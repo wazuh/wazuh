@@ -752,6 +752,22 @@ def test_generate_default_password():
         assert set(password) <= allowed
 
 
+def test_check_database_integrity_refuses_a_name_already_taken(fresh_in_memory_db, tmp_path):
+    """A dangling symlink where `rbac.db` goes is refused instead of followed.
+
+    `os.path.exists` is false for one, and SQLite follows it, so the creation path would write a database
+    through the link. The directory is group-writable, so the account the daemons run as chooses the target.
+    """
+    db_file = tmp_path / "rbac.db"
+    db_file.symlink_to(tmp_path / "nothing-here")
+
+    with patch("wazuh.rbac.orm.DB_FILE", new=str(db_file)):
+        with pytest.raises(fresh_in_memory_db.PreseededPasswordsError, match="is not a database"):
+            fresh_in_memory_db.check_database_integrity()
+
+    assert not (tmp_path / "nothing-here").exists()
+
+
 def test_load_preseeded_passwords_absent(fresh_in_memory_db, tmp_path):
     """A node with nothing provisioned reads nothing, and the caller generates a password per user."""
     with patch("wazuh.rbac.orm.PRESEEDED_PASSWORDS_FILE", new=str(tmp_path / "absent.json")):
@@ -1128,7 +1144,9 @@ def test_check_database_integrity_exceptions(remove_mock, close_sessions_mock, e
             with pytest.raises(exception):
                 fresh_in_memory_db.check_database_integrity()
 
-            close_sessions_mock.assert_called_once()
+            # Called, not called once: the `finally` closes on every path, and the creation branch closes
+            # explicitly before unlinking a database it could not finish.
+            close_sessions_mock.assert_called()
             mock_exists.assert_called_with(fresh_in_memory_db.DB_FILE_TMP)
             remove_mock.assert_called_with(fresh_in_memory_db.DB_FILE_TMP)
 

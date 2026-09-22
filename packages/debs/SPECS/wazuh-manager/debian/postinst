@@ -269,7 +269,7 @@ case "$1" in
     # what it can resolve, leaves the node unconfigured rather than half configured when it cannot, and
     # never prints a password. After the RBAC database restore above, so a reinstall that carried one over
     # is left alone.
-    if [ -z "$2" ]; then
+    if [ ! -f ${DIR}/api/configuration/security/rbac.db ]; then
         sh ${SCRIPTS_DIR}/src/init/resolve-credentials.sh ${DIR}
     fi
 

@@ -24,8 +24,8 @@ ADD base/manager/supervisord.conf /etc/supervisor/conf.d/
 
 RUN mkdir wazuh && curl -sL https://github.com/wazuh/wazuh/tarball/${WAZUH_BRANCH} | tar zx --strip-components=1 -C wazuh
 COPY base/manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
-# install.sh refuses a manager that does not name the indexer user's password. This environment has
-# no indexer, so the value only has to exist; entrypoint.sh sets the API credentials it does use.
+# Without it the installation leaves the node unconfigured. This environment has no indexer, so the
+# value only has to exist; entrypoint.sh sets the API credentials it does use.
 RUN INDEXER_PASSWORD=Env1ronment-Indexer. /wazuh/install.sh
 # The manager does not generate TLS certificates: issue the indexer trust material and the HTTPS
 # agent listener pair with the devcontainer copy of the installation assistant tool (sources already

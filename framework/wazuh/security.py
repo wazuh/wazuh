@@ -17,8 +17,7 @@ from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
 from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
 from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
-from wazuh.rbac.orm import USER_PASSWORD_MAX_LENGTH, USER_PASSWORD_MIN_LENGTH, \
-    USER_PASSWORD_POLICY as _user_password
+from wazuh.rbac.orm import USER_PASSWORD_MAX_LENGTH, USER_PASSWORD_MIN_LENGTH, USER_PASSWORD_POLICY
 
 @dapi_allower()
 def get_user_me(token: dict) -> AffectedItemsWazuhResult:
@@ -174,7 +173,7 @@ def create_user(username: str = None, password: str = None) -> AffectedItemsWazu
     """
     if not USER_PASSWORD_MIN_LENGTH <= len(password) <= USER_PASSWORD_MAX_LENGTH:
         raise WazuhError(5009)
-    elif not _user_password.match(password):
+    elif not USER_PASSWORD_POLICY.match(password):
         raise WazuhError(5007)
 
     result = AffectedItemsWazuhResult(none_msg='User could not be created',
@@ -224,7 +223,7 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
     if password is not None:
         if not USER_PASSWORD_MIN_LENGTH <= len(password) <= USER_PASSWORD_MAX_LENGTH:
             raise WazuhError(5009)
-        elif not _user_password.match(password):
+        elif not USER_PASSWORD_POLICY.match(password):
             raise WazuhError(5007)
 
         if int(user_id[0]) <= MAX_ID_RESERVED:

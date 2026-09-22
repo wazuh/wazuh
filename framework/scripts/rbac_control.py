@@ -153,14 +153,12 @@ async def restore_default_passwords(script_args):
     # Checked here and not only by `update_user`, which rejects it after the fact: the interactive prompt
     # would accept a password it cannot apply, and a file naming several users would apply the ones read
     # before the offending entry.
-    from wazuh.rbac.orm import USER_PASSWORD_MAX_LENGTH, USER_PASSWORD_MIN_LENGTH, USER_PASSWORD_POLICY
+    from wazuh.rbac.orm import USER_PASSWORD_REQUIREMENT, is_valid_password
 
     for username, new_password in new_passwords.items():
-        if not USER_PASSWORD_MIN_LENGTH <= len(new_password) <= USER_PASSWORD_MAX_LENGTH \
-                or not USER_PASSWORD_POLICY.match(new_password):
+        if not is_valid_password(new_password):
             print(f"\tThe password of '{username}' does not satisfy the API password policy: "
-                  f"{USER_PASSWORD_MIN_LENGTH} to {USER_PASSWORD_MAX_LENGTH} characters, holding both a "
-                  f"letter and a digit")
+                  f"{USER_PASSWORD_REQUIREMENT}")
             sys.exit(1)
 
     # `local_master` resolves to the master from anywhere, which is where the credential in use lives.
@@ -220,7 +218,7 @@ def _read_provisioned_passwords(default_users: list) -> dict:
 
     import yaml
     from wazuh.rbac.orm import PRESEEDED_PASSWORDS_FILE, PreseededPasswordsError, \
-        _assert_preseed_source_is_trusted
+        _assert_preseed_source_is_trusted, is_valid_password
 
     if not os.path.exists(PRESEEDED_PASSWORDS_FILE):
         return {}
@@ -235,8 +233,10 @@ def _read_provisioned_passwords(default_users: list) -> dict:
             document = yaml.safe_load(f) or {}
         if not isinstance(document, dict):
             raise ValueError('it does not hold a YAML mapping')
+        # And only what the API loader would accept: an entry it would refuse has to be replaced in this
+        # same run, not carried intact into a first start that then stops the whole manager.
         for entry in document.get('manager') or []:
-            if entry['name'] in default_users:
+            if entry['name'] in default_users and is_valid_password(entry['password']):
                 provisioned[entry['name']] = entry['password']
     except (OSError, KeyError, TypeError, ValueError, yaml.YAMLError, PreseededPasswordsError) as exc:
         # The parser's own message echoes the line it failed on, password included.
@@ -271,8 +271,8 @@ async def provision_default_passwords(script_args):
 
     import yaml
     from wazuh.core.common import DEFAULT_RBAC_RESOURCES
-    from wazuh.rbac.orm import DB_FILE, PRESEEDED_PASSWORDS_FILE, USER_PASSWORD_MAX_LENGTH, \
-        USER_PASSWORD_MIN_LENGTH, USER_PASSWORD_POLICY, generate_default_password
+    from wazuh.rbac.orm import DB_FILE, PRESEEDED_PASSWORDS_FILE, USER_PASSWORD_REQUIREMENT, \
+        generate_default_password, is_valid_password
 
     with open(path.join(DEFAULT_RBAC_RESOURCES, 'users.yaml')) as f:
         default_users = list(yaml.safe_load(f)['default_users'])
@@ -300,11 +300,9 @@ async def provision_default_passwords(script_args):
             origin[username] = 'GENERATED'
             continue
 
-        if not USER_PASSWORD_MIN_LENGTH <= len(supplied) <= USER_PASSWORD_MAX_LENGTH \
-                or not USER_PASSWORD_POLICY.match(supplied):
+        if not is_valid_password(supplied):
             print(f"\tThe password of '{username}', taken from {variable}, does not satisfy the API "
-                  f"password policy: {USER_PASSWORD_MIN_LENGTH} to {USER_PASSWORD_MAX_LENGTH} characters, "
-                  f"holding both a letter and a digit")
+                  f"password policy: {USER_PASSWORD_REQUIREMENT}")
             sys.exit(1)
 
         provisioned[username] = supplied
@@ -330,8 +328,7 @@ async def preseed_default_password(script_args):
 
     import yaml
     from wazuh.core.common import DEFAULT_RBAC_RESOURCES
-    from wazuh.rbac.orm import DB_FILE, USER_PASSWORD_MAX_LENGTH, USER_PASSWORD_MIN_LENGTH, \
-        USER_PASSWORD_POLICY
+    from wazuh.rbac.orm import DB_FILE, USER_PASSWORD_REQUIREMENT, is_valid_password
 
     with open(path.join(DEFAULT_RBAC_RESOURCES, 'users.yaml')) as f:
         default_users = list(yaml.safe_load(f)['default_users'])
@@ -344,11 +341,9 @@ async def preseed_default_password(script_args):
     # host, and the policy does not allow the trailing newline `echo` adds
     password = sys.stdin.readline().rstrip('\n').rstrip('\r')
 
-    if not USER_PASSWORD_MIN_LENGTH <= len(password) <= USER_PASSWORD_MAX_LENGTH \
-            or not USER_PASSWORD_POLICY.match(password):
+    if not is_valid_password(password):
         print(f"\tThe password of '{script_args.user}' does not satisfy the API password policy: "
-              f"{USER_PASSWORD_MIN_LENGTH} to {USER_PASSWORD_MAX_LENGTH} characters, holding both a letter "
-              f"and a digit")
+              f"{USER_PASSWORD_REQUIREMENT}")
         sys.exit(1)
 
     # Merged rather than overwritten: one user is set per execution, and an entry this call does not name
@@ -371,8 +366,10 @@ async def preseed_default_password(script_args):
 
 async def reset_rbac_database(script_args):
     """Attempt to fully wipe the RBAC database to restore factory values. Input confirmation is required."""
-    if not script_args.reset_force and input("This action will completely wipe your RBAC configuration and restart it "
-                                             "to default values. Type RESET to proceed: ") != "RESET":
+    target = "this node" if script_args.local else "the master node"
+    if not script_args.reset_force and input(f"This action will completely wipe the RBAC configuration of "
+                                             f"{target} and restart it to default values. Type RESET to "
+                                             f"proceed: ") != "RESET":
         print("\tRBAC database reset aborted.")
         sys.exit(0)
 
@@ -390,7 +387,7 @@ async def reset_rbac_database(script_args):
         print(f"\tRBAC database reset failed | {str(response)}")
         sys.exit(1)
 
-    print("\tSuccessfully reset RBAC database")
+    print(f"\tSuccessfully reset the RBAC database of {target}")
 
 
 def get_script_arguments():

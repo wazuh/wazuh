@@ -59,6 +59,15 @@ CURRENT_ORM_VERSION = 1
 USER_PASSWORD_MIN_LENGTH = 12
 USER_PASSWORD_MAX_LENGTH = 64
 USER_PASSWORD_POLICY = re.compile(r'^(?=.*[A-Za-z])(?=.*\d).{12,}\Z')
+USER_PASSWORD_REQUIREMENT = (f'{USER_PASSWORD_MIN_LENGTH} to {USER_PASSWORD_MAX_LENGTH} characters, holding '
+                             f'both a letter and a digit')
+
+
+def is_valid_password(password) -> bool:
+    """Whether a password satisfies the API password policy, length included."""
+    return (isinstance(password, str)
+            and USER_PASSWORD_MIN_LENGTH <= len(password) <= USER_PASSWORD_MAX_LENGTH
+            and bool(USER_PASSWORD_POLICY.match(password)))
 
 # The rule a password must pass is the floor; what this manager generates is far above it. 32 characters
 # over a 73-character alphabet is about 198 bits. The alphabet leaves out the quote, backslash, backtick,
@@ -253,10 +262,8 @@ def _load_preseeded_passwords(known_usernames: list) -> dict:
         if username in preseeded:
             raise PreseededPasswordsError(f"'{PRESEEDED_PASSWORDS_FILE}' names '{username}' more than once")
 
-        # Length too: `wazuh.security` enforces it separately from the pattern (error 5009). The value itself
-        # is never logged.
-        if not isinstance(password, str) or not USER_PASSWORD_MIN_LENGTH <= len(password) \
-                <= USER_PASSWORD_MAX_LENGTH or not USER_PASSWORD_POLICY.match(password):
+        # The value itself is never logged
+        if not is_valid_password(password):
             raise PreseededPasswordsError(f"the password provisioned for '{username}' in "
                                           f"'{PRESEEDED_PASSWORDS_FILE}' does not satisfy the API password "
                                           f"policy. Set it again with "
@@ -2852,16 +2859,30 @@ def check_database_integrity():
         else:
             logger.info("RBAC database not found. Initializing")
 
+            # `os.path.exists` above is false for a dangling symlink, and SQLite follows one: the
+            # directory is group-writable, so the name can be pointed at a file of root's.
+            if os.path.lexists(DB_FILE):
+                raise PreseededPasswordsError(f"'{DB_FILE}' exists but is not a database. Remove it and "
+                                              f"start again")
+
             # Resolved before anything is created: an unusable provisioning file must stop the start
             # without leaving a half-seeded database behind.
             preseeded_passwords = load_preseeded_passwords()
 
-            db_manager.connect(DB_FILE)
-            db_manager.create_database(DB_FILE)
-            _set_permissions_and_ownership(DB_FILE)
-            db_manager.insert_default_resources(DB_FILE, preseeded_passwords)
-            db_manager.set_database_version(DB_FILE, CURRENT_ORM_VERSION)
-            db_manager.close_sessions()
+            try:
+                db_manager.connect(DB_FILE)
+                db_manager.create_database(DB_FILE)
+                _set_permissions_and_ownership(DB_FILE)
+                db_manager.insert_default_resources(DB_FILE, preseeded_passwords)
+                db_manager.set_database_version(DB_FILE, CURRENT_ORM_VERSION)
+                db_manager.close_sessions()
+            except Exception:
+                # Nothing rather than a database seeded halfway: the next start has to take this path
+                # again, and a partial one would reach the migration instead and be refused there.
+                db_manager.close_sessions()
+                os.path.lexists(DB_FILE) and os.remove(DB_FILE)
+                raise
+
             logger.info(f"Default users seeded from '{PRESEEDED_PASSWORDS_FILE}'")
             logger.info(f"{DB_FILE} database created successfully")
     except PreseededPasswordsError as e:
@@ -2869,20 +2890,21 @@ def check_database_integrity():
         # still in place and the temporary one removed by the `finally` below.
         logger.error(f"Cannot seed the RBAC database: {e}. Nothing has been applied, and the manager does "
                      f"not start until this is fixed")
-        db_manager.close_sessions()
         raise e
     except ValueError as e:
         logger.error("Error retrieving the current Wazuh RBAC database version. Aborting database integrity check")
-        db_manager.close_sessions()
         raise e
     except Exception as e:
         logger.error("Error during the database migration. Restoring the previous database file")
         logger.error(f"Error details: {str(e)}")
-        db_manager.close_sessions()
         raise e
     else:
         logger.info("RBAC database integrity check finished successfully")
     finally:
+        # Before the daemon forks: a session left open here is inherited, and SQLite advises against
+        # sharing a connection across `fork()`
+        db_manager.close_sessions()
+
         # Remove tmp database if present
         os.path.exists(DB_FILE_TMP) and os.remove(DB_FILE_TMP)
 

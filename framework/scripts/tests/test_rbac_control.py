@@ -235,7 +235,8 @@ async def test_reset_rbac_database(forward_mock, print_mock, user_input, db_setu
         if user_input == "RESET":
             await rbac_control.reset_rbac_database(Arguments())
             forward_mock.assert_called_with(core_security.rbac_db_factory_reset, request_type="local_master")
-            assert "Successfully reset RBAC database" in print_mock.call_args[0][0]
+            # The node is named, because the default routing wipes the master wherever this is typed
+            assert "Successfully reset the RBAC database of the master node" in print_mock.call_args[0][0]
         else:
             with pytest.raises(SystemExit):
                 await rbac_control.reset_rbac_database(Arguments())
@@ -499,6 +500,26 @@ async def test_provision_default_passwords(print_mock, tmp_path, db_setup):
     printed = "\n".join(str(c.args[0]) for c in print_mock.call_args_list if c.args)
     assert not any(password in printed for password in provisioned.values())
     assert str(provisioning_file) in printed
+
+
+@pytest.mark.asyncio
+@patch("builtins.print")
+async def test_provision_default_passwords_replaces_an_unusable_entry(print_mock, tmp_path, db_setup):
+    """A provisioned password the API loader would refuse is replaced, not carried into the first start.
+
+    The two tools that write the file validate what they are given, so only a hand-written entry gets here.
+    Left intact it would make the installation report success and the first start stop the whole manager.
+    """
+    provisioning_file = tmp_path / "wazuh-preseeded-passwords.yml"
+    provisioning_file.write_text(yaml.safe_dump({'manager': [{'name': 'wazuh', 'password': 'short'}]}))
+    provisioning_file.chmod(0o640)
+
+    with _provisioning(tmp_path):
+        await rbac_control.provision_default_passwords(Arguments())
+
+    provisioned = _provisioned(provisioning_file)
+    assert provisioned["wazuh"] != "short"
+    assert "wazuh-wui" in provisioned
 
 
 @pytest.mark.asyncio

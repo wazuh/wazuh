@@ -138,8 +138,8 @@ jobs:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
       INSTALLATION_DIR: /var/wazuh-manager
-      # The manager refuses a fresh installation that does not name the indexer user's password. There is
-      # no indexer in this job, so the value only has to exist.
+      # Without it the installation leaves the node unconfigured. There is no indexer in this job, so the
+      # value only has to exist.
       INDEXER_PASSWORD: Integration-Indexer1!
       # The default API users have no shipped password. The installation takes this one for 'wazuh' and
       # generates one for 'wazuh-wui', and the suites authenticate with this same value.

@@ -281,6 +281,14 @@ Install()
     runInit $INSTYPE ${update_only}
     runinit_value=$?
 
+    # Before anything starts the manager: the block below does when START_WAZUH is yes, which is the default
+    # for a manager, and a first API start with no credentials in place generates its own and creates
+    # rbac.db, which then makes every supplied password a no-op. Skipped while a package is being built,
+    # where this script only stages a file tree.
+    if [ "X${update_only}" = "X" ] && [ "X$INSTYPE" = "Xmanager" ] && [ -z "${WAZUH_PACKAGE_BUILD}" ]; then
+        sh "${SCRIPT_DIR}/src/init/resolve-credentials.sh" "${INSTALLDIR}"
+    fi
+
     # For updates, run upgrade hooks and start services again.
     if [ "X${update_only}" = "Xyes" ]; then
         WazuhUpgrade $INSTYPE
@@ -1172,13 +1180,6 @@ main()
 
     # Install selected components.
     Install
-
-    # After Install: the keystore tool and the framework are part of what it puts in place. Skipped while a
-    # package is being built, which would otherwise write a keystore entry and a credentials file into the
-    # tree the package ships, giving every installation the same password.
-    if [ "X${update_only}" = "X" ] && [ "X$INSTYPE" = "Xmanager" ] && [ -z "${WAZUH_PACKAGE_BUILD}" ]; then
-        sh "${SCRIPT_DIR}/src/init/resolve-credentials.sh" "${INSTALLDIR}"
-    fi
 
     # Post-install usage hints.
     control_script="wazuh-control"

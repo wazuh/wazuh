@@ -13,7 +13,7 @@ from api.authentication import change_keypair
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh import WazuhInternalError, WazuhError
 from wazuh.core.decorators import dapi_allower
-from wazuh.rbac.orm import AuthenticationManager, TokenManager, check_database_integrity, DB_FILE, \
+from wazuh.rbac.orm import TokenManager, check_database_integrity, DB_FILE, \
     PreseededPasswordsError, dispose_engine, load_preseeded_passwords
 
 REQUIRED_FIELDS = ['id']
@@ -169,7 +169,7 @@ def rbac_db_factory_reset():
     try:
         load_preseeded_passwords()
     except PreseededPasswordsError as exc:
-        raise WazuhError(5012, extra_message=str(exc))
+        raise WazuhError(5012, extra_message=str(exc)) from exc
 
     # Before the removal: a pooled connection would stay on the inode this unlinks, and `revoke_tokens`
     # below opens its session on that same pool

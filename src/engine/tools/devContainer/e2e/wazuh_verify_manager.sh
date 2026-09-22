@@ -133,9 +133,9 @@ fi
 if [ "$API" -eq 1 ]; then
   API_PORT=$(grep -E '^port:' "$HOME_DIR/api/configuration/api.yaml" 2>/dev/null | awk '{print $2}')
   API_PORT="${API_PORT:-55000}"
-  tok=$(curl -sk --max-time 15 -u wazuh:wazuh -X POST "https://127.0.0.1:${API_PORT}/security/user/authenticate" 2>/dev/null \
+  tok=$(curl -sk --max-time 15 -u "wazuh:${INITIAL_WAZUH_PASSWORD:-DevCont4iner-Api.}" -X POST "https://127.0.0.1:${API_PORT}/security/user/authenticate" 2>/dev/null \
         | python3 -c 'import json,sys;print(json.load(sys.stdin)["data"]["token"])' 2>/dev/null || true)
-  check 5 "API login wazuh:wazuh on :${API_PORT}" yes "$([ -n "$tok" ] && echo yes || echo no)"
+  check 5 "API login as wazuh on :${API_PORT}" yes "$([ -n "$tok" ] && echo yes || echo no)"
 else
   skip 5 "API login" "--api not given"
 fi

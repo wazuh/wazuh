@@ -73,14 +73,29 @@ echo "== Everything resolves =="
 DIR="$(make_installdir)"
 INDEXER_PASSWORD="Ind3xer-Pass." run_target "${DIR}"
 check "exit status 0" "0" "${STATUS}"
-check "the user name is piped in" "-f indexer -k username|wazuh-manager" "$(sed -n '1p' "${DIR}/keystore.log")"
-check "the password is piped in" "-f indexer -k password|Ind3xer-Pass." "$(sed -n '2p' "${DIR}/keystore.log")"
+# The password goes first: a failure then leaves neither half of the pair, not a user name pointing at a
+# password that was never written.
+check "the password is piped in first" "-f indexer -k password|Ind3xer-Pass." "$(sed -n '1p' "${DIR}/keystore.log")"
+check "then the user name" "-f indexer -k username|wazuh-manager" "$(sed -n '2p' "${DIR}/keystore.log")"
 check "no password on a command line" "0" \
     "$(cut -d'|' -f1 "${DIR}/keystore.log" | grep -c 'Ind3xer-Pass\.')"
 check "no password anywhere in the output" "0" "$(echo "${OUTPUT}" | grep -c 'Ind3xer-Pass\.')"
 check "the owned accounts are provisioned" "provision-passwords" "$(cat "${DIR}/rbac.log")"
 check "nothing is reported missing" "0" "$(echo "${OUTPUT}" | grep -c 'MISSING')"
 check "two accounts resolved" "2" "$(echo "${OUTPUT}" | grep -c 'resolved')"
+rm -rf "${DIR}"
+
+echo "== The database already exists, so nothing is provisioned =="
+DIR="$(make_installdir)"
+cat > "${DIR}/bin/rbac_control" <<'STUB'
+#!/bin/sh
+echo "	'/var/wazuh-manager/api/configuration/security/rbac.db' already exists: its users keep the password"
+exit 0
+STUB
+chmod +x "${DIR}/bin/rbac_control"
+INDEXER_PASSWORD="Ind3xer-Pass." run_target "${DIR}"
+check "it is not reported as written" "1" "$(echo "${OUTPUT}" | grep -c 'already set on this node')"
+check "and not as the credentials file" "0" "$(echo "${OUTPUT}" | grep -c 'wazuh-preseeded-passwords.yml')"
 rm -rf "${DIR}"
 
 echo "== The consumed credential is missing =="
@@ -122,7 +137,7 @@ rm -rf "${DIR}"
 echo "== INDEXER_USERNAME overrides the account =="
 DIR="$(make_installdir)"
 INDEXER_PASSWORD="Ind3xer-Pass." INDEXER_USERNAME="other-user" run_target "${DIR}"
-check "the override is used" "-f indexer -k username|other-user" "$(sed -n '1p' "${DIR}/keystore.log")"
+check "the override is used" "-f indexer -k username|other-user" "$(sed -n '2p' "${DIR}/keystore.log")"
 rm -rf "${DIR}"
 
 echo

@@ -94,7 +94,7 @@ Four more variables carry credentials rather than configuration options. They ar
       https://documentation.wazuh.com/current/installation-guide/wazuh-server/
 ```
 
-All or nothing: a node missing any credential it consumes stays unconfigured even when it resolved the rest. A manager that starts and then fails every indexer call is harder to diagnose than one that never started and said why. Set the variable and install again, or set it and re-run the resolution.
+All or nothing: a node missing any credential it consumes stays unconfigured even when it resolved the rest. A manager that starts and then fails every indexer call is harder to diagnose than one that never started and said why. Set the variable and install again.
 
 Unlike the `WAZUH_REMOTE_*` variables above, do not place these after `sudo`: an argument is visible to every account on the host through the process list, and it also lands in the shell history. Export them first and preserve the environment with `sudo -E`:
 
@@ -174,21 +174,13 @@ A pair that exists but is not readable by the `wazuh-manager` user passes that v
 
 #### The Server API passwords
 
-The manager ships no password for its two Server API users, `wazuh` and `wazuh-wui`. The installation generates one for each and prints them, once:
+The manager ships no password for its two Server API users, `wazuh` and `wazuh-wui`. The installation generates one for each and writes them to the credentials file, naming it but never the values:
 
 ```
-	wazuh: GENERATED
-	wazuh-wui: GENERATED
-
-Server API credentials of this node:
-
-	wazuh: pgL.PTR0aFZVqw8DiDkl
-	wazuh-wui: IBVv-51r.40-1JZLlnEq
-
-They are also in '/var/wazuh-manager/api/configuration/security/wazuh-preseeded-passwords.yml', which only root and the Wazuh group can read. Store them elsewhere and remove that file.
+  resolved   Server API passwords for wazuh and wazuh-wui, in /var/wazuh-manager/api/configuration/security/wazuh-preseeded-passwords.yml
 ```
 
-This output is the only disclosure the manager makes. The password never reaches its log, nor the process list.
+That file is the only disclosure the manager makes. A password reaches neither the installation output, nor the manager log, nor the process list.
 
 To decide the password instead of having it generated, put it in the environment of the installation, in `INITIAL_WAZUH_PASSWORD` for `wazuh` and `INITIAL_WAZUH_WUI_PASSWORD` for `wazuh-wui`. Either one that is absent is generated:
 
@@ -303,7 +295,7 @@ The package ships no password for either of them. What each one ends up with is 
 - **Supplied**, through `INITIAL_WAZUH_PASSWORD` or `INITIAL_WAZUH_WUI_PASSWORD` at installation time, or written to the credentials file with `rbac_control set-password` before the first start.
 - **Generated** otherwise, per user, from the system CSPRNG, satisfying the password policy by construction.
 
-Either way the value lands in `api/configuration/security/wazuh-preseeded-passwords.yml`, the installation prints it, and the manager seeds `rbac.db` from it the first time the API starts. See [The Server API passwords](#the-server-api-passwords).
+Either way the value lands in `api/configuration/security/wazuh-preseeded-passwords.yml`, and the manager seeds `rbac.db` from it the first time the API starts. See [The Server API passwords](#the-server-api-passwords).
 
 A credentials file that is present but cannot be used is the one case that stops the manager: wrong owner or permissions, malformed YAML, a section this manager does not read, an unknown user, the same user twice, or a password the policy rejects. No database is created and the API refuses to start, which stops the whole manager, since the seeding runs before the daemon forks and `wazuh-manager-control` reads its exit code. The log names the reason, and the file is left on disk to be corrected.
 

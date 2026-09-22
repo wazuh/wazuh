@@ -1941,18 +1941,6 @@
                     "test_agent_PUT_endpoints.tavern.yaml",
                     "test_cluster_endpoints.tavern.yaml"
                 ]
-            },
-            {
-                "name": "security_config.sh",
-                "tag": "security",
-                "tests": [
-                    "test_rbac_black_security_endpoints.tavern.yaml",
-                    "test_rbac_white_security_endpoints.tavern.yaml",
-                    "test_security_DELETE_endpoints.tavern.yaml",
-                    "test_security_GET_endpoints.tavern.yaml",
-                    "test_security_POST_endpoints.tavern.yaml",
-                    "test_security_PUT_endpoints.tavern.yaml"
-                ]
             }
         ]
     },

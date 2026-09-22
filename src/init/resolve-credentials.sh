@@ -21,6 +21,9 @@
 #
 # Usage: resolve-credentials.sh <installdir> [--container]
 #
+# --container is for the image entrypoints in wazuh-docker and wazuh-kubernetes; nothing in this repository
+# passes it, since its two container environments provision their own API credentials.
+#
 # Exit status: 0 on a package installation even when something is missing, because a maintainer script that
 # fails leaves the package half-installed over a state the operator can still fix. 1 with --container, where
 # no operator is going to fix anything.
@@ -54,7 +57,12 @@ missing()
 # Owned: generated here unless the INITIAL_* variables supply them. Its output is captured because this
 # script owns the report; it is echoed only when the call fails, where it names the reason.
 if PROVISION_OUTPUT=$("${RBAC_CONTROL}" provision-passwords 2>&1); then
-    resolved "Server API passwords for wazuh and wazuh-wui, in ${CREDENTIALS_FILE}"
+    # It exits 0 both when it provisioned and when it found a database it must not touch, and only the
+    # first of those is something this script applied.
+    case "${PROVISION_OUTPUT}" in
+        *"already exists"*) resolved "Server API passwords already set on this node" ;;
+        *) resolved "Server API passwords for wazuh and wazuh-wui, in ${CREDENTIALS_FILE}" ;;
+    esac
 else
     printf '%s\n' "${PROVISION_OUTPUT}" >&2
     missing "Server API passwords for wazuh and wazuh-wui"
@@ -65,8 +73,8 @@ fi
 INDEXER_ACCOUNT="${INDEXER_USERNAME:-wazuh-manager}"
 if [ -z "${INDEXER_PASSWORD}" ]; then
     missing "indexer password for ${INDEXER_ACCOUNT}, expected in INDEXER_PASSWORD"
-elif ! printf '%s\n' "${INDEXER_ACCOUNT}" | "${KEYSTORE}" -f indexer -k username > /dev/null 2>&1 \
-        || ! printf '%s\n' "${INDEXER_PASSWORD}" | "${KEYSTORE}" -f indexer -k password > /dev/null 2>&1; then
+elif ! printf '%s\n' "${INDEXER_PASSWORD}" | "${KEYSTORE}" -f indexer -k password > /dev/null 2>&1 \
+        || ! printf '%s\n' "${INDEXER_ACCOUNT}" | "${KEYSTORE}" -f indexer -k username > /dev/null 2>&1; then
     missing "indexer password for ${INDEXER_ACCOUNT}, which the keystore refused"
 else
     resolved "indexer password for ${INDEXER_ACCOUNT}"
