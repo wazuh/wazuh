@@ -73,8 +73,8 @@ src/shared_modules/ca_bundle/
 | `serializeCertificates(certs) -> string` | The PEM document to publish: built from parsed objects, never forwarded bytes |
 | `contentSha256(certs) -> string` | Lowercase hex SHA-256 of the sorted DER encodings (RF-1) |
 | `identityOf(cert) -> string` | `"x509-sha256:<hex>"` of one certificate's DER, for logs and the registry |
-| `leafChainsToAnyCa(leaf, cas) -> bool` | Whether the served certificate CHAINS to a certificate of the bundle — `X509_verify_cert()` with default flags, so dates, `basicConstraints` and a self-signed anchor are all required (what decides `GET /cacerts`' 503 and the published generation) |
-| `vouch(bundle, leaf, bytes) -> Vouch` | The publication to advertise, or 0 and the `GuardFailure` that refused (RF-2) |
+| `leafChainsToAnyCa(leaf, cas, at?) -> bool` | Whether the served certificate CHAINS to a certificate of the bundle — `X509_verify_cert()` with default flags, so dates, `basicConstraints` and a self-signed anchor are all required (what decides `GET /cacerts`' 503 and the published generation). `at` pins the instant the validity windows are judged at; omitted, OpenSSL uses the current time |
+| `vouch(bundle, leaf, bytes, at?) -> Vouch` | The publication to advertise, or 0 and the `GuardFailure` that refused (RF-2); `at` reaches the chain guard, the only one with a date term |
 | `renderBlock(block) -> string` | The eight `##` lines; only `wazuh-manager-certs` writes them |
 | `describe(cert, leaf) -> CertificateFacts` | Subject, issuer, identity, validity window, `isCa`, `signsLeaf` (the plain **signature** fact, deliberately not the chain verdict) — the tool's `inspect`/`check` |
 | `kMaxCertificates` (6), `kMaxSerializedBytes` (8191) | The caps `vouch()` enforces |
@@ -101,11 +101,11 @@ visible:
 | Only a **non-self-signed intermediate**, which did sign the leaf | vouched | refused: without `PARTIAL_CHAIN` an anchor must be self-signed, exactly as on the agent |
 | The **served leaf itself** has expired | vouched | refused: the whole path's validity is checked |
 
-Two consequences worth stating. First, the verdict now depends on the clock, so a bundle publishable
-yesterday can stop being publishable today with no file having changed — and remoted's caller caches
-this verdict per bundle CONTENT (`CaCertificateSource::buildLocked()`), so a CA that expires while
-the file is untouched keeps its last verdict until the bytes change or remoted restarts (issue
-#39319, D1: deferred, and the deferral weighs more now than it did when the guard was time-free).
+Two consequences worth stating. First, the verdict depends on the clock, so a bundle publishable
+yesterday can stop being publishable today with no file having changed — which is why both functions
+take an optional instant `at`, and why remoted's `CaCertificateSource` judges them again on every read
+instead of caching them with the bytes (issue #39519): a CA that expires in place is refused from the
+next read on, and one whose `notBefore` was ahead of the node's clock is served once its window opens.
 Second, remoted's `caMatchesLeaf`, `remoted.server.tls.ca_matches_leaf` and the `ca_mismatch` 503 all
 mean "does not chain" now, which is what their log lines say.
 
@@ -134,7 +134,7 @@ binary in `src/build/shared_modules/ca_bundle/test/`, or `ctest -L ca_bundle`), 
 | `parseBundle` (RF-3, RF-4) | Block at the top / between certificates / after the last one; two blocks (the first wins); no block; five near-miss `##` shapes; truncated and non-base64 documents clear the certificates |
 | `vouch` (RF-2) | One case per `GuardFailure` in its evaluation order, including `leaf == nullptr`, seven certificates and one byte over the size cap; and the success that returns the block's publication |
 | `renderBlock` (RF-5) | The eight lines verbatim, and the round trip through `parseBundle()` |
-| `leafChainsToAnyCa` (C33) | The regression case — same public key, another subject: signs the leaf, does not anchor it; the root alone and among foreign CAs; an expired signer; a signer without `CA:TRUE`; an intermediate alone (default flags); an expired served LEAF; a self-signed leaf as its own anchor; null leaf, empty bundle, a null entry among the anchors; and the same impostor through `vouch()` |
+| `leafChainsToAnyCa` (C33) | The regression case — same public key, another subject: signs the leaf, does not anchor it; the root alone and among foreign CAs; an expired signer; a signer without `CA:TRUE`; an intermediate alone (default flags); an expired served LEAF; a self-signed leaf as its own anchor; null leaf, empty bundle, a null entry among the anchors; the instant given (`at`) honoured here and by `vouch()`'s chain guard; and the same impostor through `vouch()` |
 | `identityOf` / `describe` | The identity against an independently computed SHA-256; subject/issuer/dates/`isCa`/`signsLeaf`, and where `signsLeaf` and `leafChainsToAnyCa()` deliberately disagree |
 
 `test/testPki.hpp` builds its certificates in memory (EC P-256, `X509_sign`) — a bounded copy of

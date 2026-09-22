@@ -786,6 +786,42 @@ TEST(CaBundleTest, NothingChainsWithoutALeafOrWithoutAnchors)
     EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), withNull));
 }
 
+TEST(CaBundleTest, LeafChainsToAnyCaJudgesAtTheInstantGiven)
+{
+    // A rotation's pre-staged CA: the window opens in ten minutes, and the leaf it signs is valid
+    // now. Judged at this instant it anchors nothing; inside its window it does; past its notAfter
+    // it does not again. The caller's clock decides, not the file.
+    const auto pki = makePki("chain-at");
+    const auto futureCa = selfSignedCaWithKey("chain-at-ca", pki.caKey.get(), 600, 7200);
+    const auto bundle = bundleOf({futureCa.get()});
+    const auto now = std::time(nullptr);
+
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), bundle));
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), bundle, now));
+    EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), bundle, now + 1200));
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), bundle, now + 8000));
+}
+
+TEST(CaBundleTest, VouchJudgesTheChainGuardAtTheInstantGiven)
+{
+    // The same CA, stamped: the only guard with a date term follows the instant it is given, and
+    // the publication comes back exactly when the chain does.
+    const auto pki = makePki("vouch-at");
+    const auto futureCa = selfSignedCaWithKey("vouch-at-ca", pki.caKey.get(), 600, 7200);
+    const auto served = bundleOf({futureCa.get()});
+    const auto parsed = parseBundle(sealedDocument(served, stampFor(served, 1789000000)));
+    ASSERT_TRUE(parsed.block.has_value());
+    const auto bytes = serializeCertificates(parsed.certificates).size();
+    const auto now = std::time(nullptr);
+
+    EXPECT_EQ(vouch(parsed, pki.leaf.get(), bytes).failure, GuardFailure::no_ca_signs_leaf);
+    EXPECT_EQ(vouch(parsed, pki.leaf.get(), bytes, now).failure, GuardFailure::no_ca_signs_leaf);
+    const auto inside = vouch(parsed, pki.leaf.get(), bytes, now + 1200);
+    EXPECT_EQ(inside.failure, GuardFailure::none);
+    EXPECT_EQ(inside.publication, 1789000000);
+    EXPECT_EQ(vouch(parsed, pki.leaf.get(), bytes, now + 8000).failure, GuardFailure::no_ca_signs_leaf);
+}
+
 TEST(CaBundleTest, VouchRefusesABundleWhoseCaOnlySignsTheLeaf)
 {
     // The same impostor, now through the guard that decides what generation is announced: a

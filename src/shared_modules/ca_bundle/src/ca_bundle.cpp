@@ -387,7 +387,7 @@ namespace ca_bundle
         return "x509-sha256:" + sha256Hex(*der);
     }
 
-    bool leafChainsToAnyCa(const X509* leaf, const std::vector<X509Ptr>& cas)
+    bool leafChainsToAnyCa(const X509* leaf, const std::vector<X509Ptr>& cas, std::optional<std::time_t> at)
     {
         if (leaf == nullptr || cas.empty())
         {
@@ -433,13 +433,19 @@ namespace ca_bundle
             return false;
         }
 
+        if (at.has_value())
+        {
+            X509_STORE_CTX_set_time(ctx.get(), 0, *at);
+        }
+
         const bool chains = X509_verify_cert(ctx.get()) == 1;
         // Both the store and the context go back with the unique_ptrs above, on every path.
         ERR_clear_error(); // a refused chain queues the reason; nothing here reports it
         return chains;
     }
 
-    Vouch vouch(const ParsedBundle& bundle, const X509* leaf, std::size_t serializedBytes)
+    Vouch
+    vouch(const ParsedBundle& bundle, const X509* leaf, std::size_t serializedBytes, std::optional<std::time_t> at)
     {
         // Fixed order, first failure wins -- the caller's logs and the tool's exit codes name the
         // cause, so which guard answers has to be the same everywhere.
@@ -462,7 +468,7 @@ namespace ca_bundle
         // Named no_ca_signs_leaf for the callers already written against it, but the question is
         // leafChainsToAnyCa()'s since C33: a CA that merely signs the leaf is not one an agent can
         // use, so it must not decide which generation this manager announces.
-        if (!leafChainsToAnyCa(leaf, bundle.certificates))
+        if (!leafChainsToAnyCa(leaf, bundle.certificates, at))
         {
             return {0, GuardFailure::no_ca_signs_leaf};
         }
