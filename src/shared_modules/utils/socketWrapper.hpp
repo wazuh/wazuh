@@ -429,11 +429,6 @@ public:
         return m_recvDataBuffer.size();
     }
 
-    size_t sendBufferSize()
-    {
-        return m_sendDataBuffer.size();
-    }
-
     bool hasUnsentMessages()
     {
         std::lock_guard<std::mutex> lock {m_mutex};
