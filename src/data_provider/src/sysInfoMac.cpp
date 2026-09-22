@@ -472,7 +472,10 @@ nlohmann::json SysInfo::getGroups() const
 
     for (auto& group : collectedGroups)
     {
-        allGids.insert(static_cast<gid_t>(group["gid"].get<int>()));
+        if (group.contains("gid"))
+        {
+            allGids.insert(static_cast<gid_t>(group["gid"].get<int>()));
+        }
     }
 
     // Single call to getUserNamesByGid with all GIDs
@@ -482,19 +485,34 @@ nlohmann::json SysInfo::getGroups() const
     for (auto& group : collectedGroups)
     {
         nlohmann::json groupItem {};
-        gid_t currentGid = static_cast<gid_t>(group["gid"].get<int>());
+        const bool hasGid { group.contains("gid") };
 
-        groupItem["group_id"] = group["gid"];
+        // A group resolvable only via OpenDirectory (see GroupsProvider::collect()) carries no
+        // real GID. group_id/group_id_signed are BIGINT columns downstream (dbsync's
+        // bindJsonData): a JSON null there still binds the literal integer 0, colliding with the
+        // real gid-0 group ("wheel"). Omitting the keys entirely is the only representation that
+        // reaches a genuine SQL NULL (buildInsertDataSqlQuery skips columns absent from the
+        // source JSON), so the fields are only set here when a real GID is known.
+        if (hasGid)
+        {
+            groupItem["group_id"] = group["gid"];
+            groupItem["group_id_signed"] = group["gid_signed"];
+        }
+
         groupItem["group_name"] = (group.contains("groupname") && !group["groupname"].get<std::string>().empty()) ? group["groupname"] : UNKNOWN_VALUE;
         groupItem["group_description"] = (group.contains("comment") && !group["comment"].get<std::string>().empty()) ? group["comment"] : UNKNOWN_VALUE;
-        groupItem["group_id_signed"] = group["gid_signed"];
-        groupItem["group_uuid"] = UNKNOWN_VALUE;
+        groupItem["group_uuid"] = (group.contains("uuid") && !group["uuid"].get<std::string>().empty()) ? group["uuid"] : UNKNOWN_VALUE;
         groupItem["group_is_hidden"] = group["is_hidden"];
 
-        // Obtain the users for this specific GID
-        auto gidStr = std::to_string(currentGid);
-        nlohmann::json collectedUsersGroups = allUsersGroups.contains(gidStr) ?
-                                              allUsersGroups[gidStr] : nlohmann::json::array();
+        // Obtain the users for this specific GID, when one is known
+        nlohmann::json collectedUsersGroups = nlohmann::json::array();
+
+        if (hasGid)
+        {
+            auto gidStr = std::to_string(static_cast<gid_t>(group["gid"].get<int>()));
+            collectedUsersGroups = allUsersGroups.contains(gidStr) ?
+                                   allUsersGroups[gidStr] : nlohmann::json::array();
+        }
 
         if (collectedUsersGroups.empty())
         {
