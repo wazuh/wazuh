@@ -307,11 +307,9 @@ STATIC char *w_agent_auth_read_token(const agent_auth_opts_t *opts, FILE *in, FI
         return text;
     }
 
-    char text[W_ETOKEN_MAX_FILE_BYTES + 1] = {'\0'};
-
     /* Reading stdin from a terminal would block on input nobody is going to type, which reads as
      * the command having hung. Say what is wanted instead: a token only ever arrives here from a
-     * redirect or a pipe. */
+     * redirect or a pipe. Checked BEFORE the buffer exists so the common mistake costs nothing. */
     if (isatty(fileno(in))) {
         fprintf(err, "%s: no token given. Pass --token-file <path>, or redirect one in:\n",
                 AGENT_AUTH_NAME);
@@ -323,17 +321,26 @@ STATIC char *w_agent_auth_read_token(const agent_auth_opts_t *opts, FILE *in, FI
         return NULL;
     }
 
-    size_t length = fread(text, 1, sizeof(text) - 1, in);
+    /* Heap, not a stack array. Since #39321 this bound is sized for a token with a CA bundle
+     * embedded in it, and 96 KB is far too much to put on a frame -- the same reason
+     * w_agent_token_read_file() and the bootstrap's own reader allocate theirs. Zeroed, as the
+     * array it replaces was, so the trim loop below can never walk into anything unwritten. */
+    char *text;
+    os_calloc(W_ETOKEN_MAX_FILE_BYTES + 1, sizeof(char), text);
+
+    size_t length = fread(text, 1, W_ETOKEN_MAX_FILE_BYTES, in);
 
     if (ferror(in)) {
         fprintf(err, "%s: could not read the enrollment token from standard input.\n",
                 AGENT_AUTH_NAME);
+        os_free(text);
         return NULL;
     }
 
-    if (length == sizeof(text) - 1) {
+    if (length == W_ETOKEN_MAX_FILE_BYTES) {
         fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", AGENT_AUTH_NAME,
                 W_ETOKEN_MAX_FILE_BYTES);
+        os_free(text);
         return NULL;
     }
 
@@ -345,11 +352,15 @@ STATIC char *w_agent_auth_read_token(const agent_auth_opts_t *opts, FILE *in, FI
     if (length == 0) {
         fprintf(err, "%s: the enrollment token is empty. Pass --token-file <path>,\n"
                 "  or redirect one on standard input.\n", AGENT_AUTH_NAME);
+        os_free(text);
         return NULL;
     }
 
+    /* Handed back at its real size rather than as the 96 KB it was read into: the caller holds
+     * this for the rest of the run, and a token is a few hundred bytes. */
     char *owned;
     os_strdup(text, owned);
+    os_free(text);
 
     return owned;
 }
