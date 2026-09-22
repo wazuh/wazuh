@@ -26,6 +26,8 @@ STATIC int w_token_bootstrap_split_dir_filename(const char *path, char *buf, siz
 STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid);
 STATIC void w_token_bootstrap_mark_anchor_committed(int gid);
 #ifndef WIN32
+STATIC int w_token_bootstrap_open_parent_nofollow(const char *path, char *dir, size_t dir_size,
+                                                  const char **filename);
 STATIC int w_token_bootstrap_open_and_chown(const char *path, uid_t owner, gid_t group);
 STATIC int w_token_bootstrap_open_and_chown_keys(int gid);
 STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid);
@@ -194,6 +196,32 @@ STATIC void w_token_bootstrap_ensure_parent_dir(const char *path, int gid) {
 #ifndef WIN32
 
 /**
+ * @brief Opens the directory holding @p path, refusing to follow a symlink standing in its place.
+ *
+ * w_openat_nofollow_vetted() protects the FINAL component only -- it opens its basedir with a
+ * plain open(O_DIRECTORY) (file_op.c) -- which is exactly right for INSTALLDIR/etc, whose parent
+ * is 0750 root:wazuh and therefore not somewhere the runtime user can rename anything. It is NOT
+ * enough for INSTALLDIR/etc/certs: etc is group-writable by that user, so it can replace `certs`
+ * itself with a symlink and redirect anything this process then resolves through that path. The
+ * anchor's own directory has to be opened with O_NOFOLLOW for the same reason its contents are.
+ *
+ * @param path      File whose parent directory is wanted.
+ * @param dir       Buffer receiving that directory's path.
+ * @param dir_size  Size of @p dir.
+ * @param filename  Receives @p path's last component, pointing into @p dir's source; may be NULL.
+ * @return A directory descriptor the caller must close, or -1 (errno set; ELOOP or ENOTDIR when
+ *         a symlink was found where the directory should be).
+ */
+STATIC int w_token_bootstrap_open_parent_nofollow(const char *path, char *dir, size_t dir_size,
+                                                  const char **filename) {
+    if (w_token_bootstrap_split_dir_filename(path, dir, dir_size, filename) != 0) {
+        return -1;
+    }
+
+    return open(dir, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+}
+
+/**
  * @brief chown()s @p path to @p owner:@p group without following a symlink planted in its parent
  *        directory. Both files this is used for live in INSTALLDIR/etc, which is 0770 root:wazuh
  *        -- the runtime user can create entries there, and since #39321 the same is true of
@@ -327,12 +355,31 @@ STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
      * build instead. Nothing is lost by its absence here -- Windows has no privilege drop, and
      * the installation directory's own ACL already keeps non-administrators out of certs\. */
 #ifdef WIN32
-    const int flags = O_WRONLY | O_CREAT | O_EXCL;
+    fd = open(AGENT_ANCHOR_MARKER, O_WRONLY | O_CREAT | O_EXCL, 0640);
 #else
-    const int flags = O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW;
+    char dir[OS_FLSIZE + 1];
+    const char *filename;
+    int dirfd;
+    int saved_errno;
+
+    /* Opened relative to a directory descriptor that cannot be a symlink, for the reason
+     * w_token_bootstrap_open_parent_nofollow() gives: O_EXCL|O_NOFOLLOW stops this root-owned
+     * create landing on an existing file or a link, but on its own it would still let the
+     * runtime user choose the DIRECTORY it lands in by swapping `certs`. */
+    if (dirfd = w_token_bootstrap_open_parent_nofollow(AGENT_ANCHOR_MARKER, dir, sizeof(dir),
+                                                       &filename), dirfd < 0) {
+        mdebug1("Token bootstrap: could not open '%s' to write the anchor marker: %s (%d).", dir,
+                strerror(errno), errno);
+        return;
+    }
+
+    fd = openat(dirfd, filename, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0640);
+    saved_errno = errno;
+    close(dirfd);
+    errno = saved_errno;
 #endif
 
-    if (fd = open(AGENT_ANCHOR_MARKER, flags, 0640), fd < 0) {
+    if (fd < 0) {
         /* EEXIST is the benign race of two starts at once, not a problem worth a line. */
         if (errno != EEXIST) {
             mdebug1("Token bootstrap: could not write '%s': %s (%d).", AGENT_ANCHOR_MARKER,
@@ -373,25 +420,64 @@ STATIC void w_token_bootstrap_mark_anchor_committed(int gid) {
  */
 STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid) {
     char dir[OS_FLSIZE + 1];
+    const char *filename;
+    struct stat statbuf;
+    int dirfd;
+    int fd;
 
-    if (chown(AGENT_ANCHOR_CA, uid, gid) != 0) {
-        mdebug1("Token bootstrap: could not repair ownership of '%s': %s (%d).", AGENT_ANCHOR_CA,
+    /* Every operation below goes through a descriptor, never a path. This runs as root, on every
+     * boot, over a directory the runtime user can write -- and chown(2)/chmod(2) follow symlinks.
+     * Resolved by path, `wazuh` could unlink the anchor it owns (the sticky bit permits removing
+     * your own file), leave a symlink to /etc/shadow in its place, and have this hand itself the
+     * target; or replace `certs` with a symlink to /etc and have the directory calls retarget
+     * that. Opening each object once, with O_NOFOLLOW, and acting on the descriptor closes both:
+     * a descriptor cannot be re-pointed after the fact, so there is no window between the check
+     * and the change. */
+    if (dirfd = w_token_bootstrap_open_parent_nofollow(AGENT_ANCHOR_CA, dir, sizeof(dir), &filename),
+            dirfd < 0) {
+        mdebug1("Token bootstrap: could not open '%s' to repair it: %s (%d).", dir,
                 strerror(errno), errno);
-    }
-
-    if (w_token_bootstrap_split_dir_filename(AGENT_ANCHOR_CA, dir, sizeof(dir), NULL) != 0) {
         return;
     }
 
-    if (chown(dir, 0, gid) != 0) {
+    if (fchown(dirfd, 0, (gid_t) gid) != 0) {
         mdebug1("Token bootstrap: could not repair ownership of '%s': %s (%d).", dir,
                 strerror(errno), errno);
     }
 
-    if (chmod(dir, 01770) == -1) {
+    if (fchmod(dirfd, 01770) != 0) {
         mdebug1("Token bootstrap: could not repair permissions on '%s': %s (%d).", dir,
                 strerror(errno), errno);
     }
+
+    /* Not w_token_bootstrap_open_and_chown(): it opens its basedir by path, which is the half of
+     * this attack the directory descriptor above exists to remove. Opened relative to that
+     * descriptor instead, and vetted the same way it vets -- O_NOFOLLOW rules out a symlink,
+     * S_ISREG the devices and FIFOs it does not, and a link count of one a hard link to a file
+     * this agent has no business owning. */
+    if (fd = openat(dirfd, filename, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK), fd < 0) {
+        mdebug1("Token bootstrap: could not open '%s' to repair its ownership: %s (%d).",
+                AGENT_ANCHOR_CA, strerror(errno), errno);
+        close(dirfd);
+        return;
+    }
+
+    if (fstat(fd, &statbuf) != 0) {
+        mdebug1("Token bootstrap: could not stat '%s' to repair its ownership: %s (%d).",
+                AGENT_ANCHOR_CA, strerror(errno), errno);
+    } else if (!S_ISREG(statbuf.st_mode) || statbuf.st_nlink != 1) {
+        /* Loud, unlike the failures around it: the anchor being something other than a plain,
+         * singly-linked file is not an environment quirk, it is someone having put something
+         * else there. */
+        mwarn("Token bootstrap: '%s' is not a regular file with a single link; refusing to change "
+              "its ownership.", AGENT_ANCHOR_CA);
+    } else if (fchown(fd, (uid_t) uid, (gid_t) gid) != 0) {
+        mdebug1("Token bootstrap: could not repair ownership of '%s': %s (%d).", AGENT_ANCHOR_CA,
+                strerror(errno), errno);
+    }
+
+    close(fd);
+    close(dirfd);
 
     /* Last, so the marker only appears once the directory can actually hold it root-owned. */
     w_token_bootstrap_mark_anchor_committed(gid);

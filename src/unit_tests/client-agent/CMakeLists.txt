@@ -158,6 +158,7 @@ list(APPEND client-agent_names "test_token_bootstrap")
 list(APPEND client-agent_flags "-Wl,--wrap,hc_fetch_cacerts -Wl,--wrap,hc_enroll \
                                 -Wl,--wrap,hc_spki_pinned_certificate -Wl,--wrap,OS_IsValidIP \
                                 -Wl,--wrap,chown -Wl,--wrap,chmod -Wl,--wrap,fchown \
+                                -Wl,--wrap,fchmod \
                                 -Wl,--wrap,OS_MoveFile \
                                 ${DEBUG_OP_WRAPPERS}")
 

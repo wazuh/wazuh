@@ -129,6 +129,16 @@ static gid_t g_secret_chown_gid = (gid_t) -1;
 static uid_t g_keys_chown_uid = (uid_t) -1;
 static gid_t g_keys_chown_gid = (gid_t) -1;
 
+/* Which entry point the repair actually used. The values above are recorded from BOTH the
+ * path-based and the descriptor-based wrappers, so that a regression back to chown(path, ...) /
+ * chmod(path, ...) still lands in them and the value assertions keep passing -- which is exactly
+ * why they cannot also prove the hardening is in place. These do: the repair runs as root over a
+ * directory the runtime user can write, so resolving the anchor or its directory by path is the
+ * symlink-follow this hardening exists to remove. */
+static bool g_anchor_chown_via_fd = false;
+static bool g_dir_chown_via_fd = false;
+static bool g_dir_chmod_via_fd = false;
+
 /* The anchor's chown() target is the TempFile()-created temporary file
  * ("etc/certs/root-ca.pem.XXXXXX", a random mkstemp() suffix appended to the destination name --
  * see file_op.c), not the final AGENT_ANCHOR_CA path itself: the chown happens before the
@@ -150,9 +160,24 @@ static bool is_anchor_path(const char *path) {
 }
 
 /* The anchor's parent directory (etc/certs), chowned separately from the anchor file itself --
- * see w_token_bootstrap_ensure_parent_dir() in token_bootstrap.c. */
+ * see w_token_bootstrap_ensure_parent_dir() in token_bootstrap.c.
+ *
+ * Matched relative OR absolute: the path-based wrappers see the relative name the code passes,
+ * but w_token_bootstrap_repair_anchor_ownership() now acts on a directory DESCRIPTOR, and the
+ * fd-based wrappers below recover its name through /proc/self/fd, which always answers with an
+ * absolute path. A plain strcmp() against "etc/certs" would silently never match there, and the
+ * repair's assertions would pass on an unset sentinel instead of on what it did. */
 static bool is_anchor_dir_path(const char *path) {
-    return path && strcmp(path, "etc/certs") == 0;
+    static const char suffix[] = "/etc/certs";
+    size_t path_len = path ? strlen(path) : 0;
+
+    if (!path) {
+        return false;
+    }
+
+    return strcmp(path, "etc/certs") == 0 ||
+           (path_len >= sizeof(suffix) - 1 &&
+            strcmp(path + path_len - (sizeof(suffix) - 1), suffix) == 0);
 }
 
 /* The re-enrollment secret. Prefix-matched on the basename for the same reason as the anchor:
@@ -237,6 +262,14 @@ int __wrap_fchown(int fd, uid_t owner, gid_t group) {
         if (is_secret_file_path(path)) {
             g_secret_chown_uid = owner;
             g_secret_chown_gid = group;
+        } else if (is_anchor_path(path)) {
+            g_anchor_chown_uid = owner;
+            g_anchor_chown_gid = group;
+            g_anchor_chown_via_fd = true;
+        } else if (is_anchor_dir_path(path)) {
+            g_dir_chown_uid = owner;
+            g_dir_chown_gid = group;
+            g_dir_chown_via_fd = true;
         } else if (is_keys_file_path(path)) {
             if (g_keys_fchown_should_fail) {
                 errno = EACCES;
@@ -266,6 +299,32 @@ int __wrap_chmod(const char *path, mode_t mode) {
         g_anchor_chmod_mode = mode;
     } else if (is_secret_path(path)) {
         g_secret_chmod_mode = mode;
+    }
+
+    return 0;
+}
+
+/* The descriptor-based half of the pair above, for the same reason __wrap_fchown() exists:
+ * w_token_bootstrap_repair_anchor_ownership() sets the sticky group-writable mode on a directory
+ * descriptor it opened with O_NOFOLLOW, never on the path. Wrapped rather than left real so an
+ * unprivileged run behaves like a privileged one, exactly as __wrap_chmod() does. */
+int __wrap_fchmod(int fd, mode_t mode) {
+    char link[64];
+    char path[PATH_MAX];
+    ssize_t len;
+
+    snprintf(link, sizeof(link), "/proc/self/fd/%d", fd);
+    len = readlink(link, path, sizeof(path) - 1);
+
+    if (len > 0) {
+        path[len] = '\0';
+
+        if (is_anchor_dir_path(path)) {
+            g_dir_chmod_mode = mode;
+            g_dir_chmod_via_fd = true;
+        } else if (is_anchor_path(path)) {
+            g_anchor_chmod_mode = mode;
+        }
     }
 
     return 0;
@@ -369,6 +428,9 @@ static int setup_test(void **state) {
     g_anchor_chmod_mode = (mode_t) -1;
     g_secret_chmod_mode = (mode_t) -1;
     g_anchor_chown_recorded_before_move = false;
+    g_anchor_chown_via_fd = false;
+    g_dir_chown_via_fd = false;
+    g_dir_chmod_via_fd = false;
 
     return 0;
 }
@@ -646,6 +708,16 @@ static void test_anchor_latch_repairs_pre_39321_ownership(void **state) {
     assert_int_equal(g_dir_chown_uid, 0);
     assert_int_equal(g_dir_chown_gid, getgid());
     assert_int_equal(g_dir_chmod_mode, 01770);
+
+    /* ... and all three landed on a descriptor, not on a path. This runs as root over a
+     * directory the runtime user can write, so by-path resolution would let that user unlink the
+     * anchor it owns, leave a symlink to (say) /etc/shadow behind, and have root hand it the
+     * target -- or swap `certs` itself and redirect the directory calls. The assertions above
+     * cannot catch a regression to chown()/chmod() on the path, because the path wrappers record
+     * into the very same variables; these are what fail if the hardening is undone. */
+    assert_true(g_anchor_chown_via_fd);
+    assert_true(g_dir_chown_via_fd);
+    assert_true(g_dir_chmod_via_fd);
 
     /* The marker is minted here too: an install from before #39321 has an anchor but no marker,
      * and without one the deletion guard could never fire for it. */
