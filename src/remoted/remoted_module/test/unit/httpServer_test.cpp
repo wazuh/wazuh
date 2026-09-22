@@ -1118,6 +1118,63 @@ TEST(HttpServerTest, ExpiryWarningRunsAgainOnTimerTick)
     server->stop();
 }
 
+TEST(HttpServerTest, TheMonitorNoticesACaThatExpiresInPlace)
+{
+    // A CA with eight seconds left signs a leaf valid for an hour. Nothing writes the CA file
+    // again: the status the monitor logs on its tick has to flip on the clock alone, and it
+    // could not while the verdict was cached with the bytes. Eight seconds so that start() and
+    // the first status read land inside the window under valgrind as well.
+    const auto caKey = makeTestKey();
+    const auto leafKey = makeTestKey();
+    const auto ca = makeCertificate("expiring-ca", -60, 8, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    const auto leaf = makeCertificate("manager", -60, 3600, leafKey.get(), caKey.get(), ca.get(), "IP:127.0.0.1");
+
+    TempDir dir;
+    const auto caPath = dir.path() + "/ca.pem";
+    const auto leafPath = dir.path() + "/leaf.pem";
+    const auto keyPath = dir.path() + "/leaf-key.pem";
+    writePemFile(caPath, {ca.get()});
+    writePemFile(leafPath, {leaf.get()});
+    ASSERT_TRUE(remoted::test::writePemKey(keyPath, leafKey.get()));
+    struct stat before {};
+    ASSERT_EQ(::stat(caPath.c_str(), &before), 0);
+
+    auto server = makeHttpServer();
+    HttpServerConfig config;
+    config.caPublicationRecordPath = "";
+    config.port = 0;
+    config.certificatePath = leafPath;
+    config.privateKeyPath = keyPath;
+    config.caCertificatePath = caPath;
+    config.certificateStatusInterval = std::chrono::seconds {1};
+
+    ASSERT_NO_THROW(server->start(config));
+    ASSERT_EQ(server->certificateStatus().caMatchesLeaf, true);
+
+    TlsCertificateSnapshot status;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {20};
+    do
+    {
+        status = server->certificateStatus();
+        if (status.caMatchesLeaf == false)
+        {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds {100});
+    } while (std::chrono::steady_clock::now() < deadline);
+
+    EXPECT_EQ(status.caMatchesLeaf, false);
+    EXPECT_EQ(status.chainValid, false);
+    EXPECT_GE(status.evaluations, 2U); // the monitor kept ticking meanwhile
+
+    struct stat after {};
+    ASSERT_EQ(::stat(caPath.c_str(), &after), 0);
+    EXPECT_EQ(before.st_mtime, after.st_mtime);
+    EXPECT_EQ(before.st_size, after.st_size);
+
+    server->stop();
+}
+
 TEST(HttpServerTest, StopAcceptingJoinsTheCertificateMonitor)
 {
     TempCert cert {10};
