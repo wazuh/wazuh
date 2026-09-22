@@ -21,7 +21,11 @@ Conflicts:   ossec-hids ossec-hids-agent
 Obsoletes: wazuh-api < 4.0.0
 AutoReqProv: no
 
-Requires: coreutils
+# openssl is the CLI, not the library the daemons link: bin/wazuh-manager-mint-certs drives it to
+# mint the bootstrap CA and issue the manager's two TLS pairs during credential resolution. Without
+# it a fresh host has no certificates and the service refuses to start. AutoReqProv is off above, so
+# this has to be stated rather than inferred.
+Requires: coreutils openssl
 BuildRequires: coreutils glibc-devel automake autoconf libtool policycoreutils-python curl perl
 
 ExclusiveOS: linux
@@ -345,25 +349,10 @@ fi
 # from replacing the root-owned indexer trust material in the dir.
 mkdir -p %{_localstatedir}/etc/certs
 
-# The manager does not generate TLS certificates. The HTTPS agent listener's certificate and
-# key are provisioned externally (e.g. with the Wazuh installation assistant, wazuh-certs-tool)
-# like the indexer trust material; authd's <ssl_manager_cert>/<ssl_manager_key> point at the
-# same pair, so both listeners present one manager identity. Custom paths supplied through the
-# WAZUH_REMOTE_HTTPS_CERTIFICATE / WAZUH_REMOTE_HTTPS_KEY installation variables are honoured.
-# wazuh-manager-control refuses to start until the pair exists, hence the NOTICE below.
-CERT="${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}"
-KEY="${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}"
-case "${CERT}" in /*) ;; *) CERT="%{_localstatedir}/${CERT}";; esac
-case "${KEY}" in /*) ;; *) KEY="%{_localstatedir}/${KEY}";; esac
-if [ ! -f "${CERT}" ] || [ ! -f "${KEY}" ]; then
-  echo "NOTICE: no TLS certificate for the HTTPS agent listener was found"
-  echo "        (${CERT}, ${KEY})."
-  echo "        wazuh-manager does not generate certificates. Provision root-ca.pem,"
-  echo "        remoted.pem and remoted-key.pem with the Wazuh installation assistant"
-  echo "        (wazuh-certs-tool) before starting the service; wazuh-manager-control"
-  echo "        refuses to start until they exist. See 'Deploy certificates' in the"
-  echo "        installation guide (docs/ref/getting-started/installation.md)."
-fi
+# No install-time certificate check any more. The credential resolver invoked at the end of this
+# scriptlet issues the pair when it can, and when it cannot the answer may well have changed by the
+# time the operator starts the service -- so the check belongs at start, where it is made. Warning
+# here about a state that no longer exists is what trains operators to ignore installer output.
 
 # The certificates the service daemons read after dropping privileges (the provisioned listener
 # pair and the API certificate apid issues for itself) are owned by wazuh-manager. Re-applied
@@ -395,6 +384,17 @@ find %{_localstatedir}/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} 
 # Restore wazuh-manager.conf permissions after upgrading
 chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.conf
 chmod 0660 %{_localstatedir}/etc/wazuh-manager.conf
+
+# Resolve every credential the manager owns or consumes: seed rbac.db with generated or supplied
+# Server API passwords, store the indexer credential in the keystore, issue the TLS pairs.
+#
+# It must never abort this scriptlet, so --install always exits 0 and simply leaves unresolved
+# whatever it could not resolve. The service refuses to start and names what is missing; that is
+# where the check belongs, because the answer changes between these two moments and only the answer
+# at start matters.
+if [ -x %{_localstatedir}/bin/wazuh-manager-resolve-credentials ]; then
+  %{_localstatedir}/bin/wazuh-manager-resolve-credentials --install -H %{_localstatedir} || true
+fi
 
 # Delete the installation files used to configure the manager
 rm -rf %{_localstatedir}/packages_files
@@ -440,6 +440,24 @@ fi
 
 # If the package is been uninstalled
 if [ $1 = 0 ];then
+  # Take the manager's own keys out of the shared credentials file before the tree goes, since the
+  # library that knows the file format lives inside it. Only WAZUH_MANAGER_* keys, and only inside
+  # the managed block: the other components' keys and anything the operator wrote are not ours to
+  # remove, even when they carry the same name.
+  if [ -f %{_localstatedir}/lib/credentials-lib.sh ]; then
+    . %{_localstatedir}/lib/credentials-lib.sh
+    cred_purge_prefix WAZUH_MANAGER_ > /dev/null 2>&1 || true
+
+    # The last component out removes what is left. A file still carrying any WAZUH_ key is a file a
+    # sibling is still using, so this errs towards leaving it: a leftover root-only file is
+    # harmless, breaking an installed indexer or dashboard is not.
+    if [ -f "${CRED_FILE}" ] && ! grep -q '^[[:space:]]*WAZUH_[A-Z_]*=' "${CRED_FILE}" 2>/dev/null; then
+      rm -f "${CRED_FILE}" "${CRED_LOCK}" > /dev/null 2>&1
+      rm -rf "${CRED_DIR}/ca" > /dev/null 2>&1
+      rmdir "${CRED_DIR}" > /dev/null 2>&1 || true
+    fi
+  fi
+
   # Remove the wazuh-manager user if it exists
   if getent passwd wazuh-manager > /dev/null 2>&1; then
     userdel wazuh-manager >/dev/null 2>&1
@@ -573,6 +591,9 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-modulesd
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/rbac_control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-keystore
+%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-resolve-credentials
+%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-mint-certs
+%attr(640, root, wazuh-manager) %{_localstatedir}/lib/credentials-lib.sh
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc
 %attr(660, root, wazuh-manager) %ghost %{_localstatedir}/etc/wazuh-manager.conf
 %dir %attr(1770, root, wazuh-manager) %{_localstatedir}/etc/certs

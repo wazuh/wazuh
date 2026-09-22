@@ -6,11 +6,13 @@ import json
 import logging
 import os
 import re
+import secrets
+import string
 from datetime import datetime
 from enum import IntEnum
 from shutil import chown
 from time import time
-from typing import Union
+from typing import Optional, Union
 
 import yaml
 from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey, Boolean, or_, \
@@ -40,6 +42,41 @@ CLOUD_RESERVED_RANGE = 89
 
 # Dummy hash for constant-time username enumeration protection
 _DUMMY_HASH = generate_password_hash("wazuh-dummy-constant-never-matches-any-real-password")
+
+# Generated-password shape. This is the same alphabet, length and class guarantee as
+# cred_generate_password() in src/init/credentials/credentials-lib.sh, because the resolver and
+# this module are two entry points to the same seeding and a value from either must satisfy the
+# same policy the Server API enforces in wazuh/security.py. The omitted punctuation (quotes,
+# backslash, backtick, $, ! and #) keeps a value safe to paste through shell, YAML, JSON and
+# docker-compose interpolation without escaping.
+_PASSWORD_SYMBOLS = '.,_+:@%^=~-'
+_PASSWORD_ALPHABET = string.ascii_letters + string.digits + _PASSWORD_SYMBOLS
+_PASSWORD_LENGTH = 32
+
+
+def generate_password() -> str:
+    """Generate a random password that satisfies the Server API password policy.
+
+    One lowercase letter, one uppercase letter, one digit and one symbol are placed first and the
+    result is shuffled with a CSPRNG, so the policy is met by construction rather than by
+    generate-and-retry.
+
+    Returns
+    -------
+    str
+        A 32-character password.
+    """
+    rand = secrets.SystemRandom()
+    chars = [
+        secrets.choice(string.ascii_lowercase),
+        secrets.choice(string.ascii_uppercase),
+        secrets.choice(string.digits),
+        secrets.choice(_PASSWORD_SYMBOLS),
+    ]
+    chars += [secrets.choice(_PASSWORD_ALPHABET) for _ in range(_PASSWORD_LENGTH - len(chars))]
+    rand.shuffle(chars)
+
+    return ''.join(chars)
 
 # Start a session and set the default security elements
 DB_FILE = os.path.join(SECURITY_PATH, "rbac.db")
@@ -2080,21 +2117,35 @@ class DatabaseManager:
         """
         return str(self.sessions[database].execute(text("pragma user_version")).first()[0])
 
-    def insert_default_resources(self, database: str):
+    def insert_default_resources(self, database: str, passwords: Optional[dict] = None):
         """Insert default security resources into the given database.
 
         Parameters
         ----------
         database : str
             Name of the stored database.
+        passwords : dict, optional
+            Mapping of default username to the password to seed it with, supplied by the credential
+            resolver. A user absent from the mapping is seeded with a freshly generated password.
+
+        Notes
+        -----
+        `users.yaml` carries no password: one shipped in a packaged file would be a password every
+        installation shares. A user without a supplied value therefore gets a generated one, which
+        makes a deployment that bypasses the resolver entirely still end up unique rather than
+        falling back to a known default.
         """
+        passwords = passwords or {}
+
         # Create default users if they don't exist yet
         with open(os.path.join(DEFAULT_RBAC_RESOURCES, "users.yaml"), 'r') as stream:
             default_users = yaml.safe_load(stream)
 
             with AuthenticationManager(self.sessions[database]) as auth:
                 for d_username, payload in default_users[next(iter(default_users))].items():
-                    auth.add_user(username=d_username, password=payload['password'], check_default=False)
+                    auth.add_user(username=d_username,
+                                  password=passwords.get(d_username) or generate_password(),
+                                  check_default=False)
                     auth.edit_run_as(user_id=auth.get_user(username=d_username)['id'],
                                      allow_run_as=payload['allow_run_as'])
 
@@ -2458,10 +2509,17 @@ class DatabaseManager:
         self.sessions[database].execute(text(f'pragma user_version={version}'))
 
 
-def check_database_integrity():
+def check_database_integrity(passwords: Optional[dict] = None):
     """Check RBAC database integrity.
     If the database does not exist, it must be created properly.
     If the database exists, the RBAC DB migration process is applied.
+
+    Parameters
+    ----------
+    passwords : dict, optional
+        Mapping of default username to the password to seed it with, supplied by the credential
+        resolver. Only consulted when the database does not exist yet: an already-seeded database
+        is never reseeded, so the keys are ignored from that point on however they are set.
 
     Raises
     ------
@@ -2501,7 +2559,9 @@ def check_database_integrity():
                 # Remove tmp database if present
                 os.path.exists(DB_FILE_TMP) and os.remove(DB_FILE_TMP)
 
-                # Create new tmp database and populate it with default resources
+                # Create new tmp database and populate it with default resources. The passwords
+                # generated here are throwaway: migrate_data() below copies the existing users
+                # across with their hashes intact, so an upgrade never changes a credential.
                 db_manager.connect(DB_FILE_TMP)
                 db_manager.create_database(DB_FILE_TMP)
                 _set_permissions_and_ownership(DB_FILE_TMP)
@@ -2528,7 +2588,7 @@ def check_database_integrity():
             db_manager.connect(DB_FILE)
             db_manager.create_database(DB_FILE)
             _set_permissions_and_ownership(DB_FILE)
-            db_manager.insert_default_resources(DB_FILE)
+            db_manager.insert_default_resources(DB_FILE, passwords=passwords)
             db_manager.set_database_version(DB_FILE, CURRENT_ORM_VERSION)
             db_manager.close_sessions()
             logger.info(f"{DB_FILE} database created successfully")
