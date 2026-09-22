@@ -103,11 +103,6 @@ namespace Utils
 {
     struct IPAddressSmartDeleter
     {
-        void operator()(IP_ADAPTER_INFO* address)
-        {
-            win_free(address);
-            address = nullptr;
-        }
         void operator()(IP_ADAPTER_ADDRESSES* address)
         {
             win_free(address);

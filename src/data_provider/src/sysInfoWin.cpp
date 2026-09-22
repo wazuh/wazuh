@@ -655,7 +655,6 @@ nlohmann::json SysInfo::getOsInfo() const
 nlohmann::json SysInfo::getNetworks() const
 {
     nlohmann::json networks {};
-    std::unique_ptr<IP_ADAPTER_INFO, Utils::IPAddressSmartDeleter> adapterInfo;
     std::unique_ptr<IP_ADAPTER_ADDRESSES, Utils::IPAddressSmartDeleter> adaptersAddresses;
     Utils::NetworkWindowsHelper::getAdapters(adaptersAddresses);
 
@@ -683,14 +682,12 @@ nlohmann::json SysInfo::getNetworks() const
                     if (AF_INET == unicastAddressFamily)
                     {
                         // IPv4 data
-                        FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::IPV4, rawAdapterAddresses, unicastAddress,
-                                                                                                                               adapterInfo.get()))->buildNetworkData(netInterfaceInfo);
+                        FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::IPV4, rawAdapterAddresses, unicastAddress))->buildNetworkData(netInterfaceInfo);
                     }
                     else if (AF_INET6 == unicastAddressFamily)
                     {
                         // IPv6 data
-                        FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::IPV6, rawAdapterAddresses, unicastAddress,
-                                                                                                                               adapterInfo.get()))->buildNetworkData(netInterfaceInfo);
+                        FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::IPV6, rawAdapterAddresses, unicastAddress))->buildNetworkData(netInterfaceInfo);
                     }
                 }
 
@@ -698,8 +695,7 @@ nlohmann::json SysInfo::getNetworks() const
             }
 
             // Common data
-            FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::COMMON_DATA, rawAdapterAddresses, unicastAddress,
-                                                                                                                   adapterInfo.get()))->buildNetworkData(netInterfaceInfo);
+            FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::COMMON_DATA, rawAdapterAddresses, unicastAddress))->buildNetworkData(netInterfaceInfo);
 
             networks["iface"].push_back(netInterfaceInfo);
         }

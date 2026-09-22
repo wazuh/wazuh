@@ -50,12 +50,10 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
     public:
         explicit NetworkWindowsInterface(Utils::NetworkWindowsHelper::NetworkFamilyTypes family,
                                          const PIP_ADAPTER_ADDRESSES& addrs,
-                                         const PIP_ADAPTER_UNICAST_ADDRESS& unicastAddress,
-                                         const PIP_ADAPTER_INFO& adapterInfo)
+                                         const PIP_ADAPTER_UNICAST_ADDRESS& unicastAddress)
             : m_interfaceFamily(family)
             , m_interfaceAddress(addrs)
             , m_currentUnicastAddress(unicastAddress)
-            , m_adapterInfo(adapterInfo)
         {
             if (!addrs)
             {
@@ -361,7 +359,6 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
         Utils::NetworkWindowsHelper::NetworkFamilyTypes m_interfaceFamily;
         PIP_ADAPTER_ADDRESSES                           m_interfaceAddress;
         PIP_ADAPTER_UNICAST_ADDRESS                     m_currentUnicastAddress;
-        PIP_ADAPTER_INFO                                m_adapterInfo;
 };
 
 #endif //_NETWORK_WINDOWS_WRAPPER_H
