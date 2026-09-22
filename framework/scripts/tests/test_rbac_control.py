@@ -257,6 +257,21 @@ async def test_reset_rbac_database_exceptions(input_mock, print_mock):
         assert exception_message in print_mock.call_args[0][0]
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("local,request_type", [(False, "local_master"), (True, "local_any")])
+@patch("builtins.print")
+async def test_reset_rbac_database_routing(print_mock, local, request_type):
+    """`--local` resets the node the command runs on, the default routing resets the master.
+
+    Without it a reset typed on a worker runs on the master, so the database the operator meant to wipe is
+    left untouched and the one serving the deployment is the one that goes.
+    """
+    with patch("scripts.rbac_control.cluster_utils.forward_function") as forward_mock:
+        await rbac_control.reset_rbac_database(Arguments(reset_force=True, local=local))
+
+    assert forward_mock.call_args.kwargs['request_type'] == request_type
+
+
 @patch("scripts.rbac_control.sys.exit")
 def test_get_script_arguments(exit_mock):
     """Test exit conditions for the `get_script_arguments` function."""

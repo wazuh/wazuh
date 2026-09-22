@@ -397,7 +397,11 @@ async def reset_rbac_database(script_args):
 
     from wazuh.core.security import rbac_db_factory_reset
 
-    response = await cluster_utils.forward_function(rbac_db_factory_reset, request_type="local_master")
+    # Same routing as `change-password`: `local_master` resolves to the master from anywhere, and `--local`
+    # acts on the node the command runs on, which is the only way to reset a worker's own database.
+    request_type = "local_any" if script_args.local else "local_master"
+
+    response = await cluster_utils.forward_function(rbac_db_factory_reset, request_type=request_type)
 
     if isinstance(response, Exception):
         # Through the exit status too: an installer chains this call, and the reset is now refused whenever
@@ -459,6 +463,10 @@ def get_script_arguments():
                                                   "every user that file does not name.")
     reset_parser.add_argument("-f", "--force", action="store_true", dest="reset_force", default=False,
                               help="Do not ask for confirmation for the RBAC database factory reset.")
+    reset_parser.add_argument("--local", action="store_true", dest="local", default=False,
+                              help="Reset this node's own RBAC database instead of the master's. Without "
+                                   "it the reset runs on the master wherever it is typed, so a worker's "
+                                   "database is left untouched.")
     reset_parser.set_defaults(func=reset_rbac_database)
 
     if not len(sys.argv) > 1:

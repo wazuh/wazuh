@@ -471,7 +471,7 @@ sudo /var/wazuh-manager/bin/rbac_control change-password --user wazuh --local
 ```
 
 > [!IMPORTANT]
-> `--local` is not optional on a worker. Without it the call is routed as `local_master` and **executes on the master**, so it changes the master's database while reporting `UPDATED` on the node where it was typed. The worker is left untouched.
+> `--local` is not optional on a worker. Without it the call is routed as `local_master` and **executes on the master**, so it changes the master's database while reporting `UPDATED` on the node where it was typed. The worker is left untouched. `rbac_control factory-reset` takes the same option, and without it a reset typed on a worker wipes the master's database instead.
 
 Do not copy `rbac.db` between nodes. It carries the tokens and RBAC resources of the node that created it, not only the passwords.
 
