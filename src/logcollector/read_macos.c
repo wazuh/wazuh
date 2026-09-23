@@ -165,6 +165,8 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
                 if (status == 0) {
                     // Normal process' end of execution
                     minfo(MACOS_LOG_SHOW_CHILD_EXITED, log_mode_wfd->pid, status);
+                } else if (macos_log_shutdown && WIFSIGNALED(status) && WTERMSIG(status) == SIGTERM) {
+                    mdebug1(MACOS_LOG_SHOW_CHILD_EXITED, log_mode_wfd->pid, status);
                 } else {
                     // Abnormal process' end of execution
                     merror(MACOS_LOG_SHOW_CHILD_EXITED, log_mode_wfd->pid, status);
@@ -180,8 +182,8 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
                     lf->macos_log->state = LOG_NOT_RUNNING;
                 }
             } else {    // LOG_RUNNING_STREAM
-                if (WIFSIGNALED(status) && WTERMSIG(status) == SIGTERM) {
-                    mdebug1(MACOS_LOG_STREAM_CHILD_EXITED, log_mode_wfd->pid, WTERMSIG(status));
+                if (macos_log_shutdown && WIFSIGNALED(status) && WTERMSIG(status) == SIGTERM) {
+                    mdebug1(MACOS_LOG_STREAM_CHILD_EXITED, log_mode_wfd->pid, status);
                 } else {
                     merror(MACOS_LOG_STREAM_CHILD_EXITED, log_mode_wfd->pid, status);
                 }
