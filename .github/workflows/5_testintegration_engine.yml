@@ -59,6 +59,16 @@ jobs:
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
 
+      # setupEnvironment.py stores the test indexer credentials with it.
+      - name: Upload keystore tool
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: wazuh-manager-keystore
+          path: src/build/bin/wazuh-manager-keystore
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
       - name: Upload wazuh shared libraries
         uses: ./.github/actions/upload_s3_artifact
         with:
@@ -129,6 +139,15 @@ jobs:
         aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
         aws_region: ${{ secrets.CI_AWS_REGION }}
 
+    - name: Download keystore tool
+      uses: ./.github/actions/download_s3_artifact
+      with:
+        name: wazuh-manager-keystore
+        path: src/build/bin/
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
+
     - name: Download jemalloc shared libraries
       uses: ./.github/actions/download_s3_artifact
       with:
@@ -182,7 +201,7 @@ jobs:
 
     - name: Setup environment
       run: |
-        chmod +x src/build/engine/wazuh-engine
+        chmod +x src/build/engine/wazuh-engine src/build/bin/wazuh-manager-keystore
         python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
 
     - name: Initial state
@@ -234,6 +253,15 @@ jobs:
         aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
         aws_region: ${{ secrets.CI_AWS_REGION }}
 
+    - name: Download keystore tool
+      uses: ./.github/actions/download_s3_artifact
+      with:
+        name: wazuh-manager-keystore
+        path: src/build/bin/
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
+
     - name: Download jemalloc shared libraries
       uses: ./.github/actions/download_s3_artifact
       with:
@@ -275,7 +303,7 @@ jobs:
 
     - name: Setup environment
       run: |
-        chmod +x src/build/engine/wazuh-engine
+        chmod +x src/build/engine/wazuh-engine src/build/bin/wazuh-manager-keystore
         python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
 
     - name: Initial state

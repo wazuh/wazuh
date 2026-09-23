@@ -251,6 +251,17 @@ jobs:
           sudo chown root:wazuh-manager "$INSTALLATION_DIR/etc/certs"
           sudo chmod 1770 "$INSTALLATION_DIR/etc/certs"
 
+      - name: Supply the indexer credential
+        run: |
+          # The unit resolves credentials before starting and refuses to run without the indexer's
+          # password. systemd starts it from a clean environment, so the key goes in the shared
+          # credentials file. There is no indexer here; the value only has to be valid. The Server API
+          # passwords are generated at start and published to the same file, where the framework's
+          # get_default_api_password() reads them.
+          sudo install -d -m 0700 -o root -g root /etc/wazuh
+          echo "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer-Integration1'" | sudo tee /etc/wazuh/credentials.env > /dev/null
+          sudo chmod 0600 /etc/wazuh/credentials.env
+
       - name: Start wazuh-manager and verify
         run: |
           sudo systemctl start wazuh-manager
