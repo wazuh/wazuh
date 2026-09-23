@@ -1440,7 +1440,8 @@ bool Json::eraseIfKey(const std::function<bool(const std::string&)>& func, bool 
 
     for (auto it = value->MemberBegin(); it != value->MemberEnd();)
     {
-        if (func(it->name.GetString()))
+        const std::string name {it->name.GetString(), it->name.GetStringLength()};
+        if (func(name))
         {
             it = value->EraseMember(it);
             modified = true;
@@ -1449,7 +1450,16 @@ bool Json::eraseIfKey(const std::function<bool(const std::string&)>& func, bool 
         {
             if (recursive && it->value.IsObject())
             {
-                std::string newPath {path + "/" + it->name.GetString()};
+                std::string newPath {path};
+                if (name.find_first_of("~/") == std::string::npos)
+                {
+                    newPath += '/';
+                    newPath.append(name);
+                }
+                else
+                {
+                    newPath += formatJsonPath(name, true);
+                }
                 modified |= eraseIfKey(func, recursive, newPath);
             }
             ++it;

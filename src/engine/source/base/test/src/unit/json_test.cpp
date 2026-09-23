@@ -2870,6 +2870,19 @@ TEST(JsonTest, eraseIfKeyInvalidPointer)
     ASSERT_THROW(json.eraseIfKey([](const std::string& key) { return true; }, false, "a"), std::runtime_error);
 }
 
+TEST(JsonTest, eraseIfKeyPassesTheFullMemberNameToThePredicate)
+{
+    Json json {R"({"key":1,"key\u0000suffix":2})"};
+    const Json expected {R"({"key\u0000suffix":2})"};
+
+    EXPECT_TRUE(json.eraseIfKey([](const std::string& key) { return key == "key"; }));
+    EXPECT_EQ(json, expected);
+
+    const std::string nulKey {"key\0suffix", 10};
+    EXPECT_TRUE(json.eraseIfKey([&nulKey](const std::string& key) { return key == nulKey; }));
+    EXPECT_EQ(json, Json {R"({})"});
+}
+
 // Test parameters for eraseIfKey [json object, recursive, path, expected json]
 using ParamsJEraseIfKey = std::tuple<std::string, bool, std::string, std::string>;
 
@@ -2893,6 +2906,24 @@ INSTANTIATE_TEST_SUITE_P(
     JsonEraseIfKey,
     EraseIfKey,
     ::testing::Values(
+        ParamsJEraseIfKey(R"({"a/b":{"key":1,"keep":2},"a":{"b":{"keep":3}}})",
+                          true,
+                          "",
+                          R"({"a/b":{"keep":2},"a":{"b":{"keep":3}}})"),
+        ParamsJEraseIfKey(R"({"a~1b":{"key":1},"a/b":{"keep":2},"a~b":{"key":3}})",
+                          true,
+                          "",
+                          R"({"a~1b":{},"a/b":{"keep":2},"a~b":{}})"),
+        ParamsJEraseIfKey(
+            R"({"a":{"keep":1},"a\u0000x":{"key":2,"keep":3}})", true, "", R"({"a":{"keep":1},"a\u0000x":{"keep":3}})"),
+        ParamsJEraseIfKey(R"({"a.b":{"key":1},"a":{"b":{"keep":2}},"":{"key":3}})",
+                          true,
+                          "",
+                          R"({"a.b":{},"a":{"b":{"keep":2}},"":{}})"),
+        ParamsJEraseIfKey(R"({"outer/~":{"a\u0000/~.b":{"key":1,"keep":2}},"key":3})",
+                          true,
+                          "/outer~1~0",
+                          R"({"outer/~":{"a\u0000/~.b":{"keep":2}},"key":3})"),
         ParamsJEraseIfKey(R"({"key1" : "value1", "key2" : "value2", "NO_key3" : "value3", "NO_key4" : "value4"})",
                           false,
                           "",
