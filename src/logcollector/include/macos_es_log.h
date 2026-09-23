@@ -18,6 +18,7 @@
 /* ******************  DEFINES  ****************** */
 
 #define ESLOGGER_CMD_STR "/usr/bin/eslogger" ///< Path to Apple's Endpoint Security `eslogger` CLI
+#define ESLOGGER_NOT_PERMITTED_STR "ES_NEW_CLIENT_RESULT_ERR_NOT_PERMITTED" ///< `eslogger` stderr marker of a missing Full Disk Access grant
 
 /* Backoff policy: the collector is never disabled permanently once started, so a later spawn attempt
  * (e.g. after Full Disk Access is granted again) always retries. `failures` resets only after a healthy
@@ -36,7 +37,7 @@
  *
  * Allocates the runtime config and performs the first spawn attempt via `w_macos_es_ensure_running()`.
  * Unlike `w_macos_create_log_env()`, there is no vault/replay logic to set up: `eslogger` is live-only.
- * When `eslogger` does not exist (macOS older than 13) it warns once and leaves `lf->macos_es` NULL,
+ * When `eslogger` does not exist it warns once and leaves `lf->macos_es` NULL,
  * so the collector is never polled.
  *
  * @param lf localfile's logreader structure with the `<events>` list and its runtime configuration to be set

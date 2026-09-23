@@ -220,8 +220,7 @@ void w_macos_es_ensure_running(logreader * lf) {
 
 void w_macos_es_create_env(logreader * lf) {
 
-    /* A missing binary is permanent (macOS older than 13): warn once and leave the collector disabled
-     * instead of retrying forever */
+    /* A missing binary is permanent: warn once and leave the collector disabled instead of retrying forever */
     if (waccess(ESLOGGER_CMD_STR, F_OK) != 0) {
         mwarn(LOGCOLLECTOR_MACOS_ES_UNAVAILABLE, ESLOGGER_CMD_STR);
     } else {

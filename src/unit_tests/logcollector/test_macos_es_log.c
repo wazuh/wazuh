@@ -500,8 +500,7 @@ void test_w_macos_es_create_env_eslogger_missing(void ** state) {
     will_return(__wrap_access, -1);
 
     expect_string(__wrap__mwarn, formatted_msg,
-                  "(8026): '/usr/bin/eslogger' not found. The 'macos-es' log format requires macOS 13 or later and "
-                  "will be disabled.");
+                  "(8026): '/usr/bin/eslogger' not found. The 'macos-es' log format will be disabled.");
 
     w_macos_es_create_env(&lf);
 

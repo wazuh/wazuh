@@ -809,7 +809,7 @@ After the first refused attempt, macOS adds `wazuh-logcollector` to the list by 
 1. **System Settings** → **Privacy & Security** → **Full Disk Access**.
 2. Switch on `wazuh-logcollector`.
 
-The **+** file picker cannot browse `/Library/Ossec` (mode `750`), so use the entry macOS created instead of adding the binary by hand. MDM servers can grant the same through a Privacy Preferences Policy Control payload (`SystemPolicyAllFiles`).
+The agent picks the grant up at its next retry, without a restart.
 
 Revoking access does not stop an `eslogger` that is already running: it only refuses the next start (agent restart, or `eslogger` exiting for any reason).
 
@@ -829,13 +829,15 @@ Ensure only one `<localfile>` block with `log_format=macos-es` exists (same rest
 
 | Log line contains | Meaning |
 |---|---|
-| `Monitoring macOS Endpoint Security events with: /usr/bin/eslogger ...` | Started successfully — this is the full command line it ran |
-| `(8026): '/usr/bin/eslogger' not found` | The host runs macOS older than 13; the collector stays disabled, logged once at startup |
+| `(9205): Monitoring macOS Endpoint Security events with: /usr/bin/eslogger ...` | Started successfully — this is the full command line it ran |
+| `(8026): '/usr/bin/eslogger' not found` | The collector stays disabled, logged once at startup |
 | `(1250): Error trying to execute "/usr/bin/eslogger"` | The binary exists but is not executable (path tampered with) — the agent will retry |
-| `(1612): Error while trying to execute 'eslogger'` | `wpopenv()`/pipe setup failed — check `dmesg`/system logs for resource exhaustion |
-| `(1614): macOS ES 'eslogger' process exited, pid: ..., exit value: ...` | `eslogger` exited with that code — the agent will retry. Missing Full Disk Access shows as exit value `1`, right after an `(8024)` line with `Not permitted to create an ES Client` |
+| `(1612): Error while trying to execute` | `wpopenv()`/pipe setup failed — check `dmesg`/system logs for resource exhaustion |
+| `(1616): macOS ES: 'eslogger' is not permitted to create an Endpoint Security client` | `wazuh-logcollector` has no Full Disk Access grant — switch it on as described above. The agent retries with backoff, and `(1614)` with exit value `1` follows |
+| `(1614): macOS ES 'eslogger' process exited, pid: ..., exit value: ...` | `eslogger` exited with that code — the agent will retry |
 | `(1615): macOS ES 'eslogger' process terminated by signal, pid: ..., signal: ...` | `eslogger` was killed by that signal — the agent will retry |
 | `(8024): macOS ES: Discarding non-JSON line` | `eslogger` printed something to stderr/stdout that wasn't a JSON event (e.g. its own warning) — the line was logged, not forwarded |
+| `(8027): macOS ES: Discarding an event larger than ... bytes` | One event exceeded the agent's maximum message size and was dropped; the next event is read normally |
 
 **The retry is not instant — this is expected, not stuck:**
 

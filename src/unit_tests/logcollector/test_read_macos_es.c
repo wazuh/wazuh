@@ -200,8 +200,7 @@ void test_w_macos_es_getlog_oversize_drop(void ** state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, "123456789");
 
-    expect_string(__wrap__mdebug1, formatted_msg,
-                  "macOS ES: Maximum message length reached. The record was discarded.");
+    expect_string(__wrap__mwarn, formatted_msg, "(8027): macOS ES: Discarding an event larger than 8 bytes.");
 
     will_return(__wrap_fgetc, 'x');
     will_return(__wrap_fgetc, 'x');
@@ -223,8 +222,7 @@ void test_w_macos_es_getlog_oversize_drain_interrupted_resumes_on_next_read(void
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, "123456789");
 
-    expect_string(__wrap__mdebug1, formatted_msg,
-                  "macOS ES: Maximum message length reached. The record was discarded.");
+    expect_string(__wrap__mwarn, formatted_msg, "(8027): macOS ES: Discarding an event larger than 8 bytes.");
 
     will_return(__wrap_fgetc, 'x');
     will_return(__wrap_fgetc, EOF);
@@ -369,6 +367,45 @@ void test_read_macos_es_warns_on_invalid_json(void ** state) {
     assert_null(ret);
 }
 
+void test_read_macos_es_fda_refusal_logs_error(void ** state) {
+    logreader lf;
+    memset(&lf, 0, sizeof(logreader));
+    w_macos_es_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    wfd_t wfd;
+    memset(&wfd, 0, sizeof(wfd));
+    wfd.pid = 4242;
+    cfg.wfd = &wfd;
+    lf.macos_es = &cfg;
+    maximum_lines = 1000;
+    int rc = -1;
+
+    will_return(__wrap_can_read, 1);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets,
+                "Failed to create ES client: Not permitted to create an ES Client, responsible process needs TCC Full "
+                "Disk Access authorization (ES_NEW_CLIENT_RESULT_ERR_NOT_PERMITTED)\n");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1616): macOS ES: 'eslogger' is not permitted to create an Endpoint Security client. Grant Full "
+                  "Disk Access to 'wazuh-logcollector' in System Settings > Privacy & Security > Full Disk Access.");
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_waitpid, __pid, 4242);
+    expect_value(__wrap_waitpid, __options, WNOHANG);
+    will_return(__wrap_waitpid, 0);
+    will_return(__wrap_waitpid, 0);
+
+    void * ret = read_macos_es(&lf, &rc, 0);
+
+    assert_null(ret);
+}
+
 void test_read_macos_es_max_lines_cap_skips_exit_check(void ** state) {
     logreader lf;
     memset(&lf, 0, sizeof(logreader));
@@ -439,14 +476,14 @@ void test_w_macos_es_check_exit_still_running(void ** state) {
     assert_int_equal(cfg.failures, 0);
 }
 
-void test_w_macos_es_check_exit_waitpid_error(void ** state) {
+void test_w_macos_es_check_exit_waitpid_error_releases_and_backs_off(void ** state) {
     logreader lf;
     w_macos_es_config_t cfg;
     memset(&cfg, 0, sizeof(cfg));
-    wfd_t wfd;
-    memset(&wfd, 0, sizeof(wfd));
-    wfd.pid = 111;
-    cfg.wfd = &wfd;
+    wfd_t * wfd = calloc(1, sizeof(wfd_t));
+    wfd->pid = 111;
+    wfd->file_out = (FILE *) 1234;
+    cfg.wfd = wfd;
     lf.macos_es = &cfg;
 
     expect_value(__wrap_waitpid, __pid, 111);
@@ -454,11 +491,17 @@ void test_w_macos_es_check_exit_waitpid_error(void ** state) {
     will_return(__wrap_waitpid, 0);
     will_return(__wrap_waitpid, -1);
 
+    will_return(__wrap_time, 1000);
+
     expect_string(__wrap__merror, formatted_msg, "(1111): Error during waitpid()-call due to [(0)-(Success)].");
+
+    expect_fclose((FILE *) 1234, 0);
 
     w_macos_es_check_exit(&lf);
 
-    assert_ptr_equal(cfg.wfd, &wfd);
+    assert_null(cfg.wfd);
+    assert_int_equal(cfg.failures, 1);
+    assert_int_equal(cfg.next_spawn_at, 1000 + MACOS_ES_BACKOFF_BASE_SEC);
 }
 
 void test_w_macos_es_check_exit_fast_crash_does_not_reset_failures(void ** state) {
@@ -604,11 +647,12 @@ int main(void) {
         cmocka_unit_test(test_read_macos_es_cannot_read),
         cmocka_unit_test(test_read_macos_es_pushes_valid_json),
         cmocka_unit_test(test_read_macos_es_warns_on_invalid_json),
+        cmocka_unit_test(test_read_macos_es_fda_refusal_logs_error),
         cmocka_unit_test(test_read_macos_es_max_lines_cap_skips_exit_check),
         cmocka_unit_test(test_read_macos_es_backoff_not_elapsed_skips_spawn),
         // Tests w_macos_es_check_exit
         cmocka_unit_test(test_w_macos_es_check_exit_still_running),
-        cmocka_unit_test(test_w_macos_es_check_exit_waitpid_error),
+        cmocka_unit_test(test_w_macos_es_check_exit_waitpid_error_releases_and_backs_off),
         cmocka_unit_test(test_w_macos_es_check_exit_fast_crash_does_not_reset_failures),
         cmocka_unit_test(test_w_macos_es_check_exit_healthy_run_resets_failures),
         cmocka_unit_test(test_w_macos_es_check_exit_killed_by_signal),

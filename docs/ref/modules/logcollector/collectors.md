@@ -9,7 +9,7 @@ Logcollector reads events from different log sources on the monitored endpoint. 
 | `eventchannel` | Windows | Windows Event Log via the EventChannel API (Vista and later) |
 | `eventlog` | Windows | Windows Event Log via the `OpenEventLog` / `ReadEventLog` API |
 | `macos` | macOS | macOS Unified Logging System (ULS) |
-| `macos-es` | macOS 15+ (`eslogger` ships since macOS 13) | macOS Endpoint Security framework events, via the `eslogger` CLI |
+| `macos-es` | macOS | macOS Endpoint Security framework events, via the `eslogger` CLI |
 | `journald` | Linux | systemd journal |
 
 For full configuration options, see [Configuration](configuration.md).
@@ -135,7 +135,7 @@ The `<query>` attribute `type` accepts a comma-separated list of `activity`, `lo
 
 ## macos-es — macOS Endpoint Security (eslogger)
 
-Collects structured, unredacted security events from Apple's Endpoint Security framework by shelling out to the signed `eslogger` CLI. `eslogger` itself ships since macOS 13 (Ventura), but Wazuh targets **macOS 15+** as the supported version. If `/usr/bin/eslogger` does not exist (macOS older than 13), the agent logs warning `(8026)` once at startup and leaves the collector disabled.
+Collects structured, unredacted security events from Apple's Endpoint Security framework by shelling out to the signed `eslogger` CLI. If `/usr/bin/eslogger` does not exist, the agent logs warning `(8026)` once at startup and leaves the collector disabled.
 
 Endpoint Security closes two gaps the `macos` (ULS) collector cannot: ULS reports **zero lines** for an SSH logout, and it redacts a failed GUI login's username as `<<private>>`. Endpoint Security reports both, unredacted. Only one `<localfile>` block with `log_format` set to `macos-es` is allowed per agent.
 

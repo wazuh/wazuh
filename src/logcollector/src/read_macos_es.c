@@ -94,12 +94,16 @@ void * read_macos_es(logreader * lf, int * rc, __attribute__((unused)) int drop_
         size = strlen(read_buffer);
 
         if (size > 0) {
-            if (!check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, read_buffer)) {
-                if (w_macos_es_is_valid_json(read_buffer)) {
-                    w_msg_hash_queues_push(read_buffer, MACOS_ES, size + 1, lf->log_target, LOCALFILE_MQ);
+            /* stderr shares the pipe: diagnostics are classified before the user's ignore/restrict
+             * filters, so a filter can never hide them */
+            if (!w_macos_es_is_valid_json(read_buffer)) {
+                if (strstr(read_buffer, ESLOGGER_NOT_PERMITTED_STR) != NULL) {
+                    merror(LOGCOLLECTOR_MACOS_ES_NOT_PERMITTED);
                 } else {
                     mwarn(LOGCOLLECTOR_MACOS_ES_INV_JSON, read_buffer);
                 }
+            } else if (!check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, read_buffer)) {
+                w_msg_hash_queues_push(read_buffer, MACOS_ES, size + 1, lf->log_target, LOCALFILE_MQ);
             }
         } else {
             mdebug2("macOS ES: Discarding empty message.");
@@ -174,7 +178,7 @@ STATIC bool w_macos_es_getlog(char * buffer, int length, FILE * stream, w_macos_
     if (buffer[offset - 1] != '\n') {
         if (offset + 1 >= length) {
             /* Oversize record: drop it and resynchronize to the next line, even across reads */
-            mdebug1("macOS ES: Maximum message length reached. The record was discarded.");
+            mwarn(LOGCOLLECTOR_MACOS_ES_OVERSIZE, length - 2);
             macos_es_cfg->discarding = !w_macos_es_drain_line(stream);
             buffer[0] = '\0';
             return false;
@@ -200,7 +204,14 @@ STATIC void w_macos_es_check_exit(logreader * lf) {
     }
 
     if (retval != pid) {
-        merror(WAITPID_ERROR, errno, strerror(errno));
+        /* The child can no longer be waited on: drop it and respawn after the backoff, instead of
+         * failing the same way on every poll */
+        int error = errno;
+
+        if (w_macos_es_note_failure(lf->macos_es)) {
+            merror(WAITPID_ERROR, error, strerror(error));
+        }
+        w_macos_es_release_reaped(lf);
         return;
     }
 

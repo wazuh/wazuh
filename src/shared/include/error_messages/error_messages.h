@@ -150,6 +150,7 @@
 #define LOGCOLLECTOR_MACOS_ES_FP_TO_FD_ERROR        "(1613): The file descriptor couldn't be obtained from the file pointer of the eslogger pipe: %s (%d)."
 #define LOGCOLLECTOR_MACOS_ES_CHILD_EXITED          "(1614): macOS ES 'eslogger' process exited, pid: %d, exit value: %d."
 #define LOGCOLLECTOR_MACOS_ES_CHILD_KILLED          "(1615): macOS ES 'eslogger' process terminated by signal, pid: %d, signal: %d."
+#define LOGCOLLECTOR_MACOS_ES_NOT_PERMITTED         "(1616): macOS ES: 'eslogger' is not permitted to create an Endpoint Security client. Grant Full Disk Access to 'wazuh-logcollector' in System Settings > Privacy & Security > Full Disk Access."
 
 
 /* remoted */
