@@ -1743,8 +1743,10 @@ with it the `503` decision and the published generation, are judged against the 
 evaluation from the certificates already parsed. A CA that **expires while the file is untouched**
 therefore answers `503` from the next request on (and `ca_generation` drops to `0`), and a CA whose
 `notBefore` was still ahead of this node's clock is served, and published, from the request after its
-window opens. Either flip is logged once, by the request that notices it, not only on the next daily
-evaluation. A CA file that cannot be
+window opens. Either flip is logged once, within a minute: besides the requests, the listener
+judges the bundle again every 60 seconds on its own. This matters for the expiry, because an agent
+that verifies the manager fails its TLS handshake against an expired CA and never sends the request
+that would notice it. A CA file that cannot be
 read keeps the last good bundle in service and logs the failure; only a file that was never readable
 answers `404`, and a file that reads but carries no certificate answers `404` at once. A replacement
 CA the loaded leaf does not chain to answers `503` on the next request. Separately, the certificate

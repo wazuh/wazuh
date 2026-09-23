@@ -1175,6 +1175,75 @@ TEST(HttpServerTest, TheMonitorNoticesACaThatExpiresInPlace)
     server->stop();
 }
 
+TEST(HttpServerTest, TheCaRecheckSaysAnExpiryWithNoRequestAndNoDailyTick)
+{
+    // The expiry nobody asks about: agents that verify this manager fail their handshake once the
+    // CA expires, so no request reaches the bundle, and the daily evaluation is a day away. Two
+    // listeners on the same files, neither asked anything: the one with the recheck has already
+    // judged the expiry and delivered its event; the control, with it disabled, still owes it --
+    // which is what makes the first one's empty mailbox mean something.
+    const auto caKey = makeTestKey();
+    const auto leafKey = makeTestKey();
+    const auto ca = makeCertificate("expiring-ca", -60, 8, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    const auto leaf = makeCertificate("manager", -60, 3600, leafKey.get(), caKey.get(), ca.get(), "IP:127.0.0.1");
+    const auto expiry = std::chrono::steady_clock::now() + std::chrono::seconds {8};
+
+    TempDir dir;
+    const auto caPath = dir.path() + "/ca.pem";
+    const auto leafPath = dir.path() + "/leaf.pem";
+    const auto keyPath = dir.path() + "/leaf-key.pem";
+    writePemFile(caPath, {ca.get()});
+    writePemFile(leafPath, {leaf.get()});
+    ASSERT_TRUE(remoted::test::writePemKey(keyPath, leafKey.get()));
+
+    struct Listener
+    {
+        std::unique_ptr<IHttpServer> server;
+        std::shared_ptr<CaCertificateSource> source;
+        std::shared_ptr<CaRecordEventMailbox> mailbox;
+    };
+    const auto startListener = [&](Listener& listener, std::chrono::seconds recheck)
+    {
+        listener.server = makeHttpServer();
+        HttpServerConfig config;
+        config.caPublicationRecordPath = "";
+        config.port = 0;
+        config.certificatePath = leafPath;
+        config.privateKeyPath = keyPath;
+        config.caCertificatePath = caPath;
+        config.caBundleRecheckInterval = recheck;
+        config.onCaRecordReady = [&listener](auto source, auto mailbox)
+        {
+            listener.source = std::move(source);
+            listener.mailbox = std::move(mailbox);
+        };
+        listener.server->start(config);
+    };
+
+    Listener rechecked;
+    Listener control;
+    ASSERT_NO_THROW(startListener(rechecked, std::chrono::seconds {1}));
+    ASSERT_NO_THROW(startListener(control, std::chrono::seconds {0}));
+    ASSERT_TRUE(rechecked.source && rechecked.mailbox && control.source && control.mailbox);
+
+    std::this_thread::sleep_until(expiry + std::chrono::seconds {3});
+
+    ASSERT_EQ(control.source->snapshot().matchesLeaf, false);
+    const auto owed = control.mailbox->drain();
+    ASSERT_EQ(owed.size(), 1U);
+    EXPECT_EQ(owed[0].kind, RecordEvent::chain_lost_on_clock);
+
+    ASSERT_EQ(rechecked.source->snapshot().matchesLeaf, false);
+    EXPECT_TRUE(rechecked.mailbox->drain().empty()); // the recheck judged it and said it already
+
+    // Neither listener ran its daily evaluation: the recheck is not one.
+    EXPECT_EQ(rechecked.server->certificateStatus().evaluations, 1U);
+    EXPECT_EQ(control.server->certificateStatus().evaluations, 1U);
+
+    rechecked.server->stop();
+    control.server->stop();
+}
+
 TEST(HttpServerTest, StopAcceptingJoinsTheCertificateMonitor)
 {
     TempCert cert {10};

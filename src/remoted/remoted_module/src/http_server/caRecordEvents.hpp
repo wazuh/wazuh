@@ -98,7 +98,10 @@ namespace remoted::http
         std::int64_t previousPublication {0}; ///< What the record held before this event; 0 when it held nothing.
                                               ///< For the `*_on_clock` kinds, the publication announced before.
         std::int64_t publication {0};         ///< The publication now in effect; 0 means "not published".
-        std::string reason; ///< `chain_lost_on_clock` only: OpenSSL's reason when the chain verdict has one.
+        /// `chain_lost_on_clock`, and a `guard_failed` on `no_ca_signs_leaf` that only a date causes:
+        /// the certificates on the leaf's path that are outside their validity window and since or
+        /// until when. Empty otherwise.
+        std::string reason;
         ca_bundle::GuardFailure guard {ca_bundle::GuardFailure::none}; ///< Which guard refused, for `guard_failed`.
         /// The value that guard measured, so the line names it: the certificate count for
         /// `too_many_certificates`, the serialised size for `too_many_bytes`, 0 for every other guard

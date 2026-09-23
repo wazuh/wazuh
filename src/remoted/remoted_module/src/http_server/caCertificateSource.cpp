@@ -67,6 +67,64 @@ namespace remoted::http
             return isCa;
         }
 
+        /// Which certificates on @p leaf's path through @p cas are outside their validity window at
+        /// @p at, and since or until when: "CA '/CN=root' expired at 2026-09-23T16:01:55Z". The path
+        /// is followed by name, issuer to subject, so every CA that could stand in it -- both of a
+        /// rotation's same-name CAs included -- is named and an unrelated one is not. Empty when
+        /// nothing on it is out of its window.
+        std::string outOfWindow(const X509* leaf, const std::vector<X509Ptr>& cas, std::time_t at)
+        {
+            std::string reason;
+            const auto note = [&reason, at](const X509* certificate, const std::string& role)
+            {
+                const auto facts = ca_bundle::describe(certificate, nullptr);
+                std::string text;
+                if (facts.notAfter != 0 && at > facts.notAfter)
+                {
+                    text = "expired at " + rfc3339Utc(facts.notAfter);
+                }
+                else if (facts.notBefore != 0 && at < facts.notBefore)
+                {
+                    text = "not valid until " + rfc3339Utc(facts.notBefore);
+                }
+                else
+                {
+                    return;
+                }
+                reason += (reason.empty() ? "" : "; ") + role + " '" + subjectOfCertificate(certificate) + "' " + text;
+            };
+
+            if (leaf == nullptr)
+            {
+                return reason;
+            }
+            note(leaf, "certificate");
+
+            std::vector<bool> named(cas.size(), false);
+            std::vector<const X509_NAME*> issuers {X509_get_issuer_name(leaf)};
+            while (!issuers.empty())
+            {
+                const X509_NAME* issuer = issuers.back();
+                issuers.pop_back();
+                for (std::size_t i = 0; i < cas.size(); ++i)
+                {
+                    const X509* ca = cas[i].get();
+                    if (named[i] || ca == nullptr || X509_cmp(ca, leaf) == 0 ||
+                        X509_NAME_cmp(X509_get_subject_name(ca), issuer) != 0)
+                    {
+                        continue;
+                    }
+                    named[i] = true;
+                    note(ca, "CA");
+                    if (X509_NAME_cmp(X509_get_issuer_name(ca), X509_get_subject_name(ca)) != 0)
+                    {
+                        issuers.push_back(X509_get_issuer_name(ca));
+                    }
+                }
+            }
+            return reason;
+        }
+
         /// Whether two record entries say the same thing. What decides if there is anything left to
         /// write, and whether the entry a write landed is still the one that was pending.
         bool sameEntry(const Entry& left, const Entry& right)
@@ -381,10 +439,16 @@ namespace remoted::http
 
         const auto at = m_verdictClock ? std::optional<std::time_t> {m_verdictClock()} : std::nullopt;
 
+        // A real chain validation since C33, with OpenSSL's default flags: a certificate that merely
+        // signs the leaf is not one an agent can build a chain to, and this verdict is what the 503
+        // and the announced generation are decided from. Asked once: the vouch's chain guard is the
+        // same question about the same certificates at the same instant.
+        const bool chains = m_leaf && leafChainsToAnyCa(m_leaf.get(), m_parsed.certificates, at);
+
         // The one vouch there is (D15): every caller -- the endpoint, the log lines, the notify
         // descriptor -- reads this verdict instead of re-deciding it. What is measured is what would
         // be handed out: the PEM we serialised, not the file.
-        const auto vouch = ca_bundle::vouch(m_parsed, m_leaf.get(), m_snapshot.serializedBytes, at);
+        const auto vouch = ca_bundle::vouchGivenChain(m_parsed, chains, m_snapshot.serializedBytes);
         m_snapshot.publication = vouch.publication;
         m_snapshot.vouchFailure = vouch.failure;
 
@@ -398,10 +462,7 @@ namespace remoted::http
             return;
         }
 
-        // A real chain validation since C33, with OpenSSL's default flags: a certificate that merely
-        // signs the leaf is not one an agent can build a chain to, and this verdict is what the 503
-        // and the announced generation are decided from.
-        m_snapshot.matchesLeaf = leafChainsToAnyCa(m_leaf.get(), m_parsed.certificates, at);
+        m_snapshot.matchesLeaf = chains;
 
         // Does the leaf VALIDATE with this bundle as its trust store (chain, dates, CA constraints,
         // server purpose)? Information for the logs and GET /tls, never for the 503 -- see chainValidates().
@@ -422,7 +483,13 @@ namespace remoted::http
         event.recordPath = m_record ? m_record->path() : std::string {};
         event.previousPublication = publicationBefore;
         event.publication = m_snapshot.publication;
-        event.reason = m_snapshot.chainError;
+        // From the dates, not chainValidates()'s error: that one answers another question (purpose,
+        // partial chains) and names one failure of one candidate, so it could blame a condition that
+        // did not change, or only one of a rotation's two CAs.
+        if (!chains)
+        {
+            event.reason = outOfWindow(m_leaf.get(), m_parsed.certificates, at.value_or(std::time(nullptr)));
+        }
         m_mailbox->post(std::move(event));
     }
 
@@ -462,6 +529,7 @@ namespace remoted::http
         event.previousPublication = hadAntecedent ? m_recordEffective.publication : 0;
 
         std::int64_t publication {0};
+        std::optional<std::int64_t> heldByClock;
 
         switch (built.vouchFailure)
         {
@@ -495,8 +563,26 @@ namespace remoted::http
                 }
                 break;
 
-            case ca_bundle::GuardFailure::hash_mismatch:
             case ca_bundle::GuardFailure::no_ca_signs_leaf:
+                event.kind = RecordEvent::guard_failed;
+                event.guard = built.vouchFailure;
+                if (m_leaf && ca_bundle::leafChainsToAnyCaIgnoringDates(m_leaf.get(), m_parsed.certificates))
+                {
+                    // Only a date stands between these bytes and their vouch. Agents are told 0 now,
+                    // but the record describes the FILE, keyed by its hash: it keeps the generation
+                    // the file carries, so the window opening later (a cache hit, which never
+                    // reaches here) does not leave the record contradicting what is published.
+                    event.reason = outOfWindow(
+                        m_leaf.get(), m_parsed.certificates, m_verdictClock ? m_verdictClock() : std::time(nullptr));
+                    const auto held = ca_bundle::vouchGivenChain(m_parsed, true, built.serializedBytes);
+                    if (held.failure == ca_bundle::GuardFailure::none)
+                    {
+                        heldByClock = held.publication;
+                    }
+                }
+                break;
+
+            case ca_bundle::GuardFailure::hash_mismatch:
             case ca_bundle::GuardFailure::too_many_certificates:
             case ca_bundle::GuardFailure::too_many_bytes:
                 // A block is there and a guard refused it: one event carrying WHICH guard and the
@@ -517,7 +603,7 @@ namespace remoted::http
 
         event.publication = publication;
 
-        const Entry updated {m_path, hash, publication};
+        const Entry updated {m_path, hash, heldByClock.value_or(publication)};
         if (!hadAntecedent || !sameEntry(updated, m_recordEffective))
         {
             // The effective entry moves whether or not the last write succeeded (objections 5, 7):

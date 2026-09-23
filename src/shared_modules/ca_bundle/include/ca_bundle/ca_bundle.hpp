@@ -173,6 +173,15 @@ namespace ca_bundle
     bool
     leafChainsToAnyCa(const X509* leaf, const std::vector<X509Ptr>& cas, std::optional<std::time_t> at = std::nullopt);
 
+    /**
+     * @brief leafChainsToAnyCa() with every validity window left out (`X509_V_FLAG_NO_CHECK_TIME`).
+     *
+     * Tells a bundle the clock is holding back from one that is wrong: when leafChainsToAnyCa()
+     * says no and this says yes, only a date stands between the leaf and an anchor of @p cas, so
+     * the same bytes chain once that window opens (or chained until it closed).
+     */
+    bool leafChainsToAnyCaIgnoringDates(const X509* leaf, const std::vector<X509Ptr>& cas);
+
     /// How many certificates a bundle may carry to be vouched for (spike #39277, D5).
     constexpr std::size_t kMaxCertificates = 6;
 
@@ -223,6 +232,17 @@ namespace ca_bundle
                 const X509* leaf,
                 std::size_t serializedBytes,
                 std::optional<std::time_t> at = std::nullopt);
+
+    /**
+     * @brief vouch() with the chain guard's answer already known: @p leafChains stands in for
+     *        leafChainsToAnyCa(), and every other guard and the order are the same.
+     *
+     * For a caller that needs that answer anyway -- remoted decides its `503` from it -- so the
+     * chain is verified once per judgement instead of twice. vouch() is this with the
+     * verification done for it; a caller that passes an answer about other certificates or
+     * another instant gets a verdict about those.
+     */
+    Vouch vouchGivenChain(const ParsedBundle& bundle, bool leafChains, std::size_t serializedBytes);
 
     /**
      * @brief The block's eight `##` lines, ready to be written above the certificates.

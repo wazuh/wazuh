@@ -387,100 +387,134 @@ namespace ca_bundle
         return "x509-sha256:" + sha256Hex(*der);
     }
 
-    bool leafChainsToAnyCa(const X509* leaf, const std::vector<X509Ptr>& cas, std::optional<std::time_t> at)
+    namespace
     {
-        if (leaf == nullptr || cas.empty())
+        /// leafChainsToAnyCa()'s verification, with @p flags added to OpenSSL's defaults (0 for none).
+        bool chainsToAnyCa(const X509* leaf,
+                           const std::vector<X509Ptr>& cas,
+                           std::optional<std::time_t> at,
+                           unsigned long flags)
         {
-            return false;
-        }
-
-        StorePtr store {X509_STORE_new(), &X509_STORE_free};
-        StoreCtxPtr ctx {X509_STORE_CTX_new(), &X509_STORE_CTX_free};
-        if (!store || !ctx)
-        {
-            // Out of memory building the verifier. "Does not chain" is the only answer that fails
-            // closed, and the caller's guard reads it as "nothing to publish".
-            ERR_clear_error();
-            return false;
-        }
-
-        for (const auto& ca : cas)
-        {
-            if (!ca)
+            if (leaf == nullptr || cas.empty())
             {
-                // A null entry is no anchor; the rest of the bundle still gets its chance, exactly
-                // as the signature loop this replaced skipped it.
-                continue;
+                return false;
             }
-            // OpenSSL 1.1+ accepts a certificate already in the store and returns 1; the only
-            // failures left are allocation and locking, which no verdict about the bundle can
-            // absorb -- a store missing one of its anchors would answer a different question.
-            if (X509_STORE_add_cert(store.get(), ca.get()) != 1)
+
+            StorePtr store {X509_STORE_new(), &X509_STORE_free};
+            StoreCtxPtr ctx {X509_STORE_CTX_new(), &X509_STORE_CTX_free};
+            if (!store || !ctx)
+            {
+                // Out of memory building the verifier. "Does not chain" is the only answer that fails
+                // closed, and the caller's guard reads it as "nothing to publish".
+                ERR_clear_error();
+                return false;
+            }
+
+            for (const auto& ca : cas)
+            {
+                if (!ca)
+                {
+                    // A null entry is no anchor; the rest of the bundle still gets its chance, exactly
+                    // as the signature loop this replaced skipped it.
+                    continue;
+                }
+                // OpenSSL 1.1+ accepts a certificate already in the store and returns 1; the only
+                // failures left are allocation and locking, which no verdict about the bundle can
+                // absorb -- a store missing one of its anchors would answer a different question.
+                if (X509_STORE_add_cert(store.get(), ca.get()) != 1)
+                {
+                    ERR_clear_error();
+                    return false;
+                }
+            }
+
+            // No untrusted chain and no flags: the bundle has to suffice on its own, because it is all
+            // an agent bootstrapping from `GET /cacerts` will ever hold, and the anchor has to be a
+            // self-signed root, because that is what such an agent's OpenSSL trusts by default (no
+            // X509_V_FLAG_PARTIAL_CHAIN here on purpose -- see the header). X509_STORE_CTX_init takes a
+            // non-const X509*; verification does not modify the certificate observably.
+            if (X509_STORE_CTX_init(ctx.get(), store.get(), const_cast<X509*>(leaf), nullptr) != 1)
             {
                 ERR_clear_error();
                 return false;
             }
+
+            if (at.has_value())
+            {
+                X509_STORE_CTX_set_time(ctx.get(), 0, *at);
+            }
+            if (flags != 0)
+            {
+                X509_STORE_CTX_set_flags(ctx.get(), flags);
+            }
+
+            const bool chains = X509_verify_cert(ctx.get()) == 1;
+            // Both the store and the context go back with the unique_ptrs above, on every path.
+            ERR_clear_error(); // a refused chain queues the reason; nothing here reports it
+            return chains;
         }
 
-        // No untrusted chain and no flags: the bundle has to suffice on its own, because it is all
-        // an agent bootstrapping from `GET /cacerts` will ever hold, and the anchor has to be a
-        // self-signed root, because that is what such an agent's OpenSSL trusts by default (no
-        // X509_V_FLAG_PARTIAL_CHAIN here on purpose -- see the header). X509_STORE_CTX_init takes a
-        // non-const X509*; verification does not modify the certificate observably.
-        if (X509_STORE_CTX_init(ctx.get(), store.get(), const_cast<X509*>(leaf), nullptr) != 1)
+        /// vouch()'s guards in their fixed order, with the chain guard asked through @p leafChains
+        /// only once the three before it have passed.
+        template<typename ChainGuard>
+        Vouch vouchWith(const ParsedBundle& bundle, std::size_t serializedBytes, ChainGuard&& leafChains)
         {
-            ERR_clear_error();
-            return false;
+            // Fixed order, first failure wins -- the caller's logs and the tool's exit codes name the
+            // cause, so which guard answers has to be the same everywhere.
+            if (bundle.certificates.empty())
+            {
+                return {0, GuardFailure::no_certificates};
+            }
+            if (!bundle.block)
+            {
+                return {0, GuardFailure::no_block};
+            }
+            // An empty computed hash (i2d_X509 failed on one certificate -- a null X509Ptr among
+            // them, say) never avails a block, even one whose own Content-SHA256 is also empty: two
+            // empty strings comparing equal would let a bundle we could not even hash through.
+            const auto computedHash = contentSha256(bundle.certificates);
+            if (computedHash.empty() || bundle.block->contentSha256 != computedHash)
+            {
+                return {0, GuardFailure::hash_mismatch};
+            }
+            // Named no_ca_signs_leaf for the callers already written against it, but the question is
+            // leafChainsToAnyCa()'s since C33: a CA that merely signs the leaf is not one an agent can
+            // use, so it must not decide which generation this manager announces.
+            if (!leafChains())
+            {
+                return {0, GuardFailure::no_ca_signs_leaf};
+            }
+            if (bundle.certificates.size() > kMaxCertificates)
+            {
+                return {0, GuardFailure::too_many_certificates};
+            }
+            if (serializedBytes > kMaxSerializedBytes)
+            {
+                return {0, GuardFailure::too_many_bytes};
+            }
+            return {bundle.block->publication, GuardFailure::none};
         }
+    } // namespace
 
-        if (at.has_value())
-        {
-            X509_STORE_CTX_set_time(ctx.get(), 0, *at);
-        }
+    bool leafChainsToAnyCa(const X509* leaf, const std::vector<X509Ptr>& cas, std::optional<std::time_t> at)
+    {
+        return chainsToAnyCa(leaf, cas, at, 0);
+    }
 
-        const bool chains = X509_verify_cert(ctx.get()) == 1;
-        // Both the store and the context go back with the unique_ptrs above, on every path.
-        ERR_clear_error(); // a refused chain queues the reason; nothing here reports it
-        return chains;
+    bool leafChainsToAnyCaIgnoringDates(const X509* leaf, const std::vector<X509Ptr>& cas)
+    {
+        return chainsToAnyCa(leaf, cas, std::nullopt, X509_V_FLAG_NO_CHECK_TIME);
     }
 
     Vouch
     vouch(const ParsedBundle& bundle, const X509* leaf, std::size_t serializedBytes, std::optional<std::time_t> at)
     {
-        // Fixed order, first failure wins -- the caller's logs and the tool's exit codes name the
-        // cause, so which guard answers has to be the same everywhere.
-        if (bundle.certificates.empty())
-        {
-            return {0, GuardFailure::no_certificates};
-        }
-        if (!bundle.block)
-        {
-            return {0, GuardFailure::no_block};
-        }
-        // An empty computed hash (i2d_X509 failed on one certificate -- a null X509Ptr among
-        // them, say) never avails a block, even one whose own Content-SHA256 is also empty: two
-        // empty strings comparing equal would let a bundle we could not even hash through.
-        const auto computedHash = contentSha256(bundle.certificates);
-        if (computedHash.empty() || bundle.block->contentSha256 != computedHash)
-        {
-            return {0, GuardFailure::hash_mismatch};
-        }
-        // Named no_ca_signs_leaf for the callers already written against it, but the question is
-        // leafChainsToAnyCa()'s since C33: a CA that merely signs the leaf is not one an agent can
-        // use, so it must not decide which generation this manager announces.
-        if (!leafChainsToAnyCa(leaf, bundle.certificates, at))
-        {
-            return {0, GuardFailure::no_ca_signs_leaf};
-        }
-        if (bundle.certificates.size() > kMaxCertificates)
-        {
-            return {0, GuardFailure::too_many_certificates};
-        }
-        if (serializedBytes > kMaxSerializedBytes)
-        {
-            return {0, GuardFailure::too_many_bytes};
-        }
-        return {bundle.block->publication, GuardFailure::none};
+        return vouchWith(bundle, serializedBytes, [&] { return leafChainsToAnyCa(leaf, bundle.certificates, at); });
+    }
+
+    Vouch vouchGivenChain(const ParsedBundle& bundle, bool leafChains, std::size_t serializedBytes)
+    {
+        return vouchWith(bundle, serializedBytes, [leafChains] { return leafChains; });
     }
 
     std::string renderBlock(const PublicationBlock& block)

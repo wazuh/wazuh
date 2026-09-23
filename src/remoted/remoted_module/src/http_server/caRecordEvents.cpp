@@ -50,11 +50,14 @@ namespace remoted::http
                 // path to a self-signed anchor of this bundle, validity windows and CA bits
                 // included.
                 case ca_bundle::GuardFailure::no_ca_signs_leaf:
+                    // With a reason, only a validity window is in the way and the line names it;
+                    // without one, the generic list of what does not count.
                     return bundle +
-                           " is not published because the served leaf certificate does not chain to any CA "
-                           "in it (an expired CA, one without CA:TRUE or one that merely signs the leaf "
-                           "does not count); " +
-                           UNPUBLISHED_CONSEQUENCE + ".";
+                           " is not published because the served leaf certificate does not chain to any CA in it (" +
+                           (event.reason.empty() ? std::string {"an expired CA, one without CA:TRUE or one that merely "
+                                                                "signs the leaf does not count"}
+                                                 : event.reason) +
+                           "); " + UNPUBLISHED_CONSEQUENCE + ".";
 
                 case ca_bundle::GuardFailure::too_many_certificates:
                     return bundle + " is not published because it carries " + std::to_string(event.observed) +
