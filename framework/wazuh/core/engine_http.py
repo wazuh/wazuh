@@ -177,6 +177,18 @@ class VdHTTPClient:
             code = self._SCAN_REJECTION_CODES.get(reason, 8007)
             raise WazuhError(code, extra_message=reason)
 
+class RemotedAdminHTTPError(WazuhError):
+    """An error status answered by remoted's admin socket, with the HTTP status the route returned.
+
+    Raised as error 2029 like before; `status_code` lets a caller tell a contractual `503` (the HTTPS
+    listener is not up) apart from anything else without parsing the body.
+    """
+
+    def __init__(self, status_code: int, extra_message: str = None):
+        super().__init__(2029, extra_message=extra_message)
+        self.status_code = status_code
+
+
 class RemotedHTTPClient:
     """Synchronous HTTP client for remoted's local admin unix socket."""
 
@@ -220,6 +232,41 @@ class RemotedHTTPClient:
 
         if response.is_error:
             raise WazuhError(2029, extra_message=response.text)
+
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise WazuhInternalError(2032, extra_message=f'Invalid JSON in remoted admin response: {exc}')
+
+    def get_tls(self) -> dict:
+        """Retrieve the TLS certificate material remoted serves, from its local admin socket.
+
+        Returns
+        -------
+        dict
+            The `GET /tls` document: `evaluated_at`/`evaluated_at_ts`, `listener` (the served
+            certificate: subject, issuer, sans, validity in RFC 3339 and epoch forms,
+            `seconds_until_expiry`, `fingerprint`, `serial`, `path`, `loaded_at`) and `ca_bundle`
+            (path, publication fields, `content_sha256`, counts and sizes against their limits,
+            `matches_active_leaf`, `chain_valid`, one entry per certificate with `signs_active_leaf`, and
+            `last_read_failure` while the bundle cannot be read). remoted answers 503 while its
+            HTTPS listener is not up, which surfaces here as a `RemotedAdminHTTPError` (error 2029)
+            carrying that status code.
+        """
+        try:
+            response = self._client.get(
+                url=f'{self.API_URL}/tls',
+                headers={'Content-Type': 'application/json'},
+            )
+        except httpx.TimeoutException as exc:
+            raise WazuhInternalError(2030, extra_message=str(exc))
+        except httpx.ConnectError as exc:
+            raise WazuhInternalError(2031, extra_message=str(exc))
+        except httpx.RequestError as exc:
+            raise WazuhError(2013, extra_message=str(exc))
+
+        if response.is_error:
+            raise RemotedAdminHTTPError(response.status_code, extra_message=response.text)
 
         try:
             return response.json()

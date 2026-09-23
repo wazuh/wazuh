@@ -19,9 +19,10 @@ with patch('wazuh.common.wazuh_uid'):
             get_api_config, get_cluster_node, get_cluster_nodes,
             get_conf_validation, get_config, get_configuration_node,
             get_healthcheck, get_info_node, get_log_node, get_log_summary_node,
-            get_node_config, get_daemon_stats_node,
+            get_node_config, get_daemon_stats_node, get_remoted_tls_node,
             get_status, get_status_node, put_restart, put_reload, update_configuration)
         from wazuh import cluster, manager, stats
+        from wazuh.core.cluster.dapi.dapi import DistributedAPI
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -257,6 +258,59 @@ async def test_get_configuration_node(mock_exc, mock_dapi, mock_remove, mock_dfu
             if not mock_isinstance.return_value:
                 # raw=True: the file text is returned as XML
                 assert result.content_type == XML_CONTENT_TYPE
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["cluster_controller"], indirect=True)
+@patch('api.controllers.cluster_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.cluster_controller.remove_nones_to_dict')
+@patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_get_remoted_tls_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
+    """Verify 'get_remoted_tls_node' distributes manager.get_remoted_tls per node."""
+    with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
+        result = await get_remoted_tls_node(node_id='worker1')
+        f_kwargs = {'node_id': 'worker1'}
+        mock_dapi.assert_called_once_with(f=manager.get_remoted_tls,
+                                          f_kwargs=mock_remove.return_value,
+                                          request_type='distributed_master',
+                                          is_async=False,
+                                          wait_for_complete=False,
+                                          logger=ANY,
+                                          basic_services=('wazuh-manager-modulesd', 'wazuh-manager-analysisd',
+                                                          'wazuh-manager-db'),
+                                          rbac_permissions=mock_request.context['token_info']['rbac_policies'],
+                                          nodes=mock_exc.return_value
+                                          )
+        mock_exc.assert_has_calls([call(mock_snodes.return_value),
+                                   call(mock_dfunc.return_value)])
+        assert mock_exc.call_count == 2
+        mock_remove.assert_called_once_with(f_kwargs)
+        assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["cluster_controller"], indirect=True)
+async def test_get_remoted_tls_node_does_not_require_remoted(mock_request):
+    """The endpoint reports on remoted, so remoted being down is a state it must describe: the daemons it
+    declares to the DAPI leave it out, and the status check over them does not raise 1017 (PR #39410 review)."""
+    with patch('api.controllers.cluster_controller.get_system_nodes', return_value=AsyncMock()), \
+            patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems()), \
+            patch('api.controllers.cluster_controller.remove_nones_to_dict'), \
+            patch('api.controllers.cluster_controller.DistributedAPI.distribute_function',
+                  return_value=AsyncMock()), \
+            patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None) as mock_dapi:
+        await get_remoted_tls_node(node_id='worker1')
+
+    basic_services = mock_dapi.call_args.kwargs['basic_services']
+    assert 'wazuh-manager-remoted' not in basic_services
+
+    # The guard itself, run over what the endpoint declared: `get_remoted_tls` gets to answer.
+    dapi = DistributedAPI(f=manager.get_remoted_tls, logger=MagicMock(), basic_services=basic_services)
+    with patch('wazuh.core.manager.status',
+               return_value={'wazuh-manager-modulesd': 'running', 'wazuh-manager-analysisd': 'running',
+                             'wazuh-manager-db': 'running', 'wazuh-manager-remoted': 'stopped'}):
+        assert dapi.check_wazuh_status() is None
 
 
 @pytest.mark.asyncio

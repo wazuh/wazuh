@@ -1243,9 +1243,11 @@ namespace remoted::http
 
         /// The certificate the SSL_CTX serves (our own reference), constant until the next start():
         /// the leaf side of every certificate evaluation. The CA side is re-read from
-        /// m_caCertificatePath at each one, so a rotated CA file is noticed at the next tick.
+        /// m_config.caCertificatePath at each one, so a rotated CA file is noticed at the next tick.
         X509Ptr m_leaf;
-        std::string m_caCertificatePath;
+        /// The same leaf as GET /tls describes it, with the instant start() loaded it: computed once
+        /// per start() (the leaf cannot change in between), served on every tlsInventory() call.
+        std::optional<TlsListener> m_listener;
         /// The CA file as one coherent thing: what /cacerts publishes and the verdict that goes
         /// with it, from the same read (issue #39078). Created in start(), when the leaf exists.
         std::shared_ptr<CaCertificateSource> m_caSource;
@@ -1574,6 +1576,32 @@ namespace remoted::http
         return source ? source->leafSignerPem(buffer, capacity) : 0;
     }
 
+    TlsInventory RestinioHttpServer::tlsInventory() const
+    {
+        TlsInventory inventory;
+        std::shared_ptr<CaCertificateSource> source;
+        {
+            // Same brief take of m_mutex as caCertificateSnapshot(): copy what start() recorded, then
+            // read the CA outside it -- the source has its own lock, and the read must not make a
+            // /tls request wait out a concurrent start().
+            std::lock_guard<std::mutex> lock {m_impl->m_mutex};
+            if (!m_impl->m_server || m_impl->m_acceptingStopped || !m_impl->m_listener.has_value())
+            {
+                // Not accepting: nothing is being served, so there is nothing to describe. The
+                // route turns this into its 503.
+                return {};
+            }
+            inventory.listener = m_impl->m_listener;
+            inventory.caCertificatePath = m_impl->m_config.caCertificatePath;
+            source = m_impl->m_caSource;
+        }
+        if (source)
+        {
+            inventory.ca = source->snapshot();
+        }
+        return inventory;
+    }
+
     TlsCertificateSnapshot RestinioHttpServer::certificateStatus() const
     {
         // The monitor has its own lock; m_mutex is not needed (and must not be taken: a metrics
@@ -1626,10 +1654,15 @@ namespace remoted::http
         // status, so certificateStatus() is meaningful from here on -- before anything is accepted.
         auto tls = createTlsContext(config);
         m_impl->m_leaf = std::move(tls.leaf);
-        m_impl->m_caCertificatePath = config.caCertificatePath;
         m_impl->m_caSource = std::move(tls.caSource);
         m_impl->m_caMailbox = std::move(tls.mailbox);
         m_impl->m_certMonitor.record(tls.initialStatus);
+        m_impl->m_listener.reset();
+        if (auto described = remoted::http::describeCertificate(m_impl->m_leaf.get()))
+        {
+            m_impl->m_listener =
+                TlsListener {std::move(*described), std::chrono::system_clock::now(), config.certificatePath};
+        }
 
         // Hand the CA source and its mailbox to whoever configured this server (the facade wires
         // them into the GET /cacerts handler, so a publication change is logged and persisted in
@@ -1752,6 +1785,9 @@ namespace remoted::http
             m_impl->m_budget.reset();
             throw;
         }
+        // A fresh listener re-arms stopAccepting()'s one-shot guard, so tlsInventory() reads "accepting"
+        // again on a server object that was stopped and started.
+        m_impl->m_acceptingStopped = false;
 
         const auto displayAddress = formatHostForDisplay(config.bindAddress);
         LOGFN_INFO(logFn(),

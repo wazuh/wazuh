@@ -65,6 +65,7 @@ namespace remoted::http
         CaCertificateSnapshot caCertificateSnapshot() const override;
         CaCertificateSource::CaDescriptor caDescriptor() const override;
         int caLeafSignerPem(char* buffer, std::size_t capacity) const override;
+        TlsInventory tlsInventory() const override;
         void start(const HttpServerConfig& config) override;
         void stopAccepting() noexcept override;
         void stop() noexcept override;
