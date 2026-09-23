@@ -409,7 +409,9 @@ void LogCollectorStart()
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
             w_macos_es_create_env(current);
             current->read = read_macos_es;
-            if (current->macos_es->wfd != NULL) {
+            /* Registered even if the first spawn failed: a later respawn from read_macos_es() must
+             * still be terminated when logcollector exits */
+            if (current->macos_es != NULL) {
                 if (atexit(w_macos_es_release_env)) {
                     merror(ATEXIT_ERROR);
                 }
@@ -2122,10 +2124,9 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     else if (current->macos_log != NULL && current->macos_log->state != LOG_NOT_RUNNING) {
                         current->read(current, &r, 0);
                     }
-                    /* Read Endpoint Security (`eslogger`) events. Polled unconditionally — not
-                     * gated on liveness like ULS above — so the supervisor inside read_macos_es()
-                     * gets a chance to respawn a dead process every tick (R7/R14: unlike ULS's
-                     * `log stream`, a dead `eslogger` must not stay dead forever). */
+                    /* Read Endpoint Security (`eslogger`) events. Polled unconditionally, not gated
+                     * on liveness like ULS above, so read_macos_es() can respawn a dead process:
+                     * unlike ULS's `log stream`, a dead `eslogger` must not stay dead forever. */
                     else if (current->macos_es != NULL) {
                         current->read(current, &r, 0);
                     }
@@ -3036,8 +3037,16 @@ void w_macos_release_log_execution(void) {
 
 void w_macos_es_release_env(void) {
 
-    if (macos_es_logreader != NULL) {
+    if (macos_es_logreader == NULL) {
+        return;
+    }
+
+    /* This runs from exit(), possibly inside a signal handler on a thread that already holds the reader's
+     * mutex, so it must not block. If an input thread is busy with the reader, leave it alone: freeing the
+     * connector under it would be a use-after-free, and eslogger exits on EPIPE at its next write. */
+    if (pthread_mutex_trylock(&macos_es_logreader->mutex) == 0) {
         w_macos_es_release(macos_es_logreader);
+        w_mutex_unlock(&macos_es_logreader->mutex);
     }
 }
 

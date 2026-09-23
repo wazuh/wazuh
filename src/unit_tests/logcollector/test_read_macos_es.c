@@ -83,6 +83,15 @@ void test_w_macos_es_is_valid_json_invalid(void ** state) {
     assert_false(w_macos_es_is_valid_json("not json at all"));
 }
 
+void test_w_macos_es_is_valid_json_trailing_data(void ** state) {
+    assert_false(w_macos_es_is_valid_json("{\"a\":1}},\"b\":2}"));
+}
+
+void test_w_macos_es_is_valid_json_not_an_object(void ** state) {
+    assert_false(w_macos_es_is_valid_json("123 junk"));
+    assert_false(w_macos_es_is_valid_json("\"tail of a record\""));
+}
+
 /* w_macos_es_getlog */
 
 void test_w_macos_es_getlog_no_data(void ** state) {
@@ -124,11 +133,26 @@ void test_w_macos_es_getlog_partial_line(void ** state) {
     assert_string_equal(cfg->ctxt_buffer, "{\"event\":");
 }
 
+void test_w_macos_es_getlog_partial_line_then_no_data_keeps_it(void ** state) {
+    w_macos_es_config_t * cfg = *state;
+    char buffer[256];
+
+    strcpy(cfg->ctxt_buffer, "{\"event\":");
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    bool ret = w_macos_es_getlog(buffer, sizeof(buffer), (FILE *) 1, cfg);
+
+    assert_false(ret);
+    assert_string_equal(cfg->ctxt_buffer, "{\"event\":");
+}
+
 void test_w_macos_es_getlog_split_across_reads(void ** state) {
     w_macos_es_config_t * cfg = *state;
     char buffer[256];
 
-    /* First read: partial line, saved into ctxt_buffer */
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, "{\"event\":");
@@ -136,7 +160,6 @@ void test_w_macos_es_getlog_split_across_reads(void ** state) {
     bool ret = w_macos_es_getlog(buffer, sizeof(buffer), (FILE *) 1, cfg);
     assert_false(ret);
 
-    /* Second read: rest of the line arrives, completing the record */
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, "\"authentication\"}\n");
@@ -175,7 +198,7 @@ void test_w_macos_es_getlog_oversize_drop(void ** state) {
 
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, "123456789"); // 9 chars, no '\n', fills buffer[10] to the brim
+    will_return(__wrap_fgets, "123456789");
 
     expect_string(__wrap__mdebug1, formatted_msg,
                   "macOS ES: Maximum message length reached. The record was discarded.");
@@ -189,11 +212,62 @@ void test_w_macos_es_getlog_oversize_drop(void ** state) {
     assert_false(ret);
     assert_string_equal(buffer, "");
     assert_string_equal(cfg->ctxt_buffer, "");
+    assert_false(cfg->discarding);
+}
+
+void test_w_macos_es_getlog_oversize_drain_interrupted_resumes_on_next_read(void ** state) {
+    w_macos_es_config_t * cfg = *state;
+    char buffer[10];
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "123456789");
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "macOS ES: Maximum message length reached. The record was discarded.");
+
+    will_return(__wrap_fgetc, 'x');
+    will_return(__wrap_fgetc, EOF);
+
+    bool ret = w_macos_es_getlog(buffer, sizeof(buffer), (FILE *) 1, cfg);
+
+    assert_false(ret);
+    assert_true(cfg->discarding);
+
+    will_return(__wrap_fgetc, '"');
+    will_return(__wrap_fgetc, '}');
+    will_return(__wrap_fgetc, '\n');
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "{\"b\":2}\n");
+
+    ret = w_macos_es_getlog(buffer, sizeof(buffer), (FILE *) 1, cfg);
+
+    assert_true(ret);
+    assert_string_equal(buffer, "{\"b\":2}");
+    assert_false(cfg->discarding);
+}
+
+void test_w_macos_es_getlog_discarding_tail_still_unfinished(void ** state) {
+    w_macos_es_config_t * cfg = *state;
+    char buffer[256];
+
+    cfg->discarding = true;
+
+    will_return(__wrap_fgetc, 'x');
+    will_return(__wrap_fgetc, EOF);
+
+    bool ret = w_macos_es_getlog(buffer, sizeof(buffer), (FILE *) 1, cfg);
+
+    assert_false(ret);
+    assert_true(cfg->discarding);
+    assert_string_equal(buffer, "");
 }
 
 /* read_macos_es */
 
-void test_read_macos_es_wfd_null(void ** state) {
+void test_read_macos_es_macos_es_null(void ** state) {
     logreader lf;
     memset(&lf, 0, sizeof(logreader));
     lf.macos_es = NULL;
@@ -250,7 +324,6 @@ void test_read_macos_es_pushes_valid_json(void ** state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, NULL);
 
-    /* Exit check: still running */
     expect_value(__wrap_waitpid, __pid, 4242);
     expect_value(__wrap_waitpid, __options, WNOHANG);
     will_return(__wrap_waitpid, 0);
@@ -286,7 +359,6 @@ void test_read_macos_es_warns_on_invalid_json(void ** state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, NULL);
 
-    /* Exit check: still running */
     expect_value(__wrap_waitpid, __pid, 4242);
     expect_value(__wrap_waitpid, __options, WNOHANG);
     will_return(__wrap_waitpid, 0);
@@ -295,6 +367,53 @@ void test_read_macos_es_warns_on_invalid_json(void ** state) {
     void * ret = read_macos_es(&lf, &rc, 0);
 
     assert_null(ret);
+}
+
+void test_read_macos_es_max_lines_cap_skips_exit_check(void ** state) {
+    logreader lf;
+    memset(&lf, 0, sizeof(logreader));
+    w_macos_es_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    wfd_t wfd;
+    memset(&wfd, 0, sizeof(wfd));
+    wfd.pid = 4242;
+    cfg.wfd = &wfd;
+    lf.macos_es = &cfg;
+    maximum_lines = 1;
+    int rc = -1;
+
+    will_return(__wrap_can_read, 1);
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, "{\"a\":1}\n");
+
+    expect_string(__wrap_w_msg_hash_queues_push, str, "{\"a\":1}");
+    expect_string(__wrap_w_msg_hash_queues_push, file, MACOS_ES);
+    expect_value(__wrap_w_msg_hash_queues_push, size, strlen("{\"a\":1}") + 1);
+    will_return(__wrap_w_msg_hash_queues_push, 0);
+
+    void * ret = read_macos_es(&lf, &rc, 0);
+
+    assert_null(ret);
+    assert_ptr_equal(cfg.wfd, &wfd);
+}
+
+void test_read_macos_es_backoff_not_elapsed_skips_spawn(void ** state) {
+    logreader lf;
+    memset(&lf, 0, sizeof(logreader));
+    w_macos_es_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.next_spawn_at = 2000;
+    lf.macos_es = &cfg;
+    int rc = -1;
+
+    will_return(__wrap_time, 1000);
+
+    void * ret = read_macos_es(&lf, &rc, 0);
+
+    assert_null(ret);
+    assert_null(cfg.wfd);
 }
 
 /* w_macos_es_check_exit */
@@ -316,7 +435,7 @@ void test_w_macos_es_check_exit_still_running(void ** state) {
 
     w_macos_es_check_exit(&lf);
 
-    assert_ptr_equal(cfg.wfd, &wfd); // untouched
+    assert_ptr_equal(cfg.wfd, &wfd);
     assert_int_equal(cfg.failures, 0);
 }
 
@@ -339,40 +458,36 @@ void test_w_macos_es_check_exit_waitpid_error(void ** state) {
 
     w_macos_es_check_exit(&lf);
 
-    assert_ptr_equal(cfg.wfd, &wfd); // untouched
+    assert_ptr_equal(cfg.wfd, &wfd);
 }
 
 void test_w_macos_es_check_exit_fast_crash_does_not_reset_failures(void ** state) {
     logreader lf;
     w_macos_es_config_t cfg;
     memset(&cfg, 0, sizeof(cfg));
-    wfd_t wfd;
-    memset(&wfd, 0, sizeof(wfd));
-    wfd.pid = 111;
-    cfg.wfd = &wfd;
-    cfg.failures = 2; // already failing repeatedly
+    wfd_t * wfd = calloc(1, sizeof(wfd_t));
+    wfd->pid = 111;
+    wfd->file_out = (FILE *) 1234;
+    cfg.wfd = wfd;
+    cfg.failures = 2;
     cfg.started_at = 1000;
     lf.macos_es = &cfg;
 
     expect_value(__wrap_waitpid, __pid, 111);
     expect_value(__wrap_waitpid, __options, WNOHANG);
-    will_return(__wrap_waitpid, 1); // exit status (unused by the assertion)
+    will_return(__wrap_waitpid, 1 << 8);
     will_return(__wrap_waitpid, 111);
 
-    will_return(__wrap_time, 1005); // uptime = 5s, well under the 60s healthy threshold
+    will_return(__wrap_time, 1005);
+    will_return(__wrap_time, 1005);
 
     expect_string(__wrap__merror, formatted_msg, "(1614): macOS ES 'eslogger' process exited, pid: 111, exit value: 1.");
 
-    will_return(__wrap_time, 1005); // w_macos_es_note_failure's own time(NULL)
-
-    expect_value(__wrap_kill, pid, 111);
-    expect_value(__wrap_kill, sig, SIGTERM);
-    will_return(__wrap_kill, 0);
-    will_return(__wrap_wpclose, 0);
+    expect_fclose((FILE *) 1234, 0);
 
     w_macos_es_check_exit(&lf);
 
-    assert_int_equal(cfg.failures, 3); // NOT reset: this run did not stay up long enough
+    assert_int_equal(cfg.failures, 3);
     assert_null(cfg.wfd);
 }
 
@@ -380,11 +495,11 @@ void test_w_macos_es_check_exit_healthy_run_resets_failures(void ** state) {
     logreader lf;
     w_macos_es_config_t cfg;
     memset(&cfg, 0, sizeof(cfg));
-    wfd_t wfd;
-    memset(&wfd, 0, sizeof(wfd));
-    wfd.pid = 111;
-    cfg.wfd = &wfd;
-    cfg.failures = 5; // was previously failing a lot
+    wfd_t * wfd = calloc(1, sizeof(wfd_t));
+    wfd->pid = 111;
+    wfd->file_out = (FILE *) 1234;
+    cfg.wfd = wfd;
+    cfg.failures = 5;
     cfg.started_at = 1000;
     lf.macos_es = &cfg;
 
@@ -393,21 +508,77 @@ void test_w_macos_es_check_exit_healthy_run_resets_failures(void ** state) {
     will_return(__wrap_waitpid, 0);
     will_return(__wrap_waitpid, 111);
 
-    will_return(__wrap_time, 1000 + MACOS_ES_HEALTHY_UPTIME_SEC); // stayed up long enough
+    will_return(__wrap_time, 1000 + MACOS_ES_HEALTHY_UPTIME_SEC);
+    will_return(__wrap_time, 1000 + MACOS_ES_HEALTHY_UPTIME_SEC);
 
     expect_string(__wrap__merror, formatted_msg, "(1614): macOS ES 'eslogger' process exited, pid: 111, exit value: 0.");
 
-    will_return(__wrap_time, 1000 + MACOS_ES_HEALTHY_UPTIME_SEC); // w_macos_es_note_failure's own time(NULL)
-
-    expect_value(__wrap_kill, pid, 111);
-    expect_value(__wrap_kill, sig, SIGTERM);
-    will_return(__wrap_kill, 0);
-    will_return(__wrap_wpclose, 0);
+    expect_fclose((FILE *) 1234, 0);
 
     w_macos_es_check_exit(&lf);
 
-    assert_int_equal(cfg.failures, 1); // reset to 0 by the healthy run, then +1 for this exit
+    assert_int_equal(cfg.failures, 1);
     assert_null(cfg.wfd);
+}
+
+void test_w_macos_es_check_exit_killed_by_signal(void ** state) {
+    logreader lf;
+    w_macos_es_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    wfd_t * wfd = calloc(1, sizeof(wfd_t));
+    wfd->pid = 111;
+    wfd->file_out = (FILE *) 1234;
+    cfg.wfd = wfd;
+    cfg.started_at = 1000;
+    lf.macos_es = &cfg;
+
+    expect_value(__wrap_waitpid, __pid, 111);
+    expect_value(__wrap_waitpid, __options, WNOHANG);
+    will_return(__wrap_waitpid, SIGKILL);
+    will_return(__wrap_waitpid, 111);
+
+    will_return(__wrap_time, 1005);
+    will_return(__wrap_time, 1005);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1615): macOS ES 'eslogger' process terminated by signal, pid: 111, signal: 9.");
+
+    expect_fclose((FILE *) 1234, 0);
+
+    w_macos_es_check_exit(&lf);
+
+    assert_null(cfg.wfd);
+}
+
+void test_w_macos_es_check_exit_drops_partial_record_of_dead_process(void ** state) {
+    logreader lf;
+    w_macos_es_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    wfd_t * wfd = calloc(1, sizeof(wfd_t));
+    wfd->pid = 111;
+    wfd->file_out = (FILE *) 1234;
+    cfg.wfd = wfd;
+    cfg.started_at = 1000;
+    strcpy(cfg.ctxt_buffer, "{\"event\":");
+    cfg.discarding = true;
+    lf.macos_es = &cfg;
+
+    expect_value(__wrap_waitpid, __pid, 111);
+    expect_value(__wrap_waitpid, __options, WNOHANG);
+    will_return(__wrap_waitpid, 0);
+    will_return(__wrap_waitpid, 111);
+
+    will_return(__wrap_time, 1005);
+    will_return(__wrap_time, 1005);
+
+    expect_string(__wrap__merror, formatted_msg, "(1614): macOS ES 'eslogger' process exited, pid: 111, exit value: 0.");
+
+    expect_fclose((FILE *) 1234, 0);
+
+    w_macos_es_check_exit(&lf);
+
+    assert_string_equal(cfg.ctxt_buffer, "");
+    assert_false(cfg.discarding);
 }
 
 int main(void) {
@@ -416,23 +587,32 @@ int main(void) {
         // Tests w_macos_es_is_valid_json
         cmocka_unit_test(test_w_macos_es_is_valid_json_valid),
         cmocka_unit_test(test_w_macos_es_is_valid_json_invalid),
+        cmocka_unit_test(test_w_macos_es_is_valid_json_trailing_data),
+        cmocka_unit_test(test_w_macos_es_is_valid_json_not_an_object),
         // Tests w_macos_es_getlog
         cmocka_unit_test_setup_teardown(test_w_macos_es_getlog_no_data, setup_cfg, teardown_cfg),
         cmocka_unit_test_setup_teardown(test_w_macos_es_getlog_cannot_read, setup_cfg, teardown_cfg),
         cmocka_unit_test_setup_teardown(test_w_macos_es_getlog_partial_line, setup_cfg, teardown_cfg),
+        cmocka_unit_test_setup_teardown(test_w_macos_es_getlog_partial_line_then_no_data_keeps_it, setup_cfg, teardown_cfg),
         cmocka_unit_test_setup_teardown(test_w_macos_es_getlog_split_across_reads, setup_cfg, teardown_cfg),
         cmocka_unit_test_setup_teardown(test_w_macos_es_getlog_two_records_in_one_chunk, setup_cfg, teardown_cfg),
         cmocka_unit_test_setup_teardown(test_w_macos_es_getlog_oversize_drop, setup_cfg, teardown_cfg),
+        cmocka_unit_test_setup_teardown(test_w_macos_es_getlog_oversize_drain_interrupted_resumes_on_next_read, setup_cfg, teardown_cfg),
+        cmocka_unit_test_setup_teardown(test_w_macos_es_getlog_discarding_tail_still_unfinished, setup_cfg, teardown_cfg),
         // Tests read_macos_es
-        cmocka_unit_test(test_read_macos_es_wfd_null),
+        cmocka_unit_test(test_read_macos_es_macos_es_null),
         cmocka_unit_test(test_read_macos_es_cannot_read),
         cmocka_unit_test(test_read_macos_es_pushes_valid_json),
         cmocka_unit_test(test_read_macos_es_warns_on_invalid_json),
+        cmocka_unit_test(test_read_macos_es_max_lines_cap_skips_exit_check),
+        cmocka_unit_test(test_read_macos_es_backoff_not_elapsed_skips_spawn),
         // Tests w_macos_es_check_exit
         cmocka_unit_test(test_w_macos_es_check_exit_still_running),
         cmocka_unit_test(test_w_macos_es_check_exit_waitpid_error),
         cmocka_unit_test(test_w_macos_es_check_exit_fast_crash_does_not_reset_failures),
         cmocka_unit_test(test_w_macos_es_check_exit_healthy_run_resets_failures),
+        cmocka_unit_test(test_w_macos_es_check_exit_killed_by_signal),
+        cmocka_unit_test(test_w_macos_es_check_exit_drops_partial_record_of_dead_process),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

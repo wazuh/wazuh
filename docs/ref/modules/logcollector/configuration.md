@@ -96,10 +96,10 @@ None (query value is the XPath expression itself)
 
 Comma-separated list of Endpoint Security event names to subscribe to (`macos-es` only).
 
-- **Default value:** `authentication,login_login,login_logout,lw_session_login,lw_session_logout,openssh_login,openssh_logout` (used when `<events>` is omitted or empty)
+- **Default value:** `authentication,login_login,login_logout,lw_session_login,lw_session_logout,openssh_login,openssh_logout` (used when `<events>` is omitted, empty, or has no valid value)
 - **Allowed values:** Comma-separated Endpoint Security event names — run `eslogger --list-events` on the host for the full catalog on that macOS version
 - **Format:** `<events>event1,event2,...</events>`
-- **Note:** Validation is syntactic only: each token must be a single word, blank tokens (e.g. a trailing comma) are silently skipped, and a multi-word token is dropped with a warning but does not invalidate the rest of the list. There is no allow-list of event *names* — Apple adds new ones every macOS release, so the agent does not reject a name it doesn't recognize; an unknown-but-well-formed name is simply passed to `eslogger`, which will reject it itself if invalid
+- **Note:** Validation is syntactic only. Surrounding whitespace (including newlines) is trimmed and blank tokens (e.g. a trailing comma) are skipped. A token may only contain lowercase letters, digits and underscores; any other token is dropped with warning `(8023)` without invalidating the rest of the list, and if no token is valid the default events are used with warning `(8025)`. There is no allow-list of event *names* — Apple adds new ones every macOS release, so an unknown-but-well-formed name is simply passed to `eslogger`, which will reject it itself if invalid
 - **Example:** `<events>authentication,openssh_logout</events>`
 
 ### filter
@@ -800,13 +800,18 @@ Ensure only one `<localfile>` block with `log_format=macos` exists.
 
 ### macOS ES (eslogger) Not Collecting Logs
 
-**Grant Full Disk Access to `/usr/bin/eslogger` — this is a separate grant from FIM's:**
+**Grant Full Disk Access to `/Library/Ossec/bin/wazuh-logcollector`:**
 
-TCC evaluates the executable being run, not its parent, so the existing FIM Full Disk Access grant does **not** cover `eslogger`. Grant it explicitly:
+`eslogger` requires its *responsible process* to have Full Disk Access (see `man eslogger`). When the agent spawns it, the responsible process is `wazuh-logcollector` (`sudo launchctl procinfo <eslogger pid>` shows `responsible path = /Library/Ossec/bin/wazuh-logcollector`), not `/usr/bin/eslogger`: granting `/usr/bin/eslogger` alone does not help.
+
+After the first refused attempt, macOS adds `wazuh-logcollector` to the list by itself, switched off. Turn it on:
 
 1. **System Settings** → **Privacy & Security** → **Full Disk Access**.
-2. Click **+**. The Finder dialog defaults to hiding `/usr/bin`; press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> and type `/usr/bin` to jump there, or type the full path `/usr/bin/eslogger` directly.
-3. Select `eslogger` and add it.
+2. Switch on `wazuh-logcollector`.
+
+The **+** file picker cannot browse `/Library/Ossec` (mode `750`), so use the entry macOS created instead of adding the binary by hand. MDM servers can grant the same through a Privacy Preferences Policy Control payload (`SystemPolicyAllFiles`).
+
+Revoking access does not stop an `eslogger` that is already running: it only refuses the next start (agent restart, or `eslogger` exiting for any reason).
 
 **Verify `eslogger` works before blaming the agent:**
 
@@ -814,7 +819,7 @@ TCC evaluates the executable being run, not its parent, so the existing FIM Full
 sudo eslogger authentication
 ```
 
-If this hangs waiting for events with no TCC prompt or error, the binary and permission are fine — trigger a login/logout in another session and confirm JSON lines appear. If it prints a TCC/permission error instead, fix that first; the agent will see exactly the same failure.
+This checks the binary and the event catalog only: run from Terminal or SSH, the responsible process is the terminal app or `sshd`, not the agent, so it does not test the agent's grant. If it hangs waiting for events, trigger a login/logout in another session and confirm JSON lines appear.
 
 **Only one `macos-es` localfile allowed:**
 
@@ -825,14 +830,16 @@ Ensure only one `<localfile>` block with `log_format=macos-es` exists (same rest
 | Log line contains | Meaning |
 |---|---|
 | `Monitoring macOS Endpoint Security events with: /usr/bin/eslogger ...` | Started successfully — this is the full command line it ran |
-| `(1250): Error trying to execute "/usr/bin/eslogger"` | The binary is missing or not executable on this host (wrong/old macOS, or path tampered with) |
+| `(8026): '/usr/bin/eslogger' not found` | The host runs macOS older than 13; the collector stays disabled, logged once at startup |
+| `(1250): Error trying to execute "/usr/bin/eslogger"` | The binary exists but is not executable (path tampered with) — the agent will retry |
 | `(1612): Error while trying to execute 'eslogger'` | `wpopenv()`/pipe setup failed — check `dmesg`/system logs for resource exhaustion |
-| `(1614): macOS ES 'eslogger' process exited, pid: ..., exit value: ...` | `eslogger` died (commonly: FDA was revoked, or the agent process was killed) — the agent will retry |
+| `(1614): macOS ES 'eslogger' process exited, pid: ..., exit value: ...` | `eslogger` exited with that code — the agent will retry. Missing Full Disk Access shows as exit value `1`, right after an `(8024)` line with `Not permitted to create an ES Client` |
+| `(1615): macOS ES 'eslogger' process terminated by signal, pid: ..., signal: ...` | `eslogger` was killed by that signal — the agent will retry |
 | `(8024): macOS ES: Discarding non-JSON line` | `eslogger` printed something to stderr/stdout that wasn't a JSON event (e.g. its own warning) — the line was logged, not forwarded |
 
 **The retry is not instant — this is expected, not stuck:**
 
-After a failure the agent waits before respawning `eslogger`, growing the delay each consecutive failure: 5s, 10s, 20s, 40s, 80s, 160s, capped at 300s. If FDA gets re-granted mid-backoff, the very next scheduled attempt picks it up — no agent restart needed. A run that stays up at least 60s resets the delay back to 5s for the next failure, so a one-off crash doesn't leave the agent throttled for minutes afterward.
+After a failure the agent waits before respawning `eslogger`, growing the delay each consecutive failure: 5s, 10s, 20s, 40s, 80s, 160s, capped at 300s. If FDA gets re-granted mid-backoff, the very next scheduled attempt picks it up (up to 300s later) and logs the `Monitoring macOS Endpoint Security events` line again — no agent restart needed. A run that stays up at least 60s resets the delay back to 5s for the next failure, so a one-off crash doesn't leave the agent throttled for minutes afterward.
 
 **No alert after the event reaches the manager — also expected, for now:**
 

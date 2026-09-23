@@ -35,6 +35,13 @@ int total_files;
 STATIC int w_logcollector_get_macos_log_type(const char * content);
 
 /**
+ * @brief Checks that an `eslogger` event name only contains lowercase letters, digits and underscores
+ * @param event non-empty, already-trimmed event name
+ * @return true if the name is well-formed, false otherwise
+ */
+STATIC bool w_logcollector_is_valid_macos_es_event(const char * event);
+
+/**
  * @brief Validate and normalize the comma-separated `<events>` list (macos-es log format)
  * @param content raw element content
  * @return newly allocated, comma-separated string of valid tokens, or NULL if none were valid/present
@@ -1187,9 +1194,11 @@ void w_macos_es_config_free(w_macos_es_config_t ** config) {
     }
 
     if ((*config)->wfd != NULL) {
+#ifndef WIN32
         if ((*config)->wfd->pid > 0) {
             kill((*config)->wfd->pid, SIGTERM);
         }
+#endif
         wpclose((*config)->wfd);
     }
 
@@ -1261,39 +1270,60 @@ STATIC int w_logcollector_get_macos_log_type(const char * content) {
     return retval;
 }
 
+STATIC bool w_logcollector_is_valid_macos_es_event(const char * event) {
+
+    for (const char * p = event; *p != '\0'; p++) {
+        if (!islower((unsigned char) *p) && !isdigit((unsigned char) *p) && *p != '_') {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 STATIC char * w_logcollector_get_macos_es_events(const char * content) {
 
-    const size_t MAX_ARRAY_SIZE = 64;
     const char * XML_LOCALFILE_EVENTS = "events";
+    size_t num_tokens = 1;
     size_t current = 0;
+    bool invalid_found = false;
     char * result = NULL;
 
     if (content == NULL || *content == '\0') {
         return NULL;
     }
 
-    char ** event_arr = OS_StrBreak(',', content, MAX_ARRAY_SIZE);
+    for (const char * p = content; *p != '\0'; p++) {
+        if (*p == ',') {
+            num_tokens++;
+        }
+    }
+
+    char ** event_arr = OS_StrBreak(',', content, num_tokens);
 
     if (event_arr) {
         while (event_arr[current]) {
-            char * trimmed = w_strtrim(event_arr[current]);
+            char * start = event_arr[current];
+            char * end = NULL;
 
-            if (trimmed[0] == '\0') {
+            while (isspace((unsigned char) *start)) {
+                start++;
+            }
+            end = start + strlen(start);
+            while (end > start && isspace((unsigned char) end[-1])) {
+                end--;
+            }
+            *end = '\0';
+
+            if (*start == '\0') {
                 /* Empty token (e.g. trailing comma): skipped, no warning */
-            } else if (w_word_counter(trimmed) != 1) {
-                mwarn(LOGCOLLECTOR_INV_ES_EVENT, trimmed, XML_LOCALFILE_EVENTS);
+            } else if (!w_logcollector_is_valid_macos_es_event(start)) {
+                /* Rejecting anything but [a-z0-9_] also keeps a token like "--oslog" from reaching
+                 * eslogger as an option */
+                mwarn(LOGCOLLECTOR_INV_ES_EVENT, start, XML_LOCALFILE_EVENTS);
+                invalid_found = true;
             } else {
-                size_t old_len = result ? strlen(result) : 0;
-                size_t sep_len = result ? 1 : 0;
-
-                os_realloc(result, old_len + sep_len + strlen(trimmed) + 1, result);
-                if (old_len == 0) {
-                    result[0] = '\0';
-                }
-                if (sep_len) {
-                    strcat(result, ",");
-                }
-                strcat(result, trimmed);
+                wm_strcat(&result, start, ',');
             }
 
             os_free(event_arr[current]);
@@ -1301,6 +1331,10 @@ STATIC char * w_logcollector_get_macos_es_events(const char * content) {
         }
 
         os_free(event_arr);
+    }
+
+    if (result == NULL && invalid_found) {
+        mwarn(LOGCOLLECTOR_NO_VALID_ES_EVENTS, XML_LOCALFILE_EVENTS);
     }
 
     return result;

@@ -60,7 +60,7 @@ static int teardown_wfd(void ** state) {
 void test_w_macos_es_is_executable_success(void ** state) {
 
     expect_string(__wrap_access, __name, "/usr/bin/eslogger");
-    expect_value(__wrap_access, __type, 1);
+    expect_value(__wrap_access, __type, X_OK);
     will_return(__wrap_access, 0);
 
     bool ret = w_macos_es_is_executable();
@@ -68,13 +68,11 @@ void test_w_macos_es_is_executable_success(void ** state) {
     assert_true(ret);
 }
 
-void test_w_macos_es_is_executable_error(void ** state) {
+void test_w_macos_es_is_executable_error_does_not_log(void ** state) {
 
     expect_string(__wrap_access, __name, "/usr/bin/eslogger");
-    expect_value(__wrap_access, __type, 1);
+    expect_value(__wrap_access, __type, X_OK);
     will_return(__wrap_access, 1);
-
-    expect_string(__wrap__merror, formatted_msg, "(1250): Error trying to execute \"/usr/bin/eslogger\": Success (0).");
 
     bool ret = w_macos_es_is_executable();
 
@@ -224,8 +222,6 @@ void test_w_macos_es_note_failure_growth_and_cap(void ** state) {
     size_t i;
 
     for (i = 0; i < sizeof(expected_delay) / sizeof(expected_delay[0]); i++) {
-        // Advances well past the throttle window each time so this loop only exercises the
-        // delay growth/cap math; the throttle verdict itself is covered by the dedicated test below.
         will_return(__wrap_time, 1000 + (time_t) i * (MACOS_ES_WARN_THROTTLE_SEC + 1));
 
         bool should_log = w_macos_es_note_failure(&cfg);
@@ -242,19 +238,19 @@ void test_w_macos_es_note_failure_throttle(void ** state) {
     memset(&cfg, 0, sizeof(cfg));
 
     will_return(__wrap_time, 1000);
-    assert_true(w_macos_es_note_failure(&cfg)); // failure 1: always logged
+    assert_true(w_macos_es_note_failure(&cfg));
 
     will_return(__wrap_time, 1005);
-    assert_true(w_macos_es_note_failure(&cfg)); // failure 2: always logged
+    assert_true(w_macos_es_note_failure(&cfg));
 
     will_return(__wrap_time, 1010);
-    assert_true(w_macos_es_note_failure(&cfg)); // failure 3: always logged (== MACOS_ES_WARN_THROTTLE_AFTER)
+    assert_true(w_macos_es_note_failure(&cfg));
 
     will_return(__wrap_time, 1015);
-    assert_false(w_macos_es_note_failure(&cfg)); // failure 4: throttled, only 15s since last_warn_at (1010)
+    assert_false(w_macos_es_note_failure(&cfg));
 
     will_return(__wrap_time, 1010 + MACOS_ES_WARN_THROTTLE_SEC);
-    assert_true(w_macos_es_note_failure(&cfg)); // failure 5: throttle window elapsed
+    assert_true(w_macos_es_note_failure(&cfg));
 }
 
 /* w_macos_es_release */
@@ -283,6 +279,8 @@ void test_w_macos_es_release_running_process(void ** state) {
     memset(&wfd, 0, sizeof(wfd));
     wfd.pid = 555;
     cfg.wfd = &wfd;
+    strcpy(cfg.ctxt_buffer, "{\"event\":");
+    cfg.discarding = true;
     lf.macos_es = &cfg;
 
     expect_value(__wrap_kill, pid, 555);
@@ -293,6 +291,38 @@ void test_w_macos_es_release_running_process(void ** state) {
     w_macos_es_release(&lf);
 
     assert_null(cfg.wfd);
+    assert_string_equal(cfg.ctxt_buffer, "");
+    assert_false(cfg.discarding);
+}
+
+/* w_macos_es_release_reaped */
+
+void test_w_macos_es_release_reaped_null_wfd(void ** state) {
+    logreader lf;
+    w_macos_es_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    lf.macos_es = &cfg;
+
+    w_macos_es_release_reaped(&lf);
+}
+
+void test_w_macos_es_release_reaped_does_not_signal_or_wait(void ** state) {
+    logreader lf;
+    w_macos_es_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    wfd_t * wfd = calloc(1, sizeof(wfd_t));
+    wfd->pid = 555;
+    wfd->file_out = (FILE *) 1234;
+    cfg.wfd = wfd;
+    strcpy(cfg.ctxt_buffer, "{\"event\":");
+    lf.macos_es = &cfg;
+
+    expect_fclose((FILE *) 1234, 0);
+
+    w_macos_es_release_reaped(&lf);
+
+    assert_null(cfg.wfd);
+    assert_string_equal(cfg.ctxt_buffer, "");
 }
 
 /* w_macos_es_ensure_running */
@@ -306,7 +336,7 @@ void test_w_macos_es_ensure_running_already_running(void ** state) {
     cfg.wfd = &wfd;
     lf.macos_es = &cfg;
 
-    w_macos_es_ensure_running(&lf); // no mocks set: any call would fail the test
+    w_macos_es_ensure_running(&lf);
 
     assert_ptr_equal(cfg.wfd, &wfd);
 }
@@ -318,9 +348,9 @@ void test_w_macos_es_ensure_running_backoff_not_elapsed(void ** state) {
     cfg.next_spawn_at = 2000;
     lf.macos_es = &cfg;
 
-    will_return(__wrap_time, 1000); // still before next_spawn_at
+    will_return(__wrap_time, 1000);
 
-    w_macos_es_ensure_running(&lf); // no further mocks set: any call would fail the test
+    w_macos_es_ensure_running(&lf);
 
     assert_null(cfg.wfd);
 }
@@ -333,16 +363,38 @@ void test_w_macos_es_ensure_running_not_executable(void ** state) {
     lf.events = NULL;
 
     expect_string(__wrap_access, __name, "/usr/bin/eslogger");
-    expect_value(__wrap_access, __type, 1);
+    expect_value(__wrap_access, __type, X_OK);
     will_return(__wrap_access, 1);
-    expect_string(__wrap__merror, formatted_msg, "(1250): Error trying to execute \"/usr/bin/eslogger\": Success (0).");
 
-    will_return(__wrap_time, 1000); // w_macos_es_note_failure's own time(NULL)
+    will_return(__wrap_time, 1000);
+
+    expect_string(__wrap__merror, formatted_msg, "(1250): Error trying to execute \"/usr/bin/eslogger\": Success (0).");
 
     w_macos_es_ensure_running(&lf);
 
     assert_null(cfg.wfd);
     assert_int_equal(cfg.failures, 1);
+}
+
+void test_w_macos_es_ensure_running_not_executable_throttled(void ** state) {
+    logreader lf;
+    w_macos_es_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.failures = MACOS_ES_WARN_THROTTLE_AFTER;
+    cfg.last_warn_at = 1000;
+    lf.macos_es = &cfg;
+    lf.events = NULL;
+
+    expect_string(__wrap_access, __name, "/usr/bin/eslogger");
+    expect_value(__wrap_access, __type, X_OK);
+    will_return(__wrap_access, 1);
+
+    will_return(__wrap_time, 1010);
+
+    w_macos_es_ensure_running(&lf);
+
+    assert_null(cfg.wfd);
+    assert_int_equal(cfg.failures, MACOS_ES_WARN_THROTTLE_AFTER + 1);
 }
 
 void test_w_macos_es_ensure_running_exec_fails(void ** state) {
@@ -353,13 +405,13 @@ void test_w_macos_es_ensure_running_exec_fails(void ** state) {
     lf.events = "authentication";
 
     expect_string(__wrap_access, __name, "/usr/bin/eslogger");
-    expect_value(__wrap_access, __type, 1);
+    expect_value(__wrap_access, __type, X_OK);
     will_return(__wrap_access, 0);
 
     will_return(__wrap_wpopenv, NULL);
     expect_string(__wrap__merror, formatted_msg, "(1974): An error ocurred while calling wpopenv(): Success (0).");
 
-    will_return(__wrap_time, 1000); // w_macos_es_note_failure's own time(NULL)
+    will_return(__wrap_time, 1000);
 
     expect_string(__wrap__merror, formatted_msg,
                   "(1612): Error while trying to execute `eslogger` as follows: /usr/bin/eslogger authentication.");
@@ -381,7 +433,7 @@ void test_w_macos_es_ensure_running_success(void ** state) {
     wfd.file_out = (FILE *) 1234;
 
     expect_string(__wrap_access, __name, "/usr/bin/eslogger");
-    expect_value(__wrap_access, __type, 1);
+    expect_value(__wrap_access, __type, X_OK);
     will_return(__wrap_access, 0);
 
     will_return(__wrap_wpopenv, &wfd);
@@ -393,7 +445,7 @@ void test_w_macos_es_ensure_running_success(void ** state) {
     expect_string(__wrap__minfo, formatted_msg,
                   "(9205): Monitoring macOS Endpoint Security events with: /usr/bin/eslogger authentication.");
 
-    will_return(__wrap_time, 1000); // started_at
+    will_return(__wrap_time, 1000);
 
     w_macos_es_ensure_running(&lf);
 
@@ -402,12 +454,94 @@ void test_w_macos_es_ensure_running_success(void ** state) {
     assert_int_equal(cfg.failures, 0);
 }
 
+void test_w_macos_es_ensure_running_respawn_after_failure_streak_logs_start(void ** state) {
+    logreader lf;
+    w_macos_es_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.failures = MACOS_ES_WARN_THROTTLE_AFTER + 1;
+    cfg.next_spawn_at = 1000;
+    lf.macos_es = &cfg;
+    lf.events = "authentication";
+    wfd_t wfd;
+    memset(&wfd, 0, sizeof(wfd));
+    wfd.file_out = (FILE *) 1234;
+
+    will_return(__wrap_time, 1000);
+
+    expect_string(__wrap_access, __name, "/usr/bin/eslogger");
+    expect_value(__wrap_access, __type, X_OK);
+    will_return(__wrap_access, 0);
+
+    will_return(__wrap_wpopenv, &wfd);
+    expect_value(__wrap_fileno, __stream, wfd.file_out);
+    will_return(__wrap_fileno, 1);
+    will_return(__wrap_fcntl, 0);
+    will_return(__wrap_fcntl, 0);
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "(9205): Monitoring macOS Endpoint Security events with: /usr/bin/eslogger authentication.");
+
+    will_return(__wrap_time, 1000);
+
+    w_macos_es_ensure_running(&lf);
+
+    assert_ptr_equal(cfg.wfd, &wfd);
+}
+
+/* w_macos_es_create_env */
+
+void test_w_macos_es_create_env_eslogger_missing(void ** state) {
+    logreader lf;
+    memset(&lf, 0, sizeof(lf));
+    os_strdup("macos-es", lf.file);
+
+    expect_string(__wrap_access, __name, "/usr/bin/eslogger");
+    expect_value(__wrap_access, __type, F_OK);
+    will_return(__wrap_access, -1);
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8026): '/usr/bin/eslogger' not found. The 'macos-es' log format requires macOS 13 or later and "
+                  "will be disabled.");
+
+    w_macos_es_create_env(&lf);
+
+    assert_null(lf.macos_es);
+    assert_null(lf.file);
+}
+
+void test_w_macos_es_create_env_allocates_and_tries_first_spawn(void ** state) {
+    logreader lf;
+    memset(&lf, 0, sizeof(lf));
+    os_strdup("macos-es", lf.file);
+
+    expect_string(__wrap_access, __name, "/usr/bin/eslogger");
+    expect_value(__wrap_access, __type, F_OK);
+    will_return(__wrap_access, 0);
+
+    expect_string(__wrap_access, __name, "/usr/bin/eslogger");
+    expect_value(__wrap_access, __type, X_OK);
+    will_return(__wrap_access, 1);
+
+    will_return(__wrap_time, 1000);
+
+    expect_string(__wrap__merror, formatted_msg, "(1250): Error trying to execute \"/usr/bin/eslogger\": Success (0).");
+
+    w_macos_es_create_env(&lf);
+
+    assert_non_null(lf.macos_es);
+    assert_null(lf.macos_es->wfd);
+    assert_int_equal(lf.macos_es->failures, 1);
+    assert_null(lf.file);
+
+    os_free(lf.macos_es);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
         // Tests w_macos_es_is_executable
         cmocka_unit_test(test_w_macos_es_is_executable_success),
-        cmocka_unit_test(test_w_macos_es_is_executable_error),
+        cmocka_unit_test(test_w_macos_es_is_executable_error_does_not_log),
         // Tests w_macos_es_create_argv
         cmocka_unit_test(test_w_macos_es_create_argv_single),
         cmocka_unit_test(test_w_macos_es_create_argv_multiple),
@@ -424,12 +558,20 @@ int main(void) {
         cmocka_unit_test(test_w_macos_es_release_null_macos_es),
         cmocka_unit_test(test_w_macos_es_release_null_wfd),
         cmocka_unit_test(test_w_macos_es_release_running_process),
+        // Tests w_macos_es_release_reaped
+        cmocka_unit_test(test_w_macos_es_release_reaped_null_wfd),
+        cmocka_unit_test(test_w_macos_es_release_reaped_does_not_signal_or_wait),
         // Tests w_macos_es_ensure_running
         cmocka_unit_test(test_w_macos_es_ensure_running_already_running),
         cmocka_unit_test(test_w_macos_es_ensure_running_backoff_not_elapsed),
         cmocka_unit_test(test_w_macos_es_ensure_running_not_executable),
+        cmocka_unit_test(test_w_macos_es_ensure_running_not_executable_throttled),
         cmocka_unit_test(test_w_macos_es_ensure_running_exec_fails),
         cmocka_unit_test(test_w_macos_es_ensure_running_success),
+        cmocka_unit_test(test_w_macos_es_ensure_running_respawn_after_failure_streak_logs_start),
+        // Tests w_macos_es_create_env
+        cmocka_unit_test(test_w_macos_es_create_env_eslogger_missing),
+        cmocka_unit_test(test_w_macos_es_create_env_allocates_and_tries_first_spawn),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

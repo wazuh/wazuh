@@ -149,6 +149,7 @@
 #define LOGCOLLECTOR_MACOS_ES_EXEC_ERROR            "(1612): Error while trying to execute `eslogger` as follows: %s."
 #define LOGCOLLECTOR_MACOS_ES_FP_TO_FD_ERROR        "(1613): The file descriptor couldn't be obtained from the file pointer of the eslogger pipe: %s (%d)."
 #define LOGCOLLECTOR_MACOS_ES_CHILD_EXITED          "(1614): macOS ES 'eslogger' process exited, pid: %d, exit value: %d."
+#define LOGCOLLECTOR_MACOS_ES_CHILD_KILLED          "(1615): macOS ES 'eslogger' process terminated by signal, pid: %d, signal: %d."
 
 
 /* remoted */

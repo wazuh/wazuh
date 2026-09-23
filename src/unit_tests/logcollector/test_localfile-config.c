@@ -466,6 +466,60 @@ void test_w_logcollector_get_macos_es_events_content_multiword_invalid(void ** s
     os_free(ret);
 }
 
+void test_w_logcollector_get_macos_es_events_content_multiline_list(void ** state) {
+    char * ret = w_logcollector_get_macos_es_events("\n\tauthentication,\n\topenssh_login,\n\topenssh_logout\n");
+    assert_string_equal(ret, "authentication,openssh_login,openssh_logout");
+    os_free(ret);
+}
+
+void test_w_logcollector_get_macos_es_events_content_option_like_token_rejected(void ** state) {
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8023): Invalid event value '--oslog' for 'events' option. Value will be ignored.");
+
+    char * ret = w_logcollector_get_macos_es_events("--oslog,openssh_logout");
+    assert_string_equal(ret, "openssh_logout");
+    os_free(ret);
+}
+
+void test_w_logcollector_get_macos_es_events_content_tab_joined_rejected(void ** state) {
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8023): Invalid event value 'sudo\tsu' for 'events' option. Value will be ignored.");
+
+    char * ret = w_logcollector_get_macos_es_events("sudo\tsu,openssh_logout");
+    assert_string_equal(ret, "openssh_logout");
+    os_free(ret);
+}
+
+void test_w_logcollector_get_macos_es_events_content_all_invalid_warns_default(void ** state) {
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8023): Invalid event value 'Authentication' for 'events' option. Value will be ignored.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8023): Invalid event value 'open-ssh' for 'events' option. Value will be ignored.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8025): No valid value in 'events' option. Default events will be used.");
+
+    char * ret = w_logcollector_get_macos_es_events("Authentication, open-ssh");
+    assert_null(ret);
+}
+
+void test_w_logcollector_get_macos_es_events_content_more_than_64_tokens(void ** state) {
+    char content[70 * 5 + 1] = "";
+    char expected[70 * 4 + 1] = "";
+
+    for (int i = 0; i < 70; i++) {
+        char token[8];
+        snprintf(token, sizeof(token), "e%02d", i);
+        strcat(content, token);
+        strcat(content, i < 69 ? ", " : "");
+        strcat(expected, token);
+        strcat(expected, i < 69 ? "," : "");
+    }
+
+    char * ret = w_logcollector_get_macos_es_events(content);
+    assert_string_equal(ret, expected);
+    os_free(ret);
+}
+
 /* init_w_journal_log_config_t */
 void test_init_w_journal_log_config_t_ok(void ** state) {
     w_journal_log_config_t * config = NULL;
@@ -1321,6 +1375,11 @@ int main(void) {
         cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_single),
         cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_multiple_trim_and_skip_empty),
         cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_multiword_invalid),
+        cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_multiline_list),
+        cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_option_like_token_rejected),
+        cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_tab_joined_rejected),
+        cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_all_invalid_warns_default),
+        cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_more_than_64_tokens),
         // Test init_w_journal_log_config_t
         cmocka_unit_test(test_init_w_journal_log_config_t_fail),
         cmocka_unit_test(test_init_w_journal_log_config_t_ok),

@@ -21,37 +21,37 @@
 #endif
 
 /**
- * @brief Checks whether a line is a well-formed JSON object/value, without keeping the parsed tree
+ * @brief Checks whether a line is exactly one JSON object, without keeping the parsed tree
  *
+ * Trailing data after the object is rejected, so a fragment that merely starts like JSON never passes.
  * @param line NUL-terminated line to validate
- * @return true if `line` parses as JSON, false otherwise
+ * @return true if `line` is a single complete JSON object, false otherwise
  */
 STATIC bool w_macos_es_is_valid_json(const char * line);
 
 /**
- * @brief Discards buffered bytes up to (and including) the next '\n', best-effort
+ * @brief Discards buffered bytes up to (and including) the next '\n'
  *
- * Used to resynchronize after an oversize record is dropped. On a non-blocking pipe this may stop
- * before reaching a newline if no more data is currently available; the next read will simply
- * continue discarding the same record's remainder.
+ * On a non-blocking pipe this may stop before reaching a newline if no more data is currently available.
  * @param stream eslogger's non-blocking output pipe
+ * @return true if the '\n' was consumed, false if the read stopped first (the record is still unfinished)
  */
-STATIC void w_macos_es_drain_line(FILE * stream);
+STATIC bool w_macos_es_drain_line(FILE * stream);
 
 /**
  * @brief Assembles one complete NDJSON record from `eslogger`'s output, buffering partial lines
  *
  * Unlike ULS's `w_macos_log_getlog()`, there is no multi-line splitting, header detection or
- * timeout-driven force-send: each `eslogger` record is exactly one JSON line (see plan.md's
- * "Correction to the issue's proposed design"). The only machinery needed is the partial-line
- * accumulator, because the pipe is non-blocking and a record can span multiple `fgets` reads.
+ * timeout-driven force-send: each `eslogger` record is exactly one JSON line. The only machinery needed
+ * is the partial-line accumulator, because the pipe is non-blocking and a record can span multiple
+ * `fgets` reads, and the discard state that drops the rest of an oversize record across reads.
  *
  * @param [out] buffer receives the complete line (without the trailing '\n') when true is returned
  * @param length buffer's max length
  * @param stream eslogger's non-blocking output pipe
- * @param macos_es_cfg macos-es runtime config (holds the partial-line backup)
- * @return true if a complete record was assembled into buffer, false otherwise (no data yet, or
- *         the line is still incomplete)
+ * @param macos_es_cfg macos-es runtime config (holds the partial-line backup and the discard state)
+ * @return true if a complete record was assembled into buffer, false otherwise (no data yet, the line
+ *         is still incomplete, or an oversize record is being discarded)
  */
 STATIC bool w_macos_es_getlog(char * buffer, int length, FILE * stream, w_macos_es_config_t * macos_es_cfg);
 
@@ -108,10 +108,8 @@ void * read_macos_es(logreader * lf, int * rc, __attribute__((unused)) int drop_
         count_logs++;
     }
 
-    /* Only check liveness once the loop stopped because there was nothing left to read, not
-     * because it hit the per-tick cap. Unlike read_macos()'s equivalent `count_logs < maximum_lines`
-     * check, this is written so it isn't vacuously false when maximum_lines is 0 (unlimited, the
-     * default) — with that default, read_macos()'s own exit-check never runs; ours must. */
+    /* Only check liveness once the loop stopped because the pipe had nothing left to read, not because
+     * it hit the per-tick `logcollector.max_lines` cap; `maximum_lines == 0` means no cap at all. */
     if (maximum_lines == 0 || count_logs < maximum_lines) {
         w_macos_es_check_exit(lf);
     }
@@ -121,23 +119,22 @@ void * read_macos_es(logreader * lf, int * rc, __attribute__((unused)) int drop_
 
 STATIC bool w_macos_es_is_valid_json(const char * line) {
 
-    cJSON * json = cJSON_Parse(line);
-
-    if (json == NULL) {
-        return false;
-    }
+    cJSON * json = cJSON_ParseWithOpts(line, NULL, true);
+    bool valid = cJSON_IsObject(json);
 
     cJSON_Delete(json);
-    return true;
+    return valid;
 }
 
-STATIC void w_macos_es_drain_line(FILE * stream) {
+STATIC bool w_macos_es_drain_line(FILE * stream) {
 
     int c;
 
     do {
         c = fgetc(stream);
     } while (c != '\n' && c != EOF);
+
+    return c == '\n';
 }
 
 STATIC bool w_macos_es_getlog(char * buffer, int length, FILE * stream, w_macos_es_config_t * macos_es_cfg) {
@@ -146,6 +143,14 @@ STATIC bool w_macos_es_getlog(char * buffer, int length, FILE * stream, w_macos_
     char * str = buffer;
 
     *str = '\0';
+
+    /* Finishes dropping an oversize record whose tail had not arrived yet on a previous read */
+    if (macos_es_cfg->discarding) {
+        if (!w_macos_es_drain_line(stream)) {
+            return false;
+        }
+        macos_es_cfg->discarding = false;
+    }
 
     /* Restores a partial line saved from a previous, non-blocking-interrupted read */
     if (macos_es_cfg->ctxt_buffer[0] != '\0') {
@@ -168,9 +173,9 @@ STATIC bool w_macos_es_getlog(char * buffer, int length, FILE * stream, w_macos_
 
     if (buffer[offset - 1] != '\n') {
         if (offset + 1 >= length) {
-            /* Oversize record: drop it and resynchronize to the next line, best-effort */
+            /* Oversize record: drop it and resynchronize to the next line, even across reads */
             mdebug1("macOS ES: Maximum message length reached. The record was discarded.");
-            w_macos_es_drain_line(stream);
+            macos_es_cfg->discarding = !w_macos_es_drain_line(stream);
             buffer[0] = '\0';
             return false;
         }
@@ -187,29 +192,33 @@ STATIC bool w_macos_es_getlog(char * buffer, int length, FILE * stream, w_macos_
 STATIC void w_macos_es_check_exit(logreader * lf) {
 
     int status = 0;
-    pid_t retval = waitpid(lf->macos_es->wfd->pid, &status, WNOHANG);
+    pid_t pid = lf->macos_es->wfd->pid;
+    pid_t retval = waitpid(pid, &status, WNOHANG);
 
     if (retval == 0) {
         return; // still running
     }
 
-    if (retval != lf->macos_es->wfd->pid) {
+    if (retval != pid) {
         merror(WAITPID_ERROR, errno, strerror(errno));
         return;
     }
 
-    /* The child exited. Only a run that stayed alive long enough resets the failure count —
-     * resetting on every exit would let a fast crash-loop restart backoff from the 5s base
-     * forever, exactly what R14 forbids. */
+    /* The child exited. Only a run that stayed alive long enough resets the failure count: resetting
+     * on every exit would let a process that dies right away restart the backoff from the 5s base forever. */
     if (time(NULL) - lf->macos_es->started_at >= MACOS_ES_HEALTHY_UPTIME_SEC) {
         lf->macos_es->failures = 0;
     }
 
     if (w_macos_es_note_failure(lf->macos_es)) {
-        merror(LOGCOLLECTOR_MACOS_ES_CHILD_EXITED, lf->macos_es->wfd->pid, status);
+        if (WIFSIGNALED(status)) {
+            merror(LOGCOLLECTOR_MACOS_ES_CHILD_KILLED, pid, WTERMSIG(status));
+        } else {
+            merror(LOGCOLLECTOR_MACOS_ES_CHILD_EXITED, pid, WEXITSTATUS(status));
+        }
     }
 
-    w_macos_es_release(lf);
+    w_macos_es_release_reaped(lf);
 }
 
 #endif

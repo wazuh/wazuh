@@ -19,15 +19,13 @@
 
 /**
  * @brief Checks whether the `eslogger` command can be executed or not by using waccess()
- * @return true when `eslogger` can be executed, false otherwise.
+ *
+ * Does not log: the caller decides, through the failure throttle, whether the error is reported.
+ * @return true when `eslogger` can be executed, false otherwise (errno is set by waccess()).
  */
 STATIC bool w_macos_es_is_executable(void) {
 
-    if (waccess(ESLOGGER_CMD_STR, X_OK) == 0) {
-        return true;
-    }
-    merror(ACCESS_ERROR, ESLOGGER_CMD_STR, strerror(errno), errno);
-    return false;
+    return waccess(ESLOGGER_CMD_STR, X_OK) == 0;
 }
 
 /**
@@ -106,6 +104,19 @@ STATIC wfd_t * w_macos_es_exec(char ** argv) {
     return wfd;
 }
 
+/**
+ * @brief Drops any partial record kept from the previous `eslogger` process
+ *
+ * A respawned process starts a fresh stream, so a partial line or a pending discard from the old one
+ * must not be glued onto its first record.
+ * @param config macos-es runtime config
+ */
+STATIC void w_macos_es_reset_ctxt(w_macos_es_config_t * config) {
+
+    config->ctxt_buffer[0] = '\0';
+    config->discarding = false;
+}
+
 bool w_macos_es_note_failure(w_macos_es_config_t * config) {
 
     time_t now = time(NULL);
@@ -143,6 +154,24 @@ void w_macos_es_release(logreader * lf) {
 
     wpclose(lf->macos_es->wfd);
     lf->macos_es->wfd = NULL;
+    w_macos_es_reset_ctxt(lf->macos_es);
+}
+
+void w_macos_es_release_reaped(logreader * lf) {
+
+    if (lf->macos_es == NULL || lf->macos_es->wfd == NULL) {
+        return;
+    }
+
+    if (lf->macos_es->wfd->file_in != NULL) {
+        fclose(lf->macos_es->wfd->file_in);
+    }
+    if (lf->macos_es->wfd->file_out != NULL) {
+        fclose(lf->macos_es->wfd->file_out);
+    }
+
+    os_free(lf->macos_es->wfd);
+    w_macos_es_reset_ctxt(lf->macos_es);
 }
 
 void w_macos_es_ensure_running(logreader * lf) {
@@ -159,7 +188,11 @@ void w_macos_es_ensure_running(logreader * lf) {
     }
 
     if (!w_macos_es_is_executable()) {
-        w_macos_es_note_failure(lf->macos_es);
+        int error = errno;
+
+        if (w_macos_es_note_failure(lf->macos_es)) {
+            merror(ACCESS_ERROR, ESLOGGER_CMD_STR, strerror(error), error);
+        }
         return;
     }
 
@@ -169,12 +202,14 @@ void w_macos_es_ensure_running(logreader * lf) {
     lf->macos_es->wfd = w_macos_es_exec(argv);
 
     if (lf->macos_es->wfd != NULL) {
+        /* Not throttled: after a failure streak (e.g. Full Disk Access granted again) this line is the only
+         * sign of recovery, and the backoff already spaces it out */
         minfo(LOGCOLLECTOR_MACOS_ES_INFO, cmd_str);
         lf->macos_es->started_at = time(NULL);
         // `failures` is deliberately NOT reset here: only a run that stays alive for at least
         // MACOS_ES_HEALTHY_UPTIME_SEC (checked in w_macos_es_check_exit) may reset it. Resetting
-        // on every successful spawn would let a fast crash-loop (spawn, crash, spawn, crash...)
-        // restart backoff from the 5s base forever — exactly what R14 forbids.
+        // on every successful spawn would let a fast crash loop (spawn, crash, spawn, crash...)
+        // restart the backoff from the 5s base forever.
     } else if (w_macos_es_note_failure(lf->macos_es)) {
         merror(LOGCOLLECTOR_MACOS_ES_EXEC_ERROR, cmd_str);
     }
@@ -185,9 +220,14 @@ void w_macos_es_ensure_running(logreader * lf) {
 
 void w_macos_es_create_env(logreader * lf) {
 
-    os_calloc(1, sizeof(w_macos_es_config_t), lf->macos_es);
-
-    w_macos_es_ensure_running(lf);
+    /* A missing binary is permanent (macOS older than 13): warn once and leave the collector disabled
+     * instead of retrying forever */
+    if (waccess(ESLOGGER_CMD_STR, F_OK) != 0) {
+        mwarn(LOGCOLLECTOR_MACOS_ES_UNAVAILABLE, ESLOGGER_CMD_STR);
+    } else {
+        os_calloc(1, sizeof(w_macos_es_config_t), lf->macos_es);
+        w_macos_es_ensure_running(lf);
+    }
 
     os_free(lf->file);
     lf->fp = NULL;

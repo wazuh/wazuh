@@ -168,11 +168,12 @@ typedef struct {
 /**
  * @brief An instance of w_macos_es_config_t represents the runtime state of the `eslogger` process
  *
- * Unlike `w_macos_log_config_t`, this holds no vault/replay data: `eslogger` is live-only (R8).
+ * Unlike `w_macos_log_config_t`, this holds no vault/replay data: `eslogger` is a live-only subscription.
  */
 typedef struct {
     wfd_t * wfd;                  ///< IPC connector to the running `eslogger` process
     char ctxt_buffer[OS_MAXSTR];  ///< Backup of a partial NDJSON line, pending the rest of the record
+    bool discarding;              ///< Dropping the rest of an oversize record until its '\n' arrives
     unsigned int failures;        ///< Consecutive spawn/run failures, drives the backoff delay
     time_t started_at;            ///< When the current/last process was spawned
     time_t next_spawn_at;         ///< Earliest time a new spawn attempt is allowed (backoff)
@@ -312,8 +313,8 @@ void w_macos_log_config_free(w_macos_log_config_t ** config);
 /**
  * @brief Free the macos-es runtime config and all its resources
  *
- * Sends SIGTERM to a still-running `eslogger` before closing the pipe, unlike `w_macos_log_config_free()`'s
- * unconditional `wpclose()` — a blocking `waitpid()` on a live child is a known hang risk (R1).
+ * Sends SIGTERM to a still-running `eslogger` before closing the pipe: `eslogger` never exits on its own,
+ * so `wpclose()`'s blocking `waitpid()` would otherwise hang.
  * @param config Macos-es runtime config
  */
 void w_macos_es_config_free(w_macos_es_config_t ** config);

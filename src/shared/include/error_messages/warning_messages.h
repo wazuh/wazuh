@@ -139,6 +139,8 @@
 
 #define LOGCOLLECTOR_INV_ES_EVENT                    "(8023): Invalid event value '%s' for '%s' option. Value will be ignored."
 #define LOGCOLLECTOR_MACOS_ES_INV_JSON                "(8024): macOS ES: Discarding non-JSON line: '%s'."
+#define LOGCOLLECTOR_NO_VALID_ES_EVENTS               "(8025): No valid value in '%s' option. Default events will be used."
+#define LOGCOLLECTOR_MACOS_ES_UNAVAILABLE             "(8026): '%s' not found. The 'macos-es' log format requires macOS 13 or later and will be disabled."
 
 /* Remoted */
 #define REMOTED_NET_PROTOCOL_ERROR              "(9000): Error getting protocol. Default value (%s) will be used."
