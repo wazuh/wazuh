@@ -42,8 +42,13 @@ LOGIN_ENDPOINT = '/security/user/authenticate'
 # Authentication context hash key
 HASH_AUTH_CONTEXT_KEY = 'hash_auth_context'
 
-# Allowed upper bound for auth_context payload
-AUTH_CONTEXT_MAX_PAYLOAD_SIZE = 8 * 1024
+# Default of the max auth_context payload size in bytes (see api.yaml `auth_context_max_payload_size`).
+# Literal on purpose: `read_yaml_config()` merges the installed api.yaml into `default_api_configuration`
+# in place, so that dict stops holding the default as soon as the option is set.
+AUTH_CONTEXT_MAX_PAYLOAD_SIZE = 64 * 1024
+
+# Written to the access log in place of the run_as authorization context below debug level
+AUTH_CONTEXT_NOT_LOGGED = '<authorization context not logged; see hash_auth_context>'
 
 # API secure headers
 server = Server().set("Wazuh")
@@ -116,6 +121,15 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     if not hash_auth_context and path == RUN_AS_LOGIN_ENDPOINT:
         hash_auth_context = hashlib.blake2b(json.dumps(body).encode(),
                                             digest_size=16).hexdigest()
+
+    # The authorization context carries third-party identity (AD/LDAP group memberships, SSO claims)
+    # and is written verbatim to api.log and again to api.json, on failed authentication too. The hash
+    # above already identifies it, so the payload itself is only logged when debug is explicitly
+    # enabled -- `isEnabledFor` rather than `logger.level`, so an unconfigured logger masks instead of
+    # falling through. Hashed before the substitution, so the digest still matches the one
+    # api/api/authentication.py stamps into the issued token.
+    if path == RUN_AS_LOGIN_ENDPOINT and not logger.isEnabledFor(logging.DEBUG):
+        body = {'auth_context': AUTH_CONTEXT_NOT_LOGGED}
 
     custom_logging(user, host, method, path, query, body, time_diff, response.status_code,
                    hash_auth_context=hash_auth_context, headers=headers)
@@ -267,16 +281,26 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
 
 
 class CheckAuthContextSizeMiddleware(BaseHTTPMiddleware):
-    """Reject run_as requests whose body exceeds AUTH_CONTEXT_MAX_PAYLOAD_SIZE."""
+    """Reject run_as requests whose body exceeds auth_context_max_payload_size.
+
+    Merging this upwards: 5.x rewrote this class to check the declared `Content-Length` before
+    touching the body and to fall back to a capped read, and it caps the auth context at
+    `MAX_LOGGED_BODY_SIZE` because its access logger only caches a body up to that size -- an
+    attempt that was never cached is logged without its auth context hash. Carrying
+    `auth_context_max_payload_size` over therefore means letting it govern that caching threshold
+    on this path too, not just replacing the constant; taking the 5.x side wholesale instead leaves
+    the option declared in api.yaml, validator.py and spec.yaml with nothing reading it.
+    """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         if request.url.path == RUN_AS_LOGIN_ENDPOINT and request.method == "POST":
+            max_size = configuration.api_conf['auth_context_max_payload_size']
             body = await request.body()
-            if len(body) > AUTH_CONTEXT_MAX_PAYLOAD_SIZE:
+            if len(body) > max_size:
                 raise PayloadTooLargeException(
                     title="Request Entity Too Large",
                     detail=f"Auth context payload exceeds the maximum allowed size of "
-                           f"{AUTH_CONTEXT_MAX_PAYLOAD_SIZE} bytes.",
+                           f"{max_size} bytes.",
                 )
         return await call_next(request)
 
@@ -316,7 +340,8 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
 
         # Don't allow heavy bodies when trying to authenticate. Necessary because this middleware is executed before
         # CheckAuthContextSizeMiddleware can be executed
-        if body and (request.url.path != RUN_AS_LOGIN_ENDPOINT or len(body) <= AUTH_CONTEXT_MAX_PAYLOAD_SIZE):
+        max_auth_context_payload_size = configuration.api_conf['auth_context_max_payload_size']
+        if body and (request.url.path != RUN_AS_LOGIN_ENDPOINT or len(body) <= max_auth_context_payload_size):
             try:
                 # Load the request body to the _json field before calling the controller so it's cached before the stream
                 # is consumed. If there's a json error we skip it so it's handled later.

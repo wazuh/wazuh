@@ -16,6 +16,7 @@ custom_api_configuration = {
     "drop_privileges": True,
     "experimental_features": False,
     "max_upload_size": 10485760,
+    "auth_context_max_payload_size": 65536,
     "authentication_pool_size": 2,
     "https": {
         "enabled": True,
@@ -123,6 +124,9 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'drop_privileges': 'invalid_type'},
     {'experimental_features': 'invalid_type'},
     {'max_upload_size': 'invalid_type'},
+    {'auth_context_max_payload_size': 'invalid_type'},
+    {'auth_context_max_payload_size': 0},
+    {'auth_context_max_payload_size': 2097152},
     {'authentication_pool_size': 'invalid_type'},
     {'authentication_pool_size': 0},
     {'authentication_pool_size': 100},
