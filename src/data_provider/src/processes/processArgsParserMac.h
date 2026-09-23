@@ -16,6 +16,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include "stringHelper.h"
 
 struct ProcessArgs
 {
@@ -83,7 +84,7 @@ struct ProcessCommandLine
 
 // Builds the inventory fields from the executable path and the parsed arguments.
 // commandLine is the full invocation (executable path followed by its arguments),
-// args holds the non-empty arguments after argv[0] joined with spaces.
+// args holds the non-empty arguments after argv[0] joined with spaces. Both are sanitized to valid UTF-8.
 // If executablePath is empty, the path found in the argument area is used instead.
 static inline ProcessCommandLine buildProcessCommandLine(const std::string& executablePath, const ProcessArgs& processArgs)
 {
@@ -109,6 +110,10 @@ static inline ProcessCommandLine buildProcessCommandLine(const std::string& exec
     {
         result.commandLine += result.commandLine.empty() ? result.args : " " + result.args;
     }
+
+    // Separators are ASCII, so sanitizing the joined strings equals sanitizing each argument.
+    result.commandLine = Utils::sanitizeUtf8(result.commandLine);
+    result.args = Utils::sanitizeUtf8(result.args);
 
     return result;
 }

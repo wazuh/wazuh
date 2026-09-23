@@ -72,6 +72,76 @@ namespace Utils
         data = strOut;
     }
 
+    /**
+     * @brief Replaces every byte that does not start a valid UTF-8 sequence with U+FFFD.
+     *
+     * Validation follows RFC 3629: overlong forms, UTF-16 surrogates and code points above
+     * U+10FFFF are rejected. Use it on raw bytes from the system (e.g. process arguments)
+     * before storing them in JSON, which must be valid UTF-8.
+     *
+     * @param input Bytes to sanitize.
+     * @return Copy of input that is valid UTF-8.
+     */
+    static std::string sanitizeUtf8(const std::string& input)
+    {
+        static const std::string REPLACEMENT {"\xEF\xBF\xBD"};
+
+        const auto byteAt = [&input](const size_t pos) -> unsigned int
+        {
+            return pos < input.size() ? static_cast<unsigned char>(input[pos]) : 0u;
+        };
+
+        const auto inRange = [](const unsigned int c, const unsigned int low, const unsigned int high)
+        {
+            return c >= low && c <= high;
+        };
+
+        std::string output;
+        output.reserve(input.size());
+        size_t pos {0};
+
+        while (pos < input.size())
+        {
+            const auto lead {byteAt(pos)};
+            size_t length {0};
+
+            if (lead < 0x80)
+            {
+                length = 1;
+            }
+            else if (inRange(lead, 0xC2, 0xDF))
+            {
+                length = inRange(byteAt(pos + 1), 0x80, 0xBF) ? 2 : 0;
+            }
+            else if (inRange(lead, 0xE0, 0xEF))
+            {
+                const auto low {lead == 0xE0 ? 0xA0u : 0x80u};
+                const auto high {lead == 0xED ? 0x9Fu : 0xBFu};
+                length = inRange(byteAt(pos + 1), low, high) && inRange(byteAt(pos + 2), 0x80, 0xBF) ? 3 : 0;
+            }
+            else if (inRange(lead, 0xF0, 0xF4))
+            {
+                const auto low {lead == 0xF0 ? 0x90u : 0x80u};
+                const auto high {lead == 0xF4 ? 0x8Fu : 0xBFu};
+                length = inRange(byteAt(pos + 1), low, high) && inRange(byteAt(pos + 2), 0x80, 0xBF) &&
+                         inRange(byteAt(pos + 3), 0x80, 0xBF) ? 4 : 0;
+            }
+
+            if (length > 0)
+            {
+                output.append(input, pos, length);
+                pos += length;
+            }
+            else
+            {
+                output += REPLACEMENT;
+                ++pos;
+            }
+        }
+
+        return output;
+    }
+
     static bool replaceAll(std::string& data, const std::string& toSearch, const std::string& toReplace)
     {
         auto pos {data.find(toSearch)};

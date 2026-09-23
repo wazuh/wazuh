@@ -21,6 +21,35 @@ void StringUtilsTest::SetUp() {};
 
 void StringUtilsTest::TearDown() {};
 
+TEST_F(StringUtilsTest, SanitizeUtf8KeepsValidText)
+{
+    const std::string valid {"ascii \xC3\xB1 \xE2\x82\xAC \xF0\x9F\x98\x80 \xED\x9F\xBF \xF4\x8F\xBF\xBF"};
+
+    EXPECT_EQ(Utils::sanitizeUtf8(valid), valid);
+    EXPECT_EQ(Utils::sanitizeUtf8(""), "");
+}
+
+TEST_F(StringUtilsTest, SanitizeUtf8ReplacesInvalidBytes)
+{
+    const std::string replacement {"\xEF\xBF\xBD"};
+
+    // Stray bytes and lone continuation bytes.
+    EXPECT_EQ(Utils::sanitizeUtf8("a\xFF" "b"), "a" + replacement + "b");
+    EXPECT_EQ(Utils::sanitizeUtf8("\x80"), replacement);
+    // Truncated sequences, including at the end of the string.
+    EXPECT_EQ(Utils::sanitizeUtf8("\xC3"), replacement);
+    EXPECT_EQ(Utils::sanitizeUtf8("\xE2\x82 x"), replacement + replacement + " x");
+    EXPECT_EQ(Utils::sanitizeUtf8("\xF0\x9F\x98"), replacement + replacement + replacement);
+    // Overlong forms.
+    EXPECT_EQ(Utils::sanitizeUtf8("\xC0\xAF"), replacement + replacement);
+    EXPECT_EQ(Utils::sanitizeUtf8("\xE0\x80\xAF"), replacement + replacement + replacement);
+    EXPECT_EQ(Utils::sanitizeUtf8("\xF0\x80\x80\xAF"), replacement + replacement + replacement + replacement);
+    // UTF-16 surrogates and code points above U+10FFFF.
+    EXPECT_EQ(Utils::sanitizeUtf8("\xED\xA0\x80"), replacement + replacement + replacement);
+    EXPECT_EQ(Utils::sanitizeUtf8("\xF4\x90\x80\x80"), replacement + replacement + replacement + replacement);
+    EXPECT_EQ(Utils::sanitizeUtf8("\xF5\x80\x80\x80"), replacement + replacement + replacement + replacement);
+}
+
 TEST_F(StringUtilsTest, CheckReplacement)
 {
     std::string string_base {"hello_world"};

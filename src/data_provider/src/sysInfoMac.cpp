@@ -83,6 +83,14 @@ static bool getProcessArgs(const pid_t pid, std::vector<char>& buffer, ProcessAr
         return false;
     }
 
+    // When the argument area does not fit, the kernel returns its tail (environment strings)
+    // behind the real argc and fills the whole buffer. The buffer cannot be grown past
+    // kern.argmax, so a full buffer is treated as unreadable arguments.
+    if (size >= buffer.size())
+    {
+        return false;
+    }
+
     return parseProcArgs2(buffer.data(), size, processArgs);
 }
 
@@ -90,7 +98,8 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
 {
     nlohmann::json jsProcessInfo{};
     jsProcessInfo["pid"]        = std::to_string(pid);
-    jsProcessInfo["name"]       = taskInfo.pbsd.pbi_name;
+    // The kernel cuts pbi_name at a fixed byte length, which can split a multi-byte character.
+    jsProcessInfo["name"]       = Utils::sanitizeUtf8(taskInfo.pbsd.pbi_name);
     jsProcessInfo["state"]      = UNKNOWN_VALUE;
     jsProcessInfo["parent_pid"] = taskInfo.pbsd.pbi_ppid;
     jsProcessInfo["start"]      = Utils::rawTimestampToISO8601(static_cast<uint32_t>(taskInfo.pbsd.pbi_start_tvsec));

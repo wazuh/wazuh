@@ -11,6 +11,7 @@
 
 #include "sysInfoProcessesMac_test.h"
 #include "processes/processArgsParserMac.h"
+#include "json.hpp"
 
 namespace
 {
@@ -255,4 +256,23 @@ TEST_F(SysInfoProcessesMacTest, parsedBufferToCommandLine)
 
     EXPECT_EQ(result.commandLine, "/usr/bin/log stream --predicate (process == \"sudo\")");
     EXPECT_EQ(result.argsCount, 2u);
+}
+
+TEST_F(SysInfoProcessesMacTest, commandLineWithInvalidUtf8IsSerializable)
+{
+    const auto buffer {buildProcArgs(3, "/bin/sleep", {"sleep", "99999", "\xFF"})};
+    ProcessArgs processArgs;
+
+    ASSERT_TRUE(parseProcArgs2(buffer.data(), buffer.size(), processArgs));
+    const auto result {buildProcessCommandLine("/bin/sleep", processArgs)};
+
+    EXPECT_EQ(result.commandLine, "/bin/sleep 99999 \xEF\xBF\xBD");
+    EXPECT_EQ(result.args, "99999 \xEF\xBF\xBD");
+    EXPECT_EQ(result.argsCount, 2u);
+
+    nlohmann::json item;
+    item["command_line"] = result.commandLine;
+    item["args"] = result.args;
+    // Syscollector checksums each item with a strict dump(), which throws on invalid UTF-8.
+    EXPECT_NO_THROW(item.dump());
 }
