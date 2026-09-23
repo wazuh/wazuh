@@ -432,8 +432,15 @@ migrated fleet:
     [Trust anchor delivery](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents).
   - **Package upgrade on the host.** Nothing is delivered. Place the manager's
     `/var/wazuh-manager/etc/certs/root-ca.pem` at `/var/ossec/etc/certs/root-ca.pem` on Linux and
-    macOS, or `<installdir>\certs\root-ca.pem` on Windows, before upgrading. An agent already
-    upgraded without one takes it from a token afterwards, keeping its identity:
+    macOS, or `<installdir>\certs\root-ca.pem` on Windows, before upgrading:
+
+    ```bash
+    sudo install -m 640 -o root -g wazuh root-ca.pem /var/ossec/etc/certs/root-ca.pem
+    ```
+
+    The ownership is part of the instruction, not decoration: an anchor the `wazuh` user cannot read
+    fails closed exactly as a missing one does, and a listing looks right until the group is checked.
+    An agent already upgraded without one takes it from a token afterwards, keeping its identity:
     `wazuh-agent-auth --token-file <file> --certs-only`.
 
   An upgraded agent that holds the anchor and states no `<verification_mode>` of its own comes up
