@@ -754,7 +754,18 @@ def check_events(args, ctx, rep):
     argv = docker_exec_argv(container)
     rep.note("nonce carrier for {0}: {1}".format(nonce, line))
     rep.note("nonce command (argv, the line arrives on stdin): {0}".format(argv))
+    # The event must be THIS run's and the chosen 5.x agent's: filter by agent id, and when this
+    # run writes the line itself the nonce must not be indexed yet — a reused --nonce would
+    # otherwise pass on the previous run's document while the new one is still in flight (v9).
+    filters = [{"term": {EVENT_FIELD: nonce}}]
+    if ctx.get("agent_id_5x"):
+        filters.append({"term": {AGENT_ID_FIELD: ctx["agent_id_5x"]}})
+    query = {"bool": {"filter": filters}}
     if args.exec_docker:
+        before = indexer_count(args, EVENTS_INDEX, {"term": {EVENT_FIELD: nonce}})
+        if before:
+            return "FAIL", "nonce {0} already indexed ({1} document(s)) before this run wrote it; " \
+                "use a fresh --nonce".format(nonce, before)
         subprocess.run(argv, input=line + "\n", check=True, text=True)
         rep.note("nonce line written by --exec-docker")
     elif not args.nonce_written:
@@ -762,7 +773,6 @@ def check_events(args, ctx, rep):
             container
         )
 
-    query = {"term": {EVENT_FIELD: nonce}}
     deadline = time.time() + EVENTS_DEADLINE
     count = 0
     while True:
@@ -1572,6 +1582,14 @@ def write_manifest(args, ctx, captured):
         if cached and cached != digest:
             problems.append("changed since capture: {0}".format(name))
         lines.append("| {0} | `{1}` | {2} | {3} |".format(name, digest, size, dimensions))
+    # What the run PRODUCED must still be there: listdir only shows what survived, so a PNG (or
+    # its sidecar) that vanished after its view passed would otherwise leave no trace (v9).
+    expected = set(digests) | {filename for _, filename, _ in captured}
+    expected |= {name[:-len(".png")] + ".json" for name in digests if name.endswith(".png")}
+    for name in sorted(expected - set(names)):
+        if not os.path.exists(os.path.join(args.out, name)):
+            lines.append("| {0} | (missing) | — | — |".format(name))
+            problems.append("missing since capture: {0}".format(name))
     path = write_text(os.path.join(args.out, "captures.md"), "\n".join(lines) + "\n",
                       args.secrets)
     return path, "; ".join(problems)

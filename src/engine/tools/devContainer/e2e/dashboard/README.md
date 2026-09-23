@@ -15,7 +15,7 @@ The script prints the same parseable grammar as `../wazuh_verify_manager.sh` and
 dashboard/
 ├── capture.py             the CLI: checks, browser session, PNGs, sidecars, captures.md
 ├── capture_logic.py       the decisions (pure functions: no I/O, no network, no Playwright)
-├── test_capture_logic.py  unit tests of those decisions (141 tests, no network, no browser)
+├── test_capture_logic.py  unit tests of those decisions (143 tests, no network, no browser)
 ├── test_capture_dom.py    DOM tests of the extraction scripts (14 tests, a real Chromium on
 │                          HTML fixtures; SKIPped without the venv)
 ├── views.json             per view: route, landing, table, selectors, query, assertions
@@ -100,6 +100,14 @@ per-column match over the rows that were really read.
 | the manifest reused the sha256 cached when the view passed, and `png_dimensions` turned an `OSError` into `—`: a PNG that could not be opened any more published with `failed=0`, `rc=0` | every file of the 'Every file' table is **read again at publication** (sha256 and IHDR); an `OSError` is `FAIL 10. manifest (got: unreadable: 08-inventory.png (PermissionError))` and bytes that are not the ones hashed then are `changed since capture: …`, both before the summary |
 | the README promised the matched row "is in the PNG either way" | it does not: `full_page=True` grows the capture to the document, not to a container that scrolls on its own (see v6 and Limitations) |
 
+
+## What v9 changed (review of the branch)
+
+| v8 | v9 |
+|---|---|
+| publication re-read only the files `listdir` returned: a PNG or sidecar that vanished after its view passed left no trace and the run could still end `failed=0` | every artifact the run produced (each hashed PNG, its sidecar, each captured file) must still exist: otherwise `FAIL 10. manifest (got: missing since capture: <file>)` and a `(missing)` row |
+| with `--exec-docker --nonce <reused>` the index count accepted the previous run's document at once, and it did not check which agent sent it | the nonce must be **absent** from the events index before this run writes it (else `FAIL 4 … already indexed … use a fresh --nonce`), and check 4 counts only documents with `wazuh.agent.id` = the chosen 5.x agent |
+
 ## Prerequisites
 
 - **root**: `queue/sockets/vd-http.sock` is `0660` and `queue/db/global.db` is not world readable.
@@ -175,7 +183,7 @@ sudo python3 $D/capture.py --views agents,discover,inventory,vd --exec-docker
 
 | suite | interpreter | what it covers |
 |---|---|---|
-| `test_capture_logic.py` (141) | any `python3` | every decision: the plan, the landing (including the rison parser, the root query clause, the exact `metadata.indexPattern` path and a duplicated `_a`), the row matcher, the frame note, the counter, the verdicts, the `--out` guard (refused roots through a symlink, exclusivity by name **and** kind), the manifest's counted failures (a PNG that cannot be re-read at publication included), the pixel size of a PNG, the `full_page=True` of `shoot()`, the orchestration and the report — with a fake page and a temporary directory, no network, no browser, no manager |
+| `test_capture_logic.py` (143) | any `python3` | every decision: the plan, the landing (including the rison parser, the root query clause, the exact `metadata.indexPattern` path and a duplicated `_a`), the row matcher, the frame note, the counter, the verdicts, the `--out` guard (refused roots through a symlink, exclusivity by name **and** kind), the manifest's counted failures (a PNG that cannot be re-read at publication included), the pixel size of a PNG, the `full_page=True` of `shoot()`, the orchestration and the report — with a fake page and a temporary directory, no network, no browser, no manager |
 | `test_capture_dom.py` (14) | the venv's (`$WORKSPACE/venv-dashboard/bin/python`) | the three **extraction scripts**, in a real headless Chromium (`--no-sandbox`) over HTML fixtures copied from the measured DOM (probes probe-columns and probe-canvas, 2026-09-20): column identity by `left` and by `<th>` position, the visible text minus `.euiScreenReaderOnly`, `left`/`right`/`truncated`, `ambiguous table (2)`, `table missing`, `scope missing`. Nothing is fetched: only `page.set_content()`. With any other interpreter every test **SKIPs** (`playwright not importable …`), never errors |
 
 Both suites read `views.json`, so the fixtures are asserted through the **real selectors of the
@@ -465,12 +473,12 @@ Under `--out`, which by default is a **fresh directory per run**,
   columns only, so `<n>` is **not** the `<td>` index when a selection column leads the row — the header's own
   DOM position is used instead. That correction, and the other two extraction rules, are now pinned by
   `test_capture_dom.py` instead of by a live run.
-- **The last live run is v8, 2026-09-23 03:59:55 UTC, 25/25 verifier checks** — `agents`, `discover`
-  and `inventory` PASS, `vd` FAIL with 0 findings (feed ready, scan completed, nothing indexed for the
-  5.x agent). Its two changes (the exact `metadata.indexPattern` path, the PNG re-read at publication)
-  are also pinned by the suites (141 + 14 tests, and the mutations that kill them), and
+- **Live runs are dated, never "the latest"**: v8 ran live on 2026-09-23 03:59:55 UTC and again at
+  14:18:59 UTC (25/25 verifier checks both times) — `agents`, `discover` and `inventory` PASS, `vd` FAIL
+  with 0 findings (feed ready, scan completed, nothing indexed for the 5.x agent). v9's two changes are
+  pinned by the suites (143 + 14 tests; removing either check makes its regression test fail), and
   `test_discover_queries_the_declared_index_pattern_and_no_other` replays the Discover URL of the
-  v7c live run (2026-09-21) against the new rule.
+  v7c live run (2026-09-21) against the exact-index rule.
 - **The capture is the whole page and the crop is not a requirement** (V11), so where the row was
   drawn never fails a view. That is **not** a promise that the row is in the PNG: `full_page=True`
   grows the capture to the document, and a row inside a container that scrolls on its own (a

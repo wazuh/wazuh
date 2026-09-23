@@ -1799,6 +1799,8 @@ class Orchestration(TempRun):
         png = os.path.join(self.out, "08-inventory.png")
         with open(png, "wb") as handle:
             handle.write(png_header() + b"\x00" * 64)
+        with open(os.path.join(self.out, "08-inventory.json"), "w") as handle:
+            handle.write("{}")   # a PASS view always has its sidecar (artifacts_ok)
         cached = capture.sha256_of(png)
         ctx = {"run_id": "20260921T000000Z-x", "sha256": {"08-inventory.png": cached}}
         captured = [("inventory", "08-inventory.png", [])]
@@ -1858,6 +1860,58 @@ class Orchestration(TempRun):
             self.assertEqual(1, capture.finish(rep, self.args_for(), dict(ctx), captured))
         self.assertIn("FAIL  10. manifest (got: changed since capture: 08-inventory.png)",
                       buffer.getvalue())
+
+    def test_a_reused_nonce_already_indexed_fails_before_writing_and_the_query_is_per_agent(self):
+        args = capture.parse_args(["--exec-docker", "--out", self.out])
+        seen, ran = [], []
+        real = (capture.indexer_count, capture.indexer_search, capture.subprocess.run)
+        capture.indexer_count = lambda a, index, query: seen.append(query) or counts.pop(0)
+        capture.indexer_search = lambda a, index, body: {"hits": {"hits": [{"_index": "ix"}]}}
+        capture.subprocess.run = lambda *a, **k: ran.append(a)
+        try:
+            ctx = {"nonce": "e2e-capture-abcd1234", "agent_id_5x": "002"}
+            counts = [1]   # the previous run's document is already there
+            with contextlib.redirect_stdout(io.StringIO()):
+                status, reason = capture.check_events(args, dict(ctx), capture.Reporter([]))
+            self.assertEqual("FAIL", status)
+            self.assertIn("already indexed (1 document(s)) before this run wrote it", reason)
+            self.assertEqual([], ran)   # nothing was written
+            seen.clear()
+            counts = [0, 1]  # fresh nonce: absent before, present after
+            with contextlib.redirect_stdout(io.StringIO()):
+                status, reason = capture.check_events(args, dict(ctx), capture.Reporter([]))
+            self.assertEqual("PASS", status, reason)
+            self.assertEqual(1, len(ran))
+            self.assertIn({"term": {capture.AGENT_ID_FIELD: "002"}}, seen[-1]["bool"]["filter"])
+        finally:
+            capture.indexer_count, capture.indexer_search, capture.subprocess.run = real
+
+    def test_an_artifact_that_vanished_after_its_view_passed_fails_the_manifest(self):
+        png = os.path.join(self.out, "06-agents.png")
+        sidecar = os.path.join(self.out, "06-agents.json")
+        with open(png, "wb") as handle:
+            handle.write(png_header() + b"\x00" * 16)
+        with open(sidecar, "w") as handle:
+            handle.write("{}")
+        ctx = {"run_id": "20260923T000000Z-x", "sha256": {"06-agents.png": capture.sha256_of(png)}}
+        captured = [("agents", "06-agents.png", [])]
+        rep = capture.Reporter([])
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(0, capture.finish(rep, self.args_for(), dict(ctx), captured))
+        for gone in (png, sidecar):
+            with open(gone, "rb") as handle:
+                keep = handle.read()
+            os.remove(gone)
+            rep = capture.Reporter([])
+            with contextlib.redirect_stdout(io.StringIO()) as buffer:
+                rc = capture.finish(rep, self.args_for(), dict(ctx), captured)
+            self.assertEqual(1, rc, buffer.getvalue())
+            self.assertIn("FAIL  10. manifest (got: missing since capture: {0})".format(
+                os.path.basename(gone)), buffer.getvalue())
+            with open(os.path.join(self.out, "captures.md")) as handle:
+                self.assertIn("| {0} | (missing) | — | — |".format(os.path.basename(gone)), handle.read())
+            with open(gone, "wb") as handle:
+                handle.write(keep)
 
     def test_every_unreadable_artifact_is_named_in_the_same_reason(self):
         for name in ("08-inventory.json", "09-vd-FAIL.png"):
