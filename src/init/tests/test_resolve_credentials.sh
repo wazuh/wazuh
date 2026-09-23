@@ -357,6 +357,27 @@ check "the remoted SAN setting is honoured separately" "yes" \
         2>/dev/null | grep -q 'agents.corp.local' && echo yes)"
 cleanup "${root}"
 
+# The installed tree has <manager-home>/etc at 0770 root:wazuh-manager -- a contract
+# manager_base.csv pins and CI enforces, because the service rewrites etc/client.keys and
+# etc/shared/ after dropping privileges. An ancestor rule that refuses any group-writable directory
+# therefore refuses every standard installation.
+root="$(make_tree)"
+chmod 0770 "${root}/home/etc"
+run_resolver "${root}" --install
+check "a parent group-writable by the service's own group is accepted" "0" "${RC}"
+check "and the certificates are issued" "yes" \
+    "$([ -f "${root}/home/etc/certs/remoted.pem" ] && echo yes)"
+cleanup "${root}"
+
+# World-writable is still refused: that is a third party, not the service.
+root="$(make_tree)"
+chmod 0777 "${root}/home/etc"
+run_resolver "${root}" --prestart
+check "a world-writable parent is still refused" "1" "${RC}"
+check "and says so" "yes" \
+    "$(grep -q 'must not be world writable' <<< "$(resolver_output)" && echo yes)"
+cleanup "${root}"
+
 # --------------------------------------------------------------------------------------------
 # --clear
 #

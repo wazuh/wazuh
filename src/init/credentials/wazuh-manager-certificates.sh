@@ -133,14 +133,15 @@ _wmc_validate_path() (
 _wmc_validate_parent_tree() (
     _wmc_parent=${1%/*}
     [ -n "$_wmc_parent" ] || _wmc_parent=/
-    _wmc_check_parent "$_wmc_parent"
+    _wmc_check_parent "$_wmc_parent" "${2-}"
 )
 
 _wmc_check_parent() (
+    _wmc_service_gid=${2-}
     if [ "$1" != / ]; then
         _wmc_parent=${1%/*}
         [ -n "$_wmc_parent" ] || _wmc_parent=/
-        _wmc_check_parent "$_wmc_parent" || return 1
+        _wmc_check_parent "$_wmc_parent" "$_wmc_service_gid" || return 1
     fi
     [ ! -L "$1" ] && [ -d "$1" ] || {
         _wmc_error "parent must be a real directory: $1"; return 1;
@@ -149,9 +150,15 @@ _wmc_check_parent() (
         _wmc_error "parent must be root-owned: $1"; return 1;
     }
     _wmc_mode=$(stat -c %a -- "$1") || return 1
-    [ "$((0$_wmc_mode & 0022))" -eq 0 ] || {
-        _wmc_error "parent must not be group/world writable: $1"; return 1;
+    [ "$((0$_wmc_mode & 0002))" -eq 0 ] || {
+        _wmc_error "parent must not be world writable: $1"; return 1;
     }
+    if [ "$((0$_wmc_mode & 0020))" -ne 0 ]; then
+        if [ -z "$_wmc_service_gid" ] ||
+           [ "$(stat -c %g -- "$1")" != "$_wmc_service_gid" ]; then
+            _wmc_error "parent must not be group writable: $1"; return 1;
+        fi
+    fi
 )
 
 # Missing service-directory parents are root:service-group 0750, so the
@@ -223,7 +230,7 @@ _wmc_prepare_cert_dir() (
             return 1
         fi
         _wmc_make_parents "${_wmc_dir%/*}" "$_wmc_group" || return 1
-        _wmc_validate_parent_tree "$_wmc_dir" || return 1
+        _wmc_validate_parent_tree "$_wmc_dir" "$_wmc_gid" || return 1
         install -d -m 1770 -o root -g "$_wmc_group" "$_wmc_dir" || {
             _wmc_error "cannot create certificate directory: $_wmc_dir"
             return 1
@@ -236,7 +243,7 @@ _wmc_prepare_cert_dir() (
         fi
     fi
 
-    _wmc_validate_parent_tree "$_wmc_dir" || return 1
+    _wmc_validate_parent_tree "$_wmc_dir" "$_wmc_gid" || return 1
     if [ ! -d "$_wmc_dir" ]; then
         _wmc_error "not a directory: $_wmc_dir"
         return 1
