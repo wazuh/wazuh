@@ -12,8 +12,8 @@ exercised by a live run against the dashboard — and one of them (`tds[header.i
 be corrected live, with nothing red to warn first.
 
 These tests load, with `page.set_content()`, HTML fixtures copied from the DOM the probes of
-2026-09-20 recorded against dashboard `5.0.0-latest` (`anexos/e5a/probes/resultados.md`,
-sections probe-columns and probe-canvas): the IT Hygiene data grid (header cells at `left`
+2026-09-20 recorded against dashboard `5.0.0-latest` (probes probe-columns and
+probe-canvas): the IT Hygiene data grid (header cells at `left`
 8/48/293/538/782/1027, absolutely positioned row cells sharing those lefts, a
 `discoverQueryHits` under `.euiDataGrid__controls`), the agents table (a leading selection
 `<th>` without `data-test-subj`, then `tableHeaderCell_<field>_<n>`) and Discover's

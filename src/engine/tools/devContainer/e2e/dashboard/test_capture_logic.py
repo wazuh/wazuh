@@ -40,7 +40,7 @@ AGENTS = [("001", "agent-4x-ubuntu", "v4.14.3"), ("002", "agent-5x-ubuntu", "v5.
 
 DASHBOARD = "https://localhost:443"
 
-# The three URLs the live run of 2026-09-20 really landed on (anexos/e5a/matrix.log 17-20).
+# The three URLs the live run of 2026-09-20 really landed on (verifier log, lines 17-20).
 LIVE_AGENTS_URL = "https://localhost/app/endpoints-summary#/agents-preview/"
 LIVE_DISCOVER_URL = (
     "https://localhost/app/data-explorer/discover#?_a=(discover:(columns:!(_source),"
@@ -54,7 +54,7 @@ LIVE_INVENTORY_URL = (
     "%20and%20package.name:%22adduser%22'))&_g=(filters:!(),refreshInterval:(pause:!t,value:0),"
     "time:(from:now-24h,to:now))"
 )
-# The Discover URL of the v7c run (anexos/e5a/matrix.log:18, 2026-09-21 02:26:21 UTC), verbatim.
+# The Discover URL of the v7c run (2026-09-21 02:26:21 UTC), verbatim.
 LIVE_DISCOVER_URL_V7C = (
     "https://localhost/app/data-explorer/discover#?_a=(discover:(columns:!(user.name,"
     "wazuh.agent.name,wazuh.protocol.location),isDirty:!f,sort:!()),metadata:(indexPattern:"
@@ -538,7 +538,7 @@ class Landing(unittest.TestCase):
                          cl.landing_ok(no_clause, DASHBOARD, wanted)[1])
 
     def test_the_rison_of_the_live_run_is_parsed_as_a_structure(self):
-        """The three state values the run of `anexos/e5a/matrix.log` really landed with, as
+        """The three state values the live run of 2026-09-20 really landed with, as
         `parse_qs` hands them over (percent-decoded)."""
         a = ("(filters:!(),query:(language:kuery,query:'wazuh.agent.id:\"002\" and "
              "package.name:\"adduser\"'))")

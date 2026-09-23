@@ -55,12 +55,12 @@ each of them with something a wrong page cannot satisfy:
 
 ## What v6 changed (decision V11)
 
-> «No es importante el recortado del screenshot, mientras tenga buena calidad puede ser la captura
-> de la pantalla completa» — the user, 2026-09-20 (`90-preguntas-abiertas.md`, row **V11**).
+> Cropping the screenshot is not a requirement: a good-quality capture of the whole page is enough
+> (decision V11, 2026-09-20).
 
 | v5 | v6 |
 |---|---|
-| `page.screenshot(full_page=False)` — the PNG was the 1280×800 viewport | **`full_page=True`**: the **viewport stays 1280×800** and the PNG comes out at whatever the page occupies — measured `1283×1064` for IT Hygiene and `1280×800` for the agents and Discover views (`anexos/e5a/evidencia/dashboard/captures.md`), which is why the size is **read from each file** and never promised |
+| `page.screenshot(full_page=False)` — the PNG was the 1280×800 viewport | **`full_page=True`**: the **viewport stays 1280×800** and the PNG comes out at whatever the page occupies — measured `1283×1064` for IT Hygiene and `1280×800` for the agents and Discover views (in each run's `captures.md`), which is why the size is **read from each file** and never promised |
 | a matched row outside the viewport was `FAIL … row outside the frame …` / `column <c> outside the frame …` | the row is **still measured** on both axes, and the answer is reported as `frame_note.in_viewport` |
 | an asserted column drawn truncated (`Ubuntu Develop…`) was `FAIL … column <c> truncated in frame` | it is reported as `frame_note.truncated_columns`, next to the value that was compared |
 | — | both travel to the **sidecar** (`assertions[].frame_note`) and to the **PASS line** and the manifest (`…; frame: in_viewport=false, truncated=[package.vendor]`) |
@@ -176,7 +176,7 @@ sudo python3 $D/capture.py --views agents,discover,inventory,vd --exec-docker
 | suite | interpreter | what it covers |
 |---|---|---|
 | `test_capture_logic.py` (141) | any `python3` | every decision: the plan, the landing (including the rison parser, the root query clause, the exact `metadata.indexPattern` path and a duplicated `_a`), the row matcher, the frame note, the counter, the verdicts, the `--out` guard (refused roots through a symlink, exclusivity by name **and** kind), the manifest's counted failures (a PNG that cannot be re-read at publication included), the pixel size of a PNG, the `full_page=True` of `shoot()`, the orchestration and the report — with a fake page and a temporary directory, no network, no browser, no manager |
-| `test_capture_dom.py` (14) | the venv's (`$WORKSPACE/venv-dashboard/bin/python`) | the three **extraction scripts**, in a real headless Chromium (`--no-sandbox`) over HTML fixtures copied from the measured DOM (`anexos/e5a/probes/resultados.md`, probe-columns and probe-canvas): column identity by `left` and by `<th>` position, the visible text minus `.euiScreenReaderOnly`, `left`/`right`/`truncated`, `ambiguous table (2)`, `table missing`, `scope missing`. Nothing is fetched: only `page.set_content()`. With any other interpreter every test **SKIPs** (`playwright not importable …`), never errors |
+| `test_capture_dom.py` (14) | the venv's (`$WORKSPACE/venv-dashboard/bin/python`) | the three **extraction scripts**, in a real headless Chromium (`--no-sandbox`) over HTML fixtures copied from the measured DOM (probes probe-columns and probe-canvas, 2026-09-20): column identity by `left` and by `<th>` position, the visible text minus `.euiScreenReaderOnly`, `left`/`right`/`truncated`, `ambiguous table (2)`, `table missing`, `scope missing`. Nothing is fetched: only `page.set_content()`. With any other interpreter every test **SKIPs** (`playwright not importable …`), never errors |
 
 Both suites read `views.json`, so the fixtures are asserted through the **real selectors of the
 views**: a scope or a table that moves there fails here first.
@@ -456,8 +456,7 @@ Under `--out`, which by default is a **fresh directory per run**,
 
 ## Limitations
 
-- **v4 ran live on 2026-09-20 22:08:14 UTC (runs v4b/v4c, 23/23 verifier checks; that `matrix.log`
-  has since been replaced by the v7c run below):**
+- **v4 ran live on 2026-09-20 22:08:14 UTC (runs v4b/v4c, 23/23 verifier checks):**
   `agents` (`row={'name': 'agent-4x-ubuntu', 'status': 'active'}`, same for the 5.x, `rows_eq=2`),
   `discover` (`user.name` = nonce, `wazuh.agent.name`, `wazuh.protocol.location`, `hits_eq=1`, `rows_eq=1`) and
   `inventory` (`adduser 3.118ubuntu5` of agent 002 both in the backend sample and in the grid row, `hits_eq=1`,
@@ -466,12 +465,12 @@ Under `--out`, which by default is a **fresh directory per run**,
   columns only, so `<n>` is **not** the `<td>` index when a selection column leads the row — the header's own
   DOM position is used instead. That correction, and the other two extraction rules, are now pinned by
   `test_capture_dom.py` instead of by a live run.
-- **The last live run is v7c: `anexos/e5a/matrix.log:1` of the plan, 2026-09-21 02:26:21 UTC, worktree
-  `1f59210a37`, 24/24 verifier checks** — `agents`, `discover` and `inventory` PASS, `vd` FAIL with
-  0 findings (P6). v8 has not run live: its two changes (the exact `metadata.indexPattern` path, the
-  PNG re-read at publication) are pinned by the suites (141 + 14 tests, and the mutations that kill
-  them), and `test_discover_queries_the_declared_index_pattern_and_no_other` replays the Discover URL
-  of that v7c run (`matrix.log:18`) against the new rule.
+- **The last live run is v8, 2026-09-23 03:59:55 UTC, 25/25 verifier checks** — `agents`, `discover`
+  and `inventory` PASS, `vd` FAIL with 0 findings (feed ready, scan completed, nothing indexed for the
+  5.x agent). Its two changes (the exact `metadata.indexPattern` path, the PNG re-read at publication)
+  are also pinned by the suites (141 + 14 tests, and the mutations that kill them), and
+  `test_discover_queries_the_declared_index_pattern_and_no_other` replays the Discover URL of the
+  v7c live run (2026-09-21) against the new rule.
 - **The capture is the whole page and the crop is not a requirement** (V11), so where the row was
   drawn never fails a view. That is **not** a promise that the row is in the PNG: `full_page=True`
   grows the capture to the document, and a row inside a container that scrolls on its own (a
@@ -537,7 +536,7 @@ Under `--out`, which by default is a **fresh directory per run**,
   `#?_a=(…indexPattern:'wazuh-events-v5*'…)&_q=(…query:'user.name:"<nonce>"')` (the OSD Discover, not
   Threat Hunting); inventory `/app/it-hygiene` →
   `#/overview/?tab=it-hygiene&tabView=software&tabSubView=packages&_a=(…)`.
-- Column identity measured with `anexos/e5a/probes/probe-columns.py`: the IT Hygiene page holds
+- Column identity measured with a one-off DOM probe (probe-columns): the IT Hygiene page holds
   **one** `.euiDataGrid`; its header cells are `[data-test-subj="dataGridHeaderCell-<field>"]` at
   `left` 8/48/293/538/782/1027 (`inspectCollapseColumn`, `wazuh.agent.name`, `package.vendor`,
   `package.name`, `package.version`, `package.type`) and each `[data-test-subj="dataGridRowCell"]`
