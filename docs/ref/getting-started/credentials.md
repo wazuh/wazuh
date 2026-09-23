@@ -159,7 +159,7 @@ mode flag, because the presence of a private key beside the anchor is the signal
 |---------------------|------------------------------|--------|
 | nothing | no | mint a bootstrap CA, then issue both pairs from it |
 | anchor + key | no | issue both pairs from the CA found |
-| anchor + key | one of the two | keep that pair, issue only the missing one |
+| anchor + key | one of the two | keep that pair and issue only the missing one, if the kept pair was issued by that CA; **unresolved** otherwise |
 | nothing | one of the two | **unresolved**: no CA is minted, since its anchor would not match the pair |
 | anchor only | yes | use both, install the anchor if `etc/certs` lacks it, generate nothing |
 | anchor only | no | install the anchor; **unresolved**, the service will not start |

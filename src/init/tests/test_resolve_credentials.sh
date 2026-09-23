@@ -411,6 +411,21 @@ rm -rf "${root}"
 
 if command -v openssl > /dev/null 2>&1; then
 
+    # An operator-placed pair: a real certificate and key, issued by the given CA.
+    sign_pair() {
+        local dir="$1" name="$2" cacert="$3" cakey="$4"
+        openssl req -new -nodes -newkey rsa:2048 -keyout "${dir}/${name}-key.pem" -out "${dir}/${name}.csr" \
+            -subj "/CN=placed-${name}" > /dev/null 2>&1
+        openssl x509 -req -in "${dir}/${name}.csr" -CA "${cacert}" -CAkey "${cakey}" -CAcreateserial \
+            -out "${dir}/${name}.pem" -days 1 > /dev/null 2>&1
+        rm -f "${dir}/${name}.csr"
+    }
+
+    mint_foreign_ca() {
+        openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 1 -keyout "$1.key" -out "$1.pem" \
+            -subj "/CN=Somebody else's CA" > /dev/null 2>&1
+    }
+
     # Case A: nothing staged. A bootstrap CA is minted and both pairs are issued from it.
     root="$(make_tree)"
     run_resolver "${root}" --install > /dev/null
@@ -444,14 +459,29 @@ if command -v openssl > /dev/null 2>&1; then
     check "case C leaves a pre-issued pair untouched" "pre-issued remoted" \
         "$(cat "${root}/home/etc/certs/remoted.pem")"
 
-    # Only the missing pair is issued; the one already placed is kept.
+    # Only the missing pair is issued; the one already placed, from the same CA, is kept.
+    sign_pair "${root}/home/etc/certs" remoted "${root}/etc/wazuh/ca/root-ca.pem" "${root}/etc/wazuh/ca/root-ca.key"
+    placed="$(md5sum < "${root}/home/etc/certs/remoted.pem")"
     rm -f "${root}/home/etc/certs/indexer-connector"*.pem
     run_resolver "${root}" --prestart > /dev/null
-    check "a partial set keeps the pair already placed" "pre-issued remoted" \
-        "$(cat "${root}/home/etc/certs/remoted.pem")"
+    check "a partial set keeps the pair already placed" "${placed}" "$(md5sum < "${root}/home/etc/certs/remoted.pem")"
     check "and issues only the missing one" "yes" \
         "$(openssl verify -CAfile "${root}/etc/wazuh/ca/root-ca.pem" \
             "${root}/home/etc/certs/indexer-connector.pem" > /dev/null 2>&1 && echo yes)"
+
+    # A placed pair from another CA is never completed from this one: the two would not chain together.
+    mint_foreign_ca "${root}/foreign"
+    sign_pair "${root}/home/etc/certs" remoted "${root}/foreign.pem" "${root}/foreign.key"
+    placed="$(md5sum < "${root}/home/etc/certs/remoted.pem")"
+    anchor="$(md5sum < "${root}/home/etc/certs/root-ca.pem")"
+    rm -f "${root}/home/etc/certs/indexer-connector"*.pem
+    run_resolver "${root}" --prestart
+    check "a pair from another CA leaves the certificates unresolved" "yes" \
+        "$(grep -q "MISSING the manager's TLS" <<< "$(resolver_output)" && echo yes)"
+    check "and says why" "yes" "$(grep -q 'refusing to mix CAs' <<< "$(resolver_output)" && echo yes)"
+    check "and issues nothing" "" "$(ls "${root}/home/etc/certs/" | grep '^indexer-connector')"
+    check "and keeps the placed pair" "${placed}" "$(md5sum < "${root}/home/etc/certs/remoted.pem")"
+    check "and leaves the installed anchor alone" "${anchor}" "$(md5sum < "${root}/home/etc/certs/root-ca.pem")"
     rm -rf "${root}"
 
     # With no CA to issue from, a placed pair is not orphaned by minting a new anchor.
@@ -467,18 +497,30 @@ if command -v openssl > /dev/null 2>&1; then
     # Case C with the anchor missing from etc/certs: the one in the CA directory is installed.
     root="$(make_tree)"
     mkdir -p "${root}/etc/wazuh/ca"
-    openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 1 \
-        -keyout "${root}/other-ca.key" -out "${root}/etc/wazuh/ca/root-ca.pem" \
-        -subj "/CN=Somebody else's CA" > /dev/null 2>&1
-    for f in remoted remoted-key indexer-connector indexer-connector-key; do
-        printf 'pre-issued %s\n' "${f}" > "${root}/home/etc/certs/${f}.pem"
+    mint_foreign_ca "${root}/other-ca"
+    cp "${root}/other-ca.pem" "${root}/etc/wazuh/ca/root-ca.pem"
+    for pair in remoted indexer-connector; do
+        sign_pair "${root}/home/etc/certs" "${pair}" "${root}/other-ca.pem" "${root}/other-ca.key"
     done
+    placed="$(md5sum < "${root}/home/etc/certs/remoted.pem")"
     run_resolver "${root}" --prestart
     check "placed pairs without an anchor get the one from the CA directory" "yes" \
         "$(cmp -s "${root}/etc/wazuh/ca/root-ca.pem" "${root}/home/etc/certs/root-ca.pem" && echo yes)"
     check "and the certificates count as resolved" "" \
         "$(grep "MISSING the manager's TLS" <<< "$(resolver_output)")"
-    check "and the placed pairs are kept" "pre-issued remoted" "$(cat "${root}/home/etc/certs/remoted.pem")"
+    check "and the placed pairs are kept" "${placed}" "$(md5sum < "${root}/home/etc/certs/remoted.pem")"
+    rm -rf "${root}"
+
+    # Case D with one pair of that CA missing: nothing can reissue it, so the start is refused.
+    root="$(make_tree)"
+    mkdir -p "${root}/etc/wazuh/ca"
+    mint_foreign_ca "${root}/other-ca"
+    cp "${root}/other-ca.pem" "${root}/etc/wazuh/ca/root-ca.pem"
+    sign_pair "${root}/home/etc/certs" indexer-connector "${root}/other-ca.pem" "${root}/other-ca.key"
+    run_resolver "${root}" --prestart
+    check "a missing pair with only the anchor on the host is unresolved" "yes" \
+        "$(grep -q "MISSING the manager's TLS certificates in" <<< "$(resolver_output)" && echo yes)"
+    check "and nothing is issued" "" "$(ls "${root}/home/etc/certs/" | grep '^remoted')"
     rm -rf "${root}"
 
     # Case D: an anchor with no private key. This host cannot sign and must not pretend to.
