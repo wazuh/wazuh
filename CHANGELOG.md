@@ -34,6 +34,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed false error log when macOS `log stream` process exits during graceful agent shutdown. ([#38767](https://github.com/wazuh/wazuh/pull/38767))
 - Fixed missing Windows FIM inventory for file names with non-ANSI characters. ([#38301](https://github.com/wazuh/wazuh/pull/38301))
 - Fixed an agent crash caused by unsynchronized reads of the FIM directories list from the whodata callbacks. ([#39201](https://github.com/wazuh/wazuh/issues/39201))
 - Fixed FIM eBPF whodata dropping events on hosts whose NSS backend is remote. ([#39360](https://github.com/wazuh/wazuh/issues/39360))
