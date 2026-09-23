@@ -826,7 +826,7 @@ stages:
     delay_before: 1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
+      url: "{protocol:s}://{host:s}:{master_port:d}/security/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -843,7 +843,7 @@ stages:
     delay_before: 1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
+      url: "{protocol:s}://{host:s}:{master_port:d}/security/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -865,7 +865,7 @@ stages:
     delay_before: 10
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{master_port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -885,7 +885,7 @@ stages:
     delay_before: 1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{master_port:d}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
