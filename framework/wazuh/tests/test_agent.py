@@ -35,7 +35,7 @@ with patch('wazuh.core.common.wazuh_uid'):
             remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
             restart_agents, upgrade_agents, upload_group_file, \
             reload_agents, \
-            check_uninstall_permission, ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST, ERROR_CODES_UPGRADE_SOCKET
+            check_uninstall_permission, ERROR_CODES_UPGRADE_SOCKET
         from wazuh.core.agent import Agent
         from wazuh import WazuhError, WazuhException, WazuhInternalError
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
@@ -1244,10 +1244,7 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
         if raise_error:
             # Upgrade expecting a Wazuh Exception
             for error in expected_errors_and_items.keys():
-                if int(error) in ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST:
-                    with pytest.raises(WazuhError, match=f".* {error} .*"):
-                        upgrade_agents(agent_list=list(agent_set), filters=filters)
-                elif int(error) not in (ERROR_CODES_UPGRADE_SOCKET + [1701, 1703, 1731]):
+                if int(error) not in (ERROR_CODES_UPGRADE_SOCKET + [1701, 1703, 1731]):
                     with pytest.raises(WazuhInternalError, match=f".* {error} .*"):
                         upgrade_agents(agent_list=list(agent_set), filters=filters)
         else:
@@ -1276,6 +1273,45 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
             for i, error in enumerate(error_codes_in_failed_items):
                 errors_and_items[str(error)] = failed_items[i]
             assert expected_errors_and_items == errors_and_items
+
+
+
+@pytest.mark.parametrize('socket_error, error_code', [(14, 1824), (16, 1826)])
+@patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_upgrade_agents_reports_mixed_outcomes_per_agent(mock_socket, mock_wdb, mock_client_keys,
+                                                               socket_error, error_code):
+    """One socket answer carrying a success AND a failure must keep both, attributed per agent.
+
+    This is the case the fix exists for. The Task Manager evaluates each agent and answers per
+    agent -- `/agents/upgrade` resolves a WPK per package group, so a Linux agent's task is created
+    while a Windows one answers 1824 in the SAME response. These two codes used to abort the whole
+    loop, which threw the success away.
+
+    Asserting the RESULT rather than an exception is what makes this a test of the fix: dropping
+    1824/1826 from the per-agent branch makes affected_items or failed_items wrong here, where it
+    left every other test in this file passing.
+    """
+    result_from_socket = {
+        'error': 0,
+        'data': [{'error': 0, 'message': 'Success', 'agent': 1},
+                 {'error': socket_error, 'message': 'The WPK file does not exist', 'agent': 2}],
+        'message': 'Success'}
+
+    with patch('wazuh.core.agent.core_upgrade_agents') as core_upgrade_agents_mock:
+        core_upgrade_agents_mock.return_value = result_from_socket
+        result = upgrade_agents(agent_list=['001', '002'])
+
+    assert isinstance(result, AffectedItemsWazuhResult), 'these codes must no longer raise'
+    assert result.affected_items == ['001'], \
+        f'001 had its task created and must survive; got {result.affected_items}'
+    assert result.total_affected_items == 1
+
+    failed = {error.code: ids for error, ids in result.failed_items.items()}
+    assert failed == {error_code: {'002'}}, \
+        f'only 002 failed, and with {error_code}; got {failed}'
 
 
 @patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))

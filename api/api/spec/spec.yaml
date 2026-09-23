@@ -600,6 +600,41 @@ components:
           type: integer
           format: int32
           description: "Number of items that have failed applying the requested operation"
+        nodes:
+          type: object
+          description: >
+            Present only for operations the server API distributes across cluster nodes, and only
+            when at least one node reported an outcome. Maps a node name to what THAT node did,
+            recorded before the per-item results are merged.
+
+            It exists because merging resolves a disagreement about an item in favour of the
+            success: an item applied on two nodes and refused by a third is reported as applied,
+            which is correct for the item and leaves the operator unable to tell which node could
+            not serve it. This names it.
+          additionalProperties:
+            type: object
+            properties:
+              affected_items:
+                type: array
+                description: >
+                  Identifiers of the items this node applied the operation to. Present only for
+                  operations whose items are identifiers: an endpoint that returns documents in
+                  `affected_items` (daemon statistics, log entries) contributes no entry here,
+                  because per-node attribution of a payload says nothing and would repeat it once
+                  per node.
+                items:
+                  type: string
+              failed_items:
+                type: object
+                description: "Error code to the items this node could not apply it to"
+                additionalProperties:
+                  type: array
+                  items:
+                    type: string
+          example:
+            master: {affected_items: ["001"]}
+            worker1: {affected_items: ["001"]}
+            worker2: {failed_items: {"1824": ["001"]}}
 
     AllItemsResponseAgents:
       allOf:

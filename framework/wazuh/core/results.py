@@ -376,6 +376,16 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         super().__init__(dct)
         self._affected_items = affected_items if affected_items is not None else []
         self._failed_items = {}
+        # Which node produced which outcome, for operations DAPI distributes across the cluster.
+        # {node_name: {'affected_items': [...], 'failed_items': {code: [ids]}}}
+        #
+        # Populated by forward_request() from each node's own answer, BEFORE the merge below
+        # reconciles them, and unioned rather than reconciled. That ordering is the point: the
+        # merge deliberately lets a success override a failure for the same item, which is right
+        # for the stale-view case it exists for but erases a genuinely node-local fact -- an agent
+        # whose upgrade task was created on two nodes and could not be created on a third reads as
+        # a clean success, and the operator is never told which node could not serve it (#39428).
+        self._node_attribution = {}
         if total_affected_items is not None:
             self._total_affected_items = total_affected_items
         else:
@@ -507,6 +517,10 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
             result.affected_items = deduped_affected
             result.total_affected_items -= duplicates
 
+        # Unioned, never reconciled: each entry is what one node reported about itself, and two
+        # nodes disagreeing is the information worth keeping, not a conflict to resolve.
+        result._node_attribution = {**self._node_attribution, **other._node_attribution}
+
         return result
 
     def to_dict(self) -> dict:
@@ -578,6 +592,37 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
     @property
     def failed_items(self):
         return self._failed_items
+
+    @property
+    def node_attribution(self):
+        return self._node_attribution
+
+    def attribute_to_node(self, node_name: str):
+        """Record this result's own outcomes as produced by `node_name`.
+
+        Called once per node by forward_request(), on that node's untouched answer, so what is
+        stored is that node's view before any merge reconciles it away.
+
+        Only IDENTIFIER-shaped affected items are recorded. Many distributed endpoints put whole
+        documents in `affected_items` -- `GET /cluster/{node_id}/daemons/stats` returns a metrics
+        dump per daemon, `/logs` returns log entries -- and for those "which items did this node
+        apply" is not a question anyone asks: copying them here would duplicate the entire payload
+        once per node and say nothing. An endpoint whose items are neither identifiers nor failures
+        therefore contributes no entry at all, which keeps its response byte-identical.
+
+        Parameters
+        ----------
+        node_name : str
+            Cluster node that produced this result.
+        """
+        entry = {}
+        if self._affected_items and all(isinstance(item, str) for item in self._affected_items):
+            entry['affected_items'] = sorted(self._affected_items, key=str)
+        if self._failed_items:
+            entry['failed_items'] = {error.code: sorted(ids, key=str)
+                                     for error, ids in self._failed_items.items()}
+        if entry:
+            self._node_attribution[node_name] = entry
 
     @property
     def all_msg(self):
@@ -749,6 +794,7 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
                               'id': sort_ids(ids)
                               }
                              for exc, ids in ordered_failed_items],
+            **({'nodes': self._node_attribution} if self._node_attribution else {}),
             **self.dikt
         }
 
