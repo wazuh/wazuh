@@ -437,7 +437,11 @@ static inline void logResponseIssues(const std::string& indexName, const std::st
     // bulk size and holds nothing worth reporting. A `_delete_by_query` response never carries "errors":true
     // regardless of its outcome, so it is told apart by its "failures" key instead - those bodies are small
     // either way.
-    const auto hasBulkErrors = responseBody.find(R"("errors":true)") != std::string::npos;
+    // Tolerate whitespace around the separator: a body serialized as `"errors" : true` must not slip
+    // through the fast path, or the rejections it carries would go unreported exactly as before this fix.
+    const auto errorsKey = responseBody.find(R"("errors")");
+    const auto hasBulkErrors = errorsKey != std::string::npos &&
+                               responseBody.find("true", errorsKey) < responseBody.find_first_of(",}", errorsKey);
     const auto looksLikeDeleteByQuery = responseBody.find(R"("failures")") != std::string::npos;
     if (!hasBulkErrors && !looksLikeDeleteByQuery)
     {
