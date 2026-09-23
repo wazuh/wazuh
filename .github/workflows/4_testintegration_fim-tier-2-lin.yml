@@ -102,12 +102,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install auditd -y
+          sudo /usr/sbin/auditd || true
       # Run fim integration tests.
       - name: Run fim integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 2 test_fim/ \
-            -k "not whodata and not Who-data"
+          sudo python -m pytest --tier 2 test_fim/
       - name: "Compilation cache statistics"
         if: always()
         run: sccache --show-stats 2>/dev/null | grep -viE "cache location|bucket" || true
