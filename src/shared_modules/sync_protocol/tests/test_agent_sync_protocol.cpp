@@ -2930,7 +2930,49 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithChecksumMismatchHasReason)
         SyncModuleResult syncResult = protocol->synchronizeModule(Mode::DELTA);
         EXPECT_FALSE(syncResult.success);
         EXPECT_FALSE(syncResult.failureReason.empty());
-        EXPECT_NE(syncResult.failureReason.find("version mismatch"), std::string::npos);
+        EXPECT_NE(syncResult.failureReason.find("checksum mismatch"), std::string::npos);
+        // This instance was constructed with the default isFeedBased=false (FIM/SCA/agent-info
+        // metadata-groups shape): the wording must stay generic, not claim a VD "feed" that has
+        // nothing to do with this instance.
+        EXPECT_EQ(syncResult.failureReason.find("feed"), std::string::npos);
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    bool response = feedHttpResult(409, R"({"current_version":991021,"error":"version_mismatch"})");
+
+    EXPECT_TRUE(response);
+
+    syncThread.join();
+}
+
+// Companion to the test above: syscollector's dedicated VD AgentSyncProtocol instance is
+// constructed with isFeedBased=true, and only that instance should get the "feed" wording --
+// this is what actually lets syscollectorImp.cpp's VD sync log say "feed version mismatch"
+// without misdescribing a FIM/SCA/agent-info metadata-groups 409 the same way.
+TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithChecksumMismatchHasFeedReasonWhenFeedBased)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
+    {
+    };
+    protocol = std::make_unique<AgentSyncProtocol>("test_module_vd", ":memory:", testLogger, mockQueue,
+                                                   mockSyncTransport, /*isFeedBased=*/true);
+
+    std::thread syncThread(
+        [this]()
+    {
+        std::vector<PersistedData> testData =
+        {
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+        };
+
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData));
+        EXPECT_CALL(*mockQueue, resetSyncingItems()).Times(1);
+
+        SyncModuleResult syncResult = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_FALSE(syncResult.success);
+        EXPECT_NE(syncResult.failureReason.find("feed version mismatch"), std::string::npos);
     });
 
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));

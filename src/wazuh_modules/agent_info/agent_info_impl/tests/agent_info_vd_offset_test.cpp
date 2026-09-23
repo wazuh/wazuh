@@ -8,6 +8,7 @@
 #include <metadata_provider.h>
 
 #include <cstring>
+#include <filesystem>
 #include <memory>
 #include <string>
 
@@ -29,6 +30,14 @@ class AgentInfoVdOffsetTest : public ::testing::Test
     protected:
         void SetUp() override
         {
+            // Create directory for shared memory file (required on Unix/macOS), same as
+            // agent_info_integrity_test.cpp: the metadata_provider tests below construct the
+            // real SharedMemoryProvider singleton, which opens "var/run/.wazuh_agent_metadata"
+            // relative to the test binary's cwd. Not currently reachable in CI (an earlier test
+            // file in the same build dir creates the directory first), but this test should not
+            // depend on that ordering to pass in isolation.
+            std::filesystem::create_directories("var/run");
+
             m_mockDBSync = std::make_shared<MockDBSync>();
 
             EXPECT_CALL(*m_mockDBSync, handle())

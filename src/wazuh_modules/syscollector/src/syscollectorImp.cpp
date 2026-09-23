@@ -2427,9 +2427,12 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
         m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, logger_func);
         m_logFunction(LOG_DEBUG, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
 
-        // Initialize VD sync protocol with different module name to avoid routing conflicts
+        // Initialize VD sync protocol with different module name to avoid routing conflicts.
+        // isFeedBased = true: this instance's 409s are checked against the manager's VD feed
+        // offset, not a per-item/global-state checksum -- see determineSyncFailureReasonBasedOnSyncResult().
         std::string vdModuleName = moduleName + "_vd";
-        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, logger_func_vd);
+        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, logger_func_vd,
+                                                                 nullptr, nullptr, /*isFeedBased=*/true);
         m_logFunction(LOG_DEBUG, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
 
         // Initialize schema validator factory from embedded resources

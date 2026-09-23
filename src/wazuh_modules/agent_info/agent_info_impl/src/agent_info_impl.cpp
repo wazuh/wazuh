@@ -236,7 +236,9 @@ void AgentInfoImpl::start(int interval, int integrityInterval, const std::functi
     // vd_feed_offset at its stale/zero value for a full 5s, guaranteeing a 409 the manager's
     // feed had already moved past. Skipping it here does not touch the delay for any other
     // cycle where a real metadata/group change needs the coordination it protects.
-    if (!m_isFirstRun || !m_isFirstGroupsRun)
+    const bool coordinationCouldRunThisCycle = !m_isFirstRun || !m_isFirstGroupsRun;
+
+    if (coordinationCouldRunThisCycle)
     {
         std::unique_lock<std::mutex> lock(m_mutex);
         m_cv.wait_for(lock, std::chrono::seconds(5), [this] { return m_stopped.load(); });
@@ -683,6 +685,11 @@ void AgentInfoImpl::updateMetadataProvider(const nlohmann::json& agentMetadata, 
     copyField(metadata.os_version, sizeof(metadata.os_version), agentMetadata, "host_os_version");
     copyField(metadata.cluster_name, sizeof(metadata.cluster_name), agentMetadata, "cluster_name");
 
+    // metadata_provider_update() (called below) ignores this field -- vd_feed_offset is
+    // exclusively published via metadata_provider_update_vd_feed_offset(), from
+    // observeVdFeedOffset() (#39543 review follow-up). Still copied here so `metadata` stays a
+    // faithful snapshot for any future consumer of this struct; it is not currently used for
+    // anything else downstream of this function.
     if (agentMetadata.contains("vd_feed_offset") && agentMetadata["vd_feed_offset"].is_number_unsigned())
     {
         metadata.vd_feed_offset = agentMetadata["vd_feed_offset"].get<uint64_t>();
@@ -2516,26 +2523,29 @@ AgentInfoImpl::VdOffsetObserveResult AgentInfoImpl::observeVdFeedOffset(uint64_t
             return result;
         }
 
+        // Publish to metadata_provider right here, on this IPC/query thread, BEFORE the durable
+        // DBSync write below -- not just to agent-info's own durable vd_feed_state table.
+        // Waiting for the next populateAgentMetadata() cycle (main loop, its own cadence) is what
+        // let a fresh agent's first VD sync race an empty/stale offset in metadata_provider
+        // (#39543): local metadata gathering (hostname/os info, fast, no network) usually
+        // finishes well before this observe() call (which needs a round trip to the manager)
+        // ever fires, so has_metadata is normally already true here and this actually takes
+        // effect. When it is not yet true (no full snapshot exists at all so far), this is a
+        // no-op and the value is simply left for that first full populate to pick up, same as
+        // before this call existed. Ordered ahead of writeVdFeedStateLocked() (a DBSync
+        // transaction) specifically because that write is not free -- publishing first shaves
+        // that extra latency off the window a racing first VD sync could still land in.
+        if (metadata_provider_update_vd_feed_offset(offset) == 0)
+        {
+            m_logFunction(LOG_DEBUG, "Published a fresh VD feed offset directly to metadata_provider.");
+        }
+
         state.hasOffset = true;
         state.offset = offset;
         writeVdFeedStateLocked(state);
     }
 
     result.changed = true;
-
-    // Publish the fresh offset to metadata_provider right here, on this IPC/query thread --
-    // not just to agent-info's own durable vd_feed_state table above. Waiting for the next
-    // populateAgentMetadata() cycle (main loop, its own cadence) is what let a fresh agent's
-    // first VD sync race an empty/stale offset in metadata_provider (#39543): local metadata
-    // gathering (hostname/os info, fast, no network) usually finishes well before this
-    // observe() call (which needs a round trip to the manager) ever fires, so has_metadata is
-    // normally already true here and this actually takes effect. When it is not yet true
-    // (no full snapshot exists at all so far), this is a no-op and the value is simply left
-    // for that first full populate to pick up, same as before this call existed.
-    if (metadata_provider_update_vd_feed_offset(offset) == 0)
-    {
-        m_logFunction(LOG_DEBUG, "Published a fresh VD feed offset directly to metadata_provider.");
-    }
 
     // Deliberately outside the lock above: queryModuleWithRetry can block for several
     // seconds retrying syscollector, and holding m_dbSyncMutex across that would stall

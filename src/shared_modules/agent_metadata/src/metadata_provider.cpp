@@ -73,6 +73,22 @@ namespace
 
             int update(const agent_metadata_t* metadata)
             {
+                // Serializes this process's own writers (populateAgentMetadata()'s full update()
+                // vs. observeVdFeedOffset()'s narrow updateVdFeedOffset(), which can run
+                // concurrently on different threads within wazuh-modulesd/agentd) -- #39543 review
+                // follow-up. The `updating` flag below is a reader-facing seqlock (stops a reader
+                // from observing a torn record); it does nothing to stop two writers from
+                // interleaving, which could let a stale read-then-write clobber a fresher value.
+                // Static, not an instance member: a std::mutex has a non-trivial destructor, and
+                // the class itself must stay trivially destructible (#38766, see the static_assert
+                // below) -- a static class member lives in its own storage and is not torn down by
+                // ~SharedMemoryProvider(), so it does not affect that guarantee. It only
+                // synchronizes writers within this process; it is not shared across processes
+                // (agentd and modulesd each have their own instance of this static), which is the
+                // pre-existing, separate hazard start_agent.c's w_agentd_populate_metadata()
+                // comment already documents.
+                std::lock_guard<std::mutex> writeLock(s_writeMutex);
+
                 if (!metadata || !m_shm)
                 {
                     return -1;
@@ -124,7 +140,17 @@ namespace
                 std::strncpy(m_shm->base_metadata.cluster_name, metadata->cluster_name, sizeof(m_shm->base_metadata.cluster_name) - 1);
                 m_shm->base_metadata.cluster_name[sizeof(m_shm->base_metadata.cluster_name) - 1] = '\0';
 
-                m_shm->base_metadata.vd_feed_offset = metadata->vd_feed_offset;
+                // vd_feed_offset is deliberately NOT copied from `metadata` here: this field is
+                // exclusively owned/written by updateVdFeedOffset(), the narrow path the IPC
+                // handler uses the moment the manager reports a fresh offset. A full update() is
+                // driven by a periodic, DB-backed read (populateAgentMetadata()'s own
+                // getVdFeedState() snapshot, or agentd's carry-over read in
+                // w_agentd_populate_metadata()) that can legitimately be stale by the time this
+                // call actually runs -- serializing writers (the mutex above) stops torn records,
+                // but does nothing to stop this call from overwriting a fresher value with a
+                // stale one it read earlier (#39543 review follow-up). Leaving the field alone
+                // here means whichever of the two ever wrote it last via updateVdFeedOffset()
+                // stays authoritative regardless of how update() calls interleave with it.
 
                 // Copy groups
                 m_shm->groups_count = (metadata->groups_count > MAX_GROUPS_PER_MULTIGROUP) ? MAX_GROUPS_PER_MULTIGROUP : metadata->groups_count;
@@ -158,6 +184,9 @@ namespace
             // function existed.
             int updateVdFeedOffset(uint64_t offset)
             {
+                // Same writer-serialization rationale as update() above.
+                std::lock_guard<std::mutex> writeLock(s_writeMutex);
+
                 if (!m_shm)
                 {
                     return -1;
@@ -258,6 +287,9 @@ namespace
 
             void reset()
             {
+                // Same writer-serialization rationale as update() above.
+                std::lock_guard<std::mutex> writeLock(s_writeMutex);
+
 #ifndef _WIN32
 
                 // Same read-only mapping hazard as update().
@@ -406,10 +438,15 @@ namespace
             int m_shm_fd;
             bool m_read_only;
 #endif
+            static std::mutex s_writeMutex;
     };
 
+    std::mutex SharedMemoryProvider::s_writeMutex;
+
     // Guards the invariant above: anything that makes this destructible again brings back
-    // the exit-time unmap that #38766 was.
+    // the exit-time unmap that #38766 was. A static data member is not part of an instance's
+    // layout/teardown (it has its own storage duration, independent of ~SharedMemoryProvider()),
+    // so s_writeMutex above does not affect this.
     static_assert(std::is_trivially_destructible<SharedMemoryProvider>::value,
                   "SharedMemoryProvider must stay trivially destructible: a destructor would "
                   "unmap the segment before agentd's shutdown drain has finished reading it.");
