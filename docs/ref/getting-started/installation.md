@@ -251,8 +251,8 @@ echo '{"wazuh": "<NEW_WAZUH_PASSWORD>", "wazuh-wui": "<NEW_WAZUH_WUI_PASSWORD>"}
     | sudo /var/wazuh-manager/bin/rbac_control change-password --passwords-file -
 ```
 
-A password must be 12 to 64 characters long and contain at least one uppercase letter, one lowercase
-letter, one digit and one non-alphanumeric character; the API rejects anything else with error
+A password must be 12 to 64 characters long and contain at least one letter and one digit; the API
+rejects anything else with error
 `5009` (length) or `5007` (character classes).
 
 The same change can be made through the API, which is the option for automation. `wazuh` has ID `1`

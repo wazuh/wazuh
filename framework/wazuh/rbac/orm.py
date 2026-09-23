@@ -49,7 +49,7 @@ _DUMMY_HASH = generate_password_hash("wazuh-dummy-constant-never-matches-any-rea
 # same policy the Server API enforces in wazuh/security.py. The omitted punctuation (quotes,
 # backslash, backtick, $, ! and #) keeps a value safe to paste through shell, YAML, JSON and
 # docker-compose interpolation without escaping.
-_PASSWORD_SYMBOLS = '.,_+:@%^=~-'
+_PASSWORD_SYMBOLS = '.,_+:@%^=~-'  # nosec B105 - the generator's symbol set, not a password
 _PASSWORD_ALPHABET = string.ascii_letters + string.digits + _PASSWORD_SYMBOLS
 _PASSWORD_LENGTH = 32
 

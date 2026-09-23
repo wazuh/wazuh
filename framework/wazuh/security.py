@@ -19,11 +19,10 @@ from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager,
 from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
 from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
 
-# Minimum twelve characters, at least one uppercase letter, one lowercase letter, one number and one special character:
-_user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$')
+# At least one letter and one digit, PCI DSS v4.0 requirement 8.3.6. \Z rather than $, which would
+# also match before a trailing newline.
+_user_password = re.compile(r'^(?=.*[A-Za-z])(?=.*\d).*\Z')
 
-# The upper bound, and the lower bound inside the regex above, satisfy PCI DSS v4.0 requirement
-# 8.3.6. The character classes go beyond it: 8.3.6 asks only for letters and digits.
 PASSWORD_MIN_LENGTH = 12
 PASSWORD_MAX_LENGTH = 64
 

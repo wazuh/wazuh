@@ -264,12 +264,14 @@ rm -rf "${root}"
 root="$(make_tree)"
 export CRED_DIR="${root}/etc/wazuh"
 . "${CRED_SRC}/credentials-lib.sh"
-for case in "shortA1." "alllowercase1." "ALLUPPERCASE1." "NoDigitsAtAll." "NoSymbolsHere123"; do
+for case in "shortA1." "NoDigitsAtAll." "123456789012."; do
     cred_validate_password KEY "${case}" 2> /dev/null
     check "the policy rejects '${case}'" "1" "$?"
 done
-cred_validate_password KEY "Perfectly.Fine1" 2> /dev/null
-check "and accepts a compliant value" "0" "$?"
+for case in "Perfectly.Fine1" "alllowercase1" "NoSymbolsHere123"; do
+    cred_validate_password KEY "${case}" 2> /dev/null
+    check "the policy accepts '${case}'" "0" "$?"
+done
 
 # What is generated must pass what is enforced, every time rather than most times.
 generated_ok="yes"
