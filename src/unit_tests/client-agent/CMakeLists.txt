@@ -96,6 +96,13 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
 list(APPEND client-agent_names "test_startup_gate")
 list(APPEND client-agent_flags "-Wl,--wrap,OS_SHA256_File ${DEBUG_OP_WRAPPERS}")
 
+# POSIX-only: the Windows branch dispatches in-process via control_dispatch(), no
+# socket/retry involved. Wraps the OS_ConnectUnixDomain/sleep boundary controlAgent()
+# retries against, same convention as test_agent_report.c.
+list(APPEND client-agent_names "test_reload_agent")
+list(APPEND client-agent_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
+                                -Wl,--wrap,sleep -Wl,--wrap,close ${DEBUG_OP_WRAPPERS}")
+
 list(APPEND client-agent_names "test_ca_publication")
 # Real temporary files, so no filesystem wrappers -- but the install path logs, and the
 # unwrapped logger reads ossec.conf and dies without one.
@@ -284,6 +291,12 @@ if(TARGET test_agent_auth_cli)
     # test looks for another, and the failure reads as "the file does not exist" from inside a
     # function the test just proved could see it.
     target_compile_definitions(test_agent_auth_cli PRIVATE CLIENT)
+endif()
+
+if(TARGET test_reload_agent)
+    # CONTROL_SOCK in defs.h is "queue/sockets/control" with -DCLIENT (how the agent library is
+    # built) and "queue/sockets/control.sock" without, so the expected path must match.
+    target_compile_definitions(test_reload_agent PRIVATE CLIENT)
 endif()
 
 if(TARGET test_token_bootstrap)
