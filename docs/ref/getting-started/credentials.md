@@ -266,8 +266,14 @@ still in the file is ignored whatever it contains. Replacing a credential on a r
 rotation, not installation.
 
 Removing the package leaves the credentials file untouched. Purging it removes only the
-`WAZUH_MANAGER_*` keys, and only from inside the managed block; the file, the CA directory and
-`/etc/wazuh` are removed only once no other component's keys remain.
+`WAZUH_MANAGER_*` keys, and only from inside the managed block — lines you wrote are never touched,
+even when they carry the same key.
+
+The last component out then removes what is left, `/etc/wazuh` included. "Last" is asked of the
+package manager: the file, the CA directory and `/etc/wazuh` go only when neither `wazuh-indexer`
+nor `wazuh-dashboard` is still installed, so purging the manager on a host that also runs one of
+them cannot take the trust material out from under it. A CA relocated with `WAZUH_CA_DIR` is left
+alone, and `/etc/wazuh` is removed with `rmdir`, so anything of yours in it survives.
 
 ## Rotation
 
