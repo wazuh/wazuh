@@ -33,6 +33,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixed missing Windows FIM inventory for file names with non-ANSI characters. ([#38301](https://github.com/wazuh/wazuh/pull/38301))
 - Fixed an agent crash caused by unsynchronized reads of the FIM directories list from the whodata callbacks. ([#39201](https://github.com/wazuh/wazuh/issues/39201))
+- Fixed FIM eBPF whodata dropping events on hosts whose NSS backend is remote. ([#39360](https://github.com/wazuh/wazuh/issues/39360))
 - Fixed the Windows agent MSI upgrade leaving the agent broken after the next reboot, and the silent `/q` upgrade hanging, when a system restart was pending. ([#38277](https://github.com/wazuh/wazuh/pull/38277))
 - Fixed syscollector sometimes keeping excluded macOS packages in the inventory. ([#38340](https://github.com/wazuh/wazuh/pull/38340))
 - Fixed `wazuh-execd` crashing when more active response commands than supported are defined. ([#38410](https://github.com/wazuh/wazuh/pull/38410))
