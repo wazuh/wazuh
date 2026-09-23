@@ -119,6 +119,7 @@ static void test_w_mconf_validate_checks_files(void **state) {
                    "  <remote><https>\n"
                    "    <certificate>test_mconf-config.conf</certificate>\n"
                    "    <key>test_mconf-config.conf</key>\n"
+                   "    <ca_certificate>test_mconf-config.conf</ca_certificate>\n"
                    "  </https></remote>\n"
                    "  <auth>\n"
                    "    <ssl_manager_cert>test_mconf-config.conf</ssl_manager_cert>\n"
