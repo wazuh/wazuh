@@ -13,6 +13,7 @@
 #include "fakeIndexer.hpp"
 #include "indexerConnector.hpp"
 #include "json.hpp"
+#include "keyStore.hpp"
 #include "stringHelper.h"
 #include "gtest/gtest.h"
 #include <atomic>
@@ -43,6 +44,30 @@ static const auto C_ADDRESS {INDEXER_HOSTNAME + ":" + std::to_string(C_PORT)};
 
 // The async tests override flush_interval_seconds=1 in the connector config.
 static const auto MAX_ASYNC_PUBLISH_TIME_MS {5000};
+
+namespace
+{
+    bool seedIndexerCredentials()
+    {
+        try
+        {
+            // Keystore::put() opens `queue/keystore` relative to the working directory and creates
+            // the store itself, but not the directory above it.
+            std::filesystem::create_directories("queue");
+            Keystore::put("indexer", "username", "test-user");
+            Keystore::put("indexer", "password", "test-password");
+            return true;
+        }
+        catch (const std::exception&)
+        {
+            return false;
+        }
+    }
+
+    /// Seeded before main(): the connector caches the indexer credentials on its first use and throws
+    /// when they are unset, and TearDown() removes `queue/` after every test.
+    const bool g_credentialsSeeded = seedIndexerCredentials();
+} // namespace
 
 void IndexerConnectorTest::SetUp()
 {

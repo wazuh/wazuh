@@ -26,7 +26,7 @@ silently and leave the deployment holding a credential nobody else has.
 | `WAZUH_MANAGER_API_PASSWORD` | `wazuh` (Server API, in `rbac.db`) | **owns** it — generates one if you do not supply it, and publishes it |
 | `WAZUH_MANAGER_WUI_PASSWORD` | `wazuh-wui` (Server API, read by the dashboard) | **owns** it — generates one if you do not supply it, and publishes it |
 | `WAZUH_INDEXER_MANAGER_PASSWORD` | `wazuh-manager` (on the indexer) | **consumes** it — never generates it, never publishes it |
-| `WAZUH_MANAGER_CERT_SANS` | the manager's own certificates | **owns** them |
+| `WAZUH_MANAGER_CERT_SANS` | the manager's own certificates | **owns** them — publishes the value when you supply one |
 | `WAZUH_CA_DIR` | trust material, default `/etc/wazuh/ca` | path only, not a secret |
 
 A credential the manager *owns* lives in its own datastore, so generating one makes it true. A
@@ -40,8 +40,8 @@ the one key that commonly leaves a fresh manager unresolved until the indexer pu
 the input, the handoff between components, and the record you read to find a generated password.
 
 * `0600 root:root`, in a `0700 root:root` directory. It is refused outright — with the reason
-  logged — when its ownership or mode is wrong, when it is a symlink, or when any directory above
-  it is group- or world-writable.
+  logged — when its owner, group or mode is wrong, when it is a symlink, or when any directory above
+  it is group- or world-writable. `$WAZUH_CA_DIR` is held to the same directory rule.
 * Plain `KEY=VALUE` lines. The file is **parsed, never sourced**: nothing in it is ever executed.
 * The packages own a delimited block and nothing else. Lines you write outside it are never
   touched, reordered or reformatted, even when they carry the same key.
@@ -93,7 +93,7 @@ That trap is why the file, not the command line, is the documented way to choose
 
 Every password, supplied or generated, must be **12 to 64 characters and contain a letter and a
 digit**, PCI DSS v4.0 requirement 8.3.6. This is the rule the Server API itself enforces, so a value
-accepted here is never one the API rejects later.
+accepted here is never one the API rejects later. A supplied value must also be printable ASCII.
 
 Generated passwords are 32 characters drawn from `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`. Quotes,
 backslash, backtick, `$`, `!` and `#` are left out deliberately, so a value is safe to paste through
@@ -159,8 +159,12 @@ mode flag, because the presence of a private key beside the anchor is the signal
 |---------------------|------------------------------|--------|
 | nothing | no | mint a bootstrap CA, then issue both pairs from it |
 | anchor + key | no | issue both pairs from the CA found |
-| anchor only | yes | use both, generate nothing |
+| anchor + key | one of the two | keep that pair, issue only the missing one |
+| nothing | one of the two | **unresolved**: no CA is minted, since its anchor would not match the pair |
+| anchor only | yes | use both, install the anchor if `etc/certs` lacks it, generate nothing |
 | anchor only | no | install the anchor; **unresolved**, the service will not start |
+
+A pair already in `etc/certs` is never overwritten.
 
 A host that was never given a CA private key cannot sign, and so cannot be where one leaks from.
 
@@ -192,7 +196,8 @@ interfaces are excluded, or a host running containers would advertise its `docke
 addresses too.
 
 `WAZUH_MANAGER_CERT_SANS` **replaces** that derived set; loopback is always appended. Wildcard names
-are refused: under a shared CA, a node holding one could present a certificate for any other node.
+are dropped from the list, with a warning: under a shared CA, a node holding one could present a
+certificate for any other node.
 
 ```sh
 WAZUH_MANAGER_CERT_SANS='DNS:wazuh.corp.local,IP:10.0.1.11'

@@ -19,6 +19,9 @@
 #   A   nothing in the CA dir        -> mint a bootstrap CA, then issue both pairs from it
 #   B   anchor + key                 -> issue both pairs from the CA found
 #   C   anchor only, pair in place   -> install the anchor, generate nothing   (handled by the caller)
+#
+# Each pair is resolved on its own: one already in ${CERTS_DIR} is kept as it is, and only the missing
+# one is issued.
 #   D   anchor only, no pair         -> install the anchor; unresolved, the service will not start
 #
 # A and B are one install run twice: the first package creates what the second finds.
@@ -54,6 +57,9 @@ CERTS_DIR="${DIR}/etc/certs"
 
 CA_CERT="${CA_DIR}/root-ca.pem"
 CA_KEY="${CA_DIR}/root-ca.key"
+
+DN_O="Wazuh"
+DN_OU="Wazuh Manager"
 
 RSA_BITS=2048
 DAYS=3650
@@ -154,11 +160,11 @@ build_sans() {
     esac
 
     # A wildcard name is never emitted: under a shared CA a node holding one can present a
-    # certificate for any other node.
-    printf '%s' "${_bs}" | tr ',' '\n' | grep -q '^DNS:\*' && {
-        err "refusing a wildcard name in the SAN list"
-        return 1
-    }
+    # certificate for any other node. It is dropped and the rest of the list is kept.
+    if printf '%s' "${_bs}" | tr ',' '\n' | grep -q '^DNS:\*'; then
+        err "dropping wildcard names from the SAN list"
+        _bs=$(printf '%s' "${_bs}" | tr ',' '\n' | grep -v '^DNS:\*' | paste -sd, -)
+    fi
 
     printf '%s' "${_bs}"
 }
@@ -179,8 +185,8 @@ prompt             = no
 
 [dn]
 CN = ${_oc_cn}
-O  = Wazuh
-OU = Wazuh Manager
+O  = ${DN_O}
+OU = ${DN_OU}
 
 [ext]
 basicConstraints = CA:FALSE
@@ -263,6 +269,10 @@ issue_pair() {
     return 0
 }
 
+pair_present() {
+    [ -f "${CERTS_DIR}/$1.pem" ] && [ -f "${CERTS_DIR}/$1-key.pem" ]
+}
+
 # -----------------------------------------------------------------------------------------
 # Run
 # -----------------------------------------------------------------------------------------
@@ -274,9 +284,7 @@ if ! install -d -m 1770 -o root -g wazuh-manager "${CERTS_DIR}" 2>/dev/null; the
     }
 fi
 
-# Resolved before anything is created: a rejected SAN set must not leave a freshly minted CA behind
-# for the next run to adopt.
-SANS=$(build_sans) || exit 1
+SANS=$(build_sans)
 CN=$(hostname 2>/dev/null)
 [ -n "${CN}" ] || CN="wazuh-manager"
 
@@ -286,6 +294,13 @@ if [ -f "${CA_CERT}" ] && [ ! -f "${CA_KEY}" ]; then
     # CA the moment somebody places an issued pair here.
     install -m 0640 -o root -g wazuh-manager "${CA_CERT}" "${CERTS_DIR}/root-ca.pem" 2>/dev/null \
         || cp -f "${CA_CERT}" "${CERTS_DIR}/root-ca.pem"
+
+    # Case C: both pairs were placed and only the anchor was missing.
+    if pair_present remoted && pair_present indexer-connector; then
+        log "installed the trust anchor from ${CA_DIR} for the pairs already in place"
+        exit 0
+    fi
+
     err "found a trust anchor in ${CA_DIR} but no CA private key: this host cannot sign for itself"
     err "place an issued certificate and key in ${CERTS_DIR} (remoted.pem/remoted-key.pem and"
     err "indexer-connector.pem/indexer-connector-key.pem), or supply the CA key on the host that mints it"
@@ -293,6 +308,12 @@ if [ -f "${CA_CERT}" ] && [ ! -f "${CA_KEY}" ]; then
 fi
 
 if [ ! -f "${CA_CERT}" ]; then
+    # A bootstrap CA would replace the anchor that an already placed pair chains to.
+    if pair_present remoted || pair_present indexer-connector; then
+        err "one TLS pair is already in ${CERTS_DIR} but ${CA_DIR} holds no CA to issue the other from"
+        err "place the missing pair in ${CERTS_DIR}, or the CA that issued the existing one in ${CA_DIR}"
+        exit 1
+    fi
     mint_ca || exit 1            # case A
 else
     log "using the existing CA ${CA_CERT}"   # case B
@@ -300,23 +321,29 @@ fi
 
 # Logged on every run: a wrong SAN set is the one failure here that is otherwise silent until the
 # first peer connection.
-log "issuing with CN=${CN} SANs ${SANS}"
+log "issuing with DN CN=${CN},O=${DN_O},OU=${DN_OU} and SANs ${SANS}"
 
-issue_pair "remoted" "${CN}" "${SANS}" || exit 1
-issue_pair "indexer-connector" "${CN}" "${SANS}" || exit 1
+for _pair in remoted indexer-connector; do
+    if pair_present "${_pair}"; then
+        log "keeping the existing ${_pair} pair"
+        continue
+    fi
+
+    issue_pair "${_pair}" "${CN}" "${SANS}" || exit 1
+
+    # remoted and authd open the listener pair after dropping privileges, so it belongs to the
+    # service user. The indexer material is read as root and stays root-owned, so a compromised
+    # daemon cannot replace the manager's own trust material.
+    _owner="root:wazuh-manager"
+    [ "${_pair}" = "remoted" ] && _owner="wazuh-manager:wazuh-manager"
+    chown "${_owner}" "${CERTS_DIR}/${_pair}.pem" "${CERTS_DIR}/${_pair}-key.pem" 2>/dev/null
+    chmod 0640 "${CERTS_DIR}/${_pair}.pem" "${CERTS_DIR}/${_pair}-key.pem" 2>/dev/null
+done
 
 install -m 0640 -o root -g wazuh-manager "${CA_CERT}" "${CERTS_DIR}/root-ca.pem" 2>/dev/null \
     || cp -f "${CA_CERT}" "${CERTS_DIR}/root-ca.pem"
-
-# remoted and authd open the listener pair after dropping privileges, so it belongs to the service
-# user. The indexer material is read as root and stays root-owned, so a compromised daemon cannot
-# replace the manager's own trust anchor.
-chown wazuh-manager:wazuh-manager "${CERTS_DIR}/remoted.pem" "${CERTS_DIR}/remoted-key.pem" 2>/dev/null
-chown root:wazuh-manager "${CERTS_DIR}/root-ca.pem" \
-    "${CERTS_DIR}/indexer-connector.pem" "${CERTS_DIR}/indexer-connector-key.pem" 2>/dev/null
-chmod 0640 "${CERTS_DIR}/remoted.pem" "${CERTS_DIR}/remoted-key.pem" \
-    "${CERTS_DIR}/root-ca.pem" \
-    "${CERTS_DIR}/indexer-connector.pem" "${CERTS_DIR}/indexer-connector-key.pem" 2>/dev/null
+chown root:wazuh-manager "${CERTS_DIR}/root-ca.pem" 2>/dev/null
+chmod 0640 "${CERTS_DIR}/root-ca.pem" 2>/dev/null
 
 log "certificates are in place under ${CERTS_DIR}"
 exit 0
