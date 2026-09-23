@@ -185,7 +185,9 @@ static void sanitizeJsonValue(nlohmann::json& input)
     }
     else if (input.is_string())
     {
-        const std::string& stringValue = input.get_ref<const std::string&>();
+        // Collected strings can hold arbitrary bytes (e.g. a process name set with prctl), and
+        // every later dump() of the item throws on invalid UTF-8.
+        const std::string stringValue = Utils::sanitizeUtf8(input.get_ref<const std::string&>());
 
         if (stringValue != " ")
         {

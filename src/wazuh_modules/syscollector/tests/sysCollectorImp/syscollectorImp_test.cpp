@@ -2718,6 +2718,66 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     }
 }
 
+TEST_F(SyscollectorImpTest, sanitizeJsonValuesReplacesInvalidUtf8)
+{
+    // A process can set its name to arbitrary bytes, which then reach the ports inventory.
+    auto ports = nlohmann::json::parse(
+                     R"([{"file_inode":43481,"source_ip":"0.0.0.0","source_port":47748,"process_pid":1234,"network_transport":"udp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"","host_network_egress_queue":0}])");
+    ports[0]["process_name"] = std::string {"evil\xFF"};
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(ports));
+
+    CallbackMock wrapper;
+    std::function<void(const std::string&)> callbackData
+    {
+        [&wrapper](const std::string & data)
+        {
+            wrapper.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    const std::string expectedName {R"("name":"evil)" "\xEF\xBF\xBD" R"(")"};
+
+    EXPECT_CALL(wrapper, callbackMock(testing::HasSubstr(expectedName))).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, testing::HasSubstr(expectedName), testing::_)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackData, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackData,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false, false, false, false, true, true, false, false, false, false, false, false, true);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+}
+
 // ========================================
 // Tests for query method and coordination commands
 // ========================================
