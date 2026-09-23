@@ -232,6 +232,33 @@ remove the pair and start the service again.
 The bootstrap CA is local to the host and disposable. A host that minted its own and later joins a
 real cluster does not merge trust: the cluster's CA re-issues everything.
 
+## Container images
+
+A container image built by installing the package is a special case worth stating plainly: the
+package's `postinst` runs the resolver, so the image layer carries a seeded `rbac.db`, a bootstrap
+CA **including its private key**, and an issued certificate set. Every container started from that
+image would share all of it — which is worse than a shipped default password, because it looks
+random.
+
+Clear them so the first start of each container resolves from nothing:
+
+```bash
+/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --clear
+```
+
+Run it at the end of the Dockerfile, so the image ships with no credentials at all, or once from an
+entrypoint before the first start. It removes `rbac.db`, the keystore, the certificates and the
+bootstrap CA, and takes the manager's own keys out of the managed block of the credentials file.
+
+> [!WARNING]
+> `--clear` is the one destructive operation here, and `rbac.db` holds **every** Server API user,
+> role, policy and rule — not only the two default users. On a deployment with custom RBAC, clearing
+> means recreating it. It refuses to run while the manager is running; stop the service first.
+
+Two things it deliberately leaves alone: a CA directory holding only an anchor, since no private key
+beside it means the CA was issued elsewhere and is not the manager's to destroy, and anything
+outside the managed block or belonging to another component.
+
 ## Upgrades and removal
 
 An upgrade takes step 1 for everything: existing values are detected and left untouched, and any key

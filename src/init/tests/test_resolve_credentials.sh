@@ -66,7 +66,7 @@ make_tree() {
     chmod 0700 "${root}"
 
     mkdir -p "${root}/base" "${root}/home/bin" "${root}/home/lib" \
-             "${root}/home/api/configuration/security" "${root}/store"
+             "${root}/home/api/configuration/security" "${root}/home/queue/keystore"
     chmod 0700 "${root}/base"
 
     # 1770 root:<group> is what InstallServer() creates and what the certificate helper insists on.
@@ -78,7 +78,8 @@ make_tree() {
 
     cat > "${root}/home/bin/wazuh-manager-keystore" <<'STUB'
 #!/bin/sh
-S="$(dirname "$0")/../../store"
+S="$(dirname "$0")/../queue/keystore"
+mkdir -p "${S}"
 f=""; k=""; g=0
 while [ -n "$1" ]; do
     case "$1" in
@@ -201,14 +202,14 @@ printf "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'\n" >> "${root}/base/cred
 run_resolver "${root}" --prestart
 check "the next start succeeds once the key is there" "0" "${RC}"
 check "and the credential is in the manager's own store" "Indexer.Wr0te1" \
-    "$(cat "${root}/store/indexer.password")"
+    "$(cat "${root}/home/queue/keystore/indexer.password")"
 
 # Re-running changes nothing: an upgrade takes step 0 for everything.
-before="$(md5sum "${root}/base/credentials.env" "${root}/store/indexer.password" \
+before="$(md5sum "${root}/base/credentials.env" "${root}/home/queue/keystore/indexer.password" \
     "${root}/home/etc/certs/remoted.pem" | md5sum)"
 run_resolver "${root}" --prestart
 check "re-running is a no-op" "${before}" \
-    "$(md5sum "${root}/base/credentials.env" "${root}/store/indexer.password" \
+    "$(md5sum "${root}/base/credentials.env" "${root}/home/queue/keystore/indexer.password" \
         "${root}/home/etc/certs/remoted.pem" | md5sum)"
 cleanup "${root}"
 
@@ -354,6 +355,82 @@ check "the connector SAN setting is honoured" "yes" \
 check "the remoted SAN setting is honoured separately" "yes" \
     "$(openssl x509 -in "${root}/home/etc/certs/remoted.pem" -noout -ext subjectAltName \
         2>/dev/null | grep -q 'agents.corp.local' && echo yes)"
+cleanup "${root}"
+
+# --------------------------------------------------------------------------------------------
+# --clear
+#
+# For an image built by installing the package: its postinst resolved, so the image layer carries
+# one rbac.db, one CA private key and one certificate set that every container would share.
+# --------------------------------------------------------------------------------------------
+
+root="$(make_tree)"
+write_credentials "${root}" "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'"
+run_resolver "${root}" --install
+baked="$(seeded_password "${root}" wazuh)"
+baked_ca="$(openssl x509 -in "${root}/base/ca/root-ca.pem" -noout -fingerprint 2>/dev/null)"
+
+run_resolver "${root}" --clear
+check "--clear exits 0" "0" "${RC}"
+check "it removes rbac.db" "" "$(ls "${root}/home/api/configuration/security" | grep '^rbac.db$')"
+check "it clears the keystore" "0" "$(ls "${root}/home/queue/keystore" 2>/dev/null | wc -l)"
+check "it removes every certificate" "0" "$(ls "${root}/home/etc/certs" | wc -l)"
+check "it removes the bootstrap CA, private key included" "0" "$(ls "${root}/base/ca" 2>/dev/null | wc -l)"
+check "it removes the manager's published keys" "" "$(published "${root}" WAZUH_MANAGER_API_PASSWORD)"
+check "but leaves a key it does not own" "1" \
+    "$(grep -c "^WAZUH_INDEXER_MANAGER_PASSWORD=" "${root}/base/credentials.env")"
+
+# The point of clearing: the next start must not reproduce what the image carried.
+run_resolver "${root}" --prestart
+check "the next start resolves again" "0" "${RC}"
+check "and the password differs from the baked one" "differ" \
+    "$([ "$(seeded_password "${root}" wazuh)" != "${baked}" ] && echo differ)"
+check "and so does the CA" "differ" \
+    "$([ "$(openssl x509 -in "${root}/base/ca/root-ca.pem" -noout -fingerprint 2>/dev/null)" != "${baked_ca}" ] && echo differ)"
+check "the reissued pair verifies against the new CA" "yes" \
+    "$(openssl verify -CAfile "${root}/base/ca/root-ca.pem" \
+        "${root}/home/etc/certs/remoted.pem" > /dev/null 2>&1 && echo yes)"
+cleanup "${root}"
+
+# It is the one destructive path in the tool, so it refuses on a live manager rather than leaving
+# a running deployment without the credentials it is using.
+root="$(make_tree)"
+run_resolver "${root}" --install
+mkdir -p "${root}/home/var/run"
+sleep 120 &
+live_pid=$!
+echo "${live_pid}" > "${root}/home/var/run/wazuh-manager-analysisd-${live_pid}.pid"
+run_resolver "${root}" --clear
+check "--clear refuses while the manager is running" "1" "${RC}"
+check "and says so" "yes" \
+    "$(grep -q 'refusing to clear credentials while the manager is running' <<< "$(resolver_output)" && echo yes)"
+check "leaving rbac.db in place" "yes" \
+    "$([ -f "${root}/home/api/configuration/security/rbac.db" ] && echo yes)"
+kill "${live_pid}" 2>/dev/null
+wait "${live_pid}" 2>/dev/null
+
+# A stale pidfile from an unclean stop is not a running manager.
+rm -f "${root}/home/var/run/"*.pid
+echo "999999" > "${root}/home/var/run/wazuh-manager-analysisd-999999.pid"
+run_resolver "${root}" --clear
+check "a stale pidfile does not block it" "0" "${RC}"
+cleanup "${root}"
+
+# A CA directory holding only an anchor was issued elsewhere and handed to this host: destroying it
+# would take a corporate or cert-manager trust root with it.
+root="$(make_tree)"
+mkdir -p "${root}/base/ca"
+chmod 0700 "${root}/base/ca"
+openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 1 \
+    -keyout "${root}/external.key" -out "${root}/base/ca/root-ca.pem" \
+    -subj "/CN=Corporate PKI" > /dev/null 2>&1
+chmod 0644 "${root}/base/ca/root-ca.pem"
+external_ca="$(md5sum < "${root}/base/ca/root-ca.pem")"
+run_resolver "${root}" --clear
+check "--clear keeps an externally-issued trust anchor" "${external_ca}" \
+    "$(md5sum < "${root}/base/ca/root-ca.pem")"
+check "and says why" "yes" \
+    "$(grep -q 'it carries no private key, so it was issued elsewhere' <<< "$(resolver_output)" && echo yes)"
 cleanup "${root}"
 
 # --------------------------------------------------------------------------------------------
