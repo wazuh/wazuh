@@ -2427,9 +2427,12 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
         m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, logger_func);
         m_logFunction(LOG_DEBUG, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
 
-        // Initialize VD sync protocol with different module name to avoid routing conflicts
+        // Initialize VD sync protocol with different module name to avoid routing conflicts.
+        // isFeedBased = true: this instance's 409s are checked against the manager's VD feed
+        // offset, not a per-item/global-state checksum -- see determineSyncFailureReasonBasedOnSyncResult().
         std::string vdModuleName = moduleName + "_vd";
-        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, logger_func_vd);
+        m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, logger_func_vd,
+                                                                 nullptr, nullptr, /*isFeedBased=*/true);
         m_logFunction(LOG_DEBUG, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
 
         // Initialize schema validator factory from embedded resources
@@ -2537,9 +2540,20 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                 m_logFunction(LOG_WARNING, "Syscollector synchronization failed " +
                               std::to_string(result.consecutiveFailures) + " times in a row: " + result.failureReason);
             }
+            else if (result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+            {
+                // Same grace as the managerNotReady/localTransportUnavailable branch above: a
+                // session rejection (e.g. 409 checksum/version mismatch) is ordinarily transient
+                // -- the state it disagreed about (an index checksum, a feed offset) is expected
+                // to catch up within a cycle or two -- so it is not yet worth a WARNING.
+                m_logFunction(LOG_INFO, "Syscollector synchronization deferred" +
+                              (result.failureReason.empty() ? "." : ": " + result.failureReason) +
+                              " Will retry next cycle.");
+            }
             else
             {
-                m_logFunction(LOG_WARNING, "Syscollector synchronization failed" +
+                m_logFunction(LOG_WARNING, "Syscollector synchronization failed " +
+                              std::to_string(result.consecutiveFailures) + " times in a row" +
                               (result.failureReason.empty() ? "." : ": " + result.failureReason));
             }
         }
@@ -2595,9 +2609,21 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                 m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed " +
                               std::to_string(vdResult.consecutiveFailures) + " times in a row: " + vdResult.failureReason);
             }
+            else if (vdResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+            {
+                // Same grace as the managerNotReady/localTransportUnavailable branch above: a
+                // session rejection (e.g. 409 version_mismatch -- most commonly a fresh agent's
+                // first VD sync racing the manager's already-loaded feed, #39543) is ordinarily
+                // transient -- the agent's locally known feed offset is expected to catch up
+                // within a cycle or two -- so it is not yet worth a WARNING.
+                m_logFunction(LOG_INFO, "Syscollector VD synchronization deferred" +
+                              (vdResult.failureReason.empty() ? "." : ": " + vdResult.failureReason) +
+                              " Will retry next cycle.");
+            }
             else
             {
-                m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed" +
+                m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed " +
+                              std::to_string(vdResult.consecutiveFailures) + " times in a row" +
                               (vdResult.failureReason.empty() ? "." : ": " + vdResult.failureReason));
             }
         }

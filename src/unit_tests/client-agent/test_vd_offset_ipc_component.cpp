@@ -53,6 +53,7 @@
 #include <unistd.h>
 
 #include <atomic>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -255,6 +256,42 @@ TEST_F(VdOffsetIpcComponentTest, ObserveOverRealIpcPersistsOffsetAndMarksPending
     EXPECT_TRUE(changed);
     EXPECT_TRUE(pending);
     EXPECT_EQ(100u, pendingOffset);
+}
+
+// #39543: agentd's control thread processes the very first Notify (config_hash, then
+// vd_feed_offset) before modulesd's own startup_gate has necessarily let it open
+// WM_LOCAL_SOCK yet -- a single connect attempt used to find nobody listening and silently
+// drop the one Notify carrying a real offset. Simulates that ordering directly: nothing is
+// bound to WM_LOCAL_SOCK when vd_offset_client_observe() is called, and the socket only
+// appears after a short delay comfortably inside the bounded retry budget (10 attempts, 300ms
+// apart, ~2.7s worst case -- see VD_OFFSET_CONNECT_RETRIES in vd_offset_client.c).
+TEST_F(VdOffsetIpcComponentTest, ObserveOverRealIpcRetriesUntilModuleSocketOpens)
+{
+    constexpr auto bindDelay = std::chrono::milliseconds(900);
+
+    std::thread lateBinder(
+        [bindDelay]()
+    {
+        std::this_thread::sleep_for(bindDelay);
+        int serverSock = OS_BindUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
+        ASSERT_GE(serverSock, 0);
+        runModuleSideDispatchLoop(serverSock, /*requestCount=*/1);
+    });
+
+    bool changed = false;
+    bool pending = false;
+    uint64_t pendingOffset = 0;
+    const auto start = std::chrono::steady_clock::now();
+    ASSERT_TRUE(vd_offset_client_observe(100, &changed, &pending, &pendingOffset));
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+    lateBinder.join();
+
+    EXPECT_TRUE(changed);
+    EXPECT_TRUE(pending);
+    EXPECT_EQ(100u, pendingOffset);
+    // Proves the call actually waited for the late bind rather than the socket coincidentally
+    // existing already -- not a strict timing assertion, just "it did retry, not fail fast".
+    EXPECT_GE(elapsed, bindDelay - std::chrono::milliseconds(200));
 }
 
 TEST_F(VdOffsetIpcComponentTest, ObserveOverRealIpcDoesNotMarkPendingWhenVDFirstNotDone)

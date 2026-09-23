@@ -35,9 +35,16 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param retries Default number of retries for synchronization operations.
         /// @param queue Optional persistent queue to use for message storage and retrieval.
         /// @param syncTransport Optional carrier for whole sessions; defaults to the queue-sync socket.
+        /// @param isFeedBased True when this instance's sessions are checked against a
+        ///        manager-tracked feed position rather than a per-item/global-state checksum --
+        ///        currently only syscollector's dedicated VD sync-protocol instance. Only affects
+        ///        the wording of a 409/CHECKSUM_ERROR failure reason (see
+        ///        determineSyncFailureReasonBasedOnSyncResult()); every other instance (FIM, SCA,
+        ///        agent-info, syscollector's own regular inventory sync) leaves this false.
         explicit AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger,
                                    std::shared_ptr<IPersistentQueue> queue = nullptr,
-                                   std::shared_ptr<ISyncSessionTransport> syncTransport = nullptr);
+                                   std::shared_ptr<ISyncSessionTransport> syncTransport = nullptr,
+                                   bool isFeedBased = false);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
         void persistDifference(const std::string& id,
@@ -120,6 +127,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Name of the module associated with this instance.
         std::string m_moduleName;
+
+        /// @brief True when this instance's sessions are checked against a manager-tracked feed
+        ///        position (currently only syscollector's VD instance) rather than a
+        ///        per-item/global-state checksum. See the constructor's doc comment.
+        bool m_isFeedBased;
 
         /// @brief Carries a whole session to the agent over the queue-sync STREAM
         ///        socket, which has no 64 KB bound.

@@ -103,6 +103,74 @@ TEST_F(MetadataProviderTest, GetMetadataBeforeUpdate)
     EXPECT_EQ(metadata_provider_get(&retrieved), -1);
 }
 
+// #39543: metadata_provider_update_vd_feed_offset() must refuse (no-op) before any full
+// metadata_provider_update() ever succeeded -- setting only this field with no prior snapshot
+// would let a reader see every other field (hostname, os_*, ...) as blank.
+TEST_F(MetadataProviderTest, UpdateVdFeedOffsetNoOpBeforeAnyFullUpdate)
+{
+    EXPECT_EQ(metadata_provider_update_vd_feed_offset(12345), -1);
+
+    // Confirms it is a true no-op, not a partial write: still no snapshot at all.
+    agent_metadata_t retrieved{};
+    EXPECT_EQ(metadata_provider_get(&retrieved), -1);
+}
+
+// Once a full snapshot exists, the narrow update takes effect immediately and touches only
+// vd_feed_offset -- every other field from the prior full update() survives untouched.
+TEST_F(MetadataProviderTest, UpdateVdFeedOffsetAfterFullUpdateTouchesOnlyThatField)
+{
+    agent_metadata_t metadata = createSampleMetadata();
+    metadata.vd_feed_offset = 1;
+    ASSERT_EQ(metadata_provider_update(&metadata), 0);
+
+    EXPECT_EQ(metadata_provider_update_vd_feed_offset(987654), 0);
+
+    agent_metadata_t retrieved{};
+    ASSERT_EQ(metadata_provider_get(&retrieved), 0);
+    EXPECT_EQ(retrieved.vd_feed_offset, 987654u);
+    EXPECT_STREQ(retrieved.agent_id, "001");
+    EXPECT_STREQ(retrieved.hostname, "test_host");
+    EXPECT_STREQ(retrieved.os_name, "Ubuntu");
+}
+
+// #39543 review follow-up: update() must never clobber a vd_feed_offset that
+// updateVdFeedOffset() already published, even when the caller's own struct carries a
+// different (stale) value -- e.g. populateAgentMetadata() read an old DB snapshot before
+// observeVdFeedOffset() published a newer one. update() simply never writes this field.
+TEST_F(MetadataProviderTest, UpdatePreservesExistingVdFeedOffsetAcrossFullUpdates)
+{
+    agent_metadata_t first = createSampleMetadata();
+    first.vd_feed_offset = 1;
+    ASSERT_EQ(metadata_provider_update(&first), 0);
+
+    ASSERT_EQ(metadata_provider_update_vd_feed_offset(777), 0);
+
+    agent_metadata_t second = createSampleMetadata();
+    std::strncpy(second.agent_id, "002", sizeof(second.agent_id) - 1);
+    second.vd_feed_offset = 42; // Stale/unrelated value a caller might still pass in.
+    ASSERT_EQ(metadata_provider_update(&second), 0);
+
+    agent_metadata_t retrieved{};
+    ASSERT_EQ(metadata_provider_get(&retrieved), 0);
+    EXPECT_STREQ(retrieved.agent_id, "002");   // Confirms the second update() did apply...
+    EXPECT_EQ(retrieved.vd_feed_offset, 777u); // ...but left vd_feed_offset untouched.
+}
+
+// NOTE (#39543 review follow-up, investigated but deliberately not fixed here): a first
+// version of this test stressed update() and updateVdFeedOffset() concurrently from two
+// threads while a third thread called get(), expecting no torn record. It failed -- not
+// because s_writeMutex above fails to serialize the two writers (it does, which is exactly
+// what UpdatePreservesExistingVdFeedOffsetAcrossFullUpdates above deterministically proves),
+// but because get() itself only checks `updating` ONCE, before its field-by-field copy, and
+// never re-checks it afterward. A writer can start and fully finish (updating: false -> true
+// -> false) entirely within get()'s own copy window, and get() has no way to notice --a
+// proper seqlock reader needs a monotonically increasing sequence counter it re-validates
+// after the copy (odd = write in progress, and any change between the pre- and post-copy
+// reads means retry), not a plain boolean checked only up front. This is a real, pre-existing
+// gap in get() (not introduced by this change, and not what the review's finding #1 was
+// about, which was specifically the writer-vs-writer clobber the field-ownership fix above
+// closes) -- left as a follow-up rather than expanded into a struct-layout change here.
+
 // Test metadata with groups
 TEST_F(MetadataProviderTest, UpdateMetadataWithGroups)
 {
