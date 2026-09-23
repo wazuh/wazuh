@@ -5,6 +5,7 @@ After=network.target network-online.target
 
 [Service]
 Type=forking
+LimitNOFILE=65536
 TimeoutSec=45
 PIDFile=WAZUH_HOME_TMP/var/run/wazuh-agentd.pid
 
