@@ -109,7 +109,7 @@ endif()
 
 if(${TARGET} STREQUAL "agent")
 list(APPEND client-agent_names "test_agentd")
-list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request ${DEBUG_OP_WRAPPERS}")
+list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request -Wl,--wrap,getDefine_Int -Wl,--wrap,os_read_agent_profile ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_sendmsg")
 list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS} \

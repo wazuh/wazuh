@@ -15,6 +15,7 @@
 #include "../client-agent/agentd.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/url_wrappers.h"
+#include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 
 #ifdef TEST_AGENT
 
@@ -349,6 +350,85 @@ void test_read_configuration_invalid(void** state) {
     assert_false(atc->package_uninstallation);
 }
 
+// ----------------------------------------------------------------------------------------------------------------------------------------------
+// w_agentd_reload_force_reconnect_interval
+
+#define SHARED_TEST_CONF "test_force_reconnect_shared.conf"
+
+char *__wrap_os_read_agent_profile(void) {
+    return strdup("test");
+}
+
+static void write_shared_conf(const char *content) {
+    FILE *fp = fopen(SHARED_TEST_CONF, "w");
+    assert_non_null(fp);
+    fputs(content, fp);
+    fclose(fp);
+    will_return(__wrap_getDefine_Int, 1);
+    expect_string(__wrap__mdebug2, formatted_msg, "agent_config element does not have any attributes.");
+}
+
+static int setup_reload(void **state) {
+    os_calloc(1, sizeof(agent), agt);
+    local_force_reconnect_interval = 0;
+    return 0;
+}
+
+static int teardown_reload(void **state) {
+    os_free(agt);
+    unlink(SHARED_TEST_CONF);
+    return 0;
+}
+
+void test_reload_force_reconnect_interval_applied(void **state) {
+    write_shared_conf("<agent_config><client><force_reconnect_interval>10m</force_reconnect_interval></client></agent_config>");
+
+    expect_string(__wrap__minfo, formatted_msg, "Using force reconnect interval, Wazuh Agent will reconnect every 10 minute(s)");
+
+    w_agentd_reload_force_reconnect_interval(SHARED_TEST_CONF);
+    assert_int_equal(agt->force_reconnect_interval, 600);
+}
+
+void test_reload_force_reconnect_interval_unchanged(void **state) {
+    agt->force_reconnect_interval = 600;
+    write_shared_conf("<agent_config><client><force_reconnect_interval>10m</force_reconnect_interval></client></agent_config>");
+
+    w_agentd_reload_force_reconnect_interval(SHARED_TEST_CONF);
+    assert_int_equal(agt->force_reconnect_interval, 600);
+}
+
+void test_reload_force_reconnect_interval_disabled(void **state) {
+    agt->force_reconnect_interval = 600;
+    write_shared_conf("<agent_config><client><force_reconnect_interval>0</force_reconnect_interval></client></agent_config>");
+
+    expect_string(__wrap__minfo, formatted_msg, "Force reconnect interval disabled.");
+
+    w_agentd_reload_force_reconnect_interval(SHARED_TEST_CONF);
+    assert_int_equal(agt->force_reconnect_interval, 0);
+}
+
+void test_reload_force_reconnect_interval_revert_to_local(void **state) {
+    local_force_reconnect_interval = 3600;
+    agt->force_reconnect_interval = 600;
+    write_shared_conf("<agent_config></agent_config>");
+
+    expect_string(__wrap__minfo, formatted_msg, "Using force reconnect interval, Wazuh Agent will reconnect every 1 hour(s)");
+
+    w_agentd_reload_force_reconnect_interval(SHARED_TEST_CONF);
+    assert_int_equal(agt->force_reconnect_interval, 3600);
+}
+
+void test_reload_force_reconnect_interval_invalid_conf(void **state) {
+    agt->force_reconnect_interval = 600;
+    write_shared_conf("<agent_config><client><server>x</server></client></agent_config>");
+
+    expect_string(__wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'server'.");
+    expect_string(__wrap__merror, formatted_msg, "(1202): Configuration error at '" SHARED_TEST_CONF "'.");
+
+    w_agentd_reload_force_reconnect_interval(SHARED_TEST_CONF);
+    assert_int_equal(agt->force_reconnect_interval, 600);
+}
+
 #endif // TEST_AGENT
 
 int main(void) {
@@ -376,6 +456,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_configuration_yes, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_read_configuration_no, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_read_configuration_invalid, setup_config, teardown_config),
+
+        // w_agentd_reload_force_reconnect_interval
+        cmocka_unit_test_setup_teardown(test_reload_force_reconnect_interval_applied, setup_reload, teardown_reload),
+        cmocka_unit_test_setup_teardown(test_reload_force_reconnect_interval_unchanged, setup_reload, teardown_reload),
+        cmocka_unit_test_setup_teardown(test_reload_force_reconnect_interval_disabled, setup_reload, teardown_reload),
+        cmocka_unit_test_setup_teardown(test_reload_force_reconnect_interval_revert_to_local, setup_reload, teardown_reload),
+        cmocka_unit_test_setup_teardown(test_reload_force_reconnect_interval_invalid_conf, setup_reload, teardown_reload),
 
 #endif // TEST_AGENT
     };
