@@ -24,6 +24,7 @@ readonly EXCLUDE_FOLDERS=(
 # Variables
 BRANCH="${DEFAULT_BRANCH}"
 DEV_CONTAINER_DESTINATION=""
+CLAUDE_PACKAGE=""
 
 # Clean up the temporary directory
 cleanup() {
@@ -35,17 +36,20 @@ trap cleanup EXIT
 # Function to show usage
 show_usage() {
     cat << EOF
-Usage: $(basename "$0") [-d <destination>] [-b <branch>] [-h]
+Usage: $(basename "$0") [-d <destination>] [-b <branch>] [-c <claude.tar.gz>] [-h]
 
 Options:
     -d    Destination directory for devContainer (default: ./devContainer)
     -b    Git branch to download from (default: ${DEFAULT_BRANCH})
+    -c    Claude Code setup exported with the claude-portable skill (claude-portable.sh export);
+          it is copied into the devContainer and the command to import it is printed
     -h    Show this help message
 
 Examples:
     $(basename "$0")
     $(basename "$0") -d ~/my-devcontainer
     $(basename "$0") -b development -d /tmp/devcontainer
+    $(basename "$0") -d ~/my-devcontainer -c ~/claude-portable.tar.gz
 EOF
 }
 
@@ -138,6 +142,17 @@ patch_devcontainer_name() {
     echo "DevContainer name patched with suffix: - ${suffix}"
 }
 
+# Function to copy the exported Claude Code setup into the devContainer workspace
+copy_claude_package() {
+    [ -z "$CLAUDE_PACKAGE" ] && return 0
+    cp "$CLAUDE_PACKAGE" "$DEV_CONTAINER_DESTINATION/claude-portable.tar.gz"
+    echo ""
+    echo "Claude Code setup copied to: $DEV_CONTAINER_DESTINATION/claude-portable.tar.gz"
+    echo "Once the devContainer is up (WAZUH_REPO cloned), run inside it, from the workspace folder:"
+    echo "  tar xzf claude-portable.tar.gz -C /tmp claude/skills/claude-portable/scripts/claude-portable.sh"
+    echo "  bash /tmp/claude/skills/claude-portable/scripts/claude-portable.sh import claude-portable.tar.gz"
+}
+
 # Function to open in VSCode
 open_in_vscode() {
     while true; do
@@ -177,13 +192,16 @@ open_in_vscode() {
 # Main script
 
 # Parse command line arguments
-while getopts ":d:b:h" opt; do
+while getopts ":d:b:c:h" opt; do
     case ${opt} in
         d )
             DEV_CONTAINER_DESTINATION=$OPTARG
             ;;
         b )
             BRANCH=$OPTARG
+            ;;
+        c )
+            CLAUDE_PACKAGE=$OPTARG
             ;;
         h )
             show_usage
@@ -209,6 +227,17 @@ else
     DEV_CONTAINER_DESTINATION=$(realpath "$DEV_CONTAINER_DESTINATION")
 fi
 
+# Validate the Claude Code package before downloading anything
+if [ -n "$CLAUDE_PACKAGE" ]; then
+    # Read the whole listing first: grep -q would close the pipe early and pipefail would reject a valid package
+    if [ ! -f "$CLAUDE_PACKAGE" ] || ! CLAUDE_LISTING=$(tar tzf "$CLAUDE_PACKAGE" 2>/dev/null) \
+        || ! grep -qx 'PORTABLE-MANIFEST.txt' <<< "$CLAUDE_LISTING"; then
+        echo "Error: $CLAUDE_PACKAGE is not a package exported by claude-portable.sh (no PORTABLE-MANIFEST.txt)" >&2
+        exit 1
+    fi
+    CLAUDE_PACKAGE=$(realpath "$CLAUDE_PACKAGE")
+fi
+
 # Check if destination folder already exists
 if [ -d "$DEV_CONTAINER_DESTINATION" ]; then
     echo "Error: The folder $DEV_CONTAINER_DESTINATION already exists" >&2
@@ -226,6 +255,9 @@ copy_devContainer
 
 # Patch the devcontainer.json name with a unique suffix
 patch_devcontainer_name
+
+# Copy the exported Claude Code setup, if any
+copy_claude_package
 
 # Print success message
 echo ""
