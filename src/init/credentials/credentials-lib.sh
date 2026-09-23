@@ -43,10 +43,8 @@ CRED_BLOCK_END="# >>> end wazuh generated"
 CRED_PW_ALPHABET='A-Za-z0-9.,_+:@%^=~-'
 CRED_PW_LENGTH=32
 
-# Policy bounds. The upper bound and the character classes are the Server API's own rule
-# (framework/wazuh/security.py). It is stricter than PCI DSS v4.0 8.3.6, which asks only for
-# twelve characters with letters and digits, and being stricter is what keeps a value we
-# generate or accept here from being one the API itself would later reject.
+# Policy bounds: PCI DSS v4.0 8.3.6, the same rule the Server API enforces in
+# framework/wazuh/security.py, so a value accepted here is never one the API rejects later.
 CRED_PW_MIN=12
 CRED_PW_MAX=64
 
@@ -425,23 +423,13 @@ cred_validate_password() {
         return 1
     fi
 
-    if ! printf '%s' "${_cvp_value}" | grep -q '[a-z]'; then
-        cred_err "${_cvp_key} rejected: must contain a lowercase letter"
-        return 1
-    fi
-
-    if ! printf '%s' "${_cvp_value}" | grep -q '[A-Z]'; then
-        cred_err "${_cvp_key} rejected: must contain an uppercase letter"
+    if ! printf '%s' "${_cvp_value}" | grep -q '[A-Za-z]'; then
+        cred_err "${_cvp_key} rejected: must contain a letter"
         return 1
     fi
 
     if ! printf '%s' "${_cvp_value}" | grep -q '[0-9]'; then
         cred_err "${_cvp_key} rejected: must contain a digit"
-        return 1
-    fi
-
-    if ! printf '%s' "${_cvp_value}" | grep -q '[^A-Za-z0-9]'; then
-        cred_err "${_cvp_key} rejected: must contain a symbol"
         return 1
     fi
 

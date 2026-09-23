@@ -5,7 +5,7 @@
 import argparse
 import asyncio
 import sys
-from os import path
+from os import path, remove
 from signal import signal, SIGINT
 
 try:
@@ -185,7 +185,8 @@ async def seed_rbac_database(script_args):
     from wazuh.rbac.orm import DB_FILE, check_database_integrity
     from wazuh.security import validate_password
 
-    if path.exists(DB_FILE):
+    # An empty file is what a failed creation leaves behind, not a seeded database.
+    if path.exists(DB_FILE) and path.getsize(DB_FILE) > 0:
         print(f"\t{DB_FILE} already exists; leaving it untouched")
         sys.exit(0)
 
@@ -210,7 +211,15 @@ async def seed_rbac_database(script_args):
                 print(f"\tThe password supplied for '{username}' was rejected: {exc.message}")
                 sys.exit(1)
 
-    check_database_integrity(passwords=passwords)
+    try:
+        if path.exists(DB_FILE):
+            remove(DB_FILE)
+        check_database_integrity(passwords=passwords)
+    except Exception:
+        # A half-created database would pass for a seeded one on every later run.
+        if path.exists(DB_FILE):
+            remove(DB_FILE)
+        raise
     print(f"\t{DB_FILE} created")
 
 
@@ -287,5 +296,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     except WazuhError as e:
         print(f"Error {e.code}: {e.message}")
+        sys.exit(1)
     except Exception as e:
         print(f"Internal error: {e}")
+        sys.exit(1)

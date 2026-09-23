@@ -116,7 +116,7 @@ create_user:
           - new_user1
   - params:
       username: new_user2
-      password: WazuhWazuh123
+      password: WazuhWazuhWazuh
     result:
       affected_items: []
       failed_items:

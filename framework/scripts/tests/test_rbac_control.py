@@ -3,6 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
+import runpy
 import sys
 from unittest.mock import patch, MagicMock, AsyncMock
 
@@ -27,6 +28,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         del sys.modules['wazuh.rbac.orm']
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from scripts import rbac_control
+        from wazuh.core.exception import WazuhError
         from wazuh.tests.test_security import db_setup # noqa
 
 
@@ -151,6 +153,111 @@ async def test_restore_default_passwords_exceptions(safe_load_mock, getpass_mock
         assert "testing_user" in print_mock.call_args[0][0]
         assert exception_message in print_mock.call_args[0][0]
 
+
+@pytest.mark.asyncio
+@patch("builtins.print")
+async def test_seed_rbac_database(print_mock, tmp_path, db_setup):
+    """Check that `seed_rbac_database` seeds a missing database with the passwords read from the standard input."""
+    passwords = {'wazuh': 'NewPassword12', 'wazuh-wui': 'NewPassword34'}
+    with patch('wazuh.rbac.orm.DB_FILE', str(tmp_path / 'rbac.db')), \
+            patch('wazuh.rbac.orm.check_database_integrity') as integrity_mock, \
+            patch('scripts.rbac_control.sys.stdin.read', return_value=json.dumps(passwords)):
+        await rbac_control.seed_rbac_database(Arguments(passwords_file='-'))
+
+    integrity_mock.assert_called_once_with(passwords=passwords)
+
+
+@pytest.mark.asyncio
+@patch("builtins.print")
+async def test_seed_rbac_database_existing(print_mock, tmp_path, db_setup):
+    """Check that `seed_rbac_database` leaves an existing database untouched and exits 0."""
+    db_file = tmp_path / 'rbac.db'
+    db_file.write_text('seeded')
+    with patch('wazuh.rbac.orm.DB_FILE', str(db_file)), \
+            patch('wazuh.rbac.orm.check_database_integrity') as integrity_mock, \
+            pytest.raises(SystemExit) as exit_error:
+        await rbac_control.seed_rbac_database(Arguments(passwords_file='-'))
+
+    assert exit_error.value.code == 0
+    integrity_mock.assert_not_called()
+    assert db_file.read_text() == 'seeded'
+
+
+
+@pytest.mark.asyncio
+@patch("builtins.print")
+async def test_seed_rbac_database_replaces_an_empty_file(print_mock, tmp_path, db_setup):
+    """Check that `seed_rbac_database` seeds over an empty file, which is what a failed creation leaves."""
+    db_file = tmp_path / 'rbac.db'
+    db_file.touch()
+    with patch('wazuh.rbac.orm.DB_FILE', str(db_file)), \
+            patch('wazuh.rbac.orm.check_database_integrity') as integrity_mock, \
+            patch('scripts.rbac_control.sys.stdin.read', return_value='{}'):
+        await rbac_control.seed_rbac_database(Arguments(passwords_file='-'))
+
+    integrity_mock.assert_called_once_with(passwords={})
+    assert not db_file.exists()
+
+
+@pytest.mark.asyncio
+@patch("builtins.print")
+async def test_seed_rbac_database_removes_a_partial_database(print_mock, tmp_path, db_setup):
+    """Check that a failed creation leaves no database behind to pass for a seeded one."""
+    db_file = tmp_path / 'rbac.db'
+
+    def fail_after_creating(passwords):
+        db_file.write_text('partial')
+        raise OSError('chown failed')
+
+    with patch('wazuh.rbac.orm.DB_FILE', str(db_file)), \
+            patch('wazuh.rbac.orm.check_database_integrity', side_effect=fail_after_creating), \
+            patch('scripts.rbac_control.sys.stdin.read', return_value='{}'), \
+            pytest.raises(OSError):
+        await rbac_control.seed_rbac_database(Arguments(passwords_file='-'))
+
+    assert not db_file.exists()
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("content, expected_error", [
+    ('not json', "Could not read the passwords file"),
+    ('["NewPassword12"]', "must hold a JSON object"),
+    (json.dumps({'wazuh': 'lettersonlypassword'}), "The password supplied for 'wazuh' was rejected"),
+])
+@patch("builtins.print")
+async def test_seed_rbac_database_invalid(print_mock, content, expected_error, tmp_path, db_setup):
+    """Check that `seed_rbac_database` exits 1 without seeding on unusable input, never printing a password.
+
+    Parameters
+    ----------
+    content : str
+        Content of the standard input.
+    expected_error : str
+        Fragment expected in the printed error.
+    """
+    with patch('wazuh.rbac.orm.DB_FILE', str(tmp_path / 'rbac.db')), \
+            patch('wazuh.rbac.orm.check_database_integrity') as integrity_mock, \
+            patch('scripts.rbac_control.sys.stdin.read', return_value=content), \
+            pytest.raises(SystemExit) as exit_error:
+        await rbac_control.seed_rbac_database(Arguments(passwords_file='-'))
+
+    assert exit_error.value.code == 1
+    integrity_mock.assert_not_called()
+    assert expected_error in print_mock.call_args[0][0]
+    assert 'lettersonlypassword' not in print_mock.call_args[0][0]
+
+
+
+@pytest.mark.parametrize("exception", [WazuhError(1000), ValueError("broken database")])
+@patch("builtins.print")
+def test_script_exits_non_zero_on_error(print_mock, exception, tmp_path, db_setup):
+    """Check that the script reports a failure through its exit status, which is all the credential resolver reads."""
+    with patch('wazuh.rbac.orm.DB_FILE', str(tmp_path / 'rbac.db')), \
+            patch('wazuh.rbac.orm.check_database_integrity', side_effect=exception), \
+            patch('sys.argv', new=['rbac_control', 'seed']), \
+            pytest.raises(SystemExit) as exit_error:
+        runpy.run_path(rbac_control.__file__, run_name='__main__')
+
+    assert exit_error.value.code == 1
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("user_input", ["RESET", "whatever"])

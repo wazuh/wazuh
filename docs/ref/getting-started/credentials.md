@@ -91,10 +91,9 @@ That trap is why the file, not the command line, is the documented way to choose
 
 ## The password policy
 
-Every password, supplied or generated, must be **12 to 64 characters and contain an uppercase
-letter, a lowercase letter, a digit and a symbol**. This satisfies PCI DSS v4.0 requirement 8.3.6,
-which asks for twelve characters with letters and digits, and matches what the Server API itself
-enforces — so a value accepted here is never one the API rejects later.
+Every password, supplied or generated, must be **12 to 64 characters and contain a letter and a
+digit**, PCI DSS v4.0 requirement 8.3.6. This is the rule the Server API itself enforces, so a value
+accepted here is never one the API rejects later.
 
 Generated passwords are 32 characters drawn from `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`. Quotes,
 backslash, backtick, `$`, `!` and `#` are left out deliberately, so a value is safe to paste through
