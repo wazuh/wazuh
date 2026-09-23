@@ -349,7 +349,16 @@ def test_data_indexation(opensearch, test_folder):
             resp = None
             for retry in range(retries):
                 resp = requests.get(f"http://{GLOBAL_URL}/{index}/_search")
-                assert resp.status_code == 200, f"Search failed: {resp.text}"
+                if resp.status_code != 200:
+                    # A transient non-200 (the index not existing yet) is what the polling is here for,
+                    # so it has to feed the retry instead of ending the test on the first attempt.
+                    if retry < retries - 1:
+                        LOGGER.warning(
+                            f"Search on '{index}' returned {resp.status_code} "
+                            f"(attempt {retry+1}/{retries}). Retrying..."
+                        )
+                        time.sleep(0.5 * (retry + 1))
+                    continue
 
                 hits = resp.json()["hits"]
                 if hits["total"]["value"] == len(expected_data) and all(
