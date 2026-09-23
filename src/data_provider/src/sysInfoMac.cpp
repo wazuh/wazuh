@@ -28,6 +28,7 @@
 #include "hardware/factoryHardwareFamilyCreator.h"
 #include "hardware/hardwareWrapperImplMac.h"
 #include "osPrimitivesImplMac.h"
+#include "processes/processArgsParserMac.h"
 #include "sqliteWrapperTemp.h"
 #include "packages/modernPackageDataRetriever.hpp"
 #include "timeHelper.h"
@@ -71,7 +72,21 @@ static const std::map<std::string, int> s_mapPackagesDirectories =
     { "/opt/local/var/macports/registry", MACPORTS}
 };
 
-static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_t pid)
+static bool getProcessArgs(const pid_t pid, std::vector<char>& buffer, ProcessArgs& processArgs)
+{
+    int mib[3] {CTL_KERN, KERN_PROCARGS2, pid};
+    size_t size {buffer.size()};
+
+    // Fails for zombies and for processes the caller is not allowed to inspect.
+    if (buffer.empty() || sysctl(mib, 3, buffer.data(), &size, nullptr, 0) != 0)
+    {
+        return false;
+    }
+
+    return parseProcArgs2(buffer.data(), size, processArgs);
+}
+
+static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_t pid, std::vector<char>& argsBuffer)
 {
     nlohmann::json jsProcessInfo{};
     jsProcessInfo["pid"]        = std::to_string(pid);
@@ -86,7 +101,16 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
         proc_pidpath(pid, pathBuffer, sizeof(pathBuffer))
     };
 
-    jsProcessInfo["command_line"] = pathLen > 0 ? std::string(pathBuffer) : "";
+    ProcessArgs processArgs;
+
+    // On failure processArgs stays empty and only the executable path is reported.
+    getProcessArgs(pid, argsBuffer, processArgs);
+
+    const auto commandLine {buildProcessCommandLine(pathLen > 0 ? std::string(pathBuffer) : "", processArgs)};
+
+    jsProcessInfo["command_line"] = commandLine.commandLine;
+    jsProcessInfo["args"]         = commandLine.args;
+    jsProcessInfo["args_count"]   = commandLine.argsCount;
 
     return jsProcessInfo;
 }
@@ -397,6 +421,16 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
     const auto spPids         { std::make_unique<pid_t[]>(maxProc) };
     const auto processesCount { proc_listallpids(spPids.get(), maxProc) };
 
+    // Reused for every process; kern.argmax bounds the size of a process argument area.
+    int argMax{};
+    len = sizeof(argMax);
+    std::vector<char> argsBuffer;
+
+    if (!sysctlbyname("kern.argmax", &argMax, &len, NULL, 0) && argMax > 0)
+    {
+        argsBuffer.resize(static_cast<size_t>(argMax));
+    }
+
     for (int index = 0; index < processesCount; ++index)
     {
         ProcessTaskInfo taskInfo{};
@@ -408,7 +442,7 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
 
         if (PROC_PIDTASKALLINFO_SIZE == sizeTask)
         {
-            auto processInfo = getProcessInfo(taskInfo, pid);
+            auto processInfo = getProcessInfo(taskInfo, pid, argsBuffer);
             callback(processInfo);
         }
     }
