@@ -5,7 +5,9 @@
 """
 
 import os
+import re
 import stat
+import subprocess
 import time
 
 import pytest
@@ -49,10 +51,11 @@ def break_listener_tls_files(test_metadata):
     '''
     Stop the manager and apply the case's mutation to the listener's TLS files, then restore them exactly.
 
-    The manager does not generate certificates, so whatever the mutation removes has to be put back by
-    hand: `missing_certificate` moves the certificate aside (same directory), `unreadable_key` makes the
-    private key root-owned 0600 so only the validator (root) can read it. Ownership and mode are read
-    before touching anything and restored in `finally`, whatever the test outcome.
+    Whatever the mutation removes has to be put back by hand: `missing_certificate` moves the certificate
+    aside (same directory), `unreadable_key` makes the private key root-owned 0600 so only the validator
+    (root) can read it. Ownership and mode are read before touching anything and restored in `finally`,
+    whatever the test outcome. Yields the journal cursor taken before the start, so a test can read only
+    what that start logged.
     '''
     services.control_service('stop')
     # A manager started outside the service unit is not always stopped by the unit's stop: wait until
@@ -66,12 +69,14 @@ def break_listener_tls_files(test_metadata):
     certificate = os.path.join(WAZUH_PATH, test_metadata['certificate'])
     key = os.path.join(WAZUH_PATH, test_metadata['key'])
     mutation = test_metadata['mutation']
+    cursor = subprocess.run(['journalctl', '--show-cursor', '-n', '0', '-q'], capture_output=True,
+                            text=True).stdout.rpartition('cursor: ')[2].strip()
 
     if mutation == 'missing_certificate':
         aside = certificate + ASIDE_SUFFIX
         os.rename(certificate, aside)
         try:
-            yield
+            yield cursor
         finally:
             os.rename(aside, certificate)
     elif mutation == 'unreadable_key':
@@ -79,7 +84,7 @@ def break_listener_tls_files(test_metadata):
         os.chown(key, 0, 0)
         os.chmod(key, 0o600)
         try:
-            yield
+            yield cursor
         finally:
             os.chown(key, original.st_uid, original.st_gid)
             os.chmod(key, stat.S_IMODE(original.st_mode))
@@ -95,11 +100,9 @@ def test_https_cert_missing(test_configuration, test_metadata, configure_local_i
                             restart_wazuh_expect_error):
     '''
     description: Check that the manager refuses to start when the HTTPS agent listener's certificate is
-                 missing, and that the verdict tells the operator the manager does not generate certificates.
-                 For this purpose, the test moves etc/certs/remoted.pem aside, starts the service and checks
-                 the manager log with a FileMonitor for the 1244 verdict wazuh-manager-control dumps there
-                 (pointer '/remote/https/certificate', 'file not found' with the resolved path, and the
-                 provisioning hint). No daemon starts: the validator runs before all of them.
+                 missing and the host holds no CA key to reissue it. For this purpose, the test moves
+                 etc/certs/remoted.pem aside, starts the service and checks the unit's journal for the
+                 verdict of the credential resolver, which runs as ExecStartPre before any daemon.
 
     parameters:
         - test_configuration
@@ -124,11 +127,17 @@ def test_https_cert_missing(test_configuration, test_metadata, configure_local_i
             type: fixture
             brief: Start the service tolerating the failure, once the test finishes stops the daemons.
     '''
-
-    log_monitor = FileMonitor(WAZUH_LOG_PATH)
-
-    log_monitor.start(callback=generate_callback(test_metadata['expected_error']), timeout=60)
-    assert log_monitor.callback_result
+    expected = re.compile(test_metadata['expected_error'])
+    deadline = time.time() + 60
+    journal = ''
+    while time.time() < deadline:
+        journal = subprocess.run(['journalctl', '-u', 'wazuh-manager', '--no-pager', '-q',
+                                  f'--after-cursor={break_listener_tls_files}'],
+                                 capture_output=True, text=True).stdout
+        if any(expected.match(line) for line in journal.splitlines()):
+            break
+        time.sleep(1)
+    assert any(expected.match(line) for line in journal.splitlines()), journal[-2000:]
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(unreadable_configuration, unreadable_metadata),

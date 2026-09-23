@@ -273,6 +273,20 @@ pair_present() {
     [ -f "${CERTS_DIR}/$1.pem" ] && [ -f "${CERTS_DIR}/$1-key.pem" ]
 }
 
+# A pair already in place is kept only next to the CA that issued it: issuing the missing one, or
+# installing this anchor beside it, would otherwise leave the manager with two unrelated roots.
+placed_pairs_chain_to_ca() {
+    for _pp in remoted indexer-connector; do
+        pair_present "${_pp}" || continue
+        if ! openssl verify -CAfile "${CA_CERT}" "${CERTS_DIR}/${_pp}.pem" >/dev/null 2>&1; then
+            err "the ${_pp} pair in ${CERTS_DIR} was not issued by ${CA_CERT}; refusing to mix CAs"
+            err "place the CA that issued it in ${CA_DIR}, or replace the pair"
+            return 1
+        fi
+    done
+    return 0
+}
+
 # -----------------------------------------------------------------------------------------
 # Run
 # -----------------------------------------------------------------------------------------
@@ -292,6 +306,7 @@ if [ -f "${CA_CERT}" ] && [ ! -f "${CA_KEY}" ]; then
     # Case D. A trust anchor but no identity, and no way to invent one -- the certificate equivalent
     # of a missing consumed password. The anchor is still installed, so the manager trusts the right
     # CA the moment somebody places an issued pair here.
+    placed_pairs_chain_to_ca || exit 1
     install -m 0640 -o root -g wazuh-manager "${CA_CERT}" "${CERTS_DIR}/root-ca.pem" 2>/dev/null \
         || cp -f "${CA_CERT}" "${CERTS_DIR}/root-ca.pem"
 
@@ -317,6 +332,7 @@ if [ ! -f "${CA_CERT}" ]; then
     mint_ca || exit 1            # case A
 else
     log "using the existing CA ${CA_CERT}"   # case B
+    placed_pairs_chain_to_ca || exit 1
 fi
 
 # Logged on every run: a wrong SAN set is the one failure here that is otherwise silent until the
