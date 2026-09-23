@@ -239,10 +239,10 @@ flowchart LR
 
 > Behind a balancer, the certificate the manager issues for itself is unlikely to carry the right
 > names: it derives them from the host, which does not know the name the balancer presents. Either
-> set `WAZUH_MANAGER_CERT_SANS` so the issued pair carries the name the balancer checks *and* the one
-> agents connect to, or issue the pair externally (the Wazuh installation assistant's
-> `wazuh-certs-tool`) from a CA both sides trust. See
-> [Credentials](../../../getting-started/credentials.md#certificates).
+> set `WAZUH_MANAGER_REMOTED_CERT_SANS` so the issued listener pair carries the name the balancer
+> checks *and* the one agents connect to, or issue the pair externally (the Wazuh installation
+> assistant's `wazuh-certs-tool`) from a CA both sides trust. See
+> [Credentials](../../../getting-started/credentials.md#subject-alternative-names).
 
 ## 6. `verification_mode`: read this before enabling it
 

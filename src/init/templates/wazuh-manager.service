@@ -3,25 +3,10 @@ Description=Wazuh manager
 Wants=network-online.target
 After=network.target network-online.target
 
-# A failing pre-start step under a restart policy retries forever and floods the journal. Three
-# attempts in a minute, then systemd gives up and leaves the unit failed -- a state an operator can
-# see and query. On systemd 230 and later these two belong in [Unit], not [Service].
-StartLimitBurst=3
-StartLimitIntervalSec=60
-
 [Service]
 Type=forking
 LimitNOFILE=65536
 TimeoutSec=45
-
-# Resolve every credential the manager needs, and refuse to start when one is missing, naming it in
-# the journal. This runs the whole ladder rather than only checking, which is what makes install
-# order irrelevant: a manager installed before the indexer resolves nothing at install time, picks
-# up the indexer's published key here, and starts.
-#
-# The '+' prefix makes the step run with full privileges regardless of any User=/Group= this unit
-# may later grow; it is needed to read a 0600 root:root credentials file and to write the keystore.
-ExecStartPre=+WAZUH_HOME_TMP/bin/wazuh-manager-resolve-credentials --prestart
 
 ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control start
 ExecStop=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-manager-control stop

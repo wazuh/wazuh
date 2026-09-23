@@ -89,19 +89,22 @@ case "$1" in
     ;;
 
     purge)
-        # Take the manager's own keys out of the shared credentials file. dpkg has already removed
-        # ${DIR}/lib/credentials-lib.sh by now, so this repeats its cred_purge_prefix and must keep
-        # its paths, block markers and lock. Only WAZUH_MANAGER_* keys, and only inside the managed
-        # block: the other components' keys and anything the operator wrote are not ours to remove,
-        # even when they carry the same name.
+        # Take the manager's own keys out of the shared credentials file. This deliberately does NOT
+        # source lib/wazuh-credentials.sh: by the time purge runs, dpkg has already removed the
+        # package's files, so that helper is gone. It therefore repeats wazuh_env_unset's effect and
+        # must keep the helper's paths, block markers and lock byte for byte -- note the em dash and
+        # the trailing "<<<" in the markers, and .credentials.lock rather than .credentials.env.lock.
+        #
+        # Only WAZUH_MANAGER_* keys, and only inside the managed block: the other components' keys
+        # and anything the operator wrote are not ours to remove, even when they carry the same name.
         CRED_DIR="/etc/wazuh"
         CRED_FILE="${CRED_DIR}/credentials.env"
-        CRED_LOCK="${CRED_DIR}/.credentials.env.lock"
+        CRED_LOCK="${CRED_DIR}/.credentials.lock"
         if [ -f "${CRED_FILE}" ] && [ ! -L "${CRED_FILE}" ]; then
             (
                 flock -w 30 9 || exit 0
                 umask 077
-                awk -v begin="# >>> wazuh generated - do not edit" -v end="# >>> end wazuh generated" '
+                awk -v begin="# >>> wazuh generated — do not edit <<<" -v end="# >>> end wazuh generated <<<" '
                     $0 == begin { inblock = 1; print; next }
                     $0 == end   { inblock = 0; print; next }
                     inblock && index($0, "WAZUH_MANAGER_") == 1 { next }
@@ -115,9 +118,16 @@ case "$1" in
             # The last component out removes what is left. A file still carrying any WAZUH_ key is
             # a file a sibling is still using, so this errs towards leaving it: a leftover
             # root-only file is harmless, breaking an installed indexer or dashboard is not.
+            #
+            # Only the default CA directory is removed. One relocated through WAZUH_CA_DIR is left
+            # alone: without the helper we cannot resolve it, and deleting a path we cannot confirm
+            # is worse than leaving one behind.
+            #
+            # `set -e` is active, so every branch is an explicit if with || true: a bare
+            # `[ ... ] && cmd` whose test fails would abort the purge.
             if ! grep -q '^[[:space:]]*WAZUH_[A-Z_]*=' "${CRED_FILE}" 2>/dev/null; then
-                rm -f "${CRED_FILE}" "${CRED_LOCK}" > /dev/null 2>&1
-                rm -rf "${CRED_DIR}/ca" > /dev/null 2>&1
+                rm -f "${CRED_FILE}" "${CRED_LOCK}" > /dev/null 2>&1 || true
+                rm -rf "${CRED_DIR}/ca" > /dev/null 2>&1 || true
                 rmdir "${CRED_DIR}" > /dev/null 2>&1 || true
             fi
         fi

@@ -43,12 +43,12 @@ CLOUD_RESERVED_RANGE = 89
 # Dummy hash for constant-time username enumeration protection
 _DUMMY_HASH = generate_password_hash("wazuh-dummy-constant-never-matches-any-real-password")
 
-# Generated-password shape. This is the same alphabet, length and class guarantee as
-# cred_generate_password() in src/init/credentials/credentials-lib.sh, because the resolver and
-# this module are two entry points to the same seeding and a value from either must satisfy the
-# same policy the Server API enforces in wazuh/security.py. The omitted punctuation (quotes,
-# backslash, backtick, $, ! and #) keeps a value safe to paste through shell, YAML, JSON and
-# docker-compose interpolation without escaping.
+# Generated-password shape. This is the same alphabet and length as wazuh_password_generate() in
+# src/init/credentials/wazuh-credentials.sh, because the credential resolver and this module are two
+# entry points to the same seeding and a value from either must satisfy the same policy the Server
+# API enforces in wazuh/security.py. The omitted punctuation (quotes, backslash, backtick, $, ! and
+# #) keeps a value safe to paste through shell, YAML, JSON and docker-compose interpolation without
+# escaping.
 _PASSWORD_SYMBOLS = '.,_+:@%^=~-'  # nosec B105 - the generator's symbol set, not a password
 _PASSWORD_ALPHABET = string.ascii_letters + string.digits + _PASSWORD_SYMBOLS
 _PASSWORD_LENGTH = 32

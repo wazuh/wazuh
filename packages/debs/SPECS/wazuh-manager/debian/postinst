@@ -181,14 +181,14 @@ case "$1" in
         wazuh-manager-analysisd wazuh-manager-apid wazuh-manager-authd \
         wazuh-manager-clusterd wazuh-manager-control wazuh-manager-service-control wazuh-manager-db \
         wazuh-manager-keystore wazuh-manager-modulesd wazuh-manager-remoted \
-        wazuh-manager-resolve-credentials wazuh-manager-mint-certs; do
+        wazuh-manager-resolve-credentials; do
         if [ -f "${DIR}/bin/${BIN}" ]; then
             case "${BIN}" in
                 wazuh-manager-service-control)
                     chown root:${GROUP} "${DIR}/bin/${BIN}"
                     chmod 4750 "${DIR}/bin/${BIN}"
                     ;;
-                agent_groups|agent_upgrade|cluster_control|rbac_control|wazuh-manager-apid|wazuh-manager-clusterd|wazuh-manager-resolve-credentials|wazuh-manager-mint-certs)
+                agent_groups|agent_upgrade|cluster_control|rbac_control|wazuh-manager-apid|wazuh-manager-clusterd|wazuh-manager-resolve-credentials)
                     chown root:${GROUP} "${DIR}/bin/${BIN}"
                     ;;
                 *)

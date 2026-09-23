@@ -8,7 +8,7 @@ Homepage: http://www.wazuh.com
 
 Package: wazuh-manager
 Architecture: any
-Depends: ${shlibs:Depends}, libc6 (>= 2.7), curl, openssl
+Depends: ${shlibs:Depends}, libc6 (>= 2.7), curl, openssl, iproute2, hostname
 Suggests: expect
 Conflicts: ossec-hids-agent, ossec-hids, wazuh-api
 Replaces: wazuh-api
