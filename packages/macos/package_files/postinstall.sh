@@ -42,7 +42,7 @@ chown -R root:wheel ${DIR}/lib
 chown -R ${USER}:${GROUP} ${DIR}/queue/{alerts,diff,sockets,rids}
 
 chmod -R 770 ${DIR}/queue/{alerts,sockets}
-chmod -R 750 ${DIR}/queue/{diff,sockets,rids}
+chmod -R 750 ${DIR}/queue/{diff,rids}
 
 # For the logging user
 chmod 770 ${DIR}/logs
