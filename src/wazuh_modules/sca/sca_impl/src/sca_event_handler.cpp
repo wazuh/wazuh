@@ -8,6 +8,7 @@
 #include <hashHelper.h>
 #include <stringHelper.h>
 #include <timeHelper.h>
+#include <wazuhCommon.hpp>
 
 #include <array>
 
@@ -784,7 +785,8 @@ std::string SCAEventHandler::CalculateHashId(const nlohmann::json& data) const
     Utils::HashData hash(Utils::HashType::Sha1);
     hash.update(baseId.c_str(), baseId.size());
 
-    return Utils::asciiToHex(hash.hash());
+    const auto digest {hash.hash()};
+    return wazuh::hex_encode(digest.data(), digest.size());
 }
 
 void SCAEventHandler::PushStateful(const nlohmann::json& event, ReturnTypeCallback operation, uint64_t version) const

@@ -1,7 +1,7 @@
 #include <sca_checksum.hpp>
 
 #include <hashHelper.h>
-#include <stringHelper.h>
+#include <wazuhCommon.hpp>
 
 #include <cstdio>
 #include <memory>
@@ -160,7 +160,7 @@ namespace sca
             hash.update(checksumBuffer.get(), strlen(checksumBuffer.get()));
 
             const auto hashResult = hash.hash();
-            return Utils::asciiToHex(hashResult);
+            return wazuh::hex_encode(hashResult.data(), hashResult.size());
         }
         // LCOV_EXCL_START
         catch (const std::exception& e)

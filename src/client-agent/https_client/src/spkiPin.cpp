@@ -13,6 +13,7 @@
 
 #include "digest.hpp"
 #include "jwt/base64Url.hpp"
+#include "wazuhCommon.hpp"
 
 #include <openssl/bio.h>
 #include <openssl/crypto.h>
@@ -258,7 +259,7 @@ std::optional<SpkiDigest> spkiSha256FromDer(const void* der, std::size_t length,
 
 std::string spkiPinHex(const SpkiDigest& digest)
 {
-    return toHexLower(digest.data(), digest.size());
+    return wazuh::hex_encode(digest.data(), digest.size());
 }
 
 std::string spkiPinBase64Url(const SpkiDigest& digest)

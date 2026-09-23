@@ -15,6 +15,7 @@
 #include <vector>
 #include <string>
 #include "stringHelper.h"
+#include "wazuhCommon.hpp"
 
 #include <filesystem_wrapper.hpp>
 
@@ -223,19 +224,6 @@ namespace chrome
         return letters_string.substr(0, 32);
     }
 
-    std::string ChromeExtensionsProvider::hashToHexString(const uint8_t* hash, size_t length)
-    {
-        std::ostringstream oss;
-        oss << std::hex << std::setfill('0');
-
-        for (size_t i = 0; i < length; ++i)
-        {
-            oss << std::setw(2) << static_cast<int>(hash[i]);
-        }
-
-        return oss.str();
-    }
-
     std::string ChromeExtensionsProvider::sha256File(const std::string& filepath)
     {
         std::ifstream file(filepath, std::ios::binary);
@@ -280,7 +268,7 @@ namespace chrome
 
         EVP_MD_CTX_free(mdctx);
 
-        return hashToHexString(hash, length);
+        return wazuh::hex_encode(hash, length);
     }
 
     std::string ChromeExtensionsProvider::webkitToUnixTime(std::string webkit_timestamp)

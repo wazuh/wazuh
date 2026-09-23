@@ -16,7 +16,7 @@
 #include "testSessionBuilder.hpp"
 
 #include "hashHelper.h"
-#include "stringHelper.h"
+#include "wazuhCommon.hpp"
 
 #include <json.hpp>
 
@@ -63,7 +63,8 @@ namespace
     {
         Utils::HashData hash(Utils::HashType::Sha1);
         hash.update(concatenated.c_str(), concatenated.length());
-        return Utils::asciiToHex(hash.hash());
+        const auto digest {hash.hash()};
+        return wazuh::hex_encode(digest.data(), digest.size());
     }
 
     nlohmann::json searchPage(const std::vector<std::string>& checksums)

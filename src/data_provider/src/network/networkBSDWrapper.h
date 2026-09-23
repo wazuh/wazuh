@@ -16,8 +16,6 @@
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/if_dl.h>
-#include <sstream>
-#include <iomanip>
 #include <net/route.h>
 #include <sys/sysctl.h>
 #include <sys/param.h>
@@ -28,6 +26,7 @@
 #include "makeUnique.h"
 #include "sharedDefs.h"
 #include "stringHelper.h"
+#include "wazuhCommon.hpp"
 
 static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
 {
@@ -221,7 +220,6 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
         {
             std::string retVal { "00:00:00:00:00:00" };
             auto sdl { reinterpret_cast<struct sockaddr_dl*>(m_interfaceAddress->ifa_addr) };
-            std::stringstream ss;
 
             if (sdl && MAC_ADDRESS_COUNT_SEGMENTS == sdl->sdl_alen)
             {
@@ -229,18 +227,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
                 if (macAddress)
                 {
-                    for (auto i = 0ull; i < MAC_ADDRESS_COUNT_SEGMENTS; ++i)
-                    {
-                        ss << std::hex << std::setfill('0') << std::setw(2);
-                        ss << static_cast<int>(static_cast<uint8_t>(macAddress[i]));
-
-                        if (i != MAC_ADDRESS_COUNT_SEGMENTS - 1)
-                        {
-                            ss << ":";
-                        }
-                    }
-
-                    retVal = ss.str();
+                    retVal = wazuh::hex_encode_delimited(macAddress, MAC_ADDRESS_COUNT_SEGMENTS, ':');
                 }
             }
 
