@@ -101,6 +101,8 @@ set are different, see [Back up and restore](../../ref/backup-restore.md).
 
 Uninstall 4.x and install 5.0 following the installation documentation.
 
+### Provision the certificates
+
 Unlike 4.x, the 5.0 manager does not issue the certificates agents and the indexer verify it by.
 Issue them with the installation assistant's `wazuh-certs-tool` and deploy them under `etc/certs/`
 before the first start, as
@@ -131,23 +133,42 @@ Without the pair the manager does not start, and says so before any daemon runs:
 A pair that exists but is unreadable by the service user passes that check and stops
 `wazuh-manager-remoted` instead, with `Cannot start the HTTPS agent listener: ...`.
 
+> [!NOTE]
+> Where this material comes from is being reworked in
+> [#39554](https://github.com/wazuh/wazuh/issues/39554): a manager given an empty CA directory will
+> mint its own CA and issue both pairs from it, and the API password will be resolved from a shared
+> `credentials.env` rather than printed by the assistant. The requirements above about the
+> subjectAltName and about keeping the CA do not change — they come from the fleet, not from
+> whoever issues the certificate.
+
 ### Install it out of the fleet's reach
 
 The installer starts the manager, and it has to: the registry is created by the manager itself, from
 a schema compiled into it, so there is no way to prepare one beforehand. That leaves a window in
-which a 5.0 manager is answering on the migrated address with an empty registry — and a **5.0 agent**
-that reaches it in that window is told its key is unknown. Its re-enrollment policy then does exactly
-what it should, which is the problem: it enrolls again and comes back with a **new id**, and a new
-name too, its hostname, if `<agent_name>` is not configured. The identity this whole procedure exists
-to preserve is gone for that agent, and nothing says so:
+which the 5.0 manager answers on the migrated address with an empty registry.
+
+**On a first migration this is harmless.** Every agent is still 4.x at that point, and a 4.x agent
+whose key the manager does not recognise does not re-register: it logs `(1216): Unable to connect`
+and retries until the registry is restored. Its identity is never at risk.
+
+It stops being harmless the second time. This procedure is also what a restore comes down to, and a
+manager rebuilt after the fleet has been upgraded meets **5.0 agents**. A 5.0 agent told its key is
+unknown does exactly what it is specified to do, which is the problem: it re-enrolls, and comes back
+with a **new id** — and a new name, its hostname, when `<agent_name>` is not configured. The identity
+this whole procedure exists to preserve is gone for that agent, and nothing says so:
 
 ```console
 agent:   WARNING: https_client: credential rejected (401); re-enrolling.
 manager: INFO: Agent key generated for agent 'agent-ubuntu24' (requested locally)
 ```
 
-Close the window rather than racing it. Install with the agent listeners pointed away from the
-fleet, which the installation variables already support:
+A new agent installed during the window costs you something too, even on a first migration: it
+enrolls legitimately and takes the next free id, which is one the bundle is about to restore. The
+import then fails on that agent with the manager's error `1708`, and you have two identities to
+reconcile by hand.
+
+Both are avoided the same way, by closing the window rather than racing it. Install with the agent
+listeners pointed away from the fleet, which the installation variables already support:
 
 ```bash
 sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='127.0.0.1' \
@@ -155,14 +176,16 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='127.0.0.1' \
      dpkg -i wazuh-manager_*.deb
 ```
 
-The manager comes up complete — it creates its databases, the API answers, and you can do every
-step below — while no agent can reach it on `1514`, `1515` or `1517`. In
+The manager comes up complete — it creates its databases, the API answers, and every step below
+works against it — while no agent can reach it on `1514`, `1515` or `1517`. In
 [Step 5](#5-start-the-manager-open-it-to-the-fleet-and-verify-the-registry) you set
 `<remote><https><bind_addr>` back to `0.0.0.0` and `<remote><legacy><enabled>` back to `yes`, and the
-fleet reconnects against a registry that already knows it.
+fleet reconnects against a registry that already knows it. It is also what the
+[migration tool](#3-restore-the-identity-data) wants: it talks to the API, which answers on loopback
+throughout.
 
-A 4.x agent is not exposed to any of this: it has no re-enrollment policy and simply retries. Stopping
-the agents works too, but on a fleet of any size the two variables are the cheaper guarantee.
+Stopping the agents works too. On a fleet of any size the two variables are the cheaper guarantee,
+and they need nothing of the endpoints.
 
 Once the installation finishes, stop the manager before touching any of its files:
 
