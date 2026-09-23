@@ -315,32 +315,42 @@ static inline void logBulkItemErrors(const nlohmann::json& responseJson, const s
             const auto& itemData = entry.value();
             if (itemData.contains("error"))
             {
-                std::string id, type, reason;
-                if (itemData.contains("_id"))
+                // Scoped per item: a field that is not the string it is expected to be (an `_id` that
+                // arrives as null, for instance) must not abort the remaining rejections, nor bubble up
+                // and make the caller report a parse failure that never happened.
+                try
                 {
-                    id = itemData.at("_id").get_ref<const std::string&>();
-                }
+                    std::string id, type, reason;
+                    if (itemData.contains("_id"))
+                    {
+                        id = itemData.at("_id").get_ref<const std::string&>();
+                    }
 
-                const auto& error = itemData.at("error");
-                if (error.contains("type"))
-                {
-                    type = error.at("type").get_ref<const std::string&>();
-                }
-                if (error.contains("reason"))
-                {
-                    reason = error.at("reason").get_ref<const std::string&>();
-                }
+                    const auto& error = itemData.at("error");
+                    if (error.contains("type"))
+                    {
+                        type = error.at("type").get_ref<const std::string&>();
+                    }
+                    if (error.contains("reason"))
+                    {
+                        reason = error.at("reason").get_ref<const std::string&>();
+                    }
 
-                // The document id is partly agent-controlled and the reason echoes the indexer's own error
-                // text, so strip control characters to keep either from forging log lines.
-                sanitizeLogText(id);
-                sanitizeLogText(type);
-                sanitizeLogText(reason);
+                    // The document id is partly agent-controlled and the reason echoes the indexer's own error
+                    // text, so strip control characters to keep either from forging log lines.
+                    sanitizeLogText(id);
+                    sanitizeLogText(type);
+                    sanitizeLogText(reason);
 
-                auto& rejection = rejections[std::make_pair(type, reason)];
-                if (rejection.first++ == 0)
+                    auto& rejection = rejections[std::make_pair(type, reason)];
+                    if (rejection.first++ == 0)
+                    {
+                        rejection.second = id;
+                    }
+                }
+                catch (const nlohmann::json::exception&)
                 {
-                    rejection.second = id;
+                    logWarn(IC_NAME, "Unparseable rejection entry in the '%s' bulk response.", indexName.c_str());
                 }
             }
         }
