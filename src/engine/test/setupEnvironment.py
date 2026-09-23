@@ -3,6 +3,7 @@
 import os
 import shutil
 import argparse
+import subprocess
 from pathlib import Path
 
 
@@ -45,6 +46,16 @@ def setup_engine(engine_src_dir, environment_dir):
         print(f"Error: {engine_bin} not exists, compile the engine first")
         exit(1)
     shutil.copy(engine_bin, engine_bin_dest)
+
+    # The indexer connector reads its credentials from <home>/queue/keystore and refuses to start
+    # without them. The engine runs from this directory, and the test indexer does not check them.
+    keystore_bin = Path(engine_src_dir) / '..' / 'build' / 'bin' / 'wazuh-manager-keystore'
+    if not keystore_bin.exists():
+        print(f"Error: {keystore_bin} not exists, compile the manager first")
+        exit(1)
+    for key, value in (('username', 'test-user'), ('password', 'test-password')):
+        subprocess.run([str(keystore_bin), '-f', 'indexer', '-k', key], input=value, text=True, check=True,
+                       env={**os.environ, 'WAZUH_MANAGER_HOME': environment_dir})
 
 
 def main():
