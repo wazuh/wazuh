@@ -246,29 +246,18 @@ testconfig()
     # may never run to clear a marker left by an earlier, unrelated one.
     rm -f ${DIR}/var/run/*.failed
 
-    # The whole file first (XML, schema, cross-field rules and the files it references): fails fast
-    # with the JSON pointer of the offending option before any daemon runs its own -t.
-    MCONF_VERDICT=$(${MCONF} validate 2>&1)
-    if [ $? != 0 ]; then
-        echo "${MCONF_VERDICT}" >&2
-        # With the fail-fast no daemon starts, so nothing else records the reason where operators
-        # (and the integration tests) look for it: surface the verdict in the manager log too.
-        echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: ${MCONF_VERDICT}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
-        if [ $USE_JSON = true ]; then
-            echo -n '{"error":20,"message":"'${WAZUH_CONF}': Configuration error."}'
-        else
-            echo "${WAZUH_CONF}: Configuration error. Exiting"
-        fi
-        rm -f ${DIR}/var/run/*.start
-        rm -f ${DIR}/var/run/.restart
-        unlock;
-        exit 1;
-    fi
-
-    # Credentials, once the configuration is known good and while we are still root. The systemd
-    # unit runs the same ladder from ExecStartPre; this call is what covers a direct
-    # `wazuh-manager-control start`, and it is a no-op the second time because every step-0 test is
-    # already true by then.
+    # Credentials FIRST, before the configuration validator runs, and while we are still root.
+    #
+    # The order is load-bearing, not a preference. checkSemantics() verifies that the files named by
+    # remote.https.certificate/key and auth.ssl_manager_cert/key exist, and this resolver is what
+    # creates them. Validating first would therefore refuse to start with "(1244) file not found:
+    # .../remoted.pem" on any host whose certificates have not been issued yet -- every from-source
+    # install, since install.sh deliberately does not resolve credentials at build time, and any
+    # package install whose postinst could not complete the certificate half. The resolver would
+    # never get the chance to issue them, or to explain why it could not.
+    #
+    # The resolver reads no configuration of its own, so it has nothing to gain from running after
+    # the validator.
     #
     # Unresolved credentials fail here rather than at the daemon's own -t: a missing indexer
     # password is not a configuration error and has no JSON pointer to report, and the resolver has
@@ -287,6 +276,26 @@ testconfig()
             unlock;
             exit 1;
         fi
+    fi
+
+    # Then the whole configuration file (XML, schema, cross-field rules and the files it
+    # references): fails fast with the JSON pointer of the offending option before any daemon runs
+    # its own -t.
+    MCONF_VERDICT=$(${MCONF} validate 2>&1)
+    if [ $? != 0 ]; then
+        echo "${MCONF_VERDICT}" >&2
+        # With the fail-fast no daemon starts, so nothing else records the reason where operators
+        # (and the integration tests) look for it: surface the verdict in the manager log too.
+        echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: ${MCONF_VERDICT}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
+        if [ $USE_JSON = true ]; then
+            echo -n '{"error":20,"message":"'${WAZUH_CONF}': Configuration error."}'
+        else
+            echo "${WAZUH_CONF}: Configuration error. Exiting"
+        fi
+        rm -f ${DIR}/var/run/*.start
+        rm -f ${DIR}/var/run/.restart
+        unlock;
+        exit 1;
     fi
 
     # Then each daemon checks what is not configuration (files, sockets, keys).

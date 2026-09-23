@@ -93,17 +93,31 @@ case "$1" in
         # the library that knows the file format lives inside it. Only WAZUH_MANAGER_* keys, and
         # only inside the managed block: the other components' keys and anything the operator wrote
         # are not ours to remove, even when they carry the same name.
-        if [ -f ${DIR}/lib/credentials-lib.sh ]; then
-            . ${DIR}/lib/credentials-lib.sh
-            cred_purge_prefix WAZUH_MANAGER_ > /dev/null 2>&1 || true
+        if [ -f ${DIR}/lib/wazuh-credentials.sh ]; then
+            . ${DIR}/lib/wazuh-credentials.sh
+
+            for CRED_KEY in WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD \
+                            WAZUH_MANAGER_CERT_SANS WAZUH_MANAGER_REMOTED_CERT_SANS; do
+                wazuh_env_unset "${CRED_KEY}" > /dev/null 2>&1 || true
+            done
+
+            CRED_FILE=$(wazuh_env_get_file 2>/dev/null) || CRED_FILE=""
+            CRED_BASE=$(wazuh_base_get_dir 2>/dev/null) || CRED_BASE=""
+            CRED_CA=$(wazuh_ca_get_dir 2>/dev/null) || CRED_CA=""
 
             # The last component out removes what is left. A file still carrying any WAZUH_ key is
             # a file a sibling is still using, so this errs towards leaving it: a leftover
             # root-only file is harmless, breaking an installed indexer or dashboard is not.
-            if [ -f "${CRED_FILE}" ] && ! grep -q '^[[:space:]]*WAZUH_[A-Z_]*=' "${CRED_FILE}" 2>/dev/null; then
-                rm -f "${CRED_FILE}" "${CRED_LOCK}" > /dev/null 2>&1
-                rm -rf "${CRED_DIR}/ca" > /dev/null 2>&1
-                rmdir "${CRED_DIR}" > /dev/null 2>&1 || true
+            if [ -n "${CRED_FILE}" ] && [ -f "${CRED_FILE}" ] && \
+               ! grep -q '^[[:space:]]*WAZUH_[A-Z_]*=' "${CRED_FILE}" 2>/dev/null; then
+                rm -f "${CRED_FILE}" > /dev/null 2>&1 || true
+                if [ -n "${CRED_CA}" ]; then
+                    rm -rf "${CRED_CA}" > /dev/null 2>&1 || true
+                fi
+                if [ -n "${CRED_BASE}" ]; then
+                    rm -f "${CRED_BASE}/.credentials.lock" > /dev/null 2>&1 || true
+                    rmdir "${CRED_BASE}" > /dev/null 2>&1 || true
+                fi
             fi
         fi
 

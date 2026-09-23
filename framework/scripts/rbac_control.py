@@ -183,7 +183,7 @@ async def seed_rbac_database(script_args):
     import json
 
     from wazuh.rbac.orm import DB_FILE, check_database_integrity
-    from wazuh.security import validate_password
+    from wazuh.security import validate_seeded_password
 
     if path.exists(DB_FILE):
         print(f"\t{DB_FILE} already exists; leaving it untouched")
@@ -203,9 +203,12 @@ async def seed_rbac_database(script_args):
 
         # insert_default_resources() writes through the ORM layer, which enforces nothing, so the
         # policy is applied here instead. The value is never printed, only the username it belongs to.
+        #
+        # The seeding rule, not the API rule: the resolver supplies values that `wazuh_password_generate`
+        # produced, and those are guaranteed a letter and a digit but not a symbol.
         for username, password in passwords.items():
             try:
-                validate_password(password)
+                validate_seeded_password(password)
             except WazuhError as exc:
                 print(f"\tThe password supplied for '{username}' was rejected: {exc.message}")
                 sys.exit(1)

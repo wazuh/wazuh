@@ -211,3 +211,49 @@ def test_rbac_catalog_getters_are_not_memoized(db_setup):
         assert not hasattr(getter, 'cache_info'), f'{getter.__name__} memoizes its own result'
 
     assert hasattr(core_security.load_spec, 'cache_info')
+
+
+@pytest.mark.parametrize('password', [
+    'NoSymbolsHere123',      # the shape wazuh_password_generate() can produce
+    'aB3' + 'x' * 9,         # exactly twelve characters
+])
+def test_seeded_password_policy_accepts_what_the_resolver_generates(db_setup, password):
+    """A value the credential resolver can hand to `rbac_control seed` must be seedable.
+
+    `wazuh_password_generate` in src/init/credentials/wazuh-credentials.sh guarantees a letter and a
+    digit, not a symbol: roughly one generated password in a hundred and fifty carries none. Holding
+    the seeding path to the Server API's stricter rule would therefore refuse to seed -- and so
+    refuse to start the manager -- on that fraction of otherwise healthy installations.
+    """
+    security, _, _ = db_setup
+
+    security.validate_seeded_password(password)
+
+
+@pytest.mark.parametrize('password', [
+    'short1A',               # under twelve characters
+    'x' * 65 + '1',          # over sixty-four
+    'NoDigitsInHereAtAll',   # no digit
+    '1234567890123',         # no letter
+])
+def test_seeded_password_policy_rejects_what_pci_forbids(db_setup, password):
+    """PCI DSS v4.0 8.3.6 is still enforced: twelve to sixty-four, with a letter and a digit."""
+    security, _, _ = db_setup
+
+    with pytest.raises(WazuhError, match=r'\b(5007|5009)\b'):
+        security.validate_seeded_password(password)
+
+
+def test_the_api_rule_stays_stricter_than_the_seeding_rule(db_setup):
+    """The two rules are deliberately different, and this pins the difference.
+
+    A symbol-free password is seedable but is not something the API will accept when a user sets it
+    through `POST/PUT /security/users` or `rbac_control change-password`. Collapsing the two would
+    either reintroduce the seeding failure above or quietly weaken the API's own policy.
+    """
+    security, _, _ = db_setup
+
+    security.validate_seeded_password('NoSymbolsHere123')
+
+    with pytest.raises(WazuhError):
+        security.validate_password('NoSymbolsHere123')

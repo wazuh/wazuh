@@ -26,7 +26,8 @@ silently and leave the deployment holding a credential nobody else has.
 | `WAZUH_MANAGER_API_PASSWORD` | `wazuh` (Server API, in `rbac.db`) | **owns** it — generates one if you do not supply it, and publishes it |
 | `WAZUH_MANAGER_WUI_PASSWORD` | `wazuh-wui` (Server API, read by the dashboard) | **owns** it — generates one if you do not supply it, and publishes it |
 | `WAZUH_INDEXER_MANAGER_PASSWORD` | `wazuh-manager` (on the indexer) | **consumes** it — never generates it, never publishes it |
-| `WAZUH_MANAGER_CERT_SANS` | the manager's own certificates | **owns** them |
+| `WAZUH_MANAGER_CERT_SANS` | the indexer-connector certificate | **owns** it |
+| `WAZUH_MANAGER_REMOTED_CERT_SANS` | the agent-listener certificate | **owns** it |
 | `WAZUH_CA_DIR` | trust material, default `/etc/wazuh/ca` | path only, not a secret |
 
 A credential the manager *owns* lives in its own datastore, so generating one makes it true. A
@@ -51,12 +52,12 @@ the input, the handoff between components, and the record you read to find a gen
 # Written by the operator before installing
 WAZUH_INDEXER_MANAGER_PASSWORD='Str0ng.Pass+01'
 
-# >>> wazuh generated - do not edit
-# Editing a value here does not change the deployment: a component that already
-# holds the credential keeps it. To rotate, use wazuh-passwords-tool.sh.
-WAZUH_MANAGER_API_PASSWORD='zL9dH…'
-WAZUH_MANAGER_WUI_PASSWORD='cF4nP…'
-# >>> end wazuh generated
+# >>> wazuh generated — do not edit <<<
+# Editing a value here does not change the deployment.
+# To rotate, use wazuh-passwords-tool.sh.
+WAZUH_MANAGER_API_PASSWORD="zL9dH…"
+WAZUH_MANAGER_WUI_PASSWORD="cF4nP…"
+# >>> end wazuh generated <<<
 ```
 
 > [!IMPORTANT]
@@ -91,14 +92,23 @@ That trap is why the file, not the command line, is the documented way to choose
 
 ## The password policy
 
-Every password, supplied or generated, must be **12 to 64 characters and contain an uppercase
-letter, a lowercase letter, a digit and a symbol**. This satisfies PCI DSS v4.0 requirement 8.3.6,
-which asks for twelve characters with letters and digits, and matches what the Server API itself
-enforces — so a value accepted here is never one the API rejects later.
+Every password resolved here, supplied or generated, must be **12 to 64 characters and contain at
+least one letter and one digit** — PCI DSS v4.0 requirement 8.3.6, applied identically by all three
+components.
 
-Generated passwords are 32 characters drawn from `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`. Quotes,
-backslash, backtick, `$`, `!` and `#` are left out deliberately, so a value is safe to paste through
-shell, YAML, JSON and docker-compose interpolation without escaping.
+Generated passwords are 32 characters drawn from `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, with a
+lowercase letter, an uppercase letter and a digit guaranteed. Quotes, backslash, backtick, `$`, `!`
+and `#` are left out deliberately, so a value is safe to paste through shell, YAML, JSON and
+docker-compose interpolation without escaping.
+
+> [!NOTE]
+> Changing a Server API password **through the API** — `POST /security/users`,
+> `PUT /security/users/{user_id}` or `rbac_control change-password` — is held to a stricter rule: it
+> additionally requires an uppercase letter, a lowercase letter and a symbol, and rejects anything
+> else with error `5009` (length) or `5007` (character classes). That rule governs a value you
+> choose; the rule above governs one the resolver generates or accepts at seeding time. A generated
+> password is not guaranteed to carry a symbol, so it may not satisfy the stricter rule — it
+> authenticates normally either way.
 
 ## Installing and starting
 
@@ -132,9 +142,6 @@ $ systemctl status wazuh-manager
 1. Read the journal: `journalctl -u wazuh-manager -n 50`.
 2. Set the missing key in `/etc/wazuh/credentials.env`.
 3. `sudo systemctl start wazuh-manager`.
-
-The unit gives up after three attempts in a minute and stays `failed`, rather than retrying forever
-and flooding the journal.
 
 Validation covers **presence and format only**. The pre-start step never opens a network connection,
 because making a service's start depend on reaching its peer would break boot ordering and cluster
@@ -187,22 +194,33 @@ as root and stays root-owned, so a daemon cannot replace the manager's own trust
 
 ### Subject alternative names
 
-By default the certificate carries the hostname, the FQDN, `localhost`, the loopback addresses and
-the global addresses on default-route interfaces only. Link-local ranges and non-default-route
-interfaces are excluded, or a host running containers would advertise its `docker0`, `veth*` and CNI
-addresses too.
+The two leaves are configured independently, because they are presented to different peers:
 
-`WAZUH_MANAGER_CERT_SANS` **replaces** that derived set; loopback is always appended. Wildcard names
-are refused: under a shared CA, a node holding one could present a certificate for any other node.
+| Setting | Configures | Discovery when unset |
+|---------|------------|----------------------|
+| `WAZUH_MANAGER_CERT_SANS` | `indexer-connector.pem` | hostname, FQDN, `localhost`, loopback, and the global addresses on default-route interfaces |
+| `WAZUH_MANAGER_REMOTED_CERT_SANS` | `remoted.pem` | hostname, FQDN, `localhost`, loopback, and **every** address `ip -o addr show` reports — including non-default-route, virtual and link-local interfaces |
+
+Remoted's list is deliberately the wider of the two: agents reach the manager over whatever address
+the operator pointed them at, which is frequently not the one on the default route.
+
+An explicit value **replaces** discovery for that leaf; it does not extend it. Wildcard DNS names,
+scoped IPv6 and CIDR notation are refused — under a shared CA, a node holding a wildcard could
+present a certificate for any other node — and equivalent textual IPv6 addresses are deduplicated.
 
 ```sh
 WAZUH_MANAGER_CERT_SANS='DNS:wazuh.corp.local,IP:10.0.1.11'
+WAZUH_MANAGER_REMOTED_CERT_SANS='DNS:agents.corp.local,IP:10.0.1.11,IP:2001:db8::10'
 ```
 
+Changing either setting afterwards renews nothing: a complete existing pair always wins. To reissue,
+remove the pair and start the service again.
+
 > [!WARNING]
-> A missing certificate stops the service, but a **wrong** one does not — it fails at the first peer
-> connection, possibly weeks later, because the pre-start step opens no connections. Every run logs
-> the SAN list and the DN it issued with; check what a node actually presents with
+> Discovery failing is an **error**, not a quiet fall back to loopback: a node issued a
+> loopback-only certificate installs cleanly and then fails at the first peer connection, possibly
+> weeks later, because the pre-start step opens no network connections. If `ip -o addr show` cannot
+> run, supply the SANs explicitly. Check what a node actually presents with
 > `openssl x509 -in /var/wazuh-manager/etc/certs/remoted.pem -noout -text`.
 
 The bootstrap CA is local to the host and disposable. A host that minted its own and later joins a

@@ -21,11 +21,19 @@ Conflicts:   ossec-hids ossec-hids-agent
 Obsoletes: wazuh-api < 4.0.0
 AutoReqProv: no
 
-# openssl is the CLI, not the library the daemons link: bin/wazuh-manager-mint-certs drives it to
-# mint the bootstrap CA and issue the manager's two TLS pairs during credential resolution. Without
-# it a fresh host has no certificates and the service refuses to start. AutoReqProv is off above, so
-# this has to be stated rather than inferred.
-Requires: coreutils openssl
+# Credential resolution runs from the maintainer scripts and from the service's pre-start step, and
+# needs three things a minimal install does not guarantee. AutoReqProv is off above, so each has to
+# be stated rather than inferred.
+#
+#   openssl    The CLI, not the library the daemons link: lib/wazuh-manager-certificates.sh drives
+#              it to mint the bootstrap CA and issue the manager's two TLS pairs.
+#   iproute    Subject alternative names come from `ip -o addr show`. A failed enumeration is an
+#              error rather than a loopback-only fallback, precisely so a node cannot be issued a
+#              certificate that installs cleanly and then fails at the first peer connection.
+#   hostname   The CN and the DNS names come from hostname/FQDN lookup.
+#
+# Without any of them a fresh host has no certificates and the service refuses to start.
+Requires: coreutils openssl iproute hostname
 BuildRequires: coreutils glibc-devel automake autoconf libtool policycoreutils-python curl perl
 
 ExclusiveOS: linux
@@ -444,17 +452,31 @@ if [ $1 = 0 ];then
   # library that knows the file format lives inside it. Only WAZUH_MANAGER_* keys, and only inside
   # the managed block: the other components' keys and anything the operator wrote are not ours to
   # remove, even when they carry the same name.
-  if [ -f %{_localstatedir}/lib/credentials-lib.sh ]; then
-    . %{_localstatedir}/lib/credentials-lib.sh
-    cred_purge_prefix WAZUH_MANAGER_ > /dev/null 2>&1 || true
+  if [ -f %{_localstatedir}/lib/wazuh-credentials.sh ]; then
+    . %{_localstatedir}/lib/wazuh-credentials.sh
+
+    for CRED_KEY in WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD \
+                    WAZUH_MANAGER_CERT_SANS WAZUH_MANAGER_REMOTED_CERT_SANS; do
+      wazuh_env_unset "${CRED_KEY}" > /dev/null 2>&1 || true
+    done
+
+    CRED_FILE=$(wazuh_env_get_file 2>/dev/null) || CRED_FILE=""
+    CRED_BASE=$(wazuh_base_get_dir 2>/dev/null) || CRED_BASE=""
+    CRED_CA=$(wazuh_ca_get_dir 2>/dev/null) || CRED_CA=""
 
     # The last component out removes what is left. A file still carrying any WAZUH_ key is a file a
     # sibling is still using, so this errs towards leaving it: a leftover root-only file is
     # harmless, breaking an installed indexer or dashboard is not.
-    if [ -f "${CRED_FILE}" ] && ! grep -q '^[[:space:]]*WAZUH_[A-Z_]*=' "${CRED_FILE}" 2>/dev/null; then
-      rm -f "${CRED_FILE}" "${CRED_LOCK}" > /dev/null 2>&1
-      rm -rf "${CRED_DIR}/ca" > /dev/null 2>&1
-      rmdir "${CRED_DIR}" > /dev/null 2>&1 || true
+    if [ -n "${CRED_FILE}" ] && [ -f "${CRED_FILE}" ] && \
+       ! grep -q '^[[:space:]]*WAZUH_[A-Z_]*=' "${CRED_FILE}" 2>/dev/null; then
+      rm -f "${CRED_FILE}" > /dev/null 2>&1 || true
+      if [ -n "${CRED_CA}" ]; then
+        rm -rf "${CRED_CA}" > /dev/null 2>&1 || true
+      fi
+      if [ -n "${CRED_BASE}" ]; then
+        rm -f "${CRED_BASE}/.credentials.lock" > /dev/null 2>&1 || true
+        rmdir "${CRED_BASE}" > /dev/null 2>&1 || true
+      fi
     fi
   fi
 
@@ -592,8 +614,8 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/rbac_control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-manager-keystore
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-resolve-credentials
-%attr(750, root, wazuh-manager) %{_localstatedir}/bin/wazuh-manager-mint-certs
-%attr(640, root, wazuh-manager) %{_localstatedir}/lib/credentials-lib.sh
+%attr(640, root, wazuh-manager) %{_localstatedir}/lib/wazuh-credentials.sh
+%attr(640, root, wazuh-manager) %{_localstatedir}/lib/wazuh-manager-certificates.sh
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc
 %attr(660, root, wazuh-manager) %ghost %{_localstatedir}/etc/wazuh-manager.conf
 %dir %attr(1770, root, wazuh-manager) %{_localstatedir}/etc/certs

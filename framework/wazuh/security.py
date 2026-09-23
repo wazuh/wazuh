@@ -22,6 +22,10 @@ from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
 # Minimum twelve characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$')
 
+# PCI DSS v4.0 requirement 8.3.6: at least one letter and one digit. This is what the credential
+# resolver enforces for every component, and what a seeded password is held to.
+_seeded_password = re.compile(r'^(?=.*[A-Za-z])(?=.*\d).{12,}$')
+
 # The upper bound, and the lower bound inside the regex above, satisfy PCI DSS v4.0 requirement
 # 8.3.6. The character classes go beyond it: 8.3.6 asks only for letters and digits.
 PASSWORD_MIN_LENGTH = 12
@@ -31,10 +35,10 @@ PASSWORD_MAX_LENGTH = 64
 def validate_password(password: str):
     """Check a password against the Server API password policy.
 
-    This is the single spelling of the rule. It is mirrored -- deliberately, since a shell script
-    cannot import it -- by cred_validate_password() in src/init/credentials/credentials-lib.sh, so
-    that a value the credential resolver accepts or generates at install time is never one this
-    function would reject later.
+    This is the rule for a password set *through the API* -- `POST /security/users` and
+    `PUT /security/users/{user_id}`. It is stricter than the product-wide rule applied at seeding
+    time (see `validate_seeded_password`): on top of PCI DSS v4.0 requirement 8.3.6 it also demands
+    an upper- and a lowercase letter and a symbol.
 
     Parameters
     ----------
@@ -51,6 +55,38 @@ def validate_password(password: str):
     if len(password) > PASSWORD_MAX_LENGTH or len(password) < PASSWORD_MIN_LENGTH:
         raise WazuhError(5009)
     if not _user_password.match(password):
+        raise WazuhError(5007)
+
+
+def validate_seeded_password(password: str):
+    """Check a password supplied to the initial seeding of `rbac.db`.
+
+    PCI DSS v4.0 requirement 8.3.6 -- twelve to sixty-four characters containing at least one letter
+    and one digit -- which is the product-wide rule the credential resolver enforces for every
+    component. It is deliberately NOT `validate_password`: that one additionally requires a symbol,
+    and `wazuh_password_generate` in src/init/credentials/wazuh-credentials.sh guarantees only a
+    letter and a digit. Roughly one generated password in a hundred and fifty carries no symbol, so
+    applying the API rule here would refuse to seed -- and therefore refuse to start the manager --
+    on that fraction of otherwise healthy installations.
+
+    The stricter rule still governs every later change through the API, which is an operator-driven
+    path where the value is chosen rather than generated.
+
+    Parameters
+    ----------
+    password : str
+        Password to check.
+
+    Raises
+    ------
+    WazuhError(5009)
+        Insecure user password provided (length).
+    WazuhError(5007)
+        Insecure user password provided (variety of characters).
+    """
+    if len(password) > PASSWORD_MAX_LENGTH or len(password) < PASSWORD_MIN_LENGTH:
+        raise WazuhError(5009)
+    if not _seeded_password.match(password):
         raise WazuhError(5007)
 
 
