@@ -25,6 +25,20 @@ const base::Name KVDB_STORE_NAME {"kvdb-ioc/status/0"};   ///< Store document na
 constexpr std::string_view LOG_MODULE_NAME = "IOC::KVDB"; ///< Log module name for KVDBManager
 
 /**
+ * @brief Size the preallocated files RocksDB creates per store.
+ *
+ * Both defaults are charged per store regardless of how much data it holds: the WAL is
+ * preallocated at 1.1 * write_buffer_size (DBImpl::GetWalPreallocateBlockSize), so the 64 MiB
+ * default reserves ~70 MB, and the manifest reserves a further 4 MiB to hold a few dozen bytes.
+ * IOC stores range from ~3 MB to ~95 MB and are bulk-loaded then served read-only.
+ */
+void applyIocStoreTuning(rocksdb::Options& options)
+{
+    options.write_buffer_size = 8ULL * 1024 * 1024;
+    options.manifest_preallocation_size = 64ULL * 1024;
+}
+
+/**
  * @brief Represents the persisted state of a KVDB instance
  */
 class DBState
@@ -224,6 +238,8 @@ void KVDBManager::add(std::string_view name)
     rocksdb::Options options;
     options.create_if_missing = true;
     options.error_if_exists = true;
+
+    applyIocStoreTuning(options);
 
     rocksdb::DB* rawDb = nullptr;
     auto status = rocksdb::DB::Open(options, instancePath.string(), &rawDb);
@@ -585,8 +601,11 @@ void KVDBManager::loadStateFromStore()
                 if (dbState.hasInstance() && std::filesystem::exists(absPath))
                 {
                     // Open DB in READ/WRITE mode
+                    rocksdb::Options loadOptions;
+                    applyIocStoreTuning(loadOptions);
+
                     rocksdb::DB* rawDb = nullptr;
-                    auto status = rocksdb::DB::Open(rocksdb::Options {}, absPath.string(), &rawDb);
+                    auto status = rocksdb::DB::Open(loadOptions, absPath.string(), &rawDb);
                     if (status.ok())
                     {
                         auto instance = std::make_shared<DbInstance>(absPath.string(), rawDb);
