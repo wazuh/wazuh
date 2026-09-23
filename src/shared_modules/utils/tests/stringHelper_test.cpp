@@ -34,7 +34,7 @@ TEST_F(StringUtilsTest, SanitizeUtf8ReplacesInvalidBytes)
     const std::string replacement {"\xEF\xBF\xBD"};
 
     // Stray bytes and lone continuation bytes.
-    EXPECT_EQ(Utils::sanitizeUtf8("a\xFF" "b"), "a" + replacement + "b");
+    EXPECT_EQ(Utils::sanitizeUtf8("a\xFFz"), "a" + replacement + "z");
     EXPECT_EQ(Utils::sanitizeUtf8("\x80"), replacement);
     // Truncated sequences, including at the end of the string.
     EXPECT_EQ(Utils::sanitizeUtf8("\xC3"), replacement);
