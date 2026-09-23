@@ -28,6 +28,16 @@
 #                became available since and configures itself. Exits non-zero naming every key it
 #                could not resolve.
 #
+#   --clear      Removes every credential this manager owns or stores, so the next --install or
+#                --prestart resolves from nothing. Nothing in the product calls it: it exists for
+#                an image that was built by installing the package, whose postinst therefore
+#                seeded rbac.db, minted a bootstrap CA and issued certificates into the image
+#                layer. Every container started from such an image would otherwise share one
+#                database, one CA private key and one certificate -- which the specification calls
+#                out as worse than the defect this whole mechanism closes, because it looks random.
+#                Run it at the end of the Dockerfile, or once from an entrypoint before the first
+#                start.
+#
 # Validating at start rather than at install is deliberate: the answer changes between the two
 # moments and only the answer at start matters. A manager installed first resolves nothing;
 # by the time it is started the indexer has published its key, and it resolves. Checking at
@@ -47,6 +57,7 @@ while [ -n "${1-}" ]; do
     case "${1-}" in
         --install)  MODE="install" ; shift ;;
         --prestart) MODE="prestart"; shift ;;
+        --clear)    MODE="clear"   ; shift ;;
         -H)
             if [ -z "${2-}" ]; then
                 echo "resolve-credentials: -H needs a directory" >&2
@@ -56,7 +67,7 @@ while [ -n "${1-}" ]; do
             shift 2
             ;;
         -h|--help)
-            echo "Usage: $0 [--install|--prestart] [-H <home>]"
+            echo "Usage: $0 [--install|--prestart|--clear] [-H <home>]"
             exit 0
             ;;
         *)
@@ -352,8 +363,86 @@ resolve_certificates() {
 }
 
 # -----------------------------------------------------------------------------------------
+# --clear
+#
+# The one destructive path in a tool whose every other rule is "never overwrite, never repair,
+# leave what is already there alone". It exists for exactly one situation: an image built by
+# installing the package, which ran the resolver in its postinst and therefore baked this host's
+# credentials into a layer that every container will share.
+#
+# Two things it deliberately does NOT remove:
+#
+#   * A CA directory holding only an anchor. No private key beside it means the CA was issued
+#     elsewhere and handed to this host; it is not ours to destroy, and a container that was given
+#     a real CA should keep trusting it.
+#   * Anything outside the managed block of the credentials file, or any sibling component's keys.
+# -----------------------------------------------------------------------------------------
+
+manager_is_running() {
+    for _mir_pid in "${DIR}"/var/run/*.pid; do
+        [ -e "${_mir_pid}" ] || continue
+        _mir_n=$(cat "${_mir_pid}" 2>/dev/null)
+        [ -n "${_mir_n}" ] || continue
+        # A stale pidfile from an unclean stop is not a running manager.
+        kill -0 "${_mir_n}" 2>/dev/null && return 0
+    done
+    return 1
+}
+
+clear_credentials() {
+    if manager_is_running; then
+        err "refusing to clear credentials while the manager is running"
+        err "        stop it first: wazuh-manager-control stop"
+        return 1
+    fi
+
+    # rbac.db holds every user, role, policy and rule -- the two default users are only part of it,
+    # so this is named rather than folded into a quiet list.
+    if [ -e "${RBAC_DB}" ]; then
+        rm -f "${RBAC_DB}" "${RBAC_DB}.tmp"
+        log "removed ${RBAC_DB} (every Server API user, role and policy it held, not only the defaults)"
+    fi
+
+    # The keystore has no delete verb -- writing an empty value is refused -- so the RocksDB files
+    # go directly. The directory itself stays, keeping its ownership and mode.
+    if [ -d "${DIR}/queue/keystore" ]; then
+        rm -rf "${DIR}"/queue/keystore/* 2>/dev/null
+        log "cleared the keystore (the indexer credential)"
+    fi
+
+    for _cc_file in remoted.pem remoted-key.pem indexer-connector.pem indexer-connector-key.pem root-ca.pem; do
+        if [ -e "${DIR}/etc/certs/${_cc_file}" ]; then
+            rm -f "${DIR}/etc/certs/${_cc_file}"
+            log "removed etc/certs/${_cc_file}"
+        fi
+    done
+
+    _cc_ca=$(wazuh_ca_get_dir 2>/dev/null) || _cc_ca=""
+    if [ -n "${_cc_ca}" ] && [ -f "${_cc_ca}/root-ca.key" ]; then
+        rm -f "${_cc_ca}/root-ca.pem" "${_cc_ca}/root-ca.key" "${_cc_ca}/root-ca.srl"
+        log "removed the bootstrap CA in ${_cc_ca}"
+    elif [ -n "${_cc_ca}" ] && [ -f "${_cc_ca}/root-ca.pem" ]; then
+        log "keeping the trust anchor in ${_cc_ca}: it carries no private key, so it was issued elsewhere"
+    fi
+
+    # Only this component's keys, and only inside the managed block.
+    for _cc_key in WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD; do
+        wazuh_env_unset "${_cc_key}" >/dev/null 2>&1 || true
+    done
+    log "removed the manager's published keys from the credentials file"
+
+    log "cleared; the next start resolves from nothing"
+    return 0
+}
+
+# -----------------------------------------------------------------------------------------
 # Run
 # -----------------------------------------------------------------------------------------
+
+if [ "${MODE}" = "clear" ]; then
+    clear_credentials
+    exit $?
+fi
 
 resolve_api_passwords
 resolve_indexer_password

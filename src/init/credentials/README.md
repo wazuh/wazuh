@@ -49,6 +49,11 @@ collide and so the files fall inside the tree `.github/actions/check_files/manag
 | `wazuh-credentials.sh` | `<manager-home>/lib/wazuh-credentials.sh` | `0640 root:wazuh-manager` |
 | `wazuh-manager-certificates.sh` | `<manager-home>/lib/wazuh-manager-certificates.sh` | `0640 root:wazuh-manager` |
 
+A third mode, `--clear`, removes every credential the manager owns or stores so the next run
+resolves from nothing. Nothing in the product calls it: it is for an image built by installing the
+package, whose `postinst` baked this host's credentials into a layer every container would share.
+It refuses while the manager is running, and keeps a CA directory that holds only an anchor.
+
 It is invoked from the DEB `postinst` and the RPM `%post` as `--install`, and as `--prestart` from
 `testconfig()` in `../wazuh-server.sh` — that is, from `wazuh-manager-control start`, which is what
 the systemd unit's `ExecStart` runs.
