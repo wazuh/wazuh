@@ -1624,9 +1624,12 @@ InstallServer()
     # rbac.db inside the package and every installation in the world would share it. The resolver
     # runs from postinst/%post and from wazuh-manager-control start instead, both of which run on
     # the target host.
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} init/credentials/resolve-credentials ${INSTALLDIR}/bin/wazuh-manager-resolve-credentials
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} init/credentials/mint-certs.sh ${INSTALLDIR}/bin/wazuh-manager-mint-certs
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} init/credentials/credentials-lib.sh ${INSTALLDIR}/lib/credentials-lib.sh
+    # wazuh-credentials.sh and wazuh-manager-certificates.sh are the shared helpers, versioned
+    # together and pinned as a pair: the certificate half checks for the credential half's
+    # functions at call time and refuses to run without them.
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} init/credentials/resolve-credentials.sh ${INSTALLDIR}/bin/wazuh-manager-resolve-credentials
+    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} init/credentials/wazuh-credentials.sh ${INSTALLDIR}/lib/wazuh-credentials.sh
+    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} init/credentials/wazuh-manager-certificates.sh ${INSTALLDIR}/lib/wazuh-manager-certificates.sh
 }
 
 InstallAgent()

@@ -7,6 +7,8 @@
     certificate: 'etc/certs/remoted.pem'
     key: 'etc/certs/remoted-key.pem'
     mutation: missing_certificate
-    # The unit's ExecStartPre (src/init/credentials/resolve-credentials) runs before any daemon and
-    # writes its verdict to the unit's journal. The CI provisions the anchor without its key (case D).
+    # wazuh-manager-control start runs the credential resolver
+    # (src/init/credentials/resolve-credentials.sh) before the configuration validator and any
+    # daemon, and systemd captures its stderr in the unit's journal. The CI provisions the anchor
+    # without its key, so the resolver cannot sign and reports the certificates as unresolved.
     expected_error: ".*MISSING the manager's TLS certificates in .*etc/certs.*"

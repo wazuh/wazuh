@@ -7,24 +7,36 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-# Drives src/init/credentials/ against a throwaway tree: the resolution ladder, the credentials
-# file format and its locking, the password policy, and the four certificate cases.
+# Drives src/init/credentials/resolve-credentials.sh: the manager's half of the credential
+# resolution ladder -- which keys it owns, which it consumes, what it does at each of the two
+# moments, and what it reports when something is missing.
 #
-# Black-box where it can be. The keystore and rbac_control are stub binaries, so every case runs
-# without a build; openssl is real, so the certificates the cases produce are actually verified
-# against the CA that signed them.
+# The shared helpers it stands on (wazuh-credentials.sh, wazuh-manager-certificates.sh) have their
+# own suite, test-wazuh-helpers.sh, which covers the file format, locking, permissions, SAN
+# discovery and the certificate states in far more depth. Nothing here re-tests those; the cases
+# below are about the orchestration on top.
 #
-# CRED_DIR and CRED_TRUST_ROOT point the library at the throwaway tree. Nothing that ships sets
-# either -- a real run resolves /etc/wazuh/credentials.env and validates its ancestry from / down --
-# but without them every case here would be refused for /tmp's own 1777.
+# Must run as root, like the resolver itself. The helpers refuse any base directory with a
+# group- or world-writable ancestor, so the throwaway tree goes under /root rather than /tmp --
+# the same reason test-wazuh-helpers.sh uses /root. Override with WAZUH_TEST_PARENT only to
+# another secure root-owned directory.
 #
-#   ./test_resolve_credentials.sh
+# The keystore and rbac_control are stubs, so the cases run without a build. OpenSSL is real, so
+# the certificates produced are verified against the CA that signed them.
+#
+#   sudo ./test_resolve_credentials.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CRED_SRC="${SCRIPT_DIR}/../credentials"
+TEST_PARENT="${WAZUH_TEST_PARENT:-/root}"
 
 failures=0
 checks=0
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo "This suite must run as root: the helpers require a root-owned base directory." >&2
+    exit 1
+fi
 
 check() {
 
@@ -46,19 +58,23 @@ check() {
 }
 
 # A throwaway manager tree: stub keystore (a file per family.key), stub rbac_control (records the
-# JSON it was given on stdin and creates rbac.db), real mint-certs.sh. Echoes the root.
+# JSON it was given on stdin and creates rbac.db), and the real shared helpers. Echoes the root.
 make_tree() {
 
     local root
-    root="$(mktemp -d)"
+    root="$(mktemp -d "${TEST_PARENT}/wazuh-resolver-tests.XXXXXX")"
+    chmod 0700 "${root}"
 
-    mkdir -p "${root}/etc/wazuh" "${root}/home/bin" "${root}/home/lib" \
-             "${root}/home/api/configuration/security" "${root}/home/etc/certs" "${root}/store"
+    mkdir -p "${root}/base" "${root}/home/bin" "${root}/home/lib" \
+             "${root}/home/api/configuration/security" "${root}/store"
+    chmod 0700 "${root}/base"
 
-    cp "${CRED_SRC}/credentials-lib.sh" "${root}/home/lib/"
-    cp "${CRED_SRC}/resolve-credentials" "${root}/home/bin/"
-    cp "${CRED_SRC}/mint-certs.sh" "${root}/home/bin/wazuh-manager-mint-certs"
-    chmod +x "${root}/home/bin/resolve-credentials" "${root}/home/bin/wazuh-manager-mint-certs"
+    # 1770 root:<group> is what InstallServer() creates and what the certificate helper insists on.
+    install -d -m 1770 -o root -g root "${root}/home/etc/certs"
+
+    cp "${CRED_SRC}/wazuh-credentials.sh" "${CRED_SRC}/wazuh-manager-certificates.sh" "${root}/home/lib/"
+    cp "${CRED_SRC}/resolve-credentials.sh" "${root}/home/bin/resolve-credentials"
+    chmod +x "${root}/home/bin/resolve-credentials"
 
     cat > "${root}/home/bin/wazuh-manager-keystore" <<'STUB'
 #!/bin/sh
@@ -100,6 +116,9 @@ STUB
 # Deliberately not "echo the output and let the caller capture it": command substitution runs the
 # function in a subshell, so the RC it sets there never reaches the caller and every exit-status
 # check silently reads 0.
+#
+# root:root stands in for the service identity, as test-wazuh-helpers.sh does: the certificate
+# helper requires the user and group to exist and creates neither.
 RESOLVER_OUT="$(mktemp)"
 trap 'rm -f "${RESOLVER_OUT}"' EXIT
 
@@ -107,7 +126,8 @@ run_resolver() {
 
     local root="$1"; shift
 
-    CRED_DIR="${root}/etc/wazuh" CRED_TRUST_ROOT="${root}" \
+    WAZUH_BASE_DIR="${root}/base" \
+    WAZUH_MANAGER_USER=root WAZUH_MANAGER_GROUP=root \
         "${root}/home/bin/resolve-credentials" "$@" -H "${root}/home" > "${RESOLVER_OUT}" 2>&1
     RC=$?
 
@@ -125,36 +145,42 @@ seeded_password() {
 
 }
 
-# A value the manager published, with the file's one escape ('\'') undone.
-#
-# Scoped to the managed block on purpose: a key the operator wrote outside it may carry the same
-# name, and reading that back would make "the manager published nothing" indistinguishable from
-# "the manager published what the operator already had there".
+# A value the manager published, read from inside the managed block only: a key the operator wrote
+# outside it may carry the same name, and reading that back would make "the manager published
+# nothing" indistinguishable from "the manager published what was already there".
 published() {
 
     awk -v key="$2" '
         /^# >>> wazuh generated/ { inblock = 1; next }
         /^# >>> end wazuh generated/ { inblock = 0; next }
         inblock && index($0, key "=") == 1 { print substr($0, length(key) + 2) }
-    ' "$1/etc/wazuh/credentials.env" 2>/dev/null | sed -e "s/^'//" -e "s/'$//" -e "s/'\\\\''/'/g"
+    ' "$1/base/credentials.env" 2>/dev/null | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//"
 
 }
 
 write_credentials() {
 
-    printf '%s\n' "$2" > "$1/etc/wazuh/credentials.env"
-    chmod 0600 "$1/etc/wazuh/credentials.env"
+    printf '%s\n' "$2" > "$1/base/credentials.env"
+    chmod 0600 "$1/base/credentials.env"
+
+}
+
+cleanup() {
+
+    case "$1" in
+        "${TEST_PARENT}"/wazuh-resolver-tests.*) rm -rf "$1" ;;
+    esac
 
 }
 
 # --------------------------------------------------------------------------------------------
-# The ladder
+# The two moments
 # --------------------------------------------------------------------------------------------
 
 # A clean host resolves everything it owns and nothing it merely consumes, and says nothing about
 # the difference: the installer has no opinion about whether the manager can run.
 root="$(make_tree)"
-run_resolver "${root}" --install > /dev/null
+run_resolver "${root}" --install
 check "a clean install exits 0" "0" "${RC}"
 check "the two API passwords are seeded" "yes" \
     "$([ -n "$(seeded_password "${root}" wazuh)" ] && [ -n "$(seeded_password "${root}" wazuh-wui)" ] && echo yes)"
@@ -163,7 +189,6 @@ check "both are published to the credentials file" "yes" \
        [ "$(published "${root}" WAZUH_MANAGER_WUI_PASSWORD)" = "$(seeded_password "${root}" wazuh-wui)" ] && echo yes)"
 check "the consumed indexer key is never published" "" \
     "$(published "${root}" WAZUH_INDEXER_MANAGER_PASSWORD)"
-check "the credentials file is 0600" "600" "$(stat -c '%a' "${root}/etc/wazuh/credentials.env")"
 
 # Start on that same host: the one credential the manager cannot invent is missing, and it is named.
 run_resolver "${root}" --prestart
@@ -172,27 +197,29 @@ check "and names the missing key" "yes" \
     "$(grep -q 'MISSING WAZUH_INDEXER_MANAGER_PASSWORD' <<< "$(resolver_output)" && echo yes)"
 
 # The indexer publishes its key; the manager picks it up at start with no reinstall or repair.
-printf "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'\n" >> "${root}/etc/wazuh/credentials.env"
-run_resolver "${root}" --prestart > /dev/null
+printf "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'\n" >> "${root}/base/credentials.env"
+run_resolver "${root}" --prestart
 check "the next start succeeds once the key is there" "0" "${RC}"
 check "and the credential is in the manager's own store" "Indexer.Wr0te1" \
     "$(cat "${root}/store/indexer.password")"
-check "together with its username" "wazuh-manager" "$(cat "${root}/store/indexer.username")"
 
 # Re-running changes nothing: an upgrade takes step 0 for everything.
-before="$(md5sum "${root}/etc/wazuh/credentials.env" "${root}/store/indexer.password")"
-run_resolver "${root}" --prestart > /dev/null
+before="$(md5sum "${root}/base/credentials.env" "${root}/store/indexer.password" \
+    "${root}/home/etc/certs/remoted.pem" | md5sum)"
+run_resolver "${root}" --prestart
 check "re-running is a no-op" "${before}" \
-    "$(md5sum "${root}/etc/wazuh/credentials.env" "${root}/store/indexer.password")"
-rm -rf "${root}"
+    "$(md5sum "${root}/base/credentials.env" "${root}/store/indexer.password" \
+        "${root}/home/etc/certs/remoted.pem" | md5sum)"
+cleanup "${root}"
 
 # Two independent installations must never share a credential.
-root="$(make_tree)";  run_resolver "${root}" --install > /dev/null
-root2="$(make_tree)"; run_resolver "${root2}" --install > /dev/null
+root="$(make_tree)";  run_resolver "${root}" --install
+root2="$(make_tree)"; run_resolver "${root2}" --install
 check "two clean installs generate different passwords" "differ" \
     "$([ "$(seeded_password "${root}" wazuh)" != "$(seeded_password "${root2}" wazuh)" ] && echo differ)"
-check "generated passwords are 32 characters" "32" "$(printf '%s' "$(seeded_password "${root}" wazuh)" | wc -c)"
-rm -rf "${root}" "${root2}"
+check "generated passwords are 32 characters" "32" \
+    "$(printf '%s' "$(seeded_password "${root}" wazuh)" | wc -c)"
+cleanup "${root}"; cleanup "${root2}"
 
 # --------------------------------------------------------------------------------------------
 # Where a value comes from
@@ -200,28 +227,30 @@ rm -rf "${root}" "${root2}"
 
 root="$(make_tree)"
 write_credentials "${root}" "WAZUH_MANAGER_API_PASSWORD='Supplied.Api1'"
-run_resolver "${root}" --install > /dev/null
+run_resolver "${root}" --install
 check "a supplied value is what gets seeded" "Supplied.Api1" "$(seeded_password "${root}" wazuh)"
 check "and the user with no supplied value still gets one" "yes" \
     "$([ -n "$(seeded_password "${root}" wazuh-wui)" ] && echo yes)"
-rm -rf "${root}"
+cleanup "${root}"
 
 root="$(make_tree)"
 write_credentials "${root}" "WAZUH_MANAGER_API_PASSWORD='FromFile.Aa1'"
-CRED_DIR="${root}/etc/wazuh" CRED_TRUST_ROOT="${root}" WAZUH_MANAGER_API_PASSWORD='FromEnvir.Aa1' \
+WAZUH_BASE_DIR="${root}/base" WAZUH_MANAGER_USER=root WAZUH_MANAGER_GROUP=root \
+    WAZUH_MANAGER_API_PASSWORD='FromEnvir.Aa1' \
     "${root}/home/bin/resolve-credentials" --install -H "${root}/home" > /dev/null 2>&1
 check "the environment overrides the file" "FromEnvir.Aa1" "$(seeded_password "${root}" wazuh)"
-rm -rf "${root}"
+cleanup "${root}"
 
 # Step 0 wins over both channels: a value edited into the file after seeding changes nothing.
 root="$(make_tree)"
-run_resolver "${root}" --install > /dev/null
+run_resolver "${root}" --install
 seeded="$(seeded_password "${root}" wazuh)"
 write_credentials "${root}" "WAZUH_MANAGER_API_PASSWORD='Edited.Later1'
 WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'"
-run_resolver "${root}" --prestart > /dev/null
+run_resolver "${root}" --prestart
 check "editing the file does not reseed an existing database" "${seeded}" "$(seeded_password "${root}" wazuh)"
-rm -rf "${root}"
+check "and the run still succeeds" "0" "${RC}"
+cleanup "${root}"
 
 # --------------------------------------------------------------------------------------------
 # An invalid value is a failure, not an absence
@@ -243,7 +272,17 @@ check "naming the key and the rule" "yes" \
     "$(grep -q 'INVALID WAZUH_MANAGER_API_PASSWORD' <<< "${start_output}" && echo yes)"
 check "the value is never printed" "" \
     "$(grep -o 'short' <<< "${install_output}${start_output}" | head -1)"
-rm -rf "${root}"
+cleanup "${root}"
+
+# The seeding policy is PCI DSS 8.3.6 -- a letter and a digit -- not the Server API's stricter
+# create/update rule. wazuh_password_generate() guarantees no symbol, so requiring one here would
+# refuse to seed on roughly one installation in a hundred and fifty.
+root="$(make_tree)"
+write_credentials "${root}" "WAZUH_MANAGER_API_PASSWORD='NoSymbolsHere123'"
+run_resolver "${root}" --install
+check "a supplied value with no symbol is accepted at seeding" "NoSymbolsHere123" \
+    "$(seeded_password "${root}" wazuh)"
+cleanup "${root}"
 
 # A seeding failure must block the start rather than pass silently. The resolver's caller ignores
 # the per-credential return values, so a failure that marks nothing would let the service come up
@@ -259,338 +298,63 @@ check "a failure to seed rbac.db blocks the start" "1" "${RC}"
 check "and is named" "yes" "$(grep -q 'MISSING rbac.db' <<< "$(resolver_output)" && echo yes)"
 run_resolver "${root}" --install
 check "but still lets the install exit 0" "0" "${RC}"
-rm -rf "${root}"
+cleanup "${root}"
 
-# Nothing is seeded that was not published first, and a later run seeds what was published.
-root="$(make_tree)"
-mkdir -p "${root}/fakebin"
-printf '#!/bin/sh\nexit 1\n' > "${root}/fakebin/mv"
-chmod +x "${root}/fakebin/mv"
-PATH="${root}/fakebin:${PATH}" run_resolver "${root}" --prestart
-check "a credentials file that cannot be written blocks the start" "1" "${RC}"
-check "and says nothing was seeded" "yes" \
-    "$(grep -q 'could not be written, so nothing was seeded' <<< "$(resolver_output)" && echo yes)"
-check "and nothing is seeded" "" "$(seeded_password "${root}" wazuh)"
-run_resolver "${root}" --install > /dev/null
-check "the next run seeds exactly what it published" "$(published "${root}" WAZUH_MANAGER_API_PASSWORD)" \
-    "$(seeded_password "${root}" wazuh)"
-rm -rf "${root}"
+# --------------------------------------------------------------------------------------------
+# What the resolver asks the certificate helper for
+#
+# The helper's own states are covered by test-wazuh-helpers.sh. What matters here is that the
+# manager gets both pairs it needs, chained to one anchor, and that an unusable result blocks the
+# start instead of being reported as success.
+# --------------------------------------------------------------------------------------------
 
-# Each class of the policy, independently.
 root="$(make_tree)"
-export CRED_DIR="${root}/etc/wazuh"
-. "${CRED_SRC}/credentials-lib.sh"
-for case in "shortA1." "NoDigitsAtAll." "123456789012." "Pässword12345" "$(printf 'Tab\tPassword1')"; do
-    cred_validate_password KEY "${case}" 2> /dev/null
-    check "the policy rejects '${case}'" "1" "$?"
+run_resolver "${root}" --install
+for pair in remoted indexer-connector; do
+    check "${pair} is issued and verifies against the CA" "yes" \
+        "$(openssl verify -CAfile "${root}/base/ca/root-ca.pem" \
+            "${root}/home/etc/certs/${pair}.pem" > /dev/null 2>&1 && echo yes)"
 done
-for case in "Perfectly.Fine1" "alllowercase1" "NoSymbolsHere123"; do
-    cred_validate_password KEY "${case}" 2> /dev/null
-    check "the policy accepts '${case}'" "0" "$?"
-done
+check "the anchor is installed for the manager to read" "yes" \
+    "$([ -f "${root}/home/etc/certs/root-ca.pem" ] && echo yes)"
+check "the connector leaf is a client certificate" "yes" \
+    "$(openssl x509 -in "${root}/home/etc/certs/indexer-connector.pem" -noout -ext extendedKeyUsage \
+        2>/dev/null | grep -q 'Client Authentication' && echo yes)"
+check "the remoted leaf is a server certificate" "yes" \
+    "$(openssl x509 -in "${root}/home/etc/certs/remoted.pem" -noout -ext extendedKeyUsage \
+        2>/dev/null | grep -q 'Server Authentication' && echo yes)"
+check "the CA private key is never copied into the service directory" "" \
+    "$(ls "${root}/home/etc/certs" | grep 'root-ca.key')"
+cleanup "${root}"
 
-# A keystore holding only the password, as the connector's former built-in username allowed, gets
-# the username written rather than passing step 0 with a credential the connector refuses.
+# An anchor with no private key: this host cannot sign and must not pretend to.
 root="$(make_tree)"
-printf 'Stored.Before1' > "${root}/store/indexer.password"
+mkdir -p "${root}/base/ca"
+chmod 0700 "${root}/base/ca"
+openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 1 \
+    -keyout "${root}/other-ca.key" -out "${root}/base/ca/root-ca.pem" \
+    -subj "/CN=Somebody elses CA" > /dev/null 2>&1
+chmod 0644 "${root}/base/ca/root-ca.pem"
 run_resolver "${root}" --prestart
-check "a stored password without a username gets the username" "wazuh-manager" \
-    "$(cat "${root}/store/indexer.username" 2>/dev/null)"
-check "and the indexer credential counts as resolved" "" \
-    "$(grep 'MISSING WAZUH_INDEXER_MANAGER_PASSWORD' <<< "$(resolver_output)")"
-rm -rf "${root}"
+check "an anchor-only CA leaves the certificates unresolved" "1" "${RC}"
+check "and the resolver says so" "yes" \
+    "$(grep -q "MISSING the manager.s TLS certificates" <<< "$(resolver_output)" && echo yes)"
+check "no leaf is issued" "" "$(ls "${root}/home/etc/certs" | grep '^remoted')"
+check "and no CA private key appears on this host" "" "$(ls "${root}/base/ca" | grep 'root-ca.key')"
+cleanup "${root}"
 
-# What is generated must pass what is enforced, every time rather than most times.
-generated_ok="yes"
-for _ in $(seq 1 50); do
-    pw="$(cred_generate_password)"
-    cred_validate_password GEN "${pw}" 2> /dev/null || generated_ok="no"
-    [ "${#pw}" -eq 32 ] || generated_ok="no"
-done
-check "every generated password satisfies the policy" "yes" "${generated_ok}"
-rm -rf "${root}"
-
-# --------------------------------------------------------------------------------------------
-# The credentials file
-# --------------------------------------------------------------------------------------------
-
+# Explicit SANs replace discovery, for each of the two leaves independently.
 root="$(make_tree)"
-write_credentials "${root}" "# an operator comment
-WAZUH_MANAGER_API_PASSWORD='OperatorOwns.1'
-WAZUH_INDEXER_ADMIN_PASSWORD='Sibling.Key1a'"
-run_resolver "${root}" --install > /dev/null
-check "lines outside the managed block are left untouched" "yes" \
-    "$(grep -qx "WAZUH_MANAGER_API_PASSWORD='OperatorOwns.1'" "${root}/etc/wazuh/credentials.env" && \
-       grep -qx '# an operator comment' "${root}/etc/wazuh/credentials.env" && echo yes)"
-check "even when they carry a key the manager owns" "1" \
-    "$(awk '/^# >>> wazuh generated/{b=1;next} /^# >>> end/{b=0} b&&/^WAZUH_MANAGER_API_PASSWORD=/{n++} END{print n+0}' \
-        "${root}/etc/wazuh/credentials.env")"
-
-# Purge takes this component's keys and nothing else.
-( export CRED_DIR="${root}/etc/wazuh"
-  . "${root}/home/lib/credentials-lib.sh"
-  cred_purge_prefix WAZUH_MANAGER_ )
-check "a purge leaves the sibling's key" "yes" \
-    "$(grep -q "WAZUH_INDEXER_ADMIN_PASSWORD='Sibling.Key1a'" "${root}/etc/wazuh/credentials.env" && echo yes)"
-check "a purge leaves the operator's line" "yes" \
-    "$(grep -qx "WAZUH_MANAGER_API_PASSWORD='OperatorOwns.1'" "${root}/etc/wazuh/credentials.env" && echo yes)"
-check "a purge removes the generated keys" "0" \
-    "$(awk '/^# >>> wazuh generated/{b=1;next} /^# >>> end/{b=0} b&&/^WAZUH_MANAGER_/{n++} END{print n+0}' \
-        "${root}/etc/wazuh/credentials.env")"
-rm -rf "${root}"
-
-# A file anyone else can read is refused outright rather than repaired: it is either a mistake or
-# an attack, and fixing it silently hides both.
-root="$(make_tree)"
-printf "WAZUH_MANAGER_API_PASSWORD='Supplied.Api1'\n" > "${root}/etc/wazuh/credentials.env"
-chmod 0644 "${root}/etc/wazuh/credentials.env"
-run_resolver "${root}" --prestart
-check "a group-readable credentials file is refused" "1" "${RC}"
-check "and the reason is logged" "yes" \
-    "$(grep -q 'group- or world-accessible' <<< "$(resolver_output)" && echo yes)"
-rm -rf "${root}"
-
-if [ "$(id -u)" = "0" ]; then
-    root="$(make_tree)"
-    printf "WAZUH_MANAGER_API_PASSWORD='Supplied.Api1'\n" > "${root}/etc/wazuh/credentials.env"
-    chmod 0600 "${root}/etc/wazuh/credentials.env"
-    chgrp daemon "${root}/etc/wazuh/credentials.env"
-    run_resolver "${root}" --prestart
-    check "a credentials file outside the root group is refused" "1" "${RC}"
-    check "and the reason is logged" "yes" \
-        "$(grep -q "does not belong to the resolver's own group" <<< "$(resolver_output)" && echo yes)"
-    rm -rf "${root}"
-else
-    echo "skip - group ownership case (needs root to chgrp)"
-fi
-
-root="$(make_tree)"
-mkdir -p "${root}/elsewhere"
-printf "WAZUH_MANAGER_API_PASSWORD='Supplied.Api1'\n" > "${root}/elsewhere/real.env"
-chmod 0600 "${root}/elsewhere/real.env"
-ln -s "${root}/elsewhere/real.env" "${root}/etc/wazuh/credentials.env"
-run_resolver "${root}" --prestart
-check "a symlinked credentials file is refused" "1" "${RC}"
-check "and says it is a symlink" "yes" \
-    "$(grep -q 'symlink' <<< "$(resolver_output)" && echo yes)"
-rm -rf "${root}"
-
-# systemd starts units in parallel, so three pre-start steps can reach one file at once. Without
-# the lock, generated values are lost silently at boot.
-root="$(make_tree)"
-mkdir -p "${root}/etc/wazuh"
-(
-    # Exported before sourcing on purpose: the library derives CRED_FILE and CRED_LOCK from
-    # CRED_DIR when it is sourced, so setting it afterwards -- or as a command prefix -- would
-    # leave both pointing at the real /etc/wazuh.
-    export CRED_DIR="${root}/etc/wazuh"
-    . "${root}/home/lib/credentials-lib.sh"
-    for i in $(seq 1 16); do
-        ( cred_publish "WAZUH_CONCURRENT_${i}" "Value.Number${i}a" > /dev/null ) &
-    done
-    wait
-)
-check "concurrent writers lose no key" "16" \
-    "$(grep -c '^WAZUH_CONCURRENT_' "${root}/etc/wazuh/credentials.env")"
-check "and produce exactly one managed block" "1" \
-    "$(grep -c '>>> wazuh generated' "${root}/etc/wazuh/credentials.env")"
-rm -rf "${root}"
-
-# The file is parsed, never sourced: a command in it is a value, not something that runs.
-root="$(make_tree)"
-write_credentials "${root}" "WAZUH_MANAGER_API_PASSWORD='Valid.Value1a'
-touch ${root}/PWNED"
-run_resolver "${root}" --install > /dev/null
-check "the credentials file is never sourced" "no" \
-    "$([ -e "${root}/PWNED" ] && echo yes || echo no)"
-rm -rf "${root}"
-
-# --------------------------------------------------------------------------------------------
-# Certificates
-# --------------------------------------------------------------------------------------------
-
-if command -v openssl > /dev/null 2>&1; then
-
-    # An operator-placed pair: a real certificate and key, issued by the given CA.
-    sign_pair() {
-        local dir="$1" name="$2" cacert="$3" cakey="$4"
-        openssl req -new -nodes -newkey rsa:2048 -keyout "${dir}/${name}-key.pem" -out "${dir}/${name}.csr" \
-            -subj "/CN=placed-${name}" > /dev/null 2>&1
-        openssl x509 -req -in "${dir}/${name}.csr" -CA "${cacert}" -CAkey "${cakey}" -CAcreateserial \
-            -out "${dir}/${name}.pem" -days 1 > /dev/null 2>&1
-        rm -f "${dir}/${name}.csr"
-    }
-
-    mint_foreign_ca() {
-        openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 1 -keyout "$1.key" -out "$1.pem" \
-            -subj "/CN=Somebody else's CA" > /dev/null 2>&1
-    }
-
-    # Case A: nothing staged. A bootstrap CA is minted and both pairs are issued from it.
-    root="$(make_tree)"
-    run_resolver "${root}" --install > /dev/null
-    check "case A mints a CA" "yes" "$([ -f "${root}/etc/wazuh/ca/root-ca.pem" ] && echo yes)"
-    for pair in remoted indexer-connector; do
-        check "case A issues ${pair}, verified against that CA" "yes" \
-            "$(openssl verify -CAfile "${root}/etc/wazuh/ca/root-ca.pem" \
-                "${root}/home/etc/certs/${pair}.pem" > /dev/null 2>&1 && echo yes)"
-    done
-    check "and installs the anchor for the manager to read" "yes" \
-        "$([ -f "${root}/home/etc/certs/root-ca.pem" ] && echo yes)"
-    check "the CA private key is 0400" "400" "$(stat -c '%a' "${root}/etc/wazuh/ca/root-ca.key")"
-
-    # Case B: a second component on the same host finds the CA and issues from it.
-    ca_before="$(md5sum < "${root}/etc/wazuh/ca/root-ca.pem")"
-    rm -f "${root}/home/etc/certs/"*.pem
-    run_resolver "${root}" --install > /dev/null
-    check "case B reuses the CA rather than minting another" "${ca_before}" \
-        "$(md5sum < "${root}/etc/wazuh/ca/root-ca.pem")"
-    check "case B issues from the CA it found" "yes" \
-        "$(openssl verify -CAfile "${root}/etc/wazuh/ca/root-ca.pem" \
-            "${root}/home/etc/certs/remoted.pem" > /dev/null 2>&1 && echo yes)"
-
-    # Case C: a pre-issued pair is left alone. Placing one is how an operator supplies it, which is
-    # why there is no key for it.
-    mkdir -p "${root}/home/etc/certs"
-    for f in remoted remoted-key indexer-connector indexer-connector-key; do
-        printf 'pre-issued %s\n' "${f}" > "${root}/home/etc/certs/${f}.pem"
-    done
-    run_resolver "${root}" --prestart > /dev/null
-    check "case C leaves a pre-issued pair untouched" "pre-issued remoted" \
-        "$(cat "${root}/home/etc/certs/remoted.pem")"
-
-    # Only the missing pair is issued; the one already placed, from the same CA, is kept.
-    sign_pair "${root}/home/etc/certs" remoted "${root}/etc/wazuh/ca/root-ca.pem" "${root}/etc/wazuh/ca/root-ca.key"
-    placed="$(md5sum < "${root}/home/etc/certs/remoted.pem")"
-    rm -f "${root}/home/etc/certs/indexer-connector"*.pem
-    run_resolver "${root}" --prestart > /dev/null
-    check "a partial set keeps the pair already placed" "${placed}" "$(md5sum < "${root}/home/etc/certs/remoted.pem")"
-    check "and issues only the missing one" "yes" \
-        "$(openssl verify -CAfile "${root}/etc/wazuh/ca/root-ca.pem" \
-            "${root}/home/etc/certs/indexer-connector.pem" > /dev/null 2>&1 && echo yes)"
-
-    # A placed pair from another CA is never completed from this one: the two would not chain together.
-    mint_foreign_ca "${root}/foreign"
-    sign_pair "${root}/home/etc/certs" remoted "${root}/foreign.pem" "${root}/foreign.key"
-    placed="$(md5sum < "${root}/home/etc/certs/remoted.pem")"
-    anchor="$(md5sum < "${root}/home/etc/certs/root-ca.pem")"
-    rm -f "${root}/home/etc/certs/indexer-connector"*.pem
-    run_resolver "${root}" --prestart
-    check "a pair from another CA leaves the certificates unresolved" "yes" \
-        "$(grep -q "MISSING the manager's TLS" <<< "$(resolver_output)" && echo yes)"
-    check "and says why" "yes" "$(grep -q 'refusing to mix CAs' <<< "$(resolver_output)" && echo yes)"
-    check "and issues nothing" "" "$(ls "${root}/home/etc/certs/" | grep '^indexer-connector')"
-    check "and keeps the placed pair" "${placed}" "$(md5sum < "${root}/home/etc/certs/remoted.pem")"
-    check "and leaves the installed anchor alone" "${anchor}" "$(md5sum < "${root}/home/etc/certs/root-ca.pem")"
-    rm -rf "${root}"
-
-    # With no CA to issue from, a placed pair is not orphaned by minting a new anchor.
-    root="$(make_tree)"
-    printf 'pre-issued remoted\n' > "${root}/home/etc/certs/remoted.pem"
-    printf 'pre-issued remoted-key\n' > "${root}/home/etc/certs/remoted-key.pem"
-    run_resolver "${root}" --prestart
-    check "a placed pair with no CA leaves the certificates unresolved" "1" "${RC}"
-    check "and mints no CA" "" "$(ls "${root}/etc/wazuh/ca" 2>/dev/null)"
-    check "and keeps the placed pair" "pre-issued remoted" "$(cat "${root}/home/etc/certs/remoted.pem")"
-    rm -rf "${root}"
-
-    # Case C with the anchor missing from etc/certs: the one in the CA directory is installed.
-    root="$(make_tree)"
-    mkdir -p "${root}/etc/wazuh/ca"
-    mint_foreign_ca "${root}/other-ca"
-    cp "${root}/other-ca.pem" "${root}/etc/wazuh/ca/root-ca.pem"
-    for pair in remoted indexer-connector; do
-        sign_pair "${root}/home/etc/certs" "${pair}" "${root}/other-ca.pem" "${root}/other-ca.key"
-    done
-    placed="$(md5sum < "${root}/home/etc/certs/remoted.pem")"
-    run_resolver "${root}" --prestart
-    check "placed pairs without an anchor get the one from the CA directory" "yes" \
-        "$(cmp -s "${root}/etc/wazuh/ca/root-ca.pem" "${root}/home/etc/certs/root-ca.pem" && echo yes)"
-    check "and the certificates count as resolved" "" \
-        "$(grep "MISSING the manager's TLS" <<< "$(resolver_output)")"
-    check "and the placed pairs are kept" "${placed}" "$(md5sum < "${root}/home/etc/certs/remoted.pem")"
-    rm -rf "${root}"
-
-    # Case D with one pair of that CA missing: nothing can reissue it, so the start is refused.
-    root="$(make_tree)"
-    mkdir -p "${root}/etc/wazuh/ca"
-    mint_foreign_ca "${root}/other-ca"
-    cp "${root}/other-ca.pem" "${root}/etc/wazuh/ca/root-ca.pem"
-    sign_pair "${root}/home/etc/certs" indexer-connector "${root}/other-ca.pem" "${root}/other-ca.key"
-    run_resolver "${root}" --prestart
-    check "a missing pair with only the anchor on the host is unresolved" "yes" \
-        "$(grep -q "MISSING the manager's TLS certificates in" <<< "$(resolver_output)" && echo yes)"
-    check "and nothing is issued" "" "$(ls "${root}/home/etc/certs/" | grep '^remoted')"
-    rm -rf "${root}"
-
-    # Case D: an anchor with no private key. This host cannot sign and must not pretend to.
-    root="$(make_tree)"
-    mkdir -p "${root}/etc/wazuh/ca"
-    openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 1 \
-        -keyout "${root}/other-ca.key" -out "${root}/etc/wazuh/ca/root-ca.pem" \
-        -subj "/CN=Somebody else's CA" > /dev/null 2>&1
-    run_resolver "${root}" --prestart
-    check "case D leaves the certificates unresolved" "1" "${RC}"
-    check "and says why" "yes" \
-        "$(grep -q 'MISSING the manager' <<< "$(resolver_output)" && echo yes)"
-    check "case D still installs the anchor" "yes" \
-        "$([ -f "${root}/home/etc/certs/root-ca.pem" ] && echo yes)"
-    check "case D leaves no CA private key on the host" "" \
-        "$(ls "${root}/etc/wazuh/ca/" | grep 'root-ca.key')"
-    check "and issues nothing" "" "$(ls "${root}/home/etc/certs/" | grep '^remoted')"
-    rm -rf "${root}"
-
-    # The SAN key replaces the derived set, and loopback is always appended.
-    root="$(make_tree)"
-    write_credentials "${root}" "WAZUH_MANAGER_CERT_SANS='DNS:wazuh.corp.local,IP:10.0.1.11'"
-    run_resolver "${root}" --install > /dev/null
-    sans="$(openssl x509 -in "${root}/home/etc/certs/remoted.pem" -noout -text | grep -A1 'Alternative Name' | tail -1)"
-    check "the SAN key replaces the derived names" "yes" \
-        "$(grep -q 'wazuh.corp.local' <<< "${sans}" && ! grep -q "$(hostname)" <<< "${sans}" && echo yes)"
-    check "loopback is always appended" "yes" \
-        "$(grep -q '127.0.0.1' <<< "${sans}" && echo yes)"
-    check "a SAN key the file already carries is not copied into the block" "" \
-        "$(published "${root}" WAZUH_MANAGER_CERT_SANS)"
-    rm -rf "${root}"
-
-    root="$(make_tree)"
-    WAZUH_MANAGER_CERT_SANS='DNS:env.corp.local' run_resolver "${root}" --install > /dev/null
-    check "a SAN key from the environment is published" "DNS:env.corp.local" \
-        "$(published "${root}" WAZUH_MANAGER_CERT_SANS)"
-    rm -rf "${root}"
-
-    root="$(make_tree)"
-    run_resolver "${root}" --install > /dev/null
-    check "the DN and the SANs are logged" "yes" \
-        "$(grep -q 'issuing with DN CN=.*,O=Wazuh,OU=Wazuh Manager and SANs DNS:' <<< "$(resolver_output)" && echo yes)"
-    check "derived SANs are not published" "" "$(published "${root}" WAZUH_MANAGER_CERT_SANS)"
-    rm -rf "${root}"
-
-    # A wildcard under a shared CA lets a node present a certificate for any other node.
-    root="$(make_tree)"
-    write_credentials "${root}" "WAZUH_MANAGER_CERT_SANS='DNS:*.wazuh.indexer,DNS:node1.wazuh.indexer'"
-    run_resolver "${root}" --install
-    sans="$(openssl x509 -in "${root}/home/etc/certs/remoted.pem" -noout -text | grep -A1 'Alternative Name' | tail -1)"
-    check "a wildcard SAN is dropped" "yes" \
-        "$(grep -q 'node1.wazuh.indexer' <<< "${sans}" && ! grep -qF '*' <<< "${sans}" && echo yes)"
-    check "and the drop is logged" "yes" \
-        "$(grep -q 'dropping wildcard names' <<< "$(resolver_output)" && echo yes)"
-    rm -rf "${root}"
-
-    # WAZUH_CA_DIR can point anywhere, so its chain is checked like the credentials file's.
-    root="$(make_tree)"
-    mkdir -p "${root}/shared/ca"
-    chmod 0777 "${root}/shared"
-    WAZUH_CA_DIR="${root}/shared/ca" run_resolver "${root}" --prestart
-    check "a CA directory under a writable parent is refused" "1" "${RC}"
-    check "and nothing is minted there" "" "$(ls "${root}/shared/ca")"
-    check "and the reason is logged" "yes" \
-        "$(grep -q 'group- or world-writable' <<< "$(resolver_output)" && echo yes)"
-    rm -rf "${root}"
-
-else
-    echo "skip - certificate cases (openssl is not available)"
-fi
+write_credentials "${root}" "WAZUH_MANAGER_CERT_SANS='DNS:connector.corp.local'
+WAZUH_MANAGER_REMOTED_CERT_SANS='DNS:agents.corp.local,IP:10.0.1.11'"
+run_resolver "${root}" --install
+check "the connector SAN setting is honoured" "yes" \
+    "$(openssl x509 -in "${root}/home/etc/certs/indexer-connector.pem" -noout -ext subjectAltName \
+        2>/dev/null | grep -q 'connector.corp.local' && echo yes)"
+check "the remoted SAN setting is honoured separately" "yes" \
+    "$(openssl x509 -in "${root}/home/etc/certs/remoted.pem" -noout -ext subjectAltName \
+        2>/dev/null | grep -q 'agents.corp.local' && echo yes)"
+cleanup "${root}"
 
 # --------------------------------------------------------------------------------------------
 

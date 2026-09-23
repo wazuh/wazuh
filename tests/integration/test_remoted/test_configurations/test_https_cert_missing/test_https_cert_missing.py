@@ -102,7 +102,7 @@ def test_https_cert_missing(test_configuration, test_metadata, configure_local_i
     description: Check that the manager refuses to start when the HTTPS agent listener's certificate is
                  missing and the host holds no CA key to reissue it. For this purpose, the test moves
                  etc/certs/remoted.pem aside, starts the service and checks the unit's journal for the
-                 verdict of the credential resolver, which runs as ExecStartPre before any daemon.
+                 verdict of the credential resolver.
 
     parameters:
         - test_configuration

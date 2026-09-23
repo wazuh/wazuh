@@ -269,13 +269,6 @@ jobs:
           sudo grep -q '^WAZUH_INDEXER_MANAGER_PASSWORD=' /etc/wazuh/credentials.env || \
             echo "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer-Integration1'" | sudo tee -a /etc/wazuh/credentials.env > /dev/null
 
-      - name: Lift the service start limit
-        run: |
-          # The unit allows three starts a minute; the suites restart the manager far more often than that.
-          sudo mkdir -p /etc/systemd/system/wazuh-manager.service.d
-          printf '[Unit]\nStartLimitIntervalSec=0\n' | sudo tee /etc/systemd/system/wazuh-manager.service.d/start-limit.conf > /dev/null
-          sudo systemctl daemon-reload
-
       - name: Start wazuh-manager and verify
         run: |
           sudo systemctl start wazuh-manager

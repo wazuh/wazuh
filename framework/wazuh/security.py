@@ -31,7 +31,7 @@ def validate_password(password: str):
     """Check a password against the Server API password policy.
 
     This is the single spelling of the rule. It is mirrored -- deliberately, since a shell script
-    cannot import it -- by cred_validate_password() in src/init/credentials/credentials-lib.sh, so
+    cannot import it -- by wazuh_password_validate() in src/init/credentials/wazuh-credentials.sh, so
     that a value the credential resolver accepts or generates at install time is never one this
     function would reject later.
 
