@@ -123,6 +123,10 @@ DWORD WINAPI w_rotate_log_thread(LPVOID arg);
 void * w_rotate_log_thread(void * arg);
 #endif
 
+// Max connect() retries in controlAgent() (reload_agent.c); defined here so the
+// unit test asserts against the same value instead of duplicating it.
+#define CONTROL_AGENT_MAX_RETRIES 30
+
 // Reload agent
 /* Trigger the reload chain via modulesd's control socket.
  * Returns true if the "reload" command was dispatched successfully

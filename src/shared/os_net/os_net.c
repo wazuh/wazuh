@@ -212,7 +212,9 @@ int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size)
 
     /* Connect to the UNIX domain */
     if (connect(ossock, (struct sockaddr *)&n_us, SUN_LEN(&n_us)) < 0) {
+        int saved_errno = errno;
         OS_CloseSocket(ossock);
+        errno = saved_errno;
         return (OS_SOCKTERR);
     }
 
