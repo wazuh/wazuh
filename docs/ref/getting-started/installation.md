@@ -181,8 +181,10 @@ Replace `127.0.0.1` with your indexer IP address if it's running on a different 
 
 ### Start the manager
 
-The packages do not start or enable the service: you start it when the deployment is ready. This is
-also the moment every credential is validated.
+Neither the packages nor `install.sh` start or enable the service: you start it when the deployment
+is ready. This is also the moment every credential is validated; a source installation resolves them
+for the first time here, since `install.sh` does not run the resolver. Set `USER_AUTO_START="y"` in
+`etc/preloaded-vars.conf` to have `install.sh` start it anyway.
 
 ```bash
 sudo systemctl daemon-reload

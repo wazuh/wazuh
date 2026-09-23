@@ -734,7 +734,7 @@ setDefaultConfigByInstallType()
     setDefaultIfEmpty USER_CA_STORE "n"
 
     if [ "X${INSTYPE}" = "Xmanager" ]; then
-        setDefaultIfEmpty USER_AUTO_START "y"
+        setDefaultIfEmpty USER_AUTO_START "n"
         setDefaultIfEmpty USER_ENABLE_AUTHD "y"
         setDefaultIfEmpty USER_ENABLE_SYSCHECK "n"
         setDefaultIfEmpty USER_ENABLE_ROOTCHECK "n"

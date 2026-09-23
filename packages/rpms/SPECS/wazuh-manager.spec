@@ -434,16 +434,11 @@ if [ $1 = 0 ]; then
   fi
   %{_localstatedir}/bin/wazuh-manager-control stop > /dev/null 2>&1
 
-fi
-
-%postun
-
-# If the package is been uninstalled
-if [ $1 = 0 ];then
-  # Take the manager's own keys out of the shared credentials file before the tree goes, since the
-  # library that knows the file format lives inside it. Only WAZUH_MANAGER_* keys, and only inside
-  # the managed block: the other components' keys and anything the operator wrote are not ours to
-  # remove, even when they carry the same name.
+  # Take the manager's own keys out of the shared credentials file. This runs here and not in
+  # %postun because the library that knows the file format is one of the package's files, and rpm
+  # has removed them by then. Only WAZUH_MANAGER_* keys, and only inside the managed block: the
+  # other components' keys and anything the operator wrote are not ours to remove, even when they
+  # carry the same name.
   if [ -f %{_localstatedir}/lib/credentials-lib.sh ]; then
     . %{_localstatedir}/lib/credentials-lib.sh
     cred_purge_prefix WAZUH_MANAGER_ > /dev/null 2>&1 || true
@@ -458,6 +453,12 @@ if [ $1 = 0 ];then
     fi
   fi
 
+fi
+
+%postun
+
+# If the package is been uninstalled
+if [ $1 = 0 ];then
   # Remove the wazuh-manager user if it exists
   if getent passwd wazuh-manager > /dev/null 2>&1; then
     userdel wazuh-manager >/dev/null 2>&1
