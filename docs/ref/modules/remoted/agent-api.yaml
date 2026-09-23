@@ -278,10 +278,13 @@ paths:
         Before forwarding, the module parses the H line's JSON and resolves `wazuh` -> `agent` ->
         `id`, requiring each step to appear **exactly once** and `wazuh` and `wazuh.agent` to be
         objects. Names are compared after JSON unescaping, so `"wazuh"` and `"\u0077azuh"` are the same
-        member. `wazuh.agent.id` is then cross-checked against the authenticated `agent-id`
-        (compared numerically, so `"001"` and `"1"` are the same agent). A repeated step of that
-        path, a missing/malformed H line, a non-numeric `wazuh.agent.id`, or a mismatch is rejected
-        with `400 Invalid event batch` (`PayloadAgentMismatch`) and the batch is never forwarded.
+        member. `wazuh.agent.id` is then cross-checked against the authenticated `agent-id` as a
+        **string**, compared byte for byte: `"001"`, `"01"` and `"1"` are three different identities
+        even though they are one number, and only the exact form the token carries is accepted. Send
+        the id exactly as it appears in the token's `sub`. A repeated step of that path, a
+        missing/malformed H line, a non-numeric `wazuh.agent.id`, or any difference from the
+        authenticated id -- including zero padding -- is rejected with `400 Invalid event batch`
+        (`PayloadAgentMismatch`) and the batch is never forwarded.
         Repetitions elsewhere in the header are not rejected here. Once those checks pass, the
         module forwards the exact request body to the engine's event ingress over a Unix-domain
         socket; the engine validates the H/E batch and a bad batch surfaces as the same

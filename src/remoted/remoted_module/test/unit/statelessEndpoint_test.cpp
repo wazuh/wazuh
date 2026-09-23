@@ -137,10 +137,28 @@ TEST(ValidatePayloadIdentity, MatchingNumericAgentIdSucceeds)
     EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
 }
 
-TEST(ValidatePayloadIdentity, LeadingZerosNormalizeToTheSameNumber)
+TEST(ValidatePayloadIdentity, ZeroPaddingThatDiffersFromTheTokenIsRejected)
 {
-    // Header says "001", the authenticated agent id is "1" -- same number, must match.
+    // Header says "001", the token proves "1". Same number, different string -- and it is the
+    // string that travels: the body is forwarded verbatim and the engine both keys its
+    // agent-metadata cache on that raw id and writes it into every event. Accepting this would let
+    // one agent file events under an id no agent has, and mint a cache entry per spelling.
     const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"001\"}}}\nE some event\n", "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+}
+
+TEST(ValidatePayloadIdentity, ExtraZeroPaddingOnACanonicalIdIsRejected)
+{
+    // The same in the other direction, against a canonical token id.
+    const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"0001\"}}}\nE some event\n", "001");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+}
+
+TEST(ValidatePayloadIdentity, CanonicalZeroPaddedIdMatchesItself)
+{
+    // A conforming agent stamps the H line from the same string its token carries, so the canonical
+    // zero-padded form matches exactly and is unaffected by the byte-for-byte comparison.
+    const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"001\"}}}\nE some event\n", "001");
     EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
 }
 
@@ -361,7 +379,8 @@ TEST(ValidatePayloadIdentity, DeeplyNestedMetadataOffTheIdentityPathIsAccepted)
 
 TEST(ValidatePayloadIdentity, FullConformingHeaderWithUniqueNamesSucceeds)
 {
-    // The complete documented H line. The same key NAME in DIFFERENT objects ("name" under agent,
+    // The complete documented H line, with the token carrying the same canonical id the header
+    // stamps. The same key NAME in DIFFERENT objects ("name" under agent,
     // host.os and cluster) is legal and must not read as a repetition: the rule is per-object, and
     // only on the identity path.
     const auto fixture =
@@ -370,7 +389,7 @@ TEST(ValidatePayloadIdentity, FullConformingHeaderWithUniqueNamesSucceeds)
                     R"("os":{"name":"Ubuntu","version":"22.04","platform":"ubuntu","type":"linux"}}},)"
                     R"("cluster":{"name":"production","node":"master-node"}}})"
                     "\nE 1:/var/log/syslog:hello\n",
-                    "1");
+                    "001");
     EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
 }
 

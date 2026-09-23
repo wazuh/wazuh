@@ -443,11 +443,12 @@ src/endpoints/
   <json>` line with RapidJSON (`rapidjson::Document::Parse(data, length)` — non-in-situ, since the
   payload is a `string_view` into a shared, non-NUL-terminated buffer), then resolves
   `/wazuh/agent/id` with `agentIdFromHeader()`, walking `wazuh` → `agent` → `id`. Each step must
-  exist **exactly once** and the two containers must be objects; the id is then compared as a
-  number against the authenticated `agentId` (so `"001"` and `"1"` match). Member names are
+  exist **exactly once** and the two containers must be objects; the id must then be **the same
+  string** as the authenticated `agentId`, compared byte for byte, so `"001"`, `"01"` and `"1"` are
+  three different identities even though they are one number. Member names are
   compared **decoded and by length** — `"\u0077azuh"` *is* `wazuh`, while a name with an embedded NUL is
   a different, longer name. Anything unclean — a repeated step, a missing/malformed header, a
-  non-object container, non-numeric on either side, or a real mismatch — collapses to
+  non-object container, a non-numeric id, or any difference from the authenticated id — collapses to
   `AuthError::PayloadAgentMismatch`.
 
   **Why "exactly once" and not just "present".** JSON permits repeated member
