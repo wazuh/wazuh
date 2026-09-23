@@ -131,6 +131,12 @@ cred_check_file() {
         return 1
     fi
 
+    _ccf_group=$(stat -c '%g' "${CRED_FILE}" 2>/dev/null)
+    if [ "${_ccf_group}" != "$(id -g)" ]; then
+        cred_err "refusing to read ${CRED_FILE}: it does not belong to the resolver's own group"
+        return 1
+    fi
+
     _ccf_mode=$(stat -c '%a' "${CRED_FILE}" 2>/dev/null)
     if [ $(( 0${_ccf_mode} & 0077 )) -ne 0 ]; then
         cred_err "refusing to read ${CRED_FILE}: it is group- or world-accessible (${_ccf_mode})"
@@ -416,6 +422,14 @@ cred_block_is_empty() {
 cred_validate_password() {
     _cvp_key="$1"
     _cvp_value="$2"
+
+    # Printable ASCII only. Beyond it, ${#} counts bytes where the Server API counts characters,
+    # and a control character would break the JSON the value is seeded through.
+    if [ "$(printf '%s' "${_cvp_value}" | wc -l)" -ne 0 ] || \
+       printf '%s' "${_cvp_value}" | LC_ALL=C grep -q '[^ -~]'; then
+        cred_err "${_cvp_key} rejected: must contain only printable ASCII characters"
+        return 1
+    fi
 
     _cvp_len=${#_cvp_value}
     if [ "${_cvp_len}" -lt "${CRED_PW_MIN}" ] || [ "${_cvp_len}" -gt "${CRED_PW_MAX}" ]; then

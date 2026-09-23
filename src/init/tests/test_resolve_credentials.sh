@@ -177,6 +177,7 @@ run_resolver "${root}" --prestart > /dev/null
 check "the next start succeeds once the key is there" "0" "${RC}"
 check "and the credential is in the manager's own store" "Indexer.Wr0te1" \
     "$(cat "${root}/store/indexer.password")"
+check "together with its username" "wazuh-manager" "$(cat "${root}/store/indexer.username")"
 
 # Re-running changes nothing: an upgrade takes step 0 for everything.
 before="$(md5sum "${root}/etc/wazuh/credentials.env" "${root}/store/indexer.password")"
@@ -260,11 +261,26 @@ run_resolver "${root}" --install
 check "but still lets the install exit 0" "0" "${RC}"
 rm -rf "${root}"
 
+# Nothing is seeded that was not published first, and a later run seeds what was published.
+root="$(make_tree)"
+mkdir -p "${root}/fakebin"
+printf '#!/bin/sh\nexit 1\n' > "${root}/fakebin/mv"
+chmod +x "${root}/fakebin/mv"
+PATH="${root}/fakebin:${PATH}" run_resolver "${root}" --prestart
+check "a credentials file that cannot be written blocks the start" "1" "${RC}"
+check "and says nothing was seeded" "yes" \
+    "$(grep -q 'could not be written, so nothing was seeded' <<< "$(resolver_output)" && echo yes)"
+check "and nothing is seeded" "" "$(seeded_password "${root}" wazuh)"
+run_resolver "${root}" --install > /dev/null
+check "the next run seeds exactly what it published" "$(published "${root}" WAZUH_MANAGER_API_PASSWORD)" \
+    "$(seeded_password "${root}" wazuh)"
+rm -rf "${root}"
+
 # Each class of the policy, independently.
 root="$(make_tree)"
 export CRED_DIR="${root}/etc/wazuh"
 . "${CRED_SRC}/credentials-lib.sh"
-for case in "shortA1." "NoDigitsAtAll." "123456789012."; do
+for case in "shortA1." "NoDigitsAtAll." "123456789012." "Pässword12345" "$(printf 'Tab\tPassword1')"; do
     cred_validate_password KEY "${case}" 2> /dev/null
     check "the policy rejects '${case}'" "1" "$?"
 done
@@ -272,6 +288,17 @@ for case in "Perfectly.Fine1" "alllowercase1" "NoSymbolsHere123"; do
     cred_validate_password KEY "${case}" 2> /dev/null
     check "the policy accepts '${case}'" "0" "$?"
 done
+
+# A keystore holding only the password, as the connector's former built-in username allowed, gets
+# the username written rather than passing step 0 with a credential the connector refuses.
+root="$(make_tree)"
+printf 'Stored.Before1' > "${root}/store/indexer.password"
+run_resolver "${root}" --prestart
+check "a stored password without a username gets the username" "wazuh-manager" \
+    "$(cat "${root}/store/indexer.username" 2>/dev/null)"
+check "and the indexer credential counts as resolved" "" \
+    "$(grep 'MISSING WAZUH_INDEXER_MANAGER_PASSWORD' <<< "$(resolver_output)")"
+rm -rf "${root}"
 
 # What is generated must pass what is enforced, every time rather than most times.
 generated_ok="yes"
@@ -322,6 +349,20 @@ check "a group-readable credentials file is refused" "1" "${RC}"
 check "and the reason is logged" "yes" \
     "$(grep -q 'group- or world-accessible' <<< "$(resolver_output)" && echo yes)"
 rm -rf "${root}"
+
+if [ "$(id -u)" = "0" ]; then
+    root="$(make_tree)"
+    printf "WAZUH_MANAGER_API_PASSWORD='Supplied.Api1'\n" > "${root}/etc/wazuh/credentials.env"
+    chmod 0600 "${root}/etc/wazuh/credentials.env"
+    chgrp daemon "${root}/etc/wazuh/credentials.env"
+    run_resolver "${root}" --prestart
+    check "a credentials file outside the root group is refused" "1" "${RC}"
+    check "and the reason is logged" "yes" \
+        "$(grep -q "does not belong to the resolver's own group" <<< "$(resolver_output)" && echo yes)"
+    rm -rf "${root}"
+else
+    echo "skip - group ownership case (needs root to chgrp)"
+fi
 
 root="$(make_tree)"
 mkdir -p "${root}/elsewhere"
@@ -402,6 +443,42 @@ if command -v openssl > /dev/null 2>&1; then
     run_resolver "${root}" --prestart > /dev/null
     check "case C leaves a pre-issued pair untouched" "pre-issued remoted" \
         "$(cat "${root}/home/etc/certs/remoted.pem")"
+
+    # Only the missing pair is issued; the one already placed is kept.
+    rm -f "${root}/home/etc/certs/indexer-connector"*.pem
+    run_resolver "${root}" --prestart > /dev/null
+    check "a partial set keeps the pair already placed" "pre-issued remoted" \
+        "$(cat "${root}/home/etc/certs/remoted.pem")"
+    check "and issues only the missing one" "yes" \
+        "$(openssl verify -CAfile "${root}/etc/wazuh/ca/root-ca.pem" \
+            "${root}/home/etc/certs/indexer-connector.pem" > /dev/null 2>&1 && echo yes)"
+    rm -rf "${root}"
+
+    # With no CA to issue from, a placed pair is not orphaned by minting a new anchor.
+    root="$(make_tree)"
+    printf 'pre-issued remoted\n' > "${root}/home/etc/certs/remoted.pem"
+    printf 'pre-issued remoted-key\n' > "${root}/home/etc/certs/remoted-key.pem"
+    run_resolver "${root}" --prestart
+    check "a placed pair with no CA leaves the certificates unresolved" "1" "${RC}"
+    check "and mints no CA" "" "$(ls "${root}/etc/wazuh/ca" 2>/dev/null)"
+    check "and keeps the placed pair" "pre-issued remoted" "$(cat "${root}/home/etc/certs/remoted.pem")"
+    rm -rf "${root}"
+
+    # Case C with the anchor missing from etc/certs: the one in the CA directory is installed.
+    root="$(make_tree)"
+    mkdir -p "${root}/etc/wazuh/ca"
+    openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 1 \
+        -keyout "${root}/other-ca.key" -out "${root}/etc/wazuh/ca/root-ca.pem" \
+        -subj "/CN=Somebody else's CA" > /dev/null 2>&1
+    for f in remoted remoted-key indexer-connector indexer-connector-key; do
+        printf 'pre-issued %s\n' "${f}" > "${root}/home/etc/certs/${f}.pem"
+    done
+    run_resolver "${root}" --prestart
+    check "placed pairs without an anchor get the one from the CA directory" "yes" \
+        "$(cmp -s "${root}/etc/wazuh/ca/root-ca.pem" "${root}/home/etc/certs/root-ca.pem" && echo yes)"
+    check "and the certificates count as resolved" "" \
+        "$(grep "MISSING the manager's TLS" <<< "$(resolver_output)")"
+    check "and the placed pairs are kept" "pre-issued remoted" "$(cat "${root}/home/etc/certs/remoted.pem")"
     rm -rf "${root}"
 
     # Case D: an anchor with no private key. This host cannot sign and must not pretend to.
@@ -430,15 +507,43 @@ if command -v openssl > /dev/null 2>&1; then
         "$(grep -q 'wazuh.corp.local' <<< "${sans}" && ! grep -q "$(hostname)" <<< "${sans}" && echo yes)"
     check "loopback is always appended" "yes" \
         "$(grep -q '127.0.0.1' <<< "${sans}" && echo yes)"
+    check "a SAN key the file already carries is not copied into the block" "" \
+        "$(published "${root}" WAZUH_MANAGER_CERT_SANS)"
+    rm -rf "${root}"
+
+    root="$(make_tree)"
+    WAZUH_MANAGER_CERT_SANS='DNS:env.corp.local' run_resolver "${root}" --install > /dev/null
+    check "a SAN key from the environment is published" "DNS:env.corp.local" \
+        "$(published "${root}" WAZUH_MANAGER_CERT_SANS)"
+    rm -rf "${root}"
+
+    root="$(make_tree)"
+    run_resolver "${root}" --install > /dev/null
+    check "the DN and the SANs are logged" "yes" \
+        "$(grep -q 'issuing with DN CN=.*,O=Wazuh,OU=Wazuh Manager and SANs DNS:' <<< "$(resolver_output)" && echo yes)"
+    check "derived SANs are not published" "" "$(published "${root}" WAZUH_MANAGER_CERT_SANS)"
     rm -rf "${root}"
 
     # A wildcard under a shared CA lets a node present a certificate for any other node.
     root="$(make_tree)"
-    write_credentials "${root}" "WAZUH_MANAGER_CERT_SANS='DNS:*.wazuh.indexer'"
-    run_resolver "${root}" --prestart > /dev/null
-    check "a wildcard SAN is refused" "1" "${RC}"
-    check "and no CA is left behind for the next run to adopt" "" \
-        "$(ls "${root}/etc/wazuh/ca" 2>/dev/null)"
+    write_credentials "${root}" "WAZUH_MANAGER_CERT_SANS='DNS:*.wazuh.indexer,DNS:node1.wazuh.indexer'"
+    run_resolver "${root}" --install
+    sans="$(openssl x509 -in "${root}/home/etc/certs/remoted.pem" -noout -text | grep -A1 'Alternative Name' | tail -1)"
+    check "a wildcard SAN is dropped" "yes" \
+        "$(grep -q 'node1.wazuh.indexer' <<< "${sans}" && ! grep -qF '*' <<< "${sans}" && echo yes)"
+    check "and the drop is logged" "yes" \
+        "$(grep -q 'dropping wildcard names' <<< "$(resolver_output)" && echo yes)"
+    rm -rf "${root}"
+
+    # WAZUH_CA_DIR can point anywhere, so its chain is checked like the credentials file's.
+    root="$(make_tree)"
+    mkdir -p "${root}/shared/ca"
+    chmod 0777 "${root}/shared"
+    WAZUH_CA_DIR="${root}/shared/ca" run_resolver "${root}" --prestart
+    check "a CA directory under a writable parent is refused" "1" "${RC}"
+    check "and nothing is minted there" "" "$(ls "${root}/shared/ca")"
+    check "and the reason is logged" "yes" \
+        "$(grep -q 'group- or world-writable' <<< "$(resolver_output)" && echo yes)"
     rm -rf "${root}"
 
 else

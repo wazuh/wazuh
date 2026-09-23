@@ -18,6 +18,7 @@ target_link_libraries(
   optimized
   gtest_main
   indexer_connector
+  keystore
   pthread)
 
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
