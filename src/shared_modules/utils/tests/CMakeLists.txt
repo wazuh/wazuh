@@ -69,7 +69,6 @@ file(
   "threadEventDispatcher_test.cpp"
   "jsonArrayParser_test.cpp"
   "zlibHelper_test.cpp"
-  "rsaHelper_test.cpp"
   "evpHelper_test.cpp"
   "socketServer_test.cpp"
   "reflectiveJson_test.cpp"

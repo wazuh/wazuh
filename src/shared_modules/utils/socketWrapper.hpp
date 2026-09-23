@@ -429,17 +429,6 @@ public:
         return m_recvDataBuffer.size();
     }
 
-    size_t sendBufferSize()
-    {
-        return m_sendDataBuffer.size();
-    }
-
-    bool hasUnsentMessages()
-    {
-        std::lock_guard<std::mutex> lock {m_mutex};
-        return !m_unsentPacketList.empty();
-    }
-
     void connect(const SocketAddress& connInfo, int type = (SOCK_STREAM | SOCK_NONBLOCK))
     {
         // Close socket if it was already initialized.

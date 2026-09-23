@@ -36,42 +36,6 @@
 
 namespace Utils
 {
-    static void ISO8859ToUTF8(std::string& data)
-    {
-        // Convert from ISO-8859-1 to UTF-8
-        std::string strOut;
-        // 0xc0 is 11000000 in binary, used to mask the first 2 bits of the character of a 2-byte sequence
-        constexpr auto UTF8_2BYTE_SEQ {0xc0};
-        // 6 is the number of bits to shift the character to the right
-        constexpr auto UTF8_2BYTE_SEQ_VALUE_LEN {6};
-        // 0x80 is 10000000 in binary, is the first code point of a 2-byte sequence
-        constexpr auto UTF8_2BYTE_FIRST_CODE_VALUE {0x80};
-        // 0x3f is 00111111 in binary, used to mask the last 6 bits of the character of a 2-byte sequence
-        constexpr auto UTF8_2BYTE_MASK {0x3f};
-
-        for (auto it = data.begin(); it != data.end(); ++it)
-        {
-            const uint8_t ch = *it;
-
-            // ASCII character
-            if (ch < UTF8_2BYTE_FIRST_CODE_VALUE)
-            {
-                strOut.push_back(ch);
-            }
-            // Extended ASCII
-            else
-            {
-                // 2-byte sequence
-                // 110xxxxx
-                strOut.push_back(UTF8_2BYTE_SEQ | ch >> UTF8_2BYTE_SEQ_VALUE_LEN);
-                // 10xxxxxx
-                strOut.push_back(UTF8_2BYTE_FIRST_CODE_VALUE | (ch & UTF8_2BYTE_MASK));
-            }
-        }
-
-        data = strOut;
-    }
-
     static bool replaceAll(std::string& data, const std::string& toSearch, const std::string& toReplace)
     {
         auto pos {data.find(toSearch)};
@@ -552,46 +516,6 @@ namespace Utils
 
         return false;
     }
-    static bool replaceFirstView(std::string& data, std::string_view toSearch, std::string_view toReplace)
-    {
-        auto pos {data.find(toSearch)};
-        auto ret {false};
-
-        if (std::string::npos != pos)
-        {
-            data.replace(pos, toSearch.size(), toReplace);
-            ret = true;
-        }
-
-        return ret;
-    }
-
-    static std::string toLowerCaseView(std::string_view str)
-    {
-        std::string temp {str};
-        std::transform(std::begin(temp),
-                       std::end(temp),
-                       std::begin(temp),
-                       [](std::string::value_type character) { return std::tolower(character); });
-        return temp;
-    }
-
-    static std::vector<std::string_view> splitView(std::string_view str, const char delimiter)
-    {
-        std::vector<std::string_view> tokens;
-        std::string_view token;
-        std::size_t pos {0};
-
-        while ((pos = str.find(delimiter)) != std::string::npos)
-        {
-            token = str.substr(0, pos);
-            tokens.push_back(token);
-            str.remove_prefix(pos + 1);
-        }
-        tokens.push_back(str);
-        return tokens;
-    }
-
     static bool isNumber(std::string_view str)
     {
         auto it = str.begin();

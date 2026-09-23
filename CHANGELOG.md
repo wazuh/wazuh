@@ -39,6 +39,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#39305](https://github.com/wazuh/wazuh/issues/39305) | Removed dead C++ code from the agent modules. |
 
 #### Fixed
 

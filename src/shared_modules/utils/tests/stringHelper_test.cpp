@@ -11,7 +11,6 @@
 
 #include "stringHelper_test.h"
 #include "stringHelper.h"
-#include <sstream>
 #if __cplusplus >= 201703L
 #include <string_view>
 using namespace std::string_view_literals;
@@ -467,83 +466,6 @@ TEST_F(StringUtilsTest, findRegexInStringExtractingSecondGroup)
     EXPECT_EQ(matchedValue, "extracted");
 }
 
-TEST_F(StringUtilsTest, convertToUTF8NoChanges)
-{
-    std::string noUnicodeString {"This is a test"};
-    Utils::ISO8859ToUTF8(noUnicodeString);
-    EXPECT_EQ("This is a test", noUnicodeString);
-}
-
-TEST_F(StringUtilsTest, rawUnicodeToUTF8)
-{
-    std::stringstream fileContent;
-    // Set buffer in ISO8859-1
-    fileContent << R"(CLASSES=none)"
-                   R"(BASEDIR=/opt/csw)"
-                   R"(INSTDATE=Jan 09 2023 14:35)"
-                   R"(PKGSAV=/var/sadm/pkg/CSWschilybase/save)"
-                   R"(PKGINST=CSWschilybase)"
-                   R"(PSTAMP=joerg@unstable9x-20130619141117)"
-                   R"(EMAIL=joerg@opencsw.org)"
-                   R"(HOTLINE=http://www.opencsw.org/bugtrack/)"
-                   R"(VENDOR=http://cdrecord.berlios.de/old/private/  packaged for CSW by J)"
-                << "\xF6"
-                << R"(rg Schilling)"
-                   R"(CATEGORY=application)"
-                   R"(NAME=schilybase - A collection of common files from J. Schilling)"
-                   R"(PKG=CSWschilybase)"
-                   R"(VERSION=1.01,REV=2013.06.19)"
-                   R"(ARCH=i386)"
-                   R"(OAMBASE=/usr/sadm/sysadm)"
-                   R"(PATH=/sbin:/usr/sbin:/usr/bin:/usr/sadm/install/bin)"
-                   R"(TZ=localtime)"
-                   R"(LANG=C)"
-                   R"(LC_ALL=)"
-                   R"(LC_MONETARY=)"
-                   R"(LC_MESSAGES=)"
-                   R"(LC_COLLATE=)"
-                   R"(LC_TIME=)"
-                   R"(LC_NUMERIC=)"
-                   R"(LC_CTYPE=)";
-
-    std::string content;
-
-    while (fileContent.good())
-    {
-        std::string line;
-        std::getline(fileContent, line);
-        // Convert 'line' to UTF-8
-        Utils::ISO8859ToUTF8(line);
-
-        content += line;
-    }
-
-    EXPECT_EQ("CLASSES=none"
-              "BASEDIR=/opt/csw"
-              "INSTDATE=Jan 09 2023 14:35"
-              "PKGSAV=/var/sadm/pkg/CSWschilybase/save"
-              "PKGINST=CSWschilybase"
-              "PSTAMP=joerg@unstable9x-20130619141117"
-              "EMAIL=joerg@opencsw.org"
-              "HOTLINE=http://www.opencsw.org/bugtrack/VENDOR=http://cdrecord.berlios.de/old/private/  packaged for CSW"
-              " by J\xC3\xB6rg Schilling"
-              "CATEGORY=applicationNAME=schilybase - A collection of common files from J. SchillingPKG=CSWschilybase"
-              "VERSION=1.01,REV=2013.06.19"
-              "ARCH=i386"
-              "OAMBASE=/usr/sadm/sysadm"
-              "PATH=/sbin:/usr/sbin:/usr/bin:/usr/sadm/install/bin"
-              "TZ=localtime"
-              "LANG=C"
-              "LC_ALL="
-              "LC_MONETARY="
-              "LC_MESSAGES="
-              "LC_COLLATE="
-              "LC_TIME="
-              "LC_NUMERIC="
-              "LC_CTYPE=",
-              content);
-}
-
 TEST_F(StringUtilsTest, stringIsNumberFalse1)
 {
     EXPECT_FALSE(Utils::isNumber(std::string("random_string")));
@@ -760,45 +682,6 @@ TEST_F(StringUtilsTest, splitToNumbers)
 
 #if __cplusplus >= 201703L
 
-TEST_F(StringUtilsTest, SplitEmptyStringSV)
-{
-    auto splitTextVector {Utils::splitView(""sv, '.')};
-    EXPECT_EQ(1ull, splitTextVector.size());
-    EXPECT_EQ(splitTextVector[0], "");
-}
-
-TEST_F(StringUtilsTest, SplitDelimiterNoCoincidenceSV)
-{
-    const auto splitTextVector {Utils::splitView("hello_world"sv, '.')};
-    EXPECT_EQ(1ull, splitTextVector.size());
-}
-
-TEST_F(StringUtilsTest, SplitDelimiterCoincidenceSV)
-{
-    const auto splitTextVector {Utils::splitView("hello.world"sv, '.')};
-    EXPECT_EQ(2ull, splitTextVector.size());
-    EXPECT_EQ(splitTextVector[0], "hello");
-    EXPECT_EQ(splitTextVector[1], "world");
-}
-
-TEST_F(StringUtilsTest, SplitDelimiterAtTheBeginningCoincidenceSV)
-{
-    const auto splitTextVector {Utils::splitView(".hello.world"sv, '.')};
-    EXPECT_EQ(3ull, splitTextVector.size());
-    EXPECT_EQ(splitTextVector[0], "");
-    EXPECT_EQ(splitTextVector[1], "hello");
-    EXPECT_EQ(splitTextVector[2], "world");
-}
-
-TEST_F(StringUtilsTest, SplitDelimiterAtTheEndCoincidenceSV)
-{
-    const auto splitTextVector {Utils::splitView("hello.world."sv, '.')};
-    EXPECT_EQ(3ull, splitTextVector.size());
-    EXPECT_EQ(splitTextVector[0], "hello");
-    EXPECT_EQ(splitTextVector[1], "world");
-    EXPECT_EQ(splitTextVector[2], "");
-}
-
 TEST_F(StringUtilsTest, StartsWithSV)
 {
     const std::string_view start {"Package_"};
@@ -815,29 +698,6 @@ TEST_F(StringUtilsTest, StartsWithSV)
     EXPECT_FALSE(Utils::startsWith(""sv, start));
     EXPECT_FALSE(Utils::startsWith(item3, start));
     EXPECT_FALSE(Utils::startsWith(item4, start));
-}
-
-TEST_F(StringUtilsTest, CheckFirstReplacementSV)
-{
-    std::string string_base {"bye_bye"};
-    const auto retVal {Utils::replaceFirstView(string_base, "bye"sv, "hello"sv)};
-    EXPECT_EQ(string_base, "hello_bye");
-    EXPECT_TRUE(retVal);
-}
-
-TEST_F(StringUtilsTest, CheckNotFirstReplacementSV)
-{
-    std::string string_base {"hello_world"};
-    const auto retVal {Utils::replaceFirstView(string_base, "nothing_"sv, "bye_"sv)};
-    EXPECT_EQ(string_base, "hello_world");
-    EXPECT_FALSE(retVal);
-}
-
-TEST_F(StringUtilsTest, ToLowerCaseSV)
-{
-    EXPECT_EQ("", Utils::toLowerCaseView(""sv));
-    EXPECT_EQ("hello world", Utils::toLowerCaseView("HeLlO WoRlD"sv));
-    EXPECT_EQ("123", Utils::toLowerCaseView("123"sv));
 }
 
 #endif

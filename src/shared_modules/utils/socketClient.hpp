@@ -101,11 +101,6 @@ public:
         }
     }
 
-    int getSocketDescriptor() const
-    {
-        return m_socket->fileDescriptor();
-    }
-
     void connect(
         const std::function<void(const char*, uint32_t, const char*, uint32_t)>& onRead,
         const std::function<void()>& onConnect = []() {},
