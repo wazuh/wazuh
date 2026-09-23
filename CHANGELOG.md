@@ -76,6 +76,12 @@ All notable changes to this project will be documented in this file.
 - Updated embedded Python to 3.10.21 and dependencies `cryptography`, `pip`, `pyasn1` and `setuptools`. ([#39148](https://github.com/wazuh/wazuh/pull/39148))
 - Updated the Google Cloud dependencies (`google-cloud-storage`, `google-cloud-core`, `google-auth` and `google-resumable-media`), which relied on the `pkg_resources` module removed in `setuptools` 82. ([#39148](https://github.com/wazuh/wazuh/pull/39148))
 
+### Ruleset
+
+#### Fixed
+
+- Fixed SCA checks silently failing across macOS, RHEL/Debian, AlmaLinux, Amazon Linux, CentOS, Oracle Linux, and Rocky Linux, Ubuntu, Solaris, MongoDB policies by adding missing shell wrappers and fixing broken rule syntax. ([#38679](https://github.com/wazuh/wazuh/pull/38679))
+
 ## [v4.14.8]
 
 ### Manager

@@ -497,7 +497,7 @@ checks:
       - 'c:auditconfig -getplugin audit_binfile -> r:Plugin: audit_binfile \(active\)'
       - "c:auditconfig -getplugin audit_binfile -> r:Attributes: p_age=0h;p_dir=/var/audit;p_flags=all;p_fsize=0;p_minfree=1"
       - "c:userattr audit_flags root -> r:lo,ad,ft,ex,cis:no"
-      - "c:ls -l /var/share/audit/*.not_terminated.* -> r:.not_terminated."
+      - 'c:sh -c "ls -l /var/share/audit/*.not_terminated.*" -> r:.not_terminated.'
 
   # 5 File/Directory Permissions/Access
   - id: 23536

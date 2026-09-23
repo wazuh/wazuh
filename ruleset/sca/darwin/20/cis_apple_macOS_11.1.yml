@@ -468,18 +468,7 @@ checks:
     rules:
       - 'c:defaults read /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist AutoSubmit -> 0'
 
-  # 2.5.6 Limit Ad tracking and personalized Ads (Automated)
-  - id: 18029
-    title: "Limit Ad tracking and personalized Ads."
-    description: "Apple provides a framework that allows advertisers to target Apple users and end-users with advertisements. While many people prefer that when they see advertising it is relevant to them and their interests, the detailed information that is data mining collected, correlated, and available to advertisers in repositories is often disconcerting. This information is valuable to both advertisers and attackers and has been used with other metadata to reveal users' identities"
-    rationale: "Organizations should manage user privacy settings on managed devices to align with organizational policies and user data protection requirements."
-    remediation: "Run the following command in Terminal: sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.auditd.plist"
-    compliance:
-      - cis: ["2.5.6"]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      - "c:defaults -currentHost read /Users/<username>/Library/Preferences/com.apple.AdLib.plist allowApplePersonalizedAdvertising -> 0"
+  # 2.5.6 Limit Ad tracking and personalized Ads (Automated) - Not Implemented
 
   ############################################################
   # 2.6 iCloud
@@ -760,8 +749,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - "c:grep -E -s '!tty_tickets' /etc/sudoers /etc/sudoers.d/* -> r:^$"
-      - 'c:grep -E -s "timestamp_type" /etc/sudoers /etc/sudoers.d/* -> r:^$|!timestamp_type=ppid|!timestamp_type=global'
+      - 'c:sh -c "grep -E -s ''!tty_tickets'' /etc/sudoers /etc/sudoers.d/*" -> r:^$'
+      - 'c:sh -c "grep -E -s ''timestamp_type'' /etc/sudoers /etc/sudoers.d/*" -> r:^$|!timestamp_type=ppid|!timestamp_type=global'
 
   # not implemented - SCA Limit -> 5.6 Ensure login keychain is locked when the computer sleeps (Manual)
 
