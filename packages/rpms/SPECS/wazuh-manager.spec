@@ -461,11 +461,21 @@ if [ $1 = 0 ]; then
     CRED_BASE=$(wazuh_base_get_dir 2>/dev/null) || CRED_BASE=""
     CRED_CA=$(wazuh_ca_get_dir 2>/dev/null) || CRED_CA=""
 
-    # The last component out removes what is left. A file still carrying any WAZUH_ key is a file a
-    # sibling is still using, so this errs towards leaving it: a leftover root-only file is
-    # harmless, breaking an installed indexer or dashboard is not.
-    if [ -n "${CRED_FILE}" ] && [ -f "${CRED_FILE}" ] && \
-       ! grep -q '^[[:space:]]*WAZUH_[A-Z_]*=' "${CRED_FILE}" 2>/dev/null; then
+    # The last component out removes what is left, /etc/wazuh included.
+    #
+    # "Last" is asked of rpm, not inferred from the file's contents. A leftover WAZUH_ key says
+    # nothing about whether a sibling is installed -- an operator who wrote one line by hand on a
+    # manager-only host would otherwise keep the credentials file and the CA private key on a
+    # machine with no Wazuh left on it. Only siblings are queried: this scriptlet runs while
+    # wazuh-manager itself is still installed.
+    CRED_SIBLING_LEFT=no
+    for CRED_SIBLING in wazuh-indexer wazuh-dashboard; do
+      if rpm -q "${CRED_SIBLING}" > /dev/null 2>&1; then
+        CRED_SIBLING_LEFT=yes
+      fi
+    done
+
+    if [ -n "${CRED_FILE}" ] && [ -f "${CRED_FILE}" ] && [ "${CRED_SIBLING_LEFT}" = no ]; then
       rm -f "${CRED_FILE}" > /dev/null 2>&1 || true
       if [ -n "${CRED_CA}" ]; then
         rm -rf "${CRED_CA}" > /dev/null 2>&1 || true
