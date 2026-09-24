@@ -172,8 +172,35 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
             }
         };
 
+        // A symlink here can point anywhere: another user's own Applications folder (so their
+        // apps get attributed to whoever placed the link), the very directory this scan already
+        // covers (so the same install is reported twice, under two paths, doubling vulnerability
+        // alerts for it), or a bundle only root can read (so this root-run scan reads it on the
+        // placer's behalf). Reject it outright instead of resolving it. A status this can't read
+        // is treated the same as a symlink: safer to skip the entry than to risk following it.
+        const auto isSymlinkOrUnknown
+        {
+            [&fs](const std::filesystem::path & entryPath)
+            {
+                try
+                {
+                    return fs.is_symlink(entryPath);
+                }
+                catch (const std::exception& e)
+                {
+                    std::cerr << e.what() << std::endl;
+                    return true;
+                }
+            }
+        };
+
         for (const auto& package : packages)
         {
+            if (isSymlinkOrUnknown(package))
+            {
+                continue;
+            }
+
             if ((PKG == pkgType && Utils::endsWith(package, ".app")) ||
                     (RCP == pkgType && Utils::endsWith(package, ".plist")))
             {
@@ -223,7 +250,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
 
                         for (const auto& nestedEntry : nestedEntries)
                         {
-                            if (Utils::endsWith(nestedEntry, ".app"))
+                            if (Utils::endsWith(nestedEntry, ".app") && !isSymlinkOrUnknown(nestedEntry))
                             {
                                 buildAndReportPackage(package.string(), nestedEntry.filename().string());
                             }
@@ -492,7 +519,10 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
             // abort the scan for the remaining users, or for the pypi/npm scanning that follows.
             try
             {
-                if (fs.is_directory(userApplicationsPath))
+                // Reject the Applications folder itself if it is a symlink: it could point at
+                // another user's own Applications (misattributing their installs to this one),
+                // or at a directory this scan already covers (double-reporting every app in it).
+                if (fs.is_directory(userApplicationsPath) && !fs.is_symlink(userApplicationsPath))
                 {
                     getPackagesFromPath(userApplicationsPath, PKG, callback);
                 }
