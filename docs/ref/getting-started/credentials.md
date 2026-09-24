@@ -103,13 +103,8 @@ and `#` are left out deliberately, so a value is safe to paste through shell, YA
 docker-compose interpolation without escaping.
 
 > [!NOTE]
-> Changing a Server API password **through the API** — `POST /security/users`,
-> `PUT /security/users/{user_id}` or `rbac_control change-password` — is held to a stricter rule: it
-> additionally requires an uppercase letter, a lowercase letter and a symbol, and rejects anything
-> else with error `5009` (length) or `5007` (character classes). That rule governs a value you
-> choose; the rule above governs one the resolver generates or accepts at seeding time. A generated
-> password is not guaranteed to carry a symbol, so it may not satisfy the stricter rule — it
-> authenticates normally either way.
+> The Server API rejects a password outside this rule with error `5009` (length) or `5007` (missing
+> letter or digit).
 
 ## Installing and starting
 
@@ -280,6 +275,8 @@ alone, and `/etc/wazuh` is removed with `rmdir`, so anything of yours in it surv
 Use `wazuh-passwords-tool.sh` for a coordinated change on a running deployment. A package must never
 reconfigure a sibling — it is invoked by the package manager as a side effect of an unrelated action
 — whereas the tool is invoked by you, at a moment of your choosing.
+
+No rotation path updates `/etc/wazuh/credentials.env`, so a value left there after a change is stale.
 
 To change a Server API password on its own:
 

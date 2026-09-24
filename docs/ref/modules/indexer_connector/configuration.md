@@ -84,7 +84,7 @@ If the Wazuh Indexer requires username/password authentication (e.g. the built-i
 
 ```bash
 wazuh-manager-keystore -f indexer -k username -v admin
-wazuh-manager-keystore -f indexer -k password -v <password>
+echo '<password>' | wazuh-manager-keystore -f indexer -k password
 ```
 
 The Indexer Connector reads these values automatically at startup from the `indexer` column family in the keystore.
