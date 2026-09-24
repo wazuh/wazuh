@@ -46,7 +46,7 @@ done
 
 PYTHON="${PYTHON:-python3}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COLLECTOR="$SCRIPT_DIR/../../src/engine/tools/devContainer/scripts/bench_collect.py"
+COLLECTOR="$SCRIPT_DIR/../devContainer/scripts/bench_collect.py"
 
 [[ -f "$COLLECTOR" ]] || { echo "scrape_metrics: collector not found at $COLLECTOR" >&2; exit 1; }
 

@@ -84,9 +84,9 @@ CLEANUP_AFTER=false
 KEEP_AGENTS=false
 METRICS_INTERVAL=1
 
-MONITOR_PY="$SCRIPT_DIR/../../src/engine/tools/devContainer/scripts/monitor.py"
-GRAPHICS_PY="$SCRIPT_DIR/../../src/engine/tools/devContainer/scripts/monitor_graphics_generator.py"
-BENCH_SAMPLES_PY="$SCRIPT_DIR/../../src/engine/tools/devContainer/scripts/bench_samples.py"
+MONITOR_PY="$SCRIPT_DIR/../devContainer/scripts/monitor.py"
+GRAPHICS_PY="$SCRIPT_DIR/../devContainer/scripts/monitor_graphics_generator.py"
+BENCH_SAMPLES_PY="$SCRIPT_DIR/../devContainer/scripts/bench_samples.py"
 
 PYTHON="${PYTHON:-python3}"
 if [[ -n "${VIRTUAL_ENV:-}" && -x "$VIRTUAL_ENV/bin/python3" ]]; then

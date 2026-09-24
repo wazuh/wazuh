@@ -19,8 +19,7 @@ import pytest
 HERE = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..'))
 # result_summary imports bench_samples, which lives with the monitor that writes the file.
-sys.path.insert(0, os.path.join(HERE, '..', '..', '..', 'src', 'engine', 'tools',
-                                'devContainer', 'scripts'))
+sys.path.insert(0, os.path.join(HERE, '..', '..', 'devContainer', 'scripts'))
 import bench_samples as bs
 import result_summary as rs
 

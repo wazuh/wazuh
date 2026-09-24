@@ -40,7 +40,7 @@ from typing import Any
 # the samples file silently unreadable and the summary fall back to the legacy CSV.
 _BENCH_SAMPLES_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
-    "..", "..", "src", "engine", "tools", "devContainer", "scripts",
+    "..", "devContainer", "scripts",
 )
 if os.path.isdir(_BENCH_SAMPLES_DIR):
     sys.path.insert(0, os.path.abspath(_BENCH_SAMPLES_DIR))
