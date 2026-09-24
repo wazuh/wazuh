@@ -43,6 +43,9 @@ fixed names wazuh-agent_{4x,5x}.{deb,rpm} that the Dockerfiles install by exact 
 A 5.x package already in pkgs/ is re-downloaded when its size differs from the remote one (the
 "latest" file is rebuilt every night; an old copy silently lacks new agent features such as the
 enrollment-token bootstrap). 4.x packages are versioned and only re-downloaded with --force.
+The names are fixed, so the URL each package came from is kept in pkgs/<name>.url: a package
+fetched from another URL (another WAZUH_4X_VERSION or WAZUH_ARCH, or a copy without that record)
+is STALE and re-downloaded.
 
 Options:
   --check        Do not download: report CURRENT / STALE / MISSING per package and exit 3 when
@@ -108,20 +111,23 @@ function remote_size() {  # Content-Length of a URL, empty when unknown
 }
 
 # download_to <url> <dest> <policy>   policy: versioned (keep if present) | latest (refresh when the size differs)
+# <dest>.url records the URL <dest> was fetched from: the names do not carry version or architecture.
 function download_to() {
   local url="$1" dest="$2" policy="$3"
   local name; name=$(basename "$dest")
-  local rsize lsize=""
+  local rsize lsize="" lurl=""
   rsize=$(remote_size "$url")
   [[ -f "$dest" ]] && lsize=$(stat -c %s "$dest")
+  [[ -f "$dest.url" ]] && lurl=$(<"$dest.url")
 
-  local state
+  local state why=""
   if [[ ! -f "$dest" ]]; then state=MISSING
+  elif [[ "$lurl" != "$url" ]]; then state=STALE; why=", fetched from ${lurl:-an unrecorded URL}"
   elif [[ "$policy" == latest && -n "$rsize" && "$rsize" != "$lsize" ]]; then state=STALE
   else state=CURRENT; fi
 
   if (( CHECK == 1 )); then
-    printf '    %-8s %s (local %s bytes, remote %s bytes)\n' "$state" "$name" "${lsize:-0}" "${rsize:-?}"
+    printf '    %-8s %s (local %s bytes, remote %s bytes%s)\n' "$state" "$name" "${lsize:-0}" "${rsize:-?}" "$why"
     [[ "$state" == CURRENT ]] || STALE=1
     return 0
   fi
@@ -135,6 +141,7 @@ function download_to() {
   echo "       Saving to:   $dest"
   curl -fsSL "$url" -o "$dest.tmp"
   mv "$dest.tmp" "$dest"
+  printf '%s\n' "$url" > "$dest.url"
   echo "    => OK ($(du -h "$dest" | awk '{print $1}'))"
 }
 
