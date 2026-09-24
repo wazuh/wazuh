@@ -285,7 +285,7 @@ The file is the entire cutover either way: `ossec.conf` is never edited by the u
 
 As with the connectivity check, an abort happens before the package manager runs: the agent stays on 4.14.X, keeps running, and the upgrade can be retried. `upgrade_result` is `2`.
 
-This matters most for an **on-prem fleet whose manager certificate is issued by the deployment's own CA** (the `root-ca.pem` of the installation assistant's `wazuh-certs-tool`, which also issues the listener certificate — the manager generates neither), the typical case outside a publicly-trusted CA. Decide before a fleet-wide upgrade whether the manager distributes that CA for you or you place it yourself, rather than discovering afterwards that the fleet is connected but verifying nothing.
+This matters specifically for an **on-prem fleet whose manager certificate is issued by the deployment's own CA** (the `root-ca.pem` of the Wazuh installation assistant's `wazuh-certs-tool`, which also issues the listener certificate, replacing the bootstrap pair the manager issues for itself at installation) — the typical case outside a publicly-trusted CA. Since a 4.X agent never checked the certificate, upgrading in place without first placing the manager's CA at the default path (or configuring `<certificate_authorities>` explicitly) leaves the new agent unable to connect. Place the CA ahead of a fleet-wide upgrade rather than discovering the gap one aborted upgrade at a time.
 
 ## TLS 1.3 enrollment enforcement (`wazuh-authd`)
 

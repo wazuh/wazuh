@@ -25,16 +25,17 @@ ADD base/manager/supervisord.conf /etc/supervisor/conf.d/
 RUN mkdir wazuh && curl -sL https://github.com/wazuh/wazuh/tarball/${WAZUH_BRANCH} | tar zx --strip-components=1 -C wazuh
 COPY base/manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 RUN /wazuh/install.sh
-# The manager does not generate TLS certificates: issue the indexer trust material and the HTTPS
-# agent listener pair with the devcontainer copy of the installation assistant tool (sources already
-# in /wazuh). The api_ssl volume shared by the cluster containers is populated from this image, so
-# the listener SAN covers every manager service name (see certs-config.yml).
+# Replace the certificates install.sh issued with a set whose SANs cover every manager service name
+# in the compose environment: the api_ssl volume shared by the cluster containers is populated from
+# this image (see certs-config.yml), and a pair minted against the build container's own hostname
+# would not match. Issued with the devcontainer copy of the installation assistant tool (sources
+# already in /wazuh).
 COPY base/manager/certs-config.yml /wazuh/certs-config.yml
-# The pairs are issued here and their anchor is staged in the shared CA directory WITHOUT its private
-# key, which is how a distributed node is provisioned: the manager uses what it is given and cannot
-# sign for itself. Staging the anchor is not optional -- the credential resolver refuses to mint a CA
-# when manager material already exists ("shared CA missing but manager material exists"), so without
-# it the manager will not start.
+# Overwriting them is enough. The credential resolver issues certificates at installation and never
+# looks at them again -- not at service start, not on upgrade -- so nothing here has to reproduce
+# the provenance of the pair it replaces, and the shared CA directory is not consulted. The
+# bootstrap CA install.sh left behind goes with it: its private key has no business being baked
+# into an image layer every container shares.
 RUN bash /wazuh/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c /wazuh/certs-config.yml -o /tmp/wazuh-certificates && \
     mkdir -p /var/wazuh-manager/etc/certs && \
     install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/root-ca.pem /var/wazuh-manager/etc/certs/root-ca.pem && \
@@ -42,9 +43,7 @@ RUN bash /wazuh/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c /wazuh/cert
     install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem && \
     install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted.pem /var/wazuh-manager/etc/certs/remoted.pem && \
     install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted-key.pem /var/wazuh-manager/etc/certs/remoted-key.pem && \
-    install -d -m 0700 -o root -g root /etc/wazuh /etc/wazuh/ca && \
-    install -o root -g root -m 644 /tmp/wazuh-certificates/root-ca.pem /etc/wazuh/ca/root-ca.pem && \
-    rm -rf /tmp/wazuh-certificates
+    rm -rf /tmp/wazuh-certificates /etc/wazuh/ca
 COPY base/manager/entrypoint.sh /scripts/entrypoint.sh
 
 # HEALTHCHECK

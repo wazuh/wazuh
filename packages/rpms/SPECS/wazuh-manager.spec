@@ -86,7 +86,18 @@ echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_AUTHD="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
+# This is a staging install whose tree is copied into the package below. Resolving credentials here
+# would bake this build host's rbac.db, bootstrap CA private key and certificates into an artifact
+# every deployment installs. %post resolves them on the target host instead.
+echo 'USER_RESOLVE_CREDENTIALS="n"' >> ./etc/preloaded-vars.conf
 ./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
+
+# Belt and braces for the line above: whatever produced them, credential material must never reach
+# a package. Dropped before the copy into BUILDROOT, so anything new that starts being generated at
+# build time is caught by rpm's own unpackaged-files check rather than shipped.
+rm -f  %{_localstatedir}/api/configuration/security/rbac.db
+rm -f  %{_localstatedir}/etc/certs/*.pem
+rm -rf %{_localstatedir}/queue/keystore/*
 
 # Create directories
 mkdir -p ${RPM_BUILD_ROOT}%{_initrddir}
@@ -394,14 +405,26 @@ chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.conf
 chmod 0660 %{_localstatedir}/etc/wazuh-manager.conf
 
 # Resolve every credential the manager owns or consumes: seed rbac.db with generated or supplied
-# Server API passwords, store the indexer credential in the keystore, issue the TLS pairs.
+# Server API passwords, store the indexer credential in the keystore, and -- on a fresh install
+# only -- issue the TLS pairs.
 #
-# It must never abort this scriptlet, so --install always exits 0 and simply leaves unresolved
-# whatever it could not resolve. The service refuses to start and names what is missing; that is
-# where the check belongs, because the answer changes between these two moments and only the answer
-# at start matters.
+# $1 is 1 on a fresh install and >= 2 on an upgrade. That distinction is the whole reason the two
+# modes exist: --upgrade resolves the passwords and the keystore (each a no-op once resolved, so it
+# can only fill in a value this host never had) and leaves the certificates entirely alone. An
+# operator who replaced the shipped pair with their own PKI must not find it re-examined or
+# reissued by a package upgrade.
+#
+# Neither mode may abort this scriptlet, so both always exit 0 and simply leave unresolved whatever
+# they could not resolve. The service refuses to start and names what is missing; that is where the
+# check belongs, because the answer changes between these two moments and only the answer at start
+# matters.
 if [ -x %{_localstatedir}/bin/wazuh-manager-resolve-credentials ]; then
-  %{_localstatedir}/bin/wazuh-manager-resolve-credentials --install -H %{_localstatedir} || true
+  if [ "$1" -eq 1 ]; then
+    CRED_MODE="--install"
+  else
+    CRED_MODE="--upgrade"
+  fi
+  %{_localstatedir}/bin/wazuh-manager-resolve-credentials ${CRED_MODE} -H %{_localstatedir} || true
 fi
 
 # Delete the installation files used to configure the manager

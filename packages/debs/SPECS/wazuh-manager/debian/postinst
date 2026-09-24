@@ -251,16 +251,29 @@ case "$1" in
     done
 
     # Resolve every credential the manager owns or consumes: seed rbac.db with generated or
-    # supplied Server API passwords, store the indexer credential in the keystore, issue the TLS
-    # pairs. Runs last, once the tree, its permissions and the configuration are all in place.
+    # supplied Server API passwords, store the indexer credential in the keystore, and -- on a
+    # fresh install only -- issue the TLS pairs. Runs last, once the tree, its permissions and the
+    # configuration are all in place.
     #
-    # It must never abort this script. A maintainer script that exits non-zero leaves the package
-    # half-configured, breaks `apt install -f` and fails image builds, so --install always exits 0
-    # and simply leaves unresolved whatever it could not resolve. The service refuses to start and
-    # names what is missing; that is where the check belongs, because the answer changes between
-    # these two moments and only the answer at start matters.
+    # `configure` fires on a fresh install and on an upgrade alike; $2 is the version we are
+    # upgrading from, and empty on a fresh install. That distinction is the whole reason the two
+    # modes exist: --upgrade resolves the passwords and the keystore (each a no-op once resolved,
+    # so it can only fill in a value this host never had) and leaves the certificates entirely
+    # alone. An operator who replaced the shipped pair with their own PKI must not find it
+    # re-examined or reissued by a package upgrade.
+    #
+    # Neither mode may abort this script. A maintainer script that exits non-zero leaves the
+    # package half-configured, breaks `apt install -f` and fails image builds, so both always exit
+    # 0 and simply leave unresolved whatever they could not resolve. The service refuses to start
+    # and names what is missing; that is where the check belongs, because the answer changes
+    # between these two moments and only the answer at start matters.
     if [ -x ${DIR}/bin/wazuh-manager-resolve-credentials ]; then
-        ${DIR}/bin/wazuh-manager-resolve-credentials --install -H ${DIR} || true
+        if [ -z "$2" ]; then
+            CRED_MODE="--install"
+        else
+            CRED_MODE="--upgrade"
+        fi
+        ${DIR}/bin/wazuh-manager-resolve-credentials ${CRED_MODE} -H ${DIR} || true
     fi
 
     # Remove old service file /etc/systemd/system/wazuh-manager.service if present

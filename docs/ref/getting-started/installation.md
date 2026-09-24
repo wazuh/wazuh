@@ -84,6 +84,10 @@ again immediately before the service starts. There is nothing to configure by ha
 single-host installation: the packages generate what the manager owns and issue its certificates
 from a bootstrap CA.
 
+The certificates are issued **at installation only**. Nothing re-examines or reissues them
+afterwards — not a service start, not a package upgrade — so a pair you provision yourself, and the
+absence of a CA directory that usually goes with it, survive untouched.
+
 The one credential the manager cannot invent is its account on the indexer, because inventing a
 password does not make the peer accept it. Supply it before starting the service:
 
@@ -113,9 +117,18 @@ certificate flows and what to do when the manager refuses to start.
 #### Using certificates issued elsewhere
 
 A distributed deployment, a corporate PKI, cert-manager or Vault all issue the manager's
-certificates outside the host. Place them in the manager's own certificates directory **before**
-installing the package — an existing pair is what makes the manager leave the certificates alone —
-along with the CA that signs them.
+certificates outside the host. Place them in the manager's own certificates directory along with the
+CA that signs them — **before** installing the package, so the install issues nothing, or afterwards,
+overwriting the pair it issued. Either way nothing looks at them again.
+
+You do not need to keep a copy of your root CA on the host: `/etc/wazuh/ca` exists so that a manager
+given nothing can still come up, and once a pair is in `etc/certs` nothing consults it. If the
+install minted a bootstrap CA before you replaced the pair, delete the directory — a signing key on a
+node that does not sign is exposure with no purpose:
+
+```bash
+sudo rm -rf /etc/wazuh/ca
+```
 
 The manager uses two pairs, both of which must be leaves of the same `root-ca.pem`: the HTTPS agent
 listener served by `wazuh-manager-remoted` and reused by `wazuh-manager-authd` on port 1515, and the
@@ -152,9 +165,11 @@ sudo chmod 640 /var/wazuh-manager/etc/certs/*.pem
 
 **Note:** Replace `node-1` with the name you used when generating the certificates.
 
-A wrong certificate is not caught at start: the pre-start step opens no network connections, so it
-fails at the first peer connection instead. Check what a node presents with
-`openssl x509 -in /var/wazuh-manager/etc/certs/remoted.pem -noout -text`.
+A wrong certificate is not caught at start: nothing re-examines the pair, and no network connection
+is opened, so it fails at the first peer connection instead. What *is* caught at start is a file that
+is missing (`wazuh-manager-conf validate`, with the `(1244)` verdict naming it) or unreadable by the
+`wazuh-manager` user (`wazuh-manager-remoted`, after it drops privileges). Check what a node presents
+with `openssl x509 -in /var/wazuh-manager/etc/certs/remoted.pem -noout -text`.
 
 #### Configure the indexer address
 
@@ -182,9 +197,8 @@ Replace `127.0.0.1` with your indexer IP address if it's running on a different 
 ### Start the manager
 
 Neither the packages nor `install.sh` start or enable the service: you start it when the deployment
-is ready. This is also the moment every credential is validated; a source installation resolves them
-for the first time here, since `install.sh` does not run the resolver. Set `USER_AUTO_START="y"` in
-`etc/preloaded-vars.conf` to have `install.sh` start it anyway.
+is ready. This is also the moment the passwords and the indexer credential are validated. Set
+`USER_AUTO_START="y"` in `etc/preloaded-vars.conf` to have `install.sh` start it anyway.
 
 ```bash
 sudo systemctl daemon-reload

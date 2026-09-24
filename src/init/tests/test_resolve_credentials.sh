@@ -204,13 +204,62 @@ check "the next start succeeds once the key is there" "0" "${RC}"
 check "and the credential is in the manager's own store" "Indexer.Wr0te1" \
     "$(cat "${root}/home/queue/keystore/indexer.password")"
 
-# Re-running changes nothing: an upgrade takes step 0 for everything.
-before="$(md5sum "${root}/base/credentials.env" "${root}/home/queue/keystore/indexer.password" \
-    "${root}/home/etc/certs/remoted.pem" | md5sum)"
+# Re-running changes nothing: every ladder takes step 0 for everything already resolved.
+state() {
+    md5sum "$1/base/credentials.env" "$1/home/queue/keystore/indexer.password" \
+        "$1/home/etc/certs/remoted.pem" "$1/home/etc/certs/remoted-key.pem" \
+        "$1/home/etc/certs/root-ca.pem" | md5sum
+}
+before="$(state "${root}")"
 run_resolver "${root}" --prestart
-check "re-running is a no-op" "${before}" \
-    "$(md5sum "${root}/base/credentials.env" "${root}/home/queue/keystore/indexer.password" \
-        "${root}/home/etc/certs/remoted.pem" | md5sum)"
+check "re-running a start is a no-op" "${before}" "$(state "${root}")"
+run_resolver "${root}" --upgrade
+check "an upgrade exits 0" "0" "${RC}"
+check "and changes nothing either" "${before}" "$(state "${root}")"
+cleanup "${root}"
+
+# --------------------------------------------------------------------------------------------
+# Certificates belong to the install and to no other moment
+#
+# Issuing one is a signature, not a lookup: re-deriving the chain at every start would make the
+# shared CA directory a standing dependency of the manager, which a deployment running on its own
+# PKI has no reason to satisfy. So neither a start nor an upgrade may reissue, re-anchor or even
+# re-examine what is in etc/certs -- an operator's replacement pair has to survive both untouched,
+# and the absence of a CA has to be survivable too.
+# --------------------------------------------------------------------------------------------
+
+root="$(make_tree)"
+write_credentials "${root}" "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'"
+run_resolver "${root}" --install
+
+# Stand in for an operator who replaced the issued pair with one from their own PKI and kept no
+# copy of its root: a foreign leaf, and the CA directory gone entirely.
+openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 1 \
+    -keyout "${root}/home/etc/certs/remoted-key.pem" -out "${root}/home/etc/certs/remoted.pem" \
+    -subj "/CN=issued-elsewhere" > /dev/null 2>&1
+chown root:root "${root}/home/etc/certs/remoted.pem" "${root}/home/etc/certs/remoted-key.pem"
+rm -rf "${root}/base/ca"
+foreign="$(md5sum "${root}/home/etc/certs/remoted.pem" | cut -d' ' -f1)"
+
+run_resolver "${root}" --prestart
+check "a start with no CA directory at all still succeeds" "0" "${RC}"
+check "and leaves the operator's own certificate alone" "${foreign}" \
+    "$(md5sum "${root}/home/etc/certs/remoted.pem" | cut -d' ' -f1)"
+check "and does not recreate the CA directory" "" "$([ -d "${root}/base/ca" ] && echo exists)"
+
+run_resolver "${root}" --upgrade
+check "an upgrade with no CA directory succeeds too" "0" "${RC}"
+check "and leaves it alone as well" "${foreign}" \
+    "$(md5sum "${root}/home/etc/certs/remoted.pem" | cut -d' ' -f1)"
+check "and still does not recreate the CA directory" "" "$([ -d "${root}/base/ca" ] && echo exists)"
+
+# A certificate that is simply gone is not reissued either: that verdict belongs to the
+# configuration validator and to remoted's own preflight, which read the files as they are.
+rm -f "${root}/home/etc/certs/remoted.pem" "${root}/home/etc/certs/remoted-key.pem"
+run_resolver "${root}" --prestart
+check "a start does not reissue a missing certificate" "0" "${RC}"
+check "and the file stays missing" "" \
+    "$([ -f "${root}/home/etc/certs/remoted.pem" ] && echo exists)"
 cleanup "${root}"
 
 # Two independent installations must never share a credential.
@@ -336,10 +385,11 @@ openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 1 \
     -keyout "${root}/other-ca.key" -out "${root}/base/ca/root-ca.pem" \
     -subj "/CN=Somebody elses CA" > /dev/null 2>&1
 chmod 0644 "${root}/base/ca/root-ca.pem"
-run_resolver "${root}" --prestart
-check "an anchor-only CA leaves the certificates unresolved" "1" "${RC}"
-check "and the resolver says so" "yes" \
-    "$(grep -q "MISSING the manager.s TLS certificates" <<< "$(resolver_output)" && echo yes)"
+run_resolver "${root}" --install
+check "an anchor-only CA still lets the install exit 0" "0" "${RC}"
+check "but the resolver says the certificates are missing" "yes" \
+    "$(grep -q "has no TLS certificates and this install could not issue them" \
+        <<< "$(resolver_output)" && echo yes)"
 check "no leaf is issued" "" "$(ls "${root}/home/etc/certs" | grep '^remoted')"
 check "and no CA private key appears on this host" "" "$(ls "${root}/base/ca" | grep 'root-ca.key')"
 cleanup "${root}"
@@ -372,10 +422,10 @@ cleanup "${root}"
 # World-writable is still refused: that is a third party, not the service.
 root="$(make_tree)"
 chmod 0777 "${root}/home/etc"
-run_resolver "${root}" --prestart
-check "a world-writable parent is still refused" "1" "${RC}"
-check "and says so" "yes" \
+run_resolver "${root}" --install
+check "a world-writable parent is still refused" "yes" \
     "$(grep -q 'must not be world writable' <<< "$(resolver_output)" && echo yes)"
+check "and no certificate is issued into it" "" "$(ls "${root}/home/etc/certs" | grep '^remoted')"
 cleanup "${root}"
 
 # Externally-issued certificates: wazuh-certs-tool -- the documented way to provision a distributed
@@ -415,20 +465,25 @@ EOF
     check "the fixture really carries no extendedKeyUsage" "" \
         "$(openssl x509 -in "${root}/home/etc/certs/indexer-connector.pem" -noout \
             -ext extendedKeyUsage 2>/dev/null | grep -c 'Authentication' | grep -v '^0$')"
-    run_resolver "${root}" --prestart
-    check "a connector leaf with no extendedKeyUsage is accepted" "0" "${RC}"
+    # A reinstall over a tree whose pairs were staged beforehand: install is the one moment that
+    # examines them, so it is the one moment this rule can fire.
+    run_resolver "${root}" --install
+    check "a connector leaf with no extendedKeyUsage is accepted" "" \
+        "$(grep -q 'extended key usage' <<< "$(resolver_output)" && echo complained)"
 
     issue_leaf indexer-connector "extendedKeyUsage = serverAuth"
-    run_resolver "${root}" --prestart
-    check "but one declaring serverAuth only is refused" "1" "${RC}"
-    check "and the diagnostic blames the purpose, not the chain" "yes" \
+    run_resolver "${root}" --install
+    check "but one declaring serverAuth only is refused" "yes" \
         "$(grep -q 'is not usable for clientAuth' <<< "$(resolver_output)" && echo yes)"
+    check "and the diagnostic blames the purpose, not the chain" "" \
+        "$(grep -q 'not signed by' <<< "$(resolver_output)" && echo chain)"
     cleanup "${root}"
 fi
 
 # The listener pair belongs to the service user, because remoted and authd open it after dropping
-# privileges. A root-owned key is one the service cannot read, and the resolver refuses it before any
-# daemon runs -- which is what tests/integration/.../test_https_cert_missing asserts on the journal.
+# privileges. The install checks that; nothing after it does, so a key that becomes unreadable
+# later is caught by remoted's own access(R_OK) preflight instead -- which is what
+# tests/integration/.../test_https_cert_unreadable asserts, on remoted's line in the manager log.
 root="$(make_tree)"
 write_credentials "${root}" "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'"
 run_resolver "${root}" --install
@@ -439,16 +494,18 @@ check "a healthy tree resolves" "0" "${RC}"
 # ownership the helper enforces.
 chown root:0 "${root}/home/etc/certs/remoted-key.pem" 2>/dev/null
 chmod 0600 "${root}/home/etc/certs/remoted-key.pem"
-run_resolver "${root}" --prestart
-check "a listener key the service cannot read blocks the start" "1" "${RC}"
-check "and the diagnostic names that file" "yes" \
+run_resolver "${root}" --install
+check "a reinstall names a listener key the service cannot read" "yes" \
     "$(grep -qE 'remoted-key\.pem (must have mode|.*unexpected owner)|unexpected owner for .*remoted-key\.pem' \
         <<< "$(resolver_output)" && echo yes)"
+run_resolver "${root}" --prestart
+check "but a start does not re-examine it" "0" "${RC}"
 cleanup "${root}"
 
-# Certificates staged without their anchor: the helper refuses to mint a CA when manager material
-# already exists, so a node given pairs but no /etc/wazuh/ca cannot start. This is the state a
-# container image lands in when it installs certificates at build time and forgets the anchor.
+# Certificates staged without their anchor. At install the helper refuses to mint a CA when manager
+# material already exists -- minting a second root beside certificates issued from a first is how a
+# host ends up with two trust roots and nothing detecting it. Starting, though, is unaffected: this
+# is exactly the shape of a node provisioned from someone else's PKI, and it must come up.
 root="$(make_tree)"
 write_credentials "${root}" "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'"
 run_resolver "${root}" --install          # mints a CA and both pairs
@@ -456,10 +513,12 @@ check "a first install resolves" "0" "${RC}"
 
 # Keep the pairs, take the CA away -- pairs present, anchor absent.
 rm -rf "${root}/base/ca"
-run_resolver "${root}" --prestart
-check "pairs without their anchor are refused" "1" "${RC}"
-check "and the refusal explains it will not mint a second CA" "yes" \
+run_resolver "${root}" --install
+check "a reinstall will not mint a second CA beside them" "yes" \
     "$(grep -q 'refusing to mint another CA' <<< "$(resolver_output)" && echo yes)"
+check "and mints nothing" "" "$([ -d "${root}/base/ca" ] && echo exists)"
+run_resolver "${root}" --prestart
+check "while the start is unaffected" "0" "${RC}"
 cleanup "${root}"
 
 # --------------------------------------------------------------------------------------------
@@ -485,9 +544,10 @@ check "it removes the manager's published keys" "" "$(published "${root}" WAZUH_
 check "but leaves a key it does not own" "1" \
     "$(grep -c "^WAZUH_INDEXER_MANAGER_PASSWORD=" "${root}/base/credentials.env")"
 
-# The point of clearing: the next start must not reproduce what the image carried.
-run_resolver "${root}" --prestart
-check "the next start resolves again" "0" "${RC}"
+# The point of clearing: what comes next must not reproduce what the image carried. --clear wipes
+# and --install resolves; they are a pair, because certificates are only ever issued at install.
+run_resolver "${root}" --install
+check "a following install resolves again" "0" "${RC}"
 check "and the password differs from the baked one" "differ" \
     "$([ "$(seeded_password "${root}" wazuh)" != "${baked}" ] && echo differ)"
 check "and so does the CA" "differ" \
