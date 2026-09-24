@@ -61,7 +61,8 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${env:ENGINE_BUILD}/wazuh-engine",
-            "args": ["-f", "-dd"],
+            //"args": ["-f", "-dd"],
+            "args": ["-f"],
             "stopAtEntry": false,
             "cwd": "/var/wazuh-manager/",
             "environment": [
@@ -74,7 +75,7 @@
                     "value": "2"
                 },
                 {
-                    "name": "WAZUH_ENGINE_FORCE_HOME",
+                    "name": "WAZUH_MANAGER_FORCE_HOME",
                     "value": "/var/wazuh-manager/"
                 },
                 {
@@ -107,8 +108,8 @@
             "request": "launch",
             "program": "/var/wazuh-manager/bin/wazuh-manager-analysisd",
            // "additionalSOLibSearchPath": "${workspaceFolder}/wazuh/src/",
-            //"args": ["-f", "-dd"],
-            "args": ["-f"],
+            "args": ["-f", "-d"],
+            //"args": ["-f"],
             "stopAtEntry": false,
             "cwd": "/var/wazuh-manager/",
             "environment": [
@@ -146,8 +147,8 @@
             "request": "launch",
             "program": "/var/wazuh-manager/bin/wazuh-manager-remoted",
            // "additionalSOLibSearchPath": "${workspaceFolder}/wazuh/src/",
-            "args": ["-f", "-dd"],
-            //"args": ["-f"],
+            //"args": ["-f", "-dd"],
+            "args": ["-f"],
             "stopAtEntry": false,
             "cwd": "/var/wazuh-manager/",
             "environment": [

@@ -177,6 +177,38 @@
             "detail": "PASS/FAIL per agent: key in client.keys, global.db active, agent log, trust anchor (5.x), manager log, API."
         },
         {
+            "label": "E2E Scripts: [Dashboard] Setup",
+            "type": "shell",
+            "command": "sudo",
+            "args": [
+                "-E",
+                "python3",
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/dashboard/capture.py",
+                "--setup",
+                "--venv",
+                "${workspaceFolder}/venv-dashboard"
+            ],
+            "problemMatcher": [],
+            "detail": "Once per workspace: creates the venv outside the repo, installs playwright==1.63.0 and chromium (apt deps). Ends with '# chromium launch: ok'."
+        },
+        {
+            "label": "E2E Scripts: [Dashboard] Capture",
+            "type": "shell",
+            "command": "sudo",
+            "args": [
+                "-E",
+                "python3",
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/dashboard/capture.py",
+                "--venv",
+                "${workspaceFolder}/venv-dashboard",
+                "--views",
+                "agents,discover,inventory,vd",
+                "--exec-docker"
+            ],
+            "problemMatcher": [],
+            "detail": "Stack up (indexer + dashboard), >= 1 agent enrolled (one 5.x); may wait up to 15 min for the VD feed; the vd view needs one finding of that agent, and with two 5.x agents add --agent-5x-id <id>. PASS/FAIL/SKIP per view; PNGs + captures.md under $WORKSPACE/e2e-dashboard-out/<run_id>."
+        },
+        {
             "label": "E2E Scripts: [Manager] Up (reset & start containers)",
             "type": "shell",
             "command": "docker compose -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/docker-compose.yml down -v && docker compose -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/docker-compose.yml up -d",
@@ -208,6 +240,20 @@
                 "-j27",
                 "TARGET=manager",
                 "DEBUG=yes"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build MANAGER - release",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "-j27",
+                "TARGET=manager"
             ],
             "group": "build",
             "problemMatcher": [

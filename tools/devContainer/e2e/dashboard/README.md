@@ -186,12 +186,16 @@ sudo python3 $D/capture.py --views agents,discover,inventory,vd --exec-docker
 (cd $D && $WORKSPACE/venv-dashboard/bin/python -m unittest -v test_capture_dom)  # the DOM
 ```
 
+VS Code: `E2E Scripts: [Dashboard] Setup` once, then `E2E Scripts: [Dashboard] Capture` (the four views with
+`--exec-docker`, venv `$WORKSPACE/venv-dashboard`); add `--agent-5x-id <id>` to the task when two 5.x agents are
+enrolled.
+
 ### Tests
 
 | suite | interpreter | what it covers |
 |---|---|---|
-| `test_capture_logic.py` (143) | any `python3` | every decision: the plan, the landing (including the rison parser, the root query clause, the exact `metadata.indexPattern` path and a duplicated `_a`), the row matcher, the frame note, the counter, the verdicts, the `--out` guard (refused roots through a symlink, exclusivity by name **and** kind), the manifest's counted failures (a PNG that cannot be re-read at publication included), the pixel size of a PNG, the `full_page=True` of `shoot()`, the orchestration and the report — with a fake page and a temporary directory, no network, no browser, no manager |
-| `test_capture_dom.py` (14) | the venv's (`$WORKSPACE/venv-dashboard/bin/python`) | the three **extraction scripts**, in a real headless Chromium (`--no-sandbox`) over HTML fixtures copied from the measured DOM (probes probe-columns and probe-canvas, 2026-09-20): column identity by `left` and by `<th>` position, the visible text minus `.euiScreenReaderOnly`, `left`/`right`/`truncated`, `ambiguous table (2)`, `table missing`, `scope missing`. Nothing is fetched: only `page.set_content()`. With any other interpreter every test **SKIPs** (`playwright not importable …`), never errors |
+| `test_capture_logic.py` (146) | any `python3` | every decision: the plan, the landing (including the rison parser, the root query clause, the exact `metadata.indexPattern` path and a duplicated `_a`), the row matcher, the frame note, the counter, the verdicts, the `--out` guard (refused roots through a symlink, exclusivity by name **and** kind), the manifest's counted failures (a PNG that cannot be re-read at publication included), the pixel size of a PNG, the `full_page=True` of `shoot()`, the orchestration and the report — with a fake page and a temporary directory, no network, no browser, no manager |
+| `test_capture_dom.py` (15) | the venv's (`$WORKSPACE/venv-dashboard/bin/python`) | the three **extraction scripts**, in a real headless Chromium (`--no-sandbox`) over HTML fixtures copied from the measured DOM (probes probe-columns and probe-canvas, 2026-09-20): column identity by `left` and by `<th>` position, the visible text minus `.euiScreenReaderOnly`, `left`/`right`/`truncated`, `ambiguous table (2)`, `table missing`, `scope missing`. Nothing is fetched: only `page.set_content()`. With any other interpreter every test **SKIPs** (`playwright not importable …`), never errors |
 
 Both suites read `views.json`, so the fixtures are asserted through the **real selectors of the
 views**: a scope or a table that moves there fails here first.
