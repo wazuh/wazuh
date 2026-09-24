@@ -2873,14 +2873,61 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
     umask(0027);
 
     /* Read file */
+#ifdef WIN32
     fd = wfopen(filesrc, "rb");
+
     if (!fd) {
-        merror("in w_compress_gzfile(): fopen error %s (%d):'%s'",
+        merror("in w_compress_gzfile(): cannot open %s (%d):'%s'",
                 filesrc,
                 errno,
                 strerror(errno));
         return -1;
     }
+#else
+    struct stat statbuf;
+    int saved_errno;
+    int flags;
+    int srcfd = open(filesrc, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK);
+
+    fd = NULL;
+
+    if (srcfd >= 0) {
+        if (fstat(srcfd, &statbuf) < 0) {
+            saved_errno = errno;
+        } else if (!S_ISREG(statbuf.st_mode)) {
+            saved_errno = EINVAL;
+        } else {
+            if (flags = fcntl(srcfd, F_GETFL), flags != -1) {
+                fcntl(srcfd, F_SETFL, flags & ~O_NONBLOCK);
+            }
+
+            fd = fdopen(srcfd, "rb");
+            saved_errno = errno;
+        }
+
+        if (fd == NULL) {
+            close(srcfd);
+            errno = saved_errno;
+        }
+    }
+
+    if (!fd) {
+        if (errno == ELOOP || errno == EINVAL || errno == ENXIO || errno == EMLINK
+#ifdef EFTYPE
+            || errno == EFTYPE
+#endif
+        ) {
+            mdebug2("in w_compress_gzfile(): skipping '%s': not a regular file", filesrc);
+            return -2;
+        }
+
+        merror("in w_compress_gzfile(): cannot open %s (%d):'%s'",
+                filesrc,
+                errno,
+                strerror(errno));
+        return -1;
+    }
+#endif
 
     /* Open compressed file */
     gz_fd = gzopen(filedst, "w");
