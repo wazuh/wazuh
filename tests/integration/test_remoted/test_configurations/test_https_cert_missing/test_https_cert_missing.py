@@ -14,11 +14,8 @@ import pytest
 
 from pathlib import Path
 from wazuh_testing.constants.paths import WAZUH_PATH
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
-from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import services
-from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
@@ -146,12 +143,12 @@ def test_https_cert_unreadable_by_service_user(test_configuration, test_metadata
                                                truncate_monitored_files, set_wazuh_configuration,
                                                break_listener_tls_files, restart_wazuh_expect_error):
     '''
-    description: Check that remoted refuses to start when the HTTPS agent listener's private key exists but
-                 the service user cannot read it. For this purpose, the test makes etc/certs/remoted-key.pem
-                 root-owned 0600 -- the configuration validator, which runs as root, still passes -- starts
-                 the service and checks the manager log with a FileMonitor for remoted's preflight error,
-                 which names the key and says it is missing or unreadable by the service user. remoted exits
-                 instead of coming up without the HTTPS transport.
+    description: Check that the manager refuses to start when the HTTPS agent listener's private key exists
+                 but the service user cannot read it. For this purpose, the test makes
+                 etc/certs/remoted-key.pem root-owned 0600, starts the service and checks the unit's journal
+                 for the verdict of the credential resolver, which validates the listener pair's ownership
+                 before the configuration validator and before any daemon -- so the key is refused there and
+                 remoted never reaches its own preflight. Nothing comes up without the HTTPS transport.
 
     parameters:
         - test_configuration
@@ -178,7 +175,16 @@ def test_https_cert_unreadable_by_service_user(test_configuration, test_metadata
             brief: Start the service tolerating the failure, once the test finishes stops the daemons.
     '''
 
-    log_monitor = FileMonitor(WAZUH_LOG_PATH)
-
-    log_monitor.start(callback=generate_callback(test_metadata['expected_error']), timeout=60)
-    assert log_monitor.callback_result
+    # The journal, not WAZUH_LOG_PATH: the resolver runs before any daemon and writes to stderr, which
+    # systemd captures under the unit. Nothing has opened the manager log at that point.
+    expected = re.compile(test_metadata['expected_error'])
+    deadline = time.time() + 60
+    journal = ''
+    while time.time() < deadline:
+        journal = subprocess.run(['journalctl', '-u', 'wazuh-manager', '--no-pager', '-q',
+                                  f'--after-cursor={break_listener_tls_files}'],
+                                 capture_output=True, text=True).stdout
+        if any(expected.match(line) for line in journal.splitlines()):
+            break
+        time.sleep(1)
+    assert any(expected.match(line) for line in journal.splitlines()), journal[-2000:]
