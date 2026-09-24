@@ -30,6 +30,11 @@ RUN /wazuh/install.sh
 # in /wazuh). The api_ssl volume shared by the cluster containers is populated from this image, so
 # the listener SAN covers every manager service name (see certs-config.yml).
 COPY base/manager/certs-config.yml /wazuh/certs-config.yml
+# The pairs are issued here and their anchor is staged in the shared CA directory WITHOUT its private
+# key, which is how a distributed node is provisioned: the manager uses what it is given and cannot
+# sign for itself. Staging the anchor is not optional -- the credential resolver refuses to mint a CA
+# when manager material already exists ("shared CA missing but manager material exists"), so without
+# it the manager will not start.
 RUN bash /wazuh/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c /wazuh/certs-config.yml -o /tmp/wazuh-certificates && \
     mkdir -p /var/wazuh-manager/etc/certs && \
     install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/root-ca.pem /var/wazuh-manager/etc/certs/root-ca.pem && \
@@ -37,6 +42,8 @@ RUN bash /wazuh/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c /wazuh/cert
     install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem && \
     install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted.pem /var/wazuh-manager/etc/certs/remoted.pem && \
     install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted-key.pem /var/wazuh-manager/etc/certs/remoted-key.pem && \
+    install -d -m 0700 -o root -g root /etc/wazuh /etc/wazuh/ca && \
+    install -o root -g root -m 644 /tmp/wazuh-certificates/root-ca.pem /etc/wazuh/ca/root-ca.pem && \
     rm -rf /tmp/wazuh-certificates
 COPY base/manager/entrypoint.sh /scripts/entrypoint.sh
 

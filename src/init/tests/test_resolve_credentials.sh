@@ -426,6 +426,42 @@ EOF
     cleanup "${root}"
 fi
 
+# The listener pair belongs to the service user, because remoted and authd open it after dropping
+# privileges. A root-owned key is one the service cannot read, and the resolver refuses it before any
+# daemon runs -- which is what tests/integration/.../test_https_cert_missing asserts on the journal.
+root="$(make_tree)"
+write_credentials "${root}" "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'"
+run_resolver "${root}" --install
+check "a healthy tree resolves" "0" "${RC}"
+
+# root:root 0600 is the mutation the integration fixture applies. The suite's service identity is
+# root, so drop the group instead: what matters is that the pair no longer matches the expected
+# ownership the helper enforces.
+chown root:0 "${root}/home/etc/certs/remoted-key.pem" 2>/dev/null
+chmod 0600 "${root}/home/etc/certs/remoted-key.pem"
+run_resolver "${root}" --prestart
+check "a listener key the service cannot read blocks the start" "1" "${RC}"
+check "and the diagnostic names that file" "yes" \
+    "$(grep -qE 'remoted-key\.pem (must have mode|.*unexpected owner)|unexpected owner for .*remoted-key\.pem' \
+        <<< "$(resolver_output)" && echo yes)"
+cleanup "${root}"
+
+# Certificates staged without their anchor: the helper refuses to mint a CA when manager material
+# already exists, so a node given pairs but no /etc/wazuh/ca cannot start. This is the state a
+# container image lands in when it installs certificates at build time and forgets the anchor.
+root="$(make_tree)"
+write_credentials "${root}" "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'"
+run_resolver "${root}" --install          # mints a CA and both pairs
+check "a first install resolves" "0" "${RC}"
+
+# Keep the pairs, take the CA away -- pairs present, anchor absent.
+rm -rf "${root}/base/ca"
+run_resolver "${root}" --prestart
+check "pairs without their anchor are refused" "1" "${RC}"
+check "and the refusal explains it will not mint a second CA" "yes" \
+    "$(grep -q 'refusing to mint another CA' <<< "$(resolver_output)" && echo yes)"
+cleanup "${root}"
+
 # --------------------------------------------------------------------------------------------
 # --clear
 #
