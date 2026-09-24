@@ -198,10 +198,13 @@ CheckListenerCerts()
         fi
     done
 
-    # No notice when the pair is absent. The credential resolver issues it at service start from
-    # whatever is in $WAZUH_CA_DIR, and when it cannot the service refuses to start and says so in
-    # the journal -- which is where someone looks. Warning here about a state that is resolved
-    # later is what trains operators to ignore installer output.
+    # No notice when the pair is absent. The credential resolver issues it later in this same
+    # installation, from whatever is in $WAZUH_CA_DIR -- and only there, never at a service start
+    # or an upgrade. It reports for itself when it could not, and the service then refuses to start
+    # on the configuration validator's (1244) verdict naming the file, which is where someone
+    # looks. A notice here fires before the step that resolves the very state it describes, and
+    # warning about a state that is about to be resolved is what trains operators to ignore
+    # installer output.
 }
 
 ##########

@@ -3799,9 +3799,10 @@ void test_remoted_module_control_config_silent_below_disconnection_time(void** s
 #define TLS_FILES_TEST_CERT "etc/certs/remoted.pem"
 #define TLS_FILES_TEST_KEY "etc/certs/remoted-key.pem"
 #define TLS_FILES_TEST_HINT                                                                                  \
-    " wazuh-manager does not generate TLS certificates: provision them with wazuh-certs-tool (Wazuh "     \
-    "installation assistant) and install remoted.pem, remoted-key.pem and root-ca.pem under etc/certs, "  \
-    "readable by the service user (see 'Deploy certificates' in the installation guide)."
+    " The pair is issued at installation and is never reissued at start: if the files are present, "      \
+    "check that they are owned by the service user and mode 0640, since remoted opens them after "        \
+    "dropping privileges; otherwise provision remoted.pem, remoted-key.pem and root-ca.pem under "        \
+    "etc/certs (see 'Credentials' in the installation guide)."
 
 static void tls_files_config(remoted_module_config_t *rm_config)
 {

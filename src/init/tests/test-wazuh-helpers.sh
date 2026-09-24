@@ -23,7 +23,12 @@ export TEST_SCRIPT_DIR
 # the per-case sub-shells, and the one case that sources a helper through "$TEST_SHELL -c", read
 # them from the environment. Each falls back to this file's own directory, which is the upstream
 # layout, so a verbatim upstream copy still runs unchanged.
-WAZUH_HELPER_DIR=$TEST_SCRIPT_DIR/../credentials
+# ${VAR-default} on both, so an operator-set value wins. It was a plain assignment on this one,
+# which silently ignored WAZUH_HELPER_DIR from the environment and made the README's claim that
+# both are overridable false for half of it -- and makes it impossible to point the suite at a
+# modified copy of the certificate helper, which is how you check that a case still fails when the
+# behaviour it pins is removed.
+WAZUH_HELPER_DIR=${WAZUH_HELPER_DIR-$TEST_SCRIPT_DIR/../credentials}
 [ -f "$WAZUH_HELPER_DIR/wazuh-manager-certificates.sh" ] || WAZUH_HELPER_DIR=$TEST_SCRIPT_DIR
 WAZUH_HELPER_DIR=$(CDPATH= cd -- "$WAZUH_HELPER_DIR" && pwd -P)
 export WAZUH_HELPER_DIR
@@ -265,8 +270,9 @@ if [ "${1-}" = --case ]; then
             ;;
         interfaces)
             unset WAZUH_MANAGER_REMOTED_CERT_SANS
-            # Include physical, secondary/non-default, virtual, loopback,
-            # link-local and IPv6. The helper must not filter by default route.
+            # Physical, secondary/non-default-route, virtual, loopback, link-local and IPv6. The
+            # helper must not filter by default route -- agents reach the manager over whatever
+            # address they were pointed at -- but it must filter by scope.
             ip() {
                 printf '%s\n' \
                     '1: lo inet 127.0.0.1/8 scope host lo' \
@@ -278,8 +284,16 @@ if [ "${1-}" = --case ]; then
                     '5: eth1 inet6 2001:db8::99/64 scope global tentative'
             }
             sans=$(wazuh_manager_remoted_sans)
-            for expected in IP:127.0.0.1 IP:192.0.2.10 IP:198.51.100.12 IP:172.17.0.1 IP:fe80:0:0:0:0:0:0:12 IP:2001:db8:0:0:0:0:0:12; do
+            for expected in IP:127.0.0.1 IP:192.0.2.10 IP:198.51.100.12 IP:172.17.0.1 IP:2001:db8:0:0:0:0:0:12; do
                 printf '%s\n' "$sans" | grep -Fx "$expected"
+            done
+            # Link-local is excluded: an EUI-64 fe80:: address carries the interface MAC, and this
+            # certificate is served to every agent that completes a handshake. Loopback is still
+            # present above, but as the entry the helper appends rather than from `scope host`.
+            for refused in IP:fe80:0:0:0:0:0:0:12 IP:2001:db8:0:0:0:0:0:99; do
+                if printf '%s\n' "$sans" | grep -Fxq "$refused"; then
+                    fail "$refused must not be a SAN"
+                fi
             done
             fixture
             openssl verify -purpose sslserver -verify_ip 198.51.100.12 -CAfile "$(wazuh_ca_get_dir)/root-ca.pem" "$WAZUH_MANAGER_HOME/etc/certs/remoted.pem"

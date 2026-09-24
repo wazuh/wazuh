@@ -47,7 +47,7 @@ the input, the handoff between components, and the record you read to find a gen
 * `0600 root:root`, in a `0700 root:root` directory. It is refused outright — with the reason
   logged — when its owner, group or mode is wrong, when it is a symlink, or when any directory above
   it is group- or world-writable. `$WAZUH_CA_DIR` is held to the same directory rule.
-* Plain `KEY=VALUE` lines. The file is **parsed, never sourced**: nothing in it is ever executed.
+* One `KEY=VALUE` per line. The file is **parsed, never sourced**: nothing in it is ever executed.
 * The packages own a delimited block and nothing else. Lines you write outside it are never
   touched, reordered or reformatted, even when they carry the same key.
 * Neither `/etc/wazuh` nor the file itself ships in any package.
@@ -68,6 +68,31 @@ WAZUH_MANAGER_WUI_PASSWORD="cF4nP…"
 > Editing a generated value here does not change the credential the manager already holds. Step 1
 > of the order wins over the file, so the manager keeps what is in its own store and your edit has
 > no effect. Use `wazuh-passwords-tool.sh` to rotate a credential in a running deployment.
+
+### Reading a value back
+
+Every value the packages write is **double-quoted**, with `\`, `"`, `$` and `` ` `` backslash-escaped
+inside the quotes. A value you write yourself may be double-quoted, single-quoted or bare; all three
+are read back identically, and the surrounding quotes are never part of the value.
+
+This matters because the quotes are removed by the *parser*, not by the file format. Anything that
+reads the file with `grep`/`cut`/`awk`, or hands it to a loader that does not unquote, gets the
+quotation marks as part of the password and fails to authenticate with no visible cause:
+
+```bash
+# Wrong -- yields  "zL9dH…"  including the quotation marks
+grep '^WAZUH_MANAGER_API_PASSWORD=' /etc/wazuh/credentials.env | cut -d= -f2-
+
+# Right
+sed -n "s/^WAZUH_MANAGER_API_PASSWORD=[\"']\{0,1\}\(.*[^\"']\)[\"']\{0,1\}$/\1/p" \
+    /etc/wazuh/credentials.env
+```
+
+> [!WARNING]
+> **Do not pass this file to `docker run --env-file` or `docker compose env_file`.** Docker does not
+> strip quotation marks: it treats them as part of the value, so the container receives a password
+> with literal `"` characters around it and every request it makes is rejected as `401`. Read the
+> value out and pass it with `-e KEY=value` instead.
 
 The file holds every plaintext password in the deployment, so delete it once every component is
 installed and running — not earlier, because until then it is how the components hand credentials to
@@ -94,6 +119,19 @@ sudo apt-get install wazuh-manager
 
 That trap is why the file, not the command line, is the documented way to choose a value.
 
+> [!IMPORTANT]
+> Supplying `WAZUH_MANAGER_API_PASSWORD` or `WAZUH_MANAGER_WUI_PASSWORD` through the environment does
+> **not** keep it off disk. The manager publishes every credential it owns into
+> `/etc/wazuh/credentials.env` whether it generated the value or you supplied it, because the
+> dashboard authenticates as `wazuh-wui` and reads the value from there — publishing only generated
+> values would mean a deployment that chose its own passwords never hands them over. What protects
+> it is the file: `0600 root:root` inside a `0700 root:root` directory, refused outright on every
+> read and every write when the owner, the mode, a symlink or any ancestor is wrong. Only root can
+> read it, and [deleting it](#the-credentials-file) once every component is running is the last step
+> of an installation, not an optional one.
+>
+> `WAZUH_INDEXER_MANAGER_PASSWORD` is never published — the manager only consumes it.
+
 ## The password policy
 
 Every password, supplied or generated, must be **12 to 64 characters and contain at least one letter
@@ -110,6 +148,20 @@ docker-compose interpolation without escaping.
 > [!NOTE]
 > The Server API rejects a password outside this rule with error `5009` (length) or `5007` (missing
 > letter or digit).
+
+This rule replaces an earlier one that also demanded an uppercase letter, a lowercase letter and a
+symbol. It is a lower floor for an operator who chooses their own value, for three reasons:
+
+* **It has to be one rule.** The resolver validates a value at installation and the Server API
+  validates it again at rotation. Two different rules means a value the installation accepts and the
+  API later refuses — a deployment that comes up and cannot be administered. PCI DSS 8.3.6 is the
+  rule the indexer and the dashboard implement, so it is the one all three share.
+* **Composition rules are not what makes a password strong.** NIST SP 800-63B §5.1.1.2 advises
+  against them: they push operators toward predictable substitutions while barely enlarging the
+  search space. The 12-character minimum — the control that does — is unchanged.
+* **The weakness this release closes was not the shape of a chosen password.** It was that every
+  installation shipped `wazuh`/`wazuh` and `wazuh-wui`/`wazuh-wui`. Where you supply nothing, a
+  32-character value is generated instead, which no composition rule would improve on.
 
 ## Installing and starting
 
@@ -177,10 +229,23 @@ re-anchors or even re-examines them. Two reasons, and both matter in a distribut
 So `/etc/wazuh/ca` is a bootstrap handoff, not a standing dependency. **You can delete it** once the
 pairs are in `etc/certs`, and a manager provisioned entirely from outside never needs one at all.
 
-What certificates the manager will accept is decided where it always was — `wazuh-manager-conf
-validate` checks the files exist, `remoted` probes them with `access(R_OK)` after dropping
-privileges, and the TLS handshake decides the rest. Those read the files as they are at start, which
-is the only state that matters.
+What certificates the manager will accept is decided where it always was, against the files as they
+are at start — which is the only state that matters:
+
+* `wazuh-manager-conf validate` checks that the agent-listener pair and the authd material **exist**.
+  It runs as root, so it does not tell you whether the `wazuh-manager` user can read them.
+* `remoted` probes its own pair with `access(R_OK)` **after** dropping privileges, and refuses to
+  start the listener when it cannot read either file.
+* The TLS handshake decides the rest.
+
+> [!NOTE]
+> The Indexer Connector pair is not covered by either check. `<indexer><ssl>` is deliberately left
+> out of the configuration validator's file list, so that a manager with no indexer can still start,
+> and nothing probes it after the privilege drop. A `indexer-connector-key.pem` that exists but is
+> not readable by `wazuh-manager` therefore passes every check that runs as root and fails later,
+> when the connector is loaded. The install checks the ownership and mode of both pairs, so a pair
+> the manager issued is correct by construction — when you provision one by hand, get the ownership
+> right from the table below.
 
 ### What the install does
 
@@ -239,10 +304,17 @@ The two leaves are configured independently, because they are presented to diffe
 | Setting | Configures | Discovery when unset |
 |---------|------------|----------------------|
 | `WAZUH_MANAGER_CERT_SANS` | `indexer-connector.pem` | hostname, FQDN, `localhost`, loopback, and the global addresses on default-route interfaces |
-| `WAZUH_MANAGER_REMOTED_CERT_SANS` | `remoted.pem` | hostname, FQDN, `localhost`, loopback, and **every** address `ip -o addr show` reports — including non-default-route, virtual and link-local interfaces |
+| `WAZUH_MANAGER_REMOTED_CERT_SANS` | `remoted.pem` | hostname, FQDN, `localhost`, loopback, and **every global-scope** address `ip -o addr show` reports — including addresses on interfaces that are not on the default route, that are virtual, or that are down |
 
 Remoted's list is deliberately the wider of the two: agents reach the manager over whatever address
-the operator pointed them at, which is frequently not the one on the default route.
+the operator pointed them at, which is frequently not the one on the default route, and a manager
+issued a narrower certificate installs cleanly and then fails at the first peer connection.
+
+It is wider by *interface*, not by *scope*. Link-local (`fe80::`) and host-scope addresses are left
+out: no peer can match them, so they would be disclosure with no function — and a link-local address
+formed the classic way carries the interface's MAC into a certificate that is served to every client
+completing a handshake on port 1517. If a node must present an address discovery does not pick up,
+set `WAZUH_MANAGER_REMOTED_CERT_SANS` explicitly; it replaces the whole list.
 
 An explicit value **replaces** discovery for that leaf; it does not extend it. Wildcard DNS names,
 scoped IPv6 and CIDR notation are refused — under a shared CA, a node holding a wildcard could
@@ -321,9 +393,19 @@ Certificates are not looked at at all. An upgrade never re-examines, re-anchors 
 in `etc/certs`, so one you replaced with your own PKI's — and the absent CA directory that usually
 goes with it — survives every upgrade untouched.
 
-Removing the package leaves the credentials file untouched. Purging it removes only the
-`WAZUH_MANAGER_*` keys, and only from inside the managed block — lines you wrote are never touched,
-even when they carry the same key.
+What removal does depends on which package manager, because they do not offer the same operations:
+
+| Command | Effect on the credentials file |
+|---------|-------------------------------|
+| `apt remove wazuh-manager` | untouched |
+| `apt purge wazuh-manager` | the manager's own keys are removed from the managed block |
+| `rpm -e wazuh-manager` / `dnf remove` | the manager's own keys are removed from the managed block |
+
+RPM has no operation that removes a package while keeping its configuration, so an erase is the
+equivalent of a DEB purge and is treated as one. Both take exactly the same four keys
+(`WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD`, `WAZUH_MANAGER_CERT_SANS`,
+`WAZUH_MANAGER_REMOTED_CERT_SANS`) and only from inside the managed block — lines you wrote are never
+touched, even when they carry the same key.
 
 The last component out then removes what is left, `/etc/wazuh` included. "Last" is asked of the
 package manager: the file, the CA directory and `/etc/wazuh` go only when neither `wazuh-indexer`

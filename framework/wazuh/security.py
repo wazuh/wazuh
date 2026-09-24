@@ -21,6 +21,27 @@ from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
 
 # At least one letter and one digit, PCI DSS v4.0 requirement 8.3.6. \Z rather than $, which would
 # also match before a trailing newline.
+#
+# This REPLACES the previous rule, which additionally demanded an uppercase letter, a lowercase
+# letter and a symbol. Relaxing a password rule deserves its reasoning stated, so:
+#
+#   * The rule has to be one rule. The manager, the indexer and the dashboard all resolve against
+#     /etc/wazuh/credentials.env, and the credential resolver validates a value at install time that
+#     this function validates again at rotation. Two different rules means a value the installation
+#     accepts and the API later refuses -- a deployment that comes up and cannot be administered.
+#     PCI DSS 8.3.6 is the rule the other two components implement, so it is the one that is shared.
+#   * Composition rules are not what makes a password strong, and NIST SP 800-63B 5.1.1.2 says so
+#     explicitly ("verifiers SHOULD NOT impose other composition rules"): they push operators toward
+#     predictable substitutions while barely moving the search space. The 12-character floor -- the
+#     control that does move it -- is unchanged, and the 64-character ceiling still exists only
+#     because bcrypt truncates past 72 bytes.
+#   * The weakness that actually mattered was not the shape of a chosen password: it was that every
+#     installation shipped `wazuh`/`wazuh` and `wazuh-wui`/`wazuh-wui`. That is what #39554 removes.
+#     Where nothing is supplied the seeding generates 32 characters from a 73-character alphabet
+#     (~198 bits), which no composition rule would have improved on.
+#
+# So the floor moved down for an operator who insists on choosing their own value, and the default
+# moved from "known to everyone" to "unique per installation".
 _user_password = re.compile(r'^(?=.*[A-Za-z])(?=.*\d).*\Z')
 
 PASSWORD_MIN_LENGTH = 12

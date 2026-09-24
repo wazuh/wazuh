@@ -31,8 +31,11 @@
 #
 #   wazuh_manager_remoted_sans
 #       Prints the resolved Remoted SANs, one typed entry per line. If no
-#       explicit list is configured, every IPv4/IPv6 address assigned to every
-#       local interface is included, together with the node hostname/FQDN.
+#       explicit list is configured, every GLOBAL-scope IPv4/IPv6 address
+#       assigned to every local interface is included -- whether or not the
+#       interface carries the default route, is virtual, or is down -- together
+#       with the node hostname/FQDN and loopback. Link-local and host scope are
+#       excluded; see _wmc_default_remoted_sans() for why.
 #       Requires successful iproute2 discovery (no loopback-only fallback).
 #       Tentative/DAD-failed addresses are skipped; IPs are canonicalized.
 #       This helper creates a private temporary workspace below the base.
@@ -45,7 +48,9 @@
 #
 #   WAZUH_MANAGER_REMOTED_CERT_SANS
 #       Exact comma-separated SAN list for remoted.pem. When absent, SANs are
-#       discovered from all interfaces. An explicitly empty value is invalid.
+#       discovered from the global-scope addresses of all interfaces; set this
+#       to present an address discovery does not reach, since it replaces the
+#       whole list. An explicitly empty value is invalid.
 #
 #   WAZUH_MANAGER_NODE_NAME
 #       Certificate common name. Defaults to hostname -s.
@@ -563,18 +568,22 @@ _wmc_default_manager_sans() (
 _wmc_default_remoted_sans() (
     _wmc_output=$1
     # Require successful enumeration, not just presence of the ip binary.
-    # Includes all assigned addresses, also down/virtual/link-local interfaces.
+    #
+    # Every GLOBAL address on every interface, including interfaces that are not on the default
+    # route, that are virtual, or that are currently down -- deliberately wider than
+    # _wmc_default_manager_sans().
     _wmc_addresses=$(ip -o addr show) || {
         _wmc_error 'cannot enumerate interfaces; supply WAZUH_MANAGER_REMOTED_CERT_SANS'
         return 1
     }
     _wmc_list=$(printf '%s\n' "$_wmc_addresses" | awk '
-        ($3=="inet" || $3=="inet6") && $0 !~ / (tentative|dadfailed)( |$)/ {
+        ($3=="inet" || $3=="inet6") && $0 !~ / (tentative|dadfailed)( |$)/ &&
+        $0 ~ / scope global/ {
             sub(/\/.*/, "", $4); print "IP:" $4
         }
     ') || return 1
     [ -n "$_wmc_list" ] || {
-        _wmc_error 'no usable interface address; supply WAZUH_MANAGER_REMOTED_CERT_SANS'
+        _wmc_error 'no global interface address; supply WAZUH_MANAGER_REMOTED_CERT_SANS'
         return 1
     }
     _wmc_append_host_names "$_wmc_output.names" || return 1
@@ -845,6 +854,8 @@ _wmc_generate_remoted_pair() (
     _wmc_sans=${4-}
     _wmc_user=${5-}
     _wmc_group=${6-}
+    _wmc_uid=${7-}
+    _wmc_gid=${8-}
     _wmc_tmp_dir=$(mktemp -d "$_wmc_dir/.remoted.XXXXXX") || return 1
     trap 'rm -rf -- "$_wmc_tmp_dir"' 0
     trap 'return 130' 1 2 3 15
@@ -910,8 +921,7 @@ _wmc_generate_remoted_pair() (
     chmod 0640 "$_wmc_tmp_dir/remoted.pem" "$_wmc_tmp_dir/remoted-key.pem" || return 1
 
     _wmc_validate_pair "$_wmc_tmp_dir/remoted.pem" "$_wmc_tmp_dir/remoted-key.pem" \
-        "$_wmc_ca_dir/root-ca.pem" "$(id -u "$_wmc_user")" \
-        "$(getent group "$_wmc_group" | cut -d: -f3)" serverAuth 1 || return 1
+        "$_wmc_ca_dir/root-ca.pem" "$_wmc_uid" "$_wmc_gid" serverAuth 1 || return 1
     ln -T -- "$_wmc_tmp_dir/remoted-key.pem" "$_wmc_dir/remoted-key.pem" || return 1
     ln -T -- "$_wmc_tmp_dir/remoted.pem" "$_wmc_dir/remoted.pem" || return 1
     rm -rf -- "$_wmc_tmp_dir"
@@ -1042,7 +1052,8 @@ _wmc_ensure_locked() (
         fi
         if [ "$_wmc_remoted_state" = absent ]; then
             _wmc_generate_remoted_pair "$_wmc_dir" "$_wmc_ca_dir" "$_wmc_node" \
-                "$_wmc_stage/remoted" "$_wmc_user" "$_wmc_group" || return 1
+                "$_wmc_stage/remoted" "$_wmc_user" "$_wmc_group" \
+                "$_wmc_uid" "$_wmc_gid" || return 1
         fi
     fi
 

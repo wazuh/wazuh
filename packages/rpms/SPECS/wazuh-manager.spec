@@ -22,8 +22,9 @@ Obsoletes: wazuh-api < 4.0.0
 AutoReqProv: no
 
 # Credential resolution runs from the maintainer scripts and from the service's pre-start step, and
-# needs three things a minimal install does not guarantee. AutoReqProv is off above, so each has to
-# be stated rather than inferred.
+# needs a set of tools a minimal install does not guarantee. AutoReqProv is off above, so each has
+# to be stated rather than inferred -- the authoritative list is _wmc_require_commands() in
+# lib/wazuh-manager-certificates.sh, which refuses to run when one is missing.
 #
 #   openssl    The CLI, not the library the daemons link: lib/wazuh-manager-certificates.sh drives
 #              it to mint the bootstrap CA and issue the manager's two TLS pairs.
@@ -31,9 +32,17 @@ AutoReqProv: no
 #              error rather than a loopback-only fallback, precisely so a node cannot be issued a
 #              certificate that installs cleanly and then fails at the first peer connection.
 #   hostname   The CN and the DNS names come from hostname/FQDN lookup.
+#   gawk       Both helpers parse the credentials file, classify SANs and canonicalise IPv6 in awk.
+#              coreutils does not provide it and a minimal or container image frequently lacks it.
+#   util-linux `flock`, which serialises every write to the shared credentials file and the CA
+#              across the manager, the indexer and the dashboard.
+#   diffutils  `cmp`, which is how a certificate is matched against its private key and against the
+#              shared trust anchor.
+#   grep, sed  Used throughout both helpers and by the resolver.
+#   findutils  `find`, which is how `--clear` empties the keystore.
 #
 # Without any of them a fresh host has no certificates and the service refuses to start.
-Requires: coreutils openssl iproute hostname
+Requires: coreutils openssl iproute hostname gawk util-linux diffutils grep sed findutils
 BuildRequires: coreutils glibc-devel automake autoconf libtool policycoreutils-python curl perl
 
 ExclusiveOS: linux
@@ -470,10 +479,19 @@ if [ $1 = 0 ]; then
   # removed them by then -- so unlike the DEB's postrm, which has no pre-purge hook and must repeat
   # the helper's logic inline, this can simply source it.
   #
-  # Only WAZUH_MANAGER_* keys, and only inside the managed block: the other components' keys and
-  # anything the operator wrote are not ours to remove, even when they carry the same name.
+  # Only the manager's own keys, and only inside the managed block: the other components' keys and
+  # anything the operator wrote are not ours to remove, even when they carry the same name. This is
+  # the SAME list the DEB's postrm drops, so both removal paths take exactly the same keys out.
+  #
+  # NOTE: there is no `rpm -e` that keeps configuration the way `apt remove` (as opposed to
+  # `apt purge`) does, so this is rpm's equivalent of a purge and runs on every erase.
   if [ -f %{_localstatedir}/lib/wazuh-credentials.sh ]; then
+    # rpm runs scriptlets under `sh -e`. The helper defines functions and nothing else today, but a
+    # top-level statement upstream returning non-zero would abort the erase halfway through, so the
+    # source is explicitly tolerated.
+    set +e
     . %{_localstatedir}/lib/wazuh-credentials.sh
+    set -e
 
     for CRED_KEY in WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD \
                     WAZUH_MANAGER_CERT_SANS WAZUH_MANAGER_REMOTED_CERT_SANS; do
@@ -492,8 +510,8 @@ if [ $1 = 0 ]; then
     # machine with no Wazuh left on it. Only siblings are queried: this scriptlet runs while
     # wazuh-manager itself is still installed.
     #
-    # Only the default CA directory is removed, as the DEB does. One relocated through WAZUH_CA_DIR
-    # may hold a CA this package never created, and is left alone.
+    # Only the CA directory under the base is removed, as the DEB does. One relocated through
+    # WAZUH_CA_DIR may hold a CA this package never created, and is left alone.
     CRED_SIBLING_LEFT=no
     for CRED_SIBLING in wazuh-indexer wazuh-dashboard; do
       if rpm -q "${CRED_SIBLING}" > /dev/null 2>&1; then
