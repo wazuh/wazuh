@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.10]
 
+### Manager
+
+#### Fixed
+
+- Fixed a memory leak in `wazuh-remoted` when parsing repeated OS/version records in an agent keepalive. ([#39614](https://github.com/wazuh/wazuh/pull/39614))
+
 ### Agent
 
 #### Fixed

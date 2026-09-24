@@ -216,6 +216,18 @@ int parse_agent_update_msg (char *msg,
                 *str_tmp = '\0';
                 str_tmp += 3;
 
+                if (agent_data->osd) {
+                    os_free(agent_data->osd->os_name);
+                    os_free(agent_data->osd->os_version);
+                    os_free(agent_data->osd->os_major);
+                    os_free(agent_data->osd->os_minor);
+                    os_free(agent_data->osd->os_codename);
+                    os_free(agent_data->osd->os_platform);
+                    os_free(agent_data->osd->os_build);
+                    os_free(agent_data->osd->os_uname);
+                    os_free(agent_data->osd->os_arch);
+                    os_free(agent_data->osd);
+                }
                 os_calloc(1, sizeof(os_data), agent_data->osd);
                 parse_uname_string(line, agent_data->osd);
                 os_strdup(line, agent_data->osd->os_uname);
