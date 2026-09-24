@@ -84,7 +84,9 @@ if [[ "$(cat /proc/1/comm 2>/dev/null)" == systemd ]]; then
 else
   "${BIN}/wazuh-manager-control" restart
 fi
-if ! "${BIN}/wazuh-manager-control" status | grep -q '^wazuh-manager-clusterd is running'; then
+# status exits 1 when any daemon is down: read its output apart from its exit code.
+STATUS="$("${BIN}/wazuh-manager-control" status)" || true
+if ! grep -q '^wazuh-manager-clusterd is running' <<<"$STATUS"; then
   echo "ERROR: wazuh-manager-clusterd is not running after the restart; see $(dirname "$CONF")/../logs/wazuh-manager.log" >&2
   echo "       The previous config is in ${CONF}.bak." >&2
   exit 1

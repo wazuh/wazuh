@@ -67,7 +67,10 @@ function from_source() {
   # while tar reads it, and a snapshot taken mid-write gives a worker that looks
   # healthy with missing detection data. Snapshot a stopped manager only;
   # setup-master.sh starts it again.
-  if "${home}/bin/wazuh-manager-control" status 2>/dev/null | grep -q ' is running'; then
+  # status exits 1 as soon as one daemon is down, so read its output apart from its
+  # exit code (with pipefail, a pipeline would hide a partially running manager).
+  local status; status="$("${home}/bin/wazuh-manager-control" status 2>/dev/null)" || true
+  if grep -q ' is running' <<<"$status"; then
     echo "ERROR: the manager at ${home} is running. Stop it for the snapshot:" >&2
     echo "       sudo ${home}/bin/wazuh-manager-control stop   (setup-master.sh starts it again)" >&2
     exit 1
