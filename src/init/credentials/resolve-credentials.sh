@@ -10,8 +10,12 @@
 # The manager's half of the credential resolution ladder.
 #
 # The shared half -- the credentials file, its locking convention, password generation and
-# validation, the CA, and the manager's own certificates -- lives in wazuh-credentials.sh and
-# wazuh-manager-certificates.sh, which are common to all three components and versioned together.
+# validation, and the CA -- lives in wazuh-credentials.sh, which the manager, the indexer and the
+# dashboard must agree on exactly. It is therefore NOT in this repository: it is owned by
+# wazuh-installation-assistant and downloaded by `make deps` into src/external/wazuh-credentials/.
+# wazuh-manager-certificates.sh, beside this file, is the manager's own and shared with nobody,
+# though the two are still a pair at runtime -- it refuses to run without the shared functions.
+#
 # This file adds only what is specific to the manager: which keys it owns, which it consumes, and
 # where each resolved value is stored.
 #
@@ -115,20 +119,44 @@ if [ -z "${DIR}" ]; then
     DIR=$(dirname "$(dirname "${_self}")")
 fi
 
-# Installed layout puts the helpers in lib/; the source tree has them beside this file, which is
-# what lets the test suite drive the ladder without an install.
-if [ -f "${DIR}/lib/wazuh-credentials.sh" ]; then
+# The two halves sit together once installed and apart in the source tree, so they are resolved
+# separately.
+#
+#   * wazuh-manager-certificates.sh is ours and lives beside this file.
+#   * wazuh-credentials.sh is shared with the indexer and the dashboard, so it is owned by
+#     wazuh-installation-assistant and downloaded by `make deps` into src/external/wazuh-credentials/
+#     -- it is NOT in this repository. WAZUH_SHARED_HELPER_DIR overrides where to look for it.
+#
+# Resolving from the source tree at all is what lets the test suites drive the ladder without an
+# install; on an installed manager the first branch of each wins and the rest never runs.
+_self_dir=$(dirname "$0")
+
+if [ -f "${DIR}/lib/wazuh-manager-certificates.sh" ]; then
     HELPER_DIR="${DIR}/lib"
-elif [ -f "$(dirname "$0")/wazuh-credentials.sh" ]; then
-    HELPER_DIR="$(dirname "$0")"
+elif [ -f "${_self_dir}/wazuh-manager-certificates.sh" ]; then
+    HELPER_DIR="${_self_dir}"
+else
+    echo "resolve-credentials: cannot find wazuh-manager-certificates.sh" >&2
+    exit 2
+fi
+
+if [ -n "${WAZUH_SHARED_HELPER_DIR-}" ] && [ -f "${WAZUH_SHARED_HELPER_DIR}/wazuh-credentials.sh" ]; then
+    SHARED_HELPER_DIR="${WAZUH_SHARED_HELPER_DIR}"
+elif [ -f "${DIR}/lib/wazuh-credentials.sh" ]; then
+    SHARED_HELPER_DIR="${DIR}/lib"
+elif [ -f "${_self_dir}/../../external/wazuh-credentials/wazuh-credentials.sh" ]; then
+    SHARED_HELPER_DIR="${_self_dir}/../../external/wazuh-credentials"
+elif [ -f "${_self_dir}/wazuh-credentials.sh" ]; then
+    SHARED_HELPER_DIR="${_self_dir}"
 else
     echo "resolve-credentials: cannot find wazuh-credentials.sh" >&2
+    echo "        it is downloaded from wazuh-installation-assistant by 'make -C src deps TARGET=manager'" >&2
     exit 2
 fi
 
 # Order matters: the certificate helper checks for the shared functions at call time and refuses
 # to run without them.
-. "${HELPER_DIR}/wazuh-credentials.sh"
+. "${SHARED_HELPER_DIR}/wazuh-credentials.sh"
 . "${HELPER_DIR}/wazuh-manager-certificates.sh"
 
 # The certificate helper reads the manager's home from the environment, so a tree installed under

@@ -11,7 +11,8 @@
 # resolution ladder -- which keys it owns, which it consumes, what it does at each of the two
 # moments, and what it reports when something is missing.
 #
-# The shared helpers it stands on (wazuh-credentials.sh, wazuh-manager-certificates.sh) have their
+# The shared helpers it stands on (wazuh-credentials.sh, downloaded; wazuh-manager-certificates.sh,
+# in src/init/credentials/) have their
 # own suite, test-wazuh-helpers.sh, which covers the file format, locking, permissions, SAN
 # discovery and the certificate states in far more depth. Nothing here re-tests those; the cases
 # below are about the orchestration on top.
@@ -28,7 +29,17 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CRED_SRC="${SCRIPT_DIR}/../credentials"
+# wazuh-credentials.sh is not in this repository: it is shared with the indexer and the dashboard,
+# owned by wazuh-installation-assistant, and downloaded by `make deps` into
+# src/external/wazuh-credentials/. Everything else the resolver needs is in CRED_SRC.
+SHARED_SRC="${WAZUH_SHARED_HELPER_DIR:-${SCRIPT_DIR}/../../external/wazuh-credentials}"
 TEST_PARENT="${WAZUH_TEST_PARENT:-/root}"
+
+if [ ! -f "${SHARED_SRC}/wazuh-credentials.sh" ]; then
+    echo "cannot find ${SHARED_SRC}/wazuh-credentials.sh" >&2
+    echo "run 'make -C src deps TARGET=manager' to download it, or set WAZUH_SHARED_HELPER_DIR" >&2
+    exit 1
+fi
 
 failures=0
 checks=0
@@ -72,7 +83,8 @@ make_tree() {
     # 1770 root:<group> is what InstallServer() creates and what the certificate helper insists on.
     install -d -m 1770 -o root -g root "${root}/home/etc/certs"
 
-    cp "${CRED_SRC}/wazuh-credentials.sh" "${CRED_SRC}/wazuh-manager-certificates.sh" "${root}/home/lib/"
+    cp "${SHARED_SRC}/wazuh-credentials.sh" "${root}/home/lib/"
+    cp "${CRED_SRC}/wazuh-manager-certificates.sh" "${root}/home/lib/"
     cp "${CRED_SRC}/resolve-credentials.sh" "${root}/home/bin/resolve-credentials"
     chmod +x "${root}/home/bin/resolve-credentials"
 

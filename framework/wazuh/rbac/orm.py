@@ -44,7 +44,8 @@ CLOUD_RESERVED_RANGE = 89
 _DUMMY_HASH = generate_password_hash("wazuh-dummy-constant-never-matches-any-real-password")
 
 # Generated-password shape. This is the same alphabet and length as wazuh_password_generate() in
-# src/init/credentials/wazuh-credentials.sh, because the credential resolver and this module are two
+# wazuh-credentials.sh -- the shared credential library downloaded from wazuh-installation-assistant
+# by `make deps` into src/external/wazuh-credentials/ -- because the resolver and this module are two
 # entry points to the same seeding and a value from either must satisfy the same policy the Server
 # API enforces in wazuh/security.py. The omitted punctuation (quotes, backslash, backtick, $, ! and
 # #) keeps a value safe to paste through shell, YAML, JSON and docker-compose interpolation without

@@ -4,6 +4,16 @@ POSIX shell libraries; source both files from root-run install/pre-start scripts
 Download/pin matching versions at package build time, but generate secrets only
 on the installed host (never in a package or container image build).
 
+**Only one of the two lives here.** `wazuh-manager-certificates.sh` is the
+manager's and is in this directory. `wazuh-credentials.sh` is shared with the
+indexer and the dashboard — all three resolve against the same
+`/etc/wazuh/credentials.env`, so all three must agree on it exactly — and is
+owned by
+[wazuh-installation-assistant](https://github.com/wazuh/wazuh-installation-assistant)
+under `credentials_lib/`. `make deps` downloads it to
+`src/external/wazuh-credentials/`; it is not committed here, because a copy in
+this repository is a copy that can drift.
+
 ## Paths
 
 | Resolver / setting | Default | Meaning |
@@ -35,18 +45,34 @@ The service user/group must exist before issuance; no accounts are created.
 
 ## In this repository
 
-`resolve-credentials.sh`, beside these helpers, is the manager's consumer of them: it adds only
-which keys the manager owns (`WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD`) and which
-it consumes (`WAZUH_INDEXER_MANAGER_PASSWORD`), and delegates everything else here.
+`resolve-credentials.sh`, beside the certificate helper, is the manager's consumer of both: it adds
+only which keys the manager owns (`WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD`) and
+which it consumes (`WAZUH_INDEXER_MANAGER_PASSWORD`), and delegates everything else to them.
+
+### Getting the shared half
+
+`make -C src deps TARGET=manager` downloads it, through the `CREDENTIALS_LIB_*` rule in
+[`src/Makefile`](../../Makefile) — the same ref-fallback the indexer templates use:
+`tools/get_git_refs.sh` reports *this* repository's refs and the rule walks them until one resolves
+against `wazuh-installation-assistant`, so a branch that exists only here 404s and falls through to
+`refs/heads/<version>` from `VERSION.json`. Server targets only; an agent resolves no credentials.
+
+Nothing degrades quietly when it is absent. `InstallServer()` aborts the installation, and both test
+suites exit non-zero, each naming the `make` command that fetches it. To point them at a working
+copy instead — reviewing a change to the shared half before it merges upstream — set
+`WAZUH_SHARED_HELPER_DIR`, which `resolve-credentials.sh` and both suites honour.
+
+### What gets installed
 
 `InstallServer()` in `../inst-functions.sh` installs the three files into the *installation prefix*
 rather than a fixed system path, so that parallel installs under different `USER_DIR` values do not
-collide and so the files fall inside the tree `.github/actions/check_files/manager_base.csv` pins:
+collide and so the files fall inside the tree `.github/actions/check_files/manager_base.csv` pins.
+The two halves are apart in the source tree and together once installed:
 
 | Source | Installed as | Mode |
 | --- | --- | --- |
 | `resolve-credentials.sh` | `<manager-home>/bin/wazuh-manager-resolve-credentials` | `0750 root:wazuh-manager` |
-| `wazuh-credentials.sh` | `<manager-home>/lib/wazuh-credentials.sh` | `0640 root:wazuh-manager` |
+| `../../external/wazuh-credentials/wazuh-credentials.sh` (downloaded) | `<manager-home>/lib/wazuh-credentials.sh` | `0640 root:wazuh-manager` |
 | `wazuh-manager-certificates.sh` | `<manager-home>/lib/wazuh-manager-certificates.sh` | `0640 root:wazuh-manager` |
 
 It runs in four modes:
@@ -168,11 +194,14 @@ component owns. Do not use `wazuh_env_set` as a password rotation mechanism.
 Dependencies: OpenSSL, GNU coreutils (`stat`, `date`, `ln -T`, etc.), util-linux
 `flock`, iproute2, `getent`, `hostname`, and a POSIX shell with awk/sed/grep.
 
-Upstream expects the suite beside the two helpers. Here it lives with the other
-`src/init` shell tests instead, and resolves the helpers through
-`WAZUH_HELPER_DIR` — which defaults to `../credentials` and falls back to the
-suite's own directory, so a verbatim upstream copy still runs unchanged. That is
-the only local modification to the file.
+Upstream expects the suite beside both helpers, in one directory. Here it lives
+with the other `src/init` shell tests, and the helpers are not even in the same
+place as each other, so it resolves them through two variables instead of
+upstream's one: `WAZUH_HELPER_DIR` (the certificate half, defaulting to
+`../credentials`) and `WAZUH_SHARED_HELPER_DIR` (the downloaded half, defaulting
+to `../../external/wazuh-credentials`). Each falls back to the suite's own
+directory, which is the upstream layout, so a verbatim upstream copy still runs
+unchanged. That resolution block is the only local modification to the file.
 
 ```sh
 sudo sh ../tests/test-wazuh-helpers.sh
