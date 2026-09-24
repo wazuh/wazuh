@@ -17,9 +17,8 @@
 #   3. Hard-restart the daemon (kill existing processes, clean up stale PID files,
 #      relaunch) so the new configuration is picked up from a clean slate.
 #
-# The script is idempotent: if dockerd is already up with the nftables backend
-# and the cgroupfs driver already configured, it exits immediately instead of
-# restarting the daemon.
+# The script is idempotent: if daemon.json already asks for both settings and the
+# RUNNING dockerd reports both (docker info), it exits without restarting it.
 set -eu
 
 # ── 1. Redirect iptables tooling to the nftables-backed binaries ──────────────
@@ -29,9 +28,15 @@ update-alternatives --set ip6tables /usr/sbin/ip6tables-nft
 # ── 2. Configure dockerd to use the nftables firewall backend ─────────────────
 DAEMON_JSON=/etc/docker/daemon.json
 
+# The file only states what was asked for: a run cut between writing it and the
+# restart below leaves the old daemon answering. So the restart is skipped only
+# when the running daemon itself reports both settings; a daemon that cannot
+# report them (an older Docker without FirewallBackend in docker info) is restarted.
+running_cgroup=$(docker info --format '{{.CgroupDriver}}' 2>/dev/null || true)
+running_firewall=$(docker info --format '{{if .FirewallBackend}}{{.FirewallBackend.Driver}}{{end}}' 2>/dev/null || true)
 if [ -f "$DAEMON_JSON" ] && grep -q '"firewall-backend"[[:space:]]*:[[:space:]]*"nftables"' "$DAEMON_JSON" \
    && grep -q 'native.cgroupdriver=cgroupfs' "$DAEMON_JSON" \
-   && docker info > /dev/null 2>&1; then
+   && [ "$running_cgroup" = cgroupfs ] && [ "$running_firewall" = nftables ]; then
     echo "dockerd already running with the nftables firewall backend and the cgroupfs driver."
     exit 0
 fi
@@ -49,6 +54,10 @@ EOF
 # no process is found).
 pkill dockerd     || true
 pkill containerd  || true
+# Wait (up to 30 s) for the old daemon to exit: it takes a moment to shut down,
+# and a new dockerd started while it still holds its socket can fail to start.
+i=0
+while pgrep -x dockerd > /dev/null 2>&1 && [ "$i" -lt 30 ]; do sleep 1; i=$((i + 1)); done
 
 # Remove stale PID files that would prevent a clean restart.
 rm -f /run/docker*.pid      /var/run/docker*.pid
