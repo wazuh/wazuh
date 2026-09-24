@@ -129,11 +129,13 @@ WAZUH_MANAGER_HOME="${WAZUH_MANAGER_HOME:-/var/wazuh-manager}"
 
 # Certificates: issued by the devcontainer copy of the installation assistant's
 # certificate tool, driven by the YAML next to it (its node names are load-bearing,
-# see the comments in that file). WAZUH_DEV_SCRIPTS is exported by the devcontainer.
-WAZUH_DEV_SCRIPTS="${WAZUH_DEV_SCRIPTS:-${SCRIPT_DIR}/../scripts}"
-WAZUH_DEV_SCRIPTS="${WAZUH_DEV_SCRIPTS%/}"
-CERTS_TOOL="${WAZUH_DEV_SCRIPTS}/wazuh-certs-tool.sh"
-CERTS_CONFIG="${CERTS_CONFIG:-${WAZUH_DEV_SCRIPTS}/wazuh-certs-tool.yml}"
+# see the comments in that file). Both are taken from ../scripts of THIS checkout,
+# not from $WAZUH_DEV_SCRIPTS: that variable is fixed when the devContainer is
+# created, so it can name another checkout (a worktree) or, in a devContainer
+# created before the move to tools/, a location that no longer exists.
+DEV_SCRIPTS="$(cd "${SCRIPT_DIR}/../scripts" && pwd)"
+CERTS_TOOL="${DEV_SCRIPTS}/wazuh-certs-tool.sh"
+CERTS_CONFIG="${CERTS_CONFIG:-${DEV_SCRIPTS}/wazuh-certs-tool.yml}"
 CERTS_DIR="${SCRIPT_DIR}/certs"
 
 
@@ -195,7 +197,7 @@ function upsert_certs() {
   need_cmd openssl
 
   if [ ! -f "$CERTS_TOOL" ]; then
-    echo "ERROR: certificate tool not found: $CERTS_TOOL (set WAZUH_DEV_SCRIPTS)" >&2
+    echo "ERROR: certificate tool not found: $CERTS_TOOL" >&2
     return 1
   fi
   if [ ! -f "$CERTS_CONFIG" ]; then

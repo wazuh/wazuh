@@ -25,7 +25,7 @@ set -euo pipefail
 #   MANAGER_NODE_NAME   <node> above (default: first "- name:" under "manager:" in
 #                       the certificates YAML)
 #   CERTS_DIR           source directory (default: certs/ next to this script)
-#   CERTS_CONFIG        certificates YAML (default: $WAZUH_DEV_SCRIPTS/wazuh-certs-tool.yml)
+#   CERTS_CONFIG        certificates YAML (default: ../scripts/wazuh-certs-tool.yml of this checkout)
 # ------------------------------------------------------------------------------
 
 OLD_DIR=$(pwd)
@@ -34,10 +34,11 @@ trap 'cd "$OLD_DIR"' EXIT
 cd "$SCRIPT_DIR"
 
 WAZUH_MANAGER_HOME="${WAZUH_MANAGER_HOME:-/var/wazuh-manager}"
-WAZUH_DEV_SCRIPTS="${WAZUH_DEV_SCRIPTS:-${SCRIPT_DIR}/../scripts}"
-WAZUH_DEV_SCRIPTS="${WAZUH_DEV_SCRIPTS%/}"
+# ../scripts of this checkout, never $WAZUH_DEV_SCRIPTS (see init.sh: it can name
+# another checkout or the pre-move location).
+DEV_SCRIPTS="$(cd "${SCRIPT_DIR}/../scripts" && pwd)"
 CERTS_DIR="${CERTS_DIR:-${SCRIPT_DIR}/certs}"
-CERTS_CONFIG="${CERTS_CONFIG:-${WAZUH_DEV_SCRIPTS}/wazuh-certs-tool.yml}"
+CERTS_CONFIG="${CERTS_CONFIG:-${DEV_SCRIPTS}/wazuh-certs-tool.yml}"
 DEST_DIR="${WAZUH_MANAGER_HOME}/etc/certs"
 WAZUH_USER="wazuh-manager"
 WAZUH_GROUP="wazuh-manager"
