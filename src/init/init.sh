@@ -152,12 +152,16 @@ runInit()
 
         rm -f /etc/rc.d/init.d/${service}
 
-        # Deliberately NOT `systemctl enable`. The unit is installed and left neither enabled nor
-        # started, matching what the DEB and RPM packages already do and what the documentation
+        # The manager is deliberately NOT enabled. The unit is installed and left neither enabled
+        # nor started, matching what the DEB and RPM packages already do and what the documentation
         # tells operators to run (`systemctl enable --now wazuh-manager`). The manager needs
         # credentials it cannot always resolve at install time -- the indexer's password commonly
         # arrives later -- and enabling without starting would only produce a failed unit at the
-        # next reboot, when nobody is watching.
+        # next reboot, when nobody is watching. The agent needs none of that and is still enabled.
+        if [ "X${update_only}" = "X" ] && [ "X${type}" = "Xagent" ]
+        then
+            systemctl enable "wazuh-"$type
+        fi
 
         return 0;
     fi

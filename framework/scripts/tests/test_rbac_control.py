@@ -5,7 +5,7 @@
 import json
 import runpy
 import sys
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import call, patch, MagicMock, AsyncMock
 
 import pytest
 
@@ -251,13 +251,52 @@ async def test_seed_rbac_database_invalid(print_mock, content, expected_error, t
 @patch("builtins.print")
 def test_script_exits_non_zero_on_error(print_mock, exception, tmp_path, db_setup):
     """Check that the script reports a failure through its exit status, which is all the credential resolver reads."""
-    with patch('wazuh.rbac.orm.DB_FILE', str(tmp_path / 'rbac.db')), \
+    with patch('os.geteuid', return_value=1000), \
+            patch('wazuh.rbac.orm.DB_FILE', str(tmp_path / 'rbac.db')), \
             patch('wazuh.rbac.orm.check_database_integrity', side_effect=exception), \
             patch('sys.argv', new=['rbac_control', 'seed']), \
             pytest.raises(SystemExit) as exit_error:
         runpy.run_path(rbac_control.__file__, run_name='__main__')
 
     assert exit_error.value.code == 1
+
+
+@pytest.mark.parametrize("euid, expected_calls", [
+    (0, [call.setgroups([]), call.setgid(998), call.setuid(997)]),
+    (1000, []),
+])
+def test_drop_privileges(euid, expected_calls):
+    """Check that root drops its supplementary groups, then its group, then its user, and that
+    anyone else keeps its identity."""
+    calls = MagicMock()
+    with patch('scripts.rbac_control.geteuid', return_value=euid), \
+            patch('scripts.rbac_control.setgroups', calls.setgroups), \
+            patch('scripts.rbac_control.setgid', calls.setgid), \
+            patch('scripts.rbac_control.setuid', calls.setuid), \
+            patch('wazuh.core.common.wazuh_gid', return_value=998), \
+            patch('wazuh.core.common.wazuh_uid', return_value=997):
+        rbac_control.drop_privileges()
+
+    assert calls.mock_calls == expected_calls
+
+
+def test_script_drops_privileges_before_the_command(tmp_path, db_setup):
+    """Check that nothing touches rbac.db while the script still runs as root."""
+    calls = MagicMock()
+    with patch('os.geteuid', return_value=0), \
+            patch('os.setgroups', calls.setgroups), \
+            patch('os.setgid', calls.setgid), \
+            patch('os.setuid', calls.setuid), \
+            patch('wazuh.core.common.wazuh_gid', return_value=998), \
+            patch('wazuh.core.common.wazuh_uid', return_value=997), \
+            patch('wazuh.rbac.orm.DB_FILE', str(tmp_path / 'rbac.db')), \
+            patch('wazuh.rbac.orm.check_database_integrity', calls.check_database_integrity), \
+            patch('sys.argv', new=['rbac_control', 'seed']), \
+            patch('builtins.print'), \
+            pytest.raises(SystemExit):
+        runpy.run_path(rbac_control.__file__, run_name='__main__')
+
+    assert [name for name, _, _ in calls.mock_calls] == ['setgroups', 'setgid', 'setuid', 'check_database_integrity']
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("user_input", ["RESET", "whatever"])
