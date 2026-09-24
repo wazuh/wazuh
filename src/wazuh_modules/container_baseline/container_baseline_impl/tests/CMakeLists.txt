@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(container_baseline_unit_test)
 
+include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
+include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
+
+link_directories(${SRC_FOLDER}/external/googletest/lib/)
+
 # CONFIGURE_DEPENDS: without it a plain GLOB is evaluated only at configure
 # time, so adding a source file produced confusing "undefined reference"
 # failures until someone re-ran cmake by hand.
