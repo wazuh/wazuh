@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.10]
 
+### Manager
+
+#### Fixed
+
+- Fixed false positive vulnerability reports for Ubuntu HWE, cloud and OEM kernel images. ([#39599](https://github.com/wazuh/wazuh/pull/39599))
+
 ### Agent
 
 #### Fixed
