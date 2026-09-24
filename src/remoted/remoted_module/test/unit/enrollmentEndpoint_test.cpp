@@ -732,6 +732,23 @@ TEST(EnrollmentEndpointTest, AuthdUnreachableMapsTo503)
     EXPECT_EQ(j["error"]["code"], -1);
 }
 
+TEST(EnrollmentEndpointTest, AuthdOutcomeUnknownMapsTo503WithADistinctCode)
+{
+    // A server IS bound and accepts the connection, then drops the reply -- distinct from
+    // AuthdUnreachableMapsTo503 above, where the connect itself fails. Same reasoning as
+    // AuthdClientTest.ServerDroppingTheResponseTimesOut: the request reached authd, so this must
+    // not collapse to the same "-1, nothing happened" answer.
+    const std::string path = makeUniqueSocketPath("enrollment_endpoint_outcome_unknown");
+    FakeUdsServer server(path, [](const std::string&) { return "{}"; });
+    server.setDropResponses(true);
+
+    const auto response = run(openModeConfig(), kValidBody, path);
+
+    EXPECT_EQ(response.status, 503);
+    const auto j = parseBody(response);
+    EXPECT_EQ(j["error"]["code"], -2);
+}
+
 // -----------------------------------------------------------------------------
 // Enrollment tokens (issue #38993): the id of a verified token travels to authd as `token_id`,
 // authd's refusals of it are 403, and both outcomes count in remoted.enroll.token.*.

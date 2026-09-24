@@ -1357,7 +1357,7 @@ that value.
 **Success — `200`**: `{"id":"...","name":"...","ip":"...","key":"...","reenroll_secret":"..."}`,
 verbatim from authd's `data` (`reenroll_secret` is omitted, not empty, when authd sent none). For a
 re-enrollment the `id` is the one the bearer named and `key`/`reenroll_secret` are the rotated pair.
-**Failure**: `{"error":{"code":<authd-code-or-0-or--1>,"message":"..."}}`, except that a `401`'s
+**Failure**: `{"error":{"code":<authd-code-or-0-or--1-or--2>,"message":"..."}}`, except that a `401`'s
 `code` is the authentication failure class (a string).
 
 | authd code | meaning | HTTP |
@@ -1370,7 +1370,8 @@ re-enrollment the `id` is the one the bearer named and `key`/`reenroll_secret` a
 | 9016 (new) | clustered forward to master failed (transport leg of `w_request_agent_add_clustered`) | 503 |
 | 9022 / 9023 / 9024 | authd refused the use of a **verified** enrollment token: not found or revoked / expired / no uses left (`httpStatusForAuthdError()`). `403`, not `401`: the bearer DID verify, so this is not something the agent fixes by re-signing. 9022/9023 are reachable only when remoted's replica lagged behind authd's store; 9024 only authd can decide (it owns the use counter) | 403, `error.code` = the authd code |
 | 9026 / 9027 / 9028 | authd's verdict on a **re-enrollment** bearer remoted forwarded unverified: unknown agent or no secret on record / invalid credential / outside the accepted time window (`reenrollmentRejection()`) — authentication failures, so they take the uniform 401 through `authErrorResponse()`, never authd's code or text | 401, `error.code` = `unknown_agent` / `invalid_signature` / `stale_token` |
-| transport failure (authd unreachable) | — | 503 |
+| request never reached authd (stopping, queue full, connect failure) | — | 503, `error.code` = -1 |
+| request reached authd but no clean answer came back (I/O error after the send, timeout, unparseable reply) | — | 503, `error.code` = -2 |
 | bad/missing/stale credential | — | 401, `error.code` = the class (`invalid_signature`, `invalid_request`, `stale_token`, `unknown_agent`, `token_unknown`, `token_expired`, `token_revoked`, `enrollment_key_unavailable`) |
 | local schema or version validation failure | — | 400 |
 | enrollment administratively disabled | — | 403 |
