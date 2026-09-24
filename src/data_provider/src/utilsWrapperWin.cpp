@@ -325,7 +325,9 @@ ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)
                 const int convertedSize = WideCharToMultiByte(
                                               CP_UTF8, 0, argv[i], -1, arg.data(), argSize, nullptr, nullptr);
 
-                if (convertedSize > 0)
+                // convertedSize includes the null terminator, so 1 is an empty argument (""),
+                // which is skipped like on Linux and macOS.
+                if (convertedSize > 1)
                 {
                     arg.resize(static_cast<std::size_t>(convertedSize - 1));
 
@@ -335,6 +337,7 @@ ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)
                     }
 
                     result.argvs += arg;
+                    ++result.argsCount;
                 }
             }
         }
