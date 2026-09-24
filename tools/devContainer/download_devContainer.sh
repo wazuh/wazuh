@@ -14,6 +14,9 @@ readonly DEFAULT_BRANCH="5.0.0"
 readonly EXCLUDED_FILES=(
     "download_devContainer.sh"
     "README.md"
+    # The CI's copy (.github/actions/reinstall_cmake) that lives next to the devContainer
+    # config; the image uses .devcontainer/reinstall-cmake.sh, which is still downloaded.
+    "reinstall-cmake.sh"
 )
 
 readonly EXCLUDE_FOLDERS=(
