@@ -40,7 +40,7 @@ chmod +x download_devContainer.sh
 
 **Example:**
 ```bash
-./download_devContainer.sh -d ~/wazuh-engine-dev -b development
+./download_devContainer.sh -d ~/wazuh-manager-dev -b 5.0.0
 ```
 
 > [!NOTE]

@@ -48,7 +48,7 @@ Options:
 Examples:
     $(basename "$0")
     $(basename "$0") -d ~/my-devcontainer
-    $(basename "$0") -b development -d /tmp/devcontainer
+    $(basename "$0") -b 5.0.0 -d /tmp/devcontainer
     $(basename "$0") -d ~/my-devcontainer -c ~/claude-portable.tar.gz
 EOF
 }
