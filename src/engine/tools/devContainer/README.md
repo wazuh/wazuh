@@ -34,7 +34,7 @@ chmod +x download_devContainer.sh
 
 **Options:**
 - `-d <destination>`: Specify destination directory (default: `./devContainer`)
-- `-b <branch>`: Specify Git branch to download from (default: `main`)
+- `-b <branch>`: Specify Git branch to download from (default: `main`). The devContainer also clones this branch of the repository on creation
 - `-c <claude.tar.gz>`: Copy a Claude Code setup exported with `claude-portable.sh export` into the destination and print the command that imports it once the devContainer is up
 - `-h`: Show help message
 
