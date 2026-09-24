@@ -57,12 +57,52 @@ chmod +x download_devContainer.sh
 The script downloads only the core devContainer configuration:
 
 ```
-devContainer/
-├── .devcontainer/    # Dockerfile and devcontainer.json
-└── .vscode/          # VS Code tasks, launch, and settings
+<destination>/
+├── .devcontainer/          # Dockerfile, devcontainer.json, fix-dind.sh, reinstall-cmake.sh, reinstall-clang-format.sh
+├── .vscode/                # VS Code tasks, launch, and settings
+└── claude-portable.tar.gz  # only with -c
 ```
 
 The `scripts/` and `e2e/` directories are **not** included in the download. They are available in the full Wazuh repository under `tools/devContainer/`.
+
+### First start
+
+On the first start ("Reopen in Container" or `devcontainer up`), `postCreateCommand` runs two steps in sequence:
+
+1. `.devcontainer/fix-dind.sh`: Docker-in-Docker on the nftables backend with the cgroupfs driver; it waits until dockerd answers.
+2. The clone of the repository, on the branch given with `-b`, submodules included, into `wazuh.partial/`. It is renamed to
+   `wazuh/` (`$WAZUH_REPO`) only once the clone has completed:
+   - an existing `wazuh/` checkout is kept, and its submodules are updated;
+   - a non-empty `wazuh/` that is not a git checkout is left untouched, and the step fails.
+
+Then `postStartCommand` sets `vm.max_map_count`, which the indexer needs, and `fs.inotify.max_user_watches`. If either step fails, the creation log shows a failed `postCreateCommand`, and the devContainer skips `postStartCommand`.
+
+### Importing a Claude Code setup (`-c`)
+
+`-c <claude.tar.gz>` only copies the package into the destination folder; nothing imports it automatically. Once the
+devContainer is up and `wazuh/` has been cloned, run this from the workspace folder inside it:
+
+```bash
+tar xzf claude-portable.tar.gz -C /tmp claude/skills/claude-portable/scripts/claude-portable.sh
+bash /tmp/claude/skills/claude-portable/scripts/claude-portable.sh import claude-portable.tar.gz
+bash .claude/skills/claude-portable/scripts/claude-portable.sh doctor --fetch
+```
+
+The first command extracts only the import script. `import` then does four things:
+
+1. It checks every file against the package manifest (sha256). On any mismatch it installs nothing.
+2. It creates `.claude/` with the paths of this workspace.
+3. If the package carries the project memory, it installs it under `~/.claude/projects/<workspace slug>/memory/`
+   without overwriting existing files. Differing files are listed as conflicts, to merge by hand.
+4. It ends with `doctor`.
+
+`doctor --fetch` offers to fetch what the skills need outside the repository (`qa-integration-framework`, `qa-venv`,
+the Codex plugin), and asks before each download or install.
+
+Start Claude Code from the workspace folder so it picks up `.claude/` and the memory. If it was already running, restart it.
+
+To produce the package, run `claude-portable.sh export --with-memory` in an existing devContainer. The package never
+contains `settings.local.json`, and the export refuses to pack credentials.
 
 ### Build tree
 
