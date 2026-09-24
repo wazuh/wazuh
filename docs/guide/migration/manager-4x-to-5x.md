@@ -17,9 +17,9 @@ indexer.
 | Agent registry: registration date, last known version and OS, group membership (`global.db`) | Kept, including assignments made from the manager or the API that never reached the agent's `ossec.conf`. | Step 3 |
 | Group folders (`etc/shared/<group>/`) | Kept. `agent.conf` files must be valid for 5.0. | Step 3 |
 | Enrollment password (`authd.pass`) | Kept on the manager only if 4.x agents still have to enroll. 5.0 agents never use it, and the 5.0 package upgrade deletes it from the endpoint. | [Step 3](#enrollment-password) |
-| API users, roles and policies (`rbac.db`) | Kept, including passwords. | Step 3 |
+| API users, roles and policies (`rbac.db`) | Kept, including passwords, which then replace the ones the 5.0 install generated. | [Step 3](#api-users-roles-and-policies) |
 | Manager configuration | Rewritten by hand into `wazuh-manager.conf`. | Step 4 |
-| TLS material | Not carried. 5.0 needs its own CA and agent-listener certificate, issued before the first start, and every agent ends up verifying the manager against that CA. | Step 2, [Step 7](#7-upgrade-the-agents-to-50) |
+| TLS material | Not carried. 5.0 needs a CA and an agent-listener certificate issued from it, minted by the manager or given to it before the first start, and every agent ends up verifying the manager against that CA. | [Step 2](#certificates-and-credentials), [Step 7](#7-upgrade-the-agents-to-50) |
 | Alerts, inventory, vulnerability and SCA history in the indexer | Not read by 5.0. The 4.x indices stay in the indexer for consultation; inventory, FIM, SCA and vulnerability state is rebuilt by each agent once it runs 5.0. | Section [Historical data](#historical-data) |
 | Agent labels | Removed in 5.0 on both sides. Not migrated. | |
 | Custom rules, decoders and CDB lists | Not migrated. The engine uses a different model; see the ruleset guides. | [Rules](rules-4x-to-5x.md), [decoders](xml-decoders-migration.md), [CDB lists](cdb-to-kvdb-migration.md) |
@@ -37,10 +37,16 @@ indexer.
   requires it to be on 4.14.0 or later first.
 - **Ports.** Agents need `1514/tcp` and `1515/tcp` (legacy channel and enrollment) while any 4.x
   agent remains, and `1517/tcp` (HTTPS) for every agent that has been upgraded to 5.0.
-- **Certificates.** The 5.0 manager issues none of the material agents and the indexer depend on,
-  and refuses to start without the agent listener pair. Issue them with the installation assistant's `wazuh-certs-tool` before you install,
-  and make sure the certificate's subjectAltName carries every address agents dial, which for a
-  migration is the address the 4.x fleet already uses. See [Step 2](#2-install-the-50-manager).
+- **Certificates.** Decide which CA the 5.0 manager will be trusted under before you install:
+  one it mints itself on first start, one you hand it, or certificates issued elsewhere from it.
+  The agent listener certificate's subjectAltName must carry every address agents dial, which for
+  a migration is the address the 4.x fleet already uses. See
+  [Step 2](#certificates-and-credentials).
+- **Credentials.** The `wazuh-manager` password on the indexer, written to
+  `/etc/wazuh/credentials.env` before the install. It must pass the 5.0 password policy (12 to 64
+  characters, a letter and a digit), which one carried over from 4.x may not. The manager generates
+  its own Server API passwords and publishes them in the same file. See
+  [Step 2](#certificates-and-credentials).
 - **Tools.** The `sqlite3` command-line tool on the 5.0 host for [Step 3](#3-restore-the-identity-data).
   It is not part of the manager packages and is often absent on a minimal server; the Python the
   manager bundles (`/var/wazuh-manager/framework/python/bin/python3`, module `sqlite3`) runs the same
@@ -101,51 +107,130 @@ set are different, see [Back up and restore](../../ref/backup-restore.md).
 
 Uninstall 4.x and install 5.0 following the installation documentation.
 
-### Provision the certificates
+### Certificates and credentials
 
-Unlike 4.x, the 5.0 manager does not issue the certificates agents and the indexer verify it by.
-Issue them with the installation assistant's `wazuh-certs-tool` and deploy them under `etc/certs/`
-before the first start, as
-[Deploy certificates](../../ref/getting-started/installation.md#deploy-certificates) describes:
+The 5.0 manager resolves every credential it needs — its two Server API passwords, its account on
+the indexer and its TLS material — in one order, applied when the package is installed and again
+immediately before the service starts: what is already in its own store is kept, a key set in
+`/etc/wazuh/credentials.env` (or in the environment) is validated and used, what the manager owns
+is generated, and anything else leaves the service refusing to start and naming the missing piece in
+the journal. [Credentials](../../ref/getting-started/credentials.md) has the whole order; this is
+the part a migration has to get right.
 
-- the indexer material, `root-ca.pem`, `indexer-connector.pem` and `indexer-connector-key.pem`,
-  owned `root:wazuh-manager 640`, so the manager can read it but not replace its own trust anchor;
-- the agent listener pair `remoted.pem`/`remoted-key.pem`, a leaf of that same `root-ca.pem`, owned
-  `wazuh-manager:wazuh-manager 640` because remoted and authd open it after dropping privileges.
+> [!NOTE]
+> This is the resolution [#39554](https://github.com/wazuh/wazuh/issues/39554) introduces. On a
+> 5.0.0 build without it the manager issues nothing: deploy the pairs under `etc/certs` as
+> [Deploy certificates](../../ref/getting-started/installation.md#deploy-certificates) describes,
+> the API password is the one the installation assistant prints, and a missing listener pair stops
+> the start with `(1244): Invalid configuration at '/remote/https/certificate': file not found`.
 
-The API listener is the exception: `wazuh-manager-apid` still issues its own self-signed certificate
-on first start, and needs nothing from you. Two requirements come from the fleet rather than from
-the installer:
+**The indexer password.** The one credential the manager cannot invent is its `wazuh-manager`
+account on the indexer, because inventing a password would not make the indexer accept it. Write it
+to the credentials file before installing:
 
-- **The subjectAltName must carry every address agents dial.** For a migration that is the address
-  the 4.x agents already have in their `ossec.conf`, plus the cluster VIP and any NAT address. The
-  manager cannot check this and warns only when the certificate carries no usable SAN at all.
-- **Keep `root-ca.pem` and its key.** It is what every 5.0 agent verifies the manager against and
-  what enrollment tokens pin, so reissuing it later invalidates both. Certificates are not
-  synchronized between cluster nodes: every node's listener certificate must be issued by this CA.
+```bash
+sudo install -d -m 0700 -o root -g root /etc/wazuh
+printf "WAZUH_INDEXER_MANAGER_PASSWORD='%s'\n" '<the wazuh-manager password on the indexer>' \
+    | sudo tee /etc/wazuh/credentials.env > /dev/null
+sudo chmod 0600 /etc/wazuh/credentials.env
+```
 
-Without the pair the manager does not start, and says so before any daemon runs:
+The value must pass the 5.0 password policy, 12 to 64 characters with at least one letter and one
+digit, or the manager refuses to start with `WAZUH_INDEXER_MANAGER_PASSWORD was rejected by the
+password policy`. An indexer kept from the 4.x deployment may well hold a shorter password for that
+account: rotate it on the indexer first, with `wazuh-passwords-tool.sh`, and write the new value
+here. Validation is of presence and format only; a wrong password passes it and fails as a `401`
+when the manager first talks to the indexer.
+
+**The API passwords.** The manager generates the `wazuh` and `wazuh-wui` passwords when the package
+is installed and publishes them back into the same file, so nothing prints them any more:
 
 ```console
-(1244): Invalid configuration at '/remote/https/certificate': file not found: /var/wazuh-manager/etc/certs/remoted.pem (the manager does not generate certificates; provision the file, e.g. with wazuh-certs-tool).
+$ sudo cat /etc/wazuh/credentials.env
+WAZUH_INDEXER_MANAGER_PASSWORD='...'
+
+# >>> wazuh generated — do not edit <<<
+# Editing a value here does not change the deployment.
+# To rotate, use wazuh-passwords-tool.sh.
+WAZUH_MANAGER_API_PASSWORD="..."
+WAZUH_MANAGER_WUI_PASSWORD="..."
+# >>> end wazuh generated <<<
+```
+
+They matter twice in this procedure: the [migration tool](#1-back-up-the-4x-manager) reads the
+first one from there, and carrying the 4.x `rbac.db` in [Step 3](#api-users-roles-and-policies)
+replaces both with the 4.x ones. The file holds every plaintext password in the deployment: delete
+it once every component is installed and running, not before, because until then it is how the
+components hand credentials to one another.
+
+**The certificates.** Two pairs, both leaves of one `root-ca.pem`: `remoted.pem`/`remoted-key.pem`
+for the agent listener on `1517` and `wazuh-manager-authd` on `1515`, and
+`indexer-connector.pem`/`indexer-connector-key.pem`, the client certificate presented to the indexer.
+What the manager does about them is decided by what it finds in `/etc/wazuh/ca`:
+
+| In `/etc/wazuh/ca` | In `etc/certs` before the install | Result |
+|---|---|---|
+| nothing | nothing | the manager mints a bootstrap CA on this host and issues both pairs from it |
+| `root-ca.pem` and `root-ca.key` | nothing | it issues both pairs from that CA |
+| `root-ca.pem` only | both pairs, issued elsewhere from that CA | it uses them and generates nothing |
+| nothing | both pairs | **refused**, `shared CA missing but manager material exists; refusing to mint another CA` |
+
+For a single manager the first row is enough, and the CA it mints is the one the fleet will pin. A
+cluster must give every node the same CA, through either of the middle rows, because certificates
+are not synchronized between nodes and an agent that fails over to a node under a different CA
+refuses it. The last row is the trap for a migration that brings certificates issued with the
+assistant's `wazuh-certs-tool`: the pairs alone are not enough, the manager must also be told which
+CA they descend from. Place the anchor, without its key, next to them. Everything can be root-owned
+at this point, the installer sets the ownership the daemons need:
+
+```bash
+sudo install -d -m 0700 -o root -g root /etc/wazuh/ca
+sudo install -m 0644 -o root -g root root-ca.pem /etc/wazuh/ca/root-ca.pem
+sudo install -d -m 1770 -o root -g root /var/wazuh-manager/etc/certs
+sudo install -m 0640 -o root -g root root-ca.pem indexer-connector.pem indexer-connector-key.pem \
+    remoted.pem remoted-key.pem /var/wazuh-manager/etc/certs/
+```
+
+Two requirements come from the fleet rather than from whoever signs, and hold in every row:
+
+- **The subjectAltName must carry every address agents dial.** For a migration that is the address
+  the 4.x agents already have in their `ossec.conf`, plus the cluster VIP and any NAT address. When
+  the manager issues the listener certificate itself it puts every address of the host in it; set
+  `WAZUH_MANAGER_REMOTED_CERT_SANS` in the credentials file to name them yourself, which replaces
+  the discovery rather than adding to it. Nothing checks the list against the fleet, and a
+  certificate that lacks an address fails only when an agent dials it.
+- **Keep `root-ca.pem` and its key.** It is what every 5.0 agent verifies the manager against and
+  what enrollment tokens pin, so reissuing it later invalidates both. Back up `/etc/wazuh/ca` once
+  the manager has minted it.
+
+The API listener on `55000` is the exception to all of this: `wazuh-manager-apid` issues its own
+self-signed certificate on first start and needs nothing from you.
+
+When the manager cannot resolve its certificates it refuses to start, before any daemon runs, and
+the journal says which row you are in:
+
+```console
+$ sudo systemctl start wazuh-manager
+Job for wazuh-manager.service failed because the control process exited with error code.
+$ sudo journalctl -u wazuh-manager -n 20 --no-pager
+wazuh-manager-certificates: shared CA missing but manager material exists; refusing to mint another CA
+resolve-credentials: MISSING the manager's TLS certificates in /var/wazuh-manager/etc/certs
+resolve-credentials:         the diagnostics above name the file at fault; a CA directory holding only a
+resolve-credentials:         trust anchor cannot sign, so place an issued pair there
+Unresolved credentials. Exiting
 ```
 
 A pair that exists but is unreadable by the service user passes that check and stops
 `wazuh-manager-remoted` instead, with `Cannot start the HTTPS agent listener: ...`.
 
-> [!NOTE]
-> Where this material comes from is being reworked in
-> [#39554](https://github.com/wazuh/wazuh/issues/39554): a manager given an empty CA directory will
-> mint its own CA and issue both pairs from it, and the API password will be resolved from a shared
-> `credentials.env` rather than printed by the assistant. The requirements above about the
-> subjectAltName and about keeping the CA do not change — they come from the fleet, not from
-> whoever issues the certificate.
-
 ### Install it out of the fleet's reach
 
-The installer starts the manager, and it has to: the registry is created by the manager itself, from
-a schema compiled into it, so there is no way to prepare one beforehand. That leaves a window in
-which the 5.0 manager answers on the migrated address with an empty registry.
+The installer leaves the manager stopped and lets you start it, but it has to start once before the
+registry is restored, whichever way you restore it: the registry is created by the manager itself on
+its first start, from a schema compiled into it, so the manual procedure has nothing to write into
+until then, and the migration tool talks to the API, which needs the manager running. That first
+start opens a window in which the 5.0 manager answers on the migrated address with an empty
+registry.
 
 **On a first migration this is harmless.** Every agent is still 4.x at that point, and a 4.x agent
 whose key the manager does not recognise does not re-register: it logs `(1216): Unable to connect`
@@ -160,6 +245,17 @@ this whole procedure exists to preserve is gone for that agent, and nothing says
 ```console
 agent:   WARNING: https_client: credential rejected (401); re-enrolling.
 manager: INFO: Agent key generated for agent 'agent-ubuntu24' (requested locally)
+```
+
+And an agent that was refused an enrollment, because its per-agent secret is not something this
+procedure carries, keeps retrying that enrollment once a minute and does not go back to its key on
+its own when the registry reappears. Restart it, and it connects with its key and obtains a new
+secret:
+
+```console
+wazuh-agentd: INFO: Enrollment rejected by the manager: invalid_request: Invalid client authentication. Retrying.
+...
+wazuh-agentd: INFO: Re-enrollment secret obtained from the manager for agent '001'.
 ```
 
 A new agent installed during the window costs you something too, even on a first migration: it
@@ -187,10 +283,19 @@ throughout.
 Stopping the agents works too. On a fleet of any size the two variables are the cheaper guarantee,
 and they need nothing of the endpoints.
 
-Once the installation finishes, stop the manager before touching any of its files:
+Once the installation finishes, start the manager for the first time. It resolves its credentials,
+creates its databases and comes up with every daemon running:
 
 ```bash
-systemctl stop wazuh-manager
+sudo systemctl start wazuh-manager
+sudo /var/wazuh-manager/bin/wazuh-manager-control status
+```
+
+If you will use the migration tool, leave it running: the tool needs the API. For the manual
+procedure below, stop it again before touching any of its files:
+
+```bash
+sudo systemctl stop wazuh-manager
 ```
 
 ## 3. Restore the identity data
@@ -307,11 +412,13 @@ copied database is taken for a current one and keeps its 4.x **default** roles a
 ones 5.0 added for endpoints that did not exist in 4.x — minting enrollment tokens among them — are
 never created, and no role, `administrator` included, can use them through the API. Setting the
 version back to `0` is what asks for the supported upgrade, which the API performs on its next
-start: it builds a database with the 5.0 defaults and migrates your own resources into it.
+start and records in `logs/api.log`: it builds a database with the 5.0 defaults and migrates your
+own resources into it.
 
 ```console
 INFO: RBAC database migration required. Current version is 0 but it should be 1. Upgrading RBAC database to version 1
 INFO: /var/wazuh-manager/api/configuration/security/rbac.db database upgraded successfully
+INFO: RBAC database integrity check finished successfully
 ```
 
 What survives that upgrade: the `wazuh` and `wazuh-wui` users with their 4.x passwords, and every
@@ -322,6 +429,23 @@ the 4.x default policies, including those naming endpoints removed in 5.0 (`sysc
 Verify after [Step 5](#5-start-the-manager-open-it-to-the-fleet-and-verify-the-registry) that your own users authenticate
 and their roles still apply. Minting enrollment tokens never depends on this: the
 `wazuh-manager-authd` command line does not go through the API.
+
+Carrying the database also carries the `wazuh` and `wazuh-wui` passwords, and that reaches outside
+it. The 5.0 install generated both and published them in `/etc/wazuh/credentials.env`, which is
+where a dashboard installed against this manager took its `wazuh-wui` password from. An existing
+`rbac.db` is never reseeded, so from the next start both users answer to their 4.x passwords, the
+two published values are stale, and that dashboard can no longer log in. Choose one: set both users
+back to the published values once the manager is up again,
+
+```bash
+grep -o 'WAZUH_MANAGER_API_PASSWORD=.*' /etc/wazuh/credentials.env | cut -d'"' -f2 \
+    | /var/wazuh-manager/bin/rbac_control change-password -u wazuh -p -
+grep -o 'WAZUH_MANAGER_WUI_PASSWORD=.*' /etc/wazuh/credentials.env | cut -d'"' -f2 \
+    | /var/wazuh-manager/bin/rbac_control change-password -u wazuh-wui -p -
+```
+
+or keep the 4.x passwords and give the dashboard the 4.x `wazuh-wui` one. The migration tool
+prints this same warning when it installs `rbac.db`.
 
 ## 4. Migrate the configuration
 
@@ -375,15 +499,20 @@ knows every agent:
 </remote>
 ```
 
+Then start it, or restart it if you left it running for the migration tool, and enable it, which
+the installer deliberately does not do:
+
 ```bash
-systemctl start wazuh-manager
-/var/wazuh-manager/bin/wazuh-manager-control status
+sudo systemctl enable wazuh-manager
+sudo systemctl restart wazuh-manager
+sudo /var/wazuh-manager/bin/wazuh-manager-control status
 grep -E "keystore|authd" /var/wazuh-manager/logs/wazuh-manager.log | tail
 ```
 
 Expected: every daemon running, `wazuh-manager-remoted:keystore: INFO: Loaded N agent key(s)
 from 'etc/client.keys'` with your agent count, and authd `Accepting connections on port 1515`.
-Then confirm the registry with your 4.x API credentials:
+Then confirm the registry through the API, with the `wazuh` password published in
+`/etc/wazuh/credentials.env`, or the 4.x one if you carried `rbac.db`:
 
 ```bash
 TOKEN=$(curl -sk -u <user>:<password> -X POST "https://localhost:55000/security/user/authenticate?raw=true")

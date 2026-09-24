@@ -429,12 +429,18 @@ class MigrationToolTest(unittest.TestCase):
         tool.CREDENTIALS_ENV = path
         try:
             args = type("A", (), {"api_password_file": None, "api_user": "wazuh"})()
-            saved = os.environ.pop("WAZUH_API_PASSWORD", None)
+            saved = {k: os.environ.pop(k, None)
+                     for k in ("WAZUH_API_PASSWORD", "WAZUH_MANAGER_API_PASSWORD")}
             try:
                 self.assertEqual("fromfile1234", tool.read_api_password(args))
+                os.environ["WAZUH_MANAGER_API_PASSWORD"] = "fromenv12345"
+                self.assertEqual("fromenv12345", tool.read_api_password(args),
+                                 "the manager's own key name must be honoured in the environment")
             finally:
-                if saved is not None:
-                    os.environ["WAZUH_API_PASSWORD"] = saved
+                os.environ.pop("WAZUH_MANAGER_API_PASSWORD", None)
+                for k, v in saved.items():
+                    if v is not None:
+                        os.environ[k] = v
         finally:
             tool.CREDENTIALS_ENV = original
 
@@ -450,7 +456,7 @@ class MigrationToolTest(unittest.TestCase):
             err = io.StringIO()
             with cl.redirect_stderr(err):
                 self.assertEqual(0, self.do_import("--with-rbac"))
-            self.assertIn("no longer matches", err.getvalue(),
+            self.assertIn("no longer match", err.getvalue(),
                           "carrying rbac.db silently changes the API password; say so")
         finally:
             tool.CREDENTIALS_ENV = original

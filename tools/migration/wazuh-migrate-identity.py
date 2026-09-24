@@ -146,9 +146,11 @@ class ManagerApi:
         token = (answer.get("data") or {}).get("token")
         if not token:
             raise MigrationError(
-                "the API refused the credentials for '%s' (%s). On a fresh 5.0 installation the"
-                " password is the one the installation assistant printed."
-                % (self.user, answer.get("detail") or answer.get("title") or "no detail"))
+                "the API refused the credentials for '%s' (%s). A fresh 5.0 installation"
+                " publishes the password it generated in %s; one that carried the 4.x rbac.db"
+                " answers to the 4.x password instead."
+                % (self.user, answer.get("detail") or answer.get("title") or "no detail",
+                   CREDENTIALS_ENV))
         self.token = "Bearer " + token
 
     def request(self, method, path, body=None, content_type="application/json"):
@@ -457,7 +459,7 @@ def read_credentials_env(path=None, key=CREDENTIALS_KEY):
 
 
 def read_api_password(args):
-    """In order: --api-password-file, WAZUH_API_PASSWORD, the manager's credentials.env, a tty."""
+    """In order: --api-password-file, the environment, the manager's credentials.env, a tty."""
     if args.api_password_file:
         source = sys.stdin if args.api_password_file == "-" else open(args.api_password_file)
         with contextlib.closing(source):
@@ -465,7 +467,8 @@ def read_api_password(args):
         if password:
             return password
         raise MigrationError("no password was read from %s." % args.api_password_file)
-    password = os.environ.get("WAZUH_API_PASSWORD")
+    # The manager's own key name is honoured too, so a value exported for it serves both.
+    password = os.environ.get("WAZUH_API_PASSWORD") or os.environ.get(CREDENTIALS_KEY)
     if password:
         return password
     password = read_credentials_env()
@@ -645,12 +648,15 @@ def command_import(args):
         if name == "rbac.db":
             stage_rbac(target, args.dry_run)
             if os.path.isfile(CREDENTIALS_ENV):
-                # The manager never reseeds an existing rbac.db, so from the next start the API
-                # password is the 4.x one, while the file still holds the value the install
-                # generated. Two records, one true.
-                warn("the Server API password is now the 4.x one carried in rbac.db; %s in %s"
-                     " no longer matches it and this tool will not read it from there. Rotate"
-                     " with wazuh-passwords-tool.sh, or pass --api-password-file."
+                # The manager never reseeds an existing rbac.db, so from the next start both
+                # Server API users carry their 4.x passwords, while the file still holds the values
+                # the install generated and handed to the dashboard. Two records, one true.
+                warn("from the next start the 'wazuh' and 'wazuh-wui' passwords are the 4.x ones"
+                     " carried in rbac.db; %s and WAZUH_MANAGER_WUI_PASSWORD in %s no longer"
+                     " match them, and a dashboard installed with that WUI value cannot log in."
+                     " Either set both users back to the published values with"
+                     " 'rbac_control change-password' after the restart, or update the dashboard"
+                     " and pass --api-password-file to 'check'."
                      % (CREDENTIALS_KEY, CREDENTIALS_ENV))
 
     log("")

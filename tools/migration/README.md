@@ -42,24 +42,29 @@ sudo ./wazuh-migrate-identity.py export /root/wazuh-4x-bundle
 # move the bundle to the 5.0 host: it carries agent keys
 
 # on the 5.0 manager, installed, running, and not yet reachable by the fleet
-sudo ./wazuh-migrate-identity.py import /root/wazuh-4x-bundle --api-password-file /root/api-pw
+sudo ./wazuh-migrate-identity.py import /root/wazuh-4x-bundle
 
 # open the manager to the fleet, then
-sudo ./wazuh-migrate-identity.py check /root/wazuh-4x-bundle --api-password-file /root/api-pw
+sudo ./wazuh-migrate-identity.py check /root/wazuh-4x-bundle
 ```
+
+Both read the API password the manager published at install; `--api-password-file` is for when it
+is somewhere else.
 
 `--dry-run` reports what `export` and `import` would do and changes nothing. Run it first.
 
 The API password is read, in order, from `--api-password-file` (`-` for standard input), from
-`WAZUH_API_PASSWORD`, from the `WAZUH_MANAGER_API_PASSWORD` the manager published in
-`/etc/wazuh/credentials.env` when it generated one at install, or prompted for on a terminal. Never
-from the command line, because `ps` is world-readable. The credentials file is parsed as `KEY=VALUE`
-and never sourced, the way the manager itself reads it.
+`WAZUH_API_PASSWORD` or `WAZUH_MANAGER_API_PASSWORD` in the environment, from the
+`WAZUH_MANAGER_API_PASSWORD` the manager published in `/etc/wazuh/credentials.env` when it generated
+one at install, or prompted for on a terminal. Never from the command line, because `ps` is
+world-readable. The credentials file is parsed as `KEY=VALUE` and never sourced, the way the manager
+itself reads it.
 
 One consequence of `--with-rbac` is worth knowing before you use it: the manager never reseeds an
-existing `rbac.db`, so from the next start the `wazuh` user's password is the 4.x one the database
-carries, and the value in `credentials.env` is stale. The import says so, and `check` afterwards
-needs the 4.x password given explicitly.
+existing `rbac.db`, so from the next start the `wazuh` and `wazuh-wui` passwords are the 4.x ones
+the database carries, and the two values in `credentials.env` are stale. The import says so. Either
+set both users back to the published values with `rbac_control change-password` after the restart,
+or keep the 4.x passwords and give `check` the 4.x one explicitly.
 
 ## What moves
 
