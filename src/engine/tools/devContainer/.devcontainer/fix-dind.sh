@@ -9,7 +9,11 @@
 #   1. Point the iptables/ip6tables alternatives at the nft-backed binaries so that
 #      any tool calling "iptables" gets the nftables implementation transparently.
 #   2. Write /etc/docker/daemon.json to tell dockerd itself to use the nftables
-#      firewall backend instead of xtables.
+#      firewall backend instead of xtables, and to use the cgroupfs cgroup driver:
+#      without it dockerd picks the systemd driver as soon as /run/systemd/system
+#      exists (the manager installer creates it), and in a container without
+#      systemd no container starts after the next restart ("failed to connect to
+#      dbus ... /run/systemd/private").
 #   3. Hard-restart the daemon (kill existing processes, clean up stale PID files,
 #      relaunch) so the new configuration is picked up from a clean slate.
 #
@@ -24,7 +28,8 @@ update-alternatives --set ip6tables /usr/sbin/ip6tables-nft
 mkdir -p /etc/docker
 cat > /etc/docker/daemon.json <<'EOF'
 {
-  "firewall-backend": "nftables"
+  "firewall-backend": "nftables",
+  "exec-opts": ["native.cgroupdriver=cgroupfs"]
 }
 EOF
 

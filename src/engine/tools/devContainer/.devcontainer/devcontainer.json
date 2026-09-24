@@ -85,8 +85,10 @@
 	},
 
 	"postCreateCommand": {
-		// Fix Docker-in-Docker networking for nftables-based kernels
-		"fix_dind": "sh ${containerWorkspaceFolder}/wazuh/src/engine/tools/devContainer/.devcontainer/fix-dind.sh",
+		// Fix Docker-in-Docker networking for nftables-based kernels. The entries of this object run in PARALLEL,
+		// so the script is taken from the downloaded .devcontainer/ (present from the start), never from the
+		// repository that clone_and_install is still cloning.
+		"fix_dind": "sh ${containerWorkspaceFolder}/.devcontainer/fix-dind.sh",
 		// Configure zsh
 	    "zsh_cnf_0": "echo \"setopt APPEND_HISTORY;setopt INC_APPEND_HISTORY\" >> ~/.zshrc",
 		"zsh_cnf_1": "echo \"export HISTFILE=${containerWorkspaceFolder}/.zsh_history\" >> ~/.zshrc",

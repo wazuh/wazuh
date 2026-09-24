@@ -153,6 +153,25 @@ copy_claude_package() {
     echo "  bash /tmp/claude/skills/claude-portable/scripts/claude-portable.sh import claude-portable.tar.gz"
 }
 
+# Function to make the devContainer clone the branch it was downloaded from
+patch_devcontainer_clone_branch() {
+    local json_file="$DEV_CONTAINER_DESTINATION/.devcontainer/devcontainer.json"
+    local clone='git clone --recursive https://github.com/wazuh/wazuh.git'
+
+    if [ ! -f "$json_file" ] || ! grep -qF "$clone" "$json_file"; then
+        echo "Warning: clone command not found in '$json_file'; the devContainer will clone the default branch" >&2
+        return
+    fi
+    if ! git check-ref-format --branch "$BRANCH" >/dev/null 2>&1; then
+        echo "Warning: '$BRANCH' is not a valid branch name; the devContainer will clone the default branch" >&2
+        return
+    fi
+
+    sed -i "s|git clone --recursive https://github.com/wazuh/wazuh.git|git clone --recursive --branch ${BRANCH} https://github.com/wazuh/wazuh.git|" "$json_file"
+
+    echo "DevContainer will clone branch: ${BRANCH}"
+}
+
 # Function to open in VSCode
 open_in_vscode() {
     while true; do
@@ -255,6 +274,9 @@ copy_devContainer
 
 # Patch the devcontainer.json name with a unique suffix
 patch_devcontainer_name
+
+# Make the devContainer clone the same branch
+patch_devcontainer_clone_branch
 
 # Copy the exported Claude Code setup, if any
 copy_claude_package
