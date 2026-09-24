@@ -254,7 +254,7 @@ TEST_F(GetPackagesFromPathTest, FindsAnAppOneLevelDeepInAVendorSubfolder)
     getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json & package)
     {
         found.push_back(package);
-    });
+    }, true);
 
     ASSERT_EQ(found.size(), 1u);
     EXPECT_EQ(found[0].at("name").get<std::string>(), "VendorApp");
@@ -269,12 +269,12 @@ TEST_F(GetPackagesFromPathTest, SkipsASubfolderStartingWithADot)
     getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json & package)
     {
         found.push_back(package);
-    });
+    }, true);
 
     EXPECT_TRUE(found.empty());
 }
 
-TEST_F(GetPackagesFromPathTest, RejectsASymlinkedAppEntry)
+TEST_F(GetPackagesFromPathTest, RejectsASymlinkedAppEntryWhenRejectingSymlinks)
 {
     writeAppInfoPlist(m_tempDir + "/Real.app/Contents/Info.plist", "RealApp");
     ASSERT_EQ(0, ::symlink((m_tempDir + "/Real.app").c_str(), (m_tempDir + "/Linked.app").c_str()));
@@ -283,7 +283,7 @@ TEST_F(GetPackagesFromPathTest, RejectsASymlinkedAppEntry)
     getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json & package)
     {
         found.push_back(package);
-    });
+    }, true);
 
     // Only the real bundle is reported; the symlinked alias to the same bundle is not,
     // so the same install is not double-counted under a second path.
@@ -291,7 +291,7 @@ TEST_F(GetPackagesFromPathTest, RejectsASymlinkedAppEntry)
     EXPECT_EQ(found[0].at("path").get<std::string>(), m_tempDir + "/Real.app/Contents/Info.plist");
 }
 
-TEST_F(GetPackagesFromPathTest, RejectsASymlinkedVendorSubfolder)
+TEST_F(GetPackagesFromPathTest, RejectsASymlinkedVendorSubfolderWhenRejectingSymlinks)
 {
     writeAppInfoPlist(m_tempDir + "/RealVendor/App.app/Contents/Info.plist", "RealVendorApp");
     ASSERT_EQ(0, ::symlink((m_tempDir + "/RealVendor").c_str(), (m_tempDir + "/VendorLink").c_str()));
@@ -300,10 +300,28 @@ TEST_F(GetPackagesFromPathTest, RejectsASymlinkedVendorSubfolder)
     getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json & package)
     {
         found.push_back(package);
-    });
+    }, true);
 
     // The app is found once, through the real vendor folder; the symlinked alias to that
     // same folder is not descended into, so it is not reported a second time.
     ASSERT_EQ(found.size(), 1u);
     EXPECT_EQ(found[0].at("path").get<std::string>(), m_tempDir + "/RealVendor/App.app/Contents/Info.plist");
+}
+
+// Regression test for the Safari cryptex case: a fixed, root-owned root (rejectSymlinks=false)
+// must still follow a symlinked app entry, exactly like /Applications/Safari.app pointing into
+// /System/Cryptexes/App since macOS 13. Confirmed against real hardware: without this,
+// Safari silently disappeared from the inventory.
+TEST_F(GetPackagesFromPathTest, FollowsASymlinkedAppEntryWhenNotRejectingSymlinks)
+{
+    writeAppInfoPlist(m_tempDir + "/Real.app/Contents/Info.plist", "RealApp");
+    ASSERT_EQ(0, ::symlink((m_tempDir + "/Real.app").c_str(), (m_tempDir + "/Linked.app").c_str()));
+
+    std::vector<nlohmann::json> found;
+    getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json & package)
+    {
+        found.push_back(package);
+    }, false);
+
+    ASSERT_EQ(found.size(), 2u);
 }

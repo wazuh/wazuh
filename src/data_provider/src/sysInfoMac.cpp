@@ -314,7 +314,10 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         {
             if (fs.is_directory(pkgDirectory))
             {
-                getPackagesFromPath(pkgDirectory, packageDirectory.second, callback);
+                // A fixed, root-owned location: Apple ships real entries here as symlinks
+                // (e.g. /Applications/Safari.app into /System/Cryptexes/App since macOS 13),
+                // so symlinks must be followed here, not rejected.
+                getPackagesFromPath(pkgDirectory, packageDirectory.second, callback, false);
             }
         }
         catch (const std::exception& e)
@@ -350,7 +353,8 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
                 // or at a directory this scan already covers (double-reporting every app in it).
                 if (fs.is_directory(userApplicationsPath) && !fs.is_symlink(userApplicationsPath))
                 {
-                    getPackagesFromPath(userApplicationsPath, PKG, callback);
+                    // A user-writable root: reject symlinked entries found inside it too.
+                    getPackagesFromPath(userApplicationsPath, PKG, callback, true);
                 }
             }
             catch (const std::exception& e)

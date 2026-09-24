@@ -85,7 +85,7 @@ void BSDPackageImpl::buildPackageData(nlohmann::json& package)
     package["multiarch"] = m_packageWrapper->multiarch();
 }
 
-void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
+void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback, bool rejectSymlinks)
 {
     const file_system::FileSystemWrapper fs;
 
@@ -159,12 +159,21 @@ void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std
             }
         };
 
-        // A symlink here can point anywhere: another user's own Applications folder (so their
-        // apps get attributed to whoever placed the link), the very directory this scan already
-        // covers (so the same install is reported twice, under two paths, doubling vulnerability
-        // alerts for it), or a bundle only root can read (so this root-run scan reads it on the
-        // placer's behalf). Reject it outright instead of resolving it. A status this can't read
-        // is treated the same as a symlink: safer to skip the entry than to risk following it.
+        // Only meaningful when rejectSymlinks is true, for a caller scanning a user-writable
+        // root: there, a symlink can point anywhere else that user does not own, another
+        // user's own Applications folder (so their apps get attributed to whoever placed the
+        // link), the very directory this scan already covers (so the same install is reported
+        // twice, doubling vulnerability alerts for it), or a bundle only root can read (so this
+        // root-run scan reads it on the placer's behalf). Reject it outright instead of
+        // resolving it. A status this can't read is treated the same as a symlink: safer to
+        // skip the entry than to risk following it.
+        //
+        // Fixed, root-owned locations (/Applications and the rest of s_mapPackagesDirectories)
+        // must NOT reject symlinks: Apple itself ships /Applications/Safari.app as a symlink
+        // into /System/Cryptexes/App since macOS 13, and third-party tooling (nix-darwin,
+        // home-manager, an app kept on an external volume) links into /Applications the same
+        // way. Rejecting those there would silently drop real, already-installed software from
+        // the inventory, which is the opposite of this fix's intent.
         const auto isSymlinkOrUnknown
         {
             [&fs](const std::filesystem::path & entryPath)
@@ -183,7 +192,7 @@ void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std
 
         for (const auto& package : packages)
         {
-            if (isSymlinkOrUnknown(package))
+            if (rejectSymlinks && isSymlinkOrUnknown(package))
             {
                 continue;
             }
@@ -237,7 +246,7 @@ void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std
 
                         for (const auto& nestedEntry : nestedEntries)
                         {
-                            if (Utils::endsWith(nestedEntry, ".app") && !isSymlinkOrUnknown(nestedEntry))
+                            if (Utils::endsWith(nestedEntry, ".app") && (!rejectSymlinks || !isSymlinkOrUnknown(nestedEntry)))
                             {
                                 buildAndReportPackage(package.string(), nestedEntry.filename().string());
                             }
