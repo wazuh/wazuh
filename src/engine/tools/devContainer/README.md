@@ -35,6 +35,7 @@ chmod +x download_devContainer.sh
 **Options:**
 - `-d <destination>`: Specify destination directory (default: `./devContainer`)
 - `-b <branch>`: Specify Git branch to download from (default: `main`)
+- `-c <claude.tar.gz>`: Copy a Claude Code setup exported with `claude-portable.sh export` into the destination and print the command that imports it once the devContainer is up
 - `-h`: Show help message
 
 **Example:**
@@ -62,6 +63,20 @@ devContainer/
 ```
 
 The `scripts/` and `e2e/` directories are **not** included in the download. They are available in the full Wazuh repository under `src/engine/tools/devContainer/`.
+
+### Build tree
+
+There is **one** CMake tree, `$WAZUH_REPO/src/build`: `make TARGET=manager` configures it, and the VS Code CMake Tools
+extension builds in the same tree (`cmake.buildDirectory`, with the same `Unix Makefiles` generator and
+`TARGET=manager`). `ENGINE_BUILD` is its `engine/` subdirectory, where the engine binary (`wazuh-engine`) and the
+engine unit tests (`source/<module>/<module>_utest`) land — the paths `launch.json` and TestMate use, and the binary
+the installer copies. CMake Tools does not configure on open (`cmake.configureOnOpen: false`), so opening VS Code
+never changes the tree's build type; configure it with `make` (or the CMake Tools *Configure* command) and build targets
+from the tree root:
+
+```bash
+cmake --build $WAZUH_REPO/src/build -j"$(nproc)" --target wazuh-engine
+```
 
 
 ## Development Utilities (scripts/)

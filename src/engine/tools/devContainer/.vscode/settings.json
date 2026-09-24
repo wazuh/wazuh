@@ -4,9 +4,13 @@
         "119"
     ],
     "C_Cpp.formatting": "clangFormat",
-    "cmake.buildDirectory": "${env:ENGINE_BUILD}",
-    "cmake.configureOnOpen": true,
+    "cmake.buildDirectory": "${env:WAZUH_REPO}/src/build",
+    "cmake.configureOnOpen": false,
+    "cmake.configureSettings": {
+        "TARGET": "manager"
+    },
     "cmake.ctest.parallelJobs": 0,
+    "cmake.generator": "Unix Makefiles",
     "cmake.options.statusBarVisibility": "icon",
     "cmake.sourceDirectory": "${env:WAZUH_REPO}/src",
     "editor.rulers": [

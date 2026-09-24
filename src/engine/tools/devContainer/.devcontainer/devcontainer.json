@@ -52,7 +52,8 @@
 				"eriklynd.json-tools",
 				"mads-hartmann.bash-ide-vscode",
 				"GitHub.copilot",
-				"anthropic.claude-vscode"
+				"anthropic.claude-code",
+				"openai.chatgpt"
 			]
 		}
 	},

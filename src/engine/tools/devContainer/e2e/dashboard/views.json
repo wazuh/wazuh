@@ -1,0 +1,158 @@
+{
+  "agents": {
+    "app": "endpoints-summary",
+    "route": "/app/endpoints-summary",
+    "ready_selector": ".euiPage",
+    "landing": {
+      "path": "/app/endpoints-summary",
+      "hash_route": "/agents-preview/",
+      "hash_params": {},
+      "state": {}
+    },
+    "alternatives": [],
+    "query": "",
+    "search_selector": "",
+    "scope_selector": "[data-test-subj=\"table-with-search-bar\"]",
+    "table": {
+      "kind": "table",
+      "selector": "table.euiTable"
+    },
+    "assertions": [
+      {
+        "row": {
+          "name": "{{agent_names}}",
+          "status": "active"
+        }
+      },
+      {
+        "rows_eq": "{{agent_count}}"
+      }
+    ],
+    "fallback_clicks": [],
+    "wait_selector": "[data-test-subj=\"table-with-search-bar\"] table.euiTable tbody tr"
+  },
+  "discover": {
+    "app": "data-explorer/discover",
+    "route": "/app/data-explorer/discover#?_a=(discover:(columns:!(user.name,wazuh.agent.name,wazuh.protocol.location),isDirty:!f,sort:!()),metadata:(indexPattern:'wazuh-events-v5*',view:discover))&_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-24h,to:now))&_q=(filters:!(),query:(language:kuery,query:'user.name:%22{{nonce}}%22'))",
+    "ready_selector": "[data-test-subj=\"queryInput\"]",
+    "landing": {
+      "path": "/app/data-explorer/discover",
+      "hash_route": "",
+      "hash_params": {},
+      "state": {
+        "_a": "metadata.indexPattern:'wazuh-events-v5*'",
+        "_q": "query:'user.name:\"{{nonce}}\"'"
+      }
+    },
+    "alternatives": [],
+    "query": "user.name:\"{{nonce}}\"",
+    "search_selector": "[data-test-subj=\"queryInput\"]",
+    "scope_selector": ".dscCanvas",
+    "table": {
+      "kind": "doctable",
+      "selector": "table[data-test-subj=\"docTable\"]"
+    },
+    "count_selector": "[data-test-subj=\"discoverQueryHits\"]",
+    "wait_selector": "table[data-test-subj=\"docTable\"] tbody tr",
+    "assertions": [
+      {
+        "row": {
+          "user.name": "{{nonce}}",
+          "wazuh.agent.name": "{{agent_name_5x}}",
+          "wazuh.protocol.location": "/var/log/dpkg.log"
+        }
+      },
+      {
+        "rows_eq": 1
+      },
+      {
+        "hits_eq": 1
+      }
+    ],
+    "fallback_clicks": []
+  },
+  "inventory": {
+    "app": "it-hygiene",
+    "route": "/app/it-hygiene#/overview/?tab=it-hygiene&tabView=software&tabSubView=packages&_a=(filters:!(),query:(language:kuery,query:'wazuh.agent.id:%22{{agent_id_5x}}%22%20and%20package.name:%22{{package_name}}%22'))&_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-24h,to:now))",
+    "ready_selector": ".euiPage",
+    "landing": {
+      "path": "/app/it-hygiene",
+      "hash_route": "/overview/",
+      "hash_params": {
+        "tab": "it-hygiene",
+        "tabView": "software",
+        "tabSubView": "packages"
+      },
+      "state": {
+        "_a": "query:'wazuh.agent.id:\"{{agent_id_5x}}\" and package.name:\"{{package_name}}\"'"
+      }
+    },
+    "alternatives": [],
+    "query": "",
+    "search_selector": "",
+    "scope_selector": ".euiDataGrid",
+    "table": {
+      "kind": "grid",
+      "selector": ".euiDataGrid"
+    },
+    "count_selector": "[data-test-subj=\"discoverQueryHits\"]",
+    "assertions": [
+      {
+        "row": {
+          "wazuh.agent.name": "{{agent_name_5x}}",
+          "package.name": "{{package_name}}",
+          "package.version": "{{package_version}}"
+        }
+      },
+      {
+        "rows_eq": 1
+      },
+      {
+        "hits_eq": 1
+      }
+    ],
+    "fallback_clicks": [],
+    "wait_selector": ".euiDataGrid [data-test-subj=\"dataGridRowCell\"]"
+  },
+  "vd": {
+    "app": "vulnerability-detection",
+    "route": "/app/vulnerability-detection#/overview/?tab=vuls&tabView=inventory&_a=(filters:!(),query:(language:kuery,query:'wazuh.agent.id:%22{{agent_id_5x}}%22%20and%20vulnerability.id:%22{{cve_5x}}%22'))&_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-24h,to:now))",
+    "ready_selector": ".euiPage",
+    "landing": {
+      "path": "/app/vulnerability-detection",
+      "hash_route": "/overview/",
+      "hash_params": {
+        "tab": "vuls",
+        "tabView": "inventory"
+      },
+      "state": {
+        "_a": "query:'wazuh.agent.id:\"{{agent_id_5x}}\" and vulnerability.id:\"{{cve_5x}}\"'"
+      }
+    },
+    "alternatives": [],
+    "query": "",
+    "search_selector": "",
+    "scope_selector": ".euiDataGrid",
+    "table": {
+      "kind": "grid",
+      "selector": ".euiDataGrid"
+    },
+    "count_selector": "[data-test-subj=\"discoverQueryHits\"]",
+    "assertions": [
+      {
+        "row": {
+          "wazuh.agent.name": "{{agent_name_5x}}",
+          "vulnerability.id": "{{cve_5x}}"
+        }
+      },
+      {
+        "rows_eq": 1
+      },
+      {
+        "hits_eq": 1
+      }
+    ],
+    "fallback_clicks": [],
+    "wait_selector": ".euiDataGrid [data-test-subj=\"dataGridRowCell\"]"
+  }
+}
