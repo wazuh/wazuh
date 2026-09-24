@@ -16,6 +16,7 @@
 #include <cerrno>
 #include <cstdio>
 #include <fcntl.h>
+#include <filesystem>
 #include <functional>
 #include <istream>
 #include <optional>
@@ -32,8 +33,24 @@
 
 static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
 static const std::string PLIST_BINARY_START { "bplist00"            };
-static const std::string UTILITIES_FOLDER   { "/Utilities"          };
+static const std::string UTILITIES_FOLDER_NAME { "Utilities" };
 const std::set<std::string> excludedCategories = {"pkg", "x86_64", "arm64"};
+
+// A plain substring search for "/Utilities" would also match a folder that merely starts
+// with that word (e.g. "/Applications/Utilities Pro/" or "/Users/UtilitiesAdmin/"). Compare
+// each path component exactly instead, so only a directory actually named "Utilities" counts.
+static bool isUnderUtilitiesFolder(const std::string& filePath)
+{
+    for (const auto& component : std::filesystem::path(filePath))
+    {
+        if (component == UTILITIES_FOLDER_NAME)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 // Real Info.plist/receipt files are a few KB at most; this is a generous ceiling, not a
 // realistic size, so it never rejects legitimate content.
@@ -348,7 +365,7 @@ class PKGWrapper final : public IPackageWrapper
                     m_priority = UNKNOWN_VALUE;
                     m_size = 0;
                     m_installTime = UNKNOWN_VALUE;
-                    m_source = filePath.find(UTILITIES_FOLDER) != std::string::npos ? "utilities" : "applications";
+                    m_source = isUnderUtilitiesFolder(filePath) ? "utilities" : "applications";
                     m_location = filePath;
                 }
             };

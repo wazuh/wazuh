@@ -14,6 +14,7 @@
 #include "packages/pkgWrapper.h"
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <limits.h>
 #include <stdexcept>
@@ -410,6 +411,27 @@ TEST_F(PKGWrapperTest, SourceBundleNamedLikeUtilities)
     EXPECT_EQ(wrapper->name(), "MyUtilities");
     EXPECT_EQ(wrapper->source(), "applications");
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
+}
+
+// A folder whose name merely starts with the word (e.g. a vendor's own "Utilities Pro")
+// must not be classified as the system Utilities folder. Only an exact "Utilities"
+// path component should count, not any folder name containing it as a prefix.
+TEST_F(PKGWrapperTest, SourceFolderNamedLikeUtilitiesButNotExactly)
+{
+    const std::string parentDir { m_tempDir + "/Utilities Pro" };
+    const std::string package { "PKGWrapperTest_NotUtilities.app" };
+    const std::string contentsDir { parentDir + "/" + package + "/Contents" };
+    ASSERT_TRUE(std::filesystem::create_directories(contentsDir));
+
+    std::ofstream file { contentsDir + "/Info.plist" };
+    file << "<plist></plist>";
+    file.close();
+
+    PackageContext ctx { parentDir, package, "" };
+    std::shared_ptr<PKGWrapper> wrapper;
+    EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
+
+    EXPECT_EQ(wrapper->source(), "applications");
 }
 
 TEST_F(PKGWrapperTest, pkgVersionXML)
