@@ -236,7 +236,7 @@ The section is preserved, but `wazuh-authd` now enforces TLS 1.3 as the minimum 
 (`remoted_module`) presents, not a separate `authd.pem`/`authd-key.pem` pair -- authd does not
 generate or own a certificate of its own, and neither does the manager: the pair is provisioned
 externally with the Wazuh installation assistant's `wazuh-certs-tool` (see
-[Deploy certificates](../../ref/getting-started/installation.md#deploy-certificates) and
+[Deploy certificates](../../ref/getting-started/installation.md#using-certificates-issued-elsewhere) and
 `ssl_manager_cert` in [authd/configuration.md](../../ref/modules/authd/configuration.md#ssl_manager_cert)).
 
 ### Sections to remove from `wazuh-manager.conf`

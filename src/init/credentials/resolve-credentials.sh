@@ -72,10 +72,21 @@
 #
 # So /etc/wazuh/ca is a bootstrap handoff, not a standing dependency: it exists so a manager that
 # was given nothing can still come up, and once the pair is in etc/certs nothing consults it again.
-# What certificates the daemons will actually accept is decided by the daemons -- the configuration
-# validator checks the files exist, remoted probes them with access(R_OK) after dropping privileges
-# (w_remoted_check_tls_files(), src/remoted/src/secure.c), and the TLS handshake decides the rest.
-# Those checks run against the files as they are at start, which is the only state that matters.
+# What certificates the daemons will actually accept is decided by the daemons, against the files as
+# they are at start -- which is the only state that matters. Exactly what that covers:
+#
+#   * The configuration validator checks that remote.https.* and auth.ssl_* EXIST. It runs as root,
+#     so it says nothing about whether the service user can read them.
+#   * remoted then probes its own pair with access(R_OK) AFTER dropping privileges
+#     (w_remoted_check_tls_files(), src/remoted/src/secure.c).
+#   * The TLS handshake decides the rest.
+#
+# The Indexer Connector pair is the gap: indexer.ssl.* is deliberately outside the validator's file
+# list (semantics.cpp skips it so a manager without an indexer can still start) and nothing probes
+# it after the privilege drop, so one that is present but unreadable by the service user passes
+# every root-side check and fails later, inside the daemon that loads the connector. Installation
+# checks the ownership and mode of both pairs, so what this script issues is right by construction;
+# material provisioned by hand is only covered once it is used.
 #
 # The step never opens a network connection. It validates presence and format only -- making a
 # service's start depend on reaching its peer would break boot ordering and cluster restarts.
@@ -251,10 +262,19 @@ store_indexer_username() {
 
 # wazuh_password_validate() rejects only line breaks. Any other control character would pass it
 # and then break the JSON that seeds rbac.db, so it fails the policy here instead.
+#
+# The class is matched by `LC_ALL=C tr` rather than by a [[:cntrl:]] glob in the shell: the class is
+# locale-dependent, the maintainer scripts inherit whatever locale the operator's session or the
+# package manager happens to carry, and whether a shell re-reads the locale on an LC_ALL assignment
+# is not something POSIX settles. Pinning it on the external command keeps the same value accepted
+# or rejected on every host rather than on most of them. `printf` is a builtin, so the value reaches
+# `tr` over a pipe and never through a command line.
 password_is_valid() {
-    case "$1" in
-        *[[:cntrl:]]*) return 1 ;;
-    esac
+    # Lengths through ${#...} rather than `wc -c`, whose output is right-aligned with blanks on some
+    # implementations -- and dash's `test -eq` rejects an operand with leading whitespace, which
+    # would turn every password into a validation error on those hosts.
+    _piv_stripped=$(printf '%s' "$1" | LC_ALL=C tr -d '[:cntrl:]') || return 1
+    [ "${#_piv_stripped}" -eq "${#1}" ] || return 1
     wazuh_password_validate "$1"
 }
 
@@ -321,6 +341,15 @@ resolve_api_passwords() {
     # exists nothing reads these keys again, so a value seeded but never published would be lost.
     # A failed seed then reuses the published values on the next run.
     #
+    # Note that this writes a value the operator supplied through the process environment into the
+    # file as well, which is deliberate and not an oversight: the dashboard has to authenticate as
+    # `wazuh-wui`, and it reads the value from here. Publishing only generated values would mean a
+    # deployment that chose its own passwords silently never hands them over. What protects it is
+    # the file, not the fact that it was generated: wazuh_env_set() writes 0600 root:root inside a
+    # 0700 root:root directory and refuses the file outright -- on every read and every write --
+    # when the owner, the mode or any ancestor is wrong, or when it is a symlink. Only root reads
+    # it, and the documented last step of an installation is to delete it.
+    #
     # Either failure has to be recorded, not merely returned: the caller ignores the return value,
     # so without this the run would end with nothing marked and the service would be allowed to
     # start.
@@ -351,13 +380,26 @@ seed_rbac() {
     _sr_api=$(json_escape "${API_PASSWORD}")
     _sr_wui=$(json_escape "${WUI_PASSWORD}")
 
-    if printf '{"wazuh": "%s", "wazuh-wui": "%s"}' "${_sr_api}" "${_sr_wui}" \
-        | "${RBAC_CONTROL}" seed --passwords-file - >/dev/null 2>&1; then
+    # Captured, not discarded. rbac_control is the only thing that knows WHY a seed failed -- a
+    # rejected password, an unwritable directory, a broken framework import -- and without relaying
+    # it the operator is left with "MISSING rbac.db" and a service that will not start, which names
+    # the symptom and nothing else. It prints usernames and error messages, never a password value
+    # (seed_rbac_database() is explicit about that), so relaying it in full leaks nothing.
+    _sr_out=$(printf '{"wazuh": "%s", "wazuh-wui": "%s"}' "${_sr_api}" "${_sr_wui}" \
+        | "${RBAC_CONTROL}" seed --passwords-file - 2>&1)
+    _sr_status=$?
+
+    if [ "${_sr_status}" -eq 0 ]; then
         log "seeded rbac.db"
         return 0
     fi
 
-    err "could not seed rbac.db"
+    err "could not seed rbac.db (${RBAC_CONTROL} exited ${_sr_status})"
+    if [ -n "${_sr_out}" ]; then
+        printf '%s\n' "${_sr_out}" | while IFS= read -r _sr_line; do
+            err "        ${_sr_line}"
+        done
+    fi
     return 1
 }
 
@@ -502,10 +544,18 @@ clear_credentials() {
     fi
 
     # The keystore has no delete verb -- writing an empty value is refused -- so the RocksDB files
-    # go directly. The directory itself stays, keeping its ownership and mode.
+    # go directly. The directory itself stays, keeping its ownership and mode. `find -delete` rather
+    # than a `*` glob, which skips dotfiles: this is the path whose whole promise is that nothing of
+    # this host's credentials survives into the image, so "almost everything" is not good enough.
     if [ -d "${DIR}/queue/keystore" ]; then
-        rm -rf "${DIR}"/queue/keystore/* 2>/dev/null
-        log "cleared the keystore (the indexer credential)"
+        if find "${DIR}/queue/keystore" -mindepth 1 -delete 2>/dev/null; then
+            log "cleared the keystore (the indexer credential)"
+        else
+            # Never claim it. This path exists so that nothing of this host's credentials reaches
+            # an image, and a cleared-but-not-cleared keystore is the failure it is meant to stop.
+            err "could not clear the keystore in ${DIR}/queue/keystore"
+            return 1
+        fi
     fi
 
     for _cc_file in remoted.pem remoted-key.pem indexer-connector.pem indexer-connector-key.pem root-ca.pem; do

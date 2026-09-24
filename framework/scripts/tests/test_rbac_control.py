@@ -222,6 +222,7 @@ async def test_seed_rbac_database_removes_a_partial_database(print_mock, tmp_pat
     ('not json', "Could not read the passwords file"),
     ('["NewPassword12"]', "must hold a JSON object"),
     (json.dumps({'wazuh': 'lettersonlypassword'}), "The password supplied for 'wazuh' was rejected"),
+    (json.dumps({'wazuh-ui': 'NewPassword12'}), "is not an RBAC default user"),
 ])
 @patch("builtins.print")
 async def test_seed_rbac_database_invalid(print_mock, content, expected_error, tmp_path, db_setup):
@@ -315,7 +316,10 @@ async def test_reset_rbac_database(forward_mock, print_mock, user_input, db_setu
         if user_input == "RESET":
             await rbac_control.reset_rbac_database(Arguments())
             forward_mock.assert_called_with(core_security.rbac_db_factory_reset, request_type="local_master")
-            assert "Successfully reset RBAC database" in print_mock.call_args[0][0]
+            printed = " ".join(str(c[0][0]) for c in print_mock.call_args_list)
+            assert "Successfully reset RBAC database" in printed
+            # The reset generates a password nobody knows, so it has to name the recovery path.
+            assert "change-password" in printed
         else:
             with pytest.raises(SystemExit):
                 await rbac_control.reset_rbac_database(Arguments())
@@ -327,12 +331,19 @@ async def test_reset_rbac_database(forward_mock, print_mock, user_input, db_setu
 @patch("builtins.print")
 @patch("builtins.input", return_value="RESET")
 async def test_reset_rbac_database_exceptions(input_mock, print_mock):
-    """Check the `restore_default_passwords` function behaviour when receiving exceptions."""
+    """Check the `restore_default_passwords` function behaviour when receiving exceptions.
+
+    The non-zero exit status is part of the contract: `change-password` already reports a failure
+    that way, and a command that prints an error and exits 0 is unusable from a script.
+    """
     exception_message = "Random exception message"
-    with patch("scripts.rbac_control.cluster_utils.forward_function", return_value=Exception(exception_message)):
+    with patch("scripts.rbac_control.cluster_utils.forward_function", return_value=Exception(exception_message)), \
+            pytest.raises(SystemExit) as exit_error:
         await rbac_control.reset_rbac_database(Arguments())
-        assert "RBAC database reset failed" in print_mock.call_args[0][0]
-        assert exception_message in print_mock.call_args[0][0]
+
+    assert exit_error.value.code == 1
+    assert "RBAC database reset failed" in print_mock.call_args[0][0]
+    assert exception_message in print_mock.call_args[0][0]
 
 
 @patch("scripts.rbac_control.sys.exit")

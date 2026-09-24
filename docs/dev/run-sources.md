@@ -83,7 +83,7 @@ certificate tool (`wazuh-certs-tool`). Nothing re-examines them afterwards: over
 a resolved pair is enough, and the CA directory can go with it. Until they exist,
 `wazuh-manager-control start` refuses to start
 (`(1244): Invalid configuration at '/remote/https/certificate': file not found: …`).
-See [Deploy certificates](../ref/getting-started/installation.md#deploy-certificates)
+See [Deploy certificates](../ref/getting-started/installation.md#using-certificates-issued-elsewhere)
 and [Credentials](../ref/getting-started/credentials.md).
 
 In the devcontainer, the E2E environment carries a copy of that tool

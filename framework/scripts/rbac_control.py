@@ -199,6 +199,8 @@ async def seed_rbac_database(script_args):
     """
     import json
 
+    import yaml
+    from wazuh.core.common import DEFAULT_RBAC_RESOURCES
     from wazuh.rbac.orm import DB_FILE, check_database_integrity
     from wazuh.security import validate_password
 
@@ -219,9 +221,21 @@ async def seed_rbac_database(script_args):
             print("\tThe passwords file must hold a JSON object mapping default usernames to passwords")
             sys.exit(1)
 
+        # A key that is not a default user is silently dropped by insert_default_resources(), which
+        # only looks up the users it is seeding. Reporting it is the difference between "your typo
+        # did nothing" and a deployment that quietly holds a generated password nobody has, so it is
+        # checked the same way `change-password` checks it.
+        with open(path.join(DEFAULT_RBAC_RESOURCES, 'users.yaml')) as f:
+            default_users = list(yaml.safe_load(f)['default_users'])
+
         # insert_default_resources() writes through the ORM layer, which enforces nothing, so the
         # policy is applied here instead. The value is never printed, only the username it belongs to.
         for username, password in passwords.items():
+            if username not in default_users:
+                print(f"\t'{username}' is not an RBAC default user. "
+                      f"Default users: {', '.join(default_users)}")
+                sys.exit(1)
+
             try:
                 validate_password(password)
             except WazuhError as exc:
@@ -251,8 +265,17 @@ async def reset_rbac_database(script_args):
 
     response = await cluster_utils.forward_function(rbac_db_factory_reset, request_type="local_master")
 
-    print(f"\tRBAC database reset failed | {str(response)}" if isinstance(response, Exception)
-          else "\tSuccessfully reset RBAC database")
+    if isinstance(response, Exception):
+        print(f"\tRBAC database reset failed | {str(response)}")
+        sys.exit(1)
+
+    # The reset no longer restores a shipped password: each default user is given a freshly
+    # generated one, which is never returned or logged. Without this line an operator is left with a
+    # working API, no credential for it, and no indication that a recovery path exists.
+    from wazuh.core.common import WAZUH_PATH
+
+    print("\tSuccessfully reset RBAC database. Each default user was given a new, unknown "
+          f"password; set one with '{path.join(WAZUH_PATH, 'bin', 'rbac_control')} change-password'")
 
 
 def get_script_arguments():

@@ -557,17 +557,19 @@ command returns an `err <message>` response.
 
 ## Manager certificate
 
-authd has no certificate-generation mode (the `-C/-B/-K/-X/-S` flags of earlier builds are gone) and
-the manager generates no TLS material at all. The pair referenced by
+authd has no certificate-generation mode (the `-C/-B/-K/-X/-S` flags of earlier builds are gone); the
+manager's credential resolver issues the pair at installation, and nothing reissues it afterwards.
+The pair referenced by
 [`ssl_manager_cert` and `ssl_manager_key`](configuration.md#ssl_manager_cert) is the HTTPS agent
 listener's, provisioned by the operator with the Wazuh installation assistant's `wazuh-certs-tool`
-(see [Deploy certificates](../../getting-started/installation.md#deploy-certificates)). Without it
+(see [Deploy certificates](../../getting-started/installation.md#using-certificates-issued-elsewhere)). Without it
 the manager fails closed before authd runs (`wazuh-manager-control start` reports the validator's
 `(1244) … file not found` verdict); when the files exist but the SSL context cannot be built — most
 often because the service user cannot read them — authd logs
-`SSL context setup failed (certificate '<cert>', key '<key>'). wazuh-manager does not generate TLS
-certificates: provision them with wazuh-certs-tool (Wazuh installation assistant); see 'Deploy
-certificates' in the installation guide. Exiting.` and exits.
+`SSL context setup failed (certificate '<cert>', key '<key>'). authd reuses the HTTPS agent
+listener's pair, issued at installation and never reissued at start: check that both files are owned
+by the service user and mode 0640, or provision them; see 'Credentials' in the installation guide.
+Exiting.` and exits.
 
 ## Key source files
 

@@ -102,9 +102,21 @@ running on its own PKI has no reason to satisfy it: it stages a pair and keeps n
 every node. They are also the one credential an operator legitimately replaces out of band, so
 re-running the ladder over someone else's material can only produce false verdicts about it.
 
-Nothing is lost by stopping: `wazuh-manager-conf validate` checks the files exist, `remoted` probes
-them with `access(R_OK)` after dropping privileges (`w_remoted_check_tls_files()`), and the TLS
-handshake decides the rest — all against the files as they are at start.
+Little is lost by stopping, and it is worth being exact about how little. Against the files as they
+are at start: `wazuh-manager-conf validate` checks that `remote.https.*` and `auth.ssl_*` **exist**
+(as root, so it says nothing about whether the service user can read them), `remoted` then probes
+its own pair with `access(R_OK)` **after** dropping privileges
+(`w_remoted_check_tls_files()`), and the TLS handshake decides the rest.
+
+The gap is the Indexer Connector pair. `indexer.ssl.*` is deliberately outside the validator's file
+list — `semantics.cpp` skips it so that a manager without an indexer can still start — and nothing
+probes it after the privilege drop. So `indexer-connector-key.pem` present but unreadable by
+`wazuh-manager` passes every root-side check and surfaces later, as the daemon that loads the
+connector failing at startup. `wazuh_manager_certificates_ensure()` does check the ownership and
+mode of **both** pairs, and more strictly than remoted's runtime probe, so material this helper
+issued is right by construction; material provisioned by hand, or whose mode drifted afterwards, is
+not covered until it is used. An `access(R_OK)` preflight for that pair, matching remoted's, is the
+missing piece.
 
 `--clear` removes every credential the manager owns or stores so a following `--install` resolves
 from nothing. It is for an image built by installing the package, whose `postinst` baked this host's
@@ -178,10 +190,13 @@ component owns. Do not use `wazuh_env_set` as a password rotation mechanism.
   limited by CA validity; a newly created CA is not backdated.
 - `WAZUH_MANAGER_CERT_SANS` configures the connector.
 - `WAZUH_MANAGER_REMOTED_CERT_SANS` configures Remoted. Explicit values replace
-  discovery. Absent values include all assigned IPv4/IPv6 addresses reported by
-  `ip -o addr show`, including non-default-route, virtual and link-local
-  interfaces, plus hostname/FQDN and loopback. Tentative/DAD-failed addresses
-  are excluded. No DNS or network connectivity is verified.
+  discovery. Absent values include every **global-scope** IPv4/IPv6 address
+  reported by `ip -o addr show` — including addresses on interfaces that are not
+  on the default route, that are virtual, or that are down — plus hostname/FQDN
+  and loopback. Tentative/DAD-failed addresses are excluded, and so are
+  link-local and host scope: a peer can never match a `fe80::` SAN, and an
+  EUI-64 one carries the interface MAC into a certificate served to every agent.
+  No DNS or network connectivity is verified.
 - Discovery failure is an error, not a silent loopback-only fallback. Supply
   explicit SANs if netlink is unavailable. Wildcard DNS, scoped IPv6 and CIDRs
   are rejected; equivalent textual IPv6 addresses are deduplicated.

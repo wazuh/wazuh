@@ -174,7 +174,7 @@ Time in seconds before allowing a new connection to overtake an existing agent c
 
 **XML Section:** `<remote><https>`
 
-Configuration for the RESTinio-based HTTPS listener. All options are optional; an absent `<https>` block (or an absent individual option) falls back to the module's built-in defaults, so the listener is usable without configuring anything here. There is no `enabled` toggle: the listener always starts, and the manager fails closed without a readable certificate/key — it does not generate them, the operator provisions them (see [Certificate provisioning and fail-closed start](https-events-api.md#certificate-provisioning-and-fail-closed-start)).
+Configuration for the RESTinio-based HTTPS listener. All options are optional; an absent `<https>` block (or an absent individual option) falls back to the module's built-in defaults, so the listener is usable without configuring anything here. There is no `enabled` toggle: the listener always starts, and the manager fails closed without a readable certificate/key — it issues them at installation and never reissues them; a deployment on its own PKI overwrites them (see [Certificate provisioning and fail-closed start](https-events-api.md#certificate-provisioning-and-fail-closed-start)).
 
 ### https.port
 
@@ -234,7 +234,7 @@ Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same so
 Path to the TLS certificate chain (PEM) presented by the server.
 
 - **Default value:** `etc/certs/remoted.pem` (relative to the manager's chroot)
-- **Note:** the manager does not generate this file. Provision it — a leaf of the CA in
+- **Note:** the manager issues this file at installation and never reissues it. To use your own PKI, overwrite it — a leaf of the CA in
   `ca_certificate`, issued by the installation assistant's `wazuh-certs-tool` — as
   `wazuh-manager:wazuh-manager 640` before the first start. Missing: `wazuh-manager-control start`
   refuses with `(1244): Invalid configuration at '/remote/https/certificate': file not found: …`.
