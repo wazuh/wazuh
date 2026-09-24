@@ -405,6 +405,56 @@ class MigrationToolTest(unittest.TestCase):
         self.assertNotIn("--api-password ", completed.stdout,
                          "ps is world-readable; only a file, the environment or a tty")
 
+    # -- the manager's published API password
+
+    def test_credentials_env_is_parsed_not_sourced(self):
+        path = os.path.join(self.workspace.name, "credentials.env")
+        with open(path, "w") as handle:
+            handle.write("# operator line\n"
+                         "WAZUH_INDEXER_MANAGER_PASSWORD='Str0ng.Pass+01'\n"
+                         "# >>> wazuh generated <<<\n"
+                         "WAZUH_MANAGER_API_PASSWORD=\"first\"\n"
+                         "WAZUH_MANAGER_API_PASSWORD=\"zL9dH.second$(echo never-run)\"\n"
+                         "WAZUH_MANAGER_WUI_PASSWORD='cF4nP'\n")
+        self.assertEqual("zL9dH.second$(echo never-run)", tool.read_credentials_env(path),
+                         "last assignment wins and nothing inside is ever executed")
+        self.assertIsNone(tool.read_credentials_env(path + ".missing"))
+        self.assertIsNone(tool.read_credentials_env(path, key="NOT_THERE"))
+
+    def test_api_password_falls_back_to_credentials_env(self):
+        path = os.path.join(self.workspace.name, "credentials.env")
+        with open(path, "w") as handle:
+            handle.write("WAZUH_MANAGER_API_PASSWORD=fromfile1234\n")
+        original = tool.CREDENTIALS_ENV
+        tool.CREDENTIALS_ENV = path
+        try:
+            args = type("A", (), {"api_password_file": None, "api_user": "wazuh"})()
+            saved = os.environ.pop("WAZUH_API_PASSWORD", None)
+            try:
+                self.assertEqual("fromfile1234", tool.read_api_password(args))
+            finally:
+                if saved is not None:
+                    os.environ["WAZUH_API_PASSWORD"] = saved
+        finally:
+            tool.CREDENTIALS_ENV = original
+
+    def test_rbac_import_warns_that_the_published_password_is_stale(self):
+        path = os.path.join(self.workspace.name, "credentials.env")
+        with open(path, "w") as handle:
+            handle.write("WAZUH_MANAGER_API_PASSWORD=generated12345\n")
+        original = tool.CREDENTIALS_ENV
+        tool.CREDENTIALS_ENV = path
+        try:
+            self.assertEqual(0, self.export("--with-rbac"))
+            import io, contextlib as cl
+            err = io.StringIO()
+            with cl.redirect_stderr(err):
+                self.assertEqual(0, self.do_import("--with-rbac"))
+            self.assertIn("no longer matches", err.getvalue(),
+                          "carrying rbac.db silently changes the API password; say so")
+        finally:
+            tool.CREDENTIALS_ENV = original
+
     # -- check
 
     def test_check_passes_after_an_import(self):

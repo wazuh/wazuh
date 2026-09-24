@@ -50,9 +50,16 @@ sudo ./wazuh-migrate-identity.py check /root/wazuh-4x-bundle --api-password-file
 
 `--dry-run` reports what `export` and `import` would do and changes nothing. Run it first.
 
-The API password is read from `--api-password-file` (`-` for standard input), from
-`WAZUH_API_PASSWORD`, or prompted for on a terminal. Never from the command line, because `ps` is
-world-readable.
+The API password is read, in order, from `--api-password-file` (`-` for standard input), from
+`WAZUH_API_PASSWORD`, from the `WAZUH_MANAGER_API_PASSWORD` the manager published in
+`/etc/wazuh/credentials.env` when it generated one at install, or prompted for on a terminal. Never
+from the command line, because `ps` is world-readable. The credentials file is parsed as `KEY=VALUE`
+and never sourced, the way the manager itself reads it.
+
+One consequence of `--with-rbac` is worth knowing before you use it: the manager never reseeds an
+existing `rbac.db`, so from the next start the `wazuh` user's password is the 4.x one the database
+carries, and the value in `credentials.env` is stale. The import says so, and `check` afterwards
+needs the 4.x password given explicitly.
 
 ## What moves
 

@@ -47,6 +47,11 @@ DEFAULT_SOURCE_DIR = "/var/ossec"
 DEFAULT_TARGET_DIR = "/var/wazuh-manager"
 DEFAULT_API_URL = "https://localhost:55000"
 
+# Where a 5.0 manager publishes the Server API password it generated at install (#39554). Read
+# as data, never sourced; the last assignment of the key wins, as the manager's own reader does.
+CREDENTIALS_ENV = "/etc/wazuh/credentials.env"
+CREDENTIALS_KEY = "WAZUH_MANAGER_API_PASSWORD"
+
 # 4.x stamps PRAGMA user_version 0 and tracks its own schema in metadata.db_version. Only the
 # revisions whose agent table this reader has been checked against are accepted.
 SOURCE_DB_VERSIONS_CHECKED = (7, 8, 9, 10, 11, 12)
@@ -426,7 +431,33 @@ def load_manifest(bundle):
     return manifest
 
 
+def read_credentials_env(path=None, key=CREDENTIALS_KEY):
+    """The value the manager published for `key`, or None. Parsed, never sourced."""
+    # Resolved at call time rather than bound as a default, so the module setting stays the single
+    # place that names the file.
+    path = CREDENTIALS_ENV if path is None else path
+    try:
+        with open(path) as handle:
+            lines = handle.read().splitlines()
+    except OSError:
+        return None
+    value = None
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, _, raw = line.partition("=")
+        if name.strip() != key:
+            continue
+        raw = raw.strip()
+        if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in "\"'":
+            raw = raw[1:-1]
+        value = raw or None
+    return value
+
+
 def read_api_password(args):
+    """In order: --api-password-file, WAZUH_API_PASSWORD, the manager's credentials.env, a tty."""
     if args.api_password_file:
         source = sys.stdin if args.api_password_file == "-" else open(args.api_password_file)
         with contextlib.closing(source):
@@ -437,11 +468,16 @@ def read_api_password(args):
     password = os.environ.get("WAZUH_API_PASSWORD")
     if password:
         return password
+    password = read_credentials_env()
+    if password:
+        log("  api      password taken from %s (%s)" % (CREDENTIALS_ENV, CREDENTIALS_KEY))
+        return password
     if sys.stdin.isatty():
         return getpass.getpass("API password for %s: " % args.api_user)
     # Never accepted on the command line: ps is world-readable.
     raise MigrationError("no API password. Use --api-password-file, WAZUH_API_PASSWORD, or run"
-                         " it on a terminal.")
+                         " it on a terminal. A 5.0 manager publishes the one it generated in %s."
+                         % CREDENTIALS_ENV)
 
 
 def api_preflight(api, manifest, force):
@@ -608,6 +644,14 @@ def command_import(args):
         install_secret(args.bundle, name, target, args.dry_run)
         if name == "rbac.db":
             stage_rbac(target, args.dry_run)
+            if os.path.isfile(CREDENTIALS_ENV):
+                # The manager never reseeds an existing rbac.db, so from the next start the API
+                # password is the 4.x one, while the file still holds the value the install
+                # generated. Two records, one true.
+                warn("the Server API password is now the 4.x one carried in rbac.db; %s in %s"
+                     " no longer matches it and this tool will not read it from there. Rotate"
+                     " with wazuh-passwords-tool.sh, or pass --api-password-file."
+                     % (CREDENTIALS_KEY, CREDENTIALS_ENV))
 
     log("")
     if args.dry_run:
