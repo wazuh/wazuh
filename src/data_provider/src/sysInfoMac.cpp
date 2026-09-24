@@ -502,19 +502,7 @@ nlohmann::json SysInfo::getGroups() const
         }
         else
         {
-            std::string usersConcatenated;
-
-            for (const auto& user : collectedUsersGroups)
-            {
-                if (!usersConcatenated.empty())
-                {
-                    usersConcatenated += secondaryArraySeparator;
-                }
-
-                usersConcatenated += user.get<std::string>();
-            }
-
-            groupItem["group_users"] = usersConcatenated;
+            groupItem["group_users"] = Utils::join(collectedUsersGroups.get<std::vector<std::string>>(), secondaryArraySeparator);
         }
 
         result.push_back(std::move(groupItem));
@@ -569,21 +557,9 @@ nlohmann::json SysInfo::getUsers() const
         }
         else
         {
-            std::string accumGroups;
-
-            for (const auto& group : collectedUsersGroups)
-            {
-                if (!accumGroups.empty())
-                {
-                    accumGroups += secondaryArraySeparator;
-                }
-
-                const auto groupName = group.get<std::string>();
-                accumGroups += groupName;
-                userGroupNames.insert(groupName);
-            }
-
-            userItem["user_groups"] = accumGroups;
+            const auto groupNames = collectedUsersGroups.get<std::vector<std::string>>();
+            userItem["user_groups"] = Utils::join(groupNames, secondaryArraySeparator);
+            userGroupNames.insert(groupNames.begin(), groupNames.end());
         }
 
         // Macos

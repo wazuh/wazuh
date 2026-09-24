@@ -831,4 +831,13 @@ TEST_F(StringUtilsTest, ToLowerCaseSV)
     EXPECT_EQ("123", Utils::toLowerCaseView("123"sv));
 }
 
+TEST_F(StringUtilsTest, Join)
+{
+    EXPECT_EQ("", Utils::join(std::vector<std::string> {}, ","));
+    EXPECT_EQ("a", Utils::join(std::vector<std::string> {"a"}, ","));
+    EXPECT_EQ("a,b,c", Utils::join(std::vector<std::string> {"a", "b", "c"}, ","));
+    EXPECT_EQ("a, b", Utils::join(std::vector<std::string> {"a", "b"}, ", "));
+    EXPECT_EQ("b,", Utils::join(std::vector<std::string> {"", "b", ""}, ","));
+}
+
 #endif

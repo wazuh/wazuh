@@ -581,6 +581,24 @@ namespace Utils
         }
         return true;
     }
+
+    template<typename Container>
+    [[nodiscard]] std::string join(const Container& items, std::string_view separator)
+    {
+        std::string result;
+
+        for (const auto& item : items)
+        {
+            if (!result.empty())
+            {
+                result += separator;
+            }
+
+            result += item;
+        }
+
+        return result;
+    }
 #endif
 
 } // namespace Utils

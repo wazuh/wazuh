@@ -1101,19 +1101,7 @@ nlohmann::json SysInfo::getGroups() const
         }
         else
         {
-            std::string usersConcatenated;
-
-            for (const auto& user : collectedUsersGroups)
-            {
-                if (!usersConcatenated.empty())
-                {
-                    usersConcatenated += secondaryArraySeparator;
-                }
-
-                usersConcatenated += user.get<std::string>();
-            }
-
-            groupItem["group_users"] = usersConcatenated;
+            groupItem["group_users"] = Utils::join(collectedUsersGroups.get<std::vector<std::string>>(), secondaryArraySeparator);
         }
 
         result.push_back(std::move(groupItem));
@@ -1159,19 +1147,7 @@ nlohmann::json SysInfo::getUsers() const
         }
         else
         {
-            std::string accumGroups;
-
-            for (const auto& group : collectedUsersGroups)
-            {
-                if (!accumGroups.empty())
-                {
-                    accumGroups += secondaryArraySeparator;
-                }
-
-                accumGroups += group.get<std::string>();
-            }
-
-            userItem["user_groups"] = accumGroups;
+            userItem["user_groups"] = Utils::join(collectedUsersGroups.get<std::vector<std::string>>(), secondaryArraySeparator);
         }
 
         // Only in windows
