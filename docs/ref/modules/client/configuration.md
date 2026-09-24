@@ -322,8 +322,14 @@ Failures are split into permanent and transient. A
 transient one -- an unreachable manager, a misprovisioned CA, a `5xx` -- is retried in place, on
 the same ramp as enrollment itself -- the `agent.enrollment_retry_delta` and
 `agent.enrollment_retry_max` internal options under **Enrollment Retry** below -- so an agent
-that starts before its manager does still bootstraps. A permanent one -- a malformed token, a
-pin mismatch, a `404` from `/cacerts` -- is not retried.
+that starts before its manager does still bootstraps. A `401` from `/enroll` naming
+`token_unknown` or `stale_token` -- a node whose copy of the token store has not caught up yet,
+or clocks that disagree -- is retried on the same ramp for a minute: the first attempt that still
+fails after that stops the agent with an error (75 seconds after the first `401` with the default
+ramp) and keeps the token, so a restart tries again. A permanent one -- a malformed
+token, a pin mismatch, a `404` from `/cacerts` -- is not retried. The service start does not wait
+for the retries: once the first attempt fails in a way worth retrying, the agent reports itself
+started and keeps retrying in the background.
 
 #### authorization_pass_path
 

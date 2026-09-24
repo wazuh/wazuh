@@ -469,6 +469,14 @@ STATIC w_enroll_status_t w_enrollment_classify_auth_failure(const char *auth_cla
      * here as a 401 only from remoted's own replica of the token store, which can lag the master
      * (the same window that makes token_unknown retryable). authd's authoritative refusal of the
      * same token comes back as the 403 handled above, and THAT is the one that stops the loop. */
+    if (strcmp(auth_class, "token_expired") == 0 || strcmp(auth_class, "token_revoked") == 0) {
+        /* Only the enrollment-token paths receive these two, and none of them retries them, so
+         * this line does not promise a retry. */
+        minfo("Enrollment rejected by the manager: %s%s%s. This enrollment token can no longer be "
+              "used; mint a new one.", auth_class, detail_sep, detail);
+        return W_ENROLL_ERR_AUTH_RETRY;
+    }
+
     minfo("Enrollment rejected by the manager: %s%s%s. Retrying.", auth_class, detail_sep, detail);
     return W_ENROLL_ERR_AUTH_RETRY;
 }

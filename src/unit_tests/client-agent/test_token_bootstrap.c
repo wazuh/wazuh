@@ -914,6 +914,122 @@ static void test_disabled_enrollment_keeps_the_token(void **state) {
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
 }
 
+/* Mocks a verified /enroll that answers 401 with the given class, and the log lines it produces. */
+static void expect_enroll_401(const char *auth_class) {
+    static char body[128];
+    static char line[200];
+    const bool final_class = (strcmp(auth_class, "token_revoked") == 0 || strcmp(auth_class, "token_expired") == 0);
+
+    snprintf(body, sizeof(body),
+             "{\"error\":{\"code\":\"%s\",\"message\":\"Invalid client authentication\"}}", auth_class);
+    snprintf(line, sizeof(line), "Enrollment rejected by the manager: %s: Invalid client authentication. %s", auth_class,
+             final_class ? "This enrollment token can no longer be used; mint a new one." : "Retrying.");
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 401L);
+    will_return(__wrap_hc_enroll, body);
+    will_return(__wrap_hc_enroll, 1);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_enrolling_as_line();
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, line);
+}
+
+/* A worker whose copy of the token store has not caught up answers token_unknown: retried, and the
+ * token is kept for the next attempt. */
+static void test_token_unknown_is_pending_and_keeps_the_token(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    expect_enroll_401("token_unknown");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PENDING);
+    assert_int_equal(g_enroll_call_count, 1);
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+}
+
+static void test_stale_token_is_pending(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    expect_enroll_401("stale_token");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PENDING);
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+/* The other 401 classes cannot clear on their own on a first start, so they still end it. */
+static void test_token_revoked_401_is_permanent_and_keeps_the_token(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    expect_enroll_401("token_revoked");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+static void test_bound_pending_passes_other_results_through(void **state) {
+    (void) state;
+    time_t since = 0;
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_DONE, &since, 1000), W_TOKEN_BOOTSTRAP_DONE);
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PERMANENT, &since, 1000),
+                     W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_TRANSIENT, &since, 1000),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(since, 0);
+}
+
+static void test_bound_pending_retries_within_the_window(void **state) {
+    (void) state;
+    time_t since = 0;
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since, 1000),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(since, 1000);
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since,
+                                                     1000 + W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S - 1),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(since, 1000);
+}
+
+/* The window is checked after each attempt, so the one that crosses it (here +75 s, the default
+ * ramp's) gives up, and the error reports the time that actually passed. */
+static void test_bound_pending_gives_up_after_the_window(void **state) {
+    (void) state;
+    time_t since = 1000;
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "The manager still does not accept the enrollment token after 75 seconds. It may "
+                  "not have reached this node, or it was deleted: mint a new token, or restart the "
+                  "agent to try again.");
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since, 1075),
+                     W_TOKEN_BOOTSTRAP_PERMANENT);
+}
+
+/* A transient failure between two pending ones neither restarts nor extends the window. */
+static void test_bound_pending_window_survives_transient_results(void **state) {
+    (void) state;
+    time_t since = 0;
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since, 1000),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_TRANSIENT, &since, 1200),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(since, 1000);
+
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since,
+                                                     1000 + W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S),
+                     W_TOKEN_BOOTSTRAP_PERMANENT);
+}
+
 static void test_full_happy_path_via_pin(void **state) {
     (void) state;
     write_token_file(true, true, NULL);
@@ -1510,6 +1626,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_pin_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fatal_token_refusal_discards_the_dead_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_disabled_enrollment_keeps_the_token, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_token_unknown_is_pending_and_keeps_the_token, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_stale_token_is_pending, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_token_revoked_401_is_permanent_and_keeps_the_token, setup_test,
+                                        teardown_test),
+        cmocka_unit_test(test_bound_pending_passes_other_results_through),
+        cmocka_unit_test(test_bound_pending_retries_within_the_window),
+        cmocka_unit_test(test_bound_pending_gives_up_after_the_window),
+        cmocka_unit_test(test_bound_pending_window_survives_transient_results),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_pin, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_restores_the_previous_key, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_without_a_previous_key_reports_no_rollback, setup_test, teardown_test),
