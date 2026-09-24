@@ -9,7 +9,7 @@
  * Foundation.
  */
 #include "processInfoMac.h"
-#include "filesystemHelper.h"
+#include <filesystem>
 #include <libproc.h>
 
 std::string resolveProcessName(const pid_t pid, const std::string& fallbackName)
@@ -19,7 +19,7 @@ std::string resolveProcessName(const pid_t pid, const std::string& fallbackName)
 
     if (pathLen > 0)
     {
-        return Utils::getFilename(std::string{pathBuffer});
+        return std::filesystem::path(std::string {pathBuffer}).filename().string();
     }
 
     return fallbackName;
