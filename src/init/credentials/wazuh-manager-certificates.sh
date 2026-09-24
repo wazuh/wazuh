@@ -683,7 +683,11 @@ _wmc_validate_pair() (
         *) return 1 ;;
     esac
     openssl verify -purpose "$_wmc_purpose" -CAfile "$_wmc_ca" "$_wmc_cert" >/dev/null 2>&1 || {
-        _wmc_error "certificate does not chain to the configured root CA: $_wmc_cert"
+        if openssl verify -CAfile "$_wmc_ca" "$_wmc_cert" >/dev/null 2>&1; then
+            _wmc_error "certificate chains to the root CA but is not usable for $_wmc_eku: $_wmc_cert"
+        else
+            _wmc_error "certificate does not chain to the configured root CA: $_wmc_cert"
+        fi
         return 1
     }
 
@@ -695,17 +699,21 @@ _wmc_validate_pair() (
             return 1
             ;;
     esac
-    case $_wmc_eku in
-        clientAuth)
-            case $_wmc_text in
-                *'TLS Web Client Authentication'*) ;;
-                *) _wmc_error "certificate lacks clientAuth: $_wmc_cert"; return 1 ;;
-            esac
-            ;;
-        serverAuth)
-            case $_wmc_text in
-                *'TLS Web Server Authentication'*) ;;
-                *) _wmc_error "certificate lacks serverAuth: $_wmc_cert"; return 1 ;;
+    case $_wmc_text in
+        *'X509v3 Extended Key Usage'*)
+            case $_wmc_eku in
+                clientAuth)
+                    case $_wmc_text in
+                        *'TLS Web Client Authentication'*) ;;
+                        *) _wmc_error "certificate declares an extended key usage without clientAuth: $_wmc_cert"; return 1 ;;
+                    esac
+                    ;;
+                serverAuth)
+                    case $_wmc_text in
+                        *'TLS Web Server Authentication'*) ;;
+                        *) _wmc_error "certificate declares an extended key usage without serverAuth: $_wmc_cert"; return 1 ;;
+                    esac
+                    ;;
             esac
             ;;
     esac

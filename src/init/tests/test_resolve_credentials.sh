@@ -378,6 +378,54 @@ check "and says so" "yes" \
     "$(grep -q 'must not be world writable' <<< "$(resolver_output)" && echo yes)"
 cleanup "${root}"
 
+# Externally-issued certificates: wazuh-certs-tool -- the documented way to provision a distributed
+# deployment, and owned by the installation assistant rather than this repo -- emits no
+# extendedKeyUsage on its node certificates. RFC 5280 4.2.1.12 makes an absent extension
+# unrestricted, so refusing those certificates stopped the manager starting on every node
+# provisioned the documented way, and on both CI integration environments.
+if command -v openssl > /dev/null 2>&1; then
+    root="$(make_tree)"
+    write_credentials "${root}" "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'"
+    run_resolver "${root}" --install
+    ca="${root}/base/ca"
+
+    issue_leaf() {
+        # $1 destination name, $2 extendedKeyUsage line ('' for no extension at all)
+        cat > "${root}/leaf.cnf" <<EOF
+[req]
+distinguished_name = dn
+prompt = no
+[dn]
+CN = wazuh-manager
+[ext]
+basicConstraints = CA:FALSE
+${2}
+subjectAltName = DNS:wazuh-manager
+EOF
+        openssl req -new -nodes -newkey rsa:2048 -keyout "${root}/leaf.key" \
+            -out "${root}/leaf.csr" -config "${root}/leaf.cnf" > /dev/null 2>&1
+        openssl x509 -req -in "${root}/leaf.csr" -CA "${ca}/root-ca.pem" -CAkey "${ca}/root-ca.key" \
+            -CAcreateserial -out "${root}/leaf.pem" -days 2 -sha256 \
+            -extensions ext -extfile "${root}/leaf.cnf" > /dev/null 2>&1
+        install -m 0640 "${root}/leaf.pem" "${root}/home/etc/certs/$1.pem"
+        install -m 0640 "${root}/leaf.key" "${root}/home/etc/certs/$1-key.pem"
+    }
+
+    issue_leaf indexer-connector ""
+    check "the fixture really carries no extendedKeyUsage" "" \
+        "$(openssl x509 -in "${root}/home/etc/certs/indexer-connector.pem" -noout \
+            -ext extendedKeyUsage 2>/dev/null | grep -c 'Authentication' | grep -v '^0$')"
+    run_resolver "${root}" --prestart
+    check "a connector leaf with no extendedKeyUsage is accepted" "0" "${RC}"
+
+    issue_leaf indexer-connector "extendedKeyUsage = serverAuth"
+    run_resolver "${root}" --prestart
+    check "but one declaring serverAuth only is refused" "1" "${RC}"
+    check "and the diagnostic blames the purpose, not the chain" "yes" \
+        "$(grep -q 'is not usable for clientAuth' <<< "$(resolver_output)" && echo yes)"
+    cleanup "${root}"
+fi
+
 # --------------------------------------------------------------------------------------------
 # --clear
 #

@@ -245,8 +245,8 @@ jobs:
           # so a regression that leaves it root:root would make the dropped service fail to start.
           # The listener pair is opened by remoted after dropping privileges, hence wazuh-manager-owned.
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/root-ca.pem" "$INSTALLATION_DIR/etc/certs/root-ca.pem"
-          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-indexer.pem" "$INSTALLATION_DIR/etc/certs/indexer-connector.pem"
-          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-indexer-key.pem" "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem"
+          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager.pem" "$INSTALLATION_DIR/etc/certs/indexer-connector.pem"
+          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-key.pem" "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem"
           sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$INSTALLATION_DIR/etc/certs/remoted.pem"
           sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$INSTALLATION_DIR/etc/certs/remoted-key.pem"
           sudo chown root:wazuh-manager "$INSTALLATION_DIR/etc/certs"
