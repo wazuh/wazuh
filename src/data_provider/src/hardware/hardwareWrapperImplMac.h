@@ -13,6 +13,9 @@
 #define _HARDWARE_WRAPPER_IMPL_MAC_H
 
 #include <sys/sysctl.h>
+#include <mach/mach.h>
+#include <mach/mach_host.h>
+#include <mach/mach_error.h>
 #include "hardwareWrapperInterface.h"
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
@@ -131,35 +134,7 @@ class OSHardwareWrapperMac final : public IOSHardwareWrapper, public TOsPrimitiv
 
         uint64_t ramFree() const
         {
-            u_int pageSize{0};
-            size_t len{sizeof(pageSize)};
-            auto ret{this->sysctlbyname("vm.pagesize", &pageSize, &len, nullptr, 0)};
-
-            if (ret)
-            {
-                throw std::system_error
-                {
-                    ret,
-                    std::system_category(),
-                    "Error reading page size."
-                };
-            }
-
-            uint64_t freePages{0};
-            len = sizeof(freePages);
-            ret = this->sysctlbyname("vm.page_free_count", &freePages, &len, nullptr, 0);
-
-            if (ret)
-            {
-                throw std::system_error
-                {
-                    ret,
-                    std::system_category(),
-                    "Error reading pages free count."
-                };
-            }
-
-            return (freePages * pageSize) / KByte;
+            return availableRam(sampleMemory()) / KByte;
         }
 
         uint64_t ramUsage() const
@@ -173,6 +148,59 @@ class OSHardwareWrapperMac final : public IOSHardwareWrapper, public TOsPrimitiv
             }
 
             return ret;
+        }
+
+    private:
+        struct MemorySample final
+        {
+            u_int pageSize{0};
+            vm_statistics64_data_t vmStat{};
+        };
+
+        MemorySample sampleMemory() const
+        {
+            MemorySample sample;
+            size_t len{sizeof(sample.pageSize)};
+            auto ret{this->sysctlbyname("vm.pagesize", &sample.pageSize, &len, nullptr, 0)};
+
+            if (ret)
+            {
+                throw std::system_error
+                {
+                    ret,
+                    std::system_category(),
+                    "Error reading page size."
+                };
+            }
+
+            mach_msg_type_number_t count{HOST_VM_INFO64_COUNT};
+            const auto hostPort{this->mach_host_self()};
+            DEFER([this, hostPort]()
+            {
+                this->mach_port_deallocate(mach_task_self(), hostPort);
+            });
+
+            const auto kr{this->host_statistics64(hostPort,
+                                                  HOST_VM_INFO64,
+                                                  reinterpret_cast<host_info64_t>(&sample.vmStat),
+                                                  &count)};
+
+            if (kr != KERN_SUCCESS)
+            {
+                throw std::runtime_error
+                {
+                    std::string{"Error reading virtual memory statistics: "} + mach_error_string(kr)
+                };
+            }
+
+            return sample;
+        }
+
+        static uint64_t availableRam(const MemorySample& sample)
+        {
+            const auto& vmStat{sample.vmStat};
+            const uint64_t availablePages{vmStat.free_count + vmStat.active_count + vmStat.inactive_count};
+            return availablePages * sample.pageSize;
         }
 };
 

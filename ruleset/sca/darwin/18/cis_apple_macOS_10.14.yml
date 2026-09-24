@@ -211,7 +211,7 @@ checks:
       - https://support.apple.com/kb/PH11450
     condition: all
     rules:
-      - 'c:sudo system_profiler SPPrintersDataType | grep -e Sharing -> r:System Printer Sharing:\s*\t*Yes'
+      - 'c:sh -c "sudo system_profiler SPPrintersDataType | grep -e Sharing" -> r:System Printer Sharing:\s*\t*Yes'
 
   # 2.4.5 Disable Remote Login (Automated)
   - id: 17016
@@ -575,8 +575,8 @@ checks:
       - cis: ["5.3"]
     condition: all
     rules:
-      - 'c:grep -E -s "!tty_tickets" /etc/sudoers /etc/sudoers.d/* -> r:^$'
-      - 'c:grep -E -s "timestamp_type" /etc/sudoers /etc/sudoers.d/* -> r:^$|!timestamp_type=ppid|!timestamp_type=global'
+      - 'c:sh -c "grep -E -s ''!tty_tickets'' /etc/sudoers /etc/sudoers.d/*" -> r:^$'
+      - 'c:sh -c "grep -E -s ''timestamp_type'' /etc/sudoers /etc/sudoers.d/*" -> r:^$|!timestamp_type=ppid|!timestamp_type=global'
 
   # 5.7 Do not enable the "root" account (Automated)
   - id: 17053

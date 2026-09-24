@@ -517,7 +517,7 @@ checks:
     condition: any
     rules:
       - "c:crontab -u root -l -> r:aide"
-      - "c:grep -r aide /etc/cron.* /etc/crontab -> r:aide"
+      - 'c:sh -c "grep -r aide /etc/cron.* /etc/crontab" -> r:aide'
 
   ###############################################
   # 1.4 Secure Boot Settings
@@ -2371,7 +2371,7 @@ checks:
       - tsc: ["CC6.1", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'c:grep *.*[^I][^I]*@ /etc/rsyslog.conf /etc/rsyslog.d/*.conf -> !r:# && r:*.* @@\.+'
+      - 'c:sh -c "grep ''*.*[^I][^I]*@'' /etc/rsyslog.conf /etc/rsyslog.d/*.conf" -> !r:# && r:*.* @@\.+'
 
   # 4.2.2.1 Ensure syslog-ng service is enabled (Scored)
   - id: 4132

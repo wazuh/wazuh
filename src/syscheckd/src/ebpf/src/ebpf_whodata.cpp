@@ -9,6 +9,7 @@
 
 #include <bounded_queue.hpp>
 #include <cerrno>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -16,10 +17,12 @@
 #include <memory>
 #include <pwd.h>
 
+#include <mutex>
 #include <string>
 #include <sys/stat.h>
 #include <thread>
 #include <unistd.h>
+#include <unordered_map>
 #include <vector>
 
 // clang-format off
@@ -93,19 +96,79 @@ static char* num_to_str(T num)
     return strdup(std::to_string(num).c_str());
 }
 
+constexpr auto ID_CACHE_TTL = std::chrono::seconds(1);
+constexpr size_t ID_CACHE_MAX_ENTRIES = 1024;
+
+template<typename T>
+using id_cache_t = std::unordered_map<uint32_t, std::pair<T, std::chrono::steady_clock::time_point>>;
+
+template<typename T, typename Resolver>
+static T resolve_cached(id_cache_t<T>& cache, uint32_t id, Resolver resolve)
+{
+    static std::mutex mutex;
+    const std::lock_guard<std::mutex> lock(mutex);
+
+    if (cache.size() > ID_CACHE_MAX_ENTRIES)
+    {
+        cache.clear();
+    }
+
+    const auto now = std::chrono::steady_clock::now();
+    auto& [value, resolved_at] = cache[id];
+
+    if (now - resolved_at >= ID_CACHE_TTL)
+    {
+        value = resolve(id);
+        resolved_at = now;
+    }
+
+    return value;
+}
+
+static char* get_cached_name(id_cache_t<std::string>& cache, uint32_t id, char* (*resolve)(int))
+{
+    const auto name = resolve_cached(cache,
+                                     id,
+                                     [resolve](uint32_t value)
+                                     {
+                                         const std::unique_ptr<char, decltype(&free)> resolved(
+                                             resolve(static_cast<int>(value)), free);
+                                         return resolved ? std::string(resolved.get()) : std::string();
+                                     });
+    return name.empty() ? nullptr : strdup(name.c_str());
+}
+
+static char* get_user_cached(uint32_t uid)
+{
+    static id_cache_t<std::string> cache;
+    return get_cached_name(cache, uid, fimebpf::instance().m_get_user);
+}
+
+static char* get_group_cached(uint32_t gid)
+{
+    static id_cache_t<std::string> cache;
+    return get_cached_name(cache, gid, fimebpf::instance().m_get_group);
+}
+
 /* Resolves the primary GID for a given UID by looking up its passwd entry.
  * Used to derive "login_gid" (audit GID) from login_uid, since the kernel
  * audit subsystem only tracks loginuid (auid) and has no equivalent GID. */
 static int get_login_gid(unsigned int uid)
 {
-    struct passwd pwd {};
-    struct passwd* result = nullptr;
-    char buf[16384];
-    if (getpwuid_r(uid, &pwd, buf, sizeof(buf), &result) != 0 || result == nullptr)
-    {
-        return -1;
-    }
-    return (int)pwd.pw_gid;
+    static id_cache_t<int> cache;
+    return resolve_cached(cache,
+                          uid,
+                          [](uint32_t id)
+                          {
+                              struct passwd pwd {};
+                              struct passwd* result = nullptr;
+                              char buf[16384];
+                              if (getpwuid_r(id, &pwd, buf, sizeof(buf), &result) != 0 || result == nullptr)
+                              {
+                                  return -1;
+                              }
+                              return static_cast<int>(pwd.pw_gid);
+                          });
 }
 
 /* Callback for normal whodata events */
@@ -716,20 +779,20 @@ void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& loc
             w_evt->path = strdup(event->filename.c_str());
             w_evt->process_name = strdup(event->comm.c_str());
             w_evt->user_id = num_to_str(event->uid);
-            w_evt->user_name = fimebpf::instance().m_get_user(event->uid);
+            w_evt->user_name = get_user_cached(event->uid);
             w_evt->group_id = num_to_str(event->gid);
-            w_evt->group_name = fimebpf::instance().m_get_group(event->gid);
+            w_evt->group_name = get_group_cached(event->gid);
             w_evt->effective_uid = num_to_str(event->euid);
-            w_evt->effective_name = fimebpf::instance().m_get_user(event->euid);
+            w_evt->effective_name = get_user_cached(event->euid);
             if (event->login_uid != (uint32_t)-1)
             {
                 w_evt->audit_uid = num_to_str(event->login_uid);
-                w_evt->audit_name = fimebpf::instance().m_get_user(event->login_uid);
+                w_evt->audit_name = get_user_cached(event->login_uid);
                 int audit_gid_val = get_login_gid(event->login_uid);
                 if (audit_gid_val >= 0)
                 {
                     w_evt->audit_gid = num_to_str((unsigned int)audit_gid_val);
-                    w_evt->audit_group_name = fimebpf::instance().m_get_group(audit_gid_val);
+                    w_evt->audit_group_name = get_group_cached(static_cast<uint32_t>(audit_gid_val));
                 }
             }
             w_evt->inode = num_to_str(event->inode);
