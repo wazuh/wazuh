@@ -74,5 +74,98 @@ namespace file_system
     {
         return std::filesystem::remove(path);
     }
+
+    std::uintmax_t FileSystemWrapper::file_size(const std::filesystem::path& path) const
+    {
+        std::error_code ec;
+
+        if (!std::filesystem::is_regular_file(path, ec) || ec)
+        {
+            return 0;
+        }
+
+        const auto size = std::filesystem::file_size(path, ec);
+        return ec ? 0 : size;
+    }
+
+    std::uintmax_t FileSystemWrapper::directory_size(const std::filesystem::path& path,
+                                                     std::uintmax_t maxEntries,
+                                                     std::chrono::milliseconds deadline) const
+    {
+        std::error_code ec;
+
+        if (!std::filesystem::is_directory(path, ec) || ec)
+        {
+            return 0;
+        }
+
+        const auto start = std::chrono::steady_clock::now();
+
+        std::filesystem::recursive_directory_iterator it(
+            path, std::filesystem::directory_options::skip_permission_denied, ec);
+        const std::filesystem::recursive_directory_iterator end;
+
+        if (ec)
+        {
+            return 0;
+        }
+
+        std::uintmax_t total {0};
+        std::uintmax_t entries {0};
+
+        while (it != end)
+        {
+            if (++entries > maxEntries)
+            {
+                return 0;
+            }
+
+            if (std::chrono::steady_clock::now() - start > deadline)
+            {
+                return 0;
+            }
+
+            // is_symlink() never follows the link, unlike is_regular_file(), which does. Skipping it here
+            // is what keeps a file or directory reachable through both its real path and a symlinked alias
+            // from being counted twice.
+            const bool isSymlink = it->is_symlink(ec);
+
+            if (ec)
+            {
+                return 0;
+            }
+
+            if (!isSymlink)
+            {
+                const bool isRegularFile = it->is_regular_file(ec);
+
+                if (ec)
+                {
+                    return 0;
+                }
+
+                if (isRegularFile)
+                {
+                    const auto size = it->file_size(ec);
+
+                    if (ec)
+                    {
+                        return 0;
+                    }
+
+                    total += size;
+                }
+            }
+
+            it.increment(ec);
+
+            if (ec)
+            {
+                return 0;
+            }
+        }
+
+        return total;
+    }
 } // namespace file_system
 // LCOV_EXCL_STOP

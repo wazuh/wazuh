@@ -26,4 +26,9 @@ class MockFileSystemWrapper : public IFileSystemWrapper
         MOCK_METHOD(int, open, (const char* path, int flags, int mode), (const, override));
         MOCK_METHOD(int, flock, (int fd, int operation), (const, override));
         MOCK_METHOD(int, close, (int fd), (const, override));
+        MOCK_METHOD(std::uintmax_t, file_size, (const std::filesystem::path& path), (const, override));
+        MOCK_METHOD(std::uintmax_t,
+                    directory_size,
+                    (const std::filesystem::path& path, std::uintmax_t maxEntries, std::chrono::milliseconds deadline),
+                    (const, override));
 };

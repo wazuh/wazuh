@@ -10,6 +10,8 @@
  */
 
 #include "sysInfoMacPackages_test.h"
+#include <climits>
+#include <unistd.h>
 #include "packages/packageMac.h"
 #include "packages/macportsWrapper.h"
 #include "mocks/sqliteWrapperTempMock.h"
@@ -82,10 +84,100 @@ TEST_F(SysInfoMacPackagesTest, Test_SPEC_Data)
     EXPECT_EQ("13", packages.at("multiarch").get_ref<const std::string&>());
 }
 
+// The registry stores no size and `location` points at a compressed archive, so the size is
+// summed from the port's own file list. Fixtures: bin/tool (100 bytes) + lib/data.bin (250).
+TEST_F(SysInfoMacPackagesTest, macPortsSizeSumsTheRegistryFileList)
+{
+    char cwd[PATH_MAX] {};
+    ASSERT_NE(::getcwd(cwd, sizeof(cwd)), nullptr);
+    const std::string base {std::string(cwd) + "/input_files/Cellar/testpkg/1.0.0"};
+
+    // char(1) is what the query uses to join the paths, because a path may contain a newline.
+    const std::string paths
+    {
+        base + "/bin/tool" + '\x01' + base + "/lib/data.bin" + '\x01' +
+        base + "/does/not/exist"
+    };
+
+    auto mockStatement { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement, columnsCount()).WillOnce(Return(6));
+
+    auto mockColumn_1 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_1, value(An<const std::string&>())).WillOnce(Return("testpkg"));
+    auto mockColumn_2 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_2, value(An<const std::string&>())).WillOnce(Return("1.0.0"));
+    auto mockColumn_3 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_3, value(An<const int64_t&>())).WillOnce(Return(1690831043));
+    auto mockColumn_4 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_4, value(An<const std::string&>()))
+    .WillOnce(Return("/opt/local/var/macports/software/testpkg/testpkg-1.0.0.darwin_25.arm64.tbz2"));
+    auto mockColumn_5 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_5, value(An<const std::string&>())).WillOnce(Return("arm64"));
+    auto mockColumn_6 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_6, value(An<const std::string&>())).WillOnce(Return(paths));
+
+    EXPECT_CALL(*mockColumn_1, hasValue()).WillOnce(Return(true));
+    EXPECT_CALL(*mockColumn_2, hasValue()).WillOnce(Return(true));
+    EXPECT_CALL(*mockColumn_3, hasValue()).WillOnce(Return(true));
+    EXPECT_CALL(*mockColumn_4, hasValue()).WillOnce(Return(true));
+    EXPECT_CALL(*mockColumn_5, hasValue()).WillOnce(Return(true));
+    EXPECT_CALL(*mockColumn_6, hasValue()).WillOnce(Return(true));
+
+    EXPECT_CALL(*mockStatement, column(0)).WillOnce(Return(ByMove(std::move(mockColumn_1))));
+    EXPECT_CALL(*mockStatement, column(1)).WillOnce(Return(ByMove(std::move(mockColumn_2))));
+    EXPECT_CALL(*mockStatement, column(2)).WillOnce(Return(ByMove(std::move(mockColumn_3))));
+    EXPECT_CALL(*mockStatement, column(3)).WillOnce(Return(ByMove(std::move(mockColumn_4))));
+    EXPECT_CALL(*mockStatement, column(4)).WillOnce(Return(ByMove(std::move(mockColumn_5))));
+    EXPECT_CALL(*mockStatement, column(5)).WillOnce(Return(ByMove(std::move(mockColumn_6))));
+
+    MacportsWrapper macportsMock(*mockStatement);
+
+    // A path recorded in the registry but since removed contributes nothing rather than throwing,
+    // and the archive in `location` is never measured.
+    EXPECT_EQ(macportsMock.size(), 350);
+}
+
+TEST_F(SysInfoMacPackagesTest, macPortsSizeIsZeroWhenTheFileListIsAbsent)
+{
+    auto mockStatement { std::make_unique<MockStatement>() };
+    EXPECT_CALL(*mockStatement, columnsCount()).WillOnce(Return(6));
+
+    auto mockColumn_1 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_1, value(An<const std::string&>())).WillOnce(Return("testpkg"));
+    auto mockColumn_2 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_2, value(An<const std::string&>())).WillOnce(Return("1.0.0"));
+    auto mockColumn_3 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_3, value(An<const int64_t&>())).WillOnce(Return(1690831043));
+    auto mockColumn_4 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_4, value(An<const std::string&>())).WillOnce(Return("/opt/local/x.tbz2"));
+    auto mockColumn_5 { std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_5, value(An<const std::string&>())).WillOnce(Return("arm64"));
+    auto mockColumn_6 { std::make_unique<MockColumn>() };
+
+    EXPECT_CALL(*mockColumn_1, hasValue()).WillOnce(Return(true));
+    EXPECT_CALL(*mockColumn_2, hasValue()).WillOnce(Return(true));
+    EXPECT_CALL(*mockColumn_3, hasValue()).WillOnce(Return(true));
+    EXPECT_CALL(*mockColumn_4, hasValue()).WillOnce(Return(true));
+    EXPECT_CALL(*mockColumn_5, hasValue()).WillOnce(Return(true));
+    // A port with no active files, which group_concat returns as NULL.
+    EXPECT_CALL(*mockColumn_6, hasValue()).WillOnce(Return(false));
+
+    EXPECT_CALL(*mockStatement, column(0)).WillOnce(Return(ByMove(std::move(mockColumn_1))));
+    EXPECT_CALL(*mockStatement, column(1)).WillOnce(Return(ByMove(std::move(mockColumn_2))));
+    EXPECT_CALL(*mockStatement, column(2)).WillOnce(Return(ByMove(std::move(mockColumn_3))));
+    EXPECT_CALL(*mockStatement, column(3)).WillOnce(Return(ByMove(std::move(mockColumn_4))));
+    EXPECT_CALL(*mockStatement, column(4)).WillOnce(Return(ByMove(std::move(mockColumn_5))));
+    EXPECT_CALL(*mockStatement, column(5)).WillOnce(Return(ByMove(std::move(mockColumn_6))));
+
+    MacportsWrapper macportsMock(*mockStatement);
+
+    EXPECT_EQ(macportsMock.size(), 0);
+}
+
 TEST_F(SysInfoMacPackagesTest, macPortsValidData)
 {
     auto mockStatement { std::make_unique<MockStatement>() };
-    EXPECT_CALL(*mockStatement, columnsCount()).WillOnce(Return(5));
+    EXPECT_CALL(*mockStatement, columnsCount()).WillOnce(Return(6));
 
     auto mockColumn_1 { std::make_unique<MockColumn>() };
     EXPECT_CALL(*mockColumn_1, value(An<const std::string&>()))
@@ -99,6 +191,8 @@ TEST_F(SysInfoMacPackagesTest, macPortsValidData)
     auto mockColumn_4 { std::make_unique<MockColumn>() };
     EXPECT_CALL(*mockColumn_4, value(An<const std::string&>()))
     .WillOnce(Return("/opt/local/var/macports/software/neovim/neovim-0.8.1.tgz"));
+    auto mockColumn_6 {std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_6, hasValue()).WillOnce(Return(false));
     auto mockColumn_5 {std::make_unique<MockColumn>() };
     EXPECT_CALL(*mockColumn_5, value(An<const std::string&>()))
     .WillOnce(Return("x86_64"));
@@ -114,6 +208,7 @@ TEST_F(SysInfoMacPackagesTest, macPortsValidData)
     EXPECT_CALL(*mockStatement, column(2)).WillOnce(Return(ByMove(std::move(mockColumn_3))));
     EXPECT_CALL(*mockStatement, column(3)).WillOnce(Return(ByMove(std::move(mockColumn_4))));
     EXPECT_CALL(*mockStatement, column(4)).WillOnce(Return(ByMove(std::move(mockColumn_5))));
+    EXPECT_CALL(*mockStatement, column(5)).WillOnce(Return(ByMove(std::move(mockColumn_6))));
 
     MacportsWrapper macportsMock(*mockStatement);
 
@@ -127,7 +222,7 @@ TEST_F(SysInfoMacPackagesTest, macPortsValidData)
 TEST_F(SysInfoMacPackagesTest, macPortsValidDataEmptyFields)
 {
     auto mockStatement { std::make_unique<MockStatement>() };
-    EXPECT_CALL(*mockStatement, columnsCount()).WillOnce(Return(5));
+    EXPECT_CALL(*mockStatement, columnsCount()).WillOnce(Return(6));
 
     auto mockColumn_1 { std::make_unique<MockColumn>() };
     EXPECT_CALL(*mockColumn_1, value(An<const std::string&>()))
@@ -141,6 +236,8 @@ TEST_F(SysInfoMacPackagesTest, macPortsValidDataEmptyFields)
     auto mockColumn_4 { std::make_unique<MockColumn>() };
     EXPECT_CALL(*mockColumn_4, value(An<const std::string&>()))
     .WillOnce(Return(""));
+    auto mockColumn_6 {std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_6, hasValue()).WillOnce(Return(false));
     auto mockColumn_5 {std::make_unique<MockColumn>() };
     EXPECT_CALL(*mockColumn_5, value(An<const std::string&>()))
     .WillOnce(Return(""));
@@ -156,6 +253,7 @@ TEST_F(SysInfoMacPackagesTest, macPortsValidDataEmptyFields)
     EXPECT_CALL(*mockStatement, column(2)).WillOnce(Return(ByMove(std::move(mockColumn_3))));
     EXPECT_CALL(*mockStatement, column(3)).WillOnce(Return(ByMove(std::move(mockColumn_4))));
     EXPECT_CALL(*mockStatement, column(4)).WillOnce(Return(ByMove(std::move(mockColumn_5))));
+    EXPECT_CALL(*mockStatement, column(5)).WillOnce(Return(ByMove(std::move(mockColumn_6))));
 
     MacportsWrapper macportsMock(*mockStatement);
 
@@ -170,7 +268,7 @@ TEST_F(SysInfoMacPackagesTest, macPortsValidDataEmptyFields)
 TEST_F(SysInfoMacPackagesTest, macPortsValidDataEmptyName)
 {
     auto mockStatement { std::make_unique<MockStatement>() };
-    EXPECT_CALL(*mockStatement, columnsCount()).WillOnce(Return(5));
+    EXPECT_CALL(*mockStatement, columnsCount()).WillOnce(Return(6));
 
     auto mockColumn_1 { std::make_unique<MockColumn>() };
     EXPECT_CALL(*mockColumn_1, value(An<const std::string&>()))
@@ -184,6 +282,8 @@ TEST_F(SysInfoMacPackagesTest, macPortsValidDataEmptyName)
     auto mockColumn_4 { std::make_unique<MockColumn>() };
     EXPECT_CALL(*mockColumn_4, value(An<const std::string&>()))
     .WillOnce(Return("/opt/local/var/macports/software/neovim/neovim-0.8.1.tgz"));
+    auto mockColumn_6 {std::make_unique<MockColumn>() };
+    EXPECT_CALL(*mockColumn_6, hasValue()).WillOnce(Return(false));
     auto mockColumn_5 {std::make_unique<MockColumn>() };
     EXPECT_CALL(*mockColumn_5, value(An<const std::string&>()))
     .WillOnce(Return("x86_64"));
@@ -199,6 +299,7 @@ TEST_F(SysInfoMacPackagesTest, macPortsValidDataEmptyName)
     EXPECT_CALL(*mockStatement, column(2)).WillOnce(Return(ByMove(std::move(mockColumn_3))));
     EXPECT_CALL(*mockStatement, column(3)).WillOnce(Return(ByMove(std::move(mockColumn_4))));
     EXPECT_CALL(*mockStatement, column(4)).WillOnce(Return(ByMove(std::move(mockColumn_5))));
+    EXPECT_CALL(*mockStatement, column(5)).WillOnce(Return(ByMove(std::move(mockColumn_6))));
 
     MacportsWrapper macportsMock(*mockStatement);
 

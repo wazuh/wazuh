@@ -24,7 +24,15 @@
 namespace
 {
     const std::string MACPORTS_DB_NAME {"registry.db"};
-    const std::string MACPORTS_QUERY {"SELECT name, version, date, location, archs FROM ports WHERE state = 'installed';"};
+    // The registry holds no size column, and `location` points at the compressed archive the port
+    // was built into rather than at installed content, so the installed paths are gathered here and
+    // summed by the wrapper. char(1) separates them because a path may legally contain a newline.
+    const std::string MACPORTS_QUERY
+    {
+        "SELECT p.name, p.version, p.date, p.location, p.archs, "
+        "(SELECT group_concat(f.actual_path, char(1)) FROM files f WHERE f.id = p.id AND f.active = 1) "
+        "FROM ports p WHERE p.state = 'installed';"
+    };
 }
 
 std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageContext, int>& ctx)
