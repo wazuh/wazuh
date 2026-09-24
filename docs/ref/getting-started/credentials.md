@@ -1,8 +1,12 @@
 # Credentials
 
-The manager resolves every credential it needs through one order, applied at two moments: when the
-package is installed, and again immediately before the service starts. Nothing an operator can skip
-stands between a deployment and credentials unique to it.
+The manager resolves every credential it needs through one order, applied when the package is
+installed and again immediately before the service starts. Nothing an operator can skip stands
+between a deployment and credentials unique to it.
+
+Certificates are the exception, and it is worth knowing up front: they are issued **once, at
+installation**, and nothing examines them again — not a service start, not a package upgrade. See
+[Certificates](#certificates).
 
 ## The resolution order
 
@@ -122,9 +126,9 @@ time; by the time you start it the indexer has published its key, and it resolve
 
 ## When the manager does not start
 
-Service start runs the whole order again — not merely a check — so the manager picks up whatever
-became available since it was installed. When something is still missing it refuses to start and
-names it. There is no repair command: fix the key and start the service again.
+Service start runs the password and keystore order again — not merely a check — so the manager picks
+up whatever became available since it was installed. When something is still missing it refuses to
+start and names it. There is no repair command: fix the key and start the service again.
 
 ```
 $ sudo systemctl enable --now wazuh-manager
@@ -156,6 +160,29 @@ The manager needs two TLS pairs, both leaves of the same CA:
 | `etc/certs/indexer-connector.pem`, `indexer-connector-key.pem` | the client certificate presented to the indexer |
 | `etc/certs/root-ca.pem` | the trust anchor for both, served to agents on `GET /cacerts` |
 
+### Issued at installation, and at no other moment
+
+The pairs are issued by the install, and neither a service start nor a package upgrade issues,
+re-anchors or even re-examines them. Two reasons, and both matter in a distributed deployment:
+
+* **Issuing a certificate is a signature, not a lookup.** Re-deriving the chain at every start would
+  mean the CA directory has to still be there, still hold the anchor this manager's material was
+  issued from, and still match it byte for byte. A deployment running on its own PKI stages a pair
+  and nothing else — it has no reason to keep a copy of its root CA on every manager forever, and no
+  reason to accept a manager that refuses to boot because that copy drifted or was tidied away.
+* **They are the credential you legitimately replace out of band.** A password lives in one place the
+  resolver owns; a certificate is rotated by whatever issues the rest of your estate's certificates.
+
+So `/etc/wazuh/ca` is a bootstrap handoff, not a standing dependency. **You can delete it** once the
+pairs are in `etc/certs`, and a manager provisioned entirely from outside never needs one at all.
+
+What certificates the manager will accept is decided where it always was — `wazuh-manager-conf
+validate` checks the files exist, `remoted` probes them with `access(R_OK)` after dropping
+privileges, and the TLS handshake decides the rest. Those read the files as they are at start, which
+is the only state that matters.
+
+### What the install does
+
 Which flow applies is decided by what is in `$WAZUH_CA_DIR` (default `/etc/wazuh/ca`) — there is no
 mode flag, because the presence of a private key beside the anchor is the signal:
 
@@ -163,17 +190,29 @@ mode flag, because the presence of a private key beside the anchor is the signal
 |---------------------|------------------------------|--------|
 | nothing | no | mint a bootstrap CA, then issue both pairs from it |
 | anchor + key | no | issue both pairs from the CA found |
-| anchor + key | one of the two | keep that pair and issue only the missing one, if the kept pair was issued by that CA; **unresolved** otherwise |
-| nothing | one of the two | **unresolved**: no CA is minted, since its anchor would not match the pair |
+| anchor + key | one of the two | keep that pair and issue only the missing one, if the kept pair was issued by that CA; **nothing issued** otherwise |
+| nothing | one of the two | **nothing issued**: no CA is minted, since its anchor would not match the pair |
 | anchor only | yes | use both, install the anchor if `etc/certs` lacks it, generate nothing |
-| anchor only | no | install the anchor; **unresolved**, the service will not start |
+| anchor only | no | install the anchor; **nothing issued** |
 
 A pair already in `etc/certs` is never overwritten.
 
 A host that was never given a CA private key cannot sign, and so cannot be where one leaks from.
 
-To supply a pre-issued pair, place it in `etc/certs` **before** installing: that makes step 1 true,
-which is why there is no key for it.
+When the install issues nothing it says so and still exits `0` — there is no such thing as a failed
+install here. The manager then has no certificates, and refuses to start with the configuration
+validator's verdict naming the file:
+
+```
+(1244): Invalid configuration at '/remote/https/certificate': file not found:
+/var/wazuh-manager/etc/certs/remoted.pem (issued by the credential resolver at installation, or
+provisioned externally, e.g. with wazuh-certs-tool)
+```
+
+Provision the pair and start the service again; nothing has to be reinstalled.
+
+To supply a pre-issued pair, place it in `etc/certs` **before** installing, or afterwards — either
+way it is used as it is and never replaced.
 
 ```bash
 sudo install -d -m 1770 -o root -g wazuh-manager /var/wazuh-manager/etc/certs
@@ -214,8 +253,14 @@ WAZUH_MANAGER_CERT_SANS='DNS:wazuh.corp.local,IP:10.0.1.11'
 WAZUH_MANAGER_REMOTED_CERT_SANS='DNS:agents.corp.local,IP:10.0.1.11,IP:2001:db8::10'
 ```
 
-Changing either setting afterwards renews nothing: a complete existing pair always wins. To reissue,
-remove the pair and start the service again.
+Changing either setting afterwards renews nothing: a complete existing pair always wins, and a start
+issues nothing in any case. To reissue, remove the pair and run the resolver's `--install` mode
+again:
+
+```bash
+sudo rm /var/wazuh-manager/etc/certs/remoted.pem /var/wazuh-manager/etc/certs/remoted-key.pem
+sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install
+```
 
 > [!WARNING]
 > Discovery failing is an **error**, not a quiet fall back to loopback: a node issued a
@@ -235,15 +280,26 @@ CA **including its private key**, and an issued certificate set. Every container
 image would share all of it — which is worse than a shipped default password, because it looks
 random.
 
-Clear them so the first start of each container resolves from nothing:
+Clear them so each container resolves from nothing. `--clear` and `--install` are a pair — the first
+wipes, the second resolves — because certificates are only ever issued at install:
 
-```bash
-/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --clear
+```dockerfile
+# end of the Dockerfile: ship an image with no credentials at all
+RUN /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --clear
 ```
 
-Run it at the end of the Dockerfile, so the image ships with no credentials at all, or once from an
-entrypoint before the first start. It removes `rbac.db`, the keystore, the certificates and the
-bootstrap CA, and takes the manager's own keys out of the managed block of the credentials file.
+```bash
+# entrypoint, before the first start: resolve this container's own. Idempotent, so a restarted
+# container that already resolved is a no-op.
+/var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install
+```
+
+`--clear` removes `rbac.db`, the keystore, the certificates and the bootstrap CA, and takes the
+manager's own keys out of the managed block of the credentials file.
+
+An image that bakes in certificates of its own — issued for the service names its containers will
+answer to — needs neither call for them: overwrite the files in `etc/certs` and nothing will ever
+look at where they came from.
 
 > [!WARNING]
 > `--clear` is the one destructive operation here, and `rbac.db` holds **every** Server API user,
@@ -259,6 +315,10 @@ outside the managed block or belonging to another component.
 An upgrade takes step 1 for everything: existing values are detected and left untouched, and any key
 still in the file is ignored whatever it contains. Replacing a credential on a running deployment is
 rotation, not installation.
+
+Certificates are not looked at at all. An upgrade never re-examines, re-anchors or reissues the pair
+in `etc/certs`, so one you replaced with your own PKI's — and the absent CA directory that usually
+goes with it — survives every upgrade untouched.
 
 Removing the package leaves the credentials file untouched. Purging it removes only the
 `WAZUH_MANAGER_*` keys, and only from inside the managed block — lines you wrote are never touched,

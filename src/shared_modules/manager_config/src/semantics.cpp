@@ -47,7 +47,7 @@ namespace manager_config::detail
             {
                 return Error {pointer,
                               "file not found: " + resolved.string() +
-                                  " (issued by the credential resolver at service start, or provisioned "
+                                  " (issued by the credential resolver at installation, or provisioned "
                                   "externally, e.g. with wazuh-certs-tool)"};
             }
             return std::nullopt;
@@ -121,10 +121,11 @@ namespace manager_config::detail
             }
         }
 
-        // The manager does not generate any of these files: the operator provisions the HTTPS/authd certificate
-        // pair and CA (e.g. with wazuh-certs-tool), so a missing file is a fail-closed verdict here, before any
-        // daemon starts. indexer.ssl.* is deliberately not checked (the indexer connector reports those files at
-        // runtime), otherwise a manager without an indexer could not start.
+        // Nothing recreates these files at start: the credential resolver issues them once, at installation,
+        // and the operator provisions or rotates them out of band thereafter (e.g. with wazuh-certs-tool). So a
+        // missing file is a fail-closed verdict here, before any daemon starts. indexer.ssl.* is deliberately
+        // not checked (the indexer connector reports those files at runtime), otherwise a manager without an
+        // indexer could not start.
         if (options.checkFiles)
         {
             for (const char* pointer : {"/remote/https/certificate",

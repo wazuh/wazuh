@@ -51,7 +51,16 @@ override_dh_install:
 	USER_ENABLE_EMAIL="n" \
 	USER_ENABLE_AUTHD="y" \
 	USER_AUTO_START="n" \
+	USER_RESOLVE_CREDENTIALS="n" \
 	./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
+
+	# USER_RESOLVE_CREDENTIALS="n" above, and this scrub behind it: this is a staging install whose
+	# tree is copied into the package, so credential material generated here would be shipped to
+	# every deployment -- and dpkg has no equivalent of rpm's unpackaged-files check to catch it.
+	# postinst resolves them on the target host instead.
+	rm -f  $(INSTALLATION_DIR)/api/configuration/security/rbac.db
+	rm -f  $(INSTALLATION_DIR)/etc/certs/*.pem
+	rm -rf $(INSTALLATION_DIR)/queue/keystore/*
 
 	# Copying init.d script
 	mkdir -p ${TARGET_DIR}/etc/init.d/

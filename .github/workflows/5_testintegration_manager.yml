@@ -215,8 +215,11 @@ jobs:
 
       - name: Provision TLS certificates
         run: |
-          # Provision the node the way a distributed deployment does: pairs issued elsewhere in etc/certs
-          # and only their anchor in the CA directory, so the manager uses them and cannot sign for itself.
+          # Provision the node the way a distributed deployment does: replace the pair the installation
+          # issued with one issued elsewhere, and keep no CA on the host at all. The credential resolver
+          # issues certificates at installation and never looks at them again -- not at service start,
+          # not on upgrade -- so overwriting them is the whole procedure, and a manager running on
+          # someone else's PKI is under no obligation to keep a copy of its root CA.
           # The pairs come from the devcontainer copy of the installation assistant tool; the manager
           # node's SAN carries DNS:wazuh-manager, which the integration tests assert on the listener
           # certificate.
@@ -251,10 +254,11 @@ jobs:
           sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$INSTALLATION_DIR/etc/certs/remoted-key.pem"
           sudo chown root:wazuh-manager "$INSTALLATION_DIR/etc/certs"
           sudo chmod 1770 "$INSTALLATION_DIR/etc/certs"
-          # A package installation minted a bootstrap CA here; it is replaced by the anchor of the pairs.
-          sudo install -d -m 0700 -o root -g root /etc/wazuh /etc/wazuh/ca
-          sudo rm -f /etc/wazuh/ca/root-ca.key /etc/wazuh/ca/root-ca.srl
-          sudo install -o root -g root -m 644 "$CERTS_OUT/root-ca.pem" /etc/wazuh/ca/root-ca.pem
+          # The installation minted a bootstrap CA here, including its private key. Nothing consults it
+          # once the pairs are in place, and leaving a signing key on a node that does not sign is the
+          # exposure this whole mechanism exists to remove -- so it goes. Its absence is also part of
+          # what is under test: the manager must start with no CA directory at all.
+          sudo rm -rf /etc/wazuh/ca
 
       - name: Supply the indexer credential
         run: |

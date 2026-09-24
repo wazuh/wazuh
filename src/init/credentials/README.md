@@ -49,14 +49,42 @@ collide and so the files fall inside the tree `.github/actions/check_files/manag
 | `wazuh-credentials.sh` | `<manager-home>/lib/wazuh-credentials.sh` | `0640 root:wazuh-manager` |
 | `wazuh-manager-certificates.sh` | `<manager-home>/lib/wazuh-manager-certificates.sh` | `0640 root:wazuh-manager` |
 
-A third mode, `--clear`, removes every credential the manager owns or stores so the next run
-resolves from nothing. Nothing in the product calls it: it is for an image built by installing the
-package, whose `postinst` baked this host's credentials into a layer every container would share.
-It refuses while the manager is running, and keeps a CA directory that holds only an anchor.
+It runs in four modes:
 
-It is invoked from the DEB `postinst` and the RPM `%post` as `--install`, and as `--prestart` from
-`testconfig()` in `../wazuh-server.sh` — that is, from `wazuh-manager-control start`, which is what
-the systemd unit's `ExecStart` runs.
+| Mode | Called from | Passwords, keystore | Certificates |
+| --- | --- | --- | --- |
+| `--install` | DEB `postinst` / RPM `%post` / `install.sh`, **fresh install only** | resolve | **issue** (`wazuh_manager_certificates_ensure`) |
+| `--upgrade` | the same three, when a previous version was installed | resolve | untouched |
+| `--prestart` | `testconfig()` in `../wazuh-server.sh` — that is, `wazuh-manager-control start`, which is what the unit's `ExecStart` runs | resolve, fail naming the key | untouched |
+| `--clear` | nothing in the product | remove | remove |
+
+Each caller already knows which of the first two applies: `$2` is empty in a DEB `postinst
+configure` on a fresh install, `$1` is `1` in an RPM `%post`, and `install.sh` has `update_only`.
+
+`install.sh` skips the call entirely under `USER_RESOLVE_CREDENTIALS="n"`, which the DEB and RPM
+recipes set — they run it to stage a tree they then copy into the package, and resolving there would
+put one build host's `rbac.db`, bootstrap CA private key and certificates inside an artifact every
+deployment installs. Both recipes also delete those paths after the staging install, so a future
+change that starts generating something new cannot leak it either; on RPM the unpackaged-files check
+turns the leak into a build failure, and on DEB nothing would.
+
+**Why certificates leave the ladder after the install.** Issuing one is a signature, not a lookup,
+so every later run that re-examined them would have to re-derive the chain — which means the CA
+directory has to still be there, still hold the anchor the material was issued from, and still match
+it byte for byte. That makes `$WAZUH_CA_DIR` a standing dependency of the manager, and a deployment
+running on its own PKI has no reason to satisfy it: it stages a pair and keeps no root CA copy on
+every node. They are also the one credential an operator legitimately replaces out of band, so
+re-running the ladder over someone else's material can only produce false verdicts about it.
+
+Nothing is lost by stopping: `wazuh-manager-conf validate` checks the files exist, `remoted` probes
+them with `access(R_OK)` after dropping privileges (`w_remoted_check_tls_files()`), and the TLS
+handshake decides the rest — all against the files as they are at start.
+
+`--clear` removes every credential the manager owns or stores so a following `--install` resolves
+from nothing. It is for an image built by installing the package, whose `postinst` baked this host's
+credentials into a layer every container would share; the two are a pair, since only `--install`
+issues certificates. It refuses while the manager is running, and keeps a CA directory that holds
+only an anchor.
 
 ## Integration
 
@@ -76,15 +104,15 @@ printf 'Base: %s\nENV: %s\nCA: %s\n' \
 wazuh_env_set WAZUH_MANAGER_REMOTED_CERT_SANS \
     'DNS:agents.example.com,IP:192.0.2.10,IP:2001:db8::10' || exit 1
 
-# Suitable on its own for a pre-start resolver:
+# The manager calls this at install time only -- see the mode table above.
 wazuh_manager_certificates_ensure || exit 1
 ```
 
 `wazuh_manager_certificates_ensure` finishes by running the whole of
 `wazuh_manager_certificates_validate`, so a successful `ensure` already means a full validation
 passed and calling both in sequence repeats roughly thirty-five `openssl` invocations for no added
-coverage — about half a second on every service start. Call `validate` on its own when you want to
-check without creating anything (a health check, a diagnostic); do not call it after `ensure`.
+coverage. Call `validate` on its own when you want to check without creating anything (a health
+check, a diagnostic); do not call it after `ensure`. The manager calls neither at service start.
 
 At package install time, the caller must handle failure without aborting the
 package transaction. The libraries return nonzero but do not decide that policy.
@@ -94,7 +122,8 @@ Use an explicit `if` when sourcing from scripts with `set -e`:
 if wazuh_manager_certificates_ensure; then
     :
 else
-    : # Leave resolution to pre-start; do not start or enable services here.
+    : # Report it and carry on; do not abort the transaction, and do not start or enable services
+      # here. The manager has no certificates, and says so at start.
 fi
 ```
 

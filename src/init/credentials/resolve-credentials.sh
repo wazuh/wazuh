@@ -15,18 +15,26 @@
 # This file adds only what is specific to the manager: which keys it owns, which it consumes, and
 # where each resolved value is stored.
 #
-# The same script runs at two moments, and the difference between them is the whole design:
+# The same script runs at three moments, and the difference between them is the whole design:
 #
-#   --install    From postinst / %post. Creates what it can, and has no opinion about
-#                whether the manager can run. Never fails: a maintainer script that aborts
-#                leaves the package half-configured, breaks `apt install -f` and fails image
-#                builds. Exits 0 whatever it could not resolve.
+#   --install    From a FRESH postinst / %post / install.sh -- never from an upgrade. Creates what
+#                it can, and has no opinion about whether the manager can run. Never fails: a
+#                maintainer script that aborts leaves the package half-configured, breaks
+#                `apt install -f` and fails image builds. Exits 0 whatever it could not resolve.
+#                This is the only moment that issues TLS certificates (see below).
+#
+#   --upgrade    From postinst / %post / install.sh when a previous version was already installed.
+#                Identical to --install for the passwords and the keystore -- every one of those is
+#                a step-0 no-op once resolved, so the only values it can fill in are the ones this
+#                host never had -- but it does NOT touch the certificates. An operator who replaced
+#                the shipped pair with their own PKI must not find it re-examined, re-anchored or
+#                reissued by a package upgrade.
 #
 #   --prestart   From wazuh-manager-control start, which is what the systemd unit's ExecStart
 #                runs -- so it covers the systemd and the manual start alike. Runs the same ladder
 #                again, not merely a check, so a manager installed before the indexer picks up what
 #                became available since and configures itself. Exits non-zero naming every key it
-#                could not resolve.
+#                could not resolve. Like --upgrade, it does not touch the certificates.
 #
 #   --clear      Removes every credential this manager owns or stores, so the next --install or
 #                --prestart resolves from nothing. Nothing in the product calls it: it exists for
@@ -43,6 +51,28 @@
 # by the time it is started the indexer has published its key, and it resolves. Checking at
 # install would have declared a problem that no longer exists.
 #
+# Certificates are the one credential that does NOT work that way, which is why they are issued at
+# install and never looked at again:
+#
+#   * Their resolution is not a lookup, it is a signature. Every run that re-examines them has to
+#     re-derive the trust chain, which means the shared CA directory has to still be there, still
+#     hold the anchor this manager's material was issued from, and still match it byte for byte.
+#     A deployment that brings its own PKI stages a pair and nothing else -- it has no reason to
+#     keep a copy of its root CA on every manager forever, and no reason to accept that a manager
+#     refuses to boot because that copy drifted or was tidied away.
+#
+#   * They are the credential an operator legitimately replaces out of band. A password lives in
+#     one place this script owns; a certificate is rotated by whatever issues the rest of the
+#     estate's certificates. Re-running the ladder over someone else's material can only produce
+#     false verdicts about it.
+#
+# So /etc/wazuh/ca is a bootstrap handoff, not a standing dependency: it exists so a manager that
+# was given nothing can still come up, and once the pair is in etc/certs nothing consults it again.
+# What certificates the daemons will actually accept is decided by the daemons -- the configuration
+# validator checks the files exist, remoted probes them with access(R_OK) after dropping privileges
+# (w_remoted_check_tls_files(), src/remoted/src/secure.c), and the TLS handshake decides the rest.
+# Those checks run against the files as they are at start, which is the only state that matters.
+#
 # The step never opens a network connection. It validates presence and format only -- making a
 # service's start depend on reaching its peer would break boot ordering and cluster restarts.
 # A credential that is present but wrong still fails as a 401 at runtime, exactly as today.
@@ -56,6 +86,7 @@ DIR=""
 while [ -n "${1-}" ]; do
     case "${1-}" in
         --install)  MODE="install" ; shift ;;
+        --upgrade)  MODE="upgrade" ; shift ;;
         --prestart) MODE="prestart"; shift ;;
         --clear)    MODE="clear"   ; shift ;;
         -H)
@@ -67,7 +98,7 @@ while [ -n "${1-}" ]; do
             shift 2
             ;;
         -h|--help)
-            echo "Usage: $0 [--install|--prestart|--clear] [-H <home>]"
+            echo "Usage: $0 [--install|--upgrade|--prestart|--clear] [-H <home>]"
             exit 0
             ;;
         *)
@@ -353,8 +384,10 @@ resolve_certificates() {
     # invocations a second time and adds 0.5s to every single service start for no coverage --
     # verified by breaking a key's mode and swapping in a foreign key, both of which ensure() alone
     # rejects.
+    # Not mark_unresolved(): that list is the set of keys the SERVICE will refuse to start without,
+    # and only --prestart reports it. Certificates are resolved at install and nowhere else, so the
+    # caller reports this failure at the moment it happens instead.
     if ! wazuh_manager_certificates_ensure; then
-        mark_unresolved "certificates"
         return 1
     fi
 
@@ -446,11 +479,24 @@ fi
 
 resolve_api_passwords
 resolve_indexer_password
-resolve_certificates
+
+# Certificates are issued once, on a fresh install, and are not part of the ladder at any other
+# moment -- see the header. An upgrade that re-derived the chain would have to find the shared CA
+# directory unchanged, which is exactly the standing dependency this design refuses to create.
+if [ "${MODE}" = "install" ]; then
+    # This is the only chance to issue them, so say so plainly rather than exiting 0 in silence and
+    # letting the operator meet it later as "(1244) file not found" from the configuration
+    # validator. The helper has already printed which file or which rule was at fault.
+    if ! resolve_certificates; then
+        err "the manager has no TLS certificates and this install could not issue them"
+        err "        provision the pair into ${DIR}/etc/certs before starting the service"
+        err "        (e.g. with wazuh-certs-tool); the service will not start without it"
+    fi
+fi
 
 # The installer has no opinion about whether the component can run: no warning, no failure, no
 # special state. Nothing checks credentials until something needs them.
-if [ "${MODE}" = "install" ]; then
+if [ "${MODE}" = "install" ] || [ "${MODE}" = "upgrade" ]; then
     exit 0
 fi
 
@@ -473,11 +519,6 @@ for _key in ${UNRESOLVED}; do
         WAZUH_INDEXER_MANAGER_PASSWORD)
             err "MISSING WAZUH_INDEXER_MANAGER_PASSWORD"
             err "        set it in ${CREDENTIALS_FILE}, or install wazuh-indexer on this host first"
-            ;;
-        certificates)
-            err "MISSING the manager's TLS certificates in ${DIR}/etc/certs"
-            err "        the diagnostics above name the file at fault; a CA directory holding only a"
-            err "        trust anchor cannot sign, so place an issued pair there"
             ;;
         rbac.db)
             err "MISSING rbac.db: the Server API database could not be created"

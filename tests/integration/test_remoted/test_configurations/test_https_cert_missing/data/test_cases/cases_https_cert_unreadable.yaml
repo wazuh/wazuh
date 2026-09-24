@@ -1,5 +1,5 @@
 - name: Listener key unreadable by the service user
-  description: With etc/certs/remoted-key.pem root-owned (0600) the credential resolver refuses to start the service, naming the key
+  description: With etc/certs/remoted-key.pem present but root-owned (0600), the validator passes and remoted refuses to start with its preflight error naming the key
   configuration_parameters:
     CERTIFICATE: 'etc/certs/remoted.pem'
     KEY: 'etc/certs/remoted-key.pem'
@@ -7,9 +7,8 @@
     certificate: 'etc/certs/remoted.pem'
     key: 'etc/certs/remoted-key.pem'
     mutation: unreadable_key
-    # The listener pair belongs to the service user, because remoted and authd open it after dropping
-    # privileges. The credential resolver validates that ownership before the configuration validator
-    # and before any daemon, so a root-owned key is refused there and remoted never reaches its own
-    # preflight (w_remoted_check_tls_files() in src/remoted/src/secure.c). The manager does not start,
-    # which is the property this case exists to prove; the resolver names the offending file.
-    expected_error: ".*unexpected owner for .*remoted-key\\.pem.*"
+    # Neither of the two layers that run as root can see an ownership problem: the credential
+    # resolver does not look at certificates outside installation, and the configuration validator
+    # only checks the file exists. remoted probes the pair after dropping privileges
+    # (w_remoted_check_tls_files() in src/remoted/src/secure.c) and exits with this line.
+    expected_error: ".*Cannot start the HTTPS agent listener: the TLS private key '.*remoted-key\\.pem' is missing or unreadable by the service user.*"

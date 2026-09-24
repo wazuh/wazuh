@@ -248,16 +248,17 @@ testconfig()
 
     # Credentials FIRST, before the configuration validator runs, and while we are still root.
     #
-    # The order is load-bearing, not a preference. checkSemantics() verifies that the files named by
-    # remote.https.certificate/key and auth.ssl_manager_cert/key exist, and this resolver is what
-    # creates them. Validating first would therefore refuse to start with "(1244) file not found:
-    # .../remoted.pem" on any host whose certificates have not been issued yet -- every from-source
-    # install, since install.sh deliberately does not resolve credentials at build time, and any
-    # package install whose postinst could not complete the certificate half. The resolver would
-    # never get the chance to issue them, or to explain why it could not.
+    # --prestart does NOT touch the certificates: those are issued once, at installation, and an
+    # operator who replaced them with their own PKI must not have them re-examined at every start
+    # (issuing one is a signature, not a lookup, so re-deriving the chain would make the shared CA
+    # directory a standing dependency of the manager). Missing or unreadable certificates are
+    # caught by checkSemantics() just below and by remoted's own access(R_OK) preflight after it
+    # drops privileges; the resolver only answers for the passwords and the keystore.
     #
-    # The resolver reads no configuration of its own, so it has nothing to gain from running after
-    # the validator.
+    # The order is still deliberate. A host missing both a certificate and the indexer credential
+    # has two problems, and the credential is the one the operator has to go and fetch from another
+    # component -- naming it first is more useful than a JSON pointer at a file. The resolver reads
+    # no configuration of its own, so it has nothing to gain from running after the validator.
     #
     # Unresolved credentials fail here rather than at the daemon's own -t: a missing indexer
     # password is not a configuration error and has no JSON pointer to report, and the resolver has
