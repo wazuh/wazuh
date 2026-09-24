@@ -56,7 +56,7 @@ wired up in this overlay.
 |---|---|---|
 | `WAZUH_MANAGER_SOURCE` | `manifest` | Worker manager artifact source. |
 | `WAZUH_ARCH` | autodetected | Package architecture. |
-| `WAZUH_CLUSTER_KEY` | generated | Shared cluster key (persisted to `.env`). |
+| `WAZUH_CLUSTER_KEY` | generated | Shared cluster key, kept in `cluster/.env`. An exported value replaces the stored one; `init.sh` and `setup-master.sh` resolve it the same way. |
 | `INDEXER_USER` / `INDEXER_PASSWORD` | `admin` / `admin` | Indexer credentials stored in the worker keystore. |
 
 ## Verifying

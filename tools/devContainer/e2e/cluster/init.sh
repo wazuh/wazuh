@@ -77,15 +77,23 @@ function from_source() {
   printf 'WAZUH_UID=%s\nWAZUH_GID=%s\n' "$(id -u wazuh-manager)" "$(id -g wazuh-manager)" > "${PKG_DIR}/wazuh-manager.ids"
 }
 
-function ensure_cluster_key() {
-  local env_file="${SCRIPT_DIR}/.env"
-  if [[ -f "$env_file" ]] && grep -q '^WAZUH_CLUSTER_KEY=' "$env_file"; then
+# The cluster key has one source of truth, cluster/.env, which compose reads with --env-file. An exported
+# WAZUH_CLUSTER_KEY replaces the stored key (compose gives the exported variable precedence over the env
+# file, so the master must use it too); otherwise the stored key is reused; otherwise one is generated.
+# cluster/init.sh and setup-master.sh resolve it with this same function.
+function resolve_cluster_key() {  # resolve_cluster_key <env file>  → sets CLUSTER_KEY, persists it
+  local env_file="$1" stored=""
+  [[ -f "$env_file" ]] && stored="$(grep -m1 '^WAZUH_CLUSTER_KEY=' "$env_file" | cut -d= -f2-)" || true
+  if [[ -n "${WAZUH_CLUSTER_KEY:-}" ]]; then CLUSTER_KEY="$WAZUH_CLUSTER_KEY"
+  elif [[ -n "$stored" ]]; then CLUSTER_KEY="$stored"
+  else CLUSTER_KEY="$(openssl rand -hex 16)"; fi
+  if [[ "$CLUSTER_KEY" != "$stored" ]]; then
+    { grep -v '^WAZUH_CLUSTER_KEY=' "$env_file" 2>/dev/null || true; printf 'WAZUH_CLUSTER_KEY=%s\n' "$CLUSTER_KEY"; } > "$env_file.new"
+    mv "$env_file.new" "$env_file"
+    echo "==> Cluster key $([[ -n "$stored" ]] && echo replaced || echo stored) in ${env_file}"
+  else
     echo "==> Cluster key already present in ${env_file}"
-    return 0
   fi
-  need_cmd openssl
-  printf 'WAZUH_CLUSTER_KEY=%s\n' "$(openssl rand -hex 16)" >> "$env_file"
-  echo "==> Generated cluster key in ${env_file}"
 }
 
 case "$SOURCE" in
@@ -95,7 +103,8 @@ case "$SOURCE" in
   *) echo "Invalid WAZUH_MANAGER_SOURCE='${SOURCE}'. Use manifest|local|source." >&2; exit 1 ;;
 esac
 
-ensure_cluster_key
+need_cmd openssl
+resolve_cluster_key "${SCRIPT_DIR}/.env"
 
 echo "==> node/pkg:"
 ls -lh "$PKG_DIR" | tail -n +2
