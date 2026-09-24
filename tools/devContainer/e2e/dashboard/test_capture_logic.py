@@ -67,7 +67,7 @@ LIVE_DISCOVER_URL_V7C = (
 LIVE_VD_URL = (
     "https://localhost/app/vulnerability-detection#/overview/?tab=vuls&tabView=inventory"
     "&_a=(filters:!(),query:(language:kuery,query:'wazuh.agent.id:%22002%22%20and%20"
-    "vulnerability.id:%22CVE-2024-38428%22'))&_g=(filters:!(),refreshInterval:(pause:!t,"
+    "vulnerability.id:%22CVE-2024-38428%22%20and%20package.name:%22wget%22'))&_g=(filters:!(),refreshInterval:(pause:!t,"
     "value:0),time:(from:now-24h,to:now))"
 )
 
@@ -93,6 +93,7 @@ def ctx_of(**kwargs):
         "agent_name_5x": "agent-5x-ubuntu",
         "package_5x": {"name": "wget", "version": "1.21.4-1ubuntu4"},
         "cve_5x": "CVE-2024-38428",
+        "cve_package_5x": "wget",
     }
     ctx.update(kwargs)
     return ctx
@@ -800,6 +801,16 @@ class Placeholders(unittest.TestCase):
         vulns = {"hits": {"hits": [{"_source": {"vulnerability": {"id": "CVE-2024-38428"}}}]}}
         self.assertEqual("CVE-2024-38428", cl.vulnerability_sample(vulns))
         self.assertEqual("", cl.vulnerability_sample({"hits": {"hits": []}}))
+        # one finding per package a CVE affects: pairs, deduplicated in the order they came
+        self.assertEqual([("CVE-2022-22576", "curl"), ("CVE-2022-22576", "libcurl4"),
+                          ("CVE-2022-27774", "curl")], cl.vulnerability_candidates(
+            {"hits": {"hits": [
+                {"_source": {"vulnerability": {"id": "CVE-2022-22576"}, "package": {"name": "curl"}}},
+                {"_source": {"vulnerability.id": "CVE-2022-22576", "package.name": "libcurl4"}},
+                {"_source": {"vulnerability": {"id": "CVE-2022-22576"}, "package": {"name": "curl"}}},
+                {"_source": {"vulnerability": {}, "package": {"name": "curl"}}},
+                {"_source": {"vulnerability": {"id": "CVE-2022-27774"}, "package": {"name": "curl"}}}]}}))
+        self.assertEqual([], cl.vulnerability_candidates({}))
         # flattened keys answer the same, the order the indexer sorted them in is kept, and a
         # document without a package.name is not a candidate
         self.assertEqual([("curl", "8.5.0"), ("wget", "1.21.4")], cl.inventory_candidates(
@@ -849,6 +860,41 @@ class InventorySample(TempRun):
         self.assertEqual("no package with exactly one document for agent 002 among the first "
                          "2 of wazuh-states-inventory-packages*", got)
         self.assertEqual({}, ctx["package_5x"])
+
+
+class VdCveSample(TempRun):
+    """The vd view's CVE must have ONE finding for this agent, like check 4b's package."""
+
+    def sample_with(self, findings, counts):
+        args = self.args_for()
+        rep = capture.Reporter([])
+        hits = [{"_source": {"vulnerability": {"id": c}, "package": {"name": p}}} for c, p in findings]
+        original_search, original_count = capture.indexer_search, capture.indexer_count
+        capture.indexer_search = lambda a, index, body: {"hits": {"hits": hits}}
+        capture.indexer_count = lambda a, index, query: counts[(
+            query["bool"]["filter"][1]["term"]["vulnerability.id"],
+            query["bool"]["filter"][2]["term"]["package.name"])]
+        self.addCleanup(setattr, capture, "indexer_search", original_search)
+        self.addCleanup(setattr, capture, "indexer_count", original_count)
+        with contextlib.redirect_stdout(io.StringIO()) as buffer:
+            cve = capture.vd_sample_cve(args, ctx_of(), rep)
+        return cve, buffer.getvalue()
+
+    def test_a_cve_of_two_packages_is_sampled_with_its_package(self):
+        # every CVE of the live agent of 2026-09-24 came from curl: no id alone was unique
+        cve, _out = self.sample_with([("CVE-2022-22576", "curl"), ("CVE-2022-22576", "libcurl4")],
+                                     {("CVE-2022-22576", "curl"): 1, ("CVE-2022-22576", "libcurl4"): 1})
+        self.assertEqual(("CVE-2022-22576", "curl"), cve)
+
+    def test_a_pair_with_two_findings_is_skipped_for_the_next(self):
+        cve, out = self.sample_with([("CVE-2022-22576", "curl"), ("CVE-2022-27774", "curl")],
+                                    {("CVE-2022-22576", "curl"): 2, ("CVE-2022-27774", "curl"): 1})
+        self.assertEqual(("CVE-2022-27774", "curl"), cve)
+        self.assertIn("# vd cve sample: CVE-2022-22576 in curl has 2 findings for agent 002, next", out)
+
+    def test_no_unique_pair_is_empty_not_a_guess(self):
+        cve, _out = self.sample_with([("CVE-2022-22576", "curl")], {("CVE-2022-22576", "curl"): 2})
+        self.assertEqual(("", ""), cve)
 
 
 class Blocking(unittest.TestCase):
@@ -1621,9 +1667,9 @@ class ViewIntegration(TempRun):
         """v7: the vd view asserts `rows_eq: 1` like the other filtered views. Without it a
         grid holding the right finding AND somebody else's — the filter ignored, or the
         previous result still on screen — passed with a counter that read 1."""
-        cells = self.cells([("wazuh.agent.name", "agent-5x-ubuntu"),
+        cells = self.cells([("wazuh.agent.name", "agent-5x-ubuntu"), ("package.name", "wget"),
                             ("vulnerability.id", "CVE-2024-38428")], top=100)
-        cells += self.cells([("wazuh.agent.name", "agent-4x-ubuntu"),
+        cells += self.cells([("wazuh.agent.name", "agent-4x-ubuntu"), ("package.name", "wget"),
                              ("vulnerability.id", "CVE-2019-9999")], top=132)
         page = FakePage(
             elements={(".euiDataGrid",): ["grid"],
@@ -1647,7 +1693,7 @@ class ViewIntegration(TempRun):
         self.assertEqual(1, results[0]["matched"])
         self.assertEqual(2, results[1]["value"])
         # with the foreign row gone it is the view that was asked for
-        page.tables[".euiDataGrid"]["cells"] = cells[:2]
+        page.tables[".euiDataGrid"]["cells"] = cells[:3]  # the first row's three cells
         status, reason = capture.run_view(FakeSession(page), self.args_for(), self.ctx(), "vd",
                                           views_json()["vd"], 9)
         self.assertEqual("PASS", status, reason)

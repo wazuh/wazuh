@@ -15,7 +15,7 @@ The script prints the same parseable grammar as `../wazuh_verify_manager.sh` and
 dashboard/
 ├── capture.py             the CLI: checks, browser session, PNGs, sidecars, captures.md
 ├── capture_logic.py       the decisions (pure functions: no I/O, no network, no Playwright)
-├── test_capture_logic.py  unit tests of those decisions (143 tests, no network, no browser)
+├── test_capture_logic.py  unit tests of those decisions (146 tests, no network, no browser)
 ├── test_capture_dom.py    DOM tests of the extraction scripts (15 tests, a real Chromium on
 │                          HTML fixtures; SKIPped without the venv)
 ├── views.json             per view: route, landing, table, selectors, query, assertions
@@ -113,6 +113,7 @@ per-column match over the rows that were really read.
 | v9 | v10 |
 |---|---|
 | the `agents` view waited for any `tbody tr`, and while the endpoints table loads EUI draws exactly one: the empty-state row (`No items found`, one full-width cell). A slow first load was asserted as an empty table (`FAIL 6. agents (got: 0 rows match …)`) | it waits for a row with a second cell (`td:nth-child(2)`), which only a data row has; `test_the_agents_wait_ends_on_a_data_row_not_on_the_empty_state` pins it and fails with the v9 selector |
+| the `vd` view sampled the first `vulnerability.id` of the agent and asserted exactly one row for it; on the first run with findings every CVE was one for curl and one for libcurl4 (`FAIL 9. vd (got: 2 rows match …)`) | it samples the first `vulnerability.id` + `package.name` pair with exactly one finding (like check 4b's package), filters the view by both and asserts `package.name` in the row too; `VdCveSample` pins the walk |
 
 ## Prerequisites
 
@@ -270,7 +271,7 @@ every other check on its real source and yields exactly `FAIL 9. vd (got: probe 
 | 6 | `agents` view | one row **per active agent** reading that `name` and `status: active` (exactly one row each), and `rows_eq = {{agent_count}}`: the table lists this run's active agents and nothing else |
 | 7 | `discover` view | the nonce query is in the URL state, the counter reads exactly **1**, the table has exactly **1** row and that row reads `user.name = <nonce>`, `wazuh.agent.name = <5.x agent>`, `wazuh.protocol.location = /var/log/dpkg.log` |
 | 8 | `inventory` view | the view filtered by `wazuh.agent.id:"<5x>" and package.name:"<sampled>"` lands with that filter in `_a`, the counter reads **1**, there is exactly **1** row and it reads the 5.x agent's name, that package **and that version** |
-| 9 | `vd` view | the feed verdict (below); then one `vulnerability.id` of the 5.x agent is sampled from `wazuh-states-vulnerabilities*` and the view, filtered by `wazuh.agent.id:"<5x>" and vulnerability.id:"<CVE>"`, must show **exactly one** row with that agent and that CVE (`rows_eq: 1`), with the counter reading 1 |
+| 9 | `vd` view | the feed verdict (below); then one finding of the 5.x agent is sampled from `wazuh-states-vulnerabilities*`: the first `vulnerability.id` + `package.name` pair (sorted by id) whose `_count` for this agent is **exactly 1** — a CVE alone is a finding of every package built from the vulnerable source (curl and libcurl4), so it is not unique. The view, filtered by `wazuh.agent.id:"<5x>" and vulnerability.id:"<CVE>" and package.name:"<package>"`, must show **exactly one** row with that agent, package and CVE (`rows_eq: 1`), with the counter reading 1; no unique pair among the first 25 ⇒ FAIL |
 | 10 | `manifest` | only when the evidence index could not be published: writing `captures.md` raised (`FAIL 10. manifest (got: OSError)`), its `--out` never came to exist (`no out dir: …`), the directory could not be listed for the 'Every file' table (`listing … failed: PermissionError`) or one of the artifacts could not be read, hashed or measured (`unreadable: 08-inventory.json (PermissionError)`, every offender named in the same reason). Always **before** the summary |
 
 A check that was not asked for is reported as `SKIP n. <name> (not requested)`. A failure in 1, 2 or
@@ -320,7 +321,7 @@ that agent alone.
 
 One entry per view. The placeholders resolved per run are `{{nonce}}`, `{{agent_names}}`,
 `{{agent_count}}`, `{{agent_id_5x}}`, `{{agent_name_5x}}` (from `global.db`, never a hardcoded name),
-`{{package_name}}` / `{{package_version}}` (check 4b) and `{{cve_5x}}` (check 9). **A placeholder
+`{{package_name}}` / `{{package_version}}` (check 4b) and `{{cve_5x}}` / `{{cve_package_5x}}` (check 9). **A placeholder
 that resolves to nothing is a FAIL naming it** (`unresolved placeholder {{agent_id_5x}}`), never an
 empty filter:
 
@@ -444,7 +445,7 @@ Under `--out`, which by default is a **fresh directory per run**,
   `landing_requested` (rendered), `routes_tried` (one entry per candidate: `app`, `route`, `url`,
   `url_ok`, `missing`), `final_url`, `ready_selector`, `table`, `assertions` (each with its value,
   its verdict, the number of rows read and the scope it was read in), `agent_ids`, `agent_id_5x`,
-  `agent_name_5x`, `package_5x`, `cve_5x`, `counts_by_agent`, `index`, `category`, `nonce`,
+  `agent_name_5x`, `package_5x`, `cve_5x`, `cve_package_5x`, `counts_by_agent`, `index`, `category`, `nonce`,
   `api_request_calls` (`total` and every `POST /api/request` with `status >= 400` seen during the
   session — on the FAIL path too, which is the one worth reading). Each `row` assertion also
   carries `matched`, its `frame_note`
@@ -497,10 +498,9 @@ Under `--out`, which by default is a **fresh directory per run**,
   - `scope_selector` of `discover` is `.dscCanvas`, confirmed live (`probes/probe-canvas.py`: it holds both
     `table[data-test-subj=docTable]` and `discoverQueryHits`, one table). If a dashboard release changes it
     the view FAILs with `scope missing: .dscCanvas`.
-  - the `vd` view's columns are declared as `wazuh.agent.name` and `vulnerability.id`: **the real
-    column names of the VD data grid were never measured** (the live runs failed before opening the
-    view, with 0 findings). Expect the first VD run with findings to correct them; the failure will
-    read `0 rows match {…}` and the sidecar lists the columns that were read.
+  - the `vd` view's columns were measured by the first run with findings (2026-09-24): the VD
+    inventory grid shows `wazuh.agent.name`, `package.name`, `package.version`,
+    `vulnerability.severity` and `vulnerability.id`, and the view asserts the first, second and last.
   - `doctable` header names are taken from `[data-test-subj^="docTableHeader-"]` when the header
     carries one, else from the first word of the header's text.
 - **`views.json` was corrected by two live runs (2026-09-20, dashboard `5.0.0-latest`)**; a dashboard

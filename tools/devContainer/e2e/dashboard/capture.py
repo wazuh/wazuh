@@ -104,7 +104,7 @@ from capture_logic import (
     vd_verdict,
     view_block,
     view_verdict,
-    vulnerability_sample,
+    vulnerability_candidates,
 )
 
 DASHBOARD_PACKAGE = "5.0.0-latest"
@@ -493,6 +493,7 @@ def placeholder_values(ctx):
         "package_name": package.get("name"),
         "package_version": package.get("version"),
         "cve_5x": ctx.get("cve_5x"),
+        "cve_package_5x": ctx.get("cve_package_5x"),
     }
 
 
@@ -1485,6 +1486,7 @@ def write_sidecar(args, ctx, view, number, cfg, candidate, final_url, results, t
         "agent_name_5x": ctx.get("agent_name_5x"),
         "package_5x": ctx.get("package_5x"),
         "cve_5x": ctx.get("cve_5x"),
+        "cve_package_5x": ctx.get("cve_package_5x"),
         "counts_by_agent": ctx.get("counts_by_agent", {}).get(view, {}),
         "index": ctx.get("index"),
         "category": ctx.get("category"),
@@ -1535,7 +1537,8 @@ def write_manifest(args, ctx, captured):
     lines.append("| package sampled | `{0}` `{1}` |".format(
         (ctx.get("package_5x") or {}).get("name") or "(none)",
         (ctx.get("package_5x") or {}).get("version") or ""))
-    lines.append("| cve sampled | `{0}` |".format(ctx.get("cve_5x") or "(none)"))
+    lines.append("| cve sampled | `{0}` |".format(
+        " in ".join(v for v in (ctx.get("cve_5x"), ctx.get("cve_package_5x")) if v) or "(none)"))
     lines.append("| events index | {0} |".format(ctx.get("index") or "(not resolved)"))
     lines.append("")
     lines.append("| vista | fichero | sha256 | qué prueba | assertions |")
@@ -1642,11 +1645,35 @@ def vd_findings(args, ctx):
     return counts
 
 
-def vd_sample_cve(args, ctx):
-    """One vulnerability.id of THIS run's 5.x agent, so the view can be filtered by it."""
-    body = {"query": {"term": {AGENT_ID_FIELD: ctx.get("agent_id_5x")}}, "size": 1,
+def cve_count(args, agent_5x, cve, package):
+    """How many findings this agent has for that vulnerability.id in that package."""
+    query = {"bool": {"filter": [{"term": {AGENT_ID_FIELD: agent_5x}},
+                                 {"term": {"vulnerability.id": cve}},
+                                 {"term": {"package.name": package}}]}}
+    return indexer_count(args, VULNERABILITIES_INDEX, query)
+
+
+def vd_sample_cve(args, ctx, rep=None, limit=SAMPLE_CANDIDATES):
+    """The first (vulnerability.id, package.name) with EXACTLY ONE finding of THIS run's 5.x
+    agent, ("", "") if none.
+
+    The view is filtered by both and asserts `rows_eq: 1` / `hits_eq: 1`. The CVE alone is not
+    unique when it is a finding of several packages (CVE-2022-22576: curl and libcurl4), which
+    would fail the view on a truth about the data, as a multi-arch package would in check 4b.
+    """
+    agent_5x = ctx.get("agent_id_5x")
+    body = {"query": {"term": {AGENT_ID_FIELD: agent_5x}}, "size": limit,
             "sort": [{"vulnerability.id": "asc"}]}
-    return vulnerability_sample(indexer_search(args, VULNERABILITIES_INDEX, body))
+    for cve, package in vulnerability_candidates(indexer_search(args, VULNERABILITIES_INDEX, body)):
+        if not package:
+            continue
+        count = cve_count(args, agent_5x, cve, package)
+        if count == 1:
+            return cve, package
+        if rep is not None:
+            rep.note("vd cve sample: {0} in {1} has {2} findings for agent {3}, next".format(
+                cve, package, count, agent_5x))
+    return "", ""
 
 
 def vd_poll(args, rep):
@@ -1960,11 +1987,15 @@ def view_check(session, args, ctx, rep, view, cfg, number, block=None):
         if block:  # the feed is ready, but this run has no browser to prove the view with
             return block[0], "{0} (feed verdict: {1})".format(block[1], reason)
         try:
-            ctx["cve_5x"] = vd_sample_cve(args, ctx)
+            ctx["cve_5x"], ctx["cve_package_5x"] = vd_sample_cve(args, ctx, rep)
         except Exception as exc:
             rep.note("vd cve sample failed: {0}: {1}".format(type(exc).__name__, exc))
-        rep.note("vd cve sample for agent {0}: {1}".format(
-            ctx.get("agent_id_5x"), ctx.get("cve_5x") or "(none)"))
+        rep.note("vd cve sample for agent {0}: {1} {2}".format(
+            ctx.get("agent_id_5x"), ctx.get("cve_5x") or "(none)", ctx.get("cve_package_5x") or ""))
+        if not ctx.get("cve_5x"):
+            return "FAIL", ("no vulnerability.id + package.name with exactly one finding for agent {0} among "
+                            "the first {1} of {2}").format(
+                ctx.get("agent_id_5x"), SAMPLE_CANDIDATES, VULNERABILITIES_INDEX)
 
     return run_view(session, args, ctx, view, cfg, number)
 

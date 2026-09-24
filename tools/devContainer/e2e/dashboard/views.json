@@ -116,7 +116,7 @@
   },
   "vd": {
     "app": "vulnerability-detection",
-    "route": "/app/vulnerability-detection#/overview/?tab=vuls&tabView=inventory&_a=(filters:!(),query:(language:kuery,query:'wazuh.agent.id:%22{{agent_id_5x}}%22%20and%20vulnerability.id:%22{{cve_5x}}%22'))&_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-24h,to:now))",
+    "route": "/app/vulnerability-detection#/overview/?tab=vuls&tabView=inventory&_a=(filters:!(),query:(language:kuery,query:'wazuh.agent.id:%22{{agent_id_5x}}%22%20and%20vulnerability.id:%22{{cve_5x}}%22%20and%20package.name:%22{{cve_package_5x}}%22'))&_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-24h,to:now))",
     "ready_selector": ".euiPage",
     "landing": {
       "path": "/app/vulnerability-detection",
@@ -126,7 +126,7 @@
         "tabView": "inventory"
       },
       "state": {
-        "_a": "query:'wazuh.agent.id:\"{{agent_id_5x}}\" and vulnerability.id:\"{{cve_5x}}\"'"
+        "_a": "query:'wazuh.agent.id:\"{{agent_id_5x}}\" and vulnerability.id:\"{{cve_5x}}\" and package.name:\"{{cve_package_5x}}\"'"
       }
     },
     "alternatives": [],
@@ -142,6 +142,7 @@
       {
         "row": {
           "wazuh.agent.name": "{{agent_name_5x}}",
+          "package.name": "{{cve_package_5x}}",
           "vulnerability.id": "{{cve_5x}}"
         }
       },

@@ -1181,3 +1181,23 @@ def vulnerability_sample(response):
     if source is None:
         return ""
     return str(dig(source, "vulnerability.id") or "")
+
+
+def vulnerability_candidates(response):
+    """The distinct (vulnerability.id, package.name) of a sampled PAGE of findings, in the order
+    the indexer returned them (sorted by id), without the id-less ones.
+
+    The vd view is filtered by both and asserts `rows_eq: 1` and `hits_eq: 1`, so the sample has
+    to be a pair with exactly ONE finding for this agent. The CVE alone is not enough: a CVE is
+    a finding of every package built from the vulnerable source (CVE-2022-22576 is one for curl
+    and one for libcurl4), and on an agent whose CVEs all come from one such source no id is
+    unique. capture.py walks these candidates and keeps the first whose `_count` is 1.
+    """
+    hits = ((response or {}).get("hits") or {}).get("hits") or []
+    out = []
+    for hit in hits:
+        source = (hit or {}).get("_source") or {}
+        pair = (str(dig(source, "vulnerability.id") or ""), str(dig(source, "package.name") or ""))
+        if pair[0] and pair not in out:
+            out.append(pair)
+    return out
