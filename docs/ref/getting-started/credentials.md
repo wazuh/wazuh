@@ -99,7 +99,8 @@ That trap is why the file, not the command line, is the documented way to choose
 Every password, supplied or generated, must be **12 to 64 characters and contain at least one letter
 and one digit** — PCI DSS v4.0 requirement 8.3.6, applied identically by all three components. It is
 also the rule the Server API enforces for `POST`/`PUT /security/users` and
-`rbac_control change-password`, so a value accepted here is never one the API rejects later.
+`rbac_control change-password`, so a value accepted here is never one the API rejects later. The
+manager also refuses a supplied value that contains a control character, such as a tab.
 
 Generated passwords are 32 characters drawn from `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, with a
 lowercase letter, an uppercase letter and a digit guaranteed. Quotes, backslash, backtick, `$`, `!`

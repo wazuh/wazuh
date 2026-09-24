@@ -25,6 +25,9 @@ echo 'MySecretPassword' | wazuh-manager-keystore -f indexer -k password
 
 # Store a value from a file
 wazuh-manager-keystore -f indexer -k password -vp /path/to/secret.txt
+
+# Print a stored value; exits non-zero when the key is not set
+wazuh-manager-keystore -f indexer -k username -g
 ```
 
 | Flag | Description |
@@ -34,6 +37,7 @@ wazuh-manager-keystore -f indexer -k password -vp /path/to/secret.txt
 | `-v <value>` | Value (inline) |
 | `-vp <path>` | Value read from file |
 | (stdin) | Value read from standard input when `-v` and `-vp` are omitted |
+| `-g` | Print the stored value instead of writing one; exits non-zero when the key is not set |
 
 ## `keystore_server`
 
@@ -56,8 +60,7 @@ fetches the Wazuh Indexer credentials the manager API needs from it.
   PUT of an empty value). Responses look like
   `{"status": "ok", "operation": "get", "columnFamily": ..., "key": ..., "value": ...}`. This wire
   format is a live contract with `KeystoreClient` on the Python side and is not expected to change.
-  One quirk worth knowing: a `GET` for an empty/absent value returns the literal string
-  `"wazuh-manager"` rather than an empty value or an error.
+  A `GET` for an empty or absent value returns an empty `value`.
 - **Relationship to `src/shared_modules/keystore/`:** `keystore_server` itself holds no storage or
   crypto logic — every request is translated directly into a call to `Keystore::get()` or
   `Keystore::put()` from the shared library documented above, which does the RocksDB persistence

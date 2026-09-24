@@ -214,6 +214,22 @@ indexer_password_is_stored() {
     "${KEYSTORE}" -f indexer -k password -g >/dev/null 2>&1
 }
 
+# The indexer connector needs both keys. A username the operator already stored is kept, so only
+# an absent one gets the manager's account.
+store_indexer_username() {
+    "${KEYSTORE}" -f indexer -k username -g >/dev/null 2>&1 && return 0
+    printf '%s' "wazuh-manager" | "${KEYSTORE}" -f indexer -k username >/dev/null 2>&1
+}
+
+# wazuh_password_validate() rejects only line breaks. Any other control character would pass it
+# and then break the JSON that seeds rbac.db, so it fails the policy here instead.
+password_is_valid() {
+    case "$1" in
+        *[[:cntrl:]]*) return 1 ;;
+    esac
+    wazuh_password_validate "$1"
+}
+
 # -----------------------------------------------------------------------------------------
 # Owned: the two Server API accounts
 #
@@ -246,7 +262,7 @@ resolve_api_passwords() {
             # An invalid value stops here rather than falling through to generation: replacing
             # what the operator asked for would discard their intent silently and leave the
             # deployment holding a credential nobody else has.
-            if ! wazuh_password_validate "${_rap_value}"; then
+            if ! password_is_valid "${_rap_value}"; then
                 err "${_rap_key} was rejected by the password policy"
                 mark_invalid "${_rap_key}"
                 continue
@@ -272,19 +288,26 @@ resolve_api_passwords() {
     [ -n "${INVALID}" ] && return 1
     [ -n "${API_PASSWORD}" ] && [ -n "${WUI_PASSWORD}" ] || return 1
 
-    # A seeding failure has to be recorded, not merely returned: the caller ignores the return
-    # value, so without this the run would end with nothing marked and the service would be
-    # allowed to start against a database that was never created.
+    # A component publishes every credential it owns, whether it generated the value or was
+    # given one, so a sibling installed later finds it. Publishing comes first: once rbac.db
+    # exists nothing reads these keys again, so a value seeded but never published would be lost.
+    # A failed seed then reuses the published values on the next run.
+    #
+    # Either failure has to be recorded, not merely returned: the caller ignores the return value,
+    # so without this the run would end with nothing marked and the service would be allowed to
+    # start.
+    if ! wazuh_env_set WAZUH_MANAGER_API_PASSWORD "${API_PASSWORD}" ||
+       ! wazuh_env_set WAZUH_MANAGER_WUI_PASSWORD "${WUI_PASSWORD}"; then
+        err "could not publish WAZUH_MANAGER_API_PASSWORD and WAZUH_MANAGER_WUI_PASSWORD"
+        mark_unresolved "rbac.db"
+        return 1
+    fi
+    log "published WAZUH_MANAGER_API_PASSWORD and WAZUH_MANAGER_WUI_PASSWORD"
+
     if ! seed_rbac; then
         mark_unresolved "rbac.db"
         return 1
     fi
-
-    # A component publishes every credential it owns, whether it generated the value or was
-    # given one, so a sibling installed later finds it.
-    wazuh_env_set WAZUH_MANAGER_API_PASSWORD "${API_PASSWORD}" || return 1
-    wazuh_env_set WAZUH_MANAGER_WUI_PASSWORD "${WUI_PASSWORD}" || return 1
-    log "published WAZUH_MANAGER_API_PASSWORD and WAZUH_MANAGER_WUI_PASSWORD"
 
     return 0
 }
@@ -325,6 +348,11 @@ json_escape() {
 
 resolve_indexer_password() {
     if indexer_password_is_stored; then
+        if ! store_indexer_username; then
+            err "could not write the indexer username to the keystore"
+            mark_unresolved WAZUH_INDEXER_MANAGER_PASSWORD
+            return 1
+        fi
         log "the indexer credential is already in the keystore"
         return 0
     fi
@@ -337,7 +365,7 @@ resolve_indexer_password() {
         return 1
     fi
 
-    if ! wazuh_password_validate "${_rip_value}"; then
+    if ! password_is_valid "${_rip_value}"; then
         err "WAZUH_INDEXER_MANAGER_PASSWORD was rejected by the password policy"
         mark_invalid WAZUH_INDEXER_MANAGER_PASSWORD
         return 1
@@ -352,8 +380,8 @@ resolve_indexer_password() {
     # Through stdin, never argv. Storing it in the manager's own keystore is what makes step 0
     # true for every later start, which is why the credentials file can be deleted once every
     # component is installed and running.
-    printf '%s' "wazuh-manager" | "${KEYSTORE}" -f indexer -k username >/dev/null 2>&1
-    if ! printf '%s' "${_rip_value}" | "${KEYSTORE}" -f indexer -k password >/dev/null 2>&1; then
+    if ! store_indexer_username ||
+       ! printf '%s' "${_rip_value}" | "${KEYSTORE}" -f indexer -k password >/dev/null 2>&1; then
         err "could not write the indexer credential to the keystore"
         mark_unresolved WAZUH_INDEXER_MANAGER_PASSWORD
         return 1
@@ -392,6 +420,15 @@ resolve_certificates() {
     fi
 
     log "certificates are in place"
+
+    # A wrong name fails only at the first peer connection, not here, so the DN and SANs each leaf
+    # carries are logged. -text rather than -ext keeps this working on OpenSSL older than 1.1.1.
+    for _rc_leaf in indexer-connector remoted; do
+        _rc_text=$(openssl x509 -in "${DIR}/etc/certs/${_rc_leaf}.pem" -noout -subject -text 2>/dev/null) || continue
+        _rc_dn=$(printf '%s\n' "${_rc_text}" | sed -n 's/^subject= *//p' | head -n 1)
+        _rc_sans=$(printf '%s\n' "${_rc_text}" | sed -n '/X509v3 Subject Alternative Name:/{n;s/^ *//p;}')
+        log "${_rc_leaf}.pem: DN ${_rc_dn}; SANs ${_rc_sans}"
+    done
     return 0
 }
 
@@ -510,7 +547,7 @@ CREDENTIALS_FILE=$(wazuh_env_get_file 2>/dev/null) || CREDENTIALS_FILE="/etc/waz
 # It names every missing key and where to set it, and never prints a value.
 for _key in ${INVALID}; do
     err "INVALID ${_key}: the supplied value does not meet the password policy"
-    err "        (12-64 characters, with at least one letter and one digit)"
+    err "        (12-64 characters, with at least one letter and one digit, and no control characters)"
     err "        correct it in ${CREDENTIALS_FILE} and start the service again"
 done
 
@@ -529,7 +566,5 @@ for _key in ${UNRESOLVED}; do
             ;;
     esac
 done
-
-err "see https://documentation.wazuh.com/current/user-manual/manager/credentials.html"
 
 exit 1

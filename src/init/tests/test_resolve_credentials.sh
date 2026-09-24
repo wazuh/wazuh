@@ -350,6 +350,56 @@ run_resolver "${root}" --install
 check "but still lets the install exit 0" "0" "${RC}"
 cleanup "${root}"
 
+# A file the helper can read but not write (here, no final newline) must not end up with a seeded
+# rbac.db whose passwords were never published: nothing would read them again, and nobody would
+# know them. The start is blocked instead, and fixing the file is enough.
+root="$(make_tree)"
+printf "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'" > "${root}/base/credentials.env"
+chmod 0600 "${root}/base/credentials.env"
+run_resolver "${root}" --install
+check "an install that cannot publish still exits 0" "0" "${RC}"
+check "and seeds nothing it could not publish" "" "$(seeded_password "${root}" wazuh)"
+run_resolver "${root}" --prestart
+check "the start is refused" "1" "${RC}"
+echo >> "${root}/base/credentials.env"
+run_resolver "${root}" --prestart
+check "once the file is fixed the start succeeds" "0" "${RC}"
+check "and what was seeded is what was published" "yes" \
+    "$([ -n "$(seeded_password "${root}" wazuh)" ] && \
+       [ "$(published "${root}" WAZUH_MANAGER_API_PASSWORD)" = "$(seeded_password "${root}" wazuh)" ] && echo yes)"
+cleanup "${root}"
+
+# A control character passes wazuh_password_validate() but cannot go through the seeding JSON, so
+# it has to be reported as the invalid key it is, not as a database that failed to be created.
+root="$(make_tree)"
+write_credentials "${root}" "$(printf 'WAZUH_MANAGER_API_PASSWORD="Tab\tInside123"')"
+run_resolver "${root}" --prestart
+check "a value with a control character is invalid" "yes" \
+    "$(grep -q 'INVALID WAZUH_MANAGER_API_PASSWORD' <<< "$(resolver_output)" && echo yes)"
+check "and nothing is seeded" "" "$(seeded_password "${root}" wazuh)"
+cleanup "${root}"
+
+# --------------------------------------------------------------------------------------------
+# The indexer username
+# --------------------------------------------------------------------------------------------
+
+# An operator who stored another account keeps it: only the password comes from the file.
+root="$(make_tree)"
+printf 'admin' > "${root}/home/queue/keystore/indexer.username"
+write_credentials "${root}" "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'"
+run_resolver "${root}" --install
+check "a username already in the keystore is kept" "admin" \
+    "$(cat "${root}/home/queue/keystore/indexer.username")"
+cleanup "${root}"
+
+# A password stored with no username would leave the indexer connector unable to start.
+root="$(make_tree)"
+printf 'Indexer.Wr0te1' > "${root}/home/queue/keystore/indexer.password"
+run_resolver "${root}" --prestart
+check "a stored password with no username gets the manager's account" "wazuh-manager" \
+    "$(cat "${root}/home/queue/keystore/indexer.username" 2>/dev/null)"
+cleanup "${root}"
+
 # --------------------------------------------------------------------------------------------
 # What the resolver asks the certificate helper for
 #
@@ -367,6 +417,10 @@ for pair in remoted indexer-connector; do
 done
 check "the anchor is installed for the manager to read" "yes" \
     "$([ -f "${root}/home/etc/certs/root-ca.pem" ] && echo yes)"
+for pair in remoted indexer-connector; do
+    check "the ${pair} DN and SANs are logged" "yes" \
+        "$(grep -qE "${pair}\.pem: DN .*CN ?= ?[^;]+; SANs .*DNS:" <<< "$(resolver_output)" && echo yes)"
+done
 check "the connector leaf is a client certificate" "yes" \
     "$(openssl x509 -in "${root}/home/etc/certs/indexer-connector.pem" -noout -ext extendedKeyUsage \
         2>/dev/null | grep -q 'Client Authentication' && echo yes)"

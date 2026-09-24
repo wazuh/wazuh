@@ -480,17 +480,20 @@ if [ $1 = 0 ]; then
       wazuh_env_unset "${CRED_KEY}" > /dev/null 2>&1 || true
     done
 
-    CRED_FILE=$(wazuh_env_get_file 2>/dev/null) || CRED_FILE=""
     CRED_BASE=$(wazuh_base_get_dir 2>/dev/null) || CRED_BASE=""
-    CRED_CA=$(wazuh_ca_get_dir 2>/dev/null) || CRED_CA=""
 
-    # The last component out removes what is left, /etc/wazuh included.
+    # The last component out removes what is left, /etc/wazuh included -- whether or not the
+    # credentials file is still there, since the documentation tells operators to delete it once
+    # every component runs, and the CA private key must not outlive the last component.
     #
     # "Last" is asked of rpm, not inferred from the file's contents. A leftover WAZUH_ key says
     # nothing about whether a sibling is installed -- an operator who wrote one line by hand on a
     # manager-only host would otherwise keep the credentials file and the CA private key on a
     # machine with no Wazuh left on it. Only siblings are queried: this scriptlet runs while
     # wazuh-manager itself is still installed.
+    #
+    # Only the default CA directory is removed, as the DEB does. One relocated through WAZUH_CA_DIR
+    # may hold a CA this package never created, and is left alone.
     CRED_SIBLING_LEFT=no
     for CRED_SIBLING in wazuh-indexer wazuh-dashboard; do
       if rpm -q "${CRED_SIBLING}" > /dev/null 2>&1; then
@@ -498,15 +501,10 @@ if [ $1 = 0 ]; then
       fi
     done
 
-    if [ -n "${CRED_FILE}" ] && [ -f "${CRED_FILE}" ] && [ "${CRED_SIBLING_LEFT}" = no ]; then
-      rm -f "${CRED_FILE}" > /dev/null 2>&1 || true
-      if [ -n "${CRED_CA}" ]; then
-        rm -rf "${CRED_CA}" > /dev/null 2>&1 || true
-      fi
-      if [ -n "${CRED_BASE}" ]; then
-        rm -f "${CRED_BASE}/.credentials.lock" > /dev/null 2>&1 || true
-        rmdir "${CRED_BASE}" > /dev/null 2>&1 || true
-      fi
+    if [ -n "${CRED_BASE}" ] && [ "${CRED_SIBLING_LEFT}" = no ]; then
+      rm -f "${CRED_BASE}/credentials.env" "${CRED_BASE}/.credentials.lock" > /dev/null 2>&1 || true
+      rm -rf "${CRED_BASE}/ca" > /dev/null 2>&1 || true
+      rmdir "${CRED_BASE}" > /dev/null 2>&1 || true
     fi
   fi
 

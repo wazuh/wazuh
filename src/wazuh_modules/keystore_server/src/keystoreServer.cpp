@@ -48,8 +48,8 @@ namespace
      * `DELETE|cf|key` (a DELETE is a PUT of empty) answered with
      * `{"status","operation","columnFamily","key"[,"value"]}` -- is a live contract with the
      * Python framework's KeystoreClient (framework/wazuh/core/indexer/credential_manager.py), so
-     * nothing about it may change here. That includes the oddest corner: a GET whose value is
-     * empty/absent answers the literal "wazuh-manager" -- deliberately preserved, not fixed.
+     * nothing about it may change here, except that a GET whose value is empty or absent answers
+     * an empty value.
      */
     void handleRequest(KeystoreSocketServer* server, const int fd, const char* body, const uint32_t bodySize)
     {
