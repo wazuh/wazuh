@@ -23,8 +23,8 @@ void SysInfoWinTest::TearDown() {};
 
 TEST_F(SysInfoWinTest, test_estimated_size_to_bytes)
 {
-    // A published value of 0. An installer that publishes nothing at all never reaches
-    // this helper: the caller leaves the field unset instead.
+    // A published value of 0. The caller also stores 0 when an installer publishes nothing,
+    // and either way that 0 is reported as null when the document is built.
     EXPECT_EQ(0, PackageWindowsHelper::estimatedSizeToBytes(0));
 
     // The registry publishes KiB; the field is in bytes, as it is for Debian packages.

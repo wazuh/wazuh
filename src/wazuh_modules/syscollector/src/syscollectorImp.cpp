@@ -1064,7 +1064,26 @@ nlohmann::json Syscollector::ecsPackageData(const nlohmann::json& originalData, 
     setJsonField(ret, originalData, "/package/name", "name", createFields);
     setJsonField(ret, originalData, "/package/path", "path", createFields);
     setJsonField(ret, originalData, "/package/priority", "priority", createFields);
-    setJsonField(ret, originalData, "/package/size", "size", createFields);
+
+    // A package never occupies 0 bytes. Collectors store 0 when the size is unknown, because
+    // DBSync cannot hold a NULL for this column without every comparison reporting a false
+    // change, so the sentinel is translated here rather than in the collectors. Same shape as
+    // /host/cpu/speed and the ports /process/pid above.
+    if (createFields || originalData.contains("size"))
+    {
+        const nlohmann::json::json_pointer pointer("/package/size");
+        const auto it {originalData.find("size")};
+
+        if (it != originalData.end() && it->is_number() && it->get<int64_t>() > 0)
+        {
+            ret[pointer] = *it;
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
     setJsonField(ret, originalData, "/package/source", "source", createFields);
     setJsonField(ret, originalData, "/package/type", "type", createFields);
     setJsonField(ret, originalData, "/package/vendor", "vendor", createFields);
