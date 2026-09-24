@@ -89,14 +89,17 @@
 		// otherwise run in parallel and the clone starves fix-dind.sh's dockerd restart
 		// of CPU/IO. fix-dind.sh is taken from the downloaded .devcontainer/ (present from
 		// the start), never from the repository it runs before. The clone goes to
-		// wazuh.partial and becomes wazuh/ only once it completed, submodules included:
-		// git creates .git before it fetches, so an interrupted clone must never be taken
-		// for a checkout, and wazuh/ with a .git is always a finished one, which is kept
-		// (its submodules are updated). The clone runs even if fix-dind.sh fails, but any
-		// failure fails the entry (exit 1), so the devContainer reports it instead of
-		// succeeding. Uses the workspace folder directly; remoteEnv's WAZUH_REPO is not
-		// populated in this lifecycle command.
-		"fix_dind_then_clone": "rc=0; sh ${containerWorkspaceFolder}/.devcontainer/fix-dind.sh || rc=1; REPO=\"${containerWorkspaceFolder}/wazuh\"; if [ ! -e \"$REPO/.git\" ]; then rm -rf \"$REPO.partial\"; if git clone --recursive https://github.com/wazuh/wazuh.git \"$REPO.partial\"; then rm -rf \"$REPO\" && mv \"$REPO.partial\" \"$REPO\" || rc=1; else rc=1; fi; fi; git config --global --add safe.directory \"$REPO\"; if [ -e \"$REPO/.git\" ]; then git -C \"$REPO\" submodule update --init --recursive || rc=1; fi; exit $rc",
+		// wazuh.partial (this entry's own staging dir, wiped before each attempt) and
+		// becomes wazuh/ only once it completed, submodules included: git creates .git
+		// before it fetches, so an interrupted clone must never be taken for a checkout.
+		// wazuh/ is therefore never something this entry deletes: with a .git it is a
+		// finished checkout, which is kept (its submodules are updated); empty, it is
+		// removed with rmdir; with other contents it is left alone and the entry fails.
+		// The clone runs even if fix-dind.sh fails, but any failure fails the entry
+		// (exit 1), so the devContainer reports it instead of succeeding. Uses the
+		// workspace folder directly; remoteEnv's WAZUH_REPO is not populated in this
+		// lifecycle command.
+		"fix_dind_then_clone": "rc=0; sh ${containerWorkspaceFolder}/.devcontainer/fix-dind.sh || rc=1; REPO=\"${containerWorkspaceFolder}/wazuh\"; if [ -e \"$REPO\" ] && [ ! -e \"$REPO/.git\" ] && ! rmdir \"$REPO\" 2>/dev/null; then echo \"$REPO exists, is not a git checkout and is not empty: left untouched; move it away to get the clone\" >&2; rc=1; elif [ ! -e \"$REPO/.git\" ]; then rm -rf \"$REPO.partial\"; if git clone --recursive https://github.com/wazuh/wazuh.git \"$REPO.partial\"; then mv \"$REPO.partial\" \"$REPO\" || rc=1; else rc=1; fi; fi; git config --global --add safe.directory \"$REPO\"; if [ -e \"$REPO/.git\" ]; then git -C \"$REPO\" submodule update --init --recursive || rc=1; fi; exit $rc",
 		// Configure zsh
 	    "zsh_cnf_0": "echo \"setopt APPEND_HISTORY;setopt INC_APPEND_HISTORY\" >> ~/.zshrc",
 		"zsh_cnf_1": "echo \"export HISTFILE=${containerWorkspaceFolder}/.zsh_history\" >> ~/.zshrc",
