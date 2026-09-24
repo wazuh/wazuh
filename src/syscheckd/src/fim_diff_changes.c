@@ -331,6 +331,7 @@ diff_data *initialize_registry_diff_data(const char *key_name, const char *value
         snprintf(buffer, PATH_MAX, "%s/[x32] %s%s", diff->tmp_folder, encoded_key, encoded_value);
     }
     os_strdup(buffer, diff->file_origin);
+    os_strdup(buffer, diff->new_file);
 
     snprintf(buffer, PATH_MAX, "%s/tmp-entry", diff->tmp_folder);
     os_strdup(buffer, diff->uncompress_file);
@@ -407,6 +408,10 @@ char *fim_file_diff(const char *filename, const directory_t *configuration) {
 
     char *diff_changes = NULL;
     int ret;
+    int nodiff;
+#ifndef WIN32
+    char *resolved_origin = NULL;
+#endif
 
     // Generate diff structure
     diff_data *diff = initialize_file_diff_data(filename, configuration);
@@ -446,7 +451,14 @@ char *fim_file_diff(const char *filename, const directory_t *configuration) {
         syscheck.diff_folder_size += backup_file_size;
         if (ret == -2){
             os_strdup("Unable to calculate diff due to 'disk_quota' limit has been reached.", diff_changes);
+        } else if (ret == -3) {
+            fim_diff_delete_compress_folder(diff->compress_folder);
         }
+        goto cleanup;
+    }
+
+    if (w_uncompress_gzfile(diff->compress_tmp_file, diff->new_file) != 0) {
+        syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
     }
 
@@ -457,7 +469,17 @@ char *fim_file_diff(const char *filename, const directory_t *configuration) {
         goto cleanup;
     }
 
-    if (is_file_nodiff(diff->file_origin)) {
+#ifndef WIN32
+    resolved_origin = realpath(diff->file_origin, NULL);
+    nodiff = is_file_nodiff(diff->file_origin) ||
+             (resolved_origin != NULL && is_file_nodiff(resolved_origin));
+
+    os_free(resolved_origin);
+#else
+    nodiff = is_file_nodiff(diff->file_origin);
+#endif
+
+    if (nodiff) {
         os_strdup("Diff truncated due to 'nodiff' configuration detected for this file.", diff_changes);
         syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
@@ -538,6 +560,9 @@ diff_data *initialize_file_diff_data(const char *filename, const directory_t *co
     os_snprintf(buffer, PATH_MAX, "%s/tmp", abs_diff_dir_path);
     os_strdup(buffer, diff->tmp_folder);
 
+    snprintf(buffer, PATH_MAX, "%s/new-entry", diff->tmp_folder);
+    os_strdup(buffer, diff->new_file);
+
     snprintf(buffer, PATH_MAX, "%s/tmp-entry", diff->tmp_folder);
     os_strdup(buffer, diff->uncompress_file);
 
@@ -563,6 +588,7 @@ void free_diff_data(diff_data *diff) {
     os_free(diff->compress_file);
     os_free(diff->tmp_folder);
     os_free(diff->file_origin);
+    os_free(diff->new_file);
     os_free(diff->uncompress_file);
     os_free(diff->compress_tmp_file);
     os_free(diff->diff_file);
@@ -623,7 +649,11 @@ int fim_diff_estimate_compression(float file_size) {
 }
 
 int fim_diff_create_compress_file(const diff_data *diff) {
-    if (w_compress_gzfile(diff->file_origin, diff->compress_tmp_file) != 0) {
+    int ret = w_compress_gzfile(diff->file_origin, diff->compress_tmp_file);
+
+    if (ret == -2) {
+        return -3;
+    } else if (ret != 0) {
         mwarn(FIM_WARN_GENDIFF_SNAPSHOT, diff->file_origin);
         return -1;
     } else if (syscheck.disk_quota_enabled) {
@@ -669,7 +699,7 @@ int fim_diff_compare(const diff_data *diff) {
     }
 
     /* Get md5sum of the new file */
-    if (OS_MD5_File(diff->file_origin, md5sum_new, OS_BINARY) != 0) {
+    if (OS_MD5_File(diff->new_file, md5sum_new, OS_BINARY) != 0) {
         return -1;
     }
 
@@ -692,13 +722,13 @@ char *fim_diff_generate(const diff_data *diff, bool is_file) {
     uncompress_file_filtered = filter(diff->uncompress_file);
 #ifdef WIN32
     if (is_file) {
-        file_origin_filtered = utf8_GetShortPathName(diff->file_origin);
+        file_origin_filtered = utf8_GetShortPathName(diff->new_file);
     }
     if (file_origin_filtered == NULL) {
-        file_origin_filtered = filter(diff->file_origin);
+        file_origin_filtered = filter(diff->new_file);
     }
 #else
-    file_origin_filtered = filter(diff->file_origin);
+    file_origin_filtered = filter(diff->new_file);
 #endif
     diff_file_filtered = filter(diff->diff_file);
 

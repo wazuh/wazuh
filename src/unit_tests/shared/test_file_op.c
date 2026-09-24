@@ -498,37 +498,113 @@ void test_MergeAppendFile_success(void **state) {
 
 // w_compress_gzfile
 
-void test_w_compress_gzfile_wfopen_fail(void **state){
+static char compress_dir[PATH_MAX + 1];
+static char compress_src[PATH_MAX + 1];
+
+static int setup_compress_gzfile(void **state) {
+    int fd;
+
+    test_mode = 0;
+    snprintf(compress_dir, sizeof(compress_dir), "/tmp/wazuh_compress_XXXXXX");
+    assert_non_null(mkdtemp(compress_dir));
+    snprintf(compress_src, sizeof(compress_src), "%s/testfilesrc", compress_dir);
+
+    fd = open(compress_src, O_WRONLY | O_CREAT | O_TRUNC, 0640);
+    assert_int_not_equal(fd, -1);
+    assert_int_equal(write(fd, "teststring", 10), 10);
+    close(fd);
+
+    test_mode = 1;
+    errno = 0;
+    return 0;
+}
+
+static int teardown_compress_gzfile(void **state) {
+    char path[PATH_MAX + 1];
+
+    test_mode = 0;
+    snprintf(path, sizeof(path), "%s/link", compress_dir);
+    remove(path);
+    snprintf(path, sizeof(path), "%s/fifo", compress_dir);
+    remove(path);
+    snprintf(path, sizeof(path), "%s/subdir", compress_dir);
+    remove(path);
+    remove(compress_src);
+    remove(compress_dir);
+    test_mode = 1;
+    errno = 0;
+    return 0;
+}
+
+void test_w_compress_gzfile_open_fail(void **state){
 
     int ret;
-    char *srcfile = "testfilesrc";
-    char *dstfile = "testfiledst.gz";
+    char srcfile[PATH_MAX + 1];
 
-    expect_string(__wrap_fopen, path, srcfile);
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, NULL);
+    snprintf(srcfile, sizeof(srcfile), "%s/missing", compress_dir);
 
-    expect_string(__wrap__merror, formatted_msg, "in w_compress_gzfile(): fopen error testfilesrc (0):'Success'");
+    expect_any(__wrap__merror, formatted_msg);
 
-    ret = w_compress_gzfile(srcfile, dstfile);
+    ret = w_compress_gzfile(srcfile, "testfiledst.gz");
     assert_int_equal(ret, -1);
+}
+
+void test_w_compress_gzfile_symlink_rejected(void **state){
+
+    int ret;
+    char srcfile[PATH_MAX + 1];
+
+    snprintf(srcfile, sizeof(srcfile), "%s/link", compress_dir);
+    assert_int_equal(symlink(compress_src, srcfile), 0);
+
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    ret = w_compress_gzfile(srcfile, "testfiledst.gz");
+    assert_int_equal(ret, -2);
+    assert_int_equal(errno, ELOOP);
+}
+
+void test_w_compress_gzfile_fifo_rejected(void **state){
+
+    int ret;
+    char srcfile[PATH_MAX + 1];
+
+    snprintf(srcfile, sizeof(srcfile), "%s/fifo", compress_dir);
+    assert_int_equal(mkfifo(srcfile, 0640), 0);
+
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    ret = w_compress_gzfile(srcfile, "testfiledst.gz");
+    assert_int_equal(ret, -2);
+    assert_int_equal(errno, EINVAL);
+}
+
+void test_w_compress_gzfile_directory_rejected(void **state){
+
+    int ret;
+    char srcfile[PATH_MAX + 1];
+
+    snprintf(srcfile, sizeof(srcfile), "%s/subdir", compress_dir);
+    assert_int_equal(mkdir(srcfile, 0750), 0);
+
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    ret = w_compress_gzfile(srcfile, "testfiledst.gz");
+    assert_int_equal(ret, -2);
+    assert_int_equal(errno, EINVAL);
 }
 
 void test_w_compress_gzfile_gzopen_fail(void **state){
 
     int ret;
-    char *srcfile = "testfilesrc";
+    char *srcfile = compress_src;
     char *dstfile = "testfiledst.gz";
-
-    expect_string(__wrap_fopen, path, srcfile);
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
 
     expect_string(__wrap_gzopen, path, dstfile);
     expect_string(__wrap_gzopen, mode, "w");
     will_return(__wrap_gzopen, NULL);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_any(__wrap_fclose, _File);
     will_return(__wrap_fclose, 1);
 
     expect_string(__wrap__merror, formatted_msg, "in w_compress_gzfile(): gzopen error testfiledst.gz (0):'Success'");
@@ -540,12 +616,8 @@ void test_w_compress_gzfile_gzopen_fail(void **state){
 void test_w_compress_gzfile_write_error(void **state){
 
     int ret;
-    char *srcfile = "testfilesrc";
+    char *srcfile = compress_src;
     char *dstfile = "testfiledst.gz";
-
-    expect_string(__wrap_fopen, path, srcfile);
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
 
     expect_string(__wrap_gzopen, path, dstfile);
     expect_string(__wrap_gzopen, mode, "w");
@@ -564,7 +636,7 @@ void test_w_compress_gzfile_write_error(void **state){
     will_return(__wrap_gzerror, "Test error");
     expect_string(__wrap__merror, formatted_msg, "in w_compress_gzfile(): Compression error: Test error");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_any(__wrap_fclose, _File);
     will_return(__wrap_fclose, 1);
     expect_value(__wrap_gzclose, file, 2);
     will_return(__wrap_gzclose, 1);
@@ -576,12 +648,8 @@ void test_w_compress_gzfile_write_error(void **state){
 void test_w_compress_gzfile_success(void **state){
 
     int ret;
-    char *srcfile = "testfilesrc";
+    char *srcfile = compress_src;
     char *dstfile = "testfiledst.gz";
-
-    expect_string(__wrap_fopen, path, srcfile);
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
 
     expect_string(__wrap_gzopen, path, dstfile);
     expect_string(__wrap_gzopen, mode, "w");
@@ -598,7 +666,7 @@ void test_w_compress_gzfile_success(void **state){
     will_return(__wrap_fread, "");
     will_return(__wrap_fread, 0);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_any(__wrap_fclose, _File);
     will_return(__wrap_fclose, 1);
     expect_value(__wrap_gzclose, file, 2);
     will_return(__wrap_gzclose, 1);
@@ -1992,10 +2060,13 @@ int main(void) {
         cmocka_unit_test(test_MergeAppendFile_success),
 #endif
         // w_compress_gzfile
-        cmocka_unit_test(test_w_compress_gzfile_wfopen_fail),
-        cmocka_unit_test(test_w_compress_gzfile_gzopen_fail),
-        cmocka_unit_test(test_w_compress_gzfile_write_error),
-        cmocka_unit_test(test_w_compress_gzfile_success),
+        cmocka_unit_test_setup_teardown(test_w_compress_gzfile_open_fail, setup_compress_gzfile, teardown_compress_gzfile),
+        cmocka_unit_test_setup_teardown(test_w_compress_gzfile_symlink_rejected, setup_compress_gzfile, teardown_compress_gzfile),
+        cmocka_unit_test_setup_teardown(test_w_compress_gzfile_fifo_rejected, setup_compress_gzfile, teardown_compress_gzfile),
+        cmocka_unit_test_setup_teardown(test_w_compress_gzfile_directory_rejected, setup_compress_gzfile, teardown_compress_gzfile),
+        cmocka_unit_test_setup_teardown(test_w_compress_gzfile_gzopen_fail, setup_compress_gzfile, teardown_compress_gzfile),
+        cmocka_unit_test_setup_teardown(test_w_compress_gzfile_write_error, setup_compress_gzfile, teardown_compress_gzfile),
+        cmocka_unit_test_setup_teardown(test_w_compress_gzfile_success, setup_compress_gzfile, teardown_compress_gzfile),
         // w_uncompress_gzfile
         cmocka_unit_test(test_w_uncompress_gzfile_lstat_fail),
         cmocka_unit_test(test_w_uncompress_gzfile_fopen_fail),

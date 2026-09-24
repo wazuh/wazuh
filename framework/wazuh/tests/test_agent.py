@@ -1306,6 +1306,21 @@ def test_agent_get_agent_config(mock_exists, socket_mock, send_mock, wazuh_socke
     assert result.dikt['data'] == {"test": "conf"}, 'Result message is not as expected.'
 
 
+@patch('wazuh.core.wazuh_socket.WazuhSocket')
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+@patch('os.path.exists')
+def test_agent_get_agent_config_masks_sensitive_fields(mock_exists, socket_mock, send_mock, wazuh_socket_mock):
+    """Test `get_agent_config` masks sensitive values for a caller without update-config permissions."""
+    wazuh_socket_mock.return_value.receive.return_value = \
+        b'ok {"node_name": "node01", "key": "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH", "authd.pass": "P4ssW0rd!"}'
+
+    result = get_agent_config(agent_list=['001'], component='com', config='cluster')
+    assert result.dikt['data']['key'] == '*****'
+    assert result.dikt['data']['authd.pass'] == '*****'
+    assert result.dikt['data']['node_name'] == 'node01'
+
+
 @pytest.mark.parametrize('agent_list', [
     ['005']
 ])

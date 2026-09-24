@@ -1692,8 +1692,8 @@ checks:
       - soc_2: ["CC4.1", "CC5.2"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled chrony.service" -> r:^enabled$'
-      - 'c:"systemctl is-active chrony.service" -> r:^active$'
+      - "c:systemctl is-enabled chrony.service -> r:^enabled$"
+      - "c:systemctl is-active chrony.service -> r:^active$"
 
   # 2.4.1.1 Ensure cron daemon is enabled and active. (Automated)
   - id: 28625
@@ -4623,7 +4623,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - "c:find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec stat -Lc \"%n %a\" {} + -> r:\\w+ -> !r:000|040|200|400|600|240|440|640"
+      - "c:find /etc/audit/ -type f \\( -name \"*.conf\" -o -name \"*.rules\" \\) -exec stat -Lc \"%n %a\" {} + -> r:\\w+ -> !r:000|040|200|400|600|240|440|640"
 
   # 6.3.4.6 Ensure audit configuration files owner is configured. (Automated)
   - id: 28608
@@ -4647,7 +4647,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - "c:find /etc/audit/ -type f \\( -name '*.rules' -o -name '*.conf' \\) -exec stat -Lc \"%U\" {} + -> !r:root|\\s*"
+      - "c:find /etc/audit/ -type f \\( -name \"*.rules\" -o -name \"*.conf\" \\) -exec stat -Lc \"%U\" {} + -> !r:root|\\s*"
 
   # 6.3.4.7 Ensure audit configuration files group owner is configured. (Automated)
   - id: 28609
@@ -4671,7 +4671,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - "c:find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec stat -Lc \"%U\" {} + -> !r:root|\\s*"
+      - "c:find /etc/audit/ -type f \\( -name \"*.conf\" -o -name \"*.rules\" \\) -exec stat -Lc \"%U\" {} + -> !r:root|\\s*"
 
   # 6.3.4.8 Ensure audit tools mode is configured. (Automated)
   - id: 28610

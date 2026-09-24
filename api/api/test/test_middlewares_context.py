@@ -25,7 +25,9 @@ import pytest
 from connexion import AsyncApp
 from connexion.middleware import MiddlewarePosition
 
+from api.alogging import MAX_LOGGED_BODY_SIZE
 from api.middlewares import (
+    AUTH_CONTEXT_NOT_LOGGED,
     CheckAuthContextSizeMiddleware,
     RUN_AS_LOGIN_ENDPOINT,
     WazuhAccessLoggerMiddleware,
@@ -200,5 +202,32 @@ async def test_access_log_reports_a_run_as_body_however_it_was_read(declare_leng
         task.cancel()
 
     mock_custom_logging.assert_called_once()
-    assert mock_custom_logging.call_args.args[5] == auth_context
+    # The context itself is masked below debug level; the hash is what identifies it in the log.
+    assert mock_custom_logging.call_args.args[5] == {'auth_context': AUTH_CONTEXT_NOT_LOGGED}
+    assert mock_custom_logging.call_args.kwargs['hash_auth_context'] == expected_hash
+
+
+@pytest.mark.asyncio
+async def test_access_log_hashes_an_auth_context_over_the_logging_limit():
+    """Check that a context larger than the logging limit is still hashed from the real body.
+
+    `auth_context_max_payload_size` admits a context well above `MAX_LOGGED_BODY_SIZE`, so the
+    access logger has to buffer it on this path; a body it leaves unread reaches `access_log` with
+    nothing to hash and the attempt is logged without its auth context identifier.
+    """
+    auth_context = {'user_name': 'wazuh', 'groups': [f'group_{i:04d}' for i in range(1000)]}
+    body = json.dumps(auth_context).encode()
+    assert len(body) > MAX_LOGGED_BODY_SIZE
+    expected_hash = hashlib.blake2b(body, digest_size=16).hexdigest()
+
+    app = _build_app()
+    task, queue = await _start(app)
+    try:
+        with patch('api.middlewares.custom_logging') as mock_custom_logging:
+            await _post(app, 'good', path=RUN_AS_LOGIN_ENDPOINT, body=body)
+    finally:
+        await queue.put({'type': 'lifespan.shutdown'})
+        task.cancel()
+
+    mock_custom_logging.assert_called_once()
     assert mock_custom_logging.call_args.kwargs['hash_auth_context'] == expected_hash

@@ -1534,29 +1534,37 @@ class WazuhDBBackend(AbstractDatabaseBackend):
         self.conn.close()
 
     def _substitute_params(self, query, request):
+        """Substitute request parameters in query.
+
+        This is only necessary when the backend is wdb. Sqlite substitutes parameters by itself.
+
+        All placeholders are replaced in a single pass, so a value that happens to match another
+        parameter's placeholder name is not substituted a second time, and single quotes inside string
+        values are doubled so each value renders as a well-formed SQL string literal.
         """
-        Substitute request parameters in query. This is only necessary when the backend is wdb. Sqlite substitutes
-        parameters by itself.
-        """
+        def quote(element):
+            return "'" + str(element).replace("'", "''") + "'"
+
+        rendered = {}
         for k, v in request.items():
             if isinstance(v, list):
-                values = list()
-                for element in v:
-                    if isinstance(element, (int, float)) or (isinstance(element, str) and element.isnumeric()):
-                        values.append(element)
-                    else:
-                        values.append(f"'{element}'")
-                value = f"{','.join(values)}"
+                values = [element if isinstance(element, (int, float)) or
+                          (isinstance(element, str) and element.isnumeric()) else quote(element) for element in v]
+                rendered[str(k)] = ','.join(str(element) for element in values)
             elif isinstance(v, (int, float)):
-                value = f"{v}"
+                rendered[str(k)] = f"{v}"
             elif isinstance(v, str):
-                value = f"'{v}'"
+                rendered[str(k)] = quote(v)
             else:
                 raise TypeError(f'Invalid type for request parameters: {type(v)}')
-            # Escape backslash to avoid re error
-            value = value.replace('\\', '\\\\')
-            query = re.sub(r':\b' + re.escape(str(k)) + r'\b', value, query)
-        return query
+
+        if not rendered:
+            return query
+
+        # Match longest keys first so a key that is a prefix of another (e.g. :search vs :search_id) is not
+        # matched partially. The callback replacement is used verbatim, so backslashes need no escaping.
+        pattern = re.compile(r':\b(' + '|'.join(re.escape(k) for k in sorted(rendered, key=len, reverse=True)) + r')\b')
+        return pattern.sub(lambda m: rendered[m.group(1)], query)
 
     def _render_query(self, query):
         """Render query attending the format."""

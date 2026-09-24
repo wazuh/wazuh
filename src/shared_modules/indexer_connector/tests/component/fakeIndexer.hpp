@@ -36,6 +36,8 @@ private:
     std::function<void(const std::string&)> m_initTemplateCallback = {};
     std::function<void(const std::string&)> m_initIndexCallback = {};
     std::function<void(const std::string&)> m_publishCallback = {};
+    std::function<std::string(const std::string&)> m_publishResponseCallback = {};
+    std::function<std::string(const std::string&)> m_deleteByQueryResponseCallback = {};
     std::function<std::string(const std::string&)> m_searchCallback = {};
     std::function<void(const std::string&)> m_deleteScrollCallback = {};
 
@@ -101,6 +103,28 @@ public:
     void setPublishCallback(std::function<void(const std::string&)> callback)
     {
         m_publishCallback = std::move(callback);
+    }
+
+    /**
+     * @brief Sets the publish response body callback, used to return a custom `_bulk` response body (e.g. to
+     * simulate per-item errors inside an HTTP 200 response).
+     *
+     * @param callback New callback.
+     */
+    void setPublishResponseCallback(std::function<std::string(const std::string&)> callback)
+    {
+        m_publishResponseCallback = std::move(callback);
+    }
+
+    /**
+     * @brief Sets the delete by query response body callback, used to return a custom `_delete_by_query` response
+     * body (e.g. to simulate failures inside an HTTP 200 response).
+     *
+     * @param callback New callback.
+     */
+    void setDeleteByQueryResponseCallback(std::function<std::string(const std::string&)> callback)
+    {
+        m_deleteByQueryResponseCallback = std::move(callback);
     }
 
     /**
@@ -239,7 +263,16 @@ public:
                                   m_publishCallback(req.body);
                               }
                               res.status = 200;
-                              res.set_content("Content published", "text/plain");
+                              if (m_publishResponseCallback)
+                              {
+                                  res.set_content(m_publishResponseCallback(req.body), "application/json");
+                              }
+                              else
+                              {
+                                  // A realistic default: valid JSON, no per-item errors, matching a real OpenSearch
+                                  // `_bulk` response shape closely enough for onSuccess's response parsing.
+                                  res.set_content(R"({"took":0,"errors":false,"items":[]})", "application/json");
+                              }
                           }
                           catch (const std::exception& e)
                           {
@@ -259,7 +292,14 @@ public:
                                   m_publishCallback(req.body);
                               }
                               res.status = 200;
-                              res.set_content("Content published", "text/plain");
+                              if (m_deleteByQueryResponseCallback)
+                              {
+                                  res.set_content(m_deleteByQueryResponseCallback(req.body), "application/json");
+                              }
+                              else
+                              {
+                                  res.set_content(R"({"took":0,"deleted":0,"failures":[]})", "application/json");
+                              }
                           }
                           catch (const std::exception& e)
                           {

@@ -13,23 +13,116 @@
 #include "fakeIndexer.hpp"
 #include "indexerConnector.hpp"
 #include "json.hpp"
+#include "loggerHelper.h"
 #include "stringHelper.h"
 #include "gtest/gtest.h"
+#include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <cstdarg>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <stdexcept>
+#include <string>
 #include <thread>
+#include <tuple>
 #include <utility>
+#include <vector>
 
 namespace Log
 {
     std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
         GLOBAL_LOG_FUNCTION;
 }; // namespace Log
+
+namespace
+{
+    std::mutex CAPTURED_LOGS_MUTEX;
+    std::vector<std::pair<int, std::string>> CAPTURED_LOGS;
+
+    /**
+     * @brief Drops every log entry captured so far.
+     */
+    void clearCapturedLogs()
+    {
+        std::lock_guard<std::mutex> lock {CAPTURED_LOGS_MUTEX};
+        CAPTURED_LOGS.clear();
+    }
+
+    /**
+     * @brief Checks whether a log entry of the given level whose formatted message contains the given substring was
+     * captured.
+     *
+     * @param logLevel Log level to look for.
+     * @param substring Substring to look for in the formatted message.
+     * @return true if a matching entry was captured, false otherwise.
+     */
+    bool hasCapturedLog(const int logLevel, const std::string& substring)
+    {
+        std::lock_guard<std::mutex> lock {CAPTURED_LOGS_MUTEX};
+        return std::any_of(CAPTURED_LOGS.begin(),
+                           CAPTURED_LOGS.end(),
+                           [logLevel, &substring](const auto& entry)
+                           { return entry.first == logLevel && entry.second.find(substring) != std::string::npos; });
+    }
+
+    /**
+     * @brief Counts the captured log entries of the given level whose formatted message contains the given substring.
+     *
+     * @param logLevel Log level to look for.
+     * @param substring Substring to look for in the formatted message.
+     * @return Number of matching entries.
+     */
+    std::size_t countCapturedLogs(const int logLevel, const std::string& substring)
+    {
+        std::lock_guard<std::mutex> lock {CAPTURED_LOGS_MUTEX};
+        return static_cast<std::size_t>(
+            std::count_if(CAPTURED_LOGS.begin(),
+                          CAPTURED_LOGS.end(),
+                          [logLevel, &substring](const auto& entry)
+                          { return entry.first == logLevel && entry.second.find(substring) != std::string::npos; }));
+    }
+
+    /**
+     * @brief Log function shared by every log-capturing test in this file.
+     *
+     * `Log::assignLogFunction` installs the first callable it is given and never replaces it, process-wide. Passing
+     * this same function to every IndexerConnector construction keeps that behavior irrelevant: whichever test runs
+     * first installs it, and each test only clears the buffer before its own scenario.
+     *
+     * @param logLevel Log level of the message.
+     * @param tag Tag of the message.
+     * @param file Source file the message was logged from.
+     * @param line Source line the message was logged from.
+     * @param func Function the message was logged from.
+     * @param logMessage Message format string.
+     * @param args Format arguments.
+     */
+    void sharedTestLogFunction(const int logLevel,
+                               const char* tag,
+                               const char* file,
+                               const int line,
+                               const char* func,
+                               const char* logMessage,
+                               va_list args)
+    {
+        std::ignore = tag;
+        std::ignore = file;
+        std::ignore = line;
+        std::ignore = func;
+
+        char formattedStr[MAXLEN] = {0};
+        vsnprintf(formattedStr, MAXLEN, logMessage, args);
+
+        std::lock_guard<std::mutex> lock {CAPTURED_LOGS_MUTEX};
+        CAPTURED_LOGS.emplace_back(logLevel, formattedStr);
+    }
+} // namespace
 
 // Template.
 static const auto TEMPLATE_FILE_PATH {std::filesystem::temp_directory_path() / "template.json"};
@@ -111,6 +204,8 @@ void IndexerConnectorTest::TearDown()
     // Remove generated data.
     std::filesystem::remove(TEMPLATE_FILE_PATH);
     std::filesystem::remove_all(QUEUE_FOLDER);
+
+    clearCapturedLogs();
 
     // Delete fake indexers.
     for (auto& server : m_indexerServers)
@@ -560,6 +655,90 @@ TEST_F(IndexerConnectorTest, PublishDeletedWithSpecialCharId)
 }
 
 /**
+ * @brief Test that a DELETED operation only removes its own exact document id, not a longer sibling id that merely
+ * starts with it - the raw prefix-scan `seek()` would otherwise sweep both out of the index and the local mirror.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDeletedDoesNotCollideWithLongerItemId)
+{
+    const std::string deletedId {"000_openssl_CVE-2023-1"};
+    const std::string siblingId {"000_openssl_CVE-2023-100"};
+    const std::string unrelatedId {"000_zlib_CVE-2024-9"};
+
+    std::atomic<bool> callbackCalled {false};
+    std::mutex deleteRequestsMutex;
+    std::string deleteRequests;
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&callbackCalled, &deleteRequestsMutex, &deleteRequests](const std::string& data)
+        {
+            if (data.find(R"("delete")") != std::string::npos)
+            {
+                std::lock_guard<std::mutex> lock {deleteRequestsMutex};
+                deleteRequests.append(data);
+            }
+            callbackCalled = true;
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    // Populate the local mirror. `unrelatedId` keeps the mirror non-empty after the deletion below, so the
+    // final diff() exercises the real comparison instead of short-circuiting on the empty-mirror guard.
+    for (const auto& id : {deletedId, siblingId, unrelatedId})
+    {
+        callbackCalled = false;
+        nlohmann::json publishData;
+        publishData["id"] = id;
+        publishData["operation"] = "INSERTED";
+        publishData["data"] = "content";
+        ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+        ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    }
+
+    callbackCalled = false;
+    nlohmann::json deleteData;
+    deleteData["id"] = deletedId;
+    deleteData["operation"] = "DELETED";
+    ASSERT_NO_THROW(indexerConnector.publish(deleteData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    {
+        std::lock_guard<std::mutex> lock {deleteRequestsMutex};
+        EXPECT_NE(deleteRequests.find(R"("_id":")" + deletedId + R"(")"), std::string::npos)
+            << "The requested document was not deleted from the index";
+        EXPECT_EQ(deleteRequests.find(R"("_id":")" + siblingId + R"(")"), std::string::npos)
+            << "The longer sibling document was also deleted from the index";
+    }
+
+    // The sibling must still be in the local mirror: a routine resync finding it in the index must not
+    // conclude it is stale and delete it.
+    m_indexerServers[A_IDX]->setSearchCallback(
+        [&siblingId, &unrelatedId](const std::string&) -> std::string
+        {
+            return R"({"_scroll_id":"abcdef","hits":{"total":{"value":2},"hits":[{"_id":")" + siblingId +
+                   R"("},{"_id":")" + unrelatedId + R"("}]}})";
+        });
+
+    std::atomic<bool> deleteRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&deleteRequested](const std::string& data)
+        {
+            if (data.find(R"("delete")") != std::string::npos)
+            {
+                deleteRequested = true;
+            }
+        });
+
+    indexerConnector.sync("000");
+
+    EXPECT_ANY_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_FALSE(deleteRequested) << "The sibling document was wrongly removed from the local mirror";
+}
+
+/**
  * @brief Test the connection and posterior data publication into a server. The published data is checked against the
  * expected one. The publication contains a DELETED_BY_QUERY operation.
  *
@@ -596,6 +775,230 @@ TEST_F(IndexerConnectorTest, PublishDeletedByQuery)
     publishData["operation"] = "DELETED_BY_QUERY";
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
     ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+}
+
+/**
+ * @brief Test that deleting a shorter agent ID does not sweep a longer sibling agent ID's mirror
+ * entries out via the raw prefix-scan `seek()`, by checking the sibling's entry is still readable from the
+ * mirror afterwards - a later sync() that finds the index missing that document must reindex it.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDeletedByQueryDoesNotCollideWithLongerAgentId)
+{
+    std::atomic<bool> callbackCalled {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&callbackCalled](const std::string& data)
+        {
+            std::ignore = data;
+            callbackCalled = true;
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    // Insert the sibling agents' own documents, populating the local mirror.
+    for (const auto& id : {std::string("250_admins"), std::string("2502_wheel")})
+    {
+        callbackCalled = false;
+        nlohmann::json publishData;
+        publishData["id"] = id;
+        publishData["operation"] = "INSERTED";
+        publishData["data"] = "content";
+        ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+        ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    }
+
+    // Delete the shorter agent "250" - this must only remove "250"'s own mirror entry, not "2502"'s.
+    callbackCalled = false;
+    nlohmann::json deleteData;
+    deleteData["id"] = "250";
+    deleteData["operation"] = "DELETED_BY_QUERY";
+    ASSERT_NO_THROW(indexerConnector.publish(deleteData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    // Agent "2502"'s routine resync, with the index reporting no document for it. The assertion is that
+    // diff() reindexes "2502_wheel", which it can only do by reading that key back out of the local mirror -
+    // so it holds exactly when the mirror survived agent "250"'s deletion. Asserting instead that no delete
+    // fires would prove nothing: a wrongly emptied mirror trips diff()'s empty-mirror guard, which suppresses
+    // every deletion on its own.
+    std::atomic<bool> searchRequested {false};
+    m_indexerServers[A_IDX]->setSearchCallback(
+        [&searchRequested](const std::string&) -> std::string
+        {
+            searchRequested = true;
+            return R"({"_scroll_id":"abcdef","hits":{"total":{"value":0},"hits":[]}})";
+        });
+
+    std::atomic<bool> reindexRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&reindexRequested](const std::string& data)
+        {
+            if (data.find(R"("index")") != std::string::npos && data.find(R"("_id":"2502_wheel")") != std::string::npos)
+            {
+                reindexRequested = true;
+            }
+        });
+
+    indexerConnector.sync("2502");
+
+    // EXPECT, not ASSERT: on a regression the timeout must not abort before the assertions below, which name
+    // the actual defect instead of reporting a bare wait timeout.
+    EXPECT_NO_THROW(waitUntil([&reindexRequested]() { return reindexRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_TRUE(searchRequested) << "sync() never queried the index, so the assertion below proves nothing";
+    ASSERT_TRUE(reindexRequested) << "Agent 2502's mirror entry was swept away by agent 250's deletion";
+}
+
+/**
+ * @brief Test that `diff()` does not delete real index documents when the local mirror scan comes back
+ * completely empty for an agent, independent of the mirror-prefix-collision mechanism - an empty
+ * mirror is not proof the documents don't belong, it can just as easily mean a corrupted/gapped mirror.
+ *
+ */
+TEST_F(IndexerConnectorTest, DiffSkipsDeletionOnEmptyMirror)
+{
+    m_indexerServers[A_IDX]->setSearchCallback(
+        [](const std::string&) -> std::string
+        { return R"({"_scroll_id":"abcdef","hits":{"total":{"value":1},"hits":[{"_id":"004_preseeded"}]}})"; });
+
+    std::atomic<bool> deleteRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&deleteRequested](const std::string& data)
+        {
+            if (data.find("\"delete\"") != std::string::npos)
+            {
+                deleteRequested = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    // Never publish anything for agent "004" - its mirror is empty by construction, matching a case where the
+    // local RocksDB mirror never held (or lost) this agent's entries while the real index still has them.
+    indexerConnector.sync("004");
+
+    EXPECT_ANY_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_FALSE(deleteRequested) << "diff() deleted a real document based on an empty per-agent mirror scan";
+}
+
+/**
+ * @brief Test that `diff()` is a clean no-op once an agent's deletion has fully landed on both sides: the local
+ * mirror is empty because the agent's own DELETED_BY_QUERY purged it, and the index no longer reports any
+ * document for it either. This is the far end of the legitimate-deletion timeline whose mid-flight state
+ * `DiffSkipsDeletionOnEmptyMirror` covers - here the empty-mirror guard must not fire at all, and no request
+ * of any kind should reach the indexer.
+ *
+ */
+TEST_F(IndexerConnectorTest, DiffIsNoOpOnceAgentDeletionHasFullyLanded)
+{
+    std::atomic<bool> callbackCalled {false};
+    std::atomic<bool> searchRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&callbackCalled](const std::string& data)
+        {
+            std::ignore = data;
+            callbackCalled = true;
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    // Populate agent "250"'s mirror entry first, so its mirror ends up empty because the deletion below
+    // legitimately emptied it - not because it was never written.
+    nlohmann::json publishData;
+    publishData["id"] = "250_admins";
+    publishData["operation"] = "INSERTED";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    callbackCalled = false;
+    nlohmann::json deleteData;
+    deleteData["id"] = "250";
+    deleteData["operation"] = "DELETED_BY_QUERY";
+    ASSERT_NO_THROW(indexerConnector.publish(deleteData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    // The index-side deletion has landed too: the scroll search reports no documents for this agent.
+    m_indexerServers[A_IDX]->setSearchCallback(
+        [&searchRequested](const std::string&) -> std::string
+        {
+            searchRequested = true;
+            return R"({"_scroll_id":"abcdef","hits":{"total":{"value":0},"hits":[]}})";
+        });
+
+    // sendBulkReactive() skips the HTTP call entirely when there is nothing to send, so the assertion is that no
+    // _bulk request fires at all, not that no "delete" action appears inside one.
+    std::atomic<bool> publishCallbackFired {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&publishCallbackFired](const std::string& data)
+        {
+            std::ignore = data;
+            publishCallbackFired = true;
+        });
+
+    indexerConnector.sync("250");
+
+    EXPECT_ANY_THROW(
+        waitUntil([&publishCallbackFired]() { return publishCallbackFired.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    // The reconciliation really ran: without this the negative assertion below would also hold for a sync() that
+    // never reached diff() at all.
+    ASSERT_TRUE(searchRequested) << "sync() never queried the index, so the no-op assertion proves nothing";
+    ASSERT_FALSE(publishCallbackFired) << "A fully deleted agent's sync issued a bulk request instead of a no-op";
+}
+
+/**
+ * @brief Test that `diff()`'s empty-mirror guard also protects an agent that has simply moved to a node which
+ * never processed it: this connector's mirror holds no entries for the agent, while the shared index still
+ * reports the documents written by its previous node. Shares the guard's code path with
+ * `DiffSkipsDeletionOnEmptyMirror` on purpose - that test pins corruption containment, this one pins failover
+ * safety, so a refactor motivated by only one of them cannot silently break the other.
+ *
+ */
+TEST_F(IndexerConnectorTest, DiffGuardProtectsFailedOverAgentSameAsCorruption)
+{
+    std::atomic<bool> searchRequested {false};
+    m_indexerServers[A_IDX]->setSearchCallback(
+        [&searchRequested](const std::string&) -> std::string
+        {
+            searchRequested = true;
+            return R"({"_scroll_id":"abcdef","hits":{"total":{"value":1},"hits":[{"_id":"010_preseeded"}]}})";
+        });
+
+    std::atomic<bool> deleteRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&deleteRequested](const std::string& data)
+        {
+            if (data.find("\"delete\"") != std::string::npos)
+            {
+                deleteRequested = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    // This connector instance stands in for a cluster node that has never processed agent "010": nothing is ever
+    // published for it here, so its mirror partition is empty by construction.
+    indexerConnector.sync("010");
+
+    EXPECT_ANY_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    // The reconciliation really ran: without this the negative assertion below would also hold for a sync() that
+    // never reached diff() at all.
+    ASSERT_TRUE(searchRequested) << "sync() never queried the index, so the no-deletion assertion proves nothing";
+    ASSERT_FALSE(deleteRequested) << "A failed-over agent's real document was deleted by the node it moved to";
 }
 
 /**
@@ -877,34 +1280,399 @@ TEST_F(IndexerConnectorTest, QueueCorruptionTest)
     }
     EXPECT_TRUE(corrupted);
 
-    bool dbRepaired {false};
-    auto customLogFunction = [&dbRepaired](const int logLevel,
-                                           const std::string& tag,
-                                           const std::string& file,
-                                           const int line,
-                                           const std::string& func,
-                                           const std::string& logMessage,
-                                           va_list args)
-    {
-        std::ignore = tag;
-        std::ignore = file;
-        std::ignore = line;
-        std::ignore = func;
-        std::ignore = args;
-
-        if (logLevel == 2) // Warning messages
-        {
-            if (logMessage.compare("Database '%s' was repaired because it was corrupt.") == 0)
-            {
-                dbRepaired = true;
-            }
-        }
-    };
+    clearCapturedLogs();
 
     EXPECT_NO_THROW({
         spIndexerConnector = std::make_unique<IndexerConnector>(
-            indexerConfig, TEMPLATE_FILE_PATH, "", true, customLogFunction, INDEXER_TIMEOUT);
+            indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT);
     });
 
-    EXPECT_TRUE(dbRepaired) << "The log that indicates the database was repaired wasn't found";
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_WARNING, "was repaired because it was corrupt"))
+        << "The log that indicates the database was repaired wasn't found";
+}
+
+/**
+ * @brief Test that a per-item `_bulk` rejection inside an HTTP 200 response is logged at warning level with the
+ * document id, error type and reason, and that the dispatch queue keeps draining afterwards (no throw/stall on a
+ * rejected-but-200 batch).
+ */
+TEST_F(IndexerConnectorTest, PublishBulkErrorLogged)
+{
+    clearCapturedLogs();
+
+    // A real per-item `_bulk` rejection body: HTTP 200, `errors: true`, one item carrying an `error`.
+    m_indexerServers[A_IDX]->setPublishResponseCallback(
+        [](const std::string&) -> std::string
+        {
+            return R"({"took":1,"errors":true,"items":[{"index":{"_id":"003_broken","status":400,)"
+                   R"("error":{"type":"strict_dynamic_mapping_exception","reason":"mapping set to strict"}}}]})";
+        });
+
+    std::atomic<bool> firstPublishSeen {false};
+    std::atomic<bool> secondPublishSeen {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&firstPublishSeen, &secondPublishSeen](const std::string& data)
+        {
+            if (data.find("003_broken") != std::string::npos)
+            {
+                firstPublishSeen = true;
+            }
+            if (data.find("004_ok") != std::string::npos)
+            {
+                secondPublishSeen = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = "003_broken";
+    publishData["operation"] = "INSERTED";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&firstPublishSeen]() { return firstPublishSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    // Matched as one whole formatted entry, so id, type and reason are pinned as coming from the same rejection.
+    const std::string expectedWarning {
+        "1 document(s) rejected by index '" + std::string {INDEXER_NAME} +
+        "' - type: 'strict_dynamic_mapping_exception', reason: 'mapping set to strict', sample id: '003_broken'"};
+    ASSERT_NO_THROW(waitUntil([&expectedWarning]() { return hasCapturedLog(Log::LOGLEVEL_WARNING, expectedWarning); },
+                              MAX_INDEXER_PUBLISH_TIME_MS));
+
+    // The queue must keep draining after a rejected-but-200 item: a second, unrelated publish should still go
+    // through promptly, not stall behind the rejected one.
+    publishData["id"] = "004_ok";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(
+        waitUntil([&secondPublishSeen]() { return secondPublishSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+}
+
+/**
+ * @brief Test that control characters in the agent-controlled document id and in the indexer-supplied error reason
+ * are stripped before they reach the log, so a crafted value cannot forge extra log lines.
+ */
+TEST_F(IndexerConnectorTest, PublishBulkErrorLogSanitizesControlCharacters)
+{
+    clearCapturedLogs();
+
+    // `_id` and `error.reason` both carry an embedded newline followed by a forged log line.
+    m_indexerServers[A_IDX]->setPublishResponseCallback(
+        [](const std::string&) -> std::string
+        {
+            return R"({"took":1,"errors":true,"items":[{"index":{"_id":"003_bad\nwazuh-modulesd: forged id",)"
+                   R"("status":400,"error":{"type":"mapper_parsing_exception",)"
+                   R"("reason":"bad value\nwazuh-modulesd: forged reason"}}}]})";
+        });
+
+    std::atomic<bool> publishSeen {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&publishSeen](const std::string& data)
+        {
+            if (data.find("003_bad") != std::string::npos)
+            {
+                publishSeen = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = "003_bad";
+    publishData["operation"] = "INSERTED";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&publishSeen]() { return publishSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    ASSERT_NO_THROW(waitUntil([]() { return hasCapturedLog(Log::LOGLEVEL_WARNING, "rejected by index"); },
+                              MAX_INDEXER_PUBLISH_TIME_MS));
+
+    EXPECT_FALSE(hasCapturedLog(Log::LOGLEVEL_WARNING, "003_bad\nwazuh-modulesd"))
+        << "The newline injected in the document id reached the log unescaped";
+    EXPECT_FALSE(hasCapturedLog(Log::LOGLEVEL_WARNING, "bad value\nwazuh-modulesd"))
+        << "The newline injected in the error reason reached the log unescaped";
+
+    // Each newline must have become a space, keeping the whole rejection on a single formatted entry.
+    const std::string expectedWarning {
+        "1 document(s) rejected by index '" + std::string {INDEXER_NAME} +
+        "' - type: 'mapper_parsing_exception', reason: 'bad value wazuh-modulesd: forged reason', sample id: '003_bad "
+        "wazuh-modulesd: forged id'"};
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_WARNING, expectedWarning))
+        << "The rejection was not logged as a single sanitized entry";
+}
+
+/**
+ * @brief Test that a `_delete_by_query` response reporting failures inside an HTTP 200 body is logged. That shape
+ * carries no `errors` flag, so the bulk-specific handling alone never reports it.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDeleteByQueryFailuresLogged)
+{
+    clearCapturedLogs();
+
+    m_indexerServers[A_IDX]->setDeleteByQueryResponseCallback(
+        [](const std::string&) -> std::string
+        {
+            return R"({"took":12,"deleted":1,"version_conflicts":0,"failures":[)"
+                   R"({"index":"indexer_connector_test","id":"250_admins",)"
+                   R"("cause":{"type":"version_conflict_engine_exception","reason":"document already updated"}}]})";
+        });
+
+    std::atomic<bool> deleteRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&deleteRequested](const std::string& data)
+        {
+            if (data.find("agent.id") != std::string::npos)
+            {
+                deleteRequested = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = "250";
+    publishData["operation"] = "DELETED_BY_QUERY";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    const std::string expectedWarning {"Delete by query on index '" + std::string {INDEXER_NAME} +
+                                       "' completed with issues - version_conflicts: 0, failures: 1, sample id: "
+                                       "'250_admins', sample reason: 'document already updated'"};
+    ASSERT_NO_THROW(waitUntil([&expectedWarning]() { return hasCapturedLog(Log::LOGLEVEL_WARNING, expectedWarning); },
+                              MAX_INDEXER_PUBLISH_TIME_MS));
+}
+
+/**
+ * @brief Test that a `_delete_by_query` response is still inspected even though it carries no `"errors":true`
+ * anywhere, which is what the fully successful bulk fast path keys on. Guards against gating both response shapes
+ * behind that single substring probe.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDeleteByQueryIssuesLoggedWithoutBulkErrorsFlag)
+{
+    clearCapturedLogs();
+
+    const std::string responseBody {R"({"took":7,"deleted":0,"version_conflicts":3,"failures":[]})"};
+    ASSERT_EQ(responseBody.find(R"("errors":true)"), std::string::npos)
+        << "The response body must not carry the bulk errors flag for this test to exercise the intended path";
+
+    m_indexerServers[A_IDX]->setDeleteByQueryResponseCallback([responseBody](const std::string&) -> std::string
+                                                              { return responseBody; });
+
+    std::atomic<bool> deleteRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&deleteRequested](const std::string& data)
+        {
+            if (data.find("agent.id") != std::string::npos)
+            {
+                deleteRequested = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = "251";
+    publishData["operation"] = "DELETED_BY_QUERY";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    const std::string expectedWarning {
+        "Delete by query on index '" + std::string {INDEXER_NAME} +
+        "' completed with issues - version_conflicts: 3, failures: 0, sample id: '', sample reason: ''"};
+    ASSERT_NO_THROW(waitUntil([&expectedWarning]() { return hasCapturedLog(Log::LOGLEVEL_WARNING, expectedWarning); },
+                              MAX_INDEXER_PUBLISH_TIME_MS));
+}
+
+/**
+ * @brief Test that a successful `_bulk` response body is never parsed, by returning a body that is too malformed to
+ * parse: no parse failure is reported for it, while the same malformed body carrying the errors flag does report one.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishSuccessfulBulkResponseIsNotParsed)
+{
+    clearCapturedLogs();
+
+    // Both bodies are unparseable JSON; only the second one carries the flag that opens the parse path.
+    const std::string filler(64 * 1024, 'x');
+    m_indexerServers[A_IDX]->setPublishResponseCallback(
+        [filler](const std::string& data) -> std::string
+        {
+            if (data.find("006_parsed") != std::string::npos)
+            {
+                return R"({"took":1,"errors":true,"items":[)" + filler;
+            }
+            return R"({"took":1,"errors":false,"items":[)" + filler;
+        });
+
+    std::atomic<bool> successSeen {false};
+    std::atomic<bool> errorSeen {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&successSeen, &errorSeen](const std::string& data)
+        {
+            if (data.find("005_ignored") != std::string::npos)
+            {
+                successSeen = true;
+            }
+            if (data.find("006_parsed") != std::string::npos)
+            {
+                errorSeen = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = "005_ignored";
+    publishData["operation"] = "INSERTED";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&successSeen]() { return successSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    publishData["id"] = "006_parsed";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&errorSeen]() { return errorSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    // The second body reaching the parse is what proves the first one was skipped rather than parsed silently.
+    ASSERT_NO_THROW(waitUntil([]()
+                              { return hasCapturedLog(Log::LOGLEVEL_ERROR, "Failed to parse response body JSON"); },
+                              MAX_INDEXER_PUBLISH_TIME_MS));
+    EXPECT_EQ(countCapturedLogs(Log::LOGLEVEL_ERROR, "Failed to parse response body JSON"), 1U)
+        << "The successful bulk response was parsed instead of being skipped";
+}
+
+/**
+ * @brief Test that the per-item rejections of a `_bulk` response are aggregated into one entry per distinct error
+ * type and reason, instead of one entry per rejected document.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishBulkErrorsAggregatedByTypeAndReason)
+{
+    clearCapturedLogs();
+
+    m_indexerServers[A_IDX]->setPublishResponseCallback(
+        [](const std::string&) -> std::string
+        {
+            return R"({"took":1,"errors":true,"items":[)"
+                   R"({"index":{"_id":"007_a","status":400,"error":{"type":"mapper_parsing_exception",)"
+                   R"("reason":"bad value"}}},)"
+                   R"({"index":{"_id":"007_b","status":400,"error":{"type":"mapper_parsing_exception",)"
+                   R"("reason":"bad value"}}},)"
+                   R"({"index":{"_id":"007_c","status":400,"error":{"type":"mapper_parsing_exception",)"
+                   R"("reason":"bad value"}}},)"
+                   R"({"index":{"_id":"007_d","status":400,"error":{"type":"strict_dynamic_mapping_exception",)"
+                   R"("reason":"mapping set to strict"}}}]})";
+        });
+
+    std::atomic<bool> publishSeen {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&publishSeen](const std::string& data)
+        {
+            if (data.find("007_a") != std::string::npos)
+            {
+                publishSeen = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = "007_a";
+    publishData["operation"] = "INSERTED";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&publishSeen]() { return publishSeen.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    const std::string expectedGrouped {"3 document(s) rejected by index '" + std::string {INDEXER_NAME} +
+                                       "' - type: 'mapper_parsing_exception', reason: 'bad value', sample id: '007_a'"};
+    ASSERT_NO_THROW(waitUntil([&expectedGrouped]() { return hasCapturedLog(Log::LOGLEVEL_WARNING, expectedGrouped); },
+                              MAX_INDEXER_PUBLISH_TIME_MS));
+
+    const std::string expectedSingle {
+        "1 document(s) rejected by index '" + std::string {INDEXER_NAME} +
+        "' - type: 'strict_dynamic_mapping_exception', reason: 'mapping set to strict', sample id: '007_d'"};
+    EXPECT_TRUE(hasCapturedLog(Log::LOGLEVEL_WARNING, expectedSingle));
+
+    // Two distinct (type, reason) pairs, so two entries - not one per rejected document.
+    EXPECT_EQ(countCapturedLogs(Log::LOGLEVEL_WARNING, "rejected by index"), 2U);
+    EXPECT_FALSE(hasCapturedLog(Log::LOGLEVEL_WARNING, "007_b")) << "A rejection was logged per document";
+    EXPECT_FALSE(hasCapturedLog(Log::LOGLEVEL_WARNING, "007_c")) << "A rejection was logged per document";
+}
+
+/**
+ * @brief Test that a search-phase `_delete_by_query` failure, which carries no document id and holds its cause under
+ * `reason` instead of `cause`, is still reported with its text rather than as an empty sample.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDeleteByQuerySearchPhaseFailureLogged)
+{
+    clearCapturedLogs();
+
+    m_indexerServers[A_IDX]->setDeleteByQueryResponseCallback(
+        [](const std::string&) -> std::string
+        {
+            return R"({"took":3,"deleted":0,"version_conflicts":0,"failures":[)"
+                   R"({"shard":0,"index":"indexer_connector_test","node":"node-1",)"
+                   R"("reason":{"type":"search_phase_execution_exception","reason":"all shards failed"}}]})";
+        });
+
+    std::atomic<bool> deleteRequested {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&deleteRequested](const std::string& data)
+        {
+            if (data.find("agent.id") != std::string::npos)
+            {
+                deleteRequested = true;
+            }
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {
+        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, sharedTestLogFunction, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = "252";
+    publishData["operation"] = "DELETED_BY_QUERY";
+    ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    const std::string expectedWarning {
+        "Delete by query on index '" + std::string {INDEXER_NAME} +
+        "' completed with issues - version_conflicts: 0, failures: 1, sample id: '', sample reason: 'all shards "
+        "failed'"};
+    ASSERT_NO_THROW(waitUntil([&expectedWarning]() { return hasCapturedLog(Log::LOGLEVEL_WARNING, expectedWarning); },
+                              MAX_INDEXER_PUBLISH_TIME_MS));
 }

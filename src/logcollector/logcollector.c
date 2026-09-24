@@ -137,6 +137,7 @@ static OSHash *excluded_binaries = NULL;
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 
 STATIC w_macos_log_procceses_t * macos_processes = NULL;
+volatile sig_atomic_t macos_log_shutdown = 0;
 
 #endif
 
@@ -2952,6 +2953,7 @@ void w_macos_release_log_stream(void) {
 
 void w_macos_release_log_execution(void) {
 
+    macos_log_shutdown = 1;
     w_macos_release_log_show();
     w_macos_release_log_stream();
 }

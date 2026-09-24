@@ -356,6 +356,32 @@ TEST_F(SystemInventoryUpsertElement, validAgentID_Hw)
         R"({"id":"001_boardInfo","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName","speed":2497},"memory":{"free":50,"total":100,"used":50,"usage":0.5},"serial_number":"boardInfo"},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
+TEST_F(SystemInventoryUpsertElement, unknownCpuFrequency_Hw)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Hw));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("agentIp"));
+    EXPECT_CALL(*context, boardInfo()).WillOnce(testing::Return("boardInfo"));
+    EXPECT_CALL(*context, cpuCores()).WillOnce(testing::Return(2));
+    EXPECT_CALL(*context, cpuName()).WillOnce(testing::Return("cpuName"));
+    EXPECT_CALL(*context, cpuFrequency()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, freeMem()).WillRepeatedly(testing::Return(50));
+    EXPECT_CALL(*context, totalMem()).WillRepeatedly(testing::Return(100));
+    EXPECT_CALL(*context, usedMem()).WillRepeatedly(testing::Return(0.5));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    // No "speed" key: an unknown CPU frequency must not be reported as 0 Hz.
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_boardInfo","operation":"INSERTED","data":{"host":{"cpu":{"cores":2,"name":"cpuName"},"memory":{"free":50,"total":100,"used":50,"usage":0.5},"serial_number":"boardInfo"},"agent":{"id":"001","name":"agentName","host":{"ip":"agentIp"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+}
+
 /*
  * Test cases for SystemInventoryUpsertElement net protocol scenario
  * These tests check the behavior of the UpsertSystemElement class when handling requests.

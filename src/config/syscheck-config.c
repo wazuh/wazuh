@@ -2126,6 +2126,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         OS_ClearNode(children);
                         return(OS_INVALID);
                     }
+#ifndef WIN32
                 } else if (strcmp(children[j]->element, xml_provider) == 0) {
                     if(strcmp(children[j]->content, "ebpf") == 0)
                         syscheck->whodata_provider = EBPF_PROVIDER;
@@ -2137,7 +2138,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         OS_ClearNode(children);
                         return(OS_INVALID);
                     }
-#ifndef WIN32
                 } else if (strcmp(children[j]->element, xml_queue_size) == 0) {
                     char * end;
                     long value = strtol(children[j]->content, &end, 10);
@@ -2150,6 +2150,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     else {
                         syscheck->queue_size = value;
                     }
+#else
+                } else if (strcmp(children[j]->element, xml_provider) == 0) {
+                    mwarn(FIM_WARN_WHODATA_PROVIDER_UNSUPPORTED);
 #endif
                 } else {
                     mwarn(XML_ELEMNULL);

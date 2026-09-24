@@ -502,6 +502,25 @@ os_info *get_unix_version()
                           strcmp(info->os_platform, "arch") == 0) {
                 os_free(info->os_version);
                 os_strdup("", info->os_version);
+            } else if (strcmp(info->os_platform, "sles") == 0 ||
+                          strcmp(info->os_platform, "sled") == 0) {
+                // SUSE Linux Enterprise (Server/Desktop) reports VERSION as
+                // "<major>-SP<minor>" (e.g. "15-SP6") instead of the host-readable
+                // "<major>.<minor>" (e.g. "15.6") used by VERSION_ID.
+                if (info->os_version) {
+                    regmatch_t match[3];
+                    if (w_regexec("^([0-9]+)-[Ss][Pp]([0-9]+)$", info->os_version, 3, match)) {
+                        int major_size = match[1].rm_eo - match[1].rm_so;
+                        int minor_size = match[2].rm_eo - match[2].rm_so;
+                        char *new_version;
+                        os_malloc(major_size + minor_size + 2, new_version);
+                        snprintf(new_version, major_size + minor_size + 2, "%.*s.%.*s",
+                                 major_size, info->os_version + match[1].rm_so,
+                                 minor_size, info->os_version + match[2].rm_so);
+                        os_free(info->os_version);
+                        info->os_version = new_version;
+                    }
+                }
             }
         }
     }
