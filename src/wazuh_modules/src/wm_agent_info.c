@@ -859,6 +859,13 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     // Set synchronization parameters from configuration
     agent_info_enable_synchronization = agent_info->sync.enable_synchronization;
 
+    // Don't open agent_info.db if shutdown was already requested (e.g. mid WPK upgrade).
+    if (wm_agent_info_is_shutting_down())
+    {
+        mdebug1("Shutdown requested before start. Exiting.");
+        return NULL;
+    }
+
     // Loaded before the (blocking) queue open so agent_info.db exists before wmcom's
     // listener, which runs independently of this thread, can route queries to it.
     if (agent_info_module = so_get_module_handle(AGENT_INFO_LIB_NAME), agent_info_module)
