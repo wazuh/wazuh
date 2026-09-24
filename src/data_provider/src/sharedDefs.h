@@ -136,7 +136,8 @@ static const std::set<std::string> UNIX_NPM_DEFAULT_BASE_DIRS
 // PYPI/NPM base dirs above. Add more glob patterns here to cover other per-user locations.
 static const std::set<std::string> MACOS_USER_APPLICATIONS_DIRS
 {
-    "/Users/*/Applications"
+    "/Users/*/Applications",
+    "/private/var/root/Applications"
 };
 
 #endif //_SHARED_DEFS_H

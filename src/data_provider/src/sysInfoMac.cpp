@@ -147,15 +147,17 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
     {
         const auto packages { fs.list_directory(pkgDirectory) };
 
-        for (const auto& package : packages)
+        // Shared by every branch below: build one package's data and hand it to the caller,
+        // discarding anything with an empty name and logging (not propagating) any failure
+        // so one bad entry never aborts the rest of the scan.
+        const auto buildAndReportPackage
         {
-            if ((PKG == pkgType && Utils::endsWith(package, ".app")) ||
-                    (RCP == pkgType && Utils::endsWith(package, ".plist")))
+            [&callback, pkgType](const std::string & filePath, const std::string & packageName, const std::string& version = "")
             {
                 try
                 {
                     nlohmann::json jsPackage;
-                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package.filename().string(), ""}, pkgType))->buildPackageData(jsPackage);
+                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{filePath, packageName, version}, pkgType))->buildPackageData(jsPackage);
 
                     if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                     {
@@ -167,6 +169,15 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                 {
                     std::cerr << e.what() << std::endl;
                 }
+            }
+        };
+
+        for (const auto& package : packages)
+        {
+            if ((PKG == pkgType && Utils::endsWith(package, ".app")) ||
+                    (RCP == pkgType && Utils::endsWith(package, ".plist")))
+            {
+                buildAndReportPackage(pkgDirectory, package.filename().string());
             }
             else if (BREW == pkgType)
             {
@@ -181,21 +192,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
 
                         if (!Utils::startsWith(version, "."))
                         {
-                            try
-                            {
-                                nlohmann::json jsPackage;
-                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package.filename().string(), version}, pkgType))->buildPackageData(jsPackage);
-
-                                if (!jsPackage.at("name").get_ref<const std::string&>().empty())
-                                {
-                                    // Only return valid content packages
-                                    callback(jsPackage);
-                                }
-                            }
-                            catch (const std::exception& e)
-                            {
-                                std::cerr << e.what() << std::endl;
-                            }
+                            buildAndReportPackage(pkgDirectory, package.filename().string(), version);
                         }
                     }
                 }
@@ -228,21 +225,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                         {
                             if (Utils::endsWith(nestedEntry, ".app"))
                             {
-                                try
-                                {
-                                    nlohmann::json jsPackage;
-                                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{package.string(), nestedEntry.filename().string(), ""}, pkgType))->buildPackageData(jsPackage);
-
-                                    if (!jsPackage.at("name").get_ref<const std::string&>().empty())
-                                    {
-                                        // Only return valid content packages
-                                        callback(jsPackage);
-                                    }
-                                }
-                                catch (const std::exception& e)
-                                {
-                                    std::cerr << e.what() << std::endl;
-                                }
+                                buildAndReportPackage(package.string(), nestedEntry.filename().string());
                             }
                         }
                     }
@@ -474,9 +457,16 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     {
         const auto pkgDirectory { packageDirectory.first };
 
-        if (fs.is_directory(pkgDirectory))
+        try
         {
-            getPackagesFromPath(pkgDirectory, packageDirectory.second, callback);
+            if (fs.is_directory(pkgDirectory))
+            {
+                getPackagesFromPath(pkgDirectory, packageDirectory.second, callback);
+            }
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << e.what() << std::endl;
         }
     }
 
@@ -485,7 +475,16 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     for (const auto& userApplicationsGlob : MACOS_USER_APPLICATIONS_DIRS)
     {
         std::deque<std::string> userApplicationsPaths;
-        Utils::expandAbsolutePath(userApplicationsGlob, userApplicationsPaths);
+
+        try
+        {
+            Utils::expandAbsolutePath(userApplicationsGlob, userApplicationsPaths);
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << e.what() << std::endl;
+            continue;
+        }
 
         for (const auto& userApplicationsPath : userApplicationsPaths)
         {
