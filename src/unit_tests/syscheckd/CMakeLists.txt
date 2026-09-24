@@ -363,6 +363,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
   add_test(NAME test_check_rc_sys COMMAND test_check_rc_sys)
 
   set(CHECK_RC_IF_FLAGS "-Wl,--wrap,socket \
+                          -Wl,--wrap,close \
                           -Wl,--wrap,ioctl \
                           -Wl,--wrap,system \
                           -Wl,--wrap,notify_rk \

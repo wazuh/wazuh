@@ -38,6 +38,12 @@ int __wrap_socket(__attribute__((unused)) int domain,
     return mock_type(int);
 }
 
+/* Keep the mocked descriptor from reaching the real close() */
+int __wrap_close(__attribute__((unused)) int fd)
+{
+    return 0;
+}
+
 /*
  * SIOCGIFCONF returns the names in fake_ifs. SIOCGIFFLAGS returns the flags of
  * the matching entry, or fails (as the kernel does) for unused ifreq slots.
