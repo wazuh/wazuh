@@ -101,20 +101,38 @@ else
 fi
 cat "${CONF}.new" > "$CONF" && rm -f "${CONF}.new"
 
-# A worker that cannot start must not look alive: exit, so Docker shows the
-# container as exited (healthcheck.sh covers a daemon that dies later).
-if ! "$BIN/wazuh-manager-control" start; then
+# The shell supervises the manager from here on, startup included. tini forwards
+# docker stop's SIGTERM to this shell, and bash defers a trap while a foreground
+# command runs, so the start runs in the background and the shell waits for it:
+# a stop that arrives while daemons are still starting interrupts the start and
+# runs wazuh-manager-control stop, never leaving started daemons to be killed.
+START_PID=""
+stop_manager() {  # stop_manager <exit status>
+  trap - TERM INT
+  if [ -n "$START_PID" ] && kill -0 "$START_PID" 2>/dev/null; then
+    kill "$START_PID" 2>/dev/null || true
+    wait "$START_PID" 2>/dev/null || true
+  fi
+  "$BIN/wazuh-manager-control" stop || true
+  exit "$1"
+}
+trap 'stop_manager 0' TERM INT
+
+# A worker that cannot start must not look alive: stop whatever did start and
+# exit 1, so Docker shows the container as exited (healthcheck.sh covers a daemon
+# that dies later).
+"$BIN/wazuh-manager-control" start &
+START_PID=$!
+if ! wait "$START_PID"; then
+  START_PID=""
   echo "ERROR: wazuh-manager failed to start on ${NODE_NAME}; last lines of wazuh-manager.log:" >&2
   tail -n 40 /var/wazuh-manager/logs/wazuh-manager.log >&2 || true
-  exit 1
+  stop_manager 1
 fi
+START_PID=""
 
-# Stay in the foreground as the manager's supervisor. tini forwards docker stop's
-# SIGTERM to this shell, which stops the manager cleanly instead of letting the
-# daemons be killed, so no stale PID file or half-written state reaches the next
-# docker compose start.
-stop_manager() { trap - TERM INT; "$BIN/wazuh-manager-control" stop || true; exit 0; }
-trap stop_manager TERM INT
+# Stay in the foreground: the trap above stops the manager cleanly on docker stop,
+# so no stale PID file or half-written state reaches the next docker compose start.
 touch /var/wazuh-manager/logs/wazuh-manager.log
 tail -f /var/wazuh-manager/logs/wazuh-manager.log &
 wait $!
