@@ -10,7 +10,7 @@ from functools import wraps
 from wazuh.core.agent import get_agents_info, get_groups, expand_group
 from wazuh.core.common import rbac, broadcast, cluster_nodes
 from wazuh.core.exception import WazuhPermissionError
-from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.results import AbstractWazuhResult, AffectedItemsWazuhResult
 from wazuh.rbac.utils import expand_rules, expand_lists, expand_decoders
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
 
@@ -637,8 +637,8 @@ def _mask_payload(payload, mask_text: str = MASK_DEFAULT):
     """
     Recursively mask sensitive data in a payload in-place.
 
-    The function traverses dictionaries, lists, and AffectedItemsWazuhResult
-    objects, applying masking to:
+    The function traverses dictionaries, lists, AffectedItemsWazuhResult and
+    WazuhResult objects, applying masking to:
     - Paths defined in the global `SENSITIVE_FIELD_PATHS` (via `_mask_paths_in_object`).
     - The literal key ``'key'`` (its value is replaced entirely by `mask`).
     - Any string element that matches the XML pattern handled by `_mask_xml_string`
@@ -649,9 +649,9 @@ def _mask_payload(payload, mask_text: str = MASK_DEFAULT):
 
     Parameters
     ----------
-    payload : dict, list, AffectedItemsWazuhResult, or other
-        Data structure to be masked. Only dict, list, and AffectedItemsWazuhResult
-        are processed; other types are ignored.
+    payload : dict, list, AbstractWazuhResult, or other
+        Data structure to be masked. Only dict, list and AbstractWazuhResult
+        subclasses are processed; other types are ignored.
     mask : str
         Replacement text used for all masked values.
 
@@ -673,6 +673,10 @@ def _mask_payload(payload, mask_text: str = MASK_DEFAULT):
     elif isinstance(payload, AffectedItemsWazuhResult):
         for item in payload.affected_items:
             _mask_payload(item, mask_text)
+    elif isinstance(payload, AbstractWazuhResult):
+        # A WazuhResult is a MutableMapping, not a dict, and carries the configuration under 'data'.
+        # The masking rules apply to that object, never to the envelope holding it.
+        _mask_payload(payload.get('data'), mask_text)
 
 
 def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
