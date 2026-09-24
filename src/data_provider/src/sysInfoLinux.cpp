@@ -113,10 +113,11 @@ static nlohmann::json getProcessInfo(const proc_t* process)
     // process->cmd (/proc/<pid>/comm) is capped at TASK_COMM_LEN (15 chars); use the
     // untruncated argv[0] basename instead, falling back to comm for kernel threads,
     // which have no cmdline.
+    // cmdline and comm are arbitrary bytes; the inventory JSON must be valid UTF-8.
     const std::string baseName {commandLine.empty() ? std::string {} : std::filesystem::path(commandLine).filename().string()};
-    jsProcessInfo["name"]         = baseName.empty() ? process->cmd : baseName;
-    jsProcessInfo["command_line"] = commandLine;
-    jsProcessInfo["args"]         = commandLineArgs;
+    jsProcessInfo["name"]         = Utils::sanitizeUtf8(baseName.empty() ? process->cmd : baseName);
+    jsProcessInfo["command_line"] = Utils::sanitizeUtf8(commandLine);
+    jsProcessInfo["args"]         = Utils::sanitizeUtf8(commandLineArgs);
     jsProcessInfo["args_count"]   = commandLineCount;
     jsProcessInfo["start"]        = Utils::rawTimestampToISO8601(static_cast<uint32_t>(Utils::timeTick2unixTime(process->start_time)));
     return jsProcessInfo;
