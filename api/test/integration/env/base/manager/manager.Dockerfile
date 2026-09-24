@@ -25,17 +25,18 @@ ADD base/manager/supervisord.conf /etc/supervisor/conf.d/
 RUN mkdir wazuh && curl -sL https://github.com/wazuh/wazuh/tarball/${WAZUH_BRANCH} | tar zx --strip-components=1 -C wazuh
 COPY base/manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 RUN /wazuh/install.sh
-# Replace the certificates install.sh issued with a set whose SANs cover every manager service name
-# in the compose environment: the api_ssl volume shared by the cluster containers is populated from
-# this image (see certs-config.yml), and a pair minted against the build container's own hostname
-# would not match. Issued with the devcontainer copy of the installation assistant tool (sources
-# already in /wazuh).
+# Issue the manager's certificates here rather than letting the install do it: preloaded-vars.conf
+# sets USER_RESOLVE_CREDENTIALS="n", so nothing credential-bearing is baked into the layer, and the
+# SANs have to cover every manager service name in the compose environment anyway (see
+# certs-config.yml) -- a pair minted against the build container's own hostname would not match.
+# The api_ssl volume shared by the cluster containers is populated from this path. Issued with the
+# devcontainer copy of the installation assistant tool (sources already in /wazuh).
+#
+# Certificates are the one credential it is safe to bake in: they are public material plus a key
+# scoped to names only this test environment answers to, and the resolver never re-examines a pair
+# once it is in place -- not at service start, not on upgrade. No CA directory is left behind, so
+# no signing key reaches the layer.
 COPY base/manager/certs-config.yml /wazuh/certs-config.yml
-# Overwriting them is enough. The credential resolver issues certificates at installation and never
-# looks at them again -- not at service start, not on upgrade -- so nothing here has to reproduce
-# the provenance of the pair it replaces, and the shared CA directory is not consulted. The
-# bootstrap CA install.sh left behind goes with it: its private key has no business being baked
-# into an image layer every container shares.
 RUN bash /wazuh/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c /wazuh/certs-config.yml -o /tmp/wazuh-certificates && \
     mkdir -p /var/wazuh-manager/etc/certs && \
     install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/root-ca.pem /var/wazuh-manager/etc/certs/root-ca.pem && \
