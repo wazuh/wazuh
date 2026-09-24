@@ -492,7 +492,6 @@
 #define FIM_ERROR_EBPF_RINGBUFF_CONSUME             "(6977): Consuming ring buffer failed."
 #define FIM_ERROR_EBPF_HEALTHCHECK_TIMEOUT          "(6978): eBPF healthcheck timeout."
 #define FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL         "(6979): Healthcheck file can't be removed. Path: %s"
-#define FIM_ERROR_EBPF_INVALID_KERNEL               "(6980): Invalid Kernel version detected. Must be +5.8."
 #define FIM_ERROR_EBPF_HEALTHCHECK_ACTION_FAILED    "(6981): eBPF healthcheck action failed: %s. %s"
 #define FIM_ERROR_EBPF_HEALTHCHECK_ACTION_SKIPPED   "(6982): eBPF healthcheck action skipped: %s. %s"
 #define FIM_ERROR_EBPF_OBJ_ATTACH_DETAIL            "(6983): Attaching BPF program '%s' failed (errno=%d: %s)."

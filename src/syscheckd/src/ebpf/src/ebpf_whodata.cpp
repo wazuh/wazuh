@@ -7,6 +7,7 @@
  * Foundation.
  */
 
+#include <algorithm>
 #include <bounded_queue.hpp>
 #include <cerrno>
 #include <chrono>
@@ -30,13 +31,14 @@
 #include "bpf_helpers.h"
 // clang-format on
 
-#define KERNEL_VERSION_FILE  "/proc/sys/kernel/osrelease"
 #define EBPF_HC_FILE         "tmp/ebpf_hc"
 #define LIB_INSTALL_PATH     "bpf"
 #define BPF_OBJ_INSTALL_PATH "lib/modern.bpf.o"
 #define WAIT_MS              500
 #define HC_ACTION_TIMEOUT_S  10
 #define LSM_LIST_FILE        "/sys/kernel/security/lsm"
+#define LIBBPF_DEBUG         2 // enum libbpf_print_level
+#define LIBBPF_LOG_MAX       4096
 
 // Global
 volatile bool event_received = false;
@@ -88,6 +90,36 @@ static void destroy_global_links()
         }
     }
     global_links.clear();
+}
+
+static void release_bpf()
+{
+    destroy_global_links();
+    bpf_helpers->bpf_object_close(global_obj);
+    global_obj = nullptr;
+    w_bpf_deinit(bpf_helpers);
+}
+
+/* Forward libbpf diagnostics (load, BTF and verifier errors) to the FIM log */
+static int libbpf_print(int level, const char* format, va_list args)
+{
+    va_list args_len;
+    va_copy(args_len, args);
+    std::string msg(std::max(vsnprintf(nullptr, 0, format, args_len), 0), '\0');
+    va_end(args_len);
+    vsnprintf(msg.data(), msg.size() + 1, format, args);
+
+    if (!msg.empty() && msg.back() == '\n')
+    {
+        msg.pop_back();
+    }
+    // Verifier logs can be megabytes long and end with the rejection reason: keep the tail
+    if (msg.size() > LIBBPF_LOG_MAX)
+    {
+        msg.erase(0, msg.size() - LIBBPF_LOG_MAX);
+    }
+    fimebpf::instance().m_loggingFunction(level == LIBBPF_DEBUG ? LOG_DEBUG_VERBOSE : LOG_DEBUG, msg.c_str());
+    return 0;
 }
 
 template<typename T>
@@ -394,33 +426,6 @@ static bool run_healthcheck_action(
     return true;
 }
 
-int check_invalid_kernel_version()
-{
-    auto logFn = fimebpf::instance().m_loggingFunction;
-    std::ifstream file(KERNEL_VERSION_FILE);
-
-    if (!file)
-    {
-        return 1;
-    }
-
-    std::string version;
-    file >> version;
-
-    int major = 0, minor = 0;
-    if (sscanf(version.c_str(), "%d.%d", &major, &minor) < 2)
-    {
-        return 1;
-    }
-
-    if ((major < 5) || (major == 5 && minor < 8))
-    {
-        logFn(LOG_ERROR, FIM_ERROR_EBPF_INVALID_KERNEL);
-        return 1;
-    }
-    return 0;
-}
-
 int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
 {
     auto logFn = fimebpf::instance().m_loggingFunction;
@@ -483,6 +488,8 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
         bpf_helpers->module, "bpf_program__section_name");
     bpf_helpers->bpf_program_name =
         (bpf_program__name_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__name");
+    bpf_helpers->libbpf_set_print =
+        (libbpf_set_print_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "libbpf_set_print");
 
     /* Load all required symbols (C++17 fold expression) */
     const auto all_loaded = [](auto... ptrs)
@@ -509,13 +516,16 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load)
                     bpf_helpers->bpf_object_destroy_skeleton,
                     bpf_helpers->bpf_object_load_skeleton,
                     bpf_helpers->bpf_object_attach_skeleton,
-                    bpf_helpers->bpf_object_detach_skeleton))
+                    bpf_helpers->bpf_object_detach_skeleton,
+                    bpf_helpers->libbpf_set_print))
     {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_LIB_LOAD);
         local_sym_load->freeLibrary(bpf_helpers->module);
         bpf_helpers.reset();
         return 1;
     }
+
+    bpf_helpers->libbpf_set_print(libbpf_print);
 
     // Successfully loaded libbpf
     logFn(LOG_DEBUG_VERBOSE, FIM_EBPF_LIB_LOADED);
@@ -858,16 +868,16 @@ extern "C"
             bpf_helpers->init_libbpf = (init_libbpf_t)init_libbpf;
         }
 
-        if (!bpf_helpers->check_invalid_kernel_version)
-        {
-            bpf_helpers->check_invalid_kernel_version = (check_invalid_kernel_version_t)check_invalid_kernel_version;
-        }
-
         kernelEventQueue.setMaxSize(fimebpf::instance().m_queue_size);
 
-        if (!logFn || bpf_helpers->check_invalid_kernel_version() || bpf_helpers->init_libbpf(std::move(sym_load)) ||
-            bpf_helpers->init_bpfobj() || bpf_helpers->init_ring_buffer(&rb, healthcheck_event))
+        if (!logFn || bpf_helpers->init_libbpf(std::move(sym_load)))
         {
+            return 1;
+        }
+
+        if (bpf_helpers->init_bpfobj() || bpf_helpers->init_ring_buffer(&rb, healthcheck_event))
+        {
+            release_bpf();
             return 1;
         }
 
@@ -904,7 +914,7 @@ extern "C"
 
         if (healthcheck_failed)
         {
-            destroy_global_links();
+            release_bpf();
             return 1;
         }
 
@@ -937,10 +947,7 @@ extern "C"
         }
 
         bpf_helpers->ring_buffer_free(rb);
-        destroy_global_links();
-        bpf_helpers->bpf_object_close(global_obj);
-        global_obj = nullptr;
-        w_bpf_deinit(bpf_helpers);
+        release_bpf();
         close_libbpf(std::move(sym_load));
 
         return 0;
