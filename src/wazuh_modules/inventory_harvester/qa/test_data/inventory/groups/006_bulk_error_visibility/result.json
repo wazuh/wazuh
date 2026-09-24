@@ -1,0 +1,49 @@
+[
+    {
+        "index_name": "wazuh-states-inventory-groups-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "group": {
+                    "id": 100,
+                    "id_signed": -100,
+                    "is_hidden": false,
+                    "name": "admins"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "002",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "group": {
+                    "id": 200,
+                    "id_signed": -200,
+                    "is_hidden": false,
+                    "name": "wheel"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]

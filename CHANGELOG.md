@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Added the missing compiler hardening flags (stack canary, PIE, full RELRO and FORTIFY_SOURCE) to the Linux binaries. ([#38571](https://github.com/wazuh/wazuh/pull/38571))
+- The API access log no longer writes the `run_as` authorization context verbatim unless debug logging is enabled; `hash_auth_context` still identifies it. ([#39471](https://github.com/wazuh/wazuh/pull/39471))
 
 #### Fixed
 
@@ -29,6 +30,8 @@ All notable changes to this project will be documented in this file.
 - Added Fluentd server identity verification to the `fluent-forward` module: the certificate name is now checked against the configured address and the shared key digest returned by the server is verified. ([#38686](https://github.com/wazuh/wazuh/pull/38686))
 - Aligned the API `force` parameter with its OpenAPI schema: `POST /agents` now declares it, and `POST /agents/insert` no longer sends a `force` object that the request did not carry. ([#38804](https://github.com/wazuh/wazuh/pull/38804))
 - Escaped control characters in the request path of the API plain-text access log, so an unauthenticated request can no longer forge access log entries. ([#38894](https://github.com/wazuh/wazuh/pull/38894))
+- Fixed the indexer connector silently diverging from the `wazuh-states-*` indices: per-item `_bulk` rejections are now logged instead of ignored, aggregated by error type and reason, `_delete_by_query` responses reporting failures or version conflicts are now logged too, agent-ID deletions no longer match by raw string prefix, `diff()` no longer deletes real documents when its local mirror comes up empty, and a DELETED document no longer sweeps in sibling documents whose ID merely starts with the deleted one. ([#39041](https://github.com/wazuh/wazuh/pull/39041))
+- Raised the default API `run_as` authentication-context payload size limit from 8 KB to 64 KB and made it configurable via the new `auth_context_max_payload_size` option, for AD/LDAP/SSO logins with large group-membership contexts. ([#39471](https://github.com/wazuh/wazuh/pull/39471))
 
 ### Agent
 
@@ -40,8 +43,10 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed false error log when macOS `log stream` process exits during graceful agent shutdown. ([#38767](https://github.com/wazuh/wazuh/pull/38767))
 - Fixed missing Windows FIM inventory for file names with non-ANSI characters. ([#38301](https://github.com/wazuh/wazuh/pull/38301))
 - Fixed an agent crash caused by unsynchronized reads of the FIM directories list from the whodata callbacks. ([#39201](https://github.com/wazuh/wazuh/issues/39201))
+- Fixed FIM eBPF whodata dropping events on hosts whose NSS backend is remote. ([#39360](https://github.com/wazuh/wazuh/issues/39360))
 - Fixed the Windows agent MSI upgrade leaving the agent broken after the next reboot, and the silent `/q` upgrade hanging, when a system restart was pending. ([#38277](https://github.com/wazuh/wazuh/pull/38277))
 - Fixed syscollector sometimes keeping excluded macOS packages in the inventory. ([#38340](https://github.com/wazuh/wazuh/pull/38340))
 - Fixed `wazuh-execd` crashing when more active response commands than supported are defined. ([#38410](https://github.com/wazuh/wazuh/pull/38410))
@@ -57,16 +62,20 @@ All notable changes to this project will be documented in this file.
 - Fixed process names truncated to fifteen characters in the syscollector inventory. ([#38969](https://github.com/wazuh/wazuh/pull/38969))
 - Fixed the gcloud wodle's Pub/Sub integration failing to start whenever the bucket integration's dependencies (e.g. `google-cloud-storage`) were broken, by deferring each integration's imports so a failure in one no longer blocks the other. ([#38868](https://github.com/wazuh/wazuh/pull/38868))
 - Fixed the macOS agent's default FIM configuration monitoring `/etc`, which macOS resolves as a symlink to `/private/etc`; without `follow_symbolic_link` enabled, syscheck only recorded the symlink itself, leaving every file under it (`sudoers`, `sshd_config`, `pam.d`, `hosts`) uncovered. The default `<directories>`, `<ignore>`, and `<nodiff>` entries now target `/private/etc` directly. ([#39119](https://github.com/wazuh/wazuh/issues/39119))
+- Fixed the macOS agent's syscollector process and port inventory being truncated, because `proc_listallpids()` was called with the buffer size expressed in pid_t count instead of bytes. ([#39126](https://github.com/wazuh/wazuh/issues/39126))
 - Fixed the default agent nodiff list not protecting /etc/shadow and real key paths. ([#39124](https://github.com/wazuh/wazuh/pull/39124))
 - Fixed FIM not monitoring user-mounted `tmpfs` directories mistaken for `/dev`. ([#38627](https://github.com/wazuh/wazuh/pull/38627))
 - Fixed the gcloud wodle silently discarding a crashed process's raw output when it produced no recognized log line, and fixed `wm_exec()` (shared by every wodle) reporting exit code 0 for a process killed by a signal, such as an OOM kill or a native segfault, which had made that raw-output fallback unreachable for exactly the crashes it was meant to catch. ([#38943](https://github.com/wazuh/wazuh/pull/38943))
 - Fixed the default Windows FIM configuration monitoring none of its 19 named critical binaries (`cmd.exe`, `lsass.exe`, `sc.exe`, `sethc.exe`, etc.), because duplicate `%WINDIR%\SysNative` / `%WINDIR%\System32` directory declarations collapsed onto the same path once normalized and silently replaced each other's `restrict` list. ([#39198](https://github.com/wazuh/wazuh/issues/39198))
+- Fixed the macOS postinstall not re-owning `ossec`-era files, due to an unterminated `find -exec`. ([#39160](https://github.com/wazuh/wazuh/issues/39160))
 - Fixed the AWS wodle rejecting the `us-gov-east-1` and `us-gov-west-1` regions as invalid. ([#30480](https://github.com/wazuh/wazuh/issues/30480))
 - Fixed the macOS agent not reporting the password status and hash algorithm of local users. ([#39356](https://github.com/wazuh/wazuh/pull/39356))
 - Fixed the macOS agent reporting zeroed password aging values for local users, where macOS defines no such policy. ([#39356](https://github.com/wazuh/wazuh/pull/39356))
 - Fixed the users inventory misreporting sudoers, missing group-based grants (e.g. macOS's `%admin`, Linux's `%sudo`/`%wheel`) and flagging unrelated accounts. ([#39165](https://github.com/wazuh/wazuh/issues/39165))
 - Fixed the users inventory never reading sudo grants placed in sudoers drop-in files (`/etc/sudoers.d/*`). ([#39165](https://github.com/wazuh/wazuh/issues/39165))
 - Fixed the macOS agent shipping preinstalled empty `logs/ossec.log`/`ossec.json` placeholders. ([#39120](https://github.com/wazuh/wazuh/issues/39120))
+- Fixed the Windows agent accepting `<whodata><provider>ebpf</provider></whodata>` and silently disabling whodata. ([#39353](https://github.com/wazuh/wazuh/issues/39353))
+- Fixed the FIM eBPF whodata healthcheck failing on RHEL 9 kernels and discarding the eBPF provider. ([#39570](https://github.com/wazuh/wazuh/pull/39570))
 
 ### Ruleset
 
@@ -74,6 +83,7 @@ All notable changes to this project will be documented in this file.
 - Fixed multiple checks with deprecated commands in Apple macOS 26.0 SCA file. ([#38669](https://github.com/wazuh/wazuh/pull/38669))
 - Fixed false-pass on the CIS Amazon Linux 2023 and Ubuntu 18.04 minimum password-days checks. ([#39047](https://github.com/wazuh/wazuh/pull/39047))
 - Fixed a `Permisive` typo failing the SELinux mode check on compliant hosts across 5 SCA policies. ([#39166](https://github.com/wazuh/wazuh/pull/39166))
+- Fixed the CIS Ubuntu 20.04 and Debian 10 "nologin is not listed in /etc/shells" check always reporting passed, by matching `nologin` instead of the never-occurring `nologins`. ([#39474](https://github.com/wazuh/wazuh/pull/39474))
 
 ### Other
 
@@ -81,6 +91,12 @@ All notable changes to this project will be documented in this file.
 
 - Updated embedded Python to 3.10.21 and dependencies `cryptography`, `pip`, `pyasn1` and `setuptools`. ([#39148](https://github.com/wazuh/wazuh/pull/39148))
 - Updated the Google Cloud dependencies (`google-cloud-storage`, `google-cloud-core`, `google-auth` and `google-resumable-media`), which relied on the `pkg_resources` module removed in `setuptools` 82. ([#39148](https://github.com/wazuh/wazuh/pull/39148))
+
+### Ruleset
+
+#### Fixed
+
+- Fixed SCA checks silently failing across macOS, RHEL/Debian, AlmaLinux, Amazon Linux, CentOS, Oracle Linux, and Rocky Linux, Ubuntu, Solaris, MongoDB policies by adding missing shell wrappers and fixing broken rule syntax. ([#38679](https://github.com/wazuh/wazuh/pull/38679))
 
 ## [v4.14.8]
 

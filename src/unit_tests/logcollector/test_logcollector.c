@@ -2525,6 +2525,7 @@ void test_w_macos_release_log_execution_log_stream_and_show_launched_and_running
 
     assert_null(macos_processes->stream.wfd);
     assert_null(macos_processes->show.wfd);
+    assert_int_equal(macos_log_shutdown, 1);
 
 }
 
