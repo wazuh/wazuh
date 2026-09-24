@@ -24,7 +24,7 @@ into `node/pkg/`:
 |---|---|---|
 | `manifest` (default) | `WAZUH_MANIFEST_URL` | Nightly manager package for the arch. |
 | `local` | `WAZUH_MANAGER_DEB=/path.deb` | A local package. |
-| `source` | `WAZUH_HOME` (default `/var/wazuh-manager`) | Snapshot of the manager built on this host with the devContainer make tasks. The manager must be stopped while it is taken (`sudo /var/wazuh-manager/bin/wazuh-manager-control stop`); `setup-master.sh` starts it again. |
+| `source` | the install at `/var/wazuh-manager` | Snapshot of the manager built on this host with the devContainer make tasks. Only an install at `/var/wazuh-manager` is taken: the worker runs it from that path and the install records absolute paths under its home (GeoIP databases in the engine store). The manager must be stopped while it is taken (`sudo /var/wazuh-manager/bin/wazuh-manager-control stop`); `setup-master.sh` starts it again. |
 
 ## Usage
 

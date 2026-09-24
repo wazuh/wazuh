@@ -65,6 +65,15 @@ function from_local() {
 
 function from_source() {
   local home="${WAZUH_HOME:-/var/wazuh-manager}"
+  # The worker runs the tree at /var/wazuh-manager, and an install is not
+  # relocatable: the engine store records absolute paths (data/store/geo/mmdb/0
+  # names ${home}/data/mmdb/*.mmdb), so a snapshot of another home would give
+  # workers that look healthy and have no GeoIP data. Only that home is taken.
+  if [[ "$(realpath -m "$home")" != /var/wazuh-manager ]]; then
+    echo "ERROR: source mode snapshots an install at /var/wazuh-manager only (got WAZUH_HOME=${home})." >&2
+    echo "       The worker runs it from that path, and the install records absolute paths under its home." >&2
+    exit 1
+  fi
   [[ -x "${home}/bin/wazuh-manager-control" ]] || {
     echo "ERROR: no manager install found at ${home}. Build it first with the devContainer" >&2
     echo "       'Build MANAGER' task, then re-run with WAZUH_MANAGER_SOURCE=source." >&2
@@ -87,14 +96,10 @@ function from_source() {
   # Exclude the master's identity/state (the worker gets its own via cluster sync
   # and the entrypoint) and the runtime dirs the worker recreates. The archive is
   # published only once tar succeeded.
-  # The worker extracts the tree under /var and runs /var/wazuh-manager, so the
-  # archive root is always wazuh-manager/ whatever WAZUH_HOME is called (the
-  # daemons and wazuh-manager-control resolve their home from where they run).
   local base; base="$(basename "$home")"
   tar -C "$(dirname "$home")" \
       --exclude="${base}/logs" --exclude="${base}/queue" --exclude="${base}/var" \
       --exclude="${base}/etc/client.keys" --exclude="${base}/etc/authd.pass" \
-      --transform="s,^${base}\(/\|\$\),wazuh-manager\1,S" \
       -czf "${PKG_DIR}/wazuh-manager-tree.tar.gz.tmp" "$base"
   mv "${PKG_DIR}/wazuh-manager-tree.tar.gz.tmp" "${PKG_DIR}/wazuh-manager-tree.tar.gz"
   # The image creates wazuh-manager with these ids before extracting the tree (node/Dockerfile).
