@@ -62,9 +62,7 @@ static const std::vector<int> s_validFDSock =
 static const std::map<std::string, int> s_mapPackagesDirectories =
 {
     { "/Applications", PKG },
-    { "/Applications/Utilities", PKG},
     { "/System/Applications", PKG},
-    { "/System/Applications/Utilities", PKG},
     { "/System/Library/CoreServices", PKG},
     { "/private/var/db/receipts", RCP},
     { "/Library/Apple/System/Library/Receipts", RCP},
