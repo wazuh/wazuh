@@ -439,12 +439,18 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                         architecture = UNKNOWN_VALUE;
                     }
 
+                    // EstimatedSize is a REG_DWORD in KiB, converted to bytes to match the
+                    // convention already used for Debian packages. Not every installer
+                    // publishes it, and the field keeps carrying 0 when none is published.
+                    DWORD estimatedSizeKb { 0 };
+                    const auto hasSize { packageReg.dword("EstimatedSize", estimatedSizeKb) };
+
                     packageJson["name"]         = std::move(name);
                     packageJson["description"]  = UNKNOWN_VALUE;
                     packageJson["version_"]     = version.empty() ? UNKNOWN_VALUE : std::move(version);
                     packageJson["category"]     = UNKNOWN_VALUE;
                     packageJson["priority"]     = UNKNOWN_VALUE;
-                    packageJson["size"]         = 0;
+                    packageJson["size"]         = hasSize ? PackageWindowsHelper::estimatedSizeToBytes(estimatedSizeKb) : 0;
                     packageJson["vendor"]       = vendor.empty() ? UNKNOWN_VALUE : std::move(vendor);
                     packageJson["source"]       = UNKNOWN_VALUE;
                     packageJson["installed"]    = install_time.empty() ? UNKNOWN_VALUE : std::move(install_time);

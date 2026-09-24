@@ -50,6 +50,55 @@ TEST_F(RegistryUtilsTest, RegistryDWORDNoThrow)
     EXPECT_FALSE(result);
 }
 
+TEST_F(RegistryUtilsTest, RegistryDWORDRejectsAStringValue)
+{
+    // A REG_SZ of three characters fits the DWORD buffer, so without a type check its bytes
+    // are returned as a number: "123" reads back as 3355185. The value must be rejected and
+    // the caller's variable left untouched.
+    HKEY handler;
+    const LPCTSTR subkey {TEXT("WazuhTest")};
+    LPCTSTR value {TEXT("Test")};
+    const char data[] {"123"};
+    DWORD valueRead {0xABCD};
+
+    auto result {RegCreateKeyEx(
+        HKEY_CURRENT_USER, subkey, 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, nullptr, &handler, nullptr)};
+    EXPECT_EQ(ERROR_SUCCESS, result);
+
+    result = RegSetValueEx(handler, value, 0, REG_SZ, reinterpret_cast<const BYTE*>(data), sizeof(data));
+    EXPECT_EQ(ERROR_SUCCESS, result);
+
+    Utils::Registry reg(HKEY_CURRENT_USER, subkey);
+    EXPECT_FALSE(reg.dword(value, valueRead));
+    EXPECT_EQ(0xABCD, valueRead);
+
+    RegDeleteKeyEx(HKEY_CURRENT_USER, subkey, KEY_WOW64_64KEY, 0);
+    RegCloseKey(handler);
+}
+
+TEST_F(RegistryUtilsTest, RegistryDWORDReadsARealDword)
+{
+    HKEY handler;
+    const LPCTSTR subkey {TEXT("WazuhTest")};
+    LPCTSTR value {TEXT("Test")};
+    DWORD data {153600};
+    DWORD valueRead {0};
+
+    auto result {RegCreateKeyEx(
+        HKEY_CURRENT_USER, subkey, 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, nullptr, &handler, nullptr)};
+    EXPECT_EQ(ERROR_SUCCESS, result);
+
+    result = RegSetValueEx(handler, value, 0, REG_DWORD, reinterpret_cast<LPBYTE>(&data), sizeof(DWORD));
+    EXPECT_EQ(ERROR_SUCCESS, result);
+
+    Utils::Registry reg(HKEY_CURRENT_USER, subkey);
+    EXPECT_TRUE(reg.dword(value, valueRead));
+    EXPECT_EQ(data, valueRead);
+
+    RegDeleteKeyEx(HKEY_CURRENT_USER, subkey, KEY_WOW64_64KEY, 0);
+    RegCloseKey(handler);
+}
+
 TEST_F(RegistryUtilsTest, RegistryQWORD)
 {
     HKEY handler;

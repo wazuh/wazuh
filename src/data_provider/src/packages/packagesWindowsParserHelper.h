@@ -27,6 +27,12 @@ namespace PackageWindowsHelper
     constexpr auto WIN_REG_PRODUCT_HOTFIX {"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Installer\\UserData\\S-1-5-18\\Products"};
     constexpr auto WIN_REG_WOW_HOTFIX {"SOFTWARE\\WOW6432Node\\Microsoft\\Updates"};
 
+    static int64_t estimatedSizeToBytes(const uint32_t sizeKb)
+    {
+        constexpr int64_t BYTES_PER_KIB { 1024 };
+        return static_cast<int64_t>(sizeKb) * BYTES_PER_KIB;
+    }
+
     static std::string extractHFValue(std::string input)
     {
         constexpr auto KB_FORMAT_REGEX_STR { "(KB+[0-9]{6,})"};

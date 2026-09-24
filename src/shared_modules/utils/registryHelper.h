@@ -81,12 +81,25 @@ namespace Utils
 
             bool dword(const std::string& valueName, DWORD& value) const
             {
+                // The type has to be requested and checked: without it a REG_SZ short enough to
+                // fit the buffer is read as raw bytes and returned as a plausible number, so
+                // "123" comes back as 3355185. The read lands in a local so a rejected value
+                // never reaches the caller's variable, and the payload has to be a whole DWORD.
+                DWORD type{};
+                DWORD data{};
                 DWORD size{sizeof(DWORD)};
                 const auto result
                 {
-                    RegQueryValueEx(m_registryKey, valueName.c_str(), nullptr, nullptr, reinterpret_cast<LPBYTE>(&value), &size)
+                    RegQueryValueEx(m_registryKey, valueName.c_str(), nullptr, &type, reinterpret_cast<LPBYTE>(&data), &size)
                 };
-                return result == ERROR_SUCCESS;
+
+                if (ERROR_SUCCESS != result || REG_DWORD != type || sizeof(DWORD) != size)
+                {
+                    return false;
+                }
+
+                value = data;
+                return true;
             }
 
             std::vector<std::string> enumerate() const
