@@ -11,6 +11,8 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <limits>
+#include <algorithm>
 
 #include "users_darwin.hpp"
 #include "uuid_wrapper.hpp"
@@ -152,6 +154,39 @@ nlohmann::json UsersProvider::collectAccountPolicyData(const uid_t uid)
 {
     nlohmann::json accountData;
     m_odWrapper->genAccountPolicyData(std::to_string(uid), accountData);
+
+    // expires_every_n_days is only present when pwpolicy or an MDM has imposed a change
+    // interval. It doubles as the source for the expiration date, which macOS does not store
+    // directly: it is derived the same way the policy itself evaluates it, from the last change.
+    // password_last_set_time defaults to 0.0 in od_wrapper.mm when OpenDirectory never reported
+    // it, so the key is always present; a real last-set time (> 0) is required, not merely
+    // present, before either aging field is derived -- otherwise both fields would misrepresent
+    // an unknown last-set time as an epoch-1970 one.
+    if (accountData.contains("expires_every_n_days"))
+    {
+        const auto expiresEveryNDays = accountData["expires_every_n_days"].get<int64_t>();
+        const auto lastSetTimeSeconds = static_cast<int64_t>(accountData.value("password_last_set_time", 0.0));
+
+        if (lastSetTimeSeconds > 0)
+        {
+            constexpr auto secondsPerDay = 86400;
+            constexpr int64_t noExpiration = -1;
+            constexpr int64_t maxWireValue = std::numeric_limits<int32_t>::max();
+            // Largest day count that still keeps lastSetTime + days*secondsPerDay within the int
+            // wire field for this account's actual last-set time (not a fixed day count: the same
+            // policy overflows sooner the more recently the password was last changed). Mirrors
+            // shadow_linux.cpp's MAX_EXPIRE_DAYS: the manager's parser rejects an out-of-range int
+            // and would drop the whole message.
+            const int64_t maxExpireDaysForAccount = (maxWireValue - lastSetTimeSeconds) / secondsPerDay;
+
+            // password_max_days_between_changes is the raw day count and shares the same int
+            // wire field, so it needs its own cap independent of the expiration-date arithmetic.
+            accountData["password_max_days_between_changes"] = std::min(expiresEveryNDays, maxWireValue);
+            accountData["password_expiration_date"] = (expiresEveryNDays > maxExpireDaysForAccount)
+                                                      ? noExpiration
+                                                      : lastSetTimeSeconds + expiresEveryNDays * secondsPerDay;
+        }
+    }
 
     return accountData;
 }

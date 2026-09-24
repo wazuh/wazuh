@@ -34,6 +34,7 @@ default_api_configuration = {
     "port": 55000,
     "drop_privileges": True,
     "max_upload_size": 10485760,
+    "auth_context_max_payload_size": 65536,
     "authentication_pool_size": 2,
     "intervals": {
         "request_timeout": 10

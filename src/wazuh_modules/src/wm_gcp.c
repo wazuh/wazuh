@@ -340,6 +340,10 @@ static void wm_gcp_parse_output(char *output, char *tag, int exit_status){
     // nothing meaningful left to lose once that fires.
     int logged_anything = 0;
 
+    if (!output) {
+        return;
+    }
+
     for (line = strstr(parsing_output, WM_GCP_LOGGING_TOKEN); line; line = strstr(parsing_output, WM_GCP_LOGGING_TOKEN)) {
         char * tokenized_line;
         os_calloc(WM_STRING_MAX, sizeof(char), tokenized_line);
@@ -400,7 +404,7 @@ static void wm_gcp_parse_output(char *output, char *tag, int exit_status){
     // the plain log sink) -- keeping the tail rather than the head when it doesn't fit, since a
     // Python traceback's most diagnostic line (the exception type and message) is the last one,
     // not the first.
-    if (!logged_anything && exit_status != 0 && output && *output) {
+    if (!logged_anything && exit_status != 0 && *output) {
         size_t output_len = strlen(output);
         const char *to_log = output_len > OS_SIZE_6144 - 1 ? output + (output_len - (OS_SIZE_6144 - 1)) : output;
         mterror(tag, "%s", to_log);

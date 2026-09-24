@@ -455,6 +455,28 @@ int kprobe__vfs_open(struct pt_regs *ctx)
     return 0;
 }
 
+/*
+ * Returns the candidate as a dentry only if it holds the dentry invariant
+ * d_inode->i_sb == d_sb, NULL otherwise.
+ */
+static __always_inline struct dentry *resolve_dentry(struct dentry *dentry)
+{
+    struct inode *d_inode = NULL;
+    struct super_block *i_sb = NULL, *d_sb = NULL;
+
+    if (!dentry)
+        return NULL;
+
+    bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &dentry->d_inode);
+    if (!d_inode)
+        return NULL;
+
+    bpf_probe_read_kernel(&i_sb, sizeof(i_sb), &d_inode->i_sb);
+    bpf_probe_read_kernel(&d_sb, sizeof(d_sb), &dentry->d_sb);
+
+    return (i_sb && i_sb == d_sb) ? dentry : NULL;
+}
+
 SEC("kprobe/security_inode_setattr")
 int kprobe__security_inode_setattr(struct pt_regs *ctx)
 {
@@ -467,13 +489,14 @@ int kprobe__security_inode_setattr(struct pt_regs *ctx)
      * Argument layout for security_inode_setattr:
      *   pre-6.0 :  (struct dentry *dentry, struct iattr *attr)               -> dentry @ PARM1
      *   6.0+    :  (struct {user_namespace,mnt_idmap} *, struct dentry *,...) -> dentry @ PARM2
+     *
+     * Enterprise kernels backport the 6.0 layout (RHEL 9 on 5.14), so the
+     * position is taken from whichever argument is a valid dentry instead
+     * of the kernel version.
      */
-    struct dentry *dentry;
-    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 0, 0)) {
-        dentry = (struct dentry *)PT_REGS_PARM1_CORE(ctx);
-    } else {
-        dentry = (struct dentry *)PT_REGS_PARM2_CORE(ctx);
-    }
+    struct dentry *dentry = resolve_dentry((struct dentry *)PT_REGS_PARM1_CORE(ctx));
+    if (!dentry)
+        dentry = resolve_dentry((struct dentry *)PT_REGS_PARM2_CORE(ctx));
     if (!dentry)
         return 0;
 

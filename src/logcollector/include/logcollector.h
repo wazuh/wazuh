@@ -356,6 +356,8 @@ extern rlim_t nofile;
 #endif
 
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+extern volatile sig_atomic_t macos_log_shutdown;
+
 /**
  * @brief This function is called to release macOS log's "show" and/or "stream" resources
  */

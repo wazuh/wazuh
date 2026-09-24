@@ -46,10 +46,10 @@ LOGIN_ENDPOINT = '/security/user/authenticate'
 # Authentication context hash key
 HASH_AUTH_CONTEXT_KEY = 'hash_auth_context'
 
-# Allowed upper bound for auth_context payload. Must not exceed MAX_LOGGED_BODY_SIZE: the access
-# logger only caches a body up to that size, and a run_as attempt whose body was never cached is
-# logged without its auth context hash.
-AUTH_CONTEXT_MAX_PAYLOAD_SIZE = 8 * 1024
+# Default of the max auth_context payload size in bytes (see api.yaml `auth_context_max_payload_size`).
+# Literal on purpose: `read_yaml_config()` merges the installed api.yaml into `default_api_configuration`
+# in place, so that dict stops holding the default as soon as the option is set.
+AUTH_CONTEXT_MAX_PAYLOAD_SIZE = 64 * 1024
 
 # Scope extensions key under which a middleware leaves a body it has already read, for the layers
 # above it -- which never see the stream -- to report
@@ -569,7 +569,12 @@ class CheckAuthenticatedRateLimitMiddleware(BaseHTTPMiddleware):
 
 
 class CheckAuthContextSizeMiddleware(BaseHTTPMiddleware):
-    """Reject run_as requests whose body exceeds AUTH_CONTEXT_MAX_PAYLOAD_SIZE."""
+    """Reject run_as requests whose body exceeds auth_context_max_payload_size.
+
+    The option governs the access logger's caching threshold on this path too
+    (`WazuhAccessLoggerMiddleware`): a body this class admits but that layer does not cache reaches
+    `access_log` with nothing to hash, and the attempt is logged without its auth context hash.
+    """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Refuse an oversized auth context without paying for it first.
@@ -592,16 +597,16 @@ class CheckAuthContextSizeMiddleware(BaseHTTPMiddleware):
             Returned response.
         """
         if request.url.path == RUN_AS_LOGIN_ENDPOINT and request.method == "POST":
+            max_size = configuration.api_conf['auth_context_max_payload_size']
             detail = f"Auth context payload exceeds the maximum allowed size of " \
-                     f"{AUTH_CONTEXT_MAX_PAYLOAD_SIZE} bytes."
+                     f"{max_size} bytes."
             declared_length = get_declared_content_length(request)
             if declared_length is None:
                 # This is the only layer that reads a chunked auth context, and the access logger
                 # above it will never see the stream, so the bytes are handed over explicitly.
                 # Without this, a chunked run_as attempt is logged with an empty body.
-                set_cached_body(request,
-                                await read_capped_body(request, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, detail))
-            elif declared_length > AUTH_CONTEXT_MAX_PAYLOAD_SIZE:
+                set_cached_body(request, await read_capped_body(request, max_size, detail))
+            elif declared_length > max_size:
                 raise PayloadTooLargeException(title="Request Entity Too Large", detail=detail)
         return await call_next(request)
 
@@ -656,8 +661,16 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
         # the ASGI server never delivers more body than the request declares; a request that declares
         # none, or declares more than is worth logging, is left for the endpoint to read and its body
         # does not reach the log.
+        #
+        # The run_as login path is bounded by `auth_context_max_payload_size` rather than by the
+        # logging limit: `CheckAuthContextSizeMiddleware` admits an auth context up to that size, and
+        # a body that reaches no cache is hashed by nothing, so the attempt would be logged without
+        # its auth context hash. Anything above it is refused below, and custom_logging() still omits
+        # a payload larger than MAX_LOGGED_BODY_SIZE from the log line.
+        max_cached_body = (configuration.api_conf['auth_context_max_payload_size']
+                           if request.url.path == RUN_AS_LOGIN_ENDPOINT else MAX_LOGGED_BODY_SIZE)
         content_length = get_declared_content_length(request)
-        if content_length is not None and 0 < content_length <= MAX_LOGGED_BODY_SIZE:
+        if content_length is not None and 0 < content_length <= max_cached_body:
             # Related to https://github.com/wazuh/wazuh/issues/24060.
             await request.body()
 

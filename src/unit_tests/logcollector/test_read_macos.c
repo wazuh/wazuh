@@ -48,6 +48,7 @@ char * w_macos_get_last_log_timestamp(void);
 /* Globals */
 
 extern w_macos_log_procceses_t * macos_processes;
+extern volatile sig_atomic_t macos_log_shutdown;
 
 extern int maximum_lines;
 extern int errno;
@@ -1770,6 +1771,126 @@ void test_read_macos_faulty_ended_stream(void ** state) {
     os_free(lf.macos_log);
 }
 
+static void run_read_macos_stream_exit(int status, int shutdown, bool expect_debug) {
+
+    logreader lf;
+    int dummy_rc;
+    char expected_msg[OS_SIZE_256];
+
+    os_calloc(1, sizeof(w_macos_log_config_t), lf.macos_log);
+    os_calloc(1, sizeof(wfd_t), lf.macos_log->processes.stream.wfd);
+    wfd_t * stream_ptr = lf.macos_log->processes.stream.wfd;
+    lf.macos_log->state = LOG_RUNNING_STREAM;
+    lf.macos_log->processes.stream.wfd->pid = 10;
+    macos_processes = &lf.macos_log->processes;
+    macos_log_shutdown = shutdown;
+    lf.macos_log->store_current_settings = true;
+    lf.macos_log->is_header_processed = true;
+    lf.regex_ignore = NULL;
+    lf.regex_restrict = NULL;
+
+    strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
+    lf.macos_log->ctxt.timestamp = 1000;
+
+    will_return(__wrap_can_read, 1);
+    will_return(__wrap_time, 1000 + MACOS_LOG_TIMEOUT + 1);
+    will_return(__wrap_w_msg_hash_queues_push, 0);
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    expect_string(__wrap_w_macos_set_last_log_timestamp, timestamp, "2021-05-17 15:31:53-0700");
+
+    expect_value(__wrap_waitpid, __pid, 10);
+    expect_any(__wrap_waitpid, __options);
+    will_return(__wrap_waitpid, status);
+    will_return(__wrap_waitpid, 10);
+
+    snprintf(expected_msg, sizeof(expected_msg), "(1607): macOS 'log stream' process exited, pid: 10, exit value: %d.", status);
+    if (expect_debug) {
+        expect_string(__wrap__mdebug1, formatted_msg, expected_msg);
+    } else {
+        expect_string(__wrap__merror, formatted_msg, expected_msg);
+    }
+    expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log stream` resources.");
+
+    expect_value(__wrap_kill, sig, SIGTERM);
+    expect_value(__wrap_kill, pid, 10);
+    will_return(__wrap_kill, 0);
+    will_return(__wrap_wpclose, NULL);
+
+    assert_null(read_macos(&lf, &dummy_rc, 0));
+    assert_string_equal(lf.macos_log->ctxt.buffer, "");
+    assert_int_equal(lf.macos_log->state, LOG_NOT_RUNNING);
+    assert_null(macos_processes->stream.wfd);
+
+    macos_log_shutdown = 0;
+    os_free(stream_ptr);
+    os_free(lf.macos_log);
+}
+
+void test_read_macos_stream_sigterm_on_shutdown(void ** state) {
+    run_read_macos_stream_exit(15, 1, true);
+}
+
+void test_read_macos_stream_external_sigterm(void ** state) {
+    run_read_macos_stream_exit(15, 0, false);
+}
+
+void test_read_macos_show_sigterm_on_shutdown(void ** state) {
+
+    logreader lf;
+    int dummy_rc;
+
+    os_calloc(1, sizeof(w_macos_log_config_t), lf.macos_log);
+    os_calloc(1, sizeof(wfd_t), lf.macos_log->processes.show.wfd);
+    wfd_t * show_ptr = lf.macos_log->processes.show.wfd;
+    lf.macos_log->state = LOG_RUNNING_SHOW;
+    lf.macos_log->processes.show.wfd->pid = 10;
+    lf.macos_log->processes.stream.wfd = NULL;
+    macos_processes = &lf.macos_log->processes;
+    macos_log_shutdown = 1;
+    lf.macos_log->store_current_settings = true;
+    lf.macos_log->is_header_processed = true;
+    lf.regex_ignore = NULL;
+    lf.regex_restrict = NULL;
+
+    strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
+    lf.macos_log->ctxt.timestamp = 1000;
+    will_return(__wrap_time, 1000 + MACOS_LOG_TIMEOUT + 1);
+
+    will_return(__wrap_can_read, 1);
+    will_return(__wrap_w_msg_hash_queues_push, 0);
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    expect_string(__wrap_w_macos_set_last_log_timestamp, timestamp, "2021-05-17 15:31:53-0700");
+
+    expect_value(__wrap_waitpid, __pid, 10);
+    expect_any(__wrap_waitpid, __options);
+    will_return(__wrap_waitpid, 15);
+    will_return(__wrap_waitpid, 10);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(1607): macOS 'log show' process exited, pid: 10, exit value: 15.");
+    expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log show` resources.");
+
+    expect_value(__wrap_kill, sig, SIGTERM);
+    expect_value(__wrap_kill, pid, 10);
+    will_return(__wrap_kill, 0);
+    will_return(__wrap_wpclose, NULL);
+
+    assert_null(read_macos(&lf, &dummy_rc, 0));
+    assert_int_equal(lf.macos_log->state, LOG_NOT_RUNNING);
+    assert_null(macos_processes->show.wfd);
+
+    macos_log_shutdown = 0;
+    os_free(show_ptr);
+    os_free(lf.macos_log);
+}
+
 void test_read_macos_faulty_waitpid(void ** state) {
 
     logreader lf;
@@ -1937,6 +2058,9 @@ int main(void) {
         cmocka_unit_test(test_read_macos_toggle_faulty_ended_show_to_stream),
         cmocka_unit_test(test_read_macos_toggle_correctly_ended_show_to_faulty_stream),
         cmocka_unit_test(test_read_macos_faulty_ended_stream),
+        cmocka_unit_test(test_read_macos_stream_sigterm_on_shutdown),
+        cmocka_unit_test(test_read_macos_stream_external_sigterm),
+        cmocka_unit_test(test_read_macos_show_sigterm_on_shutdown),
         cmocka_unit_test(test_read_macos_faulty_waitpid),
         cmocka_unit_test(test_read_macos_log_ignored),
     };

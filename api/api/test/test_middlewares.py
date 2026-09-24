@@ -16,6 +16,8 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from connexion import AsyncApp
+from connexion.middleware import MiddlewarePosition
+from content_size_limit_asgi import ContentSizeLimitMiddleware
 from connexion.testing import TestContext
 from connexion.exceptions import ProblemException, OAuthProblem, Unauthorized
 
@@ -1475,6 +1477,25 @@ async def test_check_expect_header_middleware_uses_runtime_max_upload_size():
 
 
 @pytest.mark.asyncio
+async def test_check_expect_header_middleware_no_limit():
+    """A `max_upload_size` of 0 disables the ceiling, so no declared length is refused at the header."""
+    middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
+
+    mock_request = MagicMock(headers={
+        'Expect': '100-continue',
+        'Content-Length': str(10 * 1024 * 1024 * 1024)
+    })
+    response = Response("Success")
+    call_next_mock = AsyncMock(return_value=response)
+
+    with patch('api.middlewares.configuration.api_conf', new={'max_upload_size': 0}):
+        returned_response = await middleware.dispatch(mock_request, call_next_mock)
+
+    call_next_mock.assert_called_once_with(mock_request)
+    assert returned_response == response
+
+
+@pytest.mark.asyncio
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
 @pytest.mark.parametrize("username_with_special_chars", [
     'user\nname',
@@ -1682,3 +1703,121 @@ async def test_access_log_no_warning_for_200(mock_req):
         await access_log(request=mock_req, response=response, prev_time=expected_time)
 
         mock_warning.assert_not_called()
+
+
+def default_auth_context_limit():
+    """Pin the live auth context limit to its default, so the host's installed api.yaml can't skew the test."""
+    return patch.dict('api.middlewares.configuration.api_conf',
+                      {'auth_context_max_payload_size': AUTH_CONTEXT_MAX_PAYLOAD_SIZE})
+
+
+def build_ad_ldap_payload(group_count):
+    """Build an AD/LDAP-shaped run_as authentication context with `group_count` group entries.
+
+    Parameters
+    ----------
+    group_count : int
+        Number of group entries in the context.
+
+    Returns
+    -------
+    bytes
+        Serialised authentication context.
+    """
+    auth_context = {
+        'auth_context': {
+            'user': 'jdoe@example.com',
+            'department': 'Security Operations',
+            'groups': [
+                {
+                    'name': f'CN=WazuhGroup{i:04d},OU=Groups,DC=example,DC=com',
+                    'sid': f'S-1-5-21-1234567890-987654321-1122334455-{10000 + i}',
+                }
+                for i in range(group_count)
+            ],
+        }
+    }
+    return json.dumps(auth_context).encode()
+
+
+@pytest.mark.asyncio
+async def test_check_auth_context_size_middleware_honours_the_configured_limit():
+    """Check that the live `auth_context_max_payload_size` governs, not the module default."""
+    custom_limit = 2048
+    response = MagicMock()
+    dispatch_mock = AsyncMock(return_value=response)
+    request = build_request(path=RUN_AS_LOGIN_ENDPOINT, content_length=custom_limit + 1)
+    middleware = CheckAuthContextSizeMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with patch.dict('api.middlewares.configuration.api_conf',
+                    {'auth_context_max_payload_size': custom_limit}), \
+         pytest.raises(PayloadTooLargeException) as exc_info:
+        await middleware.dispatch(request=request, call_next=dispatch_mock)
+
+    assert exc_info.value.status == 413
+    assert str(custom_limit) in exc_info.value.detail
+    dispatch_mock.assert_not_awaited()
+
+    # The same declared length is below the default limit, so it goes through untouched.
+    with default_auth_context_limit():
+        assert await middleware.dispatch(request=request, call_next=dispatch_mock) == response
+
+
+@pytest.mark.asyncio
+async def test_check_auth_context_size_middleware_admits_an_ad_ldap_context():
+    """Check that an AD/LDAP context larger than the logging limit is not refused."""
+    body = build_ad_ldap_payload(200)
+    assert MAX_LOGGED_BODY_SIZE < len(body) < AUTH_CONTEXT_MAX_PAYLOAD_SIZE
+    response = MagicMock()
+    dispatch_mock = AsyncMock(return_value=response)
+    request = build_request(path=RUN_AS_LOGIN_ENDPOINT, content_length=len(body))
+    middleware = CheckAuthContextSizeMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with default_auth_context_limit():
+        assert await middleware.dispatch(request=request, call_next=dispatch_mock) == response
+
+
+@pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_caches_an_auth_context_over_the_logging_limit():
+    """Check that the run_as path is bounded by the auth context limit, not by the logging one.
+
+    `CheckAuthContextSizeMiddleware` admits a context up to `auth_context_max_payload_size`, and a
+    body this layer does not cache reaches `access_log` with nothing to hash: the attempt would be
+    logged without its auth context hash.
+    """
+    body = build_ad_ldap_payload(120)
+    assert MAX_LOGGED_BODY_SIZE < len(body) < AUTH_CONTEXT_MAX_PAYLOAD_SIZE
+    response = MagicMock()
+    response.status_code = 200
+    dispatch_mock = AsyncMock(return_value=response)
+    request = build_request(path=RUN_AS_LOGIN_ENDPOINT, content_length=len(body),
+                            receive=chunked_receive(body, 1))
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with patch('api.middlewares.access_log'), \
+         patch('api.middlewares.ConnexionRequest.from_starlette_request', return_value=request), \
+         default_auth_context_limit():
+        assert await middleware.dispatch(request=request, call_next=dispatch_mock) == response
+
+    assert request._body == body
+
+
+@pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_respects_the_configured_auth_context_limit():
+    """Check that lowering the option also lowers what this layer is willing to buffer."""
+    custom_limit = 2048
+    response = MagicMock()
+    response.status_code = 200
+    dispatch_mock = AsyncMock(return_value=response)
+    # `build_request` fails the read, so caching anything at all shows up as an error.
+    request = build_request(path=RUN_AS_LOGIN_ENDPOINT, content_length=custom_limit + 1)
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with patch('api.middlewares.access_log'), \
+         patch('api.middlewares.ConnexionRequest.from_starlette_request', return_value=request), \
+         patch.dict('api.middlewares.configuration.api_conf',
+                    {'auth_context_max_payload_size': custom_limit}):
+        assert await middleware.dispatch(request=request, call_next=dispatch_mock) == response
+
+    assert not hasattr(request, '_body')
+

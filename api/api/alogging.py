@@ -129,6 +129,13 @@ def escape_control_chars(value: str) -> str:
     return control_chars_pattern.sub(lambda m: repr(m.group())[1:-1], value)
 
 
+# Maximum size, in serialised bytes, of a request body that is written to the API logs. The same
+# payload is written once to api.log and again to api.json, so logging it verbatim turns a single
+# request into several times its size on disk. It is also the size above which the access logger
+# refuses to buffer a body at all.
+MAX_LOGGED_BODY_SIZE = 8 * 1024
+
+
 class APILoggerSize:
     size_regex = re.compile(r"(\d+)([KM])")
     unit_conversion = {

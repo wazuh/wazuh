@@ -231,10 +231,10 @@ checks:
           - "Active Scanning"
           - "Exploit Public-Facing Application"
           - "Exploitation for Client Execution"
-    condition: any
+    condition: all
     rules:
-      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''ConfigDataInstall'')" && c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''CriticalUpdateInstall'')" -> r:^1$'
-      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''ConfigDataInstall'')" && c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''CriticalUpdateInstall'')" -> r:.+'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''ConfigDataInstall'')" -> r:^1$'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''CriticalUpdateInstall'')" -> r:^1$'
 
   # 1.7 Ensure Software Update Deferment Is Less Than or Equal to 30 Days. (Automated)
   - id: 30005
@@ -1095,7 +1095,7 @@ checks:
           - "Hide Artifacts"
     condition: all
     rules:
-      - "c:security authorizationdb read system.preferences | grep -A1 shared -> r:>false<"
+      - 'c:sh -c "security authorizationdb read system.preferences | grep -A1 shared" -> r:>false<'
 
   # 2.7.1 Ensure Screen Saver Corners Are Secure. (Automated) - Not Implemented
   # 2.8.1 Audit Universal Control Settings. (Manual) - Not Implemented

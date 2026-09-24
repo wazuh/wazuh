@@ -1246,7 +1246,7 @@ checks:
           - "Hide Artifacts"
     condition: all
     rules:
-      - "c:security authorizationdb read system.preferences | grep -A1 shared -> r:<false"
+      - 'c:sh -c "security authorizationdb read system.preferences | grep -A1 shared" -> r:<false'
 
   # 2.7.1 Ensure Screen Saver Corners Are Secure. (Automated) - Not Implemented
   # 2.7.2 Audit iPhone Mirroring. (Manual) - Not Implemented

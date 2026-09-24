@@ -51,6 +51,7 @@ api_config_schema = {
         "port": {"type": "number"},
         "drop_privileges": {"type": "boolean"},
         "max_upload_size": {"type": "integer", "minimum": 0},
+        "auth_context_max_payload_size": {"type": "integer", "minimum": 1024, "maximum": 1048576},
         "authentication_pool_size": {"type": "integer", "minimum": 1, "maximum": 50},
         "intervals": {
             "type": "object",
