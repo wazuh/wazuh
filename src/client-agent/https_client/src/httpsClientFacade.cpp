@@ -329,7 +329,22 @@ void HttpsClientFacade::controlLoop()
         // when nothing is: a load of one atomic and a return.
         m_caFetcher.tick(m_controlWaiter);
 
-        const auto interval = m_control.consumeFastFollowup() ? FAST_FOLLOWUP_INTERVAL : controlInterval();
+        std::chrono::milliseconds interval;
+
+        if (m_control.consumeFastFollowup())
+        {
+            interval = FAST_FOLLOWUP_INTERVAL;
+        }
+        else if (const auto backoff = m_control.unescalatedAuthFailBackoff())
+        {
+            // A 401 the AuthGate did not latch (not unknown_agent): back off instead of
+            // retrying on the plain notify cadence forever (#39601).
+            interval = *backoff;
+        }
+        else
+        {
+            interval = controlInterval();
+        }
 
         if (!m_controlWaiter.waitFor(interval))
         {

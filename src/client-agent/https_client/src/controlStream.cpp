@@ -186,6 +186,7 @@ ControlStream::~ControlStream()
 bool ControlStream::step(Waiter& waiter)
 {
     const OutcomeClass outcome = runStep(waiter);
+    m_lastOutcome = outcome;
     updateProducerPause(outcome);
     return isRegistered();
 }
