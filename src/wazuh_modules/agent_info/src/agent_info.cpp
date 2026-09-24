@@ -436,7 +436,7 @@ int agent_info_task_check_and_record(const char* task_id)
     {
         if (g_log_callback)
         {
-            g_log_callback(LOG_WARNING,
+            g_log_callback(LOG_DEBUG,
                            "task_check_and_record called before agent_info's database is available",
                            "agent-info");
         }
@@ -453,7 +453,7 @@ int agent_info_vd_offset_observe(uint64_t offset, int* out_changed, int* out_pen
     {
         if (g_log_callback)
         {
-            g_log_callback(LOG_WARNING,
+            g_log_callback(LOG_DEBUG,
                            "vd_offset_observe called before agent_info's database is available",
                            "agent-info");
         }
@@ -487,7 +487,7 @@ int agent_info_vd_offset_clear_pending(uint64_t offset)
     {
         if (g_log_callback)
         {
-            g_log_callback(LOG_WARNING,
+            g_log_callback(LOG_DEBUG,
                            "vd_offset_clear_pending called before agent_info's database is available",
                            "agent-info");
         }
@@ -507,7 +507,7 @@ int agent_info_vd_offset_get_state(int* out_has_offset,
     {
         if (g_log_callback)
         {
-            g_log_callback(LOG_WARNING,
+            g_log_callback(LOG_DEBUG,
                            "vd_offset_get_state called before agent_info's database is available",
                            "agent-info");
         }

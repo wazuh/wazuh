@@ -819,9 +819,10 @@ int wm_agent_info_sync_message(const char* command, size_t command_len)
 // and sync-protocol connections are closed before this thread returns and therefore
 // before whoever joins it observes the module as stopped. Must cover the early-exit
 // paths too: agent_info_task_registry_init() may have already constructed the
-// instance (and opened agent_info.db) before the handshake wait, so returning from
-// those paths without this would leave the database open until process teardown --
-// i.e. past the point where the replacement agent starts.
+// instance (and opened agent_info.db) before the message queue is opened or the
+// handshake wait completes, so returning from those paths without this would leave
+// the database open until process teardown -- i.e. past the point where the
+// replacement agent starts.
 //
 // Releases the resources, it does NOT destroy the instance: agent_info_cleanup()
 // resets the global with no lock, while agent_info_parse_response() (sync dispatcher
@@ -855,25 +856,11 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         return NULL;
     }
 
-    // Initialize message queue
-    g_agent_info_queue = wm_agent_info_startmq(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
-
-    if (g_agent_info_queue < 0)
-    {
-        // A negative result here means shutdown, so don't log an error.
-        if (!wm_agent_info_is_shutting_down())
-        {
-            merror("Cannot initialize agent-info message queue.");
-        }
-        return NULL;
-    }
-
-    mdebug1("Agent-info message queue initialized successfully.");
-
     // Set synchronization parameters from configuration
     agent_info_enable_synchronization = agent_info->sync.enable_synchronization;
 
-    // Get module handle and function pointers
+    // Loaded before the (blocking) queue open so agent_info.db exists before wmcom's
+    // listener, which runs independently of this thread, can route queries to it.
     if (agent_info_module = so_get_module_handle(AGENT_INFO_LIB_NAME), agent_info_module)
     {
         mdebug1("Successfully loaded agent-info library");
@@ -951,8 +938,8 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_init_sync_protocol_ptr(AGENT_INFO_WM_NAME);
     }
 
-    // Durable task_id registry: initialize before the handshake wait/coordinator
-    // loop below, so it is ready the moment agentd's first /control dedup query can arrive.
+    // Durable task_id registry: initialize before the queue open and handshake wait
+    // below, so it is ready the moment agentd's first /control dedup query can arrive.
     // Periodic cleanup runs automatically from within AgentInfoImpl::start()'s own loop
     // -- no separate thread spawned here anymore.
     if (agent_info_task_registry_init_ptr)
@@ -965,6 +952,24 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         merror("agent_info_task_registry_init function not available; /control task dedup will "
                "fail closed (every task treated as non-dispatchable) until this is fixed.");
     }
+
+    // Initialize message queue
+    g_agent_info_queue = wm_agent_info_startmq(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+
+    if (g_agent_info_queue < 0)
+    {
+        // A negative result here means shutdown, so don't log an error.
+        if (!wm_agent_info_is_shutting_down())
+        {
+            merror("Cannot initialize agent-info message queue.");
+        }
+
+        // The registry init above may have already constructed agent_info.db.
+        wm_agent_info_release();
+        return NULL;
+    }
+
+    mdebug1("Agent-info message queue initialized successfully.");
 
     // Query agentd for handshake data (cluster_name, agent_groups) via agcom
     char cluster_name[256] = {0};
