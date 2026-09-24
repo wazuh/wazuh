@@ -156,7 +156,14 @@ fi
 declare -a ROWS_MD=()
 for i in "${!CONTAINERS[@]}"; do
   n=$((i + 1)); c=${CONTAINERS[$i]}; nm=${NAMES[$i]}; fl=${FLAVOURS[$i]}; st=${STATES[$i]}
-  docker logs --tail 400 "$c" > "$OUT/$c.log" 2>&1 || true
+  # The agent's own ossec.log first: the container output only carries what the
+  # entrypoint's `tail -F` printed from the moment it started (the last 10 lines), so
+  # a line written while the agent was starting (a restarted container's "(4102)
+  # Connected") can be missing from it. The container output follows, for the
+  # entrypoint's own messages.
+  { docker exec "$c" tail -n 2000 /var/ossec/logs/ossec.log 2>/dev/null
+    echo "# --- docker logs --tail 400 $c"
+    docker logs --tail 400 "$c" 2>&1; } > "$OUT/$c.log" || true
   keyline=$(awk -v n="$nm" '$2==n {print $1" "$2; exit}' "$OUT/client.keys.txt")
   check "${n}a" "$c" "key in the manager's client.keys" "$nm" "$(awk '{print $2}' <<<"$keyline")"
   status=$(gdb "select connection_status from agent where name='$nm'" | head -1)
