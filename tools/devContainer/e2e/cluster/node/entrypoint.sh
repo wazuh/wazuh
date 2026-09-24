@@ -87,17 +87,26 @@ EOF
 # Replace an existing <cluster> block, or insert one before the closing root tag
 # (the default config ships without <cluster>, so a plain replace would be a no-op).
 if grep -q '<cluster>' "$CONF"; then
+  # Only the first block is replaced, and a block opened and closed on the same
+  # line must not switch skipping on (it would drop the rest of the file).
   awk -v block="$BLOCK" '
-    /<cluster>/    { print block; skip=1; next }
+    /<cluster>/ && !done { print block; done=1; if ($0 !~ /<\/cluster>/) skip=1; next }
     skip && /<\/cluster>/ { skip=0; next }
-    skip           { next }
-                   { print }
+    skip                 { next }
+                         { print }
   ' "$CONF" > "${CONF}.new"
 else
   awk -v block="$BLOCK" '
     /<\/wazuh_config>/ && !done { print block; done=1 }
     { print }
   ' "$CONF" > "${CONF}.new"
+fi
+# Validate the staged file (XML, schema, cross-field rules) before it replaces
+# the configuration; an invalid result leaves the original untouched.
+if ! "$BIN/wazuh-manager-conf" -f "${CONF}.new" validate; then
+  echo "ERROR: the new cluster configuration does not validate; ${CONF} left unchanged." >&2
+  rm -f "${CONF}.new"
+  exit 1
 fi
 cat "${CONF}.new" > "$CONF" && rm -f "${CONF}.new"
 
