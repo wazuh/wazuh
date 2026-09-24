@@ -58,6 +58,12 @@ pkill containerd  || true
 # and a new dockerd started while it still holds its socket can fail to start.
 i=0
 while pgrep -x dockerd > /dev/null 2>&1 && [ "$i" -lt 30 ]; do sleep 1; i=$((i + 1)); done
+# Never start a second daemon next to one that did not exit: stop here, before
+# touching its PID files.
+if pgrep -x dockerd > /dev/null 2>&1; then
+    echo "ERROR: dockerd did not exit within 30 seconds; not starting another one (pid $(pgrep -x dockerd | tr '\n' ' '))." >&2
+    exit 1
+fi
 
 # Remove stale PID files that would prevent a clean restart.
 rm -f /run/docker*.pid      /var/run/docker*.pid
@@ -81,4 +87,13 @@ until docker info > /dev/null 2>&1; do
     sleep 1
     ELAPSED=$((ELAPSED + 1))
 done
+# The daemon that answers must be the new one, with the settings written above.
+running_cgroup=$(docker info --format '{{.CgroupDriver}}' 2>/dev/null || true)
+running_firewall=$(docker info --format '{{if .FirewallBackend}}{{.FirewallBackend.Driver}}{{end}}' 2>/dev/null || true)
+if [ "$running_cgroup" != cgroupfs ] || [ "$running_firewall" != nftables ]; then
+    printf '\nERROR: dockerd answers with cgroup driver "%s" and firewall backend "%s", not cgroupfs/nftables.\n' \
+        "$running_cgroup" "$running_firewall" >&2
+    printf 'Check /tmp/dockerd.log for details.\n' >&2
+    exit 1
+fi
 printf '\ndockerd is ready.\n'
