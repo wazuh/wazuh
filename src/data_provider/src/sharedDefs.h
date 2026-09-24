@@ -132,4 +132,11 @@ static const std::set<std::string> UNIX_NPM_DEFAULT_BASE_DIRS
     "/private/var/root/.nvm/versions/node/v*/lib"
 };
 
+// Per-user application folders on macOS, expanded and scanned the same way as the
+// PYPI/NPM base dirs above. Add more glob patterns here to cover other per-user locations.
+static const std::set<std::string> MACOS_USER_APPLICATIONS_DIRS
+{
+    "/Users/*/Applications"
+};
+
 #endif //_SHARED_DEFS_H

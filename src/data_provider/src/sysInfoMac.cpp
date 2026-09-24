@@ -9,9 +9,11 @@
  * Foundation.
  */
 #include "sysInfo.hpp"
+#include <deque>
 #include <optional>
 #include "cmdHelper.h"
 #include "stringHelper.h"
+#include "stdFileSystemHelper.hpp"
 #include <filesystem_wrapper.hpp>
 #include "osinfo/sysOsParsers.h"
 #include <libproc.h>
@@ -196,6 +198,34 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                             {
                                 std::cerr << e.what() << std::endl;
                             }
+                        }
+                    }
+                }
+            }
+            else if (PKG == pkgType && fs.is_directory(package) && !Utils::startsWith(package.filename().string(), "."))
+            {
+                // Vendors sometimes group their apps one level down (e.g. /Applications/<Vendor>/<App>.app).
+                // Look exactly one level below, no further, so nested helper bundles inside a .app are not walked into.
+                const auto nestedEntries { fs.list_directory(package) };
+
+                for (const auto& nestedEntry : nestedEntries)
+                {
+                    if (Utils::endsWith(nestedEntry, ".app"))
+                    {
+                        try
+                        {
+                            nlohmann::json jsPackage;
+                            FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{package.string(), nestedEntry.filename().string(), ""}, pkgType))->buildPackageData(jsPackage);
+
+                            if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                            {
+                                // Only return valid content packages
+                                callback(jsPackage);
+                            }
+                        }
+                        catch (const std::exception& e)
+                        {
+                            std::cerr << e.what() << std::endl;
                         }
                     }
                 }
@@ -425,6 +455,22 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         if (fs.is_directory(pkgDirectory))
         {
             getPackagesFromPath(pkgDirectory, packageDirectory.second, callback);
+        }
+    }
+
+    // Per-user Applications folders (e.g. /Users/vagrant/Applications). Each user's copy is
+    // reported under its own path, same as the per-user pypi paths below; no cross-user dedup.
+    for (const auto& userApplicationsGlob : MACOS_USER_APPLICATIONS_DIRS)
+    {
+        std::deque<std::string> userApplicationsPaths;
+        Utils::expandAbsolutePath(userApplicationsGlob, userApplicationsPaths);
+
+        for (const auto& userApplicationsPath : userApplicationsPaths)
+        {
+            if (fs.is_directory(userApplicationsPath))
+            {
+                getPackagesFromPath(userApplicationsPath, PKG, callback);
+            }
         }
     }
 
