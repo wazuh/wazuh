@@ -551,6 +551,33 @@ merged.mg\n#\"_agent_ip\":192.168.0.164\n";
     wdb_free_agent_info_data(agent_data);
 }
 
+void test_parse_agent_update_msg_multiple_uname_lines(void **state)
+{
+    char *msg = "Linux |debian10 |4.19.0-9-amd64 |#1 SMP Debian 4.19.118-2+deb10u1 (2020-06-07) |x86_64 \
+[Debian GNU/Linux|debian: 10 (buster)] - Wazuh v3.13.0 / ab73af41699f13fdd81903b5f23d8d00\n\
+Linux |ubuntu2004 |5.4.0-42-generic |#46-Ubuntu SMP Fri Jul 10 00:24:02 UTC 2020 |x86_64 \
+[Ubuntu|ubuntu: 20.04 LTS (Focal Fossa)] - Wazuh v3.13.1 / cd84bg52799f13fdd81903b5f23d8d01\n\
+fd756ba04d9c32c8848d4608bec41251 merged.mg\n#\"_agent_ip\":192.168.0.150\n";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    int result = parse_agent_update_msg(msg, agent_data);
+
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("Wazuh v3.13.1", agent_data->version);
+    assert_string_equal("Ubuntu", agent_data->osd->os_name);
+    assert_string_equal("20", agent_data->osd->os_major);
+    assert_string_equal("04", agent_data->osd->os_minor);
+    assert_string_equal("20.04 LTS", agent_data->osd->os_version);
+    assert_string_equal("ubuntu", agent_data->osd->os_platform);
+    assert_string_equal("x86_64", agent_data->osd->os_arch);
+    assert_string_equal("fd756ba04d9c32c8848d4608bec41251", agent_data->merged_sum);
+    assert_string_equal("192.168.0.150", agent_data->agent_ip);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] =
@@ -579,6 +606,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_archlinux, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_macos, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_windows, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_multiple_uname_lines, setup_remoted_op, teardown_remoted_op),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
