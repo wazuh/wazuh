@@ -1015,6 +1015,35 @@ void test_gen_diff_str_ok(void **state) {
     free(diff_str);
 }
 
+#ifndef TEST_WINAGENT
+/* wazuh/devel-major-incidents#271 (GHSA-2j4r-mf29-x4h5): a diff file with an
+ * embedded NUL makes os_strdup() allocate only strlen(buf) bytes, while the
+ * truncation scan below still walks back the raw fread() byte count (up to
+ * ~59 KB) into that short allocation. Under ASan this is a deterministic
+ * heap-buffer-overflow read (and, if it doesn't crash first, a 16-byte
+ * out-of-bounds write from strcpy(diff_str + n, STR_MORE_CHANGES)). */
+void test_gen_diff_str_embedded_nul_heap_overflow(void **state) {
+    diff_data *diff = *state;
+    diff->diff_file = strdup("/path/to/diff/file");
+
+    FILE *fp = (FILE*)2345;
+    size_t max_read = OS_MAXSTR - OS_SK_HEADER - 1;
+
+    expect_wfopen(diff->diff_file, "rb", fp);
+    expect_fread("A", max_read);
+    expect_fclose(fp, 0);
+
+    expect_string(__wrap_unlink, file, "/path/to/diff/file");
+    will_return(__wrap_unlink, 0);
+
+    char *diff_str = gen_diff_str(diff);
+
+    assert_non_null(diff_str);
+    assert_string_equal(diff_str, "A");
+    free(diff_str);
+}
+#endif
+
 #ifdef TEST_WINAGENT
 void test_fim_diff_generate_filters_fail(void **state) {
     diff_data *diff = *state;
@@ -2176,6 +2205,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_gen_diff_str_wfropen_fail, setup_diff_data, teardown_free_diff_data),
         cmocka_unit_test_setup_teardown(test_gen_diff_str_fread_fail, setup_diff_data, teardown_free_diff_data),
         cmocka_unit_test_setup_teardown(test_gen_diff_str_ok, setup_gen_diff_str, teardown_free_gen_diff_str),
+#ifndef TEST_WINAGENT
+        cmocka_unit_test_setup_teardown(test_gen_diff_str_embedded_nul_heap_overflow, setup_diff_data, teardown_free_diff_data),
+#endif
 
         // fim_diff_generate
         cmocka_unit_test_setup_teardown(test_fim_diff_generate_status_error, setup_diff_data, teardown_free_diff_data),

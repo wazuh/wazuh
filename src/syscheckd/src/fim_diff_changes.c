@@ -784,6 +784,7 @@ char *gen_diff_str(const diff_data *diff){
     }
 #else
     os_strdup(buf, diff_str);
+    n = strlen(diff_str);
 
     if(n >= OS_MAXSTR - OS_SK_HEADER - 1) {
         n -= strlen(STR_MORE_CHANGES);
