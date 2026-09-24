@@ -17,7 +17,7 @@
 #include "dbsyncPipelineFactory.h"
 #include "cjsonSmartDeleter.hpp"
 #include "hashHelper.h"
-#include "stringHelper.h"
+#include "wazuhCommon.hpp"
 
 #ifdef __cplusplus
 extern "C" {
@@ -891,7 +891,7 @@ std::string DBSync::calculateTableChecksum(const std::string& tableName, const s
 
     hash.update(concatenated_checksums.c_str(), concatenated_checksums.length());
     const std::vector<unsigned char> hashResult = hash.hash();
-    final_checksum = Utils::asciiToHex(hashResult);
+    final_checksum = wazuh::hex_encode(hashResult.data(), hashResult.size());
 
     return final_checksum;
 }

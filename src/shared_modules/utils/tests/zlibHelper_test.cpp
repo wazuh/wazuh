@@ -11,7 +11,7 @@
 
 #include "zlibHelper_test.hpp"
 #include "hashHelper.h"
-#include "stringHelper.h"
+#include "wazuhCommon.hpp"
 #include "zlibHelper.hpp"
 #include "gtest/gtest.h"
 #include <algorithm>
@@ -81,7 +81,8 @@ std::string ZlibHelperTest::getFileHash(const std::filesystem::path& filepath) c
 
     Utils::HashData hash;
     hash.update(buffer.c_str(), buffer.size());
-    return Utils::asciiToHex(hash.hash());
+    const auto digest {hash.hash()};
+    return wazuh::hex_encode(digest.data(), digest.size());
 };
 
 /**

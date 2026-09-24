@@ -213,14 +213,6 @@ namespace chrome
             /// @param length
             /// @return A string representation of the hash.
             std::string hashToLetterString(const uint8_t* hash, size_t length);
-            /// @brief Converts a hash to a hex string.
-            /// This method converts a hash represented as a byte array into a hexadecimal string format.
-            /// It iterates through each byte of the hash and converts it to a two-character hexadecimal
-            /// representation, resulting in a string that represents the hash in hexadecimal format.
-            /// @param hash
-            /// @param length
-            /// @return A hexadecimal string representation of the hash.
-            std::string hashToHexString(const uint8_t* hash, size_t length);
             /// @brief Converts a WebKit timestamp to a Unix timestamp.
             /// This method takes a WebKit timestamp, which is in microseconds since the epoch,
             /// and converts it to a Unix timestamp in seconds. It handles potential errors such as

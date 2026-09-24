@@ -33,6 +33,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#39304](https://github.com/wazuh/wazuh/issues/39304) | Unified byte-to-hex conversion into a single shared implementation. |
 | [#38171](https://github.com/wazuh/wazuh/issues/38171) | Compiled syscollector normalizer and data_provider parser regex once instead of on every call. |
 
 #### Removed

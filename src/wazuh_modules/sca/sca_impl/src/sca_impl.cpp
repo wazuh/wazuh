@@ -20,6 +20,7 @@
 #include "hashHelper.h"
 #include "sca.h"
 #include "schemaValidator.hpp"
+#include "wazuhCommon.hpp"
 
 // Static member definitions
 int (*SecurityConfigurationAssessment::s_wmExecFunc)(char*, char**, int*, int, const char*) = nullptr;
@@ -538,7 +539,7 @@ std::string SecurityConfigurationAssessment::calculateSyncedChecksChecksum()
     Utils::HashData hash(Utils::HashType::Sha1);
     hash.update(concatenatedChecksums.c_str(), concatenatedChecksums.length());
     const std::vector<unsigned char> hashResult = hash.hash();
-    return Utils::asciiToHex(hashResult);
+    return wazuh::hex_encode(hashResult.data(), hashResult.size());
 }
 
 // LCOV_EXCL_START
@@ -1421,7 +1422,7 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
                 Utils::HashData hash(Utils::HashType::Sha1);
                 hash.update(baseId.c_str(), baseId.length());
                 const std::vector<unsigned char> hashResult = hash.hash();
-                std::string hashedId = Utils::asciiToHex(hashResult);
+                std::string hashedId = wazuh::hex_encode(hashResult.data(), hashResult.size());
 
                 m_spSyncProtocol->persistDifference(
                     hashedId,

@@ -16,7 +16,7 @@
 
 #include "hashHelper.h"
 #include "loggerHelper.h"
-#include "stringHelper.h"
+#include "wazuhCommon.hpp"
 
 #include <json.hpp>
 
@@ -120,7 +120,7 @@ namespace
         Utils::HashData hash(Utils::HashType::Sha1);
         hash.update(concatenatedChecksums.c_str(), concatenatedChecksums.length());
         const std::vector<unsigned char> hashResult = hash.hash();
-        return Utils::asciiToHex(hashResult);
+        return wazuh::hex_encode(hashResult.data(), hashResult.size());
     }
 } // namespace
 

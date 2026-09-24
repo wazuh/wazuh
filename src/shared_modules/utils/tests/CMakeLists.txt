@@ -51,6 +51,7 @@ file(
   "loggerHelper_test.cpp"
   "globHelper_test.cpp"
   "wazuhDBQueryBuilder_test.cpp"
+  "wazuhCommon_test.cpp"
   "main.cpp")
 
 file(

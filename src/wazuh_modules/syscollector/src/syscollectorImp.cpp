@@ -14,6 +14,7 @@
 #include "stringHelper.h"
 #include "hashHelper.h"
 #include "timeHelper.h"
+#include "wazuhCommon.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
@@ -199,7 +200,8 @@ static std::string getItemChecksum(const nlohmann::json& item)
     const auto content{item.dump()};
     Utils::HashData hash;
     hash.update(content.c_str(), content.size());
-    return Utils::asciiToHex(hash.hash());
+    const auto digest {hash.hash()};
+    return wazuh::hex_encode(digest.data(), digest.size());
 }
 
 // Runtime counters that move on their own between scans. They are part of the inventory state, so
@@ -286,7 +288,8 @@ static std::string getItemId(const nlohmann::json& item, const std::vector<std::
         }
     }
 
-    return Utils::asciiToHex(hash.hash());
+    const auto digest {hash.hash()};
+    return wazuh::hex_encode(digest.data(), digest.size());
 }
 
 static bool isElementDuplicated(const nlohmann::json& input, const std::pair<std::string, std::string>& keyValue)
@@ -2248,7 +2251,8 @@ std::string Syscollector::calculateHashId(const nlohmann::json& data, const std:
     Utils::HashData hash(Utils::HashType::Sha1);
     hash.update(primaryKey.c_str(), primaryKey.size());
 
-    return Utils::asciiToHex(hash.hash());
+    const auto digest {hash.hash()};
+    return wazuh::hex_encode(digest.data(), digest.size());
 }
 
 nlohmann::json Syscollector::addPreviousFields(nlohmann::json& current, const nlohmann::json& previous)
