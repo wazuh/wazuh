@@ -125,8 +125,9 @@ EXPORTED void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comH
 // Result of parsing a wide-string command line into UTF-8 components.
 struct ProcessCmdLine
 {
-    std::string cmd;    // Full command line in UTF-8
-    std::string argvs;  // Arguments only (after the executable), space-separated, UTF-8
+    std::string cmd;           // Full command line in UTF-8
+    std::string argvs;         // Arguments only (after the executable), space-separated, UTF-8
+    std::size_t argsCount {0}; // Number of arguments in argvs
 };
 
 // Converts a UTF-16 command line into UTF-8 cmd and argvs fields.
