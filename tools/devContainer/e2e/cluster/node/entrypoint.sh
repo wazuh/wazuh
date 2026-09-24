@@ -109,5 +109,12 @@ if ! "$BIN/wazuh-manager-control" start; then
   exit 1
 fi
 
+# Stay in the foreground as the manager's supervisor. tini forwards docker stop's
+# SIGTERM to this shell, which stops the manager cleanly instead of letting the
+# daemons be killed, so no stale PID file or half-written state reaches the next
+# docker compose start.
+stop_manager() { trap - TERM INT; "$BIN/wazuh-manager-control" stop || true; exit 0; }
+trap stop_manager TERM INT
 touch /var/wazuh-manager/logs/wazuh-manager.log
-exec tail -f /var/wazuh-manager/logs/wazuh-manager.log
+tail -f /var/wazuh-manager/logs/wazuh-manager.log &
+wait $!

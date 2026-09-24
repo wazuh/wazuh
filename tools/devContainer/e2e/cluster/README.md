@@ -24,7 +24,7 @@ into `node/pkg/`:
 |---|---|---|
 | `manifest` (default) | `WAZUH_MANIFEST_URL` | Nightly manager package for the arch. |
 | `local` | `WAZUH_MANAGER_DEB=/path.deb` | A local package. |
-| `source` | `WAZUH_HOME` (default `/var/wazuh-manager`) | Snapshot of the manager built on this host with the devContainer make tasks. |
+| `source` | `WAZUH_HOME` (default `/var/wazuh-manager`) | Snapshot of the manager built on this host with the devContainer make tasks. The manager must be stopped while it is taken (`sudo /var/wazuh-manager/bin/wazuh-manager-control stop`); `setup-master.sh` starts it again. |
 
 ## Usage
 
@@ -57,6 +57,7 @@ wired up in this overlay.
 | `WAZUH_MANAGER_SOURCE` | `manifest` | Worker manager artifact source. |
 | `WAZUH_ARCH` | autodetected | Package architecture. |
 | `WAZUH_CLUSTER_KEY` | generated | Shared cluster key, kept in `cluster/.env`. An exported value replaces the stored one; `init.sh` and `setup-master.sh` resolve it the same way. |
+| `WAZUH_CLUSTER_NAME` | `wazuh` | Cluster name of the master and the workers, kept in `cluster/.env` like the key. |
 | `INDEXER_USER` / `INDEXER_PASSWORD` | `admin` / `admin` | Indexer credentials stored in the worker keystore. |
 
 ## Verifying

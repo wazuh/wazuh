@@ -10,32 +10,32 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 
 CONF="${WAZUH_MANAGER_CONF:-/var/wazuh-manager/etc/wazuh-manager.conf}"
 BIN="$(dirname "$CONF")/../bin"
-CLUSTER_NAME="${CLUSTER_NAME:-wazuh}"
 MASTER_NODE_NAME="${MASTER_NODE_NAME:-master}"
 ENV_FILE="${SCRIPT_DIR}/.env"
 
 [[ $EUID -eq 0 ]] || { echo "ERROR: run as root (writes to $(dirname "$CONF")); use sudo." >&2; exit 1; }
 test -f "$CONF" || { echo "ERROR: manager config not found at $CONF" >&2; exit 1; }
 
-# The cluster key has one source of truth, cluster/.env, which compose reads with --env-file. An exported
-# WAZUH_CLUSTER_KEY replaces the stored key (compose gives the exported variable precedence over the env
-# file, so the master must use it too); otherwise the stored key is reused; otherwise one is generated.
-# cluster/init.sh and setup-master.sh resolve it with this same function.
-function resolve_cluster_key() {  # resolve_cluster_key <env file>  → sets CLUSTER_KEY, persists it
-  local env_file="$1" stored=""
-  [[ -f "$env_file" ]] && stored="$(grep -m1 '^WAZUH_CLUSTER_KEY=' "$env_file" | cut -d= -f2-)" || true
-  if [[ -n "${WAZUH_CLUSTER_KEY:-}" ]]; then CLUSTER_KEY="$WAZUH_CLUSTER_KEY"
-  elif [[ -n "$stored" ]]; then CLUSTER_KEY="$stored"
-  else CLUSTER_KEY="$(openssl rand -hex 16)"; fi
-  if [[ "$CLUSTER_KEY" != "$stored" ]]; then
-    { grep -v '^WAZUH_CLUSTER_KEY=' "$env_file" 2>/dev/null || true; printf 'WAZUH_CLUSTER_KEY=%s\n' "$CLUSTER_KEY"; } > "$env_file.new"
+# Settings the master and the workers must share (cluster key and name) have one
+# source of truth, cluster/.env, which compose reads with --env-file. An exported
+# value replaces the stored one (compose gives the exported variable precedence
+# over the env file, so the master must use it too); otherwise the stored value is
+# reused; otherwise <default> is stored. The file is written 0600 (it holds the
+# key). cluster/init.sh and setup-master.sh resolve them with this same function.
+function resolve_cluster_setting() {  # resolve_cluster_setting <env file> <VAR> <default>  → REPLY
+  local env_file="$1" var="$2" default="$3" stored=""
+  [[ -f "$env_file" ]] && stored="$(grep -m1 "^${var}=" "$env_file" | cut -d= -f2-)" || true
+  if [[ -n "${!var:-}" ]]; then REPLY="${!var}"
+  elif [[ -n "$stored" ]]; then REPLY="$stored"
+  else REPLY="$default"; fi
+  if [[ "$REPLY" != "$stored" ]]; then
+    ( umask 077; { grep -v "^${var}=" "$env_file" 2>/dev/null || true; printf '%s=%s\n' "$var" "$REPLY"; } > "$env_file.new" )
     mv "$env_file.new" "$env_file"
-    echo "==> Cluster key $([[ -n "$stored" ]] && echo replaced || echo stored) in ${env_file}"
-  else
-    echo "==> Cluster key already present in ${env_file}"
+    echo "==> ${var} $([[ -n "$stored" ]] && echo replaced || echo stored) in ${env_file}"
   fi
 }
-resolve_cluster_key "$ENV_FILE"
+resolve_cluster_setting "$ENV_FILE" WAZUH_CLUSTER_KEY "$(openssl rand -hex 16)"; CLUSTER_KEY="$REPLY"
+resolve_cluster_setting "$ENV_FILE" WAZUH_CLUSTER_NAME wazuh; CLUSTER_NAME="$REPLY"
 
 read -r -d '' BLOCK <<EOF || true
   <cluster>

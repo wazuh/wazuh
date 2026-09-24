@@ -19,13 +19,15 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      CLUSTER_NAME: "wazuh"
+      CLUSTER_NAME: "${WAZUH_CLUSTER_NAME:-wazuh}"
       CLUSTER_KEY: "${WAZUH_CLUSTER_KEY:?run ./cluster/init.sh to generate the cluster key}"
       NODE_TYPE: "worker"
       MASTER_ADDR: "host.docker.internal"
       INDEXER_HOST: "wazuh-indexer"
       INDEXER_USER: "${INDEXER_USER:-admin}"
       INDEXER_PASSWORD: "${INDEXER_PASSWORD:-admin}"
+    # Time for the entrypoint to run wazuh-manager-control stop on docker stop.
+    stop_grace_period: 90s
     healthcheck:
       test: ["CMD", "/healthcheck.sh"]
       interval: 30s
