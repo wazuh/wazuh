@@ -39,6 +39,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#38857](https://github.com/wazuh/wazuh/issues/38857) | Removed manager-probing dead code from the agent's execd. |
 
 #### Fixed
 

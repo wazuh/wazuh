@@ -460,7 +460,7 @@ No dedicated thread. `control_dispatch()` is called synchronously from the reque
 
 **Component**: `wazuh-execd` daemon
 - **Socket**: `/var/ossec/queue/sockets/com`
-- **Commands**: restart, reload, getconfig, check-manager-configuration, unmerge, uncompress, lock_restart
+- **Commands**: restart, reload, getconfig, unmerge, uncompress, lock_restart
 - **Agent restart/reload**: Via Active Response scripts (`restart.sh`, `restart-wazuh.exe`)
 - **Responsibilities**:
   - Active Response execution
