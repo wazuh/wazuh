@@ -26,6 +26,12 @@ services:
       MASTER_ADDR: "host.docker.internal"
       INDEXER_HOST: "wazuh-indexer"
       INDEXER_USER: "${INDEXER_USER:-admin}"
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      interval: 30s
+      timeout: 15s
+      start_period: 120s
+      retries: 3
       INDEXER_PASSWORD: "${INDEXER_PASSWORD:-admin}"
     volumes:
       - ./certs:/certs:ro

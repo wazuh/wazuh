@@ -20,23 +20,29 @@ INDEXER_USER="${INDEXER_USER:-admin}"
 INDEXER_PASSWORD="${INDEXER_PASSWORD:-admin}"
 : "${CLUSTER_KEY:?CLUSTER_KEY is required and must match the master}"
 
-# Ensure the runtime user exists (needed for the source-mode snapshot, harmless
-# for package installs).
-getent group wazuh-manager >/dev/null 2>&1 || groupadd -r wazuh-manager
-getent passwd wazuh-manager >/dev/null 2>&1 || useradd -r -g wazuh-manager -d /var/wazuh-manager -s /sbin/nologin wazuh-manager
+# The runtime user comes from the package or, in source mode, from the image
+# build, which creates it with the host's numeric ids before extracting the tree
+# (node/Dockerfile). Nothing here changes the ownership of the installation: the
+# tree root, bin/ and lib/ stay root-owned and bin/wazuh-manager-service-control
+# keeps its setuid bit, both of which that helper checks before it acts
+# (src/util/manager_service_control/main.c); a chown would clear the bit.
+getent passwd wazuh-manager >/dev/null 2>&1 || { echo "ERROR: the image has no wazuh-manager user" >&2; exit 1; }
 
 # Source mode ships the tree without logs/, queue/ and var/ (the master's live
-# state, excluded by cluster/init.sh) and with the host's numeric ownership. The
-# daemons do not create these directories themselves, so recreate the fixed
-# skeleton (dynamic entries such as queue/cluster/<node> are the daemons' own)
-# and hand the tree root plus the runtime dirs to the container's wazuh-manager
-# before any tool needs to traverse them. No-op on a package install.
-mkdir -p logs/api logs/cluster logs/wazuh \
-         queue/authd queue/cluster queue/db queue/indexer queue/keystore \
-         queue/rids queue/sockets queue/tasks queue/vd \
-         var/db var/download var/multigroups var/run var/upgrade
-chown wazuh-manager:wazuh-manager /var/wazuh-manager
-chown -R wazuh-manager:wazuh-manager logs queue var
+# state, excluded by cluster/init.sh). The daemons do not create these
+# directories themselves, so recreate the fixed skeleton with the owners and
+# modes of an installed manager (dynamic entries such as queue/cluster/<node> are
+# the daemons' own). Directories that exist (package install) are left alone.
+skel() {  # skel <mode> <owner:group> <dir>...
+  local mode=$1 owner=$2 d; shift 2
+  for d in "$@"; do [[ -d $d ]] || install -d -o "${owner%:*}" -g "${owner#*:}" -m "$mode" "$d"; done
+}
+skel 770 wazuh-manager:wazuh-manager logs queue
+skel 750 wazuh-manager:wazuh-manager logs/api logs/cluster logs/wazuh queue/authd queue/db queue/keystore
+skel 770 wazuh-manager:wazuh-manager queue/cluster queue/indexer queue/rids queue/sockets queue/tasks queue/vd
+skel 750 root:wazuh-manager var
+skel 770 root:wazuh-manager var/db var/download var/run var/upgrade
+skel 770 wazuh-manager:wazuh-manager var/multigroups
 
 # Certificates from the mounted bundle, issued by e2e/init.sh with the unified
 # manager layout (wazuh/wazuh#38278): dir root:wazuh-manager 1770 (sticky); the
@@ -55,6 +61,9 @@ install -o wazuh-manager -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted
 # Indexer credentials live in the manager keystore, not in the config file.
 "$BIN/wazuh-manager-keystore" -f indexer -k username -v "$INDEXER_USER"
 printf '%s' "$INDEXER_PASSWORD" | "$BIN/wazuh-manager-keystore" -f indexer -k password
+# The keystore tool runs as root here: hand what it wrote back to the runtime
+# user, as on an installed manager.
+chown -R wazuh-manager:wazuh-manager queue/keystore
 
 # Point the indexer connection at the indexer container.
 sed -i "s#<host>https://[^<]*</host>#<host>https://${INDEXER_HOST}:${INDEXER_PORT}</host>#" "$CONF"
@@ -92,15 +101,13 @@ else
 fi
 cat "${CONF}.new" > "$CONF" && rm -f "${CONF}.new"
 
-# Own everything written above (config, keystore) as the runtime user...
-chown -R wazuh-manager:wazuh-manager /var/wazuh-manager
-# ...except the certificates: the indexer material stays root-owned and the
-# listener pair wazuh-manager-owned (see above).
-chown root:wazuh-manager "$CERT_DST" "$CERT_DST"/root-ca.pem "$CERT_DST"/indexer-connector.pem "$CERT_DST"/indexer-connector-key.pem
-chown wazuh-manager:wazuh-manager "$CERT_DST"/remoted.pem "$CERT_DST"/remoted-key.pem
-chmod 1770 "$CERT_DST"
-
-"$BIN/wazuh-manager-control" start || true
+# A worker that cannot start must not look alive: exit, so Docker shows the
+# container as exited (healthcheck.sh covers a daemon that dies later).
+if ! "$BIN/wazuh-manager-control" start; then
+  echo "ERROR: wazuh-manager failed to start on ${NODE_NAME}; last lines of wazuh-manager.log:" >&2
+  tail -n 40 /var/wazuh-manager/logs/wazuh-manager.log >&2 || true
+  exit 1
+fi
 
 touch /var/wazuh-manager/logs/wazuh-manager.log
 exec tail -f /var/wazuh-manager/logs/wazuh-manager.log

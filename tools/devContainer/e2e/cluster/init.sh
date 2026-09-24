@@ -35,7 +35,7 @@ function resolve_arch() {
   case "$arch" in amd64|arm64) DEB_ARCH="$arch" ;; *) echo "Invalid WAZUH_ARCH='$arch'." >&2; exit 1 ;; esac
 }
 
-function reset_pkg() { mkdir -p "$PKG_DIR"; rm -f "$PKG_DIR"/*.deb "$PKG_DIR"/*.tar.gz 2>/dev/null || true; }
+function reset_pkg() { mkdir -p "$PKG_DIR"; rm -f "$PKG_DIR"/*.deb "$PKG_DIR"/*.tar.gz "$PKG_DIR"/wazuh-manager.ids 2>/dev/null || true; }
 
 function from_manifest() {
   need_cmd curl; need_cmd yq; resolve_arch
@@ -73,6 +73,8 @@ function from_source() {
       --exclude="${base}/logs" --exclude="${base}/queue" --exclude="${base}/var" \
       --exclude="${base}/etc/client.keys" --exclude="${base}/etc/authd.pass" \
       -czf "${PKG_DIR}/wazuh-manager-tree.tar.gz" "$base" || [ $? -eq 1 ]
+  # The image creates wazuh-manager with these ids before extracting the tree (node/Dockerfile).
+  printf 'WAZUH_UID=%s\nWAZUH_GID=%s\n' "$(id -u wazuh-manager)" "$(id -g wazuh-manager)" > "${PKG_DIR}/wazuh-manager.ids"
 }
 
 function ensure_cluster_key() {
