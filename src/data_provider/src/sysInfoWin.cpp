@@ -348,7 +348,7 @@ static nlohmann::json getProcessHandleFields(const PROCESSENTRY32& processEntry)
             {
                 jsHandleFields["command_line"]   = parsed.cmd;
                 jsHandleFields["args"] = parsed.argvs;
-                jsHandleFields["args_count"] = parsed.argvs.size();
+                jsHandleFields["args_count"] = parsed.argsCount;
             }
             else
             {

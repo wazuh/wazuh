@@ -336,6 +336,7 @@ ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)
                     }
 
                     result.argvs += arg;
+                    ++result.argsCount;
                 }
             }
         }
