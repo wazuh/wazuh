@@ -302,6 +302,11 @@ namespace remoted::http
         /// signs it) after the start-time evaluation -- see IHttpServer::certificateStatus(). Not a
         /// configuration option: buildHttpServerConfig() leaves the default, tests inject a short one.
         std::chrono::seconds certificateStatusInterval {std::chrono::hours {24}};
+        /// How often, between two of those evaluations, the CA bundle alone is judged again and its
+        /// publication events delivered: a CA that expires in place silences the agents that verify
+        /// this manager, so no request would ever notice it (issue #39519). No log line repeats: an
+        /// event is posted once per change. Not a configuration option; 0 disables it.
+        std::chrono::seconds caBundleRecheckInterval {std::chrono::seconds {60}};
         /// Called by start() with the CA source and the publication-event mailbox it just built,
         /// before the listener accepts anything -- and again on every later start(), with the new
         /// pair. It is how the owner of a logger that is NOT the transport (the GET /cacerts

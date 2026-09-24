@@ -72,7 +72,7 @@ namespace
 
     // How the transport says one CA publication event: its own tag, the mailbox's ordering. Handed
     // to CaRecordEventMailbox::deliver() -- which drains and emits under one lock of its own -- so
-    // the transport's three delivery points (start, the daily tick, closing) and the endpoint's
+    // the transport's four delivery points (start, the daily tick, the recheck, closing) and the endpoint's
     // cannot publish a generation out of order (issue #39319, C26).
     void emitCaRecordLine(remoted::http::RecordEventLevel level, const std::string& line)
     {
@@ -1820,27 +1820,36 @@ namespace remoted::http
         // Periodic re-evaluation of the served certificate (expiry + CA coherence), re-logged on
         // every tick exactly like the start-time one. The raw leaf pointer is safe to capture:
         // m_leaf is only replaced by a later start(), and stopAccepting() joins this thread first.
-        m_impl->m_certMonitor.start(config.certificateStatusInterval,
-                                    [leaf = m_impl->m_leaf.get(),
-                                     leafPath = config.certificatePath,
-                                     caPath = config.caCertificatePath,
-                                     source = m_impl->m_caSource,
-                                     mailbox = m_impl->m_caMailbox]
-                                    {
-                                        // Expiry is the leaf's business; the CA half comes from the same source the
-                                        // endpoint answers from, so this tick can never overwrite a fresher CA verdict
-                                        // with a re-read of its own (issue #39078, H06) -- and it is built by the
-                                        // same statusFrom() the start-time evaluation used.
-                                        const auto status = remoted::http::statusFrom(leaf, source->snapshot());
-                                        // Exactly the start-time sequence: the certificate lines, then the
-                                        // publication events through the mailbox (deliver, persist, deliver).
-                                        // Whatever the GET /cacerts handler already said is not here, and whatever
-                                        // this says the handler will not repeat (C21b, C26).
-                                        logCertificateStatus(status, leafPath, caPath);
-                                        remoted::http::deliverAndPersistRecordEvents(
-                                            *source, *mailbox, &emitCaRecordLine);
-                                        return status;
-                                    });
+        m_impl->m_certMonitor.start(
+            config.certificateStatusInterval,
+            [leaf = m_impl->m_leaf.get(),
+             leafPath = config.certificatePath,
+             caPath = config.caCertificatePath,
+             source = m_impl->m_caSource,
+             mailbox = m_impl->m_caMailbox]
+            {
+                // Expiry is the leaf's business; the CA half comes from the same source the
+                // endpoint answers from, so this tick can never overwrite a fresher CA verdict
+                // with a re-read of its own (issue #39078, H06) -- and it is built by the
+                // same statusFrom() the start-time evaluation used.
+                const auto status = remoted::http::statusFrom(leaf, source->snapshot());
+                // Exactly the start-time sequence: the certificate lines, then the
+                // publication events through the mailbox (deliver, persist, deliver).
+                // Whatever the GET /cacerts handler already said is not here, and whatever
+                // this says the handler will not repeat (C21b, C26).
+                logCertificateStatus(status, leafPath, caPath);
+                remoted::http::deliverAndPersistRecordEvents(*source, *mailbox, &emitCaRecordLine);
+                return status;
+            },
+            // Between two evaluations: only the bundle's verdict and its events,
+            // so a validity window closing is said within the interval even with
+            // no request left to notice it (issue #39519).
+            config.caBundleRecheckInterval,
+            [source = m_impl->m_caSource, mailbox = m_impl->m_caMailbox]
+            {
+                (void)source->snapshot();
+                remoted::http::deliverAndPersistRecordEvents(*source, *mailbox, &emitCaRecordLine);
+            });
     }
 
     void RestinioHttpServer::stopAccepting() noexcept

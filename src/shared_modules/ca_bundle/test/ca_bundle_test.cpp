@@ -30,13 +30,16 @@ using ca_bundle::contentSha256;
 using ca_bundle::describe;
 using ca_bundle::GuardFailure;
 using ca_bundle::identityOf;
+using ca_bundle::kMaxSerializedBytes;
 using ca_bundle::leafChainsToAnyCa;
+using ca_bundle::leafChainsToAnyCaIgnoringDates;
 using ca_bundle::parseBundle;
 using ca_bundle::ParsedBundle;
 using ca_bundle::PublicationBlock;
 using ca_bundle::renderBlock;
 using ca_bundle::serializeCertificates;
 using ca_bundle::vouch;
+using ca_bundle::vouchGivenChain;
 using ca_bundle::X509Ptr;
 using ca_bundle::test::makeCertificate;
 using ca_bundle::test::makeTestKey;
@@ -784,6 +787,88 @@ TEST(CaBundleTest, NothingChainsWithoutALeafOrWithoutAnchors)
     withNull.push_back(X509Ptr {});
     withNull.push_back(retain(pki.ca.get()));
     EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), withNull));
+}
+
+TEST(CaBundleTest, LeafChainsToAnyCaJudgesAtTheInstantGiven)
+{
+    // A rotation's pre-staged CA: the window opens in ten minutes, and the leaf it signs is valid
+    // now. Judged at this instant it anchors nothing; inside its window it does; past its notAfter
+    // it does not again. The caller's clock decides, not the file.
+    const auto pki = makePki("chain-at");
+    const auto futureCa = selfSignedCaWithKey("chain-at-ca", pki.caKey.get(), 600, 7200);
+    const auto bundle = bundleOf({futureCa.get()});
+    const auto now = std::time(nullptr);
+
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), bundle));
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), bundle, now));
+    EXPECT_TRUE(leafChainsToAnyCa(pki.leaf.get(), bundle, now + 1200));
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), bundle, now + 8000));
+}
+
+TEST(CaBundleTest, VouchJudgesTheChainGuardAtTheInstantGiven)
+{
+    // The same CA, stamped: the only guard with a date term follows the instant it is given, and
+    // the publication comes back exactly when the chain does.
+    const auto pki = makePki("vouch-at");
+    const auto futureCa = selfSignedCaWithKey("vouch-at-ca", pki.caKey.get(), 600, 7200);
+    const auto served = bundleOf({futureCa.get()});
+    const auto parsed = parseBundle(sealedDocument(served, stampFor(served, 1789000000)));
+    ASSERT_TRUE(parsed.block.has_value());
+    const auto bytes = serializeCertificates(parsed.certificates).size();
+    const auto now = std::time(nullptr);
+
+    EXPECT_EQ(vouch(parsed, pki.leaf.get(), bytes).failure, GuardFailure::no_ca_signs_leaf);
+    EXPECT_EQ(vouch(parsed, pki.leaf.get(), bytes, now).failure, GuardFailure::no_ca_signs_leaf);
+    const auto inside = vouch(parsed, pki.leaf.get(), bytes, now + 1200);
+    EXPECT_EQ(inside.failure, GuardFailure::none);
+    EXPECT_EQ(inside.publication, 1789000000);
+    EXPECT_EQ(vouch(parsed, pki.leaf.get(), bytes, now + 8000).failure, GuardFailure::no_ca_signs_leaf);
+}
+
+TEST(CaBundleTest, IgnoringDatesTellsTheClockFromAWrongCa)
+{
+    // A CA the clock holds back chains once dates are left out; one that merely signs the leaf
+    // under another subject never does, whatever the clock says.
+    const auto pki = makePki("chain-nodates");
+    const auto futureCa = selfSignedCaWithKey("chain-nodates-ca", pki.caKey.get(), 600, 7200);
+    const auto expiredCa = selfSignedCaWithKey("chain-nodates-ca", pki.caKey.get(), -7200, -600);
+    const auto impostor = selfSignedCaWithKey("chain-nodates-other-subject", pki.caKey.get());
+
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), bundleOf({futureCa.get()})));
+    EXPECT_TRUE(leafChainsToAnyCaIgnoringDates(pki.leaf.get(), bundleOf({futureCa.get()})));
+    EXPECT_FALSE(leafChainsToAnyCa(pki.leaf.get(), bundleOf({expiredCa.get()})));
+    EXPECT_TRUE(leafChainsToAnyCaIgnoringDates(pki.leaf.get(), bundleOf({expiredCa.get()})));
+    EXPECT_FALSE(leafChainsToAnyCaIgnoringDates(pki.leaf.get(), bundleOf({impostor.get()})));
+    EXPECT_FALSE(leafChainsToAnyCaIgnoringDates(nullptr, bundleOf({futureCa.get()})));
+    EXPECT_FALSE(leafChainsToAnyCaIgnoringDates(pki.leaf.get(), {}));
+}
+
+TEST(CaBundleTest, VouchGivenChainIsVouchWithTheChainAnswerHandedIn)
+{
+    // Every guard before and after the chain one answers as vouch() does, in the same order; the
+    // chain guard answers what it is told.
+    const auto pki = makePki("vouch-given");
+    const auto served = bundleOf({pki.ca.get()});
+    const auto document = sealedDocument(served, stampFor(served, 1789000000));
+    const auto parsed = parseBundle(document);
+    ASSERT_TRUE(parsed.block.has_value());
+    const auto bytes = serializeCertificates(parsed.certificates).size();
+
+    const auto chained = vouchGivenChain(parsed, true, bytes);
+    EXPECT_EQ(chained.failure, GuardFailure::none);
+    EXPECT_EQ(chained.publication, 1789000000);
+    EXPECT_EQ(chained.publication, vouch(parsed, pki.leaf.get(), bytes).publication);
+    EXPECT_EQ(vouchGivenChain(parsed, false, bytes).failure, GuardFailure::no_ca_signs_leaf);
+    EXPECT_EQ(vouchGivenChain(parsed, false, bytes).publication, 0);
+
+    EXPECT_EQ(vouchGivenChain(ParsedBundle {}, true, bytes).failure, GuardFailure::no_certificates);
+    EXPECT_EQ(vouchGivenChain(parseBundle(serializeCertificates(served)), true, bytes).failure, GuardFailure::no_block);
+    auto mismatched = parseBundle(document);
+    mismatched.block->contentSha256 = std::string(64, '0');
+    EXPECT_EQ(vouchGivenChain(mismatched, true, bytes).failure, GuardFailure::hash_mismatch);
+    EXPECT_EQ(vouchGivenChain(mismatched, false, bytes).failure, GuardFailure::hash_mismatch);
+    EXPECT_EQ(vouchGivenChain(parsed, true, kMaxSerializedBytes + 1).failure, GuardFailure::too_many_bytes);
+    EXPECT_EQ(vouchGivenChain(parsed, false, kMaxSerializedBytes + 1).failure, GuardFailure::no_ca_signs_leaf);
 }
 
 TEST(CaBundleTest, VouchRefusesABundleWhoseCaOnlySignsTheLeaf)

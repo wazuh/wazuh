@@ -203,6 +203,7 @@ namespace remoted::http
     {
     public:
         using EvaluateFn = std::function<TlsCertificateSnapshot()>;
+        using RecheckFn = std::function<void()>;
 
         TlsCertificateMonitor() = default;
         ~TlsCertificateMonitor();
@@ -220,8 +221,17 @@ namespace remoted::http
          * swallowed so the thread survives (the evaluate function is expected to do its own
          * logging). A non-positive @p interval starts no thread: the start-time evaluation stands
          * until the listener restarts. Calling start() while already running is a no-op.
+         *
+         * @p recheck, when given, also runs every @p recheckInterval between two evaluations, on
+         * the same thread, and records nothing: it is the cheap half of a tick, for what has to be
+         * noticed without a caller and without repeating the evaluation's log lines (issue #39519).
+         * An evaluation restarts its countdown. A non-positive @p recheckInterval, or one no shorter
+         * than @p interval, disables it.
          */
-        void start(std::chrono::seconds interval, EvaluateFn evaluate);
+        void start(std::chrono::seconds interval,
+                   EvaluateFn evaluate,
+                   std::chrono::seconds recheckInterval = std::chrono::seconds {0},
+                   RecheckFn recheck = {});
 
         /// Wake and join the thread. Idempotent; safe if never started. Keeps the last snapshot.
         void stop() noexcept;

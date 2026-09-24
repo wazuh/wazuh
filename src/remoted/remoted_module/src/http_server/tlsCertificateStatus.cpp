@@ -292,34 +292,63 @@ namespace remoted::http
         m_snapshot = std::move(snapshot);
     }
 
-    void TlsCertificateMonitor::start(std::chrono::seconds interval, EvaluateFn evaluate)
+    void TlsCertificateMonitor::start(std::chrono::seconds interval,
+                                      EvaluateFn evaluate,
+                                      std::chrono::seconds recheckInterval,
+                                      RecheckFn recheck)
     {
         if (m_thread.joinable() || interval <= std::chrono::seconds {0} || !evaluate)
         {
             return;
         }
+        if (!recheck || recheckInterval <= std::chrono::seconds {0} || recheckInterval >= interval)
+        {
+            recheck = {};
+        }
         m_stopping.store(false, std::memory_order_relaxed);
         m_thread = std::thread(
-            [this, interval, evaluate = std::move(evaluate)]
+            [this, interval, evaluate = std::move(evaluate), recheckInterval, recheck = std::move(recheck)]
             {
+                using Clock = std::chrono::steady_clock;
+                auto nextEvaluation = Clock::now() + interval;
+                auto nextRecheck = recheck ? Clock::now() + recheckInterval : Clock::time_point::max();
+
                 std::unique_lock<std::mutex> lock {m_waitMutex};
                 while (!m_stopping.load(std::memory_order_relaxed))
                 {
                     // Woken early by stop(); a spurious wakeup just re-arms the wait.
-                    if (m_wakeup.wait_for(
-                            lock, interval, [this] { return m_stopping.load(std::memory_order_relaxed); }))
+                    if (m_wakeup.wait_until(lock,
+                                            std::min(nextEvaluation, nextRecheck),
+                                            [this] { return m_stopping.load(std::memory_order_relaxed); }))
                     {
                         break;
                     }
                     lock.unlock();
+                    const auto now = Clock::now();
+                    const bool evaluating = now >= nextEvaluation;
+                    // The evaluate and recheck functions own their logging; a failed tick must not
+                    // take the thread (and every future tick) down with it.
                     try
                     {
-                        record(evaluate());
+                        if (evaluating)
+                        {
+                            record(evaluate());
+                        }
+                        else
+                        {
+                            recheck();
+                        }
                     }
                     catch (...)
                     {
-                        // The evaluate function owns its logging; a failed tick must not take the
-                        // thread (and every future tick) down with it.
+                    }
+                    if (evaluating)
+                    {
+                        nextEvaluation = now + interval;
+                    }
+                    if (recheck)
+                    {
+                        nextRecheck = now + recheckInterval;
                     }
                     lock.lock();
                 }

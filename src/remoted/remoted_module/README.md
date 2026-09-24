@@ -33,7 +33,8 @@ remoted_module/
 │   │                               #   coherence evaluation and its daily monitor thread (the bundle
 │   │                               #   itself is shared_modules/ca_bundle's; re-exported from here);
 │   │                               #   caCertificateSource.hpp/.cpp = the CA file as ONE read:
-│   │                               #   certificates re-serialised + verdict, cached by content hash;
+│   │                               #   certificates re-serialised (parse cached by content hash) + the
+│   │                               #   verdicts, judged against the clock on every call;
 │   │                               #   fileRead.hpp/.cpp = bounded, injectable POSIX read + failure cause;
 │   │                               #   endpointRateLimiter.hpp/.cpp = token bucket per endpoint
 │   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below);
@@ -122,7 +123,12 @@ src/http_server/
   thread parked on a `condition_variable::wait_for`, the module's canonical periodic-task shape —
   RESTinio's `run_async()` keeps its `io_context` private, so no timer there: D45) re-evaluates and
   re-logs every `HttpServerConfig::certificateStatusInterval` (24 h; tests inject 1 s — it is not a
-  configuration option) and is stopped in `stopAccepting()` before the worker-pool join. The leaf
+  configuration option) and is stopped in `stopAccepting()` before the worker-pool join. Between two
+  evaluations the same thread runs a recheck every `HttpServerConfig::caBundleRecheckInterval` (60 s,
+  not a configuration option either; 0 disables it): `CaCertificateSource::snapshot()` and a
+  delivery of the record events, no status recorded and no evaluation line repeated. It exists
+  because a CA that expires in place makes verifying agents fail their handshake, so no request is
+  left to notice it (issue #39519). The leaf
   compared is the one in the `SSL_CTX` (constant until restart); the CA is re-read from disk at every
   tick. `certificateStatus()` is a default `{}` on the interface, so the test fakes need nothing.
 
@@ -344,9 +350,15 @@ src/endpoints/
   and one hash per call, bounded by the injectable POSIX reader in `fileRead.hpp` (at most 1 MiB + 1
   byte, under the source's own mutex). The fourth parameter, `deliverCaRecordEvents`, drains and logs
   the CA record event mailbox once, right before the handler answers (empty is a no-op — see the
-  mailbox discussion below, issue #39319, C26); the parsed certificates, their reserialised PEM, the
-  leaf-match verdict and the publication verdict are cached by the SHA-256 of the bytes, so a
-  same-size, same-mtime replacement is still reparsed. `certificates == 0 || pem.empty()` ⇒
+  mailbox discussion below, issue #39319, C26); the parsed certificates and their reserialised PEM are
+  cached by the SHA-256 of the bytes, so a same-size, same-mtime replacement is still reparsed. The
+  leaf-match verdict, the chain verdict and the publication verdict are NOT cached: they have a date
+  term, so `snapshot()` judges them against the clock on every call from the parsed certificates, and a
+  CA that expires (or becomes valid) with the file untouched flips them on the next call, with one
+  `chain_lost_on_clock` / `chain_regained_on_clock` line through the mailbox (issue #39519). The chain
+  is verified once per call: `ca_bundle::vouchGivenChain()` takes that answer instead of verifying
+  again.
+  `certificates == 0 || pem.empty()` ⇒
   `404 {"error":"not_found"}`; a read
   failure (missing, unreadable, a read error, or over the cap) leaves the last good snapshot being
   served and records the cause instead of clearing it — only a readable file with nothing in it
@@ -390,24 +402,36 @@ src/endpoints/
   disables it), read once before the source exists and written by
   `CaCertificateSource::flushPendingRecord()` **outside** the hot-path mutex, one writer at a time,
   retried on every call while an entry is pending even if the bundle's hash never changes again.
+  The publication it keeps is the one the FILE carries, never one the clock decided. The cache-hit
+  path, the only place where the clock alone moves a verdict, never writes it. A rebuild that finds
+  a stamped bundle only a date keeps from being vouched for (`no_ca_signs_leaf`, while the leaf
+  chains with dates left out: `ca_bundle::leafChainsToAnyCaIgnoringDates()`) records the block's
+  generation, while agents are told `0`. So the window opening later, or a restart after it did,
+  announces nothing a second time.
   Comparing a changed hash against that record derives a `CaRecordEvent`
   (`http_server/caRecordEvents.hpp`): `first_time_unpublished` (INFO, a fresh node) ·
   `published_changed` (INFO, "N (was M)") · `changed_outside_tool` (WARN, the block was lost or the
-  bytes changed by hand) · `guard_failed` (WARN, naming the guard and what it measured) ·
+  bytes changed by hand) · `guard_failed` (WARN, naming the guard and what it measured, and for a
+  clock-held `no_ca_signs_leaf` the certificates whose window is in the way) ·
   `record_unwritable` (WARN, once per failure streak, independent of and never in place of the
-  bundle's own event) — posted to a bounded `CaRecordEventMailbox` the source only fills. Neither
+  bundle's own event) · `chain_lost_on_clock` / `chain_regained_on_clock` (WARN / INFO: the leaf
+  stopped or started chaining to an UNCHANGED bundle because a validity window closed or opened.
+  The WARN names, from their dates, the certificates on the leaf's path that are out of their
+  window; issue #39519) — posted to a
+  bounded `CaRecordEventMailbox` the source only fills. Neither
   `CaPublicationRecord` nor `caRecordEvents.hpp` logs anything (`describeRecordEvent()` is pure, so
   it links into the test binary without pulling the module's logger along); every consumer goes
   through `CaRecordEventMailbox::deliver()` instead of draining and logging as two separate steps
   (issue #39319, C26), which serialises the drain and the emission under its own mutex so two
-  consumers can never publish an older generation after a newer one. **Four** callers own one, not
-  three: the transport at start, its 24 h monitor tick, this handler right before it answers, and
-  the `/control` notify path's `ca_generation` provider — which, alone among the four, only
+  consumers can never publish an older generation after a newer one. **Five** callers own one: the
+  transport at start, its 24 h monitor tick and the 60 s recheck between ticks, this handler right
+  before it answers, and the `/control` notify path's `ca_generation` provider — which, alone among
+  the five, only
   **drains and logs**: it never calls `CaCertificateSource::flushPendingRecord()`, so the keepalive
-  path that answers every agent's notify never waits on a disk write. A **fifth** delivery point
+  path that answers every agent's notify never waits on a disk write. A **sixth** delivery point
   runs once, at `stopAccepting()`, after the monitor thread has stopped and the worker pool has been
   joined — the last chance to say what the last read noticed, so an event nobody has drained yet is
-  not lost when the listener closes. Start, the tick and `GET /cacerts` are the ones that persist,
+  not lost when the listener closes. Start, the tick, the recheck and `GET /cacerts` are the ones that persist,
   and each pairs its `flushPendingRecord()` with a **second** delivery right after it
   (`deliverAndPersistRecordEvents()`), so a `record_unwritable` that flush itself produces comes out
   in that same call instead of waiting for the next drain. Every event is still said exactly once,
@@ -2344,11 +2368,13 @@ Response shape (`http_server/tlsInventory.cpp` renders it, keys in this order):
   its **only** trust store (path building, dates, `basicConstraints`/`keyUsage`, server purpose).
   They disagree on purpose for an expired CA, or one without `CA:TRUE`, that still signs the leaf:
   `signs_active_leaf: true`, `matches_active_leaf: false`, `chain_valid: false` plus `chain_error`
-  (present only when false). `matches_active_leaf` is judged when the bundle is parsed, like the `503`
-  it mirrors. `chain_valid` is `null` when there is nothing to validate against. It is judged against the clock on
-  every request — hit or miss of the content-hash cache, and against the last good bundle while the
-  file is unreadable — so a CA that expires with the file untouched flips it on the next request and
-  fires the monitor's WARN on its next tick; only the parse is cached, never the verdict.
+  (present only when false). `chain_valid` is `null` when there is nothing to validate against. All
+  three bundle-level verdicts — `matches_active_leaf`, `chain_valid` and `publication` /
+  `publication_vouched` — are judged against the clock on every request — hit or miss of the
+  content-hash cache, and against the last good bundle while the file is unreadable — so a CA that
+  expires with the file untouched flips them on the next request, with one `chain_lost_on_clock`
+  line within a minute (the listener's 60 s recheck says it if no request does); only the parse is
+  cached, never a verdict (issue #39519).
 - **`last_read_failure`** (present only while the bundle cannot be read): the CA fields then describe
   the **last good read** — the certificates, hash and sizes of the file as it was — next to `cause`
   (the `describeReadFailure()` fragment, e.g. `"cannot be opened (No such file or directory)"`),
@@ -2419,8 +2445,9 @@ certificate status: `TlsCertificateStatusTest` drives `daysUntilExpiry()`/`statu
 CA, CA unreadable, a bundle with the right CA not first, and the cases where a signature is NOT a
 chain (expired CA, no `CA:TRUE`, intermediate-only) next to `chainValidates()`' own verdict on each —
 and `HttpServerTest` pins that the status is
-already evaluated when `start()` returns, re-evaluated on a 1 s `certificateStatusInterval`, and that
-`stopAccepting()` joins the monitor), `cacertsEndpoint_test.cpp` (the `GET /cacerts` decision table
+already evaluated when `start()` returns, re-evaluated on a 1 s `certificateStatusInterval`, that the
+`caBundleRecheckInterval` recheck delivers an in-place CA expiry with no request and no evaluation
+(against a control listener with it disabled), and that `stopAccepting()` joins the monitor), `cacertsEndpoint_test.cpp` (the `GET /cacerts` decision table
 against a faked snapshot: the snapshot's PEM served as `application/x-pem-file`, missing/garbage file
 404, `caMatchesLeaf == false` 503, `nullopt` serves, body/`Authorization` ignored, both metric
 families counted, null metrics count nothing), `cacertsE2E_test.cpp` (a REAL TLS server with a leaf

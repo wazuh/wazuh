@@ -20,7 +20,7 @@ come after step 4 has landed everywhere, never before.
 
 | # | Step | Restart? | What it changes |
 |---|---|---|---|
-| 1 | `wazuh-manager-certs add <new-ca.pem>` on the master — or place the file by hand and `wazuh-manager-certs stamp` | No | The bundle now carries **both** CAs; the old one still signs the served leaf |
+| 1 | `wazuh-manager-certs add <new-ca.pem>` on the master — or place the file by hand and `wazuh-manager-certs stamp` | No | The bundle now carries **both** CAs; the old one still signs the served leaf. A CA whose `notBefore` is still ahead of this node's clock (`add` refuses one, so this is clock skew with the issuing host, or a file placed by hand) is served and published on its own once the window opens, no write needed (see [Clocks, not files](#clocks-not-files)) |
 | 2 | Distribute the published bundle to every other node: `wazuh-manager-certs --from-master` on each worker, or copy the file and run `check` | No | Every node advertises the same `ca_generation` and serves the same certificates |
 | 3 | Wait out **the overlap window** (see below) | No | Agents catch up on their own schedule, at the pace the endpoint's rate limit allows |
 | 4 | Reissue the leaf(s) under the new CA, install them, **restart `wazuh-manager-remoted`** | **Yes — the only restart in the whole procedure** | The listener now presents a leaf signed by the new CA |
@@ -72,7 +72,9 @@ row is logged **once per event**, not on every request:
 | INFO `unpublished CA bundle at <path>; publish it with wazuh-manager-certs stamp or add on the master` | `0` / `200` | A plain PEM was placed by hand, or by the installer, and never published | `stamp` on the master (or `add` if there's a second CA to bring in at the same time) |
 | WARN `CA bundle at <path> changed outside the tool and is not published; previous publication N; run stamp on the master` | `0` / `200` | Something edited the file without going through `wazuh-manager-certs` — the content no longer matches what was last sealed | Confirm the new content is intentional, then `stamp` on the master to reseal it |
 | WARN naming a `Content-SHA256` mismatch | `0` / `200` | The `##` block is present but no longer describes the certificates that follow it (partial edit, corruption) | `stamp` on the master — it rebuilds the block from what is actually there |
-| WARN naming a guard (`7 certificates (max 6)`, `8402 bytes (max 8191)`, `no CA signs the served leaf`) | `0` / `200`, or **`503`** if literally nothing in the bundle chains to the served leaf | The bundle fails one of the guards `wazuh-manager-certs` itself enforces on write — something bypassed it | Fix the bundle with `wazuh-manager-certs` (never by hand): `remove` the offending entry, or `add` back a CA that signs the leaf |
+| WARN naming a guard (`7 certificates (max 6)`, `8402 bytes (max 8191)`, `does not chain to any CA in it`) — when only a date is in the way, the parenthesis names it (`CA '/CN=…' not valid until <date>`) | `0` / `200`, or **`503`** if literally nothing in the bundle chains to the served leaf | The bundle fails one of the guards `wazuh-manager-certs` itself enforces on write — something bypassed it | Fix the bundle with `wazuh-manager-certs` (never by hand): `remove` the offending entry, or `add` back a CA that signs the leaf |
+| WARN `The CA bundle '<path>' no longer chains to the served leaf certificate, and the file did not change: a validity window closed (CA '/CN=…' expired at <date>) …` | `0` / **`503`** | The CA that anchored the served leaf — or the leaf itself — expired in place: nothing wrote the file, the clock moved. The parenthesis names every certificate on the leaf's path that is out of its window, and since or until when: two entries in the gap between a rotation's two same-name CAs. Said once, within a minute, whether or not a request arrives | Renew: `add` the re-issued CA on the master (reissue and reinstall the leaf too if it is the one that expired), then `prune-expired` |
+| INFO `The CA bundle '<path>' chains to the served leaf certificate again, and the file did not change: a validity window opened …` | timestamp / `200` | A CA whose `notBefore` was ahead of this node's clock reached it (clock skew with the issuing host is the usual cause) | Nothing — the bundle is live |
 | No bundle at all (`404`) | `null` | The configured file is missing, unreadable, or carries no certificate | Provision it and `stamp` |
 | Nothing logged | `0`, same hash as last time | Steady state for an unpublished bundle nobody has touched | Nothing — this is silent by design so a hand-placed PEM doesn't spam the log on every read |
 
@@ -159,3 +161,30 @@ is exit 2; what it read fine but would not accept is exit 1.** Full table and pe
   `remoted.cacerts.*` while a rotation is in flight.
 - [Configuration — `https.cacerts_rate_limit`](configuration.md#httpscacerts_rate_limit) — the knob
   that paces adoption during the overlap window.
+
+## Clocks, not files
+
+Whether the served leaf chains to the bundle — the `503 ca_mismatch` decision, the `ca_generation`
+agents are told and `remoted.server.tls.ca_matches_leaf` — is judged against the clock on every read
+of the bundle, from the certificates already parsed; only the parse itself is cached by the file's
+content. Two things therefore happen with no write to the file:
+
+- A CA that **expires in place** stops being served and published at its `notAfter`: `GET /cacerts`
+  answers `503` from the next request and `notify` announces `0` from the next keepalive. The WARN
+  above is logged once, within a minute: the listener judges the bundle again every 60 seconds on
+  its own, because agents that verify this manager fail their TLS handshake against the expired CA
+  and never reach it — once the CA expires, requests are not what notices it. The daily evaluation
+  then repeats its ERROR.
+- A CA whose `notBefore` is **still ahead** of this node's clock is refused until that instant and
+  served, and published under the block's generation, from then on — with the INFO line above.
+
+The request paths read the file no more often than before: the notify path keeps its one read per
+second at most, and `GET /cacerts` its one read per request. The 60-second recheck adds one read a
+minute, off the request path. It also means a file change with no traffic is noticed, and its
+event logged, within a minute rather than at the next request or the next day.
+
+The publication record (`var/run/remoted-ca-bundle/record.json`) describes the **file**, not the
+moment. A rebuild that finds a stamped bundle only a date keeps from publishing (a CA placed by hand
+before its `notBefore`, or the node restarted after its CA expired) records the block's generation,
+not `0`. Agents are still told `0` until the window opens. Nothing is announced again when it does,
+or at the next restart.

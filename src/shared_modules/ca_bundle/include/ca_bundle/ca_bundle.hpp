@@ -161,14 +161,26 @@ namespace ca_bundle
      * CA, a not-yet-valid one and a signer without `CA:TRUE` no longer count, and neither does a
      * bundle whose served leaf has itself expired. All of them are anchors an agent could not use,
      * so the stricter answer is the correct one -- but a bundle that was publishable yesterday can
-     * stop being publishable today with no file having changed.
+     * stop being publishable today with no file having changed, so a caller that caches this answer
+     * has to judge it again on the clock. @p at pins the instant the validity windows are judged
+     * at (such a caller, and the tests); empty means OpenSSL's own clock.
      *
      * What this does NOT check is the certificate's PURPOSE (`serverAuth` EKU): remoted's
      * chainValidates() is the operator-facing verdict that adds it, and relaxes the anchor rule with
      * `X509_V_FLAG_PARTIAL_CHAIN` at the same time, so neither verdict subsumes the other.
      * describe()'s `signsLeaf` stays the plain signature fact, for the tool's diagnostics.
      */
-    bool leafChainsToAnyCa(const X509* leaf, const std::vector<X509Ptr>& cas);
+    bool
+    leafChainsToAnyCa(const X509* leaf, const std::vector<X509Ptr>& cas, std::optional<std::time_t> at = std::nullopt);
+
+    /**
+     * @brief leafChainsToAnyCa() with every validity window left out (`X509_V_FLAG_NO_CHECK_TIME`).
+     *
+     * Tells a bundle the clock is holding back from one that is wrong: when leafChainsToAnyCa()
+     * says no and this says yes, only a date stands between the leaf and an anchor of @p cas, so
+     * the same bytes chain once that window opens (or chained until it closed).
+     */
+    bool leafChainsToAnyCaIgnoringDates(const X509* leaf, const std::vector<X509Ptr>& cas);
 
     /// How many certificates a bundle may carry to be vouched for (spike #39277, D5).
     constexpr std::size_t kMaxCertificates = 6;
@@ -213,9 +225,24 @@ namespace ca_bundle
      * Only a bundle that passes all of them gets its block's publication; anything else is 0 plus
      * the cause, and 0 is what an agent reads as "this manager has no published bundle". The
      * `no_block` case is the one that means "not published yet" rather than "broken", which is
-     * what separates an INFO from a WARN in the caller's logs.
+     * what separates an INFO from a WARN in the caller's logs. @p at is handed to the chain guard:
+     * it is the only guard with a date term.
      */
-    Vouch vouch(const ParsedBundle& bundle, const X509* leaf, std::size_t serializedBytes);
+    Vouch vouch(const ParsedBundle& bundle,
+                const X509* leaf,
+                std::size_t serializedBytes,
+                std::optional<std::time_t> at = std::nullopt);
+
+    /**
+     * @brief vouch() with the chain guard's answer already known: @p leafChains stands in for
+     *        leafChainsToAnyCa(), and every other guard and the order are the same.
+     *
+     * For a caller that needs that answer anyway -- remoted decides its `503` from it -- so the
+     * chain is verified once per judgement instead of twice. vouch() is this with the
+     * verification done for it; a caller that passes an answer about other certificates or
+     * another instant gets a verdict about those.
+     */
+    Vouch vouchGivenChain(const ParsedBundle& bundle, bool leafChains, std::size_t serializedBytes);
 
     /**
      * @brief The block's eight `##` lines, ready to be written above the certificates.

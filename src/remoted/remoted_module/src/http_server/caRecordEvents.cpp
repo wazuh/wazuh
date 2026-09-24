@@ -50,11 +50,14 @@ namespace remoted::http
                 // path to a self-signed anchor of this bundle, validity windows and CA bits
                 // included.
                 case ca_bundle::GuardFailure::no_ca_signs_leaf:
+                    // With a reason, only a validity window is in the way and the line names it;
+                    // without one, the generic list of what does not count.
                     return bundle +
-                           " is not published because the served leaf certificate does not chain to any CA "
-                           "in it (an expired CA, one without CA:TRUE or one that merely signs the leaf "
-                           "does not count); " +
-                           UNPUBLISHED_CONSEQUENCE + ".";
+                           " is not published because the served leaf certificate does not chain to any CA in it (" +
+                           (event.reason.empty() ? std::string {"an expired CA, one without CA:TRUE or one that merely "
+                                                                "signs the leaf does not count"}
+                                                 : event.reason) +
+                           "); " + UNPUBLISHED_CONSEQUENCE + ".";
 
                 case ca_bundle::GuardFailure::too_many_certificates:
                     return bundle + " is not published because it carries " + std::to_string(event.observed) +
@@ -207,6 +210,34 @@ namespace remoted::http
                                           " until `wazuh-manager-certs stamp` is run on the master.");
 
             case RecordEvent::guard_failed: return std::make_pair(RecordEventLevel::warn, describeGuard(event));
+
+            case RecordEvent::chain_lost_on_clock:
+                // The file is the same and the answer is not: the operator's fix is a renewal, not
+                // a `stamp`, and the line says which two things changed for agents (the 503 and,
+                // for a published bundle, the generation).
+                return std::make_pair(
+                    RecordEventLevel::warn,
+                    "The CA bundle '" + event.bundlePath +
+                        "' no longer chains to the served leaf certificate, and the file did not change: a validity "
+                        "window closed" +
+                        (event.reason.empty() ? std::string {} : " (" + event.reason + ")") +
+                        ". GET /cacerts answers 503 ca_mismatch from now on" +
+                        (event.previousPublication != 0 ? ", and " + std::string {UNPUBLISHED_CONSEQUENCE} +
+                                                              " instead of " + std::to_string(event.previousPublication)
+                                                        : std::string {}) +
+                        "; renew the CA or the certificate.");
+
+            case RecordEvent::chain_regained_on_clock:
+                // The pre-staged CA of a rotation reaching its notBefore: INFO, and the generation
+                // agents are told from now on, so the operator can match it against the runbook.
+                return std::make_pair(RecordEventLevel::info,
+                                      "The CA bundle '" + event.bundlePath +
+                                          "' chains to the served leaf certificate again, and the file did not "
+                                          "change: a validity window opened. GET /cacerts serves it from now on" +
+                                          (event.publication != 0
+                                               ? ", published as generation " + std::to_string(event.publication)
+                                               : std::string {}) +
+                                          ".");
 
             case RecordEvent::record_unwritable:
                 // The RECORD's path, never the bundle's (they are different files and different

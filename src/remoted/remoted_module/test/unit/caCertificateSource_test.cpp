@@ -272,6 +272,18 @@ namespace
         }
     };
 
+    /// The wall clock the verdicts are judged against, moved by hand: what turns "the CA expires"
+    /// into an assertion instead of a wait.
+    struct FakeClock
+    {
+        std::shared_ptr<std::time_t> now {std::make_shared<std::time_t>(std::time(nullptr))};
+
+        std::time_t operator()() const
+        {
+            return *now;
+        }
+    };
+
     /// Throwaway directory for a publication record, removed with everything under it (the record
     /// file, its temporaries, a subdirectory created mid-test) on scope exit. Same mold as
     /// downloadEndpoint_test.cpp's TempDir (mkdtemp: unique per instance and per process), teardown
@@ -1789,6 +1801,55 @@ TEST(CaCertificateSourceDescriptor, HonoursTheFullRefreshWindow)
     EXPECT_EQ(*afterTheWindow.generation, kNewerPublication);
 }
 
+TEST(CaCertificateSourceDescriptor, FollowsTheClockOnceTheRefreshWindowElapses)
+{
+    const auto caKey = remoted::test::makeTestKey();
+    const auto leafKey = remoted::test::makeTestKey();
+    const auto ca =
+        remoted::test::makeCertificate("Short CA", -3600, 3600, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    const auto leaf = remoted::test::makeCertificate("manager", -60, 7200, leafKey.get(), caKey.get(), ca.get());
+
+    const auto plain = "/tmp/casource_descriptor_clock_plain_" + std::to_string(::getpid()) + ".pem";
+    const auto path = "/tmp/casource_descriptor_clock_" + std::to_string(::getpid()) + ".pem";
+    remoted::test::ScratchFileCleanup cleanup {{plain, path}};
+    remoted::test::writePemFile(plain, {ca.get()});
+    write(path, sealedDocument(readPemCertificates(plain), kPublication));
+
+    const CountingReader reader;
+    const TestClock window;
+    FakeClock verdict;
+    const std::time_t start = *verdict.now;
+    CaCertificateSource source {path, leaf.get(), reader, window, LoadOutcome {}, nullptr, nullptr, verdict};
+
+    auto descriptor = source.descriptor();
+    ASSERT_TRUE(descriptor.generation.has_value());
+    EXPECT_EQ(*descriptor.generation, kPublication);
+
+    // The CA expires inside the refresh window: the last verdict stands until the window closes,
+    // the one second of staleness the notify path is allowed (CA-15).
+    *verdict.now = start + 7000;
+    descriptor = source.descriptor();
+    ASSERT_TRUE(descriptor.generation.has_value());
+    EXPECT_EQ(*descriptor.generation, kPublication);
+    EXPECT_EQ(reader.calls->load(), 1);
+
+    // The window closes: one read, no re-parse, and agents are told 0 -- there IS a bundle, it is
+    // just no longer vouched for.
+    *window.now += CaCertificateSource::kDescriptorRefresh;
+    descriptor = source.descriptor();
+    ASSERT_TRUE(descriptor.generation.has_value());
+    EXPECT_EQ(*descriptor.generation, 0);
+    EXPECT_EQ(reader.calls->load(), 2);
+    EXPECT_EQ(source.parses(), 1U);
+
+    *verdict.now = start;
+    *window.now += CaCertificateSource::kDescriptorRefresh;
+    descriptor = source.descriptor();
+    ASSERT_TRUE(descriptor.generation.has_value());
+    EXPECT_EQ(*descriptor.generation, kPublication);
+    EXPECT_EQ(source.parses(), 1U);
+}
+
 TEST(CaCertificateSourceDescriptor, IsNulloptWhenNoBundleIsServable)
 {
     auto pki = makePki("casource-descriptor-empty");
@@ -2110,7 +2171,10 @@ TEST(CaCertificateSourceRecord, InvalidBlockOrGuardFailureUpdatesTheRecordWithou
         ASSERT_EQ(events.size(), 1U);
         EXPECT_EQ(events[0].kind, RecordEvent::guard_failed);
         EXPECT_EQ(events[0].guard, GuardFailure::no_ca_signs_leaf);
+        EXPECT_TRUE(events[0].reason.empty()) << events[0].reason; // no date is what is in the way
 
+        // Somebody else's CA: no window will ever open, so the record keeps 0 (only a clock-held
+        // bundle records the generation its file carries).
         source.flushPendingRecord();
         const auto outcome = record->load(path);
         ASSERT_EQ(outcome.status, LoadOutcome::Status::ok);
@@ -2508,21 +2572,7 @@ TEST(CaCertificateSourceRecord, NotifyStyleDeliveryLogsWithoutTouchingTheRecord)
     EXPECT_EQ(record->load(pki->files.caCertPath).status, LoadOutcome::Status::ok);
 }
 
-namespace
-{
-    /// A clock the test moves by hand: what CaCertificateSource judges the chain verdict against.
-    struct FakeClock
-    {
-        std::shared_ptr<std::time_t> now {std::make_shared<std::time_t>(std::time(nullptr))};
-
-        std::time_t operator()() const
-        {
-            return *now;
-        }
-    };
-} // namespace
-
-TEST(CaCertificateSource, ChainVerdictFollowsTheClockOnACacheHit)
+TEST(CaCertificateSource, VerdictsFollowTheClockOnACacheHit)
 {
     const auto caKey = remoted::test::makeTestKey();
     const auto leafKey = remoted::test::makeTestKey();
@@ -2543,6 +2593,7 @@ TEST(CaCertificateSource, ChainVerdictFollowsTheClockOnACacheHit)
     auto snapshot = source.snapshot();
     EXPECT_EQ(snapshot.chainValid, true);
     EXPECT_TRUE(snapshot.chainError.empty());
+    EXPECT_EQ(snapshot.matchesLeaf, true);
 
     // Same bytes, later clock: a cache hit that must not repeat a verdict the dates have overturned
     // (PR #39370 review, r4037971554).
@@ -2550,18 +2601,19 @@ TEST(CaCertificateSource, ChainVerdictFollowsTheClockOnACacheHit)
     snapshot = source.snapshot();
     EXPECT_EQ(snapshot.chainValid, false);
     EXPECT_FALSE(snapshot.chainError.empty());
-    EXPECT_EQ(snapshot.matchesLeaf, true); // the signature check has no date term
+    EXPECT_EQ(snapshot.matchesLeaf, false); // the 503 decision has the same date term
     ASSERT_EQ(snapshot.entries.size(), 1U);
-    EXPECT_TRUE(snapshot.entries[0].signsLeaf);
-    EXPECT_EQ(source.parses(), 1U); // the verdict moved, the bytes did not: no re-parse
+    EXPECT_TRUE(snapshot.entries[0].signsLeaf); // the signature alone has none
+    EXPECT_EQ(source.parses(), 1U);             // the verdicts moved, the bytes did not: no re-parse
 
     *clock.now = start;
     snapshot = source.snapshot();
     EXPECT_EQ(snapshot.chainValid, true);
+    EXPECT_EQ(snapshot.matchesLeaf, true);
     EXPECT_EQ(source.parses(), 1U);
 }
 
-TEST(CaCertificateSource, ChainVerdictFollowsTheClockWhileTheFileIsUnreadable)
+TEST(CaCertificateSource, VerdictsFollowTheClockWhileTheFileIsUnreadable)
 {
     const auto caKey = remoted::test::makeTestKey();
     const auto leafKey = remoted::test::makeTestKey();
@@ -2593,6 +2645,9 @@ TEST(CaCertificateSource, ChainVerdictFollowsTheClockWhileTheFileIsUnreadable)
     EXPECT_EQ(snapshot.certificates, 1U);
     EXPECT_EQ(snapshot.chainValid, false);
     EXPECT_FALSE(snapshot.chainError.empty());
+    EXPECT_EQ(snapshot.matchesLeaf, false);
+    EXPECT_EQ(snapshot.publication, 0);
+    EXPECT_EQ(snapshot.vouchFailure, GuardFailure::no_block); // unstamped: the vouch never reaches the chain guard
     EXPECT_EQ(source.parses(), 1U);
 }
 
@@ -2616,11 +2671,387 @@ TEST(CaCertificateSource, ANotYetValidCaBecomesValidWithoutAReparse)
     auto snapshot = source.snapshot();
     EXPECT_EQ(snapshot.chainValid, false);
     EXPECT_NE(snapshot.chainError.find("not yet valid"), std::string::npos);
+    EXPECT_EQ(snapshot.matchesLeaf, false);
 
     *clock.now = start + 1200;
     snapshot = source.snapshot();
     EXPECT_EQ(snapshot.chainValid, true);
+    EXPECT_EQ(snapshot.matchesLeaf, true);
     EXPECT_EQ(source.parses(), 1U);
+}
+
+TEST(CaCertificateSource, AStampedBundleStopsBeingPublishedWhenItsCaExpiresInPlace)
+{
+    const auto caKey = remoted::test::makeTestKey();
+    const auto leafKey = remoted::test::makeTestKey();
+    const auto ca =
+        remoted::test::makeCertificate("Short CA", -3600, 3600, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    const auto leaf = remoted::test::makeCertificate("manager", -60, 7200, leafKey.get(), caKey.get(), ca.get());
+
+    const auto plain = "/tmp/casource_clock_stamped_plain_" + std::to_string(::getpid()) + ".pem";
+    const auto path = "/tmp/casource_clock_stamped_" + std::to_string(::getpid()) + ".pem";
+    remoted::test::ScratchFileCleanup cleanup {{plain, path}};
+    remoted::test::writePemFile(plain, {ca.get()});
+    const auto certificates = readPemCertificates(plain);
+    write(path, sealedDocument(certificates, kPublication));
+
+    FakeClock clock;
+    const std::time_t start = *clock.now;
+    CaCertificateSource source {
+        path, leaf.get(), readFileBounded, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, nullptr, clock};
+
+    auto snapshot = source.snapshot();
+    EXPECT_EQ(snapshot.matchesLeaf, true);
+    EXPECT_EQ(snapshot.chainValid, true);
+    EXPECT_EQ(snapshot.publication, kPublication);
+    EXPECT_EQ(snapshot.vouchFailure, GuardFailure::none);
+
+    // Same clock, same bytes: the same answer, from the same parse.
+    snapshot = source.snapshot();
+    EXPECT_EQ(snapshot.publication, kPublication);
+    EXPECT_EQ(source.parses(), 1U);
+
+    // The CA's window closes with the file untouched: the 503 decision and the announced generation
+    // move together, and the stamp is still there -- only the verdict about it changed.
+    *clock.now = start + 7000;
+    snapshot = source.snapshot();
+    EXPECT_EQ(snapshot.matchesLeaf, false);
+    EXPECT_EQ(snapshot.chainValid, false);
+    EXPECT_EQ(snapshot.publication, 0);
+    EXPECT_EQ(snapshot.vouchFailure, GuardFailure::no_ca_signs_leaf);
+    ASSERT_TRUE(snapshot.block.has_value());
+    EXPECT_EQ(snapshot.block->publication, kPublication);
+    EXPECT_EQ(snapshot.pem, serializeCertificates(certificates));
+    EXPECT_EQ(source.parses(), 1U);
+
+    *clock.now = start;
+    snapshot = source.snapshot();
+    EXPECT_EQ(snapshot.matchesLeaf, true);
+    EXPECT_EQ(snapshot.publication, kPublication);
+    EXPECT_EQ(snapshot.vouchFailure, GuardFailure::none);
+    EXPECT_EQ(source.parses(), 1U);
+}
+
+TEST(CaCertificateSource, ANotYetValidStampedCaStartsBeingPublishedWithoutAReparse)
+{
+    // A rotation's pre-staged CA: stamped and in the file before its notBefore. Refused until the
+    // window opens, served and published from then on, and nobody has to touch the file.
+    const auto caKey = remoted::test::makeTestKey();
+    const auto leafKey = remoted::test::makeTestKey();
+    const auto ca =
+        remoted::test::makeCertificate("Future CA", 600, 7200, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    const auto leaf = remoted::test::makeCertificate("manager", -60, 7200, leafKey.get(), caKey.get(), ca.get());
+
+    const auto plain = "/tmp/casource_clock_future_plain_" + std::to_string(::getpid()) + ".pem";
+    const auto path = "/tmp/casource_clock_future_stamped_" + std::to_string(::getpid()) + ".pem";
+    remoted::test::ScratchFileCleanup cleanup {{plain, path}};
+    remoted::test::writePemFile(plain, {ca.get()});
+    write(path, sealedDocument(readPemCertificates(plain), kPublication));
+
+    FakeClock clock;
+    const std::time_t start = *clock.now;
+    CaCertificateSource source {
+        path, leaf.get(), readFileBounded, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, nullptr, clock};
+
+    auto snapshot = source.snapshot();
+    EXPECT_EQ(snapshot.matchesLeaf, false);
+    EXPECT_EQ(snapshot.chainValid, false);
+    EXPECT_EQ(snapshot.publication, 0);
+    EXPECT_EQ(snapshot.vouchFailure, GuardFailure::no_ca_signs_leaf);
+
+    *clock.now = start + 1200;
+    snapshot = source.snapshot();
+    EXPECT_EQ(snapshot.matchesLeaf, true);
+    EXPECT_EQ(snapshot.chainValid, true);
+    EXPECT_EQ(snapshot.publication, kPublication);
+    EXPECT_EQ(snapshot.vouchFailure, GuardFailure::none);
+    EXPECT_EQ(source.parses(), 1U);
+}
+
+// ---------------------------------------------------------------------------
+// The clock, not the file, changing whether the leaf chains: said once through the mailbox, so the
+// next request carries it instead of the next tick.
+// ---------------------------------------------------------------------------
+
+TEST(CaCertificateSourceClockEvents, LosingAndRegainingTheChainOnTheClockAreEachSaidOnce)
+{
+    const auto caKey = remoted::test::makeTestKey();
+    const auto leafKey = remoted::test::makeTestKey();
+    const auto ca =
+        remoted::test::makeCertificate("Short CA", -3600, 3600, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    const auto leaf = remoted::test::makeCertificate("manager", -60, 7200, leafKey.get(), caKey.get(), ca.get());
+
+    const auto plain = "/tmp/casource_clock_events_plain_" + std::to_string(::getpid()) + ".pem";
+    const auto path = "/tmp/casource_clock_events_" + std::to_string(::getpid()) + ".pem";
+    remoted::test::ScratchFileCleanup cleanup {{plain, path}};
+    remoted::test::writePemFile(plain, {ca.get()});
+    write(path, sealedDocument(readPemCertificates(plain), kPublication));
+
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    FakeClock clock;
+    const std::time_t start = *clock.now;
+    CaCertificateSource source {
+        path, leaf.get(), readFileBounded, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, mailbox, clock};
+
+    ASSERT_EQ(source.snapshot().publication, kPublication);
+    {
+        const auto events = source.drainRecordEvents();
+        ASSERT_EQ(events.size(), 1U);
+        EXPECT_EQ(events[0].kind, RecordEvent::published_changed);
+    }
+    source.snapshot();
+    EXPECT_TRUE(source.drainRecordEvents().empty()); // same clock, same bytes: nothing to say
+
+    *clock.now = start + 7000;
+    ASSERT_EQ(source.snapshot().matchesLeaf, false);
+    {
+        const auto events = source.drainRecordEvents();
+        ASSERT_EQ(events.size(), 1U);
+        EXPECT_EQ(events[0].kind, RecordEvent::chain_lost_on_clock);
+        EXPECT_EQ(events[0].bundlePath, path);
+        EXPECT_EQ(events[0].previousPublication, kPublication);
+        EXPECT_EQ(events[0].publication, 0);
+        EXPECT_NE(events[0].reason.find("expired"), std::string::npos) << events[0].reason;
+
+        const auto line = remoted::http::describeRecordEvent(events[0]);
+        ASSERT_TRUE(line.has_value());
+        EXPECT_EQ(line->first, remoted::http::RecordEventLevel::warn);
+        EXPECT_NE(line->second.find(path), std::string::npos) << line->second;
+        EXPECT_NE(line->second.find("503"), std::string::npos) << line->second;
+        EXPECT_NE(line->second.find(std::to_string(kPublication)), std::string::npos) << line->second;
+    }
+    source.snapshot();
+    EXPECT_TRUE(source.drainRecordEvents().empty()); // still expired: said once, not once per read
+
+    *clock.now = start;
+    ASSERT_EQ(source.snapshot().matchesLeaf, true);
+    {
+        const auto events = source.drainRecordEvents();
+        ASSERT_EQ(events.size(), 1U);
+        EXPECT_EQ(events[0].kind, RecordEvent::chain_regained_on_clock);
+        EXPECT_EQ(events[0].previousPublication, 0);
+        EXPECT_EQ(events[0].publication, kPublication);
+
+        const auto line = remoted::http::describeRecordEvent(events[0]);
+        ASSERT_TRUE(line.has_value());
+        EXPECT_EQ(line->first, remoted::http::RecordEventLevel::info);
+        EXPECT_NE(line->second.find(std::to_string(kPublication)), std::string::npos) << line->second;
+    }
+    EXPECT_EQ(source.parses(), 1U);
+}
+
+TEST(CaCertificateSourceClockEvents, ARebuildLeavesTheAnnouncementToTheRecord)
+{
+    const auto caKey = remoted::test::makeTestKey();
+    const auto leafKey = remoted::test::makeTestKey();
+    const auto ca =
+        remoted::test::makeCertificate("Short CA", -3600, 3600, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    const auto leaf = remoted::test::makeCertificate("manager", -60, 7200, leafKey.get(), caKey.get(), ca.get());
+
+    const auto plain = "/tmp/casource_clock_rebuild_plain_" + std::to_string(::getpid()) + ".pem";
+    const auto path = "/tmp/casource_clock_rebuild_" + std::to_string(::getpid()) + ".pem";
+    remoted::test::ScratchFileCleanup cleanup {{plain, path}};
+    remoted::test::writePemFile(plain, {ca.get()});
+    const auto certificates = readPemCertificates(plain);
+    write(path, sealedDocument(certificates, kPublication));
+
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    FakeClock clock;
+    const std::time_t start = *clock.now;
+    CaCertificateSource source {
+        path, leaf.get(), readFileBounded, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, mailbox, clock};
+
+    ASSERT_EQ(source.snapshot().publication, kPublication);
+    ASSERT_EQ(source.drainRecordEvents().size(), 1U);
+
+    // The clock passes the CA's notAfter AND the master re-stamps the file before the next read:
+    // one read, one rebuild, and the record's own event is the only one -- the guard it names is
+    // the clock's doing, and nothing says it twice.
+    *clock.now = start + 7000;
+    replaceAtomically(path, sealedDocument(certificates, kNewerPublication));
+    ASSERT_EQ(source.snapshot().publication, 0);
+
+    const auto events = source.drainRecordEvents();
+    ASSERT_EQ(events.size(), 1U);
+    EXPECT_EQ(events[0].kind, RecordEvent::guard_failed);
+    EXPECT_EQ(events[0].guard, GuardFailure::no_ca_signs_leaf);
+    EXPECT_NE(events[0].reason.find("CA '/CN=Short CA' expired at "), std::string::npos) << events[0].reason;
+    EXPECT_EQ(source.parses(), 2U);
+}
+
+namespace
+{
+    /// @p certificate re-issued with an extendedKeyUsage of @p usages, signed again with @p signerKey.
+    void setExtendedKeyUsage(X509* certificate, const char* usages, EVP_PKEY* signerKey)
+    {
+        X509V3_CTX ctx;
+        X509V3_set_ctx_nodb(&ctx);
+        X509V3_set_ctx(&ctx, certificate, certificate, nullptr, nullptr, 0);
+        X509_EXTENSION* extension = X509V3_EXT_conf_nid(nullptr, &ctx, NID_ext_key_usage, usages);
+        ASSERT_NE(extension, nullptr);
+        X509_add_ext(certificate, extension, -1);
+        X509_EXTENSION_free(extension);
+        ASSERT_GT(X509_sign(certificate, signerKey, EVP_sha256()), 0);
+    }
+} // namespace
+
+TEST(CaCertificateSourceClockEvents, TheReasonNamesTheWindowThatClosedNotAnUnrelatedFailure)
+{
+    // A leaf that is not for TLS servers: chainValidates() fails it for its purpose all along, while
+    // the anchor rule the 503 follows does not look at purpose. When the CA expires, the line has
+    // to name the expiry -- the one thing a renewal fixes -- not the purpose, which did not change.
+    const auto caKey = remoted::test::makeTestKey();
+    const auto leafKey = remoted::test::makeTestKey();
+    const auto ca =
+        remoted::test::makeCertificate("Short CA", -3600, 3600, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    auto leaf = remoted::test::makeCertificate("manager", -60, 7200, leafKey.get(), caKey.get(), ca.get());
+    setExtendedKeyUsage(leaf.get(), "clientAuth", caKey.get());
+
+    const auto plain = "/tmp/casource_clock_reason_plain_" + std::to_string(::getpid()) + ".pem";
+    const auto path = "/tmp/casource_clock_reason_" + std::to_string(::getpid()) + ".pem";
+    remoted::test::ScratchFileCleanup cleanup {{plain, path}};
+    remoted::test::writePemFile(plain, {ca.get()});
+    write(path, sealedDocument(readPemCertificates(plain), kPublication));
+
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    FakeClock clock;
+    const std::time_t start = *clock.now;
+    CaCertificateSource source {
+        path, leaf.get(), readFileBounded, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, mailbox, clock};
+
+    auto snapshot = source.snapshot();
+    ASSERT_EQ(snapshot.matchesLeaf, true);
+    ASSERT_EQ(snapshot.chainValid, false);
+    ASSERT_NE(snapshot.chainError.find("purpose"), std::string::npos) << snapshot.chainError;
+    source.drainRecordEvents();
+
+    *clock.now = start + 7000;
+    snapshot = source.snapshot();
+    ASSERT_EQ(snapshot.matchesLeaf, false);
+    const auto events = source.drainRecordEvents();
+    ASSERT_EQ(events.size(), 1U);
+    EXPECT_EQ(events[0].kind, RecordEvent::chain_lost_on_clock);
+    EXPECT_EQ(events[0].reason,
+              "CA '/CN=Short CA' expired at " +
+                  remoted::http::rfc3339Utc(ca_bundle::describe(ca.get(), nullptr).notAfter));
+    EXPECT_EQ(events[0].reason.find("purpose"), std::string::npos) << events[0].reason;
+
+    const auto line = remoted::http::describeRecordEvent(events[0]);
+    ASSERT_TRUE(line.has_value());
+    EXPECT_NE(line->second.find("a validity window closed (CA '/CN=Short CA' expired at "), std::string::npos)
+        << line->second;
+}
+
+TEST(CaCertificateSourceClockEvents, TheGapBetweenTwoSameNameCasNamesBoth)
+{
+    // A rotation's two CAs share name and key, and the new one's window opens twenty minutes after
+    // the old one's closed. In the gap the leaf chains to neither, and the line says why for both:
+    // one expired, the other is not valid yet.
+    const auto caKey = remoted::test::makeTestKey();
+    const auto leafKey = remoted::test::makeTestKey();
+    const auto oldCa =
+        remoted::test::makeCertificate("Twin CA", -3600, 600, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    const auto newCa =
+        remoted::test::makeCertificate("Twin CA", 1800, 7200, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    const auto unrelatedKey = remoted::test::makeTestKey();
+    const auto unrelated = remoted::test::makeCertificate(
+        "Unrelated CA", -7200, -3600, unrelatedKey.get(), unrelatedKey.get(), nullptr, nullptr, true);
+    const auto leaf = remoted::test::makeCertificate("manager", -60, 7200, leafKey.get(), caKey.get(), oldCa.get());
+
+    const auto plain = "/tmp/casource_clock_twins_plain_" + std::to_string(::getpid()) + ".pem";
+    const auto path = "/tmp/casource_clock_twins_" + std::to_string(::getpid()) + ".pem";
+    remoted::test::ScratchFileCleanup cleanup {{plain, path}};
+    remoted::test::writePemFile(plain, {oldCa.get(), newCa.get(), unrelated.get()});
+    write(path, sealedDocument(readPemCertificates(plain), kPublication));
+
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    FakeClock clock;
+    const std::time_t start = *clock.now;
+    CaCertificateSource source {
+        path, leaf.get(), readFileBounded, std::chrono::steady_clock::now, LoadOutcome {}, nullptr, mailbox, clock};
+
+    ASSERT_EQ(source.snapshot().matchesLeaf, true);
+    source.drainRecordEvents();
+
+    *clock.now = start + 1200;
+    ASSERT_EQ(source.snapshot().matchesLeaf, false);
+    auto events = source.drainRecordEvents();
+    ASSERT_EQ(events.size(), 1U);
+    EXPECT_EQ(events[0].kind, RecordEvent::chain_lost_on_clock);
+    EXPECT_NE(events[0].reason.find("CA '/CN=Twin CA' expired at "), std::string::npos) << events[0].reason;
+    EXPECT_NE(events[0].reason.find("CA '/CN=Twin CA' not valid until "), std::string::npos) << events[0].reason;
+    EXPECT_EQ(events[0].reason.find("Unrelated"), std::string::npos) << events[0].reason;
+
+    *clock.now = start + 2400;
+    ASSERT_EQ(source.snapshot().matchesLeaf, true);
+    events = source.drainRecordEvents();
+    ASSERT_EQ(events.size(), 1U);
+    EXPECT_EQ(events[0].kind, RecordEvent::chain_regained_on_clock);
+    EXPECT_EQ(source.parses(), 1U);
+}
+
+TEST(CaCertificateSourceRecord, ARebuildTheClockHoldsBackRecordsTheFilesPublication)
+{
+    // A stamped CA whose window has not opened yet, read for the first time (a hand-placed file, or
+    // clock skew with the host that issued it). Agents are told 0 until the window opens, but the
+    // record describes the file: it keeps the block's generation, so a restart after the window
+    // opened has nothing to announce -- no "published as N (was 0)" for a file nobody rewrote.
+    const auto caKey = remoted::test::makeTestKey();
+    const auto leafKey = remoted::test::makeTestKey();
+    const auto ca =
+        remoted::test::makeCertificate("Future CA", 600, 7200, caKey.get(), caKey.get(), nullptr, nullptr, true);
+    const auto leaf = remoted::test::makeCertificate("manager", -60, 7200, leafKey.get(), caKey.get(), ca.get());
+
+    const auto plain = "/tmp/casource_record_held_plain_" + std::to_string(::getpid()) + ".pem";
+    const auto path = "/tmp/casource_record_held_" + std::to_string(::getpid()) + ".pem";
+    remoted::test::ScratchFileCleanup cleanup {{plain, path}};
+    remoted::test::writePemFile(plain, {ca.get()});
+    write(path, sealedDocument(readPemCertificates(plain), kPublication));
+
+    TempDir dir;
+    auto record = std::make_shared<CaPublicationRecord>(dir.path() + "/record.json");
+    FakeClock clock;
+    const std::time_t start = *clock.now;
+    {
+        auto mailbox = std::make_shared<CaRecordEventMailbox>();
+        CaCertificateSource source {path,
+                                    leaf.get(),
+                                    readFileBounded,
+                                    std::chrono::steady_clock::now,
+                                    record->load(path),
+                                    record,
+                                    mailbox,
+                                    clock};
+
+        ASSERT_EQ(source.snapshot().publication, 0);
+        const auto events = source.drainRecordEvents();
+        ASSERT_EQ(events.size(), 1U);
+        EXPECT_EQ(events[0].kind, RecordEvent::guard_failed);
+        EXPECT_EQ(events[0].guard, GuardFailure::no_ca_signs_leaf);
+        EXPECT_EQ(events[0].publication, 0);
+        EXPECT_NE(events[0].reason.find("CA '/CN=Future CA' not valid until "), std::string::npos) << events[0].reason;
+        const auto line = remoted::http::describeRecordEvent(events[0]);
+        ASSERT_TRUE(line.has_value());
+        EXPECT_NE(line->second.find("(CA '/CN=Future CA' not valid until "), std::string::npos) << line->second;
+
+        source.flushPendingRecord();
+        const auto outcome = record->load(path);
+        ASSERT_EQ(outcome.status, LoadOutcome::Status::ok);
+        EXPECT_EQ(outcome.entry.publication, kPublication);
+
+        *clock.now = start + 1200;
+        ASSERT_EQ(source.snapshot().publication, kPublication);
+        const auto opened = source.drainRecordEvents();
+        ASSERT_EQ(opened.size(), 1U);
+        EXPECT_EQ(opened[0].kind, RecordEvent::chain_regained_on_clock);
+    }
+
+    // The restart: same file, window open. The record already says what the file carries.
+    auto mailbox = std::make_shared<CaRecordEventMailbox>();
+    CaCertificateSource restarted {
+        path, leaf.get(), readFileBounded, std::chrono::steady_clock::now, record->load(path), record, mailbox, clock};
+    ASSERT_EQ(restarted.snapshot().publication, kPublication);
+    EXPECT_TRUE(restarted.drainRecordEvents().empty());
 }
 
 TEST(ParsedBundle, SerialisationRoundTripsAndDropsEverythingElse)

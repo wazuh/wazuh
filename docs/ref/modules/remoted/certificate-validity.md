@@ -66,11 +66,11 @@ Every timestamp comes in two spellings: RFC 3339 UTC, and `_ts` as epoch seconds
 | `listener.path` | The configured path, relative to the installation directory. |
 | `listener.loaded_at` | When remoted loaded this certificate: its last start. See [Freshness](#freshness). |
 | `ca_bundle.path` | [`https.ca_certificate`](configuration.md#httpsca_certificate), the file `GET /cacerts` serves from. |
-| `ca_bundle.publication`, `publication_vouched` | The publication `wazuh-manager-certs` stamped in the bundle's `##` block, the same value the manager advertises to agents as `ca_generation`: `null` when there is no servable bundle, `0` when a bundle is served but no guard vouches for it, else the vouched Unix timestamp. `publication_vouched` is that guard's verdict (block present, hash matches, the leaf chains to a CA of the bundle, count and size within the agent limits). See the [CA rotation runbook](ca-rotation.md). |
+| `ca_bundle.publication`, `publication_vouched` | The publication `wazuh-manager-certs` stamped in the bundle's `##` block, the same value the manager advertises to agents as `ca_generation`: `null` when there is no servable bundle, `0` when a bundle is served but no guard vouches for it, else the vouched Unix timestamp. `publication_vouched` is that guard's verdict (block present, hash matches, the leaf chains to a CA of the bundle, count and size within the agent limits), judged against the clock on every request: a CA that expires with the file untouched reads `0` / `false` on the next one. See the [CA rotation runbook](ca-rotation.md). |
 | `ca_bundle.content_sha256` | The bundle's identity: SHA-256 (bare hex) over the DER encoding of every certificate, sorted and concatenated, so it does not depend on the order the files were concatenated in. |
 | `ca_bundle.certificates_count`, `certificates_limit` | Certificates in the bundle, and the most a bundle may carry and still reach every agent (6). |
 | `ca_bundle.serialized_bytes`, `serialized_bytes_limit` | Size of the PEM `GET /cacerts` sends, and the largest bundle an agent accepts (8191 bytes). Whichever limit binds first is the room left before adding a CA. Nothing here enforces them: the rotation tool refuses to publish past them. |
-| `ca_bundle.matches_active_leaf` | Whether the listener certificate chains to some CA of this bundle: the `503 ca_mismatch` decision of `GET /cacerts`, see [Three different questions](#three-different-questions). `null` when there is nothing to check against. |
+| `ca_bundle.matches_active_leaf` | Whether the listener certificate chains to some CA of this bundle: the `503 ca_mismatch` decision of `GET /cacerts`, see [Three different questions](#three-different-questions). Judged against the clock on every request. `null` when there is nothing to check against. |
 | `ca_bundle.chain_valid`, `chain_error` | Whether the listener certificate validates with this bundle as its **only** trust store; see [Three different questions](#three-different-questions). `null` when there is nothing to validate against; `chain_error` present only when `false`. |
 | `ca_bundle.certificates[]` | One entry per certificate, same fields as the listener minus `sans`, `path` and `loaded_at`, plus `signs_active_leaf`. |
 | `ca_bundle.last_read_failure` | Present only while the bundle file cannot be read; see [When the bundle cannot be read](#when-the-bundle-cannot-be-read). |
@@ -108,11 +108,11 @@ They disagree on purpose in the cases an operator most needs to see: a CA that s
 but has expired, or that lacks `CA:TRUE`, reads `signs_active_leaf: true` while `matches_active_leaf`
 and `chain_valid` are both `false`, `chain_error` saying why (`certificate has expired`, `invalid CA certificate`). During a
 rotation the new CA typically reads `signs_active_leaf: false` until the listener is reissued under
-it: that is the expected intermediate state, not a fault. `chain_valid` is evaluated at request time:
-a CA that expires while the file stays untouched reads `false` on the next request, and the daily
-log line says the same.
-`matches_active_leaf` is evaluated when the bundle is parsed, exactly like the `503` it mirrors: it
-follows a change of the file at once, not the clock alone.
+it: that is the expected intermediate state, not a fault. All three are evaluated at request time,
+from the certificates already parsed: a CA that expires while the file stays untouched reads
+`matches_active_leaf: false`, `chain_valid: false` and `publication: 0` on the next request -- the
+same moment `GET /cacerts` starts answering `503` -- and the log says so once, in the request that
+noticed it. Only the parse is cached by the file's content hash, never a verdict with a date term.
 
 ## When the bundle cannot be read
 
