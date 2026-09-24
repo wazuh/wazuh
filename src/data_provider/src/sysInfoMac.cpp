@@ -200,31 +200,55 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                     }
                 }
             }
-            else if (PKG == pkgType && fs.is_directory(package) && !Utils::startsWith(package.filename().string(), "."))
+            else if (PKG == pkgType)
             {
-                // Vendors sometimes group their apps one level down (e.g. /Applications/<Vendor>/<App>.app).
-                // Look exactly one level below, no further, so nested helper bundles inside a .app are not walked into.
-                const auto nestedEntries { fs.list_directory(package) };
+                // Entries under a user-writable directory (e.g. a per-user ~/Applications) can be a
+                // symlink loop or otherwise fail is_directory/list_directory with a filesystem_error.
+                // Keep that isolated to this one entry instead of aborting the rest of the scan.
+                bool isEligibleSubdirectory = false;
 
-                for (const auto& nestedEntry : nestedEntries)
+                try
                 {
-                    if (Utils::endsWith(nestedEntry, ".app"))
-                    {
-                        try
-                        {
-                            nlohmann::json jsPackage;
-                            FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{package.string(), nestedEntry.filename().string(), ""}, pkgType))->buildPackageData(jsPackage);
+                    isEligibleSubdirectory = fs.is_directory(package) && !Utils::startsWith(package.filename().string(), ".");
+                }
+                catch (const std::exception& e)
+                {
+                    std::cerr << e.what() << std::endl;
+                }
 
-                            if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                if (isEligibleSubdirectory)
+                {
+                    try
+                    {
+                        // Vendors sometimes group their apps one level down (e.g. /Applications/<Vendor>/<App>.app).
+                        // Look exactly one level below, no further, so nested helper bundles inside a .app are not walked into.
+                        const auto nestedEntries { fs.list_directory(package) };
+
+                        for (const auto& nestedEntry : nestedEntries)
+                        {
+                            if (Utils::endsWith(nestedEntry, ".app"))
                             {
-                                // Only return valid content packages
-                                callback(jsPackage);
+                                try
+                                {
+                                    nlohmann::json jsPackage;
+                                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{package.string(), nestedEntry.filename().string(), ""}, pkgType))->buildPackageData(jsPackage);
+
+                                    if (!jsPackage.at("name").get_ref<const std::string&>().empty())
+                                    {
+                                        // Only return valid content packages
+                                        callback(jsPackage);
+                                    }
+                                }
+                                catch (const std::exception& e)
+                                {
+                                    std::cerr << e.what() << std::endl;
+                                }
                             }
                         }
-                        catch (const std::exception& e)
-                        {
-                            std::cerr << e.what() << std::endl;
-                        }
+                    }
+                    catch (const std::exception& e)
+                    {
+                        std::cerr << e.what() << std::endl;
                     }
                 }
             }
@@ -465,9 +489,18 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 
         for (const auto& userApplicationsPath : userApplicationsPaths)
         {
-            if (fs.is_directory(userApplicationsPath))
+            // A user's own home directory is untrusted input: a symlink loop or similar there must not
+            // abort the scan for the remaining users, or for the pypi/npm scanning that follows.
+            try
             {
-                getPackagesFromPath(userApplicationsPath, PKG, callback);
+                if (fs.is_directory(userApplicationsPath))
+                {
+                    getPackagesFromPath(userApplicationsPath, PKG, callback);
+                }
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << e.what() << std::endl;
             }
         }
     }

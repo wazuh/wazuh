@@ -34,6 +34,14 @@ static const std::string PLIST_BINARY_START { "bplist00"            };
 static const std::string UTILITIES_FOLDER   { "/Utilities"          };
 const std::set<std::string> excludedCategories = {"pkg", "x86_64", "arm64"};
 
+// Reject anything that isn't a plain regular file (a FIFO would block open() forever,
+// and a symlink to a character device like /dev/zero would grow memory unbounded on read).
+static bool isRegularFile(const std::string& filePath)
+{
+    struct stat fileStat {};
+    return (lstat(filePath.c_str(), &fileStat) == 0) && S_ISREG(fileStat.st_mode);
+}
+
 class PKGWrapper final : public IPackageWrapper
 {
     public:
@@ -206,6 +214,11 @@ class PKGWrapper final : public IPackageWrapper
 
         void getPkgData(const std::string& filePath)
         {
+            if (!isRegularFile(filePath))
+            {
+                return;
+            }
+
             const auto isBinaryFnc
             {
                 [&filePath]()
@@ -321,6 +334,11 @@ class PKGWrapper final : public IPackageWrapper
 
         void getPkgDataRcp(const std::string& filePath)
         {
+            if (!isRegularFile(filePath))
+            {
+                return;
+            }
+
             const auto isBinaryFnc
             {
                 [&filePath]()
