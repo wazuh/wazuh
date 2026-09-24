@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed a one-byte heap buffer underflow in the GCP wodle output parser. ([#39606](https://github.com/wazuh/wazuh/pull/39606))
 - Fixed the `report_changes` snapshot following symbolic links and accepting non-regular files on Linux and macOS. ([#39476](https://github.com/wazuh/wazuh/pull/39476))
 
 ### Agent
