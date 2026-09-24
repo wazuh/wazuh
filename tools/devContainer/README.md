@@ -222,7 +222,7 @@ Defines four agent services, all connecting to the manager on the host via `host
 | `agent_5x_centos` | CentOS | 5.x | 1514, 1515 |
 | `agent_5x_ubuntu` | Ubuntu | 5.x | 1514, 1515 |
 
-Each service mounts a persistent volume for `/var/ossec` and restarts with `unless-stopped`. Use `docker-compose down -v` for a clean start that discards agent state.
+Each service mounts a persistent volume for `/var/ossec`. There is no restart policy: like the indexer and the dashboard, the agents stay stopped when the devContainer restarts, and `docker compose start` brings them back with their keys once the manager is running. Use `docker-compose down -v` for a clean start that discards agent state.
 
 **Usage:**
 ```bash

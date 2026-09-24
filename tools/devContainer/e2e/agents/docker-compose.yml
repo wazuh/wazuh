@@ -5,13 +5,15 @@
 #   docker compose --env-file /tmp/wazuh-e2e-agents.env -f docker-compose.yml up -d --build [service…]
 #   sudo ./verify_agents.sh --api                                    # PASS/FAIL per agent
 # `down -v` drops the volumes and therefore the enrolled keys; a plain `down` keeps them.
+# No restart policy: like the indexer and the dashboard, the agents stay stopped when the
+# devContainer (and its dockerd) restarts; `docker compose -f docker-compose.yml start` brings
+# them back, with their keys, once the manager is running.
 # 4.x agents enroll through authd (1515, shared password); 5.x agents ONLY through POST /enroll
 # (1517) with the token, whose address already carries host, port and prefix — no MANAGER_* for them.
 name: dev-env-engine-agents
 
 x-agent-defaults: &agent_defaults
   pull_policy: build
-  restart: unless-stopped
   extra_hosts:
     - "host.docker.internal:host-gateway"
 

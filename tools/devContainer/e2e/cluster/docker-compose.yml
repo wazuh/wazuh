@@ -16,7 +16,6 @@ services:
       context: ./cluster/node
     image: dev-wazuh-node
     pull_policy: build
-    restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
@@ -26,13 +25,13 @@ services:
       MASTER_ADDR: "host.docker.internal"
       INDEXER_HOST: "wazuh-indexer"
       INDEXER_USER: "${INDEXER_USER:-admin}"
+      INDEXER_PASSWORD: "${INDEXER_PASSWORD:-admin}"
     healthcheck:
       test: ["CMD", "/healthcheck.sh"]
       interval: 30s
       timeout: 15s
       start_period: 120s
       retries: 3
-      INDEXER_PASSWORD: "${INDEXER_PASSWORD:-admin}"
     volumes:
       - ./certs:/certs:ro
     depends_on:

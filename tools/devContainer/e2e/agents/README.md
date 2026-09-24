@@ -71,6 +71,8 @@ here at all — the entrypoint refuses to start it unenrolled rather than fallin
 | agent `version` newer than the manager refused | `<remote><agents><allow_higher_versions>no` | use a manager built from a branch at least as new as the nightly, or set it to `yes` for the test |
 | `Duplicate name` | a previous container enrolled with the same name | `docker compose down -v` (or remove the agent with the API) |
 
+The containers have no restart policy: after a devContainer restart they are stopped, like the indexer and the
+dashboard, and `docker compose start` brings them back with their keys once the manager is running.
 `docker compose down` keeps the volumes (the agents reconnect with their keys); `down -v` starts from scratch and
 the next `up` enrolls again — mint a token with enough `--max-uses`, or a new one. **After refreshing `pkgs/`,
 `down -v` is mandatory**: the volume holds the whole `/var/ossec` (binaries included) copied from the image that
