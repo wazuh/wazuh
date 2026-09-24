@@ -90,9 +90,12 @@
 		// of CPU/IO. fix-dind.sh is taken from the downloaded .devcontainer/ (present from
 		// the start), never from the repository it runs before. Guards on .git, wiping a
 		// partial checkout first, so an interrupted clone gets retried instead of accepted
-		// as done. Uses the workspace folder directly; remoteEnv's WAZUH_REPO is not
-		// populated in this lifecycle command.
-		"fix_dind_then_clone": "sh ${containerWorkspaceFolder}/.devcontainer/fix-dind.sh; REPO=\"${containerWorkspaceFolder}/wazuh\"; if [ ! -e \"$REPO/.git\" ]; then rm -rf \"$REPO\"; git clone --recursive https://github.com/wazuh/wazuh.git \"$REPO\"; fi; git config --global --add safe.directory \"$REPO\";",
+		// as done; the submodules are updated on every run, so a clone cut while fetching
+		// them completes too. The clone runs even if fix-dind.sh fails, but any failure
+		// fails the entry (exit 1), so the devContainer reports it instead of succeeding.
+		// Uses the workspace folder directly; remoteEnv's WAZUH_REPO is not populated in
+		// this lifecycle command.
+		"fix_dind_then_clone": "rc=0; sh ${containerWorkspaceFolder}/.devcontainer/fix-dind.sh || rc=1; REPO=\"${containerWorkspaceFolder}/wazuh\"; if [ ! -e \"$REPO/.git\" ]; then rm -rf \"$REPO\"; git clone --recursive https://github.com/wazuh/wazuh.git \"$REPO\" || rc=1; fi; git config --global --add safe.directory \"$REPO\"; if [ -e \"$REPO/.git\" ]; then git -C \"$REPO\" submodule update --init --recursive || rc=1; fi; exit $rc",
 		// Configure zsh
 	    "zsh_cnf_0": "echo \"setopt APPEND_HISTORY;setopt INC_APPEND_HISTORY\" >> ~/.zshrc",
 		"zsh_cnf_1": "echo \"export HISTFILE=${containerWorkspaceFolder}/.zsh_history\" >> ~/.zshrc",
