@@ -199,7 +199,7 @@ sequenceDiagram
     B-->>M: N container(s) scanned, M row(s)
     M->>D: fim_container_events_release()
     Note over D: first-scan boundary crossed:<br/>consumer may touch file_entry,<br/>and everything from here ALERTS
-    D-->>M: baseline walk committed;<br/>the reconcile consumer is now live
+    D-->>M: baseline walk committed,<br/>the reconcile consumer is now live
 ```
 
 **Why subscribe before walking.** A file changed *while* the walk is in progress would otherwise fall
