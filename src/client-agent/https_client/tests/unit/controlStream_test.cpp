@@ -301,6 +301,49 @@ TEST_F(ControlStreamTest, UnknownAgentAuthFailureStillGoesAuthError)
     EXPECT_TRUE(m_authGate.paused());
 }
 
+TEST_F(ControlStreamTest, UnescalatedAuthFailureReportsABackoffOverrideInsteadOfTheFixedCadence)
+{
+    // A 401 the AuthGate did not latch must not keep retrying on the plain notify cadence
+    // forever: RetrySender returns it unescalated on every call (#39064), and useSlowCadence()/
+    // rejectedRetryIntervalS stays reserved for the genuine unknown_agent/AUTH_ERROR path (see
+    // UnknownAgentAuthFailureStillGoesAuthError above) -- so this stream's own Backoff has to
+    // govern the cadence instead (#39601).
+    ScriptedRandom random {{1.0}}; // Jitter always hits the window ceiling.
+    ControlStream stream {m_config,          m_performer,     m_signer,        m_clock,
+                          random,            m_sink,          m_spoolFactory,  m_configHash,
+                          m_caPublication,   m_cluster,       m_authGate,      m_compressionGate,
+                          m_taskStore,       m_vdOffsetStore, [this] { return m_hostJson; }};
+
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(response(TransportStatus::Ok, 401)));
+    EXPECT_FALSE(stream.step(m_waiter));
+    EXPECT_FALSE(stream.useSlowCadence());
+
+    const auto backoff = stream.unescalatedAuthFailBackoff();
+    ASSERT_TRUE(backoff.has_value());
+    EXPECT_EQ(std::chrono::milliseconds {m_config.backoffBaseMs}, *backoff); // First window.
+}
+
+TEST_F(ControlStreamTest, EscalatedAuthFailureReportsNoBackoffOverride)
+{
+    // unknown_agent already gets its own fixed slow cadence through useSlowCadence(); it must
+    // not also start ramping this stream's Backoff on top of that.
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(authFail()));
+    EXPECT_FALSE(m_stream.step(m_waiter));
+    EXPECT_TRUE(m_stream.useSlowCadence());
+
+    EXPECT_FALSE(m_stream.unescalatedAuthFailBackoff().has_value());
+}
+
+TEST_F(ControlStreamTest, SuccessReportsNoBackoffOverride)
+{
+    EXPECT_CALL(m_sink, onStateChange(HC_STATE_REGISTERED));
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"limits":{"eps":0}})")));
+
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_FALSE(m_stream.unescalatedAuthFailBackoff().has_value());
+}
+
 TEST_F(ControlStreamTest, PausedGateSkipsHttpAndReleaseResumesWithAFreshStartup)
 {
     // First step: 401 startup engages the gate (via RetrySender) -> AUTH_ERROR.

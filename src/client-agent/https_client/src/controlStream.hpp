@@ -30,6 +30,7 @@
 #include "vdOffsetStore.hpp"
 #include "wpkFetcher.hpp"
 
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -91,6 +92,23 @@ class ControlStream final
         bool useSlowCadence() const
         {
             return m_machine.useSlowCadence();
+        }
+
+        /// Non-empty only right after a /control attempt whose 401 was NOT escalated (the
+        /// AuthGate stayed open: any class but unknown_agent -- that already gets
+        /// useSlowCadence()/rejectedRetryIntervalS through AuthError instead). RetrySender
+        /// deliberately returns such a 401 unescalated on every call (#39064), so nothing else
+        /// slows the Notify/Startup cadence: mutates the Backoff this stream's RetrySender
+        /// already resets on success, growing the interval instead of retrying on the plain
+        /// notify cadence forever (#39601).
+        std::optional<std::chrono::milliseconds> unescalatedAuthFailBackoff()
+        {
+            if (m_lastOutcome == OutcomeClass::AuthFail && !useSlowCadence())
+            {
+                return m_backoff.next();
+            }
+
+            return std::nullopt;
         }
 
         /// Blocks until any in-flight remote_upgrade download/dispatch thread (see
@@ -199,6 +217,9 @@ class ControlStream final
 
         /// Set from Effects::resetCadence; see consumeFastFollowup().
         bool m_fastFollowup {false};
+
+        /// The last step()'s outcome; see unescalatedAuthFailBackoff().
+        OutcomeClass m_lastOutcome {OutcomeClass::Interrupted};
 };
 
 #endif // _HC_CONTROL_STREAM_HPP
