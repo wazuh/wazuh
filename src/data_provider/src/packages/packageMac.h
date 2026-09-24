@@ -12,6 +12,7 @@
 #ifndef _PACKAGE_MAC_H
 #define _PACKAGE_MAC_H
 
+#include <functional>
 #include "ipackageInterface.h"
 #include "ipackageWrapper.h"
 #include "sqliteWrapperTemp.h"
@@ -38,5 +39,11 @@ class BSDPackageImpl final : public IPackage
 
         void buildPackageData(nlohmann::json& package) override;
 };
+
+// pkgType is one of the PKG/RCP/BREW/MACPORTS constants declared in sharedDefs.h.
+// Exposed here (rather than kept file-local to sysInfoMac.cpp, where SysInfo::getPackages()
+// calls it) so it can be exercised directly against a real temporary directory in tests,
+// without dragging in the rest of sysInfoMac.cpp's unrelated hardware/network/users code.
+void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback);
 
 #endif // _PACKAGE_MAC_H

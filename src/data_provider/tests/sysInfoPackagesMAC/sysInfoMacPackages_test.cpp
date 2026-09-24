@@ -14,6 +14,9 @@
 #include "packages/macportsWrapper.h"
 #include "mocks/sqliteWrapperTempMock.h"
 #include "sqliteWrapperTemp.h"
+#include <filesystem>
+#include <fstream>
+#include <unistd.h>
 
 void SysInfoMacPackagesTest::SetUp() {};
 
@@ -201,4 +204,106 @@ TEST_F(SysInfoMacPackagesTest, macPortsValidDataEmptyName)
 
     // Packages with empty string names are discarded.
     EXPECT_EQ(macportsMock.name(), "");
+}
+
+namespace
+{
+    void writeAppInfoPlist(const std::string& infoPlistPath, const std::string& bundleName)
+    {
+        std::filesystem::create_directories(std::filesystem::path(infoPlistPath).parent_path());
+        std::ofstream out { infoPlistPath, std::ios::trunc };
+        out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            << "<plist version=\"1.0\">\n"
+            << "<dict>\n"
+            << "  <key>CFBundleName</key>\n"
+            << "  <string>" << bundleName << "</string>\n"
+            << "</dict>\n"
+            << "</plist>\n";
+    }
+}
+
+class GetPackagesFromPathTest : public ::testing::Test
+{
+    protected:
+        std::string m_tempDir;
+
+        void SetUp() override
+        {
+            char tmpl[] = "/tmp/getpkgpath_test_XXXXXX";
+
+            if (const char* dir = ::mkdtemp(tmpl))
+            {
+                m_tempDir = dir;
+            }
+        }
+
+        void TearDown() override
+        {
+            if (!m_tempDir.empty())
+            {
+                std::filesystem::remove_all(m_tempDir);
+            }
+        }
+};
+
+TEST_F(GetPackagesFromPathTest, FindsAnAppOneLevelDeepInAVendorSubfolder)
+{
+    writeAppInfoPlist(m_tempDir + "/Vendor/App.app/Contents/Info.plist", "VendorApp");
+
+    std::vector<nlohmann::json> found;
+    getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json & package)
+    {
+        found.push_back(package);
+    });
+
+    ASSERT_EQ(found.size(), 1u);
+    EXPECT_EQ(found[0].at("name").get<std::string>(), "VendorApp");
+    EXPECT_EQ(found[0].at("path").get<std::string>(), m_tempDir + "/Vendor/App.app/Contents/Info.plist");
+}
+
+TEST_F(GetPackagesFromPathTest, SkipsASubfolderStartingWithADot)
+{
+    writeAppInfoPlist(m_tempDir + "/.HiddenVendor/App.app/Contents/Info.plist", "HiddenApp");
+
+    std::vector<nlohmann::json> found;
+    getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json & package)
+    {
+        found.push_back(package);
+    });
+
+    EXPECT_TRUE(found.empty());
+}
+
+TEST_F(GetPackagesFromPathTest, RejectsASymlinkedAppEntry)
+{
+    writeAppInfoPlist(m_tempDir + "/Real.app/Contents/Info.plist", "RealApp");
+    ASSERT_EQ(0, ::symlink((m_tempDir + "/Real.app").c_str(), (m_tempDir + "/Linked.app").c_str()));
+
+    std::vector<nlohmann::json> found;
+    getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json & package)
+    {
+        found.push_back(package);
+    });
+
+    // Only the real bundle is reported; the symlinked alias to the same bundle is not,
+    // so the same install is not double-counted under a second path.
+    ASSERT_EQ(found.size(), 1u);
+    EXPECT_EQ(found[0].at("path").get<std::string>(), m_tempDir + "/Real.app/Contents/Info.plist");
+}
+
+TEST_F(GetPackagesFromPathTest, RejectsASymlinkedVendorSubfolder)
+{
+    writeAppInfoPlist(m_tempDir + "/RealVendor/App.app/Contents/Info.plist", "RealVendorApp");
+    ASSERT_EQ(0, ::symlink((m_tempDir + "/RealVendor").c_str(), (m_tempDir + "/VendorLink").c_str()));
+
+    std::vector<nlohmann::json> found;
+    getPackagesFromPath(m_tempDir, PKG, [&found](nlohmann::json & package)
+    {
+        found.push_back(package);
+    });
+
+    // The app is found once, through the real vendor folder; the symlinked alias to that
+    // same folder is not descended into, so it is not reported a second time.
+    ASSERT_EQ(found.size(), 1u);
+    EXPECT_EQ(found[0].at("path").get<std::string>(), m_tempDir + "/RealVendor/App.app/Contents/Info.plist");
 }
