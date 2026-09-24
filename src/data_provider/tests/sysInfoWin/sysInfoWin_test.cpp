@@ -439,6 +439,18 @@ TEST_F(SysInfoWinTest, ParseCmdLineArgsCountIsNotArgvsLength)
     EXPECT_EQ(result.argsCount, 2u);
 }
 
+// Empty quoted arguments are skipped, so they add nothing to argvs or argsCount.
+TEST_F(SysInfoWinTest, ParseCmdLineEmptyArgumentsSkipped)
+{
+    const auto result = parseProcessCommandLine(L"cmd.exe /c start \"\" notepad.exe");
+    EXPECT_EQ(result.argvs, "/c start notepad.exe");
+    EXPECT_EQ(result.argsCount, 3u);
+
+    const auto leading = parseProcessCommandLine(L"app.exe \"\" foo");
+    EXPECT_EQ(leading.argvs, "foo");
+    EXPECT_EQ(leading.argsCount, 1u);
+}
+
 
 // Tests for buildProcessSnapshotRecord() — the record the Windows process inventory
 // emits from the snapshot entry alone, with no handle on the process.
