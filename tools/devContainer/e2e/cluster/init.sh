@@ -50,10 +50,17 @@ function from_manifest() {
 
 function from_local() {
   : "${WAZUH_MANAGER_DEB:?set WAZUH_MANAGER_DEB to a local wazuh-manager .deb path}"
+  # A relative path is the caller's, not this script's (it cd's to its own dir).
+  [[ "$WAZUH_MANAGER_DEB" = /* ]] || WAZUH_MANAGER_DEB="${OLD_DIR}/${WAZUH_MANAGER_DEB}"
   [[ -f "$WAZUH_MANAGER_DEB" ]] || { echo "ERROR: file not found: $WAZUH_MANAGER_DEB" >&2; exit 1; }
+  # Copy it aside first: the package may already live in node/pkg/ (a nightly
+  # downloaded by an earlier run), which reset_pkg empties.
+  local staged; staged="$(mktemp)"
+  cp "$WAZUH_MANAGER_DEB" "$staged"
   reset_pkg
   echo "==> [local] Using ${WAZUH_MANAGER_DEB}"
-  cp "$WAZUH_MANAGER_DEB" "${PKG_DIR}/$(basename "$WAZUH_MANAGER_DEB")"
+  mv "$staged" "${PKG_DIR}/$(basename "$WAZUH_MANAGER_DEB")"
+  chmod 644 "${PKG_DIR}/$(basename "$WAZUH_MANAGER_DEB")"
 }
 
 function from_source() {
@@ -80,10 +87,14 @@ function from_source() {
   # Exclude the master's identity/state (the worker gets its own via cluster sync
   # and the entrypoint) and the runtime dirs the worker recreates. The archive is
   # published only once tar succeeded.
+  # The worker extracts the tree under /var and runs /var/wazuh-manager, so the
+  # archive root is always wazuh-manager/ whatever WAZUH_HOME is called (the
+  # daemons and wazuh-manager-control resolve their home from where they run).
   local base; base="$(basename "$home")"
   tar -C "$(dirname "$home")" \
       --exclude="${base}/logs" --exclude="${base}/queue" --exclude="${base}/var" \
       --exclude="${base}/etc/client.keys" --exclude="${base}/etc/authd.pass" \
+      --transform="s,^${base}\(/\|\$\),wazuh-manager\1,S" \
       -czf "${PKG_DIR}/wazuh-manager-tree.tar.gz.tmp" "$base"
   mv "${PKG_DIR}/wazuh-manager-tree.tar.gz.tmp" "${PKG_DIR}/wazuh-manager-tree.tar.gz"
   # The image creates wazuh-manager with these ids before extracting the tree (node/Dockerfile).
