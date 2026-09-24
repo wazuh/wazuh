@@ -253,7 +253,8 @@
             "args": [
                 "--directory=${env:WAZUH_REPO}/src",
                 "-j27",
-                "TARGET=manager"
+                "TARGET=manager",
+                "WAZUH_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Release"
             ],
             "group": "build",
             "problemMatcher": [
@@ -300,6 +301,7 @@
                 "--directory=${env:WAZUH_REPO}/src",
                 "-j27",
                 "TARGET=manager",
+                "WAZUH_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Release",
                 "ENGINE_TEST=y"
             ],
             "group": "build",
