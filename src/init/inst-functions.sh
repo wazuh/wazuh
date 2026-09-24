@@ -1618,17 +1618,31 @@ InstallServer()
     # so that parallel installs under different USER_DIR values do not collide, which also keeps it
     # inside the tree .github/actions/check_files/manager_base.csv pins.
     #
-    # The scripts are only INSTALLED here -- never run from install.sh. The DEB and RPM builds
-    # invoke install.sh at *package build* time and then ship the resulting tree wholesale
-    # (`cp -r $(INSTALLATION_DIR)/.` in debian/rules), so resolving credentials here would seed one
-    # rbac.db inside the package and every installation in the world would share it. The resolver
-    # runs from postinst/%post and from wazuh-manager-control start instead, both of which run on
-    # the target host.
-    # wazuh-credentials.sh and wazuh-manager-certificates.sh are the shared helpers, versioned
-    # together and pinned as a pair: the certificate half checks for the credential half's
-    # functions at call time and refuses to run without them.
+    # The scripts are INSTALLED here; whether install.sh then RUNS the resolver is decided by
+    # USER_RESOLVE_CREDENTIALS, which the DEB and RPM recipes set to "n". They invoke install.sh at
+    # *package build* time and ship the resulting tree wholesale (`cp -r $(INSTALLATION_DIR)/.` in
+    # debian/rules), so resolving there would seed one rbac.db, one bootstrap CA private key and one
+    # certificate set inside the package, and every installation in the world would share them.
+    # Their postinst/%post resolves on the target host instead.
+    #
+    # wazuh-credentials.sh is not in this repository. It is the half of the ladder the manager, the
+    # indexer and the dashboard must agree on exactly, so it is owned by wazuh-installation-assistant
+    # and downloaded by `make deps` into external/wazuh-credentials/ (see CREDENTIALS_LIB_* in
+    # src/Makefile). The two halves are still a pair at runtime: wazuh-manager-certificates.sh
+    # checks for the credential half's functions at call time and refuses to run without them.
+    #
+    # A missing download is fatal rather than a warning: unlike the indexer templates, a manager
+    # without this file has a resolver that cannot source its own library, so it would fail in
+    # postinst and again at every single start -- an install that looks like it worked and cannot.
+    CREDENTIALS_LIB_SRC="external/wazuh-credentials/wazuh-credentials.sh"
+    if [ ! -f "${CREDENTIALS_LIB_SRC}" ]; then
+        echo "ERROR: ${CREDENTIALS_LIB_SRC} not found."
+        echo "       It is downloaded from wazuh-installation-assistant by 'make -C src deps TARGET=manager'."
+        exit 1
+    fi
+
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} init/credentials/resolve-credentials.sh ${INSTALLDIR}/bin/wazuh-manager-resolve-credentials
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} init/credentials/wazuh-credentials.sh ${INSTALLDIR}/lib/wazuh-credentials.sh
+    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} "${CREDENTIALS_LIB_SRC}" ${INSTALLDIR}/lib/wazuh-credentials.sh
     ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} init/credentials/wazuh-manager-certificates.sh ${INSTALLDIR}/lib/wazuh-manager-certificates.sh
 }
 

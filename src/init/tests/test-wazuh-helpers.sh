@@ -13,15 +13,29 @@ umask 077
 TEST_SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 export TEST_SCRIPT_DIR
 
-# Local deviation from upstream, which expects the two helpers beside this file. In this repo the
-# suite lives with the other src/init shell tests and the helpers live in src/init/credentials/,
-# so they are resolved once here and exported -- the per-case sub-shells, and the one case that
-# sources a helper through "$TEST_SHELL -c", all read it from the environment. Falls back to this
-# file's own directory, which is the upstream layout, so a verbatim upstream copy still runs.
+# Local deviation from upstream, which expects both helpers beside this file. In this repo they are
+# not even in the same place as each other: wazuh-manager-certificates.sh is ours and lives in
+# src/init/credentials/, while wazuh-credentials.sh is shared with the indexer and the dashboard,
+# owned by wazuh-installation-assistant, and downloaded by `make deps` into
+# src/external/wazuh-credentials/ -- it is not in this repository at all.
+#
+# So there are two variables instead of upstream's one. Both are resolved once here and exported:
+# the per-case sub-shells, and the one case that sources a helper through "$TEST_SHELL -c", read
+# them from the environment. Each falls back to this file's own directory, which is the upstream
+# layout, so a verbatim upstream copy still runs unchanged.
 WAZUH_HELPER_DIR=$TEST_SCRIPT_DIR/../credentials
-[ -f "$WAZUH_HELPER_DIR/wazuh-credentials.sh" ] || WAZUH_HELPER_DIR=$TEST_SCRIPT_DIR
+[ -f "$WAZUH_HELPER_DIR/wazuh-manager-certificates.sh" ] || WAZUH_HELPER_DIR=$TEST_SCRIPT_DIR
 WAZUH_HELPER_DIR=$(CDPATH= cd -- "$WAZUH_HELPER_DIR" && pwd -P)
 export WAZUH_HELPER_DIR
+
+WAZUH_SHARED_HELPER_DIR=${WAZUH_SHARED_HELPER_DIR-$TEST_SCRIPT_DIR/../../external/wazuh-credentials}
+[ -f "$WAZUH_SHARED_HELPER_DIR/wazuh-credentials.sh" ] || WAZUH_SHARED_HELPER_DIR=$WAZUH_HELPER_DIR
+if [ ! -f "$WAZUH_SHARED_HELPER_DIR/wazuh-credentials.sh" ]; then
+    echo "cannot find wazuh-credentials.sh; run 'make -C src deps TARGET=manager' to download it" >&2
+    exit 1
+fi
+WAZUH_SHARED_HELPER_DIR=$(CDPATH= cd -- "$WAZUH_SHARED_HELPER_DIR" && pwd -P)
+export WAZUH_SHARED_HELPER_DIR
 
 TEST_SHELL=${TEST_SHELL-/bin/sh}
 export TEST_SHELL
@@ -45,14 +59,14 @@ if [ "${1-}" = --case ]; then
     export WAZUH_MANAGER_CERT_SANS='DNS:connector.test,IP:192.0.2.10'
     export WAZUH_MANAGER_REMOTED_CERT_SANS='DNS:agents.test,IP:192.0.2.11,IP:2001:db8::11'
     if [ "${TEST_PIPEFAIL-0}" = 1 ]; then set -o pipefail; fi
-    . "$WAZUH_HELPER_DIR/wazuh-credentials.sh"
+    . "$WAZUH_SHARED_HELPER_DIR/wazuh-credentials.sh"
     . "$WAZUH_HELPER_DIR/wazuh-manager-certificates.sh"
     case $2 in
         import)
             before=$(umask)
             before_pwd=$PWD
             before_opts=$-
-            . "$WAZUH_HELPER_DIR/wazuh-credentials.sh"
+            . "$WAZUH_SHARED_HELPER_DIR/wazuh-credentials.sh"
             . "$WAZUH_HELPER_DIR/wazuh-manager-certificates.sh"
             eq "$(umask)" "$before" umask
             eq "$PWD" "$before_pwd" cwd
@@ -128,7 +142,7 @@ if [ "${1-}" = --case ]; then
             ;;
         invalid_paths)
             for path in '' relative / /root/../tmp /root//bad /root/./bad; do
-                reject env WAZUH_BASE_DIR="$path" "$TEST_SHELL" -eu -c '. "$WAZUH_HELPER_DIR/wazuh-credentials.sh"; wazuh_env_set TEST value'
+                reject env WAZUH_BASE_DIR="$path" "$TEST_SHELL" -eu -c '. "$WAZUH_SHARED_HELPER_DIR/wazuh-credentials.sh"; wazuh_env_set TEST value'
             done
             ;;
         permissions)
@@ -321,7 +335,7 @@ fi
 for tool in openssl flock ip getent stat awk od sha256sum; do
     command -v "$tool" >/dev/null || fail "missing dependency: $tool"
 done
-. "$WAZUH_HELPER_DIR/wazuh-credentials.sh"
+. "$WAZUH_SHARED_HELPER_DIR/wazuh-credentials.sh"
 test_parent=${WAZUH_TEST_PARENT-/root}
 _wazuh_validate_absolute_path "$test_parent"
 _wazuh_check_existing_tree "$test_parent"
