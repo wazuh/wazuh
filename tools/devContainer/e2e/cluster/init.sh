@@ -64,13 +64,16 @@ function from_local() {
 }
 
 function from_source() {
-  local home="${WAZUH_HOME:-/var/wazuh-manager}"
+  local requested="${WAZUH_HOME:-/var/wazuh-manager}" home
   # The worker runs the tree at /var/wazuh-manager, and an install is not
   # relocatable: the engine store records absolute paths (data/store/geo/mmdb/0
-  # names ${home}/data/mmdb/*.mmdb), so a snapshot of another home would give
-  # workers that look healthy and have no GeoIP data. Only that home is taken.
-  if [[ "$(realpath -m "$home")" != /var/wazuh-manager ]]; then
-    echo "ERROR: source mode snapshots an install at /var/wazuh-manager only (got WAZUH_HOME=${home})." >&2
+  # names <home>/data/mmdb/*.mmdb), so a snapshot of another home would give
+  # workers that look healthy and have no GeoIP data. Only that home is taken,
+  # and from here on only its canonical spelling is used (tar takes its basename:
+  # /var/wazuh-manager/. would archive ".").
+  home="$(realpath -m "$requested")"
+  if [[ "$home" != /var/wazuh-manager ]]; then
+    echo "ERROR: source mode snapshots an install at /var/wazuh-manager only (got WAZUH_HOME=${requested})." >&2
     echo "       The worker runs it from that path, and the install records absolute paths under its home." >&2
     exit 1
   fi
