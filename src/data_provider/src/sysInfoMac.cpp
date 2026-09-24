@@ -9,9 +9,11 @@
  * Foundation.
  */
 #include "sysInfo.hpp"
+#include <deque>
 #include <optional>
 #include "cmdHelper.h"
 #include "stringHelper.h"
+#include "stdFileSystemHelper.hpp"
 #include <filesystem_wrapper.hpp>
 #include "osinfo/sysOsParsers.h"
 #include <libproc.h>
@@ -43,8 +45,6 @@
 
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
-const std::string MACPORTS_DB_NAME {"registry.db"};
-const std::string MACPORTS_QUERY {"SELECT name, version, date, location, archs FROM ports WHERE state = 'installed';"};
 constexpr auto MAC_ROSETTA_DEFAULT_ARCH {"arm64"};
 
 using ProcessTaskInfo = struct proc_taskallinfo;
@@ -60,9 +60,7 @@ static const std::vector<int> s_validFDSock =
 static const std::map<std::string, int> s_mapPackagesDirectories =
 {
     { "/Applications", PKG },
-    { "/Applications/Utilities", PKG},
     { "/System/Applications", PKG},
-    { "/System/Applications/Utilities", PKG},
     { "/System/Library/CoreServices", PKG},
     { "/private/var/db/receipts", RCP},
     { "/Library/Apple/System/Library/Receipts", RCP},
@@ -96,116 +94,6 @@ nlohmann::json SysInfo::getHardware() const
     nlohmann::json hardware;
     FactoryHardwareFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_shared<OSHardwareWrapperMac<OsPrimitivesMac>>())->buildHardwareData(hardware);
     return hardware;
-}
-
-static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
-{
-    const file_system::FileSystemWrapper fs;
-
-    if (MACPORTS == pkgType)
-    {
-        if (fs.is_regular_file(pkgDirectory + "/" + MACPORTS_DB_NAME))
-        {
-            try
-            {
-                std::shared_ptr<SQLite::IConnection> sqliteConnection = std::make_shared<SQLite::Connection>(pkgDirectory + "/" + MACPORTS_DB_NAME);
-
-                SQLite::Statement stmt
-                {
-                    sqliteConnection,
-                    MACPORTS_QUERY
-                };
-
-                std::pair<SQLite::IStatement&, const int&> pkgContext {std::make_pair(std::ref(stmt), std::cref(pkgType))};
-
-                while (SQLITE_ROW == stmt.step())
-                {
-                    try
-                    {
-                        nlohmann::json jsPackage;
-                        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(pkgContext)->buildPackageData(jsPackage);
-
-                        if (!jsPackage.at("name").get_ref<const std::string&>().empty())
-                        {
-                            // Only return valid content packages
-                            callback(jsPackage);
-                        }
-                    }
-                    catch (const std::exception& e)
-                    {
-                        std::cerr << e.what() << std::endl;
-                    }
-                }
-            }
-            catch (const std::exception& e)
-            {
-                std::cerr << e.what() << std::endl;
-            }
-        }
-    }
-    else
-    {
-        const auto packages { fs.list_directory(pkgDirectory) };
-
-        for (const auto& package : packages)
-        {
-            if ((PKG == pkgType && Utils::endsWith(package, ".app")) ||
-                    (RCP == pkgType && Utils::endsWith(package, ".plist")))
-            {
-                try
-                {
-                    nlohmann::json jsPackage;
-                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package.filename().string(), ""}, pkgType))->buildPackageData(jsPackage);
-
-                    if (!jsPackage.at("name").get_ref<const std::string&>().empty())
-                    {
-                        // Only return valid content packages
-                        callback(jsPackage);
-                    }
-                }
-                catch (const std::exception& e)
-                {
-                    std::cerr << e.what() << std::endl;
-                }
-            }
-            else if (BREW == pkgType)
-            {
-                if (fs.is_directory(package) && !Utils::startsWith(package.filename().string(), "."))
-
-                {
-                    const auto packageVersions { fs.list_directory(package) };
-
-                    for (const auto& versionPath : packageVersions)
-                    {
-                        const std::string version = versionPath.filename().string();
-
-                        if (!Utils::startsWith(version, "."))
-                        {
-                            try
-                            {
-                                nlohmann::json jsPackage;
-                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package.filename().string(), version}, pkgType))->buildPackageData(jsPackage);
-
-                                if (!jsPackage.at("name").get_ref<const std::string&>().empty())
-                                {
-                                    // Only return valid content packages
-                                    callback(jsPackage);
-                                }
-                            }
-                            catch (const std::exception& e)
-                            {
-                                std::cerr << e.what() << std::endl;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // else: invalid package
-        }
-    }
-
-
 }
 
 nlohmann::json SysInfo::getPackages() const
@@ -422,9 +310,57 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     {
         const auto pkgDirectory { packageDirectory.first };
 
-        if (fs.is_directory(pkgDirectory))
+        try
         {
-            getPackagesFromPath(pkgDirectory, packageDirectory.second, callback);
+            if (fs.is_directory(pkgDirectory))
+            {
+                // A fixed, root-owned location: Apple ships real entries here as symlinks
+                // (e.g. /Applications/Safari.app into /System/Cryptexes/App since macOS 13),
+                // so symlinks must be followed here, not rejected.
+                getPackagesFromPath(pkgDirectory, packageDirectory.second, callback, false);
+            }
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << e.what() << std::endl;
+        }
+    }
+
+    // Per-user Applications folders (e.g. /Users/vagrant/Applications). Each user's copy is
+    // reported under its own path, same as the per-user pypi paths below; no cross-user dedup.
+    for (const auto& userApplicationsGlob : MACOS_USER_APPLICATIONS_DIRS)
+    {
+        std::deque<std::string> userApplicationsPaths;
+
+        try
+        {
+            Utils::expandAbsolutePath(userApplicationsGlob, userApplicationsPaths);
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << e.what() << std::endl;
+            continue;
+        }
+
+        for (const auto& userApplicationsPath : userApplicationsPaths)
+        {
+            // A user's own home directory is untrusted input: a symlink loop or similar there must not
+            // abort the scan for the remaining users, or for the pypi/npm scanning that follows.
+            try
+            {
+                // Reject the Applications folder itself if it is a symlink: it could point at
+                // another user's own Applications (misattributing their installs to this one),
+                // or at a directory this scan already covers (double-reporting every app in it).
+                if (fs.is_directory(userApplicationsPath) && !fs.is_symlink(userApplicationsPath))
+                {
+                    // A user-writable root: reject symlinked entries found inside it too.
+                    getPackagesFromPath(userApplicationsPath, PKG, callback, true);
+                }
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << e.what() << std::endl;
+            }
         }
     }
 
