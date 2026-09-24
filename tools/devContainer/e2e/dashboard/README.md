@@ -16,7 +16,7 @@ dashboard/
 ├── capture.py             the CLI: checks, browser session, PNGs, sidecars, captures.md
 ├── capture_logic.py       the decisions (pure functions: no I/O, no network, no Playwright)
 ├── test_capture_logic.py  unit tests of those decisions (143 tests, no network, no browser)
-├── test_capture_dom.py    DOM tests of the extraction scripts (14 tests, a real Chromium on
+├── test_capture_dom.py    DOM tests of the extraction scripts (15 tests, a real Chromium on
 │                          HTML fixtures; SKIPped without the venv)
 ├── views.json             per view: route, landing, table, selectors, query, assertions
 └── README.md              this file
@@ -107,6 +107,12 @@ per-column match over the rows that were really read.
 |---|---|
 | publication re-read only the files `listdir` returned: a PNG or sidecar that vanished after its view passed left no trace and the run could still end `failed=0` | every artifact the run produced (each hashed PNG, its sidecar, each captured file) must still exist: otherwise `FAIL 10. manifest (got: missing since capture: <file>)` and a `(missing)` row |
 | with `--exec-docker --nonce <reused>` the index count accepted the previous run's document at once, and it did not check which agent sent it | the nonce must be **absent** from the events index before this run writes it (else `FAIL 4 … already indexed … use a fresh --nonce`), and check 4 counts only documents with `wazuh.agent.id` = the chosen 5.x agent |
+
+## What v10 changed (live run of 2026-09-24)
+
+| v9 | v10 |
+|---|---|
+| the `agents` view waited for any `tbody tr`, and while the endpoints table loads EUI draws exactly one: the empty-state row (`No items found`, one full-width cell). A slow first load was asserted as an empty table (`FAIL 6. agents (got: 0 rows match …)`) | it waits for a row with a second cell (`td:nth-child(2)`), which only a data row has; `test_the_agents_wait_ends_on_a_data_row_not_on_the_empty_state` pins it and fails with the v9 selector |
 
 ## Prerequisites
 

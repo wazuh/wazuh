@@ -376,6 +376,19 @@ class DomExtraction(unittest.TestCase):
         self.assertEqual([True, True, True], [r["ok"] for r in results],
                          [r.get("reason") for r in results])
 
+    def test_the_agents_wait_ends_on_a_data_row_not_on_the_empty_state(self):
+        # While the endpoints table loads, EUI renders a single full-width cell ("No items
+        # found"); a wait for any row ended on it and the assertions ran against an empty table.
+        wait = views()["agents"]["wait_selector"]
+        self.page.set_content(page_html(
+            '<div data-test-subj="table-with-search-bar" class="euiBasicTable euiBasicTable-loading">'
+            '<table class="euiTable"><thead><tr><th>ID</th><th>Name</th></tr></thead><tbody>'
+            '<tr class="euiTableRow"><td colspan="9" class="euiTableRowCell">No items found</td></tr>'
+            "</tbody></table></div>"))
+        self.assertEqual(0, self.page.locator(wait).count())
+        self.page.set_content(agents_html(hidden_row=False))
+        self.assertGreater(self.page.locator(wait).count(), 0)
+
     # ------------------------------------------------------------------ doctable
 
     def test_discover_maps_its_headers_onto_its_cells(self):

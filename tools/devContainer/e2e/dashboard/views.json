@@ -29,7 +29,7 @@
       }
     ],
     "fallback_clicks": [],
-    "wait_selector": "[data-test-subj=\"table-with-search-bar\"] table.euiTable tbody tr"
+    "wait_selector": "[data-test-subj=\"table-with-search-bar\"] table.euiTable tbody tr td:nth-child(2)"
   },
   "discover": {
     "app": "data-explorer/discover",
