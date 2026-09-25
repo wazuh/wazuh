@@ -252,7 +252,7 @@ namespace PackageWindowsHelper
 
                     if (VerQueryValueA(buffer.data(), subBlock, reinterpret_cast<LPVOID*>(&value), &valueLength) && value && valueLength)
                     {
-                        version = Utils::trim(std::string(value), " \t");
+                        version = Utils::trim(std::string(value, strnlen(value, valueLength)), " \t");
                     }
                 }
             }

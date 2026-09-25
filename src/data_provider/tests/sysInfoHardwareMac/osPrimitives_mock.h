@@ -36,6 +36,11 @@ class OsPrimitivesMacMock: public IOsPrimitivesMac
 
         MOCK_METHOD(int, sysctl, (int* name, u_int namelen, void* oldp, size_t* oldlenp, void* newp, size_t newlen), (const override));
         MOCK_METHOD(int, sysctlbyname, (const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen), (const override));
+        MOCK_METHOD(int, proc_listallpids, (void* buffer, int buffersize), (const override));
+
+        MOCK_METHOD(kern_return_t, host_statistics64, (host_t hostPriv, host_flavor_t flavor, host_info64_t hostInfo64Out, mach_msg_type_number_t* hostInfo64OutCnt), (const override));
+        MOCK_METHOD(mach_port_t, mach_host_self, (), (const override));
+        MOCK_METHOD(kern_return_t, mach_port_deallocate, (ipc_space_t task, mach_port_name_t name), (const override));
 
         MOCK_METHOD(CFMutableDictionaryRef, IOServiceMatching, (const char* name), (const override));
         MOCK_METHOD(kern_return_t, IOServiceGetMatchingServices, (mach_port_t mainPort, CFDictionaryRef matching, io_iterator_t* existing), (const override));
