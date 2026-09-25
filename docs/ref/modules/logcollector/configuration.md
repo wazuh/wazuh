@@ -99,7 +99,7 @@ Comma-separated list of Endpoint Security event names to subscribe to (`macos-es
 - **Default value:** `authentication,login_login,login_logout,lw_session_login,lw_session_logout,openssh_login,openssh_logout` (used when `<events>` is omitted, empty, or has no valid value)
 - **Allowed values:** Comma-separated Endpoint Security event names — run `eslogger --list-events` on the host for the full catalog on that macOS version
 - **Format:** `<events>event1,event2,...</events>`
-- **Note:** Validation is syntactic only. Surrounding whitespace (including newlines) is trimmed and blank tokens (e.g. a trailing comma) are skipped. A token may only contain lowercase letters, digits and underscores; any other token is dropped with warning `(8023)` without invalidating the rest of the list, and if no token is valid the default events are used with warning `(8025)`. There is no allow-list of event *names* — Apple adds new ones every macOS release, so an unknown-but-well-formed name is simply passed to `eslogger`, which will reject it itself if invalid
+- **Note:** Surrounding whitespace (including newlines) is trimmed and blank tokens (e.g. a trailing comma) are skipped. A token may only contain lowercase letters, digits and underscores. At startup, each name is also checked against the running macOS's catalog (`eslogger --list-events`), because `eslogger` refuses the whole list when a single name is unknown. An invalid or unknown name is dropped with warning `(8023)` without invalidating the rest of the list, and if no name is left the default events are used with warning `(8025)`. If the catalog cannot be read, the list is used as configured
 - **Example:** `<events>authentication,openssh_logout</events>`
 
 ### filter
@@ -802,24 +802,24 @@ Ensure only one `<localfile>` block with `log_format=macos` exists.
 
 **Grant Full Disk Access to `/Library/Ossec/bin/wazuh-logcollector`:**
 
-`eslogger` requires its *responsible process* to have Full Disk Access (see `man eslogger`). When the agent spawns it, the responsible process is `wazuh-logcollector` (`sudo launchctl procinfo <eslogger pid>` shows `responsible path = /Library/Ossec/bin/wazuh-logcollector`), not `/usr/bin/eslogger`: granting `/usr/bin/eslogger` alone does not help.
+`eslogger` requires its responsible process to have Full Disk Access (`man eslogger`). The agent's `wazuh-logcollector` starts `eslogger`, so `wazuh-logcollector` is the responsible process and needs the grant.
 
 After the first refused attempt, macOS adds `wazuh-logcollector` to the list by itself, switched off. Turn it on:
 
 1. **System Settings** → **Privacy & Security** → **Full Disk Access**.
 2. Switch on `wazuh-logcollector`.
 
+> **Note:** macOS 15 lists `wazuh-logcollector` twice. Both rows switch together, so switching on either one is enough.
+
 The agent picks the grant up at its next retry, without a restart.
 
 Revoking access does not stop an `eslogger` that is already running: it only refuses the next start (agent restart, or `eslogger` exiting for any reason).
 
-**Verify `eslogger` works before blaming the agent:**
+**List the event names this macOS supports** (no Full Disk Access needed):
 
 ```bash
-sudo eslogger authentication
+sudo eslogger --list-events
 ```
-
-This checks the binary and the event catalog only: run from Terminal or SSH, the responsible process is the terminal app or `sshd`, not the agent, so it does not test the agent's grant. If it hangs waiting for events, trigger a login/logout in another session and confirm JSON lines appear.
 
 **Only one `macos-es` localfile allowed:**
 
@@ -830,6 +830,8 @@ Ensure only one `<localfile>` block with `log_format=macos-es` exists (same rest
 | Log line contains | Meaning |
 |---|---|
 | `(9205): Monitoring macOS Endpoint Security events with: /usr/bin/eslogger ...` | Started successfully — this is the full command line it ran |
+| `(8023): Invalid event value '...' for 'events' option` | That `<events>` name is malformed or unknown to this macOS's `eslogger`; it is dropped and the other names are still collected |
+| `(8025): No valid value in 'events' option` | No `<events>` name is usable; the default events are used |
 | `(8026): '/usr/bin/eslogger' not found` | The collector stays disabled, logged once at startup |
 | `(1250): Error trying to execute "/usr/bin/eslogger"` | The binary exists but is not executable (path tampered with) — the agent will retry |
 | `(1612): Error while trying to execute` | `wpopenv()`/pipe setup failed — check `dmesg`/system logs for resource exhaustion |
@@ -842,10 +844,6 @@ Ensure only one `<localfile>` block with `log_format=macos-es` exists (same rest
 **The retry is not instant — this is expected, not stuck:**
 
 After a failure the agent waits before respawning `eslogger`, growing the delay each consecutive failure: 5s, 10s, 20s, 40s, 80s, 160s, capped at 300s. If FDA gets re-granted mid-backoff, the very next scheduled attempt picks it up (up to 300s later) and logs the `Monitoring macOS Endpoint Security events` line again — no agent restart needed. A run that stays up at least 60s resets the delay back to 5s for the next failure, so a one-off crash doesn't leave the agent throttled for minutes afterward.
-
-**No alert after the event reaches the manager — also expected, for now:**
-
-There is currently no manager-side decoder for `location: macos-es`, so a successfully forwarded event will not produce a rule match or alert. To confirm the event actually arrived, check the manager's raw/archive pipeline for a document with `location: macos-es`, not the alerts index.
 
 **No historical events, ever:**
 

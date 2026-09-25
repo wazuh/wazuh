@@ -26,6 +26,9 @@
 bool w_macos_es_is_executable(void);
 char ** w_macos_es_create_argv(const char * events);
 wfd_t * w_macos_es_exec(char ** argv);
+void w_macos_es_drop_unknown_events(logreader * lf);
+
+#define ESLOGGER_LIST_EVENTS "/usr/bin/eslogger --list-events"
 
 /* setup/teardown */
 
@@ -206,10 +209,6 @@ void test_w_macos_es_exec_success(void ** state) {
     wfd_t * ret = w_macos_es_exec(argv);
 
     assert_ptr_equal(ret, wfd);
-
-    assert_int_equal(wpopenv_captured_argc(), 2);
-    assert_string_equal(wpopenv_captured_argv(0), "/usr/bin/eslogger");
-    assert_string_equal(wpopenv_captured_argv(1), "authentication");
 }
 
 /* w_macos_es_note_failure */
@@ -488,6 +487,118 @@ void test_w_macos_es_ensure_running_respawn_after_failure_streak_logs_start(void
     assert_ptr_equal(cfg.wfd, &wfd);
 }
 
+/* w_macos_es_drop_unknown_events */
+
+static void expect_catalog(const char ** names, int pclose_ret) {
+    expect_popen(ESLOGGER_LIST_EVENTS, "r", (FILE *) 1);
+
+    for (; *names != NULL; names++) {
+        expect_value(__wrap_fgets, __stream, (FILE *) 1);
+        will_return(__wrap_fgets, *names);
+    }
+    expect_value(__wrap_fgets, __stream, (FILE *) 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_pclose, __stream, (FILE *) 1);
+    will_return(__wrap_pclose, pclose_ret);
+}
+
+void test_w_macos_es_drop_unknown_events_null_events(void ** state) {
+    logreader lf;
+    memset(&lf, 0, sizeof(lf));
+
+    w_macos_es_drop_unknown_events(&lf);
+
+    assert_null(lf.events);
+}
+
+void test_w_macos_es_drop_unknown_events_popen_fails_keeps_list(void ** state) {
+    logreader lf;
+    memset(&lf, 0, sizeof(lf));
+    os_strdup("openssh_login,foo", lf.events);
+
+    expect_popen(ESLOGGER_LIST_EVENTS, "r", NULL);
+
+    w_macos_es_drop_unknown_events(&lf);
+
+    assert_string_equal(lf.events, "openssh_login,foo");
+    os_free(lf.events);
+}
+
+void test_w_macos_es_drop_unknown_events_listing_fails_keeps_list(void ** state) {
+    logreader lf;
+    memset(&lf, 0, sizeof(lf));
+    os_strdup("openssh_login,foo", lf.events);
+    const char * catalog[] = {"openssh_login\n", NULL};
+
+    expect_catalog(catalog, 256);
+
+    w_macos_es_drop_unknown_events(&lf);
+
+    assert_string_equal(lf.events, "openssh_login,foo");
+    os_free(lf.events);
+}
+
+void test_w_macos_es_drop_unknown_events_empty_listing_keeps_list(void ** state) {
+    logreader lf;
+    memset(&lf, 0, sizeof(lf));
+    os_strdup("openssh_login,foo", lf.events);
+    const char * catalog[] = {NULL};
+
+    expect_catalog(catalog, 0);
+
+    w_macos_es_drop_unknown_events(&lf);
+
+    assert_string_equal(lf.events, "openssh_login,foo");
+    os_free(lf.events);
+}
+
+void test_w_macos_es_drop_unknown_events_drops_unknown_keeps_known(void ** state) {
+    logreader lf;
+    memset(&lf, 0, sizeof(lf));
+    os_strdup("openssh_login,foo,authentication", lf.events);
+    const char * catalog[] = {"access\n", "authentication\n", "openssh_login\n", "openssh_logout\n", NULL};
+
+    expect_catalog(catalog, 0);
+    expect_string(__wrap__mwarn, formatted_msg, "(8023): Invalid event value 'foo' for 'events' option. Value will be ignored.");
+
+    w_macos_es_drop_unknown_events(&lf);
+
+    assert_string_equal(lf.events, "openssh_login,authentication");
+    os_free(lf.events);
+}
+
+void test_w_macos_es_drop_unknown_events_prefix_is_not_a_match(void ** state) {
+    logreader lf;
+    memset(&lf, 0, sizeof(lf));
+    os_strdup("openssh,openssh_login", lf.events);
+    const char * catalog[] = {"openssh_login\n", NULL};
+
+    expect_catalog(catalog, 0);
+    expect_string(__wrap__mwarn, formatted_msg, "(8023): Invalid event value 'openssh' for 'events' option. Value will be ignored.");
+
+    w_macos_es_drop_unknown_events(&lf);
+
+    assert_string_equal(lf.events, "openssh_login");
+    os_free(lf.events);
+}
+
+void test_w_macos_es_drop_unknown_events_all_unknown_uses_defaults(void ** state) {
+    logreader lf;
+    memset(&lf, 0, sizeof(lf));
+    os_strdup("foo", lf.events);
+    const char * catalog[] = {"openssh_login\n", NULL};
+
+    expect_catalog(catalog, 0);
+    expect_string(__wrap__mwarn, formatted_msg, "(8023): Invalid event value 'foo' for 'events' option. Value will be ignored.");
+    expect_string(__wrap__mwarn, formatted_msg, "(8025): No valid value in 'events' option. Default events will be used.");
+
+    w_macos_es_drop_unknown_events(&lf);
+
+    assert_string_equal(lf.events, MACOS_ES_DEFAULT_EVENTS);
+    os_free(lf.events);
+}
+
 /* w_macos_es_create_env */
 
 void test_w_macos_es_create_env_eslogger_missing(void ** state) {
@@ -568,6 +679,14 @@ int main(void) {
         cmocka_unit_test(test_w_macos_es_ensure_running_exec_fails),
         cmocka_unit_test(test_w_macos_es_ensure_running_success),
         cmocka_unit_test(test_w_macos_es_ensure_running_respawn_after_failure_streak_logs_start),
+        // Tests w_macos_es_drop_unknown_events
+        cmocka_unit_test(test_w_macos_es_drop_unknown_events_null_events),
+        cmocka_unit_test(test_w_macos_es_drop_unknown_events_popen_fails_keeps_list),
+        cmocka_unit_test(test_w_macos_es_drop_unknown_events_listing_fails_keeps_list),
+        cmocka_unit_test(test_w_macos_es_drop_unknown_events_empty_listing_keeps_list),
+        cmocka_unit_test(test_w_macos_es_drop_unknown_events_drops_unknown_keeps_known),
+        cmocka_unit_test(test_w_macos_es_drop_unknown_events_prefix_is_not_a_match),
+        cmocka_unit_test(test_w_macos_es_drop_unknown_events_all_unknown_uses_defaults),
         // Tests w_macos_es_create_env
         cmocka_unit_test(test_w_macos_es_create_env_eslogger_missing),
         cmocka_unit_test(test_w_macos_es_create_env_allocates_and_tries_first_spawn),

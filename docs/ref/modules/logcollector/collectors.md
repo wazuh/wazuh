@@ -137,7 +137,7 @@ The `<query>` attribute `type` accepts a comma-separated list of `activity`, `lo
 
 Collects structured, unredacted security events from Apple's Endpoint Security framework by shelling out to the signed `eslogger` CLI. If `/usr/bin/eslogger` does not exist, the agent logs warning `(8026)` once at startup and leaves the collector disabled.
 
-Endpoint Security closes two gaps the `macos` (ULS) collector cannot: ULS reports **zero lines** for an SSH logout, and it redacts a failed GUI login's username as `<<private>>`. Endpoint Security reports both, unredacted. Only one `<localfile>` block with `log_format` set to `macos-es` is allowed per agent.
+Endpoint Security closes two gaps the `macos` (ULS) collector cannot: on macOS 26, ULS reports no line for an SSH logout, and on every version it redacts a failed GUI login's username as `<<private>>`. Endpoint Security reports both, unredacted. Only one `<localfile>` block with `log_format` set to `macos-es` is allowed per agent.
 
 ```xml
 <localfile>
@@ -149,7 +149,7 @@ Endpoint Security closes two gaps the `macos` (ULS) collector cannot: ULS report
 
 `<events>` is a comma-separated list of Endpoint Security event names to subscribe to — run `eslogger --list-events` on the host for the full catalog on that macOS version. If `<events>` is omitted or empty, the agent subscribes to the 7 names shown above by default. See [Configuration](configuration.md#events) for validation rules, and [Troubleshooting](configuration.md#macos-es-eslogger-not-collecting-logs) for the required Full Disk Access grant and how the collector behaves when `eslogger` crashes or that permission is revoked.
 
-Events are forwarded exactly as `eslogger` emits them (one JSON object per line, unmodified) under `location: macos-es`, and only ever live: there is **no** historical replay. Every fresh subscription — whether from an agent restart or `eslogger` being respawned after a crash — starts from that moment forward, never resuming or backfilling. As of this writing there is no manager-side decoder for `macos-es` events, so they reach the manager but are not yet parsed into named alerts.
+Events are forwarded exactly as `eslogger` emits them (one JSON object per line, unmodified) under `location: macos-es`, and only ever live: there is **no** historical replay. Every fresh subscription — whether from an agent restart or `eslogger` being respawned after a crash — starts from that moment forward, never resuming or backfilling.
 
 ---
 

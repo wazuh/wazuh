@@ -105,7 +105,7 @@ else()
                                     -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
                                     -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,wpclose -Wl,--wrap,access \
                                     -Wl,--wrap,getpid -Wl,--wrap,_minfo -Wl,--wrap,wfopen -Wl,--wrap,popen \
-                                    -Wl,--wrap,time -Wl,--wrap,kill -Wl,--wrap,_mwarn")
+                                    -Wl,--wrap,time -Wl,--wrap,kill -Wl,--wrap,_mwarn -Wl,--wrap,pclose")
 
     list(APPEND logcollector_names "test_read_macos")
     list(APPEND logcollector_flags "-Wl,--wrap,w_expression_match -Wl,--wrap,can_read -Wl,--wrap,fgets \

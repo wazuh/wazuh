@@ -218,6 +218,72 @@ void w_macos_es_ensure_running(logreader * lf) {
     free_strarray(argv);
 }
 
+/**
+ * @brief Drops the `events` names that this macOS's `eslogger` does not know
+ *
+ * `eslogger` refuses its whole argument list when a single name is unknown, so one typo in `<events>` would
+ * stop every event. The catalog comes from `eslogger --list-events`, which needs neither root nor Full Disk
+ * Access. When the catalog cannot be read, the list is kept as is and `eslogger` reports an unknown name itself.
+ * @param lf localfile's logreader structure; `lf->events` is replaced with the filtered list
+ */
+STATIC void w_macos_es_drop_unknown_events(logreader * lf) {
+
+    char line[OS_SIZE_256];
+    char needle[OS_SIZE_256 + 2];
+    char * catalog = NULL;
+    char * known = NULL;
+    char * events = NULL;
+    char * name = NULL;
+    char * saveptr = NULL;
+    FILE * fp = NULL;
+
+    if (lf->events == NULL) {
+        return;
+    }
+
+    if (fp = popen(ESLOGGER_CMD_STR " --list-events", "r"), fp == NULL) {
+        mdebug1("macOS ES: Cannot list the eslogger events: %s (%d). The configured events are used as is.",
+                strerror(errno), errno);
+        return;
+    }
+
+    /* Stored as ",name1,name2,...," so that a lookup is a single strstr() for ",<name>," */
+    os_strdup(",", catalog);
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        line[strcspn(line, "\n")] = '\0';
+        if (*line != '\0') {
+            wm_strcat(&catalog, line, '\0');
+            wm_strcat(&catalog, ",", '\0');
+        }
+    }
+
+    if (pclose(fp) != 0 || strcmp(catalog, ",") == 0) {
+        mdebug1("macOS ES: Cannot list the eslogger events. The configured events are used as is.");
+        os_free(catalog);
+        return;
+    }
+
+    os_strdup(lf->events, events);
+    for (name = strtok_r(events, ",", &saveptr); name != NULL; name = strtok_r(NULL, ",", &saveptr)) {
+        snprintf(needle, sizeof(needle), ",%s,", name);
+        if (strstr(catalog, needle) != NULL) {
+            wm_strcat(&known, name, ',');
+        } else {
+            mwarn(LOGCOLLECTOR_INV_ES_EVENT, name, "events");
+        }
+    }
+
+    if (known == NULL) {
+        mwarn(LOGCOLLECTOR_NO_VALID_ES_EVENTS, "events");
+        os_strdup(MACOS_ES_DEFAULT_EVENTS, known);
+    }
+
+    os_free(lf->events);
+    lf->events = known;
+    os_free(events);
+    os_free(catalog);
+}
+
 void w_macos_es_create_env(logreader * lf) {
 
     /* A missing binary is permanent: warn once and leave the collector disabled instead of retrying forever */
@@ -225,6 +291,7 @@ void w_macos_es_create_env(logreader * lf) {
         mwarn(LOGCOLLECTOR_MACOS_ES_UNAVAILABLE, ESLOGGER_CMD_STR);
     } else {
         os_calloc(1, sizeof(w_macos_es_config_t), lf->macos_es);
+        w_macos_es_drop_unknown_events(lf);
         w_macos_es_ensure_running(lf);
     }
 
