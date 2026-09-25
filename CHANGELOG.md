@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed false positive vulnerability reports for Ubuntu HWE, cloud and OEM kernel images. ([#39599](https://github.com/wazuh/wazuh/pull/39599))
 - Fixed the `report_changes` snapshot following symbolic links and accepting non-regular files on Linux and macOS. ([#39476](https://github.com/wazuh/wazuh/pull/39476))
 - Fixed a root-level OS command injection in the rootcheck promiscuous-interface check. ([#39622](https://github.com/wazuh/wazuh/pull/39622))
 
