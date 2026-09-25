@@ -8,6 +8,10 @@ endif()
 
 file(GLOB sysinfo_UNIT_TEST_SRC "*.cpp")
 
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  list(FILTER sysinfo_UNIT_TEST_SRC EXCLUDE REGEX ".*/processHelperMac_test\\.cpp$")
+endif()
+
 file(GLOB SYSINFO_SRC "${SRC_FOLDER}/data_provider/src/sysInfo.cpp"
      "${SRC_FOLDER}/data_provider/src/osinfo/sysOsParsers.cpp")
 
