@@ -40,16 +40,30 @@
  * Either way: the one response that carries a real (non-zero) vd_feed_offset is, on every fresh
  * agent, guaranteed to find nobody listening/registered yet on a single attempt -- it used to be
  * silently dropped on POSIX, leaving syscollector's first VD sync to race an empty
- * metadata_provider (409 version_mismatch, #39543 / PR #39550). A short, bounded retry closes
- * that window; PR #39550 added it only on the POSIX branch below, leaving the identical race
- * open on Windows (#9152) until the WIN32 branch got the same treatment. Bounded, not
- * indefinite: at most VD_OFFSET_CONNECT_RETRIES attempts, VD_OFFSET_CONNECT_RETRY_DELAY_US
- * apart, so a genuinely-unavailable agent-info (not just "not started yet") still costs only a
- * small, known, one-shot-comparable tax per notify -- the loop breaks on the first success, so
- * the steady-state case (modulesd already up, the overwhelming majority of calls over an
- * agent's lifetime) pays nothing extra at all. */
+ * metadata_provider (a manager 409 version_mismatch). A short, bounded retry closes that window
+ * on the POSIX branch below; the identical race was left open on the WIN32 branch below until it
+ * got the same treatment. Bounded, not indefinite: at most VD_OFFSET_CONNECT_RETRIES attempts,
+ * VD_OFFSET_CONNECT_RETRY_DELAY_US apart, so a genuinely-unavailable agent-info (not just "not
+ * started yet") still costs only a small, known, one-shot-comparable tax per notify -- the loop
+ * breaks on the first success, so the steady-state case (modulesd already up, the overwhelming
+ * majority of calls over an agent's lifetime) pays nothing extra at all. */
 #define VD_OFFSET_CONNECT_RETRIES 10
 #define VD_OFFSET_CONNECT_RETRY_DELAY_US 300000 /* 300 ms; ~2.7s worst case across all retries */
+
+#ifdef WIN32
+/* Wider budget than the POSIX constants above: live-verified that agent-info's module
+ * registration on Windows can take noticeably longer than a POSIX modulesd's socket-open --
+ * one clean-install run measured ~4s between the first Notify (carrying the real offset) and
+ * agent-info's own "Started" log line, already past VD_OFFSET_CONNECT_RETRIES/_DELAY_US's 2.7s
+ * budget and still producing the 409 this whole retry exists to prevent. Windows loads/verifies
+ * several separate DLLs per wodle (Authenticode checks against unsigned dev builds add real,
+ * measured latency here) where POSIX's modulesd is a single process already listening once its
+ * socket exists, so the two platforms' realistic "not ready yet" windows are not the same order
+ * of magnitude. ~9s worst case, still bounded, still free in the steady state (loop breaks on
+ * first success). */
+#define VD_OFFSET_WIN_LOOKUP_RETRIES 30
+#define VD_OFFSET_WIN_LOOKUP_RETRY_DELAY_US 300000
+#endif
 
 /* Shared by both branches below: pulls the "error" field an agent-info (or, on Windows, the
  * module-query dispatcher itself) JSON response carries. */
@@ -128,7 +142,7 @@ static bool vd_offset_send_query(const char *command, char *response, size_t res
     char *output = NULL;
     int attempt;
 
-    for (attempt = 0; attempt < VD_OFFSET_CONNECT_RETRIES; attempt++) {
+    for (attempt = 0; attempt < VD_OFFSET_WIN_LOOKUP_RETRIES; attempt++) {
         os_free(output);
 
         wm_module_query_json_ex("agent-info", command, &output);
@@ -137,20 +151,20 @@ static bool vd_offset_send_query(const char *command, char *response, size_t res
             break;
         }
 
-        if (attempt + 1 < VD_OFFSET_CONNECT_RETRIES) {
-            w_time_delay(VD_OFFSET_CONNECT_RETRY_DELAY_US / 1000);
+        if (attempt + 1 < VD_OFFSET_WIN_LOOKUP_RETRIES) {
+            w_time_delay(VD_OFFSET_WIN_LOOKUP_RETRY_DELAY_US / 1000);
         }
     }
 
     if (!output) {
         merror("vd_offset_client: agent-info query returned no output after %d attempt(s).",
-               VD_OFFSET_CONNECT_RETRIES);
+               VD_OFFSET_WIN_LOOKUP_RETRIES);
         return false;
     }
 
     if (vd_offset_is_module_not_registered(output)) {
         mdebug1("vd_offset_client: agent-info not registered yet after %d attempt(s); "
-                "will retry next notify.", VD_OFFSET_CONNECT_RETRIES);
+                "will retry next notify.", VD_OFFSET_WIN_LOOKUP_RETRIES);
         os_free(output);
         return false;
     }
