@@ -14,7 +14,7 @@
 #include <optional>
 #include "cmdHelper.h"
 #include "stringHelper.h"
-#include "stdFileSystemHelper.hpp"
+#include <filesystem_utils.hpp>
 #include <filesystem_wrapper.hpp>
 #include "processInfoMac.h"
 #include "osinfo/sysOsParsers.h"
@@ -436,7 +436,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 
         try
         {
-            Utils::expandAbsolutePath(userApplicationsGlob, userApplicationsPaths);
+            file_system::FileSystemUtils().expand_absolute_path(userApplicationsGlob, userApplicationsPaths);
         }
         catch (const std::exception& e)
         {
