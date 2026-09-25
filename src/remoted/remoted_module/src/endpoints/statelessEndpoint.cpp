@@ -12,7 +12,6 @@
 #include "statelessEndpoint.hpp"
 
 #include <rapidjson/document.h>
-#include <rapidjson/pointer.h>
 
 #include <charconv>
 #include <optional>
@@ -102,21 +101,80 @@ namespace remoted::endpoints::stateless
             return value;
         }
 
-        std::optional<std::string_view> getString(const rapidjson::Document& doc, const rapidjson::Pointer& pointer)
+        // The one member of `obj` named `name`, or nullptr when it is absent OR repeated.
+        //
+        // Repeated is a rejection, not a pick: a lookup here takes the FIRST member of a duplicated
+        // name while the engine's merge keeps the LAST, and the body is forwarded byte for byte in
+        // between -- so a repeated step of /wazuh/agent/id would authorise one agent and ingest
+        // another.
+        //
+        // A third reader is what makes rejection the only coherent answer, rather than a rule about
+        // which copy wins: the engine's AgentMetadataCache resolves this same pointer, also
+        // first-wins, and keys its cache entry on the result. Picking a winner leaves one of the
+        // three out of step either way -- keep the first and the event still goes out under the
+        // last; keep the last and the cache is still keyed on the first. Refusing the ambiguity is
+        // the only rule all three agree on, which is also why it must not be relaxed later.
+        //
+        // Only that path is checked; a repetition anywhere else cannot move the identity, because
+        // the engine escapes member names when it builds the pointer it recurses with
+        // (base/src/json.cpp).
+        //
+        // Names are compared decoded and by length: "\u0077azuh" IS "wazuh", while "wazuh\u0000x" (length 7)
+        // is a different name and must not be confused with it.
+        const rapidjson::Value* findUniqueMember(const rapidjson::Value& obj, std::string_view name)
         {
-            const auto* value = pointer.Get(doc);
-            if (!value || !value->IsString())
+            const rapidjson::Value* found = nullptr;
+
+            for (auto it = obj.MemberBegin(); it != obj.MemberEnd(); ++it)
+            {
+                if (std::string_view {it->name.GetString(), it->name.GetStringLength()} != name)
+                {
+                    continue;
+                }
+                if (found != nullptr)
+                {
+                    return nullptr; // repeated: the document is ambiguous about this key
+                }
+                found = &it->value;
+            }
+
+            return found;
+        }
+
+        // Resolves /wazuh/agent/id, requiring each step to exist exactly once and each container to
+        // be an object.
+        std::optional<std::string_view> agentIdFromHeader(const rapidjson::Document& doc)
+        {
+            if (!doc.IsObject())
             {
                 return std::nullopt;
             }
-            return std::string_view {value->GetString(), value->GetStringLength()};
+
+            const auto* wazuh = findUniqueMember(doc, "wazuh");
+            if (wazuh == nullptr || !wazuh->IsObject())
+            {
+                return std::nullopt;
+            }
+
+            const auto* agent = findUniqueMember(*wazuh, "agent");
+            if (agent == nullptr || !agent->IsObject())
+            {
+                return std::nullopt;
+            }
+
+            const auto* id = findUniqueMember(*agent, "id");
+            if (id == nullptr || !id->IsString())
+            {
+                return std::nullopt;
+            }
+
+            return std::string_view {id->GetString(), id->GetStringLength()};
         }
     } // namespace
 
     remoted::auth::AuthError validatePayloadIdentity(const remoted::auth::AuthenticatedRequest& req)
     {
         using remoted::auth::AuthError;
-        static const rapidjson::Pointer kAgentIdPointer("/wazuh/agent/id");
 
         const auto headerJson = headerLineJson(req.payload.bytes());
         if (!headerJson)
@@ -130,23 +188,33 @@ namespace remoted::endpoints::stateless
         // kParseIterativeFlag: bounds the parser's C-stack usage to a constant regardless of input
         // nesting depth (it uses an explicit heap stack instead of recursive descent) -- without it,
         // a deeply-nested H-line (still well inside kMaxHeaderLineJsonSize) could overflow this
-        // worker thread's stack. Only changes how the DOM is built, not its shape: Pointer::Get()
-        // below is unaffected.
+        // worker thread's stack. Only changes how the DOM is built, not its shape: the identity
+        // lookup below is unaffected.
         doc.Parse<rapidjson::kParseIterativeFlag>(headerJson->data(), headerJson->size());
         if (doc.HasParseError())
         {
             return AuthError::PayloadAgentMismatch;
         }
 
-        const auto payloadAgentIdStr = getString(doc, kAgentIdPointer);
+        const auto payloadAgentIdStr = agentIdFromHeader(doc);
         if (!payloadAgentIdStr)
         {
             return AuthError::PayloadAgentMismatch;
         }
 
-        const auto payloadAgentId = parseAgentId(*payloadAgentIdStr);
-        const auto authenticatedAgentId = parseAgentId(req.agentId);
-        if (!payloadAgentId || !authenticatedAgentId || *payloadAgentId != *authenticatedAgentId)
+        // Shape first: still a non-negative integer that fits AgentId, so "", "-1", "12x" and an
+        // id too large to represent are refused exactly as before.
+        if (!parseAgentId(*payloadAgentIdStr))
+        {
+            return AuthError::PayloadAgentMismatch;
+        }
+
+        // Identity: the SAME STRING the token proves, byte for byte. "001", "01" and "1" are one
+        // agent arithmetically but three distinct strings, and it is the string that travels -- the
+        // body is forwarded verbatim, and the engine keys its cache on the raw id and stamps it
+        // into every event. A conforming agent stamps the H line from the string its token carries,
+        // so exact equality costs it nothing.
+        if (*payloadAgentIdStr != req.agentId)
         {
             return AuthError::PayloadAgentMismatch;
         }

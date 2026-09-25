@@ -123,10 +123,15 @@ INSTANTIATE_TEST_SUITE_P(
         // period verified cleanly, yet libcurl still failed peer verification.
         TlsClassifyCase {true, X509_V_OK, true, TlsFailureKind::HostnameMismatch},
         // The chain verified cleanly AND libcurl's overall result was not
-        // CURLE_PEER_FAILED_VERIFICATION: nothing to classify (e.g. the attempt failed for
-        // an unrelated reason after a clean handshake -- not reachable in practice since this
-        // classifier is only ever called on a TlsFail, but the function must not invent a
-        // hostname mismatch out of a clean verification).
+        // CURLE_PEER_FAILED_VERIFICATION: nothing to classify -- the attempt failed for an
+        // unrelated reason after a clean handshake. Genuinely reachable in practice, not just
+        // a defensive case: curlHandle.cpp's statusFromCurlCode() buckets several other curl
+        // codes (CURLE_SSL_CIPHER, CURLE_SSL_CONNECT_ERROR, ...) into TlsFail too, any of
+        // which can fire after the depth-0 certificate already verified cleanly. This row is
+        // exactly why verify_mode=system's local-anchor fallback (curlPerformer.cpp, #39123)
+        // does not key off sawDepth0 alone: it additionally requires depth0VerificationFailed
+        // (TlsFailureDetail), so a TlsFail shaped like this row -- kind None, but the
+        // certificate itself was never the problem -- is correctly left off the fallback path.
         TlsClassifyCase {true, X509_V_OK, false, TlsFailureKind::None},
         // An ordinary chain/CA-trust failure (untrusted root, wrong issuer, ...): not one of
         // the two classified causes, stays generic.

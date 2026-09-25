@@ -15,12 +15,20 @@
  * the same listener. Plus the two negatives the handler alone cannot prove: the global prefix is
  * applied like on every other route, and a CA that does not sign the served leaf is refused (503)
  * by the real start-time evaluation, not a faked status.
+ *
+ * The CA file the fixture installs is a STAMPED bundle (issue #39319, D9): the `##` publication
+ * block `wazuh-manager-certs` writes, in front of the certificate. That is the shape a rotated
+ * manager has on disk, so it is the shape these end-to-end tests run against -- and what the route
+ * answers with is still the certificate alone, re-serialised by the process, never the file.
  */
 
 #include "endpoints/cacertsEndpoint.hpp"
 #include "http_server/IHttpServer.hpp"
 #include "http_server/httpServerFactory.hpp"
 
+#include "ca_bundle/ca_bundle.hpp"
+
+#include "testCertificates.hpp"
 #include "testTlsServer.hpp"
 
 #include <gtest/gtest.h>
@@ -28,8 +36,10 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <fstream>
@@ -37,6 +47,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 
 using namespace remoted::http;
@@ -86,6 +97,84 @@ namespace
         return std::string {std::istreambuf_iterator<char> {file}, std::istreambuf_iterator<char> {}};
     }
 
+    void writeFile(const std::string& path, const std::string& contents)
+    {
+        std::ofstream file {path, std::ios::binary | std::ios::trunc};
+        file << contents;
+    }
+
+    /// The document `wazuh-manager-certs` leaves behind for @p pem's certificates: its block, then
+    /// the certificates re-serialised.
+    std::string stampedDocument(const std::string& pem, std::int64_t publication)
+    {
+        const auto certificates = ca_bundle::parseBundle(pem).certificates;
+        ca_bundle::PublicationBlock block;
+        block.publication = publication;
+        block.contentSha256 = ca_bundle::contentSha256(certificates);
+        block.updated = "2026-09-18T00:00:00Z";
+        block.writtenBy = "cacertsE2E_test";
+        return ca_bundle::renderBlock(block) + ca_bundle::serializeCertificates(certificates);
+    }
+
+    /// A CA-signed listener PKI built in memory, with the CA's validity window chosen by the test:
+    /// what the CLI recipes cannot produce with second granularity.
+    struct ShortLivedPki
+    {
+        std::string caPath;
+        std::string certPath;
+        std::string keyPath;
+        std::string servedCa; ///< The CA alone, re-serialised: what /cacerts must answer.
+
+        std::vector<std::string> files() const
+        {
+            return {caPath, certPath, keyPath};
+        }
+    };
+
+    ShortLivedPki makeShortLivedPki(const std::string& prefix, long caNotBeforeSeconds, long caNotAfterSeconds)
+    {
+        const auto caKey = remoted::test::makeTestKey();
+        const auto leafKey = remoted::test::makeTestKey();
+        const auto ca = remoted::test::makeCertificate((prefix + "-ca").c_str(),
+                                                       caNotBeforeSeconds,
+                                                       caNotAfterSeconds,
+                                                       caKey.get(),
+                                                       caKey.get(),
+                                                       nullptr,
+                                                       nullptr,
+                                                       true);
+        const auto leaf = remoted::test::makeCertificate(
+            (prefix + "-leaf").c_str(), -60, 3600, leafKey.get(), caKey.get(), ca.get(), "IP:127.0.0.1");
+
+        ShortLivedPki pki;
+        const auto base = "/tmp/" + prefix + "_" + std::to_string(::getpid());
+        pki.caPath = base + "-ca.pem";
+        pki.certPath = base + "-leaf.pem";
+        pki.keyPath = base + "-key.pem";
+        remoted::test::writePemFile(pki.certPath, {leaf.get()});
+        EXPECT_TRUE(remoted::test::writePemKey(pki.keyPath, leafKey.get()));
+        remoted::test::writePemFile(pki.caPath, {ca.get()});
+        pki.servedCa = ca_bundle::serializeCertificates(ca_bundle::parseBundle(readFile(pki.caPath)).certificates);
+        return pki;
+    }
+
+    /// Polls `GET /cacerts` until it answers @p wanted or @p maxWait elapses; the last response.
+    std::string waitForCacertsStatus(std::uint16_t port, int wanted, std::chrono::seconds maxWait)
+    {
+        const auto deadline = std::chrono::steady_clock::now() + maxWait;
+        std::string response;
+        do
+        {
+            response = remoted::test::sendGetRequest(port, "/cacerts");
+            if (statusOf(response) == wanted)
+            {
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds {200});
+        } while (std::chrono::steady_clock::now() < deadline);
+        return response;
+    }
+
     class CacertsE2ETest : public ::testing::Test
     {
     protected:
@@ -105,11 +194,43 @@ namespace
             files.push_back(m_foreignCa->certPath);
             files.push_back(m_foreignCa->keyPath);
             m_cleanup = std::make_unique<remoted::test::ScratchFileCleanup>(std::move(files));
+
+            // Stamp the CA file the way the tool does (D9): the block, then the certificate it
+            // describes. `##` lines are comments to every PEM reader, so nothing downstream --
+            // OpenSSL's trust store, the source, the route -- changes shape because of them.
+            const std::string caPath = m_pki->caCertPath;
+            const auto certificates = ca_bundle::parseBundle(readFile(caPath)).certificates;
+            if (certificates.size() != 1)
+            {
+                GTEST_SKIP() << "the throwaway CA file did not yield exactly one certificate";
+            }
+
+            m_servedCa = ca_bundle::serializeCertificates(certificates);
+            ca_bundle::PublicationBlock block;
+            m_publication = 1789000000;
+            block.publication = m_publication;
+            block.contentSha256 = ca_bundle::contentSha256(certificates);
+            block.updated = "2026-09-18T00:00:00Z";
+            block.writtenBy = "cacertsE2E_test";
+            m_caFileContents = ca_bundle::renderBlock(block) + m_servedCa;
+
+            std::ofstream stamped {caPath, std::ios::binary | std::ios::trunc};
+            stamped << m_caFileContents;
+            stamped.close();
+            ASSERT_FALSE(stamped.fail()) << "cannot stamp " << caPath;
         }
 
         // The facade's wiring slice: GET / and GET /cacerts, both raw routes, both budget-exempt,
         // the status read through the server the route belongs to.
         void startServer(const std::string& rawPrefix, const std::string& caCertificatePath)
+        {
+            startServerWith(rawPrefix, m_pki->certPath, m_pki->keyPath, caCertificatePath);
+        }
+
+        void startServerWith(const std::string& rawPrefix,
+                             const std::string& certificatePath,
+                             const std::string& privateKeyPath,
+                             const std::string& caCertificatePath)
         {
             m_port = findFreePort();
             ASSERT_NE(m_port, 0);
@@ -140,10 +261,14 @@ namespace
 
             HttpServerConfig config;
             config.port = m_port;
-            config.certificatePath = m_pki->certPath;
-            config.privateKeyPath = m_pki->keyPath;
+            config.certificatePath = certificatePath;
+            config.privateKeyPath = privateKeyPath;
             config.caCertificatePath = caCertificatePath;
             config.globalPrefix = rawPrefix;
+            // The publication record is not under test here: the default path would point at a
+            // var/run directory that does not exist in the build's cwd and warn once per server
+            // (paso 7, addendum). CaCertificateSourceRecord covers the record itself.
+            config.caPublicationRecordPath = "";
             ASSERT_NO_THROW(m_server->start(config));
         }
 
@@ -160,6 +285,9 @@ namespace
         std::optional<remoted::test::TestCaSignedCertificate> m_pki;
         std::optional<remoted::test::TestCertificate> m_foreignCa;
         std::unique_ptr<remoted::test::ScratchFileCleanup> m_cleanup;
+        std::string m_servedCa;         ///< The certificate alone, re-serialised: what /cacerts must answer.
+        std::string m_caFileContents;   ///< The stamped file on disk: the block plus that certificate.
+        std::int64_t m_publication {0}; ///< The block's publication SetUp() stamped the file with.
     };
 } // namespace
 
@@ -171,7 +299,16 @@ TEST_F(CacertsE2ETest, ServesTheCaTheListenerChainsTo)
     ASSERT_EQ(statusOf(response), 200) << response;
     const auto [head, body] = remoted::test::splitResponse(response);
     EXPECT_NE(head.find("Content-Type: application/x-pem-file"), std::string::npos) << head;
-    EXPECT_EQ(body, readFile(m_pki->caCertPath)); // the file, byte for byte
+
+    // The real transport puts the generation the fixture stamped the file with on the wire (issue
+    // #39319, RF-4), the same value the block above carries -- not a hash of anything.
+    EXPECT_NE(head.find("Wazuh-CA-Generation: " + std::to_string(m_publication)), std::string::npos) << head;
+
+    // The file carries the publication block; what the route hands out is the certificate this
+    // process re-serialised out of it, with no `##` line in sight (D9).
+    ASSERT_NE(m_caFileContents.find("## Wazuh CA bundle"), std::string::npos);
+    EXPECT_EQ(body, m_servedCa);
+    EXPECT_EQ(body.find("##"), std::string::npos);
 
     // The property (design §2.3): a client that trusts ONLY what /cacerts handed out verifies this
     // very listener's certificate -- the served CA really is the one the leaf chains to.
@@ -193,7 +330,7 @@ TEST_F(CacertsE2ETest, UnderTheGlobalPrefixOnlyThePrefixedTargetAnswers)
 
     const auto prefixed = remoted::test::sendGetRequest(m_port, "/wazuh-manager/cacerts");
     EXPECT_EQ(statusOf(prefixed), 200) << prefixed;
-    EXPECT_EQ(remoted::test::splitResponse(prefixed).second, readFile(m_pki->caCertPath));
+    EXPECT_EQ(remoted::test::splitResponse(prefixed).second, m_servedCa);
 
     // The transport's routing, same as every other route: the bare path is a 404 from the router's
     // non-matched handler -- the same body the handler itself uses for a missing file, so an agent
@@ -250,7 +387,6 @@ TEST_F(CacertsE2ETest, AnEmptiedCaAnswers404WithoutARestart)
 
     // Unlike a failed read, a readable file with nothing in it is the operator's way of saying
     // "stop serving" -- it takes effect at once, no restart needed.
-    const auto original = readFile(m_pki->caCertPath);
     {
         std::ofstream truncate {m_pki->caCertPath, std::ios::binary | std::ios::trunc};
     }
@@ -258,8 +394,76 @@ TEST_F(CacertsE2ETest, AnEmptiedCaAnswers404WithoutARestart)
     EXPECT_EQ(statusOf(emptied), 404) << emptied;
     EXPECT_EQ(remoted::test::splitResponse(emptied).second, R"({"error":"not_found"})");
 
+    // Restored to the stamped bytes SetUp() wrote, block included.
     std::ofstream restore {m_pki->caCertPath, std::ios::binary | std::ios::trunc};
-    restore << original;
+    restore << m_caFileContents;
     restore.close();
     EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/cacerts")), 200);
+}
+
+TEST_F(CacertsE2ETest, ACaThatExpiresInPlaceStopsBeingServedWithoutATouch)
+{
+    // A stamped CA with eight seconds left signs the leaf this listener serves, and the file is
+    // never written again: the 200 has to become the 503 on the clock alone. Eight, not three: the
+    // first request has to land inside the window under valgrind as well.
+    const auto pki = makeShortLivedPki("cacerts_e2e_expiring", -60, 8);
+    remoted::test::ScratchFileCleanup cleanup {pki.files()};
+    const auto stamped = stampedDocument(readFile(pki.caPath), 1789000000);
+    writeFile(pki.caPath, stamped);
+    struct stat before {};
+    ASSERT_EQ(::stat(pki.caPath.c_str(), &before), 0);
+
+    startServerWith("", pki.certPath, pki.keyPath, pki.caPath);
+
+    const auto first = remoted::test::sendGetRequest(m_port, "/cacerts");
+    ASSERT_EQ(statusOf(first), 200) << first;
+    const auto [firstHead, firstBody] = remoted::test::splitResponse(first);
+    EXPECT_NE(firstHead.find("Wazuh-CA-Generation: 1789000000"), std::string::npos) << firstHead;
+    EXPECT_EQ(firstBody, pki.servedCa);
+    EXPECT_EQ(m_server->certificateStatus().caMatchesLeaf, true);
+
+    const auto refused = waitForCacertsStatus(m_port, 503, std::chrono::seconds {20});
+    ASSERT_EQ(statusOf(refused), 503) << refused;
+    EXPECT_EQ(remoted::test::splitResponse(refused).second, R"({"error":"ca_mismatch"})");
+    EXPECT_EQ(m_server->certificateStatus().caMatchesLeaf, false);
+
+    // The file is exactly what it was: same bytes, same mtime. Only the clock moved.
+    struct stat after {};
+    ASSERT_EQ(::stat(pki.caPath.c_str(), &after), 0);
+    EXPECT_EQ(before.st_mtime, after.st_mtime);
+    EXPECT_EQ(readFile(pki.caPath), stamped);
+
+    // Everything else on the listener is unaffected: the leaf is still served over TLS.
+    EXPECT_EQ(statusOf(remoted::test::sendGetRequest(m_port, "/")), 200);
+}
+
+TEST_F(CacertsE2ETest, APreStagedCaStartsBeingServedAtItsNotBefore)
+{
+    // The rotation's step 1 with a CA whose window has not opened yet: refused and announced as 0
+    // until its notBefore, served and published from then on -- with nobody touching the file.
+    const auto pki = makeShortLivedPki("cacerts_e2e_prestaged", 8, 3600);
+    remoted::test::ScratchFileCleanup cleanup {pki.files()};
+    const auto stamped = stampedDocument(readFile(pki.caPath), 1789000000);
+    writeFile(pki.caPath, stamped);
+    struct stat before {};
+    ASSERT_EQ(::stat(pki.caPath.c_str(), &before), 0);
+
+    startServerWith("", pki.certPath, pki.keyPath, pki.caPath);
+
+    const auto first = remoted::test::sendGetRequest(m_port, "/cacerts");
+    ASSERT_EQ(statusOf(first), 503) << first;
+    EXPECT_EQ(remoted::test::splitResponse(first).second, R"({"error":"ca_mismatch"})");
+    EXPECT_EQ(m_server->certificateStatus().caMatchesLeaf, false);
+
+    const auto served = waitForCacertsStatus(m_port, 200, std::chrono::seconds {20});
+    ASSERT_EQ(statusOf(served), 200) << served;
+    const auto [head, body] = remoted::test::splitResponse(served);
+    EXPECT_NE(head.find("Wazuh-CA-Generation: 1789000000"), std::string::npos) << head;
+    EXPECT_EQ(body, pki.servedCa);
+    EXPECT_EQ(m_server->certificateStatus().caMatchesLeaf, true);
+
+    struct stat after {};
+    ASSERT_EQ(::stat(pki.caPath.c_str(), &after), 0);
+    EXPECT_EQ(before.st_mtime, after.st_mtime);
+    EXPECT_EQ(readFile(pki.caPath), stamped);
 }

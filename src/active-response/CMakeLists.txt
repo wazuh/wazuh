@@ -103,7 +103,7 @@ endif()
 
 # Build macOS-specific block-ip active response
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  # macOS uses separate block-ip binary with pf only
+  # macOS uses a separate block-ip binary: pf -> hosts.deny -> route chain
   add_active_response_executable(
     block-ip
     ${CMAKE_CURRENT_SOURCE_DIR}/src/block-ip-macos.c)
@@ -114,7 +114,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   target_include_directories(block-ip PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/helpers)
 
-  target_compile_definitions(block-ip PRIVATE PLATFORM_MACOS=1)
 
   # Build other macOS active response programs
   add_active_response_executable(

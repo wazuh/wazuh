@@ -174,7 +174,8 @@ equivalent option on an AWS NLB target group.
 
 ### 4.4. Allow the body size remoted allows
 
-remoted accepts up to 20 MB per request. A proxy with a smaller limit answers `413` to events the
+remoted accepts up to `<remote><https><max_body_size>` per request, 10 MiB by default. A proxy with
+a smaller limit answers `413` to events the
 manager would have accepted. NGINX defaults to 1 MB and must be raised; HAProxy has no limit by
 default.
 
@@ -200,7 +201,8 @@ flowchart LR
 
 ### 4.6. Health checks
 
-remoted answers `GET /` with `200`, unauthenticated and with no body. Use it as the health check
+remoted answers `GET /` with `200`, unauthenticated, with a small JSON body
+(`{"status":"ok","module":"remoted"}`). Use it as the health check
 (on AWS: path `/`, matcher `200`). A plain TCP check also works, since the port only opens once the
 listener is ready.
 
@@ -322,16 +324,90 @@ behaves as it does on a direct manager.
 
 ## 7. In a cluster
 
-Under termination each request is routed independently, so **any manager can receive any request
-from any agent at any time**. Two things must therefore hold across all managers:
+> **Deploying a cluster behind a balancer has its own page.** Topology, port map, which operations
+> require the master, the certificate layout, the deployment procedure and a production checklist
+> live in
+> [A Wazuh server cluster behind a load balancer](../../cluster/lb.md), with symptom-first diagnosis
+> in [Troubleshooting a balanced cluster](../../cluster/lb-troubleshooting.md). This section covers
+> only what a proxy operator has to know.
 
-* **Agent keys must be present everywhere.** A manager without an agent's key answers `401`. Since
-  requests are spread per request, a freshly enrolled agent whose key has not reached every manager
-  yet sees **intermittent** `401`s — correct token, correct configuration, "sometimes it
-  works". If you see that pattern right after enrolling, this is why.
-* **Clocks must be in sync (NTP).** The token carries its issue time and each manager judges it
-  against its own clock, so drift produces the same intermittent `401`s. Keep the related
-  `remoted.jwt_max_age` / `remoted.jwt_clock_skew` internal options identical across managers too.
+Under termination each request is routed independently, so **any manager can receive any request
+from any agent at any time**. Under passthrough the granularity is the **connection**, not the
+request: an agent that keeps one connection open stays on one node for its lifetime. Both models
+are supported; the deployment has to know which one it picked, because it decides how visible
+everything below is.
+
+### What the cluster replicates, and what it does not
+
+| Path | Replicated | Consequence for a balanced deployment |
+|---|---|---|
+| `etc/client.keys` | yes, on a 9 s interval | A new agent is unknown to workers for a few seconds |
+| `etc/authd.pass` | yes | A changed password is not accepted everywhere at once |
+| `etc/enrollment_tokens.json` | yes | A fresh token is unknown to workers for a few seconds |
+| `etc/shared/`, `var/multigroups/` | yes | `config_hash` converges |
+| **`etc/certs/`** | **no** | Every node needs its own listener certificate |
+| **`var/upgrade/`** | **no** | A custom WPK must be on **every** node |
+| **remoted's in-memory agent registry** | **no** | See the `403` below |
+
+### Measured windows
+
+A newly enrolled agent sees brief failures while the cluster catches up. All of them clear without
+intervention. Measured on a three-node cluster:
+
+| File | Master accepts after | Workers accept after | Rejection meanwhile |
+|---|---|---|---|
+| `etc/client.keys` | 0.04 s | 8.4 – 13.0 s | `401` |
+| `etc/authd.pass` | immediately | ~23 s | `401 Invalid client authentication` |
+| `etc/enrollment_tokens.json` | 0.13 s | 7.2 – 13.1 s | `401 token_unknown` |
+
+In practice an agent meets **three different errors in the same burst** — a `503` from a node whose
+pipeline is not ready, a `401` from a node without the credential yet, and under passthrough a TLS
+error with no HTTP status. Same cause, cleared in 5 to 15 seconds.
+
+### The `403` that is not a propagation window
+
+`POST /control` registers an agent in the memory of the node that handled it, and **nothing
+replicates that registry**. A `POST /download` for `resource_type: config` routed to a node that has
+not yet served this agent a `/control` is refused with `403`.
+
+It also converges, but through the agent's own notify cycle rather than through the cluster, so
+**the window grows with the number of nodes**: covering N nodes with random routing needs `N·H(N)`
+notifies — about 6 at three nodes, 30 at ten, 72 at twenty. At `notify_time` 60 s and ten nodes that
+is roughly half an hour before a freshly enrolled agent can fetch its configuration from *every*
+node.
+
+It affects only configuration downloads; WPK downloads are not gated this way.
+
+### Values that must match across nodes
+
+* **`global_prefix`**, or that node answers `404` to every agent request — with no counter and no
+  per-request log line. Compare the startup line across nodes.
+* **The `limits` internal options** (`fim.file_limit`, `syscollector.*_limit`, …) **and
+  `<cluster><name>`**, or that node reports a different `settings_hash` for the same agent.
+* **Clocks (NTP).** The token carries its issue time and each manager judges it against its own
+  clock; drift produces the same intermittent `401`s. Keep `remoted.jwt_max_age` and
+  `remoted.jwt_clock_skew` identical too.
+
+### Certificates
+
+`etc/certs/` is not replicated, so each node carries its own listener pair. Under **passthrough**
+every node's SAN must contain the address agents dial, because the agent validates the certificate
+of whichever node answered — not the balancer's. The same address is checked again when an
+enrollment token is minted.
+
+**Do not bootstrap trust from `GET /cacerts` under TLS termination when the balancer certificate
+comes from a different CA.** It returns the CA that signs the *manager's* listener certificate, so
+the anchor cannot verify the balancer and an agent that adopts it loses its connection. An
+enrollment token pins that same CA and does not help either. Sign the balancer leaf with the same CA
+as the nodes, or distribute the anchor out of band.
+
+### A degraded node stays in rotation
+
+`GET /` reports that the process is alive, not that the node can do its job. A node that has lost a
+dependency can answer `200` here, accept events with `202`, and fail `/control` with `500` — losing
+groups, configuration hashes and task delivery for every agent routed to it. Neither the balancer
+nor `cluster_control` nor the server API marks it. Treat sustained `500` on `/control` from one node
+as that node being degraded, and take it out of rotation manually.
 
 ## 8. Checklist before going to production
 
@@ -341,7 +417,7 @@ from any agent at any time**. Two things must therefore hold across all managers
 - [ ] The proxy forwards the request target unchanged
 - [ ] Backend connections negotiate TLS 1.3
 - [ ] Backend certificate verification is enabled, and the certificate has a matching SAN
-- [ ] Body size limit raised to 20 MB
+- [ ] Body size limit at or above the manager's `<remote><https><max_body_size>` (10 MiB by default)
 - [ ] Response timeout ≥ 30 s
 - [ ] Health check against `GET /`
 - [ ] PROXY protocol **disabled**

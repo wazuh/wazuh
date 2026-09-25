@@ -142,17 +142,34 @@ std::chrono::milliseconds StatelessStream::tick(Waiter& waiter, bool force)
     // waits and retries on this stream's own thread; the next flush is thus
     // naturally deferred while the accumulator (fed by the intake thread) keeps
     // absorbing (D5/D6).
-    if (flushDue(force) && flushOnce(waiter, m_config.requestTimeoutMs, m_config.statelessMaxAttempts) &&
-            flushDue(false))
+    if (flushDue(force))
     {
-        // Keep draining back-to-back while a backlog stays above the threshold.
-        // The size condition is edge-triggered in submit() (it fires once, as
-        // the buffer crosses the mark), so without this a buffer that stays
-        // above the threshold would give up a whole batch interval per request
-        // and cap throughput at one payload per interval regardless of load.
-        // Gated on the flush having succeeded: any failure falls through to the
-        // interval, so a rejecting or back-pressuring manager is never hammered.
-        return std::chrono::milliseconds::zero();
+        const auto outcome = flushOnce(waiter, m_config.requestTimeoutMs, m_config.statelessMaxAttempts);
+
+        if (outcome == OutcomeClass::Ok && flushDue(false))
+        {
+            // Keep draining back-to-back while a backlog stays above the threshold.
+            // The size condition is edge-triggered in submit() (it fires once, as
+            // the buffer crosses the mark), so without this a buffer that stays
+            // above the threshold would give up a whole batch interval per request
+            // and cap throughput at one payload per interval regardless of load.
+            return std::chrono::milliseconds::zero();
+        }
+
+        if (outcome == OutcomeClass::AuthFail)
+        {
+            // The manager keeps refusing this credential's signature/shape/timestamp/etc (not
+            // unknown_agent -- that pauses everything via the AuthGate above instead).
+            // RetrySender deliberately returns this outcome unescalated on every call (#39064),
+            // so nothing else slows this stream's own retry cadence: back off on the Backoff
+            // this stream's RetrySender already resets on success, instead of hammering the
+            // manager on the plain batch interval (#39601).
+            return m_backoff.next();
+        }
+
+        // Any other failure falls through to the plain interval, so a rejecting or
+        // back-pressuring manager is never hammered (back-pressure is already paced
+        // inside RetrySender itself).
     }
 
     return std::chrono::milliseconds {m_config.batchIntervalMs};
@@ -188,7 +205,7 @@ bool StatelessStream::flushDue(bool force) const
     return m_accumulator.flushDue(static_cast<uint64_t>(elapsed), eventBytesBudgetLocked());
 }
 
-bool StatelessStream::flushOnce(Waiter& waiter, uint32_t timeoutMs, uint32_t maxAttempts)
+OutcomeClass StatelessStream::flushOnce(Waiter& waiter, uint32_t timeoutMs, uint32_t maxAttempts)
 {
     uint64_t eventBudget;
     std::string headerLine;
@@ -231,7 +248,7 @@ bool StatelessStream::flushOnce(Waiter& waiter, uint32_t timeoutMs, uint32_t max
     }
 
     handleOutcome(result.outcome, snapshot, m_signer.agentId() != headerAgentId);
-    return result.outcome == OutcomeClass::Ok;
+    return result.outcome;
 }
 
 void StatelessStream::handleOutcome(OutcomeClass outcome,
@@ -329,7 +346,7 @@ void StatelessStream::drain(Waiter& waiter)
     // atexit handler.
     for (uint32_t iteration = 0; iteration <= m_config.bufferCapMultiplier; iteration++)
     {
-        if (m_accumulator.empty() || !flushOnce(waiter, m_config.drainTimeoutMs, 1))
+        if (m_accumulator.empty() || flushOnce(waiter, m_config.drainTimeoutMs, 1) != OutcomeClass::Ok)
         {
             return;
         }

@@ -1,0 +1,501 @@
+{
+	// See https://go.microsoft.com/fwlink/?LinkId=733558
+	// for the documentation about the tasks.json format
+	"version": "2.0.0",
+	"tasks": [
+        {
+            "label": "Test Env: Remove",
+            "type": "shell",
+            "command": "rm",
+            "args": [
+                "-rf",
+                "${env:TMP_CLEAN_ENV}"
+            ]
+        },
+        {
+            "label": "Test Env: Create",
+            "type": "shell",
+            "command": "${env:ENGINE_SRC}/test/setupEnvironment.py",
+            "args": [
+                "-e",
+                "${env:TMP_CLEAN_ENV}"
+            ],
+            "dependsOn": "Remove engine env",
+            "problemMatcher": []
+        },
+        {
+            "label": "Python venv: Create",
+            "type": "shell",
+            "command": "rm -rf ${env:TMP_PY_VENV}; python -m venv ${env:TMP_PY_VENV};. ${env:TMP_PY_VENV}/bin/activate; pip install behave pyyaml protobuf==4.21 docker lxml argcomplete psutil matplotlib",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "Python venv: Install dependencies",
+            "type": "shell",
+            "command": ". ${env:TMP_PY_VENV}/bin/activate && pip install ${env:ENGINE_PYTHONPATH_API} ${env:ENGINE_PYTHONPATH_SUITE} ${env:ENGINE_PYTHONPATH_TEST} ${env:ENGINE_PYTHONPATH_HELPER} ${env:ENGINE_PYTHONPATH_METRICS} ${env:ENGINE_PYTHONPATH_IT}",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "Scripts: Mount proc",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/mount_wazuh_proc.sh",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "Scripts: Create standalone structure",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/create_struct_standalone.sh",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "Scripts: Purge Wazuh installation",
+            "type": "shell",
+            "command": "${env:WAZUH_REPO}/tools/purge_wazuh.sh",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "E2E Scripts: [Manager] Init setup (certs && pkg)",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/init.sh",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "E2E Scripts: [Manager] Copy wazuh-manager certs",
+            "type": "shell",
+            "command": "sudo",
+            "args": [
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/wazuh_copy_certs.sh"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "E2E Scripts: [Manager] Regenerate certs (keep CA)",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/init.sh",
+            "args": [
+                "--certs-only",
+                "--regen-certs"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "E2E Scripts: [Manager] Fresh install from branch (purge!)",
+            "type": "shell",
+            "command": "sudo",
+            "args": [
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/wazuh_install_manager.sh",
+                "--yes",
+                "--mode",
+                "fresh",
+                "--api"
+            ],
+            "problemMatcher": [],
+            "detail": "Stops and PURGES /var/wazuh-manager, installs this checkout with install.sh, copies the certificates, starts it and runs wazuh_verify_manager.sh. Evidence under $TMPDIR/wazuh-e2e-evidence/<timestamp>."
+        },
+        {
+            "label": "E2E Scripts: [Manager] Verify installed manager",
+            "type": "shell",
+            "command": "sudo",
+            "args": [
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/wazuh_verify_manager.sh",
+                "--api"
+            ],
+            "problemMatcher": [],
+            "detail": "PASS/FAIL per check: daemons, conf validate, GET /cacerts, new ERROR/CRITICAL lines, API login."
+        },
+        {
+            "label": "E2E Scripts: [Agent] Init setup (download pkgs)",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/init.sh",
+            "args": [],
+            "problemMatcher": [],
+            "detail": "Downloads the 4.x/5.x agent packages into e2e/agents/pkgs/; a stale 5.x 'latest' is refreshed automatically."
+        },
+        {
+            "label": "E2E Scripts: [Agent] Check packages (--check)",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/init.sh",
+            "args": [
+                "--check"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "E2E Scripts: [Agent] Re-download packages (--force)",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/init.sh",
+            "args": [
+                "--force"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "E2E Scripts: [Agent] Create enrollment token",
+            "type": "shell",
+            "command": "sudo",
+            "args": [
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/create_token.sh",
+                "--env-file",
+                "/tmp/wazuh-e2e-agents.env",
+                "--meta",
+                "/tmp/wazuh-e2e-agents.meta"
+            ],
+            "problemMatcher": [],
+            "detail": "Mints an enrollment token on the running manager (5.x agents) and copies authd.pass (4.x agents) into /tmp/wazuh-e2e-agents.env (0600). Delete the file after 'Up'."
+        },
+        {
+            "label": "E2E Scripts: [Agent] Up (start containers)",
+            "type": "shell",
+            "command": "docker compose --env-file /tmp/wazuh-e2e-agents.env -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/docker-compose.yml up -d --build",
+            "args": [],
+            "problemMatcher": [],
+            "detail": "Needs the env file from 'Create enrollment token'. Keeps existing volumes (already enrolled agents reconnect)."
+        },
+        {
+            "label": "E2E Scripts: [Agent] Reset (down -v)",
+            "type": "shell",
+            "command": "docker compose -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/docker-compose.yml down -v",
+            "args": [],
+            "problemMatcher": [],
+            "detail": "Removes the agent containers AND their volumes: the enrolled keys are lost and the next Up enrolls again."
+        },
+        {
+            "label": "E2E Scripts: [Agent] Verify enrollment",
+            "type": "shell",
+            "command": "sudo",
+            "args": [
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/verify_agents.sh",
+                "--api"
+            ],
+            "problemMatcher": [],
+            "detail": "PASS/FAIL per agent: key in client.keys, global.db active, agent log, trust anchor (5.x), manager log, API."
+        },
+        {
+            "label": "E2E Scripts: [Dashboard] Setup",
+            "type": "shell",
+            "command": "sudo",
+            "args": [
+                "-E",
+                "python3",
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/dashboard/capture.py",
+                "--setup",
+                "--venv",
+                "${workspaceFolder}/venv-dashboard"
+            ],
+            "problemMatcher": [],
+            "detail": "Once per workspace: creates the venv outside the repo, installs playwright==1.63.0 and chromium (apt deps). Ends with '# chromium launch: ok'."
+        },
+        {
+            "label": "E2E Scripts: [Dashboard] Capture",
+            "type": "shell",
+            "command": "sudo",
+            "args": [
+                "-E",
+                "python3",
+                "${env:WAZUH_DEV_SCRIPTS}/../e2e/dashboard/capture.py",
+                "--venv",
+                "${workspaceFolder}/venv-dashboard",
+                "--views",
+                "agents,discover,inventory,vd",
+                "--exec-docker"
+            ],
+            "problemMatcher": [],
+            "detail": "Stack up (indexer + dashboard), >= 1 agent enrolled (one 5.x); may wait up to 15 min for the VD feed; the vd view needs one finding of that agent, and with two 5.x agents add --agent-5x-id <id>. PASS/FAIL/SKIP per view; PNGs + captures.md under $WORKSPACE/e2e-dashboard-out/<run_id>."
+        },
+        {
+            "label": "E2E Scripts: [Manager] Up (reset & start containers)",
+            "type": "shell",
+            "command": "docker compose -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/docker-compose.yml down -v && docker compose -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/docker-compose.yml up -d",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "PR: clang-format (format)",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/pr-clang.sh",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "PR: clang-format (check)",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/pr-clang.sh",
+            "args": [
+                "--check"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build MANAGER - debug",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "-j27",
+                "TARGET=manager",
+                "DEBUG=yes"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build MANAGER - release",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "-j27",
+                "TARGET=manager",
+                "WAZUH_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Release"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build MANAGER - debug && test",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "-j27",
+                "TARGET=manager",
+                "DEBUG=yes",
+                "TEST=yes"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build MANAGER + Full Engine - debug",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "-j",
+                "TARGET=manager",
+                "ENGINE_TEST=y",
+                "DEBUG=yes"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build MANAGER + Full Engine - Release",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "-j27",
+                "TARGET=manager",
+                "WAZUH_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Release",
+                "ENGINE_TEST=y"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build MANAGER - address sanitizer",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "options": {
+                "env": {
+                    "LDFLAGS": "-fsanitize=address",
+                    "CFLAGS": "-fsanitize=address -fno-omit-frame-pointer"
+                }
+            },
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "-j27",
+                "TARGET=manager",
+                "DEBUG=yes"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build MANAGER - thread sanitizer",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "options": {
+                "env": {
+                    "LDFLAGS": "-fsanitize=thread",
+                    "CFLAGS": "-fsanitize=thread -fno-omit-frame-pointer"
+                }
+            },
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "-j27",
+                "TARGET=manager",
+                "DEBUG=yes"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Download precompiled deps",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "deps",
+                "TARGET=manager",
+                "-j"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Download deps sources",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "deps",
+                "TARGET=manager",
+                "EXTERNAL_SRC_ONLY=yes",
+                "-j"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Clean deps",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "clean-deps"
+            ],
+            "group": "build"
+        },
+        {
+            "label": "Clean external",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "clean-external"
+            ],
+            "group": "build"
+        },
+        {
+            "label": "Clean internals",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "clean-internals"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Clean",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src",
+                "clean"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "dependsOn": [
+                "Clean deps"
+            ]
+        },
+        {
+            "label": "cmake UNIT TESTS Server",
+            "type": "shell",
+            "command": "/usr/local/bin/cmake",
+            "args": [
+                "-DTARGET=manager",
+                "-S",
+                "${env:WAZUH_REPO}/src/unit_tests",
+                "-B",
+                "${env:WAZUH_REPO}/src/unit_tests/build"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build UNIT TESTS",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src/unit_tests/build"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Build UNIT TESTS - coverage",
+            "type": "shell",
+            "command": "/usr/bin/make",
+            "args": [
+                "--directory=${env:WAZUH_REPO}/src/unit_tests/build",
+                "coverage"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Valgrind remoted (example)",
+            "type": "shell",
+            "command": "/usr/bin/valgrind",
+            "args": [
+                "--track-origins=yes",
+                "--leak-check=full",
+                "--keep-stacktraces=alloc-and-free",
+                "--track-fds=yes",
+                "--trace-children=yes",
+                "--num-callers=20",
+                "--show-leak-kinds=definite,indirect",
+                "--log-file=ValgrindPRs.log",
+                "/var/wazuh-manager/bin/wazuh-remoted",
+                "-f",
+                "-d"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Clean unused containers (interactive)",
+            "type": "shell",
+            "command": "bash ${env:WAZUH_DEV_SCRIPTS}/clean-unused-containers.sh",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            },
+            "detail": "Lists stopped containers with last used date and size, then interactively asks which to delete."
+        }
+    ]
+}

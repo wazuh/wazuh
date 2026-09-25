@@ -358,3 +358,88 @@ def test_results_merge(iterables, criteria, ascending, types, expected_result):
         Expected results after merge.
     """
     assert merge(*iterables, criteria=criteria, ascending=ascending, types=types) == expected_result
+
+
+def _node_result(affected=(), failed=()):
+    """One node's answer, shaped as a distributed operation builds it."""
+    result = AffectedItemsWazuhResult(all_msg='all ok', some_msg='some failed', none_msg='none ok')
+    for item_id in affected:
+        result.affected_items.append(item_id)
+        result.total_affected_items += 1
+    for item_id, code in failed:
+        result.add_failed_item(id_=item_id, error=WazuhError(code))
+    return result
+
+
+def test_node_attribution_survives_the_success_wins_reconciliation():
+    """The node that could not serve must stay visible after the merge resolves the item.
+
+    `__or__` lets a success override a failure for the same item, which is right for the stale-view
+    case it exists for and wrong for a node-local fact: an agent whose upgrade task was created on
+    two nodes and not on a third merges to a clean success, leaving the operator with no way to
+    learn which node could not serve it (#39428).
+
+    Attribution is recorded per node BEFORE the merge and unioned, so it survives that.
+    """
+    master = _node_result(affected=['001'])
+    worker1 = _node_result(affected=['001'])
+    worker2 = _node_result(failed=[('001', 1824)])
+    for name, result in (('master', master), ('worker1', worker1), ('worker2', worker2)):
+        result.attribute_to_node(name)
+
+    merged = (master | worker1) | worker2
+    rendered = merged.render()
+
+    # The item's own outcome is still reconciled: it WAS scheduled, and that is what matters to it.
+    assert rendered['data']['affected_items'] == ['001']
+    assert rendered['data']['failed_items'] == []
+
+    # And the node breakdown is what the merge can no longer erase.
+    assert rendered['data']['nodes'] == {
+        'master': {'affected_items': ['001']},
+        'worker1': {'affected_items': ['001']},
+        'worker2': {'failed_items': {1824: ['001']}},
+    }
+
+
+def test_node_attribution_is_absent_when_nothing_attributed():
+    """A result nobody attributed must render exactly as before: no new key.
+
+    Every endpoint shares this class, so the field has to stay invisible unless DAPI populated it.
+    """
+    result = _node_result(affected=['001'])
+
+    assert 'nodes' not in result.render()['data']
+
+
+def test_node_attribution_ignores_document_shaped_affected_items():
+    """Endpoints whose affected items are documents must contribute no attribution.
+
+    `GET /cluster/{node_id}/daemons/stats` puts a whole metrics dump per daemon in
+    `affected_items`, and `/logs` puts log entries. Recording those per node would duplicate the
+    entire payload once per node, and the API's own response validator rejects them outright --
+    it answered `500 Response body does not conform to specification ... is not of type 'string'
+    - 'data.nodes.worker2.affected_items.0'` when this recorded them.
+
+    "Which items did this node apply" is only a question for identifier-shaped results.
+    """
+    result = AffectedItemsWazuhResult()
+    result.affected_items.append({'name': 'wazuh-manager-analysisd', 'uptime': '2026-09-22T20:48:15.257Z'})
+    result.total_affected_items = 1
+
+    result.attribute_to_node('worker2')
+
+    assert result.node_attribution == {}, 'a document is not an identifier'
+    assert 'nodes' not in result.render()['data']
+
+
+def test_node_attribution_records_a_failure_even_for_document_shaped_results():
+    """A failure is keyed by identifier, so it is recorded whatever the affected items look like."""
+    result = AffectedItemsWazuhResult()
+    result.affected_items.append({'name': 'wazuh-manager-analysisd'})
+    result.total_affected_items = 1
+    result.add_failed_item(id_='001', error=WazuhError(1824))
+
+    result.attribute_to_node('worker2')
+
+    assert result.node_attribution == {'worker2': {'failed_items': {1824: ['001']}}}

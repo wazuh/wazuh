@@ -44,7 +44,7 @@ set(START_AGENT_BASE_FLAGS "-Wl,--wrap,w_rotate_log -Wl,--wrap,getDefine_Int -Wl
                             -Wl,--wrap,w_https_client_submit_event -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
                             -Wl,--wrap=_imp__dbsync_initialize \
-                            -Wl,--wrap,metadata_provider_update -Wl,--wrap,metadata_provider_get \
+                            -Wl,--wrap,metadata_provider_update \
                             -Wl,--wrap,get_unix_version -Wl,--wrap,get_win_version -Wl,--wrap,free_osinfo")
 if(${TARGET} STREQUAL "winagent")
     list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS} -Wl,--wrap,os_random -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap,w_query_agentd")
@@ -96,9 +96,24 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
 list(APPEND client-agent_names "test_startup_gate")
 list(APPEND client-agent_flags "-Wl,--wrap,OS_SHA256_File ${DEBUG_OP_WRAPPERS}")
 
+# POSIX-only: the Windows branch dispatches in-process via control_dispatch(), no
+# socket/retry involved. Wraps the OS_ConnectUnixDomain/sleep boundary controlAgent()
+# retries against, same convention as test_agent_report.c.
+list(APPEND client-agent_names "test_reload_agent")
+list(APPEND client-agent_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
+                                -Wl,--wrap,sleep -Wl,--wrap,close ${DEBUG_OP_WRAPPERS}")
+
+list(APPEND client-agent_names "test_ca_publication")
+# Real temporary files, so no filesystem wrappers -- but the install path logs, and the
+# unwrapped logger reads ossec.conf and dies without one.
+# rename() is the exception: it is the instant the trust store is committed, and wrapping it is
+# what makes crash atomicity assertable rather than merely argued. The wrapper delegates to
+# __real_rename() unless a test asks it to fail, so the install still runs for real.
+list(APPEND client-agent_flags "-Wl,--wrap,rename ${DEBUG_OP_WRAPPERS}")
+
 list(APPEND client-agent_names "test_agent_ssl_ca")
 list(APPEND client-agent_flags "-Wl,--wrap,w_is_file -Wl,--wrap,os_find_ca_bundle \
-                                -Wl,--wrap,w_x509_load_pem -Wl,--wrap,X509_free ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,w_x509_load_all_pem -Wl,--wrap,w_x509_free_all ${DEBUG_OP_WRAPPERS}")
 
 # getAgentConfig() reads the agt globals and builds cJSON, nothing else: no wrappers.
 list(APPEND client-agent_names "test_agent_config")
@@ -150,8 +165,21 @@ list(APPEND client-agent_names "test_token_bootstrap")
 list(APPEND client-agent_flags "-Wl,--wrap,hc_fetch_cacerts -Wl,--wrap,hc_enroll \
                                 -Wl,--wrap,hc_spki_pinned_certificate -Wl,--wrap,OS_IsValidIP \
                                 -Wl,--wrap,chown -Wl,--wrap,chmod -Wl,--wrap,fchown \
+                                -Wl,--wrap,fchmod \
                                 -Wl,--wrap,OS_MoveFile \
                                 ${DEBUG_OP_WRAPPERS}")
+
+list(APPEND client-agent_names "test_agent_auth_cli")
+# kill() is wrapped for the running-agentd probe only; the wrapper forwards every real signal
+# to __real_kill, or cmocka's own failure handling would go through it too.
+# OS_MoveFile is wrapped for one thing the enrollment core cannot be asked for any other way: a
+# commit that fails after the manager has already accepted. That is the state the command has the
+# most to say about, and the branch it says it in is chosen here rather than in the core.
+list(APPEND client-agent_flags "-Wl,--wrap,kill -Wl,--wrap,hc_fetch_cacerts \
+                                -Wl,--wrap,hc_enroll -Wl,--wrap,hc_spki_pinned_certificate \
+                                -Wl,--wrap,OS_WriteXML -Wl,--wrap,OS_MoveFile \
+                                -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup \
+                                -Wl,--wrap,chown -Wl,--wrap,fchown ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_https_client_bridge")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
@@ -250,6 +278,25 @@ if(TARGET test_enrollment)
     # enrollment.h pulls in https_client.h (hc_enroll_result_t), same as
     # test_https_client_bridge above.
     target_include_directories(test_enrollment PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
+endif()
+
+if(TARGET test_agent_auth_cli)
+    # agent_auth_cli.c includes https_client.h through token_bootstrap.h, same as the bootstrap
+    # suite below.
+    target_include_directories(test_agent_auth_cli PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
+
+    # The agent library is built with -DCLIENT (src/CMakeLists.txt), and several path macros in
+    # defs.h are conditional on it -- WAZUHCONF is "etc/ossec.conf" with it and
+    # "etc/wazuh-manager.conf" without. Without this the test writes one file and the code under
+    # test looks for another, and the failure reads as "the file does not exist" from inside a
+    # function the test just proved could see it.
+    target_compile_definitions(test_agent_auth_cli PRIVATE CLIENT)
+endif()
+
+if(TARGET test_reload_agent)
+    # CONTROL_SOCK in defs.h is "queue/sockets/control" with -DCLIENT (how the agent library is
+    # built) and "queue/sockets/control.sock" without, so the expected path must match.
+    target_compile_definitions(test_reload_agent PRIVATE CLIENT)
 endif()
 
 if(TARGET test_token_bootstrap)

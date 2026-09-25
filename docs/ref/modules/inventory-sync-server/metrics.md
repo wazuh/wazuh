@@ -49,7 +49,7 @@ Reading notes:
 - **Counters accumulate for the life of the process** and survive the module's internal
   restart retries (the registry is created once and never reset). There is no reset endpoint,
   and no rates in the dump: derive events-per-second by diffing counters between polls (the
-  in-repo scraper `src/engine/tools/devContainer/scripts/monitor.py` does exactly this).
+  in-repo scraper `tools/devContainer/scripts/monitor.py` does exactly this).
 - **The catalog is dynamic**: the `sync.shard.<i>.*` gauges exist once the pipeline is built
   (one pair per worker), and the seven `server.*` pulls appear only after the transport's
   first successful start. A manager still waiting on its startup gate answers `200` with a
@@ -143,7 +143,7 @@ are diagnostic **from this module's side**.
 | `vd.lane.depth` | gauge_int | items | VD sessions queued in the lane | [`…vd_workers`](configuration.md#wazuh_modulesinventory_sync_server_vd_workers) (drain), [`…vd_scan_queue_slots`](configuration.md#wazuh_modulesinventory_sync_server_vd_scan_queue_slots) (cap) |
 | `vd.capacity.503.total` | counter | count | VD sessions refused because the scan queue was full (the endpoint answers the 503). **Not** `remoted.scanvd.queue_full`, which remoted raises for the agent-initiated `POST /scan/vd` path on a different socket ([remoted metrics](../remoted/metrics.md#vd-scan-admission--remotedscanvd)) | [`…vd_scan_queue_slots`](configuration.md#wazuh_modulesinventory_sync_server_vd_scan_queue_slots) |
 | `vd.lane.time` | histogram | microseconds | Enqueue-to-response time of VD data sessions, **all outcomes** (including the feed-not-ready 503 and offset-mismatch 409) | [`…vd_workers`](configuration.md#wazuh_modulesinventory_sync_server_vd_workers); bounded by [`…response_timeout`](configuration.md#wazuh_modulesinventory_sync_server_response_timeout) |
-| `vd.retry_after.total` | counter | count | 503s carrying a `Retry-After` header: the CVE feed was not ready (counted at both gates — strand-side admission and the dispatch-time re-check) | [`…vd_feed_retry_after_seconds`](configuration.md#wazuh_modulesinventory_sync_server_vd_feed_retry_after_seconds) sets the header **value** only — the *rate* is driven by the CVE-feed download state, which this module does not configure |
+| `vd.retry_after.total` | counter | count | 503s carrying a `Retry-After` header: the CVE feed was not ready, or the scanner is enabled here but still starting up (counted at both gates — strand-side admission and the dispatch-time re-check) | [`…vd_feed_retry_after_seconds`](configuration.md#wazuh_modulesinventory_sync_server_vd_feed_retry_after_seconds) sets the header **value** only — the *rate* is driven by the CVE-feed download state and the scanner's own startup time, which this module does not configure |
 | `vd.offset_mismatch.total` | counter | count | VD data sessions rejected (409) for a stale or ahead-of-node feed offset | diagnostic — offsets realign as feeds settle |
 | `vd.scan.duration` | histogram | microseconds | Time inside the vulnerability scanner (success and throw both sampled) | diagnostic — owned by the vulnerability-scanner module |
 | `vd.scans.ok` | counter | count | Scans completed | diagnostic |

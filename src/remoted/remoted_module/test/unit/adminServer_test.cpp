@@ -23,15 +23,19 @@
 #include "testLogRecorder.hpp" // the SHARED process-wide log sink (first-come; see the header)
 #include "testTlsServer.hpp"   // generateTestCertificate + ScratchFileCleanup
 
+#include "json.hpp"
+
 #include <gtest/gtest.h>
 #include <httplib.h>
 
+#include <cerrno>
 #include <chrono>
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <memory>
 #include <netinet/in.h>
 #include <string>
@@ -150,9 +154,15 @@ protected:
      *        enrollment_enabled): whether enrollment itself is administratively enabled.
      *        Defaults to true so existing call sites that pass enrollUsePassword=true keep
      *        exercising Password-mode enrollment being active, as before this parameter existed.
+     * @param serveOwnCertificateAsCa When true, a copy of the throwaway (self-signed) certificate
+     *        is installed at caPath() and configured as remote.https.ca_certificate, so the CA
+     *        bundle GET /tls describes has one certificate that signs the leaf and the test can
+     *        rewrite that file. Otherwise the module's default path (etc/certs/root-ca.pem, relative
+     *        to the scratch cwd) is left unconfigured and never exists.
      * @return The public HTTPS port the module bound (0 when the fixture itself failed).
      */
-    std::uint16_t startModule(bool enrollUsePassword = false, bool enrollmentEnabled = true)
+    std::uint16_t
+    startModule(bool enrollUsePassword = false, bool enrollmentEnabled = true, bool serveOwnCertificateAsCa = false)
     {
         // A second cycle regenerates the SAME pid-derived paths, so the previous cleanup must
         // run BEFORE the new files exist -- destroying it after would delete them again.
@@ -175,9 +185,40 @@ protected:
         std::snprintf(cfg.cluster_name, sizeof(cfg.cluster_name), "%s", "test-cluster");
         std::snprintf(cfg.certificate_path, sizeof(cfg.certificate_path), "%s", certificate->certPath.c_str());
         std::snprintf(cfg.private_key_path, sizeof(cfg.private_key_path), "%s", certificate->keyPath.c_str());
+        if (serveOwnCertificateAsCa)
+        {
+            m_caPath = (m_scratchDir / "root-ca.pem").string();
+            std::ifstream in {certificate->certPath, std::ios::binary};
+            std::ofstream out {m_caPath, std::ios::binary | std::ios::trunc};
+            out << in.rdbuf();
+            std::snprintf(cfg.ca_certificate_path, sizeof(cfg.ca_certificate_path), "%s", m_caPath.c_str());
+        }
 
         remoted_module_start(remoted::test::testLogCallback, &cfg);
         return static_cast<std::uint16_t>(cfg.port);
+    }
+
+    /// The CA bundle startModule(..., /*serveOwnCertificateAsCa=*/true) configured; empty otherwise.
+    const std::string& caPath() const
+    {
+        return m_caPath;
+    }
+
+    /// Replaces the CA bundle atomically (sibling + rename), the way an operator must.
+    void replaceCaBundle(const std::string& pem) const
+    {
+        const auto temporary = m_caPath + ".tmp";
+        {
+            std::ofstream out {temporary, std::ios::binary | std::ios::trunc};
+            out << pem;
+        }
+        ASSERT_EQ(std::rename(temporary.c_str(), m_caPath.c_str()), 0);
+    }
+
+    static std::string contentsOf(const std::string& path)
+    {
+        std::ifstream in {path, std::ios::binary};
+        return std::string {std::istreambuf_iterator<char> {in}, std::istreambuf_iterator<char> {}};
     }
 
     /// A UDS HTTP client pointed at the admin socket, timeouts bounded so a broken server fails
@@ -197,6 +238,7 @@ private:
     std::unique_ptr<remoted::test::ScratchFileCleanup> m_certificateCleanup;
     std::filesystem::path m_originalCwd;
     std::filesystem::path m_scratchDir;
+    std::string m_caPath;
 };
 
 // GET / answers the liveness probe inline, and the socket itself carries the contract: the
@@ -318,6 +360,121 @@ TEST_F(AdminServerTest, UnknownRouteAnswers404AndWrongVerb405)
     ASSERT_TRUE(wrongVerbStatus) << "POST /status failed: " << httplib::to_string(wrongVerbStatus.error());
     EXPECT_EQ(wrongVerbStatus->status, 405);
     EXPECT_EQ(wrongVerbStatus->get_header_value("Allow"), "GET");
+
+    // And /tls.
+    const auto wrongVerbTls = client->Post("/tls", "", "application/json");
+    ASSERT_TRUE(wrongVerbTls) << "POST /tls failed: " << httplib::to_string(wrongVerbTls.error());
+    EXPECT_EQ(wrongVerbTls->status, 405);
+    EXPECT_EQ(wrongVerbTls->get_header_value("Allow"), "GET");
+}
+
+// GET /tls (issue #39320): the served certificate and the CA bundle, as the issue's document. The
+// exact shape is tlsInventory_test.cpp's; over the socket this pins that the route serves the
+// listener the facade started (its configured paths, a self-consistent clock) and the bundle
+// /cacerts would hand out, with no threshold verdicts anywhere.
+TEST_F(AdminServerTest, GetTlsDescribesTheListenerAndTheCaBundle)
+{
+    startModule(/*enrollUsePassword=*/false, /*enrollmentEnabled=*/true, /*serveOwnCertificateAsCa=*/true);
+
+    const auto client = makeAdminClient();
+    const auto response = client->Get("/tls");
+    ASSERT_TRUE(response) << "GET /tls failed: " << httplib::to_string(response.error());
+    EXPECT_EQ(response->status, 200);
+    EXPECT_EQ(response->get_header_value("Content-Type"), "application/json");
+
+    const auto document = nlohmann::json::parse(response->body);
+    const auto& listener = document.at("listener");
+    EXPECT_EQ(listener.at("subject"), "CN=localhost");
+    EXPECT_TRUE(listener.at("sans").is_array());
+    EXPECT_EQ(listener.at("fingerprint").get<std::string>().rfind("x509-sha256:", 0), 0U);
+    EXPECT_EQ(listener.at("fingerprint").get<std::string>().size(), 12U + 64U);
+    EXPECT_FALSE(listener.at("path").get<std::string>().empty());
+    // One clock for the whole document: evaluated now, loaded at (or before) now, expiring later.
+    const auto now = document.at("evaluated_at_ts").get<std::int64_t>();
+    EXPECT_LE(listener.at("loaded_at_ts").get<std::int64_t>(), now);
+    EXPECT_EQ(listener.at("seconds_until_expiry").get<std::int64_t>(),
+              listener.at("not_after_ts").get<std::int64_t>() - now);
+    EXPECT_GT(listener.at("seconds_until_expiry").get<std::int64_t>(), 0);
+
+    const auto& bundle = document.at("ca_bundle");
+    EXPECT_EQ(bundle.at("path"), caPath());
+    EXPECT_EQ(bundle.at("certificates_count"), 1);
+    EXPECT_EQ(bundle.at("certificates_limit"), 6);
+    EXPECT_EQ(bundle.at("serialized_bytes_limit"), 8191);
+    EXPECT_GT(bundle.at("serialized_bytes").get<std::size_t>(), 0U);
+    EXPECT_EQ(bundle.at("content_sha256").get<std::string>().size(), 64U);
+    EXPECT_EQ(bundle.at("chain_valid"), true); // openssl req -x509 stamps CA:TRUE: its own valid anchor
+    EXPECT_FALSE(bundle.contains("last_read_failure"));
+    ASSERT_EQ(bundle.at("certificates").size(), 1U);
+    EXPECT_EQ(bundle.at("certificates")[0].at("signs_active_leaf"), true);
+    EXPECT_EQ(bundle.at("certificates")[0].at("fingerprint"), listener.at("fingerprint")); // self-signed
+    EXPECT_EQ(response->body.find("\"warning\""), std::string::npos);
+    EXPECT_EQ(response->body.find("\"critical\""), std::string::npos);
+}
+
+// The freshness contract, end to end: the CA half changes with the file between two requests --
+// no restart, no monitor tick -- and a bundle that goes missing keeps its last good description
+// with `last_read_failure` counting the failed reads; the leaf half never moves.
+TEST_F(AdminServerTest, GetTlsFollowsTheCaBundleWithoutARestart)
+{
+    startModule(/*enrollUsePassword=*/false, /*enrollmentEnabled=*/true, /*serveOwnCertificateAsCa=*/true);
+    const auto client = makeAdminClient();
+
+    const auto first = nlohmann::json::parse(client->Get("/tls")->body);
+    ASSERT_EQ(first.at("ca_bundle").at("certificates_count"), 1);
+
+    // A second, unrelated CA appended to the bundle.
+    const auto other = remoted::test::generateTestCertificate("rmt_admin_tls_other");
+    ASSERT_TRUE(other.has_value());
+    remoted::test::ScratchFileCleanup otherCleanup {{other->certPath, other->keyPath}};
+    replaceCaBundle(contentsOf(caPath()) + contentsOf(other->certPath));
+
+    const auto second = nlohmann::json::parse(client->Get("/tls")->body);
+    ASSERT_EQ(second.at("ca_bundle").at("certificates_count"), 2);
+    EXPECT_EQ(second.at("ca_bundle").at("certificates")[0].at("signs_active_leaf"), true);
+    EXPECT_EQ(second.at("ca_bundle").at("certificates")[1].at("signs_active_leaf"), false);
+    EXPECT_NE(second.at("ca_bundle").at("content_sha256"), first.at("ca_bundle").at("content_sha256"));
+    EXPECT_EQ(second.at("listener").at("fingerprint"), first.at("listener").at("fingerprint"));
+    EXPECT_EQ(second.at("listener").at("loaded_at_ts"), first.at("listener").at("loaded_at_ts"));
+
+    // The bundle moved away (an operator mid-rotation): last good read, plus the cause, counted.
+    ASSERT_EQ(std::rename(caPath().c_str(), (caPath() + ".away").c_str()), 0);
+    const auto third = nlohmann::json::parse(client->Get("/tls")->body);
+    EXPECT_EQ(third.at("ca_bundle").at("certificates_count"), 2);
+    ASSERT_TRUE(third.at("ca_bundle").contains("last_read_failure"));
+    EXPECT_EQ(third.at("ca_bundle").at("last_read_failure").at("consecutive"), 1);
+    EXPECT_EQ(third.at("ca_bundle").at("last_read_failure").at("errno"), ENOENT);
+    EXPECT_NE(third.at("ca_bundle").at("last_read_failure").at("cause").get<std::string>().find("cannot be opened"),
+              std::string::npos);
+    const auto fourth = nlohmann::json::parse(client->Get("/tls")->body);
+    EXPECT_EQ(fourth.at("ca_bundle").at("last_read_failure").at("consecutive"), 2);
+
+    // Restored: the failure is gone, the same bytes are a cache hit.
+    ASSERT_EQ(std::rename((caPath() + ".away").c_str(), caPath().c_str()), 0);
+    const auto fifth = nlohmann::json::parse(client->Get("/tls")->body);
+    EXPECT_FALSE(fifth.at("ca_bundle").contains("last_read_failure"));
+    EXPECT_EQ(fifth.at("ca_bundle").at("certificates_count"), 2);
+}
+
+// No readable bundle at all (the default path never existed here): the listener is still described,
+// and the CA half says why it is empty instead of reading as "nothing to worry about".
+TEST_F(AdminServerTest, GetTlsWithoutAReadableCaStillDescribesTheListener)
+{
+    startModule();
+
+    const auto client = makeAdminClient();
+    const auto response = client->Get("/tls");
+    ASSERT_TRUE(response) << "GET /tls failed: " << httplib::to_string(response.error());
+    EXPECT_EQ(response->status, 200);
+
+    const auto document = nlohmann::json::parse(response->body);
+    EXPECT_TRUE(document.contains("listener"));
+    const auto& bundle = document.at("ca_bundle");
+    EXPECT_EQ(bundle.at("path"), "etc/certs/root-ca.pem"); // the module default, relative to the install dir
+    EXPECT_EQ(bundle.at("certificates_count"), 0);
+    EXPECT_TRUE(bundle.at("chain_valid").is_null());
+    ASSERT_TRUE(bundle.contains("last_read_failure"));
+    EXPECT_EQ(bundle.at("last_read_failure").at("errno"), ENOENT);
 }
 
 // GET /status reports client.keys (informational, under "readable") and, when Password-mode

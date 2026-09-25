@@ -1,0 +1,123 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/cpp
+{
+	"name": "Wazuh 5.x Development",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	"features": {
+		"ghcr.io/nils-geistmann/devcontainers-features/zsh:0": {
+			"theme": "bira",
+			"plugins": "git docker docker-compose",
+			"setLocale": true,
+			"desiredLocale": "en_US.UTF-8"
+		},
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		"ghcr.io/devcontainers/features/go:1": {},
+		"ghcr.io/devcontainers/features/python:1": {},
+		"ghcr.io/devcontainers/features/sshd:1": {},
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
+	},
+	// Configure tool-specific properties.
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-vscode.cpptools",
+				"ms-vscode.cmake-tools",
+				"ms-azuretools.vscode-docker",
+				"redhat.vscode-yaml",
+				"DotJoshJohnson.xml",
+				"shardulm94.trailing-spaces",
+				"Gruntfuggly.todo-tree",
+				"alexcvzz.vscode-sqlite",
+				"richie5um2.vscode-sort-json",
+				"mechatroner.rainbow-csv",
+				"ms-python.debugpy",
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-vsliveshare.vsliveshare",
+				"ms-vsliveshare.vsliveshare-pack",
+				"ms-python.isort",
+				"golang.go",
+				"github.vscode-github-actions",
+				"cschlosser.doxdocgen",
+				"matepek.vscode-catch2-test-adapter",
+				"amiralizadeh9480.cpp-helper",
+				"ms-vscode.cpptools-extension-pack",
+				"rogalmic.bash-debug",
+				"ms-python.autopep8",
+				"eamodio.gitlens",
+				"pbkit.vscode-pbkit",
+				"eriklynd.json-tools",
+				"mads-hartmann.bash-ide-vscode",
+				"GitHub.copilot",
+				"anthropic.claude-code",
+				"openai.chatgpt"
+			]
+		}
+	},
+
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	"remoteUser": "root",
+
+	"remoteEnv": {
+		// Set the workspace folder to the container workspace folder.
+		"WAZUH_REPO": "${containerWorkspaceFolder}/wazuh",
+		"WAZUH_HOME": "/var/wazuh-manager",
+		"WAZUH_DEV_SCRIPTS": "${containerWorkspaceFolder}/wazuh/tools/devContainer/scripts/",
+		"ENGINE_SRC": "${containerWorkspaceFolder}/wazuh/src/engine",
+		"ENGINE_BUILD": "${containerWorkspaceFolder}/wazuh/src/build/engine",
+		"ENGINE_RULESET": "${containerWorkspaceFolder}/intelligence-data/ruleset",
+		"ENGINE_PYTHONPATH_API": "${containerWorkspaceFolder}/wazuh/src/engine/tools/api-communication/",
+		"ENGINE_PYTHONPATH_SUITE": "${containerWorkspaceFolder}/wazuh/src/engine/tools/engine-suite/",
+		"ENGINE_PYTHONPATH_METRICS": "${containerWorkspaceFolder}/wazuh/src/engine/tools/engine-metrics/",
+		"ENGINE_PYTHONPATH_TEST": "${containerWorkspaceFolder}/wazuh/src/engine/test/engine-test-utils/",
+		"ENGINE_PYTHONPATH_HELPER": "${containerWorkspaceFolder}/wazuh/src/engine/test/helper_tests/engine-helper-test/",
+		"ENGINE_PYTHONPATH_IT": "${containerWorkspaceFolder}/wazuh/src/engine/test/integration_tests/engine-it/",
+		"ENGINE_PYTHONPATH_DBG": "${containerWorkspaceFolder}/wazuh/src/engine/tools/api-communication/src:${containerWorkspaceFolder}/wazuh/src/engine/tools/engine-suite/src:${containerWorkspaceFolder}/wazuh/src/engine/tools/engine-metrics/src:${containerWorkspaceFolder}/wazuh/src/engine/test/engine-test-utils/src:${containerWorkspaceFolder}/wazuh/src/engine/test/helper_tests/engine-helper-test/src:${containerWorkspaceFolder}/wazuh/src/engine/test/integration_tests/engine-it/src",
+		"TMP_CLEAN_ENV": "/tmp/clean_env",
+		"TMP_PY_VENV": "${containerWorkspaceFolder}/venv",
+		"ENGINE_STANDALONE_DIR": "${containerWorkspaceFolder}/standalone",
+		"ENGINE_STANDALONE_SOCKET_API": "${containerWorkspaceFolder}/standalone/socket-api.sock",
+		"ENGINE_STANDALONE_SOCKET_REMOTED": "${containerWorkspaceFolder}/standalone/event-enrich.sock",
+		"ENGINE_STANDALONE_SOCKET_LEGACY": "${containerWorkspaceFolder}/standalone/event-local.sock"
+	},
+
+	"postCreateCommand": {
+		// Runs fix-dind.sh then clones the repo, in sequence: postCreateCommand entries
+		// otherwise run in parallel and the clone starves fix-dind.sh's dockerd restart
+		// of CPU/IO. fix-dind.sh is taken from the downloaded .devcontainer/ (present from
+		// the start), never from the repository it runs before. The clone goes to
+		// wazuh.partial (this entry's own staging dir, wiped before each attempt) and
+		// becomes wazuh/ only once it completed, submodules included: git creates .git
+		// before it fetches, so an interrupted clone must never be taken for a checkout.
+		// wazuh/ is therefore never something this entry deletes: with a .git it is a
+		// finished checkout, which is kept (its submodules are updated); empty, it is
+		// removed with rmdir; with other contents it is left alone and the entry fails.
+		// The clone runs even if fix-dind.sh fails, but any failure fails the entry
+		// (exit 1), so the devContainer reports it instead of succeeding. Uses the
+		// workspace folder directly; remoteEnv's WAZUH_REPO is not populated in this
+		// lifecycle command.
+		"fix_dind_then_clone": "rc=0; sh ${containerWorkspaceFolder}/.devcontainer/fix-dind.sh || rc=1; REPO=\"${containerWorkspaceFolder}/wazuh\"; if [ -e \"$REPO\" ] && [ ! -e \"$REPO/.git\" ] && ! rmdir \"$REPO\" 2>/dev/null; then echo \"$REPO exists, is not a git checkout and is not empty: left untouched; move it away to get the clone\" >&2; rc=1; elif [ ! -e \"$REPO/.git\" ]; then rm -rf \"$REPO.partial\"; if git clone --recursive https://github.com/wazuh/wazuh.git \"$REPO.partial\"; then mv \"$REPO.partial\" \"$REPO\" || rc=1; else rc=1; fi; fi; git config --global --add safe.directory \"$REPO\"; if [ -e \"$REPO/.git\" ]; then git -C \"$REPO\" submodule update --init --recursive || rc=1; fi; exit $rc",
+		// Configure zsh
+	    "zsh_cnf_0": "echo \"setopt APPEND_HISTORY;setopt INC_APPEND_HISTORY\" >> ~/.zshrc",
+		"zsh_cnf_1": "echo \"export HISTFILE=${containerWorkspaceFolder}/.zsh_history\" >> ~/.zshrc",
+		"zsh_cnf_2": "echo \"export HISTSIZE=1000000000\" >> ~/.zshrc",
+		"zsh_cnf_3": "echo \"export SAVEHIST=1000000000\" >> ~/.zshrc"
+	},
+
+	// Post start commands
+	"postStartCommand": {
+		// OpenSearch config
+		"set-max-vm-map-count": "/bin/sh -c 'sysctl -w vm.max_map_count=262144'",
+		"set-max-file-descriptors": "/bin/sh -c 'ulimit -n 65536'",
+		"welcome": "echo '\\e[1;33mWelcome to the Wazuh Manager 5.x Development container!\\n\\e[0mRun task \\e[1;32m'Build clean python env'\\e[0m to install the python dependencies.'",
+		// Set fs.inotify.max_user_watches
+		"set-max-inotify-watches": "/bin/sh -c 'sysctl -w fs.inotify.max_user_watches=524288'"
+	}
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+
+}

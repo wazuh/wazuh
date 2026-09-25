@@ -54,7 +54,7 @@ enroll_https_latency_ms_p50,enroll_https_latency_ms_p99
   so requests and attempts are the same number here.
 - `cacerts_*` are the `GET /cacerts` counters ([15](15-cacerts.md)): the CA-distribution requests a
   `cacerts` step sends. `cacerts_200` counts CA PEMs handed out; `cacerts_404` (the manager has no
-  CA file), `cacerts_503` (the manager refused a CA that does not sign its own certificate) and
+  CA file), `cacerts_503` (the manager refused a CA the served certificate does not chain to) and
   `cacerts_429` (the route's own rate limit, `remote.https.cacerts_rate_limit`) are the manager's
   contract outcomes; `cacerts_other` holds what invalidates the run (a `200` without a PEM body, a
   status the contract does not name) — the `429` has a column of its own so a rate-limited manager is
@@ -171,18 +171,27 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
   pacing, `connection_reuse`, and `server_vd_workers` read from `GET /metrics` when available (the
   VD worker count changes what the lane numbers mean).
 
-## `server_metrics.csv` — the scrape
+## `samples/metrics.ndjson` — the scrape
 
-The sender **MAY** scrape `GET /metrics` (F9a) itself in `uds` mode; in `agent` mode the socket may
-not be reachable from where the sender runs, and the orchestration's monitor does it (F9c-3). One
-row per scrape, long format so a new metric never breaks a parser:
+The sender **MAY** scrape `GET /metrics` (F9a) itself in `uds` mode; in `agent` mode the socket may not be reachable from where the sender runs, and the orchestration's monitor does it (F9c-3).
+
+The format is NDJSON, one object per scrape, defined by `tools/devContainer/scripts/bench_samples.py` — the orchestration's monitor and the `scrape_metrics.sh` fallback write the same lines, and every source shares one file:
 
 ```text
-timestamp,elapsed_s,<metric-name>,<value>
+{"kind":"run","r":"<run id>","started":"...Z","label":"<run label>"}
+{"kind":"meta","src":"inventory-sync","socket":"...","r":"<run id>",
+ "types":{"<metric>":"counter",...},"units":{...},"descriptions":{...}}
+{"ts":"...Z","t":12.0,"src":"inventory-sync","ok":true,"m":{"<metric>":<value>,...},
+ "h":{"<metric>":{"count":..,"p50":..,"p90":..,"p99":..,"max":..},...},
+ "off":["<metric disabled in this scrape>"],"d":{"name":...,"timestamp":...},"r":"<run id>"}
+{"ts":"...Z","t":13.0,"src":"inventory-sync","ok":false,"err":"connection refused","r":"<run id>"}
 ```
 
-Histograms contribute one row per summary field, named `<metric>.p50`, `<metric>.p99`,
-`<metric>.count`, `<metric>.sum`.
+The file is append-only and a reused label reuses its results directory, so it **MAY** hold several runs. Every line carries the `r` of the run that wrote it, each run opens with a `run` marker, and a consumer **MUST** scope to one run — the last, unless it says otherwise — rather than read the file whole: a cumulative counter's delta over two runs is the sum of both.
+
+The capture **MUST** be lossless: the module's original response has to be reconstructible from the file. Per-metric descriptors (`type`, `unit`, `description`) are registration-time constants and go on the `meta` line once, re-emitted if one changes; `d` holds the dump's own top-level scalars, including the server's clock; `off` names the metrics that reported `enabled: false`, whose `m` value is stale rather than measured. Metric names are the module's own; a histogram's distribution is in `h`, never among the scalars, so no consumer has to recognise a percentile by the shape of its name. A metric the dump did not carry is ABSENT from `m` rather than zero, and a failed scrape carries no metrics at all — writing zeros for either would read as a counter reset to anything computing a delta.
+
+This replaced a long-format `server_metrics.csv` (`timestamp,elapsed_s,metric,value`) that the fallback scraper wrote while the monitor wrote a wide one, so the same numbers reached the collator under two naming conventions. Per-daemon CSV files are no longer written during collection. They **MAY** be exported on demand from `samples/metrics.ndjson` using `python3 bench_samples.py <results_dir>`. By default, exports are written as `<results_dir>/stats-api-*.csv`; `--out-dir` selects a different destination. The orchestration also accepts `run_benchmark.sh --export-csv` to export the latest run after collection ends (requires `pandas`). This export is optional and disabled by default.
 
 ## Console output
 

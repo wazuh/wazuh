@@ -1269,6 +1269,19 @@ stages:
     response:
       status_code: 400
 
+  - name: Try to authenticate with an oversized auth_context payload (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
+      headers:
+        Authorization: "Basic {basic_auth_context:s}"
+      method: POST
+      json:
+        username: "elastic"
+        padding: "{oversized_auth_context_padding:s}"
+    response:
+      status_code: 413
+
 ---
 test_name: POST /security/user/authenticate
 

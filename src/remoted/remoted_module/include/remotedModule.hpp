@@ -21,6 +21,7 @@
 #include "remoted_module.h"
 #include "singleton.hpp"
 #include <cstdarg>
+#include <cstddef>
 #include <functional>
 
 /**
@@ -60,6 +61,18 @@ public:
      *         for why -1 must be treated as "proceed" rather than as a refusal.
      */
     int tlsCaMatchesLeaf() const;
+
+    /**
+     * @brief The one CA certificate that signs the certificate the HTTPS listener serves,
+     *        re-serialised into @p buffer -- a single certificate, no publication block.
+     *
+     * @param buffer Destination. Not NUL-terminated: the return value is the length.
+     * @param capacity Bytes available at @p buffer.
+     * @return Bytes written (> 0), 0 when there is nothing to deliver, -1 when @p capacity is too
+     *         small. See RemotedModuleFacade::tlsCaLeafSignerPem() for why the legacy WPK delivery
+     *         needs one certificate rather than the bundle.
+     */
+    int tlsCaLeafSignerPem(char* buffer, std::size_t capacity) const;
 };
 
 #endif // _REMOTED_MODULE_HPP

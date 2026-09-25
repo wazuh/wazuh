@@ -7,8 +7,19 @@
      </requestedPrivileges>
    </security>
  </trustInfo>
+ <dependency>
+   <dependentAssembly>
+     <assemblyIdentity
+       type="win32"
+       name="Microsoft.Windows.Common-Controls"
+       version="6.0.0.0"
+       processorArchitecture="*"
+       publicKeyToken="6595b64144ccf1df"
+       language="*"
+     />
+   </dependentAssembly>
+ </dependency>
  <file name="wsock32.dll" loadFrom="%windir%\System32\wsock32.dll"></file>
- <file name="comctl32.dll" loadFrom="%windir%\System32\comctl32.dll"></file>
  <file name="TextShaping.dll" loadFrom="%windir%\System32\TextShaping.dll"></file>
  <file name="msasn1.dll" loadFrom="%windir%\System32\msasn1.dll"></file>
  <file name="cryptsp.dll" loadFrom="%windir%\System32\cryptsp.dll"></file>

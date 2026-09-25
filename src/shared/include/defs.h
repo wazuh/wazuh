@@ -300,6 +300,25 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AGENT_ANCHOR_CA "certs/root-ca.pem"
 #endif
 
+/* Written beside the anchor once one has been committed, and never removed. Records that this
+ * install has held a trust anchor, which the anchor's own presence can no longer answer: since
+ * #39321 the agent owns the anchor so it can replace it on a CA rotation, and an agent that can
+ * replace a file can also delete it. Without this, deleting one file would send
+ * w_agent_resolve_ssl_posture() back to 'none' and the agent would come up unverified, looking
+ * exactly like a stock install that never had an anchor at all.
+ *
+ * Root-owned in a sticky directory, so the runtime user cannot remove it even though it can
+ * replace the anchor next to it. Empty: only its existence carries meaning.
+ *
+ * This does not stop that user OVERWRITING the anchor with a CA of its own -- nothing short of
+ * a privileged writer could, once the agent is able to adopt a rotation unaided. What it closes
+ * is the cheaper attack and the commoner accident: silently losing verification entirely. */
+#ifndef WIN32
+#define AGENT_ANCHOR_MARKER "etc/certs/.anchor-committed"
+#else
+#define AGENT_ANCHOR_MARKER "certs/.anchor-committed"
+#endif
+
 /* Enrollment-token bootstrap: the one-shot file src/init/register_configure_agent.sh's
  * WAZUH_ENROLLMENT_TOKEN_PATH writes at install time. w_agent_token_bootstrap() reads it once,
  * before AGENT_ANCHOR_CA exists, and deletes it once a committed success is already in place

@@ -145,7 +145,7 @@ foreach(counter RANGE ${count})
     # wrap -- even a test that never calls the code path. Harmless where it is not needed.
     target_link_libraries(
         ${remoted_test_name}
-        "-Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,remoted_module_tls_ca_matches_leaf"
+        "-Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,remoted_module_tls_ca_matches_leaf -Wl,--wrap,remoted_module_tls_leaf_signer_pem"
     )
 
     if(NOT remoted_test_flags STREQUAL " ")

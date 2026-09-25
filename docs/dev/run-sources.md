@@ -73,12 +73,12 @@ installer prints a `NOTICE` when the listener pair is missing, and
 See [Deploy certificates](../ref/getting-started/installation.md#deploy-certificates).
 
 In the devcontainer, the E2E environment carries a copy of that tool
-(`src/engine/tools/devContainer/scripts/wazuh-certs-tool.sh`, driven by
+(`tools/devContainer/scripts/wazuh-certs-tool.sh`, driven by
 `wazuh-certs-tool.yml` next to it) and a script that deploys its output with the
 names and ownership above:
 
 ```bash
-cd $WAZUH_REPO/src/engine/tools/devContainer/e2e
+cd $WAZUH_REPO/tools/devContainer/e2e
 ./init.sh --certs-only          # issues certs/ (reuses certs/root-ca.pem when present)
 sudo ./wazuh_copy_certs.sh      # -> /var/wazuh-manager/etc/certs
 ```
@@ -93,7 +93,7 @@ Or run the tool directly and `install` the five files yourself, as the CI does
 (`.github/workflows/5_testintegration_manager.yml`, step "Provision TLS certificates"):
 
 ```bash
-bash $WAZUH_REPO/src/engine/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c certs.yml -o ./certs
+bash $WAZUH_REPO/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c certs.yml -o ./certs
 ```
 
 ### Starting the Server

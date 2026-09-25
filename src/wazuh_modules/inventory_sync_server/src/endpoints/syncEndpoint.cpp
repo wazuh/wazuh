@@ -138,16 +138,17 @@ namespace invsync::endpoints::sync
                     return;
                 }
 
-                // D17: while the CVE feed is downloading, VD sessions are rejected WITHOUT
-                // processing -- the re-POST applies scan and ingest together, and nobody blocks
-                // waiting for the feed (the lane re-checks at dispatch too).
+                // D17: while the CVE feed is downloading, or the scanner is enabled here but
+                // still starting up, VD sessions are rejected WITHOUT processing -- the re-POST
+                // applies scan and ingest together, and nobody blocks waiting for either (the
+                // lane re-checks at dispatch too).
                 if (!scanner->feedReady())
                 {
                     if (const auto decision = vdThrottle.record())
                     {
                         LOGFN_DEBUG1(logFn(),
                                      "Answered 503 + Retry-After to %llu vulnerability-detection session(s) in the "
-                                     "last %d s: the CVE feed is not ready.",
+                                     "last %d s: the CVE feed is not ready, or the scanner is still starting up.",
                                      static_cast<unsigned long long>(decision.total),
                                      wazuh::uds_http::LogThrottle::kDefaultWindowSeconds);
                     }

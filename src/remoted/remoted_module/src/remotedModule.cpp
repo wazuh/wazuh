@@ -37,6 +37,11 @@ int RemotedModule::tlsCaMatchesLeaf() const
     return RemotedModuleFacade::instance().tlsCaMatchesLeaf();
 }
 
+int RemotedModule::tlsCaLeafSignerPem(char* buffer, std::size_t capacity) const
+{
+    return RemotedModuleFacade::instance().tlsCaLeafSignerPem(buffer, capacity);
+}
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -102,6 +107,23 @@ extern "C"
             // determine the answer, and the one caller treats it as "proceed" -- see the ABI doc
             // comment. Silent on purpose: this is polled per upgrade, and a throwing accessor
             // would otherwise log once per agent per poll cycle.
+            return -1;
+        }
+    }
+
+    int remoted_module_tls_leaf_signer_pem(char* buffer, size_t capacity)
+    {
+        try
+        {
+            return RemotedModule::instance().tlsCaLeafSignerPem(buffer, capacity);
+        }
+        catch (...)
+        {
+            // Same discipline as remoted_module_tls_ca_matches_leaf(): nothing may cross back into
+            // C, and silent on purpose -- this is polled once per legacy upgrade, and a throwing
+            // accessor would log once per agent per poll cycle. -1 rather than 0 because a failure
+            // to produce the certificate is not the same finding as "the leaf chains to no
+            // certificate of the bundle"; the caller refuses to deliver on either.
             return -1;
         }
     }

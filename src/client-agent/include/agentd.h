@@ -19,9 +19,13 @@
 #include "module_limits.h"
 #include "enrollment_status.h" /* w_enroll_status_t; NOT enrollment.h -- see that header */
 
-/* Decode the enrollment token on stdin and print what it carries, without its credential.
- * Shared by both agent entry points so Linux and Windows accept exactly the same tokens.
+/* Decode an enrollment token from @p in and print what it carries, without its credential.
+ * Shared by every entry point that answers --show-token, so they cannot drift over which tokens
+ * are acceptable. Streams are parameters because wazuh-agent-auth also reads from --token-file.
  * Returns 0, 2 when the token itself was rejected, or 1 when it could not be read. */
+int w_agent_show_token(FILE *in, FILE *out, FILE *err, const char *progname);
+
+/* The stdin form the two agent entry points use. */
 int w_agent_show_enrollment_token(void);
 
 /* Overwrite the compiled default enrollment password (AUTHD_PASS) in its own allocation and
@@ -118,6 +122,10 @@ DWORD WINAPI w_rotate_log_thread(LPVOID arg);
 #else
 void * w_rotate_log_thread(void * arg);
 #endif
+
+// Max connect() retries in controlAgent() (reload_agent.c); defined here so the
+// unit test asserts against the same value instead of duplicating it.
+#define CONTROL_AGENT_MAX_RETRIES 30
 
 // Reload agent
 /* Trigger the reload chain via modulesd's control socket.

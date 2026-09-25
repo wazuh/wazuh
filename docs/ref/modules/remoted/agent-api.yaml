@@ -51,9 +51,10 @@ servers:
       globalPrefix:
         default: "/wazuh-manager"
         description: >
-          Value of <remote><https><global_prefix> without its trailing slash. Freshly generated
-          configurations ship /wazuh-manager; an absent tag means no prefix (use an empty
-          string here). The signed request target includes this prefix.
+          Value of <remote><https><global_prefix> without its trailing slash. The default is
+          /wazuh-manager, materialised by the schema, so an absent tag means the prefix IS
+          applied. Serving unprefixed endpoints requires setting the tag to / explicitly.
+          The signed request target includes this prefix.
 
 tags:
   - name: Health
@@ -119,20 +120,58 @@ paths:
         bytes) answers `404` at once and stops serving the previous bundle -- this is how an
         operator halts a CA without restarting; restoring the file serves it again on the next
         request. Coherence with the served certificate is evaluated from the same read as the body,
-        on every request: when the CA on disk does **not** sign the certificate this very listener
-        is serving, the route answers `503 ca_mismatch` instead of handing out a CA that would make
-        every verifying agent fail its handshake against this manager (RF-27). The certificate
-        monitor (at start and every 24 h) only re-logs this same verdict; it does not decide the
-        response. The converse rotation -- a *different but valid* CA written over the file without
+        on every request, and against the clock of that request: when the certificate this very
+        listener is serving does **not** chain to the CA on disk -- validity windows included, so a
+        CA that expired with the file untouched is refused from the next request on, and one whose
+        `notBefore` was ahead of this node's clock is served once its window opens -- the route
+        answers `503 ca_mismatch` instead of handing out a CA that would make every verifying agent
+        fail its handshake against this manager (RF-27). The certificate monitor (at start and every
+        24 h) only re-logs this same verdict; it does not decide the response. The converse rotation -- a *different but valid* CA written over the file without
         restarting -- is served on the very next request; a new *leaf* certificate still needs a
         restart to load, so rotate CA and certificate together and restart remoted.
 
-        This is a trust-on-first-use bootstrap over an unverified channel: an agent that already
-        holds the CA MUST NOT replace it from this route, and a deployment that can distribute the
-        CA out of band SHOULD.
+        Every `200` also carries `Wazuh-CA-Generation` (see below): the generation this bundle is
+        published under -- `0` when there is a bundle to serve but no guard vouched for it -- never
+        a hash of the file or of the certificates it carries (issue #39319, RF-4).
+
+        What an agent MAY do with the response differs by *why* it called this route, and the two
+        cases must not be conflated:
+          - **Bootstrap** (no anchor yet; this connection is itself unverified -- the very case this
+            route exists for): the agent MUST install only the single certificate that satisfies the
+            enrollment token's SPKI pin, never the bundle as served (`token_bootstrap.c`,
+            `hc_spki_pinned_certificate()`); anything else in the body was chosen by whoever answered
+            the connection, pinned half or not, and installing it would hand that party a trust
+            anchor too.
+          - **Refresh** (the agent already trusts the CA and is calling over a connection that TLS
+            already validated against it): a rotation is what `ca_generation` in `/control`'s
+            `notify` response is for -- a newer generation there is the signal to call this route at
+            all. The agent then confirms the fetched bundle is the SAME rotation, not a stale or a
+            different one, by checking that this response's `Wazuh-CA-Generation` header carries that
+            same generation, and only then replaces its trust store with the response body in full
+            (never merged with, or partially over, what it held).
+
+        NONE OF THAT WORKS BEHIND A TLS-TERMINATING LOAD BALANCER, and the bootstrap case is the
+        one it breaks. This route returns the CA that signs the MANAGER's listener certificate,
+        but under termination the agent's TLS peer is the balancer. When the balancer's
+        certificate comes from a different CA, nothing served here can verify the peer the agent
+        actually talks to -- not the bundle, and not the single token-pinned certificate either,
+        since the token pins this same CA. An agent that adopts it loses the connection it had.
+        Sign the balancer leaf with the same CA as the nodes, or distribute the anchor out of
+        band. See docs/ref/modules/cluster/lb.md.
       responses:
         "200":
           description: The CA certificate(s) the listener chains to, as a PEM file.
+          headers:
+            Wazuh-CA-Generation:
+              description: |
+                The generation the served bundle is published under: the timestamp a guard vouched
+                for it, or `0` when there is a bundle to serve but none did -- an unstamped file and
+                a stamped one a guard refused both answer `0` alike. Present on every `200`, never on
+                a `404` or a `503` (there is no bundle to attach a generation to). Never a hash of
+                the file or of the certificates it carries: this header exists to be compared with
+                `/control`'s `ca_generation` on a refresh, not to prove anything about content
+                (issue #39319, RF-4).
+              schema: { type: integer, minimum: 0 }
           content:
             application/x-pem-file:
               schema:
@@ -238,13 +277,20 @@ paths:
         value other than `zstd` is rejected with `415`; a missing header is treated as an
         uncompressed body, unchanged from today.
 
-        Before forwarding, the module parses the H line's JSON and cross-checks `wazuh.agent.id`
-        (compared numerically, so `"001"` and `"1"` are the same agent) against the authenticated
-        `agent-id`; a missing/malformed H line, a non-numeric `wazuh.agent.id`, or a mismatch is
-        rejected with `400 Invalid event batch` (`PayloadAgentMismatch`) and the batch is never
-        forwarded. Once that check passes, the module forwards the exact request body to the
-        engine's event ingress over a Unix-domain socket; the engine validates the H/E batch and a
-        bad batch surfaces as the same `400 Invalid event batch`.
+        Before forwarding, the module parses the H line's JSON and resolves `wazuh` -> `agent` ->
+        `id`, requiring each step to appear **exactly once** and `wazuh` and `wazuh.agent` to be
+        objects. Names are compared after JSON unescaping, so `"wazuh"` and `"\u0077azuh"` are the same
+        member. `wazuh.agent.id` is then cross-checked against the authenticated `agent-id` as a
+        **string**, compared byte for byte: `"001"`, `"01"` and `"1"` are three different identities
+        even though they are one number, and only the exact form the token carries is accepted. Send
+        the id exactly as it appears in the token's `sub`. A repeated step of that path, a
+        missing/malformed H line, a non-numeric `wazuh.agent.id`, or any difference from the
+        authenticated id -- including zero padding -- is rejected with `400 Invalid event batch`
+        (`PayloadAgentMismatch`) and the batch is never forwarded.
+        Repetitions elsewhere in the header are not rejected here. Once those checks pass, the
+        module forwards the exact request body to the engine's event ingress over a Unix-domain
+        socket; the engine validates the H/E batch and a bad batch surfaces as the same
+        `400 Invalid event batch`.
       requestBody:
         required: true
         content:
@@ -376,8 +422,21 @@ paths:
         `config_hash` (a different value means fetch `merged.mg` via `POST /download`, sending
         `agent.config_token` back verbatim as the `resource_id` -- the token is opaque to the
         agent, which must never derive that identifier from `agent.groups` itself),
-        `vd_feed_offset` (a strictly higher value means request a re-scan via `POST /scan/vd`), and
-        `tasks` when the manager has work to dispatch.
+        `ca_generation` (issue #39319, RF-3: the generation the CA bundle `GET /cacerts` would serve
+        right now is published under, costing this hot path no extra file read -- see that route's
+        own description for what an agent does with a rotation once it sees one here), a strictly
+        higher `vd_feed_offset` (request a re-scan via `POST /scan/vd`), and `tasks` when the manager
+        has work to dispatch.
+
+        `ca_generation` carries one of four states, and they are NOT interchangeable: a timestamp
+        once a guard vouched for the bundle; `0` when there is a bundle to serve and none did (an
+        unstamped file, or one a guard refused); `null` when there is no servable bundle at all
+        (nothing configured, or the configured file yields no certificate); and the key itself
+        **absent** on a manager whose build predates this feature -- absent means *unknown*, not
+        the same as the confirmed-empty `null`. `nlohmann::json` serialises object keys in
+        alphabetical order, so on the wire `ca_generation` lands between `agent` and `settings_hash`
+        (see the examples below); nothing in this contract depends on that order, and neither should
+        a client.
 
         Note the parse asymmetry between the two: `startup` reads `version` at the top level, while
         `notify` reads it at `agent.version`.
@@ -413,8 +472,8 @@ paths:
         "200":
           description: |
             Message accepted. The body depends on `type`: `startup` returns the agent's limits,
-            cluster name and groups; `notify` returns change-detection hashes, the VD feed offset and
-            any pending tasks; `shutdown` returns an empty object.
+            cluster name and groups; `notify` returns change-detection hashes, `ca_generation`, the
+            VD feed offset and any pending tasks; `shutdown` returns an empty object.
           content:
             application/json:
               schema:
@@ -429,15 +488,20 @@ paths:
                     cluster: { name: wazuh-cluster }
                     agent: { groups: [default, web-servers] }
                 notifyNoTasks:
-                  summary: No pending work -- `tasks` is an empty array, never an absent key
+                  summary: |
+                    No pending work -- `tasks` is an empty array, never an absent key. `ca_generation`
+                    lands here, between `agent` and `settings_hash`: that is the wire order, not an
+                    authoring choice (see the `ca_generation` paragraph above).
                   value:
                     agent: { groups: [web-servers], config_token: web-servers, config_hash: "e3b0c442..." }
+                    ca_generation: 1758000000
                     settings_hash: "d7a8fbb3..."
                     tasks: []
                     vd_feed_offset: 12345678
                 notifyWithTasks:
                   value:
                     agent: { groups: [web-servers], config_token: web-servers, config_hash: "e3b0c442..." }
+                    ca_generation: 1758000000
                     settings_hash: "d7a8fbb3..."
                     vd_feed_offset: 12345678
                     tasks:
@@ -497,18 +561,29 @@ paths:
                   value: { error: "invalid_version", code: 409 }
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
-        "500":
+        "503":
           description: |
-            wazuh-db failed while resolving the agent's groups. `startup` always answers this way;
-            `notify` only when there is no cached membership to fall back on (first contact since
-            the module started) -- with a cache, the stale membership is served instead.
+            A dependency this route needs is not answering, so the request cannot be served right
+            now -- but the condition clears by itself when that dependency returns, and the agent
+            retries it as back-pressure rather than as a server fault.
+
+            Today that dependency is `wazuh-manager-db`, consulted to resolve the agent's groups.
+            `startup` always answers this way when it is unavailable; `notify` only when there is
+            also no cached membership to fall back on (first contact since the module started) --
+            with a cache, the stale membership is served instead.
+
+            `remoted` itself is healthy in this state: it keeps accepting connections, and keeps
+            answering `GET /` and `POST /stateless`. Whether a sustained `503` should take the node
+            out of a load balancer's rotation is a rule for the operator to add; the manager does
+            not decide it.
+
+            The manager's log names the dependency and what to check.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
               examples:
-                databaseError:
-                  value: { error: "database_error", code: 500 }
-        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+                dependencyUnavailable:
+                  value: { error: "dependency_unavailable", dependency: "wazuh-db" }
 
   /stateful:
     post:
@@ -893,18 +968,20 @@ paths:
             The `error` code names the actual cause for an operator reading the exchange.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              schema: { $ref: "#/components/schemas/ScanVdError" }
               examples:
                 scanQueueFull:
-                  value: { error: "scan_queue_full", code: 503 }
-                indexerUnavailable:
-                  value: { error: "indexer_unavailable", code: 503 }
+                  summary: Also indexer_unavailable / task_create_failed
+                  value: { error: "scan_queue_full" }
                 feedNotReady:
-                  summary: Also scanner_not_ready / vd_not_initialized
-                  value: { error: "feed_not_ready", code: 503 }
+                  summary: Also scanner_not_ready
+                  value: { error: "feed_not_ready" }
                 vdUnreachable:
-                  summary: Also shutting_down / vd_error
-                  value: { error: "vd_unreachable", code: 503 }
+                  summary: Also vd_error -- the round trip to VD itself failed or its answer was unparseable
+                  value: { error: "vd_unreachable" }
+                vdNotInitialized:
+                  summary: Permanent
+                  value: { error: "vd_not_initialized" }
 
   /enroll:
     post:
@@ -1089,14 +1166,23 @@ paths:
         "503":
           description: |
             `authd` reached `max_agents` (9013), a worker rejected the request (9015) or its forward
-            to the master failed (9016), or `authd` was unreachable / unparseable / timed out.
+            to the master failed (9016), the request never reached `authd` (code -1), or it reached
+            `authd` but no well-formed answer came back in time (code -2) -- `authd` may have
+            processed it anyway.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
               examples:
-                unavailable:
+                notSent:
+                  summary: The request never reached authd. Safe to retry.
                   value:
                     error: { code: -1, message: "Enrollment service temporarily unavailable" }
+                outcomeUnknown:
+                  summary: authd may have processed the request before the answer was lost.
+                  value:
+                    error:
+                      code: -2
+                      message: "Enrollment outcome unknown: the request reached authd but no answer came back in time -- it may have already been processed"
 
   /enroll/secret:
     post:
@@ -1576,6 +1662,24 @@ components:
           format: int64
           description: This node's real current offset, to retry with.
           example: 12345680
+
+    ScanVdError:
+      type: object
+      required: [error]
+      description: |
+        `POST /scan/vd`'s `503` shape. Flat, unlike the general `ErrorResponse`: the body carries
+        no HTTP status duplicate, only the machine-readable cause. `error` is not a closed set:
+        remoted is a pass-through here and relays VD's own error string verbatim, including the
+        transport-level ones its uds_http_server socket can produce on its own (e.g. "Server is
+        shutting down", "Data session limit reached") when VD itself never answers.
+      properties:
+        error:
+          type: string
+          description: |
+            Machine-readable cause. The values VD is known to produce: `scan_queue_full`,
+            `indexer_unavailable`, `feed_not_ready`, `scanner_not_ready`, `task_create_failed`,
+            `vd_not_initialized`, `vd_unreachable`, `vd_error`, `Server is shutting down`.
+          example: scan_queue_full
 
     EnrollRequest:
       type: object

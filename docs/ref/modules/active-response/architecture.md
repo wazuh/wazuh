@@ -587,7 +587,7 @@ Execd logs script exit status but does not propagate errors to the manager.
 ### macOS
 
 - **Firewall**: Prefers `pfctl` (Packet Filter)
-- **Fallback**: `hosts.deny` for non-root scenarios
+- **Fallback**: `hosts.deny`, then `route` (blackhole) if `pf` is unavailable or not enabled
 - **Privileges**: Requires root for firewall operations
 
 ### Windows

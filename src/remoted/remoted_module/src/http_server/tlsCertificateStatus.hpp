@@ -24,69 +24,49 @@
  * loggerHelper.h out of this header, as common/logThrottle.hpp explains.
  *
  * Only <openssl/types.h> is pulled in here (X509 stays an incomplete type), so IHttpServer.hpp
- * can carry TlsCertificateSnapshot without leaking the OpenSSL API into every endpoint.
+ * can carry TlsCertificateSnapshot without leaking the OpenSSL API into every endpoint -- a
+ * property ca_bundle/ca_bundle.hpp keeps as well.
+ *
+ * Reading, hashing and vouching for the CA bundle itself is shared_modules/ca_bundle's (issue
+ * #39319): X509Ptr, serializeCertificates() and leafChainsToAnyCa() live there now and are
+ * re-exported below, so every user of this header keeps its spelling.
  */
 
 #include "fileRead.hpp"
+
+#include "ca_bundle/ca_bundle.hpp"
 
 #include <openssl/types.h>
 
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstddef>
 #include <cstdint>
+#include <ctime>
 #include <functional>
-#include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <thread>
 #include <vector>
 
 namespace remoted::http
 {
-    /// Deleter kept out of line so X509 can stay incomplete for the header's includers.
-    struct X509Deleter
-    {
-        void operator()(X509* certificate) const noexcept;
-    };
-
-    /// Owning X509 handle.
-    using X509Ptr = std::unique_ptr<X509, X509Deleter>;
-
-    /**
-     * @brief Outcome of parsing PEM bytes: the certificates found, and whether the input ended cleanly.
-     *
-     * `wellFormed` is false when the reader stopped on something it could not decode instead of at
-     * end of input. The distinction matters for what we publish: a file we do not fully understand
-     * is refused whole rather than served up to its first bad block (issue #39078, H01).
-     */
-    struct PemCertificates
-    {
-        std::vector<X509Ptr> certificates;
-        bool wellFormed {true};
-    };
-
-    /**
-     * @brief Read every CERTIFICATE block out of PEM bytes already in memory.
-     *
-     * Non-certificate blocks (a key, a CRL) are skipped by OpenSSL's PEM reader, so a bundle or a
-     * combined file yields exactly its certificates -- and, because the caller serialises these
-     * objects back instead of forwarding the bytes, nothing else can ever leave through them.
-     */
-    PemCertificates parseCertificates(std::string_view pem);
+    // Owned by shared_modules/ca_bundle now, re-exported (using-declarations, not new types) so the
+    // ~40 places that spell them `remoted::http::X509Ptr` / serializeCertificates() /
+    // leafChainsToAnyCa() -- caCertificateSource.{hpp,cpp}, the tests' PKI -- did not have to change
+    // when the parsing moved out. The bundle READER is ca_bundle's parseBundle(), which returns the
+    // publication block too, so it is called by its own name.
+    //
+    // leafChainsToAnyCa() was anyCaSignsLeaf() until C33: what decides the 503 and the published
+    // generation is a real chain validation now, not a signature check, so the name says so.
+    using ca_bundle::leafChainsToAnyCa;
+    using ca_bundle::serializeCertificates;
+    using ca_bundle::X509Ptr;
 
     /// Subject line of a certificate, for logs and snapshots. Empty for a null certificate.
     std::string subjectOfCertificate(const X509* certificate);
-
-    /**
-     * @brief PEM text containing @p certificates and nothing else.
-     *
-     * What `GET /cacerts` and `--embed-ca` publish: a document this process built from parsed
-     * X.509 objects, not a file it forwarded.
-     */
-    std::string serializeCertificates(const std::vector<X509Ptr>& certificates);
 
     /**
      * @brief Whole days until @p certificate's notAfter, negative once expired.
@@ -98,15 +78,11 @@ namespace remoted::http
     std::optional<int> daysUntilExpiry(const X509* certificate);
 
     /**
-     * @brief Whether any of @p cas signed @p leaf (`X509_verify` against each CA's public key).
-     *
-     * A signature check, not a chain validation: no dates, no name constraints, no basicConstraints.
-     * That is deliberate -- the question `GET /cacerts` needs answered is "would the PEM I am about
-     * to hand out let an agent trust the certificate I am serving", and the issuer signature is the
-     * one property that decides it. A self-signed leaf listed as its own CA matches. The chain
-     * question is chainValidates()'s, and it informs the logs, not the 503 (issue #39318).
+     * @brief Whether @p ca signed @p leaf (`X509_verify` against the CA's public key): the plain
+     *        signature fact `GET /tls` reports per certificate as `signs_active_leaf`. Not the chain
+     *        question -- leafChainsToAnyCa() decides the 503 and chainValidates() the operator verdict.
      */
-    bool anyCaSignsLeaf(const X509* leaf, const std::vector<X509Ptr>& cas);
+    bool caSignsLeaf(const X509* leaf, const X509* ca);
 
     /// What chainValidates() found: nullopt when there was nothing to validate against.
     struct ChainVerdict
@@ -123,13 +99,19 @@ namespace remoted::http
      * own certificate file -- because the bundle is all an agent bootstrapping from `GET /cacerts`
      * will ever hold. `X509_V_FLAG_PARTIAL_CHAIN` makes any certificate of the bundle a trust anchor
      * even when it is not self-signed, so `root-ca.pem` may carry a purchased intermediate that
-     * signed the leaf as well as a private self-signed CA. Evaluated against the current time.
+     * signed the leaf as well as a private self-signed CA. Evaluated against @p at when given, else
+     * the current time: the verdict has a date term, so whoever caches it must re-evaluate it.
      *
-     * Not what decides the 503: anyCaSignsLeaf() is. This is information for the operator -- a CA
-     * that signs the leaf but has expired, or lacks `CA:TRUE`, still "matches" and yet no verifying
-     * agent could use it -- surfaced through the snapshots and the certificate log lines.
+     * Not what decides the 503: ca_bundle's leafChainsToAnyCa() is, and since C33 that is a chain
+     * validation as well -- with OpenSSL's DEFAULT flags, so its anchor must be self-signed and this
+     * verdict is the MORE permissive of the two on that axis. It stays a separate, operator-facing
+     * line because it adds the server PURPOSE the guard does not check: a leaf that chains to the
+     * bundle and yet could never be served to a verifying agent is worth saying out loud, and so is
+     * the bundle that only holds an intermediate (serviceable for this check, unusable for an
+     * agent). Surfaced through the snapshots and the certificate log lines, never as a refusal.
      */
-    ChainVerdict chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas);
+    ChainVerdict
+    chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas, std::optional<std::time_t> at = std::nullopt);
 
     /**
      * @brief The names that describe this host to itself, and to nobody else.
@@ -175,15 +157,17 @@ namespace remoted::http
      * @brief Point-in-time result of one certificate evaluation.
      *
      * Published two ways: by the facade as the `remoted.server.tls.*` pull metrics, and to
-     * `GET /cacerts`, which refuses (503) to hand out a CA that does not sign the served leaf.
+     * `GET /cacerts`, which refuses (503) to hand out a bundle the served leaf does not chain to.
      * The default-constructed value is what a server that never started reports.
      */
     struct TlsCertificateSnapshot
     {
         std::optional<int> expiryDays;            ///< Days until the served leaf expires; see daysUntilExpiry().
-        std::optional<bool> caMatchesLeaf;        ///< true/false when the CA file was readable and carried at
-                                                  ///< least one certificate; nullopt when it was not (a
-                                                  ///< missing CA is "unknown", never "mismatch").
+        std::optional<bool> caMatchesLeaf;        ///< Whether the served leaf CHAINS to the CA file
+                                                  ///< (ca_bundle::leafChainsToAnyCa(), C33): true/false when the
+                                                  ///< file was readable and carried at least one certificate,
+                                                  ///< nullopt when it was not (a missing CA is "unknown", never
+                                                  ///< "mismatch").
         std::uint64_t evaluations {0};            ///< How many evaluations produced snapshots so far (1 after
                                                   ///< the start-time one; +1 per monitor tick).
         std::string leafSubject;                  ///< Subject of the served leaf, for the log lines.
@@ -196,6 +180,11 @@ namespace remoted::http
         std::optional<ReadFailure> caReadFailure; ///< Present while the CA file cannot be read: the CA fields
                                                   ///< above then describe the last GOOD read of it (or are empty
                                                   ///< when there never was one), not the file as it is now.
+        // Nothing about the bundle's PUBLICATION lives here: what the log lines name travels in the
+        // CaRecordEvent the source posts to its mailbox (caRecordEvents.hpp), built from the
+        // CaCertificateSnapshot that noticed it, and what an agent is told travels in
+        // CaCertificateSource::CaDescriptor. This status is the leaf's evaluation plus the CA
+        // verdict the metrics publish, and that is all it carries (issue #39319, D23).
     };
 
     /**
@@ -214,6 +203,7 @@ namespace remoted::http
     {
     public:
         using EvaluateFn = std::function<TlsCertificateSnapshot()>;
+        using RecheckFn = std::function<void()>;
 
         TlsCertificateMonitor() = default;
         ~TlsCertificateMonitor();
@@ -231,8 +221,17 @@ namespace remoted::http
          * swallowed so the thread survives (the evaluate function is expected to do its own
          * logging). A non-positive @p interval starts no thread: the start-time evaluation stands
          * until the listener restarts. Calling start() while already running is a no-op.
+         *
+         * @p recheck, when given, also runs every @p recheckInterval between two evaluations, on
+         * the same thread, and records nothing: it is the cheap half of a tick, for what has to be
+         * noticed without a caller and without repeating the evaluation's log lines (issue #39519).
+         * An evaluation restarts its countdown. A non-positive @p recheckInterval, or one no shorter
+         * than @p interval, disables it.
          */
-        void start(std::chrono::seconds interval, EvaluateFn evaluate);
+        void start(std::chrono::seconds interval,
+                   EvaluateFn evaluate,
+                   std::chrono::seconds recheckInterval = std::chrono::seconds {0},
+                   RecheckFn recheck = {});
 
         /// Wake and join the thread. Idempotent; safe if never started. Keeps the last snapshot.
         void stop() noexcept;

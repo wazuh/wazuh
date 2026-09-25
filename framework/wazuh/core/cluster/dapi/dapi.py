@@ -605,6 +605,19 @@ class DistributedAPI:
 
         response = await asyncio.shield(asyncio.gather(*[forward(node) for node in resolved_nodes]))
 
+        # Record who answered what, before the reduce below merges the answers. An operation
+        # distributed across the cluster can succeed on some nodes and fail on others for reasons
+        # that are genuinely per node -- var/upgrade/ is not replicated, verification_mode is per
+        # node -- and the merge resolves those disagreements in favour of the success, which is
+        # right for the item's outcome and wrong for the operator, who is left without the one
+        # thing they need: which node could not serve it (#39428).
+        #
+        # Exceptions are skipped: they already carry dapi_errors, which is the same information on
+        # the error path and is rendered by the API's own handler.
+        for (node_name, _), node_response in zip(resolved_nodes, response):
+            if isinstance(node_response, wresults.AffectedItemsWazuhResult):
+                node_response.attribute_to_node(node_name)
+
         if allowed_nodes.total_affected_items > 1:
             response = reduce(or_, response)
             if isinstance(response, wresults.AbstractWazuhResult):
