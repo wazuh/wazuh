@@ -232,7 +232,9 @@ async def restart_agents(pretty: bool = False, wait_for_complete: bool = False,
     ConnexionResponse
         API response.
     """
-    f_kwargs = {'agent_list': agents_list}
+    # Generate request_time once for deterministic task IDs across all cluster nodes
+    f_kwargs = {'agent_list': agents_list,
+                'request_time': int(time.time())}
 
     dapi = DistributedAPI(f=agent.restart_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -452,7 +454,9 @@ async def restart_agent(agent_id: str, pretty: bool = False, wait_for_complete: 
     ConnexionResponse
         API response.
     """
-    f_kwargs = {'agent_list': [agent_id]}
+    # Generate request_time once for deterministic task IDs across all cluster nodes
+    f_kwargs = {'agent_list': [agent_id],
+                'request_time': int(time.time())}
 
     dapi = DistributedAPI(f=agent.restart_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1140,7 +1144,9 @@ async def reload_agents(pretty: bool = False, wait_for_complete: bool = False,
     ConnexionResponse
         API response.
     """
-    f_kwargs = {'agent_list': agents_list}
+    # Generate request_time once for deterministic task IDs across all cluster nodes
+    f_kwargs = {'agent_list': agents_list,
+                'request_time': int(time.time())}
 
     dapi = DistributedAPI(f=agent.reload_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1173,7 +1179,9 @@ async def reload_agent(agent_id: str, pretty: bool = False, wait_for_complete: b
     ConnexionResponse
         API response.
     """
-    f_kwargs = {'agent_list': [agent_id]}
+    # Generate request_time once for deterministic task IDs across all cluster nodes
+    f_kwargs = {'agent_list': [agent_id],
+                'request_time': int(time.time())}
 
     dapi = DistributedAPI(f=agent.reload_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1222,7 +1230,9 @@ async def restart_agents_by_group(group_id: str, pretty: bool = False,
         data = AffectedItemsWazuhResult(none_msg='Restart command was not sent to any agent')
         return json_response(data, pretty=pretty)
 
-    f_kwargs = {'agent_list': agent_list}
+    # Generate request_time once for deterministic task IDs across all cluster nodes
+    f_kwargs = {'agent_list': agent_list,
+                'request_time': int(time.time())}
     dapi = DistributedAPI(f=agent.restart_agents_by_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
@@ -1271,7 +1281,9 @@ async def reload_agents_by_group(group_id: str, pretty: bool = False,
         data = AffectedItemsWazuhResult(none_msg='Reload command was not sent to any agent')
         return json_response(data, pretty=pretty)
 
-    f_kwargs = {'agent_list': agent_list}
+    # Generate request_time once for deterministic task IDs across all cluster nodes
+    f_kwargs = {'agent_list': agent_list,
+                'request_time': int(time.time())}
     dapi = DistributedAPI(f=agent.reload_agents_by_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
