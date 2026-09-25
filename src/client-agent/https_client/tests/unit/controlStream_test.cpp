@@ -92,6 +92,7 @@ namespace
                 , m_config(makeConfig())
                 , m_spoolFactory(::testing::TempDir())
                 , m_configHash("abc")
+                , m_caPublication(1789000010)
                 , m_authGate(m_sink, [] {})
             , m_stream(m_config,
                        m_performer,
@@ -101,6 +102,7 @@ namespace
                        m_sink,
                        m_spoolFactory,
                        m_configHash,
+                       m_caPublication,
                        m_cluster,
                        m_authGate,
                        m_compressionGate,
@@ -130,6 +132,7 @@ namespace
             MockHttpPerformer m_performer;
             TempSpoolFactory m_spoolFactory;
             ConfigHashState m_configHash;
+            CaPublicationState m_caPublication;
             ClusterIdentity m_cluster;
             AuthGate m_authGate;
             CompressionGate m_compressionGate;
@@ -296,6 +299,49 @@ TEST_F(ControlStreamTest, UnknownAgentAuthFailureStillGoesAuthError)
     EXPECT_FALSE(m_stream.step(m_waiter));
     EXPECT_EQ(HC_STATE_AUTH_ERROR, m_stream.connState());
     EXPECT_TRUE(m_authGate.paused());
+}
+
+TEST_F(ControlStreamTest, UnescalatedAuthFailureReportsABackoffOverrideInsteadOfTheFixedCadence)
+{
+    // A 401 the AuthGate did not latch must not keep retrying on the plain notify cadence
+    // forever: RetrySender returns it unescalated on every call (#39064), and useSlowCadence()/
+    // rejectedRetryIntervalS stays reserved for the genuine unknown_agent/AUTH_ERROR path (see
+    // UnknownAgentAuthFailureStillGoesAuthError above) -- so this stream's own Backoff has to
+    // govern the cadence instead (#39601).
+    ScriptedRandom random {{1.0}}; // Jitter always hits the window ceiling.
+    ControlStream stream {m_config,          m_performer,     m_signer,        m_clock,
+                          random,            m_sink,          m_spoolFactory,  m_configHash,
+                          m_caPublication,   m_cluster,       m_authGate,      m_compressionGate,
+                          m_taskStore,       m_vdOffsetStore, [this] { return m_hostJson; }};
+
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(response(TransportStatus::Ok, 401)));
+    EXPECT_FALSE(stream.step(m_waiter));
+    EXPECT_FALSE(stream.useSlowCadence());
+
+    const auto backoff = stream.unescalatedAuthFailBackoff();
+    ASSERT_TRUE(backoff.has_value());
+    EXPECT_EQ(std::chrono::milliseconds {m_config.backoffBaseMs}, *backoff); // First window.
+}
+
+TEST_F(ControlStreamTest, EscalatedAuthFailureReportsNoBackoffOverride)
+{
+    // unknown_agent already gets its own fixed slow cadence through useSlowCadence(); it must
+    // not also start ramping this stream's Backoff on top of that.
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(authFail()));
+    EXPECT_FALSE(m_stream.step(m_waiter));
+    EXPECT_TRUE(m_stream.useSlowCadence());
+
+    EXPECT_FALSE(m_stream.unescalatedAuthFailBackoff().has_value());
+}
+
+TEST_F(ControlStreamTest, SuccessReportsNoBackoffOverride)
+{
+    EXPECT_CALL(m_sink, onStateChange(HC_STATE_REGISTERED));
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"limits":{"eps":0}})")));
+
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_FALSE(m_stream.unescalatedAuthFailBackoff().has_value());
 }
 
 TEST_F(ControlStreamTest, PausedGateSkipsHttpAndReleaseResumesWithAFreshStartup)
@@ -1406,6 +1452,83 @@ TEST_F(ControlStreamTest, AFailingShutdownDoesNotCountTowardTheThreshold)
 
     m_stream.step(m_waiter);
     EXPECT_EQ(1, pauses); // Two real steps are still what arms it.
+}
+
+/* The fixture's agent holds publication 1789000010, so a higher one is a refresh to arm. */
+TEST_F(ControlStreamTest, NotifyWithAHigherCaGenerationArmsARefresh)
+{
+    const std::string notify = R"({"status":"ok","ca_generation":1789000012})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify.
+
+    EXPECT_EQ(1789000012, m_caPublication.pending());
+    EXPECT_EQ(1789000010, m_caPublication.local()); // Nothing is installed by observing.
+}
+
+TEST_F(ControlStreamTest, NotifyWithALowerCaGenerationIsIgnored)
+{
+    const std::string notify = R"({"status":"ok","ca_generation":1789000009})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter);
+
+    EXPECT_EQ(0, m_caPublication.pending());
+}
+
+/* A manager predating #39321 says nothing about CA bundles, which is not the same as a manager
+ * reporting that nobody has published one -- but both leave the trust store alone. */
+TEST_F(ControlStreamTest, NotifyWithoutCaGenerationArmsNothing)
+{
+    const std::string notify = R"({"status":"ok"})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter);
+
+    EXPECT_EQ(0, m_caPublication.pending());
+}
+
+TEST_F(ControlStreamTest, NotifyWithAZeroOrNullCaGenerationArmsNothing)
+{
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"status":"ok","ca_generation":0})")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"status":"ok","ca_generation":null})")))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter); // 0: a bundle nobody published.
+    m_stream.step(m_waiter); // null: no servable bundle at all.
+
+    EXPECT_EQ(0, m_caPublication.pending());
+}
+
+/* Tolerant like the rest of the Notify body: a field of the wrong type is the absence it
+ * effectively is, and must not stop the agent reading the tasks alongside it. */
+TEST_F(ControlStreamTest, NotifyWithANonIntegerCaGenerationArmsNothing)
+{
+    const std::string notify = R"({"status":"ok","ca_generation":"latest"})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 200, "{}")));
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter);
+
+    EXPECT_EQ(0, m_caPublication.pending());
 }
 
 TEST_F(ControlStreamTest, NotifyWithVdFeedOffsetObservesIt)

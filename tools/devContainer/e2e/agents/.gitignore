@@ -1,0 +1,4 @@
+pkgs/*.deb
+pkgs/*.rpm
+pkgs/*.url
+init.log

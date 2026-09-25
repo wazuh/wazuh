@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <ctime>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -28,7 +29,11 @@ enum class TransportStatus
     Ok,          ///< The request completed and an HTTP status is available.
     Timeout,     ///< The request timed out.
     ConnectFail, ///< DNS/connect failure.
-    TlsFail,     ///< TLS handshake/verification failure.
+    TlsFail,     ///< TLS handshake/verification failure. HttpResponse::tlsFailure narrows
+    ///< this further (#39062) when the cause is a hostname mismatch or a certificate-date
+    ///< problem; verify_mode=system's local-anchor fallback (curlPerformer.cpp, #39123)
+    ///< acts only when tlsFailure.kind is still None -- a genuine chain/CA-trust failure,
+    ///< the one cause a different anchor could plausibly fix.
     Aborted,     ///< Interrupted through the abort flag (shutdown).
     OtherError   ///< Any other transport error.
 };
@@ -183,7 +188,7 @@ struct HttpRequestSpec
     std::string responseFilePath;      ///< When non-empty: stream the response body to this
     ///< file (truncated per attempt) instead of
     ///< HttpResponse::body.
-    uint64_t maxResponseBytes {0};     ///< Cap on a file-streamed response (0 = unlimited);
+    uint64_t maxResponseBytes {0};     ///< Cap on the response body, streamed or in memory (0 = unlimited);
     ///< exceeding it aborts the transfer.
     uint32_t timeoutMs {0};
     const std::atomic<bool>* abortFlag {nullptr}; ///< Optional cooperative abort.
@@ -195,6 +200,8 @@ struct HttpResponse
     TransportStatus status {TransportStatus::OtherError};
     long httpCode {0};
     long retryAfterSeconds {0}; ///< Parsed Retry-After header (0 = absent).
+    std::int64_t caGeneration {0}; ///< Parsed Wazuh-CA-Generation header (0 = absent or
+    ///< not a positive integer). Only ever set on GET /cacerts.
     std::time_t serverDateSeconds {0}; ///< Parsed Date header, manager's clock at
     ///< response time (0 = absent/unparsed). Every response the manager's
     ///< transport builds carries one, including every 401 -- RetrySender's
@@ -210,6 +217,81 @@ struct HttpResponse
     ///< problem; default-constructed (kind == None) otherwise, including for every
     ///< other TlsFail cause (chain/CA trust), which stays generic. See
     ///< tlsCertDiagnostics.hpp.
+
+    /// Whether libcurl could not even LOAD the CA file configured for this attempt
+    /// (CURLE_SSL_CACERT_BADFILE -- missing, unreadable, or not a certificate it can
+    /// parse), as opposed to loading it fine and then failing to verify the peer
+    /// against it. Deliberately separate from tlsFailure: a bad local CA file is a
+    /// permanent local misconfiguration, not a verification outcome, and (unlike a
+    /// hostname mismatch or a chain/CA-trust failure) OpenSSL's verify callback never
+    /// runs at all when the CA file itself fails to load -- sawDepth0 stays false,
+    /// which is exactly what makes this indistinguishable from a pure transport
+    /// failure (a cipher-negotiation failure, a reset mid-handshake) without this
+    /// field. verify_mode=system's local-anchor fallback (curlPerformer.cpp, #39123)
+    /// checks this before its normal sawDepth0/depth0VerificationFailed gate, so a
+    /// fallback anchor that corrupts after startup (config.c's w_x509_load_pem only
+    /// runs once, at startup) is caught and reported instead of the agent silently
+    /// latching onto a file it can never successfully dial again.
+    bool caFileLoadFailed {false};
 };
+
+/// Name of a TransportStatus, for the printer below and for logs, on the same reasoning as
+/// outcomeName(): an ordinal does not carry the reason to the reader.
+inline const char* transportStatusName(TransportStatus status)
+{
+    switch (status)
+    {
+        case TransportStatus::Ok:
+            return "Ok";
+
+        case TransportStatus::Timeout:
+            return "Timeout";
+
+        case TransportStatus::ConnectFail:
+            return "ConnectFail";
+
+        case TransportStatus::TlsFail:
+            return "TlsFail";
+
+        case TransportStatus::Aborted:
+            return "Aborted";
+
+        case TransportStatus::OtherError:
+            return "OtherError";
+
+        default:
+            return "unknown";
+    }
+}
+
+/**
+ * @brief Renders an HttpResponse for gtest, found by argument-dependent lookup.
+ *
+ * Without it gtest has no way to print this type and falls back to dumping the object's raw
+ * bytes. That is worse than unreadable: sizeof(HttpResponse) spans the padding the compiler
+ * inserts after `status` to align `httpCode`, those bytes are never written by any constructor,
+ * and reading them is a genuine use of uninitialised memory -- which valgrind reports as an
+ * error, failing the RTR job.
+ *
+ * The dump is not confined to a failing assertion either. INSTANTIATE_TEST_SUITE_P records
+ * PrintToString(param) for every parameter while registering the suite, so a suite parameterised
+ * on HttpResponse trips this during InitGoogleMock(), before a single test runs and however many
+ * of them pass.
+ *
+ * The body is summarised by length rather than printed: it can be as large as the client's
+ * 8 KiB cap, and its bytes are never what the reader of a failure message is after.
+ */
+inline void PrintTo(const HttpResponse& response, std::ostream* os)
+{
+    *os << "HttpResponse{status=" << transportStatusName(response.status)
+        << ", httpCode=" << response.httpCode
+        << ", retryAfterSeconds=" << response.retryAfterSeconds
+        << ", caGeneration=" << response.caGeneration
+        << ", serverDateSeconds=" << static_cast<long long>(response.serverDateSeconds)
+        << ", localIp='" << response.localIp << "'"
+        << ", body=" << response.body.size() << " byte(s)"
+        << ", curlError='" << response.curlError << "'"
+        << ", tlsFailureKind=" << static_cast<int>(response.tlsFailure.kind) << "}";
+}
 
 #endif // _HC_HTTP_TYPES_HPP

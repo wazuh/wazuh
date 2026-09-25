@@ -15,6 +15,8 @@
 #include "json.hpp"
 #include "remoted_module.h"
 #include <cstdint>
+#include <functional>
+#include <optional>
 #include <string>
 
 namespace remoted::control
@@ -68,6 +70,16 @@ namespace remoted::control
         uint32_t tmMaxQueueSize = kTaskMaxQueueSize;
         uint32_t keepaliveThrottleSec = kKeepaliveThrottleSec;
         uint32_t registryEvictionTtlSec = kRegistryEvictionTtlSec;
+
+        /// Where the CA bundle's published generation comes from on the notify path (RF-3): the
+        /// facade binds it to the HTTPS listener's CaCertificateSource through
+        /// IHttpServer::caDescriptor(), which revalidates at most once a second (C8/C18), so a
+        /// notify storm never turns into a read storm. `nullopt` means there is no servable bundle
+        /// at all (`ca_generation: null` on the wire), 0 means there is one and no guard vouched
+        /// for it. An EMPTY function is "this manager has no such provider": the response then
+        /// carries no `ca_generation` at all, which is exactly what a build without the listener
+        /// (buildControlConfig() never sets this) and the tests' bare Config do.
+        std::function<std::optional<std::int64_t>()> caGenerationProvider;
     };
 
     Config buildControlConfig(const remoted_module_config_t& c);

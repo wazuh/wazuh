@@ -29,6 +29,14 @@ class UUIDWrapper : public IUUIDWrapper
             mbr_uid_to_uuid(uid, uuid);
         }
 
+        /// @brief Converts a GID to a UUID.
+        /// @param gid The group ID to convert.
+        /// @param uuid Output parameter that will contain the corresponding UUID.
+        void gidToUUID(gid_t gid, uuid_t& uuid) override
+        {
+            mbr_gid_to_uuid(gid, uuid);
+        }
+
         /// @brief Converts a UUID to its string representation.
         /// @param uuid The UUID to convert.
         /// @param str Output buffer that will contain the string representation.

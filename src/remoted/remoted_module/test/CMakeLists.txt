@@ -42,7 +42,11 @@ target_link_libraries(
   wazuh_metrics
   # jwtCppSpike_test.cpp (and the JWT auth tests) include <jwt-cpp/jwt.h> directly; remoted_module
   # links ext_jwt_cpp PRIVATE, so this target needs its own link too.
-  ext_jwt_cpp)
+  ext_jwt_cpp
+  # caCertificateSource_test.cpp/httpServer_test.cpp call ca_bundle::parseBundle() and the X509Ptr
+  # re-exported by tlsCertificateStatus.hpp; remoted_module links shared_modules/ca_bundle PRIVATE,
+  # so this target needs its own link (which also propagates its include directory).
+  ca_bundle)
 
 target_include_directories(
   remoted_module_utest

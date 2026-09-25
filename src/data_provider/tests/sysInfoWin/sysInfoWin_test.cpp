@@ -348,6 +348,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineEmptyInput)
     const auto result = parseProcessCommandLine(L"");
     EXPECT_TRUE(result.cmd.empty());
     EXPECT_TRUE(result.argvs.empty());
+    EXPECT_EQ(result.argsCount, 0u);
 }
 
 // Simple executable path with no arguments.
@@ -356,6 +357,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineNoArguments)
     const auto result = parseProcessCommandLine(L"C:\\Windows\\notepad.exe");
     EXPECT_EQ(result.cmd, "C:\\Windows\\notepad.exe");
     EXPECT_TRUE(result.argvs.empty());
+    EXPECT_EQ(result.argsCount, 0u);
 }
 
 // Executable with a single argument.
@@ -364,6 +366,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineSingleArgument)
     const auto result = parseProcessCommandLine(L"app.exe --help");
     EXPECT_EQ(result.cmd, "app.exe --help");
     EXPECT_EQ(result.argvs, "--help");
+    EXPECT_EQ(result.argsCount, 1u);
 }
 
 // Executable with multiple arguments (svchost-style).
@@ -373,6 +376,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineMultipleArguments)
                             L"C:\\Windows\\system32\\svchost.exe -k netsvcs -p");
     EXPECT_EQ(result.cmd, "C:\\Windows\\system32\\svchost.exe -k netsvcs -p");
     EXPECT_EQ(result.argvs, "-k netsvcs -p");
+    EXPECT_EQ(result.argsCount, 3u);
 }
 
 // Quoted executable path with spaces in the path.
@@ -382,6 +386,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineQuotedPathWithSpaces)
                             L"\"C:\\Program Files\\My App\\app.exe\" --flag value");
     EXPECT_EQ(result.cmd, "\"C:\\Program Files\\My App\\app.exe\" --flag value");
     EXPECT_EQ(result.argvs, "--flag value");
+    EXPECT_EQ(result.argsCount, 2u);
 }
 
 // Quoted argument values are unquoted by CommandLineToArgvW.
@@ -391,6 +396,8 @@ TEST_F(SysInfoWinTest, ParseCmdLineQuotedArguments)
                             L"app.exe --name \"hello world\" --verbose");
     EXPECT_EQ(result.cmd, "app.exe --name \"hello world\" --verbose");
     EXPECT_EQ(result.argvs, "--name hello world --verbose");
+    // "hello world" is one argument even though argvs joins it with spaces.
+    EXPECT_EQ(result.argsCount, 3u);
 }
 
 // Unicode characters in the command line are properly converted to UTF-8.
@@ -400,6 +407,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineUnicodeCharacters)
     const auto result = parseProcessCommandLine(L"app.exe caf\u00E9");
     EXPECT_EQ(result.cmd, "app.exe caf\xC3\xA9");
     EXPECT_EQ(result.argvs, "caf\xC3\xA9");
+    EXPECT_EQ(result.argsCount, 1u);
 }
 
 // Command with many arguments preserves order and spacing.
@@ -408,6 +416,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineManyArguments)
     const auto result = parseProcessCommandLine(L"cmd.exe /c dir /s /b /a-d");
     EXPECT_EQ(result.cmd, "cmd.exe /c dir /s /b /a-d");
     EXPECT_EQ(result.argvs, "/c dir /s /b /a-d");
+    EXPECT_EQ(result.argsCount, 5u);
 }
 
 // Calling the function twice with the same input produces the same result.
@@ -418,6 +427,28 @@ TEST_F(SysInfoWinTest, ParseCmdLineDeterministic)
     const auto result2 = parseProcessCommandLine(input);
     EXPECT_EQ(result1.cmd, result2.cmd);
     EXPECT_EQ(result1.argvs, result2.argvs);
+    EXPECT_EQ(result1.argsCount, result2.argsCount);
+}
+
+// argsCount counts arguments, not the characters in argvs.
+TEST_F(SysInfoWinTest, ParseCmdLineArgsCountIsNotArgvsLength)
+{
+    const auto result = parseProcessCommandLine(
+                            L"\"C:\\Program Files\\App\\app.exe\" -Embedding \"C:\\Users\\Some User\\file.txt\"");
+    EXPECT_EQ(result.argvs, "-Embedding C:\\Users\\Some User\\file.txt");
+    EXPECT_EQ(result.argsCount, 2u);
+}
+
+// Empty quoted arguments are skipped, so they add nothing to argvs or argsCount.
+TEST_F(SysInfoWinTest, ParseCmdLineEmptyArgumentsSkipped)
+{
+    const auto result = parseProcessCommandLine(L"cmd.exe /c start \"\" notepad.exe");
+    EXPECT_EQ(result.argvs, "/c start notepad.exe");
+    EXPECT_EQ(result.argsCount, 3u);
+
+    const auto leading = parseProcessCommandLine(L"app.exe \"\" foo");
+    EXPECT_EQ(leading.argvs, "foo");
+    EXPECT_EQ(leading.argsCount, 1u);
 }
 
 

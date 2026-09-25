@@ -407,7 +407,7 @@ static void test_agent_manager_port_defaults_to_1517(void **state) {
 
     const char *xml_str = "<manager><endpoint>10.0.0.5</endpoint></manager>";
 
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__mdebug1, formatted_msg,
                   "No port in <agent><manager><endpoint>. Using the default port 1517.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
@@ -425,7 +425,7 @@ static void test_agent_manager_endpoint_defaults_to_wazuh_manager_when_absent(vo
 
     const char *xml_str = "<manager><endpoint>10.0.0.5</endpoint></manager>";
 
-    expect_string(__wrap__minfo, formatted_msg,
+    expect_string(__wrap__mdebug1, formatted_msg,
                   "No port in <agent><manager><endpoint>. Using the default port 1517.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);
@@ -434,8 +434,8 @@ static void test_agent_manager_endpoint_defaults_to_wazuh_manager_when_absent(vo
     cleanup(&xml, nodes, &cfg);
 }
 
-/* #38624: <endpoint> carries the whole target, in the same language the
- * WAZUH_MANAGER_ENDPOINT installation variable accepts. Only the host is mandatory. */
+/* <endpoint> carries the whole target -- host, optional port, optional URL prefix.
+ * Only the host is mandatory. */
 
 static void test_agent_manager_endpoint_accepts_a_hostname(void **state) {
     OS_XML xml = {0};

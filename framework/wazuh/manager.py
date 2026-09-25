@@ -11,7 +11,8 @@ from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, manager_reload
 from wazuh.core.configuration import get_manager_conf
-from wazuh.core.engine_http import EngineHTTPClient, RemotedHTTPClient, VdHTTPClient
+from wazuh.core.engine_http import (EngineHTTPClient, RemotedAdminHTTPError, RemotedHTTPClient, VdHTTPClient,
+                                    WazuhDBStatusHTTPClient)
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_wazuh_logs, \
     get_logs_summary, validate_manager_conf, WAZUH_LOG_FIELDS
@@ -98,6 +99,38 @@ def _modulesd_status(running: bool) -> dict:
     }
 
 
+def _wdb_status(running: bool) -> dict:
+    """Build the status entry for wazuh-db from its own GET /v1/status endpoint.
+
+    A PID check cannot answer this one: wazuh-manager-db can be running, accepting connections on
+    its socket, and still unable to query `global.db`. In that state `remoted`'s POST /control
+    answers `503` for every agent it serves while events keep flowing, and nothing else reports the
+    node as degraded (issue #39429). This is what makes that visible here.
+
+    Unlike remoted's admin plane, this socket is not optional: it is the same daemon answering, so
+    being unable to reach it while the process runs is a real unready state, not an unreachable
+    side channel. It is reported as such rather than falling back to plain liveness.
+    """
+    if not running:
+        return {'ready': False}
+
+    client = None
+    try:
+        client = WazuhDBStatusHTTPClient()
+        wdb = client.get_status()
+    except WazuhException as exc:
+        return {'ready': False, 'reason': f'status endpoint unreachable: {exc}'}
+    finally:
+        if client is not None:
+            client.close()
+
+    entry = {'ready': wdb.get('status') == 'ok'}
+    global_db = wdb.get('global')
+    if isinstance(global_db, dict):
+        entry['global'] = global_db
+    return entry
+
+
 def _remoted_status(running: bool) -> dict:
     """Build the status entry for remoted from its local admin GET /status endpoint.
 
@@ -134,6 +167,81 @@ def _remoted_status(running: bool) -> dict:
     return entry
 
 
+# Why remoted could not describe its certificates, by the code RemotedHTTPClient raised. Every
+# entry is remoted's own state (down, no admin plane, slow, garbled), never the caller's fault.
+_REMOTED_TLS_REASONS = {
+    2013: 'request failed',
+    2028: 'admin client unavailable',
+    2030: 'timeout',
+    2031: 'admin socket unreachable',
+    2032: 'invalid response',
+}
+
+
+def _remoted_tls(running: bool) -> dict:
+    """Fetch remoted's `GET /tls` document, or say why it is not available.
+
+    Anything that is remoted's own state -- not running, admin socket never came up, HTTPS
+    listener not started (the route's 503), a timeout, a garbled answer -- becomes an explicit
+    `{'available': False, 'reason': ...}` instead of an exception: a consumer must never read a
+    missing document as "no certificate to worry about", and an error would leave no node to hang
+    that state on. The document itself passes through untouched, `seconds_until_expiry` negative
+    once expired included.
+    """
+    if not running:
+        return {'available': False, 'reason': 'remoted not running'}
+
+    client = None
+    try:
+        client = RemotedHTTPClient()
+        document = client.get_tls()
+    except RemotedAdminHTTPError as exc:
+        # remoted is up but its HTTPS listener is not (yet): the route answers 503 by contract.
+        reason = 'listener not started' if exc.status_code == 503 else 'unexpected response'
+        return {'available': False, 'reason': reason}
+    except WazuhInternalError as exc:
+        return {'available': False, 'reason': _REMOTED_TLS_REASONS.get(exc.code, 'invalid response')}
+    except WazuhError as exc:
+        return {'available': False, 'reason': _REMOTED_TLS_REASONS.get(exc.code, 'unexpected response')}
+    except WazuhException:
+        return {'available': False, 'reason': 'unexpected response'}
+    finally:
+        if client is not None:
+            client.close()
+
+    return {'available': True, **document}
+
+
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
+def get_remoted_tls() -> AffectedItemsWazuhResult:
+    """Report the TLS certificate material remoted serves on this node.
+
+    The certificate the HTTPS listener presents to agents and the CA bundle `GET /cacerts` hands
+    out, as remoted's admin `GET /tls` describes them: dates, identities, which CA signs the leaf,
+    sizes against their limits. No thresholds: the consumer decides what "soon" means. The CA half
+    is read on this request; the listener's certificate is the one loaded when remoted started
+    (`listener.loaded_at`), so a replaced file shows only after a restart.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Exactly one affected item, always carrying `node`: the document with `available: true`, or
+        `{'node', 'available': False, 'reason'}` when remoted could not describe itself (not
+        running, admin socket unreachable, listener not started, timeout, invalid response). Never a
+        failed item: the state is the node's answer, not an error of the request.
+    """
+    result = AffectedItemsWazuhResult(
+        all_msg=f"TLS certificate information was returned{' in specified node' if node_id != 'manager' else ''}",
+        none_msg=f"Could not read TLS certificate information{' in specified node' if node_id != 'manager' else ''}",
+    )
+
+    running = status().get('wazuh-manager-remoted') == 'running'
+    result.affected_items.append({'node': node_id, **_remoted_tls(running)})
+    result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def get_status() -> AffectedItemsWazuhResult:
     """Report the node status: whether it is ready to process events, per daemon.
@@ -167,6 +275,8 @@ def get_status() -> AffectedItemsWazuhResult:
             entry.update(_modulesd_status(running))
         elif daemon == 'wazuh-manager-remoted':
             entry.update(_remoted_status(running))
+        elif daemon == 'wazuh-manager-db':
+            entry.update(_wdb_status(running))
 
         node_ready = node_ready and bool(entry['ready'])
         node_status[daemon] = entry

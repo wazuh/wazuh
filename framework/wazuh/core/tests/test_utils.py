@@ -1499,6 +1499,56 @@ def test_WazuhDBQuery_substitute_params(mock_socket_conn, mock_conn_db, mock_glo
 @patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
+def test_WazuhDBQuery_substitute_params_values(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+    """Scalars, ints and lists render with the historical quoting."""
+    backend = utils.WazuhDBBackend(agent_id=0)
+    assert backend._substitute_params("a = :a AND b = :b", {'a': 'hello', 'b': 5}) == "a = 'hello' AND b = 5"
+    assert backend._substitute_params("id IN (:ids)", {'ids': ['001', '002', 'abc']}) == "id IN (001,002,'abc')"
+    assert backend._substitute_params("no placeholders", {}) == "no placeholders"
+    with pytest.raises(TypeError):
+        backend._substitute_params("x = :x", {'x': object()})
+
+
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_substitute_params_prefix_collision(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+    """A placeholder that is a prefix of another is not matched partially."""
+    backend = utils.WazuhDBBackend(agent_id=0)
+    result = backend._substitute_params("name LIKE :search OR id LIKE :search_id",
+                                        {'search': '%foo%', 'search_id': 'foo'})
+    assert result == "name LIKE '%foo%' OR id LIKE 'foo'"
+
+
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_substitute_params_single_pass(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+    """A value equal to another placeholder name is not substituted a second time."""
+    backend = utils.WazuhDBBackend(agent_id=0)
+    # A key with '$' (as the query builder produces) whose value looks like the ':b' placeholder.
+    result = backend._substitute_params("x = :a$0 AND y = :b", {'a$0': ':b', 'b': 'value_b'})
+    # ':a$0' resolves to the literal ':b'; the replacement text is not scanned again for :b.
+    assert result == "x = ':b' AND y = 'value_b'"
+
+
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_substitute_params_quote_escaping(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
+    """Single quotes in a value are escaped by doubling so a value cannot terminate its literal."""
+    backend = utils.WazuhDBBackend(agent_id=0)
+    assert backend._substitute_params("name = :n", {'n': "O'Brien"}) == "name = 'O''Brien'"
+    assert backend._substitute_params("name = :n", {'n': "a'b'c"}) == "name = 'a''b''c'"
+
+
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_format_data_into_dictionary(mock_socket_conn, mock_conn_db, mock_glob,
                                                             mock_exists):
     """Test utils.WazuhDBQuery._format_data_into_dictionary."""

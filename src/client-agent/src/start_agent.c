@@ -165,67 +165,29 @@ w_enroll_status_t try_enroll_to_server(void) {
     return W_ENROLL_OK;
 }
 
-/* Attempts, and the pause between them, for reading the record that is about to be replaced.
- * Sized for the `updating` window described in w_agentd_populate_metadata(): a struct copy in
- * another process, not a retry loop around anything that can stay busy. */
-#define METADATA_READ_ATTEMPTS 3
-#define METADATA_READ_RETRY_MS 10
-
 /* Populate shared memory with agent metadata so the first keepalive already
  * contains full agent info.
  *
  * Serialized: start_agent() publishes from the main thread, bridge_on_startup_result()
  * and bridge_on_control_response() from the module's dispatcher thread, and
- * bridge_reenroll_thread() from the re-enrollment worker, while
- * metadata_provider_update() has no writer lock of its own -- it only raises an
- * `updating` flag readers poll, so two overlapping writers would clear it while
- * one is still copying and a reader would get a torn record. */
+ * bridge_reenroll_thread() from the re-enrollment worker -- this local mutex serializes
+ * those call sites within agentd itself. metadata_provider_update() additionally serializes
+ * internally against every writer within its own process now too (#39543 review follow-up),
+ * so a concurrent write from agent-info (a different process) can no longer tear the record
+ * either.
+ *
+ * vd_feed_offset is not set below, deliberately: metadata_provider_update() never touches
+ * that field (see its own doc comment) -- it is exclusively owned and published by
+ * agent-info via metadata_provider_update_vd_feed_offset(), independent of this call
+ * entirely. An earlier version of this function read the existing value first specifically
+ * to avoid clobbering it before publishing; that is now handled structurally by the
+ * provider instead, so there is nothing left to carry over here. */
 void w_agentd_populate_metadata(void)
 {
     static pthread_mutex_t metadata_mutex = PTHREAD_MUTEX_INITIALIZER;
     agent_metadata_t metadata = {0};
 
     w_mutex_lock(&metadata_mutex);
-
-    /* Carry over vd_feed_offset, the one field agentd does not own. metadata_provider_update()
-     * replaces the whole record, and that offset is written only by agent-info, from what the
-     * manager reports over /control -- publishing a zero makes every VD synchronization abort
-     * with NO_VD_OFFSET_ERROR until agent-info's next cycle rewrites it, which in turn fails
-     * Syscollector::syncModule() and makes the wodle skip the recovery pass behind it. Every
-     * other field here is either local to the agent or set below from what the handshake
-     * reported.
-     *
-     * The read is retried because -1 is not one answer but two: nothing has ever been published
-     * (first boot, where a zero offset is the truth), or the reader hit the `updating` flag
-     * agent-info raises while it writes. agent-info is a different process, so the mutex above
-     * does not serialize against it, and that window is no wider than a struct copy -- but
-     * reading it as "no offset" would suppress VD synchronization until agent-info's next
-     * /control cycle, which is to say it would disable the identity resync this change exists
-     * for, in exactly the window right after a re-enrollment where it is needed. Retrying is the
-     * local fix; the structural one is a partial update in the provider, so agentd never has to
-     * round-trip a field it does not own. */
-    {
-        agent_metadata_t previous = {0};
-        int carried = 0;
-
-        for (int attempt = 0; attempt < METADATA_READ_ATTEMPTS; attempt++) {
-            if (metadata_provider_get(&previous) == 0) {
-                metadata.vd_feed_offset = previous.vd_feed_offset;
-                metadata_provider_free_metadata(&previous);
-                carried = 1;
-                break;
-            }
-
-            if (attempt + 1 < METADATA_READ_ATTEMPTS) {
-                w_time_delay(METADATA_READ_RETRY_MS);
-            }
-        }
-
-        if (!carried) {
-            /* Also the ordinary first-boot path, where there is genuinely nothing to carry. */
-            mdebug1("No published agent metadata to carry the VD feed offset from.");
-        }
-    }
 
 #ifdef WIN32
     os_info *os = get_win_version();

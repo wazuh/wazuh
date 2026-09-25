@@ -177,6 +177,18 @@ class VdHTTPClient:
             code = self._SCAN_REJECTION_CODES.get(reason, 8007)
             raise WazuhError(code, extra_message=reason)
 
+class RemotedAdminHTTPError(WazuhError):
+    """An error status answered by remoted's admin socket, with the HTTP status the route returned.
+
+    Raised as error 2029 like before; `status_code` lets a caller tell a contractual `503` (the HTTPS
+    listener is not up) apart from anything else without parsing the body.
+    """
+
+    def __init__(self, status_code: int, extra_message: str = None):
+        super().__init__(2029, extra_message=extra_message)
+        self.status_code = status_code
+
+
 class RemotedHTTPClient:
     """Synchronous HTTP client for remoted's local admin unix socket."""
 
@@ -226,6 +238,41 @@ class RemotedHTTPClient:
         except ValueError as exc:
             raise WazuhInternalError(2032, extra_message=f'Invalid JSON in remoted admin response: {exc}')
 
+    def get_tls(self) -> dict:
+        """Retrieve the TLS certificate material remoted serves, from its local admin socket.
+
+        Returns
+        -------
+        dict
+            The `GET /tls` document: `evaluated_at`/`evaluated_at_ts`, `listener` (the served
+            certificate: subject, issuer, sans, validity in RFC 3339 and epoch forms,
+            `seconds_until_expiry`, `fingerprint`, `serial`, `path`, `loaded_at`) and `ca_bundle`
+            (path, publication fields, `content_sha256`, counts and sizes against their limits,
+            `matches_active_leaf`, `chain_valid`, one entry per certificate with `signs_active_leaf`, and
+            `last_read_failure` while the bundle cannot be read). remoted answers 503 while its
+            HTTPS listener is not up, which surfaces here as a `RemotedAdminHTTPError` (error 2029)
+            carrying that status code.
+        """
+        try:
+            response = self._client.get(
+                url=f'{self.API_URL}/tls',
+                headers={'Content-Type': 'application/json'},
+            )
+        except httpx.TimeoutException as exc:
+            raise WazuhInternalError(2030, extra_message=str(exc))
+        except httpx.ConnectError as exc:
+            raise WazuhInternalError(2031, extra_message=str(exc))
+        except httpx.RequestError as exc:
+            raise WazuhError(2013, extra_message=str(exc))
+
+        if response.is_error:
+            raise RemotedAdminHTTPError(response.status_code, extra_message=response.text)
+
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise WazuhInternalError(2032, extra_message=f'Invalid JSON in remoted admin response: {exc}')
+
     def get_status(self) -> dict:
         """Retrieve remoted's readiness status from its local admin socket.
 
@@ -255,3 +302,57 @@ class RemotedHTTPClient:
             return response.json()
         except ValueError as exc:
             raise WazuhInternalError(2032, extra_message=f'Invalid JSON in remoted admin response: {exc}')
+
+
+class WazuhDBStatusHTTPClient:
+    """Synchronous HTTP client for wazuh-db's unix socket, for status reporting only.
+
+    Separate from `wazuh.core.wdb_http.WazuhDBHTTPClient`, which is the async data-plane client
+    for agent queries: node status is read from synchronous framework code, and mixing an event
+    loop into it for one call is not worth the coupling. Same split as the other clients here.
+    """
+
+    API_URL = 'http://localhost'
+
+    def __init__(self, timeout: float = 10):
+        self.socket_path = str(common.WDB_HTTP_SOCKET)
+        try:
+            transport = httpx.HTTPTransport(uds=self.socket_path)
+            self._client = httpx.Client(transport=transport, timeout=timeout)
+        except Exception as exc:
+            raise WazuhInternalError(2033, extra_message=str(exc)) from exc
+
+    def close(self) -> None:
+        """Close the wazuh-db HTTP client."""
+        self._client.close()
+
+    def get_status(self) -> dict:
+        """Retrieve wazuh-db's readiness from its own HTTP socket.
+
+        The daemon answers `503` when it is running but cannot serve -- that is an answer, not a
+        transport failure, so it is returned rather than raised: the caller needs to distinguish
+        "running but unable" from "not reachable at all", and only the body carries which tables
+        are missing.
+
+        Returns
+        -------
+        dict
+            The status document, with `status` (`ok`/`unavailable`) and a `global` object carrying
+            `available` and, when unavailable, `missing_tables`.
+        """
+        try:
+            response = self._client.get(
+                url=f'{self.API_URL}/v1/status',
+                headers={'Content-Type': 'application/json'},
+            )
+        except httpx.TimeoutException as exc:
+            raise WazuhInternalError(2035, extra_message=str(exc))
+        except httpx.ConnectError as exc:
+            raise WazuhInternalError(2036, extra_message=str(exc))
+        except httpx.RequestError as exc:
+            raise WazuhError(2013, extra_message=str(exc))
+
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise WazuhInternalError(2037, extra_message=f'Invalid JSON in wazuh-db status response: {exc}')

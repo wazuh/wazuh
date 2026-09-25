@@ -55,7 +55,9 @@ void legacy_task_retry_list_purge_expired(void);
 #define LEGACY_TASK_CA_MAX_ATTEMPTS 3
 
 /* A minimal but STRUCTURALLY VALID PEM: legacy_task_ca_read() requires both the BEGIN and the END
- * marker, so a fixture missing either is rejected before any wire step. */
+ * marker on whatever the module's export hands it, so a fixture missing either is rejected before
+ * any wire step. ONE certificate, which is the whole contract of that export (issue #39319): the
+ * agent-side installer refuses a drop-in carrying more than one. */
 #define TEST_CA_PEM "-----BEGIN CERTIFICATE-----\nZmFrZQ==\n-----END CERTIFICATE-----\n"
 
 /* Must match LEGACY_TASK_AGENT_NOT_READY_BACKOFF_SEC in legacy_task_delivery.c. */
@@ -159,15 +161,20 @@ static cJSON *build_payload_versioned(const char *wpk_file, const char *sha1, co
     return payload;
 }
 
-/* Queues the manager-side read of the CA file: one wfopen, one fread (legacy_task_ca_read() issues
- * a single bounded read, not a loop) and one fclose. */
-static void expect_ca_file_read(FILE *fake_ca, const char *path, const char *pem) {
-    expect_string(__wrap_wfopen, path, path);
-    expect_string(__wrap_wfopen, mode, "rb");
-    will_return(__wrap_wfopen, fake_ca);
+/* Queues the manager-side answer for the CA to deliver. Since issue #39319 legacy_task_ca_read()
+ * does not open the file at all: it asks the C++ module, which resolves
+ * remote.https.ca_certificate itself and hands back the ONE certificate of that bundle which signs
+ * the served leaf, re-serialised. So what a test stages here is that answer -- the PEM and its
+ * length -- not a file. The FILE* parameter this took for that read is gone along with it; call
+ * sites no longer need a tmpfile() of their own for it.
+ *
+ * @param path Unused: the path is the module's business now, and is only in the log lines this
+ *             manager writes. test_ca_reads_the_configured_path is where that is asserted. */
+static void expect_ca_export(const char *path, const char *pem) {
+    (void) path;
 
-    expect_fread((char *) pem, strlen(pem));
-    expect_fclose(fake_ca, 0);
+    will_return(__wrap_remoted_module_tls_leaf_signer_pem, pem);
+    will_return(__wrap_remoted_module_tls_leaf_signer_pem, (int) strlen(pem));
 }
 
 /* The digest the agent must echo back for TEST_CA_PEM. Computed rather than hard-coded so the
@@ -178,10 +185,10 @@ static const char *test_ca_sha1(void) {
     return digest;
 }
 
-/* Queues a complete, successful CA cycle: file read, CA-signs-leaf check, then the four wire steps
- * against LEGACY_TASK_CA_FILE_NAME. */
-static void expect_ca_delivery_success(FILE *fake_ca) {
-    expect_ca_file_read(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
+/* Queues a complete, successful CA cycle: the export's answer, the CA-signs-leaf check, then the
+ * four wire steps against LEGACY_TASK_CA_FILE_NAME. */
+static void expect_ca_delivery_success(void) {
+    expect_ca_export(LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
 
     will_return(__wrap_remoted_module_tls_ca_matches_leaf, 1);
 
@@ -205,9 +212,6 @@ static void expect_ca_delivery_success(FILE *fake_ca) {
  * ordered -- so this helper is itself the ordering assertion: moving the CA cycle to either side of
  * that boundary would leave a queued response unmatched and fail every test that uses it. */
 static void expect_full_successful_push(FILE *fake_file, const char *sha1) {
-    FILE *fake_ca = tmpfile();
-    assert_non_null(fake_ca);
-
     expect_any(__wrap__minfo, formatted_msg); // "delivering remote_upgrade task..."
     expect_any(__wrap__minfo, formatted_msg); // "successfully delivered..."
 
@@ -233,7 +237,7 @@ static void expect_full_successful_push(FILE *fake_file, const char *sha1) {
     snprintf(sha1_response, sizeof(sha1_response), "{\"error\":0,\"message\":\"%s\"}", sha1);
     expect_req_step(sha1_response, 0);                           // sha1
 
-    expect_ca_delivery_success(fake_ca);                         // step 5b
+    expect_ca_delivery_success();                                // step 5b
 
     expect_req_step("{\"error\":0,\"message\":\"0\"}", 0);       // upgrade
 }
@@ -378,9 +382,7 @@ static void test_deliver_write_step_chunks_large_file(void **state) {
     expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);           // close
     expect_req_step("{\"error\":0,\"message\":\"abc123\"}", 0);      // sha1
 
-    FILE *fake_ca = tmpfile();
-    assert_non_null(fake_ca);
-    expect_ca_delivery_success(fake_ca);                              // step 5b
+    expect_ca_delivery_success();                                     // step 5b
 
     expect_req_step("{\"error\":0,\"message\":\"0\"}", 0);           // upgrade
 
@@ -608,9 +610,7 @@ static void test_deliver_fails_on_upgrade_exit_nonzero(void **state) {
     expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);            // close
     expect_req_step("{\"error\":0,\"message\":\"abc123\"}", 0);       // sha1, matches
 
-    FILE *fake_ca = tmpfile();
-    assert_non_null(fake_ca);
-    expect_ca_delivery_success(fake_ca);                               // step 5b
+    expect_ca_delivery_success();                                      // step 5b
 
     expect_req_step("{\"error\":0,\"message\":\"1\"}", 0);            // upgrade: non-zero exit status
 
@@ -694,9 +694,7 @@ static void test_deliver_fails_on_upgrade_step_no_ack_is_permanent_not_retryable
     expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);           // close
     expect_req_step("{\"error\":0,\"message\":\"abc123\"}", 0);      // sha1, matches
 
-    FILE *fake_ca = tmpfile();
-    assert_non_null(fake_ca);
-    expect_ca_delivery_success(fake_ca);                              // step 5b
+    expect_ca_delivery_success();                                     // step 5b
 
     expect_req_step(NULL, -1);                  // upgrade: no ack at all
     expect_any(__wrap__mwarn, formatted_msg);    // "no response for step targeting 'upgrade'"
@@ -788,12 +786,10 @@ static void test_ca_sent_when_target_version_absent(void **state) {
     (void) state;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
-    expect_ca_delivery_success(fake_ca);
+    expect_ca_delivery_success();
     expect_upgrade_step_and_success();
 
     cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh"); // no wpk_version key
@@ -807,12 +803,10 @@ static void test_ca_sent_when_target_version_unparseable(void **state) {
     (void) state;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
-    expect_ca_delivery_success(fake_ca);
+    expect_ca_delivery_success();
     expect_upgrade_step_and_success();
 
     cJSON *payload = build_payload_versioned("wazuh_agent.wpk", "abc123", "upgrade.sh", "nightly-build");
@@ -821,7 +815,10 @@ static void test_ca_sent_when_target_version_unparseable(void **state) {
     cJSON_Delete(payload);
 }
 
-/* An operator-set remote.https.ca_certificate is honoured over the built-in default. */
+/* An operator-set remote.https.ca_certificate is honoured over the built-in default. Since the read
+ * moved into the C++ module (issue #39319) the path is no longer observable through an open(); what
+ * this manager still owns is naming it, so the assertion moved to the log line -- an exact match,
+ * not expect_any, or this case would no longer pin anything its name claims. */
 static void test_ca_reads_the_configured_path(void **state) {
     (void) state;
     /* A writable buffer, not a string literal: logr.https.ca_certificate is a plain char* that the
@@ -830,15 +827,22 @@ static void test_ca_reads_the_configured_path(void **state) {
     logr.https.ca_certificate = configured_ca;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
 
-    expect_ca_file_read(fake_ca, "etc/certs/corporate-ca.pem", TEST_CA_PEM);
+    expect_ca_export("etc/certs/corporate-ca.pem", TEST_CA_PEM);
     will_return(__wrap_remoted_module_tls_ca_matches_leaf, 1);
-    expect_any(__wrap__mdebug1, formatted_msg);
+
+    /* Built from the same fixture the delivery uses, so the expectation and the code cannot drift:
+     * the configured path, the byte count actually pushed and the digest of those bytes. */
+    static char sending_msg[512];
+    snprintf(sending_msg, sizeof(sending_msg),
+             "legacy_task_delivery: agent '044': sending the manager CA '%s' (%u bytes, sha1 '%s') as '%s' "
+             "for task '%s'", configured_ca, (unsigned int) strlen(TEST_CA_PEM), test_ca_sha1(),
+             LEGACY_TASK_CA_FILE_NAME, "t-044");
+    expect_string(__wrap__mdebug1, formatted_msg, sending_msg);
+
     expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // CA open
     expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // CA write
     expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // CA close
@@ -855,7 +859,14 @@ static void test_ca_reads_the_configured_path(void **state) {
     cJSON_Delete(payload);
 }
 
-/* A CA file that cannot be opened: logged as an error, no wire step attempted, upgrade proceeds. */
+/* No CA to deliver: logged as an error, no wire step attempted, upgrade proceeds.
+ *
+ * The MECHANISM changed with issue #39319 -- the export answers 0 instead of wfopen() answering
+ * NULL -- and with it what "nothing to deliver" covers: a missing or unreadable bundle, one that
+ * carries no certificate, AND a bundle none of whose CAs signs the certificate this manager serves.
+ * That last one is why the generic merror names it too: this return is what the CA-18 case reaches,
+ * before the explicit remoted_module_tls_ca_matches_leaf() guard is ever consulted. The outcome
+ * being pinned here is unchanged: one error, no wire step, the upgrade goes ahead. */
 static void test_ca_file_missing_continues_the_upgrade(void **state) {
     (void) state;
 
@@ -864,9 +875,8 @@ static void test_ca_file_missing_continues_the_upgrade(void **state) {
 
     expect_wpk_transfer_up_to_sha1(fake_file);
 
-    expect_string(__wrap_wfopen, path, LEGACY_TASK_CA_DEFAULT_PATH);
-    expect_string(__wrap_wfopen, mode, "rb");
-    will_return(__wrap_wfopen, NULL);
+    will_return(__wrap_remoted_module_tls_leaf_signer_pem, NULL); // nothing copied
+    will_return(__wrap_remoted_module_tls_leaf_signer_pem, 0);    // nothing to deliver
 
     expect_any(__wrap__merror, formatted_msg); // "is missing, unreadable, larger than ..."
     expect_upgrade_step_and_success();
@@ -877,19 +887,46 @@ static void test_ca_file_missing_continues_the_upgrade(void **state) {
     cJSON_Delete(payload);
 }
 
-/* A readable file that is not a certificate -- a private key, an empty file, a stray path. The
- * CA-signs-leaf accessor is never reached, so no mock is queued for it. */
+/* The certificate does not fit the caller's buffer: the export reports -1 rather than truncating,
+ * and -1 must refuse exactly as 0 does. A truncated anchor is the one thing worse than no anchor --
+ * it would be pinned by an installer that cannot tell it is incomplete -- so this pins that the
+ * distinction between "too big" and "none" never becomes the difference between refusing and
+ * shipping. No wire step is queued, so any delivery attempt fails this case. */
+static void test_ca_export_capacity_too_small_continues_the_upgrade(void **state) {
+    (void) state;
+
+    FILE *fake_file = tmpfile();
+    assert_non_null(fake_file);
+
+    expect_wpk_transfer_up_to_sha1(fake_file);
+
+    will_return(__wrap_remoted_module_tls_leaf_signer_pem, NULL); // nothing copied into the buffer
+    will_return(__wrap_remoted_module_tls_leaf_signer_pem, -1);   // over LEGACY_TASK_CA_MAX_BYTES
+
+    expect_any(__wrap__merror, formatted_msg); // "is missing, unreadable, larger than ..."
+    expect_upgrade_step_and_success();
+
+    cJSON *payload = build_payload_versioned("wazuh_agent.wpk", "abc123", "upgrade.sh", "v5.0.0");
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("052", "t-052", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
+    // The CA's own refusal must never re-classify the task: the WPK is going ahead on the next step.
+    assert_false(no_response);
+    cJSON_Delete(payload);
+}
+
+/* An answer that is not a certificate -- a private key, a stray blob. The real export cannot
+ * produce one (it serialises a parsed X.509 object), which is exactly why this stays: the marker
+ * checks in legacy_task_ca_read() are defence in depth against any future producer that could, and
+ * a mock is the only way to prove they still bite. The CA-signs-leaf accessor is never reached, so
+ * no mock is queued for it. */
 static void test_ca_file_without_certificate_block_is_refused(void **state) {
     (void) state;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
-    expect_ca_file_read(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH,
-                        "-----BEGIN PRIVATE KEY-----\nZmFrZQ==\n-----END PRIVATE KEY-----\n");
+    expect_ca_export(LEGACY_TASK_CA_DEFAULT_PATH, "-----BEGIN PRIVATE KEY-----\nZmFrZQ==\n-----END PRIVATE KEY-----\n");
 
     expect_any(__wrap__merror, formatted_msg);
     expect_upgrade_step_and_success();
@@ -900,19 +937,19 @@ static void test_ca_file_without_certificate_block_is_refused(void **state) {
     cJSON_Delete(payload);
 }
 
-/* A PEM with a BEGIN line but no END line -- what a short read leaves behind. Refused here rather
+/* A PEM with a BEGIN line but no END line -- what a truncation leaves behind. Refused here rather
  * than shipped, because nothing re-validates these bytes between the agent's disk and the installer
- * that pins them. GET /cacerts checks only the BEGIN marker; this path deliberately checks both. */
+ * that pins them: an anchor with no END line is worse than no anchor at all. (GET /cacerts does not
+ * look at markers at all -- it parses with PEM_read_bio_X509 since issue #39318 -- so this check is
+ * this path's own, not a stricter version of that route's.) */
 static void test_ca_file_truncated_pem_is_refused(void **state) {
     (void) state;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
-    expect_ca_file_read(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, "-----BEGIN CERTIFICATE-----\nZmFrZQ==\n");
+    expect_ca_export(LEGACY_TASK_CA_DEFAULT_PATH, "-----BEGIN CERTIFICATE-----\nZmFrZQ==\n");
 
     expect_any(__wrap__merror, formatted_msg);
     expect_upgrade_step_and_success();
@@ -929,12 +966,10 @@ static void test_ca_not_sent_when_it_does_not_sign_the_leaf(void **state) {
     (void) state;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
-    expect_ca_file_read(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
+    expect_ca_export(LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
 
     will_return(__wrap_remoted_module_tls_ca_matches_leaf, 0); // explicit mismatch
 
@@ -953,12 +988,10 @@ static void test_ca_sent_when_signing_status_is_unknown(void **state) {
     (void) state;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
-    expect_ca_file_read(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
+    expect_ca_export(LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
 
     will_return(__wrap_remoted_module_tls_ca_matches_leaf, -1); // unknown
 
@@ -986,12 +1019,10 @@ static void test_ca_sha1_mismatch_retries_then_truncates(void **state) {
     (void) state;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
-    expect_ca_file_read(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
+    expect_ca_export(LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
     will_return(__wrap_remoted_module_tls_ca_matches_leaf, 1);
     expect_any(__wrap__mdebug1, formatted_msg); // "sending the manager CA ..."
 
@@ -1031,12 +1062,10 @@ static void test_ca_no_response_breaks_early_and_skips_truncate(void **state) {
     (void) state;
 
     FILE *fake_file = tmpfile();
-    FILE *fake_ca = tmpfile();
     assert_non_null(fake_file);
-    assert_non_null(fake_ca);
 
     expect_wpk_transfer_up_to_sha1(fake_file);
-    expect_ca_file_read(fake_ca, LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
+    expect_ca_export(LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
     will_return(__wrap_remoted_module_tls_ca_matches_leaf, 1);
     expect_any(__wrap__mdebug1, formatted_msg); // "sending the manager CA ..."
 
@@ -2058,6 +2087,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_ca_sent_when_target_version_unparseable, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_ca_reads_the_configured_path, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_ca_file_missing_continues_the_upgrade, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_ca_export_capacity_too_small_continues_the_upgrade, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_ca_file_without_certificate_block_is_refused, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_ca_file_truncated_pem_is_refused, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_ca_not_sent_when_it_does_not_sign_the_leaf, test_setup, test_teardown),

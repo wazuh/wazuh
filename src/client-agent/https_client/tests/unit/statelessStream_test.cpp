@@ -681,6 +681,53 @@ TEST_F(StatelessStreamTest, AFailedFlushFallsBackToTheBatchInterval)
     EXPECT_EQ(std::chrono::milliseconds {m_config.batchIntervalMs}, m_stream.tick(m_waiter, false));
 }
 
+TEST_F(StatelessStreamTest, UnescalatedAuthFailBacksOffInsteadOfTheFixedInterval)
+{
+    // invalid_signature (or any class but unknown_agent): RetrySender returns this outcome
+    // unescalated on every call (#39064), so nothing else may slow the retry cadence except the
+    // Backoff this stream already owns -- not the fixed batch interval (#39601).
+    ScriptedRandom random {{1.0}}; // Jitter always hits the window ceiling.
+    StatelessStream stream {m_config, m_performer, m_signer, m_clock, random, m_sink, m_authGate, m_compressionGate};
+    stream.submit(reinterpret_cast<const uint8_t*>("event-aaaa"), 10); // Submits to `stream`, not m_stream.
+
+    EXPECT_CALL(m_performer, perform(_)).WillRepeatedly(Return(response(TransportStatus::Ok, 401)));
+
+    const auto first = stream.tick(m_waiter, true);
+    // First window: the base, not the (unrelated) fixed batch interval.
+    EXPECT_EQ(std::chrono::milliseconds {m_config.backoffBaseMs}, first);
+    EXPECT_NE(std::chrono::milliseconds {m_config.batchIntervalMs}, first);
+
+    const auto second = stream.tick(m_waiter, true);
+    EXPECT_GT(second, first); // Growing: the exponential ramp, not a fixed interval repeated.
+}
+
+TEST_F(StatelessStreamTest, SuccessAfterUnescalatedAuthFailuresResetsTheBackoff)
+{
+    // The Backoff is shared with this stream's RetrySender, which resets it on
+    // OutcomeClass::Ok -- so a recovered credential returns the cadence to the base window.
+    ScriptedRandom random {{1.0}};
+    StatelessStream stream {m_config, m_performer, m_signer, m_clock, random, m_sink, m_authGate, m_compressionGate};
+    stream.submit(reinterpret_cast<const uint8_t*>("event-aaaa"), 10);
+
+    EXPECT_CALL(m_performer, perform(_))
+    // Each AuthFail tick is 2 calls: RetrySender's one-shot clock-skew grace retry (#39064)
+    // fires unconditionally before the 401 survives unescalated.
+    .WillOnce(Return(response(TransportStatus::Ok, 401)))
+    .WillOnce(Return(response(TransportStatus::Ok, 401)))
+    .WillOnce(Return(response(TransportStatus::Ok, 401)))
+    .WillOnce(Return(response(TransportStatus::Ok, 401)))
+    .WillOnce(Return(response(TransportStatus::Ok, 200))); // Succeeds outright: 1 call.
+
+    stream.tick(m_waiter, true); // Grows the shared backoff.
+    stream.tick(m_waiter, true); // Grows it further.
+    stream.submit(reinterpret_cast<const uint8_t*>("event-bbbb"), 10);
+    stream.tick(m_waiter, true); // Succeeds: resets the shared backoff.
+
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(response(TransportStatus::Ok, 401)));
+    stream.submit(reinterpret_cast<const uint8_t*>("event-cccc"), 10);
+    EXPECT_EQ(std::chrono::milliseconds {m_config.backoffBaseMs}, stream.tick(m_waiter, true));
+}
+
 TEST_F(StatelessStreamTest, DrainUsesASingleAttemptWithinTheDrainWindow)
 {
     // The drain runs on the stop path with a waiter that is never stopped, so

@@ -2,7 +2,7 @@
 """
 The `wazuh-agent+jwt` bearer token every remoted HTTPS request carries, in pure stdlib -- the shared
 signer behind send_stateless.py, send_control.py, send_agent_json.py, send_scan_vd.py,
-send_download.py and load_balancer/send_signed_request.py -- plus the sibling `wazuh-enroll+jwt`
+send_download.py and the load_balancer/ lab probes -- plus the sibling `wazuh-enroll+jwt`
 bearer of send_enroll.py (HKDF-SHA256 of the enrollment password, no identity claims).
 
   protocol-version: 1

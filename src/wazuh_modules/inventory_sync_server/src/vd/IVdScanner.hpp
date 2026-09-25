@@ -67,8 +67,10 @@ namespace invsync::vd
     public:
         virtual ~IVdScanner() = default;
 
-        /// @brief Whether the CVE feed is ready for scans. Cheap (an atomic load in production):
-        /// the strand calls it at admission and the lane worker re-checks it at dispatch.
+        /// @brief Whether this node is ready to scan: false while the CVE feed is still
+        /// downloading OR while a scanner that will run here is still starting up. Cheap (an
+        /// atomic load in production): the strand calls it at admission and the lane worker
+        /// re-checks it at dispatch.
         virtual bool feedReady() const = 0;
 
         /// @brief Whether this node runs a vulnerability scanner at all: false when vulnerability

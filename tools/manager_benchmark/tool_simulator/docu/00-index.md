@@ -48,7 +48,7 @@ originates.
 | **Re-scan request** | A `POST /scan/vd` (`kind: "scan_vd"`): asks the manager to re-scan the inventory it ALREADY holds for that agent, against a newer CVE feed — not the scan a VDFirst/VDSync session triggers over the inventory it carries |
 | **EPS** | Requests per second the sender aims for, enforced by a leaky bucket |
 | **Drain** | The bounded shutdown window: stop starting work, let in-flight responses land, then report |
-| **Artifacts** | The files a run produces: `bench.csv`, `sender_summary.json`, `server_metrics.csv`, … |
+| **Artifacts** | The files a run produces: `bench.csv`, `sender_summary.json`, `samples/metrics.ndjson`, … |
 
 ## What is NOT here
 

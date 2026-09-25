@@ -311,6 +311,286 @@ void test_get_unix_version_opensuse_tumbleweed(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
+void test_get_unix_version_sles_service_pack(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"SLES\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"15-SP6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"15.6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"sles\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "SLES");
+    assert_string_equal(ret->os_version, "15.6");
+    assert_string_equal(ret->os_major, "15");
+    assert_string_equal(ret->os_minor, "6");
+    assert_string_equal(ret->os_platform, "sles");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_sles_service_pack_sp7(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"SLES\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"15-SP7\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"15.7\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"sles\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "SLES");
+    assert_string_equal(ret->os_version, "15.7");
+    assert_string_equal(ret->os_major, "15");
+    assert_string_equal(ret->os_minor, "7");
+    assert_string_equal(ret->os_platform, "sles");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_sles_service_pack_12_sp5(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"SLES\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"12-SP5\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"12.5\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"sles\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "SLES");
+    assert_string_equal(ret->os_version, "12.5");
+    assert_string_equal(ret->os_major, "12");
+    assert_string_equal(ret->os_minor, "5");
+    assert_string_equal(ret->os_platform, "sles");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_sled_service_pack(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"SLED\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"15-SP6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"15.6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"sled\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "SLED");
+    assert_string_equal(ret->os_version, "15.6");
+    assert_string_equal(ret->os_major, "15");
+    assert_string_equal(ret->os_minor, "6");
+    assert_string_equal(ret->os_platform, "sled");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_sles_service_pack_lowercase(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"SLES\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"15-sp6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"sles\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "SLES");
+    assert_string_equal(ret->os_version, "15.6");
+    assert_string_equal(ret->os_major, "15");
+    assert_string_equal(ret->os_minor, "6");
+    assert_string_equal(ret->os_platform, "sles");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_sles_service_pack_extra_suffix(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"SLES\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"15-SP6-extra\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"sles\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "SLES");
+    assert_string_equal(ret->os_version, "15-SP6-extra");
+    assert_string_equal(ret->os_platform, "sles");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_sles_no_service_pack(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"SLES\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"15\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"sles\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "SLES");
+    assert_string_equal(ret->os_version, "15");
+    assert_string_equal(ret->os_major, "15");
+    assert_null(ret->os_minor);
+    assert_string_equal(ret->os_platform, "sles");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+void test_get_unix_version_opensuse_leap_unaffected(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Open /etc/os-release
+    expect_string(__wrap_wfopen, path, "/etc/os-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "NAME=\"openSUSE Leap\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION=\"15.6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "VERSION_ID=\"15.6\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "ID=\"opensuse-leap\"");
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, NULL);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "openSUSE Leap");
+    assert_string_equal(ret->os_version, "15.6");
+    assert_string_equal(ret->os_major, "15");
+    assert_string_equal(ret->os_minor, "6");
+    assert_string_equal(ret->os_platform, "opensuse-leap");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
 void test_get_unix_version_alpine(void **state)
 {
     (void) state;
@@ -1957,6 +2237,14 @@ int main(void) {
             cmocka_unit_test_teardown(test_get_unix_version_archlinux, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_opensuse_tumbleweed_no_version_id, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_opensuse_tumbleweed, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_sp7, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_12_sp5, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_sled_service_pack, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_lowercase, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_extra_suffix, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_sles_no_service_pack, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_opensuse_leap_unaffected, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_alpine, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_centos, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_fedora, delete_os_info),

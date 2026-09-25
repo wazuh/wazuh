@@ -271,7 +271,7 @@ SELECT pid, name, path, cmdline, state, ppid, start_time, uid, gid FROM processe
 |---|---|---|
 | `pid` | `process.pid` | |
 | `name` | `process.name` | |
-| `cmdline` | `process.command_line` | First token of the command line |
+| `cmdline` | `process.command_line` | Linux: first token of the command line (`argv[0]`). Windows and macOS: full command line, including arguments |
 | `cmdline` (remaining tokens) | `process.args` | Arguments after the command, space-separated |
 | — | `process.args_count` | Count of arguments; no OSquery equivalent |
 | `state` | `process.state` | Single character: `S` (sleeping), `R` (running), `Z` (zombie), etc. |
@@ -279,7 +279,7 @@ SELECT pid, name, path, cmdline, state, ppid, start_time, uid, gid FROM processe
 | `start_time` | `process.start` | OSquery: integer epoch; Wazuh 5.0: ISO 8601 timestamp |
 | — | `process.utime` | CPU time in user mode (clock ticks); no direct OSquery equivalent |
 | — | `process.stime` | CPU time in kernel mode (clock ticks); no direct OSquery equivalent |
-| `path` | — | Binary path not collected separately; use `process.command_line` |
+| `path` | — | Binary path not collected separately. On Linux, use `process.command_line`. On macOS, `process.command_line` is the binary path followed by `process.args`. On Windows, `process.command_line` is the raw command line (the command may be quoted and arguments keep their original quoting), so the path cannot be reliably derived from it |
 | `uid` | — | Not collected in Wazuh 5.0 |
 | `gid` | — | Not collected in Wazuh 5.0 |
 

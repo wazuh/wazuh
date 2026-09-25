@@ -130,6 +130,7 @@ namespace manager_config::detail
             for (const char* pointer : {"/remote/https/certificate",
                                         "/remote/https/key",
                                         "/remote/https/ca",
+                                        "/remote/https/ca_certificate",
                                         "/auth/ssl_agent_ca",
                                         "/auth/ssl_manager_cert",
                                         "/auth/ssl_manager_key"})

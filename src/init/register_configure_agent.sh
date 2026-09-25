@@ -31,6 +31,17 @@ WET_ERR_NO_DECODER="ERR_NO_DECODER"
 
 # The sixteen names the token replaced. Still read, so an install carrying a 4.x-era command or
 # an untouched playbook is told what happened.
+#
+# Three implementation lists have to move together, and neither of the other two can be derived
+# from this one: this array, removed_names[] in src/win32/InstallerScripts.vbs, and the property
+# declarations plus the CustomActionData field order in src/win32/wazuh-installer.wxs. Nine names
+# are common to both platforms; the rest differ, because Windows carries the unprefixed MSI
+# spellings (ADDRESS, PASSWORD, PEM, ...) where this carries WAZUH_-prefixed shell aliases, and a
+# few have no counterpart at all. Both test suites mirror the lists by hand as well --
+# src/init/tests/test_register_configure_agent.sh and the names[]/removed[] arrays in
+# src/win32/tests/test_installer_scripts.vbs, the first of which is positional against the
+# CustomActionData order. The published list in docs/ref/getting-started/installation.md is the
+# operator-facing one.
 REMOVED_VARS=(WAZUH_MANAGER WAZUH_MANAGER_IP WAZUH_MANAGER_PORT WAZUH_MANAGER_ENDPOINT \
               WAZUH_REGISTRATION_PASSWORD WAZUH_PASSWORD \
               WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
@@ -489,6 +500,10 @@ decode_enrollment_token() {
 # which is what a hand-configured install needs.
 #
 # Kept in lockstep with config() in src/win32/InstallerScripts.vbs; a change here belongs there.
+# WriteAgent() in src/init/inst-functions.sh also writes this file, but not under this rule: it
+# generates a fresh ossec.conf for a source install from install.sh's own prompts, with no
+# deployment variables in play, so it does not participate in the refusals below. So does
+# wazuh-agent-auth, which rewrites <manager><endpoint> from the token it is handed.
 resolve_deployment_conflicts() {
 
     TOKEN_PRESENT="no"
@@ -780,8 +795,8 @@ main () {
     fi
 
     # Honoured in both supported shapes: alongside a token, where it overrides the mode the
-    # bootstrapped anchor would have resolved to on its own, and alongside an endpoint, where
-    # it is the only TLS input there is.
+    # bootstrapped anchor would have resolved to on its own, and on a token-less install, where
+    # it is the only TLS input a variable can still supply.
     set_agent_verification_mode "${WAZUH_SSL_VERIFICATION}"
 
     # What is left of <enrollment>: the three settings that were never about registration.

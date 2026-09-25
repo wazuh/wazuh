@@ -57,7 +57,7 @@ Every subcommand requires a **config JSON** passed with `-c`. Fields:
   "password": "admin",
   "ssl": {
     "certificate_authorities": [
-      "/workspaces/devContainer/wazuh/src/engine/tools/devContainer/e2e/certs/root-ca.pem"
+      "/workspaces/devContainer/wazuh/tools/devContainer/e2e/certs/root-ca.pem"
     ]
   }
 }
@@ -243,13 +243,13 @@ Aliases queried:
 
 ## Using engine's dev environment setup (e2e)
 
-The dev e2e stack is in `src/engine/tools/devContainer/e2e/`.
+The dev e2e stack is in `tools/devContainer/e2e/`.
 
 ### Start the indexer
 
 ```bash
 docker compose \
-  -f src/engine/tools/devContainer/e2e/docker-compose.yml \
+  -f tools/devContainer/e2e/docker-compose.yml \
   -p dev-env-engine up -d
 ```
 
@@ -265,7 +265,7 @@ Update `hosts` in `input/config.json` with this IP.
 ### Credentials
 
 The `admin` password after a fresh `indexer-security-init.sh` run is `admin`.
-Check `src/engine/tools/devContainer/e2e/certs/wazuh-passwords.txt` if it differs.
+Check `tools/devContainer/e2e/certs/wazuh-passwords.txt` if it differs.
 
 ### TLS certificate note
 
@@ -274,7 +274,7 @@ in its SAN (`IP:127.0.0.1, IP:127.0.0.1`). If the container IP changes, regenera
 the cert:
 
 ```bash
-CERTS=src/engine/tools/devContainer/e2e/certs
+CERTS=tools/devContainer/e2e/certs
 
 # Generate new CSR (reuse existing key)
 openssl req -new -key $CERTS/node-1-key.pem \

@@ -145,9 +145,10 @@ namespace remoted::endpoints::reenrollsecret
                 return errorForAuthdCode(result.errorCode);
             }
 
-            // errorCode -1 covers an unreachable authd, a timeout, a malformed reply AND a full
-            // AuthdClient queue -- all of them "the bridge got no clean answer", all of them
-            // retryable, none of them the agent's fault.
+            // A negative errorCode (kAuthdRequestNotSentErrorCode or kAuthdOutcomeUnknownErrorCode)
+            // covers an unreachable authd, a timeout, a malformed reply AND a full AuthdClient
+            // queue -- all of them "the bridge got no clean answer", all of them retryable, none of
+            // them the agent's fault.
             remoted::enrollment::incSecretAuthdUnavailable(metrics);
             if (const auto throttle = authdUnavailableThrottle().record())
             {

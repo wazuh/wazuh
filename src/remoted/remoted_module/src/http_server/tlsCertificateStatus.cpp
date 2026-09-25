@@ -11,10 +11,7 @@
 
 #include "tlsCertificateStatus.hpp"
 
-#include <openssl/bio.h>
 #include <openssl/err.h>
-#include <openssl/evp.h>
-#include <openssl/pem.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
@@ -29,8 +26,6 @@ namespace remoted::http
 {
     namespace
     {
-        using BioPtr = std::unique_ptr<BIO, decltype(&BIO_free)>;
-
         bool equalsIgnoreCase(const std::string& a, const std::string& b)
         {
             return a.size() == b.size() &&
@@ -85,73 +80,6 @@ namespace remoted::http
         return oneline != nullptr ? std::string {oneline} : std::string {};
     }
 
-    void X509Deleter::operator()(X509* certificate) const noexcept
-    {
-        X509_free(certificate);
-    }
-
-    PemCertificates parseCertificates(std::string_view pem)
-    {
-        PemCertificates result;
-        if (pem.empty())
-        {
-            return result;
-        }
-
-        BioPtr bio {BIO_new_mem_buf(pem.data(), static_cast<int>(pem.size())), &BIO_free};
-        if (!bio)
-        {
-            ERR_clear_error();
-            result.wellFormed = false;
-            return result;
-        }
-
-        // PEM_read_bio_X509 skips blocks that are not a CERTIFICATE, so a combined key+cert file
-        // or a bundle yields exactly its certificates. It fails at end of input with a "no start
-        // line" error; any other reason means a block it could not decode.
-        for (X509Ptr certificate {PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr)}; certificate;
-             certificate.reset(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr)))
-        {
-            result.certificates.push_back(std::move(certificate));
-        }
-
-        // The only clean way out of the loop. Anything else (bad base64, a truncated block, a
-        // header the decoder chokes on) means we do not understand the whole input, and a document
-        // we do not fully understand is not one to publish from.
-        result.wellFormed = ERR_GET_REASON(ERR_peek_last_error()) == PEM_R_NO_START_LINE;
-        ERR_clear_error();
-
-        if (!result.wellFormed)
-        {
-            result.certificates.clear();
-        }
-
-        return result;
-    }
-
-    std::string serializeCertificates(const std::vector<X509Ptr>& certificates)
-    {
-        BioPtr bio {BIO_new(BIO_s_mem()), &BIO_free};
-        if (!bio)
-        {
-            ERR_clear_error();
-            return {};
-        }
-
-        for (const auto& certificate : certificates)
-        {
-            if (PEM_write_bio_X509(bio.get(), certificate.get()) != 1)
-            {
-                ERR_clear_error();
-                return {};
-            }
-        }
-
-        char* data = nullptr;
-        const long length = BIO_get_mem_data(bio.get(), &data);
-        return (data != nullptr && length > 0) ? std::string {data, static_cast<std::size_t>(length)} : std::string {};
-    }
-
     std::optional<int> daysUntilExpiry(const X509* certificate)
     {
         if (certificate == nullptr)
@@ -182,27 +110,21 @@ namespace remoted::http
         return days;
     }
 
-    bool anyCaSignsLeaf(const X509* leaf, const std::vector<X509Ptr>& cas)
+    bool caSignsLeaf(const X509* leaf, const X509* ca)
     {
-        if (leaf == nullptr)
+        if (leaf == nullptr || ca == nullptr)
         {
             return false;
         }
-        for (const auto& ca : cas)
-        {
-            EVP_PKEY* key = X509_get0_pubkey(ca.get());
-            // X509_verify takes a non-const X509* (it may cache the encoding) but does not modify
-            // the certificate in any observable way.
-            if (key != nullptr && X509_verify(const_cast<X509*>(leaf), key) == 1)
-            {
-                return true;
-            }
-        }
+        EVP_PKEY* key = X509_get0_pubkey(ca);
+        // X509_verify takes a non-const X509* (it may cache the encoding) but does not modify
+        // the certificate in any observable way.
+        const bool signs = key != nullptr && X509_verify(const_cast<X509*>(leaf), key) == 1;
         ERR_clear_error(); // a failed X509_verify queues a signature error
-        return false;
+        return signs;
     }
 
-    ChainVerdict chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas)
+    ChainVerdict chainValidates(const X509* leaf, const std::vector<X509Ptr>& cas, std::optional<std::time_t> at)
     {
         if (leaf == nullptr || cas.empty())
         {
@@ -244,6 +166,13 @@ namespace remoted::http
         {
             ERR_clear_error();
             return {false, "internal error"};
+        }
+
+        if (at.has_value())
+        {
+            // A caller with a clock of its own (the tests; a source re-judging a cached bundle) pins the
+            // instant the validity dates are checked against.
+            X509_STORE_CTX_set_time(ctx.get(), 0, *at);
         }
 
         ChainVerdict verdict;
@@ -363,34 +292,63 @@ namespace remoted::http
         m_snapshot = std::move(snapshot);
     }
 
-    void TlsCertificateMonitor::start(std::chrono::seconds interval, EvaluateFn evaluate)
+    void TlsCertificateMonitor::start(std::chrono::seconds interval,
+                                      EvaluateFn evaluate,
+                                      std::chrono::seconds recheckInterval,
+                                      RecheckFn recheck)
     {
         if (m_thread.joinable() || interval <= std::chrono::seconds {0} || !evaluate)
         {
             return;
         }
+        if (!recheck || recheckInterval <= std::chrono::seconds {0} || recheckInterval >= interval)
+        {
+            recheck = {};
+        }
         m_stopping.store(false, std::memory_order_relaxed);
         m_thread = std::thread(
-            [this, interval, evaluate = std::move(evaluate)]
+            [this, interval, evaluate = std::move(evaluate), recheckInterval, recheck = std::move(recheck)]
             {
+                using Clock = std::chrono::steady_clock;
+                auto nextEvaluation = Clock::now() + interval;
+                auto nextRecheck = recheck ? Clock::now() + recheckInterval : Clock::time_point::max();
+
                 std::unique_lock<std::mutex> lock {m_waitMutex};
                 while (!m_stopping.load(std::memory_order_relaxed))
                 {
                     // Woken early by stop(); a spurious wakeup just re-arms the wait.
-                    if (m_wakeup.wait_for(
-                            lock, interval, [this] { return m_stopping.load(std::memory_order_relaxed); }))
+                    if (m_wakeup.wait_until(lock,
+                                            std::min(nextEvaluation, nextRecheck),
+                                            [this] { return m_stopping.load(std::memory_order_relaxed); }))
                     {
                         break;
                     }
                     lock.unlock();
+                    const auto now = Clock::now();
+                    const bool evaluating = now >= nextEvaluation;
+                    // The evaluate and recheck functions own their logging; a failed tick must not
+                    // take the thread (and every future tick) down with it.
                     try
                     {
-                        record(evaluate());
+                        if (evaluating)
+                        {
+                            record(evaluate());
+                        }
+                        else
+                        {
+                            recheck();
+                        }
                     }
                     catch (...)
                     {
-                        // The evaluate function owns its logging; a failed tick must not take the
-                        // thread (and every future tick) down with it.
+                    }
+                    if (evaluating)
+                    {
+                        nextEvaluation = now + interval;
+                    }
+                    if (recheck)
+                    {
+                        nextRecheck = now + recheckInterval;
                     }
                     lock.lock();
                 }

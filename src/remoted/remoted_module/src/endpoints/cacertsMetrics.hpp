@@ -56,8 +56,8 @@ namespace remoted::endpoints::cacerts
         std::shared_ptr<wazuh::metrics::ICounter> served;      ///< 200s: the CA PEM was handed out.
         std::shared_ptr<wazuh::metrics::ICounter> notFound;    ///< 404s: the CA file is missing, unreadable
                                                                ///< or carries no certificate.
-        std::shared_ptr<wazuh::metrics::ICounter> caMismatch;  ///< 503s: the CA on disk does not sign the
-                                                               ///< served certificate (refused, not served).
+        std::shared_ptr<wazuh::metrics::ICounter> caMismatch;  ///< 503s: the served certificate does not chain
+                                                               ///< to the CA on disk (refused, not served).
         std::shared_ptr<wazuh::metrics::ICounter> rateLimited; ///< 429s: the route was asked faster than
                                                                ///< 'remote.https.cacerts_rate_limit'.
     };
@@ -71,7 +71,8 @@ namespace remoted::endpoints::cacerts
             manager.getOrCreateCounter(
                 METRIC_CACERTS_NOT_FOUND, "404s: the CA file is missing, unreadable or has no certificate", "count"),
             manager.getOrCreateCounter(METRIC_CACERTS_CA_MISMATCH,
-                                       "503s: refused because the configured CA does not sign the served certificate",
+                                       "503s: refused because the served certificate does not chain to the "
+                                       "configured CA",
                                        "count"),
             manager.getOrCreateCounter(METRIC_CACERTS_RATE_LIMITED,
                                        "429s: refused by the endpoint's rate limit "

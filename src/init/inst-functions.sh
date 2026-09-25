@@ -379,9 +379,10 @@ WriteAgent()
     echo "    <manager>" >> $NEWCONFIG
 
     # <endpoint> carries the whole connection target, composed from install.sh's own
-    # $SERVER_IP/$HNAME prompt. A source install therefore names its manager here and
-    # registers afterwards with wazuh-agent-auth, which is the token-less path the
-    # packages no longer offer.
+    # $SERVER_IP/$HNAME prompt. A source install therefore names its manager here and is
+    # registered afterwards by running wazuh-agent-auth with a token (install.sh prints the
+    # command): the install itself carries none, and a token is the only registration path
+    # there is.
     AGENT_ENDPOINT="$SERVER_IP"
     if [ "X${HNAME}" != "X" ]; then
       AGENT_ENDPOINT="$HNAME"
@@ -1465,6 +1466,7 @@ InstallLocal()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/api
 
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/verify-agent-conf ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/wazuh-manager-certs ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/wazuh-manager-conf ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-db ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin/wazuh-manager-analysisd
@@ -1632,6 +1634,10 @@ InstallAgent()
 
     ${INSTALL} -m 0750 -o root -g 0 build/bin/manage_agents ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-agentd ${INSTALLDIR}/bin
+    # Standalone enrollment-token consumer. 0750 root:root like wazuh-agentd: it reads a
+    # credential and installs the trust anchor, so the unprivileged account the agent runs as
+    # must not be able to run it.
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-agent-auth ${INSTALLDIR}/bin
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/incoming

@@ -52,6 +52,9 @@ HANDLE utf8_CreateFile(const char* utf8_path,
 /// Replace a file with utf8 path
 BOOL utf8_ReplaceFile(const char* old_name, const char* new_name, const char* backup_name, DWORD flags);
 
+/// Move a file with utf8 paths
+BOOL utf8_MoveFileEx(const char* old_name, const char* new_name, DWORD flags);
+
 /// Delete a file with utf8 path
 BOOL utf8_DeleteFile(const char* utf8_path);
 

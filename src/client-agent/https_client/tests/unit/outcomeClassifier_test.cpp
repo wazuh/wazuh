@@ -64,7 +64,11 @@ INSTANTIATE_TEST_SUITE_P(
         ClassifierCase {TransportStatus::Ok, 299, OutcomeClass::Ok},
         // Transport errors: retryable AND the confirmed-disconnect class that
         // arms the producer pause. TlsFail is deliberately in here too: no HTTP
-        // status arrived, so the manager did not answer.
+        // status arrived, so the manager did not answer -- including a TlsFail
+        // CurlPerformer's verify_mode=system fallback (#39123) already decided was
+        // not eligible (a classified hostname/date failure, or no fallback path
+        // configured) or had already exhausted; CurlPerformer resolves the
+        // retry-eligible case before a response ever gets here.
         ClassifierCase {TransportStatus::Timeout, 0, OutcomeClass::Unreachable},
         ClassifierCase {TransportStatus::ConnectFail, 0, OutcomeClass::Unreachable},
         ClassifierCase {TransportStatus::TlsFail, 0, OutcomeClass::Unreachable},

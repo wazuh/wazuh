@@ -23,7 +23,7 @@ The harness never *uses* the answer: its TLS client skips verification (docu/04)
 checked for shape and dropped like every other body (docu/03). Two reasons it still deserves a step:
 
 1. **Contract.** A fleet whose first contact is a `404` (no CA file on the manager) or a `503` (the
-   manager refuses to hand out a CA that does not sign its own certificate) cannot bootstrap trust at
+   manager refuses to hand out a CA the served certificate does not chain to) cannot bootstrap trust at
    all. `scenarios/cacerts.json` pins that a correctly provisioned manager answers every one of 200
    requests with a PEM.
 2. **Cost floor.** It is the cheapest route on the listener — TLS handshake, routing, a small file
