@@ -381,14 +381,27 @@ check "and what was seeded is what was published" "yes" \
        [ "$(published "${root}" WAZUH_MANAGER_API_PASSWORD)" = "$(seeded_password "${root}" wazuh)" ] && echo yes)"
 cleanup "${root}"
 
-# A control character passes wazuh_password_validate() but cannot go through the seeding JSON, so
-# it has to be reported as the invalid key it is, not as a database that failed to be created.
+# Only the generator's alphabet is accepted. A character outside it is reported as the invalid key
+# it is, and never reaches the file or rbac.db: a non-ASCII value would be seeded and then refused
+# at every login, and a control character cannot go through the seeding JSON.
+for value in "$(printf 'Tab\tInside123')" 'Contraseña1234' 'Seven7ñññññ' 'With Space123' 'Dollar$Sign123'; do
+    root="$(make_tree)"
+    write_credentials "${root}" "WAZUH_MANAGER_API_PASSWORD='${value}'"
+    run_resolver "${root}" --install
+    check "a value outside the alphabet is not published" "" \
+        "$(published "${root}" WAZUH_MANAGER_API_PASSWORD)"
+    run_resolver "${root}" --prestart
+    check "a value outside the alphabet is invalid" "yes" \
+        "$(grep -q 'INVALID WAZUH_MANAGER_API_PASSWORD' <<< "$(resolver_output)" && echo yes)"
+    check "and nothing is seeded" "" "$(seeded_password "${root}" wazuh)"
+    cleanup "${root}"
+done
+
 root="$(make_tree)"
-write_credentials "${root}" "$(printf 'WAZUH_MANAGER_API_PASSWORD="Tab\tInside123"')"
-run_resolver "${root}" --prestart
-check "a value with a control character is invalid" "yes" \
-    "$(grep -q 'INVALID WAZUH_MANAGER_API_PASSWORD' <<< "$(resolver_output)" && echo yes)"
-check "and nothing is seeded" "" "$(seeded_password "${root}" wazuh)"
+write_credentials "${root}" "WAZUH_MANAGER_API_PASSWORD='Aa1.,_+:@%^=~-'"
+run_resolver "${root}" --install
+check "every character of the alphabet is accepted" "Aa1.,_+:@%^=~-" \
+    "$(seeded_password "${root}" wazuh)"
 cleanup "${root}"
 
 # --------------------------------------------------------------------------------------------

@@ -478,7 +478,8 @@ class WazuhException(Exception):
         5004: {'message': 'The user could not be removed or updated',
                'remediation': 'Administrator users cannot be removed or updated'},
         5007: {'message': 'Insecure user password provided',
-               'remediation': 'The password must contain at least one letter and one number.'},
+               'remediation': 'The password must contain at least one letter and one number, and only the '
+                              'characters A-Z a-z 0-9 . , _ + : @ % ^ = ~ -'},
         5008: {'message': 'The current user cannot be deleted',
                'remediation': 'You can delete this user with the administrator user (wazuh) or '
                               'any other user with the necessary permissions'},
