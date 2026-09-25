@@ -208,7 +208,7 @@ int main(int argc, char* argv[])
 
     // Raise the soft file descriptor limit; the hard limit belongs to whoever started the manager
     {
-        constexpr rlim_t target = 65536;
+        constexpr rlim_t target = 8192;
         struct rlimit limit {};
         if (getrlimit(RLIMIT_NOFILE, &limit) == 0 && limit.rlim_cur < target)
         {
