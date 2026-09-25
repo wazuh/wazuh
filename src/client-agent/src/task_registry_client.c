@@ -16,6 +16,7 @@
 
 #ifdef WIN32
 #include "wmodules.h"
+#include "module_query_errors.h"
 #endif
 
 /* Bounded: agent-info is a local, normally-responsive process, but agentd
@@ -23,13 +24,16 @@
  * stall the /control notify cycle for longer than this. */
 #define TASK_REGISTRY_RECV_TIMEOUT_S 5
 
-/* Same rationale/constants as vd_offset_client.c: the very first Notify after agentd starts
- * races modulesd's own startup gate over this identical socket (WM_LOCAL_SOCK), and task
+/* Same rationale/constants as vd_offset_client.c (both platforms -- see that file's longer
+ * comment): the very first Notify after agentd starts races modulesd's own startup, over
+ * WM_LOCAL_SOCK on POSIX or over module-list registration on Windows (wm_find_module()
+ * inside wm_module_query_json_ex() answering MQ_ERR_MODULE_NOT_FOUND with no wait), and task
  * registry checks are dispatched from the same "tasks first" ordering in handleNotifyBody() --
  * so a brand-new agent's very first task check hits the same one-shot-drop window #39543 was
- * about, just for a different registry. Bounded, same reasoning: a genuinely-down agent-info
- * still costs only a small, known, one-shot-comparable tax; the loop breaks on the first
- * successful connect, so the steady-state case pays nothing extra. */
+ * about (#9152 for the Windows side of it), just for a different registry. Bounded, same
+ * reasoning on both platforms: a genuinely-unavailable agent-info still costs only a small,
+ * known, one-shot-comparable tax; the loop breaks on the first success, so the steady-state
+ * case pays nothing extra. */
 #define TASK_REGISTRY_CONNECT_RETRIES 10
 #define TASK_REGISTRY_CONNECT_RETRY_DELAY_US 300000 /* 300 ms; ~2.7s worst case across all retries */
 
@@ -140,19 +144,57 @@ static task_registry_result_t task_registry_check_and_record_posix(const char *t
  * call through the same generic query path used elsewhere in-process
  * (wm_module_query_json_ex -> wm_find_module("agent-info") ->
  * module->context->query(...)), no socket involved. */
+
+/* True only for the specific, transient "agent-info hasn't registered itself into the module
+ * list yet" answer (see the TASK_REGISTRY_CONNECT_RETRIES comment above) -- never for a
+ * genuine, lasting error, which the retry below must not loop on. */
+static bool task_registry_is_module_not_registered(const char *json) {
+    cJSON *root = cJSON_Parse(json);
+    if (!root) {
+        return false;
+    }
+
+    const cJSON *error = cJSON_GetObjectItem(root, "error");
+    bool notRegistered = error && cJSON_IsNumber(error) && error->valueint == MQ_ERR_MODULE_NOT_FOUND;
+    cJSON_Delete(root);
+    return notRegistered;
+}
+
 static task_registry_result_t task_registry_check_and_record_win(const char *task_id) {
     char command[OS_MAXSTR];
     char *output = NULL;
     task_registry_result_t result;
+    int attempt;
 
     snprintf(command, sizeof(command),
              "{\"command\":\"task_check_and_record\",\"task_id\":\"%s\"}", task_id);
 
-    wm_module_query_json_ex("agent-info", command, &output);
+    for (attempt = 0; attempt < TASK_REGISTRY_CONNECT_RETRIES; attempt++) {
+        os_free(output);
+
+        wm_module_query_json_ex("agent-info", command, &output);
+
+        if (!output || !task_registry_is_module_not_registered(output)) {
+            break;
+        }
+
+        if (attempt + 1 < TASK_REGISTRY_CONNECT_RETRIES) {
+            w_time_delay(TASK_REGISTRY_CONNECT_RETRY_DELAY_US / 1000);
+        }
+    }
 
     if (!output) {
-        merror("task_registry_client: agent-info query returned no output for task %s; "
-               "treating as non-dispatchable (fail closed).", task_id);
+        merror("task_registry_client: agent-info query returned no output for task %s after "
+               "%d attempt(s); treating as non-dispatchable (fail closed).",
+               task_id, TASK_REGISTRY_CONNECT_RETRIES);
+        return TASK_REGISTRY_RESULT_ERROR;
+    }
+
+    if (task_registry_is_module_not_registered(output)) {
+        mdebug1("task_registry_client: agent-info not registered yet for task %s after %d "
+                "attempt(s); treating as non-dispatchable (fail closed).",
+                task_id, TASK_REGISTRY_CONNECT_RETRIES);
+        os_free(output);
         return TASK_REGISTRY_RESULT_ERROR;
     }
 

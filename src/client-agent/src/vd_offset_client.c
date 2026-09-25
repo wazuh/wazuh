@@ -16,28 +16,53 @@
 
 #ifdef WIN32
 #include "wmodules.h"
+#include "module_query_errors.h"
 #endif
 
 /* Bounded, same rationale as task_registry_client.c: agent-info is a local,
  * normally-responsive process, but agentd must never hang indefinitely on it. */
 #define VD_OFFSET_RECV_TIMEOUT_S 5
 
-/* The very first Notify after agentd starts races modulesd's own startup: the connect below
- * targets WM_LOCAL_SOCK, which agent-info (inside modulesd) does not open until modulesd's
- * startup_gate releases it -- gated on the config_hash carried in that SAME first Notify
- * response (startup_gate_check_manager_config_hash(), processed a few lines earlier in the
- * same handleNotifyBody() call this ultimately comes from). So the one response that carries
- * a real (non-zero) vd_feed_offset is, on every fresh agent, guaranteed to find nobody
- * listening yet on a single attempt -- it used to be silently dropped, leaving
- * syscollector's first VD sync to race an empty metadata_provider (409 version_mismatch,
- * #39543). A short, bounded retry here is what actually closes that window. Bounded, not
+/* The very first Notify after agentd starts races modulesd's own startup, on both platforms --
+ * just through a different transport, so it needs a different signal for "not up yet" below.
+ *
+ * POSIX: the connect targets WM_LOCAL_SOCK, which agent-info (inside modulesd, a separate
+ * process there) does not open until modulesd's startup_gate releases it -- gated on the
+ * config_hash carried in that SAME first Notify response (startup_gate_check_manager_config_hash(),
+ * processed a few lines earlier in the same handleNotifyBody() call this ultimately comes from).
+ *
+ * Windows: agentd and every wazuh_modules wodle (including agent-info) run as threads of the
+ * same service process (src/win32/win_service.c) -- there is no socket to connect, but the same
+ * race exists one layer up: wm_module_query_json_ex()'s wm_find_module("agent-info") answers
+ * immediately with MQ_ERR_MODULE_NOT_FOUND, no wait, if agent-info has not registered itself
+ * into the module list yet.
+ *
+ * Either way: the one response that carries a real (non-zero) vd_feed_offset is, on every fresh
+ * agent, guaranteed to find nobody listening/registered yet on a single attempt -- it used to be
+ * silently dropped on POSIX, leaving syscollector's first VD sync to race an empty
+ * metadata_provider (409 version_mismatch, #39543 / PR #39550). A short, bounded retry closes
+ * that window; PR #39550 added it only on the POSIX branch below, leaving the identical race
+ * open on Windows (#9152) until the WIN32 branch got the same treatment. Bounded, not
  * indefinite: at most VD_OFFSET_CONNECT_RETRIES attempts, VD_OFFSET_CONNECT_RETRY_DELAY_US
- * apart, so a genuinely-down agent-info (not just "not started yet") still costs only a
- * small, known, one-shot-comparable tax per notify -- the loop breaks on the first
- * successful connect, so the steady-state case (modulesd already up, the overwhelming
- * majority of calls over an agent's lifetime) pays nothing extra at all. */
+ * apart, so a genuinely-unavailable agent-info (not just "not started yet") still costs only a
+ * small, known, one-shot-comparable tax per notify -- the loop breaks on the first success, so
+ * the steady-state case (modulesd already up, the overwhelming majority of calls over an
+ * agent's lifetime) pays nothing extra at all. */
 #define VD_OFFSET_CONNECT_RETRIES 10
 #define VD_OFFSET_CONNECT_RETRY_DELAY_US 300000 /* 300 ms; ~2.7s worst case across all retries */
+
+/* Shared by both branches below: pulls the "error" field an agent-info (or, on Windows, the
+ * module-query dispatcher itself) JSON response carries. */
+static bool parse_error_field(const cJSON *root, int *out_error) {
+    const cJSON *error = cJSON_GetObjectItem(root, "error");
+
+    if (!error || !cJSON_IsNumber(error)) {
+        return false;
+    }
+
+    *out_error = error->valueint;
+    return true;
+}
 
 #ifndef WIN32
 static bool vd_offset_send_query(const char *query, char *response, size_t response_cap) {
@@ -84,13 +109,49 @@ static bool vd_offset_send_query(const char *query, char *response, size_t respo
     return true;
 }
 #else
+/* True only for the specific, transient "agent-info hasn't registered itself into the module
+ * list yet" answer -- never for a genuine, lasting error (bad JSON, unsupported query, disabled
+ * module, ...), which the retry below must not loop on. */
+static bool vd_offset_is_module_not_registered(const char *json) {
+    cJSON *root = cJSON_Parse(json);
+    if (!root) {
+        return false;
+    }
+
+    int error_code = -1;
+    bool notRegistered = parse_error_field(root, &error_code) && error_code == MQ_ERR_MODULE_NOT_FOUND;
+    cJSON_Delete(root);
+    return notRegistered;
+}
+
 static bool vd_offset_send_query(const char *command, char *response, size_t response_cap) {
     char *output = NULL;
+    int attempt;
 
-    wm_module_query_json_ex("agent-info", command, &output);
+    for (attempt = 0; attempt < VD_OFFSET_CONNECT_RETRIES; attempt++) {
+        os_free(output);
+
+        wm_module_query_json_ex("agent-info", command, &output);
+
+        if (!output || !vd_offset_is_module_not_registered(output)) {
+            break;
+        }
+
+        if (attempt + 1 < VD_OFFSET_CONNECT_RETRIES) {
+            w_time_delay(VD_OFFSET_CONNECT_RETRY_DELAY_US / 1000);
+        }
+    }
 
     if (!output) {
-        merror("vd_offset_client: agent-info query returned no output.");
+        merror("vd_offset_client: agent-info query returned no output after %d attempt(s).",
+               VD_OFFSET_CONNECT_RETRIES);
+        return false;
+    }
+
+    if (vd_offset_is_module_not_registered(output)) {
+        mdebug1("vd_offset_client: agent-info not registered yet after %d attempt(s); "
+                "will retry next notify.", VD_OFFSET_CONNECT_RETRIES);
+        os_free(output);
         return false;
     }
 
@@ -100,17 +161,6 @@ static bool vd_offset_send_query(const char *command, char *response, size_t res
     return true;
 }
 #endif
-
-static bool parse_error_field(const cJSON *root, int *out_error) {
-    const cJSON *error = cJSON_GetObjectItem(root, "error");
-
-    if (!error || !cJSON_IsNumber(error)) {
-        return false;
-    }
-
-    *out_error = error->valueint;
-    return true;
-}
 
 bool vd_offset_client_observe(uint64_t offset, bool *out_changed, bool *out_pending,
                               uint64_t *out_pending_offset) {
