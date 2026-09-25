@@ -75,26 +75,30 @@ static const std::map<std::string, int> s_mapPackagesDirectories =
     { "/opt/local/var/macports/registry", MACPORTS}
 };
 
+static mach_timebase_info_data_t getTimebase()
+{
+    mach_timebase_info_data_t tb{0, 0};
+    mach_timebase_info(&tb);
+
+    if (tb.denom == 0)
+    {
+        tb.numer = 1;
+        tb.denom = 1;
+    }
+
+    return tb;
+}
+
+static int64_t getClockTicksPerSecond()
+{
+    const auto ticks { sysconf(_SC_CLK_TCK) };
+    return ticks > 0 ? ticks : 100;
+}
+
 static uint64_t machTimeToClockTicks(const uint64_t machTicks)
 {
-    static const mach_timebase_info_data_t timebase = []()
-    {
-        mach_timebase_info_data_t tb{0, 0};
-        mach_timebase_info(&tb);
-        if (tb.denom == 0)
-        {
-            tb.numer = 1;
-            tb.denom = 1;
-        }
-        return tb;
-    }();
-
-    static const int64_t clkTck = []()
-    {
-        const auto ticks = sysconf(_SC_CLK_TCK);
-        return ticks > 0 ? ticks : 100;
-    }();
-
+    static const auto timebase { getTimebase() };
+    static const auto clkTck { getClockTicksPerSecond() };
     return ProcessHelperMac::clockTicksFromMachTime(machTicks, timebase.numer, timebase.denom, clkTck);
 }
 
