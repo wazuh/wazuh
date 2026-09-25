@@ -332,6 +332,40 @@ async def test_agent_reload_agents(exit_mock, enter_mock, init_mock, run_mock, a
             '004 must be reported with 1774 by a node that has no information about it.'
 
 
+@pytest.mark.parametrize('func, task_mock_name', [
+    (restart_agents, 'wazuh.agent.create_restart_tasks'),
+    (reload_agents, 'wazuh.agent.create_reload_tasks'),
+])
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
+@patch('wazuh.agent.WazuhDBQueryAgents.run')
+@patch('wazuh.agent.WazuhDBQueryAgents.__init__', return_value=None)
+@patch('wazuh.agent.WazuhDBQueryAgents.__enter__')
+@patch('wazuh.agent.WazuhDBQueryAgents.__exit__')
+async def test_agent_restart_reload_agents_request_time(exit_mock, enter_mock, init_mock, run_mock, agents_info_mock,
+                                                        func, task_mock_name):
+    """Test that the API's timestamp reaches task creation untouched.
+
+    The task id is derived from it, so every cluster node serving the same broadcast request has to
+    stamp the identical one: with a per-node timestamp the same logical restart gets a different id
+    on each node, and an agent that polls two of them runs it twice -- the agent only skips a task
+    id it has already run.
+    """
+    mock_query = MagicMock()
+    mock_query.run.return_value = {'items': [{'id': '010', 'version': 'v5.0.0'}]}
+    enter_mock.return_value = mock_query
+
+    with patch(task_mock_name) as create_mock:
+        create_mock.return_value = [{'data': [{'agent': '010', 'error': 0}]}]
+
+        await func(['010'], request_time=1700000000)
+        assert create_mock.call_args[0][2] == 1700000000, "The caller's timestamp must be the one used."
+
+        # A caller of its own (not the API) still gets a task: the timestamp is only defaulted.
+        create_mock.reset_mock()
+        await func(['010'])
+        assert isinstance(create_mock.call_args[0][2], int)
+
+
 @pytest.mark.parametrize('agent_list, expected_items', [
     (['001', '002', '003'], ['001', '002', '003']),
     (['001', '400', '002', '500'], ['001', '002'])

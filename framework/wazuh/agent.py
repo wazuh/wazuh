@@ -4,6 +4,7 @@
 
 import logging
 import operator
+import time
 from os import chmod, path, listdir, rename
 from shutil import rmtree
 from typing import Union
@@ -216,7 +217,7 @@ def get_agents_summary_os(agent_list: list[str] = None) -> AffectedItemsWazuhRes
 @expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703]},
                   post_proc_func=async_list_handler)
-async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
+async def restart_agents(agent_list: list = None, request_time: int = None) -> AffectedItemsWazuhResult:
     """Restart a list of agents.
 
     An agent this node's database holds no version for is reported with error 1774, never as an
@@ -227,6 +228,9 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
     ----------
     agent_list : list
         List of agents IDs.
+    request_time : int
+        Unix timestamp from the API controller, stamped once per request so the deterministic task
+        id comes out the same on every cluster node. Defaults to now for callers of their own.
 
     Returns
     -------
@@ -303,8 +307,14 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 
         # Create restart tasks for all eligible agents
         if eligible_agents:
-            import time
-            request_time = int(time.time())
+            # The task id is derived from this timestamp, so it has to be the one the API stamped
+            # on the request and forwarded to every node. A node stamping its own would give the
+            # same logical restart a different id per node, and since the agent skips only a task id
+            # it has already run, an agent polling two nodes would restart twice. Falls back to now
+            # for callers that are a request of their own.
+            if request_time is None:
+                request_time = int(time.time())
+
             responses = create_restart_tasks(eligible_agents, TASK_CHUNK_SIZE, request_time)
 
             for response in responses:
@@ -332,26 +342,28 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703], 'force': True},
                   post_proc_func=async_list_handler)
-async def restart_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult:
+async def restart_agents_by_group(agent_list: list = None, request_time: int = None) -> AffectedItemsWazuhResult:
     """Restart all agents belonging to a group.
 
     Parameters
     ----------
     agent_list : list, optional
         List of agents. Default `None`
+    request_time : int, optional
+        Unix timestamp from the API controller. Default `None`
 
     Returns
     -------
     AffectedItemsWazuhResult
         Affected items.
     """
-    return await restart_agents(agent_list=agent_list)
+    return await restart_agents(agent_list=agent_list, request_time=request_time)
 
 
 @expose_resources(actions=["agent:reload"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703]},
                   post_proc_func=async_list_handler)
-async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
+async def reload_agents(agent_list: list = None, request_time: int = None) -> AffectedItemsWazuhResult:
     """Reload a list of agents.
 
     An agent this node's database holds no version for is reported with error 1774, never as an
@@ -362,6 +374,9 @@ async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
     ----------
     agent_list : list
         List of agents IDs.
+    request_time : int
+        Unix timestamp from the API controller, stamped once per request so the deterministic task
+        id comes out the same on every cluster node. Defaults to now for callers of their own.
 
     Returns
     -------
@@ -438,8 +453,14 @@ async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 
         # Create reload tasks for all eligible agents
         if eligible_agents:
-            import time
-            request_time = int(time.time())
+            # The task id is derived from this timestamp, so it has to be the one the API stamped
+            # on the request and forwarded to every node. A node stamping its own would give the
+            # same logical reload a different id per node, and since the agent skips only a task id
+            # it has already run, an agent polling two nodes would reload twice. Falls back to now
+            # for callers that are a request of their own.
+            if request_time is None:
+                request_time = int(time.time())
+
             responses = create_reload_tasks(eligible_agents, TASK_CHUNK_SIZE, request_time)
 
             for response in responses:
@@ -467,20 +488,22 @@ async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 @expose_resources(actions=["agent:reload"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703], 'force': True},
                   post_proc_func=async_list_handler)
-async def reload_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult:
+async def reload_agents_by_group(agent_list: list = None, request_time: int = None) -> AffectedItemsWazuhResult:
     """Reload all agents belonging to a group.
 
     Parameters
     ----------
     agent_list : list, optional
         List of agents. Default `None`
+    request_time : int, optional
+        Unix timestamp from the API controller. Default `None`
 
     Returns
     -------
     AffectedItemsWazuhResult
         Affected items.
     """
-    return await reload_agents(agent_list=agent_list)
+    return await reload_agents(agent_list=agent_list, request_time=request_time)
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
