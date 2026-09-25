@@ -7,6 +7,8 @@
     certificate: 'etc/certs/remoted.pem'
     key: 'etc/certs/remoted-key.pem'
     mutation: unreadable_key
-    # The validator runs as root, so the file passes it; remoted probes the pair after dropping
-    # privileges (w_remoted_check_tls_files() in src/remoted/src/secure.c) and exits with this line.
+    # Neither of the two layers that run as root can see an ownership problem: the credential
+    # resolver does not look at certificates outside installation, and the configuration validator
+    # only checks the file exists. remoted probes the pair after dropping privileges
+    # (w_remoted_check_tls_files() in src/remoted/src/secure.c) and exits with this line.
     expected_error: ".*Cannot start the HTTPS agent listener: the TLS private key '.*remoted-key\\.pem' is missing or unreadable by the service user.*"

@@ -6,7 +6,33 @@
 
 #include <base/logging.hpp>
 #include <chrono>
+#include <filesystem>
+#include <keyStore.hpp>
 #include <thread>
+
+namespace
+{
+bool seedIndexerCredentials()
+{
+    try
+    {
+        // Keystore::put() opens `queue/keystore` relative to the working directory and creates the
+        // store itself, but not the directory above it.
+        std::filesystem::create_directories("queue");
+        Keystore::put("indexer", "username", "test-user");
+        Keystore::put("indexer", "password", "test-password");
+        return true;
+    }
+    catch (const std::exception&)
+    {
+        return false;
+    }
+}
+
+/// Seeded before main(): the connector caches the indexer credentials on its first use and throws
+/// when they are unset.
+const bool g_credentialsSeeded = seedIndexerCredentials();
+} // namespace
 
 class WIndexerConnectorTest : public ::testing::Test
 {

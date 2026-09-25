@@ -150,3 +150,57 @@ def test_keystore_parameters(password, insertion_method):
     pass_from_DB = get_password()
     clear_password()
     assert pass_from_DB == password
+
+
+def run_get(family, key):
+    """ Runs the keystore binary in read mode and returns its exit status and stdout.
+
+    Unlike `run_command`, a non-zero exit status is a valid outcome here: it is how the CLI reports
+    that the key is not set.
+
+    Args:
+        family (str): Column family to read from.
+        key (str): Key to read.
+
+    Returns:
+        tuple[int, str]: Exit status and stripped stdout.
+    """
+    command = " ".join([KEYSTORE_BINARY, "-f", family, "-k", key, "-g"])
+    with Popen(command, stdout=PIPE, stderr=PIPE, shell=True) as process:
+        stdout, _ = process.communicate()
+        return process.returncode, stdout.decode().strip()
+
+
+@pytest.mark.parametrize("password", password_list)
+def test_keystore_get_returns_the_stored_value(password):
+    """ `-g` prints what was stored and exits 0.
+
+    This is the read side the credential resolver needs: without it the CLI was write-only and
+    nothing could answer "is this credential already in our own store?".
+    """
+    set_password(password)
+    status, value = run_get("indexer", "password")
+    clear_password()
+
+    assert status == 0
+    assert value == password
+
+
+def test_keystore_get_of_an_unset_key_exits_non_zero():
+    """ An unset key exits non-zero and prints nothing.
+
+    It must not answer a default: a caller cannot otherwise tell "not set" from "set to whatever the
+    default happens to be", which is what https://github.com/wazuh/wazuh/issues/39554 removed.
+    """
+    status, value = run_get("indexer", "a-key-that-was-never-set")
+
+    assert status != 0
+    assert value == ""
+
+
+def test_keystore_get_rejects_a_value_argument():
+    """ `-g` reads; combining it with a value to write is a usage error rather than a silent write. """
+    command = " ".join([KEYSTORE_BINARY, "-f", "indexer", "-k", "password", "-g", "-v", "something"])
+    with Popen(command, stdout=PIPE, stderr=PIPE, shell=True) as process:
+        process.communicate()
+        assert process.returncode != 0

@@ -100,6 +100,33 @@ int main(int argc, char* argv[])
         value = args.getValue();
         valuePath = args.getValuePath();
 
+        // Reading back is what gives a caller a definite answer to "is this credential already in
+        // our own store?". The credential resolver needs exactly that to decide whether a key is
+        // already resolved, and inferring it from anything else -- a config file, a shipped
+        // default -- makes every restart a guess.
+        if (args.isGet())
+        {
+            if (!value.empty() || !valuePath.empty())
+            {
+                throw CmdLineArgsException("-g does not take a value.");
+            }
+
+            dropPrivilegesIfAvailable();
+
+            std::string stored;
+            Keystore::get(family, key, stored);
+
+            if (stored.empty())
+            {
+                // Absent and empty are the same thing here, and both mean "not set". Exiting
+                // non-zero rather than printing nothing is what lets a shell test it directly.
+                return 1;
+            }
+
+            std::cout << stored << "\n";
+            return 0;
+        }
+
         std::string secret;
         if (value.empty() && valuePath.empty())
         {

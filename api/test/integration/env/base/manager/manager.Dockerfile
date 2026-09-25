@@ -25,19 +25,26 @@ ADD base/manager/supervisord.conf /etc/supervisor/conf.d/
 RUN mkdir wazuh && curl -sL https://github.com/wazuh/wazuh/tarball/${WAZUH_BRANCH} | tar zx --strip-components=1 -C wazuh
 COPY base/manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 RUN /wazuh/install.sh
-# The manager does not generate TLS certificates: issue the indexer trust material and the HTTPS
-# agent listener pair with the devcontainer copy of the installation assistant tool (sources already
-# in /wazuh). The api_ssl volume shared by the cluster containers is populated from this image, so
-# the listener SAN covers every manager service name (see certs-config.yml).
+# Issue the manager's certificates here rather than letting the install do it: preloaded-vars.conf
+# sets USER_RESOLVE_CREDENTIALS="n", so nothing credential-bearing is baked into the layer, and the
+# SANs have to cover every manager service name in the compose environment anyway (see
+# certs-config.yml) -- a pair minted against the build container's own hostname would not match.
+# The api_ssl volume shared by the cluster containers is populated from this path. Issued with the
+# devcontainer copy of the installation assistant tool (sources already in /wazuh).
+#
+# Certificates are the one credential it is safe to bake in: they are public material plus a key
+# scoped to names only this test environment answers to, and the resolver never re-examines a pair
+# once it is in place -- not at service start, not on upgrade. No CA directory is left behind, so
+# no signing key reaches the layer.
 COPY base/manager/certs-config.yml /wazuh/certs-config.yml
 RUN bash /wazuh/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c /wazuh/certs-config.yml -o /tmp/wazuh-certificates && \
     mkdir -p /var/wazuh-manager/etc/certs && \
     install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/root-ca.pem /var/wazuh-manager/etc/certs/root-ca.pem && \
-    install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-indexer.pem /var/wazuh-manager/etc/certs/indexer-connector.pem && \
-    install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-indexer-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem && \
+    install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager.pem /var/wazuh-manager/etc/certs/indexer-connector.pem && \
+    install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem && \
     install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted.pem /var/wazuh-manager/etc/certs/remoted.pem && \
     install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted-key.pem /var/wazuh-manager/etc/certs/remoted-key.pem && \
-    rm -rf /tmp/wazuh-certificates
+    rm -rf /tmp/wazuh-certificates /etc/wazuh/ca
 COPY base/manager/entrypoint.sh /scripts/entrypoint.sh
 
 # HEALTHCHECK

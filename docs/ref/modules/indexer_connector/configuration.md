@@ -84,7 +84,7 @@ If the Wazuh Indexer requires username/password authentication (e.g. the built-i
 
 ```bash
 wazuh-manager-keystore -f indexer -k username -v admin
-wazuh-manager-keystore -f indexer -k password -v <password>
+echo '<password>' | wazuh-manager-keystore -f indexer -k password
 ```
 
 The Indexer Connector reads these values automatically at startup from the `indexer` column family in the keystore.
@@ -277,12 +277,17 @@ openssl verify -CAfile /var/wazuh-manager/etc/certs/root-ca.pem \
 Verify keystore credentials:
 
 ```bash
-# List keystore entries
-wazuh-manager-keystore -l
+# Read back what is stored. Exits non-zero when the key is not set.
+/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -g
+/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -g
 
 # Test with curl
 curl -u admin:password https://127.0.0.1:9200/_cat/health
 ```
+
+There is no default credential: when the keystore holds no `indexer`/`password` entry the manager
+refuses to start and names `WAZUH_INDEXER_MANAGER_PASSWORD` in the journal. See
+[Credentials](../../getting-started/credentials.md).
 
 ### Configuration Validation
 

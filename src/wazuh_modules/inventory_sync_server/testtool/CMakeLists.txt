@@ -23,13 +23,15 @@ target_include_directories(
           ${SRC_FOLDER}/external/flatbuffers/include
           ${SRC_FOLDER}/external/nlohmann
           ${SRC_FOLDER}/external/cJSON
-          ${SRC_FOLDER}/shared_modules/common)
+          ${SRC_FOLDER}/shared_modules/common
+          ${SRC_FOLDER}/shared_modules/keystore/include)
 
 if(TARGET compile_schemas_input)
   add_dependencies(inventory_sync_server_testtool compile_schemas_input)
 endif()
 
-target_link_libraries(inventory_sync_server_testtool inventory_sync_server vulnerability_scanner wazuhext pthread)
+target_link_libraries(inventory_sync_server_testtool inventory_sync_server vulnerability_scanner indexer_connector wazuhext
+                      pthread)
 
 set_target_properties(
   inventory_sync_server_testtool PROPERTIES RUNTIME_OUTPUT_DIRECTORY

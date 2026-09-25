@@ -62,15 +62,29 @@ To move the system service to the new directory on purpose, pass
 
 ### Provision certificates
 
-The manager does not generate TLS certificates. Before the first start, deploy under
-`etc/certs` the indexer trust material — `root-ca.pem`, `indexer-connector.pem`,
-`indexer-connector-key.pem` (`root:wazuh-manager 640`) — and the HTTPS agent listener
-pair — `remoted.pem`, `remoted-key.pem` (`wazuh-manager:wazuh-manager 640`) — issued
-by the Wazuh installation assistant's certificate tool (`wazuh-certs-tool`). The
-installer prints a `NOTICE` when the listener pair is missing, and
-`wazuh-manager-control start` refuses to start until it exists
+`install.sh` resolves the manager's credentials at the end of the run: it seeds the
+Server API passwords, stores the indexer credential if one was supplied, and issues
+both TLS pairs under `etc/certs` from a bootstrap CA in `/etc/wazuh/ca`. So a plain
+source install already has certificates and you can skip this section.
+
+Two cases where you supply them instead:
+
+* You want the pairs your deployment actually uses (an E2E environment, a node that
+  has to match certificates issued elsewhere).
+* You passed `USER_RESOLVE_CREDENTIALS="n"` — which you should for any install whose
+  tree is copied somewhere else, since a bootstrap CA private key generated once and
+  shared by every copy is worse than no certificate at all.
+
+Deploy under `etc/certs` the indexer trust material — `root-ca.pem`,
+`indexer-connector.pem`, `indexer-connector-key.pem` (`root:wazuh-manager 640`) — and
+the HTTPS agent listener pair — `remoted.pem`, `remoted-key.pem`
+(`wazuh-manager:wazuh-manager 640`) — issued by the Wazuh installation assistant's
+certificate tool (`wazuh-certs-tool`). Nothing re-examines them afterwards: overwriting
+a resolved pair is enough, and the CA directory can go with it. Until they exist,
+`wazuh-manager-control start` refuses to start
 (`(1244): Invalid configuration at '/remote/https/certificate': file not found: …`).
-See [Deploy certificates](../ref/getting-started/installation.md#deploy-certificates).
+See [Deploy certificates](../ref/getting-started/installation.md#using-certificates-issued-elsewhere)
+and [Credentials](../ref/getting-started/credentials.md).
 
 In the devcontainer, the E2E environment carries a copy of that tool
 (`tools/devContainer/scripts/wazuh-certs-tool.sh`, driven by

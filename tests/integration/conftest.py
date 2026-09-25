@@ -170,9 +170,8 @@ def load_wazuh_basic_configuration():
     minimal_configuration = configuration.get_minimal_configuration()
 
     # The framework's template still points auth at etc/certs/authd.pem, which no 5.x installation
-    # has: the manager does not generate certificates, the operator (or the CI workflow, with
-    # wazuh-certs-tool) provisions etc/certs/remoted.pem and remoted-key.pem, and authd reuses that
-    # pair. The strict loader checks the files at service start, so the stale path would abort the
+    # has: the credential resolver issues etc/certs/remoted.pem and remoted-key.pem at installation
+    # (or the CI workflow provisions them with wazuh-certs-tool), and authd reuses that pair. The strict loader checks the files at service start, so the stale path would abort the
     # whole restart. Fix it here until the template is updated in qa-integration-framework.
     minimal_configuration = [line.replace('etc/certs/authd.pem', 'etc/certs/remoted.pem')
                                  .replace('etc/certs/authd-key.pem', 'etc/certs/remoted-key.pem')

@@ -215,10 +215,14 @@ jobs:
 
       - name: Provision TLS certificates
         run: |
-          # The manager does not generate certificates (src/init/inst-functions.sh, CheckListenerCerts()):
-          # issue the indexer trust material and the HTTPS agent listener pair with the devcontainer copy
-          # of the installation assistant tool. The manager node's SAN carries DNS:wazuh-manager, which
-          # the integration tests assert on the listener certificate.
+          # Provision the node the way a distributed deployment does: replace the pair the installation
+          # issued with one issued elsewhere, and keep no CA on the host at all. The credential resolver
+          # issues certificates at installation and never looks at them again -- not at service start,
+          # not on upgrade -- so overwriting them is the whole procedure, and a manager running on
+          # someone else's PKI is under no obligation to keep a copy of its root CA.
+          # The pairs come from the devcontainer copy of the installation assistant tool; the manager
+          # node's SAN carries DNS:wazuh-manager, which the integration tests assert on the listener
+          # certificate.
           sudo systemctl stop wazuh-manager 2>/dev/null || true
           CERTS_YML="$RUNNER_TEMP/wazuh-certs.yml"
           CERTS_OUT="$RUNNER_TEMP/wazuh-certificates"
@@ -244,12 +248,30 @@ jobs:
           # so a regression that leaves it root:root would make the dropped service fail to start.
           # The listener pair is opened by remoted after dropping privileges, hence wazuh-manager-owned.
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/root-ca.pem" "$INSTALLATION_DIR/etc/certs/root-ca.pem"
-          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-indexer.pem" "$INSTALLATION_DIR/etc/certs/indexer-connector.pem"
-          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-indexer-key.pem" "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem"
+          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager.pem" "$INSTALLATION_DIR/etc/certs/indexer-connector.pem"
+          sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-key.pem" "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem"
           sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$INSTALLATION_DIR/etc/certs/remoted.pem"
           sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$INSTALLATION_DIR/etc/certs/remoted-key.pem"
           sudo chown root:wazuh-manager "$INSTALLATION_DIR/etc/certs"
           sudo chmod 1770 "$INSTALLATION_DIR/etc/certs"
+          # The installation minted a bootstrap CA here, including its private key. Nothing consults it
+          # once the pairs are in place, and leaving a signing key on a node that does not sign is the
+          # exposure this whole mechanism exists to remove -- so it goes. Its absence is also part of
+          # what is under test: the manager must start with no CA directory at all.
+          sudo rm -rf /etc/wazuh/ca
+
+      - name: Supply the indexer credential
+        run: |
+          # The unit resolves credentials before starting and refuses to run without the indexer's
+          # password. systemd starts it from a clean environment, so the key goes in the shared
+          # credentials file. There is no indexer here; the value only has to be valid. The key is
+          # appended: a package installation has already published the generated Server API
+          # passwords there, and the framework's get_default_api_password() reads them back.
+          sudo install -d -m 0700 -o root -g root /etc/wazuh
+          sudo touch /etc/wazuh/credentials.env
+          sudo chmod 0600 /etc/wazuh/credentials.env
+          sudo grep -q '^WAZUH_INDEXER_MANAGER_PASSWORD=' /etc/wazuh/credentials.env || \
+            echo "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer-Integration1'" | sudo tee -a /etc/wazuh/credentials.env > /dev/null
 
       - name: Start wazuh-manager and verify
         run: |

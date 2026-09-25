@@ -29,8 +29,11 @@
  * The pipe protocol on `queue/sockets/keystore.sock` is a live contract with the Python framework's
  * KeystoreClient (framework/wazuh/core/indexer/credential_manager.py fetches the indexer
  * credentials through it), and it had ZERO tests while it lived inside inventory_sync. These pin
- * it byte-for-byte as it moves into its own module -- including the deliberate oddity that a GET
- * of an empty/absent value answers the literal "wazuh-manager".
+ * it byte-for-byte as it moves into its own module. The one thing deliberately NOT preserved is the
+ * old oddity where a GET of an empty/absent value answered the literal "wazuh-manager": see
+ * https://github.com/wazuh/wazuh/issues/39554 -- answering a known credential for a key nobody set
+ * made "not set" and "set to wazuh-manager" indistinguishable, which is the exact question the
+ * credential resolver has to answer.
  */
 
 namespace
@@ -157,15 +160,16 @@ TEST_F(KeystoreServerProtocolTest, PutThenGetRoundTrips)
     EXPECT_EQ("s3cret-value", get.value("value", ""));
 }
 
-TEST_F(KeystoreServerProtocolTest, AMissingKeyAnswersTheWazuhManagerDefault)
+TEST_F(KeystoreServerProtocolTest, AMissingKeyAnswersAnEmptyValue)
 {
-    // The framework's credential_manager may depend on this literal; it is preserved, not fixed.
+    // Empty, not "wazuh-manager". The framework's credential_manager turns an empty answer into
+    // IndexerUnavailableError (code 2201) rather than authenticating with a guessable password.
     const auto get = query(m_path, "GET|default|" + uniqueKey("missing"));
     EXPECT_EQ("ok", get.value("status", ""));
-    EXPECT_EQ("wazuh-manager", get.value("value", ""));
+    EXPECT_EQ("", get.value("value", ""));
 }
 
-TEST_F(KeystoreServerProtocolTest, DeleteIsAPutOfEmptyAndFallsBackToTheDefault)
+TEST_F(KeystoreServerProtocolTest, DeleteIsAPutOfEmptyAndReadsBackEmpty)
 {
     const auto key = uniqueKey("delete");
 
@@ -175,8 +179,8 @@ TEST_F(KeystoreServerProtocolTest, DeleteIsAPutOfEmptyAndFallsBackToTheDefault)
     EXPECT_EQ("ok", del.value("status", ""));
     EXPECT_EQ("delete", del.value("operation", ""));
 
-    // Deleted == empty == the default literal, exactly like the legacy behavior.
-    EXPECT_EQ("wazuh-manager", query(m_path, "GET|default|" + key).value("value", ""));
+    // Deleted == empty, and empty is reported as empty.
+    EXPECT_EQ("", query(m_path, "GET|default|" + key).value("value", ""));
 }
 
 TEST_F(KeystoreServerProtocolTest, AnUnknownOperationIsAnError)

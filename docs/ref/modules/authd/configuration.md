@@ -145,7 +145,7 @@ Path to the manager's TLS certificate presented to agents during enrollment. Sha
 HTTPS agent server (`remoted_module`'s `POST /enroll`): both listeners present the same manager
 identity, since `/enroll`'s mTLS mode treats this certificate as the enrollment credential.
 
-- **Default value:** `etc/certs/remoted.pem` (resolved relative to the Wazuh install directory, e.g. `/var/wazuh-manager/etc/certs/remoted.pem`) -- authd does not generate or own a certificate of its own, and neither does the manager: the pair is provisioned externally (Wazuh installation assistant, `wazuh-certs-tool`; see [Deploy certificates](../../getting-started/installation.md#deploy-certificates)) and the manager fails closed without it. When the SSL context cannot be built from these files authd logs `SSL context setup failed (certificate '…', key '…')` with the provisioning hint and exits
+- **Default value:** `etc/certs/remoted.pem` (resolved relative to the Wazuh install directory, e.g. `/var/wazuh-manager/etc/certs/remoted.pem`) -- authd does not generate or own a certificate of its own: it reuses the HTTPS agent listener's pair, which the credential resolver issues at installation and which a deployment on its own PKI replaces out of band (Wazuh installation assistant, `wazuh-certs-tool`; see [Deploy certificates](../../getting-started/installation.md#using-certificates-issued-elsewhere)) and the manager fails closed without it. When the SSL context cannot be built from these files authd logs `SSL context setup failed (certificate '…', key '…')` with the provisioning hint and exits
 - **Allowed values:** Path to a PEM-encoded certificate (relative paths resolved from the Wazuh install directory)
 
 ### ssl_manager_key
