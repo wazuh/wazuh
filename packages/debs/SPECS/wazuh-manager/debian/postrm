@@ -153,10 +153,13 @@ case "$1" in
         #
         # `set -e` is active, so every branch is an explicit if with || true: a bare
         # `[ ... ] && cmd` whose test fails would abort the purge.
+        # ${db:Status-Status} is the status word alone. `${Status}` is "<want> <eflag> <status>",
+        # so matching 'install ok installed' misses a sibling the operator put on hold, which
+        # reports 'hold ok installed' -- and purging the manager beside a held wazuh-indexer would
+        # then take credentials.env and the CA private key out from under it.
         CRED_SIBLING_LEFT=no
         for CRED_SIBLING in wazuh-indexer wazuh-dashboard; do
-            if dpkg-query -W -f='${Status}' "${CRED_SIBLING}" 2>/dev/null \
-                | grep -q 'install ok installed'; then
+            if [ "$(dpkg-query -W -f='${db:Status-Status}' "${CRED_SIBLING}" 2>/dev/null)" = installed ]; then
                 CRED_SIBLING_LEFT=yes
             fi
         done

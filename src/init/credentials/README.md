@@ -81,7 +81,7 @@ It runs in four modes:
 | --- | --- | --- | --- |
 | `--install` | DEB `postinst` / RPM `%post` / `install.sh`, **fresh install only** | resolve | **issue** (`wazuh_manager_certificates_ensure`) |
 | `--upgrade` | the same three, when a previous version was installed | resolve | untouched |
-| `--prestart` | `testconfig()` in `../wazuh-server.sh` — that is, `wazuh-manager-control start`, which is what the unit's `ExecStart` runs | resolve, fail naming the key | untouched |
+| `--prestart` | `resolvecredentials()` in `../wazuh-server.sh` — that is, `wazuh-manager-control start`, which is what the unit's `ExecStart` runs, and `restart`/`reload` after the daemons are stopped | resolve, fail naming the key | untouched |
 | `--clear` | nothing in the product | remove | remove |
 
 Each caller already knows which of the first two applies: `$2` is empty in a DEB `postinst

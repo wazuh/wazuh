@@ -210,19 +210,23 @@ mark_invalid() {
 #
 # An explicitly empty value is treated as absent rather than as a policy failure: for a password
 # that is what an operator who cleared a line means, and it leaves the key unresolved with a
-# message rather than blocking the install on a validation error.
+# message rather than blocking the install on a validation error. "Absent" means absent at that
+# level only -- an empty environment variable falls through to the file, it does not hide it.
 #
 # Prints the value and returns 0 when set, 1 when absent, 2 when the file itself is unusable.
 setting_get() {
     _sg_name="$1"
 
-    if eval "[ \"\${${_sg_name}+x}\" = x ]"; then
-        eval "_sg_env=\${${_sg_name}-}"
-        if [ -n "${_sg_env}" ]; then
-            printf '%s' "${_sg_env}"
-            return 0
-        fi
-        return 1
+    # Set-but-empty is treated exactly as unset, so it falls through to the file rather than
+    # shadowing it. The variable being *present* is not the operator's intent: compose's bare
+    # `- KEY`, a unit's EnvironmentFile with a blank assignment and `env KEY= ...` all export an
+    # empty value for a key nobody meant to set, and making that hide the file turned a credential
+    # the file holds into "MISSING WAZUH_INDEXER_MANAGER_PASSWORD", or made an owned key be
+    # regenerated instead of read back.
+    eval "_sg_env=\${${_sg_name}-}"
+    if [ -n "${_sg_env}" ]; then
+        printf '%s' "${_sg_env}"
+        return 0
     fi
 
     _sg_status=0
@@ -486,6 +490,10 @@ resolve_certificates() {
     # Not mark_unresolved(): that list is the set of keys the SERVICE will refuse to start without,
     # and only --prestart reports it. Certificates are resolved at install and nowhere else, so the
     # caller reports this failure at the moment it happens instead.
+    # ensure() records for itself whether it minted the bootstrap CA, under the credentials lock and
+    # therefore atomically with the mint -- see WAZUH_MANAGER_CA_MINT_MARKER. Doing it out here
+    # would mean observing the CA outside the lock, and the ordering that gets it wrong is the
+    # likely one: a sibling minting is exactly when we block.
     if ! wazuh_manager_certificates_ensure; then
         return 1
     fi
@@ -566,18 +574,35 @@ clear_credentials() {
         fi
     done
 
+    # A CA goes only when this host minted it, which resolve_certificates() recorded at the time.
+    # The presence of root-ca.key is NOT that evidence: an operator who staged a signing CA -- their
+    # own anchor and key, so the manager issues leaves from their PKI -- leaves the same shape, and
+    # deleting that private key is destroying something we were given, not something we made.
     _cc_ca=$(wazuh_ca_get_dir 2>/dev/null) || _cc_ca=""
-    if [ -n "${_cc_ca}" ] && [ -f "${_cc_ca}/root-ca.key" ]; then
-        rm -f "${_cc_ca}/root-ca.pem" "${_cc_ca}/root-ca.key" "${_cc_ca}/root-ca.srl"
+    if [ -n "${_cc_ca}" ] && [ -f "${_cc_ca}/${WAZUH_MANAGER_CA_MINT_MARKER}" ]; then
+        rm -f "${_cc_ca}/root-ca.pem" "${_cc_ca}/root-ca.key" "${_cc_ca}/root-ca.srl" \
+              "${_cc_ca}/${WAZUH_MANAGER_CA_MINT_MARKER}"
         log "removed the bootstrap CA in ${_cc_ca}"
+    elif [ -n "${_cc_ca}" ] && [ -f "${_cc_ca}/root-ca.key" ]; then
+        log "keeping the CA in ${_cc_ca}: this host did not mint it, so its private key is not ours to remove"
     elif [ -n "${_cc_ca}" ] && [ -f "${_cc_ca}/root-ca.pem" ]; then
         log "keeping the trust anchor in ${_cc_ca}: it carries no private key, so it was issued elsewhere"
     fi
 
-    # Only this component's keys, and only inside the managed block.
+    # Only this component's keys, and only inside the managed block. A failure here is reported and
+    # fails the run: an unwritable or malformed credentials file leaves both passwords in place, and
+    # announcing that they were removed when they were not is how a published credential reaches an
+    # image that was cleared precisely so it would not.
+    _cc_failed=""
     for _cc_key in WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD; do
-        wazuh_env_unset "${_cc_key}" >/dev/null 2>&1 || true
+        wazuh_env_unset "${_cc_key}" >/dev/null 2>&1 || _cc_failed="${_cc_failed} ${_cc_key}"
     done
+    if [ -n "${_cc_failed}" ]; then
+        _cc_file=$(wazuh_env_get_file 2>/dev/null) || _cc_file="the credentials file"
+        err "could not remove from ${_cc_file}:${_cc_failed}"
+        err "        they are still published; fix the file's ownership, mode and syntax and clear again"
+        return 1
+    fi
     log "removed the manager's published keys from the credentials file"
 
     log "cleared; the next start resolves from nothing"

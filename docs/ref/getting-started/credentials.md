@@ -394,9 +394,22 @@ look at where they came from.
 > role, policy and rule — not only the two default users. On a deployment with custom RBAC, clearing
 > means recreating it. It refuses to run while the manager is running; stop the service first.
 
-Two things it deliberately leaves alone: a CA directory holding only an anchor, since no private key
-beside it means the CA was issued elsewhere and is not the manager's to destroy, and anything
-outside the managed block or belonging to another component.
+It deliberately leaves alone anything outside the managed block or belonging to another component,
+and **any CA this host did not mint** — including one that has its private key beside it. The
+installation records the mint in the CA directory at the moment it happens, and that record is the
+only thing that authorises removing a CA private key. So a CA you staged yourself survives, whether
+you gave the manager only an anchor or a full signing pair:
+
+| In the CA directory | `--clear` |
+|---------------------|-----------|
+| A CA this installation minted | removed, private key included |
+| A signing CA you staged (anchor **and** key) | kept — this host did not mint it |
+| An anchor you staged, no key | kept — it was issued elsewhere |
+
+If it cannot take its own keys out of `/etc/wazuh/credentials.env` — a wrong mode, a malformed file —
+it says so and exits non-zero rather than reporting a clearance it did not perform. Check the exit
+status when you run it from a `Dockerfile`: the point of the command is that the image ships no
+credentials, and a `RUN` that ignored the failure would ship them anyway.
 
 ## Upgrades and removal
 
@@ -407,6 +420,21 @@ rotation, not installation.
 Certificates are not looked at at all. An upgrade never re-examines, re-anchors or reissues the pair
 in `etc/certs`, so one you replaced with your own PKI's — and the absent CA directory that usually
 goes with it — survives every upgrade untouched.
+
+> [!NOTE]
+> With one exception, on DEB only. `apt remove` (without `purge`) renames everything under `etc/` to
+> `*.save`, so a later reinstall finds no pair and must issue one — but dpkg reports that reinstall
+> the same way it reports an upgrade. The `postinst` therefore treats "no `etc/certs/remoted.pem`
+> **and** no `etc/certs/indexer-connector.pem`" as an install and issues.
+>
+> That test also matches a genuine upgrade on a host that keeps **both** certificates somewhere else
+> — `WAZUH_REMOTE_HTTPS_CERTIFICATE` pointed outside `etc/certs`, and `<indexer><ssl><certificate>`
+> likewise. On such a host an upgrade issues a pair into `etc/certs` that nothing reads, and mints a
+> bootstrap CA in `/etc/wazuh/ca` if none is there. Nothing in use is touched or overwritten: a file
+> already in place is never replaced, and a `root-ca.pem` that differs from the CA's aborts the
+> issuance. If you run on your own PKI at non-default paths and want neither, keep a `root-ca.pem`
+> in `etc/certs` — the issuance then has an anchor it must match and stops — or remove the issued
+> files and `/etc/wazuh/ca` afterwards.
 
 What removal does depends on which package manager, because they do not offer the same operations:
 

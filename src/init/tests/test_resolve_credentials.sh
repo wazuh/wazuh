@@ -404,6 +404,23 @@ check "every character of the alphabet is accepted" "Aa1.,_+:@%^=~-" \
     "$(seeded_password "${root}" wazuh)"
 cleanup "${root}"
 
+# An empty environment variable must fall through to the file rather than shadow it: an
+# orchestrator that passes a key through without a value (compose's bare `- KEY`, a unit's
+# EnvironmentFile with a blank assignment) would otherwise turn a credential the file holds into a
+# MISSING key, and an owned one into a regenerated password.
+root="$(make_tree)"
+write_credentials "${root}" "WAZUH_MANAGER_API_PASSWORD='FromFile.Aa1'
+WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'"
+WAZUH_BASE_DIR="${root}/base" WAZUH_MANAGER_USER=root WAZUH_MANAGER_GROUP=root \
+    WAZUH_MANAGER_API_PASSWORD='' WAZUH_INDEXER_MANAGER_PASSWORD='' \
+    "${root}/home/bin/resolve-credentials" --prestart -H "${root}/home" > "${RESOLVER_OUT}" 2>&1
+RC=$?
+check "an empty environment variable does not shadow the file" "0" "${RC}"
+check "the owned key is read from the file, not regenerated" "FromFile.Aa1" "$(seeded_password "${root}" wazuh)"
+check "and the consumed key is not reported missing" "" \
+    "$(grep -o 'MISSING WAZUH_INDEXER_MANAGER_PASSWORD' <<< "$(resolver_output)" | head -1)"
+cleanup "${root}"
+
 # --------------------------------------------------------------------------------------------
 # The indexer username
 # --------------------------------------------------------------------------------------------
@@ -658,6 +675,37 @@ rm -f "${root}/home/var/run/"*.pid
 echo "999999" > "${root}/home/var/run/wazuh-manager-analysisd-999999.pid"
 run_resolver "${root}" --clear
 check "a stale pidfile does not block it" "0" "${RC}"
+cleanup "${root}"
+
+# A CA this host did not mint is kept, private key or not. An operator who stages a signing CA --
+# their own anchor AND key, so the manager issues leaves from their PKI -- leaves exactly the shape
+# a minted one has, so "root-ca.key is present" cannot be the evidence; only the marker the install
+# wrote may authorise deleting a private key.
+root="$(make_tree)"
+mkdir -p "${root}/base/ca"
+chmod 0700 "${root}/base/ca"
+openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 1 \
+    -keyout "${root}/base/ca/root-ca.key" -out "${root}/base/ca/root-ca.pem" \
+    -subj "/CN=Operator signing CA" > /dev/null 2>&1
+chmod 0644 "${root}/base/ca/root-ca.pem"; chmod 0400 "${root}/base/ca/root-ca.key"
+staged_ca="$(md5sum < "${root}/base/ca/root-ca.key")"
+run_resolver "${root}" --install
+run_resolver "${root}" --clear
+check "--clear keeps a signing CA this host did not mint" "${staged_ca}" \
+    "$(md5sum < "${root}/base/ca/root-ca.key" 2>/dev/null)"
+check "and says why" "yes" \
+    "$(grep -q 'this host did not mint it' <<< "$(resolver_output)" && echo yes)"
+cleanup "${root}"
+
+# A credentials file that cannot be written must not be reported as cleared: the published
+# passwords are still in it, and an image cleared on that promise would ship them.
+root="$(make_tree)"
+run_resolver "${root}" --install
+chmod 0644 "${root}/base/credentials.env"
+run_resolver "${root}" --clear
+check "--clear fails when it cannot unpublish" "1" "${RC}"
+check "and says the keys are still published" "yes" \
+    "$(grep -q 'they are still published' <<< "$(resolver_output)" && echo yes)"
 cleanup "${root}"
 
 # A CA directory holding only an anchor was issued elsewhere and handed to this host: destroying it

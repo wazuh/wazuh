@@ -38,6 +38,38 @@ def signal_handler(n_signal, frame):
     sys.exit(1)
 
 
+# Content of every password file, read while the script was still root. See preload_sources().
+_preloaded_sources = {}
+
+
+def preload_sources(script_args):
+    """Read the password files the command was given, before privileges are dropped.
+
+    `drop_privileges()` runs before the command does, so a file only root can read -- the documented
+    `--password-file /root/wui.pass` at `0600 root:root` -- would otherwise fail with `Permission
+    denied` once this process is the service user. The file belongs to whoever invoked us, and they
+    are root; what dropping privileges protects is `rbac.db`, created under a directory the service
+    group can write, and that is unaffected by reading here.
+
+    A read that fails is left to the command, which opens the file again and reports the failure in
+    the words that fit what it was doing.
+
+    Parameters
+    ----------
+    script_args : argparse.Namespace
+        Arguments given to the script.
+    """
+    for attribute in ('password_file', 'passwords_file'):
+        source = getattr(script_args, attribute, None)
+        if not source or source == '-':
+            continue
+        try:
+            with open(source) as f:
+                _preloaded_sources[source] = f.read()
+        except OSError:
+            pass
+
+
 def read_source(source: str) -> str:
     """Read the whole content of a file, or of the standard input if the source is `-`.
 
@@ -53,6 +85,9 @@ def read_source(source: str) -> str:
     """
     if source == '-':
         return sys.stdin.read()
+
+    if source in _preloaded_sources:
+        return _preloaded_sources[source]
 
     with open(source) as f:
         return f.read()
@@ -333,6 +368,8 @@ if __name__ == "__main__":
     args = get_script_arguments()
 
     try:
+        # Before the drop, deliberately: the operator's password file is commonly root-only.
+        preload_sources(args)
         drop_privileges()
         asyncio.run(main())
     except WazuhError as e:
