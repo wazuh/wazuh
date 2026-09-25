@@ -103,8 +103,7 @@ namespace
     /// marked seen (recorded before this function returns) and an
     /// at-least-once redelivery -- even across a restart, notably the one a
     /// remote_upgrade itself triggers -- stays dropped.
-    std::vector<NotifyTask> collectFreshTasks(const nlohmann::json& parsed, ITaskIdStore& taskStore,
-                                              const LogFn& logFn)
+    std::vector<NotifyTask> collectFreshTasks(const nlohmann::json& parsed, ITaskIdStore& taskStore, const LogFn& logFn)
     {
         std::vector<NotifyTask> batch;
         const auto tasks = parsed.find("tasks");
@@ -175,6 +174,7 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
     , m_vdOffsetStore(vdOffsetStore)
     , m_rescanRequester(config, performer, signer, clock, random, authGate, compressionGate, vdOffsetStore)
     , m_collectHost(std::move(collectHost))
+    , m_certVerificationLimiter(clock)
 {
 }
 
@@ -357,8 +357,7 @@ OutcomeClass ControlStream::sendNotify(Waiter& waiter)
     return result.outcome;
 }
 
-void ControlStream::applyEffects(const ControlStateMachine::Effects& effects,
-                                 const std::string& handshake)
+void ControlStream::applyEffects(const ControlStateMachine::Effects& effects, const std::string& handshake)
 {
     if (effects.stateChanged)
     {
@@ -468,8 +467,7 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
         // no agent change at all. groupsCsv() is the pre-config_token path, kept only so a
         // manager that reports no token behaves exactly as it did before the field existed.
         const std::string configToken = jsonField(*agent, "config_token");
-        maybeDownloadConfig(
-            managerHash, configToken.empty() ? groupsCsv(*agent) : configToken, waiter);
+        maybeDownloadConfig(managerHash, configToken.empty() ? groupsCsv(*agent) : configToken, waiter);
 
         // Deliberately NOT the token: this is the agent's group identity (agcom's gethandshake,
         // /stats and /config tagging), which stays the manager-reported group list itself.
@@ -520,8 +518,7 @@ void ControlStream::maybeAdoptCaPublication(std::optional<std::int64_t> advertis
     // Logged on the observation that arms the refresh, not on every notify that raises the
     // target: at the keepalive cadence the latter would be a line every ten seconds for as long
     // as a rotation is in flight.
-    LOGFN_INFO(m_logFn,
-               "Manager advertises CA bundle publication %lld; the agent holds %lld. A refresh is due.",
+    LOGFN_INFO(m_logFn, "Manager advertises CA bundle publication %lld; the agent holds %lld. A refresh is due.",
                static_cast<long long>(m_caPublication.pending()),
                static_cast<long long>(m_caPublication.local()));
 }
@@ -540,8 +537,8 @@ void ControlStream::maybeRequestVdRescan(uint64_t offset, Waiter& waiter)
     }
 }
 
-void ControlStream::maybeDownloadConfig(const std::string& managerHash,
-                                        const std::string& resourceId, Waiter& waiter)
+void ControlStream::maybeDownloadConfig(const std::string& managerHash, const std::string& resourceId,
+                                        Waiter& waiter)
 {
     const std::string localHash = m_configHash.get();
 
@@ -593,8 +590,7 @@ void ControlStream::maybeReportAgentGroups(const std::string& csv)
 
 void ControlStream::maybeArmSettingsRefresh(const std::string& incoming)
 {
-    LOGFN_DEBUG2(m_logFn, "settings_hash check: manager=%s local=%s",
-                 incoming.c_str(), m_settingsHash.c_str());
+    LOGFN_DEBUG2(m_logFn, "settings_hash check: manager=%s local=%s", incoming.c_str(), m_settingsHash.c_str());
 
     if (incoming.empty())
     {
@@ -661,6 +657,17 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
                        "condition is cleared.", target.c_str());
         }
 
+        // Pairs with the WARNING below, on the same reasoning as the 404 recovery
+        // just above: without this, an operator has no way to tell a certificate-
+        // trust failure reported an hour ago from one still ongoing right now.
+        if (m_certVerificationReported)
+        {
+            m_certVerificationReported = false;
+            m_certVerificationLimiter.reset();
+            LOGFN_INFO(m_logFn, "The manager's certificate is verifying successfully again; "
+                       "the TLS verification failure is cleared.");
+        }
+
         if (m_producersPaused)
         {
             m_producersPaused = false;
@@ -685,6 +692,36 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
         LOGFN_ERROR(m_logFn, "The manager answered HTTP 404 to the request target '%s': it "
                     "serves no such route. The path in <endpoint> must match the global "
                     "prefix the manager serves.", target.c_str());
+    }
+
+    // A cert-trust TLS failure gets its own report, on the same "before the pause
+    // bookkeeping, independent of it" footing as the 404 block above: this must not
+    // wait producerPauseThreshold cycles for its first line (a repro against a real
+    // manager confirmed ~30s of true silence otherwise), and it must keep reminding
+    // the operator for as long as the failure persists rather than latch into a
+    // single one-shot line the way the 404 case does -- a persistent MITM/rotation
+    // is exactly the case that must not go quiet again.
+    if (outcome == OutcomeClass::Unreachable && m_lastCertVerificationFailed)
+    {
+        const auto decision = m_certVerificationLimiter.record();
+        m_certVerificationReported = true;
+
+        if (decision)
+        {
+            // The full wire URL, not just the routed path: unlike the 404 line above (which is
+            // about routing, so the path alone identifies the problem), this WARNING is the
+            // only per-incident line naming the failure at all, and it must not depend on the
+            // reader still having the one-time startup INFO line in view to know which manager
+            // is being rejected.
+            const std::string url = m_config.baseUrl() + prefixedTarget(m_config.serverEndpoint, "/control");
+            const std::string suffix = decision.suppressed > 0
+                                       ? " (" + std::to_string(decision.suppressed) +
+                                       " more suppressed in the last " +
+                                       std::to_string(LogRateLimiter::kDefaultWindowSeconds) + "s)"
+                                       : std::string();
+            LOGFN_WARN(m_logFn, "Could not verify the manager's certificate at '%s': %s%s",
+                       url.c_str(), m_lastCurlError.c_str(), suffix.c_str());
+        }
     }
 
     // Undeliverable with nothing already in motion to change it. AuthFail only surfaces once the
@@ -850,6 +887,7 @@ void ControlStream::updateConnectionInfo(const HttpResponse& response)
     // outcome reaches updateProducerPause() -- so the pause never quotes a reason
     // from an earlier incident.
     m_lastCurlError = response.curlError;
+    m_lastCertVerificationFailed = isCertificateVerificationFailure(response);
 }
 
 ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const

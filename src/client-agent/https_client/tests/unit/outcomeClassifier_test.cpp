@@ -110,6 +110,63 @@ TEST(OutcomeClassifierTest, AbortedIsInterruptedNeverOk)
     EXPECT_EQ(OutcomeClass::Interrupted, classifyOutcome(makeResponse(TransportStatus::Aborted, 0)));
 }
 
+struct CertVerificationCase
+{
+    TransportStatus status;
+    TlsFailureKind kind;
+    bool depth0VerificationFailed;
+    bool chainTrustRejectedAboveDepth0;
+    bool expected;
+};
+
+inline void PrintTo(const CertVerificationCase& value, std::ostream* stream)
+{
+    *stream << "status=" << static_cast<int>(value.status) << " kind=" << static_cast<int>(value.kind)
+            << " depth0Failed=" << value.depth0VerificationFailed
+            << " chainAboveDepth0=" << value.chainTrustRejectedAboveDepth0
+            << " expected=" << value.expected;
+}
+
+class IsCertificateVerificationFailureTable : public ::testing::TestWithParam<CertVerificationCase>
+{
+};
+
+TEST_P(IsCertificateVerificationFailureTable, ClassifiesAsExpected)
+{
+    const auto& param = GetParam();
+    HttpResponse response = makeResponse(param.status, 0);
+    response.tlsFailure.kind = param.kind;
+    response.tlsFailure.depth0VerificationFailed = param.depth0VerificationFailed;
+    response.tlsFailure.chainTrustRejectedAboveDepth0 = param.chainTrustRejectedAboveDepth0;
+    EXPECT_EQ(param.expected, isCertificateVerificationFailure(response));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    D9Table,
+    IsCertificateVerificationFailureTable,
+    ::testing::Values(
+        // The ordinary chain/CA-trust class this issue is about: leaf-depth rejection.
+        CertVerificationCase {TransportStatus::TlsFail, TlsFailureKind::None, true, false, true},
+        // Chain-trust rejection above the leaf (an untrusted intermediate/root) -- OpenSSL's
+        // chain builder can reject before ever reaching depth 0, so depth0VerificationFailed
+        // stays false in this case.
+        CertVerificationCase {TransportStatus::TlsFail, TlsFailureKind::None, false, true, true},
+        // Already classified elsewhere as hostname/date: must not double-report.
+        CertVerificationCase {TransportStatus::TlsFail, TlsFailureKind::HostnameMismatch, true, false, false},
+        CertVerificationCase {TransportStatus::TlsFail, TlsFailureKind::CertExpired, true, false, false},
+        CertVerificationCase {TransportStatus::TlsFail, TlsFailureKind::CertNotYetValid, false, true, false},
+        // A TlsFail that never reached certificate inspection at all (a cipher-negotiation
+        // failure, or a corrupt local CA file -- HttpResponse::caFileLoadFailed's case):
+        // neither flag is ever set, so this must stay generic, unclassified TlsFail.
+        CertVerificationCase {TransportStatus::TlsFail, TlsFailureKind::None, false, false, false},
+        // Not a TLS failure at all: never a cert-verification failure regardless of what the
+        // (irrelevant here) tlsFailure fields happen to say.
+        CertVerificationCase {TransportStatus::Ok, TlsFailureKind::None, true, true, false},
+        CertVerificationCase {TransportStatus::Timeout, TlsFailureKind::None, true, true, false},
+        CertVerificationCase {TransportStatus::ConnectFail, TlsFailureKind::None, true, true, false},
+        CertVerificationCase {TransportStatus::Aborted, TlsFailureKind::None, true, true, false},
+        CertVerificationCase {TransportStatus::OtherError, TlsFailureKind::None, true, true, false}));
+
 TEST(OutcomeClassifierTest, HcResultMapping)
 {
     EXPECT_EQ(HC_RESULT_OK, toHcResult(OutcomeClass::Ok));
