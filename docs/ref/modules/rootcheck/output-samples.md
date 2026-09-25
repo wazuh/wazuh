@@ -171,7 +171,7 @@ Rootcheck alerts follow the ECS (Elastic Common Schema) format:
     "architecture": "x86_64"
   },
   "event": {
-    "original": "Interface 'eth1' in promiscuous mode, but ifconfig is not showing it(probably trojaned).",
+    "original": "Interface 'eth1' in promiscuous mode.",
     "category": ["host", "malware"],
     "dataset": "wazuh.rootcheck",
     "kind": "alert",
@@ -190,17 +190,13 @@ Rootcheck alerts follow the ECS (Elastic Common Schema) format:
 - May indicate packet sniffing or network monitoring tool
 - Can be legitimate (e.g., network monitoring tools) but requires investigation
 
-**Note about "ifconfig not showing it":**
-The message mentions `ifconfig` not showing the promiscuous mode. This can occur for two reasons:
-1. **Legacy command issue (common):** Modern Linux distributions use `ip` command instead of `ifconfig`. The rootcheck module tries to cross-verify using `ifconfig`, but if it's not installed, it reports this as suspicious. This is a **false positive** on systems without `net-tools` package.
-2. **Actual trojaned tools (rare):** System commands have been replaced with trojaned versions that hide the promiscuous mode.
-
-To verify the actual status on modern systems:
+**Verifying the interface:**
+Rootcheck reports promiscuous mode directly from the kernel interface flags (`SIOCGIFFLAGS`/`IFF_PROMISC`). To confirm the status manually:
 ```bash
 ip link show eth1 | grep PROMISC
 ```
 
-If you see the `PROMISC` flag and `ifconfig` doesn't exist, this is expected behavior on modern systems and not necessarily malicious.
+If you see the `PROMISC` flag, the interface is in promiscuous mode. This can be legitimate (e.g., network monitoring tools) and does not necessarily indicate malicious activity.
 
 ---
 
@@ -594,20 +590,15 @@ wazuh.protocol.location: rootcheck AND event.category: malware
 
 ### Common False Positive Scenarios
 
-1. **Promiscuous Mode - "ifconfig not showing it (probably trojaned)":**
-   - **Cause:** Modern Linux distributions don't include `ifconfig` command (replaced by `ip` command from iproute2). Rootcheck detects promiscuous mode correctly but can't verify with `ifconfig`, so it reports as suspicious.
-   - **Verification:** Run `ip link show <interface> | grep PROMISC` to confirm the interface is actually in promiscuous mode
-   - **Solution:** If legitimate (e.g., network monitoring), this is expected. Consider adding interface to ignore list or installing `net-tools` package if available.
-
-2. **Promiscuous Mode - Legitimate monitoring:**
+1. **Promiscuous Mode - Legitimate monitoring:**
    - **Cause:** Legitimate network monitoring tools (tcpdump, Wireshark, network security tools)
    - **Solution:** Verify tool legitimacy and add exception if needed
 
-3. **Device Directory Files:**
+2. **Device Directory Files:**
    - **Cause:** Custom device drivers, special hardware, test files
    - **Solution:** Add to ignore list if verified legitimate
 
-4. **World-Writable Test Files:**
+3. **World-Writable Test Files:**
    - **Cause:** Temporary test files, development environments
    - **Solution:** Review and remove unnecessary test files, or add to ignore list
 

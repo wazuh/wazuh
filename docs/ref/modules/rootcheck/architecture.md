@@ -194,7 +194,6 @@ for file in /dev/* {
 2. For each interface:
    - Check interface flags using `ioctl(SIOCGIFFLAGS)`
    - Look for `IFF_PROMISC` flag
-   - Parse `ifconfig` output as secondary check
 3. Trigger alert if promiscuous mode detected
 
 **Detection Logic:**
