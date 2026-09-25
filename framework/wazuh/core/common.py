@@ -202,3 +202,15 @@ AR_BOOKMARK_FILEPATH = os.path.join(CLUSTERD_WORKINGDIR, "ar_bookmark.json")
 
 # ========================================== INSTALLATION UID PATH ====================================================
 SECURITY_PATH = os.path.join(WAZUH_PATH, 'api', 'configuration', 'security')
+
+# ============================================== CLUSTER PLACEHOLDERS =================================================
+
+# 1774 -> "this node's database holds no information about the agent". Not a verdict about the
+# agent but the absence of one: the node was asked about an agent that has never connected to it,
+# which is routine for 5.x agents, since they connect over stateless, load-balanced HTTPS and have
+# no fixed owning node.
+#
+# Lives here because two layers need it and neither owns it: wazuh/agent.py emits it, and the
+# cluster merge in core/cluster/dapi drops it for any agent another node did report on -- a
+# placeholder only stands while nothing better exists.
+AGENT_NOT_IN_LOCAL_DB_ERROR_CODE = 1774

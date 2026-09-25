@@ -123,6 +123,10 @@ The Wazuh RESTful API uses the control channel for:
 
 Agent restart and reload via the API require the target agent to be running **version 5.0.0 or higher**. Agents on older versions will return error `1761`.
 
+In a cluster the request is broadcast to every node, and each node only knows the version of the agents that have connected to *it* — 5.x agents connect over stateless, load-balanced HTTPS and have no fixed owning node. A node that holds no version for an agent still creates its task, because the agent's next poll may land there and the agent discards a task id it has already run, and answers error `1774` ("the agent has never connected to this node, which holds no information about it") rather than `1761`, which would blame a version that node has never seen.
+
+`1774` is a per-node answer, so read it in the `nodes` field: a merge drops it as soon as any node reports that agent as affected, and it reaches the top level only when no node has ever seen the agent. The task copies nobody fetches are expired by the Task Manager after `task-manager.task_ttl` (1 h by default) and logged at debug level.
+
 ### Communication Examples
 
 **Manager Control (Direct Socket)**:

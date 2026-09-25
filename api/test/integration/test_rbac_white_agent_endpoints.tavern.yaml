@@ -1360,8 +1360,10 @@ stages:
           affected_items:
             - '004'
           failed_items:
+            # 012 has never connected anywhere, so no node holds a version for it: 1774, not the
+            # 1761 that would blame a version nobody has ever seen.
             - error:
-                code: 1761
+                code: 1774
               id:
                 - '012'
           total_affected_items: 1

@@ -206,6 +206,8 @@ def test_agent_get_agents_summary_os(connect_mock, send_mock):
     (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
     (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
     (['003'],        [],      1761),   # 'N/A' version (rejected startup) - must not raise, must be rejected
+    (['004'],        [],      1774),  # no version in this node's DB - task created, answered with 1774
+    (['004', '010'], ['010'], 1774),  # ditto, next to an agent this node does know
 ])
 @patch('wazuh.agent.create_restart_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
@@ -233,13 +235,19 @@ async def test_agent_restart_agents(exit_mock, enter_mock, init_mock, run_mock, 
             {'id': '001', 'version': 'v4.2.0'},
             {'id': '002', 'version': 'v4.0.0'},
             {'id': '010', 'version': 'v5.0.0'},
-            {'id': '003', 'version': 'N/A'}
+            {'id': '003', 'version': 'N/A'},
+            # wazuh-db omits NULL columns, so an agent that has never connected to this node comes
+            # back with no 'version' key at all -- which is not the same as the 'N/A' sentinel
+            # above, and must not be read as a pre-5.0 agent.
+            {'id': '004'}
         ]
     }
     enter_mock.return_value = mock_query
 
-    # Mock task creation response
-    create_restart_mock.return_value = [{"data": [{"agent": agent_id, "error": 0} for agent_id in expected_items]}]
+    # Mock task creation response. Keyed on the agents the function actually asks to queue, so the
+    # result reflects the function's own reporting decisions and not the mock's.
+    create_restart_mock.side_effect = \
+        lambda agents, chunk_size, request_time: [{"data": [{"agent": agent_id, "error": 0} for agent_id in agents]}]
 
     result = await restart_agents(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
@@ -248,6 +256,15 @@ async def test_agent_restart_agents(exit_mock, enter_mock, init_mock, run_mock, 
         code = next(iter(result.failed_items.keys())).code
         assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
 
+    if '004' in agent_list:
+        # This node holds no version for 004: the task is still created, because the agent may poll
+        # here next, but the answer is 1774 and never an affected item -- claiming success would
+        # override, on a merge, the verdict of the node that does know the agent.
+        assert '004' in create_restart_mock.call_args[0][0], 'The task must be created for the agent anyway.'
+        assert '004' not in result.affected_items, '004 must not be reported as affected by this node.'
+        assert any(error.code == 1774 and '004' in ids for error, ids in result.failed_items.items()), \
+            '004 must be reported with 1774 by a node that has no information about it.'
+
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
     (['010'],        ['010'], None),   # v5.0.0 - succeeds
@@ -255,6 +272,8 @@ async def test_agent_restart_agents(exit_mock, enter_mock, init_mock, run_mock, 
     (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
     (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
     (['003'],        [],      1761),   # 'N/A' version (rejected startup) - must not raise, must be rejected
+    (['004'],        [],      1774),  # no version in this node's DB - task created, answered with 1774
+    (['004', '010'], ['010'], 1774),  # ditto, next to an agent this node does know
 ])
 @patch('wazuh.agent.create_reload_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
@@ -282,13 +301,19 @@ async def test_agent_reload_agents(exit_mock, enter_mock, init_mock, run_mock, a
             {'id': '001', 'version': 'v4.2.0'},
             {'id': '002', 'version': 'v4.0.0'},
             {'id': '010', 'version': 'v5.0.0'},
-            {'id': '003', 'version': 'N/A'}
+            {'id': '003', 'version': 'N/A'},
+            # wazuh-db omits NULL columns, so an agent that has never connected to this node comes
+            # back with no 'version' key at all -- which is not the same as the 'N/A' sentinel
+            # above, and must not be read as a pre-5.0 agent.
+            {'id': '004'}
         ]
     }
     enter_mock.return_value = mock_query
 
-    # Mock task creation response
-    create_reload_mock.return_value = [{"data": [{"agent": agent_id, "error": 0} for agent_id in expected_items]}]
+    # Mock task creation response. Keyed on the agents the function actually asks to queue, so the
+    # result reflects the function's own reporting decisions and not the mock's.
+    create_reload_mock.side_effect = \
+        lambda agents, chunk_size, request_time: [{"data": [{"agent": agent_id, "error": 0} for agent_id in agents]}]
 
     result = await reload_agents(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
@@ -296,6 +321,15 @@ async def test_agent_reload_agents(exit_mock, enter_mock, init_mock, run_mock, a
     if result.failed_items:
         code = next(iter(result.failed_items.keys())).code
         assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
+
+    if '004' in agent_list:
+        # This node holds no version for 004: the task is still created, because the agent may poll
+        # here next, but the answer is 1774 and never an affected item -- claiming success would
+        # override, on a merge, the verdict of the node that does know the agent.
+        assert '004' in create_reload_mock.call_args[0][0], 'The task must be created for the agent anyway.'
+        assert '004' not in result.affected_items, '004 must not be reported as affected by this node.'
+        assert any(error.code == 1774 and '004' in ids for error, ids in result.failed_items.items()), \
+            '004 must be reported with 1774 by a node that has no information about it.'
 
 
 @pytest.mark.parametrize('agent_list, expected_items', [
