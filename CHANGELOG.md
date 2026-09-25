@@ -47,6 +47,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#39179](https://github.com/wazuh/wazuh/issues/39179) | Reported a network interface type on macOS for tunnel and virtual interfaces (gif, stf, utun, VLAN, bridge, cellular) instead of leaving them blank. |
 
 ## Prior versions
 
