@@ -9,11 +9,12 @@
  * Foundation.
  */
 #include "sysInfo.hpp"
+#include <algorithm>
 #include <deque>
 #include <optional>
 #include "cmdHelper.h"
 #include "stringHelper.h"
-#include "stdFileSystemHelper.hpp"
+#include <filesystem_utils.hpp>
 #include <filesystem_wrapper.hpp>
 #include "processInfoMac.h"
 #include "osinfo/sysOsParsers.h"
@@ -45,6 +46,9 @@
 #include "chrome.hpp"
 #include "safari_darwin.hpp"
 #include "firefox.hpp"
+#include <mach/mach_time.h>
+#include <unistd.h>
+#include "processHelperMac.h"
 
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
@@ -71,6 +75,69 @@ static const std::map<std::string, int> s_mapPackagesDirectories =
     { "/opt/homebrew/Cellar", BREW},
     { "/opt/local/var/macports/registry", MACPORTS}
 };
+
+static mach_timebase_info_data_t getTimebase()
+{
+    mach_timebase_info_data_t tb{0, 0};
+    mach_timebase_info(&tb);
+
+    if (tb.denom == 0)
+    {
+        tb.numer = 1;
+        tb.denom = 1;
+    }
+
+    return tb;
+}
+
+static int64_t getClockTicksPerSecond()
+{
+    const auto ticks { sysconf(_SC_CLK_TCK) };
+    return ticks > 0 ? ticks : 100;
+}
+
+static uint64_t machTimeToClockTicks(const uint64_t machTicks)
+{
+    static const auto timebase { getTimebase() };
+    static const auto clkTck { getClockTicksPerSecond() };
+    return ProcessHelperMac::clockTicksFromMachTime(machTicks, timebase.numer, timebase.denom, clkTck);
+}
+
+static int getLowestThreadStateRank(const pid_t pid, const int32_t threadCount)
+{
+    auto rank { ProcessHelperMac::THREAD_STATE_RANK_UNKNOWN };
+
+    if (threadCount <= 0)
+    {
+        return rank;
+    }
+
+    // Leave room for threads created after the task info was read.
+    std::vector<uint64_t> threadIds(static_cast<size_t>(threadCount) + 16);
+    const auto bytes
+    {
+        proc_pidinfo(pid, PROC_PIDLISTTHREADS, 0, threadIds.data(), static_cast<int>(threadIds.size() * sizeof(uint64_t)))
+    };
+
+    if (bytes <= 0)
+    {
+        return rank;
+    }
+
+    const auto count { std::min(static_cast<size_t>(bytes) / sizeof(uint64_t), threadIds.size()) };
+
+    for (size_t i = 0; i < count && rank > 1; ++i)
+    {
+        struct proc_threadinfo threadInfo {};
+
+        if (proc_pidinfo(pid, PROC_PIDTHREADINFO, threadIds[i], &threadInfo, PROC_PIDTHREADINFO_SIZE) == PROC_PIDTHREADINFO_SIZE)
+        {
+            rank = std::min(rank, ProcessHelperMac::threadStateRank(threadInfo.pth_run_state, threadInfo.pth_sleep_time));
+        }
+    }
+
+    return rank;
+}
 
 static bool getProcessArgs(const pid_t pid, std::vector<char>& buffer, ProcessArgs& processArgs)
 {
@@ -101,8 +168,11 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
     // resolveProcessName() falls back to pbi_name, which the kernel cuts at a fixed byte
     // length and can split a multi-byte character on the way.
     jsProcessInfo["name"]       = Utils::sanitizeUtf8(resolveProcessName(pid, taskInfo.pbsd.pbi_name));
-    jsProcessInfo["state"]      = UNKNOWN_VALUE;
+    jsProcessInfo["state"]      = ProcessHelperMac::getProcessState(taskInfo.pbsd.pbi_status,
+                                                                    getLowestThreadStateRank(pid, taskInfo.ptinfo.pti_threadnum));
     jsProcessInfo["parent_pid"] = taskInfo.pbsd.pbi_ppid;
+    jsProcessInfo["utime"]      = machTimeToClockTicks(taskInfo.ptinfo.pti_total_user);
+    jsProcessInfo["stime"]      = machTimeToClockTicks(taskInfo.ptinfo.pti_total_system);
     jsProcessInfo["start"]      = Utils::rawTimestampToISO8601(static_cast<uint32_t>(taskInfo.pbsd.pbi_start_tvsec));
 
     char pathBuffer[PROC_PIDPATHINFO_MAXSIZE] = {0};
@@ -366,7 +436,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 
         try
         {
-            Utils::expandAbsolutePath(userApplicationsGlob, userApplicationsPaths);
+            file_system::FileSystemUtils().expand_absolute_path(userApplicationsGlob, userApplicationsPaths);
         }
         catch (const std::exception& e)
         {
