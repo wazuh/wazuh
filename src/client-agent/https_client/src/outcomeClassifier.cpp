@@ -92,3 +92,20 @@ OutcomeClass classifyOutcome(const HttpResponse& response)
     // intermediary is in the path).
     return (code >= 500) ? OutcomeClass::ServerError : OutcomeClass::Permanent;
 }
+
+bool isCertificateVerificationFailure(const HttpResponse& response)
+{
+    if (response.status != TransportStatus::TlsFail)
+    {
+        return false;
+    }
+
+    if (response.tlsFailure.kind != TlsFailureKind::None)
+    {
+        // Already classified (and already logged) as a hostname mismatch or a
+        // certificate-date problem by classifyTlsVerifyFailure()'s own lines.
+        return false;
+    }
+
+    return response.tlsFailure.depth0VerificationFailed || response.tlsFailure.chainTrustRejectedAboveDepth0;
+}
