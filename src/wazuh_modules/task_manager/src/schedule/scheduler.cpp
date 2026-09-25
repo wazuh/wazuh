@@ -298,8 +298,32 @@ namespace task_manager::schedule
     {
         // Agent tasks DO age out while pending, and manager tasks deliberately do not. Both live
         // in this database and nothing else prunes either.
-        m_store.expireAgentTasks(now - m_options.agentTaskTtl.count());
-        m_store.deleteOldAgentTasks(now - m_options.agentTaskGrace.count());
+        const auto expired {m_store.expireAgentTasks(now - m_options.agentTaskTtl.count())};
+        const auto removed {m_store.deleteOldAgentTasks(now - m_options.agentTaskGrace.count())};
+
+        if (expired > 0)
+        {
+            // A pending agent task expires because its agent never polled THIS node inside the
+            // TTL. That is routine rather than wrong: a restart is broadcast to every node, the
+            // agent polls one of them over load-balanced HTTPS, and the copies nobody fetched
+            // expire here. Debug, then, not a warning -- but said out loud, because otherwise a
+            // command that was never delivered leaves no trace anywhere. Counts only: the
+            // statement behind this is one bulk UPDATE, and naming each row would cost a separate
+            // query over an unbounded result set on every cleanup pass.
+            LOGFN_DEBUG1(schedulerLogFn(),
+                         "Expired %lld pending agent task(s) created more than %llds ago (task_ttl): their "
+                         "agent never fetched them from this node",
+                         static_cast<long long>(expired),
+                         static_cast<long long>(m_options.agentTaskTtl.count()));
+        }
+
+        if (removed > 0)
+        {
+            LOGFN_DEBUG1(schedulerLogFn(),
+                         "Removed %lld expired or delivered agent task(s) older than %llds",
+                         static_cast<long long>(removed),
+                         static_cast<long long>(m_options.agentTaskGrace.count()));
+        }
 
         storage::RetentionRules rules;
         rules.terminalBefore = now - static_cast<Timestamp>(m_options.retentionDays) * 86400;
