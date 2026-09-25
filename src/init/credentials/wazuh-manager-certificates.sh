@@ -733,22 +733,12 @@ _wmc_validate_pair() (
         esac
     fi
 
-    _wmc_cert_pub=$(mktemp "${_wmc_cert%/*}/.cert-pub.XXXXXX") || return 1
-    _wmc_key_pub=$(mktemp "${_wmc_cert%/*}/.key-pub.XXXXXX") || {
-        rm -f -- "$_wmc_cert_pub"
-        return 1
-    }
-    trap 'rm -f -- "$_wmc_cert_pub" "$_wmc_key_pub"' 0
-    trap 'return 130' 1 2 3 15
-    chmod 0600 "$_wmc_cert_pub" "$_wmc_key_pub" || return 1
-    openssl x509 -in "$_wmc_cert" -pubkey -noout >"$_wmc_cert_pub" 2>/dev/null || return 1
-    openssl pkey -in "$_wmc_key" -passin pass: -pubout </dev/null >"$_wmc_key_pub" 2>/dev/null || return 1
-    cmp -s -- "$_wmc_cert_pub" "$_wmc_key_pub" || {
+    _wmc_cert_pub=$(openssl x509 -in "$_wmc_cert" -pubkey -noout 2>/dev/null) || return 1
+    _wmc_key_pub=$(openssl pkey -in "$_wmc_key" -passin pass: -pubout </dev/null 2>/dev/null) || return 1
+    [ "$_wmc_cert_pub" = "$_wmc_key_pub" ] || {
         _wmc_error "private key does not match certificate: $_wmc_cert"
         return 1
     }
-    rm -f -- "$_wmc_cert_pub" "$_wmc_key_pub"
-    trap - 0 1 2 3 15
 )
 
 _wmc_pair_state() (
@@ -768,6 +758,17 @@ _wmc_pair_state() (
     fi
 )
 
+# etc/ is writable by the service group, which can therefore swap etc/certs
+# while root issues. Issuance works relative to the directory entered here;
+# inside it, the sticky bit protects root's staging entries.
+_wmc_enter_cert_dir() {
+    cd -P -- "$1" || return 1
+    [ "$(stat -c '%u:%g:%a' .)" = "0:$2:1770" ] || {
+        _wmc_error "certificate directory changed during issuance: $1"
+        return 1
+    }
+}
+
 _wmc_install_ca_anchor() (
     _wmc_source=${1-}
     _wmc_target=${2-}
@@ -783,13 +784,14 @@ _wmc_install_ca_anchor() (
         return 0
     fi
 
-    _wmc_tmp=$(mktemp "${_wmc_target%/*}/.root-ca.XXXXXX") || return 1
+    _wmc_enter_cert_dir "${_wmc_target%/*}" "$_wmc_gid" || return 1
+    _wmc_tmp=$(mktemp .root-ca.XXXXXX) || return 1
     trap 'rm -f -- "$_wmc_tmp"' 0
     trap 'return 130' 1 2 3 15
     cp -- "$_wmc_source" "$_wmc_tmp" || return 1
     chown root:"$_wmc_group" "$_wmc_tmp" || return 1
     chmod 0640 "$_wmc_tmp" || return 1
-    ln -T -- "$_wmc_tmp" "$_wmc_target" || return 1
+    ln -T -- "$_wmc_tmp" root-ca.pem || return 1
     rm -f -- "$_wmc_tmp"
     trap - 0 1 2 3 15
     if command -v restorecon >/dev/null 2>&1; then
@@ -805,7 +807,8 @@ _wmc_generate_indexer_pair() (
     _wmc_sans=${4-}
     _wmc_group=${5-}
     _wmc_gid=${6-}
-    _wmc_tmp_dir=$(mktemp -d "$_wmc_dir/.indexer-connector.XXXXXX") || return 1
+    _wmc_enter_cert_dir "$_wmc_dir" "$_wmc_gid" || return 1
+    _wmc_tmp_dir=$(mktemp -d .indexer-connector.XXXXXX) || return 1
     trap 'rm -rf -- "$_wmc_tmp_dir"' 0
     trap 'return 130' 1 2 3 15
     chmod 0700 "$_wmc_tmp_dir" || return 1
@@ -841,8 +844,8 @@ _wmc_generate_indexer_pair() (
     _wmc_validate_pair "$_wmc_tmp_dir/indexer-connector.pem" \
         "$_wmc_tmp_dir/indexer-connector-key.pem" "$_wmc_ca_dir/root-ca.pem" \
         0 "$_wmc_gid" clientAuth 1 || return 1
-    ln -T -- "$_wmc_tmp_dir/indexer-connector-key.pem" "$_wmc_dir/indexer-connector-key.pem" || return 1
-    ln -T -- "$_wmc_tmp_dir/indexer-connector.pem" "$_wmc_dir/indexer-connector.pem" || return 1
+    ln -T -- "$_wmc_tmp_dir/indexer-connector-key.pem" indexer-connector-key.pem || return 1
+    ln -T -- "$_wmc_tmp_dir/indexer-connector.pem" indexer-connector.pem || return 1
     rm -rf -- "$_wmc_tmp_dir"
     trap - 0 1 2 3 15
 )
@@ -856,7 +859,8 @@ _wmc_generate_remoted_pair() (
     _wmc_group=${6-}
     _wmc_uid=${7-}
     _wmc_gid=${8-}
-    _wmc_tmp_dir=$(mktemp -d "$_wmc_dir/.remoted.XXXXXX") || return 1
+    _wmc_enter_cert_dir "$_wmc_dir" "$_wmc_gid" || return 1
+    _wmc_tmp_dir=$(mktemp -d .remoted.XXXXXX) || return 1
     trap 'rm -rf -- "$_wmc_tmp_dir"' 0
     trap 'return 130' 1 2 3 15
     chmod 0700 "$_wmc_tmp_dir" || return 1
@@ -922,8 +926,8 @@ _wmc_generate_remoted_pair() (
 
     _wmc_validate_pair "$_wmc_tmp_dir/remoted.pem" "$_wmc_tmp_dir/remoted-key.pem" \
         "$_wmc_ca_dir/root-ca.pem" "$_wmc_uid" "$_wmc_gid" serverAuth 1 || return 1
-    ln -T -- "$_wmc_tmp_dir/remoted-key.pem" "$_wmc_dir/remoted-key.pem" || return 1
-    ln -T -- "$_wmc_tmp_dir/remoted.pem" "$_wmc_dir/remoted.pem" || return 1
+    ln -T -- "$_wmc_tmp_dir/remoted-key.pem" remoted-key.pem || return 1
+    ln -T -- "$_wmc_tmp_dir/remoted.pem" remoted.pem || return 1
     rm -rf -- "$_wmc_tmp_dir"
     trap - 0 1 2 3 15
 )

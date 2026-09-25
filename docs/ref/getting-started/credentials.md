@@ -134,13 +134,14 @@ That trap is why the file, not the command line, is the documented way to choose
 
 ## The password policy
 
-Every password, supplied or generated, must be **12 to 64 characters and contain at least one letter
-and one digit** — PCI DSS v4.0 requirement 8.3.6, applied identically by all three components. It is
-also the rule the Server API enforces for `POST`/`PUT /security/users` and
-`rbac_control change-password`, so a value accepted here is never one the API rejects later. The
-manager also refuses a supplied value that contains a control character, such as a tab.
+Every password, supplied or generated, must be **12 to 64 characters from
+`A-Z a-z 0-9 . , _ + : @ % ^ = ~ -` and contain at least one letter and one digit** — PCI DSS v4.0
+requirement 8.3.6, applied identically by all three components. It is also the rule the Server API
+enforces for `POST`/`PUT /security/users` and `rbac_control change-password`, so a value accepted
+here is never one the API rejects later. A supplied value with any other character, including a
+non-ASCII letter or a space, is invalid.
 
-Generated passwords are 32 characters drawn from `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, with a
+Generated passwords are 32 characters drawn from the same set, with a
 lowercase letter, an uppercase letter and a digit guaranteed. Quotes, backslash, backtick, `$`, `!`
 and `#` are left out deliberately, so a value is safe to paste through shell, YAML, JSON and
 docker-compose interpolation without escaping.

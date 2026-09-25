@@ -260,10 +260,11 @@ store_indexer_username() {
     printf '%s' "wazuh-manager" | "${KEYSTORE}" -f indexer -k username >/dev/null 2>&1
 }
 
-# wazuh_password_validate() rejects only line breaks. Any other control character would pass it
-# and then break the JSON that seeds rbac.db, so it fails the policy here instead.
+# A supplied password may only use the generator's alphabet. Anything else either never logs in
+# (connexion decodes Basic auth as latin1, so a non-ASCII value always gets 401) or is measured in
+# bytes by dash and in characters by rbac_control, which then disagree on its length.
 #
-# The class is matched by `LC_ALL=C tr` rather than by a [[:cntrl:]] glob in the shell: the class is
+# The set is matched by `LC_ALL=C tr` rather than by a glob in the shell: ranges are
 # locale-dependent, the maintainer scripts inherit whatever locale the operator's session or the
 # package manager happens to carry, and whether a shell re-reads the locale on an LC_ALL assignment
 # is not something POSIX settles. Pinning it on the external command keeps the same value accepted
@@ -273,8 +274,8 @@ password_is_valid() {
     # Lengths through ${#...} rather than `wc -c`, whose output is right-aligned with blanks on some
     # implementations -- and dash's `test -eq` rejects an operand with leading whitespace, which
     # would turn every password into a validation error on those hosts.
-    _piv_stripped=$(printf '%s' "$1" | LC_ALL=C tr -d '[:cntrl:]') || return 1
-    [ "${#_piv_stripped}" -eq "${#1}" ] || return 1
+    _piv_rest=$(printf '%s' "$1" | LC_ALL=C tr -d 'A-Za-z0-9.,_+:@%^=~-') || return 1
+    [ -z "${_piv_rest}" ] || return 1
     wazuh_password_validate "$1"
 }
 
@@ -625,7 +626,7 @@ CREDENTIALS_FILE=$(wazuh_env_get_file 2>/dev/null) || CREDENTIALS_FILE="/etc/waz
 # It names every missing key and where to set it, and never prints a value.
 for _key in ${INVALID}; do
     err "INVALID ${_key}: the supplied value does not meet the password policy"
-    err "        (12-64 characters, with at least one letter and one digit, and no control characters)"
+    err "        (12-64 characters from A-Z a-z 0-9 . , _ + : @ % ^ = ~ -, with at least one letter and one digit)"
     err "        correct it in ${CREDENTIALS_FILE} and start the service again"
 done
 

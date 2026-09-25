@@ -76,13 +76,13 @@ bin/rbac_control change-password --user wazuh-wui --password-file /root/wui.pass
 echo '{"wazuh": "...", "wazuh-wui": "..."}' | bin/rbac_control change-password --passwords-file -
 ```
 
-Passwords are never accepted as a command-line argument, so they do not reach the process list. The command exits non-zero if any requested change was not applied. A new password must satisfy the policy enforced by `framework/wazuh/security.py`: 12 to 64 characters, with at least one letter and one digit (PCI DSS v4.0 requirement 8.3.6). Changing `wazuh-wui`'s password requires updating the dashboard configuration to match.
+Passwords are never accepted as a command-line argument, so they do not reach the process list. The command exits non-zero if any requested change was not applied. A new password must satisfy the policy enforced by `framework/wazuh/security.py`: 12 to 64 characters from `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, with at least one letter and one digit (PCI DSS v4.0 requirement 8.3.6). Changing `wazuh-wui`'s password requires updating the dashboard configuration to match.
 
 `bin/rbac_control factory-reset` recreates `rbac.db` and gives both default users new random passwords that are neither printed nor written to `/etc/wazuh/credentials.env`. The running API keeps authenticating against the previous database until the manager restarts, so run `change-password` and then restart the manager.
 
 ### What a password change does and does not do
 
-The policy above is enforced by `security.update_user` and `security.create_user`: a password outside 12-64 characters fails with error `5009`, one missing a character class with `5007`. A caller that is not itself a reserved user gets `5011`, however privileged its role, and these users cannot be deleted at all (`5004`).
+The policy above is enforced by `security.update_user` and `security.create_user`: a password outside 12-64 characters fails with error `5009`, one missing a character class or using a character outside that set with `5007`. A caller that is not itself a reserved user gets `5011`, however privileged its role, and these users cannot be deleted at all (`5004`).
 
 Once a change goes through:
 
