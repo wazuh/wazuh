@@ -353,7 +353,7 @@ static void wm_gcp_parse_output(char *output, char *tag, int exit_status){
         // 1 is added because it's mandatory to consider the null byte
         int cp_length = 1 + strlen(line) - next_lines_chars > WM_STRING_MAX ? WM_STRING_MAX : 1 + strlen(line) - next_lines_chars;
         snprintf(tokenized_line, cp_length, "%s", line);
-        if (tokenized_line[cp_length - 2] == '\n') tokenized_line[cp_length - 2] = '\0';
+        if (cp_length >= 2 && tokenized_line[cp_length - 2] == '\n') tokenized_line[cp_length - 2] = '\0';
 
         char *p_line = NULL;
 
