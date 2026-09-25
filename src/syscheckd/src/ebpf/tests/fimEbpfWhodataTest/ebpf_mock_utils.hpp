@@ -122,7 +122,6 @@ void mock_w_bpf_deinit([[maybe_unused]]void* helpers) {}
 int mock_init_ring_buffer_success([[maybe_unused]]ring_buffer** rb, [[maybe_unused]]ring_buffer_sample_fn sample_cb) { return 0; }
 int mock_init_ring_buffer_failure([[maybe_unused]]ring_buffer** rb, [[maybe_unused]]ring_buffer_sample_fn sample_cb) { return 1; }
 void mock_ebpf_pop_events() { return; }
-int mock_check_invalid_kernel_version() { return 0; }
 int mock_init_libbpf([[maybe_unused]]std::unique_ptr<DynamicLibraryWrapper> sym_load) { return 0; }
 int mock_init_bpfobj() { return 0; }
 

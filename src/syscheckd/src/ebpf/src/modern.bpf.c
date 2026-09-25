@@ -211,7 +211,9 @@ statfunc long get_path_str_from_path(unsigned char **path_str,
 
     size_t buf_off = HALF_PERCPU_ARRAY_SIZE;
 
-#pragma unroll
+    /* Force a full unroll: clang >= 20 otherwise keeps a partially unrolled
+     * loop whose 32-bit counter the RHEL 8 verifier cannot bound. */
+#pragma clang loop unroll(full)
     for (int i = 0; i < MAX_PATH_COMPONENTS; i++) {
         dentry_mnt = BPF_CORE_READ(vfsmnt, mnt_root);
         dentry_parent = BPF_CORE_READ(dentry, d_parent);
