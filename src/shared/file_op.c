@@ -2862,6 +2862,252 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
 }
 
 
+#ifndef WIN32
+// Same limit as Linux's MAXSYMLINKS; bounds a symlink loop the kernel would stop with ELOOP.
+#define W_VETTED_MAX_SYMLINKS 40
+
+/**
+ * A hard link can be made by anyone who can write to its directory, so an entry with more than one link
+ * is trusted only when nobody but root and the entry's owner can.
+ *
+ * @return true if entry_stat, found in the directory described by dir_stat, can be trusted.
+ */
+static bool w_vet_link_count(const struct stat * entry_stat, const struct stat * dir_stat) {
+    return entry_stat->st_nlink <= 1 ||
+           ((dir_stat->st_uid == 0 || dir_stat->st_uid == entry_stat->st_uid) &&
+            !(dir_stat->st_mode & (S_IWGRP | S_IWOTH)));
+}
+
+/**
+ * Decides whether a file opened by w_fopen_vetted_follow() may be read, from stat results alone. Split out
+ * so the trust rule can be unit tested with fabricated ownership, without root or a live race.
+ *
+ * @param fd_stat fstat() result of the opened file.
+ * @param dir_stat fstat() result of the directory holding the file's final path entry.
+ * @param link_uid Owner of the non-root symlinks followed to reach the file, or NULL if there were none.
+ * @return 0 if the file may be read, -1 otherwise (errno EINVAL for a file type, EPERM for trust).
+ *
+ * Not declared in file_op.h: given external linkage only so the unit tests can reach it.
+ */
+int w_vet_opened_file(const struct stat * fd_stat, const struct stat * dir_stat, const uid_t * link_uid) {
+    if (!S_ISREG(fd_stat->st_mode)) {
+        // Only root can create a FIFO or device a planted symlink or hard link does not explain.
+        if (!(S_ISFIFO(fd_stat->st_mode) || S_ISCHR(fd_stat->st_mode)) || fd_stat->st_uid != 0) {
+            errno = EINVAL;
+            return -1;
+        }
+    }
+
+    // fs.protected_symlinks rule, applied to every symlink on the path: a link must be owned by root or
+    // by the owner of the file it leads to.
+    if (link_uid && *link_uid != fd_stat->st_uid) {
+        errno = EPERM;
+        return -1;
+    }
+
+    if (!w_vet_link_count(fd_stat, dir_stat)) {
+        errno = EPERM;
+        return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * Resolves path one component at a time with openat()/fstatat()/readlinkat(), so no symlink is followed
+ * without first being inspected, then opens the final entry non-blocking and vets it.
+ *
+ * @return A vetted descriptor with O_NONBLOCK cleared, or -1 on error (sets errno).
+ */
+static int w_open_vetted_follow_fd(const char * path) {
+    char pending[PATH_MAX + 1];
+    char target[PATH_MAX + 1];
+    char next[PATH_MAX + 1];
+    char name[PATH_MAX + 1];
+    struct stat entry_stat;
+    struct stat fd_stat;
+    struct stat dir_stat;
+    uid_t link_uid = 0;
+    bool has_link_uid = false;
+    int symlinks = 0;
+    int dirfd;
+    int fd = -1;
+    int saved_errno;
+    int flags;
+    const char * cursor;
+    size_t len;
+    ssize_t n;
+
+    if (strlen(path) > PATH_MAX) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    strcpy(pending, path);
+
+    if (dirfd = open(*pending == '/' ? "/" : ".", O_RDONLY | O_DIRECTORY | O_CLOEXEC), dirfd < 0) {
+        return -1;
+    }
+
+    for (cursor = pending;;) {
+        while (*cursor == '/') {
+            cursor++;
+        }
+
+        if (*cursor == '\0') {
+            // The path names a directory, not a file.
+            errno = EINVAL;
+            goto fail;
+        }
+
+        len = strcspn(cursor, "/");
+        memcpy(name, cursor, len);
+        name[len] = '\0';
+        cursor += len;
+
+        if (!strcmp(name, ".")) {
+            continue;
+        }
+
+        if (fstatat(dirfd, name, &entry_stat, AT_SYMLINK_NOFOLLOW) < 0) {
+            goto fail;
+        }
+
+        if (S_ISLNK(entry_stat.st_mode)) {
+            if (++symlinks > W_VETTED_MAX_SYMLINKS) {
+                errno = ELOOP;
+                goto fail;
+            }
+
+            // A hard link to someone else's symlink would otherwise pass as that owner's link.
+            if (entry_stat.st_nlink > 1) {
+                if (fstat(dirfd, &dir_stat) < 0) {
+                    goto fail;
+                }
+                if (!w_vet_link_count(&entry_stat, &dir_stat)) {
+                    errno = EPERM;
+                    goto fail;
+                }
+            }
+
+            // Root-owned links are trusted; all others must share one owner, checked against the file.
+            if (entry_stat.st_uid != 0) {
+                if (has_link_uid && link_uid != entry_stat.st_uid) {
+                    errno = EPERM;
+                    goto fail;
+                }
+                link_uid = entry_stat.st_uid;
+                has_link_uid = true;
+            }
+
+            if (n = readlinkat(dirfd, name, target, PATH_MAX), n <= 0) {
+                if (n == 0) {
+                    errno = ENOENT;
+                }
+                goto fail;
+            }
+            target[n] = '\0';
+
+            if (snprintf(next, sizeof(next), "%s%s", target, cursor) >= (int) sizeof(next)) {
+                errno = ENAMETOOLONG;
+                goto fail;
+            }
+            strcpy(pending, next);
+            cursor = pending;
+
+            if (*pending == '/') {
+                close(dirfd);
+                if (dirfd = open("/", O_RDONLY | O_DIRECTORY | O_CLOEXEC), dirfd < 0) {
+                    return -1;
+                }
+            }
+            continue;
+        }
+
+        if (*cursor != '\0') {
+            // Intermediate directory; O_NOFOLLOW fails the open if it was swapped to a symlink since fstatat().
+            if (fd = openat(dirfd, name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC), fd < 0) {
+                goto fail_swapped;
+            }
+            close(dirfd);
+            dirfd = fd;
+            fd = -1;
+            continue;
+        }
+
+        break;
+    }
+
+    if (fd = openat(dirfd, name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC), fd < 0) {
+        goto fail_swapped;
+    }
+
+    if (fstat(fd, &fd_stat) < 0 || fstat(dirfd, &dir_stat) < 0) {
+        goto fail;
+    }
+
+    if (w_vet_opened_file(&fd_stat, &dir_stat, has_link_uid ? &link_uid : NULL) < 0) {
+        goto fail;
+    }
+
+    close(dirfd);
+
+    // O_NONBLOCK only mattered while opening a possible FIFO; clear it so reads behave normally.
+    if (flags = fcntl(fd, F_GETFL), flags == -1 || fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) < 0) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+        return -1;
+    }
+
+    return fd;
+
+fail_swapped:
+    // O_NOFOLLOW reports a symlink as ELOOP (EMLINK on FreeBSD): the entry changed under us.
+    if (errno == ELOOP || errno == EMLINK) {
+        errno = EPERM;
+    }
+fail:
+    saved_errno = errno;
+    if (fd >= 0) {
+        close(fd);
+    }
+    close(dirfd);
+    errno = saved_errno;
+    return -1;
+}
+#endif
+
+
+FILE * w_fopen_vetted_follow(const char * path, const char * mode) {
+    if (!path || !mode || (strcmp(mode, "r") && strcmp(mode, "rb"))) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+#ifdef WIN32
+    // The vetting below is POSIX-only; Windows keeps wfopen().
+    return wfopen(path, mode);
+#else
+    int saved_errno;
+    FILE * fp;
+    int fd = w_open_vetted_follow_fd(path);
+
+    if (fd < 0) {
+        return NULL;
+    }
+
+    if (fp = fdopen(fd, mode), fp == NULL) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+    }
+
+    return fp;
+#endif
+}
+
+
 int w_compress_gzfile(const char *filesrc, const char *filedst) {
     FILE *fd;
     gzFile gz_fd;

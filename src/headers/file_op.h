@@ -549,6 +549,33 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
 
 
 /**
+ * @brief Open a file for reading, following an admin-trusted symlink but rejecting an untrusted one.
+ *
+ * Intended for paths configured by an admin (such as logcollector's `<localfile>` entries and glob
+ * expansions) where following a symlink is an accepted, even intended, feature — unlike
+ * w_fopen_nofollow()/w_gzopen_nofollow(), which reject every symlink outright.
+ *
+ * On POSIX the path is resolved one component at a time, so every symlink on it, including one naming a
+ * directory, is inspected before it is followed. The final entry is opened non-blocking, so a FIFO cannot
+ * block the open. The file is then accepted only when:
+ * - it is a regular file, or a FIFO or character device owned by root;
+ * - every symlink followed is owned by root or by the file's owner (the Linux `fs.protected_symlinks`
+ *   rule, applied to the whole path);
+ * - if it, or any symlink followed, has more than one hard link, the directory holding it is owned by root
+ *   or by its owner and is not writable by group or others, since a hard link can be made by anyone who
+ *   can write there.
+ *
+ * A rejection sets errno to EINVAL (file type) or EPERM (trust), never ENOENT, so a caller that treats
+ * ENOENT as "file gone" is not misled by it. Windows falls back to wfopen().
+ *
+ * @param path Path of the file. May be absolute or relative, and may contain symlinks.
+ * @param mode Open mode, either "r" or "rb".
+ * @return File pointer on success, NULL on error (sets errno).
+ */
+FILE * w_fopen_vetted_follow(const char * path, const char * mode);
+
+
+/**
  * @brief Compress a file in GZIP.
  *
  * @param filesrc Source file.
