@@ -362,6 +362,18 @@ if(NOT ${TARGET} STREQUAL "winagent")
   target_link_libraries(test_check_rc_sys SYSCHECK_O ${TEST_DEPS} "${CHECK_RC_SYS_FLAGS}")
   add_test(NAME test_check_rc_sys COMMAND test_check_rc_sys)
 
+  set(CHECK_RC_IF_FLAGS "-Wl,--wrap,socket \
+                          -Wl,--wrap,close \
+                          -Wl,--wrap,ioctl \
+                          -Wl,--wrap,system \
+                          -Wl,--wrap,notify_rk \
+                          -Wl,--wrap,_mterror")
+
+  add_executable(test_check_rc_if test_check_rc_if.c)
+  target_include_directories(test_check_rc_if PRIVATE ${SRC_FOLDER}/rootcheck)
+  target_link_libraries(test_check_rc_if SYSCHECK_O ${TEST_DEPS} "${CHECK_RC_IF_FLAGS}")
+  add_test(NAME test_check_rc_if COMMAND test_check_rc_if)
+
   set(COMMON_FLAGS "-Wl,--wrap,wopendir \
                     -Wl,--wrap,closedir \
                     -Wl,--wrap,w_stat \
