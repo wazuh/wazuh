@@ -237,7 +237,7 @@ namespace
         {
             if (ruleDetails[i] == ':' && (i == 0 || ruleDetails[i - 1] != '%'))
             {
-                definitions.push_back(current);
+                definitions.push_back(std::move(current));
                 current.clear();
             }
             else
@@ -246,7 +246,7 @@ namespace
             }
         }
 
-        definitions.push_back(current);
+        definitions.push_back(std::move(current));
 
         return definitions;
     }
@@ -433,7 +433,7 @@ std::map<std::string, std::string> SudoersProvider::collectUserAliases(const nlo
 
             if (!name.empty())
             {
-                aliases[name] = members;
+                aliases[std::move(name)] = std::move(members);
             }
         }
     }
