@@ -1,0 +1,1136 @@
+# Security Configuration Assessment
+# Australian Cyber Security Centre (ACSC) Essential Eight - Maturity Level 1 & 2
+# For Microsoft Windows 10 / Windows 11
+#
+# Copyright (C) 2026, Yong Joo Seng Pte Ltd
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
+
+policy:
+  id: "e8_ml1_ml2_windows"
+  file: "e8_ml1_ml2_windows.yml"
+  name: "ACSC Essential Eight (ML1 + ML2) Benchmark for Microsoft Windows 10 and 11"
+  description: >
+    Configuration assessment aligned with the Australian Cyber Security
+    Centre (ACSC) Essential Eight mitigation strategies at Maturity
+    Levels 1 and 2. Covers technically-verifiable controls across
+    application control, patch application, MS Office macro hardening,
+    user application hardening, administrative privilege restriction,
+    operating system patching enablement, multi-factor authentication
+    signals, and backup readiness.
+
+    Process-based controls (e.g. patch SLA timeliness, third-party
+    application patch latency, backup restoration testing, user training)
+    are out of scope for any single-shot configuration scan and require
+    complementary controls. These limitations are noted in the
+    description of each affected check.
+  references:
+    - https://www.cyber.gov.au/resources-business-and-government/essential-cyber-security/essential-eight
+    - https://www.cyber.gov.au/resources-business-and-government/essential-cyber-security/essential-eight/essential-eight-maturity-model
+    - https://www.cyber.gov.au/resources-business-and-government/essential-cyber-security/essential-eight/implementing-application-control
+    - https://www.cyber.gov.au/resources-business-and-government/essential-cyber-security/essential-eight/microsoft-office-macro-security
+
+requirements:
+  title: "Check that the platform is Windows 10 or Windows 11"
+  description: "This policy is applicable only to Microsoft Windows 10 and Windows 11 endpoints."
+  condition: any
+  rules:
+    - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows 10'
+    - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows 11'
+
+checks:
+
+  # =================================================================
+  # E8 #1: Application Control
+  # =================================================================
+  # Maturity Level 1 baseline: prevent execution of unapproved/malicious
+  # applications including executables, software libraries, scripts,
+  # installers, compiled HTML, HTML applications, and control panel
+  # applets. Wazuh SCA cannot semantically validate AppLocker/WDAC rule
+  # contents but can verify the enforcement mechanism is in place.
+  # =================================================================
+
+  - id: 30001
+    title: "Ensure the Application Identity service (AppIDSvc) is configured to start automatically"
+    description: >
+      AppLocker rules cannot be enforced without the Application Identity
+      service running. ACSC Essential Eight ML1 requires application
+      control to be implemented; AppIDSvc is a prerequisite for AppLocker
+      enforcement on Windows endpoints.
+    rationale: >
+      If AppIDSvc is not running, any AppLocker policy applied to the
+      endpoint is silently inert, providing no protection against
+      unauthorised application execution.
+    remediation: >
+      Set the service to automatic start via Group Policy:
+      Computer Configuration > Policies > Windows Settings > Security Settings >
+      System Services > Application Identity > Define this policy setting > Automatic.
+      Or via PowerShell: Set-Service -Name AppIDSvc -StartupType Automatic
+    compliance:
+      - acsc_essential_eight: ["ML1.AC.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\AppIDSvc -> Start -> 2'
+
+  - id: 30002
+    title: "Ensure AppLocker policy is present in the registry"
+    description: >
+      ACSC Essential Eight ML1 requires application control mechanisms
+      to be configured. The presence of an AppLocker policy under the
+      SrpV2 registry hive indicates that an application control policy
+      has been deployed. This check verifies presence, not enforcement
+      semantics.
+    rationale: >
+      An endpoint with no AppLocker policy at all has no application
+      control enforcement, regardless of whether the AppIDSvc service is
+      running. Both the service and a policy must be present.
+    remediation: >
+      Deploy an AppLocker policy via Group Policy:
+      Computer Configuration > Windows Settings > Security Settings >
+      Application Control Policies > AppLocker.
+    compliance:
+      - acsc_essential_eight: ["ML1.AC.2"]
+    condition: any
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows\SrpV2\Exe'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows\SrpV2\Msi'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows\SrpV2\Script'
+
+  - id: 30003
+    title: "Ensure AppLocker rule collections cover executables, scripts, and installers (ML2)"
+    description: >
+      ACSC Essential Eight ML2 expands application control coverage to
+      include executables, software libraries, scripts, installers,
+      compiled HTML, HTML applications, and control panel applets. This
+      check verifies that all three primary rule collections (Exe, Msi,
+      Script) have policy entries.
+    rationale: >
+      Partial AppLocker coverage (e.g. EXE rules but no Script rules)
+      leaves common attack vectors such as PowerShell, JScript, and MSI
+      packages unrestricted. ML2 requires comprehensive coverage.
+    remediation: >
+      Define AppLocker rules for Executable, Script, and Windows
+      Installer rule collections via Group Policy:
+      Computer Configuration > Windows Settings > Security Settings >
+      Application Control Policies > AppLocker.
+    compliance:
+      - acsc_essential_eight: ["ML2.AC.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows\SrpV2\Exe'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows\SrpV2\Msi'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows\SrpV2\Script'
+
+  - id: 30004
+    title: "Ensure Windows Defender Application Control (WDAC) policy is deployed (ML2)"
+    description: >
+      ACSC Essential Eight ML2 recommends application control via
+      cryptographically-validated mechanisms. WDAC provides stronger
+      enforcement than AppLocker by operating in kernel mode. This check
+      verifies that at least one WDAC policy file is present in the
+      active CodeIntegrity policy directory.
+    rationale: >
+      WDAC policies provide tamper-resistant application control that
+      cannot be bypassed by administrative users. AppLocker alone can be
+      neutralised by a local administrator.
+    remediation: >
+      Deploy a WDAC base policy via Intune, Configuration Manager, or
+      PowerShell. Compiled .cip policy files are placed in
+      C:\Windows\System32\CodeIntegrity\CiPolicies\Active.
+    compliance:
+      - acsc_essential_eight: ["ML2.AC.2"]
+    condition: any
+    rules:
+      - 'd:C:\Windows\System32\CodeIntegrity\CiPolicies\Active -> r:\.cip$'
+
+  # =================================================================
+  # E8 #2: Patch Applications
+  # =================================================================
+  # ACSC requires patches for security vulnerabilities to be applied
+  # within timeframes defined by maturity level. Patch latency is not
+  # detectable from a single-shot configuration scan; checks below
+  # verify that the patching infrastructure is enabled.
+  # =================================================================
+
+  - id: 30005
+    title: "Ensure Microsoft Edge auto-update is enabled"
+    description: >
+      ACSC Essential Eight requires applications such as web browsers
+      to be patched. Microsoft Edge auto-update being disabled prevents
+      timely patching of one of the highest-risk applications on a
+      Windows endpoint.
+    rationale: >
+      Browsers are a primary attack surface for drive-by exploits and
+      phishing. A browser without automatic updates may run with known
+      exploitable vulnerabilities for extended periods.
+    remediation: >
+      Do not set the registry value 'UpdateDefault' under
+      HKLM\SOFTWARE\Policies\Microsoft\EdgeUpdate to 0. Alternatively,
+      explicitly set it to 1 (always allow updates).
+    compliance:
+      - acsc_essential_eight: ["ML1.PA.1"]
+    condition: none
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EdgeUpdate -> UpdateDefault -> 0'
+
+  - id: 30006
+    title: "Ensure Office Click-to-Run automatic updates are enabled (ML2)"
+    description: >
+      ACSC Essential Eight ML2 requires Microsoft Office to be patched
+      within stricter timeframes. Disabling Office automatic updates
+      prevents this. This check verifies that the Office update
+      mechanism is not explicitly disabled.
+    rationale: >
+      Microsoft Office is one of the most-targeted applications on
+      enterprise endpoints. Disabling automatic updates leaves known
+      Office vulnerabilities unpatched.
+    remediation: >
+      Do not set 'EnableAutomaticUpdates' to 0 under
+      HKLM\SOFTWARE\Policies\Microsoft\office\16.0\common\officeupdate.
+      Recommended: explicitly set EnableAutomaticUpdates to 1.
+    compliance:
+      - acsc_essential_eight: ["ML2.PA.1"]
+    condition: none
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\office\16.0\common\officeupdate -> EnableAutomaticUpdates -> 0'
+
+  # =================================================================
+  # E8 #3: Configure Microsoft Office Macro Settings
+  # =================================================================
+  # ACSC ML1 requires macros from the internet to be blocked, and
+  # macros to be disabled for users without a demonstrated business
+  # requirement. ML2 adds antivirus scanning and stricter restrictions.
+  # =================================================================
+
+  - id: 30010
+    title: "Ensure Word blocks macros from running in files originating from the internet"
+    description: >
+      ACSC Essential Eight ML1 requires that Microsoft Office macros from
+      the internet be blocked. This is enforced via the
+      BlockContentExecutionFromInternet registry value.
+    rationale: >
+      Macro-based malware delivered via email and web download remains a
+      common initial access vector. Blocking macros from internet-zone
+      files defeats this delivery method without affecting trusted
+      business macros.
+    remediation: >
+      Set BlockContentExecutionFromInternet to 1 under
+      HKCU\Software\Microsoft\Office\16.0\Word\Security.
+      Configurable via Group Policy: User Configuration > Administrative
+      Templates > Microsoft Word > Word Options > Security > Trust Center >
+      Block macros from running in Office files from the Internet.
+    compliance:
+      - acsc_essential_eight: ["ML1.MO.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\Word\Security -> BlockContentExecutionFromInternet -> 1'
+
+  - id: 30011
+    title: "Ensure Excel blocks macros from running in files originating from the internet"
+    description: >
+      ACSC Essential Eight ML1 requires that Microsoft Office macros from
+      the internet be blocked. This check verifies the Excel-specific
+      registry value.
+    rationale: >
+      Excel macros are a particularly common malware delivery mechanism
+      because of the prevalence of spreadsheet attachments in business
+      email.
+    remediation: >
+      Set BlockContentExecutionFromInternet to 1 under
+      HKCU\Software\Microsoft\Office\16.0\Excel\Security.
+    compliance:
+      - acsc_essential_eight: ["ML1.MO.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\Excel\Security -> BlockContentExecutionFromInternet -> 1'
+
+  - id: 30012
+    title: "Ensure PowerPoint blocks macros from running in files originating from the internet"
+    description: >
+      ACSC Essential Eight ML1 requires that Microsoft Office macros from
+      the internet be blocked. This check verifies the PowerPoint-specific
+      registry value.
+    rationale: >
+      Although less common than Word/Excel macro abuse, PowerPoint macros
+      remain a viable malware delivery mechanism and must be hardened.
+    remediation: >
+      Set BlockContentExecutionFromInternet to 1 under
+      HKCU\Software\Microsoft\Office\16.0\PowerPoint\Security.
+    compliance:
+      - acsc_essential_eight: ["ML1.MO.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\PowerPoint\Security -> BlockContentExecutionFromInternet -> 1'
+
+  - id: 30013
+    title: "Ensure Word VBA macro warnings are set to disable all without notification"
+    description: >
+      ACSC Essential Eight ML1 requires Microsoft Office macros to be
+      disabled for users that do not have a demonstrated business
+      requirement. The strictest setting (VBAWarnings=4) disables all
+      macros without notification.
+    rationale: >
+      Disabling macros entirely is the strongest protection. Lower
+      settings allow user override which is a frequently-exploited
+      social engineering vector.
+    remediation: >
+      Set VBAWarnings to 4 under
+      HKCU\Software\Microsoft\Office\16.0\Word\Security.
+      Note: organisations with a legitimate macro requirement should
+      instead configure VBAWarnings=2 (disable with notification) and
+      pair with trusted-location or signed-macro requirements.
+    compliance:
+      - acsc_essential_eight: ["ML1.MO.2"]
+    condition: any
+    rules:
+      - 'r:HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\Word\Security -> VBAWarnings -> 4'
+      - 'r:HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\Word\Security -> VBAWarnings -> 2'
+
+  - id: 30014
+    title: "Ensure Excel VBA macro warnings are set to disable all without notification"
+    description: >
+      ACSC Essential Eight ML1 requires Microsoft Office macros to be
+      disabled for users without a business requirement. This check
+      verifies the Excel-specific setting.
+    rationale: >
+      Excel is the most common Office application used for macro-based
+      malware delivery; strict macro restrictions here have the highest
+      protective value.
+    remediation: >
+      Set VBAWarnings to 4 (or 2 with trusted-location enforcement) under
+      HKCU\Software\Microsoft\Office\16.0\Excel\Security.
+    compliance:
+      - acsc_essential_eight: ["ML1.MO.2"]
+    condition: any
+    rules:
+      - 'r:HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\Excel\Security -> VBAWarnings -> 4'
+      - 'r:HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\Excel\Security -> VBAWarnings -> 2'
+
+  - id: 30015
+    title: "Ensure PowerPoint VBA macro warnings are set to disable all without notification"
+    description: >
+      ACSC Essential Eight ML1 requires Microsoft Office macros to be
+      disabled for users without a business requirement. This check
+      verifies the PowerPoint-specific setting.
+    rationale: >
+      Macro hardening must be applied uniformly across Office
+      applications. A strict setting in Word/Excel but lax in PowerPoint
+      leaves a viable bypass.
+    remediation: >
+      Set VBAWarnings to 4 (or 2 with trusted-location enforcement) under
+      HKCU\Software\Microsoft\Office\16.0\PowerPoint\Security.
+    compliance:
+      - acsc_essential_eight: ["ML1.MO.2"]
+    condition: any
+    rules:
+      - 'r:HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\PowerPoint\Security -> VBAWarnings -> 4'
+      - 'r:HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\PowerPoint\Security -> VBAWarnings -> 2'
+
+  - id: 30016
+    title: "Ensure Word macros are scanned by antivirus before execution (ML2)"
+    description: >
+      ACSC Essential Eight ML2 requires Microsoft Office macros to be
+      scanned by an antivirus solution. The MacroRuntimeScanScope
+      registry value controls AMSI macro scanning. A value of 2 enables
+      scanning for all macros.
+    rationale: >
+      AMSI macro scanning provides runtime detection of malicious
+      VBA payloads even when macros are permitted to execute.
+    remediation: >
+      Set MacroRuntimeScanScope to 2 under
+      HKCU\Software\Microsoft\Office\16.0\Word\Security.
+    compliance:
+      - acsc_essential_eight: ["ML2.MO.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\Word\Security -> MacroRuntimeScanScope -> 2'
+
+  - id: 30017
+    title: "Ensure Excel macros are scanned by antivirus before execution (ML2)"
+    description: >
+      ACSC Essential Eight ML2 requires Microsoft Office macros to be
+      scanned by an antivirus solution. This check verifies the Excel
+      AMSI macro scanning setting.
+    rationale: >
+      AMSI macro scanning in Excel is critical given Excel's prominence
+      as a malware delivery mechanism via XLM/VBA macros.
+    remediation: >
+      Set MacroRuntimeScanScope to 2 under
+      HKCU\Software\Microsoft\Office\16.0\Excel\Security.
+    compliance:
+      - acsc_essential_eight: ["ML2.MO.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\Excel\Security -> MacroRuntimeScanScope -> 2'
+
+  # =================================================================
+  # E8 #4: User Application Hardening
+  # =================================================================
+  # ACSC ML1 requires web browsers to be configured to block Java from
+  # the internet, web advertisements, and Internet Explorer 11 to be
+  # disabled. ML2 adds PowerShell hardening, .NET hardening, and
+  # ASR rules.
+  # =================================================================
+
+  - id: 30020
+    title: "Ensure PowerShell Script Block Logging is enabled"
+    description: >
+      ACSC Essential Eight ML1 user application hardening guidance
+      requires PowerShell logging to be enabled to support detection of
+      malicious script execution.
+    rationale: >
+      Script Block Logging records the deobfuscated content of PowerShell
+      scripts as they execute, providing essential telemetry for
+      detecting and investigating PowerShell-based attacks (a primary
+      living-off-the-land technique).
+    remediation: >
+      Set EnableScriptBlockLogging to 1 under
+      HKLM\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging.
+      Configurable via Group Policy: Computer Configuration >
+      Administrative Templates > Windows Components > Windows PowerShell >
+      Turn on PowerShell Script Block Logging.
+    compliance:
+      - acsc_essential_eight: ["ML1.UA.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 1'
+
+  - id: 30021
+    title: "Ensure PowerShell Module Logging is enabled (ML2)"
+    description: >
+      ACSC Essential Eight ML2 user application hardening guidance
+      expands PowerShell logging requirements to include module logging
+      for detailed operational visibility.
+    rationale: >
+      Module logging captures pipeline execution events that complement
+      script block logging, enabling more comprehensive detection of
+      PowerShell-based attacks.
+    remediation: >
+      Set EnableModuleLogging to 1 under
+      HKLM\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ModuleLogging.
+    compliance:
+      - acsc_essential_eight: ["ML2.UA.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ModuleLogging -> EnableModuleLogging -> 1'
+
+  - id: 30022
+    title: "Ensure PowerShell v2 is not installed"
+    description: >
+      ACSC Essential Eight ML1 user application hardening guidance
+      requires legacy PowerShell v2 to be removed because it lacks the
+      logging and AMSI integration of modern PowerShell, and is
+      commonly abused to bypass logging.
+    rationale: >
+      Attackers frequently invoke 'powershell.exe -Version 2' to evade
+      script block logging and AMSI. The PowerShell v2 Windows Optional
+      Feature must not be installed.
+    remediation: >
+      Remove the feature via PowerShell as Administrator:
+      Disable-WindowsOptionalFeature -Online -FeatureName MicrosoftWindowsPowerShellV2Root
+    compliance:
+      - acsc_essential_eight: ["ML1.UA.2"]
+    condition: none
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\PowerShell\1\PowerShellEngine -> PowerShellVersion -> r:^2'
+
+  - id: 30023
+    title: "Ensure Internet Explorer 11 is disabled"
+    description: >
+      ACSC Essential Eight ML1 user application hardening guidance
+      requires Internet Explorer 11 to be disabled or removed. IE11 is
+      end-of-life and its rendering engine is a common attack surface.
+    rationale: >
+      Internet Explorer 11 receives no security updates and is a primary
+      target for browser exploits. Disabling it removes a significant
+      attack surface.
+    remediation: >
+      Set DisableInternetExplorerApp to 1 under
+      HKLM\SOFTWARE\Policies\Microsoft\Internet Explorer\Main.
+      Or remove the IE optional feature via:
+      Disable-WindowsOptionalFeature -Online -FeatureName Internet-Explorer-Optional-amd64
+    compliance:
+      - acsc_essential_eight: ["ML1.UA.3"]
+    condition: any
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Main -> DisableInternetExplorerApp -> 1'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Internet Explorer'
+
+  - id: 30024
+    title: "Ensure Java browser plugin is not present"
+    description: >
+      ACSC Essential Eight ML1 requires that web browsers do not process
+      Java from the internet. Verifying the absence of the Java browser
+      plugin is the most reliable way to enforce this.
+    rationale: >
+      Java browser content has historically been a major attack surface.
+      Even with browser-side blocking, the absence of the plugin
+      provides defence-in-depth.
+    remediation: >
+      Uninstall the Java Runtime Environment from Programs and Features,
+      or ensure the Java browser plugin is uninstalled while retaining
+      Java for non-browser use cases if required.
+    compliance:
+      - acsc_essential_eight: ["ML1.UA.4"]
+    condition: none
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\JavaSoft\Java Plug-in'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\JavaSoft\Java Plug-in'
+
+  - id: 30025
+    title: "Ensure Adobe Flash Player is not present"
+    description: >
+      ACSC Essential Eight ML1 user application hardening guidance
+      requires Adobe Flash Player to be uninstalled. Flash reached end
+      of life in December 2020.
+    rationale: >
+      Adobe Flash Player is unsupported and contains many publicly known
+      vulnerabilities. Its presence on a modern endpoint indicates
+      incomplete remediation.
+    remediation: >
+      Uninstall any Flash Player installation via Programs and Features.
+      Modern Windows 10/11 builds do not include Flash by default.
+    compliance:
+      - acsc_essential_eight: ["ML1.UA.5"]
+    condition: none
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Macromedia\FlashPlayer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Macromedia\FlashPlayer'
+
+  - id: 30026
+    title: "Ensure SMBv1 client and server are disabled"
+    description: >
+      Although not explicitly an Essential Eight control, ACSC user
+      application hardening and OS hardening guidance requires legacy
+      protocols such as SMBv1 to be disabled. SMBv1 is exploitable and
+      end-of-life.
+    rationale: >
+      SMBv1 was the protocol exploited by EternalBlue / WannaCry.
+      Disabling it removes a significant lateral-movement and
+      ransomware-propagation vector.
+    remediation: >
+      Disable via PowerShell as Administrator:
+      Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol
+    compliance:
+      - acsc_essential_eight: ["ML1.UA.6"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters -> SMB1 -> 0'
+
+  - id: 30027
+    title: "Ensure LAN Manager authentication level refuses LM and NTLMv1 (ML2)"
+    description: >
+      ACSC Essential Eight ML2 user application hardening requires
+      legacy authentication protocols to be disabled. LM and NTLMv1 are
+      cryptographically broken and trivially crackable.
+    rationale: >
+      LM and NTLMv1 hashes can be cracked or relayed in minutes with
+      commodity tools. Permitting LM/NTLMv1 responses allows attackers
+      who capture authentication traffic to recover credentials and
+      impersonate users.
+    remediation: >
+      Set LmCompatibilityLevel to 5 under
+      HKLM\SYSTEM\CurrentControlSet\Control\Lsa.
+      Configurable via Group Policy: Computer Configuration >
+      Windows Settings > Security Settings > Local Policies >
+      Security Options > Network security: LAN Manager authentication
+      level > Send NTLMv2 response only. Refuse LM & NTLM.
+    compliance:
+      - acsc_essential_eight: ["ML2.UA.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> LmCompatibilityLevel -> 5'
+
+  - id: 30028
+    title: "Ensure AutoRun and AutoPlay are disabled (ML2)"
+    description: >
+      ACSC Essential Eight ML2 user application hardening guidance
+      requires AutoPlay and AutoRun to be disabled to mitigate
+      removable-media-borne malware.
+    rationale: >
+      AutoRun has been a malware delivery vector for decades (e.g.
+      Stuxnet, Conficker). Disabling it forces explicit user action
+      before any removable-media payload executes.
+    remediation: >
+      Set NoDriveTypeAutoRun to 0xFF (255) under
+      HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer.
+      Also set NoAutorun to 1 to disable AutoRun for legacy media.
+    compliance:
+      - acsc_essential_eight: ["ML2.UA.3"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoDriveTypeAutoRun -> 255'
+
+  - id: 30029
+    title: "Ensure Microsoft Defender Attack Surface Reduction (ASR) rules are configured (ML2)"
+    description: >
+      ACSC Essential Eight ML2 user application hardening guidance
+      recommends Microsoft Defender ASR rules be deployed to block
+      common attacker techniques such as Office child processes,
+      credential theft from LSASS, and obfuscated script execution.
+    rationale: >
+      ASR rules provide low-overhead exploit and behaviour-based
+      blocking that complements traditional anti-malware signatures.
+    remediation: >
+      Enable ASR rules via Group Policy:
+      Computer Configuration > Administrative Templates > Windows Components >
+      Microsoft Defender Antivirus > Microsoft Defender Exploit Guard >
+      Attack Surface Reduction > Configure Attack Surface Reduction rules.
+    compliance:
+      - acsc_essential_eight: ["ML2.UA.4"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR -> ExploitGuard_ASR_Rules -> 1'
+
+  # =================================================================
+  # E8 #5: Restrict Administrative Privileges
+  # =================================================================
+  # ACSC requires privileged access to be requested and approved,
+  # privileged accounts to be separated from unprivileged accounts,
+  # and privileged accounts not to be used for reading email, web
+  # browsing, or obtaining files via online services.
+  # =================================================================
+
+  - id: 30030
+    title: "Ensure User Account Control (UAC) is enabled"
+    description: >
+      ACSC Essential Eight ML1 administrative privilege restriction
+      requires that privilege escalation be controlled. UAC is the
+      primary Windows mechanism for prompting on privilege elevation.
+    rationale: >
+      UAC prevents silent privilege elevation, requiring explicit user
+      consent or credential entry. Disabling UAC allows malware running
+      as a standard user to escalate without any user interaction.
+    remediation: >
+      Set EnableLUA to 1 under
+      HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System.
+      Configurable via Group Policy: Computer Configuration >
+      Windows Settings > Security Settings > Local Policies >
+      Security Options > User Account Control: Run all administrators
+      in Admin Approval Mode > Enabled.
+    compliance:
+      - acsc_essential_eight: ["ML1.AP.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> EnableLUA -> 1'
+
+  - id: 30031
+    title: "Ensure UAC prompts administrators for consent on the secure desktop"
+    description: >
+      ACSC Essential Eight ML1 administrative privilege restriction
+      requires that privilege elevation prompts be displayed on the
+      secure desktop to defeat input-injection attacks against the
+      consent prompt.
+    rationale: >
+      Without secure-desktop UAC, malicious code can use SendInput or
+      similar APIs to programmatically click 'Yes' on a UAC prompt.
+    remediation: >
+      Set ConsentPromptBehaviorAdmin to 2 (Prompt for consent on the
+      secure desktop) under
+      HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System.
+    compliance:
+      - acsc_essential_eight: ["ML1.AP.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> ConsentPromptBehaviorAdmin -> 2'
+
+  - id: 30032
+    title: "Ensure UAC denies elevation requests from standard users"
+    description: >
+      ACSC Essential Eight ML1 administrative privilege restriction
+      requires that standard users cannot elevate via the UAC prompt.
+      Privilege escalation must require explicit administrator account
+      use.
+    rationale: >
+      Allowing standard users to enter administrator credentials at a
+      UAC prompt undermines administrative-privilege separation by
+      enabling credential reuse on user-controlled endpoints.
+    remediation: >
+      Set ConsentPromptBehaviorUser to 0 (Automatically deny elevation
+      requests) under
+      HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System.
+    compliance:
+      - acsc_essential_eight: ["ML1.AP.3"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> ConsentPromptBehaviorUser -> 0'
+
+  - id: 30033
+    title: "Ensure UAC virtualises file and registry write failures (ML2)"
+    description: >
+      ACSC Essential Eight ML2 administrative privilege restriction
+      requires UAC features that prevent privileged file and registry
+      writes from legacy applications.
+    rationale: >
+      File and registry virtualisation prevents legacy applications
+      from silently writing to protected locations, surfacing privilege
+      misuse and reducing attack surface.
+    remediation: >
+      Set EnableVirtualization to 1 under
+      HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System.
+    compliance:
+      - acsc_essential_eight: ["ML2.AP.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> EnableVirtualization -> 1'
+
+  - id: 30034
+    title: "Ensure Local Administrator Password Solution (LAPS) is configured (ML2)"
+    description: >
+      ACSC Essential Eight ML2 administrative privilege restriction
+      recommends unique local administrator passwords per endpoint.
+      Microsoft LAPS provides this for Active-Directory-joined devices.
+    rationale: >
+      A shared local administrator password across endpoints enables
+      lateral movement via pass-the-hash. LAPS issues a unique random
+      password to each device and rotates it.
+    remediation: >
+      Deploy Microsoft LAPS via Group Policy:
+      Computer Configuration > Policies > Administrative Templates >
+      LAPS > Configure password backup directory.
+    compliance:
+      - acsc_essential_eight: ["ML2.AP.2"]
+    condition: any
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Policies\LAPS'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'
+
+  # =================================================================
+  # E8 #6: Patch Operating Systems
+  # =================================================================
+  # ACSC requires operating system patches to be applied within
+  # specified timeframes. Single-shot scans cannot verify patch
+  # latency but can verify that patching infrastructure is enabled.
+  # =================================================================
+
+  - id: 30040
+    title: "Ensure the Windows Update service is enabled"
+    description: >
+      ACSC Essential Eight ML1 requires operating system patches to be
+      applied. The Windows Update service (wuauserv) must be enabled
+      for patches to be detected, downloaded, and installed.
+    rationale: >
+      A disabled Windows Update service silently prevents the endpoint
+      from receiving any operating system security patches, leaving
+      known vulnerabilities indefinitely exploitable.
+    remediation: >
+      Set the service to automatic or manual (triggered) start. On
+      Windows 10/11 the default is manual-trigger which is acceptable.
+      Set-Service -Name wuauserv -StartupType Automatic
+    compliance:
+      - acsc_essential_eight: ["ML1.OS.1"]
+    condition: any
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\wuauserv -> Start -> 2'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\wuauserv -> Start -> 3'
+
+  - id: 30041
+    title: "Ensure automatic updates are not disabled by Group Policy"
+    description: >
+      ACSC Essential Eight ML1 requires operating system patches to be
+      applied promptly. Group Policy must not disable Windows Update.
+    rationale: >
+      A NoAutoUpdate=1 setting suppresses all automatic patching even
+      when the wuauserv service is running, creating a false sense of
+      security.
+    remediation: >
+      Do not set NoAutoUpdate to 1 under
+      HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU.
+      Recommended: explicitly set NoAutoUpdate to 0 and configure
+      AUOptions appropriately.
+    compliance:
+      - acsc_essential_eight: ["ML1.OS.2"]
+    condition: none
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate -> 1'
+
+  - id: 30042
+    title: "Ensure feature update deferral does not exceed 365 days (ML2)"
+    description: >
+      ACSC Essential Eight ML2 limits the period for which operating
+      system feature updates may be deferred. Excessive deferral leads
+      to running unsupported OS versions.
+    rationale: >
+      A feature update deferral of more than 365 days will eventually
+      result in the endpoint running an unsupported Windows 10/11
+      release with no security patching.
+    remediation: >
+      Configure DeferFeatureUpdatesPeriodInDays to a value <= 365 under
+      HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate.
+    compliance:
+      - acsc_essential_eight: ["ML2.OS.1"]
+    condition: any
+    rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdatesPeriodInDays'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdatesPeriodInDays -> n:^(\d+) compare <= 365'
+
+  - id: 30043
+    title: "Ensure quality update deferral does not exceed 30 days (ML2)"
+    description: >
+      ACSC Essential Eight ML2 requires that critical and high-risk
+      operating system patches be applied within 14 days. A quality
+      update deferral period exceeding 30 days makes this impossible.
+    rationale: >
+      Quality updates contain security fixes. Excessive deferral keeps
+      known-exploitable vulnerabilities present on the endpoint.
+    remediation: >
+      Configure DeferQualityUpdatesPeriodInDays to <= 30 under
+      HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate.
+    compliance:
+      - acsc_essential_eight: ["ML2.OS.2"]
+    condition: any
+    rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferQualityUpdatesPeriodInDays'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferQualityUpdatesPeriodInDays -> n:^(\d+) compare <= 30'
+
+  # =================================================================
+  # E8 #7: Multi-Factor Authentication
+  # =================================================================
+  # MFA is largely identity-provider-side and cannot be fully verified
+  # from an endpoint scan. The checks below verify endpoint-side
+  # MFA-supporting configuration.
+  # =================================================================
+
+  - id: 30050
+    title: "Ensure Remote Desktop Network Level Authentication (NLA) is required"
+    description: >
+      ACSC Essential Eight ML1 multi-factor authentication guidance
+      requires authentication to occur before resource access. NLA
+      enforces authentication at the network layer before the desktop
+      session is established.
+    rationale: >
+      Without NLA, an unauthenticated user can reach the Windows logon
+      screen via RDP, exposing the system to credential brute force,
+      pre-authentication exploits, and screen-scraping attacks.
+    remediation: >
+      Set UserAuthentication to 1 under
+      HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp.
+      Configurable via Group Policy: Computer Configuration >
+      Administrative Templates > Windows Components > Remote Desktop
+      Services > Remote Desktop Session Host > Security >
+      Require user authentication for remote connections by using NLA.
+    compliance:
+      - acsc_essential_eight: ["ML1.MFA.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp -> UserAuthentication -> 1'
+
+  - id: 30051
+    title: "Ensure Windows Hello for Business is enabled (ML2)"
+    description: >
+      ACSC Essential Eight ML2 multi-factor authentication guidance
+      recommends phishing-resistant MFA. Windows Hello for Business
+      provides biometric or PIN-with-TPM authentication that is not
+      phishable.
+    rationale: >
+      Windows Hello for Business binds credentials to the device's TPM
+      and the user's biometric, defeating remote credential theft and
+      phishing attacks against the authentication factor.
+    remediation: >
+      Enable via Group Policy:
+      Computer Configuration > Administrative Templates > Windows
+      Components > Windows Hello for Business > Use Windows Hello for
+      Business > Enabled.
+    compliance:
+      - acsc_essential_eight: ["ML2.MFA.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PassportForWork -> Enabled -> 1'
+
+  - id: 30052
+    title: "Ensure local account use of blank passwords is restricted to console logon (ML2)"
+    description: >
+      ACSC Essential Eight ML2 multi-factor authentication and account
+      hardening requires that authentication strength be enforced for
+      remote access. Blank-password local accounts must not be usable
+      over the network.
+    rationale: >
+      Allowing remote logon with blank-password accounts trivially
+      bypasses any MFA assumptions and provides immediate unauthenticated
+      access to resources.
+    remediation: >
+      Set LimitBlankPasswordUse to 1 under
+      HKLM\SYSTEM\CurrentControlSet\Control\Lsa.
+    compliance:
+      - acsc_essential_eight: ["ML2.MFA.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> LimitBlankPasswordUse -> 1'
+
+  # =================================================================
+  # E8 #8: Regular Backups
+  # =================================================================
+  # ACSC requires backups of important data, software, and configuration
+  # settings, retained per organisational requirements, with restoration
+  # tested. Restoration testing and retention validation are out of
+  # scope for endpoint scanning; checks below verify backup readiness
+  # infrastructure.
+  # =================================================================
+
+  - id: 30060
+    title: "Ensure the Volume Shadow Copy Service is enabled"
+    description: >
+      ACSC Essential Eight ML1 backup requirements depend on the Volume
+      Shadow Copy Service (VSS) for consistent point-in-time backups
+      and ransomware-resistant recovery via Previous Versions.
+    rationale: >
+      VSS being disabled prevents most Windows backup tools from
+      capturing consistent snapshots and removes the Previous Versions
+      recovery option that mitigates accidental deletion and some
+      ransomware impact.
+    remediation: >
+      Set the service to manual (default) or automatic via:
+      Set-Service -Name VSS -StartupType Manual
+    compliance:
+      - acsc_essential_eight: ["ML1.BU.1"]
+    condition: any
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\VSS -> Start -> 2'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\VSS -> Start -> 3'
+
+  - id: 30061
+    title: "Ensure System Restore is not disabled"
+    description: >
+      ACSC Essential Eight ML1 backup considerations include the ability
+      to recover from misconfiguration. System Restore provides a
+      lightweight recovery path for OS-level state.
+    rationale: >
+      System Restore disabled removes a recovery option that mitigates
+      driver-related, update-related, and some malware-related issues.
+    remediation: >
+      Do not set DisableSR to 1 under
+      HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore.
+    compliance:
+      - acsc_essential_eight: ["ML1.BU.2"]
+    condition: none
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore -> DisableSR -> 1'
+
+  - id: 30062
+    title: "Ensure Microsoft Defender real-time protection is enabled"
+    description: >
+      ACSC Essential Eight ML2 backup integrity guidance benefits from
+      anti-malware protection that prevents ransomware encryption of
+      backup data. Defender real-time protection is a baseline control.
+    rationale: >
+      Backups are useless if a ransomware infection encrypts them
+      faster than backup rotation. Real-time anti-malware protection
+      reduces the probability of backup compromise.
+    remediation: >
+      Do not set DisableRealtimeMonitoring to 1 under
+      HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection.
+    compliance:
+      - acsc_essential_eight: ["ML2.BU.1"]
+    condition: none
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection -> DisableRealtimeMonitoring -> 1'
+
+  - id: 30063
+    title: "Ensure Controlled Folder Access is enabled (ML2)"
+    description: >
+      ACSC Essential Eight ML2 backup integrity guidance benefits from
+      ransomware protection. Controlled Folder Access prevents
+      unauthorised processes from modifying files in protected folders
+      including user document locations.
+    rationale: >
+      Controlled Folder Access blocks ransomware from modifying user
+      data and connected backup destinations, complementing backup
+      strategy with active protection.
+    remediation: >
+      Set EnableControlledFolderAccess to 1 under
+      HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Controlled Folder Access.
+    compliance:
+      - acsc_essential_eight: ["ML2.BU.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Controlled Folder Access -> EnableControlledFolderAccess -> 1'
+
+  # =================================================================
+  # Cross-cutting / OS hardening adjacent to E8
+  # =================================================================
+  # These checks support multiple E8 controls and are commonly part
+  # of any Windows hardening baseline aligned with ACSC guidance.
+  # =================================================================
+
+  - id: 30070
+    title: "Ensure BitLocker is enabled on the system drive (ML2)"
+    description: >
+      ACSC Essential Eight ML2 administrative privilege restriction and
+      backup integrity benefit from full-disk encryption. BitLocker
+      protects against offline tampering and data theft.
+    rationale: >
+      Without disk encryption, an attacker with physical access can
+      bypass all OS-level access controls by booting from external
+      media or removing the drive.
+    remediation: >
+      Enable BitLocker via Control Panel > BitLocker Drive Encryption,
+      or via PowerShell: Enable-BitLocker -MountPoint "C:"
+    compliance:
+      - acsc_essential_eight: ["ML2.AP.3"]
+    condition: all
+    rules:
+      - 'c:powershell -Command "(Get-BitLockerVolume -MountPoint C).ProtectionStatus" -> r:1'
+
+  - id: 30071
+    title: "Ensure Windows Defender Credential Guard is enabled (ML2)"
+    description: >
+      ACSC Essential Eight ML2 administrative privilege restriction and
+      multi-factor authentication guidance benefit from Credential
+      Guard, which uses virtualisation-based security to isolate
+      credentials from the OS kernel.
+    rationale: >
+      Credential Guard prevents credential theft tools (e.g. Mimikatz)
+      from extracting NTLM hashes and Kerberos tickets from LSASS,
+      defeating pass-the-hash and golden-ticket attacks.
+    remediation: >
+      Enable via Group Policy:
+      Computer Configuration > Administrative Templates > System >
+      Device Guard > Turn on Virtualization Based Security >
+      Credential Guard Configuration > Enabled with UEFI lock.
+    compliance:
+      - acsc_essential_eight: ["ML2.AP.4"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\LSA -> LsaCfgFlags -> 1'
+
+  - id: 30072
+    title: "Ensure WDigest authentication is disabled"
+    description: >
+      ACSC Essential Eight user application hardening and administrative
+      privilege restriction guidance requires that legacy authentication
+      that exposes plaintext credentials in memory be disabled.
+    rationale: >
+      WDigest stores plaintext passwords in LSASS memory, allowing
+      credential theft tools to recover them directly. Disabling
+      WDigest forces use of NTLM/Kerberos hashes only.
+    remediation: >
+      Set UseLogonCredential to 0 under
+      HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest.
+    compliance:
+      - acsc_essential_eight: ["ML1.AP.4"]
+    condition: any
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest -> UseLogonCredential -> 0'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest -> UseLogonCredential'
+
+  - id: 30073
+    title: "Ensure anonymous SID enumeration is restricted"
+    description: >
+      ACSC Essential Eight administrative privilege restriction guidance
+      requires that account enumeration via anonymous SMB sessions be
+      blocked to defeat reconnaissance.
+    rationale: >
+      Anonymous SID/name enumeration allows attackers to map account
+      names without authentication, enabling targeted password spraying
+      and account compromise.
+    remediation: >
+      Set RestrictAnonymousSAM to 1 and RestrictAnonymous to 1 under
+      HKLM\SYSTEM\CurrentControlSet\Control\Lsa.
+    compliance:
+      - acsc_essential_eight: ["ML1.AP.5"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymousSAM -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymous -> 1'
+
+  - id: 30074
+    title: "Ensure Microsoft Defender SmartScreen is enabled for Edge"
+    description: >
+      ACSC Essential Eight user application hardening guidance requires
+      web browsers to block known malicious sites. SmartScreen provides
+      reputation-based blocking for Edge.
+    rationale: >
+      SmartScreen blocks navigation to known phishing and malware sites
+      and prevents download of known malicious files, defeating common
+      initial access techniques.
+    remediation: >
+      Set SmartScreenEnabled to 1 under
+      HKLM\SOFTWARE\Policies\Microsoft\Edge.
+    compliance:
+      - acsc_essential_eight: ["ML1.UA.7"]
+    condition: any
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge -> SmartScreenEnabled -> 1'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge -> SmartScreenEnabled'
+
+  - id: 30075
+    title: "Ensure Microsoft Office is configured to disable Trust Bar notifications for unsigned macros (ML2)"
+    description: >
+      ACSC Essential Eight ML2 macro hardening requires unsigned macros
+      to be blocked outright rather than allowed via user override.
+    rationale: >
+      Trust Bar prompts that allow macro execution via a single click
+      are a primary social engineering target. Removing the prompt
+      eliminates this vector.
+    remediation: >
+      Set DontTrustInstalledFiles to 1 under
+      HKCU\Software\Microsoft\Office\16.0\Word\Security and equivalent
+      paths for Excel/PowerPoint.
+    compliance:
+      - acsc_essential_eight: ["ML2.MO.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\Word\Security -> DontTrustInstalledFiles -> 1'
+
+  - id: 30076
+    title: "Ensure Outlook blocks programmatic access (ML2)"
+    description: >
+      ACSC Essential Eight ML2 macro hardening guidance requires Outlook
+      programmatic access to be restricted, mitigating malware that
+      attempts to use Outlook to send phishing emails to a victim's
+      contacts.
+    rationale: >
+      Unrestricted programmatic Outlook access allows malware to read
+      mailboxes, send malicious email from the victim's account, and
+      exfiltrate contact data without user interaction.
+    remediation: >
+      Set ObjectModelGuard to 2 under
+      HKCU\Software\Microsoft\Office\16.0\Outlook\Security.
+    compliance:
+      - acsc_essential_eight: ["ML2.MO.3"]
+    condition: all
+    rules:
+      - 'r:HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\Outlook\Security -> ObjectModelGuard -> 2'
+
+  - id: 30077
+    title: "Ensure Office disables loading of all add-ins not signed by a trusted publisher (ML2)"
+    description: >
+      ACSC Essential Eight ML2 macro hardening guidance extends to
+      Office add-ins. Loading unsigned add-ins is equivalent to running
+      arbitrary code in the Office process context.
+    rationale: >
+      Office add-ins execute with the same privileges as the Office
+      application. An unsigned add-in is functionally equivalent to an
+      unsigned macro and should be subject to the same restrictions.
+    remediation: >
+      Set RequireAddinSig to 1 under
+      HKCU\Software\Microsoft\Office\16.0\<App>\Security for Word, Excel,
+      PowerPoint, and Outlook.
+    compliance:
+      - acsc_essential_eight: ["ML2.MO.4"]
+    condition: all
+    rules:
+      - 'r:HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\Word\Security -> RequireAddinSig -> 1'
+      - 'r:HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\Excel\Security -> RequireAddinSig -> 1'
+
+  - id: 30078
+    title: "Ensure Microsoft Defender cloud-delivered protection is enabled (ML2)"
+    description: >
+      ACSC Essential Eight ML2 user application hardening benefits from
+      cloud-delivered anti-malware protection which provides faster
+      response to novel threats than signature-based detection alone.
+    rationale: >
+      Cloud-delivered protection enables sub-minute response to newly
+      observed malware variants, significantly reducing the window
+      between threat emergence and endpoint protection.
+    remediation: >
+      Set SpynetReporting to 2 under
+      HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet.
+    compliance:
+      - acsc_essential_eight: ["ML2.UA.5"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> SpynetReporting -> 2'
