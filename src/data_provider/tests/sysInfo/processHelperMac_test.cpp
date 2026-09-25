@@ -80,18 +80,42 @@ TEST(ProcessHelperMacTest, clockTicksFromMachTimeFallbackClkTck)
     EXPECT_EQ(100ULL, ProcessHelperMac::clockTicksFromMachTime(1'000'000'000ULL, 1, 1, -1));
 }
 
-TEST(ProcessHelperMacTest, getProcessStateValidStatuses)
+TEST(ProcessHelperMacTest, threadStateRankOrdering)
 {
-    EXPECT_EQ("I", ProcessHelperMac::getProcessState(1)); // SIDL
-    EXPECT_EQ("R", ProcessHelperMac::getProcessState(2)); // SRUN
-    EXPECT_EQ("S", ProcessHelperMac::getProcessState(3)); // SSLEEP
-    EXPECT_EQ("T", ProcessHelperMac::getProcessState(4)); // SSTOP
-    EXPECT_EQ("Z", ProcessHelperMac::getProcessState(5)); // SZOMB
+    EXPECT_EQ(1, ProcessHelperMac::threadStateRank(TH_STATE_RUNNING, 0));
+    EXPECT_EQ(2, ProcessHelperMac::threadStateRank(TH_STATE_UNINTERRUPTIBLE, 0));
+    EXPECT_EQ(3, ProcessHelperMac::threadStateRank(TH_STATE_WAITING, 0));
+    EXPECT_EQ(3, ProcessHelperMac::threadStateRank(TH_STATE_WAITING, 20));
+    EXPECT_EQ(4, ProcessHelperMac::threadStateRank(TH_STATE_WAITING, 21));
+    EXPECT_EQ(5, ProcessHelperMac::threadStateRank(TH_STATE_STOPPED, 0));
+    EXPECT_EQ(6, ProcessHelperMac::threadStateRank(TH_STATE_HALTED, 0));
+    EXPECT_EQ(ProcessHelperMac::THREAD_STATE_RANK_UNKNOWN, ProcessHelperMac::threadStateRank(0, 0));
+    EXPECT_EQ(ProcessHelperMac::THREAD_STATE_RANK_UNKNOWN, ProcessHelperMac::threadStateRank(99, 0));
 }
 
-TEST(ProcessHelperMacTest, getProcessStateUnknownStatuses)
+TEST(ProcessHelperMacTest, getProcessStateFromThreads)
 {
-    EXPECT_EQ(UNKNOWN_VALUE, ProcessHelperMac::getProcessState(0));
-    EXPECT_EQ(UNKNOWN_VALUE, ProcessHelperMac::getProcessState(6));
-    EXPECT_EQ(UNKNOWN_VALUE, ProcessHelperMac::getProcessState(999));
+    // A process reported as running by the BSD status takes its state from its threads
+    constexpr uint32_t runningStatus { 2 }; // SRUN
+    EXPECT_EQ("R", ProcessHelperMac::getProcessState(runningStatus, 1));
+    EXPECT_EQ("U", ProcessHelperMac::getProcessState(runningStatus, 2));
+    EXPECT_EQ("S", ProcessHelperMac::getProcessState(runningStatus, 3));
+    EXPECT_EQ("I", ProcessHelperMac::getProcessState(runningStatus, 4));
+    EXPECT_EQ("T", ProcessHelperMac::getProcessState(runningStatus, 5));
+    EXPECT_EQ("H", ProcessHelperMac::getProcessState(runningStatus, 6));
+}
+
+TEST(ProcessHelperMacTest, getProcessStateStoppedAndZombie)
+{
+    // Stopped and zombie BSD statuses win over any thread state
+    EXPECT_EQ("T", ProcessHelperMac::getProcessState(SSTOP, 1));
+    EXPECT_EQ("Z", ProcessHelperMac::getProcessState(SZOMB, 1));
+    EXPECT_EQ("Z", ProcessHelperMac::getProcessState(SZOMB, ProcessHelperMac::THREAD_STATE_RANK_UNKNOWN));
+}
+
+TEST(ProcessHelperMacTest, getProcessStateUnknown)
+{
+    EXPECT_EQ(UNKNOWN_VALUE, ProcessHelperMac::getProcessState(2, ProcessHelperMac::THREAD_STATE_RANK_UNKNOWN));
+    EXPECT_EQ(UNKNOWN_VALUE, ProcessHelperMac::getProcessState(2, 0));
+    EXPECT_EQ(UNKNOWN_VALUE, ProcessHelperMac::getProcessState(0, 99));
 }
