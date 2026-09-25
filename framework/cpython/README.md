@@ -75,7 +75,7 @@ The script will:
 
 ## Output
 
-All build artifacts are written to `./output/` with the following naming convension:
+All build artifacts are written to `./output/` with the following naming convention:
 
 - Sources: `cpython_[amd64/x86_64].tar.gz`
 - Compiled: `cpython.tar.gz`

@@ -18,7 +18,7 @@ The following commands runs a cluster:
 2. Run `docker compose up`
 
 If a single docker is needed, it is possible to run:
-1. Move to the dockefile location for instance:
+1. Move to the Dockerfile location for instance:
  `cd wazuh-manager`
 2. Run `docker build -t wazuh-manager --target server ./wazuh-manager`
 3. Define .env with the necessary environment variables

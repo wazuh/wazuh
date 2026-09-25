@@ -173,7 +173,7 @@ _We are using **Ubuntu 22.04** for this example:_
     # Clone `wazuh` repository within your testing environment
     git clone https://github.com/wazuh/wazuh.git
 
-    # Clone the `qa-integration-framework` repository withing your testing environment
+    # Clone the `qa-integration-framework` repository within your testing environment
     git clone https://github.com/wazuh/qa-integration-framework.git
 
     # Install tests dependencies

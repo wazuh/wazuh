@@ -23,7 +23,7 @@ engine_handler = EngineHandler(
 # Start the Engine
 engine_handler.start()
 
-# Do somenthing with the Engine, the api is available through the handler
+# Do something with the Engine, the api is available through the handler
 request = {}
 error, response = engine_handler.api_client.send_recv(request)
 
@@ -36,4 +36,4 @@ The configuration file is a `.env` file with the following format:
 ENVIROMENT_VARIABLE=value
 ```
 
-You can check the possible enviroment variables in `source/conf/src/conf.cpp` in `Conf::Conf` constructor.
+You can check the possible environment variables in `source/conf/src/conf.cpp` in `Conf::Conf` constructor.
