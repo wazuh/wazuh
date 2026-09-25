@@ -8,8 +8,9 @@
 #   . /usr/share/wazuh-manager/lib/wazuh-credentials.sh
 #   . /usr/share/wazuh-manager/lib/wazuh-manager-certificates.sh
 #
-# Importing this file performs no action and does not change the caller's shell
-# options, umask, IFS, working directory, or traps.
+# Importing this file defines its functions and sets exactly one variable,
+# WAZUH_MANAGER_CA_MINT_MARKER (see below). It takes no other action, and does
+# not change the caller's shell options, umask, IFS, working directory or traps.
 #
 # Public API
 # ----------
@@ -65,10 +66,23 @@
 #   WAZUH_MANAGER_USER / WAZUH_MANAGER_GROUP
 #       Service identity. Both default to wazuh-manager.
 #
+#   WAZUH_MANAGER_CA_MINT_MARKER
+#       Name of the file wazuh_manager_certificates_ensure() drops in the CA
+#       directory when THIS host minted the bootstrap CA. Set at import, so a
+#       consumer that sources this file reads the same name rather than
+#       repeating the literal; assign it before sourcing to override.
+#       A CA private key may be deleted only when this file sits beside it.
+#
 # The two SAN settings follow the shared credential precedence: value in
 # <wazuh_base_get_dir>/credentials.env, then process environment override, then derived
 # default. Values may be typed (DNS:name, IP:address) or untyped; untyped values
 # are classified as IP or DNS after validation.
+
+# Dropped into the CA directory by wazuh_manager_certificates_ensure() when this host minted the
+# bootstrap CA. Public because it is a contract with the consumer that clears credentials: a CA
+# private key may be deleted only when this file sits beside it. The CA directory is root:root 0700,
+# so nothing but root can create it.
+WAZUH_MANAGER_CA_MINT_MARKER=${WAZUH_MANAGER_CA_MINT_MARKER-.wazuh-manager-bootstrap-ca}
 
 _wmc_error() (
     printf '%s\n' "wazuh-manager-certificates: $*" >&2
@@ -1008,7 +1022,9 @@ _wmc_ensure_locked() (
     _wmc_ca_dir=$(wazuh_ca_get_dir) || return 1
 
     _wmc_validate_path "$_wmc_ca_dir" || return 1
+    _wmc_ca_was_absent=0
     if [ ! -e "$_wmc_ca_dir/root-ca.pem" ] && [ ! -L "$_wmc_ca_dir/root-ca.pem" ]; then
+        _wmc_ca_was_absent=1
         for _wmc_existing in root-ca.pem indexer-connector.pem indexer-connector-key.pem remoted.pem remoted-key.pem; do
             if [ -e "$_wmc_dir/$_wmc_existing" ] || [ -L "$_wmc_dir/$_wmc_existing" ]; then
                 _wmc_error 'shared CA missing but manager material exists; refusing to mint another CA'
@@ -1017,6 +1033,24 @@ _wmc_ensure_locked() (
         done
     fi
     _wazuh_ca_ensure_locked || return 1
+
+    # Record that THIS host minted the CA, which is the only thing that may later authorise deleting
+    # its private key. "root-ca.key is present" cannot answer that: an operator who stages a signing
+    # CA -- their own anchor and key, so the manager issues leaves from their PKI -- leaves exactly
+    # the same shape on disk.
+    #
+    # Written here and not by the caller because only here is the observation atomic with the mint.
+    # We hold the credentials lock, so the absence checked above and the CA that exists now are the
+    # same moment. A caller checking before wazuh_manager_certificates_ensure() would be looking
+    # outside the lock, and the ordering that loses that race is the LIKELY one: if a sibling is
+    # minting, we block on the lock precisely while it does, and would then take the credit.
+    if [ "$_wmc_ca_was_absent" -eq 1 ] && [ -f "$_wmc_ca_dir/root-ca.key" ]; then
+        (umask 077; : >"$_wmc_ca_dir/$WAZUH_MANAGER_CA_MINT_MARKER") 2>/dev/null || {
+            # Not fatal: the CA and the certificates are in place and usable. Without the marker a
+            # later --clear keeps the CA, which is the safe direction.
+            _wmc_error "could not record that the bootstrap CA was minted in $_wmc_ca_dir"
+        }
+    fi
     _wazuh_validate_ca_files "$_wmc_ca_dir" || return 1
     _wmc_prepare_cert_dir "$_wmc_dir" "$_wmc_group" "$_wmc_gid" 1 || return 1
     _wmc_install_ca_anchor \

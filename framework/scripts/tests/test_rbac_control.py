@@ -281,6 +281,65 @@ def test_drop_privileges(euid, expected_calls):
     assert calls.mock_calls == expected_calls
 
 
+def test_password_files_are_read_before_privileges_are_dropped(tmp_path, db_setup):
+    """The operator's password file is commonly root-only, so it must be read while still root.
+
+    `--password-file /root/wui.pass` at `0600 root:root` is the documented unattended form. Opening
+    it after the drop fails with `Permission denied` and the command reports it as an unreadable
+    file, which tells the operator nothing about why.
+    """
+    calls = MagicMock()
+    password_file = tmp_path / 'wui.pass'
+    password_file.write_text('Some.Password12\n')
+
+    def record_open(*args, **kwargs):
+        calls.open()
+        return original_open(*args, **kwargs)
+
+    original_open = open
+    with patch('os.geteuid', return_value=0), \
+            patch('os.setgroups', calls.setgroups), \
+            patch('os.setgid', calls.setgid), \
+            patch('os.setuid', calls.setuid), \
+            patch('wazuh.core.common.wazuh_gid', return_value=998), \
+            patch('wazuh.core.common.wazuh_uid', return_value=997), \
+            patch('builtins.open', side_effect=record_open), \
+            patch('sys.argv', new=['rbac_control', 'change-password', '--user', 'wazuh-wui',
+                                   '--password-file', str(password_file)]), \
+            patch('builtins.print'), \
+            pytest.raises(SystemExit):
+        runpy.run_path(rbac_control.__file__, run_name='__main__')
+
+    names = [name for name, _, _ in calls.mock_calls]
+    assert 'open' in names, 'the password file was never read'
+    assert names.index('open') < names.index('setuid'), \
+        'the password file was read after privileges were dropped'
+
+
+def test_preloaded_source_is_reused(tmp_path):
+    """A preloaded file is served from memory, so the post-drop read never touches the filesystem."""
+    password_file = tmp_path / 'pw'
+    password_file.write_text('Some.Password12\n')
+
+    args = Arguments(password_file=str(password_file), passwords_file=None)
+    rbac_control._preloaded_sources.clear()
+    rbac_control.preload_sources(args)
+
+    assert rbac_control._preloaded_sources[str(password_file)] == 'Some.Password12\n'
+    password_file.unlink()
+    assert rbac_control.read_source(str(password_file)) == 'Some.Password12\n'
+    rbac_control._preloaded_sources.clear()
+
+
+def test_preload_sources_defers_an_unreadable_file(tmp_path):
+    """An unreadable source is left for the command, which reports it in its own words."""
+    args = Arguments(password_file=str(tmp_path / 'missing'), passwords_file=None)
+    rbac_control._preloaded_sources.clear()
+    rbac_control.preload_sources(args)
+
+    assert rbac_control._preloaded_sources == {}
+
+
 def test_script_drops_privileges_before_the_command(tmp_path, db_setup):
     """Check that nothing touches rbac.db while the script still runs as root."""
     calls = MagicMock()
