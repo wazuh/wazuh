@@ -472,4 +472,29 @@ TEST(ConfDropPrivileges, EnvOverride)
 
     unsetEnv("WAZUH_ENGINE_DROP_PRIVILEGES");
 }
+
+/************************************************************************
+ *                       File descriptor limit key
+ ************************************************************************/
+TEST(ConfRlimitNofile, DefaultsTo8192)
+{
+    logging::testInit();
+    unsetEnv("WAZUH_RLIMIT_NOFILE");
+
+    conf::Conf conf(std::make_shared<conf::mocks::MockFileLoader>());
+
+    EXPECT_EQ(conf.get<int>(conf::key::RLIMIT_NOFILE), 8192);
+}
+
+TEST(ConfRlimitNofile, EnvOverride)
+{
+    logging::testInit();
+    setEnv("WAZUH_RLIMIT_NOFILE", "65536");
+
+    conf::Conf conf(std::make_shared<conf::mocks::MockFileLoader>());
+
+    EXPECT_EQ(conf.get<int>(conf::key::RLIMIT_NOFILE), 65536);
+
+    unsetEnv("WAZUH_RLIMIT_NOFILE");
+}
 } // namespace

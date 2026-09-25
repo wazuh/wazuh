@@ -206,31 +206,6 @@ int main(int argc, char* argv[])
         }
     }
 
-    // Raise the soft file descriptor limit; the hard limit belongs to whoever started the manager
-    {
-        constexpr rlim_t target = 65536;
-        struct rlimit limit {};
-        if (getrlimit(RLIMIT_NOFILE, &limit) == 0 && limit.rlim_cur < target)
-        {
-            const rlim_t soft = (limit.rlim_max == RLIM_INFINITY || limit.rlim_max >= target) ? target : limit.rlim_max;
-            if (soft > limit.rlim_cur)
-            {
-                limit.rlim_cur = soft;
-                if (setrlimit(RLIMIT_NOFILE, &limit) != 0)
-                {
-                    LOG_ERROR("Could not set the file descriptor limit to {}: {}", soft, strerror(errno));
-                }
-            }
-            if (soft < target)
-            {
-                LOG_WARNING("File descriptor limit is {}, below the {} requested by the engine. Raise the limit the "
-                            "process is started with (LimitNOFILE, ulimit -n, container ulimits) to go higher.",
-                            soft,
-                            target);
-            }
-        }
-    }
-
     // Daemonize the process
     if (!opts.runForeground)
     {
@@ -248,6 +223,50 @@ int main(int argc, char* argv[])
     {
         LOG_ERROR("Error loading configuration: {}", e.what());
         exit(EXIT_FAILURE);
+    }
+
+    // Raise the soft file descriptor limit; the hard limit belongs to whoever started the process
+    {
+        constexpr int minNofile = 1024;
+        constexpr int maxNofile = 1048576;
+        constexpr int defaultNofile = 8192;
+        auto requested = confManager.get<int>(conf::key::RLIMIT_NOFILE);
+        if (requested < minNofile || requested > maxNofile)
+        {
+            LOG_WARNING("Invalid configuration: {} is out of range [{}, {}] ({}). Using {}.",
+                        conf::key::RLIMIT_NOFILE,
+                        minNofile,
+                        maxNofile,
+                        requested,
+                        defaultNofile);
+            requested = defaultNofile;
+        }
+        const auto target = static_cast<rlim_t>(requested);
+        struct rlimit limit {};
+        if (getrlimit(RLIMIT_NOFILE, &limit) == 0 && limit.rlim_cur < target)
+        {
+            const rlim_t soft = (limit.rlim_max == RLIM_INFINITY || limit.rlim_max >= target) ? target : limit.rlim_max;
+            if (soft > limit.rlim_cur)
+            {
+                limit.rlim_cur = soft;
+                if (setrlimit(RLIMIT_NOFILE, &limit) != 0)
+                {
+                    LOG_ERROR("Could not set the file descriptor limit to {}: {}", soft, strerror(errno));
+                }
+                else
+                {
+                    LOG_DEBUG("File descriptor limit raised to {}", soft);
+                }
+            }
+            if (soft < target)
+            {
+                LOG_WARNING("File descriptor limit is {}, below the {} requested by '{}'. Raise the limit the "
+                            "process is started with (LimitNOFILE, ulimit -n, container ulimits) to go higher.",
+                            soft,
+                            target,
+                            conf::key::RLIMIT_NOFILE);
+            }
+        }
     }
 
     // Set signal [SIGINT]: Crt+C handler and signal [SIGTERM]: kill handler
