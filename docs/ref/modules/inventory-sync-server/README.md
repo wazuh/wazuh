@@ -19,8 +19,8 @@ relayed back to the agent IS the session result — no acks, no retransmission, 
 - **Synchronous vulnerability scanning**: sessions with option `VDFirst`/`VDSync` run through a
   dedicated scan lane that executes the [Vulnerability Scanner](../vulnerability-scanner/README.md)
   BEFORE indexing — a `200` guarantees the scan ran AND the inventory was flushed; a failed scan
-  answers `500` with nothing indexed; a still-downloading CVE feed answers `503 + Retry-After`
-  without processing.
+  answers `500` with nothing indexed; a still-downloading CVE feed, or a scanner enabled here but
+  still starting up, answers `503 + Retry-After` without processing.
 - **Agent deletion endpoint** (`POST /_internal/agents/delete`): manager-internal and UDS-local,
   called by the Task Manager's dispatcher to execute a durable deletion task that
   `wazuh-manager-authd` created when the agent was removed. It reaches every index holding
@@ -98,8 +98,9 @@ agent's documents). The situations an operator will recognize:
   [503 troubleshooting entry](configuration.md#requests-are-answered-503-under-load) for which
   option matches which gate. Sheds are expected backpressure: agents retry on their own.
 - **What does `Retry-After` mean?** Only one `503` carries it: the CVE feed is still downloading,
-  so vulnerability-detection sessions are rejected *without processing* and the agent re-sends
-  the same session after the given seconds. No other `503` schedules the retry for the agent.
+  or the vulnerability scanner is enabled here but still starting up, so vulnerability-detection
+  sessions are rejected *without processing* and the agent re-sends the same session after the
+  given seconds. No other `503` schedules the retry for the agent.
 - **Why did an agent full-resync out of nowhere?** Its `ModuleCheck` answered `409` — the
   manager-side checksum of that module's documents did not match the agent's. The resync is the
   repair, not the problem.

@@ -386,7 +386,18 @@ jobs:
         run: |
           & checkfiles_env\Scripts\Activate.ps1
           net stop WazuhSvc
-          python .github/actions/check_files/check_files.py -f .github/actions/check_files/windows_agent_base.csv --wazuh_gid -1 --wazuh_uid -1 --directory "C:\Program Files (x86)\ossec-agent"
+          # Base csv is Windows 10 (shared with wazuh-agent-packages); expect this OS's SCA/profile files, per wazuh-installer.wxs conditions
+          $os = Get-CimInstance Win32_OperatingSystem
+          $build = [int]$os.BuildNumber
+          if ($os.ProductType -eq 1) {
+            $expected = 'profile-10.template', "ruleset\sca\cis_win$(if ($build -lt 22000) { 10 } else { 11 })_enterprise.yml"
+          } else {
+            $expected = @{ 14393 = 'profile-2016.template', 'ruleset\sca\cis_win2016.yml'; 17763 = 'profile-2019.template', 'ruleset\sca\cis_win2019.yml'; 20348 = @('ruleset\sca\cis_win2022.yml'); 26100 = @('ruleset\sca\cis_win2025.yml') }[$build]
+            if (-not $expected) { throw "No SCA/profile mapping for Windows Server build $build" }
+          }
+          $base = Get-Content .github/actions/check_files/windows_agent_base.csv | Where-Object { $_ -notmatch '\\profile-[^\\]+\.template,|\\ruleset\\sca\\[^\\]+\.yml,' }
+          $base + ($expected | ForEach-Object { "C:\Program Files (x86)\ossec-agent\$_,,,666,file,-rw-rw-rw-,," }) | Set-Content windows_os_agent_base.csv
+          python .github/actions/check_files/check_files.py -f windows_os_agent_base.csv --wazuh_gid -1 --wazuh_uid -1 --directory "C:\Program Files (x86)\ossec-agent"
           python .github/actions/check_files/check_files.py -b windows_actual_state.csv --wazuh_gid -1 --wazuh_uid -1 --directory "C:\Program Files (x86)\ossec-agent"
           Get-Content windows_actual_state.csv
 

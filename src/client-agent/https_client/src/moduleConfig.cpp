@@ -40,6 +40,8 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     typed.agentKeyHex = boundedString(config.agent_key, sizeof(config.agent_key));
     typed.verifyMode = static_cast<hc_verify_mode_t>(config.verify_mode);
     typed.caPath = boundedString(config.ca_path, sizeof(config.ca_path));
+    typed.systemFallbackCaPath = boundedString(config.system_fallback_ca_path,
+                                               sizeof(config.system_fallback_ca_path));
     typed.clientCert = boundedString(config.client_cert, sizeof(config.client_cert));
     typed.clientKey = boundedString(config.client_key, sizeof(config.client_key));
     typed.ciphers = boundedString(config.ciphers, sizeof(config.ciphers));
@@ -58,6 +60,10 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     typed.configReportIntervalS = orDefault<uint32_t>(config.config_report_interval_s, 3600);
     typed.version = boundedString(config.version, sizeof(config.version));
     typed.configChecksum = boundedString(config.config_checksum, sizeof(config.config_checksum));
+    // Anything but a positive publication means none is recorded; the module treats them
+    // alike and re-anchors on the first one the manager advertises.
+    typed.caPublication = config.ca_publication > 0 ? config.ca_publication : CA_PUBLICATION_UNKNOWN;
+    typed.caRefreshAllowed = config.ca_refresh_allowed;
     typed.requestTimeoutMs = orDefault<uint32_t>(config.request_timeout_ms, 10000);
     typed.statefulTimeoutMs = orDefault<uint32_t>(config.stateful_timeout_ms, 90000);
     typed.backoffBaseMs = orDefault<uint32_t>(config.backoff_base_ms, 1000);
@@ -116,7 +122,7 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
     if (verifyMode != HC_VERIFY_FULL && verifyMode != HC_VERIFY_CERT && verifyMode != HC_VERIFY_NONE
             && verifyMode != HC_VERIFY_SYSTEM)
     {
-        LOGFN_ERROR(logFn, "Config rejected: unknown verify_mode %d.", verifyMode);
+        LOGFN_ERROR(logFn, "Config rejected: unknown verification_mode %d.", verifyMode);
         return false;
     }
 
@@ -141,7 +147,7 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
             // The second is not an operator's choice, which is exactly why it is worth saying
             // out loud -- it is the only sign that an agent is talking to its manager
             // unverified.
-            LOGFN_WARN(logFn, "TLS verification is DISABLED (verify_mode=none).");
+            LOGFN_WARN(logFn, "TLS verification is DISABLED (verification_mode=none).");
         }
 
         return true;
@@ -155,7 +161,7 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
         if (!caPath.empty())
         {
             LOGFN_CRITICAL(logFn,
-                           "https_client config rejected: verify_mode=system must not set "
+                           "https_client config rejected: verification_mode=system must not set "
                            "certificate_authorities (got '%s').",
                            caPath.c_str());
             return false;
@@ -166,15 +172,33 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
         // Windows/macOS ask their native certificate store (CurlPerformer), which this
         // process cannot introspect at validation time; Linux's trust anchor is a probed
         // file, so fail closed now rather than at the first handshake if none is found.
-        if (fsProbe.findSystemCaBundle().empty())
+        // A configured systemFallbackCaPath (#39123) is still allowed to start: an absent
+        // OS bundle is exactly the case CurlPerformer's fallback exists to survive, and
+        // refusing to start here would never give it the chance to try. Both being absent
+        // is the one combination this process can already tell has no way to verify.
+        if (fsProbe.findSystemCaBundle().empty() && systemFallbackCaPath.empty())
         {
             LOGFN_CRITICAL(logFn,
-                           "https_client config rejected: verify_mode=system found no OS CA "
-                           "bundle in any known location.");
+                           "https_client config rejected: verification_mode=system found no OS CA "
+                           "bundle in any known location, and no local fallback anchor is "
+                           "present either.");
             return false;
         }
 
 #endif
+
+        // Readability, same as the generic fallthrough below checks for caPath -- the
+        // config.c/w_agent_validate_ssl_ca side additionally parses the anchor as an X.509
+        // certificate before the module ever starts (#39123); this check only guards against
+        // it disappearing or losing read permission between that startup check and here.
+        if (!systemFallbackCaPath.empty() && !fsProbe.isReadableFile(systemFallbackCaPath))
+        {
+            LOGFN_CRITICAL(logFn,
+                           "https_client config rejected: verification_mode=system's local fallback "
+                           "anchor is not a readable file ('%s').",
+                           systemFallbackCaPath.c_str());
+            return false;
+        }
 
         return true;
     }
@@ -186,7 +210,7 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn,
     if (caPath.empty() || !fsProbe.isReadableFile(caPath))
     {
         LOGFN_CRITICAL(logFn,
-                       "https_client config rejected: verify_mode requires a readable CA file "
+                       "https_client config rejected: verification_mode requires a readable CA file "
                        "(certificate_authorities='%s').",
                        caPath.c_str());
         return false;

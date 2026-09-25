@@ -23,6 +23,16 @@
  * stall the /control notify cycle for longer than this. */
 #define TASK_REGISTRY_RECV_TIMEOUT_S 5
 
+/* Same rationale/constants as vd_offset_client.c: the very first Notify after agentd starts
+ * races modulesd's own startup gate over this identical socket (WM_LOCAL_SOCK), and task
+ * registry checks are dispatched from the same "tasks first" ordering in handleNotifyBody() --
+ * so a brand-new agent's very first task check hits the same one-shot-drop window #39543 was
+ * about, just for a different registry. Bounded, same reasoning: a genuinely-down agent-info
+ * still costs only a small, known, one-shot-comparable tax; the loop breaks on the first
+ * successful connect, so the steady-state case pays nothing extra. */
+#define TASK_REGISTRY_CONNECT_RETRIES 10
+#define TASK_REGISTRY_CONNECT_RETRY_DELAY_US 300000 /* 300 ms; ~2.7s worst case across all retries */
+
 /* Parses a response of the standard module-query envelope
  * (module_query_errors.h, src/wazuh_modules/src/wm_agent_info.c's
  * wm_agent_info_query(): {"error":0,"data":{"new":true|false}} on success,
@@ -76,16 +86,27 @@ static task_registry_result_t task_registry_check_and_record_posix(const char *t
     int sock = -1;
     char response[OS_MAXSTR + 1] = {0};
     ssize_t recv_len;
+    int attempt;
 
     snprintf(query, sizeof(query),
              "query agent-info {\"command\":\"task_check_and_record\",\"task_id\":\"%s\"}",
              task_id);
 
-    sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
+    for (attempt = 0; attempt < TASK_REGISTRY_CONNECT_RETRIES; attempt++) {
+        sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
+        if (sock >= 0) {
+            break;
+        }
+
+        if (attempt + 1 < TASK_REGISTRY_CONNECT_RETRIES) {
+            usleep(TASK_REGISTRY_CONNECT_RETRY_DELAY_US);
+        }
+    }
+
     if (sock < 0) {
-        mdebug1("task_registry_client: could not connect to '%s': %s (%d); "
+        mdebug1("task_registry_client: could not connect to '%s' after %d attempt(s): %s (%d); "
                 "treating task %s as non-dispatchable (fail closed).",
-                WM_LOCAL_SOCK, strerror(errno), errno, task_id);
+                WM_LOCAL_SOCK, TASK_REGISTRY_CONNECT_RETRIES, strerror(errno), errno, task_id);
         return TASK_REGISTRY_RESULT_ERROR;
     }
 

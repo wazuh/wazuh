@@ -37,8 +37,8 @@ func (a *agent) runCacerts(ctx context.Context, lane string) {
 		return
 	}
 
-	// 404 (no CA file on the manager) and 503 (the manager refuses a CA that
-	// does not sign its own certificate) are the manager's contract outcomes,
+	// 404 (no CA file on the manager) and 503 (the manager refuses a CA the
+	// served certificate does not chain to) are the manager's contract outcomes,
 	// recorded as such; a scenario's `expected` block decides whether they are
 	// acceptable for the run.
 	a.r.reg.RecordCacerts(a.fleet.Name, lane, res.Status, us(res.Latency))

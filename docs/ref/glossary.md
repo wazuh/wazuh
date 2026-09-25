@@ -6,8 +6,9 @@ through `wazuh-manager-remoted`; executions are recorded in the
 `wazuh-active-responses` data stream.
 
 **Agent** — Endpoint component that collects logs, inventory, and security data
-and sends them to the manager over an encrypted connection (port 1514, TCP by
-default).
+and sends them to the manager over HTTPS on port 1517, verifying the manager's
+certificate against a trust anchor it receives at enrollment. Port 1514 is the
+legacy listener, kept only for agents still on 4.x.
 
 **Agent group** — Named set of agents that receive a shared configuration
 (`agent.conf`) from the manager. In 5.0 the group is declared by the agent during

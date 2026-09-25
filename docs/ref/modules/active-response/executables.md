@@ -87,6 +87,7 @@ Wazuh provides **5 Active Response executables** covering IP blocking and accoun
 |----------|--------|------|-----------------|
 | 1 | pf | `pfctl` | `pfctl -t wazuh_fwtable -T add 192.168.1.100` |
 | 2 | hosts.deny | edit file | `ALL: 192.168.1.100` (appended to `/etc/hosts.deny`) |
+| 3 | route | `route` | IPv4: `route -q add 192.168.1.100 127.0.0.1 -blackhole` · IPv6: `route -q add -inet6 2001:db8::1 ::1 -blackhole` |
 
 **Input Fields**:
 ```json
@@ -107,22 +108,18 @@ Wazuh provides **5 Active Response executables** covering IP blocking and accoun
 
 **macOS-Specific Details**:
 - **PF Table**: Uses table name `wazuh_fwtable`
-- **Connection Killing**: When blocking, also kills existing connections: `pfctl -k 192.168.1.100`
-- **Anchor Configuration**: Requires PF anchor `wazuh_anchor` to be configured in `/etc/pf.conf`
+- **Connection Killing**: When blocking, also kills existing connections: `pfctl -k 192.168.1.100`. Best effort: a failure here is not reported.
+- **Table Precondition**: The `wazuh_fwtable` table and its block rules are a one-time setup owned by the administrator, the same way `wazuh_blacklist` is for `npf` on NetBSD. `block-ip` does not use a PF anchor file, never edits `/etc/pf.conf` and never reloads the packet filter ruleset: if the table is absent it declines and the next method in the chain is tried. The macOS package does not apply or announce it — `install.sh`'s notice runs at package build time, not on the endpoint — so it has to be applied by hand.
+- **Fallback**: Falls back to `hosts.deny`, then to a `route` blackhole if `pf` is unavailable, not enabled or missing its table — the same no-configuration-needed fallback the Unix/Linux chain has, so a stock macOS install (pf disabled, no `/etc/hosts.deny`) still blocks the address
+- **Unblocking**: Each method declines when the address is not the one it holds (`pf` reports `0/1 addresses deleted.`, `hosts.deny` finds no matching line), so the unblock walks the chain until it reaches the method that actually applied the block. Without this a block applied by `route` would never be lifted once `pf` or `hosts.deny` became available.
 - **Permissions**: Requires root privileges
 
-**Example pf.conf setup**:
+**Example pf.conf setup** (added by the administrator, then `sudo pfctl -f /etc/pf.conf`):
 ```
 # /etc/pf.conf
-anchor "wazuh_anchor"
-load anchor "wazuh_anchor" from "/etc/pf.anchors/wazuh_anchor"
-```
-
-**Example anchor file**:
-```
-# /etc/pf.anchors/wazuh_anchor
 table <wazuh_fwtable> persist
-block in quick from <wazuh_fwtable>
+block in quick from <wazuh_fwtable> to any
+block out quick from any to <wazuh_fwtable>
 ```
 
 **Return Codes**:

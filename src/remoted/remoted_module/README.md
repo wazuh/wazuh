@@ -30,9 +30,11 @@ remoted_module/
 │   ├── decoding/                   # ns remoted::decoding — Content-Encoding policy (see below)
 │   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below);
 │   │                               #   tlsCertificateStatus.hpp/.cpp = served-certificate expiry + CA
-│   │                               #   coherence evaluation and its daily monitor thread;
+│   │                               #   coherence evaluation and its daily monitor thread (the bundle
+│   │                               #   itself is shared_modules/ca_bundle's; re-exported from here);
 │   │                               #   caCertificateSource.hpp/.cpp = the CA file as ONE read:
-│   │                               #   certificates re-serialised + verdict, cached by content hash;
+│   │                               #   certificates re-serialised (parse cached by content hash) + the
+│   │                               #   verdicts, judged against the clock on every call;
 │   │                               #   fileRead.hpp/.cpp = bounded, injectable POSIX read + failure cause;
 │   │                               #   endpointRateLimiter.hpp/.cpp = token bucket per endpoint
 │   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below);
@@ -94,8 +96,12 @@ src/http_server/
 ├── IHttpServer.hpp          # neutral interface + types (Method/HttpRequest/HttpResponse/
 │                            #   IHttpResponder/HttpServerConfig). No transport types leak here.
 ├── inFlightBudget.hpp       # global in-flight byte budget + RAII Reservation (backpressure/503)
-├── tlsCertificateStatus.hpp/.cpp # served-leaf expiry + "does the configured CA sign it" evaluation
-│                            #   (pure functions over X509 + a PEM path) and TlsCertificateMonitor
+├── tlsCertificateStatus.hpp/.cpp # served-leaf expiry + chain verdict + TlsCertificateMonitor (pure
+│                            #   functions over X509); re-exports ca_bundle's X509Ptr,
+│                            #   serializeCertificates() and leafChainsToAnyCa() into remoted::http
+├── certificateDescriptor.hpp/.cpp # one certificate as GET /tls reports it (RFC 2253 names, SANs, epoch
+│                            #   validity; identity and bundle hash come from ca_bundle)
+├── tlsInventory.hpp/.cpp    # TlsInventory (served leaf + CA snapshot from ONE call) and the GET /tls document
 ├── httpServerConfig.hpp/.cpp# buildHttpServerConfig(): C-ABI struct -> HttpServerConfig (+ fallbacks)
 ├── httpServerFactory.hpp    # makeHttpServer() -> the single transport swap point
 └── RestinioHttpServer.hpp/.cpp # RESTinio + OpenSSL implementation (PImpl hides RESTinio in the .cpp)
@@ -103,15 +109,26 @@ src/http_server/
 
 - **Certificate status (`tlsCertificateStatus.hpp`, `IHttpServer::certificateStatus()`):** when
   `start()` builds the TLS context it evaluates the leaf it just loaded — days to `notAfter`
-  (negative once expired) and whether `HttpServerConfig::caCertificatePath` (the CA `GET /cacerts`
-  hands out; any `CERTIFICATE` block of the file counts, so a bundle works) signs it — logs the
-  result (ERROR expired / CA does not sign, WARN < 30 days / CA unreadable, WARN/INFO for the chain
-  verdict from `chainValidates()`, the bundle as sole trust store) and records it **before**
-  `run_async`, so no request can ever read "not evaluated yet". A `TlsCertificateMonitor` (own
+  (negative once expired) and whether it **chains** to `HttpServerConfig::caCertificatePath` (the CA
+  `GET /cacerts` hands out; any `CERTIFICATE` block of the file is offered as a trust anchor, so a
+  bundle works), which is [`ca_bundle`](../../shared_modules/ca_bundle/README.md)'s
+  `leafChainsToAnyCa()` — a real `X509_verify_cert()` with OpenSSL's default flags since C33, so an
+  expired CA, one without `CA:TRUE` and one that merely signs the leaf under another subject all
+  read `false` — logs the
+  result (ERROR expired / leaf does not chain to the CA, WARN < 30 days / CA unreadable, WARN/INFO
+  for the chain verdict from `chainValidates()`, the bundle as sole trust store, INFO for the
+  generation a stamped bundle is published under and WARN naming the guard that refused to vouch for
+  one) and records it
+  **before** `run_async`, so no request can ever read "not evaluated yet". A `TlsCertificateMonitor` (own
   thread parked on a `condition_variable::wait_for`, the module's canonical periodic-task shape —
   RESTinio's `run_async()` keeps its `io_context` private, so no timer there: D45) re-evaluates and
   re-logs every `HttpServerConfig::certificateStatusInterval` (24 h; tests inject 1 s — it is not a
-  configuration option) and is stopped in `stopAccepting()` before the worker-pool join. The leaf
+  configuration option) and is stopped in `stopAccepting()` before the worker-pool join. Between two
+  evaluations the same thread runs a recheck every `HttpServerConfig::caBundleRecheckInterval` (60 s,
+  not a configuration option either; 0 disables it): `CaCertificateSource::snapshot()` and a
+  delivery of the record events, no status recorded and no evaluation line repeated. It exists
+  because a CA that expires in place makes verifying agents fail their handshake, so no request is
+  left to notice it (issue #39519). The leaf
   compared is the one in the `SSL_CTX` (constant until restart); the CA is re-read from disk at every
   tick. `certificateStatus()` is a default `{}` on the interface, so the test fakes need nothing.
 
@@ -254,7 +271,7 @@ src/endpoints/
 ├── configEndpoint.hpp/.cpp   # /config policy: near-duplicate of statsEndpoint, on purpose
 ├── downloadEndpoint.hpp/.cpp # /download policy: request grammar + resource resolution + file streaming
 ├── iAgentGroupSource.hpp     # interface: the selector an authenticated agent may download
-├── cacertsEndpoint.hpp/.cpp  # GET /cacerts: the CA that signs the listener cert, certificates only (no auth)
+├── cacertsEndpoint.hpp/.cpp  # GET /cacerts: the CA the listener cert chains to, certificates only (no auth)
 ├── rateLimitGate.hpp/.cpp    # per-endpoint rate limit in front of the two unauthenticated routes
 └── reenrollSecretEndpoint.hpp/.cpp # POST /enroll/secret: a re-enrollment secret for an agent that
                              #   already holds a key (authenticated; authd mints, the key is untouched)
@@ -326,16 +343,26 @@ src/endpoints/
   no credential yet: this is how it gets the CA to trust the manager with), `countAgainstBudget=false`
   (a trust bootstrap is never shed under memory pressure), `Buffered`, under the global prefix like
   every route. `makeHandler(std::function<CaCertificateSnapshot()> snapshotOf, CacertsMetrics,
-  const EndpointHttpMetrics*)` never touches the filesystem itself: it calls `snapshotOf()`, the
+  const EndpointHttpMetrics*, std::function<void()> deliverCaRecordEvents = {})` never touches the
+  filesystem itself: it calls `snapshotOf()`, the
   lambda the facade passes that locks a `weak_ptr` to the server and calls `caCertificateSnapshot()`,
   which reads through `CaCertificateSource` (`http_server/caCertificateSource.{hpp,cpp}`) — one read
   and one hash per call, bounded by the injectable POSIX reader in `fileRead.hpp` (at most 1 MiB + 1
-  byte, under the source's own mutex); the parsed certificates, their reserialised PEM and the
-  leaf-match verdict are cached by the SHA-256 of the bytes, so a same-size, same-mtime replacement
-  is still reparsed. `certificates == 0 || pem.empty()` ⇒ `404 {"error":"not_found"}`; a read
+  byte, under the source's own mutex). The fourth parameter, `deliverCaRecordEvents`, drains and logs
+  the CA record event mailbox once, right before the handler answers (empty is a no-op — see the
+  mailbox discussion below, issue #39319, C26); the parsed certificates and their reserialised PEM are
+  cached by the SHA-256 of the bytes, so a same-size, same-mtime replacement is still reparsed. The
+  leaf-match verdict, the chain verdict and the publication verdict are NOT cached: they have a date
+  term, so `snapshot()` judges them against the clock on every call from the parsed certificates, and a
+  CA that expires (or becomes valid) with the file untouched flips them on the next call, with one
+  `chain_lost_on_clock` / `chain_regained_on_clock` line through the mailbox (issue #39519). The chain
+  is verified once per call: `ca_bundle::vouchGivenChain()` takes that answer instead of verifying
+  again.
+  `certificates == 0 || pem.empty()` ⇒
+  `404 {"error":"not_found"}`; a read
   failure (missing, unreadable, a read error, or over the cap) leaves the last good snapshot being
   served and records the cause instead of clearing it — only a readable file with nothing in it
-  clears the snapshot; `matchesLeaf == false` (no certificate in the CA signs the served leaf) ⇒
+  clears the snapshot; `matchesLeaf == false` (the served leaf does not CHAIN to any certificate of the CA file — `ca_bundle::leafChainsToAnyCa()`, a real validation since C33, so a CA that merely signs it, an expired one and one without `CA:TRUE` all read false) ⇒
   `503 {"error":"ca_mismatch"}` — refused, because handing it out would make every verifying agent
   fail against this very listener; `true` **or `nullopt`** (no leaf to check against: a server
   that has not started) ⇒ `200 Content-Type: application/x-pem-file`, the snapshot's PEM (certificates this
@@ -345,9 +372,71 @@ src/endpoints/
   a request is answered from the last good snapshot because the file itself cannot be read right
   now. The WHAT is counted through a `MeteredResponder` on `remoted.http.cacerts.responses.*`
   (method label `GET`), the WHY on `remoted.cacerts.*`. The snapshot also carries
-  `chainValid`/`chainError` from `chainValidates()` (the bundle as trust store, `PARTIAL_CHAIN`,
-  SSL-server purpose), which play no part in this response and which the transport logs
-  (`WARN`/`INFO`) in `logCertificateStatus()`.
+  `chainValid`/`chainError` from `chainValidates()` (the same validation with `PARTIAL_CHAIN` and the
+  SSL-server purpose added, so it can differ from `matchesLeaf` in both directions), which play no
+  part in this response and which the transport logs (`WARN`/`INFO`) in `logCertificateStatus()`.
+  Neither does the publication verdict the same read produces (issue #39319):
+  [`ca_bundle`](../../shared_modules/ca_bundle/README.md)'s `vouch()` is called once per read that
+  changed the bytes, and `publication`/`vouchFailure`/`block`/`serializedBytes`/`fileSha256` travel
+  with the snapshot — an unvouched bundle is served exactly as a vouched one, and the difference is
+  the generation agents are told about (0 when no guard vouched for it) plus the log line that names
+  the guard. `CaCertificateSource::descriptor()` is the read-mostly view of that generation for
+  callers on the hot path: it revalidates through the same mutex at most once every
+  `kDescriptorRefresh` (1 s), and answers `nullopt` while there is no servable bundle at all. A
+  **failed** read inside `descriptor()` still consumes that window (`caCertificateSource.cpp:218-226`):
+  it updates `m_lastDescriptorRead` whether or not the revalidation actually read anything new, so a
+  permission fixed a moment after a failed revalidation can take up to a second to show up in
+  `ca_generation` — deliberate (D18): the alternative is a read on every single notify the moment
+  anything looks wrong, which is exactly the storm `kDescriptorRefresh` exists to prevent.
+  Every `200` this endpoint answers also carries the `Wazuh-CA-Generation` header
+  (`endpoints/cacertsEndpoint.cpp`, shared constant `CA_GENERATION_HEADER`): the same generation the
+  snapshot's `publication` field carries, `0` alike whether the bundle was never stamped or a guard
+  refused it, and **never** a hash of anything — the header exists to let an agent that already
+  trusts the CA confirm a `GET /cacerts` refresh landed the generation `/control`'s `notify`
+  announced, not to prove the bundle's content. `404` and `503` carry no such header: there is no
+  bundle being handed out to attach a generation to.
+  What the file cannot say about itself is whether it was EVER published, so a private record —
+  `CaPublicationRecord` (`http_server/caPublicationRecord.{hpp,cpp}`) — remembers the bundle's
+  bytes and its publication in a directory of its own, `var/run/remoted-ca-bundle/record.json`
+  (mode 0750/0640, created by remoted at start via `ensureRecordDirectory()`; an empty path
+  disables it), read once before the source exists and written by
+  `CaCertificateSource::flushPendingRecord()` **outside** the hot-path mutex, one writer at a time,
+  retried on every call while an entry is pending even if the bundle's hash never changes again.
+  The publication it keeps is the one the FILE carries, never one the clock decided. The cache-hit
+  path, the only place where the clock alone moves a verdict, never writes it. A rebuild that finds
+  a stamped bundle only a date keeps from being vouched for (`no_ca_signs_leaf`, while the leaf
+  chains with dates left out: `ca_bundle::leafChainsToAnyCaIgnoringDates()`) records the block's
+  generation, while agents are told `0`. So the window opening later, or a restart after it did,
+  announces nothing a second time.
+  Comparing a changed hash against that record derives a `CaRecordEvent`
+  (`http_server/caRecordEvents.hpp`): `first_time_unpublished` (INFO, a fresh node) ·
+  `published_changed` (INFO, "N (was M)") · `changed_outside_tool` (WARN, the block was lost or the
+  bytes changed by hand) · `guard_failed` (WARN, naming the guard and what it measured, and for a
+  clock-held `no_ca_signs_leaf` the certificates whose window is in the way) ·
+  `record_unwritable` (WARN, once per failure streak, independent of and never in place of the
+  bundle's own event) · `chain_lost_on_clock` / `chain_regained_on_clock` (WARN / INFO: the leaf
+  stopped or started chaining to an UNCHANGED bundle because a validity window closed or opened.
+  The WARN names, from their dates, the certificates on the leaf's path that are out of their
+  window; issue #39519) — posted to a
+  bounded `CaRecordEventMailbox` the source only fills. Neither
+  `CaPublicationRecord` nor `caRecordEvents.hpp` logs anything (`describeRecordEvent()` is pure, so
+  it links into the test binary without pulling the module's logger along); every consumer goes
+  through `CaRecordEventMailbox::deliver()` instead of draining and logging as two separate steps
+  (issue #39319, C26), which serialises the drain and the emission under its own mutex so two
+  consumers can never publish an older generation after a newer one. **Five** callers own one: the
+  transport at start, its 24 h monitor tick and the 60 s recheck between ticks, this handler right
+  before it answers, and the `/control` notify path's `ca_generation` provider — which, alone among
+  the five, only
+  **drains and logs**: it never calls `CaCertificateSource::flushPendingRecord()`, so the keepalive
+  path that answers every agent's notify never waits on a disk write. A **sixth** delivery point
+  runs once, at `stopAccepting()`, after the monitor thread has stopped and the worker pool has been
+  joined — the last chance to say what the last read noticed, so an event nobody has drained yet is
+  not lost when the listener closes. Start, the tick, the recheck and `GET /cacerts` are the ones that persist,
+  and each pairs its `flushPendingRecord()` with a **second** delivery right after it
+  (`deliverAndPersistRecordEvents()`), so a `record_unwritable` that flush itself produces comes out
+  in that same call instead of waiting for the next drain. Every event is still said exactly once,
+  by whichever consumer notices it first, and a guard that fails between two ticks is reported by
+  the very next request instead of a day later.
 
 - **Endpoint handler (async):**
   `using AuthenticatedHandler = std::function<void(std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder>)>;`
@@ -376,11 +465,34 @@ src/endpoints/
   its own `target`/`postProcess` (and, once there are several, its own `endpoints/<name>/` folder).
   `stateless::validatePayloadIdentity(req)` is a pure, pre-forward check: it parses the body's `H
   <json>` line with RapidJSON (`rapidjson::Document::Parse(data, length)` — non-in-situ, since the
-  payload is a `string_view` into a shared, non-NUL-terminated buffer — plus `rapidjson::Pointer` for
-  `/wazuh/agent/id`) and compares it, as a number, against the authenticated `agentId` (also parsed
-  as a number, so `"001"` and `"1"` match). Anything that isn't a clean match — missing/malformed
-  header, non-numeric on either side, or a real mismatch — collapses to `AuthError::PayloadAgentMismatch`;
-  there is no partial-validation path an agent could use to skip the check.
+  payload is a `string_view` into a shared, non-NUL-terminated buffer), then resolves
+  `/wazuh/agent/id` with `agentIdFromHeader()`, walking `wazuh` → `agent` → `id`. Each step must
+  exist **exactly once** and the two containers must be objects; the id must then be **the same
+  string** as the authenticated `agentId`, compared byte for byte, so `"001"`, `"01"` and `"1"` are
+  three different identities even though they are one number. Member names are
+  compared **decoded and by length** — `"\u0077azuh"` *is* `wazuh`, while a name with an embedded NUL is
+  a different, longer name. Anything unclean — a repeated step, a missing/malformed header, a
+  non-object container, a non-numeric id, or any difference from the authenticated id — collapses to
+  `AuthError::PayloadAgentMismatch`.
+
+  **Why "exactly once" and not just "present".** JSON permits repeated member
+  names, and the two parsers this payload meets disagree about which repetition counts: a lookup
+  here takes the **first**, the engine's merge keeps the **last**, and this module forwards the body
+  byte for byte in between. A header repeating `wazuh`, `agent` or `id` would therefore authorise
+  one agent and ingest another. Refusing the repetition is what keeps "validated" and "ingested"
+  the same identity.
+
+  **Why the check stops at the identity path.** A repetition elsewhere in the header cannot move the
+  identity, so paying to scan the whole document on every request would buy nothing. That holds
+  because of a matching fix on the other side: the engine escapes the member name when it builds the
+  JSON Pointer its merge recurses with (`src/engine/source/base/src/json.cpp`, via
+  `Json::formatJsonPath(name, skipDot=true)`). Before that fix a member literally called
+  `wazuh/agent` was pasted into the pointer raw, so it stopped being one token and landed on the
+  *real* `/wazuh/agent`, overwriting the id that had just been validated — from a key that is not on
+  the identity path at all. Now such a member stays an inert literal sibling. It may survive into
+  the ingested event; that is harmless, and it is rejected at index time by the template. **The two
+  halves are load-bearing together**: narrowing this check without the engine's escaping reopens the
+  bypass, which is exactly how it was found.
   `stateless::makeHandler(forwarder, socketPath)` wires `validatePayloadIdentity` in front of
   `forwarder.forward(...)`: on failure it answers via `errorResponseFor()` and never forwards; this is
   the single `AuthenticatedHandler` the facade registers for `/stateless`.
@@ -459,8 +571,8 @@ src/control/
 │                             #   (answers "which selector may this agent download?", nullopt = deny)
 ├── wazuhDBClient.hpp/.cpp    # WazuhDBClient: async UDS client to wazuh-db (agent status/data updates)
 ├── taskClient.hpp/.cpp       # TaskClient: async UDS client to task-manager (pending task fetch)
-├── mergedMgWatcher.hpp/.cpp  # MergedMgWatcher: inotify + poll watcher for var/multigroups/*.mg changes
-└── hashCache.hpp/.cpp        # HashCache: LRU cache for merged.mg file hashes (avoids repeated disk reads)
+├── mergedMgWatcher.hpp/.cpp  # MergedMgWatcher: inotify watcher for var/multigroups/*.mg changes
+└── hashCache.hpp/.cpp        # HashCache: settings hash (compute-once) + merged.mg config hash cache
 ```
 
 ### Architecture
@@ -568,11 +680,25 @@ sequenceDiagram
    - Reads this node's current Vulnerability Detection feed offset via `VdClient` (cached, see
      `common/vdClient.hpp` below) and includes it as `vd_feed_offset` — always present, 0 if the VD
      module has never completed a feed update or is temporarily unreachable
-   - **Response** (every field always present -- `tasks` is `[]` when there is no work, never an
-     absent key):
+   - Reads the CA bundle's published generation through `Config::caGenerationProvider` (issue
+     #39319, RF-3) and includes it as `ca_generation` — the SAME generation `GET /cacerts`'s
+     `Wazuh-CA-Generation` header would answer right now, at the cost of at most one file read per
+     second across every agent on this node (`IHttpServer::caDescriptor()` →
+     `CaCertificateSource::descriptor()`, `kDescriptorRefresh`), never a read per notify. Four
+     states on the wire, not three: a timestamp once a guard vouched for the bundle; `0` when there
+     is a bundle and none did; `null` when there is no servable bundle at all; and the key itself
+     **absent** when `caGenerationProvider` is unset (an empty `std::function`, what
+     `buildControlConfig()` leaves it at on a build with no HTTPS listener wired in) — absent means
+     *this manager does not know*, which is not the same as the confirmed-empty `null`, and an agent
+     must not conflate the two
+   - **Response** (`agent`/`settings_hash`/`tasks`/`vd_feed_offset` always present -- `tasks` is
+     `[]` when there is no work, never an absent key; `ca_generation` is the one field that can be
+     missing, per the state above). `nlohmann::json` serialises object keys alphabetically, so on
+     the wire `ca_generation` lands between `agent` and `settings_hash`, exactly as below:
      ```json
      {
        "agent": {"groups": ["web-servers"], "config_token": "web-servers", "config_hash": "e3b0c44..."},
+       "ca_generation": 1758000000,
        "settings_hash": "d7a8fbb...",
        "tasks": [],
        "vd_feed_offset": 12345678
@@ -648,20 +774,28 @@ objects (id, type, payload JSON). Uses the same bounded queue + deadline + error
 
 #### MergedMgWatcher (`mergedMgWatcher.hpp/.cpp`)
 
-Watches `var/multigroups/*.mg` for changes (inotify + poll fallback) to detect group shared file
-updates. When a `.mg` file changes, it:
-1. Hashes the file
-2. Compares against the cached hash (`HashCache`)
-3. If changed, marks all agents in that group for config invalidation (via callback)
-
-This is the signal that triggers agents in a group to re-fetch their shared configuration when
-`merged.mg` is updated.
+Watches `var/multigroups/*.mg` for changes to detect group shared file updates, using **inotify
+exclusively**: it opens an `inotify_init1(IN_NONBLOCK | IN_CLOEXEC)` fd, watches the shared-groups
+and multigroups roots for `IN_CREATE | IN_MOVED_TO | IN_DELETE | IN_MOVED_FROM` (new/removed group
+dirs) and each group dir for `IN_CLOSE_WRITE | IN_MOVED_TO` (a finished rewrite or an atomic
+write-then-rename), and runs its own thread around a `select()` on that single fd. That `select()`
+only bounds the wait with a 1-second timeout so the loop can observe the stop flag; it does not
+provide a second, independent way of detecting changes. If `inotify_init1` fails at construction, the
+watcher does not start — the process keeps running without change detection
+(`mergedMgWatcher.cpp:39-54,105-119`). When a watched `.mg` file changes, it calls back to invalidate
+that path's entry in `HashCache` (`invalidateConfigHash()`), which marks agents in that group for
+config invalidation on their next lookup.
 
 #### HashCache (`hashCache.hpp/.cpp`)
 
-Simple LRU cache (`std::list` + `std::unordered_map`) for file path → SHA256 hash. Avoids re-reading
-and re-hashing the same `.mg` file on every agent keepalive. Configurable `maxSize` (default 256).
-Thread-safe via a single `std::mutex`.
+Two independent, unbounded caches, each guarded by its own `std::shared_mutex`
+(`hashCache.cpp:298-305`) — there is no shared lock and no size-based eviction between them:
+- `m_settingsHash` — the SHA-256 of the manager's static settings (limits + cluster), a single value
+  computed once on first request and cached for the life of the process, under `m_settingsMutex`.
+- `m_configCache` — `std::unordered_map<std::string, std::string>` from a resolved `merged.mg`
+  absolute path to its SHA-256, one entry per group, under `m_configMutex`. Entries grow with the
+  number of distinct group sets seen and are removed only by `MergedMgWatcher` calling
+  `invalidateConfigHash()` when the underlying file changes — never by an entry count or age limit.
 
 #### VdClient (`common/vdClient.hpp/.cpp`)
 
@@ -747,7 +881,7 @@ All errors use `LogThrottle` (90-second windows) to avoid log flooding:
 - **AgentRegistry**: sharded with per-shard `shared_mutex` (concurrent reads, exclusive writes)
 - **WazuhDBClient / TaskClient**: single worker thread per client, requests queued via `std::queue` + mutex + CV
 - **ControlHandler**: stateless (all state in registry + clients), thread-safe via client APIs
-- **HashCache**: single `std::mutex` protecting LRU list + map
+- **HashCache**: two independent `std::shared_mutex` (one for `m_settingsHash`, one for `m_configCache`)
 
 The HTTP handler threads call `ControlHandler` concurrently; the handler coordinates via the registry
 and clients, which are all thread-safe internally.
@@ -1270,7 +1404,7 @@ that value.
 **Success — `200`**: `{"id":"...","name":"...","ip":"...","key":"...","reenroll_secret":"..."}`,
 verbatim from authd's `data` (`reenroll_secret` is omitted, not empty, when authd sent none). For a
 re-enrollment the `id` is the one the bearer named and `key`/`reenroll_secret` are the rotated pair.
-**Failure**: `{"error":{"code":<authd-code-or-0-or--1>,"message":"..."}}`, except that a `401`'s
+**Failure**: `{"error":{"code":<authd-code-or-0-or--1-or--2>,"message":"..."}}`, except that a `401`'s
 `code` is the authentication failure class (a string).
 
 | authd code | meaning | HTTP |
@@ -1283,7 +1417,8 @@ re-enrollment the `id` is the one the bearer named and `key`/`reenroll_secret` a
 | 9016 (new) | clustered forward to master failed (transport leg of `w_request_agent_add_clustered`) | 503 |
 | 9022 / 9023 / 9024 | authd refused the use of a **verified** enrollment token: not found or revoked / expired / no uses left (`httpStatusForAuthdError()`). `403`, not `401`: the bearer DID verify, so this is not something the agent fixes by re-signing. 9022/9023 are reachable only when remoted's replica lagged behind authd's store; 9024 only authd can decide (it owns the use counter) | 403, `error.code` = the authd code |
 | 9026 / 9027 / 9028 | authd's verdict on a **re-enrollment** bearer remoted forwarded unverified: unknown agent or no secret on record / invalid credential / outside the accepted time window (`reenrollmentRejection()`) — authentication failures, so they take the uniform 401 through `authErrorResponse()`, never authd's code or text | 401, `error.code` = `unknown_agent` / `invalid_signature` / `stale_token` |
-| transport failure (authd unreachable) | — | 503 |
+| request never reached authd (stopping, queue full, connect failure) | — | 503, `error.code` = -1 |
+| request reached authd but no clean answer came back (I/O error after the send, timeout, unparseable reply) | — | 503, `error.code` = -2 |
 | bad/missing/stale credential | — | 401, `error.code` = the class (`invalid_signature`, `invalid_request`, `stale_token`, `unknown_agent`, `token_unknown`, `token_expired`, `token_revoked`, `enrollment_key_unavailable`) |
 | local schema or version validation failure | — | 400 |
 | enrollment administratively disabled | — | 403 |
@@ -2066,8 +2201,8 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
 | `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total}` | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector, or the manager has no established membership for it). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request) and from `not_found` (an *entitled* request whose file is not on disk) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
-| `remoted.cacerts.{served, not_found, ca_mismatch, rate_limited}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, refused because the configured CA does not sign the served leaf, or refused by the route's rate limit before the CA was even read | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch; `rate_limited` is bumped by the gate (`endpoints/rateLimitGate.cpp`), which runs before the handler |
-| `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does `remote.https.ca_certificate` sign it (0 when it does not, or when the last successful read yielded no certificate — a read that fails after a good one keeps that bundle's verdict) | `IHttpServer::certificateStatus()`: `cert_expiry_days` from the transport's `TlsCertificateMonitor` snapshot (evaluated at start and every 24 h); `ca_matches_leaf` re-read from the same `CaCertificateSource` `/cacerts` answers from, on every scrape; registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
+| `remoted.cacerts.{served, not_found, ca_mismatch, rate_limited}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, refused because the served leaf does not chain to any CA of the bundle (`ca_mismatch`: a signature alone is not enough, C33), or refused by the route's rate limit before the CA was even read | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch; `rate_limited` is bumped by the gate (`endpoints/rateLimitGate.cpp`), which runs before the handler |
+| `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does it CHAIN to `remote.https.ca_certificate` (0 when it does not — including a CA that signs it but is expired, not a CA, or under another subject — or when the last successful read yielded no certificate; a read that fails after a good one keeps that bundle's verdict) | `IHttpServer::certificateStatus()`: `cert_expiry_days` from the transport's `TlsCertificateMonitor` snapshot (evaluated at start and every 24 h); `ca_matches_leaf` re-read from the same `CaCertificateSource` `/cacerts` answers from, on every scrape; registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
 | `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable, rate_limited}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above). `rate_limited` is the odd one: the request was refused before the handler ran, so it has no outcome among the others | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp`; `rate_limited` by the gate (`endpoints/rateLimitGate.cpp`) |
 | `remoted.<enroll\|cacerts>.rate_limit.{limit, burst, available}` (pulls) | is the BUCKET's ceiling sized right: `available` pinned at 0 while `rate_limited` climbs is a rate below what the fleet needs, not necessarily an attack. Two buckets, three routes — the `enroll` one governs `POST /enroll` and `POST /enroll/secret` together | `EndpointRateLimiter::diagnostics()` through `registerRateLimitDiagnostics()`; reads the bucket WITHOUT charging it, so scraping never costs an agent its enrollment |
@@ -2092,7 +2227,7 @@ decoded, verified or forwarded for it to have an outcome about). Auth-gateway re
 and appear only in `remoted.auth.reject.*`; a handler's own pre-forward rejection (empty body,
 payload identity) counts in its `responses.*` (the "what") and, where it is an AuthError, in
 `remoted.auth.reject.*` too (the "why"). EPS/rates are deliberately NOT computed in-process —
-the scraper (`engine/tools/devContainer/scripts/monitor.py`) derives rates by diffing counters
+the scraper (`tools/devContainer/scripts/monitor.py`) derives rates by diffing counters
 per interval, which is exactly what its `_REMOTED_MODULE_SCALARS`/`_REMOTED_MODULE_HISTOGRAMS`
 catalogs consume.
 
@@ -2100,15 +2235,16 @@ catalogs consume.
 
 The module's management plane: a second, independent HTTP server (the shared
 `shared_modules/uds_http_server` library — the public HTTPS server keeps its own RESTinio stack)
-brought up by `startAdminServer()` right after the public server. It serves exactly three
-read-only routes, all **Liveness** class (answered inline from resident state, exempt from the
-byte budget):
+brought up by `startAdminServer()` right after the public server. It serves exactly four
+read-only routes, all **Liveness** class (answered inline from resident state — or, for `/tls`,
+one bounded read of a few-KB file — exempt from the byte budget):
 
 | Route | Answer |
 |---|---|
 | `GET /` | `{"status":"ok","module":"remoted_module"}` — liveness probe |
 | `GET /metrics` | JSON dump of the module's whole `wazuh_metrics` registry (every family in **Metrics catalog** above), same envelope as inventory sync's `/metrics` |
 | `GET /status` | Readiness, not bare liveness — see below |
+| `GET /tls` | The served TLS certificate and the CA bundle `GET /cacerts` hands out: dates, identities, which CA signs the leaf — see below |
 
 ### `GET /status`: readiness, not liveness
 
@@ -2168,6 +2304,104 @@ entirely in `framework/wazuh/manager.py`'s `_remoted_status()`, not in this hand
 this route's own perspective, the socket either answers or it doesn't come up at all (the
 warn-and-continue policy below).
 
+### `GET /tls`: the served certificate and the CA bundle
+
+What an operator — or `GET /cluster/{node_id}/daemons/remoted/tls` — reads to see certificate
+validity without shelling into the node (issue #39320): the leaf the HTTPS listener is serving and
+every certificate of the CA bundle `GET /cacerts` hands out, with their dates, identities and which
+CA signs the leaf. **No thresholds, no `warning`/`critical` verdicts**: the consumer decides what
+"soon" means; the daily `TlsCertificateMonitor` keeps logging expiry as before, unchanged.
+
+**One** `IHttpServer::tlsInventory()` call per request (`http_server/tlsInventory.hpp`): the leaf
+half is the `CertificateDescriptor` `start()` computed from the certificate in the `SSL_CTX`, the CA
+half is one `CaCertificateSource::snapshot()` — the same read `/cacerts` answers from, so the two
+routes can never disagree about `signs_active_leaf`. `503 {"error":"Service unavailable","code":503}`
+while the public listener is not accepting (before its start, after `stopAccepting()`, during
+teardown), through the same `m_publicDiagMutex`/`m_publicDiagTarget` weak_ptr `tlsCaMatchesLeaf()`
+uses. Still a **Liveness** route: the CA read is bounded (`CaCertificateSource::kMaxBytes`),
+regular files only, under the source's own mutex — nothing that can block the admin reactor.
+
+Response shape (`http_server/tlsInventory.cpp` renders it, keys in this order):
+
+```json
+{
+  "evaluated_at": "2026-09-15T10:00:00Z", "evaluated_at_ts": 1789466400,
+  "listener": {
+    "subject": "CN=manager-01", "issuer": "CN=Corp Root CA",
+    "sans": ["manager-01.example.com", "10.0.0.5"],
+    "not_before": "2026-01-01T00:00:00Z", "not_before_ts": 1767225600,
+    "not_after": "2027-01-01T00:00:00Z", "not_after_ts": 1798761600,
+    "seconds_until_expiry": 9295200,
+    "fingerprint": "x509-sha256:3f9c…", "serial": "0x1a2b…",
+    "path": "etc/certs/remoted.pem",
+    "loaded_at": "2026-09-14T08:12:31Z", "loaded_at_ts": 1789373551
+  },
+  "ca_bundle": {
+    "path": "etc/certs/root-ca.pem",
+    "publication": 0, "publication_vouched": false,
+    "content_sha256": "b7e1…",
+    "certificates_count": 2, "certificates_limit": 6,
+    "serialized_bytes": 2428, "serialized_bytes_limit": 8191,
+    "chain_valid": true,
+    "certificates": [
+      {"subject": "CN=Corp Root CA", "issuer": "CN=Corp Root CA", "not_before": "…", "not_before_ts": 0,
+       "not_after": "…", "not_after_ts": 0, "seconds_until_expiry": 0,
+       "fingerprint": "x509-sha256:…", "serial": "0x…", "signs_active_leaf": true},
+      {"…": "…", "signs_active_leaf": false}
+    ]
+  }
+}
+```
+
+- **Freshness is asymmetric, and the document says so.** The CA half is never older than the
+  request: replace the bundle on disk (atomically — write a sibling, `rename` it over the path,
+  as `caCertificateSource.hpp` explains) and the next request shows it, no restart, no monitor tick.
+  The leaf lives in the `SSL_CTX` from `start()` until the next one: `listener.loaded_at` dates it,
+  and replacing `remoted.pem` on disk changes nothing until remoted restarts. There is deliberately
+  no "force refresh" parameter — it could refresh only half the resource.
+- **`signs_active_leaf`, `matches_active_leaf`, `chain_valid`.** Per certificate, `signs_active_leaf` is
+  the plain signature check (`caSignsLeaf()`, `X509_verify` against that CA's key). Bundle-level
+  `matches_active_leaf` is `CaCertificateSnapshot::matchesLeaf` -- `ca_bundle::leafChainsToAnyCa()`,
+  a real chain validation with OpenSSL's default rules -- what `/cacerts` uses for its `503 ca_mismatch`
+  and what `remoted.server.tls.ca_matches_leaf` reports.
+  Bundle-level `chain_valid` is `chainValidates()`'s verdict: the leaf validates with the bundle as
+  its **only** trust store (path building, dates, `basicConstraints`/`keyUsage`, server purpose).
+  They disagree on purpose for an expired CA, or one without `CA:TRUE`, that still signs the leaf:
+  `signs_active_leaf: true`, `matches_active_leaf: false`, `chain_valid: false` plus `chain_error`
+  (present only when false). `chain_valid` is `null` when there is nothing to validate against. All
+  three bundle-level verdicts — `matches_active_leaf`, `chain_valid` and `publication` /
+  `publication_vouched` — are judged against the clock on every request — hit or miss of the
+  content-hash cache, and against the last good bundle while the file is unreadable — so a CA that
+  expires with the file untouched flips them on the next request, with one `chain_lost_on_clock`
+  line within a minute (the listener's 60 s recheck says it if no request does); only the parse is
+  cached, never a verdict (issue #39519).
+- **`last_read_failure`** (present only while the bundle cannot be read): the CA fields then describe
+  the **last good read** — the certificates, hash and sizes of the file as it was — next to `cause`
+  (the `describeReadFailure()` fragment, e.g. `"cannot be opened (No such file or directory)"`),
+  `errno` and `consecutive` failed reads. A bundle that never read successfully shows
+  `certificates_count: 0` **plus** the failure — never an empty list that reads as "nothing to
+  worry about".
+- **Identity** is `fingerprint`: `x509-sha256:` + SHA-256 of the DER, 64 lowercase hex digits, no
+  colons (`certificateDescriptor.hpp`). The DER, not the SPKI pin: a reissue with the same key is a
+  different certificate and reads as one. `openssl x509 -in cert.pem -noout -fingerprint -sha256`
+  prints the same digest uppercase with colons — `| cut -d= -f2 | tr -d ':' | tr 'A-F' 'a-f'` to
+  compare. `content_sha256` is the bundle's identity: `ca_bundle::contentSha256()`, SHA-256 over the
+  DERs sorted bytewise and concatenated, independent of the order the operator concatenated the files
+  in -- the same function the `##` block's `Content-SHA256` is checked with. `serial` is `0x` + lowercase hex.
+- **Limits.** `certificates_limit` (6) and `serialized_bytes_limit` (8191 — the agent's
+  `HC_MAX_CACERTS_BODY` less its terminator) are `ca_bundle::kMaxCertificates` /
+  `ca_bundle::kMaxSerializedBytes`, whichever binds first. Nothing here enforces them (the file is the operator's,
+  and the rotation tool refuses to publish past them); they sit next to `certificates_count` and
+  `serialized_bytes` so the room left before adding a CA is visible.
+- **`publication` / `publication_vouched`** follow the wire contract of `ca_generation` (#39319):
+  `publication` is `null` when there is no servable bundle, `0` when one is served but no guard
+  vouches for it (`vouchFailure != none`), else the vouched timestamp of the bundle's `##` block;
+  `publication_vouched` is that guard's verdict.
+- `sans` is listed for the listener only (bare dNSName/iPAddress entries, in certificate order); a
+  CA's names are not something an agent dials. Every timestamp comes in both spellings — RFC 3339
+  UTC and `_ts` epoch seconds — and `seconds_until_expiry` is `not_after_ts − evaluated_at_ts`,
+  **negative once expired**.
+
 Contract points:
 
 - **Fixed path, no knob**: the constant `queue/sockets/remote-admin-http.sock` is **relative** on
@@ -2190,6 +2424,7 @@ Contract points:
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/status
+curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/tls | jq
 ```
 
 ## Integration in remoted
@@ -2205,11 +2440,14 @@ curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http:
 Unit tests (built when `UNIT_TEST` is enabled) live in `test/unit/`: `remotedModule_test.cpp`
 (C-ABI black-box), `httpServer_test.cpp` (transport config incl. in-flight-budget/max-connections
 resolution + responder contract incl. a shared request surviving a deferred handler, plus the
-certificate status: `TlsCertificateStatusTest` drives `daysUntilExpiry()`/`anyCaSignsLeaf()`/
-`statusFrom()` from certificates built in memory — signed by the CA, by a foreign CA,
-CA unreadable, a bundle with the signing CA not first — and `HttpServerTest` pins that the status is
-already evaluated when `start()` returns, re-evaluated on a 1 s `certificateStatusInterval`, and that
-`stopAccepting()` joins the monitor), `cacertsEndpoint_test.cpp` (the `GET /cacerts` decision table
+certificate status: `TlsCertificateStatusTest` drives `daysUntilExpiry()`/`statusFrom()` and
+`ca_bundle`'s `leafChainsToAnyCa()` from certificates built in memory — chaining to the CA, a foreign
+CA, CA unreadable, a bundle with the right CA not first, and the cases where a signature is NOT a
+chain (expired CA, no `CA:TRUE`, intermediate-only) next to `chainValidates()`' own verdict on each —
+and `HttpServerTest` pins that the status is
+already evaluated when `start()` returns, re-evaluated on a 1 s `certificateStatusInterval`, that the
+`caBundleRecheckInterval` recheck delivers an in-place CA expiry with no request and no evaluation
+(against a control listener with it disabled), and that `stopAccepting()` joins the monitor), `cacertsEndpoint_test.cpp` (the `GET /cacerts` decision table
 against a faked snapshot: the snapshot's PEM served as `application/x-pem-file`, missing/garbage file
 404, `caMatchesLeaf == false` 503, `nullopt` serves, body/`Authorization` ignored, both metric
 families counted, null metrics count nothing), `cacertsE2E_test.cpp` (a REAL TLS server with a leaf
@@ -2217,7 +2455,8 @@ signed by a throwaway CA — `testTlsServer.hpp`'s `generateCaSignedCertificate(
 serves lets a client with `verify_peer` and **only that PEM** complete the handshake against the same
 listener, while a foreign CA does not; prefixed vs bare target; a foreign CA configured as
 `caCertificatePath` is caught by the real start-time evaluation and answered 503; the CA moved away
-is a 404 without a restart),
+is a 404 without a restart; the fixture's CA file is a stamped bundle, so what the route answers is
+the certificate this process reserialised and never the file's `##` lines),
 `inFlightBudget_test.cpp` (reserve/release accounting, exhaustion, RAII move-once, disabled mode,
 concurrency), `deferredWorkLimiter_test.cpp` (count-based limiter: acquire-to-capacity, RAII/move
 release, disabled mode, concurrency), `endpointRateLimiter_test.cpp` (the third limiter, a token
@@ -2278,15 +2517,40 @@ keeps the original answer), `logThrottle_test.cpp` (first occurrence emits, the 
 is counted not printed, and 8 threads × 10 000 records neither lose nor double-count),
 `strictJsonObject_test.cpp` (exact-allowlist parsing: missing/extra/duplicate/mistyped members,
 non-ASCII bytes and BOMs rejected, and a truncated multi-byte tail never read past the view — the
-ASAN heap-overflow regression), `caCertificateSource_test.cpp` (certificates only, never the key
-from a combined PEM; a file with one undecodable block is refused whole; re-parsed on content change
-despite identical size and mtime; a read failure -- missing, a directory, a read error, or over the
-1 MiB cap with both a fake and a real file -- keeps the previous snapshot and records the cause,
-while an emptied but readable file clears it; 8 threads racing 20 atomic file rotations never
-publish a torn mix of two CAs' bytes and subjects, and a fake reader counting its in-flight calls
-proves the read itself runs under the mutex; and `fileRead`'s `readFileBounded()` gets its own
-`Ok`/`TooLarge`/`CannotOpen`/`ReadError` cases with the matching errno, including a FIFO refused
-as not a regular file).
+ASAN heap-overflow regression), `caCertificateSource_test.cpp` (the publication verdict of a stamped
+bundle and every guard that refuses one -- no block, a hash that describes other certificates, no CA
+signing the served leaf, no leaf at all, a seventh certificate, a document over the byte cap -- and
+`descriptor()`'s refresh window driven by an injected clock and a call-counting reader: 100 calls,
+one read; certificates only, never the key from a combined PEM; a file with one undecodable block is
+refused whole; re-parsed on content change despite identical size and mtime; a read failure --
+missing, a directory, a read error, or over the 1 MiB cap with both a fake and a real file -- keeps
+the previous snapshot and records the cause, while an emptied but readable file clears it; 8 threads
+racing 20 atomic file rotations never publish a torn mix of two CAs' bytes and subjects, and a fake
+reader counting its in-flight calls proves the read itself runs under the mutex; and `fileRead`'s
+`readFileBounded()` gets its own `Ok`/`TooLarge`/`CannotOpen`/`ReadError` cases with the matching
+errno, including a FIFO refused as not a regular file). That file also gained a
+`CaCertificateSourceRecord` suite wiring the publication record described above into the source end
+to end: a fresh unpublished bundle, a republish lower than what was recorded (never `max(record,
+block)`), a bundle that stops being servable (no event, the record untouched), an initial record
+that could not be read (silent on that first pass only), three independent nodes starting from zero
+each with their own record, and a `store()` stuck on a slow injected writer never blocking a
+concurrent `descriptor()`/`snapshot()` call on another thread. Two new files pin the record itself:
+`caPublicationRecord_test.cpp` (round-trips through `load()`'s five statuses, the atomic-replace
+write under a restrictive and a permissive umask, a write that fails mid-way leaving the previous
+record intact, a directory `fsync` refused with the rename already landed, an orphaned temporary
+left by another pid never blocking the next write, and two `store()` calls racing on the same
+object never sharing a temporary name) and `caRecordEvents_test.cpp` (`describeRecordEvent()`'s
+wording for each of the six `RecordEvent` kinds — INFO for a first publication and for a changed
+generation, WARN for a lost stamp, a refused guard naming it and the value it measured, and a
+record that could not be persisted naming its OWN path, never the bundle's — plus the bounded
+mailbox: events drained once, in order, and the oldest dropped past 32 with the drop counted).
+`cacertsEndpoint_test.cpp` and `httpServer_test.cpp` each gained coverage for
+`deliverCaRecordEvents()`/`onCaRecordReady()`: the collaborator runs before all three of
+`GET /cacerts`'s answers, an event drained by the handler is never seen again by a simulated tick
+(and vice versa), and a `stop()`/`start()` cycle hands out a genuinely new, empty mailbox. What the
+previous mailbox still held pending is neither replayed into the new one nor left sitting there:
+`stop()`'s own close-time delivery (issue #39319, C26) drains and says it before the mailbox is
+replaced, so draining the OLD mailbox directly afterwards finds it empty too.
 
 Body decoding: `bodyDecoder_test.cpp` (only an exact, case-insensitive `zstd` decodes — `gzip`,
 `"zstd, gzip"` and prefixes are refused — the decoded bytes stay charged to the in-flight budget
@@ -2397,7 +2661,16 @@ load but Password-mode is disabled, asserting `ready:true` alongside `keystore:{
 to prove a keystore failure alone never drags `ready` down, and `enrollment_tokens:{loaded:0,
 last_reload_ok:true}` reported whenever enrollment is enabled without ever gating `ready`, 404/405 exact-match routing, the
 warn-and-continue policy when the bind fails with the public listener unaffected, and `stop()`
-unlinking the socket with a restart cycle bringing the plane back).
+unlinking the socket with a restart cycle bringing the plane back; `GET /tls` describing the
+listener the facade started and the bundle `/cacerts` serves, following a bundle rewritten on disk
+between two requests with the leaf and `loaded_at` unchanged, keeping the last good read plus a
+counted `last_read_failure` while the bundle is away, and a never-readable bundle still yielding the
+listener). The `GET /tls` document itself is `tlsInventory_test.cpp` (rendered at a fixed clock:
+every key, both timestamp spellings, failure-only fields, no verdicts); the per-certificate
+descriptor and the identities are `certificateDescriptor_test.cpp`; the per-entry
+`signsLeaf`/sizes/`contentSha256` of the snapshot and the transport's `tlsInventory()` (empty unless
+accepting; CA file followed, leaf file not) are in `caCertificateSource_test.cpp` and
+`httpServer_test.cpp`.
 
 **Two files in `test/unit/` are spikes, not contracts.** They characterize a third-party library
 fetched by `make deps`; their purpose is to pin observed dependency behaviour, and

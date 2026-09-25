@@ -196,8 +196,10 @@ Recommended handling:
 After upgrading and cleaning configuration, verify:
 
 1. Agent successfully connects to the manager over HTTPS on port `1517`.
-2. Enrollment/service endpoint is reachable on port `1515` (if enrollment is being used).
-3. Agent and manager versions are both compatible with 5.0 communication protocol.
+2. Agent and manager versions are both compatible with 5.0 communication protocol.
+3. The agent holds a trust anchor at `/var/ossec/etc/certs/root-ca.pem` and verifies the manager. A remote upgrade delivers one — see [Trust anchor delivery to legacy agents](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents); a local package upgrade does not.
+
+Port `1515` is the legacy enrollment listener. An upgraded agent keeps the identity it already has and does not enroll again, so it never uses that port; a 5.0 agent registering for the first time does so over `POST /enroll` on `1517`, with an enrollment token.
 
 Typical connectivity symptoms requiring action:
 
@@ -211,9 +213,10 @@ Workaround checklist:
 
 - Confirm manager is up and reachable from the agent host.
 - Confirm manager has been migrated to a compatible 5.0 deployment.
-- Confirm firewall/network rules allow `1517/tcp` (agent to manager) and `1515/tcp` (enrollment).
-- Confirm the agent points to the correct manager address in `<agent><manager><address>`.
-- Confirm enrollment credentials: if enrollment fails with `Invalid password (from manager)`, verify that the password in `/var/ossec/etc/authd.pass` on the agent matches `/var/wazuh-manager/etc/authd.pass` on the manager.
+- Confirm firewall/network rules allow `1517/tcp` (agent to manager). `1515/tcp` is needed only while agents still on 4.x are enrolling.
+- Confirm the agent points to the correct manager address. A carried-over 4.X file spells it `<client><server><address>`, which is read as a fallback; the 5.0 spelling is `<agent><manager><endpoint>`.
+- Confirm the URL prefix matches the manager's `remote.https.global_prefix`. A mismatch answers every request `404`, never `401`, and is the single most commonly missed cause here.
+- Confirm the trust anchor arrived. If verification is the problem, the agent names which check failed — see the message table in [Agent Not Connecting](../../ref/modules/client/README.md#agent-not-connecting).
 
 ## Remote upgrade (WPK)
 

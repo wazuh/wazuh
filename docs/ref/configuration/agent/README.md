@@ -64,10 +64,56 @@ wazuh_modules.rlimit_nofile=8192
 ```
 
 `wazuh_modules.rlimit_nofile` cannot go below `8192`: a lower value is rejected at start with
-`Invalid definition` and modulesd does not run. The daemon raises only its soft limit, up to the hard
-limit it inherits; a lower hard limit is kept and logged once as a warning.
+`Invalid definition` and modulesd does not run. See [File descriptor limits](#file-descriptor-limits)
+for how the value interacts with the limit the agent is started with.
 
 **Used by modules:** Command, Syscollector, and other wodle-based modules on the agent.
+
+---
+
+## File descriptor limits
+
+Two limits apply to every daemon, and they have different owners:
+
+1. **The hard limit** is set by whatever starts the agent: `LimitNOFILE=65536` in
+   `wazuh-agent.service`, the SysV init scripts, or `ulimits.nofile` in a container. The daemons
+   never change it. Raising it needs `CAP_SYS_RESOURCE`, which containers drop by default, so it
+   is set where the process is started, not from inside.
+2. **The soft limit** is the one the kernel enforces (`EMFILE`, "too many open files"). At start,
+   each daemon raises its own soft limit to the value of its internal option, never above the hard
+   limit it inherited and never below what it already had:
+
+| Option | Default | Range |
+|---|---|---|
+| `wazuh_modules.rlimit_nofile` | `8192` | `8192`-`1048576` |
+| `logcollector.rlimit_nofile` | `1100` | `1024`-`1048576` |
+
+`wazuh-agentd`, `wazuh-syscheckd` and `wazuh-execd` have no option and keep the limits they inherit.
+
+When the hard limit is below the option, the daemon runs with the hard limit and logs a warning
+naming both values, for example
+`File descriptor limit is 4096, below the 8192 requested by 'wazuh_modules.rlimit_nofile'`. The
+line is emitted twice per start, because `wazuh-control start` validates the configuration first
+and each daemon raises its limit before that validation. An option above the hard limit never
+fails and never logs an error.
+
+To go higher than the ceiling the unit declares, use a systemd drop-in rather than editing the
+unit, which a package upgrade replaces:
+
+```ini
+# /etc/systemd/system/wazuh-agent.service.d/nofile.conf
+[Service]
+LimitNOFILE=131072
+```
+
+For a SysV start, raise the limit with `ulimit -n` before the init script, and in a container set
+`ulimits.nofile`.
+
+Note for agents upgraded from a release before the unit declared `LimitNOFILE`: hosts whose systemd
+granted a higher hard limit (512K on EL8+, Fedora, Debian 10+ and Ubuntu 20.04+) now start with
+`65536`. That is far above what any agent daemon requests by default, but an installation that
+raised `wazuh_modules.rlimit_nofile` or `logcollector.rlimit_nofile` above `65536` is capped at the
+new ceiling and logs the warning above. The drop-in restores the previous headroom.
 
 ---
 

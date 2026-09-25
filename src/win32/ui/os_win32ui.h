@@ -94,11 +94,18 @@ extern HWND hStatus;
 #define UI_MENU_HELP_HELP       1608
 #define UI_MENU_HELP_ABOUT      1609
 #define UI_MENU_NONE            1610
+#define UI_MENU_MANAGE_ENROLL   1611
+#define UI_MENU_MANAGE_CERTS    1612
 
 #define IDD_MAIN                1700
 #define IDC_MAIN_STATUS         1701
 #define IDC_CANCEL              1703
 #define IDD_ABOUT               1704
+#define IDD_ENROLL              1705
+#define IDC_ENROLL_PROMPT       1706
+#define IDC_ENROLL_TOKEN        1707
+#define IDC_ENROLL_OK           1708
+#define IDC_ENROLL_CANCELBTN    1709
 #define IDC_STATIC -1
 
 /** Prototypes **/
@@ -119,5 +126,10 @@ void init_config();
 /* Get OSSEC Server IP */
 int get_ossec_server();
 
+/* Enroll, or re-enroll, this agent with a token via wazuh-agent-auth.exe */
+int run_agent_enroll(HWND hwnd);
+
+/* Refresh this agent's trust anchor/manager address with a token, without re-registering */
+int run_agent_certs_only(HWND hwnd);
 
 #endif

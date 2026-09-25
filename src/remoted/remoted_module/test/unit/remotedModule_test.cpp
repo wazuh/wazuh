@@ -244,9 +244,9 @@ namespace
     // A "CA" that does NOT carry CA:TRUE, signing the leaf anyway -- same `openssl` CLI recipe as
     // testTlsServer.hpp's generateCaSignedCertificate(), except the CA gets an explicit
     // `basicConstraints=critical,CA:FALSE`. `openssl x509 -req -CA` does not itself check the
-    // issuing certificate's own constraints, so this signs cleanly; what fails afterwards is
-    // chainValidates() (issue #39318), which does enforce them for every non-leaf certificate on
-    // the path -- exactly the WARN this test is after.
+    // issuing certificate's own constraints, so this signs cleanly; what refuses it afterwards is
+    // the publication/serving guard itself (issue #39319, C33: nothing chains to a certificate that
+    // is not a CA) as well as chainValidates() (issue #39318).
     struct NonCaSignedCertificate
     {
         std::string caCertPath;
@@ -283,6 +283,44 @@ namespace
                               " -out " + csrPath) &&
                         quiet("openssl x509 -req -in " + csrPath + " -days 1 -CA " + pki.caCertPath + " -CAkey " +
                               pki.caKeyPath + " -CAcreateserial -CAserial " + serialPath + " -out " + pki.certPath);
+        std::remove(csrPath.c_str());
+        std::remove(serialPath.c_str());
+        if (!ok)
+        {
+            return std::nullopt;
+        }
+        return pki;
+    }
+
+    // A proper self-signed CA:TRUE CA, and a leaf it signed whose extendedKeyUsage is clientAuth
+    // ONLY (`-addext` on the CSR, carried over with `-copy_extensions copy`). The leaf CHAINS to
+    // that CA -- `openssl verify -CAfile` says OK, and so does the guard, which sets no purpose --
+    // while `openssl verify -purpose sslserver` fails with "unsupported certificate purpose", which
+    // is what chainValidates() adds. The one fixture that keeps the "chains but is not a usable
+    // SERVER certificate" WARN reachable now that the guard is a chain validation too (C33).
+    std::optional<NonCaSignedCertificate> generateClientAuthOnlyCertificate(const std::string& prefix)
+    {
+        const auto base = "/tmp/" + prefix + "_" + std::to_string(::getpid());
+        NonCaSignedCertificate pki;
+        pki.caCertPath = base + "_ca.crt";
+        pki.caKeyPath = base + "_ca.key";
+        pki.certPath = base + ".crt";
+        pki.keyPath = base + ".key";
+        const auto csrPath = base + ".csr";
+        const auto serialPath = base + "_ca.srl";
+
+        const auto quiet = [](const std::string& command)
+        {
+            return std::system((command + " >/dev/null 2>&1").c_str()) == 0;
+        };
+        const bool ok =
+            quiet("openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=" + prefix + "-ca -keyout " +
+                  pki.caKeyPath + " -out " + pki.caCertPath) &&
+            quiet("openssl req -newkey rsa:2048 -nodes -subj /CN=localhost -addext "
+                  "\"extendedKeyUsage=clientAuth\" -keyout " +
+                  pki.keyPath + " -out " + csrPath) &&
+            quiet("openssl x509 -req -in " + csrPath + " -days 1 -CA " + pki.caCertPath + " -CAkey " + pki.caKeyPath +
+                  " -CAcreateserial -CAserial " + serialPath + " -copy_extensions copy -out " + pki.certPath);
         std::remove(csrPath.c_str());
         std::remove(serialPath.c_str());
         if (!ok)
@@ -506,8 +544,12 @@ TEST_F(RemotedModuleTest, CacertsNotFoundNamesTheReadCause)
 // that signs the served leaf directly but is not itself a valid CA (no CA:TRUE) still lets
 // GET /cacerts serve 200 -- and the module logs the WARN a verifying agent's otherwise-mysterious
 // rejected handshake would need. RestinioHttpServer.cpp's logCertificateStatus() is what emits it.
-TEST_F(RemotedModuleTest, CacertsWarnsWhenTheChainDoesNotValidate)
+TEST_F(RemotedModuleTest, CacertsRefusesACaWithoutCaTrueThatMerelySignsTheLeaf)
 {
+    // Before C33 this bundle was SERVED (200) with a WARN: the guard was a signature check, and the
+    // "CA" signs the leaf. It is not an anchor any verifying agent could use, so the guard is a
+    // chain validation now and the route refuses it -- 503, ca_mismatch, with the ERROR line naming
+    // what is wrong. The behaviour change is deliberate and is the point of C33.
     auto pki = generateNonCaSignedCertificate("rmt-cacerts-nonca");
     ASSERT_TRUE(pki.has_value()) << "could not generate the throwaway non-CA-signed certificate";
     remoted::test::ScratchFileCleanup cleanup {pki->files()};
@@ -522,10 +564,40 @@ TEST_F(RemotedModuleTest, CacertsWarnsWhenTheChainDoesNotValidate)
     const auto port = static_cast<std::uint16_t>(cfg.port);
 
     const auto response = remoted::test::sendGetRequest(port, "/cacerts");
+    ASSERT_NE(response.find(" 503 "), std::string::npos) << response;
+    EXPECT_NE(response.find("ca_mismatch"), std::string::npos) << response;
+
+    EXPECT_TRUE(LogRecorder::waitForMessageContaining("does not chain to the configured CA"))
+        << "the module never said the served certificate does not chain to the configured CA";
+
+    remoted_module_stop();
+}
+
+TEST_F(RemotedModuleTest, CacertsWarnsWhenTheChainDoesNotValidate)
+{
+    // The other side of that coin, and the one case where the two verdicts still disagree in this
+    // direction: the leaf CHAINS to the configured CA (so the bundle is served) and yet validating
+    // it as a SERVER certificate fails, because its extendedKeyUsage is clientAuth only. An agent
+    // that pins this CA will still reject the handshake, so the WARN has to be said -- it is
+    // information, never a refusal (issue #39318).
+    auto pki = generateClientAuthOnlyCertificate("rmt-cacerts-clientauth");
+    ASSERT_TRUE(pki.has_value()) << "could not generate the throwaway clientAuth-only certificate";
+    remoted::test::ScratchFileCleanup cleanup {pki->files()};
+
+    auto cfg = makeConfig();
+    std::snprintf(cfg.certificate_path, sizeof(cfg.certificate_path), "%s", pki->certPath.c_str());
+    std::snprintf(cfg.private_key_path, sizeof(cfg.private_key_path), "%s", pki->keyPath.c_str());
+    std::snprintf(cfg.ca_certificate_path, sizeof(cfg.ca_certificate_path), "%s", pki->caCertPath.c_str());
+
+    LogRecorder::clear();
+    remoted_module_start(testLogCallback, &cfg);
+    const auto port = static_cast<std::uint16_t>(cfg.port);
+
+    const auto response = remoted::test::sendGetRequest(port, "/cacerts");
     ASSERT_NE(response.find(" 200 "), std::string::npos) << response;
 
-    EXPECT_TRUE(LogRecorder::waitForMessageContaining("but the chain does not validate"))
-        << "the module never warned that the configured CA signs the leaf but the chain does not validate";
+    EXPECT_TRUE(LogRecorder::waitForMessageContaining("validating it as a SERVER certificate fails"))
+        << "the module never warned that the served certificate chains but is not a server certificate";
 
     remoted_module_stop();
 }

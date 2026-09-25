@@ -162,7 +162,6 @@ extern "C"
                                       ///< modulesd warns about if this exceeds it.
                                       ///< Range 0..65536. <=0 -> 1024.
 
-
         /* ---- Sync pipeline (the POST /stateful ingestion path) ---- */
         int sync_workers;                ///< Worker threads applying sessions to the indexer, sharded by
                                          ///< agent id (FIFO per agent). Each worker owns one
@@ -276,9 +275,9 @@ extern "C"
          * soon as start() returns. May be NULL, which is treated as {}.
          */
         const cJSON* indexer;
-        /* ---- Route-class admission (QoS): the data plane can shed, the control plane cannot -- APPENDED, never inserted: this struct crosses a C/C++ build boundary and keeping
-         * existing offsets stable makes a stale object a missing-feature bug instead of a
-         * garbage-pointer crash. ---- */
+        /* ---- Route-class admission (QoS): the data plane can shed, the control plane cannot -- APPENDED, never
+         * inserted: this struct crosses a C/C++ build boundary and keeping existing offsets stable makes a stale object
+         * a missing-feature bug instead of a garbage-pointer crash. ---- */
         int reserved_control_connections; ///< Accept headroom the data plane can never consume: the
                                           ///< data class's session cap resolves to
                                           ///< max_parallel_connections minus this, so /stateful alone
@@ -329,6 +328,18 @@ extern "C"
         int indexer_sync_connector_max_bulk_size; ///< NDJSON bytes staged before the connector cuts
                                                   ///< a `_bulk` request. -> `max_bulk_size`.
                                                   ///< <=0 -> 10 MiB.
+
+        /* ---- Vulnerability-detection scan-lane readiness -- APPENDED, same ABI rule as above. ---- */
+        bool vd_configured_enabled; ///< Whether `<vulnerability-detection>` is present and
+                                    ///< enabled in THIS node's own configuration -- read
+                                    ///< directly from the vulnerability_scanner wmodule's
+                                    ///< parsed config, which wm_config() populates before any
+                                    ///< module thread runs, so it is available before that
+                                    ///< module's own start() begins. Lets the scan lane defer
+                                    ///< (retryable 503) a session that arrives in the narrow
+                                    ///< window before the scanner's start() has run, instead
+                                    ///< of treating "hasn't started yet" the same as "will
+                                    ///< never run here".
     } inventory_sync_server_config_t;
 
     /**

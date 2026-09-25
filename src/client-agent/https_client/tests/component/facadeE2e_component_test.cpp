@@ -41,9 +41,10 @@ namespace
     // Every test here binds TLS_PORT + n for n in 0..11 (the fixture itself takes the base), so
     // this owns 24900-24911. Two constraints, both learned the hard way:
     //
-    // 1. Keep clear of the other component files' fixed ports -- tlsVerification 44857-44862,
-    //    enroll 44870-44874, cacerts 44880-44882, httpsClient 44441/44853 -- because they all run
-    //    in ONE gtest binary. A base of 44861 covered 44861-44872 and collided with four of them.
+    // 1. Keep clear of the other component files' fixed ports -- tlsVerification 44857-44864,
+    //    enroll 44870-44874, cacerts 44880-44882, httpsClient 44441/44853, caRefresh 24930-24938
+    //    -- because they all run in ONE gtest binary. A base of 44861 covered 44861-44872 and
+    //    collided with four of them.
     // 2. Stay BELOW the ephemeral range (net.ipv4.ip_local_port_range, 32768-60999 on the CI
     //    image). A fixed listener port inside that range is racing every outbound connection the
     //    suite makes: these tests open many local TLS connections, and one of them holding the

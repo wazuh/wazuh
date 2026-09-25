@@ -15,6 +15,7 @@
 #include "stringHelper.h"
 #include "stdFileSystemHelper.hpp"
 #include <filesystem_wrapper.hpp>
+#include "processInfoMac.h"
 #include "osinfo/sysOsParsers.h"
 #include <libproc.h>
 #include <pwd.h>
@@ -31,6 +32,7 @@
 #include "hardware/hardwareWrapperImplMac.h"
 #include "osPrimitivesImplMac.h"
 #include "processes/processArgsParserMac.h"
+#include "processesWrapperImplMac.h"
 #include "sqliteWrapperTemp.h"
 #include "packages/modernPackageDataRetriever.hpp"
 #include "timeHelper.h"
@@ -96,8 +98,9 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
 {
     nlohmann::json jsProcessInfo{};
     jsProcessInfo["pid"]        = std::to_string(pid);
-    // The kernel cuts pbi_name at a fixed byte length, which can split a multi-byte character.
-    jsProcessInfo["name"]       = Utils::sanitizeUtf8(taskInfo.pbsd.pbi_name);
+    // resolveProcessName() falls back to pbi_name, which the kernel cuts at a fixed byte
+    // length and can split a multi-byte character on the way.
+    jsProcessInfo["name"]       = Utils::sanitizeUtf8(resolveProcessName(pid, taskInfo.pbsd.pbi_name));
     jsProcessInfo["state"]      = UNKNOWN_VALUE;
     jsProcessInfo["parent_pid"] = taskInfo.pbsd.pbi_ppid;
     jsProcessInfo["start"]      = Utils::rawTimestampToISO8601(static_cast<uint32_t>(taskInfo.pbsd.pbi_start_tvsec));
@@ -224,47 +227,49 @@ nlohmann::json SysInfo::getOsInfo() const
 
 static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<socket_fdinfo>>& processSocket)
 {
-    int32_t maxProcess { 0 };
-    auto maxProcessLen { sizeof(maxProcess) };
+    std::vector<pid_t> pids;
 
-    if (!sysctlbyname("kern.maxproc", &maxProcess, &maxProcessLen, nullptr, 0))
+    try
     {
-        auto pids { std::make_unique<pid_t[]>(maxProcess) };
-        const auto processesCount { proc_listallpids(pids.get(), maxProcess) };
+        pids = listAllPids(OsPrimitivesMac{});
+    }
+    catch (const std::system_error&)
+    {
+        // Preserve the previous behavior: silently skip port collection if
+        // kern.maxproc can't be read, rather than propagating the error.
+        return;
+    }
 
-        for (auto i = 0 ; i < processesCount ; ++i)
+    for (const auto pid : pids)
+    {
+        proc_bsdinfo processInformation {};
+
+        if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &processInformation, PROC_PIDTBSDINFO_SIZE) != -1)
         {
-            const auto pid { pids[i] };
+            const std::string processName { resolveProcessName(pid, processInformation.pbi_name) };
+            const ProcessInfo processData { pid, processName };
 
-            proc_bsdinfo processInformation {};
+            const auto processFDBufferSize { proc_pidinfo(pid, PROC_PIDLISTFDS, 0, 0, 0) };
 
-            if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &processInformation, PROC_PIDTBSDINFO_SIZE) != -1)
+            if (processFDBufferSize != -1)
             {
-                const std::string processName { processInformation.pbi_name };
-                const ProcessInfo processData { pid, processName };
+                auto processFDInformationBuffer { std::make_unique<char[]>(processFDBufferSize) };
 
-                const auto processFDBufferSize { proc_pidinfo(pid, PROC_PIDLISTFDS, 0, 0, 0) };
-
-                if (processFDBufferSize != -1)
+                if (proc_pidinfo(pid, PROC_PIDLISTFDS, 0, processFDInformationBuffer.get(), processFDBufferSize) != -1)
                 {
-                    auto processFDInformationBuffer { std::make_unique<char[]>(processFDBufferSize) };
+                    auto processFDInformation { reinterpret_cast<proc_fdinfo*>(processFDInformationBuffer.get())};
 
-                    if (proc_pidinfo(pid, PROC_PIDLISTFDS, 0, processFDInformationBuffer.get(), processFDBufferSize) != -1)
+                    for (auto j = 0ul; j < processFDBufferSize / PROC_PIDLISTFD_SIZE; ++j )
                     {
-                        auto processFDInformation { reinterpret_cast<proc_fdinfo*>(processFDInformationBuffer.get())};
-
-                        for (auto j = 0ul; j < processFDBufferSize / PROC_PIDLISTFD_SIZE; ++j )
+                        if (PROX_FDTYPE_SOCKET == processFDInformation[j].proc_fdtype)
                         {
-                            if (PROX_FDTYPE_SOCKET == processFDInformation[j].proc_fdtype)
-                            {
-                                socket_fdinfo socketInfo {};
+                            socket_fdinfo socketInfo {};
 
-                                if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid, processFDInformation[j].proc_fd, PROC_PIDFDSOCKETINFO, &socketInfo, PROC_PIDFDSOCKETINFO_SIZE))
+                            if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid, processFDInformation[j].proc_fd, PROC_PIDFDSOCKETINFO, &socketInfo, PROC_PIDFDSOCKETINFO_SIZE))
+                            {
+                                if (std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo.psi.soi_kind) != s_validFDSock.end())
                                 {
-                                    if (std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo.psi.soi_kind) != s_validFDSock.end())
-                                    {
-                                        processSocket[processData].push_back(socketInfo);
-                                    }
+                                    processSocket[processData].push_back(socketInfo);
                                 }
                             }
                         }
@@ -301,26 +306,11 @@ nlohmann::json SysInfo::getPorts() const
 
 void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) const
 {
-    int32_t maxProc{};
-    size_t len { sizeof(maxProc) };
-    const auto ret { sysctlbyname("kern.maxproc", &maxProc, &len, NULL, 0) };
-
-    if (ret)
-    {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading kernel max processes."
-        };
-    }
-
-    const auto spPids         { std::make_unique<pid_t[]>(maxProc) };
-    const auto processesCount { proc_listallpids(spPids.get(), maxProc) };
+    const auto pids { listAllPids(OsPrimitivesMac{}) };
 
     // Reused for every process; kern.argmax bounds the size of a process argument area.
     int argMax{};
-    len = sizeof(argMax);
+    size_t len { sizeof(argMax) };
     std::vector<char> argsBuffer;
 
     if (!sysctlbyname("kern.argmax", &argMax, &len, NULL, 0) && argMax > 0)
@@ -328,10 +318,9 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
         argsBuffer.resize(static_cast<size_t>(argMax));
     }
 
-    for (int index = 0; index < processesCount; ++index)
+    for (const auto pid : pids)
     {
         ProcessTaskInfo taskInfo{};
-        const auto pid { spPids.get()[index] };
         const auto sizeTask
         {
             proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &taskInfo, PROC_PIDTASKALLINFO_SIZE)
@@ -451,7 +440,10 @@ nlohmann::json SysInfo::getGroups() const
 
     for (auto& group : collectedGroups)
     {
-        allGids.insert(static_cast<gid_t>(group["gid"].get<int>()));
+        if (group.contains("gid"))
+        {
+            allGids.insert(static_cast<gid_t>(group["gid"].get<int>()));
+        }
     }
 
     // Single call to getUserNamesByGid with all GIDs
@@ -461,19 +453,34 @@ nlohmann::json SysInfo::getGroups() const
     for (auto& group : collectedGroups)
     {
         nlohmann::json groupItem {};
-        gid_t currentGid = static_cast<gid_t>(group["gid"].get<int>());
+        const bool hasGid { group.contains("gid") };
 
-        groupItem["group_id"] = group["gid"];
+        // A group resolvable only via OpenDirectory (see GroupsProvider::collect()) carries no
+        // real GID. group_id/group_id_signed are BIGINT columns downstream (dbsync's
+        // bindJsonData): a JSON null there still binds the literal integer 0, colliding with the
+        // real gid-0 group ("wheel"). Omitting the keys entirely is the only representation that
+        // reaches a genuine SQL NULL (buildInsertDataSqlQuery skips columns absent from the
+        // source JSON), so the fields are only set here when a real GID is known.
+        if (hasGid)
+        {
+            groupItem["group_id"] = group["gid"];
+            groupItem["group_id_signed"] = group["gid_signed"];
+        }
+
         groupItem["group_name"] = (group.contains("groupname") && !group["groupname"].get<std::string>().empty()) ? group["groupname"] : UNKNOWN_VALUE;
         groupItem["group_description"] = (group.contains("comment") && !group["comment"].get<std::string>().empty()) ? group["comment"] : UNKNOWN_VALUE;
-        groupItem["group_id_signed"] = group["gid_signed"];
-        groupItem["group_uuid"] = UNKNOWN_VALUE;
+        groupItem["group_uuid"] = (group.contains("uuid") && !group["uuid"].get<std::string>().empty()) ? group["uuid"] : UNKNOWN_VALUE;
         groupItem["group_is_hidden"] = group["is_hidden"];
 
-        // Obtain the users for this specific GID
-        auto gidStr = std::to_string(currentGid);
-        nlohmann::json collectedUsersGroups = allUsersGroups.contains(gidStr) ?
-                                              allUsersGroups[gidStr] : nlohmann::json::array();
+        // Obtain the users for this specific GID, when one is known
+        nlohmann::json collectedUsersGroups = nlohmann::json::array();
+
+        if (hasGid)
+        {
+            auto gidStr = std::to_string(static_cast<gid_t>(group["gid"].get<int>()));
+            collectedUsersGroups = allUsersGroups.contains(gidStr) ?
+                                   allUsersGroups[gidStr] : nlohmann::json::array();
+        }
 
         if (collectedUsersGroups.empty())
         {
@@ -591,9 +598,6 @@ nlohmann::json SysInfo::getUsers() const
         //TODO: Avoid this iteration, move logic to LoggedInUsersProvider
         for (auto& item : collectedLoggedInUser)
         {
-            // By default, user is not logged in.
-            userItem["login_status"] = 0;
-
             // tty,host,time and pid can take more than one value due to different logins.
             if (item["user"] == username)
             {
@@ -633,13 +637,29 @@ nlohmann::json SysInfo::getUsers() const
 
         userItem["user_password_hash_algorithm"] = user["password_hash_algorithm"];
         userItem["user_password_status"] = user["password_status"];
-        // macOS has no shadow file and no password aging policy unless an MDM imposes one, so
-        // there is no source for these. Reporting the day counters as not collected keeps them
-        // apart from a policy that genuinely allows zero days; the expiration date is a
-        // timestamp string in this schema, so it stays unknown.
+        // macOS has no shadow file. The only aging policy it can hold is a pwpolicy/MDM-imposed
+        // change interval, which is where the expiration date and max_days_between_changes come
+        // from when present. macOS has no equivalent of a minimum password age or of a warning
+        // period before expiration, so those two stay not collected rather than a guessed zero.
+        // The provider reports the expiration as a UNIX timestamp, and -1 when its arithmetic
+        // would overflow; this schema stores the date as text.
         userItem["user_password_expiration_date"] = UNKNOWN_VALUE;
+
+        if (user.contains("password_expiration_date"))
+        {
+            const auto expirationTimestamp{user["password_expiration_date"].get<int64_t>()};
+
+            if (expirationTimestamp > 0)
+            {
+                userItem["user_password_expiration_date"] =
+                    Utils::rawTimestampToISO8601(static_cast<uint32_t>(expirationTimestamp));
+            }
+        }
+
         userItem["user_password_inactive_days"] = NOT_COLLECTED_VALUE;
-        userItem["user_password_max_days_between_changes"] = NOT_COLLECTED_VALUE;
+        userItem["user_password_max_days_between_changes"] = user.contains("password_max_days_between_changes")
+                                                             ? user["password_max_days_between_changes"]
+                                                             : nlohmann::json(NOT_COLLECTED_VALUE);
         userItem["user_password_min_days_between_changes"] = NOT_COLLECTED_VALUE;
         userItem["user_password_warning_days_before_expiration"] = NOT_COLLECTED_VALUE;
 

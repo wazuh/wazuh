@@ -38,11 +38,6 @@ Function XmlEscape(text)
     XmlEscape = Replace(Replace(Replace(text, "&", "&amp;"), "<", "&lt;"), ">", "&gt;")
 End Function
 
-' Strips XML comments from a working copy so the WAZUH_REGISTRATION_CA checks below
-' don't match tag content that's still inside a "<!-- ... -->" wrapper -- mirrors
-' strip_xml_comments() in pkg_installer.sh and its port in do_upgrade.ps1. "[\s\S]*?"
-' spans a multi-line comment (VBScript's regexp "." does not match newline); non-greedy
-' so two separate comments don't merge into one.
 ' Replace a paired <tag>...</tag> value in place. Two call sites carried an identical inline
 ' regexp; one helper is one place for them to stay identical.
 Function RegExpReplaceTag(text, tagName, value)
@@ -107,6 +102,10 @@ Function DecodeEnrollmentToken(home_dir, objFSO, token, ByRef adr)
 
 End Function
 
+' Strips XML comments from a working copy so a tag check does not match content that is still
+' inside a "<!-- ... -->" wrapper -- mirrors strip_xml_comments() in pkg_installer.sh and its
+' port in do_upgrade.ps1. "[\s\S]*?" spans a multi-line comment (VBScript's regexp "." does not
+' match newline); non-greedy so two separate comments don't merge into one.
 Function StrippedOfComments(text)
     Dim reComment
     Set reComment = New RegExp
@@ -683,9 +682,9 @@ Public Function SetWazuhPermissions()
 
         ' The token carries the enrollment credential, so the blanket Authenticated Users:RX
         ' granted above has to come back off it, the way it does for client.keys just before.
-        ' Since #39063 this is the only credential file the installer itself writes: nothing
+        ' This is the only credential file the installer itself writes: nothing
         ' sets WAZUH_REGISTRATION_PASSWORD any more, so the authd.pass line above now only ever
-        ' applies to a file placed by hand or by wazuh-agent-auth.
+        ' applies to a file an operator placed themselves.
         '
         ' The file is short-lived either way -- the bootstrap consumes the token at the first
         ' start and unlinks it -- but it is at rest between this install and that start, and on

@@ -202,7 +202,7 @@ namespace remoted::enrollment
             while (!pending.empty())
             {
                 AuthdResult result;
-                result.errorCode = -1;
+                result.errorCode = kAuthdRequestNotSentErrorCode;
                 result.message = "AuthdClient is stopping";
                 pending.front().callback(std::move(result));
                 pending.pop();
@@ -249,7 +249,7 @@ namespace remoted::enrollment
                                      remoted::common::LogThrottle::kDefaultWindowSeconds);
                     }
                     AuthdResult result;
-                    result.errorCode = -1;
+                    result.errorCode = kAuthdRequestNotSentErrorCode;
                     result.message = "AuthdClient is stopping";
                     reject(std::move(result));
                     return;
@@ -264,7 +264,7 @@ namespace remoted::enrollment
                                remoted::common::LogThrottle::kDefaultWindowSeconds);
                 }
                 AuthdResult result;
-                result.errorCode = -1;
+                result.errorCode = kAuthdRequestNotSentErrorCode;
                 result.message = "Enrollment request queue is full";
                 reject(std::move(result));
             }
@@ -334,7 +334,7 @@ namespace remoted::enrollment
             using SocketType = Socket<OSPrimitives, SizeHeaderProtocol>;
 
             AuthdResult result;
-            result.errorCode = -1;
+            result.errorCode = kAuthdRequestNotSentErrorCode;
 
             // Deliberately the bare Socket, not shared_modules/utils's SocketClient: SocketClient's
             // connect() only starts a background thread that connects asynchronously and returns
@@ -444,6 +444,8 @@ namespace remoted::enrollment
             }
             catch (const std::exception& e)
             {
+                // Socket::send() only throws before completing the frame (see its while loop),
+                // and authd can't act on a frame it never fully received.
                 result.message = std::string("I/O error talking to authd: ") + e.what();
                 if (const auto throttle = ioErrorThrottle().record())
                 {
@@ -475,6 +477,8 @@ namespace remoted::enrollment
             {
                 if (!responseReceived)
                 {
+                    // The send already completed: authd may have acted on it.
+                    result.errorCode = kAuthdOutcomeUnknownErrorCode;
                     result.message = std::string("I/O error talking to authd: ") + e.what();
                     if (const auto throttle = ioErrorThrottle().record())
                     {
@@ -491,6 +495,8 @@ namespace remoted::enrollment
 
             if (!responseReceived)
             {
+                // The send completed, so authd may have processed it before this timeout.
+                result.errorCode = kAuthdOutcomeUnknownErrorCode;
                 result.message = "Timed out waiting for authd's reply";
                 if (const auto throttle = timeoutThrottle().record())
                 {
@@ -508,13 +514,16 @@ namespace remoted::enrollment
 
         AuthdResult parseResponse(const std::string& response)
         {
+            // Only reached once a response was received: never "not sent" past this point.
             AuthdResult result;
-            result.errorCode = -1;
+            result.errorCode = kAuthdOutcomeUnknownErrorCode;
 
             try
             {
                 const auto json = nlohmann::json::parse(response);
-                const int errorCode = json.value("error", -1);
+                // Default matches this function's own invariant: a well-formed reply missing
+                // "error" is still an answer, not a send failure.
+                const int errorCode = json.value("error", kAuthdOutcomeUnknownErrorCode);
 
                 if (errorCode == 0)
                 {
@@ -536,7 +545,7 @@ namespace remoted::enrollment
             }
             catch (const std::exception& e)
             {
-                result.errorCode = -1;
+                result.errorCode = kAuthdOutcomeUnknownErrorCode;
                 result.message = std::string("Malformed response from authd: ") + e.what();
                 if (const auto throttle = protocolErrorThrottle().record())
                 {

@@ -23,7 +23,7 @@
 
 // Various synchronization functions write a SyncResult into `m_syncState.lastSyncResult`
 // We use that to generate a std::string message which will be reported as a warning by each module (FIM, SCA, Syscollector, AgentInfo).
-static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result)
+static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result, bool isFeedBased)
 {
     std::string failureReason;
 
@@ -54,7 +54,23 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
             failureReason = "Manager rejected the session as too large (413); it must be split and resent.";
             break;
 
-        // SyncResult::CHECKSUM_ERROR is not returned by either synchronizeModule() or synchronizeMetadataOrGroups()
+        // Reached by synchronizeModule()/synchronizeMetadataOrGroups() themselves, never by the
+        // dedicated Mode::CHECK integrity flow (requiresFullSync(), which tracks its own
+        // isChecksumMismatch locally and never calls this function at all). What actually triggers
+        // it here is always a position/version disagreement, not a literal data-checksum compare --
+        // syscollector's VD feed offset for the one instance built with isFeedBased == true, or (for
+        // every other instance: FIM, SCA, agent-info, syscollector's own regular inventory sync)
+        // agent-info's metadata/groups global_version counter (synchronizeMetadataOrGroups()'s own
+        // `globalVersion` parameter), unrelated to any feed. "Checksum mismatch" for the non-feed
+        // wording is a deliberate simplification, not a literal description of the wire mechanism --
+        // chosen for a generic, module-agnostic term shared by FIM/SCA/agent-info alike. Do NOT
+        // describe this as triggering a full resync -- that retry-budget mechanism belongs to
+        // requiresFullSync() alone and is not what happens here: this session is simply dropped.
+        case SyncResult::CHECKSUM_ERROR:
+            failureReason = isFeedBased
+                            ? "Manager reported a feed version mismatch (409) for this session; it will be retried on the next sync cycle."
+                            : "Manager reported a checksum mismatch (409) for this session.";
+            break;
 
         default:
             break;
@@ -110,8 +126,10 @@ long AgentSyncProtocol::currentAgentId()
 
 AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger,
                                      std::shared_ptr<IPersistentQueue> queue,
-                                     std::shared_ptr<ISyncSessionTransport> syncTransport)
+                                     std::shared_ptr<ISyncSessionTransport> syncTransport,
+                                     bool isFeedBased)
     : m_moduleName(moduleName),
+      m_isFeedBased(isFeedBased),
       m_persistentQueue(nullptr), // Ensure initialized to nullptr
       m_logger(std::move(logger)),
       m_sessionMaxBytes(s_sessionMaxBytes.load())
@@ -376,7 +394,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
         // clearSyncState() below), so reading them without the lock races
         // against a late/duplicate HCRESULT for this session. (CID 562615)
         std::lock_guard<std::mutex> lock(m_syncState.mtx);
-        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult, m_isFeedBased);
         managerNotReady = m_syncState.lastSyncManagerNotReady;
         awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
     }
@@ -581,7 +599,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
         // Same unlocked-read race as synchronizeDeltaByBlocks(); see the
         // comment there. (CID 562619)
         std::lock_guard<std::mutex> lock(m_syncState.mtx);
-        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult, m_isFeedBased);
         managerNotReady = m_syncState.lastSyncManagerNotReady;
         awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
     }
@@ -696,7 +714,7 @@ SyncModuleResult AgentSyncProtocol::notifyDataClean(const std::vector<std::strin
     {
         // Same unlocked-read race as synchronizeModule(); see the comment there. (CID 562619)
         std::lock_guard<std::mutex> lock(m_syncState.mtx);
-        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult, m_isFeedBased);
         managerNotReady = m_syncState.lastSyncManagerNotReady;
         awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
     }

@@ -83,6 +83,7 @@
 #define FIM_ERROR_EBPF_HEALTHCHECK              "(6959): The eBPF healthcheck has failed. Switching all whodata eBPF configuration to audit."
 #define FIM_WARN_INODE_WRONG_TYPE               "(6960): Inode field received with a wrong type, it must be a string."
 #define FIM_WARN_SYMLINK_NOFOLLOW               "(6961): Configured path '%s' is a symbolic link to '%s'. Without 'follow_symbolic_link' enabled, only the symlink itself will be monitored, not the directory contents. Consider monitoring '%s' directly or enabling 'follow_symbolic_link'."
+#define FIM_WARN_WHODATA_PROVIDER_UNSUPPORTED   "(6967): The whodata 'provider' option is only available on Linux. Ignoring it."
 
 /* Log rotation warning messages. Unused -- no emitter on either product -- and kept only because
  * the codes are published. Rotation itself lives in shared/src/log_rotate.c.

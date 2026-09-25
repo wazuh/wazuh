@@ -38,6 +38,7 @@
 #include "endpointGetV1AgentsAll.hpp"
 #include "endpointGetV1AgentsParamGroups.hpp"
 #include "endpointGetV1AgentsSync.hpp"
+#include "endpointGetV1Status.hpp"
 #include "endpointPostV1AgentsSummary.hpp"
 #include "endpointPostV1AgentsSync.hpp"
 
@@ -160,6 +161,7 @@ namespace
     std::vector<std::int64_t> MockStatement::s_boundInts;
     std::vector<std::string> MockStatement::s_boundStrings;
 
+    using TestEndpointGetV1Status = TEndpointGetV1Status<MockConnection, MockStatement>;
     using TestEndpointGetV1AgentsParamGroups = TEndpointGetV1AgentsParamGroups<MockConnection, MockStatement>;
     using TestEndpointGetV1AgentsAll = TEndpointGetV1AgentsAll<MockConnection, MockStatement>;
     using TestEndpointGetV1AgentsSync = TEndpointGetV1AgentsSync<MockConnection, MockStatement>;
@@ -362,4 +364,58 @@ TEST_F(WdbHttpEndpointsTest, PostAgentsSummaryEmptyBodyEmptyDbReturnsEmptyObject
     EXPECT_EQ(MockStatement::s_lastQuery,
               "SELECT COUNT(*) as quantity, os_platform AS platform FROM agent WHERE id > 0 "
               "AND os_platform IS NOT NULL AND os_platform <> '' GROUP BY platform ORDER BY quantity DESC limit 5;");
+}
+
+// GET /v1/status is the readiness answer remoted needs before it asks for an agent's groups:
+// liveness says the process is up, this says the database behind /control can actually be
+// queried (issue #39429). It reads sqlite_master rather than agent data, so it stays cheap
+// enough for a load balancer to poll.
+TEST_F(WdbHttpEndpointsTest, GetStatusWithTheExpectedSchemaReturns200)
+{
+    MockConnection db;
+    wazuh::uds_http::HttpRequest req;
+    // Any row means "this table exists": the endpoint only checks presence.
+    MockStatement::s_rowsToReturn = {{std::int64_t {1}}};
+
+    const auto response = TestEndpointGetV1Status::call(db, req);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_NE(response.body.find("\"status\":\"ok\""), std::string::npos) << response.body;
+    EXPECT_NE(response.body.find("\"available\":true"), std::string::npos) << response.body;
+}
+
+// The failure this route exists to expose: the daemon is up and answering, but the schema
+// behind an agent-groups lookup is not there. 503 -- not 500 -- because being unable to serve
+// is a correct answer to "can you serve?", and it is what tells a caller to route elsewhere.
+TEST_F(WdbHttpEndpointsTest, GetStatusWithoutTheExpectedSchemaReturns503)
+{
+    MockConnection db;
+    wazuh::uds_http::HttpRequest req;
+    MockStatement::s_rowsToReturn.clear(); // no table lookup matches
+
+    const auto response = TestEndpointGetV1Status::call(db, req);
+
+    EXPECT_EQ(response.status, 503);
+    EXPECT_NE(response.body.find("\"status\":\"unavailable\""), std::string::npos) << response.body;
+    EXPECT_NE(response.body.find("\"available\":false"), std::string::npos) << response.body;
+    for (const auto* table : {"agent", "belongs", "group"})
+    {
+        EXPECT_NE(response.body.find(table), std::string::npos)
+            << "missing_tables must name " << table << ": " << response.body;
+    }
+}
+
+// Pin WHICH tables it checks. These three are what an agent-groups lookup joins over, so they
+// are the ones whose absence surfaces as remoted's 500 database_error -- checking a different
+// set would make this route answer a question nobody asked.
+TEST_F(WdbHttpEndpointsTest, GetStatusChecksTheTablesAgentGroupsLookupNeeds)
+{
+    MockConnection db;
+    wazuh::uds_http::HttpRequest req;
+    MockStatement::s_rowsToReturn = {{std::int64_t {1}}};
+
+    TestEndpointGetV1Status::call(db, req);
+
+    EXPECT_EQ(MockStatement::s_boundStrings, (std::vector<std::string> {"agent", "belongs", "group"}));
+    EXPECT_EQ(MockStatement::s_lastQuery, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1");
 }

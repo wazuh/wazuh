@@ -190,9 +190,15 @@ def test_unknown_agent_re_enrolls_with_the_stored_secret_and_keeps_the_id(
 
     # "One request, no second /cacerts fetch" (#39064's DoD). The agent already holds a usable
     # anchor, so it goes straight to POST /enroll; re-fetching would reopen the provisional-trust
-    # window the bootstrap exists to close, for nothing. True by construction today --
-    # hc_fetch_cacerts() has one caller, on the startup path -- and asserted here so it stays that
-    # way, because nothing else would notice a fetch quietly reappearing.
+    # window the bootstrap exists to close, for nothing.
+    #
+    # This used to hold by construction: hc_fetch_cacerts() was the only thing that fetched
+    # /cacerts, and only on the startup path. Since #39321 that is no longer true -- a CA refresh
+    # fetches the same route, over the verified channel, at any point in the agent's life. What
+    # keeps the assertion meaningful is narrower now: a refresh is armed only by a notify
+    # advertising a `ca_generation` above the one the agent holds, and this simulator advertises
+    # none. So the assertion still reads "the re-enrollment did not re-fetch"; it no longer reads
+    # "nothing in the agent could have".
     assert manager.get_requests(CACERTS_ENDPOINT) == [], \
         'The re-enrollment re-fetched /cacerts instead of using the anchor it already had'
     assert len(enroll_requests(manager)) == 1, \

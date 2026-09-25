@@ -47,14 +47,37 @@ namespace remoted::endpoints::stateless
      * @brief Cross-checks the payload's claimed identity against the authenticated identity.
      *
      * Parses the body's `H <json>` line (RapidJSON, non-in-situ length-based Parse -- the payload is
-     * a view into a shared, non-null-terminated buffer) and compares `/wazuh/agent/id` (a JSON
-     * string, parsed as a non-negative integer) against @p req.agentId (also parsed as one). Pure
-     * function, no side effects -- unit-tested directly, no sockets, no forwarding.
+     * a view into a shared, non-null-terminated buffer) and compares `/wazuh/agent/id` against
+     * @p req.agentId as a STRING, byte for byte, after checking it is shaped like a non-negative
+     * integer. Pure function, no side effects -- unit-tested directly, no sockets, no forwarding.
      *
      * Any of the following collapses to the same AuthError::PayloadAgentMismatch: the body doesn't
-     * start with "H ", the JSON after it doesn't parse, `/wazuh/agent/id` is missing or not a string,
-     * either side fails to parse as a non-negative integer, or the two integers differ. There is no
-     * partial-validation bypass: a missing/malformed header is rejected exactly like a real mismatch.
+     * start with "H ", the JSON after it doesn't parse, `wazuh` or `wazuh.agent` is missing,
+     * repeated or not an object, `/wazuh/agent/id` is missing, repeated or not a string, it is not
+     * shaped like a non-negative integer, or it differs from @p req.agentId by so much as a leading
+     * zero. There is no partial-validation bypass: a missing/malformed header is rejected exactly
+     * like a real mismatch.
+     *
+     * The comparison is deliberately textual, not numeric. "001", "01" and "1" are one agent
+     * arithmetically but three distinct strings, and it is the string that travels: the body is
+     * forwarded verbatim, and the engine keys its agent-metadata cache on the raw id and stamps it
+     * into every event. A numeric comparison would let one agent file events under an id no agent
+     * has, and mint a cache entry per spelling. @p req.agentId is canonical (the token's verified
+     * `sub`) and a conforming agent stamps the H line from that same string, so exact equality
+     * costs it nothing. This endpoint cannot normalise instead -- it does not rewrite the body.
+     *
+     * Requiring each step of `/wazuh/agent/id` to appear EXACTLY ONCE is what keeps "validated" and
+     * "ingested" the same identity. JSON permits repeated member names; a lookup here takes the
+     * FIRST while the engine's merge keeps the LAST, and this function's caller forwards the body
+     * byte for byte -- so a repeated step would authorise one agent and ingest another.
+     * Names are compared decoded and by length, so "\u0077azuh" is recognised as
+     * `wazuh` and "wazuh\u0000x" is not confused with it.
+     *
+     * The check is deliberately limited to that path. A repetition elsewhere in the header cannot
+     * move the identity: the engine escapes member names when building the JSON Pointer it recurses
+     * with (`base/src/json.cpp`), so a member called `wazuh/agent` stays a literal sibling instead
+     * of landing on the real one. Keeping this check narrow keeps the per-request cost proportional
+     * to the identity path rather than to the whole header.
      *
      * @param req Verified request; payload.bytes() must still be valid (call before any release()).
      * @return AuthError::None on match, AuthError::PayloadAgentMismatch otherwise.
