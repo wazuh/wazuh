@@ -144,6 +144,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // Process module
     addUnit<std::string>(key::PID_FILE_PATH, "WAZUH_ENGINE_PID_FILE_PATH", (wazuhRoot / "var/run/").c_str());
     addUnit<bool>(key::DROP_PRIVILEGES, "WAZUH_ENGINE_DROP_PRIVILEGES", true);
+    addUnit<int>(key::RLIMIT_NOFILE, "WAZUH_RLIMIT_NOFILE", 8192);
 
     // API modules
     addUnit<int64_t>(key::API_RESOURCE_PAYLOAD_MAX_BYTES, "WAZUH_SERVER_API_MAX_RESOURCE_PAYLOAD_SIZE", 50'000);
