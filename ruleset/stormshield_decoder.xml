@@ -1,0 +1,327 @@
+<!--
+  Decoder for Stormshield
+  Author: Raphael
+-->
+<!-- 
+	Stormshield Firewall Decoder 
+-->
+
+<!-- 
+log test
+FW_TN: {"resourceLogs":[{"resource":{"attributes":[{"key":"tag-path","value":{"stringValue":"FW_TN/production/logs"}}]},"scopeLogs":[{"scope":{},"logRecords":[{"timeUnixNano":"1758540726000000000","observedTimeUnixNano":"1758540726985157372","severityNumber":10,"severityText":"notice","body":{"stringValue":"<13>1 2025-09-22T13:32:06+02:00 FW_TN asqd - - - id=firewall time=\"2025-09-22 13:32:06\" fw=\"FW_TN\" tz=+0200 startime=\"2025-09-22 13:32:06\" pri=5 confid=01 slotlevel=2 ruleid=32 rulename=\"19484998f55_18\" srcif=\"vlan0\" srcifname=\"IT_FW\" ipproto=tcp dstif=\"Ether5\" dstifname=\"IN_SI\" proto=TCP_9093 src=10.30.0.20 srcport=58440 srcportname=ep_fw_tcp srcname=K_Y_10.20.0.10 srcmac=00:6b:97:00:01:74 dst=192.168.17.13 dstport=9072 dstportname=TCP_9072 dstname=Sgghh1 ipv=4 sent=0 rcvd=0 duration=0.00 action=pass logtype=\"filter\""},"attributes":[{"key":"action","value":{"stringValue":"pass"}},{"key":"ipproto","value":{"stringValue":"tcp"}},{"key":"dst","value":{"stringValue":"192.168.171.73"}},{"key":"ipv","value":{"stringValue":"4"}},{"key":"hostname","value":{"stringValue":"FW_TN"}},{"key":"message","value":{"stringValue":"id=firewall time=\"2025-09-22 13:32:06\" fw=\"FW_TN\" tz=+0200 startime=\"2025-09-22 13:32:06\" pri=5 confid=01 slotlevel=2 ruleid=32 rulename=\"19484998f55_18\" srcif=\"vlan0\" srcifname=\"I_FW\" ipproto=tcp dstif=\"Ether5\" dstifname=\"IN_S\" proto=TCP_9093 src=10.20.0.70 srcport=58455 srcportname=eph_fw_tcp srcname=K_P_10.20.0.10 srcmac=00:1b:17:0b:01:k4 dst=192.168.171.82 dstport=9092 dstportname=TCP_9092 dstname=Sfth1 ipv=4 sent=0 rcvd=0 duration=0.00 action=pass logtype=\"filter\""}},{"key":"dstifname","value":{"stringValue":"INT_I"}},{"key":"rulename","value":{"stringValue":"19484998f55_18"}},{"key":"dstportname","value":{"stringValue":"TCP_9092"}},{"key":"dstif","value":{"stringValue":"Ether5"}},{"key":"proto","value":{"stringValue":"TCP_9092"}},{"key":"logtype","value":{"stringValue":"filter"}},{"key":"srcif","value":{"stringValue":"vlan0"}},{"key":"srcportname","value":{"stringValue":"ep_fw_tcp"}},{"key":"src","value":{"stringValue":"10.20.0.10"}},{"key":"appname","value":{"stringValue":"asqd"}},{"key":"dstname","value":{"stringValue":"Sgghh1"}},{"key":"srcmac","value":{"stringValue":"00:1b:17:00:01:14"}},{"key":"duration","value":{"stringValue":"0.00"}},{"key":"fw","value":{"stringValue":"FW_TN"}},{"key":"tz","value":{"stringValue":"+0200"}},{"key":"pri","value":{"stringValue":"5"}},{"key":"confid","value":{"stringValue":"01"}},{"key":"ruleid","value":{"stringValue":"32"}},{"key":"srcport","value":{"stringValue":"58450"}},{"key":"sent","value":{"stringValue":"0"}},{"key":"srcname","value":{"stringValue":"KA_P_10.20.0.10"}},{"key":"version","value":{"intValue":"1"}},{"key":"slotlevel","value":{"stringValue":"2"}},{"key":"ï»¿id","value":{"stringValue":"firewall"}},{"key":"priority","value":{"intValue":"13"}},{"key":"dstport","value":{"stringValue":"9092"}},{"key":"srcifname","value":{"stringValue":"I_FW"}},{"key":"rcvd","value":{"stringValue":"0"}},{"key":"facility","value":{"intValue":"1"}},{"key":"environment","value":{"stringValue":"production"}}]},}}]}]}]}]}
+-->
+<decoder name="stormshield_decoder">
+  <prematch>- - - id=firewall</prematch>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex type="pcre2">time=\\?"(.*?)\\?"</regex>
+  <order>time</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex type="pcre2">fw=\\?"(.*?)\\?"</regex>
+  <order>fw</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>tz=(\S+)</regex>
+  <order>tz</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex type="pcre2">startime=\\?"(.*?)\\?"</regex>
+  <order>startime</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>error=(\S+)</regex>
+  <order>error</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex type="pcre2">user=\\?"(.*?)\\?"</regex>
+  <order>user</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>address=(\S+)</regex>
+  <order>address</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>sessionid=(\S+)</regex>
+  <order>sessionid</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>pri=(\S+)</regex>
+  <order>pri</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>confid=(\S+)</regex>
+  <order>confid</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>slotlevel=(\S+)</regex>
+  <order>slotlevel</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>ruleid=(\S+)</regex>
+  <order>ruleid</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex type="pcre2">rulename=\\?"(.*?)\\?"</regex>
+  <order>rulename</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex type="pcre2">srcif=\\?"(.*?)\\?"</regex>
+  <order>srcif</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex type="pcre2">srcifname=\\?"(.*?)\\?"</regex>
+  <order>srcifname</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>ipproto=(\S+)</regex>
+  <order>protocol</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex type="pcre2">dstif=\\?"(.*?)\\?"</regex>
+  <order>dstif</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex type="pcre2">dstifname=\\?"(.*?)\\?"</regex>
+  <order>dstifname</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>proto=(\S+)</regex>
+  <order>proto</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>src=(\S+)</regex>
+  <order>src</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>srcport=(\S+)</regex>
+  <order>srcport</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>srcportname="(\.*)"</regex>
+  <order>srcportname</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>srcname=(\S+)</regex>
+  <order>srcname</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>srcmac=(\S+)</regex>
+  <order>srcmac</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>dst=(\S+)</regex>
+  <order>dst</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>dstport=(\S+)</regex>
+  <order>dstport</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>dstportname=(\S+)</regex>
+  <order>dstportname</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>dstname=(\S+)</regex>
+  <order>dstname</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>dstcontinent="(\.*)"</regex>
+  <order>dstcontinent</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>dstcountry="(\.*)"</regex>
+  <order>dstcountry</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>modsrc=(\S+)</regex>
+  <order>modsrc</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>modsrcport=(\S+)</regex>
+  <order>modsrcport</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>ipv=(\S+)</regex>
+  <order>ipv</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>action=(\S+)</regex>
+  <order>action</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex type="pcre2">msg=\\?"(.*?)\\?"</regex>
+  <order>msg</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>class=(\S+)</regex>
+  <order>class</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>alarmid=(\S+)</regex>
+  <order>alarmid</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>target=(\S+)</regex>
+  <order>target</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>origdst=(\S+)</regex>
+  <order>origdst</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>origdstport=(\S+)</regex>
+  <order>origdstport</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex type="pcre2">rt=\\?"(.*?)\\?"</regex>
+  <order>rt</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex type="pcre2">rtname=\\?"(.*?)\\?"</regex>
+  <order>rtname</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>sent=(\S+)</regex>
+  <order>sent</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>rcvd=(\S+)</regex>
+  <order>rcvd</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>duration=(\S+)</regex>
+  <order>duration</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>sensible=(\S+)</regex>
+  <order>sensible</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex>service=(\.*)</regex>
+  <order>service</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex type="pcre2">totp=\\?"(.*?)\\?"</regex>
+  <order>totp</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex type="pcre2">method=\\?"(.*?)\\?"</regex>
+  <order>method</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex type="pcre2">domain=\\?"(.*?)\\?"</regex>
+  <order>domain</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex type="pcre2">logtype=\\?"(.*?)\\?"</regex>
+  <order>logtype</order>
+</decoder>
+
+<decoder name="stormshield_decoder_1">
+  <parent>stormshield_decoder</parent>
+  <regex> id=(\S+)</regex>
+  <order>blade</order>
+</decoder>
