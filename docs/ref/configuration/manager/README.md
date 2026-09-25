@@ -125,9 +125,13 @@ Two limits apply to every daemon, and they have different owners:
 | `remoted.rlimit_nofile` | `65536` | `1024`-`1048576` |
 | `wazuh_db.rlimit_nofile` | `65536` | `1024`-`1048576` |
 | `wazuh_modules.rlimit_nofile` | `65536` | `8192`-`1048576` |
+| `analysisd.rlimit_nofile` | `8192` | `1024`-`1048576` |
 
-`wazuh-manager-analysisd` (the engine) applies the same `65536` without an option. `authd`, `apid`
-and `clusterd` keep the limits they inherit.
+The engine's default is lower because it keeps a few dozen descriptors open (the IoC database
+files, its sockets and its log files) where the C daemons hold one per connection. Inside
+wazuh-indexer the engine runs standalone and does not read the internal options file: set
+`WAZUH_RLIMIT_NOFILE` in its environment instead. `authd`, `apid` and `clusterd` keep the limits
+they inherit.
 
 When the hard limit is below the option, the daemon runs with the hard limit and logs one warning
 naming both values, for example
