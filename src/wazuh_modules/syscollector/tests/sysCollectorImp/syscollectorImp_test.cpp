@@ -4623,6 +4623,96 @@ TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
     SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 }
 
+TEST_F(SyscollectorImpTest, packageSizeZeroIsReportedAsNull)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    // A package never occupies 0 bytes: collectors store 0 when the size is unknown, and it
+    // has to reach the document as null rather than as a misleading 0.
+    const std::string packagesJson =
+        R"([{"architecture":"amd64","category":"x11","name":"xserver-xorg","priority":"optional","size":0,"source":"xorg","version_":"1:7.7+19ubuntu14","type":"deb","path":" "}])";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages(_)).WillRepeatedly(testing::Invoke(
+                                                                [&packagesJson](std::function<void(nlohmann::json&)> callback)
+    {
+        for (auto& item : nlohmann::json::parse(packagesJson))
+        {
+            callback(item);
+        }
+    }));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            if (index == "wazuh-states-inventory-packages")
+            {
+                auto jsonData = nlohmann::json::parse(data);
+
+                // A stored 0 must reach the document as null, not as a literal 0
+                EXPECT_TRUE(jsonData["package"]["size"].is_null());
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-packages"), testing::_, testing::_)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false, false, false, true, false, false, false, false, false, false, false, false, false);
+
+            // Initialize sync protocol to enable schema validation
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400
+                                                     );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
 TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};

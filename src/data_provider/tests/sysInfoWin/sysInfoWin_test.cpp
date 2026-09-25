@@ -21,6 +21,32 @@
 void SysInfoWinTest::SetUp() {};
 void SysInfoWinTest::TearDown() {};
 
+TEST_F(SysInfoWinTest, test_estimated_size_to_bytes)
+{
+    // A published value of 0. The caller also stores 0 when an installer publishes nothing,
+    // and either way that 0 is reported as null when the document is built.
+    EXPECT_EQ(0, PackageWindowsHelper::estimatedSizeToBytes(0));
+
+    // The registry publishes KiB; the field is in bytes, as it is for Debian packages.
+    EXPECT_EQ(1024, PackageWindowsHelper::estimatedSizeToBytes(1));
+    EXPECT_EQ(1048576, PackageWindowsHelper::estimatedSizeToBytes(1024));
+    EXPECT_EQ(157286400, PackageWindowsHelper::estimatedSizeToBytes(153600));
+}
+
+TEST_F(SysInfoWinTest, test_estimated_size_does_not_overflow)
+{
+    // EstimatedSize is a REG_DWORD, so the widest value it can carry is 0xFFFFFFFF KiB.
+    // Multiplying in 32 bits would wrap; the result has to stay positive and exact.
+    const int64_t widest { PackageWindowsHelper::estimatedSizeToBytes(0xFFFFFFFF) };
+    EXPECT_EQ(4398046510080LL, widest);
+    EXPECT_GT(widest, 0);
+
+    // 4 GiB exactly, where an unsigned 32-bit multiply wraps to 0. A signed one would
+    // already have overflowed at half of it.
+    EXPECT_EQ(4294967296LL, PackageWindowsHelper::estimatedSizeToBytes(4194304));
+    EXPECT_EQ(2147483648LL, PackageWindowsHelper::estimatedSizeToBytes(2097152));
+}
+
 TEST_F(SysInfoWinTest, test_extract_HFValue_7618)
 {
     // Invalid cases
