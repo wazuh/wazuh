@@ -27,6 +27,7 @@ int remote_conf;
 int min_eps;
 int rotate_log;
 int agent_debug_level;
+long local_force_reconnect_interval;
 
 /* Read the config file (for the remote client) */
 int ClientConf(const char *cfgfile)
@@ -69,6 +70,8 @@ int ClientConf(const char *cfgfile)
         return (OS_INVALID);
     }
 
+    local_force_reconnect_interval = agt->force_reconnect_interval;
+
 #ifdef CLIENT
     if(agt->flags.remote_conf = getDefine_Int("agent", "remote_conf", 0, 1), agt->flags.remote_conf) {
         remote_conf = agt->flags.remote_conf;
@@ -88,6 +91,28 @@ int ClientConf(const char *cfgfile)
     }
 
     return (1);
+}
+
+/* Re-apply force_reconnect_interval from the shared configuration without touching the live connection */
+void w_agentd_reload_force_reconnect_interval(const char *shared_cfg)
+{
+    agent shared = { .force_reconnect_interval = local_force_reconnect_interval };
+
+    if (ReadConfig(CCLIENT | CAGENT_CONFIG, shared_cfg, &shared, NULL) < 0) {
+        return;
+    }
+
+    if (shared.force_reconnect_interval == agt->force_reconnect_interval) {
+        return;
+    }
+
+    agt->force_reconnect_interval = shared.force_reconnect_interval;
+
+    if (agt->force_reconnect_interval) {
+        minfo("Using force reconnect interval, Wazuh Agent will reconnect every %ld %s", w_seconds_to_time_value(agt->force_reconnect_interval), w_seconds_to_time_unit(agt->force_reconnect_interval, TRUE));
+    } else {
+        minfo("Force reconnect interval disabled.");
+    }
 }
 
 

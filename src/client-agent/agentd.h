@@ -34,6 +34,7 @@
 
 /* Client configuration */
 int ClientConf(const char *cfgfile);
+void w_agentd_reload_force_reconnect_interval(const char *shared_cfg);
 
 /* Parse read config into JSON format */
 cJSON *getClientConfig(void);
@@ -234,6 +235,7 @@ extern int size_rotate_read;
 extern int timeout;
 extern int interval;
 extern int remote_conf;
+extern long local_force_reconnect_interval;
 extern int min_eps;
 
 
