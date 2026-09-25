@@ -537,7 +537,7 @@ store_enrollment_token() {
     # briefly readable -- a reinstall would otherwise keep whatever mode the old file had.
     : > "${set_token_path}"
     chmod 600 "${set_token_path}"
-    chown root:root "${set_token_path}"
+    chown 0:0 "${set_token_path}"
     printf '%s' "${WAZUH_ENROLLMENT_TOKEN}" > "${set_token_path}"
 
     echo "$(date '+%Y/%m/%d %H:%M:%S') Enrollment token stored; the manager was set to '${TOKEN_ADR}' and the trust anchor will be bootstrapped at the first agent start." >> "${INSTALLDIR}/logs/ossec.log"

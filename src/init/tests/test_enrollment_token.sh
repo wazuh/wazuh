@@ -63,6 +63,12 @@ file_mode() {
 
 }
 
+file_owner() {
+
+    stat -c '%u:%g' "$1" 2>/dev/null || stat -f '%u:%g' "$1"
+
+}
+
 # Build an INSTALLDIR whose bin/wazuh-agentd answers --show-token with ${1} and exits ${2}.
 # Echoes the directory; the caller removes it.
 make_installdir() {
@@ -160,6 +166,10 @@ run_target "${DESC_WITH_KEY}" 0
 check "a token alone writes its address into <endpoint>" "siem.example.local" "$(endpoint_of)"
 check "a token alone stores the token verbatim" "${TOKEN}" "$(cat "${RUN_DIR}/etc/enrollment_token")"
 check "the stored token is root-only" "600" "$(file_mode "${RUN_DIR}/etc/enrollment_token")"
+if [ "${EUID}" -eq 0 ]; then
+    check "the stored token is owned by uid 0 and gid 0" "0:0" "$(file_owner "${RUN_DIR}/etc/enrollment_token")"
+    check "storing the token reports no chown error" "" "$(grep 'chown' "${RUN_DIR}/stderr")"
+fi
 check "a token alone succeeds" "0" "${RUN_STATUS}"
 check "a token alone writes no authd.pass" "absent" \
       "$([ -e "${RUN_DIR}/etc/authd.pass" ] && echo present || echo absent)"
