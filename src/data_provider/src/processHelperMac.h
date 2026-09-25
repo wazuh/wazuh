@@ -107,9 +107,13 @@ namespace ProcessHelperMac
      * stopped and zombie processes reliably; any other process is reported as running, so
      * its state comes from the lowest thread rank.
      *
+     * Unlike ps, threads idle for more than 20 seconds are reported as "S" rather than "I".
+     * That split depends only on how long a thread has slept, so it would flip between scans
+     * for processes that wake up periodically and report a change each time.
+     *
      * @param status Process status from proc_bsdinfo.pbi_status.
      * @param threadRank Lowest threadStateRank() among the process threads.
-     * @return Single character string ("R", "U", "S", "I", "T", "H", "Z") or UNKNOWN_VALUE.
+     * @return Single character string ("R", "U", "S", "T", "H", "Z") or UNKNOWN_VALUE.
      */
     static inline std::string getProcessState(const uint32_t status, const int threadRank)
     {
@@ -125,7 +129,7 @@ namespace ProcessHelperMac
                 break;
         }
 
-        constexpr char RANK_STATES[] { "RUSITH" };
+        constexpr char RANK_STATES[] { "RUSSTH" };
 
         if (threadRank >= 1 && threadRank < THREAD_STATE_RANK_UNKNOWN)
         {

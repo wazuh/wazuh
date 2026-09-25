@@ -100,7 +100,8 @@ TEST(ProcessHelperMacTest, getProcessStateFromThreads)
     EXPECT_EQ("R", ProcessHelperMac::getProcessState(runningStatus, 1));
     EXPECT_EQ("U", ProcessHelperMac::getProcessState(runningStatus, 2));
     EXPECT_EQ("S", ProcessHelperMac::getProcessState(runningStatus, 3));
-    EXPECT_EQ("I", ProcessHelperMac::getProcessState(runningStatus, 4));
+    // Long idle threads are reported as sleeping so the state does not flip between scans
+    EXPECT_EQ("S", ProcessHelperMac::getProcessState(runningStatus, 4));
     EXPECT_EQ("T", ProcessHelperMac::getProcessState(runningStatus, 5));
     EXPECT_EQ("H", ProcessHelperMac::getProcessState(runningStatus, 6));
 }
