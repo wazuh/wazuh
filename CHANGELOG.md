@@ -46,6 +46,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#31462](https://github.com/wazuh/wazuh/issues/31462) | Fixed agent startup lock recovery after an interrupted control invocation. |
 
 ## Prior versions
 

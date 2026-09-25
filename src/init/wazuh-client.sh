@@ -49,12 +49,12 @@ checkpid()
 lock()
 {
     i=0;
+    unreachable=0;
+    marker_busy=0;
 
     # Providing a lock.
     while [ 1 ]; do
-        mkdir ${LOCK} > /dev/null 2>&1
-        MSL=$?
-        if [ "${MSL}" = "0" ]; then
+        if mkdir ${LOCK} > /dev/null 2>&1; then
             # Lock acquired (setting the pid)
             echo "$$" > ${LOCK_PID}
             return;
@@ -65,20 +65,51 @@ lock()
         i=`expr $i + 1`;
         pid=$(cat ${LOCK_PID} 2>/dev/null)
 
-        if [ $? = 0 ]
-        then
-            kill -0 ${pid} >/dev/null 2>&1
-            if [ ! $? = 0 ]; then
-                # Pid is not present.
-                # Unlocking and executing
-                unlock;
-                mkdir ${LOCK} > /dev/null 2>&1
-                echo "$$" > ${LOCK_PID}
-                return;
+        # Only consecutive pid-less rounds may open the gate below. Neither
+        # "$i" (a caller queued behind a live owner would inherit an open
+        # gate the moment that owner is gone) nor a round spent on a dead
+        # pid says anything about a lock that is still mid-acquisition.
+        if [ -z "${pid}" ]; then
+            unreachable=`expr ${unreachable} + 1`
+        else
+            unreachable=0
+        fi
+
+        # An empty pid (no pid file) fails kill -0 just like a dead one.
+        kill -0 ${pid} >/dev/null 2>&1
+        if [ "$?" != "0" ]; then
+            # A dead pid is stale right away; a missing one may still be
+            # mid-acquisition, so it needs a few consecutive rounds first.
+            if [ -n "${pid}" ] || [ "${unreachable}" -gt 2 ]; then
+                # mkdir on this marker is exclusive like ${LOCK}'s own, so
+                # only one caller at a time may unlock and recreate ${LOCK}.
+                if mkdir "${LOCK}.reclaim" > /dev/null 2>&1; then
+                    marker_busy=0
+                    # Another caller may have reclaimed ${LOCK} meanwhile.
+                    rpid=$(cat ${LOCK_PID} 2>/dev/null)
+                    kill -0 ${rpid} >/dev/null 2>&1
+                    if [ ! $? = 0 ]; then
+                        unlock;
+                        if mkdir ${LOCK} > /dev/null 2>&1; then
+                            echo "$$" > ${LOCK_PID}
+                            rmdir "${LOCK}.reclaim" > /dev/null 2>&1
+                            return;
+                        fi
+                    fi
+                    rmdir "${LOCK}.reclaim" > /dev/null 2>&1
+                else
+                    # The marker is held only briefly; one still busy after
+                    # several consecutive rounds was left by a dead caller.
+                    marker_busy=`expr ${marker_busy} + 1`
+                    if [ "${marker_busy}" -gt 4 ]; then
+                        rmdir "${LOCK}.reclaim" > /dev/null 2>&1
+                        marker_busy=0
+                    fi
+                fi
             fi
         fi
 
-        # We tried 10 times to acquire the lock.
+        # We tried MAX_ITERATION times to acquire the lock.
         if [ "$i" = "${MAX_ITERATION}" ]; then
             echo "ERROR: Another instance is locking this process."
             echo "If you are sure that no other instance is running, please remove ${LOCK}"
