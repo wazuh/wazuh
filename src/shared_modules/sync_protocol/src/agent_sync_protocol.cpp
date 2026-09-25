@@ -359,6 +359,28 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
             }
             else
             {
+                bool isProtocolError = false;
+                {
+                    std::lock_guard<std::mutex> lock(m_syncState.mtx);
+                    isProtocolError = (m_syncState.lastSyncResult == SyncResult::PROTOCOL_ERROR);
+                }
+
+                if (isProtocolError)
+                {
+                    std::vector<std::string> failedIds;
+                    failedIds.reserve(content.dataValues.size() + content.dataContexts.size());
+                    for (const auto& item : content.dataValues)
+                    {
+                        failedIds.push_back(item.id);
+                    }
+                    for (const auto& item : content.dataContexts)
+                    {
+                        failedIds.push_back(item.id);
+                    }
+
+                    m_persistentQueue->deferItems(failedIds);
+                }
+
                 m_persistentQueue->resetSyncingItems();
                 break;
             }

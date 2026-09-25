@@ -28,6 +28,7 @@ class MockPersistentQueueStorage : public IPersistentQueueStorage
         MOCK_METHOD(void, resetAllSyncing, (), (override));
         MOCK_METHOD(void, removeByIndex, (const std::string& index), (override));
         MOCK_METHOD(void, removeAllDataContext, (), (override));
+        MOCK_METHOD(void, deferItems, (const std::vector<std::string>& ids), (override));
         MOCK_METHOD(void, deleteDatabase, (), (override));
 };
 
@@ -315,6 +316,34 @@ TEST(PersistentQueueTest, ResetSyncingItemsThrowsOnStorageError)
     PersistentQueue queue(":memory:", testLogger, mockStorage);
 
     EXPECT_THROW(queue.resetSyncingItems(), std::exception);
+}
+
+TEST(PersistentQueueTest, DeferItemsDelegatesToStorage)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    std::vector<std::string> ids = {"item1", "item2"};
+
+    EXPECT_CALL(*mockStorage, resetAllSyncing()).WillOnce(testing::Return());
+    EXPECT_CALL(*mockStorage, deferItems(ids)).Times(1);
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+
+    EXPECT_NO_THROW(queue.deferItems(ids));
+}
+
+TEST(PersistentQueueTest, DeferItemsThrowsWhenStorageThrows)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    std::vector<std::string> ids = {"item1"};
+
+    EXPECT_CALL(*mockStorage, resetAllSyncing()).WillOnce(testing::Return());
+    EXPECT_CALL(*mockStorage, deferItems(ids)).WillOnce(testing::Throw(std::runtime_error("Simulated deferral error")));
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+
+    EXPECT_THROW(queue.deferItems(ids), std::exception);
 }
 
 // Test to cover IPersistentQueue D0 destructor (delete through base pointer)
