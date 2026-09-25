@@ -16,6 +16,7 @@ int main (int argc, char **argv) {
     char log_msg[OS_MAXSTR];
     int action = OS_INVALID;
     int end_of_options = 0;
+    int is_macos = 0;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
 
@@ -85,6 +86,27 @@ int main (int argc, char **argv) {
             snprintf(args, COMMANDSIZE_4096 -1, "-u");
         }
 
+    } else if (!strcmp("Darwin", uname_buffer.sysname)) {
+        is_macos = 1;
+
+        // Checking if pwpolicy is present
+        if (get_binary_path("pwpolicy", &cmd_path) < 0) {
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "The pwpolicy file '%s' is not accessible: %s (%d)", cmd_path, strerror(errno), errno);
+            write_debug_file(argv[0], log_msg);
+            cJSON_Delete(input_json);
+            os_free(cmd_path);
+            return OS_INVALID;
+        }
+
+        // Disabling an account
+        memset(args, '\0', COMMANDSIZE_4096);
+        if (action == ENABLE_COMMAND) {
+            snprintf(args, COMMANDSIZE_4096 -1, "-disableuser");
+        } else {
+            snprintf(args, COMMANDSIZE_4096 -1, "-enableuser");
+        }
+
     } else {
         memset(log_msg, '\0', OS_MAXSTR);
         snprintf(log_msg, OS_MAXSTR - 1, "Invalid system: '%s'", uname_buffer.sysname);
@@ -98,11 +120,18 @@ int main (int argc, char **argv) {
     int argc_cmd = 0;
 
     exec_cmd1[argc_cmd++] = cmd_path;
-    exec_cmd1[argc_cmd++] = args;
-    if (end_of_options) {
-        exec_cmd1[argc_cmd++] = "--";
+    if (is_macos) {
+        // pwpolicy takes the user before the action flag: pwpolicy -u <user> -disableuser
+        exec_cmd1[argc_cmd++] = "-u";
+        exec_cmd1[argc_cmd++] = (char *)user;
+        exec_cmd1[argc_cmd++] = args;
+    } else {
+        exec_cmd1[argc_cmd++] = args;
+        if (end_of_options) {
+            exec_cmd1[argc_cmd++] = "--";
+        }
+        exec_cmd1[argc_cmd++] = (char *)user;
     }
-    exec_cmd1[argc_cmd++] = (char *)user;
     exec_cmd1[argc_cmd] = NULL;
 
     wfd_t *wfd = wpopenv(cmd_path, exec_cmd1, W_BIND_STDERR);

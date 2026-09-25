@@ -155,6 +155,12 @@ Agents keep verifying throughout: they pin the CA, not the leaf.
 Agents that pinned the old CA stop verifying this manager until they receive the new anchor; how an
 agent is re-enrolled or updated with it is documented on the agent side.
 
+This one-shot replacement has a downtime window: agents lose trust the instant the old CA leaves
+`root-ca.pem`, before they have any way to learn the new one. For a bundle that carries **more than
+one** CA at once — old and new side by side while agents catch up, no downtime window — use
+`wazuh-manager-certs` instead; the ordered procedure is the
+[CA Rotation Runbook](ca-rotation.md).
+
 ## Authentication (JWT bearer)
 
 **Enrollment uses a separate credential; `GET /` and `GET /cacerts` need no bearer.** The other endpoints require the agent<->manager
@@ -357,7 +363,8 @@ Everything below the `401` rows keeps a numeric `code` equal to the HTTP status.
 | Body exceeds the auth body limit (5 MiB) -- or, for `Content-Encoding: zstd`, the decoder's buffers or the decompressed output don't fit in the in-flight capacity free at that moment | `413` | `Request payload is too large`              |
 | `Content-Encoding` present but not (case-insensitively) `zstd`                                                                                                                          | `415` | `Unsupported Content-Encoding`              |
 | `Content-Encoding: zstd`, but the body isn't a valid/complete zstd frame                                                                                                                | `400` | `Malformed compressed body`                 |
-| Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, or doesn't match the authenticated `agent-id`                                                                        | `400` | `Invalid event batch`                       |
+| H line repeats `wazuh`, `wazuh.agent` or `wazuh.agent.id` (names compared after JSON unescaping)                                                                                        | `400` | `Invalid event batch`                       |
+| Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, `wazuh` or `wazuh.agent` not an object, or not byte-for-byte equal to the authenticated `agent-id` (zero padding included)  | `400` | `Invalid event batch`                       |
 | Downstream rejected the batch (bad H/E)                                                                                                                                                 | `400` | `Invalid event batch`                       |
 | Out of capacity, or downstream unreachable/errored                                                                                                                                      | `503` | `Service unavailable`                       |
 | Endpoint handler raised an unexpected error                                                                                                                                             | `500` | `Internal server error`                     |
@@ -365,6 +372,20 @@ Everything below the `401` rows keeps a numeric `code` equal to the HTTP status.
 The payload-identity check runs **before** the batch is forwarded: a mismatch never reaches the
 engine at all, and (by design) shares the same `400 Invalid event batch` message as a batch the
 engine itself rejects, so a client cannot distinguish the two causes.
+
+A header that repeats a step of the identity path is refused outright rather than resolved. JSON
+permits repetition, but the manager forwards the batch downstream byte for byte and the engine
+re-reads those same bytes under different rules — it keeps the *last* of a repeated name where this
+check takes the *first*. Whichever member was validated would therefore not be the one ingested, so
+the ambiguous header is rejected instead. The comparison is done on the unescaped names, so
+`"wazuh"` and `"\u0077azuh"` count as the same member.
+
+The rule covers `wazuh`, `wazuh.agent` and `wazuh.agent.id` only. A repetition elsewhere in the
+header cannot move the identity, because the engine escapes member names when it builds the JSON
+Pointer it merges through: a member literally named `wazuh/agent` stays a literal sibling instead of
+resolving onto the real one. Such a field may reach the ingested event; it is inert there and the
+index template rejects it. A conforming agent is unaffected either way — the protocol has always
+specified one occurrence of each field (see [Event protocol](event-protocol.md#rules)).
 
 Requests larger than the 10 MiB transport cap are dropped at the TLS/HTTP layer (the connection is
 closed) before authentication runs, so they never receive a clean `413`.
@@ -428,8 +449,8 @@ manager-local Unix socket (`GET /`, `GET /metrics`, `GET /status` on
   holds any credential. Returns **`200`** with the PEM,
   **`404`** `{"error":"not_found"}` when the file was never readable or is readable but carries no
   certificate (a file that stops being readable after it was served keeps the last good bundle in
-  service), or **`503`** `{"error":"ca_mismatch"}` when the configured CA does not sign the certificate this
-  listener serves — refusing to hand out a CA that would make every verifying agent fail. See
+  service), or **`503`** `{"error":"ca_mismatch"}` when the certificate this listener serves does not chain to
+  the configured CA — refusing to hand out a CA that would make every verifying agent fail. See
   [CA certificate endpoint](#ca-certificate-endpoint-get-cacerts) below.
 - **`POST /stateless`** — authenticated event ingestion. Once the signature is verified, the module
   cross-checks the H line's `wazuh.agent.id` against the authenticated `agent-id` (**`400`** on a
@@ -889,6 +910,7 @@ update), which had no equivalent once agent-manager connections became stateless
     "config_token": "web-servers",
     "config_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
+  "ca_generation": 1758000000,
   "settings_hash": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
   "tasks": [],
   "vd_feed_offset": 12345678
@@ -902,6 +924,16 @@ rather than omitting the field or sending an empty string. `config_token` is alw
 string, including in that unresolved case — the agent still needs something to name on `/download`,
 and the next notify re-triggers the attempt.
 
+**`ca_generation` (issue #39319, RF-3) is the one exception to "always present" above, and it is not
+interchangeable across its four states.** It carries the generation the CA bundle
+[`GET /cacerts`](#ca-certificate-endpoint-get-cacerts) would serve right now, at no extra cost to
+this hot path: a timestamp once a guard vouched for that bundle; `0` when there is a bundle to serve
+and no guard vouched for it (an unstamped file, or one a guard refused); `null` when there is no
+servable bundle at all (nothing configured, or the configured file yields no certificate); and the
+key itself **absent** on a manager whose build predates this feature — absent means *unknown*, not
+the same as the confirmed-empty `null`. `nlohmann::json` serialises object keys alphabetically, so on
+the wire `ca_generation` lands between `agent` and `settings_hash`, exactly as in the examples above.
+
 **Response with tasks (`200 OK`):**
 ```json
 {
@@ -910,6 +942,7 @@ and the next notify re-triggers the attempt.
     "config_token": "web-servers",
     "config_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
+  "ca_generation": 1758000000,
   "settings_hash": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
   "vd_feed_offset": 12345678,
   "tasks": [
@@ -987,7 +1020,7 @@ Control-specific conditions:
 | Malformed agent version (startup only)     | `400` | `invalid_version`      |
 | Agent version higher than allowed (startup only) | `409` | `invalid_version` |
 | Invalid host info format (notify only)     | `400` | `invalid_host_info`    |
-| wazuh-db error during startup (get groups) | `500` | `database_error`       |
+| wazuh-db unavailable (get groups)          | `503` | `dependency_unavailable` |
 
 The two version rejections deliberately carry different statuses even though they share an `error`
 message. A **malformed** version is a bad request: resending the same bytes can never succeed, so the
@@ -1308,14 +1341,15 @@ master node's `authd` predates it.
 | Re-enrollment already in progress (9030) | `409` | Retry after the pending rotation is committed; no second rotation is performed. |
 | Identity transition could not be recorded (9031) | `503` | No credential is handed out. See [journal admission and recovery limitations](../authd/architecture.md#the-identity-journal). |
 | Worker rejected the request (9015), or its forward to the master failed (9016, new in 5.0) | `503` | Only reachable via the local-socket bridge — see [Authd's local socket protocol](../authd/README.md#local-socket-enrollment-protocol). |
-| `authd` unreachable, or its reply was unparseable/timed out | `503` | `{"error":{"code":-1,"message":"Enrollment service temporarily unavailable"}}` |
+| The request never reached `authd` — it was stopping, its queue was full, or the connect itself failed | `503` | `{"error":{"code":-1,"message":"Enrollment service temporarily unavailable"}}`. Safe to retry: nothing was sent. |
+| The request reached `authd` but no well-formed answer came back — an I/O error after the send, a response timeout, or an unparseable reply | `503` | `{"error":{"code":-2,"message":"Enrollment outcome unknown: the request reached authd but no answer came back in time -- it may have already been processed"}}`. `authd` may have processed the add anyway — on a worker, possibly forwarding it to and creating it on the master — before the answer was lost. Not safe to assume it did not happen; do not treat a retry under the same name as risk-free (a real add may already exist, answered later with `409`). On a re-enrollment, `authd` may already have rotated the agent's key and re-enrollment secret, so a retry signed with the previous secret gets `409` (9030) while the rotation is pending, or `401` once it is committed. |
 
 Every error the `/enroll` **endpoint itself** produces — every row in the table above, disabled/
 credential/body-size/validation/`authd` business and transport failures alike — has the shape
 `{"error":{"code":<code>,"message":"<text>"}}`, distinct from every other endpoint's flat
 `{"error":"<message>","code":<status>}` shape, since this one passes through `authd`'s own numeric
 codes for diagnostics (`code` is `0` for the non-`authd` rows that carry no numeric code, `-1` when
-`authd` gave no clean answer, and — for a `401` only — the authentication failure class as a string,
+the request never reached `authd`, `-2` when it reached `authd` but no clean answer came back, and — for a `401` only — the authentication failure class as a string,
 exactly as on every other route).
 
 A few conditions never reach the endpoint's own code at all — the shared HTTP transport rejects them
@@ -1689,26 +1723,49 @@ memory pressure, and it is served under the [global prefix](#endpoints) like eve
 | --- | --- | --- | --- |
 | Served | `200` | re-serialised certificates, `Content-Type: application/x-pem-file` | The CA the listener chains to. A bundle is served as a bundle; private keys and other non-certificate material are omitted |
 | No CA | `404` | `{"error":"not_found"}` | The configured file was never readable -- missing, unreadable, too large, or otherwise unparsable -- or it is readable but contains no usable certificates (an emptied file). A file that stops being readable after it was served keeps serving the last good bundle instead. Same body as an unknown route; the manager logs the failure |
-| Incoherent CA | `503` | `{"error":"ca_mismatch"}` | The configured CA does **not** sign the certificate this listener is serving. Refused rather than served: handing it out would make every verifying agent fail its handshake against this very manager |
+| Incoherent CA | `503` | `{"error":"ca_mismatch"}` | The certificate this listener is serving does **not** chain to the configured CA. Refused rather than served: handing it out would make every verifying agent fail its handshake against this very manager |
 
 **What the coherence check compares.** The leaf is the certificate loaded into the TLS context when
 the listener started (constant until a restart); the CA is re-read from disk at each evaluation,
-and every `CERTIFICATE` block in the file counts — the CA is coherent when *any* of them signed the
-leaf, so a bundle carrying the signing CA plus others passes. It is a signature check, not a full
-chain validation, and that decision does not change: the manager separately validates the served
-certificate's full chain — dates, every CA's `basicConstraints`/`keyUsage`, and server purpose —
-using the bundle as its sole trust store (the anchor need not be self-signed), and logs the result
-at startup and on every daily evaluation: a `WARN` when the bundle signs the leaf but the chain does
-not validate (an expired CA, or one missing `CA:TRUE`, would serve no verifying agent), an
-informational line when the chain validates without a direct signature. Neither outcome changes this
+and every `CERTIFICATE` block in the file is offered as a trust anchor — the CA is coherent when the
+leaf builds a valid **chain** to *any* of them, so a bundle carrying the issuing CA plus others
+passes. It is a full validation (`X509_verify_cert()` with OpenSSL's default flags, the bundle as
+its sole trust store), which means:
+
+- a CA that merely **signs** the leaf is not enough: the leaf's own issuer has to be there, so a
+  certificate holding the CA's key under a different subject does not count;
+- the **validity windows** and the `basicConstraints`/`keyUsage` of everything on the path are
+  checked, so an expired CA, a not-yet-valid one, one without `CA:TRUE` — or an expired leaf — make
+  the file incoherent;
+- the anchor must be **self-signed**, because that is what an agent's own OpenSSL trusts by default,
+  so a bundle carrying only a (non-self-signed) intermediate is refused even though that
+  intermediate signed the leaf.
+
+None of these could serve a verifying agent, which is why they are refused rather than served
+(issue #39319; before this the check was a bare signature and such a bundle was served and even
+announced as published).
+
+The manager separately validates the same chain with the server **purpose** added and the anchor
+rule relaxed (an anchor need not be self-signed), and logs the result at startup and on every daily
+evaluation: a `WARN` when the leaf chains to the bundle and yet fails as a *server* certificate (the
+wrong extended key usage, say), an informational line when it only validates because a certificate
+of the bundle was treated as an anchor without being self-signed. Neither outcome changes this
 endpoint's response.
 
 **Cadence.** Each request reads the CA file and obtains the certificate bundle and coherence verdict
-from the same snapshot. Parsing and signature checks are cached by a hash of those bytes; a changed
-file is re-evaluated even if its size and modification time stay the same. A CA file that cannot be
+from the same snapshot. Parsing is cached by a hash of those bytes; a changed file is re-parsed even if
+its size and modification time stay the same. The verdicts are not cached: the chain validation, and
+with it the `503` decision and the published generation, are judged against the clock on every
+evaluation from the certificates already parsed. A CA that **expires while the file is untouched**
+therefore answers `503` from the next request on (and `ca_generation` drops to `0`), and a CA whose
+`notBefore` was still ahead of this node's clock is served, and published, from the request after its
+window opens. Either flip is logged once, within a minute: besides the requests, the listener
+judges the bundle again every 60 seconds on its own. This matters for the expiry, because an agent
+that verifies the manager fails its TLS handshake against an expired CA and never sends the request
+that would notice it. A CA file that cannot be
 read keeps the last good bundle in service and logs the failure; only a file that was never readable
 answers `404`, and a file that reads but carries no certificate answers `404` at once. A replacement
-CA that does not sign the loaded leaf answers `503` on the next request. Separately, the certificate
+CA the loaded leaf does not chain to answers `503` on the next request. Separately, the certificate
 monitor runs at startup and every 24 hours, logging expiry and coherence findings. Rotate the CA and
 listener certificate together and restart remoted to load the new leaf. Replace the CA file
 atomically (write a sibling, then rename it over the path): a file caught half-written is readable,

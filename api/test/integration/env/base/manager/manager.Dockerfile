@@ -30,7 +30,7 @@ RUN /wazuh/install.sh
 # in /wazuh). The api_ssl volume shared by the cluster containers is populated from this image, so
 # the listener SAN covers every manager service name (see certs-config.yml).
 COPY base/manager/certs-config.yml /wazuh/certs-config.yml
-RUN bash /wazuh/src/engine/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c /wazuh/certs-config.yml -o /tmp/wazuh-certificates && \
+RUN bash /wazuh/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c /wazuh/certs-config.yml -o /tmp/wazuh-certificates && \
     mkdir -p /var/wazuh-manager/etc/certs && \
     install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/root-ca.pem /var/wazuh-manager/etc/certs/root-ca.pem && \
     install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-indexer.pem /var/wazuh-manager/etc/certs/indexer-connector.pem && \

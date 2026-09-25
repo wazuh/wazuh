@@ -36,8 +36,11 @@ target_include_directories(
 # (queue/sockets/remote-admin-http.sock, see startAdminServer() in remotedModuleFacade.hpp). Also
 # registered by the top-level configure; its asio/llhttp deps stay PRIVATE inside the archive,
 # and it compiles the same vendored standalone asio (ASIO_STANDALONE) ext_restinio already uses.
+# ca_bundle: shared_modules/ca_bundle, the CA bundle's parsing/hashing/guards (issue #39319), which
+# the certs tool answers the same questions with. Its PUBLIC include directory propagates through
+# this PRIVATE link, so http_server/ resolves <ca_bundle/ca_bundle.hpp> with nothing added below.
 target_link_libraries(remoted_module PRIVATE pthread ext_restinio ext_rapidjson ext_zstd ext_jwt_cpp
-                                             wazuh_metrics wazuh_uds_http_server)
+                                             wazuh_metrics wazuh_uds_http_server ca_bundle)
 
 set_target_properties(remoted_module PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                                 BUILD_RPATH "$ORIGIN/../lib")

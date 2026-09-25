@@ -383,6 +383,11 @@ $default_ca_file = Join-Path $wazuhDir "certs\root-ca.pem"
 # explicitly recorded decision rather than done implicitly here.
 $incoming_ca_file = Join-Path $wazuhDir "incoming\root-ca.pem"
 
+# The most certificates a delivery may carry. Mirrors ca_bundle::kMaxCertificates --
+# the most the manager will ever vouch for in a published bundle -- so a file holding
+# more is not one of ours whatever else it is.
+$ca_max_certificates = 6
+
 # Set once the delivered CA passes validation; it is installed further down, past
 # the last gate that can abort this upgrade.
 $ca_validated = $false
@@ -450,61 +455,127 @@ if (-Not $incoming_item) {
         $ca_reject_reason = "is empty or larger than the 64 KiB a CA certificate should ever need"
     }
 
-    # A manager delivery is expected to be exactly one self-signed root, never a
-    # bundle/chain -- reject that shape explicitly. Left unchecked, the global
-    # -replace below would strip every BEGIN/END marker in a multi-cert file
-    # and concatenate all their bodies into one blob, unlike openssl x509 on
-    # the Linux/macOS side, which silently parses only the first certificate
-    # and ignores the rest; explicit rejection here keeps both platforms
-    # consistent instead of diverging on this input shape.
+    # A trust store is legitimately a BUNDLE since #39321: the agent adopts up to
+    # ca_bundle::kMaxCertificates from a manager publication, and during a rotation
+    # overlap two or more roots are trusted at once. So every certificate in the
+    # delivery is validated below, rather than the file being refused for holding
+    # more than one. Mirrors pkg_installer.sh, which splits the PEM for the same
+    # reason: openssl x509 there reads only the FIRST certificate of a multi-cert
+    # file and ignores the rest, so neither platform can act on such a file whole.
+    #
+    # Every reject below is worded so that a ONE-certificate delivery -- what the
+    # manager actually sends, and what every install has received until now -- gets
+    # exactly the message it got before this file could hold a bundle. The
+    # "certificate N of M" phrasing appears only for a real bundle.
+    #
+    # Matches, not Match: each BEGIN/END pair is taken on its own. Everything
+    # OUTSIDE a pair is dropped and never reaches the installed anchor, which is
+    # more than tidiness -- w_ca_publication_read() (src/client-agent/src/ca_publication.c)
+    # reads exactly that region of this file for a "## generation:" line and takes
+    # it as the publication this agent has already adopted. A delivery carrying a
+    # forged one would pin the agent at that generation and silently stop it ever
+    # adopting another CA bundle. Per RFC 7468 2 such a preamble is legal PEM and is
+    # accepted on both platforms -- it simply does not survive into the anchor.
+    $ca_blocks = @()
     if (-Not $ca_reject_reason) {
-        $begin_marker_count = ([regex]::Matches($ca_pem, '-----BEGIN CERTIFICATE-----')).Count
-        if ($begin_marker_count -gt 1) {
-            $ca_reject_reason = "contains more than one certificate (expected exactly one self-signed root)"
+        $ca_matches = [regex]::Matches($ca_pem, '-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+        if ($ca_matches.Count -eq 0) {
+            # No encapsulation boundary at all. Same verdict, and the same words, as
+            # the single parse attempt that used to stand here.
+            $ca_reject_reason = "does not parse as a PEM certificate (no BEGIN/END CERTIFICATE block found)"
+        } elseif ($ca_matches.Count -gt $ca_max_certificates) {
+            $ca_reject_reason = "contains $($ca_matches.Count) certificates (at most $($ca_max_certificates), the most the manager will ever publish in one bundle)"
         }
     }
 
+    $ca_current_count = 0
+    $ca_window_first = $null
     if (-Not $ca_reject_reason) {
-        try {
-            # Extract strictly between the first BEGIN/END pair, not just delete the
-            # marker strings from the whole content: openssl's own PEM reader does the
-            # same (scans for the markers, ignores anything outside them), so a file
-            # with a readable preamble before BEGIN -- valid PEM, and accepted on the
-            # Linux/macOS side -- would otherwise leave that preamble text mixed into
-            # $ca_base64 here and fail to decode.
-            $pem_match = [regex]::Match($ca_pem, '-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----', [System.Text.RegularExpressions.RegexOptions]::Singleline)
-            if (-Not $pem_match.Success) {
-                throw "no BEGIN/END CERTIFICATE block found"
+        $ca_index = 0
+        foreach ($ca_match in $ca_matches) {
+            $ca_index++
+            $ca_cert = $null
+            $ca_cert_reject = $null
+            $ca_cert_window = $null
+
+            try {
+                $ca_base64 = ($ca_match.Groups[1].Value -replace '[\r\n\s]', '')
+                $ca_bytes = [System.Convert]::FromBase64String($ca_base64)
+                # New-Object, not the ::new() static-method syntax: ::new() requires
+                # PowerShell 5.0+ and this script otherwise targets much older hosts (see
+                # Start-NativePowerShell's "Windows PowerShell v1.0" path above) -- on an
+                # older PowerShell, ::new() would fail to parse and every valid CA would be
+                # rejected here as "does not parse as a PEM certificate". The leading comma
+                # stops New-Object from unrolling the byte array into multiple constructor
+                # arguments.
+                $ca_cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 (, $ca_bytes)
+            } catch {
+                $ca_cert_reject = "does not parse as a PEM certificate ($($_.Exception.Message))"
             }
-            $ca_base64 = ($pem_match.Groups[1].Value -replace '[\r\n\s]', '')
-            $ca_bytes = [System.Convert]::FromBase64String($ca_base64)
-            # New-Object, not the ::new() static-method syntax: ::new() requires
-            # PowerShell 5.0+ and this script otherwise targets much older hosts (see
-            # Start-NativePowerShell's "Windows PowerShell v1.0" path above) -- on an
-            # older PowerShell, ::new() would fail to parse and every valid CA would be
-            # rejected here as "does not parse as a PEM certificate". The leading comma
-            # stops New-Object from unrolling the byte array into multiple constructor
-            # arguments.
-            $ca_cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 (, $ca_bytes)
-        } catch {
-            $ca_reject_reason = "does not parse as a PEM certificate ($($_.Exception.Message))"
+
+            if (-Not $ca_cert_reject) {
+                $basic_constraints = $ca_cert.Extensions | Where-Object { $_ -is [System.Security.Cryptography.X509Certificates.X509BasicConstraintsExtension] } | Select-Object -First 1
+                if (-Not $basic_constraints -or -Not $basic_constraints.CertificateAuthority) {
+                    $ca_cert_reject = "is not a CA certificate (no Basic Constraints CA:TRUE)"
+                }
+            }
+
+            if (-Not $ca_cert_reject) {
+                $now = Get-Date
+                if ($now -lt $ca_cert.NotBefore) {
+                    $ca_cert_window = "is not yet valid (notBefore $($ca_cert.NotBefore))"
+                } elseif ($now -gt $ca_cert.NotAfter) {
+                    $ca_cert_window = "has expired (notAfter $($ca_cert.NotAfter))"
+                }
+            }
+
+            if ($ca_cert_reject) {
+                if ($ca_matches.Count -eq 1) {
+                    $ca_reject_reason = $ca_cert_reject
+                } else {
+                    $ca_reject_reason = "contains a certificate ($($ca_index) of $($ca_matches.Count)) that $($ca_cert_reject)"
+                }
+                break
+            }
+
+            if ($ca_cert_window) {
+                # Kept, not rejected, and kept only in a bundle: a rotation's overlap is
+                # exactly where an aged-out root sits beside the live replacement that
+                # supersedes it, and the platform simply fails to build a chain through an
+                # anchor outside its window. Dropping the whole delivery over one stale
+                # certificate would leave this agent with NO anchor, which is the single
+                # outcome CA delivery exists to prevent.
+                if (-Not $ca_window_first) {
+                    $ca_window_first = $ca_cert_window
+                }
+                # Worded to stay true whatever the verdict turns out to be: the delivery is
+                # still refused below if NO certificate is current, and a line promising an
+                # install would contradict the refusal that follows it.
+                if ($ca_matches.Count -gt 1) {
+                    Write-Output "$(Get-Date -format u) - Delivered CA at $($incoming_ca_file): certificate $($ca_index) of $($ca_matches.Count) $($ca_cert_window), so it cannot verify anything; that alone is not a reason to refuse the delivery." >> .\upgrade\upgrade.log
+                }
+            } else {
+                $ca_current_count++
+            }
+
+            $ca_blocks += $ca_match.Value
         }
     }
 
-    if (-Not $ca_reject_reason) {
-        $basic_constraints = $ca_cert.Extensions | Where-Object { $_ -is [System.Security.Cryptography.X509Certificates.X509BasicConstraintsExtension] } | Select-Object -First 1
-        if (-Not $basic_constraints -or -Not $basic_constraints.CertificateAuthority) {
-            $ca_reject_reason = "is not a CA certificate (no Basic Constraints CA:TRUE)"
+    if (-Not $ca_reject_reason -and $ca_current_count -eq 0) {
+        if ($ca_matches.Count -eq 1) {
+            $ca_reject_reason = $ca_window_first
+        } else {
+            $ca_reject_reason = "holds $($ca_matches.Count) certificates and not one of them is inside its validity period"
         }
     }
 
+    # Install the certificates that were validated, not the file they arrived in.
+    # Joined with a newline apiece, which reproduces a manager delivery byte for byte:
+    # that is one certificate with nothing around it (remotedModuleFacade.hpp,
+    # tlsCaLeafSignerPem()).
     if (-Not $ca_reject_reason) {
-        $now = Get-Date
-        if ($now -lt $ca_cert.NotBefore) {
-            $ca_reject_reason = "is not yet valid (notBefore $($ca_cert.NotBefore))"
-        } elseif ($now -gt $ca_cert.NotAfter) {
-            $ca_reject_reason = "has expired (notAfter $($ca_cert.NotAfter))"
-        }
+        $ca_pem = ($ca_blocks -join "`n") + "`n"
     }
 
     if ($ca_reject_reason) {
@@ -974,7 +1045,11 @@ if ($ca_validated) {
     # failed write is caught here instead of silently logging success with nothing
     # actually installed.
     $ca_install_ok = $true
-    $ca_tmp_file = "$($default_ca_file).tmp"
+    # NOT "$default_ca_file.tmp": that is byte-identical to the agent's OWN fixed staging
+    # name (CA_PUBLICATION_TEMP_SUFFIX in src/client-agent/src/ca_publication.c, opened by
+    # w_ca_publication_open_staging()), so an upgrade and an in-flight CA refresh would
+    # truncate each other's staging file. Named like the incoming snapshot above instead.
+    $ca_tmp_file = Join-Path (Split-Path $default_ca_file) ".root-ca.pem.upgrade-tmp"
     try {
         Set-Content -Path $ca_tmp_file -Value $ca_pem -NoNewline -ErrorAction Stop
         Move-Item -Force -Path $ca_tmp_file -Destination $default_ca_file -ErrorAction Stop
@@ -1008,10 +1083,18 @@ if ($ca_validated) {
             Write-Output "$(Get-Date -format u) - Could not restrict permissions on $($default_ca_file): $($_.Exception.Message)" >> .\upgrade\upgrade.log
         }
 
+        # Only a real bundle says how many certificates it carried: a one-certificate
+        # delivery is what the manager sends and what every install has logged until
+        # now, so that line stays exactly as it was and stays greppable.
+        $ca_count_suffix = ""
+        if ($ca_blocks -and $ca_blocks.Count -gt 1) {
+            $ca_count_suffix = " ($($ca_blocks.Count) certificates)"
+        }
+
         # A present, readable anchor here is picked up automatically at agent startup
         # and resolves an unset <verification_mode> to 'full' against it -- so this
         # alone is sufficient to activate verification; no <ssl> edit is needed.
-        Write-Output "$(Get-Date -format u) - $($ca_install_verb) CA at $($default_ca_file). ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> .\upgrade\upgrade.log
+        Write-Output "$(Get-Date -format u) - $($ca_install_verb) CA at $($default_ca_file)$($ca_count_suffix). ossec.conf is not modified, but this alone is sufficient to activate certificate verification: the agent resolves an unset <verification_mode> to 'full' against a present, readable anchor at this path." >> .\upgrade\upgrade.log
     }
 
     Remove-Item -Force -ErrorAction SilentlyContinue $incoming_ca_file

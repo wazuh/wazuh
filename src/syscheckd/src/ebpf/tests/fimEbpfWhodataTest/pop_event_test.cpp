@@ -140,6 +140,45 @@ TEST_F(PopEventsTest, EbpfPopValidLoginUidSetsAuditAttribution) {
     });
 }
 
+static int g_user_lookups = 0;
+static char* counting_get_user([[maybe_unused]] int uid) {
+    g_user_lookups++;
+    return strdup("mock_user");
+}
+
+TEST_F(PopEventsTest, EbpfPopCachesIdentityLookups) {
+    g_user_lookups = 0;
+    MockFimebpf::mock_get_user = counting_get_user;
+    MockFimebpf::SetMockFunctions();
+    MockBoundedQueue<std::unique_ptr<dynamic_file_event>> mock_kernel_queue;
+
+    EXPECT_CALL(MockFimebpf::GetInstance(), mock_fim_shutdown_process_on())
+        .WillOnce(::testing::Return(false))
+        .WillOnce(::testing::Return(false))
+        .WillOnce(::testing::Return(true));
+
+    EXPECT_CALL(mock_kernel_queue, pop(::testing::_, ::testing::_))
+        .Times(2)
+        .WillRepeatedly(::testing::DoAll(
+            ::testing::Invoke(
+                [](std::unique_ptr<dynamic_file_event>& event_arg, [[maybe_unused]]int timeout_arg) {
+                    event_arg = std::make_unique<dynamic_file_event>();
+                    event_arg->uid = 4242;
+                    event_arg->euid = 4242;
+                    event_arg->login_uid = 4242;
+                }
+            ),
+            ::testing::Return(true)
+        ));
+
+    EXPECT_CALL(MockFimebpf::GetInstance(), m_fim_whodata_event(::testing::_))
+        .Times(2);
+
+    ebpf_pop_events(mock_kernel_queue);
+
+    EXPECT_EQ(g_user_lookups, 1);
+}
+
 void SetUpModule() {}
 void TearDownModule() {}
 

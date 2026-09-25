@@ -15,24 +15,94 @@
 #include <cctype>
 #include <cerrno>
 #include <cstdio>
+#include <fcntl.h>
+#include <filesystem>
 #include <functional>
-#include <fstream>
 #include <istream>
+#include <optional>
 #include <regex>
 #include <set>
 #include <sstream>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <utility>
 #include "stringHelper.h"
 #include "ipackageWrapper.h"
 #include "sharedDefs.h"
 #include "plist/plist.h"
-#include <file_io_utils.hpp>
 
 static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
 static const std::string PLIST_BINARY_START { "bplist00"            };
-static const std::string UTILITIES_FOLDER   { "/Utilities"          };
+static const std::string UTILITIES_FOLDER_NAME { "Utilities" };
 const std::set<std::string> excludedCategories = {"pkg", "x86_64", "arm64"};
+
+// A plain substring search for "/Utilities" would also match a folder that merely starts
+// with that word (e.g. "/Applications/Utilities Pro/" or "/Users/UtilitiesAdmin/"). Compare
+// each path component exactly instead, so only a directory actually named "Utilities" counts.
+static bool isUnderUtilitiesFolder(const std::string& filePath)
+{
+    for (const auto& component : std::filesystem::path(filePath))
+    {
+        if (component == UTILITIES_FOLDER_NAME)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Real Info.plist/receipt files are a few KB at most; this is a generous ceiling, not a
+// realistic size, so it never rejects legitimate content.
+static constexpr int64_t MAX_PLIST_SIZE { 10 * 1024 * 1024 };
+
+// Opens the file once and stats that same file descriptor (not the path), so there is no
+// window between the check and the read for the target to be swapped for a FIFO (TOCTOU),
+// and reads it in a single pass bounded by the size just checked, so a huge or sparse file
+// can't be read fully into memory. Returns nullopt for anything that isn't a plain regular
+// file within the size limit (a FIFO would otherwise block open() forever, and a symlink to
+// a character device like /dev/zero, or a sparse file reporting a huge logical size, would
+// otherwise grow memory unbounded on read). O_NONBLOCK keeps a FIFO race from blocking this
+// open even if the path was swapped after some earlier, unrelated check.
+static std::optional<std::string> readRegularFileCapped(const std::string& filePath)
+{
+    const int fd = open(filePath.c_str(), O_RDONLY | O_NONBLOCK);
+
+    if (fd < 0)
+    {
+        return std::nullopt;
+    }
+
+    struct stat fileStat {};
+
+    const bool isEligible = (fstat(fd, &fileStat) == 0) && S_ISREG(fileStat.st_mode) && fileStat.st_size <= MAX_PLIST_SIZE;
+
+    std::optional<std::string> content;
+
+    if (isEligible)
+    {
+        std::string buffer(static_cast<size_t>(fileStat.st_size), '\0');
+        ssize_t totalRead = 0;
+
+        while (totalRead < fileStat.st_size)
+        {
+            const ssize_t bytesRead = read(fd, &buffer[static_cast<size_t>(totalRead)], static_cast<size_t>(fileStat.st_size - totalRead));
+
+            if (bytesRead <= 0)
+            {
+                break;
+            }
+
+            totalRead += bytesRead;
+        }
+
+        buffer.resize(static_cast<size_t>(totalRead));
+        content = std::move(buffer);
+    }
+
+    close(fd);
+    return content;
+}
 
 class PKGWrapper final : public IPackageWrapper
 {
@@ -206,17 +276,14 @@ class PKGWrapper final : public IPackageWrapper
 
         void getPkgData(const std::string& filePath)
         {
-            const auto isBinaryFnc
+            const auto content { readRegularFileCapped(filePath) };
+
+            if (!content)
             {
-                [&filePath]()
-                {
-                    // If first line is "bplist00" it's a binary plist file
-                    std::fstream file {filePath, std::ios_base::in};
-                    std::string line;
-                    return std::getline(file, line) && Utils::startsWith(line, PLIST_BINARY_START);
-                }
-            };
-            const auto isBinary { isBinaryFnc() };
+                return;
+            }
+
+            const bool isBinary { Utils::startsWith(*content, PLIST_BINARY_START) };
             constexpr auto BUNDLEID_PATTERN{R"(^[^.]+\.([^.]+).*$)"};
             static std::regex bundleIdRegex{BUNDLEID_PATTERN};
 
@@ -298,40 +365,33 @@ class PKGWrapper final : public IPackageWrapper
                     m_priority = UNKNOWN_VALUE;
                     m_size = 0;
                     m_installTime = UNKNOWN_VALUE;
-                    m_source = filePath.find(UTILITIES_FOLDER) != std::string::npos ? "utilities" : "applications";
+                    m_source = isUnderUtilitiesFolder(filePath) ? "utilities" : "applications";
                     m_location = filePath;
                 }
             };
 
             if (isBinary)
             {
-                auto xmlContent { binaryToXML(filePath) };
+                auto xmlContent { binaryToXML(*content) };
                 getDataFnc(xmlContent);
             }
             else
             {
-                std::fstream file { filePath, std::ios_base::in };
-
-                if (file.is_open())
-                {
-                    getDataFnc(file);
-                }
+                std::istringstream data { *content };
+                getDataFnc(data);
             }
         }
 
         void getPkgDataRcp(const std::string& filePath)
         {
-            const auto isBinaryFnc
+            const auto content { readRegularFileCapped(filePath) };
+
+            if (!content)
             {
-                [&filePath]()
-                {
-                    // If first line is "bplist00" it's a binary plist file
-                    std::fstream file {filePath, std::ios_base::in};
-                    std::string line;
-                    return std::getline(file, line) && Utils::startsWith(line, PLIST_BINARY_START);
-                }
-            };
-            const auto isBinary { isBinaryFnc() };
+                return;
+            }
+
+            const bool isBinary { Utils::startsWith(*content, PLIST_BINARY_START) };
 
             const auto getDataFncRcp
             {
@@ -398,17 +458,13 @@ class PKGWrapper final : public IPackageWrapper
 
             if (isBinary)
             {
-                auto xmlContent { binaryToXML(filePath) };
+                auto xmlContent { binaryToXML(*content) };
                 getDataFncRcp(xmlContent);
             }
             else
             {
-                std::fstream file { filePath, std::ios_base::in };
-
-                if (file.is_open())
-                {
-                    getDataFncRcp(file);
-                }
+                std::istringstream data { *content };
+                getDataFncRcp(data);
             }
 
             const auto& checker = s_receiptLivenessChecker();
@@ -534,13 +590,10 @@ class PKGWrapper final : public IPackageWrapper
             return instance;
         }
 
-        std::stringstream binaryToXML(const std::string& filePath)
+        std::stringstream binaryToXML(const std::string& binaryContent)
         {
             std::string xmlContent;
             plist_t rootNode { nullptr };
-
-            const file_io::FileIOUtils ioUtils;
-            const auto binaryContent { ioUtils.getBinaryContent(filePath) };
 
             // plist C++ APIs calls - to be used when Makefile and external are updated.
             // const auto dataFromBin { PList::Structure::FromBin(binaryContent) };
@@ -560,8 +613,9 @@ class PKGWrapper final : public IPackageWrapper
                 {
                     xmlContent.assign(xml, xml + length);
                     plist_to_xml_free(xml);
-                    plist_free(rootNode);
                 }
+
+                plist_free(rootNode);
             }
 
             return std::stringstream{xmlContent};

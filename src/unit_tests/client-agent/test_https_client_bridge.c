@@ -466,6 +466,10 @@ static void test_full_verify_mode_and_ca_reach_the_module(void **state)
     agt->ssl.verification_mode = AGENT_VERIFY_FULL;
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    /* An operator's own CA, so the module is told a published bundle may not replace it. */
+    expect_string(__wrap__minfo, formatted_msg,
+                  "https_client: '/etc/wazuh/ca.pem' is not the agent's own trust anchor, so a "
+                  "CA bundle published by the manager will not replace it.");
     expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
     expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
     will_return(__wrap_OS_SHA256_File, NULL);
@@ -482,6 +486,10 @@ static void test_full_verify_mode_and_ca_reach_the_module(void **state)
     assert_int_equal(g_captured_config.server_port, 8443);
     assert_string_equal(g_captured_config.agent_id, "001");
     assert_int_equal(g_captured_config.verify_mode, HC_VERIFY_FULL);
+    /* #39321: a CA the agent did not install is not a CA it may overwrite. Without this the
+     * refresh would write to a path the unprivileged agent cannot replace, and retry it for as
+     * long as the manager kept advertising. */
+    assert_false(g_captured_config.ca_refresh_allowed);
     assert_string_equal(g_captured_config.ca_path, "/etc/wazuh/ca.pem");
 
     w_https_client_stop(); /* Consumes the hc_destroy expectation queued above. */

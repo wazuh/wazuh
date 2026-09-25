@@ -602,6 +602,20 @@ stages:
       <<: *permission_denied
 
 ---
+test_name: GET /cluster/{node_id}/daemons/remoted/tls
+
+stages:
+  - name: Try to get remoted's TLS certificate validity from a specified node (worker1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/daemons/remoted/tls"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
 test_name: GET /cluster/{node_id}/logs
 
 stages:

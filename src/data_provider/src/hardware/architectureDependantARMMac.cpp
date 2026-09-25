@@ -15,21 +15,73 @@
 #define kIOMainPortDefault kIOMasterPortDefault
 #endif
 
+namespace
+{
+    constexpr const char* CPU_FREQ_KEYS[] = {"voltage-states5-sram", "voltage-states1-sram"};
+
+    bool readMaxFrequency(IOsPrimitivesMac* osPrimitives, CFMutableDictionaryRef properties, const char* keyName, uint64_t& cpuHz)
+    {
+        CFStringRef cfkey = osPrimitives->CFStringCreateWithCString(kCFAllocatorDefault, keyName, kCFStringEncodingUTF8);
+        DEFER([osPrimitives, cfkey]()
+        {
+            osPrimitives->CFRelease(cfkey);
+        });
+
+        auto p_cores_freq_property = static_cast<CFDataRef>(osPrimitives->CFDictionaryGetValue(properties, cfkey));
+
+        if (p_cores_freq_property == nullptr)
+        {
+            return false;
+        }
+
+        auto p_cores_freq_type = osPrimitives->CFGetTypeID(p_cores_freq_property);
+
+        if (p_cores_freq_type != osPrimitives->CFDataGetTypeID())
+        {
+            return false;
+        }
+
+        size_t length = osPrimitives->CFDataGetLength(p_cores_freq_property);
+        uint64_t maxFreq = 0;
+
+        // The frequencies are in hz, saved in an array as little endian 4 byte integers
+        for (size_t i = 0; i + sizeof(uint32_t) <= length; i += sizeof(uint32_t))
+        {
+            uint32_t cur_freq = 0;
+            osPrimitives->CFDataGetBytes(p_cores_freq_property, osPrimitives->CFRangeMake(i, sizeof(uint32_t)), reinterpret_cast<UInt8*>(&cur_freq));
+            maxFreq = std::max(maxFreq, static_cast<uint64_t>(cur_freq));
+        }
+
+        if (maxFreq == 0)
+        {
+            return false;
+        }
+
+        cpuHz = maxFreq;
+        return true;
+    }
+}
+
 double getMhz(IOsPrimitivesMac* osPrimitives)
 {
     constexpr auto MHz{1000000};
     uint64_t cpuHz = 0;
 
+    size_t sysctlLen{sizeof(cpuHz)};
+    int sysctlRet{osPrimitives->sysctlbyname("hw.cpufrequency", &cpuHz, &sysctlLen, nullptr, 0)};
+
+    if (sysctlRet == 0 && cpuHz != 0)
+    {
+        return static_cast<double>(cpuHz) / MHz;
+    }
+
+    cpuHz = 0;
+
     auto matching = osPrimitives->IOServiceMatching("AppleARMIODevice");
 
     if (matching == nullptr)
     {
-        throw std::system_error
-        {
-            0,
-            std::system_category(),
-            "Error on library function call IOServiceMatching."
-        };
+        return static_cast<double>(cpuHz) / MHz;
     }
 
     io_iterator_t device_it = 0;
@@ -37,12 +89,7 @@ double getMhz(IOsPrimitivesMac* osPrimitives)
 
     if (kr != KERN_SUCCESS)
     {
-        throw std::system_error
-        {
-            kr,
-            std::system_category(),
-            "Error on library function call IOServiceGetMatchingServices."
-        };
+        return static_cast<double>(cpuHz) / MHz;
     }
 
     DEFER([osPrimitives, device_it]()
@@ -79,12 +126,7 @@ double getMhz(IOsPrimitivesMac* osPrimitives)
 
         if (kr != KERN_SUCCESS)
         {
-            throw std::system_error
-            {
-                kr,
-                std::system_category(),
-                "Error on library function call IORegistryEntryCreateCFProperties."
-            };
+            continue;
         }
 
         DEFER([osPrimitives, properties]()
@@ -92,45 +134,12 @@ double getMhz(IOsPrimitivesMac* osPrimitives)
             osPrimitives->CFRelease(properties);
         });
 
-        // voltage-states5-sram contains the performance cores available frequencies
-        CFStringRef cfkey = osPrimitives->CFStringCreateWithCString(kCFAllocatorDefault, "voltage-states5-sram", kCFStringEncodingUTF8);
-        DEFER([osPrimitives, cfkey]()
+        for (const auto& keyName : CPU_FREQ_KEYS)
         {
-            osPrimitives->CFRelease(cfkey);
-        });
-
-        auto p_cores_freq_property = static_cast<CFDataRef>(osPrimitives->CFDictionaryGetValue(properties, cfkey));
-
-        if (p_cores_freq_property == nullptr)
-        {
-            throw std::system_error
+            if (readMaxFrequency(osPrimitives, properties, keyName, cpuHz))
             {
-                0,
-                std::system_category(),
-                "Error on library function call CFDictionaryGetValue."
-            };
-        }
-
-        auto p_cores_freq_type = osPrimitives->CFGetTypeID(p_cores_freq_property);
-
-        if (p_cores_freq_type != osPrimitives->CFDataGetTypeID())
-        {
-            throw std::system_error
-            {
-                0,
-                std::system_category(),
-                "CF type id of p_cores_freq_property is not Data type id."
-            };
-        }
-
-        size_t length = osPrimitives->CFDataGetLength(p_cores_freq_property);
-
-        // The frequencies are in hz, saved in an array as little endian 4 byte integers
-        for (size_t i = 0; i < length - 3; i += sizeof(uint32_t))
-        {
-            uint32_t cur_freq = 0;
-            osPrimitives->CFDataGetBytes(p_cores_freq_property, osPrimitives->CFRangeMake(i, sizeof(uint32_t)), reinterpret_cast<UInt8*>(&cur_freq));
-            cpuHz = std::max(cpuHz, static_cast<uint64_t>(cur_freq));
+                break;
+            }
         }
     }
 

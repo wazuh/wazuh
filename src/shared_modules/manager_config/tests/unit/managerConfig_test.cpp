@@ -377,7 +377,7 @@ TEST(Semantics, CheckFilesResolvesRelativeToHome)
 {
     const auto dir = std::filesystem::temp_directory_path() / "manager_config_utest_home";
     std::filesystem::create_directories(dir / "etc" / "certs");
-    for (const char* name : {"remoted.pem", "remoted-key.pem"})
+    for (const char* name : {"remoted.pem", "remoted-key.pem", "root-ca.pem"})
     {
         std::ofstream(dir / "etc" / "certs" / name) << "x";
     }
@@ -400,6 +400,26 @@ TEST(Semantics, CheckFilesResolvesRelativeToHome)
                                         options);
     EXPECT_TRUE(std::holds_alternative<manager_config::Document>(indexerOk))
         << std::get<manager_config::Error>(indexerOk).what();
+    std::filesystem::remove_all(dir);
+}
+
+TEST(Semantics, CaCertificateFileValidation)
+{
+    const auto dir = std::filesystem::temp_directory_path() / "manager_config_utest_ca_cert";
+    std::filesystem::create_directories(dir / "etc" / "certs");
+    for (const char* name : {"remoted.pem", "remoted-key.pem", "root-ca.pem"})
+    {
+        std::ofstream(dir / "etc" / "certs" / name) << "x";
+    }
+    manager_config::LoadOptions options;
+    options.home = dir;
+    auto ko = manager_config::Document::parse(wrap("<remote><https>"
+                                                   "<ca_certificate>etc/certs/missing-ca.pem</ca_certificate>"
+                                                   "</https></remote>"),
+                                              options);
+    ASSERT_TRUE(std::holds_alternative<manager_config::Error>(ko));
+    EXPECT_EQ(std::get<manager_config::Error>(ko).pointer, "/remote/https/ca_certificate");
+    EXPECT_NE(std::get<manager_config::Error>(ko).message.find("file not found"), std::string::npos);
     std::filesystem::remove_all(dir);
 }
 

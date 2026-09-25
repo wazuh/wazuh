@@ -26,12 +26,18 @@ def load(label):
     return json.load(open(p))
 
 
-def srv(label, key):
+def srv(label, key, src="inventory-sync"):
+    """A server-metric delta out of summary.json.
+
+    server_metrics is keyed by source, so a lookup names which daemon it means, and the
+    metric name is the module's own dotted one. `delta` holds COUNTERS only -- a level has
+    no delta to report.
+    """
     p = f"{BASE}/results_{label}/summary.json"
     if not os.path.exists(p):
         return None
-    d = json.load(open(p)).get("server_metrics", {}).get("delta", {})
-    return d.get(key)
+    block = json.load(open(p)).get("server_metrics", {})
+    return (block.get(src, {}).get("delta") or {}).get(key)
 
 
 def fnum(v, nd=1):

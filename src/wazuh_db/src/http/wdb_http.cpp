@@ -23,6 +23,7 @@
 #include "endpointGetV1AgentsAll.hpp"
 #include "endpointGetV1AgentsParamGroups.hpp"
 #include "endpointGetV1AgentsSync.hpp"
+#include "endpointGetV1Status.hpp"
 #include "endpointPostV1AgentsSummary.hpp"
 #include "endpointPostV1AgentsSync.hpp"
 #include "sqlite3Wrapper.hpp"
@@ -95,6 +96,58 @@ namespace
             },
             wazuh::uds_http::RouteOptions {routeClass});
     }
+
+    // The status route cannot share registerRoute(): that wrapper answers 500 when the database
+    // is unreachable, and for this route being unable to serve IS the answer, not an internal
+    // fault. A caller asking "can you serve?" needs 503, which tells it to route elsewhere; a 500
+    // reads as "this endpoint is broken" and says nothing about the daemon's ability to work.
+    //
+    // It is registered as Liveness so back-pressure on the data plane never sheds it: a status
+    // route that gets dropped exactly when the daemon is struggling answers the wrong question.
+    // The class is about shedding policy and body caps, not semantics -- liveness and readiness
+    // remain distinct routes with distinct answers (issue #39429).
+    void registerStatusRoute(wazuh::uds_http::IUdsHttpServer& server)
+    {
+        server.addRoute(
+            wazuh::uds_http::Method::Get,
+            "/v1/status",
+            [](std::shared_ptr<const wazuh::uds_http::HttpRequest> request,
+               std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
+            {
+                static constexpr auto UNAVAILABLE_BODY =
+                    R"({"status":"unavailable","module":"wazuh-db","global":{"available":false,"missing_tables":[]}})";
+
+                if (!request)
+                {
+                    responder->send({400, "Empty request", {{"Content-Type", "text/plain"}}});
+                    return;
+                }
+
+                void* ctx = nullptr;
+                auto* db = wdb_global_pre(&ctx);
+                DEFER([ctx]() { wdb_global_post(ctx); });
+
+                if (!db)
+                {
+                    responder->send(wazuh::uds_http::HttpResponse::json(503, UNAVAILABLE_BODY));
+                    return;
+                }
+
+                try
+                {
+                    SQLite3Wrapper::Connection connection(db);
+                    responder->send(EndpointGetV1Status::call(connection, *request));
+                }
+                catch (const std::exception& e)
+                {
+                    // A throw here means the query could not run at all, which is the same verdict
+                    // as a failed connection: report it, do not hide it behind a 500.
+                    logError("wazuh-manager-db", "Status endpoint could not query the database: %s", e.what());
+                    responder->send(wazuh::uds_http::HttpResponse::json(503, UNAVAILABLE_BODY));
+                }
+            },
+            wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
+    }
 } // namespace
 
 void wdb_http_start(full_log_fnc_t callbackLog, const char* socket_path)
@@ -121,6 +174,8 @@ void wdb_http_start(full_log_fnc_t callbackLog, const char* socket_path)
             *server, wazuh::uds_http::Method::Get, "/v1/agents/sync", wazuh::uds_http::RouteClass::Data);
         registerRoute<EndpointPostV1AgentsSync>(
             *server, wazuh::uds_http::Method::Post, "/v1/agents/sync", wazuh::uds_http::RouteClass::Data);
+        // Readiness: can this daemon serve at all? Answered without reading agent data.
+        registerStatusRoute(*server);
 
         wazuh::uds_http::UdsHttpServerConfig config;
         config.socketPath = socket_path;

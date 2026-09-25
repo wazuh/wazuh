@@ -1234,6 +1234,21 @@ main()
         echo " - ${moreinfo}"
         echo "   https://documentation.wazuh.com/"
         echo ""
+
+        # A source install never runs register_configure_agent.sh -- that only runs from the
+        # deb/rpm/macOS postinst, which is where WAZUH_ENROLLMENT_TOKEN is read and stored. So
+        # this install has no token and no trust anchor, and nothing later will give it one.
+        # Only says so when that is actually true: an update over an enrolled agent keeps both.
+        # Printed as a bare command rather than a ${message} because the installer's strings live
+        # in ten locale catalogs and an English-only key renders empty in the other nine -- the
+        # same reason the boot notice below prints its command directly.
+        if [ ! -s "${INSTALLDIR}/etc/client.keys" ] && [ ! -f "${INSTALLDIR}/etc/certs/root-ca.pem" ]; then
+            echo " - This agent is not enrolled and has no trust anchor. To enroll it against a"
+            echo "   manager, run as root with an enrollment token minted by that manager:"
+            echo ""
+            echo "      ${INSTALLDIR}/bin/wazuh-agent-auth --token-file <path>"
+            echo ""
+        fi
     fi
 
     if [ "X$notmodified" = "Xyes" ]; then

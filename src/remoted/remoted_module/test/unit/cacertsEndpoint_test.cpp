@@ -21,20 +21,28 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unistd.h>
+#include <vector>
 
 #include <gtest/gtest.h>
 
+#include "ca_bundle/ca_bundle.hpp"
 #include "common/requestOutcomeMetrics.hpp"
 #include "endpoints/cacertsEndpoint.hpp"
 #include "endpoints/cacertsMetrics.hpp"
+#include "http_server/caCertificateSource.hpp"
+#include "http_server/caPublicationRecord.hpp"
+#include "http_server/caRecordEvents.hpp"
 #include "http_server/fileRead.hpp"
+#include "testTlsServer.hpp"
 
 #include <wazuh_metrics/manager.hpp>
 
@@ -171,6 +179,114 @@ namespace
             return run([snapshot = std::move(snapshot)] { return snapshot; }, request);
         }
     };
+
+    // ---- Helpers for the deliverCaRecordEvents() tests below (issue #39319, C21b) ----
+
+    /// Records the ORDER "delivered"/"responded" land in, for
+    /// DeliversRecordEventsBeforeRespondingOnAllThreePaths: unlike CapturingResponder, its send()
+    /// itself appends to the shared trace instead of just capturing the response.
+    class OrderRecordingResponder : public IHttpResponder
+    {
+    public:
+        explicit OrderRecordingResponder(std::vector<std::string>& order)
+            : m_order {order}
+        {
+        }
+
+        void send(HttpResponse response) override
+        {
+            std::lock_guard<std::mutex> lock {m_mu};
+            if (m_done)
+            {
+                return;
+            }
+            m_order.push_back("responded");
+            m_response = std::move(response);
+            m_done = true;
+            m_cv.notify_all();
+        }
+
+        HttpResponse wait(std::chrono::milliseconds timeout = 2s)
+        {
+            std::unique_lock<std::mutex> lock {m_mu};
+            EXPECT_TRUE(m_cv.wait_for(lock, timeout, [&] { return m_done; })) << "responder never called";
+            return m_response;
+        }
+
+    private:
+        std::vector<std::string>& m_order;
+        std::mutex m_mu;
+        std::condition_variable m_cv;
+        bool m_done {false};
+        HttpResponse m_response;
+    };
+
+    std::string readAll(const std::string& path)
+    {
+        std::ifstream in {path, std::ios::binary};
+        return {std::istreambuf_iterator<char> {in}, std::istreambuf_iterator<char> {}};
+    }
+
+    void write(const std::string& path, const std::string& contents)
+    {
+        std::ofstream out {path, std::ios::binary | std::ios::trunc};
+        out << contents;
+    }
+
+    /// Throwaway directory for a publication record (same mold as downloadEndpoint_test.cpp's
+    /// TempDir: mkdtemp for per-instance/per-process uniqueness, std::filesystem for teardown,
+    /// since CaPublicationRecord writes names this file does not predict).
+    class TempDir
+    {
+    public:
+        TempDir()
+        {
+            std::string tmpl = "/tmp/wazuh-cacerts-endpoint-test-XXXXXX";
+            std::vector<char> buffer(tmpl.begin(), tmpl.end());
+            buffer.push_back('\0');
+
+            const char* created = ::mkdtemp(buffer.data());
+            if (created == nullptr)
+            {
+                throw std::runtime_error("mkdtemp failed for the cacerts endpoint test's scratch directory");
+            }
+            m_path = created;
+        }
+
+        ~TempDir()
+        {
+            std::error_code ignored;
+            std::filesystem::remove_all(m_path, ignored);
+        }
+
+        TempDir(const TempDir&) = delete;
+        TempDir& operator=(const TempDir&) = delete;
+
+        const std::string& path() const
+        {
+            return m_path;
+        }
+
+    private:
+        std::string m_path;
+    };
+
+    /// The document `wazuh-manager-certs` would leave behind: the block, then the certificates it
+    /// describes. Duplicated from caCertificateSource_test.cpp's sealedDocument() -- this file
+    /// tests the ENDPOINT's use of the record, not the source, and pulls in ca_bundle for nothing
+    /// else.
+    std::string sealBundle(const std::vector<remoted::http::X509Ptr>& certificates,
+                           std::int64_t publication,
+                           const std::string& contentSha256Override = {})
+    {
+        ca_bundle::PublicationBlock block;
+        block.publication = publication;
+        block.contentSha256 =
+            contentSha256Override.empty() ? ca_bundle::contentSha256(certificates) : contentSha256Override;
+        block.updated = "2026-09-18T00:00:00Z";
+        block.writtenBy = "cacertsEndpoint_test";
+        return ca_bundle::renderBlock(block) + remoted::http::serializeCertificates(certificates);
+    }
 } // namespace
 
 TEST(CacertsEndpoint, ServesTheSnapshotPemWithPemContentType)
@@ -351,4 +467,214 @@ TEST(CacertsEndpoint, NullMetricsCountNothing)
     auto responder2 = std::make_shared<CapturingResponder>();
     missing(std::make_shared<const HttpRequest>(getRequest()), responder2);
     EXPECT_EQ(responder2->wait().status, 404);
+}
+
+// ---------------------------------------------------------------------------
+// Wazuh-CA-Generation (issue #39319, RF-4): the header every 200 carries, so an agent that
+// refreshes over an already-verified channel learns which generation the bundle it just received
+// is published under without a second round trip. 0 is deliberately the SAME wire value whether
+// nobody ever stamped the bundle or a guard refused it -- an agent cannot and need not tell those
+// apart. 404 and 503 carry no such header at all: there is no bundle being handed out to attach a
+// generation to.
+// ---------------------------------------------------------------------------
+
+TEST(CacertsEndpoint, PublishedBundleAddsCaGenerationHeader)
+{
+    Fixture f;
+    auto snapshot = snapshotOf(true);
+    snapshot.publication = 1758000000;
+
+    const auto response = f.run(snapshot);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(responseHeader(response, CA_GENERATION_HEADER), "1758000000");
+}
+
+TEST(CacertsEndpoint, UnpublishedBundleAddsZeroCaGenerationHeader)
+{
+    Fixture f;
+    // snapshotOf() leaves publication at CaCertificateSnapshot's own default (0): a bundle nobody
+    // ever stamped and one a guard refused both look like this on the wire (design §2.4).
+    const auto response = f.run(snapshotOf(true));
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_EQ(responseHeader(response, CA_GENERATION_HEADER), "0");
+}
+
+TEST(CacertsEndpoint, NotFoundAnswerCarriesNoCaGenerationHeader)
+{
+    Fixture f;
+
+    const auto response = f.run(CaCertificateSnapshot {});
+
+    EXPECT_EQ(response.status, 404);
+    EXPECT_TRUE(responseHeader(response, CA_GENERATION_HEADER).empty());
+}
+
+TEST(CacertsEndpoint, CaMismatchAnswerCarriesNoCaGenerationHeader)
+{
+    Fixture f;
+
+    const auto response = f.run(snapshotOf(false));
+
+    EXPECT_EQ(response.status, 503);
+    EXPECT_TRUE(responseHeader(response, CA_GENERATION_HEADER).empty());
+}
+
+TEST(CacertsEndpoint, NeverEmitsAHashHeader)
+{
+    // The published and the unpublished 200 from above: not one header on either answer names a
+    // hash -- only the generation ever leaves this endpoint, never a digest of the file or of the
+    // certificates it carries (CA-9).
+    Fixture f;
+    auto published = snapshotOf(true);
+    published.publication = 1758000000;
+
+    for (const auto& response : {f.run(published), f.run(snapshotOf(true))})
+    {
+        for (const auto& [key, value] : response.headers)
+        {
+            std::string lowered = key;
+            std::transform(
+                lowered.begin(), lowered.end(), lowered.begin(), [](unsigned char c) { return std::tolower(c); });
+            EXPECT_EQ(lowered.find("sha"), std::string::npos) << key;
+            EXPECT_EQ(lowered.find("hash"), std::string::npos) << key;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// deliverCaRecordEvents(): the collaborator that says out loud, and persists, what the read just
+// above noticed about the bundle's publication (issue #39319, C21b). The first test below stays
+// with the file's usual canned snapshots (only the ORDER matters); the other two need a REAL
+// CaCertificateSource so there is something genuine to drain.
+// ---------------------------------------------------------------------------
+
+TEST(CacertsEndpoint, DeliversRecordEventsBeforeRespondingOnAllThreePaths)
+{
+    Fixture f;
+    struct Case
+    {
+        const char* name;
+        CaCertificateSnapshot snapshot;
+        int expectedStatus;
+    };
+    const std::vector<Case> cases = {
+        {"200", snapshotOf(true), 200},
+        {"404", CaCertificateSnapshot {}, 404},
+        {"503", snapshotOf(false), 503},
+    };
+
+    for (const auto& testCase : cases)
+    {
+        std::vector<std::string> order;
+        std::function<void()> deliver = [&order]
+        {
+            order.push_back("delivered");
+        };
+        auto handler = makeHandler([snapshot = testCase.snapshot] { return snapshot; }, f.metrics, &f.http, deliver);
+        auto responder = std::make_shared<OrderRecordingResponder>(order);
+        handler(std::make_shared<const HttpRequest>(getRequest()), responder);
+        const auto response = responder->wait();
+
+        EXPECT_EQ(response.status, testCase.expectedStatus) << testCase.name;
+        ASSERT_EQ(order.size(), 2U) << testCase.name;
+        EXPECT_EQ(order[0], "delivered") << testCase.name;
+        EXPECT_EQ(order[1], "responded") << testCase.name;
+    }
+}
+
+TEST(CacertsEndpoint, HandlerAndTickEmitExactlyOnce)
+{
+    auto pki = remoted::test::generateCaSignedCertificate("cacerts-endpoint-once");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files()};
+
+    auto leafCerts = ca_bundle::parseBundle(readAll(pki->certPath)).certificates;
+    ASSERT_EQ(leafCerts.size(), 1U);
+
+    TempDir dir;
+    auto record = std::make_shared<remoted::http::CaPublicationRecord>(dir.path() + "/record.json");
+    auto mailbox = std::make_shared<remoted::http::CaRecordEventMailbox>();
+    // An ordinary CA file (no publication block): the first read announces first_time_unpublished.
+    remoted::http::CaCertificateSource source {pki->caCertPath,
+                                               leafCerts.front().get(),
+                                               remoted::http::readFileBounded,
+                                               std::chrono::steady_clock::now,
+                                               record->load(pki->caCertPath),
+                                               record,
+                                               mailbox};
+
+    Fixture f;
+    std::vector<remoted::http::CaRecordEvent> handlerDrained;
+    std::function<void()> deliver = [&source, &handlerDrained]
+    {
+        auto events = source.drainRecordEvents();
+        handlerDrained.insert(handlerDrained.end(), events.begin(), events.end());
+        source.flushPendingRecord();
+    };
+    auto handler = makeHandler([&source] { return source.snapshot(); }, f.metrics, &f.http, deliver);
+    auto responder = std::make_shared<CapturingResponder>();
+    handler(std::make_shared<const HttpRequest>(getRequest()), responder);
+    EXPECT_EQ(responder->wait().status, 200);
+
+    ASSERT_EQ(handlerDrained.size(), 1U);
+    EXPECT_EQ(handlerDrained[0].kind, remoted::http::RecordEvent::first_time_unpublished);
+
+    // A tick right after the request must see nothing: the request already drained the mailbox --
+    // an event comes out of exactly one of the two callers, never both (C21b).
+    EXPECT_TRUE(source.drainRecordEvents().empty());
+}
+
+TEST(CacertsEndpoint, GuardFailureIsLoggedOnTheNextRequestNotAtTheTick)
+{
+    auto pki = remoted::test::generateCaSignedCertificate("cacerts-endpoint-guardtick");
+    ASSERT_TRUE(pki.has_value());
+    remoted::test::ScratchFileCleanup cleanup {pki->files()};
+
+    auto leafCerts = ca_bundle::parseBundle(readAll(pki->certPath)).certificates;
+    ASSERT_EQ(leafCerts.size(), 1U);
+    auto caCerts = ca_bundle::parseBundle(readAll(pki->caCertPath)).certificates;
+    ASSERT_EQ(caCerts.size(), 1U);
+
+    TempDir dir;
+    auto record = std::make_shared<remoted::http::CaPublicationRecord>(dir.path() + "/record.json");
+    auto mailbox = std::make_shared<remoted::http::CaRecordEventMailbox>();
+    remoted::http::CaCertificateSource source {pki->caCertPath,
+                                               leafCerts.front().get(),
+                                               remoted::http::readFileBounded,
+                                               std::chrono::steady_clock::now,
+                                               record->load(pki->caCertPath),
+                                               record,
+                                               mailbox};
+
+    // "Tick 0": the start-time evaluation, drained and persisted exactly like the real transport.
+    source.snapshot();
+    source.drainRecordEvents();
+    source.flushPendingRecord();
+
+    // Between two ticks (the 24h cadence does not matter here: a guard is re-evaluated on the
+    // next READ, whoever makes it), the bundle is edited by hand into a hash mismatch.
+    write(pki->caCertPath, sealBundle(caCerts, 1789000000, std::string(64, 'a')));
+
+    // The very next request drains it -- not a tick.
+    Fixture f;
+    std::vector<remoted::http::CaRecordEvent> handlerDrained;
+    std::function<void()> deliver = [&source, &handlerDrained]
+    {
+        auto events = source.drainRecordEvents();
+        handlerDrained.insert(handlerDrained.end(), events.begin(), events.end());
+        source.flushPendingRecord();
+    };
+    auto handler = makeHandler([&source] { return source.snapshot(); }, f.metrics, &f.http, deliver);
+    auto responder = std::make_shared<CapturingResponder>();
+    handler(std::make_shared<const HttpRequest>(getRequest()), responder);
+    responder->wait();
+
+    ASSERT_EQ(handlerDrained.size(), 1U);
+    EXPECT_EQ(handlerDrained[0].kind, remoted::http::RecordEvent::guard_failed);
+    EXPECT_EQ(handlerDrained[0].guard, ca_bundle::GuardFailure::hash_mismatch);
+
+    // A tick simulated right after sees nothing: the request already said it.
+    EXPECT_TRUE(source.drainRecordEvents().empty());
 }

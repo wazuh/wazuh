@@ -372,7 +372,7 @@ extern "C"
 
             FsProbe fsProbe;
             CurlPerformer performer(typedConfig, defaultCurlHandleFactory(), fsProbe);
-            CacertsClient client(typedConfig, performer, fsProbe, HTTPS_CLIENT_LOGTAG);
+            CacertsClient client(typedConfig, performer, fsProbe, HTTPS_CLIENT_LOGTAG, /*unverifiedByDesign=*/true);
 
             const HttpResponse response = client.fetch();
 

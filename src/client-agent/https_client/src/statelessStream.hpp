@@ -78,7 +78,9 @@ class StatelessStream final
 
     private:
         bool flushDue(bool force) const;
-        bool flushOnce(Waiter& waiter, uint32_t timeoutMs, uint32_t maxAttempts);
+        /// Returns the outcome of the attempt (not just ok/failed) so tick() can tell an
+        /// unescalated AuthFail apart from every other failure and back off accordingly (#39601).
+        OutcomeClass flushOnce(Waiter& waiter, uint32_t timeoutMs, uint32_t maxAttempts);
         /// identityChanged: the signer's agent id moved (hc_set_agent_identity) between building
         /// the batch and the last attempt -- a 400 then means the H line, not the events.
         void handleOutcome(OutcomeClass outcome, const EventAccumulator::Snapshot& snapshot, bool identityChanged);

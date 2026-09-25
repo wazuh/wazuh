@@ -82,6 +82,33 @@ namespace
         *certOut = cert;
     }
 
+    // A self-signed CA with a caller-chosen, distinct CN -- unlike makeSelfSigned() (which
+    // hardcodes CN=127.0.0.1 for every caller, fine when each test only ever uses ONE such
+    // cert as the peer's own leaf identity, but wrong when a test needs several DIFFERENT CA
+    // certs to coexist in the same verification: OpenSSL's issuer lookup during chain
+    // building matches by subject NAME, not by key, so two unrelated self-signed CAs sharing
+    // the identical name (both "CN=127.0.0.1") can cause OpenSSL to pick the wrong one as a
+    // certificate's presumed issuer, surfacing as a bogus X509_V_ERR_CERT_SIGNATURE_FAILURE
+    // instead of the actual untrusted-issuer error the test means to exercise). No SAN: only
+    // ever used as a CA in a chain, never dialed directly as the peer's own leaf identity.
+    void makeSelfSignedCa(const char* commonName, EVP_PKEY** keyOut, X509** certOut)
+    {
+        EVP_PKEY* pkey = EVP_RSA_gen(2048);
+        X509* cert = X509_new();
+        ASN1_INTEGER_set(X509_get_serialNumber(cert), 1);
+        X509_gmtime_adj(X509_get_notBefore(cert), 0);
+        X509_gmtime_adj(X509_get_notAfter(cert), 60L * 60L);
+        X509_set_pubkey(cert, pkey);
+        X509_NAME* name = X509_get_subject_name(cert);
+        X509_NAME_add_entry_by_txt(
+            name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>(commonName), -1, -1, 0);
+        X509_set_issuer_name(cert, name);
+        addExtension(cert, NID_basic_constraints, "critical,CA:TRUE");
+        X509_sign(cert, pkey, EVP_sha256());
+        *keyOut = pkey;
+        *certOut = cert;
+    }
+
     // A leaf genuinely signed by the given CA (unlike makeSelfSigned(), issuer/signer is
     // caKey, not the leaf's own key), with a caller-chosen SAN -- lets a test build a
     // perfectly valid chain for the wrong identity. notBefore/notAfter default to "valid
@@ -202,7 +229,9 @@ namespace
     // verify_mode=system never sets ca_path (validateTls rejects a config that
     // does, see moduleConfig_test.cpp) -- the trust anchor comes from an
     // injected IFsProbe instead, below.
-    ModuleConfig tlsSystemConfig(uint16_t port)
+    // fallbackCaPath: #39123's local-anchor fallback (empty -> not configured, today's
+    // behavior; CurlPerformer never retries past what the OS bundle stand-in decides).
+    ModuleConfig tlsSystemConfig(uint16_t port, const std::string& fallbackCaPath = "")
     {
         hc_config_t config {};
         std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
@@ -212,6 +241,13 @@ namespace
         config.request_timeout_ms = 3000;
         config.backoff_base_ms = 10;
         config.backoff_cap_ms = 50;
+
+        if (!fallbackCaPath.empty())
+        {
+            std::strncpy(config.system_fallback_ca_path, fallbackCaPath.c_str(),
+                         sizeof(config.system_fallback_ca_path) - 1);
+        }
+
         return ModuleConfig::fromC(config);
     }
 
@@ -311,7 +347,9 @@ TEST(TlsVerificationTest, FullVerificationRejectsAnUntrustedCertificate)
     EXPECT_EQ(TransportStatus::TlsFail, response.status); // Untrusted: no HTTP status reached.
     // Not one of the two classified causes: proves the hostname-mismatch elimination fallback
     // (chain clean + CURLE_PEER_FAILED_VERIFICATION => HostnameMismatch) does NOT misfire here,
-    // where the chain itself is what failed.
+    // where the chain itself is what failed. Also #39123's isUnclassifiedChainFailure() sees
+    // this exact shape (TlsFail + kind==None) as the one verify_mode=system's local-anchor
+    // fallback may act on.
     EXPECT_EQ(TlsFailureKind::None, response.tlsFailure.kind);
 
     std::remove(wrongCaPath.c_str());
@@ -536,9 +574,237 @@ TEST(TlsVerificationTest, SystemVerificationRejectsACertificateNotInTheOsBundle)
     CurlPerformer performer {config, defaultCurlHandleFactory(), fsProbe};
 
     const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
+    // TlsFail + kind==None (#39123's isUnclassifiedChainFailure()) is the one outcome the
+    // fallback below can act on. No system_fallback_ca_path is set here, so there is nothing
+    // to fall back to and this is the final result, exactly like today.
     EXPECT_EQ(TransportStatus::TlsFail, response.status);
     EXPECT_EQ(TlsFailureKind::None, response.tlsFailure.kind);
 
+    std::remove(bundlePath.c_str());
+}
+
+// #39123: the OS bundle stand-in does not know the server's certificate, but a fallback
+// anchor that does is configured -- CurlPerformer must retry against it transparently
+// (one warning, no operator action) instead of leaving the connection unverified or failing.
+TEST(TlsVerificationTest, SystemVerificationFallsBackToTheLocalAnchorWhenTheOsBundleDoesNotVerify)
+{
+    constexpr uint16_t port = 44863;
+    EVP_PKEY* serverKey = nullptr;
+    X509* serverCert = nullptr;
+    makeSelfSigned(&serverKey, &serverCert);
+    const std::string fallbackPath = writeCertPem(serverCert, "system_fallback_trusted");
+    ASSERT_FALSE(fallbackPath.empty());
+
+    EVP_PKEY* otherKey = nullptr;
+    X509* otherCert = nullptr;
+    makeSelfSigned(&otherKey, &otherCert);
+    const std::string bundlePath = writeCertPem(otherCert, "system_fallback_os_bundle");
+    ASSERT_FALSE(bundlePath.empty());
+
+    TlsServer server {serverCert, serverKey, port};
+    X509_free(serverCert);
+    EVP_PKEY_free(serverKey);
+    X509_free(otherCert);
+    EVP_PKEY_free(otherKey);
+
+    const auto config = tlsSystemConfig(port, fallbackPath);
+    ConfigKeyProvider keyProvider {KEY_HEX};
+    JwtSigner signer {"001", keyProvider};
+    FixedFsProbe fsProbe {bundlePath};
+    CurlPerformer performer {config, defaultCurlHandleFactory(), fsProbe};
+
+    const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
+    EXPECT_EQ(TransportStatus::Ok, response.status);
+    EXPECT_EQ(200, response.httpCode);
+
+    // Latched: a second request must dial the fallback anchor directly, never the OS
+    // bundle again, and still succeed.
+    const auto secondResponse = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
+    EXPECT_EQ(TransportStatus::Ok, secondResponse.status);
+
+    std::remove(fallbackPath.c_str());
+    std::remove(bundlePath.c_str());
+}
+
+// #39123: neither the OS bundle nor the fallback anchor verifies the server -- the result
+// must still be a verification failure (never a silent unverified connection), so the
+// caller's normal fail-closed handling applies. The LOGFN_CRITICAL this path also emits is
+// a safe no-op in this test binary (GLOBAL_LOG_FUNCTION is never assigned, see
+// tests/unit/main.cpp/tests/component/main.cpp) -- only the real agent's bridge wires it to
+// mtLoggingFunctionsWrapper's exit(1).
+TEST(TlsVerificationTest, SystemVerificationFailsWhenNeitherTheOsBundleNorTheFallbackAnchorVerify)
+{
+    constexpr uint16_t port = 44864;
+    EVP_PKEY* serverKey = nullptr;
+    X509* serverCert = nullptr;
+    makeSelfSigned(&serverKey, &serverCert);
+
+    EVP_PKEY* bundleKey = nullptr;
+    X509* bundleCert = nullptr;
+    makeSelfSigned(&bundleKey, &bundleCert);
+    const std::string bundlePath = writeCertPem(bundleCert, "system_both_fail_os_bundle");
+    ASSERT_FALSE(bundlePath.empty());
+
+    EVP_PKEY* fallbackKey = nullptr;
+    X509* fallbackCert = nullptr;
+    makeSelfSigned(&fallbackKey, &fallbackCert);
+    const std::string fallbackPath = writeCertPem(fallbackCert, "system_both_fail_fallback");
+    ASSERT_FALSE(fallbackPath.empty());
+
+    TlsServer server {serverCert, serverKey, port};
+    X509_free(serverCert);
+    EVP_PKEY_free(serverKey);
+    X509_free(bundleCert);
+    EVP_PKEY_free(bundleKey);
+    X509_free(fallbackCert);
+    EVP_PKEY_free(fallbackKey);
+
+    const auto config = tlsSystemConfig(port, fallbackPath);
+    ConfigKeyProvider keyProvider {KEY_HEX};
+    JwtSigner signer {"001", keyProvider};
+    FixedFsProbe fsProbe {bundlePath};
+    CurlPerformer performer {config, defaultCurlHandleFactory(), fsProbe};
+
+    const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
+    EXPECT_EQ(TransportStatus::TlsFail, response.status);
+    EXPECT_EQ(TlsFailureKind::None, response.tlsFailure.kind);
+
+    std::remove(bundlePath.c_str());
+    std::remove(fallbackPath.c_str());
+}
+
+// #39123 follow-up (contrarian-reviewer round): every other CURLE_SSL_CACERT_BADFILE-related
+// assertion lives in curlPerformer_test.cpp against a MockCurlHandle with caFileLoadFailed()
+// scripted by hand -- that proves CurlPerformer::perform()'s branching is correct GIVEN that
+// value, not that curlHandle.cpp's real perform() actually produces it from a real curl/
+// OpenSSL failure. This test closes that gap: the fallback anchor path names a file that is
+// not a certificate at all, so the real load happens against real curl/OpenSSL, exactly the
+// way an admin's corrupted/partially-written AGENT_ANCHOR_CA would fail in production.
+TEST(TlsVerificationTest, SystemVerificationFailsClosedWhenTheFallbackAnchorFileIsCorrupt)
+{
+    constexpr uint16_t port = 44869;
+    EVP_PKEY* serverKey = nullptr;
+    X509* serverCert = nullptr;
+    makeSelfSigned(&serverKey, &serverCert);
+
+    EVP_PKEY* bundleKey = nullptr;
+    X509* bundleCert = nullptr;
+    makeSelfSigned(&bundleKey, &bundleCert);
+    const std::string bundlePath = writeCertPem(bundleCert, "system_corrupt_fallback_os_bundle");
+    ASSERT_FALSE(bundlePath.empty());
+
+    // Not a certificate: real curl/OpenSSL rejects this at load time
+    // (CURLE_SSL_CACERT_BADFILE), before any handshake or verify callback runs.
+    const std::string fallbackPath =
+        ::testing::TempDir() + "hc_tls_system_corrupt_fallback_" + std::to_string(::getpid()) + ".crt";
+    std::FILE* corruptFile = std::fopen(fallbackPath.c_str(), "wb");
+    ASSERT_NE(nullptr, corruptFile);
+    std::fputs("not a certificate", corruptFile);
+    std::fclose(corruptFile);
+
+    TlsServer server {serverCert, serverKey, port};
+    X509_free(serverCert);
+    EVP_PKEY_free(serverKey);
+    X509_free(bundleCert);
+    EVP_PKEY_free(bundleKey);
+
+    const auto config = tlsSystemConfig(port, fallbackPath);
+    ConfigKeyProvider keyProvider {KEY_HEX};
+    JwtSigner signer {"001", keyProvider};
+    FixedFsProbe fsProbe {bundlePath};
+    CurlPerformer performer {config, defaultCurlHandleFactory(), fsProbe};
+
+    const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
+    EXPECT_EQ(TransportStatus::TlsFail, response.status);
+    EXPECT_TRUE(response.caFileLoadFailed);
+    // Confirms isCaFileLoadFailure() is what caught this, not isUnclassifiedChainFailure():
+    // a bad CA file is rejected before OpenSSL's verify callback ever runs, so no
+    // certificate was ever inspected for this (the fallback) attempt.
+    EXPECT_FALSE(response.tlsFailure.sawDepth0);
+
+    std::remove(bundlePath.c_str());
+    std::remove(fallbackPath.c_str());
+}
+
+// #39123 follow-up: this used to pin a KNOWN LIMITATION (contrarian-reviewer round) where the
+// fallback never engaged here at all. The #39123 fallback used to be gated on sawDepth0 alone
+// (curlPerformer.cpp's isUnclassifiedChainFailure()), which is only ever set true when
+// OpenSSL's verify callback actually reaches the leaf (depth 0) certificate. For a
+// single-certificate chain (every other test in this suite), an untrusted root is discovered
+// exactly there, so sawDepth0 is true and the fallback gets its chance. For a
+// MULTI-certificate chain (leaf + intermediate, as a manager fronted by a subordinate CA
+// would present), OpenSSL's build_chain()/verify_chain()
+// (src/external/openssl/crypto/x509/x509_vfy.c) can reject the chain at the intermediate's
+// depth (>0) and return before internal_verify() ever runs depth 0 at all -- so sawDepth0
+// stayed false and the fallback anchor was never even attempted, even though it was
+// configured here to correctly trust the intermediate CA that actually signed the leaf.
+// Fixed by capturing a chain-trust rejection at ANY depth (curlHandle.cpp's
+// isChainBuildingTrustFailure(), TlsFailureDetail::chainTrustRejectedAboveDepth0), which
+// isUnclassifiedChainFailure() now accepts as a second, independent path alongside the
+// original sawDepth0-based one. This test now pins the fixed behavior instead of the
+// limitation.
+TEST(TlsVerificationTest, SystemVerificationFallsBackWhenTheUntrustedCaIsAnIntermediateNotTheLeaf)
+{
+    constexpr uint16_t port = 44865;
+
+    // The intermediate CA that actually signs the leaf below -- and the exact CA the
+    // fallback anchor is configured to trust, further down. A distinct CN
+    // ("intermediate-ca", not the 127.0.0.1 every makeSelfSigned() cert shares): OpenSSL's
+    // issuer lookup during chain building matches by subject name, and this test
+    // deliberately has THREE different self-signed CAs in play (this one, the OS bundle
+    // stand-in, and none other here) -- sharing a name across them would let OpenSSL's chain
+    // builder pick the wrong one as a candidate issuer regardless of which key actually
+    // signed the leaf, producing a bogus signature-failure instead of exercising the
+    // untrusted-issuer path this test means to reach.
+    EVP_PKEY* intermediateKey = nullptr;
+    X509* intermediateCert = nullptr;
+    makeSelfSignedCa("intermediate-ca", &intermediateKey, &intermediateCert);
+    const std::string fallbackPath = writeCertPem(intermediateCert, "system_chain_depth_fallback");
+    ASSERT_FALSE(fallbackPath.empty());
+
+    EVP_PKEY* leafKey = nullptr;
+    X509* leafCert = nullptr;
+    makeCaSignedLeaf(intermediateCert, intermediateKey, "IP:127.0.0.1", &leafKey, &leafCert);
+
+    // An OS bundle that trusts neither the intermediate nor the leaf -- unrelated to both,
+    // like every other "the OS store does not vouch for this manager" test above. A distinct
+    // CN from intermediate-ca, for the same reason.
+    EVP_PKEY* bundleKey = nullptr;
+    X509* bundleCert = nullptr;
+    makeSelfSignedCa("os-bundle-ca", &bundleKey, &bundleCert);
+    const std::string bundlePath = writeCertPem(bundleCert, "system_chain_depth_os_bundle");
+    ASSERT_FALSE(bundlePath.empty());
+
+    // The server presents BOTH the leaf and the intermediate that signed it -- a manager
+    // fronted by a subordinate CA, not the single-certificate shape every other test here
+    // uses.
+    TlsServer server {leafCert, leafKey, port, /*extraChainCert=*/intermediateCert};
+    X509_free(leafCert);
+    EVP_PKEY_free(leafKey);
+    X509_free(intermediateCert);
+    EVP_PKEY_free(intermediateKey);
+    X509_free(bundleCert);
+    EVP_PKEY_free(bundleKey);
+
+    const auto config = tlsSystemConfig(port, fallbackPath);
+    ConfigKeyProvider keyProvider {KEY_HEX};
+    JwtSigner signer {"001", keyProvider};
+    FixedFsProbe fsProbe {bundlePath};
+    CurlPerformer performer {config, defaultCurlHandleFactory(), fsProbe};
+
+    const auto response = sendSigned(performer, signer, "H {}\nE 1:l:tls\n");
+
+    // The fallback anchor (the intermediate CA) verifies this exact leaf, so the overall
+    // attempt now succeeds -- even though OpenSSL never reaches depth 0's internal_verify()
+    // against the OS bundle attempt at all. Real curl error observed on THAT first attempt
+    // while writing this test: "(60) ... self-signed certificate in certificate chain (19)"
+    // -- OpenSSL rejects the untrusted intermediate at ITS OWN depth (1), confirming
+    // sawDepth0 stays false for that attempt rather than just assuming it from
+    // source-reading alone; chainTrustRejectedAboveDepth0 is what catches it instead.
+    EXPECT_EQ(TransportStatus::Ok, response.status);
+    EXPECT_EQ(200, response.httpCode);
+
+    std::remove(fallbackPath.c_str());
     std::remove(bundlePath.c_str());
 }
 

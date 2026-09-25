@@ -1,0 +1,23 @@
+# The same agent with verification explicitly turned off, for the one case that asserts a
+# refresh never happens. Explicit rather than absent: with an anchor on disk an unset mode
+# resolves to 'full', so 'none' has to be asked for, and asking for it is what makes the agent
+# log AG_SSL_NONE_IGNORES_ANCHOR -- the evidence that the posture under test is really in force.
+- sections:
+  - section: agent
+    elements:
+        - notify_time:
+            value: 3
+        - auto_restart:
+            value: 'no'
+        - manager:
+            elements:
+            - endpoint:
+                value: '127.0.0.1:1517/wazuh-manager'
+        - ssl:
+            elements:
+            - verification_mode:
+                value: none
+        - enrollment:
+            elements:
+            - enabled:
+                value: 'no'

@@ -23,6 +23,11 @@ class IUUIDWrapper
         /// @param uuid Output parameter that will contain the corresponding UUID.
         virtual void uidToUUID(uid_t uid, uuid_t& uuid) = 0;
 
+        /// @brief Converts a GID to a UUID.
+        /// @param gid The group ID to convert.
+        /// @param uuid Output parameter that will contain the corresponding UUID.
+        virtual void gidToUUID(gid_t gid, uuid_t& uuid) = 0;
+
         /// @brief Converts a UUID to its string representation.
         /// @param uuid The UUID to convert.
         /// @param str Output buffer that will contain the string representation.

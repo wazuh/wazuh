@@ -48,7 +48,11 @@
     FRIEND_TEST(SyscollectorIdentityTest, DeferredVDRecoveryDoesNotAttachContext);                                     \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableWithinToleranceLogsDeferred);                 \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableAtToleranceLogsDeferred);                     \
-    FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning)
+    FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning);                    \
+    FRIEND_TEST(SyscollectorImpTest, SyncModule_GenericFailureWithinToleranceLogsDeferred);                            \
+    FRIEND_TEST(SyscollectorImpTest, SyncModule_GenericFailurePastToleranceLogsWarning);                               \
+    FRIEND_TEST(SyscollectorImpTest, SyncModule_VDGenericFailureWithinToleranceLogsDeferred);                          \
+    FRIEND_TEST(SyscollectorImpTest, SyncModule_VDGenericFailurePastToleranceLogsWarning)
 #else
 #define SYSCOLLECTOR_FRIEND_TEST_DECLARATIONS
 #endif // SYSCOLLECTOR_UNIT_TESTING

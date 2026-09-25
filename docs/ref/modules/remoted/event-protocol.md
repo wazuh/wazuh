@@ -97,6 +97,13 @@ The header is a JSON object conforming to Elastic Common Schema (ECS):
 - Exactly one header per batch (first line)
 - JSON must be compact (no newlines)
 - UTF-8 encoding required
+- **The identity path must not be repeated.** Within the header, `wazuh`, `wazuh.agent` and
+  `wazuh.agent.id` must each appear exactly once, and `wazuh` and `wazuh.agent` must be objects.
+  Names are compared after JSON unescaping, so `"wazuh"` and `"\u0077azuh"` are the same name. A header
+  that repeats any of those is rejected with `400 Invalid event batch` and the batch is never
+  ingested — see [HTTPS events API](https-events-api.md#error-responses). Repeating other fields is
+  not rejected, but it is still outside this specification: each field is defined to appear once,
+  and which copy survives is not contractual.
 
 ### Example Headers
 

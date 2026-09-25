@@ -13,8 +13,10 @@
 #define _REMOTED_MODULE_FACADE_HPP
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstdarg>
+#include <cstdint>
 #include <cstdio>
 #include <functional>
 #include <memory>
@@ -84,6 +86,45 @@ inline const LogFn& moduleLogFn()
     return instance;
 }
 
+/// Tag the CA publication events drained by the GET /cacerts handler come out under: the same one
+/// the endpoint's own lines use (endpoints/cacertsEndpoint.cpp), because to an operator reading the
+/// log they are that route talking -- the transport logs the same events under its own tag when it
+/// is the one that drained them (at start, on the daily tick and when the listener closes).
+/// Function-local static for the same visibility reason as moduleLogFn().
+inline const LogFn& cacertsRecordLogFn()
+{
+    static const LogFn instance {LogFn {"wazuh-manager-remoted:endpoints"}.compose("cacerts")};
+    return instance;
+}
+
+/// Tag for the same events when the CONTROL notify path is the one that drains them (issue #39319,
+/// C26): in steady state a manager sees nothing but notifies, so that path is the only consumer
+/// that will ever say them -- under the route that did, not under /cacerts'.
+inline const LogFn& controlRecordLogFn()
+{
+    static const LogFn instance {LogFn {"wazuh-manager-remoted:endpoints"}.compose("control")};
+    return instance;
+}
+
+/// Turns a CA publication event into a log line under @p logFn's tag. Handed to
+/// CaRecordEventMailbox::deliver(), which owns the ordering (it serialises the drain with the
+/// emission, C26); this only maps the level. @p logFn must outlive the emitter -- every caller
+/// passes a function-local static above.
+inline remoted::http::CaRecordEventMailbox::Emit caRecordEmitter(const LogFn& logFn)
+{
+    return [&logFn](remoted::http::RecordEventLevel level, const std::string& line)
+    {
+        if (level == remoted::http::RecordEventLevel::warn)
+        {
+            LOGFN_WARN(logFn, "%s", line.c_str());
+        }
+        else
+        {
+            LOGFN_INFO(logFn, "%s", line.c_str());
+        }
+    };
+}
+
 // Heartbeat period for the skeleton worker loop.
 constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
 
@@ -91,7 +132,7 @@ constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
 // remoted_module_config_t::max_deferred_requests <= 0).
 constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {128};
 
-// Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status). RELATIVE on
+// Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status + GET /tls). RELATIVE on
 // purpose: remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
 // Named "-admin" (not "-http"/"-stats"): remoted's HTTP identity is the public listener, this is
 // a management plane, and it must not collide with remcom's legacy "queue/sockets/remote.sock". No
@@ -198,7 +239,7 @@ public:
      * must not hand a pre-v5.0.0 agent an anchor that cannot chain to this listener -- an agent
      * that pins one fails every handshake afterwards, which is worse than having no anchor.
      *
-     * @return 1 signs it, 0 explicitly does not, -1 unknown (listener down, never evaluated, or the
+     * @return 1 the leaf chains to it, 0 explicitly does not, -1 unknown (listener down, never evaluated, or the
      *         CA file was unreadable at the last tick). Callers must treat -1 as "proceed", the same
      *         way the /cacerts route does: refusing on unknown turns one transient read failure into
      *         a fleet-wide loss of the trust bootstrap.
@@ -217,6 +258,31 @@ public:
             return -1;
         }
         return *status.caMatchesLeaf ? 1 : 0;
+    }
+
+    /**
+     * @brief The one certificate of `remote.https.ca_certificate` the served leaf chains to,
+     *        re-serialised into @p buffer.
+     *
+     * Exported to C (remoted_module_tls_leaf_signer_pem()) for remoted's legacy task poller: it
+     * writes these bytes to a pre-v5.0.0 agent's `etc/certs/root-ca.pem` ahead of the upgrade, and
+     * that agent's installer refuses a file with more than one certificate in it. So what leaves
+     * here is ONE certificate, re-serialised by this process, with no publication block -- whatever
+     * the bundle around it holds while a rotation overlaps (issue #39319, C7).
+     *
+     * @return Bytes written (> 0); 0 when the leaf chains to nothing in it, there is no servable bundle or
+     *         the listener is down; -1 when @p capacity is too small. The caller delivers nothing
+     *         on anything <= 0.
+     */
+    int tlsCaLeafSignerPem(char* buffer, std::size_t capacity)
+    {
+        std::lock_guard<std::mutex> lock {m_publicDiagMutex};
+        const auto server = m_publicDiagTarget.lock();
+        if (!server)
+        {
+            return 0;
+        }
+        return server->caLeafSignerPem(buffer, capacity);
     }
 
     void stop()
@@ -348,7 +414,19 @@ public:
 private:
     void startHttpServer()
     {
-        const auto config = remoted::http::buildHttpServerConfig(m_config);
+        // Not const: the CA publication-record collaborator below is installed on it (a
+        // std::function field of the config, like certificateStatusInterval is a plain value --
+        // internal wiring, not a configuration option) before the transport is started.
+        auto config = remoted::http::buildHttpServerConfig(m_config);
+
+        // Where the transport will publish the CA source and its publication-event mailbox
+        // (HttpServerConfig::onCaRecordReady, fired inside start() before anything is accepted).
+        // Handles rather than the objects themselves because the route below is registered BEFORE
+        // the server is started, so the handler captures the box and finds whatever start() put in
+        // it -- including on a later restart, which replaces both with a fresh pair (C21b). Owned
+        // by the facade, exactly like m_cacertsMetrics: no weak_ptr to the server is involved.
+        auto caSourceHandle = std::make_shared<std::shared_ptr<remoted::http::CaCertificateSource>>();
+        auto caMailboxHandle = std::make_shared<std::shared_ptr<remoted::http::CaRecordEventMailbox>>();
 
         // The auth-rejection counters live behind errorResponseFor()'s process-wide funnel, so
         // they are installed rather than threaded through the gateway/endpoints. Under the
@@ -445,6 +523,32 @@ private:
                 remoted::endpoints::ratelimit::buildCacertsSettings(m_config));
         }
 
+        // Whatever the read a /cacerts request does notices about the bundle's PUBLICATION: said
+        // once (delivering REMOVES the events, so the daily tick will not repeat them), in the
+        // mailbox's own order and with the pending record persisted outside every lock, before the
+        // answer goes out (issue #39319, C21b, C22, C26). A plain std::function, owned by the
+        // handler: the source and the mailbox arrive through the handles above, so nothing here
+        // holds the server alive.
+        auto deliverCaRecordEvents = [caSourceHandle, caMailboxHandle, emit = caRecordEmitter(cacertsRecordLogFn())]
+        {
+            const auto& mailbox = *caMailboxHandle;
+            if (!mailbox)
+            {
+                return;
+            }
+            if (const auto& source = *caSourceHandle)
+            {
+                // Deliver, flush, deliver: a record this request's own flush could not write is
+                // said in this request instead of waiting up to a day for the next drain
+                // (objection 3).
+                remoted::http::deliverAndPersistRecordEvents(*source, *mailbox, emit);
+            }
+            else
+            {
+                mailbox->deliver(emit);
+            }
+        };
+
         m_httpServer->addRoute(
             remoted::http::Method::Get,
             "/cacerts",
@@ -459,7 +563,8 @@ private:
                                                         return {};
                                                     },
                                                     m_cacertsMetrics,
-                                                    &m_cacertsHttpMetrics),
+                                                    &m_cacertsHttpMetrics,
+                                                    std::move(deliverCaRecordEvents)),
                                                 m_cacertsRateLimiter,
                                                 &remoted::endpoints::cacerts::rateLimitedResponse,
                                                 m_cacertsMetrics.rateLimited,
@@ -575,7 +680,45 @@ private:
         // member on this facade, so its address stays stable across HTTP-server retries; the
         // counters it caches live in m_metricsManager (created once, never reset), so totals
         // carry over too -- desirable for observability.
-        const auto controlConfig = remoted::control::buildControlConfig(m_config);
+        auto controlConfig = remoted::control::buildControlConfig(m_config);
+
+        // The CA generation an agent is told about on every notify (RF-3). Same weak server pointer
+        // as /cacerts above, for the same two reasons: the handler must not keep the listener alive,
+        // and after stop() resets m_httpServer the provider answers "no servable bundle" instead of
+        // touching a dead source. Resolved per call, never captured as a shared_ptr. The cost is the
+        // source's to bound -- caDescriptor() revalidates at most once a second (C8/C18) -- so this
+        // adds no file read to /control.
+        controlConfig.caGenerationProvider =
+            [weak = std::weak_ptr<remoted::http::IHttpServer>(m_httpServer),
+             caMailboxHandle,
+             emit = caRecordEmitter(controlRecordLogFn())]() -> std::optional<std::int64_t>
+        {
+            const auto server = weak.lock();
+            if (!server)
+            {
+                return std::nullopt;
+            }
+
+            // The descriptor FIRST: its revalidation is what notices a rotated bundle and posts the
+            // event, so draining before it would say nothing about the read this very notify did.
+            const auto descriptor = server->caDescriptor();
+
+            // And then it is said. In steady state a manager sees nothing but notifies -- no
+            // /cacerts request, no tick for up to 24 h -- so without this the WARN about a bundle
+            // that stopped being publishable waited a day and, past the mailbox's 32 events, was
+            // dropped unread (issue #39319, C26, objection 2). Deliberately deliver() and NOT
+            // deliverAndPersistRecordEvents(): the keepalive path says things, it never waits for a
+            // disk (RNF-2, C22). The record is persisted by the tick, by the next /cacerts request
+            // or at close -- and nothing is lost meanwhile, because the source keeps the entry
+            // pending until a write succeeds.
+            if (const auto& mailbox = *caMailboxHandle)
+            {
+                mailbox->deliver(emit);
+            }
+
+            return descriptor.generation;
+        };
+
         auto vdClient = std::make_shared<remoted::common::VdClient>();
         m_controlHandler = std::make_unique<remoted::control::ControlHandler>(
             agentRegistry,
@@ -775,6 +918,17 @@ private:
                                           "authd_connect_timeout'/'authd_response_timeout",
                                           resolvedAuthdConnectTimeoutMs + resolvedAuthdResponseTimeoutMs,
                                           static_cast<long long>(config.requestTimeoutSec) * 1000);
+
+        // Installed last, just before the transport builds the source: start() fires it with the
+        // CA source and the mailbox it created, and the /cacerts handler registered above reads
+        // both out of these handles from then on.
+        config.onCaRecordReady =
+            [caSourceHandle, caMailboxHandle](std::shared_ptr<remoted::http::CaCertificateSource> source,
+                                              std::shared_ptr<remoted::http::CaRecordEventMailbox> mailbox)
+        {
+            *caSourceHandle = std::move(source);
+            *caMailboxHandle = std::move(mailbox);
+        };
 
         m_httpServer->start(config);
 
@@ -1205,6 +1359,36 @@ private:
                 },
                 wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
 
+            // GET /tls: the served certificate and the CA bundle as `GET /cacerts` would hand it out
+            // right now (issue #39320) -- see http_server/tlsInventory.hpp for the document. ONE
+            // tlsInventory() call per request: it is the one place the leaf and the CA verdict come
+            // from the same instant, and the CA half costs a bounded read of a few KB under the
+            // source's own mutex (regular files only, O_NONBLOCK), which is why this stays a Liveness
+            // route like its siblings rather than the first Control route on the admin plane. Same
+            // weak target as tlsCaMatchesLeaf(): 503 while the public listener is not up.
+            m_adminServer->addRoute(
+                wazuh::uds_http::Method::Get,
+                "/tls",
+                [this](std::shared_ptr<const wazuh::uds_http::HttpRequest>,
+                       std::shared_ptr<wazuh::uds_http::IHttpResponder> responder)
+                {
+                    std::shared_ptr<remoted::http::IHttpServer> server;
+                    {
+                        std::lock_guard<std::mutex> lock {m_publicDiagMutex};
+                        server = m_publicDiagTarget.lock();
+                    }
+                    const auto inventory = server ? server->tlsInventory() : remoted::http::TlsInventory {};
+                    if (!inventory.listener.has_value())
+                    {
+                        responder->send(
+                            wazuh::uds_http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})"));
+                        return;
+                    }
+                    responder->send(wazuh::uds_http::HttpResponse::json(
+                        200, remoted::http::renderTlsInventory(inventory, std::chrono::system_clock::now())));
+                },
+                wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
+
             wazuh::uds_http::UdsHttpServerConfig config;
             config.socketPath = REMOTED_MODULE_ADMIN_SOCKET_PATH;
             // Identity: a NEW server with no prior wire contract, so the Server: header carries
@@ -1212,7 +1396,7 @@ private:
             config.logTag = "wazuh-manager-remoted:remoted-module:admin";
             config.serverName = "remoted admin";
             config.serverHeader = "wazuh-remoted";
-            // Three liveness routes serving one local operator: sized far below the library's
+            // Four liveness routes serving one local operator: sized far below the library's
             // data-plane defaults, everything else left at them.
             config.ioThreads = 2;
             config.maxConnections = 64;
@@ -1221,9 +1405,10 @@ private:
 
             registerAdminTransportDiagnostics();
 
-            LOGFN_INFO(moduleLogFn(),
-                       "remoted admin server listening on '%s' (routes: GET /, GET /metrics, and GET /status).",
-                       REMOTED_MODULE_ADMIN_SOCKET_PATH);
+            LOGFN_INFO(
+                moduleLogFn(),
+                "remoted admin server listening on '%s' (routes: GET /, GET /metrics, GET /status, and GET /tls).",
+                REMOTED_MODULE_ADMIN_SOCKET_PATH);
         }
         catch (const std::exception& e)
         {
@@ -1458,7 +1643,7 @@ private:
         m_metricsManager->registerPullMetric(
             remoted::endpoints::cacerts::METRIC_TLS_CA_MATCHES_LEAF,
             [certificateStatus] { return static_cast<uint64_t>(certificateStatus().caMatchesLeaf == true ? 1 : 0); },
-            "1 when remote.https.ca_certificate signs the served certificate",
+            "1 when the served certificate chains to remote.https.ca_certificate",
             "flag");
         m_metricsManager->registerPullMetric(
             "remoted.forwarder.deferred.inflight",
@@ -1643,7 +1828,7 @@ private:
     /// transport-diagnostics pulls can hold a weak_ptr that expires when stop() resets it --
     /// nothing else shares ownership.
     std::shared_ptr<remoted::http::IHttpServer> m_httpServer;
-    /// Local admin plane (fixed UDS socket, GET / + GET /metrics + GET /status). OPTIONAL by
+    /// Local admin plane (fixed UDS socket, GET / + GET /metrics + GET /status + GET /tls). OPTIONAL by
     /// policy: a failed start leaves it null and the module keeps running (see startAdminServer()).
     std::shared_ptr<wazuh::uds_http::IUdsHttpServer> m_adminServer;
     /// Pull-metric plumbing for the admin server's TransportDiagnostics: the weak target is

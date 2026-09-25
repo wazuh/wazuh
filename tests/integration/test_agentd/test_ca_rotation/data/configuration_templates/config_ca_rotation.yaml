@@ -1,0 +1,28 @@
+# No <ssl> section at all, deliberately. w_agent_resolve_ssl_posture() (config.c) resolves an
+# unset <verification_mode> to 'full' when an anchor is on disk, and then injects the anchor as
+# the <certificate_authorities> to verify against. That is the posture a real enrolled agent
+# ends up in, and it is the only posture in which a CA refresh happens at all -- so writing the
+# anchor is the whole configuration, and a test cannot accidentally verify against something
+# other than the store under test.
+- sections:
+  - section: agent
+    elements:
+        # The keepalive cadence, and so the refresh jitter window: the fetcher spreads a fleet
+        # over JITTER_INTERVALS (3) of these before its first attempt. At 3 seconds that window
+        # is 0-9s, which fits inside a test's patience; at the production default of 10 it
+        # would not.
+        - notify_time:
+            value: 3
+        - auto_restart:
+            value: 'no'
+        - manager:
+            elements:
+            - endpoint:
+                value: '127.0.0.1:1517/wazuh-manager'
+        - enrollment:
+            elements:
+            # The identity is seeded by the fixture. Enrollment stays off so that nothing in
+            # this suite can rewrite client.keys or the anchor behind a case's back: every
+            # change to the trust store here must come from a CA refresh.
+            - enabled:
+                value: 'no'

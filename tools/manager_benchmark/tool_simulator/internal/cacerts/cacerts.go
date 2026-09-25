@@ -7,8 +7,8 @@
 // verification (wire.NewAgentClient uses InsecureSkipVerify), so the PEM is
 // validated for shape and dropped like every other body (docu/03). What the
 // step measures is the route's contract and cost under a fleet: a trust
-// bootstrap that is 404 (no CA file) or 503 (the manager refuses a CA that does
-// not sign its own certificate) is what a real fleet would hit on first contact.
+// bootstrap that is 404 (no CA file) or 503 (the manager refuses a CA the served
+// certificate does not chain to) is what a real fleet would hit on first contact.
 package cacerts
 
 import (
@@ -49,7 +49,7 @@ func (e *ErrProtocol) Error() string { return e.msg }
 // Request sends one GET /cacerts.
 //
 // 200 (PEM served), 404 (the manager has no CA file), 503 (the manager refuses
-// to hand out a CA that does not sign its own certificate) and 429 (the route's
+// to hand out a CA the served certificate does not chain to) and 429 (the route's
 // rate limit, `remote.https.cacerts_rate_limit`) are all ORDINARY results the
 // caller records: they are contract outcomes a real fleet can meet, not failures
 // of the measurement. Do() adds the bearer in agent mode; the route ignores it,
