@@ -380,8 +380,8 @@ one: the manager refuses an enrollment whose `key_hash` matches an agent it
 already knows, and omitting the hash re-registers the agent under a new id. Such
 an agent keeps working on the key it holds, but the upgrade removes its
 `authd.pass`, so it has no unattended recovery left. If it is ever removed on the
-manager it will stop with *"operator action is required"* and wait. Re-point it
-with an enrollment token.
+manager, register it again with
+[`wazuh-agent-auth --force-enroll`](README.md#enrolling-or-re-pointing-an-agent).
 
 The agent only discards an identity when the manager explicitly says it is
 unknown. Any other authentication failure — a clock outside the manager's

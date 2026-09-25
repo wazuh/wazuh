@@ -1231,14 +1231,6 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     return W_TOKEN_ENROLL_OK;
 }
 
-/**
- * @brief Documents, not implements, the only reset that works today: a fresh bootstrap only
- *        re-runs once AGENT_ANCHOR_CA is removed, client.keys is emptied or removed, AND a new
- *        enrollment-token file is placed -- each latch (anchor exists / keys non-empty / no
- *        token file) independently blocks it otherwise, so clearing any one or two alone is not
- *        enough. This is today's actual behavior; it has no dedicated interface or name of its
- *        own.
- */
 w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
     w_token_enroll_opts_t opts = {0};
     w_token_enroll_report_t report = {0};

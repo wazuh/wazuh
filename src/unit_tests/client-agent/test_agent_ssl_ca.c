@@ -207,8 +207,9 @@ static void test_inferred_none_with_a_marker_but_no_anchor_refuses_to_start(void
     expect_string(__wrap__merror, formatted_msg,
                   "(4125): the trust anchor 'etc/certs/root-ca.pem' is gone but this agent has "
                   "held one ('etc/certs/.anchor-committed' is still there). Verification would "
-                  "silently fall back to 'none', so the start is refused. Restore the anchor, or "
-                  "set <ssl><verification_mode> explicitly to say what was intended.");
+                  "silently fall back to 'none', so the start is refused. Restore the anchor, "
+                  "reinstall it with 'wazuh-agent-auth --certs-only', or set "
+                  "<ssl><verification_mode> explicitly to say what was intended.");
 
     assert_false(w_agent_validate_ssl_ca(&cfg));
 }
