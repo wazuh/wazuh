@@ -29,13 +29,23 @@
  * WM_LOCAL_SOCK on POSIX or over module-list registration on Windows (wm_find_module()
  * inside wm_module_query_json_ex() answering MQ_ERR_MODULE_NOT_FOUND with no wait), and task
  * registry checks are dispatched from the same "tasks first" ordering in handleNotifyBody() --
- * so a brand-new agent's very first task check hits the same one-shot-drop window #39543 was
- * about (#9152 for the Windows side of it), just for a different registry. Bounded, same
- * reasoning on both platforms: a genuinely-unavailable agent-info still costs only a small,
- * known, one-shot-comparable tax; the loop breaks on the first success, so the steady-state
- * case pays nothing extra. */
+ * so a brand-new agent's very first task check hits the same one-shot-drop window as the VD
+ * feed offset delivery does, just for a different registry. Bounded, same reasoning on both
+ * platforms: a genuinely-unavailable agent-info still costs only a small, known,
+ * one-shot-comparable tax; the loop breaks on the first success, so the steady-state case pays
+ * nothing extra. */
 #define TASK_REGISTRY_CONNECT_RETRIES 10
 #define TASK_REGISTRY_CONNECT_RETRY_DELAY_US 300000 /* 300 ms; ~2.7s worst case across all retries */
+
+#ifdef WIN32
+/* Wider budget than the POSIX constants above -- same measured reason as
+ * VD_OFFSET_WIN_LOOKUP_RETRIES in vd_offset_client.c (see that file's comment): a clean-install
+ * run on a Windows test VM measured ~4s between the first Notify and agent-info's own "Started"
+ * log line, past the POSIX-sized 2.7s budget. ~9s worst case, still bounded, still free in the
+ * steady state. */
+#define TASK_REGISTRY_WIN_LOOKUP_RETRIES 30
+#define TASK_REGISTRY_WIN_LOOKUP_RETRY_DELAY_US 300000
+#endif
 
 /* Parses a response of the standard module-query envelope
  * (module_query_errors.h, src/wazuh_modules/src/wm_agent_info.c's
@@ -169,7 +179,7 @@ static task_registry_result_t task_registry_check_and_record_win(const char *tas
     snprintf(command, sizeof(command),
              "{\"command\":\"task_check_and_record\",\"task_id\":\"%s\"}", task_id);
 
-    for (attempt = 0; attempt < TASK_REGISTRY_CONNECT_RETRIES; attempt++) {
+    for (attempt = 0; attempt < TASK_REGISTRY_WIN_LOOKUP_RETRIES; attempt++) {
         os_free(output);
 
         wm_module_query_json_ex("agent-info", command, &output);
@@ -178,22 +188,22 @@ static task_registry_result_t task_registry_check_and_record_win(const char *tas
             break;
         }
 
-        if (attempt + 1 < TASK_REGISTRY_CONNECT_RETRIES) {
-            w_time_delay(TASK_REGISTRY_CONNECT_RETRY_DELAY_US / 1000);
+        if (attempt + 1 < TASK_REGISTRY_WIN_LOOKUP_RETRIES) {
+            w_time_delay(TASK_REGISTRY_WIN_LOOKUP_RETRY_DELAY_US / 1000);
         }
     }
 
     if (!output) {
         merror("task_registry_client: agent-info query returned no output for task %s after "
                "%d attempt(s); treating as non-dispatchable (fail closed).",
-               task_id, TASK_REGISTRY_CONNECT_RETRIES);
+               task_id, TASK_REGISTRY_WIN_LOOKUP_RETRIES);
         return TASK_REGISTRY_RESULT_ERROR;
     }
 
     if (task_registry_is_module_not_registered(output)) {
         mdebug1("task_registry_client: agent-info not registered yet for task %s after %d "
                 "attempt(s); treating as non-dispatchable (fail closed).",
-                task_id, TASK_REGISTRY_CONNECT_RETRIES);
+                task_id, TASK_REGISTRY_WIN_LOOKUP_RETRIES);
         os_free(output);
         return TASK_REGISTRY_RESULT_ERROR;
     }

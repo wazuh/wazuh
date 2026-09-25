@@ -107,6 +107,10 @@ namespace
 
 #endif
 
+                // Read before this call flips it: distinguishes the bootstrap update (no prior
+                // snapshot existed) from every steady-state one, decided below.
+                const bool isFirstSnapshot = !m_shm->has_metadata;
+
                 m_shm->updating.store(true, std::memory_order_release);
 
                 // Copy scalar fields
@@ -140,17 +144,39 @@ namespace
                 std::strncpy(m_shm->base_metadata.cluster_name, metadata->cluster_name, sizeof(m_shm->base_metadata.cluster_name) - 1);
                 m_shm->base_metadata.cluster_name[sizeof(m_shm->base_metadata.cluster_name) - 1] = '\0';
 
-                // vd_feed_offset is deliberately NOT copied from `metadata` here: this field is
-                // exclusively owned/written by updateVdFeedOffset(), the narrow path the IPC
-                // handler uses the moment the manager reports a fresh offset. A full update() is
-                // driven by a periodic, DB-backed read (populateAgentMetadata()'s own
+                // vd_feed_offset is deliberately NOT copied from `metadata` here on every update:
+                // this field is exclusively owned/written by updateVdFeedOffset(), the narrow path
+                // the IPC handler uses the moment the manager reports a fresh offset. A full
+                // update() is driven by a periodic, DB-backed read (populateAgentMetadata()'s own
                 // getVdFeedState() snapshot, or agentd's carry-over read in
                 // w_agentd_populate_metadata()) that can legitimately be stale by the time this
                 // call actually runs -- serializing writers (the mutex above) stops torn records,
                 // but does nothing to stop this call from overwriting a fresher value with a
-                // stale one it read earlier (#39543 review follow-up). Leaving the field alone
-                // here means whichever of the two ever wrote it last via updateVdFeedOffset()
-                // stays authoritative regardless of how update() calls interleave with it.
+                // stale one it read earlier. Leaving the field alone on a steady-state update
+                // means whichever of the two ever wrote it last via updateVdFeedOffset() stays
+                // authoritative regardless of how update() calls interleave with it.
+                //
+                // The ONE exception is the bootstrap update (isFirstSnapshot, computed above,
+                // before this call sets has_metadata true): updateVdFeedOffset() unconditionally
+                // refuses (-1, no-op) while has_metadata is still false, since it must not publish
+                // a lone field into a record with blank hostname/os/*. If the manager's first
+                // Notify carrying a real offset is observed and IPC-delivered before agent-info's
+                // own first full snapshot exists -- routine on a restart, where agent-info's
+                // startup delay (coordinateModules()'s pause dance) keeps has_metadata false for
+                // several seconds while the manager keeps answering notifies in the meantime --
+                // that publish attempt is silently dropped, and observeVdFeedOffset()'s own
+                // "not newer than the durable record" guard means no later notify for the SAME
+                // offset value ever retries it: the field is then permanently stuck at its
+                // stale/zero value for the rest of the process's life, with every VD sync rejected
+                // 409 until the manager's feed itself advances past it. Seeding it here, once, from
+                // whatever populateAgentMetadata()'s own getVdFeedState() read (the same durable
+                // source updateVdFeedOffset() itself writes to) closes that gap structurally: it
+                // does not race a fresher direct value, because none can exist yet -- has_metadata
+                // was false, so updateVdFeedOffset() could not have published anything to protect.
+                if (isFirstSnapshot)
+                {
+                    m_shm->base_metadata.vd_feed_offset = metadata->vd_feed_offset;
+                }
 
                 // Copy groups
                 m_shm->groups_count = (metadata->groups_count > MAX_GROUPS_PER_MULTIGROUP) ? MAX_GROUPS_PER_MULTIGROUP : metadata->groups_count;
