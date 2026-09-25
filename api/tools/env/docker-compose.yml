@@ -68,6 +68,8 @@ services:
         environment:
             OPENDISTRO_SECURITY_ENABLED: "false"
             NODE_NAME: "wazuh.manager"
+            WAZUH_MANAGER_API_PASSWORD: "${WAZUH_API_PASSWORD:-WazuhApi.2026}"
+            WAZUH_MANAGER_WUI_PASSWORD: "${WAZUH_WUI_PASSWORD:-WazuhWui.2026}"
         entrypoint:
             - /scripts/entrypoint.sh
             - wazuh.manager
@@ -98,6 +100,8 @@ services:
                 condition: service_started
         environment:
             NODE_NAME: "wazuh.worker1"
+            WAZUH_MANAGER_API_PASSWORD: "${WAZUH_API_PASSWORD:-WazuhApi.2026}"
+            WAZUH_MANAGER_WUI_PASSWORD: "${WAZUH_WUI_PASSWORD:-WazuhWui.2026}"
         ports:
             - "55051:55000"
         entrypoint:
@@ -124,6 +128,8 @@ services:
                 condition: service_started
         environment:
             NODE_NAME: "wazuh.worker2"
+            WAZUH_MANAGER_API_PASSWORD: "${WAZUH_API_PASSWORD:-WazuhApi.2026}"
+            WAZUH_MANAGER_WUI_PASSWORD: "${WAZUH_WUI_PASSWORD:-WazuhWui.2026}"
         ports:
             - "55052:55000"
         entrypoint:

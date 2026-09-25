@@ -50,5 +50,6 @@ wazuh_core.hosts:
     url: https://wazuh.manager
     port: 55000
     username: wazuh-wui
-    password: wazuh-wui
+    # Must match WAZUH_MANAGER_WUI_PASSWORD in docker-compose.yml.
+    password: WazuhWui.2026
     run_as: true
