@@ -24,29 +24,6 @@
 #include "defs.h"
 #include "rootcheck.h"
 
-#ifndef IFCONFIG
-#define IFCONFIG "ifconfig %s | grep PROMISC > /dev/null 2>&1"
-#endif
-
-/* Prototypes */
-static int run_ifconfig(const char *ifconfig);
-
-
-/* Execute the ifconfig command
- * Returns 1 if the interface is in promiscuous mode
- */
-static int run_ifconfig(const char *ifconfig)
-{
-    char nt[OS_SIZE_1024 + 1];
-
-    snprintf(nt, OS_SIZE_1024, IFCONFIG, ifconfig);
-    if (system(nt) == 0) {
-        return (1);
-    }
-
-    return (0);
-}
-
 /* Check all interfaces for promiscuous mode */
 void check_rc_if()
 {
@@ -84,18 +61,12 @@ void check_rc_if()
 
         _total++;
 
+        /* The interface name is attacker-controlled: never pass it to a shell */
         if ((_ifr.ifr_flags & IFF_PROMISC) ) {
             char op_msg[OS_SIZE_1024 + 1];
-            if (run_ifconfig(_ifr.ifr_name)) {
-                snprintf(op_msg, OS_SIZE_1024, "Interface '%s' in promiscuous"
-                         " mode.", _ifr.ifr_name);
-                notify_rk(ALERT_SYSTEM_CRIT, op_msg);
-            } else {
-                snprintf(op_msg, OS_SIZE_1024, "Interface '%s' in promiscuous"
-                         " mode, but ifconfig is not showing it"
-                         "(probably trojaned).", _ifr.ifr_name);
-                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
-            }
+            snprintf(op_msg, OS_SIZE_1024, "Interface '%s' in promiscuous"
+                     " mode.", _ifr.ifr_name);
+            notify_rk(ALERT_SYSTEM_CRIT, op_msg);
             _errors++;
         }
     }
