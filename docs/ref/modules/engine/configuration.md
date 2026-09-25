@@ -93,6 +93,27 @@ files owned by `wazuh-manager`. To avoid the problem altogether, restore the
 ownership right after every debugging session run with
 `analysisd.drop_privileges=false`.
 
+
+#### Process Limits
+
+At startup the engine raises its own soft file-descriptor limit to
+**`analysisd.rlimit_nofile`** (default: `8192`, allowed `1024` to `1048576`).
+It never raises the hard limit, which belongs to whatever starts the process
+(`LimitNOFILE=` in the service unit, `ulimit -n`, container `ulimits`), and it
+never lowers a soft limit that is already higher. When the hard limit is below
+the option, the engine keeps the hard limit and logs one warning naming both
+values:
+
+```
+File descriptor limit is 4096, below the 8192 requested by 'analysisd.rlimit_nofile'. Raise the limit the process is started with (LimitNOFILE, ulimit -n, container ulimits) to go higher.
+```
+
+A value outside the allowed range is replaced by the default with a warning.
+In standalone mode (inside wazuh-indexer) the internal options file is not
+read: set `WAZUH_RLIMIT_NOFILE` in the environment of `run_engine.sh` instead.
+The limits of every manager daemon are described in
+[File descriptor limits](../../configuration/manager/README.md#file-descriptor-limits).
+
 #### Event Queue Management
 
 Control event queue sizing and processing rate limiting:
