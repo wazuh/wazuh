@@ -300,7 +300,8 @@
 #define AG_SSL_ANCHOR_UNPARSEABLE  "(4124): <ssl><verification_mode> is 'system' and the local trust anchor '%s' is readable but holds no certificate this agent can parse. The https_client module's fallback (#39123) would never verify against it, so the start is refused here rather than at the first handshake that reaches it."
 #define AG_SSL_ANCHOR_VANISHED     "(4125): the trust anchor '%s' is gone but this agent has held " \
                                    "one ('%s' is still there). Verification would silently fall back " \
-                                   "to 'none', so the start is refused. Restore the anchor, or set " \
+                                   "to 'none', so the start is refused. Restore the anchor, reinstall " \
+                                   "it with 'wazuh-agent-auth --certs-only', or set " \
                                    "<ssl><verification_mode> explicitly to say what was intended."
 
 /* Rules reading errors */
