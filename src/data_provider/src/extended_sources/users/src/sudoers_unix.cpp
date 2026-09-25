@@ -231,22 +231,18 @@ namespace
     std::vector<std::string> splitAliasDefinitions(const std::string& ruleDetails)
     {
         std::vector<std::string> definitions;
-        std::string current;
+        size_t start = 0;
 
         for (size_t i = 0; i < ruleDetails.size(); ++i)
         {
             if (ruleDetails[i] == ':' && (i == 0 || ruleDetails[i - 1] != '%'))
             {
-                definitions.push_back(std::move(current));
-                current.clear();
-            }
-            else
-            {
-                current.push_back(ruleDetails[i]);
+                definitions.push_back(ruleDetails.substr(start, i - start));
+                start = i + 1;
             }
         }
 
-        definitions.push_back(std::move(current));
+        definitions.push_back(ruleDetails.substr(start));
 
         return definitions;
     }
