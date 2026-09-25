@@ -37,6 +37,12 @@ static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
     { std::make_pair(IFT_FDDI, IFT_FDDI),                       "FDDI"           },
     { std::make_pair(IFT_PPP, IFT_PPP),                         "point-to-point" },
     { std::make_pair(IFT_ATM, IFT_ATM),                         "ATM"            },
+    { std::make_pair(IFT_GIF, IFT_GIF),                         "tunnel"         },
+    { std::make_pair(IFT_STF, IFT_STF),                         "tunnel"         },
+    { std::make_pair(IFT_L2VLAN, IFT_L2VLAN),                   "vlan"           },
+    { std::make_pair(IFT_BRIDGE, IFT_BRIDGE),                   "bridge"         },
+    { std::make_pair(IFT_CELLULAR, IFT_CELLULAR),               "cellular"       },
+    { std::make_pair(IFT_OTHER, IFT_OTHER),                     "other"          },
 };
 
 class NetworkBSDInterface final : public INetworkInterfaceWrapper

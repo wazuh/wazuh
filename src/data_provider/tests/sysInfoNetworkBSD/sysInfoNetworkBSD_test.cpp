@@ -12,6 +12,7 @@
 #include "sysInfoNetworkBSD_test.h"
 #include "network/networkInterfaceBSD.h"
 #include "network/networkFamilyDataAFactory.h"
+#include "network/networkBSDWrapper.h"
 
 void SysInfoNetworkBSDTest::SetUp() {};
 
@@ -146,4 +147,40 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_UNSPEC_THROW_NULLPTR)
 {
     nlohmann::json ifaddr {};
     EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSPlatformType::BSDBASED>::create(nullptr)->buildNetworkData(ifaddr));
+}
+
+TEST_F(SysInfoNetworkBSDTest, Test_Type_Tunnel_And_Virtual_Link_Types)
+{
+    struct sockaddr_dl sdl {};
+    struct ifaddrs addr {};
+    addr.ifa_addr = reinterpret_cast<struct sockaddr*>(&sdl);
+
+    const std::vector<std::pair<int, std::string>> expectedTypes
+    {
+        { IFT_ETHER,    "ethernet" },
+        { IFT_GIF,      "tunnel"   },
+        { IFT_STF,      "tunnel"   },
+        { IFT_L2VLAN,   "vlan"     },
+        { IFT_BRIDGE,   "bridge"   },
+        { IFT_CELLULAR, "cellular" },
+        { IFT_OTHER,    "other"    },
+    };
+
+    for (const auto& [linkType, expected] : expectedTypes)
+    {
+        sdl.sdl_type = linkType;
+        NetworkBSDInterface iface { &addr };
+        EXPECT_EQ(expected, iface.type()) << "link type: " << linkType;
+    }
+}
+
+TEST_F(SysInfoNetworkBSDTest, Test_Type_Unmapped_Link_Type_Returns_Unknown)
+{
+    struct sockaddr_dl sdl {};
+    struct ifaddrs addr {};
+    addr.ifa_addr = reinterpret_cast<struct sockaddr*>(&sdl);
+    sdl.sdl_type = IFT_SLIP;
+
+    NetworkBSDInterface iface { &addr };
+    EXPECT_EQ(UNKNOWN_VALUE, iface.type());
 }
