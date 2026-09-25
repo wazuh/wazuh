@@ -179,6 +179,9 @@ _wmc_make_parents() (
         chmod 0750 "$1" || return 1
         _wazuh_restorecon "$1" || return 1
     fi
+    # No service gid on purpose: a parent the service group can write is refused, so the install -d
+    # in _wmc_prepare_cert_dir never runs where the service user could plant a symlink for it to
+    # follow. Passing the gid here needs that install -d made symlink-safe first.
     _wmc_check_parent "$1"
 )
 _wmc_get_identity() (
@@ -770,6 +773,22 @@ _wmc_enter_cert_dir() {
     }
 }
 
+# wazuh-manager-certs stamp/add rewrite etc/certs/root-ca.pem with a publication block and possibly
+# more CAs, so the anchor only has to be one of the bundle's certificates.
+_wmc_bundle_has_anchor() (
+    _wmc_want=$(openssl x509 -in "$2" -noout -fingerprint -sha256 2>/dev/null) || return 1
+    awk '
+        /-----BEGIN CERTIFICATE-----/ { cert = ""; inside = 1 }
+        inside { cert = cert $0 "\n" }
+        /-----END CERTIFICATE-----/ && inside {
+            cmd = "openssl x509 -noout -fingerprint -sha256 2>/dev/null"
+            printf "%s", cert | cmd
+            close(cmd)
+            inside = 0
+        }
+    ' "$1" | grep -Fxq -- "$_wmc_want"
+)
+
 _wmc_install_ca_anchor() (
     _wmc_source=${1-}
     _wmc_target=${2-}
@@ -778,8 +797,8 @@ _wmc_install_ca_anchor() (
 
     if [ -e "$_wmc_target" ] || [ -L "$_wmc_target" ]; then
         _wmc_validate_file "$_wmc_target" 0 "$_wmc_gid" 640 || return 1
-        if ! cmp -s -- "$_wmc_source" "$_wmc_target"; then
-            _wmc_error "existing manager root-ca.pem differs from $_wmc_source"
+        if ! _wmc_bundle_has_anchor "$_wmc_target" "$_wmc_source"; then
+            _wmc_error "existing manager root-ca.pem does not contain the CA in $_wmc_source"
             return 1
         fi
         return 0
@@ -962,8 +981,8 @@ _wmc_validate_locked() (
     _wazuh_validate_ca_files "$_wmc_ca_dir" || return 1
     _wmc_prepare_cert_dir "$_wmc_dir" "$_wmc_group" "$_wmc_gid" 0 || return 1
     _wmc_validate_file "$_wmc_dir/root-ca.pem" 0 "$_wmc_gid" 640 || return 1
-    cmp -s -- "$_wmc_ca_dir/root-ca.pem" "$_wmc_dir/root-ca.pem" || {
-        _wmc_error 'manager root-ca.pem differs from the shared trust anchor'
+    _wmc_bundle_has_anchor "$_wmc_dir/root-ca.pem" "$_wmc_ca_dir/root-ca.pem" || {
+        _wmc_error 'manager root-ca.pem does not contain the shared trust anchor'
         return 1
     }
 

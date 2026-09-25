@@ -134,12 +134,15 @@ That trap is why the file, not the command line, is the documented way to choose
 
 ## The password policy
 
-Every password, supplied or generated, must be **12 to 64 characters from
+A password supplied in `credentials.env` or the environment must be **12 to 64 characters from
 `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -` and contain at least one letter and one digit** — PCI DSS v4.0
-requirement 8.3.6, applied identically by all three components. It is also the rule the Server API
-enforces for `POST`/`PUT /security/users` and `rbac_control change-password`, so a value accepted
-here is never one the API rejects later. A supplied value with any other character, including a
-non-ASCII letter or a space, is invalid.
+requirement 8.3.6. A supplied value with any other character, including a non-ASCII letter or a
+space, is invalid.
+
+The Server API (`POST`/`PUT /security/users`, `rbac_control change-password`) applies the same
+length, letter and digit rule but accepts any printable ASCII character except the space, so
+passwords rotated with `wazuh-passwords-tool.sh` or set by other clients keep working. Every value
+accepted here is one the API accepts later.
 
 Generated passwords are 32 characters drawn from the same set, with a
 lowercase letter, an uppercase letter and a digit guaranteed. Quotes, backslash, backtick, `$`, `!`

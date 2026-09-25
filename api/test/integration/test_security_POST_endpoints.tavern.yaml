@@ -804,12 +804,12 @@ stages:
         Authorization: "Bearer {test_login_token}"
       json:
         username: "new_user"
-        password: "new_user1A.extra"
+        password: "new_user1A!extra"
       method: POST
     response:
       status_code: 200
 
-  - name: Create a new user (password with characters outside the allowed set)
+  - name: Create a new user (password with non-ASCII characters)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users"
@@ -832,7 +832,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       json:
         username: "test_very_long_user_name_so_the_request_fails_because_of_maximum1"
-        password: "new_user1A.extra"
+        password: "new_user1A!@#~½¬?¿ñàÀ"
       method: POST
     response:
       status_code: 400
@@ -843,7 +843,7 @@ stages:
       <<: *post_users_request
       json:
         username: "new_user"
-        password: "new_user1B.extra"
+        password: "new_user1B!extra"
     response:
       status_code: 200
       json:
@@ -953,7 +953,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       json:
         username: "new_user1"
-        password: "new_user1A.extra"
+        password: "new_user1A!extra"
       method: POST
     response:
       status_code: 200

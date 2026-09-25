@@ -210,11 +210,12 @@ def test_sanitize_rbac_policy(db_setup, policy_case):
     ('Aa1.,_+:@%^=~-', None),
     ('Contraseña1234', 5007),
     ('Password 1234', 5007),
-    ('Pass"word1234', 5007),
-    ('Pass$word1234', 5007),
+    ('Pass"word1234', None),
+    ('Admin!2026secure', None),
+    ('Rotate*Pass?12', None),
 ])
 def test_validate_password(db_setup, password, error_code):
-    """Check the PCI DSS v4.0 8.3.6 rule: 12 to 64 characters with a letter and a digit, from the generator's alphabet."""
+    """Check the PCI DSS v4.0 8.3.6 rule: 12 to 64 printable ASCII characters with a letter and a digit."""
     security, _, _ = db_setup
     if error_code is None:
         security.validate_password(password)
