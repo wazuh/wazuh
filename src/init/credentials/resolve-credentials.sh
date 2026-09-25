@@ -81,12 +81,16 @@
 #     (w_remoted_check_tls_files(), src/remoted/src/secure.c).
 #   * The TLS handshake decides the rest.
 #
-# The Indexer Connector pair is the gap: indexer.ssl.* is deliberately outside the validator's file
-# list (semantics.cpp skips it so a manager without an indexer can still start) and nothing probes
-# it after the privilege drop, so one that is present but unreadable by the service user passes
-# every root-side check and fails later, inside the daemon that loads the connector. Installation
-# checks the ownership and mode of both pairs, so what this script issues is right by construction;
-# material provisioned by hand is only covered once it is used.
+# The Indexer Connector pair is the gap, and a wider one than it looks. semantics.cpp keeps
+# indexer.ssl.* out of its file list so a manager without an indexer can still start, on the grounds
+# that the connector reports those files at runtime -- but it reports only the CA
+# (std::filesystem::exists() on certificate_authorities, which throws when absent). `certificate` and
+# `key` reach the TLS layer unchecked, and nothing anywhere tests readability, exists() being a stat
+# rather than access(R_OK). So a leaf that is missing, or present and unreadable by the service user,
+# passes every root-side check AND every check the connector makes, and surfaces from the handshake
+# at the first indexer request. Installation checks the ownership and mode of both pairs, so what
+# this script issues is right by construction; material provisioned by hand is only covered once it
+# is used.
 #
 # The step never opens a network connection. It validates presence and format only -- making a
 # service's start depend on reaching its peer would break boot ordering and cluster restarts.
@@ -267,6 +271,11 @@ store_indexer_username() {
 # A supplied password may only use the generator's alphabet. Anything else either never logs in
 # (connexion decodes Basic auth as latin1, so a non-ASCII value always gets 401) or is measured in
 # bytes by dash and in characters by rbac_control, which then disagree on its length.
+#
+# wazuh_password_validate() in the shared half enforces the same set, and the four character classes
+# on top of it. Keeping the check here as well is deliberate rather than redundant: the shared half
+# is downloaded, and the ref-fallback in src/Makefile can resolve an older copy that predates the
+# rule. This is the floor that holds whichever copy was fetched.
 #
 # The set is matched by `LC_ALL=C tr` rather than by a glob in the shell: ranges are
 # locale-dependent, the maintainer scripts inherit whatever locale the operator's session or the
@@ -651,7 +660,8 @@ CREDENTIALS_FILE=$(wazuh_env_get_file 2>/dev/null) || CREDENTIALS_FILE="/etc/waz
 # It names every missing key and where to set it, and never prints a value.
 for _key in ${INVALID}; do
     err "INVALID ${_key}: the supplied value does not meet the password policy"
-    err "        (12-64 characters from A-Z a-z 0-9 . , _ + : @ % ^ = ~ -, with at least one letter and one digit)"
+    err "        (12-64 characters from A-Z a-z 0-9 . , _ + : @ % ^ = ~ -, with at least one"
+    err "        lowercase letter, one uppercase letter, one digit and one symbol)"
     err "        correct it in ${CREDENTIALS_FILE} and start the service again"
 done
 

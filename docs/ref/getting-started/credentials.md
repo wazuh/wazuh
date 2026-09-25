@@ -134,27 +134,39 @@ That trap is why the file, not the command line, is the documented way to choose
 
 ## The password policy
 
-A password supplied in `credentials.env` or the environment must be **12 to 64 characters from
-`A-Z a-z 0-9 . , _ + : @ % ^ = ~ -` and contain at least one letter and one digit** — PCI DSS v4.0
-requirement 8.3.6. A supplied value with any other character, including a non-ASCII letter or a
-space, is invalid.
+There are two rules, and the difference between them is deliberate.
 
-The Server API (`POST`/`PUT /security/users`, `rbac_control change-password`) applies the same
-length, letter and digit rule but accepts any printable ASCII character except the space, so
-passwords rotated with `wazuh-passwords-tool.sh` or set by other clients keep working. Every value
-accepted here is one the API accepts later.
+**A password supplied in `credentials.env` or the environment** must be 12 to 64 characters drawn
+only from `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, and must contain at least one lowercase letter, one
+uppercase letter, one digit and one symbol from that set. Any other character — a non-ASCII letter,
+a space, a quote — makes it invalid, as does a missing class. This is the rule all three components
+apply to the shared file, so a value that satisfies it resolves everywhere.
 
-Generated passwords are 32 characters drawn from the same set, with a
-lowercase letter, an uppercase letter and a digit guaranteed. Quotes, backslash, backtick, `$`, `!`
-and `#` are left out deliberately, so a value is safe to paste through shell, YAML, JSON and
-docker-compose interpolation without escaping.
+**The Server API** (`POST`/`PUT /security/users`, `rbac_control change-password`) keeps the same
+12–64 length but asks only for one letter and one digit, from any printable ASCII except the space.
+It is the looser of the two on purpose: it has to accept what rotation tools and other API clients
+send. Every value the supplied-password rule accepts is one the API accepts too, so a credential
+seeded at installation is never one the API later refuses.
+
+| | Supplied to the resolver | Server API |
+|---|---|---|
+| Length | 12–64 | 12–64 |
+| Characters | `A-Z a-z 0-9 . , _ + : @ % ^ = ~ -` | any printable ASCII except space |
+| Required | lowercase, uppercase, digit **and** symbol | a letter and a digit |
+
+Generated passwords are 32 characters from the narrower set with all four classes guaranteed, so
+they satisfy both rules by construction. Quotes, backslash, backtick, `$`, `!` and `#` are left out
+deliberately, so a value is safe to paste through shell, YAML, JSON and docker-compose interpolation
+without escaping.
 
 > [!NOTE]
-> The Server API rejects a password outside this rule with error `5009` (length) or `5007` (missing
-> letter or digit).
+> The Server API rejects a password outside its rule with error `5009` (length) or `5007`
+> (characters). The resolver reports a supplied value it refuses as `INVALID <KEY>` in the journal,
+> naming the rule and never the value.
 
-This rule replaces an earlier one that also demanded an uppercase letter, a lowercase letter and a
-symbol. It is a lower floor for an operator who chooses their own value, for three reasons:
+The Server API's rule replaces an earlier one that demanded an uppercase letter, a lowercase letter
+and a symbol of every password it accepted. Lowering that floor — while keeping the stricter rule for
+what the resolver is handed — was deliberate, for three reasons:
 
 * **It has to be one rule.** The resolver validates a value at installation and the Server API
   validates it again at rotation. Two different rules means a value the installation accepts and the
@@ -244,12 +256,14 @@ are at start — which is the only state that matters:
 
 > [!NOTE]
 > The Indexer Connector pair is not covered by either check. `<indexer><ssl>` is deliberately left
-> out of the configuration validator's file list, so that a manager with no indexer can still start,
-> and nothing probes it after the privilege drop. A `indexer-connector-key.pem` that exists but is
-> not readable by `wazuh-manager` therefore passes every check that runs as root and fails later,
-> when the connector is loaded. The install checks the ownership and mode of both pairs, so a pair
-> the manager issued is correct by construction — when you provision one by hand, get the ownership
-> right from the table below.
+> out of the configuration validator's file list, so that a manager with no indexer can still start.
+> The connector itself checks only `<certificate_authorities>` — and only that it exists;
+> `<certificate>` and `<key>` are used without any check at all, and nothing tests whether the
+> service user can read them. An `indexer-connector-key.pem` that is missing, or present but not
+> readable by `wazuh-manager`, therefore passes everything that runs before the daemons and surfaces
+> from the TLS handshake at the first indexer request. The install checks the ownership and mode of
+> both pairs, so a pair the manager issued is correct by construction — when you provision one by
+> hand, get the ownership right from the table below.
 
 ### What the install does
 

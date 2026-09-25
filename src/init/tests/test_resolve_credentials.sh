@@ -336,14 +336,34 @@ check "the value is never printed" "" \
     "$(grep -o 'short' <<< "${install_output}${start_output}" | head -1)"
 cleanup "${root}"
 
-# The seeding policy is PCI DSS 8.3.6 -- a letter and a digit -- not the Server API's stricter
-# create/update rule. wazuh_password_generate() guarantees no symbol, so requiring one here would
-# refuse to seed on roughly one installation in a hundred and fifty.
+# The seeding policy is wazuh_password_validate()'s, in the shared half: the generator's alphabet
+# AND one character of each of its four classes. Stricter than the Server API's create/update rule,
+# which takes any printable ASCII with a letter and a digit -- deliberately, because the API has to
+# accept what other clients and rotation tools send, while a value supplied HERE is one all three
+# components will resolve against and the generator can guarantee.
+#
+# Every class is required, so a value missing any one of them is refused rather than seeded. The
+# cases below take a valid value and remove exactly one class each.
+for _case in "NoSymbolsHere123:symbol" "nosymbolshere.123:uppercase" "NOSYMBOLSHERE.123:lowercase" \
+             "NoSymbolsHere.abc:digit"; do
+    _value=${_case%%:*}
+    _class=${_case##*:}
+    root="$(make_tree)"
+    write_credentials "${root}" "WAZUH_MANAGER_API_PASSWORD='${_value}'"
+    run_resolver "${root}" --install
+    check "a supplied value with no ${_class} is refused at seeding" "" "$(seeded_password "${root}" wazuh)"
+    run_resolver "${root}" --prestart
+    check "and the start names it invalid" "yes" \
+        "$(grep -q 'INVALID WAZUH_MANAGER_API_PASSWORD' <<< "$(resolver_output)" && echo yes)"
+    check "without printing the value" "" "$(grep -o "${_value}" <<< "$(resolver_output)" | head -1)"
+    cleanup "${root}"
+done
+
+# And one carrying all four is seeded as supplied.
 root="$(make_tree)"
-write_credentials "${root}" "WAZUH_MANAGER_API_PASSWORD='NoSymbolsHere123'"
+write_credentials "${root}" "WAZUH_MANAGER_API_PASSWORD='AllFourClasses.1'"
 run_resolver "${root}" --install
-check "a supplied value with no symbol is accepted at seeding" "NoSymbolsHere123" \
-    "$(seeded_password "${root}" wazuh)"
+check "a supplied value with every class is seeded" "AllFourClasses.1" "$(seeded_password "${root}" wazuh)"
 cleanup "${root}"
 
 # A seeding failure must block the start rather than pass silently. The resolver's caller ignores

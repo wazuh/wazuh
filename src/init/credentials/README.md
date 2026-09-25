@@ -108,15 +108,21 @@ are at start: `wazuh-manager-conf validate` checks that `remote.https.*` and `au
 its own pair with `access(R_OK)` **after** dropping privileges
 (`w_remoted_check_tls_files()`), and the TLS handshake decides the rest.
 
-The gap is the Indexer Connector pair. `indexer.ssl.*` is deliberately outside the validator's file
-list — `semantics.cpp` skips it so that a manager without an indexer can still start — and nothing
-probes it after the privilege drop. So `indexer-connector-key.pem` present but unreadable by
-`wazuh-manager` passes every root-side check and surfaces later, as the daemon that loads the
-connector failing at startup. `wazuh_manager_certificates_ensure()` does check the ownership and
-mode of **both** pairs, and more strictly than remoted's runtime probe, so material this helper
-issued is right by construction; material provisioned by hand, or whose mode drifted afterwards, is
-not covered until it is used. An `access(R_OK)` preflight for that pair, matching remoted's, is the
-missing piece.
+The gap is the Indexer Connector pair, and it is wider than the validator's exclusion alone.
+`semantics.cpp` deliberately keeps `indexer.ssl.*` out of its file list so that a manager without an
+indexer can still start, and its comment says the connector reports those files at runtime. The
+connector reports *one* of them: `buildSecureCommunication()` calls `std::filesystem::exists()` on
+`certificate_authorities` and throws when it is absent. `certificate` and `key` are read from the
+configuration and handed to the TLS layer **unchecked** — no existence test, and nowhere any
+readability test, since `exists()` is a stat and not `access(R_OK)`.
+
+So an `indexer-connector-key.pem` that is missing, or present and unreadable by `wazuh-manager`,
+passes every root-side check and every check the connector makes, and surfaces from the TLS layer at
+the first indexer request. `wazuh_manager_certificates_ensure()` does check the ownership and mode of
+**both** pairs at installation, and more strictly than remoted's runtime probe, so material this
+helper issued is right by construction; material provisioned by hand, or whose mode drifted
+afterwards, is not covered until it is used. The missing piece is an existence-and-`access(R_OK)`
+preflight for that pair after the privilege drop, matching `w_remoted_check_tls_files()`.
 
 `--clear` removes every credential the manager owns or stores so a following `--install` resolves
 from nothing. It is for an image built by installing the package, whose `postinst` baked this host's
