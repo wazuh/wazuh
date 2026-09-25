@@ -35,6 +35,10 @@
 #include "generate_cert.h"
 #include <sys/epoll.h>
 
+#ifdef WAZUH_UNIT_TESTING
+#define static
+#endif
+
 /* Prototypes */
 static void help_authd(char * home_path) __attribute((noreturn));
 
@@ -684,6 +688,7 @@ void delete_client(uint32_t index) {
 
         if (g_client_pool[index]->ssl) {
             SSL_shutdown(g_client_pool[index]->ssl);
+            ERR_clear_error();
             SSL_free(g_client_pool[index]->ssl);
             g_client_pool[index]->ssl = NULL;
         }
@@ -706,6 +711,17 @@ void delete_client(uint32_t index) {
     else
     {
         merror("Client not found in pool");
+    }
+}
+
+static void sweep_idle_clients(void) {
+    time_t now = w_get_monotonic_time();
+    for (int j = 1; j < AUTH_POOL; j++) {
+        if (g_client_pool[j] && g_client_pool[j]->write_len == 0 &&
+            now - g_client_pool[j]->connected_at >= AUTH_IDLE_CONN_TIMEOUT) {
+            mdebug2("Closing idle enrolment connection from %s (slot %d)", g_client_pool[j]->ip, j);
+            delete_client(j);
+        }
     }
 }
 
@@ -903,7 +919,7 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
         _ncl = sizeof(_nc);
 
         struct epoll_event events[MAX_EVENTS];
-        int event_number = epoll_wait(g_epfd, events, MAX_EVENTS, -1);
+        int event_number = epoll_wait(g_epfd, events, MAX_EVENTS, AUTH_EPOLL_WAIT_MS);
         for (int i = 0; i < event_number; ++i)
         {
             uint32_t index = events[i].data.u32;
@@ -928,6 +944,7 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
                     new_client->agentname = NULL;
                     new_client->new_id = NULL;
                     new_client->enrollment_ok = FALSE;
+                    new_client->connected_at = w_get_monotonic_time();
 
                     set_non_blocking(new_client->socket);
 
@@ -1045,6 +1062,8 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
                 }
             }
         }
+
+        sweep_idle_clients();
     }
 
     close(g_stopFD[0]);
