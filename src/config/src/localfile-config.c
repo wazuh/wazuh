@@ -35,6 +35,20 @@ int total_files;
 STATIC int w_logcollector_get_macos_log_type(const char * content);
 
 /**
+ * @brief Checks that an `eslogger` event name only contains lowercase letters, digits and underscores
+ * @param event non-empty, already-trimmed event name
+ * @return true if the name is well-formed, false otherwise
+ */
+STATIC bool w_logcollector_is_valid_macos_es_event(const char * event);
+
+/**
+ * @brief Validate and normalize the comma-separated `<events>` list (macos-es log format)
+ * @param content raw element content
+ * @return newly allocated, comma-separated string of valid tokens, or NULL if none were valid/present
+ */
+STATIC char * w_logcollector_get_macos_es_events(const char * content);
+
+/**
  * @brief Check the regex type configured in localfile, the allowed types are osmatch, osregex and pcre2
  * @param node Current configuration node being edited
  * @param element Configuration element tag name
@@ -59,6 +73,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_query = "query";
     const char *xml_localfile_query_type_attr = "type";
     const char *xml_localfile_query_level_attr = "level";
+    const char *xml_localfile_events = "events";
     const char *xml_localfile_label = "label";
     const char *xml_localfile_target = "target";
     const char *xml_localfile_outformat = "out_format";
@@ -171,6 +186,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 }
             }
             os_strdup(node[i]->content, logf[pl].query);
+        } else if (strcasecmp(node[i]->element, xml_localfile_events) == 0) {
+            os_free(logf[pl].events);
+            logf[pl].events = w_logcollector_get_macos_es_events(node[i]->content);
         } else if (strcmp(node[i]->element, xml_localfile_target) == 0) {
             // Count number of targets
             int count, n;
@@ -405,6 +423,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     return (OS_INVALID);
                 }
 #endif
+            } else if (strcmp(logf[pl].logformat, MACOS_ES) == 0) {
             } else if (strcmp(logf[pl].logformat, JOURNALD_LOG) == 0) {
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
@@ -581,6 +600,10 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             mwarn(LOGCOLLECTOR_MISSING_LOCATION_MACOS);
             // Neceesary to check duplicated blocks
             os_strdup(MACOS, logf[pl].file);
+        } else if (strcmp(logf[pl].logformat, MACOS_ES) == 0) {
+            mwarn(LOGCOLLECTOR_JOURNAL_CONFG_MISSING_LOC, MACOS_ES);
+            // Necessary to check duplicated blocks
+            os_strdup(MACOS_ES, logf[pl].file);
         } else if (strcmp(logf[pl].logformat, JOURNALD_LOG) == 0) {
             mwarn(LOGCOLLECTOR_JOURNAL_CONFG_MISSING_LOC, JOURNALD_LOG);
             os_strdup(JOURNALD_LOG, logf[pl].file);
@@ -677,6 +700,56 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_alias);
         }
     }
+
+    /* Verify macos-es log config */
+    if (strcmp(logf[pl].logformat, MACOS_ES) == 0) {
+
+        if (strcmp(logf[pl].file, MACOS_ES) != 0) {
+            /* Invalid macos-es log configuration */
+            mwarn(LOGCOLLECTOR_JOURNAL_CONFG_INVALID_LOC, logf[pl].file, MACOS_ES);
+            os_free(logf[pl].file);
+            // Necessary to check duplicated blocks
+            w_strdup(MACOS_ES, logf[pl].file);
+        }
+
+        if (logf[pl].events == NULL) {
+            os_strdup(MACOS_ES_DEFAULT_EVENTS, logf[pl].events);
+        }
+
+        if (logf[pl].query != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS_ES, xml_localfile_query);
+        }
+        if (logf[pl].reconnect_time != DEFAULT_EVENTCHANNEL_REC_TIME) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS_ES, xml_localfile_reconnect_time);
+        }
+        if (logf[pl].age != 0) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS_ES, xml_localfile_age);
+        }
+        if (logf[pl].filter_binary != 0) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS_ES, xml_localfile_binaries);
+        }
+        if (logf[pl].exclude != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS_ES, xml_localfile_exclude);
+        }
+        if (logf[pl].multiline != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS_ES, xml_localfile_multiline_regex);
+        }
+        if (logf[pl].labels != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS_ES, xml_localfile_label);
+        }
+        if (logf[pl].ign != DEFAULT_FREQUENCY_SECS) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS_ES, xml_localfile_frequency);
+        }
+        if (logf[pl].alias != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS_ES, xml_localfile_alias);
+        }
+
+    } else if (logf[pl].events != NULL) {
+        /* Only log format macos-es supports the events option */
+        mwarn(LOGCOLLECTOR_OPTION_IGNORED, logf[pl].logformat, xml_localfile_events);
+        os_free(logf[pl].events);
+    }
+
     /* Verify Multiline Regex Config */
     if (strcmp(logf[pl].logformat, MULTI_LINE_REGEX) == 0) {
 
@@ -911,6 +984,7 @@ void Free_Logreader(logreader * logf) {
         os_free(logf->logformat);
         w_multiline_log_config_free(&(logf->multiline));
         w_macos_log_config_free(&(logf->macos_log));
+        w_macos_es_config_free(&(logf->macos_es));
         w_journal_log_config_free(&(logf->journal_log));
         os_free(logf->djb_program_name);
         os_free(logf->channel_str);
@@ -918,6 +992,7 @@ void Free_Logreader(logreader * logf) {
         os_free(logf->query);
         os_free(logf->exclude);
         os_free(logf->query_level);
+        os_free(logf->events);
 
         if (logf->regex_ignore) {
             OSList_Destroy(logf->regex_ignore);
@@ -1112,6 +1187,24 @@ void w_macos_log_config_free(w_macos_log_config_t ** macos_log) {
     os_free(*macos_log);
 }
 
+void w_macos_es_config_free(w_macos_es_config_t ** config) {
+
+    if (config == NULL || *config == NULL) {
+        return;
+    }
+
+    if ((*config)->wfd != NULL) {
+#ifndef WIN32
+        if ((*config)->wfd->pid > 0) {
+            kill((*config)->wfd->pid, SIGTERM);
+        }
+#endif
+        wpclose((*config)->wfd);
+    }
+
+    os_free(*config);
+}
+
 w_multiline_config_t* w_multiline_log_config_clone(w_multiline_config_t* config)
 {
     if (config == NULL)
@@ -1175,6 +1268,76 @@ STATIC int w_logcollector_get_macos_log_type(const char * content) {
     }
 
     return retval;
+}
+
+STATIC bool w_logcollector_is_valid_macos_es_event(const char * event) {
+
+    for (const char * p = event; *p != '\0'; p++) {
+        if (!islower((unsigned char) *p) && !isdigit((unsigned char) *p) && *p != '_') {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+STATIC char * w_logcollector_get_macos_es_events(const char * content) {
+
+    const char * XML_LOCALFILE_EVENTS = "events";
+    size_t num_tokens = 1;
+    size_t current = 0;
+    bool invalid_found = false;
+    char * result = NULL;
+
+    if (content == NULL || *content == '\0') {
+        return NULL;
+    }
+
+    for (const char * p = content; *p != '\0'; p++) {
+        if (*p == ',') {
+            num_tokens++;
+        }
+    }
+
+    char ** event_arr = OS_StrBreak(',', content, num_tokens);
+
+    if (event_arr) {
+        while (event_arr[current]) {
+            char * start = event_arr[current];
+            char * end = NULL;
+
+            while (isspace((unsigned char) *start)) {
+                start++;
+            }
+            end = start + strlen(start);
+            while (end > start && isspace((unsigned char) end[-1])) {
+                end--;
+            }
+            *end = '\0';
+
+            if (*start == '\0') {
+                /* Empty token (e.g. trailing comma): skipped, no warning */
+            } else if (!w_logcollector_is_valid_macos_es_event(start)) {
+                /* Rejecting anything but [a-z0-9_] also keeps a token like "--oslog" from reaching
+                 * eslogger as an option */
+                mwarn(LOGCOLLECTOR_INV_ES_EVENT, start, XML_LOCALFILE_EVENTS);
+                invalid_found = true;
+            } else {
+                wm_strcat(&result, start, ',');
+            }
+
+            os_free(event_arr[current]);
+            current++;
+        }
+
+        os_free(event_arr);
+    }
+
+    if (result == NULL && invalid_found) {
+        mwarn(LOGCOLLECTOR_NO_VALID_ES_EVENTS, XML_LOCALFILE_EVENTS);
+    }
+
+    return result;
 }
 
 w_exp_type_t w_check_regex_type(xml_node * node, const char * element) {

@@ -14,6 +14,8 @@
 #define EVENTLOG     "eventlog"
 #define EVENTCHANNEL "eventchannel"
 #define MACOS        "macos"
+#define MACOS_ES     "macos-es"
+#define MACOS_ES_DEFAULT_EVENTS "authentication,login_login,login_logout,lw_session_login,lw_session_logout,openssh_login,openssh_logout"
 #define JOURNALD_LOG                  "journald"
 #define MULTI_LINE_REGEX              "multi-line-regex"
 #define MULTI_LINE_REGEX_TIMEOUT      5
@@ -162,6 +164,22 @@ typedef struct {
     bool store_current_settings;        ///< True if current_settings is stored in vault
 } w_macos_log_config_t;
 
+/* -- macOS Endpoint Security (eslogger) log format specific configuration -- */
+/**
+ * @brief An instance of w_macos_es_config_t represents the runtime state of the `eslogger` process
+ *
+ * Unlike `w_macos_log_config_t`, this holds no vault/replay data: `eslogger` is a live-only subscription.
+ */
+typedef struct {
+    wfd_t * wfd;                  ///< IPC connector to the running `eslogger` process
+    char ctxt_buffer[OS_MAXSTR];  ///< Backup of a partial NDJSON line, pending the rest of the record
+    bool discarding;              ///< Dropping the rest of an oversize record until its '\n' arrives
+    unsigned int failures;        ///< Consecutive spawn/run failures, drives the backoff delay
+    time_t started_at;            ///< When the current/last process was spawned
+    time_t next_spawn_at;         ///< Earliest time a new spawn attempt is allowed (backoff)
+    time_t last_warn_at;          ///< Last time a failure was logged, for throttling repeats
+} w_macos_es_config_t;
+
 /* -- journal log format specific configuration -- */
 /**
  * @brief Represents a filter unit, the minimal condition of a filter
@@ -218,6 +236,7 @@ typedef struct _logreader {
     char *logformat;
     w_multiline_config_t* multiline;     ///< Multiline regex config & state
     w_macos_log_config_t* macos_log;     ///< macOS log config & state
+    w_macos_es_config_t* macos_es;       ///< macOS Endpoint Security (eslogger) runtime state
     w_journal_log_config_t* journal_log; ///< Journal log config & state
     long linecount;
     char *djb_program_name;
@@ -230,6 +249,7 @@ typedef struct _logreader {
     char *query;
     int query_type;      ///< Filtering by type in macOS log
     char * query_level;  ///< Filtering by level in macOS log
+    char * events;       ///< Comma-separated `eslogger` event list (macos-es log format)
     int filter_binary;
     int ucs2;
     outformat ** out_format;
@@ -289,6 +309,15 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *gl
  * @param macos_log Macos log config
  */
 void w_macos_log_config_free(w_macos_log_config_t ** config);
+
+/**
+ * @brief Free the macos-es runtime config and all its resources
+ *
+ * Sends SIGTERM to a still-running `eslogger` before closing the pipe: `eslogger` never exits on its own,
+ * so `wpclose()`'s blocking `waitpid()` would otherwise hang.
+ * @param config Macos-es runtime config
+ */
+void w_macos_es_config_free(w_macos_es_config_t ** config);
 
 /**
  * @brief Free the multiline log config and all its resources

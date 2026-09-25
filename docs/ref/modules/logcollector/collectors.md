@@ -9,6 +9,7 @@ Logcollector reads events from different log sources on the monitored endpoint. 
 | `eventchannel` | Windows | Windows Event Log via the EventChannel API (Vista and later) |
 | `eventlog` | Windows | Windows Event Log via the `OpenEventLog` / `ReadEventLog` API |
 | `macos` | macOS | macOS Unified Logging System (ULS) |
+| `macos-es` | macOS | macOS Endpoint Security framework events, via the `eslogger` CLI |
 | `journald` | Linux | systemd journal |
 
 For full configuration options, see [Configuration](configuration.md).
@@ -128,7 +129,27 @@ Collects events from the macOS Unified Logging System (ULS) using the `log` CLI.
 </localfile>
 ```
 
-The `<query>` attribute `type` accepts a comma-separated list of `activity`, `log`, and `trace`. The `level` attribute sets the minimum log level (`default`, `info`, `debug`). See [Configuration](configuration.md#macos) for predicate syntax and filtering examples.
+The `<query>` attribute `type` accepts a comma-separated list of `activity`, `log`, and `trace`. The `level` attribute sets the minimum log level (`default`, `info`, `debug`). See [Configuration](configuration.md#macos-uls-query-attributes) for predicate syntax and filtering examples.
+
+---
+
+## macos-es — macOS Endpoint Security (eslogger)
+
+Collects structured, unredacted security events from Apple's Endpoint Security framework by shelling out to the signed `eslogger` CLI. If `/usr/bin/eslogger` does not exist, the agent logs warning `(8026)` once at startup and leaves the collector disabled.
+
+Endpoint Security closes two gaps the `macos` (ULS) collector cannot: on macOS 26, ULS reports no line for an SSH logout, and on every version it redacts a failed GUI login's username as `<<private>>`. Endpoint Security reports both, unredacted. Only one `<localfile>` block with `log_format` set to `macos-es` is allowed per agent.
+
+```xml
+<localfile>
+  <location>macos-es</location>
+  <log_format>macos-es</log_format>
+  <events>authentication,login_login,login_logout,lw_session_login,lw_session_logout,openssh_login,openssh_logout</events>
+</localfile>
+```
+
+`<events>` is a comma-separated list of Endpoint Security event names to subscribe to — run `eslogger --list-events` on the host for the full catalog on that macOS version. If `<events>` is omitted or empty, the agent subscribes to the 7 names shown above by default. See [Configuration](configuration.md#events) for validation rules, and [Troubleshooting](configuration.md#macos-es-eslogger-not-collecting-logs) for the required Full Disk Access grant and how the collector behaves when `eslogger` crashes or that permission is revoked.
+
+Events are forwarded exactly as `eslogger` emits them (one JSON object per line, unmodified) under `location: macos-es`, and only ever live: there is **no** historical replay. Every fresh subscription — whether from an agent restart or `eslogger` being respawned after a crash — starts from that moment forward, never resuming or backfilling.
 
 ---
 

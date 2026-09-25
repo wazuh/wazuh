@@ -19,6 +19,8 @@
 #include "../wrappers/wazuh/os_xml/os_xml_wrappers.h"
 #include "../wrappers/externals/pcre2/pcre2_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
+#include "../wrappers/wazuh/shared/exec_op_wrappers.h"
+#include "../wrappers/posix/signal_wrappers.h"
 
 const char * multiline_attr_match_str(w_multiline_match_type_t match_type);
 const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type);
@@ -26,6 +28,7 @@ unsigned int w_get_attr_timeout(xml_node * node);
 w_multiline_replace_type_t w_get_attr_replace(xml_node * node);
 w_multiline_match_type_t w_get_attr_match(xml_node * node);
 int w_logcollector_get_macos_log_type(const char * content);
+char * w_logcollector_get_macos_es_events(const char * content);
 
 // Journal
 #define VALID_PCRE2_REGEX "valid regex \\w+"
@@ -424,6 +427,97 @@ void test_w_logcollector_get_macos_log_type_content_log_multiword_invalid(void *
 
     int ret = w_logcollector_get_macos_log_type(content);
     assert_int_equal(ret, MACOS_LOG_TYPE_LOG);
+}
+
+/*  w_logcollector_get_macos_es_events  */
+void test_w_logcollector_get_macos_es_events_content_NULL(void ** state) {
+    char * ret = w_logcollector_get_macos_es_events(NULL);
+    assert_null(ret);
+}
+
+void test_w_logcollector_get_macos_es_events_content_empty(void ** state) {
+    char * ret = w_logcollector_get_macos_es_events("");
+    assert_null(ret);
+}
+
+void test_w_logcollector_get_macos_es_events_content_only_separators(void ** state) {
+    char * ret = w_logcollector_get_macos_es_events(" , , ");
+    assert_null(ret);
+}
+
+void test_w_logcollector_get_macos_es_events_content_single(void ** state) {
+    char * ret = w_logcollector_get_macos_es_events("  openssh_logout  ");
+    assert_string_equal(ret, "openssh_logout");
+    os_free(ret);
+}
+
+void test_w_logcollector_get_macos_es_events_content_multiple_trim_and_skip_empty(void ** state) {
+    char * ret = w_logcollector_get_macos_es_events("authentication, openssh_logout ,, login_login");
+    assert_string_equal(ret, "authentication,openssh_logout,login_login");
+    os_free(ret);
+}
+
+void test_w_logcollector_get_macos_es_events_content_multiword_invalid(void ** state) {
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8023): Invalid event value 'foo bar' for 'events' option. Value will be ignored.");
+
+    char * ret = w_logcollector_get_macos_es_events("authentication, foo bar, openssh_logout");
+    assert_string_equal(ret, "authentication,openssh_logout");
+    os_free(ret);
+}
+
+void test_w_logcollector_get_macos_es_events_content_multiline_list(void ** state) {
+    char * ret = w_logcollector_get_macos_es_events("\n\tauthentication,\n\topenssh_login,\n\topenssh_logout\n");
+    assert_string_equal(ret, "authentication,openssh_login,openssh_logout");
+    os_free(ret);
+}
+
+void test_w_logcollector_get_macos_es_events_content_option_like_token_rejected(void ** state) {
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8023): Invalid event value '--oslog' for 'events' option. Value will be ignored.");
+
+    char * ret = w_logcollector_get_macos_es_events("--oslog,openssh_logout");
+    assert_string_equal(ret, "openssh_logout");
+    os_free(ret);
+}
+
+void test_w_logcollector_get_macos_es_events_content_tab_joined_rejected(void ** state) {
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8023): Invalid event value 'sudo\tsu' for 'events' option. Value will be ignored.");
+
+    char * ret = w_logcollector_get_macos_es_events("sudo\tsu,openssh_logout");
+    assert_string_equal(ret, "openssh_logout");
+    os_free(ret);
+}
+
+void test_w_logcollector_get_macos_es_events_content_all_invalid_warns_default(void ** state) {
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8023): Invalid event value 'Authentication' for 'events' option. Value will be ignored.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8023): Invalid event value 'open-ssh' for 'events' option. Value will be ignored.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8025): No valid value in 'events' option. Default events will be used.");
+
+    char * ret = w_logcollector_get_macos_es_events("Authentication, open-ssh");
+    assert_null(ret);
+}
+
+void test_w_logcollector_get_macos_es_events_content_more_than_64_tokens(void ** state) {
+    char content[70 * 5 + 1] = "";
+    char expected[70 * 4 + 1] = "";
+
+    for (int i = 0; i < 70; i++) {
+        char token[8];
+        snprintf(token, sizeof(token), "e%02d", i);
+        strcat(content, token);
+        strcat(content, i < 69 ? ", " : "");
+        strcat(expected, token);
+        strcat(expected, i < 69 ? "," : "");
+    }
+
+    char * ret = w_logcollector_get_macos_es_events(content);
+    assert_string_equal(ret, expected);
+    os_free(ret);
 }
 
 /* init_w_journal_log_config_t */
@@ -1180,6 +1274,56 @@ void test_w_logreader_journald_merge_both_have_filters(void ** state) {
     free(logr);
 }
 
+/* w_macos_es_config_free */
+void test_w_macos_es_config_free_null_config(void ** state) {
+    w_macos_es_config_free(NULL);
+}
+
+void test_w_macos_es_config_free_null_star(void ** state) {
+    w_macos_es_config_t * config = NULL;
+
+    w_macos_es_config_free(&config);
+}
+
+void test_w_macos_es_config_free_no_wfd(void ** state) {
+    w_macos_es_config_t * config = NULL;
+    os_calloc(1, sizeof(w_macos_es_config_t), config);
+
+    w_macos_es_config_free(&config);
+}
+
+void test_w_macos_es_config_free_dead_pid(void ** state) {
+    w_macos_es_config_t * config = NULL;
+    os_calloc(1, sizeof(w_macos_es_config_t), config);
+    wfd_t * wfd = calloc(1, sizeof(wfd_t));
+    wfd->pid = 0;
+    config->wfd = wfd;
+
+    will_return(__wrap_wpclose, 0);
+
+    w_macos_es_config_free(&config);
+
+    free(wfd);
+}
+
+void test_w_macos_es_config_free_running_process(void ** state) {
+    w_macos_es_config_t * config = NULL;
+    os_calloc(1, sizeof(w_macos_es_config_t), config);
+    wfd_t * wfd = calloc(1, sizeof(wfd_t));
+    wfd->pid = 1234;
+    config->wfd = wfd;
+
+    expect_value(__wrap_kill, pid, 1234);
+    expect_value(__wrap_kill, sig, SIGTERM);
+    will_return(__wrap_kill, 0);
+
+    will_return(__wrap_wpclose, 0);
+
+    w_macos_es_config_free(&config);
+
+    free(wfd);
+}
+
 /* main */
 
 int main(void) {
@@ -1224,6 +1368,18 @@ int main(void) {
         cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_trace_activity),
         cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_trace_log_activity),
         cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_log_multiword_invalid),
+        // Tests w_logcollector_get_macos_es_events
+        cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_NULL),
+        cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_empty),
+        cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_only_separators),
+        cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_single),
+        cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_multiple_trim_and_skip_empty),
+        cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_multiword_invalid),
+        cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_multiline_list),
+        cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_option_like_token_rejected),
+        cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_tab_joined_rejected),
+        cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_all_invalid_warns_default),
+        cmocka_unit_test(test_w_logcollector_get_macos_es_events_content_more_than_64_tokens),
         // Test init_w_journal_log_config_t
         cmocka_unit_test(test_init_w_journal_log_config_t_fail),
         cmocka_unit_test(test_init_w_journal_log_config_t_ok),
@@ -1281,6 +1437,12 @@ int main(void) {
         // Test w_multiline_log_config_clone
         cmocka_unit_test(test_w_multiline_log_config_clone_null),
         cmocka_unit_test(test_w_multiline_log_config_clone_success),
+        // Test w_macos_es_config_free
+        cmocka_unit_test(test_w_macos_es_config_free_null_config),
+        cmocka_unit_test(test_w_macos_es_config_free_null_star),
+        cmocka_unit_test(test_w_macos_es_config_free_no_wfd),
+        cmocka_unit_test(test_w_macos_es_config_free_dead_pid),
+        cmocka_unit_test(test_w_macos_es_config_free_running_process),
 
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

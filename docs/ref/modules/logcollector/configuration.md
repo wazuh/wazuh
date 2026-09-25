@@ -41,7 +41,7 @@ Specifies the path to the log file or log source to monitor.
   - Date-based patterns using `strftime` format (e.g., `/var/log/app-%y-%m-%d.log`)
   - Wildcard patterns (e.g., `/var/log/app*.log`)
   - Windows environment variables (Windows only, e.g., `%WINDIR%\Logs\file.log`)
-  - Special values: `macos` (macOS ULS), `journald` (systemd journal)
+  - Special values: `macos` (macOS ULS), `macos-es` (macOS Endpoint Security), `journald` (systemd journal)
   - Windows Event channels (e.g., `Application`, `Security`, `System`)
 - **Note:** For Windows Event channels, the value depends on the `log_format` setting
 
@@ -56,6 +56,7 @@ Defines the format of the log source to determine how logs are read and parsed.
   - `eventchannel` - Windows Event Channel (Windows Vista and later)
   - `eventlog` - Windows Event Log (all Windows versions)
   - `macos` - macOS Unified Logging System
+  - `macos-es` - macOS Endpoint Security framework events (via the `eslogger` CLI)
   - `journald` - Linux systemd journal
   - `command` - Output from a command
   - `full_command` - Full output from a command including empty lines
@@ -90,6 +91,16 @@ None (query value is the XPath expression itself)
 - **`level`** - Minimum log level to collect
   - **Allowed values:** `default`, `info`, `debug`
   - **Example:** `<query type="log" level="info">subsystem == "com.apple.securityd"</query>`
+
+### events
+
+Comma-separated list of Endpoint Security event names to subscribe to (`macos-es` only).
+
+- **Default value:** `authentication,login_login,login_logout,lw_session_login,lw_session_logout,openssh_login,openssh_logout` (used when `<events>` is omitted, empty, or has no valid value)
+- **Allowed values:** Comma-separated Endpoint Security event names — run `eslogger --list-events` on the host for the full catalog on that macOS version
+- **Format:** `<events>event1,event2,...</events>`
+- **Note:** Surrounding whitespace (including newlines) is trimmed and blank tokens (e.g. a trailing comma) are skipped. A token may only contain lowercase letters, digits and underscores. At startup, each name is also checked against the running macOS's catalog (`eslogger --list-events`), because `eslogger` refuses the whole list when a single name is unknown. An invalid or unknown name is dropped with warning `(8023)` without invalidating the rest of the list, and if no name is left the default events are used with warning `(8025)`. If the catalog cannot be read, the list is used as configured
+- **Example:** `<events>authentication,openssh_logout</events>`
 
 ### filter
 
@@ -523,6 +534,27 @@ Filter by specific subsystem:
 </localfile>
 ```
 
+### macOS Endpoint Security (eslogger)
+
+Subscribe to the default event set (SSH logout, GUI login/logout, remote login/logout, and both authentication attempts and successes):
+
+```xml
+<localfile>
+  <location>macos-es</location>
+  <log_format>macos-es</log_format>
+</localfile>
+```
+
+Subscribe only to the two events needed to detect an SSH logout and a failed authentication:
+
+```xml
+<localfile>
+  <location>macos-es</location>
+  <log_format>macos-es</log_format>
+  <events>authentication,openssh_logout</events>
+</localfile>
+```
+
 ### Linux systemd Journal
 
 Monitor SSH authentication via journald:
@@ -765,6 +797,57 @@ log show --predicate 'process == "sshd"' --info
 **Only one macOS localfile allowed:**
 
 Ensure only one `<localfile>` block with `log_format=macos` exists.
+
+### macOS ES (eslogger) Not Collecting Logs
+
+**Grant Full Disk Access to `/Library/Ossec/bin/wazuh-logcollector`:**
+
+`eslogger` requires its responsible process to have Full Disk Access (`man eslogger`). The agent's `wazuh-logcollector` starts `eslogger`, so `wazuh-logcollector` is the responsible process and needs the grant.
+
+After the first refused attempt, macOS adds `wazuh-logcollector` to the list by itself, switched off. Turn it on:
+
+1. **System Settings** → **Privacy & Security** → **Full Disk Access**.
+2. Switch on `wazuh-logcollector`.
+
+> **Note:** macOS 15 lists `wazuh-logcollector` twice. Both rows switch together, so switching on either one is enough.
+
+The agent picks the grant up at its next retry, without a restart.
+
+Revoking access does not stop an `eslogger` that is already running: it only refuses the next start (agent restart, or `eslogger` exiting for any reason).
+
+**List the event names this macOS supports** (no Full Disk Access needed):
+
+```bash
+sudo eslogger --list-events
+```
+
+**Only one `macos-es` localfile allowed:**
+
+Ensure only one `<localfile>` block with `log_format=macos-es` exists (same restriction as `macos`).
+
+**Reading `ossec.log` for the collector's own diagnosis:**
+
+| Log line contains | Meaning |
+|---|---|
+| `(9205): Monitoring macOS Endpoint Security events with: /usr/bin/eslogger ...` | Started successfully — this is the full command line it ran |
+| `(8023): Invalid event value '...' for 'events' option` | That `<events>` name is malformed or unknown to this macOS's `eslogger`; it is dropped and the other names are still collected |
+| `(8025): No valid value in 'events' option` | No `<events>` name is usable; the default events are used |
+| `(8026): '/usr/bin/eslogger' not found` | The collector stays disabled, logged once at startup |
+| `(1250): Error trying to execute "/usr/bin/eslogger"` | The binary exists but is not executable (path tampered with) — the agent will retry |
+| `(1612): Error while trying to execute` | `wpopenv()`/pipe setup failed — check `dmesg`/system logs for resource exhaustion |
+| `(1616): macOS ES: 'eslogger' is not permitted to create an Endpoint Security client` | `wazuh-logcollector` has no Full Disk Access grant — switch it on as described above. The agent retries with backoff, and `(1614)` with exit value `1` follows |
+| `(1614): macOS ES 'eslogger' process exited, pid: ..., exit value: ...` | `eslogger` exited with that code — the agent will retry |
+| `(1615): macOS ES 'eslogger' process terminated by signal, pid: ..., signal: ...` | `eslogger` was killed by that signal — the agent will retry |
+| `(8024): macOS ES: Discarding non-JSON line` | `eslogger` printed something to stderr/stdout that wasn't a JSON event (e.g. its own warning) — the line was logged, not forwarded |
+| `(8027): macOS ES: Discarding an event larger than ... bytes` | One event exceeded the agent's maximum message size and was dropped; the next event is read normally |
+
+**The retry is not instant — this is expected, not stuck:**
+
+After a failure the agent waits before respawning `eslogger`, growing the delay each consecutive failure: 5s, 10s, 20s, 40s, 80s, 160s, capped at 300s. If FDA gets re-granted mid-backoff, the very next scheduled attempt picks it up (up to 300s later) and logs the `Monitoring macOS Endpoint Security events` line again — no agent restart needed. A run that stays up at least 60s resets the delay back to 5s for the next failure, so a one-off crash doesn't leave the agent throttled for minutes afterward.
+
+**No historical events, ever:**
+
+`macos-es` never replays anything — not on agent restart, not after `eslogger` crashes and respawns. If you need to see an event, trigger it (log out over SSH, fail a GUI login) *after* confirming the collector already started.
 
 ### Socket Connection Failures
 

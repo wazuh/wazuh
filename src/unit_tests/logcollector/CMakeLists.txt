@@ -67,7 +67,7 @@ else()
                                     -Wl,--wrap,w_get_attr_val_by_name -Wl,--wrap,fgetpos -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS} \
                                     -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddStringToObject \
                                     -Wl,--wrap,cJSON_AddBoolToObject -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_CreateArray \
-                                    -Wl,--wrap,cJSON_AddItemToArray")
+                                    -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,wpclose -Wl,--wrap,kill")
 
     list(APPEND logcollector_names "test_state")
     list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
@@ -99,6 +99,14 @@ else()
                                     -Wl,--wrap,so_get_function_sym -Wl,--wrap,so_get_module_handle -Wl,--wrap,wfopen \
                                     -Wl,--wrap,_mdebug1 -Wl,--wrap,w_get_os_codename -Wl,--wrap,w_get_process_childs -Wl,--wrap,popen")
 
+    list(APPEND logcollector_names "test_macos_es_log")
+    list(APPEND logcollector_flags "-Wl,--wrap,wpopenv -Wl,--wrap,fileno -Wl,--wrap,fcntl -Wl,--wrap,_merror \
+                                    -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos \
+                                    -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
+                                    -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,wpclose -Wl,--wrap,access \
+                                    -Wl,--wrap,getpid -Wl,--wrap,_minfo -Wl,--wrap,wfopen -Wl,--wrap,popen \
+                                    -Wl,--wrap,time -Wl,--wrap,kill -Wl,--wrap,_mwarn -Wl,--wrap,pclose")
+
     list(APPEND logcollector_names "test_read_macos")
     list(APPEND logcollector_flags "-Wl,--wrap,w_expression_match -Wl,--wrap,can_read -Wl,--wrap,fgets \
                                     -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,_mdebug2\
@@ -110,6 +118,14 @@ else()
                                     -Wl,--wrap,isDebug -Wl,--wrap,w_get_first_child -Wl,--wrap,w_is_macos_sierra \
                                     -Wl,--wrap,w_macos_set_log_settings -Wl,--wrap,w_macos_set_last_log_timestamp \
                                     -Wl,--wrap,w_macos_set_is_valid_data -Wl,--wrap,wfopen")
+
+    list(APPEND logcollector_names "test_read_macos_es")
+    list(APPEND logcollector_flags "-Wl,--wrap,fgets -Wl,--wrap,fgetc -Wl,--wrap,fclose -Wl,--wrap,fflush \
+                                    -Wl,--wrap,fgetpos -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fseek \
+                                    -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,wfopen -Wl,--wrap,popen \
+                                    -Wl,--wrap,can_read -Wl,--wrap,w_msg_hash_queues_push \
+                                    -Wl,--wrap,waitpid -Wl,--wrap,kill -Wl,--wrap,wpclose -Wl,--wrap,time \
+                                    -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn -Wl,--wrap,_merror")
 
     list(APPEND logcollector_names "test_read_multiline")
     list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
