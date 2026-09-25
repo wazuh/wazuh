@@ -19,9 +19,11 @@ from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager,
 from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
 from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
 
-# At least one letter and one digit, PCI DSS v4.0 requirement 8.3.6, from the alphabet the credential
-# resolver generates from. Basic auth is decoded as latin1, so a non-ASCII password could be stored but
-# never used to log in. \Z rather than $, which would also match before a trailing newline.
+# At least one letter and one digit, PCI DSS v4.0 requirement 8.3.6, in printable ASCII without spaces.
+# Basic auth is decoded as latin1, so a non-ASCII password could be stored but never used to log in.
+# The credential resolver's narrower alphabet is a subset of this one; it is not applied here because
+# rotation tools and API clients send symbols outside it. \Z rather than $, which would also match
+# before a trailing newline.
 #
 # This REPLACES the previous rule, which additionally demanded an uppercase letter, a lowercase
 # letter and a symbol. Relaxing a password rule deserves its reasoning stated, so:
@@ -43,7 +45,7 @@ from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
 #
 # So the floor moved down for an operator who insists on choosing their own value, and the default
 # moved from "known to everyone" to "unique per installation".
-_user_password = re.compile(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9.,_+:@%^=~-]*\Z')
+_user_password = re.compile(r'^(?=.*[A-Za-z])(?=.*\d)[\x21-\x7e]*\Z')
 
 PASSWORD_MIN_LENGTH = 12
 PASSWORD_MAX_LENGTH = 64

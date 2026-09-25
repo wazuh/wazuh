@@ -335,6 +335,25 @@ if [ "${1-}" = --case ]; then
             reject wazuh_manager_certificates_ensure
             eq "$(sha256sum "$dir/remoted-key.pem")" "$before" no-regeneration
             ;;
+        stamped_bundle)
+            fixture
+            dir="$WAZUH_MANAGER_HOME/etc/certs"
+            # Reproduce what wazuh-manager-certs stamp/add leave: a ## publication block and a
+            # second CA around the anchor. The documented reissue must still work over it.
+            openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 30 -subj /CN=second-ca \
+                -addext basicConstraints=critical,CA:TRUE -keyout "$WAZUH_TEST_ROOT/stamped-second.key" \
+                -out "$WAZUH_TEST_ROOT/stamped-second.pem" 2>/dev/null
+            { printf '%s\n' '## Wazuh-CA-Publication: 1790000000' '## Content-SHA256: 0'
+              cat "$dir/root-ca.pem" "$WAZUH_TEST_ROOT/stamped-second.pem"; } >"$WAZUH_TEST_ROOT/bundle"
+            cat "$WAZUH_TEST_ROOT/bundle" >"$dir/root-ca.pem"
+            rm "$dir/remoted.pem" "$dir/remoted-key.pem"
+            wazuh_manager_certificates_ensure
+            openssl verify -purpose sslserver -CAfile "$(wazuh_ca_get_dir)/root-ca.pem" "$dir/remoted.pem"
+            wazuh_manager_certificates_validate
+            # A bundle that no longer carries the anchor is still refused.
+            cat "$WAZUH_TEST_ROOT/stamped-second.pem" >"$dir/root-ca.pem"
+            reject wazuh_manager_certificates_validate
+            ;;
         cert_symlink)
             fixture
             dir="$WAZUH_MANAGER_HOME/etc/certs"
@@ -364,7 +383,7 @@ test_log="$WAZUH_TEST_ROOT/test.log"
 test_fail=0
 test_count=0
 printf 'Test workspace: %s\n' "$WAZUH_TEST_ROOT"
-for test_case in import defaults env operator malformed no_newline precedence invalid_paths permissions symlinks concurrent_env passwords ca manager external_missing invalid_sans san_precedence interfaces discovery_failure concurrent_manager ca_missing_existing key_mismatch cert_symlink; do
+for test_case in import defaults env operator malformed no_newline precedence invalid_paths permissions symlinks concurrent_env passwords ca manager external_missing invalid_sans san_precedence interfaces discovery_failure concurrent_manager ca_missing_existing key_mismatch cert_symlink stamped_bundle; do
     test_count=$((test_count+1))
     printf '\nCASE %s\n' "$test_case" >>"$test_log"
     if "$TEST_SHELL" -eu "$TEST_SCRIPT_DIR/test-wazuh-helpers.sh" --case "$test_case" >>"$test_log" 2>&1; then

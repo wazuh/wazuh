@@ -36,8 +36,7 @@ AutoReqProv: no
 #              coreutils does not provide it and a minimal or container image frequently lacks it.
 #   util-linux `flock`, which serialises every write to the shared credentials file and the CA
 #              across the manager, the indexer and the dashboard.
-#   diffutils  `cmp`, which is how a certificate is matched against its private key and against the
-#              shared trust anchor.
+#   diffutils  `cmp`, which is how the shared helper matches a certificate against its private key.
 #   grep, sed  Used throughout both helpers and by the resolver.
 #   findutils  `find`, which is how `--clear` empties the keystore.
 #
