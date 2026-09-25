@@ -648,7 +648,7 @@ void LogCollectorStart()
                      * ensure it's fresh when hardlinks are used (like alerts.log).
                      */
                     FILE *tf;
-                    tf = wfopen(current->file, "r");
+                    tf = w_fopen_vetted_follow(current->file, "r");
                     if(tf == NULL) {
                         if (errno == ENOENT) {
                             if(current->exists==1){
@@ -673,6 +673,12 @@ void LogCollectorStart()
                                 mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
                             } else {
                                 mdebug1(OPEN_UNABLE, current->file);
+                            }
+                        } else if (errno == EPERM || errno == EINVAL) {
+                            // Rejected by the file-type or trust check: warn once per file.
+                            if (current->exists == 1) {
+                                mwarn(FOPEN_ERROR, current->file, errno, strerror(errno));
+                                current->exists = 0;
                             }
                         } else {
                             merror(FOPEN_ERROR, current->file, errno, strerror(errno));
@@ -1023,7 +1029,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
      */
 
     /* TODO: Support text mode on Windows */
-    lf->fp = wfopen(lf->file, "rb");
+    lf->fp = w_fopen_vetted_follow(lf->file, "rb");
     if (!lf->fp) {
         if (do_log == 1 && lf->exists == 1) {
             merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
@@ -1112,7 +1118,7 @@ error:
 int reload_file(logreader * lf) {
 
     /* TODO: Support text mode on Windows */
-    lf->fp = wfopen(lf->file, "rb");
+    lf->fp = w_fopen_vetted_follow(lf->file, "rb");
 
     if (!lf->fp) {
         return -1;

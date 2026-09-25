@@ -2033,6 +2033,337 @@ void test_w_fopen_nofollow_missing_basedir(void **state) {
     assert_null(w_fopen_nofollow(basedir, "regular", "wb"));
 }
 
+/* Tests w_fopen_vetted_follow */
+
+// Same rationale as w_fopen_nofollow above: these run against the real file system.
+
+extern int w_vet_opened_file(const struct stat * fd_stat, const struct stat * dir_stat, const uid_t * link_uid);
+// chmod() is always mocked in this binary.
+extern int __real_chmod(const char * path, mode_t mode);
+
+static int teardown_vetted(void **state) {
+    const char * entries[] = { "subdir/victim", "subdir/link", NULL };
+    char path[PATH_MAX + 1];
+    int i;
+
+    for (i = 0; entries[i]; i++) {
+        nofollow_path(path, entries[i]);
+        remove(path);
+    }
+
+    return teardown_nofollow(state);
+}
+
+static void assert_vetted_reads_content(const char * path) {
+    char buf[8] = {0};
+    FILE * fp = w_fopen_vetted_follow(path, "rb");
+
+    assert_non_null(fp);
+    assert_int_equal(fread(buf, 1, 7, fp), 7);
+    assert_string_equal(buf, "content");
+    assert_int_equal(fclose(fp), 0);
+}
+
+static void assert_vetted_rejected(const char * path, int expected_errno) {
+    errno = 0;
+    assert_null(w_fopen_vetted_follow(path, "rb"));
+    assert_int_equal(errno, expected_errno);
+}
+
+void test_w_fopen_vetted_follow_reads_regular_file(void **state) {
+    char path[PATH_MAX + 1];
+
+    nofollow_create_file("regular", "content");
+    nofollow_path(path, "regular");
+
+    assert_vetted_reads_content(path);
+}
+
+void test_w_fopen_vetted_follow_directory_rejected(void **state) {
+    char path[PATH_MAX + 1];
+
+    nofollow_path(path, "subdir");
+    assert_int_equal(mkdir(path, 0750), 0);
+
+    assert_vetted_rejected(path, EINVAL);
+}
+
+void test_w_fopen_vetted_follow_missing_file(void **state) {
+    char path[PATH_MAX + 1];
+
+    nofollow_path(path, "regular");
+
+    assert_vetted_rejected(path, ENOENT);
+}
+
+void test_w_fopen_vetted_follow_fifo_rejected_without_blocking(void **state) {
+    char path[PATH_MAX + 1];
+
+    nofollow_path(path, "fifo");
+    assert_int_equal(mkfifo(path, 0640), 0);
+    // A FIFO owned by anyone but root is rejected, so make sure this one is not root's.
+    if (geteuid() == 0) {
+        assert_int_equal(chown(path, 1000, (gid_t) -1), 0);
+    }
+
+    // Must return instead of blocking on the FIFO waiting for a writer.
+    assert_vetted_rejected(path, EINVAL);
+}
+
+void test_w_fopen_vetted_follow_root_fifo_accepted_without_blocking(void **state) {
+    char path[PATH_MAX + 1];
+    FILE * fp;
+
+    if (geteuid() != 0) {
+        print_message("Skipped: needs root to create a root-owned FIFO.\n");
+        return;
+    }
+
+    nofollow_path(path, "fifo");
+    assert_int_equal(mkfifo(path, 0640), 0);
+
+    // Must return instead of blocking on the FIFO waiting for a writer.
+    fp = w_fopen_vetted_follow(path, "rb");
+    assert_non_null(fp);
+    assert_int_equal(fclose(fp), 0);
+}
+
+void test_w_fopen_vetted_follow_hard_link_accepted(void **state) {
+    char target[PATH_MAX + 1];
+    char hardlink[PATH_MAX + 1];
+
+    // The directory is private to the test user, who also owns the file: nobody else could have linked it.
+    nofollow_create_file("victim", "content");
+    nofollow_path(target, "victim");
+    nofollow_path(hardlink, "link");
+    assert_int_equal(link(target, hardlink), 0);
+
+    assert_vetted_reads_content(hardlink);
+}
+
+void test_w_fopen_vetted_follow_hard_link_in_shared_dir_rejected(void **state) {
+    char target[PATH_MAX + 1];
+    char hardlink[PATH_MAX + 1];
+
+    nofollow_create_file("victim", "content");
+    nofollow_path(target, "victim");
+    nofollow_path(hardlink, "link");
+    assert_int_equal(link(target, hardlink), 0);
+    // Anyone could have made the link in a world-writable directory.
+    assert_int_equal(__real_chmod(nofollow_dir, 0777), 0);
+
+    assert_vetted_rejected(hardlink, EPERM);
+}
+
+void test_w_fopen_vetted_follow_hard_linked_symlink_in_shared_dir_rejected(void **state) {
+    char target[PATH_MAX + 1];
+    char symlink_path[PATH_MAX + 1];
+    char hardlink[PATH_MAX + 1];
+
+    // A second name for a symlink, made in a directory anyone can write to. The file itself has a single
+    // link, so only the symlink's link count can give it away.
+    nofollow_create_file("victim", "content");
+    nofollow_path(target, "victim");
+    nofollow_path(symlink_path, "target");
+    assert_int_equal(symlink(target, symlink_path), 0);
+    nofollow_path(hardlink, "link");
+    // Without AT_SYMLINK_FOLLOW, linkat() links the symlink itself rather than the file it points to.
+    assert_int_equal(linkat(AT_FDCWD, symlink_path, AT_FDCWD, hardlink, 0), 0);
+    assert_int_equal(__real_chmod(nofollow_dir, 0777), 0);
+
+    assert_vetted_rejected(hardlink, EPERM);
+}
+
+void test_w_fopen_vetted_follow_symlink_same_owner_accepted(void **state) {
+    char target[PATH_MAX + 1];
+    char link_path[PATH_MAX + 1];
+
+    // The symlink and its target are both created by the test process, so they share an owner: this is
+    // the "user symlink pointing to the user's own file" case, exercisable without root.
+    nofollow_create_file("victim", "content");
+    nofollow_path(target, "victim");
+    nofollow_path(link_path, "link");
+    assert_int_equal(symlink(target, link_path), 0);
+
+    assert_vetted_reads_content(link_path);
+}
+
+void test_w_fopen_vetted_follow_relative_symlink_accepted(void **state) {
+    char dir[PATH_MAX + 1];
+    char link_path[PATH_MAX + 1];
+
+    // subdir/link -> ../victim: the target is resolved from the directory holding the link.
+    nofollow_create_file("victim", "content");
+    nofollow_path(dir, "subdir");
+    assert_int_equal(mkdir(dir, 0750), 0);
+    nofollow_path(link_path, "subdir/link");
+    assert_int_equal(symlink("../victim", link_path), 0);
+
+    assert_vetted_reads_content(link_path);
+}
+
+void test_w_fopen_vetted_follow_directory_symlink_same_owner_accepted(void **state) {
+    char dir[PATH_MAX + 1];
+    char path[PATH_MAX + 1];
+
+    nofollow_path(dir, "subdir");
+    assert_int_equal(mkdir(dir, 0750), 0);
+    nofollow_create_file("subdir/victim", "content");
+    nofollow_path(path, "link");
+    assert_int_equal(symlink(dir, path), 0);
+    nofollow_path(path, "link/victim");
+
+    assert_vetted_reads_content(path);
+}
+
+void test_w_fopen_vetted_follow_symlink_root_owned_accepted(void **state) {
+    char target[PATH_MAX + 1];
+    char link_path[PATH_MAX + 1];
+
+    if (geteuid() != 0) {
+        print_message("Skipped: needs root to create a root-owned symlink.\n");
+        return;
+    }
+
+    nofollow_create_file("victim", "content");
+    nofollow_path(target, "victim");
+    assert_int_equal(chown(target, 1000, (gid_t) -1), 0);
+    nofollow_path(link_path, "link");
+    assert_int_equal(symlink(target, link_path), 0);
+
+    // The link is root's and the file is not: accepted purely because the link is root-owned.
+    assert_vetted_reads_content(link_path);
+}
+
+void test_w_fopen_vetted_follow_symlink_other_owner_rejected(void **state) {
+    char target[PATH_MAX + 1];
+    char link_path[PATH_MAX + 1];
+
+    if (geteuid() != 0) {
+        print_message("Skipped: needs root to create a symlink owned by someone other than its target.\n");
+        return;
+    }
+
+    // The target file is owned by root (the test process); the symlink itself is handed to another uid.
+    nofollow_create_file("victim", "content");
+    nofollow_path(target, "victim");
+    nofollow_path(link_path, "link");
+    assert_int_equal(symlink(target, link_path), 0);
+    assert_int_equal(lchown(link_path, 1000, (gid_t) -1), 0);
+
+    assert_vetted_rejected(link_path, EPERM);
+}
+
+void test_w_fopen_vetted_follow_directory_symlink_other_owner_rejected(void **state) {
+    char dir[PATH_MAX + 1];
+    char path[PATH_MAX + 1];
+
+    if (geteuid() != 0) {
+        print_message("Skipped: needs root to create a symlink owned by someone other than its target.\n");
+        return;
+    }
+
+    // A directory symlink owned by another uid, leading to a root-owned file.
+    nofollow_path(dir, "subdir");
+    assert_int_equal(mkdir(dir, 0750), 0);
+    nofollow_create_file("subdir/victim", "content");
+    nofollow_path(path, "link");
+    assert_int_equal(symlink(dir, path), 0);
+    assert_int_equal(lchown(path, 1000, (gid_t) -1), 0);
+    nofollow_path(path, "link/victim");
+
+    assert_vetted_rejected(path, EPERM);
+}
+
+void test_w_fopen_vetted_follow_invalid_mode(void **state) {
+    errno = 0;
+    assert_null(w_fopen_vetted_follow("/etc/passwd", "w"));
+    assert_int_equal(errno, EINVAL);
+}
+
+void test_w_vet_opened_file_regular_accepted(void **state) {
+    struct stat fd_stat = { .st_mode = S_IFREG, .st_uid = 1000, .st_nlink = 1 };
+    struct stat dir_stat = { .st_mode = S_IFDIR | 0777, .st_uid = 1001 };
+
+    assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), 0);
+}
+
+void test_w_vet_opened_file_fifo_not_root_rejected(void **state) {
+    struct stat fd_stat = { .st_mode = S_IFIFO, .st_uid = 1000, .st_nlink = 1 };
+    struct stat dir_stat = { .st_mode = S_IFDIR | 0755, .st_uid = 0 };
+
+    errno = 0;
+    assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), -1);
+    assert_int_equal(errno, EINVAL);
+}
+
+void test_w_vet_opened_file_root_fifo_and_chr_accepted(void **state) {
+    struct stat fd_stat = { .st_mode = S_IFIFO, .st_uid = 0, .st_nlink = 1 };
+    struct stat dir_stat = { .st_mode = S_IFDIR | 0755, .st_uid = 0 };
+
+    assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), 0);
+    fd_stat.st_mode = S_IFCHR;
+    assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), 0);
+}
+
+void test_w_vet_opened_file_root_block_device_rejected(void **state) {
+    struct stat fd_stat = { .st_mode = S_IFBLK, .st_uid = 0, .st_nlink = 1 };
+    struct stat dir_stat = { .st_mode = S_IFDIR | 0755, .st_uid = 0 };
+
+    errno = 0;
+    assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), -1);
+    assert_int_equal(errno, EINVAL);
+}
+
+void test_w_vet_opened_file_symlink_target_owner_accepted(void **state) {
+    struct stat fd_stat = { .st_mode = S_IFREG, .st_uid = 1000, .st_nlink = 1 };
+    struct stat dir_stat = { .st_mode = S_IFDIR | 0755, .st_uid = 0 };
+    uid_t link_uid = 1000;
+
+    assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, &link_uid), 0);
+}
+
+void test_w_vet_opened_file_symlink_other_owner_rejected(void **state) {
+    struct stat fd_stat = { .st_mode = S_IFREG, .st_uid = 0, .st_nlink = 1 };
+    struct stat dir_stat = { .st_mode = S_IFDIR | 0755, .st_uid = 0 };
+    uid_t link_uid = 1000;
+
+    errno = 0;
+    assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, &link_uid), -1);
+    assert_int_equal(errno, EPERM);
+}
+
+void test_w_vet_opened_file_hard_link_trusted_dir_accepted(void **state) {
+    // alerts.log: a hard link in a directory only its owner can write to.
+    struct stat fd_stat = { .st_mode = S_IFREG, .st_uid = 1000, .st_nlink = 2 };
+    struct stat dir_stat = { .st_mode = S_IFDIR | 0750, .st_uid = 1000 };
+
+    assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), 0);
+    dir_stat.st_uid = 0;
+    assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), 0);
+}
+
+void test_w_vet_opened_file_hard_link_foreign_dir_rejected(void **state) {
+    // A hard link to a root-owned file, in a directory owned by another user.
+    struct stat fd_stat = { .st_mode = S_IFREG, .st_uid = 0, .st_nlink = 2 };
+    struct stat dir_stat = { .st_mode = S_IFDIR | 0755, .st_uid = 1000 };
+
+    errno = 0;
+    assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), -1);
+    assert_int_equal(errno, EPERM);
+}
+
+void test_w_vet_opened_file_hard_link_writable_dir_rejected(void **state) {
+    struct stat fd_stat = { .st_mode = S_IFREG, .st_uid = 0, .st_nlink = 2 };
+    struct stat dir_stat = { .st_mode = S_IFDIR | 0775, .st_uid = 0 };
+
+    errno = 0;
+    assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), -1);
+    assert_int_equal(errno, EPERM);
+    dir_stat.st_mode = S_IFDIR | 01777;
+    assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), -1);
+}
+
 #endif /* TEST_WINAGENT */
 
 int main(void) {
@@ -2109,6 +2440,31 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_invalid_name, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_invalid_mode, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_missing_basedir, setup_nofollow, teardown_nofollow),
+        // w_fopen_vetted_follow
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_reads_regular_file, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_directory_rejected, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_missing_file, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_fifo_rejected_without_blocking, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_root_fifo_accepted_without_blocking, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_hard_link_accepted, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_hard_link_in_shared_dir_rejected, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_hard_linked_symlink_in_shared_dir_rejected, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_symlink_same_owner_accepted, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_relative_symlink_accepted, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_directory_symlink_same_owner_accepted, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_symlink_root_owned_accepted, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_symlink_other_owner_rejected, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_directory_symlink_other_owner_rejected, setup_nofollow, teardown_vetted),
+        cmocka_unit_test(test_w_fopen_vetted_follow_invalid_mode),
+        cmocka_unit_test(test_w_vet_opened_file_regular_accepted),
+        cmocka_unit_test(test_w_vet_opened_file_fifo_not_root_rejected),
+        cmocka_unit_test(test_w_vet_opened_file_root_fifo_and_chr_accepted),
+        cmocka_unit_test(test_w_vet_opened_file_root_block_device_rejected),
+        cmocka_unit_test(test_w_vet_opened_file_symlink_target_owner_accepted),
+        cmocka_unit_test(test_w_vet_opened_file_symlink_other_owner_rejected),
+        cmocka_unit_test(test_w_vet_opened_file_hard_link_trusted_dir_accepted),
+        cmocka_unit_test(test_w_vet_opened_file_hard_link_foreign_dir_rejected),
+        cmocka_unit_test(test_w_vet_opened_file_hard_link_writable_dir_rejected),
 #else
         cmocka_unit_test(test_get_UTC_modification_time_success),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),

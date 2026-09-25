@@ -132,6 +132,19 @@ void expect_w_fopen_nofollow(const char * basedir, const char * filename, const 
     will_return(__wrap_w_fopen_nofollow, ret);
 }
 
+// No __real_ fallback, for the same reason as w_fopen_nofollow above.
+FILE *__wrap_w_fopen_vetted_follow(const char * path, const char * mode) {
+    check_expected(path);
+    check_expected(mode);
+    return mock_type(FILE *);
+}
+
+void expect_w_fopen_vetted_follow(const char * path, const char * mode, FILE *ret) {
+    expect_string(__wrap_w_fopen_vetted_follow, path, path);
+    expect_string(__wrap_w_fopen_vetted_follow, mode, mode);
+    will_return(__wrap_w_fopen_vetted_follow, ret);
+}
+
 char ** __wrap_wreaddir(const char * name) {
     check_expected(name);
     return mock_type(char**);
