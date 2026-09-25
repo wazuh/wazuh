@@ -16,20 +16,27 @@
 #include <string>
 #include "sharedDefs.h"
 
-#ifndef SIDL
-#define SIDL 1
-#endif
-#ifndef SRUN
-#define SRUN 2
-#endif
-#ifndef SSLEEP
-#define SSLEEP 3
-#endif
 #ifndef SSTOP
 #define SSTOP 4
 #endif
 #ifndef SZOMB
 #define SZOMB 5
+#endif
+
+#ifndef TH_STATE_RUNNING
+#define TH_STATE_RUNNING 1
+#endif
+#ifndef TH_STATE_STOPPED
+#define TH_STATE_STOPPED 2
+#endif
+#ifndef TH_STATE_WAITING
+#define TH_STATE_WAITING 3
+#endif
+#ifndef TH_STATE_UNINTERRUPTIBLE
+#define TH_STATE_UNINTERRUPTIBLE 4
+#endif
+#ifndef TH_STATE_HALTED
+#define TH_STATE_HALTED 5
 #endif
 
 namespace ProcessHelperMac
@@ -59,24 +66,55 @@ namespace ProcessHelperMac
     }
 
     /**
-     * @brief Maps BSD process status (pbi_status) to single-character process state string.
+     * @brief Rank used when no thread state is available. Lower ranks take precedence.
+     */
+    constexpr int THREAD_STATE_RANK_UNKNOWN { 7 };
+
+    /**
+     * @brief Ranks a thread run state the same way macOS ps does, so the busiest thread
+     * of a process determines its state.
+     *
+     * @param runState Thread run state from proc_threadinfo.pth_run_state.
+     * @param sleepTime Seconds the thread has been sleeping, from proc_threadinfo.pth_sleep_time.
+     * @return Rank from 1 (running) to 6 (halted), or THREAD_STATE_RANK_UNKNOWN.
+     */
+    static inline int threadStateRank(const int32_t runState, const int32_t sleepTime)
+    {
+        switch (runState)
+        {
+            case TH_STATE_RUNNING:
+                return 1;
+
+            case TH_STATE_UNINTERRUPTIBLE:
+                return 2;
+
+            case TH_STATE_WAITING:
+                return sleepTime > 20 ? 4 : 3;
+
+            case TH_STATE_STOPPED:
+                return 5;
+
+            case TH_STATE_HALTED:
+                return 6;
+
+            default:
+                return THREAD_STATE_RANK_UNKNOWN;
+        }
+    }
+
+    /**
+     * @brief Builds the single-character process state. The BSD process status only tracks
+     * stopped and zombie processes reliably; any other process is reported as running, so
+     * its state comes from the lowest thread rank.
      *
      * @param status Process status from proc_bsdinfo.pbi_status.
-     * @return Single character string ("I", "R", "S", "T", "Z") or UNKNOWN_VALUE.
+     * @param threadRank Lowest threadStateRank() among the process threads.
+     * @return Single character string ("R", "U", "S", "I", "T", "H", "Z") or UNKNOWN_VALUE.
      */
-    static inline std::string getProcessState(const uint32_t status)
+    static inline std::string getProcessState(const uint32_t status, const int threadRank)
     {
         switch (status)
         {
-            case SIDL:
-                return "I";
-
-            case SRUN:
-                return "R";
-
-            case SSLEEP:
-                return "S";
-
             case SSTOP:
                 return "T";
 
@@ -84,8 +122,17 @@ namespace ProcessHelperMac
                 return "Z";
 
             default:
-                return UNKNOWN_VALUE;
+                break;
         }
+
+        constexpr char RANK_STATES[] { "RUSITH" };
+
+        if (threadRank >= 1 && threadRank < THREAD_STATE_RANK_UNKNOWN)
+        {
+            return std::string(1, RANK_STATES[threadRank - 1]);
+        }
+
+        return UNKNOWN_VALUE;
     }
 } // namespace ProcessHelperMac
 
