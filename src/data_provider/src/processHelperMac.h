@@ -70,14 +70,19 @@ namespace ProcessHelperMac
         {
             case SIDL:
                 return "I";
+
             case SRUN:
                 return "R";
+
             case SSLEEP:
                 return "S";
+
             case SSTOP:
                 return "T";
+
             case SZOMB:
                 return "Z";
+
             default:
                 return UNKNOWN_VALUE;
         }
