@@ -190,7 +190,7 @@ component owns. Do not use `wazuh_env_set` as a password rotation mechanism.
   limited by CA validity; a newly created CA is not backdated.
 - `WAZUH_MANAGER_CERT_SANS` configures the connector.
 - `WAZUH_MANAGER_REMOTED_CERT_SANS` configures Remoted. Explicit values replace
-  discovery. Absent values include every **global-scope** IPv4/IPv6 address
+  discovery; loopback is appended to them. Absent values include every **global-scope** IPv4/IPv6 address
   reported by `ip -o addr show` — including addresses on interfaces that are not
   on the default route, that are virtual, or that are down — plus hostname/FQDN
   and loopback. Tentative/DAD-failed addresses are excluded, and so are

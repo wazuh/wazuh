@@ -264,9 +264,13 @@ if [ "${1-}" = --case ]; then
             unset WAZUH_MANAGER_REMOTED_CERT_SANS
             wazuh_env_set WAZUH_MANAGER_REMOTED_CERT_SANS 'DNS:file.test,IP:2001:db8::1,IP:2001:db8:0:0:0:0:0:1'
             sans=$(wazuh_manager_remoted_sans)
-            eq "$(printf '%s\n' "$sans" | wc -l | tr -d ' ')" 2 deduplication
-            export WAZUH_MANAGER_REMOTED_CERT_SANS=DNS:process.test
-            eq "$(wazuh_manager_remoted_sans)" DNS:process.test san-environment
+            eq "$(printf '%s\n' "$sans" | wc -l | tr -d ' ')" 5 deduplication
+            export WAZUH_MANAGER_REMOTED_CERT_SANS='DNS:process.test,IP:127.0.0.1'
+            sans=$(wazuh_manager_remoted_sans)
+            eq "$(printf '%s\n' "$sans" | head -1)" DNS:process.test san-environment
+            for expected in DNS:localhost IP:127.0.0.1 IP:0:0:0:0:0:0:0:1; do
+                eq "$(printf '%s\n' "$sans" | grep -Fxc "$expected")" 1 "loopback $expected appended once"
+            done
             ;;
         interfaces)
             unset WAZUH_MANAGER_REMOTED_CERT_SANS

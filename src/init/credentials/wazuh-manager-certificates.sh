@@ -594,12 +594,13 @@ DNS:localhost
 IP:127.0.0.1
 IP:::1" "$_wmc_output"
 )
+# An explicit list replaces discovery, but loopback is appended to it as to the derived one.
 _wmc_resolve_manager_sans_to() (
     _wmc_output=${1-}
     _wmc_status=0
     _wmc_setting=$(_wmc_resolve_manager_san_setting) || _wmc_status=$?
     case $_wmc_status in
-        0) _wmc_normalize_sans "$_wmc_setting" "$_wmc_output" ;;
+        0) _wmc_normalize_sans "$_wmc_setting,DNS:localhost,IP:127.0.0.1,IP:::1" "$_wmc_output" ;;
         1) _wmc_default_manager_sans "$_wmc_output" ;;
         *) return 1 ;;
     esac
@@ -610,7 +611,7 @@ _wmc_resolve_remoted_sans_to() (
     _wmc_status=0
     _wmc_setting=$(_wmc_resolve_remoted_san_setting) || _wmc_status=$?
     case $_wmc_status in
-        0) _wmc_normalize_sans "$_wmc_setting" "$_wmc_output" ;;
+        0) _wmc_normalize_sans "$_wmc_setting,DNS:localhost,IP:127.0.0.1,IP:::1" "$_wmc_output" ;;
         1) _wmc_default_remoted_sans "$_wmc_output" ;;
         *) return 1 ;;
     esac

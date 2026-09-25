@@ -268,7 +268,10 @@ case "$1" in
     # and names what is missing; that is where the check belongs, because the answer changes
     # between these two moments and only the answer at start matters.
     if [ -x ${DIR}/bin/wazuh-manager-resolve-credentials ]; then
-        if [ -z "$2" ]; then
+        # A reinstall from the config-files state also passes the old version, but postrm renamed
+        # every file in etc/ to *.save: with no pair in place there is nothing to keep, so it
+        # resolves as an install and issues the certificates.
+        if [ -z "$2" ] || { [ ! -e ${DIR}/etc/certs/remoted.pem ] && [ ! -e ${DIR}/etc/certs/indexer-connector.pem ]; }; then
             CRED_MODE="--install"
         else
             CRED_MODE="--upgrade"
