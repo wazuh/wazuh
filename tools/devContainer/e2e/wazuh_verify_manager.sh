@@ -25,14 +25,15 @@ Checks (each one PASS/FAIL/SKIP):
   3.  GET <prefix>/cacerts on the HTTPS agent listener answers 200 (port/prefix from the live config)
   4.  no new ERROR/CRITICAL line in logs/wazuh-manager.log since --start-mark, ignoring --ignore-regex
       (SKIP without a mark; the last 300 lines are still copied to manager.log)
-  5.  API login with the default user (only with --api)
+  5.  API login as wazuh with the published password (only with --api; WAZUH_API_PASSWORD overrides)
 
 Options:
   --home DIR          installed manager (default /var/wazuh-manager, or WAZUH_MANAGER_HOME)
   --out DIR           where to write the evidence files (default \$TMPDIR/wazuh-e2e-evidence/<timestamp>)
   --start-mark FILE   file holding the byte offset of logs/wazuh-manager.log taken before the start
                       (wazuh_install_manager.sh writes it as start.mark)
-  --api               also try POST /security/user/authenticate with the default credentials
+  --api               also try POST /security/user/authenticate as wazuh, with WAZUH_API_PASSWORD or else
+                      WAZUH_MANAGER_API_PASSWORD from /etc/wazuh/credentials.env
   --daemons N         expected number of running daemons (default 7)
   --ignore-regex RE   ERROR/CRITICAL lines matching RE are known environment noise (default:
                       indexer-related noise of a manager running without an indexer)
@@ -129,13 +130,21 @@ else
   skip 4 "new ERROR/CRITICAL lines" "no --start-mark; last 300 lines in manager.log"
 fi
 
-# 5. API login with the default user (framework/wazuh/rbac/default/users.yaml)
+# 5. API login as `wazuh`, with the password the installation published (WAZUH_API_PASSWORD overrides it)
 if [ "$API" -eq 1 ]; then
   API_PORT=$(grep -E '^port:' "$HOME_DIR/api/configuration/api.yaml" 2>/dev/null | awk '{print $2}')
   API_PORT="${API_PORT:-55000}"
-  tok=$(curl -sk --max-time 15 -u wazuh:wazuh -X POST "https://127.0.0.1:${API_PORT}/security/user/authenticate" 2>/dev/null \
-        | python3 -c 'import json,sys;print(json.load(sys.stdin)["data"]["token"])' 2>/dev/null || true)
-  check 5 "API login wazuh:wazuh on :${API_PORT}" yes "$([ -n "$tok" ] && echo yes || echo no)"
+  API_PASS="${WAZUH_API_PASSWORD:-$(sed -n "s/^WAZUH_MANAGER_API_PASSWORD=[\"']\{0,1\}\(.*[^\"']\)[\"']\{0,1\}$/\1/p" \
+             /etc/wazuh/credentials.env 2>/dev/null | tail -n 1)}"
+  tok=""
+  if [ -n "$API_PASS" ]; then
+    # Through curl's config on stdin, not -u, so the password never reaches the process list.
+    tok=$(printf 'user = "wazuh:%s"\n' "$API_PASS" \
+          | curl -sk --max-time 15 -K - -X POST "https://127.0.0.1:${API_PORT}/security/user/authenticate" 2>/dev/null \
+          | python3 -c 'import json,sys;print(json.load(sys.stdin)["data"]["token"])' 2>/dev/null || true)
+  fi
+  check 5 "API login as wazuh on :${API_PORT}" yes \
+    "$([ -n "$tok" ] && echo yes || { [ -n "$API_PASS" ] && echo no || echo 'no (no WAZUH_MANAGER_API_PASSWORD in /etc/wazuh/credentials.env; set WAZUH_API_PASSWORD)'; })"
 else
   skip 5 "API login" "--api not given"
 fi
