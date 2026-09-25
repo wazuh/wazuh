@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <vector>
 
@@ -101,5 +103,21 @@ class IFileSystemWrapper
         /// @param fd File descriptor
         /// @return 0 on success, -1 on error
         virtual int close(int fd) const = 0;
+
+        /// @brief Returns the size in bytes of a regular file.
+        /// @param path The file to measure.
+        /// @return Returns the file size in bytes, or 0 if the path is not a regular file or on any error.
+        virtual std::uintmax_t file_size(const std::filesystem::path& path) const = 0;
+
+        /// @brief Returns the recursive sum of the sizes of every regular file under a directory.
+        /// @param path The directory to measure.
+        /// @param maxEntries Upper bound on the number of directory entries that may be visited.
+        /// @param deadline Wall-clock budget for the walk.
+        /// @return Returns the summed size in bytes, or 0 (never a partial sum) if the path is not a directory,
+        /// if maxEntries is exceeded, if the deadline elapses, or on any error. Symbolic links are skipped rather
+        /// than followed, so a file or directory reachable through both its real path and an alias is counted once.
+        virtual std::uintmax_t directory_size(const std::filesystem::path& path,
+                                              std::uintmax_t maxEntries,
+                                              std::chrono::milliseconds deadline) const = 0;
 };
 // LCOV_EXCL_STOP

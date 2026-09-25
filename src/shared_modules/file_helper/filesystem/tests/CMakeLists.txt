@@ -2,7 +2,7 @@ include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
-add_executable(filesystem_unit_test filesystem_utils_test.cpp)
+add_executable(filesystem_unit_test filesystem_utils_test.cpp filesystem_wrapper_test.cpp)
 target_include_directories(filesystem_unit_test
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
 target_include_directories(
