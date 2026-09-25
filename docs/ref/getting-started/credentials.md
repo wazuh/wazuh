@@ -264,6 +264,16 @@ mode flag, because the presence of a private key beside the anchor is the signal
 
 A pair already in `etc/certs` is never overwritten.
 
+A CA you place yourself has to match what the resolver checks, or it is refused and nothing is
+issued: the directory `root:root 0700`, `root-ca.pem` `root:root 0644` and `root-ca.key`
+`root:root 0400`.
+
+```bash
+sudo install -d -m 0700 -o root -g root /etc/wazuh/ca
+sudo install -m 0644 -o root -g root root-ca.pem /etc/wazuh/ca/root-ca.pem
+sudo install -m 0400 -o root -g root root-ca.key /etc/wazuh/ca/root-ca.key
+```
+
 A host that was never given a CA private key cannot sign, and so cannot be where one leaks from.
 
 When the install issues nothing it says so and still exits `0` — there is no such thing as a failed
@@ -317,7 +327,8 @@ formed the classic way carries the interface's MAC into a certificate that is se
 completing a handshake on port 1517. If a node must present an address discovery does not pick up,
 set `WAZUH_MANAGER_REMOTED_CERT_SANS` explicitly; it replaces the whole list.
 
-An explicit value **replaces** discovery for that leaf; it does not extend it. Wildcard DNS names,
+An explicit value **replaces** discovery for that leaf; it does not extend it. `localhost`,
+`127.0.0.1` and `::1` are appended to it all the same. Wildcard DNS names,
 scoped IPv6 and CIDR notation are refused — under a shared CA, a node holding a wildcard could
 present a certificate for any other node — and equivalent textual IPv6 addresses are deduplicated.
 
