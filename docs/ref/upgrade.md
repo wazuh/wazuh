@@ -2,7 +2,7 @@
 
 This guide provides instructions for upgrading Wazuh server and agent components from a previous version. The upgrade process preserves the documented configuration and runtime paths while replacing package-managed files with the new version. The service is automatically restarted during the upgrade.
 
-**Important**: Upgrading the Wazuh **manager** from version 4.x to 5.x is **not supported**. For manager major version upgrades, a fresh installation is required. However, Wazuh **agents** support upgrades from 4.x to 5.x and can connect to a 5.x manager.
+**Important**: Upgrading the Wazuh **manager** from version 4.x to 5.x is **not supported**. For manager major version upgrades, a fresh installation is required; [Manager migration from 4.x to 5.0](../guide/migration/manager-4x-to-5x.md) describes how to carry agent keys, registry, groups and API users into it. Wazuh **agents** support upgrades from 4.x to 5.x and can connect to a 5.x manager.
 
 ---
 
