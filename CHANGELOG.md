@@ -93,6 +93,12 @@ All notable changes to this project will be documented in this file.
 
 - Fixed SCA checks silently failing across macOS, RHEL/Debian, AlmaLinux, Amazon Linux, CentOS, Oracle Linux, and Rocky Linux, Ubuntu, Solaris, MongoDB policies by adding missing shell wrappers and fixing broken rule syntax. ([#38679](https://github.com/wazuh/wazuh/pull/38679))
 
+### Ruleset
+
+#### Fixed
+
+- Fixed the Debian 13 CIS SCA AppArmor audit check. ([#38711](https://github.com/wazuh/wazuh/pull/38711))
+
 ## [v4.14.8]
 
 ### Manager
