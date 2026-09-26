@@ -13,10 +13,10 @@
 
 #include "os_net.h"
 #include "cJSON.h"
+#include "module_query_errors.h"
 
 #ifdef WIN32
 #include "wmodules.h"
-#include "module_query_errors.h"
 #endif
 
 /* Bounded, same rationale as task_registry_client.c: agent-info is a local,
@@ -32,13 +32,16 @@
  * processed a few lines earlier in the same handleNotifyBody() call this ultimately comes from).
  *
  * Windows: agentd and every wazuh_modules wodle (including agent-info) run as threads of the
- * same service process (src/win32/win_service.c) -- there is no socket to connect, but the same
- * race exists one layer up: wm_module_query_json_ex()'s wm_find_module("agent-info") answers
- * immediately with MQ_ERR_MODULE_NOT_FOUND, no wait, if agent-info has not registered itself
- * into the module list yet.
+ * same service process (src/win32/win_service.c) -- there is no socket to connect, and the module
+ * list itself (wm_find_module("agent-info")) is already populated by the time the HTTPS client
+ * even starts, so a "module not found" answer is not the transient case here. The transient case
+ * is one layer deeper: agent-info's module thread is in the list but its own query function
+ * pointers are not wired up yet (its C++ implementation object is still being constructed), which
+ * answers with "module is not running" instead. A module truly absent from configuration is a
+ * separate, permanent condition the retry below must not mask.
  *
  * Either way: the one response that carries a real (non-zero) vd_feed_offset is, on every fresh
- * agent, guaranteed to find nobody listening/registered yet on a single attempt -- it used to be
+ * agent, guaranteed to find nobody listening/ready yet on a single attempt -- it used to be
  * silently dropped on POSIX, leaving syscollector's first VD sync to race an empty
  * metadata_provider (a manager 409 version_mismatch). A short, bounded retry closes that window
  * on the POSIX branch below; the identical race was left open on the WIN32 branch below until it
@@ -46,37 +49,21 @@
  * VD_OFFSET_CONNECT_RETRY_DELAY_US apart, so a genuinely-unavailable agent-info (not just "not
  * started yet") still costs only a small, known, one-shot-comparable tax per notify -- the loop
  * breaks on the first success, so the steady-state case (modulesd already up, the overwhelming
- * majority of calls over an agent's lifetime) pays nothing extra at all. */
+ * majority of calls over an agent's lifetime) pays nothing extra at all. This retry is a latency
+ * reduction, not a correctness requirement: the caller on the agent-info side now republishes its
+ * own already-known offset on every later observation too (not only the first), so a notify that
+ * exhausts this retry without success simply gets picked up by the next one instead of losing the
+ * value outright. */
 #define VD_OFFSET_CONNECT_RETRIES 10
 #define VD_OFFSET_CONNECT_RETRY_DELAY_US 300000 /* 300 ms; ~2.7s worst case across all retries */
 
 #ifdef WIN32
-/* Wider budget than the POSIX constants above: live-verified that agent-info's module
- * registration on Windows can take noticeably longer than a POSIX modulesd's socket-open --
- * one clean-install run measured ~4s between the first Notify (carrying the real offset) and
- * agent-info's own "Started" log line, already past VD_OFFSET_CONNECT_RETRIES/_DELAY_US's 2.7s
- * budget and still producing the 409 this whole retry exists to prevent. Windows loads/verifies
- * several separate DLLs per wodle (Authenticode checks against unsigned dev builds add real,
- * measured latency here) where POSIX's modulesd is a single process already listening once its
- * socket exists, so the two platforms' realistic "not ready yet" windows are not the same order
- * of magnitude. ~9s worst case, still bounded, still free in the steady state (loop breaks on
- * first success). */
-#define VD_OFFSET_WIN_LOOKUP_RETRIES 30
+/* Same bounded budget as the POSIX constants above: the window here is agent-info's own
+ * in-process object construction/function-pointer wiring, not a socket or module-discovery
+ * delay, so it does not call for a wider budget than that. */
+#define VD_OFFSET_WIN_LOOKUP_RETRIES 10
 #define VD_OFFSET_WIN_LOOKUP_RETRY_DELAY_US 300000
 #endif
-
-/* Shared by both branches below: pulls the "error" field an agent-info (or, on Windows, the
- * module-query dispatcher itself) JSON response carries. */
-static bool parse_error_field(const cJSON *root, int *out_error) {
-    const cJSON *error = cJSON_GetObjectItem(root, "error");
-
-    if (!error || !cJSON_IsNumber(error)) {
-        return false;
-    }
-
-    *out_error = error->valueint;
-    return true;
-}
 
 #ifndef WIN32
 static bool vd_offset_send_query(const char *query, char *response, size_t response_cap) {
@@ -123,19 +110,23 @@ static bool vd_offset_send_query(const char *query, char *response, size_t respo
     return true;
 }
 #else
-/* True only for the specific, transient "agent-info hasn't registered itself into the module
- * list yet" answer -- never for a genuine, lasting error (bad JSON, unsupported query, disabled
- * module, ...), which the retry below must not loop on. */
-static bool vd_offset_is_module_not_registered(const char *json) {
+/* True only for the specific, transient "agent-info is not ready to answer queries yet" answers
+ * -- module missing from the list entirely (MQ_ERR_MODULE_NOT_FOUND, in practice only a
+ * permanently-unconfigured module, since the list is built well before this can ever be called)
+ * or present but not yet wired up (MQ_ERR_MODULE_NOT_RUNNING, the actual transient case during
+ * startup) -- never for a genuine, lasting error (bad JSON, unsupported query, an internal
+ * failure reported by the module itself, ...), which the retry below must not loop on. */
+static bool vd_offset_is_transient_unavailable(const char *json) {
     cJSON *root = cJSON_Parse(json);
     if (!root) {
         return false;
     }
 
     int error_code = -1;
-    bool notRegistered = parse_error_field(root, &error_code) && error_code == MQ_ERR_MODULE_NOT_FOUND;
+    bool transient = mq_parse_error_field(root, &error_code) &&
+                      (error_code == MQ_ERR_MODULE_NOT_FOUND || error_code == MQ_ERR_MODULE_NOT_RUNNING);
     cJSON_Delete(root);
-    return notRegistered;
+    return transient;
 }
 
 static bool vd_offset_send_query(const char *command, char *response, size_t response_cap) {
@@ -147,7 +138,7 @@ static bool vd_offset_send_query(const char *command, char *response, size_t res
 
         wm_module_query_json_ex("agent-info", command, &output);
 
-        if (!output || !vd_offset_is_module_not_registered(output)) {
+        if (!output || !vd_offset_is_transient_unavailable(output)) {
             break;
         }
 
@@ -162,8 +153,8 @@ static bool vd_offset_send_query(const char *command, char *response, size_t res
         return false;
     }
 
-    if (vd_offset_is_module_not_registered(output)) {
-        mdebug1("vd_offset_client: agent-info not registered yet after %d attempt(s); "
+    if (vd_offset_is_transient_unavailable(output)) {
+        mdebug1("vd_offset_client: agent-info not ready yet after %d attempt(s); "
                 "will retry next notify.", VD_OFFSET_WIN_LOOKUP_RETRIES);
         os_free(output);
         return false;
@@ -213,7 +204,7 @@ bool vd_offset_client_observe(uint64_t offset, bool *out_changed, bool *out_pend
     }
 
     int error_code = -1;
-    if (!parse_error_field(root, &error_code) || error_code != 0) {
+    if (!mq_parse_error_field(root, &error_code) || error_code != 0) {
         const cJSON *message = cJSON_GetObjectItem(root, "message");
         mdebug1("vd_offset_client: agent-info reported an error (%d): %s", error_code,
                 (message && cJSON_IsString(message) && message->valuestring) ? message->valuestring : "?");
@@ -269,7 +260,7 @@ bool vd_offset_client_clear_pending(uint64_t offset) {
     }
 
     int error_code = -1;
-    if (!parse_error_field(root, &error_code) || error_code != 0) {
+    if (!mq_parse_error_field(root, &error_code) || error_code != 0) {
         cJSON_Delete(root);
         return false;
     }
