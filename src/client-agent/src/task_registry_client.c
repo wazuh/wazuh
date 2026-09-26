@@ -13,10 +13,10 @@
 
 #include "os_net.h"
 #include "cJSON.h"
+#include "module_query_errors.h"
 
 #ifdef WIN32
 #include "wmodules.h"
-#include "module_query_errors.h"
 #endif
 
 /* Bounded: agent-info is a local, normally-responsive process, but agentd
@@ -26,24 +26,23 @@
 
 /* Same rationale/constants as vd_offset_client.c (both platforms -- see that file's longer
  * comment): the very first Notify after agentd starts races modulesd's own startup, over
- * WM_LOCAL_SOCK on POSIX or over module-list registration on Windows (wm_find_module()
- * inside wm_module_query_json_ex() answering MQ_ERR_MODULE_NOT_FOUND with no wait), and task
- * registry checks are dispatched from the same "tasks first" ordering in handleNotifyBody() --
- * so a brand-new agent's very first task check hits the same one-shot-drop window as the VD
- * feed offset delivery does, just for a different registry. Bounded, same reasoning on both
- * platforms: a genuinely-unavailable agent-info still costs only a small, known,
- * one-shot-comparable tax; the loop breaks on the first success, so the steady-state case pays
- * nothing extra. */
+ * WM_LOCAL_SOCK on POSIX or, on Windows, over agent-info's own in-process object construction
+ * (its query function pointers are wired up only once that finishes -- the module itself is
+ * already in wm_find_module()'s list well before this can ever run, so "module not found" is not
+ * the transient case there; "module not running" is), and task registry checks are dispatched
+ * from the same "tasks first" ordering in handleNotifyBody() -- so a brand-new agent's very
+ * first task check hits the same one-shot-drop window as the VD feed offset delivery does, just
+ * for a different registry. Bounded, same reasoning on both platforms: a genuinely-unavailable
+ * agent-info still costs only a small, known, one-shot-comparable tax; the loop breaks on the
+ * first success, so the steady-state case pays nothing extra. */
 #define TASK_REGISTRY_CONNECT_RETRIES 10
 #define TASK_REGISTRY_CONNECT_RETRY_DELAY_US 300000 /* 300 ms; ~2.7s worst case across all retries */
 
 #ifdef WIN32
-/* Wider budget than the POSIX constants above -- same measured reason as
- * VD_OFFSET_WIN_LOOKUP_RETRIES in vd_offset_client.c (see that file's comment): a clean-install
- * run on a Windows test VM measured ~4s between the first Notify and agent-info's own "Started"
- * log line, past the POSIX-sized 2.7s budget. ~9s worst case, still bounded, still free in the
- * steady state. */
-#define TASK_REGISTRY_WIN_LOOKUP_RETRIES 30
+/* Same bounded budget as the POSIX constants above -- see vd_offset_client.c's matching
+ * constant: the window here is agent-info's own in-process construction, not a socket or
+ * module-discovery delay. */
+#define TASK_REGISTRY_WIN_LOOKUP_RETRIES 10
 #define TASK_REGISTRY_WIN_LOOKUP_RETRY_DELAY_US 300000
 #endif
 
@@ -155,19 +154,21 @@ static task_registry_result_t task_registry_check_and_record_posix(const char *t
  * (wm_module_query_json_ex -> wm_find_module("agent-info") ->
  * module->context->query(...)), no socket involved. */
 
-/* True only for the specific, transient "agent-info hasn't registered itself into the module
- * list yet" answer (see the TASK_REGISTRY_CONNECT_RETRIES comment above) -- never for a
- * genuine, lasting error, which the retry below must not loop on. */
-static bool task_registry_is_module_not_registered(const char *json) {
+/* True only for the specific, transient "agent-info is not ready to answer queries yet" answers
+ * (see the TASK_REGISTRY_CONNECT_RETRIES comment above: module missing from the list entirely,
+ * or present but not yet wired up) -- never for a genuine, lasting error, which the retry below
+ * must not loop on. */
+static bool task_registry_is_transient_unavailable(const char *json) {
     cJSON *root = cJSON_Parse(json);
     if (!root) {
         return false;
     }
 
-    const cJSON *error = cJSON_GetObjectItem(root, "error");
-    bool notRegistered = error && cJSON_IsNumber(error) && error->valueint == MQ_ERR_MODULE_NOT_FOUND;
+    int error_code = -1;
+    bool transient = mq_parse_error_field(root, &error_code) &&
+                      (error_code == MQ_ERR_MODULE_NOT_FOUND || error_code == MQ_ERR_MODULE_NOT_RUNNING);
     cJSON_Delete(root);
-    return notRegistered;
+    return transient;
 }
 
 static task_registry_result_t task_registry_check_and_record_win(const char *task_id) {
@@ -184,7 +185,7 @@ static task_registry_result_t task_registry_check_and_record_win(const char *tas
 
         wm_module_query_json_ex("agent-info", command, &output);
 
-        if (!output || !task_registry_is_module_not_registered(output)) {
+        if (!output || !task_registry_is_transient_unavailable(output)) {
             break;
         }
 
@@ -200,8 +201,8 @@ static task_registry_result_t task_registry_check_and_record_win(const char *tas
         return TASK_REGISTRY_RESULT_ERROR;
     }
 
-    if (task_registry_is_module_not_registered(output)) {
-        mdebug1("task_registry_client: agent-info not registered yet for task %s after %d "
+    if (task_registry_is_transient_unavailable(output)) {
+        mdebug1("task_registry_client: agent-info not ready yet for task %s after %d "
                 "attempt(s); treating as non-dispatchable (fail closed).",
                 task_id, TASK_REGISTRY_WIN_LOOKUP_RETRIES);
         os_free(output);
