@@ -25,6 +25,8 @@ All notable changes to this project will be documented in this file.
 - Escaped control characters in the request path of the API plain-text access log, so an unauthenticated request can no longer forge access log entries. ([#38894](https://github.com/wazuh/wazuh/pull/38894))
 - Fixed the indexer connector silently diverging from the `wazuh-states-*` indices: per-item `_bulk` rejections are now logged instead of ignored, aggregated by error type and reason, `_delete_by_query` responses reporting failures or version conflicts are now logged too, agent-ID deletions no longer match by raw string prefix, `diff()` no longer deletes real documents when its local mirror comes up empty, and a DELETED document no longer sweeps in sibling documents whose ID merely starts with the deleted one. ([#39041](https://github.com/wazuh/wazuh/pull/39041))
 - Raised the default API `run_as` authentication-context payload size limit from 8 KB to 64 KB and made it configurable via the new `auth_context_max_payload_size` option, for AD/LDAP/SSO logins with large group-membership contexts. ([#39471](https://github.com/wazuh/wazuh/pull/39471))
+- Fixed `wazuh-authd` indexing the wrong (or no) pending key under concurrent enrollment handshakes, by tracking each client's own inserted key instead of assuming it was always the last one in the keystore. ([#39651](https://github.com/wazuh/wazuh/pull/39651))
+- Logged `SocketClient` connection/send failures against the vulnerability scanner's report socket, once on the transition into a failing state and once on recovery, instead of discarding them silently. ([#39651](https://github.com/wazuh/wazuh/pull/39651))
 
 ### Agent
 
