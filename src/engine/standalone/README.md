@@ -66,7 +66,9 @@ The engine's behaviour can be tuned via environment variables before launching `
 | `WAZUH_SERVER_ENABLE_EVENT_PROCESSING` | `false` | Enable/disable event processing |
 | `WAZUH_SERVER_API_MAX_RESOURCE_PAYLOAD_SIZE` | `50000` | Max payload size (bytes) for API resource requests |
 | `WAZUH_SERVER_API_MAX_RESOURCE_KVDB_PAYLOAD_SIZE` | `100000` | Max payload size (bytes) for KVDB API requests |
-| `WAZUH_RLIMIT_NOFILE` | `8192` | Soft file-descriptor limit the engine raises itself to at start (`1024`-`1048576`); never above the hard limit the launcher grants |
+
+Inside wazuh-indexer the engine inherits the unit's `LimitNOFILE=65535` and only raises its soft
+limit to `8192` when it starts lower; there is no variable for it.
 
 ### Log file and rotation
 
