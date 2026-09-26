@@ -2516,8 +2516,22 @@ AgentInfoImpl::VdOffsetObserveResult AgentInfoImpl::observeVdFeedOffset(uint64_t
 
         if (state.hasOffset && offset <= state.offset)
         {
-            // Not newer: agents never move the stored offset backward (N3), and an exact
-            // repeat is a no-op too.
+            // Not newer for the durable record below -- but metadata_provider's live copy is a
+            // separate store with its own lifecycle, and on at least one platform it does not
+            // survive every restart this durable table does (a fresh, empty in-memory record
+            // starts back at an unset offset, while this on-disk table keeps its last known
+            // value across that same restart). Without republishing here, a restart right after
+            // this exact offset was already durably known would leave the live copy stuck at its
+            // post-restart default forever: this early return is the only path a repeated,
+            // unchanged offset ever takes, so it is also the only chance to notice the live copy
+            // needs it again. The call is cheap and idempotent -- metadata_provider itself decides
+            // whether it can accept it yet -- so repeating it on every unchanged observation costs
+            // nothing once the live copy already matches. Publishes state.offset, the durably-known
+            // value, rather than the incoming (not-newer, possibly backward) one -- this branch is
+            // also reached in the defensive backward-offset case this durable record already
+            // guards against, and the live copy must never regress to a value older than what is
+            // already trusted here.
+            metadata_provider_update_vd_feed_offset(state.offset);
             result.pending = state.pending;
             result.pendingOffset = state.pendingOffset;
             return result;

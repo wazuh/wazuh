@@ -11,6 +11,8 @@
 #ifndef MODULE_QUERY_ERRORS_H
 #define MODULE_QUERY_ERRORS_H
 
+#include "cJSON.h"
+
 /**
  * @brief Standard error codes for module query operations
  *
@@ -69,5 +71,27 @@
  */
 #define MQ_IS_MODULE_UNAVAILABLE(code) \
     ((code) >= MQ_ERR_MODULE_DISABLED && (code) <= MQ_ERR_MODULE_NOT_SUPPORTED)
+
+/**
+ * @brief Parses the top-level "error" field out of a response using this envelope
+ *
+ * Shared by every client of this envelope (agentd's in-process module-query clients on
+ * Windows, its socket-based ones on POSIX) so each one does not reimplement the same few
+ * lines of cJSON lookup.
+ *
+ * @param root Parsed JSON response.
+ * @param out_error Set to the error code when present and numeric; untouched otherwise.
+ * @return true if an "error" field was found and is numeric, false otherwise.
+ */
+static inline bool mq_parse_error_field(const cJSON *root, int *out_error) {
+    const cJSON *error = cJSON_GetObjectItem(root, "error");
+
+    if (!error || !cJSON_IsNumber(error)) {
+        return false;
+    }
+
+    *out_error = error->valueint;
+    return true;
+}
 
 #endif /* MODULE_QUERY_ERRORS_H */

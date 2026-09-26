@@ -140,17 +140,19 @@ namespace
                 std::strncpy(m_shm->base_metadata.cluster_name, metadata->cluster_name, sizeof(m_shm->base_metadata.cluster_name) - 1);
                 m_shm->base_metadata.cluster_name[sizeof(m_shm->base_metadata.cluster_name) - 1] = '\0';
 
-                // vd_feed_offset is deliberately NOT copied from `metadata` here: this field is
-                // exclusively owned/written by updateVdFeedOffset(), the narrow path the IPC
-                // handler uses the moment the manager reports a fresh offset. A full update() is
-                // driven by a periodic, DB-backed read (populateAgentMetadata()'s own
-                // getVdFeedState() snapshot, or agentd's carry-over read in
-                // w_agentd_populate_metadata()) that can legitimately be stale by the time this
-                // call actually runs -- serializing writers (the mutex above) stops torn records,
-                // but does nothing to stop this call from overwriting a fresher value with a
-                // stale one it read earlier (#39543 review follow-up). Leaving the field alone
-                // here means whichever of the two ever wrote it last via updateVdFeedOffset()
-                // stays authoritative regardless of how update() calls interleave with it.
+                // vd_feed_offset is deliberately NOT copied from `metadata` here, on every update,
+                // with no bootstrap exception: this field is exclusively owned/written by
+                // updateVdFeedOffset(), the narrow path the IPC handler uses the moment the
+                // manager reports an offset. A full update() is driven by a periodic, DB-backed
+                // read (populateAgentMetadata()'s own getVdFeedState() snapshot, or agentd's
+                // carry-over read in w_agentd_populate_metadata()) that can legitimately be stale
+                // by the time this call actually runs -- serializing writers (the mutex above)
+                // stops torn records, but does nothing to stop this call from overwriting a
+                // fresher value with a stale one it read earlier. Leaving the field alone here,
+                // unconditionally, means whichever caller last wrote it via updateVdFeedOffset()
+                // stays authoritative regardless of how update() calls interleave with it or which
+                // one happens to run first after a restart -- see that function's own comment for
+                // why it no longer needs a bootstrap assist from this one to stay correct.
 
                 // Copy groups
                 m_shm->groups_count = (metadata->groups_count > MAX_GROUPS_PER_MULTIGROUP) ? MAX_GROUPS_PER_MULTIGROUP : metadata->groups_count;
@@ -175,13 +177,19 @@ namespace
             }
 
             // Narrow counterpart to update(): touches only vd_feed_offset, so a caller that
-            // just observed a fresh offset (e.g. the IPC handler on the query thread) can
-            // publish it without waiting for -- or overwriting the rest of -- the next full
-            // populateAgentMetadata() cycle. Refuses (-1) before has_metadata is true: with no
+            // just observed an offset from the manager (e.g. the IPC handler on the query
+            // thread) can publish it without waiting for -- or overwriting the rest of -- the
+            // next full populateAgentMetadata() cycle. Its caller invokes this on every
+            // observation, including one for an offset it already durably knows about, not only
+            // the first time a value is seen: that value still needs to reach whatever fresh
+            // copy of this shared record exists on this run, which the caller's own durable
+            // record has no visibility into. Refuses (-1) before has_metadata is true: with no
             // prior full snapshot, setting only this field would let a reader see hostname/os/*
             // as blank, which syscollector's own Start message also depends on. In that case the
             // offset is simply left for the first full update() to pick up, same as before this
-            // function existed.
+            // function existed -- and the caller's own repeat invocations on every later
+            // observation (even of an unchanged value) are what eventually deliver it once
+            // has_metadata does flip true, without needing update() itself to carry it.
             int updateVdFeedOffset(uint64_t offset)
             {
                 // Same writer-serialization rationale as update() above.
