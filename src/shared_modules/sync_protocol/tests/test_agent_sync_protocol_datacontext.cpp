@@ -51,6 +51,7 @@ class MockPersistentQueue : public IPersistentQueue
         MOCK_METHOD(void, resetSyncingItems, (), (override));
         MOCK_METHOD(void, clearItemsByIndex, (const std::string& index), (override));
         MOCK_METHOD(void, clearAllDataContext, (), (override));
+        MOCK_METHOD(void, deferItems, (const std::vector<std::string>& ids), (override));
         MOCK_METHOD(void, deleteDatabase, (), (override));
 };
 

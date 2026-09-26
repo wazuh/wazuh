@@ -231,6 +231,20 @@ void PersistentQueue::clearAllDataContext()
     }
 }
 
+void PersistentQueue::deferItems(const std::vector<std::string>& ids)
+{
+    try
+    {
+        std::lock_guard<std::mutex> storageLock(m_storageMutex);
+        m_storage->deferItems(ids);
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error deferring items: ") + ex.what());
+        throw;
+    }
+}
+
 void PersistentQueue::deleteDatabase()
 {
     try

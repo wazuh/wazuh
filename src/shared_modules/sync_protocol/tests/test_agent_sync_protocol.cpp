@@ -29,6 +29,119 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::DoAll;
 
+#ifdef _WIN32
+// On Windows, non-admin test processes cannot create the Global\WazuhAgentMetadata
+// shared memory object used by production metadata_provider. Provide an in-memory
+// mock implementation for the sync protocol unit tests.
+namespace
+{
+    struct InProcessMetadataStore
+    {
+        std::mutex mtx;
+        bool hasMetadata {false};
+        agent_metadata_t data {};
+        std::vector<std::string> groups;
+    };
+
+    InProcessMetadataStore& getInProcessMetadataStore()
+    {
+        static InProcessMetadataStore store;
+        return store;
+    }
+}
+
+extern "C" {
+
+int metadata_provider_update(const agent_metadata_t* metadata)
+{
+    if (!metadata)
+    {
+        return -1;
+    }
+    auto& store = getInProcessMetadataStore();
+    std::lock_guard<std::mutex> lock(store.mtx);
+
+    std::memcpy(&store.data, metadata, sizeof(agent_metadata_t));
+    store.groups.clear();
+    if (metadata->groups && metadata->groups_count > 0)
+    {
+        for (size_t i = 0; i < metadata->groups_count; ++i)
+        {
+            if (metadata->groups[i])
+            {
+                store.groups.emplace_back(metadata->groups[i]);
+            }
+        }
+    }
+    store.data.groups = nullptr;
+    store.data.groups_count = store.groups.size();
+    store.hasMetadata = true;
+    return 0;
+}
+
+int metadata_provider_get(agent_metadata_t* out_metadata)
+{
+    if (!out_metadata)
+    {
+        return -1;
+    }
+    auto& store = getInProcessMetadataStore();
+    std::lock_guard<std::mutex> lock(store.mtx);
+    if (!store.hasMetadata)
+    {
+        return -1;
+    }
+
+    std::memcpy(out_metadata, &store.data, sizeof(agent_metadata_t));
+    if (!store.groups.empty())
+    {
+        out_metadata->groups = new char*[store.groups.size()];
+        out_metadata->groups_count = store.groups.size();
+        for (size_t i = 0; i < store.groups.size(); ++i)
+        {
+            const auto& g = store.groups[i];
+            out_metadata->groups[i] = new char[g.size() + 1];
+            std::strcpy(out_metadata->groups[i], g.c_str());
+        }
+    }
+    else
+    {
+        out_metadata->groups = nullptr;
+        out_metadata->groups_count = 0;
+    }
+    return 0;
+}
+
+void metadata_provider_free_metadata(agent_metadata_t* metadata)
+{
+    if (!metadata)
+    {
+        return;
+    }
+    if (metadata->groups)
+    {
+        for (size_t i = 0; i < metadata->groups_count; ++i)
+        {
+            delete[] metadata->groups[i];
+        }
+        delete[] metadata->groups;
+        metadata->groups = nullptr;
+    }
+    metadata->groups_count = 0;
+}
+
+void metadata_provider_reset(void)
+{
+    auto& store = getInProcessMetadataStore();
+    std::lock_guard<std::mutex> lock(store.mtx);
+    store.hasMetadata = false;
+    store.groups.clear();
+    std::memset(&store.data, 0, sizeof(store.data));
+}
+
+} // extern "C"
+#endif
+
 // IPersistentQueue Mock
 class MockPersistentQueue : public IPersistentQueue
 {
@@ -45,6 +158,7 @@ class MockPersistentQueue : public IPersistentQueue
         MOCK_METHOD(void, resetSyncingItems, (), (override));
         MOCK_METHOD(void, clearItemsByIndex, (const std::string& index), (override));
         MOCK_METHOD(void, clearAllDataContext, (), (override));
+        MOCK_METHOD(void, deferItems, (const std::vector<std::string>& ids), (override));
         MOCK_METHOD(void, deleteDatabase, (), (override));
 
 };
@@ -1325,6 +1439,119 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaAbortsRemainingBlocksAfterSe
     EXPECT_FALSE(result.success);
     EXPECT_EQ(result.failureReason, "Manager reported synchronization failure.");
     EXPECT_EQ(mockSyncTransport->sendCount(), 2);
+}
+
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaDefersItemsOnProtocolError)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "err_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
+        {0, "err_id_2", "test_index_1", "test_data_2", Operation::MODIFY, 2}
+    };
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .Times(1)
+    .WillOnce(Return(testData));
+
+    // Upon HTTP 400 (PROTOCOL_ERROR), deferItems must be called with failed item IDs
+    // before resetSyncingItems.
+    ::testing::InSequence seq;
+    EXPECT_CALL(*mockQueue, deferItems(std::vector<std::string>{"err_id_1", "err_id_2"})).Times(1);
+    EXPECT_CALL(*mockQueue, resetSyncingItems()).Times(1);
+
+    std::atomic<bool> syncDone{false};
+    auto syncFuture = std::async(std::launch::async, [this, &syncDone]()
+    {
+        auto result = protocol->synchronizeModule(Mode::DELTA, Option::SYNC);
+        syncDone.store(true, std::memory_order_release);
+        return result;
+    });
+
+    std::thread ackThread([this, &syncDone]()
+    {
+        while (!syncDone.load(std::memory_order_acquire))
+        {
+            if (mockSyncTransport->sendCount() > 0)
+            {
+                feedHttpResult(400); // Bad Request -> PROTOCOL_ERROR
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    });
+
+    if (syncFuture.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
+    {
+        syncDone.store(true, std::memory_order_release);
+        ackThread.join();
+        FAIL() << "Sync thread did not finish in time";
+    }
+
+    const SyncModuleResult result = syncFuture.get();
+    syncDone.store(true, std::memory_order_release);
+    ackThread.join();
+
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(mockSyncTransport->sendCount(), 1);
+}
+
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaDoesNotDeferOnCommunicationError)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "retry_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .Times(1)
+    .WillOnce(Return(testData));
+
+    // For 503 (COMMUNICATION_ERROR / ManagerNotReady), deferItems must NOT be called
+    EXPECT_CALL(*mockQueue, deferItems(_)).Times(0);
+    EXPECT_CALL(*mockQueue, resetSyncingItems()).Times(1);
+
+    std::atomic<bool> syncDone{false};
+    auto syncFuture = std::async(std::launch::async, [this, &syncDone]()
+    {
+        auto result = protocol->synchronizeModule(Mode::DELTA, Option::SYNC);
+        syncDone.store(true, std::memory_order_release);
+        return result;
+    });
+
+    std::thread ackThread([this, &syncDone]()
+    {
+        while (!syncDone.load(std::memory_order_acquire))
+        {
+            if (mockSyncTransport->sendCount() > 0)
+            {
+                feedHttpResult(503); // Service Unavailable -> COMMUNICATION_ERROR
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    });
+
+    if (syncFuture.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
+    {
+        syncDone.store(true, std::memory_order_release);
+        ackThread.join();
+        FAIL() << "Sync thread did not finish in time";
+    }
+
+    const SyncModuleResult result = syncFuture.get();
+    syncDone.store(true, std::memory_order_release);
+    ackThread.join();
+
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(mockSyncTransport->sendCount(), 1);
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleStopWakesEndAckWait)
