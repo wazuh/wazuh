@@ -98,9 +98,12 @@ def test_get_manager_status(mock_read_config):
 
     with patch('wazuh.core.cluster.utils.glob', return_value=['ossec-0.pid']):
         with patch('re.match', return_value='None'):
-            status = utils.get_manager_status()
-            for value in status.values():
-                assert value == 'failed'
+            with patch('wazuh.core.cluster.utils.os.kill', side_effect=ProcessLookupError) as kill_mock:
+                status = utils.get_manager_status()
+                for value in status.values():
+                    assert value == 'failed'
+                kill_mock.assert_called_with(0, 0)
+                assert kill_mock.call_count == len(status)
 
         # with patch('wazuh.core.cluster.utils.join', return_value='failed') as join_mock:
         with patch('wazuh.core.cluster.utils.os.path.exists', side_effect=exist_mock):
@@ -119,9 +122,30 @@ def test_get_manager_status(mock_read_config):
                 assert value == 'starting'
 
             called += 1
-            status = utils.get_manager_status()
-            for value in status.values():
-                assert value == 'running'
+            with patch('wazuh.core.cluster.utils.os.kill', side_effect=PermissionError) as kill_mock:
+                status = utils.get_manager_status()
+                for value in status.values():
+                    assert value == 'running'
+                kill_mock.assert_called_with(0, 0)
+                assert kill_mock.call_count == len(status)
+
+
+@pytest.mark.parametrize(
+    'side_effect, expected',
+    [
+        (None, True),
+        (PermissionError, True),
+        (ProcessLookupError, False),
+    ]
+)
+@patch('wazuh.core.cluster.utils.os.kill')
+def test_process_exists(mock_kill, side_effect, expected):
+    """Check process detection when a PID is accessible, hidden or missing."""
+    mock_kill.side_effect = side_effect
+
+    assert utils.process_exists(1234) is expected
+    mock_kill.assert_called_once_with(1234, 0)
+
 
 
 @pytest.mark.parametrize('node_type, apid_reported', [
