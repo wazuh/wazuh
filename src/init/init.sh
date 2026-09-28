@@ -38,9 +38,13 @@ ReadServiceInstallDir()
         _rsid_dir=$(sed -n 's|^[[:space:]]*\(/.*\)/bin/[^[:space:]]*control start$|\1|p' "${1}" 2>/dev/null | head -1)
     fi
 
-    # macOS LaunchDaemon
+    # macOS LaunchDaemon: packages older than 4.14.9 launch from StartupItems, whose WAZUH script holds the home.
     if [ "X${_rsid_dir}" = "X" ]; then
-        _rsid_dir=$(sed -n 's|^[[:space:]]*<string>\(/.*\)/Wazuh-launcher</string>[[:space:]]*$|\1|p' "${1}" 2>/dev/null | head -1)
+        if grep -q '<string>/Library/StartupItems/WAZUH/' "${1}" 2>/dev/null; then
+            _rsid_dir=$(ReadServiceInstallDir /Library/StartupItems/WAZUH/WAZUH)
+        else
+            _rsid_dir=$(sed -n 's|^[[:space:]]*<string>\(/.*\)/Wazuh-launcher</string>[[:space:]]*$|\1|p' "${1}" 2>/dev/null | head -1)
+        fi
     fi
 
     echo "${_rsid_dir}"
