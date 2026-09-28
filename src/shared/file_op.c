@@ -2914,6 +2914,57 @@ int w_vet_opened_file(const struct stat * fd_stat, const struct stat * dir_stat,
 }
 
 /**
+ * Reads the target of symlink name in dirfd, failing unless it is still the link link_stat describes, so a
+ * link swapped in after its owner was checked is not followed.
+ *
+ * @return Target length as readlinkat(), or -1 on error (errno EPERM if the link was swapped).
+ */
+static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat * link_stat, char * target) {
+    struct stat now;
+    ssize_t n;
+#if defined(__linux__) && defined(O_PATH)
+    // Pin the link itself, so the target read belongs to the inode compared below.
+    int linkfd;
+    int saved_errno;
+
+    if (linkfd = openat(dirfd, name, O_PATH | O_NOFOLLOW | O_CLOEXEC), linkfd < 0) {
+        return -1;
+    }
+
+    if (fstat(linkfd, &now) < 0) {
+        n = -1;
+    } else if (now.st_dev != link_stat->st_dev || now.st_ino != link_stat->st_ino ||
+               now.st_uid != link_stat->st_uid) {
+        errno = EPERM;
+        n = -1;
+    } else {
+        n = readlinkat(linkfd, "", target, PATH_MAX);
+    }
+
+    saved_errno = errno;
+    close(linkfd);
+    errno = saved_errno;
+    return n;
+#else
+    // No way to pin a link here: check it is the same one after reading it.
+    if (n = readlinkat(dirfd, name, target, PATH_MAX), n < 0) {
+        return -1;
+    }
+
+    if (fstatat(dirfd, name, &now, AT_SYMLINK_NOFOLLOW) < 0) {
+        return -1;
+    }
+
+    if (now.st_dev != link_stat->st_dev || now.st_ino != link_stat->st_ino || now.st_uid != link_stat->st_uid) {
+        errno = EPERM;
+        return -1;
+    }
+
+    return n;
+#endif
+}
+
+/**
  * Resolves path one component at a time with openat()/fstatat()/readlinkat(), so no symlink is followed
  * without first being inspected, then opens the final entry non-blocking and vets it.
  *
@@ -3000,7 +3051,7 @@ static int w_open_vetted_follow_fd(const char * path) {
                 has_link_uid = true;
             }
 
-            if (n = readlinkat(dirfd, name, target, PATH_MAX), n <= 0) {
+            if (n = w_readlink_vetted(dirfd, name, &entry_stat, target), n <= 0) {
                 if (n == 0) {
                     errno = ENOENT;
                 }
@@ -3025,9 +3076,25 @@ static int w_open_vetted_follow_fd(const char * path) {
         }
 
         if (*cursor != '\0') {
-            // Intermediate directory; O_NOFOLLOW fails the open if it was swapped to a symlink since fstatat().
-            if (fd = openat(dirfd, name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC), fd < 0) {
+            // Intermediate directory. O_DIRECTORY may be 0 on some platforms, so a FIFO is rejected up front,
+            // O_NONBLOCK keeps one swapped in since fstatat() from blocking, and fstat() rejects it after.
+            if (!S_ISDIR(entry_stat.st_mode)) {
+                errno = ENOTDIR;
+                goto fail;
+            }
+
+            // O_NOFOLLOW fails the open if it was swapped to a symlink since fstatat().
+            if (fd = openat(dirfd, name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC), fd < 0) {
                 goto fail_swapped;
+            }
+
+            if (fstat(fd, &entry_stat) < 0) {
+                goto fail;
+            }
+
+            if (!S_ISDIR(entry_stat.st_mode)) {
+                errno = ENOTDIR;
+                goto fail;
             }
             close(dirfd);
             dirfd = fd;

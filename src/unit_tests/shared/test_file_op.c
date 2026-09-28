@@ -2110,6 +2110,26 @@ void test_w_fopen_vetted_follow_fifo_rejected_without_blocking(void **state) {
     assert_vetted_rejected(path, EINVAL);
 }
 
+void test_w_fopen_vetted_follow_fifo_component_rejected_without_blocking(void **state) {
+    char path[PATH_MAX + 1];
+
+    nofollow_path(path, "fifo");
+    assert_int_equal(mkfifo(path, 0640), 0);
+    nofollow_path(path, "fifo/victim");
+
+    // Must return instead of blocking on the FIFO waiting for a writer.
+    assert_vetted_rejected(path, ENOTDIR);
+}
+
+void test_w_fopen_vetted_follow_file_component_rejected(void **state) {
+    char path[PATH_MAX + 1];
+
+    nofollow_create_file("regular", "content");
+    nofollow_path(path, "regular/victim");
+
+    assert_vetted_rejected(path, ENOTDIR);
+}
+
 void test_w_fopen_vetted_follow_root_fifo_accepted_without_blocking(void **state) {
     char path[PATH_MAX + 1];
     FILE * fp;
@@ -2445,6 +2465,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_directory_rejected, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_missing_file, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_fifo_rejected_without_blocking, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_fifo_component_rejected_without_blocking, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_file_component_rejected, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_root_fifo_accepted_without_blocking, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_hard_link_accepted, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_hard_link_in_shared_dir_rejected, setup_nofollow, teardown_vetted),
