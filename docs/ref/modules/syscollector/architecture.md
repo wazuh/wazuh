@@ -499,6 +499,8 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock) {
 }
 ```
 
+The wodle's sync thread (`wm_sync_module`) runs the synchronization cycle and, after each successful one, the recovery process. The wait before each cycle restarts with every agent start, so the thread also asks whether the agent ID changed since the last full synchronization (for example after the agent was removed and re-enrolled): at startup, and every 30 seconds while it waits. On a change it runs its cycle at once, and the recovery process resends every table under the new ID. While that resend keeps failing (a failed synchronization counts, since the resend only follows a successful one), the 30 seconds double on each attempt, up to the synchronization interval; a cycle skipped because a flush was sending keeps the period.
+
 ### Manager Response Handling
 
 Syscollector processes manager responses through the syscom interface:
@@ -718,6 +720,9 @@ Check if Sync Protocol Initialized
          └─► Initialized
              │
              ▼
+Wait for any synchronization or recovery in progress, then hold both off until done
+             │
+             ▼
 Call synchronizeModule(Mode::DELTA)
              │
              ├─► Sends all pending differences
@@ -725,7 +730,7 @@ Call synchronizeModule(Mode::DELTA)
              └─► Returns sync result
 ```
 
-The flush operation does not wait for an ongoing sync to complete—it triggers a new sync session immediately.
+The flush operation waits for an ongoing synchronization or recovery to complete before it opens its own session, and a synchronization or recovery due while it sends is skipped until the next cycle.
 
 #### Version Management Commands
 

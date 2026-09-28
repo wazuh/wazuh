@@ -14,6 +14,7 @@
 #include "stringHelper.h"
 #include "hashHelper.h"
 #include "timeHelper.h"
+#include "defer.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
@@ -2473,10 +2474,39 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
         return {false, {}};
     }
 
-    m_logFunction(LOG_INFO, "Starting inventory synchronization.");
+    // RAII guard ensures m_syncing is set to false even if function exits early. Claimed under
+    // the mutex a flush checks it with, so the two never both start.
+    std::optional<ScanGuard> syncGuard;
 
-    // RAII guard ensures m_syncing is set to false even if function exits early
-    ScanGuard syncGuard(m_syncing, m_pauseCv);
+    {
+        std::lock_guard<std::mutex> lock(m_pauseMutex);
+
+        // Checked again under the mutex pause() waits with: a pause() that lands after the check
+        // above has already seen no sync running and returned.
+        if (m_paused || m_stopping.load())
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Syscollector module is paused or stopping, skipping synchronization");
+            }
+
+            return {false, {}};
+        }
+
+        if (m_flushInProgress.load())
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Syscollector synchronization skipped: flush in progress");
+            }
+
+            return {false, {}};
+        }
+
+        syncGuard.emplace(m_syncing, m_pauseCv);
+    }
+
+    m_logFunction(LOG_INFO, "Starting inventory synchronization.");
 
     // Held for the whole function: setSyncProtocol()/setSyncProtocolVD() replace these
     // pointers under the exclusive lock, and synchronizeModule() below can run for a while
@@ -2627,6 +2657,13 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                               (vdResult.failureReason.empty() ? "." : ": " + vdResult.failureReason));
             }
         }
+    }
+
+    if (!overallSuccess)
+    {
+        // The identity resend only runs after a successful synchronization, so a failed one is
+        // the attempt that failed: the sync thread backs off on it just as on a failed resend.
+        m_identityResyncAttempts.fetch_add(1);
     }
 
     if (overallSuccess)
@@ -3231,6 +3268,42 @@ int Syscollector::executeFlushSync()
         return 0; // Not an error - just nothing to flush
     }
 
+    // Wait for a running synchronization or recovery before sending: a recovery clears the
+    // manager's indices with a DataClean, which has no session guard of its own and would reset
+    // this flush's session under it. agent-info polls the flush with no deadline, so waiting here
+    // only delays the coordination. The flags are cleared outside this mutex (ScanGuard), so the
+    // condition is re-checked every second rather than relying on the notification alone.
+    {
+        std::unique_lock<std::mutex> lock(m_pauseMutex);
+
+        while ((m_syncing.load() || m_recoveryInProgress.load()) && !m_stopping.load())
+        {
+            m_pauseCv.wait_for(lock, std::chrono::seconds(1));
+        }
+
+        if (m_stopping.load())
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_INFO, "Syscollector flush skipped: module is stopping");
+            }
+
+            return -1;
+        }
+
+        m_flushInProgress = true;
+    }
+
+    DEFER([this]()
+    {
+        {
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_flushInProgress = false;
+        }
+
+        m_pauseCv.notify_all();
+    });
+
     // Trigger immediate synchronization to flush pending messages.
     SyncModuleResult result = {true, {}};
     SyncModuleResult vdResult = {true, {}};
@@ -3640,6 +3713,15 @@ std::string Syscollector::query(const std::string& jsonQuery)
                 response["error"] = MQ_ERR_INTERNAL;
                 response["message"] = "Failed to retrieve Syscollector synced agent id";
             }
+        }
+        else if (command == "get_identity_changed")
+        {
+            // Polled by the sync thread so a re-enrolled agent resends its inventory right away,
+            // instead of waiting for a sync interval that frequent reloads keep restarting.
+            response["error"] = MQ_SUCCESS;
+            response["message"] = "Syscollector identity change retrieved";
+            response["data"]["identity_changed"] = agentIdentityChangeState();
+            response["data"]["resync_attempts"] = m_identityResyncAttempts.load();
         }
         else if (command == "get_first_scan_completed")
         {
@@ -5127,18 +5209,17 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
     return true;
 }
 
-void Syscollector::checkAgentIdentity()
+Syscollector::AgentIdentity Syscollector::readAgentIdentity(long& currentId, int64_t& syncedId)
 {
-    const long currentId = AgentSyncProtocol::currentAgentId();
+    currentId = AgentSyncProtocol::currentAgentId();
+    syncedId = 0;
 
     if (currentId == 0)
     {
         // Nothing published yet. "Unknown" -- an unavailable provider, or one still holding the
         // previous id, must never read as a new identity.
-        return;
+        return AgentIdentity::Unknown;
     }
-
-    int64_t syncedId = 0;
 
     if (!getMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, syncedId))
     {
@@ -5146,23 +5227,66 @@ void Syscollector::checkAgentIdentity()
         // worst outcome available: a single transient failure in the window right after a
         // re-enrollment would record the new id as already synchronized and suppress the resync
         // permanently. Treat it like an unknown id and try again next cycle.
-        return;
+        return AgentIdentity::Unknown;
     }
 
     if (syncedId == 0)
     {
         // Read cleanly, and nothing recorded: a clean install, or a database from before this
-        // marker existed. Adopt it and resync nothing -- on a clean install the ordinary first
-        // sync covers it, and on an upgraded agent the manager's copy is the one this agent has
-        // been maintaining all along.
+        // marker existed. The caller adopts it and resyncs nothing -- on a clean install the
+        // ordinary first sync covers it, and on an upgraded agent the manager's copy is the one
+        // this agent has been maintaining all along.
+        return AgentIdentity::Unrecorded;
+    }
+
+    return syncedId == currentId ? AgentIdentity::Unchanged : AgentIdentity::Changed;
+}
+
+int Syscollector::agentIdentityChangeState()
+{
+    // Without a sync protocol the resync has nothing to send with, so a change would never be
+    // acted on and the sync thread would wake for it every poll period.
+    if (!m_spSyncProtocol)
+    {
+        return -1;
+    }
+
+    long currentId = 0;
+    int64_t syncedId = 0;
+
+    switch (readAgentIdentity(currentId, syncedId))
+    {
+        case AgentIdentity::Changed:
+            return 1;
+
+        case AgentIdentity::Unknown:
+            return -1;
+
+        case AgentIdentity::Unrecorded:
+        case AgentIdentity::Unchanged:
+        default:
+            return 0;
+    }
+}
+
+void Syscollector::checkAgentIdentity()
+{
+    long currentId = 0;
+    int64_t syncedId = 0;
+    const auto identity = readAgentIdentity(currentId, syncedId);
+
+    if (identity == AgentIdentity::Unrecorded)
+    {
         updateMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, currentId);
         return;
     }
 
-    if (syncedId == currentId)
+    if (identity != AgentIdentity::Changed)
     {
         return;
     }
+
+    m_identityResyncAttempts.fetch_add(1);
 
     m_logFunction(LOG_INFO,
                   "Inventory was last synchronized as agent " + std::to_string(syncedId) +
@@ -5320,6 +5444,26 @@ void Syscollector::checkAgentIdentity()
 
 void Syscollector::runRecoveryProcess()
 {
+    // A flush sending right now would have its session reset by the DataClean this may send; the
+    // next cycle runs it instead. Claimed under the mutex the flush checks it with.
+    std::optional<ScanGuard> recoveryGuard;
+
+    {
+        std::lock_guard<std::mutex> lock(m_pauseMutex);
+
+        if (m_flushInProgress.load())
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Syscollector recovery skipped: flush in progress");
+            }
+
+            return;
+        }
+
+        recoveryGuard.emplace(m_recoveryInProgress, m_pauseCv);
+    }
+
     // #38601: identity before integrity. If this agent's id changed, the manager holds nothing
     // under it, and the per-table checksum loop below would only rediscover that one table at a
     // time, an integrity_interval apart each. Safe to drive the resync from here rather than

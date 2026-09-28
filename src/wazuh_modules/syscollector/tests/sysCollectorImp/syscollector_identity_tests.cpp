@@ -25,9 +25,13 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
+#include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <memory>
+#include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "json.hpp"
@@ -36,6 +40,7 @@
 #include "syscollectorTablesDef.hpp"
 #include "agent_sync_protocol.hpp"
 #include "metadata_provider.h"
+#include "module_query_errors.h"
 #include <sqlite3.h>
 #include <mock_sysinfo.hpp>
 
@@ -588,4 +593,265 @@ TEST_F(SyscollectorIdentityTest, DeferredVDRecoveryDoesNotAttachContext)
 
     EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
                     PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ false));
+}
+
+// The sync thread polls this to resync right after a re-enrollment instead of waiting out a sync
+// interval that frequent reloads keep restarting. It must agree with checkAgentIdentity().
+TEST_F(SyscollectorIdentityTest, IdentityChangedQueryReportsAChangedId)
+{
+    initWithMarker(true, true, 5);
+    publishAgentId("9");
+    INJECT_MOCK_PROTOCOLS();
+    (void)vdProtocol;
+
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(0);
+
+    const auto response = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
+    EXPECT_EQ(response["error"], MQ_SUCCESS);
+    EXPECT_EQ(response["data"]["identity_changed"], 1);
+
+    // Read-only: the marker still says 5, so the next cycle still resends.
+    EXPECT_EQ(readMarker(), 5);
+}
+
+TEST_F(SyscollectorIdentityTest, IdentityChangedQueryIgnoresAnUnchangedId)
+{
+    initWithMarker(true, true, 5);
+    publishAgentId("5");
+    INJECT_MOCK_PROTOCOLS();
+    (void)plainProtocol;
+    (void)vdProtocol;
+
+    const auto response = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
+    EXPECT_EQ(response["data"]["identity_changed"], 0);
+}
+
+// "Cannot tell" is its own answer: read as "unchanged" it would reset the sync thread's backoff,
+// read as "changed" it would wake the sync thread every poll period.
+TEST_F(SyscollectorIdentityTest, IdentityChangedQueryReportsAnUnknownId)
+{
+    initWithMarker(true, true, 5);
+    metadata_provider_reset();
+    INJECT_MOCK_PROTOCOLS();
+    (void)plainProtocol;
+    (void)vdProtocol;
+
+    const auto response = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
+    EXPECT_EQ(response["data"]["identity_changed"], -1);
+}
+
+// An absent marker is adopted by checkAgentIdentity(), never resynced, so it is not a change. The
+// query leaves the adoption to the cycle.
+TEST_F(SyscollectorIdentityTest, IdentityChangedQueryIgnoresAnAbsentMarker)
+{
+    initModule(true, true);
+    publishAgentId("7");
+    INJECT_MOCK_PROTOCOLS();
+    (void)plainProtocol;
+    (void)vdProtocol;
+
+    const auto response = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
+    EXPECT_EQ(response["data"]["identity_changed"], 0);
+    EXPECT_EQ(readMarker(), 0);
+}
+
+// Without a sync protocol there is nothing to resend with.
+TEST_F(SyscollectorIdentityTest, IdentityChangedQueryReportsUnknownWithoutSyncProtocol)
+{
+    initWithMarker(true, true, 5);
+    publishAgentId("9");
+
+    const auto response = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
+    EXPECT_EQ(response["data"]["identity_changed"], -1);
+}
+
+// A flush sending from agent-info's coordination owns the protocols: a sync started beside it
+// would drain the same queue.
+TEST_F(SyscollectorIdentityTest, SyncSkipsWhileAFlushSends)
+{
+    initModule(true, true);
+    INJECT_MOCK_PROTOCOLS();
+
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).Times(0);
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).Times(0);
+
+    Syscollector::instance().m_flushInProgress = true;
+    EXPECT_FALSE(Syscollector::instance().syncModule(Mode::DELTA).success);
+    Syscollector::instance().m_flushInProgress = false;
+}
+
+// The identity resync's DataClean has no session guard: sent beside a flush it would reset the
+// flush's session. The recovery stands back and the next cycle runs it.
+TEST_F(SyscollectorIdentityTest, RecoverySkipsWhileAFlushSends)
+{
+    initWithMarker(true, true, 1);
+    publishAgentId("2");
+    INJECT_MOCK_PROTOCOLS();
+
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(0);
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(0);
+
+    Syscollector::instance().m_flushInProgress = true;
+    Syscollector::instance().runRecoveryProcess();
+    Syscollector::instance().m_flushInProgress = false;
+
+    EXPECT_EQ(readMarker(), 1);
+    EXPECT_FALSE(Syscollector::instance().m_recoveryInProgress.load());
+}
+
+// The other direction: a flush requested while a recovery runs waits for it, then sends.
+TEST_F(SyscollectorIdentityTest, FlushWaitsForARecoveryThenSends)
+{
+    initModule(true, true);
+    INJECT_MOCK_PROTOCOLS();
+    (void)vdProtocol;
+
+    std::atomic<bool> sent {false};
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillOnce([&sent](Mode, Option)
+    {
+        sent = true;
+        return okResult();
+    });
+
+    Syscollector::instance().m_recoveryInProgress = true;
+
+    std::atomic<int> flushResult {1};
+    std::thread flusher([&flushResult]()
+    {
+        flushResult = Syscollector::instance().executeFlushSync();
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    EXPECT_FALSE(sent.load());
+    EXPECT_FALSE(Syscollector::instance().m_flushInProgress.load());
+
+    {
+        std::lock_guard<std::mutex> lock(Syscollector::instance().m_pauseMutex);
+        Syscollector::instance().m_recoveryInProgress = false;
+    }
+    Syscollector::instance().m_pauseCv.notify_all();
+
+    flusher.join();
+    EXPECT_TRUE(sent.load());
+    EXPECT_NE(flushResult.load(), 1);
+    EXPECT_FALSE(Syscollector::instance().m_flushInProgress.load());
+}
+
+// A flush still waiting when the module stops sends nothing and reports a failure, instead of
+// holding teardown until the recovery ends.
+TEST_F(SyscollectorIdentityTest, FlushWaitingForARecoveryGivesUpOnShutdown)
+{
+    initModule(true, true);
+    INJECT_MOCK_PROTOCOLS();
+
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).Times(0);
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).Times(0);
+
+    Syscollector::instance().m_recoveryInProgress = true;
+
+    std::atomic<int> flushResult {1};
+    std::thread flusher([&flushResult]()
+    {
+        flushResult = Syscollector::instance().executeFlushSync();
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    Syscollector::instance().m_stopping = true;
+    Syscollector::instance().m_pauseCv.notify_all();
+
+    flusher.join();
+    EXPECT_EQ(flushResult.load(), -1);
+    EXPECT_FALSE(Syscollector::instance().m_flushInProgress.load());
+
+    Syscollector::instance().m_recoveryInProgress = false;
+    Syscollector::instance().m_stopping = false;
+}
+
+// The flag must not outlive a session that throws, or every later sync and recovery would skip.
+TEST_F(SyscollectorIdentityTest, FlushClearsItsFlagWhenTheSessionThrows)
+{
+#ifdef WIN32
+    GTEST_SKIP() << "Skipping FlushClearsItsFlagWhenTheSessionThrows test on Windows due to exception handling issues in Wine environment";
+#endif
+    initModule(true, true);
+    INJECT_MOCK_PROTOCOLS();
+    (void)vdProtocol;
+
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillOnce([](Mode, Option) -> SyncModuleResult
+    {
+        throw std::runtime_error("session failed");
+    });
+
+    EXPECT_THROW(Syscollector::instance().executeFlushSync(), std::runtime_error);
+    EXPECT_FALSE(Syscollector::instance().m_flushInProgress.load());
+}
+
+// agent-info pauses before it flushes and resumes before it polls the flush; a pause that waited
+// for the flush would stall that sequence.
+TEST_F(SyscollectorIdentityTest, PauseDoesNotWaitForAFlush)
+{
+    initModule(true, true);
+
+    Syscollector::instance().m_flushInProgress = true;
+
+    const auto start = std::chrono::steady_clock::now();
+    EXPECT_TRUE(Syscollector::instance().pause());
+    EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::seconds(1));
+
+    Syscollector::instance().resume();
+    Syscollector::instance().m_flushInProgress = false;
+}
+
+// The sync thread backs off only after a real attempt: it compares this count before and after a
+// cycle. The module is a singleton, so the cases compare deltas.
+static int queryResyncAttempts()
+{
+    const auto response = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
+    return response["data"]["resync_attempts"].get<int>();
+}
+
+TEST_F(SyscollectorIdentityTest, ChangedIdResendCountsAsAResyncAttempt)
+{
+    initWithMarker(true, true, 1);
+    publishAgentId("2");
+    INJECT_MOCK_PROTOCOLS();
+
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(SyncModuleResult {}));
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(SyncModuleResult {}));
+
+    const int before = queryResyncAttempts();
+    Syscollector::instance().checkAgentIdentity();
+    EXPECT_EQ(queryResyncAttempts(), before + 1);
+}
+
+// The resend only follows a successful synchronization, so one that ran and failed (the manager
+// down) is the attempt that failed.
+TEST_F(SyscollectorIdentityTest, FailedSyncCountsAsAResyncAttempt)
+{
+    initModule(true, true);
+    INJECT_MOCK_PROTOCOLS();
+    (void)vdProtocol;
+
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillOnce(Return(SyncModuleResult {}));
+
+    const int before = queryResyncAttempts();
+    EXPECT_FALSE(Syscollector::instance().syncModule(Mode::DELTA).success);
+    EXPECT_EQ(queryResyncAttempts(), before + 1);
+}
+
+// A cycle skipped because agent-info's flush was sending -- the usual collision right after a
+// re-enrollment -- is no sign the manager refused anything, and must not count.
+TEST_F(SyscollectorIdentityTest, SkippedSyncIsNotAResyncAttempt)
+{
+    initModule(true, true);
+    INJECT_MOCK_PROTOCOLS();
+
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).Times(0);
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).Times(0);
+
+    const int before = queryResyncAttempts();
+    Syscollector::instance().m_flushInProgress = true;
+    EXPECT_FALSE(Syscollector::instance().syncModule(Mode::DELTA).success);
+    Syscollector::instance().m_flushInProgress = false;
+    EXPECT_EQ(queryResyncAttempts(), before);
 }

@@ -496,6 +496,28 @@ class EXPORTED Syscollector final
         /// under an id different from the one it was compared against.
         void checkAgentIdentity();
 
+        /// @brief Whether the agent id differs from the one Syscollector last synchronized as.
+        ///
+        /// Read-only twin of checkAgentIdentity()'s decision, for the sync thread to poll.
+        /// @return 1 when it changed; 0 when it did not, or was never recorded (adopted, not a
+        ///         change); -1 when it cannot tell: no id published yet, a failed read, or no sync
+        ///         protocol to resend with. The sync thread keeps its retry state on -1.
+        int agentIdentityChangeState();
+
+        /// @brief What checkAgentIdentity() and agentIdentityChangeState() both decide on.
+        enum class AgentIdentity
+        {
+            Unknown,    ///< No id published yet, or the marker could not be read.
+            Unrecorded, ///< No id recorded yet: adopted, never resynced.
+            Unchanged,  ///< Recorded and equal to the current one.
+            Changed     ///< Recorded and different: the manager has nothing under this id.
+        };
+
+        /// @brief Reads the current and the recorded agent id and classifies them.
+        /// @param currentId Set to the id the metadata provider publishes (0 when unknown).
+        /// @param syncedId Set to the id last recorded as synchronized (0 when none).
+        AgentIdentity readAgentIdentity(long& currentId, int64_t& syncedId);
+
         /**
          * @brief Checks if document limit has been reached for a given table/index
          *
@@ -529,6 +551,17 @@ class EXPORTED Syscollector final
         std::atomic<bool>                                                        m_paused;
         std::atomic<bool>                                                        m_scanning;
         std::atomic<bool>                                                        m_syncing;
+        /// @brief Set while a flush sends. syncModule() and runRecoveryProcess() stand back from
+        /// it; pause() does not wait for it.
+        std::atomic<bool>                                                        m_flushInProgress {false};
+        /// @brief Set while runRecoveryProcess() runs. A flush waits for it: the identity resync
+        /// and the integrity recovery clear the manager's indices with a DataClean, which would
+        /// reset the flush's session under it.
+        std::atomic<bool>                                                        m_recoveryInProgress {false};
+        /// @brief Agent id change resends actually started, plus synchronizations that ran and failed
+        /// (the resend only follows a successful one). Reported by get_identity_changed so the sync
+        /// thread backs off only after a real attempt, not after a cycle that was skipped.
+        std::atomic<uint32_t>                                                    m_identityResyncAttempts {0};
         bool                                                                     m_groups;
         bool                                                                     m_users;
         bool                                                                     m_services;

@@ -288,7 +288,8 @@ Triggers an immediate synchronization session to send all pending inventory chan
 **Behavior:**
 - Checks if sync protocol is initialized
 - If not initialized, returns `0` (not an error, just nothing to flush)
-- If initialized, calls `synchronizeModule()` with `Mode::DELTA`
+- If initialized, waits for any synchronization or recovery already in progress (such as a resend of every table after an agent ID change) and keeps new ones from starting until it is done
+- Calls `synchronizeModule()` with `Mode::DELTA`
 - Returns result of synchronization operation
 
 **Usage Example:**
