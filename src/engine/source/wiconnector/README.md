@@ -114,10 +114,9 @@ The `Config` struct encapsulates connection parameters:
 ```cpp
 struct Config
 {
-    std::vector<std::string> hosts;  // e.g. ["https://localhost:9200"]
-    std::string username;            // OpenSearch username
-    std::string password;            // OpenSearch password
-    size_t maxQueueBytes {0};        // 0 = unlimited (bytes)
+    std::vector<std::string> hosts;    // e.g. ["https://localhost:9200"]
+    size_t maxQueueBytes {0};          // 0 = unlimited (bytes)
+    size_t maxRetryDelaySeconds {15};  // Upper bound of the retry backoff
 
     struct {
         std::vector<std::string> cacert; // CA bundle paths
@@ -128,6 +127,8 @@ struct Config
     std::string toJson() const;      // Serialises to JSON for IndexerConnectorAsync
 };
 ```
+
+Credentials are not part of `Config`: the connector reads them from the keystore (`indexer` / `username`, `password`).
 
 An alternative constructor accepts a raw JSON OSSEC configuration string directly.
 
