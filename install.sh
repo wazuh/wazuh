@@ -277,6 +277,39 @@ Install()
 
     cd ../
 
+    # Resolve every credential the manager owns or consumes, exactly as the packages do from their
+    # postinst: seed rbac.db with generated Server API passwords, store the indexer credential in
+    # the keystore, and -- on a fresh install only -- issue the TLS pairs.
+    #
+    # This runs here and not at service start because issuing a certificate is a signature, not a
+    # lookup: repeating it at every start would make the shared CA directory a standing dependency
+    # of the manager, which a deployment that brings its own PKI has no reason to satisfy. So a
+    # from-source install has to resolve them here or the manager has none at all.
+    #
+    # USER_RESOLVE_CREDENTIALS="n" turns it off, and the DEB and RPM recipes MUST set it. They run
+    # this installer to stage a tree they then copy into the package, so resolving here would bake
+    # one build host's rbac.db, CA private key and certificates into an artifact every deployment
+    # installs -- the maximal form of the defect this whole mechanism exists to close. Their own
+    # postinst/%post resolves on the target host instead. Same reason USER_REGISTER_SERVICE exists.
+    #
+    # After RestoreUpgradePreserve, deliberately: on an update that call puts the preserved etc/
+    # back, and the resolver must see the certificates the operator actually has. --upgrade leaves
+    # them untouched in any case; the ordering keeps that true rather than incidental.
+    #
+    # It must never abort the installer, for the same reason the maintainer scripts tolerate it: an
+    # unresolvable credential is reported by the service at start, where the answer is the one that
+    # matters.
+    if [ "X${INSTYPE}" = "Xmanager" ] && \
+       [ "X$(normalizeYesNoOrDefault "${USER_RESOLVE_CREDENTIALS}" "yes")" != "Xno" ] && \
+       [ -x "${INSTALLDIR}/bin/wazuh-manager-resolve-credentials" ]; then
+        if [ "X${update_only}" = "Xyes" ]; then
+            CREDENTIALS_MODE="--upgrade"
+        else
+            CREDENTIALS_MODE="--install"
+        fi
+        "${INSTALLDIR}/bin/wazuh-manager-resolve-credentials" ${CREDENTIALS_MODE} -H "${INSTALLDIR}" || true
+    fi
+
     # Generate/init service units and enable boot-time startup.
     runInit $INSTYPE ${update_only}
     runinit_value=$?
@@ -714,6 +747,12 @@ ValidateServiceRegistrationVars()
         echo "ERROR: invalid USER_TAKEOVER_SERVICE value '${USER_TAKEOVER_SERVICE}'. Use '${yes}' or '${no}'."
         exit 1;
     fi
+
+    if [ "X${USER_RESOLVE_CREDENTIALS}" != "X" ] && \
+       [ "X$(normalizeYesNo "${USER_RESOLVE_CREDENTIALS}")" = "Xinvalid" ]; then
+        echo "ERROR: invalid USER_RESOLVE_CREDENTIALS value '${USER_RESOLVE_CREDENTIALS}'. Use '${yes}' or '${no}'."
+        exit 1;
+    fi
 }
 
 setDefaultIfEmpty()
@@ -734,7 +773,7 @@ setDefaultConfigByInstallType()
     setDefaultIfEmpty USER_CA_STORE "n"
 
     if [ "X${INSTYPE}" = "Xmanager" ]; then
-        setDefaultIfEmpty USER_AUTO_START "y"
+        setDefaultIfEmpty USER_AUTO_START "n"
         setDefaultIfEmpty USER_ENABLE_AUTHD "y"
         setDefaultIfEmpty USER_ENABLE_SYSCHECK "n"
         setDefaultIfEmpty USER_ENABLE_ROOTCHECK "n"

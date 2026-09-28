@@ -809,7 +809,7 @@ stages:
     response:
       status_code: 200
 
-  - name: Create a new user (secure password 2)
+  - name: Create a new user (password with non-ASCII characters)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users"
@@ -820,7 +820,9 @@ stages:
         password: "new_user1A!@#~½¬?¿ñàÀ"
       method: POST
     response:
-      status_code: 200
+      status_code: 400
+      json:
+        error: 5007
 
   - name: Add a too long named user
     request:

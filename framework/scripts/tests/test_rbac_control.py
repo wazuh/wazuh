@@ -3,8 +3,9 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
+import runpy
 import sys
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import call, patch, MagicMock, AsyncMock
 
 import pytest
 
@@ -27,6 +28,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         del sys.modules['wazuh.rbac.orm']
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from scripts import rbac_control
+        from wazuh.core.exception import WazuhError
         from wazuh.tests.test_security import db_setup # noqa
 
 
@@ -153,6 +155,210 @@ async def test_restore_default_passwords_exceptions(safe_load_mock, getpass_mock
 
 
 @pytest.mark.asyncio
+@patch("builtins.print")
+async def test_seed_rbac_database(print_mock, tmp_path, db_setup):
+    """Check that `seed_rbac_database` seeds a missing database with the passwords read from the standard input."""
+    passwords = {'wazuh': 'NewPassword12', 'wazuh-wui': 'NewPassword34'}
+    with patch('wazuh.rbac.orm.DB_FILE', str(tmp_path / 'rbac.db')), \
+            patch('wazuh.rbac.orm.check_database_integrity') as integrity_mock, \
+            patch('scripts.rbac_control.sys.stdin.read', return_value=json.dumps(passwords)):
+        await rbac_control.seed_rbac_database(Arguments(passwords_file='-'))
+
+    integrity_mock.assert_called_once_with(passwords=passwords)
+
+
+@pytest.mark.asyncio
+@patch("builtins.print")
+async def test_seed_rbac_database_existing(print_mock, tmp_path, db_setup):
+    """Check that `seed_rbac_database` leaves an existing database untouched and exits 0."""
+    db_file = tmp_path / 'rbac.db'
+    db_file.write_text('seeded')
+    with patch('wazuh.rbac.orm.DB_FILE', str(db_file)), \
+            patch('wazuh.rbac.orm.check_database_integrity') as integrity_mock, \
+            pytest.raises(SystemExit) as exit_error:
+        await rbac_control.seed_rbac_database(Arguments(passwords_file='-'))
+
+    assert exit_error.value.code == 0
+    integrity_mock.assert_not_called()
+    assert db_file.read_text() == 'seeded'
+
+
+
+@pytest.mark.asyncio
+@patch("builtins.print")
+async def test_seed_rbac_database_replaces_an_empty_file(print_mock, tmp_path, db_setup):
+    """Check that `seed_rbac_database` seeds over an empty file, which is what a failed creation leaves."""
+    db_file = tmp_path / 'rbac.db'
+    db_file.touch()
+    with patch('wazuh.rbac.orm.DB_FILE', str(db_file)), \
+            patch('wazuh.rbac.orm.check_database_integrity') as integrity_mock, \
+            patch('scripts.rbac_control.sys.stdin.read', return_value='{}'):
+        await rbac_control.seed_rbac_database(Arguments(passwords_file='-'))
+
+    integrity_mock.assert_called_once_with(passwords={})
+    assert not db_file.exists()
+
+
+@pytest.mark.asyncio
+@patch("builtins.print")
+async def test_seed_rbac_database_removes_a_partial_database(print_mock, tmp_path, db_setup):
+    """Check that a failed creation leaves no database behind to pass for a seeded one."""
+    db_file = tmp_path / 'rbac.db'
+
+    def fail_after_creating(passwords):
+        db_file.write_text('partial')
+        raise OSError('chown failed')
+
+    with patch('wazuh.rbac.orm.DB_FILE', str(db_file)), \
+            patch('wazuh.rbac.orm.check_database_integrity', side_effect=fail_after_creating), \
+            patch('scripts.rbac_control.sys.stdin.read', return_value='{}'), \
+            pytest.raises(OSError):
+        await rbac_control.seed_rbac_database(Arguments(passwords_file='-'))
+
+    assert not db_file.exists()
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("content, expected_error", [
+    ('not json', "Could not read the passwords file"),
+    ('["NewPassword12"]', "must hold a JSON object"),
+    (json.dumps({'wazuh': 'lettersonlypassword'}), "The password supplied for 'wazuh' was rejected"),
+    (json.dumps({'wazuh-ui': 'NewPassword12'}), "is not an RBAC default user"),
+])
+@patch("builtins.print")
+async def test_seed_rbac_database_invalid(print_mock, content, expected_error, tmp_path, db_setup):
+    """Check that `seed_rbac_database` exits 1 without seeding on unusable input, never printing a password.
+
+    Parameters
+    ----------
+    content : str
+        Content of the standard input.
+    expected_error : str
+        Fragment expected in the printed error.
+    """
+    with patch('wazuh.rbac.orm.DB_FILE', str(tmp_path / 'rbac.db')), \
+            patch('wazuh.rbac.orm.check_database_integrity') as integrity_mock, \
+            patch('scripts.rbac_control.sys.stdin.read', return_value=content), \
+            pytest.raises(SystemExit) as exit_error:
+        await rbac_control.seed_rbac_database(Arguments(passwords_file='-'))
+
+    assert exit_error.value.code == 1
+    integrity_mock.assert_not_called()
+    assert expected_error in print_mock.call_args[0][0]
+    assert 'lettersonlypassword' not in print_mock.call_args[0][0]
+
+
+
+@pytest.mark.parametrize("exception", [WazuhError(1000), ValueError("broken database")])
+@patch("builtins.print")
+def test_script_exits_non_zero_on_error(print_mock, exception, tmp_path, db_setup):
+    """Check that the script reports a failure through its exit status, which is all the credential resolver reads."""
+    with patch('os.geteuid', return_value=1000), \
+            patch('wazuh.rbac.orm.DB_FILE', str(tmp_path / 'rbac.db')), \
+            patch('wazuh.rbac.orm.check_database_integrity', side_effect=exception), \
+            patch('sys.argv', new=['rbac_control', 'seed']), \
+            pytest.raises(SystemExit) as exit_error:
+        runpy.run_path(rbac_control.__file__, run_name='__main__')
+
+    assert exit_error.value.code == 1
+
+
+@pytest.mark.parametrize("euid, expected_calls", [
+    (0, [call.setgroups([]), call.setgid(998), call.setuid(997)]),
+    (1000, []),
+])
+def test_drop_privileges(euid, expected_calls):
+    """Check that root drops its supplementary groups, then its group, then its user, and that
+    anyone else keeps its identity."""
+    calls = MagicMock()
+    with patch('scripts.rbac_control.geteuid', return_value=euid), \
+            patch('scripts.rbac_control.setgroups', calls.setgroups), \
+            patch('scripts.rbac_control.setgid', calls.setgid), \
+            patch('scripts.rbac_control.setuid', calls.setuid), \
+            patch('wazuh.core.common.wazuh_gid', return_value=998), \
+            patch('wazuh.core.common.wazuh_uid', return_value=997):
+        rbac_control.drop_privileges()
+
+    assert calls.mock_calls == expected_calls
+
+
+def test_password_files_are_read_before_privileges_are_dropped(tmp_path, db_setup):
+    """The operator's password file is commonly root-only, so it must be read while still root.
+
+    `--password-file /root/wui.pass` at `0600 root:root` is the documented unattended form. Opening
+    it after the drop fails with `Permission denied` and the command reports it as an unreadable
+    file, which tells the operator nothing about why.
+    """
+    calls = MagicMock()
+    password_file = tmp_path / 'wui.pass'
+    password_file.write_text('Some.Password12\n')
+
+    def record_open(*args, **kwargs):
+        calls.open()
+        return original_open(*args, **kwargs)
+
+    original_open = open
+    with patch('os.geteuid', return_value=0), \
+            patch('os.setgroups', calls.setgroups), \
+            patch('os.setgid', calls.setgid), \
+            patch('os.setuid', calls.setuid), \
+            patch('wazuh.core.common.wazuh_gid', return_value=998), \
+            patch('wazuh.core.common.wazuh_uid', return_value=997), \
+            patch('builtins.open', side_effect=record_open), \
+            patch('sys.argv', new=['rbac_control', 'change-password', '--user', 'wazuh-wui',
+                                   '--password-file', str(password_file)]), \
+            patch('builtins.print'), \
+            pytest.raises(SystemExit):
+        runpy.run_path(rbac_control.__file__, run_name='__main__')
+
+    names = [name for name, _, _ in calls.mock_calls]
+    assert 'open' in names, 'the password file was never read'
+    assert names.index('open') < names.index('setuid'), \
+        'the password file was read after privileges were dropped'
+
+
+def test_preloaded_source_is_reused(tmp_path):
+    """A preloaded file is served from memory, so the post-drop read never touches the filesystem."""
+    password_file = tmp_path / 'pw'
+    password_file.write_text('Some.Password12\n')
+
+    args = Arguments(password_file=str(password_file), passwords_file=None)
+    rbac_control._preloaded_sources.clear()
+    rbac_control.preload_sources(args)
+
+    assert rbac_control._preloaded_sources[str(password_file)] == 'Some.Password12\n'
+    password_file.unlink()
+    assert rbac_control.read_source(str(password_file)) == 'Some.Password12\n'
+    rbac_control._preloaded_sources.clear()
+
+
+def test_preload_sources_defers_an_unreadable_file(tmp_path):
+    """An unreadable source is left for the command, which reports it in its own words."""
+    args = Arguments(password_file=str(tmp_path / 'missing'), passwords_file=None)
+    rbac_control._preloaded_sources.clear()
+    rbac_control.preload_sources(args)
+
+    assert rbac_control._preloaded_sources == {}
+
+
+def test_script_drops_privileges_before_the_command(tmp_path, db_setup):
+    """Check that nothing touches rbac.db while the script still runs as root."""
+    calls = MagicMock()
+    with patch('os.geteuid', return_value=0), \
+            patch('os.setgroups', calls.setgroups), \
+            patch('os.setgid', calls.setgid), \
+            patch('os.setuid', calls.setuid), \
+            patch('wazuh.core.common.wazuh_gid', return_value=998), \
+            patch('wazuh.core.common.wazuh_uid', return_value=997), \
+            patch('wazuh.rbac.orm.DB_FILE', str(tmp_path / 'rbac.db')), \
+            patch('wazuh.rbac.orm.check_database_integrity', calls.check_database_integrity), \
+            patch('sys.argv', new=['rbac_control', 'seed']), \
+            patch('builtins.print'), \
+            pytest.raises(SystemExit):
+        runpy.run_path(rbac_control.__file__, run_name='__main__')
+
+    assert [name for name, _, _ in calls.mock_calls] == ['setgroups', 'setgid', 'setuid', 'check_database_integrity']
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("user_input", ["RESET", "whatever"])
 @patch("builtins.print")
 @patch("scripts.rbac_control.cluster_utils.forward_function")
@@ -169,7 +375,10 @@ async def test_reset_rbac_database(forward_mock, print_mock, user_input, db_setu
         if user_input == "RESET":
             await rbac_control.reset_rbac_database(Arguments())
             forward_mock.assert_called_with(core_security.rbac_db_factory_reset, request_type="local_master")
-            assert "Successfully reset RBAC database" in print_mock.call_args[0][0]
+            printed = " ".join(str(c[0][0]) for c in print_mock.call_args_list)
+            assert "Successfully reset RBAC database" in printed
+            # The reset generates a password nobody knows, so it has to name the recovery path.
+            assert "change-password" in printed
         else:
             with pytest.raises(SystemExit):
                 await rbac_control.reset_rbac_database(Arguments())
@@ -181,12 +390,19 @@ async def test_reset_rbac_database(forward_mock, print_mock, user_input, db_setu
 @patch("builtins.print")
 @patch("builtins.input", return_value="RESET")
 async def test_reset_rbac_database_exceptions(input_mock, print_mock):
-    """Check the `restore_default_passwords` function behaviour when receiving exceptions."""
+    """Check the `restore_default_passwords` function behaviour when receiving exceptions.
+
+    The non-zero exit status is part of the contract: `change-password` already reports a failure
+    that way, and a command that prints an error and exits 0 is unusable from a script.
+    """
     exception_message = "Random exception message"
-    with patch("scripts.rbac_control.cluster_utils.forward_function", return_value=Exception(exception_message)):
+    with patch("scripts.rbac_control.cluster_utils.forward_function", return_value=Exception(exception_message)), \
+            pytest.raises(SystemExit) as exit_error:
         await rbac_control.reset_rbac_database(Arguments())
-        assert "RBAC database reset failed" in print_mock.call_args[0][0]
-        assert exception_message in print_mock.call_args[0][0]
+
+    assert exit_error.value.code == 1
+    assert "RBAC database reset failed" in print_mock.call_args[0][0]
+    assert exception_message in print_mock.call_args[0][0]
 
 
 @patch("scripts.rbac_control.sys.exit")

@@ -406,15 +406,18 @@ ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-all-errors'))
 	TZDATA_CURL_FLAGS += --retry-all-errors
 endif
 TZDATA_CURL := curl $(TZDATA_CURL_FLAGS) -o
-# Curl flags for indexer templates and WCS flat files with retry logic
-INDEXER_CURL_FLAGS := -fsS --retry 5 --retry-delay 2 --connect-timeout 20 --max-time 300
+# Curl for every ref-based download below -- indexer templates, WCS flat files, the shared
+# credential library. Distinct from $(CURL) above in that it retries and fails on an HTTP error
+# status instead of writing the error page to the output file, which is what makes the ref-fallback
+# loops work: they depend on a 404 being a non-zero exit.
+FETCH_CURL_FLAGS := -fsS --retry 5 --retry-delay 2 --connect-timeout 20 --max-time 300
 ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-connrefused'))
-	INDEXER_CURL_FLAGS += --retry-connrefused
+	FETCH_CURL_FLAGS += --retry-connrefused
 endif
 ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-all-errors'))
-	INDEXER_CURL_FLAGS += --retry-all-errors
+	FETCH_CURL_FLAGS += --retry-all-errors
 endif
-INDEXER_CURL := curl $(INDEXER_CURL_FLAGS) -o
+FETCH_CURL := curl $(FETCH_CURL_FLAGS) -o
 DEPS_VERSION = 99-37702
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
@@ -525,6 +528,22 @@ INDEXER_PLUGINS_BASE_URL := https://raw.githubusercontent.com/wazuh/wazuh-indexe
 INDEXER_PLUGINS_STATES_PATH := plugins/setup/src/main/resources/templates/states
 INDEXER_PLUGINS_STREAMS_PATH := plugins/setup/src/main/resources/templates/streams
 
+# Shared credential library
+#
+# wazuh-credentials.sh is the credential resolution ladder's shared half -- the credentials file
+# format, its locking convention, password generation and validation, and the CA. The manager, the
+# indexer and the dashboard all resolve credentials against the same /etc/wazuh/credentials.env, so
+# the three must agree on it exactly; it is owned by wazuh-installation-assistant and downloaded
+# here rather than vendored, because a copy in this repository is a copy that can drift.
+# The manager's own half stays in init/credentials/ (wazuh-manager-certificates.sh,
+# resolve-credentials.sh): those are not shared with anybody.
+CREDENTIALS_LIB_DIR := external/wazuh-credentials
+CREDENTIALS_LIB_BASE_URL := https://raw.githubusercontent.com/wazuh/wazuh-installation-assistant
+CREDENTIALS_LIB_PATH := credentials_lib
+
+CREDENTIALS_LIB_SERVER_FILES := \
+	wazuh-credentials.sh
+
 # Base templates (always downloaded)
 INDEXER_TEMPLATES_BASE := \
 	fim-files.json \
@@ -565,13 +584,17 @@ WCS_FLAT_YAML_FILES := wcs_flat.yml
 WCS_FLAT_FILES := $(WCS_FLAT_YAML_FILES:%=$(WCS_FLAT_DIR)/%)
 
 # Select templates based on TARGET
+# The credential library is server-only: the resolver that sources it is installed by
+# InstallServer(), and an agent resolves no credentials.
 ifneq (,$(filter agent winagent, ${TARGET}))
 INDEXER_TEMPLATES_STATES := $(INDEXER_TEMPLATES_BASE)
 INDEXER_TEMPLATES_STREAMS :=
 WCS_FLAT_FILES :=
+CREDENTIALS_LIB_FILES :=
 else
 INDEXER_TEMPLATES_STATES := $(INDEXER_TEMPLATES_BASE) $(INDEXER_TEMPLATES_SERVER_STATES)
 INDEXER_TEMPLATES_STREAMS := $(INDEXER_TEMPLATES_SERVER_STREAMS)
+CREDENTIALS_LIB_FILES := $(CREDENTIALS_LIB_SERVER_FILES:%=$(CREDENTIALS_LIB_DIR)/%)
 endif
 
 INDEXER_TEMPLATE_FILES := $(INDEXER_TEMPLATES_STATES:%=$(INDEXER_PLUGINS_DIR)/%) $(INDEXER_TEMPLATES_STREAMS:%=$(INDEXER_PLUGINS_DIR)/%)
@@ -584,7 +607,7 @@ print-%:
 	@echo '$($*)'
 
 .PHONY: deps
-deps: $(EXTERNAL_TAR) $(SHARED_TAR) $(INDEXER_TEMPLATE_FILES) $(WCS_FLAT_FILES)
+deps: $(EXTERNAL_TAR) $(SHARED_TAR) $(INDEXER_TEMPLATE_FILES) $(WCS_FLAT_FILES) $(CREDENTIALS_LIB_FILES)
 
 external/$(CPYTHON).tar.gz:
 # Python interpreter
@@ -669,12 +692,20 @@ shared_modules/http-request.tar.gz:
 	rm $(patsubst %.gz,%,$@)) || true
 	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"
 
-# Indexer plugin templates download
-# Get refs from get_git_refs.sh if INDEXER_PLUGINS_REFS is not set
-ifdef INDEXER_PLUGINS_REFS
-INDEXER_PLUGIN_REFS_LIST := $(INDEXER_PLUGINS_REFS)
+# Ref list for every ref-based download below. get_git_refs.sh reports THIS repository's branch and
+# tag, which each rule then walks against its own upstream until one resolves -- nothing here is
+# specific to any one of them.
+#
+# Override with GIT_REFS to pin what the rules try. INDEXER_PLUGINS_REFS is the name this input had
+# when the indexer templates were its only consumer and is still honoured: an `ifdef` that stops
+# matching does not fail, it silently falls back to the branch of whoever is building, which is the
+# kind of change that shows up as a mysteriously wrong template three releases later.
+ifdef GIT_REFS
+GIT_REFS_LIST := $(GIT_REFS)
+else ifdef INDEXER_PLUGINS_REFS
+GIT_REFS_LIST := $(INDEXER_PLUGINS_REFS)
 else
-INDEXER_PLUGIN_REFS_LIST := $(shell $(ROUTE_PATH)/../tools/get_git_refs.sh 2>/dev/null)
+GIT_REFS_LIST := $(shell $(ROUTE_PATH)/../tools/get_git_refs.sh 2>/dev/null)
 endif
 
 $(INDEXER_PLUGINS_DIR):
@@ -682,10 +713,10 @@ $(INDEXER_PLUGINS_DIR):
 
 $(INDEXER_TEMPLATES_SERVER_STREAMS:%=$(INDEXER_PLUGINS_DIR)/%): | $(INDEXER_PLUGINS_DIR)
 	@success=0; \
-	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
+	for ref in $(GIT_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STREAMS_PATH)/$(notdir $@)"; \
-		echo "$(INDEXER_CURL) $@ $(CACERT_OPT) -f $$url"; \
-		if $(INDEXER_CURL) $@ $(CACERT_OPT) -f "$$url"; then \
+		echo "$(FETCH_CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(FETCH_CURL) $@ $(CACERT_OPT) -f "$$url"; then \
 			success=1; \
 			break; \
 		fi; \
@@ -699,10 +730,36 @@ $(INDEXER_TEMPLATES_SERVER_STREAMS:%=$(INDEXER_PLUGINS_DIR)/%): | $(INDEXER_PLUG
 $(INDEXER_PLUGINS_DIR)/%.json: | $(INDEXER_PLUGINS_DIR)
 	 @echo "[-] Downloading dependency $(notdir $@) ..."
 	 @success=0; \
-	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
+	for ref in $(GIT_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STATES_PATH)/$(notdir $@)"; \
-		echo "$(INDEXER_CURL) $@ $(CACERT_OPT) -f $$url"; \
-		if $(INDEXER_CURL) $@ $(CACERT_OPT) -f "$$url"; then \
+		echo "$(FETCH_CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(FETCH_CURL) $@ $(CACERT_OPT) -f "$$url"; then \
+			success=1; \
+			break; \
+		fi; \
+	done; \
+	if [ $$success -eq 0 ]; then \
+		printf "\033[31mERROR: Failed to download %s from any reference\033[0m\n" "$(notdir $@)" >&2; \
+		exit 1; \
+	fi
+	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $@)"
+
+# Shared credential library download
+#
+# Same ref-fallback list as the indexer templates and the WCS flat files: get_git_refs.sh reports
+# THIS repository's refs, and the loop walks them until one resolves upstream. A branch that exists
+# only here 404s and falls through to refs/heads/<version> from VERSION.json, which is the ref a
+# release build wants anyway.
+$(CREDENTIALS_LIB_DIR):
+	@mkdir -p $(CREDENTIALS_LIB_DIR)
+
+$(CREDENTIALS_LIB_SERVER_FILES:%=$(CREDENTIALS_LIB_DIR)/%): | $(CREDENTIALS_LIB_DIR)
+	 @echo "[-] Downloading dependency $(notdir $@) ..."
+	 @success=0; \
+	for ref in $(GIT_REFS_LIST); do \
+		url="$(CREDENTIALS_LIB_BASE_URL)/$$ref/$(CREDENTIALS_LIB_PATH)/$(notdir $@)"; \
+		echo "$(FETCH_CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(FETCH_CURL) $@ $(CACERT_OPT) -f "$$url"; then \
 			success=1; \
 			break; \
 		fi; \
@@ -721,10 +778,10 @@ $(WCS_FLAT_DIR):
 $(WCS_FLAT_DIR)/wcs_flat.yml: | $(WCS_FLAT_DIR)
 	 @echo "[-] Downloading dependency $(notdir $@) ..."
 	 @success=0; \
-	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
+	for ref in $(GIT_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(WCS_FLAT_STATELESS_PATH)/$(notdir $@)"; \
-		echo "$(INDEXER_CURL) $@ $(CACERT_OPT) -f $$url"; \
-		if $(INDEXER_CURL) $@ $(CACERT_OPT) -f "$$url"; then \
+		echo "$(FETCH_CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(FETCH_CURL) $@ $(CACERT_OPT) -f "$$url"; then \
 			success=1; \
 			break; \
 		fi; \

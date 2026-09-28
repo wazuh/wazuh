@@ -12,7 +12,7 @@ Filebeat is not uninstalled automatically during the manager upgrade. Removing i
 |---|---|---|
 | `output.elasticsearch.hosts` | `<indexer><hosts><host>` (include `https://` and port) | `wazuh-manager.conf` |
 | `output.elasticsearch.username` | `wazuh-manager-keystore -f indexer -k username -v <value>` | Keystore |
-| `output.elasticsearch.password` | `wazuh-manager-keystore -f indexer -k password -v <value>` | Keystore |
+| `output.elasticsearch.password` | `echo '<value>' \| wazuh-manager-keystore -f indexer -k password` | Keystore |
 | `output.elasticsearch.ssl.certificate_authorities` | `<indexer><ssl><certificate_authorities><ca>` | `wazuh-manager.conf` |
 | `output.elasticsearch.ssl.certificate` | `<indexer><ssl><certificate>` | `wazuh-manager.conf` |
 | `output.elasticsearch.ssl.key` | `<indexer><ssl><key>` | `wazuh-manager.conf` |
@@ -70,7 +70,7 @@ sudo chmod 640 \
 
 ```bash
 sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username -v <your_username>
-sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -v <your_password>
+echo '<your_password>' | sudo /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
 ```
 
 ### 4. Configure the `<indexer>` block

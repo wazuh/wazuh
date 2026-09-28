@@ -19,8 +19,65 @@ from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager,
 from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
 from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
 
-# Minimum twelve characters, at least one uppercase letter, one lowercase letter, one number and one special character:
-_user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,}$')
+# At least one letter and one digit, PCI DSS v4.0 requirement 8.3.6, in printable ASCII without spaces.
+# Basic auth is decoded as latin1, so a non-ASCII password could be stored but never used to log in.
+# The credential resolver's narrower alphabet is a subset of this one; it is not applied here because
+# rotation tools and API clients send symbols outside it. \Z rather than $, which would also match
+# before a trailing newline.
+#
+# This REPLACES the previous rule, which additionally demanded an uppercase letter, a lowercase
+# letter and a symbol. Relaxing a password rule deserves its reasoning stated, so:
+#
+#   * The rule has to be one rule. The manager, the indexer and the dashboard all resolve against
+#     /etc/wazuh/credentials.env, and the credential resolver validates a value at install time that
+#     this function validates again at rotation. Two different rules means a value the installation
+#     accepts and the API later refuses -- a deployment that comes up and cannot be administered.
+#     PCI DSS 8.3.6 is the rule the other two components implement, so it is the one that is shared.
+#   * Composition rules are not what makes a password strong, and NIST SP 800-63B 5.1.1.2 says so
+#     explicitly ("verifiers SHOULD NOT impose other composition rules"): they push operators toward
+#     predictable substitutions while barely moving the search space. The 12-character floor -- the
+#     control that does move it -- is unchanged, and the 64-character ceiling still exists only
+#     because bcrypt truncates past 72 bytes.
+#   * The weakness that actually mattered was not the shape of a chosen password: it was that every
+#     installation shipped `wazuh`/`wazuh` and `wazuh-wui`/`wazuh-wui`. That is what #39554 removes.
+#     Where nothing is supplied the seeding generates 32 characters from a 73-character alphabet
+#     (~198 bits), which no composition rule would have improved on.
+#
+# So the floor moved down for an operator who insists on choosing their own value, and the default
+# moved from "known to everyone" to "unique per installation".
+_user_password = re.compile(r'^(?=.*[A-Za-z])(?=.*\d)[\x21-\x7e]*\Z')
+
+PASSWORD_MIN_LENGTH = 12
+PASSWORD_MAX_LENGTH = 64
+
+
+def validate_password(password: str):
+    """Check a password against the Server API password policy.
+
+    This is the single spelling of the rule. It is mirrored -- deliberately, since a shell script
+    cannot import it -- by wazuh_password_validate() in wazuh-credentials.sh, the shared credential
+    library downloaded from wazuh-installation-assistant by `make deps` into
+    src/external/wazuh-credentials/, so
+    that a value the credential resolver accepts or generates at install time is never one this
+    function would reject later.
+
+    Parameters
+    ----------
+    password : str
+        Password to check.
+
+    Raises
+    ------
+    WazuhError(5009)
+        Insecure user password provided (length).
+    WazuhError(5007)
+        Insecure user password provided (variety of characters).
+    """
+    if len(password) > PASSWORD_MAX_LENGTH or len(password) < PASSWORD_MIN_LENGTH:
+        raise WazuhError(5009)
+    if not _user_password.match(password):
+        raise WazuhError(5007)
+
 
 @dapi_allower()
 def get_user_me(token: dict) -> AffectedItemsWazuhResult:
@@ -174,10 +231,7 @@ def create_user(username: str = None, password: str = None) -> AffectedItemsWazu
     AffectedItemsWazuhResult
         Status message.
     """
-    if len(password) > 64 or len(password) < 12:
-        raise WazuhError(5009)
-    elif not _user_password.match(password):
-        raise WazuhError(5007)
+    validate_password(password)
 
     result = AffectedItemsWazuhResult(none_msg='User could not be created',
                                       all_msg='User was successfully created')
@@ -224,10 +278,7 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
     if password is None:
         raise WazuhError(4001)
     if password is not None:
-        if len(password) > 64 or len(password) < 12:
-            raise WazuhError(5009)
-        elif not _user_password.match(password):
-            raise WazuhError(5007)
+        validate_password(password)
 
         if int(user_id[0]) <= MAX_ID_RESERVED:
             if current_user is None:

@@ -150,11 +150,12 @@ options) log a notice and are skipped. No script rewrites the file for you.
 
 ## Certificates
 
-The HTTPS listener requires a certificate and key, and the manager does not generate them: they are
+The HTTPS listener requires a certificate and key. The manager issues a pair for itself at installation, but a
+distributed deployment normally replaces it: they are
 issued with the Wazuh installation assistant's `wazuh-certs-tool` — a `remoted.pem` leaf of the same
 `root-ca.pem` the assistant issues for the rest of the platform, so agents can pin that CA — and
 deployed under `etc/certs` before the first start (see
-[Deploy certificates](../../ref/getting-started/installation.md#deploy-certificates)). Starting is
+[Deploy certificates](../../ref/getting-started/installation.md#using-certificates-issued-elsewhere)). Starting is
 **fail-closed**: without them `wazuh-manager-control start` refuses (`(1244): Invalid configuration at
 '/remote/https/certificate': file not found: …`), and a pair the service user cannot read stops
 `remoted` at startup (`Cannot start the HTTPS agent listener: …`) rather than coming up without the

@@ -17,6 +17,8 @@
 #      from build/lib at that relative path)
 #   5. certificates: the manager generates none; e2e/init.sh --certs-only (reusing certs/ and its CA)
 #      + wazuh_copy_certs.sh; init.sh also opens the remoted listeners to 0.0.0.0 for docker agents
+#   5b. indexer credential stored in the keystore (INDEXER_USER/INDEXER_PASSWORD, default admin/admin,
+#      as the cluster e2e): the manager consumes it and never generates it, so it will not start without
 #   6. etc/.install-provenance written; start.mark = byte offset of the log before `start`
 #   7. wazuh-manager-control start, output to a FILE (never a pipe: the daemons inherit it)
 #   8. wazuh_verify_manager.sh, then --before-hook again as the "after"
@@ -50,6 +52,10 @@ Usage: sudo $0 --yes [--mode fresh|sandbox] [--dir DIR] [--out DIR] [--before-ho
   --api               make wazuh_verify_manager.sh also try the API login
   --https-port N      sandbox only: WAZUH_REMOTE_HTTPS_PORT for install.sh (default 1517)
   --legacy-port N     sandbox only: WAZUH_REMOTE_LEGACY_PORT for install.sh (default 1514)
+
+Environment:
+  INDEXER_USER / INDEXER_PASSWORD  indexer credential stored in the manager keystore before the start
+                                   (default admin / admin, the e2e indexer's)
 
 Repository: $REPO_DIR (override with WAZUH_REPO)
 EOF
@@ -208,6 +214,17 @@ fi
 WAZUH_MANAGER_HOME="$DIR" "$E2E/wazuh_copy_certs.sh" >>"$LOG" 2>&1 || die "wazuh_copy_certs.sh failed"
 certs_line=$(openssl x509 -in "$DIR/etc/certs/remoted.pem" -noout -subject -issuer -enddate 2>/dev/null | tr '\n' ' ')
 log "remoted.pem: $certs_line"
+
+# ---------------------------------------------------------------- 5b. indexer credential
+step "indexer-credential"
+KEYSTORE="$DIR/bin/wazuh-manager-keystore"
+printf '%s' "${INDEXER_USER:-admin}" | "$KEYSTORE" -f indexer -k username >>"$LOG" 2>&1 \
+  || die "could not store the indexer username in the keystore"
+printf '%s' "${INDEXER_PASSWORD:-admin}" | "$KEYSTORE" -f indexer -k password >>"$LOG" 2>&1 \
+  || die "could not store the indexer password in the keystore"
+# The keystore tool runs as root here: hand what it wrote back to the runtime user.
+chown -R wazuh-manager:wazuh-manager "$DIR/queue/keystore"
+log "indexer credential stored in the keystore for user ${INDEXER_USER:-admin}"
 
 # ---------------------------------------------------------------- 6. provenance + start mark
 step "provenance"

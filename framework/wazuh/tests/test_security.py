@@ -197,6 +197,32 @@ def test_sanitize_rbac_policy(db_setup, policy_case):
                 assert all(':'.join(p.split(':')[:-1]) for p in policy[element])
 
 
+
+@pytest.mark.parametrize('password, error_code', [
+    ('Password1234', None),
+    ('lowercase1234', None),
+    ('Short1', 5009),
+    ('P' * 60 + '12345', 5009),
+    ('OnlyLettersHere', 5007),
+    ('123456789012', 5007),
+    ('Password1234\n', 5007),
+    ('Pass\nword1234', 5007),
+    ('Aa1.,_+:@%^=~-', None),
+    ('Contraseña1234', 5007),
+    ('Password 1234', 5007),
+    ('Pass"word1234', None),
+    ('Admin!2026secure', None),
+    ('Rotate*Pass?12', None),
+])
+def test_validate_password(db_setup, password, error_code):
+    """Check the PCI DSS v4.0 8.3.6 rule: 12 to 64 printable ASCII characters with a letter and a digit."""
+    security, _, _ = db_setup
+    if error_code is None:
+        security.validate_password(password)
+    else:
+        with pytest.raises(WazuhError, match=str(error_code)):
+            security.validate_password(password)
+
 def test_rbac_catalog_getters_are_not_memoized(db_setup):
     """The RBAC catalog getters must not cache their own result.
 

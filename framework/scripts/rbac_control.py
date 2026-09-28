@@ -5,7 +5,7 @@
 import argparse
 import asyncio
 import sys
-from os import path
+from os import geteuid, path, remove, setgid, setgroups, setuid
 from signal import signal, SIGINT
 
 try:
@@ -16,9 +16,58 @@ except Exception as e:
     sys.exit(1)
 
 
+def drop_privileges():
+    """Run as the service user when started as root.
+
+    api/configuration/security is writable by the service group, so rbac.db created or reset there
+    by root would follow a symbolic link that user planted and hand the link's target over to it.
+    Every command only touches files the service user owns.
+    """
+    if geteuid() != 0:
+        return
+
+    from wazuh.core.common import wazuh_gid, wazuh_uid
+
+    setgroups([])
+    setgid(wazuh_gid())
+    setuid(wazuh_uid())
+
+
 def signal_handler(n_signal, frame):
     print("")
     sys.exit(1)
+
+
+# Content of every password file, read while the script was still root. See preload_sources().
+_preloaded_sources = {}
+
+
+def preload_sources(script_args):
+    """Read the password files the command was given, before privileges are dropped.
+
+    `drop_privileges()` runs before the command does, so a file only root can read -- the documented
+    `--password-file /root/wui.pass` at `0600 root:root` -- would otherwise fail with `Permission
+    denied` once this process is the service user. The file belongs to whoever invoked us, and they
+    are root; what dropping privileges protects is `rbac.db`, created under a directory the service
+    group can write, and that is unaffected by reading here.
+
+    A read that fails is left to the command, which opens the file again and reports the failure in
+    the words that fit what it was doing.
+
+    Parameters
+    ----------
+    script_args : argparse.Namespace
+        Arguments given to the script.
+    """
+    for attribute in ('password_file', 'passwords_file'):
+        source = getattr(script_args, attribute, None)
+        if not source or source == '-':
+            continue
+        try:
+            with open(source) as f:
+                _preloaded_sources[source] = f.read()
+        except OSError:
+            pass
 
 
 def read_source(source: str) -> str:
@@ -36,6 +85,9 @@ def read_source(source: str) -> str:
     """
     if source == '-':
         return sys.stdin.read()
+
+    if source in _preloaded_sources:
+        return _preloaded_sources[source]
 
     with open(source) as f:
         return f.read()
@@ -165,6 +217,78 @@ async def restore_default_passwords(script_args):
         sys.exit(1)
 
 
+async def seed_rbac_database(script_args):
+    """Create the RBAC database, seeding the default users with the supplied passwords.
+
+    Invoked by the credential resolver from the package's postinst and from the service's pre-start
+    step, so it must behave the way both of those need:
+
+    * An already-seeded database is left exactly as it is, and the supplied passwords are ignored
+      however they are set. Reseeding would change the credentials of a working deployment during
+      what the operator asked to be an installation.
+    * It exits 0 in both cases, because a maintainer script that aborts leaves the package
+      half-configured.
+
+    Passwords arrive as a JSON object on the standard input. They are never accepted on the command
+    line, where they would be world-readable in `ps`.
+    """
+    import json
+
+    import yaml
+    from wazuh.core.common import DEFAULT_RBAC_RESOURCES
+    from wazuh.rbac.orm import DB_FILE, check_database_integrity
+    from wazuh.security import validate_password
+
+    # An empty file is what a failed creation leaves behind, not a seeded database.
+    if path.exists(DB_FILE) and path.getsize(DB_FILE) > 0:
+        print(f"\t{DB_FILE} already exists; leaving it untouched")
+        sys.exit(0)
+
+    passwords = {}
+    if script_args.passwords_file:
+        try:
+            passwords = json.loads(read_source(script_args.passwords_file))
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"\tCould not read the passwords file: {exc}")
+            sys.exit(1)
+
+        if not isinstance(passwords, dict):
+            print("\tThe passwords file must hold a JSON object mapping default usernames to passwords")
+            sys.exit(1)
+
+        # A key that is not a default user is silently dropped by insert_default_resources(), which
+        # only looks up the users it is seeding. Reporting it is the difference between "your typo
+        # did nothing" and a deployment that quietly holds a generated password nobody has, so it is
+        # checked the same way `change-password` checks it.
+        with open(path.join(DEFAULT_RBAC_RESOURCES, 'users.yaml')) as f:
+            default_users = list(yaml.safe_load(f)['default_users'])
+
+        # insert_default_resources() writes through the ORM layer, which enforces nothing, so the
+        # policy is applied here instead. The value is never printed, only the username it belongs to.
+        for username, password in passwords.items():
+            if username not in default_users:
+                print(f"\t'{username}' is not an RBAC default user. "
+                      f"Default users: {', '.join(default_users)}")
+                sys.exit(1)
+
+            try:
+                validate_password(password)
+            except WazuhError as exc:
+                print(f"\tThe password supplied for '{username}' was rejected: {exc.message}")
+                sys.exit(1)
+
+    try:
+        if path.exists(DB_FILE):
+            remove(DB_FILE)
+        check_database_integrity(passwords=passwords)
+    except Exception:
+        # A half-created database would pass for a seeded one on every later run.
+        if path.exists(DB_FILE):
+            remove(DB_FILE)
+        raise
+    print(f"\t{DB_FILE} created")
+
+
 async def reset_rbac_database(script_args):
     """Attempt to fully wipe the RBAC database to restore factory values. Input confirmation is required."""
     if not script_args.reset_force and input("This action will completely wipe your RBAC configuration and restart it "
@@ -176,8 +300,17 @@ async def reset_rbac_database(script_args):
 
     response = await cluster_utils.forward_function(rbac_db_factory_reset, request_type="local_master")
 
-    print(f"\tRBAC database reset failed | {str(response)}" if isinstance(response, Exception)
-          else "\tSuccessfully reset RBAC database")
+    if isinstance(response, Exception):
+        print(f"\tRBAC database reset failed | {str(response)}")
+        sys.exit(1)
+
+    # The reset no longer restores a shipped password: each default user is given a freshly
+    # generated one, which is never returned or logged. Without this line an operator is left with a
+    # working API, no credential for it, and no indication that a recovery path exists.
+    from wazuh.core.common import WAZUH_PATH
+
+    print("\tSuccessfully reset RBAC database. Each default user was given a new, unknown "
+          f"password; set one with '{path.join(WAZUH_PATH, 'bin', 'rbac_control')} change-password'")
 
 
 def get_script_arguments():
@@ -199,10 +332,20 @@ def get_script_arguments():
                                              "from this file, or from the standard input if it is '-', and change "
                                              "all of them in a single execution.")
     change_password_parser.set_defaults(func=restore_default_passwords)
+
+    seed_parser = arg_subparsers.add_parser("seed",
+                                            help="Create the RBAC database, seeding the default users with the "
+                                                 "supplied passwords. An existing database is left untouched. A "
+                                                 "default user with no password supplied gets a generated one.")
+    seed_parser.add_argument("--passwords-file", action="store", dest="passwords_file", default=None,
+                             help="Read a JSON object mapping default usernames to their passwords from this file, "
+                                  "or from the standard input if it is '-'.")
+    seed_parser.set_defaults(func=seed_rbac_database)
+
     reset_parser = arg_subparsers.add_parser("factory-reset",
                                              help="Reset the RBAC database to its default state. This will completely"
-                                                  " wipe your custom RBAC information, and restore the default users'"
-                                                  " shipped passwords.")
+                                                  " wipe your custom RBAC information, and give each default user a"
+                                                  " newly generated password.")
     reset_parser.add_argument("-f", "--force", action="store_true", dest="reset_force", default=False,
                               help="Do not ask for confirmation for the RBAC database factory reset.")
     reset_parser.set_defaults(func=reset_rbac_database)
@@ -225,8 +368,13 @@ if __name__ == "__main__":
     args = get_script_arguments()
 
     try:
+        # Before the drop, deliberately: the operator's password file is commonly root-only.
+        preload_sources(args)
+        drop_privileges()
         asyncio.run(main())
     except WazuhError as e:
         print(f"Error {e.code}: {e.message}")
+        sys.exit(1)
     except Exception as e:
         print(f"Internal error: {e}")
+        sys.exit(1)

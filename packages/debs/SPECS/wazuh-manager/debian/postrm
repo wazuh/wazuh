@@ -89,6 +89,87 @@ case "$1" in
     ;;
 
     purge)
+        # Take the manager's own keys out of the shared credentials file. This deliberately does NOT
+        # source lib/wazuh-credentials.sh: by the time purge runs, dpkg has already removed the
+        # package's files, so that helper is gone. It therefore repeats wazuh_env_unset's effect and
+        # must keep the helper's paths, block markers and lock byte for byte -- note the em dash and
+        # the trailing "<<<" in the markers, and .credentials.lock rather than .credentials.env.lock.
+        #
+        # Only the manager's own keys, and only inside the managed block: the other components' keys
+        # and anything the operator wrote are not ours to remove, even when they carry the same name.
+        #
+        # The key list is spelled out rather than swept by a WAZUH_MANAGER_ prefix so that it is the
+        # SAME list the RPM's %preun feeds to wazuh_env_unset(). The two removal paths must take
+        # exactly the same keys out of the file; an open-ended prefix here would also claim a key a
+        # future sibling publishes under that name.
+        CRED_KEYS="WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD WAZUH_MANAGER_CERT_SANS WAZUH_MANAGER_REMOTED_CERT_SANS"
+
+        # WAZUH_BASE_DIR is how wazuh_base_get_dir() resolves the base, and it is a process setting
+        # only -- reading it from the file whose location it decides would be circular. Honouring it
+        # here is what keeps this path and the RPM's (which can still call the helper) pointed at the
+        # same directory on a relocated install.
+        CRED_DIR="${WAZUH_BASE_DIR:-/etc/wazuh}"
+        CRED_FILE="${CRED_DIR}/credentials.env"
+        CRED_LOCK="${CRED_DIR}/.credentials.lock"
+        if [ -f "${CRED_FILE}" ] && [ ! -L "${CRED_FILE}" ]; then
+            # Set here and not inside the subshell: `9>` is applied when the subshell is created, so
+            # a umask set in its body comes too late and would leave a newly created lock at 0644 --
+            # which _wazuh_validate_regular_file() then refuses at the next install.
+            CRED_UMASK=$(umask)
+            umask 077
+            (
+                flock -w 30 9 || exit 0
+                awk -v begin="# >>> wazuh generated — do not edit <<<" -v end="# >>> end wazuh generated <<<" \
+                    -v keys="${CRED_KEYS}" '
+                    BEGIN { n = split(keys, k, " "); for (i = 1; i <= n; i++) drop[k[i]] = 1 }
+                    $0 == begin { inblock = 1; print; next }
+                    $0 == end   { inblock = 0; print; next }
+                    inblock {
+                        equal = index($0, "=")
+                        if (equal && (substr($0, 1, equal - 1) in drop)) next
+                    }
+                    { print }
+                ' "${CRED_FILE}" > "${CRED_FILE}.tmp" \
+                    && chown root:root "${CRED_FILE}.tmp" && chmod 0600 "${CRED_FILE}.tmp" \
+                    && mv -f "${CRED_FILE}.tmp" "${CRED_FILE}" \
+                    || rm -f "${CRED_FILE}.tmp"
+            ) 9>"${CRED_LOCK}" || true
+            umask "${CRED_UMASK}"
+        fi
+
+        # The last component out removes what is left, /etc/wazuh included -- whether or not the
+        # credentials file is still there, since the documentation tells operators to delete it once
+        # every component runs, and the CA private key must not outlive the last component.
+        #
+        # "Last" is asked of dpkg, not inferred from the file's contents. A leftover WAZUH_ key
+        # says nothing about whether a sibling is installed -- an operator who wrote one line by
+        # hand on a manager-only host would otherwise keep the credentials file and the CA
+        # private key on a machine with no Wazuh left on it.
+        #
+        # Only the CA directory under the base is removed. One relocated through WAZUH_CA_DIR is
+        # left alone: without the helper we cannot resolve it, and deleting a path we cannot confirm
+        # is worse than leaving one behind. The base goes with rmdir rather than rm -rf, so anything
+        # an operator put there that we do not recognise survives. Identical to the RPM's %preun.
+        #
+        # `set -e` is active, so every branch is an explicit if with || true: a bare
+        # `[ ... ] && cmd` whose test fails would abort the purge.
+        # ${db:Status-Status} is the status word alone. `${Status}` is "<want> <eflag> <status>",
+        # so matching 'install ok installed' misses a sibling the operator put on hold, which
+        # reports 'hold ok installed' -- and purging the manager beside a held wazuh-indexer would
+        # then take credentials.env and the CA private key out from under it.
+        CRED_SIBLING_LEFT=no
+        for CRED_SIBLING in wazuh-indexer wazuh-dashboard; do
+            if [ "$(dpkg-query -W -f='${db:Status-Status}' "${CRED_SIBLING}" 2>/dev/null)" = installed ]; then
+                CRED_SIBLING_LEFT=yes
+            fi
+        done
+
+        if [ "${CRED_SIBLING_LEFT}" = no ]; then
+            rm -f "${CRED_FILE}" "${CRED_LOCK}" > /dev/null 2>&1 || true
+            rm -rf "${CRED_DIR}/ca" > /dev/null 2>&1 || true
+            rmdir "${CRED_DIR}" > /dev/null 2>&1 || true
+        fi
+
         if getent passwd wazuh-manager > /dev/null 2>&1 ; then
             deluser wazuh-manager  > /dev/null 2>&1
         fi
