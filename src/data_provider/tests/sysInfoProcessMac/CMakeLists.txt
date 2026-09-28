@@ -8,7 +8,7 @@ endif()
 
 include_directories(${SRC_FOLDER}/data_provider/src)
 
-file(GLOB sysinfo_UNIT_TEST_SRC "sysInfoProcessMac_test.cpp" "main.cpp")
+file(GLOB sysinfo_UNIT_TEST_SRC "sysInfoProcessMac_test.cpp" "processHelperMac_test.cpp" "main.cpp")
 
 file(GLOB SYSINFO_SRC "${SRC_FOLDER}/data_provider/src/processInfoMac.cpp")
 
