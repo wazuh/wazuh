@@ -2147,6 +2147,27 @@ void test_w_fopen_vetted_follow_file_component_rejected(void **state) {
     assert_vetted_rejected(path, ENOTDIR);
 }
 
+void test_w_fopen_vetted_follow_search_only_dir_accepted(void **state) {
+    char path[PATH_MAX + 1];
+
+    if (geteuid() == 0) {
+        print_message("Skipped: directory permissions do not restrict root.\n");
+        skip();
+    }
+
+    nofollow_path(path, "subdir");
+    assert_int_equal(mkdir(path, 0750), 0);
+    nofollow_create_file("subdir/victim", "content");
+    // Searchable but not readable, like a 0711 directory to anyone but its owner.
+    assert_int_equal(__real_chmod(path, 0311), 0);
+    nofollow_path(path, "subdir/victim");
+
+    assert_vetted_reads_content(path);
+
+    nofollow_path(path, "subdir");
+    assert_int_equal(__real_chmod(path, 0750), 0);
+}
+
 void test_w_fopen_vetted_follow_root_fifo_accepted_without_blocking(void **state) {
     char path[PATH_MAX + 1];
     FILE * fp;
@@ -2542,6 +2563,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_owner_fifo_in_private_dir_accepted, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_fifo_component_rejected_without_blocking, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_file_component_rejected, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_search_only_dir_accepted, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_root_fifo_accepted_without_blocking, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_hard_link_accepted, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_hard_link_in_shared_dir_rejected, setup_nofollow, teardown_vetted),

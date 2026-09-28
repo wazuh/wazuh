@@ -2965,6 +2965,35 @@ static int w_clear_nonblock(int fd) {
 #endif
 
 #ifndef W_VETTED_NO_AT_WALK
+// Search-only access to a directory. O_PATH is spelled out for the agent packages, built with headers older
+// than glibc 2.14 that lack it; it has this value on these architectures, and kernels before 2.6.39 ignore it.
+#if defined(O_PATH)
+#define W_VETTED_SEARCH_ONLY O_PATH
+#elif defined(__linux__) && (defined(__x86_64__) || defined(__i386__) || defined(__aarch64__) || defined(__arm__) || \
+                             defined(__powerpc__))
+#define W_VETTED_SEARCH_ONLY 010000000
+#elif defined(O_SEARCH)
+#define W_VETTED_SEARCH_ONLY O_SEARCH
+#endif
+
+/**
+ * Opens a directory of the path being walked. Looking entries up in it takes only search permission, so when
+ * read is denied it is opened again for search only, where the platform has a way to.
+ *
+ * @return Directory descriptor, or -1 on error (sets errno).
+ */
+static int w_open_walk_dir(int dirfd, const char * name, int flags) {
+    int fd = openat(dirfd, name, O_RDONLY | O_DIRECTORY | O_CLOEXEC | flags);
+
+#ifdef W_VETTED_SEARCH_ONLY
+    if (fd < 0 && errno == EACCES) {
+        fd = openat(dirfd, name, W_VETTED_SEARCH_ONLY | O_DIRECTORY | O_CLOEXEC | flags);
+    }
+#endif
+
+    return fd;
+}
+
 /**
  * Reads the target of symlink name in dirfd, failing unless it is still the link link_stat describes, so a
  * link swapped in after its owner was checked is not followed.
@@ -3047,7 +3076,7 @@ static int w_open_vetted_follow_fd(const char * path) {
 
     strcpy(pending, path);
 
-    if (dirfd = open(*pending == '/' ? "/" : ".", O_RDONLY | O_DIRECTORY | O_CLOEXEC), dirfd < 0) {
+    if (dirfd = w_open_walk_dir(AT_FDCWD, *pending == '/' ? "/" : ".", 0), dirfd < 0) {
         return -1;
     }
 
@@ -3121,7 +3150,7 @@ static int w_open_vetted_follow_fd(const char * path) {
 
             if (*pending == '/') {
                 close(dirfd);
-                if (dirfd = open("/", O_RDONLY | O_DIRECTORY | O_CLOEXEC), dirfd < 0) {
+                if (dirfd = w_open_walk_dir(AT_FDCWD, "/", 0), dirfd < 0) {
                     return -1;
                 }
             }
@@ -3137,7 +3166,7 @@ static int w_open_vetted_follow_fd(const char * path) {
             }
 
             // O_NOFOLLOW fails the open if it was swapped to a symlink since fstatat().
-            if (fd = openat(dirfd, name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC), fd < 0) {
+            if (fd = w_open_walk_dir(dirfd, name, O_NOFOLLOW | O_NONBLOCK), fd < 0) {
                 goto fail_swapped;
             }
 
