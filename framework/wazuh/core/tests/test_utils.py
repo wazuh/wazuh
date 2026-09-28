@@ -1088,6 +1088,26 @@ def test_WazuhDBQuery_protected_add_search_to_query(mock_socket_conn, mock_conn_
     mock_conn_db.assert_called_once_with()
 
 
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_protected_add_search_to_query_skips_extra_fields(mock_socket_conn, mock_conn_db, mock_glob,
+                                                                       mock_exists):
+    """Test WazuhDBQuery._add_search_to_query function does not search on extra fields."""
+    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
+                               search={"negation": False, "value": "1"}, select=None,
+                               filters=None, fields={'1': 'one', '2': 'two', 'secret': 'secret_col'},
+                               default_sort_field=None, query=None,
+                               backend=utils.WazuhDBBackend(agent_id=1),
+                               count=5, get_data=None, extra_fields={'secret'})
+
+    query._add_search_to_query()
+    assert '(one LIKE :search AND one IS NOT NULL)' in query.query
+    assert '(two LIKE :search AND two IS NOT NULL)' in query.query
+    assert 'secret_col' not in query.query
+
+
 @pytest.mark.parametrize('selector_fields, error, expected_exception', [
     (None, False, None),
     (['1'], False, None),
