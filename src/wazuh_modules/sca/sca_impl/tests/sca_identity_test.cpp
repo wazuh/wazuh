@@ -27,7 +27,10 @@
 
 #include <chrono>
 #include <filesystem>
+#include <future>
 #include <memory>
+#include <mutex>
+#include <stdexcept>
 #include <string>
 
 namespace
@@ -51,8 +54,10 @@ class SCAIdentityTest : public ::testing::Test
             std::filesystem::current_path("sca_identity_test");
             metadata_provider_reset();
 
+            // Locked: the shutdown cases log from the test thread and a woken worker at once.
             LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const std::string & log)
             {
+                std::lock_guard<std::mutex> lock(m_logMutex);
                 m_logOutput += log + "\n";
             });
 
@@ -64,6 +69,8 @@ class SCAIdentityTest : public ::testing::Test
 
             m_sca = std::make_shared<SCAMock>(m_mockDBSync, m_mockFileSystem);
             m_sca->setSyncProtocol(m_mockSyncProtocol);
+            // As once Run() is past its initialization, which is when the sync thread may act.
+            m_sca->setRunInitializedForTest(true);
             // syncModule() answers immediately unless the module is paused -- that is how
             // agent-info drives a coordinated sync, and it is the state these cases exercise.
             m_sca->pause();
@@ -116,11 +123,25 @@ class SCAIdentityTest : public ::testing::Test
             }));
         }
 
+        /// Waits for a flush started on another thread. On a timeout, stops the module so the
+        /// waiting flush returns: a failed assertion must fail the test, not hang it in ~future.
+        bool finished(std::future<int>& flush)
+        {
+            if (flush.wait_for(std::chrono::seconds(5)) == std::future_status::ready)
+            {
+                return true;
+            }
+
+            m_sca->quiesce();
+            return false;
+        }
+
         std::shared_ptr<MockDBSync> m_mockDBSync;
         std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
         std::shared_ptr<MockAgentSyncProtocol> m_mockSyncProtocol;
         std::shared_ptr<SCAMock> m_sca;
         std::string m_logOutput;
+        std::mutex m_logMutex;
 };
 
 // The marker has never been recorded -- every agent on its first cycle after an upgrade. It must
@@ -244,7 +265,8 @@ TEST_F(SCAIdentityTest, IdentityChangedQueryIgnoresAnUnknownId)
     // No publishAgentId() here -- the provider was reset in SetUp().
     expectMetadata(/* syncedAgentId */ 7, /* firstSyncCompleted */ 123456);
 
-    EXPECT_EQ(queryIdentityChanged(*m_sca), 0);
+    // "Cannot tell", not "unchanged": the sync thread keeps its retry state on it.
+    EXPECT_EQ(queryIdentityChanged(*m_sca), -1);
 }
 
 // An unrecorded marker is adopted by checkAgentIdentity(), never resynced, so it is not a change.
@@ -254,4 +276,176 @@ TEST_F(SCAIdentityTest, IdentityChangedQueryIgnoresAnAbsentMarker)
     expectMetadata(/* syncedAgentId */ 0, /* firstSyncCompleted */ 123456);
 
     EXPECT_EQ(queryIdentityChanged(*m_sca), 0);
+}
+
+// Without a sync protocol syncModule() never reaches checkAgentIdentity(), so reporting the change
+// would only make the sync thread wake for nothing every poll period.
+TEST_F(SCAIdentityTest, IdentityChangedQueryIgnoresAChangeWithoutSyncProtocol)
+{
+    publishAgentId("002");
+    expectMetadata(/* syncedAgentId */ 1, /* firstSyncCompleted */ 123456);
+    m_sca->setSyncProtocol(nullptr);
+
+    EXPECT_EQ(queryIdentityChanged(*m_sca), -1);
+}
+
+// The flush and the sync thread's resend never overlap: the resend's DataClean would otherwise
+// clear the queue a flush session is still sending. While the flush sends, a sync skips.
+TEST_F(SCAIdentityTest, SyncSkipsWhileAFlushSends)
+{
+    publishAgentId("007");
+    expectMetadata(/* syncedAgentId */ 7, /* firstSyncCompleted */ 123456);
+
+    bool syncedDuringFlush = true;
+
+    EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
+    .WillOnce(::testing::Invoke([this, &syncedDuringFlush](auto&& ...)
+    {
+        syncedDuringFlush = m_sca->syncModule(Mode::DELTA);
+        return SyncModuleResult {true, {}};
+    }));
+
+    EXPECT_EQ(m_sca->callExecuteFlushSync(), 0);
+
+    EXPECT_FALSE(syncedDuringFlush);
+    EXPECT_NE(m_logOutput.find("SCA sync skipped - flush in progress"), std::string::npos);
+}
+
+// A flush that arrives while a resend is running waits for it instead of overlapping it.
+TEST_F(SCAIdentityTest, FlushWaitsForASyncInProgressThenSends)
+{
+    publishAgentId("007");
+    expectMetadata(/* syncedAgentId */ 7, /* firstSyncCompleted */ 123456);
+
+    EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
+    .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
+
+    m_sca->setSyncInProgress(true);
+
+    auto flush = std::async(std::launch::async, [this] { return m_sca->callExecuteFlushSync(); });
+
+    EXPECT_EQ(flush.wait_for(std::chrono::milliseconds(200)), std::future_status::timeout);
+
+    m_sca->notifySyncComplete();
+
+    ASSERT_TRUE(finished(flush));
+    EXPECT_EQ(flush.get(), 0);
+}
+
+// If the module stops while the flush waits, it gives up without sending anything.
+TEST_F(SCAIdentityTest, FlushWaitingForASyncGivesUpOnShutdown)
+{
+    EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_)).Times(0);
+
+    m_sca->setSyncInProgress(true);
+
+    auto flush = std::async(std::launch::async, [this] { return m_sca->callExecuteFlushSync(); });
+
+    EXPECT_EQ(flush.wait_for(std::chrono::milliseconds(200)), std::future_status::timeout);
+
+    m_sca->quiesce();
+
+    ASSERT_TRUE(finished(flush));
+    EXPECT_EQ(flush.get(), -1);
+    EXPECT_NE(m_logOutput.find("SCA flush aborted: the module is stopping"), std::string::npos);
+}
+
+// The flush hands its flag back on every path out: left set, every later synchronization would
+// skip until the module restarts.
+TEST_F(SCAIdentityTest, FlushClearsItsFlagWhenTheSessionThrows)
+{
+    publishAgentId("007");
+    expectMetadata(/* syncedAgentId */ 7, /* firstSyncCompleted */ 123456);
+
+    EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
+    .WillOnce(::testing::Throw(std::runtime_error("session failed")))
+    .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
+
+    EXPECT_THROW(m_sca->callExecuteFlushSync(), std::runtime_error);
+    EXPECT_TRUE(m_sca->syncModule(Mode::DELTA));
+}
+
+// agent-info resumes SCA while its flush is still sending, so scans must not stay blocked behind
+// it: pause() waits for scans and syncs, never for a flush.
+TEST_F(SCAIdentityTest, PauseDoesNotWaitForAFlush)
+{
+    m_sca->resume();
+    m_sca->setFlushInProgressForTest(true);
+
+    auto pause = std::async(std::launch::async, [this] { m_sca->pause(); });
+    const bool returned = pause.wait_for(std::chrono::seconds(5)) == std::future_status::ready;
+
+    if (!returned)
+    {
+        m_sca->quiesce();
+    }
+
+    EXPECT_TRUE(returned);
+}
+
+// The sync thread starts before Run() and asks about the id right away. The resend waits for Run()
+// to apply the document limits, or its snapshot could send rows that are about to be demoted.
+TEST_F(SCAIdentityTest, ResendWaitsForRunToInitialize)
+{
+    publishAgentId("002");
+    expectMetadata(/* syncedAgentId */ 1, /* firstSyncCompleted */ 123456);
+    m_sca->setRunInitializedForTest(false);
+
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
+    .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
+    EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return(SyncModuleResult {true, {}}));
+
+    auto sync = std::async(std::launch::async, [this] { return m_sca->syncModule(Mode::DELTA); });
+
+    EXPECT_EQ(sync.wait_for(std::chrono::milliseconds(200)), std::future_status::timeout);
+
+    m_sca->setRunInitializedForTest(true);
+
+    const bool returned = sync.wait_for(std::chrono::seconds(5)) == std::future_status::ready;
+
+    if (!returned)
+    {
+        m_sca->quiesce();
+    }
+
+    ASSERT_TRUE(returned);
+    EXPECT_TRUE(sync.get());
+    EXPECT_NE(m_logOutput.find("last synchronized as agent 1, now running as agent 2"), std::string::npos);
+}
+
+// If the module stops first, the cycle gives up without sending anything -- not the resend, and
+// not a delta under an id the manager holds no baseline for -- so the next start retries.
+TEST_F(SCAIdentityTest, ResendWaitingForRunGivesUpOnShutdown)
+{
+    publishAgentId("002");
+    expectMetadata(/* syncedAgentId */ 1, /* firstSyncCompleted */ 123456);
+    m_sca->setRunInitializedForTest(false);
+
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
+    EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_)).Times(0);
+
+    auto sync = std::async(std::launch::async, [this] { return m_sca->syncModule(Mode::DELTA); });
+
+    EXPECT_EQ(sync.wait_for(std::chrono::milliseconds(200)), std::future_status::timeout);
+
+    m_sca->quiesce();
+
+    ASSERT_EQ(sync.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+    EXPECT_FALSE(sync.get());
+}
+
+// A resend the manager did not take leaves the markers alone and sends nothing else: a delta would
+// go out under an id the manager holds no baseline for, and the cycle must not read as a success.
+TEST_F(SCAIdentityTest, FailedResendSendsNoDelta)
+{
+    publishAgentId("002");
+    expectMetadata(/* syncedAgentId */ 1, /* firstSyncCompleted */ 123456);
+
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
+    .WillOnce(::testing::Return(SyncModuleResult {false, {}}));
+    EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_)).Times(0);
+
+    EXPECT_FALSE(m_sca->syncModule(Mode::DELTA));
+    EXPECT_NE(m_logOutput.find("SCA synchronization postponed: the agent id change was not resent"), std::string::npos);
 }

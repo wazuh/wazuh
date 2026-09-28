@@ -33,6 +33,22 @@ class SCAMock : public SecurityConfigurationAssessment
             m_syncInProgress.store(inProgress);
         }
 
+        /// @brief Mark a flush as sending or done, waking waiters the way executeFlushSync() does.
+        void setFlushInProgressForTest(bool inProgress)
+        {
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_flushInProgress.store(inProgress);
+            m_pauseCv.notify_all();
+        }
+
+        /// @brief Mark Run() as past its initialization (or not), which the identity resend waits for.
+        void setRunInitializedForTest(bool initialized)
+        {
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_runInitialized.store(initialized);
+            m_pauseCv.notify_all();
+        }
+
         /// @brief Notify pause condition variable (to simulate sync completion)
         void notifySyncComplete()
         {
