@@ -44,7 +44,8 @@ indexer.
   [Step 2](#certificates-and-credentials).
 - **Credentials.** The `wazuh-manager` password on the indexer, written to
   `/etc/wazuh/credentials.env` before the install. It must pass the 5.0 password policy, which
-  limits the characters it may use, and one the 4.x assistant generated almost never does. The manager generates
+  limits the characters it may use and requires all four character classes. One the 4.x
+  assistant generated usually fails it. The manager generates
   its own Server API passwords and publishes them in the same file. See
   [Step 2](#certificates-and-credentials).
 - **Tools.** The `sqlite3` command-line tool on the 5.0 host for [Step 3](#3-restore-the-identity-data).
@@ -136,14 +137,16 @@ printf "WAZUH_INDEXER_MANAGER_PASSWORD='%s'\n" '<the wazuh-manager password on t
 sudo chmod 0600 /etc/wazuh/credentials.env
 ```
 
-The value must pass the 5.0 password policy: 12 to 64 characters, only from
-`A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, with at least one letter and one digit. **A password the 4.x
-installation assistant generated almost never does**: its generator always adds one character from
-`.*+?`, and `*` and `?` are outside the set. The manager then refuses to start:
+The value must pass the policy for supplied passwords: 12 to 64 characters, only from
+`A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, with at least one lowercase letter, one uppercase letter, one
+digit and one symbol from that set. **A password the 4.x installation assistant generated usually
+fails it**: the generator draws from `A-Za-z0-9.*+?` and always adds one of `.*+?`, and `*` and `?`
+are outside the set. The manager then refuses to start:
 
 ```console
 resolve-credentials: INVALID WAZUH_INDEXER_MANAGER_PASSWORD: the supplied value does not meet the password policy
-resolve-credentials:         (12-64 characters from A-Z a-z 0-9 . , _ + : @ % ^ = ~ -, with at least one letter and one digit)
+resolve-credentials:         (12-64 characters from A-Z a-z 0-9 . , _ + : @ % ^ = ~ -, with at least one
+resolve-credentials:         lowercase letter, one uppercase letter, one digit and one symbol)
 resolve-credentials:         correct it in /etc/wazuh/credentials.env and start the service again
 Unresolved credentials. Exiting
 ```
