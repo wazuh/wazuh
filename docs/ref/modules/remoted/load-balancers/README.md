@@ -375,9 +375,9 @@ not yet served this agent a `/control` is refused with `403`.
 
 It also converges, but through the agent's own notify cycle rather than through the cluster, so
 **the window grows with the number of nodes**: covering N nodes with random routing needs `N·H(N)`
-notifies — about 6 at three nodes, 30 at ten, 72 at twenty. At `notify_time` 60 s and ten nodes that
-is roughly half an hour before a freshly enrolled agent can fetch its configuration from *every*
-node.
+notifies — about 6 at three nodes, 30 at ten, 72 at twenty. At the default `notify_time` of 10 s and
+ten nodes that is roughly five minutes before a freshly enrolled agent can fetch its configuration
+from *every* node.
 
 It affects only configuration downloads; WPK downloads are not gated this way.
 

@@ -52,9 +52,22 @@ Maximum size, in bytes, of a request body the API accepts.
   `Expect: 100-continue` header. The refusal is also recorded in `api.log` at `WARNING` level with
   the endpoint and the limit that rejected it.
 - **Note:** This is the general limit only. `POST /security/user/authenticate/run_as` is additionally
-  bounded by a fixed 8192-byte limit on its authorization context, which is not configurable and is
-  **not** lifted by setting `max_upload_size` to `0`: that endpoint still answers `413` for a body
-  every other endpoint would accept.
+  bounded by [`auth_context_max_payload_size`](#auth_context_max_payload_size), a limit that setting
+  `max_upload_size` to `0` does **not** lift: that endpoint still answers `413` for a body every other
+  endpoint would accept.
+
+### auth_context_max_payload_size
+
+Maximum size, in bytes, of the authorization context body accepted by `POST
+/security/user/authenticate/run_as`.
+
+- **Default value:** `65536` (64 KB)
+- **Allowed values:** Integer from `1024` to `1048576`
+- **Note:** A body above this value is refused with `413 Payload Too Large` before the credentials are
+  checked, even when `max_upload_size` is `0`. `max_upload_size`, when set, still bounds the same body,
+  so the effective limit is the lower of the two.
+- **Note:** Raise it when AD/LDAP/SSO logins with large group memberships are refused with `413`. The
+  API buffers up to this many bytes of each `run_as` request before authenticating it.
 
 ### authentication_pool_size
 
@@ -111,10 +124,11 @@ Role-Based Access Control enforcement mode.
 Standard API settings for most deployments:
 
 ```yaml
-host: 0.0.0.0
+host: ["0.0.0.0", "::"]
 port: 55000
 drop_privileges: true
 max_upload_size: 10485760  # 10 MB
+auth_context_max_payload_size: 65536  # 64 KB
 authentication_pool_size: 2
 intervals:
   request_timeout: 10
@@ -144,10 +158,11 @@ logs:
 Enhanced security settings for production environments:
 
 ```yaml
-host: 0.0.0.0
+host: ["0.0.0.0", "::"]
 port: 55000
 drop_privileges: true
 max_upload_size: 10485760
+auth_context_max_payload_size: 65536
 authentication_pool_size: 2
 intervals:
   request_timeout: 10
@@ -168,10 +183,10 @@ logs:
   level: warning
 https:
   enabled: true
-  key: /var/wazuh-manager/etc/certs/api-key.pem
-  cert: /var/wazuh-manager/etc/certs/api-cert.pem
+  key: apid-key.pem    # file names only, resolved under etc/certs/
+  cert: apid.pem
   use_ca: true
-  ca: /var/wazuh-manager/etc/certs/root-ca.pem
+  ca: root-ca.pem
 ```
 
 ### Development Configuration
@@ -179,10 +194,11 @@ https:
 Relaxed settings for development and testing:
 
 ```yaml
-host: 0.0.0.0
+host: ["0.0.0.0", "::"]
 port: 55000
 drop_privileges: false
 max_upload_size: 52428800  # 50 MB
+auth_context_max_payload_size: 262144  # Room for large AD/LDAP group lists
 authentication_pool_size: 4  # Higher for dev testing
 intervals:
   request_timeout: 30  # Longer for debugging
@@ -290,17 +306,20 @@ Control API load using `max_request_per_minute`:
 
 **Small deployments (<10 users):**
 ```yaml
-max_request_per_minute: 300
+access:
+  max_request_per_minute: 300
 ```
 
 **Medium deployments (10-50 users):**
 ```yaml
-max_request_per_minute: 600
+access:
+  max_request_per_minute: 600
 ```
 
 **Large deployments (50+ users):**
 ```yaml
-max_request_per_minute: 1000
+access:
+  max_request_per_minute: 1000
 ```
 
 Requests are keyed per client address, so `max_request_per_minute` is enforced independently
@@ -359,14 +378,11 @@ curl -k -X GET "https://localhost:55000/" \
 Monitor API activity and errors:
 
 ```bash
-# API logs
+# Plain-text log (requests, errors and startup messages)
 tail -f /var/wazuh-manager/logs/api.log
 
-# API access logs
-tail -f /var/wazuh-manager/logs/api/access.log
-
-# API error logs
-tail -f /var/wazuh-manager/logs/api/error.log
+# Same events as JSON, one object per line, when logs.format includes json
+tail -f /var/wazuh-manager/logs/api.json
 ```
 
 ### Authentication Monitoring
@@ -382,12 +398,11 @@ grep "authentication failed" /var/wazuh-manager/logs/api.log
 Check API response times and request rates:
 
 ```bash
-# Request rate
-grep "GET\|POST\|PUT\|DELETE" /var/wazuh-manager/logs/api/access.log | \
-  wc -l
+# Requests logged so far
+grep -cE '"(GET|POST|PUT|DELETE) ' /var/wazuh-manager/logs/api.log
 
 # Slow requests (>1s)
-grep -E "time=[0-9]{4,}" /var/wazuh-manager/logs/api/access.log
+grep -E 'done in [1-9][0-9]*\.[0-9]{3}s:' /var/wazuh-manager/logs/api.log
 ```
 
 ---
@@ -418,8 +433,8 @@ cat /var/wazuh-manager/api/configuration/security/security.yaml
 
 **Verify user exists:**
 ```bash
-# List API users
-/var/wazuh-manager/bin/wazuh-apid -l
+# List API users (needs a token with security:read)
+curl -k -H "Authorization: Bearer $TOKEN" "https://localhost:55000/security/users"
 ```
 
 ### High Memory Usage

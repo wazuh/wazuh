@@ -313,11 +313,11 @@ every node. Measured, one notify plus six downloads per round:
 **The window scales with cluster size**, because covering every node with random routing is the
 coupon-collector problem — `N·H(N)` notifies for `N` nodes:
 
-| Nodes | Notifies to cover them all | At `notify_time` 60 s |
+| Nodes | Notifies to cover them all | At `notify_time` 10 s |
 |---|---|---|
-| 3 | 5.5 | ~5 minutes |
-| 10 | 29.3 | ~30 minutes |
-| 20 | 72.0 | ~70 minutes |
+| 3 | 5.5 | ~1 minute |
+| 10 | 29.3 | ~5 minutes |
+| 20 | 72.0 | ~12 minutes |
 
 Plan for it on large clusters: a freshly enrolled agent may not be able to fetch its configuration
 from **every** node for that long. It can always fetch it from the nodes it has already contacted.

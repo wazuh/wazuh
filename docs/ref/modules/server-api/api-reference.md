@@ -396,6 +396,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | GET | `/cluster/local/config` | Local node config. The cluster key comes back masked unless the caller holds `cluster:read_secrets` over this node |
 | GET | `/cluster/api/config` | API config |
 | PUT | `/cluster/restart` | Restart cluster |
+| PUT | `/cluster/reload` | Restart manager daemons on all nodes, or a given list, keeping active agent connections |
 | GET | `/cluster/configuration/validation` | Validate config |
 | GET | `/cluster/{node_id}/status` | Node status |
 | GET | `/cluster/{node_id}/info` | Node info |
@@ -411,6 +412,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/security/user/authenticate` | Login (get JWT) |
+| DELETE | `/security/user/authenticate` | Logout (invalidate all of the current user's tokens) |
 | POST | `/security/user/authenticate/run_as` | Login with auth context |
 | PUT | `/security/user/revoke` | Revoke tokens |
 | GET | `/security/users` | List users |
@@ -566,9 +568,13 @@ All exceptions inherit from `WazuhException` (defined in `core/exception.py`), w
 | 900–999 | API-level errors | Child process terminated, executor failure, endpoint restricted to master |
 | 999–1099 | Core Wazuh errors | Incompatible Python, internal error, command errors, socket issues |
 | 1100–1199 | Configuration errors | Invalid section/field/type, XML syntax, missing config |
-| 1200–1299 | Agent errors | Agent not found, duplicate, version mismatch |
-| 1700–1799 | RBAC errors | Permission denied, invalid role/policy |
-| 2000+ | Module-specific errors | Syscheck, rootcheck, active response, cluster |
+| 1700–1799 | Agent errors | Agent not found, duplicate, version mismatch |
+| 2000–2999 | Internal service errors | wazuh-db, engine, modulesd and remoted admin sockets, indexer |
+| 3000–3999 | Cluster errors | Cluster configuration, distributed API requests, worker not connected |
+| 4000–4999 | RBAC errors | Permission denied, invalid role/policy |
+| 5000–5999 | User management errors | User not found, insecure password, invalid `allow_run_as` |
+| 6000–6999 | Security errors | Blocked IP, request rate limit reached, `run_as` not enabled for the user |
+| 8000–8999 | Vulnerability scan errors | Scanner or feed not ready, scan queue full |
 
 Error responses include a `dapi_errors` field in cluster deployments.
 
