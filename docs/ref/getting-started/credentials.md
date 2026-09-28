@@ -193,6 +193,50 @@ sudo systemctl enable --now wazuh-manager
 Install order does not matter. A manager installed before the indexer resolves nothing at install
 time; by the time you start it the indexer has published its key, and it resolves.
 
+## Cluster deployments
+
+Every node resolves credentials for itself, and nothing in the cluster shares the result. Supply the
+same values on every node **before** you install it:
+
+```bash
+# on each node, before installing
+sudo install -d -m 0700 -o root -g root /etc/wazuh
+sudo touch /etc/wazuh/credentials.env && sudo chmod 0600 /etc/wazuh/credentials.env
+sudo tee -a /etc/wazuh/credentials.env > /dev/null <<'EOF'
+WAZUH_MANAGER_API_PASSWORD='<the same value on every node>'
+WAZUH_MANAGER_WUI_PASSWORD='<the same value on every node>'
+WAZUH_INDEXER_MANAGER_PASSWORD='<the wazuh-manager password on the indexer>'
+EOF
+```
+
+Four things follow, and the last is why supplying the values yourself is worth the trouble:
+
+* **Only a master seeds `rbac.db`.** A worker never serves the Server API — `wazuh-manager-control`
+  starts `apid` only when `cluster.node_type` is `master` — so seeding a database there would publish
+  a password to that host's `credentials.env` that authenticates nowhere. The resolver reads the node
+  role for this and nothing else, and treats every uncertain answer as `master`: an unreadable or
+  invalid configuration seeds, rather than silently skipping.
+* **A database that already exists is never touched**, whatever the role says. The role only decides
+  whether to *create* one; nothing removes `rbac.db`, which holds every user, role, policy and rule
+  you have, not just the two default users.
+* **`rbac.db` is not replicated.** The cluster synchronizes `etc/` (`client.keys`, `authd.pass`,
+  `enrollment_tokens.json`), `etc/shared/` and `var/multigroups/` — nothing else. Each node's database
+  is whatever that node was seeded with.
+* **Promotion seeds at the next start.** Change `cluster.node_type` to `master` and restart: the
+  resolver seeds the database before `apid` runs. If you supplied `WAZUH_MANAGER_API_PASSWORD` and
+  `WAZUH_MANAGER_WUI_PASSWORD` on that node, it comes up with the credentials you already know. If you
+  did not, it generates fresh ones, and the password you recorded from the old master no longer works.
+  That is the whole reason to set them everywhere up front.
+
+The same applies to `rbac_control change-password`: it writes to the master's database, so repeat it
+on any node that may take that role. See
+[Server API authentication](../modules/server-api/authentication.md).
+
+Certificates work the same way — each node issues its own at installation — so stage one CA in
+`/etc/wazuh/ca` on every node before installing, or provision each node's pair from your own PKI.
+A node that mints its own bootstrap CA trusts only itself, and agents that reach a different node
+will not trust what it presents.
+
 ## When the manager does not start
 
 Service start runs the password and keystore order again — not merely a check — so the manager picks

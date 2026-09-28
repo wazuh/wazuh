@@ -118,7 +118,19 @@ cp "${D}/seeded.json" "${D}/rbac.db"
 exit 0
 STUB
 
-    chmod +x "${root}/home/bin/wazuh-manager-keystore" "${root}/home/bin/rbac_control"
+    # Stands in for bin/wazuh-manager-conf, the only configuration the resolver reads. Writing a
+    # node type into home/node_type makes this tree a worker; removing the file makes `get` fail the
+    # way an invalid document does, which is the fail-safe path.
+    cat > "${root}/home/bin/wazuh-manager-conf" <<'STUB'
+#!/bin/sh
+[ "$1" = get ] && [ "$2" = cluster.node_type ] || exit 2
+f="$(dirname "$0")/../node_type"
+[ -s "${f}" ] || exit 1
+cat "${f}"
+STUB
+
+    chmod +x "${root}/home/bin/wazuh-manager-keystore" "${root}/home/bin/rbac_control" \
+             "${root}/home/bin/wazuh-manager-conf"
     echo "${root}"
 
 }
@@ -439,6 +451,77 @@ check "an empty environment variable does not shadow the file" "0" "${RC}"
 check "the owned key is read from the file, not regenerated" "FromFile.Aa1" "$(seeded_password "${root}" wazuh)"
 check "and the consumed key is not reported missing" "" \
     "$(grep -o 'MISSING WAZUH_INDEXER_MANAGER_PASSWORD' <<< "$(resolver_output)" | head -1)"
+cleanup "${root}"
+
+# --------------------------------------------------------------------------------------------
+# Cluster role
+#
+# A worker never serves the Server API, and rbac.db is not replicated, so seeding one there would
+# publish a password to that host's credentials.env that authenticates nowhere. The role is the only
+# configuration this script reads, and every uncertain answer has to mean "not a worker".
+# --------------------------------------------------------------------------------------------
+
+root="$(make_tree)"
+printf 'worker\n' > "${root}/home/node_type"
+run_resolver "${root}" --install
+check "a worker install exits 0" "0" "${RC}"
+check "and does not seed rbac.db" "" "$(seeded_password "${root}" wazuh)"
+check "and says why" "yes" \
+    "$(grep -q 'cluster worker; the Server API runs on the master' <<< "$(resolver_output)" && echo yes)"
+check "and publishes no API password it did not seed" "" \
+    "$(published "${root}" WAZUH_MANAGER_API_PASSWORD)"
+# The gate skips rbac.db and nothing else. A worker talks to the indexer like any other node, so
+# that credential is still required of it. --install prints no verdict at all (it always exits 0),
+# so the question goes to the start.
+run_resolver "${root}" --prestart
+check "a worker start still refuses without the indexer credential" "1" "${RC}"
+check "naming that key" "yes" \
+    "$(grep -q 'MISSING WAZUH_INDEXER_MANAGER_PASSWORD' <<< "$(resolver_output)" && echo yes)"
+check "and never naming rbac.db" "" \
+    "$(grep -o 'MISSING rbac.db' <<< "$(resolver_output)" | head -1)"
+
+# Promotion: the role changes, and the next start seeds -- before apid, which the control script
+# starts only on a master.
+printf 'master\n' > "${root}/home/node_type"
+write_credentials "${root}" "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'"
+run_resolver "${root}" --prestart
+check "a promoted node seeds at its next start" "yes" \
+    "$([ -n "$(seeded_password "${root}" wazuh)" ] && echo yes)"
+check "and the start succeeds" "0" "${RC}"
+cleanup "${root}"
+
+# An explicit master behaves exactly as before.
+root="$(make_tree)"
+printf 'master\n' > "${root}/home/node_type"
+run_resolver "${root}" --install
+check "an explicit master still seeds" "yes" "$([ -n "$(seeded_password "${root}" wazuh)" ] && echo yes)"
+cleanup "${root}"
+
+# Fail-safe: anything other than a definite `worker` seeds. A configuration that does not parse makes
+# `wazuh-manager-conf get` print nothing and exit non-zero -- for ANY invalid section, not just the
+# cluster one -- so reading that as "worker" would silently unseed a master over an unrelated typo.
+for _case in "missing:no node_type answer at all" "empty:an empty answer" "master:an explicit master"; do
+    _state=${_case%%:*}
+    _label=${_case##*:}
+    root="$(make_tree)"
+    case "${_state}" in
+        missing) : ;;                                   # stub exits 1, as an unparseable config does
+        empty)   : > "${root}/home/node_type" ;;
+        master)  printf 'master\n' > "${root}/home/node_type" ;;
+    esac
+    run_resolver "${root}" --install
+    check "${_label} seeds rather than skipping" "yes" \
+        "$([ -n "$(seeded_password "${root}" wazuh)" ] && echo yes)"
+    cleanup "${root}"
+done
+
+# And with no CLI present at all -- an install ordering that put us before it.
+root="$(make_tree)"
+rm -f "${root}/home/bin/wazuh-manager-conf"
+printf 'worker\n' > "${root}/home/node_type"
+run_resolver "${root}" --install
+check "no config CLI seeds rather than skipping" "yes" \
+    "$([ -n "$(seeded_password "${root}" wazuh)" ] && echo yes)"
 cleanup "${root}"
 
 # --------------------------------------------------------------------------------------------

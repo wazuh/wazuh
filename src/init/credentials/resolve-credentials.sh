@@ -181,6 +181,7 @@ export WAZUH_MANAGER_HOME
 
 KEYSTORE="${DIR}/bin/wazuh-manager-keystore"
 RBAC_CONTROL="${DIR}/bin/rbac_control"
+MANAGER_CONF="${DIR}/bin/wazuh-manager-conf"
 RBAC_DB="${DIR}/api/configuration/security/rbac.db"
 
 LOG_TAG="resolve-credentials"
@@ -256,6 +257,20 @@ rbac_is_seeded() {
     [ -s "${RBAC_DB}" ]
 }
 
+# The only configuration this script reads, and the only thing it reads it for.
+#
+# Written so that every uncertain answer means "not a worker": a missing CLI, a configuration that
+# does not parse, an empty answer. Only the literal `worker` skips anything. The inverse spelling --
+# treating anything that is not `master` as a worker -- would turn an unrelated 1244 in, say, the
+# remote section into a silently unseeded rbac.db, because `wazuh-manager-conf get` prints nothing
+# and exits non-zero on ANY invalid document, not just an invalid cluster block. That is the failure
+# this ordering exists to avoid.
+node_is_worker() {
+    [ -x "${MANAGER_CONF}" ] || return 1
+    _niw_type=$("${MANAGER_CONF}" get cluster.node_type 2>/dev/null) || return 1
+    [ "${_niw_type}" = "worker" ]
+}
+
 indexer_password_is_stored() {
     [ -x "${KEYSTORE}" ] || return 1
     "${KEYSTORE}" -f indexer -k password -g >/dev/null 2>&1
@@ -308,6 +323,19 @@ resolve_api_passwords() {
         # operator edited into the file -- the database already holds a credential, and a
         # package must never reconfigure what is already configured.
         log "rbac.db is already seeded; WAZUH_MANAGER_API_PASSWORD and WAZUH_MANAGER_WUI_PASSWORD are ignored"
+        return 0
+    fi
+
+    # A worker never serves the Server API -- wazuh-manager-control skips apid unless
+    # cluster.node_type is master -- and rbac.db is not replicated between nodes, so seeding one here
+    # would publish a password to this host's credentials.env that authenticates nowhere.
+    #
+    # After the step-0 check on purpose: a database that already exists is left alone whatever the
+    # role says. Nothing is removed, ever. If this node is later promoted, the config becomes master
+    # and the next start seeds it here, before apid runs -- which is why the answer is only ever
+    # "skip", never "delete".
+    if node_is_worker; then
+        log "this node is a cluster worker; the Server API runs on the master, so rbac.db is not seeded here"
         return 0
     fi
 

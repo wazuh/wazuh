@@ -55,6 +55,33 @@ def apid():
     return module
 
 
+def _prepare_start_without_rbac_db(apid, tmp_path, name='rbac.db'):
+    """Stub `start()` as `_prepare_start` does, but point DB_FILE at a path that is not a database."""
+    api_error = _prepare_start(apid)
+    apid.DB_FILE = str(tmp_path / name)
+    return api_error
+
+
+@pytest.mark.parametrize('exists', [False, True], ids=['absent', 'empty'])
+def test_start_refuses_to_create_the_rbac_database(apid, tmp_path, exists):
+    """`start()` must not create `rbac.db`: it would seed passwords published nowhere.
+
+    Creating it here gives the two default users generated passwords that never reach
+    /etc/wazuh/credentials.env or the log, so the API starts and nobody can authenticate. The file
+    belongs to the credential resolver; an empty one is a failed creation, not a database.
+    """
+    api_error = _prepare_start_without_rbac_db(apid, tmp_path)
+    if exists:
+        open(apid.DB_FILE, 'w').close()
+
+    with pytest.raises(api_error) as error:
+        apid.start({'host': ['0.0.0.0'], 'port': 55000, 'server_header': False})
+
+    assert error.value.code == 2012
+    apid.check_database_integrity.assert_not_called()
+    assert not os.path.exists(apid.DB_FILE) or os.path.getsize(apid.DB_FILE) == 0
+
+
 def _socket_factory(bind_outcomes):
     """Build a `socket.socket` replacement whose `bind()` follows a scripted list of outcomes.
 
@@ -403,6 +430,9 @@ def _prepare_start(apid):
             self.code = code
 
     apid.check_database_integrity = MagicMock()
+    # start() now refuses to run when rbac.db is absent instead of creating it, so point the guard at
+    # a file that exists and is non-empty. APID_PATH is this script itself: any real file will do.
+    apid.DB_FILE = APID_PATH
     apid.common = MagicMock()
     apid.common.mp_pools.get.return_value = {'thread_pool': MagicMock()}
     apid.pyDaemonModule = MagicMock()

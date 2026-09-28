@@ -247,11 +247,33 @@ def start(params: dict):
     Raises
     ------
     APIError
-        Code 2012 if the RBAC database integrity check fails, or code 2010 if the configured
-        port is still in use after every bind attempt.
+        Code 2012 if `rbac.db` is absent or its integrity check fails, or code 2010 if the
+        configured port is still in use after every bind attempt.
     SystemExit
         A shutdown was requested before the server started, or the server never started.
     """
+    # `rbac.db` belongs to the credential resolver, which seeds it through `rbac_control seed` and
+    # publishes the two default users' passwords to /etc/wazuh/credentials.env. Creating it here
+    # instead -- which `check_database_integrity()` does when the file is absent -- seeds those users
+    # with generated passwords that are published NOWHERE: not to the credentials file, not to the
+    # log. The result is an API that starts cleanly and that nobody can authenticate against, with no
+    # record of the credential on the host.
+    #
+    # An empty file is what a failed creation leaves behind, not a database, so it is treated as
+    # absent -- the same test `rbac_control seed` applies.
+    #
+    # Nothing legitimate reaches this with the file missing: `wazuh-manager-control start` runs
+    # `resolvecredentials()` before `start_service()`, and refuses the whole start when a credential
+    # is unresolved. Failing here names the step that owns the file rather than quietly inventing one.
+    if not os.path.exists(DB_FILE) or os.path.getsize(DB_FILE) == 0:
+        raise APIError(
+            2012,
+            details=f"'{DB_FILE}' does not exist. It is created by the credential resolver, not by "
+                    f"the API: start the manager with 'wazuh-manager-control start', or run "
+                    f"'{os.path.join(common.WAZUH_PATH, 'bin', 'wazuh-manager-resolve-credentials')} "
+                    f"--prestart'",
+        )
+
     try:
         check_database_integrity()
     except Exception as db_integrity_exc:
@@ -463,7 +485,7 @@ if __name__ == '__main__':
     from connexion.options import SwaggerUIOptions
     from content_size_limit_asgi.errors import ContentSizeExceeded
     from wazuh.core import common, pyDaemonModule, utils
-    from wazuh.rbac.orm import check_database_integrity
+    from wazuh.rbac.orm import DB_FILE, check_database_integrity
 
     from api import __path__ as api_path
     from api import error_handler
