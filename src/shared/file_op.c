@@ -2965,13 +2965,17 @@ static int w_clear_nonblock(int fd) {
 #endif
 
 #ifndef W_VETTED_NO_AT_WALK
-// Search-only access to a directory. O_PATH is spelled out for the agent packages, built with headers older
-// than glibc 2.14 that lack it; it has this value on these architectures, and kernels before 2.6.39 ignore it.
+// O_PATH is spelled out for the agent packages, built with headers older than glibc 2.14 that lack it; it has
+// this value on these architectures, and kernels before 2.6.39 ignore it.
 #if defined(O_PATH)
-#define W_VETTED_SEARCH_ONLY O_PATH
+#define W_VETTED_O_PATH O_PATH
 #elif defined(__linux__) && (defined(__x86_64__) || defined(__i386__) || defined(__aarch64__) || defined(__arm__) || \
                              defined(__powerpc__))
-#define W_VETTED_SEARCH_ONLY 010000000
+#define W_VETTED_O_PATH 010000000
+#endif
+
+#if defined(W_VETTED_O_PATH)
+#define W_VETTED_SEARCH_ONLY W_VETTED_O_PATH
 #elif defined(O_SEARCH)
 #define W_VETTED_SEARCH_ONLY O_SEARCH
 #endif
@@ -3003,30 +3007,33 @@ static int w_open_walk_dir(int dirfd, const char * name, int flags) {
 static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat * link_stat, char * target) {
     struct stat now;
     ssize_t n;
-#if defined(__linux__) && defined(O_PATH)
+#ifdef W_VETTED_O_PATH
     // Pin the link itself, so the target read belongs to the inode compared below.
     int linkfd;
     int saved_errno;
 
-    if (linkfd = openat(dirfd, name, O_PATH | O_NOFOLLOW | O_CLOEXEC), linkfd < 0) {
+    if (linkfd = openat(dirfd, name, W_VETTED_O_PATH | O_NOFOLLOW | O_CLOEXEC), linkfd >= 0) {
+        if (fstat(linkfd, &now) < 0) {
+            n = -1;
+        } else if (now.st_dev != link_stat->st_dev || now.st_ino != link_stat->st_ino ||
+                   now.st_uid != link_stat->st_uid) {
+            errno = EPERM;
+            n = -1;
+        } else {
+            n = readlinkat(linkfd, "", target, PATH_MAX);
+        }
+
+        saved_errno = errno;
+        close(linkfd);
+        errno = saved_errno;
+        return n;
+    }
+
+    // A kernel that ignores O_PATH fails O_NOFOLLOW on the link with ELOOP: fall back to the unpinned check.
+    if (errno != ELOOP) {
         return -1;
     }
-
-    if (fstat(linkfd, &now) < 0) {
-        n = -1;
-    } else if (now.st_dev != link_stat->st_dev || now.st_ino != link_stat->st_ino ||
-               now.st_uid != link_stat->st_uid) {
-        errno = EPERM;
-        n = -1;
-    } else {
-        n = readlinkat(linkfd, "", target, PATH_MAX);
-    }
-
-    saved_errno = errno;
-    close(linkfd);
-    errno = saved_errno;
-    return n;
-#else
+#endif
     // No way to pin a link here: check it is the same one after reading it.
     if (n = readlinkat(dirfd, name, target, PATH_MAX), n < 0) {
         return -1;
@@ -3042,7 +3049,6 @@ static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat
     }
 
     return n;
-#endif
 }
 
 /**
