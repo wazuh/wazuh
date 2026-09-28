@@ -30,7 +30,7 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 
    Do not edit or store custom policies in `$WAZUH_HOME/ruleset/sca`. Package upgrades replace stock policy files in that directory. Use an administrator-managed path and point `<policy>` entries to that path.
 
-   Policies under `$WAZUH_HOME/etc/shared` are shared policies. The agent treats paths that contain `etc/shared/` as remote policies, so command rules (`c:`) in those policies run only when the `sca.remote_commands` internal option is enabled. External local paths outside `etc/shared`, such as `/opt/wazuh-sca/custom_linux.yml`, are not treated as remote by this check, but the file must exist locally on each agent.
+   Policies under `$WAZUH_HOME/etc/shared` are shared policies. The agent treats a policy as remote when its `<policy>` entry is declared in the shared `agent.conf` and its resolved path is not inside the package-managed `$WAZUH_HOME/ruleset/sca` directory. Command rules (`c:`) in remote policies run only when the `sca.remote_commands` internal option is enabled. The check depends on where the entry is declared, not on the path string: a policy under `etc/shared/` is normally declared through the shared `agent.conf`, so it is remote, while an external path such as `/opt/wazuh-sca/custom_linux.yml` is local when declared in the agent's own configuration and remote when declared in the shared `agent.conf`. An external path must exist locally on each agent.
 
    ```xml
    <sca>
@@ -38,7 +38,7 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
      <scan_on_start>yes</scan_on_start>
      <interval>12h</interval>
      <policies>
-       <!-- Shared policy: distributed through etc/shared; command rules require sca.remote_commands=1. -->
+       <!-- Shared policy: distributed through etc/shared; when declared in the shared agent.conf, command rules require sca.remote_commands=1. -->
        <policy>etc/shared/default/sca/custom_linux.yml</policy>
        <!-- External local policy: must exist on each agent. -->
        <policy>/opt/wazuh-sca/custom_linux_local.yml</policy>
