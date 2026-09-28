@@ -94,7 +94,7 @@ File contents, permissions, and ownership are preserved for the paths listed abo
 
 The `WAZUH_REMOTE_*` installation variables described in [Installation](getting-started/installation.md) also shape that `wazuh-manager.conf.new`, so an upgrade run with them exported produces a side-file that already carries those values. If one of them holds an invalid value the side-file is not written and the upgrade reports a warning and continues: the live configuration is preserved either way.
 
-Note in particular `remote.https.global_prefix`: a preserved configuration without the tag keeps today's behavior (endpoints served unprefixed — the built-in default is `/`), while the regenerated `wazuh-manager.conf.new` carries `/wazuh-manager/`. Adopting that line from the side-file changes the URLs the manager serves **and** the request path your agents must send and sign, so only do it as part of a coordinated agent-side change.
+Note in particular `remote.https.global_prefix`: its schema default, `/wazuh-manager/`, is applied to every configuration the manager loads, preserved or not. A preserved `wazuh-manager.conf` with no `<global_prefix>` element therefore serves (and expects agents to sign) routes under `/wazuh-manager/`, exactly like a fresh install. Agents use the same prefix by default; only an agent whose `<manager><endpoint>` ends in a bare `/` expects unprefixed routes (see [Client configuration](modules/client/configuration.md#endpoint)). To keep such agents working, add `<global_prefix>/</global_prefix>` to the live configuration (and, on DEB, to `wazuh-manager.conf.new` before adopting it), then move them to the prefixed path as a coordinated agent-side change.
 
 **If the upgrade fails.** Source-based upgrades attempt to restore preserved files automatically when the upgrade fails or is interrupted after the preserve step. If automatic restore fails, or if a package-based upgrade fails before restoration completes, the preserve directory is left in place for manual recovery:
 
@@ -347,8 +347,8 @@ Preserve directory locations for recovery:
 
 | Stack | Preserve directory |
 |---|---|
-| DEB | `/var/ossec/packages_files/agent_upgrade_preserve` |
-| RPM | `/var/ossec/tmp/agent_upgrade_preserve` |
+| DEB | `/var/ossec/packages_files/agent_config_files` |
+| RPM | None. RPM itself keeps `client.keys` and `local_internal_options.conf` (`%config(noreplace)`) and `ossec.conf` (`%ghost`, generated only on first install) in place under `/var/ossec/etc/` |
 | Source | `${TMPDIR:-/tmp}/wazuh-agent-upgrade-preserve.*` |
 
 ### Download package
@@ -424,7 +424,7 @@ wazuh-agent-*.msi /q
 Verify the agent is running:
 
 ```powershell
-Get-Service -Name wazuh
+Get-Service -Name WazuhSvc
 ```
 
 ---
@@ -673,17 +673,17 @@ The message table in [Agent Not Connecting](modules/client/README.md#agent-not-c
 **Issue: Windows agent upgrade fails**
 
 ```powershell
-# Check Windows event logs
-Get-EventLog -LogName Application -Source "Wazuh" -Newest 50
+# Check the remote (WPK) upgrade log
+Get-Content "C:\Program Files (x86)\ossec-agent\upgrade\upgrade.log"
+
+# Check the agent log
+Get-Content "C:\Program Files (x86)\ossec-agent\ossec.log" -Tail 50
 
 # Verify service status
-Get-Service -Name wazuh
-
-# Check installation logs
-Get-Content "C:\Windows\Temp\wazuh-agent-install.log"
+Get-Service -Name WazuhSvc
 
 # Restart service
-Restart-Service -Name wazuh
+Restart-Service -Name WazuhSvc
 ```
 
 ---

@@ -211,13 +211,13 @@ For more installation options, see the [Installation](../ref/getting-started/ins
 Start the Wazuh service on Windows:
 
 ```powershell
-Start-Service -Name wazuh
+Start-Service -Name WazuhSvc
 ```
 
 To verify the service is running:
 
 ```powershell
-Get-Service -Name wazuh
+Get-Service -Name WazuhSvc
 ```
 
 ## Configuration
@@ -252,7 +252,7 @@ After modifying the configuration, restart the agent:
 
 **Windows**:
 ```powershell
-Restart-Service -Name wazuh
+Restart-Service -Name WazuhSvc
 ```
 
 ## Stopping Services
@@ -272,7 +272,7 @@ Restart-Service -Name wazuh
 ### Agent on Windows
 
 ```powershell
-Stop-Service -Name wazuh
+Stop-Service -Name WazuhSvc
 ```
 
 ## Logs

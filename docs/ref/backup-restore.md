@@ -814,7 +814,7 @@ sudo systemctl status wazuh-agent
 
 ```powershell
 # Stop the agent service
-Stop-Service -Name wazuh
+Stop-Service -Name WazuhSvc
 
 # Restore configuration files
 Copy-Item -Path "$BackupDir\ossec.conf" -Destination "C:\Program Files (x86)\ossec-agent\ossec.conf" -Force
@@ -822,10 +822,10 @@ Copy-Item -Path "$BackupDir\client.keys" -Destination "C:\Program Files (x86)\os
 Copy-Item -Path "$BackupDir\local_internal_options.conf" -Destination "C:\Program Files (x86)\ossec-agent\local_internal_options.conf" -Force -ErrorAction SilentlyContinue
 
 # Start the agent service
-Start-Service -Name wazuh
+Start-Service -Name WazuhSvc
 
 # Verify agent status
-Get-Service -Name wazuh
+Get-Service -Name WazuhSvc
 ```
 
 **macOS agents:**

@@ -158,7 +158,7 @@
                   "$ref": "#/definitions/ip"
                 }
               ],
-              "description": "Bind address."
+              "description": "Bind address. Absent: 0.0.0.0, or every IPv6 interface (::) when ipv6 is enabled; remoted applies that default, not the schema."
             },
             "queue_size": {
               "type": "integer",

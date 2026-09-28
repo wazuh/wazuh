@@ -55,7 +55,7 @@ Specifies the role of the node.
 Defines the key used to encrypt the communication between the nodes. This key must be 32 characters long.
 
 - **Default value:** Value randomly produced during node installation
-- **Allowed values:** Letters, digits, and underscores (32 characters)
+- **Allowed values:** Letters and digits (`^[A-Za-z0-9]{32}$`)
 - **Note:** This key must be the same for all cluster nodes
 
 > **Security Warning**
@@ -76,15 +76,10 @@ openssl rand -hex 16
 Specifies the port to use for cluster communications.
 
 - **Default value:** `1516`
-- **Allowed values:** Any port number higher than 1024 and lower than 65535
-- **Note:** This range is only enforced by `check_cluster_config`, which runs
-  at `wazuh-clusterd` daemon startup and during `cluster_control` CLI
-  validation. It is **not** enforced by `read_cluster_config`, the function
-  used generally by the framework/API when reading cluster configuration
-  elsewhere (e.g. `GET /cluster/config`); that path only performs a lenient
-  `isdigit()` check with no range validation. A port outside this range can
-  therefore be read back and reported by the API even though it would fail
-  validation at daemon startup.
+- **Allowed values:** `1025` to `65534`
+- **Note:** The range is enforced by the configuration schema on every load,
+  so a value outside it fails validation (`(1244): Invalid configuration at
+  '/cluster/port'`) before any daemon starts.
 
 ### bind_addr
 

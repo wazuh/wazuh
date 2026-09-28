@@ -87,6 +87,8 @@ Remove from pkgutil:
 
 ```bash
 sudo pkgutil --forget com.wazuh.pkg.wazuh-agent
+# Only present on hosts upgraded from 4.x; a "No receipt" error here is harmless
+sudo pkgutil --forget com.wazuh.pkg.wazuh-agent-etc
 ```
 
 ### Windows
