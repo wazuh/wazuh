@@ -1088,6 +1088,14 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
                 response["data"]["module"] = "sca";
             }
         }
+        else if (command == "get_identity_changed")
+        {
+            response["error"] = 0;
+            response["message"] = "SCA identity change retrieved successfully";
+            response["data"]["action"] = "get_identity_changed";
+            response["data"]["module"] = "sca";
+            response["data"]["identity_changed"] = agentIdentityChanged() ? 1 : 0;
+        }
         else if (command == "get_scan_completed")
         {
             const int64_t scanCompleted = m_scanCompleted.load();
@@ -1571,6 +1579,15 @@ void SecurityConfigurationAssessment::checkAgentIdentity()
     updateMetadataValue(SCA_SYNCED_AGENT_ID_METADATA_KEY, currentId);
     updateMetadataValue(SCA_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
     m_firstSyncCompleted.store(true);
+}
+
+bool SecurityConfigurationAssessment::agentIdentityChanged()
+{
+    const long currentId = AgentSyncProtocol::currentAgentId();
+    int64_t syncedId = 0;
+
+    return currentId != 0 && getMetadataValue(SCA_SYNCED_AGENT_ID_METADATA_KEY, syncedId) && syncedId != 0 &&
+           syncedId != currentId;
 }
 
 void SecurityConfigurationAssessment::refreshFirstScanCompletedState()

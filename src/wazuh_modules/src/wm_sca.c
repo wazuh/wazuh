@@ -35,6 +35,7 @@
 
 #define SCA_SYNC_PROTOCOL_DB_PATH "queue/sca/db/sca_sync.db"
 #define SCA_SYNC_RETRIES 3
+#define SCA_IDENTITY_POLL_SECONDS 30
 
 // Global flag to stop sync module
 static volatile int sca_sync_module_running = 0;
@@ -362,6 +363,15 @@ static bool wm_sca_query_int(const char* query, const char* field, int* value)
     return result;
 }
 
+// Polled so a re-enrolled agent resends its SCA state right away, instead of waiting for a sync
+// interval that frequent reloads keep restarting.
+static bool wm_sca_identity_changed(void)
+{
+    int changed = 0;
+
+    return wm_sca_query_int("{\"command\":\"get_identity_changed\"}", "identity_changed", &changed) && changed > 0;
+}
+
 static wm_sca_startup_action_t wm_sca_get_startup_action(bool* first_sync_completed)
 {
     int marker = 0;
@@ -388,6 +398,12 @@ static wm_sca_startup_action_t wm_sca_get_startup_action(bool* first_sync_comple
         if (first_sync_completed)
         {
             *first_sync_completed = true;
+        }
+
+        if (wm_sca_identity_changed())
+        {
+            minfo("SCA agent id changed since the last synchronization. Synchronizing now.");
+            return SCA_STARTUP_ACTION_IMMEDIATE;
         }
 
         mdebug1("SCA first synchronization already completed in a previous run. Keeping startup synchronization delay.");
@@ -904,6 +920,13 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
         {
             for (uint32_t i = 0; i < sca_sync_interval && sca_sync_module_running; i++)
             {
+                // Skipping i == 0 keeps retries of a failed resync at least one poll apart
+                if (i > 0 && i % SCA_IDENTITY_POLL_SECONDS == 0 && wm_sca_identity_changed())
+                {
+                    minfo("SCA agent id changed since the last synchronization. Synchronizing now.");
+                    break;
+                }
+
                 sleep(1);
             }
         }

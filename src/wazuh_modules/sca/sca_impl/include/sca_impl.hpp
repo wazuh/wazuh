@@ -251,6 +251,12 @@ class SecurityConfigurationAssessment
         /// under an id different from the one it was compared against.
         void checkAgentIdentity();
 
+        /// @brief Whether the agent id differs from the one SCA last synchronized as.
+        ///
+        /// Read-only twin of checkAgentIdentity()'s decision, for the sync thread to poll: an
+        /// unpublished id, a failed read or an unrecorded marker never count as a change.
+        bool agentIdentityChanged();
+
         /// @brief Refresh the cached first-sync completion flag from metadata.
         void refreshFirstSyncCompletedState();
 

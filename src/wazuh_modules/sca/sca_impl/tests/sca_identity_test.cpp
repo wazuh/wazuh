@@ -210,3 +210,48 @@ TEST_F(SCAIdentityTest, FailedDataCleanRecordsNothing)
 
     EXPECT_NE(m_logOutput.find("Failed to clear SCA index"), std::string::npos);
 }
+
+// get_identity_changed must answer exactly what checkAgentIdentity() would decide, without acting
+// on it, so the sync thread can poll it safely.
+static int queryIdentityChanged(SCAMock& sca)
+{
+    const auto response = nlohmann::json::parse(sca.query(R"({"command":"get_identity_changed"})"));
+    EXPECT_EQ(response["error"], 0);
+    return response["data"]["identity_changed"].get<int>();
+}
+
+TEST_F(SCAIdentityTest, IdentityChangedQueryReportsAChangedId)
+{
+    publishAgentId("002");
+    expectMetadata(/* syncedAgentId */ 1, /* firstSyncCompleted */ 123456);
+
+    // Reporting only: the resync itself stays on the syncModule() path.
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
+
+    EXPECT_EQ(queryIdentityChanged(*m_sca), 1);
+}
+
+TEST_F(SCAIdentityTest, IdentityChangedQueryIgnoresAnUnchangedId)
+{
+    publishAgentId("007");
+    expectMetadata(/* syncedAgentId */ 7, /* firstSyncCompleted */ 123456);
+
+    EXPECT_EQ(queryIdentityChanged(*m_sca), 0);
+}
+
+TEST_F(SCAIdentityTest, IdentityChangedQueryIgnoresAnUnknownId)
+{
+    // No publishAgentId() here -- the provider was reset in SetUp().
+    expectMetadata(/* syncedAgentId */ 7, /* firstSyncCompleted */ 123456);
+
+    EXPECT_EQ(queryIdentityChanged(*m_sca), 0);
+}
+
+// An unrecorded marker is adopted by checkAgentIdentity(), never resynced, so it is not a change.
+TEST_F(SCAIdentityTest, IdentityChangedQueryIgnoresAnAbsentMarker)
+{
+    publishAgentId("001");
+    expectMetadata(/* syncedAgentId */ 0, /* firstSyncCompleted */ 123456);
+
+    EXPECT_EQ(queryIdentityChanged(*m_sca), 0);
+}
