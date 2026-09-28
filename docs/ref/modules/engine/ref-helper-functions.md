@@ -109,6 +109,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [kvdb_get_merge_recursive](#kvdb_get_merge_recursive)
 - [merge](#merge)
 - [merge_key_in](#merge_key_in)
+- [merge_recursive](#merge_recursive)
 - [merge_recursive_key_in](#merge_recursive_key_in)
 - [parse_alphanumeric](#parse_alphanumeric)
 - [parse_between](#parse_between)
@@ -16785,6 +16786,233 @@ normalize:
 ```
 
 *The operation was successful*
+
+
+
+---
+# merge_recursive
+
+## Signature
+
+```
+
+field: merge_recursive(any_object)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| any_object | object, array, number, string, boolean | reference | Any object |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| [object, array, number, string, boolean] | - |
+
+
+## Description
+
+Recursively merge “any_object” into “field”. Both fields must exist and be of the same type, object or array;
+otherwise the operation fails and neither field is modified.
+When merging objects, a key present in both is merged recursively if both values are objects or arrays;
+any other collision (string, number or boolean) is overwritten by the value from “any_object”.
+When merging arrays, the elements of “any_object” that are not already in “field” are appended,
+keeping the original order; no element is removed.
+The result is written to “field” and “any_object” is deleted.
+At build time, when “field” is a schema field it must be of type object (temporary fields starting with `_` are not checked).
+This helper function is typically used in the map stage
+
+
+## Keywords
+
+- `undefined` 
+
+## Examples
+
+### Example 1
+
+Nested objects are merged recursively
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: merge_recursive($any_object)
+```
+
+#### Input Event
+
+```json
+{
+  "any_object": {
+    "a": {
+      "d": "e"
+    }
+  },
+  "target_field": {
+    "a": {
+      "b": "c"
+    }
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "any_object": {
+    "a": {
+      "d": "e"
+    }
+  },
+  "target_field": {
+    "a": {
+      "b": "c",
+      "d": "e"
+    }
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+A scalar collision is overwritten by the source value
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: merge_recursive($any_object)
+```
+
+#### Input Event
+
+```json
+{
+  "any_object": {
+    "key": "new"
+  },
+  "target_field": {
+    "key": "old",
+    "other": 1
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "any_object": {
+    "key": "new"
+  },
+  "target_field": {
+    "key": "new",
+    "other": 1
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+Arrays keep their order and only new elements are appended
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: merge_recursive($any_object)
+```
+
+#### Input Event
+
+```json
+{
+  "any_object": [
+    0,
+    1,
+    2,
+    4
+  ],
+  "target_field": [
+    1,
+    3
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "any_object": [
+    0,
+    1,
+    2,
+    4
+  ],
+  "target_field": [
+    1,
+    3,
+    0,
+    2,
+    4
+  ]
+}
+```
+
+*The operation was successful*
+
+### Example 4
+
+Fields of different types are not merged
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: merge_recursive($any_object)
+```
+
+#### Input Event
+
+```json
+{
+  "any_object": [
+    1
+  ],
+  "target_field": {
+    "a": 1
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "any_object": [
+    1
+  ],
+  "target_field": {
+    "a": 1
+  }
+}
+```
+
+*The operation was performed with errors*
 
 
 
