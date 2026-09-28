@@ -41,6 +41,10 @@ CLOUD_RESERVED_RANGE = 89
 
 # Dummy hash for constant-time username enumeration protection
 _DUMMY_HASH = generate_password_hash("wazuh-dummy-constant-never-matches-any-real-password")
+# Method family (e.g. "scrypt") the dummy hash uses, to detect stored hashes left over
+# from an older Werkzeug default (e.g. "pbkdf2") that would otherwise be cheaper to
+# verify and reopen the timing side-channel _DUMMY_HASH is meant to close.
+_DEFAULT_HASH_METHOD = _DUMMY_HASH.split(':', 1)[0]
 
 # Start a session and set the default security elements
 DB_FILE = os.path.join(SECURITY_PATH, "rbac.db")
@@ -956,6 +960,14 @@ class AuthenticationManager(RBACManager):
 
         hash_to_check = user.password if user else _DUMMY_HASH
         result = check_password_hash(hash_to_check, password)
+
+        if result and user is not None and not user.password.startswith(f'{_DEFAULT_HASH_METHOD}:'):
+            # Rehash on login: a stored hash from an older Werkzeug default (e.g. pbkdf2)
+            # is cheaper to verify than the current one, which leaks its presence through
+            # timing. Upgrading it here, the only point with the plaintext password, closes
+            # that gap for this account going forward.
+            user.password = generate_password_hash(password)
+            self.session.commit()
 
         return result and user is not None
 
