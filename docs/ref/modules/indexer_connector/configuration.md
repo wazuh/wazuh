@@ -294,7 +294,7 @@ refuses to start and names `WAZUH_INDEXER_MANAGER_PASSWORD` in the journal. See
 Validate configuration before restarting:
 
 ```bash
-/var/wazuh-manager/bin/wazuh-logtest-config
+/var/wazuh-manager/bin/wazuh-manager-conf validate
 ```
 
 ---
