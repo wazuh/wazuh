@@ -2174,7 +2174,7 @@ void test_w_fopen_vetted_follow_root_fifo_accepted_without_blocking(void **state
 
     if (geteuid() != 0) {
         print_message("Skipped: needs root to create a root-owned FIFO.\n");
-        return;
+        skip();
     }
 
     nofollow_path(path, "fifo");
@@ -2280,7 +2280,7 @@ void test_w_fopen_vetted_follow_symlink_root_owned_accepted(void **state) {
 
     if (geteuid() != 0) {
         print_message("Skipped: needs root to create a root-owned symlink.\n");
-        return;
+        skip();
     }
 
     nofollow_create_file("victim", "content");
@@ -2299,7 +2299,7 @@ void test_w_fopen_vetted_follow_symlink_other_owner_rejected(void **state) {
 
     if (geteuid() != 0) {
         print_message("Skipped: needs root to create a symlink owned by someone other than its target.\n");
-        return;
+        skip();
     }
 
     // The target file is owned by root (the test process); the symlink itself is handed to another uid.
@@ -2320,7 +2320,7 @@ void test_w_fopen_vetted_follow_directory_symlink_other_owner_rejected(void **st
 
     if (geteuid() != 0) {
         print_message("Skipped: needs root to create a symlink owned by someone other than its target.\n");
-        return;
+        skip();
     }
 
     // A directory symlink owned by another uid, leading to a root-owned file.
@@ -2342,7 +2342,7 @@ void test_w_fopen_vetted_follow_directory_symlink_other_owner_root_dir_accepted(
 
     if (geteuid() != 0) {
         print_message("Skipped: needs root to create a symlink owned by someone other than its target.\n");
-        return;
+        skip();
     }
 
     // Same link as above, but in a directory only root can write to: its owner cannot re-point it.
