@@ -18,7 +18,7 @@ For module overview and architecture, see [Indexer Connector Module](index.html)
 
 The Indexer Connector configuration establishes TLS-secured connections to one or more Indexer nodes for data indexing and feed synchronization.
 
-**Required fields:** Both `<hosts>` and `<ssl>` are required. The parser returns an error if either is absent or empty.
+**Required fields:** `<hosts>` is required; the parser returns an error if it is absent or empty. `<ssl>` is optional — omitting it disables TLS client certificate/CA configuration, not the connection itself.
 
 ### hosts
 
@@ -39,9 +39,8 @@ Example:
 
 TLS/SSL configuration block.
 
-- **Default value:** None (required configuration block, even if empty)
+- **Default value:** None (optional; omit the block entirely to skip TLS client/CA configuration)
 - **Allowed values:** Contains sub-options: `certificate_authorities`, `certificate`, `key`
-- **Note:** This block is required by the parser even if no TLS verification is configured
 
 #### certificate_authorities
 
