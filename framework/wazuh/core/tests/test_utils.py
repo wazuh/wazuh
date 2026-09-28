@@ -1257,7 +1257,9 @@ def test_WazuhDBQuery_protected_parse_query_regex(mock_backend_connect, mock_exi
 
 @pytest.mark.parametrize('q, error, expected_exception', [
     ('os.name=ubuntu;os.version>12e', False, None),
-    ('os.name=debian;os.version>12e),(os.name=ubuntu;os.version>12e)', False, None),
+    ('(os.name=debian;os.version>12e),(os.name=ubuntu;os.version>12e)', False, None),
+    ('os.name=debian;os.version>12e),(os.name=ubuntu;os.version>12e)', True, 1407),
+    ('(os.name=debian;os.version>12e', True, 1407),
     ('bad_query', True, 1407),
     ('os.bad_field=ubuntu', True, 1408),
     ('os.name=!ubuntu', True, 1409),
@@ -1455,6 +1457,55 @@ def test_WazuhDBQuery_protected_add_filters_to_query_final_query(mock_conn_db, m
     query._add_filters_to_query()
 
     assert query.query.rstrip(' ') == expected_query
+
+
+@pytest.mark.parametrize('q, valid', [
+    ('id=001', True),
+    ('(id=001,id=002);status=active', True),
+    ('((id=001),(id=002))', True),
+    ('name=Mozilla Firefox 53.0 (x64 en-US)', True),
+    ('id=001),(id=002', False),
+    ('(id=001', False),
+    ('id=001)', False),
+    ('(id=001));(status=active', False),
+])
+def test_validate_query_parentheses(q, valid):
+    """Test that validate_query_parentheses rejects a q whose groups are not closed after being opened."""
+    if valid:
+        utils.validate_query_parentheses(q)
+    else:
+        with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+            utils.validate_query_parentheses(q)
+
+
+@pytest.mark.parametrize('filters, q, expected_where', [
+    # An OR in q stays inside the q group instead of splitting the legacy filters off
+    ({'status': 'active'}, 'id=001,id=002',
+     "(status = :status$0 COLLATE NOCASE) AND ((id = :id$0 COLLATE NOCASE) OR (id = :id$1 COLLATE NOCASE))"),
+    # A level drop of two that stays above zero opens its own parenthesis
+    ({'status': 'active'}, '(((id=001,id=002)),id=003)',
+     "(status = :status$0 COLLATE NOCASE) AND (((((id = :id$0 COLLATE NOCASE) OR (id = :id$1 COLLATE NOCASE))) "
+     "OR (id = :id$2 COLLATE NOCASE)))"),
+    # Without legacy filters q is still one group
+    (None, 'id=001,id=002', "((id = :id$0 COLLATE NOCASE) OR (id = :id$1 COLLATE NOCASE))"),
+    # Without q nothing is added
+    ({'status': 'active'}, '', "(status = :status$0 COLLATE NOCASE)"),
+])
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('wazuh.core.utils.path.exists', return_value=True)
+def test_WazuhDBQuery_protected_add_filters_to_query_groups_q(mock_conn_db, mock_file_exists,
+                                                              filters, q, expected_where):
+    """Test that the q filters are rendered as one balanced group ANDed with the legacy filters."""
+    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None, search=None, select=None,
+                               fields={'id': 'id', 'status': 'status'}, filters=filters,
+                               default_sort_field=None, query=q, backend=utils.WazuhDBBackend(agent_id=0),
+                               count=5, get_data=None)
+
+    query._add_filters_to_query()
+
+    where = query.query.split(' WHERE ', 1)[1].rstrip()
+    assert where == expected_where
+    assert where.count('(') == where.count(')')
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)

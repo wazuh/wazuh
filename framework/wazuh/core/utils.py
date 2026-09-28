@@ -1219,6 +1219,59 @@ class WazuhDBBackend(AbstractDatabaseBackend):
         return self.conn.execute(query=self._render_query(query), count=count)
 
 
+QUERY_OPERATORS = {"=": "=", "!=": "!=", "<": "<", ">": ">", "~": 'LIKE'}
+QUERY_SEPARATORS = {',': 'OR', ';': 'AND', '': ''}
+# To correctly turn a query into SQL, a regex is used. This regex will extract all necessary information:
+# For example, the following regex -> (name!=wazuh;id>5),group=webserver <- would return 3 different matches:
+#   (name != wazuh ;
+#    id   > 5      ),
+#    group=webserver
+QUERY_REGEX = re.compile(
+    # One or more ( characters.
+    r"(\(+)?" +
+    # Field name: name of the field to look on DB.
+    r"([\w.]+)" +
+    # Operator: looks for '=', '!=', '<', '>' or '~'.
+    rf"([{''.join(QUERY_OPERATORS.keys())}]{{1,2}})" +
+    # Value: A string.
+    r"((?:(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}$]*)\))*"
+    r"(?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}$]+)"
+    r"(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}$]*)\))*)+)"
+    # One or more ) characters.
+    r"(\)+)?" +
+    # Separator: looks for ';', ',' or nothing.
+    rf"([{''.join(QUERY_SEPARATORS.keys())}])?"
+)
+
+
+def validate_query_parentheses(q: str):
+    """Check that every group in a q query is closed, and closed after it was opened.
+
+    WazuhDBQuery renders the q terms as one parenthesised group ANDed with the RBAC and legacy filters, and callers
+    wrap the user's q the same way (e.g. `group=X;(q)`). A ')' closing a group the query never opened would close
+    that enclosing group instead, letting an OR in q escape the conditions ANDed with it. Callers that wrap a q must
+    validate it before wrapping it, since the wrapped query can be balanced when the user's part is not.
+
+    Parameters
+    ----------
+    q : str
+        Query to check.
+
+    Raises
+    ------
+    WazuhError(1407)
+        If the parentheses of the query are not balanced.
+    """
+    level = 0
+    for open_level, _, _, _, close_level, _ in QUERY_REGEX.findall(q):
+        level += len(open_level) - len(close_level)
+        if level < 0:
+            raise WazuhError(1407, q)
+
+    if level != 0:
+        raise WazuhError(1407, q)
+
+
 class WazuhDBQuery(object):
     """This class describes a database query for wazuh."""
 
@@ -1287,36 +1340,17 @@ class WazuhDBQuery(object):
         self.default_sort_field = default_sort_field
         self.default_sort_order = default_sort_order
         self.query_filters = []
+        self._q_filters_start = 0
         self.count = count
         self.data = get_data
         self.total_items = 0
         # Do not include any fields when we are looking for distinct values
         self.min_select_fields = set() if distinct else min_select_fields
-        self.query_operators = {"=": "=", "!=": "!=", "<": "<", ">": ">", "~": 'LIKE'}
-        self.query_separators = {',': 'OR', ';': 'AND', '': ''}
+        self.query_operators = QUERY_OPERATORS
+        self.query_separators = QUERY_SEPARATORS
         self.special_characters = "\'\""
         self.wildcard_equal_fields = set()
-        # To correctly turn a query into SQL, a regex is used. This regex will extract all necessary information:
-        # For example, the following regex -> (name!=wazuh;id>5),group=webserver <- would return 3 different matches:
-        #   (name != wazuh ;
-        #    id   > 5      ),
-        #    group=webserver
-        self.query_regex = re.compile(
-            # One or more ( characters.
-            r"(\(+)?" +
-            # Field name: name of the field to look on DB.
-            r"([\w.]+)" +
-            # Operator: looks for '=', '!=', '<', '>' or '~'.
-            rf"([{''.join(self.query_operators.keys())}]{{1,2}})" +
-            # Value: A string.
-            r"((?:(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}$]*)\))*"
-            r"(?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}$]+)"
-            r"(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}$]*)\))*)+)"
-            # One or more ) characters.
-            r"(\)+)?" +
-            # Separator: looks for ';', ',' or nothing.
-            rf"([{''.join(self.query_separators.keys())}])?"
-        )
+        self.query_regex = QUERY_REGEX
         self.date_fields = date_fields
         self.extra_fields = extra_fields
         self.q = query
@@ -1418,6 +1452,7 @@ class WazuhDBQuery(object):
         """
         if not self.query_regex.match(self.q):
             raise WazuhError(1407, self.q)
+        validate_query_parentheses(self.q)
 
         level = 0
         allowed_query_fields = set(self.fields.keys()) - self.extra_fields
@@ -1475,6 +1510,9 @@ class WazuhDBQuery(object):
     def _parse_filters(self):
         if self.legacy_filters:
             self._parse_legacy_filters()
+        # q filters are rendered as one parenthesised group, so an OR inside q cannot escape the legacy and RBAC
+        # filters ANDed before it
+        self._q_filters_start = len(self.query_filters)
         if self.q:
             self._parse_query()
         if self.search or self.query_filters:
@@ -1506,15 +1544,18 @@ class WazuhDBQuery(object):
         self._parse_filters()
 
         curr_level = 0
-        for q_filter in self.query_filters:
+        last_index = len(self.query_filters) - 1
+        for index, q_filter in enumerate(self.query_filters):
             self._clean_filter(q_filter)
             field_name = q_filter['field'].split('$', 1)[0]
             field_filter = q_filter['field'].replace('.', '_')
             level = q_filter['level']
 
-            repeat_open = level + 1 - curr_level
-            if level == 0 or repeat_open == 0:
-                repeat_open = 1
+            if index == self._q_filters_start:
+                self.query += '('
+
+            # Each filter leaves exactly `level` parentheses open, so the q group is closed by its own ')'
+            repeat_open = max(level + 1 - curr_level, 1)
 
             self.query += '(' * repeat_open
 
@@ -1525,6 +1566,8 @@ class WazuhDBQuery(object):
                 repeat_close += curr_level - level
 
             self.query += ')' * repeat_close
+            if index == last_index and index >= self._q_filters_start:
+                self.query += ')'
             self.query += ' {} '.format(q_filter['separator'])
             curr_level = level
 
