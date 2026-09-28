@@ -75,6 +75,9 @@ UPGRADE_TIMEOUT = 240
 class WazuhDBQueryAgents(WazuhDBQuery):
     """Class used to query Wazuh agents."""
 
+    oversized_rbac_field = "id"
+    oversized_rbac_zfill = True
+
     def __init__(
         self,
         offset: int = 0,
@@ -368,6 +371,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 class WazuhDBQueryGroup(WazuhDBQuery):
     """Class used to query Wazuh groups."""
 
+    oversized_rbac_field = "name"
+
     def __init__(
         self,
         offset: int = 0,
@@ -549,6 +554,9 @@ class WazuhDBQueryGroup(WazuhDBQuery):
 
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
     """Class used to query grouping by agents."""
+
+    # The GROUP BY select cannot be narrowed to the RBAC field, so oversized_run is not supported here.
+    oversized_rbac_field = None
 
     def __init__(self, filter_fields: dict, *args: dict, **kwargs: dict):
         """Class constructor.

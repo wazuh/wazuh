@@ -1222,6 +1222,11 @@ class WazuhDBBackend(AbstractDatabaseBackend):
 class WazuhDBQuery(object):
     """This class describes a database query for wazuh."""
 
+    # Field holding the RBAC resource, used by oversized_run. None means the query does not support that path.
+    oversized_rbac_field = None
+    # Whether the RBAC resources are agent IDs, compared zero-padded to three digits.
+    oversized_rbac_zfill = False
+
     def __init__(self, offset: int, limit: int, table: str, sort: dict, search: dict, select: list, query: str,
                  fields: dict, default_sort_field: str, count: bool, get_data: bool, backend: str,
                  default_sort_order: str = 'ASC', filters: dict = {}, min_select_fields: set = set(),
@@ -1597,49 +1602,56 @@ class WazuhDBQuery(object):
         WazuhInternalError(1123)
             Error communicating with socket. Query too long.
         """
+        resource = self.oversized_rbac_field
+        if resource is None:
+            raise WazuhInternalError(1123)
+
+        def normalize(value) -> str:
+            return str(value).zfill(3) if self.oversized_rbac_zfill else str(value)
+
         self._add_select_to_query()
         original_select = self.select
-        rbac_ids = set(self.legacy_filters.pop('rbac_ids', set()))
+        rbac_ids = {normalize(item) for item in self.legacy_filters.pop('rbac_ids', set())}
         self._add_filters_to_query()
         self._add_search_to_query()
         self._add_sort_to_query()
 
-        resource = None
-        final_ids = list()
-        resources = list()
-        if self.__class__.__name__ == 'WazuhDBQueryAgents':
-            resource = 'id'
-        elif self.__class__.__name__ == 'WazuhDBQueryGroups':
-            resource = 'name'
-        else:
-            raise WazuhInternalError(1123)
         self.select = [resource]
         self._add_select_to_query()
         self._execute_data_query()
-        try:
-            resources = list(map(lambda d: str(d[resource]).zfill(3), self._data))
-            maximum_value = min(self.limit, len(resources)) if self.limit is not None else len(resources)
-            for item in resources:
-                if self.rbac_negate:
-                    if item.zfill(3) not in rbac_ids:
-                        final_ids.append(item)
-                else:
-                    if item.zfill(3) in rbac_ids:
-                        final_ids.append(item)
-                if len(final_ids) >= maximum_value:
-                    break
-        except NameError:
-            pass
+        resources = [normalize(d[resource]) for d in self._data]
 
-        count = len(resources) - len(set(rbac_ids).intersection(set(resources))) if self.rbac_negate else \
-            len(set(rbac_ids).intersection(set(resources)))
+        # Resolve the RBAC filter here, keeping only the allowed resources in the query's order. The second pass pages
+        # over this list with its own LIMIT/OFFSET, so it must hold every allowed resource up to the end of the page.
+        maximum_value = len(resources) if self.limit is None else min(self.offset + self.limit, len(resources))
+        final_ids = list()
+        for item in resources:
+            if len(final_ids) >= maximum_value:
+                break
+            if (item not in rbac_ids) if self.rbac_negate else (item in rbac_ids):
+                final_ids.append(item)
+
+        count = len(resources) - len(rbac_ids.intersection(resources)) if self.rbac_negate else \
+            len(rbac_ids.intersection(resources))
 
         self.select = original_select
         self.reset()
-        self.legacy_filters['rbac_ids'] = final_ids
+
+        # Nothing is allowed. An empty filter would be dropped rather than match nothing, so do not run the query.
+        if not final_ids:
+            return {'items': [], 'totalItems': 0} if self.data else {'totalItems': 0}
+
+        # final_ids holds the allowed resources whatever the original filter was, so the second pass must use IN.
+        original_negate = self.rbac_negate
         original_count = self.count
+        self.legacy_filters['rbac_ids'] = final_ids
+        self.rbac_negate = False
         self.count = False
-        result = self.general_run()
+        try:
+            result = self.general_run()
+        finally:
+            self.rbac_negate = original_negate
+            self.count = original_count
         if original_count:
             result['totalItems'] = count
 

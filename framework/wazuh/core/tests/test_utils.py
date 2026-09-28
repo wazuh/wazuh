@@ -20,7 +20,7 @@ from freezegun import freeze_time
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh import WazuhException
-        from wazuh.core.agent import WazuhDBQueryAgents
+        from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroup
         from wazuh.core import utils, exception
         from wazuh.core.common import WAZUH_PATH
 
@@ -1652,25 +1652,110 @@ def test_WazuhDBQuery_general_run(mock_socket_conn, execute_value, expected_resu
         assert query.general_run() == expected_result
 
 
-@pytest.mark.parametrize('execute_value, rbac_ids, negate, final_rbac_ids, expected_result', [
-    ([{'id': 99}, {'id': 100}], ['001', '099', '101'], False, [{'id': 99}],
+@pytest.mark.parametrize('execute_value, rbac_ids, negate, expected_ids, final_rbac_ids, expected_result', [
+    ([{'id': 99}, {'id': 100}], ['001', '099', '101'], False, ['099'], [{'id': 99}],
      {'items': [{'id': '099'}], 'totalItems': 1}),
-    ([{'id': 1}], [], True, [{'id': 1}], {'items': [{'id': '001'}], 'totalItems': 1}),
+    ([{'id': 1}], [], True, ['001'], [{'id': 1}], {'items': [{'id': '001'}], 'totalItems': 1}),
     ([{'id': i} for i in range(30000)], [str(i).zfill(3) for i in range(15001)], True,
-     [{'id': i} for i in range(15001, 30000)],
+     [str(i).zfill(3) for i in range(15001, 30000)], [{'id': i} for i in range(15001, 30000)],
      {'items': [{'id': str(i).zfill(3)} for i in range(15001, 30000)], 'totalItems': 14999})
 ])
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_oversized_run(mock_socket_conn, execute_value, rbac_ids, negate,
+def test_WazuhDBQuery_oversized_run(mock_socket_conn, execute_value, rbac_ids, negate, expected_ids,
                                     final_rbac_ids, expected_result):
-    """Test utils.WazuhDBQuery.oversized_run function."""
-    with patch('wazuh.core.utils.WazuhDBBackend.execute', side_effect=[execute_value, final_rbac_ids]):
+    """Test utils.WazuhDBQuery.oversized_run function.
+
+    The second pass must select the allowed ids with IN, whatever the original filter was.
+    """
+    with patch('wazuh.core.utils.WazuhDBBackend.execute', side_effect=[execute_value, final_rbac_ids]) as execute:
         query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select={'id'},
                                    query=None, count=True, get_data=True, remove_extra_fields=False)
         query.legacy_filters['rbac_ids'] = rbac_ids
         query.rbac_negate = negate
 
         assert query.oversized_run() == expected_result
+
+        second_query, second_request = execute.call_args_list[1].args
+        assert 'id IN (:rbac_id)' in second_query
+        assert 'NOT IN' not in second_query
+        assert second_request['rbac_id'] == expected_ids
+        assert query.rbac_negate == negate
+
+
+@pytest.mark.parametrize('data, expected_result', [
+    (True, {'items': [], 'totalItems': 0}),
+    (False, {'totalItems': 0}),
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_oversized_run_nothing_allowed(mock_socket_conn, data, expected_result):
+    """Test utils.WazuhDBQuery.oversized_run returns nothing when every resource is denied.
+
+    An empty RBAC filter is dropped from the query, so running the second pass would return every agent.
+    """
+    with patch('wazuh.core.utils.WazuhDBBackend.execute', side_effect=[[{'id': 1}, {'id': 2}]]) as execute:
+        query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select={'id'},
+                                   query=None, count=True, get_data=data, remove_extra_fields=False)
+        query.legacy_filters['rbac_ids'] = ['001', '002']
+        query.rbac_negate = True
+
+        assert query.oversized_run() == expected_result
+        execute.assert_called_once()
+
+
+@pytest.mark.parametrize('negate, rbac_ids', [
+    (False, [str(i).zfill(3) for i in range(2, 10)]),
+    (True, ['000', '001']),
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_oversized_run_offset(mock_socket_conn, negate, rbac_ids):
+    """Test utils.WazuhDBQuery.oversized_run keeps every allowed id up to the end of the requested page."""
+    with patch('wazuh.core.utils.WazuhDBBackend.execute',
+               side_effect=[[{'id': i} for i in range(10)], [{'id': 5}, {'id': 6}]]) as execute:
+        query = WazuhDBQueryAgents(offset=3, limit=2, sort=None, search=None, select={'id'},
+                                   query=None, count=True, get_data=True, remove_extra_fields=False)
+        query.legacy_filters['rbac_ids'] = rbac_ids
+        query.rbac_negate = negate
+
+        assert query.oversized_run() == {'items': [{'id': '005'}, {'id': '006'}], 'totalItems': 8}
+
+        _, second_request = execute.call_args_list[1].args
+        assert second_request['rbac_id'] == ['002', '003', '004', '005', '006']
+        assert second_request['offset'] == 3
+        assert second_request['limit'] == 2
+
+
+@pytest.mark.parametrize('negate, rbac_ids', [
+    (False, ['cd']),
+    (True, ['ab']),
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_oversized_run_groups(mock_socket_conn, negate, rbac_ids):
+    """Test utils.WazuhDBQuery.oversized_run on groups, whose names must not be zero-padded."""
+    with patch('wazuh.core.utils.WazuhDBBackend.execute',
+               side_effect=[[{'name': 'ab', 'count': 1}, {'name': 'cd', 'count': 2}],
+                            [{'name': 'cd', 'count': 2}]]) as execute:
+        query = WazuhDBQueryGroup(count=True, get_data=True)
+        query.legacy_filters['rbac_ids'] = rbac_ids
+        query.rbac_negate = negate
+
+        assert query.oversized_run() == {'items': [{'name': 'cd', 'count': 2}], 'totalItems': 1}
+
+        second_query, second_request = execute.call_args_list[1].args
+        assert 'name IN (:rbac_name)' in second_query
+        assert 'NOT IN' not in second_query
+        assert second_request['rbac_name'] == ['cd']
+
+
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_oversized_run_unsupported(mock_socket_conn):
+    """Test utils.WazuhDBQuery.oversized_run raises 1123 on a query with no RBAC field."""
+    query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select={'id'},
+                               query=None, count=True, get_data=True, remove_extra_fields=False)
+    query.oversized_rbac_field = None
+    query.legacy_filters['rbac_ids'] = ['001']
+
+    with pytest.raises(exception.WazuhInternalError, match='.* 1123 .*'):
+        query.oversized_run()
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
