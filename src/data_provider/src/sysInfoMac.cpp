@@ -9,7 +9,6 @@
  * Foundation.
  */
 #include "sysInfo.hpp"
-#include <algorithm>
 #include <deque>
 #include <optional>
 #include "cmdHelper.h"
@@ -80,63 +79,36 @@ static mach_timebase_info_data_t getTimebase()
 {
     mach_timebase_info_data_t tb{0, 0};
     mach_timebase_info(&tb);
-
-    if (tb.denom == 0)
-    {
-        tb.numer = 1;
-        tb.denom = 1;
-    }
-
     return tb;
-}
-
-static int64_t getClockTicksPerSecond()
-{
-    const auto ticks { sysconf(_SC_CLK_TCK) };
-    return ticks > 0 ? ticks : 100;
 }
 
 static uint64_t machTimeToClockTicks(const uint64_t machTicks)
 {
     static const auto timebase { getTimebase() };
-    static const auto clkTck { getClockTicksPerSecond() };
+    static const int64_t clkTck { sysconf(_SC_CLK_TCK) };
     return ProcessHelperMac::clockTicksFromMachTime(machTicks, timebase.numer, timebase.denom, clkTck);
 }
 
-static int getLowestThreadStateRank(const pid_t pid, const int32_t threadCount)
+static int32_t getMainThreadRunState(const pid_t pid)
 {
-    auto rank { ProcessHelperMac::THREAD_STATE_RANK_UNKNOWN };
+    // Threads are listed in creation order, so the first handle is the main thread's. Handles
+    // are not unique, but the lookup returns the first thread that matches, which is the main
+    // thread itself.
+    uint64_t threadHandle {};
 
-    if (threadCount <= 0)
+    if (proc_pidinfo(pid, PROC_PIDLISTTHREADS, 0, &threadHandle, sizeof(threadHandle)) != sizeof(threadHandle))
     {
-        return rank;
+        return 0;
     }
 
-    // Leave room for threads created after the task info was read.
-    std::vector<uint64_t> threadIds(static_cast<size_t>(threadCount) + 16);
-    const auto bytes
-    {
-        proc_pidinfo(pid, PROC_PIDLISTTHREADS, 0, threadIds.data(), static_cast<int>(threadIds.size() * sizeof(uint64_t)))
-    };
+    struct proc_threadinfo threadInfo {};
 
-    if (bytes <= 0)
+    if (proc_pidinfo(pid, PROC_PIDTHREADINFO, threadHandle, &threadInfo, PROC_PIDTHREADINFO_SIZE) != PROC_PIDTHREADINFO_SIZE)
     {
-        return rank;
+        return 0;
     }
 
-    const auto count { std::min(static_cast<size_t>(bytes) / sizeof(uint64_t), threadIds.size()) };
-
-    for (size_t i = 0; i < count && rank > 1; ++i)
-    {
-        struct proc_threadinfo threadInfo {};
-
-        if (proc_pidinfo(pid, PROC_PIDTHREADINFO, threadIds[i], &threadInfo, PROC_PIDTHREADINFO_SIZE) == PROC_PIDTHREADINFO_SIZE)
-        {
-            rank = std::min(rank, ProcessHelperMac::threadStateRank(threadInfo.pth_run_state, threadInfo.pth_sleep_time));
-        }
-    }
-
-    return rank;
+    return threadInfo.pth_run_state;
 }
 
 static bool getProcessArgs(const pid_t pid, std::vector<char>& buffer, ProcessArgs& processArgs)
@@ -168,8 +140,7 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
     // resolveProcessName() falls back to pbi_name, which the kernel cuts at a fixed byte
     // length and can split a multi-byte character on the way.
     jsProcessInfo["name"]       = Utils::sanitizeUtf8(resolveProcessName(pid, taskInfo.pbsd.pbi_name));
-    jsProcessInfo["state"]      = ProcessHelperMac::getProcessState(taskInfo.pbsd.pbi_status,
-                                                                    getLowestThreadStateRank(pid, taskInfo.ptinfo.pti_threadnum));
+    jsProcessInfo["state"]      = ProcessHelperMac::getProcessState(taskInfo.pbsd.pbi_status, getMainThreadRunState(pid));
     jsProcessInfo["parent_pid"] = taskInfo.pbsd.pbi_ppid;
     jsProcessInfo["utime"]      = machTimeToClockTicks(taskInfo.ptinfo.pti_total_user);
     jsProcessInfo["stime"]      = machTimeToClockTicks(taskInfo.ptinfo.pti_total_system);

@@ -80,43 +80,26 @@ TEST(ProcessHelperMacTest, clockTicksFromMachTimeFallbackClkTck)
     EXPECT_EQ(100ULL, ProcessHelperMac::clockTicksFromMachTime(1'000'000'000ULL, 1, 1, -1));
 }
 
-TEST(ProcessHelperMacTest, threadStateRankOrdering)
+TEST(ProcessHelperMacTest, getProcessStateFromMainThread)
 {
-    EXPECT_EQ(1, ProcessHelperMac::threadStateRank(TH_STATE_RUNNING, 0));
-    EXPECT_EQ(2, ProcessHelperMac::threadStateRank(TH_STATE_UNINTERRUPTIBLE, 0));
-    EXPECT_EQ(3, ProcessHelperMac::threadStateRank(TH_STATE_WAITING, 0));
-    EXPECT_EQ(3, ProcessHelperMac::threadStateRank(TH_STATE_WAITING, 20));
-    EXPECT_EQ(4, ProcessHelperMac::threadStateRank(TH_STATE_WAITING, 21));
-    EXPECT_EQ(5, ProcessHelperMac::threadStateRank(TH_STATE_STOPPED, 0));
-    EXPECT_EQ(6, ProcessHelperMac::threadStateRank(TH_STATE_HALTED, 0));
-    EXPECT_EQ(ProcessHelperMac::THREAD_STATE_RANK_UNKNOWN, ProcessHelperMac::threadStateRank(0, 0));
-    EXPECT_EQ(ProcessHelperMac::THREAD_STATE_RANK_UNKNOWN, ProcessHelperMac::threadStateRank(99, 0));
+    // A process reported as running by the BSD status takes its state from its main thread
+    EXPECT_EQ("R", ProcessHelperMac::getProcessState(SRUN, TH_STATE_RUNNING));
+    EXPECT_EQ("D", ProcessHelperMac::getProcessState(SRUN, TH_STATE_UNINTERRUPTIBLE));
+    EXPECT_EQ("S", ProcessHelperMac::getProcessState(SRUN, TH_STATE_WAITING));
+    EXPECT_EQ("T", ProcessHelperMac::getProcessState(SRUN, TH_STATE_STOPPED));
+    EXPECT_EQ("H", ProcessHelperMac::getProcessState(SRUN, TH_STATE_HALTED));
 }
 
-TEST(ProcessHelperMacTest, getProcessStateFromThreads)
+TEST(ProcessHelperMacTest, getProcessStateStopped)
 {
-    // A process reported as running by the BSD status takes its state from its threads
-    constexpr uint32_t runningStatus { 2 }; // SRUN
-    EXPECT_EQ("R", ProcessHelperMac::getProcessState(runningStatus, 1));
-    EXPECT_EQ("U", ProcessHelperMac::getProcessState(runningStatus, 2));
-    EXPECT_EQ("S", ProcessHelperMac::getProcessState(runningStatus, 3));
-    // Long idle threads are reported as sleeping so the state does not flip between scans
-    EXPECT_EQ("S", ProcessHelperMac::getProcessState(runningStatus, 4));
-    EXPECT_EQ("T", ProcessHelperMac::getProcessState(runningStatus, 5));
-    EXPECT_EQ("H", ProcessHelperMac::getProcessState(runningStatus, 6));
-}
-
-TEST(ProcessHelperMacTest, getProcessStateStoppedAndZombie)
-{
-    // Stopped and zombie BSD statuses win over any thread state
-    EXPECT_EQ("T", ProcessHelperMac::getProcessState(SSTOP, 1));
-    EXPECT_EQ("Z", ProcessHelperMac::getProcessState(SZOMB, 1));
-    EXPECT_EQ("Z", ProcessHelperMac::getProcessState(SZOMB, ProcessHelperMac::THREAD_STATE_RANK_UNKNOWN));
+    // A stopped BSD status wins over any thread state
+    EXPECT_EQ("T", ProcessHelperMac::getProcessState(SSTOP, TH_STATE_RUNNING));
+    EXPECT_EQ("T", ProcessHelperMac::getProcessState(SSTOP, 0));
 }
 
 TEST(ProcessHelperMacTest, getProcessStateUnknown)
 {
-    EXPECT_EQ(UNKNOWN_VALUE, ProcessHelperMac::getProcessState(2, ProcessHelperMac::THREAD_STATE_RANK_UNKNOWN));
-    EXPECT_EQ(UNKNOWN_VALUE, ProcessHelperMac::getProcessState(2, 0));
-    EXPECT_EQ(UNKNOWN_VALUE, ProcessHelperMac::getProcessState(0, 99));
+    // 0 means the main thread could not be read
+    EXPECT_EQ(UNKNOWN_VALUE, ProcessHelperMac::getProcessState(SRUN, 0));
+    EXPECT_EQ(UNKNOWN_VALUE, ProcessHelperMac::getProcessState(SRUN, 99));
 }
