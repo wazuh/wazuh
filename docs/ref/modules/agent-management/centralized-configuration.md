@@ -122,4 +122,4 @@ When the same setting is defined in multiple places, the following precedence ap
 1. `agent.conf` (centralized configuration from the manager)
 2. `ossec.conf` (local configuration on the agent)
 
-If an agent belongs to multiple groups, the configurations from all groups are merged. In case of conflicts between groups, the configuration from the group with the lowest alphabetical order takes precedence.
+If an agent belongs to multiple groups, the configurations from all groups are merged. Groups are merged in the order they were assigned to the agent, and in case of conflicts between groups, the configuration from the group assigned last takes precedence. See [Configuration merge order](agent-groups.md#configuration-merge-order).

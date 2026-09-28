@@ -104,15 +104,17 @@ An agent can belong to at most 128 groups simultaneously. Attempting to assign a
 
 ### Configuration merge order
 
-When an agent belongs to multiple groups, the configurations are merged in alphabetical order by group name. If a conflict occurs (the same setting defined in multiple groups), the value from the group that appears first alphabetically takes precedence.
+When an agent belongs to multiple groups, the configurations are merged in the order the groups were assigned to the agent, not by group name. Each group's `agent.conf` is appended to the merged `agent.conf` in that order, and the agent reads it top to bottom. If a conflict occurs (the same setting defined in multiple groups), the value from the group assigned last takes precedence. Other shared files with the same name in several groups are overwritten the same way, so the copy from the group assigned last is the one distributed.
 
 ### Example
 
-An agent assigned to groups `database-servers` and `web-servers`:
+An agent in the `default` group that is then assigned to `web-servers` and, after that, to `database-servers`:
 
 1. The `default` group configuration is applied first.
-2. The `database-servers` group configuration is merged.
-3. The `web-servers` group configuration is merged.
+2. The `web-servers` group configuration is merged.
+3. The `database-servers` group configuration is merged.
+
+If `web-servers` and `database-servers` set the same option, the `database-servers` value applies.
 
 ## Shared files
 
