@@ -2879,6 +2879,21 @@ static bool w_vet_link_count(const struct stat * entry_stat, const struct stat *
 }
 
 /**
+ * Anyone who can write to a directory can create a FIFO in it, and one whose writer never writes blocks
+ * reads, so a FIFO or device not owned by root is trusted only when nobody else can create entries there:
+ * the directory is owned by root or the entry's owner, not writable by others, and writable by its group
+ * only when that is the entry's group.
+ *
+ * @return true if entry_stat, found in the directory described by dir_stat, can be trusted.
+ */
+static bool w_vet_special_owner(const struct stat * entry_stat, const struct stat * dir_stat) {
+    return entry_stat->st_uid == 0 ||
+           ((dir_stat->st_uid == 0 || dir_stat->st_uid == entry_stat->st_uid) &&
+            !(dir_stat->st_mode & S_IWOTH) &&
+            (!(dir_stat->st_mode & S_IWGRP) || dir_stat->st_gid == entry_stat->st_gid));
+}
+
+/**
  * Decides whether a file opened by w_fopen_vetted_follow() may be read, from stat results alone. Split out
  * so the trust rule can be unit tested with fabricated ownership, without root or a live race.
  *
@@ -2891,9 +2906,13 @@ static bool w_vet_link_count(const struct stat * entry_stat, const struct stat *
  */
 int w_vet_opened_file(const struct stat * fd_stat, const struct stat * dir_stat, const uid_t * link_uid) {
     if (!S_ISREG(fd_stat->st_mode)) {
-        // Only root can create a FIFO or device a planted symlink or hard link does not explain.
-        if (!(S_ISFIFO(fd_stat->st_mode) || S_ISCHR(fd_stat->st_mode)) || fd_stat->st_uid != 0) {
+        if (!(S_ISFIFO(fd_stat->st_mode) || S_ISCHR(fd_stat->st_mode))) {
             errno = EINVAL;
+            return -1;
+        }
+
+        if (!w_vet_special_owner(fd_stat, dir_stat)) {
+            errno = EPERM;
             return -1;
         }
     }
