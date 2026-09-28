@@ -259,7 +259,7 @@ sudo grep -A4 "<ssl>" /var/ossec/etc/ossec.conf
 
 The trust anchor should be `0640 root:wazuh`. A root-owned file the `wazuh` user cannot read fails closed just as a missing one does, and a directory listing looks right until the group is checked.
 
-If the agent has no anchor, or the manager's has changed, refresh it with [`wazuh-agent-auth --certs-only`](#enrolling-or-re-pointing-an-agent) rather than copying the file by hand. That includes a CA a remote upgrade left in `var/incoming/root-ca.pem` without installing it.
+If the agent has no anchor, or the manager's has changed, refresh it with [`wazuh-agent-auth --certs-only`](#enrolling-or-re-pointing-an-agent) rather than copying the file by hand. That includes a CA a remote upgrade left in `var/incoming/root-ca.pem` without installing it: once an anchor is in place, `--certs-only` (and a token enrollment) removes that staged copy, so a later upgrade cannot install it over the anchor.
 
 #### Auditing a fleet
 

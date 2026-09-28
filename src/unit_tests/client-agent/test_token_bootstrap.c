@@ -388,6 +388,7 @@ static void remove_test_paths(void) {
     unlink("etc/client.keys");
     unlink("etc/other-file");
     unlink(AGENT_REENROLL_SECRET);
+    unlink(AGENT_DELIVERED_CA);
     remove_staged_siblings("etc/certs", "root-ca.pem.");
     remove_staged_siblings("etc", "client.keys.");
 }
@@ -396,6 +397,8 @@ static int group_setup(void **state) {
     (void) state;
     mkdir("etc", 0755);
     mkdir("etc/certs", 0755);
+    mkdir("var", 0755);
+    mkdir("var/incoming", 0755);
     remove_test_paths();
     return 0;
 }
@@ -758,6 +761,45 @@ static void test_empty_placeholder_keys_file_is_not_already_enrolled(void **stat
     assert_int_equal(g_spki_call_count, 1);
     assert_int_equal(g_enroll_call_count, 1);
     assert_int_equal(IsFile("etc/certs/root-ca.pem"), 0);
+}
+
+/* An enrollment that commits an anchor also supersedes a CA a WPK upgrade left staged. */
+static void test_enrollment_removes_a_ca_staged_by_an_upgrade(void **state) {
+    (void) state;
+    write_file("etc/client.keys", "");
+    write_file(AGENT_DELIVERED_CA, "STALE-CA");
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    /* Only AGENT_ANCHOR_CA hits TempFile()'s benign FSTAT_ERROR mdebug1 here -- KEYS_FILE
+     * already exists (the placeholder), so fstat() on it succeeds and that debug line
+     * doesn't fire twice. */
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Removed the CA a remote upgrade left at '" AGENT_DELIVERED_CA "': the trust "
+                  "anchor supersedes it.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_fetch_call_count, 1);
+    assert_int_equal(g_spki_call_count, 1);
+    assert_int_equal(g_enroll_call_count, 1);
+    assert_int_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_int_not_equal(IsFile(AGENT_DELIVERED_CA), 0);
 }
 
 static void test_malformed_token_logs_named_error_and_writes_nothing(void **state) {
@@ -1619,6 +1661,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_anchor_latch_keys_chown_failure_is_quiet, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_anchor_latch_repairs_pre_39321_ownership, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_empty_placeholder_keys_file_is_not_already_enrolled, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enrollment_removes_a_ca_staged_by_an_upgrade, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_malformed_token_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_adr_unreachable_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_not_found_logs_named_error_and_writes_nothing, setup_test, teardown_test),

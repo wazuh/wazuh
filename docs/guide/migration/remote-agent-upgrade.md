@@ -287,7 +287,8 @@ agent keeps its id and `client.keys`, and the step needs no `openssl` command:
    sudo systemctl start wazuh-agent
    ```
 3. Confirm that `/var/ossec/etc/certs/root-ca.pem` exists and that `ossec.log` no longer logs
-   `(4126)`, then remove `/var/ossec/var/incoming/root-ca.pem`.
+   `(4126)`. `--certs-only` also removes `/var/ossec/var/incoming/root-ca.pem`, so a later upgrade
+   cannot install that copy over the anchor.
 
 Install `openssl` too, so later upgrades can validate a delivered CA. Do not copy the file from
 `var/incoming` into place by hand or re-run the upgrade to pick it up. A hand-copied anchor does not
