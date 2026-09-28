@@ -214,7 +214,7 @@ A few starting points:
 ### Common Issues
 
 **Issue:** A task shows up as `expired` before an agent could pick it up.
-**Solution:** Increase `task_ttl` if the target agents may be offline for long periods, or make sure the agents actually poll on their `notify` cadence.
+**Solution:** Increase `task_ttl` if the target agents may be offline for long periods, or make sure the agents actually poll on their `notify` cadence. Each cleanup pass logs how many pending agent tasks it expired at debug level (`Expired N pending agent task(s) created more than Ns ago (task_ttl)`). In a cluster, some expiries are expected rather than a fault: an agent command is queued on every node, only the node the agent polls delivers it, and the other nodes' copies age out.
 
 **Issue:** `Task payload too large` errors when creating tasks.
 **Solution:** Producers should reduce payload size, or raise `max_payload_bytes`. This limit protects the manager from unbounded task payloads.

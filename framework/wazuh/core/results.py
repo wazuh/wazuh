@@ -597,6 +597,41 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
     def node_attribution(self):
         return self._node_attribution
 
+    def drop_uninformative_failures(self, code: int):
+        """Drop `code` from failed_items for every item some other source already accounted for.
+
+        `code` marks a failure that is not a verdict about the item but the absence of one --
+        `common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE`, "this node has no information about the agent".
+        It is worth reporting only while nothing better exists: once another node has reported
+        that same item, as an affected item or with a real error, keeping the placeholder lists
+        the item twice and counts it twice in total_failed_items, so a 12-agent request comes back
+        with 14 failures.
+
+        Called on the merged result, never on a single node's answer: a node's own answer is what
+        `nodes` preserves, and there the placeholder is exactly the information wanted -- it says
+        which node could not serve the item and why.
+
+        Parameters
+        ----------
+        code : int
+            Error code to treat as a placeholder.
+        """
+        placeholder = next((error for error in self._failed_items if error.code == code), None)
+        if placeholder is None:
+            return
+
+        # Identifier-shaped items only, like attribute_to_node: an endpoint whose affected items
+        # are whole documents has no ids to reconcile, and a dict is not hashable.
+        accounted_for = {item for item in self._affected_items if isinstance(item, str)}
+        accounted_for |= {id_
+                          for error, ids in self._failed_items.items() if error.code != code
+                          for id_ in ids}
+
+        self._failed_items[placeholder] -= accounted_for
+        if not self._failed_items[placeholder]:
+            del self._failed_items[placeholder]
+        self._recalculate_failed_items()
+
     def attribute_to_node(self, node_name: str):
         """Record this result's own outcomes as produced by `node_name`.
 

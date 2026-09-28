@@ -443,3 +443,53 @@ def test_node_attribution_records_a_failure_even_for_document_shaped_results():
     result.attribute_to_node('worker2')
 
     assert result.node_attribution == {'worker2': {'failed_items': {1824: ['001']}}}
+
+
+def test_uninformative_failure_yields_to_a_real_verdict():
+    """1774 must not double-list an agent some other node did report on.
+
+    Every node an agent has never connected to answers 1774 for it, which says the node has nothing
+    to say rather than anything about the agent. Once the merge has collected the nodes that do
+    know it, keeping that placeholder lists the agent twice -- and counts it twice, so a request
+    for three agents comes back with more failures than agents.
+    """
+    master = _node_result(affected=['001'], failed=[('002', 1761)])
+    worker = _node_result(failed=[('001', 1774), ('002', 1774), ('003', 1774)])
+
+    merged = master | worker
+    merged.drop_uninformative_failures(1774)
+
+    rendered = merged.render()['data']
+    assert rendered['affected_items'] == ['001']
+    # 002 keeps the only answer that explains anything, and 003 keeps the placeholder: no node has
+    # ever seen it, so "no node has information about this agent" IS the outcome.
+    assert [(item['error']['code'], item['id']) for item in rendered['failed_items']] == \
+           [(1761, ['002']), (1774, ['003'])]
+    assert rendered['total_failed_items'] == 2, 'the placeholder must not be counted twice'
+
+
+def test_uninformative_failure_survives_in_the_per_node_breakdown():
+    """Dropping the placeholder from the merge must not erase it from `nodes`.
+
+    That breakdown is each node's own answer, and there "this node has no information about the
+    agent" is the point: it names the node that could not serve the agent (#39428).
+    """
+    master = _node_result(affected=['001'])
+    master.attribute_to_node('master')
+    worker = _node_result(failed=[('001', 1774)])
+    worker.attribute_to_node('worker1')
+
+    merged = master | worker
+    merged.drop_uninformative_failures(1774)
+
+    assert merged.render()['data']['failed_items'] == []
+    assert merged.node_attribution['worker1'] == {'failed_items': {1774: ['001']}}
+
+
+def test_drop_uninformative_failures_is_a_no_op_without_the_code():
+    """A result that never carried the placeholder must come out untouched."""
+    result = _node_result(affected=['001'], failed=[('002', 1761)])
+
+    result.drop_uninformative_failures(1774)
+
+    assert result.render()['data']['total_failed_items'] == 1

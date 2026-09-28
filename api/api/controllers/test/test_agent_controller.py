@@ -160,7 +160,8 @@ async def test_add_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
 async def test_restart_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
     """Verify 'restart_agents' endpoint is working as expected."""
     result = await restart_agents()
-    f_kwargs = {'agent_list': '*'
+    f_kwargs = {'agent_list': '*',
+                'request_time': ANY
                 }
     mock_dapi.assert_called_once_with(f=agent.restart_agents,
                                       f_kwargs=mock_remove.return_value,
@@ -319,7 +320,8 @@ async def test_restart_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
     """Verify 'restart_agent' endpoint is working as expected."""
     result = await restart_agent(
                                  agent_id='001')
-    f_kwargs = {'agent_list': ['001']
+    f_kwargs = {'agent_list': ['001'],
+                'request_time': ANY
                 }
     mock_dapi.assert_called_once_with(f=agent.restart_agents,
                                       f_kwargs=mock_remove.return_value,
@@ -826,7 +828,8 @@ async def test_restart_agents_by_group(mock_aiwr, mock_dapi, mock_remove, mock_d
             assert mock_dapi.call_count == 1
             mock_aiwr.assert_called_once_with(none_msg='Restart command was not sent to any agent')
         else:
-            f_kwargs = {'agent_list': [mock_exc.return_value.affected_items[0]['id']]
+            f_kwargs = {'agent_list': [mock_exc.return_value.affected_items[0]['id']],
+                        'request_time': ANY
                         }
             mock_dapi.assert_has_calls(calls_get_agents,
                                        calls_restart_agents_by_group)
@@ -848,7 +851,7 @@ async def test_restart_agents_by_group(mock_aiwr, mock_dapi, mock_remove, mock_d
 async def test_reload_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
     """Verify 'reload_agents' endpoint is working as expected."""
     result = await reload_agents()
-    f_kwargs = {'agent_list': '*'}
+    f_kwargs = {'agent_list': '*', 'request_time': ANY}
     mock_dapi.assert_called_once_with(f=agent.reload_agents,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -873,7 +876,7 @@ async def test_reload_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 async def test_reload_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
     """Verify 'reload_agent' endpoint is working as expected."""
     result = await reload_agent(agent_id='001')
-    f_kwargs = {'agent_list': ['001']}
+    f_kwargs = {'agent_list': ['001'], 'request_time': ANY}
     mock_dapi.assert_called_once_with(f=agent.reload_agents,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='distributed_master',
@@ -927,7 +930,8 @@ async def test_reload_agents_by_group(mock_aiwr, mock_dapi, mock_remove, mock_df
             assert mock_dapi.call_count == 1
             mock_aiwr.assert_called_once_with(none_msg='Reload command was not sent to any agent')
         else:
-            f_kwargs = {'agent_list': [mock_exc.return_value.affected_items[0]['id']]}
+            f_kwargs = {'agent_list': [mock_exc.return_value.affected_items[0]['id']],
+                        'request_time': ANY}
             mock_dapi.assert_has_calls(calls_get_agents, calls_reload_agents_by_group)
             assert mock_dapi.call_count == 2
             mock_exc.assert_has_calls([call(mock_dfunc.return_value),

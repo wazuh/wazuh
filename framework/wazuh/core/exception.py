@@ -277,6 +277,13 @@ class WazuhException(Exception):
         1773: {'message': 'Enrollment token request refused by the manager',
                'remediation': 'Check the request against the field limits in the API spec, then retry'
                },
+        1774: {'message': 'The agent has never connected to this node, which holds no information about it',
+               'remediation': 'The command is queued on this node and will run when the agent connects to it, '
+                              'within task-manager.task_ttl; do not send it again, as a second request creates a '
+                              'second task and the agent would run both. On a cluster the request is sent to '
+                              'every node and an agent only appears on the nodes it has connected to, so check '
+                              'the `nodes` field for the outcome reported by the node the agent does connect to'
+               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'
