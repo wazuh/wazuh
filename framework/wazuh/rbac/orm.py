@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import copy
 import json
 import logging
 import os
@@ -26,8 +27,8 @@ from sqlalchemy.sql.expression import select, delete
 from sqlalchemy.sql import text
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from api.configuration import security_conf
-from api.constants import SECURITY_PATH
+from api.configuration import default_security_configuration, read_yaml_config
+from api.constants import SECURITY_CONFIG_PATH, SECURITY_PATH
 from wazuh.core.common import wazuh_uid, wazuh_gid, DEFAULT_RBAC_RESOURCES
 from wazuh.core.utils import get_utc_now, safe_move
 from wazuh.rbac.utils import clear_tokens_cache
@@ -185,6 +186,27 @@ class UserRoles(_Base):
 
 # Blacklists
 
+def token_exp_timeout_ms() -> int:
+    """Return the token lifetime currently configured in security.yaml, in milliseconds.
+
+    A revocation rule must outlive every token it revokes, so it is sized from the file rather than
+    from the `security_conf` object imported at start-up: `update_security_conf` only writes the
+    file, and the process that creates the rule (the API's local request pool, `rbac_control`) is
+    not the one that refreshes that object before signing tokens. A rule sized from a stale, shorter
+    timeout would be purged by `delete_all_expired_rules` while the tokens it revoked are still
+    within their lifetime, making them valid again.
+
+    Returns
+    -------
+    int
+        Current `auth_token_exp_timeout`, in milliseconds.
+    """
+    # `read_yaml_config` merges the file into `default_conf` in place, so it gets a copy.
+    configuration = read_yaml_config(config_file=SECURITY_CONFIG_PATH,
+                                     default_conf=copy.deepcopy(default_security_configuration))
+    return configuration['auth_token_exp_timeout'] * 1000
+
+
 class RunAsTokenBlacklist(_Base):
     """Class that represents the table containing the tokens given through the run_as login endpoint that are considered
     invalid. An invalid token is an expired or revoked token.
@@ -200,7 +222,7 @@ class RunAsTokenBlacklist(_Base):
 
     def __init__(self):
         self.nbf_invalid_until = int(time() * 1000)
-        self.is_valid_until = self.nbf_invalid_until + (security_conf['auth_token_exp_timeout'] * 1000)
+        self.is_valid_until = self.nbf_invalid_until + token_exp_timeout_ms()
 
     def to_dict(self) -> dict:
         """Return the information of the RunAsTokenBlacklist object.
@@ -231,7 +253,7 @@ class UsersTokenBlacklist(_Base):
     def __init__(self, user_id):
         self.user_id = user_id
         self.nbf_invalid_until = int(time() * 1000)
-        self.is_valid_until = self.nbf_invalid_until + (security_conf['auth_token_exp_timeout'] * 1000)
+        self.is_valid_until = self.nbf_invalid_until + token_exp_timeout_ms()
 
     def to_dict(self):
         """Return the information of the token rule
@@ -262,7 +284,7 @@ class RolesTokenBlacklist(_Base):
     def __init__(self, role_id):
         self.role_id = role_id
         self.nbf_invalid_until = int(time() * 1000)
-        self.is_valid_until = self.nbf_invalid_until + (security_conf['auth_token_exp_timeout'] * 1000)
+        self.is_valid_until = self.nbf_invalid_until + token_exp_timeout_ms()
 
     def to_dict(self):
         """Return the information of the token rule

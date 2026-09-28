@@ -1381,8 +1381,9 @@ def get_security_config() -> WazuhResult:
 def update_security_config(updated_config: dict = None) -> str:
     """Update or restore current security configuration.
 
-    Update the shared configuration object "security_conf" with
-    "updated_config" and then overwrite the content of security.yaml.
+    Overwrite the content of security.yaml with "updated_config". The in-memory "security_conf"
+    object of this process is not updated: every consumer that needs the current values reads the
+    file (`get_security_conf`, `wazuh.rbac.orm.token_exp_timeout_ms`).
 
     Parameters
     ----------
