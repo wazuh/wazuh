@@ -18,6 +18,11 @@ PROTECTED_SECTIONS = (
     ('/remote/agents/allow_higher_versions', ('agents', 'allow_higher_versions', 'allow'), 1129),
 )
 
+# Options that only a caller allowed to READ them in clear may change: the write-side twin of the read-side masking.
+# Knowing the cluster key is what lets a host join the cluster as a peer, so a caller who may not read it must not be
+# able to choose it either. Unlike PROTECTED_SECTIONS this is RBAC (`cluster:read_secrets`), not an api.yaml knob.
+SECRET_SECTIONS = ('/cluster/key',)
+
 
 def _resolve_pointer(document: dict, pointer: str):
     node = document
@@ -65,3 +70,29 @@ def check_protected_sections(new_document: dict, current_document: dict, upload_
             continue
         if _resolve_pointer(new_document, pointer) != _resolve_pointer(current_document, pointer):
             raise WazuhError(code, extra_message=pointer)
+
+
+def check_secret_sections(new_document: dict, current_document: dict, can_read_secrets: bool):
+    """Raise if a secret option differs between the new and the current effective documents and the caller may not
+    read it.
+
+    Parameters
+    ----------
+    new_document : dict
+        Effective document about to be written (defaults applied).
+    current_document : dict
+        Effective document currently on disk.
+    can_read_secrets : bool
+        Whether the caller holds `cluster:read_secrets` over the node being served.
+
+    Raises
+    ------
+    WazuhError(1132)
+        A secret option was modified by a caller without `cluster:read_secrets`.
+    """
+    if can_read_secrets:
+        return
+
+    for pointer in SECRET_SECTIONS:
+        if _resolve_pointer(new_document, pointer) != _resolve_pointer(current_document, pointer):
+            raise WazuhError(1132, extra_message=pointer)

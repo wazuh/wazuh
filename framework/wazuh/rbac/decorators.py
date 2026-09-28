@@ -561,7 +561,7 @@ def _audit_logger() -> logging.Logger:
     return logger if logger.hasHandlers() else framework_logger
 
 
-def _can_read_secrets() -> bool:
+def can_read_secrets() -> bool:
     """Check whether the current user may read the sensitive configuration values of THIS node in clear.
 
     A separate action from the update ones on purpose: being allowed to WRITE the configuration used
@@ -747,6 +747,38 @@ def _mask_all_sensitive_fields(text: str, mask_text: str = "***") -> str:
     return text
 
 
+def unmask_xml_by_path(text: str, path: str, value: str, mask_text: str = MASK_DEFAULT) -> str:
+    """Put ``value`` back where `_mask_xml_by_path` left ``mask_text``. Write-side twin of it, kept next to it so the
+    two locate the field with the same pattern.
+
+    A configuration read without the read-secrets action comes back masked; sending it back unchanged must keep the
+    current secret rather than try to store the mask. Only a value that is exactly the mask (surrounding whitespace
+    aside) is replaced, so any other value reaches the caller's checks as written.
+
+    Parameters
+    ----------
+    text : str
+        Input XML string to process.
+    path : str
+        Dotted path representing nested XML tags, e.g. ``"cluster.key"``.
+    value : str
+        Value to restore in place of the mask.
+    mask_text : str, optional
+        Mask to look for. Defaults to `MASK_DEFAULT`.
+
+    Returns
+    -------
+    str
+        A new string with the masked value replaced by ``value``, or the original string when it holds no mask there.
+    """
+    def restore(match: re.Match) -> str:
+        if match.group(2).strip() != mask_text:
+            return match.group(0)
+        return f'{match.group(1)}{value}{match.group(3)}'
+
+    return _build_xml_mask_pattern(path).sub(restore, text)
+
+
 def _mask_paths_in_object(obj, dotted_path: str, mask_text: str):
     """Mask a value at a dotted path inside dict/list.
 
@@ -846,7 +878,7 @@ def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
             result = func(*args, **kwargs)
 
             # Only the read-secrets action over THIS node lifts the mask; update-config no longer does.
-            if _can_read_secrets():
+            if can_read_secrets():
                 _audit_secret_read(result)
                 return result
 

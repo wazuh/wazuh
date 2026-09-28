@@ -120,6 +120,9 @@ class WazuhException(Exception):
         1131: {'message': 'XML syntax error',
                'remediation': 'Please, provide a well-formed XML file with the single root <wazuh_config>: unescaped '
                               '& or <, legacy comments and multiple roots are not accepted.'},
+        1132: {'message': 'Secret option was modified',
+               'remediation': 'Changing the cluster key requires the `cluster:read_secrets` action over the node. '
+                              'Send the key back as returned by the API (masked as `*****`) to keep the current one.'},
 
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
