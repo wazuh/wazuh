@@ -118,7 +118,7 @@ at the shipped defaults (60 s throttle, 10 s notify) that is 6×; the campaign m
 rather than quoting either number. Detection latency is governed by `agents_disconnection_time`
 alone (§4). Budget outage recovery at ~6.5 TLS handshakes/min per disconnected agent, and check
 that against [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections)
-(512) before a fleet-wide restart.
+(256) before a fleet-wide restart.
 
 **Manager outages and event loss.** Short outages are transparent (measured: a 25 s outage
 delivered every buffered event exactly once). On longer ones the loss point is **not** the HTTPS

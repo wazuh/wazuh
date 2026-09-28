@@ -570,7 +570,7 @@ Soft file descriptor limit remoted raises itself to at start.
   (`LimitNOFILE=65536` in the service unit, the init script, or the container's `ulimits.nofile`),
   and never lowers a soft limit that is already higher. A hard limit below this value is kept and
   logged once as a warning; raise that limit first to go higher. HTTPS connections are bounded by
-  `remoted.max_parallel_connections` (default `512`), far below this value; only a large 4.x fleet
+  `remoted.max_parallel_connections` (default `256`), far below this value; only a large 4.x fleet
   on the legacy TCP listener needs more. `GET /manager/configuration` reports the effective value.
   See [File descriptor limits](../../configuration/manager/README.md#file-descriptor-limits).
 
