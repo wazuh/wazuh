@@ -116,6 +116,9 @@ Linux manager/server · **Ma** macOS agent · **Wa** Windows agent (MinGW).
 | libpcre2 | ✔ | ✔ | ✔ | ✔ | precompiled `.a` |
 | flatbuffers | ✔ | ✔ | ✔ | ✔ | precompiled `.a` + `flatc` |
 | nlohmann | ✔ | ✔ | ✔ | ✔ | **source-only (header)** |
+| zstd | ✔ | ✔ | ✔ | ✔ | precompiled `.a` |
+| jwt-cpp | ✔ | ✔ | ✔ | ✔ | **source-only (header)** |
+| rapidjson | ✔ | ✔ | ✔ | ✔ | **source-only (header)** |
 
 ### Shared build-time dependency (downloaded on all targets, linked non-Windows)
 
@@ -170,7 +173,10 @@ inventory_sync_server/keystore_server/vulnerability_scanner instead, so it links
 | date | — | ✔ | — | — | precompiled `.a` (needs curl) |
 | fmt | — | ✔ | — | — | precompiled `.a` |
 | minizip | — | ✔ | — | — | precompiled `.a` — **lives in the zlib tree**, built on the non-Windows legs (incl. agent) so it ships inside `zlib.tar.gz` |
-| rapidjson | — | ✔ | — | — | **source-only (header)** |
+| asio | — | ✔ | — | — | **source-only (header)** |
+| expected-lite | — | ✔ | — | — | **source-only (header)** |
+| llhttp | — | ✔ | — | — | precompiled `.a` |
+| restinio | — | ✔ | — | — | **source-only (header)** |
 | RxCpp | — | ✔ | — | — | **source-only (header)** |
 | taskflow | — | ✔ | — | — | **source-only (header)** |
 | concurrentqueue | — | ✔ | — | — | **source-only (header)** |
@@ -191,8 +197,8 @@ the download behind a flag drops them from the bundle and breaks every test buil
 | googletest | all targets | agent + server tests | precompiled `.a` |
 | benchmark | all targets | server tests | precompiled `.a` |
 
-> **Header-only deps** (nlohmann, cpp-httplib, rapidjson, RxCpp, taskflow,
-> concurrentqueue, fast_float) carry no compiled artifact — they belong only in
+> **Header-only deps** (nlohmann, jwt-cpp, cpp-httplib, rapidjson, RxCpp, taskflow,
+> concurrentqueue, fast_float, asio, expected-lite, restinio) carry no compiled artifact — they belong only in
 > `libraries/sources/`. The generation snapshot still copies their (binary-free)
 > trees into `libraries/<os>/<arch>/`; pruning those redundant per-arch copies is
 > tracked as follow-up work for #36247.
@@ -236,7 +242,7 @@ There are no manager builder images for darwin or windows. The matrix reflects t
 
 ### Source-rebuild fallbacks are silent
 
-`src/Makefile` line 596 (the precompiled-fetch rule) is `-@ … || true` — a missing precompiled tarball is non-fatal and CMake falls back to source compilation. That means a packing-path bug (binary placed under `libraries/linux/amd64/` when `make deps` looked for `libraries/linux/x86_64/`, say) won't fail `make deps` outright. The smoke-build's "Analyze dependency usage" step is what catches this, by grepping the build log for `Performing build step for '<dep>_external'` / `Building … ext_<dep>.dir/` and emitting `::warning::` for each.
+`src/Makefile` lines 602 and 650 (the precompiled-fetch rules) are `-@ … || true` — a missing precompiled tarball is non-fatal and CMake falls back to source compilation. That means a packing-path bug (binary placed under `libraries/linux/amd64/` when `make deps` looked for `libraries/linux/x86_64/`, say) won't fail `make deps` outright. The smoke-build's "Analyze dependency usage" step is what catches this, by grepping the build log for `Performing build step for '<dep>_external'` / `Building … ext_<dep>.dir/` and emitting `::warning::` for each.
 
 Treat any smoke-build warning as a blocker. The whole point of a deps release is that everything ships precompiled.
 

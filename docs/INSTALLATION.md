@@ -10,8 +10,8 @@ The following specific versions are required for compatibility with the global d
 
 | Tool | Required Version |
 |------|-----------------|
-| `mdbook` | `0.5.2` |
-| `mdbook-mermaid` | `0.17.0` |
+| `mdbook` | `0.4.40` |
+| `mdbook-mermaid` | `0.13.0` |
 
 ## Installation
 
@@ -20,19 +20,19 @@ The following specific versions are required for compatibility with the global d
 #### Using Cargo (Rust Package Manager)
 
 ```bash
-# Install mdbook 0.5.2
-cargo install mdbook --version 0.5.2
+# Install mdbook 0.4.40
+cargo install mdbook --version 0.4.40
 
-# Install mdbook-mermaid 0.17.0
-cargo install mdbook-mermaid --version 0.17.0
+# Install mdbook-mermaid 0.13.0
+cargo install mdbook-mermaid --version 0.13.0
 ```
 
 #### Using Pre-built Binaries
 
 Download the appropriate binaries for your platform:
 
-- **mdbook 0.5.2**: https://github.com/rust-lang/mdBook/releases/tag/v0.5.2
-- **mdbook-mermaid 0.17.0**: https://github.com/badboy/mdbook-mermaid/releases/tag/v0.17.0
+- **mdbook 0.4.40**: https://github.com/rust-lang/mdBook/releases/tag/v0.4.40
+- **mdbook-mermaid 0.13.0**: https://github.com/badboy/mdbook-mermaid/releases/tag/v0.13.0
 
 ### Verification
 
@@ -40,10 +40,10 @@ After installation, verify the versions:
 
 ```bash
 mdbook --version
-# Expected output: mdbook v0.5.2
+# Expected output: mdbook v0.4.40
 
 mdbook-mermaid --version
-# Expected output: mdbook-mermaid 0.17.0
+# Expected output: mdbook-mermaid 0.13.0
 ```
 
 ## Building the Documentation
@@ -61,11 +61,13 @@ The documentation will be available at `http://127.0.0.1:3000`
 
 ### Building Static HTML
 
-To build the documentation as static HTML:
+To build the documentation as static HTML, use `docs/build.sh` rather than calling `mdbook build`
+directly: it first runs `tools/gen-manager-conf-ref.py --check` to refuse a build with a stale
+manager configuration reference, then builds the book. This is also what CI runs.
 
 ```bash
 cd docs
-mdbook build
+./build.sh
 ```
 
 The output will be generated in the `docs/book` directory.

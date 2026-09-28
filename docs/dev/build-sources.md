@@ -75,8 +75,8 @@ make -C src clean-windows           # Clean Windows resource files
 
 **Clean target descriptions:**
 
-- `clean` - Removes all build artifacts including external dependencies. Use this for a complete clean build.
-- `clean-deps` - Removes only external dependencies (e.g., libraries downloaded during `make deps`).
+- `clean` - Removes compiled binaries, object files, and the *build* artifacts of external dependencies, but keeps the fetched external sources under `external/`. Use `clean-deps` too for a complete clean build.
+- `clean-deps` - Removes the external dependencies themselves (e.g., sources/archives fetched during `make deps`).
 - `clean-internals` - Removes compiled binaries and object files but preserves external dependencies. Useful for quick rebuilds.
 - `clean-windows` - Removes Windows-specific compiled resource files.
 
