@@ -2287,6 +2287,8 @@ void test_w_fopen_vetted_follow_symlink_other_owner_rejected(void **state) {
     nofollow_path(link_path, "link");
     assert_int_equal(symlink(target, link_path), 0);
     assert_int_equal(lchown(link_path, 1000, (gid_t) -1), 0);
+    // The link's owner also owns its directory, so it could re-point the link.
+    assert_int_equal(chown(nofollow_dir, 1000, (gid_t) -1), 0);
 
     assert_vetted_rejected(link_path, EPERM);
 }
@@ -2307,9 +2309,32 @@ void test_w_fopen_vetted_follow_directory_symlink_other_owner_rejected(void **st
     nofollow_path(path, "link");
     assert_int_equal(symlink(dir, path), 0);
     assert_int_equal(lchown(path, 1000, (gid_t) -1), 0);
+    assert_int_equal(chown(nofollow_dir, 1000, (gid_t) -1), 0);
     nofollow_path(path, "link/victim");
 
     assert_vetted_rejected(path, EPERM);
+}
+
+void test_w_fopen_vetted_follow_directory_symlink_other_owner_root_dir_accepted(void **state) {
+    char dir[PATH_MAX + 1];
+    char path[PATH_MAX + 1];
+
+    if (geteuid() != 0) {
+        print_message("Skipped: needs root to create a symlink owned by someone other than its target.\n");
+        return;
+    }
+
+    // Same link as above, but in a directory only root can write to: its owner cannot re-point it.
+    nofollow_path(dir, "subdir");
+    assert_int_equal(mkdir(dir, 0750), 0);
+    nofollow_create_file("subdir/victim", "content");
+    nofollow_path(path, "link");
+    assert_int_equal(symlink(dir, path), 0);
+    assert_int_equal(lchown(path, 1000, (gid_t) -1), 0);
+    assert_int_equal(__real_chmod(nofollow_dir, 0755), 0);
+    nofollow_path(path, "link/victim");
+
+    assert_vetted_reads_content(path);
 }
 
 void test_w_fopen_vetted_follow_invalid_mode(void **state) {
@@ -2527,6 +2552,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_symlink_root_owned_accepted, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_symlink_other_owner_rejected, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_directory_symlink_other_owner_rejected, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_directory_symlink_other_owner_root_dir_accepted, setup_nofollow, teardown_vetted),
         cmocka_unit_test(test_w_fopen_vetted_follow_invalid_mode),
         cmocka_unit_test(test_w_vet_opened_file_regular_accepted),
         cmocka_unit_test(test_w_vet_opened_file_fifo_not_root_trusted_dir_accepted),

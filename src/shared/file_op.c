@@ -2879,10 +2879,19 @@ static bool w_vet_link_count(const struct stat * entry_stat, const struct stat *
 }
 
 /**
- * Anyone who can write to a directory can create a FIFO in it, and one whose writer never writes blocks
- * reads, so a FIFO or device not owned by root is trusted only when nobody else can create entries there:
- * the directory is owned by root or the entry's owner, not writable by others, and writable by its group
- * only when that is the entry's group.
+ * A symlink's target cannot be changed, only the link replaced, which takes write access to its directory.
+ * So a link in a directory only root can write to is as trusted as root's own, whoever owns it.
+ *
+ * @return true if a symlink in the directory described by dir_stat can be trusted regardless of its owner.
+ */
+static bool w_vet_fixed_link(const struct stat * dir_stat) {
+    return dir_stat->st_uid == 0 && !(dir_stat->st_mode & (S_IWGRP | S_IWOTH));
+}
+
+/**
+ * Unlike a regular file, a FIFO can block reads, and anyone who can write to a directory can create one.
+ * So a FIFO or device not owned by root is trusted only when its directory is owned by root or the entry's
+ * owner, not writable by others, and group-writable only for the entry's own group.
  *
  * @return true if entry_stat, found in the directory described by dir_stat, can be trusted.
  */
@@ -2899,7 +2908,7 @@ static bool w_vet_special_owner(const struct stat * entry_stat, const struct sta
  *
  * @param fd_stat fstat() result of the opened file.
  * @param dir_stat fstat() result of the directory holding the file's final path entry.
- * @param link_uid Owner of the non-root symlinks followed to reach the file, or NULL if there were none.
+ * @param link_uid Owner of the symlinks followed that someone other than root could replace, or NULL if none.
  * @return 0 if the file may be read, -1 otherwise (errno EINVAL for a file type, EPERM for trust).
  *
  * Not declared in file_op.h: given external linkage only so the unit tests can reach it.
@@ -2917,8 +2926,7 @@ int w_vet_opened_file(const struct stat * fd_stat, const struct stat * dir_stat,
         }
     }
 
-    // fs.protected_symlinks rule, applied to every symlink on the path: a link must be owned by root or
-    // by the owner of the file it leads to.
+    // A link its owner could re-point may only lead to that owner's own file.
     if (link_uid && *link_uid != fd_stat->st_uid) {
         errno = EPERM;
         return -1;
@@ -3049,25 +3057,27 @@ static int w_open_vetted_follow_fd(const char * path) {
                 goto fail;
             }
 
-            // A hard link to someone else's symlink would otherwise pass as that owner's link.
-            if (entry_stat.st_nlink > 1) {
+            if (entry_stat.st_uid != 0 || entry_stat.st_nlink > 1) {
                 if (fstat(dirfd, &dir_stat) < 0) {
                     goto fail;
                 }
+
+                // A hard link to someone else's symlink would otherwise pass as that owner's link.
                 if (!w_vet_link_count(&entry_stat, &dir_stat)) {
                     errno = EPERM;
                     goto fail;
                 }
-            }
 
-            // Root-owned links are trusted; all others must share one owner, checked against the file.
-            if (entry_stat.st_uid != 0) {
-                if (has_link_uid && link_uid != entry_stat.st_uid) {
-                    errno = EPERM;
-                    goto fail;
+                // Links owned by root, or that only root can replace, are trusted; all others must share
+                // one owner, checked against the file.
+                if (entry_stat.st_uid != 0 && !w_vet_fixed_link(&dir_stat)) {
+                    if (has_link_uid && link_uid != entry_stat.st_uid) {
+                        errno = EPERM;
+                        goto fail;
+                    }
+                    link_uid = entry_stat.st_uid;
+                    has_link_uid = true;
                 }
-                link_uid = entry_stat.st_uid;
-                has_link_uid = true;
             }
 
             if (n = w_readlink_vetted(dirfd, name, &entry_stat, target), n <= 0) {

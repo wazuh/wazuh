@@ -558,9 +558,10 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
  * On POSIX the path is resolved one component at a time, so every symlink on it, including one naming a
  * directory, is inspected before it is followed. The final entry is opened non-blocking, so a FIFO cannot
  * block the open. The file is then accepted only when:
- * - it is a regular file, or a FIFO or character device owned by root;
- * - every symlink followed is owned by root or by the file's owner (the Linux `fs.protected_symlinks`
- *   rule, applied to the whole path);
+ * - it is a regular file, or a FIFO or character device owned by root or found in a directory nobody
+ *   else can create entries in;
+ * - every symlink followed is owned by root, sits in a directory only root can write to, or is owned by
+ *   the file's owner;
  * - if it, or any symlink followed, has more than one hard link, the directory holding it is owned by root
  *   or by its owner and is not writable by group or others, since a hard link can be made by anyone who
  *   can write there.
