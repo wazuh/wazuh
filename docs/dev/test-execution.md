@@ -390,8 +390,8 @@ pykwalify==1.7.0
 pytest-html==3.1.1
 ```
 
-The `docker-compose` version needed is **1.28.0 or newer**. **It cannot be 2.X.Y** as it includes breaking changes that
-will make the generation of our API integration test environment fail.
+The `docker-compose` version needed is **1.28.0 or newer**, including the 2.X.Y `docker compose` plugin (this is what
+CI uses).
 
 Once these requirements are satisfied, we can perform the API integration tests:
 
@@ -413,8 +413,6 @@ test_agent_GET_endpoints.tavern.yaml ...........................................
 API integration tests
 
 optional arguments:
-  --build-managers-only
-                  Recreates only the managers' image once the AIT test environment is built.
   --nobuild
                   Prevents rebuilding the environment when running tests once the images are already created.
   --disable-warnings

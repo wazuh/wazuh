@@ -27,13 +27,13 @@ wazuh# cd packages
 
 | Option               | Description                                                         | Default                 |
 |----------------------|---------------------------------------------------------------------|-------------------------|
-| -b, --branch         | Git branch to use (optional)                                        | main                    |
+| -b, --branch         | Git branch to use (optional)                                        | (none: mounts the local checkout) |
 | -t, --target         | Target package to build (required): manager or agent                | -                       |
 | -a, --architecture   | Target architecture (optional): amd64, arm64                        | -                       |
 | -j, --jobs           | Number of parallel jobs (optional)                                  | 2                       |
 | -r, --revision       | Package revision (optional)                                         | 0                       |
 | -s, --store          | Destination path for the package (optional)                         | (output folder created) |
-| -p, --path           | Installation path for the package (optional)                        | /var/ossec              |
+| -p, --path           | Installation path for the package (optional)                        | /var/wazuh-manager (manager), /var/ossec (agent) |
 | -d, --debug          | Build binaries with debug symbols (optional)                        | no                      |
 | -c, --checksum       | Generate checksum on the same directory (optional)                  | no                      |
 | --dont-build-docker  | Use a locally built Docker image (optional)                         | no                      |
@@ -52,13 +52,13 @@ wazuh# cd packages
 **Example Usage:**
 
 1. Build a manager package for amd64 architecture:
-`./wazuh_package_builder.sh -t manager -a amd64 -s /tmp --system rpm`
+`./generate_package.sh -t manager -a amd64 -s /tmp --system rpm`
 
 2. Build a debug agent package for arm64 architecture with checksum generation:
-`./wazuh_package_builder.sh -t agent -a arm64 -s /tmp -d -c --system rpm`
+`./generate_package.sh -t agent -a arm64 -s /tmp -d -c --system rpm`
 
 3. Build a package using local Wazuh source code:
-`./wazuh_package_builder.sh -t manager -a amd64 --sources /path/to/wazuh/source --system rpm`
+`./generate_package.sh -t manager -a amd64 --sources /path/to/wazuh/source --system rpm`
 
 
 **Notes:**

@@ -12,7 +12,7 @@ The minimum toolchain requirements are:
 
 - GNU C/C++ Compiler 13+
 - GNU Make
-- CMake 3.18+
+- CMake 3.22.1+
 - SELinux Policy Core Utils
 - procps
 - curl
@@ -44,7 +44,7 @@ dnf install libcmocka-devel
 
 ### Windows Agent Build Requirements
 
-To build the Windows agent, you need MinGW, CMocka, and Wine.
+To build the Windows agent, you need MinGW and CMocka. Wine is only needed to run the cross-compiled unit tests, not to build.
 
 #### Installing MinGW and Wine on Ubuntu 24.04
 
