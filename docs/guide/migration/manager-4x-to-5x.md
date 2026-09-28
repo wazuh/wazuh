@@ -578,6 +578,15 @@ migrated fleet:
     cannot be sent the upgrade proceeds and the manager logs that step alone, which is worth
     checking before declaring the migration done. See
     [Trust anchor delivery](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents).
+    A 4.x agent does not fetch its task: `wazuh-manager-remoted` hands it over on its next poll of
+    the pending tasks, every `remoted.legacy_task_polling_interval` seconds (default `900`), so an
+    upgrade that shows no activity for a quarter of an hour is waiting, not failing. The two lines
+    to look for, in that order:
+
+    ```console
+    wazuh-manager-remoted: INFO: legacy_task_delivery: agent '003': delivered the manager CA as 'root-ca.pem' for task '...'; the agent can verify this manager after the upgrade
+    wazuh-manager-remoted: INFO: legacy_task_delivery: successfully delivered remote_upgrade task '...' to agent '003' (wpk: '...')
+    ```
   - **Package upgrade on the host.** Nothing is delivered. Place the manager's
     `/var/wazuh-manager/etc/certs/root-ca.pem` at `/var/ossec/etc/certs/root-ca.pem` on Linux and
     macOS, or `<installdir>\certs\root-ca.pem` on Windows, before upgrading:
