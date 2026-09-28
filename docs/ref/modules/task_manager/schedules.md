@@ -160,9 +160,9 @@ retention period after it is marked disconnected, not the moment it is marked.
 protected is how long the handler holds its executor slot, measured in seconds, while the batch is
 counted in agents.
 
-If `wazuh-authd` refuses a removal because its own deletion backlog is full, the sweep stops there
+If `wazuh-manager-authd` refuses a removal because its own deletion backlog is full, the sweep stops there
 and retries on the queue's backoff ladder rather than reporting success — the agent is still there.
-An agent that is already gone, or one whose deletion `wazuh-authd` has already journaled, counts as
+An agent that is already gone, or one whose deletion `wazuh-manager-authd` has already journaled, counts as
 done.
 
 **Deletion is by agent id**, which is in hand from the candidate query. Nothing round-trips through
