@@ -138,6 +138,66 @@ def test_delete_all_expired_rules(db_setup):
         assert tm.delete_all_expired_rules()
 
 
+@pytest.fixture
+def raised_token_timeout(tmp_path):
+    """Write a security.yaml raising the token lifetime to 3600s while the in-memory copy still says 900s.
+
+    This is the state left by `PUT /security/config` in the process that creates revocation rules:
+    the file is updated and the `security_conf` imported at start-up is not.
+    """
+    security_file = tmp_path / 'security.yaml'
+    security_file.write_text(yaml.dump({'auth_token_exp_timeout': 3600}))
+    with patch('wazuh.rbac.orm.SECURITY_CONFIG_PATH', new=str(security_file)), \
+            patch('api.configuration.SECURITY_CONFIG_PATH', new=str(security_file)), \
+            patch.dict('api.configuration.security_conf', {'auth_token_exp_timeout': 900}):
+        yield 3600
+
+
+@pytest.mark.parametrize('kind, table', [
+    ('users', 'UsersTokenBlacklist'),
+    ('roles', 'RolesTokenBlacklist'),
+    ('run_as', 'RunAsTokenBlacklist'),
+])
+def test_token_rules_sized_from_security_file(db_setup, raised_token_timeout, kind, table):
+    """Check that every revocation rule lasts the timeout in security.yaml, not the stale in-memory one."""
+    user_ids, role_ids = add_token(db_setup)
+    rule_kwargs = {'users': {'users': {user_ids[0]}}, 'roles': {'roles': {role_ids[0]}},
+                   'run_as': {'run_as': True}}[kind]
+
+    with patch('wazuh.rbac.orm.time', return_value=1609459200.0):
+        with db_setup.TokenManager() as tm:
+            tm.delete_all_rules()
+            assert tm.add_user_roles_rules(**rule_kwargs) is True
+            rules = tm.session.query(getattr(db_setup, table)).all()
+
+    assert len(rules) == 1
+    assert rules[0].is_valid_until - rules[0].nbf_invalid_until == raised_token_timeout * 1000
+
+
+def test_revocation_outlives_stale_token_timeout(db_setup, raised_token_timeout):
+    """Check that a revocation is not purged at the previous, shorter timeout while the revoked token is alive."""
+    with db_setup.AuthenticationManager() as am:
+        am.add_user(username='revoked_user', password='testingA1!')
+        user_id = am.get_user('revoked_user')['id']
+
+    revoke_time = 1609459200.0
+    token_nbf_ms = int(revoke_time * 1000) - 1000
+    with patch('wazuh.rbac.orm.time', return_value=revoke_time):
+        with db_setup.TokenManager() as tm:
+            assert tm.add_user_roles_rules(users={user_id})
+
+    # Past the old 900s timeout, the token (valid for 3600s) must still be revoked.
+    with patch('wazuh.rbac.orm.time', return_value=revoke_time + 901):
+        with db_setup.TokenManager() as tm:
+            tm.delete_all_expired_rules()
+            assert not tm.is_token_valid(user_id=user_id, token_nbf_time=token_nbf_ms)
+
+    # Past the configured timeout the token has expired on its own, and the rule may go.
+    with patch('wazuh.rbac.orm.time', return_value=revoke_time + raised_token_timeout + 1):
+        with db_setup.TokenManager() as tm:
+            assert tm.delete_all_expired_rules() == ([user_id], [])
+
+
 def test_add_user(db_setup):
     """Check user is added to database"""
     with db_setup.AuthenticationManager() as am:
