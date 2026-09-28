@@ -67,7 +67,7 @@ Follow these steps in order to migrate a decoder:
    - **Schema fields auto-type**: `<source.ip>` (IP), `<source.port>` (number), `<@timestamp>` (date).
    - **Force a type with a suffix**: `<source.port/long>`.
    - **Optional segments**: `connected from <source.ip>(? port <source.port>)` — matches an optional ` port N` suffix. For optional fields: `<?optional.field>`.
-   - **Match-but-don't-map (wildcard)**: `<~>` matches and discards any content. Add an optional name to distinguish multiple wildcards in one expression (`<~skip>`), and a type suffix to constrain what it matches (`<~skip/long>` only matches integer content).
+   - **Match-but-don't-map (wildcard)**: `<~>` matches and discards any content. A type suffix constrains what it matches without mapping it (`<~/long>` only matches integer content, `<~/literal/->` only a literal `-`). The wildcard cannot be named: `<~skip>` is not a wildcard but a target field called `~skip`, which the schema validator rejects because it is neither a schema field nor a `_`-prefixed temporary, so the decoder fails to build.
    - **Temporary vars** use a _ prefix (e.g. `<_ssh.event>`) and are stripped after decoding.
    - **You can list multiple expressions under one parse|**: they're tried in order, first match wins.
 5. **Add static assignments**: Anything you set unconditionally (event category, dataset, outcome) goes in **map** blocks inside normalize. Each normalize block can have its own check, parse|, and map, and failed blocks are skipped rather than failing the whole decoder.
