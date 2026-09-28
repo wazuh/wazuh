@@ -131,6 +131,24 @@ struct Config
 
 An alternative constructor accepts a raw JSON OSSEC configuration string directly.
 
+Beyond the `Config` struct fields above, `main.cpp` reads eight more settings
+from the same `conf` mechanism (env var, `internal_options.conf`, or
+default — env var wins) and folds them into the JSON handed to
+`IndexerConnectorAsync`. They're documented by their `internal_options.conf`
+key in [Engine Module — Internal options reference § Indexer connector](../../../../docs/ref/modules/engine/README.md#indexer-connector);
+here's the env-var equivalent for each:
+
+| Internal option | Env Override | Default |
+|-----------------|--------------|---------|
+| `analysisd.indexer_queue_max_bytes` | `WAZUH_INDEXER_QUEUE_MAX_BYTES` | `67108864` (64 MB) |
+| `analysisd.indexer_bulk_max_bytes` | `WAZUH_INDEXER_BULK_MAX_BYTES` | `8388608` (8 MB) |
+| `analysisd.indexer_flush_interval` | `WAZUH_INDEXER_FLUSH_INTERVAL` | `20` |
+| `analysisd.indexer_logger_queue_size` | `WAZUH_INDEXER_LOGGER_QUEUE_SIZE` | `8` |
+| `analysisd.indexer_logger_threads` | `WAZUH_INDEXER_LOGGER_THREADS` | `1` |
+| `analysisd.indexer_max_retry_delay` | `WAZUH_INDEXER_MAX_RETRY_DELAY` | `15` |
+| `analysisd.indexer_request_timeout` | `WAZUH_INDEXER_REQUEST_TIMEOUT` | `60` |
+| `analysisd.indexer_monitoring_interval` | `WAZUH_INDEXER_MONITORING_INTERVAL` | `10` |
+
 ## Directory Structure
 
 ```

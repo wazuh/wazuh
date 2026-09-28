@@ -114,7 +114,7 @@ The default 1 MiB limit is enough for the majority of tasks. Raise it only if th
 After editing configuration:
 
 ```bash
-/var/wazuh-manager/bin/wazuh-logtest-config
+/var/wazuh-manager/bin/wazuh-manager-conf validate
 ```
 
 ### Check Module Status
