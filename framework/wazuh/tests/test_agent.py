@@ -491,6 +491,17 @@ def test_agent_get_agents_in_group_q_formats(socket_mock, send_mock, mock_get_gr
     assert kwargs['q'] == expected_q
 
 
+@pytest.mark.parametrize('q', ['name=a),(id>0', '(name=a'])
+@patch('wazuh.agent.get_agents')
+@patch('wazuh.agent.get_groups', return_value=['default'])
+def test_agent_get_agents_in_group_unbalanced_q(mock_get_groups, mock_get_agents, q):
+    """A q closing the `group=X;(q)` wrapper from inside would escape the group condition, so it is rejected."""
+    with pytest.raises(WazuhError, match='.* 1407 .*'):
+        get_agents_in_group(group_list=['default'], q=q)
+
+    mock_get_agents.assert_not_called()
+
+
 @pytest.mark.parametrize('agent_list, expected_items', [
     (['001', '002', '003'], ['001', '002', '003']),
     (['001', '400', '002', '500'], ['001', '002'])
@@ -1260,6 +1271,14 @@ def test_agent_get_outdated_agents(socket_mock, send_mock):
         assert item['id'] in outdated_agents
     # Check failed items
     assert result.total_failed_items == 0
+
+
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_outdated_agents_unbalanced_q(socket_mock, send_mock):
+    """A q closing the `version!=X;(q)` wrapper from inside would escape the version condition, so it is rejected."""
+    with pytest.raises(WazuhError, match='.* 1407 .*'):
+        get_outdated_agents(agent_list=short_agent_list, q='id=001),(id>0')
 
 
 @pytest.mark.parametrize('agent_set, expected_errors_and_items, result_from_socket, filters, raise_error', [

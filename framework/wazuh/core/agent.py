@@ -29,6 +29,7 @@ from wazuh.core.utils import (
     WazuhDBQuery,
     WazuhDBQueryGroupBy,
     WazuhDBBackend,
+    validate_query_parentheses,
     get_utc_now,
     get_date_from_timestamp,
 )
@@ -275,8 +276,11 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             and self.legacy_filters["older_than"] != "0s"
         ):
             if self.legacy_filters["older_than"]:
+                if self.q:
+                    # A ')' in q closing a group it never opened would escape the older_than condition
+                    validate_query_parentheses(self.q)
                 self.q = (
-                    (self.q + ";" if self.q else "")
+                    (f"({self.q});" if self.q else "")
                     + "(lastKeepAlive>{0};status!=never_connected,dateAdd>{0};status=never_connected)".format(
                         self.legacy_filters["older_than"]
                     )
@@ -489,8 +493,11 @@ class WazuhDBQueryGroup(WazuhDBQuery):
             and self.legacy_filters["older_than"] != "0s"
         ):
             if self.legacy_filters["older_than"]:
+                if self.q:
+                    # A ')' in q closing a group it never opened would escape the older_than condition
+                    validate_query_parentheses(self.q)
                 self.q = (
-                    (self.q + ";" if self.q else "")
+                    (f"({self.q});" if self.q else "")
                     + "(lastKeepAlive>{0};status!=never_connected,dateAdd>{0};status=never_connected)".format(
                         self.legacy_filters["older_than"]
                     )

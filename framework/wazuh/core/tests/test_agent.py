@@ -235,6 +235,63 @@ def test_WazuhDBQueryAgents_parse_legacy_filters(mock_socket_conn):
         'Query returned does not match the expected one'
 
 
+@patch('socket.socket.connect')
+def test_WazuhDBQueryAgents_parse_legacy_filters_older_than_keeps_q_grouped(mock_socket_conn):
+    """An OR in the user's q must not absorb the older_than condition appended after it."""
+    query_agent = WazuhDBQueryAgents(filters={'older_than': 'test'}, query='name=a,name=b')
+    query_agent._parse_legacy_filters()
+
+    assert query_agent.q == '(name=a,name=b);' \
+        '(lastKeepAlive>test;status!=never_connected,dateAdd>test;status=never_connected)'
+
+
+@patch('socket.socket.connect')
+def test_WazuhDBQueryAgents_parse_legacy_filters_older_than_rejects_unbalanced_q(mock_socket_conn):
+    """'(q);(older_than)' is balanced even when q is not, so q is checked before it is wrapped."""
+    query_agent = WazuhDBQueryAgents(filters={'older_than': 'test'}, query='name=a),(id>0')
+
+    with pytest.raises(WazuhError, match='.* 1407 .*'):
+        query_agent._parse_legacy_filters()
+
+
+@pytest.mark.parametrize('rbac_negate, rbac_operator', [
+    (False, 'IN'),
+    (True, 'NOT IN'),
+])
+@pytest.mark.parametrize('q, expected_where', [
+    ('name=a,id>0',
+     '((name = :name$0 COLLATE NOCASE) OR (id > :id$1 COLLATE NOCASE))'),
+    ('(name=a,name=b);id>0',
+     '(((name = :name$0 COLLATE NOCASE) OR (name = :name$1 COLLATE NOCASE)) AND (id > :id$1 COLLATE NOCASE))'),
+    ('(((name=a,name=b)),id>0)',
+     '(((((name = :name$0 COLLATE NOCASE) OR (name = :name$1 COLLATE NOCASE))) OR (id > :id$1 COLLATE NOCASE)))'),
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQueryAgents_rbac_filter_is_anded_with_whole_q(mock_socket_conn, q, expected_where,
+                                                               rbac_negate, rbac_operator):
+    """An OR in q must stay inside the q group, so every branch of it is restricted by the RBAC filter."""
+    query_agent = WazuhDBQueryAgents(filters={'rbac_ids': ['001', '002']}, rbac_negate=rbac_negate, query=q)
+    query_agent._add_filters_to_query()
+
+    where = query_agent.query.split(' WHERE ', 1)[1].rstrip()
+    assert where == f'(id {rbac_operator} (:rbac_id)) AND {expected_where}'
+    assert where.count('(') == where.count(')')
+
+
+@pytest.mark.parametrize('q', [
+    'name=a),(id>0',
+    'name=a;(id>0',
+    '(name=a,id>0))',
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQueryAgents_unbalanced_q_is_rejected(mock_socket_conn, q):
+    """A q that closes a group it never opened could otherwise close the group that holds q."""
+    query_agent = WazuhDBQueryAgents(filters={'rbac_ids': ['001']}, rbac_negate=False, query=q)
+
+    with pytest.raises(WazuhError, match='.* 1407 .*'):
+        query_agent._add_filters_to_query()
+
+
 @pytest.mark.parametrize('field_name, field_filter, q_filter', [
     ('group', 'field', {'value': '1', 'operator': '='}),
     ('group', 'test', {'value': '1', 'operator': '!='}),

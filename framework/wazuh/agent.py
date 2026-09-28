@@ -22,7 +22,7 @@ from wazuh.core.wdb_http import get_wdb_http_client
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_with_mode, process_array, clear_temporary_caches, \
-    full_copy
+    full_copy, validate_query_parentheses
 from wazuh.rbac.decorators import audit_agent_keys_read, expose_resources, async_list_handler
 
 logger = logging.getLogger('wazuh')
@@ -623,6 +623,9 @@ def get_agents_in_group(group_list: list, offset: int = 0, limit: int = common.D
         raise WazuhResourceNotFound(1710)
 
     q_group = f'group={group_list[0]}'
+    if q:
+        # A ')' in q closing a group it never opened would close the wrapper and escape the group condition
+        validate_query_parentheses(q)
     q = f'{q_group};({q})' if q else q_group
 
     return get_agents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, q=q,
@@ -1445,6 +1448,9 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
 
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
+        if q:
+            # A ')' in q closing a group it never opened would close the wrapper and escape the version condition
+            validate_query_parentheses(q)
         with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
                                 query=f"version!={manager_version}" + (f";({q})" if q else ''),
                                 **rbac_filters) as db_query:
