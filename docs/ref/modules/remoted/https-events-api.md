@@ -414,15 +414,16 @@ The one `503` that *does* carry a `Retry-After` is relayed, not generated: on `/
 digits-only `Retry-After` from the inventory sync server is passed through, since there the
 downstream answer **is** the session result.
 
-**Statuses remoted never sends.** `429 Too Many Requests` is not part of this contract — capacity is
-shed with `503`, as above. Neither is `426 Upgrade Required`. The agent's client classifies both as
-retryable anyway, so an agent that logs one has been answered by something between it and the
-manager (a load balancer, a proxy, a WAF) rather than by remoted. Treat either as a sign to look at
-the intermediary — see [Load balancers](load-balancers/README.md).
+**Statuses remoted never sends.** `426 Upgrade Required` is not part of this contract, and `429`
+is answered only on the three rate-limited routes above — capacity is shed with `503`, never `429`.
+The agent's client classifies both as retryable anyway, so an agent that logs a `426`, or a `429`
+on any other route, has been answered by something between it and the manager (a load balancer, a
+proxy, a WAF) rather than by remoted. Treat it as a sign to look at the intermediary — see
+[Load balancers](load-balancers/README.md).
 
 ## Endpoints
 
-The listener exposes **ten** agent-facing routes. Every one of them except `GET /`, `GET /cacerts`
+The listener exposes **eleven** agent-facing routes. Every one of them except `GET /`, `GET /cacerts`
 and `POST /enroll` is authenticated with the bearer token above.
 
 Every path on this page is the endpoint's **logical** path. When
