@@ -216,6 +216,38 @@ its purge finish, and then the id can be reused.
 closed, because allowing the reuse risks an outstanding purge deleting the new agent's documents.
 Auto-assigned ids are unaffected — the id counter comes from authd's own journal.
 
+## Command-line options
+
+`wazuh-manager-control` starts the daemon without arguments; the flags below are for running
+`/var/wazuh-manager/bin/wazuh-manager-authd` by hand, typically for troubleshooting. The long
+options belong to the token utility and are described in [Enrollment tokens](#enrollment-tokens).
+
+```text
+wazuh-manager-authd -[VhdtfP] [-u user] [-g group] [-D dir] [-p port] [-c ciphersuites] [-v path [-s]] [-x path] [-k path]
+```
+
+| Flag | Effect | Default |
+| --- | --- | --- |
+| `-V` | Print the version and license, then exit. | — |
+| `-h` | Print the help message, then exit. | — |
+| `-d` | Enable debug logging. Repeat it (`-dd`) to raise the level. When given, `authd.debug` in the internal options is not read. | off |
+| `-t` | Read and validate `etc/wazuh-manager.conf`, then exit `0` on success. It also checks that the configured certificate files exist. Nothing is bound or started. | — |
+| `-f` | Run in the foreground instead of daemonizing. **Also forces [`disabled`](configuration.md#disabled) to `no`**, so the daemon starts even when the configuration disables it. | off |
+| `-u <user>` | User the daemon switches to after startup. | `wazuh-manager` |
+| `-g <group>` | Group the daemon switches to after startup. | `wazuh-manager` |
+| `-D <dir>` | Accepted, but does not change the working directory: the daemon has already moved into the installation directory before it reads its options, and resolves every path from there. The value only shows up in a debug message. | `/var/wazuh-manager` |
+| `-p <port>` | Listening port. Overrides [`port`](configuration.md#port); `0` or a non-numeric value is rejected. | `1515` |
+| `-P` | Require the shared enrollment password. Overrides [`use_password`](configuration.md#use_password), but can only turn it on. | off |
+| `-c <suites>` | TLS 1.3 cipher suites. Overrides [`ciphers`](configuration.md#ciphers); validated the same way. | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` |
+| `-v <path>` | CA certificate used to verify agent certificates. Overrides [`ssl_agent_ca`](configuration.md#ssl_agent_ca). | none |
+| `-s` | Verify that the agent certificate's CN matches its IP. Overrides [`ssl_verify_host`](configuration.md#ssl_verify_host), but can only turn it on; it needs a CA from `-v` or `ssl_agent_ca`. | off |
+| `-x <path>` | Manager certificate. Overrides [`ssl_manager_cert`](configuration.md#ssl_manager_cert). | `etc/certs/remoted.pem` |
+| `-k <path>` | Manager private key. Overrides [`ssl_manager_key`](configuration.md#ssl_manager_key). | `etc/certs/remoted-key.pem` |
+
+The overrides are applied after the configuration file is read, so a flag always wins over the
+matching `<auth>` option. `-P`, `-s` and `-f` can only enable their setting: no flag turns one off.
+The configuration file still has to be valid; the flags do not replace it.
+
 ## Enrollment tokens
 
 An enrollment token is the credential a new agent pastes to enroll over `POST /enroll` without the

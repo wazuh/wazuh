@@ -316,4 +316,4 @@ What each status code tells you:
 
 Ready-to-run configurations covering these scenarios — including the ones written to fail, so you
 can see each trap in action — ship with the source under
-`src/remoted/remoted_module/tools/load_balancer/nginx/`.
+`src/remoted/remoted_module/tools/load_balancer/base/nginx/`.

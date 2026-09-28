@@ -463,7 +463,7 @@ Debug logging level for remoted module.
 Network receive buffer size in bytes.
 
 - **Default value:** `4096`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `1024` to `16384`
 - **Note:** Larger values may improve throughput on high-bandwidth networks
 
 ### remoted.send_timeout_to_retry
@@ -471,7 +471,7 @@ Network receive buffer size in bytes.
 Timeout in seconds before retrying a failed send operation.
 
 - **Default value:** `1`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `1` to `60`
 - **Note:** Lower values increase retry frequency; higher values reduce network overhead
 
 ### remoted.worker_pool
@@ -479,7 +479,7 @@ Timeout in seconds before retrying a failed send operation.
 Number of worker threads for processing agent messages.
 
 - **Default value:** `4`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `1` to `16`
 - **Note:** Increase for high-throughput environments (e.g., `8` for >50K events/sec)
 
 ### remoted.sender_pool
@@ -487,7 +487,7 @@ Number of worker threads for processing agent messages.
 Number of sender threads for forwarding events to the engine.
 
 - **Default value:** `8`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `1` to `64`
 - **Note:** Increase for high-throughput environments (e.g., `16` for >50K events/sec)
 
 ### remoted.control_msg_queue_size
@@ -495,7 +495,7 @@ Number of sender threads for forwarding events to the engine.
 Queue size for agent keep-alive and control messages.
 
 - **Default value:** `16384`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `4096` to `1048576`
 - **Note:** Increase for large agent counts (e.g., `32768` for >10K agents)
 
 ### remoted.batch_events_capacity
@@ -503,7 +503,7 @@ Queue size for agent keep-alive and control messages.
 Queue capacity for batching events before forwarding to the engine.
 
 - **Default value:** `131072`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `0` to `1048576`; `0` removes the item-count cap
 - **Note:** Increase for high event rates (e.g., `262144` for >50K events/sec)
 
 ### remoted.queue_max_bytes
@@ -570,7 +570,7 @@ Soft file descriptor limit remoted raises itself to at start.
   (`LimitNOFILE=65536` in the service unit, the init script, or the container's `ulimits.nofile`),
   and never lowers a soft limit that is already higher. A hard limit below this value is kept and
   logged once as a warning; raise that limit first to go higher. HTTPS connections are bounded by
-  `remoted.max_parallel_connections` (default `512`), far below this value; only a large 4.x fleet
+  `remoted.max_parallel_connections` (default `256`), far below this value; only a large 4.x fleet
   on the legacy TCP listener needs more. `GET /manager/configuration` reports the effective value.
   See [File descriptor limits](../../configuration/manager/README.md#file-descriptor-limits).
 
@@ -579,7 +579,7 @@ Soft file descriptor limit remoted raises itself to at start.
 Maximum bytes to send in a single write operation to an agent.
 
 - **Default value:** `4096` (4 KB)
-- **Allowed values:** Positive integer (bytes)
+- **Allowed values:** Integer from `512` to `16384` (bytes)
 - **Note:** Larger values may improve throughput but increase network buffer requirements
 
 ### remoted.buffer_relax
@@ -595,7 +595,7 @@ Send buffer flushing mode selector.
 Size of send buffer per agent connection in bytes.
 
 - **Default value:** `131072` (128 KB)
-- **Allowed values:** Positive integer (bytes)
+- **Allowed values:** Integer from `65536` to `1048576` (bytes)
 - **Note:** Larger buffers handle burst traffic better
 
 ### remoted.recv_timeout
@@ -603,7 +603,7 @@ Size of send buffer per agent connection in bytes.
 Timeout in seconds for receiving data from agents.
 
 - **Default value:** `1`
-- **Allowed values:** Positive integer (seconds)
+- **Allowed values:** Integer from `1` to `60` (seconds)
 - **Note:** Agent marked as unresponsive if no data received within timeout
 
 ### remoted.tcp_keepidle
@@ -611,7 +611,7 @@ Timeout in seconds for receiving data from agents.
 Time in seconds before sending TCP keepalive probes on idle connections.
 
 - **Default value:** `30`
-- **Allowed values:** Positive integer (seconds)
+- **Allowed values:** Integer from `1` to `7200` (seconds)
 - **Note:** Helps detect dead connections; platform-specific support required
 
 ### remoted.tcp_keepintvl
@@ -619,7 +619,7 @@ Time in seconds before sending TCP keepalive probes on idle connections.
 Interval in seconds between TCP keepalive probes.
 
 - **Default value:** `10`
-- **Allowed values:** Positive integer (seconds)
+- **Allowed values:** Integer from `1` to `100` (seconds)
 - **Note:** Works with `tcp_keepidle` and `tcp_keepcnt`
 
 ### remoted.tcp_keepcnt
@@ -627,31 +627,33 @@ Interval in seconds between TCP keepalive probes.
 Number of unacknowledged TCP keepalive probes before considering connection dead.
 
 - **Default value:** `3`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `1` to `50`
 - **Note:** Total dead detection time = `tcp_keepidle + (tcp_keepintvl × tcp_keepcnt)`
 
 ### remoted.merge_shared
 
-Enable merging shared configuration files for agents.
+Build each group's `merged.mg` from the files in its `shared/` directory.
 
-- **Default value:** `yes`
-- **Allowed values:** `yes`, `no`
-- **Note:** Combines group-specific configurations; disable for troubleshooting
+- **Default value:** `1`
+- **Allowed values:** `0` (disabled), `1` (enabled)
+- **Note:** With `0`, remoted does not rebuild `merged.mg`. It is also forced to `0` on a cluster
+  worker node and when remoted is started with `-m`.
 
 ### remoted.pass_empty_keyfile
 
-Allow remoted to start even if client.keys file is empty.
+Allow remoted to start when `client.keys` is missing, unreadable or empty.
 
-- **Default value:** `yes`
-- **Allowed values:** `yes`, `no`
-- **Note:** Useful for fresh installations; disable in production for security
+- **Default value:** `1`
+- **Allowed values:** `0` (disabled), `1` (enabled)
+- **Note:** With `0`, remoted exits whenever it loads a `client.keys` with no agents, including the
+  first start of a manager that has none registered yet.
 
 ### remoted.request_pool
 
 Size of the request pool for handling agent communications.
 
 - **Default value:** `1024`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `1` to `4096`
 - **Note:** Increase for high-concurrency scenarios
 
 ### remoted.request_timeout
@@ -659,7 +661,7 @@ Size of the request pool for handling agent communications.
 Timeout in seconds for agent request operations.
 
 - **Default value:** `10`
-- **Allowed values:** Positive integer (seconds)
+- **Allowed values:** Integer from `1` to `600` (seconds)
 - **Note:** Maximum time to wait for agent response
 
 ### remoted.response_timeout
@@ -667,7 +669,7 @@ Timeout in seconds for agent request operations.
 Timeout in seconds for manager response operations to agents.
 
 - **Default value:** `60`
-- **Allowed values:** Positive integer (seconds)
+- **Allowed values:** Integer from `1` to `3600` (seconds)
 - **Note:** Maximum time for manager to respond to agent requests
 
 ### remoted.request_rto_sec
@@ -675,7 +677,7 @@ Timeout in seconds for manager response operations to agents.
 Retransmission timeout (seconds part) for agent requests.
 
 - **Default value:** `1`
-- **Allowed values:** Positive integer (seconds)
+- **Allowed values:** Integer from `0` to `60` (seconds)
 - **Note:** Combined with `request_rto_msec` for total RTO
 
 ### remoted.request_rto_msec
@@ -691,7 +693,7 @@ Retransmission timeout (milliseconds part) for agent requests.
 Maximum retry attempts for failed agent communications.
 
 - **Default value:** `4`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `1` to `16`
 - **Note:** After this many failures, operation is abandoned
 
 ### remoted.shared_reload
@@ -699,31 +701,35 @@ Maximum retry attempts for failed agent communications.
 Interval in seconds for reloading shared configuration files.
 
 - **Default value:** `10`
-- **Allowed values:** Positive integer (seconds)
+- **Allowed values:** Integer from `1` to `18000` (seconds)
 - **Note:** How often remoted checks for changes in `shared/` directory
 
 ### remoted.disk_storage
 
-Enable disk-based storage for agent event queue persistence.
+Where remoted builds a group's `merged.mg` before comparing it with the current one.
 
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-- **Note:** Persists queued events across remoted restarts; impacts I/O performance
+- **Default value:** `0`
+- **Allowed values:** `0` (in memory), `1` (in a temporary `merged.mg.tmp` file next to it)
+- **Note:** It does not persist events or any queue. `1` trades memory for disk I/O while building
+  large shared configurations.
 
 ### remoted.verify_msg_id
 
-Verify message ID sequence from agents to detect tampering or replay attacks.
+Reject agent messages whose counter is not higher than the last one received from that agent,
+to detect replayed messages.
 
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-- **Note:** Enable for additional security; may cause issues with clock skew or agent restarts
+- **Default value:** `0`
+- **Allowed values:** `0` (disabled), `1` (enabled)
+- **Note:** `1` requires `remoted.worker_pool` set to `1`; with more workers remoted refuses to
+  start, because message order cannot be guaranteed. It checks only messages on the legacy (4.x)
+  listener; HTTPS agents are authenticated per request with their bearer token.
 
 ### remoted.batch_events_per_agent_capacity
 
 Maximum events to batch per agent before forwarding to engine.
 
 - **Default value:** `131072`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `0` to `1048576`; `0` removes the per-agent cap
 - **Note:** Higher values improve throughput but increase latency
 
 ### remoted.recv_counter_flush
@@ -731,7 +737,7 @@ Maximum events to batch per agent before forwarding to engine.
 Message count threshold for flushing receive counters to statistics.
 
 - **Default value:** `128`
-- **Allowed values:** Positive integer (message count)
+- **Allowed values:** Integer from `10` to `999999` (message count)
 - **Note:** Counters are flushed after this many messages received; internal monitoring metric
 
 ### remoted.comp_average_printout

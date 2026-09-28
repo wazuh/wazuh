@@ -101,7 +101,7 @@ when it silently is not.
 
 ### Endpoints
 
-Ten agent-facing routes. Full request/response contracts in
+Eleven agent-facing routes. Full request/response contracts in
 [HTTPS Agent API](https-events-api.md); machine-readable in [`agent-api.yaml`](agent-api.yaml).
 
 | Route | Purpose | Downstream |
@@ -109,6 +109,7 @@ Ten agent-facing routes. Full request/response contracts in
 | `GET /` | Unauthenticated liveness probe | — |
 | `GET /cacerts` | Unauthenticated CA distribution; the agent must independently authenticate the CA, for example with a pin | filesystem |
 | `POST /enroll` | Agent registration; bridges to `authd`, which keeps all enrollment logic | authd local socket |
+| `POST /enroll/secret` | Authenticated re-enrollment secret for agents that hold a valid key but no secret; the key is not rotated | authd local socket |
 | `POST /stateless` | Event batches (H/E wire format) | Engine, `POST /events/enriched` |
 | `POST /stateful` | Whole inventory sync sessions, relayed opaquely | Inventory Sync Server |
 | `POST /control` | `startup` / `notify` / `shutdown`; returns limits, groups, change-detection hashes and pending tasks | wazuh-db, task-manager |
@@ -228,7 +229,7 @@ For the complete set, see [Configuration](configuration.md).
 
 ## References
 
-- [HTTPS Agent API](https-events-api.md) — the agent-facing protocol and all ten endpoints
+- [HTTPS Agent API](https-events-api.md) — the agent-facing protocol and all eleven endpoints
 - [Endpoint reference](agent-api-reference.html) — the same contract as OpenAPI
 - [Configuration](configuration.md)
 - [Metrics](metrics.md)

@@ -422,7 +422,7 @@ the intermediary — see [Load balancers](load-balancers/README.md).
 
 ## Endpoints
 
-The listener exposes **ten** agent-facing routes. Every one of them except `GET /`, `GET /cacerts`
+The listener exposes **eleven** agent-facing routes. Every one of them except `GET /`, `GET /cacerts`
 and `POST /enroll` is authenticated with the bearer token above.
 
 Every path on this page is the endpoint's **logical** path. When

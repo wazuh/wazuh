@@ -17,6 +17,7 @@ For module overview and architecture, see [Auth Daemon Module](README.md).
 ## Configuration Options
 
 The `<auth>` section configures the enrollment service that handles agent registration.
+Some options can also be set with a [command-line flag](README.md#command-line-options) when the daemon is run by hand; a flag always wins over the file.
 
 ### disabled
 
@@ -25,6 +26,7 @@ Disables the enrollment service entirely.
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
 - **Note:** When the `<auth>` block is present but this option is not set, the service starts
+- **Note:** The `-f` [command-line flag](README.md#command-line-options) (run in the foreground) forces this to `no`.
 
 ### port
 
@@ -33,6 +35,7 @@ TCP port on which the enrollment service listens.
 - **Default value:** `1515`
 - **Allowed values:** Integer from `1` to `65535`
 - **Note:** Only `0` is rejected by the code; there is no upper-bound check, so values above `65535` are silently truncated rather than validated. Operators should keep the configured value within the valid port range themselves.
+- **Note:** The `-p` [command-line flag](README.md#command-line-options) overrides this value.
 
 ### ipv6
 
@@ -76,6 +79,7 @@ Require agents to provide a shared enrollment password.
 
 - **Default value:** `no` (the configuration shipped by the installer sets it to `yes`)
 - **Allowed values:** `yes`, `no`
+- **Note:** The `-P` [command-line flag](README.md#command-line-options) forces this to `yes`; no flag turns it off.
 
 When enabled, the password is read from `/var/wazuh-manager/etc/authd.pass` (a single line). If the file does not exist, `wazuh-manager-authd` generates a random password on start (32 bytes straight from the CSPRNG, written as 64 lowercase hexadecimal characters), stores it in that file, and reuses it on later starts. A password written by hand is not held to that format: any single line longer than two characters is accepted. If the file exists but is empty or invalid, `wazuh-manager-authd` does not start. In a cluster, the password belongs to the master and is distributed to the workers automatically; a worker rejects enrollment until it receives the file.
 
@@ -124,6 +128,7 @@ Colon-separated list of TLS 1.3 cipher suites accepted by the enrollment TLS ses
 
 - **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
 - **Allowed values:** Colon-separated combination of `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`
+- **Note:** The `-c` [command-line flag](README.md#command-line-options) overrides this value.
 
 ### ssl_agent_ca
 
@@ -131,6 +136,7 @@ Path to the CA certificate used to verify agent client certificates during mutua
 
 - **Default value:** none (agent certificate verification disabled)
 - **Allowed values:** Path to a PEM-encoded CA certificate (existence checked at startup)
+- **Note:** The `-v` [command-line flag](README.md#command-line-options) overrides this value.
 
 ### ssl_verify_host
 
@@ -138,6 +144,7 @@ Verify that the CN of the agent certificate matches the agent's IP address. Requ
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
+- **Note:** The `-s` [command-line flag](README.md#command-line-options) forces this to `yes`; no flag turns it off.
 
 ### ssl_manager_cert
 
@@ -147,6 +154,7 @@ identity, since `/enroll`'s mTLS mode treats this certificate as the enrollment 
 
 - **Default value:** `etc/certs/remoted.pem` (resolved relative to the Wazuh install directory, e.g. `/var/wazuh-manager/etc/certs/remoted.pem`) -- authd does not generate or own a certificate of its own: it reuses the HTTPS agent listener's pair, which the credential resolver issues at installation and which a deployment on its own PKI replaces out of band (Wazuh installation assistant, `wazuh-certs-tool`; see [Deploy certificates](../../getting-started/installation.md#using-certificates-issued-elsewhere)) and the manager fails closed without it. When the SSL context cannot be built from these files authd logs `SSL context setup failed (certificate '…', key '…')` with the provisioning hint and exits
 - **Allowed values:** Path to a PEM-encoded certificate (relative paths resolved from the Wazuh install directory)
+- **Note:** The `-x` [command-line flag](README.md#command-line-options) overrides this value.
 
 ### ssl_manager_key
 
@@ -154,6 +162,7 @@ Path to the private key corresponding to `ssl_manager_cert`.
 
 - **Default value:** `etc/certs/remoted-key.pem` (resolved relative to the Wazuh install directory)
 - **Allowed values:** Path to a PEM-encoded private key (relative paths resolved from the Wazuh install directory)
+- **Note:** The `-k` [command-line flag](README.md#command-line-options) overrides this value.
 
 ### force
 
