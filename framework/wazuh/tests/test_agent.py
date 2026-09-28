@@ -366,6 +366,40 @@ async def test_agent_restart_reload_agents_request_time(exit_mock, enter_mock, i
         assert isinstance(create_mock.call_args[0][2], int)
 
 
+@pytest.mark.parametrize('func, task_mock_name', [
+    (restart_agents, 'wazuh.agent.create_restart_tasks'),
+    (reload_agents, 'wazuh.agent.create_reload_tasks'),
+])
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
+@patch('wazuh.agent.WazuhDBQueryAgents.run')
+@patch('wazuh.agent.WazuhDBQueryAgents.__init__', return_value=None)
+@patch('wazuh.agent.WazuhDBQueryAgents.__enter__')
+@patch('wazuh.agent.WazuhDBQueryAgents.__exit__')
+async def test_agent_restart_reload_agents_task_not_stored(exit_mock, enter_mock, init_mock, run_mock,
+                                                           agents_info_mock, func, task_mock_name):
+    """A task the manager could not store is answered with 1727, even for an agent this node cannot judge.
+
+    1774 tells the operator the command is queued on this node and will run when the agent connects
+    there. With nothing written that is a promise about a row that does not exist, so the creation
+    failure is what gets reported -- for an agent with no version here exactly as for any other.
+    """
+    mock_query = MagicMock()
+    mock_query.run.return_value = {'items': [{'id': '004'}, {'id': '010', 'version': 'v5.0.0'}]}
+    enter_mock.return_value = mock_query
+
+    with patch(task_mock_name) as create_mock:
+        create_mock.return_value = [{'data': [
+            {'agent': '004', 'error': 4, 'message': 'The task manager did not store the task'},
+            {'agent': '010', 'error': 0},
+        ]}]
+
+        result = await func(['004', '010'])
+
+    assert result.affected_items == ['010']
+    reported = {error.code: ids for error, ids in result.failed_items.items()}
+    assert reported == {1727: {'004'}}, 'A task that was never written must not be answered with 1774.'
+
+
 @pytest.mark.parametrize('agent_list, expected_items', [
     (['001', '002', '003'], ['001', '002', '003']),
     (['001', '400', '002', '500'], ['001', '002'])

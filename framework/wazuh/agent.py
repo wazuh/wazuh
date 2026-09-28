@@ -282,8 +282,9 @@ async def restart_agents(agent_list: list = None, request_time: int = None) -> A
                 # two nodes runs once, and the copies nobody fetches age out at
                 # task-manager.task_ttl.
                 #
-                # It is reported as FAILED with 1774, never as affected. Affected is a claim this
-                # node is in no position to make -- it cannot tell a v5.x agent from a pre-5.0 one
+                # It is reported as FAILED with 1774 once the task manager confirms the row was
+                # written (a creation failure answers 1727 instead, below), and never as affected.
+                # Affected is a claim this node is in no position to make -- it cannot tell a v5.x agent from a pre-5.0 one
                 # -- and since a merge lets a success override a failure (see
                 # AffectedItemsWazuhResult.__or__), claiming it would erase the 1761 that the node
                 # which DOES know the agent reports for a pre-5.0 one. As a failure it behaves the
@@ -292,9 +293,8 @@ async def restart_agents(agent_list: list = None, request_time: int = None) -> A
                 # and it is the whole answer when no node has ever seen the agent. What it must
                 # not do is answer 1761, which blames the agent's version for what is this node's
                 # own gap, and which the per-node breakdown added in #39428 made visible.
-                logger.debug("restart_agents: no version for agent %s in this node's database; creating "
-                             "its task and reporting error %d", agent_id, common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE)
-                result.add_failed_item(id_=agent_id, error=WazuhError(common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE))
+                logger.debug("restart_agents: no version for agent %s in this node's database; queuing its "
+                             "task, to be answered once the task manager has replied", agent_id)
                 agents_unknown_here.add(agent_id)
                 eligible_agents.append(agent_id)
                 continue
@@ -320,18 +320,24 @@ async def restart_agents(agent_list: list = None, request_time: int = None) -> A
             for response in responses:
                 for agent_info in response['data']:
                     agent_id = agent_info.get('agent')
-                    if agent_id in agents_unknown_here:
-                        # Already answered with 1774 above. Whether the row was written changes
-                        # nothing this node can vouch for, so its verdict stands either way.
-                        continue
+                    error_code = agent_info.get('error')
 
-                    if agent_info.get('error') == 0:
-                        result.affected_items.append(agent_id)
-                    else:
-                        # Map task creation errors to Wazuh errors
-                        error_code = agent_info.get('error')
+                    if error_code != 0:
+                        # Map task creation errors to Wazuh errors. Checked before 1774 and for
+                        # every agent alike: when nothing was written, 1774 would tell the operator
+                        # the command is queued on this node -- which is what its remediation
+                        # promises -- about a row that does not exist. The task manager's own
+                        # failure is what this node knows, and a merge still lets another node's
+                        # success win at the top level.
                         error_msg = agent_info.get('message', f'Task creation failed with error {error_code}')
                         result.add_failed_item(id_=agent_id, error=WazuhInternalError(1727, extra_message=error_msg))
+                    elif agent_id in agents_unknown_here:
+                        # The task is written; what this node cannot do is judge the agent behind
+                        # it (see the version check above), so it answers that and nothing else.
+                        result.add_failed_item(id_=agent_id,
+                                               error=WazuhError(common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE))
+                    else:
+                        result.affected_items.append(agent_id)
 
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)
@@ -428,8 +434,9 @@ async def reload_agents(agent_list: list = None, request_time: int = None) -> Af
                 # two nodes runs once, and the copies nobody fetches age out at
                 # task-manager.task_ttl.
                 #
-                # It is reported as FAILED with 1774, never as affected. Affected is a claim this
-                # node is in no position to make -- it cannot tell a v5.x agent from a pre-5.0 one
+                # It is reported as FAILED with 1774 once the task manager confirms the row was
+                # written (a creation failure answers 1727 instead, below), and never as affected.
+                # Affected is a claim this node is in no position to make -- it cannot tell a v5.x agent from a pre-5.0 one
                 # -- and since a merge lets a success override a failure (see
                 # AffectedItemsWazuhResult.__or__), claiming it would erase the 1761 that the node
                 # which DOES know the agent reports for a pre-5.0 one. As a failure it behaves the
@@ -438,9 +445,8 @@ async def reload_agents(agent_list: list = None, request_time: int = None) -> Af
                 # and it is the whole answer when no node has ever seen the agent. What it must
                 # not do is answer 1761, which blames the agent's version for what is this node's
                 # own gap, and which the per-node breakdown added in #39428 made visible.
-                logger.debug("reload_agents: no version for agent %s in this node's database; creating "
-                             "its task and reporting error %d", agent_id, common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE)
-                result.add_failed_item(id_=agent_id, error=WazuhError(common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE))
+                logger.debug("reload_agents: no version for agent %s in this node's database; queuing its "
+                             "task, to be answered once the task manager has replied", agent_id)
                 agents_unknown_here.add(agent_id)
                 eligible_agents.append(agent_id)
                 continue
@@ -466,18 +472,24 @@ async def reload_agents(agent_list: list = None, request_time: int = None) -> Af
             for response in responses:
                 for agent_info in response['data']:
                     agent_id = agent_info.get('agent')
-                    if agent_id in agents_unknown_here:
-                        # Already answered with 1774 above. Whether the row was written changes
-                        # nothing this node can vouch for, so its verdict stands either way.
-                        continue
+                    error_code = agent_info.get('error')
 
-                    if agent_info.get('error') == 0:
-                        result.affected_items.append(agent_id)
-                    else:
-                        # Map task creation errors to Wazuh errors
-                        error_code = agent_info.get('error')
+                    if error_code != 0:
+                        # Map task creation errors to Wazuh errors. Checked before 1774 and for
+                        # every agent alike: when nothing was written, 1774 would tell the operator
+                        # the command is queued on this node -- which is what its remediation
+                        # promises -- about a row that does not exist. The task manager's own
+                        # failure is what this node knows, and a merge still lets another node's
+                        # success win at the top level.
                         error_msg = agent_info.get('message', f'Task creation failed with error {error_code}')
                         result.add_failed_item(id_=agent_id, error=WazuhInternalError(1727, extra_message=error_msg))
+                    elif agent_id in agents_unknown_here:
+                        # The task is written; what this node cannot do is judge the agent behind
+                        # it (see the version check above), so it answers that and nothing else.
+                        result.add_failed_item(id_=agent_id,
+                                               error=WazuhError(common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE))
+                    else:
+                        result.affected_items.append(agent_id)
 
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)
