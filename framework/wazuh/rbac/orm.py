@@ -961,13 +961,20 @@ class AuthenticationManager(RBACManager):
         hash_to_check = user.password if user else _DUMMY_HASH
         result = check_password_hash(hash_to_check, password)
 
-        if result and user is not None and not user.password.startswith(f'{_DEFAULT_HASH_METHOD}:'):
+        if result and user is not None and not hash_to_check.startswith(f'{_DEFAULT_HASH_METHOD}:'):
             # Rehash on login: a stored hash from an older Werkzeug default (e.g. pbkdf2)
             # is cheaper to verify than the current one, which leaks its presence through
             # timing. Upgrading it here, the only point with the plaintext password, closes
             # that gap for this account going forward.
-            user.password = generate_password_hash(password)
-            self.session.commit()
+            # The UPDATE is conditioned on the exact hash just verified (compare-and-swap):
+            # a concurrent password change (e.g. via PUT /security/users/{id}) between the
+            # read above and this write must not be clobbered by rehashing the old password.
+            try:
+                self.session.query(User).filter_by(id=user.id, password=hash_to_check).update(
+                    {'password': generate_password_hash(password)})
+                self.session.commit()
+            except OperationalError:
+                self.session.rollback()
 
         return result and user is not None
 

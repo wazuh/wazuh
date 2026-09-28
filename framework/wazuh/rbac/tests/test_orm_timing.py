@@ -6,14 +6,16 @@
 import time
 import statistics
 from unittest.mock import MagicMock
-from werkzeug.security import generate_password_hash
+from sqlalchemy.exc import OperationalError
+from werkzeug.security import check_password_hash, generate_password_hash
 
 import pytest
 
 
 class MockUser:
     """Mock User object for testing."""
-    def __init__(self, username, password_hash):
+    def __init__(self, username, password_hash, user_id=1):
+        self.id = user_id
         self.username = username
         self.password = password_hash
 
@@ -150,7 +152,13 @@ class TestCheckUserLegacyHashRehash:
     """Test suite to verify check_user() upgrades legacy password hashes on login."""
 
     def test_legacy_hash_rehashed_on_successful_login(self):
-        """A legacy hash is rehashed to the current default once the password is verified."""
+        """A legacy hash is rehashed to the current default once the password is verified.
+
+        The UPDATE must be a compare-and-swap conditioned on the exact hash that was
+        just verified, not a blind write of `user`, so it can't clobber a password
+        change committed concurrently by another process between the read and this
+        write (see the race this guards against in orm.py).
+        """
         from wazuh.rbac.orm import AuthenticationManager, _DEFAULT_HASH_METHOD
 
         real_password = "correct_password"
@@ -158,15 +166,20 @@ class TestCheckUserLegacyHashRehash:
 
         manager = MagicMock()
         mock_result = MagicMock()
-        user = MockUser("legacy_user", legacy_hash)
+        user = MockUser("legacy_user", legacy_hash, user_id=42)
         mock_result.first.return_value = user
         manager.session.scalars.return_value = mock_result
 
         result = AuthenticationManager.check_user(manager, "legacy_user", real_password)
 
         assert result is True
-        assert user.password.startswith(f"{_DEFAULT_HASH_METHOD}:")
-        assert user.password != legacy_hash
+        manager.session.query.return_value.filter_by.assert_called_once_with(
+            id=42, password=legacy_hash)
+        update_call = manager.session.query.return_value.filter_by.return_value.update
+        update_call.assert_called_once()
+        new_hash = update_call.call_args[0][0]['password']
+        assert new_hash.startswith(f"{_DEFAULT_HASH_METHOD}:")
+        assert check_password_hash(new_hash, real_password)
         manager.session.commit.assert_called_once()
 
     def test_legacy_hash_not_rehashed_on_failed_login(self):
@@ -185,7 +198,7 @@ class TestCheckUserLegacyHashRehash:
         result = AuthenticationManager.check_user(manager, "legacy_user", "wrong_password")
 
         assert result is False
-        assert user.password == legacy_hash
+        manager.session.query.assert_not_called()
         manager.session.commit.assert_not_called()
 
     def test_default_hash_not_rehashed(self):
@@ -204,5 +217,56 @@ class TestCheckUserLegacyHashRehash:
         result = AuthenticationManager.check_user(manager, "current_user", real_password)
 
         assert result is True
-        assert user.password == default_hash
+        manager.session.query.assert_not_called()
         manager.session.commit.assert_not_called()
+
+    def test_legacy_hash_rehash_skipped_on_concurrent_password_change(self):
+        """If the stored hash changed since it was read, the compare-and-swap UPDATE
+        matches zero rows instead of overwriting the concurrently-set password.
+
+        This does not need to be asserted here (the real UPDATE's WHERE clause does
+        the work against the actual database), but check_user must still commit
+        without raising so a concurrent change isn't masked by an exception.
+        """
+        from wazuh.rbac.orm import AuthenticationManager
+
+        real_password = "correct_password"
+        legacy_hash = generate_password_hash(real_password, method="pbkdf2:sha256:150000")
+
+        manager = MagicMock()
+        mock_result = MagicMock()
+        user = MockUser("legacy_user", legacy_hash, user_id=42)
+        mock_result.first.return_value = user
+        manager.session.scalars.return_value = mock_result
+        # Simulate the UPDATE matching no rows because another process already
+        # changed the password (rowcount 0), as SQLAlchemy would report it.
+        manager.session.query.return_value.filter_by.return_value.update.return_value = 0
+
+        result = AuthenticationManager.check_user(manager, "legacy_user", real_password)
+
+        assert result is True
+        manager.session.commit.assert_called_once()
+
+    def test_legacy_hash_login_succeeds_despite_rehash_write_failure(self):
+        """A successful login is not turned into a failure by a rehash write error.
+
+        The rehash is opportunistic; if the database can't be written right now
+        (disk full, rbac.db locked past SQLite's busy timeout, read-only file), the
+        login that already passed the real hash check must still succeed.
+        """
+        from wazuh.rbac.orm import AuthenticationManager
+
+        real_password = "correct_password"
+        legacy_hash = generate_password_hash(real_password, method="pbkdf2:sha256:150000")
+
+        manager = MagicMock()
+        mock_result = MagicMock()
+        user = MockUser("legacy_user", legacy_hash, user_id=42)
+        mock_result.first.return_value = user
+        manager.session.scalars.return_value = mock_result
+        manager.session.commit.side_effect = OperationalError("UPDATE", {}, Exception("database is locked"))
+
+        result = AuthenticationManager.check_user(manager, "legacy_user", real_password)
+
+        assert result is True
+        manager.session.rollback.assert_called_once()
