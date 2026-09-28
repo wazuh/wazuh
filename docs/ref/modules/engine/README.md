@@ -1894,7 +1894,7 @@ kanban
 
 - **Type**: Defines when the filter is executed in the pipeline:
   - `pre-filter`: evaluated before decoders.
-  - `post-filter`: evaluated after decoders.
+  - `post-filter`: evaluated after enrichment, before the outputs.
 
 - **Metadata**: Provides descriptive information about the filter (module, title, description, compatibility, versions,
   author, references). This metadata does not affect processing stages.
