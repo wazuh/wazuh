@@ -632,19 +632,21 @@ Number of unacknowledged TCP keepalive probes before considering connection dead
 
 ### remoted.merge_shared
 
-Enable merging shared configuration files for agents.
+Build each group's `merged.mg` from the files in its `shared/` directory.
 
-- **Default value:** `yes`
-- **Allowed values:** `yes`, `no`
-- **Note:** Combines group-specific configurations; disable for troubleshooting
+- **Default value:** `1`
+- **Allowed values:** `0` (disabled), `1` (enabled)
+- **Note:** With `0`, remoted does not rebuild `merged.mg`. It is also forced to `0` on a cluster
+  worker node and when remoted is started with `-m`.
 
 ### remoted.pass_empty_keyfile
 
-Allow remoted to start even if client.keys file is empty.
+Allow remoted to start when `client.keys` is missing, unreadable or empty.
 
-- **Default value:** `yes`
-- **Allowed values:** `yes`, `no`
-- **Note:** Useful for fresh installations; disable in production for security
+- **Default value:** `1`
+- **Allowed values:** `0` (disabled), `1` (enabled)
+- **Note:** With `0`, remoted exits whenever it loads a `client.keys` with no agents, including the
+  first start of a manager that has none registered yet.
 
 ### remoted.request_pool
 
@@ -704,19 +706,23 @@ Interval in seconds for reloading shared configuration files.
 
 ### remoted.disk_storage
 
-Enable disk-based storage for agent event queue persistence.
+Where remoted builds a group's `merged.mg` before comparing it with the current one.
 
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-- **Note:** Persists queued events across remoted restarts; impacts I/O performance
+- **Default value:** `0`
+- **Allowed values:** `0` (in memory), `1` (in a temporary `merged.mg.tmp` file next to it)
+- **Note:** It does not persist events or any queue. `1` trades memory for disk I/O while building
+  large shared configurations.
 
 ### remoted.verify_msg_id
 
-Verify message ID sequence from agents to detect tampering or replay attacks.
+Reject agent messages whose counter is not higher than the last one received from that agent,
+to detect replayed messages.
 
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
-- **Note:** Enable for additional security; may cause issues with clock skew or agent restarts
+- **Default value:** `0`
+- **Allowed values:** `0` (disabled), `1` (enabled)
+- **Note:** `1` requires `remoted.worker_pool` set to `1`; with more workers remoted refuses to
+  start, because message order cannot be guaranteed. It checks only messages on the legacy (4.x)
+  listener; HTTPS agents are authenticated per request with their bearer token.
 
 ### remoted.batch_events_per_agent_capacity
 
