@@ -1297,6 +1297,99 @@ TEST_F(ControlStreamTest, PauseCarriesTheTransportReasonToTheConsumer)
     EXPECT_EQ(curlError, reported);
 }
 
+TEST_F(ControlStreamTest, CertVerificationFailureStillPausesProducersAfterThreshold)
+{
+    // Same shape as PauseCarriesTheTransportReasonToTheConsumer, but with the tlsFailure
+    // fields a real chain/CA-trust rejection carries (isCertificateVerificationFailure()'s
+    // own predicate is unit-tested directly in outcomeClassifier_test.cpp). The new,
+    // independent WARNING this also drives (updateProducerPause(), logged straight through
+    // LOGFN_WARN -- not through the mock sink, so its text can't be asserted from this
+    // binary) must coexist with the pre-existing threshold/latch bookkeeping below without
+    // disturbing it: this is what this test actually asserts.
+    const std::string curlError = "(60) SSL certificate problem: unable to get local issuer certificate";
+    HttpResponse certFailure = response(TransportStatus::TlsFail, 0, {}, {}, curlError);
+    certFailure.tlsFailure.depth0VerificationFailed = true;
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillRepeatedly(Return(certFailure));
+
+    std::string reported;
+    EXPECT_CALL(m_sink, onProducerPause(true, _)).Times(1)
+    .WillOnce(Invoke([&](bool, const std::string & reason)
+    {
+        reported = reason;
+    }));
+    m_waiter.script({true, true, true, true, true, true, true});
+
+    m_stream.step(m_waiter); // Startup accepted.
+    m_stream.step(m_waiter); // 1/2.
+    m_stream.step(m_waiter); // 2/2 -> pause.
+
+    EXPECT_EQ(curlError, reported);
+}
+
+TEST_F(ControlStreamTest, CertVerificationFailureRecoveryStillResumesProducers)
+{
+    // The recovery half of the same coexistence claim: once the manager's certificate
+    // verifies again, the pre-existing resume path still fires. Internally this also clears
+    // m_certVerificationReported and resets the new limiter -- not directly observable here,
+    // but what that reset actually buys (an immediate report on a LATER, separate incident,
+    // rather than a suppressed one landing in the old incident's tail window) is exercised on
+    // its own in LogRateLimiterTest.ResetMakesTheNextOccurrenceEmitImmediately.
+    const std::string curlError = "(60) SSL certificate problem: self-signed certificate";
+    HttpResponse certFailure = response(TransportStatus::TlsFail, 0, {}, {}, curlError);
+    certFailure.tlsFailure.chainTrustRejectedAboveDepth0 = true;
+
+    int attempt = 0;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec&)
+    {
+        attempt++;
+
+        if (attempt == 1)
+        {
+            return response(TransportStatus::Ok, 200, "{}"); // Startup.
+        }
+
+        // Attempts 2-13: three failing steps of four attempts each (mirrors
+        // ThresholdPausesOnceAndRecoveryReleasesWithoutAStateChange).
+        return attempt <= 13 ? certFailure : response(TransportStatus::Ok, 200, "{}");
+    }));
+
+    int pauses = 0;
+    int resumes = 0;
+
+    ::testing::InSequence sequence;
+    EXPECT_CALL(m_sink, onProducerPause(true, _)).Times(1)
+    .WillOnce(Invoke([&](bool, const std::string&)
+    {
+        pauses++;
+    }));
+    EXPECT_CALL(m_sink, onProducerPause(false, _)).Times(1)
+    .WillOnce(Invoke([&](bool, const std::string&)
+    {
+        resumes++;
+    }));
+    m_waiter.script({true, true, true, true, true, true, true, true, true});
+
+    m_stream.step(m_waiter); // Startup accepted.
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(0, pauses); // 1/2: counted, not armed yet.
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(1, pauses); // 2/2: armed here.
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(1, pauses); // Still unreachable: no second announcement.
+    EXPECT_EQ(0, resumes);
+
+    m_stream.step(m_waiter);
+    EXPECT_EQ(1, resumes); // The successful notify releases it.
+}
+
 TEST_F(ControlStreamTest, PauseFromAnAnsweredRejectionCarriesNoTransportReason)
 {
     // A 409 means the manager answered, so any curl error still on the response

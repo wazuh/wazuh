@@ -19,6 +19,7 @@
 #include "caPublicationState.hpp"
 #include "configHashState.hpp"
 #include "controlStateMachine.hpp"
+#include "logRateLimiter.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
 #include "rescanRequester.hpp"
@@ -174,6 +175,11 @@ class ControlStream final
         /// attempt reached the manager at all. Handed to the consumer when the
         /// producer pause is armed.
         std::string m_lastCurlError;
+        /// Whether the last /control attempt's HttpResponse was the ordinary
+        /// chain/CA-trust class of TLS failure (isCertificateVerificationFailure()).
+        /// Same lifecycle as m_lastCurlError: overwritten every step, success
+        /// included, always before the outcome reaches updateProducerPause().
+        bool m_lastCertVerificationFailed {false};
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 
         /// SHA-256 of the exact startup-response bytes (the local settings
@@ -214,6 +220,17 @@ class ControlStream final
         /// it lasts. Cleared by a success, so a route that breaks again later is
         /// reported again.
         bool m_routeNotFoundReported {false};
+
+        /// One report per incident, independent of and reported before the pause-threshold
+        /// bookkeeping below (same reasoning as m_routeNotFoundReported): a persistent
+        /// cert-trust failure must not wait producerPauseThreshold cycles for its first
+        /// line, and once armed the periodic reminder comes from m_certVerificationLimiter,
+        /// not from re-arming this flag. Cleared on recovery so a later, separate incident
+        /// is reported again from its own first occurrence.
+        bool m_certVerificationReported {false};
+        /// First-emits-then-one-per-window for the cert-verification-failure report;
+        /// reset() on recovery (see m_certVerificationReported).
+        LogRateLimiter m_certVerificationLimiter;
 
         /// Set from Effects::resetCadence; see consumeFastFollowup().
         bool m_fastFollowup {false};
