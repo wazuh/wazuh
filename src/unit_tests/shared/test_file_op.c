@@ -2111,20 +2111,41 @@ void test_w_fopen_vetted_follow_fifo_rejected_without_blocking(void **state) {
     assert_vetted_rejected(path, EPERM);
 }
 
-void test_w_fopen_vetted_follow_owner_fifo_in_private_dir_accepted(void **state) {
+void test_w_fopen_vetted_follow_fifo_in_root_only_dir_accepted(void **state) {
     char path[PATH_MAX + 1];
     FILE * fp;
 
+    if (geteuid() != 0) {
+        print_message("Skipped: needs root to own the directory and give the FIFO to another user.\n");
+        skip();
+    }
+
     nofollow_path(path, "fifo");
     assert_int_equal(mkfifo(path, 0640), 0);
-    if (geteuid() == 0) {
-        assert_int_equal(chown(path, 1000, (gid_t) -1), 0);
-    }
+    assert_int_equal(chown(path, 1000, (gid_t) -1), 0);
 
     // Must return instead of blocking on the FIFO waiting for a writer.
     fp = w_fopen_vetted_follow(path, "rb");
     assert_non_null(fp);
     assert_int_equal(fclose(fp), 0);
+}
+
+void test_w_fopen_vetted_follow_owner_fifo_in_own_dir_rejected(void **state) {
+    char path[PATH_MAX + 1];
+
+    if (geteuid() != 0) {
+        print_message("Skipped: needs root to give the directory and the FIFO to another user.\n");
+        skip();
+    }
+
+    nofollow_path(path, "fifo");
+    assert_int_equal(mkfifo(path, 0640), 0);
+    assert_int_equal(chown(path, 1000, (gid_t) -1), 0);
+    // The FIFO's owner also owns its directory.
+    assert_int_equal(chown(nofollow_dir, 1000, (gid_t) -1), 0);
+
+    // Must return instead of blocking on the FIFO waiting for a writer.
+    assert_vetted_rejected(path, EPERM);
 }
 
 void test_w_fopen_vetted_follow_fifo_component_rejected_without_blocking(void **state) {
@@ -2375,14 +2396,7 @@ void test_w_vet_opened_file_fifo_not_root_trusted_dir_accepted(void **state) {
     struct stat fd_stat = { .st_mode = S_IFIFO, .st_uid = 1000, .st_gid = 1000, .st_nlink = 1 };
     struct stat dir_stat = { .st_mode = S_IFDIR | 0755, .st_uid = 0 };
 
-    assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), 0);
-    // Directory owned by the FIFO's owner.
-    dir_stat.st_uid = 1000;
-    assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), 0);
-    // Group-writable directory of the FIFO's own group, like root:syslog /var/log.
-    dir_stat.st_uid = 0;
-    dir_stat.st_gid = 1000;
-    dir_stat.st_mode = S_IFDIR | 0775;
+    // Directory owned by root that only root can write to.
     assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), 0);
     fd_stat.st_mode = S_IFCHR;
     assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), 0);
@@ -2399,6 +2413,18 @@ void test_w_vet_opened_file_fifo_not_root_untrusted_dir_rejected(void **state) {
     // Directory owned by another user.
     dir_stat.st_mode = S_IFDIR | 0755;
     dir_stat.st_uid = 1001;
+    errno = 0;
+    assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), -1);
+    assert_int_equal(errno, EPERM);
+    // Directory owned by the FIFO's owner: its owner can keep it open without writing.
+    dir_stat.st_uid = 1000;
+    errno = 0;
+    assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), -1);
+    assert_int_equal(errno, EPERM);
+    // Group-writable directory of the FIFO's own group, like root:syslog /var/log.
+    dir_stat.st_mode = S_IFDIR | 0775;
+    dir_stat.st_uid = 0;
+    dir_stat.st_gid = 1000;
     errno = 0;
     assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), -1);
     assert_int_equal(errno, EPERM);
@@ -2560,7 +2586,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_directory_rejected, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_missing_file, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_fifo_rejected_without_blocking, setup_nofollow, teardown_vetted),
-        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_owner_fifo_in_private_dir_accepted, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_fifo_in_root_only_dir_accepted, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_owner_fifo_in_own_dir_rejected, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_fifo_component_rejected_without_blocking, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_file_component_rejected, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_search_only_dir_accepted, setup_nofollow, teardown_vetted),

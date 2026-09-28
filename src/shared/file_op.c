@@ -2889,17 +2889,13 @@ static bool w_vet_fixed_link(const struct stat * dir_stat) {
 }
 
 /**
- * Unlike a regular file, a FIFO can block reads, and anyone who can write to a directory can create one.
- * So a FIFO or device not owned by root is trusted only when its directory is owned by root or the entry's
- * owner, not writable by others, and group-writable only for the entry's own group.
+ * Unlike a regular file, a FIFO can block reads, and its owner can keep it open without writing. So a FIFO
+ * or device not owned by root is trusted only in a directory only root can write to, where root placed it.
  *
  * @return true if entry_stat, found in the directory described by dir_stat, can be trusted.
  */
 static bool w_vet_special_owner(const struct stat * entry_stat, const struct stat * dir_stat) {
-    return entry_stat->st_uid == 0 ||
-           ((dir_stat->st_uid == 0 || dir_stat->st_uid == entry_stat->st_uid) &&
-            !(dir_stat->st_mode & S_IWOTH) &&
-            (!(dir_stat->st_mode & S_IWGRP) || dir_stat->st_gid == entry_stat->st_gid));
+    return entry_stat->st_uid == 0 || w_vet_fixed_link(dir_stat);
 }
 
 /**
