@@ -250,7 +250,8 @@ def create_user(username: str = None, password: str = None) -> AffectedItemsWazu
 
 
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}'])
-def update_user(user_id: str = None, password: str = None, current_user: str = None) -> AffectedItemsWazuhResult:
+def update_user(user_id: str = None, password: str = None, current_user: str = None,
+                run_as: bool = False) -> AffectedItemsWazuhResult:
     """Update a specified user
 
     Parameters
@@ -261,6 +262,10 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
         Password for the new user.
     current_user : str
         Name of the user that made the request.
+    run_as : bool
+        Whether the request was made with a run_as token. The `sub` of such a token is the account that
+        logged in (e.g. `wazuh-wui`), not the end user whose roles the token carries, so it is never
+        treated as a reserved caller.
     Raises
     ------
     WazuhError(4001)
@@ -281,13 +286,13 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
         validate_password(password)
 
         if int(user_id[0]) <= MAX_ID_RESERVED:
-            if current_user is None:
+            if current_user is None or run_as:
                 raise WazuhError(5011)
 
             with AuthenticationManager() as auth_manager:
-                current_user_id = auth_manager.get_user(current_user)['id']
+                caller = auth_manager.get_user(current_user)
 
-            if current_user_id > MAX_ID_RESERVED:
+            if not caller or caller['id'] > MAX_ID_RESERVED:
                 raise WazuhError(5011)
 
     result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
