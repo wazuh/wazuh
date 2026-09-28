@@ -2941,6 +2941,31 @@ int w_vet_opened_file(const struct stat * fd_stat, const struct stat * dir_stat,
 }
 
 /**
+ * O_NONBLOCK only matters while opening a possible FIFO; clears it so reads behave normally.
+ *
+ * @return fd, or -1 on error with fd closed (sets errno).
+ */
+static int w_clear_nonblock(int fd) {
+    int saved_errno;
+    int flags;
+
+    if (flags = fcntl(fd, F_GETFL), flags == -1 || fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) < 0) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+        return -1;
+    }
+
+    return fd;
+}
+
+// Solaris before 11 has no readlinkat(), and HP-UX has none of openat(), fstatat() and readlinkat().
+#if !defined(W_VETTED_NO_AT_WALK) && (defined(HPUX) || (defined(SUN_MAJOR_VERSION) && SUN_MAJOR_VERSION < 11))
+#define W_VETTED_NO_AT_WALK
+#endif
+
+#ifndef W_VETTED_NO_AT_WALK
+/**
  * Reads the target of symlink name in dirfd, failing unless it is still the link link_stat describes, so a
  * link swapped in after its owner was checked is not followed.
  *
@@ -3011,7 +3036,6 @@ static int w_open_vetted_follow_fd(const char * path) {
     int dirfd;
     int fd = -1;
     int saved_errno;
-    int flags;
     const char * cursor;
     size_t len;
     ssize_t n;
@@ -3147,16 +3171,7 @@ static int w_open_vetted_follow_fd(const char * path) {
     }
 
     close(dirfd);
-
-    // O_NONBLOCK only mattered while opening a possible FIFO; clear it so reads behave normally.
-    if (flags = fcntl(fd, F_GETFL), flags == -1 || fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) < 0) {
-        saved_errno = errno;
-        close(fd);
-        errno = saved_errno;
-        return -1;
-    }
-
-    return fd;
+    return w_clear_nonblock(fd);
 
 fail_swapped:
     // O_NOFOLLOW reports a symlink as ELOOP (EMLINK on FreeBSD): the entry changed under us.
@@ -3172,6 +3187,110 @@ fail:
     errno = saved_errno;
     return -1;
 }
+#else
+/**
+ * dirname() may modify its argument and is not thread-safe everywhere, so the parent is cut out of path by
+ * hand. A bare file name resolves to ".".
+ *
+ * @return 0 on success, -1 on error (sets errno).
+ */
+static int w_stat_parent_dir(const char * path, struct stat * dir_stat) {
+    char dir[PATH_MAX + 1];
+    const char * slash = strrchr(path, '/');
+    size_t len;
+
+    if (!slash) {
+        return stat(".", dir_stat);
+    }
+
+    if (len = slash == path ? 1 : (size_t) (slash - path), len > PATH_MAX) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    memcpy(dir, path, len);
+    dir[len] = '\0';
+    return stat(dir, dir_stat);
+}
+
+/**
+ * Path-based stand-in for the component walk, for platforms without its *at() calls. The type, owner and link
+ * count rules are applied to the opened descriptor, so a FIFO still cannot block the read. Only the path's
+ * last entry is checked as a symlink, and by path, so a symlink swapped in a directory higher up, or swapped
+ * and restored between the checks, is not caught.
+ *
+ * @return A vetted descriptor with O_NONBLOCK cleared, or -1 on error (sets errno).
+ */
+static int w_open_vetted_follow_fd(const char * path) {
+    char resolved[PATH_MAX + 1];
+    struct stat link_stat;
+    struct stat link_dir_stat;
+    struct stat fd_stat;
+    struct stat dir_stat;
+    struct stat now;
+    uid_t link_uid = 0;
+    bool has_link_uid = false;
+    int saved_errno;
+    int fd;
+
+    if (lstat(path, &link_stat) < 0) {
+        return -1;
+    }
+
+    if (S_ISLNK(link_stat.st_mode)) {
+        if (w_stat_parent_dir(path, &link_dir_stat) < 0) {
+            return -1;
+        }
+
+        if (!w_vet_link_count(&link_stat, &link_dir_stat)) {
+            errno = EPERM;
+            return -1;
+        }
+
+        if (link_stat.st_uid != 0 && !w_vet_fixed_link(&link_dir_stat)) {
+            link_uid = link_stat.st_uid;
+            has_link_uid = true;
+        }
+    }
+
+    if (fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC), fd < 0) {
+        return -1;
+    }
+
+    // The directory rules need the file's real location, and the inode checks reject a path changed meanwhile.
+    if (fstat(fd, &fd_stat) < 0 || lstat(path, &now) < 0 || !realpath(path, resolved) ||
+        w_stat_parent_dir(resolved, &dir_stat) < 0) {
+        goto fail;
+    }
+
+    if (now.st_dev != link_stat.st_dev || now.st_ino != link_stat.st_ino || now.st_uid != link_stat.st_uid ||
+        (!S_ISLNK(link_stat.st_mode) && (fd_stat.st_dev != link_stat.st_dev || fd_stat.st_ino != link_stat.st_ino))) {
+        errno = EPERM;
+        goto fail;
+    }
+
+    if (stat(resolved, &now) < 0) {
+        goto fail;
+    }
+
+    if (now.st_dev != fd_stat.st_dev || now.st_ino != fd_stat.st_ino) {
+        errno = EPERM;
+        goto fail;
+    }
+
+    if (w_vet_opened_file(&fd_stat, &dir_stat, has_link_uid ? &link_uid : NULL) < 0) {
+        goto fail;
+    }
+
+    return w_clear_nonblock(fd);
+
+fail:
+    saved_errno = errno;
+    close(fd);
+    errno = saved_errno;
+    return -1;
+}
+#endif
 #endif
 
 
