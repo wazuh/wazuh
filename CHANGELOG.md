@@ -42,6 +42,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed configuration masking to cover the credential fields of cloud, integration and cluster HAProxy settings, and the group configuration files. ([#39706](https://github.com/wazuh/wazuh/pull/39706))
+- Fixed configuration masking not applying to XML tags written with whitespace or attributes. ([#39663](https://github.com/wazuh/wazuh/pull/39663))
 
 ## [v4.14.9]
 
