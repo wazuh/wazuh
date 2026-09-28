@@ -449,3 +449,132 @@ TEST_F(SCAIdentityTest, FailedResendSendsNoDelta)
     EXPECT_FALSE(m_sca->syncModule(Mode::DELTA));
     EXPECT_NE(m_logOutput.find("SCA synchronization postponed: the agent id change was not resent"), std::string::npos);
 }
+
+// The sync thread backs off only after a resend was really started: it reads this count before and
+// after a cycle, so a cycle that never tried must leave it alone.
+static int queryResyncAttempts(SCAMock& sca)
+{
+    const auto response = nlohmann::json::parse(sca.query(R"({"command":"get_identity_changed"})"));
+    EXPECT_EQ(response["error"], 0);
+    return response["data"]["resync_attempts"].get<int>();
+}
+
+TEST_F(SCAIdentityTest, FailedResendCountsAsAResyncAttempt)
+{
+    publishAgentId("002");
+    expectMetadata(/* syncedAgentId */ 1, /* firstSyncCompleted */ 123456);
+
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
+    .WillOnce(::testing::Return(SyncModuleResult {false, {}}));
+
+    EXPECT_EQ(queryResyncAttempts(*m_sca), 0);
+    EXPECT_FALSE(m_sca->syncModule(Mode::DELTA));
+    EXPECT_EQ(queryResyncAttempts(*m_sca), 1);
+}
+
+// A cycle skipped because agent-info's flush was sending -- the usual collision right after a
+// re-enrollment -- is no sign the manager refused anything, and must not count.
+TEST_F(SCAIdentityTest, SkippedSyncIsNotAResyncAttempt)
+{
+    publishAgentId("002");
+    expectMetadata(/* syncedAgentId */ 1, /* firstSyncCompleted */ 123456);
+
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
+
+    m_sca->setFlushInProgressForTest(true);
+    EXPECT_FALSE(m_sca->syncModule(Mode::DELTA));
+    m_sca->setFlushInProgressForTest(false);
+
+    EXPECT_EQ(queryResyncAttempts(*m_sca), 0);
+}
+
+// Nor does a cycle that gave up waiting for Run() to apply the document limits.
+TEST_F(SCAIdentityTest, ResendThatNeverStartedIsNotAResyncAttempt)
+{
+    publishAgentId("002");
+    expectMetadata(/* syncedAgentId */ 1, /* firstSyncCompleted */ 123456);
+    m_sca->setRunInitializedForTest(false);
+
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
+
+    auto sync = std::async(std::launch::async, [this] { return m_sca->syncModule(Mode::DELTA); });
+    EXPECT_EQ(sync.wait_for(std::chrono::milliseconds(200)), std::future_status::timeout);
+    m_sca->quiesce();
+    ASSERT_EQ(sync.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+    EXPECT_FALSE(sync.get());
+
+    // Read directly: the module is stopped by now.
+    EXPECT_EQ(m_sca->identityResyncAttemptsForTest(), 0u);
+}
+
+// The integrity recovery's DataClean has no session guard either: beside a running flush it would
+// reset that session. It stands back, leaves the check time alone so the next cycle runs it, and
+// does not even ask the manager.
+TEST_F(SCAIdentityTest, IntegrityCheckStandsBackFromAFlush)
+{
+    try
+    {
+        m_sca->initSyncProtocol("sca", ":memory:", std::chrono::seconds(3600));
+    }
+    catch (const std::exception&)
+    {
+        // Only the interval is needed; the protocol is the mock below.
+    }
+
+    m_sca->setSyncProtocol(m_mockSyncProtocol);
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json & query,
+                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        if (query.dump().find("last_integrity_check") != std::string::npos)
+        {
+            callback(SELECTED, nlohmann::json {{"value", 1}});
+        }
+    }));
+
+    EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_)).Times(0);
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
+
+    m_sca->setFlushInProgressForTest(true);
+    const auto response = nlohmann::json::parse(m_sca->query(R"({"command":"check_integrity"})"));
+    m_sca->setFlushInProgressForTest(false);
+
+    EXPECT_EQ(response["error"], 0);
+    EXPECT_EQ(response["data"]["recovery_performed"], false);
+    EXPECT_NE(m_logOutput.find("SCA integrity check deferred - flush in progress"), std::string::npos);
+    EXPECT_FALSE(m_sca->recoveryInProgressForTest());
+}
+
+// The other direction: a flush that arrives while a recovery DataClean runs waits for it.
+TEST_F(SCAIdentityTest, FlushWaitsForARecoveryThenSends)
+{
+    EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
+    .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
+
+    m_sca->setRecoveryInProgressForTest(true);
+
+    auto flush = std::async(std::launch::async, [this] { return m_sca->callExecuteFlushSync(); });
+
+    EXPECT_EQ(flush.wait_for(std::chrono::milliseconds(200)), std::future_status::timeout);
+
+    m_sca->setRecoveryInProgressForTest(false);
+
+    ASSERT_TRUE(finished(flush));
+    EXPECT_EQ(flush.get(), 0);
+}
+
+// And a sync stands back from it too, as from a flush.
+TEST_F(SCAIdentityTest, SyncSkipsWhileARecoveryDataCleanRuns)
+{
+    publishAgentId("007");
+    expectMetadata(/* syncedAgentId */ 7, /* firstSyncCompleted */ 123456);
+
+    EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_)).Times(0);
+
+    m_sca->setRecoveryInProgressForTest(true);
+    EXPECT_FALSE(m_sca->syncModule(Mode::DELTA));
+    m_sca->setRecoveryInProgressForTest(false);
+
+    EXPECT_NE(m_logOutput.find("SCA sync skipped - DataClean in progress"), std::string::npos);
+}

@@ -41,6 +41,26 @@ class SCAMock : public SecurityConfigurationAssessment
             m_pauseCv.notify_all();
         }
 
+        /// @brief Mark a recovery DataClean as running or done, waking waiters the way it does.
+        void setRecoveryInProgressForTest(bool inProgress)
+        {
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_recoveryInProgress.store(inProgress);
+            m_pauseCv.notify_all();
+        }
+
+        /// @brief Whether a recovery DataClean holds its slot.
+        bool recoveryInProgressForTest() const
+        {
+            return m_recoveryInProgress.load();
+        }
+
+        /// @brief Agent id change resends started so far.
+        uint32_t identityResyncAttemptsForTest() const
+        {
+            return m_identityResyncAttempts.load();
+        }
+
         /// @brief Mark Run() as past its initialization (or not), which the identity resend waits for.
         void setRunInitializedForTest(bool initialized)
         {

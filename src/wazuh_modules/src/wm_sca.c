@@ -366,16 +366,39 @@ static bool wm_sca_query_int(const char* query, const char* field, int* value)
 // Polled so a re-enrolled agent resends its SCA state right away, instead of waiting for a sync
 // interval that frequent reloads keep restarting. 1: the id changed; 0: it did not; -1: SCA cannot
 // tell right now (no id published yet, a failed read or query), which must not read as either.
-static int wm_sca_identity_state(void)
+// resync_attempts, when not NULL, gets how many resends SCA has started since it came up, or -1
+// when the answer does not say.
+static int wm_sca_identity_state(int* resync_attempts)
 {
     int state = 0;
+    char* output = NULL;
+    bool parsed = false;
 
-    if (!wm_sca_query_int("{\"command\":\"get_identity_changed\"}", "identity_changed", &state))
+    if (resync_attempts)
+    {
+        *resync_attempts = -1;
+    }
+
+    if (!sca_query_ptr)
     {
         return -1;
     }
 
-    return state;
+    sca_query_ptr("{\"command\":\"get_identity_changed\"}", &output);
+
+    if (output)
+    {
+        parsed = wm_sca_parse_query_int(output, "identity_changed", &state);
+
+        if (parsed && resync_attempts && !wm_sca_parse_query_int(output, "resync_attempts", resync_attempts))
+        {
+            *resync_attempts = -1;
+        }
+
+        free(output);
+    }
+
+    return parsed ? state : -1;
 }
 
 static wm_sca_startup_action_t wm_sca_get_startup_action(bool* first_sync_completed, bool* identity_changed)
@@ -411,7 +434,7 @@ static wm_sca_startup_action_t wm_sca_get_startup_action(bool* first_sync_comple
             *first_sync_completed = true;
         }
 
-        if (wm_sca_identity_state() > 0)
+        if (wm_sca_identity_state(NULL) > 0)
         {
             minfo("SCA agent id changed since the last synchronization. Synchronizing now.");
 
@@ -916,6 +939,10 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
     // INFO once per change, whichever check notices it first (the startup one included); DEBUG
     // after that.
     bool identity_change_logged = false;
+    // Resends SCA had started by the end of the previous cycle. The counter starts at zero with the
+    // module, like this thread. A cycle that leaves it unchanged never tried: a flush was sending,
+    // a sync was already running, or Run() had not applied the document limits yet.
+    int last_resync_attempts = 0;
 
     switch (wm_sca_get_startup_action(&first_sync_completed, &identity_change_logged))
     {
@@ -945,7 +972,7 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
             for (uint32_t i = 0; i < sca_sync_interval && sca_sync_module_running; i++)
             {
                 // Skipping i == 0 keeps retries of a failed resync at least one poll apart
-                if (i > 0 && i % identity_poll == 0 && wm_sca_identity_state() > 0)
+                if (i > 0 && i % identity_poll == 0 && wm_sca_identity_state(NULL) > 0)
                 {
                     if (identity_change_logged)
                     {
@@ -1026,11 +1053,17 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
         // An id still changed after the cycle was not resent (checkAgentIdentity() records the new
         // id only once the manager took the snapshot): back off before the next attempt. An answer
         // of -1 says nothing either way and leaves the retry state as it is.
-        const int identity_state = wm_sca_identity_state();
+        int resync_attempts = -1;
+        const int identity_state = wm_sca_identity_state(&resync_attempts);
 
         if (identity_state > 0)
         {
-            if (identity_poll < sca_sync_interval)
+            // Only a resend that was started and failed says the manager is not ready yet; a cycle
+            // that never got to it keeps the period. An answer without the count backs off, the
+            // safe side.
+            const bool attempted = resync_attempts < 0 || resync_attempts != last_resync_attempts;
+
+            if (attempted && identity_poll < sca_sync_interval)
             {
                 identity_poll = (identity_poll > sca_sync_interval / 2) ? sca_sync_interval : identity_poll * 2;
             }
@@ -1038,7 +1071,11 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
             // The wait below never runs past sca_sync_interval, whatever the poll period says.
             const uint32_t next_attempt = identity_poll < sca_sync_interval ? identity_poll : sca_sync_interval;
 
-            if (identity_change_logged)
+            if (!attempted)
+            {
+                mdebug1("SCA resync under the new agent id was not attempted this cycle, next check in %u seconds.", next_attempt);
+            }
+            else if (identity_change_logged)
             {
                 mdebug1("SCA resync under the new agent id did not complete, next attempt in %u seconds.", next_attempt);
             }
@@ -1052,6 +1089,11 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
         {
             identity_poll = SCA_IDENTITY_POLL_SECONDS;
             identity_change_logged = false;
+        }
+
+        if (resync_attempts >= 0)
+        {
+            last_resync_attempts = resync_attempts;
         }
 
         mdebug1("SCA synchronization cycle finished, waiting up to %u seconds before next run.", sca_sync_interval);

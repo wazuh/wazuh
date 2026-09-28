@@ -172,6 +172,14 @@ class SecurityConfigurationAssessment
         /// for it.
         std::atomic<bool> m_flushInProgress {false};
 
+        /// @brief Set while a DataClean outside the sync cycle runs (the integrity recovery, the
+        /// all-policies-removed cleanup). A flush waits for it; it stands back from a flush.
+        std::atomic<bool> m_recoveryInProgress {false};
+
+        /// @brief Agent id change resends actually started. Reported by get_identity_changed so the
+        /// sync thread backs off only after a real attempt, not after a cycle that never tried.
+        std::atomic<uint32_t> m_identityResyncAttempts {0};
+
         /// @brief Set once Run() has initialized the document limits, before its first scan. The
         /// identity resend waits for it.
         std::atomic<bool> m_runInitialized {false};

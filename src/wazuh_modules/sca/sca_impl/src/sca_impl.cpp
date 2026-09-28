@@ -639,6 +639,12 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
             return false;
         }
 
+        if (m_recoveryInProgress.load())
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync skipped - DataClean in progress");
+            return false;
+        }
+
         if (!m_spSyncProtocol)
         {
             return false;
@@ -991,13 +997,17 @@ int SecurityConfigurationAssessment::executeFlushSync()
     // re-enrollment, which is also when the sync thread resends the whole snapshot, and that
     // snapshot's DataClean has no session guard in the sync protocol: overlapping this session it
     // would clear the queue this flush is still sending. So the flush waits for a sync already
-    // running, and syncModule() stands back while the flush runs. A flag
+    // running, or for a recovery DataClean (m_recoveryInProgress) for the same reason, and
+    // syncModule() and the integrity check stand back while the flush runs. A flag
     // of its own rather than m_syncInProgress: pause() waits for that one, and agent-info resumes
     // SCA while its flush is still running, so scans must not stay blocked behind it. agent-info
     // polls the flush without a deadline, so waiting here only delays its version handover.
     {
         std::unique_lock<std::mutex> lock(m_pauseMutex);
-        m_pauseCv.wait(lock, [this] { return !m_syncInProgress.load() || !m_keepRunning.load(); });
+        m_pauseCv.wait(lock, [this]
+        {
+            return (!m_syncInProgress.load() && !m_recoveryInProgress.load()) || !m_keepRunning.load();
+        });
 
         if (!m_keepRunning.load())
         {
@@ -1169,6 +1179,7 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
             response["data"]["action"] = "get_identity_changed";
             response["data"]["module"] = "sca";
             response["data"]["identity_changed"] = agentIdentityChangeState();
+            response["data"]["resync_attempts"] = m_identityResyncAttempts.load();
         }
         else if (command == "get_scan_completed")
         {
@@ -1229,8 +1240,46 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
         else if (command == "check_integrity")
         {
             int64_t currentTime = Utils::getSecondsFromEpoch();
+            const bool intervalElapsed = integrityIntervalElapsed(currentTime);
 
-            if (integrityIntervalElapsed(currentTime))
+            // The recovery below sends a DataClean, which has no session guard in the sync
+            // protocol: beside a running flush it would reset that session and clear its queue. So
+            // it stands back from a flush, and a flush waits for it. Claimed under the mutex the
+            // flush checks it with, so the two never both start.
+            bool recoverySlotClaimed = false;
+
+            if (intervalElapsed)
+            {
+                std::lock_guard<std::mutex> lock(m_pauseMutex);
+
+                if (!m_flushInProgress.load())
+                {
+                    m_recoveryInProgress.store(true);
+                    recoverySlotClaimed = true;
+                }
+            }
+
+            DEFER([this, recoverySlotClaimed]()
+            {
+                if (recoverySlotClaimed)
+                {
+                    std::lock_guard<std::mutex> lock(m_pauseMutex);
+                    m_recoveryInProgress.store(false);
+                    m_pauseCv.notify_all();
+                }
+            });
+
+            if (intervalElapsed && !recoverySlotClaimed)
+            {
+                // The check time is left alone, so the next cycle runs it.
+                LoggingHelper::getInstance().log(LOG_DEBUG, "SCA integrity check deferred - flush in progress");
+                response["error"] = 0;
+                response["message"] = "Integrity check deferred: flush in progress";
+                response["data"]["module"] = "sca";
+                response["data"]["action"] = "check_integrity";
+                response["data"]["recovery_performed"] = false;
+            }
+            else if (intervalElapsed)
             {
                 LoggingHelper::getInstance().log(LOG_DEBUG, "Integrity interval elapsed, performing integrity check");
 
@@ -1659,6 +1708,8 @@ bool SecurityConfigurationAssessment::checkAgentIdentity()
         return false;
     }
 
+    m_identityResyncAttempts.fetch_add(1);
+
     LoggingHelper::getInstance().log(
         LOG_INFO,
         "SCA was last synchronized as agent " + std::to_string(syncedId) + ", now running as agent " +
@@ -1958,14 +2009,27 @@ bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
             LoggingHelper::getInstance().log(LOG_DEBUG, "Waiting for sync to complete before DataClean...");
         }
 
-        m_pauseCv.wait(lock, [this] { return !m_syncInProgress.load() || !m_keepRunning; });
+        m_pauseCv.wait(lock, [this]
+        {
+            return (!m_syncInProgress.load() && !m_flushInProgress.load()) || !m_keepRunning;
+        });
 
         if (!m_keepRunning)
         {
             LoggingHelper::getInstance().log(LOG_DEBUG, "DataClean aborted - module shutdown during sync wait");
             return false;
         }
+
+        // Same reason as the integrity recovery: a flush must not start beside this DataClean.
+        m_recoveryInProgress.store(true);
     }
+
+    DEFER([this]()
+    {
+        std::lock_guard<std::mutex> lock(m_pauseMutex);
+        m_recoveryInProgress.store(false);
+        m_pauseCv.notify_all();
+    });
 
     LoggingHelper::getInstance().log(LOG_DEBUG, "Proceeding with DataClean (sync not in progress)");
 
