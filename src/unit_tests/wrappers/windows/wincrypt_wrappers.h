@@ -22,6 +22,8 @@
 #define CertGetNameString wrap_CertGetNameString
 #undef CertCloseStore
 #define CertCloseStore wrap_CertCloseStore
+#undef CertFreeCertificateContext
+#define CertFreeCertificateContext wrap_CertFreeCertificateContext
 #undef WinVerifyTrust
 #define WinVerifyTrust wrap_WinVerifyTrust
 #undef GetModuleFileNameW
@@ -39,6 +41,8 @@ DWORD wrap_CertGetNameString(PCCERT_CONTEXT pCertContext,
                              DWORD cchNameString);
 
 BOOL wrap_CertCloseStore(HCERTSTORE hCertStore, DWORD dwFlags);
+
+BOOL wrap_CertFreeCertificateContext(PCCERT_CONTEXT pCertContext);
 
 LONG wrap_WinVerifyTrust(HWND hwnd, GUID *pgActionID, LPVOID pWVTData);
 

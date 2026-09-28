@@ -452,6 +452,7 @@ static DWORD find_ca_in_root_store() {
                 if (strncmp(ca_name, CA_NAME, sizeof(CA_NAME) - 1) == 0) {
                     result = ERROR_SUCCESS;
                     os_free(ca_name);
+                    CertFreeCertificateContext(cert_context);
                     break;
                 }
             }
@@ -476,13 +477,16 @@ static DWORD find_ca_in_root_store() {
 DWORD check_ca_available() {
     DWORD result = find_ca_in_root_store();
 
-    if (result != ERROR_SUCCESS) {
+    if (result == ERROR_INVALID_DATA) {
         // Windows installs trusted third-party roots on demand while building a chain.
         wchar_t self_path[MAX_PATH];
         char error_message[OS_SIZE_1024];
+        DWORD length = GetModuleFileNameW(NULL, self_path, MAX_PATH);
 
-        if (GetModuleFileNameW(NULL, self_path, MAX_PATH) &&
-            verify_pe_signature(self_path, error_message, sizeof(error_message)) == ERROR_SUCCESS) {
+        if (length > 0 && length < MAX_PATH) {
+            if (verify_pe_signature(self_path, error_message, sizeof(error_message)) != ERROR_SUCCESS) {
+                plain_mwarn("%s", error_message);
+            }
             result = find_ca_in_root_store();
         }
     }
