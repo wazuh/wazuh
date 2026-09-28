@@ -18,9 +18,9 @@ from wazuh.core.manager import status, get_api_conf, get_wazuh_logs, \
     get_logs_summary, validate_manager_conf, WAZUH_LOG_FIELDS
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.manager_conf import load_manager_conf, load_manager_conf_text, write_manager_conf
-from wazuh.core.manager_conf_policy import check_protected_sections
+from wazuh.core.manager_conf_policy import SECRET_SECTIONS, check_protected_sections, check_secret_sections
 from wazuh.core.utils import process_array, safe_move, full_copy
-from wazuh.rbac.decorators import expose_resources, mask_sensitive_config
+from wazuh.rbac.decorators import can_read_secrets, expose_resources, mask_sensitive_config, unmask_xml_by_path
 
 logger = logging.getLogger('wazuh')
 
@@ -603,13 +603,42 @@ def get_basic_info() -> AffectedItemsWazuhResult:
     return result
 
 
+def _restore_masked_secrets(new_conf: str, current_document: dict) -> str:
+    """Replace every masked secret option of `new_conf` with its current value.
+
+    Parameters
+    ----------
+    new_conf : str
+        Configuration text as sent by the caller.
+    current_document : dict
+        Effective document currently on disk.
+
+    Returns
+    -------
+    str
+        The text with the masks replaced, or unchanged when it holds none.
+    """
+    for pointer in SECRET_SECTIONS:
+        parts = pointer.strip('/').split('/')
+        current = current_document
+        for part in parts:
+            current = current.get(part) if isinstance(current, dict) else None
+        if isinstance(current, str):
+            new_conf = unmask_xml_by_path(new_conf, '.'.join(parts), current)
+
+    return new_conf
+
+
 @expose_resources(actions=['cluster:update_config'], resources=[f'node:id:{node_id}'])
 def update_manager_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
     """Replace the manager configuration (etc/wazuh-manager.conf) with the provided one.
 
-    The new text is checked before anything is written (XML syntax, schema, protected sections); the file is then
-    replaced atomically and validated by `bin/wazuh-manager-conf` (cross-field semantics). Any failure restores the
-    previous file.
+    The new text is checked before anything is written (XML syntax, schema, protected sections, secret options); the
+    file is then replaced atomically and validated by `bin/wazuh-manager-conf` (cross-field semantics). Any failure
+    restores the previous file.
+
+    A secret option (the cluster key) sent back masked, as the API serves it to a caller without
+    `cluster:read_secrets`, keeps its current value; changing it to anything else requires that action.
 
     Parameters
     ----------
@@ -633,11 +662,16 @@ def update_manager_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
         if not new_conf:
             raise WazuhError(1125)
 
-        # XML syntax (1131), schema (1130) and protected sections (1127/1129), before touching the file.
-        # One CLI call parses, validates and applies the defaults (the certificate files it names are
-        # not required to exist yet: validate_manager_conf() checks them against the written file).
+        # A secret sent back masked keeps the current value: the mask would not even pass the schema.
+        current_document = load_manager_conf()
+        new_conf = _restore_masked_secrets(new_conf, current_document)
+
+        # XML syntax (1131), schema (1130), protected sections (1127/1129) and secret options (1132), before
+        # touching the file. One CLI call parses, validates and applies the defaults (the certificate files it
+        # names are not required to exist yet: validate_manager_conf() checks them against the written file).
         new_document = load_manager_conf_text(new_conf)
-        check_protected_sections(new_document, load_manager_conf())
+        check_protected_sections(new_document, current_document)
+        check_secret_sections(new_document, current_document, can_read_secrets())
 
         # Create a backup of the current configuration before attempting to replace it
         try:

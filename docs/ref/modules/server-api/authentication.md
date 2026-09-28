@@ -121,6 +121,15 @@ a later `deny` over the node being served wins, and in `rbac_mode: black` the va
 clear unless a policy denies them, as everything else does in that mode. The default policy grants
 it over `node:id:*`, so an `administrator` sees them on every node.
 
+The same action guards the **write** side of the cluster key. Knowing the key is what lets a host join
+the cluster as a peer, so being able to choose it is worth as much as being able to read it:
+`PUT /cluster/{node_id}/configuration` refuses a new `<cluster><key>` with error `1132` unless the
+caller holds `cluster:read_secrets` over that node. A configuration read masked and sent back
+unchanged keeps working: a key equal to the mask `*****` is replaced with the node's current key
+before the text is validated and written, so `cluster:update_config` alone still edits every other
+option, cluster membership (`node_type`, `nodes`, `bind_addr`, `port`) included — without the key those
+grant nothing.
+
 ### Agent keys
 
 An agent's pre-shared key — the `client.keys` line that authenticates it — is the third secret behind

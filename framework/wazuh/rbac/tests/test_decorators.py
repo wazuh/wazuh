@@ -195,19 +195,19 @@ def test_mask_sensitive_config_on_affected_items_result(db_setup):
 
 
 # ---------------------------------------------------------------------------
-# Tests for _can_read_secrets (the RBAC gate for masking: an action of its own, over ONE node)
+# Tests for can_read_secrets (the RBAC gate for masking: an action of its own, over ONE node)
 # ---------------------------------------------------------------------------
 
 def test_can_read_secrets_no_perms(db_setup):
     """Returns False when RBAC context holds no relevant action."""
     db_setup.rbac.set({'rbac_mode': 'white'})
-    assert db_setup._can_read_secrets() is False
+    assert db_setup.can_read_secrets() is False
 
 
 def test_can_read_secrets_on_the_served_node(db_setup):
     """Returns True when cluster:read_secrets is granted over the node being served."""
     db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {'node:id:master-node': 'allow'}})
-    assert db_setup._can_read_secrets() is True
+    assert db_setup.can_read_secrets() is True
 
 
 def test_can_read_secrets_on_another_node(db_setup):
@@ -218,13 +218,13 @@ def test_can_read_secrets_on_another_node(db_setup):
     secrets, however many nodes the caller can otherwise reach.
     """
     db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {'node:id:worker1': 'allow'}})
-    assert db_setup._can_read_secrets() is False
+    assert db_setup.can_read_secrets() is False
 
 
 def test_can_read_secrets_on_every_node(db_setup):
     """Returns True for the shipped `secrets_read` policy, which grants it over node:id:*."""
     db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {'node:id:*': 'allow'}})
-    assert db_setup._can_read_secrets() is True
+    assert db_setup.can_read_secrets() is True
 
 
 def test_can_read_secrets_denied_on_the_served_node(db_setup):
@@ -236,7 +236,7 @@ def test_can_read_secrets_denied_on_the_served_node(db_setup):
             'node:id:master-node': 'deny'
         }
     })
-    assert db_setup._can_read_secrets() is False
+    assert db_setup.can_read_secrets() is False
 
 
 def test_can_read_secrets_denied_on_another_node(db_setup):
@@ -248,49 +248,49 @@ def test_can_read_secrets_denied_on_another_node(db_setup):
             'node:id:worker1': 'deny'
         }
     })
-    assert db_setup._can_read_secrets() is True
+    assert db_setup.can_read_secrets() is True
 
 
 def test_can_read_secrets_black_mode_without_the_action(db_setup):
     """`black` means everything not denied is allowed, and this gate is no exception."""
     db_setup.rbac.set({'rbac_mode': 'black'})
-    assert db_setup._can_read_secrets() is True
+    assert db_setup.can_read_secrets() is True
 
 
 def test_can_read_secrets_black_mode_with_a_deny(db_setup):
     """...and a deny over the served node still masks in black mode."""
     db_setup.rbac.set({'rbac_mode': 'black', 'cluster:read_secrets': {'node:id:master-node': 'deny'}})
-    assert db_setup._can_read_secrets() is False
+    assert db_setup.can_read_secrets() is False
 
 
 def test_can_read_secrets_manager_action_is_not_a_key(db_setup):
     """`manager:read_secrets` is in no catalog and no policy: it no longer lifts the mask."""
     db_setup.rbac.set({'rbac_mode': 'white', 'manager:read_secrets': {'node:id:master-node': 'allow'}})
-    assert db_setup._can_read_secrets() is False
+    assert db_setup.can_read_secrets() is False
 
 
 def test_can_read_secrets_read_only_role(db_setup):
     """Returns False for a user that only holds :read -- the readonly-role CVE attack vector."""
     db_setup.rbac.set({'rbac_mode': 'white', 'manager:read': {'*:*:*': 'allow'}})
-    assert db_setup._can_read_secrets() is False
+    assert db_setup.can_read_secrets() is False
 
 
 def test_can_read_secrets_empty_action_dict(db_setup):
     """Returns False when the action key exists but the resource map is empty."""
     db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {}})
-    assert db_setup._can_read_secrets() is False
+    assert db_setup.can_read_secrets() is False
 
 
 def test_can_read_secrets_non_dict_action_value(db_setup):
     """Returns False when the action value is not a dict (malformed RBAC token)."""
     db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': None})
-    assert db_setup._can_read_secrets() is False
+    assert db_setup.can_read_secrets() is False
 
 
 def test_can_read_secrets_none_rbac(db_setup):
     """Returns False gracefully when the RBAC context variable returns None."""
     db_setup.rbac.set(None)
-    assert db_setup._can_read_secrets() is False
+    assert db_setup.can_read_secrets() is False
 
 
 def test_can_read_secrets_masks_when_the_node_cannot_be_resolved(db_setup):
@@ -299,7 +299,7 @@ def test_can_read_secrets_masks_when_the_node_cannot_be_resolved(db_setup):
     db_setup.rbac.set({'rbac_mode': 'black'})
 
     with patch('wazuh.core.cluster.cluster.get_node', side_effect=WazuhError(3006)):
-        assert db_setup._can_read_secrets() is False
+        assert db_setup.can_read_secrets() is False
 
 
 def test_local_node_id_is_read_once_from_the_cluster_configuration(db_setup):
@@ -613,3 +613,45 @@ def test_secret_read_is_audited_for_the_bare_cluster_key(db_setup):
     assert result["key"] == "264ae8ec9f19"
     line = mock_info.call_args[0][0]
     assert 'secret_read' in line and 'cluster.key' in line and '264ae8ec9f19' not in line
+
+
+# Tests for unmask_xml_by_path (the write-side twin of the masking)
+
+_UNMASK_KEY = 'c98b62a9b6169ac5f67dae55ae4a9088'
+_UNMASK_XML = ("<wazuh_config>\n  <indexer>\n    <ssl>\n      <key>etc/certs/indexer-connector-key.pem</key>\n"
+               "    </ssl>\n  </indexer>\n  <cluster>\n    <name>wazuh</name>\n    <key>" + _UNMASK_KEY +
+               "</key>\n  </cluster>\n</wazuh_config>\n")
+
+
+def test_unmask_xml_by_path_reverts_the_mask(db_setup):
+    """What the read side masks, the write side restores: GET then PUT unchanged keeps the text byte for byte."""
+    masked = db_setup._mask_all_sensitive_fields(_UNMASK_XML, db_setup.MASK_DEFAULT)
+    assert _UNMASK_KEY not in masked
+
+    assert db_setup.unmask_xml_by_path(masked, 'cluster.key', _UNMASK_KEY) == _UNMASK_XML
+
+
+def test_unmask_xml_by_path_tolerates_whitespace_around_the_mask(db_setup):
+    masked = _UNMASK_XML.replace(f'<key>{_UNMASK_KEY}</key>', f'<key> {db_setup.MASK_DEFAULT}\n</key>')
+
+    assert db_setup.unmask_xml_by_path(masked, 'cluster.key', _UNMASK_KEY) == _UNMASK_XML
+
+
+@pytest.mark.parametrize('sent', [
+    'd4f1e0a57c2b9368a1e4f7c0b2d85e19',
+    '',
+    '****',
+    '*****x',
+])
+def test_unmask_xml_by_path_leaves_any_other_value_alone(db_setup, sent):
+    """Only the exact mask is replaced: a real value, or anything that merely resembles the mask, reaches the
+    caller's checks as written."""
+    text = _UNMASK_XML.replace(_UNMASK_KEY, sent)
+
+    assert db_setup.unmask_xml_by_path(text, 'cluster.key', _UNMASK_KEY) == text
+
+
+def test_unmask_xml_by_path_without_the_field(db_setup):
+    text = "<wazuh_config>\n  <cluster>\n    <name>wazuh</name>\n  </cluster>\n</wazuh_config>\n"
+
+    assert db_setup.unmask_xml_by_path(text, 'cluster.key', _UNMASK_KEY) == text
