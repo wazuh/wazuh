@@ -169,6 +169,74 @@ def test_mask_sensitive_config_without_permissions(db_setup):
     assert result["integration"] == [{"name": "slack", "hook_url": "*****"}]
 
 
+@pytest.mark.parametrize('wrap', [False, True])
+def test_mask_sensitive_config_haproxy_helper_passwords(db_setup, wrap):
+    """HAProxy helper passwords are masked with and without the "cluster" wrapper."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+    helper = {"haproxy_password": "HAPROXYSECRET", "client_cert_password": "CERTSECRET", "port": 5555}
+
+    @db_setup.mask_sensitive_config()
+    def get_conf():
+        return {"cluster": {"haproxy_helper": helper}} if wrap else {"haproxy_helper": helper}
+
+    result = get_conf()
+    result = result["cluster"]["haproxy_helper"] if wrap else result["haproxy_helper"]
+    assert result["haproxy_password"] == "*****"
+    assert result["client_cert_password"] == "*****"
+    assert result["port"] == 5555
+
+
+def test_mask_sensitive_config_raw_xml_haproxy_helper_password_with_escaped_lt(db_setup):
+    """A backslash-escaped '<' is part of the value, so the whole password is masked."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+    xml = (
+        "<ossec_config><cluster><haproxy_helper><haproxy_password>Xy7\\<%kLTAIL</haproxy_password>"
+        "</haproxy_helper></cluster></ossec_config>"
+    )
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return xml
+
+    result = get_conf_raw()
+    assert "Xy7" not in result and "TAIL" not in result
+    assert "<haproxy_password>*****</haproxy_password>" in result
+
+
+def test_mask_sensitive_config_raw_xml_haproxy_helper_password_ending_in_backslash(db_setup):
+    """A value ending in a backslash right before the closing tag is still masked."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+    xml = (
+        "<ossec_config><cluster><haproxy_helper><haproxy_password>Xy7\\</haproxy_password>"
+        "</haproxy_helper></cluster></ossec_config>"
+    )
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return xml
+
+    result = get_conf_raw()
+    assert "Xy7" not in result
+    assert "<haproxy_password>*****</haproxy_password>" in result
+
+
+def test_mask_sensitive_config_raw_xml_haproxy_helper_passwords(db_setup):
+    """HAProxy helper passwords are masked in raw XML for unprivileged users."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+    xml = (
+        "<ossec_config><cluster><haproxy_helper><haproxy_password>HAPROXYSECRET</haproxy_password>"
+        "<client_cert_password>CERTSECRET</client_cert_password></haproxy_helper></cluster></ossec_config>"
+    )
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return xml
+
+    result = get_conf_raw()
+    assert "HAPROXYSECRET" not in result and "CERTSECRET" not in result
+    assert "<haproxy_password>*****</haproxy_password>" in result
+
+
 def test_mask_sensitive_config_with_permissions(db_setup):
     db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*': 'allow'}})
 
@@ -657,3 +725,307 @@ def test_mask_sensitive_config_xml_inside_nested_list(db_setup):
         return {'files': [['<api_key>SECRET</api_key>']]}
 
     assert get_conf() == {'files': [['<api_key>*****</api_key>']]}
+
+
+# ---------------------------------------------------------------------------
+# Tests for whitespace/attribute variants of the masked tags (regression for
+# the mask regex missing tags written as <cluster >, <cluster\t> or with
+# attributes, which the manager's own XML parser still treats as <cluster>)
+# ---------------------------------------------------------------------------
+
+_XML_CLUSTER_TAG_WITH_SPACE = """\
+<ossec_config>
+  <cluster >
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+_XML_CLUSTER_TAG_WITH_TAB = "<ossec_config>\n  <cluster\t>\n    <key>SECRETCLUSTERKEY</key>\n  </cluster>\n</ossec_config>"
+
+_XML_CLUSTER_TAG_WITH_ATTRIBUTE = """\
+<ossec_config>
+  <cluster foo="bar">
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+_XML_KEY_TAG_WITH_SPACE = """\
+<ossec_config>
+  <cluster>
+    <key >SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+_XML_CLUSTER_TAG_WITH_LT_IN_ATTRIBUTE = """\
+<ossec_config>
+  <cluster note="a < b">
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+_XML_KEY_TAG_WITH_LT_IN_ATTRIBUTE = """\
+<ossec_config>
+  <cluster>
+    <key note="<">SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+_XML_DECOY_TAG_WITH_CLUSTER_PREFIX = """\
+<ossec_config>
+  <clusterx>
+    <key>NOTSECRET</key>
+  </clusterx>
+</ossec_config>"""
+
+
+@pytest.mark.parametrize('xml_payload', [
+    _XML_CLUSTER_TAG_WITH_SPACE,
+    _XML_CLUSTER_TAG_WITH_TAB,
+    _XML_CLUSTER_TAG_WITH_ATTRIBUTE,
+    _XML_KEY_TAG_WITH_SPACE,
+    _XML_CLUSTER_TAG_WITH_LT_IN_ATTRIBUTE,
+    _XML_KEY_TAG_WITH_LT_IN_ATTRIBUTE,
+])
+def test_mask_sensitive_config_raw_xml_tag_whitespace_variants(db_setup, xml_payload):
+    """Whitespace/attributes on the opening tag must not bypass the mask, and the mask must land in place."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return xml_payload
+
+    result = get_conf_raw()
+    assert "SECRETCLUSTERKEY" not in result
+    assert "<key" in result and "</key" in result
+    assert "*****" in result
+
+
+def test_mask_sensitive_config_raw_xml_decoy_tag_not_masked(db_setup):
+    """A different tag sharing the `cluster` prefix must not be matched."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return _XML_DECOY_TAG_WITH_CLUSTER_PREFIX
+
+    result = get_conf_raw()
+    assert result == _XML_DECOY_TAG_WITH_CLUSTER_PREFIX
+
+
+_XML_COMMENTED_KEY_BEFORE_REAL_KEY = """\
+<ossec_config>
+  <cluster>
+    <!-- <key note>OLDKEY</key> -->
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+_XML_DUPLICATE_KEY_TAGS = """\
+<ossec_config>
+  <cluster>
+    <key>OLDKEY</key>
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+_XML_KEY_VALUE_WITH_EMBEDDED_COMMENT = """\
+<ossec_config>
+  <cluster>
+    <key>SECRETCLUSTERKEY<!-- rotate me --></key>
+  </cluster>
+</ossec_config>"""
+
+_XML_KEY_CLOSING_TAG_WITH_SPACE = """\
+<ossec_config>
+  <cluster>
+    <key>SECRETCLUSTERKEY</key >
+  </cluster>
+</ossec_config>"""
+
+_XML_COMMENT_WITH_APOSTROPHE_BEFORE_REAL_KEY = """\
+<ossec_config>
+  <cluster>
+    <!-- <key is the cluster's shared secret -->
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+  <indexer>
+    <ssl>
+      <key>/etc/filebeat/certs/filebeat-key.pem<!-- don't move --></key>
+    </ssl>
+  </indexer>
+  <!-- <cluster></cluster> -->
+</ossec_config>"""
+
+
+@pytest.mark.parametrize('xml_payload', [
+    _XML_COMMENTED_KEY_BEFORE_REAL_KEY,
+    _XML_DUPLICATE_KEY_TAGS,
+    _XML_KEY_VALUE_WITH_EMBEDDED_COMMENT,
+    _XML_KEY_CLOSING_TAG_WITH_SPACE,
+    _XML_COMMENT_WITH_APOSTROPHE_BEFORE_REAL_KEY,
+])
+def test_mask_sensitive_config_raw_xml_all_key_occurrences_masked(db_setup, xml_payload):
+    """A prior <key> (commented-out or duplicated) or a comment inside the value must not leave the real key in clear text."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return xml_payload
+
+    result = get_conf_raw()
+    assert "SECRETCLUSTERKEY" not in result
+    assert "OLDKEY" not in result
+
+
+@pytest.mark.parametrize('xml_payload, secrets', [
+    (_XML_MULTIPLE_CLUSTER_BLOCKS, ('FIRSTKEY', 'SECONDKEY')),
+    (_XML_MULTILINE_KEY, ('MULTILINE', 'SECRET')),
+])
+def test_mask_sensitive_config_raw_xml_every_block_masked(db_setup, xml_payload, secrets):
+    """Every <cluster> block is masked, and a key value spanning several lines is masked whole."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return xml_payload
+
+    result = get_conf_raw()
+    assert all(secret not in result for secret in secrets)
+
+
+@pytest.mark.parametrize('payload', [
+    "<ossec_config><cluster><!-- " + "<key><!" * 8000 + " --></cluster></ossec_config>",
+    "<ossec_config><cluster><node_name>" + "\\<key>" * 8000 + "</node_name></cluster></ossec_config>",
+], ids=['inside_comment', 'escaped'])
+def test_mask_sensitive_config_raw_xml_repeated_leaf_openings_are_linear(db_setup, payload):
+    """Leaf openings inside a comment or after a backslash must not make every match attempt rescan the block."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return payload
+
+    start = time.perf_counter()
+    assert get_conf_raw() == payload
+    assert time.perf_counter() - start < 2.0
+
+
+_XML_CLUSTER_NEVER_CLOSES = """\
+<ossec_config>
+  <cluster>
+    <key>SECRETCLUSTERKEY</key>
+"""
+
+_XML_CLUSTER_CLOSING_TAG_TYPO = """\
+<ossec_config>
+  <cluster>
+    <key>SECRETCLUSTERKEY</key>
+  </clustr>
+</ossec_config>"""
+
+_XML_CLUSTER_CLOSE_INSIDE_COMMENT = """\
+<ossec_config>
+  <cluster>
+    <!-- old block: </cluster> -->
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+_XML_CLUSTER_NESTED_IN_NODES = """\
+<ossec_config>
+  <cluster>
+    <nodes><cluster>10.0.0.1</cluster></nodes>
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+
+@pytest.mark.parametrize('xml_payload', [
+    _XML_CLUSTER_NEVER_CLOSES,
+    _XML_CLUSTER_CLOSING_TAG_TYPO,
+    _XML_CLUSTER_CLOSE_INSIDE_COMMENT,
+    _XML_CLUSTER_NESTED_IN_NODES,
+])
+def test_mask_sensitive_config_raw_xml_missing_or_fake_block_close(db_setup, xml_payload):
+    """A missing, misspelled, or commented-out </cluster> must not leave the whole block unmasked."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return xml_payload
+
+    result = get_conf_raw()
+    assert "SECRETCLUSTERKEY" not in result
+
+
+_XML_MIXED_CASE_TAGS = """\
+<ossec_config>
+  <Cluster>
+    <Key>SECRETCLUSTERKEY</Key>
+  </Cluster>
+</ossec_config>"""
+
+
+def test_mask_sensitive_config_raw_xml_mixed_case_tags(db_setup):
+    """<Cluster>/<Key> must mask too: configuration.py lowercases tags when it reads them back."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return _XML_MIXED_CASE_TAGS
+
+    result = get_conf_raw()
+    assert "SECRETCLUSTERKEY" not in result
+
+
+def test_mask_sensitive_config_raw_xml_unclosed_key_many_comments_is_fast(db_setup):
+    """An unclosed <key> followed by many comments must not trigger catastrophic regex backtracking (ReDoS guard)."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+    payload = "<ossec_config><cluster><key>" + "<!--c-->" * 40 + "</cluster></ossec_config>"
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return payload
+
+    start = time.perf_counter()
+    get_conf_raw()
+    elapsed = time.perf_counter() - start
+    assert elapsed < 2.0
+
+
+_XML_CLUSTER_CLOSE_INSIDE_OSXML_COMMENT = """\
+<ossec_config>
+  <cluster>
+    <! old block: </cluster> !>
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+
+def test_mask_sensitive_config_raw_xml_close_inside_osxml_style_comment(db_setup):
+    """A </cluster> written inside an os_xml-style <! ... !> comment must not truncate the block early.
+
+    os_xml's own comment reader (_oscomment) closes a comment opened with '<!' at the first
+    '-->' or '!>', not only the W3C '-->' form.
+    """
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return _XML_CLUSTER_CLOSE_INSIDE_OSXML_COMMENT
+
+    result = get_conf_raw()
+    assert "SECRETCLUSTERKEY" not in result
+
+
+def test_mask_xml_by_path_three_level_path_missing_middle_tag_is_fast(db_setup):
+    """A 3-tag path whose middle tag is absent from the block must not backtrack exponentially over trailing
+    comments (ReDoS guard for the cluster.haproxy_helper.* paths)."""
+    payload = "<cluster>" + "<!--c-->" * 40
+
+    start = time.perf_counter()
+    result = db_setup._mask_xml_by_path(payload, "cluster.haproxy_helper.haproxy_password", "*****")
+    elapsed = time.perf_counter() - start
+
+    assert elapsed < 2.0
+    assert result == payload
