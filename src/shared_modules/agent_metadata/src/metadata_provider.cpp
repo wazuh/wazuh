@@ -313,6 +313,14 @@ namespace
                     m_shm->updating.store(true, std::memory_order_release);
                     m_shm->has_metadata = false;
                     m_shm->groups_count = 0;
+                    // update() never touches this field (see its own comment), and it is not
+                    // implied by has_metadata=false above: without clearing it here too, a value
+                    // set via updateVdFeedOffset() outlives this reset -- this segment is a named,
+                    // OS-persistent mapping (see its own doc comment), so a stale value survives
+                    // not just within one process but across separate process runs, which is what
+                    // let one test's nonzero offset leak into an unrelated later test expecting the
+                    // field's zero default.
+                    m_shm->base_metadata.vd_feed_offset = 0;
                     m_shm->updating.store(false, std::memory_order_release);
                 }
             }

@@ -68,9 +68,9 @@ class AgentSyncProtocolTest : public ::testing::Test
             char* groups[] = {const_cast<char*>("group1")};
             metadata.groups = groups;
             metadata.groups_count = 1;
-            // A VD feed offset already received from the manager, so VDFIRST/VDSYNC tests
-            // exercise the ordinary case; the sessions sent with no offset at all have their
-            // own tests, with their own explicit metadata.
+            // vd_feed_offset here is inert: update() deliberately never copies that field (it is
+            // solely owned by metadata_provider_update_vd_feed_offset(), see metadata_provider.cpp).
+            // A test that needs a real, non-zero live offset calls that function directly instead.
             metadata.vd_feed_offset = 12345;
             metadata_provider_update(&metadata);
 
@@ -2907,8 +2907,10 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithPayloadTooLarge)
 // failureReason empty -- determineSyncFailureReasonBasedOnSyncResult() had no case for
 // SyncResult::CHECKSUM_ERROR, on the wrong assumption that only requiresFullSync() ever saw it.
 // A brand-new agent's first VD sync (feed_offset 0 racing the manager's already-loaded feed)
-// hits exactly this path (#39543).
-TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithChecksumMismatchHasReason)
+// hits exactly this path (#39543). This body is executeChecksum()'s real shape
+// (sessionProcessor.cpp's CHECKSUM_MISMATCH_BODY), the actual case a FIM/SCA/agent-info instance
+// (isFeedBased=false) hits.
+TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithChecksumMismatchBodyHasGenericReason)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
@@ -2939,7 +2941,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithChecksumMismatchHasReason)
 
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
-    bool response = feedHttpResult(409, R"({"current_version":991021,"error":"version_mismatch"})");
+    bool response = feedHttpResult(409, R"({"status":"checksum_mismatch"})");
 
     EXPECT_TRUE(response);
 
@@ -2947,10 +2949,58 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithChecksumMismatchHasReason)
 }
 
 // Companion to the test above: syscollector's dedicated VD AgentSyncProtocol instance is
-// constructed with isFeedBased=true, and only that instance should get the "feed" wording --
-// this is what actually lets syscollectorImp.cpp's VD sync log say "feed version mismatch"
-// without misdescribing a FIM/SCA/agent-info metadata-groups 409 the same way.
-TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithChecksumMismatchHasFeedReasonWhenFeedBased)
+// constructed with isFeedBased=true and gets a version_mismatch-shaped body (vdScanLane.cpp's
+// versionMismatchBody()) -- the message must read the body, not just isFeedBased, and report both
+// sides of the mismatch: the agent's own vd_feed_offset and the manager's current_version (991021,
+// from the body). This is what closes the original report: a canned "feed version mismatch" label
+// that gave no way to tell a real offset gap from the shared-memory offset bug that used to get
+// stuck at 0.
+//
+// Uses metadata_provider_update_vd_feed_offset() directly rather than SetUp()'s
+// metadata.vd_feed_offset field: update() (called by SetUp()) deliberately never copies that
+// field, on any call, since the metadata_provider.cpp round that made updateVdFeedOffset() the
+// field's only writer -- SetUp()'s own vd_feed_offset assignment is a no-op today.
+TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithVersionMismatchBodyReportsBothOffsets)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
+    {
+    };
+    protocol = std::make_unique<AgentSyncProtocol>("test_module_vd", ":memory:", testLogger, mockQueue,
+                                                   mockSyncTransport, /*isFeedBased=*/true);
+    ASSERT_EQ(metadata_provider_update_vd_feed_offset(12345), 0);
+
+    std::thread syncThread(
+        [this]()
+    {
+        std::vector<PersistedData> testData =
+        {
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+        };
+
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) ).WillOnce(Return(testData));
+        EXPECT_CALL(*mockQueue, resetSyncingItems()).Times(1);
+
+        SyncModuleResult syncResult = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_FALSE(syncResult.success);
+        EXPECT_NE(syncResult.failureReason.find("feed version mismatch"), std::string::npos);
+        EXPECT_NE(syncResult.failureReason.find("12345"), std::string::npos) << syncResult.failureReason;
+        EXPECT_NE(syncResult.failureReason.find("991021"), std::string::npos) << syncResult.failureReason;
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    bool response = feedHttpResult(409, R"({"current_version":991021,"error":"version_mismatch"})");
+
+    EXPECT_TRUE(response);
+
+    syncThread.join();
+}
+
+// A 409 whose body this code does not recognize (stripped by a proxy, an older manager, or a
+// future shape) must not crash the JSON parser and must fall back to the old isFeedBased-only
+// wording -- no regression for a body shape this code has never seen.
+TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithUnrecognizedBodyFallsBackToIsFeedBased)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&)
@@ -2977,7 +3027,8 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithChecksumMismatchHasFeedReas
 
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
-    bool response = feedHttpResult(409, R"({"current_version":991021,"error":"version_mismatch"})");
+    // Not valid JSON at all -- must not throw past the parser.
+    bool response = feedHttpResult(409, "not json");
 
     EXPECT_TRUE(response);
 
