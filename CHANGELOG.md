@@ -48,6 +48,7 @@
 | Issue | Comment |
 |-------|---------|
 | [#39179](https://github.com/wazuh/wazuh/issues/39179) | Reported a network interface type on macOS for tunnel and virtual interfaces (gif, stf, utun, VLAN, bridge, cellular) instead of leaving them blank. |
+| [#39169](https://github.com/wazuh/wazuh/issues/39169) | Reported per-process CPU time (`utime`, `stime`) and process state on macOS instead of leaving them empty or `unknown`. |
 
 ## Prior versions
 
