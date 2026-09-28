@@ -49,6 +49,11 @@ BOOL wrap_CertCloseStore(__UNUSED_PARAM(HCERTSTORE hCertStore), __UNUSED_PARAM(D
     return mock_type(BOOL);
 }
 
+BOOL wrap_CertFreeCertificateContext(PCCERT_CONTEXT pCertContext) {
+    check_expected_ptr(pCertContext);
+    return TRUE;
+}
+
 LONG wrap_WinVerifyTrust(__UNUSED_PARAM(HWND hwnd), __UNUSED_PARAM(GUID *pgActionID), LPVOID pWVTData) {
     WINTRUST_DATA *data = (WINTRUST_DATA *)pWVTData;
 
