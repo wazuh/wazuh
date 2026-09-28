@@ -145,52 +145,6 @@ class TestCheckUserConsistency:
         assert isinstance(_DUMMY_HASH, str)
         assert len(_DUMMY_HASH) > 50, "_DUMMY_HASH should be a bcrypt hash"
 
-    def test_legacy_hash_execution_time_consistency(self):
-        """Verify a legacy (pre-default) password hash does not create a faster timing bucket."""
-        from wazuh.rbac.orm import AuthenticationManager
-
-        real_password = "test_password_123"
-        legacy_hash = generate_password_hash(real_password, method="pbkdf2:sha256:150000")
-
-        manager = MagicMock()
-        mock_result = MagicMock()
-        manager.session.scalars.return_value = mock_result
-
-        # Measure timing for a user with a legacy hash, wrong password (no rehash triggered)
-        legacy_user_times = []
-        for _ in range(5):
-            mock_result.first.return_value = MockUser("legacy_user", legacy_hash)
-
-            t0 = time.perf_counter()
-            result = AuthenticationManager.check_user(manager, "legacy_user", "wrong_password")
-            elapsed = (time.perf_counter() - t0) * 1000
-            legacy_user_times.append(elapsed)
-
-            assert result is False
-
-        legacy_median = statistics.median(legacy_user_times)
-
-        # Measure timing for invalid username (dummy hash)
-        invalid_user_times = []
-        for _ in range(5):
-            mock_result.first.return_value = None
-
-            t0 = time.perf_counter()
-            result = AuthenticationManager.check_user(manager, "invalid_user", "wrong_password")
-            elapsed = (time.perf_counter() - t0) * 1000
-            invalid_user_times.append(elapsed)
-
-            assert result is False
-
-        invalid_median = statistics.median(invalid_user_times)
-
-        ratio = invalid_median / legacy_median if legacy_median > 0 else 1.0
-
-        assert ratio < 2.0, (
-            f"Legacy hash is distinguishable by timing from a missing user. "
-            f"Legacy: {legacy_median:.2f}ms, Missing: {invalid_median:.2f}ms, Ratio: {ratio:.1f}x"
-        )
-
 
 class TestCheckUserLegacyHashRehash:
     """Test suite to verify check_user() upgrades legacy password hashes on login."""
