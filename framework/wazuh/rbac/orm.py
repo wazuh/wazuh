@@ -189,12 +189,10 @@ class UserRoles(_Base):
 def token_exp_timeout_ms() -> int:
     """Return the token lifetime currently configured in security.yaml, in milliseconds.
 
-    A revocation rule must outlive every token it revokes, so it is sized from the file rather than
-    from the `security_conf` object imported at start-up: `update_security_conf` only writes the
-    file, and the process that creates the rule (the API's local request pool, `rbac_control`) is
-    not the one that refreshes that object before signing tokens. A rule sized from a stale, shorter
-    timeout would be purged by `delete_all_expired_rules` while the tokens it revoked are still
-    within their lifetime, making them valid again.
+    A token rule has to last as long as the tokens it covers, so it is sized from the file rather
+    than from the `security_conf` object imported at start-up: `update_security_conf` only writes
+    the file, and the process that creates the rule (the API's local request pool, `rbac_control`)
+    is not the one that refreshes that object before signing tokens.
 
     Returns
     -------
