@@ -205,20 +205,28 @@ verification state -- see the resolution table under `verification_mode` above.
 
 | | Path | Ownership |
 |---|---|---|
-| Linux, macOS | `etc/certs/root-ca.pem`, relative to the installation directory | `0640 root:wazuh`, in a `0750 root:wazuh` directory |
+| Linux, macOS | `etc/certs/root-ca.pem`, relative to the installation directory | `0640 wazuh:wazuh`, in a `01770 root:wazuh` directory |
 | Windows | `certs\root-ca.pem` | The inherited ACL of the directory the agent creates |
 
-Three things put it there, and the file is identical whichever did:
+Four things write it:
 
-- **The enrollment-token bootstrap**, on the agent's first start after a token install. It
-  fetches the manager's CA, checks it against the token's pin and installs only the certificate
-  that matched.
+- **The enrollment-token bootstrap**, on the agent's first start after a token install, or when
+  `wazuh-agent-auth` enrolls the agent or refreshes its CA with `--certs-only`. It fetches the
+  manager's CA, checks it against the token's pin and installs only the certificate that matched.
+  A token minted with `--embed-ca` installs the certificates it carries instead, with no fetch.
 - **A WPK upgrade from 4.x**, where the manager delivers its CA over the upgrade channel. See
   [Trust anchor delivery to legacy agents](../../../guide/migration/remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents).
 - **An operator**, placing the file by hand or through configuration management.
+- **The manager's CA publication**, while the agent runs. When the manager publishes a newer CA
+  bundle, the agent downloads it over its verified connection and replaces the file with it.
+  This is how an agent enrolled with a pinned token, which starts out trusting a single CA,
+  comes to trust every CA the manager publishes, and how enrolled agents follow a CA rotation.
+  It only applies to this file: an agent whose `<certificate_authorities>` names a different file,
+  or whose `<verification_mode>` is `none` or `system`, is never refreshed.
 
-It is root-owned and not writable by the `wazuh` user the agent runs as, so it is always
-written by root before the daemon drops privileges -- the same pattern `client.keys` follows.
+The agent never edits it in place: it only ever replaces the whole file, which is why the
+directory is group-writable with the sticky bit set -- the agent can replace its own anchor
+but nothing root-owned beside it.
 
 ### ip_update_interval
 

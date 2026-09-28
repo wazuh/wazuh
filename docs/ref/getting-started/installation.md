@@ -371,15 +371,17 @@ Whether the node is hidden from the cluster. Default: `no`.
 
 ## Agent
 
-A 5.0 agent registers with an **enrollment token**. The token names the manager, pins the certificate authority that signs the manager's agent-facing certificate, and carries the enrollment credential. Tokens are minted on the manager, see [minting a token](../modules/authd/enrollment-lifecycle.md#step-1-the-operator-mints-a-token) and [Enrollment tokens](../modules/authd/README.md#enrollment-tokens) for listing, revocation and the refusal rules.
+A 5.0 agent registers with an **enrollment token**. The token names the manager, pins the certificate authority that signs the agent-facing certificate of the manager it was minted on, and carries the enrollment credential. Tokens are minted on the manager (in a cluster, on the master node, whichever node the token's address names), see [minting a token](../modules/authd/enrollment-lifecycle.md#step-1-the-operator-mints-a-token) and [Enrollment tokens](../modules/authd/README.md#enrollment-tokens) for listing, revocation and the refusal rules.
 
 A token comes in three shapes, and every installation method below accepts any of them:
 
 | Shape | Minted with | What the agent does with it |
 |---|---|---|
-| Pinned | the default | Fetches the manager's CA, checks it against the pin in the token, installs it as the trust anchor |
-| Embedded CA | `--embed-ca` | Takes the certificate from the token itself; no fetch |
+| Pinned | the default | Fetches the manager's CA, installs only the certificate that matches the pin in the token as the trust anchor |
+| Embedded CA | `--embed-ca` | Installs every CA certificate the token carries as the trust anchor; no fetch |
 | Credential-less | `--no-credential` | Points the agent at the manager and installs the trust anchor, but presents no enrollment credential |
+
+In a [CA rotation](../modules/remoted/ca-rotation.md#enrollment-tokens-and-a-rotation) that changes the CA key, pinned tokens minted before the manager's certificates are replaced, and `--embed-ca` tokens minted before the new CA was added, stop working once the certificates are replaced; agents already enrolled with them are not affected. Mint new ones for any still used to enroll agents once every node's certificate has been replaced.
 
 > [!IMPORTANT]
 > Every token expires: 30 days by default, 3650 days at most. Expiry is checked by the manager, not by the installer, so an agent given a stale token installs and starts normally and then fails to register. The agent log names the token id the manager refused.

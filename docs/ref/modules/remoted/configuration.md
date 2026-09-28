@@ -99,6 +99,8 @@ requirements are therefore the operator's to meet:
   the cluster VIP, each node's own address, and any NAT address. remoted logs a warning at start-up
   if the certificate carries no usable SAN at all — meaning no DNS or IP entry beyond loopback and
   the host's own name — but it cannot detect a SAN list that is merely missing the right address.
+  A token minted for one worker's own address also needs that address on the master's
+  certificate; see [Enrollment tokens](../authd/README.md#enrollment-tokens).
 
 ### legacy.port
 
