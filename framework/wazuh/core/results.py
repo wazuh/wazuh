@@ -654,8 +654,13 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         if self._affected_items and all(isinstance(item, str) for item in self._affected_items):
             entry['affected_items'] = sorted(self._affected_items, key=str)
         if self._failed_items:
-            entry['failed_items'] = {error.code: sorted(ids, key=str)
-                                     for error, ids in self._failed_items.items()}
+            # Keyed by exception, and two exceptions with the same code but a per-item
+            # extra_message are different keys (1824/1727 carry the task manager's message per
+            # agent): union them, or each code keeps only the last exception's ids.
+            failed_by_code = {}
+            for error, ids in self._failed_items.items():
+                failed_by_code.setdefault(error.code, set()).update(ids)
+            entry['failed_items'] = {code: sorted(ids, key=str) for code, ids in failed_by_code.items()}
         if entry:
             self._node_attribution[node_name] = entry
 
