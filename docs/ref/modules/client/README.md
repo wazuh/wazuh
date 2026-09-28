@@ -236,6 +236,7 @@ sudo grep -E "cacerts|pin_mismatch|verified enrollment|TLS verification|\(41[0-9
 | `(4124)` | `system`, and the trust anchor is readable but holds no certificate the agent can parse | Replace the anchor, or enroll with a token to reinstall it; truncated copies are the usual cause |
 | `(4125)` | The trust anchor is gone, but this install has held one (`.anchor-committed` is still beside it) | Restore the anchor, or set `<verification_mode>` explicitly to say what was intended. Starting unverified is refused rather than done silently |
 | `(4122)` | An explicit `none` on a host that holds a usable anchor | Remove `<verification_mode>none</verification_mode>` to verify against it |
+| `(4126)` | No anchor, but a remote upgrade delivered the manager's CA and could not install it (usually the `openssl` command is missing), so it is still in `var/incoming/root-ca.pem`. The agent runs with `none` | Install the anchor with [`--certs-only`](#enrolling-or-re-pointing-an-agent); a token minted with `--no-credential` is enough. See [When the CA cannot be validated on the agent](../../../guide/migration/remote-agent-upgrade.md#when-the-ca-cannot-be-validated-on-the-agent) |
 | `TLS verification failed connecting to …: the certificate does not include that name` | The address the agent dials is not in the certificate | The line lists the names the certificate does carry |
 | `TLS verification failed connecting to …: the certificate has expired` / `is not valid yet` | The manager's certificate is outside its validity window, or the clock is wrong | The line gives the date it checked against |
 | `TLS verification is DISABLED (verification_mode=none)` | The resolved mode is `none` | See the resolution table under [`verification_mode`](configuration.md#verification_mode) |
@@ -258,7 +259,7 @@ sudo grep -A4 "<ssl>" /var/ossec/etc/ossec.conf
 
 The trust anchor should be `0640 root:wazuh`. A root-owned file the `wazuh` user cannot read fails closed just as a missing one does, and a directory listing looks right until the group is checked.
 
-If the agent has no anchor, or the manager's has changed, refresh it with [`wazuh-agent-auth --certs-only`](#enrolling-or-re-pointing-an-agent) rather than copying the file by hand.
+If the agent has no anchor, or the manager's has changed, refresh it with [`wazuh-agent-auth --certs-only`](#enrolling-or-re-pointing-an-agent) rather than copying the file by hand. That includes a CA a remote upgrade left in `var/incoming/root-ca.pem` without installing it.
 
 #### Auditing a fleet
 
@@ -277,6 +278,12 @@ The log corroborates it, with the caveat that `ossec.log` spans earlier boots un
 
 ```bash
 sudo grep "TLS verification is DISABLED" /var/ossec/logs/ossec.log | tail -1
+```
+
+A CA still in `var/incoming` names the cause for an agent upgraded remotely: the manager delivered it but the installer could not validate it, usually for lack of the `openssl` command:
+
+```bash
+sudo test -f /var/ossec/var/incoming/root-ca.pem && echo "DELIVERED CA NOT INSTALLED"
 ```
 
 See [Trust anchor delivery to legacy agents](../../../guide/migration/remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents) for the delivery and for confirming it ran.

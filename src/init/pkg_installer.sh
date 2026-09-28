@@ -450,19 +450,17 @@ DEFAULT_CA_FILE="./etc/certs/root-ca.pem"
 # runs. Runs at the very start of the script, ahead of the manager connectivity
 # check and the <ssl> gate below.
 #
-# Installing the file is the entire cutover here -- ossec.conf is never edited.
-# That is a deliberate, narrower scope than the issue's full "Install the anchor"/
-# "Do not override deliberate operator configuration" sections: this build has no
-# anchor-driven verification (confirmed against moduleConfig.cpp's validateTls()
-# and config.c -- verifyMode/caPath come strictly from parsed config, nothing
-# probes a conventional anchor path), so a file placed here does not by itself
-# change what mode the upgraded agent boots into. Wiring it into <ssl> is left for
-# a separate, explicitly recorded decision rather than done implicitly here.
+# Installing the file is the whole cutover: ossec.conf is never edited, and the
+# agent picks up an anchor at DEFAULT_CA_FILE on its own when <verification_mode>
+# is unset.
 INCOMING_CA_FILE="./var/incoming/root-ca.pem"
 
 # Set once the delivered CA passes validation; it is installed further down, past
 # the last gate that can abort this upgrade.
 CA_VALIDATED=0
+
+# Set when the delivered CA could not be validated for lack of a tool.
+CA_TOOL_HINT=""
 
 if [ -L "${INCOMING_CA_FILE}" ]; then
     # var/incoming is written by com's own transfer, but is not exclusively
@@ -621,6 +619,8 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
         # delivery, just an environment that couldn't validate it this run, so a
         # later upgrade attempt (with openssl available) should still get to try.
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE} ${CA_REJECT_REASON}; leaving it in place for a later upgrade attempt and continuing unverified." >> ./logs/upgrade.log
+        # Replaces the generic "place the CA" advice below; the recovery needs neither tool.
+        CA_TOOL_HINT="The manager's CA is already on this host at ${INCOMING_CA_FILE} but could not be validated: ${CA_TOOL} was not found. To enable verification, stop the agent, run ./bin/wazuh-agent-auth --token-file <file> --certs-only with an enrollment token minted on the manager (wazuh-manager-authd --create-enrollment-token), then start the agent; install ${CA_TOOL} so later upgrades can validate a delivered CA."
     elif [ -n "${CA_REJECT_REASON}" ]; then
         # A malformed/expired/non-CA file must not break the upgrade, nor be left
         # behind for a later upgrade to pick up -- remove it below same as on success.
@@ -787,7 +787,11 @@ else
     # one -- and <ssl> left unset resolves to 'none' without it: the upgraded agent
     # will run unverified. Say so plainly, since this is the one remaining path to
     # an unverified 5.0 agent and it must be obvious, not silent.
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - No trust anchor is present at ${DEFAULT_CA_FILE}; the upgraded agent will run unverified unless <ssl><verification_mode> and <certificate_authorities> are configured explicitly. To enable verification: place the manager's CA at ${DEFAULT_CA_FILE} and re-run the upgrade, or configure <certificate_authorities> explicitly and restart the agent." >> ./logs/upgrade.log
+    if [ -n "${CA_TOOL_HINT}" ]; then
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - No trust anchor is present at ${DEFAULT_CA_FILE}; the upgraded agent will run unverified unless <ssl><verification_mode> and <certificate_authorities> are configured explicitly. ${CA_TOOL_HINT}" >> ./logs/upgrade.log
+    else
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - No trust anchor is present at ${DEFAULT_CA_FILE}; the upgraded agent will run unverified unless <ssl><verification_mode> and <certificate_authorities> are configured explicitly. To enable verification: place the manager's CA at ${DEFAULT_CA_FILE} and re-run the upgrade, or configure <certificate_authorities> explicitly and restart the agent." >> ./logs/upgrade.log
+    fi
 fi
 
 case "${SSL_VERIFICATION_MODE}" in
@@ -859,12 +863,20 @@ case "${SSL_VERIFICATION_MODE}" in
             # condition -- no OS CA bundle at all -- does not apply here. Proceed rather
             # than block a legacy migration over a check that agent was never able to
             # pass in the first place.
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, but the currently-installed agent (${CURRENT_AGENT_VERSION}) predates 5.0 and its config cannot express TLS verification either way -- proceeding unverified. No trust anchor is present at ${DEFAULT_CA_FILE}; place one there and re-run the upgrade, or configure <certificate_authorities> explicitly after the upgrade, to enable verification." >> ./logs/upgrade.log
+            if [ -n "${CA_TOOL_HINT}" ]; then
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, but the currently-installed agent (${CURRENT_AGENT_VERSION}) predates 5.0 and its config cannot express TLS verification either way -- proceeding unverified. ${CA_TOOL_HINT}" >> ./logs/upgrade.log
+            else
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, but the currently-installed agent (${CURRENT_AGENT_VERSION}) predates 5.0 and its config cannot express TLS verification either way -- proceeding unverified. No trust anchor is present at ${DEFAULT_CA_FILE}; place one there and re-run the upgrade, or configure <certificate_authorities> explicitly after the upgrade, to enable verification." >> ./logs/upgrade.log
+            fi
         else
             # Reached only when no usable anchor is present at all (the branch above
             # already handles the case where one is) -- ossec.conf is never modified
             # by this script, so there is genuinely nothing more it can do here.
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, and no trust anchor is present at ${DEFAULT_CA_FILE}. Place the manager's CA there and retry, or configure <certificate_authorities> explicitly; interrupting upgrade." >> ./logs/upgrade.log
+            if [ -n "${CA_TOOL_HINT}" ]; then
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, and no trust anchor is present at ${DEFAULT_CA_FILE}. ${CA_TOOL_HINT} Interrupting upgrade." >> ./logs/upgrade.log
+            else
+                echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. The system trust store does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}, and no trust anchor is present at ${DEFAULT_CA_FILE}. Place the manager's CA there and retry, or configure <certificate_authorities> explicitly; interrupting upgrade." >> ./logs/upgrade.log
+            fi
             abort_upgrade "2"
         fi
         ;;

@@ -149,6 +149,16 @@ The `-l` flag lists all outdated agents with their current version. Agents on v4
 
 The manager downloads the WPK from the Wazuh repository before making it available to the agent. If the manager does not have outbound access to the WPK repository, prepare a custom WPK and use the custom upgrade method instead, see [Custom WPK upgrade](#custom-wpk-upgrade).
 
+### 4. Confirm the `openssl` command on Linux agents
+
+The Linux and macOS upgrade script validates the [CA the manager delivers](#trust-anchor-delivery-to-legacy-agents) with the `openssl` command-line tool. The agent package does not depend on it, and some supported images ship only the library (`openssl-libs`) or keep a custom build outside root's `PATH`. Without it the upgrade still succeeds, but the agent comes up verifying nothing (see [When the CA cannot be validated on the agent](#when-the-ca-cannot-be-validated-on-the-agent)). Check each Linux agent as root before upgrading, and install the distribution's `openssl` package where this prints nothing:
+
+```bash
+command -v openssl
+```
+
+Windows agents validate the CA with .NET and need nothing extra.
+
 ---
 
 ## Remote upgrade workflow in 5.x - legacy agents
@@ -250,6 +260,39 @@ The manager refuses to send the CA, and logs an actionable error, when:
 Delivery status is visible in the manager log only. As with WPK delivery itself, `tasks.db` records
 no per-task outcome — see the "Upgrade result reporting" row in [Breaking changes at a
 glance](#breaking-changes-at-a-glance).
+
+### When the CA cannot be validated on the agent
+
+On Linux and macOS the upgrade script checks the delivered CA with the `openssl` command before
+installing it as the agent's anchor. When `openssl` is not found as root, the script leaves the CA
+in `var/incoming/root-ca.pem`, installs no anchor, and the upgrade still reports success. The
+upgraded agent runs with `verification_mode` resolved to `none`:
+
+- `upgrade.log` says `cannot be validated: openssl was not found on this host` and how to recover.
+- `ossec.log` logs `(4126)` on every start until an anchor is installed, next to the generic
+  `TLS verification is DISABLED (verification_mode=none).` warning.
+
+To recover an agent already upgraded this way, install the anchor with an enrollment token. The
+agent keeps its id and `client.keys`, and the step needs no `openssl` command:
+
+1. On the master, mint a token for the address the agent already connects to. `--no-credential`
+   is enough, since the token is only used to fetch and pin the CA:
+   ```bash
+   sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <manager address> --no-credential --ttl 1h > token
+   ```
+2. Copy the token to the agent and install the anchor with the agent stopped:
+   ```bash
+   sudo systemctl stop wazuh-agent
+   sudo /var/ossec/bin/wazuh-agent-auth --token-file token --certs-only
+   sudo systemctl start wazuh-agent
+   ```
+3. Confirm that `/var/ossec/etc/certs/root-ca.pem` exists and that `ossec.log` no longer logs
+   `(4126)`, then remove `/var/ossec/var/incoming/root-ca.pem`.
+
+Install `openssl` too, so later upgrades can validate a delivered CA. Do not copy the file from
+`var/incoming` into place by hand or re-run the upgrade to pick it up. A hand-copied anchor does not
+get the ownership and marker `--certs-only` writes (see the
+[client module reference](../../ref/modules/client/README.md)).
 
 ### Certificate requirements
 
@@ -462,5 +505,9 @@ After triggering the upgrade, confirm all conditions below are met before declar
   (`grep "legacy_task_delivery.*CA" /var/wazuh-manager/logs/wazuh-manager.log`). An agent whose CA delivery
   failed is still upgraded and connected, but verifies nothing — worth catching before the migration
   is declared complete.
+- On each Linux or macOS agent, the trust anchor is in place (`sudo ls -l /var/ossec/etc/certs/root-ca.pem`)
+  and `ossec.log` has no `(4126)`. A delivered CA the agent could not validate leaves the agent
+  upgraded and connected but unverified, and the manager log does not show it. See
+  [When the CA cannot be validated on the agent](#when-the-ca-cannot-be-validated-on-the-agent).
 
 ---

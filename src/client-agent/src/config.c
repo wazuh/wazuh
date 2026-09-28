@@ -262,10 +262,18 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
          * This is not a defence against that user REPLACING the anchor with a CA of its own --
          * nothing here could be, once the agent adopts rotations unaided. It closes the cheaper
          * attack and the commoner accident: ending up with no verification at all. */
-        if (!cfg->ssl.verification_mode_explicit && w_is_file(AGENT_ANCHOR_CA) == 0
-                && w_is_file(AGENT_ANCHOR_MARKER) != 0) {
-            merror(AG_SSL_ANCHOR_VANISHED, AGENT_ANCHOR_CA, AGENT_ANCHOR_MARKER);
-            return false;
+        if (!cfg->ssl.verification_mode_explicit && w_is_file(AGENT_ANCHOR_CA) == 0) {
+            if (w_is_file(AGENT_ANCHOR_MARKER) != 0) {
+                merror(AG_SSL_ANCHOR_VANISHED, AGENT_ANCHOR_CA, AGENT_ANCHOR_MARKER);
+                return false;
+            }
+
+#ifndef WIN32
+            /* A CA the upgrade could not validate. IsFile() only stats, so a planted FIFO can't block. */
+            if (IsFile(AGENT_DELIVERED_CA) == 0) {
+                mwarn(AG_SSL_DELIVERED_CA_PENDING, AGENT_ANCHOR_CA, AGENT_DELIVERED_CA);
+            }
+#endif
         }
 
         return true;

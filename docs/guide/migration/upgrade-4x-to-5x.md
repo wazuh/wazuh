@@ -198,7 +198,7 @@ After upgrading and cleaning configuration, verify:
 
 1. Agent successfully connects to the manager over HTTPS on port `1517`.
 2. Agent and manager versions are both compatible with 5.0 communication protocol.
-3. The agent holds a trust anchor at `/var/ossec/etc/certs/root-ca.pem` and verifies the manager. A remote upgrade delivers one — see [Trust anchor delivery to legacy agents](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents); a local package upgrade does not.
+3. The agent holds a trust anchor at `/var/ossec/etc/certs/root-ca.pem` and verifies the manager. A remote upgrade delivers one — see [Trust anchor delivery to legacy agents](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents); a local package upgrade does not. On Linux, a `(4126)` in `ossec.log` means one was delivered but never installed, usually because the `openssl` command is missing — see [When the CA cannot be validated on the agent](remote-agent-upgrade.md#when-the-ca-cannot-be-validated-on-the-agent).
 
 Port `1515` is the legacy enrollment listener. An upgraded agent keeps the identity it already has and does not enroll again, so it never uses that port; a 5.0 agent registering for the first time does so over `POST /enroll` on `1517`, with an enrollment token.
 
@@ -278,7 +278,7 @@ That exception depends on identifying the installed version, so it does not appl
 
 The anchor is what changes that outcome, and it reaches the agent in one of two ways:
 
-- the manager sends it over the upgrade channel, on by default — see [Trust anchor delivery](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents);
+- the manager sends it over the upgrade channel, on by default — see [Trust anchor delivery](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents). On Linux and macOS the installer validates it with the `openssl` command first; without it the CA stays in `var/incoming`, no anchor is installed and the agent runs unverified — see [When the CA cannot be validated on the agent](remote-agent-upgrade.md#when-the-ca-cannot-be-validated-on-the-agent);
 - or you place it at the path above before upgrading.
 
 The file is the entire cutover either way: `ossec.conf` is never edited by the upgrade, and an agent that finds the anchor without a `<verification_mode>` of its own comes up verifying with `full` against it.
