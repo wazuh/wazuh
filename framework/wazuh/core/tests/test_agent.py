@@ -182,6 +182,17 @@ def test_WazuhDBQueryAgents_add_search_to_query(mock_socket_conn):
     assert 'OR id LIKE :search_id)' in query_agent.query, 'Query returned does not match the expected one'
 
 
+@pytest.mark.parametrize('negation', [True, False])
+@patch('socket.socket.connect')
+def test_WazuhDBQueryAgents_add_search_to_query_skips_internal_key(mock_socket_conn, negation):
+    """Tests _add_search_to_query of WazuhDBQueryAgents never matches on the agent key"""
+    query_agent = WazuhDBQueryAgents(search={'value': 'test', 'negation': negation})
+    query_agent._add_search_to_query()
+
+    assert 'internal_key' not in query_agent.query, 'Search must not match on the agent key'
+    assert '(name LIKE :search AND name IS NOT NULL)' in query_agent.query
+
+
 @pytest.mark.parametrize('data', [
     [{'id': 0, 'status': 'active', 'group': 'default,group1,group2', 'dateAdd': 1000000000,
       'disconnection_time': 0}],

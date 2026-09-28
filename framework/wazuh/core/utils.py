@@ -1376,8 +1376,8 @@ class WazuhDBQuery(object):
         if self.search:
             self.query += " AND NOT" if bool(self.search['negation']) else ' AND'
             self.query += " (" + " OR ".join(
-                f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)' for x in
-                self.fields.values()) + ')'
+                f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)'
+                for k, x in self.fields.items() if k not in self.extra_fields) + ')'
             self.query = self.query.replace('WHERE  AND', 'WHERE')
             self.request['search'] = "%{0}%".format(re.sub(f"[{self.special_characters}]", '_', self.search['value']))
 
