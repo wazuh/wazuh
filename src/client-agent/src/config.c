@@ -269,8 +269,9 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
             }
 
 #ifndef WIN32
-            /* A CA the upgrade could not validate. IsFile() only stats, so a planted FIFO can't block. */
-            if (IsFile(AGENT_DELIVERED_CA) == 0) {
+            /* A CA the upgrade could not validate. Only stats, so a planted FIFO can't block, and a
+             * symlink is skipped the way the installer skips it. */
+            if (IsFile(AGENT_DELIVERED_CA) == 0 && IsLink(AGENT_DELIVERED_CA) != 0) {
                 mwarn(AG_SSL_DELIVERED_CA_PENDING, AGENT_ANCHOR_CA, AGENT_DELIVERED_CA);
             }
 #endif

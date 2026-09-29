@@ -305,6 +305,9 @@ static int setup_test(void **state) {
 static int teardown_test(void **state) {
     (void) state;
     unlink(KEYS_FILE);
+    rmdir(AGENT_DELIVERED_CA);
+    unlink(AGENT_DELIVERED_CA);
+    rmdir("var/incoming");
     clear_agentd_pidfiles();
 
     if (agt != NULL) {
@@ -995,6 +998,68 @@ static void test_certs_only_dry_run_previews_the_config_rewrite(void **state) {
     assert_int_equal(g_fetch_calls, 0);
 }
 
+/* The preview also names the staged CA the run would remove, and still touches nothing. */
+static void test_certs_only_dry_run_previews_removing_a_staged_ca(void **state) {
+    (void) state;
+    agent_auth_opts_t opts;
+    char out_buf[1024] = {0};
+    char err_buf[2048] = {0};
+    char token[] = TOKEN_PIN_ONLY;
+    FILE *in = fmemopen(token, strlen(token), "r");
+    FILE *out = fmemopen(out_buf, sizeof(out_buf), "w");
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    mkdir("var", 0755);
+    mkdir("var/incoming", 0755);
+    write_file(AGENT_DELIVERED_CA, "STALE-CA");
+    write_file(KEYS_FILE, EXISTING_KEY_LINE);
+    w_agent_auth_opts_init(&opts);
+    opts.certs_only = true;
+    opts.dry_run = true;
+
+    assert_int_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_OK);
+
+    fclose(in);
+    fclose(out);
+    fclose(err);
+
+    assert_non_null(strstr(out_buf, "would remove the CA a remote upgrade left at " AGENT_DELIVERED_CA));
+    assert_int_equal(IsFile(AGENT_DELIVERED_CA), 0);
+}
+
+/* A staged CA that cannot be removed is reported, and the anchor install still succeeds. */
+static void test_certs_only_warns_when_a_staged_ca_cannot_be_removed(void **state) {
+    (void) state;
+    agent_auth_opts_t opts;
+    char out_buf[1024] = {0};
+    char err_buf[2048] = {0};
+    char token[] = TOKEN_PIN_ONLY;
+    FILE *in = fmemopen(token, strlen(token), "r");
+    FILE *out = fmemopen(out_buf, sizeof(out_buf), "w");
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    mkdir("var", 0755);
+    mkdir("var/incoming", 0755);
+    /* A directory makes unlink() fail with something other than ENOENT. */
+    mkdir(AGENT_DELIVERED_CA, 0755);
+    write_file(KEYS_FILE, EXISTING_KEY_LINE);
+    w_agent_auth_opts_init(&opts);
+    opts.certs_only = true;
+    allow_any_logging(LOG_DEBUG1 | LOG_INFO);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Could not remove the CA a remote upgrade left at '" AGENT_DELIVERED_CA "': Is a "
+                  "directory (21). Remove it, or a later upgrade may install it over the trust anchor.");
+    will_return(__wrap_hc_spki_pinned_certificate, 1);
+
+    assert_int_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_OK);
+
+    fclose(in);
+    fclose(out);
+    fclose(err);
+
+    assert_non_null(strstr(out_buf, "anchor installed manager="));
+}
+
 /* An ossec.conf with no <agent><manager> block at all parses fine and leaves the agent with no
  * address to dial. The rewrite cannot insert the node -- OS_WriteXML() appends it after
  * </ossec_config> and still reports success -- so the command has to say so rather than report a
@@ -1235,6 +1300,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_certs_only_is_idempotent, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certs_only_removes_a_ca_staged_by_an_upgrade, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certs_only_unchanged_still_removes_a_staged_ca, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_certs_only_dry_run_previews_removing_a_staged_ca, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_certs_only_warns_when_a_staged_ca_cannot_be_removed, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_reports_a_config_with_no_manager_block, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certs_only_dry_run_previews_the_config_rewrite, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certs_only_points_the_config_at_the_new_address, setup_test, teardown_test),

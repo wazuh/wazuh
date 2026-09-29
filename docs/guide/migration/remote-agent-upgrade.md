@@ -151,13 +151,15 @@ The manager downloads the WPK from the Wazuh repository before making it availab
 
 ### 4. Confirm the `openssl` command on Linux agents
 
-The Linux and macOS upgrade script validates the [CA the manager delivers](#trust-anchor-delivery-to-legacy-agents) with the `openssl` command-line tool. The agent package does not depend on it, and some supported images ship only the library (`openssl-libs`) or keep a custom build outside root's `PATH`. Without it the upgrade still succeeds, but the agent comes up verifying nothing (see [When the CA cannot be validated on the agent](#when-the-ca-cannot-be-validated-on-the-agent)). Check each Linux agent as root before upgrading, and install the distribution's `openssl` package where this prints nothing:
+The Linux upgrade script validates the [CA the manager delivers](#trust-anchor-delivery-to-legacy-agents) with the `openssl` command-line tool. The agent package does not depend on it, and some supported images ship only the library (`openssl-libs`) or keep a custom build outside root's `PATH`. Without it the upgrade still succeeds, but the agent comes up verifying nothing (see [When the CA cannot be validated on the agent](#when-the-ca-cannot-be-validated-on-the-agent)).
+
+The script runs with the `PATH` of the agent's own daemons, which on some distributions is shorter than a root login shell's (on CentOS 7, for example, it has no `/root/bin`). Check each Linux agent with that `PATH` before upgrading, and install the distribution's `openssl` package where this prints nothing:
 
 ```bash
-command -v openssl
+sudo env -i PATH="$(sudo tr '\0' '\n' < /proc/$(pgrep -xo wazuh-execd)/environ | sed -n 's/^PATH=//p')" sh -c 'command -v openssl'
 ```
 
-Windows agents validate the CA with .NET and need nothing extra.
+macOS ships `openssl` (LibreSSL) and Windows agents validate the CA with .NET, so neither needs anything extra.
 
 ---
 
@@ -263,10 +265,13 @@ glance](#breaking-changes-at-a-glance).
 
 ### When the CA cannot be validated on the agent
 
-On Linux and macOS the upgrade script checks the delivered CA with the `openssl` command before
-installing it as the agent's anchor. When `openssl` is not found as root, the script leaves the CA
-in `var/incoming/root-ca.pem`, installs no anchor, and the upgrade still reports success. The
-upgraded agent runs with `verification_mode` resolved to `none`:
+On Linux the upgrade script checks the delivered CA with the `openssl` command, and then checks that
+it verifies the manager's certificate at the address the agent dials, before installing it as the
+agent's anchor. A CA that does not verify the manager is refused, so a stale or mismatched one never
+takes the agent off the air. When `openssl` is not found, the script leaves the CA in
+`var/incoming/root-ca.pem`, installs no anchor, and the upgrade still reports success. If an anchor
+is already present, the delivered copy is discarded instead. The upgraded agent runs with
+`verification_mode` resolved to `none`:
 
 - `upgrade.log` says `cannot be validated: openssl was not found on this host` and how to recover.
 - `ossec.log` logs `(4126)` on every start until an anchor is installed, next to the generic
@@ -294,10 +299,11 @@ agent keeps its id and `client.keys`, and the step needs no `openssl` command:
    `(4126)`. `--certs-only` also removes `/var/ossec/var/incoming/root-ca.pem`, so a later upgrade
    cannot install that copy over the anchor.
 
-Install `openssl` too, so later upgrades can validate a delivered CA. Do not copy the file from
-`var/incoming` into place by hand or re-run the upgrade to pick it up. A hand-copied anchor does not
-get the ownership and marker `--certs-only` writes (see the
-[client module reference](../../ref/modules/client/README.md)).
+Do not copy the file from `var/incoming` into place by hand or re-run the upgrade to pick it up. A
+hand-copied anchor does not get the ownership and marker `--certs-only` writes (see the
+[client module reference](../../ref/modules/client/README.md)). Once the agent runs 5.x the manager
+no longer delivers its CA, so installing `openssl` afterwards changes nothing for that agent; install
+it on the agents still waiting to be upgraded.
 
 ### Certificate requirements
 

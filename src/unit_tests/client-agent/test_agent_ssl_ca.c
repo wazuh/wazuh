@@ -124,6 +124,11 @@ static void expect_delivered_ca(int present)
 {
     expect_string(__wrap_IsFile, file, AGENT_DELIVERED_CA);
     will_return(__wrap_IsFile, present ? 0 : -1);
+
+    if (present) {
+        expect_string(__wrap_IsLink, file, AGENT_DELIVERED_CA);
+        will_return(__wrap_IsLink, -1);
+    }
 }
 
 static void expect_no_anchor_ever_committed(void)
@@ -255,6 +260,21 @@ static void test_inferred_none_with_a_pending_delivered_ca_warns(void **state)
                   AGENT_DELIVERED_CA "' and was never installed (logs/upgrade.log says why; usually "
                   "the 'openssl' command is missing). Stop the agent and run 'wazuh-agent-auth "
                   "--certs-only' with an enrollment token to install the anchor.");
+
+    assert_true(w_agent_validate_ssl_ca(&cfg));
+}
+
+/* The installer refuses a symlinked CA, so one planted in var/incoming is not reported either. */
+static void test_inferred_none_with_a_symlinked_delivered_ca_does_not_warn(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
+
+    expect_anchor_deletion_guard(0, 0);
+    expect_string(__wrap_IsFile, file, AGENT_DELIVERED_CA);
+    will_return(__wrap_IsFile, 0);
+    expect_string(__wrap_IsLink, file, AGENT_DELIVERED_CA);
+    will_return(__wrap_IsLink, 0);
 
     assert_true(w_agent_validate_ssl_ca(&cfg));
 }
@@ -874,6 +894,7 @@ int main(void)
         cmocka_unit_test(test_inferred_none_with_a_marker_but_no_anchor_refuses_to_start),
         cmocka_unit_test(test_explicit_none_with_a_marker_but_no_anchor_still_starts),
         cmocka_unit_test(test_inferred_none_with_a_pending_delivered_ca_warns),
+        cmocka_unit_test(test_inferred_none_with_a_symlinked_delivered_ca_does_not_warn),
         cmocka_unit_test(test_inferred_none_with_a_marker_does_not_probe_the_delivered_ca),
         cmocka_unit_test(test_inferred_none_with_an_anchor_does_not_probe_the_delivered_ca),
         cmocka_unit_test(test_full_with_unparseable_ca_fails),

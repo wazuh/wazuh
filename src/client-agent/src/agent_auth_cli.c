@@ -673,6 +673,11 @@ STATIC int w_agent_auth_enroll(const agent_auth_opts_t *opts, FILE *in, FILE *ou
 
         fprintf(out, "would %s the trust anchor at %s\n",
                 IsFile(AGENT_ANCHOR_CA) == 0 ? "REPLACE" : "install", AGENT_ANCHOR_CA);
+#ifndef WIN32
+        if (IsFile(AGENT_DELIVERED_CA) == 0 || IsLink(AGENT_DELIVERED_CA) == 0) {
+            fprintf(out, "would remove the CA a remote upgrade left at %s\n", AGENT_DELIVERED_CA);
+        }
+#endif
         fprintf(out, "nothing was contacted and nothing was written.\n");
         w_etoken_free(&token);
         os_free(current_id);

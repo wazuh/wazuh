@@ -403,6 +403,13 @@ static int group_setup(void **state) {
     return 0;
 }
 
+static int group_teardown(void **state) {
+    (void) state;
+    remove_test_paths();
+    rmdir("var/incoming");
+    return 0;
+}
+
 static int setup_test(void **state) {
     (void) state;
     remove_test_paths();
@@ -1695,5 +1702,5 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_embedded_ca_token_larger_than_the_old_cap_is_read, setup_test, teardown_test),
     };
 
-    return cmocka_run_group_tests(tests, group_setup, NULL);
+    return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }

@@ -278,7 +278,7 @@ That exception depends on identifying the installed version, so it does not appl
 
 The anchor is what changes that outcome, and it reaches the agent in one of two ways:
 
-- the manager sends it over the upgrade channel, on by default — see [Trust anchor delivery](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents). On Linux and macOS the installer validates it with the `openssl` command first; without it the CA stays in `var/incoming`, no anchor is installed and the agent runs unverified — see [When the CA cannot be validated on the agent](remote-agent-upgrade.md#when-the-ca-cannot-be-validated-on-the-agent);
+- the manager sends it over the upgrade channel, on by default — see [Trust anchor delivery](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents). The installer validates it first and installs it only if it verifies the manager's certificate at the address the agent dials. On Linux that validation needs the `openssl` command; without it the CA stays in `var/incoming`, no anchor is installed and the agent runs unverified — see [When the CA cannot be validated on the agent](remote-agent-upgrade.md#when-the-ca-cannot-be-validated-on-the-agent);
 - or you place it at the path above before upgrading.
 
 The file is the entire cutover either way: `ossec.conf` is never edited by the upgrade, and an agent that finds the anchor without a `<verification_mode>` of its own comes up verifying with `full` against it.
