@@ -1462,6 +1462,7 @@ def get_agents_sync_group(agent_list: list = None) -> AffectedItemsWazuhResult:
     return result
 
 
+@mask_sensitive_config(update_actions=["group:update_config"], update_resources=["group:id:{group_list}"])
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_file_conf(group_list: list = None, type_conf: str = None, raw: bool = False,
                   filename: str = None) -> WazuhResult:
@@ -1491,6 +1492,7 @@ def get_file_conf(group_list: list = None, type_conf: str = None, raw: bool = Fa
                                                             raw=raw)})
 
 
+@mask_sensitive_config(update_actions=["group:update_config"], update_resources=["group:id:{group_list}"])
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_agent_conf(group_list: list = None, filename: str = 'agent.conf', offset: int = 0,
                    limit: int = common.DATABASE_LIMIT) -> WazuhResult:
