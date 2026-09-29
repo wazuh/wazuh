@@ -218,12 +218,18 @@ class TestCheckUserLegacyHashRehash:
         mock_result.first.return_value = user
         manager.session.scalars.return_value = mock_result
 
-        with patch.object(orm_module, "sleep") as mock_sleep:
+        # Pin perf_counter() and the padding target so the expected sleep duration
+        # is deterministic: check_elapsed = 10.02 - 10.0 = 0.02s, target = 0.05s,
+        # so the padding must be exactly 0.03s. `>= 0.0` alone (the previous
+        # assertion) is satisfied even by sleep(0.0) or a flipped subtraction,
+        # so it never actually catches a regression that stops padding at all.
+        with patch.object(orm_module, "perf_counter", side_effect=[10.0, 10.02]), \
+                patch.object(orm_module, "_DEFAULT_HASH_CHECK_SECONDS", 0.05), \
+                patch.object(orm_module, "sleep") as mock_sleep:
             result = AuthenticationManager.check_user(manager, "legacy_user", "wrong_password")
 
         assert result is False
-        mock_sleep.assert_called_once()
-        assert mock_sleep.call_args[0][0] >= 0.0
+        mock_sleep.assert_called_once_with(pytest.approx(0.03))
         manager.session.query.assert_not_called()
         manager.session.commit.assert_not_called()
 
@@ -250,9 +256,9 @@ class TestCheckUserLegacyHashRehash:
         mock_sleep.assert_not_called()
 
     def test_default_hash_check_refreshes_live_calibration(self):
-        """Every check against the current-default method updates the padding
-        target with its live cost, instead of leaving it frozen at whatever was
-        measured once when the process started.
+        """Every check against the current-default method nudges the padding
+        target towards its live cost, instead of leaving it frozen at whatever
+        was measured once when the process started.
         """
         from wazuh.rbac.orm import AuthenticationManager
         import wazuh.rbac.orm as orm_module
@@ -268,10 +274,40 @@ class TestCheckUserLegacyHashRehash:
 
         # perf_counter() is called twice in check_user before the branch under
         # test: once for check_start, once right after for check_elapsed.
-        with patch.object(orm_module, "perf_counter", side_effect=[100.0, 100.123]):
+        # The assertion must run inside the patch context: patch.object restores
+        # _DEFAULT_HASH_CHECK_SECONDS to its pre-patch value on exit, regardless
+        # of what check_user assigned to it while patched.
+        with patch.object(orm_module, "perf_counter", side_effect=[100.0, 100.123]), \
+                patch.object(orm_module, "_DEFAULT_HASH_CHECK_SECONDS", 0.05):
             AuthenticationManager.check_user(manager, "current_user", real_password)
+            # EMA: 0.8 * old + 0.2 * sample = 0.8 * 0.05 + 0.2 * 0.123 = 0.0646
+            assert orm_module._DEFAULT_HASH_CHECK_SECONDS == pytest.approx(0.0646)
 
-        assert orm_module._DEFAULT_HASH_CHECK_SECONDS == pytest.approx(0.123)
+    def test_default_hash_check_outlier_does_not_overwrite_calibration(self):
+        """A single slow (or fast) sample moves the padding target by at most
+        the EMA's weight (20%), instead of replacing it outright — a stray
+        outlier must not single-handedly reopen the timing gap for the next
+        legacy-hash attempt.
+        """
+        from wazuh.rbac.orm import AuthenticationManager
+        import wazuh.rbac.orm as orm_module
+
+        real_password = "correct_password"
+        default_hash = generate_password_hash(real_password)
+
+        manager = MagicMock()
+        mock_result = MagicMock()
+        user = MockUser("current_user", default_hash)
+        mock_result.first.return_value = user
+        manager.session.scalars.return_value = mock_result
+
+        # A wildly slow outlier sample (1.0s) against a stable 0.05s baseline.
+        with patch.object(orm_module, "perf_counter", side_effect=[100.0, 101.0]), \
+                patch.object(orm_module, "_DEFAULT_HASH_CHECK_SECONDS", 0.05):
+            AuthenticationManager.check_user(manager, "current_user", real_password)
+            # Only moves 20% of the way towards the outlier, not all the way to 1.0s.
+            assert orm_module._DEFAULT_HASH_CHECK_SECONDS == pytest.approx(0.8 * 0.05 + 0.2 * 1.0)
+            assert orm_module._DEFAULT_HASH_CHECK_SECONDS < 0.25
 
     def test_legacy_hash_check_does_not_update_live_calibration(self):
         """A check against a legacy hash is not a valid sample of the current

@@ -42,17 +42,7 @@ CLOUD_RESERVED_RANGE = 89
 
 # Dummy hash for constant-time username enumeration protection
 _DUMMY_HASH = generate_password_hash("wazuh-dummy-constant-never-matches-any-real-password")
-# Method family (e.g. "scrypt") the dummy hash uses, to detect stored hashes left over
-# from an older Werkzeug default (e.g. "pbkdf2") that would otherwise be cheaper to
-# verify and reopen the timing side-channel _DUMMY_HASH is meant to close.
 _DEFAULT_HASH_METHOD = _DUMMY_HASH.split(':', 1)[0]
-# Estimate of how long verifying the current-default hash takes on this host,
-# used to pad a failed check against a legacy hash up to that same cost instead
-# of running a second full hash (which would add to the cost rather than match
-# it). Seeded here with the median of a few samples so it's meaningful before
-# any real traffic arrives; check_user() below keeps it refreshed with every
-# live check against the current-default method, so it tracks the host's
-# actual load instead of drifting from this one-off startup measurement.
 _calibration_samples = []
 for _ in range(3):
     _calibration_start = perf_counter()
@@ -978,23 +968,11 @@ class AuthenticationManager(RBACManager):
         check_elapsed = perf_counter() - check_start
 
         if hash_to_check.startswith(f'{_DEFAULT_HASH_METHOD}:'):
-            # Every check against the current-default method (a missing user's dummy
-            # hash or an already-migrated account) is a live sample of its real cost
-            # on this host right now. Keep the padding target below refreshed with it
-            # instead of relying only on the one-off measurement taken at import time,
-            # which can drift from the current load.
             global _DEFAULT_HASH_CHECK_SECONDS
-            _DEFAULT_HASH_CHECK_SECONDS = check_elapsed
+            _DEFAULT_HASH_CHECK_SECONDS = 0.8 * _DEFAULT_HASH_CHECK_SECONDS + 0.2 * check_elapsed
 
         if user is not None and not hash_to_check.startswith(f'{_DEFAULT_HASH_METHOD}:'):
             if result:
-                # Rehash on login: a stored hash from an older Werkzeug default (e.g. pbkdf2)
-                # is cheaper to verify than the current one, which leaks its presence through
-                # timing. Upgrading it here, the only point with the plaintext password, closes
-                # that gap for this account going forward.
-                # The UPDATE is conditioned on the exact hash just verified (compare-and-swap):
-                # a concurrent password change (e.g. via PUT /security/users/{id}) between the
-                # read above and this write must not be clobbered by rehashing the old password.
                 try:
                     self.session.query(User).filter_by(id=user.id, password=hash_to_check).update(
                         {'password': generate_password_hash(password)})
@@ -1002,11 +980,6 @@ class AuthenticationManager(RBACManager):
                 except OperationalError:
                     self.session.rollback()
             else:
-                # A wrong password against a legacy hash is cheaper to reject than
-                # against the current default, which still leaks the account's presence
-                # for as long as it doesn't log in successfully (see the rehash above).
-                # Pad it up to the current-default cost instead of running a second full
-                # hash, which would add to the cost instead of matching it.
                 sleep(max(0.0, _DEFAULT_HASH_CHECK_SECONDS - check_elapsed))
 
         return result and user is not None
@@ -2940,7 +2913,7 @@ class DatabaseManager:
                 if user.id in (WAZUH_USER_ID, WAZUH_WUI_USER_ID):
                     auth_manager.update_user(user.id, user.password, hashed_password=True)
                     continue
-                
+
                 status = auth_manager.add_user(username=user.username,
                                                password=user.password,
                                                created_at=user.created_at,
@@ -2958,7 +2931,7 @@ class DatabaseManager:
                                           user_id=user.id,
                                           hashed_password=True,
                                           check_default=False)
-        
+
         # This is to avoid an error when trying to update default users roles, policies and rules
         if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
             return
