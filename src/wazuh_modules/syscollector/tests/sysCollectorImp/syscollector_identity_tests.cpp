@@ -235,6 +235,26 @@ class SyscollectorIdentityTest : public ::testing::Test
             sqlite3_close(db);
         }
 
+        /// @brief Waits for a DataClean started on another thread. On a timeout, stops the module
+        /// so it returns: a failed assertion must fail the test, not hang it in ~future.
+        static bool finished(std::future<bool>& dataClean)
+        {
+            if (dataClean.wait_for(std::chrono::seconds(5)) == std::future_status::ready)
+            {
+                return true;
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(Syscollector::instance().m_pauseMutex);
+                Syscollector::instance().m_stopping = true;
+            }
+
+            Syscollector::instance().m_pauseCv.notify_all();
+            dataClean.wait();
+            Syscollector::instance().m_stopping = false;
+            return false;
+        }
+
         static int64_t readMarker()
         {
             const auto response = Syscollector::instance().query(R"({"command":"get_synced_agent_id"})");
@@ -803,17 +823,14 @@ TEST_F(SyscollectorIdentityTest, DisabledCollectorsDataCleanWaitsForAFlush)
     {
         EXPECT_FALSE(Syscollector::instance().m_flushInProgress.load());
         EXPECT_TRUE(Syscollector::instance().m_recoveryInProgress.load());
+        EXPECT_TRUE(Syscollector::instance().m_startupDataCleanInProgress.load());
         sent = true;
         return okResult();
     });
 
     Syscollector::instance().m_flushInProgress = true;
 
-    std::atomic<bool> dataCleanResult {false};
-    std::thread cleaner([&dataCleanResult]()
-    {
-        dataCleanResult = Syscollector::instance().handleNotifyDataClean();
-    });
+    auto cleaner = std::async(std::launch::async, [] { return Syscollector::instance().handleNotifyDataClean(); });
 
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
     EXPECT_FALSE(sent.load());
@@ -824,10 +841,11 @@ TEST_F(SyscollectorIdentityTest, DisabledCollectorsDataCleanWaitsForAFlush)
     }
     Syscollector::instance().m_pauseCv.notify_all();
 
-    cleaner.join();
+    ASSERT_TRUE(finished(cleaner));
     EXPECT_TRUE(sent.load());
-    EXPECT_TRUE(dataCleanResult.load());
+    EXPECT_TRUE(cleaner.get());
     EXPECT_FALSE(Syscollector::instance().m_recoveryInProgress.load());
+    EXPECT_FALSE(Syscollector::instance().m_startupDataCleanInProgress.load());
 
     Syscollector::instance().m_disabledCollectorsIndicesWithData.clear();
 }
@@ -852,11 +870,7 @@ TEST_F(SyscollectorIdentityTest, DisabledCollectorsDataCleanWaitsForARecovery)
 
     Syscollector::instance().m_recoveryInProgress = true;
 
-    std::atomic<bool> dataCleanResult {false};
-    std::thread cleaner([&dataCleanResult]()
-    {
-        dataCleanResult = Syscollector::instance().handleNotifyDataClean();
-    });
+    auto cleaner = std::async(std::launch::async, [] { return Syscollector::instance().handleNotifyDataClean(); });
 
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
@@ -867,8 +881,8 @@ TEST_F(SyscollectorIdentityTest, DisabledCollectorsDataCleanWaitsForARecovery)
     }
     Syscollector::instance().m_pauseCv.notify_all();
 
-    cleaner.join();
-    EXPECT_TRUE(dataCleanResult.load());
+    ASSERT_TRUE(finished(cleaner));
+    EXPECT_TRUE(cleaner.get());
     EXPECT_FALSE(Syscollector::instance().m_recoveryInProgress.load());
 
     Syscollector::instance().m_disabledCollectorsIndicesWithData.clear();
@@ -988,5 +1002,23 @@ TEST_F(SyscollectorIdentityTest, SkippedSyncIsNotAResyncAttempt)
     Syscollector::instance().m_flushInProgress = true;
     EXPECT_FALSE(Syscollector::instance().syncModule(Mode::DELTA).success);
     Syscollector::instance().m_flushInProgress = false;
+    EXPECT_EQ(queryResyncAttempts(), before);
+}
+
+// The sync thread starts before start() and, after an agent id change, synchronizes at once, so it
+// can reach a sync while the start-up DataClean for disabled collectors is sending. That sync is
+// skipped, like one due while a flush sends, and is not counted as a resync attempt.
+TEST_F(SyscollectorIdentityTest, SyncSkipsWhileTheStartupDataCleanRuns)
+{
+    initModule(true, true);
+    INJECT_MOCK_PROTOCOLS();
+
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).Times(0);
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).Times(0);
+
+    const int before = queryResyncAttempts();
+    Syscollector::instance().m_startupDataCleanInProgress = true;
+    EXPECT_FALSE(Syscollector::instance().syncModule(Mode::DELTA).success);
+    Syscollector::instance().m_startupDataCleanInProgress = false;
     EXPECT_EQ(queryResyncAttempts(), before);
 }

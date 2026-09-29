@@ -728,8 +728,9 @@ bool Syscollector::handleNotifyDataClean()
             // resending after an agent id change) instead of skipping. Holds the recovery slot for
             // the attempt, and on success until the disabled collectors' rows are deleted, so a
             // flush cannot resend them after the DataClean. Released while a failed attempt waits
-            // to retry.
+            // to retry. A synchronization due meanwhile is skipped, as while a flush sends.
             std::optional<ScanGuard> recoveryGuard;
+            std::optional<ScanGuard> startupDataCleanGuard;
 
             if (hasDisabledCollectorsData())
             {
@@ -746,6 +747,7 @@ bool Syscollector::handleNotifyDataClean()
                 }
 
                 recoveryGuard.emplace(m_recoveryInProgress, m_pauseCv);
+                startupDataCleanGuard.emplace(m_startupDataCleanInProgress, m_pauseCv);
             }
 
             ret = notifyDisableCollectorsDataClean();
@@ -2529,6 +2531,16 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
             if (m_logFunction)
             {
                 m_logFunction(LOG_DEBUG, "Syscollector synchronization skipped: flush in progress");
+            }
+
+            return {false, {}};
+        }
+
+        if (m_startupDataCleanInProgress.load())
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG, "Syscollector synchronization skipped: DataClean in progress");
             }
 
             return {false, {}};

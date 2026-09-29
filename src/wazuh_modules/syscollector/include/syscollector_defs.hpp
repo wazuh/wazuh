@@ -61,6 +61,7 @@
     FRIEND_TEST(SyscollectorIdentityTest, ChangedIdResendCountsAsAResyncAttempt);                                      \
     FRIEND_TEST(SyscollectorIdentityTest, FailedSyncCountsAsAResyncAttempt);                                           \
     FRIEND_TEST(SyscollectorIdentityTest, SkippedSyncIsNotAResyncAttempt);                                             \
+    FRIEND_TEST(SyscollectorIdentityTest, SyncSkipsWhileTheStartupDataCleanRuns);                                      \
     FRIEND_TEST(SyscollectorIdentityTest, DisabledCollectorsDataCleanWaitsForAFlush);                                  \
     FRIEND_TEST(SyscollectorIdentityTest, DisabledCollectorsDataCleanWaitsForARecovery);                               \
     FRIEND_TEST(SyscollectorIdentityTest, NoDisabledCollectorsDataLeavesTheRecoverySlotAlone);                        \

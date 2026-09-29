@@ -730,7 +730,7 @@ Call synchronizeModule(Mode::DELTA)
              └─► Returns sync result
 ```
 
-The flush operation waits for an ongoing synchronization or recovery to complete before it opens its own session, and a synchronization or recovery due while it sends is skipped until the next cycle. The DataClean for disabled collectors sent at startup waits for a running flush instead of skipping, and a flush requested while it sends waits for it in turn.
+The flush operation waits for an ongoing synchronization or recovery to complete before it opens its own session, and a synchronization or recovery due while it sends is skipped until the next cycle. The DataClean for disabled collectors sent at startup waits for a running flush, synchronization or recovery instead of skipping; while it sends, a flush waits for it and a synchronization or recovery due is skipped until the next cycle.
 
 #### Version Management Commands
 

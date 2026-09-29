@@ -564,6 +564,10 @@ class EXPORTED Syscollector final
         /// integrity recovery and that DataClean clear the manager's indices, which would reset the
         /// flush's session under it.
         std::atomic<bool>                                                        m_recoveryInProgress {false};
+        /// @brief Set while the start-up DataClean for disabled collectors sends and deletes, on top
+        /// of m_recoveryInProgress. syncModule() stands back from it: it cannot use
+        /// m_recoveryInProgress for that, since runRecoveryProcess() calls it while holding the slot.
+        std::atomic<bool>                                                        m_startupDataCleanInProgress {false};
         /// @brief Agent id change resends actually started, plus synchronizations that ran and failed
         /// (the resend only follows a successful one). Reported by get_identity_changed so the sync
         /// thread backs off only after a real attempt, not after a cycle that was skipped.

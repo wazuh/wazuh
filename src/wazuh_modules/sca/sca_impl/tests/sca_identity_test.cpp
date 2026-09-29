@@ -137,6 +137,23 @@ class SCAIdentityTest : public ::testing::Test
             return false;
         }
 
+        /// Same for a DataClean started on another thread. Its retry wait is woken without the
+        /// mutex it waits on, so quiesce() is repeated until it returns.
+        bool finished(std::future<bool>& dataClean)
+        {
+            if (dataClean.wait_for(std::chrono::seconds(5)) == std::future_status::ready)
+            {
+                return true;
+            }
+
+            for (int i = 0; i < 50 && dataClean.wait_for(std::chrono::milliseconds(100)) != std::future_status::ready; ++i)
+            {
+                m_sca->quiesce();
+            }
+
+            return false;
+        }
+
         std::shared_ptr<MockDBSync> m_mockDBSync;
         std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
         std::shared_ptr<MockAgentSyncProtocol> m_mockSyncProtocol;
@@ -651,7 +668,7 @@ TEST_F(SCAIdentityTest, AllPoliciesRemovedDataCleanWaitsForAFlush)
     flushSending = false;
     m_sca->setFlushInProgressForTest(false);
 
-    ASSERT_EQ(dataClean.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+    ASSERT_TRUE(finished(dataClean));
     EXPECT_TRUE(dataClean.get());
     EXPECT_FALSE(m_sca->recoveryInProgressForTest());
 }
@@ -681,7 +698,7 @@ TEST_F(SCAIdentityTest, AllPoliciesRemovedDataCleanWaitsForARecovery)
     recoveryRunning = false;
     m_sca->setRecoveryInProgressForTest(false);
 
-    ASSERT_EQ(dataClean.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+    ASSERT_TRUE(finished(dataClean));
     EXPECT_TRUE(dataClean.get());
     EXPECT_FALSE(m_sca->recoveryInProgressForTest());
 }
