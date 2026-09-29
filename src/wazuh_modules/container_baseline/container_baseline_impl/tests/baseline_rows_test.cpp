@@ -91,11 +91,13 @@ TEST(BuildFimFileJson, ProducesExpectedShapeAndStableId)
     EXPECT_EQ(j.at("container").at("runtime"), "kubernetes");
     EXPECT_EQ(j.at("container").at("image").at("name"), "nginx:1.25");
 
-    ASSERT_TRUE(j.contains("kubernetes"));
-    EXPECT_EQ(j.at("kubernetes").at("namespace"), "default");
-    EXPECT_EQ(j.at("kubernetes").at("pod").at("uid"), "pod-uid");
-    EXPECT_EQ(j.at("kubernetes").at("pod").at("name"), "nginx-0");
-    EXPECT_EQ(j.at("kubernetes").at("node").at("name"), "worker-1");
+    // D15: the Kubernetes context is nested inside "container", not a sibling.
+    EXPECT_FALSE(j.contains("kubernetes")) << "kubernetes must not be a top-level block";
+    ASSERT_TRUE(j.at("container").contains("kubernetes"));
+    EXPECT_EQ(j.at("container").at("kubernetes").at("namespace"), "default");
+    EXPECT_EQ(j.at("container").at("kubernetes").at("pod").at("uid"), "pod-uid");
+    EXPECT_EQ(j.at("container").at("kubernetes").at("pod").at("name"), "nginx-0");
+    EXPECT_EQ(j.at("container").at("kubernetes").at("node").at("name"), "worker-1");
 }
 
 TEST(BuildFimFileJson, DockerRowGetsContainerBlockButNoKubernetesBlock)
@@ -120,6 +122,7 @@ TEST(BuildFimFileJson, DockerRowGetsContainerBlockButNoKubernetesBlock)
     EXPECT_EQ(j.at("container").at("oci_mounts")[0].at("destination"), "/data");
 
     EXPECT_FALSE(j.contains("kubernetes"));
+    EXPECT_FALSE(j.at("container").contains("kubernetes"));
 }
 
 TEST(BuildFimFileJson, OmitsEmptyHashesForSymlinks)
@@ -160,6 +163,7 @@ TEST(BuildProcessJson, ProducesExpectedShapeAndStableId)
     EXPECT_EQ(j.at("process").at("parent").at("pid"), 1);
     EXPECT_EQ(j.at("container").at("id"), "cid2");
     EXPECT_FALSE(j.contains("kubernetes"));
+    EXPECT_FALSE(j.at("container").contains("kubernetes"));
 }
 
 TEST(BuildPortJson, ProducesExpectedShapeAndStableId)

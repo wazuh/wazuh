@@ -453,8 +453,36 @@ and it has not been changed. What *did* change is that the pass has its own cade
 
 ## 15.10 What comes out
 
-A container file change produces a stateless event on `queue/sockets/queue`, in host FIM's own
-vocabulary plus a `container` block:
+Every container-scoped row leaves the agent in **two forms**, and they are not the same shape:
+
+| | Stateless event | Stateful document |
+| --- | --- | --- |
+| Goes to | `queue/sockets/queue` -> event pipeline (alerts) | inventory sync -> `wazuh-states-*` |
+| Envelope | `collector` / `module` / `data` | bare row plus `checksum` and `state` |
+| Says | *what changed*, with `event.type` and `changed_fields` | *what is true now*, with `document_version` |
+| Today | **works** | **rejected** — see [15.11](#1511-what-is-implemented-and-what-is-not) |
+
+Both carry the container attribution in the same place and under the same names, which is the point
+of `add_container_context()` / `StampContainerContext()` being shared: an analyst reads `container.*`
+identically on an alert and on a state, and never branches on runtime.
+
+There is **one** `container` block. A Kubernetes-origin row carries its orchestrator context
+**nested inside it**, at `container.kubernetes`, which is **omitted entirely** — not emitted empty —
+for Docker and host rows. One object therefore carries the whole attribution: a consumer tests one
+key, and an index mapping owns one subtree. An earlier revision of this branch emitted `kubernetes`
+as a second top-level block beside `container`; nothing was ever indexed in that shape, because
+every `wazuh-states-*` template is `dynamic: strict` and rejected both.
+
+> **Provenance.** Every JSON below is a verbatim capture from one run on the `wazuh_manager` VM on
+> 2026-09-29: kernel 7.0.0-31, cgroup v2, dual-runtime (`<docker>` + `<kubernetes>` configured
+> together), one `alpine` container under the host dockerd and one `busybox` Deployment in a KinD
+> cluster on the same host — topology 1, side by side, the only supported one (D4/#37382). The run
+> produced 576 events (2 FIM, 574 inventory) and **zero** top-level `kubernetes` blocks. Long
+> digests are elided with `…`; nothing else is edited.
+
+### 15.10.1 FIM, Docker — stateless
+
+A container file change, in host FIM's own vocabulary plus the `container` block:
 
 ```jsonc
 {
@@ -462,31 +490,251 @@ vocabulary plus a `container` block:
   "module": "fim",
   "data": {
     "event": {
-      "created": "2026-09-08T00:48:15.464Z",
+      "created": "2026-09-29T00:46:42.307Z",
       "type": "modified",                       // added | modified | deleted
-      "changed_fields": ["file.size", "file.mtime", "file.hash.md5", "…"]
+      "changed_fields": ["file.size", "file.mtime",
+                         "file.hash.md5", "file.hash.sha1", "file.hash.sha256"]
     },
     "file": {
-      "path": "/data/f1.txt",                   // in-container path
-      "size": 16, "mtime": "…", "permissions": ["0644"],
+      "path": "/data/f1.txt",                   // in-container path, never the host path
+      "size": 27,
+      "mtime": "2026-09-29T00:46:42.000Z",
+      "permissions": ["0644"],                  // ARRAY here; a STRING in the stateful form
       "uid": "0", "owner": "root",              // container id space
-      "hash": { "md5": "…", "sha1": "…", "sha256": "…" },
+      "gid": "0", "group": "root",
+      "inode": "2285257", "device": "1048588",
+      "hash": { "md5": "da4bcde6…", "sha1": "be3f33cb…", "sha256": "e8d64f0b…" },
       "mode": "whodata",                        // walk -> "scheduled"
-      "tags": "container"
+      "tags": "container",
+      "previous": {                             // only on "modified"
+        "size": 14,
+        "mtime": "2026-09-29T00:44:46.000Z",
+        "hash": { "md5": "7543e9a0…", "sha1": "99eb439d…", "sha256": "f3eeb1bf…" }
+      }
     },
     "container": {
-      "id": "fcc59efab…", "name": "cfimquiet", "runtime": "docker",
-      "image": { "name": "cfim:1", "digest": "sha256:…" },
+      "id": "ed3b65ea2bfb582f22fe2267f98ed72311281b46d3849cdbd7e13e2d608dc0ef",
+      "name": "cfim-docker-demo",
+      "runtime": "docker",
+      "image": { "name": "alpine:latest", "digest": "sha256:28bd5fe8…" },
+      "labels": { "maintainer": "wazuh-spike-37532", "tier": "demo" },
       "network": [ { "name": "bridge", "ip": "172.17.0.2" } ],
-      "restart_count": 0, "oci_mounts": [], "labels": {}
+      "restart_count": 0,
+      "oci_mounts": []
+      // no "kubernetes" key at all — this is a Docker-origin row
     }
   }
 }
 ```
 
 `mode` is derived from the origin: a walk reports `scheduled`, an eBPF-driven reconcile reports
-`whodata`. The same row is also offered as a **stateful** document — which is currently **rejected**,
-see below.
+`whodata`. `file.previous` appears only for a modification — it is what `changed_fields` is a
+diff *of*, and it is absent on `added` and on `deleted`.
+
+### 15.10.2 FIM, Kubernetes — stateless
+
+Same event, same file, from the pod. The envelope and the `file` object are unchanged; what differs
+is inside `container`:
+
+```jsonc
+{
+  "collector": "file",
+  "module": "fim",
+  "data": {
+    "event": {
+      "created": "2026-09-29T00:46:43.170Z",
+      "type": "modified",
+      "changed_fields": ["file.size", "file.mtime",
+                         "file.hash.md5", "file.hash.sha1", "file.hash.sha256"]
+    },
+    "file": {
+      "path": "/data/f1.txt",
+      "size": 24,
+      "mtime": "2026-09-29T00:46:43.000Z",
+      "permissions": ["0644"],
+      "uid": "0", "owner": "root", "gid": "0", "group": "root",
+      "inode": "1731200", "device": "2050",
+      "hash": { "md5": "f773ca42…", "sha1": "45e2a0c5…", "sha256": "9c2d3683…" },
+      "mode": "whodata",
+      "tags": "container",
+      "previous": {
+        "size": 11,
+        "mtime": "2026-09-29T00:44:45.000Z",
+        "hash": { "md5": "f481c5a8…", "sha1": "b1067800…", "sha256": "f0e5a79f…" }
+      }
+    },
+    "container": {
+      "id": "1bc30abf76d7e382b21aaebf66ae776d86811a280078cd0c83668fd2fae4bee7",
+      "name": "writer",                         // the CONTAINER's name, not the pod's
+      "runtime": "kubernetes",
+      "image": { "name": "docker.io/library/busybox:latest", "digest": "sha256:dc2d74b2…" },
+      "labels": { "app": "cfim-k8s-demo",
+                  "tier": "demo",
+                  "pod-template-hash": "84664c6689" },
+      "network": [ { "name": "pod", "ip": "10.244.0.5" } ],   // name is literally "pod"
+      "restart_count": 0,
+      "oci_mounts": [
+        { "destination": "/data", "source": "scratch", "ro": false },
+        { "destination": "/var/run/secrets/kubernetes.io/serviceaccount",
+          "source": "kube-api-access-zgcqp", "ro": true }
+      ],
+      "kubernetes": {                           // nested; absent on Docker and host rows
+        "namespace": "default",
+        "pod": { "name": "cfim-k8s-demo-84664c6689-nfsvd",
+                 "uid": "87ef3709-4900-4c3f-a7f6-3e8db8d33c37" },
+        "node": { "name": "demo-control-plane" },
+        "annotations": { "wazuh.com/spike": "37532" },
+        "owner_refs": [
+          { "kind": "ReplicaSet", "name": "cfim-k8s-demo-84664c6689",
+            "uid": "3896cdcc-f346-40c2-8414-297ab0089a48" },
+          { "kind": "Deployment", "name": "cfim-k8s-demo",
+            "uid": "904d1b1f-02cb-47a1-ba23-c5a6b8c165b7" }
+        ]
+      }
+    }
+  }
+}
+```
+
+Four things in there are worth reading twice:
+
+- **`container.name` is the container, not the pod.** Here `writer`, the name in the pod spec. The
+  pod's name lives at `container.kubernetes.pod.name`. A multi-container pod produces one
+  independent record per container, each with its own copy of the same `kubernetes` object.
+- **`network[].name` is the literal string `"pod"`.** Containers in a pod share one network
+  namespace, so there is no per-container attachment to name — the IP is the pod's
+  (`k8s_object_parser.hpp`, `iface.name = "pod"`). Docker reports the real network name there
+  (`bridge` above).
+- **`owner_refs` carries the transitive chain**, Pod -> ReplicaSet -> Deployment, not just the direct
+  owner. That is one extra hop resolved by the ownership poller, and it is why a rule can group by
+  workload rather than by the churning ReplicaSet name.
+- **Each key inside `kubernetes` is omitted when empty**, never emitted as `""` or `[]`. A bare pod
+  with no controller simply has no `owner_refs` key at all.
+
+### 15.10.3 IT Hygiene (syscollector), Docker — stateless
+
+The other consumer, same `container` block, in the same place. `module` is `inventory` and
+`collector` names the source table:
+
+```jsonc
+{
+  "collector": "dbsync_processes",
+  "module": "inventory",
+  "data": {
+    "event": {
+      "created": "2026-09-29T00:46:17.272Z",
+      "type": "created",                        // created | modified | deleted
+      "changed_fields": []
+    },
+    "process": {
+      "pid": 109807, "name": "sleep", "command_line": "sleep",
+      "args": ["36000"], "args_count": 2,
+      "parent": { "pid": 109769 },
+      "start": "2026-09-29T00:44:45.000Z",
+      "state": "sleeping", "utime": 4, "stime": 13
+    },
+    "container": {
+      "id": "ed3b65ea2bfb582f22fe2267f98ed72311281b46d3849cdbd7e13e2d608dc0ef",
+      "name": "cfim-docker-demo",
+      "runtime": "docker",
+      "image": { "name": "alpine:latest", "digest": "sha256:28bd5fe8…" },
+      "labels": { "maintainer": "wazuh-spike-37532", "tier": "demo" },
+      "network": [ { "name": "bridge", "ip": "172.17.0.2" } ],
+      "restart_count": 0,
+      "oci_mounts": []
+    }
+  }
+}
+```
+
+The same envelope carries all ten producing dimensions — this run emitted `dbsync_processes`,
+`dbsync_packages`, `dbsync_users`, `dbsync_groups`, `dbsync_ports`, `dbsync_osinfo`,
+`dbsync_hwinfo`, `dbsync_network_iface`, `dbsync_network_address` and `dbsync_network_protocol`,
+574 inventory events across both containers. Only the payload object next to `container` changes.
+
+Note `pid` here is the **host-namespace** pid, not the container's: syscollector reads `/proc`
+from the host and scopes by cgroup, so what it reports is what the host sees.
+
+### 15.10.4 IT Hygiene, Kubernetes — stateless
+
+Identical, with `container` in its Kubernetes form. Only the parts that differ from 15.10.3 are
+shown; the `container` block is byte-identical to 15.10.2's, which is the property worth
+demonstrating — **one enrichment record serves both consumers**:
+
+```jsonc
+{
+  "collector": "dbsync_processes",
+  "module": "inventory",
+  "data": {
+    "event": { "created": "2026-09-29T00:46:19.242Z", "type": "created", "changed_fields": [] },
+    "process": {
+      "pid": 109759, "name": "sleep", "command_line": "sleep",
+      "args": ["36000"], "args_count": 2,
+      "parent": { "pid": 109702 },
+      "start": "2026-09-29T00:44:44.000Z",
+      "state": "sleeping", "utime": 0, "stime": 17
+    },
+    "container": { …exactly as in 15.10.2, kubernetes object included… }
+  }
+}
+```
+
+### 15.10.5 The stateful form, and why it does not arrive
+
+The same rows are also offered as sync documents. The envelope differs: no `collector` / `module` /
+`data` wrapper, no `event` — instead `checksum` and `state` beside the payload. The `container`
+block is the same object, in the same shape.
+
+```jsonc
+// FIM, Kubernetes — top-level keys: container, file, checksum, state
+{
+  "file": {
+    "path": "/data/f1.txt", "size": 11,
+    "permissions": "0644",                      // STRING here; an ARRAY in the stateless form
+    "uid": "0", "gid": "0", "owner": "root", "group": "root",
+    "inode": "1731200", "device": "2050",
+    "mtime": "2026-09-29T00:44:45.000Z",
+    "hash": { "md5": "f481c5a8…", "sha1": "b1067800…", "sha256": "f0e5a79f…" }
+  },
+  "container": { …as above, kubernetes nested inside… },
+  "checksum": { "hash": { "sha1": "b1067800…" } },
+  "state": { "document_version": 1, "modified_at": "2026-09-29T00:45:16.751Z" }
+}
+
+// IT Hygiene, Kubernetes — top-level keys: checksum, container, process, state
+{
+  "process": { "pid": 109759, "name": "sleep", "command_line": "sleep", … },
+  "container": { …as above… },
+  "checksum": { "hash": { "sha1": "6467cc7a…" } },
+  "state": { "document_version": 1, "modified_at": "2026-09-29T00:45:17.160Z" }
+}
+```
+
+**Neither is indexed.** Every `wazuh-states-*` template is `dynamic: strict` and none maps a
+container field, so the document is discarded at the agent:
+
+```text
+ERROR: Schema validation failed for Syscollector message
+       (table: dbsync_processes, index: wazuh-states-inventory-processes). Errors:
+         - container: Field not allowed in strict mode
+
+ERROR: Schema validation failed for container FIM baseline row
+       ed3b65ea…:/data/f1.txt (index: wazuh-states-fim-files). Errors:
+         container: Field not allowed in strict mode
+```
+
+Note what the rejection now names: **`container` only**. Before the nesting change it named
+`container` *and* `kubernetes` as two separate unmapped top-level fields. That is the concrete
+payoff of the single block — one field to map per index instead of two.
+
+Detection and the stateless events above are unaffected — this costs the **state**, not the alert.
+Closing it is server-side work: the mappings live in `wazuh-indexer-plugins` and the vendored copy
+under `src/external/indexer-plugins/`, and the constraint running the other way is that nothing may
+live under `wazuh.*`, which the manager overwrites.
+
+One detail for whoever writes those mappings: **`file.permissions` is an array in the stateless
+event and a string in the stateful document.** Same field name, two types, one run.
+
 
 ---
 

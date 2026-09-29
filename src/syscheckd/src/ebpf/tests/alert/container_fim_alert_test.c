@@ -130,8 +130,9 @@ static cJSON* Row(const char* path, int size, const char* sha256)
     cJSON_AddStringToObject(row, "path", path);
     cJSON_AddStringToObject(row, "container_id", "cid-a");
     cJSON_AddStringToObject(row, "container_json",
-                            "{\"container\":{\"id\":\"cid-a\",\"name\":\"web\"},"
-                            "\"kubernetes\":{\"pod\":{\"name\":\"web-0\"}}}");
+                            /* D15 shape: kubernetes nested inside container. */
+                            "{\"container\":{\"id\":\"cid-a\",\"name\":\"web\","
+                            "\"kubernetes\":{\"pod\":{\"name\":\"web-0\"}}}}");
     cJSON_AddNumberToObject(row, "size", size);
     cJSON_AddStringToObject(row, "permissions", "rw-r--r--");
     cJSON_AddStringToObject(row, "uid", "0");
@@ -216,7 +217,11 @@ static void CaseCreate(void)
 
     /* The container-scope columns are enrichment, not file attributes. */
     Check(AlertStringIs("container", "name", "web"), "data.container.name from container_json");
-    Check(AlertNode("kubernetes", "pod") != NULL, "data.kubernetes from container_json");
+    /* D15: the Kubernetes context is nested inside the container block, and is
+     * NOT a second top-level block beside it. */
+    Check(AlertNode("kubernetes", NULL) == NULL, "no top-level data.kubernetes block");
+    Check(cJSON_GetObjectItem(AlertNode("container", "kubernetes"), "pod") != NULL,
+          "data.container.kubernetes.pod from container_json");
     Check(AlertNode("file", "container_id") == NULL, "container_id is NOT a file attribute");
 }
 
