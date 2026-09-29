@@ -1,9 +1,16 @@
 #include <gtest/gtest.h>
 
+#include <pthread.h>
+
+#include <cstdio>
+#include <cstdlib>
+#include <functional>
 #include <iostream>
 #include <limits>
+#include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <base/json.hpp>
 #include <base/logging.hpp>
@@ -3441,4 +3448,550 @@ TEST_F(JsonCompact, Compact_SharedPtrConstFlow)
     ASSERT_EQ(header->getString(id, "/wazuh/agent/id"), RetGet::Success);
     ASSERT_EQ(id, "001");
     ASSERT_LE(header->getAllocatedMemory(), Json::COMPACT_INITIAL_CAPACITY);
+}
+
+/************************************************************************************/
+// Bounded parsing: documents built from text are capped at Json::MAX_DEPTH levels
+/************************************************************************************/
+
+/// open×n + leaf + close×n (arrays: "[" / "]"; objects: "{\"a\":" / "}").
+static std::string nested(std::string_view open, std::string_view close, std::size_t n, std::string_view leaf = "1")
+{
+    std::string text;
+    text.reserve((open.size() + close.size()) * n + leaf.size());
+    for (std::size_t i = 0; i < n; ++i)
+    {
+        text.append(open);
+    }
+    text.append(leaf);
+    for (std::size_t i = 0; i < n; ++i)
+    {
+        text.append(close);
+    }
+    return text;
+}
+
+TEST_F(JsonBase, MaxDepthArraysParse)
+{
+    const auto text = nested("[", "]", Json::MAX_DEPTH);
+    const Json fromChars {text.c_str()};
+    const Json fromView {std::string_view {text}};
+    const Json fromCompact = Json::compact(text);
+    for (const Json* doc : {&fromChars, &fromView, &fromCompact})
+    {
+        EXPECT_TRUE(doc->isArray());
+        EXPECT_EQ(doc->str(), text);
+    }
+
+    // The depth is the open containers at any point, not their total: two sibling chains of
+    // MAX_DEPTH - 1 inside the root reach MAX_DEPTH, and parse.
+    const auto siblings =
+        "[" + nested("[", "]", Json::MAX_DEPTH - 1) + "," + nested("[", "]", Json::MAX_DEPTH - 1) + "]";
+    const Json fromSiblings {std::string_view {siblings}};
+    EXPECT_EQ(fromSiblings.str(), siblings);
+}
+
+TEST_F(JsonBase, MaxDepthObjectsParse)
+{
+    const auto text = nested("{\"a\":", "}", Json::MAX_DEPTH);
+    const Json fromChars {text.c_str()};
+    const Json fromView {std::string_view {text}};
+    const Json fromCompact = Json::compact(text);
+    for (const Json* doc : {&fromChars, &fromView, &fromCompact})
+    {
+        EXPECT_TRUE(doc->isObject());
+        EXPECT_EQ(doc->str(), text);
+    }
+
+    // Mirror of the array siblings case: pins the EndObject decrement (two object chains of MAX_DEPTH - 1
+    // under the root reach MAX_DEPTH only if the counter comes back down after the first one).
+    const auto siblings = "{\"a\":" + nested("{\"a\":", "}", Json::MAX_DEPTH - 1)
+                          + ",\"b\":" + nested("{\"a\":", "}", Json::MAX_DEPTH - 1) + "}";
+    const Json fromSiblings {std::string_view {siblings}};
+    EXPECT_EQ(fromSiblings.str(), siblings);
+}
+
+// Alternating object -> array -> object chain of n containers around a scalar leaf.
+static std::string mixedNested(std::size_t n)
+{
+    std::string text;
+    for (std::size_t i = 0; i < n; ++i)
+    {
+        text.append(i % 2 == 0 ? "{\"a\":" : "[");
+    }
+    text.append("1");
+    for (std::size_t i = n; i > 0; --i)
+    {
+        text.append((i - 1) % 2 == 0 ? "}" : "]");
+    }
+    return text;
+}
+
+TEST_F(JsonBase, MaxDepthMixedChain)
+{
+    const auto ok = mixedNested(Json::MAX_DEPTH);
+    EXPECT_EQ(Json(ok.c_str()).str(), ok);
+    EXPECT_EQ(Json(std::string_view {ok}).str(), ok);
+    EXPECT_EQ(Json::compact(ok).str(), ok);
+
+    // One level more is rejected by every text entry point with the depth message.
+    const auto tooDeep = mixedNested(Json::MAX_DEPTH + 1);
+    const auto rejects = [&tooDeep](const std::function<void()>& build)
+    {
+        try
+        {
+            build();
+            FAIL() << "expected the depth cap to reject a mixed chain of " << Json::MAX_DEPTH + 1 << " levels";
+        }
+        catch (const std::runtime_error& e)
+        {
+            EXPECT_NE(std::string_view {e.what()}.find(Json::DEPTH_ERROR_MSG), std::string_view::npos) << e.what();
+        }
+    };
+    rejects([&tooDeep]() { Json {tooDeep.c_str()}; });
+    rejects([&tooDeep]() { Json {std::string_view {tooDeep}}; });
+    rejects([&tooDeep]() { Json::compact(tooDeep); });
+}
+
+// Pins the cap itself: a silent change of MAX_DEPTH must break this test (the other cases derive their depths from
+// the constant, so they would adapt). 256 is the value signed in the design (N5); revisit here if it changes.
+TEST_F(JsonBase, MaxDepthIs256)
+{
+    ASSERT_EQ(Json::MAX_DEPTH, 256u);
+    ASSERT_NO_THROW(Json(nested("[", "]", 256).c_str()));
+    ASSERT_THROW(Json(nested("[", "]", 257).c_str()), std::runtime_error);
+}
+
+TEST_F(JsonBase, DepthAboveMaxThrows)
+{
+    const auto expectDepthError = [](const std::function<void()>& build, const std::string& what)
+    {
+        try
+        {
+            build();
+            ADD_FAILURE() << "no exception for " << what;
+        }
+        catch (const std::runtime_error& e)
+        {
+            const std::string message {e.what()};
+            EXPECT_NE(message.find(Json::DEPTH_ERROR_MSG), std::string::npos) << what << ": " << message;
+            EXPECT_NE(message.find(std::to_string(Json::MAX_DEPTH)), std::string::npos) << what << ": " << message;
+        }
+    };
+
+    const std::vector<std::pair<std::string, std::string>> cases {
+        {"arrays", nested("[", "]", Json::MAX_DEPTH + 1)},
+        {"objects", nested("{\"a\":", "}", Json::MAX_DEPTH + 1)},
+    };
+    for (const auto& [name, text] : cases)
+    {
+        expectDepthError([&]() { Json doc {text.c_str()}; }, name + " via Json(const char*)");
+        expectDepthError([&]() { Json doc {std::string_view {text}}; }, name + " via Json(std::string_view)");
+        expectDepthError([&]() { auto doc = Json::compact(text); }, name + " via Json::compact");
+    }
+}
+
+TEST_F(JsonBase, SyntaxErrorMessagesUnchanged)
+{
+    const std::vector<std::pair<std::string, std::string>> cases {
+        {"{not valid json", "JSON document could not be parsed: Missing a name for object member."},
+        {"[1,2", "JSON document could not be parsed: Missing a comma or ']' after an array element."},
+    };
+    for (const auto& [text, expected] : cases)
+    {
+        try
+        {
+            Json doc {text.c_str()};
+            ADD_FAILURE() << "no exception for " << text;
+        }
+        catch (const std::runtime_error& e)
+        {
+            ASSERT_STREQ(e.what(), expected.c_str());
+        }
+        try
+        {
+            Json doc {std::string_view {text}};
+            ADD_FAILURE() << "no exception for " << text;
+        }
+        catch (const std::runtime_error& e)
+        {
+            ASSERT_STREQ(e.what(), expected.c_str());
+        }
+        try
+        {
+            auto doc = Json::compact(text);
+            ADD_FAILURE() << "no exception for " << text;
+        }
+        catch (const std::runtime_error& e)
+        {
+            ASSERT_STREQ(e.what(), expected.c_str());
+        }
+    }
+}
+
+TEST_F(JsonBase, ParseBoundedRequiresNullDocument)
+{
+    // PRECONDITION of Json::parseBounded(): the target document is fresh (null), because
+    // rapidjson's Document::Populate keeps the previous value when the parse fails. It is
+    // checked with RAPIDJSON_ASSERT (= assert()), which aborts in debug builds; in NDEBUG
+    // builds nothing is checked and EXPECT_DEBUG_DEATH only runs the statement.
+    EXPECT_DEBUG_DEATH(
+        {
+            rapidjson::Document doc;
+            doc.SetObject();
+            rapidjson::StringStream stream("[1]");
+            static_cast<void>(Json::parseBounded(doc, stream));
+        },
+        "IsNull");
+}
+
+/************************************************************************************/
+// Stack probe (RNF-4): one deep operation on a thread with a chosen stack size.
+//
+// Driven by the environment (read at run time, skipped when WAZUH_STACK_PROBE_OP is unset):
+//   WAZUH_STACK_PROBE_OP     parse|copy|set|append|str|eq|merge|mergearr|erase|getfields|rename
+//   WAZUH_STACK_PROBE_SHAPE  obj (default) | arr | mix
+//   WAZUH_STACK_PROBE_DEPTH  nesting depth of the fixture (default 4096)
+//   WAZUH_STACK_PROBE_KIB    stack size of the probe thread in KiB (default 4096)
+// Prints PROBE_EFFECTIVE_KIB=<n> (read inside the thread) and PROBE_RESULT=PASS|FAIL.
+/************************************************************************************/
+namespace
+{
+/// Level 0 is the root. obj: every level is {"s":1,"k":<child>}; arr: [<child>]; mix: object, array, object...
+bool isObjectLevel(std::string_view shape, std::size_t level)
+{
+    return shape == "obj" || (shape == "mix" && level % 2 == 0);
+}
+
+struct DeepText
+{
+    std::string text;     ///< JSON text of the levels [from, depth) around the leaf.
+    std::string leafPath; ///< JSON Pointer from the first of those levels to the leaf.
+};
+
+DeepText deepText(std::string_view shape, std::size_t from, std::size_t depth, std::string_view leaf)
+{
+    DeepText out;
+    for (auto level = from; level < depth; ++level)
+    {
+        const bool isObj = isObjectLevel(shape, level);
+        out.text += isObj ? R"({"s":1,"k":)" : "[";
+        out.leafPath += isObj ? "/k" : "/0";
+    }
+    out.text += leaf;
+    for (auto level = depth; level-- > from;)
+    {
+        out.text += isObjectLevel(shape, level) ? "}" : "]";
+    }
+    return out;
+}
+
+struct DeepFixture
+{
+    Json value;
+    std::string leafPath;
+};
+
+/// Builds a @p depth-level document without ever parsing more than 64 levels: parses the innermost
+/// levels and wraps them one level at a time with set()/appendJson().
+DeepFixture buildDeep(std::string_view shape, std::size_t depth, std::string_view leaf)
+{
+    constexpr std::size_t PARSED_LEVELS = 64;
+    const std::size_t from = depth > PARSED_LEVELS ? depth - PARSED_LEVELS : 0;
+    auto inner = deepText(shape, from, depth, leaf);
+    DeepFixture fixture {Json {std::string_view {inner.text}}, std::move(inner.leafPath)};
+    for (auto level = from; level-- > 0;)
+    {
+        if (isObjectLevel(shape, level))
+        {
+            Json wrapper {R"({"s":1})"};
+            wrapper.set("/k", fixture.value);
+            fixture.value = std::move(wrapper);
+            fixture.leafPath.insert(0, "/k");
+        }
+        else
+        {
+            Json wrapper {"[]"};
+            wrapper.appendJson(fixture.value);
+            fixture.value = std::move(wrapper);
+            fixture.leafPath.insert(0, "/0");
+        }
+    }
+    return fixture;
+}
+
+std::size_t envSize(const char* name, std::size_t fallback)
+{
+    const char* raw = std::getenv(name);
+    return (raw == nullptr || *raw == '\0') ? fallback : static_cast<std::size_t>(std::stoull(raw));
+}
+
+struct ProbeContext
+{
+    std::function<void()> op;
+    std::string error;
+    std::size_t effectiveKiB {0};
+    int attrRc {-1};
+};
+
+void* runProbe(void* arg)
+{
+    auto* ctx = static_cast<ProbeContext*>(arg);
+    pthread_attr_t attr;
+    ctx->attrRc = pthread_getattr_np(pthread_self(), &attr);
+    if (ctx->attrRc == 0)
+    {
+        std::size_t stackSize {0};
+        ctx->attrRc = pthread_attr_getstacksize(&attr, &stackSize);
+        pthread_attr_destroy(&attr);
+        ctx->effectiveKiB = stackSize / 1024;
+    }
+    std::printf("PROBE_EFFECTIVE_KIB=%zu\n", ctx->effectiveKiB);
+    std::fflush(stdout);
+    try
+    {
+        ctx->op();
+    }
+    catch (const std::exception& e)
+    {
+        ctx->error = e.what();
+    }
+    catch (...)
+    {
+        ctx->error = "unknown exception";
+    }
+    return nullptr;
+}
+} // namespace
+
+TEST_F(JsonBase, DeepOps_StackProbe)
+{
+    const char* opEnv = std::getenv("WAZUH_STACK_PROBE_OP");
+    if (opEnv == nullptr || *opEnv == '\0')
+    {
+        GTEST_SKIP() << "WAZUH_STACK_PROBE_OP is not set";
+    }
+    const std::string op {opEnv};
+    const char* shapeEnv = std::getenv("WAZUH_STACK_PROBE_SHAPE");
+    const std::string shape {(shapeEnv == nullptr || *shapeEnv == '\0') ? "obj" : shapeEnv};
+    const auto depth = envSize("WAZUH_STACK_PROBE_DEPTH", 4096);
+    const auto kib = envSize("WAZUH_STACK_PROBE_KIB", 4096);
+    ASSERT_TRUE(shape == "obj" || shape == "arr" || shape == "mix") << "unknown shape " << shape;
+    ASSERT_GE(depth, 1u);
+    std::printf("PROBE_CASE op=%s shape=%s depth=%zu kib=%zu\n", op.c_str(), shape.c_str(), depth, kib);
+    std::fflush(stdout);
+
+    const bool objectRoot = shape != "arr";
+    if ((op == "merge" && !objectRoot) || (op == "mergearr" && shape != "arr") || (op == "erase" && !objectRoot)
+        || (op == "getfields" && shape != "obj"))
+    {
+        GTEST_SKIP() << "operation " << op << " does not apply to shape " << shape;
+    }
+
+    const auto report = [](bool pass, const std::string& detail)
+    {
+        std::printf("PROBE_RESULT=%s\n", pass ? "PASS" : "FAIL");
+        std::fflush(stdout);
+        EXPECT_TRUE(pass) << detail;
+    };
+
+    // parse above the cap: rejected before any DOM exists, no thread needed.
+    if (op == "parse" && depth > Json::MAX_DEPTH)
+    {
+        const auto text = deepText(shape, 0, depth, R"("x")").text;
+        std::string message;
+        try
+        {
+            Json doc {std::string_view {text}};
+        }
+        catch (const std::runtime_error& e)
+        {
+            message = e.what();
+        }
+        report(message.find(Json::DEPTH_ERROR_MSG) != std::string::npos, "expected a depth error, got: " + message);
+        return;
+    }
+
+    // Fixture and every input of the operation are built here, on the main thread.
+    std::string text;
+    std::string leafPath;
+    std::optional<DeepFixture> source;
+    std::optional<Json> other;
+    if (op == "parse")
+    {
+        auto deep = deepText(shape, 0, depth, R"("x")");
+        text = std::move(deep.text);
+        leafPath = std::move(deep.leafPath);
+    }
+    else
+    {
+        source.emplace(buildDeep(shape, depth, R"("x")"));
+        leafPath = source->leafPath;
+        if (op == "set" || op == "append")
+        {
+            other.emplace("{}");
+        }
+        else if (op == "eq")
+        {
+            other.emplace(source->value);
+        }
+        else if (op == "merge" || op == "mergearr")
+        {
+            other.emplace(std::move(buildDeep(shape, depth, R"("y")").value)); // same keys, different leaf
+        }
+    }
+
+    // Results, written by the probe thread and checked after the join.
+    std::optional<Json> parsed;
+    std::optional<Json> copied;
+    std::optional<std::vector<std::string>> fields;
+    std::size_t strSize {0};
+    bool flag {false};
+
+    ProbeContext ctx;
+    std::function<bool()> check;
+    if (op == "parse")
+    {
+        ctx.op = [&]()
+        {
+            parsed.emplace(std::string_view {text});
+        };
+        check = [&]()
+        {
+            return parsed && parsed->equalsString(leafPath, "x");
+        };
+    }
+    else if (op == "copy")
+    {
+        ctx.op = [&]()
+        {
+            copied.emplace(source->value);
+        };
+        check = [&]()
+        {
+            return copied && copied->exists(leafPath);
+        };
+    }
+    else if (op == "set")
+    {
+        ctx.op = [&]()
+        {
+            other->set("/a", source->value);
+        };
+        check = [&]()
+        {
+            return other->exists("/a" + leafPath);
+        };
+    }
+    else if (op == "append")
+    {
+        ctx.op = [&]()
+        {
+            other->appendJson(source->value, "/arr");
+        };
+        check = [&]()
+        {
+            return other->exists("/arr/0" + leafPath);
+        };
+    }
+    else if (op == "str")
+    {
+        ctx.op = [&]()
+        {
+            strSize = source->value.str().size();
+        };
+        check = [&]()
+        {
+            // str() of the fixture is exactly the composed text (same member order, no whitespace).
+            return strSize == deepText(shape, 0, depth, R"("x")").text.size();
+        };
+    }
+    else if (op == "eq")
+    {
+        ctx.op = [&]()
+        {
+            flag = (*other == source->value);
+        };
+        check = [&]()
+        {
+            return flag;
+        };
+    }
+    else if (op == "merge")
+    {
+        ctx.op = [&]()
+        {
+            other->merge(json::RECURSIVE, source->value, "");
+        };
+        // obj: the source leaf wins; mix: the first array keeps both elements, the leaf path still resolves.
+        check = [&]()
+        {
+            return shape == "obj" ? other->equalsString(leafPath, "x") : other->exists(leafPath);
+        };
+    }
+    else if (op == "mergearr")
+    {
+        ctx.op = [&]()
+        {
+            other->merge(json::RECURSIVE, source->value, "");
+        };
+        check = [&]()
+        {
+            return other->size() == 2;
+        };
+    }
+    else if (op == "erase")
+    {
+        ctx.op = [&]()
+        {
+            flag = source->value.eraseIfKey([](const std::string&) { return false; }, true, "");
+        };
+        check = [&]()
+        {
+            return !flag && source->value.exists(leafPath);
+        };
+    }
+    else if (op == "getfields")
+    {
+        ctx.op = [&]()
+        {
+            fields = source->value.getFields();
+        };
+        check = [&]()
+        {
+            return fields && fields->size() >= depth;
+        };
+    }
+    else if (op == "rename")
+    {
+        ctx.op = [&]()
+        {
+            flag = source->value.renameIfKey([](std::string_view in, std::string& out) { out.assign(in); }, true, "");
+        };
+        check = [&]()
+        {
+            return !flag && source->value.equalsString(leafPath, "x");
+        };
+    }
+    else
+    {
+        FAIL() << "unknown operation " << op;
+    }
+
+    pthread_attr_t attr;
+    ASSERT_EQ(pthread_attr_init(&attr), 0);
+    const int stackRc = pthread_attr_setstacksize(&attr, kib * 1024);
+    if (stackRc != 0)
+    {
+        pthread_attr_destroy(&attr);
+        FAIL() << "pthread_attr_setstacksize(" << kib << " KiB) failed: " << stackRc;
+    }
+    pthread_t thread;
+    const int createRc = pthread_create(&thread, &attr, runProbe, &ctx);
+    pthread_attr_destroy(&attr);
+    ASSERT_EQ(createRc, 0) << "pthread_create failed";
+    ASSERT_EQ(pthread_join(thread, nullptr), 0) << "pthread_join failed";
+    EXPECT_EQ(ctx.attrRc, 0) << "pthread_getattr_np/pthread_attr_getstacksize failed";
+
+    report(ctx.error.empty() && check(), ctx.error.empty() ? "check failed" : "operation threw: " + ctx.error);
 }

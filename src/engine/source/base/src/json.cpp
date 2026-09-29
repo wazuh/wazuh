@@ -46,22 +46,29 @@ Json::Json(rapidjson::Document&& document)
 Json::Json(const char* json)
     : m_document {rapidjson::Document()}
 {
-    rapidjson::ParseResult result = m_document.Parse(json);
+    rapidjson::StringStream stream(json);
+    rapidjson::ParseResult result = Json::parseBounded(m_document, stream);
     if (!result)
     {
-        throw std::runtime_error(
-            fmt::format("JSON document could not be parsed: {}", rapidjson::GetParseError_En(result.Code())));
+        throw std::runtime_error(fmt::format("JSON document could not be parsed: {}",
+                                             Json::isDepthError(result)
+                                                 ? fmt::format("{} ({})", Json::DEPTH_ERROR_MSG, Json::MAX_DEPTH)
+                                                 : rapidjson::GetParseError_En(result.Code())));
     }
 }
 
 Json::Json(std::string_view json)
     : m_document {rapidjson::Document()}
 {
-    rapidjson::ParseResult result = m_document.Parse(json.data(), static_cast<rapidjson::SizeType>(json.size()));
+    rapidjson::MemoryStream memoryStream(json.data(), json.size());
+    rapidjson::EncodedInputStream<rapidjson::UTF8<>, rapidjson::MemoryStream> stream(memoryStream);
+    rapidjson::ParseResult result = Json::parseBounded(m_document, stream);
     if (!result)
     {
-        throw std::runtime_error(
-            fmt::format("JSON document could not be parsed: {}", rapidjson::GetParseError_En(result.Code())));
+        throw std::runtime_error(fmt::format("JSON document could not be parsed: {}",
+                                             Json::isDepthError(result)
+                                                 ? fmt::format("{} ({})", Json::DEPTH_ERROR_MSG, Json::MAX_DEPTH)
+                                                 : rapidjson::GetParseError_En(result.Code())));
     }
 }
 
@@ -96,12 +103,15 @@ Json::Json(CompactTag, size_t capacityHint)
 Json Json::compact(std::string_view src, size_t capacityHint)
 {
     Json result(CompactTag {}, capacityHint != 0 ? capacityHint : src.size());
-    rapidjson::ParseResult parseResult =
-        result.m_document.Parse(src.data(), static_cast<rapidjson::SizeType>(src.size()));
+    rapidjson::MemoryStream memoryStream(src.data(), src.size());
+    rapidjson::EncodedInputStream<rapidjson::UTF8<>, rapidjson::MemoryStream> stream(memoryStream);
+    rapidjson::ParseResult parseResult = Json::parseBounded(result.m_document, stream);
     if (!parseResult)
     {
-        throw std::runtime_error(
-            fmt::format("JSON document could not be parsed: {}", rapidjson::GetParseError_En(parseResult.Code())));
+        throw std::runtime_error(fmt::format("JSON document could not be parsed: {}",
+                                             Json::isDepthError(parseResult)
+                                                 ? fmt::format("{} ({})", Json::DEPTH_ERROR_MSG, Json::MAX_DEPTH)
+                                                 : rapidjson::GetParseError_En(parseResult.Code())));
     }
     return result;
 }

@@ -267,7 +267,118 @@ public:
      *
      */
     Json();
+    // ---------------------------------------------------------------------------------------------
+    // Bounded parsing (CWE-674 hardening).
+    //
+    // A document built from text goes through parseBounded() — the text constructors below,
+    // Json::compact() and the helper-argument literal parser of the builder — so a JSON text nested
+    // deeper than MAX_DEPTH never becomes a DOM and the recursions that walk a DOM afterwards
+    // (copy on Pointer::Set, Writer::Accept, merge, ...) are bounded by construction.
+    // ---------------------------------------------------------------------------------------------
 
+    /**
+     * @brief Maximum nesting depth (open objects + arrays at any point) of a document built from text.
+     *
+     * Depth 1 is the root container: a text with MAX_DEPTH nested containers parses, one with
+     * MAX_DEPTH + 1 is a parse error. It is the single engine-wide nesting limit: parsers that build
+     * structure from untrusted text without rapidjson (XML element depth, paths from event keys) use it too.
+     */
+    static constexpr std::size_t MAX_DEPTH = 256;
+
+    /// Text of the depth-cap failure, as it appears in exceptions and parser traces ("... (256)" when formatted).
+    static constexpr std::string_view DEPTH_ERROR_MSG = "nesting depth exceeds the limit";
+
+    /**
+     * @brief Parse @p is into @p doc rejecting any nesting deeper than MAX_DEPTH.
+     *
+     * PRECONDITION: @p doc is a fresh (null) document. rapidjson's Document::Populate keeps a
+     * previous value when the generator fails, so parsing into a used document is not supported
+     * (asserted in debug builds). On failure @p doc stays null.
+     *
+     * The returned result is the Reader's: Populate never sets doc.HasParseError(), so callers MUST
+     * use this ParseResult. Its code is kParseErrorTermination when — and only when — the depth cap
+     * fired (rapidjson::Document's own handler never returns false); see isDepthError().
+     *
+     * @tparam parseFlags rapidjson parse flags (e.g. kParseStopWhenDoneFlag). kParseInsituFlag is not supported.
+     * @param doc Fresh document that receives the value (its allocator is used, so a compact document keeps its pool).
+     * @param is Input stream (StringStream, EncodedInputStream<UTF8<>, MemoryStream>, ...).
+     */
+    template<unsigned parseFlags = rapidjson::kParseNoFlags, typename InputStream>
+    static rapidjson::ParseResult parseBounded(rapidjson::Document& doc, InputStream& is)
+    {
+        static_assert(!(parseFlags & rapidjson::kParseInsituFlag), "in-situ parsing is not supported by parseBounded");
+        RAPIDJSON_ASSERT(doc.IsNull());
+        rapidjson::ParseResult result;
+        auto generator = [&](rapidjson::Document& handler) -> bool
+        {
+            BoundedHandler<rapidjson::Document> guard {handler, MAX_DEPTH};
+            rapidjson::Reader reader;
+            result = reader.Parse<parseFlags>(is, guard);
+            return static_cast<bool>(result);
+        };
+        doc.Populate(generator); // lvalue generator: Populate takes Generator&
+        return result;
+    }
+
+    /// @return true iff @p result is the depth-cap failure produced by parseBounded().
+    static bool isDepthError(const rapidjson::ParseResult& result)
+    {
+        return result.Code() == rapidjson::kParseErrorTermination;
+    }
+
+private:
+    /**
+     * @brief rapidjson Handler that forwards every SAX event to @p H and aborts the parse once the
+     * nesting depth exceeds @p maxDepth (returning false makes the Reader stop with kParseErrorTermination).
+     */
+    template<typename H>
+    class BoundedHandler
+    {
+    public:
+        using Ch = typename H::Ch;
+
+        BoundedHandler(H& inner, std::size_t maxDepth)
+            : m_inner(inner)
+            , m_maxDepth(maxDepth)
+        {
+        }
+
+        bool Null() { return m_inner.Null(); }
+        bool Bool(bool b) { return m_inner.Bool(b); }
+        bool Int(int i) { return m_inner.Int(i); }
+        bool Uint(unsigned u) { return m_inner.Uint(u); }
+        bool Int64(int64_t i) { return m_inner.Int64(i); }
+        bool Uint64(uint64_t u) { return m_inner.Uint64(u); }
+        bool Double(double d) { return m_inner.Double(d); }
+        bool RawNumber(const Ch* str, rapidjson::SizeType length, bool copy)
+        {
+            return m_inner.RawNumber(str, length, copy);
+        }
+        bool String(const Ch* str, rapidjson::SizeType length, bool copy) { return m_inner.String(str, length, copy); }
+        bool Key(const Ch* str, rapidjson::SizeType length, bool copy) { return m_inner.Key(str, length, copy); }
+        bool StartObject() { return enter() && m_inner.StartObject(); }
+        bool EndObject(rapidjson::SizeType memberCount)
+        {
+            --m_depth;
+            return m_inner.EndObject(memberCount);
+        }
+        bool StartArray() { return enter() && m_inner.StartArray(); }
+        bool EndArray(rapidjson::SizeType elementCount)
+        {
+            --m_depth;
+            return m_inner.EndArray(elementCount);
+        }
+
+    private:
+        /// Counts one more open container; false (abort) when the cap is exceeded.
+        bool enter() { return ++m_depth <= m_maxDepth; }
+
+        H& m_inner;
+        std::size_t m_maxDepth;
+        std::size_t m_depth {0};
+    };
+
+public:
     /**
      * @brief Construct a new Json object from a rapidjason Document.
      * Moves the document.
