@@ -2685,10 +2685,24 @@ static HANDLE w_createfile_nofollow_vetted(const char * basedir, const char * fi
  */
 static int w_openat_nofollow_vetted(const char * basedir, const char * filename, int oflags, mode_t mode) {
     struct stat statbuf;
-    int dirfd;
     int fd;
     int saved_errno;
     int flags;
+
+#ifdef HPUX
+    // HP-UX has no openat(): open by path. filename is a bare name, so the path stays inside basedir.
+    char path[PATH_MAX + 1];
+
+    if (snprintf(path, sizeof(path), "%s/%s", basedir, filename) >= (int) sizeof(path)) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    if (fd = open(path, oflags, mode), fd < 0) {
+        return -1;
+    }
+#else
+    int dirfd;
 
     if (dirfd = open(basedir, O_RDONLY | O_DIRECTORY | O_CLOEXEC), dirfd < 0) {
         return -1;
@@ -2702,6 +2716,7 @@ static int w_openat_nofollow_vetted(const char * basedir, const char * filename,
         errno = saved_errno;
         return -1;
     }
+#endif
 
     // Rules out anything O_NOFOLLOW does not, such as a block or character device.
     if (fstat(fd, &statbuf) < 0) {

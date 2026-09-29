@@ -516,8 +516,9 @@ FILE * wfopen(const char * pathname, const char * mode);
  * On both platforms the file is opened without truncating, the descriptor is vetted, and only then is
  * the file truncated: truncating at open time would destroy the target of a hard link before anything
  * about it could be checked. On Linux/macOS the open is relative to a descriptor of @p basedir and
- * uses O_NOFOLLOW; on Windows it skips reparse-point processing. In both cases the descriptor must
- * turn out to be a regular file with a link count of exactly 1.
+ * uses O_NOFOLLOW; HP-UX, which has no openat(), opens the joined path with O_NOFOLLOW instead; on
+ * Windows it skips reparse-point processing. In all cases the descriptor must turn out to be a regular
+ * file with a link count of exactly 1.
  *
  * @param basedir Base directory holding the file. Not created by this function.
  * @param filename Bare file name inside @p basedir.
@@ -536,9 +537,10 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
  * name; it is rejected if it is empty, "." or "..", if it refers to a parent folder, or if it contains a
  * path separator, so the resulting open cannot escape @p basedir.
  *
- * On Linux/macOS the open is relative to a descriptor of @p basedir and uses O_NOFOLLOW; on Windows it
- * skips reparse-point processing. In both cases the descriptor must turn out to be a regular file with a
- * link count of exactly 1 before it is handed to zlib.
+ * On Linux/macOS the open is relative to a descriptor of @p basedir and uses O_NOFOLLOW; HP-UX, which
+ * has no openat(), opens the joined path with O_NOFOLLOW instead; on Windows it skips reparse-point
+ * processing. In all cases the descriptor must turn out to be a regular file with a link count of
+ * exactly 1 before it is handed to zlib.
  *
  * @param basedir Base directory holding the file. Not created by this function.
  * @param filename Bare file name inside @p basedir.
