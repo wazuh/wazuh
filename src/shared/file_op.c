@@ -2976,6 +2976,31 @@ static int w_clear_nonblock(int fd) {
 #define W_VETTED_SEARCH_ONLY O_SEARCH
 #endif
 
+// Spelled out for the same reason as O_PATH; this value is the same on every Linux architecture.
+#if defined(AT_EMPTY_PATH)
+#define W_VETTED_AT_EMPTY_PATH AT_EMPTY_PATH
+#elif defined(__linux__)
+#define W_VETTED_AT_EMPTY_PATH 0x1000
+#endif
+
+/**
+ * fstat() for a descriptor of the walk, which may be O_PATH. Linux 2.6.39 to 3.5 fail fstat() on those with
+ * EBADF but accept fstatat() with AT_EMPTY_PATH.
+ *
+ * @return 0 on success, or -1 on error (sets errno).
+ */
+static int w_fstat_walk(int fd, struct stat * buf) {
+    int ret = fstat(fd, buf);
+
+#ifdef W_VETTED_AT_EMPTY_PATH
+    if (ret < 0 && errno == EBADF) {
+        ret = fstatat(fd, "", buf, W_VETTED_AT_EMPTY_PATH);
+    }
+#endif
+
+    return ret;
+}
+
 /**
  * Opens a directory of the path being walked. Looking entries up in it takes only search permission, so when
  * read is denied it is opened again for search only, where the platform has a way to.
@@ -3009,7 +3034,7 @@ static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat
     int saved_errno;
 
     if (linkfd = openat(dirfd, name, W_VETTED_O_PATH | O_NOFOLLOW | O_CLOEXEC), linkfd >= 0) {
-        if (fstat(linkfd, &now) < 0) {
+        if (w_fstat_walk(linkfd, &now) < 0) {
             n = -1;
         } else if (now.st_dev != link_stat->st_dev || now.st_ino != link_stat->st_ino ||
                    now.st_uid != link_stat->st_uid) {
@@ -3113,7 +3138,7 @@ static int w_open_vetted_follow_fd(const char * path) {
             }
 
             if (entry_stat.st_uid != 0 || entry_stat.st_nlink > 1) {
-                if (fstat(dirfd, &dir_stat) < 0) {
+                if (w_fstat_walk(dirfd, &dir_stat) < 0) {
                     goto fail;
                 }
 
@@ -3172,7 +3197,7 @@ static int w_open_vetted_follow_fd(const char * path) {
                 goto fail_swapped;
             }
 
-            if (fstat(fd, &entry_stat) < 0) {
+            if (w_fstat_walk(fd, &entry_stat) < 0) {
                 goto fail;
             }
 
@@ -3193,7 +3218,7 @@ static int w_open_vetted_follow_fd(const char * path) {
         goto fail_swapped;
     }
 
-    if (fstat(fd, &fd_stat) < 0 || fstat(dirfd, &dir_stat) < 0) {
+    if (fstat(fd, &fd_stat) < 0 || w_fstat_walk(dirfd, &dir_stat) < 0) {
         goto fail;
     }
 
