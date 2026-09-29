@@ -67,6 +67,41 @@ wazuh# cd packages
     * amd64 -> x86_64
     * arm64 -> aarch64
 
+## Windows Agent Package
+
+`packages/windows/generate_compiled_windows_agent.sh` compiles the Windows agent in a Docker container and packs the build tree into a zip, which `generate_wazuh_msi.ps1` then turns into the MSI on a Windows host.
+
+**Usage:**
+```
+wazuh# cd packages/windows
+./generate_compiled_windows_agent.sh -o <name>.zip [OPTIONS]
+```
+
+**Options:**
+
+| Option                    | Description                                                         | Default                                                          |
+|---------------------------|---------------------------------------------------------------------|------------------------------------------------------------------|
+| -o, --output              | Name of the output zip (required)                                   | -                                                                |
+| -b, --branch              | Git branch to compile (optional)                                    | -                                                                |
+| --sources                 | Path containing local Wazuh source code (optional)                  | ../../src                                                        |
+| -j, --jobs                | Number of parallel jobs (optional)                                  | 4                                                                |
+| -s, --store               | Destination path for the zip (optional)                             | current path                                                     |
+| -d, --debug               | Build binaries with debug symbols (optional)                        | no                                                               |
+| -t, --trust_verification  | Module signature verification: 0, 1 or 2 (optional)                 | 1                                                                |
+| -c, --ca_name             | Root CA required by the module signature verification (optional)    | Microsoft Identity Verification Root Certificate Authority 2020 |
+| --dont-build-docker       | Use a locally built Docker image (optional)                         | no                                                               |
+| --tag                     | Tag to use with the Docker image (optional)                         | -                                                                |
+
+**Module signature verification (`-t`, `-c`):**
+
+At startup, `wazuh-agent.exe`, `win32ui.exe`, `manage_agents.exe` and `active-response\bin\block-ip.exe` verify the signature of every module they load (Authenticode, or the system catalog for Windows files), after checking that the `-c` root is in the Windows `ROOT` store. If the root is not there, the agent verifies its own signature first, which lets Windows install the root when it is trusted, and checks again.
+
+- `-t 0`: disabled.
+- `-t 1`: a failed check or an unverified module is logged as a warning. If the root check fails, no module is verified. Released packages use this mode.
+- `-t 2`: a failed check or an unverified module stops the process.
+
+`-c` must be the root the packages are signed under: `Microsoft Identity Verification Root Certificate Authority 2020` for Azure Artifact Signing. Endpoints that cannot install that root are covered in [Installation](../ref/getting-started/installation.md#module-signature-verification).
+
 # Workflow
 
 ## Generate and push builder images to GH

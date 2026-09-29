@@ -94,7 +94,7 @@ USE_BIG_ENDIAN=no
 USE_AUDIT=no
 DISABLE_JEMALLOC?=no
 IMAGE_TRUST_CHECKS?=1
-CA_NAME?=DigiCert Assured ID Root CA
+CA_NAME?=Microsoft Identity Verification Root Certificate Authority 2020
 HTTP_REQUEST_BRANCH?=c5f94080441fc35a80c5cf8ddd9cc1ca9fc20d9b
 
 ifeq (${TARGET},winagent)
@@ -278,7 +278,7 @@ help: failtarget
 	@echo "   make OPTIMIZE_CPYTHON=yes    						Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make PYTHON_SOURCE=yes       						Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make IMAGE_TRUST_CHECKS=1     					This flag controls the dll and exe files signature verification mechanism. Allowed values are 0 (disabled), 1 (warning only) and 2 (full enforce). The default value is 1."
-	@echo "   make CA_NAME="DigiCert Assured ID Root CA" 		This flag controls the CA name used to verify the dll and exe files signature. The default value is DigiCert Assured ID Root CA."
+	@echo "   make CA_NAME="Microsoft Identity Verification Root Certificate Authority 2020" 		This flag controls the CA name used to verify the dll and exe files signature. The default value is Microsoft Identity Verification Root Certificate Authority 2020."
 	@echo "   make deps HTTP_REQUEST_BRANCH=main 				Build dependencies for http-request tool from selected branch/tag only if submodule isn't checked out, valid at make deps stage. Allowed values are any existing branch/tag."
 	@echo
 	@echo "User options: "

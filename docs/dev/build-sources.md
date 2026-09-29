@@ -55,6 +55,15 @@ make -C src TARGET=winagent deps
 make -C src TARGET=winagent
 ```
 
+### Build Options
+
+```bash
+make -C src TARGET=winagent IMAGE_TRUST_CHECKS=2   # Module signature verification: 0 disabled, 1 warn (default), 2 enforce
+make -C src TARGET=winagent CA_NAME="My Root CA"   # Root CA the verification requires (default: Microsoft Identity Verification Root Certificate Authority 2020)
+```
+
+See [Module signature verification](package-generation.md#windows-agent-package).
+
 ## Build Output
 
 After a successful build, binaries are located in:
