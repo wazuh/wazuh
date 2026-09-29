@@ -317,7 +317,7 @@ TEST_F(LaunchdFixtureTest, ProgramFallsBackToFirstProgramArgument)
     const auto all = collectFrom();
     ASSERT_EQ(all.size(), 1u);
     EXPECT_EQ(all[0]["program"], "/usr/bin/tool");
-    EXPECT_EQ(all[0]["program_arguments"], "/usr/bin/tool --flag");
+    EXPECT_EQ(all[0]["program_arguments"], R"(["/usr/bin/tool","--flag"])");
 }
 
 TEST_F(LaunchdFixtureTest, ProgramKeyWinsOverProgramArguments)
@@ -330,6 +330,41 @@ TEST_F(LaunchdFixtureTest, ProgramKeyWinsOverProgramArguments)
     const auto all = collectFrom();
     ASSERT_EQ(all.size(), 1u);
     EXPECT_EQ(all[0]["program"], "/usr/bin/real");
+}
+
+TEST_F(LaunchdFixtureTest, ArrayKeysKeepElementBoundaries)
+{
+    writePlist(m_jobsDir, "arrays.plist",
+               "<key>Label</key><string>com.test.arrays</string>"
+               "<key>ProgramArguments</key><array>"
+               "<string>/Applications/My App.app/Contents/MacOS/My App</string>"
+               "<string>--x=a,b</string><string>say \"hi\"</string></array>"
+               "<key>WatchPaths</key><array>"
+               "<string>/Applications/</string><string>/Applications/Utilities/</string></array>"
+               "<key>QueueDirectories</key><array><string>/var/spool/my queue</string></array>");
+
+    const auto all = collectFrom();
+    ASSERT_EQ(all.size(), 1u);
+    EXPECT_EQ(nlohmann::json::parse(all[0]["program_arguments"].get<std::string>()),
+              nlohmann::json::array({"/Applications/My App.app/Contents/MacOS/My App", "--x=a,b", "say \"hi\""}));
+    EXPECT_EQ(nlohmann::json::parse(all[0]["watch_paths"].get<std::string>()),
+              nlohmann::json::array({"/Applications/", "/Applications/Utilities/"}));
+    EXPECT_EQ(nlohmann::json::parse(all[0]["queue_directories"].get<std::string>()),
+              nlohmann::json::array({"/var/spool/my queue"}));
+    EXPECT_EQ(all[0]["program"], "/Applications/My App.app/Contents/MacOS/My App");
+}
+
+TEST_F(LaunchdFixtureTest, EmptyOrAbsentArrayKeysStayEmpty)
+{
+    writePlist(m_jobsDir, "empty.plist",
+               "<key>Label</key><string>com.test.empty</string>"
+               "<key>WatchPaths</key><array/>");
+
+    const auto all = collectFrom();
+    ASSERT_EQ(all.size(), 1u);
+    EXPECT_EQ(all[0]["program_arguments"], "");
+    EXPECT_EQ(all[0]["watch_paths"], "");
+    EXPECT_EQ(all[0]["queue_directories"], "");
 }
 
 TEST_F(LaunchdFixtureTest, OverrideDatabaseOutranksThePlistBothWays)
