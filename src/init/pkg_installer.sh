@@ -364,6 +364,15 @@ probe_server_with_ca() {
         # 22 is an HTTP error status, which only comes after a verified handshake.
         0|22) return 0 ;;
         51|60|83) return 1 ;;
+        # Some TLS backends report a failed verification as a generic handshake error: it was the
+        # CA only if the same handshake succeeds without verification.
+        35)
+            curl --tlsv1.3 -k -s -f -m ${PROBE_TIMEOUT} -o /dev/null "https://${PROBE_HOST}:${2}${PROBE_PATH}"
+            case $? in
+                0|22) return 1 ;;
+                *) return 2 ;;
+            esac
+            ;;
         *) return 2 ;;
     esac
 }
@@ -632,7 +641,7 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
         fi
     fi
 
-    if [ "${CA_TOOL_MISSING}" = "1" ] && [ -f "${DEFAULT_CA_FILE}" ]; then
+    if [ "${CA_TOOL_MISSING}" = "1" ] && [ -f "${DEFAULT_CA_FILE}" ] && [ -r "${DEFAULT_CA_FILE}" ]; then
         # The anchor already in place supersedes it; kept, a later upgrade would install it over that anchor.
         CA_TOOL_DISCARD=1
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE} ${CA_REJECT_REASON}; a trust anchor is already present at ${DEFAULT_CA_FILE}, so the delivered copy is discarded." >> ./logs/upgrade.log
