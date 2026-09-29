@@ -169,7 +169,7 @@
     <group>firewall_drop,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,</group>
   </rule>
 
-  <rule id="81621" level="3" frequency="18" timeframe="45" ignore="240">
+  <rule id="81621" level="3" frequency="16" timeframe="45" ignore="240">
     <if_matched_sid>81620</if_matched_sid>
     <same_source_ip />
     <description>Fortigate: Multiple URLs blocked from same source.</description>
@@ -282,11 +282,12 @@
     <group>firewall_drop,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,</group>
   </rule>
 
-  <rule id="81635" level="3" frequency="16" timeframe="45" ignore="240">
-    <if_matched_sid>81620</if_matched_sid>
+  <rule id="81635" level="5" frequency="10" timeframe="60" ignore="240">
+    <if_matched_sid>81634</if_matched_sid>
     <same_source_ip />
-    <description>Fortigate: Multiple URLs blocked from same source.</description>
-    <group>gdpr_IV_35.7.d,hipaa_164.312.b,multiple_drops,nist_800_53_AU.6,pci_dss_10.6.1,</group>
+    <same_field>app</same_field>
+    <description>Fortigate: Multiple requests by $(app) blocked from same source.</description>
+    <group>firewall_drop,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="81636" level="1">
