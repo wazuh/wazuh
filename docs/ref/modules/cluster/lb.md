@@ -187,8 +187,8 @@ certificate it checks belongs to whichever node answered. A node issued only wit
 refused by every agent that verifies, with a TLS error and **no HTTP status**.
 
 The same address is validated again when an enrollment token is minted:
-`wazuh-manager-authd --create-enrollment-token --address <host>` refuses a host the listener
-certificate does not name. So a missing SAN blocks token enrollment as well as reporting.
+`wazuh-manager-authd --create-enrollment-token --address <host>` refuses a host the master's
+listener certificate does not name. So a missing SAN blocks token enrollment as well as reporting.
 
 > The agent-facing address belongs to no single node, so `wazuh-certs-tool` takes it separately:
 > `--agent-san` under passthrough, which adds it to every manager node's listener certificate, and
@@ -205,7 +205,7 @@ CA certificates, which is what makes a rotation possible without downtime.
 > certificate. The agent's TLS peer is the balancer, so the anchor cannot verify the peer it is
 > talking to, and an agent that adopts it loses the connection it had.
 >
-> An enrollment token does not rescue that case either: it pins the same
+> An enrollment token does not rescue that case either: it pins the master's
 > `<remote><https><ca_certificate>`. **Signing the balancer leaf with the same CA as the nodes is
 > what makes either mechanism work** — which is what §8.2's termination recipe does. Otherwise
 > distribute the anchor out of band.
@@ -362,7 +362,7 @@ with `openssl` alone, so the check does not depend on the issuing tool.
 |---|---|---|
 | Balancer certificate | not used | SAN contains the agent-facing address |
 | Every manager node's SAN | **contains the agent-facing address** | contains the name the balancer dials |
-| Signed by | a CA the agents trust | balancer leaf: a CA the agents trust; node leaves: a CA the balancer trusts |
+| Signed by | one CA, which the agents trust | node leaves: one CA, which the balancer trusts; balancer leaf: that same CA if agents enroll with a token or fetch `/cacerts` (see [What agents trust](#what-agents-trust)) |
 
 The passthrough row is the one that trips people up, and the one the tooling does not make easy:
 **the same address must appear in the SAN of every manager node**, because the agent dials the
@@ -584,11 +584,13 @@ from one value, rather than asking the peer for an anchor it has not verified.
 
 Two conditions apply, and both are properties of the certificates rather than of the token:
 
-* **The token's address must appear in a manager listener certificate's SAN**, or minting is
-  refused with `address not in certificate SAN`. Under passthrough, `--agent-san` puts it there.
+* **The token's address must appear in the master's listener certificate SAN**, because tokens are
+  minted there, or minting is refused with `address not in certificate SAN`. Under passthrough,
+  `--agent-san` puts it there. A token for one worker's own address needs that address on the
+  master's certificate as well as the worker's; the shared agent-facing address avoids the issue.
   Under termination the agent-facing address is on the *balancer's* leaf, not on the nodes', so mint
   against a name the node certificates do carry, or add the agent-facing address to them as well.
-* **The CA it pins is the manager's** `<remote><https><ca_certificate>`. It is only a usable anchor
+* **The CA it pins is the master's** `<remote><https><ca_certificate>`. It is only a usable anchor
   for the agent when the certificate the agent actually validates chains to that same CA — which,
   under termination, means issuing the balancer leaf from it.
 

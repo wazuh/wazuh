@@ -293,6 +293,8 @@ subject; an IP literal only against `iPAddress` entries, and accepted with a war
 must name something **other than loopback only** — a certificate whose entire SAN set is loopback (or
 that carries no SAN extension at all) is refused, while `--address localhost` against a certificate that
 also names something reachable is minted normally — and `remote.https.ca_certificate` must have signed it.
+In a cluster these checks run on the master, where tokens are minted, against the master's own files:
+a token for one worker's own address is refused unless the master's certificate carries it too.
 `--port`/`--prefix` default to the running `remote.https` values, `--ttl` to 30 days (`N[d|h|m|s]`),
 `--max-uses` to unlimited.
 

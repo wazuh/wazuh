@@ -219,7 +219,7 @@ Behind a load balancer there is nothing to re-point between nodes: the agent add
 Start with the agent's own log:
 
 ```bash
-sudo grep -E "cacerts|pin_mismatch|TLS verification|\(41[0-9]{2}\)" /var/ossec/logs/ossec.log | tail -20
+sudo grep -E "cacerts|pin_mismatch|verified enrollment|TLS verification|\(41[0-9]{2}\)" /var/ossec/logs/ossec.log | tail -20
 ```
 
 | What the agent says | What it means | What to do |
@@ -227,7 +227,8 @@ sudo grep -E "cacerts|pin_mismatch|TLS verification|\(41[0-9]{2}\)" /var/ossec/l
 | `/cacerts adr_unreachable` | The address in the token answers nothing | Check routing, and that the manager is listening on 1517 |
 | `/cacerts not_found` | The manager answered, but has no CA to hand out | Nothing on the endpoint changes this. The manager has to be given its CA before any agent can bootstrap against it |
 | `/cacerts ca_mismatch` | The certificate the manager serves does not chain to the CA it would hand out — a CA that expired, or whose validity window has not opened yet, counts as not chaining | Nothing on the endpoint changes this. Retrying will keep failing until the manager's certificate and CA match (a CA that is merely not yet valid heals on its own once its window opens) |
-| `pin_mismatch` | The CA the manager served is not the one the token pins | Wrong token, wrong manager, or the CA was rotated. Use a fresh token |
+| `pin_mismatch` | The CA the manager served is not the one the token pins | Wrong token, wrong manager, or the CA was rotated after the token was minted (see [Enrollment tokens and a rotation](../remoted/ca-rotation.md#enrollment-tokens-and-a-rotation)). Use a fresh token |
+| `The verified enrollment request could not be sent: (60) SSL peer certificate … was not OK` | The certificate of the manager node the agent enrolls through failed verification: it does not chain to the CA the token gave the agent, or it does not name the token's address | The detail after `(60)` says which. A chain error usually means a token minted before a CA rotation (see [Enrollment tokens and a rotation](../remoted/ca-rotation.md#enrollment-tokens-and-a-rotation)); use a fresh token. A name error means that node's certificate lacks the token's address in its SAN |
 | `(4118)` | The mode needs a CA, and neither `<certificate_authorities>` nor the trust anchor is present | Enroll with a token, or name a CA |
 | `(4120)` | `system` together with an explicit `<certificate_authorities>` | Drop one of the two: remove the CA to use the OS trust store, or keep it and set the mode to `full` |
 | `(4121)` | `system` on a host with no OS CA bundle | Use `full` against the trust anchor instead |

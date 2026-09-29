@@ -115,11 +115,15 @@ structure inside it (`w_x509_spki_sha256()` in `src/shared/src/x509_op.c`).
 When `remote.https.ca_certificate` holds a bundle, the pin is taken from the certificate in it that
 **actually signs the listener certificate**, not from the first one in the file.
 
+Tokens are only minted on the master, so this is the master's listener certificate and the master's
+`ca_certificate`, whichever node the token's address names.
+
 That choice has one practical consequence worth knowing before renewing anything: **the pin survives
 a CA certificate renewal as long as the key pair is kept.** Re-issuing `root-ca.pem` with a new
 validity window, a new serial or a new subject does not invalidate tokens already handed out.
 Changing the CA key changes the pin. Once the listener's certificate chain requires that new key,
 an old pin cannot authenticate it; other certificate and hostname checks still apply independently.
+See [Enrollment tokens and a rotation](../remoted/ca-rotation.md#enrollment-tokens-and-a-rotation).
 
 The CLI prints the same 32 bytes in hexadecimal as `pin:` on stderr so an operator can compare it
 against a CA out of band, with the installed default CA path:
