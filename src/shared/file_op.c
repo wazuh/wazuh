@@ -2894,12 +2894,13 @@ static bool w_vet_link_count(const struct stat * entry_stat, const struct stat *
 }
 
 /**
- * A symlink's target cannot be changed, only the link replaced, which takes write access to its directory.
- * So a link in a directory only root can write to is as trusted as root's own, whoever owns it.
+ * Only root can add, remove or replace entries in a directory owned by root that is not writable by group or
+ * others, so whoever owns an entry there, root put it there. That makes a symlink there as trusted as root's
+ * own, since its target can only be changed by replacing the link, and likewise a FIFO or device.
  *
- * @return true if a symlink in the directory described by dir_stat can be trusted regardless of its owner.
+ * @return true if only root can write to the directory described by dir_stat.
  */
-static bool w_vet_fixed_link(const struct stat * dir_stat) {
+static bool w_vet_root_only_dir(const struct stat * dir_stat) {
     return dir_stat->st_uid == 0 && !(dir_stat->st_mode & (S_IWGRP | S_IWOTH));
 }
 
@@ -2910,7 +2911,7 @@ static bool w_vet_fixed_link(const struct stat * dir_stat) {
  * @return true if entry_stat, found in the directory described by dir_stat, can be trusted.
  */
 static bool w_vet_special_owner(const struct stat * entry_stat, const struct stat * dir_stat) {
-    return entry_stat->st_uid == 0 || w_vet_fixed_link(dir_stat);
+    return entry_stat->st_uid == 0 || w_vet_root_only_dir(dir_stat);
 }
 
 /**
@@ -3165,7 +3166,7 @@ static int w_open_vetted_follow_fd(const char * path) {
 
                 // Links owned by root, or that only root can replace, are trusted; all others must share
                 // one owner, checked against the file.
-                if (entry_stat.st_uid != 0 && !w_vet_fixed_link(&dir_stat)) {
+                if (entry_stat.st_uid != 0 && !w_vet_root_only_dir(&dir_stat)) {
                     if (has_link_uid && link_uid != entry_stat.st_uid) {
                         errno = EPERM;
                         goto fail;
@@ -3318,7 +3319,7 @@ static int w_open_vetted_follow_fd(const char * path) {
             return -1;
         }
 
-        if (link_stat.st_uid != 0 && !w_vet_fixed_link(&link_dir_stat)) {
+        if (link_stat.st_uid != 0 && !w_vet_root_only_dir(&link_dir_stat)) {
             link_uid = link_stat.st_uid;
             has_link_uid = true;
         }
