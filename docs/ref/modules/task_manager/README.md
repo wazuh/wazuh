@@ -50,6 +50,8 @@ Manager tasks are described in [Manager tasks](manager-tasks.md); the three recu
 
 The module listens on `queue/sockets/task-http.sock`, serving HTTP/1.1 through the shared
 [uds_http_server](../utils/uds-http-server/) transport — the same one wazuh-db and inventory-sync use.
+This section is the summary; the per-route contract (fields, limits, status codes) is the
+[API reference](api-reference.md), and every metric is in [Metrics](metrics.md).
 
 **Every route is a POST**, including the reads. Routing is exact-match with no path parameters, and
 the C clients that call this speak POST only, so a GET-shaped read surface would need either
