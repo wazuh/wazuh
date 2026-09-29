@@ -31,6 +31,9 @@
 #include "../wrappers/externals/zlib/zlib_wrappers.h"
 #ifdef WIN32
 #include "../wrappers/windows/fileapi_wrappers.h"
+#else
+#include <signal.h>
+#include <sys/wait.h>
 #endif
 
 /* setups/teardowns */
@@ -2267,6 +2270,49 @@ void test_w_fopen_vetted_follow_symlink_same_owner_accepted(void **state) {
     assert_vetted_reads_content(link_path);
 }
 
+void test_w_fopen_vetted_follow_repointed_symlink_not_rejected(void **state) {
+    char targets[2][PATH_MAX + 1];
+    char link_path[PATH_MAX + 1];
+    char tmp_path[PATH_MAX + 1];
+    FILE * fp;
+    pid_t child;
+    int rejected = 0;
+    int k;
+
+    nofollow_create_file("victim", "content");
+    nofollow_create_file("target", "content");
+    nofollow_path(targets[0], "victim");
+    nofollow_path(targets[1], "target");
+    nofollow_path(link_path, "link");
+    nofollow_path(tmp_path, "dangling");
+    assert_int_equal(symlink(targets[0], link_path), 0);
+
+    // Re-point the link the way rotation does (ln -sfn + mv -T) while it is opened: a swap caught mid-walk
+    // must be retried, never reported as a trust rejection.
+    child = fork();
+    assert_int_not_equal(child, -1);
+    if (child == 0) {
+        for (k = 0;; k ^= 1) {
+            if (symlink(targets[k], tmp_path) < 0 || rename(tmp_path, link_path) < 0) {
+                _exit(1);
+            }
+        }
+    }
+
+    for (k = 0; k < 20000; k++) {
+        errno = 0;
+        if (fp = w_fopen_vetted_follow(link_path, "rb"), fp) {
+            fclose(fp);
+        } else if (errno != EAGAIN) {
+            rejected++;
+        }
+    }
+
+    kill(child, SIGKILL);
+    waitpid(child, NULL, 0);
+    assert_int_equal(rejected, 0);
+}
+
 void test_w_fopen_vetted_follow_relative_symlink_accepted(void **state) {
     char dir[PATH_MAX + 1];
     char link_path[PATH_MAX + 1];
@@ -2596,6 +2642,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_hard_link_in_shared_dir_rejected, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_hard_linked_symlink_in_shared_dir_rejected, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_symlink_same_owner_accepted, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_repointed_symlink_not_rejected, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_relative_symlink_accepted, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_directory_symlink_same_owner_accepted, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_symlink_root_owned_accepted, setup_nofollow, teardown_vetted),

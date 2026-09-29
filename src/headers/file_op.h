@@ -569,7 +569,9 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
  *   can write there.
  *
  * A rejection sets errno to EINVAL (file type) or EPERM (trust), never ENOENT, so a caller that treats
- * ENOENT as "file gone" is not misled by it. Windows falls back to wfopen().
+ * ENOENT as "file gone" is not misled by it. A path that keeps changing while it is checked, as a symlink
+ * re-pointed during rotation does, is retried a few times and then fails with EAGAIN: it was not rejected,
+ * and may be opened again later. Windows falls back to wfopen().
  *
  * Solaris 10 and HP-UX lack the *at() calls the component walk needs. There the path is followed as
  * wfopen() would, still non-blocking, and the same rules are applied to the opened file, but only the

@@ -2880,6 +2880,8 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
 #ifndef WIN32
 // Same limit as Linux's MAXSYMLINKS; bounds a symlink loop the kernel would stop with ELOOP.
 #define W_VETTED_MAX_SYMLINKS 40
+// Walks retried when an entry changes between its checks, as a symlink re-pointed during rotation does.
+#define W_VETTED_RACE_RETRIES 3
 
 /**
  * A hard link can be made by anyone who can write to its directory, so an entry with more than one link
@@ -3039,7 +3041,7 @@ static int w_open_walk_dir(int dirfd, const char * name, int flags) {
  * Reads the target of symlink name in dirfd, failing unless it is still the link link_stat describes, so a
  * link swapped in after its owner was checked is not followed.
  *
- * @return Target length as readlinkat(), or -1 on error (errno EPERM if the link was swapped).
+ * @return Target length as readlinkat(), or -1 on error (errno EAGAIN if the link was swapped).
  */
 static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat * link_stat, char * target) {
     struct stat now;
@@ -3055,7 +3057,7 @@ static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat
             n = -1;
         } else if (now.st_dev != link_stat->st_dev || now.st_ino != link_stat->st_ino ||
                    now.st_uid != link_stat->st_uid) {
-            errno = EPERM;
+            errno = EAGAIN;
             n = -1;
         } else {
             n = readlinkat(linkfd, "", target, PATH_MAX);
@@ -3082,7 +3084,7 @@ static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat
     }
 
     if (now.st_dev != link_stat->st_dev || now.st_ino != link_stat->st_ino || now.st_uid != link_stat->st_uid) {
-        errno = EPERM;
+        errno = EAGAIN;
         return -1;
     }
 
@@ -3249,7 +3251,7 @@ static int w_open_vetted_follow_fd(const char * path) {
 fail_swapped:
     // O_NOFOLLOW reports a symlink as ELOOP (EMLINK on FreeBSD): the entry changed under us.
     if (errno == ELOOP || errno == EMLINK) {
-        errno = EPERM;
+        errno = EAGAIN;
     }
 fail:
     saved_errno = errno;
@@ -3338,7 +3340,7 @@ static int w_open_vetted_follow_fd(const char * path) {
 
     if (now.st_dev != link_stat.st_dev || now.st_ino != link_stat.st_ino || now.st_uid != link_stat.st_uid ||
         (!S_ISLNK(link_stat.st_mode) && (fd_stat.st_dev != link_stat.st_dev || fd_stat.st_ino != link_stat.st_ino))) {
-        errno = EPERM;
+        errno = EAGAIN;
         goto fail;
     }
 
@@ -3347,7 +3349,7 @@ static int w_open_vetted_follow_fd(const char * path) {
     }
 
     if (now.st_dev != fd_stat.st_dev || now.st_ino != fd_stat.st_ino) {
-        errno = EPERM;
+        errno = EAGAIN;
         goto fail;
     }
 
@@ -3379,7 +3381,13 @@ FILE * w_fopen_vetted_follow(const char * path, const char * mode) {
 #else
     int saved_errno;
     FILE * fp;
-    int fd = w_open_vetted_follow_fd(path);
+    int retries = 0;
+    int fd;
+
+    // Restart from the root: re-checking only the changed entry would trust stale stat data.
+    do {
+        fd = w_open_vetted_follow_fd(path);
+    } while (fd < 0 && errno == EAGAIN && retries++ < W_VETTED_RACE_RETRIES);
 
     if (fd < 0) {
         return NULL;
