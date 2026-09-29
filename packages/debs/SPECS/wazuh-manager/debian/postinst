@@ -173,7 +173,7 @@ case "$1" in
         if [ -f /etc/TIMEZONE ]; then
             cp -p /etc/TIMEZONE ${DIR}/etc/;
             chmod 640 ${DIR}/etc/TIMEZONE
-            chown root:root ${DIR}/etc/TIMEZONE
+            chown root:${GROUP} ${DIR}/etc/TIMEZONE
         fi
     fi
 
