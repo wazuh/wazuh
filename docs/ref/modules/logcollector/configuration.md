@@ -64,7 +64,8 @@ Defines the format of the log source to determine how logs are read and parsed.
   - `mysql_log` - MySQL logs
   - `postgresql_log` - PostgreSQL logs
   - `djb-multilog` - DJB multilog format
-  - `multi-line` - Multi-line log entries
+  - `multi-line: N` - Multi-line log entries of exactly `N` lines (for example, `multi-line: 3`)
+  - `multi-line-regex` - Multi-line log entries delimited by `multiline_regex`
 - **Note:** The format determines which collector is used to read the log source
 
 ### query
@@ -103,11 +104,13 @@ Filter journal entries by field (journald only).
 
 ### only-future-events
 
-Collect only events generated after the agent starts (Windows Event Channel only).
+Collect only events generated after the agent starts.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-- **Note:** When set to `yes`, ignores historical events. When set to `no`, processes all available events from the channel
+- **Attributes:** `max-size` (files only) - largest backlog read after a restart when set to `no`. Default `10M`, maximum `2G`; takes bytes or a `K`, `M` or `G` suffix. An invalid value logs a warning and keeps the default
+- **Note:** When set to `yes`, ignores historical events. When set to `no`, a file resumes from its saved bookmark, or skips to its end if it grew by more than `max-size` meanwhile; a Windows Event Channel processes all available events from the channel
+- **Example:** `<only-future-events max-size="50M">no</only-future-events>`
 
 ### target
 
@@ -157,6 +160,45 @@ Excludes files matching a pattern when using wildcards.
 - **Default value:** None (optional)
 - **Allowed values:** Regex pattern
 - **Note:** Files matching this pattern are excluded from monitoring
+
+### alias
+
+Name shown instead of the command in events from `command` and `full_command` sources.
+
+- **Default value:** The command itself
+- **Allowed values:** Any string
+- **Note:** Replaces the command in the `wazuh: output: '<alias>':` header of each event and in the event location
+- **Example:** `<alias>disk usage</alias>`
+
+### ignore
+
+Drops events that match an expression.
+
+- **Default value:** None (optional)
+- **Allowed values:** Regular expression. The `type` attribute selects its syntax: `pcre2` (default), `osregex` or `osmatch`
+- **Note:** Repeat the tag to add expressions; an event that matches any of them is dropped. The expression is tested against the text that is forwarded: each line for files, the whole event for `multi-line` and `multi-line-regex`, each output line with its `wazuh: output: '<alias>':` header in front for `command`, and the whole output with that header for `full_command`. Not applied to `eventchannel` or `eventlog`; ignored with a warning for `journald`
+- **Example:** `<ignore type="osmatch">DEBUG</ignore>`
+
+### restrict
+
+Keeps only events that match an expression.
+
+- **Default value:** None (optional)
+- **Allowed values:** Regular expression. The `type` attribute selects its syntax: `pcre2` (default), `osregex` or `osmatch`
+- **Note:** Repeat the tag to add expressions; an event must match all of them to be kept. Tested against the same text as `ignore`, with the same format limits
+- **Example:** `<restrict>sshd|sudo</restrict>`
+
+### multiline_regex
+
+PCRE2 expression that splits a `multi-line-regex` source into events.
+
+- **Default value:** None (required with `multi-line-regex`, ignored with a warning for any other `log_format`)
+- **Allowed values:** PCRE2 regular expression
+- **Attributes:**
+  - `match` - `start` (default): a matching line starts a new event; `end`: a matching line ends the current event; `all`: the event ends once the lines read so far match
+  - `replace` - what replaces the line breaks inside an event: `no-replace` (default, keeps them), `none` (removes them), `wspace` (a space) or `tab` (a tab)
+  - `timeout` - seconds to wait for more lines before sending an incomplete event. Default `5`, allowed `1` to `120`
+- **Example:** `<multiline_regex replace="wspace">^\d{4}-\d{2}-\d{2} </multiline_regex>`
 
 ### reconnect_time
 
@@ -219,7 +261,7 @@ Internal options provide advanced tuning for the Logcollector module. These opti
 File check interval for detecting log file changes.
 
 - **Default value:** `2` (seconds)
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `1` to `120`
 - **Format:** `logcollector.loop_timeout=2`
 - **Note:** Controls how frequently Logcollector checks monitored files for changes
 
@@ -571,12 +613,13 @@ Create a Unix socket for receiving syslog messages:
 
 ### Multi-Line Log Collection
 
-Collect multi-line log entries (e.g., Java stack traces):
+Collect multi-line log entries (e.g., Java stack traces) where each entry starts with a date:
 
 ```xml
 <localfile>
   <location>/var/log/app.log</location>
-  <log_format>multi-line</log_format>
+  <log_format>multi-line-regex</log_format>
+  <multiline_regex match="start" replace="wspace">^\d{4}-\d{2}-\d{2} </multiline_regex>
 </localfile>
 ```
 

@@ -54,7 +54,7 @@ Alternatively, Security Lake data can be accessed via the S3 bucket type:
 | `disabled` | No | `no` | Disables the AWS module when set to `yes`. |
 | `interval` | No | `5s` | Time interval between SQS polling requests. |
 | `run_on_start` | No | `yes` | Poll the queue immediately when the module starts. |
-| `skip_on_error` | No | `yes` | Continue processing on error instead of stopping. |
+| `skip_on_error` | No | `no` | Continue processing on error instead of stopping. |
 | `subscriber type` | Yes | — | Set to `security_lake` for Security Lake integration. |
 | `sqs_name` | Yes | — | Name of the SQS queue configured for Security Lake notifications. |
 | `aws_profile` | No | — | AWS CLI profile name for authentication. |

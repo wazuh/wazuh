@@ -41,7 +41,7 @@ Configure the AWS module in the Wazuh agent `ossec.conf` file:
 | `disabled` | No | `no` | Disables the AWS module when set to `yes`. |
 | `interval` | No | `5s` | Time interval between S3 bucket scans. |
 | `run_on_start` | No | `yes` | Process logs immediately when the module starts. |
-| `skip_on_error` | No | `yes` | Continue processing on error instead of stopping. |
+| `skip_on_error` | No | `no` | Continue processing on error instead of stopping. |
 | `bucket` | Yes | — | Defines an S3 bucket to monitor. Set `type="cloudtrail"` for CloudTrail logs. |
 | `name` | Yes | — | Name of the S3 bucket. |
 | `access_key` | No | — | AWS access key ID. Not required if using IAM roles. |
