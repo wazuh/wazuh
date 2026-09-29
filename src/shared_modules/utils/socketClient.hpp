@@ -43,6 +43,8 @@ private:
     std::mutex m_mutex;
     int m_stopFD[2] = {-1, -1};
     std::shared_mutex m_socketMutex;
+    std::function<void(const std::string&)> m_onError;
+    std::atomic<bool> m_lastSendFailed {false};
 
     void sendPendingMessages()
     {
@@ -59,11 +61,12 @@ private:
     }
 
 public:
-    explicit SocketClient(std::string socketPath)
+    explicit SocketClient(std::string socketPath, std::function<void(const std::string&)> onError = {})
         : m_socketPath {std::move(socketPath)}
         , m_epoll {std::make_shared<TEpoll>()}
         , m_socket {std::make_shared<TSocket>()}
         , m_shouldStop {false}
+        , m_onError {std::move(onError)}
     {
         int result = ::pipe(m_stopFD);
         if (result == -1)
@@ -209,6 +212,11 @@ public:
             {
                 // Failure to connect to socket
                 delay = std::min(delay * 2, MAX_DELAY);
+                if (m_onError)
+                {
+                    m_onError("Failed to connect to socket '" + m_socketPath + "': " + e.what() + ". Retrying in " +
+                              std::to_string(delay) + " seconds.");
+                }
             }
         } while (!m_cv.wait_for(lock, std::chrono::seconds(delay), [&]() { return m_shouldStop.load(); }));
     }
@@ -219,10 +227,21 @@ public:
         try
         {
             m_socket->send(dataBody, sizeBody, dataHeader, sizeHeader);
+            if (m_lastSendFailed.exchange(false) && m_onError)
+            {
+                m_onError("Recovered sending data to socket '" + m_socketPath + "'.");
+            }
         }
         catch (const std::exception& e)
         {
-            // Error sending message
+            // Error sending message. Logged once on the transition into failure (and once on recovery,
+            // above) rather than on every attempt, since a broken connection can otherwise mean one of
+            // these per send for as long as the caller keeps trying. Data is not retried or requeued here,
+            // so if the peer never becomes reachable again this send is lost silently except for this line.
+            if (!m_lastSendFailed.exchange(true) && m_onError)
+            {
+                m_onError("Failed to send data to socket '" + m_socketPath + "': " + e.what());
+            }
             m_epoll->modifyDescriptor(m_socket->fileDescriptor(), EPOLLIN | EPOLLOUT);
         }
     }
