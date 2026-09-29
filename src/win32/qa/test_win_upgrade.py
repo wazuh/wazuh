@@ -2,10 +2,12 @@ import pathlib
 import os
 import hashlib
 import pytest
+import subprocess
 
 RELEASED_PATH = 'C:\\win-agent-released\\'
 BASE_PATH = 'C:\\win-agent-base\\'
 INSTALL_PATH = 'C:\\Program Files (x86)\\ossec-agent\\'
+AUTHENTICATED_USERS_SID = 'S-1-5-11'
 
 
 def populate_dict(dict, files_list):
@@ -79,3 +81,33 @@ def test_win_upgrade():
                 tuple((key, installed_files_dict[key], files_to_install_dict[key])))
 
     assert success, f"The following binaries have a hash mismatch: '{failed_keys}'"
+
+
+def test_win_upgrade_shared_dir_permissions():
+    # Runs after test_win_upgrade, on the upgraded installation. The released version grants
+    # Authenticated Users read access to the shared directory, so this also checks that the
+    # upgrade strips it from the files that were already there.
+    shared_path = INSTALL_PATH + 'shared'
+    assert os.path.isdir(shared_path), f"Directory '{shared_path}' not found"
+
+    # Compare by SID: account names are localized. The ACLs are read through .NET instead of
+    # Get-Acl so the check does not depend on loading PowerShell modules, which fails when
+    # Windows PowerShell is started from a PowerShell 7 session such as the runner's shell.
+    script = (
+        "$ErrorActionPreference = 'Stop'; "
+        f"$root = '{shared_path}'; "
+        "$paths = @($root) + @([System.IO.Directory]::GetFileSystemEntries("
+        "$root, '*', [System.IO.SearchOption]::AllDirectories)); "
+        "foreach ($path in $paths) { "
+        "if ([System.IO.Directory]::Exists($path)) { $acl = [System.IO.Directory]::GetAccessControl($path) } "
+        "else { $acl = [System.IO.File]::GetAccessControl($path) }; "
+        "foreach ($rule in $acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier])) { "
+        f"if ($rule.IdentityReference.Value -eq '{AUTHENTICATED_USERS_SID}') {{ $path }} "
+        "} }"
+    )
+    result = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', script],
+                            capture_output=True, text=True)
+    assert result.returncode == 0, f"Failed to read the ACLs under '{shared_path}': {result.stderr}"
+
+    with_entry = sorted(set(line.strip() for line in result.stdout.splitlines() if line.strip()))
+    assert not with_entry, f"Authenticated Users still has an entry on: {with_entry}"
