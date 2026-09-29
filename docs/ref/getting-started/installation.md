@@ -520,6 +520,17 @@ Verify the agent is running:
 Get-Service -Name wazuh
 ```
 
+#### Module signature verification
+
+The agent verifies the signature of the modules it loads, which requires `Microsoft Identity Verification Root Certificate Authority 2020`, the root Azure Artifact Signing chains to, to be trusted. Windows installs it automatically when the agent first needs it. On endpoints where it cannot (automatic root certificate updates disabled, for example with the `DisableRootAutoUpdate` policy, or old systems without the current root list), the agent logs:
+
+```
+The signature of file 'C:\Program Files (x86)\ossec-agent\wazuh-agent.exe' terminated in a root certificate that is not trusted.
+The dynamic signature validation is not available because the CA name('Microsoft Identity Verification Root Certificate Authority 2020') is not available.
+```
+
+The agent keeps running without module verification. To enable it, install the root in the `Trusted Root Certification Authorities` store of the local computer, as described in [KB5022661](https://support.microsoft.com/en-us/topic/kb5022661-windows-support-for-the-azure-code-signing-program-4b505a31-fa1e-4ea6-85dd-6630229e8ef4); the certificate is available in the [Microsoft PKI repository](https://www.microsoft.com/pkiops/docs/repository.htm). Build options are described in [Package generation](../../dev/package-generation.md#windows-agent-package).
+
 ### Options
 
 #### Enrollment
