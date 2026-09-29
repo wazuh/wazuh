@@ -730,26 +730,6 @@ else
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Manager reachable at ${SERVER_ADDRESS}:${SERVER_PORT}/${SERVER_ENDPOINT}." >> ./logs/upgrade.log
 fi
 
-# A CA that validates on its own may still not be this manager's (rotated since it was delivered,
-# or the address is not in the certificate). Installed, it would take the agent off the air under
-# 'full', so it is refused; when the check cannot run, the CA is installed as before.
-if [ "${CA_VALIDATED}" = "1" ] && [ "${WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK}" != "1" ]; then
-    probe_server_with_ca "${SERVER_ADDRESS}" "${SERVER_PORT}" "${SERVER_ENDPOINT}" "${CA_SNAPSHOT}"
-    case $? in
-        0)
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA verifies the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}." >> ./logs/upgrade.log
-            ;;
-        1)
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE} does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}; refusing to install it and continuing without it." >> ./logs/upgrade.log
-            CA_VALIDATED=0
-            rm -f "${CA_SNAPSHOT}" "${INCOMING_CA_FILE}"
-            ;;
-        *)
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Could not check the delivered CA against the manager at ${SERVER_ADDRESS}:${SERVER_PORT} (curl missing, without TLS 1.3 support, or no answer); installing it on its own validation." >> ./logs/upgrade.log
-            ;;
-    esac
-fi
-
 # The upgrade replaces the agent's binaries but not its ossec.conf, so the TLS
 # posture the new agent boots under is exactly what's on disk now. A verifying mode
 # with no readable CA can never connect -- mirrors
@@ -812,6 +792,28 @@ esac
 # aborts on and the new binary starts with. An explicit mode is honoured unchanged.
 # Reconciling the rest is still open; no verdict below was changed for it, but the state
 # that drives the divergence is logged.
+
+# A CA that validates on its own may still not be this manager's (rotated since it was delivered,
+# or the address is not in the certificate). Installed, it would take the agent off the air under
+# 'full', so it is refused; when the check cannot run, the CA is installed as before. Skipped under
+# 'certificate', where the agent does not check the hostname and curl cannot be told not to.
+if [ "${CA_VALIDATED}" = "1" ] && [ "${WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK}" != "1" ] \
+        && [ "${SSL_VERIFICATION_MODE}" != "certificate" ]; then
+    probe_server_with_ca "${SERVER_ADDRESS}" "${SERVER_PORT}" "${SERVER_ENDPOINT}" "${CA_SNAPSHOT}"
+    case $? in
+        0)
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA verifies the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}." >> ./logs/upgrade.log
+            ;;
+        1)
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE} does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}; refusing to install it and continuing without it." >> ./logs/upgrade.log
+            CA_VALIDATED=0
+            rm -f "${CA_SNAPSHOT}" "${INCOMING_CA_FILE}"
+            ;;
+        *)
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Could not check the delivered CA against the manager at ${SERVER_ADDRESS}:${SERVER_PORT} (curl missing, without TLS 1.3 support, or no answer); installing it on its own validation." >> ./logs/upgrade.log
+            ;;
+    esac
+fi
 
 # One already on disk and one validated this run but not yet written reach the same
 # post-upgrade state, so the checks below ask this instead of testing the file.
