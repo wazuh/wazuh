@@ -447,8 +447,6 @@ int main(int argc, char* argv[])
             {
                 wiconnector::Config icConfig {};
                 icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
-                icConfig.username = confManager.get<std::string>(conf::key::INDEXER_USER);
-                icConfig.password = confManager.get<std::string>(conf::key::INDEXER_PASSWORD);
                 // SSL config
                 {
                     icConfig.ssl.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);

@@ -49,7 +49,7 @@ automatically. The tool also generates documentation for helper functions.
 - Simplifies testing of helper functions.
 - Generate documentation for helper functions.
 
-For more details, refer to the README on src/engine/test/helper-test/README.md
+For more details, see the [helper tests README](../../../../src/engine/test/helper_tests/README.md).
 
 ---
 
