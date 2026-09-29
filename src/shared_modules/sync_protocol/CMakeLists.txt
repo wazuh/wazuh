@@ -94,6 +94,7 @@ target_include_directories(
           ${CMAKE_CURRENT_SOURCE_DIR}/../../
           ${CMAKE_CURRENT_SOURCE_DIR}/../utils/
           ${SRC_FOLDER}/shared/include
+          ${SRC_FOLDER}/external/nlohmann/
           ${CMAKE_CURRENT_SOURCE_DIR}/../file_helper/filesystem/include
           ${CMAKE_CURRENT_SOURCE_DIR}/../agent_metadata/include)
 
