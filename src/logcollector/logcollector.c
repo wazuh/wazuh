@@ -1039,7 +1039,12 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
     lf->fp = w_fopen_vetted_follow(lf->file, "rb");
     if (!lf->fp) {
         if (do_log == 1 && lf->exists == 1) {
-            merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
+            // Rejected by the file-type or trust check: a warning, as in the rollover check.
+            if (errno == EPERM || errno == EINVAL) {
+                mwarn(FOPEN_ERROR, lf->file, errno, strerror(errno));
+            } else {
+                merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
+            }
             lf->exists = 0;
         }
         goto error;
