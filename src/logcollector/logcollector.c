@@ -675,11 +675,18 @@ void LogCollectorStart()
                                 mdebug1(OPEN_UNABLE, current->file);
                             }
                         } else if (errno == EPERM || errno == EINVAL) {
-                            // Rejected by the file-type or trust check: warn once per file.
+                            // Rejected by the file-type or trust check: warn once, and stop reading the file
+                            // previously opened, retrying the path like one that cannot be opened.
                             if (current->exists == 1) {
                                 mwarn(FOPEN_ERROR, current->file, errno, strerror(errno));
+                                os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                                free_files_status_data(old_file_status);
+                                w_logcollector_state_delete_file(current->file);
                                 current->exists = 0;
                             }
+                            fclose(current->fp);
+                            current->fp = NULL;
+                            current->ign++;
                         } else {
                             merror(FOPEN_ERROR, current->file, errno, strerror(errno));
                         }
