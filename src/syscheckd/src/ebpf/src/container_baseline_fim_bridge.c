@@ -77,7 +77,11 @@ static void normalize_container_fim_row(cJSON* msg)
         return;
     }
 
-    // Lift container_json column → container/kubernetes top-level blocks.
+    // Lift the container_json column to the top-level "container" block. Since
+    // D15 the Kubernetes context is nested INSIDE that block at
+    // container.kubernetes, so it rides along with this one detach -- there is
+    // no second block to lift. BuildContainerContextJson() is what wrote this
+    // column, so the shape here is whatever StampContainerContext() produced.
     const cJSON* container_json_item = cJSON_GetObjectItem(msg, "container_json");
     if (container_json_item != NULL && cJSON_IsString(container_json_item) &&
         container_json_item->valuestring != NULL && container_json_item->valuestring[0] != '\0') {
@@ -88,11 +92,10 @@ static void normalize_container_fim_row(cJSON* msg)
                 cJSON_DeleteItemFromObject(msg, "container");
                 cJSON_AddItemToObject(msg, "container", container_block);
             }
-            cJSON* kubernetes_block = cJSON_DetachItemFromObject(ctx, "kubernetes");
-            if (kubernetes_block != NULL) {
-                cJSON_DeleteItemFromObject(msg, "kubernetes");
-                cJSON_AddItemToObject(msg, "kubernetes", kubernetes_block);
-            }
+            // Defensive: a column written before D15 carries a sibling
+            // "kubernetes". Drop it rather than lift it, so a database that
+            // survived the change cannot emit the retired two-block shape.
+            cJSON_DeleteItemFromObject(msg, "kubernetes");
             cJSON_Delete(ctx);
         }
     }
@@ -545,9 +548,10 @@ void fim_container_baseline_first_scan_done(void)
     container_notify_scan = 1;
 }
 
-/* Lifts the container_json column onto `target` as top-level container /
- * kubernetes blocks. Same placement normalize_container_fim_row() uses for the
- * stateful document, so an analyst reads the same field names on both sides. */
+/* Lifts the container_json column onto `target` as the top-level "container"
+ * block, Kubernetes context nested inside it at container.kubernetes (D15).
+ * Same placement normalize_container_fim_row() uses for the stateful document,
+ * so an analyst reads the same field names on both sides. */
 static void add_container_context(const cJSON* row_data, cJSON* target)
 {
     const cJSON* container_json_item = cJSON_GetObjectItem(row_data, "container_json");
@@ -565,11 +569,6 @@ static void add_container_context(const cJSON* row_data, cJSON* target)
     cJSON* container_block = cJSON_DetachItemFromObject(ctx, "container");
     if (container_block != NULL) {
         cJSON_AddItemToObject(target, "container", container_block);
-    }
-
-    cJSON* kubernetes_block = cJSON_DetachItemFromObject(ctx, "kubernetes");
-    if (kubernetes_block != NULL) {
-        cJSON_AddItemToObject(target, "kubernetes", kubernetes_block);
     }
 
     cJSON_Delete(ctx);

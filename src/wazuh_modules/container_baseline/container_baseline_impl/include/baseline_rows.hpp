@@ -39,9 +39,9 @@ void ApplyIdentity(ContainerScoped& row, const ContainerIdentity& id);
 ///
 /// Shape matches FileItem::createJSON()'s "data" object field-for-field
 /// (src/syscheckd/src/db/src/dbFileItem.cpp) plus a "container" block (generic
-/// runtime context: Docker, containerd, CRI-O, ...) and, only when the
-/// container originates from a Kubernetes pod, a sibling "kubernetes" block —
-/// see event_schema.md for the two-block rationale.
+/// runtime context: Docker, containerd, CRI-O, ...) which, only when the
+/// container originates from a Kubernetes pod, carries a nested
+/// "kubernetes" object at container.kubernetes (D15).
 ///
 /// @return {id, json} where `id` is the value to pass as asp_persist_diff's
 ///         diff-id (container_id + path is already unique per row within a
@@ -100,9 +100,9 @@ std::pair<std::string, std::string> BuildHardwareJson(const HardwareBaselineRow&
 /// transaction and let the existing notifyChange/processEvent pipeline emit
 /// both the stateless delta and the stateful document.
 
-/// @brief Serialize the container/kubernetes context blocks into the blob
-/// stored in every row's `container_json` column ({"container": {...}} plus a
-/// "kubernetes" sibling only for Kubernetes-origin containers). Built once per
+/// @brief Serialize the container context block into the blob stored in every
+/// row's `container_json` column ({"container": {...}}, carrying a nested
+/// "kubernetes" object only for Kubernetes-origin containers). Built once per
 /// container and shared by all of its rows.
 std::string BuildContainerContextJson(const std::string& container_id, const ContainerContextPtr& ctx);
 

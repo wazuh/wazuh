@@ -83,14 +83,26 @@ std::optional<nlohmann::json> KubernetesBlock(const ContainerContextPtr& ctx)
     return block;
 }
 
-/// Stamps the "container" block, and the "kubernetes" block when present,
-/// onto `data`. Shared by every Build*Json() below.
+/// Stamps the "container" block onto `data`, with the Kubernetes context nested
+/// INSIDE it at container.kubernetes when the row is Kubernetes-origin (D15).
+///
+/// One object carries the whole container attribution, so a consumer tests one
+/// key and an index mapping owns one subtree. The earlier shape put "kubernetes"
+/// beside "container" as a second top-level block; nothing has been indexed in
+/// either shape (every wazuh-states-* template is dynamic:strict and rejects
+/// both today), so this is a free change now and a reindex later.
+///
+/// Shared by every Build*Json() below AND by BuildContainerContextJson(), which
+/// is what FIM persists in its container_json column -- the two must not drift,
+/// or the same row reaches the manager in two different shapes depending on
+/// which consumer emitted it.
 void StampContainerContext(nlohmann::json& data, const std::string& container_id, const ContainerContextPtr& ctx)
 {
-    data["container"] = ContainerBlock(container_id, ctx);
+    auto container = ContainerBlock(container_id, ctx);
     if (auto kubernetes = KubernetesBlock(ctx)) {
-        data["kubernetes"] = std::move(*kubernetes);
+        container["kubernetes"] = std::move(*kubernetes);
     }
+    data["container"] = std::move(container);
 }
 
 /// Emit an all-digit string as a JSON number so it satisfies schema fields typed
@@ -401,10 +413,7 @@ nlohmann::json DbsyncRowBase(const std::string& container_id, const std::string&
 std::string BuildContainerContextJson(const std::string& container_id, const ContainerContextPtr& ctx)
 {
     nlohmann::json data;
-    data["container"] = ContainerBlock(container_id, ctx);
-    if (auto kubernetes = KubernetesBlock(ctx)) {
-        data["kubernetes"] = std::move(*kubernetes);
-    }
+    StampContainerContext(data, container_id, ctx);
     return data.dump();
 }
 
