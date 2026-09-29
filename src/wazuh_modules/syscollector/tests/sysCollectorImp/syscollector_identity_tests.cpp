@@ -31,6 +31,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <future>
 #include <thread>
 #include <vector>
 
@@ -699,12 +700,30 @@ TEST_F(SyscollectorIdentityTest, RecoverySkipsWhileAFlushSends)
     EXPECT_FALSE(Syscollector::instance().m_recoveryInProgress.load());
 }
 
+// Nor does it run while the start-up DataClean for disabled collectors holds the slot: its guard
+// would clear that claim on the way out and let a flush start beside the DataClean.
+TEST_F(SyscollectorIdentityTest, RecoverySkipsWhileADataCleanHoldsTheSlot)
+{
+    initWithMarker(true, true, 1);
+    publishAgentId("2");
+    INJECT_MOCK_PROTOCOLS();
+
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(0);
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(0);
+
+    Syscollector::instance().m_recoveryInProgress = true;
+    Syscollector::instance().runRecoveryProcess();
+
+    EXPECT_TRUE(Syscollector::instance().m_recoveryInProgress.load());
+    EXPECT_EQ(readMarker(), 1);
+    Syscollector::instance().m_recoveryInProgress = false;
+}
+
 // The other direction: a flush requested while a recovery runs waits for it, then sends.
 TEST_F(SyscollectorIdentityTest, FlushWaitsForARecoveryThenSends)
 {
     initModule(true, true);
     INJECT_MOCK_PROTOCOLS();
-    (void)vdProtocol;
 
     std::atomic<bool> sent {false};
     EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillOnce([&sent](Mode, Option)
@@ -712,6 +731,7 @@ TEST_F(SyscollectorIdentityTest, FlushWaitsForARecoveryThenSends)
         sent = true;
         return okResult();
     });
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
 
     Syscollector::instance().m_recoveryInProgress = true;
 
@@ -733,7 +753,7 @@ TEST_F(SyscollectorIdentityTest, FlushWaitsForARecoveryThenSends)
 
     flusher.join();
     EXPECT_TRUE(sent.load());
-    EXPECT_NE(flushResult.load(), 1);
+    EXPECT_EQ(flushResult.load(), 0);
     EXPECT_FALSE(Syscollector::instance().m_flushInProgress.load());
 }
 
@@ -763,6 +783,121 @@ TEST_F(SyscollectorIdentityTest, FlushWaitingForARecoveryGivesUpOnShutdown)
     EXPECT_EQ(flushResult.load(), -1);
     EXPECT_FALSE(Syscollector::instance().m_flushInProgress.load());
 
+    Syscollector::instance().m_recoveryInProgress = false;
+    Syscollector::instance().m_stopping = false;
+}
+
+// The start-up DataClean for disabled collectors resets a running flush's session just as the
+// recovery's does. It waits for the flush and holds the recovery slot while it sends and deletes
+// the data, so a flush requested meanwhile waits for it in turn.
+TEST_F(SyscollectorIdentityTest, DisabledCollectorsDataCleanWaitsForAFlush)
+{
+    initModule(true, true);
+    INJECT_MOCK_PROTOCOLS();
+    (void)vdProtocol;
+
+    Syscollector::instance().m_disabledCollectorsIndicesWithData = {"wazuh-states-inventory-hotfixes"};
+
+    std::atomic<bool> sent {false};
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).WillOnce([&sent](const std::vector<std::string>&, Option, bool)
+    {
+        EXPECT_FALSE(Syscollector::instance().m_flushInProgress.load());
+        EXPECT_TRUE(Syscollector::instance().m_recoveryInProgress.load());
+        sent = true;
+        return okResult();
+    });
+
+    Syscollector::instance().m_flushInProgress = true;
+
+    std::atomic<bool> dataCleanResult {false};
+    std::thread cleaner([&dataCleanResult]()
+    {
+        dataCleanResult = Syscollector::instance().handleNotifyDataClean();
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    EXPECT_FALSE(sent.load());
+
+    {
+        std::lock_guard<std::mutex> lock(Syscollector::instance().m_pauseMutex);
+        Syscollector::instance().m_flushInProgress = false;
+    }
+    Syscollector::instance().m_pauseCv.notify_all();
+
+    cleaner.join();
+    EXPECT_TRUE(sent.load());
+    EXPECT_TRUE(dataCleanResult.load());
+    EXPECT_FALSE(Syscollector::instance().m_recoveryInProgress.load());
+
+    Syscollector::instance().m_disabledCollectorsIndicesWithData.clear();
+}
+
+// Nor may it take the slot from a recovery already holding it (the sync thread resends after an
+// agent id change while start() runs): releasing it afterwards would let a flush start beside
+// that recovery's DataClean.
+TEST_F(SyscollectorIdentityTest, DisabledCollectorsDataCleanWaitsForARecovery)
+{
+    initModule(true, true);
+    INJECT_MOCK_PROTOCOLS();
+    (void)vdProtocol;
+
+    Syscollector::instance().m_disabledCollectorsIndicesWithData = {"wazuh-states-inventory-hotfixes"};
+
+    std::atomic<bool> recoveryRunning {true};
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).WillOnce([&recoveryRunning](const std::vector<std::string>&, Option, bool)
+    {
+        EXPECT_FALSE(recoveryRunning.load());
+        return okResult();
+    });
+
+    Syscollector::instance().m_recoveryInProgress = true;
+
+    std::atomic<bool> dataCleanResult {false};
+    std::thread cleaner([&dataCleanResult]()
+    {
+        dataCleanResult = Syscollector::instance().handleNotifyDataClean();
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    {
+        std::lock_guard<std::mutex> lock(Syscollector::instance().m_pauseMutex);
+        recoveryRunning = false;
+        Syscollector::instance().m_recoveryInProgress = false;
+    }
+    Syscollector::instance().m_pauseCv.notify_all();
+
+    cleaner.join();
+    EXPECT_TRUE(dataCleanResult.load());
+    EXPECT_FALSE(Syscollector::instance().m_recoveryInProgress.load());
+
+    Syscollector::instance().m_disabledCollectorsIndicesWithData.clear();
+}
+
+// With nothing to clean it claims nothing, so it cannot clear a recovery's slot either.
+TEST_F(SyscollectorIdentityTest, NoDisabledCollectorsDataLeavesTheRecoverySlotAlone)
+{
+    initModule(true, true);
+    INJECT_MOCK_PROTOCOLS();
+    (void)vdProtocol;
+
+    Syscollector::instance().m_disabledCollectorsIndicesWithData.clear();
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(0);
+
+    Syscollector::instance().m_recoveryInProgress = true;
+
+    // Were it to wait for the slot, it would wait forever: stop it so the test fails, not hangs.
+    auto dataClean = std::async(std::launch::async, [] { return Syscollector::instance().handleNotifyDataClean(); });
+    const bool returnedAtOnce = dataClean.wait_for(std::chrono::seconds(5)) == std::future_status::ready;
+
+    if (!returnedAtOnce)
+    {
+        Syscollector::instance().m_stopping = true;
+    }
+
+    EXPECT_TRUE(returnedAtOnce);
+    EXPECT_TRUE(dataClean.get());
+    EXPECT_TRUE(Syscollector::instance().m_recoveryInProgress.load());
     Syscollector::instance().m_recoveryInProgress = false;
     Syscollector::instance().m_stopping = false;
 }

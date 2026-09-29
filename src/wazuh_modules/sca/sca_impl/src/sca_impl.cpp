@@ -1252,7 +1252,7 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
             {
                 std::lock_guard<std::mutex> lock(m_pauseMutex);
 
-                if (!m_flushInProgress.load())
+                if (!m_flushInProgress.load() && !m_recoveryInProgress.load())
                 {
                     m_recoveryInProgress.store(true);
                     recoverySlotClaimed = true;
@@ -1272,7 +1272,7 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
             if (intervalElapsed && !recoverySlotClaimed)
             {
                 // The check time is left alone, so the next cycle runs it.
-                LoggingHelper::getInstance().log(LOG_DEBUG, "SCA integrity check deferred - flush in progress");
+                LoggingHelper::getInstance().log(LOG_DEBUG, "SCA integrity check deferred - flush or DataClean in progress");
                 response["error"] = 0;
                 response["message"] = "Integrity check deferred: flush in progress";
                 response["data"]["module"] = "sca";
@@ -1998,40 +1998,24 @@ bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
         return false;
     }
 
-    // Wait for any in-progress sync to complete before sending DataClean.
-    // We must lock m_pauseMutex BEFORE checking m_syncInProgress to avoid TOCTOU race:
-    // Otherwise, sync could start between our check and the wait.
+    // Same reason as the integrity recovery: a flush must not start beside this DataClean. Held
+    // for each attempt, and on success until the databases are deleted, so a flush cannot resend
+    // the removed policies' queued rows after the DataClean. Released while a failed attempt
+    // waits to retry, so a flush is not held off for a whole scan interval.
+    bool recoverySlotHeld = false;
+
+    const auto releaseRecoverySlot = [this, &recoverySlotHeld]()
     {
-        std::unique_lock<std::mutex> lock(m_pauseMutex);
-
-        if (m_syncInProgress.load())
+        if (recoverySlotHeld)
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Waiting for sync to complete before DataClean...");
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_recoveryInProgress.store(false);
+            recoverySlotHeld = false;
+            m_pauseCv.notify_all();
         }
+    };
 
-        m_pauseCv.wait(lock, [this]
-        {
-            return (!m_syncInProgress.load() && !m_flushInProgress.load()) || !m_keepRunning;
-        });
-
-        if (!m_keepRunning)
-        {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "DataClean aborted - module shutdown during sync wait");
-            return false;
-        }
-
-        // Same reason as the integrity recovery: a flush must not start beside this DataClean.
-        m_recoveryInProgress.store(true);
-    }
-
-    DEFER([this]()
-    {
-        std::lock_guard<std::mutex> lock(m_pauseMutex);
-        m_recoveryInProgress.store(false);
-        m_pauseCv.notify_all();
-    });
-
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Proceeding with DataClean (sync not in progress)");
+    DEFER(releaseRecoverySlot);
 
     // Send DataClean notification to manager with retry logic (similar to FIM)
     std::vector<std::string> indices = {SCA_SYNC_INDEX};
@@ -2039,7 +2023,38 @@ bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
 
     while (!dataCleanSent && m_keepRunning)
     {
+        // Wait for any in-progress sync, flush or integrity recovery to complete before sending
+        // DataClean. We must lock m_pauseMutex BEFORE checking the flags to avoid TOCTOU race:
+        // Otherwise, sync could start between our check and the wait.
+        {
+            std::unique_lock<std::mutex> lock(m_pauseMutex);
+
+            if (m_syncInProgress.load())
+            {
+                LoggingHelper::getInstance().log(LOG_DEBUG, "Waiting for sync to complete before DataClean...");
+            }
+
+            m_pauseCv.wait(lock, [this]
+            {
+                return (!m_syncInProgress.load() && !m_flushInProgress.load() && !m_recoveryInProgress.load()) || !m_keepRunning;
+            });
+
+            if (!m_keepRunning)
+            {
+                break;
+            }
+
+            m_recoveryInProgress.store(true);
+            recoverySlotHeld = true;
+        }
+
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Proceeding with DataClean (sync not in progress)");
         dataCleanSent = m_spSyncProtocol->notifyDataClean(indices).success;
+
+        if (!dataCleanSent)
+        {
+            releaseRecoverySlot();
+        }
 
         if (!dataCleanSent && m_keepRunning)
         {

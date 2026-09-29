@@ -96,6 +96,12 @@ class SCAMock : public SecurityConfigurationAssessment
             return executeFlushSync();
         }
 
+        /// @brief Testing helper to drive the all-policies-removed DataClean synchronously.
+        bool callHandleAllPoliciesRemoved()
+        {
+            return handleAllPoliciesRemoved();
+        }
+
         /// @brief Testing helper to drive full recovery synchronously.
         /// @return true on success, false on failure.
         bool callPerformRecovery()

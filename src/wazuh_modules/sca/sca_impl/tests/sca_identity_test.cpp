@@ -25,6 +25,7 @@
 #include <sca_impl.hpp>
 #include <sca_sca_mock.hpp>
 
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <future>
@@ -542,7 +543,7 @@ TEST_F(SCAIdentityTest, IntegrityCheckStandsBackFromAFlush)
 
     EXPECT_EQ(response["error"], 0);
     EXPECT_EQ(response["data"]["recovery_performed"], false);
-    EXPECT_NE(m_logOutput.find("SCA integrity check deferred - flush in progress"), std::string::npos);
+    EXPECT_NE(m_logOutput.find("SCA integrity check deferred - flush or DataClean in progress"), std::string::npos);
     EXPECT_FALSE(m_sca->recoveryInProgressForTest());
 }
 
@@ -577,4 +578,147 @@ TEST_F(SCAIdentityTest, SyncSkipsWhileARecoveryDataCleanRuns)
     m_sca->setRecoveryInProgressForTest(false);
 
     EXPECT_NE(m_logOutput.find("SCA sync skipped - DataClean in progress"), std::string::npos);
+}
+
+// The all-policies-removed DataClean retries a scan interval apart. It holds the slot for each
+// attempt only: a flush arriving while a failed attempt waits to retry sends right away, rather
+// than leaving agent-info's coordination waiting out the whole interval.
+TEST_F(SCAIdentityTest, AllPoliciesRemovedDataCleanFreesTheFlushBetweenAttempts)
+{
+    m_sca->Setup(true, false, std::chrono::seconds(3600), 30, false, {});
+    m_sca->setSyncProtocol(m_mockSyncProtocol);
+
+    std::promise<void> firstAttempt;
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
+    .WillOnce(::testing::Invoke([this, &firstAttempt](auto&& ...)
+    {
+        EXPECT_TRUE(m_sca->recoveryInProgressForTest());
+        firstAttempt.set_value();
+        return SyncModuleResult {false, {}};
+    }));
+    EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
+    .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
+
+    auto dataClean = std::async(std::launch::async, [this] { return m_sca->callHandleAllPoliciesRemoved(); });
+    firstAttempt.get_future().wait();
+
+    auto flush = std::async(std::launch::async, [this] { return m_sca->callExecuteFlushSync(); });
+
+    // Not ASSERT: the retry wait below must still be ended either way.
+    EXPECT_TRUE(finished(flush));
+    EXPECT_EQ(flush.get(), 0);
+    EXPECT_FALSE(m_sca->recoveryInProgressForTest());
+
+    // Ends the retry wait. Repeated: the wait is woken without the mutex it waits on.
+    for (int i = 0; i < 50 && dataClean.wait_for(std::chrono::milliseconds(100)) != std::future_status::ready; ++i)
+    {
+        m_sca->quiesce();
+    }
+
+    ASSERT_EQ(dataClean.wait_for(std::chrono::seconds(0)), std::future_status::ready);
+    EXPECT_FALSE(dataClean.get());
+}
+
+// And it waits for a flush that is sending before it claims the slot. On success it holds the slot
+// until the databases are deleted, so a flush cannot resend the removed policies' queued rows
+// after the DataClean.
+TEST_F(SCAIdentityTest, AllPoliciesRemovedDataCleanWaitsForAFlush)
+{
+    m_sca->Setup(true, false, std::chrono::seconds(3600), 30, false, {});
+    m_sca->setSyncProtocol(m_mockSyncProtocol);
+
+    std::atomic<bool> flushSending {true};
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
+    .WillOnce(::testing::Invoke([&flushSending](auto&& ...)
+    {
+        EXPECT_FALSE(flushSending.load());
+        return SyncModuleResult {true, {}};
+    }));
+    EXPECT_CALL(*m_mockSyncProtocol, deleteDatabase()).WillOnce(::testing::Invoke([this]()
+    {
+        EXPECT_TRUE(m_sca->recoveryInProgressForTest());
+    }));
+    EXPECT_CALL(*m_mockDBSync, closeAndDeleteDatabase()).WillOnce(::testing::Invoke([this]()
+    {
+        EXPECT_TRUE(m_sca->recoveryInProgressForTest());
+    }));
+
+    m_sca->setFlushInProgressForTest(true);
+    auto dataClean = std::async(std::launch::async, [this] { return m_sca->callHandleAllPoliciesRemoved(); });
+
+    EXPECT_EQ(dataClean.wait_for(std::chrono::milliseconds(200)), std::future_status::timeout);
+
+    flushSending = false;
+    m_sca->setFlushInProgressForTest(false);
+
+    ASSERT_EQ(dataClean.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+    EXPECT_TRUE(dataClean.get());
+    EXPECT_FALSE(m_sca->recoveryInProgressForTest());
+}
+
+// Nor does it take the slot from an integrity recovery holding it: the first to finish would clear
+// the other's claim and let a flush start beside a DataClean.
+TEST_F(SCAIdentityTest, AllPoliciesRemovedDataCleanWaitsForARecovery)
+{
+    m_sca->Setup(true, false, std::chrono::seconds(3600), 30, false, {});
+    m_sca->setSyncProtocol(m_mockSyncProtocol);
+
+    std::atomic<bool> recoveryRunning {true};
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
+    .WillOnce(::testing::Invoke([&recoveryRunning](auto&& ...)
+    {
+        EXPECT_FALSE(recoveryRunning.load());
+        return SyncModuleResult {true, {}};
+    }));
+    EXPECT_CALL(*m_mockSyncProtocol, deleteDatabase());
+    EXPECT_CALL(*m_mockDBSync, closeAndDeleteDatabase());
+
+    m_sca->setRecoveryInProgressForTest(true);
+    auto dataClean = std::async(std::launch::async, [this] { return m_sca->callHandleAllPoliciesRemoved(); });
+
+    EXPECT_EQ(dataClean.wait_for(std::chrono::milliseconds(200)), std::future_status::timeout);
+
+    recoveryRunning = false;
+    m_sca->setRecoveryInProgressForTest(false);
+
+    ASSERT_EQ(dataClean.wait_for(std::chrono::seconds(5)), std::future_status::ready);
+    EXPECT_TRUE(dataClean.get());
+    EXPECT_FALSE(m_sca->recoveryInProgressForTest());
+}
+
+// check_integrity stands back from that DataClean the same way it does from a flush.
+TEST_F(SCAIdentityTest, IntegrityCheckStandsBackFromADataClean)
+{
+    try
+    {
+        m_sca->initSyncProtocol("sca", ":memory:", std::chrono::seconds(3600));
+    }
+    catch (const std::exception&)
+    {
+        // Only the interval is needed; the protocol is the mock below.
+    }
+
+    m_sca->setSyncProtocol(m_mockSyncProtocol);
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json & query,
+                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        if (query.dump().find("last_integrity_check") != std::string::npos)
+        {
+            callback(SELECTED, nlohmann::json {{"value", 1}});
+        }
+    }));
+
+    EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_)).Times(0);
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
+
+    m_sca->setRecoveryInProgressForTest(true);
+    const auto response = nlohmann::json::parse(m_sca->query(R"({"command":"check_integrity"})"));
+
+    EXPECT_EQ(response["error"], 0);
+    EXPECT_EQ(response["data"]["recovery_performed"], false);
+    EXPECT_NE(m_logOutput.find("SCA integrity check deferred - flush or DataClean in progress"), std::string::npos);
+    EXPECT_TRUE(m_sca->recoveryInProgressForTest());
+    m_sca->setRecoveryInProgressForTest(false);
 }

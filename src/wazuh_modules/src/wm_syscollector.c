@@ -1048,8 +1048,9 @@ void* wm_sync_module(__attribute__((unused)) void* args)
     // after that.
     bool identity_change_logged = false;
     // Resends Syscollector had started by the end of the previous cycle. The counter starts at zero
-    // with the module, like this thread. A cycle that leaves it unchanged never tried: the sync
-    // failed or was skipped (a scan or a flush was running), or the recovery stood back from a flush.
+    // with the module, like this thread. A failed sync moves it too, since the resend only follows a
+    // successful one. A cycle that leaves it unchanged never tried: the sync was skipped (a scan or
+    // a flush was running), or the recovery stood back from a flush.
     int last_resync_attempts = 0;
 
     switch (wm_sys_get_startup_action(&first_sync_completed, &identity_change_logged))

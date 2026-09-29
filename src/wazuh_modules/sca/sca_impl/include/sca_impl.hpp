@@ -219,6 +219,13 @@ class SecurityConfigurationAssessment
         ///       deterministically, same reason as executeFlushSync() above.
         bool performRecovery();
 
+        /// @brief Handle case when all policies are removed from config
+        /// Sends DataClean, clears DB, syncs, and signals exit
+        /// @return true if DataClean was sent and handled successfully
+        /// @note Protected (rather than private) so test subclasses can drive its retries
+        ///       against a flush, same reason as executeFlushSync() above.
+        bool handleAllPoliciesRemoved();
+
     private:
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
@@ -331,11 +338,6 @@ class SecurityConfigurationAssessment
         /// If the database has existing data, triggers DataClean to notify the manager and clears DB.
         /// @return true if no cleanup was needed (DB was already empty), false if cleanup was performed or failed
         bool handleNoPoliciesAvailable();
-
-        /// @brief Handle case when all policies are removed from config
-        /// Sends DataClean, clears DB, syncs, and signals exit
-        /// @return true if DataClean was sent and handled successfully
-        bool handleAllPoliciesRemoved();
 
         /// @brief Handle report events when internal limit changed
         /// @param demotedIds Check ids demoted by the limit change

@@ -261,6 +261,11 @@ class EXPORTED Syscollector final
         void clearTablesForIndices(const std::vector<std::string>& indices);
         bool handleNotifyDataClean();
 
+        /**
+         * @brief Whether any disabled collector still has data the manager must be told to clean.
+         */
+        bool hasDisabledCollectorsData();
+
         // Recovery functions
         /**
          * @brief Checks if a full sync is required by calculating the checksum-of-checksums for a table and comparing it with the manager's
@@ -554,9 +559,10 @@ class EXPORTED Syscollector final
         /// @brief Set while a flush sends. syncModule() and runRecoveryProcess() stand back from
         /// it; pause() does not wait for it.
         std::atomic<bool>                                                        m_flushInProgress {false};
-        /// @brief Set while runRecoveryProcess() runs. A flush waits for it: the identity resync
-        /// and the integrity recovery clear the manager's indices with a DataClean, which would
-        /// reset the flush's session under it.
+        /// @brief Set while runRecoveryProcess() or the start-up DataClean for disabled collectors
+        /// runs; each stands back from the other. A flush waits for it: the identity resync, the
+        /// integrity recovery and that DataClean clear the manager's indices, which would reset the
+        /// flush's session under it.
         std::atomic<bool>                                                        m_recoveryInProgress {false};
         /// @brief Agent id change resends actually started, plus synchronizations that ran and failed
         /// (the resend only follows a successful one). Reported by get_identity_changed so the sync

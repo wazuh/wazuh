@@ -267,6 +267,8 @@ No enabled policies found?
                               └─► Exit module
 ```
 
+A failed DataClean is retried one scan interval later. Each attempt waits for a running synchronization or flush and holds a flush off only while it sends, so a flush requested while the module waits to retry is not delayed by that wait.
+
 ---
 
 ## Coordination Commands Architecture

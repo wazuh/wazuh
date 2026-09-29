@@ -633,16 +633,15 @@ void Syscollector::start()
         m_spSyncProtocol->reset();
     }
 
+    // Deletes the disabled collectors' data itself once the notification is sent.
     bool notifySuccess = handleNotifyDataClean();
 
     if (notifySuccess)
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG, "Syscollector data clean notification for disabled collectors sent successfully, proceeding to delete data.");
+            m_logFunction(LOG_DEBUG, "Syscollector data clean notification for disabled collectors sent successfully, data deleted.");
         }
-
-        deleteDisableCollectorsData();
     }
     else
     {
@@ -723,7 +722,39 @@ bool Syscollector::handleNotifyDataClean()
     {
         attempt++;
 
-        ret = notifyDisableCollectorsDataClean();
+        {
+            // Same reason as the recovery: this DataClean would reset a running flush's session.
+            // Waits for a flush, a synchronization or a recovery (the sync thread may already be
+            // resending after an agent id change) instead of skipping. Holds the recovery slot for
+            // the attempt, and on success until the disabled collectors' rows are deleted, so a
+            // flush cannot resend them after the DataClean. Released while a failed attempt waits
+            // to retry.
+            std::optional<ScanGuard> recoveryGuard;
+
+            if (hasDisabledCollectorsData())
+            {
+                std::unique_lock<std::mutex> lock(m_pauseMutex);
+
+                while ((m_flushInProgress.load() || m_syncing.load() || m_recoveryInProgress.load()) && !m_stopping.load())
+                {
+                    m_pauseCv.wait_for(lock, std::chrono::seconds(1));
+                }
+
+                if (m_stopping.load())
+                {
+                    break;
+                }
+
+                recoveryGuard.emplace(m_recoveryInProgress, m_pauseCv);
+            }
+
+            ret = notifyDisableCollectorsDataClean();
+
+            if (ret)
+            {
+                deleteDisableCollectorsData();
+            }
+        }
 
         if (ret)
         {
@@ -4640,6 +4671,12 @@ void Syscollector::checkDisabledCollectorsIndicesWithData()
     }
 }
 
+bool Syscollector::hasDisabledCollectorsData()
+{
+    std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+    return !m_disabledCollectorsIndicesWithData.empty();
+}
+
 bool Syscollector::notifyDisableCollectorsDataClean()
 {
     // Serialize against releaseResources(): this entry point is driven by threads that
@@ -5445,17 +5482,20 @@ void Syscollector::checkAgentIdentity()
 void Syscollector::runRecoveryProcess()
 {
     // A flush sending right now would have its session reset by the DataClean this may send; the
-    // next cycle runs it instead. Claimed under the mutex the flush checks it with.
+    // next cycle runs it instead. Claimed under the mutex the flush checks it with. Also stands back
+    // from the start-up DataClean for disabled collectors, which holds the same slot: releasing it
+    // from here would let a flush start beside that DataClean.
     std::optional<ScanGuard> recoveryGuard;
 
     {
         std::lock_guard<std::mutex> lock(m_pauseMutex);
 
-        if (m_flushInProgress.load())
+        if (m_flushInProgress.load() || m_recoveryInProgress.load())
         {
             if (m_logFunction)
             {
-                m_logFunction(LOG_DEBUG, "Syscollector recovery skipped: flush in progress");
+                m_logFunction(LOG_DEBUG, m_flushInProgress.load() ? "Syscollector recovery skipped: flush in progress"
+                              : "Syscollector recovery skipped: DataClean in progress");
             }
 
             return;
