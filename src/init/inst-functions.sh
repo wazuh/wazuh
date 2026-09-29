@@ -1046,6 +1046,28 @@ InstallCommon()
                       chcon -t textrel_shlib_t ${INSTALLDIR}/lib/rt_file.bpf.o
                   fi
           fi
+
+          # The container runtime security modules (#37203). Both are SHARED
+          # targets that wazuh_modulesd_lib links directly, so they are
+          # DT_NEEDED entries of wazuh-modulesd -- a package that ships the
+          # binary without them produces a modulesd that cannot start at all,
+          # not a modulesd with the feature switched off. They are built only
+          # for the Linux agent (wazuh_modules/CMakeLists.txt gates the
+          # subdirectories on CMAKE_SYSTEM_NAME STREQUAL "Linux" inside the
+          # agent branch), which is exactly the scope of this block, and the
+          # -f guard keeps a build that did not produce them from failing the
+          # install.
+          for CONTAINER_LIB in libcontainer_instances.so libcontainer_baseline.so
+          do
+              if [ -f build/lib/${CONTAINER_LIB} ]
+                  then
+                      ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/${CONTAINER_LIB} ${INSTALLDIR}/lib
+
+                      if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+                          chcon -t textrel_shlib_t ${INSTALLDIR}/lib/${CONTAINER_LIB}
+                      fi
+              fi
+          done
       fi
     fi
 
