@@ -3045,11 +3045,12 @@ static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat
     struct stat now;
     ssize_t n;
 #ifdef W_VETTED_O_PATH
-    // Pin the link itself, so the target read belongs to the inode compared below.
+    // Pin the link itself, so the target read belongs to the inode compared below. O_NONBLOCK is for kernels
+    // that ignore O_PATH, where this is a plain open: a FIFO swapped in for the link must not block it.
     int linkfd;
     int saved_errno;
 
-    if (linkfd = openat(dirfd, name, W_VETTED_O_PATH | O_NOFOLLOW | O_CLOEXEC), linkfd >= 0) {
+    if (linkfd = openat(dirfd, name, W_VETTED_O_PATH | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC), linkfd >= 0) {
         if (w_fstat_walk(linkfd, &now) < 0) {
             n = -1;
         } else if (now.st_dev != link_stat->st_dev || now.st_ino != link_stat->st_ino ||
