@@ -508,8 +508,8 @@ done
 # precompiled tarballs (downloaded by `make deps` without EXTERNAL_SRC_ONLY)
 # so the from-source path is rarely exercised and has known issues:
 #   - libbpf-bootstrap: needs clang ≥7 with BPF backend and kernel UAPI
-#     headers ≥4.13. Wazuh team builds it in dedicated centos:7 +
-#     clang-15-from-source images (issue 28626) and uploads the result.
+#     headers ≥4.13. Built by packages/externals/ebpf/build_ebpf.sh in the
+#     workflow's build-ebpf job, whose copy replaces this one in consolidate.
 #   - libffi: ExternalProject_Add's BUILD_BYPRODUCTS doesn't translate to
 #     a working make rule under the Make generator with BUILD_IN_SOURCE TRUE.
 #     wazuhext's link step then fails with "No rule to make target".
@@ -552,10 +552,10 @@ if { [ "${SYSTEM}" = "deb" ] || [ "${SYSTEM}" = "rpm" ]; }; then
     # UAPI headers >= 4.13 (linux/bpf_perf_event.h) and a BPF-capable
     # clang, neither of which the legacy agent builder image provides — a
     # from-source attempt fails with "linux/bpf_perf_event.h: No such file
-    # or directory". Wazuh builds it in a dedicated centos:7 +
-    # clang-15-from-source image (issue 28626); here we reuse that
-    # precompiled tarball. Staged on every Linux leg regardless of
-    # BUILD_TARGET so the per-leg output is binary-complete; the
+    # or directory". packages/externals/ebpf/build_ebpf.sh builds it
+    # instead; here we reuse the published tarball so the leg builds, and
+    # consolidate ships the freshly built one. Staged on every Linux leg
+    # regardless of BUILD_TARGET so the per-leg output is binary-complete; the
     # CMakeLists.txt if(EXISTS ...) short-circuit decides whether the
     # current leg actually consumes it, so staging it unused is harmless.
     stage_precompiled libbpf-bootstrap libbpf-bootstrap/build/modern.bpf.o
