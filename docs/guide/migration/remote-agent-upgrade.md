@@ -271,6 +271,10 @@ upgraded agent runs with `verification_mode` resolved to `none`:
 - `upgrade.log` says `cannot be validated: openssl was not found on this host` and how to recover.
 - `ossec.log` logs `(4126)` on every start until an anchor is installed, next to the generic
   `TLS verification is DISABLED (verification_mode=none).` warning.
+- Later remote upgrades of that agent abort at the installer's certificate trust check
+  (`upgrade_result` `2`) unless the OS trust store already verifies the manager's certificate: a
+  5.x agent with no anchor is not given the pass a 4.x one gets. The agent keeps running on its
+  current version.
 
 To recover an agent already upgraded this way, install the anchor with an enrollment token. The
 agent keeps its id and `client.keys`, and the step needs no `openssl` command:
