@@ -44,7 +44,8 @@ indexer.
   [Step 2](#certificates-and-credentials).
 - **Credentials.** The `wazuh-manager` password on the indexer, written to
   `/etc/wazuh/credentials.env` before the install. It must pass the 5.0 password policy, which
-  limits the characters it may use, and one the 4.x assistant generated almost never does. The manager generates
+  limits the characters it may use and requires all four character classes. One the 4.x
+  assistant generated usually fails it. The manager generates
   its own Server API passwords and publishes them in the same file. See
   [Step 2](#certificates-and-credentials).
 - **Tools.** The `sqlite3` command-line tool on the 5.0 host for [Step 3](#3-restore-the-identity-data).
@@ -136,14 +137,16 @@ printf "WAZUH_INDEXER_MANAGER_PASSWORD='%s'\n" '<the wazuh-manager password on t
 sudo chmod 0600 /etc/wazuh/credentials.env
 ```
 
-The value must pass the 5.0 password policy: 12 to 64 characters, only from
-`A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, with at least one letter and one digit. **A password the 4.x
-installation assistant generated almost never does**: its generator always adds one character from
-`.*+?`, and `*` and `?` are outside the set. The manager then refuses to start:
+The value must pass the policy for supplied passwords: 12 to 64 characters, only from
+`A-Z a-z 0-9 . , _ + : @ % ^ = ~ -`, with at least one lowercase letter, one uppercase letter, one
+digit and one symbol from that set. **A password the 4.x installation assistant generated usually
+fails it**: the generator draws from `A-Za-z0-9.*+?` and always adds one of `.*+?`, and `*` and `?`
+are outside the set. The manager then refuses to start:
 
 ```console
 resolve-credentials: INVALID WAZUH_INDEXER_MANAGER_PASSWORD: the supplied value does not meet the password policy
-resolve-credentials:         (12-64 characters from A-Z a-z 0-9 . , _ + : @ % ^ = ~ -, with at least one letter and one digit)
+resolve-credentials:         (12-64 characters from A-Z a-z 0-9 . , _ + : @ % ^ = ~ -, with at least one
+resolve-credentials:         lowercase letter, one uppercase letter, one digit and one symbol)
 resolve-credentials:         correct it in /etc/wazuh/credentials.env and start the service again
 Unresolved credentials. Exiting
 ```
@@ -575,6 +578,15 @@ migrated fleet:
     cannot be sent the upgrade proceeds and the manager logs that step alone, which is worth
     checking before declaring the migration done. See
     [Trust anchor delivery](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents).
+    A 4.x agent does not fetch its task: `wazuh-manager-remoted` hands it over on its next poll of
+    the pending tasks, every `remoted.legacy_task_polling_interval` seconds (default `900`), so an
+    upgrade that shows no activity for a quarter of an hour is waiting, not failing. The two lines
+    to look for, in that order:
+
+    ```console
+    wazuh-manager-remoted: INFO: legacy_task_delivery: agent '003': delivered the manager CA as 'root-ca.pem' for task '...'; the agent can verify this manager after the upgrade
+    wazuh-manager-remoted: INFO: legacy_task_delivery: successfully delivered remote_upgrade task '...' to agent '003' (wpk: '...')
+    ```
   - **Package upgrade on the host.** Nothing is delivered. Place the manager's
     `/var/wazuh-manager/etc/certs/root-ca.pem` at `/var/ossec/etc/certs/root-ca.pem` on Linux and
     macOS, or `<installdir>\certs\root-ca.pem` on Windows, before upgrading:
