@@ -98,14 +98,12 @@ Lists all master nodes in the cluster using the `<node>` tag for each one.
 
 ### hidden
 
-Toggles whether or not to show information about the cluster that generated an alert.
+Marks this node as hidden in cluster listings.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
-- **Note:** This option does not appear to affect any current code path — a
-  repository-wide search found no location where `config_cluster['hidden']`
-  is read to influence alert output. Treat it as reserved/legacy pending
-  further investigation.
+- **Note:** The schema accepts and defaults the option, but no current code path
+  reads it, so it has no effect on cluster listings or on any other output.
 
 ---
 

@@ -151,11 +151,11 @@ reached that node too.
 
 It clears on its own. How long depends on the number of nodes:
 
-| Nodes | Notifies needed | At `notify_time` 60 s |
+| Nodes | Notifies needed | At `notify_time` 10 s |
 |---|---|---|
-| 3 | ~6 | ~5 minutes |
-| 10 | ~30 | ~30 minutes |
-| 20 | ~72 | ~70 minutes |
+| 3 | ~6 | ~1 minute |
+| 10 | ~30 | ~5 minutes |
+| 20 | ~72 | ~12 minutes |
 
 **Confirm it is this and not something else:**
 
