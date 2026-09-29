@@ -137,10 +137,10 @@ def _conf_payload():
             "ssl_manager_key": "etc/sslmanager.key",
             "key_request": {"enabled": "no"}
         },
-        "integration": {
-            "secret": "topsecret",
-            "token": "abcd-1234"
-        },
+        "integration": [{
+            "name": "slack",
+            "hook_url": "https://hooks.slack.com/services/T000/B000/XXXX"
+        }],
         "authd.pass": "P4ssW0rd!"
     }
 
@@ -149,7 +149,7 @@ def _conf_result_payload():
     r = AffectedItemsWazuhResult(all_msg="ok", some_msg="ok", none_msg="ok")
     r.affected_items.append({
         "auth": {"use_password": "no", "ssl_manager_key": "etc/sslmanager.key"},
-        "integration": {"secret": "topsecret"},
+        "integration": [{"name": "virustotal", "api_key": "VTAPIKEY"}],
         "authd.pass": "P4ssW0rd!"
     })
     r.total_affected_items = 1
@@ -165,7 +165,7 @@ def test_mask_sensitive_config_without_permissions(db_setup):
 
     result = get_conf()
     assert result["authd.pass"] == "*****"
-    assert result["integration"]["secret"] == "topsecret"
+    assert result["integration"] == [{"name": "slack", "hook_url": "*****"}]
 
 
 def test_mask_sensitive_config_with_permissions(db_setup):
@@ -177,6 +177,7 @@ def test_mask_sensitive_config_with_permissions(db_setup):
 
     result = get_conf()
     assert result["authd.pass"] == "P4ssW0rd!"
+    assert result["integration"][0]["hook_url"] == "https://hooks.slack.com/services/T000/B000/XXXX"
 
 
 def test_mask_sensitive_config_on_affected_items_result(db_setup):
@@ -189,7 +190,7 @@ def test_mask_sensitive_config_on_affected_items_result(db_setup):
     res = get_conf_result()
     item = res.affected_items[0]
     assert item["authd.pass"] == "*****"
-    assert item["integration"]["secret"] == "topsecret"
+    assert item["integration"] == [{"name": "virustotal", "api_key": "*****"}]
 
 
 def _agent_conf_wazuh_result_payload():
@@ -476,3 +477,125 @@ def test_mask_sensitive_config_does_not_raise_on_masking_error(db_setup):
         # Should NOT raise; the decorator catches the error gracefully.
         result = get_conf()
         assert result is not None
+
+
+_CREDENTIAL_JSON = {"wmodules": [
+    {"aws-s3": {"buckets": [{"access_key": "S", "secret_key": "S", "aws_profile": "default"},
+                            {"access_key": "S", "secret_key": "S"}]}},
+    {"azure-logs": {"content": [{"application_id": "id", "application_key": "S"}, {"account_key": "S"}]}},
+    {"office365": {"api_auth": [{"client_id": "id", "client_secret": "S"}]}},
+    {"github": {"api_auth": [{"org_name": "org", "api_token": "S"}]}},
+    {"ms-graph": {"api_auth": {"client_id": "id", "secret_value": "S"}}},
+    {"fluent-forward": {"shared_key": "S", "user": "user", "password": "S"}},
+    {"integration": [{"name": "slack", "hook_url": "S", "api_key": "S"}]},
+    {"cluster": {"haproxy_helper": {"haproxy_user": "user", "haproxy_password": "S",
+                                    "client_cert_password": "S"}}}
+]}
+
+_XML_WITH_CREDENTIALS = """\
+<ossec_config>
+  <wodle name="aws-s3">
+    <bucket type="cloudtrail">
+      <aws_profile>default</aws_profile>
+      <access_key>S</access_key>
+      <secret_key>S</secret_key>
+    </bucket>
+    <bucket type="guardduty">
+      <access_key>S</access_key>
+      <secret_key>S</secret_key>
+    </bucket>
+  </wodle>
+  <wodle name="azure-logs">
+    <log_analytics><application_key>S</application_key></log_analytics>
+    <storage><account_key>S</account_key></storage>
+  </wodle>
+  <office365><api_auth><client_secret>S</client_secret></api_auth></office365>
+  <github><api_auth><org_name>org</org_name><api_token>S</api_token></api_auth></github>
+  <ms-graph><api_auth><secret_value>S</secret_value></api_auth></ms-graph>
+  <fluent-forward><shared_key>S</shared_key><user>user</user><password>S</password></fluent-forward>
+  <integration><name>slack</name><hook_url>S</hook_url><api_key>S</api_key></integration>
+  <cluster><haproxy_helper><haproxy_password>S</haproxy_password>
+    <client_cert_password>S</client_cert_password></haproxy_helper></cluster>
+</ossec_config>"""
+
+
+@pytest.mark.parametrize('payload', [
+    pytest.param(lambda: json.loads(json.dumps(_CREDENTIAL_JSON)), id='json'),
+    pytest.param(lambda: WazuhResult({'data': json.loads(json.dumps(_CREDENTIAL_JSON))}), id='wazuh_result'),
+    pytest.param(lambda: _XML_WITH_CREDENTIALS, id='raw_xml'),
+])
+def test_mask_sensitive_config_masks_credential_fields(db_setup, payload):
+    """Every credential field is masked wherever each module nests it; its siblings survive."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'manager:read': {'*:*': 'allow'}})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf():
+        return payload()
+
+    result = get_conf()
+    text = result if isinstance(result, str) else json.dumps(result.render() if isinstance(result, WazuhResult)
+                                                             else result)
+    assert '"S"' not in text and '>S<' not in text
+    for name in db_setup.SENSITIVE_FIELD_NAMES:
+        assert f'"{name}"' in text or f'<{name}>' in text
+    for name, value in (('aws_profile', 'default'), ('name', 'slack'), ('org_name', 'org'), ('user', 'user')):
+        assert f'"{name}": "{value}"' in text or f'<{name}>{value}</{name}>' in text
+
+
+_GROUP_UPDATE = {'update_actions': ['group:update_config'], 'update_resources': ['group:id:{group_list}']}
+
+
+@pytest.mark.parametrize('group_perms, group_list, expected', [
+    ({'group:update_config': {'group:id:A': 'allow'}}, ['A'], True),
+    ({'group:update_config': {'group:id:A': 'allow'}}, ['B'], False),
+    ({'group:update_config': {'group:id:*': 'allow'}}, ['B'], True),
+    ({'group:update_config': {'group:id:*': 'allow', 'group:id:B': 'deny'}}, ['B'], False),
+    ({'manager:update_config': {'*:*:*': 'allow'}, 'cluster:update_config': {'node:id:*': 'allow'}}, ['A'], False),
+    ({'group:update_config': {'group:id:A': 'allow'}}, None, False),
+    ({'group:update_config': {'group:id:A': 'allow'}}, [], False),
+])
+def test_has_update_permissions_per_resource(db_setup, group_perms, group_list, expected):
+    """With update_actions, the user must hold them on every requested resource, not on any resource."""
+    db_setup.rbac.set({'rbac_mode': 'white', **group_perms})
+    with patch.object(db_setup, 'get_groups', return_value={'A', 'B'}):
+        assert db_setup._has_update_permissions(**_GROUP_UPDATE, group_list=group_list) is expected
+
+
+@pytest.mark.parametrize('data', [
+    pytest.param(lambda: _XML_WITH_CREDENTIALS, id='raw'),
+    pytest.param(lambda: [{'file_name': 'agent.conf', 'file_size': 1, 'file_content': _XML_WITH_CREDENTIALS}],
+                 id='merged_mg_json'),
+])
+@pytest.mark.parametrize('group_perms, masked', [
+    ({'group:read': {'group:id:*': 'allow'}}, True),
+    ({'group:update_config': {'group:id:default': 'allow'}}, False),
+])
+def test_mask_sensitive_config_group_file(db_setup, group_perms, masked, data):
+    """A group file under 'data', raw or packed in merged.mg, is masked unless the user can update that group."""
+    db_setup.rbac.set({'rbac_mode': 'white', **group_perms})
+
+    @db_setup.mask_sensitive_config(**_GROUP_UPDATE)
+    def get_file_conf(group_list=None):
+        return WazuhResult({'data': data()})
+
+    result = get_file_conf(group_list=['default'])
+    text = result['data'] if isinstance(result['data'], str) else result['data'][0]['file_content']
+    assert ('>S<' not in text) is masked
+    assert '<aws_profile>default</aws_profile>' in text
+
+
+def test_has_update_permissions_without_resources(db_setup):
+    """update_actions with no resource to check never lifts the mask."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'group:update_config': {'group:id:A': 'allow'}})
+    assert db_setup._has_update_permissions(['group:update_config'], [], group_list=['A']) is False
+
+
+def test_mask_sensitive_config_raw_xml_escaped_less_than(db_setup):
+    """A value holding the '\\<' escape accepted by os_xml is masked whole."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return '<ossec_config><fluent-forward><password>ab\\<cd</password></fluent-forward></ossec_config>'
+
+    assert get_conf_raw() == '<ossec_config><fluent-forward><password>*****</password></fluent-forward></ossec_config>'
