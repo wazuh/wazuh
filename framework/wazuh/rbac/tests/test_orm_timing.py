@@ -5,7 +5,7 @@
 
 import time
 import statistics
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from sqlalchemy.exc import OperationalError
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -200,6 +200,100 @@ class TestCheckUserLegacyHashRehash:
         assert result is False
         manager.session.query.assert_not_called()
         manager.session.commit.assert_not_called()
+
+    def test_legacy_hash_failed_login_is_padded_to_current_default_cost(self):
+        """A wrong password against a legacy hash is padded up to the calibrated
+        current-default cost instead of leaking the account's presence for as long
+        as it never logs in successfully.
+        """
+        from wazuh.rbac.orm import AuthenticationManager
+        import wazuh.rbac.orm as orm_module
+
+        real_password = "correct_password"
+        legacy_hash = generate_password_hash(real_password, method="pbkdf2:sha256:150000")
+
+        manager = MagicMock()
+        mock_result = MagicMock()
+        user = MockUser("legacy_user", legacy_hash)
+        mock_result.first.return_value = user
+        manager.session.scalars.return_value = mock_result
+
+        with patch.object(orm_module, "sleep") as mock_sleep:
+            result = AuthenticationManager.check_user(manager, "legacy_user", "wrong_password")
+
+        assert result is False
+        mock_sleep.assert_called_once()
+        assert mock_sleep.call_args[0][0] >= 0.0
+        manager.session.query.assert_not_called()
+        manager.session.commit.assert_not_called()
+
+    def test_default_hash_failed_login_is_not_padded(self):
+        """A wrong password against an already-current hash is not padded — the
+        padding only applies to accounts still on a legacy method.
+        """
+        from wazuh.rbac.orm import AuthenticationManager
+        import wazuh.rbac.orm as orm_module
+
+        real_password = "correct_password"
+        default_hash = generate_password_hash(real_password)
+
+        manager = MagicMock()
+        mock_result = MagicMock()
+        user = MockUser("current_user", default_hash)
+        mock_result.first.return_value = user
+        manager.session.scalars.return_value = mock_result
+
+        with patch.object(orm_module, "sleep") as mock_sleep:
+            result = AuthenticationManager.check_user(manager, "current_user", "wrong_password")
+
+        assert result is False
+        mock_sleep.assert_not_called()
+
+    def test_default_hash_check_refreshes_live_calibration(self):
+        """Every check against the current-default method updates the padding
+        target with its live cost, instead of leaving it frozen at whatever was
+        measured once when the process started.
+        """
+        from wazuh.rbac.orm import AuthenticationManager
+        import wazuh.rbac.orm as orm_module
+
+        real_password = "correct_password"
+        default_hash = generate_password_hash(real_password)
+
+        manager = MagicMock()
+        mock_result = MagicMock()
+        user = MockUser("current_user", default_hash)
+        mock_result.first.return_value = user
+        manager.session.scalars.return_value = mock_result
+
+        # perf_counter() is called twice in check_user before the branch under
+        # test: once for check_start, once right after for check_elapsed.
+        with patch.object(orm_module, "perf_counter", side_effect=[100.0, 100.123]):
+            AuthenticationManager.check_user(manager, "current_user", real_password)
+
+        assert orm_module._DEFAULT_HASH_CHECK_SECONDS == pytest.approx(0.123)
+
+    def test_legacy_hash_check_does_not_update_live_calibration(self):
+        """A check against a legacy hash is not a valid sample of the current
+        default's cost, so it must not overwrite the padding target.
+        """
+        from wazuh.rbac.orm import AuthenticationManager
+        import wazuh.rbac.orm as orm_module
+
+        real_password = "correct_password"
+        legacy_hash = generate_password_hash(real_password, method="pbkdf2:sha256:150000")
+
+        manager = MagicMock()
+        mock_result = MagicMock()
+        user = MockUser("legacy_user", legacy_hash)
+        mock_result.first.return_value = user
+        manager.session.scalars.return_value = mock_result
+
+        orm_module._DEFAULT_HASH_CHECK_SECONDS = 0.42
+        with patch.object(orm_module, "sleep"):
+            AuthenticationManager.check_user(manager, "legacy_user", "wrong_password")
+
+        assert orm_module._DEFAULT_HASH_CHECK_SECONDS == 0.42
 
     def test_default_hash_not_rehashed(self):
         """A hash already using the current default method is not rewritten on login."""

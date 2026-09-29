@@ -6,11 +6,12 @@ import json
 import logging
 import os
 import re
+import statistics
 from datetime import datetime
 from enum import IntEnum
 from functools import partial
 from shutil import chown
-from time import time
+from time import perf_counter, sleep, time
 from typing import Union
 
 import yaml
@@ -45,6 +46,19 @@ _DUMMY_HASH = generate_password_hash("wazuh-dummy-constant-never-matches-any-rea
 # from an older Werkzeug default (e.g. "pbkdf2") that would otherwise be cheaper to
 # verify and reopen the timing side-channel _DUMMY_HASH is meant to close.
 _DEFAULT_HASH_METHOD = _DUMMY_HASH.split(':', 1)[0]
+# Estimate of how long verifying the current-default hash takes on this host,
+# used to pad a failed check against a legacy hash up to that same cost instead
+# of running a second full hash (which would add to the cost rather than match
+# it). Seeded here with the median of a few samples so it's meaningful before
+# any real traffic arrives; check_user() below keeps it refreshed with every
+# live check against the current-default method, so it tracks the host's
+# actual load instead of drifting from this one-off startup measurement.
+_calibration_samples = []
+for _ in range(3):
+    _calibration_start = perf_counter()
+    check_password_hash(_DUMMY_HASH, "wazuh-timing-calibration-sample")
+    _calibration_samples.append(perf_counter() - _calibration_start)
+_DEFAULT_HASH_CHECK_SECONDS = statistics.median(_calibration_samples)
 
 # Start a session and set the default security elements
 DB_FILE = os.path.join(SECURITY_PATH, "rbac.db")
@@ -959,22 +973,41 @@ class AuthenticationManager(RBACManager):
         user = self.session.scalars(select(User).filter_by(username=username).limit(1)).first()
 
         hash_to_check = user.password if user else _DUMMY_HASH
+        check_start = perf_counter()
         result = check_password_hash(hash_to_check, password)
+        check_elapsed = perf_counter() - check_start
 
-        if result and user is not None and not hash_to_check.startswith(f'{_DEFAULT_HASH_METHOD}:'):
-            # Rehash on login: a stored hash from an older Werkzeug default (e.g. pbkdf2)
-            # is cheaper to verify than the current one, which leaks its presence through
-            # timing. Upgrading it here, the only point with the plaintext password, closes
-            # that gap for this account going forward.
-            # The UPDATE is conditioned on the exact hash just verified (compare-and-swap):
-            # a concurrent password change (e.g. via PUT /security/users/{id}) between the
-            # read above and this write must not be clobbered by rehashing the old password.
-            try:
-                self.session.query(User).filter_by(id=user.id, password=hash_to_check).update(
-                    {'password': generate_password_hash(password)})
-                self.session.commit()
-            except OperationalError:
-                self.session.rollback()
+        if hash_to_check.startswith(f'{_DEFAULT_HASH_METHOD}:'):
+            # Every check against the current-default method (a missing user's dummy
+            # hash or an already-migrated account) is a live sample of its real cost
+            # on this host right now. Keep the padding target below refreshed with it
+            # instead of relying only on the one-off measurement taken at import time,
+            # which can drift from the current load.
+            global _DEFAULT_HASH_CHECK_SECONDS
+            _DEFAULT_HASH_CHECK_SECONDS = check_elapsed
+
+        if user is not None and not hash_to_check.startswith(f'{_DEFAULT_HASH_METHOD}:'):
+            if result:
+                # Rehash on login: a stored hash from an older Werkzeug default (e.g. pbkdf2)
+                # is cheaper to verify than the current one, which leaks its presence through
+                # timing. Upgrading it here, the only point with the plaintext password, closes
+                # that gap for this account going forward.
+                # The UPDATE is conditioned on the exact hash just verified (compare-and-swap):
+                # a concurrent password change (e.g. via PUT /security/users/{id}) between the
+                # read above and this write must not be clobbered by rehashing the old password.
+                try:
+                    self.session.query(User).filter_by(id=user.id, password=hash_to_check).update(
+                        {'password': generate_password_hash(password)})
+                    self.session.commit()
+                except OperationalError:
+                    self.session.rollback()
+            else:
+                # A wrong password against a legacy hash is cheaper to reject than
+                # against the current default, which still leaks the account's presence
+                # for as long as it doesn't log in successfully (see the rehash above).
+                # Pad it up to the current-default cost instead of running a second full
+                # hash, which would add to the cost instead of matching it.
+                sleep(max(0.0, _DEFAULT_HASH_CHECK_SECONDS - check_elapsed))
 
         return result and user is not None
 
