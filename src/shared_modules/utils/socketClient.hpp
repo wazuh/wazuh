@@ -227,17 +227,18 @@ public:
         try
         {
             m_socket->send(dataBody, sizeBody, dataHeader, sizeHeader);
-            if (m_lastSendFailed.exchange(false) && m_onError)
+            // Socket::send() queues without throwing once a send has failed, so a non-throwing send only means
+            // the connection recovered when nothing is left pending.
+            if (m_lastSendFailed.load() && !m_socket->hasUnsentMessages() && m_lastSendFailed.exchange(false) &&
+                m_onError)
             {
                 m_onError("Recovered sending data to socket '" + m_socketPath + "'.");
             }
         }
         catch (const std::exception& e)
         {
-            // Error sending message. Logged once on the transition into failure (and once on recovery,
-            // above) rather than on every attempt, since a broken connection can otherwise mean one of
-            // these per send for as long as the caller keeps trying. Data is not retried or requeued here,
-            // so if the peer never becomes reachable again this send is lost silently except for this line.
+            // Error sending message. Logged once on the transition into failure (and once on recovery, above)
+            // rather than on every attempt. The data is queued by Socket::send() and flushed on EPOLLOUT.
             if (!m_lastSendFailed.exchange(true) && m_onError)
             {
                 m_onError("Failed to send data to socket '" + m_socketPath + "': " + e.what());
