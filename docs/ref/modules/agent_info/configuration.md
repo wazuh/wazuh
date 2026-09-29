@@ -16,7 +16,12 @@ For module overview and architecture, see [Agent Info Module](index.html).
 
 **Module:** Agent-only
 
-**Internal Options:** None
+**Internal Options:** `agent_info.max_entries`, `agent_info.ttl`
+
+- `agent_info.max_entries`: maximum number of entries in the durable task ID
+  registry. Default: `4096`; allowed range: `1`–`1000000`.
+- `agent_info.ttl`: retention time, in seconds, for entries in the durable
+  task ID registry. Default: `86400`; allowed range: `1`–`31536000`.
 
 The `<agent-info>` block is only parsed on agent builds. If it is present in a manager's `ossec.conf`, the manager silently ignores it (it is not read or applied in any way) and logs a debug-level message noting that the module is not supported on managers.
 
@@ -67,7 +72,7 @@ Timeout to wait for a response from other modules during coordination.
 
 Number of retry attempts when a coordination command fails.
 
-- **Default value:** `5`
+- **Default value:** `3`
 - **Allowed values:** Positive integer
 - **Parent:** `<synchronization>`
 - **Note:** Prevents transient failures from blocking synchronization
@@ -97,7 +102,7 @@ Standard agent info settings for most deployments:
     <enabled>yes</enabled>
     <sync_end_delay>1s</sync_end_delay>
     <response_timeout>30s</response_timeout>
-    <retries>5</retries>
+    <retries>3</retries>
     <max_eps>50</max_eps>
   </synchronization>
 </agent-info>
