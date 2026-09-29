@@ -268,7 +268,7 @@ public:
      */
     Json();
     // ---------------------------------------------------------------------------------------------
-    // Bounded parsing (CWE-674 hardening).
+    // Bounded parsing.
     //
     // A document built from text goes through parseBounded() — the text constructors below,
     // Json::compact() and the helper-argument literal parser of the builder — so a JSON text nested

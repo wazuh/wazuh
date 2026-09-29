@@ -2,10 +2,13 @@
 
 #include <cstring>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 
 #include <sys/mman.h>
 #include <unistd.h>
+
+#include <fmt/format.h>
 
 #include "parse_field.hpp"
 
@@ -115,4 +118,62 @@ TEST(GetFieldTest, UnquotedFieldAtEndOfInput)
     ASSERT_TRUE(field.has_value());
     EXPECT_EQ(field->end(), 1);
     EXPECT_FALSE(field->isQuoted());
+}
+
+namespace
+{
+
+// Path of `tokens` names k0..k{tokens-1}, each preceded by `sep`: with sep '/' it has `tokens` tokens.
+std::string deepPath(std::size_t tokens, char sep)
+{
+    std::string path;
+    for (std::size_t i = 0; i < tokens; ++i)
+    {
+        path += (i == 0 ? '/' : sep);
+        path += fmt::format("k{}", i);
+    }
+    return path;
+}
+
+json::Json seededDoc()
+{
+    return json::Json {R"({"seed":"s"})"};
+}
+
+} // namespace
+
+// A value is written under the key with its dots converted: the converted path is the one counted.
+TEST(ParseFieldTest, UpdateDocDepthValueBranch)
+{
+    const auto limit = json::Json::MAX_DEPTH;
+    for (const auto sep : {'.', '/'})
+    {
+        auto doc = seededDoc();
+        ASSERT_TRUE(hlp::updateDoc(doc, deepPath(limit, sep), "v", false, "\\", false)) << sep;
+        EXPECT_TRUE(doc.equalsString(deepPath(limit, '/'), "v")) << sep;
+
+        doc = seededDoc();
+        EXPECT_FALSE(hlp::updateDoc(doc, deepPath(limit + 1, sep), "v", false, "\\", false)) << sep;
+        EXPECT_EQ(doc, seededDoc()) << sep;
+    }
+}
+
+// An empty value is written as null under the key as given: its dots are not converted and do not count.
+TEST(ParseFieldTest, UpdateDocDepthEmptyBranch)
+{
+    const auto limit = json::Json::MAX_DEPTH;
+
+    auto doc = seededDoc();
+    ASSERT_TRUE(hlp::updateDoc(doc, deepPath(limit, '/'), "", false, "\\", false));
+    EXPECT_TRUE(doc.isNull(deepPath(limit, '/')));
+
+    doc = seededDoc();
+    EXPECT_FALSE(hlp::updateDoc(doc, deepPath(limit + 1, '/'), "", false, "\\", false));
+    EXPECT_EQ(doc, seededDoc());
+
+    const auto dotted = deepPath(limit + 1, '.');
+    doc = seededDoc();
+    ASSERT_TRUE(hlp::updateDoc(doc, dotted, "", false, "\\", false));
+    EXPECT_TRUE(doc.isNull(dotted));
+    EXPECT_EQ(doc.size(), 2u);
 }

@@ -42,22 +42,28 @@ Parser getJSONParser(const Params& params)
     }
 
     const auto target = params.targetField.empty() ? "" : params.targetField;
+    // A Result keeps its trace as a string_view: the depth-cap text must live in the closure, like the name.
+    auto depthTrace = fmt::format("{}: {} ({})", params.name, json::Json::DEPTH_ERROR_MSG, json::Json::MAX_DEPTH);
 
-    return [name = params.name, target](std::string_view txt)
+    return [name = params.name, target, depthTrace = std::move(depthTrace)](std::string_view txt)
     {
         if (txt.empty())
         {
             return abs::makeFailure<ResultT>(txt, name);
         }
 
-        rapidjson::Reader reader;
         const auto ssInput = std::string(txt);
         rapidjson::StringStream ss(ssInput.c_str());
         rapidjson::Document doc;
 
-        doc.ParseStream<rapidjson::kParseStopWhenDoneFlag>(ss);
-        if (doc.HasParseError())
+        // Nesting deeper than Json::MAX_DEPTH never becomes a DOM; the stream still reports what was consumed.
+        const auto result = json::Json::parseBounded<rapidjson::kParseStopWhenDoneFlag>(doc, ss);
+        if (!result)
         {
+            if (json::Json::isDepthError(result))
+            {
+                return abs::makeFailure<ResultT>(txt, depthTrace);
+            }
             return abs::makeFailure<ResultT>(txt, name);
         }
         const auto parsed = txt.substr(0, ss.Tell());
