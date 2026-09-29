@@ -50,6 +50,7 @@ sudo WAZUH_REMOTE_HTTPS_BIND_ADDR='0.0.0.0' WAZUH_REMOTE_HTTPS_PORT='1517' rpm -
 | `WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX` | `remote.https.global_prefix` | `/wazuh-manager/` |
 | `WAZUH_REMOTE_HTTPS_CERTIFICATE` | `remote.https.certificate` | `etc/certs/remoted.pem` |
 | `WAZUH_REMOTE_HTTPS_KEY` | `remote.https.key` | `etc/certs/remoted-key.pem` |
+| `WAZUH_REMOTE_HTTPS_CA_CERTIFICATE` | `remote.https.ca_certificate` | `etc/certs/root-ca.pem` |
 | `WAZUH_REMOTE_HTTPS_CA` | `remote.https.ca` | not set |
 | `WAZUH_REMOTE_HTTPS_VERIFICATION_MODE` | `remote.https.verification_mode` | not set (`none`) |
 | `WAZUH_REMOTE_HTTPS_CIPHERS` | `remote.https.ciphers` | not set |
@@ -72,7 +73,7 @@ Options marked "not set" are only written to the configuration file when their v
 `WAZUH_REMOTE_HTTPS_GLOBAL_PREFIX` is the URL path every HTTPS endpoint is served under (for example, `/stateless` is exposed as `/wazuh-manager/stateless`). Set it to `/` to serve the endpoints unprefixed. Agents must be configured with the same prefix: the request signature covers the full request path exactly as sent, so a proxy in between must forward it untouched, and a prefix mismatch between agent and manager surfaces as `404`.
 
 > [!IMPORTANT]
-> `WAZUH_REMOTE_HTTPS_CERTIFICATE`, `WAZUH_REMOTE_HTTPS_KEY` and `WAZUH_REMOTE_HTTPS_CA` must be paths relative to the installation directory, such as `etc/certs/remoted.crt`. `wazuh-manager-remoted` chroots to `/var/wazuh-manager` before opening them, so a host-absolute path like `/etc/pki/wazuh/server.crt` passes validation but is opened as `/var/wazuh-manager/etc/pki/wazuh/server.crt` at runtime. The manager fails closed on them: when a file is missing, `wazuh-manager-control start` refuses to start anything (`(1244): Invalid configuration at '/remote/https/certificate': file not found: …`), and when it exists but the `wazuh-manager` user cannot read it, `wazuh-manager-remoted` exits at startup (`Cannot start the HTTPS agent listener: …`). The files must exist and be readable by the `wazuh-manager` user before the manager is started. The credential resolver issues the default `etc/certs/remoted.pem`/`remoted-key.pem` pair and fixes its ownership; a pair at any other path is yours to provision.
+> `WAZUH_REMOTE_HTTPS_CERTIFICATE`, `WAZUH_REMOTE_HTTPS_KEY`, `WAZUH_REMOTE_HTTPS_CA_CERTIFICATE` and `WAZUH_REMOTE_HTTPS_CA` must be paths relative to the installation directory, such as `etc/certs/remoted.crt`. `wazuh-manager-remoted` chroots to `/var/wazuh-manager` before opening them, so a host-absolute path like `/etc/pki/wazuh/server.crt` passes validation but is opened as `/var/wazuh-manager/etc/pki/wazuh/server.crt` at runtime. The manager fails closed on them: when a file is missing, `wazuh-manager-control start` refuses to start anything (`(1244): Invalid configuration at '/remote/https/certificate': file not found: …`), and when it exists but the `wazuh-manager` user cannot read it, `wazuh-manager-remoted` exits at startup (`Cannot start the HTTPS agent listener: …`). The files must exist and be readable by the `wazuh-manager` user before the manager is started. The credential resolver issues the default `etc/certs/remoted.pem`/`remoted-key.pem` pair and fixes its ownership; a pair at any other path is yours to provision.
 
 ### Configuration
 
@@ -511,13 +512,13 @@ For interactive installation, double-click the MSI file and follow the installat
 Start the Wazuh Agent service:
 
 ```powershell
-Start-Service -Name wazuh
+Start-Service -Name WazuhSvc
 ```
 
 Verify the agent is running:
 
 ```powershell
-Get-Service -Name wazuh
+Get-Service -Name WazuhSvc
 ```
 
 ### Options

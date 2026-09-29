@@ -1104,7 +1104,7 @@ After saving, restart the agent:
 sudo systemctl restart wazuh-agent
 
 # Windows (PowerShell)
-Restart-Service -Name wazuh
+Restart-Service -Name WazuhSvc
 
 # macOS
 /Library/Ossec/bin/wazuh-control restart

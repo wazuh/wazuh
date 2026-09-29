@@ -55,7 +55,7 @@ wazuh-manager-remoted listeners.
 | `legacy.port` | integer | `1514` | 1-65535 | Listening port. |
 | `legacy.protocol` | list of enum | `["tcp"]` | items one of `tcp`, `udp`; at least 1 item; at most 2 items; unique | Transport protocols to listen on. |
 | `legacy.ipv6` | boolean | `false` |  | Listen on IPv6. |
-| `legacy.local_ip` | string |  | not empty | Bind address. |
+| `legacy.local_ip` | string |  | not empty | Bind address. Absent: 0.0.0.0, or every IPv6 interface (::) when ipv6 is enabled; remoted applies that default, not the schema. |
 | `legacy.queue_size` | integer | `131072` | >= 1 | Event queue size (events). Values above 262144 are accepted with a warning. |
 | `legacy.rids_closing_time` | integer or string | `5m` | >= 0; `^[0-9]+[smhdw]?$` | Idle time before a RIDS counter file is closed. |
 | `legacy.connection_overtake_time` | integer | `60` | 0-3600 | Seconds before an agent may take over an existing connection. |

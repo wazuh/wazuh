@@ -80,7 +80,7 @@ The `windows_registry` option supports several attributes:
 Restart the agent:
 
 ```console
-Restart-Service -Name wazuh
+Restart-Service -Name WazuhSvc
 ```
 
 ---
@@ -103,7 +103,7 @@ The `recursion_level` attribute defines the maximum depth to monitor.
 Restart the agent:
 
 ```console
-Restart-Service -Name wazuh
+Restart-Service -Name WazuhSvc
 ```
 
 Example structure with `recursion_level="3"`:
@@ -151,7 +151,7 @@ The `report_changes` attribute allows reporting the exact content changed.
 Restart the agent:
 
 ```console
-Restart-Service -Name wazuh
+Restart-Service -Name WazuhSvc
 ```
 
 ---
@@ -177,7 +177,7 @@ registry entry, so `\Enum$` matches any key whose path ends in `\Enum`, wherever
 Restart the agent:
 
 ```console
-Restart-Service -Name wazuh
+Restart-Service -Name WazuhSvc
 ```
 
 ---
