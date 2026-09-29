@@ -406,7 +406,8 @@ Triggers an immediate synchronization session to send all pending SCA check chan
 **Behavior:**
 - Checks if sync protocol is initialized
 - If not initialized, returns `0` (not an error, just nothing to flush)
-- If initialized, calls `synchronizeModule()` with `Mode::DELTA`
+- If initialized, waits for any SCA synchronization or integrity-recovery DataClean already in progress (such as a full resend after an agent ID change) and keeps new ones from starting until it is done
+- Calls `synchronizeModule()` with `Mode::DELTA`
 - Blocks until synchronization completes
 - Returns result of synchronization operation
 

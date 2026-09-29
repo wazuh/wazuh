@@ -105,6 +105,8 @@ typedef enum
     SYSCOLLECTOR_STARTUP_ACTION_STOP
 } wm_syscollector_startup_action_t;
 
+#define SYSCOLLECTOR_IDENTITY_POLL_SECONDS 30
+
 // Mutex access function pointers
 typedef void (*syscollector_lock_scan_mutex_func)();
 typedef void (*syscollector_unlock_scan_mutex_func)();
@@ -351,13 +353,56 @@ static bool wm_sys_query_int(const char* query, const char* field, int* value)
     return result;
 }
 
-static wm_syscollector_startup_action_t wm_sys_get_startup_action(bool* first_sync_completed)
+// Polled so a re-enrolled agent resends its inventory right away, instead of waiting for a sync
+// interval that frequent reloads keep restarting. 1: the id changed; 0: it did not; -1: Syscollector
+// cannot tell right now (no id published yet, a failed read or query), which must not read as either.
+// resync_attempts, when not NULL, gets how many resends Syscollector has started since it came up,
+// or -1 when the answer does not say.
+static int wm_sys_identity_state(int* resync_attempts)
+{
+    int state = 0;
+    char* output = NULL;
+    bool parsed = false;
+
+    if (resync_attempts)
+    {
+        *resync_attempts = -1;
+    }
+
+    if (!syscollector_query_ptr)
+    {
+        return -1;
+    }
+
+    syscollector_query_ptr("{\"command\":\"get_identity_changed\"}", &output);
+
+    if (output)
+    {
+        parsed = wm_sys_parse_query_int(output, "identity_changed", &state);
+
+        if (parsed && resync_attempts && !wm_sys_parse_query_int(output, "resync_attempts", resync_attempts))
+        {
+            *resync_attempts = -1;
+        }
+
+        free(output);
+    }
+
+    return parsed ? state : -1;
+}
+
+static wm_syscollector_startup_action_t wm_sys_get_startup_action(bool* first_sync_completed, bool* identity_changed)
 {
     int marker = 0;
 
     if (first_sync_completed)
     {
         *first_sync_completed = false;
+    }
+
+    if (identity_changed)
+    {
+        *identity_changed = false;
     }
 
     if (!syscollector_query_ptr)
@@ -377,6 +422,18 @@ static wm_syscollector_startup_action_t wm_sys_get_startup_action(bool* first_sy
         if (first_sync_completed)
         {
             *first_sync_completed = true;
+        }
+
+        if (wm_sys_identity_state(NULL) > 0)
+        {
+            mtinfo(WM_SYS_LOGTAG, "Inventory agent id changed since the last synchronization. Synchronizing now.");
+
+            if (identity_changed)
+            {
+                *identity_changed = true;
+            }
+
+            return SYSCOLLECTOR_STARTUP_ACTION_IMMEDIATE;
         }
 
         mtdebug1(WM_SYS_LOGTAG, "Inventory first synchronization already completed in a previous run. Keeping startup synchronization delay.");
@@ -983,8 +1040,21 @@ void* wm_sync_module(__attribute__((unused)) void* args)
     bool first_sync_completed = false;
     bool wait_before_sync = true;
     bool first_sync_blocked_on_scan = false;
+    // How often the wait below asks whether the agent id changed. Doubled, up to sync_interval,
+    // while a resync keeps failing, so a manager that is not ready for the new id yet gets a
+    // DataClean and every table every few minutes at most, not every 30 s.
+    uint32_t identity_poll = SYSCOLLECTOR_IDENTITY_POLL_SECONDS;
+    // INFO once per change, whichever check notices it first (the startup one included); DEBUG
+    // after that.
+    bool identity_change_logged = false;
+    // Resends Syscollector had started by the end of the previous cycle. The counter starts at zero
+    // with the module, like this thread. A failed sync moves it too, since the resend only follows a
+    // successful one. A cycle that leaves it unchanged never tried: the sync was skipped (a scan, a
+    // flush or the start-up DataClean for disabled collectors was running), or the recovery stood
+    // back from a flush or from that DataClean.
+    int last_resync_attempts = 0;
 
-    switch (wm_sys_get_startup_action(&first_sync_completed))
+    switch (wm_sys_get_startup_action(&first_sync_completed, &identity_change_logged))
     {
         case SYSCOLLECTOR_STARTUP_ACTION_IMMEDIATE:
             wait_before_sync = false;
@@ -1007,6 +1077,22 @@ void* wm_sync_module(__attribute__((unused)) void* args)
         {
             for (uint32_t i = 0; i < sync_interval && sync_module_running; i++)
             {
+                // Skipping i == 0 keeps retries of a failed resync at least one poll apart
+                if (i > 0 && i % identity_poll == 0 && wm_sys_identity_state(NULL) > 0)
+                {
+                    if (identity_change_logged)
+                    {
+                        mtdebug1(WM_SYS_LOGTAG, "Inventory agent id still differs from the last synchronization. Retrying the resync.");
+                    }
+                    else
+                    {
+                        mtinfo(WM_SYS_LOGTAG, "Inventory agent id changed since the last synchronization. Synchronizing now.");
+                        identity_change_logged = true;
+                    }
+
+                    break;
+                }
+
                 sleep(1);
             }
         }
@@ -1071,6 +1157,52 @@ void* wm_sync_module(__attribute__((unused)) void* args)
         else
         {
             mtdebug1(WM_SYS_LOGTAG, "Sync function not available");
+        }
+
+        // An id still changed after the cycle was not resent (checkAgentIdentity() records the new
+        // id only once every table reached the manager): back off before the next attempt. An
+        // answer of -1 says nothing either way and leaves the retry state as it is.
+        int resync_attempts = -1;
+        const int identity_state = wm_sys_identity_state(&resync_attempts);
+
+        if (identity_state > 0)
+        {
+            // Only a resend that was started and failed says the manager is not ready yet; a cycle
+            // that never got to it keeps the period. An answer without the count backs off, the
+            // safe side.
+            const bool attempted = resync_attempts < 0 || resync_attempts != last_resync_attempts;
+
+            if (attempted && identity_poll < sync_interval)
+            {
+                identity_poll = (identity_poll > sync_interval / 2) ? sync_interval : identity_poll * 2;
+            }
+
+            // The wait below never runs past sync_interval, whatever the poll period says.
+            const uint32_t next_attempt = identity_poll < sync_interval ? identity_poll : sync_interval;
+
+            if (!attempted)
+            {
+                mtdebug1(WM_SYS_LOGTAG, "Inventory resync under the new agent id was not attempted this cycle, next check in %u seconds.", next_attempt);
+            }
+            else if (identity_change_logged)
+            {
+                mtdebug1(WM_SYS_LOGTAG, "Inventory resync under the new agent id did not complete, next attempt in %u seconds.", next_attempt);
+            }
+            else
+            {
+                mtinfo(WM_SYS_LOGTAG, "Inventory agent id changed since the last synchronization. Resyncing in %u seconds.", next_attempt);
+                identity_change_logged = true;
+            }
+        }
+        else if (identity_state == 0)
+        {
+            identity_poll = SYSCOLLECTOR_IDENTITY_POLL_SECONDS;
+            identity_change_logged = false;
+        }
+
+        if (resync_attempts >= 0)
+        {
+            last_resync_attempts = resync_attempts;
         }
     }
 

@@ -141,7 +141,7 @@ Check if integrity_interval elapsed
 The SCA module operates with the following threads:
 
 * **Main Thread** (`wm_sca_main`): Runs the SCA implementation and handles policy execution
-* **Sync Thread** (`wm_sca_sync_module`): Handles periodic synchronization with the manager (when enabled)
+* **Sync Thread** (`wm_sca_sync_module`): Handles periodic synchronization with the manager (when enabled). The wait before each cycle restarts with every agent start, so the thread also asks whether the agent ID changed since the last full synchronization (for example after the agent was removed and re-enrolled): at startup, and every 30 seconds while it waits. On a change it runs its cycle at once, which resends the full snapshot under the new ID. While that resend keeps failing, the 30 seconds double on each failed attempt, up to the synchronization interval; a cycle that could not try (for example because a flush was sending) keeps the period
 
 ---
 
@@ -267,6 +267,8 @@ No enabled policies found?
                               └─► Exit module
 ```
 
+A failed DataClean is retried one scan interval later. Each attempt waits for a running synchronization or flush and holds a flush off only while it sends, so a flush requested while the module waits to retry is not delayed by that wait.
+
 ---
 
 ## Coordination Commands Architecture
@@ -335,6 +337,9 @@ Check if Sync Protocol Initialized
          ├─► Not Initialized → Return 0 (nothing to flush)
          │
          └─► Initialized
+             │
+             ▼
+Wait for any SCA synchronization or recovery DataClean in progress, then hold both off until done
              │
              ▼
 Call synchronizeModule(Mode::DELTA)
