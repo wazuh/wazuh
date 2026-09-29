@@ -173,7 +173,7 @@ In SCA, the rule's metadata and its test live together in one self-contained YAM
   remediation: "Install AIDE using the appropriate package manager or manual installation: # apt install aide aide-common"
   compliance:
     nist_800_53: ["AC-6"]
-    pci_dss: ["10.2", "11.5"]
+    pci_dss: ["10.2.1", "10.2.1.1"]
     # ... additional compliance keys omitted for brevity
   condition: all
   rules:

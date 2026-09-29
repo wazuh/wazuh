@@ -8,7 +8,7 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 type: integration
 
 brief: These tests check that an invalid authd.pass (empty or whitespace-only) raises the
-       expected error log and prevents wazuh-authd from starting.
+       expected error log and prevents wazuh-manager-authd from starting.
 
 components:
     - authd
@@ -105,7 +105,7 @@ def test_authd_use_password_invalid(test_configuration, test_metadata, set_wazuh
 
     assertions:
         - An 'Invalid password provided' error is raised in wazuh-manager.log.
-        - wazuh-authd does not start with an invalid password file.
+        - wazuh-manager-authd does not start with an invalid password file.
 
     input_description:
         ./data/configuration_template/config_authd_use_password_invalid.yaml: Wazuh config needed for the tests.
@@ -116,7 +116,7 @@ def test_authd_use_password_invalid(test_configuration, test_metadata, set_wazuh
     '''
     log = test_metadata['error']
 
-    # wazuh-authd exits on the invalid password; depending on the service manager the
+    # wazuh-manager-authd exits on the invalid password; depending on the service manager the
     # restart may report failure or succeed, so tolerate both outcomes.
     try:
         control_service('restart')

@@ -71,11 +71,11 @@ The following changes were identified during agent startup validation after upgr
 | `<syscheck><scan_on_start>...</scan_on_start></syscheck>` | Invalid | `INFO: (1230): Invalid element in the configuration: 'scan_on_start'.` | Remove this element from `syscheck` (Always executed on start). |
 | `<rootcheck><check_files>...</check_files></rootcheck>` | Removed | `INFO: Rootcheck option 'check_files' is no longer supported. Use the FIM module instead.` | Remove from `rootcheck`; use FIM (`syscheck`) controls. |
 | `<rootcheck><check_trojans>...</check_trojans></rootcheck>` | Removed | `INFO: Rootcheck option 'check_trojans' is no longer supported. Use the FIM module instead.` | Remove from `rootcheck`; use FIM (`syscheck`) controls. |
-| `<rootcheck><rootkit_files>...</rootkit_files></rootcheck>` | Invalid | `INFO: (1230): Invalid element in the configuration: 'rootkit_files'.` | Remove from `rootcheck`. |
+| `<rootcheck><rootkit_files>...</rootkit_files></rootcheck>` | Removed | `INFO: Rootcheck option 'rootkit_files' is no longer supported.` | Remove from `rootcheck`. |
 | `<wodle name="cis-cat">...</wodle>` | Removed in 5.0 | `INFO: The 'cis-cat' module is deprecated. Use the SCA module instead.` | Migrate to SCA, then remove the `cis-cat` wodle block. See [Migrating from CIS-CAT and OpenSCAP to SCA](ciscat-openscap-to-sca.md). |
 | `<wodle name="osquery">...</wodle>` | Removed in 5.0 | `INFO: The 'osquery' module is deprecated. Use the Syscollector module instead.` | Migrate to IT Hygiene, then remove the `osquery` wodle block. See [Migrating from OSquery to IT Hygiene](osquery-to-it-hygiene.md). |
 | `<sca><skip_nfs>...</skip_nfs></sca>` | Deprecated/Unavailable | `INFO: Detected a deprecated configuration for SCA: 'skip_nfs' is no longer available.` | Remove `<skip_nfs>` from `sca`. See [SCA policies from 4.x to 5.x](sca-policies-4x-to-5x.md). |
-| `<client><enrollment><auto_method>...</auto_method></enrollment></client>` | Ignored | `INFO: <auto_method> under <enrollment> is no longer used: enrollment always negotiates TLS 1.3. Ignoring.` | None required. The option was removed entirely and is accepted-but-ignored so an upgraded file still starts; remove it when convenient. See [TLS 1.3 enrollment enforcement](#tls-13-enrollment-enforcement-wazuh-authd) below. |
+| `<client><enrollment><auto_method>...</auto_method></enrollment></client>` | Ignored | `INFO: <auto_method> under <enrollment> is no longer used: enrollment always negotiates TLS 1.3. Ignoring.` | None required. The option was removed entirely and is accepted-but-ignored so an upgraded file still starts; remove it when convenient. See [TLS 1.3 enrollment enforcement](#tls-13-enrollment-enforcement-wazuh-manager-authd) below. |
 
 ### Additional observed parser side-effects
 
@@ -287,13 +287,13 @@ As with the connectivity check, an abort happens before the package manager runs
 
 This matters specifically for an **on-prem fleet whose manager certificate is issued by the deployment's own CA** (the `root-ca.pem` of the Wazuh installation assistant's `wazuh-certs-tool`, which also issues the listener certificate, replacing the bootstrap pair the manager issues for itself at installation) — the typical case outside a publicly-trusted CA. Since a 4.X agent never checked the certificate, upgrading in place without first placing the manager's CA at the default path (or configuring `<certificate_authorities>` explicitly) leaves the new agent unable to connect. Place the CA ahead of a fleet-wide upgrade rather than discovering the gap one aborted upgrade at a time.
 
-## TLS 1.3 enrollment enforcement (`wazuh-authd`)
+## TLS 1.3 enrollment enforcement (`wazuh-manager-authd`)
 
-Wazuh 5.0 raises the minimum TLS protocol version accepted by the manager's enrollment service (`wazuh-authd`) to TLS 1.3 and removes the `ssl_auto_negotiate` fallback that previously allowed negotiating down to TLS 1.0. This affects the manager's `wazuh-manager.conf` and the agent's `<enrollment>` block in `ossec.conf`.
+Wazuh 5.0 raises the minimum TLS protocol version accepted by the manager's enrollment service (`wazuh-manager-authd`) to TLS 1.3 and removes the `ssl_auto_negotiate` fallback that previously allowed negotiating down to TLS 1.0. This affects the manager's `wazuh-manager.conf` and the agent's `<enrollment>` block in `ossec.conf`.
 
 ### Manager: `<auth><ciphers>` must use a TLS 1.3 ciphersuite list
 
-`wazuh-authd` validates `<ciphers>` against a fixed set of TLS 1.3 ciphersuite names: `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`. A 4.x-style OpenSSL cipher-list string (for example the previous default, `HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH`) is rejected at config load:
+`wazuh-manager-authd` validates `<ciphers>` against a fixed set of TLS 1.3 ciphersuite names: `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`. A 4.x-style OpenSSL cipher-list string (for example the previous default, `HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH`) is rejected at config load:
 
 ```console
 ERROR: Invalid TLS 1.3 cipher suite 'HIGH' in 'ciphers' option
@@ -306,7 +306,7 @@ ERROR: Invalid TLS 1.3 cipher suite list: '<value>'
 ERROR: SSL context setup failed. Exiting.
 ```
 
-Either way, `wazuh-authd` does not start and no agent can enroll until `<ciphers>` is updated to a colon-separated list of the values above (default: `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`) or removed to use that default.
+Either way, `wazuh-manager-authd` does not start and no agent can enroll until `<ciphers>` is updated to a colon-separated list of the values above (default: `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`) or removed to use that default.
 
 `<auth><ssl_auto_negotiate>` was also removed entirely. Leaving it in `wazuh-manager.conf` is now an unknown option (the manager configuration is validated against its schema) and blocks the manager from starting:
 
@@ -340,4 +340,4 @@ Migration is complete when all conditions below are met:
 - The connection block is `<agent><manager><endpoint>`, and no `<client>` fallback message remains in `ossec.log`.
 - No deprecated `protocol` or `crypto_method` messages remain.
 - Agent stays connected to the manager and sends events normally.
-- No TLS 1.3 enrollment errors (`Invalid TLS 1.3 cipher suite...`, `Could not set up SSL connection...`) appear in `wazuh-authd` or agent logs, and enrollment against the 5.0 manager succeeds.
+- No TLS 1.3 enrollment errors (`Invalid TLS 1.3 cipher suite...`, `Could not set up SSL connection...`) appear in `wazuh-manager-authd` or agent logs, and enrollment against the 5.0 manager succeeds.

@@ -204,9 +204,9 @@ rejected and the manager will not start; there is no automatic migration.
 
 ### `<auth>` section
 
-The section is preserved, but `wazuh-authd` now enforces TLS 1.3 as the minimum protocol version for agent enrollment. Besides updating the certificate paths to reflect the new installation directory, this requires two additional changes:
+The section is preserved, but `wazuh-manager-authd` now enforces TLS 1.3 as the minimum protocol version for agent enrollment. Besides updating the certificate paths to reflect the new installation directory, this requires two additional changes:
 
-- `<ciphers>` must be a colon-separated list of TLS 1.3 ciphersuite names (`TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`). A 4.x-style OpenSSL cipher-list string is rejected at config load (`ERROR: Invalid TLS 1.3 cipher suite '<token>' in 'ciphers' option`) and `wazuh-authd` does not start.
+- `<ciphers>` must be a colon-separated list of TLS 1.3 ciphersuite names (`TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`). A 4.x-style OpenSSL cipher-list string is rejected at config load (`ERROR: Invalid TLS 1.3 cipher suite '<token>' in 'ciphers' option`) and `wazuh-manager-authd` does not start.
 - `<ssl_auto_negotiate>` was removed entirely. Leaving it in place is now an unknown option (`ERROR: (1244): Invalid configuration at '/auth/ssl_auto_negotiate': unknown option (does not satisfy 'additionalProperties') [...]`) and blocks the manager from starting.
 
 **4.x:**

@@ -295,9 +295,9 @@ executor slot for the whole sweep.
 | `wazuh_modules.manager_task_delete_old_budget` | 30 | 1–3600 | seconds an attempt may hold its executor slot |
 | `wazuh_modules.manager_task_disconnect_log_max` | 200 | 0–1000000 | agents the disconnection sweep names individually per run |
 
-The time bound is the one that binds in practice: the deadline on the connection to `wazuh-authd`
+The time bound is the one that binds in practice: the deadline on the connection to `wazuh-manager-authd`
 is `wazuh_modules.manager_task_wdb_timeout` (default 10 s), so 200 agents against a wedged
-`wazuh-authd` would otherwise be a worst case measured in tens of minutes while holding one executor
+`wazuh-manager-authd` would otherwise be a worst case measured in tens of minutes while holding one executor
 slot. Counting agents bounds the work; counting seconds bounds the occupancy.
 
 Whichever is reached first, the attempt returns `incomplete` — neither success nor failure — and the

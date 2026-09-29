@@ -646,11 +646,11 @@ def configure_sockets_environment_implementation(
 
             # Use a 60s timeout (vs the framework default of 10s) because
             # test_authd_key_request_worker has been observed to need >30s for
-            # wazuh-authd to publish its pid file when started right after the
-            # previous module killed wazuh-authd (likely TIME_WAIT on port 1515
+            # wazuh-manager-authd to publish its pid file when started right after the
+            # previous module killed wazuh-manager-authd (likely TIME_WAIT on port 1515
             # or post-fork init taking longer than expected). If the timeout
             # still hits, the next step is to capture /var/ossec/logs/ossec.log
-            # to see what wazuh-authd is doing after goDaemon().
+            # to see what wazuh-manager-authd is doing after goDaemon().
             services.wait_expected_daemon_status(
                 target_daemon=daemon,
                 running_condition=True,
