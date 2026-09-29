@@ -24,6 +24,9 @@
                                     "'%s' and was never installed (logs/upgrade.log says why; usually the " \
                                     "'openssl' command is missing). Stop the agent and run 'wazuh-agent-auth " \
                                     "--certs-only' with an enrollment token to install the anchor."
+#define AG_SSL_NONE_TOKEN_ENROLL_VERIFIED "(4127): <ssl><verification_mode> is 'none', but that only applies once the " \
+                                          "agent is enrolled: token enrollment still verifies the manager's " \
+                                          "certificate against the enrollment token's CA."
 
 /* File integrity monitoring warning messages*/
 #define FIM_WARN_ACCESS                         "(6900): Accessing  '%s': [(%d) - (%s)]"

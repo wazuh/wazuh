@@ -781,6 +781,23 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         report->used_pin = token.has_pin;
     }
 
+    /* The configured mode is not consulted: the token decides how its own enrollment is
+     * verified. Said before the CA is fetched and checked, so a pin or certificate failure does
+     * not read as 'none' being ignored. Only an explicit 'none' -- an inferred one just means
+     * there was no anchor yet. */
+    if (!opts->anchor_only && agt->ssl.verification_mode_explicit
+            && agt->ssl.verification_mode == AGENT_VERIFY_NONE) {
+        /* The bootstrap retries, and the configuration cannot change between attempts. */
+        static bool warned = false;
+
+        if (!warned) {
+            mwarn(AG_SSL_NONE_TOKEN_ENROLL_VERIFIED);
+            warned = true;
+        } else {
+            mdebug1(AG_SSL_NONE_TOKEN_ENROLL_VERIFIED);
+        }
+    }
+
     memset(&fetch_result, 0, sizeof(fetch_result));
 
     if (token.has_pin) {

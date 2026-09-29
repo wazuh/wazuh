@@ -1162,6 +1162,70 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_int_equal(g_keys_chown_gid, getgid());
 }
 
+/* An explicit 'none' does not reach the token's enrollment, which stays fully verified -- and the
+ * operator is told so before it runs. */
+static void test_explicit_none_warns_and_still_enrolls_verified(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    agt->ssl.verification_mode = AGENT_VERIFY_NONE;
+    agt->ssl.verification_mode_explicit = true;
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    expect_string(__wrap__mwarn, formatted_msg, AG_SSL_NONE_TOKEN_ENROLL_VERIFIED);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_enroll_call_count, 1);
+    assert_int_equal(g_enroll_config.verify_mode, HC_VERIFY_FULL);
+}
+
+/* A 'none' the agent resolved to on its own, because it had no anchor yet, is what every
+ * first-boot token install has: it must not warn. No mwarn is expected, so one fails the test. */
+static void test_inferred_none_does_not_warn(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    agt->ssl.verification_mode = AGENT_VERIFY_NONE;
+    agt->ssl.verification_mode_explicit = false;
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+}
+
 /* Regression test: unlike the two repair call sites (quiet_on_failure=true, covered above), the
  * fresh-enrollment call site (quiet_on_failure=false) must log at merror() level -- it runs once
  * per enrollment, not once per boot, so a failure there is a new, one-time event worth surfacing
@@ -1685,6 +1749,9 @@ int main(void) {
         cmocka_unit_test(test_bound_pending_gives_up_after_the_window),
         cmocka_unit_test(test_bound_pending_window_survives_transient_results),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_pin, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_explicit_none_warns_and_still_enrolls_verified, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_inferred_none_does_not_warn, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_restores_the_previous_key, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_without_a_previous_key_reports_no_rollback, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_leaves_no_staged_anchor, setup_test, teardown_test),
