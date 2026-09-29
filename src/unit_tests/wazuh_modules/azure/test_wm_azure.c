@@ -27,6 +27,7 @@
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 #include "../../wrappers/externals/pcre2/pcre2_wrappers.h"
+#include "../../wrappers/posix/pthread_wrappers.h"
 
 #define TEST_MAX_DATES 5
 
@@ -39,7 +40,7 @@ extern int test_mode;
 extern w_expression_t *azure_script_log_regex;
 
 void wm_setup_logging_capture();
-void wm_integrations_parse_output(char * const output, int exit_status);
+void wm_integrations_parse_output(char * const output, bool failed);
 bool wm_azure_graphs(wm_azure_api_t *graph);
 bool wm_azure_storage(wm_azure_storage_t *storage);
 
@@ -398,7 +399,16 @@ void test_parse_output_success_ignores_unparsed_lines(void **state) {
     expect_string(__wrap__mtinfo, tag, WM_AZURE_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "info message");
 
-    wm_integrations_parse_output(output, 0);
+    wm_integrations_parse_output(output, false);
+}
+
+void test_parse_output_logs_critical_lines_as_errors(void **state) {
+    char output[] = "2025/05/28 17:55:00 azure: CRITICAL: critical message";
+
+    expect_string(__wrap__mterror, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "critical message");
+
+    wm_integrations_parse_output(output, false);
 }
 
 void test_parse_output_failure_surfaces_unparsed_lines_after_error(void **state) {
@@ -416,25 +426,68 @@ void test_parse_output_failure_surfaces_unparsed_lines_after_error(void **state)
                   "  File \"/var/ossec/wodles/azure/azure-logs\", line 38, in <module>\n"
                   "azure.core.exceptions.AzureError: boom");
 
-    wm_integrations_parse_output(output, 1);
+    wm_integrations_parse_output(output, true);
 }
 
-void test_parse_output_failure_keeps_tail_of_oversized_output(void **state) {
-    const char *last_line = "ImportError: cannot import name 'ParserError'";
+void test_parse_output_failure_keeps_last_whole_lines_of_oversized_output(void **state) {
+    // 100 lines of 95 characters: with their separators, the last 64 take exactly 6143 bytes
     char *output = NULL;
     char *expected = NULL;
 
-    os_calloc(OS_SIZE_6144 + strlen(last_line) + 2, sizeof(char), output);
-    memset(output, 'A', OS_SIZE_6144);
-    output[OS_SIZE_6144] = '\n';
-    strcpy(output + OS_SIZE_6144 + 1, last_line);
+    os_calloc(100 * 96, sizeof(char), output);
+    for (int i = 0; i < 100; i++) {
+        char *line = output + i * 96;
+        snprintf(line, 96, "line %02d ", i);
+        memset(line + 8, 'x', 87);
+        line[95] = i < 99 ? '\n' : '\0';
+    }
     // Copied before parsing, which tokenizes the output in place
-    os_strdup(output + strlen(output) - (OS_SIZE_6144 - 1), expected);
+    os_strdup(output + 36 * 96, expected);
 
     expect_string(__wrap__mterror, tag, WM_AZURE_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, expected);
 
-    wm_integrations_parse_output(output, 1);
+    wm_integrations_parse_output(output, true);
+
+    os_free(expected);
+    os_free(output);
+}
+
+void test_parse_output_failure_oversized_line_replaces_earlier_lines(void **state) {
+    // A line longer than the buffer leaves no room for the lines kept before it
+    char *output = NULL;
+    char *expected = NULL;
+
+    os_calloc(strlen("earlier line\n") + 7000 + 1, sizeof(char), output);
+    strcpy(output, "earlier line\n");
+    memset(output + strlen("earlier line\n"), 'B', 7000);
+    os_calloc(OS_SIZE_6144, sizeof(char), expected);
+    memset(expected, 'B', OS_SIZE_6144 - 1);
+
+    expect_string(__wrap__mterror, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, expected);
+
+    wm_integrations_parse_output(output, true);
+
+    os_free(expected);
+    os_free(output);
+}
+
+void test_parse_output_failure_cuts_oversized_line_on_character_boundary(void **state) {
+    // A single line of 3072 two-byte characters: a 6143-byte tail would start inside the first one
+    char *output = NULL;
+    char *expected = NULL;
+
+    os_calloc(3072 * 2 + 1, sizeof(char), output);
+    for (int i = 0; i < 3072; i++) {
+        memcpy(output + i * 2, "\xc3\xa9", 2);
+    }
+    os_strdup(output + 2, expected);
+
+    expect_string(__wrap__mterror, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, expected);
+
+    wm_integrations_parse_output(output, true);
 
     os_free(expected);
     os_free(output);
@@ -458,22 +511,65 @@ void test_graphs_killed_script_is_not_logged_as_finished(void **state) {
     assert_false(wm_azure_graphs(module_data->api_config));
 }
 
-void test_storage_timeout_is_not_logged_as_finished(void **state) {
+void test_storage_timeout_logs_output_and_is_not_logged_as_finished(void **state) {
     wm_azure_t *module_data = (wm_azure_t *)azure_runners_module->data;
 
     expect_any(__wrap_wm_exec, command);
     expect_any(__wrap_wm_exec, secs);
     expect_any(__wrap_wm_exec, add_path);
-    will_return(__wrap_wm_exec, NULL);
-    will_return(__wrap_wm_exec, 0);
+    // What the script wrote before wm_exec() killed it
+    will_return(__wrap_wm_exec,
+                "2025/05/28 17:55:00 azure: INFO: Storage: Authenticated.\n"
+                "urllib3/connectionpool.py:1045: InsecureRequestWarning: Unverified HTTPS request");
+    will_return(__wrap_wm_exec, 128 + SIGTERM);
     will_return(__wrap_wm_exec, WM_ERROR_TIMEOUT);
 
-    expect_string(__wrap__mterror, tag, WM_AZURE_LOGTAG);
+    expect_string_count(__wrap__mterror, tag, WM_AZURE_LOGTAG, 2);
     expect_string(__wrap__mterror, formatted_msg, "Timeout expired at request 'insights-logs'.");
+    expect_string(__wrap__mtinfo, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Storage: Authenticated.");
+    expect_string(__wrap__mterror, formatted_msg, "urllib3/connectionpool.py:1045: InsecureRequestWarning: Unverified HTTPS request");
     expect_string(__wrap__mtwarn, tag, WM_AZURE_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "Storage log collection for container 'insights-logs' failed.");
 
     assert_false(wm_azure_storage(module_data->storage));
+}
+
+void test_storage_unexecutable_script_is_not_fatal(void **state) {
+    wm_azure_t *module_data = (wm_azure_t *)azure_runners_module->data;
+
+    expect_any(__wrap_wm_exec, command);
+    expect_any(__wrap_wm_exec, secs);
+    expect_any(__wrap_wm_exec, add_path);
+    // What wm_exec() reports when the script, or the python3 it runs with, cannot be executed
+    will_return(__wrap_wm_exec, NULL);
+    will_return(__wrap_wm_exec, EXECVE_ERROR);
+    will_return(__wrap_wm_exec, -1);
+
+    expect_string(__wrap__mterror, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "Could not execute 'wodles/azure/azure-logs' (exit code 127). Check that it and the python3 interpreter it runs with are installed.");
+    expect_string(__wrap__mtwarn, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mtwarn, formatted_msg, "Storage log collection for container 'insights-logs' failed.");
+
+    // Returning at all means the module thread was not exited
+    assert_false(wm_azure_storage(module_data->storage));
+}
+
+void test_storage_internal_error_exits_the_module(void **state) {
+    wm_azure_t *module_data = (wm_azure_t *)azure_runners_module->data;
+
+    expect_any(__wrap_wm_exec, command);
+    expect_any(__wrap_wm_exec, secs);
+    expect_any(__wrap_wm_exec, add_path);
+    // A failure other than a command that could not be executed, e.g. fork()
+    will_return(__wrap_wm_exec, NULL);
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, -1);
+
+    expect_string(__wrap__mterror, tag, WM_AZURE_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "Internal error. Exiting...");
+
+    expect_assert_failure(wm_azure_storage(module_data->storage));
 }
 
 void test_storage_success_is_logged_as_finished(void **state) {
@@ -499,10 +595,15 @@ int main(void) {
     };
     const struct CMUnitTest tests_runners[] = {
         cmocka_unit_test(test_parse_output_success_ignores_unparsed_lines),
+        cmocka_unit_test(test_parse_output_logs_critical_lines_as_errors),
         cmocka_unit_test(test_parse_output_failure_surfaces_unparsed_lines_after_error),
-        cmocka_unit_test(test_parse_output_failure_keeps_tail_of_oversized_output),
+        cmocka_unit_test(test_parse_output_failure_keeps_last_whole_lines_of_oversized_output),
+        cmocka_unit_test(test_parse_output_failure_oversized_line_replaces_earlier_lines),
+        cmocka_unit_test(test_parse_output_failure_cuts_oversized_line_on_character_boundary),
         cmocka_unit_test(test_graphs_killed_script_is_not_logged_as_finished),
-        cmocka_unit_test(test_storage_timeout_is_not_logged_as_finished),
+        cmocka_unit_test(test_storage_timeout_logs_output_and_is_not_logged_as_finished),
+        cmocka_unit_test(test_storage_unexecutable_script_is_not_fatal),
+        cmocka_unit_test(test_storage_internal_error_exits_the_module),
         cmocka_unit_test(test_storage_success_is_logged_as_finished)
     };
     const struct CMUnitTest tests_without_startup[] = {
