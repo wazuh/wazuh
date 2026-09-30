@@ -77,8 +77,12 @@ def check_user(user: str, password: str, required_scopes=None) -> Union[dict, No
     Returns
     -------
     dict or None
-        Dictionary with the username and its status or None.
+        Dictionary with the username, its status and the time the credential check started or None.
     """
+    # Taken before the stored hash is read, and used as the issue time of the token this login
+    # gets, so the token is ordered against user token rules by when its credentials were checked
+    # rather than by when it was signed.
+    auth_time_ms = int(core_utils.get_utc_now().timestamp() * 1000)
     dapi = DistributedAPI(f=check_user_master,
                           f_kwargs={'user': user, 'password': password},
                           request_type='local_master',
@@ -89,7 +93,7 @@ def check_user(user: str, password: str, required_scopes=None) -> Union[dict, No
     data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
 
     if data['result']:
-        return {'sub': user, 'active': True }
+        return {'sub': user, 'active': True, 'auth_time_ms': auth_time_ms}
 
 
 # Set JWT settings
@@ -498,11 +502,14 @@ def get_security_conf() -> dict:
     return conf.security_conf
 
 
-def generate_token(user_id: str = None, data: dict = None, auth_context: dict = None) -> str:
+def generate_token(issued_at_ms: int, user_id: str = None, data: dict = None, auth_context: dict = None) -> str:
     """Generate an encoded JWT token. This method should be called once a user is properly logged on.
 
     Parameters
     ----------
+    issued_at_ms : int
+        Time the credential check of this login started (milliseconds), as returned by
+        `check_user`. It is the token's issue time, never the signing time: see `check_user`.
     user_id : str
         Unique username.
     data : dict
@@ -522,16 +529,14 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
                           logger=logging.getLogger('wazuh-api')
                           )
     result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
-    # Get timestamp with millisecond precision directly
-    now_ms = int(core_utils.get_utc_now().timestamp() * 1000)
-    now_seconds = now_ms // 1000
+    issued_at_seconds = issued_at_ms // 1000
 
     payload = {
                   "iss": JWT_ISSUER,
                   "aud": "Wazuh API REST",
-                  "nbf": now_seconds,  # Standard claim: integer seconds since epoch (RFC 7519)
-                  "nbf_ms": now_ms,  # Private claim: milliseconds for precise validation
-                  "exp": now_seconds + result['auth_token_exp_timeout'],
+                  "nbf": issued_at_seconds,  # Standard claim: integer seconds since epoch (RFC 7519)
+                  "nbf_ms": issued_at_ms,  # Private claim: milliseconds for precise validation
+                  "exp": issued_at_seconds + result['auth_token_exp_timeout'],
                   "sub": str(user_id),
                   "run_as": auth_context is not None,
                   "rbac_roles": data['roles'],

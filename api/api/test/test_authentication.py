@@ -106,9 +106,19 @@ def test_check_user_master():
 @patch('api.authentication.raise_if_exc', side_effect=None)
 async def test_check_user(mock_raise_if_exc, mock_distribute_function, mock_dapi):
     """Verify if result is as expected"""
-    result = check_user('test_user', 'test_pass')
+    class NewDatetime:
+        def timestamp(self) -> float:
+            return 1.5
 
-    assert result == {'sub': 'test_user', 'active': True}, 'Result is not as expected'
+    def check_not_started(*args, **kwargs):
+        # The credential check must not have run when the issue time is taken.
+        mock_dapi.assert_not_called()
+        return NewDatetime()
+
+    with patch('api.authentication.core_utils.get_utc_now', side_effect=check_not_started):
+        result = check_user('test_user', 'test_pass')
+
+    assert result == {'sub': 'test_user', 'active': True, 'auth_time_ms': 1500}, 'Result is not as expected'
     mock_dapi.assert_called_once_with(f=ANY, f_kwargs={'user': 'test_user', 'password': 'test_pass'},
                                       request_type='local_master', is_async=False, wait_for_complete=False, logger=ANY)
     mock_distribute_function.assert_called_once_with()
@@ -220,13 +230,11 @@ async def test_generate_token(mock_raise_if_exc, mock_distribute_function, mock_
                         mock_encode, auth_context):
     """Verify if result is as expected"""
 
-    class NewDatetime:
-        def timestamp(self) -> float:
-            return 0
-
     mock_raise_if_exc.return_value = security_conf
-    with patch('api.authentication.core_utils.get_utc_now', return_value=NewDatetime()):
-        result = generate_token(user_id='001', data={'roles': [1]}, auth_context=auth_context)
+    with patch('api.authentication.core_utils.get_utc_now') as mock_now:
+        result = generate_token(issued_at_ms=0, user_id='001', data={'roles': [1]}, auth_context=auth_context)
+    # The issue time is the one handed in by the credential check, never the signing time.
+    mock_now.assert_not_called()
     assert result == 'test_token', 'Result is not as expected'
 
     # Check all functions are called with expected params
