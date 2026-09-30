@@ -94,7 +94,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libwazuhshared.so,root,wazuh,750,file,-rwxr-x---,189675,0.1
 /var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,9471335,0.1
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,521864,0.1
-/var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,1990696,0.1
+/var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2197112,0.1
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,479152,0.1
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,2569758,0.1
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,579192,0.1
@@ -185,5 +185,5 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/wodles/azure/db/__init__.py,root,wazuh,750,file,-rwxr-x---,0,0.1
 /var/ossec/wodles/azure/azure_services/analytics.py,root,wazuh,750,file,-rwxr-x---,8961,0.1
 /var/ossec/wodles/azure/azure_services/__init__.py,root,wazuh,750,file,-rwxr-x---,0,0.1
-/var/ossec/wodles/azure/azure_services/graph.py,root,wazuh,750,file,-rwxr-x---,7635,0.1
+/var/ossec/wodles/azure/azure_services/graph.py,root,wazuh,750,file,-rwxr-x---,8678,0.1
 /var/ossec/wodles/azure/azure_services/storage.py,root,wazuh,750,file,-rwxr-x---,11550,0.1
