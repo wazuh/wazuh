@@ -19,6 +19,11 @@
                                    "present: TLS verification stays disabled, as configured, and the anchor is " \
                                    "not used. Remove <verification_mode>none</verification_mode> to verify " \
                                    "against it."
+#define AG_SSL_DELIVERED_CA_PENDING "(4126): TLS verification is disabled: there is no trust anchor at '%s', " \
+                                    "but a CA delivered by the manager during a remote upgrade is waiting at " \
+                                    "'%s' and was never installed (logs/upgrade.log says why; usually the " \
+                                    "'openssl' command is missing). Stop the agent and run 'wazuh-agent-auth " \
+                                    "--certs-only' with an enrollment token to install the anchor."
 
 /* File integrity monitoring warning messages*/
 #define FIM_WARN_ACCESS                         "(6900): Accessing  '%s': [(%d) - (%s)]"

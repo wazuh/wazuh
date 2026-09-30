@@ -659,7 +659,9 @@ nc -vz <manager_ip> 1517
 # Has the agent a trust anchor? A remote upgrade delivers one; a local package
 # upgrade does not. Without it the agent connects but verifies nothing, until
 # sudo /var/ossec/bin/wazuh-agent-auth --token-file <path> --certs-only installs one.
-sudo ls -l /var/ossec/etc/certs/root-ca.pem
+# A CA left in var/incoming means one was delivered but never installed, usually
+# because the openssl command was missing during the upgrade (logged as (4126)).
+sudo ls -l /var/ossec/etc/certs/root-ca.pem /var/ossec/var/incoming/root-ca.pem
 
 # What does the agent say about TLS and enrollment? Every failure here names itself.
 sudo grep -E "TLS verification|cacerts|pin_mismatch|\(41[0-9]{2}\)" /var/ossec/logs/ossec.log | tail -20

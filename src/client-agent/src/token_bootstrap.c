@@ -485,6 +485,21 @@ STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid) {
 
 #endif /* !WIN32 */
 
+/* The anchor now in place supersedes a CA a WPK upgrade staged but could not validate; left
+ * behind, a later upgrade would install that one over it. */
+static void token_discard_delivered_ca(void) {
+#ifndef WIN32
+    if (unlink(AGENT_DELIVERED_CA) == 0) {
+        minfo("Removed the CA a remote upgrade left at '%s': the trust anchor supersedes it.",
+              AGENT_DELIVERED_CA);
+    } else if (errno != ENOENT) {
+        mwarn("Could not remove the CA a remote upgrade left at '%s': %s (%d). Remove it, or a "
+              "later upgrade may install it over the trust anchor.", AGENT_DELIVERED_CA,
+              strerror(errno), errno);
+    }
+#endif
+}
+
 /**
  * @brief Whether the anchor already on disk is byte-for-byte what this token would install.
  *
@@ -879,6 +894,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * management loop rather than rewriting the same bytes on every run. */
     if (opts->anchor_only && !anchor_changed) {
         w_etoken_free(&token);
+        token_discard_delivered_ca();
         return W_TOKEN_ENROLL_OK;
     }
 
@@ -960,6 +976,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         /* Only now: the marker says an anchor has been committed, so it must not appear before
          * one has. */
         w_token_bootstrap_mark_anchor_committed(opts->gid);
+        token_discard_delivered_ca();
 
         minfo("The manager's CA is now the agent's trust anchor.");
 
@@ -1181,6 +1198,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     /* Only now: the marker says an anchor has been committed, so it must not appear before one
      * has. */
     w_token_bootstrap_mark_anchor_committed(opts->gid);
+    token_discard_delivered_ca();
 
     /* enrollment.c's TempFile()+OS_MoveFile() replace only chmod()s client.keys to a fixed 0640
      * on the temp file, never its group, so it inherits this root process's group instead of

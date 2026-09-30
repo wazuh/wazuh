@@ -17,6 +17,7 @@
 #include "agentd.h"
 #include "x509_op.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/os_utils_wrappers.h"
 #include "../wrappers/wazuh/shared/os_cert_bundle_wrappers.h"
 
@@ -118,6 +119,24 @@ static void expect_anchor_deletion_guard(int anchor_present, int marker_present)
     }
 }
 
+/* With neither anchor nor marker the validator also looks for a CA an upgrade left behind. */
+static void expect_delivered_ca(int present)
+{
+    expect_string(__wrap_IsFile, file, AGENT_DELIVERED_CA);
+    will_return(__wrap_IsFile, present ? 0 : -1);
+
+    if (present) {
+        expect_string(__wrap_IsLink, file, AGENT_DELIVERED_CA);
+        will_return(__wrap_IsLink, -1);
+    }
+}
+
+static void expect_no_anchor_ever_committed(void)
+{
+    expect_anchor_deletion_guard(0, 0);
+    expect_delivered_ca(0);
+}
+
 /* Same queue as expect_ca_readable(), named apart so a call site says which probe it is. */
 static void expect_anchor(int present)
 {
@@ -150,7 +169,7 @@ static void test_none_without_ca_starts_quietly(void **state)
     agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
 
     /* Nothing was ever committed here, so the guard finds no marker and stands aside. */
-    expect_anchor_deletion_guard(0, 0);
+    expect_no_anchor_ever_committed();
 
     assert_true(w_agent_validate_ssl_ca(&cfg));
 }
@@ -163,7 +182,7 @@ static void test_none_with_readable_ca_is_not_probed(void **state)
     agent cfg = make_config(AGENT_VERIFY_NONE, "etc/operator-ca.pem");
 
     /* Nothing was ever committed here, so the guard finds no marker and stands aside. */
-    expect_anchor_deletion_guard(0, 0);
+    expect_no_anchor_ever_committed();
 
     assert_true(w_agent_validate_ssl_ca(&cfg));
 }
@@ -177,7 +196,7 @@ static void test_none_with_unreadable_ca_is_not_probed_either(void **state)
     agent cfg = make_config(AGENT_VERIFY_NONE, "PATH");
 
     /* Nothing was ever committed here, so the guard finds no marker and stands aside. */
-    expect_anchor_deletion_guard(0, 0);
+    expect_no_anchor_ever_committed();
 
     assert_true(w_agent_validate_ssl_ca(&cfg));
 }
@@ -223,6 +242,62 @@ static void test_explicit_none_with_a_marker_but_no_anchor_still_starts(void **s
     agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
 
     cfg.ssl.verification_mode_explicit = true;
+
+    assert_true(w_agent_validate_ssl_ca(&cfg));
+}
+
+/* An upgrade that could not validate the delivered CA left it staged: still a start, but say so. */
+static void test_inferred_none_with_a_pending_delivered_ca_warns(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
+
+    expect_anchor_deletion_guard(0, 0);
+    expect_delivered_ca(1);
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(4126): TLS verification is disabled: there is no trust anchor at '" AGENT_ANCHOR_CA
+                  "', but a CA delivered by the manager during a remote upgrade is waiting at '"
+                  AGENT_DELIVERED_CA "' and was never installed (logs/upgrade.log says why; usually "
+                  "the 'openssl' command is missing). Stop the agent and run 'wazuh-agent-auth "
+                  "--certs-only' with an enrollment token to install the anchor.");
+
+    assert_true(w_agent_validate_ssl_ca(&cfg));
+}
+
+/* The installer refuses a symlinked CA, so one planted in var/incoming is not reported either. */
+static void test_inferred_none_with_a_symlinked_delivered_ca_does_not_warn(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
+
+    expect_anchor_deletion_guard(0, 0);
+    expect_string(__wrap_IsFile, file, AGENT_DELIVERED_CA);
+    will_return(__wrap_IsFile, 0);
+    expect_string(__wrap_IsLink, file, AGENT_DELIVERED_CA);
+    will_return(__wrap_IsLink, 0);
+
+    assert_true(w_agent_validate_ssl_ca(&cfg));
+}
+
+/* A vanished anchor is refused before the staged CA is even looked at. */
+static void test_inferred_none_with_a_marker_does_not_probe_the_delivered_ca(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
+
+    expect_anchor_deletion_guard(0, 1);
+    expect_any(__wrap__merror, formatted_msg);
+
+    assert_false(w_agent_validate_ssl_ca(&cfg));
+}
+
+/* An anchor on disk means the staged CA is moot: no probe, no warning. */
+static void test_inferred_none_with_an_anchor_does_not_probe_the_delivered_ca(void **state)
+{
+    (void)state;
+    agent cfg = make_config(AGENT_VERIFY_NONE, NULL);
+
+    expect_anchor_deletion_guard(1, 0);
 
     assert_true(w_agent_validate_ssl_ca(&cfg));
 }
@@ -818,6 +893,10 @@ int main(void)
         cmocka_unit_test(test_full_with_readable_ca_starts),
         cmocka_unit_test(test_inferred_none_with_a_marker_but_no_anchor_refuses_to_start),
         cmocka_unit_test(test_explicit_none_with_a_marker_but_no_anchor_still_starts),
+        cmocka_unit_test(test_inferred_none_with_a_pending_delivered_ca_warns),
+        cmocka_unit_test(test_inferred_none_with_a_symlinked_delivered_ca_does_not_warn),
+        cmocka_unit_test(test_inferred_none_with_a_marker_does_not_probe_the_delivered_ca),
+        cmocka_unit_test(test_inferred_none_with_an_anchor_does_not_probe_the_delivered_ca),
         cmocka_unit_test(test_full_with_unparseable_ca_fails),
         cmocka_unit_test(test_full_with_a_two_certificate_bundle_starts),
         cmocka_unit_test(test_full_with_a_bundle_whose_second_block_is_corrupt_fails),
