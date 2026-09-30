@@ -127,6 +127,18 @@ engine embedded in wazuh-indexer), `ulimit -n` before the init script, or
 described in
 [File descriptor limits](../../configuration/manager/README.md#file-descriptor-limits).
 
+**Stack size.** The engine does not set the stack size of any of its threads.
+Every thread takes the soft `RLIMIT_STACK` the process was started with, read
+once at startup (`8 MiB` by default on Linux, inherited from systemd or from the
+shell that launches the process). The engine requires that limit to be
+**finite and at least `8 MiB`**. To set it, use a drop-in with `LimitSTACK=` for
+`wazuh-manager.service` (or `wazuh-indexer.service` for the engine embedded in
+wazuh-indexer), or `ulimit -s` before the init script. Do not set it to
+`infinity` (`unlimited`): with an unlimited limit glibc ignores it and gives each
+thread only `2 MiB`, below the requirement. The parsers limit their nesting to
+256 levels (see [Parser reference](ref-parser.md)), a bound sized for this
+minimum stack.
+
 #### Event Queue Management
 
 Control event queue sizing and processing rate limiting:

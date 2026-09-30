@@ -19647,6 +19647,7 @@ It is particularly useful for extracting structured data from stringified JSON r
 Upon invocation, the parser reads the input string and attempts to validate it as a proper JSON format.
 If the validation is successful, the input is transformed into a JSON object
 which is then assigned to the specified field. If the input is not valid JSON, the parser does not modify the output.
+Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
 
 
 ## Keywords
@@ -19769,6 +19770,7 @@ even the “separator” and “delimiting” tokens. If the quoting is not corr
 The “escaping” character is used to escape the “quoting” characters that are intended to be used as literal characters.
 This helper function is typically used in the map stage.
 Checks whether an input fits a keys-values list format and, if it does, such pairs of keys and values are stored as new fields of the event.
+Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
 
 
 ## Keywords
@@ -20900,6 +20902,7 @@ field: parse_xml(input_field, [...])
 This parser is designed to interpret and convert strings formatted in XML notation into a JSON object.
 It preserves the structure of the original XML in the default mode and provides a specialized
 transformation for Windows Event Log XML when the optional "windows" argument is used.
+Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
 
 
 ## Keywords

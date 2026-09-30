@@ -60,16 +60,29 @@ std::unordered_map<std::string_view, xmlModule> xmlModules = {
     {"windows", xmlWinModule},
 };
 
-void xmlToJson(pugi::xml_node& docXml, json::Json& docJson, const xmlModule& mod, const std::string& path = "")
+/**
+ * @brief Converts the element children of @p docXml into @p docJson, recursing into their children.
+ *
+ * @param depth Nesting level of the elements it walks: 1 for the children of the document. Every element counts,
+ * the Event skipped by the windows module included.
+ * @return false, leaving @p docJson partially converted, if an element is nested deeper than json::Json::MAX_DEPTH.
+ */
+bool xmlToJson(
+    pugi::xml_node& docXml, json::Json& docJson, const xmlModule& mod, const std::string& path, std::size_t depth)
 {
     // TODO: add array support
     // Iterate over the xml generating the corresponding json
     for (auto node : docXml.children())
     {
-        // Ignore text nodes as they are handled by the parent
-        if (node.type() == pugi::node_pcdata)
+        // Only elements are converted: text and CDATA nodes are handled by the parent (node.text())
+        if (node.type() != pugi::node_element)
         {
             continue;
+        }
+
+        if (depth > json::Json::MAX_DEPTH)
+        {
+            return false;
         }
 
         std::string localPath {path};
@@ -128,11 +141,13 @@ void xmlToJson(pugi::xml_node& docXml, json::Json& docJson, const xmlModule& mod
         }
 
         // Process children
-        if (!node.first_child().empty())
+        if (!node.first_child().empty() && !xmlToJson(node, docJson, mod, localPath, depth + 1))
         {
-            xmlToJson(node, docJson, mod, localPath);
+            return false;
         }
     }
+
+    return true;
 }
 
 Mapper getMapper(const json::Json& parsed, std::string_view targetField)
@@ -160,7 +175,14 @@ SemParser getSemParser(const std::string& targetField, xmlModule moduleFn)
             }
             return base::Error {};
         }
-        xmlToJson(xmlDoc, jParsed, moduleFn);
+        if (!xmlToJson(xmlDoc, jParsed, moduleFn, "", 1))
+        {
+            if (enableTrace)
+            {
+                return base::Error {fmt::format("XML {} ({})", json::Json::DEPTH_ERROR_MSG, json::Json::MAX_DEPTH)};
+            }
+            return base::Error {};
+        }
 
         if (targetField.empty())
         {

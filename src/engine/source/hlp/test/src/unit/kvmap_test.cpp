@@ -5,6 +5,27 @@
 auto constexpr NAME = "kvmapParser";
 static const std::string TARGET = "/TargetField";
 
+namespace
+{
+
+// Key of `segments` names k0..k{segments-1} joined by `sep`. The parser writes it under "/<key>", so with sep '.'
+// (value branch) or '/' the written path has `segments` tokens.
+std::string deepKey(std::size_t segments, char sep)
+{
+    std::string key;
+    for (std::size_t i = 0; i < segments; ++i)
+    {
+        if (i > 0)
+        {
+            key += sep;
+        }
+        key += fmt::format("k{}", i);
+    }
+    return key;
+}
+
+} // namespace
+
 INSTANTIATE_TEST_SUITE_P(
     KvBuild,
     HlpBuildTest,
@@ -366,6 +387,127 @@ INSTANTIATE_TEST_SUITE_P(
                j(fmt::format(R"({{"{}":{{"a":null,"b":"c"}}}})", TARGET.substr(1))),
                15,
                getKVParser,
-               {NAME, TARGET, {}, {"::=", " || ", "\"", "\\"}})
+               {NAME, TARGET, {}, {"::=", " || ", "\"", "\\"}}),
+
+        // Dots in the key nest the value; an empty value is written under the key as given (flat null).
+        ParseT(SUCCESS,
+               R"(a.b.c=v d.e=)",
+               j(fmt::format(R"({{"{}":{{"a":{{"b":{{"c":"v"}}}},"d.e":null}}}})", TARGET.substr(1))),
+               12,
+               getKVParser,
+               {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
+
+        // The pointer escape ~1 stays inside one token.
+        ParseT(SUCCESS,
+               R"(a~1b.c=v)",
+               j(fmt::format(R"({{"{}":{{"a/b":{{"c":"v"}}}}}})", TARGET.substr(1))),
+               8,
+               getKVParser,
+               {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
+
+        // Depth limit: a key with 256 dots and a value is written to a path of 257 tokens.
+        ParseT(FAILURE,
+               deepKey(257, '.') + "=v",
+               {},
+               deepKey(257, '.').size() + 2,
+               getKVParser,
+               {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
+
+        // Literal '/' in the key are tokens too: 256 of them reach 257 tokens.
+        ParseT(FAILURE,
+               deepKey(257, '/') + "=v",
+               {},
+               deepKey(257, '/').size() + 2,
+               getKVParser,
+               {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
+
+        // An empty value keeps the key unconverted, and its path of 257 '/' still exceeds the limit.
+        ParseT(FAILURE,
+               deepKey(257, '/') + "=",
+               {},
+               deepKey(257, '/').size() + 1,
+               getKVParser,
+               {NAME, TARGET, {}, {"=", " ", "'", "\\"}})
 
             ));
+
+namespace
+{
+
+hlp::parser::Parser depthParser()
+{
+    return getKVParser({NAME, TARGET, {}, {"=", " ", "'", "\\"}});
+}
+
+// Parses `input` and maps it into `event`, asserting that both phases succeed.
+void mapInto(const std::string& input, json::Json& event)
+{
+    auto result = depthParser()(input);
+    ASSERT_TRUE(result.success()) << result.trace();
+    ASSERT_TRUE(result.hasValue());
+    auto mapper = result.value().semParser(result.value().parsed, true);
+    ASSERT_TRUE(std::holds_alternative<hlp::parser::Mapper>(mapper)) << std::get<base::Error>(mapper).message;
+    event.setObject();
+    std::get<hlp::parser::Mapper>(mapper)(event);
+}
+
+} // namespace
+
+TEST(KvParserDepth, MaxDepthMaps)
+{
+    // 255 dots: 256 tokens, mapped nested
+    {
+        json::Json event;
+        ASSERT_NO_FATAL_FAILURE(mapInto(deepKey(256, '.') + "=v", event));
+        EXPECT_TRUE(event.equalsString(TARGET + "/" + deepKey(256, '/'), "v"));
+    }
+
+    // The escape ~1 does not add a token: 256 tokens, the first one is "a/b"
+    {
+        json::Json event;
+        ASSERT_NO_FATAL_FAILURE(mapInto("a~1b." + deepKey(255, '.') + "=v", event));
+        EXPECT_TRUE(event.equalsString(TARGET + "/a~1b/" + deepKey(255, '/'), "v"));
+        EXPECT_FALSE(event.exists(TARGET + "/a"));
+    }
+
+    // An empty value is written under the key as given: 256 dots are one token, a flat null
+    {
+        const auto key = deepKey(257, '.');
+        json::Json event;
+        ASSERT_NO_FATAL_FAILURE(mapInto(key + "=", event));
+        EXPECT_TRUE(event.isNull(TARGET + "/" + key));
+        EXPECT_EQ(event.size(TARGET), 1u);
+    }
+
+    // Empty-value branch at the exact boundary (D16): literal '/' in the key ARE tokens even for an empty
+    // value. 256 segments / 255 slashes reach 256 tokens under "/<key>" and map to a flat null; 257 (256
+    // slashes) is one token too many and is rejected (ParseT FAILURE + TraceNamesLimit above). This pins the
+    // empty branch's guard on its own: dropping it would let the 257-slash empty key through.
+    {
+        const auto key = deepKey(256, '/');
+        json::Json event;
+        ASSERT_NO_FATAL_FAILURE(mapInto(key + "=", event));
+        EXPECT_TRUE(event.isNull(TARGET + "/" + key));
+        EXPECT_EQ(event.size(TARGET), 1u);
+    }
+}
+
+TEST(KvParserDepth, TraceNamesLimit)
+{
+    const auto parser = depthParser();
+    // Value branch, empty-value branch, and a deep key between two valid pairs
+    for (const auto& input : {deepKey(257, '.') + "=v", deepKey(257, '/') + "=", "a=1 " + deepKey(257, '.') + "=v b=2"})
+    {
+        auto result = parser(input);
+        ASSERT_TRUE(result.success()) << result.trace();
+        ASSERT_TRUE(result.hasValue());
+
+        auto traced = result.value().semParser(result.value().parsed, true);
+        ASSERT_TRUE(std::holds_alternative<base::Error>(traced));
+        EXPECT_EQ(std::get<base::Error>(traced).message, "parse_key_value: key nesting depth exceeds the limit (256)");
+
+        auto untraced = result.value().semParser(result.value().parsed, false);
+        ASSERT_TRUE(std::holds_alternative<base::Error>(untraced));
+        EXPECT_TRUE(std::get<base::Error>(untraced).message.empty());
+    }
+}
