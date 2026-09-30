@@ -160,13 +160,15 @@ cJSON *getRemoteGlobalConfig(void);
 void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_storage * peer_info);
 
 /**
- * @brief Release a socket buffer slot.
+ * @brief Close a socket and release its receive and send slots in one critical section.
  *
- * @param buffer Network buffer.
- * @param sock Socket whose slot is released.
- * @return 1 if the slot was open and never associated with an agent, 0 otherwise.
+ * @param recv Receive network buffer.
+ * @param send Send network buffer.
+ * @param sock Socket to close.
+ * @param was_unassociated Set on success: 1 if the receive slot was open and never associated, 0 otherwise.
+ * @return close() result. On failure nothing is released and was_unassociated is not set.
  */
-int nb_close(netbuffer_t * buffer, int sock);
+int nb_close_socket(netbuffer_t * recv, netbuffer_t * send, int sock, int * was_unassociated);
 
 /**
  * @brief Mark an open socket buffer slot as associated with an agent.
