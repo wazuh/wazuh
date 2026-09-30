@@ -88,11 +88,16 @@ consumers degrade to "no container data" if it is not there.
 Three independent switches, and **all three are required** for container FIM:
 
 ```xml
-<!-- 1. The metadata module. Without this, nothing works. -->
-<container_instances>
-  <enabled>yes</enabled>
-  <docker><socket_path>/var/run/docker.sock</socket_path></docker>
-</container_instances>
+<!-- 1. The metadata module. Without this, nothing works.
+     One <container_instances> block per runtime integration, discriminated by
+     <type>; repeat the block for dual-runtime monitoring. -->
+<container_security>
+  <container_instances>
+    <enabled>yes</enabled>
+    <type>docker</type>
+    <socket_path>/var/run/docker.sock</socket_path>
+  </container_instances>
+</container_security>
 
 <syscheck>
   <!-- 2. Container FIM reads paths from container-TAGGED directories only. -->
