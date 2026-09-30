@@ -8,7 +8,7 @@ The Server API provides a RESTful interface for Wazuh manager operations, includ
 - **Configuration format:** YAML
 - **Security:** JWT authentication, RBAC authorization, TLS/SSL support
 
-For module overview and architecture, see [Server API Module](index.html).
+For module overview and architecture, see [Server API Module](README.md).
 
 ---
 
@@ -472,7 +472,7 @@ cors:
 
 ## See Also
 
-- [Server API Module](index.html) - Module overview and architecture
+- [Server API Module](README.md) - Module overview and architecture
 - [API Reference](api-reference.html) - Complete API endpoint documentation
 - [RBAC Configuration](../rbac/configuration.html) - Role-based access control
 - [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options

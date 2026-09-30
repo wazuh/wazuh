@@ -339,7 +339,7 @@ Rootcheck may also detect hidden processes with these variations:
 ```
 
 **Explanation:**
-- Port is actively listening and accepting connections
+- Port is in use (Rootcheck cannot `bind()` to it)
 - Port is not shown in netstat output (hidden from system administrators)
 - Strong indicator of kernel-level rootkit or compromised netstat binary
 - Common technique used by backdoors and rootkits to hide C2 channels
@@ -348,9 +348,12 @@ Rootcheck may also detect hidden processes with these variations:
 
 **Detection Method:**
 Rootcheck detects hidden ports by:
-1. Attempting to connect to commonly used backdoor ports
-2. Checking if netstat shows the listening port
-3. If connection succeeds but netstat doesn't show it, the port is hidden
+1. Iterating over every TCP port and then every UDP port, `0` to `65535` (not a fixed list of backdoor ports)
+2. Attempting to `bind()` each port; a failed bind means the port is in use
+3. For a port in use, checking whether `netstat -an` lists it; if it does not, checking both once more
+4. If the port still cannot be bound and netstat still does not show it, the port is reported as hidden
+
+The check is skipped when `netstat` is not available, and it stops after more than 20 hidden ports with an "Excessive number of ports hidden" alert.
 
 ---
 

@@ -32,13 +32,13 @@ Configuration reference for Wazuh agent components.
 
 | Module | XML Section | Internal Options |
 |--------|-------------|------------------|
-| [AWS](../../modules/integrations/index.html) | `<wodle name="aws-s3">` | - |
-| [Azure](../../modules/integrations/index.html) | `<wodle name="azure-logs">` | - |
-| [Docker](../../modules/integrations/index.html) | `<wodle name="docker-listener">` | - |
-| [GCP](../../modules/integrations/index.html) | `<gcp-pubsub>`, `<gcp-bucket>` | - |
-| [GitHub](../../modules/integrations/index.html) | `<github>` | - |
-| [MS Graph](../../modules/integrations/index.html) | `<ms-graph>` | - |
-| [Office 365](../../modules/integrations/index.html) | `<office365>` | - |
+| [AWS](../../modules/integrations/README.md) | `<wodle name="aws-s3">` | - |
+| [Azure](../../modules/integrations/README.md) | `<wodle name="azure-logs">` | - |
+| [Docker](../../modules/integrations/README.md) | `<wodle name="docker-listener">` | - |
+| [GCP](../../modules/integrations/README.md) | `<gcp-pubsub>`, `<gcp-bucket>` | - |
+| [GitHub](../../modules/integrations/README.md) | `<github>` | - |
+| [MS Graph](../../modules/integrations/README.md) | `<ms-graph>` | - |
+| [Office 365](../../modules/integrations/README.md) | `<office365>` | - |
 
 ---
 
@@ -117,4 +117,4 @@ new ceiling and logs the warning above. The drop-in restores the previous headro
 
 ---
 
-For comprehensive module documentation including architecture and implementation details, see [Modules Reference](../../modules/index.html).
+For comprehensive module documentation including architecture and implementation details, see [Modules Reference](../../modules/README.md).

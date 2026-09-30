@@ -6,7 +6,7 @@
 
 #### Requirements:
 1. Compiling tools (GCC and/or mingw)
-2. CMake (version 3.10 or higher)
+2. CMake (version 3.22.1 or higher)
 3. Wine (For executing winagent tests)
 4. CMocka (C Unit Testing Framework)
 
@@ -31,7 +31,7 @@ make TARGET=server|agent|winagent TEST=1
 ```
 
 #### Compile and run unit tests for Linux targets
-In order to run unit tests for either the Wazuh server or Linux agents, these need to be built using [CMake](#installing-cmake) version 3.10 or higher and [cmocka](#installing-cmocka).
+In order to run unit tests for either the Wazuh server or Linux agents, these need to be built using [CMake](#installing-cmake) version 3.22.1 or higher and [cmocka](#installing-cmocka).
 
 Navigate into `wazuh/src/unit_tests` and run the following commands:
 ```
@@ -56,7 +56,7 @@ cd syscheckd
 The output of the test will be written directly into the console.
 
 #### Compile and run unit tests for Windows agent
-Similarly to compiling unit tests for server or Linux agent configurations, [CMake](#installing-cmake) 3.10 or higher and [cmocka](#installing-cmocka) are required, as well as a 32 bit [wine installation](#installing-wine) in order to run the tests.
+Similarly to compiling unit tests for server or Linux agent configurations, [CMake](#installing-cmake) 3.22.1 or higher and [cmocka](#installing-cmocka) are required, as well as a 32 bit [wine installation](#installing-wine) in order to run the tests.
 
 Navigate into `wazuh/src/unit_tests` and run the following commands:
 ```
@@ -83,7 +83,7 @@ wine test_create_db.exe
 The output of the test will be written directly into the console.
 
 #### Compile and run unit tests for macOS agent
-Similarly to compiling unit tests for server or Linux agent configurations, [CMake](#installing-cmake) 3.10 or higher and [cmocka](#installing-cmocka) are required.
+Similarly to compiling unit tests for server or Linux agent configurations, [CMake](#installing-cmake) 3.22.1 or higher and [cmocka](#installing-cmocka) are required.
 
 Navigate into `wazuh/src/unit_tests` and run the following commands:
 ```
@@ -95,19 +95,21 @@ make
 ```
 The agent target for Wazuh must be compiled previously. The tests are run in the same way as Linux systems.
 
-If installing cmake using `apt-get` or `yum` yields a version lower the 3.10, remove it and run these commands to install from sources.
+#### Installing CMake
+If installing cmake using `apt-get` or `yum` yields a version lower than 3.22.1, remove it and run these commands to install from sources.
 
 ```
 mkdir ~/temp
 cd ~/temp
-wget https://cmake.org/files/v3.17/cmake-3.17.0-rc1.tar.gz
-tar -xzvf cmake-3.17.0-rc1.tar.gz
-cd cmake-3.17.0-rc1/
+wget https://cmake.org/files/v3.22/cmake-3.22.1.tar.gz
+tar -xzvf cmake-3.22.1.tar.gz
+cd cmake-3.22.1/
 ./bootstrap
 make
 sudo make install
 ```
 
+#### Installing cmocka
 The cmocka unit tests framework is required in order to compile and run the Wazuh unit tests suite. For server and Linux agent tests, a binary installation of cmocka using a package manager is enough. If you want to run the Windows agent tests, you will need to build cmocka using the MinGW compiler.
 
 1. Clone cmocka repository:
@@ -320,7 +322,7 @@ files are written in the `yaml` language and their names can follow the followin
 `test_{module}_endpoints.tavern.yaml` or `test_rbac_{rbac_mode}_{module}_endpoints.tavern.yaml`
 
 where `module` is the module which the endpoints tested belong; and `rbac_mode` is the RBAC mode (white or black) used
-for the test (see [RBAC API integration tests](#RBAC-API-integration-tests)).
+for the test (see [RBAC API integration tests](#rbac-api-integration-tests)).
 
 #### Docker environment
 
@@ -353,7 +355,7 @@ cleaning temporary folders, stopping and removing containers; and saving log and
 finished. The execution of `api_test` is done automatically thanks to the `pytest.fixture` decorator.
 
 In the `conftest.py` file, we can also find functions used to make the HTML report,
-configure [RBAC](#RBAC-API-integration-tests), etc.
+configure [RBAC](#rbac-api-integration-tests), etc.
 
 The environment is brought up automatically when running an API integration test. As seen in the table, the environment runs in **cluster** mode and tests are executed with `pytest`:
 
@@ -362,7 +364,7 @@ The environment is brought up automatically when running an API integration test
 | `pytest TEST_NAME`               | Wazuh cluster environment                            |
 
 
-Talking about [RBAC API integration tests](#RBAC-API-integration-tests), they don't have any marks, so there is no need
+Talking about [RBAC API integration tests](#rbac-api-integration-tests), they don't have any marks, so there is no need
 to specify one when running them. If a mark is specified, no tests will be run due to the filters. In other words,
 **RBAC tests are always going to be performed in the default cluster setup**.
 

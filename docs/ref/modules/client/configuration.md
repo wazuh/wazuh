@@ -10,7 +10,7 @@ Complete configuration reference for the Wazuh agent daemon (agentd).
 
 **Internal Options:** `agent.*`, `windows.*` (Windows only)
 
-For module overview and architecture, see [Client Module](index.html).
+For module overview and architecture, see [Client Module](README.md).
 
 ---
 
@@ -772,7 +772,7 @@ Full example with all sections:
 
 ## See Also
 
-- [Client Module](index.html) - Module overview and architecture
+- [Client Module](README.md) - Module overview and architecture
 - [Remoted Configuration](../remoted/configuration.md) - Manager-side agent listener configuration
 - [Centralized Configuration](../agent-management/centralized-configuration.md) - Group-based configuration
 - [Enrollment lifecycle](../authd/enrollment-lifecycle.md) - Agent registration, end to end

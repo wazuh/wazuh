@@ -4,7 +4,7 @@ Wazuh 5.0 introduces breaking changes to the manager configuration that require 
 
 This guide covers the four configuration files that changed between versions:
 
-- [`ossec.conf`](#osseconf--wazuh-managerconf) → `wazuh-manager.conf`
+- [`ossec.conf`](#ossecconf--wazuh-managerconf) → `wazuh-manager.conf`
 - [`internal_options.conf`](#internal_optionsconf--wazuh-manager-internal-optionsconf) → `wazuh-manager-internal-options.conf`
 - [`api.yaml`](#apiyaml)
 - [`cluster.json`](#clusterjson)

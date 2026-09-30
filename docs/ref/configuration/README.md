@@ -15,7 +15,7 @@ This section documents all Wazuh configuration files and settings.
 | `api.yaml` | REST API configuration (located in `api/configuration/`) |
 | `agent.conf` | Centralized agent configuration distributed to agents (in `shared/<group>/`) |
 
-See [Manager Configuration](manager/index.html) for detailed module references.
+See [Manager Configuration](manager/README.md) for detailed module references.
 
 ### Agent Configuration Files
 
@@ -27,7 +27,7 @@ See [Manager Configuration](manager/index.html) for detailed module references.
 | `internal_options.conf` | Internal tuning parameters for agent components |
 | `local_internal_options.conf` | User overrides for internal options (takes precedence) |
 
-See [Agent Configuration](agent/index.html) for detailed module references.
+See [Agent Configuration](agent/README.md) for detailed module references.
 
 ### Centralized Configuration
 
@@ -39,12 +39,12 @@ See [Agent Management - Centralized Configuration](../modules/agent-management/c
 
 ## Quick Navigation
 
-- [Manager Configuration](manager/index.html) - Configuration for manager components
-- [Agent Configuration](agent/index.html) - Configuration for agent components
+- [Manager Configuration](manager/README.md) - Configuration for manager components
+- [Agent Configuration](agent/README.md) - Configuration for agent components
 - [Centralized Configuration](../modules/agent-management/centralized-configuration.md) - Group-based agent configuration distribution
 
 ---
 
 ## Configuration by Module
 
-For comprehensive module documentation including architecture, events, and database schemas, see [Modules Reference](../modules/index.html).
+For comprehensive module documentation including architecture, events, and database schemas, see [Modules Reference](../modules/README.md).

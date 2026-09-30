@@ -26,4 +26,4 @@ Database sync is configured exclusively through internal options. See [Configura
 ## See Also
 
 - [Configuration](configuration.md) - Internal options reference
-- [Wazuh DB](../wazuh_db/index.html) - Database management module
+- [Wazuh DB](../wazuh_db/README.md) - Database management module

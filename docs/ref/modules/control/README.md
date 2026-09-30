@@ -197,4 +197,4 @@ result = core_restart_agents(agents_chunk=agent_ids, request_time=request_time)
 
 - [Manager Installation](../../getting-started/installation.md) - Manager installation and systemctl usage
 - [Server API Reference](../server-api/api-reference.md) - API endpoints that use the control channel
-- [RBAC](../rbac/index.html) - `agent:reload` and `agent:restart` RBAC actions
+- [RBAC](../rbac/README.md) - `agent:reload` and `agent:restart` RBAC actions

@@ -4,7 +4,7 @@ Complete configuration reference for the Indexer Connector module.
 
 The Indexer Connector manages the connection between the Wazuh manager and the Wazuh Indexer (OpenSearch), providing secure communication for indexing alerts, vulnerabilities, and agent inventory data.
 
-For module overview and architecture, see [Indexer Connector Module](index.html).
+For module overview and architecture, see [Indexer Connector Module](README.md).
 
 ---
 
@@ -88,7 +88,7 @@ echo '<password>' | wazuh-manager-keystore -f indexer -k password
 
 The Indexer Connector reads these values automatically at startup from the `indexer` column family in the keystore.
 
-For full keystore usage, see [Keystore Module](../keystore/index.html).
+For full keystore usage, see [Keystore Module](../keystore/README.md).
 
 ---
 
@@ -320,6 +320,6 @@ The connector uses round-robin load balancing across configured hosts. For optim
 
 ## See Also
 
-- [Indexer Connector Module](index.html) - Module overview and architecture
+- [Indexer Connector Module](README.md) - Module overview and architecture
 - [Vulnerability Scanner Configuration](../vulnerability-scanner/configuration.md) - Uses Indexer connection for feeds
 - [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options

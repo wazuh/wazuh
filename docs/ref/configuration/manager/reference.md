@@ -22,9 +22,9 @@ with a unit suffix (`s`, `m`, `h`, `d`, `w`); sizes accept bytes or a `B`/`K`/`M
 - [`remote`](#remote)
 - [`auth`](#auth)
 - [`wdb`](#wdb)
-- [`vulnerability-detection`](#vulnerabilitydetection)
+- [`vulnerability-detection`](#vulnerability-detection)
 - [`indexer`](#indexer) — **required**
-- [`task-manager`](#taskmanager)
+- [`task-manager`](#task-manager)
 - [`cluster`](#cluster) — **required**
 
 ## `global`

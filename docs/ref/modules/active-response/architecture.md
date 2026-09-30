@@ -547,10 +547,27 @@ Active Response uses a metadata-driven approach where all execution metadata is 
 `ExecdRun()` function in `os_execd/src/execd.c` extracts metadata directly from the JSON message:
 
 ```c
-// Extract metadata directly from JSON
-exec_cmd = cJSON_GetObjectItem(json_root, "executable")->valuestring;
-timeout = cJSON_GetObjectItem(json_root, "timeout")->valueint;
+/* Get executable name and AR metadata from wazuh.active_response */
+cJSON *json_wazuh = cJSON_GetObjectItem(json_root, "wazuh");
+cJSON *json_ar = cJSON_GetObjectItem(json_wazuh, "active_response");
+cJSON *json_executable = cJSON_GetObjectItem(json_ar, "executable");
+name = json_executable->valuestring;
+
+/* Determine timeout from AR type metadata */
+cJSON *json_ar_type = cJSON_GetObjectItem(json_ar, "type");
+cJSON *json_stateful_timeout = cJSON_GetObjectItem(json_ar, "stateful_timeout");
+
+if (cJSON_IsString(json_ar_type) && strcmp(json_ar_type->valuestring, "stateful") == 0) {
+    timeout_value = cJSON_IsNumber(json_stateful_timeout) ? (int)json_stateful_timeout->valuedouble : 0;
+} else {
+    timeout_value = 0;
+}
 ```
+
+(Type checks and error handling omitted: a message whose `wazuh` or `wazuh.active_response` is not an
+object, or whose `executable` is not a non-empty string, is logged and dropped.) The executable is
+resolved under the agent's `active-response/bin/` directory and rejected if it references a parent folder.
+A `stateful` response with a missing or zero `stateful_timeout` is run once and treated as stateless.
 
 This approach eliminates the need for configuration lookups and reduces agent-side complexity.
 
@@ -677,4 +694,4 @@ IP blocking scripts implement safety measures:
 - [Executables Reference](executables.md) - Detailed executable inventory
 - [Server architecture, flow 4](../../architecture.md) - Where Active Response sits among the manager daemons
 - [Task Manager](../task_manager/README.md) - Agent task storage and delivery
-- [Control Module](../control/index.html) - Agent restart/reload (separated in v5.0)
+- [Control Module](../control/README.md) - Agent restart/reload (separated in v5.0)

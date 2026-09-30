@@ -163,7 +163,7 @@ normalize:
       - wazuh.threat.groups: array_append(auth)
 ```
 
-The decoder only proceeds when `source.user.name` is **not** a key in the `authorized_ed users are silently dropped at the `check` stage.
+The decoder only proceeds when `source.user.name` is **not** a key in the `authorized_users` KVDB; matched (authorized) users are silently dropped at the `check` stage.
 
 #### Example: key lookup with value check
 

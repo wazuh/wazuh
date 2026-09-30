@@ -196,13 +196,13 @@ This will generate the MSI installer package.
 
 ### Installation
 
-Once the package is generated, install it using the command line with the server address and the required registration password:
+Once the package is generated, install it using the command line with an enrollment token:
 
 ```batch
-wazuh-agent-*.msi /q WAZUH_MANAGER="10.0.0.2" WAZUH_REGISTRATION_PASSWORD="<PASSWORD>"
+wazuh-agent-*.msi /q WAZUH_ENROLLMENT_TOKEN="<TOKEN>"
 ```
 
-**Important**: Replace `10.0.0.2` with the correct server IP address, and `<PASSWORD>` with the registration password retrieved from the manager (e.g., from `/var/wazuh-manager/etc/authd.pass`).
+**Important**: Replace `<TOKEN>` with an enrollment token minted on the manager (`sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <host>`). The token carries the manager address, so no separate address property is needed. `WAZUH_MANAGER` and `WAZUH_REGISTRATION_PASSWORD` were removed in 5.0: they are ignored, and an install without a token completes with no manager configured.
 
 For more installation options, see the [Installation](../ref/getting-started/installation.md#windows) guide.
 
