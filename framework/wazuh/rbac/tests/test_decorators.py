@@ -599,3 +599,33 @@ def test_mask_sensitive_config_raw_xml_escaped_less_than(db_setup):
         return '<ossec_config><fluent-forward><password>ab\\<cd</password></fluent-forward></ossec_config>'
 
     assert get_conf_raw() == '<ossec_config><fluent-forward><password>*****</password></fluent-forward></ossec_config>'
+
+
+@pytest.mark.parametrize('disabled, perms, expected', [
+    (True, {}, True),
+    (True, {'manager:update_config': {'*:*:*': 'deny'}}, False),
+    (True, {'cluster:update_config': {'node:id:*': 'deny'}}, True),
+    (False, {}, True),
+    (False, {'cluster:update_config': {'node:id:*': 'deny'}}, False),
+    (False, {'cluster:update_config': {'node:id:master-node': 'deny'}}, False),
+    (False, {'cluster:update_config': {'node:id:worker1': 'deny'}}, True),
+    (False, {'manager:update_config': {'*:*:*': 'deny'}}, True),
+])
+def test_has_update_permissions_black_mode(db_setup, disabled, perms, expected):
+    """In black mode the mask follows the permission update_ossec_conf checks, granted unless a policy denies it."""
+    db_setup.rbac.set({'rbac_mode': 'black', **perms})
+    with patch.object(db_setup, 'read_config', return_value={'disabled': disabled, 'node_name': 'master-node'}):
+        assert db_setup._has_update_permissions() is expected
+
+
+def test_mask_sensitive_config_raw_xml_black_mode_without_deny(db_setup):
+    """A black mode user that may update the configuration reads it unmasked, so saving it back keeps the values."""
+    db_setup.rbac.set({'rbac_mode': 'black'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return _XML_WITH_CREDENTIALS
+
+    with patch.object(db_setup, 'read_config', return_value={'disabled': True, 'node_name': 'node01'}):
+        assert get_conf_raw() == _XML_WITH_CREDENTIALS
+

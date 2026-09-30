@@ -8,6 +8,7 @@ from collections import defaultdict
 from functools import wraps
 
 from wazuh.core.agent import get_agents_info, get_groups, expand_group
+from wazuh.core.cluster.utils import read_config
 from wazuh.core.common import rbac, broadcast, cluster_nodes
 from wazuh.core.exception import WazuhPermissionError
 from wazuh.core.results import AbstractWazuhResult, AffectedItemsWazuhResult
@@ -528,8 +529,8 @@ def _has_update_permissions(update_actions: list = None, update_resources: list 
     Returns
     -------
     bool
-        True if user has 'manager:update_config' or 'cluster:update_config', or `update_actions` on every
-        requested resource when given, False otherwise.
+        True if user has 'manager:update_config' or 'cluster:update_config' (in black mode, if no policy denies
+        them), or `update_actions` on every requested resource when given, False otherwise.
     """
     perms = rbac.get() or {}
     if update_actions:
@@ -549,6 +550,17 @@ def _has_update_permissions(update_actions: list = None, update_resources: list 
         action_map = perms.get(action)
         if isinstance(action_map, dict) and any(effect == 'allow' for effect in action_map.values()):
             return True
+    # In black mode an action no policy denies is allowed, so resolve the permission update_ossec_conf checks:
+    # cluster:update_config over the local node when the cluster is enabled, manager:update_config otherwise
+    if perms.get('rbac_mode') == 'black':
+        try:
+            cluster_config = read_config()
+            required = {'manager:update_config': ['*:*:*']} if cluster_config['disabled'] else \
+                {'cluster:update_config': [f"node:id:{cluster_config['node_name']}"]}
+            allow = _match_permissions(req_permissions=required, rbac_mode='black')
+        except Exception:
+            return False
+        return any(allow.values())
     return False
 
 
