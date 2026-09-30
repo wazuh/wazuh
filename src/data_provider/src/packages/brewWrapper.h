@@ -13,6 +13,7 @@
 #define _BREW_WRAPPER_H
 
 #include "ipackageWrapper.h"
+#include <optional>
 #include "sharedDefs.h"
 #include "stringHelper.h"
 #include <filesystem_wrapper.hpp>
@@ -31,7 +32,7 @@ class BrewWrapper final : public IPackageWrapper
             , m_source{"homebrew"}
             , m_location{ctx.filePath}
             , m_priority{UNKNOWN_VALUE}
-            , m_size{0}
+            , m_size{std::nullopt}
             , m_vendor{UNKNOWN_VALUE}
             , m_installTime{UNKNOWN_VALUE}
         {
@@ -41,6 +42,16 @@ class BrewWrapper final : public IPackageWrapper
 
             const file_system::FileSystemWrapper fs;
             const file_io::FileIOUtils ioUtils;
+
+            // An empty result means the walk could not establish a size: an error, the entry cap
+            // or the deadline. It stays unknown rather than becoming zero, so a scan that fails to
+            // measure does not overwrite the size a previous scan established.
+            const auto measured {fs.directory_size(packagePath, PACKAGE_SIZE_MAX_ENTRIES, PACKAGE_SIZE_DEADLINE)};
+
+            if (measured.has_value())
+            {
+                m_size = static_cast<int64_t>(*measured);
+            }
 
             // Try modern INSTALL_RECEIPT.json format first (Homebrew 2.0+)
             if (fs.is_regular_file(installReceiptPath))
@@ -165,7 +176,7 @@ class BrewWrapper final : public IPackageWrapper
             return m_priority;
         }
 
-        int64_t size() const override
+        std::optional<int64_t> size() const override
         {
             return m_size;
         }
@@ -190,7 +201,7 @@ class BrewWrapper final : public IPackageWrapper
         const std::string m_source;
         const std::string m_location;
         std::string m_priority;
-        int64_t m_size;
+        std::optional<int64_t> m_size;
         std::string m_vendor;
         std::string m_installTime;
         std::string m_multiarch;

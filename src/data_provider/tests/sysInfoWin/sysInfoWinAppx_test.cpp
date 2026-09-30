@@ -10,6 +10,7 @@
  */
 
 #include <algorithm>
+#include <optional>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -202,6 +203,19 @@ class SysInfoWinAppxTest : public ::testing::Test
 };
 
 constexpr auto PYTHON_PACKAGE { "PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0" };
+
+TEST_F(SysInfoWinAppxTest, SizeIsUnknownRatherThanZero)
+{
+    loadPythonStorePackage(PYTHON_PACKAGE, true);
+
+    TestAppxWrapper wrapper(HKEY_USERS, TEST_USER_SID, PYTHON_PACKAGE, {});
+
+    // A Store package publishes no installed size. Reporting 0 would be indistinguishable
+    // from a package that genuinely occupies nothing, and writing it on every scan would
+    // overwrite whatever a future source establishes. Absent is the honest answer.
+    EXPECT_EQ(wrapper.size(), std::nullopt);
+    EXPECT_NE(wrapper.size(), 0);
+}
 
 TEST_F(SysInfoWinAppxTest, MultiApplicationPackageUsesDisplayName)
 {

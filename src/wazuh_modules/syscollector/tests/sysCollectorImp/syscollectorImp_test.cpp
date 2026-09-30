@@ -393,7 +393,7 @@ static const auto expectedPersistProcess
 };
 static const auto expectedPersistPackage
 {
-    R"({"checksum":{"hash":{"sha1":"403cf592e642409153762c635d50c05415f74dc0"}},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}})"
+    R"({"checksum":{"hash":{"sha1":"ca4acded6b5f748d7b812b535877b56fc2f9365e"}},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}})"
 };
 static const auto expectedPersistHotfix
 {
@@ -4680,6 +4680,233 @@ TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
     }
 
     // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
+TEST_F(SyscollectorImpTest, packageWithoutSizeKeepsTheStoredSizeInThePersistedDocument)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    // First scan measures the package. Later scans fail to measure it and, in the same scan, the
+    // vendor changes. The row is therefore modified, and the document sent to the inventory is
+    // built only from what that scan carried. Without the stored size being put back, the document
+    // would report no size while the database still holds 4558446240, and no later scan would
+    // correct it because the measurement then matches what is stored.
+    const std::string measured =
+        R"({"architecture":"amd64","category":"x11","name":"xserver-xorg","priority":"optional","size":4558446240,"source":"xorg","vendor":"before","version_":"1:7.7+19ubuntu14","type":"deb","path":" "})";
+    const std::string unmeasuredAndChanged =
+        R"({"architecture":"amd64","category":"x11","name":"xserver-xorg","priority":"optional","source":"xorg","vendor":"after","version_":"1:7.7+19ubuntu14","type":"deb","path":" "})";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    std::atomic<int> scanCount{0};
+    EXPECT_CALL(*spInfoWrapper, packages(_))
+    .WillOnce(testing::Invoke([&measured, &scanCount](std::function<void(nlohmann::json&)> callback)
+    {
+        ++scanCount;
+        auto item = nlohmann::json::parse(measured);
+        callback(item);
+    }))
+    .WillRepeatedly(testing::Invoke([&unmeasuredAndChanged, &scanCount](std::function<void(nlohmann::json&)> callback)
+    {
+        ++scanCount;
+        auto item = nlohmann::json::parse(unmeasuredAndChanged);
+        callback(item);
+    }));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::mutex sizesMutex;
+    std::vector<nlohmann::json> reportedSizes;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist, &sizesMutex, &reportedSizes](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            if (index == "wazuh-states-inventory-packages")
+            {
+                auto jsonData = nlohmann::json::parse(data);
+                std::lock_guard<std::mutex> lock{sizesMutex};
+                reportedSizes.push_back(jsonData["package"]["size"]);
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    EXPECT_CALL(wrapperDelta, callbackMock(testing::_)).Times(testing::AnyNumber());
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, testing::_, testing::_)).Times(testing::AnyNumber());
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          1, true, false, false, false, true, false, false, false, false, false, false, false, false, false);
+
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    {
+        std::lock_guard<std::mutex> lock{sizesMutex};
+        // Without a second report the check would pass by never having exercised the case.
+        ASSERT_GE(scanCount.load(), 2) << "only " << scanCount.load() << " scan(s) ran";
+        ASSERT_GE(reportedSizes.size(), 2u)
+                << "the package was reported " << reportedSizes.size()
+                << " time(s); the scan that omits the size must still report the modified row";
+
+        for (size_t i = 0; i < reportedSizes.size(); ++i)
+        {
+            EXPECT_FALSE(reportedSizes[i].is_null())
+                    << "report " << i << " carries no size, although the stored one was 4558446240";
+            EXPECT_EQ(reportedSizes[i], 4558446240)
+                    << "report " << i << " carries " << reportedSizes[i].dump()
+                    << " instead of the stored size";
+        }
+    }
+
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
+TEST_F(SyscollectorImpTest, packageWithoutSizeRaisesNoChangeEvent)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    // First scan measures the package. Every later scan fails to measure it and leaves the key
+    // out, which is what a collector does when the walk cannot establish a size. Nothing about
+    // the package changed, so no change event may be raised: the size takes no part in the
+    // checksum, and an absent column is not compared.
+    const std::string withSize =
+        R"({"architecture":"amd64","category":"x11","name":"xserver-xorg","priority":"optional","size":4558446240,"source":"xorg","version_":"1:7.7+19ubuntu14","type":"deb","path":" "})";
+    const std::string withoutSize =
+        R"({"architecture":"amd64","category":"x11","name":"xserver-xorg","priority":"optional","source":"xorg","version_":"1:7.7+19ubuntu14","type":"deb","path":" "})";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    std::atomic<int> scanCount{0};
+    EXPECT_CALL(*spInfoWrapper, packages(_))
+    .WillOnce(testing::Invoke([&withSize, &scanCount](std::function<void(nlohmann::json&)> callback)
+    {
+        ++scanCount;
+        auto item = nlohmann::json::parse(withSize);
+        callback(item);
+    }))
+    .WillRepeatedly(testing::Invoke([&withoutSize, &scanCount](std::function<void(nlohmann::json&)> callback)
+    {
+        ++scanCount;
+        auto item = nlohmann::json::parse(withoutSize);
+        callback(item);
+    }));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::mutex versionsMutex;
+    std::vector<uint64_t> packageVersions;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist, &versionsMutex, &packageVersions](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            if (index == "wazuh-states-inventory-packages")
+            {
+                std::lock_guard<std::mutex> lock{versionsMutex};
+                packageVersions.push_back(version);
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    EXPECT_CALL(wrapperDelta, callbackMock(testing::_)).Times(testing::AnyNumber());
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, testing::_, testing::_)).Times(testing::AnyNumber());
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          1, true, false, false, false, true, false, false, false, false, false, false, false, false, false);
+
+            Syscollector::instance().initSyncProtocol("syscollector", ":memory:", ":memory:", 86400);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    {
+        std::lock_guard<std::mutex> lock{versionsMutex};
+        // Without several scans the check would pass by never having exercised the omission.
+        ASSERT_GE(scanCount.load(), 2) << "only " << scanCount.load() << " scan(s) ran";
+        // The package is reported once, when it is inserted. Every later scan omits the size and
+        // changes nothing else, so it must not be reported again.
+        EXPECT_EQ(packageVersions.size(), 1u)
+                << "the package was reported " << packageVersions.size()
+                << " times across " << scanCount.load() << " scans: omitting the size modified it";
+    }
+
     SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 }
 

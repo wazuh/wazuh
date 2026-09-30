@@ -34,7 +34,17 @@ void WindowsPackageImpl::buildPackageData(nlohmann::json& package)
     package["architecture"] = m_packageWrapper->architecture();
     package["category"] = m_packageWrapper->groups();
     package["description"] = m_packageWrapper->description();
-    package["size"] = m_packageWrapper->size();
+    // An unknown size leaves the key out of the document entirely. The sync layer only
+    // compares and updates columns that are present, so omitting it keeps whatever a previous
+    // scan established instead of overwriting it with a zero that would churn the checksum and
+    // surface as a transient null.
+    const auto packageSize {m_packageWrapper->size()};
+
+    if (packageSize.has_value())
+    {
+        package["size"] = *packageSize;
+    }
+
     package["priority"] = m_packageWrapper->priority();
     package["source"] = m_packageWrapper->source();
     package["type"] = m_packageWrapper->format();

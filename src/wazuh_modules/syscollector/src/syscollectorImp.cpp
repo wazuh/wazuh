@@ -213,6 +213,11 @@ static std::string getItemChecksum(const nlohmann::json& item)
 static const std::map<std::string, std::vector<std::string>> VOLATILE_FIELDS_BY_TABLE
 {
     {HW_TABLE, {"memory_free", "memory_used"}},
+    // A package's size is measured by walking its files, so it can come back different, or not
+    // at all, without the package having changed: a file removed mid-walk, an entry cap or a
+    // deadline. Keeping it out of the checksum means such a scan neither reports a change nor
+    // overwrites the stored value, while the state document still carries the latest reading.
+    {PACKAGES_TABLE, {"size"}},
     {PROCESSES_TABLE, {"utime", "stime"}},
     {
         NET_IFACE_TABLE,
@@ -224,6 +229,30 @@ static const std::map<std::string, std::vector<std::string>> VOLATILE_FIELDS_BY_
         }
     }
 };
+
+// The columns that identify a package row, in the order the table declares them.
+static const std::vector<std::string> PACKAGE_KEY_FIELDS {"name", "version_", "architecture", "type", "path"};
+
+// A package row's identity as one string, so a stored size can be looked up for the row a scan
+// is about to report. Values are separated by a character that cannot appear in any of them.
+static std::string packageKey(const nlohmann::json& row)
+{
+    std::string key;
+
+    for (const auto& field : PACKAGE_KEY_FIELDS)
+    {
+        const auto it {row.find(field)};
+
+        if (it != row.end() && it->is_string())
+        {
+            key += it->get<std::string>();
+        }
+
+        key += '\x01';
+    }
+
+    return key;
+}
 
 static void eraseVolatileFields(nlohmann::json& item, const std::string& table)
 {
@@ -1739,6 +1768,52 @@ void Syscollector::scanPackages()
     {
         m_logFunction(LOG_DEBUG_VERBOSE, "Starting packages scan");
 
+        // A scan that cannot measure a package's size leaves the value out, so the stored one is
+        // kept. The record reported to the inventory is built only from what the scan carried,
+        // though, so leaving it out there would report the package as having no size while the
+        // database still holds the real one, and no later scan would correct it. The sizes already
+        // known are therefore read once here and put back into any record that arrives without one.
+        // This runs before the transaction opens: reading the same tables from inside it would be
+        // querying a database that is midway through being written.
+        std::map<std::string, int64_t> knownSizes;
+        {
+            auto sizeQuery = SelectQuery::builder()
+                             .table(PACKAGES_TABLE)
+                             .columnList({"name", "version_", "architecture", "type", "path", "size"})
+                             .build();
+
+            const auto sizeCallback
+            {
+                [&knownSizes](ReturnTypeCallback returnType, const nlohmann::json & row)
+                {
+                    if (SELECTED == returnType)
+                    {
+                        const auto it {row.find("size")};
+
+                        if (it != row.end() && it->is_number())
+                        {
+                            knownSizes[packageKey(row)] = it->get<int64_t>();
+                        }
+                    }
+                }
+            };
+
+            try
+            {
+                m_spDBSync->selectRows(sizeQuery.query(), sizeCallback);
+            }
+            // LCOV_EXCL_START
+            catch (const std::exception& ex)
+            {
+                // Without the stored sizes a package that cannot be measured reports none, which is
+                // the behaviour this guards against, so say so rather than fail the whole scan.
+                m_logFunction(LOG_WARNING,
+                              std::string{"Could not read the stored package sizes: "} + ex.what());
+            }
+
+            // LCOV_EXCL_STOP
+        }
+
         const auto callback
         {
             [this](ReturnTypeCallback result, const nlohmann::json & data)
@@ -1754,12 +1829,15 @@ void Syscollector::scanPackages()
             QUEUE_SIZE,
             callback
         };
-        m_spInfo->packages([this, &txn](nlohmann::json & rawData)
+        m_spInfo->packages([this, &txn, &knownSizes](nlohmann::json & rawData)
         {
             nlohmann::json input;
 
             sanitizeJsonValue(rawData);
-            rawData["checksum"] = getItemChecksum(rawData);
+
+            auto checksumInput = rawData;
+            eraseVolatileFields(checksumInput, PACKAGES_TABLE);
+            rawData["checksum"] = getItemChecksum(checksumInput);
 
             input["table"] = PACKAGES_TABLE;
             m_spNormalizer->normalize("packages", rawData);
@@ -1767,6 +1845,23 @@ void Syscollector::scanPackages()
 
             if (!rawData.empty())
             {
+                // Inside this guard on purpose: removeExcluded empties the row for a package the
+                // configuration excludes, and putting a size into an emptied row would report a
+                // package that should not be reported at all. After normalising, too, because that
+                // is what decides the values the row is stored under, so the identity used for the
+                // lookup has to be the normalised one. Restoring the stored size changes nothing
+                // the database compares, since it is the value already held, but it keeps the
+                // reported record truthful.
+                if (!rawData.contains("size"))
+                {
+                    const auto known {knownSizes.find(packageKey(rawData))};
+
+                    if (known != knownSizes.end())
+                    {
+                        rawData["size"] = known->second;
+                    }
+                }
+
                 input["data"] = nlohmann::json::array( { rawData } );
                 input["options"]["return_old_data"] = true;
 
