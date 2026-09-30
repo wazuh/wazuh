@@ -409,6 +409,59 @@ def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary(mock_socket_conn)
     assert all(x['os']['name'] == 'N/A' for x in result['items'])
 
 
+@patch('socket.socket.connect')
+def test_WazuhDBQueryGroupByAgents_keeps_agents_protected_fields(mock_socket_conn):
+    """The GROUP BY constructor must not reset the fields WazuhDBQueryAgents protects or parses as dates."""
+    query_group = WazuhDBQueryGroupByAgents(filter_fields=None, offset=0, limit=None, sort=None, search=None,
+                                            select=None, query='', count=True, get_data=True)
+
+    assert query_group.extra_fields == {'internal_key'}
+    assert query_group.date_fields == {'lastKeepAlive', 'dateAdd'}
+
+
+@pytest.mark.parametrize('kwargs, code', [
+    ({'filter_fields': ['internal_key'], 'select': ['internal_key']}, 1724),
+    ({'filter_fields': ['name', 'internal_key'], 'select': ['name', 'internal_key']}, 1724),
+    ({'sort': {'fields': ['internal_key'], 'order': 'asc'}}, 1403),
+    ({'query': 'internal_key=test'}, 1408),
+])
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_WazuhDBQueryGroupByAgents_rejects_internal_key(mock_socket_conn, send_mock, kwargs, code):
+    """The agent key cannot be selected, sorted or filtered by through the GROUP BY query."""
+    params = {'filter_fields': ['name'], 'offset': 0, 'limit': None, 'sort': None, 'search': None,
+              'select': ['name'], 'query': '', 'count': True, 'get_data': True} | kwargs
+    query_group = WazuhDBQueryGroupByAgents(**params)
+
+    with pytest.raises(WazuhError, match=f'.* {code} .*'):
+        query_group.run()
+
+
+@pytest.mark.parametrize('negation', [True, False])
+@patch('socket.socket.connect')
+def test_WazuhDBQueryGroupByAgents_add_search_to_query_skips_internal_key(mock_socket_conn, negation):
+    """Search through the GROUP BY query never matches on the agent key."""
+    query_group = WazuhDBQueryGroupByAgents(filter_fields=None, offset=0, limit=None, sort=None,
+                                            search={'value': 'test', 'negation': negation}, select=None,
+                                            query='', count=True, get_data=True)
+    query_group._add_search_to_query()
+
+    assert 'internal_key' not in query_group.query, 'Search must not match on the agent key'
+
+
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_WazuhDBQueryGroupByAgents_default_fields_omit_internal_key(mock_socket_conn, send_mock):
+    """Without fields, the GROUP BY query returns every column except the agent key."""
+    query_group = WazuhDBQueryGroupByAgents(filter_fields=None, offset=0, limit=None, sort=None, search=None,
+                                            select=None, query='', count=True, get_data=True)
+    result = query_group.run()
+
+    assert result['items'], 'Expected at least one group'
+    assert all('internal_key' not in item for item in result['items'])
+    assert all('name' in item for item in result['items'])
+
+
 @pytest.mark.parametrize('filter_fields, expected_response', [
     (['os.major'], [{'os': {'major': '18'}, 'count': 2}, {'os': {'major': '16'}, 'count': 1},
                     {'os': {'major': 'N/A'}, 'count': 2}, {'os': {'major': '5'}, 'count': 2},

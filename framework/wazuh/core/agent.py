@@ -582,6 +582,8 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
             filter_fields=filter_fields,
             default_sort_field=self.default_sort_field,
             backend=self.backend,
+            date_fields=self.date_fields,
+            extra_fields=self.extra_fields,
             **kwargs,
         )
         self.remove_extra_fields = True
