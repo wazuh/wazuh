@@ -1515,7 +1515,7 @@ async def get_agent_no_group(pretty: bool = False, wait_for_complete: bool = Fal
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'q': 'group=null' + (';' + q if q else '')}
+                'q': 'group=null' + (f';({q})' if q else '')}
 
     dapi = DistributedAPI(f=agent.get_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
