@@ -415,10 +415,11 @@ sudo /Library/Ossec/bin/wazuh-control status
 
 ### Windows
 
-Upgrade the package:
+Upgrade the package from the folder that holds the new MSI. PowerShell does not expand wildcards for `msiexec.exe`, so the first line resolves the package to its full path. Keep only the new `wazuh-agent-*.msi` in that folder, or set `$msi` to its full path:
 
 ```powershell
-wazuh-agent-*.msi /q
+$msi = (Get-Item .\wazuh-agent-*.msi).FullName
+msiexec.exe /i $msi /q
 ```
 
 Verify the agent is running:
