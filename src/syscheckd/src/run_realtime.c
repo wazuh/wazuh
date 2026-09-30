@@ -62,7 +62,7 @@ int fim_add_inotify_watch(const char *dir, const directory_t *configuration) {
     /* Check if it is ready to use */
     w_mutex_lock(&syscheck.fim_realtime_mutex);
 
-    if (syscheck.realtime->fd < 0) {
+    if (syscheck.realtime == NULL || syscheck.realtime->fd < 0) {
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
         return (-1);
     } else {
