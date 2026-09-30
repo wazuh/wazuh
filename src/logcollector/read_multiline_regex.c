@@ -106,14 +106,19 @@ STATIC int multiline_getlog_end(char * buffer, int length, FILE * stream, w_mult
 STATIC int multiline_getlog_all(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
 
 /**
- * @brief Get specific chunk of file between two positions
+ * @brief Feed the file bytes between two positions to a hash context, in blocks of at most OS_MAXSTR bytes
+ *
+ * The memory used does not depend on the distance between the positions. As the span is hashed as a
+ * NUL-terminated string, the bytes after the first NUL of the span are read but not hashed.
+ * On success the stream is left at `final_pos`.
  *
  * @param stream File stream
+ * @param context Hash context to update. If NULL, the span is read but not hashed.
  * @param initial_pos initial position
  * @param final_pos final position
- * @return allocated buffer containing the readed chunk. NULL on error
+ * @return true if the whole span was read. false on error
  */
-STATIC char * get_file_chunk(FILE * stream, int64_t initial_pos, int64_t final_pos);
+STATIC bool hash_file_span(FILE * stream, EVP_MD_CTX * context, int64_t initial_pos, int64_t final_pos);
 
 /* Misc functions */
 
@@ -139,7 +144,6 @@ void * read_multiline_regex(logreader * lf, int * rc, int drop_it) {
     /* Continue from last read line */
     EVP_MD_CTX *context = NULL;
     int64_t initial_pos;
-    char * raw_data = NULL;
 
     if (can_read() == 0) {
         return NULL;
@@ -168,16 +172,7 @@ void * read_multiline_regex(logreader * lf, int * rc, int drop_it) {
         initial_pos = lf->multiline->offset_last_read;
         lf->multiline->offset_last_read = w_ftell(lf->fp);
 
-        raw_data = get_file_chunk(lf->fp, initial_pos, lf->multiline->offset_last_read);
-        if (raw_data == NULL) {
-            continue;
-        }
-
-        if (is_valid_context_file) {
-            OS_SHA1_Stream(context, NULL, raw_data);
-        }
-
-        os_free(raw_data);
+        hash_file_span(lf->fp, is_valid_context_file ? context : NULL, initial_pos, lf->multiline->offset_last_read);
     }
 
     if (is_valid_context_file) {
@@ -539,22 +534,36 @@ STATIC bool multiline_ctxt_is_expired(time_t timeout, w_multiline_ctxt_t * ctxt)
     return false;
 }
 
-STATIC char * get_file_chunk(FILE * stream, int64_t initial_pos, int64_t final_pos) {
+STATIC bool hash_file_span(FILE * stream, EVP_MD_CTX * context, int64_t initial_pos, int64_t final_pos) {
 
-    char * ret_buffer = NULL;
-    int64_t read_length = final_pos - initial_pos;
+    char block[OS_MAXSTR + 1];
+    int64_t remaining = final_pos - initial_pos;
+    bool hashing = (context != NULL);
 
-    if (read_length <= 0 || w_fseek(stream, initial_pos, SEEK_SET) != 0) {
-        return ret_buffer;
+    if (remaining <= 0 || w_fseek(stream, initial_pos, SEEK_SET) != 0) {
+        return false;
     }
 
-    os_calloc((size_t) read_length + 1, sizeof(char), ret_buffer);
-    int64_t ret = (int64_t) fread(ret_buffer, sizeof(char), read_length, stream);
+    while (remaining > 0) {
+        size_t to_read = remaining > OS_MAXSTR ? OS_MAXSTR : (size_t) remaining;
+        size_t readed = fread(block, sizeof(char), to_read, stream);
 
-    if (ret != read_length) {
-        /* do not move the pointer to the file, it will remain at the end */
-        os_free(ret_buffer);
+        if (readed != to_read) {
+            /* do not move the pointer to the file, it will remain at the end */
+            return false;
+        }
+
+        if (hashing) {
+            block[readed] = '\0';
+            OS_SHA1_Stream(context, NULL, block);
+            /* The hash covers the span up to its first NUL, as when it was hashed as a single string */
+            if (strlen(block) < readed) {
+                hashing = false;
+            }
+        }
+
+        remaining -= (int64_t) readed;
     }
 
-    return ret_buffer;
+    return true;
 }

@@ -31,7 +31,7 @@ int multiline_getlog_end(char * buffer, int length, FILE * stream, w_multiline_c
 int multiline_getlog_all(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
 int multiline_getlog(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
 void * read_multiline_regex(logreader * lf, int * rc, int drop_it);
-char * get_file_chunk(FILE * stream, int64_t initial_pos, int64_t final_pos);
+bool hash_file_span(FILE * stream, EVP_MD_CTX * context, int64_t initial_pos, int64_t final_pos);
 
 /* setup/teardown */
 
@@ -72,8 +72,17 @@ int __wrap_w_update_file_status(const char * path, int64_t pos, EVP_MD_CTX * con
     return mock_type(int);
 }
 
+static size_t sha1_stream_bytes = 0;
+static size_t sha1_stream_max_block = 0;
+
 void __wrap_OS_SHA1_Stream(EVP_MD_CTX *c, os_sha1 output, char * buf) {
+    size_t len = strlen(buf);
+
     function_called();
+    sha1_stream_bytes += len;
+    if (len > sha1_stream_max_block) {
+        sha1_stream_max_block = len;
+    }
     return;
 }
 
@@ -1751,22 +1760,20 @@ void test_read_multiline_regex_log_ignored(void ** state) {
     }
 }
 
-// Test get_file_chunk
-void test_get_file_chunk_fseek_fail(void ** state) {
+// Test hash_file_span
+void test_hash_file_span_fseek_fail(void ** state) {
 
-    char * retval;
     int64_t initial_pos = 10;
     int64_t final_pos = 5;
 
-    retval = get_file_chunk(NULL, initial_pos, final_pos);
-    assert_null(retval);
+    assert_false(hash_file_span(NULL, NULL, initial_pos, final_pos));
 }
 
-void test_get_file_chunk_size_reduce(void ** state) {
+void test_hash_file_span_size_reduce(void ** state) {
 
-    char * retval;
     int64_t initial_pos = 5;
     int64_t final_pos = 10;
+    EVP_MD_CTX * context = EVP_MD_CTX_new();
 
     will_return(__wrap_fread, "test");
     will_return(__wrap_fread, 4);
@@ -1775,25 +1782,103 @@ void test_get_file_chunk_size_reduce(void ** state) {
     expect_value(__wrap_w_fseek, pos, 5);
     will_return(__wrap_w_fseek, 0);
 
-    retval = get_file_chunk(NULL, initial_pos, final_pos);
-    assert_null(retval);
+    assert_false(hash_file_span(NULL, context, initial_pos, final_pos));
+    EVP_MD_CTX_free(context);
 }
 
-void test_get_file_chunk_ok(void ** state) {
+void test_hash_file_span_ok(void ** state) {
 
-    char * retval;
     int64_t initial_pos = 5;
     int64_t final_pos = 10;
+    EVP_MD_CTX * context = EVP_MD_CTX_new();
+
+    sha1_stream_bytes = 0;
+    sha1_stream_max_block = 0;
 
     expect_any(__wrap_w_fseek, x);
     expect_value(__wrap_w_fseek, pos, 5);
     will_return(__wrap_w_fseek, 0);
-    will_return(__wrap_fread, "test");
+    will_return(__wrap_fread, "test0");
+    will_return(__wrap_fread, 5);
+    expect_function_call(__wrap_OS_SHA1_Stream);
+
+    assert_true(hash_file_span(NULL, context, initial_pos, final_pos));
+    assert_int_equal(sha1_stream_bytes, 5);
+    EVP_MD_CTX_free(context);
+}
+
+/* A span much larger than the block size is hashed in blocks of at most OS_MAXSTR bytes */
+void test_hash_file_span_several_blocks(void ** state) {
+
+    static char data[OS_MAXSTR + 1];
+    const int64_t tail = 10;
+    const int64_t final_pos = 3 * (int64_t) OS_MAXSTR + tail;
+    EVP_MD_CTX * context = EVP_MD_CTX_new();
+
+    memset(data, 'A', OS_MAXSTR);
+    data[OS_MAXSTR] = '\0';
+    sha1_stream_bytes = 0;
+    sha1_stream_max_block = 0;
+
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
+
+    for (int i = 0; i < 3; i++) {
+        will_return(__wrap_fread, data);
+        will_return(__wrap_fread, OS_MAXSTR);
+        expect_function_call(__wrap_OS_SHA1_Stream);
+    }
+    will_return(__wrap_fread, data);
+    will_return(__wrap_fread, tail);
+    expect_function_call(__wrap_OS_SHA1_Stream);
+
+    assert_true(hash_file_span(NULL, context, 0, final_pos));
+    assert_int_equal(sha1_stream_bytes, (size_t) final_pos);
+    assert_int_equal(sha1_stream_max_block, OS_MAXSTR);
+    EVP_MD_CTX_free(context);
+}
+
+/* Bytes after the first NUL of the span are read, to reach the end of the span, but not hashed */
+void test_hash_file_span_stops_hashing_after_nul(void ** state) {
+
+    static char data[OS_MAXSTR + 1];
+    EVP_MD_CTX * context = EVP_MD_CTX_new();
+
+    memset(data, 'A', OS_MAXSTR);
+    data[OS_MAXSTR] = '\0';
+    sha1_stream_bytes = 0;
+    sha1_stream_max_block = 0;
+
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
+
+    /* First block: 10 bytes followed by NULs */
+    will_return(__wrap_fread, "0123456789");
+    will_return(__wrap_fread, OS_MAXSTR);
+    expect_function_call(__wrap_OS_SHA1_Stream);
+    /* Second and third blocks: read but not hashed */
+    will_return(__wrap_fread, data);
+    will_return(__wrap_fread, OS_MAXSTR);
+    will_return(__wrap_fread, data);
+    will_return(__wrap_fread, 7);
+
+    assert_true(hash_file_span(NULL, context, 0, 2 * (int64_t) OS_MAXSTR + 7));
+    assert_int_equal(sha1_stream_bytes, 10);
+    EVP_MD_CTX_free(context);
+}
+
+/* Without a hash context the span is only read */
+void test_hash_file_span_no_context(void ** state) {
+
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 5);
+    will_return(__wrap_w_fseek, 0);
+    will_return(__wrap_fread, "test0");
     will_return(__wrap_fread, 5);
 
-    retval = get_file_chunk(NULL, initial_pos, final_pos);
-    assert_string_equal("test", retval);
-    os_free(retval);
+    assert_true(hash_file_span(NULL, NULL, 5, 10));
 }
 
 int main(void) {
@@ -1892,10 +1977,13 @@ int main(void) {
         cmocka_unit_test(test_read_multiline_regex_cant_read),
         cmocka_unit_test(test_read_multiline_regex_invalid_context),
         cmocka_unit_test(test_read_multiline_regex_log_ignored),
-        // Test get_file_chunk
-        cmocka_unit_test(test_get_file_chunk_fseek_fail),
-        cmocka_unit_test(test_get_file_chunk_size_reduce),
-        cmocka_unit_test(test_get_file_chunk_ok),
+        // Test hash_file_span
+        cmocka_unit_test(test_hash_file_span_fseek_fail),
+        cmocka_unit_test(test_hash_file_span_size_reduce),
+        cmocka_unit_test(test_hash_file_span_ok),
+        cmocka_unit_test(test_hash_file_span_several_blocks),
+        cmocka_unit_test(test_hash_file_span_stops_hashing_after_nul),
+        cmocka_unit_test(test_hash_file_span_no_context),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
