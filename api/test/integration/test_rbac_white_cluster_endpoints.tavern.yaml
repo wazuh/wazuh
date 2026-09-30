@@ -19,7 +19,8 @@ stages:
             - name: !anystr
               node_name: !anystr
               node_type: !anystr
-              key: !anystr
+              # No cluster:read_secrets in this policy: the key is masked
+              key: "*****"
               port: !anyint
               bind_addr: !anystr
               nodes: !anything
@@ -669,6 +670,49 @@ stages:
       url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker2/configuration"
       method: PUT
       data: "{valid_wazuh_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'worker2'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
+  - name: Upload a configuration that changes the cluster key without cluster:read_secrets (Deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker2/configuration"
+      method: PUT
+      data: "{valid_wazuh_conf_other_key:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1132
+              id:
+                - 'worker2'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Upload a configuration that sends the masked key back, keeping it (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker2/configuration"
+      method: PUT
+      data: "{valid_wazuh_conf_masked_key:s}"
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream

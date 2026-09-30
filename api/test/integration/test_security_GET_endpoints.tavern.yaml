@@ -1705,3 +1705,36 @@ stages:
         data:
           auth_token_exp_timeout: !anyint
           rbac_mode: !anystr
+
+---
+test_name: GET /security/actions and /security/resources bad parameters
+
+stages:
+
+  - name: Actions, pretty is not a boolean
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/actions"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        pretty: wrong
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Resources, unknown resource
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/resources"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        resource: wrong:resource
+    response:
+      status_code: 400
+      json:
+        title: Bad Request

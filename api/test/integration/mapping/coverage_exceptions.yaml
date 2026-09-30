@@ -1,0 +1,50 @@
+# Buckets endpoint_coverage.py cannot demand, each with the reason. A bucket listed here while a
+# stage covers it is an error (stale exception), so remove the entry when a test starts covering it.
+#
+#   operation: "<METHOD> <spec path>"   bucket: ok | bad_request | unauthorized | forbidden |
+#   not_found | method_not_allowed | too_large | unsupported_media_type
+#   pending: true marks a gap still to be covered; without it the waiver is permanent.
+
+# User-agnostic reads: the RBAC decorator filters the result by the caller's agent, group or node
+# permissions and answers 200 with what is left (empty for a caller with none), never 403.
+# test_rbac_white_all_endpoints.tavern.yaml asserts that empty answer for each of them.
+- operation: GET /agents/no_group
+  bucket: forbidden
+  reason: Filtered by agent:read, answers 200 with the permitted agents only (rbac_white_all asserts it empty).
+- operation: GET /agents/outdated
+  bucket: forbidden
+  reason: Filtered by agent:read, answers 200 with the permitted agents only (rbac_white_all asserts it empty).
+- operation: GET /agents/stats/distinct
+  bucket: forbidden
+  reason: Filtered by agent:read, answers 200 with the permitted agents only (rbac_white_all asserts it empty).
+- operation: GET /agents/summary
+  bucket: forbidden
+  reason: Filtered by agent:read, answers 200 with the permitted agents only (rbac_white_all asserts it empty).
+- operation: GET /agents/summary/os
+  bucket: forbidden
+  reason: Filtered by agent:read, answers 200 with the permitted agents only (rbac_white_all asserts it empty).
+- operation: GET /agents/summary/status
+  bucket: forbidden
+  reason: Filtered by agent:read, answers 200 with the permitted agents only (rbac_white_all asserts it empty).
+- operation: GET /overview/agents
+  bucket: forbidden
+  reason: Filtered by agent:read and group:read, answers 200 with the permitted data only (rbac_white_all asserts it empty).
+- operation: GET /cluster/healthcheck
+  bucket: forbidden
+  reason: Filtered by cluster:read per node, answers 200 with the permitted nodes only.
+
+# Broadcast agent commands (DistributedAPI broadcasting=True): every node answers for the agents it
+# may act on and the merge drops the rest, so a denied agent, even a single specific one, is absent
+# from a 200 answer instead of refused. rbac_white_all asserts the empty answer for each of them.
+- operation: PUT /agents/restart
+  bucket: forbidden
+  reason: Broadcast to every node; a denied agent is dropped from each node's answer, never refused with 403.
+- operation: PUT /agents/reload
+  bucket: forbidden
+  reason: Broadcast to every node; a denied agent is dropped from each node's answer, never refused with 403.
+- operation: PUT /agents/upgrade
+  bucket: forbidden
+  reason: Broadcast to every node; a denied agent is dropped from each node's answer, never refused with 403.
+- operation: PUT /agents/upgrade_custom
+  bucket: forbidden
+  reason: Broadcast to every node; a denied agent is dropped from each node's answer, never refused with 403.

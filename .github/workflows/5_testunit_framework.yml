@@ -6,7 +6,14 @@ on:
     paths:
       - '.github/workflows/5_testunit_framework.yml'
       - 'framework/**'
+      # The framework imports the API (rbac/orm.py, cluster/dapi/dapi.py, core/manager_conf_policy.py)
+      - 'api/api/**'
+      # The job builds wazuh-manager-conf, which core/manager_conf.py shells out to
+      - 'src/shared_modules/manager_config/**'
+      - 'src/CMakeLists.txt'
       - 'src/Makefile'
+      # API unit tests
+      - '!api/api/**/test/**'
   workflow_dispatch:
     inputs:
       generate_report:

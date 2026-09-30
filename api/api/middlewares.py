@@ -765,6 +765,33 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
         return response
 
 
+# Methods a CORS preflight is answered for: every method spec.yaml declares. Without it CORSMiddleware
+# answers the preflight of GET only, refusing a cross-origin write even from an allowed origin.
+CORS_ALLOW_METHODS = ['GET', 'POST', 'PUT', 'DELETE']
+
+
+def cors_list(value) -> list:
+    """Return a CORS setting of api.yaml (`source_route`, `expose_headers`, `allow_headers`) as a list.
+
+    `CORSMiddleware` expects sequences: given a string, it tests an origin with `origin in value`, a
+    substring match that allows any origin contained in the configured one (`https://dashboard.example.co`
+    for `https://dashboard.example.com`), and turns a header string into its characters. A string is
+    therefore split on commas, so `"https://a.example, https://b.example"` allows exactly those two.
+
+    Parameters
+    ----------
+    value : str or list
+        Value of the setting.
+
+    Returns
+    -------
+    list
+        One entry per origin or header, stripped, empty entries dropped.
+    """
+    items = value.split(',') if isinstance(value, str) else value
+    return [item.strip() for item in items if item.strip()]
+
+
 def setup_middlewares(app: AsyncApp):
     """Register every API middleware on `app`, in the only order that keeps the size ceiling a 413.
 
@@ -815,9 +842,10 @@ def setup_middlewares(app: AsyncApp):
         app.add_middleware(
             CORSMiddleware,
             position=MiddlewarePosition.BEFORE_EXCEPTION,
-            allow_origins=api_conf['cors']['source_route'],
-            expose_headers=api_conf['cors']['expose_headers'],
-            allow_headers=api_conf['cors']['allow_headers'],
+            allow_origins=cors_list(api_conf['cors']['source_route']),
+            allow_methods=CORS_ALLOW_METHODS,
+            expose_headers=cors_list(api_conf['cors']['expose_headers']),
+            allow_headers=cors_list(api_conf['cors']['allow_headers']),
             allow_credentials=api_conf['cors']['allow_credentials'],
         )
 

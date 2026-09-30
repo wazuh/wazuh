@@ -570,7 +570,8 @@ stages:
               allow_run_as: false
           total_affected_items: 1
 
-  - name: Update admin user password (should fail - error 5011)
+  # The caller, testing, is user 99: a reserved user (MAX_ID_RESERVED), so it may modify user 1
+  - name: Update admin user password as a reserved user
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/1"
@@ -730,3 +731,190 @@ stages:
       method: PUT
     response:
       status_code: 401
+
+---
+test_name: PUT /security/config bad bodies
+
+stages:
+
+  - name: Token timeout is not an integer
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        auth_token_exp_timeout: "wrong"
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Token timeout below the minimum of 30 seconds
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        auth_token_exp_timeout: 0
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: A field the configuration does not have
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        max_login_attempts: 1
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+        detail: "Invalid field found {{'max_login_attempts'}}"
+
+  - name: Unknown RBAC mode
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        rbac_mode: grey
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+---
+test_name: PUT on reserved security resources
+
+stages:
+
+  - name: Try to update the reserved role 1
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/1"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        name: hijacked_role
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4008
+              id:
+                - 1
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: The reserved role 1 is unchanged
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        role_ids: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 1
+              name: administrator
+
+  - name: Try to update the reserved policy 1
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies/1"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        name: hijacked_policy
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4008
+              id:
+                - 1
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: The reserved policy 1 is unchanged
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        policy_ids: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 1
+              name: agents_all_resourceless
+
+  - name: Try to update the reserved rule 1
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules/1"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        name: hijacked_rule
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4008
+              id:
+                - 1
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: The reserved rule 1 is unchanged
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        rule_ids: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - id: 1
+              name: wui_elastic_admin

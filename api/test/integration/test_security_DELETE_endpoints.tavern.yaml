@@ -886,3 +886,50 @@ stages:
       method: DELETE
     response:
       status_code: 200
+
+---
+test_name: DELETE security relations bad parameters
+
+stages:
+
+  - name: Unlink roles from a user, invalid role id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/100/roles"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        role_ids: wrong!
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Unlink policies from a role, invalid policy id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/100/policies"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        policy_ids: wrong!
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Unlink rules from a role, invalid rule id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/100/rules"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        rule_ids: wrong!
+    response:
+      status_code: 400
+      json:
+        title: Bad Request

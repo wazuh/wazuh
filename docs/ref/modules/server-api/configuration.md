@@ -468,6 +468,22 @@ cors:
 
 **Note:** Restrict CORS in production to specific origins.
 
+**Restrict CORS to specific origins:**
+```yaml
+cors:
+  enabled: true
+  source_route:
+    - "https://dashboard.example.com"
+    - "https://admin.example.com"
+  expose_headers: "*"
+  allow_headers: ["Authorization", "Content-Type"]
+```
+
+`source_route`, `expose_headers` and `allow_headers` take a list or a string; a string is split on
+commas (`"https://a.example, https://b.example"`). An origin is allowed only when it equals one of the
+entries, scheme and port included. A CORS preflight is answered for the methods the API serves:
+`GET`, `POST`, `PUT` and `DELETE`.
+
 ---
 
 ## See Also

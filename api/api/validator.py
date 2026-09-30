@@ -96,7 +96,12 @@ api_config_schema = {
             "additionalProperties": False,
             "properties": {
                 "enabled": {"type": "boolean"},
-                "source_route": {"type": "string"},
+                "source_route": {
+                    "oneOf": [
+                        {"type": "string"},
+                        {"type": "array", "items": {"type": "string"}}
+                    ]
+                },
                 "expose_headers": {
                     "oneOf": [
                         {"type": "string"},

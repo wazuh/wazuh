@@ -1315,3 +1315,110 @@ stages:
       method: GET
     response:
       status_code: 200
+
+---
+test_name: POST /security/user/authenticate bad parameters
+
+stages:
+
+  - name: raw is not a boolean
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate"
+      method: POST
+      auth: ["{user}", "{pass}"]
+      params:
+        raw: wrong
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+---
+test_name: POST security relations bad parameters
+
+stages:
+
+  - name: Link roles to a user, invalid role id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/100/roles"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        role_ids: wrong!
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Link roles to a user, negative position
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/100/roles"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        role_ids: 100
+        position: -1
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Link policies to a role, invalid policy id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/100/policies"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        policy_ids: wrong!
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Link policies to a role, negative position
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/100/policies"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        policy_ids: 100
+        position: -1
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Link rules to a role, invalid rule id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/100/rules"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        rule_ids: wrong!
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Link roles to a user, no role ids
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/100/roles"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        title: Bad Request

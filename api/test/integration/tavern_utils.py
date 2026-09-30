@@ -409,3 +409,57 @@ def healthcheck_agent_restart(response, agents_list, restarted=True):
     time.sleep(20)
     # Wait for active agent status (up to 25 seconds)
     check_agent_active_status(agents_list)
+
+
+def test_no_internal_details(response):
+    """Check that an error response does not expose internals: tracebacks, source or install paths.
+
+    Parameters
+    ----------
+    response : Request response
+    """
+    for marker in ('Traceback', 'File "/', '/var/wazuh-manager', 'wazuh.core', 'sqlite3.', 'Errno'):
+        assert marker not in response.text, f"The response exposes {marker!r}: {response.text[:300]}"
+
+
+def test_pretty_format(response):
+    """Check that a `pretty=true` response is indented JSON.
+
+    Parameters
+    ----------
+    response : Request response
+    """
+    assert response.text.startswith('{\n'), f"The response is not indented: {response.text[:100]}"
+    json.loads(response.text)
+
+
+def test_every_agent_answered(response, agents_list, failed_codes=None):
+    """Check that every requested agent is reported once, as affected or as failed.
+
+    Parameters
+    ----------
+    response : Request response
+    agents_list : list
+        Agent IDs the request was made for.
+    failed_codes : dict, optional
+        Agent ID -> error code the agent must have failed with.
+    """
+    data = response.json()['data']
+    affected = set(data['affected_items'])
+    failed = {agent_id: item['error']['code'] for item in data['failed_items'] for agent_id in item['id']}
+    assert affected.isdisjoint(failed), f"Agents reported both as affected and failed: {affected & set(failed)}"
+    assert affected | set(failed) == set(agents_list), f"Answered for {sorted(affected | set(failed))}"
+    for agent_id, code in (failed_codes or {}).items():
+        assert failed.get(agent_id) == code, f"Agent {agent_id} failed with {failed.get(agent_id)}, not {code}"
+    assert data['total_affected_items'] == len(affected)
+
+
+def test_no_cors_header(response):
+    """Check that the response does not allow the request's origin.
+
+    Parameters
+    ----------
+    response : Request response
+    """
+    assert 'access-control-allow-origin' not in response.headers, \
+        f"Origin allowed: {response.headers.get('access-control-allow-origin')}"
