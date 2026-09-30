@@ -85,45 +85,64 @@ consumers degrade to "no container data" if it is not there.
 
 ## 15.3 What turns it on
 
-Three independent switches, and **all three are required** for container FIM:
+**One block.** Every container runtime security setting lives inside `<container_security>`, and each
+child block carries its own `<enabled>`:
 
 ```xml
-<!-- 1. The metadata module. Without this, nothing works.
-     One <container_instances> block per runtime integration, discriminated by
-     <type>; repeat the block for dual-runtime monitoring. -->
 <container_security>
+  <!-- 1. The metadata module. Without this, nothing works. One <container_instances>
+       block per runtime integration, discriminated by <type>; repeat the block for
+       dual-runtime monitoring. -->
   <container_instances>
     <enabled>yes</enabled>
     <type>docker</type>
     <socket_path>/var/run/docker.sock</socket_path>
   </container_instances>
+
+  <!-- 2. Container file monitoring. These <directories> are container-scoped by
+       construction - no marker attribute - and are never walked on the host. -->
+  <syscheck>
+    <enabled>yes</enabled>
+    <directories check_all="yes">/data</directories>
+    <directories container_name="web" check_all="yes">/srv</directories>
+  </syscheck>
+
+  <!-- 3. Container inventory. <interval> is the container pass only; host inventory
+       cadence stays in <wodle name="syscollector">. -->
+  <syscollector>
+    <enabled>yes</enabled>
+    <interval>3600</interval>
+  </syscollector>
 </container_security>
 
 <syscheck>
-  <!-- 2. Container FIM reads paths from container-TAGGED directories only. -->
-  <directories tags="container" check_all="yes">/data</directories>
-
-  <!-- 3. ...and silently collects zero paths unless synchronization is enabled. -->
+  <!-- Still required: container FIM silently collects zero paths without it. -->
   <synchronization><enabled>yes</enabled></synchronization>
 </syscheck>
-
-<wodle name="syscollector">
-  <!-- Optional: decouple the container inventory pass from the host scan.
-       0 (default) = same cadence as the host scan. -->
-  <container_baseline_interval>3600</container_baseline_interval>
-</wodle>
 ```
+
+This answers [Q18](16-open-design-questions.md) — "three places, two daemons, one feature". The two
+daemons remain: modulesd reads `<container_instances>` and `<syscollector>`, syscheckd reads
+`<syscheck>`, each stepping over the other's children. What changed is that the operator sees one
+block instead of three scattered switches.
 
 **Three traps worth knowing before you debug a silent no-op:**
 
-- `tags="container"` is **tokenised**, so `tags="container,prod"` works. It did not always — a whole
-  `strcmp` against the attribute meant any additional tag selected nothing
-  ([C-series](03-findings-correctness.md)).
-- `fim_collect_container_monitored_paths()` returns **0 paths with no warning** when
-  `syscheck.enable_synchronization` is false (`container_baseline_fim_bridge.c:268`). The feature
-  looks configured and does nothing.
-- A path is only ever read *inside* a container if it came from a container-tagged root. A container
-  row for `/data/x` cannot inherit the check options of an untagged host `<directories>` entry.
+- `<synchronization><enabled>` in the **top-level** `<syscheck>` still gates container FIM:
+  `fim_collect_container_monitored_paths()` returns **0 paths with no warning** when
+  `syscheck.enable_synchronization` is false. The feature looks configured and does nothing. This is
+  the one switch the unification did not pull in, because it is genuinely shared with host FIM.
+- Writing a block is the opt-in. Omit `<syscheck>` and container file monitoring is off; omit
+  `<syscollector>` and the container inventory pass never runs. Neither is on by default any more.
+- A path is only ever read *inside* a container if it came from a container-scoped root. A container
+  row for `/data/x` cannot inherit the check options of a host `<directories>` entry — since the two
+  lists were separated that is structural rather than a filter.
+
+**What this replaced.** Before, the same feature needed `<container_instances>` at top level,
+`<directories tags="container">` inside `<syscheck>`, and `<container_baseline>` /
+`<container_baseline_interval>` inside the syscollector wodle. All three are now rejected or inert:
+the wodle options fail the configuration read naming their replacement, and `tags="container"` warns
+once that it no longer scopes anything.
 
 ---
 
