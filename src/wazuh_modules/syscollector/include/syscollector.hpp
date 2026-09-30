@@ -255,6 +255,11 @@ class EXPORTED Syscollector final
                                const std::string& destPath,
                                const std::string& sourceKey,
                                bool createFields);
+        void setJsonFieldArrayFromJsonString(nlohmann::json& target,
+                                             const nlohmann::json& source,
+                                             const std::string& destPath,
+                                             const std::string& sourceKey,
+                                             bool createFields);
 
         bool hasDataInTable(const std::string& tableName);
         void checkDisabledCollectorsIndicesWithData();

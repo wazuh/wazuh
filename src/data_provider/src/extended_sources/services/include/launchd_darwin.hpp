@@ -130,10 +130,12 @@ class LaunchdProvider
         /// @return True if parsing was successful, false otherwise.
         bool parsePlistFile(const std::string& path, LaunchdService& service);
 
-        /// @brief Joins array elements into a space-separated string.
-        /// @param arrayElements Vector of strings to join.
-        /// @return Joined string.
-        std::string joinArrayElements(const std::vector<std::string>& arrayElements);
+        /// @brief Encodes array elements as a JSON array string.
+        /// The inventory stores these fields as text, and any separator could also appear inside
+        /// an element, so JSON keeps the element boundaries recoverable.
+        /// @param arrayElements Vector of strings to encode.
+        /// @return JSON array string, or an empty string when there are no elements.
+        std::string encodeArrayElements(const std::vector<std::string>& arrayElements);
 
         /// @brief Disabled state by launchd label, as recorded in the override database.
         std::map<std::string, bool> m_disabledOverrides;

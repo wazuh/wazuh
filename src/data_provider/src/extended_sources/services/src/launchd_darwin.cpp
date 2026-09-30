@@ -10,7 +10,6 @@
 #include "launchd_darwin.hpp"
 #include <CoreFoundation/CoreFoundation.h>
 #include <fstream>
-#include <sstream>
 #include <pwd.h>
 
 #include <filesystem_wrapper.hpp>
@@ -489,11 +488,11 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
                     }
                 }
 
-                std::string joinedValue = joinArrayElements(elements);
+                std::string encodedValue = encodeArrayElements(elements);
 
                 if (keyPair.second == "program_arguments")
                 {
-                    service.programArguments = joinedValue;
+                    service.programArguments = encodedValue;
 
                     // A job may declare its executable either in Program or as the first element of
                     // ProgramArguments. Fall back to the latter, which is the more common form.
@@ -502,8 +501,8 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
                         service.program = elements.front();
                     }
                 }
-                else if (keyPair.second == "watch_paths") service.watchPaths = joinedValue;
-                else if (keyPair.second == "queue_directories") service.queueDirectories = joinedValue;
+                else if (keyPair.second == "watch_paths") service.watchPaths = encodedValue;
+                else if (keyPair.second == "queue_directories") service.queueDirectories = encodedValue;
             }
 
             CFRelease(key);
@@ -514,24 +513,13 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
     return true;
 }
 
-std::string LaunchdProvider::joinArrayElements(const std::vector<std::string>& arrayElements)
+std::string LaunchdProvider::encodeArrayElements(const std::vector<std::string>& arrayElements)
 {
     if (arrayElements.empty())
     {
         return "";
     }
 
-    std::ostringstream oss;
-
-    for (size_t i = 0; i < arrayElements.size(); ++i)
-    {
-        if (i > 0)
-        {
-            oss << " ";
-        }
-
-        oss << arrayElements[i];
-    }
-
-    return oss.str();
+    // Replace rather than throw on invalid UTF-8, so one malformed element cannot abort the scan.
+    return nlohmann::json(arrayElements).dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
 }
