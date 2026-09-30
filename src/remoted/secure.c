@@ -388,10 +388,12 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
     int sock_client = accept(logr.tcp_sock, (struct sockaddr *) peer_info, &logr.peer_size);
 
     if (sock_client >= 0) {
+        // Count before the slot exists, so no association can decrement first
+        rem_inc_tcp();
+        rem_inc_tcp_unassociated();
+
         nb_open(&netbuffer_recv, sock_client, peer_info);
         nb_open(&netbuffer_send, sock_client, peer_info);
-
-        rem_inc_tcp();
 
         mdebug1("New TCP connection [%d]", sock_client);
 
@@ -849,6 +851,11 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                     default:
                         ;
                     }
+
+                    // Only the first association of a live socket leaves the unassociated count
+                    if (r != OS_ADDSOCKET_ERROR && nb_mark_associated(&netbuffer_recv, message->sock)) {
+                        rem_dec_tcp_unassociated();
+                    }
                 }
             } else {
                 keys.keyentries[agentid]->sock = USING_UDP_NO_CLIENT_SOCKET;
@@ -1071,8 +1078,14 @@ int _close_sock(keystore * keys, int sock) {
     key_unlock();
 
     if (!close(sock)) {
-        nb_close(&netbuffer_recv, sock);
+        int was_unassociated = nb_close(&netbuffer_recv, sock);
         nb_close(&netbuffer_send, sock);
+
+        // Decrement the subset first so it never exceeds tcp_sessions
+        if (was_unassociated) {
+            rem_dec_tcp_unassociated();
+        }
+
         rem_dec_tcp();
     }
 

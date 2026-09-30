@@ -390,6 +390,123 @@ void test_nb_recv_incomplete_second_message(void ** state) {
     assert_int_equal(netbuffer->buffers[sock].data_len, 14);
 }
 
+static int mark_associated(netbuffer_t * netbuffer, int fd) {
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    return nb_mark_associated(netbuffer, fd);
+}
+
+static int close_slot(netbuffer_t * netbuffer, int fd) {
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    return nb_close(netbuffer, fd);
+}
+
+void test_nb_mark_associated_once(void ** state) {
+    netbuffer_t *netbuffer = *state;
+
+    assert_int_equal(mark_associated(netbuffer, sock), 1);
+    assert_int_equal(netbuffer->buffers[sock].associated, 1);
+    assert_int_equal(mark_associated(netbuffer, sock), 0);
+}
+
+void test_nb_mark_associated_closed_slot(void ** state) {
+    netbuffer_t *netbuffer = *state;
+
+    assert_int_equal(close_slot(netbuffer, sock), 1);
+    assert_int_equal(mark_associated(netbuffer, sock), 0);
+    assert_int_equal(netbuffer->buffers[sock].associated, 0);
+}
+
+void test_nb_mark_associated_out_of_range(void ** state) {
+    netbuffer_t *netbuffer = *state;
+
+    assert_int_equal(mark_associated(netbuffer, sock + 1), 0);
+}
+
+void test_nb_close_unassociated(void ** state) {
+    netbuffer_t *netbuffer = *state;
+
+    assert_int_equal(close_slot(netbuffer, sock), 1);
+}
+
+void test_nb_close_associated(void ** state) {
+    netbuffer_t *netbuffer = *state;
+
+    assert_int_equal(mark_associated(netbuffer, sock), 1);
+    assert_int_equal(close_slot(netbuffer, sock), 0);
+    assert_int_equal(netbuffer->buffers[sock].associated, 0);
+}
+
+void test_nb_close_already_closed(void ** state) {
+    netbuffer_t *netbuffer = *state;
+
+    assert_int_equal(close_slot(netbuffer, sock), 1);
+    assert_int_equal(close_slot(netbuffer, sock), 0);
+}
+
+void test_nb_reopen_resets_associated(void ** state) {
+    netbuffer_t *netbuffer = *state;
+    struct sockaddr_storage peer_info;
+
+    memset(&peer_info, 0, sizeof(struct sockaddr_storage));
+
+    assert_int_equal(mark_associated(netbuffer, sock), 1);
+    assert_int_equal(close_slot(netbuffer, sock), 0);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    nb_open(netbuffer, sock, &peer_info);
+
+    assert_int_equal(netbuffer->buffers[sock].associated, 0);
+    assert_int_equal(close_slot(netbuffer, sock), 1);
+}
+
+// The slot is opened by the setup (+1); every -1 comes from a 1 returned by the netbuffer.
+
+void test_nb_unassociated_seq_open_close(void ** state) {
+    netbuffer_t *netbuffer = *state;
+    int unassociated = 1;
+
+    unassociated -= close_slot(netbuffer, sock);
+
+    assert_int_equal(unassociated, 0);
+}
+
+void test_nb_unassociated_seq_open_associate_close(void ** state) {
+    netbuffer_t *netbuffer = *state;
+    int unassociated = 1;
+
+    unassociated -= mark_associated(netbuffer, sock);
+    unassociated -= close_slot(netbuffer, sock);
+
+    assert_int_equal(unassociated, 0);
+}
+
+void test_nb_unassociated_seq_open_associate_twice_close(void ** state) {
+    netbuffer_t *netbuffer = *state;
+    int unassociated = 1;
+
+    unassociated -= mark_associated(netbuffer, sock);
+    unassociated -= mark_associated(netbuffer, sock);
+    unassociated -= close_slot(netbuffer, sock);
+
+    assert_int_equal(unassociated, 0);
+}
+
+void test_nb_unassociated_seq_associate_after_close(void ** state) {
+    netbuffer_t *netbuffer = *state;
+    int unassociated = 1;
+
+    unassociated -= close_slot(netbuffer, sock);
+    unassociated -= mark_associated(netbuffer, sock);
+    unassociated -= close_slot(netbuffer, sock);
+
+    assert_int_equal(unassociated, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_nb_queue_ok, test_setup, test_teardown),
@@ -401,6 +518,17 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_nb_send_err, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_recv_incomplete_first_message, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_recv_incomplete_second_message, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_mark_associated_once, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_mark_associated_closed_slot, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_mark_associated_out_of_range, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_close_unassociated, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_close_associated, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_close_already_closed, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_reopen_resets_associated, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_unassociated_seq_open_close, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_unassociated_seq_open_associate_close, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_unassociated_seq_open_associate_twice_close, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_unassociated_seq_associate_after_close, test_setup, test_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

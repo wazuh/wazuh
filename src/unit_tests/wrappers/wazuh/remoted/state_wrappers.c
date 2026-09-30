@@ -24,6 +24,16 @@ void __wrap_rem_dec_tcp() {
     return;
 }
 
+void __wrap_rem_inc_tcp_unassociated() {
+    function_called();
+    return;
+}
+
+void __wrap_rem_dec_tcp_unassociated() {
+    function_called();
+    return;
+}
+
 void __wrap_rem_inc_recv_evt() {
     function_called();
     return;

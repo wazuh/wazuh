@@ -35,11 +35,13 @@ void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_storage * pee
     w_mutex_unlock(&mutex);
 }
 
-void nb_close(netbuffer_t * buffer, int sock) {
+int nb_close(netbuffer_t * buffer, int sock) {
+    int was_unassociated = 0;
 
     w_mutex_lock(&mutex);
 
     if (buffer->buffers[sock].bqueue) {
+        was_unassociated = !buffer->buffers[sock].associated;
         bqueue_destroy(buffer->buffers[sock].bqueue);
     }
 
@@ -47,6 +49,25 @@ void nb_close(netbuffer_t * buffer, int sock) {
     memset(buffer->buffers + sock, 0, sizeof(sockbuffer_t));
 
     w_mutex_unlock(&mutex);
+
+    return was_unassociated;
+}
+
+int nb_mark_associated(netbuffer_t * buffer, int sock) {
+    int marked = 0;
+
+    w_mutex_lock(&mutex);
+
+    sockbuffer_t * sockbuf = (buffer->buffers && sock >= 0 && sock <= buffer->max_fd) ? &buffer->buffers[sock] : NULL;
+
+    if (sockbuf && sockbuf->bqueue && !sockbuf->associated) {
+        sockbuf->associated = 1;
+        marked = 1;
+    }
+
+    w_mutex_unlock(&mutex);
+
+    return marked;
 }
 
 /*
