@@ -30,6 +30,7 @@
 #include "../wrappers/wazuh/shared/utf8_winapi_wrapper_wrappers.h"
 #include "../wrappers/externals/zlib/zlib_wrappers.h"
 #ifdef WIN32
+#include <direct.h>
 #include "../wrappers/windows/fileapi_wrappers.h"
 #else
 #include <signal.h>
@@ -1754,6 +1755,103 @@ void test_w_win_reparse_tag_is_plain(void **state) {
     assert_false(w_win_reparse_tag_is_plain(0x20000001));
 }
 
+// Entry names and bundle framing of UnmergeFiles and TestUnmergeFiles under Windows rules
+
+int unmerge_normalize_name(char *name);
+
+static char unmerge_cwd[MAX_PATH];
+static char unmerge_dir[MAX_PATH];
+
+static int setup_unmerge(void **state) {
+    char tmp[MAX_PATH];
+
+    // The bundle is written and read through the file system, not the wrappers.
+    test_mode = 0;
+    assert_non_null(_getcwd(unmerge_cwd, sizeof(unmerge_cwd)));
+    assert_true(GetTempPathA(sizeof(tmp), tmp) > 0);
+    snprintf(unmerge_dir, sizeof(unmerge_dir), "%swazuh_unmerge_%lu", tmp, GetCurrentProcessId());
+    assert_int_equal(_mkdir(unmerge_dir), 0);
+    assert_int_equal(_chdir(unmerge_dir), 0);
+    return 0;
+}
+
+static int teardown_unmerge(void **state) {
+    remove("merged.mg");
+    _chdir(unmerge_cwd);
+    _rmdir(unmerge_dir);
+    test_mode = 1;
+    return 0;
+}
+
+static void write_unmerge_bundle(const char *content) {
+    // Text mode, as the agent receives merged.mg: each LF is stored as CR LF.
+    FILE *fp = fopen("merged.mg", "w");
+
+    assert_non_null(fp);
+    assert_true(fputs(content, fp) >= 0);
+    assert_int_equal(fclose(fp), 0);
+}
+
+void test_unmerge_normalize_name_windows(void **state) {
+    const char *invalid[] = {
+        "", "..", "/a", "a\rb", "\\a", "a\\", "a\\..\\b", "sub/..\\x", "C:a", "C:\\a", "a:b", "a?b",
+        "a<b", "a>b", "a|b", "a\"b", "a*b", "notes.", "space ", "...", "a./b", "a /b"
+    };
+    const char *valid[][2] = {
+        {"a\\b", "a/b"}, {"sub/c\\.\\d", "sub/c/d"}, {".\\upgrade.sh", "upgrade.sh"}, {"a\\\\b", "a/b"},
+        {".hidden", ".hidden"}, {"..name", "..name"}
+    };
+    char name[64];
+
+    for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); i++) {
+        snprintf(name, sizeof(name), "%s", invalid[i]);
+        assert_int_equal(unmerge_normalize_name(name), 0);
+    }
+
+    for (size_t i = 0; i < sizeof(valid) / sizeof(*valid); i++) {
+        snprintf(name, sizeof(name), "%s", valid[i][0]);
+        assert_int_equal(unmerge_normalize_name(name), 1);
+        assert_string_equal(name, valid[i][1]);
+    }
+}
+
+void test_unmerge_windows_text_mode_bundle(void **state) {
+    static char content[10000];
+    FILE *fp;
+
+    // Each entry takes 13 bytes on disk, so across 4096 entries every byte of the entry
+    // layout lands on every offset of the stdio read buffer.
+    fp = fopen("merged.mg", "w");
+    assert_non_null(fp);
+
+    for (unsigned int i = 0; i < 4096; i++) {
+        assert_true(fprintf(fp, "!2 %05x\n\nx", i) > 0);
+    }
+
+    assert_int_equal(fclose(fp), 0);
+    assert_int_equal(TestUnmergeFiles("merged.mg", OS_TEXT), 1);
+
+    // An entry spanning several buffers, with LF, CR LF and lone CR bytes, then another entry.
+    for (size_t i = 0; i < sizeof(content); i++) {
+        content[i] = i % 7 == 0 ? '\n' : i % 11 == 0 ? '\r' : 'a' + i % 26;
+    }
+
+    fp = fopen("merged.mg", "w");
+    assert_non_null(fp);
+    assert_true(fprintf(fp, "!%u big.txt\n", (unsigned int)sizeof(content)) > 0);
+    assert_int_equal(fwrite(content, 1, sizeof(content), fp), sizeof(content));
+    assert_true(fputs("!3 last.conf\n\r\n\r", fp) >= 0);
+    assert_int_equal(fclose(fp), 0);
+    assert_int_equal(TestUnmergeFiles("merged.mg", OS_TEXT), 1);
+
+    // A size beyond the data is rejected by the remaining-bytes check or, when the stored CR
+    // bytes leave room for it, by the read reaching the end of the bundle first.
+    write_unmerge_bundle("!6 short.conf\nshort");
+    assert_int_equal(TestUnmergeFiles("merged.mg", OS_TEXT), 0);
+    write_unmerge_bundle("!5 lines.conf\na\nb\n");
+    assert_int_equal(TestUnmergeFiles("merged.mg", OS_TEXT), 0);
+}
+
 #endif
 
 /* ===================== Tests for cldir_ex and cldir_ex_ignore ===================== */
@@ -3021,6 +3119,8 @@ int main(void) {
         cmocka_unit_test(test_w_win_owner_trusted),
         cmocka_unit_test(test_w_win_reparse_target),
         cmocka_unit_test(test_w_win_reparse_tag_is_plain),
+        cmocka_unit_test(test_unmerge_normalize_name_windows),
+        cmocka_unit_test_setup_teardown(test_unmerge_windows_text_mode_bundle, setup_unmerge, teardown_unmerge),
 
 #endif
     };
