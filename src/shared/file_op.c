@@ -3038,10 +3038,10 @@ static int w_open_walk_dir(int dirfd, const char * name, int flags) {
 }
 
 /**
- * Reads the target of symlink name in dirfd, failing unless it is still the link link_stat describes, so a
- * link swapped in after its owner was checked is not followed.
+ * Reads the target of symlink name in dirfd, failing unless it is still a symlink with the inode and owner
+ * link_stat describes, so an entry swapped in after its owner was checked is not followed, even on inode reuse.
  *
- * @return Target length as readlinkat(), or -1 on error (errno EAGAIN if the link was swapped).
+ * @return Target length as readlinkat(), or -1 on error (errno EAGAIN if the entry was swapped).
  */
 static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat * link_stat, char * target) {
     struct stat now;
@@ -3055,7 +3055,7 @@ static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat
     if (linkfd = openat(dirfd, name, W_VETTED_O_PATH | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC), linkfd >= 0) {
         if (w_fstat_walk(linkfd, &now) < 0) {
             n = -1;
-        } else if (now.st_dev != link_stat->st_dev || now.st_ino != link_stat->st_ino ||
+        } else if (!S_ISLNK(now.st_mode) || now.st_dev != link_stat->st_dev || now.st_ino != link_stat->st_ino ||
                    now.st_uid != link_stat->st_uid) {
             errno = EAGAIN;
             n = -1;
@@ -3083,7 +3083,8 @@ static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat
         return -1;
     }
 
-    if (now.st_dev != link_stat->st_dev || now.st_ino != link_stat->st_ino || now.st_uid != link_stat->st_uid) {
+    if (!S_ISLNK(now.st_mode) || now.st_dev != link_stat->st_dev || now.st_ino != link_stat->st_ino ||
+        now.st_uid != link_stat->st_uid) {
         errno = EAGAIN;
         return -1;
     }
