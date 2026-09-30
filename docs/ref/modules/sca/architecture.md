@@ -660,13 +660,12 @@ LoggingHelper::getInstance().log(LOG_DEBUG,
 
 **Initialization:**
 ```
-[INFO] Schema validator initialized successfully from embedded resources
+[DEBUG] Schema validator initialized successfully from embedded resources
 ```
 
 **Validation Failure:**
 ```
-[ERROR] Schema validation failed for SCA message (checkId: cis_rhel7_1.1.1, index: wazuh-states-sca). Errors:
-  - Field 'check.result' expected type 'keyword', got 'integer'
+[ERROR] Schema validation failed for SCA message (checkId: cis_rhel7_1.1.1, index: wazuh-states-sca). Errors:   - check.result: Expected string, got number with value: 1
 [ERROR] Raw event that failed validation: {"check":{"id":"cis_rhel7_1.1.1","result":1}}
 [DEBUG] Marking SCA check for deferred deletion due to validation failure
 ```

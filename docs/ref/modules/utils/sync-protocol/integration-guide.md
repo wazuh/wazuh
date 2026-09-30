@@ -103,7 +103,7 @@ void onFileCreated(const std::string& filepath, const FileInfo& info) {
     protocol->persistDifference(
         id,
         Operation::CREATE,
-        "fim_files",
+        "wazuh-states-fim-files",
         data.dump(),
         info.version
     );
@@ -117,7 +117,7 @@ void onFileModified(const std::string& filepath, const FileInfo& info) {
     protocol->persistDifference(
         id,
         Operation::MODIFY,
-        "fim_files",
+        "wazuh-states-fim-files",
         data.dump(),
         info.version
     );
@@ -130,7 +130,7 @@ void onFileDeleted(const std::string& filepath, uint64_t version) {
     protocol->persistDifference(
         id,
         Operation::DELETE_,
-        "fim_files",
+        "wazuh-states-fim-files",
         "{\"path\": \"" + filepath + "\"}",
         version
     );
@@ -184,7 +184,7 @@ void recoverModuleData(const std::string& index) {
     minfo("Starting module recovery process");
 
     // Clear the manager's index before resending the fresh snapshot.
-    if (!protocol->notifyDataClean({index})) {
+    if (!protocol->notifyDataClean({index}).success) {
         merror("Failed to clear index %s before recovery; will retry later", index.c_str());
         return;
     }
@@ -416,7 +416,7 @@ private:
             // Mode::FULL to reach for here.
             if (++syncCount % 16 == 0)
             {
-                if (!m_protocol->notifyDataClean({"inventory_packages"}))
+                if (!m_protocol->notifyDataClean({"inventory_packages"}).success)
                 {
                     merror("Failed to clear inventory_packages before full-replace resync");
                     continue;
@@ -507,7 +507,7 @@ asp_destroy(handle);  // Required cleanup
 
 ### 3. Shutdown
 
-Call `stop()`/`asp_stop()` before tearing down a module so any in-flight `synchronizeModule()`/`notifyDataClean()`/`requiresFullSync()` call unblocks instead of waiting indefinitely for a transport callback that will never arrive. `reset()`/`asp_reset()` clears the stop flag if the module restarts in the same process.
+Call `stop()`/`asp_stop()` before tearing down a module so any in-flight `synchronizeModule()`/`notifyDataClean()`/`requiresFullSync()` call unblocks instead of waiting up to 15 minutes for a transport callback that will never arrive. `reset()`/`asp_reset()` clears the stop flag if the module restarts in the same process.
 
 ### 4. Logging Integration
 
@@ -549,9 +549,9 @@ public:
                 (override));
     MOCK_METHOD(SyncModuleResult, synchronizeModule, (Mode, Option), (override));
     MOCK_METHOD(bool, requiresFullSync, (const std::string&, const std::string&), (override));
-    MOCK_METHOD(bool, notifyDataClean, (const std::vector<std::string>&, Option), (override));
+    MOCK_METHOD(SyncModuleResult, notifyDataClean, (const std::vector<std::string>&, Option, bool), (override));
     MOCK_METHOD(bool, parseResponseBuffer, (const uint8_t*, size_t), (override));
-    // ... plus the remaining IAgentSyncProtocol methods as needed by the test.
+    // ... plus every other pure virtual of IAgentSyncProtocol, or the mock cannot be instantiated.
 };
 ```
 
@@ -600,7 +600,7 @@ protocol->parseResponseBuffer(endAckBytes, endAckLength);
    - `SYNC_HANDOFF_RETRIES` (fixed at 3) only covers a transiently-unavailable local socket; it does not retry HTTP-level failures
 
 3. **Synchronization Never Returns**
-   - The protocol waits indefinitely for the manager's answer once the local hand-off succeeds; a hang here usually means the HTTPS transport's own timeout (`statefulTimeoutMs`) hasn't fired yet, or `stop()` was never called during shutdown
+   - Once the local hand-off succeeds, the protocol waits for the manager's answer for up to 15 minutes (`SESSION_RESPONSE_TIMEOUT`); at the defaults the HTTPS transport gives up on a `/stateful` session after at most about 11.5 minutes, longer if the manager answers with `Retry-After` or other sessions are queued ahead. When the 15 minutes run out the module logs `Session <n> got no response within 900s; treating as failed so the next cycle can retry.` at WARNING; `stop()` ends the wait early at shutdown
    - Check `agentd`/`https_client` logs and network connectivity to the manager
 
 4. **Memory Issues**

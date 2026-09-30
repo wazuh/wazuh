@@ -18,28 +18,18 @@ Creates and initializes an Agent Sync Protocol handle for FIM.
 ```c
 AgentSyncProtocolHandle* asp_create(const char* module,
                                    const char* db_path,
-                                   const MQ_Functions* mq_funcs,
                                    asp_logger_t logger);
 ```
 
 **Parameters:**
 - `module`: Module name (`"fim"`)
 - `db_path`: Path to sync protocol database (`FIM_SYNC_PROTOCOL_DB_PATH`)
-- `mq_funcs`: Message queue function pointers
 - `logger`: Logging callback function
 
 **Usage Example:**
 ```c
 // FIM initializes sync protocol handle during startup
-MQ_Functions mq_funcs = {
-    .start = fim_startmq,
-    .send_binary = fim_send_binary_msg
-};
-
-AgentSyncProtocolHandle* sync_handle = asp_create("fim",
-                                                  FIM_SYNC_PROTOCOL_DB_PATH,
-                                                  &mq_funcs,
-                                                  loggingFunction);
+syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, loggingFunction);
 ```
 
 #### `asp_persist_diff()`
@@ -52,31 +42,24 @@ void asp_persist_diff(AgentSyncProtocolHandle* handle,
                       const char* id,
                       Operation_t operation,
                       const char* index,
-                      const char* data);
+                      const char* data,
+                      uint64_t version);
 ```
 
 **Parameters:**
 - `handle`: Sync protocol handle from `asp_create()`
 - `id`: Unique identifier (SHA1 hash of file path)
-- `operation`: Operation type (`OPERATION_CREATE`, `OPERATION_UPDATE`, `OPERATION_DELETE`)
+- `operation`: Operation type (`OPERATION_CREATE`, `OPERATION_MODIFY`, `OPERATION_DELETE`)
 - `index`: Sync index name
 - `data`: JSON string containing file/registry data
+- `version`: Document version
 
 **Usage Example:**
 ```c
-void persist_syscheck_msg(const char *id, Operation_t operation,
-                         const char *index, const cJSON* msg) {
-    if (syscheck.enable_synchronization) {
-        char* json_msg = cJSON_PrintUnformatted(msg);
-        asp_persist_diff(syscheck.sync_handle, id, operation, index, json_msg);
-        os_free(json_msg);
-    }
-}
-
-// Example calls for different operations:
-persist_syscheck_msg(file_hash, OPERATION_CREATE, FIM_FILES_SYNC_INDEX, file_json);
-persist_syscheck_msg(file_hash, OPERATION_UPDATE, FIM_FILES_SYNC_INDEX, file_json);
-persist_syscheck_msg(file_hash, OPERATION_DELETE, FIM_FILES_SYNC_INDEX, file_json);
+// FIM wraps the call in persist_syscheck_msg() (run_check.c)
+asp_persist_diff(syscheck.sync_handle, file_hash, OPERATION_CREATE, FIM_FILES_SYNC_INDEX, json_msg, version);
+asp_persist_diff(syscheck.sync_handle, file_hash, OPERATION_MODIFY, FIM_FILES_SYNC_INDEX, json_msg, version);
+asp_persist_diff(syscheck.sync_handle, file_hash, OPERATION_DELETE, FIM_FILES_SYNC_INDEX, json_msg, version);
 ```
 
 #### `asp_sync_module()`
@@ -85,29 +68,29 @@ Triggers synchronization of all pending differences.
 
 **Signature:**
 ```c
-bool asp_sync_module(AgentSyncProtocolHandle* handle,
-                     Mode_t mode,
-                     unsigned int sync_timeout,
-                     unsigned int sync_retries,
-                     size_t max_eps);
+SyncModuleResult_t asp_sync_module(AgentSyncProtocolHandle* handle,
+                                   Mode_t mode);
 ```
 
 **Parameters:**
 - `handle`: Sync protocol handle
 - `mode`: Sync mode (`MODE_DELTA` for FIM)
-- `sync_timeout`: Response timeout in seconds
-- `sync_retries`: Maximum retry attempts
-- `max_eps`: Maximum events per second (0 = unlimited)
+
+**Returns:** `SyncModuleResult_t`; see the [sync protocol API reference](../utils/sync-protocol/api-reference.md) for its fields. `success` with `sent_anything == false` means nothing was sent: the queue was empty or another sync was already running.
 
 **Usage Example:**
 ```c
 // FIM integrity thread triggers periodic synchronization
-bool sync_success = asp_sync_module(syscheck.sync_handle,
-                                   MODE_DELTA,                    // sync mode
-                                   syscheck.sync_response_timeout, // timeout
-                                   FIM_SYNC_RETRIES,              // retries
-                                   syscheck.sync_max_eps);        // max events/sec
+SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle, MODE_DELTA);
+
+if (!sync_result.success) {
+    mwarn("FIM synchronization failed: %s", sync_result.failure_reason);
+} else if (!sync_result.sent_anything) {
+    mdebug1("FIM synchronization: nothing to send.");
+}
 ```
+
+Timeouts and retries belong to the agent's HTTPS transport (`agent.https_stateful_timeout`, `agent.https_stateful_attempts`), not to this call.
 
 #### `asp_parse_response_buffer()`
 
@@ -141,19 +124,13 @@ Notifies the manager that specific indices have been cleaned and should be remov
 ```c
 bool asp_notify_data_clean(AgentSyncProtocolHandle* handle,
                            const char** indices,
-                           size_t indices_count,
-                           unsigned int sync_timeout,
-                           unsigned int retries,
-                           size_t max_eps);
+                           size_t indices_count);
 ```
 
 **Parameters:**
 - `handle`: Sync protocol handle
 - `indices`: Array of index names to clean
 - `indices_count`: Number of indices in the array
-- `sync_timeout`: Response timeout in seconds
-- `retries`: Maximum retry attempts
-- `max_eps`: Maximum events per second (0 = unlimited)
 
 **Returns:**
 - `true`: Notification succeeded
@@ -168,12 +145,7 @@ const char* indices_to_clean[] = {
     FIM_REGISTRY_VALUES_SYNC_INDEX
 };
 
-bool notify_success = asp_notify_data_clean(syscheck.sync_handle,
-                                           indices_to_clean,
-                                           3,
-                                           syscheck.sync_response_timeout,
-                                           FIM_SYNC_RETRIES,
-                                           syscheck.sync_max_eps);
+bool notify_success = asp_notify_data_clean(syscheck.sync_handle, indices_to_clean, 3);
 ```
 
 #### `asp_delete_database()`
@@ -215,7 +187,7 @@ FIM uses the following operation types defined in `agent_sync_protocol_c_interfa
 ```c
 typedef enum {
     OPERATION_CREATE = 0,    // New file/registry entry
-    OPERATION_UPDATE = 1,    // Modified file/registry entry
+    OPERATION_MODIFY = 1,    // Modified file/registry entry
     OPERATION_DELETE = 2,    // Deleted file/registry entry
     OPERATION_NO_OP = 3     // No operation (internal use)
 } Operation_t;
@@ -268,8 +240,11 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
                                 void* user_data) {
     // Database comparison result processed here
     // Events generated based on comparison
-    persist_syscheck_msg(file_path_sha1, sync_operation,
-                        FIM_FILES_SYNC_INDEX, stateful_event);
+    // Validates against the schema, then persist_syscheck_msg() on success
+    validate_and_persist_fim_event(stateful_event, file_path_sha1, sync_operation,
+                                   FIM_FILES_SYNC_INDEX, document_version,
+                                   item_desc, mark_for_deletion,
+                                   txn_context->failed_paths, path_copy, sync_flag);
 }
 ```
 

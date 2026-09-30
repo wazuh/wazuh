@@ -11,7 +11,7 @@ The WAL configuration is set in the `PersistentQueueStorage` constructor:
 **File**: `src/shared_modules/sync_protocol/src/persistent_queue_storage.cpp`
 
 ```cpp
-m_connection.execute("PRAGMA synchronous = NORMAL;");
+m_connection.execute("PRAGMA synchronous = OFF;");
 m_connection.execute("PRAGMA journal_mode = WAL;");
 ```
 
@@ -63,11 +63,14 @@ While the improvement is smaller on Linux, WAL mode still provides:
 
 ### 3. Database Integrity & Recovery
 
-WAL mode with `PRAGMA synchronous = NORMAL` provides optimal balance:
+WAL mode runs with `PRAGMA synchronous = OFF` (PR #37180), so SQLite never calls `fsync()`, not even at WAL checkpoints (with `NORMAL`, WAL mode already skipped it at commit but still synced at checkpoints):
 
-- **Crash-safe**: Commits are durable once written to WAL
+- **Agent crash or kill**: committed batches survive; SQLite replays the WAL on the next open
+- **Operating system crash or power loss**: the most recent commits can be lost, and the database file can be corrupted
 - **Atomic operations**: Complete transactions or none at all
 - **Automatic checkpoint management**: SQLite handles WAL-to-database merging
+
+The weaker guarantee is accepted because the queue is transient: items are removed once the manager accepts them, and FIM, SCA and syscollector's regular instance resend lost items after their next integrity check (every 24 hours by default) finds a checksum mismatch. Nothing repairs a database file corrupted by a power loss.
 
 ### 4. Benefits Summary
 
@@ -76,18 +79,22 @@ WAL mode with `PRAGMA synchronous = NORMAL` provides optimal balance:
 | **Performance** | 2-3× faster FIM scans |
 | **Scalability** | Better handling of large file sets |
 | **SSD Longevity** | Sequential writes reduce wear leveling |
-| **Reliability** | Crash-safe with atomic commits |
+| **Reliability** | Atomic commits; survives an agent crash, not a power loss |
 | **Concurrency** | Readers don't block writers (if needed in future) |
 
 ## Transaction Strategy Analysis
 
-### Transaction-per-Event Performance
+### Batched Writes
 
-The Agent Sync Protocol uses a transaction-per-event approach, where each file operation is wrapped in its own `BEGIN`/`COMMIT` transaction. Performance testing validates this approach:
+`persistDifference()` does not write to SQLite directly. `PersistentQueue` buffers items in memory and a flush thread writes them to storage in one `BEGIN IMMEDIATE` transaction when 100 items are buffered or 500 ms have passed, whichever comes first; a sync also flushes the buffer before it reads the queue. The flush uses two buffers, so modules keep submitting while a batch is being written. The destructor flushes whatever is still buffered on a clean shutdown; an agent crash loses the unflushed buffer and any batch whose transaction had not committed.
+
+### Transaction-per-Event Performance (earlier design)
+
+Until PR #37180, during 5.0.0 development, each file operation was wrapped in its own `BEGIN`/`COMMIT` transaction. These measurements date from that design:
 
 #### Test Results
 
-**With BEGIN/COMMIT per event (current implementation):**
+**With BEGIN/COMMIT per event:**
 
 - Test 1: 10:28:18 → 10:29:10 = 52 seconds
 - Test 2: 11:19:34 → 11:20:30 = 56 seconds
@@ -117,7 +124,6 @@ This represents only **~7% of total scan time** (4s / 57s ≈ 7%), demonstrating
 
 1. **WAL mode successfully minimized transaction costs** - The overhead is negligible
 2. **Primary bottleneck is filesystem I/O and hashing** - Not database transactions
-3. **Transaction-per-event approach is sufficiently efficient** - No need for complex batching
 
 
 ## Configuration Details
@@ -125,17 +131,16 @@ This represents only **~7% of total scan time** (4s / 57s ≈ 7%), demonstrating
 ### Current SQLite PRAGMA Settings
 
 ```cpp
-PRAGMA synchronous = NORMAL;  // Balance between safety and performance
-PRAGMA journal_mode = WAL;    // Write-Ahead Logging mode
+PRAGMA synchronous = OFF;  // Never fsync(), not even at checkpoints
+PRAGMA journal_mode = WAL; // Write-Ahead Logging mode
 ```
 
 ### Configuration Rationale
 
-- **synchronous = NORMAL**:
-  - Commits are durable after written to WAL
-  - Does not wait for OS-level flush on every transaction
-  - Provides crash safety with better performance than FULL
-  - More secure than OFF mode
+- **synchronous = OFF**:
+  - Never waits for data to reach the disk, at commit or at WAL checkpoints
+  - Survives an agent crash; an operating system crash or power loss can lose recent commits or corrupt the file
+  - Acceptable because the queue is transient and the modules' integrity check resends lost items
 
 - **journal_mode = WAL**:
   - Enables Write-Ahead Logging
@@ -149,14 +154,10 @@ PRAGMA journal_mode = WAL;    // Write-Ahead Logging mode
 The evidence demonstrates that WAL mode provides substantial performance benefits for FIM operations, with improvements ranging from 2× on Linux to 2.85× on Windows. Beyond speed improvements, WAL mode delivers:
 
 - **Significant disk I/O optimizations** through sequential writes
-- **Crash-safe data persistence** with minimal overhead
-- **Simple implementation** using transaction-per-event pattern
+- **Atomic commits** that survive an agent crash
 - **Cross-platform benefits** with particularly strong gains on Windows
 
-The transaction-per-event approach with WAL mode represents an optimal balance of:
-- **Performance**: Minimal overhead (7%) with 2-3× overall improvement
-- **Reliability**: Crash-safe, atomic operations
-- **Maintainability**: Simple code, easy debugging
+Batched writes with WAL mode and `synchronous = OFF` trade durability against a power loss, which a transient queue does not need, for lower write latency.
 
 This configuration is well-suited for the Agent Sync Protocol's write-heavy workload patterns and should be maintained as the standard persistence strategy.
 

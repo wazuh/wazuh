@@ -219,7 +219,7 @@ void fim_initialize(void)
     {
         if (schema_validator_initialize())
         {
-            minfo("Schema validator initialized successfully from embedded resources");
+            mdebug1("Schema validator initialized successfully from embedded resources");
         }
         else
         {
@@ -519,8 +519,9 @@ if (!factory.isInitialized())
 auto validator = factory.getValidator(index);
 if (!validator)
 {
-    // No validator for this index - continue without validation
-    return true;
+    // No schema for this index - discard instead of sending it unvalidated
+    m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Discarding message.");
+    return false;
 }
 
 // Proceed with validation
@@ -532,7 +533,7 @@ auto result = validator->validate(data);
 **Initialization:**
 ```cpp
 // During startup
-LOG_INFO: "Schema validator initialized successfully"
+LOG_DEBUG: "Schema validator initialized successfully from embedded resources"
 LOG_WARNING: "Schema validator not initialized. Validation disabled."
 ```
 
@@ -692,7 +693,6 @@ if (!validator)
 1. Check the raw event logged in errors
 2. Compare against the schema file for that index
 3. Verify field names and types match exactly
-4. Check for missing required fields
 
 ### Issue: Performance degradation
 

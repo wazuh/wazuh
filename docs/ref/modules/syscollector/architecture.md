@@ -1031,13 +1031,12 @@ Syscollector uses a deferred deletion pattern to safely remove invalid entries:
 
 **Initialization:**
 ```
-[INFO] Schema validator initialized successfully from embedded resources
+[DEBUG] Schema validator initialized successfully from embedded resources
 ```
 
 **Validation Failure:**
 ```
-[ERROR] Schema validation failed for Syscollector message (table: dbsync_packages, index: wazuh-states-inventory-packages). Errors:
-  - Field 'package.version' expected type 'keyword', got 'object'
+[ERROR] Schema validation failed for Syscollector message (table: dbsync_packages, index: wazuh-states-inventory-packages). Errors:   - package.version: Expected string, got object with value: {"major":1}
 [ERROR] Raw event that failed validation: {"package":{"version":{"major":1}}}
 [ERROR] Discarding invalid Syscollector message (table: dbsync_packages)
 [DEBUG] Marking entry from table dbsync_packages for deferred deletion due to validation failure

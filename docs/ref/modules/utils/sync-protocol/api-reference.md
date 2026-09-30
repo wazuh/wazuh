@@ -25,7 +25,8 @@ AgentSyncProtocol(const std::string& moduleName,
                   std::optional<std::string> dbPath,
                   LoggerFunc logger,
                   std::shared_ptr<IPersistentQueue> queue = nullptr,
-                  std::shared_ptr<ISyncSessionTransport> syncTransport = nullptr)
+                  std::shared_ptr<ISyncSessionTransport> syncTransport = nullptr,
+                  bool isFeedBased = false)
 ```
 
 **Parameters:**
@@ -34,8 +35,9 @@ AgentSyncProtocol(const std::string& moduleName,
 - `logger`: Callback function for logging messages
 - `queue`: Optional custom persistent queue implementation (mainly for testing)
 - `syncTransport`: Optional custom carrier for whole sessions (mainly for testing); defaults to `SyncSocketTransport`, which streams the session over the agent's local `queue-sync` socket
+- `isFeedBased`: `true` when the manager checks this instance's sessions against a feed position instead of a checksum. Only syscollector's vulnerability-detection instance sets it; it changes only the wording of the failure reason for an HTTP `409` whose body does not name the mismatch kind
 
-There is no `timeout`/`retries` constructor parameter: HTTP-level timeout and retry are owned exclusively by the HTTPS transport layer (`statefulTimeoutMs`, `STATEFUL_MAX_ATTEMPTS`). See [Transport-Level Timeout and Retry](lifecycle.md#transport-level-timeout-and-retry).
+There is no `timeout`/`retries` constructor parameter: HTTP-level timeout and retry are owned exclusively by the HTTPS transport layer (internal options `agent.https_stateful_timeout` and `agent.https_stateful_attempts`). See [Transport-Level Timeout and Retry](lifecycle.md#transport-level-timeout-and-retry).
 
 #### Public Methods
 
@@ -65,7 +67,7 @@ Persists a data item to the internal SQLite-backed queue for later synchronizati
 protocol.persistDifference(
     "abc123def456",
     Operation::CREATE,
-    "fim_files",
+    "wazuh-states-fim-files",
     "{\"path\": \"/etc/passwd\", \"hash\": \"...\", \"timestamp\": 1234567890}",
     1
 );
@@ -83,7 +85,7 @@ Synchronizes a module's pending data with the manager. `Mode::DELTA` reads from 
 - `mode`: Synchronization mode (only `Mode::DELTA` is valid here)
 - `option`: Sync option (default `Option::SYNC`; use `Option::VDFIRST` / `Option::VDSYNC` for VD flows)
 
-**Returns:** `SyncModuleResult` with success flag, optional failure reason, stop and manager-not-ready flags, and consecutive failure count
+**Returns:** `SyncModuleResult` (fields under Result Type below)
 
 **Example:**
 ```cpp
@@ -128,21 +130,27 @@ Synchronizes metadata or groups with the manager without sending any data items.
 ##### `notifyDataClean()`
 
 ```cpp
-bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC)
+SyncModuleResult notifyDataClean(const std::vector<std::string>& indices,
+                                 Option option = Option::SYNC,
+                                 bool trackConsecutiveFailures = false)
 ```
 
-Notifies the manager about data cleaning for specified indices. Sent as one `FullSession` carrying a `Cleans` payload (one `DataClean` per index). Upon receiving `Ok`, it clears the local database and returns true.
+Notifies the manager about data cleaning for specified indices. Sent as one `FullSession` carrying a `Cleans` payload (one `DataClean` per index). Upon receiving `Ok`, it removes the listed indices' items from the persistent queue.
 
 **Parameters:**
 - `indices`: Index names to clean
 - `option`: Synchronization option (default `Option::SYNC`)
+- `trackConsecutiveFailures`: `true` feeds this call's outcome, success or failure, into the consecutive-failure streaks `synchronizeModule()` reports. Pass `true` only from a periodic-sync path; leave the default `false` for one-off cleanups (for example after a policy is removed), in which case the result's `consecutiveFailures` is `0`. Reaching the local intake resets the local-transport streak either way
 
-**Returns:** `true` if notification completed successfully and database was cleared, `false` otherwise
+**Returns:** `SyncModuleResult` — `success` is `true` when the manager accepted the clean and the indices' queued items were removed. Fields under Result Type below
 
 **Example:**
 ```cpp
-std::vector<std::string> indices = {"fim_files", "fim_registry"};
-bool success = protocol.notifyDataClean(indices);
+std::vector<std::string> indices = {"wazuh-states-fim-files", "wazuh-states-fim-registry-keys"};
+SyncModuleResult result = protocol.notifyDataClean(indices);
+if (!result.success) {
+    // retry on the next cycle
+}
 ```
 
 ##### `fetchPendingItems()`
@@ -179,6 +187,22 @@ Deletes the database file. This method closes the database connection and remove
 protocol.deleteDatabase();
 ```
 
+##### `setSessionMaxBytes()` (static)
+
+```cpp
+static void setSessionMaxBytes(size_t maxBytes)
+```
+
+Sets the byte ceiling for one `FullSession`, process-wide. The value belongs to `<agent><batch><size>`; the daemon hosting the modules reads it and calls this before any module creates its instance. Each instance copies the value at construction, so a later call does not affect existing instances. `0` keeps the built-in default (1 MiB).
+
+##### `currentAgentId()` (static)
+
+```cpp
+static long currentAgentId()
+```
+
+Returns the agent id this process synchronizes under, read from the same metadata provider that stamps `Start.agentid` on every session. Returns `0` when no id is published yet or the value is not a plain number; treat `0` as unknown, never as a changed id. Modules compare it against the id of their last full synchronization to detect a re-enrollment.
+
 ##### `stop()` / `reset()` / `shouldStop()`
 
 ```cpp
@@ -213,6 +237,28 @@ Processes a response from the manager. Accepts either a FlatBuffer-encoded `Mess
 ```
 
 ### Functions
+
+#### `asp_set_session_max_bytes()`
+
+```c
+void asp_set_session_max_bytes(uint64_t max_session_bytes);
+```
+
+C wrapper for `setSessionMaxBytes()`. Process-wide, takes no handle. `wazuh-modulesd`, `wazuh-syscheckd` and the Windows agent call it at startup with `<agent><batch><size>`.
+
+**Parameters:**
+
+- `max_session_bytes`: Maximum bytes per session, or `0` to keep the default
+
+#### `asp_get_agent_id()`
+
+```c
+long asp_get_agent_id(void);
+```
+
+C wrapper for `currentAgentId()`. Process-wide, takes no handle. Use it rather than reading `client.keys`: during re-enrollment the two disagree, and the manager answers a session stamped with the wrong id with `403`.
+
+**Returns:** The agent id, or `0` when unknown
 
 #### `asp_create()`
 
@@ -275,7 +321,7 @@ C wrapper for `synchronizeModule()` with the default `Option_t` (`OPTION_SYNC`).
 - `handle`: Protocol handle
 - `mode`: Sync mode (only `MODE_DELTA` is valid here)
 
-**Returns:** `SyncModuleResult_t` with success flag and optional failure reason string
+**Returns:** `SyncModuleResult_t` (fields under Result Type below)
 
 #### `asp_requires_full_sync()`
 
@@ -323,18 +369,18 @@ bool asp_notify_data_clean(AgentSyncProtocolHandle* handle,
                            size_t indices_count)
 ```
 
-C wrapper for `notifyDataClean()` with the default `Option_t` (`OPTION_SYNC`). Notifies the manager about data cleaning for specified indices.
+C wrapper for `notifyDataClean()` with the default `Option_t` (`OPTION_SYNC`) and `trackConsecutiveFailures = false`; returns only the `success` flag. Notifies the manager about data cleaning for specified indices.
 
 **Parameters:**
 - `handle`: Protocol handle
 - `indices`: Array of index name strings to clean
 - `indices_count`: Number of indices in the array
 
-**Returns:** `true` if notification completed successfully and database was cleared, `false` otherwise
+**Returns:** `true` if the manager accepted the clean and the indices' queued items were removed, `false` otherwise
 
 **Example:**
 ```c
-const char* indices[] = {"fim_files", "fim_registry"};
+const char* indices[] = {"wazuh-states-fim-files", "wazuh-states-fim-registry-keys"};
 bool success = asp_notify_data_clean(handle, indices, 2);
 ```
 
@@ -465,6 +511,10 @@ struct SyncModuleResult {
     bool stopped{false};
     bool managerNotReady{false};
     unsigned int consecutiveFailures{0};
+    bool awaitingPrerequisite{false};
+    bool localTransportUnavailable{false};
+    bool sessionSkipped{false};
+    bool sentAnything{false};
 };
 ```
 
@@ -475,6 +525,9 @@ typedef struct SyncModuleResult_t {
     bool stopped;
     bool manager_not_ready;
     unsigned int consecutive_failures;
+    bool awaiting_prerequisite;
+    bool local_transport_unavailable;
+    bool sent_anything;
 } SyncModuleResult_t;
 ```
 
@@ -483,6 +536,10 @@ typedef struct SyncModuleResult_t {
 - `stopped`: `true` if the operation was aborted because `stop()` was called — lets the caller demote an expected shutdown-time failure to INFO/DEBUG instead of WARNING.
 - `managerNotReady`/`manager_not_ready`: `true` if the manager did not answer the handshake, or answered `Offline`. Describes what happened, not how serious it is — use it together with `consecutiveFailures` (see `SYNC_MANAGER_NOT_READY_TOLERANCE`) to decide the log level.
 - `consecutiveFailures`/`consecutive_failures`: consecutive failed synchronizations for this module, including this one; reset to zero on the first success.
+- `awaitingPrerequisite`/`awaiting_prerequisite`: `true` if the sync was aborted because the manager has not yet supplied the agent's groups. Expected right after an agent restart and normally clears within a cycle or two, so the caller can log it at INFO/DEBUG.
+- `localTransportUnavailable`/`local_transport_unavailable`: `true` if the local `queue-sync` intake could not be reached (the `wazuh-agentd` HTTPS client is not up yet). Nothing reached the manager, so this is not a manager-side condition. In this case `consecutiveFailures` counts consecutive failures to reach the intake, a streak separate from the sync one.
+- `sessionSkipped` (C++ only): `true` if no session ran because another synchronization was already in flight on the same instance. Reported as a success, since the in-flight sync drains the same queue; do not record it as a completed session.
+- `sentAnything`/`sent_anything`: `true` if the manager accepted at least one block of queued items. `success` with `sentAnything == false` means the queue was empty or (C++ only, `sessionSkipped`) the session was skipped; the C struct cannot tell the two apart. Always `false` for metadata and group synchronizations and for `notifyDataClean()`.
 
 ### Callback Types
 

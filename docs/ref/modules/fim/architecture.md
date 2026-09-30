@@ -541,9 +541,7 @@ if (indices_count > 0) {
 
     bool ret = false;
     while (!ret) {
-        ret = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count,
-                                    syscheck.sync_response_timeout, FIM_SYNC_RETRIES,
-                                    syscheck.sync_max_eps);
+        ret = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
         if (!ret) {
             // Wait sync_interval before retry
             for (uint32_t i = 0; i < syscheck.sync_interval; i++) {
@@ -557,7 +555,6 @@ if (indices_count > 0) {
 **Retry Logic:**
 - Continues retrying until successful
 - Waits `syscheck.sync_interval` seconds between retries
-- Uses configured timeout and max events per second limits
 
 #### Step 3: Database Cleanup
 
@@ -639,9 +636,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         mdebug1("Running inventory synchronization.");
 
         // Trigger synchronization of all pending FIM changes
-        asp_sync_module(syscheck.sync_handle, MODE_DELTA,
-                       syscheck.sync_response_timeout, FIM_SYNC_RETRIES,
-                       syscheck.sync_max_eps);
+        SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle, MODE_DELTA);
 
         sleep(syscheck.sync_interval);
     }
@@ -940,7 +935,7 @@ if (!schema_validator_is_initialized())
 {
     if (schema_validator_initialize())
     {
-        minfo("Schema validator initialized successfully from embedded resources");
+        mdebug1("Schema validator initialized successfully from embedded resources");
     }
     else
     {
@@ -966,7 +961,7 @@ Validate a JSON message:
 
 ```c
 char* errorMessage = NULL;
-const char* index = "wazuh-states-fim-file";
+const char* index = "wazuh-states-fim-files";
 const char* message = "{\"file\":{\"path\":\"/etc/passwd\"}}";
 
 if (!schema_validator_validate(index, message, &errorMessage))
@@ -1039,8 +1034,9 @@ FIM validates data for the following Wazuh indices:
 
 | Event Type | Index Pattern | Description |
 |------------|---------------|-------------|
-| File events | `wazuh-states-fim-file` | File creation, modification, deletion |
-| Registry events | `wazuh-states-fim-registry` | Registry key/value changes (Windows) |
+| File events | `wazuh-states-fim-files` | File creation, modification, deletion |
+| Registry key events | `wazuh-states-fim-registry-keys` | Registry key changes (Windows) |
+| Registry value events | `wazuh-states-fim-registry-values` | Registry value changes (Windows) |
 
 #### File Event Structure
 
@@ -1062,27 +1058,24 @@ FIM validates data for the following Wazuh indices:
 
 **Initialization:**
 ```
-INFO: Schema validator initialized successfully from embedded resources
+DEBUG: Schema validator initialized successfully from embedded resources
 ```
 
-**Validation Failure (File):**
+**Validation Failure** (`validate_and_persist_fim_event()` in `run_check.c`; `<item>` is `file <path>`, `registry key <path>` or `registry value <path>:<value>`):
 ```
-DEBUG2: Schema validation failed for FIM message (file: /etc/passwd, index: wazuh-states-fim-file). Error: Field 'file.size' expected type 'long', got 'string'
-DEBUG2: Raw event that failed validation: {"file":{"path":"/etc/passwd","size":"1024"}}
-DEBUG: Discarding invalid FIM message (file: /etc/passwd)
-DEBUG: Marking FIM entry for deferred deletion due to validation failure
-```
-
-**Validation Failure (Registry):**
-```
-DEBUG2: Schema validation failed for FIM message (registry: HKEY_LOCAL_MACHINE\Software\Test, index: wazuh-states-fim-registry). Error: Field 'registry.value_type' expected type 'keyword', got 'integer'
-DEBUG2: Raw event that failed validation: {"registry":{"path":"HKEY_LOCAL_MACHINE\\Software\\Test","value_type":1}}
-DEBUG: Discarding invalid FIM message (registry: HKEY_LOCAL_MACHINE\Software\Test)
+ERROR: Schema validation failed for <item> (index: <index>). Errors: <validator errors, one per line>
+ERROR: Raw event that failed validation: <event JSON>
+DEBUG: Skipping persistence of invalid event for <item>
+DEBUG: Marking <item> for deletion from DBSync due to validation failure
 ```
 
-**Batch Deletion:**
+The validator errors use the format in the [schema validator API reference](../utils/schema-validator/api-reference.md), for example `file.size: Expected integer, got string with value: "1024"`.
+
+**Deferred Deletion** (one line per item):
 ```
-DEBUG: Deleted 3 FIM item(s) from database due to validation failure
+DEBUG: Deleting <path> from DBSync due to validation failure
+DEBUG: Deleting registry key <path> from DBSync due to validation failure
+DEBUG: Deleting registry value <path>:<value> from DBSync due to validation failure
 ```
 
 **Graceful Degradation:**
