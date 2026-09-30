@@ -450,8 +450,14 @@ def select_array(array: list, select: list = None, required_fields: set = None,
         required_fields = set()
 
     select_nested, select_no_nested = detect_nested_select(set(select))
-    if allowed_select_fields and not select_no_nested.issubset(allowed_select_fields):
-        raise WazuhError(1724, "{}".format(', '.join(select_no_nested)))
+    if allowed_select_fields:
+        # A nested field must hang from an allowed field: every select field is looked up in every item, so an
+        # unchecked dotted name would cost one lookup per item without ever being able to return anything.
+        invalid_fields = {field for field in select_no_nested if field not in allowed_select_fields} | \
+                         {field for field in select_nested if field not in allowed_select_fields and
+                          field.split('.', 1)[0] not in allowed_select_fields}
+        if invalid_fields:
+            raise WazuhError(1724, "{}".format(', '.join(sorted(invalid_fields))))
     select = select_nested.union(select_no_nested)
 
     result_list = list()
@@ -943,6 +949,32 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
         return element
 
+    # Every clause is checked against every element, so the same literal and the same field value are
+    # converted many times. The type is part of the key: 1, 1.0 and True are equal keys to a dict.
+    converted_dates = {}
+
+    def to_date(element: typing.Any) -> typing.Any:
+        """Memoized check_date_format. Unhashable values are converted every time.
+
+        Parameters
+        ----------
+        element : any
+            Item to check.
+
+        Returns
+        -------
+        any
+            Result of check_date_format for the element.
+        """
+        key = (type(element), element)
+        try:
+            return converted_dates[key]
+        except KeyError:
+            converted_dates[key] = check_date_format(element)
+            return converted_dates[key]
+        except TypeError:
+            return check_date_format(element)
+
     def check_clause(value1: typing.Union[str, int], op: str, value2: str) -> bool:
         """Check an operation between value1 and value2. 'value1' could be an integer, it is necessary cast value2 to
         integer if this happens
@@ -986,9 +1018,9 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
                     # never raise, they just correctly evaluate to False/True.
                     continue
                 # cast value2 to integer if value1 is integer
-                value2 = check_date_format(value2)
+                value2 = to_date(value2)
                 if type(value2) == datetime:
-                    val = check_date_format(val)
+                    val = to_date(val)
                 value2 = int(value2) if type(val) == int else value2
                 if type(val) == bool and isinstance(value2, str):
                     if value2.lower() not in ('true', 'false', '1', '0'):
@@ -1057,8 +1089,41 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
         r"\)?"
     )
 
-    # get a list with OR clauses
-    or_clauses = q.split(',')
+    def parse_clause(and_clause: str) -> tuple:
+        """Split an AND clause into its field, subfields, operator and value.
+
+        Parameters
+        ----------
+        and_clause : str
+            Clause to parse.
+
+        Raises
+        ------
+        WazuhError(1407)
+            Parameter q is not valid.
+
+        Returns
+        -------
+        tuple
+            The clause itself, field name, nested field names, operator and value.
+        """
+        try:
+            field_name, field_subnames, op, value = re_get_elements.match(and_clause).groups()
+        except AttributeError:
+            raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
+
+        # The regex matches any two of the operator characters, so `>=`, `<=` or `==` parse
+        # as an operator that check_clause has no entry for. That is a malformed query, not
+        # a record that fails to match, so it is reported whatever the collection holds.
+        if op not in operators:
+            raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
+
+        return and_clause, field_name, field_subnames, op, value
+
+    # get a list with OR clauses, each one a list of parsed AND clauses. The query is parsed once, before
+    # the array is walked, so its cost does not grow with the number of elements and a malformed clause
+    # is reported whatever the collection holds.
+    or_clauses = [[parse_clause(and_clause) for and_clause in or_clause.split(';')] for or_clause in q.split(',')]
     output_array = []
     # A literal the field's type cannot address is a property of the record, not of the query: the
     # same clause evaluates fine against a differently-typed record. So a mismatch only excludes its
@@ -1070,23 +1135,10 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
     # process elements of input_array
     for elem in input_array:
         # if an element matches an OR clause, it will be added to output
-        for or_clause in or_clauses:
+        for and_clauses in or_clauses:
             # all AND clauses should match for adding an element to output
-            and_clauses = or_clause.split(';')
             match = True  # flag for checking clauses
-            for and_clause in and_clauses:
-                # get elements in a clause
-                try:
-                    field_name, field_subnames, op, value = re_get_elements.match(and_clause).groups()
-                except AttributeError:
-                    raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
-
-                # The regex matches any two of the operator characters, so `>=`, `<=` or `==` parse
-                # as an operator that check_clause has no entry for. That is a malformed query, not
-                # a record that fails to match, so it is reported whatever the collection holds.
-                if op not in operators:
-                    raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
-
+            for and_clause, field_name, field_subnames, op, value in and_clauses:
                 # check if a clause is satisfied
                 match_candidates = list()
                 # get_match_candidates/deepcopy run outside the try below: a failure here is a bug
