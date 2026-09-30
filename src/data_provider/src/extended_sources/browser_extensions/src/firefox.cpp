@@ -9,6 +9,7 @@
 
 #include "firefox.hpp"
 #include <fstream>
+#include "safe_file_reader.hpp"
 
 FirefoxAddonsProvider::FirefoxAddonsProvider(std::shared_ptr<IBrowserExtensionsWrapper> firefoxAddonsWrapper) : m_firefoxAddonsWrapper(std::move(firefoxAddonsWrapper)) {}
 
@@ -123,11 +124,11 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
                     continue;
                 }
 
-                std::ifstream extensionsFile(extensionsFilePath);
+                std::string extensionsContent;
 
-                if (!extensionsFile.is_open())
+                if (!browser_extensions::readRegularFile(extensionsFilePath, extensionsContent))
                 {
-                    // Skip this profile if file cannot be opened
+                    // Skip this profile if the file cannot be read or is not a regular file
                     continue;
                 }
 
@@ -135,7 +136,7 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
 
                 try
                 {
-                    extensionsJson = nlohmann::json::parse(extensionsFile);
+                    extensionsJson = nlohmann::json::parse(extensionsContent);
                 }
                 catch (const nlohmann::json::parse_error& e)
                 {
