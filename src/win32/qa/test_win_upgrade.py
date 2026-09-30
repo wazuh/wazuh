@@ -7,7 +7,8 @@ import subprocess
 RELEASED_PATH = 'C:\\win-agent-released\\'
 BASE_PATH = 'C:\\win-agent-base\\'
 INSTALL_PATH = 'C:\\Program Files (x86)\\ossec-agent\\'
-AUTHENTICATED_USERS_SID = 'S-1-5-11'
+# Administrators and SYSTEM
+EXPECTED_SHARED_SIDS = {'S-1-5-32-544', 'S-1-5-18'}
 
 
 def populate_dict(dict, files_list):
@@ -84,30 +85,48 @@ def test_win_upgrade():
 
 
 def test_win_upgrade_shared_dir_permissions():
-    # Runs after test_win_upgrade, on the upgraded installation. The released version grants
-    # Authenticated Users read access to the shared directory, so this also checks that the
-    # upgrade strips it from the files that were already there.
+    # Runs after test_win_upgrade, on the upgraded installation. The shared directory and every
+    # entry below it must carry only the Administrators and SYSTEM entries, like ossec.conf.
     shared_path = INSTALL_PATH + 'shared'
     assert os.path.isdir(shared_path), f"Directory '{shared_path}' not found"
 
-    # Compare by SID: account names are localized. The ACLs are read through .NET instead of
-    # Get-Acl so the check does not depend on loading PowerShell modules, which fails when
-    # Windows PowerShell is started from a PowerShell 7 session such as the runner's shell.
-    script = (
-        "$ErrorActionPreference = 'Stop'; "
-        f"$root = '{shared_path}'; "
-        "$paths = @($root) + @([System.IO.Directory]::GetFileSystemEntries("
-        "$root, '*', [System.IO.SearchOption]::AllDirectories)); "
-        "foreach ($path in $paths) { "
-        "if ([System.IO.Directory]::Exists($path)) { $acl = [System.IO.Directory]::GetAccessControl($path) } "
-        "else { $acl = [System.IO.File]::GetAccessControl($path) }; "
-        "foreach ($rule in $acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier])) { "
-        f"if ($rule.IdentityReference.Value -eq '{AUTHENTICATED_USERS_SID}') {{ $path }} "
-        "} }"
-    )
-    result = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', script],
-                            capture_output=True, text=True)
+    # The agent creates the files it receives from the manager without an explicit security
+    # descriptor, so they take their entries from the directory. A file created here the same
+    # way checks what those files get.
+    probe_path = os.path.join(shared_path, 'test_win_upgrade_probe.txt')
+    with open(probe_path, 'w') as probe:
+        probe.write('probe')
+
+    try:
+        # Compare by SID: account names are localized. The ACLs are read through .NET instead of
+        # Get-Acl so the check does not depend on loading PowerShell modules, which fails when
+        # Windows PowerShell is started from a PowerShell 7 session such as the runner's shell.
+        script = (
+            "$ErrorActionPreference = 'Stop'; "
+            f"$root = '{shared_path}'; "
+            "$paths = @($root) + @([System.IO.Directory]::GetFileSystemEntries("
+            "$root, '*', [System.IO.SearchOption]::AllDirectories)); "
+            "foreach ($path in $paths) { "
+            "if ([System.IO.Directory]::Exists($path)) { $acl = [System.IO.Directory]::GetAccessControl($path) } "
+            "else { $acl = [System.IO.File]::GetAccessControl($path) }; "
+            "foreach ($rule in $acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier])) { "
+            "$path + \"`t\" + $rule.IdentityReference.Value "
+            "} }"
+        )
+        result = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', script],
+                                capture_output=True, text=True)
+    finally:
+        os.remove(probe_path)
+
     assert result.returncode == 0, f"Failed to read the ACLs under '{shared_path}': {result.stderr}"
 
-    with_entry = sorted(set(line.strip() for line in result.stdout.splitlines() if line.strip()))
-    assert not with_entry, f"Authenticated Users still has an entry on: {with_entry}"
+    sids_by_path = {}
+    for line in result.stdout.splitlines():
+        if line.strip():
+            path, sid = line.rsplit('\t', 1)
+            sids_by_path.setdefault(path, set()).add(sid.strip())
+
+    assert probe_path in sids_by_path, f"No entries read for '{probe_path}': {sids_by_path}"
+
+    unexpected = {path: sorted(sids) for path, sids in sids_by_path.items() if sids != EXPECTED_SHARED_SIDS}
+    assert not unexpected, f"Expected only {sorted(EXPECTED_SHARED_SIDS)}, found: {unexpected}"

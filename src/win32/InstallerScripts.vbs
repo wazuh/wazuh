@@ -467,7 +467,7 @@ Public Function SetWazuhPermissions()
         ' the same permissions as ossec.conf. Files the agent writes there later inherit only the
         ' Administrators and SYSTEM entries, and a file replaced in place keeps the DACL of the
         ' file it replaces.
-        remAuthenticatedUsersPermsSharedDir = "icacls """ & home_dir & "shared" & """ /remove:g *S-1-5-11 /t /q"
+        remAuthenticatedUsersPermsSharedDir = "icacls """ & home_dir & "shared" & """ /remove:g *S-1-5-11 /t /c /q"
         WshShell.run remAuthenticatedUsersPermsSharedDir, 0, True
 
     End If
