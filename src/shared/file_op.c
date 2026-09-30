@@ -28,6 +28,9 @@
 
 #ifndef WIN32
 #include <regex.h>
+#ifdef __linux__
+#include <sys/vfs.h>
+#endif
 #else
 #include <aclapi.h>
 #include <winreg.h>
@@ -2685,10 +2688,24 @@ static HANDLE w_createfile_nofollow_vetted(const char * basedir, const char * fi
  */
 static int w_openat_nofollow_vetted(const char * basedir, const char * filename, int oflags, mode_t mode) {
     struct stat statbuf;
-    int dirfd;
     int fd;
     int saved_errno;
     int flags;
+
+#ifdef HPUX
+    // HP-UX has no openat(): open by path. filename is a bare name, so the path stays inside basedir.
+    char path[PATH_MAX + 1];
+
+    if (snprintf(path, sizeof(path), "%s/%s", basedir, filename) >= (int) sizeof(path)) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    if (fd = open(path, oflags, mode), fd < 0) {
+        return -1;
+    }
+#else
+    int dirfd;
 
     if (dirfd = open(basedir, O_RDONLY | O_DIRECTORY | O_CLOEXEC), dirfd < 0) {
         return -1;
@@ -2702,6 +2719,7 @@ static int w_openat_nofollow_vetted(const char * basedir, const char * filename,
         errno = saved_errno;
         return -1;
     }
+#endif
 
     // Rules out anything O_NOFOLLOW does not, such as a block or character device.
     if (fstat(fd, &statbuf) < 0) {
@@ -2858,6 +2876,588 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
     }
 
     return gzfp;
+#endif
+}
+
+
+#ifndef WIN32
+// Same limit as Linux's MAXSYMLINKS; bounds a symlink loop the kernel would stop with ELOOP.
+#define W_VETTED_MAX_SYMLINKS 40
+// Walks retried when an entry changes between its checks, as a symlink re-pointed during rotation does.
+#define W_VETTED_RACE_RETRIES 3
+
+/**
+ * A hard link can be made by anyone who can write to its directory, so an entry with more than one link
+ * is trusted only when nobody but root and the entry's owner can.
+ *
+ * @return true if entry_stat, found in the directory described by dir_stat, can be trusted.
+ */
+static bool w_vet_link_count(const struct stat * entry_stat, const struct stat * dir_stat) {
+    return entry_stat->st_nlink <= 1 ||
+           ((dir_stat->st_uid == 0 || dir_stat->st_uid == entry_stat->st_uid) &&
+            !(dir_stat->st_mode & (S_IWGRP | S_IWOTH)));
+}
+
+/**
+ * Only root can add, remove or replace entries in a directory owned by root that is not writable by group or
+ * others, so whoever owns an entry there, root put it there. That makes a symlink there as trusted as root's
+ * own, since its target can only be changed by replacing the link, and likewise a FIFO or device.
+ *
+ * @return true if only root can write to the directory described by dir_stat.
+ */
+static bool w_vet_root_only_dir(const struct stat * dir_stat) {
+    return dir_stat->st_uid == 0 && !(dir_stat->st_mode & (S_IWGRP | S_IWOTH));
+}
+
+/**
+ * Unlike a regular file, a FIFO can block reads, and its owner can keep it open without writing. So a FIFO
+ * or device not owned by root is trusted only in a directory only root can write to, where root placed it.
+ *
+ * @return true if entry_stat, found in the directory described by dir_stat, can be trusted.
+ */
+static bool w_vet_special_owner(const struct stat * entry_stat, const struct stat * dir_stat) {
+    return entry_stat->st_uid == 0 || w_vet_root_only_dir(dir_stat);
+}
+
+/**
+ * Decides whether a file opened by w_fopen_vetted_follow() may be read, from stat results alone. Split out
+ * so the trust rule can be unit tested with fabricated ownership, without root or a live race.
+ *
+ * @param fd_stat fstat() result of the opened file.
+ * @param dir_stat fstat() result of the directory holding the file's final path entry.
+ * @param link_uid Owner of the symlinks followed that someone other than root could replace, or NULL if none.
+ * @return 0 if the file may be read, -1 otherwise (errno EINVAL for a file type, EPERM for trust).
+ *
+ * Not declared in file_op.h: given external linkage only so the unit tests can reach it.
+ */
+int w_vet_opened_file(const struct stat * fd_stat, const struct stat * dir_stat, const uid_t * link_uid) {
+    if (!S_ISREG(fd_stat->st_mode)) {
+        if (!(S_ISFIFO(fd_stat->st_mode) || S_ISCHR(fd_stat->st_mode))) {
+            errno = EINVAL;
+            return -1;
+        }
+
+        if (!w_vet_special_owner(fd_stat, dir_stat)) {
+            errno = EPERM;
+            return -1;
+        }
+    }
+
+    // A link its owner could re-point may only lead to that owner's own file.
+    if (link_uid && *link_uid != fd_stat->st_uid) {
+        errno = EPERM;
+        return -1;
+    }
+
+    if (!w_vet_link_count(fd_stat, dir_stat)) {
+        errno = EPERM;
+        return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * O_NONBLOCK only matters while opening a possible FIFO; clears it so reads behave normally.
+ *
+ * @return fd, or -1 on error with fd closed (sets errno).
+ */
+static int w_clear_nonblock(int fd) {
+    int saved_errno;
+    int flags;
+
+    if (flags = fcntl(fd, F_GETFL), flags == -1 || fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) < 0) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+        return -1;
+    }
+
+    return fd;
+}
+
+// Solaris before 11 has no readlinkat(), and HP-UX has none of openat(), fstatat() and readlinkat().
+#if !defined(W_VETTED_NO_AT_WALK) && (defined(HPUX) || (defined(SUN_MAJOR_VERSION) && SUN_MAJOR_VERSION < 11))
+#define W_VETTED_NO_AT_WALK
+#endif
+
+#ifndef W_VETTED_NO_AT_WALK
+// O_PATH is spelled out for the agent packages, built with headers older than glibc 2.14 that lack it; it has
+// this value on these architectures, and kernels before 2.6.39 ignore it.
+#if defined(O_PATH)
+#define W_VETTED_O_PATH O_PATH
+#elif defined(__linux__) && (defined(__x86_64__) || defined(__i386__) || defined(__aarch64__) || defined(__arm__) || \
+                             defined(__powerpc__))
+#define W_VETTED_O_PATH 010000000
+#endif
+
+#if defined(W_VETTED_O_PATH)
+#define W_VETTED_SEARCH_ONLY W_VETTED_O_PATH
+#elif defined(O_SEARCH)
+#define W_VETTED_SEARCH_ONLY O_SEARCH
+#endif
+
+// Spelled out for the same reason as O_PATH; this value is the same on every Linux architecture.
+#if defined(AT_EMPTY_PATH)
+#define W_VETTED_AT_EMPTY_PATH AT_EMPTY_PATH
+#elif defined(__linux__)
+#define W_VETTED_AT_EMPTY_PATH 0x1000
+#endif
+
+/**
+ * fstat() for a descriptor of the walk, which may be O_PATH. Linux 2.6.39 to 3.5 fail fstat() on those with
+ * EBADF but accept fstatat() with AT_EMPTY_PATH.
+ *
+ * @return 0 on success, or -1 on error (sets errno).
+ */
+static int w_fstat_walk(int fd, struct stat * buf) {
+    int ret = fstat(fd, buf);
+
+#ifdef W_VETTED_AT_EMPTY_PATH
+    if (ret < 0 && errno == EBADF) {
+        ret = fstatat(fd, "", buf, W_VETTED_AT_EMPTY_PATH);
+    }
+#endif
+
+    return ret;
+}
+
+/**
+ * Opens a directory of the path being walked. Looking entries up in it takes only search permission, so when
+ * read is denied it is opened again for search only, where the platform has a way to.
+ *
+ * @return Directory descriptor, or -1 on error (sets errno).
+ */
+static int w_open_walk_dir(int dirfd, const char * name, int flags) {
+    int fd = openat(dirfd, name, O_RDONLY | O_DIRECTORY | O_CLOEXEC | flags);
+
+#ifdef W_VETTED_SEARCH_ONLY
+    if (fd < 0 && errno == EACCES) {
+        fd = openat(dirfd, name, W_VETTED_SEARCH_ONLY | O_DIRECTORY | O_CLOEXEC | flags);
+    }
+#endif
+
+    return fd;
+}
+
+#ifdef __linux__
+#define W_VETTED_PROC_SUPER_MAGIC 0x9fa0
+
+/**
+ * Tells whether dirfd is on procfs, whose symlinks such as /proc/<pid>/root and /proc/<pid>/fd/N resolve to the
+ * object they refer to, not to the text readlink() returns.
+ *
+ * @return true if dirfd is on procfs.
+ */
+static bool w_is_procfs(int dirfd) {
+    struct statfs sfs;
+
+    return fstatfs(dirfd, &sfs) == 0 && sfs.f_type == W_VETTED_PROC_SUPER_MAGIC;
+}
+#endif
+
+/**
+ * Reads the target of symlink name in dirfd, failing unless it is still a symlink with the inode and owner
+ * link_stat describes, so an entry swapped in after its owner was checked is not followed, even on inode reuse.
+ *
+ * @return Target length as readlinkat(), or -1 on error (errno EAGAIN if the entry was swapped).
+ */
+static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat * link_stat, char * target) {
+    struct stat now;
+    ssize_t n;
+#ifdef W_VETTED_O_PATH
+    // Pin the link itself, so the target read belongs to the inode compared below. O_NONBLOCK is for kernels
+    // that ignore O_PATH, where this is a plain open: a FIFO swapped in for the link must not block it.
+    int linkfd;
+    int saved_errno;
+
+    if (linkfd = openat(dirfd, name, W_VETTED_O_PATH | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC), linkfd >= 0) {
+        if (w_fstat_walk(linkfd, &now) < 0) {
+            n = -1;
+        } else if (!S_ISLNK(now.st_mode) || now.st_dev != link_stat->st_dev || now.st_ino != link_stat->st_ino ||
+                   now.st_uid != link_stat->st_uid) {
+            errno = EAGAIN;
+            n = -1;
+        } else {
+            n = readlinkat(linkfd, "", target, PATH_MAX);
+        }
+
+        saved_errno = errno;
+        close(linkfd);
+        errno = saved_errno;
+        return n;
+    }
+
+    // A kernel that ignores O_PATH fails O_NOFOLLOW on the link with ELOOP: fall back to the unpinned check.
+    if (errno != ELOOP) {
+        return -1;
+    }
+#endif
+    // No way to pin a link here: check it is the same one after reading it.
+    if (n = readlinkat(dirfd, name, target, PATH_MAX), n < 0) {
+        return -1;
+    }
+
+    if (fstatat(dirfd, name, &now, AT_SYMLINK_NOFOLLOW) < 0) {
+        return -1;
+    }
+
+    if (!S_ISLNK(now.st_mode) || now.st_dev != link_stat->st_dev || now.st_ino != link_stat->st_ino ||
+        now.st_uid != link_stat->st_uid) {
+        errno = EAGAIN;
+        return -1;
+    }
+
+    return n;
+}
+
+/**
+ * Resolves path one component at a time with openat()/fstatat()/readlinkat(), so no symlink is followed
+ * without first being inspected, then opens the final entry non-blocking and vets it.
+ *
+ * @return A vetted descriptor with O_NONBLOCK cleared, or -1 on error (sets errno).
+ */
+static int w_open_vetted_follow_fd(const char * path) {
+    char pending[PATH_MAX + 1];
+    char target[PATH_MAX + 1];
+    char next[PATH_MAX + 1];
+    char name[PATH_MAX + 1];
+    struct stat entry_stat;
+    struct stat fd_stat;
+    struct stat dir_stat;
+    uid_t link_uid = 0;
+    bool has_link_uid = false;
+    int symlinks = 0;
+    int nofollow = O_NOFOLLOW;
+    int dirfd;
+    int fd = -1;
+    int saved_errno;
+    const char * cursor;
+    size_t len;
+    ssize_t n;
+
+    if (strlen(path) > PATH_MAX) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    strcpy(pending, path);
+
+    if (dirfd = w_open_walk_dir(AT_FDCWD, *pending == '/' ? "/" : ".", 0), dirfd < 0) {
+        return -1;
+    }
+
+    for (cursor = pending;;) {
+        while (*cursor == '/') {
+            cursor++;
+        }
+
+        if (*cursor == '\0') {
+            // The path names a directory, not a file.
+            errno = EINVAL;
+            goto fail;
+        }
+
+        len = strcspn(cursor, "/");
+        memcpy(name, cursor, len);
+        name[len] = '\0';
+        cursor += len;
+
+        if (!strcmp(name, ".")) {
+            continue;
+        }
+
+        if (fstatat(dirfd, name, &entry_stat, AT_SYMLINK_NOFOLLOW) < 0) {
+            goto fail;
+        }
+
+        if (S_ISLNK(entry_stat.st_mode)) {
+            if (++symlinks > W_VETTED_MAX_SYMLINKS) {
+                errno = ELOOP;
+                goto fail;
+            }
+
+            if (entry_stat.st_uid != 0 || entry_stat.st_nlink > 1) {
+                if (w_fstat_walk(dirfd, &dir_stat) < 0) {
+                    goto fail;
+                }
+
+                // A hard link to someone else's symlink would otherwise pass as that owner's link.
+                if (!w_vet_link_count(&entry_stat, &dir_stat)) {
+                    errno = EPERM;
+                    goto fail;
+                }
+
+                // Links owned by root, or that only root can replace, are trusted; all others must share
+                // one owner, checked against the file.
+                if (entry_stat.st_uid != 0 && !w_vet_root_only_dir(&dir_stat)) {
+                    if (has_link_uid && link_uid != entry_stat.st_uid) {
+                        errno = EPERM;
+                        goto fail;
+                    }
+                    link_uid = entry_stat.st_uid;
+                    has_link_uid = true;
+                }
+            }
+
+#ifdef __linux__
+            // Only the kernel can resolve a procfs link, since its text names nothing usable. Its target moves
+            // with the process, so what bounds it is the owner check above and the vetting of the final file.
+            if (w_is_procfs(dirfd)) {
+                if (*cursor == '\0') {
+                    nofollow = 0;
+                    break;
+                }
+
+                if (fd = w_open_walk_dir(dirfd, name, O_NONBLOCK), fd < 0) {
+                    goto fail;
+                }
+
+                if (w_fstat_walk(fd, &entry_stat) < 0) {
+                    goto fail;
+                }
+
+                if (!S_ISDIR(entry_stat.st_mode)) {
+                    errno = ENOTDIR;
+                    goto fail;
+                }
+                close(dirfd);
+                dirfd = fd;
+                fd = -1;
+                continue;
+            }
+#endif
+
+            if (n = w_readlink_vetted(dirfd, name, &entry_stat, target), n <= 0) {
+                if (n == 0) {
+                    errno = ENOENT;
+                }
+                goto fail;
+            }
+            target[n] = '\0';
+
+            if (snprintf(next, sizeof(next), "%s%s", target, cursor) >= (int) sizeof(next)) {
+                errno = ENAMETOOLONG;
+                goto fail;
+            }
+            strcpy(pending, next);
+            cursor = pending;
+
+            if (*pending == '/') {
+                close(dirfd);
+                if (dirfd = w_open_walk_dir(AT_FDCWD, "/", 0), dirfd < 0) {
+                    return -1;
+                }
+            }
+            continue;
+        }
+
+        if (*cursor != '\0') {
+            // Intermediate directory. O_DIRECTORY may be 0 on some platforms, so a FIFO is rejected up front,
+            // O_NONBLOCK keeps one swapped in since fstatat() from blocking, and fstat() rejects it after.
+            if (!S_ISDIR(entry_stat.st_mode)) {
+                errno = ENOTDIR;
+                goto fail;
+            }
+
+            // O_NOFOLLOW fails the open if it was swapped to a symlink since fstatat().
+            if (fd = w_open_walk_dir(dirfd, name, O_NOFOLLOW | O_NONBLOCK), fd < 0) {
+                goto fail_swapped;
+            }
+
+            if (w_fstat_walk(fd, &entry_stat) < 0) {
+                goto fail;
+            }
+
+            if (!S_ISDIR(entry_stat.st_mode)) {
+                errno = ENOTDIR;
+                goto fail;
+            }
+            close(dirfd);
+            dirfd = fd;
+            fd = -1;
+            continue;
+        }
+
+        break;
+    }
+
+    if (fd = openat(dirfd, name, O_RDONLY | nofollow | O_NONBLOCK | O_CLOEXEC), fd < 0) {
+        if (!nofollow) {
+            goto fail;
+        }
+        goto fail_swapped;
+    }
+
+    if (fstat(fd, &fd_stat) < 0 || w_fstat_walk(dirfd, &dir_stat) < 0) {
+        goto fail;
+    }
+
+    if (!nofollow) {
+        // The file came through a procfs link, so the directory really holding it is unknown: grant nothing
+        // on the strength of a directory.
+        dir_stat.st_mode |= S_IWOTH;
+    }
+
+    if (w_vet_opened_file(&fd_stat, &dir_stat, has_link_uid ? &link_uid : NULL) < 0) {
+        goto fail;
+    }
+
+    close(dirfd);
+    return w_clear_nonblock(fd);
+
+fail_swapped:
+    // O_NOFOLLOW reports a symlink as ELOOP (EMLINK on FreeBSD): the entry changed under us.
+    if (errno == ELOOP || errno == EMLINK) {
+        errno = EAGAIN;
+    }
+fail:
+    saved_errno = errno;
+    if (fd >= 0) {
+        close(fd);
+    }
+    close(dirfd);
+    errno = saved_errno;
+    return -1;
+}
+#else
+/**
+ * dirname() may modify its argument and is not thread-safe everywhere, so the parent is cut out of path by
+ * hand. A bare file name resolves to ".".
+ *
+ * @return 0 on success, -1 on error (sets errno).
+ */
+static int w_stat_parent_dir(const char * path, struct stat * dir_stat) {
+    char dir[PATH_MAX + 1];
+    const char * slash = strrchr(path, '/');
+    size_t len;
+
+    if (!slash) {
+        return stat(".", dir_stat);
+    }
+
+    if (len = slash == path ? 1 : (size_t) (slash - path), len > PATH_MAX) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    memcpy(dir, path, len);
+    dir[len] = '\0';
+    return stat(dir, dir_stat);
+}
+
+/**
+ * Path-based stand-in for the component walk, for platforms without its *at() calls. The type, owner and link
+ * count rules are applied to the opened descriptor, so a FIFO still cannot block the read. Only the path's
+ * last entry is checked as a symlink, and by path, so a symlink swapped in a directory higher up, or swapped
+ * and restored between the checks, is not caught.
+ *
+ * @return A vetted descriptor with O_NONBLOCK cleared, or -1 on error (sets errno).
+ */
+static int w_open_vetted_follow_fd(const char * path) {
+    char resolved[PATH_MAX + 1];
+    struct stat link_stat;
+    struct stat link_dir_stat;
+    struct stat fd_stat;
+    struct stat dir_stat;
+    struct stat now;
+    uid_t link_uid = 0;
+    bool has_link_uid = false;
+    int saved_errno;
+    int fd;
+
+    if (lstat(path, &link_stat) < 0) {
+        return -1;
+    }
+
+    if (S_ISLNK(link_stat.st_mode)) {
+        if (w_stat_parent_dir(path, &link_dir_stat) < 0) {
+            return -1;
+        }
+
+        if (!w_vet_link_count(&link_stat, &link_dir_stat)) {
+            errno = EPERM;
+            return -1;
+        }
+
+        if (link_stat.st_uid != 0 && !w_vet_root_only_dir(&link_dir_stat)) {
+            link_uid = link_stat.st_uid;
+            has_link_uid = true;
+        }
+    }
+
+    if (fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC), fd < 0) {
+        return -1;
+    }
+
+    // The directory rules need the file's real location, and the inode checks reject a path changed meanwhile.
+    if (fstat(fd, &fd_stat) < 0 || lstat(path, &now) < 0 || !realpath(path, resolved) ||
+        w_stat_parent_dir(resolved, &dir_stat) < 0) {
+        goto fail;
+    }
+
+    if (now.st_dev != link_stat.st_dev || now.st_ino != link_stat.st_ino || now.st_uid != link_stat.st_uid ||
+        (!S_ISLNK(link_stat.st_mode) && (fd_stat.st_dev != link_stat.st_dev || fd_stat.st_ino != link_stat.st_ino))) {
+        errno = EAGAIN;
+        goto fail;
+    }
+
+    if (stat(resolved, &now) < 0) {
+        goto fail;
+    }
+
+    if (now.st_dev != fd_stat.st_dev || now.st_ino != fd_stat.st_ino) {
+        errno = EAGAIN;
+        goto fail;
+    }
+
+    if (w_vet_opened_file(&fd_stat, &dir_stat, has_link_uid ? &link_uid : NULL) < 0) {
+        goto fail;
+    }
+
+    return w_clear_nonblock(fd);
+
+fail:
+    saved_errno = errno;
+    close(fd);
+    errno = saved_errno;
+    return -1;
+}
+#endif
+#endif
+
+
+FILE * w_fopen_vetted_follow(const char * path, const char * mode) {
+    if (!path || !mode || (strcmp(mode, "r") && strcmp(mode, "rb"))) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+#ifdef WIN32
+    // The vetting below is POSIX-only; Windows keeps wfopen().
+    return wfopen(path, mode);
+#else
+    int saved_errno;
+    FILE * fp;
+    int retries = 0;
+    int fd;
+
+    // Restart from the root: re-checking only the changed entry would trust stale stat data.
+    do {
+        fd = w_open_vetted_follow_fd(path);
+    } while (fd < 0 && errno == EAGAIN && retries++ < W_VETTED_RACE_RETRIES);
+
+    if (fd < 0) {
+        return NULL;
+    }
+
+    if (fp = fdopen(fd, mode), fp == NULL) {
+        saved_errno = errno;
+        close(fd);
+        errno = saved_errno;
+    }
+
+    return fp;
 #endif
 }
 
