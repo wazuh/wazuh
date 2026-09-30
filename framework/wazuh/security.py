@@ -180,8 +180,42 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.DATABA
     return result
 
 
+def _check_reserved_target(user_id: int, current_user: str = None, run_as: bool = False):
+    """Refuse a modification of a reserved user unless a reserved user requested it.
+
+    Parameters
+    ----------
+    user_id : int
+        ID of the user to be modified.
+    current_user : str
+        Name of the user that made the request.
+    run_as : bool
+        Whether the request was made with a run_as token. The `sub` of such a token is the account that
+        logged in (e.g. `wazuh-wui`), not the end user whose roles the token carries, so it is never
+        treated as a reserved caller.
+
+    Raises
+    ------
+    WazuhError(5011)
+        If the target is a reserved user and the caller is unknown, is not a reserved user, or used a
+        run_as token.
+    """
+    if user_id > MAX_ID_RESERVED:
+        return
+
+    if current_user is None or run_as:
+        raise WazuhError(5011)
+
+    with AuthenticationManager() as auth_manager:
+        caller = auth_manager.get_user(current_user)
+
+    if not caller or caller['id'] > MAX_ID_RESERVED:
+        raise WazuhError(5011)
+
+
 @expose_resources(actions=['security:edit_run_as'], resources=['*:*:*'])
-def edit_run_as(user_id: str = None, allow_run_as: bool = False) -> AffectedItemsWazuhResult:
+def edit_run_as(user_id: str = None, allow_run_as: bool = False, current_user: str = None,
+                run_as: bool = False) -> AffectedItemsWazuhResult:
     """Enable/Disable the user's allow_run_as flag.
 
     Parameters
@@ -190,18 +224,29 @@ def edit_run_as(user_id: str = None, allow_run_as: bool = False) -> AffectedItem
         User ID.
     allow_run_as : bool
         Enable or disable authorization context login method for the specified user.
+    current_user : str
+        Name of the user that made the request.
+    run_as : bool
+        Whether the request was made with a run_as token.
+
+    Raises
+    ------
+    WazuhError(5011)
+        If the target is a reserved user and the caller is not a reserved user logged in without run_as.
 
     Returns
     -------
     AffectedItemsWazuhResult
         Status message.
     """
+    user_id = int(user_id)
+    _check_reserved_target(user_id, current_user, run_as)
+
     result = AffectedItemsWazuhResult(none_msg=f"The parameter allow_run_as could not be "
                                                f"{'enabled' if allow_run_as else 'disabled'} for the user",
                                       all_msg=f"Parameter allow_run_as has been "
                                               f"{'enabled' if allow_run_as else 'disabled'} for the user")
     with AuthenticationManager() as auth:
-        user_id = int(user_id)
         query = auth.edit_run_as(user_id, allow_run_as)
         if query is False:
             result.add_failed_item(id_=user_id, error=WazuhError(5001))
@@ -263,9 +308,8 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
     current_user : str
         Name of the user that made the request.
     run_as : bool
-        Whether the request was made with a run_as token. The `sub` of such a token is the account that
-        logged in (e.g. `wazuh-wui`), not the end user whose roles the token carries, so it is never
-        treated as a reserved caller.
+        Whether the request was made with a run_as token.
+
     Raises
     ------
     WazuhError(4001)
@@ -274,6 +318,8 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
         Insecure user password provided (length).
     WazuhError(5007)
         Insecure user password provided (variety of characters).
+    WazuhError(5011)
+        If the target is a reserved user and the caller is not a reserved user logged in without run_as.
 
     Returns
     -------
@@ -284,16 +330,7 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
         raise WazuhError(4001)
     if password is not None:
         validate_password(password)
-
-        if int(user_id[0]) <= MAX_ID_RESERVED:
-            if current_user is None or run_as:
-                raise WazuhError(5011)
-
-            with AuthenticationManager() as auth_manager:
-                caller = auth_manager.get_user(current_user)
-
-            if not caller or caller['id'] > MAX_ID_RESERVED:
-                raise WazuhError(5011)
+        _check_reserved_target(int(user_id[0]), current_user, run_as)
 
     result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
                                       none_msg='User could not be updated')
