@@ -159,16 +159,27 @@ check "a CA that verifies the manager is logged as such" "1" "$(log_count verifi
 check "a CA that verifies the manager is installed" "yes" "$(present verified etc/certs/root-ca.pem)"
 check "an installed CA is removed from var/incoming" "no" "$(present verified var/incoming/root-ca.pem)"
 
-# A CA the manager's certificate does not chain to is refused and removed.
+# A CA the manager's certificate does not chain to aborts the upgrade and is kept: the TLS port is
+# unauthenticated, so dropping the CA would let whoever answered there leave the agent unverified.
 STUB_CACERT_RC=60 run_case rejected "${LEGACY_CONF}" yes 4.14.7 no
-check "a CA that does not verify the manager is refused" "1" "$(log_count rejected "Delivered CA at .* does not verify the manager")"
-check "a refused CA is not installed" "no" "$(present rejected etc/certs/root-ca.pem)"
-check "a refused CA is removed from var/incoming" "no" "$(present rejected var/incoming/root-ca.pem)"
+check "a CA that does not verify the manager aborts the upgrade" "1" \
+      "$(log_count rejected "Upgrade failed. Delivered CA at .* does not verify the manager")"
+check "a rejected CA is not installed" "no" "$(present rejected etc/certs/root-ca.pem)"
+check "a rejected CA is kept in var/incoming" "yes" "$(present rejected var/incoming/root-ca.pem)"
+check "the upgrade result is 2" "2" "$(cat "${WORK}/rejected/var/upgrade/upgrade_result" 2>/dev/null)"
+check "a legacy agent is not pointed at --certs-only" "0" "$(log_count rejected "does not verify the manager.*--certs-only")"
 
-# A handshake error is a refusal when the same handshake succeeds without verification.
+# A 5.x agent has wazuh-agent-auth, so the abort also offers --certs-only.
+STUB_CACERT_RC=60 run_case rejected_5x "${LEGACY_CONF}" yes 5.0.0 no
+check "a 5.x agent is pointed at --certs-only" "1" "$(log_count rejected_5x "does not verify the manager.*--certs-only")"
+check "the 5.x rejected CA is kept too" "yes" "$(present rejected_5x var/incoming/root-ca.pem)"
+
+# A handshake error is a rejection when the same handshake succeeds without verification.
 STUB_CACERT_RC=35 STUB_RETRY_RC=0 run_case handshake_ca "${LEGACY_CONF}" yes 4.14.7 no
-check "a handshake error that -k does not reproduce is a refusal" "1" "$(log_count handshake_ca "Delivered CA at .* does not verify the manager")"
+check "a handshake error that -k does not reproduce aborts the upgrade" "1" \
+      "$(log_count handshake_ca "Upgrade failed. Delivered CA at .* does not verify the manager")"
 check "that CA is not installed" "no" "$(present handshake_ca etc/certs/root-ca.pem)"
+check "that CA is kept in var/incoming" "yes" "$(present handshake_ca var/incoming/root-ca.pem)"
 
 # ...and "could not check" when it fails without verification too.
 STUB_CACERT_RC=35 STUB_RETRY_RC=35 run_case handshake_any "${LEGACY_CONF}" yes 4.14.7 no

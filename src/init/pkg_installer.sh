@@ -804,19 +804,25 @@ esac
 
 # A CA that validates on its own may still not be this manager's (rotated since it was delivered,
 # or the address is not in the certificate). Installed, it would take the agent off the air under
-# 'full', so it is refused; when the check cannot run, the CA is installed as before. Skipped under
-# 'certificate', where the agent does not check the hostname and curl cannot be told not to.
+# 'full'; dropped, whoever answered on the unauthenticated TLS port could leave the agent unverified.
+# So the upgrade aborts and keeps the CA. When the check cannot run, the CA is installed as before.
+# Skipped under 'certificate', where the agent does not check the hostname and curl cannot be told not to.
 if [ "${CA_VALIDATED}" = "1" ] && [ "${WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK}" != "1" ] \
         && [ "${SSL_VERIFICATION_MODE}" != "certificate" ]; then
+    # A pre-5.0 agent has no wazuh-agent-auth to install the anchor with.
+    CA_PROBE_ADVICE="Fix the manager certificate and retry the upgrade"
+    if [ "${IS_LEGACY_AGENT}" != "1" ]; then
+        CA_PROBE_ADVICE="${CA_PROBE_ADVICE}, or install the anchor with ./bin/wazuh-agent-auth --token-file <file> --certs-only"
+    fi
     probe_server_with_ca "${SERVER_ADDRESS}" "${SERVER_PORT}" "${SERVER_ENDPOINT}" "${CA_SNAPSHOT}"
     case $? in
         0)
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA verifies the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}." >> ./logs/upgrade.log
             ;;
         1)
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE} does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}; refusing to install it and continuing without it." >> ./logs/upgrade.log
-            CA_VALIDATED=0
-            rm -f "${CA_SNAPSHOT}" "${INCOMING_CA_FILE}"
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Delivered CA at ${INCOMING_CA_FILE} does not verify the manager's certificate at ${SERVER_ADDRESS}:${SERVER_PORT}: the manager's CA was rotated, that address is not in its certificate, or something else answered on that port. The CA is kept and the agent keeps running its current version. ${CA_PROBE_ADVICE}; interrupting upgrade." >> ./logs/upgrade.log
+            rm -f "${CA_SNAPSHOT}"
+            abort_upgrade "2"
             ;;
         *)
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Could not check the delivered CA against the manager at ${SERVER_ADDRESS}:${SERVER_PORT} (curl missing, without TLS 1.3 support, or no answer); installing it on its own validation." >> ./logs/upgrade.log

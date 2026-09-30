@@ -267,8 +267,13 @@ glance](#breaking-changes-at-a-glance).
 
 On Linux the upgrade script checks the delivered CA with the `openssl` command, and then checks that
 it verifies the manager's certificate at the address the agent dials, before installing it as the
-agent's anchor. A CA that does not verify the manager is refused, so a stale or mismatched one never
-takes the agent off the air. When `openssl` is not found, the script leaves the CA in
+agent's anchor. If it does not verify the manager (the CA was rotated, the address is not in the
+certificate, or something else answered on that port), the upgrade aborts with `upgrade_result` `2`,
+the CA is kept in `var/incoming`, and the agent keeps running its current version, so neither a stale
+CA nor an impostor on the network can take the agent off the air or leave it unverified. Fix the
+manager certificate and retry, or, on a 5.x agent, install the anchor with `--certs-only` (below).
+When `curl` cannot run the check (it is missing or has no TLS 1.3 support, as on macOS), the CA is
+installed on its own validation. When `openssl` is not found, the script leaves the CA in
 `var/incoming/root-ca.pem`, installs no anchor, and the upgrade still reports success. If an anchor
 is already present, the delivered copy is discarded instead. The upgraded agent runs with
 `verification_mode` resolved to `none`:
