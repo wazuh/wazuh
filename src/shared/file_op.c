@@ -28,6 +28,9 @@
 
 #ifndef WIN32
 #include <regex.h>
+#ifdef __linux__
+#include <sys/vfs.h>
+#endif
 #else
 #include <aclapi.h>
 #include <winreg.h>
@@ -3037,6 +3040,22 @@ static int w_open_walk_dir(int dirfd, const char * name, int flags) {
     return fd;
 }
 
+#ifdef __linux__
+#define W_VETTED_PROC_SUPER_MAGIC 0x9fa0
+
+/**
+ * Tells whether dirfd is on procfs, whose symlinks such as /proc/<pid>/root and /proc/<pid>/fd/N resolve to the
+ * object they refer to, not to the text readlink() returns.
+ *
+ * @return true if dirfd is on procfs.
+ */
+static bool w_is_procfs(int dirfd) {
+    struct statfs sfs;
+
+    return fstatfs(dirfd, &sfs) == 0 && sfs.f_type == W_VETTED_PROC_SUPER_MAGIC;
+}
+#endif
+
 /**
  * Reads the target of symlink name in dirfd, failing unless it is still a symlink with the inode and owner
  * link_stat describes, so an entry swapped in after its owner was checked is not followed, even on inode reuse.
@@ -3109,6 +3128,7 @@ static int w_open_vetted_follow_fd(const char * path) {
     uid_t link_uid = 0;
     bool has_link_uid = false;
     int symlinks = 0;
+    int nofollow = O_NOFOLLOW;
     int dirfd;
     int fd = -1;
     int saved_errno;
@@ -3180,6 +3200,34 @@ static int w_open_vetted_follow_fd(const char * path) {
                 }
             }
 
+#ifdef __linux__
+            // Only the kernel can resolve a procfs link, since its text names nothing usable. Its target moves
+            // with the process, so what bounds it is the owner check above and the vetting of the final file.
+            if (w_is_procfs(dirfd)) {
+                if (*cursor == '\0') {
+                    nofollow = 0;
+                    break;
+                }
+
+                if (fd = w_open_walk_dir(dirfd, name, O_NONBLOCK), fd < 0) {
+                    goto fail;
+                }
+
+                if (w_fstat_walk(fd, &entry_stat) < 0) {
+                    goto fail;
+                }
+
+                if (!S_ISDIR(entry_stat.st_mode)) {
+                    errno = ENOTDIR;
+                    goto fail;
+                }
+                close(dirfd);
+                dirfd = fd;
+                fd = -1;
+                continue;
+            }
+#endif
+
             if (n = w_readlink_vetted(dirfd, name, &entry_stat, target), n <= 0) {
                 if (n == 0) {
                     errno = ENOENT;
@@ -3234,12 +3282,21 @@ static int w_open_vetted_follow_fd(const char * path) {
         break;
     }
 
-    if (fd = openat(dirfd, name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC), fd < 0) {
+    if (fd = openat(dirfd, name, O_RDONLY | nofollow | O_NONBLOCK | O_CLOEXEC), fd < 0) {
+        if (!nofollow) {
+            goto fail;
+        }
         goto fail_swapped;
     }
 
     if (fstat(fd, &fd_stat) < 0 || w_fstat_walk(dirfd, &dir_stat) < 0) {
         goto fail;
+    }
+
+    if (!nofollow) {
+        // The file came through a procfs link, so the directory really holding it is unknown: grant nothing
+        // on the strength of a directory.
+        dir_stat.st_mode |= S_IWOTH;
     }
 
     if (w_vet_opened_file(&fd_stat, &dir_stat, has_link_uid ? &link_uid : NULL) < 0) {

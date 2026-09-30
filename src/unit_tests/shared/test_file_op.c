@@ -2327,6 +2327,53 @@ void test_w_fopen_vetted_follow_relative_symlink_accepted(void **state) {
     assert_vetted_reads_content(link_path);
 }
 
+void test_w_fopen_vetted_follow_proc_fd_link_followed_by_kernel(void **state) {
+    char victim[PATH_MAX + 1];
+    char path[PATH_MAX + 1];
+    int fd;
+
+    // The link's text is "<path> (deleted)", which names nothing: only the kernel can follow it.
+    nofollow_create_file("victim", "content");
+    nofollow_path(victim, "victim");
+    fd = open(victim, O_RDONLY);
+    assert_int_not_equal(fd, -1);
+    assert_int_equal(unlinkat(AT_FDCWD, victim, 0), 0);
+    snprintf(path, sizeof(path), "/proc/self/fd/%d", fd);
+
+    assert_vetted_reads_content(path);
+    close(fd);
+}
+
+void test_w_fopen_vetted_follow_proc_fd_hard_link_rejected(void **state) {
+    char victim[PATH_MAX + 1];
+    char hardlink[PATH_MAX + 1];
+    char path[PATH_MAX + 1];
+    int fd;
+
+    // Accepted by its own directory, but a procfs link hides that directory, so the hard link is rejected.
+    nofollow_create_file("victim", "content");
+    nofollow_path(victim, "victim");
+    nofollow_path(hardlink, "link");
+    assert_int_equal(link(victim, hardlink), 0);
+    fd = open(victim, O_RDONLY);
+    assert_int_not_equal(fd, -1);
+    snprintf(path, sizeof(path), "/proc/self/fd/%d", fd);
+
+    assert_vetted_rejected(path, EPERM);
+    close(fd);
+}
+
+void test_w_fopen_vetted_follow_proc_root_component_followed_by_kernel(void **state) {
+    char victim[PATH_MAX + 1];
+    char path[PATH_MAX + 1];
+
+    nofollow_create_file("victim", "content");
+    nofollow_path(victim, "victim");
+    snprintf(path, sizeof(path), "/proc/self/root%s", victim);
+
+    assert_vetted_reads_content(path);
+}
+
 void test_w_fopen_vetted_follow_directory_symlink_same_owner_accepted(void **state) {
     char dir[PATH_MAX + 1];
     char path[PATH_MAX + 1];
@@ -2644,6 +2691,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_symlink_same_owner_accepted, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_repointed_symlink_not_rejected, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_relative_symlink_accepted, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_proc_fd_link_followed_by_kernel, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_proc_fd_hard_link_rejected, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_proc_root_component_followed_by_kernel, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_directory_symlink_same_owner_accepted, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_symlink_root_owned_accepted, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_symlink_other_owner_rejected, setup_nofollow, teardown_vetted),
