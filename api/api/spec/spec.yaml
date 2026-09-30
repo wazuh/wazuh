@@ -8464,7 +8464,9 @@ paths:
       tags:
         - Security
       summary: "Enable/Disable run_as"
-      description: "Modify a user's allow_run_as flag by specifying their ID"
+      description: "Modify a user's allow_run_as flag by specifying their ID. The flag of a reserved user (`wazuh`,
+        `wazuh-wui`) can only be changed by a reserved user authenticated without an authorization context
+        (run_as)"
       operationId: api.controllers.security_controller.edit_run_as
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:edit_run_as'

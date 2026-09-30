@@ -270,7 +270,9 @@ async def edit_run_as(user_id: str, allow_run_as: bool, pretty: bool = False,
     ConnexionResponse
         API response.
     """
-    f_kwargs = {'user_id': user_id, 'allow_run_as': allow_run_as}
+    f_kwargs = {'user_id': user_id, 'allow_run_as': allow_run_as,
+                'current_user': request.context['token_info']['sub'],
+                'run_as': request.context['token_info']['run_as']}
 
     dapi = DistributedAPI(f=security.edit_run_as,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
