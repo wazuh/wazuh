@@ -13,8 +13,9 @@ FilterOp exists(const Reference& targetField,
 
     const auto successTrace = fmt::format("{} -> Success", buildCtx->context().opName);
     const auto failureTrace = fmt::format("{} -> Failure", buildCtx->context().opName);
-    return [targetField = targetField.jsonPath(), isTestMode = buildCtx->isTestMode(), successTrace, failureTrace, negate](
-               base::ConstEvent event) -> FilterResult
+    return
+        [targetField = targetField.jsonPath(), isTestMode = buildCtx->isTestMode(), successTrace, failureTrace, negate](
+            base::ConstEvent event) -> FilterResult
     {
         if (event->exists(targetField) == negate)
         {

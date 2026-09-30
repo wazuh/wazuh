@@ -112,12 +112,12 @@ public:
             {
                 controller->stop();
             }
-            throw std::runtime_error {fmt::format(
-                "Failed to create environment with policy '{}': {}", namespaceId.toStr(), e.what())};
+            throw std::runtime_error {
+                fmt::format("Failed to create environment with policy '{}': {}", namespaceId.toStr(), e.what())};
         }
     }
 };
 
 } // namespace router
 
-#endif //ROUTER_ENVIRONMENT_BUILD_HPP
+#endif // ROUTER_ENVIRONMENT_BUILD_HPP

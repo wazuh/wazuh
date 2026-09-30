@@ -51,9 +51,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<size_t>(key::GEO_SYNC_INTERVAL, "WAZUH_GEO_SYNC_INTERVAL", 360);
     addUnit<std::string>(key::GEO_DB_PATH, "WAZUH_GEO_DB_PATH", (wazuhRoot / "data/mmdb").c_str());
     addUnit<std::string>(
-        key::GEO_MANIFEST_URL,
-        "WAZUH_GEO_MANIFEST_URL",
-        "https://api.pre.cloud.wazuh.com/maxmind_geoip/manifest.json");
+        key::GEO_MANIFEST_URL, "WAZUH_GEO_MANIFEST_URL", "https://api.pre.cloud.wazuh.com/maxmind_geoip/manifest.json");
     addUnit<size_t>(key::GEO_DOWNLOAD_TIMEOUT, "WAZUH_GEO_DOWNLOAD_TIMEOUT", 60000);
 
     // Indexer connector

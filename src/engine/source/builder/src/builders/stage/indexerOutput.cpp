@@ -48,10 +48,11 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
     auto indexName = std::string {};
     if (value.getString(indexName) != json::RetGet::Success || indexName.empty())
     {
-        throw std::runtime_error(fmt::format("Stage '{}' expects an object with key '{}' to be a non-empty string but got '{}'",
-                                             syntax::asset::INDEXER_OUTPUT_KEY,
-                                             syntax::asset::INDEXER_OUTPUT_INDEX_KEY,
-                                             value.typeName()));
+        throw std::runtime_error(
+            fmt::format("Stage '{}' expects an object with key '{}' to be a non-empty string but got '{}'",
+                        syntax::asset::INDEXER_OUTPUT_KEY,
+                        syntax::asset::INDEXER_OUTPUT_INDEX_KEY,
+                        value.typeName()));
     }
 
     // Index name can’t contain any of the following characters:

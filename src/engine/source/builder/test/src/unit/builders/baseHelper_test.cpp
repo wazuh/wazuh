@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include <base/behaviour.hpp>
 #include <base/expression.hpp>
@@ -21,6 +21,7 @@ using namespace builder::builders::mocks;
 using namespace builder::mocks;
 using namespace schemf::mocks;
 using namespace defs::mocks;
+using testing::_;
 using testing::AtLeast;
 using testing::Const;
 using testing::Invoke;
@@ -28,7 +29,6 @@ using testing::Matcher;
 using testing::Return;
 using testing::ReturnRef;
 using testing::ReturnRefOfCopy;
-using testing::_;
 
 /***************************
  * Test fixture
@@ -75,7 +75,10 @@ protected:
     {
         return [result](const std::vector<OpArg>&, const std::shared_ptr<const IBuildCtx>&) -> MapOp
         {
-            return [result](base::ConstEvent) -> MapResult { return base::result::makeSuccess(result, "success"); };
+            return [result](base::ConstEvent) -> MapResult
+            {
+                return base::result::makeSuccess(result, "success");
+            };
         };
     }
 
@@ -85,7 +88,9 @@ protected:
         return [](const std::vector<OpArg>&, const std::shared_ptr<const IBuildCtx>&) -> MapOp
         {
             return [](base::ConstEvent) -> MapResult
-            { return base::result::makeFailure(json::Json(), "mapFail"); };
+            {
+                return base::result::makeFailure(json::Json(), "mapFail");
+            };
         };
     }
 
@@ -109,12 +114,17 @@ protected:
     {
         return [](const Reference&, const std::vector<OpArg>&, const std::shared_ptr<const IBuildCtx>&) -> TransformOp
         {
-            return [](base::Event e) -> TransformResult { return base::result::makeSuccess(e, "transformOk"); };
+            return [](base::Event e) -> TransformResult
+            {
+                return base::result::makeSuccess(e, "transformOk");
+            };
         };
     }
 
     // Setup registry to return a given OpBuilderEntry for a helper name
-    void setupRegistry(const std::string& name, const OpBuilder& builder, ValidationInfo valInfo = schemf::ValidationToken{})
+    void setupRegistry(const std::string& name,
+                       const OpBuilder& builder,
+                       ValidationInfo valInfo = schemf::ValidationToken {})
     {
         OpBuilderEntry entry {valInfo, builder};
         auto& innerRegistry = registry->getRegistry<OpBuilderEntry>();
@@ -156,12 +166,12 @@ protected:
 TEST_F(BaseHelperTest, BuildTypeValidationError)
 {
     // When schema validation returns error, buildType should throw
-    auto builder = OpBuilder{makeSimpleMapBuilder()};
+    auto builder = OpBuilder {makeSimpleMapBuilder()};
     Reference targetField("target.field");
     schemf::ValidationToken token;
 
     EXPECT_CALL(*validator, validate(Matcher<const DotPath&>(_), Matcher<const schemf::ValidationToken&>(_)))
-        .WillOnce(Return(base::Error{"Schema validation failed"}));
+        .WillOnce(Return(base::Error {"Schema validation failed"}));
 
     ASSERT_THROW(buildType(builder, targetField, token, *validator), std::runtime_error);
 }
@@ -170,7 +180,7 @@ TEST_F(BaseHelperTest, BuildTypeNoRuntimeValidation)
 {
     // When validation passes without needing runtime validation, builder is returned as-is
     auto mapBuilder = makeSimpleMapBuilder();
-    OpBuilder builder{mapBuilder};
+    OpBuilder builder {mapBuilder};
     Reference targetField("target.field");
     schemf::ValidationToken token;
 
@@ -187,7 +197,7 @@ TEST_F(BaseHelperTest, BuildTypeWithRuntimeValidation)
 {
     // When validation needs runtime validation, builder should be wrapped by runType
     auto mapBuilder = makeSimpleMapBuilder();
-    OpBuilder builder{mapBuilder};
+    OpBuilder builder {mapBuilder};
     Reference targetField("target.field");
     schemf::ValidationToken token;
 
@@ -209,7 +219,7 @@ TEST_F(BaseHelperTest, BuildTypeWithRuntimeValidation)
 TEST_F(BaseHelperTest, RunTypeNonMapBuilderPassthrough)
 {
     // runType should return as-is if the builder is not a MapBuilder (e.g., FilterBuilder)
-    OpBuilder builder{makeSimpleFilterBuilder()};
+    OpBuilder builder {makeSimpleFilterBuilder()};
     Reference targetField("target.field");
     schemf::ValidationResult valResult([](const json::Json&) -> base::OptError { return std::nullopt; });
 
@@ -221,7 +231,7 @@ TEST_F(BaseHelperTest, RunTypeNonMapBuilderPassthrough)
 TEST_F(BaseHelperTest, RunTypeMapBuilderWrapped)
 {
     // runType wraps a MapBuilder with runtime validation
-    OpBuilder builder{makeSimpleMapBuilder(json::Json(R"_j("hello")_j"))};
+    OpBuilder builder {makeSimpleMapBuilder(json::Json(R"_j("hello")_j"))};
     Reference targetField("target.field");
     schemf::ValidationResult valResult([](const json::Json&) -> base::OptError { return std::nullopt; });
 
@@ -239,11 +249,10 @@ TEST_F(BaseHelperTest, RunTypeMapBuilderWrapped)
 TEST_F(BaseHelperTest, RunTypeRuntimeValidationFails)
 {
     // runType wraps a MapBuilder; runtime validation returns error
-    OpBuilder builder{makeSimpleMapBuilder(json::Json(R"_j("bad")_j"))};
+    OpBuilder builder {makeSimpleMapBuilder(json::Json(R"_j("bad")_j"))};
     Reference targetField("target.field");
-    schemf::ValidationResult valResult([](const json::Json&) -> base::OptError {
-        return base::Error{"runtime validation failed"};
-    });
+    schemf::ValidationResult valResult([](const json::Json&) -> base::OptError
+                                       { return base::Error {"runtime validation failed"}; });
 
     auto result = runType(builder, targetField, valResult);
     ASSERT_EQ(result.index(), 0u);
@@ -259,7 +268,7 @@ TEST_F(BaseHelperTest, RunTypeRuntimeValidationFails)
 TEST_F(BaseHelperTest, RunTypeInnerMapFails)
 {
     // runType wraps a MapBuilder; the inner map fails -> wrapped should also fail
-    OpBuilder builder{makeFailMapBuilder()};
+    OpBuilder builder {makeFailMapBuilder()};
     Reference targetField("target.field");
     schemf::ValidationResult valResult([](const json::Json&) -> base::OptError { return std::nullopt; });
 
@@ -356,7 +365,7 @@ TEST_F(BaseHelperTest, MapToTransformDisallowedField)
 
 TEST_F(BaseHelperTest, ToTransformFromMapBuilder)
 {
-    OpBuilder builder{makeSimpleMapBuilder()};
+    OpBuilder builder {makeSimpleMapBuilder()};
     Reference targetField("target.field");
     auto result = toTransform(builder, targetField);
     // Should produce a TransformBuilder that can be called
@@ -368,7 +377,7 @@ TEST_F(BaseHelperTest, ToTransformFromMapBuilder)
 TEST_F(BaseHelperTest, ToTransformFromTransformBuilder)
 {
     auto tb = makeSimpleTransformBuilder();
-    OpBuilder builder{tb};
+    OpBuilder builder {tb};
     Reference targetField("target.field");
     auto result = toTransform(builder, targetField);
     auto transformOp = result(targetField, {}, ctx);
@@ -378,7 +387,7 @@ TEST_F(BaseHelperTest, ToTransformFromTransformBuilder)
 
 TEST_F(BaseHelperTest, ToTransformFromFilterBuilder)
 {
-    OpBuilder builder{makeSimpleFilterBuilder()};
+    OpBuilder builder {makeSimpleFilterBuilder()};
     Reference targetField("target.field");
     auto result = toTransform(builder, targetField);
     auto transformOp = result(targetField, {}, ctx);
@@ -397,7 +406,7 @@ TEST_F(BaseHelperTest, BaseHelperBuilderMapSuccess)
     json::Json helloJson(R"("hello")");
     opArgs.emplace_back(std::make_shared<Value>(helloJson));
 
-    setupRegistry("testHelper", OpBuilder{makeSimpleMapBuilder()});
+    setupRegistry("testHelper", OpBuilder {makeSimpleMapBuilder()});
     setupValidationOk();
     auto cloneCtx = setupClone();
 
@@ -412,7 +421,7 @@ TEST_F(BaseHelperTest, BaseHelperBuilderFilterSuccess)
     Reference targetField("target.field");
     std::vector<OpArg> opArgs;
 
-    setupRegistry("testFilter", OpBuilder{makeSimpleFilterBuilder()});
+    setupRegistry("testFilter", OpBuilder {makeSimpleFilterBuilder()});
     setupValidationOk();
     auto cloneCtx = setupClone();
 
@@ -439,7 +448,7 @@ TEST_F(BaseHelperTest, BaseHelperBuilderTypeMismatchMapExpectsFilter)
     Reference targetField("target.field");
     std::vector<OpArg> opArgs;
 
-    setupRegistry("testHelper", OpBuilder{makeSimpleMapBuilder()});
+    setupRegistry("testHelper", OpBuilder {makeSimpleMapBuilder()});
     EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
 
     ASSERT_THROW(baseHelperBuilder("testHelper", targetField, opArgs, ctx, HelperType::FILTER), std::runtime_error);
@@ -451,7 +460,7 @@ TEST_F(BaseHelperTest, BaseHelperBuilderTypeMismatchFilterExpectsMap)
     Reference targetField("target.field");
     std::vector<OpArg> opArgs;
 
-    setupRegistry("testHelper", OpBuilder{makeSimpleFilterBuilder()});
+    setupRegistry("testHelper", OpBuilder {makeSimpleFilterBuilder()});
     EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
 
     ASSERT_THROW(baseHelperBuilder("testHelper", targetField, opArgs, ctx, HelperType::MAP), std::runtime_error);
@@ -469,7 +478,7 @@ TEST_F(BaseHelperTest, BaseHelperBuilderResolvesDefinition)
     EXPECT_CALL(*definitions, contains("/some/def/path")).WillOnce(Return(true));
     EXPECT_CALL(*definitions, get("/some/def/path")).WillOnce(Return(json::Json(R"_j("resolved_value")_j")));
 
-    setupRegistry("testHelper", OpBuilder{makeSimpleMapBuilder()});
+    setupRegistry("testHelper", OpBuilder {makeSimpleMapBuilder()});
     setupValidationOk();
     auto cloneCtx = setupClone();
 
@@ -491,7 +500,7 @@ TEST_F(BaseHelperTest, BaseHelperBuilderDynamicValidationToken)
     };
 
     ValidationInfo valInfo {dynamicToken};
-    setupRegistry("testHelper", OpBuilder{makeSimpleMapBuilder()}, valInfo);
+    setupRegistry("testHelper", OpBuilder {makeSimpleMapBuilder()}, valInfo);
     setupValidationOk();
     auto cloneCtx = setupClone();
 
@@ -507,7 +516,7 @@ TEST_F(BaseHelperTest, BaseHelperBuilderTransformBuilderAsMap)
     Reference targetField("target.field");
     std::vector<OpArg> opArgs;
 
-    setupRegistry("testHelper", OpBuilder{makeSimpleTransformBuilder()});
+    setupRegistry("testHelper", OpBuilder {makeSimpleTransformBuilder()});
     setupValidationOk();
     auto cloneCtx = setupClone();
 
@@ -538,7 +547,7 @@ TEST_F(BaseHelperTest, JsonDefinitionNullValueMap)
     // null literal is now accepted as a map operation
     json::Json def(R"({"target.field": null})");
 
-    setupRegistry("map", OpBuilder{makeSimpleMapBuilder()});
+    setupRegistry("map", OpBuilder {makeSimpleMapBuilder()});
     setupValidationOk();
     auto cloneCtx = setupClone();
     EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
@@ -552,7 +561,7 @@ TEST_F(BaseHelperTest, JsonDefinitionNullValueFilter)
     // null literal is also accepted in filter/check stages
     json::Json def(R"({"target.field": null})");
 
-    setupRegistry("filter", OpBuilder{makeSimpleFilterBuilder()});
+    setupRegistry("filter", OpBuilder {makeSimpleFilterBuilder()});
     setupValidationOk();
     auto cloneCtx = setupClone();
     EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
@@ -566,7 +575,7 @@ TEST_F(BaseHelperTest, JsonDefinitionBoolValueMap)
     // Bool value with MAP type -> default helper "map"
     json::Json def(R"({"target.field": true})");
 
-    setupRegistry("map", OpBuilder{makeSimpleMapBuilder()});
+    setupRegistry("map", OpBuilder {makeSimpleMapBuilder()});
     setupValidationOk();
     auto cloneCtx = setupClone();
     EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
@@ -580,7 +589,7 @@ TEST_F(BaseHelperTest, JsonDefinitionBoolValueFilter)
     // Bool value with FILTER type -> default helper "filter"
     json::Json def(R"({"target.field": true})");
 
-    setupRegistry("filter", OpBuilder{makeSimpleFilterBuilder()});
+    setupRegistry("filter", OpBuilder {makeSimpleFilterBuilder()});
     setupValidationOk();
     auto cloneCtx = setupClone();
     EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
@@ -594,7 +603,7 @@ TEST_F(BaseHelperTest, JsonDefinitionNumberValue)
     // Number value -> default helper based on type
     json::Json def(R"({"target.field": 42})");
 
-    setupRegistry("map", OpBuilder{makeSimpleMapBuilder()});
+    setupRegistry("map", OpBuilder {makeSimpleMapBuilder()});
     setupValidationOk();
     auto cloneCtx = setupClone();
     EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
@@ -608,7 +617,7 @@ TEST_F(BaseHelperTest, JsonDefinitionStringReference)
     // String value starting with '$' -> reference
     json::Json def(R"({"target.field": "$some.ref.field"})");
 
-    setupRegistry("map", OpBuilder{makeSimpleMapBuilder()});
+    setupRegistry("map", OpBuilder {makeSimpleMapBuilder()});
     setupValidationOk();
     auto cloneCtx = setupClone();
     EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
@@ -623,7 +632,7 @@ TEST_F(BaseHelperTest, JsonDefinitionStringEscapedReference)
     // String value starting with '\$' -> escaped reference, should be a plain value
     json::Json def(R"({"target.field": "\\$not.a.ref"})");
 
-    setupRegistry("map", OpBuilder{makeSimpleMapBuilder()});
+    setupRegistry("map", OpBuilder {makeSimpleMapBuilder()});
     setupValidationOk();
     auto cloneCtx = setupClone();
     EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
@@ -637,7 +646,7 @@ TEST_F(BaseHelperTest, JsonDefinitionStringHelperExpression)
     // String value that is a helper expression: helper_name(args...)
     json::Json def(R"json({"target.field": "int_calculate($other.field)"})json");
 
-    setupRegistry("int_calculate", OpBuilder{makeSimpleMapBuilder()});
+    setupRegistry("int_calculate", OpBuilder {makeSimpleMapBuilder()});
     setupValidationOk();
     auto cloneCtx = setupClone();
     EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
@@ -652,7 +661,7 @@ TEST_F(BaseHelperTest, JsonDefinitionStringPlainValue)
     // Plain string (not helper, not reference) -> default helper
     json::Json def(R"({"target.field": "just a plain string"})");
 
-    setupRegistry("map", OpBuilder{makeSimpleMapBuilder()});
+    setupRegistry("map", OpBuilder {makeSimpleMapBuilder()});
     setupValidationOk();
     auto cloneCtx = setupClone();
     EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
@@ -668,21 +677,24 @@ TEST_F(BaseHelperTest, JsonDefinitionArrayValue)
 
     // Each array element will recursively call baseHelperBuilder, needing "map" registered
     auto& innerRegistry = registry->getRegistry<OpBuilderEntry>();
-    OpBuilderEntry entry{schemf::ValidationToken{}, OpBuilder{makeSimpleMapBuilder()}};
+    OpBuilderEntry entry {schemf::ValidationToken {}, OpBuilder {makeSimpleMapBuilder()}};
     EXPECT_CALL(innerRegistry, get("map")).WillRepeatedly(Return(entry));
 
     setupValidationOk();
 
     // clone() will be called for each array element
-    EXPECT_CALL(*ctx, clone()).WillRepeatedly(Invoke([this]() -> std::shared_ptr<IBuildCtx> {
-        auto cloneCtx = std::make_shared<MockBuildCtx>();
-        ON_CALL(*cloneCtx, context()).WillByDefault(ReturnRef(context));
-        ON_CALL(Const(*cloneCtx), context()).WillByDefault(ReturnRef(context));
-        ON_CALL(*cloneCtx, isTestMode()).WillByDefault(Return(false));
-        ON_CALL(*cloneCtx, validator()).WillByDefault(ReturnRef(*validator));
-        ON_CALL(*cloneCtx, allowedFields()).WillByDefault(ReturnRef(*allowedFields));
-        return cloneCtx;
-    }));
+    EXPECT_CALL(*ctx, clone())
+        .WillRepeatedly(Invoke(
+            [this]() -> std::shared_ptr<IBuildCtx>
+            {
+                auto cloneCtx = std::make_shared<MockBuildCtx>();
+                ON_CALL(*cloneCtx, context()).WillByDefault(ReturnRef(context));
+                ON_CALL(Const(*cloneCtx), context()).WillByDefault(ReturnRef(context));
+                ON_CALL(*cloneCtx, isTestMode()).WillByDefault(Return(false));
+                ON_CALL(*cloneCtx, validator()).WillByDefault(ReturnRef(*validator));
+                ON_CALL(*cloneCtx, allowedFields()).WillByDefault(ReturnRef(*allowedFields));
+                return cloneCtx;
+            }));
 
     EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
 
@@ -699,20 +711,23 @@ TEST_F(BaseHelperTest, JsonDefinitionArrayValueFilter)
     json::Json def(R"({"target.field": ["value1", "value2"]})");
 
     auto& innerRegistry = registry->getRegistry<OpBuilderEntry>();
-    OpBuilderEntry entry{schemf::ValidationToken{}, OpBuilder{makeSimpleFilterBuilder()}};
+    OpBuilderEntry entry {schemf::ValidationToken {}, OpBuilder {makeSimpleFilterBuilder()}};
     EXPECT_CALL(innerRegistry, get("filter")).WillRepeatedly(Return(entry));
 
     setupValidationOk();
 
-    EXPECT_CALL(*ctx, clone()).WillRepeatedly(Invoke([this]() -> std::shared_ptr<IBuildCtx> {
-        auto cloneCtx = std::make_shared<MockBuildCtx>();
-        ON_CALL(*cloneCtx, context()).WillByDefault(ReturnRef(context));
-        ON_CALL(Const(*cloneCtx), context()).WillByDefault(ReturnRef(context));
-        ON_CALL(*cloneCtx, isTestMode()).WillByDefault(Return(false));
-        ON_CALL(*cloneCtx, validator()).WillByDefault(ReturnRef(*validator));
-        ON_CALL(*cloneCtx, allowedFields()).WillByDefault(ReturnRef(*allowedFields));
-        return cloneCtx;
-    }));
+    EXPECT_CALL(*ctx, clone())
+        .WillRepeatedly(Invoke(
+            [this]() -> std::shared_ptr<IBuildCtx>
+            {
+                auto cloneCtx = std::make_shared<MockBuildCtx>();
+                ON_CALL(*cloneCtx, context()).WillByDefault(ReturnRef(context));
+                ON_CALL(Const(*cloneCtx), context()).WillByDefault(ReturnRef(context));
+                ON_CALL(*cloneCtx, isTestMode()).WillByDefault(Return(false));
+                ON_CALL(*cloneCtx, validator()).WillByDefault(ReturnRef(*validator));
+                ON_CALL(*cloneCtx, allowedFields()).WillByDefault(ReturnRef(*allowedFields));
+                return cloneCtx;
+            }));
 
     EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
 
@@ -728,20 +743,23 @@ TEST_F(BaseHelperTest, JsonDefinitionObjectValue)
     json::Json def(R"({"target.field": {"sub": "value1"}})");
 
     auto& innerRegistry = registry->getRegistry<OpBuilderEntry>();
-    OpBuilderEntry entry{schemf::ValidationToken{}, OpBuilder{makeSimpleMapBuilder()}};
+    OpBuilderEntry entry {schemf::ValidationToken {}, OpBuilder {makeSimpleMapBuilder()}};
     EXPECT_CALL(innerRegistry, get("map")).WillRepeatedly(Return(entry));
 
     setupValidationOk();
 
-    EXPECT_CALL(*ctx, clone()).WillRepeatedly(Invoke([this]() -> std::shared_ptr<IBuildCtx> {
-        auto cloneCtx = std::make_shared<MockBuildCtx>();
-        ON_CALL(*cloneCtx, context()).WillByDefault(ReturnRef(context));
-        ON_CALL(Const(*cloneCtx), context()).WillByDefault(ReturnRef(context));
-        ON_CALL(*cloneCtx, isTestMode()).WillByDefault(Return(false));
-        ON_CALL(*cloneCtx, validator()).WillByDefault(ReturnRef(*validator));
-        ON_CALL(*cloneCtx, allowedFields()).WillByDefault(ReturnRef(*allowedFields));
-        return cloneCtx;
-    }));
+    EXPECT_CALL(*ctx, clone())
+        .WillRepeatedly(Invoke(
+            [this]() -> std::shared_ptr<IBuildCtx>
+            {
+                auto cloneCtx = std::make_shared<MockBuildCtx>();
+                ON_CALL(*cloneCtx, context()).WillByDefault(ReturnRef(context));
+                ON_CALL(Const(*cloneCtx), context()).WillByDefault(ReturnRef(context));
+                ON_CALL(*cloneCtx, isTestMode()).WillByDefault(Return(false));
+                ON_CALL(*cloneCtx, validator()).WillByDefault(ReturnRef(*validator));
+                ON_CALL(*cloneCtx, allowedFields()).WillByDefault(ReturnRef(*allowedFields));
+                return cloneCtx;
+            }));
 
     EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
 
@@ -760,20 +778,23 @@ TEST_F(BaseHelperTest, JsonDefinitionObjectValueFilter)
     json::Json def(R"({"target.field": {"sub": "value1"}})");
 
     auto& innerRegistry = registry->getRegistry<OpBuilderEntry>();
-    OpBuilderEntry entry{schemf::ValidationToken{}, OpBuilder{makeSimpleFilterBuilder()}};
+    OpBuilderEntry entry {schemf::ValidationToken {}, OpBuilder {makeSimpleFilterBuilder()}};
     EXPECT_CALL(innerRegistry, get("filter")).WillRepeatedly(Return(entry));
 
     setupValidationOk();
 
-    EXPECT_CALL(*ctx, clone()).WillRepeatedly(Invoke([this]() -> std::shared_ptr<IBuildCtx> {
-        auto cloneCtx = std::make_shared<MockBuildCtx>();
-        ON_CALL(*cloneCtx, context()).WillByDefault(ReturnRef(context));
-        ON_CALL(Const(*cloneCtx), context()).WillByDefault(ReturnRef(context));
-        ON_CALL(*cloneCtx, isTestMode()).WillByDefault(Return(false));
-        ON_CALL(*cloneCtx, validator()).WillByDefault(ReturnRef(*validator));
-        ON_CALL(*cloneCtx, allowedFields()).WillByDefault(ReturnRef(*allowedFields));
-        return cloneCtx;
-    }));
+    EXPECT_CALL(*ctx, clone())
+        .WillRepeatedly(Invoke(
+            [this]() -> std::shared_ptr<IBuildCtx>
+            {
+                auto cloneCtx = std::make_shared<MockBuildCtx>();
+                ON_CALL(*cloneCtx, context()).WillByDefault(ReturnRef(context));
+                ON_CALL(Const(*cloneCtx), context()).WillByDefault(ReturnRef(context));
+                ON_CALL(*cloneCtx, isTestMode()).WillByDefault(Return(false));
+                ON_CALL(*cloneCtx, validator()).WillByDefault(ReturnRef(*validator));
+                ON_CALL(*cloneCtx, allowedFields()).WillByDefault(ReturnRef(*allowedFields));
+                return cloneCtx;
+            }));
 
     EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
 
@@ -792,7 +813,10 @@ TEST_F(BaseHelperTest, JsonDefinitionObjectValueFilter)
 
 TEST_F(BaseHelperTest, ToExpressionCreatesNamedTerm)
 {
-    TransformOp op = [](base::Event e) -> TransformResult { return base::result::makeSuccess(e, "ok"); };
+    TransformOp op = [](base::Event e) -> TransformResult
+    {
+        return base::result::makeSuccess(e, "ok");
+    };
     auto expr = toExpression(op, "testOp");
     ASSERT_NE(expr, nullptr);
     ASSERT_EQ(expr->getName(), "testOp");

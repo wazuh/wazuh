@@ -1,5 +1,5 @@
-#include <fastmetrics/registry.hpp>
 #include <fastmetrics/manager.hpp>
+#include <fastmetrics/registry.hpp>
 
 namespace fastmetrics
 {
