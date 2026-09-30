@@ -58,9 +58,10 @@ Design review of the `wazuh_module` **`container_baseline`** as implemented on b
 >
 > And four defects only the integrated agent could show:
 >
-> - **[C25](03-findings-correctness.md)** — `<container_instances>` was never dispatched, so the
->   module could not start and the socket both consumers read metadata from was never bound. The
->   feature was unreachable from a real agent no matter what `ossec.conf` said. Fixed,
+> - **[C25](03-findings-correctness.md)** — `<container_instances>` (the block has since moved
+>   under `<container_security>`) was never dispatched, so the module could not start and the
+>   socket both consumers read metadata from was never bound. The feature was unreachable from a
+>   real agent no matter what `ossec.conf` said. Fixed,
 >   `83896683e7`; everything above depends on it.
 > - **[C26](03-findings-correctness.md)** — `MODIFIED` arrived unwrapped, so the container callback
 >   discarded every modification: six files changed, six rows updated in `file_entry`, **zero**
