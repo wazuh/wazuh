@@ -571,7 +571,7 @@ def get_optimized_policies(roles: tuple) -> dict:
 
 @dapi_allower()
 def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool,
-                origin_node_type: str) -> dict:
+                origin_node_type: str, hash_auth_context: str = None) -> dict:
     """Check the validity of a token with the current time and the generation time of the token.
 
     The validity decision is never cached. Caching it meant that deleting a user, changing its
@@ -592,6 +592,9 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool,
     origin_node_type : str
         Type of the node the request originated from. Only requests coming from the master node
         may be served the cached policies.
+    hash_auth_context : str, optional
+        Hash of the authorization context a run_as token was granted for. Logging out with a
+        run_as token revokes this context, not the account the token names.
 
     Returns
     -------
@@ -610,8 +613,10 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool,
             if not am.user_allow_run_as(user['username']) and set(user_roles) != set(roles):
                 return {'valid': False}
             with TokenManager() as tm:
-                # Always validate the user and run_as blacklists, even when the token carries no roles.
-                if not tm.is_token_valid(user_id=user_id, token_nbf_time=int(token_nbf_time), run_as=run_as):
+                # Always validate the user, run_as and run_as context blacklists, even when the
+                # token carries no roles.
+                if not tm.is_token_valid(user_id=user_id, token_nbf_time=int(token_nbf_time), run_as=run_as,
+                                         hash_auth_context=hash_auth_context):
                     return {'valid': False}
                 # Validate every role carried by the token, not only the statically-linked ones.
                 # run_as users have their roles assigned dynamically, so those roles travel in the
@@ -654,13 +659,20 @@ def decode_token(token: str) -> dict:
         # Decode JWT token with local secret
         payload = jwt.decode(token, generate_keypair()[1], algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
 
+        # A run_as token is revoked on logout by its authorization context (see
+        # `wazuh.security.revoke_current_user_tokens`), so one without it could not be logged out.
+        # Every run_as token `generate_token` issues carries it.
+        if payload['run_as'] and not payload.get('hash_auth_context'):
+            raise Unauthorized(INVALID_TOKEN)
+
         # Check token and add processed policies in the Master node
         # Use nbf_ms for millisecond precision validation, fallback to nbf * 1000 for backward compatibility
         token_nbf_time = payload.get('nbf_ms', int(payload['nbf'] * 1000))
         dapi = DistributedAPI(f=check_token,
                               f_kwargs={'username': payload['sub'],
                                         'roles': tuple(payload['rbac_roles']), 'token_nbf_time': token_nbf_time,
-                                        'run_as': payload['run_as'], 'origin_node_type': read_config()['node_type']},
+                                        'run_as': payload['run_as'], 'origin_node_type': read_config()['node_type'],
+                                        'hash_auth_context': payload.get('hash_auth_context')},
                               request_type='local_master',
                               is_async=False,
                               wait_for_complete=False,

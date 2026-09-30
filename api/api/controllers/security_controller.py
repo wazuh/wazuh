@@ -185,10 +185,16 @@ async def logout_user(pretty: bool = False, wait_for_complete: bool = False) -> 
         API response.
     """
 
+    # A run_as token names the account that called the run_as login, shared by every end user it
+    # logs in: its authorization context is what identifies the current user.
+    token_info = request.context['token_info']
+    f_kwargs = {'run_as': token_info['run_as'], 'hash_auth_context': token_info.get('hash_auth_context')}
+
     dapi = DistributedAPI(f=security.revoke_current_user_tokens,
+                          f_kwargs=f_kwargs,
                           request_type='local_master',
                           is_async=False,
-                          current_user=request.context['token_info']['sub'],
+                          current_user=token_info['sub'],
                           wait_for_complete=wait_for_complete,
                           logger=logger
                           )

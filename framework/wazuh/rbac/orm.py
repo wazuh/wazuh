@@ -233,6 +233,40 @@ class RunAsTokenBlacklist(_Base):
         return {'nbf_invalid_until': self.nbf_invalid_until, 'is_valid_until': self.is_valid_until}
 
 
+class RunAsContextTokenBlacklist(_Base):
+    """Class that represents the table containing the authorization contexts whose run_as tokens are invalid.
+    A run_as token's subject is the account that called the run_as login (the dashboard's), shared by
+    every end user it logs in, so revoking one end user's session by subject would end all of them.
+    The authorization context identifies the end user instead, and its hash travels in the token.
+    The information stored is:
+        hash_auth_context: Hash of the authorization context affected by the token
+        nbf_invalid_until: Time of the issue that caused the tokens to be invalidated
+        is_valid_until: Token's expiration date
+    """
+    __tablename__ = "runas_context_token_blacklist"
+
+    hash_auth_context = Column('hash_auth_context', String(64), primary_key=True)
+    nbf_invalid_until = Column('nbf_invalid_until', Integer, nullable=False)
+    is_valid_until = Column('is_valid_until', Integer, nullable=False)
+    __table_args__ = (UniqueConstraint('hash_auth_context', name='runas_context_invalidation_rule'),)
+
+    def __init__(self, hash_auth_context: str):
+        self.hash_auth_context = hash_auth_context
+        self.nbf_invalid_until = int(time() * 1000)
+        self.is_valid_until = self.nbf_invalid_until + token_exp_timeout_ms()
+
+    def to_dict(self) -> dict:
+        """Return the information of the token rule.
+
+        Returns
+        -------
+        dict
+            Dictionary with the object information.
+        """
+        return {'hash_auth_context': self.hash_auth_context, 'nbf_invalid_until': self.nbf_invalid_until,
+                'is_valid_until': self.is_valid_until}
+
+
 class UsersTokenBlacklist(_Base):
     """Class that represents the table containing the tokens given through the login endpoint that are considered
     invalid. An invalid token is an expired or revoked token.
@@ -659,7 +693,7 @@ class TokenManager(RBACManager):
         return timestamp * 1000 if timestamp < 10_000_000_000 else timestamp
 
     def is_token_valid(self, token_nbf_time: int, user_id: int = None, role_id: int = None,
-                       run_as: bool = False) -> bool:
+                       run_as: bool = False, hash_auth_context: str = None) -> bool:
         """Check if the specified token is valid.
 
         Every rule is looked up only when the argument selecting it is given, so a caller that
@@ -676,6 +710,9 @@ class TokenManager(RBACManager):
         run_as : bool
             Indicate if the token has been granted through run_as endpoint. The run_as rule is
             not read when it is False.
+        hash_auth_context : str, optional
+            Hash of the authorization context a run_as token was granted for. The context rule is
+            not read when it is omitted.
 
         Returns
         -------
@@ -694,19 +731,26 @@ class TokenManager(RBACManager):
                 select(RolesTokenBlacklist).filter_by(role_id=role_id).limit(1)).first() \
                 if role_id is not None else None
             runas_rule = self.session.query(RunAsTokenBlacklist).first() if run_as else None
+            context_rule = self.session.scalars(
+                select(RunAsContextTokenBlacklist).filter_by(hash_auth_context=hash_auth_context).limit(1)).first() \
+                if hash_auth_context is not None else None
 
             user_nbf_invalid_until = self._normalize_timestamp(user_rule.nbf_invalid_until) if user_rule else None
             role_nbf_invalid_until = self._normalize_timestamp(role_rule.nbf_invalid_until) if role_rule else None
             runas_nbf_invalid_until = self._normalize_timestamp(runas_rule.nbf_invalid_until) if runas_rule else None
+            context_nbf_invalid_until = self._normalize_timestamp(context_rule.nbf_invalid_until) \
+                if context_rule else None
 
             return (not user_rule or (token_nbf_time > user_nbf_invalid_until)) and \
                    (not role_rule or (token_nbf_time > role_nbf_invalid_until)) and \
-                   (not run_as or (not runas_rule or (token_nbf_time > runas_nbf_invalid_until)))
+                   (not run_as or (not runas_rule or (token_nbf_time > runas_nbf_invalid_until))) and \
+                   (not context_rule or (token_nbf_time > context_nbf_invalid_until))
         except IntegrityError:
             return True
 
-    def add_user_roles_rules(self, users: set = None, roles: set = None, run_as: bool = False) -> Union[bool, int]:
-        """Add new rules for users-token or roles-token.
+    def add_user_roles_rules(self, users: set = None, roles: set = None, run_as: bool = False,
+                             contexts: set = None) -> Union[bool, int]:
+        """Add new rules for users-token, roles-token or run_as context-token.
         The values nbf_invalid_until and is_valid_until are generated automatically.
 
         Parameters
@@ -717,6 +761,8 @@ class TokenManager(RBACManager):
             Set with the affected roles.
         run_as : bool
             Indicate if the token has been granted through the run_as login endpoint.
+        contexts : set
+            Set with the hashes of the affected run_as authorization contexts.
 
         Returns
         -------
@@ -727,6 +773,8 @@ class TokenManager(RBACManager):
             users = set()
         if roles is None:
             roles = set()
+        if contexts is None:
+            contexts = set()
 
         try:
             self.delete_all_expired_rules()
@@ -742,6 +790,10 @@ class TokenManager(RBACManager):
                 self.delete_rule(run_as=run_as)
                 self.session.add(RunAsTokenBlacklist())
                 self.session.commit()
+            for hash_auth_context in contexts:
+                self.delete_rule(hash_auth_context=hash_auth_context)
+                self.session.add(RunAsContextTokenBlacklist(hash_auth_context=hash_auth_context))
+                self.session.commit()
 
             clear_tokens_cache()
             return True
@@ -749,8 +801,9 @@ class TokenManager(RBACManager):
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
 
-    def delete_rule(self, user_id: int = None, role_id: int = None, run_as: bool = False) -> Union[bool, int]:
-        """Remove the rule for the specified role and user.
+    def delete_rule(self, user_id: int = None, role_id: int = None, run_as: bool = False,
+                    hash_auth_context: str = None) -> Union[bool, int]:
+        """Remove the rule for the specified role, user or run_as authorization context.
 
         Parameters
         ----------
@@ -760,6 +813,8 @@ class TokenManager(RBACManager):
             ID of the role for which the rule is going to be deleted.
         run_as : bool
             Indicate if the token has been granted through the run_as login endpoint.
+        hash_auth_context : str
+            Hash of the run_as authorization context for which the rule is going to be deleted.
 
         Returns
         -------
@@ -769,6 +824,9 @@ class TokenManager(RBACManager):
         try:
             self.session.execute(delete(UsersTokenBlacklist).filter_by(user_id=user_id))
             self.session.execute(delete(RolesTokenBlacklist).filter_by(role_id=role_id))
+            if hash_auth_context is not None:
+                self.session.execute(
+                    delete(RunAsContextTokenBlacklist).filter_by(hash_auth_context=hash_auth_context))
             if run_as:
                 run_as_rule = self.session.query(RunAsTokenBlacklist).first()
                 run_as_rule and self.session.delete(run_as_rule)
@@ -814,6 +872,10 @@ class TokenManager(RBACManager):
                 self.session.delete(runas_token_in_blacklist)
                 self.session.commit()
 
+            self.session.execute(delete(RunAsContextTokenBlacklist).where(
+                RunAsContextTokenBlacklist.is_valid_until < current_time))
+            self.session.commit()
+
             return list_users, list_roles
         except IntegrityError:
             self.session.rollback()
@@ -844,6 +906,8 @@ class TokenManager(RBACManager):
             runas_rule = self.session.query(RunAsTokenBlacklist).first()
             if runas_rule:
                 self.session.delete(runas_rule)
+                clean = True
+            if self.session.execute(delete(RunAsContextTokenBlacklist)).rowcount:
                 clean = True
 
             clean and self.session.commit()
@@ -2569,6 +2633,9 @@ def check_database_integrity(passwords: Optional[dict] = None):
             logger.info(f"{DB_FILE} file was detected")
             _set_permissions_and_ownership(DB_FILE)
             db_manager.connect(DB_FILE)
+            # Create the tables added since the database was created. `create_all` skips the ones
+            # that already exist and never alters them, so this touches no data.
+            db_manager.create_database(DB_FILE)
             current_version = int(db_manager.get_database_version(DB_FILE))
             expected_version = CURRENT_ORM_VERSION
 

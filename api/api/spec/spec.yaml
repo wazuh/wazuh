@@ -8240,7 +8240,10 @@ paths:
       tags:
         - Security
       summary: "Logout current user"
-      description: "This method should be called to invalidate all the current user's tokens"
+      description: "This method should be called to invalidate all the current user's tokens. When called
+        with a token obtained through `POST /security/user/authenticate/run_as`, only the tokens granted for
+        the same authorization context are invalidated; other tokens of the account that performed the
+        run_as login are not affected"
       operationId: api.controllers.security_controller.logout_user
       responses:
         '200':

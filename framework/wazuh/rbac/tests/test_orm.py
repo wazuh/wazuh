@@ -155,6 +155,47 @@ def test_token_issued_at_credential_check_precedes_password_change_rule(db_setup
         assert tm.is_token_valid(user_id=user_id, token_nbf_time=auth_time_ms + 1)
 
 
+def test_run_as_context_revocation_is_scoped_to_the_context(db_setup):
+    """Revoking one run_as authorization context leaves the other contexts and the account's own tokens valid.
+
+    Every run_as token names the account that called the run_as login, so revoking by that account
+    on one end user's logout used to end every dashboard session.
+    """
+    with db_setup.AuthenticationManager() as am:
+        am.add_user(username='runas_account', password='testingA1!')
+        user_id = am.get_user('runas_account')['id']
+
+    revoke_time = 1609459200.100
+    token_nbf_ms = int(revoke_time * 1000) - 1
+    with patch('wazuh.rbac.orm.time', return_value=revoke_time):
+        with db_setup.TokenManager() as tm:
+            assert tm.add_user_roles_rules(contexts={'logged_out'}) is True
+
+    with db_setup.TokenManager() as tm:
+        assert not tm.is_token_valid(user_id=user_id, token_nbf_time=token_nbf_ms, run_as=True,
+                                     hash_auth_context='logged_out')
+        assert tm.is_token_valid(user_id=user_id, token_nbf_time=token_nbf_ms, run_as=True,
+                                 hash_auth_context='still_logged_in')
+        assert tm.is_token_valid(user_id=user_id, token_nbf_time=token_nbf_ms)
+        # A later login of the same end user is not affected.
+        assert tm.is_token_valid(user_id=user_id, token_nbf_time=int(revoke_time * 1000) + 1, run_as=True,
+                                 hash_auth_context='logged_out')
+
+
+def test_run_as_context_rules_are_cleaned(db_setup):
+    """Context rules are purged once expired and by a full reset."""
+    with patch('wazuh.rbac.orm.time', return_value=0):
+        with db_setup.TokenManager() as tm:
+            assert tm.add_user_roles_rules(contexts={'expired'}) is True
+    with db_setup.TokenManager() as tm:
+        assert tm.add_user_roles_rules(contexts={'alive'}) is True
+        remaining = {rule.hash_auth_context for rule in tm.session.query(db_setup.RunAsContextTokenBlacklist)}
+        assert remaining == {'alive'}
+
+        tm.delete_all_rules()
+        assert tm.session.query(db_setup.RunAsContextTokenBlacklist).count() == 0
+
+
 def test_delete_all_rules(db_setup):
     """Check that rules are correctly deleted"""
     add_token(db_setup)
@@ -189,12 +230,13 @@ def raised_token_timeout(tmp_path):
     ('users', 'UsersTokenBlacklist'),
     ('roles', 'RolesTokenBlacklist'),
     ('run_as', 'RunAsTokenBlacklist'),
+    ('contexts', 'RunAsContextTokenBlacklist'),
 ])
 def test_token_rules_sized_from_security_file(db_setup, raised_token_timeout, kind, table):
     """Check that every revocation rule lasts the timeout in security.yaml, not the stale in-memory one."""
     user_ids, role_ids = add_token(db_setup)
     rule_kwargs = {'users': {'users': {user_ids[0]}}, 'roles': {'roles': {role_ids[0]}},
-                   'run_as': {'run_as': True}}[kind]
+                   'run_as': {'run_as': True}, 'contexts': {'contexts': {'abc'}}}[kind]
 
     with patch('wazuh.rbac.orm.time', return_value=1609459200.0):
         with db_setup.TokenManager() as tm:
@@ -861,6 +903,8 @@ def test_check_database_integrity(chmod_mock, chown_mock, remove_mock, safe_move
                 # DB exists and a migration is needed
                 fresh_in_memory_db.check_database_integrity()
                 db_mock.assert_has_calls([
+                    # Tables added since the database was created are created in place.
+                    call.create_database(fresh_in_memory_db.DB_FILE),
                     call.connect(fresh_in_memory_db.DB_FILE_TMP),
                     call.get_database_version(fresh_in_memory_db.DB_FILE),
                     call.create_database(fresh_in_memory_db.DB_FILE_TMP),

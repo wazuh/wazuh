@@ -12,7 +12,8 @@ from wazuh.core.decorators import dapi_allower
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens, \
-    load_spec, sanitize_rbac_policy, update_security_conf, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
+    invalid_run_as_context_tokens, load_spec, sanitize_rbac_policy, update_security_conf, REQUIRED_FIELDS, \
+    SORT_FIELDS, SORT_FIELDS_GET_USERS
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources, require_role_update
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
@@ -1360,14 +1361,32 @@ def remove_role_policy(role_id: str, policy_ids: list) -> AffectedItemsWazuhResu
     return result
 
 @dapi_allower()
-def revoke_current_user_tokens() -> WazuhResult:
+def revoke_current_user_tokens(run_as: bool = False, hash_auth_context: str = None) -> WazuhResult:
     """Revoke all current user's tokens.
+
+    For a run_as token the current user is the end user its authorization context describes, not the
+    account that called the run_as login: that account is shared by every end user it logs in, so
+    revoking by it would end all their sessions. Only the tokens granted for the same authorization
+    context are revoked then.
+
+    Parameters
+    ----------
+    run_as : bool
+        Whether the calling token was granted through the run_as login endpoint.
+    hash_auth_context : str
+        Hash of the authorization context the calling run_as token was granted for. Every run_as
+        token carries one: `api.authentication.decode_token` refuses those that do not.
 
     Returns
     -------
     WazuhResult
          Result of operation.
     """
+    if run_as:
+        invalid_run_as_context_tokens(contexts=[hash_auth_context])
+        return WazuhResult({'message': f'User {common.current_user.get()} ({hash_auth_context}) was '
+                                       f'successfully logged out'})
+
     with AuthenticationManager() as am:
         invalid_users_tokens(users=[am.get_user(common.current_user.get())['id']])
 

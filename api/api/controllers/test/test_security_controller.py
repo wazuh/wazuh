@@ -226,6 +226,8 @@ async def test_logout_user(mock_exc, mock_dapi, mock_dfunc, mock_request):
     """Verify 'logout_user' endpoint is working as expected."""
     result = await logout_user()
     mock_dapi.assert_called_once_with(f=security.revoke_current_user_tokens,
+                                      f_kwargs={'run_as': mock_request.context['token_info']['run_as'],
+                                                'hash_auth_context': None},
                                       request_type='local_master',
                                       is_async=False,
                                       logger=ANY,
@@ -234,6 +236,18 @@ async def test_logout_user(mock_exc, mock_dapi, mock_dfunc, mock_request):
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_logout_user_run_as(mock_exc, mock_dapi, mock_dfunc, mock_request):
+    """Verify 'logout_user' hands a run_as token's authorization context to the revocation."""
+    mock_request.context['token_info'] = mock_request.context['token_info'] | {'run_as': True,
+                                                                               'hash_auth_context': 'abc'}
+    await logout_user()
+    assert mock_dapi.call_args.kwargs['f_kwargs'] == {'run_as': True, 'hash_auth_context': 'abc'}
 
 
 @pytest.mark.asyncio
