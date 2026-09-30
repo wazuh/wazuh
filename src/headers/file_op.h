@@ -572,7 +572,13 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
  * A rejection sets errno to EINVAL (file type) or EPERM (trust), never ENOENT, so a caller that treats
  * ENOENT as "file gone" is not misled by it. A path that keeps changing while it is checked, as a symlink
  * re-pointed during rotation does, is retried a few times and then fails with EAGAIN: it was not rejected,
- * and may be opened again later. Windows falls back to wfopen().
+ * and may be opened again later.
+ *
+ * Windows follows junctions and symlinks too, and accepts a path that traverses none without further
+ * checks. When it does, every junction or symlink named on the path itself must be owned by SYSTEM,
+ * BUILTIN\Administrators, TrustedInstaller or the owner of the file finally read, else the open fails
+ * with EPERM. The path a trusted link points into is not vetted again. The file must be on disk (EINVAL
+ * otherwise) and on a local volume (EACCES otherwise).
  *
  * Solaris 10 and HP-UX lack the *at() calls the component walk needs. There the path is followed as
  * wfopen() would, still non-blocking, and the same rules are applied to the opened file, but only the

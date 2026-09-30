@@ -2882,11 +2882,12 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
 }
 
 
+// Walks retried when an entry changes between its checks, as a symlink re-pointed during rotation does.
+#define W_VETTED_RACE_RETRIES 3
+
 #ifndef WIN32
 // Same limit as Linux's MAXSYMLINKS; bounds a symlink loop the kernel would stop with ELOOP.
 #define W_VETTED_MAX_SYMLINKS 40
-// Walks retried when an entry changes between its checks, as a symlink re-pointed during rotation does.
-#define W_VETTED_RACE_RETRIES 3
 
 /**
  * A hard link can be made by anyone who can write to its directory, so an entry with more than one link
@@ -3429,6 +3430,354 @@ fail:
 #endif
 
 
+#ifdef WIN32
+// Wide-character capacity for the paths handled below; longer ones are rejected with ENAMETOOLONG.
+#define W_VETTED_WIN_PATH_MAX 4096
+#define W_VETTED_WIN_EXTENDED_PREFIX L"\\\\?\\"
+#define W_VETTED_WIN_UNC_PREFIX L"\\\\?\\UNC\\"
+
+/**
+ * Maps a Win32 error to errno, reporting a vanished path as EAGAIN, not ENOENT: while a path is being
+ * vetted it means the path is changing, and the caller retries it.
+ */
+static int w_win_race_errno(DWORD error) {
+    return (error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND || error == ERROR_SHARING_VIOLATION) ?
+           EAGAIN : w_win32_to_errno(error);
+}
+
+/**
+ * Compares two paths exactly, case included: on a case-sensitive directory a difference in case can
+ * name another file, so any difference is left to the reparse walk to settle.
+ */
+static bool w_win_same_path(const wchar_t * a, const wchar_t * b) {
+    return CompareStringOrdinal(a, -1, b, -1, FALSE) == CSTR_EQUAL;
+}
+
+/**
+ * Resolves the final path of an open handle, following every reparse point, and rejects a network
+ * location. The "\\?\" prefix is removed from a local path so it compares against a normalized request.
+ *
+ * @return 0 on success, -1 on error (sets errno).
+ */
+static int w_win_final_path(HANDLE hFile, wchar_t * path) {
+    char narrow[W_VETTED_WIN_PATH_MAX * 4];
+    DWORD len = GetFinalPathNameByHandleW(hFile, path, W_VETTED_WIN_PATH_MAX, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+
+    if (len == 0) {
+        errno = w_win_race_errno(GetLastError());
+        return -1;
+    }
+
+    if (len >= W_VETTED_WIN_PATH_MAX) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    if (!wcsncmp(path, W_VETTED_WIN_UNC_PREFIX, wcslen(W_VETTED_WIN_UNC_PREFIX))) {
+        errno = EACCES;
+        return -1;
+    }
+
+    if (!wcsncmp(path, W_VETTED_WIN_EXTENDED_PREFIX, wcslen(W_VETTED_WIN_EXTENDED_PREFIX))) {
+        wmemmove(path, path + wcslen(W_VETTED_WIN_EXTENDED_PREFIX), len - wcslen(W_VETTED_WIN_EXTENDED_PREFIX) + 1);
+    }
+
+    if (!WideCharToMultiByte(CP_UTF8, 0, path, -1, narrow, sizeof(narrow), NULL, NULL)) {
+        errno = GetLastError() == ERROR_INSUFFICIENT_BUFFER ? ENAMETOOLONG : EINVAL;
+        return -1;
+    }
+
+    if (is_network_path(narrow)) {
+        errno = EACCES;
+        return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * Reads the owner of an object. The returned SID lives inside @p sd, which the caller frees with LocalFree().
+ *
+ * @return 0 on success, -1 on error (sets errno).
+ */
+static int w_win_get_owner(HANDLE hFile, PSID * owner, PSECURITY_DESCRIPTOR * sd) {
+    DWORD rc = GetSecurityInfo(hFile, SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION, owner, NULL, NULL, NULL, sd);
+
+    if (rc != ERROR_SUCCESS) {
+        errno = w_win32_to_errno(rc);
+        return -1;
+    }
+
+    // The call can succeed with no owner recorded; that cannot be trusted.
+    if (*owner == NULL) {
+        LocalFree(*sd);
+        errno = EPERM;
+        return -1;
+    }
+
+    return 0;
+}
+
+#define W_VETTED_WIN_TRUSTED_SIDS 3
+
+/**
+ * Builds the SIDs of the owners only administrators can be: SYSTEM, BUILTIN\Administrators and
+ * NT SERVICE\TrustedInstaller. Release them with w_win_free_trusted_sids().
+ *
+ * @return 0 on success, -1 on error (sets errno).
+ */
+static int w_win_init_trusted_sids(PSID sids[W_VETTED_WIN_TRUSTED_SIDS]) {
+    SID_IDENTIFIER_AUTHORITY nt = SECURITY_NT_AUTHORITY;
+
+    if (AllocateAndInitializeSid(&nt, 1, SECURITY_LOCAL_SYSTEM_RID, 0, 0, 0, 0, 0, 0, 0, &sids[0]) &&
+        AllocateAndInitializeSid(&nt, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &sids[1]) &&
+        AllocateAndInitializeSid(&nt, 6, 80, 956008885, 3418522649, 1831038044, 1853292631, 2271478464, 0, 0, 0, 0, 0, 0, &sids[2])) {
+        return 0;
+    }
+
+    errno = w_win32_to_errno(GetLastError());
+    return -1;
+}
+
+static void w_win_free_trusted_sids(PSID sids[W_VETTED_WIN_TRUSTED_SIDS]) {
+    int i;
+
+    for (i = 0; i < W_VETTED_WIN_TRUSTED_SIDS; i++) {
+        if (sids[i]) {
+            FreeSid(sids[i]);
+        }
+    }
+}
+
+/**
+ * An owner is trusted when it is one of @p trusted or the owner of the file finally read: a link its own
+ * owner made grants nothing that owner could not already read. A missing owner is never trusted.
+ */
+static bool w_win_owner_trusted(PSID owner, PSID file_owner, PSID trusted[W_VETTED_WIN_TRUSTED_SIDS]) {
+    int i;
+
+    if (!owner || !file_owner) {
+        return false;
+    }
+
+    if (EqualSid(owner, file_owner)) {
+        return true;
+    }
+
+    for (i = 0; i < W_VETTED_WIN_TRUSTED_SIDS; i++) {
+        if (EqualSid(owner, trusted[i])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Walks @p full, an absolute normalized path, one component at a time without following reparse points,
+ * and checks that every junction or symlink on it is trusted. A component that vanishes mid-walk means
+ * the path is changing, so it is reported as EAGAIN, not ENOENT.
+ *
+ * Known limit, a follow-up: only the reparse points on @p full are vetted. The path a trusted link
+ * points into is not walked again, so a reparse point inside it is not checked.
+ *
+ * @return 0 if every reparse point is trusted, -1 on error or rejection (sets errno).
+ */
+static int w_win_check_reparse_points(const wchar_t * full, PSID file_owner, PSID trusted_sids[W_VETTED_WIN_TRUSTED_SIDS]) {
+    wchar_t component[W_VETTED_WIN_PATH_MAX];
+    const size_t prefix_len = wcslen(W_VETTED_WIN_EXTENDED_PREFIX);
+    const size_t len = wcslen(full);
+    size_t end;
+
+    if (len < 3 || full[1] != L':' || full[2] != L'\\') {
+        errno = EINVAL;
+        return -1;
+    }
+
+    if (prefix_len + len >= W_VETTED_WIN_PATH_MAX) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    for (end = 3; end <= len; end++) {
+        BY_HANDLE_FILE_INFORMATION info;
+        PSECURITY_DESCRIPTOR sd = NULL;
+        PSID owner = NULL;
+        HANDLE hComponent;
+        bool trusted;
+
+        if (full[end] != L'\\' && full[end] != L'\0') {
+            continue;
+        }
+
+        wcscpy(component, W_VETTED_WIN_EXTENDED_PREFIX);
+        wcsncat(component, full, end);
+
+        hComponent = CreateFileW(component, READ_CONTROL | FILE_READ_ATTRIBUTES,
+                                 FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
+                                 FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+        if (hComponent == INVALID_HANDLE_VALUE) {
+            errno = w_win_race_errno(GetLastError());
+            return -1;
+        }
+
+        if (!GetFileInformationByHandle(hComponent, &info)) {
+            errno = w_win32_to_errno(GetLastError());
+            CloseHandle(hComponent);
+            return -1;
+        }
+
+        if (!(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+            CloseHandle(hComponent);
+            continue;
+        }
+
+        if (w_win_get_owner(hComponent, &owner, &sd) < 0) {
+            CloseHandle(hComponent);
+            return -1;
+        }
+
+        trusted = w_win_owner_trusted(owner, file_owner, trusted_sids);
+        LocalFree(sd);
+        CloseHandle(hComponent);
+
+        if (!trusted) {
+            errno = EPERM;
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * Opens @p path for reading, following reparse points, and vets what was reached: a disk file, on a
+ * local volume, with every junction or symlink on the way trusted (see w_win_check_reparse_points()).
+ *
+ * @return A vetted handle on success, or INVALID_HANDLE_VALUE on error (sets errno).
+ */
+static HANDLE w_open_vetted_follow_handle(const char * path) {
+    wchar_t wide[W_VETTED_WIN_PATH_MAX];
+    wchar_t full[W_VETTED_WIN_PATH_MAX];
+    wchar_t requested[W_VETTED_WIN_PATH_MAX];
+    wchar_t final_path[W_VETTED_WIN_PATH_MAX];
+    wchar_t again[W_VETTED_WIN_PATH_MAX];
+    PSID trusted_sids[W_VETTED_WIN_TRUSTED_SIDS] = {NULL};
+    PSECURITY_DESCRIPTOR sd = NULL;
+    BY_HANDLE_FILE_INFORMATION info;
+    BY_HANDLE_FILE_INFORMATION info_again;
+    PSID file_owner = NULL;
+    HANDLE hFile;
+    HANDLE hAgain;
+    DWORD len;
+    int saved_errno;
+    int rc;
+
+    if (is_network_path(path)) {
+        errno = EACCES;
+        mwarn(NETWORK_PATH_EXECUTED, path);
+        return INVALID_HANDLE_VALUE;
+    }
+
+    if (!MultiByteToWideChar(CP_UTF8, 0, path, -1, wide, W_VETTED_WIN_PATH_MAX)) {
+        errno = GetLastError() == ERROR_INSUFFICIENT_BUFFER ? ENAMETOOLONG : EINVAL;
+        return INVALID_HANDLE_VALUE;
+    }
+
+    hFile = CreateFileW(wide, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        errno = w_win32_to_errno(GetLastError());
+        return INVALID_HANDLE_VALUE;
+    }
+
+    if (GetFileType(hFile) != FILE_TYPE_DISK) {
+        errno = EINVAL;
+        goto fail;
+    }
+
+    if (w_win_final_path(hFile, final_path) < 0) {
+        goto fail;
+    }
+
+    len = GetFullPathNameW(wide, W_VETTED_WIN_PATH_MAX, full, NULL);
+
+    if (len == 0 || len >= W_VETTED_WIN_PATH_MAX) {
+        errno = len ? ENAMETOOLONG : w_win32_to_errno(GetLastError());
+        goto fail;
+    }
+
+    // Expand 8.3 names so the requested path compares against the long form the final path uses.
+    len = GetLongPathNameW(full, requested, W_VETTED_WIN_PATH_MAX);
+
+    if (len == 0 || len >= W_VETTED_WIN_PATH_MAX) {
+        wcscpy(requested, full);
+    }
+
+    // An identical path means no reparse point was traversed.
+    if (w_win_same_path(requested, final_path)) {
+        return hFile;
+    }
+
+    if (w_win_init_trusted_sids(trusted_sids) < 0 || w_win_get_owner(hFile, &file_owner, &sd) < 0) {
+        goto fail;
+    }
+
+    rc = w_win_check_reparse_points(full, file_owner, trusted_sids);
+    saved_errno = errno;
+    LocalFree(sd);
+
+    if (rc < 0) {
+        errno = saved_errno;
+        goto fail;
+    }
+
+    // The path may have been re-pointed while it was checked, so open it again and compare.
+    hAgain = CreateFileW(wide, FILE_READ_ATTRIBUTES, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+    if (hAgain == INVALID_HANDLE_VALUE) {
+        errno = w_win_race_errno(GetLastError());
+        goto fail;
+    }
+
+    // Same final path and same file identity: a delete-and-recreate at that path is caught too.
+    rc = w_win_final_path(hAgain, again);
+    saved_errno = errno;
+
+    if (rc == 0 && (!GetFileInformationByHandle(hFile, &info) || !GetFileInformationByHandle(hAgain, &info_again))) {
+        rc = -1;
+        saved_errno = w_win32_to_errno(GetLastError());
+    }
+
+    CloseHandle(hAgain);
+
+    if (rc < 0) {
+        errno = saved_errno;
+        goto fail;
+    }
+
+    if (!w_win_same_path(again, final_path) || info.dwVolumeSerialNumber != info_again.dwVolumeSerialNumber ||
+        info.nFileIndexHigh != info_again.nFileIndexHigh || info.nFileIndexLow != info_again.nFileIndexLow) {
+        errno = EAGAIN;
+        goto fail;
+    }
+
+    w_win_free_trusted_sids(trusted_sids);
+    return hFile;
+
+fail:
+    saved_errno = errno;
+    w_win_free_trusted_sids(trusted_sids);
+    CloseHandle(hFile);
+    errno = saved_errno;
+    return INVALID_HANDLE_VALUE;
+}
+#endif
+
+
 FILE * w_fopen_vetted_follow(const char * path, const char * mode) {
     if (!path || !mode || (strcmp(mode, "r") && strcmp(mode, "rb"))) {
         errno = EINVAL;
@@ -3436,8 +3785,35 @@ FILE * w_fopen_vetted_follow(const char * path, const char * mode) {
     }
 
 #ifdef WIN32
-    // The vetting below is POSIX-only; Windows keeps wfopen().
-    return wfopen(path, mode);
+    int saved_errno;
+    FILE * fp;
+    HANDLE hFile;
+    int retries = 0;
+    int fd;
+
+    // Restart from the top: re-checking only the changed component would trust stale results.
+    do {
+        hFile = w_open_vetted_follow_handle(path);
+    } while (hFile == INVALID_HANDLE_VALUE && errno == EAGAIN && retries++ < W_VETTED_RACE_RETRIES);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        return NULL;
+    }
+
+    if (fd = _open_osfhandle((intptr_t)hFile, _O_RDONLY | (strchr(mode, 'b') ? 0 : _O_TEXT)), fd < 0) {
+        saved_errno = errno;
+        CloseHandle(hFile);
+        errno = saved_errno;
+        return NULL;
+    }
+
+    if (fp = _fdopen(fd, mode), fp == NULL) {
+        saved_errno = errno;
+        _close(fd);
+        errno = saved_errno;
+    }
+
+    return fp;
 #else
     int saved_errno;
     FILE * fp;
