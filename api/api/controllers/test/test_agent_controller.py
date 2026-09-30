@@ -1075,15 +1075,23 @@ async def test_delete_enrollment_tokens(mock_exc, mock_dapi, mock_remove, mock_d
 @patch('api.controllers.agent_controller.remove_nones_to_dict')
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_agent_no_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+@pytest.mark.parametrize('q, expected_q', [
+    (None, 'group=null'),
+    ('id=001', 'group=null;(id=001)'),
+    ('id=001;name=agent', 'group=null;(id=001;name=agent)'),
+    # An OR in q must not bind across the injected group=null term.
+    ('id=001,id=002', 'group=null;(id=001,id=002)'),
+])
+async def test_get_agent_no_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, q, expected_q,
+                                  mock_request):
     """Verify 'get_agent_no_group' endpoint is working as expected."""
-    result = await get_agent_no_group()
+    result = await get_agent_no_group(q=q)
     f_kwargs = {'offset': 0,
                 'limit': DATABASE_LIMIT,
                 'select': None,
                 'sort': None,
                 'search': None,
-                'q': 'group=null'
+                'q': expected_q
                 }
     mock_dapi.assert_called_once_with(f=agent.get_agents,
                                       f_kwargs=mock_remove.return_value,
