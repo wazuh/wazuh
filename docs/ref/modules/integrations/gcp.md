@@ -121,6 +121,6 @@ GCP events appear in the Wazuh alerts with the `gcp` data field populated.
 **DEPRECATED:** The `<logging>` tag in both `<gcp-pubsub>` and `<gcp-bucket>` blocks is parsed but ignored.
 
 - **Status:** Deprecated
-- **Behavior:** Parser accepts the tag and logs a debug-level message, only visible with module debug logging enabled: "Tag 'logging' from the 'gcp-pubsub' (or 'gcp-bucket') module is deprecated. This setting will be skipped."
-- **Replacement:** Use the global Wazuh logging configuration instead
+- **Behavior:** Parser accepts the tag and logs a debug-level message, only visible with `wazuh_modules.debug=1` or higher in `local_internal_options.conf` (or `wazuh-modulesd -d`): "Tag 'logging' from the 'gcp-pubsub' (or 'gcp-bucket') module is deprecated. This setting will be skipped."
+- **Replacement:** Set the GCP script log level with `wazuh_modules.debug` in `local_internal_options.conf` (`0`: warning, `1`: info, `2`: debug)
 - **Note:** This tag has no effect and will be removed in a future version
