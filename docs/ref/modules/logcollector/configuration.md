@@ -109,7 +109,7 @@ Collect only events generated after the agent starts.
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
 - **Attributes:** `max-size` (files only) - largest backlog read after a restart when set to `no`. Default `10M`, maximum `2G`; takes bytes or a `K`, `M` or `G` suffix. An invalid value logs a warning and keeps the default
-- **Note:** When set to `yes`, ignores historical events. When set to `no`, a file resumes from its saved bookmark, or skips to its end if it grew by more than `max-size` meanwhile; a Windows Event Channel processes all available events from the channel
+- **Note:** When set to `yes`, ignores historical events. When set to `no`, a file resumes from its saved bookmark, or skips to its end if it grew by more than `max-size` meanwhile; a file whose content changed (for example, rotated) is read from the start, and a file with no bookmark starts at its end; a Windows Event Channel processes all available events from the channel
 - **Example:** `<only-future-events max-size="50M">no</only-future-events>`
 
 ### target
@@ -176,7 +176,7 @@ Drops events that match an expression.
 
 - **Default value:** None (optional)
 - **Allowed values:** Regular expression. The `type` attribute selects its syntax: `pcre2` (default), `osregex` or `osmatch`
-- **Note:** Repeat the tag to add expressions; an event that matches any of them is dropped. The expression is tested against the text that is forwarded: each line for files, the whole event for `multi-line` and `multi-line-regex`, each output line with its `wazuh: output: '<alias>':` header in front for `command`, and the whole output with that header for `full_command`. Not applied to `eventchannel` or `eventlog`; ignored with a warning for `journald`
+- **Note:** Repeat the tag to add expressions; an event that matches any of them is dropped. The expression is tested against the text as read, before labels or reformatting: each line for files (the raw JSON line for `json`, the `@`-timestamped line for `djb-multilog`), the whole event for `multi-line: N` and `multi-line-regex`, each output line with its `wazuh: output: '<alias>':` header in front for `command`, and the whole output with that header for `full_command`. Not applied to `eventchannel` or `eventlog`; ignored with a warning for `journald`
 - **Example:** `<ignore type="osmatch">DEBUG</ignore>`
 
 ### restrict
