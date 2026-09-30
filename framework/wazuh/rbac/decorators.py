@@ -591,6 +591,39 @@ def _audit_logger() -> logging.Logger:
     return logger if logger.hasHandlers() else framework_logger
 
 
+def require_role_update(role_ids) -> None:
+    """Refuse the request unless the caller holds 'security:update' over every one of the given roles.
+
+    This is the permission `set_user_role` asks for to link a role to a user. An operation that gives
+    an account, or the person operating it, a role by any other road -- turning on its run_as flag,
+    resetting its password -- must ask for the same one, or it is a way around role scoping.
+
+    Resolved with the same matcher `expose_resources` uses, so the RBAC mode and denies are respected.
+    All or nothing: unlike a decorated list, the result is never narrowed to the allowed roles.
+
+    Parameters
+    ----------
+    role_ids : iterable of int
+        IDs of the roles the operation makes reachable.
+
+    Raises
+    ------
+    WazuhPermissionError(4000)
+        If the caller lacks 'security:update' over at least one of the roles, listing the missing ones.
+    """
+    required = {str(role_id) for role_id in role_ids}
+    if not required:
+        return
+
+    permissions = {'security:update': [f'role:id:{role_id}' for role_id in sorted(required)]}
+    allowed = _match_permissions(req_permissions=permissions, rbac_mode=rbac.get()['rbac_mode'])['role:id']
+    denied = required - allowed
+
+    if denied:
+        raise WazuhPermissionError(4000, extra_message='Resource type: role:id',
+                                   ids={int(role_id) for role_id in denied}, title="Permission Denied")
+
+
 def can_read_secrets() -> bool:
     """Check whether the current user may read the sensitive configuration values of THIS node in clear.
 

@@ -8466,7 +8466,8 @@ paths:
       summary: "Enable/Disable run_as"
       description: "Modify a user's allow_run_as flag by specifying their ID. The flag of a reserved user (`wazuh`,
         `wazuh-wui`) can only be changed by a reserved user authenticated without an authorization context
-        (run_as)"
+        (run_as). Enabling it also requires `security:update` over every role linked to a rule with ID above
+        99 (any rule for `wazuh-wui`), because a run_as login of the user can resolve to any of them"
       operationId: api.controllers.security_controller.edit_run_as
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:edit_run_as'
@@ -8814,7 +8815,9 @@ paths:
       tags:
         - Security
       summary: "Update users"
-      description: "Modify a user's password by specifying their ID"
+      description: "Modify a user's password by specifying their ID. Unless the user is the caller, it also
+        requires `security:update` over every role linked to the user and, when its allow_run_as flag is
+        enabled, over every role a run_as login of the user can resolve to"
       operationId: api.controllers.security_controller.update_user
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'
