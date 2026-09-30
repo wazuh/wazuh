@@ -13,6 +13,7 @@ from wazuh.core.common import rbac, broadcast, cluster_nodes, current_user
 from wazuh.core.exception import WazuhInternalError, WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
+from wazuh.rbac.utils import INTEGER_RESOURCES, canonical_id
 
 SENSITIVE_FIELD_PATHS = ("authd.pass", "cluster.key")
 
@@ -30,7 +31,7 @@ framework_logger = logging.getLogger("wazuh")
 # reads the configuration, and the RBAC decorators are imported long before that is wanted.
 _node_id = None
 
-integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
+integer_resources = list(INTEGER_RESOURCES)
 
 
 def _expand_resource(resource: str) -> set:
@@ -289,6 +290,34 @@ def _match_permissions(req_permissions: dict = None, rbac_mode: str = 'white') -
     return allow_match
 
 
+def _canonicalize_dynamic_ids(resources: list, kwargs: dict):
+    """Rewrite in place every dynamic resource id in kwargs to its canonical spelling.
+
+    RBAC compares ids as strings and the framework functions cast them to integers, so both must see
+    the same value: otherwise a padded id (`01`, `0005`) is allowed by a wildcard, missed by a deny
+    written for the canonical id, and then reaches the denied object anyway. Duplicates a list gains
+    this way are dropped, keeping the first occurrence.
+
+    Parameters
+    ----------
+    resources : list
+        List of exposed resources.
+    kwargs : dict
+        Function kwargs holding the dynamic resources.
+    """
+    for resource in resources:
+        for r in resource.split('&'):
+            m = re.search(r'^([a-z*]+:[a-z*]+):{(\w+)}$', r)
+            if m is None or m.group(2) not in kwargs:
+                continue
+            resource_type, param = m.group(1), m.group(2)
+            value = kwargs[param]
+            if isinstance(value, list):
+                kwargs[param] = list(dict.fromkeys(canonical_id(resource_type, v) for v in value))
+            else:
+                kwargs[param] = canonical_id(resource_type, value)
+
+
 def _get_required_permissions(actions: list = None, resources: list = None, **kwargs: dict) -> tuple:
     """Resource pairs exposed by the framework function
 
@@ -460,6 +489,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            _canonicalize_dynamic_ids(resources, kwargs)
             original_kwargs = dict(kwargs)
             target_params, req_permissions, add_denied = \
                 _get_required_permissions(actions=actions, resources=resources, **kwargs)
