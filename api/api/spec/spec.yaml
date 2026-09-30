@@ -2714,7 +2714,11 @@ components:
             tcp_sessions:
               type: integer
               format: int32
-              description: "Current active TCP sessions (agents)"
+              description: "Current active TCP sessions"
+            tcp_sessions_unassociated:
+              type: integer
+              format: int32
+              description: "Current active TCP sessions not yet associated with an agent (subset of tcp_sessions)"
 
     WazuhAnalysisdStatsItem:
       type: object
@@ -4293,6 +4297,10 @@ components:
           type: number
           format: float
           description: "Number of TCP active sessions during the last five seconds"
+        tcp_sessions_unassociated:
+          type: number
+          format: float
+          description: "Number of TCP active sessions not yet associated with an agent during the last five seconds (subset of tcp_sessions)"
         total_queue_size:
           type: number
           format: float
@@ -11245,6 +11253,7 @@ paths:
                             size: 131072
                             usage: 0
                         tcp_sessions: 0
+                        tcp_sessions_unassociated: 0
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
@@ -11768,6 +11777,7 @@ paths:
                     - queue_size: 0.0
                       total_queue_size: 131072.0
                       tcp_sessions: 4.0
+                      tcp_sessions_unassociated: 0.0
                       evt_count: 9089.0
                       ctrl_msg_count: 2099.0
                       discarded_count: 0.0
@@ -12833,6 +12843,7 @@ paths:
                             size: 131072
                             usage: 0
                         tcp_sessions: 0
+                        tcp_sessions_unassociated: 0
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
@@ -13329,6 +13340,7 @@ paths:
                     - queue_size: 0.0
                       total_queue_size: 131072.0
                       tcp_sessions: 4.0
+                      tcp_sessions_unassociated: 0.0
                       evt_count: 9089.0
                       ctrl_msg_count: 2099.0
                       discarded_count: 0.0

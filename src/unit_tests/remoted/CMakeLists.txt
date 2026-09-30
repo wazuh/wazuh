@@ -70,6 +70,8 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,rem_add_send -Wl,--wrap,rem_dec_tcp -Wl,--wrap,wfopen \
                             -Wl,--wrap,rem_getCounter -Wl,--wrap,rem_inc_recv_ctrl \
                             -Wl,--wrap,rem_inc_recv_unknown -Wl,--wrap,rem_inc_tcp \
+                            -Wl,--wrap,nb_mark_associated -Wl,--wrap,rem_inc_tcp_unassociated \
+                            -Wl,--wrap,rem_dec_tcp_unassociated \
                             -Wl,--wrap,rem_msgpush -Wl,--wrap,rem_setCounter -Wl,--wrap,remove \
                             -Wl,--wrap,save_controlmsg -Wl,--wrap,validate_control_msg -Wl,--wrap,sleep -Wl,--wrap,stat -Wl,--wrap,time \
                             -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int \
@@ -108,7 +110,10 @@ list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,r
                             -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Clean \
                             -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_SetFreeDataPointer \
                             -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Update -Wl,--wrap,OSHash_Get_Elem_ex \
-                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,_merror")
+                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,_merror \
+                            -Wl,--wrap,wfopen -Wl,--wrap,fprintf -Wl,--wrap,fclose -Wl,--wrap,rename \
+                            -Wl,--wrap,fflush -Wl,--wrap,fgetc -Wl,--wrap,fgetpos -Wl,--wrap,fgets -Wl,--wrap,fopen \
+                            -Wl,--wrap,popen -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove")
 
 list(APPEND remoted_names "test_remcom")
 list(APPEND remoted_flags "-Wl,--wrap,rem_create_state_json -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept \

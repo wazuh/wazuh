@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 
 ### Manager
 
+#### Added
+
+- Added the `tcp_sessions_unassociated` counter to the `wazuh-remoted` statistics, reporting TCP connections not yet associated with an agent. ([#XXXXX](https://github.com/wazuh/wazuh/pull/XXXXX))
+
 #### Fixed
 
 - Added type validation for the `path` and `index` fields of FIM synchronization entries in `wazuh-db`. ([#39709](https://github.com/wazuh/wazuh/pull/39709))
