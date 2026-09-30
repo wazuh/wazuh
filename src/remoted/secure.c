@@ -853,7 +853,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                     }
 
                     // Only the first association of a live socket leaves the unassociated count
-                    if (r != OS_ADDSOCKET_ERROR && nb_mark_associated(&netbuffer_recv, message->sock)) {
+                    if (r != OS_ADDSOCKET_ERROR && nb_mark_associated(&netbuffer_recv, message->sock, message->counter)) {
                         rem_dec_tcp_unassociated();
                     }
                 }
@@ -1070,6 +1070,7 @@ void router_message_forward(char* msg, const char* agent_id, const char* agent_i
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock) {
     int retval = 0;
+    int was_unassociated = 0;
 
     rem_setCounter(sock, global_counter);
 
@@ -1077,10 +1078,7 @@ int _close_sock(keystore * keys, int sock) {
     retval = OS_DeleteSocket(keys, sock);
     key_unlock();
 
-    if (!close(sock)) {
-        int was_unassociated = nb_close(&netbuffer_recv, sock);
-        nb_close(&netbuffer_send, sock);
-
+    if (!nb_close_socket(&netbuffer_recv, &netbuffer_send, sock, &was_unassociated)) {
         // Decrement the subset first so it never exceeds tcp_sessions
         if (was_unassociated) {
             rem_dec_tcp_unassociated();

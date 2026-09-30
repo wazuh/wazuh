@@ -35,10 +35,9 @@ void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_storage * pee
     w_mutex_unlock(&mutex);
 }
 
-int nb_close(netbuffer_t * buffer, int sock) {
+/* Release a slot. Caller must hold the mutex. Returns 1 if it was live and never associated. */
+static int nb_release_slot(netbuffer_t * buffer, int sock) {
     int was_unassociated = 0;
-
-    w_mutex_lock(&mutex);
 
     if (buffer->buffers[sock].bqueue) {
         was_unassociated = !buffer->buffers[sock].associated;
@@ -48,19 +47,37 @@ int nb_close(netbuffer_t * buffer, int sock) {
     os_free(buffer->buffers[sock].data);
     memset(buffer->buffers + sock, 0, sizeof(sockbuffer_t));
 
-    w_mutex_unlock(&mutex);
-
     return was_unassociated;
 }
 
-int nb_mark_associated(netbuffer_t * buffer, int sock) {
+int nb_close_socket(netbuffer_t * recv, netbuffer_t * send, int sock, int * was_unassociated) {
+    w_mutex_lock(&mutex);
+
+    // nb_recv() queues under this mutex, so no message of this connection can carry a counter past this fence
+    rem_setCounter(sock, global_counter);
+
+    // Closing under the mutex makes an accept() that reuses the fd wait in nb_open() until both slots are released
+    int retval = close(sock);
+
+    if (!retval) {
+        *was_unassociated = nb_release_slot(recv, sock);
+        nb_release_slot(send, sock);
+    }
+
+    w_mutex_unlock(&mutex);
+
+    return retval;
+}
+
+int nb_mark_associated(netbuffer_t * buffer, int sock, size_t counter) {
     int marked = 0;
 
     w_mutex_lock(&mutex);
 
     sockbuffer_t * sockbuf = (buffer->buffers && sock >= 0 && sock <= buffer->max_fd) ? &buffer->buffers[sock] : NULL;
 
-    if (sockbuf && sockbuf->bqueue && !sockbuf->associated) {
+    // A message older than the last close of this fd belongs to a previous connection
+    if (sockbuf && sockbuf->bqueue && !sockbuf->associated && counter > rem_getCounter(sock)) {
         sockbuf->associated = 1;
         marked = 1;
     }

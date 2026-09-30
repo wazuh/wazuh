@@ -31,12 +31,38 @@ extern unsigned int send_chunk;
 
 int sock = 15;
 
+static netbuffer_t send_netbuffer;
+
+// function_called() lets the tests check close() runs between the mutex lock and unlock.
+int __wrap_close(int fd) {
+    function_called();
+    check_expected(fd);
+    return mock();
+}
+
+// Message counter fence of the last closed fd. function_called() pins rem_setCounter() before close().
+static int fence_fd = -1;
+static size_t fence_counter = 0;
+
+void __wrap_rem_setCounter(int fd, size_t counter) {
+    function_called();
+    fence_fd = fd;
+    fence_counter = counter;
+}
+
+size_t __wrap_rem_getCounter(int fd) {
+    return fd == fence_fd ? fence_counter : 0;
+}
+
 /* setup/teardown */
 
 static int test_setup(void ** state) {
     test_mode = 1;
 
     send_buffer_size = 100;
+    global_counter = 0;
+    fence_fd = -1;
+    fence_counter = 0;
 
     netbuffer_t *netbuffer;
     struct sockaddr_storage peer_info;
@@ -49,6 +75,11 @@ static int test_setup(void ** state) {
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     nb_open(netbuffer, sock, &peer_info);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    nb_open(&send_netbuffer, sock, &peer_info);
 
     *state = netbuffer;
 
@@ -63,13 +94,20 @@ static int test_teardown(void ** state) {
     test_mode = 0;
 
     netbuffer_t *netbuffer = *state;
+    int was_unassociated = 0;
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rem_setCounter);
+    expect_function_call(__wrap_close);
+    expect_value(__wrap_close, fd, sock);
+    will_return(__wrap_close, 0);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    nb_close(netbuffer, sock);
+    nb_close_socket(netbuffer, &send_netbuffer, sock, &was_unassociated);
     os_free(netbuffer->buffers);
     os_free(netbuffer);
+    os_free(send_netbuffer.buffers);
+    memset(&send_netbuffer, 0, sizeof(netbuffer_t));
 
     os_free(notify);
 
@@ -390,18 +428,31 @@ void test_nb_recv_incomplete_second_message(void ** state) {
     assert_int_equal(netbuffer->buffers[sock].data_len, 14);
 }
 
+// Marks with a message counter newer than any fence, as a message queued by the live connection would carry.
 static int mark_associated(netbuffer_t * netbuffer, int fd) {
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    return nb_mark_associated(netbuffer, fd);
+    return nb_mark_associated(netbuffer, fd, ++global_counter);
+}
+
+static int close_socket_ret(netbuffer_t * netbuffer, int fd, int close_ret, int * was_unassociated) {
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rem_setCounter);
+    expect_function_call(__wrap_close);
+    expect_value(__wrap_close, fd, fd);
+    will_return(__wrap_close, close_ret);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    return nb_close_socket(netbuffer, &send_netbuffer, fd, was_unassociated);
 }
 
 static int close_slot(netbuffer_t * netbuffer, int fd) {
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    int was_unassociated = -1;
 
-    return nb_close(netbuffer, fd);
+    assert_int_equal(close_socket_ret(netbuffer, fd, 0, &was_unassociated), 0);
+
+    return was_unassociated;
 }
 
 void test_nb_mark_associated_once(void ** state) {
@@ -426,25 +477,80 @@ void test_nb_mark_associated_out_of_range(void ** state) {
     assert_int_equal(mark_associated(netbuffer, sock + 1), 0);
 }
 
-void test_nb_close_unassociated(void ** state) {
+// A message queued before the fd was closed must not mark the slot of a new connection accepted on that fd.
+void test_nb_mark_associated_stale_counter(void ** state) {
+    netbuffer_t *netbuffer = *state;
+    struct sockaddr_storage peer_info;
+    size_t stale = ++global_counter;
+
+    memset(&peer_info, 0, sizeof(struct sockaddr_storage));
+
+    assert_int_equal(close_slot(netbuffer, sock), 1);
+    assert_int_equal(fence_fd, sock);
+    assert_int_equal(fence_counter, stale);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    nb_open(netbuffer, sock, &peer_info);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    assert_int_equal(nb_mark_associated(netbuffer, sock, stale), 0);
+    assert_int_equal(netbuffer->buffers[sock].associated, 0);
+
+    assert_int_equal(mark_associated(netbuffer, sock), 1);
+    assert_int_equal(netbuffer->buffers[sock].associated, 1);
+}
+
+void test_nb_close_socket_unassociated(void ** state) {
     netbuffer_t *netbuffer = *state;
 
     assert_int_equal(close_slot(netbuffer, sock), 1);
+    assert_null(netbuffer->buffers[sock].bqueue);
+    assert_null(send_netbuffer.buffers[sock].bqueue);
 }
 
-void test_nb_close_associated(void ** state) {
+void test_nb_close_socket_associated(void ** state) {
     netbuffer_t *netbuffer = *state;
 
     assert_int_equal(mark_associated(netbuffer, sock), 1);
     assert_int_equal(close_slot(netbuffer, sock), 0);
     assert_int_equal(netbuffer->buffers[sock].associated, 0);
+    assert_null(netbuffer->buffers[sock].bqueue);
+    assert_null(send_netbuffer.buffers[sock].bqueue);
 }
 
-void test_nb_close_already_closed(void ** state) {
+void test_nb_close_socket_slot_already_released(void ** state) {
     netbuffer_t *netbuffer = *state;
 
     assert_int_equal(close_slot(netbuffer, sock), 1);
     assert_int_equal(close_slot(netbuffer, sock), 0);
+}
+
+// close() fails: result returned as is, both slots and the output left untouched.
+void test_nb_close_socket_close_fails(void ** state) {
+    netbuffer_t *netbuffer = *state;
+    bqueue_t * recv_queue = netbuffer->buffers[sock].bqueue;
+    bqueue_t * send_queue = send_netbuffer.buffers[sock].bqueue;
+    int was_unassociated = 7;
+
+    assert_int_equal(close_socket_ret(netbuffer, sock, -1, &was_unassociated), -1);
+    assert_int_equal(was_unassociated, 7);
+    assert_ptr_equal(netbuffer->buffers[sock].bqueue, recv_queue);
+    assert_ptr_equal(send_netbuffer.buffers[sock].bqueue, send_queue);
+    assert_int_equal(mark_associated(netbuffer, sock), 1);
+}
+
+// Double close: the second close() fails and nothing changes.
+void test_nb_close_socket_double_close(void ** state) {
+    netbuffer_t *netbuffer = *state;
+    int was_unassociated = 7;
+
+    assert_int_equal(close_slot(netbuffer, sock), 1);
+    assert_int_equal(close_socket_ret(netbuffer, sock, -1, &was_unassociated), -1);
+    assert_int_equal(was_unassociated, 7);
+    assert_null(netbuffer->buffers[sock].bqueue);
+    assert_null(send_netbuffer.buffers[sock].bqueue);
 }
 
 void test_nb_reopen_resets_associated(void ** state) {
@@ -521,9 +627,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_nb_mark_associated_once, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_mark_associated_closed_slot, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_mark_associated_out_of_range, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_nb_close_unassociated, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_nb_close_associated, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_nb_close_already_closed, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_mark_associated_stale_counter, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_close_socket_unassociated, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_close_socket_associated, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_close_socket_slot_already_released, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_close_socket_close_fails, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_close_socket_double_close, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_reopen_resets_associated, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_unassociated_seq_open_close, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_unassociated_seq_open_associate_close, test_setup, test_teardown),
