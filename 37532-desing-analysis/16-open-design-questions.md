@@ -62,7 +62,7 @@ repeated here.
 | **Q15** | Do two eBPF engines ship, or does A4 land first? *(D9)* | #37533 | this project | measurement |
 | **Q16** | What is v1's supported container count, and what happens above it? | #37203 | product + this project | measurement (item 39) |
 | **Q17** | Which shipped defaults are still placeholders? | #37532 / #37534 | this project | measurement (item 39) |
-| **Q18** | What is the operator-facing configuration surface across two consumers? | #37203 | product + this project | decision |
+| ~~**Q18**~~ | ~~What is the operator-facing configuration surface across two consumers?~~ **ANSWERED: one `<container_security>` block, one `<enabled>` per consumer.** | #37203 | product + this project | decision |
 | **Q19** | How does an operator know container coverage is *not* working? | #37203 | this project + product | decision |
 | **Q20** | Who signs the coverage matrix and the `setns` exception? | #37532 | #37203-4 | sign-off |
 | **Q21** | Who executes the two acceptance criteria that were never run? | #37532 | this project | measurement (items 39–40) |
@@ -434,21 +434,39 @@ right by default at the scale Q16 names.
 
 **Answerable by:** item 39's numbers, then one pass over the configuration schema.
 
-### Q18 — What is the operator-facing configuration surface across two consumers?
+### Q18 — What is the operator-facing configuration surface across two consumers? — **ANSWERED**
 
 *(owner: product + this project · issue: #37203)*
 
-**True today.** A `<container_security>` block, holding one `<container_instances>` block per
-runtime `<type>`, configures the metadata module in `modulesd`. Container FIM is enabled by tagging
-`<directories>` entries `container`. Syscollector's container scanning has its own interval inside
-the syscollector wodle. Three places, two daemons, one feature.
+**Was.** A `<container_security>` block configured the metadata module in `modulesd`; container FIM
+was enabled by tagging `<directories>` entries `container`; syscollector's container scanning had its
+own options inside the syscollector wodle. Three places, two daemons, one feature — miss any one and
+the feature was a silent no-op.
 
-**The question.** Can an operator turn "container security" on and off as one thing? Can they enable
-container FIM without container inventory, or vice versa? What happens when `<container_security>`
-is absent but a `container`-tagged directory is configured — which is currently reachable and, since
-[C25](03-findings-correctness.md), no longer silent, but is also not documented as a supported state.
+**Answered: one block, one `<enabled>` per consumer.** `<container_security>` now holds
+`<container_instances>`, `<syscheck>` and `<syscollector>`, each with its own `<enabled>`. So:
 
-**Answerable by:** a product decision on the configuration model, then documentation.
+- *Can an operator turn container security on and off as one thing?* Yes — remove or disable the
+  block and nothing runs.
+- *Can they enable container FIM without container inventory, or vice versa?* Yes — the two
+  `<enabled>` switches are independent, and each block's presence is its own opt-in. Neither is on by
+  default any more.
+- *What happens when `<container_security>` is absent but a `container`-tagged directory is
+  configured?* That state no longer exists. `tags="container"` is an ordinary tag with no special
+  meaning, and warns once that it stopped scoping.
+
+Two consequences worth recording, because they are not what the question assumed:
+
+- **Two daemons still parse the block.** `<container_security>` is dispatched under both `CWMODULE`
+  and `CSYSCHECK`; each reader takes its own children and steps over the other's. The unification is
+  operator-facing, not internal — there is one block, still two parses in two processes.
+- **One switch stayed outside.** `<syscheck><synchronization><enabled>` still gates container FIM and
+  is genuinely shared with host FIM, so pulling it in would have meant one setting with two meanings.
+  It remains the last way to configure container FIM correctly and get nothing
+  ([15.3](15-spike-resume.md)).
+
+The selector vocabulary this opened — `container_name` now, with `image`, namespace and label left to
+[#37533](17-issue-question-coverage.md) — is a separate decision and still open.
 
 ### Q19 — How does an operator know container coverage is *not* working?
 
@@ -541,7 +559,7 @@ They do not need refinement; they need time.
 | 5 | **Q4, Q6, Q7** | `container_instances` + indexer | Three semantics decisions that should be made together and written into one note, since two consumers read all three. |
 | 6 | **Q15, Q21** | this project, on the VM | Two measurements. Q15 decides whether WP5 is cleanup or a blocker; Q21 is an acceptance criterion that is simply owed. |
 | 7 | **Q8, Q9, Q11** | `container_instances` + this project | The lifecycle contract, once Q5 and Q10 have made it safe to design. |
-| 8 | **Q12, Q13, Q14, Q16, Q18** | product + this project | The supported-envelope conversation. One meeting, five answers, all of them documentation-shaped. |
+| 8 | **Q12, Q13, Q14, Q16** | product + this project | The supported-envelope conversation. One meeting, four answers, all of them documentation-shaped. Q18 was in this group and has since been answered in code. |
 | 9 | **Q17, Q19, Q20** | this project, then #37203-4 | Defaults, observability, signatures. Last because each depends on an earlier answer. |
 
 Two observations about the shape of this list.
