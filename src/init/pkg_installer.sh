@@ -806,13 +806,16 @@ esac
 # or the address is not in the certificate). Installed, it would take the agent off the air under
 # 'full'; dropped, whoever answered on the unauthenticated TLS port could leave the agent unverified.
 # So the upgrade aborts and keeps the CA. When the check cannot run, the CA is installed as before.
-# Skipped under 'certificate', where the agent does not check the hostname and curl cannot be told not to.
-if [ "${CA_VALIDATED}" = "1" ] && [ "${WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK}" != "1" ] \
-        && [ "${SSL_VERIFICATION_MODE}" != "certificate" ]; then
-    # A pre-5.0 agent has no wazuh-agent-auth to install the anchor with.
+# Only where the agent will verify against the anchor: not with its own <certificate_authorities>,
+# not under 'none', and not under 'certificate', where it does not check the hostname and curl
+# cannot be told not to.
+if [ "${CA_VALIDATED}" = "1" ] && [ "${WAZUH_UPGRADE_TEST_SKIP_MANAGER_CHECK}" != "1" ] && [ -z "${SSL_CA}" ] \
+        && [ "${SSL_VERIFICATION_MODE}" != "certificate" ] && [ "${SSL_VERIFICATION_MODE}" != "none" ]; then
+    # A pre-5.0 agent has no wazuh-agent-auth to install the anchor with. A 5.x one is never sent a
+    # CA, so a copy it holds was left by an earlier upgrade.
     CA_PROBE_ADVICE="Fix the manager certificate and retry the upgrade"
     if [ "${IS_LEGACY_AGENT}" != "1" ]; then
-        CA_PROBE_ADVICE="${CA_PROBE_ADVICE}, or install the anchor with ./bin/wazuh-agent-auth --token-file <file> --certs-only"
+        CA_PROBE_ADVICE="If this agent already runs 5.x, that copy was left by an earlier upgrade (the manager only sends its CA to pre-5.0 agents): install the anchor with ./bin/wazuh-agent-auth --token-file <file> --certs-only, which also removes the copy, and retry. Otherwise, fix the manager certificate and retry the upgrade"
     fi
     probe_server_with_ca "${SERVER_ADDRESS}" "${SERVER_PORT}" "${SERVER_ENDPOINT}" "${CA_SNAPSHOT}"
     case $? in

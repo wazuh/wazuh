@@ -46,6 +46,13 @@ CERTIFICATE_CONF='<ossec_config>
 </ossec_config>
 '
 
+# An <ssl> block over the legacy <client> one, as a 5.x agent's ossec.conf may carry.
+ssl_conf() {
+
+    printf '<ossec_config>\n  <client>\n    <server>\n      <address>127.0.0.1</address>\n    </server>\n  </client>\n  <agent>\n    <ssl>\n%s\n    </ssl>\n  </agent>\n</ossec_config>\n' "$1"
+
+}
+
 # A self-signed CA:TRUE certificate, which is the only shape the manager delivers.
 make_ca() {
 
@@ -173,6 +180,24 @@ check "a legacy agent is not pointed at --certs-only" "0" "$(log_count rejected 
 STUB_CACERT_RC=60 run_case rejected_5x "${LEGACY_CONF}" yes 5.0.0 no
 check "a 5.x agent is pointed at --certs-only" "1" "$(log_count rejected_5x "does not verify the manager.*--certs-only")"
 check "the 5.x rejected CA is kept too" "yes" "$(present rejected_5x var/incoming/root-ca.pem)"
+
+check "a 5.x agent is told the copy was left by an earlier upgrade" "1" "$(log_count rejected_5x "that copy was left by an earlier upgrade")"
+
+# Modes that never verify against the anchor do not run the probe, so a mismatch cannot block them.
+STUB_CACERT_RC=60 run_case explicit_none "$(ssl_conf '      <verification_mode>none</verification_mode>')" yes 5.0.0 no
+check "the probe is skipped under explicit none" "0" \
+      "$(log_count explicit_none "Delivered CA verifies|Delivered CA at .* does not verify|Could not check the delivered CA")"
+check "the CA is installed under explicit none, as before" "yes" "$(present explicit_none etc/certs/root-ca.pem)"
+
+STUB_CACERT_RC=60 run_case own_ca "$(ssl_conf "      <verification_mode>full</verification_mode>
+      <certificate_authorities>${WORK}/ca.pem</certificate_authorities>")" yes 5.0.0 no
+check "the probe is skipped with the agent's own certificate_authorities" "0" \
+      "$(log_count own_ca "Delivered CA verifies|Delivered CA at .* does not verify|Could not check the delivered CA")"
+
+# 'system' falls back to the anchor, checking the hostname, so the probe applies there.
+STUB_CACERT_RC=60 run_case explicit_system "$(ssl_conf '      <verification_mode>system</verification_mode>')" yes 5.0.0 no
+check "the probe runs under explicit system and a mismatch aborts" "1" \
+      "$(log_count explicit_system "Upgrade failed. Delivered CA at .* does not verify the manager")"
 
 # A handshake error is a rejection when the same handshake succeeds without verification.
 STUB_CACERT_RC=35 STUB_RETRY_RC=0 run_case handshake_ca "${LEGACY_CONF}" yes 4.14.7 no
