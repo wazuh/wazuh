@@ -153,6 +153,7 @@ static int teardown_process(void **state) {
     os_free(stream_backup);
     os_free(show_backup);
     os_free(local_macos_processes);
+    macos_log_shutdown = 0;
 
     return 0;
 }
@@ -2503,6 +2504,11 @@ void test_w_macos_release_log_execution_log_stream_and_show_not_launched(void **
 
 }
 
+/* The reader must see the shutdown flag before the child is killed */
+static int check_sigterm_after_shutdown(const LargestIntegralType value, __attribute__((unused)) const LargestIntegralType data) {
+    return value == SIGTERM && macos_log_shutdown == 1;
+}
+
 void test_w_macos_release_log_execution_log_stream_and_show_launched_and_running(void ** state) {
 
     macos_processes = *state;
@@ -2510,7 +2516,7 @@ void test_w_macos_release_log_execution_log_stream_and_show_launched_and_running
     macos_processes->stream.wfd->pid = 11;
 
     expect_string(__wrap__mdebug1, formatted_msg, "macOS ULS: Releasing macOS `log show` resources.");
-    expect_value(__wrap_kill, sig, SIGTERM);
+    expect_check(__wrap_kill, sig, check_sigterm_after_shutdown, 0);
     expect_value(__wrap_kill, pid, 10);
     will_return(__wrap_kill, 0);
     will_return(__wrap_wpclose, 0);

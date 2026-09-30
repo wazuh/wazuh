@@ -117,7 +117,7 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
     wfd_t * log_mode_wfd = (lf->macos_log->state == LOG_RUNNING_SHOW) ?
                             lf->macos_log->processes.show.wfd : lf->macos_log->processes.stream.wfd;
 
-    if (can_read() == 0) {
+    if (macos_log_shutdown || can_read() == 0) {
         return NULL;
     }
 
@@ -156,8 +156,13 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
         os_free(short_timestamp);
     }
 
+    /* The atexit handler owns reaping and releasing the child on shutdown */
+    if (macos_log_shutdown) {
+        return NULL;
+    }
+
     /* This "if" is true when the amount of readed logs is less than the maximum allowed */
-    if (count_logs < maximum_lines) {
+    if (maximum_lines == 0 || count_logs < maximum_lines) {
         int status = 0;
         int retval = 0;
 
