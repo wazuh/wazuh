@@ -14,9 +14,9 @@ from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens, \
     load_spec, sanitize_rbac_policy, update_security_conf, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
 from wazuh.core.utils import process_array
-from wazuh.rbac.decorators import expose_resources
+from wazuh.rbac.decorators import expose_resources, require_role_update
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
-from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
+from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED, WAZUH_WUI_USER_ID
 from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
 
 # At least one letter and one digit, PCI DSS v4.0 requirement 8.3.6, in printable ASCII without spaces.
@@ -213,6 +213,75 @@ def _check_reserved_target(user_id: int, current_user: str = None, run_as: bool 
         raise WazuhError(5011)
 
 
+def _run_as_reachable_roles(user_id: int) -> set:
+    """Return the roles a run_as login of the given user can resolve to.
+
+    Mirrors `AuthorizationContextProcessor.get_user_roles`: a run_as login evaluates every rule above
+    the reserved range, and every rule at all for `wazuh-wui`. The authorization context is chosen by
+    whoever logs in, so any role linked to one of those rules is reachable, whatever the rule matches.
+
+    Parameters
+    ----------
+    user_id : int
+        ID of the user whose run_as login is considered.
+
+    Returns
+    -------
+    set
+        IDs of the reachable roles.
+    """
+    with RolesManager() as rm:
+        roles = rm.get_roles()
+        if isinstance(roles, SecurityError):
+            return set()
+        return {role.id for role in roles
+                if any(rule.id > MAX_ID_RESERVED or user_id == WAZUH_WUI_USER_ID for rule in role.rules)}
+
+
+def _check_role_escalation(user_id: int, current_user: str = None, run_as_roles: bool = False,
+                           static_roles: bool = False):
+    """Refuse an operation over a user that would put roles the caller cannot assign within its reach.
+
+    Linking a role to a user needs 'security:update' over the role (`set_user_role`). Enabling the
+    run_as flag of an account, or resetting the password of an account held by someone else, reaches
+    the same roles by another road, so it asks for the same permission.
+
+    Parameters
+    ----------
+    user_id : int
+        ID of the user to be modified.
+    current_user : str
+        Name of the user that made the request.
+    run_as_roles : bool
+        Count the roles a run_as login of the target can resolve to. Checked against the flag the
+        target will have, not the one it has, so the caller passes True when enabling it.
+    static_roles : bool
+        Count the roles linked to the target, and, when its run_as flag is already on, the roles a
+        run_as login of it can resolve to. A caller modifying its own account is exempt: it already
+        holds all of them.
+
+    Raises
+    ------
+    WazuhPermissionError(4000)
+        If the caller lacks 'security:update' over at least one of the counted roles.
+    """
+    roles = set()
+
+    if static_roles:
+        with AuthenticationManager() as auth_manager:
+            target = auth_manager.get_user_id(user_id)
+            caller = auth_manager.get_user(current_user) if current_user is not None else None
+        if not target or (caller and caller['id'] == user_id):
+            return
+        roles.update(target['roles'])
+        run_as_roles = run_as_roles or target['allow_run_as']
+
+    if run_as_roles:
+        roles.update(_run_as_reachable_roles(user_id))
+
+    require_role_update(roles)
+
+
 @expose_resources(actions=['security:edit_run_as'], resources=['*:*:*'])
 def edit_run_as(user_id: str = None, allow_run_as: bool = False, current_user: str = None,
                 run_as: bool = False) -> AffectedItemsWazuhResult:
@@ -233,6 +302,9 @@ def edit_run_as(user_id: str = None, allow_run_as: bool = False, current_user: s
     ------
     WazuhError(5011)
         If the target is a reserved user and the caller is not a reserved user logged in without run_as.
+    WazuhPermissionError(4000)
+        If the flag is being enabled and the caller lacks 'security:update' over a role that a run_as
+        login of the target can resolve to.
 
     Returns
     -------
@@ -241,6 +313,8 @@ def edit_run_as(user_id: str = None, allow_run_as: bool = False, current_user: s
     """
     user_id = int(user_id)
     _check_reserved_target(user_id, current_user, run_as)
+    if allow_run_as:
+        _check_role_escalation(user_id, current_user, run_as_roles=True)
 
     result = AffectedItemsWazuhResult(none_msg=f"The parameter allow_run_as could not be "
                                                f"{'enabled' if allow_run_as else 'disabled'} for the user",
@@ -320,6 +394,9 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
         Insecure user password provided (variety of characters).
     WazuhError(5011)
         If the target is a reserved user and the caller is not a reserved user logged in without run_as.
+    WazuhPermissionError(4000)
+        If the target is not the caller and the caller lacks 'security:update' over one of the target's
+        roles, or over a role that a run_as login of the target can resolve to when its flag is on.
 
     Returns
     -------
@@ -331,6 +408,7 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
     if password is not None:
         validate_password(password)
         _check_reserved_target(int(user_id[0]), current_user, run_as)
+        _check_role_escalation(int(user_id[0]), current_user, static_roles=True)
 
     result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
                                       none_msg='User could not be updated')
