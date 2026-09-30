@@ -7,20 +7,24 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Added type validation for the `path` and `index` fields of FIM synchronization entries in `wazuh-db`. ([#39709](https://github.com/wazuh/wazuh/pull/39709))
 - Fixed a one-byte heap buffer underflow in the GCP wodle output parser. ([#39606](https://github.com/wazuh/wazuh/pull/39606))
 - Fixed the `report_changes` snapshot following symbolic links and accepting non-regular files on Linux and macOS. ([#39476](https://github.com/wazuh/wazuh/pull/39476))
 - Fixed a root-level OS command injection in the rootcheck promiscuous-interface check. ([#39622](https://github.com/wazuh/wazuh/pull/39622))
+- Fixed a memory leak in `wazuh-remoted` when parsing repeated OS/version records in an agent keepalive. ([#39614](https://github.com/wazuh/wazuh/pull/39614))
 - Fixed logcollector following symbolic links and opening non-regular files without validating them on Linux and macOS. ([#39649](https://github.com/wazuh/wazuh/pull/39649))
 
 ### Agent
 
 #### Fixed
 
+- Fixed FIM crash on first scan when inotify cannot be initialized. ([#39707](https://github.com/wazuh/wazuh/pull/39707))
 - Fixed `force_reconnect_interval` from centralized configuration not applied on agent hot reload. ([#39573](https://github.com/wazuh/wazuh/pull/39573))
 - Fixed the `report_changes` snapshot following symbolic links and accepting non-regular files on Linux and macOS. ([#39476](https://github.com/wazuh/wazuh/pull/39476))
 - Fixed a root-level OS command injection in the rootcheck promiscuous-interface check. ([#39622](https://github.com/wazuh/wazuh/pull/39622))
 - Fixed logcollector following symbolic links and opening non-regular files without validating them on Linux and macOS. ([#39649](https://github.com/wazuh/wazuh/pull/39649))
 - Added macOS support to the disable-account active response. ([#39463](https://github.com/wazuh/wazuh/pull/39463))
+- Fixed the macOS ULS reader losing the stored timestamp after log lines shorter than 31 characters. ([#39171](https://github.com/wazuh/wazuh/issues/39171))
 - Fixed the Windows agent reporting the operating system it had before an in-place feature update. ([#39547](https://github.com/wazuh/wazuh/pull/39547))
 
 ## [v4.14.9]
