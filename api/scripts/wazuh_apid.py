@@ -191,15 +191,22 @@ def start(params: dict):
                 validate_responses=False
                 )
 
-    # Maximum body size that the API can accept (bytes)
     if api_conf['access']['max_request_per_minute'] > 0:
         app.add_middleware(CheckRateLimitsMiddleware, MiddlewarePosition.BEFORE_SECURITY)
-    app.add_middleware(CheckExpectHeaderMiddleware)
     app.add_middleware(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(WazuhAccessLoggerMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
     app.add_middleware(SecureHeadersMiddleware)
+    # CheckExpectHeaderMiddleware and the maximum-body-size ceiling both belong at
+    # BEFORE_VALIDATION, ceiling registered last: connexion stacks middleware registered at the same
+    # position in registration order, the later one landing deeper, and the ceiling raises from
+    # inside an ASGI receive call that must reach connexion's exception middleware without crossing
+    # another BaseHTTPMiddleware's task group on the way out. BEFORE_ROUTING/BEFORE_SECURITY (and the
+    # default position either of these used to fall back to) answer 500 instead of 413 for exactly
+    # that reason.
+    app.add_middleware(CheckExpectHeaderMiddleware, MiddlewarePosition.BEFORE_VALIDATION)
     if api_conf['max_upload_size']:
-        app.add_middleware(ContentSizeLimitMiddleware, max_content_size=api_conf['max_upload_size'])
+        app.add_middleware(ContentSizeLimitMiddleware, MiddlewarePosition.BEFORE_VALIDATION,
+                           max_content_size=api_conf['max_upload_size'])
         app.add_error_handler(ContentSizeExceeded, error_handler.content_size_handler)
 
     # Enable CORS
