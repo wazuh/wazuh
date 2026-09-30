@@ -5,6 +5,7 @@
 import json
 import os
 import re
+import time
 from unittest.mock import patch
 
 import pytest
@@ -553,6 +554,8 @@ _GROUP_UPDATE = {'update_actions': ['group:update_config'], 'update_resources': 
     ({'manager:update_config': {'*:*:*': 'allow'}, 'cluster:update_config': {'node:id:*': 'allow'}}, ['A'], False),
     ({'group:update_config': {'group:id:A': 'allow'}}, None, False),
     ({'group:update_config': {'group:id:A': 'allow'}}, [], False),
+    ({'group:update_config': {'group:id:A': 'allow'}}, ['A', 'B'], False),
+    ({'group:update_config': {'group:id:A': 'allow', 'group:id:B': 'allow'}}, ['A', 'B'], True),
 ])
 def test_has_update_permissions_per_resource(db_setup, group_perms, group_list, expected):
     """With update_actions, the user must hold them on every requested resource, not on any resource."""
@@ -610,6 +613,9 @@ def test_mask_sensitive_config_raw_xml_escaped_less_than(db_setup):
     (False, {'cluster:update_config': {'node:id:master-node': 'deny'}}, False),
     (False, {'cluster:update_config': {'node:id:worker1': 'deny'}}, True),
     (False, {'manager:update_config': {'*:*:*': 'deny'}}, True),
+    (False, {'cluster:update_config': {'node:id:worker1': 'allow', 'node:id:master-node': 'deny'}}, False),
+    (False, {'manager:update_config': {'*:*:*': 'allow'}, 'cluster:update_config': {'node:id:*': 'deny'}}, False),
+    (True, {'manager:update_config': {'*:*:*': 'allow'}}, True),
 ])
 def test_has_update_permissions_black_mode(db_setup, disabled, perms, expected):
     """In black mode the mask follows the permission update_ossec_conf checks, granted unless a policy denies it."""
@@ -629,3 +635,25 @@ def test_mask_sensitive_config_raw_xml_black_mode_without_deny(db_setup):
     with patch.object(db_setup, 'read_config', return_value={'disabled': True, 'node_name': 'node01'}):
         assert get_conf_raw() == _XML_WITH_CREDENTIALS
 
+
+@pytest.mark.parametrize('repeated', ['<cluster>' * 40000, '\\<api_key>' * 10000], ids=['parent_tag', 'escaped_leaf'])
+def test_mask_all_sensitive_fields_repeated_open_tags_is_linear(db_setup, repeated):
+    """Many openings of a path's parent tag, or escaped openings of a leaf, must not make the masking quadratic."""
+    payload = '<agent_config><!--' + repeated + '--></agent_config>'
+
+    start = time.perf_counter()
+    result = db_setup._mask_all_sensitive_fields(payload, '*****')
+
+    assert time.perf_counter() - start < 2.0
+    assert result == payload
+
+
+def test_mask_sensitive_config_xml_inside_nested_list(db_setup):
+    """XML carried by a string element of a nested list is masked like any other embedded XML."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf():
+        return {'files': [['<api_key>SECRET</api_key>']]}
+
+    assert get_conf() == {'files': [['<api_key>*****</api_key>']]}

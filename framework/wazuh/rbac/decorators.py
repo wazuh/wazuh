@@ -522,15 +522,17 @@ def _has_update_permissions(update_actions: list = None, update_resources: list 
     update_actions : list, optional
         Actions required instead of 'manager:update_config' or 'cluster:update_config'.
     update_resources : list, optional
-        Resources those actions must be allowed on, in `expose_resources` syntax (e.g. "group:id:{group_list}").
+        Dynamic resources those actions must be allowed on, in `expose_resources` syntax (e.g.
+        "group:id:{group_list}"). Static resources are not resolved, so they never lift the mask.
     kwargs : dict
         Function kwargs to look for dynamic resources.
 
     Returns
     -------
     bool
-        True if user has 'manager:update_config' or 'cluster:update_config' (in black mode, if no policy denies
-        them), or `update_actions` on every requested resource when given, False otherwise.
+        True if user has 'manager:update_config' or 'cluster:update_config' (in black mode, the one
+        `update_ossec_conf` checks, unless a policy denies it), or `update_actions` on every requested resource when
+        given, False otherwise.
     """
     perms = rbac.get() or {}
     if update_actions:
@@ -546,10 +548,6 @@ def _has_update_permissions(update_actions: list = None, update_resources: list 
             if not requested or None in requested or not set(requested) <= allow[res_id]:
                 return False
         return bool(target_params)
-    for action in ("manager:update_config", "cluster:update_config"):
-        action_map = perms.get(action)
-        if isinstance(action_map, dict) and any(effect == 'allow' for effect in action_map.values()):
-            return True
     # In black mode an action no policy denies is allowed, so resolve the permission update_ossec_conf checks:
     # cluster:update_config over the local node when the cluster is enabled, manager:update_config otherwise
     if perms.get('rbac_mode') == 'black':
@@ -561,6 +559,10 @@ def _has_update_permissions(update_actions: list = None, update_resources: list 
         except Exception:
             return False
         return any(allow.values())
+    for action in ("manager:update_config", "cluster:update_config"):
+        action_map = perms.get(action)
+        if isinstance(action_map, dict) and any(effect == 'allow' for effect in action_map.values()):
+            return True
     return False
 
 
@@ -587,9 +589,11 @@ def _build_xml_mask_pattern(path: str) -> re.Pattern:
         ``.*?`` matches across newlines.
     """
     tags = path.split('.')
-    prefix_pattern = ''.join(f'<{tag}>.*?' for tag in tags[:-1]) + f'<{tags[-1]}>'
-    # os_xml reads '\<' as a literal '<' inside a value
-    full_pattern = rf'({prefix_pattern})((?:[^<\\]|\\.)*)(</{tags[-1]}>)'
+    # A lazy prefix may not cross another opening of the same tag, which keeps the match linear
+    prefix_pattern = ''.join(f'<{tag}>(?:(?!<{tag}>).)*?' for tag in tags[:-1]) + f'<{tags[-1]}>'
+    # os_xml reads '\<' as a literal '<' inside a value. An escaped opening of the same leaf ends the content,
+    # otherwise every later opening rescans the escaped run up to the end of the text
+    full_pattern = rf'({prefix_pattern})((?:[^<\\]|\\(?!<{tags[-1]}>).)*)(</{tags[-1]}>)'
     return re.compile(full_pattern, re.DOTALL)
 
 
@@ -694,8 +698,11 @@ def _mask_names_in_object(obj, mask_text: str):
             else:
                 _mask_names_in_object(value, mask_text)
     elif isinstance(obj, list):
-        for el in obj:
-            _mask_names_in_object(el, mask_text)
+        for i, el in enumerate(obj):
+            if isinstance(el, str) and '<' in el:
+                obj[i] = _mask_all_sensitive_fields(el, mask_text)
+            else:
+                _mask_names_in_object(el, mask_text)
 
 
 def _mask_payload(payload, mask_text: str = MASK_DEFAULT):
@@ -766,7 +773,8 @@ def mask_sensitive_config(mask_text: str = MASK_DEFAULT, update_actions: list = 
     update_actions : list, optional
         Actions that lift the masking instead of 'manager:update_config' or 'cluster:update_config'.
     update_resources : list, optional
-        Resources `update_actions` must be allowed on, in `expose_resources` syntax.
+        Dynamic resources `update_actions` must be allowed on, in `expose_resources` syntax (e.g.
+        "group:id:{group_list}").
 
     Returns
     -------
