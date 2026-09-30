@@ -3,6 +3,11 @@
 Multi-node cluster add-on for the e2e environment. It is an overlay on the base
 `../docker-compose.yml`. The default single-node setup is unchanged.
 
+> **Note (credentials):** the main e2e stack now generates its credentials into
+> `../.credentials.env`. This cluster overlay is still the old demo: its `admin`/`admin`
+> defaults (compose and `node/entrypoint.sh`) do not authenticate against an indexer with
+> generated credentials, and migrating it is out of scope.
+
 ## Topology
 
 - **Master**: the manager running on the host (the one you build and debug).

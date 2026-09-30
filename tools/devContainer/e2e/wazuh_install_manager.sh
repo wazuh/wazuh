@@ -13,19 +13,22 @@
 #      (an ASAN engine installs fine and then fails with a misleading libwazuhshared.so dlopen error)
 #   2. stop + purge (fresh) or rm -rf of the sandbox dir (sandbox; never an existing dir — D44)
 #   3. ./install.sh unattended (USER_* variables, stdin from /dev/null; binary-install with --skip-build)
+#   3b. the three manager credentials from the e2e .credentials.env exported to install.sh's environment
+#      (the package resolver validates and stores them; API+WUI published, indexer password keystore-only;
+#      missing file = degraded, the installer generates its own as before)
 #   4. lib/libwazuhshared.so copied by hand when install.sh did not (inst-functions.sh only copies it
 #      from build/lib at that relative path)
 #   5. certificates: the manager generates none; e2e/init.sh --certs-only (reusing certs/ and its CA)
 #      + wazuh_copy_certs.sh; init.sh also opens the remoted listeners to 0.0.0.0 for docker agents
-#   5b. indexer credential stored in the keystore (INDEXER_USER/INDEXER_PASSWORD, default admin/admin,
-#      as the cluster e2e): the manager consumes it and never generates it, so it will not start without
+#   5b. indexer credential in the keystore: manual override only (INDEXER_USER/INDEXER_PASSWORD); the
+#      default path is 3b — the resolver stores the env-supplied WAZUH_INDEXER_MANAGER_PASSWORD itself
 #   6. etc/.install-provenance written; start.mark = byte offset of the log before `start`
 #   7. wazuh-manager-control start, output to a FILE (never a pipe: the daemons inherit it)
 #   8. wazuh_verify_manager.sh, then --before-hook again as the "after"
 #   9. --out/manifest.md
 #
 # Used by the VS Code task "E2E Scripts: [Manager] Fresh install from branch (purge!)" and by the
-# manager-env skill (which asks the user before running it).
+# stack-env skill (which asks the user before running it).
 set -u
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -54,8 +57,11 @@ Usage: sudo $0 --yes [--mode fresh|sandbox] [--dir DIR] [--out DIR] [--before-ho
   --legacy-port N     sandbox only: WAZUH_REMOTE_LEGACY_PORT for install.sh (default 1514)
 
 Environment:
-  INDEXER_USER / INDEXER_PASSWORD  indexer credential stored in the manager keystore before the start
-                                   (default admin / admin, the e2e indexer's)
+  INDEXER_USER / INDEXER_PASSWORD  MANUAL OVERRIDE of the indexer credential in the manager keystore.
+                                   Default: the credentials file (tools/devContainer/e2e/.credentials.env,
+                                   written by wazuh_credentials.sh) is handed to install.sh through the
+                                   environment and the package resolver stores WAZUH_INDEXER_MANAGER_PASSWORD
+                                   itself; without the file the install runs degraded (generates its own).
 
 Repository: $REPO_DIR (override with WAZUH_REPO)
 EOF
@@ -183,9 +189,30 @@ if [ "$MODE" = sandbox ]; then
   [ -z "$HTTPS_PORT" ] || ENVV+=("WAZUH_REMOTE_HTTPS_PORT=$HTTPS_PORT")
   [ -z "$LEGACY_PORT" ] || ENVV+=("WAZUH_REMOTE_LEGACY_PORT=$LEGACY_PORT")
 fi
+# 3b. credentials file -> environment of install.sh (the resolver gives the env
+# priority: API+WUI resolved in resolve_api_passwords, the indexer password in
+# resolve_indexer_password — keystore only, never published). Values are split on
+# the FIRST '=' (the transport alphabet may contain '='); nothing is ever logged.
+CREDS_FILE="$E2E/.credentials.env"
+if [ -r "$CREDS_FILE" ]; then
+  creds_found=0
+  while IFS= read -r _cl; do
+    case "$_cl" in
+      WAZUH_MANAGER_API_PASSWORD=*|WAZUH_MANAGER_WUI_PASSWORD=*|WAZUH_INDEXER_MANAGER_PASSWORD=*)
+        ENVV+=("$_cl"); creds_found=$((creds_found+1));;
+    esac
+  done < "$CREDS_FILE"
+  if [ "$creds_found" -lt 3 ]; then
+    log "WARNING: credentials file present but only $creds_found of 3 manager keys found; install.sh will resolve/generate the rest (degraded)"
+  else
+    log "credentials file: $creds_found key(s) handed to install.sh through the environment"
+  fi
+else
+  log "WARNING: $CREDS_FILE missing; install.sh will resolve/generate on its own (degraded; run wazuh_credentials.sh first)"
+fi
 declare -a INSTALL_ARGS=()
 [ "$SKIP_BUILD" -eq 0 ] || INSTALL_ARGS+=(binary-install)
-( cd "$REPO_DIR" && env "${ENVV[@]}" ./install.sh "${INSTALL_ARGS[@]}" < /dev/null ) >>"$LOG" 2>&1
+( cd "$REPO_DIR" && export "${ENVV[@]}" && ./install.sh "${INSTALL_ARGS[@]}" < /dev/null ) >>"$LOG" 2>&1
 rc=$?
 log "install rc=$rc"
 [ "$rc" -eq 0 ] || die "install.sh failed (rc=$rc), see $LOG"
@@ -218,13 +245,27 @@ log "remoted.pem: $certs_line"
 # ---------------------------------------------------------------- 5b. indexer credential
 step "indexer-credential"
 KEYSTORE="$DIR/bin/wazuh-manager-keystore"
-printf '%s' "${INDEXER_USER:-admin}" | "$KEYSTORE" -f indexer -k username >>"$LOG" 2>&1 \
-  || die "could not store the indexer username in the keystore"
-printf '%s' "${INDEXER_PASSWORD:-admin}" | "$KEYSTORE" -f indexer -k password >>"$LOG" 2>&1 \
-  || die "could not store the indexer password in the keystore"
-# The keystore tool runs as root here: hand what it wrote back to the runtime user.
+# Default path: NOTHING to do here — step 3b handed WAZUH_INDEXER_MANAGER_PASSWORD
+# (and the API/WUI passwords) to install.sh through the environment and the package
+# resolver stored it in the keystore itself. This step is now a MANUAL OVERRIDE
+# only (INDEXER_USER/INDEXER_PASSWORD, e.g. to point the manager at another
+# indexer); the docker-exec scraping and the admin/admin fallback are gone (demo
+# credentials no longer authenticate against a generated-hash index).
+if [ -n "${INDEXER_USER:-}" ] || [ -n "${INDEXER_PASSWORD:-}" ]; then
+  [ -n "${INDEXER_USER:-}" ] && [ -n "${INDEXER_PASSWORD:-}" ] \
+    || die "INDEXER_USER and INDEXER_PASSWORD must be overridden together"
+  printf '%s' "$INDEXER_USER" | "$KEYSTORE" -f indexer -k username >>"$LOG" 2>&1 \
+    || die "could not store the indexer username in the keystore"
+  printf '%s' "$INDEXER_PASSWORD" | "$KEYSTORE" -f indexer -k password >>"$LOG" 2>&1 \
+    || die "could not store the indexer password in the keystore"
+  log "indexer credential OVERRIDDEN in the keystore for user ${INDEXER_USER}"
+else
+  log "indexer credential: resolver-managed (step 3b); no override requested"
+fi
+# The resolver (inside install.sh) and the keystore tool run as root: hand the
+# keystore back to the runtime user unconditionally, or RocksDB stays root-owned
+# and the runtime cannot read the credential (stateful queries would 503).
 chown -R wazuh-manager:wazuh-manager "$DIR/queue/keystore"
-log "indexer credential stored in the keystore for user ${INDEXER_USER:-admin}"
 
 # ---------------------------------------------------------------- 6. provenance + start mark
 step "provenance"
@@ -280,7 +321,7 @@ fi
 step "manifest"
 summary=$(grep -E '^# summary:' "$OUT/verify-manager.log" | tail -1 | sed 's/^# //')
 {
-  echo "# manager-env manifest — $(now)"
+  echo "# stack-env manifest — $(now)"
   echo "mode: $MODE"
   echo "repo.head: $HEAD   repo.branch: $BRANCH   repo.merge_base: $MERGE_BASE (origin/$BASE)"
   echo "manager.home: $DIR"
