@@ -45,7 +45,7 @@ Configure the AWS module in the Wazuh agent `ossec.conf` file using the `subscri
 | `iam_role_arn` | No | — | ARN of an IAM role to assume. |
 | `iam_role_duration` | No | — | Duration in seconds for the assumed IAM role session. |
 | `external_id` | No | — | External ID for cross-account role assumption. |
-| `discard_regex` | No | — | Regular expression to filter out matching events. Requires `field` attribute specifying JSON field name. Format: `<discard_regex field="fieldName">regex</discard_regex>` |
+| `discard_regex` | No | — | Regular expression to filter out matching events. The `field` attribute sets the JSON field the regex is matched against; without it the option is accepted but no event is discarded. Format: `<discard_regex field="fieldName">regex</discard_regex>` |
 | `sts_endpoint` | No | — | Custom AWS STS endpoint URL. |
 | `service_endpoint` | No | — | Custom AWS SQS/S3 endpoint URL. |
 

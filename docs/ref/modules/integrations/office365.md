@@ -58,8 +58,8 @@ Configure the Office 365 module in the Wazuh agent `ossec.conf` file:
 | `api_auth` | Yes | — | Authentication configuration section. Multiple `api_auth` blocks can be defined for multi-tenant setups. |
 | `tenant_id` | Yes | — | Azure AD tenant ID. |
 | `client_id` | Yes | — | Azure AD application (client) ID. |
-| `client_secret_path` | Yes | — | Path to a file containing the client secret. |
-| `client_secret` | No | — | The client secret value directly (use `client_secret_path` for better security). |
+| `client_secret_path` | Yes (or `client_secret`) | — | Path to a file containing the client secret. Cannot be set together with `client_secret`. |
+| `client_secret` | Yes (or `client_secret_path`) | — | The client secret value directly (use `client_secret_path` for better security). Cannot be set together with `client_secret_path`. |
 | `api_type` | No | `commercial` | API endpoint type. Options: `commercial`, `gcc`, `gcc-high`. |
 | `subscriptions` | Yes | — | Section defining which content subscriptions to monitor. |
 | `subscription` | Yes | — | Individual subscription name. |
