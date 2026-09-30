@@ -3333,6 +3333,8 @@ components:
       description: "List of daemon names (separated by comma), all daemons selected by default if not specified"
       schema:
         type: array
+        maxItems: 3
+        uniqueItems: true
         items:
           type: string
           enum:
@@ -3592,6 +3594,7 @@ components:
       description: "Query to filter results by. For example q=&quot;status=active&quot;"
       schema:
         type: string
+        maxLength: 1024
     raw:
       in: query
       name: raw
@@ -3689,6 +3692,7 @@ components:
       '{field1: field2}' may be selected with 'field1.field2'"
       schema:
         type: array
+        maxItems: 100
         items:
           type: string
           format: names

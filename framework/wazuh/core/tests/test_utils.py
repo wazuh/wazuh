@@ -5,6 +5,7 @@
 
 import datetime
 import os
+import re
 from collections.abc import KeysView
 from io import StringIO
 from shutil import copyfile
@@ -2270,6 +2271,57 @@ def test_select_array(select, required_fields, expected_result):
             assert element == expected_result
     except utils.WazuhError as e:
         assert e.code == 1724
+
+
+@pytest.mark.parametrize('select, invalid', [
+    (['tag.x0', 'tag.x1'], 'tag.x0, tag.x1'),
+    (['level', 'tag.x0'], 'tag.x0'),
+    (['bad', 'bad.x0'], 'bad, bad.x0'),
+])
+def test_select_array_rejects_nested_fields_outside_the_allowed_ones(select, invalid):
+    """A nested select field must hang from an allowed field; the error lists only the invalid ones."""
+    array = [{'timestamp': 't', 'level': 'info', 'description': {'x0': 'd'}}]
+
+    with pytest.raises(utils.WazuhError, match=f'.* 1724 .*: {invalid}$'):
+        utils.select_array(array, select=select, allowed_select_fields=['timestamp', 'level', 'description'])
+
+
+def test_select_array_accepts_nested_fields_of_allowed_ones():
+    """A nested field of an allowed field, or one allowed by its full name, is selected."""
+    array = [{'timestamp': 't', 'level': 'info', 'description': {'x0': 'd'}, 'os': {'name': 'n'}}]
+
+    result = utils.select_array(array, select=['description.x0', 'os.name'],
+                                allowed_select_fields=['timestamp', 'description', 'os.name'])
+
+    assert result == [{'description': {'x0': 'd'}, 'os': {'name': 'n'}}]
+
+
+@pytest.mark.parametrize('q, array', [
+    ('name=a,nameGfirewall', [{'name': 'a'}]),
+    ('nameGfirewall', []),
+    ('name>=1', []),
+])
+def test_filter_array_by_query_malformed_clause_is_reported_whatever_the_array_holds(q, array):
+    """The query is parsed before the array is walked: a malformed clause is reported even when the
+    array is empty or every element already matched an earlier OR clause."""
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query(q, array)
+
+
+def test_filter_array_by_query_parses_each_clause_once():
+    """Each clause is matched once, however many elements the array holds."""
+    real_compile = re.compile
+    compiled = []
+
+    def spying_compile(*args, **kwargs):
+        compiled.append(MagicMock(wraps=real_compile(*args, **kwargs)))
+        return compiled[-1]
+
+    with patch('wazuh.core.utils.re.compile', side_effect=spying_compile):
+        result = utils.filter_array_by_query('name=a;id=1,name=b', [{'name': 'c', 'id': '1'} for _ in range(50)])
+
+    assert result == []
+    assert sum(regex.match.call_count for regex in compiled) == 3
 
 
 def test_to_relative_path():
