@@ -3436,6 +3436,11 @@ fail:
 #define W_VETTED_WIN_EXTENDED_PREFIX L"\\\\?\\"
 #define W_VETTED_WIN_UNC_PREFIX L"\\\\?\\UNC\\"
 
+#if _WIN32_WINNT < 0x0600
+// file_op.c also builds without -D_WIN32_WINNT=0x600 (file_op_proc.o), where MinGW hides this Vista API.
+WINBASEAPI DWORD WINAPI GetFinalPathNameByHandleW(HANDLE hFile, LPWSTR lpszFilePath, DWORD cchFilePath, DWORD dwFlags);
+#endif
+
 /**
  * Maps a Win32 error to errno, reporting a vanished path as EAGAIN, not ENOENT: while a path is being
  * vetted it means the path is changing, and the caller retries it.
@@ -3450,7 +3455,7 @@ static int w_win_race_errno(DWORD error) {
  * name another file, so any difference is left to the reparse walk to settle.
  */
 static bool w_win_same_path(const wchar_t * a, const wchar_t * b) {
-    return CompareStringOrdinal(a, -1, b, -1, FALSE) == CSTR_EQUAL;
+    return wcscmp(a, b) == 0;
 }
 
 /**
@@ -3531,7 +3536,7 @@ static int w_win_init_trusted_sids(PSID sids[W_VETTED_WIN_TRUSTED_SIDS]) {
 
     if (AllocateAndInitializeSid(&nt, 1, SECURITY_LOCAL_SYSTEM_RID, 0, 0, 0, 0, 0, 0, 0, &sids[0]) &&
         AllocateAndInitializeSid(&nt, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &sids[1]) &&
-        AllocateAndInitializeSid(&nt, 6, 80, 956008885, 3418522649, 1831038044, 1853292631, 2271478464, 0, 0, 0, 0, 0, 0, &sids[2])) {
+        AllocateAndInitializeSid(&nt, 6, 80, 956008885, 3418522649, 1831038044, 1853292631, 2271478464, 0, 0, &sids[2])) {
         return 0;
     }
 
