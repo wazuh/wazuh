@@ -52,7 +52,7 @@ def mock_request():
             m_req.query_params = MagicMock()
             m_req.query_params.get = MagicMock(return_value=None)
             m_req.context = {
-                'token_info': {'sub': 'wazuh', 'run_as': 'manager', 'rbac_policies': {}}
+                'token_info': {'sub': 'wazuh', 'run_as': 'manager', 'rbac_policies': {}, 'auth_time_ms': 1234}
             }
             yield m_req
 
@@ -76,8 +76,8 @@ async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfu
                                       )
     mock_remove.assert_called_once_with(f_kwargs)
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
-    mock_token.assert_called_once_with(user_id=f_kwargs['user_id'],
-                                       data=mock_exc.return_value.dikt)
+    mock_token.assert_called_once_with(issued_at_ms=mock_request.context['token_info']['auth_time_ms'],
+                                       user_id=f_kwargs['user_id'], data=mock_exc.return_value.dikt)
     assert isinstance(result, ConnexionResponse)
     assert result.content_type == 'text/plain' if raw else result.content_type == JSON_CONTENT_TYPE
 
@@ -127,7 +127,8 @@ async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_d
                                       )
     mock_remove.assert_called_once_with(f_kwargs)
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
-    mock_token.assert_called_once_with(user_id=f_kwargs['user_id'], data=mock_exc.return_value.dikt,
+    mock_token.assert_called_once_with(issued_at_ms=mock_request.context['token_info']['auth_time_ms'],
+                                       user_id=f_kwargs['user_id'], data=mock_exc.return_value.dikt,
                                        auth_context=auth_context)
     assert isinstance(result, ConnexionResponse)
     assert result.content_type == 'text/plain' if raw else result.content_type == JSON_CONTENT_TYPE
@@ -152,7 +153,8 @@ async def test_run_as_login_auth_context(mock_token, mock_exc, mock_dapi, mock_r
 
     f_kwargs = {'user_id': '001', 'auth_context': auth_context}
     mock_remove.assert_called_once_with(f_kwargs)
-    mock_token.assert_called_once_with(user_id='001', data=mock_exc.return_value.dikt,
+    mock_token.assert_called_once_with(issued_at_ms=mock_request.context['token_info']['auth_time_ms'],
+                                       user_id='001', data=mock_exc.return_value.dikt,
                                        auth_context=auth_context)
     assert isinstance(result, ConnexionResponse)
 

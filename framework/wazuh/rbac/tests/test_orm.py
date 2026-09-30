@@ -123,6 +123,38 @@ def test_token_valid_after_revoke_same_second_ms(db_setup):
         assert tm.is_token_valid(user_id=user_id, token_nbf_time=revoke_ts + 1)
 
 
+def test_token_issued_at_credential_check_precedes_password_change_rule(db_setup):
+    """A token issued at the time its credentials were checked is ordered before a later password change.
+
+    The token's issue time is taken before the credential check (`api.authentication.check_user`),
+    so it is no later than the user token rule a password change writes after committing the new
+    hash, even when both land in the same millisecond.
+    """
+    with db_setup.AuthenticationManager() as am:
+        am.add_user(username='in_flight_user', password='testingA1!')
+        user_id = am.get_user('in_flight_user')['id']
+
+    change_time = 1609459200.100
+    auth_time_ms = int(change_time * 1000)
+
+    # The login's credential check reads the old hash before the change commits.
+    with db_setup.AuthenticationManager() as am:
+        assert am.check_user('in_flight_user', 'testingA1!')
+
+    # The password change commits and then stamps its rule, in the same millisecond at worst.
+    with db_setup.AuthenticationManager() as am:
+        assert am.update_user(user_id, 'Changed.Pass1!')
+    with patch('wazuh.rbac.orm.time', return_value=change_time):
+        with db_setup.TokenManager() as tm:
+            assert tm.add_user_roles_rules(users={user_id})
+
+    with db_setup.TokenManager() as tm:
+        # The token carries the pre-check time and falls under the rule.
+        assert not tm.is_token_valid(user_id=user_id, token_nbf_time=auth_time_ms)
+        # A token issued after the rule is not affected by it.
+        assert tm.is_token_valid(user_id=user_id, token_nbf_time=auth_time_ms + 1)
+
+
 def test_delete_all_rules(db_setup):
     """Check that rules are correctly deleted"""
     add_token(db_setup)
