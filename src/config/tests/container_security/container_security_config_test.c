@@ -20,6 +20,7 @@ extern int g_warn_count;
 
 static int g_failures = 0;
 static int g_checks = 0;
+static wmodule* g_last_modules = NULL;
 
 static void Check(int condition, const char* what)
 {
@@ -71,7 +72,32 @@ static wm_container_instances_t* ParseXml(const char* xml_text)
     OS_ClearXML(&xml);
     unlink(path);
 
-    return modules ? (wm_container_instances_t*)modules->data : NULL;
+    g_last_modules = modules;
+
+    for (wmodule* it = modules; it; it = it->next)
+    {
+        if (it->tag && strcmp(it->tag, "container-instances") == 0)
+        {
+            return (wm_container_instances_t*)it->data;
+        }
+    }
+
+    return NULL;
+}
+
+/* The syscollector module as the last ParseXml() call left it, or NULL when the
+ * parse never reached <container_security><syscollector>. */
+static wm_sys_t* LastSyscollector(void)
+{
+    for (wmodule* it = g_last_modules; it; it = it->next)
+    {
+        if (it->tag && strcmp(it->tag, "syscollector") == 0)
+        {
+            return (wm_sys_t*)it->data;
+        }
+    }
+
+    return NULL;
 }
 
 static void CaseDualRuntime(void)
@@ -265,6 +291,148 @@ static void CaseEmptyRoot(void)
     Check(c == NULL || c->enabled == 0, "module disabled");
 }
 
+static void CaseSyscollectorBlock(void)
+{
+    printf("case 13: <syscollector> configures the container inventory pass\n");
+    log_reset();
+    ParseXml("<container_security>"
+             "  <container_instances><type>docker</type></container_instances>"
+             "  <syscollector><enabled>yes</enabled><interval>5m</interval></syscollector>"
+             "</container_security>");
+    wm_sys_t* sys = LastSyscollector();
+    Check(sys != NULL, "syscollector module registered");
+    Check(sys && sys->flags.container_baseline == 1, "container baseline enabled");
+    Check(sys && sys->container_baseline_interval == 300, "interval parsed as 5m");
+    Check(sys && sys->interval == WM_SYSCOLLECTOR_DEFAULT_INTERVAL, "host interval left at its default");
+    Check(g_error_count == 0, "no errors");
+}
+
+static void CaseSyscollectorDefaultsOn(void)
+{
+    printf("case 14: writing <syscollector> is the opt-in\n");
+    log_reset();
+    ParseXml("<container_security>"
+             "  <container_instances><type>docker</type></container_instances>"
+             "  <syscollector></syscollector>"
+             "</container_security>");
+    wm_sys_t* sys = LastSyscollector();
+    Check(sys && sys->flags.container_baseline == 1, "enabled without an explicit <enabled>");
+}
+
+static void CaseSyscollectorAbsent(void)
+{
+    printf("case 15: no <syscollector> block leaves container inventory off\n");
+    log_reset();
+    ParseXml("<container_security>"
+             "  <container_instances><type>docker</type></container_instances>"
+             "</container_security>");
+    Check(LastSyscollector() == NULL, "syscollector module not registered at all");
+}
+
+static void CaseSyscollectorDisabled(void)
+{
+    printf("case 16: <syscollector><enabled>no</enabled> keeps the pass off\n");
+    log_reset();
+    ParseXml("<container_security>"
+             "  <container_instances><type>docker</type></container_instances>"
+             "  <syscollector><enabled>no</enabled><interval>10m</interval></syscollector>"
+             "</container_security>");
+    wm_sys_t* sys = LastSyscollector();
+    Check(sys && sys->flags.container_baseline == 0, "container baseline disabled");
+    Check(sys && sys->container_baseline_interval == 600, "interval still parsed");
+}
+
+static void CaseSyscollectorBadInterval(void)
+{
+    printf("case 17: a malformed <interval> fails closed\n");
+    log_reset();
+    ParseXml("<container_security>"
+             "  <container_instances><type>docker</type></container_instances>"
+             "  <syscollector><interval>5x</interval></syscollector>"
+             "</container_security>");
+    wm_sys_t* sys = LastSyscollector();
+    Check(sys && sys->flags.container_baseline == 0, "container inventory disabled");
+    Check(g_error_count > 0, "reported as an error");
+}
+
+static void CaseSyscheckSiblingIgnored(void)
+{
+    printf("case 18: syscheckd's half of the block is stepped over silently\n");
+    log_reset();
+    wm_container_instances_t* c = ParseXml("<container_security>"
+                                           "  <container_instances><type>docker</type></container_instances>"
+                                           "  <syscheck><enabled>yes</enabled>"
+                                           "    <directories>/data</directories></syscheck>"
+                                           "</container_security>");
+    Check(c && c->enabled == 1, "module still enabled");
+    Check(g_warn_count == 0, "no warning about <syscheck>");
+    Check(!log_contains("Unknown option"), "not reported as an unknown option");
+}
+
+/* Both options moved under <container_security><syscollector>. Falling through to
+ * the generic unknown-element branch would abort modulesd's config read with
+ * "No such tag", which says nothing about where they went. */
+static void CaseRetiredSyscollectorOptions(void)
+{
+    printf("case 19: the retired syscollector options name their replacement\n");
+
+    const char* retired[] = {"container_baseline", "container_baseline_interval"};
+
+    for (int k = 0; k < 2; k++)
+    {
+        log_reset();
+
+        char tmp[] = "/tmp/ci_sys_retiredXXXXXX";
+        const int fd = mkstemp(tmp);
+        char doc[256];
+
+        snprintf(doc, sizeof(doc), "<wodle name=\"syscollector\"><%s>yes</%s></wodle>", retired[k], retired[k]);
+
+        if (fd < 0 || write(fd, doc, strlen(doc)) < 0)
+        {
+            Check(0, "fixture written");
+            return;
+        }
+
+        close(fd);
+
+        OS_XML xml;
+
+        if (OS_ReadXML(tmp, &xml) < 0)
+        {
+            unlink(tmp);
+            Check(0, "fixture parsed");
+            return;
+        }
+
+        xml_node** root = OS_GetElementsbyNode(&xml, NULL);
+        xml_node** children = OS_GetElementsbyNode(&xml, root[0]);
+        wmodule module;
+
+        memset(&module, 0, sizeof(module));
+
+        const int rc = wm_syscollector_read(&xml, children, &module);
+
+        OS_ClearNode(children);
+        OS_ClearNode(root);
+        OS_ClearXML(&xml);
+        unlink(tmp);
+
+        /* The full rendered string, not a substring: unit_tests/config/test_wmodules-config.c
+         * matches it with expect_string(), so a reword here has to fail here too. */
+        char expected[256];
+
+        snprintf(expected,
+                 sizeof(expected),
+                 "'%s' has moved to <container_security><syscollector> and is no longer read at module "
+                 "'syscollector'.",
+                 retired[k]);
+
+        Check(rc < 0, "the configuration is rejected");
+        Check(log_contains(expected), "the exact message the cmocka test expects");
+    }
+}
+
 int main(void)
 {
     printf("<container_security> configuration parser contract\n\n");
@@ -281,6 +449,13 @@ int main(void)
     CaseWrongRuntimeOption();
     CasePollIntervalClamped();
     CaseEmptyRoot();
+    CaseSyscollectorBlock();
+    CaseSyscollectorDefaultsOn();
+    CaseSyscollectorAbsent();
+    CaseSyscollectorDisabled();
+    CaseSyscollectorBadInterval();
+    CaseSyscheckSiblingIgnored();
+    CaseRetiredSyscollectorOptions();
 
     printf("\n%d check(s), %d failure(s)\n", g_checks, g_failures);
     if (g_failures)

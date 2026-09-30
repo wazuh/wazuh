@@ -50,6 +50,11 @@ static const char* CI_XML_NODE_NAME = "node_name";
 static const char* CI_XML_OWNERSHIP_POLL_INTERVAL = "ownership_poll_interval";
 static const char* CI_XML_INSECURE_SKIP_TLS_VERIFY = "insecure_skip_tls_verify";
 static const char* CI_XML_SOCKET_PATH = "socket_path";
+static const char* CI_XML_SYSCOLLECTOR = "syscollector";
+static const char* CI_XML_INTERVAL = "interval";
+/* syscheckd's half of <container_security>, parsed by Read_ContainerSecuritySyscheck.
+ * Named here so this reader steps over it instead of warning about it. */
+static const char* CI_XML_SYSCHECK = "syscheck";
 
 /* Invalid configurations disable the module but never abort agent startup
  * (fail closed). */
@@ -312,6 +317,18 @@ int wm_container_instances_read(const OS_XML* xml, xml_node** nodes, wmodule* mo
                 return 0; /* Already invalidated and reported; fail closed, not fatal. */
             }
         }
+        else if (strcmp(nodes[i]->element, CI_XML_SYSCHECK) == 0)
+        {
+            /* syscheckd reads this one; warning here would fire on every correct
+             * configuration. */
+            continue;
+        }
+        else if (strcmp(nodes[i]->element, CI_XML_SYSCOLLECTOR) == 0)
+        {
+            /* Handled by Read_ContainerSecurity, which holds the module list this
+             * block has to reach. */
+            continue;
+        }
         else
         {
             mwarn("Unknown option '%s' in <container_security>.", nodes[i]->element);
@@ -344,6 +361,78 @@ int wm_container_instances_read(const OS_XML* xml, xml_node** nodes, wmodule* mo
         }
     }
 
+    return 0;
+}
+
+/* <syscollector> under <container_security> configures the container inventory pass
+ * and nothing else: <enabled> is flags.container_baseline and <interval> is
+ * container_baseline_interval. Host inventory cadence stays in <wodle name="syscollector">,
+ * so no setting in this section can change what the host scan does.
+ *
+ * The module is reached through wm_syscollector_get_or_create() rather than allocated
+ * here, so this block and the top-level wodle can appear in either order without one of
+ * them skipping the defaults. */
+static int wm_container_security_parse_syscollector(const OS_XML* xml, xml_node* node, wmodule** wmodules)
+{
+    wm_sys_t* syscollector = wm_syscollector_get_or_create(wmodules);
+
+    /* Writing the block is the opt-in, matching <container_instances>. */
+    syscollector->flags.container_baseline = 1;
+
+    xml_node** children = OS_GetElementsbyNode(xml, node);
+
+    if (!children)
+    {
+        return 0;
+    }
+
+    for (int i = 0; children[i]; i++)
+    {
+        if (!children[i]->element)
+        {
+            continue;
+        }
+
+        if (strcmp(children[i]->element, CI_XML_ENABLED) == 0)
+        {
+            const int enabled = wm_container_instances_parse_bool(children[i]->content);
+
+            if (enabled < 0)
+            {
+                merror("Invalid <%s> value '%s' in <container_security><%s>. Container inventory disabled.",
+                       CI_XML_ENABLED,
+                       children[i]->content ? children[i]->content : "",
+                       CI_XML_SYSCOLLECTOR);
+                syscollector->flags.container_baseline = 0;
+                break;
+            }
+
+            syscollector->flags.container_baseline = (unsigned int)enabled;
+        }
+        else if (strcmp(children[i]->element, CI_XML_INTERVAL) == 0)
+        {
+            unsigned int parsed = 0;
+
+            if (wm_syscollector_parse_interval(children[i]->content, &parsed) != 0)
+            {
+                merror("Invalid <%s> value '%s' in <container_security><%s>. Container inventory disabled.",
+                       CI_XML_INTERVAL,
+                       children[i]->content ? children[i]->content : "",
+                       CI_XML_SYSCOLLECTOR);
+                syscollector->flags.container_baseline = 0;
+                break;
+            }
+
+            /* 0 is accepted and meaningful: follow the host <interval>. */
+            syscollector->container_baseline_interval = parsed;
+        }
+        else
+        {
+            mwarn("Unknown option '%s' in <container_security><%s>.", children[i]->element, CI_XML_SYSCOLLECTOR);
+        }
+    }
+
+    OS_ClearNode(children);
     return 0;
 }
 
@@ -387,6 +476,18 @@ int Read_ContainerSecurity(const OS_XML* xml, xml_node* node, void* d1)
 
     xml_node** children = OS_GetElementsbyNode(xml, node);
     const int result = wm_container_instances_read(xml, children, cur_wmodule);
+
+    if (result == 0 && children)
+    {
+        for (int i = 0; children[i]; i++)
+        {
+            if (children[i]->element && strcmp(children[i]->element, CI_XML_SYSCOLLECTOR) == 0)
+            {
+                wm_container_security_parse_syscollector(xml, children[i], wmodules);
+            }
+        }
+    }
+
     OS_ClearNode(children);
     return result;
 }

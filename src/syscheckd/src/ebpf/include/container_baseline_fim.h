@@ -17,7 +17,7 @@ extern "C" {
 /**
  * @brief Run the container file baseline (spike #37532) for every container
  * currently known to the container-connector module, over every configured
- * `<directories tags="container">` entry, and persist each resulting row
+ * `<container_security><syscheck><directories>` entry, and persist each resulting row
  * through the existing FIM sync-protocol handle (syscheck.sync_handle) — the
  * same persistence path a normal host-FIM stateful event already uses.
  *
@@ -27,9 +27,10 @@ extern "C" {
  * file already present and untouched when the agent starts stayed invisible
  * to the state index. This closes that gap for the file/hash data class.
  *
- * No-op if there are no <directories tags="container"> entries configured,
- * if FIM synchronization is disabled (syscheck.enable_synchronization), or if
- * the container_instances module isn't running (its IPC socket is absent).
+ * No-op if there are no <container_security><syscheck><directories> entries
+ * configured, if FIM synchronization is disabled (syscheck.enable_synchronization),
+ * or if the container_instances module isn't running (its IPC socket is absent).
+ * The caller gates on syscheck.container_enabled before any of this is reached.
  *
  * This is independent of the whodata provider (audit vs eBPF): it only
  * enriches FIM state with container metadata, it doesn't affect change

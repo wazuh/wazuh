@@ -208,6 +208,17 @@ typedef struct whodata {
 
 #endif /* End WIN32*/
 
+/* Scopes a <container_security><syscheck><directories> entry to a subset of the
+ * containers on the node. Every field that is set must match; a selector with no
+ * field set matches every container.
+ *
+ * Adding a dimension (image, Kubernetes namespace, pod, label) is one field here
+ * plus one clause in container_selector_matches() - it changes neither the XML
+ * shape, nor the merge key, nor the event pipeline that carries the identity. */
+typedef struct container_selector_t {
+    char *name; /* container_name="..." */
+} container_selector_t;
+
 typedef struct _directory_s {
     char *path;
     int options;
@@ -216,6 +227,7 @@ typedef struct _directory_s {
     OSMatch *filerestrict;
     int recursion_level;
     char *tag; /* array of tags for each directory */
+    container_selector_t container; /* container scope; all fields NULL for a host entry */
 #ifdef WIN32
     // Windows specific fields
     whodata_dir_status dirs_status; // Status list
@@ -400,6 +412,8 @@ typedef struct _config {
     unsigned int realtime_change:1;                    /* Variable to activate the change to realtime from a whodata monitoring*/
 
     OSList *directories;                               /* List of directories to be monitored */
+    OSList *container_directories;                     /* Container-scoped directories, never walked on the host */
+    unsigned int container_enabled:1;                  /* <container_security><syscheck> present and enabled */
     OSList *wildcards;                                 /* List of wildcards to be monitored */
 
     char *scan_day;                                    /* run syscheck on this day */
@@ -582,6 +596,38 @@ directory_t *fim_create_directory(const char *path,
  */
 void fim_insert_directory(OSList *config_list,
                           directory_t *config_object);
+
+/**
+ * @brief Inserts a container-scoped directory_t into a directory_t OSList.
+ *
+ * Unlike fim_insert_directory(), the merge key is the (path, selector) pair, so two
+ * entries for the same path scoped to different containers both survive. The list is
+ * kept sorted by that same composite key.
+ *
+ * @param config_list directory_t OSList to insert into, passed by reference
+ * @param config_object directory_t object to be inserted
+ */
+void fim_insert_container_directory(OSList *config_list,
+                                    directory_t *config_object);
+
+/**
+ * @brief Parses one check_* attribute shared by the host and container readers.
+ *
+ * @param attr Attribute name
+ * @param value Attribute value, expected to be "yes" or "no"
+ * @param opts Option bitmask to update in place
+ * @retval 1 the attribute was recognised and applied
+ * @retval 0 the attribute is not a check_* attribute; the caller handles it
+ * @retval -1 the attribute was recognised but its value is invalid
+ */
+int fim_parse_check_attribute(const char *attr, const char *value, int *opts);
+
+/**
+ * @brief Frees every field of a container selector without freeing the selector.
+ *
+ * @param selector Selector to clear
+ */
+void free_container_selector(container_selector_t *selector);
 
 /**
  * @brief Copies a given directory_t object and returns a reference to the copy.

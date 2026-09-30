@@ -482,7 +482,13 @@ int main(int argc, char **argv)
     // doesn't depend on eBPF vs audit for change detection. No-op when no
     // container directories are configured, sync is disabled, or
     // container_instances isn't running.
-    if (!syscheck.disabled) {
+    //
+    // container_enabled is <container_security><syscheck><enabled>. It gates the
+    // whole block rather than just path collection because fim_container_events_start()
+    // opens the eBPF ring buffer and spawns the drain, resolver and consumer threads:
+    // turning container file monitoring off should cost nothing, not subscribe and
+    // then discard.
+    if (!syscheck.disabled && syscheck.container_enabled) {
         // Subscribe BEFORE walking (#37396 / #37532). The drain stages container
         // file events from here on, so a file changed while the walk is running
         // is reconciled afterwards instead of falling into the gap between "the

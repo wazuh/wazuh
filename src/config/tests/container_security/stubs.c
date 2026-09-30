@@ -106,9 +106,39 @@ int w_parse_bool(const char* string)
     return (strcmp(string, "yes") == 0) ? 1 : (strcmp(string, "no") == 0) ? 0 : -1;
 }
 
-/* The parser only stores this pointer on the module; it never calls through it. */
+/* Mirrors shared/src/string_op.c:738. Reimplemented for the same reason w_parse_bool
+ * is: linking string_op.c drags in the shared library. */
+long w_parse_time(const char* string)
+{
+    char* end;
+    long seconds = strtol(string, &end, 10);
+
+    if (seconds < 0)
+    {
+        return -1;
+    }
+
+    switch (*end)
+    {
+        case '\0':
+        case 's': break;
+        case 'w': seconds *= W_WEEK_SECONDS; break;
+        case 'd': seconds *= W_DAY_SECONDS; break;
+        case 'h': seconds *= W_HOUR_SECONDS; break;
+        case 'm': seconds *= W_MINUTE_SECONDS; break;
+        default: return -1;
+    }
+
+    return seconds >= 0 ? seconds : -1;
+}
+
+/* The parsers only store these pointers on the module; they never call through them. */
 const wm_context WM_CONTAINER_INSTANCES_CONTEXT = {
     .name = "container-instances",
+};
+
+const wm_context WM_SYS_CONTEXT = {
+    .name = "syscollector",
 };
 
 FILE* wfopen(const char* path, const char* mode)

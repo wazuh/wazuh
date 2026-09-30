@@ -86,6 +86,20 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     }
 
     OSList_SetFreeDataPointer(syscheck->directories, (void (*)(void *))free_directory);
+
+    /* Container-scoped entries live in their own list: they are never walked on the
+     * host, and their merge key is (path, selector) rather than the bare path, so two
+     * containers may monitor the same path without one replacing the other. */
+    syscheck->container_directories            = OSList_Create();
+
+    if (syscheck->container_directories == NULL) {
+        OSList_Destroy(syscheck->directories);
+        syscheck->directories = NULL;
+        return (OS_INVALID);
+    }
+
+    OSList_SetFreeDataPointer(syscheck->container_directories, (void (*)(void *))free_directory);
+    syscheck->container_enabled               = 0;
     syscheck->wildcards                       = NULL;
     syscheck->enable_synchronization          = 1;
     syscheck->restart_audit                   = 1;
@@ -169,6 +183,49 @@ void fim_insert_directory(OSList *config_list,
     OSList_InsertData(config_list, NULL, new_entry);
 }
 
+static int fim_compare_container_selector(const container_selector_t *a, const container_selector_t *b) {
+    /* A fixed field order so the list stays totally ordered. An unset field sorts
+     * before a set one, which puts the catch-all entry for a path first. */
+    const char *left = (a != NULL && a->name != NULL) ? a->name : "";
+    const char *right = (b != NULL && b->name != NULL) ? b->name : "";
+
+    return strcmp(left, right);
+}
+
+void fim_insert_container_directory(OSList *config_list, directory_t *new_entry) {
+    OSListNode *node_it;
+    directory_t *dir_it;
+
+    OSList_foreach (node_it, config_list) {
+        dir_it = node_it->data;
+        int cmp = strcmp(dir_it->path, new_entry->path);
+
+        if (cmp == 0) {
+            cmp = fim_compare_container_selector(&dir_it->container, &new_entry->container);
+        }
+
+        if (cmp == 0) {
+            /* Same path AND same selector: a genuine duplicate, last one wins. */
+            free_directory(dir_it);
+            node_it->data = new_entry;
+            return;
+        } else if (cmp > 0) {
+            OSList_InsertData(config_list, node_it, new_entry);
+            return;
+        }
+    }
+
+    OSList_InsertData(config_list, NULL, new_entry);
+}
+
+void free_container_selector(container_selector_t *selector) {
+    if (selector == NULL) {
+        return;
+    }
+
+    os_free(selector->name);
+}
+
 directory_t *fim_copy_directory(const directory_t *_dir) {
     if (_dir == NULL) {
         return NULL;
@@ -179,8 +236,14 @@ directory_t *fim_copy_directory(const directory_t *_dir) {
         filerestrict = _dir->filerestrict->raw;
     }
 
-    return fim_create_directory(_dir->path, _dir->options, filerestrict, _dir->recursion_level,
-                                _dir->tag, _dir->diff_size_limit, _dir->is_wildcard);
+    directory_t *copy = fim_create_directory(_dir->path, _dir->options, filerestrict, _dir->recursion_level,
+                                             _dir->tag, _dir->diff_size_limit, _dir->is_wildcard);
+
+    if (copy != NULL && _dir->container.name != NULL) {
+        os_strdup(_dir->container.name, copy->container.name);
+    }
+
+    return copy;
 }
 
 OSList *fim_copy_directory_list(const OSList *source) {
@@ -785,25 +848,150 @@ char **expand_wildcards(const char *path) {
 
 
 /* Read directories attributes */
+int fim_parse_check_attribute(const char *attr, const char *value, int *opts) {
+    /* Shared by the host reader (read_attr) and the container-security reader, so a
+     * check_* attribute means exactly the same thing in both places. Mode attributes
+     * (realtime, whodata) are deliberately absent: they are host-only and each reader
+     * handles them itself. */
+    static const struct {
+        const char *name;
+        int bits;
+    } check_map[] = {
+        { "check_sum",       CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM },
+        { "check_md5sum",    CHECK_MD5SUM },
+        { "check_sha1sum",   CHECK_SHA1SUM },
+        { "check_sha256sum", CHECK_SHA256SUM },
+        { "check_perm",      CHECK_PERM },
+        { "check_size",      CHECK_SIZE },
+        { "check_owner",     CHECK_OWNER },
+        { "check_group",     CHECK_GROUP },
+        { "check_mtime",     CHECK_MTIME },
+        { "check_inode",     CHECK_INODE },
+        { "check_device",    CHECK_DEVICE },
+    };
+    size_t i;
+    int enable;
+
+    if (attr == NULL || value == NULL || opts == NULL) {
+        return 0;
+    }
+
+    if (strcmp(value, "yes") == 0) {
+        enable = 1;
+    } else if (strcmp(value, "no") == 0) {
+        enable = 0;
+    } else {
+        enable = -1;
+    }
+
+    if (strcmp(attr, "check_all") == 0) {
+        if (enable < 0) {
+            return -1;
+        }
+
+        if (enable) {
+            fim_set_check_all(opts);
+        } else {
+            *opts &= ~(CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM | CHECK_SIZE | CHECK_OWNER |
+                       CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_DEVICE);
+#ifdef WIN32
+            *opts &= ~CHECK_ATTRS;
+#endif
+        }
+
+        return 1;
+    }
+
+    if (strcmp(attr, "check_attrs") == 0) {
+#ifdef WIN32
+        if (enable < 0) {
+            return -1;
+        }
+
+        if (enable) {
+            *opts |= CHECK_ATTRS;
+        } else {
+            *opts &= ~CHECK_ATTRS;
+        }
+#else
+        mdebug1("Option '%s' is only available on Windows systems.", attr);
+#endif
+        return 1;
+    }
+
+    for (i = 0; i < sizeof(check_map) / sizeof(check_map[0]); i++) {
+        if (strcmp(attr, check_map[i].name) != 0) {
+            continue;
+        }
+
+        if (enable < 0) {
+            return -1;
+        }
+
+        if (enable) {
+            *opts |= check_map[i].bits;
+        } else {
+            *opts &= ~check_map[i].bits;
+        }
+
+        return 1;
+    }
+
+    return 0;
+}
+
+static void fim_warn_retired_container_tag(const char *tags) {
+    /* tags="container" used to be what scoped a <directories> entry to containers.
+     * It no longer does, and the failure is otherwise completely silent, so say so
+     * once per configuration read rather than per entry. */
+    static int warned = 0;
+    const char *cursor;
+
+    if (tags == NULL || warned) {
+        return;
+    }
+
+    for (cursor = tags; *cursor != '\0';) {
+        const char *start;
+        const char *end;
+
+        while (*cursor == ',' || *cursor == ' ' || *cursor == '\t') {
+            ++cursor;
+        }
+
+        start = cursor;
+
+        while (*cursor != '\0' && *cursor != ',') {
+            ++cursor;
+        }
+
+        end = cursor;
+
+        while (end > start && (end[-1] == ' ' || end[-1] == '\t')) {
+            --end;
+        }
+
+        if ((size_t)(end - start) == 9 && strncmp(start, "container", 9) == 0) {
+            mwarn("tags=\"container\" no longer scopes a <directories> entry to containers. "
+                  "Use <container_security><syscheck><directories> instead.");
+            warned = 1;
+            return;
+        }
+
+        if (*cursor == ',') {
+            ++cursor;
+        }
+    }
+}
+
 static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs, char **g_values)
 {
-    const char *xml_check_all = "check_all";
-    const char *xml_check_sum = "check_sum";
-    const char *xml_check_sha1sum = "check_sha1sum";
-    const char *xml_check_md5sum = "check_md5sum";
-    const char *xml_check_size = "check_size";
-    const char *xml_check_owner = "check_owner";
-    const char *xml_check_group = "check_group";
-    const char *xml_check_perm = "check_perm";
-    const char *xml_check_mtime = "check_mtime";
-    const char *xml_check_inode = "check_inode";
-    const char *xml_check_device = "check_device";
-    const char *xml_check_attrs = "check_attrs";
+    /* The check_* attributes are handled by fim_parse_check_attribute(), shared with
+     * the container-security reader. Only the host-specific attributes are named here. */
     const char *xml_follow_symbolic_link = "follow_symbolic_link";
     const char *xml_real_time = "realtime";
     const char *xml_report_changes = "report_changes";
     const char *xml_restrict = "restrict";
-    const char *xml_check_sha256sum = "check_sha256sum";
     const char *xml_whodata = "whodata";
     const char *xml_recursion_level = "recursion_level";
     const char *xml_tag = "tags";
@@ -837,64 +1025,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
     /* Extract all options */
     while (attrs && values && *attrs && *values) {
-        /* Check all */
-        if (strcmp(*attrs, xml_check_all) == 0) {
-            if (strcmp(*values, "yes") == 0) {
-                fim_set_check_all(&opts);
-            } else if (strcmp(*values, "no") == 0) {
-                opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM | CHECK_SIZE
-                        | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_DEVICE);
+        int check_rc = fim_parse_check_attribute(*attrs, *values, &opts);
 
-#ifdef WIN32
-                opts &= ~ CHECK_ATTRS;
-#endif
-            } else {
-                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                goto out_free;
-            }
-        }
-        /* Check sum */
-        else if (strcmp(*attrs, xml_check_sum) == 0) {
-            if (strcmp(*values, "yes") == 0) {
-                opts |= CHECK_MD5SUM;
-                opts |= CHECK_SHA1SUM;
-                opts |= CHECK_SHA256SUM;
-            } else if (strcmp(*values, "no") == 0) {
-                opts &= ~ (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM);
-            } else {
-                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                goto out_free;
-            }
-        }
-        /* Check md5sum */
-        else if (strcmp(*attrs, xml_check_md5sum) == 0) {
-            if (strcmp(*values, "yes") == 0) {
-                opts |= CHECK_MD5SUM;
-            } else if (strcmp(*values, "no") == 0) {
-                opts &= ~ CHECK_MD5SUM;
-            } else {
-                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                goto out_free;
-            }
-        }
-        /* Check sha1sum */
-        else if (strcmp(*attrs, xml_check_sha1sum) == 0) {
-            if (strcmp(*values, "yes") == 0) {
-                opts |= CHECK_SHA1SUM;
-            } else if (strcmp(*values, "no") == 0) {
-                opts &= ~ CHECK_SHA1SUM;
-            } else {
-                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                goto out_free;
-            }
-        }
-        /* Check sha256sum */
-        else if (strcmp(*attrs, xml_check_sha256sum) == 0) {
-            if (strcmp(*values, "yes") == 0) {
-                opts |= CHECK_SHA256SUM;
-            } else if (strcmp(*values, "no") == 0) {
-                opts &= ~ CHECK_SHA256SUM;
-            } else {
+        if (check_rc != 0) {
+            if (check_rc < 0) {
                 mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                 goto out_free;
             }
@@ -910,98 +1044,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                 goto out_free;
             }
-        }
-        /* Check permission */
-        else if (strcmp(*attrs, xml_check_perm) == 0) {
-            if (strcmp(*values, "yes") == 0) {
-                opts |= CHECK_PERM;
-            } else if (strcmp(*values, "no") == 0) {
-                opts &= ~ CHECK_PERM;
-            } else {
-                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                goto out_free;
-            }
-        }
-        /* Check size */
-        else if (strcmp(*attrs, xml_check_size) == 0) {
-            if (strcmp(*values, "yes") == 0) {
-                opts |= CHECK_SIZE;
-            } else if (strcmp(*values, "no") == 0) {
-                opts &= ~ CHECK_SIZE;
-            } else {
-                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                goto out_free;
-            }
-        }
-        /* Check owner */
-        else if (strcmp(*attrs, xml_check_owner) == 0) {
-            if (strcmp(*values, "yes") == 0) {
-                opts |= CHECK_OWNER;
-            } else if (strcmp(*values, "no") == 0) {
-                opts &= ~ CHECK_OWNER;
-            } else {
-                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                goto out_free;
-            }
-        }
-        /* Check group */
-        else if (strcmp(*attrs, xml_check_group) == 0) {
-            if (strcmp(*values, "yes") == 0) {
-                opts |= CHECK_GROUP;
-            } else if (strcmp(*values, "no") == 0) {
-                opts &= ~ CHECK_GROUP;
-            } else {
-                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                goto out_free;
-            }
-        }
-        /* Check modification time */
-        else if (strcmp(*attrs, xml_check_mtime) == 0) {
-            if (strcmp(*values, "yes") == 0) {
-                opts |= CHECK_MTIME;
-            } else if (strcmp(*values, "no") == 0) {
-                opts &= ~ CHECK_MTIME;
-            } else {
-                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                goto out_free;
-            }
-        }
-        /* Check inode */
-        else if (strcmp(*attrs, xml_check_inode) == 0) {
-            if (strcmp(*values, "yes") == 0) {
-                opts |= CHECK_INODE;
-            } else if (strcmp(*values, "no") == 0) {
-                opts &= ~ CHECK_INODE;
-            } else {
-                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                goto out_free;
-            }
-        }
-        /* Check device */
-        else if (strcmp(*attrs, xml_check_device) == 0) {
-            if (strcmp(*values, "yes") == 0) {
-                opts |= CHECK_DEVICE;
-            } else if (strcmp(*values, "no") == 0) {
-                opts &= ~ CHECK_DEVICE;
-            } else {
-                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                goto out_free;
-            }
-        }
-        /* Check attributes */
-        else if (strcmp(*attrs, xml_check_attrs) == 0) {
-#ifdef WIN32
-            if (strcmp(*values, "yes") == 0) {
-                opts |= CHECK_ATTRS;
-            } else if (strcmp(*values, "no") == 0) {
-                opts &= ~ CHECK_ATTRS;
-            } else {
-                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
-                goto out_free;
-            }
-#else
-            mdebug1("Option '%s' is only available on Windows systems.", xml_check_attrs);
-#endif
         }
         /* Check real time */
         else if (strcmp(*attrs, xml_real_time) == 0) {
@@ -1053,6 +1095,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         else if (strcmp(*attrs, xml_tag) == 0) {
             os_free(tag);
             os_strdup(*values, tag);
+            fim_warn_retired_container_tag(tag);
         }
         /* Check follow symbolic links */
         else if (strcmp(*attrs, xml_follow_symbolic_link) == 0) {
@@ -2260,6 +2303,7 @@ void free_directory(directory_t *dir) {
     os_free(dir->path);
     os_free(dir->symbolic_links);
     os_free(dir->tag);
+    free_container_selector(&dir->container);
 
     if (dir->filerestrict) {
         OSMatch_FreePattern(dir->filerestrict);
@@ -2303,6 +2347,10 @@ void Free_Syscheck(syscheck_config * config) {
                 free(config->nodiff_regex[i]);
             }
             free(config->nodiff_regex);
+        }
+        if (config->container_directories) {
+            OSList_Destroy(config->container_directories);
+            config->container_directories = NULL;
         }
         if (config->directories) {
             OSList_Destroy(config->directories);

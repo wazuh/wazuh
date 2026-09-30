@@ -28,8 +28,11 @@ static const char *XML_GROUPS = "groups";
 static const char *XML_USERS = "users";
 static const char *XML_SERVICES = "services";
 static const char *XML_BROWSER_EXTENSIONS = "browser_extensions";
-static const char *XML_CONTAINER_BASELINE = "container_baseline";
-static const char *XML_CONTAINER_BASELINE_INTERVAL = "container_baseline_interval";
+/* Retired: both moved under <container_security><syscollector>. Kept here only so a
+ * configuration still carrying them gets told where they went, instead of the generic
+ * "No such tag" that the unknown-element branch would produce. */
+static const char *XML_RETIRED_CONTAINER_BASELINE = "container_baseline";
+static const char *XML_RETIRED_CONTAINER_BASELINE_INTERVAL = "container_baseline_interval";
 
 static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node) {
     const char *XML_DB_SYNC_ENABLED = "enabled";
@@ -86,13 +89,7 @@ static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node
     }
 }
 
-// Parse XML configuration
-int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
-    wm_sys_t *syscollector;
-    int i;
-
-    if(!module->data) {
-        os_calloc(1, sizeof(wm_sys_t), syscollector);
+static void wm_syscollector_set_defaults(wm_sys_t *syscollector) {
         // System provider config values
         syscollector->flags.enabled = 1;
         syscollector->interval = WM_SYSCOLLECTOR_DEFAULT_INTERVAL;
@@ -111,7 +108,9 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
         syscollector->flags.users = 1;
         syscollector->flags.services = 1;
         syscollector->flags.browser_extensions = 1;
-        syscollector->flags.container_baseline = 1;
+        // Container inventory is opt-in, like container file monitoring: writing
+        // <container_security><syscollector> is what turns it on.
+        syscollector->flags.container_baseline = 0;
         syscollector->container_baseline_interval = WM_SYSCOLLECTOR_DEFAULT_CONTAINER_INTERVAL;
 
         // Database synchronization config values
@@ -123,7 +122,90 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
 
         syscollector->max_eps = 50;
         syscollector->flags.notify_first_scan = 0; // Default value, no notification on first scan
+}
 
+wm_sys_t *wm_syscollector_get_or_create(wmodule **wmodules) {
+    wmodule *cur_wmodule = NULL;
+
+    for (wmodule *it = *wmodules; it; it = it->next) {
+        if (it->tag && strcmp(it->tag, WM_SYS_CONTEXT.name) == 0) {
+            cur_wmodule = it;
+            break;
+        }
+    }
+
+    if (!cur_wmodule) {
+        if (*wmodules) {
+            cur_wmodule = *wmodules;
+
+            while (cur_wmodule->next) {
+                cur_wmodule = cur_wmodule->next;
+            }
+
+            os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+            cur_wmodule = cur_wmodule->next;
+        } else {
+            os_calloc(1, sizeof(wmodule), cur_wmodule);
+            *wmodules = cur_wmodule;
+        }
+    }
+
+    if (!cur_wmodule->data) {
+        wm_sys_t *syscollector;
+
+        os_calloc(1, sizeof(wm_sys_t), syscollector);
+        wm_syscollector_set_defaults(syscollector);
+        cur_wmodule->context = &WM_SYS_CONTEXT;
+        cur_wmodule->tag = strdup(cur_wmodule->context->name);
+        cur_wmodule->data = syscollector;
+    }
+
+    return (wm_sys_t *)cur_wmodule->data;
+}
+
+int wm_syscollector_parse_interval(const char *content, unsigned int *output) {
+    // Suffix grammar shared with <interval>: a malformed value fails hard rather than
+    // silently falling back, so a typo cannot look like a working setting.
+    if (!content || !strlen(content)) {
+        return OS_INVALID;
+    }
+
+    char *endptr;
+    unsigned long parsed = strtoul(content, &endptr, 0);
+
+    switch (*endptr) {
+    case 'd':
+        parsed *= W_DAY_SECONDS;
+        break;
+    case 'h':
+        parsed *= W_HOUR_SECONDS;
+        break;
+    case 'm':
+        parsed *= W_MINUTE_SECONDS;
+        break;
+    case 's':
+    case '\0':
+        break;
+    default:
+        return OS_INVALID;
+    }
+
+    if (parsed >= UINT_MAX) {
+        return OS_INVALID;
+    }
+
+    *output = (unsigned int)parsed;
+    return 0;
+}
+
+// Parse XML configuration
+int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
+    wm_sys_t *syscollector;
+    int i;
+
+    if(!module->data) {
+        os_calloc(1, sizeof(wm_sys_t), syscollector);
+        wm_syscollector_set_defaults(syscollector);
         module->context = &WM_SYS_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = syscollector;
@@ -294,50 +376,11 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_SERVICES, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
-        } else if (!strcmp(node[i]->element, XML_CONTAINER_BASELINE)) {
-            if (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no")) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_CONTAINER_BASELINE, WM_SYS_CONTEXT.name);
-                return OS_INVALID;
-            }
-            syscollector->flags.container_baseline = !strcmp(node[i]->content, "yes");
-        } else if (!strcmp(node[i]->element, XML_CONTAINER_BASELINE_INTERVAL)) {
-            // Same suffix grammar as <interval> above (d/h/m/s), and the same
-            // hard failure on a malformed value: silently falling back to the
-            // host cadence would make a typo look like a working setting.
-            if (!node[i]->content || !strlen(node[i]->content)) {
-                merror("Invalid %s at module '%s'", XML_CONTAINER_BASELINE_INTERVAL, WM_SYS_CONTEXT.name);
-                return OS_INVALID;
-            }
-
-            char *endptr;
-            unsigned long parsed = strtoul(node[i]->content, &endptr, 0);
-
-            switch (*endptr) {
-            case 'd':
-                parsed *= W_DAY_SECONDS;
-                break;
-            case 'h':
-                parsed *= W_HOUR_SECONDS;
-                break;
-            case 'm':
-                parsed *= W_MINUTE_SECONDS;
-                break;
-            case 's':
-            case '\0':
-                break;
-            default:
-                merror("Invalid %s at module '%s'", XML_CONTAINER_BASELINE_INTERVAL, WM_SYS_CONTEXT.name);
-                return OS_INVALID;
-            }
-
-            // 0 is accepted and meaningful: it means "follow <interval>", which
-            // is the default and the behaviour before this option existed.
-            if (parsed >= UINT_MAX) {
-                merror("Invalid %s at module '%s'", XML_CONTAINER_BASELINE_INTERVAL, WM_SYS_CONTEXT.name);
-                return OS_INVALID;
-            }
-
-            syscollector->container_baseline_interval = (unsigned int) parsed;
+        } else if (!strcmp(node[i]->element, XML_RETIRED_CONTAINER_BASELINE) ||
+                   !strcmp(node[i]->element, XML_RETIRED_CONTAINER_BASELINE_INTERVAL)) {
+            merror("'%s' has moved to <container_security><syscollector> and is no longer read at module '%s'.",
+                   node[i]->element, WM_SYS_CONTEXT.name);
+            return OS_INVALID;
         } else if (!strcmp(node[i]->element, XML_BROWSER_EXTENSIONS)) {
             if (!node[i]->content || !strlen(node[i]->content) ||
                 (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no"))) {

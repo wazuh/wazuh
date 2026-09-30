@@ -21,10 +21,12 @@
  *   4. A delete carries path and mode only — the row DBSync hands back is the
  *      state the file HAD, and reporting it as current would be a lie.
  *   5. A change only in a column no configured check covers sends nothing.
- *   6. A container row resolves against the CONTAINER-tagged <directories>
- *      entry even when an untagged host-only entry is a longer prefix. That is
- *      the whole reason fim_container_configuration_directory() exists rather
- *      than a call to fim_configuration_directory().
+ *   6. A container row resolves against the CONTAINER-scoped <directories>
+ *      entry even when a host-only entry is a longer prefix. That is the whole
+ *      reason fim_container_configuration_directory() exists rather than a call
+ *      to fim_configuration_directory(); since the two lists were separated it
+ *      is structural rather than a filter, and this case is what keeps the two
+ *      lists from being quietly merged back together.
  *
  * Written in C, not C++, on purpose: syscheck.h has no extern "C" guard of its
  * own and reaches real C++ headers (<atomic>) transitively, so a C++ test
@@ -165,13 +167,14 @@ static directory_t* Directory(const char* path, int options, const char* tag)
 static void ConfigureDirectories(void)
 {
     syscheck.directories = OSList_Create();
+    syscheck.container_directories = OSList_Create();
 
-    /* Container-tagged: size + sha256 + mtime. */
-    OSList_AddData(syscheck.directories,
+    /* Container-scoped, from <container_security><syscheck>: size + sha256 + mtime. */
+    OSList_AddData(syscheck.container_directories,
                    Directory("/etc", CHECK_SIZE | CHECK_SHA256SUM | CHECK_MTIME, "container,prod"));
 
-    /* A LONGER prefix, host-only: no "container" tag and a different check set.
-     * fim_configuration_directory() would pick this one for /etc/ssl/cert.pem. */
+    /* A LONGER prefix, host-only, from the top-level <syscheck>: a different check
+     * set. fim_configuration_directory() would pick this one for /etc/ssl/cert.pem. */
     OSList_AddData(syscheck.directories, Directory("/etc/ssl", CHECK_PERM, NULL));
 }
 
@@ -310,7 +313,7 @@ static void CaseUncheckedColumnIsSilent(void)
 
 static void CaseTaggedEntryWinsOverLongerHostEntry(void)
 {
-    printf("case 6: a container row resolves against the container-tagged entry\n");
+    printf("case 6: a container row resolves against the container-scoped entry\n");
 
     const size_t before = g_sent_count;
     cJSON* row = Row("/etc/ssl/cert.pem", 512, "ccc");
@@ -319,12 +322,12 @@ static void CaseTaggedEntryWinsOverLongerHostEntry(void)
 
     Check(g_sent_count == before + 1, "one alert sent");
     Check(AlertStringIs("file", "tags", "container,prod"),
-          "took /etc's tag, not /etc/ssl's (untagged)");
+          "took /etc's tag, not the host-only /etc/ssl's");
 
     /* /etc checks size+sha256, /etc/ssl checks permissions. Which attributes
      * appear is the observable proof of which entry was resolved. */
     Check(AlertNode("file", "size") != NULL, "size present (from /etc's CHECK_SIZE)");
-    Check(AlertNode("file", "permissions") == NULL, "permissions absent (/etc/ssl not used)");
+    Check(AlertNode("file", "permissions") == NULL, "permissions absent (the host list was not consulted)");
 }
 
 int main(void)

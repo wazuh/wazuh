@@ -70,6 +70,28 @@ typedef struct wm_sys_t {
 // Parse XML configuration
 int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module);
 
+/**
+ * @brief Find the syscollector module in the list, appending it with its defaults applied if absent.
+ *
+ * <container_security><syscollector> and <wodle name="syscollector"> both configure this one module
+ * and may appear in either order. Routing both through this function is what makes the defaults land
+ * exactly once, instead of depending on which block the parser reached first.
+ *
+ * @param wmodules Wazuh modules list, passed by reference
+ * @return The module's configuration, never NULL
+ */
+wm_sys_t *wm_syscollector_get_or_create(wmodule **wmodules);
+
+/**
+ * @brief Parse an interval with the d/h/m/s suffix grammar used across syscollector.
+ *
+ * @param content Raw element content
+ * @param output Parsed value in seconds, written only on success
+ * @retval 0 on success
+ * @retval OS_INVALID when the value is empty, malformed or out of range
+ */
+int wm_syscollector_parse_interval(const char *content, unsigned int *output);
+
 // Query function type for agentd communication (cross-platform)
 // Fills output_buffer with JSON response on success
 // Returns true on success, false on error
