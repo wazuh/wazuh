@@ -94,8 +94,11 @@ Active response execution daemon (execd) runs on agents and has the following in
 # Active response debug level (0-2)
 execd.debug=0
 
-# Maximum restart lock attempts (default: 10)
-execd.max_restart_lock=10
+# Longest restart lock, in seconds, that a WPK upgrade can request (0-3600)
+execd.max_restart_lock=600
+
+# Seconds the agent upgrade module lets the WPK installer run before killing it (1-3600)
+execd.request_timeout=60
 ```
 
 

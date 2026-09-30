@@ -55,7 +55,7 @@ Configure the Microsoft Graph module in the Wazuh agent `ossec.conf` file:
 | `enabled` | No | `yes` | Enables or disables the module. |
 | `only_future_events` | No | `yes` | Only retrieve events generated after the module starts. |
 | `run_on_start` | No | `yes` | Query the API immediately when the module starts. |
-| `interval` | No | `5m` | Time interval between API queries. |
+| `interval` | No | `1d` | Time interval between API queries. |
 | `version` | No | `v1.0` | Microsoft Graph API version. Options: `v1.0`, `beta`. |
 | `curl_max_size` | No | `1M` | Maximum size of the HTTP response body. |
 | `page_size` | No | `50` | Number of results per API page. |
@@ -64,7 +64,7 @@ Configure the Microsoft Graph module in the Wazuh agent `ossec.conf` file:
 | `client_id` | Yes | — | Azure AD application (client) ID. |
 | `tenant_id` | Yes | — | Azure AD tenant ID. |
 | `secret_value` | Yes | — | Azure AD application client secret. |
-| `api_type` | No | `global` | API endpoint type. Options: `global`, `gcc-high`, `dod`. |
+| `api_type` | Yes | — | API endpoint type. Options: `global`, `gcc-high`, `dod`. The agent does not start without it. |
 | `resource` | Yes | — | Defines a Microsoft Graph resource to monitor. Multiple `resource` blocks are supported. |
 | `name` | Yes | — | The resource name (for example, `security`, `identityProtection`). |
 | `relationship` | Yes | — | The relationship to query within the resource (for example, `alerts_v2`, `incidents`). |
@@ -94,6 +94,7 @@ Configure the Microsoft Graph module in the Wazuh agent `ossec.conf` file:
     <client_id>YOUR_CLIENT_ID</client_id>
     <tenant_id>YOUR_TENANT_ID</tenant_id>
     <secret_value>YOUR_CLIENT_SECRET</secret_value>
+    <api_type>global</api_type>
   </api_auth>
   <resource>
     <name>security</name>

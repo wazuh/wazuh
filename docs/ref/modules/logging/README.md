@@ -20,12 +20,14 @@ The logging module is configured via the `<logging>` XML block in the main confi
 
 ### Quick Example
 
+On the manager the block goes inside the `<wazuh_config>` root; on an agent, inside `<ossec_config>`. Both default configuration files already contain it, so edit the existing block rather than adding another.
+
 ```xml
-<ossec_config>
+<wazuh_config>
   <logging>
     <log_format>plain</log_format>
   </logging>
-</ossec_config>
+</wazuh_config>
 ```
 
 ## Log Files

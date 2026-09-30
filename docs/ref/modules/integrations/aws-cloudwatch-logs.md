@@ -21,7 +21,6 @@ Configure the AWS module in the Wazuh agent `ossec.conf` file using the `service
     <disabled>no</disabled>
     <interval>5m</interval>
     <run_on_start>yes</run_on_start>
-    <skip_on_error>yes</skip_on_error>
     <service type="cloudwatchlogs">
       <access_key>YOUR_ACCESS_KEY</access_key>
       <secret_key>YOUR_SECRET_KEY</secret_key>
@@ -40,7 +39,7 @@ Configure the AWS module in the Wazuh agent `ossec.conf` file using the `service
 | `disabled` | No | `no` | Disables the AWS module when set to `yes`. |
 | `interval` | No | `5s` | Time interval between CloudWatch Logs API queries. |
 | `run_on_start` | No | `yes` | Pull logs immediately when the module starts. |
-| `skip_on_error` | No | `yes` | Continue processing on error instead of stopping. |
+| `skip_on_error` | No | `no` | Accepted, but not used by the CloudWatch Logs service. |
 | `service type` | Yes | — | Set to `cloudwatchlogs` to monitor CloudWatch Logs. |
 | `access_key` | No | — | AWS access key ID. Not required if using IAM roles. |
 | `secret_key` | No | — | AWS secret access key. Not required if using IAM roles. |

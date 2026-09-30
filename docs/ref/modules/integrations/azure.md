@@ -86,8 +86,8 @@ The Azure module is configured inside the `<ossec_config>` block of the Wazuh ag
 |--------|:--------:|---------|-------------|
 | `disabled` | No | `no` | Disables the Azure module when set to `yes`. |
 | `run_on_start` | No | `yes` | Process logs immediately when the module starts. |
-| `interval` | No | `1h` | Time interval between Azure API queries. |
-| `timeout` | No | `3600` | Maximum execution time in seconds for each run. |
+| `interval` | No | `1d` | Time interval between Azure API queries. |
+| `timeout` | No | — | Maximum execution time in seconds for each request or container scan that sets no `timeout` of its own. Unset means no limit. |
 
 #### Log Analytics and Graph API options
 
@@ -102,7 +102,7 @@ The Azure module is configured inside the `<ossec_config>` block of the Wazuh ag
 | `query` | Yes | — | KQL query (Log Analytics) or Graph API resource path. |
 | `workspace` | Yes (Log Analytics) | — | Log Analytics workspace ID. |
 | `time_offset` | No | — | Time range for the query (for example, `1h`, `1d`). |
-| `timeout` | No | `3600` | Maximum execution time in seconds for the request. |
+| `timeout` | No | Module `timeout` | Maximum execution time in seconds for the request. |
 
 #### Storage options
 
@@ -117,7 +117,7 @@ The Azure module is configured inside the `<ossec_config>` block of the Wazuh ag
 | `content_type` | No | `text` | Blob content format: `json_file` (a JSON object with a `records` array), `json_inline` (one JSON object per line) or `text` (one plain-text event per line). |
 | `path` | No | — | Blob prefix filter. |
 | `time_offset` | No | — | Time range for blob selection (for example, `1h`, `1d`). |
-| `timeout` | No | `3600` | Maximum execution time in seconds for the container scan. |
+| `timeout` | No | Module `timeout` | Maximum execution time in seconds for the container scan. |
 
 ## Azure AD application setup
 
