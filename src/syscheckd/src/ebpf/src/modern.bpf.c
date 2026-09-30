@@ -96,6 +96,18 @@ struct {
     __uint(max_entries, 1);
 } cwd_heap SEC(".maps");
 
+/*
+* Mount each thread last claimed for write access (mnt_want_write), keyed
+* by pid_tgid. The VFS claims it right before setattr, unlink and rename,
+* so it is the mount the kprobes on those functions were reached through.
+*/
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __type(key, u64);
+    __type(value, u64);
+    __uint(max_entries, 1 << 14);
+} write_mnt_map SEC(".maps");
+
 // Kernel version check
 extern int LINUX_KERNEL_VERSION __kconfig;
 
@@ -225,6 +237,7 @@ statfunc long get_path_str_from_path(unsigned char **path_str,
             /* Handle mountpoints going up */
             if (mnt != mnt_parent) {
                 dentry = BPF_CORE_READ(mnt, mnt_mountpoint);
+                mnt = mnt_parent;
                 mnt_parent = BPF_CORE_READ(mnt, mnt_parent);
                 vfsmnt = __builtin_preserve_access_index(&mnt->mnt);
                 continue;
@@ -479,6 +492,36 @@ static __always_inline struct dentry *resolve_dentry(struct dentry *dentry)
     return (i_sb && i_sb == d_sb) ? dentry : NULL;
 }
 
+SEC("kprobe/mnt_want_write")
+int kprobe__mnt_want_write(struct pt_regs *ctx)
+{
+    u64 id = bpf_get_current_pid_tgid();
+    u64 mnt = PT_REGS_PARM1(ctx);
+    bpf_map_update_elem(&write_mnt_map, &id, &mnt, BPF_ANY);
+    return 0;
+}
+
+/*
+ * Returns the mount recorded by kprobe/mnt_want_write for the current thread
+ * if it is attached (same check as the kernel's is_mounted(), which skips
+ * private mounts such as the overlayfs upper layer) and belongs to sb.
+ * NULL makes get_path_str_from_path() stop at the filesystem root.
+ */
+statfunc struct vfsmount *get_write_mnt(struct super_block *sb)
+{
+    u64 id = bpf_get_current_pid_tgid();
+    u64 *val = bpf_map_lookup_elem(&write_mnt_map, &id);
+    if (!val)
+        return NULL;
+
+    struct vfsmount *vfsmnt = (struct vfsmount *)*val;
+    unsigned long ns = (unsigned long)BPF_CORE_READ(container_of(vfsmnt, struct mount, mnt), mnt_ns);
+    if (!ns || ns >= (unsigned long)-4095 || BPF_CORE_READ(vfsmnt, mnt_sb) != sb)
+        return NULL;
+
+    return vfsmnt;
+}
+
 SEC("kprobe/security_inode_setattr")
 int kprobe__security_inode_setattr(struct pt_regs *ctx)
 {
@@ -514,26 +557,10 @@ int kprobe__security_inode_setattr(struct pt_regs *ctx)
     if ((mode & 00170000) != 0100000)
         return 0;
 
-    // Extract filesystem information
-    struct super_block *sb = NULL;
-    bpf_probe_read_kernel(&sb, sizeof(sb), &d_inode->i_sb);
-    if (!sb)
-        return 0;
-
-    struct mount *mnt_ptr = NULL;
-    bpf_probe_read_kernel(&mnt_ptr, sizeof(mnt_ptr), &sb->s_fs_info);
-    if (!mnt_ptr)
-        return 0;
-
-    struct vfsmount *mnt = NULL;
-    bpf_probe_read_kernel(&mnt, sizeof(mnt), &mnt_ptr->mnt);
-    if (!mnt)
-        return 0;
-
     // Construct path
     struct path path = {
         .dentry = dentry,
-        .mnt    = mnt
+        .mnt    = get_write_mnt(BPF_CORE_READ(d_inode, i_sb))
     };
 
     struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
@@ -594,25 +621,10 @@ int kprobe__vfs_unlink(struct pt_regs *ctx)
     if (((mode & 00170000) != 0100000))
         return 0;
 
-    struct super_block *sb = NULL;
-    bpf_probe_read_kernel(&sb, sizeof(sb), &d_inode->i_sb);
-    if (!sb)
-        return 0;
-
-    struct mount *mnt_ptr = NULL;
-    bpf_probe_read_kernel(&mnt_ptr, sizeof(mnt_ptr), &sb->s_fs_info);
-    if (!mnt_ptr)
-        return 0;
-
-    struct vfsmount *mnt = NULL;
-    bpf_probe_read_kernel(&mnt, sizeof(mnt), &mnt_ptr->mnt);
-    if (!mnt)
-        return 0;
-
     /* Build a path struct from dentry + mnt. */
     struct path path = {
         .dentry = dentry,
-        .mnt    = mnt
+        .mnt    = get_write_mnt(BPF_CORE_READ(d_inode, i_sb))
     };
 
     struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
@@ -692,21 +704,6 @@ int kprobe__vfs_rename(struct pt_regs *ctx)
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
-    struct super_block *sb = NULL;
-    bpf_probe_read_kernel(&sb, sizeof(sb), &d_inode->i_sb);
-    if (!sb)
-        return 0;
-
-    struct mount *mnt_ptr = NULL;
-    bpf_probe_read_kernel(&mnt_ptr, sizeof(mnt_ptr), &sb->s_fs_info);
-    if (!mnt_ptr)
-        return 0;
-
-    struct vfsmount *mnt = NULL;
-    bpf_probe_read_kernel(&mnt, sizeof(mnt), &mnt_ptr->mnt);
-    if (!mnt)
-        return 0;
-
     struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
     if (!string_buf)
         return 0;
@@ -715,7 +712,7 @@ int kprobe__vfs_rename(struct pt_regs *ctx)
     u8 *full_path = NULL;
     struct path new_path = {
         .dentry = new_dentry,
-        .mnt    = mnt
+        .mnt    = get_write_mnt(BPF_CORE_READ(d_inode, i_sb))
     };
 
     if (get_path_str_from_path(&full_path, &new_path, string_buf) >= 0)

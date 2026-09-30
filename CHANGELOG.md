@@ -71,6 +71,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the macOS agent shipping preinstalled empty `logs/ossec.log`/`ossec.json` placeholders. ([#39120](https://github.com/wazuh/wazuh/issues/39120))
 - Fixed the Windows agent accepting `<whodata><provider>ebpf</provider></whodata>` and silently disabling whodata. ([#39353](https://github.com/wazuh/wazuh/issues/39353))
 - Fixed the FIM eBPF whodata healthcheck failing on RHEL 9 kernels and discarding the eBPF provider. ([#39570](https://github.com/wazuh/wazuh/pull/39570))
+- Fixed FIM eBPF whodata dropping events for files outside the root mount. ([#6857](https://github.com/wazuh/external-devel-requests/issues/6857))
 
 ### Ruleset
 

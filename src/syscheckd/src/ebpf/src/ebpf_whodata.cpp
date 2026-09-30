@@ -565,8 +565,8 @@ static inline bool bpf_link_is_error(const struct bpf_link* link)
  *   - prefer_dpath:  among the lsm/* variants, true keeps *_dpath and drops
  *                    *_walk; false keeps *_walk and drops *_dpath.
  *
- * security_inode_setattr is always enabled (it works regardless of the
- * active LSM list and is independent of bpf_d_path).
+ * security_inode_setattr and mnt_want_write are always enabled (they work
+ * regardless of the active LSM list and are independent of bpf_d_path).
  */
 static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath)
 {
