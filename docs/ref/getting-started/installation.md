@@ -511,20 +511,18 @@ sudo /Library/Ossec/bin/wazuh-control status
 
 ### Windows
 
-Run the `msiexec.exe` commands below from the folder that holds the downloaded MSI. PowerShell does not expand wildcards for `msiexec.exe`, so the first line of each resolves the package to its full path. Keep a single `wazuh-agent-*.msi` in that folder, or set `$msi` to the full path of the package.
+In the commands below, replace `<MSI_PATH>` with the full path of the downloaded MSI (see [Package paths by format](packages.md#package-paths-by-format) for the file name). `Start-Process -Wait` returns only when the installer finishes, and the command prints the msiexec exit code: `0` or `3010` (restart pending) mean success, and any other value is a [Windows Installer error code](https://learn.microsoft.com/en-us/windows/win32/msi/error-codes).
 
 Install the agent silently:
 
 ```powershell
-$msi = (Get-Item .\wazuh-agent-*.msi).FullName
-msiexec.exe /i $msi /q
+(Start-Process msiexec.exe -ArgumentList '/i "<MSI_PATH>" /q' -Wait -PassThru).ExitCode
 ```
 
 The deployment variables are MSI properties:
 
 ```powershell
-$msi = (Get-Item .\wazuh-agent-*.msi).FullName
-msiexec.exe /i $msi /q WAZUH_ENROLLMENT_TOKEN="<TOKEN>" WAZUH_AGENT_NAME="windows-server-01"
+(Start-Process msiexec.exe -ArgumentList '/i "<MSI_PATH>" /q WAZUH_ENROLLMENT_TOKEN="<TOKEN>" WAZUH_AGENT_NAME="windows-server-01"' -Wait -PassThru).ExitCode
 ```
 
 For interactive installation, double-click the MSI file and follow the installation wizard.

@@ -415,11 +415,10 @@ sudo /Library/Ossec/bin/wazuh-control status
 
 ### Windows
 
-Upgrade the package from the folder that holds the new MSI. PowerShell does not expand wildcards for `msiexec.exe`, so the first line resolves the package to its full path. Keep only the new `wazuh-agent-*.msi` in that folder, or set `$msi` to its full path:
+Upgrade the package, replacing `<MSI_PATH>` with the full path of the new MSI. `Start-Process -Wait` returns only when the installer finishes, and the command prints the msiexec exit code: `0` or `3010` (restart pending) mean success, and any other value is a [Windows Installer error code](https://learn.microsoft.com/en-us/windows/win32/msi/error-codes).
 
 ```powershell
-$msi = (Get-Item .\wazuh-agent-*.msi).FullName
-msiexec.exe /i $msi /q
+(Start-Process msiexec.exe -ArgumentList '/i "<MSI_PATH>" /q' -Wait -PassThru).ExitCode
 ```
 
 Verify the agent is running:
