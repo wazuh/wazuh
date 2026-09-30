@@ -137,3 +137,4 @@ runs:
     shell: bash
     run: |
       cat ${{ inputs.report_file }} >> $GITHUB_STEP_SUMMARY
+      cat ${{ inputs.report_file }}
