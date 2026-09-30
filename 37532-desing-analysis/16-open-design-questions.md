@@ -438,12 +438,13 @@ right by default at the scale Q16 names.
 
 *(owner: product + this project · issue: #37203)*
 
-**True today.** One `<container_instances>` block configures the metadata module in `modulesd`.
-Container FIM is enabled by tagging `<directories>` entries `container`. Syscollector's container
-scanning has its own interval inside the syscollector wodle. Three places, two daemons, one feature.
+**True today.** A `<container_security>` block, holding one `<container_instances>` block per
+runtime `<type>`, configures the metadata module in `modulesd`. Container FIM is enabled by tagging
+`<directories>` entries `container`. Syscollector's container scanning has its own interval inside
+the syscollector wodle. Three places, two daemons, one feature.
 
 **The question.** Can an operator turn "container security" on and off as one thing? Can they enable
-container FIM without container inventory, or vice versa? What happens when `<container_instances>`
+container FIM without container inventory, or vice versa? What happens when `<container_security>`
 is absent but a `container`-tagged directory is configured — which is currently reachable and, since
 [C25](03-findings-correctness.md), no longer silent, but is also not documented as a supported state.
 

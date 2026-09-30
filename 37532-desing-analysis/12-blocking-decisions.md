@@ -1337,9 +1337,10 @@ limits testable without a real handshake.
 Three defects, in the order they blocked the run:
 
 - **[C25](03-findings-correctness.md#c25--the-container_instances-block-is-never-dispatched-so-the-module-cannot-start)**
-  — `Read_ContainerInstances()` had no caller, so `<container_instances>` was accepted and ignored,
-  the module never started, and `queue/sockets/container_instances` was never bound. Nothing in the
-  feature could reach a real agent. Fixed, `83896683e7`; every row in the table above depends on it.
+  — `Read_ContainerInstances()` (since renamed `Read_ContainerSecurity()`) had no caller, so the
+  block was accepted and ignored, the module never started, and
+  `queue/sockets/container_instances` was never bound. Nothing in the feature could reach a real
+  agent. Fixed, `83896683e7`; every row in the table above depends on it.
 - **[C26](03-findings-correctness.md#c26--a-change-to-an-already-known-container-file-raises-no-alert)**
   — `MODIFIED` arrived unwrapped, so `container_txn_callback` returned on every modification and a
   change to a known container file raised no alert at all. Six files changed → six rows updated in

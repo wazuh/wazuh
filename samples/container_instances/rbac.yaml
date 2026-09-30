@@ -69,7 +69,7 @@ subjects:
 #      kubectl get secret wazuh-container-instances-token -n wazuh -o jsonpath='{.data.token}' | base64 -d
 #
 # 3. Assemble a kubeconfig on the node (referenced by
-#    <container_instances><kubernetes><kubeconfig>):
+#    <container_security><container_instances><type>kubernetes</type><kubeconfig>):
 #      SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
 #      CA=$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
 #      cat > /etc/wazuh-agent/container_instances/kubeconfig <<EOF
