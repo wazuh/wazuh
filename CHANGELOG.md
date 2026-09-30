@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
-- Added the `tcp_sessions_unassociated` counter to the `wazuh-remoted` statistics, reporting TCP connections not yet associated with an agent. ([#XXXXX](https://github.com/wazuh/wazuh/pull/XXXXX))
+- Added the `tcp_sessions_unassociated` counter to the `wazuh-remoted` statistics, reporting TCP connections not yet associated with an agent. ([#39799](https://github.com/wazuh/wazuh/pull/39799))
 
 #### Fixed
 
