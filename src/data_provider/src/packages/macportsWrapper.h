@@ -13,8 +13,11 @@
 #define _MACPORTS_WRAPPER_H
 
 #include "ipackageWrapper.h"
+#include <optional>
 #include "sqliteWrapperTemp.h"
 #include "sharedDefs.h"
+#include <filesystem>
+#include <filesystem_wrapper.hpp>
 
 const std::map<std::string, int> columnIndexes
 {
@@ -22,8 +25,11 @@ const std::map<std::string, int> columnIndexes
     {"version", 1},
     {"date", 2},
     {"location", 3},
-    {"archs", 4}
+    {"archs", 4},
+    {"files", 5}
 };
+
+constexpr char MACPORTS_FILE_SEPARATOR {'\x01'};
 
 #define DATE_STR_SIZE 20
 
@@ -40,7 +46,7 @@ class MacportsWrapper final : public IPackageWrapper
             , m_source{UNKNOWN_VALUE}
             , m_location{UNKNOWN_VALUE}
             , m_priority{UNKNOWN_VALUE}
-            , m_size{0}
+            , m_size{std::nullopt}
             , m_vendor{UNKNOWN_VALUE}
             , m_installTime{UNKNOWN_VALUE}
         {
@@ -95,7 +101,7 @@ class MacportsWrapper final : public IPackageWrapper
             return m_priority;
         }
 
-        int64_t size() const override
+        std::optional<int64_t> size() const override
         {
             return m_size;
         }
@@ -110,6 +116,46 @@ class MacportsWrapper final : public IPackageWrapper
             return m_multiarch;
         }
     private:
+        static int64_t sumFileSizes(const std::string& concatenatedPaths)
+        {
+            const file_system::FileSystemWrapper fs;
+            int64_t total {0};
+            std::string::size_type begin {0};
+
+            while (begin <= concatenatedPaths.size())
+            {
+                const auto end {concatenatedPaths.find(MACPORTS_FILE_SEPARATOR, begin)};
+                const auto path {concatenatedPaths.substr(begin, end - begin)};
+
+                if (!path.empty())
+                {
+                    // A port's file list contains symbolic links, about 39% of the entries on a
+                    // populated host. file_size() follows them, which counts the target's bytes again
+                    // under whichever port owns the link and inflated the reported size by ~80% on a
+                    // real MacPorts install. symlink_status() does not follow, matching what
+                    // directory_size() does for the Homebrew path. file_size() then returns 0 for
+                    // anything that is not a readable regular file, so a path recorded in the registry
+                    // but since removed contributes nothing rather than throwing.
+                    std::error_code ec;
+                    const auto status {std::filesystem::symlink_status(path, ec)};
+
+                    if (!ec && !std::filesystem::is_symlink(status))
+                    {
+                        total += static_cast<int64_t>(fs.file_size(path));
+                    }
+                }
+
+                if (std::string::npos == end)
+                {
+                    break;
+                }
+
+                begin = end + 1;
+            }
+
+            return total;
+        }
+
         void getPkgData(SQLite::IStatement& stmt)
         {
             const int& columnsNumber = columnIndexes.size();
@@ -121,6 +167,7 @@ class MacportsWrapper final : public IPackageWrapper
                 const auto& date {stmt.column(columnIndexes.at("date"))};
                 const auto& location {stmt.column(columnIndexes.at("location"))};
                 const auto& archs {stmt.column(columnIndexes.at("archs"))};
+                const auto& files {stmt.column(columnIndexes.at("files"))};
 
                 if (name->hasValue())
                 {
@@ -164,6 +211,11 @@ class MacportsWrapper final : public IPackageWrapper
                         m_architecture = archsStr;
                     }
                 }
+
+                if (files->hasValue())
+                {
+                    m_size = sumFileSizes(files->value(std::string {}));
+                }
             }
         }
 
@@ -178,7 +230,7 @@ class MacportsWrapper final : public IPackageWrapper
         std::string m_location;
         std::string m_multiarch;
         std::string m_priority;
-        int64_t m_size;
+        std::optional<int64_t> m_size;
         std::string m_vendor;
         std::string m_installTime;
 };

@@ -8,6 +8,7 @@
  * Foundation.
  */
 #include <ctime>
+#include <optional>
 #include <algorithm>
 #include <stdexcept>
 #include <string>
@@ -115,9 +116,11 @@ class TAppxWindowsWrapper final : public IPackageWrapper
             return UNKNOWN_VALUE;
         }
 
-        int64_t size() const override
+        std::optional<int64_t> size() const override
         {
-            return 0;
+            // Store packages publish no installed size, so report it as unknown rather than
+            // as zero, which a consumer cannot tell apart from a package occupying nothing.
+            return std::nullopt;
         }
 
         std::string vendor() const override

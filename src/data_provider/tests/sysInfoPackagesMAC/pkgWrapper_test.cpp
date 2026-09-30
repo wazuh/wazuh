@@ -10,6 +10,7 @@
  */
 
 #include "pkgWrapper_test.h"
+#include <optional>
 #include "packages/packageMac.h"
 #include "packages/pkgWrapper.h"
 #include <cstdio>
@@ -94,7 +95,7 @@ TEST_F(PKGWrapperTest, LongVersion)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -123,7 +124,7 @@ TEST_F(PKGWrapperTest, ShortVersion)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -152,7 +153,7 @@ TEST_F(PKGWrapperTest, NameDifferentExecutable)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -181,7 +182,7 @@ TEST_F(PKGWrapperTest, NameFirst)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -210,7 +211,7 @@ TEST_F(PKGWrapperTest, NoNameButExecutable)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -239,7 +240,7 @@ TEST_F(PKGWrapperTest, NoNameNoExecutable)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -268,7 +269,7 @@ TEST_F(PKGWrapperTest, NoVersion)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -297,7 +298,7 @@ TEST_F(PKGWrapperTest, NoGroups)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Operasoftware");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -326,7 +327,7 @@ TEST_F(PKGWrapperTest, NoDescription)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -355,7 +356,7 @@ TEST_F(PKGWrapperTest, NoVendor)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -387,7 +388,7 @@ TEST_F(PKGWrapperTest, SourceUtilitiesFolder)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package + "/" + APP_INFO_PATH);
     EXPECT_EQ(wrapper->vendor(), "Wazuh");
     EXPECT_EQ(wrapper->priority(), UNKNOWN_VALUE);
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), UNKNOWN_VALUE);
     EXPECT_EQ(wrapper->multiarch(), UNKNOWN_VALUE);
 }
@@ -458,7 +459,7 @@ TEST_F(PKGWrapperTest, pkgVersionXML)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package);
     EXPECT_EQ(wrapper->vendor(), "Wazuh");
     EXPECT_EQ(wrapper->priority(), " ");
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), "2024-11-07T08:58:38Z");
     EXPECT_EQ(wrapper->multiarch(), " ");
 }
@@ -487,7 +488,7 @@ TEST_F(PKGWrapperTest, pkgVersionBin)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package);
     EXPECT_EQ(wrapper->vendor(), "Zoom");
     EXPECT_EQ(wrapper->priority(), " ");
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), "2024-11-08T11:44:04Z");
     EXPECT_EQ(wrapper->multiarch(), " ");
 }
@@ -516,7 +517,7 @@ TEST_F(PKGWrapperTest, pkgVersionLong)
     EXPECT_EQ(wrapper->location(), inputPath + "/" + package);
     EXPECT_EQ(wrapper->vendor(), "R-project");
     EXPECT_EQ(wrapper->priority(), " ");
-    EXPECT_EQ(wrapper->size(), 0);
+    EXPECT_EQ(wrapper->size(), std::nullopt);
     EXPECT_EQ(wrapper->install_time(), "2024-11-13T10:59:10Z");
     EXPECT_EQ(wrapper->multiarch(), " ");
 }

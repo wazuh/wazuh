@@ -12,6 +12,8 @@
 #ifndef _SHARED_DEFS_H
 #define _SHARED_DEFS_H
 
+#include <chrono>
+#include <cstdint>
 #include <set>
 #include <string>
 
@@ -34,6 +36,9 @@ constexpr auto RPM_PATH {"/var/lib/rpm/"};
 constexpr auto SNAP_PATH {"/var/lib/snapd"};
 
 constexpr auto UNKNOWN_VALUE {" "};
+
+constexpr std::uintmax_t PACKAGE_SIZE_MAX_ENTRIES {1000000};
+constexpr std::chrono::milliseconds PACKAGE_SIZE_DEADLINE {30000};
 
 // Reported for a numeric field the platform provides no source for, so that consumers can tell
 // it apart from a genuine zero. The manager stores it as NULL.
