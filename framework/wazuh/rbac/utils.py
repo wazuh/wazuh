@@ -117,3 +117,59 @@ def resource_cache(cache: TTLCache = RESOURCES_CACHE):
         return wrapper
 
     return decorator
+
+
+# Resource types whose ids are integers in their store (rbac.db).
+INTEGER_RESOURCES = ('user:id', 'role:id', 'rule:id', 'policy:id')
+
+# Agent ids are integers in global.db and zero-padded to three digits everywhere else.
+AGENT_RESOURCE = 'agent:id'
+
+
+def canonical_id(resource_type: str, value):
+    """Return the one spelling RBAC compares for a numeric resource id.
+
+    The RBAC decorator matches ids as strings, while the functions behind it cast them to integers
+    or feed them to an INTEGER column. Without a single spelling, `01` and `1` (or `0005` and `005`)
+    name the same object and a `deny` written for one never applies to the other.
+
+    Parameters
+    ----------
+    resource_type : str
+        Resource type, e.g. "role:id".
+    value : Any
+        Resource value.
+
+    Returns
+    -------
+    Any
+        `str(int(value))` for the integer resources, `str(int(value)).zfill(3)` for agents, or the
+        value unchanged when it is not a string of ASCII digits (wildcards, names, None) or belongs to
+        any other resource type.
+    """
+    if not isinstance(value, str) or not value.isascii() or not value.isdigit():
+        return value
+    if resource_type == AGENT_RESOURCE:
+        return str(int(value)).zfill(3)
+    if resource_type in INTEGER_RESOURCES:
+        return str(int(value))
+    return value
+
+
+def canonical_resource(resource: str) -> str:
+    """Return a single `type:attribute:value` resource with its value in canonical form.
+
+    Parameters
+    ----------
+    resource : str
+        Resource, e.g. "agent:id:5".
+
+    Returns
+    -------
+    str
+        The resource with `canonical_id` applied to its value, e.g. "agent:id:005".
+    """
+    resource_type, separator, value = resource.rpartition(':')
+    if not separator:
+        return resource
+    return f'{resource_type}:{canonical_id(resource_type, value)}'
