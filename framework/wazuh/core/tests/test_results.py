@@ -445,6 +445,28 @@ def test_node_attribution_records_a_failure_even_for_document_shaped_results():
     assert result.node_attribution == {'worker2': {'failed_items': {1824: ['001']}}}
 
 
+def test_node_attribution_keeps_every_item_of_a_code_raised_with_per_item_messages():
+    """Same code, different extra_message, must not drop the earlier exception's items.
+
+    `_failed_items` is keyed by exception and a WazuhException's identity includes its message,
+    so 1824 raised once per agent with the task manager's own text is one key per agent. The
+    per-node entry is keyed by code alone and must union them, matching the top-level count.
+    """
+    result = AffectedItemsWazuhResult(all_msg='all ok', some_msg='some failed', none_msg='none ok')
+    result.affected_items.append('004')
+    result.total_affected_items = 1
+    result.add_failed_item(id_='003', error=WazuhError(1824, cmd_error=True,
+                                                       extra_message='WPK file does not exist: windows 5.0.1'))
+    result.add_failed_item(id_='005', error=WazuhError(1824, cmd_error=True,
+                                                       extra_message='WPK file does not exist: macos 5.0.1'))
+
+    result.attribute_to_node('worker01')
+
+    rendered = result.render()['data']
+    assert rendered['total_failed_items'] == 2
+    assert rendered['nodes'] == {'worker01': {'affected_items': ['004'], 'failed_items': {1824: ['003', '005']}}}
+
+
 def test_uninformative_failure_yields_to_a_real_verdict():
     """1774 must not double-list an agent some other node did report on.
 
