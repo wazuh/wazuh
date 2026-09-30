@@ -23,6 +23,12 @@ All notable changes to this project will be documented in this file.
 - Fixed the macOS ULS reader losing the stored timestamp after log lines shorter than 31 characters. ([#39171](https://github.com/wazuh/wazuh/issues/39171))
 - Fixed the Windows agent reporting the operating system it had before an in-place feature update. ([#39547](https://github.com/wazuh/wazuh/pull/39547))
 
+### Ruleset
+
+#### Fixed
+
+- Fixed the `/etc/security/opasswd` permission check failing when the optional `opasswd.old` file is absent in Debian 10, 12, 13 and Ubuntu 20.04, 22.04, 24.04 SCA policies. ([#39338](https://github.com/wazuh/wazuh/issues/39338))
+
 ## [v4.14.9]
 
 ### Manager
