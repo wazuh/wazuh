@@ -17,6 +17,8 @@ on:
       - src/wazuh_modules/task_manager/**
       - src/wazuh_modules/vulnerability_scanner/**
       - src/remoted/remoted_module/**
+      - src/engine/**
+      - src/engine/.clang-format
       - .github/workflows/5_codelinter_clangformat.yml
       - .github/actions/clang_format/**
 
@@ -167,6 +169,17 @@ jobs:
           path: src/shared_modules/manager_certs
           id: manager_certs
 
+      # Engine (uses its own src/engine/.clang-format, the closest one to each file)
+      - name: Engine - Coding style
+        id: engine_style
+        continue-on-error: true
+        uses: ./.github/actions/clang_format
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/engine
+          id: engine
+
       - name: Check all coding style results
         if: always()
         run: |
@@ -214,6 +227,10 @@ jobs:
 
           if [ "${{ steps.manager_certs_style.outcome }}" != "success" ]; then
             FAILED_STEPS="$FAILED_STEPS ManagerCerts"
+          fi
+
+          if [ "${{ steps.engine_style.outcome }}" != "success" ]; then
+            FAILED_STEPS="$FAILED_STEPS Engine"
           fi
 
           if [ -n "$FAILED_STEPS" ]; then
