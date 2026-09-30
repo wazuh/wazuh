@@ -71,7 +71,7 @@ The Azure module is configured inside the `<ossec_config>` block of the Wazuh ag
       <tag>azure-storage</tag>
       <container name="insights-logs-networksecuritygroupflowevent">
         <blobs>.json</blobs>
-        <content_type>json</content_type>
+        <content_type>json_file</content_type>
         <time_offset>1h</time_offset>
       </container>
     </storage>
@@ -114,7 +114,7 @@ The Azure module is configured inside the `<ossec_config>` block of the Wazuh ag
 | `tag` | No | — | Custom tag added to generated alerts for identification. |
 | `container` | Yes | — | Defines a blob container to monitor. Use `name` attribute for the container name. |
 | `blobs` | No | — | Blob name filter (for example, `.json` to match JSON files). |
-| `content_type` | No | — | Expected blob content type (for example, `json`, `text`). |
+| `content_type` | No | `text` | Blob content format: `json_file` (a JSON object with a `records` array), `json_inline` (one JSON object per line) or `text` (one plain-text event per line). |
 | `path` | No | — | Blob prefix filter. |
 | `time_offset` | No | — | Time range for blob selection (for example, `1h`, `1d`). |
 | `timeout` | No | `3600` | Maximum execution time in seconds for the container scan. |
