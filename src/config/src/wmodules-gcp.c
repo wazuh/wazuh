@@ -209,11 +209,6 @@ int wm_gcp_pubsub_read(xml_node **nodes, wmodule *module) {
         return OS_INVALID;
     }
 
-    if (!gcp->credentials_file) {
-        merror("No value defined for tag '%s' in module '%s'", XML_CREDENTIALS_FILE, WM_GCP_PUBSUB_CONTEXT.name);
-        return OS_INVALID;
-    }
-
     return 0;
 }
 int wm_gcp_bucket_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
@@ -394,11 +389,6 @@ int wm_gcp_bucket_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
 
             if (!cur_bucket->bucket) {
                 merror("No value defined for tag '%s' in module '%s'.", XML_BUCKET_NAME, WM_GCP_BUCKET_CONTEXT.name);
-                clean_bucket(cur_bucket, gcp);
-                return OS_INVALID;
-            }
-            else if (!cur_bucket->credentials_file) {
-                merror("No value defined for tag '%s' in module '%s'.", XML_CREDENTIALS_FILE, WM_GCP_BUCKET_CONTEXT.name);
                 clean_bucket(cur_bucket, gcp);
                 return OS_INVALID;
             }
