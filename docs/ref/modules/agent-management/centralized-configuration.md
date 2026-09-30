@@ -99,7 +99,8 @@ The following configuration sections can be distributed via `agent.conf`:
 | `<rootcheck>` | Rootkit detection settings |
 | `<sca>` | Security configuration assessment policies |
 | `<wodle>` | Wazuh module (wodle) settings |
-| `<active-response>` | Active response configuration |
+
+`<active-response>` cannot be distributed this way: the agent's execd reads its `<disabled>` flag only from the agent's local `ossec.conf`, so an `<active-response>` block in `agent.conf` is accepted and ignored.
 
 ## Verifying the configuration
 

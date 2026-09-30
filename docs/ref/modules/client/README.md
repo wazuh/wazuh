@@ -310,6 +310,6 @@ If anti-tampering is triggering false positives:
 
 - [Client Configuration Reference](configuration.md) - Complete configuration options
 - [Manager Configuration Reference](../../configuration/manager/reference.md) - Manager-side `<remote>` settings
-- [Centralized Configuration](../../configuration/centralized/index.html) - Remote agent configuration
+- [Centralized Configuration](../agent-management/centralized-configuration.md) - Remote agent configuration
 - [Enrollment lifecycle](../authd/enrollment-lifecycle.md) - Agent registration, end to end
 - [Trust anchor delivery to legacy agents](../../../guide/migration/remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents) - How an agent upgraded from 4.x receives its CA

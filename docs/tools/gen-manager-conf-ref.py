@@ -144,13 +144,19 @@ def rows_for(node, schema, prefix, required_keys):
     return rows
 
 
+def anchor(heading):
+    """Return the id mdBook gives a heading: lowercase, spaces to '-', only alphanumerics, '-' and '_' kept."""
+    return ''.join('-' if ch.isspace() else ch for ch in heading.lower()
+                   if ch.isspace() or ch.isalnum() or ch in '-_')
+
+
 def render(schema):
     root_required = schema.get('required', [])
     out = [HEADER]
     out.append('## Sections\n')
     for name, raw in schema['properties'].items():
         marker = ' — **required**' if name in root_required else ''
-        out.append(f'- [`{name}`](#{name.replace("-", "")}){marker}')
+        out.append(f'- [`{name}`](#{anchor(name)}){marker}')
     out.append('')
     for name, raw in schema['properties'].items():
         section = resolve(raw, schema)

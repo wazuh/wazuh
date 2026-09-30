@@ -513,7 +513,7 @@ tags:
   - "{{ wazuh.agent.host.name }}"   # expands to the agent hostname in each finding
 ```
 
-Unresolved placeholders (absent or null fields) are silently dropped. See the [rules reference](../../../wazuh-indexer-plugins/docs/ref/modules/security-analytics/rules.md#dynamic-event-field-referencing) for the full specification.
+Unresolved placeholders (absent or null fields) are silently dropped. See the [rules reference](https://github.com/wazuh/wazuh-indexer-plugins/blob/main/docs/ref/modules/ruleset-management/rules.md#dynamic-event-field-referencing) for the full specification.
 
 ### Step 7: Migrate MITRE ATT&CK mappings
 
@@ -1105,5 +1105,5 @@ Common mappings:
 - [Sigma Modifiers](https://sigmahq.io/docs/basics/modifiers.html)
 - [Wazuh Common Schema (WCS) Documentation](https://github.com/wazuh/wazuh-indexer-plugins/tree/main/wcs/stateless/events/main/docs/README.md)
 - [WCS Field Reference (CSV)](https://github.com/wazuh/wazuh-indexer-plugins/blob/main/wcs/stateless/events/main/docs/fields.csv)
-- [Wazuh 5.x Rules Reference](../wazuh-indexer-plugins/docs/ref/modules/security-analytics/rules.md)
-- [Content Manager Rule Testing Guide](../wazuh-indexer-plugins/docs/ref/modules/content-manager/rule-testing.md)
+- [Wazuh 5.x Rules Reference](https://github.com/wazuh/wazuh-indexer-plugins/blob/main/docs/ref/modules/ruleset-management/rules.md)
+- [Content Manager Rule Testing Guide](https://github.com/wazuh/wazuh-indexer-plugins/blob/main/docs/ref/modules/content-manager/rule-testing.md)

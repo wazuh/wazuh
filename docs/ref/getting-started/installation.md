@@ -389,7 +389,13 @@ Whether the node is hidden from the cluster. Default: `no`.
 
 ## Agent
 
-A 5.0 agent registers with an **enrollment token**. The token names the manager, pins the certificate authority that signs the agent-facing certificate of the manager it was minted on, and carries the enrollment credential. Tokens are minted on the manager (in a cluster, on the master node, whichever node the token's address names), see [minting a token](../modules/authd/enrollment-lifecycle.md#step-1-the-operator-mints-a-token) and [Enrollment tokens](../modules/authd/README.md#enrollment-tokens) for listing, revocation and the refusal rules.
+A 5.0 agent registers with an **enrollment token**. The token names the manager, pins the certificate authority that signs the agent-facing certificate of the manager it was minted on, and carries the enrollment credential. Tokens are minted on the manager (in a cluster, on the master node, whichever node the token's address names). With the manager running, mint one naming the address the agents will connect to:
+
+```bash
+sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address mgr.example.com
+```
+
+The token is printed on standard output, once: no command retrieves it later. `--address` must be a name in the subject alternative names of the manager's `remote.https.certificate`, and `--ttl`, `--max-uses`, `--embed-ca` and `--no-credential` shape the token. See [minting a token](../modules/authd/enrollment-lifecycle.md#step-1-the-operator-mints-a-token) for every check the mint makes, and [Enrollment tokens](../modules/authd/README.md#enrollment-tokens) for listing, revocation and the refusal rules.
 
 A token comes in three shapes, and every installation method below accepts any of them:
 
@@ -469,6 +475,14 @@ Verify the agent is running:
 sudo systemctl status wazuh-agent
 ```
 
+Shortly after its first connection the agent reloads itself once. It downloads its group's shared configuration from the manager and applies it, and `/var/ossec/logs/ossec.log` records:
+
+```
+Agent is reloading due to shared configuration changes.
+```
+
+This is expected, not a crash: `systemctl status` shows the reload, and the service stays active. With `<auto_restart>no</auto_restart>` the first reload still happens and logs `Agent is reloading to apply startup hash validated configuration.` instead. See [`auto_restart`](../modules/client/configuration.md#auto_restart).
+
 ### macOS
 
 Install the agent:
@@ -533,6 +547,18 @@ The dynamic signature validation is not available because the CA name('Microsoft
 ```
 
 The agent keeps running without module verification. To enable it, install the root in the `Trusted Root Certification Authorities` store of the local computer, as described in [KB5022661](https://support.microsoft.com/en-us/topic/kb5022661-windows-support-for-the-azure-code-signing-program-4b505a31-fa1e-4ea6-85dd-6630229e8ef4); the certificate is available in the [Microsoft PKI repository](https://www.microsoft.com/pkiops/docs/repository.htm). Build options are described in [Package generation](../../dev/package-generation.md#windows-agent-package).
+
+### Verifying the agent connected
+
+Check from the manager side. The Server API runs on the master node; list the agent by name and look at its `status`, which reads `active` once it is connected (`never_connected` or `disconnected` otherwise):
+
+```bash
+TOKEN=$(curl -s -k -u wazuh:<WAZUH_PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+curl -s -k -X GET "https://localhost:55000/agents?name=web-server-01&select=id,name,status,ip&pretty=true" \
+    -H "Authorization: Bearer $TOKEN"
+```
+
+Drop `name=` to list every agent. The dashboard shows the same list under **Endpoints**. See [List agents](../modules/server-api/api-reference.md#list-agents) for the other filters.
 
 ### Options
 

@@ -10,7 +10,7 @@ Complete configuration reference for the Wazuh manager cluster.
 
 **Internal Options:** `wazuh_clusterd.*`
 
-For module overview and architecture, see [Cluster Module](index.html).
+For module overview and architecture, see [Cluster Module](README.md).
 
 > **Important: how `<cluster>` is validated**
 > The `<cluster>` section is part of the manager configuration schema
@@ -98,7 +98,7 @@ Lists all master nodes in the cluster using the `<node>` tag for each one.
 
 ### hidden
 
-Marks this node as hidden in cluster listings.
+Has no effect; kept for schema compatibility only.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
@@ -124,7 +124,6 @@ Standard master node configuration:
   <nodes>
     <node>MASTER_NODE_IP</node>
   </nodes>
-  <hidden>no</hidden>
 </cluster>
 ```
 
@@ -143,7 +142,6 @@ Standard worker node configuration:
   <nodes>
     <node>MASTER_NODE_IP</node>
   </nodes>
-  <hidden>no</hidden>
 </cluster>
 ```
 
@@ -162,26 +160,6 @@ Use a custom port for cluster communications:
   <nodes>
     <node>MASTER_NODE_IP</node>
   </nodes>
-  <hidden>no</hidden>
-</cluster>
-```
-
-### Hide Cluster Information
-
-Configure cluster to hide node information in alerts:
-
-```xml
-<cluster>
-  <name>wazuh</name>
-  <node_name>master-node</node_name>
-  <node_type>master</node_type>
-  <key>c98b62a9b6169ac5f67dfe55b73a8d2a</key>
-  <port>1516</port>
-  <bind_addr>0.0.0.0</bind_addr>
-  <nodes>
-    <node>MASTER_NODE_IP</node>
-  </nodes>
-  <hidden>yes</hidden>
 </cluster>
 ```
 
@@ -202,5 +180,5 @@ wazuh_clusterd.debug=0
 
 ## See Also
 
-- [Cluster Module](index.html) - Module overview and architecture
+- [Cluster Module](README.md) - Module overview and architecture
 - [Cluster Load Balancing](lb.md) - Load balancing configuration

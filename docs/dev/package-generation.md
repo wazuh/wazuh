@@ -110,10 +110,9 @@ At startup, `wazuh-agent.exe`, `win32ui.exe`, `manage_agents.exe` and `active-re
 curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_WORKFLOW_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" --data-binary "@$(pwd)/wazuh-agent-test-amd64-rpm.json" "https://api.github.com/repos/wazuh/wazuh/actions/workflows/packages-upload-agent-images-amd.yml/dispatches"
 ```
 
-Where the JSON looks like this:
+Where `wazuh-agent-test-amd64-rpm.json` looks like this:
 
 ```json
-# cat wazuh-agent-test-amd64-rpm.json
 {
     "ref":"5.0.0",
     "inputs":
@@ -122,7 +121,7 @@ Where the JSON looks like this:
          "architecture":"amd64",
          "system":"rpm",
          "revision":"test",
-         "is_stage":"false",
+         "is_stage":"false"
         }
 }
 ```
@@ -133,9 +132,9 @@ Where the JSON looks like this:
 curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_WORKFLOW_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" --data-binary "@$(pwd)/wazuh-agent-test-amd64-rpm.json" "https://api.github.com/repos/wazuh/wazuh/actions/workflows/packages-build-linux-agent-amd.yml/dispatches"
 ```
 
-Where the JSON looks like this:
+Where `wazuh-agent-test-amd64-rpm.json` looks like this:
+
 ```json
-# cat wazuh-agent-test-amd64-rpm.json
 {
     "ref":"5.0.0",
     "inputs":
@@ -145,7 +144,7 @@ Where the JSON looks like this:
          "system":"deb",
          "revision":"test",
          "is_stage":"false",
-         "checksum":"false",
-     }
+         "checksum":"false"
+        }
 }
 ```

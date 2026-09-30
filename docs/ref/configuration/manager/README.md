@@ -149,4 +149,4 @@ reports the effective value for remoted.
 
 ---
 
-For comprehensive module documentation including architecture and implementation details, see [Modules Reference](../../modules/index.html).
+For comprehensive module documentation including architecture and implementation details, see [Modules Reference](../../modules/README.md).

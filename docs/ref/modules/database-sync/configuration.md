@@ -8,7 +8,7 @@ The Database Sync module handles agent status, groups, and connection state sync
 - **Configuration method:** Internal options only
 - **Daemon:** `wazuh-manager-modulesd`
 
-For module overview, see [Database Sync Module](index.html).
+For module overview, see [Database Sync Module](README.md).
 
 ---
 
@@ -234,7 +234,7 @@ tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep "wazuh-manager-modulesd
 
 ## See Also
 
-- [Database Sync Module](index.html) - Module overview
+- [Database Sync Module](README.md) - Module overview
 - [Wazuh DB Configuration](../wazuh_db/configuration.md) - Database backup and tuning
-- [Agent Management](../agent-management/index.html) - Agent lifecycle management
+- [Agent Management](../agent-management/README.md) - Agent lifecycle management
 - [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options

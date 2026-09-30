@@ -4,7 +4,7 @@ Complete configuration reference for the Command wodle.
 
 The command wodle executes custom commands or scripts on a schedule and optionally forwards their output to the manager for analysis. This module enables integration of custom monitoring tools, audit scripts, and data collectors into Wazuh.
 
-For module overview and use cases, see [Command Module](index.html).
+For module overview and use cases, see [Command Module](README.md).
 
 ---
 
@@ -18,7 +18,7 @@ For module overview and use cases, see [Command Module](index.html).
 
 **Internal Options:** `wazuh_command.*`
 
-The command wodle is configured identically on both managers and agents. Each `<wodle name="command">` block is independent, allowing multiple command instances.
+The manager does not run this module: `wazuh-manager.conf` has no `<wodle>` section, and `wazuh-manager-modulesd` reads only its own sections from it, so a command wodle is configured on agents only (in `ossec.conf`, or pushed through the shared `agent.conf`). Each `<wodle name="command">` block is independent, allowing multiple command instances.
 
 ### disabled
 
@@ -650,7 +650,7 @@ tail -f /var/ossec/logs/ossec.log | grep "wazuh-modulesd:command"
 
 ## See Also
 
-- [Command Module](index.html) - Module overview and use cases
+- [Command Module](README.md) - Module overview and use cases
 - [Log Collector Configuration](../logcollector/configuration.md) - Alternative: use `<localfile>` with `log_format=command` for simple command output
 - [Centralized Configuration](../agent-management/centralized-configuration.md) - Deploy command wodles via centralized configuration
 - [Agent Configuration Reference](../../configuration/agent/README.md) - All agent configuration options

@@ -1462,7 +1462,7 @@ parse|event.original:
 
 ```json
 {
-  "event.original": "deny from 1.1.1.1",
+  "event.original": "deny from 1.1.1.1"
 }
 ```
 
@@ -1650,9 +1650,9 @@ Output after parse
 {
   "input": "'value-|-1'|'value-''-2'|'value-|''-3'",
   "outField": {
-    "out1": "value-\|-1",
+    "out1": "value-|-1",
     "out2": "value-'-2",
-    "out3": "value-\|'-3"
+    "out3": "value-|'-3"
   }
 }
 ```
@@ -2268,6 +2268,7 @@ Output after parse
   	"fragment": "top",
   	"username": "john.doe",
   	"port": "123"
+  }
 }
 ```
 

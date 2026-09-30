@@ -4,7 +4,7 @@ Complete configuration reference for Wazuh DB (wazuh-db).
 
 Wazuh DB is the central database service that stores agent information, vulnerability data, file integrity monitoring data, and other module state. It provides a unified query interface and automatic backup capabilities.
 
-For module overview, architecture, and database schemas, see [Wazuh DB Module](index.html).
+For module overview, architecture, and database schemas, see [Wazuh DB Module](README.md).
 
 ---
 
@@ -165,7 +165,7 @@ Wazuh DB stores its databases in:
 
 **Agent databases (4.x legacy):** `/var/wazuh-manager/queue/db/{id}.db`
 
-> In Wazuh 4.x, each agent had a dedicated SQLite database at `queue/db/{agent_id}.db` storing per-agent inventory data (FIM events, packages, processes, network interfaces). In Wazuh 5.0 this data is shipped directly to OpenSearch indices via the Indexer Connector instead. The per-agent SQLite databases are **no longer created or used**; existing files from a 4.x installation can be removed after migration. See the [Wazuh DB Module](index.html) overview for details.
+> In Wazuh 4.x, each agent had a dedicated SQLite database at `queue/db/{agent_id}.db` storing per-agent inventory data (FIM events, packages, processes, network interfaces). In Wazuh 5.0 this data is shipped directly to OpenSearch indices via the Indexer Connector instead. The per-agent SQLite databases are **no longer created or used**; existing files from a 4.x installation can be removed after migration. See the [Wazuh DB Module](README.md) overview for details.
 
 **Backup location:** `/var/wazuh-manager/backup/db/`
 
@@ -264,20 +264,25 @@ For deployments with large databases:
 
 ```bash
 # Check if wazuh-db is running
-systemctl status wazuh-manager | grep wazuh-db
+/var/wazuh-manager/bin/wazuh-manager-control status | grep wazuh-manager-db
 
-# Check wazuh-db socket
-ls -l /var/wazuh-manager/queue/sockets/wdb.sock
+# Check wazuh-db sockets
+ls -l /var/wazuh-manager/queue/sockets/wdb.sock /var/wazuh-manager/queue/sockets/wdb-http.sock
 
-# Test database connection
-echo 'agent 000 sql SELECT name FROM sqlite_master' | \
-  /var/wazuh-manager/bin/wazuh-db
+# Test that the global database can serve queries
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/wdb-http.sock http://localhost/v1/status
 ```
+
+A healthy daemon answers `{"status":"ok","module":"wazuh-db","global":{"available":true}}`. A `503`
+means the daemon is running but cannot query `global.db`, and a refused connection means it is not
+running; see [`GET /v1/status`](api-reference.md#get-v1status). The `wazuh-manager-db` binary does not
+read queries from standard input: `wdb.sock` speaks a length-prefixed protocol, so a plain `echo`
+into the binary or the socket does not reach the database.
 
 ### View wazuh-db Logs
 
 ```bash
-tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep wazuh-db
+tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep wazuh-manager-db
 ```
 
 ### Database Integrity Check
@@ -305,7 +310,7 @@ Expected output: `ok`
 
 ## See Also
 
-- [Wazuh DB Module](index.html) - Module overview, architecture, and database schemas
+- [Wazuh DB Module](README.md) - Module overview, architecture, and database schemas
 - [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options
 - [Vulnerability Scanner Configuration](../vulnerability-scanner/configuration.md) - Uses wazuh-db for vulnerability data
 - [Task Manager Configuration](../task_manager/configuration.md) - Uses wazuh-db for task storage

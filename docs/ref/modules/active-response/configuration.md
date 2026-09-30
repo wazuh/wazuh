@@ -4,7 +4,7 @@ Complete configuration reference for Active Response.
 
 The active response module enables automatic execution of scripts in response to detected threats. The Wazuh Indexer decides when a response fires, the manager relays it to the agent as a task, and the agent executes the script. Only the agent side has an `<active-response>` configuration section.
 
-For module overview and architecture, see [Active Response Module](index.html).
+For module overview and architecture, see [Active Response Module](README.md).
 
 ---
 
@@ -150,8 +150,8 @@ Active response scripts run with:
 Active response scripts must:
 - Be executable by the wazuh user
 - Accept parameters via standard input (JSON format)
-- Handle both `add` and `delete` actions
-- Complete within the timeout period
+- Handle both `enable` and `disable` commands
+- Bound their own run time: execd does not stop a script that hangs
 - Return appropriate exit codes (0=success, non-zero=failure)
 
 ---
@@ -162,7 +162,6 @@ Active response scripts must:
 
 - Active response scripts run with root/administrator privileges
 - Only disable active response if you have a specific security policy requiring it
-- Scripts are executed in a controlled environment with timeouts
 - Concurrent execution is limited to prevent resource exhaustion
 - Commands are authenticated and come only from the registered manager
 
@@ -180,21 +179,32 @@ Active response scripts must:
 - Implement proper error handling in custom scripts
 - Log all script actions for audit trails
 - Set appropriate file permissions (750, root:wazuh)
-- Review and test timeout settings for your environment
+- Review the `stateful_timeout` of each stateful channel for your environment
 
 ---
 
 ## Performance Considerations
 
-### Script Timeouts
+### Response Timing
 
-Script timeout is configured per active-response in the XML configuration using the `<timeout>` option:
+There is no timeout option in the agent's XML configuration or in internal options: the timing of a
+response travels with it. It is the `stateful_timeout` of the Active Response notification channel,
+delivered to execd in `wazuh.active_response.stateful_timeout` of the JSON message:
 
-- **Simple scripts (firewall rules):** 30-60 seconds
-- **Complex scripts (account management, API calls):** 120-300 seconds
-- **Default:** 60 seconds (if not specified)
+- **`type: stateless`:** the script runs once with `command: enable`; `stateful_timeout` is ignored.
+- **`type: stateful`:** the script runs with `command: enable`, and execd runs it again with
+  `command: disable` once `stateful_timeout` seconds have passed. A missing or `0` value makes the
+  response stateless. The reversal is only scheduled if the script answers on stdout with its alert
+  keys (see [Executables](executables.md)); a script that writes nothing is run once.
+- A stateful response repeated for the same keys while its reversal is pending is answered `abort`
+  (the action is not run twice) and restarts that countdown. Pending reversals run when execd stops.
+- The only agent-side override is `<repeated_offenders>` in the agent's `<active-response>` block of
+  `ossec.conf`: a comma-separated list of up to six durations in **minutes**. When a stateful response
+  recurs for keys execd has already seen, the n-th repetition uses the n-th value instead of
+  `stateful_timeout` (the last value once the list is exhausted).
 
-Configure timeout in the `<active-response>` XML block, not in internal options.
+execd does not bound how long a script runs: a script that can hang must enforce its own limit (see
+[Custom Timeout per Script](#custom-timeout-per-script)).
 
 ---
 
@@ -234,18 +244,19 @@ sc query WazuhSvc
 # Verify active response is enabled globally
 ```
 
-### Script Execution Timeouts
+### Response Not Reverted
 
-**Increase timeout in internal options:**
+**Check the channel:** a response is reverted only when the notification channel's `type` is
+`stateful` and its `stateful_timeout` is greater than `0` (see [Response Timing](#response-timing)).
 
-```ini
-# internal_options.conf or local_internal_options.conf
-```
-
-**Check script execution time:**
+**Check script execution time:** feed the script the JSON execd sends on stdin, followed by the
+`continue` answer execd gives to its `check_keys` message (see [Deduplication](executables.md#deduplication)):
 ```bash
 # Test script manually to measure runtime
-time /var/ossec/active-response/bin/script.sh add - 600 192.168.1.100
+printf '%s\n' \
+  '{"wazuh":{"active_response":{"name":"block-ip","executable":"block-ip","type":"stateful","stateful_timeout":600}},"source":{"ip":"192.168.1.100"},"command":"enable"}' \
+  '{"command":"continue"}' > /tmp/ar-input.json
+time /var/ossec/active-response/bin/block-ip < /tmp/ar-input.json
 ```
 
 ### Permission Errors
@@ -368,6 +379,7 @@ tail -f /var/ossec/logs/ossec.log | grep execd
 
 ### Custom Timeout per Script
 
+execd imposes no run-time limit on a script, so enforce one inside the script itself:
 
 ```bash
 #!/bin/bash
@@ -379,7 +391,7 @@ timeout 30 /path/to/actual-command
 
 ## See Also
 
-- [Active Response Module](index.html) - Module overview and architecture
+- [Active Response Module](README.md) - Module overview and architecture
 - [Active Response Architecture](architecture.md) - How active response works
 - [Active Response Executables](executables.md) - Available response scripts
 - [Manager Configuration Reference](../../configuration/manager/README.md) - Manager active response configuration

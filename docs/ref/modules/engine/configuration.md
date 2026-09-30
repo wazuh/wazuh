@@ -8,7 +8,7 @@ The Wazuh Engine is the core event processing and detection module that handles 
 - **Module:** Manager-only
 - **Configuration method:** Internal options (`analysisd.*`) and environment variables, plus the shared `<indexer>` section and the keystore
 
-For module overview, architecture, and implementation details, see [Engine Module](index.html).
+For module overview, architecture, and implementation details, see [Engine Module](README.md).
 
 ---
 
@@ -43,7 +43,7 @@ The engine has no `analysisd.indexer_username` or `analysisd.indexer_password` s
 
 The engine's own settings are internal options prefixed with `analysisd.*` in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`.
 
-**Complete internal options documentation:** See [Internal options reference](index.html#internal-options-reference) in the Engine Module documentation — every setting with its environment variable, default and allowed values.
+**Complete internal options documentation:** See [Internal options reference](README.md#internal-options-reference) in the Engine Module documentation — every setting with its environment variable, default and allowed values.
 
 ### Key Configuration Areas
 
@@ -170,7 +170,7 @@ Configure database update frequencies:
 - **`analysisd.ioc_sync_interval`** - Indicator of Compromise database sync interval
 - **`analysisd.geo_sync_interval`** - GeoIP database update interval
 
-For complete details, default values, allowed ranges, and additional internal options, see the [Internal options reference](index.html#internal-options-reference) section in the Engine Module documentation.
+For complete details, default values, allowed ranges, and additional internal options, see the [Internal options reference](README.md#internal-options-reference) section in the Engine Module documentation.
 
 ---
 
@@ -486,7 +486,7 @@ ps aux | grep analysisd
 
 ## See Also
 
-- [Engine Module](index.html) - Complete module documentation with internal options reference
+- [Engine Module](README.md) - Complete module documentation with internal options reference
 - [API Reference](api-reference.md) - Engine API endpoints and usage
 - [Architecture](architecture.md) - Engine design and implementation
 - [Helper Functions Reference](ref-helper-functions.md) - Available helper functions

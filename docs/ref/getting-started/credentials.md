@@ -67,7 +67,8 @@ WAZUH_MANAGER_WUI_PASSWORD="cF4nP…"
 > [!IMPORTANT]
 > Editing a generated value here does not change the credential the manager already holds. Step 1
 > of the order wins over the file, so the manager keeps what is in its own store and your edit has
-> no effect. Use `wazuh-passwords-tool.sh` to rotate a credential in a running deployment.
+> no effect. Use the Wazuh installation assistant's `wazuh-passwords-tool` to rotate a credential in
+> a running deployment.
 
 ### Reading a value back
 
@@ -516,9 +517,9 @@ alone, and `/etc/wazuh` is removed with `rmdir`, so anything of yours in it surv
 
 ## Rotation
 
-Use `wazuh-passwords-tool.sh` for a coordinated change on a running deployment. A package must never
-reconfigure a sibling — it is invoked by the package manager as a side effect of an unrelated action
-— whereas the tool is invoked by you, at a moment of your choosing.
+Use the Wazuh installation assistant's `wazuh-passwords-tool` for a coordinated change on a running
+deployment. A package must never reconfigure a sibling — it is invoked by the package manager as a
+side effect of an unrelated action — whereas the tool is invoked by you, at a moment of your choosing.
 
 No rotation path updates `/etc/wazuh/credentials.env`, so a value left there after a change is stale.
 

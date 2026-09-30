@@ -3,8 +3,8 @@
 How to rotate the CA that signs `wazuh-manager-remoted`'s HTTPS listener without ever taking `GET
 /cacerts` down for the fleet — the order that must not change, the four ways to get it wrong, and
 what the manager tells you along the way. For every command, flag, guard and exit code named here,
-[`wazuh-manager-certs`'s README](../../../../src/shared_modules/manager_certs/README.md) is the
-authoritative reference; this page does not repeat its command table or examples.
+`wazuh-manager-certs`'s developer README (`src/shared_modules/manager_certs/README.md` in the source
+tree) is the authoritative reference; this page does not repeat its command table or examples.
 
 Two things rotate on different clocks, and the whole procedure exists to keep that difference safe:
 
@@ -136,7 +136,7 @@ is not, by itself, proof that the bundle is in good shape.
 
 Every `wazuh-manager-certs` command that writes follows one rule: **what it could not read or parse
 is exit 2; what it read fine but would not accept is exit 1.** Full table and per-guard mapping:
-[`wazuh-manager-certs` README — Exit codes](../../../../src/shared_modules/manager_certs/README.md#exit-codes).
+the "Exit codes" section of `src/shared_modules/manager_certs/README.md` in the source tree.
 
 ## Enrollment tokens and a rotation
 
@@ -168,7 +168,7 @@ means the token is stale, not that the manager is being impersonated; see
 
 ## See also
 
-- [`wazuh-manager-certs` README](../../../../src/shared_modules/manager_certs/README.md) — every
+- `wazuh-manager-certs` README (`src/shared_modules/manager_certs/README.md` in the source tree) — every
   command, guard, exit code and example (developer reference; this page assumes it).
 - [HTTPS Agent API — `GET /cacerts`](https-events-api.md#ca-certificate-endpoint-get-cacerts) and
   [`POST /control` notify](https-events-api.md#notify-keepalive) — the wire contract `ca_generation`

@@ -122,7 +122,7 @@ migration has to get right.
 > [!NOTE]
 > This is the resolution [#39554](https://github.com/wazuh/wazuh/issues/39554) introduces. On a
 > 5.0.0 build without it the manager issues nothing: deploy the pairs under `etc/certs` as
-> [Deploy certificates](../../ref/getting-started/installation.md#deploy-certificates) describes,
+> [Using certificates issued elsewhere](../../ref/getting-started/installation.md#using-certificates-issued-elsewhere) describes,
 > the API password is the one the installation assistant prints, and a missing listener pair stops
 > the start with `(1244): Invalid configuration at '/remote/https/certificate': file not found`.
 
@@ -152,7 +152,7 @@ Unresolved credentials. Exiting
 ```
 
 So for an indexer kept from the 4.x deployment, rotate that account's password on the indexer first,
-with `wazuh-passwords-tool.sh`, to one inside the set, and write the new value here. Validation is of
+with the Wazuh installation assistant's `wazuh-passwords-tool`, to one inside the set, and write the new value here. Validation is of
 presence and format only; a wrong password passes it and fails as a `401` when the manager first
 talks to the indexer.
 
@@ -664,7 +664,7 @@ sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --addr
   ```
 
 `--dry-run` reports what either would change without contacting anything. See
-[Enrolling or re-pointing an agent](../../ref/modules/client/index.html#enrolling-or-re-pointing-an-agent) for the full surface.
+[Enrolling or re-pointing an agent](../../ref/modules/client/README.md#enrolling-or-re-pointing-an-agent) for the full surface.
 
 Back up `client.keys` and `global.db` together as well, so a restore never leaves the registry
 behind the keys and sends a fleet down the second path for no reason.

@@ -274,7 +274,7 @@ All specified objects are present in the target array.
 
 ```yaml
 check:
-  - target_field: array_contains($element, {'key1': 'value1'}, {'key2': 'value2'})
+  - target_field: array_contains($element, {"key1":"value1"}, {"key2":"value2"})
 ```
 
 #### Input Event
@@ -308,7 +308,7 @@ At least one specified object is missing from the target array.
 
 ```yaml
 check:
-  - target_field: array_contains({'key': 'value'}, {'key-non-exists': 'value-non-exists'}, {'keyn': 'valuen'})
+  - target_field: array_contains({"key":"value"}, {"key-non-exists":"value-non-exists"}, {"keyn":"valuen"})
 ```
 
 #### Input Event
@@ -497,7 +497,7 @@ At least one specified object is present in the target array.
 
 ```yaml
 check:
-  - target_field: array_contains_any($element, {'key-non-exists': 'value-non-exists'}, {'keyn': 'valuen'})
+  - target_field: array_contains_any($element, {"key-non-exists":"value-non-exists"}, {"keyn":"valuen"})
 ```
 
 #### Input Event
@@ -531,7 +531,7 @@ At least one specified element (1000) is present in the target array.
 
 ```yaml
 check:
-  - target_field: array_contains_any({'keyn': 'valuen'}, 1000, 'valuen')
+  - target_field: array_contains_any({"keyn":"valuen"}, 1000, 'valuen')
 ```
 
 #### Input Event
@@ -891,7 +891,7 @@ All specified objects are present in the target array, causing the test to fail.
 
 ```yaml
 check:
-  - target_field: array_not_contains($element, {'key1': 'value1'}, {'key2': 'value2'})
+  - target_field: array_not_contains($element, {"key1":"value1"}, {"key2":"value2"})
 ```
 
 #### Input Event
@@ -925,7 +925,7 @@ At least one specified object is missing from the target array.
 
 ```yaml
 check:
-  - target_field: array_not_contains({'key': 'value'}, {'key-non-exists': 'value-non-exists'}, {'keyn': 'valuen'})
+  - target_field: array_not_contains({"key":"value"}, {"key-non-exists":"value-non-exists"}, {"keyn":"valuen"})
 ```
 
 #### Input Event
@@ -1114,7 +1114,7 @@ At least one specified object is present in the target array.
 
 ```yaml
 check:
-  - target_field: array_not_contains_any($element, {'key-non-exists': 'value-non-exists'}, {'keyn': 'valuen'})
+  - target_field: array_not_contains_any($element, {"key-non-exists":"value-non-exists"}, {"keyn":"valuen"})
 ```
 
 #### Input Event
@@ -1148,7 +1148,7 @@ At least one specified element (1000) is present in the target array.
 
 ```yaml
 check:
-  - target_field: array_not_contains_any({'keyn': 'valuen'}, 1000, 'valuen')
+  - target_field: array_not_contains_any({"keyn":"valuen"}, 1000, 'valuen')
 ```
 
 #### Input Event
@@ -1562,7 +1562,7 @@ Compare two different integers
 
 ```yaml
 check:
-  - target_field: exists_key_in({'key': 'value'})
+  - target_field: exists_key_in({"key":"value"})
 ```
 
 #### Input Event
@@ -4233,7 +4233,7 @@ Success keys in list
 
 ```yaml
 check:
-  - target_field: keys_exist_in_list(['ts', 'host'])
+  - target_field: keys_exist_in_list(["ts","host"])
 ```
 
 #### Input Event
@@ -4286,7 +4286,7 @@ There are keys in the target field that are missing from the list
 
 ```yaml
 check:
-  - target_field: keys_exist_in_list(['ts', 'host'])
+  - target_field: keys_exist_in_list(["ts","host"])
 ```
 
 #### Input Event
@@ -4758,7 +4758,7 @@ Value is in array
 
 ```yaml
 check:
-  - target_field: match_value([1, 2, 3, 4])
+  - target_field: match_value([1,2,3,4])
 ```
 
 #### Input Event
@@ -4803,7 +4803,7 @@ Value is in array
 
 ```yaml
 check:
-  - target_field: match_value([{'key': 'value'}])
+  - target_field: match_value([{"key":"value"}])
 ```
 
 #### Input Event
@@ -6747,7 +6747,7 @@ Builds map with normalized keys and both new/old values
 ```yaml
 normalize:
   - map:
-      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', False)
+      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', false)
 ```
 
 #### Input Event
@@ -6808,7 +6808,7 @@ Keeps keys verbatim when `skipSerializer` is true
 ```yaml
 normalize:
   - map:
-      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', True)
+      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', true)
 ```
 
 #### Input Event
@@ -6869,7 +6869,7 @@ Keeps entries that only provide a new value
 ```yaml
 normalize:
   - map:
-      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', False)
+      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', false)
 ```
 
 #### Input Event
@@ -6914,7 +6914,7 @@ Discards old value when it resolves to blanks
 ```yaml
 normalize:
   - map:
-      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', False)
+      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', false)
 ```
 
 #### Input Event
@@ -6961,7 +6961,7 @@ Fails when new value is missing
 ```yaml
 normalize:
   - map:
-      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', False)
+      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', false)
 ```
 
 #### Input Event
@@ -7001,7 +7001,7 @@ Fails when array does not exist in the context
 ```yaml
 normalize:
   - map:
-      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', False)
+      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', false)
 ```
 
 #### Input Event
@@ -7079,7 +7079,7 @@ Normalizes keys and extracts values using `/Value` pointer
 ```yaml
 normalize:
   - map:
-      - target_field: array_obj_to_mapkv($source_array, '/Name', '/Value', False)
+      - target_field: array_obj_to_mapkv($source_array, '/Name', '/Value', false)
 ```
 
 #### Input Event
@@ -7140,7 +7140,7 @@ Keeps keys verbatim when `skipSerializer` is true
 ```yaml
 normalize:
   - map:
-      - target_field: array_obj_to_mapkv($source_array, '/Name', '/Value', True)
+      - target_field: array_obj_to_mapkv($source_array, '/Name', '/Value', true)
 ```
 
 #### Input Event
@@ -7237,7 +7237,7 @@ Fails when array does not exist in the context
 ```yaml
 normalize:
   - map:
-      - target_field: array_obj_to_mapkv($source_array, '/Name', '/Value', False)
+      - target_field: array_obj_to_mapkv($source_array, '/Name', '/Value', false)
 ```
 
 #### Input Event
@@ -13068,7 +13068,7 @@ The type of the value does not match the type of the array elements
 ```yaml
 normalize:
   - map:
-      - target_field: array_append([1, 2])
+      - target_field: array_append([1,2])
 ```
 
 #### Input Event
@@ -13938,7 +13938,7 @@ Deletes children equal to the given boolean
 ```yaml
 normalize:
   - map:
-      - target_field: delete_fields_with_value(True)
+      - target_field: delete_fields_with_value(true)
 ```
 
 #### Input Event
@@ -13974,7 +13974,7 @@ Deletes children equal to the given object
 ```yaml
 normalize:
   - map:
-      - target_field: delete_fields_with_value({'k': 1})
+      - target_field: delete_fields_with_value({"k":1})
 ```
 
 #### Input Event
@@ -14018,7 +14018,7 @@ Deletes children equal to the given array
 ```yaml
 normalize:
   - map:
-      - target_field: delete_fields_with_value([1, 2])
+      - target_field: delete_fields_with_value([1,2])
 ```
 
 #### Input Event
@@ -14380,7 +14380,7 @@ The value to replace was found
 ```yaml
 normalize:
   - map:
-      - target_field: get_key_in({'key': 'name', 'key2': 'surname'}, $key)
+      - target_field: get_key_in({"key":"name","key2":"surname"}, $key)
 ```
 
 #### Input Event
@@ -15230,7 +15230,7 @@ No-op when the KVDB does not exist
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_array('non-existing-db', ['0x0', '0x1'])
+      - target_field: kvdb_get_array('non-existing-db', ["0x0","0x1"])
 ```
 
 #### Input Event
@@ -15304,7 +15304,7 @@ Skips keys that are not present in the KVDB
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_array('windows_kerberos_status_code_to_code_name', ['0x0', '0x99', '0x6'])
+      - target_field: kvdb_get_array('windows_kerberos_status_code_to_code_name', ["0x0","0x99","0x6"])
 ```
 
 #### Input Event
@@ -15376,7 +15376,7 @@ No-op when none of the keys exist in the KVDB
 ```yaml
 normalize:
   - map:
-      - target_field: kvdb_get_array('windows_kerberos_status_code_to_code_name', ['0x99', '0x98'])
+      - target_field: kvdb_get_array('windows_kerberos_status_code_to_code_name', ["0x99","0x98"])
 ```
 
 #### Input Event
@@ -16613,7 +16613,7 @@ The merge was success
 ```yaml
 normalize:
   - map:
-      - target_field: merge_key_in({'input_key_1': {'v1': 'k1'}, 'input_key_2': {'v2': 'k2'}}, $key)
+      - target_field: merge_key_in({"input_key_1":{"v1":"k1"},"input_key_2":{"v2":"k2"}}, $key)
 ```
 
 #### Input Event
@@ -16702,7 +16702,7 @@ The value from the specified key `input_key_1` is not merged into `target_field`
 ```yaml
 normalize:
   - map:
-      - target_field: merge_key_in({'input_key_1': {'v1': 'k1', 'nested': {'n1': 'value1'}}, 'input_key_2': {'v2': 'k2'}}, $key)
+      - target_field: merge_key_in({"input_key_1":{"v1":"k1","nested":{"n1":"value1"}},"input_key_2":{"v2":"k2"}}, $key)
 ```
 
 #### Input Event
@@ -17067,7 +17067,7 @@ The value from the specified key `input_key_1` is merged into `target_field`, in
 ```yaml
 normalize:
   - map:
-      - target_field: merge_recursive_key_in({'input_key_1': {'v1': 'k1', 'nested': {'n1': 'value1'}}, 'input_key_2': {'v2': 'k2'}}, $key)
+      - target_field: merge_recursive_key_in({"input_key_1":{"v1":"k1","nested":{"n1":"value1"}},"input_key_2":{"v2":"k2"}}, $key)
 ```
 
 #### Input Event
@@ -17179,7 +17179,7 @@ The `nested` content from the specified key `input_key_1` is merged into `target
 ```yaml
 normalize:
   - map:
-      - target_field: merge_recursive_key_in({'input_key_1': {'v1': 'k1', 'nested': {'n1': 'value1'}}, 'input_key_2': {'v2': 'k2'}}, $key)
+      - target_field: merge_recursive_key_in({"input_key_1":{"v1":"k1","nested":{"n1":"value1"}},"input_key_2":{"v2":"k2"}}, $key)
 ```
 
 #### Input Event
@@ -21211,7 +21211,7 @@ Keys already normalized
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21247,7 +21247,7 @@ Keys lowercased and separators mapped to underscores
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21285,7 +21285,7 @@ Both map to 'hello_world' -> collision
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21318,7 +21318,7 @@ basicNormalize does not prefix underscores for leading digits
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21354,7 +21354,7 @@ Strings in arrays normalized
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21392,7 +21392,7 @@ Object keys inside arrays normalized
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21436,7 +21436,7 @@ Mixed string/object array supported
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21476,7 +21476,7 @@ Numbers in arrays not allowed by policy
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21511,7 +21511,7 @@ Booleans in arrays not allowed by policy
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21546,7 +21546,7 @@ Nulls in arrays not allowed by policy
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21581,7 +21581,7 @@ Nested arrays/objects processed recursively
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21631,7 +21631,7 @@ Deep object keys normalized
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(True)
+      - target_field: sanitize_fields(true)
 ```
 
 #### Input Event
@@ -21673,7 +21673,7 @@ Duplicated normalized strings in arrays are allowed
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21711,7 +21711,7 @@ All characters dropped -> empty key is invalid
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21743,7 +21743,7 @@ Mixed '\\', '/', ':', spaces collapse to single underscores
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21777,7 +21777,7 @@ Trailing ':' produces '_' then it is trimmed at the end
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21811,7 +21811,7 @@ All characters are separators; normalized key becomes empty
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21843,7 +21843,7 @@ Backslash and colon in strings become underscores
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21879,7 +21879,7 @@ Single string node normalized directly
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event
@@ -21909,7 +21909,7 @@ Only separators -> sanitized string becomes empty
 ```yaml
 normalize:
   - map:
-      - target_field: sanitize_fields(False)
+      - target_field: sanitize_fields(false)
 ```
 
 #### Input Event

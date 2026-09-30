@@ -10,7 +10,7 @@ Complete configuration reference for the Syscollector module that collects syste
 
 **Internal Options:** None
 
-For module overview and architecture, see [Syscollector Module](index.html).
+For module overview and architecture, see [Syscollector Module](README.md).
 
 > **Important:** Starting in version 5.0, vulnerability detection is handled by a separate Vulnerability Detector module. Syscollector focuses exclusively on inventory collection (packages, OS, hotfixes, etc.), while vulnerability detection and CVE correlation are performed independently.
 
@@ -538,7 +538,7 @@ grep -i "sync.*error" /var/ossec/logs/ossec.log
 
 ## See Also
 
-- [Syscollector Module](index.html) - Module overview and features
+- [Syscollector Module](README.md) - Module overview and features
 - [Syscollector Architecture](architecture.md) - Technical architecture and design
 - [Syscollector Events](events.md) - Event format and structure
 - [Syscollector Database Schema](database-schema.md) - Database tables and fields

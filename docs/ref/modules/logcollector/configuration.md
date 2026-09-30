@@ -4,7 +4,7 @@ Complete configuration reference for the Logcollector module.
 
 The Logcollector module collects logs from monitored endpoints and forwards them to the Wazuh server for analysis. It supports multiple log sources including plain text files, JSON logs, Windows Event Logs, macOS Unified Logging System, and systemd journal.
 
-For module overview and architecture, see [Logcollector Module](index.html).
+For module overview and architecture, see [Logcollector Module](README.md).
 
 ---
 
@@ -228,7 +228,7 @@ File check interval for detecting log file changes.
 Number of attempts to open a log file before giving up.
 
 - **Default value:** `0` (infinite retries)
-- **Allowed values:** Integer from `2` to `998`, or `0` for infinite
+- **Allowed values:** Integer from `0` to `998` (`0` means infinite retries)
 - **Format:** `logcollector.open_attempts=0`
 - **Note:** Set to `0` for continuous retry on file open failures
 
@@ -791,7 +791,7 @@ logcollector.sock_fail_time=60
 
 ## See Also
 
-- [Logcollector Module](index.html) - Module overview and architecture
+- [Logcollector Module](README.md) - Module overview and architecture
 - [Log Collectors](collectors.md) - Detailed collector documentation
 - [Client Configuration](../client/configuration.md) - Agent connectivity settings
 - [Agent Configuration Reference](../../configuration/agent/README.md) - All agent configuration options

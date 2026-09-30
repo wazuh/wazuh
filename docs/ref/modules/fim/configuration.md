@@ -9,7 +9,7 @@ FIM operates in two complementary modes:
 - **Scheduled scans**: Periodic baseline comparisons triggered by the `frequency` setting
 - **Real-time monitoring**: Continuous event-driven monitoring via `realtime` or `whodata` directory attributes
 
-For module overview and architecture, see [File Integrity Monitoring Overview](index.html).
+For module overview and architecture, see [File Integrity Monitoring Overview](README.md).
 
 ---
 
@@ -1035,7 +1035,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 
 ## See Also
 
-- [File Integrity Monitoring Overview](index.html) - Module overview and architecture
+- [File Integrity Monitoring Overview](README.md) - Module overview and architecture
 - [Who-data Monitoring](https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/auditing-whodata.html) - Detailed who-data implementation guide
 - [FIM Alerts Reference](https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/fim-alerts.html) - Alert rules and event types
 - [Centralized Agent Configuration](https://documentation.wazuh.com/current/user-manual/reference/centralized-configuration.html) - Using agent.conf for FIM
