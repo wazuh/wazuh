@@ -24,6 +24,12 @@ All notable changes to this project will be documented in this file.
 - Fixed the macOS ULS reader losing the stored timestamp after log lines shorter than 31 characters. ([#39171](https://github.com/wazuh/wazuh/issues/39171))
 - Fixed the Windows agent reporting the operating system it had before an in-place feature update. ([#39547](https://github.com/wazuh/wazuh/pull/39547))
 
+### Ruleset
+
+#### Fixed
+
+- Fixed two inverted checks in the Debian 10 SCA policy: single user mode authentication and the remote login warning banner. ([#39339](https://github.com/wazuh/wazuh/issues/39339))
+
 ## [v4.14.9]
 
 ### Manager
