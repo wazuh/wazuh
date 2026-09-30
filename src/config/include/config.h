@@ -56,7 +56,10 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
 #if defined(__linux__) && defined(CLIENT)
 /**
- * @brief Read the <container_instances> block
+ * @brief Read the <container_security> block
+ *
+ * Holds one <container_instances> block per runtime integration, each
+ * discriminated by its <type> (docker/kubernetes).
  *
  * Declared under the same guard as its definition: the module is agent-only
  * and Linux-only, like the container runtimes it enriches from.
@@ -65,7 +68,7 @@ int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
  * @param node XML node to analyze
  * @param d1 Wazuh modules list
  */
-int Read_ContainerInstances(const OS_XML* xml, xml_node* node, void* d1);
+int Read_ContainerSecurity(const OS_XML* xml, xml_node* node, void* d1);
 #endif
 
 /**

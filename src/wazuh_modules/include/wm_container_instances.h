@@ -31,9 +31,13 @@ typedef struct wm_container_instances_kubernetes_t
 typedef struct wm_container_instances_t
 {
     unsigned int enabled : 1;
-    /* The active connector is the one whose section is present (exactly one). */
+    /* One flag per runtime integration: a <container_instances> block of that
+     * <type> was present AND enabled. Both set = dual-runtime monitoring. */
     unsigned int kubernetes_present : 1;
     unsigned int docker_present : 1;
+    /* A block was rejected, so the "nothing registered" check below must not
+     * report a second, less specific reason over the top of the real one. */
+    unsigned int invalid : 1;
     wm_container_instances_kubernetes_t kubernetes;
     char* docker_socket_path;
 } wm_container_instances_t;
