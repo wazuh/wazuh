@@ -285,7 +285,29 @@ def test_check_token_runas_revoked_at_user_level(mock_optimize):
                                             run_as=True, origin_node_type='master')
 
     assert result == {'valid': False}
-    tm.is_token_valid.assert_any_call(user_id=101, token_nbf_time=100, run_as=True)
+    tm.is_token_valid.assert_any_call(user_id=101, token_nbf_time=100, run_as=True, hash_auth_context=None)
+
+
+@patch('api.authentication.optimize_resources', return_value={})
+def test_check_token_runas_checks_the_authorization_context(mock_optimize):
+    """A run_as token is validated against the revocation of its own authorization context."""
+    am = MagicMock()
+    am.get_user.return_value = {'id': 2, 'username': 'wazuh-wui'}
+    am.user_allow_run_as.return_value = True
+    urm = MagicMock()
+    urm.get_all_roles_from_user.return_value = []
+    tm = MagicMock()
+    tm.is_token_valid.side_effect = lambda **kwargs: kwargs.get('hash_auth_context') != 'revoked'
+
+    with patch('api.authentication.AuthenticationManager', _orm_manager_mock(am)), \
+            patch('api.authentication.UserRolesManager', _orm_manager_mock(urm)), \
+            patch('api.authentication.TokenManager', _orm_manager_mock(tm)):
+        assert check_token(username='wazuh-wui', roles=tuple([1]), token_nbf_time=100, run_as=True,
+                           origin_node_type='master', hash_auth_context='revoked') == {'valid': False}
+        assert check_token(username='wazuh-wui', roles=tuple([1]), token_nbf_time=100, run_as=True,
+                           origin_node_type='master', hash_auth_context='other')['valid'] is True
+
+    tm.is_token_valid.assert_any_call(user_id=2, token_nbf_time=100, run_as=True, hash_auth_context='revoked')
 
 
 @patch('api.authentication.optimize_resources', return_value={})
@@ -312,7 +334,7 @@ def test_check_token_runas_revoked_dynamic_role(mock_optimize):
     assert result == {'valid': False}
     # The user and run_as rules are checked once, before the loop; the role iterations ask only
     # for the role rule so that they do not re-read the same two rows per role.
-    tm.is_token_valid.assert_any_call(user_id=101, token_nbf_time=200, run_as=True)
+    tm.is_token_valid.assert_any_call(user_id=101, token_nbf_time=200, run_as=True, hash_auth_context=None)
     tm.is_token_valid.assert_any_call(role_id=1, token_nbf_time=200)
 
 
@@ -857,7 +879,7 @@ async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_da
     # Check all functions are called with expected params
     calls = [call(f=ANY, f_kwargs={'username': original_payload['sub'], 'token_nbf_time': int(original_payload['nbf'] * 1000),
                                    'run_as': False, 'roles': tuple(original_payload['rbac_roles']),
-                                   'origin_node_type': 'master'},
+                                   'origin_node_type': 'master', 'hash_auth_context': None},
                   request_type='local_master', is_async=False, wait_for_complete=False, logger=ANY),
              call(f=ANY, request_type='local_master', is_async=False, wait_for_complete=False, logger=ANY)]
     mock_dapi.assert_has_calls(calls)
@@ -867,6 +889,41 @@ async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_da
                                         audience='Wazuh API REST')
     assert mock_distribute_function.call_count == 2
     assert mock_raise_if_exc.call_count == 2
+
+
+@pytest.mark.asyncio
+@patch('api.authentication.jwt.decode')
+@patch('api.authentication.generate_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
+                                                            '-----BEGIN PUBLIC KEY-----'))
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', return_value=True)
+@patch('api.authentication.raise_if_exc', side_effect=None)
+async def test_decode_token_run_as_passes_the_authorization_context(mock_raise_if_exc, mock_distribute_function,
+                                                                    mock_dapi, mock_generate_keypair, mock_decode):
+    """A run_as token is checked with its authorization context hash."""
+    mock_decode.return_value = deepcopy(original_payload) | {'run_as': True, 'hash_auth_context': 'abc'}
+    mock_raise_if_exc.side_effect = [WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
+                                     WazuhResult(security_conf)]
+
+    decode_token('test_token')
+
+    assert mock_dapi.call_args_list[0].kwargs['f_kwargs']['run_as'] is True
+    assert mock_dapi.call_args_list[0].kwargs['f_kwargs']['hash_auth_context'] == 'abc'
+
+
+@pytest.mark.asyncio
+@patch('api.authentication.jwt.decode')
+@patch('api.authentication.generate_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
+                                                            '-----BEGIN PUBLIC KEY-----'))
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
+async def test_decode_token_run_as_without_authorization_context(mock_dapi, mock_generate_keypair, mock_decode):
+    """A run_as token without an authorization context hash could not be logged out, so it is refused."""
+    mock_decode.return_value = deepcopy(original_payload) | {'run_as': True}
+
+    with pytest.raises(Unauthorized):
+        decode_token('test_token')
+
+    mock_dapi.assert_not_called()
 
 
 @pytest.mark.asyncio

@@ -62,6 +62,18 @@ def invalid_run_as_tokens():
         tm.add_user_roles_rules(run_as=True)
 
 
+def invalid_run_as_context_tokens(contexts: list = None):
+    """Add the necessary rules to invalidate the run_as tokens granted for the given authorization contexts.
+
+    Parameters
+    ----------
+    contexts : list
+        List of hashes of the affected authorization contexts.
+    """
+    with TokenManager() as tm:
+        tm.add_user_roles_rules(contexts=set(contexts))
+
+
 def invalid_users_tokens(users: list = None):
     """Add the necessary rules to invalidate all affected user's tokens.
 
