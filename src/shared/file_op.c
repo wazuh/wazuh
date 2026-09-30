@@ -3928,8 +3928,11 @@ bool is_network_path(const char *path) {
         return false;
     }
 
-    // Block any path starting with \\ (UNC, extended-length UNC, device paths)
-    if (strlen(path) >= 2 && path[0] == '\\' && path[1] == '\\') {
+    // Block any path starting with two separators (UNC, extended-length UNC, device paths).
+    // Windows treats '/' and '\' as equivalent, so the forward-slash UNC form must be caught too.
+    if (strlen(path) >= 2 &&
+        (path[0] == '\\' || path[0] == '/') &&
+        (path[1] == '\\' || path[1] == '/')) {
         return true;
     }
 
