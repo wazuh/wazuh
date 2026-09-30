@@ -38,12 +38,17 @@
 | [#39306](https://github.com/wazuh/wazuh/issues/39306) | Replaced the duplicated `expandAbsolutePath` helper with `FileSystemUtils`. |
 | [#39307](https://github.com/wazuh/wazuh/issues/39307) | Removed duplicated join code in the agent data provider. |
 | [#38171](https://github.com/wazuh/wazuh/issues/38171) | Compiled syscollector normalizer and data_provider parser regex once instead of on every call. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Moved every container runtime security setting into a single `container_security` configuration block. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Stopped scanning container monitored directories on the host filesystem as well. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Made container file monitoring and container inventory opt-in and independently switchable. |
 
 #### Removed
 
 | Issue | Comment |
 |-------|---------|
 | [#38857](https://github.com/wazuh/wazuh/issues/38857) | Removed manager-probing dead code from the agent's execd. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Removed the container options from the syscollector module configuration. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Removed the container directory tag that scoped file monitoring to containers. |
 
 #### Fixed
 

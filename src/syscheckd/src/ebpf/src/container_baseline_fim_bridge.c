@@ -163,59 +163,20 @@ static void normalize_container_fim_row(cJSON* msg)
  * than another literal appearing at the call site. */
 #define CONTAINER_BASELINE_MAX_FILES_PER_PATH 20000
 
-/* True when `tags` — a COMMA-SEPARATED list, per the <directories tags="...">
- * attribute — contains "container" as one of its tokens.
- *
- * A plain strcmp() against the whole attribute only matched when "container"
- * was the sole tag, so an ordinary tags="container,prod" silently selected
- * nothing and the whole container FIM baseline no-op'd with no warning. */
-static int fim_tags_contain_container(const char* tags)
-{
-    static const char TOKEN[] = "container";
-    static const size_t TOKEN_LEN = sizeof(TOKEN) - 1;
-
-    if (tags == NULL) {
-        return 0;
-    }
-
-    for (const char* cursor = tags; *cursor != '\0';) {
-        /* Skip leading separators and whitespace of this token. */
-        while (*cursor == ',' || *cursor == ' ' || *cursor == '\t') {
-            ++cursor;
-        }
-
-        const char* start = cursor;
-        while (*cursor != '\0' && *cursor != ',') {
-            ++cursor;
-        }
-
-        /* Trim trailing whitespace of this token. */
-        const char* end = cursor;
-        while (end > start && (end[-1] == ' ' || end[-1] == '\t')) {
-            --end;
-        }
-
-        if ((size_t)(end - start) == TOKEN_LEN && strncmp(start, TOKEN, TOKEN_LEN) == 0) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
 /* Longest-prefix match of a CONTAINER-internal path against the configured
- * <directories> entries, restricted to the container-tagged ones.
+ * <container_security><syscheck><directories> entries.
  *
- * Deliberately not fim_configuration_directory(): that one searches every
- * entry, so with
+ * Deliberately not fim_configuration_directory(): that one searches the host
+ * list, so with
  *
- *     <directories tags="container">/etc</directories>
- *     <directories>/etc/ssl</directories>          <!-- host only -->
+ *     <container_security><syscheck><directories>/etc</directories></syscheck></container_security>
+ *     <syscheck><directories>/etc/ssl</directories></syscheck>     <!-- host only -->
  *
  * a container row for /etc/ssl/cert.pem would resolve to the host-only entry
  * and take ITS check options and tag. A container row can only have come from a
- * container-tagged root — fim_collect_container_monitored_paths() below is what
- * selects them — so that is the set to resolve against.
+ * container-scoped root, so that is the set to resolve against — and since the
+ * two lists are now separate, the separation is structural rather than a filter
+ * this function has to remember to apply.
  *
  * Also matches on dir_it->path rather than fim_get_real_path(dir_it), for the
  * same reason fim_collect_container_monitored_paths() passes path->path as the
@@ -230,16 +191,16 @@ static const directory_t* fim_container_configuration_directory(const char* path
     int top = 0;
     OSListNode* node_it;
 
-    if (path == NULL || *path == '\0' || syscheck.directories == NULL) {
+    if (path == NULL || *path == '\0' || syscheck.container_directories == NULL) {
         return NULL;
     }
 
     trail_path_separator(full_path, path, sizeof(full_path));
 
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.container_directories) {
         const directory_t* dir_it = (const directory_t*)node_it->data;
 
-        if (dir_it == NULL || dir_it->path == NULL || !fim_tags_contain_container(dir_it->tag)) {
+        if (dir_it == NULL || dir_it->path == NULL) {
             continue;
         }
 
@@ -268,21 +229,22 @@ int fim_collect_container_monitored_paths(cb_monitored_path_t** out_paths, size_
     *out_paths = NULL;
     *out_count = 0U;
 
-    if (syscheck.directories == NULL || !syscheck.enable_synchronization) {
+    if (syscheck.container_directories == NULL || !syscheck.enable_synchronization) {
         return 0;
     }
 
     size_t count = 0U;
-    for (OSListNode* it = OSList_GetFirstNode(syscheck.directories); it != NULL;
-         it = OSList_GetNext(syscheck.directories, it)) {
+    for (OSListNode* it = OSList_GetFirstNode(syscheck.container_directories); it != NULL;
+         it = OSList_GetNext(syscheck.container_directories, it)) {
         const directory_t* path = (const directory_t*)it->data;
-        if (path != NULL && path->path != NULL && fim_tags_contain_container(path->tag)) {
+        if (path != NULL && path->path != NULL) {
             ++count;
         }
     }
 
     if (count == 0U) {
-        mdebug1("No <directories> entry is tagged \"container\"; skipping the container FIM baseline.");
+        mdebug1("No <container_security><syscheck><directories> entry is configured; skipping the container FIM "
+                "baseline.");
         return 0;
     }
 
@@ -292,10 +254,10 @@ int fim_collect_container_monitored_paths(cb_monitored_path_t** out_paths, size_
     }
 
     size_t index = 0U;
-    for (OSListNode* it = OSList_GetFirstNode(syscheck.directories); it != NULL;
-         it = OSList_GetNext(syscheck.directories, it)) {
+    for (OSListNode* it = OSList_GetFirstNode(syscheck.container_directories); it != NULL;
+         it = OSList_GetNext(syscheck.container_directories, it)) {
         const directory_t* path = (const directory_t*)it->data;
-        if (path == NULL || path->path == NULL || !fim_tags_contain_container(path->tag)) {
+        if (path == NULL || path->path == NULL) {
             continue;
         }
 
