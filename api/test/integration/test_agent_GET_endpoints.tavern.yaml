@@ -3730,6 +3730,41 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
+  - name: Try to get the different combinations for the internal key
+    request:
+      verify: False
+      <<: *distinct_request
+      params:
+        fields: internal_key
+    response:
+      status_code: 400
+      json:
+        error: 1724
+
+  - name: Try to sort the different combinations by internal key
+    request:
+      verify: False
+      <<: *distinct_request
+      params:
+        fields: status
+        sort: internal_key
+    response:
+      status_code: 400
+      json:
+        error: 1403
+
+  - name: Try to filter the different combinations by internal key
+    request:
+      verify: False
+      <<: *distinct_request
+      params:
+        fields: status
+        q: internal_key=test
+    response:
+      status_code: 400
+      json:
+        error: 1408
+
 ---
 test_name: GET /agents/stats/distinct {fields}
 
