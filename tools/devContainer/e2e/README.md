@@ -8,3 +8,6 @@ compose passes the file to the indexer and dashboard containers through `env_fil
 
 A manual `docker compose up` without the file still starts, in degraded mode: each component
 generates its own passwords, and the dashboard has no manager API password until it is re-resolved.
+
+The file is **parsed, never sourced**: consumers split each line at the FIRST `=` (the generated
+alphabet may contain `=`) and never `source` it or echo its values.

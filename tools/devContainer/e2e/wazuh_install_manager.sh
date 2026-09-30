@@ -28,7 +28,7 @@
 #   9. --out/manifest.md
 #
 # Used by the VS Code task "E2E Scripts: [Manager] Fresh install from branch (purge!)" and by the
-# manager-env skill (which asks the user before running it).
+# stack-env skill (which asks the user before running it).
 set -u
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -321,7 +321,7 @@ fi
 step "manifest"
 summary=$(grep -E '^# summary:' "$OUT/verify-manager.log" | tail -1 | sed 's/^# //')
 {
-  echo "# manager-env manifest — $(now)"
+  echo "# stack-env manifest — $(now)"
   echo "mode: $MODE"
   echo "repo.head: $HEAD   repo.branch: $BRANCH   repo.merge_base: $MERGE_BASE (origin/$BASE)"
   echo "manager.home: $DIR"

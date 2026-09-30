@@ -10,7 +10,7 @@
 # bundle served by GET /cacerts is public material.
 #
 # Used by the VS Code task "E2E Scripts: [Manager] Verify installed manager", by
-# wazuh_install_manager.sh after every install, and by the manager-env skill.
+# wazuh_install_manager.sh after every install, and by the stack-env skill.
 set -u
 
 usage() {
@@ -153,7 +153,7 @@ say "# summary: executed=$ran passed=$ok failed=$ko skipped=$sk"
 
 if [ "$WRITE_MANIFEST" -eq 1 ]; then
   {
-    echo "# manager-env manifest — $(now)"
+    echo "# stack-env manifest — $(now)"
     echo "mode: verify"
     echo "manager.home: $HOME_DIR"
     echo "remoted.https: port=$PORT prefix=${PFX:-/}"
