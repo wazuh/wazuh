@@ -49,7 +49,7 @@ Tracks which [roadmap](08-roadmap.md) items are implemented on branch
   - `ce04396e50` — **container inventory gets its own document budget** ([14](14-spike-integration-plan.md) WP4)
 
   *After the 2026-09-08 run of the integrated agent ([12 §12.15](12-blocking-decisions.md#1215-the-integrated-agent-on-a-real-node-2026-09-08))*
-  - `83896683e7` — **`<container_instances>` is dispatched** — the module could not start at all before ([C25](03-findings-correctness.md))
+  - `83896683e7` — **`<container_instances>` is dispatched** — the module could not start at all before ([C25](03-findings-correctness.md)); the block has since moved under `<container_security>`
   - `9b068abb04` — **a changed container file reports MODIFIED** — every modification was dropped ([C26](03-findings-correctness.md)), plus the two transaction cases that pin it and [C27](03-findings-correctness.md)
   - `976c7459c0` — **`list` always carries a `containers` array**, so "no containers" stops reading as "no connector" ([C28](03-findings-correctness.md#c28--with-no-containers-list-reads-as-connector-unavailable))
   - `ccf47ab93c` — **a path reconcile no longer deletes the container's other rows** ([C27](03-findings-correctness.md), [D18](12-blocking-decisions.md#d18--how-does-a-path-reconcile-persist-a-row-without-authorising-a-sweep-resolved-2026-09-08--the-non-transactional-upsert-ccf47ab93c)) — a non-transactional per-row upsert, plus case 7 pinning it

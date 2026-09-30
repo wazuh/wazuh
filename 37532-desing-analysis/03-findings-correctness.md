@@ -708,6 +708,8 @@ whole container.
 
 ## C25 — The `<container_instances>` block is never dispatched, so the module cannot start
 
+> **Since superseded.** The configuration surface described here has moved: the root block is now `<container_security>`, holding one `<container_instances>` block per runtime `<type>`, and the entry point is `Read_ContainerSecurity()`. The defect and its fix are recorded as they were; see [15 §15.3](15-spike-resume.md) for the shape that works today.
+
 **Severity: high (blocker).** `config/src/config.c`, `config/src/wmodules-container-instances.c:205`
 
 Found by trying to run the integrated agent. Every piece of the module was present and compiled —

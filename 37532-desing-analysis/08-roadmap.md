@@ -32,9 +32,10 @@ Ordered by "what would block a release" first, then "what makes it viable at 100
 >   ([14 §14.6](14-spike-integration-plan.md)). That one blocks shipping the event path at all, so it
 >   belongs in P0 rather than in the tables' tail.
 > - **Three P0 items came out of the 2026-09-08 run of the *integrated agent*, and none is in the
->   tables.** [C25](03-findings-correctness.md) — `<container_instances>` was never dispatched, so
->   the module could not start and neither consumer could reach container metadata; the whole
->   feature was unreachable from a real agent (fixed, `83896683e7`).
+>   tables.** [C25](03-findings-correctness.md) — `<container_instances>` (the block has since
+>   moved under `<container_security>`) was never dispatched, so the module could not start and
+>   neither consumer could reach container metadata; the whole feature was unreachable from a real
+>   agent (fixed, `83896683e7`).
 >   [C26](03-findings-correctness.md) — a change to an already-known container file raised no alert,
 >   because `MODIFIED` arrived unwrapped and the callback discarded it; only first sightings got
 >   through (fixed, `9b068abb04`). [C27](03-findings-correctness.md) — a path reconcile deleted the
