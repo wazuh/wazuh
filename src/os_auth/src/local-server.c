@@ -1667,7 +1667,14 @@ static cJSON* local_token_create(cJSON *arguments, int *ierror) {
         char message[OS_SIZE_512];
 
         snprintf(message, sizeof(message), "%s: %s", ERRORS[EMINTREFUSED].message, detail);
-        mwarn("%s (address '%s').", message, req.address);
+
+        // The address is echoed only when it cannot forge a line of its own: a newline in it is
+        // one of the reasons for the refusal, and the refusal must not write it anyway.
+        if (etoken_text_is_printable(req.address)) {
+            mwarn("%s (address '%s').", message, req.address);
+        } else {
+            mwarn("%s.", message);
+        }
         return local_create_error_response(ERRORS[EMINTREFUSED].code, message);
     }
 

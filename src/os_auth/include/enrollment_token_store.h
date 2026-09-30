@@ -40,6 +40,10 @@
 #define ETOKEN_DESCRIPTION_MAX 256
 #define ETOKEN_PREFIX_MAX 256
 
+/* Longest `address` a mint accepts: the longest DNS name, which is also the API's `maxLength`. The
+ * command line has no format of its own, so this is the bound both paths share */
+#define ETOKEN_ADDRESS_MAX 253
+
 /* Most tokens the store will hold. A mint that would cross it purges the dead entries first and is
  * only refused when that many tokens are still alive. Sized against the file remoted will accept:
  * an entry measures ~240 bytes, or ~1.4 KB when the operator embeds the CA, so 5000 of the widest

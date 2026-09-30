@@ -49,4 +49,16 @@ typedef struct {
  */
 int etoken_mint_prepare(const etoken_mint_request_t *req, etoken_mint_t *out, char *detail, size_t detail_size);
 
+/**
+ * @brief Whether @p text can be interpolated into a log line without forging another one.
+ *
+ * The rule etoken_mint_prepare() applies to the free-text fields of a request: no control byte
+ * (0x00-0x1F) and no DEL. Exported for the callers that log a field of a request the mint may have
+ * refused precisely because it broke this rule.
+ *
+ * @param text The text; NULL is printable.
+ * @return 1 when printable, 0 otherwise.
+ */
+int etoken_text_is_printable(const char *text);
+
 #endif /* ENROLLMENT_TOKEN_MINT_H */

@@ -305,9 +305,9 @@ the CLI and the API (issue #39133):
 |------|-----|
 | `--ttl` at most **3650 days** (315360000 s) | A token's expiry is stored as an absolute time in a signed `time_t`. A longer lifetime does not produce a distant expiry, it produces a **negative** one, which the store's own loader refuses — and a record like that is one every node carries, because the cluster replicates the file |
 | `--description` and `--prefix` at most **256 characters** | Both are persisted in `etc/enrollment_tokens.json`, re-serialized on every consumed use and shipped to every worker |
-| `--address` at most **253 characters** | `adr_is_dns_name()` refuses any DNS name longer than that regardless of caller; an IP literal is accepted instead and is never this long |
+| `--address` at most **253 characters** | The longest DNS name, and the API's `maxLength`. Refused up front, before the certificate is read: `adr_is_dns_name()` would refuse it too, but only after the SAN match, and the CLI applies no format of its own |
 | `--max-uses` at most **4294967295** (`UINT_MAX`) | The use counter is stored as an `unsigned int`; anything above wraps |
-| No control character (`\n`, `\r`, `\t`, DEL, terminal escapes) in `--description` or `--prefix` | The description is written into the INFO line that records who minted which token, so a newline there forges a second record. Spaces and ordinary punctuation are free text as before |
+| No control character (`\n`, `\r`, `\t`, DEL, terminal escapes) in `--address`, `--description` or `--prefix` | The description is written into the INFO line that records who minted which token, and the address into the WARN line that records a refused mint, so a newline in either forges a second record. The refusal of such an address is logged without it. Spaces and ordinary punctuation are free text as before |
 
 A refusal is `9025` with the reason (`Enrollment token refused: ttl must be between 1 and 315360000
 seconds (3650 days); 0 takes the default`). The CLI refuses an out-of-range `--ttl` locally, without
