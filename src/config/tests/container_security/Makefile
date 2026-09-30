@@ -46,6 +46,7 @@ SOURCES := \
   container_security_config_test.c \
   stubs.c \
   $(SRC_ROOT)/config/src/wmodules-container-instances.c \
+  $(SRC_ROOT)/config/src/wmodules-syscollector.c \
   $(SRC_ROOT)/shared/os_xml/os_xml.c \
   $(SRC_ROOT)/shared/os_xml/os_xml_access.c \
   $(SRC_ROOT)/shared/os_xml/os_xml_node_access.c

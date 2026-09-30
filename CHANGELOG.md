@@ -164,6 +164,9 @@
 | [#40121](https://github.com/wazuh/wazuh/issues/40121) | Windows installer lines in `ossec.log` use the agent's `yyyy/mm/dd hh:mm:ss` timestamp. |
 | [#40349](https://github.com/wazuh/wazuh/pull/40349) | Changed the AWS module to pass inline `access_key`/`secret_key` to its script through the environment instead of the command line. |
 | [#40531](https://github.com/wazuh/wazuh/issues/40531) | Aligned `host.os.kernel`, `host.os.display_version` and `host.os.full` in the syscollector system inventory with the inventory schema. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Moved every container runtime security setting into a single `container_security` configuration block. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Stopped scanning container monitored directories on the host filesystem as well. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Made container file monitoring and container inventory opt-in and independently switchable. |
 
 #### Removed
 
@@ -176,6 +179,8 @@
 | [#39674](https://github.com/wazuh/wazuh/issues/39674) | Deprecated the 4.x FIM, Syscollector, SCA and agent options that no longer have any effect; an upgraded `ossec.conf` that still sets them loads with a deprecation warning. |
 | [#38600](https://github.com/wazuh/wazuh/issues/38600) | Removed the default `netstat` and `last` command monitoring entries, which depend on binaries not present on every supported platform (e.g. minimal container images), causing repeated failed executions every `frequency` cycle. |
 | [#39279](https://github.com/wazuh/wazuh/issues/39279) | Removed the default `df -P` command monitoring entry, which reported disk usage/capacity with no security relevance every `frequency` cycle. Also removed the stale `df -P`, `netstat`, and `last` entries from `etc/ossec-agent.conf`, the fallback configuration installed by `install.sh` when template generation fails on a source install. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Removed the container options from the syscollector module configuration. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Removed the container directory tag that scoped file monitoring to containers. |
 
 #### Fixed
 

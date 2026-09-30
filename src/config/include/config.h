@@ -58,8 +58,10 @@ int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
 /**
  * @brief Read the <container_security> block
  *
- * Holds one <container_instances> block per runtime integration, each
- * discriminated by its <type> (docker/kubernetes).
+ * Reads the modulesd half: one <container_instances> block per runtime
+ * integration, each discriminated by its <type> (docker/kubernetes), plus the
+ * <syscollector> block that scopes the container inventory pass. The <syscheck>
+ * block of the same section belongs to syscheckd and is stepped over here.
  *
  * Declared under the same guard as its definition: the module is agent-only
  * and Linux-only, like the container runtimes it enriches from.
@@ -69,6 +71,19 @@ int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
  * @param d1 Wazuh modules list
  */
 int Read_ContainerSecurity(const OS_XML* xml, xml_node* node, void* d1);
+
+/**
+ * @brief Read the <syscheck> block of <container_security>
+ *
+ * The syscheckd half of the same section. Both daemons dispatch on the
+ * <container_security> element and each parses only its own children, so one
+ * operator-facing block configures a feature that spans two processes.
+ *
+ * @param xml XML object
+ * @param node XML node to analyze
+ * @param d1 Syscheck configuration structure
+ */
+int Read_ContainerSecuritySyscheck(const OS_XML* xml, xml_node* node, void* d1);
 #endif
 
 /**

@@ -73,12 +73,11 @@ static void test_Test_WModule_syscollector_invalid_content_is_reported(void **st
     assert_int_equal(Test_WModule(TEST_CONF_PATH), -1);
 }
 
-/* <container_baseline_interval> gives the container-inventory pass a cadence of
- * its own (#37532). Driven through Read_WModule() with agent_cfg set, rather
- * than Test_WModule(), so the assertion is about the parser and not about the
- * <agent_config> plumbing around it — and so the PARSED VALUE can be checked,
- * which a return code alone would not show. */
-static void test_Read_WModule_syscollector_container_interval_is_parsed(void **state) {
+/* Both container options moved under <container_security><syscollector> (#37532).
+ * They are still recognised here, but only to name their replacement: falling
+ * through to the generic unknown-element branch would abort the configuration read
+ * with "No such tag", which says nothing about where they went. */
+static void test_Read_WModule_syscollector_container_baseline_is_retired(void **state) {
     OS_XML xml;
     xml_node **nodes;
     wmodule *wmodules = NULL;
@@ -86,7 +85,6 @@ static void test_Read_WModule_syscollector_container_interval_is_parsed(void **s
 
     if (OS_ReadXMLString("<wodle name=\"syscollector\">"
                          "<container_baseline>yes</container_baseline>"
-                         "<container_baseline_interval>5m</container_baseline_interval>"
                          "</wodle>", &xml) != 0) {
         fail();
     }
@@ -95,17 +93,11 @@ static void test_Read_WModule_syscollector_container_interval_is_parsed(void **s
         fail();
     }
 
+    expect_string(__wrap__merror, formatted_msg,
+                  "'container_baseline' has moved to <container_security><syscollector> and is no longer read at "
+                  "module 'syscollector'.");
 
-    assert_int_equal(Read_WModule(&xml, nodes[0], &wmodules, &agent_cfg), 0);
-
-    assert_non_null(wmodules);
-    assert_non_null(wmodules->data);
-
-    const wm_sys_t *sys = (const wm_sys_t *)wmodules->data;
-    assert_int_equal(sys->flags.container_baseline, 1);
-    assert_int_equal(sys->container_baseline_interval, 300);
-    // The host interval must be untouched by the container one.
-    assert_int_equal(sys->interval, WM_SYSCOLLECTOR_DEFAULT_INTERVAL);
+    assert_int_equal(Read_WModule(&xml, nodes[0], &wmodules, &agent_cfg), OS_INVALID);
 
     wm_free(wmodules);
     OS_ClearNode(nodes);
@@ -139,16 +131,17 @@ static void test_Read_WModule_syscollector_container_interval_defaults_to_zero(v
     OS_ClearXML(&xml);
 }
 
-/* A malformed value must fail the config rather than silently falling back to
- * the host interval, which would make a typo look like a working setting. */
-static void test_Read_WModule_syscollector_container_interval_invalid_is_reported(void **state) {
+/* The interval option is retired the same way, and the diagnostic does not depend
+ * on the value being well formed: an operator who wrote a valid interval needs to
+ * be told it moved just as much as one who wrote a typo. */
+static void test_Read_WModule_syscollector_container_interval_is_retired(void **state) {
     OS_XML xml;
     xml_node **nodes;
     wmodule *wmodules = NULL;
     int agent_cfg = 1;
 
     if (OS_ReadXMLString("<wodle name=\"syscollector\">"
-                         "<container_baseline_interval>notatime</container_baseline_interval>"
+                         "<container_baseline_interval>5m</container_baseline_interval>"
                          "</wodle>", &xml) != 0) {
         fail();
     }
@@ -158,7 +151,8 @@ static void test_Read_WModule_syscollector_container_interval_invalid_is_reporte
     }
 
     expect_string(__wrap__merror, formatted_msg,
-                  "Invalid container_baseline_interval at module 'syscollector'");
+                  "'container_baseline_interval' has moved to <container_security><syscollector> and is no longer "
+                  "read at module 'syscollector'.");
 
     assert_int_equal(Read_WModule(&xml, nodes[0], &wmodules, &agent_cfg), OS_INVALID);
 
@@ -269,9 +263,9 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_Test_WModule_syscollector_no_warning, teardown_conf_file),
         cmocka_unit_test_teardown(test_Test_WModule_syscollector_invalid_content_is_reported, teardown_conf_file),
-        cmocka_unit_test(test_Read_WModule_syscollector_container_interval_is_parsed),
+        cmocka_unit_test(test_Read_WModule_syscollector_container_baseline_is_retired),
         cmocka_unit_test(test_Read_WModule_syscollector_container_interval_defaults_to_zero),
-        cmocka_unit_test(test_Read_WModule_syscollector_container_interval_invalid_is_reported),
+        cmocka_unit_test(test_Read_WModule_syscollector_container_interval_is_retired),
         cmocka_unit_test_teardown(test_Test_WModule_github_no_warning, teardown_conf_file),
         cmocka_unit_test_teardown(test_Test_WModule_github_invalid_content_is_reported, teardown_conf_file),
         cmocka_unit_test_teardown(test_Test_WModule_sca_valid_content_is_accepted, teardown_conf_file),

@@ -210,7 +210,17 @@ static int read_main_elements(const OS_XML *xml, int modules,
         else if (strcmp(node[i]->element, oscontainer_security) == 0)
         {
 #if defined(__linux__) && defined(CLIENT)
+            /* One section, two daemons. Each sets exactly one of these bits, so only
+             * the matching call ever runs and d1 is always the type that call expects:
+             * the wmodule list from modulesd, the syscheck configuration from
+             * syscheckd. This is the same contract the <syscheck> branch above relies
+             * on, where modulesd also passes a wmodule list and is saved by the gate. */
             if ((modules & CWMODULE) && (Read_ContainerSecurity(xml, node[i], d1) < 0))
+            {
+                goto fail;
+            }
+
+            if ((modules & CSYSCHECK) && (Read_ContainerSecuritySyscheck(xml, node[i], d1) < 0))
             {
                 goto fail;
             }
