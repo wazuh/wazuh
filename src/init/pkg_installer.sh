@@ -487,6 +487,7 @@ CA_VALIDATED=0
 
 # Set when the delivered CA could not be validated for lack of a tool.
 CA_TOOL_HINT=""
+CA_TOOL_HINT_PENDING=0
 CA_TOOL_DISCARD=0
 
 if [ -L "${INCOMING_CA_FILE}" ]; then
@@ -649,7 +650,8 @@ elif [ -f "${INCOMING_CA_FILE}" ]; then
         # Left in place (see the cleanup below): it is what (4126) in the agent log points at.
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Delivered CA at ${INCOMING_CA_FILE} ${CA_REJECT_REASON}; leaving it in place and continuing unverified." >> ./logs/upgrade.log
         # Replaces the generic "place the CA" advice below; the recovery needs neither tool.
-        CA_TOOL_HINT="The manager's CA is already on this host at ${INCOMING_CA_FILE} but could not be validated: ${CA_TOOL} was not found. To enable verification, stop the agent, run ./bin/wazuh-agent-auth --token-file <file> --certs-only with an enrollment token minted on the manager (wazuh-manager-authd --create-enrollment-token --no-credential), then start the agent."
+        # Composed once the manager address is known (below): the token has to name it.
+        CA_TOOL_HINT_PENDING=1
     elif [ -n "${CA_REJECT_REASON}" ]; then
         # A malformed/expired/non-CA file must not break the upgrade, nor be left
         # behind for a later upgrade to pick up -- remove it below same as on success.
@@ -712,6 +714,16 @@ fi
 
 # Strip any leading/trailing '/' so the probe URL never doubles one up.
 SERVER_ENDPOINT=$(echo "${SERVER_ENDPOINT}" | sed -e 's|^/*||' -e 's|/*$||')
+
+# The token must name the address, port and prefix this agent already dials, or --certs-only
+# rewrites <manager><endpoint> to whatever the token names instead.
+if [ "${CA_TOOL_HINT_PENDING}" = "1" ]; then
+    CA_TOKEN_CMD="wazuh-manager-authd --create-enrollment-token --address ${SERVER_ADDRESS} --port ${SERVER_PORT}"
+    if [ -n "${SERVER_ENDPOINT}" ]; then
+        CA_TOKEN_CMD="${CA_TOKEN_CMD} --prefix ${SERVER_ENDPOINT}"
+    fi
+    CA_TOOL_HINT="The manager's CA is already on this host at ${INCOMING_CA_FILE} but could not be validated: ${CA_TOOL} was not found. To enable verification, mint a token on the master (${CA_TOKEN_CMD} --no-credential), then stop the agent, run ./bin/wazuh-agent-auth --token-file <file> --certs-only and start the agent."
+fi
 
 if [ -z "${SERVER_ADDRESS}" ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. No manager address found in the configuration." >> ./logs/upgrade.log

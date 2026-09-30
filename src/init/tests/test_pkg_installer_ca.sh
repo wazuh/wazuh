@@ -221,7 +221,8 @@ check "the CA is installed under certificate mode" "yes" "$(present certificate 
 run_case no_openssl "${LEGACY_CONF}" no 4.14.7 no
 check "without openssl the CA is left in var/incoming" "yes" "$(present no_openssl var/incoming/root-ca.pem)"
 check "the recovery hint is printed once" "1" "$(log_count no_openssl "wazuh-agent-auth --token-file <file> --certs-only")"
-check "the hint names --no-credential" "1" "$(log_count no_openssl "create-enrollment-token --no-credential")"
+check "the hint's token command names the address, port and prefix the agent dials" "1" \
+      "$(log_count no_openssl "create-enrollment-token --address 127.0.0.1 --port 1517 --prefix wazuh-manager --no-credential")"
 check "the legacy line points back to the hint" "1" "$(log_count no_openssl "See the 'No trust anchor' line above")"
 
 # Without openssl but with an anchor, the delivered copy is discarded.
