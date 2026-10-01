@@ -21,6 +21,7 @@
 #include <atomic>
 #include <chrono>
 #include <ctime>
+#include <functional>
 #include <future>
 #include <memory>
 #include <optional>
@@ -93,15 +94,25 @@ namespace
         Config cfg;
         std::shared_ptr<RegistryLookup> lookup;
 
-        LookupFixture(const std::shared_ptr<AgentRegistry>& registry, std::string answer, uint32_t deadlineMs = 2000)
+        /// @param onSelect Runs when a select reaches the fake, before it answers: the query has been
+        ///        issued (its ticket taken), so a registry write here lands while it is in flight.
+        LookupFixture(const std::shared_ptr<AgentRegistry>& registry,
+                      std::string answer,
+                      uint32_t deadlineMs = 2000,
+                      std::function<void()> onSelect = {})
         {
             server = std::make_unique<remoted::test::FakeUdsServer>(
                 path,
-                [selects = selects, answer = std::move(answer)](const std::string& request)
+                [selects = selects, answer = std::move(answer), onSelect = std::move(onSelect)](
+                    const std::string& request)
                 {
                     if (request.rfind("global select-agent-group", 0) == 0)
                     {
                         ++*selects;
+                        if (onSelect)
+                        {
+                            onSelect();
+                        }
                         return answer;
                     }
                     return std::string("ok");
@@ -276,6 +287,26 @@ TEST(RegistryAgentGroupSourceTest, ExpiredEntryIsLookedUpAndCached)
     EXPECT_EQ(registry->get(1)->groups, std::vector<std::string> {"new"});
 }
 
+TEST(RegistryAgentGroupSourceTest, APublicationAfterACachedReadIsLookedUpAgain)
+{
+    // The registry holds a fresh read; then the cluster daemon publishes the agent (a membership it
+    // just wrote -- possibly older than that read). The publication only withdraws the cached
+    // membership: the next download asks wazuh-db, never the cache and never the publication.
+    const auto registry = registryWith(1, {"g-read"});
+    LookupFixture wdb(registry, "ok [{\"group\":\"g-db\"}]");
+    const RegistryAgentGroupSource source {registry, wdb.lookup, kFreshnessSec};
+    ASSERT_EQ(resolveInline(source, "1").selector, "g-read");
+    ASSERT_EQ(wdb.selects->load(), 0);
+
+    ASSERT_EQ(registry->invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated);
+    const auto verdict = resolveAndWait(source, "1");
+
+    EXPECT_EQ(verdict.kind, GroupVerdictKind::Selector);
+    EXPECT_EQ(verdict.selector, "g-db");
+    EXPECT_EQ(wdb.selects->load(), 1);
+    EXPECT_TRUE(groupsFresh(*registry->get(1), nowSec(), kFreshnessSec));
+}
+
 TEST(RegistryAgentGroupSourceTest, NoRowIsReportedAsNoRow)
 {
     // Never "default" for an agent the local wazuh-db does not know, and nothing is cached: the
@@ -298,6 +329,20 @@ TEST(RegistryAgentGroupSourceTest, NotEstablishedEntryIsLookedUp)
 
     EXPECT_EQ(resolveAndWait(source, "1").kind, GroupVerdictKind::NoRow);
     EXPECT_EQ(wdb.selects->load(), 1);
+}
+
+TEST(RegistryAgentGroupSourceTest, SupersededLookupIsSuperseded)
+{
+    // The membership is invalidated while the lookup is in flight: its read may predate the change,
+    // so the verdict is "retry", never a selector.
+    const auto registry = registryWithUnestablishedEntry(1, {"default"});
+    LookupFixture wdb(registry, "ok [{\"group\":\"default\"}]", 2000, [&registry] { registry->invalidateGroups(1); });
+    const RegistryAgentGroupSource source {registry, wdb.lookup, kFreshnessSec};
+
+    const auto verdict = resolveAndWait(source, "1");
+    EXPECT_EQ(verdict.kind, GroupVerdictKind::Superseded);
+    EXPECT_TRUE(verdict.selector.empty());
+    EXPECT_EQ(registry->get(1)->groupsRefreshedAtSec, 0U);
 }
 
 TEST(RegistryAgentGroupSourceTest, UnavailableWhenWazuhDbRefuses)

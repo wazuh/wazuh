@@ -330,13 +330,14 @@ TEST_F(AdminServerTest, GetMetricsDumpsTheModuleFamilies)
                              "remoted.download.bytes.total",
                              "remoted.control.no_row",
                              "remoted.download.no_row",
-                             "remoted.control.registry.push.updated",
                              "remoted.control.registry.push.invalidated",
                              "remoted.control.registry.push.skipped",
                              "remoted.control.registry.push.rejected"})
     {
         EXPECT_NE(response->body.find(name), std::string::npos) << name;
     }
+    // A publication only invalidates (only a wazuh-db read establishes a membership): no such outcome.
+    EXPECT_EQ(response->body.find("remoted.control.registry.push.updated"), std::string::npos);
 
     // Live value, not a quiesced 0: the config left max_deferred_requests unset, so the limiter
     // runs at (and the pull must report) the module's default cap of 128. Scoped to the entry
@@ -453,19 +454,18 @@ namespace
 
 // POST /_internal/agents/groups is served over the socket: a freshly started module tracks no agent,
 // so a publication is accepted and every agent in it skipped -- nothing is created -- and the dump
-// counts them. The per-case contract (sets, invalidations, validation) is agentGroupsRoute_test.cpp's.
+// counts them. The per-case contract (invalidations only, validation) is agentGroupsRoute_test.cpp's.
 TEST_F(AdminServerTest, PostAgentGroupsSkipsAgentsThisNodeNeverSaw)
 {
     startModule();
 
     const auto client = makeAdminClient();
     const auto skippedBefore = metricValue(*client, "remoted.control.registry.push.skipped");
-    const auto response = client->Post(
-        "/_internal/agents/groups", R"({"set":[{"id":1,"groups":["default"]}],"invalidate":[2]})", "application/json");
+    const auto response = client->Post("/_internal/agents/groups", R"({"invalidate":[1,2]})", "application/json");
     ASSERT_TRUE(response) << "POST /_internal/agents/groups failed: " << httplib::to_string(response.error());
     EXPECT_EQ(response->status, 200) << response->body;
     const auto body = nlohmann::json::parse(response->body);
-    EXPECT_EQ(body.at("updated").get<int>(), 0);
+    EXPECT_FALSE(body.contains("updated")) << response->body;
     EXPECT_EQ(body.at("invalidated").get<int>(), 0);
     EXPECT_EQ(body.at("skipped").get<int>(), 2);
 

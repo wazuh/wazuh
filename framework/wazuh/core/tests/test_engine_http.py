@@ -638,7 +638,7 @@ def test_remoted_get_metrics_dump_request_error():
 
 # ── AsyncRemotedHTTPClient ───────────────────────────────────────────────
 
-AGENT_GROUPS_PUBLICATION = {'set': [{'id': 1, 'groups': ['default']}], 'invalidate': [5]}
+AGENT_GROUPS_PUBLICATION = {'invalidate': [1, 5]}
 
 
 def _make_async_remoted_client() -> AsyncRemotedHTTPClient:
@@ -656,12 +656,12 @@ async def test_async_remoted_post_agent_groups_ok():
     client = _make_async_remoted_client()
     mock_response = MagicMock()
     mock_response.is_error = False
-    mock_response.json.return_value = {'updated': 1, 'invalidated': 0, 'skipped': 1}
+    mock_response.json.return_value = {'invalidated': 1, 'skipped': 1}
     client._client.post.return_value = mock_response
 
     result = await client.post_agent_groups(AGENT_GROUPS_PUBLICATION)
 
-    assert result == {'updated': 1, 'invalidated': 0, 'skipped': 1}
+    assert result == {'invalidated': 1, 'skipped': 1}
     client._client.post.assert_awaited_once_with(url='http://localhost/_internal/agents/groups',
                                                  json=AGENT_GROUPS_PUBLICATION,
                                                  headers={'Content-Type': 'application/json'})

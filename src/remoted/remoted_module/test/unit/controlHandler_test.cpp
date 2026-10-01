@@ -1187,6 +1187,23 @@ namespace
     {
         return static_cast<uint64_t>(std::time(nullptr));
     }
+
+    /// What another reader's store leaves while a /control query is in flight -- a /download lookup
+    /// for the same agent (RegistryLookup coalesces only its own): the groups it read, established at
+    /// its issue time and stamped. A push never establishes groups (S45), so this is the only newer
+    /// established write a /control query can meet. Activity fields are left as they are.
+    void storeOtherRead(AgentRegistry& registry, AgentId id, std::vector<std::string> groups)
+    {
+        registry.update(id,
+                        [&](std::shared_ptr<const AgentEntry> old)
+                        {
+                            auto e = old ? std::make_shared<AgentEntry>(*old) : std::make_shared<AgentEntry>();
+                            e->groups = groups;
+                            e->groupsRefreshedAtSec = wallSec();
+                            e->groupsSeq = registry.nextGroupsSeq();
+                            return e;
+                        });
+    }
 } // namespace
 
 TEST(ControlHandlerTest, NoRowInvalidatesAnEstablishedEntryAndKeepsActivity)
@@ -1265,13 +1282,13 @@ TEST(ControlHandlerTest, StartupWithAFreshEntryMakesNoQuery)
     EXPECT_TRUE(waitForWrites(*wdb, 2U)) << "both startups persist the version";
 }
 
-TEST(ControlHandlerTest, StartupRacingAPushAnswersThePushedGroups)
+TEST(ControlHandlerTest, StartupRacingANewerReadAnswersIt)
 {
     auto wdb = std::make_shared<WdbRouter>();
     GatedSelect gate(*wdb, "ok [{\"group\":\"g-old\"}]", 1);
     HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
 
-    // The entry a push can update: what /control/shutdown mints for an agent it has not seen.
+    // An entry this node already holds: what /control/shutdown mints for an agent it has not seen.
     Waiter<HttpResponse> wd;
     h.handler->handleShutdown(1, ShutdownData {}, [&](const HttpResponse& r) { wd.complete(r); });
     ASSERT_TRUE(wd.wait(3000ms));
@@ -1281,8 +1298,8 @@ TEST(ControlHandlerTest, StartupRacingAPushAnswersThePushedGroups)
     Waiter<HttpResponse> w;
     h.handler->handleStartup(1, startup, [&](const HttpResponse& r) { w.complete(r); });
     ASSERT_TRUE(gate.waitReceived());
-    ASSERT_EQ(h.registry->setGroups(1, {"g-new"}, wallSec()), AgentRegistry::PushOutcome::Updated);
-    const auto pushedSeq = h.registry->get(1)->groupsSeq;
+    storeOtherRead(*h.registry, 1, {"g-new"});
+    const auto storedSeq = h.registry->get(1)->groupsSeq;
     gate.release();
     ASSERT_TRUE(w.wait(3000ms));
 
@@ -1290,16 +1307,16 @@ TEST(ControlHandlerTest, StartupRacingAPushAnswersThePushedGroups)
     EXPECT_EQ(nlohmann::json::parse(w.value.body)["agent"]["groups"][0], "g-new");
     const auto entry = h.registry->get(1);
     EXPECT_EQ(entry->groups, std::vector<std::string> {"g-new"});
-    EXPECT_EQ(entry->groupsSeq, pushedSeq); // the older answer did not write over it
+    EXPECT_EQ(entry->groupsSeq, storedSeq); // this answer did not write over it
 }
 
-TEST(ControlHandlerTest, NoRowRacingAPushAnswersThePushedGroups)
+TEST(ControlHandlerTest, NoRowRacingANewerReadAnswersIt)
 {
     auto wdb = std::make_shared<WdbRouter>();
     GatedSelect gate(*wdb, "ok []", 1);
     HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
 
-    // The entry a push can update: what /control/shutdown mints for an agent it has not seen.
+    // An entry this node already holds: what /control/shutdown mints for an agent it has not seen.
     Waiter<HttpResponse> wd;
     h.handler->handleShutdown(1, ShutdownData {}, [&](const HttpResponse& r) { wd.complete(r); });
     ASSERT_TRUE(wd.wait(3000ms));
@@ -1309,21 +1326,21 @@ TEST(ControlHandlerTest, NoRowRacingAPushAnswersThePushedGroups)
     Waiter<HttpResponse> w;
     h.handler->handleStartup(1, startup, [&](const HttpResponse& r) { w.complete(r); });
     ASSERT_TRUE(gate.waitReceived());
-    // The row was replicated -- and pushed -- after this query read the replica.
-    ASSERT_EQ(h.registry->setGroups(1, {"g-new"}, wallSec()), AgentRegistry::PushOutcome::Updated);
-    const auto pushedSeq = h.registry->get(1)->groupsSeq;
+    // The row was replicated -- and another read stored it -- after this query read the replica.
+    storeOtherRead(*h.registry, 1, {"g-new"});
+    const auto storedSeq = h.registry->get(1)->groupsSeq;
     gate.release();
     ASSERT_TRUE(w.wait(3000ms));
 
     ASSERT_EQ(w.value.status, 200) << "the newer, established membership answers";
     EXPECT_EQ(nlohmann::json::parse(w.value.body)["agent"]["groups"][0], "g-new");
     const auto entry = h.registry->get(1);
-    EXPECT_EQ(entry->groupsSeq, pushedSeq) << "the older answer neither wrote nor invalidated";
+    EXPECT_EQ(entry->groupsSeq, storedSeq) << "the older answer neither wrote nor invalidated";
     EXPECT_NE(entry->groupsRefreshedAtSec, 0U);
     EXPECT_EQ(h.metrics.noRow->get(), 0U);
 }
 
-TEST(ControlHandlerTest, NotifyRefreshRacingAPushKeepsThePushedGroups)
+TEST(ControlHandlerTest, NotifyRefreshRacingANewerReadKeepsIt)
 {
     auto wdb = std::make_shared<WdbRouter>();
     GatedSelect gate(*wdb, "ok [{\"group\":\"g-old\"}]", 2); // 1: startup; 2: the notify refresh
@@ -1342,7 +1359,7 @@ TEST(ControlHandlerTest, NotifyRefreshRacingAPushKeepsThePushedGroups)
     Waiter<HttpResponse> w;
     h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w.complete(r); });
     ASSERT_TRUE(gate.waitReceived());
-    ASSERT_EQ(h.registry->setGroups(1, {"g-new"}, wallSec()), AgentRegistry::PushOutcome::Updated);
+    storeOtherRead(*h.registry, 1, {"g-new"});
     gate.release();
     ASSERT_TRUE(w.wait(3000ms));
 
@@ -1351,10 +1368,14 @@ TEST(ControlHandlerTest, NotifyRefreshRacingAPushKeepsThePushedGroups)
     EXPECT_EQ(h.registry->get(1)->groups, std::vector<std::string> {"g-new"});
 }
 
-TEST(ControlHandlerTest, NotifyWithinTheIntervalAfterAPushMakesNoQuery)
+// FR-13 is withdrawn (S45): a publication withdraws the membership instead of refreshing it, so the
+// next notify reads wazuh-db again even within the interval -- and hands out what it read.
+TEST(ControlHandlerTest, NotifyAfterAPublicationQueriesAgain)
 {
+    std::atomic<bool> moved {false};
     auto wdb = std::make_shared<WdbRouter>();
-    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"g1\"}]"; });
+    wdb->onSelectAgentGroup([&](const std::string&) -> std::string
+                            { return moved.load() ? "ok [{\"group\":\"g2\"}]" : "ok [{\"group\":\"g1\"}]"; });
     HandlerFixture h(
         wdb, [](const std::string&) { return "{\"tasks\":[]}"; }, [](Config& c) { c.groupsRefreshIntervalSec = 60; });
 
@@ -1365,8 +1386,8 @@ TEST(ControlHandlerTest, NotifyWithinTheIntervalAfterAPushMakesNoQuery)
     ASSERT_TRUE(ws.wait(3000ms));
     ASSERT_EQ(selectCount(*wdb), 1U);
 
-    // A push counts as a refresh (FR-13): the next notify hands out the new token without a query.
-    ASSERT_EQ(h.registry->setGroups(1, {"g2"}, wallSec()), AgentRegistry::PushOutcome::Updated);
+    moved = true; // the cluster daemon wrote g2, then published the agent
+    ASSERT_EQ(h.registry->invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated);
     NotifyData data;
     data.version = "5.0.0";
     Waiter<HttpResponse> w;
@@ -1375,10 +1396,11 @@ TEST(ControlHandlerTest, NotifyWithinTheIntervalAfterAPushMakesNoQuery)
 
     ASSERT_EQ(w.value.status, 200);
     EXPECT_EQ(nlohmann::json::parse(w.value.body)["agent"]["config_token"], "g2");
-    EXPECT_EQ(selectCount(*wdb), 1U);
+    EXPECT_EQ(selectCount(*wdb), 2U);
+    EXPECT_TRUE(groupsFresh(*h.registry->get(1), wallSec(), 60));
 }
 
-TEST(ControlHandlerTest, StartupBlockedByASkippedPushAnswersItsOwnReadProvisionally)
+TEST(ControlHandlerTest, StartupBlockedByASkippedPushAnswers503)
 {
     auto wdb = std::make_shared<WdbRouter>();
     GatedSelect gate(*wdb, "ok [{\"group\":\"g1\"}]", 1);
@@ -1390,16 +1412,77 @@ TEST(ControlHandlerTest, StartupBlockedByASkippedPushAnswersItsOwnReadProvisiona
     h.handler->handleStartup(1, startup, [&](const HttpResponse& r) { w.complete(r); });
     ASSERT_TRUE(gate.waitReceived());
     // While the query is in flight, a push is skipped for an agent this node does not hold -- it
-    // may have been agent 1's, and nothing recorded which.
-    ASSERT_EQ(h.registry->setGroups(1, {"g-pushed"}, wallSec()), AgentRegistry::PushOutcome::Skipped);
+    // may have been agent 1's, so this read may predate agent 1's change.
+    ASSERT_EQ(h.registry->invalidateGroups(1), AgentRegistry::PushOutcome::Skipped);
     gate.release();
     ASSERT_TRUE(w.wait(3000ms));
 
-    ASSERT_EQ(w.value.status, 200);
-    EXPECT_EQ(nlohmann::json::parse(w.value.body)["agent"]["groups"][0], "g1"); // its own read, not "default"
-    const auto entry = h.registry->get(1);
-    ASSERT_TRUE(entry);
-    EXPECT_EQ(entry->groups, std::vector<std::string> {"g1"});
-    EXPECT_EQ(entry->groupsRefreshedAtSec, 0U); // provisional: the next reader looks it up again
-    EXPECT_GT(entry->groupsSeq, 0U);
+    EXPECT_EQ(w.value.status, 503);
+    EXPECT_EQ(w.value.body, R"({"error":"dependency_unavailable","dependency":"wazuh-db"})");
+    EXPECT_FALSE(h.registry->get(1)) << "nothing is written, not even provisionally";
+    std::this_thread::sleep_for(100ms);
+    EXPECT_EQ(writeCount(*wdb), 0U) << "a 503 startup persists no status";
+}
+
+TEST(ControlHandlerTest, StartupRacingAnInvalidationAnswers503)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    GatedSelect gate(*wdb, "ok [{\"group\":\"g-old\"}]", 1);
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
+
+    // The entry an invalidation can reach: what /control/shutdown mints for an agent it has not seen.
+    Waiter<HttpResponse> wd;
+    h.handler->handleShutdown(1, ShutdownData {}, [&](const HttpResponse& r) { wd.complete(r); });
+    ASSERT_TRUE(wd.wait(3000ms));
+    ASSERT_TRUE(waitForWrites(*wdb, 1U)); // the shutdown's own status write
+
+    StartupData startup;
+    startup.version = "5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleStartup(1, startup, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(gate.waitReceived());
+    // The worker applied a change it could not confirm while this query was reading the database.
+    ASSERT_EQ(h.registry->invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated);
+    const auto invalidated = h.registry->get(1);
+    gate.release();
+    ASSERT_TRUE(w.wait(3000ms));
+
+    EXPECT_EQ(w.value.status, 503);
+    EXPECT_EQ(w.value.body, R"({"error":"dependency_unavailable","dependency":"wazuh-db"})");
+    EXPECT_EQ(h.registry->get(1), invalidated) << "a 503 writes nothing: the entry stays invalidated";
+    std::this_thread::sleep_for(100ms);
+    EXPECT_EQ(writeCount(*wdb), 1U) << "a 503 startup persists no status";
+}
+
+TEST(ControlHandlerTest, NotifyRefreshRacingAnInvalidationAnswers503)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    GatedSelect gate(*wdb, "ok [{\"group\":\"g-old\"}]", 2); // 1: startup; 2: the notify refresh
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
+
+    StartupData startup;
+    startup.version = "5.0.0";
+    Waiter<HttpResponse> ws;
+    h.handler->handleStartup(1, startup, [&](const HttpResponse& r) { ws.complete(r); });
+    ASSERT_TRUE(ws.wait(3000ms));
+    ASSERT_EQ(ws.value.status, 200);
+    ASSERT_TRUE(waitForWrites(*wdb, 1U));
+
+    // groupsRefreshIntervalSec is 0 in these fixtures: the notify refreshes from wazuh-db.
+    NotifyData data;
+    data.version = "5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(gate.waitReceived());
+    ASSERT_EQ(h.registry->invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated);
+    const auto invalidated = h.registry->get(1);
+    gate.release();
+    ASSERT_TRUE(w.wait(3000ms));
+
+    // Neither the read (it may predate the change) nor the invalidated membership answers.
+    EXPECT_EQ(w.value.status, 503);
+    EXPECT_EQ(w.value.body, R"({"error":"dependency_unavailable","dependency":"wazuh-db"})");
+    EXPECT_EQ(h.registry->get(1), invalidated);
+    std::this_thread::sleep_for(100ms);
+    EXPECT_EQ(writeCount(*wdb), 1U) << "a 503 notify writes no keepalive";
 }

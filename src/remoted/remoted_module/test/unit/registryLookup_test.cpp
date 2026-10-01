@@ -351,7 +351,9 @@ TEST(RegistryLookupTest, TotalWaiterBoundRejects)
     EXPECT_EQ(f.lookup->stats().rejected, 1U);
 }
 
-TEST(RegistryLookupTest, SupersededBySetAnswersThePushedGroups)
+// A push never establishes groups (S45), so a newer established write can only be another read
+// stored first -- /control's own query for the same agent, which this component does not coalesce.
+TEST(RegistryLookupTest, SupersededByANewerReadAnswersIt)
 {
     Options options;
     options.answer = "ok [{\"group\":\"g-old\"}]";
@@ -362,8 +364,8 @@ TEST(RegistryLookupTest, SupersededBySetAnswersThePushedGroups)
 
     f.lookup->lookup(1, 1000, out.waiter());
     ASSERT_TRUE(f.wdb->waitReceived());
-    ASSERT_EQ(f.registry->setGroups(1, {"g-new"}, 2000), AgentRegistry::PushOutcome::Updated);
-    const auto pushedSeq = f.registry->get(1)->groupsSeq;
+    f.putEstablished(1, {"g-new"}, 2000); // the other read's store
+    const auto storedSeq = f.registry->get(1)->groupsSeq;
     f.wdb->release();
     ASSERT_TRUE(out.waitFor(1));
 
@@ -371,10 +373,10 @@ TEST(RegistryLookupTest, SupersededBySetAnswersThePushedGroups)
     EXPECT_EQ(out.first().groups, std::vector<std::string> {"g-new"});
     const auto entry = f.registry->get(1);
     EXPECT_EQ(entry->groups, std::vector<std::string> {"g-new"});
-    EXPECT_EQ(entry->groupsSeq, pushedSeq);
+    EXPECT_EQ(entry->groupsSeq, storedSeq);
 }
 
-TEST(RegistryLookupTest, NoRowSupersededBySetAnswersThePushedGroups)
+TEST(RegistryLookupTest, NoRowSupersededByANewerReadAnswersIt)
 {
     Options options;
     options.answer = "ok []";
@@ -385,16 +387,16 @@ TEST(RegistryLookupTest, NoRowSupersededBySetAnswersThePushedGroups)
 
     f.lookup->lookup(1, 1000, out.waiter());
     ASSERT_TRUE(f.wdb->waitReceived());
-    // The row reached the replica -- and was pushed -- after this query read it.
-    ASSERT_EQ(f.registry->setGroups(1, {"g-new"}, 2000), AgentRegistry::PushOutcome::Updated);
-    const auto pushedSeq = f.registry->get(1)->groupsSeq;
+    // The row reached the replica -- and another read stored it -- after this query read it.
+    f.putEstablished(1, {"g-new"}, 2000);
+    const auto storedSeq = f.registry->get(1)->groupsSeq;
     f.wdb->release();
     ASSERT_TRUE(out.waitFor(1));
 
     EXPECT_EQ(out.first().kind, Kind::Groups);
     EXPECT_EQ(out.first().groups, std::vector<std::string> {"g-new"});
     const auto entry = f.registry->get(1);
-    EXPECT_EQ(entry->groupsSeq, pushedSeq); // the older answer neither wrote nor invalidated
+    EXPECT_EQ(entry->groupsSeq, storedSeq); // the older answer neither wrote nor invalidated
     EXPECT_EQ(entry->groupsRefreshedAtSec, 2000U);
 }
 
@@ -416,7 +418,7 @@ TEST(RegistryLookupTest, RowWithNoGroupsIsCachedAsDefault)
     EXPECT_EQ(entry->groupsRefreshedAtSec, 1000U);
 }
 
-TEST(RegistryLookupTest, SupersededByInvalidationAnswersItsOwnReadUncached)
+TEST(RegistryLookupTest, SupersededByInvalidationIsSuperseded)
 {
     Options options;
     options.gateAt = 1;
@@ -426,19 +428,33 @@ TEST(RegistryLookupTest, SupersededByInvalidationAnswersItsOwnReadUncached)
 
     f.lookup->lookup(1, 1000, out.waiter());
     ASSERT_TRUE(f.wdb->waitReceived());
+    // The worker applied a change it could not confirm: the local database may no longer hold
+    // what this query is reading.
     ASSERT_EQ(f.registry->invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated);
     const auto invalidatedSeq = f.registry->get(1)->groupsSeq;
+    // A request that arrives after the invalidation joins the query already in flight.
+    f.lookup->lookup(1, 1000, out.waiter());
     f.wdb->release();
-    ASSERT_TRUE(out.waitFor(1));
+    ASSERT_TRUE(out.waitFor(2));
 
-    EXPECT_EQ(out.first().kind, Kind::Groups);
-    EXPECT_EQ(out.first().groups, std::vector<std::string> {"g1"}); // its own read
-    const auto entry = f.registry->get(1);
-    EXPECT_EQ(entry->groupsRefreshedAtSec, 0U); // still not established
+    // The read may predate the change: it answers nobody, and nothing is written.
+    EXPECT_EQ(out.count(Kind::Superseded), 2U);
+    EXPECT_EQ(f.lookup->stats().queries, 1U);
+    auto entry = f.registry->get(1);
+    EXPECT_EQ(entry->groupsRefreshedAtSec, 0U); // still invalidated
     EXPECT_EQ(entry->groupsSeq, invalidatedSeq);
+    EXPECT_EQ(entry->groups, std::vector<std::string> {"g-old"});
+
+    // The next request reads the database again, and that read is the answer.
+    f.lookup->lookup(1, 1100, out.waiter());
+    ASSERT_TRUE(out.waitFor(3));
+    EXPECT_EQ(out.count(Kind::Groups), 1U);
+    entry = f.registry->get(1);
+    EXPECT_EQ(entry->groups, std::vector<std::string> {"g1"});
+    EXPECT_EQ(entry->groupsRefreshedAtSec, 1100U);
 }
 
-TEST(RegistryLookupTest, SkippedPushMeansAnsweredButNotCached)
+TEST(RegistryLookupTest, SkippedPushMakesTheLookupSuperseded)
 {
     Options options;
     options.gateAt = 1;
@@ -447,12 +463,14 @@ TEST(RegistryLookupTest, SkippedPushMeansAnsweredButNotCached)
 
     f.lookup->lookup(1, 1000, out.waiter());
     ASSERT_TRUE(f.wdb->waitReceived());
-    // A push for an agent this node does not hold: it may have been agent 1's.
-    ASSERT_EQ(f.registry->setGroups(9, {"g-pushed"}, 2000), AgentRegistry::PushOutcome::Skipped);
+    // A push for an agent this node does not hold: it may have been agent 1's, so this read may
+    // predate agent 1's change.
+    ASSERT_EQ(f.registry->invalidateGroups(9), AgentRegistry::PushOutcome::Skipped);
     f.wdb->release();
     ASSERT_TRUE(out.waitFor(1));
 
-    EXPECT_EQ(out.first().kind, Kind::Groups);
+    EXPECT_EQ(out.first().kind, Kind::Superseded);
+    EXPECT_TRUE(out.first().groups.empty());
     EXPECT_EQ(f.registry->get(1), nullptr);
 }
 
