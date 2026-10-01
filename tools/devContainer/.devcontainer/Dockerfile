@@ -16,7 +16,8 @@ COPY ./reinstall-clang-format.sh /tmp/
 RUN apt-get update && apt-get -y install --no-install-recommends ninja-build \
     && chmod +x /tmp/reinstall-clang-format.sh \
     && /tmp/reinstall-clang-format.sh "${CLANG_FORMAT_REF}" \
-    && rm -f /tmp/reinstall-clang-format.sh
+    && rm -f /tmp/reinstall-clang-format.sh \
+    && rm -rf /tmp/llvm-clang-format-work
 
 # [Optional] Uncomment this section to install additional vcpkg ports.
 # RUN su vscode -c "${VCPKG_ROOT}/vcpkg install <your-port-name-here>"
@@ -37,7 +38,8 @@ RUN git clone https://gitlab.com/cmocka/cmocka.git \
     && cd cmocka && git checkout stable-1.1 \
     && mkdir build && cd build \
     && cmake -DCMAKE_BUILD_TYPE=Release .. && make && make install \
-    && ldconfig
+    && ldconfig \
+    && cd / && rm -rf cmocka
 
 # The wrapper should be fix and not this fix
 RUN sed -i '19i#include <stdint.h>' /usr/local/include/cmocka.h
