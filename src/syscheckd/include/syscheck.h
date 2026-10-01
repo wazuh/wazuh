@@ -607,10 +607,10 @@ void audit_parse(char *buffer);
 /**
  * @brief Generate the audit event that the healthcheck thread should read
  *
- * @param audit_socket The audit socket to read the events from
+ * @param audit_socket The audit socket to read the events from. Updated if the healthcheck reconnects
  * @return 0 on success, -1 on error
  */
-int audit_health_check(int audit_socket);
+int audit_health_check(int *audit_socket);
 
 /**
  * @brief Deletes all the existing audit rules added by FIM

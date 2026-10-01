@@ -283,6 +283,23 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.diff_folder_size, 0);
 }
 
+void test_Read_Syscheck_Config_invalid_diff_limit(void **state)
+{
+    (void) state;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__mwarn, formatted_msg, "(1235): Invalid value for element 'limit': 1.5GB.");
+    expect_string(__wrap__mwarn, formatted_msg, "(1235): Invalid value for element 'limit': 50 MB.");
+
+    Read_Syscheck_Config("test_syscheck_invalid_diff_limit.conf");
+
+    assert_int_equal(syscheck.disk_quota_limit, 1024 * 1024);
+    assert_int_equal(syscheck.file_size_limit, 50 * 1024);
+}
+
 void test_read_data_unit_short_values(void **state)
 {
     (void) state;
@@ -920,6 +937,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_invalid, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_undefined, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_unparsed, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_invalid_diff_limit, setup_read_config, restart_syscheck),
         cmocka_unit_test(test_read_data_unit_short_values),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_audit, setup_read_config, restart_syscheck),
