@@ -68,7 +68,7 @@ Each event travels through the following ordered stages inside a policy:
 1. **Pre-filter** *(optional)*: Evaluated before decoding. If configured, events that do not satisfy the filter
    conditions are discarded immediately, avoiding unnecessary decoding work. If no pre-filter is configured,
    all events proceed to the decoding stage unconditionally.
-2. **Decoders**: Normalize and extract fields from the raw event, mapping them to the [Wazuh Common Schema](#).
+2. **Decoders**: Normalize and extract fields from the raw event, mapping them to the [Wazuh Common Schema](../../glossary.md).
    This stage is mandatory — every event must traverse the decoder tree.
 3. **Enrichment** *(optional)*: Plugins that augment the normalized event with additional context after decoding.
    Built-in plugins include GeoIP geolocation and Indicator of Compromise (IOC) matching. Enrichment can be
@@ -124,7 +124,7 @@ Input event example:
     }
   },
   "event": {
-    "original": "{\"version\":\"1.100000\",\"account_id\":\"123456789023\",\"region\":\"us-east-1\",\"vpc_id\":\"vpc-0000000\",\"query_timestamp\":\"2025-12-11T22:22:22Z\",\"query_name\":\"amazonlinux-2-repos-us-east-1.s3.dualstack.us-east-1.amazonaws.com.\",\"query_type\":\"AAAA\",\"query_class\":\"IN\",\"rcode\":\"NOERROR\",\"answers\":[{\"Rdata\":\"s3-r-w.dualstack.us-east-1.amazonaws.com.\",\"Type\":\"CNAME\",\"Class\":\"IN\"},{\"Rdata\":\"2a02:cf40:add:4444:9191:a9a9:aaaa:cccc\",\"Type\":\"AAAA\",\"Class\":\"IN\"}],\"srcaddr\":\"8.8.8.8\",\"srcport\":\"8010\",\"transport\":\"UDP\",\"srcids\":{}}",
+    "original": "{\"version\":\"1.100000\",\"account_id\":\"123456789023\",\"region\":\"us-east-1\",\"vpc_id\":\"vpc-0000000\",\"query_timestamp\":\"2025-12-11T22:22:22Z\",\"query_name\":\"amazonlinux-2-repos-us-east-1.s3.dualstack.us-east-1.amazonaws.com.\",\"query_type\":\"AAAA\",\"query_class\":\"IN\",\"rcode\":\"NOERROR\",\"answers\":[{\"Rdata\":\"s3-r-w.dualstack.us-east-1.amazonaws.com.\",\"Type\":\"CNAME\",\"Class\":\"IN\"},{\"Rdata\":\"2a02:cf40:add:4444:9191:a9a9:aaaa:cccc\",\"Type\":\"AAAA\",\"Class\":\"IN\"}],\"srcaddr\":\"8.8.8.8\",\"srcport\":\"8010\",\"transport\":\"UDP\",\"srcids\":{}}"
   }
 }
 
@@ -1605,7 +1605,7 @@ Use this section as the conceptual overview of the asset itself, and refer to th
 
 ### Decoders
 
-Decoders are the assets responsible for normalizing raw events into structured documents that conform to the [Wazuh Common Schema](#). All events enter the decoder tree through the root decoder and traverse a branch of child decoders, each contributing progressively more specialized field extraction and normalization.
+Decoders are the assets responsible for normalizing raw events into structured documents that conform to the [Wazuh Common Schema](../../glossary.md). All events enter the decoder tree through the root decoder and traverse a branch of child decoders, each contributing progressively more specialized field extraction and normalization.
 
 The decoder tree is evaluated depth-first. After a decoder successfully processes an event, the engine evaluates that decoder's child decoders in order; only the first child that accepts the event is followed (logical OR among siblings). See [Execution Graph Summary](#execution-graph-summary) for traversal order details.
 

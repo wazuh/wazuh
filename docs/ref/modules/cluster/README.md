@@ -60,7 +60,7 @@ If shared files are modified on a worker node, those changes are discarded durin
 
 ## How it works
 
-The Wazuh server cluster is managed by the `wazuh-clusterd` daemon, which implements a master–worker architecture. All communications are initiated by worker nodes, and each worker communicates independently with the master.
+The Wazuh server cluster is managed by the `wazuh-manager-clusterd` daemon, which implements a master–worker architecture. All communications are initiated by worker nodes, and each worker communicates independently with the master.
 
 Several internal threads handle different cluster operations:
 

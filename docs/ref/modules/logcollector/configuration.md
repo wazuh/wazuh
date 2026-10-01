@@ -324,7 +324,7 @@ Wait time before reattempting a socket connection after failure.
 Number of threads for reading log files.
 
 - **Default value:** `4`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from 1 to 128
 - **Format:** `logcollector.input_threads=4`
 - **Note:** Higher values improve throughput for high-volume log collection
 

@@ -192,7 +192,7 @@ Configure SCA module minimally
       ├─► Set logging callback ─────────► sca_set_log_function(sca_log_callback)
       │
       ├─► Set sync parameters ──────────► sca_set_sync_parameters()
-      │   (module name, DB path, MQ funcs)
+      │   (module name, DB path, integrity interval)
       │
       └─► Initialize module ─────────────► sca_init()
       │

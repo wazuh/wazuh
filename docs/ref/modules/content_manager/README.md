@@ -51,7 +51,7 @@ The module is configured programmatically by its caller (the Vulnerability Scann
 | `configData.indexer.pageSize` | Documents per PIT page (default 100) |
 | `configData.indexer.numSlices` | Parallel PIT slices for initial load (default 2) |
 
-The Indexer connection parameters come from the manager's `<indexer>` XML block (see [Indexer Configuration](configuration.md)).
+The Indexer connection parameters come from the manager's `<indexer>` XML block (see [Indexer Connector configuration](../indexer_connector/configuration.md)).
 
 ## On-demand updates (`POST /ondemand`)
 

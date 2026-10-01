@@ -25,7 +25,7 @@ The `<agent-info>` block is only parsed on agent builds. If it is present in a m
 Time between periodic scans to collect agent metadata.
 
 - **Default value:** `60`
-- **Allowed values:** Positive integer (seconds)
+- **Allowed values:** Integer from 60 to 86400 (seconds). Out-of-range values are ignored with a warning and the previous value is kept
 - **Note:** Lower values increase metadata freshness but consume more resources
 
 ### integrity_interval
@@ -33,7 +33,7 @@ Time between periodic scans to collect agent metadata.
 Time between integrity checks to verify that the agent's state is synchronized with the manager.
 
 - **Default value:** `86400` (24 hours)
-- **Allowed values:** Positive integer (seconds)
+- **Allowed values:** Integer from 60 to 604800 (seconds, 1 minute to 7 days). Out-of-range values are ignored with a warning and the previous value is kept
 - **Note:** Periodic verification ensures consistency between agent and manager state
 
 ### enabled (synchronization)

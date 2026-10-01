@@ -13,3 +13,4 @@ This section describes the Wazuh integrations with cloud services and third-part
 - [GitHub](github.md) – Monitor GitHub organization audit logs.
 - [Azure](azure.md) – Integrate with Azure Log Analytics, Storage, and Graph API.
 - [Microsoft Graph Security API](microsoft-graph.md) – Retrieve security alerts and events from Microsoft Graph.
+- [Docker Listener](docker.md) – Monitor Docker container lifecycle events from the Docker daemon.

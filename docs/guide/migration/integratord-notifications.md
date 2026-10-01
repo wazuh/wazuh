@@ -39,7 +39,7 @@ The following table maps each `<integration>` field from Wazuh 4.x to its equiva
 
 ### From `<options>` to trigger actions
 
-In 4.x, the `<options>` block allowed to the users customize the behavior of the script. This was defined as a **JSON** string.The integration script would read the JSON provided in `<options>` and apply the custom behavior.
+In 4.x, the `<options>` block allowed users to customize the behavior of the script. This was defined as a **JSON** string. The integration script would read the JSON provided in `<options>` and apply the custom behavior.
 
 In 5.x, this concept is completely replaced by:
 

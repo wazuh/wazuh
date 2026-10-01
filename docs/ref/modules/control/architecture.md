@@ -494,7 +494,7 @@ No dedicated thread. `control_dispatch()` is called synchronously from the reque
 | Config validation     | ✓ wcom socket  | ✗ Not migrated    | Not available on manager — `os_execd` no longer builds/runs there                 |
 | File unmerge          | ✓ wcom socket  | ✗ Not migrated    | Unchanged, agent-only (`os_execd`/`wcom.c`)                                        |
 | File uncompress       | ✓ wcom socket  | ✗ Not migrated    | Unchanged, agent-only (`os_execd`/`wcom.c`)                                        |
-| Restart locking       | ✓ wcom socket  | ✗ Not migrated    | TBD                                                                                |
+| Restart locking       | ✓ wcom socket  | ✗ Not migrated    | Unchanged, agent-only (`os_execd`/`wcom.c`); the manager only requests it during WPK upgrades |
 | Active Response       | ✓ execd daemon | ✗ Agents only     | Intentional removal                                                                |
 
 ## Performance Characteristics

@@ -37,7 +37,7 @@ Target version:  5.0.0
 Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later.
 ```
 
-On a MacOS terminal the message is less intuitive:
+On a macOS terminal the message is less intuitive:
 
 ```console
 sh-3.2# installer -pkg /Users/vagrant/Downloads/wazuh-agent-5.0.0-beta2.arm64.pkg -target /
