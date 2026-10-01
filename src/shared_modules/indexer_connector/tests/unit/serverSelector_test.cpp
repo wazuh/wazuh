@@ -286,6 +286,23 @@ TEST_F(ServerSelectorTest, TestGetNextWhenThereAreNoAvailableServers)
     EXPECT_THROW(selector->getNext(), std::runtime_error);
 }
 
+/**
+ * @brief A host whose health check answers 429 is busy, not gone: getNext() still returns it.
+ */
+TEST_F(ServerSelectorTest, GetNextReturnsAHostThatAnswered429)
+{
+    const std::string server {"http://localhost:9212"};
+    setupProbeAnswers({{"9212", {429, R"({"error":{"type":"circuit_breaking_exception"},"status":429})"}}});
+
+    const auto selector = std::make_shared<TestServerSelector>(std::vector<std::string> {server},
+                                                               SERVER_SELECTOR_HEALTH_CHECK_INTERVAL,
+                                                               SecureCommunication {},
+                                                               m_mockHttpRequest.get());
+
+    EXPECT_EQ(selector->getNext(), server);
+    EXPECT_TRUE(selector->isAvailable());
+}
+
 // =============================================================================
 // isAvailable Tests — ServerSelector
 // =============================================================================
