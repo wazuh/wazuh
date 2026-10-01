@@ -48,7 +48,7 @@ auto& factory = SchemaValidator::SchemaValidatorFactory::getInstance();
 
 if (factory.initialize())
 {
-    m_logFunction(LOG_INFO, "Schema validator initialized");
+    m_logFunction(LOG_DEBUG, "Schema validator initialized successfully from embedded resources");
 }
 else
 {
@@ -139,7 +139,7 @@ virtual ValidationResult validate(const std::string& message) = 0;
 
 **Example:**
 ```cpp
-std::string json = R"({"agent": {"id": "001"}})";
+std::string json = R"({"wazuh": {"agent": {"id": "001"}}})";
 auto result = validator->validate(json);
 
 if (result.isValid)
@@ -172,7 +172,7 @@ virtual ValidationResult validate(const nlohmann::json& message) = 0;
 
 **Example:**
 ```cpp
-nlohmann::json json = {{"agent", {{"id", "001"}}}};
+nlohmann::json json = {{"wazuh", {{"agent", {{"id", "001"}}}}}};
 auto result = validator->validate(json);
 ```
 
@@ -242,7 +242,7 @@ bool schema_validator_initialize(void);
 ```c
 if (schema_validator_initialize())
 {
-    minfo("Schema validator initialized successfully");
+    mdebug1("Schema validator initialized successfully from embedded resources");
 }
 else
 {
@@ -342,7 +342,9 @@ bool validateAndQueue(const std::string& data, const std::string& index)
     auto validator = factory.getValidator(index);
     if (!validator)
     {
-        return false; // No schema for this index: discard, as SCA and Syscollector do
+        // No schema for this index: discard, as SCA and Syscollector do
+        m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Discarding message.");
+        return false;
     }
 
     // Validate
@@ -439,7 +441,7 @@ JSON parse error: <parser message>
 
 Every field is optional: there is no missing-field error. `null` passes for any field, and in strict mode an undefined field passes if its value is `null`.
 
-**Examples** (`wazuh-states-fim-files`, agent 5.0.0 `5727fc7`):
+**Examples** (`wazuh-states-fim-files`):
 
 ```
 file.size: Expected integer, got string with value: "1024"
@@ -460,10 +462,10 @@ Only these mapping types are checked. An array in a typed field is checked eleme
 | Type | Accepts |
 |------|---------|
 | `keyword`, `text`, `match_only_text` | JSON string |
-| `long`, `integer`, `short`, `unsigned_long` | JSON integer: a number written with a decimal point or exponent (`1024.0`, `1e3`) or above the unsigned 64-bit range fails; below that the range is not checked |
+| `long`, `integer`, `short`, `unsigned_long` | JSON integer: a number written with a decimal point or exponent (`1024.0`, `1e3`) or outside the 64-bit integer range (below `-9223372036854775808` or above `18446744073709551615`) fails; within it the range is not checked |
 | `scaled_float` | Any JSON number |
 | `boolean` | JSON `true`/`false` |
-| `date` | A number (epoch) or a string `YYYY-MM-DD[THH:MM:SS[.fraction][Z\|±HH:MM]]`; only the digit layout is checked, so `2024-13-45` passes |
+| `date` | A number (epoch) or a string `YYYY-MM-DD[THH:MM:SS[.fraction][Z\|±HH:MM]]`, with a fraction of 1 to 9 digits; only the digit layout is checked, so `2024-13-45` passes |
 | `ip` | A string holding an IPv4 or IPv6 address |
 | `object` | JSON object |
 | Field with `properties` | JSON object, validated recursively |

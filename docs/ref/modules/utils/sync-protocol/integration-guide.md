@@ -150,7 +150,7 @@ void persist_policy_check(const char* policy_id, CheckResult* result, uint64_t v
         handle,
         policy_id,
         OPERATION_MODIFY,
-        "sca_checks",
+        "wazuh-states-sca",
         json_data,
         version
     );
@@ -364,7 +364,7 @@ public:
         m_protocol->persistDifference(
             id,
             Operation::MODIFY,
-            "inventory_" + category,
+            "wazuh-states-inventory-" + category,
             data.dump(),
             version);
     }
@@ -383,7 +383,7 @@ public:
         m_protocol->persistDifference(
             pkg.name + "_" + pkg.version,
             Operation::CREATE,
-            "inventory_packages",
+            "wazuh-states-inventory-packages",
             data.dump(),
             1);
     }
@@ -394,7 +394,7 @@ public:
         m_protocol->persistDifference(
             pkgName,
             Operation::DELETE_,
-            "inventory_packages",
+            "wazuh-states-inventory-packages",
             "{\"name\": \"" + pkgName + "\"}",
             version);
     }
@@ -416,9 +416,9 @@ private:
             // Mode::FULL to reach for here.
             if (++syncCount % 16 == 0)
             {
-                if (!m_protocol->notifyDataClean({"inventory_packages"}).success)
+                if (!m_protocol->notifyDataClean({"wazuh-states-inventory-packages"}).success)
                 {
-                    merror("Failed to clear inventory_packages before full-replace resync");
+                    merror("Failed to clear wazuh-states-inventory-packages before full-replace resync");
                     continue;
                 }
 
@@ -600,7 +600,7 @@ protocol->parseResponseBuffer(endAckBytes, endAckLength);
    - `SYNC_HANDOFF_RETRIES` (fixed at 3) only covers a transiently-unavailable local socket; it does not retry HTTP-level failures
 
 3. **Synchronization Never Returns**
-   - Once the local hand-off succeeds, the protocol waits for the manager's answer for up to 15 minutes (`SESSION_RESPONSE_TIMEOUT`); at the defaults the HTTPS transport gives up on a `/stateful` session after at most about 11.5 minutes, longer if the manager answers with `Retry-After` or other sessions are queued ahead. When the 15 minutes run out the module logs `Session <n> got no response within 900s; treating as failed so the next cycle can retry.` at WARNING; `stop()` ends the wait early at shutdown
+   - Once the local hand-off succeeds, the protocol waits for the manager's answer for up to 15 minutes (`SESSION_RESPONSE_TIMEOUT`); at the defaults the HTTPS transport gives up on a `/stateful` session after at most about 11.5 minutes (up to ~14.5 with the one-shot `401`/`415` retries), longer if the manager answers with `Retry-After` or other sessions are queued ahead. When the 15 minutes run out the module logs `Session <n> got no response within 900s; treating as failed so the next cycle can retry.` at WARNING; `stop()` ends the wait early at shutdown
    - Check `agentd`/`https_client` logs and network connectivity to the manager
 
 4. **Memory Issues**

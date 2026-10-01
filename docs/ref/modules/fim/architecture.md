@@ -539,12 +539,17 @@ If any indices contain data, the agent notifies the manager to remove them from 
 if (indices_count > 0) {
     minfo("Syscheck is disabled, FIM database has entries. Proceeding with data clean notification.");
 
-    bool ret = false;
-    while (!ret) {
-        ret = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
-        if (!ret) {
-            // Wait sync_interval before retry
-            for (uint32_t i = 0; i < syscheck.sync_interval; i++) {
+    // send_data_clean_with_retry() in run_check.c
+    bool dataCleanSent = false;
+    while (!dataCleanSent && !fim_shutdown_process_on()) {
+        w_rwlock_rdlock(&fim_sync_handle_rwlock);
+        if (syscheck.sync_handle) {
+            dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+        }
+        w_rwlock_unlock(&fim_sync_handle_rwlock);
+        if (!dataCleanSent) {
+            // Wait sync_interval before retry, checking for shutdown every second
+            for (uint32_t i = 0; i < syscheck.sync_interval && !fim_shutdown_process_on(); i++) {
                 sleep(1);
             }
         }
@@ -553,7 +558,7 @@ if (indices_count > 0) {
 ```
 
 **Retry Logic:**
-- Continues retrying until successful
+- Continues retrying until it succeeds or FIM shuts down
 - Waits `syscheck.sync_interval` seconds between retries
 
 #### Step 3: Database Cleanup
@@ -637,6 +642,9 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
         // Trigger synchronization of all pending FIM changes
         SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle, MODE_DELTA);
+        if (!sync_result.success) {
+            // Logged by severity; see the asp_sync_module() example in api-reference.md
+        }
 
         sleep(syscheck.sync_interval);
     }
@@ -1009,13 +1017,15 @@ FIM uses a deferred deletion pattern to safely remove invalid entries:
    ▼
 3. After All Events
    │
-   ├─► fim_delete_failed_items(failed_list)
+   ├─► cleanup_failed_fim_files() / cleanup_failed_registry_keys() /
+   │   cleanup_failed_registry_values()
    │   │
-   │   ├─► For each failed item:
-   │   │   │
-   │   │   └─► fim_db_remove_path()
-   │   │
-   │   └─► Log deletion count
+   │   └─► For each failed item:
+   │       │
+   │       ├─► Log "Deleting <item> from DBSync due to validation failure"
+   │       │
+   │       └─► fim_db_file_delete() / fim_db_registry_key_delete() /
+   │           fim_db_registry_value_delete()
    │
    ├─► OSList_Destroy(failed_list)
    │
@@ -1024,8 +1034,7 @@ FIM uses a deferred deletion pattern to safely remove invalid entries:
 ```
 
 **Why Deferred?**
-- **Avoids nested transactions**: Cannot delete during database callbacks
-- **Improves performance**: Batch deletion instead of multiple deletes
+- **Avoids nested transactions**: Cannot delete during database callbacks; the deletes run after the transaction, one per item
 - **Better error recovery**: Failures don't affect validation process
 
 ### Supported Schemas
@@ -1142,8 +1151,8 @@ FIM's database integration with schema validation:
            │
            ▼
 ┌──────────────────────────────┐
-│  Batch Deletion              │
-│  (fim_delete_failed_items)   │
+│  Deferred Deletion           │
+│  (cleanup_failed_*)          │
 └──────────┬───────────────────┘
            │
            ▼
@@ -1155,7 +1164,7 @@ FIM's database integration with schema validation:
 
 ### Performance Considerations
 
-- **Deferred Deletion**: Batch deletion minimizes database overhead
+- **Deferred Deletion**: Invalid entries are deleted after the transaction, not inside the database callback
 - **Validation Caching**: Validator initialization is done once
 - **Early Exit**: Validation happens before sync protocol (saves queuing overhead)
 - **Real-time Impact**: Validation adds ~0.1-1ms per event (minimal impact on real-time monitoring)

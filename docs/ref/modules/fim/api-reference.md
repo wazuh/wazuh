@@ -83,10 +83,21 @@ SyncModuleResult_t asp_sync_module(AgentSyncProtocolHandle* handle,
 // FIM integrity thread triggers periodic synchronization
 SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle, MODE_DELTA);
 
-if (!sync_result.success) {
-    mwarn("FIM synchronization failed: %s", sync_result.failure_reason);
-} else if (!sync_result.sent_anything) {
-    mdebug1("FIM synchronization: nothing to send.");
+if (sync_result.success) {
+    minfo(sync_result.sent_anything ? "FIM synchronization finished successfully."
+                                    : "FIM synchronization finished: nothing to send.");
+} else if (sync_result.stopped || fim_shutdown_process_on()) {
+    minfo("FIM synchronization aborted: FIM is stopping.");
+} else if (sync_result.awaiting_prerequisite) {
+    minfo("FIM synchronization deferred: %s", sync_result.failure_reason);
+} else if ((sync_result.manager_not_ready || sync_result.local_transport_unavailable)
+           && sync_result.consecutive_failures <= SYNC_MANAGER_NOT_READY_TOLERANCE) {
+    minfo("FIM synchronization deferred: %s Will retry next cycle.", sync_result.failure_reason);
+} else if (sync_result.manager_not_ready || sync_result.local_transport_unavailable) {
+    mwarn("FIM synchronization failed %u times in a row: %s",
+          sync_result.consecutive_failures, sync_result.failure_reason);
+} else {
+    mwarn("FIM synchronization failed%s%s", sync_result.failure_reason[0] != '\0' ? ": " : "", sync_result.failure_reason);
 }
 ```
 

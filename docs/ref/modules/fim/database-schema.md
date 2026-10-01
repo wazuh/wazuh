@@ -283,6 +283,6 @@ Database files are stored in fixed locations relative to Wazuh installation:
 
 ```sql
 -- Sync protocol database optimizations
-PRAGMA synchronous = OFF;       -- No fsync() per commit; see sync protocol persistence-performance.md
+PRAGMA synchronous = OFF;       -- Never fsync(), not even at WAL checkpoints; see sync protocol persistence-performance.md
 PRAGMA journal_mode = WAL;      -- Write-Ahead Logging for concurrency
 ```

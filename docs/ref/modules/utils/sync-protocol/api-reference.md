@@ -193,7 +193,7 @@ protocol.deleteDatabase();
 static void setSessionMaxBytes(size_t maxBytes)
 ```
 
-Sets the byte ceiling for one `FullSession`, process-wide. The value belongs to `<agent><batch><size>`; the daemon hosting the modules reads it and calls this before any module creates its instance. Each instance copies the value at construction, so a later call does not affect existing instances. `0` keeps the built-in default (1 MiB).
+Sets the byte ceiling for one `FullSession`, process-wide. The value belongs to `<agent><batch><size>`; the daemon hosting the modules reads it and calls this before any module creates its instance. Each instance copies the value at construction, so a later call does not affect existing instances. `0` leaves the current value unchanged: the built-in 1 MiB unless an earlier call set another.
 
 ##### `currentAgentId()` (static)
 
@@ -248,7 +248,7 @@ C wrapper for `setSessionMaxBytes()`. Process-wide, takes no handle. `wazuh-modu
 
 **Parameters:**
 
-- `max_session_bytes`: Maximum bytes per session, or `0` to keep the default
+- `max_session_bytes`: Maximum bytes per session, or `0` to leave the current value unchanged
 
 #### `asp_get_agent_id()`
 

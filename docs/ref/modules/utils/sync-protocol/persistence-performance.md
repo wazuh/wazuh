@@ -63,7 +63,7 @@ While the improvement is smaller on Linux, WAL mode still provides:
 
 ### 3. Database Integrity & Recovery
 
-WAL mode runs with `PRAGMA synchronous = OFF` (PR #37180), so SQLite never calls `fsync()`, not even at WAL checkpoints (with `NORMAL`, WAL mode already skipped it at commit but still synced at checkpoints):
+WAL mode runs with `PRAGMA synchronous = OFF`, so SQLite never calls `fsync()`, not even at WAL checkpoints (with `NORMAL`, WAL mode already skipped it at commit but still synced at checkpoints):
 
 - **Agent crash or kill**: committed batches survive; SQLite replays the WAL on the next open
 - **Operating system crash or power loss**: the most recent commits can be lost, and the database file can be corrupted
@@ -90,7 +90,7 @@ The weaker guarantee is accepted because the queue is transient: items are remov
 
 ### Transaction-per-Event Performance (earlier design)
 
-Until PR #37180, during 5.0.0 development, each file operation was wrapped in its own `BEGIN`/`COMMIT` transaction. These measurements date from that design:
+An earlier design wrapped each file operation in its own `BEGIN`/`COMMIT` transaction. These measurements date from that design:
 
 #### Test Results
 

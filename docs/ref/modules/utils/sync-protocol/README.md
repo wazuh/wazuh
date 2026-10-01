@@ -17,7 +17,7 @@ module's own periodic cycle to retry after failures.
 ## Key Features
 
 - **Unified API**: Single interface for all modules to interact with the synchronization protocol
-- **Persistent Storage**: SQLite-based queue ensures data durability across agent restarts
+- **Persistent Storage**: SQLite-based queue survives a clean restart, and an agent crash except for the in-memory buffer not yet flushed; an OS crash or power loss can lose recent commits. FIM, SCA and syscollector resend lost items after their next integrity check (see [Persistence Performance](persistence-performance.md))
 - **Session Management**: Unique session IDs track synchronization state and guard against stale responses
 - **Transport-Owned Retry**: HTTP-level retries and per-request timeouts are managed by the HTTPS
   transport layer (internal options `agent.https_stateful_attempts`, `agent.https_stateful_timeout`);

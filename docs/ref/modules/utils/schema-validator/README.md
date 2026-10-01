@@ -118,7 +118,7 @@ auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
 
 if (validatorFactory.initialize())
 {
-    m_logFunction(LOG_INFO, "Schema validator initialized successfully");
+    m_logFunction(LOG_DEBUG, "Schema validator initialized successfully from embedded resources");
 }
 
 // 2. Get a validator for a specific index
@@ -128,7 +128,7 @@ if (validator)
 {
     // 3. Validate a JSON message
     std::string jsonMessage = R"({
-        "agent": {"id": "001"},
+        "wazuh": {"agent": {"id": "001"}},
         "package": {"name": "nginx", "version": "1.18.0"}
     })";
 
@@ -192,7 +192,7 @@ else
 1. **Initialize Once**: Call `initialize()` once during module startup
 2. **Check Initialization**: Always check `isInitialized()` before getting validators
 3. **Cache Validators**: Get validators once and reuse them (they're thread-safe)
-4. **Handle a Missing Schema**: If the factory is not initialized, skip validation; if it is initialized but has no schema for the index, log a warning and discard the message, as the C API, SCA and Syscollector do
+4. **Handle a Missing Schema**: If the factory is not initialized, skip validation; if it is initialized but has no schema for the index, discard the message: the C API rejects it with `No schema validator found for index` (FIM then logs that at ERROR), and SCA and Syscollector log `No schema validator found for index: <index>. Discarding message.` at WARNING
 5. **Delete Invalid Data**: Remove data that fails validation from local databases to prevent integrity sync loops
 
 ## Error Handling
