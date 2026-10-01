@@ -47,16 +47,23 @@ class PackageMetadataFile final
         {
             content.clear();
 #ifdef _WIN32
-            std::ifstream file(path, std::ios::binary);
+            // Text mode, as the previous readers did, so CRLF line endings are converted
+            std::ifstream file(path);
 
             if (!file.is_open())
             {
                 return false;
             }
 
-            content.resize(PACKAGE_METADATA_MAX_FILE_SIZE + 1);
-            file.read(content.data(), static_cast<std::streamsize>(content.size()));
-            content.resize(static_cast<std::size_t>(file.gcount()));
+            constexpr std::size_t CHUNK_SIZE {64 * 1024};
+            std::string chunk(CHUNK_SIZE, '\0');
+
+            while (content.size() <= PACKAGE_METADATA_MAX_FILE_SIZE &&
+                    file.read(chunk.data(), static_cast<std::streamsize>(chunk.size())).gcount() > 0)
+            {
+                content.append(chunk.data(), static_cast<std::size_t>(file.gcount()));
+            }
+
 #else
             const int fd {::open(path.c_str(), O_RDONLY | O_NONBLOCK | O_NOFOLLOW | O_CLOEXEC)};
 
@@ -74,7 +81,9 @@ class PackageMetadataFile final
                 return false;
             }
 
-            content.resize(PACKAGE_METADATA_MAX_FILE_SIZE + 1);
+            // One extra byte detects a file that grew after fstat
+            const auto expectedSize {static_cast<std::size_t>(fileStat.st_size)};
+            content.resize(expectedSize + 1);
             std::size_t total {0};
             bool readError {false};
 
@@ -100,7 +109,7 @@ class PackageMetadataFile final
             ::close(fd);
             content.resize(total);
 
-            if (readError)
+            if (readError || total != expectedSize)
             {
                 content.clear();
                 return false;
