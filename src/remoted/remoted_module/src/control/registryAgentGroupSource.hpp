@@ -29,10 +29,11 @@ namespace remoted::control
      *
      * A fresh entry (established less than `freshnessSec` ago -- the /control refresh interval) is
      * answered inline, before resolveSelector() returns, with no wazuh-db round trip: exactly the
-     * `config_token` /control hands out. A missing, expired or never-established entry (a node the
-     * agent never sent /control to, a remoted restart, the "default" /control answers an agent with
-     * no local row) is looked up asynchronously through RegistryLookup: a row is the answer (and
-     * is cached), no row is Deny, a failed lookup is Unavailable.
+     * `config_token` /control hands out. A missing, expired or invalidated entry (a node the agent
+     * never sent /control to, a remoted restart, a membership a push or a "no row" answer
+     * invalidated) is looked up asynchronously through RegistryLookup: a row is the answer (and is
+     * cached), no row is NoRow, a failed lookup is Unavailable -- both of those retry, neither
+     * authorizes.
      *
      * Lives in control/ (which owns the registry) and is consumed through
      * remoted::endpoints::IAgentGroupSource, so the dependency runs endpoints -> interface <-

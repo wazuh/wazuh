@@ -91,8 +91,9 @@ namespace remoted::control
                         done(GroupVerdict {GroupVerdictKind::Selector, makeConfigToken(toGroupsCsv(outcome.groups))});
                         return;
                     case LookupOutcome::Kind::NoRow:
-                        // No local row is never membership of "default" (S7).
-                        done(GroupVerdict {GroupVerdictKind::Deny, {}});
+                        // No local row is never membership of "default": the agent retries until
+                        // its row reaches this node's database.
+                        done(GroupVerdict {GroupVerdictKind::NoRow, {}});
                         return;
                     case LookupOutcome::Kind::Unavailable:
                     default: done(GroupVerdict {GroupVerdictKind::Unavailable, {}}); return;

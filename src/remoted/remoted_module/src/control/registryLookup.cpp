@@ -10,6 +10,7 @@
  */
 
 #include "registryLookup.hpp"
+#include "groupSelector.hpp"
 #include "wazuhDBClient.hpp"
 
 #include <optional>
@@ -140,12 +141,11 @@ namespace remoted::control
         }
         else if (result.noRow)
         {
-            // Never a membership, and never cached (S7, S15): the next request looks it up again.
-            outcome.kind = LookupOutcome::Kind::NoRow;
+            outcome = storeNoRow(id, pending);
         }
         else
         {
-            outcome = store(id, pending, std::move(result.groups));
+            outcome = store(id, pending, membershipGroups(std::move(result.groups)));
         }
         answerAll(pending.waiters, outcome);
     }
@@ -179,6 +179,36 @@ namespace remoted::control
                                {
                                    e->createdAtSec = pending.issueSec;
                                }
+                               return e;
+                           });
+        return outcome;
+    }
+
+    LookupOutcome RegistryLookup::storeNoRow(AgentId id, const Pending& pending)
+    {
+        // Never a membership and never an entry (no negative cache): the next request looks the
+        // agent up again. What the registry held for it stops counting, unless a newer write
+        // stamped it after the ticket -- then that write is the fresher answer when it is an
+        // established one, and this read changes nothing.
+        LookupOutcome outcome {LookupOutcome::Kind::NoRow, {}};
+        m_registry->update(id,
+                           [&](std::shared_ptr<const AgentEntry> old) -> std::shared_ptr<AgentEntry>
+                           {
+                               if (!old)
+                               {
+                                   return nullptr;
+                               }
+                               if (old->groupsSeq > pending.ticket)
+                               {
+                                   if (old->groupsRefreshedAtSec != 0)
+                                   {
+                                       outcome = LookupOutcome {LookupOutcome::Kind::Groups, old->groups};
+                                   }
+                                   return nullptr;
+                               }
+                               auto e = std::make_shared<AgentEntry>(*old);
+                               e->groupsRefreshedAtSec = 0;
+                               e->groupsSeq = m_registry->nextGroupsSeq();
                                return e;
                            });
         return outcome;

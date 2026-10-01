@@ -42,6 +42,7 @@ namespace remoted::endpoints::download
     constexpr auto METRIC_DOWNLOAD_STARTED {"remoted.download.started"};
     constexpr auto METRIC_DOWNLOAD_BYTES_TOTAL {"remoted.download.bytes.total"};
     constexpr auto METRIC_DOWNLOAD_UNAVAILABLE {"remoted.download.unavailable"};
+    constexpr auto METRIC_DOWNLOAD_NO_ROW {"remoted.download.no_row"};
 
     /**
      * @brief The /download counter set, pre-resolved from one manager.
@@ -52,8 +53,10 @@ namespace remoted::endpoints::download
     {
         std::shared_ptr<wazuh::metrics::ICounter> rejected;    ///< 400s: the request line didn't parse.
         std::shared_ptr<wazuh::metrics::ICounter> denied;      ///< 403s: the agent asked for a selector that is
-                                                               ///< not its own, or it has no known group membership
-                                                               ///< at all. Separate from `rejected` on purpose: a
+                                                               ///< not its own (or the source could not vouch for
+                                                               ///< it at all -- a malformed id, no source wired; a
+                                                               ///< missing wazuh-db row is `noRow`, a 503).
+                                                               ///< Separate from `rejected` on purpose: a
                                                                ///< parse failure is a broken client, this is an
                                                                ///< authorization decision and the only
                                                                ///< operator-facing signal for it (the denial itself
@@ -72,6 +75,10 @@ namespace remoted::endpoints::download
                                                                ///< not answer the fallback lookup, or too many
                                                                ///< requests already wait on lookups). Never a
                                                                ///< denial: the agent retries it.
+        std::shared_ptr<wazuh::metrics::ICounter> noRow;       ///< 503s: the node's local wazuh-db has no row
+                                                               ///< for the agent (not yet synchronized). Same
+                                                               ///< answer as `unavailable`, counted apart: a
+                                                               ///< missing row is not a failed lookup.
     };
 
     /// Resolves the remoted.download.* family on @p manager (creating it on first call; totals
@@ -92,6 +99,9 @@ namespace remoted::endpoints::download
                 METRIC_DOWNLOAD_BYTES_TOTAL, "Bytes offered to started transfers (counted once at start)", "bytes"),
             manager.getOrCreateCounter(METRIC_DOWNLOAD_UNAVAILABLE,
                                        "503s: the agent's group membership could not be read from wazuh-db in time",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_DOWNLOAD_NO_ROW,
+                                       "503s: the local wazuh-db has no row for the agent (not yet synchronized)",
                                        "count")};
     }
 
@@ -130,6 +140,13 @@ namespace remoted::endpoints::download
         if (m.unavailable)
         {
             m.unavailable->add();
+        }
+    }
+    inline void incNoRow(const DownloadMetrics& m)
+    {
+        if (m.noRow)
+        {
+            m.noRow->add();
         }
     }
     inline void incStarted(const DownloadMetrics& m, std::uint64_t offeredBytes)

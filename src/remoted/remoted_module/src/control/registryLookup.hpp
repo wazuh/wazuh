@@ -37,7 +37,7 @@ namespace remoted::control
         enum class Kind
         {
             Groups,     ///< The agent's groups, wazuh-db order (empty = a row with no groups).
-            NoRow,      ///< The local replica has no row for the agent. Never a membership.
+            NoRow,      ///< The local replica has no row for the agent. Never a membership: retry.
             Unavailable ///< wazuh-db did not answer in time, refused, or the lookup was refused.
         };
         Kind kind {Kind::Unavailable};
@@ -58,8 +58,10 @@ namespace remoted::control
      * Concurrent lookups for one agent share a single query; the requests waiting on lookups are
      * bounded per agent and in total, and one over a bound is answered Unavailable at once. What a
      * query reads is written into the registry under its ordering rule (the ticket is taken when
-     * the query is issued): a newer write wins, "no row" is never written, and a read that may be
-     * older than a skipped push is answered but not written.
+     * the query is issued): a newer write wins, a read that may be older than a skipped push is
+     * answered but not written, and a row with no groups is stored as {"default"}. "No row" is never
+     * a membership and never creates an entry; it invalidates the membership an existing entry
+     * holds, under the same rule.
      *
      * Waiters are called with no lock held: on a client worker thread, or inline on the caller's
      * thread when the lookup is refused. A waiter may call lookup() again; it must never call
@@ -110,6 +112,7 @@ namespace remoted::control
 
         void complete(AgentId id, SocketError err, AgentGroupsResult result);
         LookupOutcome store(AgentId id, const Pending& pending, std::vector<std::string> groups);
+        LookupOutcome storeNoRow(AgentId id, const Pending& pending);
 
         std::shared_ptr<AgentRegistry> m_registry;
         const LookupLimits m_limits;
