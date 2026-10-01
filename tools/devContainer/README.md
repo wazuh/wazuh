@@ -94,7 +94,7 @@ chmod +x download_devContainer.sh
 > The destination directory must not already exist — the script exits with an error if it does. It is only created after the image has been pulled; if the script fails, it does not leave a destination behind.
 
 > [!NOTE]
-> After the download completes, when the script runs in a terminal it asks whether you want to open the devContainer in VS Code. If VS Code and the Remote - Containers extension are available, it will open the workspace automatically; otherwise it will print a warning to open manually. Without a terminal it does not ask: it prints the `code --folder-uri …` command to run yourself.
+> After the download completes, when the script runs in a terminal it asks whether you want to open the devContainer in VS Code. If VS Code and the Remote - Containers extension are available, it will open the workspace automatically; otherwise it will print a warning to open manually. On macOS, when `code` is not in `PATH`, it uses the CLI inside the app (`/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code`, or the same under `~/Applications`). Without a terminal it does not ask: it prints the `code --folder-uri …` command to run yourself.
 
 > [!NOTE]
 > Without a terminal the script cannot ask you to log in either: log in first ([Logging in to ghcr.io](#logging-in-to-ghcrio)) and run it again.
@@ -105,7 +105,7 @@ In order:
 
 1. Checks the prerequisites.
 2. Clones the branch given with `-b` into a temporary directory.
-3. Checks the clone, **before touching Docker**: that `devcontainer.json` and `VERSION.json` exist, and that `devcontainer.json` has an `"image"` line. Older branches (`4.14.10` has no `.devcontainer/devcontainer.json`; `5.0.0` and `main` still carried the previous `devcontainer.json` until the one with the `"image"` line reaches them) stop here with an error.
+3. Checks the clone, **before touching Docker**: that `devcontainer.json` and `VERSION.json` exist, and that `devcontainer.json` has an `"image"` line. Branches without the prebuilt image (for example `4.14.10`, with no `.devcontainer/devcontainer.json`, or any branch whose `devcontainer.json` still builds the Dockerfile instead of naming an `"image"`) stop here with an error.
 4. Computes the image: the repository of the `"image"` line (or `$WAZUH_DEVCONTAINER_IMAGE`) plus the tag `<major>.<minor>` of `VERSION.json` (`5.0` for `5.0.0`).
 5. Checks access to the registry with `docker manifest inspect`. If the image is not accessible, it offers the login menu once (only in a terminal) and tries again.
 6. Pulls the image with `docker pull`.
@@ -157,7 +157,7 @@ then run **Dev Containers: Rebuild Container** in VS Code. Use the repository an
 
 ### Working on the image
 
-To change the image (the Dockerfile, the `*.sh` it copies, or the features in `image.devcontainer.json`), build it locally from the `.devcontainer/` folder; this needs Node.js >= 20 (or the `devcontainer` CLI) and Docker:
+To change the image (the Dockerfile, the `*.sh` it copies, or the features in `image.devcontainer.json`), build it locally from the `.devcontainer/` folder; this needs Node.js >= 20 (or the `devcontainer` CLI) and Docker. The local build is verified on Linux x64; on macOS ARM it has not been exercised yet:
 
 ```bash
 .devcontainer/build-image.sh
@@ -178,9 +178,6 @@ WAZUH_DEVCONTAINER_IMAGE=ghcr.io/<owner>/wazuh-devcontainer .devcontainer/build-
 ```
 
 ### How the image is published
-
-> [!NOTE]
-> Provisional: this section describes the workflow as designed and is reconciled with the final one afterwards.
 
 The workflow `.github/workflows/5_builderprecompiled_devcontainer-image.yml` builds `ghcr.io/wazuh/wazuh-devcontainer` with `build-image.sh`, for `amd64` and `arm64`, and publishes a single multi-platform tag, `<major>.<minor>` of `VERSION.json` (`5.0` today). It runs:
 

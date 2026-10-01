@@ -536,14 +536,36 @@ vscode_folder_uri() {
     printf 'vscode-remote://dev-container+%s/workspaces/%s\n' "$encoded_path" "$(basename "$DEV_CONTAINER_DESTINATION")"
 }
 
+# Print the VS Code CLI: `code` from PATH or, on macOS, the one inside the app bundle (not in PATH unless
+# "Shell Command: Install 'code' command in PATH" was run). Prints nothing when there is none.
+vscode_cli() {
+    local app candidate
+    if command -v code > /dev/null 2>&1; then
+        printf '%s\n' "code"
+        return 0
+    fi
+    if [ "$(uname -s)" = "Darwin" ]; then
+        for app in "/Applications" "$HOME/Applications"; do
+            candidate="$app/Visual Studio Code.app/Contents/Resources/app/bin/code"
+            if [ -x "$candidate" ]; then
+                printf '%s\n' "$candidate"
+                return 0
+            fi
+        done
+    fi
+}
+
 # Function to open in VSCode (only asks with a terminal on stdin)
 open_in_vscode() {
-    local open_vscode uri
+    local open_vscode uri cli hint
     uri=$(vscode_folder_uri)
+    cli=$(vscode_cli)
+    hint="\"${cli:-code}\" --folder-uri=\"${uri}\""
+    [ "${cli:-code}" = "code" ] && hint="code --folder-uri=\"${uri}\""
 
     if [ ! -t 0 ]; then
         echo ""
-        echo "To open it in VSCode: code --folder-uri=\"${uri}\""
+        echo "To open it in VSCode: ${hint}"
         return 0
     fi
 
@@ -556,20 +578,20 @@ open_in_vscode() {
 
         case $open_vscode in
             [Yy]* )
-                if ! command -v code &> /dev/null; then
+                if [ -z "$cli" ]; then
                     echo "Warning: VSCode CLI 'code' is not available. Please open VSCode manually" >&2
-                    echo "  code --folder-uri=\"${uri}\""
+                    echo "  ${hint}"
                     break
                 fi
 
-                if ! code --list-extensions 2>/dev/null | grep "ms-vscode-remote.remote-containers" > /dev/null; then
+                if ! "$cli" --list-extensions 2>/dev/null | grep "ms-vscode-remote.remote-containers" > /dev/null; then
                     echo "Installing the Remote - Containers extension..."
-                    code --install-extension ms-vscode-remote.remote-containers \
+                    "$cli" --install-extension ms-vscode-remote.remote-containers \
                         || echo "Warning: could not install the Remote - Containers extension" >&2
                 fi
 
                 echo "Opening the devContainer in VSCode..."
-                code --folder-uri="${uri}" || echo "Warning: VSCode could not open ${uri}" >&2
+                "$cli" --folder-uri="${uri}" || echo "Warning: VSCode could not open ${uri}" >&2
                 break
                 ;;
             [Nn]* )
