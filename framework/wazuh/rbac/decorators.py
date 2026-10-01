@@ -566,15 +566,19 @@ def _has_update_permissions(update_actions: list = None, update_resources: list 
     return False
 
 
-def _build_xml_mask_pattern(path: str) -> re.Pattern:
-    """Build a compiled regex pattern to locate a value in a nested XML structure.
+def _build_xml_mask_pattern(path: str) -> tuple:
+    """Build compiled regex patterns to locate a value in a nested XML structure.
 
     The dotted ``path`` is converted into a sequence of nested XML tags. The
-    resulting pattern captures three groups:
+    leaf pattern captures three groups:
 
-    - Group 1: opening tags up to and including the innermost tag.
-    - Group 2: the text content to be replaced (between the innermost tags).
-    - Group 3: the closing tag of the innermost element.
+    - Group 1: the opening tag of the innermost (leaf) element.
+    - Group 2: the text content to be replaced (between the leaf tags).
+    - Group 3: the closing tag of the leaf element.
+
+    The block pattern (``None`` when ``path`` has no ancestor tag) delimits the
+    span of the leaf's immediate container, so every leaf occurrence inside
+    that span can be masked -- not just the first one found in the document.
 
     Parameters
     ----------
@@ -584,25 +588,77 @@ def _build_xml_mask_pattern(path: str) -> re.Pattern:
 
     Returns
     -------
-    re.Pattern
-        Compiled regular expression with ``re.DOTALL`` flag enabled so that
-        ``.*?`` matches across newlines.
+    tuple
+        ``(block_pattern, leaf_pattern)``, both compiled with ``re.DOTALL``
+        (so ``.`` matches newlines) and ``re.IGNORECASE`` (tags are read back
+        case-insensitively, see ``configuration.py``'s ``tag.lower()``).
+        ``block_pattern`` is ``None`` if the path has a single tag.
     """
     tags = path.split('.')
-    # A lazy prefix may not cross another opening of the same tag, which keeps the match linear
-    prefix_pattern = ''.join(f'<{tag}>(?:(?!<{tag}>).)*?' for tag in tags[:-1]) + f'<{tags[-1]}>'
-    # os_xml reads '\<' as a literal '<' inside a value. An escaped opening of the same leaf ends the content,
-    # otherwise every later opening rescans the escaped run up to the end of the text
-    full_pattern = rf'({prefix_pattern})((?:[^<\\]|\\(?!<{tags[-1]}>).)*)(</{tags[-1]}>)'
-    return re.compile(full_pattern, re.DOTALL)
+
+    def open_tag(tag: str) -> str:
+        # The XML parser (src/os_xml/os_xml.c) ends an element name on '>' or
+        # any whitespace, so the tag itself may carry attributes there. Like
+        # os_xml, '<' is accepted inside a quoted attribute value but '>' is
+        # not (it ends the tag, so an unclosed quote is an error there);
+        # outside quotes '<' ends the match, which is what keeps a run of
+        # unterminated '<tag ' input from going quadratic.
+        return rf'''<{tag}(?:\s(?:[^<>"']|"[^">]*"|'[^'>]*')*)?>'''
+
+    def close_tag(tag: str) -> str:
+        # load_wazuh_xml (ElementTree), used to read the cluster key, also
+        # tolerates whitespace before the closing '>'.
+        return rf'</{tag}\s*>'
+
+    # A tempered comment body -- "any char that isn't the start of the
+    # closing delimiter" -- so each comment can only end at its own nearest
+    # closing delimiter. A lazy '.*?' here would let a comment's end slide to
+    # any LATER delimiter when the rest of the match fails, and repeating
+    # that ambiguity over N consecutive comments is exponential-backtracking
+    # bait. os_xml (src/os_xml/os_xml.c:_oscomment) closes a comment opened
+    # with '<!' at the first '-->' *or* '!>' it sees, not only the W3C form.
+    comment = r'(?:<!--(?:(?!-->).)*-->|<!(?!--)(?:(?!-->|!>|<!--).)*(?:-->|!>))'
+
+    # A comment can sit between two occurrences of the leaf tag (e.g. an old,
+    # commented-out key left next to the real one) or inside a leaf's own
+    # value; tolerate it in the content so the real value is still found.
+    # os_xml keeps a backslash-escaped '<' as literal text, so it belongs to
+    # the value too, except before '</' (ElementTree, which reads the cluster
+    # key, closes the element there) and '<!' (os_xml still opens a comment).
+    leaf_content = rf'(?:[^<\\]|\\(?!<[/!]).|\\(?=<[/!])|{comment})*'
+    # The close is optional so that a leaf opening with no close consumes its
+    # content once; otherwise every later opening of the leaf inside a comment
+    # or after a backslash rescans that content up to the end of the block.
+    leaf_pattern = re.compile(
+        rf'({open_tag(tags[-1])})({leaf_content})({close_tag(tags[-1])})?', re.DOTALL | re.IGNORECASE
+    )
+
+    block_pattern = None
+    if len(tags) > 1:
+        # The block runs from the first opening tag of the container to the
+        # LAST matching closing tag (or to end of text if there is none).
+        # This scanner cannot tell a real close from a nested container
+        # (e.g. <cluster> inside <nodes>), a stray close, or one inside a
+        # comment/CDATA, so stopping at the first close could leave the real
+        # leaf unmasked. The accepted trade-off is over-masking: a same-named
+        # leaf in another section lying between the two (e.g. <ssl><key>) is
+        # masked too. Only the leaf's immediate container (tags[-2]) anchors
+        # the block.
+        block_pattern = re.compile(
+            open_tag(tags[-2]) + rf'(?:.*{close_tag(tags[-2])}|.*)', re.DOTALL | re.IGNORECASE
+        )
+
+    return block_pattern, leaf_pattern
 
 
 def _mask_xml_by_path(text: str, path: str, mask_text: str) -> str:
-    """Replace the value at a nested XML path with a mask string.
+    """Replace every value at a nested XML path with a mask string.
 
-    Builds a pattern via `_build_xml_mask_pattern` and substitutes the text
-    content found between the innermost tags with ``mask_text``. If the pattern
-    is not present in ``text``, the original string is returned unchanged.
+    Builds patterns via `_build_xml_mask_pattern`. When the path has an
+    ancestor tag, every leaf occurrence within each ancestor block is masked
+    (not only the first one in the document); this also covers a leaf tag
+    left duplicated or commented-out next to the real one. If no pattern
+    matches, the original string is returned unchanged.
 
     Parameters
     ----------
@@ -611,15 +667,25 @@ def _mask_xml_by_path(text: str, path: str, mask_text: str) -> str:
     path : str
         Dotted path representing nested XML tags, e.g. ``"cluster.key"``.
     mask_text : str
-        Replacement string to place between the innermost tags.
+        Replacement string to place between the leaf tags.
 
     Returns
     -------
     str
         A new string with the matched content replaced by ``mask_text``.
     """
-    pattern = _build_xml_mask_pattern(path)
-    return pattern.sub(rf'\1{mask_text}\3', text)
+    block_pattern, leaf_pattern = _build_xml_mask_pattern(path)
+
+    def replacement(match: re.Match) -> str:
+        # An unclosed leaf is left as is.
+        if match.group(3) is None:
+            return match.group(0)
+        return match.group(1) + mask_text + match.group(3)
+
+    if block_pattern is None:
+        return leaf_pattern.sub(replacement, text)
+
+    return block_pattern.sub(lambda m: leaf_pattern.sub(replacement, m.group(0)), text)
 
 def _mask_all_sensitive_fields(text: str, mask_text: str = "***") -> str:
     """Apply XML masking for every path in ``SENSITIVE_FIELD_PATHS`` and every tag in ``SENSITIVE_FIELD_NAMES``.
