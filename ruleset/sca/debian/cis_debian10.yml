@@ -876,7 +876,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/shadow -> r:^root:*:|^root:\$'
+      - 'f:/etc/shadow -> r:^root:\$'
 
   # 1.5.1 Ensure address space layout randomization (ASLR) is enabled. (Automated) - Not Implemented
   # 1.5.2 Ensure ptrace_scope is restricted. (Automated) - Not Implemented
@@ -1066,9 +1066,9 @@ checks:
       - cis: ["1.7.3"]
       - mitre_tactics: ["TA0007"]
       - mitre_techniques: ["T1018", "T1082", "T1592", "T1592.004"]
-    condition: all
+    condition: none
     rules:
-      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s && r:Debian'
+      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Debian'
 
   # 1.7.4 Ensure permissions on /etc/motd are configured. (Automated)
   - id: 2545
@@ -5152,8 +5152,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -c "%a %U %G" /etc/security/opasswd -> r:^600\s+root\s+root$'
-      - 'c:stat -c "%a %U %G" /etc/security/opasswd.old -> r:^600\s+root\s+root$'
+      - 'c:stat -c "%a %U %G" /etc/security/opasswd -> r:^600\s+root\s+root$|^400\s+root\s+root$|^200\s+root\s+root$'
+      - 'not c:stat -c "%a %U %G" /etc/security/opasswd.old -> r:^\d+\s && !r:^600\s+root\s+root$|^400\s+root\s+root$|^200\s+root\s+root$'
 
   # 6.1.11 Ensure world writable files and directories are secured. (Automated) - Not Implemented
   # 6.1.12 Ensure no unowned or ungrouped files or directories exist. (Automated) - Not Implemented

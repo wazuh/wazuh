@@ -166,7 +166,8 @@ int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, EVP_MD_CTX ** c, os_sh
         open_fd = lpFileInformation.nFileIndexLow + lpFileInformation.nFileIndexHigh;
     }
 #else
-    if (fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r"), fp == NULL) {
+    // Vetted like logcollector's own open: a plain blocking open here would stall on a FIFO swapped in.
+    if (fp = w_fopen_vetted_follow(fname, mode == OS_BINARY ? "rb" : "r"), fp == NULL) {
         return -1;
     }
 #endif
