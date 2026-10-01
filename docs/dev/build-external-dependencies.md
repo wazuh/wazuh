@@ -9,7 +9,7 @@ Supporting scripts under `packages/externals/`:
 | File | Purpose |
 |------|---------|
 | `external_sources.sh` | Manifest: upstream URL template + archive format + target dir for each dep. |
-| `build_external.sh` | Container-side build script. Seeds `src/external/` via `make deps EXTERNAL_SRC_ONLY=yes`, applies overrides from `--dependencies`, runs the per-leg build, and re-ships the published `cpython` and `libbpf-bootstrap` blobs, see [Caveats](#caveats). |
+| `build_external.sh` | Container-side build script. Seeds `src/external/` via `make deps EXTERNAL_SRC_ONLY=yes`, applies overrides from `--dependencies`, runs the per-leg build, and re-ships the published `cpython` blob, see [Caveats](#caveats). |
 | `generate_external.sh` | Wrapper that runs `build_external.sh` and packs the result into `externals-<leg>.tar.gz` with the S3 layout `make deps` expects. |
 | `ebpf/build_ebpf.sh` | Builds `libbpf-bootstrap.tar.gz` (`modern.bpf.o` + `libbpf.so`) for amd64, aarch64, arm32, i386 and ppc64le on one x86_64 host, with clang 20 and Zig. See [libbpf-bootstrap](#libbpf-bootstrap-is-built-by-the-build-ebpf-job). |
 | `smoke_build.sh` | Sanity check: builds the agent/manager from source against the freshly built consolidated tree to confirm the precompiled tarballs are actually consumable. |
@@ -208,7 +208,7 @@ the download behind a flag drops them from the bundle and breaks every test buil
 2. Dispatch the workflow with `dependencies="…"` (or empty for a clean rebuild). **Do not bump `DEPS_VERSION` in this branch.** See the caveat below.
 3. Wait for `build-externals`, `consolidate`, and all 4 `smoke-build` jobs to go green.
 4. Download `externals-all.tar.gz`. Pick a new `DEPS_VERSION` (the team's convention is `99-<gh-run-id>` or a hand-picked monotonic number). Upload the tarball contents into `s3://…/deps/<new-DEPS_VERSION>/libraries/…`.
-5. Open a second PR that bumps `DEPS_VERSION` in `src/Makefile` to the new value. That single change is enough — `build_external.sh` reads `DEPS_VERSION` straight out of the Makefile for both the `make deps` seed and the cpython / libbpf re-ship URLs.
+5. Open a second PR that bumps `DEPS_VERSION` in `src/Makefile` to the new value. That single change is enough — `build_external.sh` reads `DEPS_VERSION` straight out of the Makefile for both the `make deps` seed and the cpython re-ship URL.
 
 ## Caveats
 
@@ -218,13 +218,12 @@ the download behind a flag drops them from the bundle and breaks every test buil
 
 - `make deps EXTERNAL_SRC_ONLY=yes` (the source seed for `src/external/`) reads `RESOURCES_URL = packages.wazuh.com/deps/$(DEPS_VERSION)/`.
 - The cpython pass-through block pulls `…/deps/${DEPS_VERSION}/libraries/sources/cpython_<arch>.tar.gz`.
-- `stage_precompiled` pulls `…/deps/${DEPS_VERSION}/libraries/linux/<arch>/libbpf-bootstrap.tar.gz`.
 
-If your branch has bumped `DEPS_VERSION` to the version you're trying to *produce*, all three fetches 404 and the run fails. Always dispatch the workflow with `DEPS_VERSION` pointing at the *currently published* deps release; bump it in a follow-up PR after you've uploaded the new tarball.
+If your branch has bumped `DEPS_VERSION` to the version you're trying to *produce*, both fetches 404 and the run fails. Always dispatch the workflow with `DEPS_VERSION` pointing at the *currently published* deps release; bump it in a follow-up PR after you've uploaded the new tarball.
 
 ### `libbpf-bootstrap` is built by the `build-ebpf` job
 
-`libbpf-bootstrap` needs clang ≥ 7 with the BPF backend and Linux UAPI headers ≥ 4.13 (`linux/bpf_perf_event.h`), and the legacy agent builder image (CentOS 6 / Debian wheezy era, glibc 2.12) has neither: a from-source attempt fails with `linux/bpf_perf_event.h: No such file or directory`. So the Linux legs still stage the published tarball from `DEPS_VERSION` just to get through their build, and `consolidate` replaces it with the one `build-ebpf` produced.
+`libbpf-bootstrap` needs clang ≥ 7 with the BPF backend and Linux UAPI headers ≥ 4.13 (`linux/bpf_perf_event.h`), and the legacy agent builder image (CentOS 6 / Debian wheezy era, glibc 2.12) has neither. There is no from-source fallback in `src/external/CMakeLists.txt`: the agent loads `libbpf.so` and `modern.bpf.o` at runtime, so its build does not need them, and `consolidate` ships the copy `build-ebpf` produced.
 
 `ebpf/build_ebpf.sh` compiles `modern.bpf.o` from `src/syscheckd/src/ebpf/src/modern.bpf.c` of the dispatched branch with clang 20, and cross-compiles libbpf `v1.7.0` with Zig against glibc 2.17 (2.19 on ppc64le). Pinned versions (clang, Zig, libbpf tag, `libbpf/vmlinux.h` commit) live at the top of the script; the job reads the Zig version from there. The output is reproducible, so a rebuild of an unchanged source gives the same binaries.
 
