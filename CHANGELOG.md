@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed FIM diff limit parsing, whodata event loss, audit socket leak and bookmark double fclose. ([#39812](https://github.com/wazuh/wazuh/pull/39812))
 - Fixed one-byte buffer overflows in whodata, logcollector and FIM config parsing. ([#39705](https://github.com/wazuh/wazuh/pull/39705))
 - Fixed FIM crash on first scan when inotify cannot be initialized. ([#39707](https://github.com/wazuh/wazuh/pull/39707))
 - Fixed `force_reconnect_interval` from centralized configuration not applied on agent hot reload. ([#39573](https://github.com/wazuh/wazuh/pull/39573))
