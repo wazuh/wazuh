@@ -13,6 +13,7 @@ from shutil import chown
 from time import time
 from typing import Union
 
+import regex
 import yaml
 from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey, Boolean, or_, \
     CheckConstraint
@@ -1245,6 +1246,33 @@ class RolesManager(RBACManager):
             return SecurityError.ALREADY_EXIST
 
 
+def has_malformed_regex(rule) -> bool:
+    """Check whether a rule body holds a regular expression (r'...') that is not closed or does not compile.
+
+    Parameters
+    ----------
+    rule : dict, list or str
+        Rule body, or any nested part of it.
+
+    Returns
+    -------
+    bool
+        True if any key or value starts with the regex prefix but is not a valid r'...' expression.
+    """
+    if isinstance(rule, dict):
+        return any(has_malformed_regex(k) or has_malformed_regex(v) for k, v in rule.items())
+    if isinstance(rule, list):
+        return any(has_malformed_regex(item) for item in rule)
+    if isinstance(rule, str) and rule.startswith("r'"):
+        if len(rule) < 3 or not rule.endswith("'"):
+            return True
+        try:
+            regex.compile(rule[2:-1])
+        except regex.error:
+            return True
+    return False
+
+
 class RulesManager(RBACManager):
     """Manager of the Rules class.
     This class provides all the methods needed for the administration of the Rules objects.
@@ -1329,7 +1357,7 @@ class RulesManager(RBACManager):
             True if the rule was added successfully or a SecurityError code.
         """
         try:
-            if rule is not None and not isinstance(rule, dict):
+            if rule is not None and (not isinstance(rule, dict) or has_malformed_regex(rule)):
                 return SecurityError.INVALID
             try:
                 if check_default and \
@@ -1439,7 +1467,7 @@ class RulesManager(RBACManager):
             if rule_to_update and rule_to_update is not None:
                 if rule_to_update.id > MAX_ID_RESERVED:
                     # Rule is not a valid json
-                    if rule is not None and not isinstance(rule, dict):
+                    if rule is not None and (not isinstance(rule, dict) or has_malformed_regex(rule)):
                         return SecurityError.INVALID
                     # Change the rule
                     if name is not None:

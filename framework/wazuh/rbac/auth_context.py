@@ -236,7 +236,7 @@ class RBAChecker:
             Compiled regex if a valid regex is provided else return False.
         """
         if isinstance(expression, str):
-            if not expression.startswith(self._regex_prefix):
+            if not expression.startswith(self._regex_prefix) or not expression.endswith("'") or len(expression) < 3:
                 return False
             try:
                 pattern = ''.join(expression[self._initial_index_for_regex:-1])
