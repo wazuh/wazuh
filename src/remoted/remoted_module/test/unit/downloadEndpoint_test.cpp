@@ -1212,6 +1212,31 @@ TEST(DownloadHandlerTest, AnswersServiceUnavailableForAnAgentWithNoLocalRow)
     EXPECT_EQ(metrics.noRow->get(), 1U);
 }
 
+TEST(DownloadHandlerTest, AnswersServiceUnavailableForASupersededLookup)
+{
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+    auto answerFor = [&](remoted::endpoints::GroupVerdictKind kind)
+    {
+        const auto source = std::make_shared<ScriptedAgentGroupSource>();
+        auto responder = std::make_shared<RecordingResponder>();
+        auto body = std::make_shared<std::string>(R"({"resource_type":"config","resource_id":"default"})");
+        makeHandler({}, metrics, source)(authenticatedRequest(body), responder);
+        source->deliver(remoted::endpoints::GroupVerdict {kind, {}});
+        return responder;
+    };
+
+    // A read that may predate a revocation never authorizes: retried like a failed lookup.
+    const auto superseded = answerFor(remoted::endpoints::GroupVerdictKind::Superseded);
+    EXPECT_EQ(superseded->status, 503);
+    EXPECT_EQ(metrics.unavailable->get(), 1U); // a membership that could not be established now
+    EXPECT_EQ(metrics.denied->get(), 0U);
+    EXPECT_EQ(metrics.noRow->get(), 0U);
+
+    const auto failed = answerFor(remoted::endpoints::GroupVerdictKind::Unavailable);
+    EXPECT_EQ(superseded->body, failed->body); // the same answer on the wire
+}
+
 TEST(DownloadHandlerTest, WpkRequestsNeverResolve)
 {
     TempDir dir;

@@ -222,11 +222,13 @@ sed 's/^/  /' <<<"$OUT"
 check "cross-node config download is served everywhere (AC1)" "0" "$RC"
 
 # AC2: moving the agent to another group on the master reaches worker1's cached membership through
-# the cluster daemon's publication, before that membership could have expired.
-BEFORE="$(admin_metric wazuh-worker1 remoted.control.registry.push.updated)"
+# the cluster daemon's publication, before that membership could have expired. The publication only
+# withdraws the cached membership (only a wazuh-db read establishes one), so the next download reads
+# the new groups.
+BEFORE="$(admin_metric wazuh-worker1 remoted.control.registry.push.invalidated)"
 OUT="$(probe /probe/revocation_by_push.py --password labpassword --json-out /results/e6a_revocation.json)"; RC=$?
 sed 's/^/  /' <<<"$OUT"
-AFTER="$(admin_metric wazuh-worker1 remoted.control.registry.push.updated)"
+AFTER="$(admin_metric wazuh-worker1 remoted.control.registry.push.invalidated)"
 check "a revoked selector is refused before expiry (AC2)" "0" "$RC"
 check_at_least "worker1 received the cluster daemon's publications" "1" "$(delta "$BEFORE" "$AFTER")"
 

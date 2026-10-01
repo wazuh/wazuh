@@ -360,38 +360,11 @@ namespace
     }
 } // namespace
 
-TEST(AgentRegistryTest, SetGroupsUpdatesAnExistingEntryAndLeavesActivityAlone)
-{
-    AgentRegistry reg;
-    putActive(reg, 1, {"old"});
-
-    EXPECT_EQ(reg.setGroups(1, {"g1", "g2"}, 1000), AgentRegistry::PushOutcome::Updated);
-
-    const auto entry = reg.get(1);
-    ASSERT_NE(entry, nullptr);
-    EXPECT_EQ(entry->groups, (std::vector<std::string> {"g1", "g2"}));
-    EXPECT_EQ(entry->groupsRefreshedAtSec, 1000U);
-    EXPECT_GT(entry->groupsSeq, 0U);
-    EXPECT_EQ(entry->lastKeepaliveUpdateSec, 200U);
-    EXPECT_EQ(entry->lastActivitySec, 300U);
-    EXPECT_EQ(entry->createdAtSec, 50U);
-    EXPECT_TRUE(entry->hostPersisted);
-}
-
-TEST(AgentRegistryTest, SetGroupsSkipsAnAbsentAgent)
-{
-    AgentRegistry reg;
-
-    EXPECT_EQ(reg.setGroups(7, {"g1"}, 1000), AgentRegistry::PushOutcome::Skipped);
-    EXPECT_EQ(reg.get(7), nullptr);
-    EXPECT_EQ(reg.size(), 0U);
-}
-
 TEST(AgentRegistryTest, InvalidateGroupsMarksTheEntryNotEstablished)
 {
     AgentRegistry reg;
-    putActive(reg, 1, {"g1"});
-    ASSERT_EQ(reg.setGroups(1, {"g1"}, 1000), AgentRegistry::PushOutcome::Updated);
+    putActive(reg, 1, {"g1"}); // established at 100
+    ASSERT_TRUE(groupsFresh(*reg.get(1), 110, 60));
     const auto before = reg.get(1)->groupsSeq;
 
     EXPECT_EQ(reg.invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated);
@@ -401,7 +374,11 @@ TEST(AgentRegistryTest, InvalidateGroupsMarksTheEntryNotEstablished)
     EXPECT_EQ(entry->groupsRefreshedAtSec, 0U);
     EXPECT_EQ(entry->groups, (std::vector<std::string> {"g1"})); // kept for notify's cached-on-error path
     EXPECT_GT(entry->groupsSeq, before);
-    EXPECT_FALSE(groupsFresh(*entry, 1000, 60));
+    EXPECT_FALSE(groupsFresh(*entry, 110, 60));
+    EXPECT_EQ(entry->lastKeepaliveUpdateSec, 200U);
+    EXPECT_EQ(entry->lastActivitySec, 300U);
+    EXPECT_EQ(entry->createdAtSec, 50U);
+    EXPECT_TRUE(entry->hostPersisted);
 }
 
 TEST(AgentRegistryTest, InvalidateGroupsSkipsAnAbsentAgent)
@@ -412,22 +389,22 @@ TEST(AgentRegistryTest, InvalidateGroupsSkipsAnAbsentAgent)
     EXPECT_EQ(reg.size(), 0U);
 }
 
-TEST(AgentRegistryTest, LookupTicketTakenBeforeASetIsSuperseded)
+TEST(AgentRegistryTest, LookupTicketTakenBeforeAnInvalidationIsSuperseded)
 {
     AgentRegistry reg;
     putActive(reg, 1, {"g-old"});
     const auto ticket = reg.groupsTicket(); // the query is issued here...
 
-    ASSERT_EQ(reg.setGroups(1, {"g-new"}, 1000), AgentRegistry::PushOutcome::Updated); // ...a push lands...
+    ASSERT_EQ(reg.invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated); // ...a push lands...
 
-    EXPECT_FALSE(reg.mayStoreLookup(reg.get(1), ticket)); // ...so its answer must not overwrite it.
+    EXPECT_FALSE(reg.mayStoreLookup(reg.get(1), ticket)); // ...so its answer may predate the change.
 }
 
-TEST(AgentRegistryTest, LookupTicketTakenAfterASetMayStore)
+TEST(AgentRegistryTest, LookupTicketTakenAfterAnInvalidationMayStore)
 {
     AgentRegistry reg;
     putActive(reg, 1, {"g-old"});
-    ASSERT_EQ(reg.setGroups(1, {"g-new"}, 1000), AgentRegistry::PushOutcome::Updated);
+    ASSERT_EQ(reg.invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated);
 
     const auto ticket = reg.groupsTicket();
 
@@ -448,7 +425,7 @@ TEST(AgentRegistryTest, AbsentAtIssueLookupIsNotCachedAfterASkippedPush)
     const auto ticket = reg.groupsTicket();
 
     // A push for an agent this node does not hold: nothing records which agent it was.
-    ASSERT_EQ(reg.setGroups(9, {"g1"}, 1000), AgentRegistry::PushOutcome::Skipped);
+    ASSERT_EQ(reg.invalidateGroups(9), AgentRegistry::PushOutcome::Skipped);
 
     EXPECT_FALSE(reg.mayStoreLookup(nullptr, ticket));
     EXPECT_FALSE(reg.mayStoreLookup(reg.get(3), ticket));
@@ -476,7 +453,7 @@ TEST(AgentRegistryTest, GroupsSequenceIsStrictlyIncreasingUnderConcurrency)
                 const AgentId id = static_cast<AgentId>(t + 1);
                 for (int i = 0; i < kWrites; ++i)
                 {
-                    reg.setGroups(id, {"g"}, 1000);
+                    reg.invalidateGroups(id);
                     stamps[t].push_back(reg.get(id)->groupsSeq); // only this thread writes this agent
                 }
             });
