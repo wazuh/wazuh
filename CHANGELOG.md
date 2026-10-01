@@ -81,6 +81,7 @@ All notable changes to this project will be documented in this file.
 - Fixed false-pass on the CIS Amazon Linux 2023 and Ubuntu 18.04 minimum password-days checks. ([#39047](https://github.com/wazuh/wazuh/pull/39047))
 - Fixed a `Permisive` typo failing the SELinux mode check on compliant hosts across 5 SCA policies. ([#39166](https://github.com/wazuh/wazuh/pull/39166))
 - Fixed the CIS Ubuntu 20.04 and Debian 10 "nologin is not listed in /etc/shells" check always reporting passed, by matching `nologin` instead of the never-occurring `nologins`. ([#39474](https://github.com/wazuh/wazuh/pull/39474))
+- Fixed 26 checks of the CIS Debian 13 SCA policy that could not pass on a correctly configured host (contradictory `condition: all` rules, PCRE syntax in OS_Regex rules, rules not matching auditctl output). ([#37766](https://github.com/wazuh/wazuh/issues/37766), [#38665](https://github.com/wazuh/wazuh/issues/38665))
 
 ### Other
 
