@@ -623,7 +623,11 @@ sequenceDiagram
    - Marks agent as `pending` in wazuh-db (global.db); the first notify promotes it to `active`
    - Persists the accepted agent version and resets `status_code` (host/os data arrives later via notify)
    - Records connection timestamp
-   - Fetches agent groups from wazuh-db
+   - Takes the agent's groups from its registry entry when that membership is fresh (established
+     within `remoted.control_groups_refresh_interval` — also while wazuh-db is down), otherwise
+     fetches them from wazuh-db. A row with no groups is `["default"]`. **No row** for the agent in the
+     local wazuh-db (`ok []`), or a lookup that fails, is answered `503 dependency_unavailable` with
+     nothing written — never `default`: the agent retries until its row reaches this node
    - **Response**:
      ```json
      {
@@ -658,6 +662,10 @@ sequenceDiagram
      }
      ```
    - Optional host metadata (OS, architecture, hostname, IP) — sent on first keepalive or when values change
+   - Refreshes the agent's groups from wazuh-db once its membership is no longer fresh
+     (`remoted.control_groups_refresh_interval`); a failed refresh, or no row for the agent, is
+     `503 dependency_unavailable` and writes nothing — an expired membership is never served in
+     place of an answer
    - Updates agent registry with last activity timestamp
    - Conditionally writes to wazuh-db (throttled by `keepaliveThrottleSec`, default 60s):
      - **Full update** (`updateAgentData`): when host metadata is present in the request. The first
@@ -740,7 +748,7 @@ that caches agent metadata to avoid repeated wazuh-db lookups on every keepalive
 stores:
 - `groups` — agent's assigned groups (vector of strings, wazuh-db order)
 - `groupsRefreshedAtSec` — when `groups` was last established from wazuh-db; `0` = not established
-  (never read, minted by `/control/shutdown`, invalidated, or a "no row" answer)
+  (never read, minted by `/control/shutdown`, or invalidated by a push or a "no row" answer)
 - `groupsSeq` — stamp of the last write to the two fields above, from a registry-wide counter
 - `lastKeepaliveUpdateSec` — timestamp of last wazuh-db write (for throttling)
 - `lastActivitySec` — timestamp of last control message (any type)
@@ -761,9 +769,11 @@ wazuh-db. When the answer arrives it writes the groups only if no newer write st
 the ticket (a push that landed while the query was in flight wins, and the caller answers from the
 entry). If a push skipped some absent agent after the ticket and the entry holds no established
 membership, the answer is kept for that reply only, not established. `/control` startup and the notify
-refresh follow the rule; a "no row" answer (`AgentGroupsResult::noRow`) is still answered as `default`
-but stored not established, so it never becomes a membership a download could be authorized against.
-`groupsFresh()` is the refresh test of `/control` notify (`remoted.control_groups_refresh_interval`).
+refresh follow the rule, and so does a "no row" answer (`AgentGroupsResult::noRow`): it **invalidates** the
+membership an existing entry holds (groups and activity kept) unless a newer write stamped the entry after
+the ticket — an established one then answers — and it never creates an entry. A row with no groups is
+stored as `{"default"}` by every writer (`membershipGroups()`, `groupSelector.hpp`). `groupsFresh()` is the
+freshness test of `/control` startup and notify and of `/download` (`remoted.control_groups_refresh_interval`).
 
 Sharding (8 shards) minimizes lock contention on high-frequency keepalives from many agents.
 
@@ -777,8 +787,8 @@ Exposes:
   by the notify refresh. It answers an `AgentGroupsResult`: `noRow` when the local replica has no
   row for the agent (`ok []`), otherwise the groups in wazuh-db order (empty for a row with no
   groups). A reply that is not the documented array shape is `SocketError::ProtocolError`, never an
-  empty membership. `/control` maps no row, and a row with no groups, to `default` itself
-  (`controlGroupsFrom()` in `controlHandler.cpp`); that compatibility answer is `/control`'s only.
+  empty membership. A row with no groups becomes `{"default"}` in every caller (`membershipGroups()`);
+  no row is never a membership — `/control` and `/download` answer it `503`.
 - `updateAgentData(...)` — fire-and-forget async write (full agent metadata)
 - `updateKeepalive(...)` — fire-and-forget async write (lightweight)
 - `updateStatusCode(...)` — fire-and-forget async write (e.g., invalid_version rejection)
@@ -808,8 +818,9 @@ wazuh-db when its `AgentRegistry` entry is missing or expired. Built in `startHt
 `/download` route's `RegistryAgentGroupSource` holds it (until the route table goes, phase 4) and the
 facade keeps a second reference only to `stop()` it in phase 1b. It owns its **own** `WazuhDBClient`
 (`kLookupConnections` = 2, the `/control` round-trip and request deadlines), so a burst of downloads never
-queues behind `/control`. Outcomes: `Groups` (wazuh-db order), `NoRow` (never a membership, never
-cached), `Unavailable` (wazuh-db failed or timed out, or the lookup was refused).
+queues behind `/control`. Outcomes: `Groups` (wazuh-db order; a row with no groups is `{"default"}`),
+`NoRow` (never a membership, never an entry; it invalidates an existing one), `Unavailable` (wazuh-db
+failed or timed out, or the lookup was refused).
 
 - **Coalescing and bounds**: concurrent lookups for one agent share a single query; at most
   `kLookupMaxWaitersPerAgent` (32) requests wait on one agent and `kLookupMaxWaiters` (1024) on all of
@@ -817,7 +828,8 @@ cached), `Unavailable` (wazuh-db failed or timed out, or the lookup was refused)
 - **Writes** follow the registry's ordering rule: the ticket is taken when the query is issued; a
   newer write wins (an established one is also the answer), a read that may be older than a skipped
   push is answered but not written, otherwise the groups are stored established at the request time
-  (an absent agent gets an entry with no activity fields).
+  (an absent agent gets an entry with no activity fields). `NoRow` follows the same rule: an existing
+  entry is invalidated unless a newer write stamped it, in which case an established one answers.
 - **Threads**: waiters run with no lock held — on a client worker, or inline when refused. A waiter
   may call `lookup()` again; never `stop()`.
 - **Shutdown**: `stop()` refuses new lookups, then destroys the client: in-flight queries complete or
@@ -920,6 +932,8 @@ facade's shared `wazuh_metrics` registry (`shared_modules/metrics`) via `makeCon
   are wdb_error's, so the histogram keeps meaning "how long a healthy round trip takes" — the
   number that sizes the internal options `remoted.control_wdb_roundtrip_deadline` /
   `remoted.control_wdb_request_connections`)
+- `remoted.control.no_row` — startups/notifies answered `503` because the local wazuh-db has no
+  row for the agent (`ok []`); disjoint from `wdb_error`, which counts lookups that failed
 - `remoted.control.registry.agents` — pull metric over `AgentRegistry::size()` (registered by
   the facade; weak target, quiesces to 0 once the control plane is torn down)
 
@@ -932,9 +946,11 @@ families, lives in **Metrics catalog** below.
 ### Error handling
 
 - **Version rejection**: `{"error":"invalid_version"}` + wazuh-db update (status_code=`invalid_version`); `409` when too high for policy, `400` when malformed
-- **Database errors**: `503 {"error":"dependency_unavailable","dependency":"wazuh-db"}` when startup,
-  or a notify with no cached groups, cannot read the agent's groups (wazuh-db down, round-trip timeout,
-  request expired, queue full); a notify with cached groups keeps serving them
+- **Database errors**: `503 {"error":"dependency_unavailable","dependency":"wazuh-db"}` when startup
+  or a notify needs the agent's groups (no fresh membership) and cannot read them (wazuh-db down,
+  round-trip timeout, request expired, queue full) — an expired membership is never served instead
+- **No local row** (`ok []`): the same `503` body — the agent retries it alike — counted apart as
+  `remoted.control.no_row` with its own throttled WARN; an existing membership is invalidated
 - **Queue full** (wazuh-db or task-manager): drops the operation, logs warning (throttled), continues
 - **Invalid JSON/malformed request**: `400` with specific error code (invalid_body, invalid_json, etc.)
 
@@ -1759,7 +1775,7 @@ Most endpoints answer with one in-memory body. `/download` serves `merged.mg` an
 which can be hundreds of megabytes, so it streams with **HTTP chunked transfer encoding** (64 KiB
 chunks) and memory that does not grow with file size.
 
-Metrics: `remoted.download.*` (admission outcomes incl. `unavailable` for the fallback's 503s, the
+Metrics: `remoted.download.*` (admission outcomes incl. `unavailable` and `no_row` for the fallback's 503s, the
 fallback's wazuh-db queries as the `lookups` pull, started transfers/offered bytes, all counted
 before the pump runs; the per-chunk loop is deliberately uninstrumented) — catalog in
 `endpoints/downloadMetrics.hpp`, overview in the [Metrics catalog](#metrics-catalog).
@@ -1796,11 +1812,13 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   (`control/registryAgentGroupSource.hpp`): an entry established less than
   `remoted.control_groups_refresh_interval` ago answers without querying wazuh-db. Anything else —
   no entry (a node the agent never sent `/control` to, a restarted remoted), an expired one, or one
-  whose groups never came from wazuh-db (`groupsRefreshedAtSec == 0`: what `/control/shutdown` leaves
-  for an unknown agent, and the `default` `/control` answers an agent with no local row) — is looked up
-  in the local wazuh-db **asynchronously** by `RegistryLookup`, without holding the HTTP worker: a row
-  is the answer (and is cached), no row is **403** (never "default"), and a lookup that fails or times
-  out is **503** `dependency_unavailable`. The body is released before that wait. A `wpk` request is
+  whose membership is not established (`groupsRefreshedAtSec == 0`: what `/control/shutdown` leaves
+  for an unknown agent, or what a push or a "no row" answer invalidated) — is looked up in the local
+  wazuh-db **asynchronously** by `RegistryLookup`, without holding the HTTP worker: a row is the answer
+  (and is cached; no groups is `default`), while no row — never "default" — and a lookup that fails or
+  times out are both **503** `dependency_unavailable` (counted as `remoted.download.no_row` and
+  `remoted.download.unavailable`). **403** is only a selector that is not the agent's membership. The
+  body is released before that wait. A `wpk` request is
   **not** authorized here: its authority is the agent's pending upgrade task, which `/control` does
   not carry.
 
@@ -2275,7 +2293,7 @@ linked into the settings' own documentation — is the official docs page:
 
 | Family | What it answers | Counted at |
 |---|---|---|
-| `remoted.control.*` (6 counters + `rejected` + `wdb.latency` histogram) | control-plane health, wazuh-db sizing | `controlHandler`/`controlEndpoint`/`wazuhDBClient`/`taskClient` (see the /control section) |
+| `remoted.control.*` (6 counters + `rejected` + `no_row` + `wdb.latency` histogram) | control-plane health, wazuh-db sizing | `controlHandler`/`controlEndpoint`/`wazuhDBClient`/`taskClient` (see the /control section) |
 | `remoted.control.registry.agents` (pull) | how many agents this node currently tracks — diagnostic only: the registry TTL (6 h) and eviction cadence (5 min) are compile-time constants, not settings | `AgentRegistry::size()` |
 | `remoted.scanvd.*` (7 counters) | VD scan admission split | `scanVdHandler` (see the /scan/vd section) |
 | `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed, token_unknown, token_expired, token_revoked}` | WHY authentication failed, finer than the class the wire names (see [401 classes](#401-classes)); the three `token_*` cells are `/enroll`'s enrollment-token states | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
@@ -2283,7 +2301,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|enroll.secret\|cacerts>.responses.{2xx,400,403,409,413,429,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
-| `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total, unavailable}`, `remoted.download.lookups` (pull) | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector, or the manager has no established membership for it). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request) and from `not_found` (an *entitled* request whose file is not on disk) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
+| `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total, unavailable, no_row}`, `remoted.download.lookups` (pull) | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request), from `not_found` (an *entitled* request whose file is not on disk) and from the two 503s, `unavailable` (the fallback lookup failed) and `no_row` (the local wazuh-db has no row for the agent yet) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
 | `remoted.cacerts.{served, not_found, ca_mismatch, rate_limited}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, refused because the served leaf does not chain to any CA of the bundle (`ca_mismatch`: a signature alone is not enough, C33), or refused by the route's rate limit before the CA was even read | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch; `rate_limited` is bumped by the gate (`endpoints/rateLimitGate.cpp`), which runs before the handler |
 | `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does it CHAIN to `remote.https.ca_certificate` (0 when it does not — including a CA that signs it but is expired, not a CA, or under another subject — or when the last successful read yielded no certificate; a read that fails after a good one keeps that bundle's verdict) | `IHttpServer::certificateStatus()`: `cert_expiry_days` from the transport's `TlsCertificateMonitor` snapshot (evaluated at start and every 24 h); `ca_matches_leaf` re-read from the same `CaCertificateSource` `/cacerts` answers from, on every scrape; registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |

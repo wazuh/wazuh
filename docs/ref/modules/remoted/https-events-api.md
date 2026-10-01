@@ -1037,6 +1037,14 @@ Control-specific conditions:
 | Agent version higher than allowed (startup only) | `409` | `invalid_version` |
 | Invalid host info format (notify only)     | `400` | `invalid_host_info`    |
 | wazuh-db unavailable (get groups)          | `503` | `dependency_unavailable` |
+| wazuh-db has no row for the agent (`ok []`) | `503` | `dependency_unavailable` |
+
+Both `503`s arise only when the manager holds no fresh membership for the agent (established
+within `remoted.control_groups_refresh_interval`): a fresh one answers `startup` and `notify` without
+querying wazuh-db. An expired membership is never served in place of an answer, and an agent with no
+row in the node's local wazuh-db is never handed `default`: it retries until its row arrives. The two
+causes share one answer on the wire; the manager tells them apart in its log and in the
+`remoted.control.wdb_error` / `remoted.control.no_row` metrics.
 
 The two version rejections deliberately carry different statuses even though they share an `error`
 message. A **malformed** version is a bad request: resending the same bytes can never succeed, so the
@@ -1551,8 +1559,9 @@ Accepted identifiers:
 > agent's membership there is fresh (established within `remoted.control_groups_refresh_interval`).
 > Otherwise — the agent never sent `/control` to this node, the manager restarted, the entry expired
 > or was never established — the manager reads the membership from the node's local
-> `wazuh-manager-db` first, asynchronously: an agent that database has no row for is **denied, not
-> served** (never `default`), and when the database does not answer in time the answer is `503`.
+> `wazuh-manager-db` first, asynchronously: an agent that database has no row for is **not served**
+> (never `default`) but answered `503`, as when the database does not answer in time — the agent
+> retries until its row reaches this node.
 >
 > The comparison is exact, including the order of a multigroup CSV: `a,b` and `b,a` name different
 > merged files, and only one of them is the file `config_hash` refers to.
@@ -1583,8 +1592,8 @@ instead.
 | Body empty, over 4 KiB, not a JSON object, wrong member count, or a non-string member | `400` | `Invalid request format` |
 | `resource_type` is neither `config` nor `wpk` | `400` | `Invalid resource type` |
 | `resource_id` fails the grammar for its type | `400` | `Invalid resource identifier` |
-| `resource_type: config` and `resource_id` is not the requesting agent's own selector, or the node's `wazuh-manager-db` has no row for the agent | `403` | `Forbidden` |
-| `resource_type: config` and the agent's membership could not be read from `wazuh-manager-db` in time | `503` | `dependency_unavailable` (with `dependency: wazuh-db`) |
+| `resource_type: config` and `resource_id` is not the requesting agent's own selector | `403` | `Forbidden` |
+| `resource_type: config` and the agent's membership could not be read from `wazuh-manager-db` in time, or it has no row for the agent | `503` | `dependency_unavailable` (with `dependency: wazuh-db`) |
 | Resource absent, not a regular file, or `O_NOFOLLOW` rejected a symlink | `404` | `Resource not found` |
 | Unexpected `errno` while opening or stat-ing | `500` | `Internal server error` |
 
