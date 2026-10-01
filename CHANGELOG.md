@@ -37,6 +37,12 @@ All notable changes to this project will be documented in this file.
 - Fixed the `/etc/security/opasswd` permission check failing when the optional `opasswd.old` file is absent in Debian 10, 12, 13 and Ubuntu 20.04, 22.04, 24.04 SCA policies. ([#39762](https://github.com/wazuh/wazuh/pull/39762))
 - Fixed MTA check in multiple SCA files. ([#39771](https://github.com/wazuh/wazuh/pull/39771))
 
+### RESTful API
+
+#### Fixed
+
+- Fixed configuration masking to cover the credential fields of cloud, integration and cluster HAProxy settings, and the group configuration files. ([#39706](https://github.com/wazuh/wazuh/pull/39706))
+
 ## [v4.14.9]
 
 ### Manager

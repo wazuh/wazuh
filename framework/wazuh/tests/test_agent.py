@@ -1306,11 +1306,13 @@ def test_agent_get_agent_config(mock_exists, socket_mock, send_mock, wazuh_socke
     assert result.dikt['data'] == {"test": "conf"}, 'Result message is not as expected.'
 
 
+@patch('wazuh.rbac.decorators._has_update_permissions', return_value=False)
 @patch('wazuh.core.wazuh_socket.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 @patch('os.path.exists')
-def test_agent_get_agent_config_masks_sensitive_fields(mock_exists, socket_mock, send_mock, wazuh_socket_mock):
+def test_agent_get_agent_config_masks_sensitive_fields(mock_exists, socket_mock, send_mock, wazuh_socket_mock,
+                                                       mock_perms):
     """Test `get_agent_config` masks sensitive values for a caller without update-config permissions."""
     wazuh_socket_mock.return_value.receive.return_value = \
         b'ok {"node_name": "node01", "key": "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH", "authd.pass": "P4ssW0rd!"}'
