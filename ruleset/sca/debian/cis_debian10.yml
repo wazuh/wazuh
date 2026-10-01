@@ -876,7 +876,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/shadow -> r:^root:*:|^root:\$'
+      - 'f:/etc/shadow -> r:^root:\$'
 
   # 1.5.1 Ensure address space layout randomization (ASLR) is enabled. (Automated) - Not Implemented
   # 1.5.2 Ensure ptrace_scope is restricted. (Automated) - Not Implemented
@@ -1066,9 +1066,9 @@ checks:
       - cis: ["1.7.3"]
       - mitre_tactics: ["TA0007"]
       - mitre_techniques: ["T1018", "T1082", "T1592", "T1592.004"]
-    condition: all
+    condition: none
     rules:
-      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s && r:Debian'
+      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Debian'
 
   # 1.7.4 Ensure permissions on /etc/motd are configured. (Automated)
   - id: 2545
