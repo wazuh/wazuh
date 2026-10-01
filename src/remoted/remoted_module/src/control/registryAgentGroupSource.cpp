@@ -95,6 +95,11 @@ namespace remoted::control
                         // its row reaches this node's database.
                         done(GroupVerdict {GroupVerdictKind::NoRow, {}});
                         return;
+                    case LookupOutcome::Kind::Superseded:
+                        // The read may predate a change that landed while it was in flight: never
+                        // authorize from it. The next request reads the database again.
+                        done(GroupVerdict {GroupVerdictKind::Superseded, {}});
+                        return;
                     case LookupOutcome::Kind::Unavailable:
                     default: done(GroupVerdict {GroupVerdictKind::Unavailable, {}}); return;
                 }

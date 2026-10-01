@@ -10,11 +10,9 @@
  */
 
 #include "agentGroupsRoute.hpp"
-#include "control/groupSelector.hpp"
 #include "json.hpp"
 #include "loggerHelper.h"
 
-#include <chrono>
 #include <cstdint>
 #include <limits>
 #include <optional>
@@ -34,15 +32,8 @@ namespace remoted::admin
             return instance;
         }
 
-        struct SetItem
-        {
-            control::AgentId id {0};
-            std::vector<std::string> groups;
-        };
-
         struct Publication
         {
-            std::vector<SetItem> sets;
             std::vector<control::AgentId> invalidations;
         };
 
@@ -64,18 +55,6 @@ namespace remoted::admin
             return true;
         }
 
-        // A group name as it can appear in a membership: non-empty, and without the ',' that
-        // separates the groups of a multigroup selector (a name with one would name another list).
-        bool readGroupName(const nlohmann::json& value, std::string& out)
-        {
-            if (!value.is_string())
-            {
-                return false;
-            }
-            out = value.get<std::string>();
-            return !out.empty() && out.find(',') == std::string::npos;
-        }
-
         // The whole body, validated before anything is applied: the first defect is the 400's reason.
         // Non-throwing parse (invsync precedent): a malformed body is ordinary input, not an exception.
         std::optional<Publication> parsePublication(const std::string& body, const char*& reason)
@@ -87,71 +66,27 @@ namespace remoted::admin
                 return std::nullopt;
             }
 
-            const auto set = document.find("set");
+            // Every other key is ignored, "set" included: a publication never carries groups (only a
+            // wazuh-db read establishes a membership), so a body with nothing but "set" has nothing
+            // this route applies and is refused for the missing "invalidate".
             const auto invalidate = document.find("invalidate");
-            if (set == document.end() && invalidate == document.end())
+            if (invalidate == document.end() || !invalidate->is_array())
             {
-                reason = R"(Body must carry "set", "invalidate" or both)";
+                reason = R"(Body must carry an "invalidate" array)";
                 return std::nullopt;
             }
 
             Publication publication;
-            if (set != document.end())
+            publication.invalidations.reserve(invalidate->size());
+            for (const auto& element : *invalidate)
             {
-                if (!set->is_array())
+                control::AgentId id = 0;
+                if (!readAgentId(element, id))
                 {
-                    reason = R"("set" must be an array)";
+                    reason = R"(Every "invalidate" element must be an id from 1 to 4294967295)";
                     return std::nullopt;
                 }
-                publication.sets.reserve(set->size());
-                for (const auto& element : *set)
-                {
-                    SetItem item;
-                    const auto id = element.is_object() ? element.find("id") : element.end();
-                    if (!element.is_object() || id == element.end() || !readAgentId(*id, item.id))
-                    {
-                        reason = R"(Every "set" element must be an object with an "id" from 1 to 4294967295)";
-                        return std::nullopt;
-                    }
-                    const auto groups = element.find("groups");
-                    if (groups == element.end() || !groups->is_array())
-                    {
-                        reason = R"(Every "set" element must carry a "groups" array)";
-                        return std::nullopt;
-                    }
-                    item.groups.reserve(groups->size());
-                    for (const auto& group : *groups)
-                    {
-                        std::string name;
-                        if (!readGroupName(group, name))
-                        {
-                            reason = "Group names must be non-empty strings without ','";
-                            return std::nullopt;
-                        }
-                        item.groups.push_back(std::move(name));
-                    }
-                    publication.sets.push_back(std::move(item));
-                }
-            }
-
-            if (invalidate != document.end())
-            {
-                if (!invalidate->is_array())
-                {
-                    reason = R"("invalidate" must be an array)";
-                    return std::nullopt;
-                }
-                publication.invalidations.reserve(invalidate->size());
-                for (const auto& element : *invalidate)
-                {
-                    control::AgentId id = 0;
-                    if (!readAgentId(element, id))
-                    {
-                        reason = R"(Every "invalidate" element must be an id from 1 to 4294967295)";
-                        return std::nullopt;
-                    }
-                    publication.invalidations.push_back(id);
-                }
+                publication.invalidations.push_back(id);
             }
             return publication;
         }
@@ -160,13 +95,6 @@ namespace remoted::admin
         {
             return wazuh::uds_http::HttpResponse::json(status,
                                                        nlohmann::json {{"error", message}, {"code", status}}.dump());
-        }
-
-        uint64_t wallSec()
-        {
-            return static_cast<uint64_t>(
-                std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
-                    .count());
         }
     } // namespace
 
@@ -198,32 +126,23 @@ namespace remoted::admin
                 return;
             }
 
-            const uint64_t now = wallSec();
-            uint64_t updated = 0;
             uint64_t invalidated = 0;
             uint64_t skipped = 0;
-            for (auto& item : publication->sets)
-            {
-                const auto outcome = target->setGroups(item.id, control::membershipGroups(std::move(item.groups)), now);
-                (outcome == control::AgentRegistry::PushOutcome::Updated ? updated : skipped) += 1;
-            }
             for (const auto id : publication->invalidations)
             {
                 const auto outcome = target->invalidateGroups(id);
                 (outcome == control::AgentRegistry::PushOutcome::Invalidated ? invalidated : skipped) += 1;
             }
 
-            control::addPush(metrics.updated, updated);
             control::addPush(metrics.invalidated, invalidated);
             control::addPush(metrics.skipped, skipped);
             LOGFN_DEBUG1(logFn(),
-                         "Applied a membership publication: %llu updated, %llu invalidated, %llu skipped.",
-                         static_cast<unsigned long long>(updated),
+                         "Applied a membership publication: %llu invalidated, %llu skipped.",
                          static_cast<unsigned long long>(invalidated),
                          static_cast<unsigned long long>(skipped));
 
             responder->send(wazuh::uds_http::HttpResponse::json(
-                200, nlohmann::json {{"updated", updated}, {"invalidated", invalidated}, {"skipped", skipped}}.dump()));
+                200, nlohmann::json {{"invalidated", invalidated}, {"skipped", skipped}}.dump()));
         };
     }
 } // namespace remoted::admin

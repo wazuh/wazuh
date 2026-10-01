@@ -75,27 +75,6 @@ namespace remoted::control
         }
     }
 
-    AgentRegistry::PushOutcome AgentRegistry::setGroups(AgentId id, std::vector<std::string> groups, uint64_t nowSec)
-    {
-        auto outcome = PushOutcome::Skipped;
-        update(id,
-               [&](std::shared_ptr<const AgentEntry> old) -> std::shared_ptr<AgentEntry>
-               {
-                   if (!old)
-                   {
-                       markSkipped();
-                       return nullptr;
-                   }
-                   auto e = std::make_shared<AgentEntry>(*old);
-                   e->groups = std::move(groups);
-                   e->groupsRefreshedAtSec = nowSec;
-                   e->groupsSeq = nextGroupsSeq();
-                   outcome = PushOutcome::Updated;
-                   return e;
-               });
-        return outcome;
-    }
-
     AgentRegistry::PushOutcome AgentRegistry::invalidateGroups(AgentId id)
     {
         auto outcome = PushOutcome::Skipped;

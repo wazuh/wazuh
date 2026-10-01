@@ -40,10 +40,11 @@ namespace remoted::control
         uint64_t groupsSeq = 0;
     };
 
-    /// @brief Whether `entry`'s groups came from wazuh-db (or a membership push) less than
-    /// `intervalSec` ago. A never-established entry (groupsRefreshedAtSec == 0) is not fresh; a
-    /// wall clock stepping back makes the difference wrap, which reads as "expired" (one extra
-    /// lookup, never a stale authorization).
+    /// @brief Whether `entry`'s groups came from wazuh-db less than `intervalSec` ago (only a
+    /// wazuh-db read establishes a membership; a membership push only withdraws one). A
+    /// never-established entry (groupsRefreshedAtSec == 0) is not fresh; a wall clock stepping back
+    /// makes the difference wrap, which reads as "expired" (one extra lookup, never a stale
+    /// authorization).
     inline bool groupsFresh(const AgentEntry& entry, uint64_t nowSec, uint64_t intervalSec)
     {
         return entry.groupsRefreshedAtSec != 0 && nowSec - entry.groupsRefreshedAtSec < intervalSec;
@@ -62,18 +63,16 @@ namespace remoted::control
         /// Outcome of a membership push for one agent.
         enum class PushOutcome
         {
-            Updated,     ///< An existing entry took the pushed groups.
             Invalidated, ///< An existing entry is no longer an established membership.
             Skipped      ///< No entry for the agent: nothing is created (the fallback covers it).
         };
 
-        /// @brief Sets an existing entry's groups (wazuh-db order) as freshly established at
-        /// `nowSec`, stamping it. Activity, keepalive and host fields are left as they are. An
-        /// absent agent is skipped and leaves the skip mark mayStoreLookup() reads.
-        PushOutcome setGroups(AgentId id, std::vector<std::string> groups, uint64_t nowSec);
-
-        /// @brief Marks an existing entry's membership as not established (groupsRefreshedAtSec
-        /// = 0, groups kept), stamping it, so the next reader looks it up. Absent ⇒ skipped.
+        /// @brief The one write of a membership push: marks an existing entry's membership as not
+        /// established (groupsRefreshedAtSec = 0, groups kept), stamping it, so the next reader
+        /// looks it up. A push never establishes groups: it describes the database as it was when
+        /// the cluster daemon wrote it, which a later read may already have overtaken. Activity,
+        /// keepalive and host fields are left as they are. An absent agent is skipped and leaves
+        /// the skip mark mayStoreLookup() reads.
         PushOutcome invalidateGroups(AgentId id);
 
         /// @brief The counter as it is now. A caller about to query wazuh-db takes it BEFORE the

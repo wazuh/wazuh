@@ -1433,9 +1433,9 @@ private:
                 },
                 wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
 
-            // POST /_internal/agents/groups: the memberships clusterd applied to this node's wazuh-db
-            // (one publication per agent-groups chunk, on workers), written into the SAME
-            // AgentRegistry /control and /download use -- through the weak target the registry pull
+            // POST /_internal/agents/groups: the agents whose memberships clusterd just applied to this
+            // node's wazuh-db (one publication per agent-groups chunk, on workers), invalidated in the
+            // SAME AgentRegistry /control and /download use -- through the weak target the registry pull
             // already holds, repointed by this start()'s startHttpServer(), so ownership does not
             // change and a publication racing teardown is answered 503. Control class, the first on
             // this plane: it is small-bodied and another daemon depends on it, so data-plane pressure

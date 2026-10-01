@@ -113,6 +113,23 @@ namespace remoted::control
             return response;
         }
 
+        // What storeLookedUpGroups() did with a wazuh-db row.
+        enum class GroupsWrite
+        {
+            Stored,    ///< Established in the entry: it is the answer.
+            KeptNewer, ///< A newer established write stamped the entry meanwhile: that is the answer.
+            Superseded ///< A change landed meanwhile and nothing newer is established: no answer (503).
+        };
+
+        void logSuperseded(AgentId id, const char* what)
+        {
+            LOGFN_DEBUG1(logFn(),
+                         "Agent %u /control %s: its membership changed while it was being read from "
+                         "wazuh-manager-db; the read is discarded and the agent is told to retry.",
+                         id,
+                         what);
+        }
+
         void logNoRow(AgentId id, const char* what)
         {
             if (const auto throttle = noRowThrottle().record())
@@ -238,8 +255,8 @@ namespace remoted::control
                 return;
             }
 
-            // Taken before the query: an answer read before a newer groups write (a membership
-            // push) must not overwrite it (AgentRegistry::mayStoreLookup()).
+            // Taken before the query: an answer read before a newer groups write (an invalidation,
+            // or another read stored first) must not overwrite it (AgentRegistry::mayStoreLookup()).
             const auto ticket = m_registry->groupsTicket();
             m_wdbClient->getAgentGroups(
                 id,
@@ -267,8 +284,8 @@ namespace remoted::control
 
                     if (result.noRow)
                     {
-                        // Never "default": no row is no membership. A push that established one
-                        // while the query was in flight is newer than this answer, and serves.
+                        // Never "default": no row is no membership. Another read that established
+                        // one while the query was in flight was stored first, and serves.
                         if (const auto established = applyNoRow(id, ticket))
                         {
                             completeStartup(id, version, getWallSec(), established, nullptr, std::move(callback));
@@ -295,7 +312,7 @@ namespace remoted::control
                         now,
                         nullptr,
                         [&](AgentEntry& e, const std::shared_ptr<const AgentEntry>& old)
-                        { storeLookedUpGroups(e, old, ticket, groups, now); },
+                        { return storeLookedUpGroups(e, old, ticket, groups, now); },
                         std::move(callback));
                 });
         }
@@ -375,23 +392,34 @@ namespace remoted::control
                     }
 
                     const auto groups = membershipGroups(std::move(result.groups));
-                    auto updated = m_registry->update(id,
-                                                      [&](std::shared_ptr<const AgentEntry> old)
-                                                      {
-                                                          // Fall back to `entry`: the eviction
-                                                          // thread may have dropped the agent
-                                                          // while the query was in flight.
-                                                          auto e = old     ? std::make_shared<AgentEntry>(*old)
-                                                                   : entry ? std::make_shared<AgentEntry>(*entry)
-                                                                           : std::make_shared<AgentEntry>();
-                                                          storeLookedUpGroups(*e, old, ticket, groups, now);
-                                                          e->lastActivitySec = now;
-                                                          if (e->createdAtSec == 0)
-                                                          {
-                                                              e->createdAtSec = now;
-                                                          }
-                                                          return e;
-                                                      });
+                    bool superseded = false;
+                    auto updated = m_registry->update(
+                        id,
+                        [&](std::shared_ptr<const AgentEntry> old) -> std::shared_ptr<AgentEntry>
+                        {
+                            // Fall back to `entry`: the eviction thread may have dropped the agent
+                            // while the query was in flight.
+                            auto e = old     ? std::make_shared<AgentEntry>(*old)
+                                     : entry ? std::make_shared<AgentEntry>(*entry)
+                                             : std::make_shared<AgentEntry>();
+                            if (storeLookedUpGroups(*e, old, ticket, groups, now) == GroupsWrite::Superseded)
+                            {
+                                superseded = true;
+                                return nullptr; // A 503 writes nothing, not even activity (S33).
+                            }
+                            e->lastActivitySec = now;
+                            if (e->createdAtSec == 0)
+                            {
+                                e->createdAtSec = now;
+                            }
+                            return e;
+                        });
+                    if (superseded)
+                    {
+                        logSuperseded(id, "notify");
+                        callback(membershipUnavailableResponse());
+                        return;
+                    }
 
                     processNotify(id, updated, data, now, std::move(callback));
                 });
@@ -440,32 +468,40 @@ namespace remoted::control
 
         // Writes a wazuh-db row into `e` (a copy of `old`) under the registry's one ordering rule.
         // `ticket` was taken before the query was issued.
-        //  - A newer groups write stamped `old` after the ticket (a membership push): leave the
-        //    groups alone; the caller answers from the entry, which is newer than this read.
-        //  - Otherwise established at the issue time -- unless a push skipped an absent agent
-        //    since the ticket and `old` holds no established membership: then the read is kept
-        //    for this answer only, not established, so the next reader looks it up again.
-        void storeLookedUpGroups(AgentEntry& e,
-                                 const std::shared_ptr<const AgentEntry>& old,
-                                 uint64_t ticket,
-                                 const std::vector<std::string>& groups,
-                                 uint64_t issuedAtSec)
+        //  - A newer established write stamped `old` after the ticket (another read -- a /download
+        //    lookup or another /control -- stored first; a push never establishes groups): leave the
+        //    groups alone; the caller answers from the entry.
+        //  - A newer write that established nothing (an invalidation), or a push that skipped an
+        //    absent agent after the ticket while `old` holds no established membership: the local
+        //    database changed after the query was issued -- possibly for this agent -- so this read
+        //    may predate the change. Nothing is written and the caller answers 503; the next
+        //    request reads the database again.
+        //  - Otherwise established at the issue time.
+        GroupsWrite storeLookedUpGroups(AgentEntry& e,
+                                        const std::shared_ptr<const AgentEntry>& old,
+                                        uint64_t ticket,
+                                        const std::vector<std::string>& groups,
+                                        uint64_t issuedAtSec)
         {
             if (old && old->groupsSeq > ticket)
             {
-                return;
+                return old->groupsRefreshedAtSec != 0 ? GroupsWrite::KeptNewer : GroupsWrite::Superseded;
             }
-            const bool establish = m_registry->mayStoreLookup(old, ticket);
+            if (!m_registry->mayStoreLookup(old, ticket))
+            {
+                return GroupsWrite::Superseded;
+            }
             e.groups = groups;
-            e.groupsRefreshedAtSec = establish ? issuedAtSec : 0;
+            e.groupsRefreshedAtSec = issuedAtSec;
             e.groupsSeq = m_registry->nextGroupsSeq();
+            return GroupsWrite::Stored;
         }
 
         // A "no row" answer (`ok []`) under the same rule: it invalidates the membership the
         // registry holds for the agent (groups and activity kept, so only the membership stops
         // counting) unless a newer write stamped the entry after the ticket, and it never creates
-        // an entry. Returns that newer entry when it holds an established membership -- a push that
-        // landed while the query was in flight answers the request -- and null otherwise, when the
+        // an entry. Returns that newer entry when it holds an established membership -- another read
+        // stored while the query was in flight answers the request -- and null otherwise, when the
         // caller answers 503.
         std::shared_ptr<const AgentEntry> applyNoRow(AgentId id, uint64_t ticket)
         {
@@ -496,38 +532,47 @@ namespace remoted::control
         // The 200 half of /startup, shared by a fresh entry and a queried row: one update()
         // records the activity (and, through `writeGroups`, the membership), then the accepted
         // version is persisted with the pending keepalive and the entry's groups are the answer --
-        // a push that landed while a query was in flight is newer than what the query read.
+        // another read stored while a query was in flight answers instead of what the query read.
         // `fallback` is the entry the caller already holds: the eviction thread may drop the agent
         // between that read and this update, and the answer must still carry its groups.
-        void
-        completeStartup(AgentId id,
-                        const std::string& version,
-                        uint64_t now,
-                        const std::shared_ptr<const AgentEntry>& fallback,
-                        const std::function<void(AgentEntry&, const std::shared_ptr<const AgentEntry>&)>& writeGroups,
-                        ResponseCallback callback)
+        void completeStartup(
+            AgentId id,
+            const std::string& version,
+            uint64_t now,
+            const std::shared_ptr<const AgentEntry>& fallback,
+            const std::function<GroupsWrite(AgentEntry&, const std::shared_ptr<const AgentEntry>&)>& writeGroups,
+            ResponseCallback callback)
         {
-            const auto stored = m_registry->update(id,
-                                                   [&](std::shared_ptr<const AgentEntry> old)
-                                                   {
-                                                       auto updated = old ? std::make_shared<AgentEntry>(*old)
-                                                                      : fallback
-                                                                          ? std::make_shared<AgentEntry>(*fallback)
-                                                                          : std::make_shared<AgentEntry>();
-                                                       if (writeGroups)
-                                                       {
-                                                           writeGroups(*updated, old);
-                                                       }
-                                                       updated->lastActivitySec = now;
-                                                       // /startup leaves the agent "pending" in wdb; only a write lifts
-                                                       // it, so the next notify must not be throttled.
-                                                       updated->lastKeepaliveUpdateSec = 0;
-                                                       if (updated->createdAtSec == 0)
-                                                       {
-                                                           updated->createdAtSec = now;
-                                                       }
-                                                       return updated;
-                                                   });
+            bool superseded = false;
+            const auto stored =
+                m_registry->update(id,
+                                   [&](std::shared_ptr<const AgentEntry> old) -> std::shared_ptr<AgentEntry>
+                                   {
+                                       auto updated = old        ? std::make_shared<AgentEntry>(*old)
+                                                      : fallback ? std::make_shared<AgentEntry>(*fallback)
+                                                                 : std::make_shared<AgentEntry>();
+                                       if (writeGroups && writeGroups(*updated, old) == GroupsWrite::Superseded)
+                                       {
+                                           superseded = true;
+                                           return nullptr; // A 503 writes nothing (S33).
+                                       }
+                                       updated->lastActivitySec = now;
+                                       // /startup leaves the agent "pending" in wdb; only a write lifts
+                                       // it, so the next notify must not be throttled.
+                                       updated->lastKeepaliveUpdateSec = 0;
+                                       if (updated->createdAtSec == 0)
+                                       {
+                                           updated->createdAtSec = now;
+                                       }
+                                       return updated;
+                                   });
+
+            if (superseded)
+            {
+                logSuperseded(id, "startup");
+                callback(membershipUnavailableResponse());
+                return;
+            }
 
             // A single write persists the accepted version together with the pending keepalive.
             // The version is not left to the notify path: notify only writes it alongside host
