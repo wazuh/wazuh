@@ -141,7 +141,7 @@ naming both values, for example
 `File descriptor limit is 8192, below the 65536 requested by 'remoted.rlimit_nofile'`. To go
 higher, raise the limit the process is started with: a drop-in with `LimitNOFILE=` for the service
 unit, `ulimit -n` before the init script, or `ulimits.nofile` in the container definition. An
-option above the hard limit never fails and never logs an error. `GET /manager/configuration`
+option above the hard limit never fails and never logs an error. `GET /cluster/{node_id}/configuration/request/internal`
 reports the effective value for remoted.
 
 `wazuh_modules.rlimit_nofile` cannot go below `8192`: a lower value is rejected at start with

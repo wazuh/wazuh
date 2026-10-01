@@ -324,7 +324,7 @@ cat /var/ossec/logs/ossec.log
 Verify the configuration file syntax:
 
 ```bash
-/var/ossec/bin/wazuh-control configtest
+/var/ossec/bin/wazuh-agentd -t
 ```
 
 ### Agent Not Connecting to Server

@@ -172,7 +172,7 @@ mask is not served.
 
 - The API tracks failed login attempts per IP address
 - After exceeding a configurable threshold, the IP is added to a blocked set
-- Blocked IPs receive `429 Too Many Requests` or immediate rejection
+- Blocked IPs receive `403 Forbidden` on every login attempt for `block_time` seconds; `429 Too Many Requests` is returned only when `max_request_per_minute` is exceeded
 - Rate limiting state is managed in-memory within `middlewares.py` and `error_handler.py`
 
 ---

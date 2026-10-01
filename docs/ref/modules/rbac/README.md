@@ -28,10 +28,10 @@ Follow these steps to create an internal user, create a new role mapping, and gi
       - Internal users: previously created user
    3. Click **Save role mapping**.
 
-Ensure `run_as` is set to `true` in:
+Ensure `run_as` is set to `true` for the manager host entry in `/etc/wazuh-dashboard/opensearch_dashboards.yml`:
 
-```
-/usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
+```yaml
+wazuh_core.hosts.<name>.run_as: true
 ```
 
 Restart the dashboard service and clear browser cache.

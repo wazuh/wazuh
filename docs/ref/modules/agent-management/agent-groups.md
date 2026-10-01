@@ -34,7 +34,8 @@ Each group has a dedicated directory under the manager's shared configuration pa
 ### Create a group
 
 ```
-PUT /groups?group_id=<GROUP_NAME>
+POST /groups
+{"group_id": "<GROUP_NAME>"}
 ```
 
 Example using `curl`:
@@ -42,8 +43,10 @@ Example using `curl`:
 ```bash
 TOKEN=$(curl -u <USER>:<PASSWORD> -k -X POST "https://<MANAGER_IP>:55000/security/user/authenticate" | jq -r '.data.token')
 
-curl -k -X PUT "https://<MANAGER_IP>:55000/groups?group_id=web-servers" \
-  -H "Authorization: Bearer $TOKEN"
+curl -k -X POST "https://<MANAGER_IP>:55000/groups" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"group_id": "web-servers"}'
 ```
 
 ### List groups

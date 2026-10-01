@@ -207,7 +207,7 @@ For agents below v5.0.0, `remoted` streams the WPK bytes to the agent directly, 
 
 - The agent's reported version once the upgrade completes and the agent reconnects, and `remoted`'s own log for a failure the manager detects — `tasks.db` itself has no way to distinguish that outcome from a successful delivery: the task's `STATUS` stays `delivered` regardless (`delivery_time` is populated by the manager's own `get_pending_tasks` read, a side effect of the poller retrieving the task, not by anything agent-driven, so it never meant the agent had actually installed the WPK in the first place).
 - The agent's own upgrade result, forwarded to the Engine's event pipeline like any other agent event (`upgrade_update_status`, one of "Upgrade was successful" / "Upgrade failed due missing dependency" / "Upgrade failed"). `remoted` replies to the agent with `clear_upgrade_result` within a few seconds of receiving a well-formed acknowledgment, regardless of whether it reports success or failure — this is what stops the agent's own retry loop (an agent resends the same acknowledgment on a growing backoff until it gets this reply back). The reply is handled by `remoted`'s own background poller rather than inline on receipt, so a burst of acknowledgments never competes with other agents' traffic for processing.
-- The agent version reported by `GET /agents/<id>` once the upgrade completes and the agent reconnects.
+- The agent version reported by `GET /agents?agents_list=<id>&select=id,version,status` once the upgrade completes and the agent reconnects.
 - The agent-side upgrade log (`/var/ossec/logs/ossec.log`).
 
 ---
@@ -515,7 +515,7 @@ The `agent_upgrade` module still validates the intermediate version requirement 
 
 After triggering the upgrade, confirm all conditions below are met before declaring the migration complete:
 
-- Agent version reported in `GET /agents/<id>` matches `5.0.0`.
+- Agent version reported in `GET /agents?agents_list=<id>&select=id,version,status` matches `5.0.0`.
 - Agent connection status is `active`.
 - `ossec.log` on the agent contains no errors related to the upgrade (`grep -i "upgrade" /var/ossec/logs/ossec.log`).
 - The manager log records the CA step for each upgraded agent, and no warning or error against it
