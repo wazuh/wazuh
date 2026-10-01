@@ -22,6 +22,7 @@
 #include "control/controlTypes.hpp"
 #include "control/hashCache.hpp"
 #include "control/metrics.hpp"
+#include "control/registryLookup.hpp"
 #include "control/taskClient.hpp"
 #include "control/wazuhDBClient.hpp"
 #include "fakeTaskServer.hpp"
@@ -1485,4 +1486,161 @@ TEST(ControlHandlerTest, NotifyRefreshRacingAnInvalidationAnswers503)
     EXPECT_EQ(h.registry->get(1), invalidated);
     std::this_thread::sleep_for(100ms);
     EXPECT_EQ(writeCount(*wdb), 1U) << "a 503 notify writes no keepalive";
+}
+
+namespace
+{
+    /// The /download fallback's own view of wazuh-db, holding its select-agent-group until
+    /// release(): a lookup whose query -- and ticket -- predate a /control read that is stored
+    /// first. A separate fake rather than the fixture's WdbRouter, which answers under its own lock
+    /// and would hold /control's query behind the gated one.
+    class GatedLookupWdb
+    {
+    public:
+        explicit GatedLookupWdb(std::string answer)
+            : m_path(remoted::test::makeUniqueSocketPath("ch_lookup_wdb"))
+            , m_releaseFuture(m_release.get_future().share())
+            , m_receivedFuture(m_received.get_future())
+            , m_server(m_path,
+                       [this, answer = std::move(answer)](const std::string& request)
+                       {
+                           if (request.rfind("global select-agent-group", 0) == 0 && !m_receivedSet.exchange(true))
+                           {
+                               m_received.set_value();
+                               m_releaseFuture.wait_for(10s); // bounded: a failing test must not hang the fake
+                           }
+                           return answer;
+                       })
+        {
+        }
+
+        ~GatedLookupWdb()
+        {
+            release(); // before m_server's stop() joins a connection thread still waiting on it
+        }
+
+        GatedLookupWdb(const GatedLookupWdb&) = delete;
+        GatedLookupWdb& operator=(const GatedLookupWdb&) = delete;
+
+        const std::string& path() const
+        {
+            return m_path;
+        }
+        bool waitReceived()
+        {
+            return m_receivedFuture.wait_for(5s) == std::future_status::ready;
+        }
+        void release()
+        {
+            if (!m_released.exchange(true))
+            {
+                m_release.set_value();
+            }
+        }
+
+    private:
+        std::string m_path;
+        std::promise<void> m_release;
+        std::shared_future<void> m_releaseFuture;
+        std::atomic<bool> m_released {false};
+        std::promise<void> m_received;
+        std::future<void> m_receivedFuture;
+        std::atomic<bool> m_receivedSet {false};
+        FakeUdsServer m_server; // last: its handler uses every member above
+    };
+
+    /// Generous deadlines for the two tests below: the lookup's query is held while /control runs,
+    /// and the default 2 s round trip would let a slow runner (valgrind, ASan) time it out first.
+    void patientWdb(Config& c)
+    {
+        c.wdbRoundtripDeadlineMs = 10000;
+        c.wdbRequestDeadlineMs = 10000;
+    }
+} // namespace
+
+// /control stamps what it stores (storeLookedUpGroups()): a /download lookup issued BEFORE a startup
+// read, and answered after it, must find that newer write and answer from it -- never overwrite it
+// with its own, older read. Without the stamp the entry looks no newer than the lookup's ticket, and
+// the agent's previous groups come back as an established membership.
+TEST(ControlHandlerTest, AnOlderDownloadLookupNeverOverwritesAStartupRead)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return std::string("ok [{\"group\":\"g-new\"}]"); });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; }, patientWdb);
+
+    // The /download fallback over the same registry, as the facade wires it.
+    GatedLookupWdb lookupWdb("ok [{\"group\":\"g-old\"}]");
+    auto lookupCfg = h.cfg;
+    lookupCfg.wdbSocketPath = lookupWdb.path();
+    Waiter<LookupOutcome> wl; // before the lookup: it must outlive any late callback
+    RegistryLookup lookup(h.registry, lookupCfg, h.metrics);
+
+    lookup.lookup(1, wallSec(), [&](LookupOutcome outcome) { wl.complete(std::move(outcome)); });
+    ASSERT_TRUE(lookupWdb.waitReceived()) << "the lookup never queried wazuh-db; the test would prove nothing";
+
+    StartupData startup;
+    startup.version = "5.0.0";
+    Waiter<HttpResponse> ws;
+    h.handler->handleStartup(1, startup, [&](const HttpResponse& r) { ws.complete(r); });
+    ASSERT_TRUE(ws.wait(5000ms));
+    ASSERT_EQ(ws.value.status, 200);
+    const auto stored = h.registry->get(1);
+    ASSERT_EQ(stored->groups, std::vector<std::string> {"g-new"});
+
+    lookupWdb.release();
+    ASSERT_TRUE(wl.wait(5000ms));
+
+    EXPECT_EQ(wl.value.kind, LookupOutcome::Kind::Groups);
+    EXPECT_EQ(wl.value.groups, std::vector<std::string> {"g-new"}) << "the older read answers with the newer write";
+    const auto entry = h.registry->get(1);
+    EXPECT_EQ(entry->groups, std::vector<std::string> {"g-new"}) << "the older read overwrote /control's";
+    EXPECT_EQ(entry->groupsSeq, stored->groupsSeq);
+}
+
+// The same rule on the notify refresh, which writes over an entry that already carries a stamp: the
+// refresh must take a new one, or the entry keeps the startup's -- older than the lookup's ticket.
+TEST(ControlHandlerTest, AnOlderDownloadLookupNeverOverwritesANotifyRead)
+{
+    std::atomic<bool> moved {false};
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([&](const std::string&) -> std::string
+                            { return moved.load() ? "ok [{\"group\":\"g-new\"}]" : "ok [{\"group\":\"g-old\"}]"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; }, patientWdb);
+
+    StartupData startup;
+    startup.version = "5.0.0";
+    Waiter<HttpResponse> ws;
+    h.handler->handleStartup(1, startup, [&](const HttpResponse& r) { ws.complete(r); });
+    ASSERT_TRUE(ws.wait(5000ms));
+    ASSERT_EQ(h.registry->get(1)->groups, std::vector<std::string> {"g-old"});
+
+    GatedLookupWdb lookupWdb("ok [{\"group\":\"g-old\"}]");
+    auto lookupCfg = h.cfg;
+    lookupCfg.wdbSocketPath = lookupWdb.path();
+    Waiter<LookupOutcome> wl; // before the lookup: it must outlive any late callback
+    RegistryLookup lookup(h.registry, lookupCfg, h.metrics);
+
+    lookup.lookup(1, wallSec(), [&](LookupOutcome outcome) { wl.complete(std::move(outcome)); });
+    ASSERT_TRUE(lookupWdb.waitReceived()) << "the lookup never queried wazuh-db; the test would prove nothing";
+
+    // The agent moves after the lookup read; groupsRefreshIntervalSec is 0 in these fixtures, so the
+    // notify refreshes from wazuh-db and stores what it read.
+    moved = true;
+    NotifyData data;
+    data.version = "5.0.0";
+    Waiter<HttpResponse> wn;
+    h.handler->handleNotify(1, data, [&](const HttpResponse& r) { wn.complete(r); });
+    ASSERT_TRUE(wn.wait(5000ms));
+    ASSERT_EQ(wn.value.status, 200);
+    ASSERT_EQ(nlohmann::json::parse(wn.value.body)["agent"]["config_token"], "g-new");
+    const auto stored = h.registry->get(1);
+
+    lookupWdb.release();
+    ASSERT_TRUE(wl.wait(5000ms));
+
+    EXPECT_EQ(wl.value.kind, LookupOutcome::Kind::Groups);
+    EXPECT_EQ(wl.value.groups, std::vector<std::string> {"g-new"}) << "the older read answers with the newer write";
+    const auto entry = h.registry->get(1);
+    EXPECT_EQ(entry->groups, std::vector<std::string> {"g-new"}) << "the older read overwrote the notify's";
+    EXPECT_EQ(entry->groupsSeq, stored->groupsSeq);
 }
