@@ -36,15 +36,6 @@ Time between integrity checks to verify that the agent's state is synchronized w
 - **Allowed values:** Integer from 60 to 604800 (seconds, 1 minute to 7 days). Out-of-range values are ignored with a warning and the previous value is kept
 - **Note:** Periodic verification ensures consistency between agent and manager state
 
-### enabled (synchronization)
-
-Enables or disables the module coordination and synchronization features.
-
-- **Default value:** `yes`
-- **Allowed values:** `yes`, `no`
-- **Parent:** `<synchronization>`
-- **Note:** Controls whether the module participates in coordination with other modules
-
 ---
 
 ## Configuration Examples
@@ -57,9 +48,6 @@ Standard agent info settings for most deployments:
 <agent-info>
   <interval>60</interval>
   <integrity_interval>86400</integrity_interval>
-  <synchronization>
-    <enabled>yes</enabled>
-  </synchronization>
 </agent-info>
 ```
 
@@ -82,20 +70,6 @@ Reduce scanning frequency to minimize resource usage:
 <agent-info>
   <interval>300</interval>
   <integrity_interval>86400</integrity_interval>
-</agent-info>
-```
-
-### Disable Synchronization
-
-Run metadata collection without coordination features:
-
-```xml
-<agent-info>
-  <interval>60</interval>
-  <integrity_interval>86400</integrity_interval>
-  <synchronization>
-    <enabled>no</enabled>
-  </synchronization>
 </agent-info>
 ```
 
@@ -192,13 +166,6 @@ tail -f /var/ossec/logs/ossec.log | grep agent-info
 /var/ossec/bin/wazuh-control restart
 ```
 
-### Synchronization Failures
-
-**Check synchronization settings:**
-```bash
-grep -A10 "<synchronization>" /var/ossec/etc/ossec.conf
-```
-
 ### High Resource Usage
 
 **Reduce scan frequency:**
@@ -239,7 +206,6 @@ tail -f /var/ossec/logs/ossec.log | grep "agent-info.*scan"
 
 The module performs the following validation at startup:
 
-- **Boolean Values:** Ensures boolean values are either `yes` or `no`
 - **Time Values:** Validates time format and acceptable ranges
 - **Integer Values:** Ensures integer values are within valid ranges
 - **Interval Constraints:** Verifies `interval` and `integrity_interval` are positive

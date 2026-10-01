@@ -20,11 +20,6 @@
 #define WM_AGENT_INFO_LOGTAG ARGV0 ":agent-info"
 #define AGENT_INFO_LIB_NAME  "agent_info"
 
-typedef struct wm_agent_info_sync_flags_t
-{
-    unsigned int enable_synchronization : 1;
-} wm_agent_info_sync_flags_t;
-
 // The durable, restart-surviving task_id registry (dedup for
 // /control tasks, reached from agentd over the wmcom "query agent-info ..."
 // IPC verb -- see wm_agent_info_query()). Bounded by max_entries (oldest-first
@@ -42,7 +37,6 @@ typedef struct wm_agent_info_t
 {
     int interval;        // Update interval in seconds (for delta updates)
     int integrity_interval; // Integrity check interval in seconds (for full metadata/groups verification), default 86400 (24h)
-    wm_agent_info_sync_flags_t sync;
     wm_agent_info_task_registry_t task_registry;
 } wm_agent_info_t;
 

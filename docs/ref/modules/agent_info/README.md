@@ -16,9 +16,6 @@ The module is configured in the `ossec.conf` file within an `<agent-info>` block
 <agent-info>
   <interval>60</interval>
   <integrity_interval>86400</integrity_interval>
-  <synchronization>
-    <enabled>yes</enabled>
-  </synchronization>
 </agent-info>
 ```
 
