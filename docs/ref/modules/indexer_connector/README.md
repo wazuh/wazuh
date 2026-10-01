@@ -66,7 +66,7 @@ Both connectors retry transient failures (HTTP 429 Too Many Requests, connection
 
 **How the delay scales:**
 
-- **1st failure** - sleeps exactly the base delay (`RetryDelay`, fixed at 1 second) - deterministic, no jitter, so the very first retry is never faster than configured.
+- **1st failure** - sleeps a random value between the base delay (`RetryDelay`, fixed at 1 second) and 1.5 times it, never above the cap - so the very first retry is never faster than configured, and connectors that failed in the same instant (one 429 seen by all of them) do not retry in lockstep.
 - **Each subsequent consecutive failure** - doubles the delay, capped at `analysisd.indexer_max_retry_delay` (`max_retry_delay_seconds` in the connector config; default 15s, range 1-3600), and sleeps a random value between the *previous* step and the new capped step (jitter avoids many managers retrying in lockstep).
 - **On success** (or, for async, a response confirmed not cluster-blocked) - the failure counter resets, so the next failure starts again from the base delay.
 
