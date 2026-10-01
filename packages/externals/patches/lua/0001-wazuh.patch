@@ -1,0 +1,12 @@
+diff -ruN a/makefile b/makefile
+--- a/makefile
++++ b/makefile
+@@ -76,7 +76,7 @@
+ 
+ 
+ CC= gcc
+-CFLAGS= -Wall -O2 $(MYCFLAGS) -fno-stack-protector -fno-common -march=native
++CFLAGS= -Wall -O2 $(MYCFLAGS) -fno-stack-protector -fno-common
+ AR= ar rc
+ RANLIB= ranlib
+ RM= rm -f

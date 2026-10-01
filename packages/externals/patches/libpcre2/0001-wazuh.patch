@@ -1,0 +1,13 @@
+diff -ruN a/Makefile.in b/Makefile.in
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -3265,8 +3265,7 @@
+ 	$(MAKE) $(AM_MAKEFLAGS) check-TESTS
+ check: $(BUILT_SOURCES)
+ 	$(MAKE) $(AM_MAKEFLAGS) check-am
+-all-am: Makefile $(PROGRAMS) $(LIBRARIES) $(LTLIBRARIES) $(SCRIPTS) \
+-		$(MANS) $(DATA) $(HEADERS)
++all-am: Makefile $(LTLIBRARIES) $(HEADERS)
+ install-binPROGRAMS: install-libLTLIBRARIES
+ 
+ installdirs:

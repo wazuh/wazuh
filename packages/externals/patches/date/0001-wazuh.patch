@@ -1,0 +1,71 @@
+diff -ruN a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -24,6 +24,11 @@
+ 
+ get_directory_property( has_parent PARENT_DIRECTORY )
+ 
++if (POLICY CMP0077)
++    # Allow CMake 3.13+ to override options when using FetchContent / add_subdirectory.
++    cmake_policy(SET CMP0077 NEW)
++endif ()
++
+ # Override by setting on CMake command line.
+ set( CMAKE_CXX_STANDARD 17 CACHE STRING "The C++ standard whose features are requested." )
+ 
+@@ -121,11 +126,7 @@
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+         $<INSTALL_INTERFACE:include> )
+ 
+-    if ( USE_SYSTEM_TZ_DB OR MANUAL_TZ_DB )
+-      target_compile_definitions( date-tz PRIVATE AUTO_DOWNLOAD=0 HAS_REMOTE_API=0 )
+-    else()
+-      target_compile_definitions( date-tz PRIVATE AUTO_DOWNLOAD=1 HAS_REMOTE_API=1 )
+-    endif()
++    target_compile_definitions( date-tz PRIVATE AUTO_DOWNLOAD=0 HAS_REMOTE_API=1 )
+ 
+     if ( USE_SYSTEM_TZ_DB AND NOT WIN32 AND NOT MANUAL_TZ_DB )
+       target_compile_definitions( date-tz PRIVATE INSTALL=. PUBLIC USE_OS_TZDB=1 )
+diff -ruN a/src/tz.cpp b/src/tz.cpp
+--- a/src/tz.cpp
++++ b/src/tz.cpp
+@@ -92,6 +92,10 @@
+ #  define TARGET_OS_SIMULATOR 0
+ #endif
+ 
++#if defined(ANDROID) || defined(__ANDROID__)
++#include <sys/system_properties.h>
++#endif
++
+ #if USE_OS_TZDB
+ #  include <dirent.h>
+ #endif
+@@ -2704,7 +2708,8 @@
+         os.width(8);
+         os << s.format_ << "   ";
+         os << s.until_year_ << ' ' << s.until_date_;
+-        os << "   " << s.until_utc_ << " UTC";
++        os << "   ";
++        date::operator<<(os, s.until_utc_) << " UTC";
+         os << "   " << s.until_std_ << " STD";
+         os << "   " << s.until_loc_;
+         os << "   " << make_time(s.initial_save_);
+@@ -4094,6 +4099,18 @@
+     // Fall through to try other means.
+     }
+     {
++    // On Android, it is not possible to use file based approach either,
++    // we have to ask the value of `persist.sys.timezone` system property
++#if defined(ANDROID) || defined(__ANDROID__)
++    char sys_timezone[PROP_VALUE_MAX];
++    if (__system_property_get("persist.sys.timezone", sys_timezone) > 0)
++    {
++        return locate_zone(sys_timezone);
++    }
++#endif // defined(ANDROID) || defined(__ANDROID__)
++    // Fall through to try other means.
++    }
++    {
+     // On some versions of some linux distro's (e.g. Red Hat),
+     // the current timezone might be in the first line of
+     // the /etc/sysconfig/clock file as:

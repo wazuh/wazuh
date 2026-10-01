@@ -1,0 +1,942 @@
+diff -ruN a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,558 +1,108 @@
+-cmake_minimum_required(VERSION 3.18)
++cmake_minimum_required(VERSION 3.12.4)
++project(librpm)
+ 
+-project(rpm
+-	VERSION 4.20.1
+-	DESCRIPTION "The RPM Package Manager"
+-	HOMEPAGE_URL "http://rpm.org"
+-	LANGUAGES C
+-)
+-
+-# user configurable stuff
+-option(ENABLE_CUTF8 "Enable C.UTF-8 as default locale" ON)
+-option(ENABLE_NLS "Enable native language support" ON)
+-option(ENABLE_OPENMP "Enable OpenMP threading support" ON)
+-option(ENABLE_PYTHON "Enable Python bindings" ON)
+-option(ENABLE_PLUGINS "Enable plugin support" ON)
+-option(ENABLE_WERROR "Stop build on warnings" OFF)
+-option(ENABLE_SQLITE "Enable sqlite rpmdb support" ON)
+-option(ENABLE_NDB "Enable ndb rpmdb support" ON)
+-option(ENABLE_BDB_RO "Enable read-only Berkeley DB rpmdb support (EXPERIMENTAL)" OFF)
+-option(ENABLE_TESTSUITE "Enable test-suite" OFF)
+-option(ENABLE_ASAN "Enable address-sanitizer" OFF)
+-option(ENABLE_UBSAN "Enable undefined behavior-sanitizer" OFF)
+-
+-option(WITH_CAP "Build with capability support" ON)
+-option(WITH_ACL "Build with ACL support" ON)
+-option(WITH_SELINUX "Build with SELinux support" ON)
+-option(WITH_DBUS "Build with DBUS support" ON)
+-option(WITH_AUDIT "Build with audit support" ON)
+-option(WITH_FSVERITY "Build with fsverity support" OFF)
+-option(WITH_IMAEVM "Build with IMA support" OFF)
+-option(WITH_FAPOLICYD "Build with fapolicyd support" ON)
+-option(WITH_SEQUOIA "Build with Sequoia OpenPGP support" ON)
+-option(WITH_OPENSSL "Use openssl instead of libgcrypt for internal crypto" OFF)
+-option(WITH_READLINE "Build with readline support" ON)
+-option(WITH_BZIP2 "Build with bzip2 support" ON)
+-option(WITH_ICONV "Build with iconv support" ON)
+-option(WITH_ZSTD "Build with zstd support" ON)
+-option(WITH_LIBDW "Build with libdw support" ON)
+-option(WITH_LIBELF "Build with libelf support" ON)
+-option(WITH_LIBLZMA "Build with liblzma support" ON)
+-option(WITH_DOXYGEN "Build API docs with doxygen" OFF)
+-
+-set(RPM_CONFIGDIR "${CMAKE_INSTALL_PREFIX}/lib/rpm" CACHE PATH "rpm home")
+-set(RPM_MACROSDIR "${RPM_CONFIGDIR}/macros.d")
+-set(RPM_VENDOR "vendor" CACHE STRING "rpm vendor string")
+-
+-# Emulate libtool versioning. Before a public release:
+-# - increment micro version whenever there are code changes
+-# - increment minor version whenever there are added interfaces
+-# - increment major version whenever there are removed interfaces
+-# - incrementing a more significant version segment resets changes to
+-#   any less significant segments
+-set(RPM_SOVERSION 10)
+-set(RPM_LIBVERSION ${RPM_SOVERSION}.2.1)
+-
+-set(CMAKE_C_STANDARD 99)
+-set(CMAKE_C_STANDARD_REQUIRED ON)
+-set(CMAKE_C_EXTENSIONS ON)
+-set(CMAKE_SHARED_LIBRARY_PREFIX "")
+-set(CMAKE_SHARED_MODULE_PREFIX "")
+-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+-include(GNUInstallDirs)
+-include(CheckSymbolExists)
+-add_compile_definitions(_GNU_SOURCE)
+-add_definitions(-D_FILE_OFFSET_BITS=64)
+-
+-# Find a (system) utility in canonical FHS paths, excluding $PATH.  Useful for
+-# when the path is to be used at RPM runtime, such as in the macro files.  The
+-# MYPATH environment variable can be used to augment these paths.
+-function(findutil UTIL TRY)
+-	list(GET TRY 0 util)
+-	find_program(${UTIL}
+-		NAMES ${TRY}
+-		PATHS ENV MYPATH
+-		PATHS /usr/local/bin /usr/bin /bin
+-		PATHS /usr/local/sbin /usr/sbin /sbin
+-		NO_DEFAULT_PATH
+-	)
+-	if (NOT ${UTIL})
+-		list(GET TRY 0 util)
+-		message(DEBUG "${util} not found, assuming /usr/bin/${util}")
+-		set(${UTIL} /usr/bin/${util} PARENT_SCOPE)
+-	endif()
+-	mark_as_advanced(${UTIL})
+-endfunction()
+-
+-function(makemacros)
+-	set(prefix ${CMAKE_INSTALL_PREFIX})
+-	set(exec_prefix "\${prefix}")
+-	set(bindir "\${exec_prefix}/${CMAKE_INSTALL_BINDIR}")
+-	set(sbindir "\${exec_prefix}/${CMAKE_INSTALL_SBINDIR}")
+-	set(libexecdir "\${exec_prefix}/${CMAKE_INSTALL_LIBEXECDIR}")
+-	set(datarootdir "\${prefix}/${CMAKE_INSTALL_DATAROOTDIR}")
+-	set(datadir "\${datarootdir}")
+-	set(sysconfdir "${CMAKE_INSTALL_FULL_SYSCONFDIR}")
+-	set(sharedstatedir "${CMAKE_INSTALL_FULL_SHAREDSTATEDIR}")
+-	set(localstatedir "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}")
+-	set(libdir "\${prefix}/=LIB=")
+-	set(includedir "\${prefix}/${CMAKE_INSTALL_INCLUDEDIR}")
+-	set(oldincludedir "${CMAKE_INSTALL_FULL_OLDINCLUDEDIR}")
+-	set(infodir "\${prefix}/${CMAKE_INSTALL_INFODIR}")
+-	set(mandir "\${prefix}/${CMAKE_INSTALL_MANDIR}")
+-	set(rundir /run)
+-
+-	pkg_get_variable(sysusersdir systemd sysusersdir)
+-	if (NOT sysusersdir)
+-		set(sysusersdir /usr/lib/sysusers.d)
+-	endif()
+-
+-	findutil(__7ZIP "7za;7z")
+-	findutil(__BZIP2 bzip2)
+-	findutil(__CAT cat)
+-	findutil(__CHMOD chmod)
+-	findutil(__CHOWN chown)
+-	findutil(__CP cp)
+-	findutil(__CURL curl)
+-	findutil(__FILE file)
+-	findutil(__GPG gpg)
+-	findutil(__GREP grep)
+-	findutil(__GZIP gzip)
+-	findutil(__ID id)
+-	findutil(__CC cc)
+-	findutil(__LN ln)
+-	findutil(__INSTALL install)
+-	findutil(__LRZIP lrzip)
+-	findutil(__LZIP lzip)
+-	findutil(__XZ xz)
+-	findutil(__MAKE make)
+-	findutil(__MKDIR mkdir)
+-	findutil(__MV mv)
+-	findutil(__PATCH patch)
+-	findutil(__RM rm)
+-	findutil(__SED sed)
+-	findutil(__TAR tar)
+-	findutil(__UNZIP unzip)
+-	findutil(__ZSTD zstd)
+-	findutil(__GEM gem)
+-	findutil(__GIT git)
+-	findutil(__HG hg)
+-	findutil(__BZR bzr)
+-	findutil(__QUILT quilt)
+-	findutil(__LD ld)
+-	findutil(__OBJDUMP objdump)
+-	findutil(__STRIP strip)
+-	findutil(__SYSTEMD_SYSUSERS systemd-sysusers)
+-	findutil(__FIND_DEBUGINFO find-debuginfo)
+-	findutil(__AWK awk)
+-	findutil(__AR ar)
+-	findutil(__AS as)
+-	findutil(__CPP cpp)
+-	findutil(__CXX c++)
+-
+-	list(GET db_backends 0 DB_BACKEND)
+-
+-	set(host_cpu ${CMAKE_HOST_SYSTEM_PROCESSOR})
+-	string(TOLOWER ${CMAKE_HOST_SYSTEM_NAME} host_os)
+-	set(host_vendor ${RPM_VENDOR})
+-	set(host ${host_cpu}-${host_vendor}-${host_os})
+-
+-	set(RPMCANONVENDOR ${host_vendor})
+-	set(RPMCANONOS ${host_os})
+-	set(RPMCANONGNU -gnu)
+-
+-	configure_file(platform.in platform @ONLY)
+-	configure_file(rpmrc.in rpmrc @ONLY)
+-	configure_file(macros.in macros @ONLY)
+-	configure_file(rpmpopt.in rpmpopt-${PROJECT_VERSION} @ONLY)
+-	configure_file(rpm.pc.in rpm.pc @ONLY)
+-
+-	install(CODE "execute_process(COMMAND
+-		${CMAKE_COMMAND} -E env pkglibdir=${RPM_CONFIGDIR}
+-			${CMAKE_SOURCE_DIR}/installplatform
+-			rpmrc platform macros
+-			${RPMCANONVENDOR} ${RPMCANONOS} ${RPMCANONGNU}
+-		WORKING_DIRECTORY ${CMAKE_BINARY_DIR})"
+-	)
+-endfunction()
+-
+-include(CheckLibraryExists)
+-include(CheckFunctionExists)
+-include(CheckIncludeFile)
+-include(CheckCCompilerFlag)
+-include(CheckVariableExists)
+-
+-set(OPTFUNCS
+-	stpcpy stpncpy putenv mempcpy fdatasync lutimes mergesort
+-	getauxval setprogname __progname syncfs sched_getaffinity unshare
+-	secure_getenv __secure_getenv mremap strchrnul
+-)
+-set(REQFUNCS
+-	mkstemp getcwd basename dirname realpath setenv unsetenv regcomp
+-	utimes getline localtime_r statvfs getaddrinfo
+-	openat mkdirat fstatat linkat symlinkat mkfifoat mknodat unlinkat
+-	renameat utimensat fchmodat fchownat stpcpy stpncpy
+-)
+-
+-find_package(PkgConfig REQUIRED)
+-find_package(Lua 5.2 REQUIRED)
+-find_package(ZLIB REQUIRED)
+-if (WITH_BZIP2)
+-    find_package(BZip2 REQUIRED)
+-endif()
+-if (WITH_ICONV)
+-    find_package(Iconv REQUIRED)
+-endif()
+-
+-pkg_check_modules(POPT REQUIRED IMPORTED_TARGET popt)
+-
+-if (WITH_READLINE)
+-    pkg_check_modules(READLINE REQUIRED IMPORTED_TARGET readline)
+-endif()
+-
+-if (WITH_ZSTD)
+-    pkg_check_modules(ZSTD REQUIRED IMPORTED_TARGET libzstd>=1.3.8)
+-endif()
+-if (WITH_LIBELF)
+-    pkg_check_modules(LIBELF REQUIRED IMPORTED_TARGET libelf)
+-endif()
+-if (WITH_LIBDW)
+-    pkg_check_modules(LIBDW REQUIRED IMPORTED_TARGET libdw)
+-endif()
+-if (WITH_LIBLZMA)
+-    pkg_check_modules(LIBLZMA REQUIRED IMPORTED_TARGET liblzma>=5.2.0)
+-endif()
+-pkg_check_modules(LIBARCHIVE REQUIRED IMPORTED_TARGET libarchive)
+-
+-# Lua module does not ship an IMPORTED target, define our own
+-add_library(LUA::LUA INTERFACE IMPORTED)
+-set_target_properties(LUA::LUA PROPERTIES
+-		      INTERFACE_LINK_LIBRARIES "${LUA_LIBRARIES}"
+-		      INTERFACE_INCLUDE_DIRECTORIES "${LUA_INCLUDE_DIR}")
+-
+-# file >= 5.39 ships a pkg-config, may move to that later
+-add_library(MAGIC::MAGIC UNKNOWN IMPORTED)
+-find_library(MAGIC_LIBRARY NAMES magic REQUIRED)
+-find_path(MAGIC_INCLUDE_DIR NAMES magic.h REQUIRED)
+-mark_as_advanced(MAGIC_LIBRARY)
+-mark_as_advanced(MAGIC_INCLUDE_DIR)
+-set_target_properties(MAGIC::MAGIC PROPERTIES
+-		      IMPORTED_LOCATION "${MAGIC_LIBRARY}")
+-target_include_directories(MAGIC::MAGIC INTERFACE "${MAGIC_INCLUDE_DIR}")
+-
+-if (ENABLE_OPENMP)
+-	find_package(OpenMP 4.5 REQUIRED)
+-endif()
+-
+-if (ENABLE_NLS)
+-	find_package(Intl REQUIRED)
+-	check_variable_exists(_nl_msg_cat_cntr HAVE_NL_MSG_CAT_CNTR)
+-endif()
+-
+-if (ENABLE_SQLITE)
+-	pkg_check_modules(SQLITE REQUIRED IMPORTED_TARGET sqlite3>=3.22)
+-	list(APPEND db_backends sqlite)
+-endif()
+-
+-if (ENABLE_NDB)
+-	list(APPEND db_backends ndb)
+-endif()
+-
+-if (ENABLE_BDB_RO)
+-	list(APPEND db_backends bdb_ro)
+-endif()
+-list(APPEND db_backends dummy)
+-
+-if (ENABLE_PYTHON)
+-	find_package(Python3 3.7 COMPONENTS Interpreter Development REQUIRED)
+-endif()
+-
+-if (WITH_CAP)
+-	pkg_check_modules(LIBCAP REQUIRED IMPORTED_TARGET libcap)
+-endif()
+-
+-if (WITH_ACL)
+-	pkg_check_modules(LIBACL REQUIRED IMPORTED_TARGET libacl)
+-endif()
+-
+-if (WITH_AUDIT)
+-	pkg_check_modules(AUDIT REQUIRED IMPORTED_TARGET audit)
+-endif()
+-
+-if (WITH_SELINUX)
+-	pkg_check_modules(SELINUX REQUIRED IMPORTED_TARGET libselinux)
+-endif()
+-
+-if (WITH_FSVERITY)
+-	pkg_check_modules(FSVERITY REQUIRED IMPORTED_TARGET libfsverity)
+-endif()
+-
+-if (WITH_IMAEVM)
+-	list(APPEND REQFUNCS lsetxattr)
+-	check_library_exists(imaevm imaevm_signhash "" HAVE_IMAEVM_SIGNHASH)
+-	add_library(IMA::IMA UNKNOWN IMPORTED)
+-	find_path(IMA_INCLUDE_DIR NAMES imaevm.h REQUIRED)
+-	find_library(IMA_LIBRARY NAMES imaevm REQUIRED)
+-	mark_as_advanced(IMA_INCLUDE_DIR)
+-	mark_as_advanced(IMA_LIBRARY)
+-	set_target_properties(IMA::IMA PROPERTIES
+-			      IMPORTED_LOCATION "${IMA_LIBRARY}")
+-	target_include_directories(IMA::IMA INTERFACE "${IMA_INCLUDE_DIR}")
+-endif()
+-
+-find_program(AWK gawk mawk nawk awk REQUIRED)
+-mark_as_advanced(AWK)
+-
+-find_program(FIND_DEBUGINFO find-debuginfo)
+-mark_as_advanced(FIND_DEBUGINFO)
+-
+-function(chkdef func req)
+-	string(TOUPPER ${func} FUNC)
+-	set(HAVENAME HAVE_${FUNC})
+-	check_function_exists(${func} ${HAVENAME})
+-	if (${req} AND NOT ${HAVENAME})
+-		message(FATAL_ERROR "required function ${func} not found")
+-	endif()
+-endfunction()
+-
+-foreach(f ${OPTFUNCS})
+-    chkdef(${f} FALSE)
+-endforeach()
+-
+-foreach(f ${REQFUNCS})
+-    chkdef(${f} TRUE)
+-endforeach()
+-
+-function(chkhdr inc req)
+-	string(MAKE_C_IDENTIFIER ${inc} ID)
+-	string(TOUPPER ${ID} INC)
+-	set(HAVENAME HAVE_${INC})
+-	check_include_file(${inc} ${HAVENAME})
+-	if (${req} AND NOT ${HAVENAME})
+-		message(FATAL_ERROR "required include ${inc} not found")
+-	endif()
+-endfunction()
+-
+-set(OPTINCS
+-	unistd.h limits.h getopt.h
+-	sys/utsname.h sys/systemcfg.h sys/param.h sys/auxv.h
+-)
+-foreach(f ${OPTINCS})
+-    chkhdr(${f} FALSE)
+-endforeach()
+-
+-function(id0name var file)
+-	execute_process(COMMAND ${AWK} -F: "$3==0 {print $1;exit}" ${file}
+-			OUTPUT_STRIP_TRAILING_WHITESPACE
+-			OUTPUT_VARIABLE name)
+-	if ("${name}" STREQUAL "")
+-		set(name root)
+-	endif()
+-	set(${var} ${name} PARENT_SCOPE)
+-endfunction()
+-
+-id0name(UID_0_USER /etc/passwd)
+-id0name(GID_0_GROUP /etc/group)
+-
+-# map module/package findings to config.h
+-if (BZIP2_FOUND)
+-	set(HAVE_BZLIB_H 1)
+-endif()
+-if (LIBLZMA_FOUND)
+-	set(HAVE_LZMA_H 1)
+-endif()
+-if (Iconv_FOUND)
+-	set(HAVE_ICONV 1)
+-endif()
+-if (ZSTD_FOUND)
+-	set(HAVE_ZSTD 1)
+-endif()
+-if (READLINE_FOUND)
+-	set(HAVE_READLINE 1)
+-endif()
+-if (LIBELF_FOUND)
+-	set(HAVE_LIBELF 1)
+-endif()
+-if (LIBDW_FOUND)
+-	set(HAVE_LIBDW 1)
+-	check_library_exists(dw dwelf_elf_begin "" HAVE_DWELF_ELF_BEGIN)
+-endif()
+-
+-check_symbol_exists(GLOB_ONLYDIR "glob.h" HAVE_GLOB_ONLYDIR)
+-check_symbol_exists(major "sys/sysmacros.h" MAJOR_IN_SYSMACROS)
+-if (NOT MAJOR_IN_SYSMACROS)
+-	check_symbol_exists(major "sys/mkdev.h" MAJOR_IN_MKDEV)
+-endif()
+-
+-if (ENABLE_CUTF8)
+-	set(C_LOCALE "C.UTF-8")
+-else()
+-	set(C_LOCALE "C")
+-endif()
+-message(INFO " using ${C_LOCALE} as default locale")
++# Configure basic options for minimal RPM build
++set(ENABLE_NLS 0)
++set(ENABLE_OPENMP 0)
++set(ENABLE_PLUGINS 0)
++set(ENABLE_NDB 1)
++set(ENABLE_ASAN 0)
++
++# Set basic function availability
++set(HAVE_BASENAME 1)
++set(HAVE_DIRNAME 1)
++set(HAVE_GETCWD 1)
++set(HAVE_GETLINE 1)
++set(HAVE_LOCALTIME_R 1)
++set(HAVE_FDATASYNC 1)
++set(HAVE_FSTATAT 1)
++set(HAVE_LINKAT 1)
++set(HAVE_FCHMODAT 1)
++set(HAVE_FCHOWNAT 1)
++set(HAVE_GETADDRINFO 1)
++set(HAVE_DIRENT_H 1)
++set(HAVE_LIMITS_H 1)
++set(HAVE_INTTYPES_H 1)
++set(HAVE_SYS_UTSNAME_H 1)
++set(HAVE_SYS_PARAM_H 1)
++set(HAVE_SYS_STAT_H 1)
++set(HAVE_SYS_SYSMACROS_H 1)
++set(MAJOR_IN_SYSMACROS 1)
++set(HAVE_UNISTD_H 1)
++set(HAVE___PROGNAME 1)
+ 
++# Configure config.h from config.h.in
+ configure_file(config.h.in config.h)
+ 
+-add_compile_definitions(HAVE_CONFIG_H)
+-
+-add_compile_options(-Wall -Wpointer-arith -Wmissing-prototypes -Wstrict-prototypes -Wempty-body -Wformat-security)
+-if (ENABLE_WERROR)
+-	add_compile_options(-Werror)
+-endif()
+-
+-if (ENABLE_ASAN)
+-	add_compile_options(-fsanitize=address)
+-	add_link_options(-fsanitize=address)
+-endif()
+-
+-if (ENABLE_UBSAN)
+-	add_compile_options(-fsanitize=undefined)
+-	add_link_options(-fsanitize=undefined)
+-endif()
+-
+-if (ENABLE_ASAN OR ENABLE_UBSAN)
+-	add_compile_options(-fno-omit-frame-pointer)
+-endif()
+-
+-# try to ensure some compiler sanity and hardening options where supported
+-foreach (flag -fno-strict-overflow -fno-delete-null-pointer-checks -fhardened)
+-	check_c_compiler_flag(${flag} found)
+-	if (found)
+-		add_compile_options(${flag})
+-	endif()
+-	unset(found)
+-endforeach()
+-
+-# generated sources
+-include_directories(${CMAKE_BINARY_DIR})
+-# global private includes
+-include_directories(${CMAKE_SOURCE_DIR}/misc)
+-# public headers
+-include_directories(${CMAKE_SOURCE_DIR}/include)
+-
+-add_subdirectory(docs)
+-add_subdirectory(include/rpm)
+-add_subdirectory(misc)
+-add_subdirectory(rpmio)
+-add_subdirectory(lib)
+-add_subdirectory(build)
+-add_subdirectory(sign)
+-add_subdirectory(tools)
+-
+-if (EXISTS ${CMAKE_SOURCE_DIR}/po/rpm.pot)
+-	add_subdirectory(po)
+-endif()
+-
+-if (ENABLE_PYTHON)
+-	add_subdirectory(python)
+-endif()
+-
+-set(RPM_PLUGINDIR ${CMAKE_INSTALL_FULL_LIBDIR}/rpm-plugins
+-       CACHE PATH "rpm plugin directory")
+-
+-if (ENABLE_PLUGINS)
+-	add_subdirectory(plugins)
+-endif()
+-
+-
+-add_subdirectory(fileattrs)
+-add_subdirectory(scripts)
+-
+-makemacros()
+-foreach(f macros rpmrc rpmpopt-${PROJECT_VERSION})
+-	install(FILES ${CMAKE_BINARY_DIR}/${f} DESTINATION ${RPM_CONFIGDIR})
+-endforeach()
+-
+-if (ENABLE_TESTSUITE)
+-	add_subdirectory(tests)
+-endif()
+-
+-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/rpm.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+-install(DIRECTORY DESTINATION ${RPM_CONFIGDIR}/lua)
+-install(DIRECTORY DESTINATION ${RPM_CONFIGDIR}/macros.d)
+-install(FILES CONTRIBUTING.md COPYING CREDITS INSTALL README TYPE DOC)
+-
+-add_custom_target(ChangeLog
+-		   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+-		   COMMAND git log --no-merges --no-decorate
+-				--output=${CMAKE_BINARY_DIR}/ChangeLog
+-)
+-
+-add_custom_command(OUTPUT po/rpm.pot
+-		   COMMAND git submodule update --init)
+-
+-function(add_tarball targetname namever treeish)
+-	set(distfmt tar)
+-	set(tarname ${namever}.${distfmt})
+-	set(distname ${tarname}.bz2)
+-	set(docname ${namever}-doc.${distfmt})
+-
+-	add_custom_target(${docname}
+-		DEPENDS man apidoc
+-		COMMAND tar
+-			-C ${CMAKE_BINARY_DIR}
+-			--transform 's:^:${namever}/:'
+-			-cf ${docname} docs/man/*.[1-8] docs/html/
+-	)
+-
+-	add_custom_target(${distname}
+-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+-		VERBATIM
+-		DEPENDS ChangeLog ${docname} po/rpm.pot
+-		COMMAND git archive
+-			--format=${distfmt}
+-			--output=${CMAKE_BINARY_DIR}/${tarname}
+-			--prefix=${namever}/
+-			--add-file=${CMAKE_BINARY_DIR}/ChangeLog
+-			${treeish}
+-		COMMAND git submodule foreach --quiet
+-			"git archive --prefix=${namever}/$sm_path/ \
+-				--output=${CMAKE_BINARY_DIR}/$sha1.tar HEAD \
+-			 && tar --concatenate \
+-				--file=${CMAKE_BINARY_DIR}/${tarname} \
+-				${CMAKE_BINARY_DIR}/$sha1.tar \
+-			 && rm -f ${CMAKE_BINARY_DIR}/$sha1.tar"
+-		COMMAND tar --concatenate
+-				--file=${CMAKE_BINARY_DIR}/${tarname}
+-				${CMAKE_BINARY_DIR}/${docname}
+-		COMMAND bzip2 -f ${CMAKE_BINARY_DIR}/${tarname}
+-	)
+-	add_custom_target(${targetname} DEPENDS ${distname})
+-endfunction()
+-
+-add_tarball(dist ${PROJECT_NAME}-${PROJECT_VERSION} HEAD)
+-
+-if (EXISTS ${CMAKE_SOURCE_DIR}/.git)
+-	execute_process(COMMAND git rev-list --count HEAD
+-			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+-			OUTPUT_VARIABLE gitcount
+-			OUTPUT_STRIP_TRAILING_WHITESPACE)
+-	add_tarball(snapshot
+-		    ${PROJECT_NAME}-${PROJECT_VERSION}-git${gitcount} HEAD)
+-endif()
+-
+-# Voodoo rites to make our libraries cmake find_package() importable
+-include(CMakePackageConfigHelpers)
+-configure_package_config_file(
+-	${CMAKE_CURRENT_SOURCE_DIR}/cmake/rpm-config.cmake.in
+-	${CMAKE_CURRENT_BINARY_DIR}/rpm-config.cmake
+-	INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rpm
+-)
+-write_basic_package_version_file(
+-	${CMAKE_CURRENT_BINARY_DIR}/rpm-config-version.cmake
+-	COMPATIBILITY SameMinorVersion
+-)
+-install(FILES
+-	${CMAKE_CURRENT_BINARY_DIR}/rpm-config.cmake
+-	${CMAKE_CURRENT_BINARY_DIR}/rpm-config-version.cmake
+-	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rpm
+-)
+-
+-export(TARGETS librpm librpmio librpmbuild librpmsign
+-	FILE rpm-targets.cmake
+-	NAMESPACE rpm::
+-)
+-install(EXPORT rpm-targets
+-	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${CMAKE_PROJECT_NAME}
+-	NAMESPACE rpm::
++# Generate tagtbl.inc using the shell script
++add_custom_command(
++    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/tagtbl.inc
++    COMMAND /bin/sh ${CMAKE_CURRENT_SOURCE_DIR}/lib/gentagtbl.sh ${CMAKE_CURRENT_SOURCE_DIR}/include/rpm/rpmtag.h > ${CMAKE_CURRENT_BINARY_DIR}/tagtbl.inc
++    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/include/rpm/rpmtag.h ${CMAKE_CURRENT_SOURCE_DIR}/lib/gentagtbl.sh
++    COMMENT "Generating tagtbl.inc"
++    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
++)
++
++# Collect all source files
++file(GLOB_RECURSE RPM_SOURCES
++    "${CMAKE_CURRENT_SOURCE_DIR}/lib/*.c"
++    "${CMAKE_CURRENT_SOURCE_DIR}/rpmio/*.c"
++)
++
++# Remove files that cause multiple definition conflicts or aren't needed
++list(REMOVE_ITEM RPM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/rpmio/digest_libgcrypt.c")  # No libgcrypt
++list(REMOVE_ITEM RPM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/rpmio/modemuncher.c")       # Included by lposix.c
++list(REMOVE_ITEM RPM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/rpmio/rpmpgp_sequoia.c")   # Conflicts with dummy
++list(REMOVE_ITEM RPM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/rpmio/rpmpgp_internal.c")  # May conflict
++
++# Create static library
++add_library(rpm STATIC
++    ${RPM_SOURCES}
++    ${CMAKE_CURRENT_BINARY_DIR}/tagtbl.inc
++)
++
++# Set compile definitions
++target_compile_definitions(rpm PRIVATE
++    HAVE_CONFIG_H
++    _GNU_SOURCE
++    RPM_CONFIGDIR="/usr/lib/rpm"
++    SYSCONFDIR="/usr/etc"
++    LOCALSTATEDIR="/usr/var"
++    LOCALEDIR="/usr/share/locale"
++    LIBRPMALIAS_EXECPATH="/usr/bin"
++    LIBRPMALIAS_FILENAME="rpmpopt-4.16.1.2"
++    _REENTRANT
++    PIC
++)
++
++# Set include directories
++target_include_directories(rpm PRIVATE
++    "${CMAKE_CURRENT_BINARY_DIR}"      # For generated config.h
++    "${CMAKE_CURRENT_SOURCE_DIR}/misc" # For system.h
++    "${CMAKE_CURRENT_SOURCE_DIR}"      # Root directory
++    "${CMAKE_CURRENT_SOURCE_DIR}/lib"  # For internal headers
++    "${CMAKE_CURRENT_SOURCE_DIR}/include" # For public headers
++    "${CMAKE_CURRENT_SOURCE_DIR}/rpmio"   # For rpmio headers
++    "../lua/install/include"               # For lua headers
++)
++
++# Set output location and copy headers for Wazuh to use
++set_target_properties(rpm PROPERTIES
++    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
++    OUTPUT_NAME "rpm"
++)
++
++# Create output directory for headers
++file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/output/include/rpm")
++
++# Copy all RPM headers to output directory so Wazuh can find them
++file(GLOB RPM_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/rpm/*.h")
++add_custom_target(rpm_headers ALL
++    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RPM_HEADERS} "${CMAKE_CURRENT_BINARY_DIR}/output/include/rpm/"
++    # Also copy some internal headers that might be needed
++    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/rpmio/rpmlua.h" "${CMAKE_CURRENT_BINARY_DIR}/output/include/rpm/"
++    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/rpmio/lposix.h" "${CMAKE_CURRENT_BINARY_DIR}/output/include/rpm/"
++    DEPENDS ${RPM_HEADERS}
++    COMMENT "Copying RPM headers"
+ )
++add_dependencies(rpm rpm_headers)
+diff -ruN a/lib/backend/ndb/rpmidx.c b/lib/backend/ndb/rpmidx.c
+--- a/lib/backend/ndb/rpmidx.c
++++ b/lib/backend/ndb/rpmidx.c
+@@ -215,6 +215,14 @@
+     idxdb->keyend     = le2ha(idxdb->head_mapped + IDXDB_OFFSET_KEYEND);
+     idxdb->keyexcess  = le2ha(idxdb->head_mapped + IDXDB_OFFSET_KEYEXCESS);
+ 
++    /* make sure data is sane */
++    if (idxdb->nslots < 256 || (idxdb->nslots & (idxdb->nslots - 1)) != 0 ||
++	    idxdb->usedslots > idxdb->nslots || idxdb->dummyslots > idxdb->nslots ||
++	    idxdb->nslots >= (0xffffffffU - IDXDB_SLOT_OFFSET) / 12) {
++	rpmidxUnmap(idxdb);	/* too small, somthing is wrong */
++	return RPMRC_FAIL;
++    }
++
+     idxdb->hmask = idxdb->nslots - 1;
+ 
+     /* now that we know nslots we can split between slots and keys */
+@@ -368,6 +376,8 @@
+ static int addkeypage(rpmidxdb idxdb) {
+     unsigned int addsize = idxdb->pagesize > IDXDB_KEY_CHUNKSIZE ? idxdb->pagesize : IDXDB_KEY_CHUNKSIZE;
+ 
++    if (addsize > 0xffffffffU - idxdb->file_size)
++	return RPMRC_FAIL;
+     if (rpmxdbResizeBlob(idxdb->xdb, idxdb->xdbid, idxdb->file_size + addsize))
+ 	return RPMRC_FAIL;
+     return RPMRC_OK;
+@@ -498,6 +508,8 @@
+     while (nslots & (nslots - 1))
+ 	nslots = nslots & (nslots - 1);
+     nslots *= 4;
++    if (nslots < 256 || nslots >= (0xffffffffU - IDXDB_SLOT_OFFSET) / 12)
++	return RPMRC_FAIL;
+ 
+     nidxdb->nslots = nslots;
+     nidxdb->hmask = nslots - 1;
+@@ -506,11 +518,16 @@
+     key_size = idxdb->keyend;
+     if (key_size < IDXDB_KEY_CHUNKSIZE)
+ 	key_size = IDXDB_KEY_CHUNKSIZE;
++    if (key_size >= 0xffffffffU - (IDXDB_SLOT_OFFSET + nslots * 12))
++	return RPMRC_FAIL;
++
+     file_size = IDXDB_SLOT_OFFSET + nslots * 12 + key_size;
+ 
+     /* round file size to multiple of the page size */
+     if (file_size & (nidxdb->pagesize - 1)) {
+ 	unsigned int add = nidxdb->pagesize - (file_size & (nidxdb->pagesize - 1));
++	if (add > 0xffffffffU - file_size)
++	    return RPMRC_FAIL;
+ 	file_size += add;
+ 	key_size += add;
+     }
+@@ -584,7 +601,7 @@
+  */
+ static int rpmidxCheck(rpmidxdb idxdb)
+ {
+-    if (idxdb->usedslots * 2 > idxdb->nslots ||
++    if (idxdb->usedslots > idxdb->nslots / 2 ||
+ 	(idxdb->keyexcess > 4096 && idxdb->keyexcess * 4 > idxdb->keyend) ||
+ 	idxdb->keyend >= ~idxdb->xmask) {
+ 	if (rpmidxRebuildInternal(idxdb))
+@@ -606,6 +623,8 @@
+ 
+     if (datidx >= 0x80000000)
+ 	return RPMRC_FAIL;
++    if (keyl >= 0x80000000)
++	return RPMRC_FAIL;
+     if (rpmidxCheck(idxdb))
+ 	return RPMRC_FAIL;
+     data = encodedata(idxdb, pkgidx, datidx, &ovldata);
+@@ -677,6 +696,8 @@
+ 
+     if (datidx >= 0x80000000)
+ 	return RPMRC_FAIL;
++    if (keyl >= 0x80000000)
++	return RPMRC_FAIL;
+     if (rpmidxCheck(idxdb))
+ 	return RPMRC_FAIL;
+     data = encodedata(idxdb, pkgidx, datidx, &ovldata);
+diff -ruN a/lib/backend/ndb/rpmpkg.c b/lib/backend/ndb/rpmpkg.c
+--- a/lib/backend/ndb/rpmpkg.c
++++ b/lib/backend/ndb/rpmpkg.c
+@@ -88,6 +88,12 @@
+     return ((s2 % 65521) << 16) + (s1 % 65521);
+ }
+ 
++/*** Size definitions ***/
++
++#define SLOT_SIZE 16
++#define BLK_SIZE  16
++#define PAGE_SIZE 4096
++
+ /*** Header management ***/
+ 
+ #define PKGDB_MAGIC	('R' | 'p' << 8 | 'm' << 16 | 'P' << 24)
+@@ -102,6 +108,9 @@
+ #define PKGDB_OFFSET_SLOTNPAGES 12
+ #define PKGDB_OFFSET_NEXTPKGIDX 16
+ 
++/* the slot index and the block index must fit into a 32bit integer */
++#define PKGDB_MAX_SLOTNPAGES (0xffffffffU / (PAGE_SIZE / (SLOT_SIZE > BLK_SIZE ? BLK_SIZE : SLOT_SIZE)))
++
+ static int rpmpkgReadHeader(rpmpkgdb pkgdb)
+ {
+     unsigned int generation, slotnpages, nextpkgidx, version;
+@@ -125,6 +134,8 @@
+     generation = le2h(header + PKGDB_OFFSET_GENERATION);
+     slotnpages = le2h(header + PKGDB_OFFSET_SLOTNPAGES);
+     nextpkgidx = le2h(header + PKGDB_OFFSET_NEXTPKGIDX);
++    if (slotnpages > PKGDB_MAX_SLOTNPAGES)
++	return RPMRC_FAIL;
+     /* free slots if our internal data no longer matches */
+     if (pkgdb->slots && (pkgdb->generation != generation || pkgdb->slotnpages != slotnpages)) {
+ 	free(pkgdb->slots);
+@@ -167,10 +178,6 @@
+ 
+ #define SLOT_MAGIC	('S' | 'l' << 8 | 'o' << 16 | 't' << 24)
+ 
+-#define SLOT_SIZE 16
+-#define BLK_SIZE  16
+-#define PAGE_SIZE 4096
+-
+ /* the first slots (i.e. 32 bytes) are used for the header */
+ #define SLOT_START (PKGDB_HEADER_SIZE / SLOT_SIZE)
+ 
+@@ -235,10 +242,12 @@
+ 	return RPMRC_FAIL;
+     if (stb.st_size % BLK_SIZE)
+ 	return RPMRC_FAIL;	/* hmm */
++    if (stb.st_size / BLK_SIZE >= 0xffffffffU)
++	return RPMRC_FAIL;	/* hmm */
+     fileblks = stb.st_size / BLK_SIZE;
+ 
+     /* read (and somewhat verify) all slots */
+-    pkgdb->slots = xcalloc(slotnpages * (PAGE_SIZE / SLOT_SIZE), sizeof(*pkgdb->slots));
++    pkgdb->slots = xcalloc(slotnpages, sizeof(*pkgdb->slots) * (PAGE_SIZE / SLOT_SIZE));
+     i = 0;
+     slot = pkgdb->slots;
+     minblkoff = slotnpages * (PAGE_SIZE / BLK_SIZE);
+@@ -261,6 +270,8 @@
+ 	    }
+ 	    pkgidx = le2h(pp + 4);
+ 	    blkcnt = le2h(pp + 12);
++	    if (blkoff >= 0xffffffffU - blkcnt)
++		return RPMRC_FAIL;	/* oversized entry */
+ 	    slot->pkgidx = pkgidx;
+ 	    slot->blkoff = blkoff;
+ 	    slot->blkcnt = blkcnt;
+@@ -352,6 +363,8 @@
+     if (!bestblkoff) {
+ 	bestblkoff = lastblkend;	/* append to end */
+     }
++    if (bestblkoff >= 0xffffffffU - blkcnt)
++	return RPMRC_FAIL;		/* oversized */
+     *oldslotp = oldslot;
+     *blkoffp = bestblkoff;
+     return RPMRC_OK;
+@@ -513,6 +526,8 @@
+ #define BLOBHEAD_SIZE	(4 + 4 + 4 + 4)
+ #define BLOBTAIL_SIZE	(4 + 4 + 4)
+ 
++#define PKGDB_MAX_BLOBSIZE (0xffffffffU - (BLOBHEAD_SIZE + BLOBTAIL_SIZE + BLK_SIZE - 1))
++
+ static int rpmpkgReadBlob(rpmpkgdb pkgdb, unsigned int pkgidx, unsigned int blkoff, unsigned int blkcnt, unsigned char *blob, unsigned int *bloblp, unsigned int *generationp)
+ {
+     unsigned char buf[BLOBHEAD_SIZE > BLOBTAIL_SIZE ? BLOBHEAD_SIZE : BLOBTAIL_SIZE];
+@@ -534,6 +549,8 @@
+ 	return RPMRC_FAIL;	/* bad blob */
+     generation = le2h(buf + 8);
+     bloblen = le2h(buf + 12);
++    if (bloblen > PKGDB_MAX_BLOBSIZE)
++	return RPMRC_FAIL;	/* bad blob */
+     if (blkcnt != (BLOBHEAD_SIZE + bloblen + BLOBTAIL_SIZE + BLK_SIZE - 1) / BLK_SIZE)
+ 	return RPMRC_FAIL;	/* bad blob */
+     adl = ADLER32_INIT;
+@@ -596,8 +613,8 @@
+     off_t fileoff;
+ 
+     /* sanity */
+-    if (blkcnt <  (BLOBHEAD_SIZE + BLOBTAIL_SIZE + BLK_SIZE - 1) / BLK_SIZE)
+-	return RPMRC_FAIL;	/* blkcnt too small */
++    if (blobl >= PKGDB_MAX_BLOBSIZE)
++	return RPMRC_FAIL;	/* oversized blob */
+     if (blkcnt != (BLOBHEAD_SIZE + blobl + BLOBTAIL_SIZE + BLK_SIZE - 1) / BLK_SIZE)
+ 	return RPMRC_FAIL;	/* blkcnt mismatch */
+     fileoff = (off_t)blkoff * BLK_SIZE;
+@@ -687,6 +704,8 @@
+ static int rpmpkgAddSlotPage(rpmpkgdb pkgdb)
+ {
+     unsigned int cutoff;
++    if (pkgdb->slotnpages >= PKGDB_MAX_SLOTNPAGES)
++	return RPMRC_FAIL;
+     if (!pkgdb->ordered)
+ 	rpmpkgOrderSlots(pkgdb);
+     cutoff = (pkgdb->slotnpages + 1) * (PAGE_SIZE / BLK_SIZE);
+@@ -961,7 +980,7 @@
+ 	rpmpkgClose(pkgdb);
+ 	return RPMRC_FAIL;
+     }
+-    pkgdb->fileblks = stb.st_size / BLK_SIZE;
++    pkgdb->fileblks = stb.st_size / BLK_SIZE >= 0xffffffffU ? 0xffffffffU : stb.st_size / BLK_SIZE;
+     blkskip = 1;
+     nfound = 0;
+     salvaged = xmalloc(64 * (4 * sizeof(unsigned int)));
+@@ -1088,6 +1107,8 @@
+     if (rpmpkgReadSlots(pkgdb)) {
+ 	return RPMRC_FAIL;
+     }
++    if (blobl >= 0xffffffffU - (BLOBHEAD_SIZE + BLOBTAIL_SIZE + BLK_SIZE - 1))
++	return RPMRC_FAIL;
+     blkcnt = (BLOBHEAD_SIZE + blobl + BLOBTAIL_SIZE + BLK_SIZE - 1) / BLK_SIZE;
+     /* find a nice place for the blob */
+     if (rpmpkgFindEmptyOffset(pkgdb, pkgidx, blkcnt, &blkoff, &oldslot, 0)) {
+@@ -1111,11 +1132,12 @@
+     if (rpmpkgWriteBlob(pkgdb, pkgidx, blkoff, blkcnt, blob, blobl, pkgdb->generation)) {
+ 	return RPMRC_FAIL;
+     }
++    /* update nextpkgidx if needed */
++    if (pkgidx >= pkgdb->nextpkgidx) {
++	pkgdb->nextpkgidx = pkgidx + 1; 
++    }    
+     /* write slot */
+     slotno = oldslot ? oldslot->slotno : pkgdb->freeslot;
+-    if (!slotno) {
+-	return RPMRC_FAIL;
+-    }
+     if (rpmpkgWriteslot(pkgdb, slotno, pkgidx, blkoff, blkcnt)) {
+ 	free(pkgdb->slots);
+ 	pkgdb->slots = 0;
+diff -ruN a/lib/backend/ndb/rpmxdb.c b/lib/backend/ndb/rpmxdb.c
+--- a/lib/backend/ndb/rpmxdb.c
++++ b/lib/backend/ndb/rpmxdb.c
+@@ -102,6 +102,11 @@
+ #define SLOT_SIZE		16
+ #define SLOT_START (XDB_HEADER_SIZE / SLOT_SIZE)
+ 
++/* limits */
++#define XDB_MAX_SLOTNPAGES 0x10000
++#define XDB_MIN_PAGESIZE   0x100
++#define XDB_MAX_PAGESIZE   0x10000
++
+ 
+ /* low level map/remap a file into memory */
+ static void *mapmem(void *oldaddr, size_t oldsize, size_t newsize, int prot, int fd, off_t offset)
+@@ -249,6 +254,10 @@
+     *usergenerationp = le2ha((unsigned char *)header + XDB_OFFSET_USERGENERATION);
+     if (!*slotnpagesp || !*pagesizep)
+ 	return RPMRC_FAIL;
++    if ((*pagesizep & (*pagesizep - 1)) != 0 || *pagesizep < XDB_MIN_PAGESIZE || *pagesizep > XDB_MAX_PAGESIZE)
++	return RPMRC_FAIL;
++    if (*slotnpagesp >= XDB_MAX_SLOTNPAGES)
++	return RPMRC_FAIL;
+     return RPMRC_OK;
+ }
+ 
+@@ -471,6 +480,10 @@
+         xdb->slotnpages = 1;
+         xdb->generation++;
+ 	xdb->pagesize = sysconf(_SC_PAGE_SIZE);
++	if (xdb->pagesize > XDB_MAX_PAGESIZE)
++	    xdb->pagesize = XDB_MAX_PAGESIZE;
++	if ((xdb->pagesize & (xdb->pagesize - 1)) != 0 || xdb->pagesize < XDB_MIN_PAGESIZE)
++            return RPMRC_FAIL;
+         if (rpmxdbWriteEmptySlotpage(xdb, 0)) {
+             return RPMRC_FAIL;
+         }
+@@ -779,6 +792,9 @@
+     if (xdb->firstfree)
+ 	return RPMRC_FAIL;
+ 
++    if (xdb->slotnpages >= XDB_MAX_SLOTNPAGES - 1)
++	return RPMRC_FAIL;
++
+     /* move first blob if needed */
+     nslots = xdb->nslots;
+     for (i = xdb->slots[0].next; i != nslots; i = slot->next) {
