@@ -1351,6 +1351,17 @@ void test_wfopen_network_path(void **state) {
     assert_int_equal(errno, EACCES);
 }
 
+void test_wfopen_forward_slash_network_path(void **state) {
+    errno = 0;
+    char *path = "//server/share/x.log";
+
+    expect_string(__wrap__mwarn, formatted_msg, "(9800): File access denied. Network path usage is not allowed: '//server/share/x.log'.");
+
+    FILE *fp = wfopen(path, "r");
+    assert_int_equal(fp, NULL);
+    assert_int_equal(errno, EACCES);
+}
+
 void test_waccess_local_path(void **state) {
     errno = 0;
     char *path = "C:\\file.txt";
@@ -2761,6 +2772,7 @@ int main(void) {
         cmocka_unit_test(test_is_network_path_forward_slash_local),
         cmocka_unit_test(test_wfopen_local_path),
         cmocka_unit_test(test_wfopen_network_path),
+        cmocka_unit_test(test_wfopen_forward_slash_network_path),
         cmocka_unit_test(test_waccess_local_path),
         cmocka_unit_test(test_waccess_network_path),
         cmocka_unit_test(test_wCreateFile_local_path),
