@@ -554,41 +554,14 @@ Additional client settings can be configured in the internal options file.
 
 **Note:** Modify `local_internal_options.conf` instead of `internal_options.conf` to preserve settings across upgrades.
 
-### Connection and Network Settings
+### General Settings
 
 ```ini
 # Debug level for agentd (0=no debug, 1=basic, 2=verbose)
 agent.debug=0
 
-# Send timeout in seconds (default: 60)
-agent.send_timeout=60
-
-# TCP keep-alive idle time in seconds (default: 30)
-agent.tcp_keepidle=30
-
-# TCP keep-alive interval between probes in seconds (default: 10)
-agent.tcp_keepintvl=10
-
-# TCP keep-alive probe count (default: 3)
-agent.tcp_keepcnt=3
-
-# Maximum retry attempts for failed requests (default: 4)
-agent.max_attempts=4
-
-# Request pool size (default: 1024)
-agent.request_pool=1024
-
-# Request RTO (retransmission timeout) in seconds (default: 1)
-agent.request_rto_sec=1
-
-# Request RTO in milliseconds (default: 0)
-agent.request_rto_msec=0
-
 # Remote configuration enabled (0=no, 1=yes, default: 1)
 agent.remote_conf=1
-
-# Minimum events per second threshold (default: 50)
-agent.min_eps=50
 
 # State reporting interval in seconds (default: 5)
 agent.state_interval=5
