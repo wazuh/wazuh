@@ -15,6 +15,16 @@ master's API, and poll that worker. PASS when the old selector is refused (403) 
 membership could have expired, and the new one is then served. Nothing else refreshes the entry
 meanwhile: this probe sends no /control while it polls.
 
+"Before it could have expired" is a conservative bound, so the cache simply expiring can never be
+counted as the publication working. The membership's age runs from the startup that read wazuh-db,
+not from the notify after it: notify answers a fresh entry from the cache without renewing it. remoted
+stores that moment in whole seconds, so the entry may expire up to 1 s early. The bound is therefore
+taken just before that startup was sent, minus 1 s, and each 403 is judged by when its answer
+arrived: a refusal at or after the bound proves nothing and fails the probe. The lab also runs its
+workers with a long refresh interval (setup: LAB_GROUPS_REFRESH_INTERVAL, 3600 s by default), so
+inside the --within window a refusal can only come from the publication; pass that interval as
+--expiry.
+
 Exit status 0 on PASS, 1 otherwise; --json-out writes the timeline.
 """
 import argparse
@@ -67,7 +77,8 @@ def main() -> int:
     p.add_argument("--prefix", default="/wazuh-manager/")
     p.add_argument("--ca", default="/certs/root-ca.pem")
     p.add_argument("--expiry", type=float, default=60.0,
-                   help="remoted.control_groups_refresh_interval on the worker, in seconds")
+                   help="remoted.control_groups_refresh_interval on the worker, in seconds (the lab "
+                        "sets 3600; run_issue_checks.sh reads it from the worker)")
     p.add_argument("--within", type=float, default=180.0)
     p.add_argument("--json-out", default=None)
     args = p.parse_args()
@@ -83,9 +94,12 @@ def main() -> int:
     start = time.monotonic()
     print(f"agent {a}, worker {w}\n")
 
-    # 1. The worker must know the agent: its key (else 401) and its row (else 503).
+    # 1. The worker must know the agent: its key (else 401) and its row (else 503). The startup that
+    #    answers 200 is the one that read wazuh-db and cached the membership, so the cache's age runs
+    #    from no later than the moment it was sent.
     deadline = time.monotonic() + args.within
     while True:
+        sent = time.monotonic()
         r = control(w, pre, a, k, ca, "startup")
         if r.status_code == 200 or time.monotonic() > deadline:
             break
@@ -94,10 +108,13 @@ def main() -> int:
     if r.status_code != 200:
         out["reason"] = f"the worker never accepted /control startup: {brief(r)}"
         return finish(out, args)
+    # The earliest moment the cached membership can expire: remoted stamps it in whole seconds, so
+    # up to 1 s before `--expiry` after the read.
+    expires_at = sent + args.expiry - 1.0
 
-    # 2. A fresh cached membership, and the old selector served from it.
+    # 2. The old selector served from the cache. The notify returns the token; it does not renew the
+    #    cached membership (a fresh entry is answered without a query).
     r = control(w, pre, a, k, ca, "notify")
-    fresh_at = time.monotonic()
     old = r.json()["agent"]["config_token"]
     note("control_notify", status=r.status_code, config_token=old)
     r = download(w, pre, a, k, ca, "config", old)
@@ -117,21 +134,32 @@ def main() -> int:
     print(f"2. on the master: agent {a} now belongs to {group!r} only")
 
     # 4. The worker refuses the old selector -- before its cached membership could have expired.
+    #    Each 403 is judged by when its answer ARRIVED: a request sent just before the bound can be
+    #    answered after it, and then the cache expiring explains the refusal as well as the push.
+    poll_until = min(expires_at, changed_at + args.within)
     refused_at = None
-    while time.monotonic() - fresh_at < args.expiry:
+    while time.monotonic() < poll_until:
         r = download(w, pre, a, k, ca, "config", old)
+        answered = time.monotonic()
         if r.status_code == 403:
-            refused_at = time.monotonic()
+            if answered >= expires_at:
+                note("download_old_after", status=r.status_code)
+                out["reason"] = ("the old selector was refused only once the cached membership could have "
+                                 "expired: the cache's TTL explains it as well as the publication")
+                return finish(out, args)
+            refused_at = answered
             break
         time.sleep(1)
     note("download_old_after", status=r.status_code)
     if refused_at is None:
-        out["reason"] = (f"the old selector was still answered ({r.status_code}) when the cached "
-                         f"membership could expire ({args.expiry:.0f} s after /control)")
+        out["reason"] = (f"the old selector was still answered ({r.status_code}) "
+                         + (f"when the cached membership could expire ({args.expiry:.0f} s after the startup)"
+                            if poll_until == expires_at else
+                            f"{args.within:.0f} s after the change"))
         return finish(out, args)
     out["seconds_change_to_refusal"] = round(refused_at - changed_at, 2)
-    out["seconds_before_expiry"] = round(args.expiry - (refused_at - fresh_at), 2)
-    print(f"3. old selector refused {out['seconds_change_to_refusal']} s after the change, "
+    out["seconds_before_expiry"] = round(expires_at - refused_at, 2)
+    print(f"3. old selector refused {out['seconds_change_to_refusal']} s after the change, at least "
           f"{out['seconds_before_expiry']} s before the cached membership could expire")
 
     # 5. And the new one is served (its merged.mg may take a sync round to reach the worker).

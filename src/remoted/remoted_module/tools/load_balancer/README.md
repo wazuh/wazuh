@@ -177,9 +177,20 @@ database. While the agent's key or its database row has not reached a node yet, 
 
 `revocation_by_push.py` gives worker1 a fresh cached membership (`/control`), moves the agent to a
 new group through the master's API, and requires worker1 to refuse the old selector before that
-membership could expire (`--expiry`, the 60 s `remoted.control_groups_refresh_interval`): only the
-worker's cluster daemon naming the agent after applying the change (`POST /_internal/agents/groups`,
-which withdraws the cached membership so the next download reads the new groups) can do that. `download_status.py` is one timed download against one node, for the checks that need a node
+membership could expire: only the worker's cluster daemon naming the agent after applying the change
+(`POST /_internal/agents/groups`, which withdraws the cached membership so the next download reads the
+new groups) can do that. The cache simply expiring must never pass the check, so:
+
+- the lab's managers run with `remoted.control_groups_refresh_interval=3600` (the entrypoint writes it;
+  `LAB_GROUPS_REFRESH_INTERVAL=<s>` changes it, `=default` keeps the product's 60 s), and
+  `run_issue_checks.sh` reads worker1's value back and passes it as `--expiry`. Within the probe's
+  `--within` window a refusal can then only come from the publication;
+- the probe's expiry bound is conservative. The membership's age runs from the startup that read
+  wazuh-db (a notify answers a fresh entry without renewing it), and remoted stamps it in whole
+  seconds, so the bound is taken before that startup was sent, minus 1 s. Each `403` is judged by
+  when its answer arrived, and one at or after the bound fails the probe.
+
+`download_status.py` is one timed download against one node, for the checks that need a node
 in a given state (`run_issue_checks.sh` section 9 freezes a worker's `wazuh-manager-db` with it).
 
 `download_convergence.py --password labpassword` still measures the per-round 403 rate through the
