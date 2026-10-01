@@ -225,8 +225,15 @@ PitGuard makePitGuard(PointInTime& pit, IIndexerConnectorAsync& async)
                         }
                         catch (const IndexerConnectorException& e)
                         {
-                            LOG_WARNING_L(
-                                "pitGuard", "[indexer-connector] Error deleting Point In Time (PIT): {}", e.what());
+                            // Reported at INFO, not WARNING: the context is bounded by the keep_alive
+                            // it was opened with, so the indexer releases it on its own and there is
+                            // nothing for an operator to do.
+                            LOG_INFO_L("pitGuard",
+                                       "[indexer-connector] The Point In Time could not be deleted ({}). The indexer "
+                                       "releases it on its own within {} of the last search that used it; no operator "
+                                       "action is needed.",
+                                       e.what(),
+                                       PIT_KEEP_ALIVE);
                         }
                     });
 }
