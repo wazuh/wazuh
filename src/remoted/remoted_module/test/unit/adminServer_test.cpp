@@ -326,7 +326,9 @@ TEST_F(AdminServerTest, GetMetricsDumpsTheModuleFamilies)
                              "remoted.control.wdb.latency",
                              "remoted.control.registry.agents",
                              "remoted.download.started",
-                             "remoted.download.bytes.total"})
+                             "remoted.download.bytes.total",
+                             "remoted.control.no_row",
+                             "remoted.download.no_row"})
     {
         EXPECT_NE(response->body.find(name), std::string::npos) << name;
     }

@@ -240,23 +240,39 @@ TEST(RegistryLookupTest, RowRefreshesAnExpiredEntryAndKeepsActivity)
     EXPECT_TRUE(entry->hostPersisted);
 }
 
-TEST(RegistryLookupTest, NoRowIsAnsweredAndNothingIsCached)
+TEST(RegistryLookupTest, NoRowForAnAbsentAgentCreatesNothing)
+{
+    Fixture f({"ok []"});
+    Outcomes out;
+
+    f.lookup->lookup(1, 1000, out.waiter());
+    ASSERT_TRUE(out.waitFor(1));
+
+    EXPECT_EQ(out.first().kind, Kind::NoRow);
+    EXPECT_EQ(f.registry->get(1), nullptr); // never a membership, never an entry (no negative cache)
+    EXPECT_EQ(f.registry->size(), 0U);
+}
+
+TEST(RegistryLookupTest, NoRowInvalidatesAnExistingEntryAndKeepsActivity)
 {
     Fixture f({"ok []"});
     f.putEstablished(2, {"old"}, 10);
     const auto before = f.registry->get(2);
     Outcomes out;
 
-    f.lookup->lookup(1, 1000, out.waiter());
     f.lookup->lookup(2, 1000, out.waiter());
-    ASSERT_TRUE(out.waitFor(2));
+    ASSERT_TRUE(out.waitFor(1));
 
-    EXPECT_EQ(out.count(Kind::NoRow), 2U);
-    EXPECT_EQ(f.registry->get(1), nullptr); // never a membership, never cached
+    EXPECT_EQ(out.first().kind, Kind::NoRow);
     const auto after = f.registry->get(2);
+    ASSERT_NE(after, nullptr);
     EXPECT_EQ(after->groups, before->groups);
-    EXPECT_EQ(after->groupsRefreshedAtSec, before->groupsRefreshedAtSec);
-    EXPECT_EQ(after->groupsSeq, before->groupsSeq);
+    EXPECT_EQ(after->groupsRefreshedAtSec, 0U); // the membership stops counting
+    EXPECT_GT(after->groupsSeq, before->groupsSeq);
+    EXPECT_EQ(after->lastKeepaliveUpdateSec, 200U);
+    EXPECT_EQ(after->lastActivitySec, 300U);
+    EXPECT_EQ(after->createdAtSec, 50U);
+    EXPECT_TRUE(after->hostPersisted);
 }
 
 TEST(RegistryLookupTest, WazuhDbErrorIsUnavailable)
@@ -356,6 +372,48 @@ TEST(RegistryLookupTest, SupersededBySetAnswersThePushedGroups)
     const auto entry = f.registry->get(1);
     EXPECT_EQ(entry->groups, std::vector<std::string> {"g-new"});
     EXPECT_EQ(entry->groupsSeq, pushedSeq);
+}
+
+TEST(RegistryLookupTest, NoRowSupersededBySetAnswersThePushedGroups)
+{
+    Options options;
+    options.answer = "ok []";
+    options.gateAt = 1;
+    Fixture f(options);
+    f.putEstablished(1, {"g-old"}, 10);
+    Outcomes out;
+
+    f.lookup->lookup(1, 1000, out.waiter());
+    ASSERT_TRUE(f.wdb->waitReceived());
+    // The row reached the replica -- and was pushed -- after this query read it.
+    ASSERT_EQ(f.registry->setGroups(1, {"g-new"}, 2000), AgentRegistry::PushOutcome::Updated);
+    const auto pushedSeq = f.registry->get(1)->groupsSeq;
+    f.wdb->release();
+    ASSERT_TRUE(out.waitFor(1));
+
+    EXPECT_EQ(out.first().kind, Kind::Groups);
+    EXPECT_EQ(out.first().groups, std::vector<std::string> {"g-new"});
+    const auto entry = f.registry->get(1);
+    EXPECT_EQ(entry->groupsSeq, pushedSeq); // the older answer neither wrote nor invalidated
+    EXPECT_EQ(entry->groupsRefreshedAtSec, 2000U);
+}
+
+TEST(RegistryLookupTest, RowWithNoGroupsIsCachedAsDefault)
+{
+    Fixture f({"ok [{\"group\":\"\"}]"});
+    Outcomes out;
+
+    f.lookup->lookup(1, 1000, out.waiter());
+    ASSERT_TRUE(out.waitFor(1));
+
+    // A row with no groups is membership of "default" -- stored as /control stores it, so the
+    // groups, config_hash and config_token /control builds from the entry stay /control's own.
+    EXPECT_EQ(out.first().kind, Kind::Groups);
+    EXPECT_EQ(out.first().groups, std::vector<std::string> {"default"});
+    const auto entry = f.registry->get(1);
+    ASSERT_NE(entry, nullptr);
+    EXPECT_EQ(entry->groups, std::vector<std::string> {"default"});
+    EXPECT_EQ(entry->groupsRefreshedAtSec, 1000U);
 }
 
 TEST(RegistryLookupTest, SupersededByInvalidationAnswersItsOwnReadUncached)
