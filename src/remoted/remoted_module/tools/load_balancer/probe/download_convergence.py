@@ -6,9 +6,11 @@ The key-propagation 401s close on their own: the cluster replicates client.keys 
 node ends up able to answer. The question this answers is whether the /download 403 behaves
 the same, because if it does it is the same class of transient and nothing more.
 
-It is NOT the same mechanism: nothing replicates the AgentRegistry. A node can only learn
-an agent by serving it a /control itself. So convergence here is driven by the agent's own
-notify cycle walking onto every node, not by wazuh-clusterd.
+Before #39147 it was NOT the same mechanism: nothing replicated the AgentRegistry, and a node
+could only learn an agent by serving it a /control itself, so convergence was driven by the
+agent's own notify cycle walking onto every node. Since #39147 a node without a fresh membership
+reads the agent's groups from its own database instead, and every round should read 0/N from the
+start (cross_node_download.py asserts it; this keeps the per-round view).
 
 This enrolls a fresh agent and then alternates, through the balancer:
     one /control notify   (which registers the agent on whichever node takes it)
