@@ -11,6 +11,7 @@
 
 #include "registryLookup.hpp"
 #include "groupSelector.hpp"
+#include "loggerHelper.h"
 #include "wazuhDBClient.hpp"
 
 #include <optional>
@@ -21,6 +22,14 @@ namespace remoted::control
 {
     namespace
     {
+        constexpr auto REGISTRY_LOOKUP_LOGTAG {"wazuh-manager-remoted:registry-lookup"};
+
+        const LogFn& logFn()
+        {
+            static const LogFn instance {REGISTRY_LOOKUP_LOGTAG};
+            return instance;
+        }
+
         void answerAll(std::vector<RegistryLookup::Waiter>& waiters, const LookupOutcome& outcome)
         {
             for (auto& waiter : waiters)
@@ -71,7 +80,7 @@ namespace remoted::control
                 return;
             }
             // Taken before the query is issued: an answer read before a newer write to this
-            // agent's membership (a push) must not overwrite it.
+            // agent's membership (an invalidation, or another read stored first) must not overwrite it.
             Pending pending;
             pending.ticket = m_registry->groupsTicket();
             pending.issueSec = issueSec;
@@ -159,17 +168,28 @@ namespace remoted::control
                                if (old && old->groupsSeq > pending.ticket)
                                {
                                    // A newer write landed while the query was in flight. An
-                                   // established one (a push) is the fresher answer; an
-                                   // invalidation leaves this read as the best one available.
+                                   // established one is another read, stored first: it answers,
+                                   // since both follow every invalidation delivered before them
+                                   // (a push never establishes groups). An invalidation says the
+                                   // local database changed after this query was issued, so this
+                                   // read may predate the change: it answers nothing, and the
+                                   // entry stays invalidated.
                                    if (old->groupsRefreshedAtSec != 0)
                                    {
                                        outcome.groups = old->groups;
+                                   }
+                                   else
+                                   {
+                                       outcome = LookupOutcome {LookupOutcome::Kind::Superseded, {}};
                                    }
                                    return nullptr;
                                }
                                if (!m_registry->mayStoreLookup(old, pending.ticket))
                                {
-                                   return nullptr; // Answered, not cached.
+                                   // A push skipped an agent this node does not hold after the
+                                   // ticket -- possibly this one: the read may predate it too.
+                                   outcome = LookupOutcome {LookupOutcome::Kind::Superseded, {}};
+                                   return nullptr;
                                }
                                auto e = old ? std::make_shared<AgentEntry>(*old) : std::make_shared<AgentEntry>();
                                e->groups = std::move(groups);
@@ -181,6 +201,13 @@ namespace remoted::control
                                }
                                return e;
                            });
+        if (outcome.kind == LookupOutcome::Kind::Superseded)
+        {
+            LOGFN_DEBUG1(logFn(),
+                         "Agent %u: its membership changed while it was being read from wazuh-manager-db; the "
+                         "read is discarded and the waiting requests are told to retry.",
+                         id);
+        }
         return outcome;
     }
 

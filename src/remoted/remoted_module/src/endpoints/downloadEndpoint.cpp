@@ -690,6 +690,21 @@ namespace remoted::endpoints::download
                     return;
                 }
 
+                if (verdict.kind == GroupVerdictKind::Superseded)
+                {
+                    // The membership changed while it was being read (an invalidation, or a push
+                    // this node could not place): the read may predate a revocation, so it never
+                    // authorizes. Counted as a membership that could not be established now; not a
+                    // warning -- nothing is wrong, the agent's next request reads it again.
+                    incUnavailable(metrics);
+                    LOGFN_DEBUG2(logFn(),
+                                 "Deferred a /download request from agent '%s': its membership changed while it "
+                                 "was being read; it is told to retry.",
+                                 agentId.c_str());
+                    responder->send(unavailableResponse());
+                    return;
+                }
+
                 if (verdict.kind != GroupVerdictKind::Selector || verdict.selector != downloadRequest.resourceId)
                 {
                     // Debug only: any enrolled agent can trigger this at will, so a per-request

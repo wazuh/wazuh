@@ -23,7 +23,8 @@ namespace remoted::endpoints
         Selector,    ///< The agent's own selector (e.g. "default", "web,db") is in `selector`.
         Deny,        ///< The source cannot vouch for the agent at all (malformed id, no source).
         Unavailable, ///< The membership could not be established now (its store did not answer).
-        NoRow        ///< The store answered that it holds no record of the agent (not synchronized yet).
+        NoRow,       ///< The store answered that it holds no record of the agent (not synchronized yet).
+        Superseded   ///< The membership changed while it was being read; what was read may predate it.
     };
 
     struct GroupVerdict
@@ -58,10 +59,11 @@ namespace remoted::endpoints
          * @note Deny means DENY, never "allow by default": an agent whose membership the source
          *       cannot establish has nothing to authorize it against. Do not "fix" a caller that
          *       refuses on Deny into falling through to the request's own claim -- that is
-         *       precisely the defect this interface exists to close. Unavailable and NoRow are not
-         *       a Deny either: both say "retry" (a missing record may not have been synchronized
-         *       yet), and neither ever authorizes -- in particular, no record is never membership
-         *       of "default".
+         *       precisely the defect this interface exists to close. Unavailable, NoRow and
+         *       Superseded are not a Deny either: all three say "retry" (a missing record may not
+         *       have been synchronized yet; a superseded read is re-read on the next request), and
+         *       none ever authorizes -- in particular, no record is never membership of "default",
+         *       and a read older than a change is never served.
          */
         virtual void resolveSelector(const std::string& agentId, std::function<void(GroupVerdict)> done) const = 0;
     };

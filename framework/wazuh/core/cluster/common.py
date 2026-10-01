@@ -1848,44 +1848,13 @@ def _registry_agent_id(item: Any) -> Union[int, None]:
     return agent_id
 
 
-def _registry_publication_applied(agents: Any) -> dict:
-    """Build the publication of a chunk wazuh-manager-db applied: each agent's groups, as written.
+def _registry_publication(agents: Any) -> dict:
+    """Build the publication of a chunk sent to wazuh-manager-db: invalidate every agent it names.
 
-    Items wazuh-manager-db skips (no numeric id, or `groups` not a list) are left out. An agent with a group name the
-    local remoted would refuse (empty, or with the ',' that separates the groups of a multigroup) is published as an
-    invalidation instead, so one bad name never makes remoted refuse the whole publication.
-
-    Parameters
-    ----------
-    agents : Any
-        The chunk's `data` list: `[{"id": 1, "groups": ["default", "g1"]}, ...]`.
-
-    Returns
-    -------
-    dict
-        `{"set": [...], "invalidate": [...]}`, each key only when it has items; empty when there is nothing to publish.
-    """
-    to_set, to_invalidate = [], []
-    for item in agents if isinstance(agents, list) else []:
-        agent_id = _registry_agent_id(item)
-        if agent_id is None or not isinstance(item.get('groups'), list):
-            continue
-        groups = item['groups']
-        if all(isinstance(name, str) and name and ',' not in name for name in groups):
-            to_set.append({'id': agent_id, 'groups': groups})
-        else:
-            to_invalidate.append(agent_id)
-
-    publication = {}
-    if to_set:
-        publication['set'] = to_set
-    if to_invalidate:
-        publication['invalidate'] = to_invalidate
-    return publication
-
-
-def _registry_publication_uncertain(agents: Any) -> dict:
-    """Build the publication of a chunk whose effect on wazuh-manager-db is unknown: invalidate all its agents.
+    The same for an applied chunk and for one whose effect is unknown (an error or a timeout): a publication never
+    carries groups, only which agents changed. It describes the database as it was when this chunk was written, and
+    the local remoted may already hold a newer read, so remoted only withdraws those agents' cached memberships and
+    reads them from wazuh-manager-db on their next request.
 
     Parameters
     ----------
@@ -1924,8 +1893,8 @@ async def send_data_to_wdb(data, timeout, info_type='agent-info'):
     -------
     result : dict
         Dict containing number of updated chunks, error messages (if any) and time spent. For `agent-groups` it also
-        carries `registry_publications`: one publication per chunk, in chunk order, for the local remoted -- `set`
-        for an applied chunk, `invalidate` for an errored or timed-out one, none for the chunks never sent.
+        carries `registry_publications`: one publication per chunk, in chunk order, for the local remoted -- an
+        `invalidate` of the chunk's agents for every chunk sent, applied or not, none for the chunks never sent.
     """
     result = {'updated_chunks': 0, 'error_messages': {'chunks': [], 'others': []}, 'time_spent': 0}
     before = time.perf_counter()
@@ -1954,19 +1923,19 @@ async def send_data_to_wdb(data, timeout, info_type='agent-info'):
                             f"{data['set_data_command']} {json.dumps(data['payload'], separators=(',', ':'))}",
                             raw=True
                         )
-                        _append_registry_publication(publications, _registry_publication_applied(agents))
+                        _append_registry_publication(publications, _registry_publication(agents))
                         published = True
                         result['updated_chunks'] += 1
                     except TimeoutError as e:
                         # The chunk may or may not have been applied: remoted must read those agents again.
                         if not published:
-                            _append_registry_publication(publications, _registry_publication_uncertain(agents))
+                            _append_registry_publication(publications, _registry_publication(agents))
                         wdb_conn.close()
                         raise e
                     except Exception as e:
                         # Errored chunks may be partially applied; the ignored errors are uncertain too.
                         if not published:
-                            _append_registry_publication(publications, _registry_publication_uncertain(agents))
+                            _append_registry_publication(publications, _registry_publication(agents))
                         error = str(e)
 
                         if any(ignored_exception in error for ignored_exception in IGNORED_WDB_EXCEPTIONS):
