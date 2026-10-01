@@ -2724,7 +2724,9 @@ roots and non-numeric/negative/trailing-garbage agent ids each get their own `40
 aggregated into `remoted.control.rejected`), `controlHandler_test.cpp` (a malformed version answers
 `400` *and* writes `status_code` with the version sentinelized; `config_token` is the wdb-ordered
 multigroup CSV naming the same `merged.mg` that `config_hash` was computed over; a wazuh-db failure
-answers `500` rather than silently falling back to "default"), `controlConfig_test.cpp` (non-positive
+answers `503` rather than silently falling back to "default"; every membership `/control` stores is
+stamped, so a `/download` lookup issued before a startup or notify read and answered after it answers
+with that read instead of overwriting it), `controlConfig_test.cpp` (non-positive
 values fall back instead of casting a negative into a huge unsigned; a malformed `limits_json`
 collapses to `{}`), `controlTypes_test.cpp` (the version grammar and `compareVersions` ordering
 shared with `/enroll`), `agentRegistry_test.cpp` (an updater returning null is a no-op that never
