@@ -239,6 +239,56 @@ status()
     fi
 }
 
+# The credentials file itself, checked before anything else on the start and restart paths.
+#
+# Read-only: the resolver's --check asks the shared helper whether the credentials file, its
+# directory and every directory above it are acceptable, and touches neither the keystore nor the
+# credentials lock. That is what lets it run ahead of testconfig() -- and so ahead of the stop on the
+# restart path -- where resolvecredentials() cannot (see below). It has to come first: an install
+# that met an unsafe file issued no certificates, and testconfig() would otherwise stop the start on
+# "(1244) file not found" for remoted.pem without ever naming the file that caused it. It refuses
+# the file even when this start would not read it (everything already resolved), as the indexer and
+# the dashboard do: an unsafe credentials file is a problem whether or not anything needs it today.
+#
+# Any non-zero answer refuses the start, including the resolver failing to find its helpers: a
+# verdict we could not obtain is not a reason to start.
+checkcredentials()
+{
+    # Each marker is a verdict from a previous run, and this run's verdict replaces them; testconfig()
+    # clears them too, but this function may exit before it runs. Without this, a refusal here would
+    # leave `status` reporting another run's "refused its configuration".
+    rm -f ${DIR}/var/run/*.failed
+
+    if [ ! -x ${DIR}/bin/wazuh-manager-resolve-credentials ]; then
+        return 0
+    fi
+
+    # Captured and relayed on stderr, as in resolvecredentials(), so that `-j` keeps writing a single
+    # JSON document to stdout. The helper names the rule and the path, never a value.
+    CHECK_VERDICT=$(${DIR}/bin/wazuh-manager-resolve-credentials --check -H ${DIR} 2>&1)
+    if [ $? = 0 ]; then
+        return 0
+    fi
+    if [ -n "${CHECK_VERDICT}" ]; then
+        echo "${CHECK_VERDICT}" >&2
+    fi
+    echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: unsafe credentials file" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
+    if [ -n "${CHECK_VERDICT}" ]; then
+        echo "${CHECK_VERDICT}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
+    fi
+    if [ $USE_JSON = true ]; then
+        echo -n '{"error":22,"message":"Unsafe credentials file."}'
+    else
+        echo "Unsafe credentials file. Exiting"
+    fi
+    rm -f ${DIR}/var/run/*.start
+    rm -f ${DIR}/var/run/.restart
+    # Like testconfig(), this runs before lock() on both paths: unlock() is `rm -rf ${LOCK}`, so it
+    # releases nothing of ours.
+    unlock;
+    exit 1;
+}
+
 # Credential resolution, run immediately before the daemons and while we are still root.
 #
 # Deliberately NOT part of testconfig(), and deliberately not run while any daemon is up: the
@@ -256,6 +306,9 @@ status()
 # directory a standing dependency of the manager). Missing or unreadable certificates are caught by
 # checkSemantics() in testconfig() and by remoted's own access(R_OK) preflight after it drops
 # privileges; the resolver only answers for the passwords and the keystore.
+#
+# The credentials file's ownership and mode are not this function's job: checkcredentials() has
+# already refused an unsafe one before testconfig().
 #
 # Unresolved credentials fail here rather than at the daemon's own -t: a missing indexer password is
 # not a configuration error and has no JSON pointer to report, and the resolver has already named
@@ -649,6 +702,7 @@ info()
 restart_service()
 {
     touch ${DIR}/var/run/.restart
+    checkcredentials
     testconfig
     lock
     if [ $USE_JSON = true ]; then
@@ -677,6 +731,7 @@ fi
 
 case "$action" in
 start)
+    checkcredentials
     testconfig
     resolvecredentials
     lock

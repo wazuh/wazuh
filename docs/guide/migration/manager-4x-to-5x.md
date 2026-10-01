@@ -125,6 +125,9 @@ migration has to get right.
 > [Using certificates issued elsewhere](../../ref/getting-started/installation.md#using-certificates-issued-elsewhere) describes,
 > the API password is the one the installation assistant prints, and a missing listener pair stops
 > the start with `(1244): Invalid configuration at '/remote/https/certificate': file not found`.
+> The same `(1244)` follows an install that met an unsafe credentials file, after the start has
+> named that file; see
+> [When the manager does not start](../../ref/getting-started/credentials.md#when-the-manager-does-not-start).
 
 **The indexer password.** The one credential the manager cannot invent is its `wazuh-manager`
 account on the indexer, because inventing a password would not make the indexer accept it. Write it

@@ -19,7 +19,7 @@
 # This file adds only what is specific to the manager: which keys it owns, which it consumes, and
 # where each resolved value is stored.
 #
-# The same script runs at three moments, and the difference between them is the whole design:
+# The same script runs in five modes, and the difference between them is the whole design:
 #
 #   --install    From a FRESH postinst / %post / install.sh -- never from an upgrade. Creates what
 #                it can, and has no opinion about whether the manager can run. Never fails: a
@@ -49,6 +49,19 @@
 #                out as worse than the defect this whole mechanism closes, because it looks random.
 #                Run it at the end of the Dockerfile, or once from an entrypoint before the first
 #                start.
+#
+#   --check      From wazuh-manager-control start, restart and reload, BEFORE the configuration
+#                validator. Answers one question, read-only: does the shared helper accept the
+#                credentials file, its directory and every directory above it? It resolves nothing,
+#                never opens the keystore, never takes the credentials lock and never creates
+#                /etc/wazuh, so it is safe while the manager is running -- which is why it can sit
+#                ahead of the stop on the restart path, where --prestart cannot. It exists because
+#                a refused file used to surface only as "(1244) file not found" for remoted.pem: the
+#                install that met the file issued no certificates, and the validator stopped the
+#                start before --prestart could name the file. It also refuses a file that nothing
+#                would read any more (everything already resolved): the indexer and the dashboard
+#                refuse that file too, and an unsafe credentials file is a problem whether or not
+#                this start needs it.
 #
 # Validating at start rather than at install is deliberate: the answer changes between the two
 # moments and only the answer at start matters. A manager installed first resolves nothing;
@@ -108,6 +121,7 @@ while [ -n "${1-}" ]; do
         --upgrade)  MODE="upgrade" ; shift ;;
         --prestart) MODE="prestart"; shift ;;
         --clear)    MODE="clear"   ; shift ;;
+        --check)    MODE="check"   ; shift ;;
         -H)
             if [ -z "${2-}" ]; then
                 echo "resolve-credentials: -H needs a directory" >&2
@@ -117,7 +131,7 @@ while [ -n "${1-}" ]; do
             shift 2
             ;;
         -h|--help)
-            echo "Usage: $0 [--install|--upgrade|--prestart|--clear] [-H <home>]"
+            echo "Usage: $0 [--install|--upgrade|--prestart|--clear|--check] [-H <home>]"
             exit 0
             ;;
         *)
@@ -244,6 +258,37 @@ setting_get() {
         1) return 1 ;;
         *) return 2 ;;
     esac
+}
+
+# The --check verdict. Asks the shared helper rather than re-implementing its rules: the three
+# packages must refuse exactly the same files, and only wazuh_env_get() knows them all (owner,
+# group, mode, symlink, not a regular file, a base directory that is not 0700, an ancestor that is
+# not root-owned or is writable by group or others).
+#
+# Through the public wazuh_env_get() and not the helper's private validators, for the same reason
+# password_is_valid() keeps its own floor: the helper is downloaded, and the ref-fallback in
+# src/Makefile can resolve a copy whose private names differ. wazuh_env_get() reads without the
+# lock and writes nothing. It is asked for a name that is reserved for this and never written to
+# the file, so on a usable file it answers 1 (absent), and it answers 2 only when it refused the
+# file -- after printing which rule, and where, on stderr. The value it would print on stdout is
+# discarded all the same, so nothing read from the file can reach the journal.
+#
+# Two refusals print nothing from the helper or do not concern permissions: the reserved name
+# written on a malformed line (the helper exits 2 silently) and an invalid WAZUH_BASE_DIR. Both
+# still refuse -- a verdict we cannot explain is not a reason to start -- which is why the message
+# points at the helper's line instead of restating a rule that may not be the one broken. Any other
+# status (a tool the helper needs missing, say) refuses as well: only 0 and 1 mean "usable".
+check_credentials_file() {
+    _ccf_status=0
+    wazuh_env_get WAZUH_MANAGER_CREDENTIALS_CHECK >/dev/null || _ccf_status=$?
+    case "${_ccf_status}" in
+        0|1) return 0 ;;
+    esac
+
+    _ccf_file=$(wazuh_env_get_file 2>/dev/null) || _ccf_file="/etc/wazuh/credentials.env"
+    err "UNSAFE ${_ccf_file}: refused by the shared credentials helper (see the wazuh-credentials: line above, when there is one)"
+    err "        it must be a regular file, 0600 root:root, in a 0700 root:root directory whose ancestors are root-owned and not group- or world-writable; fix it and start again"
+    return 1
 }
 
 # -----------------------------------------------------------------------------------------
@@ -652,6 +697,11 @@ clear_credentials() {
 
 if [ "${MODE}" = "clear" ]; then
     clear_credentials
+    exit $?
+fi
+
+if [ "${MODE}" = "check" ]; then
+    check_credentials_file
     exit $?
 fi
 
