@@ -39,7 +39,7 @@ void YourModule::initialize()
     {
         if (validatorFactory.initialize())
         {
-            m_logFunction(LOG_INFO, "Schema validator initialized successfully from embedded resources");
+            m_logFunction(LOG_DEBUG, "Schema validator initialized successfully from embedded resources");
         }
         else
         {
@@ -219,7 +219,7 @@ void fim_initialize(void)
     {
         if (schema_validator_initialize())
         {
-            minfo("Schema validator initialized successfully from embedded resources");
+            mdebug1("Schema validator initialized successfully from embedded resources");
         }
         else
         {
@@ -231,62 +231,90 @@ void fim_initialize(void)
 
 ### Step 3: Validate Before Sending Data
 
+FIM validates each stateful event in `validate_and_persist_fim_event()` (`run_check.c`) and persists it only if it passes. A failure seen while FIM is shutting down is ignored, because `exit()` may already have torn down the validator's state; anything else is logged at ERROR and the entry is marked for deletion:
+
 ```c
-bool fim_validate_and_queue(const char* index, const char* data, void* item_data, OSList* failed_list)
-{
+bool validate_and_persist_fim_event(
+    const cJSON* stateful_event,
+    const char* id,
+    Operation_t operation,
+    const char* index,
+    uint64_t document_version,
+    const char* item_description,
+    bool mark_for_deletion,
+    OSList* failed_list,
+    void* failed_item_data,
+    int sync_flag
+) {
     bool validation_passed = true;
 
     // Only validate if synchronization is enabled and schema validator is initialized
-    if (syscheck.enable_synchronization && schema_validator_is_initialized())
-    {
+    if (syscheck.enable_synchronization && schema_validator_is_initialized()) {
+        char* msg = cJSON_PrintUnformatted(stateful_event);
         char* errorMessage = NULL;
 
-        if (!schema_validator_validate(index, data, &errorMessage))
-        {
+        if (!schema_validator_validate(index, msg, &errorMessage)) {
+            // A schema-validation failure observed while the agent is shutting down is not
+            // trustworthy: HandleSIG() calls exit(), which tears down the schema validator's
+            // process-static state (e.g. the ISO8601 regex) while this scan thread may still be
+            // validating events, so a perfectly valid event can be reported as invalid. Do not
+            // surface it as an error and do not act on the untrustworthy result (no deletion, no
+            // persistence): the agent is stopping and the event is re-evaluated on the next start.
+            if (fim_shutdown_process_on()) {
+                mdebug1("Ignoring schema validation failure for %s during shutdown%s%s",
+                        item_description,
+                        (errorMessage && errorMessage[0]) ? ": " : "",
+                        (errorMessage && errorMessage[0]) ? errorMessage : "");
+                os_free(errorMessage);
+                os_free(msg);
+                return true;
+            }
+
             // Validation failed - log errors
-            if (errorMessage)
-            {
-                mdebug2("Schema validation failed for FIM message (index: %s). Error: %s",
-                       index, errorMessage);
-                mdebug2("Raw event that failed validation: %s", data);
-                free(errorMessage);
+            if (errorMessage) {
+                merror("Schema validation failed for %s (index: %s). Errors: %s",
+                       item_description, index, errorMessage);
+                os_free(errorMessage);
             }
 
-            // Mark for deferred deletion from database
-            if (failed_list && item_data)
-            {
-                mdebug1("Marking FIM entry for deferred deletion due to validation failure");
-                OSList_AddData(failed_list, item_data);
-            }
-
+            merror("Raw event that failed validation: %s", msg);
+            mdebug1("Skipping persistence of invalid event for %s", item_description);
             validation_passed = false;
+
+            // Mark for deletion from DBSync if requested and this is an INSERT or MODIFY operation
+            if (mark_for_deletion && failed_list && failed_item_data) {
+                mdebug1("Marking %s for deletion from DBSync due to validation failure", item_description);
+                OSList_AddData(failed_list, failed_item_data);
+            }
         }
+
+        os_free(msg);
+    }
+
+    // Persist stateful event only if validation passed (or validation is disabled) AND sync_flag is 1
+    if (validation_passed && sync_flag == 1) {
+        persist_syscheck_msg(id, operation, index, stateful_event, document_version);
     }
 
     return validation_passed;
 }
 ```
 
-### Step 4: Implement Batch Deletion
+### Step 4: Delete Invalid Entries After the Transaction
+
+FIM deletes each entry that failed validation once the database transaction has finished (`run_check.c`); registry keys and values use `cleanup_failed_registry_keys()` and `cleanup_failed_registry_values()`:
 
 ```c
-void fim_delete_failed_items(OSList* failed_list)
-{
-    if (!failed_list || OSList_GetSize(failed_list) == 0)
-    {
+void cleanup_failed_fim_files(OSList* failed_paths) {
+    if (!failed_paths) {
         return;
     }
 
-    mdebug1("Deleting %d FIM item(s) from database due to validation failure",
-           OSList_GetSize(failed_list));
-
     OSListNode* node;
-    OSList_foreach(node, failed_list)
-    {
-        void* item_data = node->data;
-
-        // Delete item from database
-        fim_db_remove_path(syscheck.database, item_data);
+    OSList_foreach(node, failed_paths) {
+        const char* failed_path = (const char*)node->data;
+        mdebug1("Deleting %s from DBSync due to validation failure", failed_path);
+        fim_db_file_delete(failed_path);
     }
 }
 ```
@@ -510,8 +538,8 @@ auto& factory = SchemaValidator::SchemaValidatorFactory::getInstance();
 // Check if initialized
 if (!factory.isInitialized())
 {
-    // Log warning once during startup
-    m_logFunction(LOG_WARNING, "Schema validator not initialized. Validation disabled.");
+    // initialize() failed at startup, which already logged:
+    // LOG_WARNING "Failed to initialize schema validator. Schema validation will be disabled."
     return true; // Continue without validation
 }
 
@@ -519,8 +547,9 @@ if (!factory.isInitialized())
 auto validator = factory.getValidator(index);
 if (!validator)
 {
-    // No validator for this index - continue without validation
-    return true;
+    // No schema for this index - discard instead of sending it unvalidated
+    m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Discarding message.");
+    return false;
 }
 
 // Proceed with validation
@@ -532,8 +561,8 @@ auto result = validator->validate(data);
 **Initialization:**
 ```cpp
 // During startup
-LOG_INFO: "Schema validator initialized successfully"
-LOG_WARNING: "Schema validator not initialized. Validation disabled."
+LOG_DEBUG: "Schema validator initialized successfully from embedded resources"
+LOG_WARNING: "Failed to initialize schema validator. Schema validation will be disabled."
 ```
 
 **Validation Errors:**
@@ -547,8 +576,11 @@ LOG_DEBUG: "Marking entry for deferred deletion due to validation failure"
 **Deletion:**
 ```cpp
 // After batch deletion
-LOG_DEBUG: "Deleted N item(s) from database due to validation failure"
-LOG_ERROR: "Failed to delete from database: <error>" // If deletion fails
+LOG_DEBUG: "Deleting <item> from DBSync due to validation failure"          // FIM, one per item
+LOG_DEBUG: "Deleting entry from table <table> due to validation failure"    // Syscollector, one per item
+LOG_DEBUG: "Deleted N item(s) from DBSync due to validation failure"        // Syscollector; SCA logs "N SCA check(s)"
+LOG_ERROR: "Failed to delete from DBSync: <error>"                          // SCA (whole batch) or Syscollector (per row), if deletion fails
+LOG_ERROR: "Failed to create DBSync transaction for deletion: <error>"      // Syscollector, if the transaction cannot be created
 ```
 
 ---
@@ -588,7 +620,7 @@ TEST_F(SchemaValidatorTest, ValidMessage)
     ASSERT_NE(validator, nullptr);
 
     std::string validJson = R"({
-        "agent": {"id": "001"},
+        "wazuh": {"agent": {"id": "001"}},
         "package": {"name": "nginx", "version": "1.18.0"}
     })";
 
@@ -606,7 +638,7 @@ TEST_F(SchemaValidatorTest, InvalidMessage)
     ASSERT_NE(validator, nullptr);
 
     std::string invalidJson = R"({
-        "agent": {"id": "001"},
+        "wazuh": {"agent": {"id": "001"}},
         "package": {"name": 123}
     })";
 
@@ -692,7 +724,6 @@ if (!validator)
 1. Check the raw event logged in errors
 2. Compare against the schema file for that index
 3. Verify field names and types match exactly
-4. Check for missing required fields
 
 ### Issue: Performance degradation
 

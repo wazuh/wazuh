@@ -170,8 +170,8 @@ Agent                                   Manager
   |------------- FullSession ------------> |
   |   Start(mode=DELTA, index=[...])       |
   |   payload = Cleans{                    |
-  |     DataClean(index="fim_files"),      |
-  |     DataClean(index="fim_registry")}   |
+  |     DataClean(index="<index 1>"),      |
+  |     DataClean(index="<index 2>")}      |
   |                                        |
   |<---- HCRESULT:<session>:200:<body> --- |
   |                                        |
@@ -221,12 +221,12 @@ Agent (recovery)                        Manager
 
 The sync protocol module does **not** impose an aggressive, normal-path response-wait timeout: once a session is successfully submitted to the HTTPS transport's intake socket, `runSession()` blocks on a condition variable that is meant to be woken by the manager's answer arriving as an `HCRESULT` (via `parseResponseBuffer()`/`applyHttpResult()`), not by a clock.
 
-It does define an explicit upper bound as a safety net, though: `SESSION_RESPONSE_TIMEOUT` (15 minutes, `agent_sync_protocol.hpp`) unblocks that wait if no result ever arrives. The code's own comment is explicit that this is "a safety net, not a normal-path timeout": the HTTPS client fires its result callback for every outcome (200, error, timeout, abort) from within `wazuh-agentd`, but that result still has to cross the C bridge (`https_client_bridge.c`) and a module-local socket to reach this wait — a hop that can silently drop it (no route for the session, a full module socket, a `send()` failure). The 15-minute value is set well above `https_client`'s own worst case for one `/stateful` session (5 attempts × 120 s `statefulTimeoutMs` + backoff, ~14 minutes), so it is only expected to fire on an actual delivery failure, never on a slow-but-alive manager. When it does fire, `SyncResult::END_TIMEOUT_ERROR` is recorded and `lastSyncManagerNotReady` is set.
+It does define an explicit upper bound as a safety net, though: `SESSION_RESPONSE_TIMEOUT` (15 minutes, `agent_sync_protocol.hpp`) unblocks that wait if no result ever arrives. The code's own comment is explicit that this is "a safety net, not a normal-path timeout": the HTTPS client fires its result callback for every outcome (200, error, timeout, abort) from within `wazuh-agentd`, but that result still has to cross the C bridge (`https_client_bridge.c`) and a module-local socket to reach this wait — a hop that can silently drop it (no route for the session, a full module socket, a `send()` failure). The 15-minute value is set well above `https_client`'s own worst case for one `/stateful` session sent at once, at the defaults, with no `Retry-After` (5 attempts × 90 s `agent.https_stateful_timeout` + 4 backoff gaps capped at 60 s by `agent.https_backoff_cap`, ~11.5 minutes). The wait can still exceed 15 minutes without a delivery failure: a `Retry-After` from the manager on `429`/`503` replaces a shorter backoff gap, the stream sends `/stateful` sessions one at a time, so a session can queue behind other modules' sessions, and queued sessions wait for a new key while the stream is paused on a rejected credential (`401`). The one-shot `401` and `415` retries add at most one attempt each per session, with no backoff before them, which brings the default worst case to ~14.5 minutes (7 × 90 s + 4 × 60 s): close to the ceiling, but under it. Nothing checks the ceiling against `agent.https_stateful_timeout`, `agent.https_stateful_attempts` or `agent.https_backoff_cap`, so raising them can cross it. When it does fire, `SyncResult::END_TIMEOUT_ERROR` is recorded and `lastSyncManagerNotReady` is set.
 
 Below that safety net, the transport layer owns its own bounds:
 
-- **Per-request timeout** — `statefulTimeoutMs` (default 120 s per attempt, configurable via the HTTPS client configuration).
-- **HTTP-level retries** — `STATEFUL_MAX_ATTEMPTS` (default 5 attempts with backoff).
+- **Per-request timeout** — internal option `agent.https_stateful_timeout` (default 90000 ms per attempt, range 1000–3600000).
+- **HTTP-level retries** — internal option `agent.https_stateful_attempts` (default 5 attempts, range 1–64), separated by full-jitter backoff (`agent.https_backoff_base`, capped at `agent.https_backoff_cap`).
 
 The only retry that remains at the `sync_protocol` level is the fixed `SYNC_HANDOFF_RETRIES` constant (currently 3): how many times `runSession()` re-submits the same session to the local `queue-sync` intake socket if that socket is transiently unavailable (e.g. during an `agentd` restart between attempts). This is not caller-configurable and is a local hand-off concern, not an HTTP-level one.
 
