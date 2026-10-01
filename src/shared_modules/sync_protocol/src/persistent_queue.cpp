@@ -74,8 +74,7 @@ void PersistentQueue::flushLoop()
 {
     while (true)
     {
-        std::size_t flushIdx = 0;
-        bool shouldFlush = false;
+        bool stopping = false;
 
         {
             std::unique_lock<std::mutex> lock(m_mutex);
@@ -84,68 +83,58 @@ void PersistentQueue::flushLoop()
                 return m_buffers[m_currentIdx].size() >= FLUSH_BATCH_SIZE || m_stop.load();
             });
 
-            if (!m_buffers[m_currentIdx].empty())
-            {
-                flushIdx = m_currentIdx;
-                shouldFlush = true;
-                m_currentIdx ^= 1;
-            }
-
-            if (m_stop.load() && !shouldFlush)
-            {
-                break;
-            }
+            stopping = m_stop.load();
         }
 
-        if (shouldFlush)
+        // Called with m_mutex released: flushActiveBuffer() takes m_storageMutex before m_mutex,
+        // so holding m_mutex here would invert that order.
+        if (!flushActiveBuffer() && stopping)
         {
-            if (flushBuffer(m_buffers[flushIdx]))
-            {
-                m_buffers[flushIdx].clear();
-            }
+            break;
         }
     }
 }
 
-bool PersistentQueue::flushBuffer(const std::vector<PersistedData>& batch)
+bool PersistentQueue::flushActiveBuffer()
 {
-    try
-    {
-        std::lock_guard<std::mutex> storageLock(m_storageMutex);
-        m_storage->submitBatch(batch);
-        return true;
-    }
-    catch (const std::exception& ex)
-    {
-        m_logger(LOG_ERROR, std::string("PersistentQueue: Error flushing batch to storage: ") + ex.what());
-        return false;
-    }
-}
+    // Held across the swap, the write and the clear. Only the holder can swap, and it clears the
+    // slot it took before releasing it, so no swap can hand producers a slot that another
+    // flusher (the background thread or a sync) is still writing and is about to clear.
+    std::lock_guard<std::mutex> storageLock(m_storageMutex);
 
-void PersistentQueue::flushPendingBuffer()
-{
     std::size_t flushIdx;
     {
         std::lock_guard<std::mutex> lock(m_mutex);
 
         if (m_buffers[m_currentIdx].empty())
         {
-            return;
+            return false;
         }
 
         flushIdx = m_currentIdx;
         m_currentIdx ^= 1;
     }
 
-    if (flushBuffer(m_buffers[flushIdx]))
+    // Producers now write to the other slot and every other flusher is waiting on the storage
+    // lock, so this slot is read and cleared without m_mutex.
+    try
     {
+        m_storage->submitBatch(m_buffers[flushIdx]);
         m_buffers[flushIdx].clear();
     }
+    catch (const std::exception& ex)
+    {
+        // The items stay in their slot and are retried with whatever producers add to it once
+        // it is the active slot again.
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error flushing batch to storage: ") + ex.what());
+    }
+
+    return true;
 }
 
 std::vector<PersistedData> PersistentQueue::fetchAndMarkForSync(size_t maxBytes)
 {
-    flushPendingBuffer();
+    flushActiveBuffer();
 
     try
     {
@@ -161,7 +150,7 @@ std::vector<PersistedData> PersistentQueue::fetchAndMarkForSync(size_t maxBytes)
 
 std::vector<PersistedData> PersistentQueue::fetchPendingItems(bool onlyDataValues)
 {
-    flushPendingBuffer();
+    flushActiveBuffer();
 
     try
     {
