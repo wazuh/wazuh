@@ -3,9 +3,10 @@
 Is an agent's configuration served by every node, whichever node its /control went to?
 
 remoted authorizes a CONFIG download against the agent's group membership. A node that holds a
-fresh membership for the agent (its own /control, or a membership update the local cluster daemon
-published after applying agent groups) answers from memory; any other node reads the agent's
-groups from its local wazuh-manager-db before answering. So behind a non-sticky balancer:
+fresh membership for the agent (read from its local wazuh-manager-db by its own /control or an
+earlier download) answers from memory; any other node -- or one whose membership the local cluster
+daemon withdrew after applying agent groups -- reads the agent's groups from its local
+wazuh-manager-db before answering. So behind a non-sticky balancer:
 
     /control on worker A  ->  /download on worker B  ->  200, the same merged.mg
 

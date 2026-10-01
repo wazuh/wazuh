@@ -5,9 +5,10 @@ Is a revoked configuration refused as soon as a worker applies the change -- not
 On a worker, remoted answers a config download from the agent's cached membership while it is
 fresh (remoted.control_groups_refresh_interval, 60 s by default). When the master reassigns the
 agent's groups, the worker's cluster daemon applies the change to its local database and then
-publishes it to the local remoted (POST /_internal/agents/groups on its admin socket), which
-replaces the cached membership at once. Without that publication the old selector would keep
-being served until the cached membership expired.
+names the agent to the local remoted (POST /_internal/agents/groups on its admin socket), which
+withdraws the cached membership at once: the next download reads the new groups from the
+database. Without that publication the old selector would keep being served until the cached
+membership expired.
 
 So: /control on one worker (a fresh cached membership), move the agent to a new group through the
 master's API, and poll that worker. PASS when the old selector is refused (403) before the cached

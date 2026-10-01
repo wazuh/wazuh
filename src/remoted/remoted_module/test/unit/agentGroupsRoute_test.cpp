@@ -11,10 +11,11 @@
 
 // The membership publication route, driven directly: the handler makeAgentGroupsHandler() returns,
 // a real AgentRegistry and a real wazuh_metrics manager, with a responder that records the answer.
-// What these pin: sets before invalidations, existing entries only (absent agents skipped, never
-// created), activity untouched, an empty group list stored as "default", the whole body validated
-// before anything is applied, 503 once the registry is gone, and the counters per agent. The route's
-// registration on the admin socket (class, body cap, 405) is adminServer_test.cpp's.
+// What these pin: a publication only invalidates -- it never establishes or renews a membership,
+// whatever else the body carries ("set" included) -- existing entries only (absent agents skipped,
+// never created), activity untouched, the whole body validated before anything is applied, 503 once
+// the registry is gone, and the counters per agent. The route's registration on the admin socket
+// (class, body cap, 405) is adminServer_test.cpp's.
 
 #include "admin/agentGroupsRoute.hpp"
 #include "control/agentRegistry.hpp"
@@ -106,81 +107,56 @@ namespace
         }
     };
 
-    void expectCounts(const RecordingResponder& r, uint64_t updated, uint64_t invalidated, uint64_t skipped)
+    void expectCounts(const RecordingResponder& r, uint64_t invalidated, uint64_t skipped)
     {
         ASSERT_EQ(r.response().status, 200) << r.response().body;
         const auto body = r.json();
-        EXPECT_EQ(body.at("updated").get<uint64_t>(), updated) << r.response().body;
         EXPECT_EQ(body.at("invalidated").get<uint64_t>(), invalidated) << r.response().body;
         EXPECT_EQ(body.at("skipped").get<uint64_t>(), skipped) << r.response().body;
+        EXPECT_FALSE(body.contains("updated")) << "a publication never establishes groups: " << r.response().body;
     }
 } // namespace
 
-TEST(AgentGroupsRouteTest, SetUpdatesExistingEntriesAndSkipsAbsentOnes)
+// The case the route exists for, and the one a late publication must not break: the entry holds a
+// fresh membership a read established -- possibly newer than what the cluster daemon wrote when it
+// published -- and the publication withdraws it without replacing or renewing it.
+TEST(AgentGroupsRouteTest, InvalidateMarksEntriesNotEstablished)
 {
     Fixture f;
-    f.putAgent(1, {"old"}, 10);
-    f.putAgent(2, {"other"}, 10);
+    f.putAgent(1, {"g-read"}, wallSec());
     const auto before = f.registry->get(1);
+    ASSERT_TRUE(groupsFresh(*before, wallSec(), 60));
 
-    const auto r = f.post(R"({"set":[{"id":1,"groups":["g1","default"]},{"id":3,"groups":["x"]}]})");
+    const auto r = f.post(R"({"invalidate":[1,9]})");
 
     EXPECT_EQ(r->sends(), 1);
-    expectCounts(*r, 1, 0, 1);
+    expectCounts(*r, 1, 1);
     const auto entry = f.registry->get(1);
-    EXPECT_EQ(entry->groups, (std::vector<std::string> {"g1", "default"})); // wazuh-db order, verbatim
-    EXPECT_TRUE(groupsFresh(*entry, wallSec(), 60)) << "a publication is an established membership";
-    EXPECT_GT(entry->groupsSeq, before->groupsSeq);
+    EXPECT_FALSE(groupsFresh(*entry, wallSec(), 60)) << "the next reader asks wazuh-db";
+    EXPECT_EQ(entry->groupsRefreshedAtSec, 0U);
+    EXPECT_EQ(entry->groups, std::vector<std::string> {"g-read"}) << "kept for notify's cached-on-error path";
+    EXPECT_GT(entry->groupsSeq, before->groupsSeq) << "a read in flight across it is superseded";
     EXPECT_EQ(entry->lastKeepaliveUpdateSec, 200U);
     EXPECT_EQ(entry->lastActivitySec, 300U);
     EXPECT_EQ(entry->createdAtSec, 50U);
     EXPECT_TRUE(entry->hostPersisted);
-    EXPECT_EQ(f.registry->get(2)->groups, std::vector<std::string> {"other"});
-    EXPECT_EQ(f.registry->get(3), nullptr) << "an absent agent is skipped, never created";
-    EXPECT_EQ(f.registry->size(), 2U);
+    EXPECT_EQ(f.registry->get(9), nullptr) << "an absent agent is skipped, never created";
+    EXPECT_EQ(f.registry->size(), 1U);
 }
 
-TEST(AgentGroupsRouteTest, InvalidateMarksEntriesNotEstablished)
+// S48: a publication never carries groups, so "set" is ignored like any other unknown key.
+TEST(AgentGroupsRouteTest, SetIsIgnoredLikeAnyUnknownKey)
 {
     Fixture f;
-    f.putAgent(1, {"g1"}, wallSec());
-    const auto before = f.registry->get(1);
+    f.putAgent(1, {"old"}, wallSec());
+    f.putAgent(2, {"old"}, wallSec());
+    const auto second = f.registry->get(2);
 
-    const auto r = f.post(R"({"invalidate":[1,9]})");
+    const auto r = f.post(R"({"set":[{"id":2,"groups":["g-pushed"]}],"invalidate":[1]})");
 
-    expectCounts(*r, 0, 1, 1);
-    const auto entry = f.registry->get(1);
-    EXPECT_EQ(entry->groupsRefreshedAtSec, 0U);
-    EXPECT_EQ(entry->groups, std::vector<std::string> {"g1"});
-    EXPECT_GT(entry->groupsSeq, before->groupsSeq);
-    EXPECT_EQ(entry->lastActivitySec, 300U);
-    EXPECT_EQ(f.registry->get(9), nullptr);
-}
-
-TEST(AgentGroupsRouteTest, SetsApplyBeforeInvalidationsAndLastWins)
-{
-    Fixture f;
-    f.putAgent(1, {"old"}, 10);
-
-    // The invalidation is listed first in the body and still applies last.
-    const auto r = f.post(R"({"invalidate":[1],"set":[{"id":1,"groups":["a"]},{"id":1,"groups":["b"]}]})");
-
-    expectCounts(*r, 2, 1, 0);
-    const auto entry = f.registry->get(1);
-    EXPECT_EQ(entry->groups, std::vector<std::string> {"b"});
-    EXPECT_EQ(entry->groupsRefreshedAtSec, 0U);
-}
-
-TEST(AgentGroupsRouteTest, EmptyGroupListIsStoredAsDefault)
-{
-    Fixture f;
-    f.putAgent(1, {"old"}, 10);
-
-    const auto r = f.post(R"({"set":[{"id":1,"groups":[]}]})");
-
-    expectCounts(*r, 1, 0, 0);
-    // A row with no groups is membership of "default" -- stored as every other writer stores it.
-    EXPECT_EQ(f.registry->get(1)->groups, std::vector<std::string> {"default"});
+    expectCounts(*r, 1, 0);
+    EXPECT_EQ(f.registry->get(1)->groupsRefreshedAtSec, 0U);
+    EXPECT_EQ(f.registry->get(2), second) << "the ignored set wrote nothing";
 }
 
 TEST(AgentGroupsRouteTest, UnknownKeysAreIgnored)
@@ -188,10 +164,10 @@ TEST(AgentGroupsRouteTest, UnknownKeysAreIgnored)
     Fixture f;
     f.putAgent(1, {"old"}, 10);
 
-    const auto r = f.post(R"({"set":[{"id":1,"name":"web01","groups":["g1"]}],"invalidate":[],"extra":true})");
+    const auto r = f.post(R"({"invalidate":[1],"extra":true})");
 
-    expectCounts(*r, 1, 0, 0);
-    EXPECT_EQ(f.registry->get(1)->groups, std::vector<std::string> {"g1"});
+    expectCounts(*r, 1, 0);
+    EXPECT_EQ(f.registry->get(1)->groupsRefreshedAtSec, 0U);
 }
 
 TEST(AgentGroupsRouteTest, MalformedBodiesAreRejectedAndNothingIsApplied)
@@ -201,24 +177,21 @@ TEST(AgentGroupsRouteTest, MalformedBodiesAreRejectedAndNothingIsApplied)
         "[]",
         "{}",
         R"({"extra":1})",
-        R"({"set":{}})",
+        // Nothing but "set": ignored, so nothing this route applies -- refused for the missing "invalidate".
+        R"({"set":[{"id":1,"groups":["g1"]}]})",
         R"({"invalidate":5})",
-        R"({"set":[5]})",
-        R"({"set":[{"groups":["g1"]}]})",
-        R"({"set":[{"id":"1","groups":["g1"]}]})",
-        R"({"set":[{"id":0,"groups":["g1"]}]})",
-        R"({"set":[{"id":4294967296,"groups":["g1"]}]})",
-        R"({"set":[{"id":-1,"groups":["g1"]}]})",
-        R"({"set":[{"id":1.5,"groups":["g1"]}]})",
-        R"({"set":[{"id":1}]})",
-        R"({"set":[{"id":1,"groups":"g1"}]})",
-        R"({"set":[{"id":1,"groups":[""]}]})",
-        R"({"set":[{"id":1,"groups":["a,b"]}]})",
-        R"({"set":[{"id":1,"groups":[7]}]})",
+        R"({"invalidate":null})",
+        R"({"invalidate":{}})",
         R"({"invalidate":["x"]})",
-        // A valid element before a bad one: validated whole, so the first is not applied either.
-        R"({"set":[{"id":1,"groups":["applied?"]},{"id":2,"groups":[""]}]})",
-        R"({"set":[{"id":1,"groups":["applied?"]}],"invalidate":[0]})",
+        R"({"invalidate":["1"]})",
+        R"({"invalidate":[0]})",
+        R"({"invalidate":[4294967296]})",
+        R"({"invalidate":[-1]})",
+        R"({"invalidate":[1.5]})",
+        R"({"invalidate":[true]})",
+        R"({"invalidate":[[1]]})",
+        // A valid id before a bad one: validated whole, so the first is not applied either.
+        R"({"invalidate":[1,0]})",
     };
 
     Fixture f;
@@ -237,7 +210,7 @@ TEST(AgentGroupsRouteTest, MalformedBodiesAreRejectedAndNothingIsApplied)
     }
     EXPECT_EQ(f.registry->size(), 1U);
     EXPECT_EQ(f.metrics.rejected->get(), bodies.size());
-    EXPECT_EQ(f.metrics.updated->get() + f.metrics.invalidated->get() + f.metrics.skipped->get(), 0U);
+    EXPECT_EQ(f.metrics.invalidated->get() + f.metrics.skipped->get(), 0U);
 }
 
 TEST(AgentGroupsRouteTest, ExpiredRegistryAnswers503)
@@ -245,7 +218,7 @@ TEST(AgentGroupsRouteTest, ExpiredRegistryAnswers503)
     Fixture f;
     f.handler = remoted::admin::makeAgentGroupsHandler(std::weak_ptr<AgentRegistry> {}, f.metrics);
 
-    const auto r = f.post(R"({"set":[{"id":1,"groups":["g1"]}]})");
+    const auto r = f.post(R"({"invalidate":[1]})");
 
     EXPECT_EQ(r->response().status, 503);
     EXPECT_EQ(r->json().at("error"), "registry unavailable");
@@ -259,16 +232,16 @@ TEST(AgentGroupsRouteTest, CountersFollowOutcomes)
     f.putAgent(1, {"old"}, 10);
     f.putAgent(2, {"old"}, 10);
 
-    f.post(R"({"set":[{"id":1,"groups":["g1"]},{"id":7,"groups":["g1"]}],"invalidate":[2,8,9]})");
-    f.post(R"({"set":[{"id":2,"groups":["g2"]}]})");
+    f.post(R"({"invalidate":[1,7,2]})");
+    f.post(R"({"invalidate":[2,8,9]})");
     f.post("not json");
 
-    // Per agent, not per request: 2 updated (1, 2), 1 invalidated (2), 3 skipped (7, 8, 9).
-    EXPECT_EQ(f.metrics.updated->get(), 2U);
-    EXPECT_EQ(f.metrics.invalidated->get(), 1U);
+    // Per agent, not per request: 3 invalidated (1, 2, 2 again), 3 skipped (7, 8, 9).
+    EXPECT_EQ(f.metrics.invalidated->get(), 3U);
     EXPECT_EQ(f.metrics.skipped->get(), 3U);
     EXPECT_EQ(f.metrics.rejected->get(), 1U);
     // The same counters the manager dumps (GET /metrics), under the family's names.
-    EXPECT_EQ(static_cast<uint64_t>(f.manager.get(METRIC_PUSH_UPDATED)->value()), 2U);
+    EXPECT_EQ(static_cast<uint64_t>(f.manager.get(METRIC_PUSH_INVALIDATED)->value()), 3U);
     EXPECT_EQ(static_cast<uint64_t>(f.manager.get(METRIC_PUSH_SKIPPED)->value()), 3U);
+    EXPECT_EQ(f.manager.get("remoted.control.registry.push.updated"), nullptr) << "no \"updated\" outcome exists";
 }

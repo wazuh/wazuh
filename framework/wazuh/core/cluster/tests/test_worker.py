@@ -252,7 +252,7 @@ async def test_sync_wazuh_db_sync_ko(send_string_mock, json_dumps_mock, event_lo
 async def test_worker_handler_publish_agent_groups_enqueues(event_loop):
     """Check that the per-chunk publications of an apply go to the Worker's registry publisher."""
     worker_handler = get_worker_handler(event_loop)
-    publications = [{'set': [{'id': 1, 'groups': ['default']}]}, {'invalidate': [2]}]
+    publications = [{'invalidate': [1]}, {'invalidate': [2]}]
 
     worker_handler.server = MagicMock()
     worker_handler.publish_agent_groups(publications)

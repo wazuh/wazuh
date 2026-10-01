@@ -69,6 +69,13 @@ if [[ "$(strings "$TMPCHK/var/wazuh-manager/lib/libremoted_module.so" 2>/dev/nul
          grep -c '/_internal/agents/groups' || true)" -eq 0 ]]; then
     echo "    !! no POST /_internal/agents/groups on remoted's admin socket in this build" >&2; fail=1
 fi
+# A publication only invalidates (a late one must never overwrite a newer read): a build whose route
+# still applies `set` measures the revocation check against the older behaviour. A build with this
+# also answers 503 for a read an invalidation superseded, which came before it.
+if [[ "$(strings "$TMPCHK/var/wazuh-manager/lib/libremoted_module.so" 2>/dev/null |
+         grep -c 'Body must carry an "invalidate" array' || true)" -eq 0 ]]; then
+    echo "    !! the admin route still applies pushed groups (\"set\") in this build" >&2; fail=1
+fi
 if [[ -z "$(find "$TMPCHK/var/wazuh-manager" -name registry_publisher.py -print -quit 2>/dev/null)" ]]; then
     echo "    !! no cluster registry publisher (registry_publisher.py) in this build" >&2; fail=1
 fi

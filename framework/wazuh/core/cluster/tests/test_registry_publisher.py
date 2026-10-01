@@ -12,10 +12,10 @@ from wazuh.core.cluster.registry_publisher import RegistryPublisher
 from wazuh.core.engine_http import RemotedAdminHTTPError
 from wazuh.core.exception import WazuhInternalError
 
-SET_1 = {'set': [{'id': 1, 'groups': ['default']}]}
-SET_2 = {'set': [{'id': 2, 'groups': ['web']}]}
+INVALIDATE_1 = {'invalidate': [1]}
+INVALIDATE_2 = {'invalidate': [2, 4]}
 INVALIDATE_3 = {'invalidate': [3]}
-COUNTS = {'updated': 1, 'invalidated': 0, 'skipped': 0}
+COUNTS = {'invalidated': 1, 'skipped': 0}
 
 
 class FakeClient:
@@ -58,11 +58,11 @@ async def test_publishes_in_order():
     client = FakeClient()
     publisher, _ = make_publisher([client])
 
-    publisher.enqueue([SET_1, INVALIDATE_3])
-    publisher.enqueue([SET_2])
+    publisher.enqueue([INVALIDATE_1, INVALIDATE_3])
+    publisher.enqueue([INVALIDATE_2])
     await run_until(publisher, lambda: len(client.posted) == 3)
 
-    assert client.posted == [SET_1, INVALIDATE_3, SET_2]
+    assert client.posted == [INVALIDATE_1, INVALIDATE_3, INVALIDATE_2]
     publisher.logger.warning.assert_not_called()
 
 
@@ -73,10 +73,10 @@ async def test_client_errors_are_logged_throttled_and_do_not_stop():
     third = FakeClient()
     publisher, factory = make_publisher([first, second, third])
 
-    publisher.enqueue([SET_1, SET_2, INVALIDATE_3])
+    publisher.enqueue([INVALIDATE_1, INVALIDATE_2, INVALIDATE_3])
     await run_until(publisher, lambda: third.posted == [INVALIDATE_3])
 
-    assert (first.posted, second.posted) == ([SET_1], [SET_2])  # each lost, never retried
+    assert (first.posted, second.posted) == ([INVALIDATE_1], [INVALIDATE_2])  # each lost, never retried
     first.close.assert_awaited_once()
     second.close.assert_awaited_once()
     assert factory.call_count == 3
@@ -88,10 +88,10 @@ async def test_404_warns_once():
     client = FakeClient([RemotedAdminHTTPError(404), RemotedAdminHTTPError(404), RemotedAdminHTTPError(404)])
     publisher, factory = make_publisher([client])
 
-    publisher.enqueue([SET_1, SET_2, INVALIDATE_3])
+    publisher.enqueue([INVALIDATE_1, INVALIDATE_2, INVALIDATE_3])
     await run_until(publisher, lambda: len(client.posted) == 3)
 
-    assert client.posted == [SET_1, SET_2, INVALIDATE_3]
+    assert client.posted == [INVALIDATE_1, INVALIDATE_2, INVALIDATE_3]
     assert publisher.logger.warning.call_count == 1
     assert '404' in publisher.logger.warning.call_args[0][0]
     assert publisher.logger.debug.call_count == 2
@@ -104,10 +104,10 @@ async def test_refusal_is_warned_and_the_client_kept():
     client = FakeClient([RemotedAdminHTTPError(400, extra_message='bad'), COUNTS])
     publisher, factory = make_publisher([client])
 
-    publisher.enqueue([SET_1, SET_2])
+    publisher.enqueue([INVALIDATE_1, INVALIDATE_2])
     await run_until(publisher, lambda: len(client.posted) == 2)
 
-    assert client.posted == [SET_1, SET_2]
+    assert client.posted == [INVALIDATE_1, INVALIDATE_2]
     assert publisher.logger.warning.call_count == 1
     assert factory.call_count == 1
 
@@ -116,7 +116,7 @@ def test_queue_full_drops_and_warns():
     """Over the queue bound, publications are dropped and counted, with one warning per window; never an error."""
     publisher, _ = make_publisher([], maxsize=1)
 
-    publisher.enqueue([SET_1, SET_2, INVALIDATE_3])
+    publisher.enqueue([INVALIDATE_1, INVALIDATE_2, INVALIDATE_3])
 
     assert publisher._queue.qsize() == 1
     assert publisher.dropped == 2
@@ -124,10 +124,10 @@ def test_queue_full_drops_and_warns():
 
 
 def test_empty_publications_are_skipped():
-    """A publication with nothing to set or invalidate is never queued."""
+    """Nothing to invalidate is never queued -- a publication carrying only groups too: remoted applies none."""
     publisher, _ = make_publisher([])
 
-    publisher.enqueue([{}, {'set': []}, {'invalidate': []}, SET_1])
+    publisher.enqueue([{}, {'set': [{'id': 1, 'groups': ['default']}]}, {'invalidate': []}, INVALIDATE_1])
 
     assert publisher._queue.qsize() == 1
 
@@ -145,12 +145,12 @@ async def test_cancel_keeps_the_queue():
     client = BlockingClient()
     publisher, _ = make_publisher([client])
 
-    publisher.enqueue([SET_1, SET_2, INVALIDATE_3])
-    await run_until(publisher, lambda: client.posted == [SET_1])
+    publisher.enqueue([INVALIDATE_1, INVALIDATE_2, INVALIDATE_3])
+    await run_until(publisher, lambda: client.posted == [INVALIDATE_1])
 
-    # SET_1 was in flight and is lost; the rest wait for the next consumer, still in order.
-    assert client.posted == [SET_1]
-    assert [publisher._queue.get_nowait(), publisher._queue.get_nowait()] == [SET_2, INVALIDATE_3]
+    # INVALIDATE_1 was in flight and is lost; the rest wait for the next consumer, still in order.
+    assert client.posted == [INVALIDATE_1]
+    assert [publisher._queue.get_nowait(), publisher._queue.get_nowait()] == [INVALIDATE_2, INVALIDATE_3]
 
 
 def test_warn_throttle_reports_the_suppressed_count():
