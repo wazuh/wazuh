@@ -43,6 +43,13 @@ namespace remoted::control
     constexpr auto METRIC_REJECTED {"remoted.control.rejected"};
     constexpr auto METRIC_WDB_LATENCY {"remoted.control.wdb.latency"};
     constexpr auto METRIC_NO_ROW {"remoted.control.no_row"};
+    // Membership publications on the local admin socket (POST /_internal/agents/groups): per-agent
+    // outcomes plus the publications refused whole. Same family as the registry they write, so the
+    // dump reads as one remoted.control.* namespace.
+    constexpr auto METRIC_PUSH_UPDATED {"remoted.control.registry.push.updated"};
+    constexpr auto METRIC_PUSH_INVALIDATED {"remoted.control.registry.push.invalidated"};
+    constexpr auto METRIC_PUSH_SKIPPED {"remoted.control.registry.push.skipped"};
+    constexpr auto METRIC_PUSH_REJECTED {"remoted.control.registry.push.rejected"};
 
     /**
      * @brief The /control counter set, pre-resolved from one manager.
@@ -88,6 +95,44 @@ namespace remoted::control
             manager.getOrCreateHistogram(METRIC_WDB_LATENCY, "Successful wazuh-db round-trip time", "microseconds"),
             manager.getOrCreateCounter(
                 METRIC_NO_ROW, "503s: the local wazuh-db has no row for the agent (not yet synchronized)", "count")};
+    }
+
+    /**
+     * @brief The membership-publication counter set, pre-resolved from one manager.
+     *
+     * Default-constructed (all null) it counts nothing -- the null object the tests rely on.
+     */
+    struct PushMetrics
+    {
+        std::shared_ptr<wazuh::metrics::ICounter> updated;     ///< Agents whose entry took the published groups.
+        std::shared_ptr<wazuh::metrics::ICounter> invalidated; ///< Agents whose membership was invalidated.
+        std::shared_ptr<wazuh::metrics::ICounter> skipped;     ///< Agents this node holds no entry for: nothing
+                                                               ///< is created, their first download looks them up.
+        std::shared_ptr<wazuh::metrics::ICounter> rejected;    ///< Publications refused whole (400 malformed,
+                                                               ///< 503 registry gone): a caller bug, or shutdown.
+    };
+
+    /// Resolves the remoted.control.registry.push.* counters on @p manager (deduped by name).
+    inline PushMetrics makePushMetrics(wazuh::metrics::IManager& manager)
+    {
+        return PushMetrics {
+            manager.getOrCreateCounter(
+                METRIC_PUSH_UPDATED, "Agents whose registry entry took a published membership", "agents"),
+            manager.getOrCreateCounter(
+                METRIC_PUSH_INVALIDATED, "Agents whose membership a publication invalidated", "agents"),
+            manager.getOrCreateCounter(
+                METRIC_PUSH_SKIPPED, "Published agents this node holds no registry entry for", "agents"),
+            manager.getOrCreateCounter(
+                METRIC_PUSH_REJECTED, "Membership publications refused whole (malformed, or no registry)", "count")};
+    }
+
+    /// Adds @p n to one PushMetrics member; a null counter (the null object) counts nothing.
+    inline void addPush(const std::shared_ptr<wazuh::metrics::ICounter>& counter, std::uint64_t n = 1)
+    {
+        if (counter && n != 0)
+        {
+            counter->add(n);
+        }
     }
 
     inline void incStartup(ControlMetrics& m)
