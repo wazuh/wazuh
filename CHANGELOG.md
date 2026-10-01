@@ -72,7 +72,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the macOS agent shipping preinstalled empty `logs/ossec.log`/`ossec.json` placeholders. ([#39120](https://github.com/wazuh/wazuh/issues/39120))
 - Fixed the Windows agent accepting `<whodata><provider>ebpf</provider></whodata>` and silently disabling whodata. ([#39353](https://github.com/wazuh/wazuh/issues/39353))
 - Fixed the FIM eBPF whodata healthcheck failing on RHEL 9 kernels and discarding the eBPF provider. ([#39570](https://github.com/wazuh/wazuh/pull/39570))
-- Fixed FIM eBPF whodata dropping events for files outside the root mount. ([#6857](https://github.com/wazuh/external-devel-requests/issues/6857))
+- Fixed FIM eBPF whodata dropping events for files outside the root mount. ([#39708](https://github.com/wazuh/wazuh/pull/39708))
 
 ### Ruleset
 
@@ -214,7 +214,7 @@ All notable changes to this project will be documented in this file.
 - Improved cluster non-merged file path validation during worker file processing. ([#36296](https://github.com/wazuh/wazuh/pull/36296))
 - Improved cluster node name format validation in the hello handler. ([#36460](https://github.com/wazuh/wazuh/pull/36460))
 - Fixed missing `agent.host.ip` in inventory documents when agent IP is empty. ([#35475](https://github.com/wazuh/wazuh/pull/35475))
-- Fixed stale agent `synced` status after hot reload on cluster worker nodes. ([#6726](https://github.com/wazuh/external-devel-requests/issues/6726))
+- Fixed stale agent `synced` status after hot reload on cluster worker nodes. ([#36164](https://github.com/wazuh/wazuh/pull/36164))
 
 ### Agent
 
