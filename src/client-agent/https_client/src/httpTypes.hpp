@@ -227,11 +227,10 @@ struct HttpResponse
     /// runs at all when the CA file itself fails to load -- sawDepth0 stays false,
     /// which is exactly what makes this indistinguishable from a pure transport
     /// failure (a cipher-negotiation failure, a reset mid-handshake) without this
-    /// field. verify_mode=system's local-anchor fallback (curlPerformer.cpp, #39123)
-    /// checks this before its normal sawDepth0/depth0VerificationFailed gate, so a
-    /// fallback anchor that corrupts after startup (config.c's w_x509_load_pem only
-    /// runs once, at startup) is caught and reported instead of the agent silently
-    /// latching onto a file it can never successfully dial again.
+    /// field. verify_mode=system's local-anchor fallback (curlPerformer.cpp) checks this
+    /// before its normal sawDepth0/depth0VerificationFailed gate, so an anchor that breaks
+    /// after startup (config.c parses it only once) stops the agent with a named reason
+    /// instead of being retried forever as if it were a network failure.
     bool caFileLoadFailed {false};
 };
 
