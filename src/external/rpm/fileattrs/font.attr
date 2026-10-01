@@ -1,0 +1,3 @@
+%__font_provides	%{_rpmconfigdir}/fontconfig.prov
+%__font_requires	%{nil}
+%__font_magic		[Ff]ont?( (program|collection))?( (text|data))

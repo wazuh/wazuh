@@ -1,0 +1,5 @@
+%__ocaml_provides	%{_rpmconfigdir}/ocamldeps.sh --provides
+%__ocaml_requires	%{_rpmconfigdir}/ocamldeps.sh --requires
+%__ocaml_magic		^(Objective caml|OCaml) .*$
+%__ocaml_path		\\.(cma|cmi|cmo|cmx|cmxa)$
+%__ocaml_flags		magic_and_path

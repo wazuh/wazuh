@@ -1,0 +1,272 @@
+#/*! \page config_rpmpopt Default configuration: @RPM_CONFIGDIR@/rpmpopt-@PROJECT_VERSION@
+# \verbatim
+#
+# This file *should not be modified*. Local customizations
+# belong in /etc/popt, not here. This file will be replaced
+# whenever a new version of RPM is installed.
+#
+# Note: Not all popt aliases are documented. This is a decision on my
+# part as to which are the more important aliases. Feel free to clip
+# a copy of the alias/exec here and place in /etc/popt or ~/.popt with
+# your own words added. It's easier than arguing about how many options
+# fit on the head of an executable :-)
+#
+
+rpm	alias --scripts --qf '\
+%|PRETRANS?{pretrans scriptlet\
+%|PRETRANSPROG?{ (using[ %{PRETRANSPROG}])}|:\n%{PRETRANS}\n}:\
+{%|PRETRANSPROG?{pretrans program:[ %{PRETRANSPROG}]\n}|}|\
+\
+%|PREIN?{preinstall scriptlet\
+%|PREINPROG?{ (using[ %{PREINPROG}])}|:\n%{PREIN}\n}:\
+{%|PREINPROG?{preinstall program:[ %{PREINPROG}]\n}|}|\
+\
+%|POSTIN?{postinstall scriptlet\
+%|POSTINPROG?{ (using[ %{POSTINPROG}])}|:\n%{POSTIN}\n}:\
+{%|POSTINPROG?{postinstall program:[ %{POSTINPROG}]\n}|}|\
+\
+%|PREUN?{preuninstall scriptlet\
+%|PREUNPROG?{ (using[ %{PREUNPROG}])}|:\n%{PREUN}\n}:\
+{%|PREUNPROG?{preuninstall program:[ %{PREUNPROG}]\n}|}|\
+\
+%|POSTUN?{postuninstall scriptlet\
+%|POSTUNPROG?{ (using[ %{POSTUNPROG}])}|:\n%{POSTUN}\n}:\
+{%|POSTUNPROG?{postuninstall program:[ %{POSTUNPROG}]\n}|}|\
+\
+%|POSTTRANS?{posttrans scriptlet\
+%|POSTTRANSPROG?{ (using[ %{POSTTRANSPROG}])}|:\n%{POSTTRANS}\n}:\
+{%|POSTTRANSPROG?{posttrans program:[ %{POSTTRANSPROG}]\n}|}|\
+\
+%|PREUNTRANS?{preuntrans scriptlet\
+%|PREUNTRANSPROG?{ (using[ %{PREUNTRANSPROG}])}|:\n%{PREUNTRANS}\n}:\
+{%|PREUNTRANSPROG?{preuntrans program:[ %{PREUNTRANSPROG}]\n}|}|\
+\
+%|POSTUNTRANS?{postuntrans scriptlet\
+%|POSTUNTRANSPROG?{ (using[ %{POSTUNTRANSPROG}])}|:\n%{POSTUNTRANS}\n}:\
+{%|POSTUNTRANSPROG?{postuntrans program:[ %{POSTUNTRANSPROG}]\n}|}|\
+\
+%|VERIFYSCRIPT?{verify scriptlet\
+%|VERIFYSCRIPTPROG?{ (using[ %{VERIFYSCRIPTPROG}])}|:\n%{VERIFYSCRIPT}\n}:\
+{%|VERIFYSCRIPTPROG?{verify program:[ %{VERIFYSCRIPTPROG}]\n}|}|\
+' \
+	--POPTdesc=$"list install/erase scriptlets from package(s)"
+
+# obsolete
+rpm	alias --setperms --restore
+rpm	alias --setugids --restore
+rpm	alias --setcaps --restore
+
+rpm	alias --conflicts	--qf \
+  "[%|VERBOSE?{%{CONFLICTFLAGS:deptype}: }:{}|%{CONFLICTNEVRS}\n]" \
+	--POPTdesc=$"list capabilities this package conflicts with"
+rpm	alias --obsoletes	--qf \
+  "[%|VERBOSE?{%{OBSOLETEFLAGS:deptype}: }:{}|%{OBSOLETENEVRS}\n]" \
+	--POPTdesc=$"list other packages removed by installing this package"
+rpm	alias --provides	--qf \
+  "[%|VERBOSE?{%{PROVIDEFLAGS:deptype}: }:{}|%{PROVIDENEVRS}\n]" \
+	--POPTdesc=$"list capabilities that this package provides"
+rpm	alias -P --provides
+
+rpm	alias --requires	--qf \
+  "[%|VERBOSE?{%{REQUIREFLAGS:deptype}: }:{}|%{REQUIRENEVRS}\n]" \
+	--POPTdesc=$"list capabilities required by package(s)"
+rpm	alias -R --requires
+
+rpm	alias --recommends	--qf \
+  "[%|VERBOSE?{%{RECOMMENDFLAGS:deptype}: }:{}|%{RECOMMENDNEVRS}\n]" \
+	--POPTdesc=$"list capabilities recommended by package(s)"
+rpm	alias --suggests	--qf \
+  "[%|VERBOSE?{%{SUGGESTFLAGS:deptype}: }:{}|%{SUGGESTNEVRS}\n]" \
+	--POPTdesc=$"list capabilities suggested by package(s)"
+rpm	alias --supplements	--qf \
+  "[%|VERBOSE?{%{SUPPLEMENTFLAGS:deptype}: }:{}|%{SUPPLEMENTNEVRS}\n]" \
+	--POPTdesc=$"list capabilities supplemented by package(s)"
+rpm	alias --enhances	--qf \
+  "[%|VERBOSE?{%{ENHANCEFLAGS:deptype}: }:{}|%{ENHANCENEVRS}\n]" \
+	--POPTdesc=$"list capabilities enhanced by package(s)"
+
+rpm	alias --info --qf '\
+Name        : %{NAME}\n\
+%|EPOCH?{Epoch       : %{EPOCH}\n}|\
+Version     : %{VERSION}\n\
+Release     : %{RELEASE}\n\
+%|DISTTAG?{DistTag     : %{DISTTAG}\n}|\
+Architecture: %{ARCH}\n\
+Install Date: %|INSTALLTIME?{%{INSTALLTIME:date}}:{(not installed)}|\n\
+Group       : %{GROUP}\n\
+Size        : %{LONGSIZE}\n\
+%|LICENSE?{License     : %{LICENSE}}|\n\
+Signature   : %|DSAHEADER?{%{DSAHEADER:pgpsig}}:{%|RSAHEADER?{%{RSAHEADER:pgpsig}}:{%|SIGGPG?{%{SIGGPG:pgpsig}}:{%|SIGPGP?{%{SIGPGP:pgpsig}}:{(none)}|}|}|}|\n\
+Source RPM  : %{SOURCERPM}\n\
+Build Date  : %{BUILDTIME:date}\n\
+Build Host  : %{BUILDHOST}\n\
+%|PREFIXES?{Relocations :[ %{PREFIXES}]\n}|\
+%|PACKAGER?{Packager    : %{PACKAGER}\n}|\
+%|VENDOR?{Vendor      : %{VENDOR}\n}|\
+%|VCS?{VCS         : %{VCS}\n}|\
+%|URL?{URL         : %{URL}\n}|\
+%|BUGURL?{Bug URL     : %{BUGURL}\n}|\
+Summary     : %{SUMMARY}\n\
+Description :\n%{DESCRIPTION}\n' \
+	--POPTdesc=$"list descriptive information from package(s)"
+
+rpm	alias --changelog --qf '[* %{CHANGELOGTIME:day} %{CHANGELOGNAME}\n%{CHANGELOGTEXT}\n\n]' \
+	--POPTdesc=$"list change logs for this package"
+
+rpm	alias --changes --qf '[* %{CHANGELOGTIME:date} %{CHANGELOGNAME}\n%{CHANGELOGTEXT}\n\n]' \
+	--POPTdesc=$"list changes for this package with full time stamps"
+
+rpm	alias --xml --qf '[%{*:xml}\n]' \
+	--POPTdesc=$"list metadata in xml"
+
+rpm	alias --json --qf '[%{*:json}]' \
+	--POPTdesc=$"list metadata in JSON"
+
+rpm	alias --triggerscripts --qf '\
+[trigger%{TRIGGERTYPE} scriptlet (using %{TRIGGERSCRIPTPROG}) -- %{TRIGGERCONDS}\n\
+%{TRIGGERSCRIPTS}\n]'
+rpm	alias --triggers --triggerscripts \
+	--POPTdesc=$"list trigger scriptlets from package(s)"
+
+rpm	alias --filetriggerscripts --qf '\
+[filetrigger%{FILETRIGGERTYPE} scriptlet (using %{FILETRIGGERSCRIPTPROG}) -- \
+%{FILETRIGGERCONDS}\n%{FILETRIGGERSCRIPTS}\n]\
+[transfiletrigger%{TRANSFILETRIGGERTYPE} scriptlet (using %{TRANSFILETRIGGERSCRIPTPROG}) -- \
+%{TRANSFILETRIGGERCONDS}\n%{TRANSFILETRIGGERSCRIPTS}\n]'
+rpm	alias --filetriggers --filetriggerscripts \
+	--POPTdesc=$"list filetrigger scriptlets from package(s)"
+
+rpm	alias --last --qf '%|INSTALLTIME?{%{INSTALLTIME}}:{000000000}| %-45{NVRA} %|INSTALLTIME?{%{INSTALLTIME:date}}:{(not installed)}|\n' \
+	--pipe "LC_NUMERIC=C sort -r -n | sed 's,^[0-9]\+ ,,' " \
+	--POPTdesc=$"list package(s) by install time, most recent first"
+
+rpm	alias --dupes   --qf '%|SOURCERPM?{%{name}.%{arch}}:{%|ARCH?{%{name}}:{%{name}-%{version}}|}|\n' --pipe "sort | uniq -d" \
+	--POPTdesc=$"list duplicated packages"
+
+rpm	alias --filesbypkg --qf '[%-25{=NAME} %{FILENAMES}\n]' \
+	--POPTdesc=$"list all files from each package"
+
+rpm	alias --fileclass --qf '[%{FILENAMES}\t%{FILECLASS}\n]' \
+	--POPTdesc=$"list file names with their classes"
+
+rpm	alias --filecolor --qf '[%{FILENAMES}\t%{FILECOLORS}\n]' \
+	--POPTdesc=$"list file names with their colors"
+
+rpm	alias --fileprovide --qf '[%{FILENAMES}\t%{FILEPROVIDE}\n]' \
+	--POPTdesc=$"list file names with their provides"
+
+rpm	alias --filerequire --qf '[%{FILENAMES}\t%{FILEREQUIRE}\n]' \
+	--POPTdesc=$"list file names with requires"
+
+rpm	alias --filecaps --qf '[%{FILENAMES}\t%|FILECAPS?{%{FILECAPS}}|\n]' \
+	--POPTdesc=$"list file names with their POSIX1.e capabilities"
+
+# colon separated i18n domains to use as PO catalogue lookaside for
+# retrieving header group/description/summary.
+rpm alias --i18ndomains --define '_i18ndomains !#:+'
+
+rpm alias --color --define '_color_output !#:+'
+
+#==============================================================================
+#	[--httpport <port>]	"port number of http proxy"
+rpm	alias --httpport	--define '_httpport !#:+'
+#	[--httpproxy <host>]	"hostname or IP of http proxy"
+rpm	alias --httpproxy	--define '_httpproxy !#:+'
+#	[--trace]		"trace macro expansion"
+rpm	alias --trace		--eval '%trace'
+
+# Minimally preserve commonly used switches from cli split-up
+rpm	exec --addsign		rpmsign --addsign
+rpm	exec --delsign		rpmsign --delsign
+rpm	exec --resign		rpmsign --resign
+#rpm	exec --signfiles	rpmsign --signfiles
+rpm	exec --checksig		rpmkeys --checksig
+rpm	exec -K			rpmkeys --checksig
+rpm	exec --import		rpmkeys --import
+rpm	exec --initdb		rpmdb --initdb
+rpm	exec --rebuilddb	rpmdb --rebuilddb
+rpm	exec --verifydb		rpmdb --verifydb
+rpm	exec --specfile		rpmspec -q
+
+#==============================================================================
+rpmbuild alias --httpport	--define '_httpport !#:+'
+rpmbuild alias --httpproxy	--define '_httpproxy !#:+'
+rpmbuild alias --with		--define "_with_!#:+     --with-!#:+" \
+	--POPTdesc=$"enable configure <option> for build" \
+	--POPTargs=$"<option>"
+rpmbuild alias --without	--define "_without_!#:+  --without-!#:+" \
+	--POPTdesc=$"disable configure <option> for build" \
+	--POPTargs=$"<option>"
+rpmbuild alias --scm		--define '__scm !#:+' \
+	--POPTdesc=$"shortcut for '--define=\"__scm <scm>\"'" \
+	--POPTargs=$"<scm>"
+# Build policies enabled from command line. Last policy applies.
+rpmbuild alias --buildpolicy --define '__os_install_post %{_rpmconfigdir}/brp-!#:+' \
+	--POPTdesc=$"set buildroot <policy> (e.g. compress man pages)" \
+	--POPTargs=$"<policy>"
+# Print error on rpmbuild --sign
+rpmbuild alias --sign --eval "%{error:rpmbuild --sign is no longer supported. Use the rpmsign command instead!}"
+	--POPTdesc=$"Obsolete, use command rpmsign instead!"
+rpmbuild alias --trace		--eval '%trace' \
+	--POPTdesc=$"trace macro expansion"
+rpmbuild alias --nodebuginfo	--define 'debug_package %{nil}' \
+	--POPTdesc=$"do not generate debuginfo for this package"
+rpmbuild alias --build-in-place --define '_build_in_place 1' \
+	--POPTdesc=$"run build in current directory on checked out sources"
+
+rpmsign alias --key-id  --define '_gpg_name !#:+' \
+	--POPTdesc=$"key id/name to sign with" \
+	--POPTargs=$"<id>"
+rpmsign alias --digest-algo --define '_gpg_digest_algo !#:+' \
+	--POPTdesc=$"override default digest algorithm (eg sha1/sha256)" \
+	--POPTargs=$"<algorithm>"
+
+rpmspec	alias --conflicts	--qf \
+  "[%|VERBOSE?{%{CONFLICTFLAGS:deptype}: }:{}|%{CONFLICTNEVRS}\n]" \
+	--POPTdesc=$"list capabilities this package conflicts with"
+rpmspec	alias --obsoletes	--qf \
+  "[%|VERBOSE?{%{OBSOLETEFLAGS:deptype}: }:{}|%{OBSOLETENEVRS}\n]" \
+	--POPTdesc=$"list other packages removed by installing this package"
+rpmspec	alias --provides	--qf \
+  "[%|VERBOSE?{%{PROVIDEFLAGS:deptype}: }:{}|%{PROVIDENEVRS}\n]" \
+	--POPTdesc=$"list capabilities that this package provides"
+rpmspec	alias --requires	--qf \
+  "[%|VERBOSE?{%{REQUIREFLAGS:deptype}: }:{}|%{REQUIRENEVRS}\n]" \
+	--POPTdesc=$"list capabilities required by package(s)"
+rpmspec	alias --recommends	--qf \
+  "[%|VERBOSE?{%{RECOMMENDFLAGS:deptype}: }:{}|%{RECOMMENDNEVRS}\n]" \
+	--POPTdesc=$"list capabilities recommended by package(s)"
+rpmspec	alias --suggests	--qf \
+  "[%|VERBOSE?{%{SUGGESTFLAGS:deptype}: }:{}|%{SUGGESTNEVRS}\n]" \
+	--POPTdesc=$"list capabilities suggested by package(s)"
+rpmspec	alias --supplements	--qf \
+  "[%|VERBOSE?{%{SUPPLEMENTFLAGS:deptype}: }:{}|%{SUPPLEMENTNEVRS}\n]" \
+	--POPTdesc=$"list capabilities supplemented by package(s)"
+rpmspec	alias --enhances	--qf \
+  "[%|VERBOSE?{%{ENHANCEFLAGS:deptype}: }:{}|%{ENHANCENEVRS}\n]" \
+	--POPTdesc=$"list capabilities enhanced by package(s)"
+rpmspec	alias --buildconflicts	--srpm --conflicts \
+	--POPTdesc=$"list capabilities conflicting with build of this package"
+rpmspec	alias --buildrequires	--srpm --requires \
+	--POPTdesc=$"list capabilities required to build this package"
+rpmspec alias --httpport	--define '_httpport !#:+'
+rpmspec alias --httpproxy	--define '_httpproxy !#:+'
+rpmspec alias --with		--define "_with_!#:+     --with-!#:+" \
+	--POPTdesc=$"enable configure <option> for build" \
+	--POPTargs=$"<option>"
+rpmspec alias --without	--define "_without_!#:+  --without-!#:+" \
+	--POPTdesc=$"disable configure <option> for build" \
+	--POPTargs=$"<option>"
+rpmspec alias --scm		--define '__scm !#:+' \
+	--POPTdesc=$"shortcut for '--define=\"__scm <scm>\"'" \
+	--POPTargs=$"<scm>"
+# Build policies enabled from command line. Last policy applies.
+rpmspec alias --buildpolicy --define '__os_install_post %{_rpmconfigdir}/brp-!#:+' \
+	--POPTdesc=$"set buildroot <policy> (e.g. compress man pages)" \
+	--POPTargs=$"<policy>"
+rpmspec alias --trace		--eval '%trace' \
+	--POPTdesc=$"trace macro expansion"
+rpmspec alias --nodebuginfo	--define 'debug_package %{nil}' \
+	--POPTdesc=$"do not generate debuginfo for this package"
+# \endverbatim
+#*/

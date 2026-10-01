@@ -1,0 +1,5 @@
+%__metainfo_provides() %{lua:
+  print("metainfo()\\n")
+  print(string.format("metainfo(%s)\\n", rpm.expand("%{basename:%1}")))
+}
+%__metainfo_path ^%{_datadir}/(appdata|metainfo)/.*\\.(appdata|metainfo)\\.xml$

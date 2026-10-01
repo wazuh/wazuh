@@ -1,0 +1,358 @@
+To build RPM you will need several other packages:
+--------------------------------------------------
+
+The cmake build system, version 3.18 or later.
+It is available from
+    https://cmake.org/
+
+The popt library for option parsing, must be version 1.13 or later.
+It is available from
+    http://ftp.rpm.org/popt/
+
+The debugedit >= 0.3 tools for producing debuginfo sub-packages.
+It is available from
+   https://sourceware.org/debugedit/
+
+Lua >= 5.2 library + development environment.
+Note that only the library is needed at runtime, RPM never calls external
+Lua interpreter for anything. Lua is available from
+    http://www.lua.org
+
+The zlib library for compression support. You might also need/want
+the unzip executable for java jar dependency analysis. All available from
+    http://www.gzip.org/zlib/
+
+The libmagic (aka file) library for file type detection (used by rpmbuild). 
+The source for the file utility + library is available from
+    ftp://ftp.astron.com/pub/file/
+
+The libarchive library for archive access, available from
+    https://www.libarchive.org/
+
+You will need a cryptographic library to support digests and an OpenPGP
+implementation to support signatures. rpm-sequoia (>= 1.3.0 required) is
+the most complete option, covering both, and also the default:
+    https://github.com/rpm-software-management/rpm-sequoia
+
+Use of rpm-sequoia is strongly recommended. It is built on a full OpenPGP
+implementation in a memory-safe language, configurable policy and
+user-relevant error messages.  For more information, see
+    https://sequoia-pgp.org/
+
+However, for bootstrapping purposes it may be desireable to avoid the
+Rust dependency from rpm-sequoia. When building with -DWITH_SEQUOIA=OFF,
+rpm is built with OpenPGP support disabled. That means, you cannot
+sign packages, verify signatures or import keys, but otherwise
+you can build (and install) packages normally. In this mode, libgcrypt
+is used for crypthographic hash calculations by default, but alternatively
+OpenSSL can be selected by specifying -DWITH_OPENSSL=ON.
+
+Finally, it's still possible to use rpm's own legacy OpenPGP parser,
+but it is considered insecure and it's use is strongly discouraged:
+    https://github.com/rpm-software-management/rpmpgp_legacy
+
+libgcrypt library is available from https://www.gnupg.org/software/libgcrypt/
+
+If using the OpenSSL library for encryption, it must be version 1.0.2 or
+later. Note: when compiling against OpenSSL, there is a possible license
+incompatibility. For more details on this, see
+https://people.gnome.org/~markmc/openssl-and-the-gpl.html
+Some Linux distributions have different legal interpretations of this
+possible incompatibility. It is recommended to consult with a lawyer before
+building RPM against OpenSSL.
+Fedora: https://fedoraproject.org/wiki/Licensing:FAQ#What.27s_the_deal_with_the_OpenSSL_license.3F
+Debian: https://lists.debian.org/debian-legal/2002/10/msg00113.html
+
+The OpenSSL crypto library is available from https://www.openssl.org/
+
+RPM needs a database engine for normal operation. The main options are
+"ndb" and "sqlite", both enabled by default but can be disabled with
+-DENABLE_NDB=OFF and -DENABLE_SQLITE=OFF respetively.
+
+Additionally standalone support for read-only BDB databases is available as
+"bdb_ro" (-DENABLE_BDB_RO=ON) to aid with migration from BDB.
+
+The ndb and bdb_ro backends have no external dependencies.
+SQLite >= 3.22.0 is required for the sqlite database backend.
+SQLite is available from https://www.sqlite.org/
+
+SELinux support is enabled by default but can be disabled with
+-DWITH_SELINUX=OFF. libselinux is is available from
+    http://www.nsa.gov/selinux/
+
+It may be desired to install bzip2, gzip, and xz/lzma so that RPM can use these
+formats.  Gzip is necessary to build packages that contain compressed
+tar balls, these are quite common on the Internet.
+These are available from
+    http://www.gzip.org
+    http://www.bzip.org
+    http://tukaani.org/xz/
+
+Python bindings to RPM library are built by default, but it can be disabled
+with -DENABLE_PYTHON=OFF. You'll need to have Python >= 3.7
+runtime and C API development environment installed.
+Python is available from:
+    http://www.python.org/
+
+POSIX.1e draft 15 file capabilities support is enabled by default, to
+disable use -DWITH_CAP=OFF. You'll also need recent libcap, available from:
+    http://ftp.kernel.org/pub/linux/libs/security/linux-privs/libcap2/
+
+POSIX 1003.1e draft 17 ACL verification support is enabled by default,
+to disable use -DWITH_ACL=OFF. You'll also need the ACL library,
+available from:
+    ftp://oss.sgi.com/projects/xfs/cmd_tars/
+
+For best results you should compile with GCC and GNU Make.  Users have
+reported difficulty with other build tools (any patches to lift these
+dependencies are welcome). Both GCC and GNU Make available from 
+    http://www.gnu.org/
+
+If National Language Support (NLS) is desired you will need gnu
+gettext (currently this is required to build rpm but we hope to 
+lift this requirement soon), available from 
+    http://www.gnu.org/
+
+By default, Rpm uses C.UTF-8 locale as it's default locale. If your
+environment does not support this, you can make rpm use the traditional
+C locale with -DENABLE_CUTF8=OFF.
+
+If you are going to hack the sources (or compile from source repository)
+you will need most of the GNU development tools including:
+autoconf, automake, gettext, libtool, makeinfo, perl, GNU m4, GNU tar
+available from 
+    http://www.gnu.org/
+
+If you plan on using cryptographic signatures you will need a version
+of GPG, available from
+    http://www.gnupg.org/
+
+OpenMP multithreading support is automatically enabled if your C compiler has
+support for OpenMP version 4.5 or higher (to disable, use -DENABLE_OPENMP=OFF
+option).  For GCC, OpenMP 4.5 is fully supported since GCC 6.1,
+which is available from
+    http://www.gnu.org/
+
+If glibc is used, it needs to be of version 2.27 or newer. Older glibc
+versions have a longstanding bug where glob() does not return dangling
+symlinks as matches, which broadly affects rpmbuild.
+
+Rpm requires a POSIX.1-2008 level operating system.
+
+To compile RPM:
+--------------
+
+    mkdir _build
+    cd _build
+    cmake ..
+
+You can view the various cmake compile options with:
+    cmake -L ..
+
+and fine tune the built components + features, eg:
+    cmake -DENABLE_PYTHON=OFF ..
+
+If you have tools outside the regular FHS paths that you need rpm to find,
+you can augment the search path via MYPATH environment variable to cmake.
+
+Now build the system with:
+
+    make
+
+and then install with:
+
+    make install
+
+
+By default, rpm installs a series of default platforms based on the CPU
+architecture names in subdirectories called
+
+    /usr/lib/platform/<arch>-<os>
+
+This is enough for many distributions. However, some distributions
+may use more specific platform names that refer to particular computer
+systems, like SBCs or specific CPU tuning when compiling. Examples of such
+platform names are: "genericx86_64", "intel_skylake_64", "raspberrypi_armv7",
+"raspberrypi_armv8", etc.
+
+If the platform name is put into /etc/rpm/platform, then rpmbuild uses it
+and the only macros file rpmbuild looks for is
+
+    /usr/lib/platform/`cat /etc/rpm/platform`-<os>/macros
+
+If this file does not exist, many rpm macros will not have their expected
+values set and e.g. %configure will fail when trying to run rpmbuild.
+
+To allow creating the macros file for such a custom platform, the shell
+variables listed below must be set. If RPM_CUSTOM_ARCH is not set, the rest
+is ignored.
+
+    export RPM_CUSTOM_ARCH=genericx86_64
+    export RPM_CUSTOM_ISANAME=x86
+    export RPM_CUSTOM_ISABITS=64
+    export RPM_CUSTOM_CANONARCH=x86_64
+    export RPM_CUSTOM_CANONCOLOR=0 # to use /usr/lib for %_libdir
+    export RPM_CUSTOM_CANONCOLOR=3 # to use /usr/lib64 for %_libdir
+
+    make install 
+
+This also creates and installs the new platform file e.g.
+/usr/lib/platform/genericx86_64-linux/macros
+
+
+Rpm comes with an automated self-test suite. The test-suite requires podman
+(https://github.com/containers/podman/) or docker (https://github.com/docker/).
+It is disabled by default to avoid the dependencies but can be enabled with
+-DENABLE_TESTSUITE=ON.  The test-suite can be executed with:
+
+    make check
+
+Additionally, rpm supports executing the test-suite in a way that's similar to
+how the project CI is set up.  You can do that with:
+
+    make ci
+
+Finally, if you wish to prepare an rpm source tar ball, you should do
+
+    make dist
+
+To package RPM:
+--------------
+
+After RPM has been installed you can run rpm to build an rpm package.
+Edit the rpm.spec file to mirror any special steps you needed to
+follow to make rpm compile and change the specfile to match your
+taste.  You will need to put the rpm source tar file into the
+SOURCES directory and we suggest putting the specfile in the
+SPECS directory, then run rpmbuild -ba rpm.spec.  You will end up
+with two rpms which can be found in RPMS and SRPMS.
+
+If you are going to install rpm on machines with OS package managers
+other then rpm, you may choose to install the base rpm package via a
+cpio instead of a tar file.  Instead of running "make tar" during the
+build process, as described above, use the base rpm packages to create
+a cpio.  After the rpms have been created run rpm2cpio on the base rpm
+package, this will give you a cpio package which can then use to
+install rpm on a new system.
+
+    rpm2cpio rpm-4.0-1.solaris2.6-sparc.rpm > rpm-4.0-1.solaris2.6-sparc.cpio
+
+
+Non Linux Configuration Issues:
+------------------------------
+
+
+OS dependencies:
+----------------
+
+Under RPM based Linux distributions all libraries (in fact all files 
+distributed with the OS) are under RPM control and this section is not 
+an issue.
+
+RPM will need to be informed of all the dependencies which were
+satisfied before RPM was installed.  Typically this only refers to
+libraries that are installed by the OS, but may include other
+libraries and packages which are available at the time RPM is
+installed and will not under RPM control.  Another common example of
+libraries which may need dependency provisions are precompiled
+libraries which are installed by the OS package manager during system
+build time.  The list of dependencies you will wish to load into RPM
+will depend on exactly how you bootstrap RPM onto your system and what
+parts of the system you put into packages as well as on the specific OS
+you are using.
+
+The script vpkg-provides.sh can be used to generate a package which
+will satisfy the dependencies on your system.  To run it you will need
+to create a specfile header for this empty package and run the progam
+with:
+
+    --spec_header '/path/to/os-base-header.spec
+
+and if you wish to ensure that some directories are not traversed you
+can use the option: 
+
+    --ignore_dirs 'grep-E|pattern|of|paths|to|ignore
+
+By default the generated rpm will include a %verifyscript to verify
+checksum of all files traversed has not changed.  This additional
+check can be suppressed with:
+
+    --no_verify
+
+The result of running the script will be a specfile which will create
+a package continging all the dependencies found on the system.  There
+will be one provides line for each depednecy. The package will contain
+none of the actual OS library files as it is assumed they are already
+on your system and managed by other means.  Here is a example
+(truncated) of the provides lines used by one user of Digital Unix. (I
+have put several provides on the same line for brevity)
+
+provides: /bin/sh /usr/bin/ksh /usr/bin/csh 
+provides: libc.so.osf.1 libm.so.osf.1 libcurses.so.xpg4 libdb.so.osf.1
+provides: libX11.so libXaw.so.6.0 libXext.so libXm.so.motif1.2 libXmu.so
+provides: libdnet_stub.so.osf.1 libsecurity.so.osf.1 libpthread.so.osf.1
+provides: libexc.so.osf.1 libmach.so.osf.1 libdps.so libdpstk.so 
+
+
+The script vpkg-provides2.sh is underdevelopment as a more advanced
+version of vpkg-provides.sh which is aware of many different unix
+vendor packaging schemes.  It will create one "dependency package" for
+each unix package your OS vendor installed.
+
+
+rpmfilename:
+-----------
+
+If you plan on packaging for more then one OS you may want to edit
+/etc/macros or /usr/lib/rpm/macros and change the line which has
+rpmfilename to something which include both the %{_target_os} and
+%{_target_cpu}.  This will cause the name of the generated rpm files
+to the operating system name as well as the architecture which the rpm
+runs under.  The line to change looks like:
+
+%_rpmfilename           %%{ARCH}/%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm
+
+you may wish to include both the %{_target_os} and %{_target_cpu} in
+the final base name, so that it's easier to distinguish between what
+package is appropriate for a particular arch-os-version combo.  We
+suggest:
+
+%_rpmfilename           %%{_target_platform/%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{_target_platform}.rpm
+
+There is no %{_target_os_version} tag, so if you need to also
+distinguish between RPMs for certain versions of the OS, you can
+hard-code the version in the rpmrc on the build machine, so that .rpm
+files are generated with the version as part of the filename.
+
+For example when one user builds RPMs for Digital Unix 4.0b and 4.0d,
+optimization is important and he will build one set of RPMs for the
+EV4 processor and another set for the EV56 processor.  He specifies
+both the OS version (if it's important, as it is for a few packages)
+and the processor version by default by setting a special rpmfilename:
+on the particular build machine.
+
+The "rpmfilename: "tag on one machine (Digital Unix 4.0d, EV56 PWS 433)
+looks like:
+
+rpmfilename: %{_target_os}/4.0d/%{_target_cpu}/%{name}-%{version}-%{release}.%{_target_os}-%{_target_cpu}ev56.rpm
+
+For package `foo-1.1', at build time that would translate into:
+
+    osf1/4.0d/alpha/foo-1.1-1.osf1-alphaev56.rpm
+
+The hyphen between the %{_target_cpu} and ev56 is left out for compatibility
+with GNU Config.guess and because `alphaev56' looks more "normal" to
+people with an alpha than alpha-ev56 for someone on an Intel Pentium
+Pro would want `i586pro' over `i586-pro', but it does make parsing
+this filename by other programs a bit more difficult.
+
+
+GPG
+---
+
+To use the signing features of rpm, you will need to configure certain
+rpm macros in ~/.rpmmacros:
+
+	%_gpg_name      <GPG UID>
+	%_gpg_path      %(echo $HOME)/.gnupg
+

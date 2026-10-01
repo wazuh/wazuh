@@ -1,0 +1,14 @@
+%__usergroup_path ^/etc/(passwd|group)$
+%__usergroup_provides() %{lua:
+    for line in io.lines(macros['1']) do
+        fields = {}
+        for e in line:gmatch('([^:]*)') do
+            table.insert(fields, e)
+        end
+        if #fields == 7 then
+            print(string.format('user(%s)\\n', fields[1]))
+        elseif #fields == 4 then
+            print(string.format('group(%s)\\n', fields[1]))
+        end
+    end
+}

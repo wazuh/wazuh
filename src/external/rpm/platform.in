@@ -1,0 +1,105 @@
+# Per-platform rpm configuration file.
+
+#==============================================================================
+# ---- per-platform macros.
+#
+%_arch			=RPMCANONARCH=
+%_build_arch		=RPMCANONARCH=
+%_vendor		@RPMCANONVENDOR@
+%_os			@RPMCANONOS@
+%_gnu			=RPMRC_GNU=
+%_target_platform	%{_target_cpu}-%{_vendor}-%{_target_os}
+%optflags		=RPMRC_OPTFLAGS=
+
+%__isa_name		=ISANAME=
+%__isa_bits		=ISABITS=
+%__isa			%{__isa_name}-%{__isa_bits}
+
+# The default transaction color. This value is a set of bits to
+# determine file and dependency affinity for this arch.
+#	0	uncolored (i.e. use only arch as install hint)
+#	1	Elf32 permitted
+#	2	Elf64 permitted
+%_transaction_color	=RPMCANONCOLOR=
+
+#==============================================================================
+# ---- configure macros.
+#
+%_prefix		@prefix@
+%_exec_prefix		@exec_prefix@
+%_bindir		@bindir@
+%_sbindir		@sbindir@
+%_libexecdir		@libexecdir@
+%_datarootdir		@datarootdir@
+%_datadir		@datadir@
+%_sysconfdir		@sysconfdir@
+%_sharedstatedir	@sharedstatedir@
+%_localstatedir		@localstatedir@
+%_lib			=LIB=
+%_libdir		@exec_prefix@/=LIB=
+%_includedir		@includedir@
+%_oldincludedir		@oldincludedir@
+%_infodir		@infodir@
+%_mandir		@mandir@
+%_initddir		%{_sysconfdir}/rc.d/init.d
+# Deprecated misspelling, present for backwards compatibility.
+%_initrddir		%{_initddir}
+%_rundir		@rundir@
+
+%_defaultdocdir		%{_datadir}/doc
+
+%_enable_debug_packages =RPMDEBUGINFO=
+
+#==============================================================================
+# ---- Build policy macros.
+#
+#---------------------------------------------------------------------
+#	Expanded at beginning of %install scriptlet.
+#
+
+%__spec_install_template\
+%{__spec_install_pre}\
+%[ 0%{?_enable_debug_packages} > 0 ? "%{?buildsubdir:%(echo "%{debug_package}" > %{specpartsdir}/rpm-debuginfo.specpart)}" : "" ]\
+%{nil}
+
+%__spec_install_pre %{___build_pre}\
+    %{__rm} -rf "%{buildroot}"\
+    %{__mkdir_p} "%{dirname:%{buildroot}}"\
+    %{__mkdir} "%{buildroot}"\
+%{nil}
+
+#---------------------------------------------------------------------
+#	Expanded at end of %install scriptlet.
+#
+
+%__arch_install_post   =ARCH_INSTALL_POST=
+
+# Standard brp-macro naming:
+# convert all '-' in basename to '_', add two leading underscores.
+%__brp_compress %{_rpmconfigdir}/brp-compress %{?_prefix}
+%__brp_strip %{_rpmconfigdir}/brp-strip %{__strip}
+%__brp_strip_comment_note %{_rpmconfigdir}/brp-strip-comment-note %{__strip} %{__objdump}
+%__brp_strip_static_archive %{_rpmconfigdir}/brp-strip-static-archive %{__strip}
+%__brp_elfperms %{_rpmconfigdir}/brp-elfperms
+%__brp_remove_la_files %{_rpmconfigdir}/brp-remove-la-files
+
+%__os_install_post    \
+    %{?__brp_compress} \
+    %{?__brp_elfperms} \
+    %{?__brp_strip} \
+    %{?__brp_strip_static_archive} \
+    %{?__brp_strip_comment_note} \
+    %{?__brp_remove_la_files} \
+%{nil}
+
+%__spec_install_post\
+    %{?__debug_package:%{__debug_install_post}}\
+    %{__arch_install_post}\
+    %{__os_install_post}\
+%{nil}
+
+=apple=#---------------------------------------------------------------------
+=apple=#	Apple Darwin vendor specific macros
+=apple=#
+=apple=%_use_internal_dependency_generator     0
+=apple=%__so	dylib

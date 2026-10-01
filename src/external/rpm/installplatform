@@ -1,0 +1,238 @@
+#!/usr/bin/env bash
+
+DESTDIR="${DESTDIR:-/}"
+pkglibdir="${pkglibdir:-/usr/lib/rpm}"
+platformdir="${pkglibdir}/platform"
+
+RPMRC="${1:-rpmrc}"
+PLATFORM="${2:-platform}"
+MACROS="${3:-macros}"
+VENDOR="${4}"
+OS="${5}"
+RPMRC_GNU="${6}"
+
+for ARCH in noarch `grep ^arch_canon $RPMRC | cut -d: -f2` ${RPM_CUSTOM_ARCH:+custom}; do
+  RPMRC_OPTFLAGS="`sed -n 's/^optflags: '$ARCH' //p' $RPMRC`"
+  RPMRC_OPTFLAGS="`echo $RPMRC_OPTFLAGS | sed -e 's, ,\ ,g'`"
+  case $RPMRC_OPTFLAGS in
+  *-g*) ;;
+  *) RPMRC_OPTFLAGS="$RPMRC_OPTFLAGS -g" ;;
+  esac
+
+  ARCH_INSTALL_POST='%{nil}'
+  LIB=lib
+
+  # XXX FIXME: incomplete and quite likely wrong too in places,
+  # consult various arch folks for correct names etc.
+  ISANAME=
+  ISABITS=
+  CANONARCH=
+  CANONCOLOR=
+  DEBUGINFO=0
+  FILTER=cat
+  case "${ARCH}" in
+    custom)
+	ARCH=$RPM_CUSTOM_ARCH
+	ISANAME=$RPM_CUSTOM_ISANAME
+	ISABITS=$RPM_CUSTOM_ISABITS
+	CANONARCH=$RPM_CUSTOM_CANONARCH
+	CANONCOLOR=$RPM_CUSTOM_CANONCOLOR
+    ;;
+    sparc64*) 
+	ISANAME=sparc
+	ISABITS=64
+	CANONARCH=sparc64
+	CANONCOLOR=3
+	;;
+    sparc*) 
+	ISANAME=sparc
+	ISABITS=32
+	CANONARCH=sparc
+	CANONCOLOR=0
+	;;
+    s390)
+	ISANAME=s390
+	ISABITS=32
+	CANONARCH=s390
+	CANONCOLOR=0
+	;;
+    s390x)
+	ISANAME=s390
+	ISABITS=64
+	CANONARCH=s390x
+	CANONCOLOR=3
+	;;
+    ppc64|ppc64p7)
+	ISANAME=ppc
+	ISABITS=64
+	CANONARCH=ppc64
+	CANONCOLOR=3
+	;;
+    ppc64le)
+	ISANAME=ppc
+        ISABITS=64
+        CANONARCH=ppc64le
+        CANONCOLOR=3
+	;;
+    ppc*)
+	ISANAME=ppc
+	ISABITS=32
+	CANONARCH=ppc
+	CANONCOLOR=0
+	;;
+    i?86|pentium?|athlon|geode)
+	ISANAME=x86
+	ISABITS=32
+	CANONARCH=i386
+	CANONCOLOR=0
+	;;
+    x86_64*|amd64|ia32e)
+	ISANAME=x86
+	ISABITS=64
+	CANONARCH=x86_64
+	CANONCOLOR=3
+	;;
+    ia64)
+	ISANAME=ia
+	ISABITS=64
+	CANONARCH=ia64
+	CANONCOLOR=2
+	;;
+    sh*)
+	ISANAME=sh
+	ISABITS=32
+	CANONARCH=${ARCH}
+	CANONCOLOR=0
+	;;
+    armv7h*)
+	ISANAME=armv7hl
+	ISABITS=32
+	CANONARCH=arm
+	CANONCOLOR=0
+	;;
+    arm*)
+	ISANAME=`echo ${ARCH} | sed "s/^\([^-]*\)-.*/\1/"`
+	ISABITS=32
+	CANONARCH=arm
+	CANONCOLOR=0
+	;;
+    alpha*)
+	ISANAME=alpha
+	ISABITS=64
+	CANONARCH=alpha
+	CANONCOLOR=0
+	;;
+    aarch64)
+	ISANAME=aarch
+	ISABITS=64
+	CANONARCH=aarch64
+	CANONCOLOR=3
+	;;
+    mips)
+	ISANAME=mips
+	ISABITS=32
+	CANONARCH=mips
+	CANONCOLOR=0
+	;;
+    mipsel)
+	ISANAME=mips
+	ISABITS=32
+	CANONARCH=mipsel
+	CANONCOLOR=0
+	;;
+    mips64)
+	ISANAME=mips
+	ISABITS=64
+	CANONARCH=mips64
+	CANONCOLOR=3
+	;;
+    mips64el)
+	ISANAME=mips
+	ISABITS=64
+	CANONARCH=mips64el
+	CANONCOLOR=3
+	;;
+    mipsr6)
+	ISANAME=mipsr6
+	ISABITS=32
+	CANONARCH=mipsr6
+	CANONCOLOR=0
+	;;
+    mipsr6el)
+	ISANAME=mipsr6
+	ISABITS=32
+	CANONARCH=mipsr6el
+	CANONCOLOR=0
+	;;
+    mips64r6)
+	ISANAME=mipsr6
+	ISABITS=64
+	CANONARCH=mips64r6
+	CANONCOLOR=3
+	;;
+    mips64r6el)
+	ISANAME=mipsr6
+	ISABITS=64
+	CANONARCH=mips64r6el
+	CANONCOLOR=3
+	;;
+    m68k)
+	ISANAME=m68k
+	ISABITS=32
+	CANONARCH=m68k
+	CANONCOLOR=0
+	;;
+    riscv64)
+	ISANAME=riscv
+	ISABITS=64
+	CANONARCH=riscv64
+	CANONCOLOR=3
+	;;
+    loongarch64)
+	ISANAME=loongarch
+	ISABITS=64
+	CANONARCH=loongarch64
+	CANONCOLOR=3
+	;;
+    noarch)
+	CANONARCH=noarch
+	CANONCOLOR=0
+	FILTER="grep -v -E ^(%optflag|%__isa)"
+	;;
+  esac
+
+  # skip architectures for which we dont have full config parameters
+  [ -z "$CANONARCH" ] && continue
+
+  if [ "$OS" = "linux" ] && [ "$CANONCOLOR" = 3 ]; then
+      LIB=${LIB}64
+  fi
+
+  if [ "$OS" = "linux" ] && [ "$CANONARCH" != "noarch" ]; then
+      DEBUGINFO=1
+  fi
+
+  PPD="${DESTDIR}/${platformdir}/${ARCH}-${OS}"
+  [ -d $PPD ] || mkdir -p $PPD
+
+  cat $PLATFORM \
+  | sed -e "s,=RPMRC_OPTFLAGS=,$RPMRC_OPTFLAGS," \
+	-e "s,=RPMCANONARCH=,$CANONARCH,g" \
+	-e "s,=RPMCANONCOLOR=,$CANONCOLOR," \
+	-e "s,=RPMRC_GNU=,$RPMRC_GNU," \
+	-e "s,=RPMDEBUGINFO=,$DEBUGINFO," \
+	-e "s,=LIB=,$LIB," \
+	-e "s,=ARCH_INSTALL_POST=,$ARCH_INSTALL_POST," \
+	-e '/\${\w*:-/!s,\${,%{_,' \
+	-e "s,=ISANAME=,$ISANAME," \
+	-e "s,=ISABITS=,$ISABITS," \
+	-e "s,^=${VENDOR}=,," \
+  | grep -v '^=' \
+  | ${FILTER} \
+  > ${PPD}/macros
+  echo "Created ${PPD}/macros"
+
+done
+
+# gently adjust undefined autoconf variables to rpm macros...
+cat $MACROS | sed -e 's,${prefix},%{_prefix},g' > ${DESTDIR}/${pkglibdir}/macros

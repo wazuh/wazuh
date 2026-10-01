@@ -1,0 +1,21 @@
+%__desktop_provides() %{lua:
+  local executable = false
+  local mimetypes = nil
+  for line in io.lines(rpm.expand("%1")) do
+    if line:match("^Type%s*=%s*Application$") or line:match("^Exec%s*=") then
+      executable = true
+    elseif line:match("^MimeType%s*=") then
+      mimetypes = line:match("=%s*(.+)")
+    end
+  end
+  if executable then
+    print("application()\\n")
+    print(string.format("application(%s)\\n", rpm.expand("%{basename:%1}")))
+    if mimetypes then
+      for mimetype in mimetypes:gmatch("([^;]+)") do
+        print(string.format("mimehandler(%s)\\n", mimetype))
+      end
+    end
+  end
+}
+%__desktop_path ^%{_datadir}/applications/.*\\.desktop$

@@ -1,0 +1,42 @@
+%__sysusers_path	^%{_sysusersdir}/.*\\.conf$
+
+# Create user(name) and group(name) provides for sysusers.
+# For the primary item, encode the whole sysusers entry in base64, to be
+# fed into systemd-sysusers or something else that can handle it.
+# For groups created as a side-effect, only provide the group.
+%__sysusers_provides() %{lua:
+    for line in io.lines(arg[1]) do
+        if line:sub(1, 1) == '#' then
+            goto continue
+        end
+        fields = {}
+        for w in line:gmatch("%S+") do
+            table.insert(fields, w)
+        end
+        if #fields >= 2 then
+            table.insert(fields, 1, '-b')
+            print(macros.add_sysuser(fields))
+        end
+        ::continue::
+    end
+}
+
+%__sysusers_dependencies() %{lua:
+    for line in io.lines(arg[1]) do
+        if line:sub(1, 1) == '#' then
+            goto continue
+        end
+        fields = {}
+        for w in line:gmatch("%S+") do
+            table.insert(fields, w)
+        end
+        if #fields >= 3 and fields[1] == 'm' then
+	    print(string.format('user(%s)\\ngroup(%s)\\n', fields[2], fields[3]))
+        end
+        ::continue::
+    end
+}
+
+%__sysusers_recommends() %[0%{?_use_weak_usergroup_deps} > 0 ? "%{__sysusers_dependencies %1}" : "" ]
+
+%__sysusers_requires() %[0%{?_use_weak_usergroup_deps} == 0 ? "%{__sysusers_dependencies %1}" : "" ]

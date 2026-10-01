@@ -1,0 +1,12 @@
+# Generate Provides for modules in /usr/lib/rpm/lua.
+# Analogous to the rpm_macro Provides generator
+# - /usr/lib/rpm/lua/fedora/common.lua -> rpm_lua(fedora.common)
+# - /usr/lib/rpm/lua/fedora/srpm/python.lua -> rpm_lua(fedora.srpm.python)
+
+%__rpm_lua_path ^%{_rpmluadir}/.+\\.lua$
+%__rpm_lua_provides() %{lua:
+-- Strip BUILDROOT + /usr/lib/rpm/lua/
+local idx = macros.buildroot:len() + macros._rpmluadir:len() + 2
+local path = arg[1]:sub(idx, -5)
+print("rpm_lua(" .. path:gsub("/", ".") .. ")")
+}

@@ -1,0 +1,53 @@
+
+# More recent contributors with multiple addresses
+Alec Leamas <leamas.alec@gmail.com> Alec Leamas <alec@nowhere.net>
+Alexandr D. Kanevskiy <kad@kad.name> Alexander Kanevskiy <kad@kad.name>
+Alexey Tourbin <alexey.tourbin@gmail.com> Alexey Tourbin <at@altlinux.ru>
+Andreas Scherer <andreas_scherer@alice.de> Andreas Scherer <andreas_github@freenet.de>
+Fionnuala Gunter <fin@linux.vnet.ibm.com> fin@linux.vnet.ibm.com <fin@linux.vnet.ibm.com>
+Fionnuala Gunter <fin.gunter@hypori.com> fin@linux.vnet.ibm.com <fin@linux.vnet.ibm.com>
+Igor Raits <i.gnatenko.brain@gmail.com> Igor Gnatenko <ignatenko@redhat.com>
+Jerome Quelin <jquelin@mageia.org> Jérôme Quelin <jquelin@mandriva.org>
+Jindrich Novy <jnovy@dhcp-lab-186.brq.redhat.com> Jindrich Novy <jnovy@redhat.com>
+Lubos Kardos <lkardos@redhat.com> Lubos Kardos <lkardos@localhost.localdomain>
+Lubos Kardos <lkardos@redhat.com> Lubos Kardos <lkardos@lkardos.brq.redhat.com>
+Neal Gompa <ngompa13@gmail.com> Neal Gompa (ニール・ゴンパ) <ngompa13@gmail.com>
+Panu Matilainen <pmatilai@redhat.com> pmatilai@dhcp115.koti.laiskiainen.org <pmatilai@dhcp115.koti.laiskiainen.org>
+Panu Matilainen <pmatilai@redhat.com> Panu Matilainen <Panu Matilainen pmatilai@redhat.com>
+Paul Nasrat <pnasrat@redhat.com> pauln@enki.eridu <pauln@enki.eridu>
+Paul Nasrat <pnasrat@redhat.com> pauln <devnull@localhost>
+Per Øyvind Karlsen <proyvind@moondrake.org> Per Øyvind Karlsen (proyvind) <proyvind@moondrake.org>
+Ralf Corsépius <corsepiu@fedoraproject.org> packman@mccallum.corsepiu.local <packman@mccallum.corsepiu.local>
+Stefan Berger <stefanb@us.ibm.com> Stefan Berger <stefanb@linux.vnet.ibm.com>
+Thierry Vignaud <thierry.vignaud@gmail.com> thierry.vignaud@gmail.com <thierry.vignaud@gmail.com>
+Taylon Silmer <taylon@taylon.eti.br> Taylon Silmer <taylonsilva@gmail.com>
+Pavlina Varekova <varekpaf@seznam.cz> Pavlina <pavlina@dhcp-27-209.brq.redhat.com>
+
+
+# Past contributors (pre-2007)
+# The email addresses here try to represent the time of contributions.
+Alex deVries <adevries@engsoc.carleton.ca> <devnull@localhost>
+Arkadiusz Miskiewicz <arekm@pld-linux.org> <devnull@localhost>
+Chip Turner <cturner@redhat.com> cturner <devnull@localhost>
+Erik Troan <ewt@redhat.com> ewt <devnull@localhost>
+Christian Gafton <gafton@redhat.com> <devnull@localhost>
+Jeff Johnson <jbj@redhat.com> jbj <devnull@localhost>
+James Olin Oden <james.oden@gmail.com> <devnull@localhost>
+Michael K. Johnson <johnsonm@redhat.com> <devnull@localhost>
+Marc Ewing <marc@redhat.com> <devnull@localhost>
+Michael Fulbright <msf@redhat.com> <devnull@localhost>
+Matt Wilson <msw@redhat.com> <devnull@localhost>
+Gustavo Niemeyer <niemeyer@conectiva.com> niemeyer <devnull@localhost>
+Bill Nottingham <notting@redhat.com> <devnull@localhost>
+Randy J. Ray <rjray@blackperl.com> <devnull@localhost>
+Elliot Lee <sopwith@redhat.com> <devnull@localhost>
+
+# Map unknown entries to one
+Unknown Author <devnull@localhost> unknown author <cooker@mandrivalinux.org>
+# Three commits from "djb" in 1998
+Unknown Author <devnull@localhost> djb <devnull@localhost>
+# Mystery "otto" fixed a missing space in the rpm.8 manual in 1998
+Unknown Author <devnull@localhost> otto <devnull@localhost>
+# This "root" would've been ewt or marc, or both
+Unknown Author <devnull@localhost> root <devnull@localhost>
+

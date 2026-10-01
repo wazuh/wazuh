@@ -1,0 +1,5 @@
+%__elf_provides		%{_rpmconfigdir}/elfdeps --provides --multifile
+%__elf_requires		%{_rpmconfigdir}/elfdeps --requires --multifile
+%__elf_magic		^(setuid,? )?(setgid,? )?(sticky )?ELF (32|64)-bit.*$
+%__elf_exclude_path	^/lib/modules/.*\\.ko?(\\.[[:alnum:]]*)$
+%__elf_protocol		multifile

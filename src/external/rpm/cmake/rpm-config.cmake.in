@@ -1,0 +1,8 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/rpm-targets.cmake")
+check_required_components(rpm)
+
+set(RPM_CONFIGDIR @RPM_CONFIGDIR@)
+set(RPM_PLUGINDIR @RPM_PLUGINDIR@)
+set(RPM_MACROSDIR @RPM_MACROSDIR@)

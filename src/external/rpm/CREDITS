@@ -1,0 +1,230 @@
+Initial work on RPM was done primarily by:
+
+	Marc Ewing
+	Erik Troan
+
+Over the years, code, documentation, translations, ideas, porting help, tests
+etc have been contributed by:
+
+	Tero Aho
+	Cerul Alain
+	A S Alam
+	Matthew Almond
+	Stuart Anderson
+	Jun Aruga
+	Ed Bailey
+	Lumir Balhar
+	Donnie Barnes
+	Hela Basa
+	Stefan Berger
+	Eric W. Biederman
+	Anders F Bjorklund
+	Frederic Bonnard
+	Nikita Borisov
+	Pádraig Brady
+	Filipe Brandenburger
+	Tony Breeds
+	Stepan Broz
+	Till Bubeck
+	Ross Burton
+	Héctor Daniel Cabrera
+	Davide Cavalca
+	Vitaly Chikunov
+	Yuri Chornoivan
+	Michal Čihař
+	Nick Clifton
+	Archie Cobbs
+	Ralf Corsépius
+	Kit Cosper
+	Mike Crowe
+	Rafal Cygnarowski
+	Jean Delvare
+	Kristof Depraetere
+        Alex de Vries
+	Tom de Vries
+	Johannes Dewender
+	Michal Domonkos
+	Piotr Drąg
+	Boris Egorov
+	Karl Eichwalder
+	Peter Eisentraut
+	Oğuz Ersen
+	W. L. Estes
+	Giulio Eulisse
+	Christophe Fergeau
+	Florian Festi
+	Jakub Filak
+	Brian Elliott Finley
+	Fred Fish
+	Fabrice Fontaine
+	Nikola Forró
+	Gleb Fotengauer-Malinovskiy
+	David Fox
+	Artur Frysiak
+	Stephen Gallagher
+	Narek Galstyan
+	Rafael Garcia-Suarez
+	Guillaume Gardet
+	Alexey Gladkov
+	Neal Gompa
+	Guido Grazioli
+	David Greaves
+	Aron Griffis
+	Fionnuala Gunter
+	Anssi Hannula
+	Johan Heikkilä
+	Olaf Hering
+	Miro Hrončok
+	Richard Hughes
+	Tom Hughes
+	Omer I.S
+	Thomas Jarosch
+	Zbigniew Jędrzejewski-Szmek
+	Jakub Jelinek
+	Alan Jenkins
+	Hongxu Jia
+	Howard Johnson
+	Jeff Johnson
+	Michael K. Johnson
+	Tadashi Jokagi
+	Peter Jones
+	Richard W.M. Jones
+	Guillem Jover
+	Joseph L. Hartmann, Jr
+	Robbie Harwood
+	Juha Kallioinen
+	Alexander Kanavin
+	Alexandr D. Kanevskiy
+	Eugene Kanter
+	Igor Kanyuka
+	Lubos Kardos
+	Per Øyvind Karlsen
+	Jiri Kastner
+	Peter Kjellerstedt
+	Tomasz Kłoczko
+	Phil Knirsch
+	Michal Kochanowicz
+	Kir Kolyshkin
+	Steve Kowalik
+	Ales Kozumplik
+	Jan Kratochvil
+	Ernestas Kulik
+	Jan Kuparinen
+	Toshio Kuratomi
+	Tim Landscheidt
+	Hermann Lauer
+	Steve Lawrence
+	Alec Leamas
+	Dimitri John Ledkov
+	Charles Lee
+	Elliot Lee
+	Robin Lee
+	Simon Lees
+	Dominique Leuenberger
+	Dmitry V. Levin
+	Markus Linnala
+	Martin Liška
+	Benedict Lofstedt
+	Till Maas
+	Daniel Mach
+	David Malcolm
+	Michal Marek
+	Panu Matilainen
+	Shogo Matsumoto
+	Jared Mauch
+	Roland McGrath
+	Kyle McMartin
+	Joshua Megerman
+	Petr Menšík
+	Gordon Messmer
+	Nigel Metheringham
+	Arkadiusz Miśkiewicz
+	Tomas Mlcoch
+	Horacio Rodriguez Montero
+	Tim Mooney
+	David Martínez Moreno
+	Eric Mumpower
+	Paul Nasrat
+	José Lemos Neto
+	Phu Hung Nguyen
+	Gustavo Niemeyer
+	Izumo Nobuse
+	Mikhail Novosyolov
+	Jindrich Novy
+	Michael Nyquisk
+	Demi Marie Obenour
+	Stanislav Ochotnicky
+	Ruediger Oertel
+	Denis Ollier
+	Vít Ondruch
+	Tomas Orsava
+	Ruediger Oertel
+	Rakesh Pandit
+	Jan Pazdziora
+	Thomas Petazzoni
+	Jan Pokorný
+	Orion Poplawski
+	Siddhesh Poyarekar
+	Richard Purdie
+	Trần Ngọc Quân
+	Jerome Quelin
+	Pavel Raiskup
+	Igor Raits
+	Elena Reshetova
+	Athos Ribeiro
+	Fábio Rodrigues Ribeiro
+	Sebastian Riedel
+	Lubomir Rintel
+	Peter Robinson
+	Bernhard Rosenkränzer
+	Pavol Rusnak
+	Kamil Rytarowski
+	Mark Salter
+	Steve Sanbeg
+	Tyson Sawyer
+	Andreas Scherer
+	Michal Schmidt
+	Michael Schroeder
+	Andreas Schwab
+	Christopher Seawood
+	Marc Seeger
+	Vladimir D. Seleznev
+	Misha Shnurapet
+	Kirill A. Shutemov
+	Jan Silhan
+	Taylon Silmer
+	Mukund Sivaraman
+	Ville Skyttä
+	Jeff Smith
+	Jes Sorensen
+	Radovan Sroka
+	Miroslav Suchý
+	Johnie Stafford
+	Tom Stellard
+	Hajime Taira
+	Bob Tanner
+	Pascal Terjan
+	Gary Thomas
+	Morgan Thomas
+	Jason Tibbitts
+	Jeff Tickle
+	Ricky Tigg
+	Michal Toman
+	Alexey Tourbin
+	Tom Tromey
+	Chip Turner
+	Göran Uddeborg
+	Vincent Untz
+	Pavlina Varekova
+	Nicolas Vigier
+	Thierry Vignaud
+	Denys Vlasenko
+	Jonathan Wakely
+	Colin Walters
+	Xiaofeng Wang
+	Brett T. Warden
+	Florian Weimer
+	Karsten Weiss
+	Bernhard M. Wiedemann
+	Mark Wielaard
+	Mimi Zohar

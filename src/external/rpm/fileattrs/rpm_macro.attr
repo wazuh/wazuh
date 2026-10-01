@@ -1,0 +1,2 @@
+%__rpm_macro_provides   %{_rpmconfigdir}/rpm_macros_provides.sh
+%__rpm_macro_path       %{_rpmmacrodir}/macros\\..*

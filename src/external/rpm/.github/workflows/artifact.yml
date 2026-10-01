@@ -1,0 +1,46 @@
+# Builds & attaches release artifacts to a newly published release.
+name: Release artifacts
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  # Generates dist tarball(s) and a checksum file to go with.
+  #
+  # A full build is needed here since we currently bundle some build artifacts
+  # with the tarball (man pages, HTML manuals and .po files) so make use of the
+  # test image as it already contains all the build dependencies.
+  #
+  dist:
+    runs-on: ubuntu-24.04
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG_NAME: ${{ github.event.release.tag_name }}
+      DIST_EXT: tar.bz2
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: |
+          podman build --target base --tag rpm -f tests/Dockerfile .
+
+      - name: Create dist tarball(s)
+        run: |
+          mkdir _build
+          podman run -v $PWD:/srv:z --workdir /srv/_build --rm rpm sh -c \
+            "cmake -DWITH_DOXYGEN=ON .. && make dist"
+
+      - name: Create checksum file
+        working-directory: _build
+        run: |
+          sha512sum --tag *.$DIST_EXT > CHECKSUM
+          cat CHECKSUM
+
+      - name: Upload dist tarball(s) & checksum file
+        working-directory: _build
+        run: |
+          gh release upload $TAG_NAME *.$DIST_EXT CHECKSUM

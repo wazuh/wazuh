@@ -1,0 +1,4 @@
+[submodule "po"]
+	path = po
+	url = https://github.com/rpm-software-management/rpm-l10n.git
+	branch = master

@@ -1,0 +1,24 @@
+name: Linux CI
+
+on: [push, pull_request]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build the Fedora testing environment
+        run: ./mktree.oci build
+        working-directory: ./tests
+      - name: Fix kernel mmap rnd bits
+        # High entropy setting in GH runner images >= 20240310.1.0
+        # causes ASAN blowing up here and there:
+        # https://github.com/actions/runner-images/issues/9491
+        run: sudo sysctl vm.mmap_rnd_bits=28
+      - name: Run the test suite
+        run: ./mktree.oci check --interactive=false -j$(nproc)
+        working-directory: ./tests
+
+    env:
+      MKTREE_ENGINE: docker

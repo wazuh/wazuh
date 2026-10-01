@@ -1,0 +1,6 @@
+%__debuginfo_provides() %{lua:
+  local file = rpm.expand("%1")
+  local b1, b2 = file:match("/([0-9a-f]+)/([0-9a-f]+)\.debug$")
+  print(string.format("debuginfo(build-id) = %s%s\\n", b1, b2))
+}
+%__debuginfo_path ^/usr/lib/debug/\\.build-id/[^/]+/[^/]+\\.debug$

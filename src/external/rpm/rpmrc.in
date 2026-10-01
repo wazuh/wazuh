@@ -1,0 +1,668 @@
+#/*! \page config_rpmrc Default configuration: @RPM_CONFIGDIR@/rpmrc
+# \verbatim
+#
+# This is a global RPM configuration file. All changes made here will
+# be lost when the rpm package is upgraded. Any per-system configuration
+# should be added to /etc/rpmrc, while per-user configuration should
+# be added to ~/.rpmrc.
+#
+#############################################################
+# Values for RPM_OPT_FLAGS for various platforms
+
+# "fat" binary with both archs, for Darwin
+optflags: fat -O2 -g -arch i386 -arch ppc
+
+optflags: i386 -O2 -g -march=i386 -mtune=i686
+optflags: i486 -O2 -g -march=i486
+optflags: i586 -O2 -g -march=i586
+optflags: i686 -O2 -g -march=i686
+optflags: pentium3 -O2 -g -march=pentium3
+optflags: pentium4 -O2 -g -march=pentium4
+optflags: athlon -O2 -g -march=athlon
+optflags: geode -Os -g -m32 -march=geode
+optflags: ia64 -O2 -g
+optflags: x86_64 -O2 -g
+optflags: x86_64_v2 -O2 -g -march=x86-64-v2
+optflags: x86_64_v3 -O2 -g -march=x86-64-v3
+optflags: x86_64_v4 -O2 -g -march=x86-64-v4
+optflags: amd64 -O2 -g
+optflags: ia32e -O2 -g
+
+optflags: alpha -O2 -g -mieee
+optflags: alphaev5 -O2 -g -mieee -mtune=ev5
+optflags: alphaev56 -O2 -g -mieee -mtune=ev56
+optflags: alphapca56 -O2 -g -mieee -mtune=pca56
+optflags: alphaev6 -O2 -g -mieee -mtune=ev6
+optflags: alphaev67 -O2 -g -mieee -mtune=ev67
+
+optflags: sparc -O2 -g -m32 -mtune=ultrasparc
+optflags: sparcv8 -O2 -g -m32 -mtune=ultrasparc -mv8
+optflags: sparcv9 -O2 -g -m32 -mtune=ultrasparc
+optflags: sparcv9v -O2 -g -m32 -mtune=niagara
+optflags: sparc64 -O2 -g -m64 -mtune=ultrasparc
+optflags: sparc64v -O2 -g -m64 -mtune=niagara
+
+optflags: m68k -O2 -g -fomit-frame-pointer
+
+optflags: ppc -O2 -g
+optflags: ppc8260 -O2 -g
+optflags: ppc8560 -O2 -g
+optflags: ppc32dy4 -O2 -g
+optflags: ppciseries -O2 -g
+optflags: ppcpseries -O2 -g
+optflags: ppc64 -O2 -g
+optflags: ppc64le -O2 -g
+optflags: ppc64p7 -O3 -mtune=power7 -mcpu=power7 -g
+
+optflags: parisc -O2 -g -mpa-risc-1-0
+optflags: hppa1.0 -O2 -g -mpa-risc-1-0
+optflags: hppa1.1 -O2 -g -mpa-risc-1-0
+optflags: hppa1.2 -O2 -g -mpa-risc-1-0
+optflags: hppa2.0 -O2 -g -mpa-risc-1-0
+
+optflags: mips -O2 -g
+optflags: mipsel -O2 -g
+optflags: mips64 -O2 -g
+optflags: mips64el -O2 -g
+
+optflags: mipsr6 -O2 -g
+optflags: mipsr6el -O2 -g
+optflags: mips64r6 -O2 -g
+optflags: mips64r6el -O2 -g
+
+optflags: armv3l -O2 -g -march=armv3
+optflags: armv4b -O2 -g -march=armv4
+optflags: armv4l -O2 -g -march=armv4
+optflags: armv4tl -O2 -g -march=armv4t
+optflags: armv5tl -O2 -g -march=armv5t
+optflags: armv5tel -O2 -g -march=armv5te
+optflags: armv5tejl -O2 -g -march=armv5te
+optflags: armv6l -O2 -g -march=armv6
+optflags: armv6hl -O2 -g -march=armv6 -mfloat-abi=hard -mfpu=vfp
+
+optflags: armv7l -O2 -g -march=armv7
+optflags: armv7hl -O2 -g -march=armv7-a -mfloat-abi=hard -mfpu=vfpv3-d16
+optflags: armv7hnl -O2 -g -march=armv7-a -mfloat-abi=hard -mfpu=neon
+optflags: armv8l -O2 -g -march=armv8-a
+optflags: armv8hl -O2 -g -march=armv8-a -mfloat-abi=hard -mfpu=vfpv4
+
+optflags: m68k -O2 -g -fomit-frame-pointer
+
+optflags: atarist -O2 -g -fomit-frame-pointer
+optflags: atariste -O2 -g -fomit-frame-pointer
+optflags: ataritt -O2 -g -fomit-frame-pointer
+optflags: falcon -O2 -g -fomit-frame-pointer
+optflags: atariclone -O2 -g -fomit-frame-pointer
+optflags: milan -O2 -g -fomit-frame-pointer
+optflags: hades -O2 -g -fomit-frame-pointer
+
+optflags: s390 -O2 -g
+optflags: s390x -O2 -g
+
+optflags: sh3 -O2 -g
+optflags: sh4 -O2 -g -mieee
+optflags: sh4a -O2 -g -mieee
+
+optflags: aarch64 -O2 -g
+
+optflags: riscv64 -O2 -g
+
+optflags: loongarch64 -O2 -g
+
+#############################################################
+# Architecture colors
+
+archcolor: noarch 0
+archcolor: i386 1
+archcolor: alpha 2
+archcolor: sparc 1
+archcolor: sparc64 2
+archcolor: sparcv9 2
+archcolor: ppc 1
+archcolor: ppc64 2
+archcolor: ppc64le 2
+
+archcolor: armv3l 1
+archcolor: armv4b 1
+archcolor: armv4l 1
+archcolor: armv4tl 1
+archcolor: armv5tel 1
+archcolor: armv5tejl 1
+archcolor: armv6l 1
+archcolor: armv7l 1
+archcolor: armv8l 1
+
+archcolor: mips 1
+archcolor: mipsel 1
+archcolor: mips64 2
+archcolor: mips64el 2
+
+archcolor: mipsr6 1
+archcolor: mipsr6el 1
+archcolor: mips64r6 2
+archcolor: mips64r6el 2
+
+archcolor: m68k 1
+
+archcolor: m68kmint 1
+
+archcolor: s390 1
+archcolor: s390x 2
+
+archcolor: ia64 2
+
+archcolor: x86_64 2
+archcolor: x86_64_v2 2
+archcolor: x86_64_v3 2
+archcolor: x86_64_v4 2
+
+archcolor: sh3 1
+archcolor: sh4 1
+
+archcolor: aarch64 2
+
+archcolor: riscv64 2
+
+
+archcolor: loongarch64 2
+
+#############################################################
+# Canonical arch names and numbers
+
+arch_canon:	athlon:	athlon	1
+arch_canon:	geode:	geode	1
+arch_canon:	pentium4:	pentium4	1
+arch_canon:	pentium3:	pentium3	1
+arch_canon:	i686:	i686	1
+arch_canon:	i586:	i586	1
+arch_canon:	i486:	i486	1
+arch_canon:	i386:	i386	1
+arch_canon:	x86_64:	x86_64	1
+arch_canon:	x86_64_v2:	x86_64_v2	1
+arch_canon:	x86_64_v3:	x86_64_v3	1
+arch_canon:	x86_64_v4:	x86_64_v4	1
+arch_canon:	amd64:	amd64	1
+arch_canon:	ia32e:	ia32e	1
+arch_canon:	em64t:	em64t	1
+
+arch_canon:	alpha:	alpha	2
+arch_canon:	alphaev5: alphaev5	2
+arch_canon:	alphaev56: alphaev56	2
+arch_canon:	alphapca56:alphapca56	2
+arch_canon:	alphaev6: alphaev6	2
+arch_canon:	alphaev67: alphaev67	2
+# We always want to prefer sparc to sparc64.
+arch_canon:     sparc64:sparc64 2
+arch_canon:     sun4u:  sparc64 2
+arch_canon:	sparc64v: sparc64v	2
+
+arch_canon: 	sparc:	sparc	3
+arch_canon: 	sun4:	sparc	3
+arch_canon: 	sun4m:	sparc	3
+arch_canon: 	sun4c:	sparc	3
+arch_canon:	sun4d:  sparc   3
+arch_canon:   sparcv8: sparcv8	3
+arch_canon:   sparcv9: sparcv9	3
+arch_canon:	sparcv9v: sparcv9v	3
+# This is really a place holder for MIPS.
+arch_canon:	mips:	mips	4
+arch_canon:	mipsel:	mipsel	4
+
+arch_canon:	ppc:	ppc	5
+arch_canon:	ppc8260:	ppc8260	5
+arch_canon:	ppc8560:	ppc8560	5
+arch_canon:	ppc32dy4:	ppc32dy4	5
+arch_canon:	ppciseries:	ppciseries	5
+arch_canon:	ppcpseries:	ppcpseries	5
+
+arch_canon:	m68k:	m68k	6
+arch_canon:	IP:	sgi	7
+arch_canon:     rs6000:	rs6000  8
+arch_canon:     ia64:	ia64	9
+
+arch_canon:	mips64:		mips64		11
+arch_canon:	mips64el:	mips64el	11
+
+arch_canon:	armv3l: armv3l	12
+arch_canon:     armv4b:	armv4b 	12
+arch_canon:     armv4l:	armv4l 	12
+arch_canon:     armv5tl: armv5tl 	12
+arch_canon:     armv5tel: armv5tel 	12
+arch_canon:     armv5tejl: armv5tejl 	12
+arch_canon:     armv6l: armv6l 	12
+arch_canon:     armv6hl: armv6hl 	12
+arch_canon:     armv7l: armv7l 	12
+arch_canon:     armv7hl: armv7hl 	12
+arch_canon:     armv7hnl: armv7hnl 	12
+arch_canon:	armv8l: armv8l	12
+arch_canon:	armv8hl: armv8hl	12
+
+arch_canon:	m68kmint: m68kmint	13
+arch_canon:	atarist: m68kmint	13
+arch_canon:	atariste: m68kmint	13
+arch_canon:	ataritt: m68kmint	13
+arch_canon:	falcon: m68kmint	13
+arch_canon:	atariclone: m68kmint	13
+arch_canon:	milan: m68kmint		13
+arch_canon:	hades: m68kmint		13
+
+arch_canon:	s390: s390	14
+arch_canon:	i370: i370	14
+arch_canon:	s390x: s390x	15
+
+arch_canon:	ppc64:	ppc64	16
+arch_canon:	ppc64le:	ppc64le	16
+arch_canon:    ppc64pseries: ppc64pseries  16
+arch_canon:    ppc64iseries: ppc64iseries  16
+arch_canon:    ppc64p7: ppc64p7  16
+
+arch_canon:	sh: sh		17
+arch_canon:	sh3: sh3	17
+arch_canon:	sh4: sh4	17
+arch_canon:	sh4a: sh4a	17
+arch_canon:	xtensa: xtensa	18
+arch_canon:	aarch64: aarch64 19
+
+arch_canon:	mipsr6: mipsr6	20
+arch_canon:	mipsr6el: mipsr6el	20
+arch_canon:	mips64r6: mips64r6	21
+arch_canon:	mips64r6el: mips64r6el	21
+
+arch_canon:	riscv: riscv64	22
+arch_canon:	riscv64: riscv64	22
+
+arch_canon:	loongarch64:	loongarch64	23
+
+#############################################################
+# Canonical OS names and numbers
+
+os_canon:	Linux:	Linux	1
+os_canon:	IRIX:	Irix	2
+# This is wrong
+os_canon:	SunOS5:	solaris	3
+os_canon:	SunOS4:	SunOS	4
+
+os_canon:      AmigaOS: AmigaOS 5
+os_canon:          AIX: AIX     5
+os_canon:        HP-UX: hpux10  6
+os_canon:         OSF1: osf1    7
+os_canon:       osf4.0: osf1    7
+os_canon:       osf3.2: osf1    7
+os_canon:      FreeBSD: FreeBSD 8
+os_canon:       SCO_SV: SCO_SV3.2v5.0.2  9
+os_canon:	IRIX64: Irix64  10
+os_canon:     NEXTSTEP: NextStep 11
+os_canon:       BSD_OS: bsdi	12
+os_canon:      machten: machten 13
+os_canon:  CYGWIN32_NT: cygwin32 14
+os_canon:  CYGWIN32_95: cygwin32 15
+os_canon:      UNIX_SV: MP_RAS: 16
+os_canon:         MiNT: FreeMiNT 17
+os_canon:       OS/390: OS/390	18
+os_canon:       VM/ESA: VM/ESA	19
+os_canon:    Linux/390: OS/390	20
+os_canon:    Linux/ESA: VM/ESA	20
+
+os_canon:       Darwin: darwin	21
+os_canon:       MacOSX: macosx	21
+
+#############################################################
+# For a given uname().machine, the default build arch
+
+buildarchtranslate: osfmach3_i686: i386
+buildarchtranslate: osfmach3_i586: i386
+buildarchtranslate: osfmach3_i486: i386
+buildarchtranslate: osfmach3_i386: i386
+
+buildarchtranslate: athlon: i386
+buildarchtranslate: geode: i386
+buildarchtranslate: pentium4: i386
+buildarchtranslate: pentium3: i386
+buildarchtranslate: i686: i386
+buildarchtranslate: i586: i386
+buildarchtranslate: i486: i386
+buildarchtranslate: i386: i386
+
+buildarchtranslate: alphaev5: alpha
+buildarchtranslate: alphaev56: alpha
+buildarchtranslate: alphapca56: alpha
+buildarchtranslate: alphaev6: alpha
+buildarchtranslate: alphaev67: alpha
+
+buildarchtranslate: sun4c: sparc
+buildarchtranslate: sun4d: sparc
+buildarchtranslate: sun4m: sparc
+buildarchtranslate: sparcv8: sparc
+buildarchtranslate: sparcv9: sparc
+buildarchtranslate: sparcv9v: sparc
+buildarchtranslate: sun4u: sparc64
+buildarchtranslate: sparc64v: sparc64
+
+buildarchtranslate: osfmach3_ppc: ppc
+buildarchtranslate: powerpc: ppc
+buildarchtranslate: powerppc: ppc
+buildarchtranslate: ppc8260: ppc
+buildarchtranslate: ppc8560: ppc
+buildarchtranslate: ppc32dy4: ppc
+buildarchtranslate: ppciseries: ppc
+buildarchtranslate: ppcpseries: ppc
+buildarchtranslate: ppc64iseries: ppc64
+buildarchtranslate: ppc64pseries: ppc64
+buildarchtranslate: ppc64p7: ppc64
+buildarchtranslate: ppc64le: ppc64le
+
+buildarchtranslate: armv3l: armv3l
+buildarchtranslate: armv4b: armv4b
+buildarchtranslate: armv4l: armv4l
+buildarchtranslate: armv4tl: armv4tl
+buildarchtranslate: armv5tl: armv5tl
+buildarchtranslate: armv5tel: armv5tel
+buildarchtranslate: armv5tejl: armv5tejl
+buildarchtranslate: armv6l: armv6l
+buildarchtranslate: armv6hl: armv6hl
+buildarchtranslate: armv7l: armv7l
+buildarchtranslate: armv7hl: armv7hl
+buildarchtranslate: armv7hnl: armv7hnl
+buildarchtranslate: armv8l: armv8l
+buildarchtranslate: armv8hl: armv8hnl
+
+buildarchtranslate: mips: mips
+buildarchtranslate: mipsel: mipsel
+buildarchtranslate: mips64: mips64
+buildarchtranslate: mips64el: mips64el
+
+buildarchtranslate: mipsr6: mipsr6
+buildarchtranslate: mipsr6el: mipsr6el
+buildarchtranslate: mips64r6: mips64r6
+buildarchtranslate: mips64r6el: mips64r6el
+
+buildarchtranslate: m68k: m68k
+
+buildarchtranslate: atarist: m68kmint
+buildarchtranslate: atariste: m68kmint
+buildarchtranslate: ataritt: m68kmint
+buildarchtranslate: falcon: m68kmint
+buildarchtranslate: atariclone:	m68kmint
+buildarchtranslate: milan: m68kmint
+buildarchtranslate: hades: m68kmint	
+
+buildarchtranslate: s390: s390
+buildarchtranslate: s390x: s390x
+
+buildarchtranslate: ia64: ia64
+
+buildarchtranslate: x86_64: x86_64
+buildarchtranslate: x86_64_v2: x86_64
+buildarchtranslate: x86_64_v3: x86_64
+buildarchtranslate: x86_64_v4: x86_64
+buildarchtranslate: amd64: x86_64
+buildarchtranslate: ia32e: x86_64
+
+buildarchtranslate: sh3: sh3
+buildarchtranslate: sh4: sh4
+buildarchtranslate: sh4a: sh4
+
+buildarchtranslate: aarch64: aarch64
+
+buildarchtranslate: riscv: riscv64
+buildarchtranslate: riscv64: riscv64
+
+buildarchtranslate: loongarch64: loongarch64
+
+#############################################################
+# Architecture compatibility
+
+arch_compat: alphaev67: alphaev6
+arch_compat: alphaev6: alphapca56
+arch_compat: alphapca56: alphaev56
+arch_compat: alphaev56: alphaev5
+arch_compat: alphaev5: alpha
+arch_compat: alpha: axp noarch
+
+arch_compat: athlon: i686
+arch_compat: geode: i586
+arch_compat: pentium4: pentium3
+arch_compat: pentium3: i686
+arch_compat: i686: i586
+arch_compat: i586: i486
+arch_compat: i486: i386
+arch_compat: i386: noarch fat
+
+arch_compat: osfmach3_i686: i686 osfmach3_i586
+arch_compat: osfmach3_i586: i586 osfmach3_i486
+arch_compat: osfmach3_i486: i486 osfmach3_i386
+arch_compat: osfmach3_i386: i486
+
+arch_compat: osfmach3_ppc: ppc
+arch_compat: powerpc: ppc
+arch_compat: powerppc: ppc
+arch_compat: ppc8260: ppc
+arch_compat: ppc8560: ppc
+arch_compat: ppc32dy4: ppc
+arch_compat: ppciseries: ppc
+arch_compat: ppcpseries: ppc
+arch_compat: ppc64: ppc
+arch_compat: ppc: rs6000
+arch_compat: rs6000: noarch fat
+arch_compat: ppc64pseries: ppc64
+arch_compat: ppc64iseries: ppc64
+arch_compat: ppc64p7: ppc64
+arch_compat: ppc64le: noarch fat
+
+arch_compat: sun4c: sparc
+arch_compat: sun4d: sparc
+arch_compat: sun4m: sparc
+arch_compat: sun4u: sparc64
+arch_compat: sparc64v: sparc64
+arch_compat: sparc64: sparcv9
+arch_compat: sparcv9v: sparcv9
+arch_compat: sparcv9: sparcv8
+arch_compat: sparcv8: sparc
+arch_compat: sparc: noarch
+
+arch_compat: mips: noarch
+arch_compat: mipsel: noarch
+arch_compat: mips64: mips
+arch_compat: mips64el: mipsel
+
+arch_compat: mipsr6: noarch
+arch_compat: mipsr6el: noarch
+arch_compat: mips64r6: mipsr6
+arch_compat: mips64r6el: mipsr6el
+
+arch_compat: hppa2.0: hppa1.2
+arch_compat: hppa1.2: hppa1.1
+arch_compat: hppa1.1: hppa1.0
+arch_compat: hppa1.0: parisc
+arch_compat: parisc: noarch
+
+arch_compat: armv4b: noarch
+arch_compat: armv8l: armv7l
+arch_compat: armv7l: armv6l
+arch_compat: armv6l: armv5tejl
+arch_compat: armv5tejl: armv5tel
+arch_compat: armv5tel: armv5tl
+arch_compat: armv5tl: armv4tl
+arch_compat: armv4tl: armv4l
+arch_compat: armv4l: armv3l
+arch_compat: armv3l: noarch
+arch_compat: armv8hl: armv7hl
+arch_compat: armv7hnl: armv7hl
+arch_compat: armv7hl: armv6hl
+arch_compat: armv6hl: noarch
+
+arch_compat: m68k: noarch
+
+arch_compat: atarist: m68kmint noarch
+arch_compat: atariste: m68kmint noarch
+arch_compat: ataritt: m68kmint noarch
+arch_compat: falcon: m68kmint noarch
+arch_compat: atariclone: m68kmint noarch
+arch_compat: milan: m68kmint noarch
+arch_compat: hades: m68kmint noarch
+
+arch_compat: i370: noarch
+arch_compat: s390: noarch
+arch_compat: s390x: s390 noarch
+
+arch_compat: ia64: noarch
+
+arch_compat: x86_64: amd64 em64t athlon noarch
+arch_compat: amd64: x86_64 em64t athlon noarch
+arch_compat: ia32e: x86_64 em64t athlon noarch
+arch_compat: x86_64_v2: x86_64 amd64 em64t athlon noarch
+arch_compat: x86_64_v3: x86_64_v2 x86_64 amd64 em64t athlon noarch
+arch_compat: x86_64_v4: x86_64_v3 x86_64_v2 x86_64 amd64 em64t athlon noarch
+
+arch_compat: sh3: noarch
+arch_compat: sh4: noarch
+arch_compat: sh4a: sh4
+
+arch_compat: aarch64: noarch
+
+arch_compat: riscv: noarch
+arch_compat: riscv64: noarch
+
+os_compat:   IRIX64: IRIX
+os_compat: solaris2.7: solaris2.3 solaris2.4 solaris2.5 solaris2.6
+os_compat: solaris2.6: solaris2.3 solaris2.4 solaris2.5
+os_compat: solaris2.5: solaris2.3 solaris2.4
+os_compat: solaris2.4: solaris2.3
+
+os_compat: hpux11.00: hpux10.30
+os_compat: hpux10.30: hpux10.20
+os_compat: hpux10.20: hpux10.10
+os_compat: hpux10.10: hpux10.01
+os_compat: hpux10.01: hpux10.00
+os_compat: hpux10.00: hpux9.07
+os_compat: hpux9.07: hpux9.05
+os_compat: hpux9.05: hpux9.04
+
+os_compat: osf4.0: osf3.2 osf1
+
+os_compat: ncr-sysv4.3: ncr-sysv4.2
+
+os_compat: FreeMiNT: mint MiNT TOS
+os_compat: MiNT: FreeMiNT mint TOS
+os_compat: mint: FreeMiNT MiNT TOS
+os_compat: TOS: FreeMiNT MiNT mint
+
+os_compat: BSD_OS: bsdi
+os_compat: bsdi4.0: bsdi
+
+os_compat: Darwin: MacOSX
+
+arch_compat: loongarch64: noarch
+
+buildarch_compat: ia64: noarch
+
+buildarch_compat: aarch64: noarch
+
+buildarch_compat: riscv: noarch
+buildarch_compat: riscv64: noarch
+
+buildarch_compat: athlon: i686
+buildarch_compat: geode: i586
+buildarch_compat: pentium4: pentium3
+buildarch_compat: pentium3: i686
+buildarch_compat: i686: i586
+buildarch_compat: i586: i486
+buildarch_compat: i486: i386
+buildarch_compat: i386: noarch fat
+
+buildarch_compat: sun4c: noarch
+buildarch_compat: sun4d: noarch
+buildarch_compat: sun4m: noarch
+buildarch_compat: sun4u: noarch
+buildarch_compat: sparc64v: sparc64
+buildarch_compat: sparc64: sparcv9v
+buildarch_compat: sparcv9v: sparcv9
+buildarch_compat: sparcv9: sparcv8
+buildarch_compat: sparcv8: sparc
+buildarch_compat: sparc: noarch
+
+buildarch_compat: alphaev67: alphaev6
+buildarch_compat: alphaev6: alphapca56
+buildarch_compat: alphapca56: alphaev56
+buildarch_compat: alphaev56: alphaev5
+buildarch_compat: alphaev5: alpha
+buildarch_compat: alpha: noarch
+
+buildarch_compat: m68k: noarch
+
+buildarch_compat: ppc8260: noarch
+buildarch_compat: ppc8560: noarch
+buildarch_compat: ppc32dy4: noarch
+buildarch_compat: ppciseries: noarch
+buildarch_compat: ppcpseries: noarch
+buildarch_compat: ppc: noarch fat
+buildarch_compat: ppc64: noarch fat
+buildarch_compat: ppc64le: noarch fat
+buildarch_compat: ppc64pseries: ppc64
+buildarch_compat: ppc64iseries: ppc64
+buildarch_compat: ppc64p7: ppc64
+
+buildarch_compat: mips: noarch
+buildarch_compat: mipsel: noarch
+buildarch_compat: mips64: noarch
+buildarch_compat: mips64el: noarch
+
+buildarch_compat: mipsr6: noarch
+buildarch_compat: mipsr6el: noarch
+buildarch_compat: mips64r6: noarch
+buildarch_compat: mips64r6el: noarch
+
+buildarch_compat: armv4b: noarch
+buildarch_compat: armv8l: armv7l
+buildarch_compat: armv7l: armv6l
+buildarch_compat: armv6l: armv5tejl
+buildarch_compat: armv5tejl: armv5tel armv5tl
+buildarch_compat: armv5tel: armv4tl armv5tl
+buildarch_compat: armv5tl: armv4tl
+buildarch_compat: armv4tl: armv4l
+buildarch_compat: armv4l: armv3l
+buildarch_compat: armv3l: noarch
+
+buildarch_compat: armv8hcnl: armv8hnl
+buildarch_compat: armv8hnl: armv8hl
+buildarch_compat: armv8hnl: armv7hnl
+buildarch_compat: armv8hl: armv7hl
+buildarch_compat: armv7hnl: armv7hl
+buildarch_compat: armv7hl: armv6hl
+buildarch_compat: armv6hl: noarch
+
+buildarch_compat: hppa2.0: hppa1.2
+buildarch_compat: hppa1.2: hppa1.1
+buildarch_compat: hppa1.1: hppa1.0
+buildarch_compat: hppa1.0: parisc
+buildarch_compat: parisc: noarch
+
+buildarch_compat: atarist: m68kmint noarch
+buildarch_compat: atariste: m68kmint noarch
+buildarch_compat: ataritt: m68kmint noarch
+buildarch_compat: falcon: m68kmint noarch
+buildarch_compat: atariclone: m68kmint noarch
+buildarch_compat: milan: m68kmint noarch
+buildarch_compat: hades: m68kmint noarch
+
+buildarch_compat: s390: noarch
+buildarch_compat: s390x: noarch
+
+buildarch_compat: ia64: noarch
+
+buildarch_compat: x86_64_v4: x86_64_v3
+buildarch_compat: x86_64_v3: x86_64_v2
+buildarch_compat: x86_64_v2: x86_64
+buildarch_compat: x86_64: noarch
+buildarch_compat: amd64: x86_64
+buildarch_compat: ia32e: x86_64
+
+buildarch_compat: sh3: noarch
+buildarch_compat: sh4: noarch
+buildarch_compat: sh4a: sh4
+
+
+buildarch_compat: loongarch64: noarch
+
+# \endverbatim
+#*/

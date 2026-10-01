@@ -1,0 +1,17 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=@CMAKE_INSTALL_PREFIX@
+libdir=@CMAKE_INSTALL_FULL_LIBDIR@
+includedir=@CMAKE_INSTALL_FULL_INCLUDEDIR@
+rpmhome=@RPM_CONFIGDIR@
+rpmplugindir=@RPM_PLUGINDIR@
+
+Name: @CMAKE_PROJECT_NAME@
+Description: @CMAKE_PROJECT_DESCRIPTION@
+Version: @CMAKE_PROJECT_VERSION@
+URL: @CMAKE_PROJECT_HOMEPAGE_URL@
+Requires: popt
+Requires.private: @ZSTD_REQUIRES@
+# Conflicts:
+Cflags: -I${includedir} -D_FILE_OFFSET_BITS=64
+Libs: -L${libdir} -lrpm -lrpmio
+Libs.private: -lpopt -lrt -lpthread @WITH_LZMA_LIB@ @WITH_BZ2_LIB@ @WITH_ZLIB_LIB@ @LUA_LIBS@
