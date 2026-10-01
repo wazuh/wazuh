@@ -2144,7 +2144,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 syscheck->restart_audit = 0;
             } else {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
             }
         } else if (w_is_str_in_array(xml_deprecated, node[i]->element)) {
             mwarn("The <%s> option is deprecated and no longer has any effect.", node[i]->element);

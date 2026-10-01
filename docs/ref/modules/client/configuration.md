@@ -267,6 +267,12 @@ Interval between agent keep-alive notifications to the manager.
 HTTPS transport; the parser accepts the tag so an upgraded configuration does not fail and logs
 that it no longer has any effect.
 
+### ip_update_interval
+
+**DEPRECATED:** parsed but ignored. The agent no longer sends periodic IP updates; the parser
+accepts the tag so an upgraded configuration does not fail and logs that it no longer has any
+effect.
+
 ### auto_restart
 
 Automatically restart agent when receiving configuration updates from manager.

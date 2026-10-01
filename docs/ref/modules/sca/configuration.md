@@ -20,7 +20,10 @@ For module overview and architecture, see [SCA Module](README.md).
 
 ## Configuration Options
 
-**Deprecated option:** `<skip_nfs>` (parsed but no longer has any effect; NFS scanning behavior is no longer configurable)
+**Deprecated options:**
+
+- `<skip_nfs>`: parsed but no longer has any effect; NFS scanning behavior is no longer configurable.
+- `<day>`, `<wday>` and `<time>`: parsed but no longer have any effect, each logging `The <option> option is deprecated and no longer has any effect.` SCA scans on its `<interval>` only.
 
 ### enabled
 

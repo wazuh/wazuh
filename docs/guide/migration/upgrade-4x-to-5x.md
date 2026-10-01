@@ -201,7 +201,13 @@ Remove unsupported elements:
 
 ## `local_internal_options.conf` migration notes
 
-`local_internal_options.conf` overrides values defined in the default `internal_options.conf`. Comparing the agent default internal options between `4.14.X` and `5.0.0`, **no agent-side option keys were removed or renamed**. All agent component namespaces remain valid in 5.0:
+`local_internal_options.conf` overrides values defined in the default `internal_options.conf`. Comparing the agent default internal options between `4.14.X` and `5.0.0`, no agent-side option keys were renamed. These `agent.*` keys were removed because nothing in 5.0 reads them, so a copy left in `local_internal_options.conf` has no effect:
+
+- `agent.min_eps`
+- `agent.tcp_keepidle`, `agent.tcp_keepintvl`, `agent.tcp_keepcnt`, `agent.send_timeout`
+- `agent.request_pool`, `agent.request_rto_sec`, `agent.request_rto_msec`, `agent.max_attempts`
+
+All agent component namespaces remain valid in 5.0:
 
 `agent`, `execd`, `logcollector`, `rootcheck`, `sca`, `syscheck`, `wazuh_command`, `wazuh_modules`, `windows`.
 

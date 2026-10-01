@@ -523,6 +523,17 @@ Specific key configurations take precedence over wildcard configurations:
 
 ---
 
+### Deprecated options
+
+**DEPRECATED:** these 4.x options are still recognized, so an upgraded `ossec.conf` keeps loading, but they have no effect. Each one logs `The <option> option is deprecated and no longer has any effect.`
+
+- Under `<syscheck>`: `scan_on_start` (a scan always runs on start), `alert_new_files`, `auto_ignore`, `database`, `prefilter_cmd`, `allow_remote_prefilter_cmd` and `remove_old_diff`.
+- Under `<synchronization>`: `max_eps`, `max_interval`, `response_timeout`, `queue_size`, `registry_enabled` and `thread_pool`.
+
+A `<restart_audit>` directly under `<syscheck>` is still applied, but logs a warning; set it under [`<whodata>`](#whodata) instead.
+
+---
+
 ## Internal Options
 
 FIM reads its internal options with the `syscheck.` prefix. Set them in `local_internal_options.conf`, next to `ossec.conf` (`/var/ossec/etc/` on Linux, `C:\Program Files (x86)\ossec-agent\` on Windows), since an upgrade replaces `internal_options.conf`.
