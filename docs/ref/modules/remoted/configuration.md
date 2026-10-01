@@ -258,9 +258,9 @@ Path to the TLS private key (PEM) matching `certificate`.
 
 Path to a CA bundle (PEM) used to verify client (agent) certificates.
 
-- **Default value:** `etc/certs/root-ca.pem` (relative to the manager's chroot)
-- **Note:** Only actually read when `verification_mode` is `certificate`; harmless
-  if left at its default and `verification_mode` stays `none`. See the special case below.
+- **Default value:** empty (client certificate verification disabled)
+- **Note:** Setting it without `verification_mode` turns verification on: `verification_mode`
+  is inferred as `certificate`, with a warning at startup. See the special case below.
 
 ### https.ca_certificate
 
@@ -290,7 +290,7 @@ A file it cannot parse to the end is refused whole rather than served up to its 
 
 Client-certificate verification strictness.
 
-- **Default value:** `none`
+- **Default value:** `none` when `ca` is not set; `certificate` when `ca` is set and this option is absent
 - **Allowed values:**
   - `none` — the client certificate is not verified.
   - `certificate` — the client certificate chain is validated against `ca`.
@@ -573,7 +573,7 @@ Soft file descriptor limit remoted raises itself to at start.
   and never lowers a soft limit that is already higher. A hard limit below this value is kept and
   logged once as a warning; raise that limit first to go higher. HTTPS connections are bounded by
   `remoted.max_parallel_connections` (default `256`), far below this value; only a large 4.x fleet
-  on the legacy TCP listener needs more. `GET /manager/configuration` reports the effective value.
+  on the legacy TCP listener needs more. `GET /cluster/{node_id}/configuration/request/internal` reports the effective value.
   See [File descriptor limits](../../configuration/manager/README.md#file-descriptor-limits).
 
 ### remoted.send_chunk

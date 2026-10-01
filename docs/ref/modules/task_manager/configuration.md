@@ -230,7 +230,7 @@ is in effect. The resolved values are reported through the active-configuration 
 `task-manager` module's `recurring_tasks` object:
 
 ```bash
-curl -k -X GET "https://localhost:55000/manager/configuration/wmodules/wmodules" \
+curl -k -X GET "https://localhost:55000/cluster/<NODE_ID>/configuration/wmodules/wmodules" \
      -H "Authorization: Bearer $TOKEN"
 ```
 

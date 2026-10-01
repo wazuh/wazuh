@@ -480,6 +480,39 @@ for one `/stateful` session.
   agent. If this value is raised, raise both manager settings first and keep `size` at or below the
   auth cap. See [remoted's configuration](../remoted/configuration.md#httpsmax_body_size).
 
+### stats_report
+
+Periodic push of the agent's internal statistics to the manager's `/stats` endpoint.
+
+```xml
+<agent>
+  <stats_report>
+    <enabled>yes</enabled>
+    <interval>60s</interval>
+  </stats_report>
+</agent>
+```
+
+- **`enabled`** — Default `no`. Allowed values: `yes`, `no`.
+- **`interval`** — Default `60` seconds. Positive duration with the usual suffixes (`60s`, `5m`, `1h`), up to one day (`86400`). `0` is rejected.
+
+### config_report
+
+Periodic push of the agent's effective configuration to the manager's `/config` endpoint.
+
+```xml
+<agent>
+  <config_report>
+    <enabled>yes</enabled>
+    <interval>1h</interval>
+  </config_report>
+</agent>
+```
+
+- **`enabled`** — Default `yes`. Allowed values: `yes`, `no`.
+- **`interval`** — Default `3600` seconds. Positive duration with the usual suffixes, up to one day (`86400`). `0` is rejected.
+- **Note:** The manager relies on this snapshot even when the configuration was never changed, which is why it ships enabled.
+
 ---
 
 ## Client Buffer Configuration (`<client_buffer>`)
@@ -502,7 +535,7 @@ Protects against unauthorized agent modifications and uninstallation.
 
 Prevent agent package uninstallation.
 
-- **Default value:** `yes`
+- **Default value:** `no`
 - **Allowed values:** `yes`, `no`
 - **Behavior:** When enabled, prevents `apt remove`, `yum remove`, etc.
 

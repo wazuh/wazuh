@@ -1,6 +1,6 @@
 # API Reference
 
-This document covers the key API endpoints with practical examples, the Wazuh Query Language (WQL), error handling, and input validation.
+This document covers the key API endpoints with practical examples, the `q` query filter syntax, error handling, and input validation.
 
 > All paths are validated against `api/api/spec/spec.yaml` (OpenAPI 3.0).
 > For the complete endpoint specification, refer to the [official Wazuh API Reference](https://documentation.wazuh.com/current/user-manual/api/reference.html).
@@ -20,7 +20,7 @@ Most `GET` endpoints accept these standard parameters:
 | `search` | string | — | Free-text search (prefix `-` for complementary) |
 | `sort` | string | — | Sort by fields (`+` asc, `-` desc, dot notation for nested) |
 | `select` | string | — | Fields to return (comma-separated) |
-| `q` | string | — | WQL query filter |
+| `q` | string | — | Query filter (see [Query filter syntax](#query-filter-syntax)) |
 | `distinct` | boolean | `false` | Return distinct values |
 
 ---
@@ -80,6 +80,7 @@ curl -k -X GET "https://localhost:55000/?pretty=true" \
     "api_version": "5.0.0",
     "revision": "rc1",
     "license_name": "GPL 2.0",
+    "license_url": "https://github.com/wazuh/wazuh/blob/v5.0.0-rc1/LICENSE",
     "hostname": "wazuh-manager",
     "timestamp": "2026-02-20T12:00:00Z"
   },
@@ -100,8 +101,8 @@ curl -k -X GET "https://localhost:55000/?pretty=true" \
 curl -k -X GET "https://localhost:55000/agents?status=active&limit=5&pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 
-# Filter with WQL: active Ubuntu agents
-curl -k -X GET "https://localhost:55000/agents?q=status%3Dactive%3Bos.name~%3Dubuntu&pretty=true" \
+# Filter with q: active Ubuntu agents
+curl -k -X GET "https://localhost:55000/agents?q=status%3Dactive%3Bos.name~ubuntu&pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 
 # Select specific fields
@@ -109,7 +110,7 @@ curl -k -X GET "https://localhost:55000/agents?select=id,name,status,ip&sort=-id
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Key filters: `status`, `os.platform`, `os.name`, `os.version`, `manager`, `version`, `group`, `name`, `ip`, `older_than`.
+Key filters: `status`, `os.platform`, `os.name`, `os.version`, `version`, `group`, `name`, `ip`, `registerIP`, `older_than`.
 
 #### Add agent
 
@@ -303,7 +304,7 @@ curl -k -X GET "https://localhost:55000/security/users?pretty=true" \
 **`PUT /security/user/revoke`** — Revoke all active JWT tokens.
 
 ```bash
-curl -k -X PUT "https://localhost:55000/security/user/revoke?pretty=true" \
+curl -k -X PUT "https://localhost:55000/security/user/revoke" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -466,9 +467,9 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 
 ---
 
-## Wazuh Query Language (WQL)
+## Query filter syntax
 
-WQL allows server-side filtering of large datasets, reducing payload size and avoiding client-side filtering.
+The `q` parameter allows server-side filtering of large datasets, reducing payload size and avoiding client-side filtering.
 
 ### Syntax
 
@@ -484,9 +485,7 @@ field operator value[;connector field operator value]
 | `!=` | Not equals |
 | `>` | Greater than |
 | `<` | Less than |
-| `>=` | Greater than or equal |
-| `<=` | Less than or equal |
-| `~=` | Contains (like) |
+| `~` | Contains (like) |
 
 ### Connectors
 
@@ -532,7 +531,7 @@ curl -k -X GET "https://localhost:55000/agents?q=status%3Dactive" \
   -H "Authorization: Bearer $TOKEN"
 
 # Active agents on Ubuntu
-curl -k -X GET "https://localhost:55000/agents?q=status%3Dactive%3Bos.name~%3Dubuntu" \
+curl -k -X GET "https://localhost:55000/agents?q=status%3Dactive%3Bos.name~ubuntu" \
   -H "Authorization: Bearer $TOKEN"
 
 # Agents with version not equal to 5.0.0
@@ -590,6 +589,6 @@ The API layer (`api/validator.py`) validates all inputs with pre-compiled regex 
 | Groups | Group name validation (excludes `.`, `..`, `all`) |
 | Base64 | Standard base64 encoded strings |
 | Dates | Date and datetime format validation |
-| WQL | Query syntax (`field operator value;connector`) |
+| `q` filter | Query syntax (`field operator value;connector`) |
 | XML | Validated via `lxml` and `defusedxml` |
 | Special chars | Separate patterns for names vs. paths |

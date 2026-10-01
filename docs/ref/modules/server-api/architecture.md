@@ -278,7 +278,7 @@ The framework communicates with Wazuh daemons via **Unix domain sockets** using 
 ### Protocol Details
 - Messages use a **4-byte little-endian header** indicating the payload length
 - The same framing is used for both sending and receiving
-- `WazuhAsyncSocket` (in `core/wdb.py`) handles async socket connections
+- `AsyncWazuhDBConnection` (in `core/wdb.py`) handles async socket connections
 
 ### Key Socket Paths
 

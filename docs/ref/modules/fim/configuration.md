@@ -1036,7 +1036,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 ## See Also
 
 - [File Integrity Monitoring Overview](README.md) - Module overview and architecture
-- [Who-data Monitoring](https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/auditing-whodata.html) - Detailed who-data implementation guide
-- [FIM Alerts Reference](https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/fim-alerts.html) - Alert rules and event types
+- [Who-data Monitoring](https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/advanced-settings.html#who-data-monitoring) - Detailed who-data implementation guide
+- [Interpreting FIM scans](https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/interpreting-fim-module-analysis.html) - FIM events and how they are shown
 - [Centralized Agent Configuration](https://documentation.wazuh.com/current/user-manual/reference/centralized-configuration.html) - Using agent.conf for FIM
 - [Wazuh Rules Reference](https://documentation.wazuh.com/current/user-manual/ruleset/ruleset-xml-syntax/rules.html) - Rule syntax and customization

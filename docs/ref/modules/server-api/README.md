@@ -2,7 +2,7 @@
 
 The **Server API** is the REST interface used to manage and interact with the Wazuh manager. It is backed by a **Python Framework** that implements all business logic, RBAC enforcement, and communication with internal daemons.
 
-The API exposes endpoints for agent management, security configuration, cluster operations, file integrity monitoring, and more. All requests are authenticated via **JWT tokens** and authorized through a **Role-Based Access Control (RBAC)** system.
+The API exposes endpoints for agent and group management, cluster operations and configuration, MITRE ATT&CK data, security (users, roles, policies and tokens) and an overview of the deployment. All requests are authenticated via **JWT tokens** and authorized through a **Role-Based Access Control (RBAC)** system.
 
 ## Key Features
 
@@ -10,7 +10,7 @@ The API exposes endpoints for agent management, security configuration, cluster 
 - **JWT Authentication**: Short-lived EC-signed tokens
 - **RBAC**: Fine-grained permission control per endpoint and resource, including a separate action for reading the configuration secrets in clear (see [Authentication](authentication.md#sensitive-configuration-values))
 - **Distributed API (DAPI)**: Transparent request routing across cluster nodes
-- **WQL**: Server-side query language for filtering large datasets
+- **`q` query filter**: Server-side filtering syntax for large datasets
 - **OpenAPI 3.0**: Fully specified API contract (`spec/spec.yaml`)
 
 ## Key Concepts
@@ -22,14 +22,14 @@ The API exposes endpoints for agent management, security configuration, cluster 
 | Core Layer | Low-level logic and system interactions |
 | RBAC | Role-Based Access Control enforced per endpoint |
 | JWT | Authentication mechanism for all API calls |
-| WQL | Query language for filtering and searching API data |
+| `q` query filter | Filter syntax for searching API data |
 | DAPI | Distributed API layer for cluster-aware request routing |
 
 ## Components
 
 - [Architecture](architecture.md) — System architecture, directory structure, execution flow, and DAPI
 - [Authentication & Security](authentication.md) — JWT, RBAC, rate limiting, and security headers
-- [API Reference](api-reference.md) — Endpoints, WQL, error handling, and input validation
+- [API Reference](api-reference.md) — Endpoints, `q` query filter syntax, error handling, and input validation
 - [Configuration](configuration.md) — API, security, and manager configuration
 - [Testing](testing.md) — Test structure, locations, and how to run tests
 

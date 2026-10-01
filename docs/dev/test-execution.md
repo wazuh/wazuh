@@ -18,7 +18,7 @@ sudo apt-get install -y gcc-mingw-w64 make python3 gcc g++ cmake libc6-dev curl 
 
 To install the additional dependencies on macOS run the following commands.
 ```
-$ /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+$ /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 $ brew install cmake
 $ brew install cmocka
 $ brew install lcov
