@@ -52,8 +52,10 @@ fail=0
 # grep -c, not grep -q: with `set -o pipefail` a -q that exits early SIGPIPEs the producer
 # and the pipeline reports 141, so every valid package would be rejected.
 if [[ "$(strings "$TMPCHK/var/wazuh-manager/lib/libremoted_module.so" 2>/dev/null |
-         grep -c expectedSelectorFor || true)" -eq 0 ]]; then
-    echo "    !! no /download registry authorization in this build" >&2; fail=1
+         grep -c 'Cannot authorize /download' || true)" -eq 0 ]]; then
+    # A string literal, not a symbol: release builds are stripped. It is the log line of the
+    # /download wazuh-db fallback (#39147), which also implies the registry authorization (#38683).
+    echo "    !! no /download authorization with the wazuh-db fallback in this build" >&2; fail=1
 fi
 if [[ "$(grep -c '"ca_certificate"' \
          "$TMPCHK/var/wazuh-manager/etc/wazuh-manager.schema.json" 2>/dev/null || true)" -eq 0 ]]; then
