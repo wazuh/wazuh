@@ -26,6 +26,7 @@
 #include <string>
 #include <thread>
 
+#include "admin/agentGroupsRoute.hpp"
 #include "auth/keystore.hpp"
 #include "auth/passwordKeySource.hpp"
 #include "auth/tokenKeySource.hpp"
@@ -133,7 +134,8 @@ constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
 // remoted_module_config_t::max_deferred_requests <= 0).
 constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {128};
 
-// Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status + GET /tls). RELATIVE on
+// Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status + GET /tls + POST
+// /_internal/agents/groups). RELATIVE on
 // purpose: remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
 // Named "-admin" (not "-http"/"-stats"): remoted's HTTP identity is the public listener, this is
 // a management plane, and it must not collide with remcom's legacy "queue/sockets/remote.sock". No
@@ -1258,19 +1260,22 @@ private:
     }
 
     /**
-     * @brief Bring up the LOCAL admin socket (GET / + GET /metrics + GET /status) -- best effort.
+     * @brief Bring up the LOCAL admin socket (GET /, /metrics, /status, /tls and POST
+     *        /_internal/agents/groups) -- best effort.
      *
      * Sibling of startHttpServer(), called after it: this is the module's management plane
      * (shared_modules/uds_http_server over REMOTED_MODULE_ADMIN_SOCKET_PATH), reachable only
      * from the local host -- agents can never reach it, and the public HTTPS server must never
-     * grow these routes (it is agent-facing, not an admin plane). All three routes are Liveness
+     * grow these routes (it is agent-facing, not an admin plane). The four GET routes are Liveness
      * class: answered inline from resident state, exempt from the byte budget, so they respond
-     * under any pressure.
+     * under any pressure. The membership publication route is the one Control route: it writes.
      *
-     * Never throws. The admin plane is optional observability, so ANY failure here (most
-     * commonly: queue/sockets/ missing outside an installed manager, or the path occupied by a
-     * non-socket file the library rightly refuses to unlink) is a WARN and the module keeps
-     * running without it -- remoted must never die for its metrics.
+     * Never throws. The admin plane is optional, so ANY failure here (most commonly:
+     * queue/sockets/ missing outside an installed manager, or the path occupied by a non-socket
+     * file the library rightly refuses to unlink) is a WARN and the module keeps running without
+     * it -- remoted must never die for its metrics. Without it, clusterd's membership publications
+     * are dropped too: the registry then follows wazuh-db only as entries expire (the /download
+     * fallback and the /control refresh), which is the posture of a node that never had them.
      */
     void startAdminServer()
     {
@@ -1428,6 +1433,25 @@ private:
                 },
                 wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Liveness});
 
+            // POST /_internal/agents/groups: the memberships clusterd applied to this node's wazuh-db
+            // (one publication per agent-groups chunk, on workers), written into the SAME
+            // AgentRegistry /control and /download use -- through the weak target the registry pull
+            // already holds, repointed by this start()'s startHttpServer(), so ownership does not
+            // change and a publication racing teardown is answered 503. Control class, the first on
+            // this plane: it is small-bodied and another daemon depends on it, so data-plane pressure
+            // never sheds it. Inline: validation plus O(batch) registry updates, no I/O.
+            std::weak_ptr<remoted::control::AgentRegistry> registry;
+            {
+                std::lock_guard<std::mutex> lock {m_controlDiagMutex};
+                registry = m_registryDiagTarget;
+            }
+            m_adminServer->addRoute(wazuh::uds_http::Method::Post,
+                                    remoted::admin::AGENT_GROUPS_ROUTE_PATH,
+                                    remoted::admin::makeAgentGroupsHandler(
+                                        std::move(registry), remoted::control::makePushMetrics(*m_metricsManager)),
+                                    wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Control,
+                                                                   remoted::admin::kAgentGroupsMaxBodyBytes});
+
             wazuh::uds_http::UdsHttpServerConfig config;
             config.socketPath = REMOTED_MODULE_ADMIN_SOCKET_PATH;
             // Identity: a NEW server with no prior wire contract, so the Server: header carries
@@ -1446,7 +1470,8 @@ private:
 
             LOGFN_INFO(
                 moduleLogFn(),
-                "remoted admin server listening on '%s' (routes: GET /, GET /metrics, GET /status, and GET /tls).",
+                "remoted admin server listening on '%s' (routes: GET /, GET /metrics, GET /status, GET /tls, and "
+                "POST /_internal/agents/groups).",
                 REMOTED_MODULE_ADMIN_SOCKET_PATH);
         }
         catch (const std::exception& e)
@@ -1467,9 +1492,9 @@ private:
      * repointed at the new server after every successful start, while the pulls themselves are
      * registered exactly once -- IManager has no unregister. After stop() resets m_adminServer
      * the weak_ptr expires and every metric reads 0, the documented quiesced value, so a dump
-     * can never touch a dead server. The budget and data/control lanes are structurally idle
-     * today (both routes are Liveness class), but the full set is published anyway so every
-     * uds_http_server consumer reports the same vocabulary.
+     * can never touch a dead server. The budget and data lanes are structurally idle (no route
+     * is Data class) and the control lane carries only the membership publications, but the full
+     * set is published anyway so every uds_http_server consumer reports the same vocabulary.
      */
     void registerAdminTransportDiagnostics()
     {
@@ -1780,7 +1805,8 @@ private:
     {
         m_httpServer.reset();
         // The admin server (when it came up) goes with the stack; its dtor runs the two-phase
-        // stop, and its handlers only reach m_metricsManager, which is never reset.
+        // stop, and its handlers only reach m_metricsManager, which is never reset, and weak
+        // targets (the registry, the keystore...), which they lock per request.
         m_adminServer.reset();
         // The control handler may have been partially built (its ctor spins up an eviction
         // thread and the wdb/task client workers) before startHttpServer() threw further down.
@@ -1872,8 +1898,8 @@ private:
     /// transport-diagnostics pulls can hold a weak_ptr that expires when stop() resets it --
     /// nothing else shares ownership.
     std::shared_ptr<remoted::http::IHttpServer> m_httpServer;
-    /// Local admin plane (fixed UDS socket, GET / + GET /metrics + GET /status + GET /tls). OPTIONAL by
-    /// policy: a failed start leaves it null and the module keeps running (see startAdminServer()).
+    /// Local admin plane (fixed UDS socket, GET / + /metrics + /status + /tls, POST /_internal/agents/groups). OPTIONAL
+    /// by policy: a failed start leaves it null and the module keeps running (see startAdminServer()).
     std::shared_ptr<wazuh::uds_http::IUdsHttpServer> m_adminServer;
     /// Pull-metric plumbing for the admin server's TransportDiagnostics: the weak target is
     /// repointed under its own mutex on every start; the pulls are registered exactly once per
