@@ -196,10 +196,10 @@ This will generate the MSI installer package.
 
 ### Installation
 
-Once the package is generated, install it using the command line with an enrollment token:
+Once the package is generated, install it from the same `src/win32` directory with an enrollment token. Replace `<VERSION>` and `<REVISION>` with the values given to the build script, which names the package `wazuh-agent-<VERSION>-<REVISION>.msi`. `start /wait` returns only when the installer finishes:
 
 ```batch
-wazuh-agent-*.msi /q WAZUH_ENROLLMENT_TOKEN="<TOKEN>"
+start /wait msiexec.exe /i wazuh-agent-<VERSION>-<REVISION>.msi /q WAZUH_ENROLLMENT_TOKEN="<TOKEN>"
 ```
 
 **Important**: Replace `<TOKEN>` with an enrollment token minted on the manager (`sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <host>`). The token carries the manager address, so no separate address property is needed. `WAZUH_MANAGER` and `WAZUH_REGISTRATION_PASSWORD` were removed in 5.0: they are ignored, and an install without a token completes with no manager configured.

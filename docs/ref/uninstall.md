@@ -93,10 +93,10 @@ sudo pkgutil --forget com.wazuh.pkg.wazuh-agent-etc
 
 ### Windows
 
-To uninstall the Wazuh agent, ensure the original Windows installer file is in your working directory and run the following command:
+To uninstall the Wazuh agent with its installer file, use the same MSI that installed the agent or last upgraded it, and replace `<MSI_PATH>` with its full path. An MSI from another version or build does not match the installed product, and msiexec returns error `1605`. `Start-Process -Wait` returns only when the uninstall finishes, and the command prints the msiexec exit code: `0` or `3010` (restart pending) mean success, and any other value is a [Windows Installer error code](https://learn.microsoft.com/en-us/windows/win32/msi/error-codes).
 
 ```powershell
-msiexec.exe /x wazuh-agent-*.msi /qn
+(Start-Process msiexec.exe -ArgumentList '/x "<MSI_PATH>" /qn' -Wait -PassThru).ExitCode
 ```
 
 Additionally, the Wazuh agent can also be uninstalled without the installer file with the following command:

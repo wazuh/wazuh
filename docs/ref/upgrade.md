@@ -415,10 +415,10 @@ sudo /Library/Ossec/bin/wazuh-control status
 
 ### Windows
 
-Upgrade the package:
+Upgrade the package, replacing `<MSI_PATH>` with the full path of the new MSI. `Start-Process -Wait` returns only when the installer finishes, and the command prints the msiexec exit code: `0` or `3010` (restart pending) mean success, and any other value is a [Windows Installer error code](https://learn.microsoft.com/en-us/windows/win32/msi/error-codes).
 
 ```powershell
-wazuh-agent-*.msi /q
+(Start-Process msiexec.exe -ArgumentList '/i "<MSI_PATH>" /q' -Wait -PassThru).ExitCode
 ```
 
 Verify the agent is running:
