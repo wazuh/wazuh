@@ -17,6 +17,8 @@ on:
       - ".github/test_modules_manager.json"
       - ".github/actions/reinstall_cmake/**"
       - "tests/integration/conftest.py"
+      - "tests/integration/pytest.ini"
+      - "tests/integration/test_manager_control/**"
       - "tests/integration/test_api/**"
       - "tests/integration/test_wazuh_db/**"
       - "tests/integration/test_remoted/**"

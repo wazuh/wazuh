@@ -77,48 +77,40 @@ file includes functions in charge of changing the RBAC mode and creating the spe
 execution. The `env/configurations/rbac` directory includes all the specific configurations for each RBAC API
 integration test, for both **white** and **black** modes.
 
-## Test mapping for CI
+## Test groups and overlays
 
-Every time a pull request is created in GitHub for the `wazuh` repository, a battery of checks is performed in the CI
-machines. One of these checks is the API integration tests execution with success.
+Besides the module and RBAC files, three files check what every endpoint shares:
 
-The API integration tests performed depend on the files modified in the pull request. In most cases, 10 API integration
-tests that we consider the basic ones are performed. These tests are the following:
+- `test_auth_endpoints.tavern.yaml`: 401 on every operation (no token, forged, unsigned, Basic
+  instead of Bearer), 405 on every path, 415 on every body operation, 404 on undeclared routes,
+  security headers, token revocation, injection, traversal, query bounds and response time.
+- `test_hardening_endpoints.tavern.yaml`: 413 and CORS, with the `hardening` overlay's `api.yaml`.
+- `test_ratelimit_endpoints.tavern.yaml`: login blocking and request rate limits, with the
+  `ratelimit` overlay's `api.yaml`. Limits count per client address: failed requests go to
+  `master_port`, whose only other traffic is `conftest.py`'s successful login, and authenticated
+  requests go through HAProxy (`balanced_port`). HAProxy's own health check sends an
+  unauthenticated request through it every 5 seconds, so its address cannot carry the failed ones.
 
-- `test_agent_DELETE_endpoints.tavern.yaml`
-- `test_agent_GET_endpoints.tavern.yaml`
-- `test_agent_POST_endpoints.tavern.yaml`
-- `test_agent_PUT_endpoints.tavern.yaml`
-- `test_cluster_endpoints.tavern.yaml`
-- `test_security_DELETE_endpoints.tavern.yaml`
-- `test_security_GET_endpoints.tavern.yaml`
-- `test_security_POST_endpoints.tavern.yaml`
-- `test_security_PUT_endpoints.tavern.yaml`
+`conftest.py` copies `env/configurations/base` and then `env/configurations/<module>` into the
+environment, `<module>` being the second word of the file name.
 
-The `wazuh/api/test/integration/mapping` directory contains the `integration_test_api_endpoints.json` file that
-represents a mapping between the API and framework files; and the API integration tests that need to be performed. The
-API integration tests executed by the CI machines will be the union of the mapped integration tests of each file
-modified in the pull request.
+## Coverage and test selection in CI
 
-This JSON file is updated when executing the `_test_mapping.py` script. The script needs to be run manually every time
-a new file or directory is added. More information can be found at `mapping/README.md`
+[mapping/endpoint_coverage.py](mapping/endpoint_coverage.py) fails when an operation of the spec
+lacks its success or failure cases, and generates [mapping/COVERAGE.md](mapping/COVERAGE.md), the
+endpoint-by-endpoint list of what is covered and by which file. [mapping/select_tests.py](mapping/select_tests.py)
+picks the files a pull request runs from [mapping/selection_rules.yaml](mapping/selection_rules.yaml).
+Both run in the setup job of the workflow; see [mapping/README.md](mapping/README.md).
 
 ## Tests execution
 
-To perform a Wazuh API integration test, we need a specific `python3` environment. This python environment includes the
-following dependencies:
+To perform a Wazuh API integration test, install the dependencies CI uses:
 
-```python
-pytest==5.4.3
-requests==2.23.0
-pyaml==21.10.1
-tavern==1.0.0
-pykwalify==1.7.0
-pytest-html==3.1.1
+```bash
+pip install -r framework/requirements-dev.txt
 ```
 
-The `docker-compose` version needed is **1.28.0 or newer**. **It cannot be 2.X.Y** as it includes breaking changes that
-will make the generation of our API integration test environment fail.
+Docker Compose v2 (`docker compose`) is required.
 
 Once these requirements are satisfied, we can perform the API integration tests:
 

@@ -3840,6 +3840,20 @@ stages:
             group2: 5
             group3: 4
 
+  - name: Try to get the summary of agents with an invalid id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/summary"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "wrong_id"
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
 ---
 test_name: GET /agents/summary/status
 
@@ -4120,4 +4134,48 @@ stages:
     response:
       status_code: 200
       json:
+        error: 0
+
+---
+test_name: GET /agents/enrollment-tokens bad parameters
+
+marks:
+  - parametrize:
+      key: [param, value]
+      vals:
+        - [limit, 0]
+        - [limit, 999999]
+        - [offset, -1]
+        - [offset, wrong]
+        - [sort, "%25"]
+
+stages:
+  - name: Invalid value for a query parameter
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/enrollment-tokens?{param}={value}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+---
+test_name: GET /agents/uninstall
+
+stages:
+
+  - name: Check user's permission to uninstall agents
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/uninstall"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        message: "User has permission to uninstall agents"
         error: 0

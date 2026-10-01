@@ -122,6 +122,7 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'logs': {'invalid_subkey': 'value'}},
     {'cors': {'enabled': 'invalid_type'}},
     {'cors': {'source_route': 12345}},
+    {'cors': {'source_route': [12345]}},
     {'cors': {'expose_headers': 12345}},
     {'cors': {'allow_headers': 12345}},
     {'cors': {'allow_credentials': 12345}},
