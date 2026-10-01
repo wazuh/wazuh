@@ -1,5 +1,7 @@
 # Run: python3 -m pytest packages/externals/tests -q
 
+import copy
+import hashlib
 import importlib.util
 import json
 import shutil
@@ -244,3 +246,103 @@ def test_flatten_rejects_invalid(tmp_path):
     bad.write_text(json.dumps(doc(entry("zlib", format="rar"))))
     result = run("flatten", "--inventory", str(bad))
     assert result.returncode == 1 and result.stdout == "" and "ERROR: zlib:" in result.stderr
+
+
+README_TEXT = "# Wazuh\n\n<!-- deps-table:begin -->\nold\n<!-- deps-table:end -->\n\n* tail\n"
+
+
+def test_readme_roundtrip(tmp_path):
+    readme = tmp_path / "README.md"
+    readme.write_text(README_TEXT)
+    inventory = tmp_path / "deps.json"
+    inventory.write_text(json.dumps(minimal()))
+    assert run("readme", "--inventory", str(inventory), "--readme", str(readme)).returncode == 0
+    text = readme.read_text()
+    assert text.startswith("# Wazuh\n\n<!-- deps-table:begin -->\n| Software") and text.endswith("<!-- deps-table:end -->\n\n* tail\n")
+    assert "| [zlib](https://example.com/zlib)       | 1.0.0   | upstream | MIT     |" in text
+    assert run("readme", "--inventory", str(inventory), "--readme", str(readme), "--check").returncode == 0
+
+
+def test_readme_check_detects_edit(tmp_path):
+    readme = tmp_path / "README.md"
+    readme.write_text(deps.render_readme(README_TEXT, minimal()).replace("zlib)       | 1.0.0", "zlib)       | 9.9.9"))
+    inventory = tmp_path / "deps.json"
+    inventory.write_text(json.dumps(minimal()))
+    result = run("readme", "--inventory", str(inventory), "--readme", str(readme), "--check")
+    assert result.returncode == 1 and "-| [zlib](https://example.com/zlib)       | 9.9.9" in result.stderr
+
+
+def test_readme_needs_markers():
+    with pytest.raises(ValueError, match="deps-table:begin"):
+        deps.render_readme("# no table\n", minimal())
+
+
+def test_drift_content_fields():
+    published = {"entries": copy.deepcopy(minimal()["entries"])}
+    published["entries"][2]["version"] = "1.0.1"
+    assert deps.drift(minimal(), published) == ["zlib: `version` is '1.0.0' here but '1.0.1' in the set manifest"]
+    published = {"entries": copy.deepcopy(minimal()["entries"])}
+    published["entries"][2]["license"] = "Zlib"
+    assert deps.drift(minimal(), published) == []
+
+
+def test_drift_names():
+    published = {"entries": minimal()["entries"][:2] + [entry("sqlite")]}
+    assert deps.drift(minimal(), published) == ["zlib: in the inventory but not in the set manifest",
+                                                "sqlite: in the set manifest but not in the inventory"]
+
+
+def test_drift_missing_manifest(tmp_path):
+    inventory = tmp_path / "deps.json"
+    inventory.write_text(json.dumps(minimal()))
+    result = run("drift", "--inventory", str(inventory), "--manifest", str(tmp_path / "nope.json"))
+    assert result.returncode == 1 and "no manifest at" in result.stderr and "nope.json" in result.stderr
+
+
+def test_sbom_real_tree(tmp_path):
+    out1, out2 = tmp_path / "a.json", tmp_path / "b.json"
+    assert run("sbom", "--output", str(out1)).returncode == 0
+    assert run("sbom", "--output", str(out2)).returncode == 0
+    assert out1.read_bytes() == out2.read_bytes()
+    bom = json.loads(out1.read_text())
+    assert (bom["bomFormat"], bom["specVersion"]) == ("CycloneDX", "1.5")
+    refs = [c["bom-ref"] for c in bom["components"]]
+    assert refs == sorted(refs) and len(set(refs)) == len(refs)
+    pypi = [c for c in bom["components"] if c["purl"].startswith("pkg:pypi/")]
+    requirements = deps.read_requirements(deps.REQUIREMENTS)
+    assert len(pypi) == len(requirements) and len(bom["components"]) == len(requirements) + len(deps.load(INVENTORY)["entries"])
+    cpython = next(c for c in bom["components"] if c["bom-ref"] == "cpython")
+    assert cpython["cpe"].startswith("cpe:2.3:a:python:python:*")
+    assert all("version" in c and c["properties"][0]["name"] == "syft:location:0:path" for c in bom["components"])
+
+
+def test_sbom_from_manifest(tmp_path):
+    published = tmp_path / "manifest.json"
+    published.write_text(json.dumps(deps.manifest(doc(entry("zlib", cpe=None, scan=False, reason="none")), "55")))
+    requirements = tmp_path / "requirements.txt"
+    requirements.write_text("# comment\nPyYAML==6.0.1\n")
+    result = run("sbom", "--manifest", str(published), "--requirements", str(requirements))
+    bom = json.loads(result.stdout)
+    assert [c["bom-ref"] for c in bom["components"]] == ["pypi:pyyaml", "zlib"]
+    assert "cpe" not in bom["components"][1]
+
+
+def test_manifest_files(tmp_path):
+    (tmp_path / "libraries" / "sources").mkdir(parents=True)
+    (tmp_path / "libraries" / "sources" / "zlib.tar.gz").write_bytes(b"z")
+    (tmp_path / "libraries" / "windows.tar.gz").write_bytes(b"w")
+    result = deps.manifest(minimal(), "56", "c" * 40, "123", tmp_path)
+    assert result["entries"] == minimal()["entries"] and result["deps_version"] == "56"
+    assert list(result["files"]) == ["libraries/sources/zlib.tar.gz", "libraries/windows.tar.gz"]
+    assert result["files"]["libraries/windows.tar.gz"] == hashlib.sha256(b"w").hexdigest()
+    assert deps.drift(minimal(), result) == []
+
+
+def test_sbom_skips_unpinned_requirements(tmp_path):
+    requirements = tmp_path / "requirements.txt"
+    requirements.write_text("PyYAML==6.0.1\nchardet>=3.0.4\n")
+    inventory = tmp_path / "deps.json"
+    inventory.write_text(json.dumps(doc(entry("zlib"))))
+    result = run("sbom", "--inventory", str(inventory), "--requirements", str(requirements))
+    assert result.returncode == 0 and "WARNING:" in result.stderr and "chardet>=3.0.4" in result.stderr
+    assert [c["bom-ref"] for c in json.loads(result.stdout)["components"]] == ["pypi:pyyaml", "zlib"]

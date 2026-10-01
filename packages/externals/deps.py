@@ -3,24 +3,40 @@
 
     deps.py check [--inventory PATH] [--src DIR] [--no-make]
     deps.py flatten [--inventory PATH]
+    deps.py readme [--inventory PATH] [--readme PATH] [--check]
+    deps.py sbom [--inventory PATH | --manifest URL|PATH] [--requirements PATH] [--output PATH]
+    deps.py manifest --deps-version N [--inventory PATH] [--wazuh-commit SHA] [--workflow-run ID] [--files DIR]
+    deps.py drift [--inventory PATH] [--manifest URL|PATH]
 
 `check` prints one `ERROR: <name>: <message>` line per problem to stderr and exits 1 if
 there is any, 0 otherwise. `flatten` prints the inventory as bash associative arrays
 (EXT_URL, EXT_SHA256, ...) for build_external.sh, whose builder images have no python3.
+`readme` rewrites the dependency table of README.md, `sbom` prints a CycloneDX 1.5 SBOM,
+`manifest` prints the manifest.json of a published set, and `drift` compares the inventory
+with the manifest of the set that src/Makefile's DEPS_VERSION points at.
 """
 
 import argparse
+import difflib
+import hashlib
 import json
 import re
 import shlex
 import shutil
 import subprocess
 import sys
+import urllib.request
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_INVENTORY = REPO / "packages" / "externals" / "dependencies.json"
 PATCHES_DIR = REPO / "packages" / "externals" / "patches"
+README = REPO / "README.md"
+REQUIREMENTS = REPO / "framework" / "requirements.txt"
+MIRROR = "https://packages.wazuh.com/deps"
+TABLE_BEGIN, TABLE_END = "<!-- deps-table:begin -->", "<!-- deps-table:end -->"
+# Fields that define what a set contains; metadata (license, CPE, notes) can be fixed without a new set.
+CONTENT_FIELDS = ("version", "revision", "source", "url", "upstream_sha256", "snapshot_sha256", "patches")
 
 TARGETS = {"agent", "manager"}
 PLATFORMS = {"linux", "darwin", "windows", "aix", "solaris", "hpux", "el5", "freebsd", "netbsd", "openbsd"}
@@ -236,46 +252,178 @@ def flatten(doc):
     return "\n".join(lines) + "\n"
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    sub = parser.add_subparsers(dest="command", required=True)
-    check = sub.add_parser("check", help="validate the inventory")
-    check.add_argument("--inventory", default=str(DEFAULT_INVENTORY))
-    check.add_argument("--src", default=str(REPO / "src"))
-    check.add_argument("--no-make", action="store_true", help="skip the EXTERNAL_RES comparison")
-    flat = sub.add_parser("flatten", help="print the inventory as bash associative arrays")
-    flat.add_argument("--inventory", default=str(DEFAULT_INVENTORY))
-    args = parser.parse_args(argv)
+def readme_table(doc):
+    rows = [("Software", "Version", "Author", "License")]
+    rows += [(f"[{e['name']}]({e['homepage']})", e["version"], e["author"], e["license"])
+             for e in sorted(doc["entries"], key=lambda e: e["name"].lower())]
+    widths = [max(len(r[i]) for r in rows) for i in range(4)]
+    line = lambda cells: "| " + " | ".join(c.ljust(w) for c, w in zip(cells, widths)) + " |"
+    return "\n".join([line(rows[0]), line(["-" * w for w in widths]), *map(line, rows[1:])])
 
+
+def render_readme(text, doc):
+    begin, end = text.find(TABLE_BEGIN), text.find(TABLE_END)
+    if begin < 0 or end < begin:
+        raise ValueError(f"README has no {TABLE_BEGIN} ... {TABLE_END} block")
+    return text[:begin + len(TABLE_BEGIN)] + "\n" + readme_table(doc) + "\n" + text[end:]
+
+
+def read_requirements(path, warnings=None):
+    """Return (normalized name, version) for every `name==version` line; other lines are reported."""
+    pins = []
+    for raw in Path(path).read_text(encoding="utf-8").splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if line:
+            name, sep, version = line.partition("==")
+            if not sep:
+                # An unpinned requirement has no version to scan; older branches still carry some.
+                if warnings is not None:
+                    warnings.append(f"{path}: {line!r} is not pinned with ==; left out of the SBOM")
+                continue
+            pins.append((re.sub(r"[-_.]+", "-", name.strip()).lower(), version.strip()))
+    return pins
+
+
+def sbom(entries, requirements):
+    components = []
+    for e in entries:
+        component = {"bom-ref": e["name"], "type": "library", "name": e["name"], "version": e["version"]}
+        cpes = e.get("cpe") if isinstance(e.get("cpe"), list) else [e.get("cpe")]
+        if cpes[0]:
+            component["cpe"] = cpes[0]
+        component["purl"] = e["purl"]
+        component["licenses"] = [{"license": {"name": e["license"]}}]
+        component["properties"] = [{"name": "syft:location:0:path", "value": "packages/externals/dependencies.json"}]
+        component["properties"] += [{"name": "wazuh:cpe", "value": c} for c in cpes[1:]]
+        components.append(component)
+    for name, version in requirements:
+        components.append({"bom-ref": f"pypi:{name}", "type": "library", "name": name, "version": version,
+                           "purl": f"pkg:pypi/{name}@{version}",
+                           "properties": [{"name": "syft:location:0:path", "value": "framework/requirements.txt"}]})
+    components.sort(key=lambda c: c["bom-ref"])
+    return {"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1, "components": components}
+
+
+def manifest(doc, deps_version, wazuh_commit=None, workflow_run=None, files_dir=None):
+    files = {}
+    if files_dir:
+        root = Path(files_dir)
+        for path in sorted(p for p in root.rglob("*") if p.is_file()):
+            files[path.relative_to(root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return {"schema": 1, "deps_version": deps_version, "wazuh_commit": wazuh_commit, "workflow_run": workflow_run,
+            "entries": doc["entries"], "files": files}
+
+
+def load_manifest(source):
     try:
-        doc = load(args.inventory)
+        if re.match(r"^https?://", source):
+            with urllib.request.urlopen(source, timeout=60) as response:
+                return json.load(response)
+        return load(source)
     except (OSError, ValueError) as exc:
-        print(f"ERROR: <inventory>: cannot read {args.inventory}: {exc}", file=sys.stderr)
-        return 1
+        raise RuntimeError(f"no manifest at {source}: {exc}") from exc
 
-    if args.command == "flatten":
-        errors = validate(doc)
-        for error in errors:
-            print(f"ERROR: {error}", file=sys.stderr)
-        if errors:
-            return 1
-        sys.stdout.write(flatten(doc))
-        return 0
 
-    warnings = []
-    external = None
-    if not args.no_make:
-        try:
-            external = external_res(args.src, warnings)
-        except RuntimeError as exc:
-            print(f"ERROR: <inventory>: {exc}", file=sys.stderr)
-            return 1
-    for warning in warnings:
-        print(f"WARNING: {warning}", file=sys.stderr)
-    errors = validate(doc, external)
+def drift(doc, published):
+    """Return the differences in content fields between the inventory and a set manifest."""
+    ours = {e["name"]: e for e in doc["entries"]}
+    theirs = {e["name"]: e for e in published.get("entries", [])}
+    errors = [f"{n}: in the inventory but not in the set manifest" for n in sorted(set(ours) - set(theirs))]
+    errors += [f"{n}: in the set manifest but not in the inventory" for n in sorted(set(theirs) - set(ours))]
+    for name in sorted(set(ours) & set(theirs)):
+        for field in CONTENT_FIELDS:
+            if ours[name].get(field) != theirs[name].get(field):
+                errors.append(f"{name}: `{field}` is {ours[name].get(field)!r} here but "
+                              f"{theirs[name].get(field)!r} in the set manifest")
+    return errors
+
+
+def deps_version(src_dir):
+    match = re.search(r"^DEPS_VERSION\s*=\s*(\S+)", (Path(src_dir) / "Makefile").read_text(encoding="utf-8"), re.M)
+    if not match:
+        raise RuntimeError(f"no DEPS_VERSION in {src_dir}/Makefile")
+    return match.group(1)
+
+
+def _report(errors):
     for error in errors:
         print(f"ERROR: {error}", file=sys.stderr)
     return 1 if errors else 0
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    sub = parser.add_subparsers(dest="command", required=True)
+    commands = {name: sub.add_parser(name, help=text) for name, text in (
+        ("check", "validate the inventory"), ("flatten", "print the inventory as bash associative arrays"),
+        ("readme", "rewrite the dependency table of README.md"), ("sbom", "print a CycloneDX SBOM"),
+        ("manifest", "print the manifest.json of a published set"),
+        ("drift", "compare the inventory with the manifest of DEPS_VERSION"))}
+    for command in commands.values():
+        command.add_argument("--inventory", default=str(DEFAULT_INVENTORY))
+    commands["check"].add_argument("--src", default=str(REPO / "src"))
+    commands["check"].add_argument("--no-make", action="store_true", help="skip the EXTERNAL_RES comparison")
+    commands["readme"].add_argument("--readme", default=str(README))
+    commands["readme"].add_argument("--check", action="store_true", help="fail instead of rewriting")
+    commands["sbom"].add_argument("--manifest", help="take the entries from a set manifest (URL or path)")
+    commands["sbom"].add_argument("--requirements", default=str(REQUIREMENTS))
+    commands["sbom"].add_argument("--output")
+    commands["manifest"].add_argument("--deps-version", required=True)
+    commands["manifest"].add_argument("--wazuh-commit")
+    commands["manifest"].add_argument("--workflow-run")
+    commands["manifest"].add_argument("--files", help="directory whose files are hashed into `files`")
+    commands["drift"].add_argument("--manifest", help="default: the mirror manifest of src/Makefile's DEPS_VERSION")
+    commands["drift"].add_argument("--src", default=str(REPO / "src"))
+    args = parser.parse_args(argv)
+
+    try:
+        doc = None if getattr(args, "manifest", None) and args.command == "sbom" else load(args.inventory)
+    except (OSError, ValueError) as exc:
+        print(f"ERROR: <inventory>: cannot read {args.inventory}: {exc}", file=sys.stderr)
+        return 1
+    if doc is not None and args.command != "check":
+        errors = validate(doc)
+        if errors:
+            return _report(errors)
+
+    try:
+        if args.command == "flatten":
+            sys.stdout.write(flatten(doc))
+        elif args.command == "readme":
+            text = Path(args.readme).read_text(encoding="utf-8")
+            new = render_readme(text, doc)
+            if args.check:
+                if new != text:
+                    sys.stderr.writelines(difflib.unified_diff(text.splitlines(True), new.splitlines(True),
+                                                               args.readme, "generated from the inventory"))
+                    return _report([f"<inventory>: {args.readme} differs from the inventory; run deps.py readme"])
+            elif new != text:
+                Path(args.readme).write_text(new, encoding="utf-8")
+        elif args.command == "sbom":
+            entries = load_manifest(args.manifest)["entries"] if args.manifest else doc["entries"]
+            warnings = []
+            text = json.dumps(sbom(entries, read_requirements(args.requirements, warnings)), indent=2) + "\n"
+            for warning in warnings:
+                print(f"WARNING: {warning}", file=sys.stderr)
+            if args.output:
+                Path(args.output).write_text(text, encoding="utf-8")
+            else:
+                sys.stdout.write(text)
+        elif args.command == "manifest":
+            result = manifest(doc, args.deps_version, args.wazuh_commit, args.workflow_run, args.files)
+            sys.stdout.write(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
+        elif args.command == "drift":
+            source = args.manifest or f"{MIRROR}/{deps_version(args.src)}/manifest.json"
+            return _report(drift(doc, load_manifest(source)))
+        else:
+            warnings = []
+            external = None if args.no_make else external_res(args.src, warnings)
+            for warning in warnings:
+                print(f"WARNING: {warning}", file=sys.stderr)
+            return _report(validate(doc, external))
+    except (OSError, ValueError, RuntimeError) as exc:
+        return _report([f"<inventory>: {exc}"])
+    return 0
 
 
 if __name__ == "__main__":
