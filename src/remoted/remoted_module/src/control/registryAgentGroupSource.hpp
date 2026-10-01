@@ -14,20 +14,25 @@
 
 #include "agentRegistry.hpp"
 #include "endpoints/iAgentGroupSource.hpp"
+#include "registryLookup.hpp"
 
+#include <cstdint>
+#include <functional>
 #include <memory>
-#include <optional>
 #include <string>
 
 namespace remoted::control
 {
     /**
-     * @brief Answers "which selector may this agent download?" from the in-memory agent registry.
+     * @brief Answers "which selector may this agent download?" from the in-memory agent registry,
+     * falling back to the local wazuh-db when the registry cannot vouch for the agent.
      *
-     * The registry is the same cache /control fills on startup and refreshes on notify, so the
-     * answer is exactly the `config_token` that agent was last handed -- no wazuh-db round trip on
-     * the download path, which is the property that let the group lookup be dropped there in the
-     * first place. The cost is one sharded shared-lock read plus a shared_ptr copy.
+     * A fresh entry (established less than `freshnessSec` ago -- the /control refresh interval) is
+     * answered inline, before resolveSelector() returns, with no wazuh-db round trip: exactly the
+     * `config_token` /control hands out. A missing, expired or never-established entry (a node the
+     * agent never sent /control to, a remoted restart, the "default" /control answers an agent with
+     * no local row) is looked up asynchronously through RegistryLookup: a row is the answer (and
+     * is cached), no row is Deny, a failed lookup is Unavailable.
      *
      * Lives in control/ (which owns the registry) and is consumed through
      * remoted::endpoints::IAgentGroupSource, so the dependency runs endpoints -> interface <-
@@ -36,17 +41,21 @@ namespace remoted::control
     class RegistryAgentGroupSource : public remoted::endpoints::IAgentGroupSource
     {
     public:
-        explicit RegistryAgentGroupSource(std::shared_ptr<const AgentRegistry> registry);
+        /// @param lookup May be null: then anything not fresh is Deny (fail closed).
+        RegistryAgentGroupSource(std::shared_ptr<const AgentRegistry> registry,
+                                 std::shared_ptr<RegistryLookup> lookup,
+                                 uint32_t freshnessSec);
 
-        /// @copydoc remoted::endpoints::IAgentGroupSource::expectedSelectorFor
+        /// @copydoc remoted::endpoints::IAgentGroupSource::resolveSelector
         ///
-        /// Returns std::nullopt -- deny -- when the id is not a well-formed AgentId, when no
-        /// registry is held, or when the agent has no entry (never completed /control/startup, or
-        /// evicted after its inactivity TTL).
-        std::optional<std::string> expectedSelectorFor(const std::string& agentId) const override;
+        /// Deny, inline, when the id is not a well-formed AgentId or no registry is held.
+        void resolveSelector(const std::string& agentId,
+                             std::function<void(remoted::endpoints::GroupVerdict)> done) const override;
 
     private:
         std::shared_ptr<const AgentRegistry> m_registry;
+        std::shared_ptr<RegistryLookup> m_lookup;
+        uint32_t m_freshnessSec;
     };
 } // namespace remoted::control
 

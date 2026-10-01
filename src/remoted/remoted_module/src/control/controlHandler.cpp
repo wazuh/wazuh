@@ -78,7 +78,7 @@ namespace remoted::control
         // One window per condition, so a total is attributable. A notify that cannot resolve groups
         // and has nothing cached is a third condition, distinct from the startup failure above and
         // from a notify that still serves its cached membership: it is the only one of the three
-        // that answers the agent 500, and sharing a window with startup made the two totals
+        // that answers the agent 503, and sharing a window with startup made the two totals
         // indistinguishable.
         remoted::common::LogThrottle& notifyUncachedWdbErrorThrottle()
         {
@@ -90,6 +90,19 @@ namespace remoted::control
         {
             return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
                 .count();
+        }
+
+        // /control's compatibility answer. The client tells "no row in the local wazuh-db" apart
+        // from "a row with no groups"; /control keeps handing out "default" for both, as it did
+        // before the distinction existed. That mapping is /control's alone: nothing that authorizes
+        // a download may read a missing row as membership of "default".
+        std::vector<std::string> controlGroupsFrom(const AgentGroupsResult& result)
+        {
+            if (result.noRow || result.groups.empty())
+            {
+                return {"default"};
+            }
+            return result.groups;
         }
 
     } // namespace
@@ -187,10 +200,13 @@ namespace remoted::control
                 return;
             }
 
+            // Taken before the query: an answer read before a newer groups write (a membership
+            // push) must not overwrite it (AgentRegistry::mayStoreLookup()).
+            const auto ticket = m_registry->groupsTicket();
             m_wdbClient->getAgentGroups(
                 id,
-                [this, id, version = data.version, callback = std::move(callback)](
-                    SocketError err, std::vector<std::string> groups) mutable
+                [this, id, ticket, version = data.version, callback = std::move(callback)](
+                    SocketError err, AgentGroupsResult result) mutable
                 {
                     if (err != SocketError::None)
                     {
@@ -223,10 +239,7 @@ namespace remoted::control
                         return;
                     }
 
-                    if (groups.empty())
-                    {
-                        groups = {"default"};
-                    }
+                    auto groups = controlGroupsFrom(result);
 
                     LOGFN_DEBUG1(logFn(),
                                  "Agent %u startup: version=%s, groups=%s.",
@@ -236,25 +249,22 @@ namespace remoted::control
 
                     const uint64_t now = getWallSec();
 
-                    m_registry->update(id,
-                                       [&](std::shared_ptr<const AgentEntry> old)
-                                       {
-                                           auto updated = old ? std::make_shared<AgentEntry>(*old)
-                                                              : std::make_shared<AgentEntry>();
-                                           updated->groups = groups;
-                                           updated->groupsRefreshedAtSec = now;
-                                           updated->lastActivitySec = now;
-                                           // /startup leaves the agent
-                                           // "pending" in wdb; only a write
-                                           // lifts it, so the next notify
-                                           // must not be throttled.
-                                           updated->lastKeepaliveUpdateSec = 0;
-                                           if (updated->createdAtSec == 0)
-                                           {
-                                               updated->createdAtSec = now;
-                                           }
-                                           return updated;
-                                       });
+                    const auto stored = m_registry->update(
+                        id,
+                        [&](std::shared_ptr<const AgentEntry> old)
+                        {
+                            auto updated = old ? std::make_shared<AgentEntry>(*old) : std::make_shared<AgentEntry>();
+                            storeLookedUpGroups(*updated, old, ticket, result.noRow, groups, now);
+                            updated->lastActivitySec = now;
+                            // /startup leaves the agent "pending" in wdb; only a write lifts it, so
+                            // the next notify must not be throttled.
+                            updated->lastKeepaliveUpdateSec = 0;
+                            if (updated->createdAtSec == 0)
+                            {
+                                updated->createdAtSec = now;
+                            }
+                            return updated;
+                        });
 
                     // A single write persists the accepted version together with the
                     // pending keepalive. The version is not left to the notify path:
@@ -269,7 +279,9 @@ namespace remoted::control
                     nlohmann::json response;
                     response["limits"] = m_config.limits;
                     response["cluster"]["name"] = m_config.clusterName;
-                    response["agent"]["groups"] = groups;
+                    // The entry's groups: a membership push that landed while this query was in
+                    // flight is newer than what this query read.
+                    response["agent"]["groups"] = stored->groups;
 
                     HttpResponse httpResp;
                     httpResp.status = 200;
@@ -307,8 +319,7 @@ namespace remoted::control
             auto entry = m_registry->get(id);
             const uint64_t now = getWallSec();
 
-            const bool needsRefresh =
-                !entry || (now - entry->groupsRefreshedAtSec >= m_config.groupsRefreshIntervalSec);
+            const bool needsRefresh = !entry || !groupsFresh(*entry, now, m_config.groupsRefreshIntervalSec);
 
             if (!needsRefresh)
             {
@@ -316,10 +327,11 @@ namespace remoted::control
                 return;
             }
 
+            const auto ticket = m_registry->groupsTicket();
             m_wdbClient->getAgentGroups(
                 id,
-                [this, id, entry, data, callback = std::move(callback), now](SocketError err,
-                                                                             std::vector<std::string> groups) mutable
+                [this, id, ticket, entry, data, callback = std::move(callback), now](SocketError err,
+                                                                                     AgentGroupsResult result) mutable
                 {
                     // Nothing cached and no answer: "default" would be a wrong answer served as
                     // authoritative, not a stale one. Fail like /startup does.
@@ -353,7 +365,7 @@ namespace remoted::control
 
                     if (refreshed)
                     {
-                        finalGroups = groups.empty() ? std::vector<std::string> {"default"} : std::move(groups);
+                        finalGroups = controlGroupsFrom(result);
                     }
                     else
                     {
@@ -370,27 +382,27 @@ namespace remoted::control
                         }
                     }
 
-                    auto updated = m_registry->update(id,
-                                                      [&](std::shared_ptr<const AgentEntry> old)
-                                                      {
-                                                          // Fall back to `entry`: the eviction
-                                                          // thread may have dropped the agent
-                                                          // while the query was in flight.
-                                                          auto e = old     ? std::make_shared<AgentEntry>(*old)
-                                                                   : entry ? std::make_shared<AgentEntry>(*entry)
-                                                                           : std::make_shared<AgentEntry>();
-                                                          if (refreshed)
-                                                          {
-                                                              e->groups = std::move(finalGroups);
-                                                              e->groupsRefreshedAtSec = now;
-                                                          }
-                                                          e->lastActivitySec = now;
-                                                          if (e->createdAtSec == 0)
-                                                          {
-                                                              e->createdAtSec = now;
-                                                          }
-                                                          return e;
-                                                      });
+                    auto updated =
+                        m_registry->update(id,
+                                           [&](std::shared_ptr<const AgentEntry> old)
+                                           {
+                                               // Fall back to `entry`: the eviction
+                                               // thread may have dropped the agent
+                                               // while the query was in flight.
+                                               auto e = old     ? std::make_shared<AgentEntry>(*old)
+                                                        : entry ? std::make_shared<AgentEntry>(*entry)
+                                                                : std::make_shared<AgentEntry>();
+                                               if (refreshed)
+                                               {
+                                                   storeLookedUpGroups(*e, old, ticket, result.noRow, finalGroups, now);
+                                               }
+                                               e->lastActivitySec = now;
+                                               if (e->createdAtSec == 0)
+                                               {
+                                                   e->createdAtSec = now;
+                                               }
+                                               return e;
+                                           });
 
                     processNotify(id, updated, data, now, std::move(callback));
                 });
@@ -435,6 +447,32 @@ namespace remoted::control
         uint64_t getVdFeedOffset() const
         {
             return m_vdClient->getOffset();
+        }
+
+        // Writes a wazuh-db answer into `e` (a copy of `old`) under the registry's one ordering
+        // rule. `ticket` was taken before the query was issued.
+        //  - A newer groups write stamped `old` after the ticket (a membership push): leave the
+        //    groups alone; the caller answers from the entry, which is newer than this read.
+        //  - No row (S25): /control still answers "default", but it is stored as NOT established
+        //    (groupsRefreshedAtSec = 0) so /download never authorizes from it.
+        //  - Otherwise established at the issue time -- unless a push skipped an absent agent
+        //    since the ticket and `old` holds no established membership: then the read is kept
+        //    for this answer only, not established, so the next reader looks it up again.
+        void storeLookedUpGroups(AgentEntry& e,
+                                 const std::shared_ptr<const AgentEntry>& old,
+                                 uint64_t ticket,
+                                 bool noRow,
+                                 const std::vector<std::string>& groups,
+                                 uint64_t issuedAtSec)
+        {
+            if (old && old->groupsSeq > ticket)
+            {
+                return;
+            }
+            const bool establish = !noRow && m_registry->mayStoreLookup(old, ticket);
+            e.groups = groups;
+            e.groupsRefreshedAtSec = establish ? issuedAtSec : 0;
+            e.groupsSeq = m_registry->nextGroupsSeq();
         }
 
         void processNotify(AgentId id,

@@ -213,9 +213,11 @@ extern "C"
         int groups_refresh_interval_sec; ///< Group refresh interval in seconds (<=0 -> 60).
         int wdb_request_connections;     ///< Wazuh-DB request connection pool size (<=0 -> 4).
         int wdb_roundtrip_deadline_ms;   ///< Wazuh-DB roundtrip deadline in milliseconds (<=0 -> 2000).
+        int wdb_request_deadline_ms;     ///< Wazuh-DB end-to-end request deadline from enqueue, in
+                                         ///< milliseconds: queue wait + reconnection + round trip (<=0 -> 5000).
         int wdb_max_queue_size;          ///< Wazuh-DB request queue high-water mark; QueueFull over it (<=0 -> 10000).
-        int tm_concurrency;              ///< Task Manager concurrency limit (<=0 -> 10).
-        int tm_deadline_ms;              ///< Task Manager per-request deadline in milliseconds (<=0 -> 200).
+        int tm_concurrency;              ///< Task Manager concurrency limit (<=0 -> 4).
+        int tm_deadline_ms;              ///< Task Manager per-request deadline in milliseconds (<=0 -> 2000).
         int tm_max_queue_size;      ///< Task Manager request queue high-water mark; QueueFull over it (<=0 -> 10000).
         int keepalive_throttle_sec; ///< Minimum seconds between two wazuh-db keepalive writes for the same agent;
                                     ///< notifies arriving faster are absorbed in memory (<=0 -> 60).

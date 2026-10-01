@@ -38,6 +38,11 @@ namespace remoted::control
             cfg.wdbRoundtripDeadlineMs = c.wdb_roundtrip_deadline_ms;
         }
 
+        if (c.wdb_request_deadline_ms > 0)
+        {
+            cfg.wdbRequestDeadlineMs = static_cast<uint32_t>(c.wdb_request_deadline_ms);
+        }
+
         if (c.wdb_max_queue_size > 0)
         {
             cfg.wdbMaxQueueSize = static_cast<uint32_t>(c.wdb_max_queue_size);

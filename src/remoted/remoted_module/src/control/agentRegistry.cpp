@@ -44,6 +44,78 @@ namespace remoted::control
         return updated;
     }
 
+    uint64_t AgentRegistry::groupsTicket() const
+    {
+        return m_groupsSeq.load();
+    }
+
+    uint64_t AgentRegistry::nextGroupsSeq()
+    {
+        return m_groupsSeq.fetch_add(1) + 1;
+    }
+
+    bool AgentRegistry::mayStoreLookup(const std::shared_ptr<const AgentEntry>& current, uint64_t ticket) const
+    {
+        if (current && current->groupsSeq > ticket)
+        {
+            return false;
+        }
+        const bool established = current && current->groupsRefreshedAtSec != 0;
+        return established || m_lastSkipSeq.load() <= ticket;
+    }
+
+    void AgentRegistry::markSkipped()
+    {
+        // A monotonic maximum, never a plain store: two skips racing could otherwise leave the
+        // smaller stamp behind, and a lookup ticketed between them would pass the check.
+        const auto seq = nextGroupsSeq();
+        auto prev = m_lastSkipSeq.load();
+        while (prev < seq && !m_lastSkipSeq.compare_exchange_weak(prev, seq))
+        {
+        }
+    }
+
+    AgentRegistry::PushOutcome AgentRegistry::setGroups(AgentId id, std::vector<std::string> groups, uint64_t nowSec)
+    {
+        auto outcome = PushOutcome::Skipped;
+        update(id,
+               [&](std::shared_ptr<const AgentEntry> old) -> std::shared_ptr<AgentEntry>
+               {
+                   if (!old)
+                   {
+                       markSkipped();
+                       return nullptr;
+                   }
+                   auto e = std::make_shared<AgentEntry>(*old);
+                   e->groups = std::move(groups);
+                   e->groupsRefreshedAtSec = nowSec;
+                   e->groupsSeq = nextGroupsSeq();
+                   outcome = PushOutcome::Updated;
+                   return e;
+               });
+        return outcome;
+    }
+
+    AgentRegistry::PushOutcome AgentRegistry::invalidateGroups(AgentId id)
+    {
+        auto outcome = PushOutcome::Skipped;
+        update(id,
+               [&](std::shared_ptr<const AgentEntry> old) -> std::shared_ptr<AgentEntry>
+               {
+                   if (!old)
+                   {
+                       markSkipped();
+                       return nullptr;
+                   }
+                   auto e = std::make_shared<AgentEntry>(*old);
+                   e->groupsRefreshedAtSec = 0;
+                   e->groupsSeq = nextGroupsSeq();
+                   outcome = PushOutcome::Invalidated;
+                   return e;
+               });
+        return outcome;
+    }
+
     std::size_t AgentRegistry::size() const
     {
         std::size_t total = 0;
