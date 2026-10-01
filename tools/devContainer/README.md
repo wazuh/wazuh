@@ -48,7 +48,7 @@ How do you want to log in to <REGISTRY>?
 Choice:
 ```
 
-The menu always shows the three options. When the GitHub CLI route is not available (`gh` is not installed, `gh auth status -h github.com` fails, `GH_TOKEN` or `GITHUB_TOKEN` is set, or the registry is not `ghcr.io`), the first line ends with ` (unavailable: gh is not installed or not logged in to github.com)`; choosing `1` then prints `option 1 is unavailable` and asks again; any other answer than `1`, `2` or `3` prints `Please answer 1, 2 or 3.`
+The menu always shows the three options. When the GitHub CLI route is not available (`gh` is not installed, `gh auth status -h github.com` fails, `GH_TOKEN` or `GITHUB_TOKEN` is set, or the registry is not `ghcr.io`), the first line ends with ` (unavailable: <reason>)` naming it (`gh is not installed`, `gh is not logged in to github.com`, `GH_TOKEN or GITHUB_TOKEN is set`, `the registry is not ghcr.io`); choosing `1` then prints `option 1 is unavailable` and asks again; any other answer than `1`, `2` or `3` prints `Please answer 1, 2 or 3.`
 
 **Option 1: GitHub CLI.** The script runs `gh auth refresh -h github.com -s read:packages`, reads your login with `gh api user -q .login`, and passes the token of `gh auth token` to `docker login` on stdin.
 
@@ -94,7 +94,7 @@ chmod +x download_devContainer.sh
 > The destination directory must not already exist — the script exits with an error if it does. It is only created after the image has been pulled; if the script fails, it does not leave a destination behind.
 
 > [!NOTE]
-> After the download completes, when the script runs in a terminal it asks whether you want to open the devContainer in VS Code. If VS Code and the Remote - Containers extension are available, it will open the workspace automatically; otherwise it will print a warning to open manually. On macOS, when `code` is not in `PATH`, it uses the CLI inside the app (`/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code`, or the same under `~/Applications`). Without a terminal it does not ask: it prints the `code --folder-uri …` command to run yourself.
+> After the download completes, when the script runs in a terminal it asks whether you want to open the devContainer in VS Code. If VS Code is available, it installs the Dev Containers extension when it is missing and opens the workspace; otherwise it will print a warning to open manually. On macOS, when `code` is not in `PATH`, it uses the CLI inside the app (`/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code`, or the same under `~/Applications`). Without a terminal it does not ask: it prints the `code --folder-uri …` command to run yourself.
 
 > [!NOTE]
 > Without a terminal the script cannot ask you to log in either: log in first ([Logging in to ghcr.io](#logging-in-to-ghcrio)) and run it again.
@@ -105,7 +105,7 @@ In order:
 
 1. Checks the prerequisites.
 2. Clones the branch given with `-b` into a temporary directory.
-3. Checks the clone, **before touching Docker**: that `devcontainer.json` and `VERSION.json` exist, and that `devcontainer.json` has an `"image"` line. Branches without the prebuilt image (for example `4.14.10`, with no `.devcontainer/devcontainer.json`, or any branch whose `devcontainer.json` still builds the Dockerfile instead of naming an `"image"`) stop here with an error.
+3. Checks the clone, **before the registry access and the pull**: that `devcontainer.json` and `VERSION.json` exist, and that `devcontainer.json` has an `"image"` line. Branches without the prebuilt image (for example `4.14.10`, with no `.devcontainer/devcontainer.json`, or any branch whose `devcontainer.json` still builds the Dockerfile instead of naming an `"image"`) stop here with an error.
 4. Computes the image: the repository of the `"image"` line (or `$WAZUH_DEVCONTAINER_IMAGE`) plus the tag `<major>.<minor>` of `VERSION.json` (`5.0` for `5.0.0`).
 5. Checks access to the registry with `docker manifest inspect`. If the image is not accessible, it offers the login menu once (only in a terminal) and tries again.
 6. Pulls the image with `docker pull`.
@@ -143,6 +143,9 @@ On the first start ("Reopen in Container" or `devcontainer up`), the devContaine
 Then `postStartCommand` sets `vm.max_map_count`, which the indexer needs, and `fs.inotify.max_user_watches`, and prints which image the container runs (`devContainer image: ci` for the published one, `local` for one built with `build-image.sh`). If either step fails, the creation log shows a failed `postCreateCommand`, and the devContainer skips `postStartCommand`.
 
 ### Updating the image
+
+> [!NOTE]
+> A devContainer downloaded before the prebuilt image existed still builds its own Dockerfile (with an older clang-format). Download it again with the script to use the published image.
 
 The image tag (`5.0`) is rebuilt when the recipe changes, so the image you pulled can get old. To update it:
 
@@ -184,7 +187,9 @@ The workflow `.github/workflows/5_builderprecompiled_devcontainer-image.yml` bui
 - on a push to `5.x.y` branches or `main` that changes `tools/devContainer/.devcontainer/**` or the workflow itself;
 - on demand, with `workflow_dispatch`, which only re-runs the build for a branch that already has the right configuration.
 
-The workflow fails if the tag in the `"image"` line of `.devcontainer/devcontainer.json` is not the `<major>.<minor>` of `VERSION.json`. For that reason, a new release line (for example `5.1.0`, and `main` after the forward-merge) first needs a commit that bumps the tag of the `"image"` line to the new `<major>.<minor>`. That commit touches `.devcontainer/**`, so it is what triggers the build. Launching `workflow_dispatch` alone does not work around it.
+The workflow fails if the tag in the `"image"` line of `.devcontainer/devcontainer.json` is not the `<major>.<minor>` of `VERSION.json`. For that reason, a new release line (for example `5.1.0`, and `main` after the forward-merge) first needs a commit that bumps the tag of the `"image"` line to the new `<major>.<minor>`. That commit touches `.devcontainer/**`, so it is what triggers the build. Launching `workflow_dispatch` alone does not work around it. Until then, downloading that branch stops with a message that names the tag mismatch.
+
+Runs are serialized: one runs and one waits, so that a cleanup never races another build. If a third run arrives, GitHub cancels the waiting one; when that happens to a run of another branch, re-launch it with `workflow_dispatch` on that branch.
 
 After each run, a cleanup step deletes the untagged versions of the package that are no longer in use. Deleted versions can be restored for 30 days.
 

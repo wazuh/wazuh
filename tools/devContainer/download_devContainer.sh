@@ -34,6 +34,8 @@ DEV_CONTAINER_DESTINATION=""
 CLAUDE_PACKAGE=""
 DEST_CREATED=0   # 1 while the destination exists but is not complete: removed on failure
 IMAGE=""         # <repository>:<major.minor>, computed from the cloned branch
+JSON_IMAGE=""    # the "image" line of the cloned devcontainer.json
+README_URL=""    # the README of the downloaded branch on GitHub (the download does not copy it)
 REGISTRY=""      # registry host of IMAGE (e.g. ghcr.io)
 OWNER=""         # first path component of the repository (e.g. wazuh)
 
@@ -51,6 +53,9 @@ trap cleanup EXIT
 # Print an error and exit
 die() {
     echo "Error: $*" >&2
+    if [ -n "$README_URL" ]; then
+        echo "       Documentation: $README_URL" >&2
+    fi
     exit 1
 }
 
@@ -183,7 +188,7 @@ download_repo() {
     cd "$OLD_PWD" || exit 1
 }
 
-# Function to check, before touching Docker, that the branch ships a prebuilt-image devContainer
+# Function to check, before the registry access and the pull, that the branch ships a prebuilt-image devContainer
 check_branch_files() {
     local json_file="$TMP_DIR/$REPO_DEV_DIR/.devcontainer/devcontainer.json"
 
@@ -212,6 +217,7 @@ compute_image() {
     local json_image repo tag version first rest
 
     json_image=$(read_json_image "$TMP_DIR/$REPO_DEV_DIR/.devcontainer/devcontainer.json")
+    JSON_IMAGE="$json_image"
 
     # Same rule as build-image.sh: the tag is what follows the last ':' only if it contains no '/'
     # (a registry port is not a tag).
@@ -294,15 +300,18 @@ registry_has_credential() {
     printf '%s' "$flat" | grep -E "\"(https?://)?${key_regex}(/[^\"]*)?\"[[:space:]]*:[[:space:]]*\\{[^}]*\"(auth|identitytoken)\"[[:space:]]*:[[:space:]]*\"[^\"]+\"" > /dev/null
 }
 
-# Return 0 when the GitHub CLI route of the login menu can be used
-gh_login_available() {
-    [ "$REGISTRY" = "ghcr.io" ] || return 1
-    # gh auth refresh does not work with a token from the environment
-    if [ -n "${GH_TOKEN:-}" ] || [ -n "${GITHUB_TOKEN:-}" ]; then
-        return 1
+# Print why the GitHub CLI route of the login menu cannot be used (nothing when it can)
+gh_login_unavailable_reason() {
+    if [ "$REGISTRY" != "ghcr.io" ]; then
+        echo "the registry is not ghcr.io"
+    elif [ -n "${GH_TOKEN:-}" ] || [ -n "${GITHUB_TOKEN:-}" ]; then
+        # gh auth refresh does not work with a token from the environment
+        echo "GH_TOKEN or GITHUB_TOKEN is set"
+    elif ! command -v gh > /dev/null 2>&1; then
+        echo "gh is not installed"
+    elif ! gh auth status -h github.com > /dev/null 2>&1; then
+        echo "gh is not logged in to github.com"
     fi
-    command -v gh > /dev/null 2>&1 || return 1
-    gh auth status -h github.com > /dev/null 2>&1
 }
 
 # Log in to REGISTRY with the GitHub CLI: the token goes through stdin only
@@ -340,10 +349,11 @@ login_menu() {
     local gh_note=""
     local choice
 
-    if gh_login_available; then
+    gh_note=$(gh_login_unavailable_reason)
+    if [ -z "$gh_note" ]; then
         gh_ok=1
     else
-        gh_note=" (unavailable: gh is not installed or not logged in to github.com)"
+        gh_note=" (unavailable: ${gh_note})"
     fi
 
     {
@@ -398,6 +408,9 @@ fail_unless_denied() {
         return 0
     fi
     if grep -i 'manifest unknown' > /dev/null <<< "$MANIFEST_ERROR"; then
+        if [ -n "$JSON_IMAGE" ] && [ "${JSON_IMAGE##*:}" != "${IMAGE##*:}" ]; then
+            die "${IMAGE} is not published (manifest unknown): devcontainer.json of branch '${BRANCH}' names ${JSON_IMAGE}, but its VERSION.json maps to the tag ${IMAGE##*:}; the \"image\" tag must be bumped on that branch (README: \"How the image is published\")."
+        fi
         die "${IMAGE} is not published (manifest unknown) (README: \"How the image is published\")."
     fi
     die "cannot reach ${REGISTRY}: ${MANIFEST_ERROR%%$'\n'*}"
@@ -585,9 +598,9 @@ open_in_vscode() {
                 fi
 
                 if ! "$cli" --list-extensions 2>/dev/null | grep "ms-vscode-remote.remote-containers" > /dev/null; then
-                    echo "Installing the Remote - Containers extension..."
+                    echo "Installing the Dev Containers extension..."
                     "$cli" --install-extension ms-vscode-remote.remote-containers \
-                        || echo "Warning: could not install the Remote - Containers extension" >&2
+                        || echo "Warning: could not install the Dev Containers extension" >&2
                 fi
 
                 echo "Opening the devContainer in VSCode..."
@@ -635,6 +648,8 @@ while getopts ":d:b:c:h" opt; do
     esac
 done
 
+README_URL="https://github.com/wazuh/wazuh/blob/${BRANCH}/tools/devContainer/README.md"
+
 # Set default destination if not provided
 if [ -z "$DEV_CONTAINER_DESTINATION" ]; then
     DEV_CONTAINER_DESTINATION="${OLD_PWD}/devContainer"
@@ -665,7 +680,7 @@ check_prerequisites
 # Download the repository
 download_repo
 
-# Check that the branch ships the prebuilt image (before touching Docker)
+# Check that the branch ships the prebuilt image (before the pull)
 check_branch_files
 
 # Compute the image of the branch
