@@ -9,8 +9,9 @@ Supporting scripts under `packages/externals/`:
 | File | Purpose |
 |------|---------|
 | `external_sources.sh` | Manifest: upstream URL template + archive format + target dir for each dep. |
-| `build_external.sh` | Container-side build script. Seeds `src/external/` via `make deps EXTERNAL_SRC_ONLY=yes`, applies overrides from `--dependencies`, runs the per-leg build, and re-ships prebuilt blobs for the two deps that aren't compiled here — see [Caveats](#libbpf-bootstrap-and-cpython-are-re-shipped-not-rebuilt). |
+| `build_external.sh` | Container-side build script. Seeds `src/external/` via `make deps EXTERNAL_SRC_ONLY=yes`, applies overrides from `--dependencies`, runs the per-leg build, and re-ships the published `cpython` blob, see [Caveats](#caveats). |
 | `generate_external.sh` | Wrapper that runs `build_external.sh` and packs the result into `externals-<leg>.tar.gz` with the S3 layout `make deps` expects. |
+| `ebpf/build_ebpf.sh` | Builds `libbpf-bootstrap.tar.gz` (`modern.bpf.o` + `libbpf.so`) for amd64, aarch64, arm32, i386 and ppc64le on one x86_64 host, with clang 20 and Zig. See [libbpf-bootstrap](#libbpf-bootstrap-is-built-by-the-build-ebpf-job). |
 | `smoke_build.sh` | Sanity check: builds the agent/manager from source against the freshly built consolidated tree to confirm the precompiled tarballs are actually consumable. |
 
 ## When to use it
@@ -47,7 +48,7 @@ There is intentionally no per-leg dispatch input. A deps release is whole-or-not
 
 ## What runs
 
-The matrix is fixed at 7 entries:
+The `build-externals` matrix is fixed at 7 entries:
 
 | Leg | Target | Runner | Notes |
 |-----|--------|--------|-------|
@@ -63,16 +64,19 @@ Why each Linux arch runs twice: the manager image (CentOS 7) can build a couple 
 
 We don't build separate `deb` legs because rpm glibc is forward-compatible with deb's.
 
+A separate `build-ebpf` job runs `ebpf/build_ebpf.sh` on `ubuntu-24.04` for every Linux arch.
+
 ## Jobs
 
 ```
-build-externals (matrix, 7 jobs)
-       │
-       └─► consolidate ──► smoke-build (5 jobs)
+build-externals (matrix, 7 jobs) ─┐
+                                  ├─► consolidate ──► smoke-build (5 jobs)
+build-ebpf ───────────────────────┘
 ```
 
 - **`build-externals`** — each leg seeds `src/external/`, applies `--dependencies` overrides, runs the build, and uploads `externals-<leg>-<target>.tar.gz`.
-- **`consolidate`** — downloads every per-leg tarball, merges into the canonical `libraries/{linux,darwin,windows,sources}/` layout, and uploads `externals-all.tar.gz` (the artifact you publish to `packages.wazuh.com/deps/<version>/`).
+- **`build-ebpf`**: installs clang 20 (`apt.llvm.org`) and the Zig version pinned in `build_ebpf.sh`, runs it, and uploads `libbpf-bootstrap` (`<arch>/libbpf-bootstrap.tar.gz`).
+- **`consolidate`** — downloads every per-leg tarball, merges into the canonical `libraries/{linux,darwin,windows,sources}/` layout, places the `build-ebpf` tarballs under `libraries/linux/<arch>/`, and uploads `externals-all.tar.gz` (the artifact you publish to `packages.wazuh.com/deps/<version>/`).
 - **`smoke-build`** — for each of the 4 Linux combinations (amd64/arm64 × agent/manager) plus a windows-i686 leg, pulls `externals-all.tar.gz`, points `make deps RESOURCES_URL=file://…` at the local tree, then runs the real Wazuh build inside the matching builder image (`pkg_rpm_<target>_builder_<arch>` for Linux, `compile_windows_agent` for windows). Confirms the precompiled tarballs you just packed actually get consumed. Emits `::warning::` for any dep that fell back to source compile — that means the binary was packed at a path `src/external/CMakeLists.txt` doesn't expect. The windows leg is what catches host-side tools shipped in `libraries/windows/<dep>.tar.gz` (e.g. flatbuffers' `flatc`, invoked during `make TARGET=winagent` schema codegen) that were built against a newer glibc/libstdc++ than the consumer image — without it, that mismatch only surfaces downstream when the windows agent build runs.
 
 ## Output
@@ -84,6 +88,7 @@ The artifact to publish is `externals-all` → `externals-all.tar.gz`. Its layou
 ```
 libraries/
 ├── linux/{amd64,aarch64}/<dep>.tar.gz   ← precompiled binaries
+├── linux/{arm32,i386,ppc64le}/libbpf-bootstrap.tar.gz
 ├── darwin/{amd64,aarch64}/<dep>.tar.gz
 ├── windows/<dep>.tar.gz                 ← no arch subdir for MinGW
 └── sources/<dep>.tar.gz                 ← upstream source snapshots
@@ -146,7 +151,7 @@ inventory_sync_server/keystore_server/vulnerability_scanner instead, so it links
 | lua | ✔ | — | — | — | precompiled `.a` (rpm dependency) |
 | rpm | ✔ | — | — | — | precompiled `.a` |
 | dbus | ✔ | — | — | — | precompiled `.a` |
-| libbpf-bootstrap | ✔ | — | — | — | **re-shipped prebuilt** (see caveats) |
+| libbpf-bootstrap | ✔ | — | — | — | precompiled `.o` + `.so` (`build-ebpf` job) |
 
 ### macOS agent only
 
@@ -209,7 +214,7 @@ the download behind a flag drops them from the bundle and breaks every test buil
 2. Dispatch the workflow with `dependencies="…"` (or empty for a clean rebuild). **Do not bump `DEPS_VERSION` in this branch.** See the caveat below.
 3. Wait for `build-externals`, `consolidate`, and all 4 `smoke-build` jobs to go green.
 4. Download `externals-all.tar.gz`. Pick a new `DEPS_VERSION` (the team's convention is `99-<gh-run-id>` or a hand-picked monotonic number). Upload the tarball contents into `s3://…/deps/<new-DEPS_VERSION>/libraries/…`.
-5. Open a second PR that bumps `DEPS_VERSION` in `src/Makefile` to the new value. That single change is enough — `build_external.sh` reads `DEPS_VERSION` straight out of the Makefile for both the `make deps` seed and the cpython / libbpf re-ship URLs.
+5. Open a second PR that bumps `DEPS_VERSION` in `src/Makefile` to the new value. That single change is enough — `build_external.sh` reads `DEPS_VERSION` straight out of the Makefile for both the `make deps` seed and the cpython re-ship URL.
 
 ## Caveats
 
@@ -219,22 +224,28 @@ the download behind a flag drops them from the bundle and breaks every test buil
 
 - `make deps EXTERNAL_SRC_ONLY=yes` (the source seed for `src/external/`) reads `RESOURCES_URL = packages.wazuh.com/deps/$(DEPS_VERSION)/`.
 - The cpython pass-through block pulls `…/deps/${DEPS_VERSION}/libraries/sources/cpython_<arch>.tar.gz`.
-- `stage_precompiled` pulls `…/deps/${DEPS_VERSION}/libraries/linux/<arch>/libbpf-bootstrap.tar.gz`.
 
-If your branch has bumped `DEPS_VERSION` to the version you're trying to *produce*, all three fetches 404 and the run fails. Always dispatch the workflow with `DEPS_VERSION` pointing at the *currently published* deps release; bump it in a follow-up PR after you've uploaded the new tarball.
+If your branch has bumped `DEPS_VERSION` to the version you're trying to *produce*, both fetches 404 and the run fails. Always dispatch the workflow with `DEPS_VERSION` pointing at the *currently published* deps release; bump it in a follow-up PR after you've uploaded the new tarball.
 
-### `libbpf-bootstrap` and `cpython` are re-shipped, not rebuilt
+### `libbpf-bootstrap` is built by the `build-ebpf` job
 
-Two deps are not actually compiled by this workflow — `build_external.sh` downloads prebuilt blobs from `packages.wazuh.com/deps/${DEPS_VERSION}/…` and packs them into the per-leg tarballs:
+`libbpf-bootstrap` needs clang ≥ 7 with the BPF backend and Linux UAPI headers ≥ 4.13 (`linux/bpf_perf_event.h`), and the legacy agent builder image (CentOS 6 / Debian wheezy era, glibc 2.12) has neither. There is no from-source fallback in `src/external/CMakeLists.txt`: the agent loads `libbpf.so` and `modern.bpf.o` at runtime, so its build does not need them, and `consolidate` ships the copy `build-ebpf` produced.
 
-- **`libbpf-bootstrap`** needs clang ≥ 7 with the BPF backend and Linux UAPI headers ≥ 4.13 (`linux/bpf_perf_event.h`), and the legacy agent builder image (CentOS 6 / Debian wheezy era, glibc 2.12) has neither — a from-source attempt fails with `linux/bpf_perf_event.h: No such file or directory`. Wazuh builds it in a separate centos:7 + clang-15-from-source image (issue #28626). Linux legs only; macOS and Windows agents don't include it.
-- **`cpython`** has its own dedicated pipeline (`5_builderpackage_embedded-python.yml`, runs `framework/cpython/compile.sh`). Manager legs only; the agent `EXTERNAL_RES` has no `$(CPYTHON)`.
+`ebpf/build_ebpf.sh` compiles `modern.bpf.o` from `src/syscheckd/src/ebpf/src/modern.bpf.c` of the dispatched branch with clang 20, and cross-compiles libbpf `v1.7.0` with Zig against glibc 2.17 (2.19 on ppc64le). Pinned versions (clang, Zig, libbpf tag, `libbpf/vmlinux.h` commit) live at the top of the script; the job reads the Zig version from there. The output is reproducible, so a rebuild of an unchanged source gives the same binaries.
 
-So bumping either of these is out of scope here. The flow is:
+To build it locally on `ubuntu:24.04` with `libelf-dev zlib1g-dev`, `apt.llvm.org/llvm.sh 20` and the pinned Zig:
 
-1. Run the dedicated pipeline (embedded-python for cpython; the centos:7+clang-15 image for libbpf-bootstrap — that build is currently out-of-repo).
+```bash
+bash packages/externals/ebpf/build_ebpf.sh   # writes ./output/<arch>/libbpf-bootstrap.tar.gz
+```
+
+### `cpython` is re-shipped, not rebuilt
+
+`cpython` has its own dedicated pipeline (`5_builderpackage_embedded-python.yml`, runs `framework/cpython/compile.sh`). Manager legs only; the agent `EXTERNAL_RES` has no `$(CPYTHON)`. `build_external.sh` downloads the prebuilt blob from `packages.wazuh.com/deps/${DEPS_VERSION}/…` and packs it into the per-leg tarballs. To bump it:
+
+1. Run `5_builderpackage_embedded-python.yml`.
 2. Upload the new blob into `packages.wazuh.com/deps/<new-DEPS_VERSION>/libraries/…` alongside the rest of the externals tree this workflow produces.
-3. Bump `DEPS_VERSION` in `src/Makefile`. Because `build_external.sh` reads `DEPS_VERSION` straight from the Makefile, this single bump is what makes the next run pick up the new cpython / libbpf blob.
+3. Bump `DEPS_VERSION` in `src/Makefile`. Because `build_external.sh` reads `DEPS_VERSION` straight from the Makefile, this single bump is what makes the next run pick up the new cpython blob.
 
 ### macOS and Windows are agent-only
 

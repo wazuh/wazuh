@@ -59,8 +59,7 @@ log() { echo "[external] $*"; }
 err() { echo "[external][ERROR] $*" >&2; }
 
 # Source-of-truth for any blob we re-ship rather than build here (currently
-# cpython and libbpf-bootstrap — see the cpython pass-through block and
-# stage_precompiled below). Reading from src/Makefile keeps the URLs in
+# cpython, see the cpython pass-through block below). Reading from src/Makefile keeps the URLs in
 # lockstep with what `make deps` would download for the same source tree,
 # which means DEPS_VERSION must point at an *existing* publish at the time
 # this workflow runs. Never bump DEPS_VERSION in the same branch that
@@ -500,66 +499,6 @@ for name in ${DEPS_FOR_LEG}; do
     fi
     snapshot_source "${name}"
 done
-
-# Stage precompiled binaries for deps whose source-rebuild path is broken
-# in the legacy builder images. src/external/CMakeLists.txt has if(EXISTS)
-# short-circuits that pick precompiled .a files when present, skipping the
-# from-source ExternalProject_Add. Wazuh's normal CI always has these
-# precompiled tarballs (downloaded by `make deps` without EXTERNAL_SRC_ONLY)
-# so the from-source path is rarely exercised and has known issues:
-#   - libbpf-bootstrap: needs clang ≥7 with BPF backend and kernel UAPI
-#     headers ≥4.13. Wazuh team builds it in dedicated centos:7 +
-#     clang-15-from-source images (issue 28626) and uploads the result.
-#   - libffi: ExternalProject_Add's BUILD_BYPRODUCTS doesn't translate to
-#     a working make rule under the Make generator with BUILD_IN_SOURCE TRUE.
-#     wazuhext's link step then fails with "No rule to make target".
-# We reuse the existing precompiled tarballs from packages.wazuh.com.
-# Done after the source-snapshot loop so the *_src.zip artifacts stay clean.
-# Future bumps of these specific deps would need the original build env
-# (per-image toolchain or external CI), so they're out of scope here.
-stage_precompiled() {
-    # $1 = dep name (folder under src/external/), $2 = sentinel file path
-    # (relative to src/external/) whose presence triggers the if(EXISTS)
-    # short-circuit in src/external/CMakeLists.txt.
-    local name="$1"
-    local sentinel="$2"
-    local arch_path
-    case "${ARCHITECTURE_TARGET}" in
-        amd64)  arch_path="amd64" ;;
-        arm64)  arch_path="aarch64" ;;
-        *)      log "stage_precompiled: unsupported arch ${ARCHITECTURE_TARGET}; skipping ${name}"; return 0 ;;
-    esac
-    local url="https://packages.wazuh.com/deps/${DEPS_VERSION}/libraries/linux/${arch_path}/${name}.tar.gz"
-    local tar="${DOWNLOAD_DIR}/${name}-precompiled.tar.gz"
-    log "staging precompiled ${name} from ${url}"
-    if ! curl -fsSL "${url}" -o "${tar}"; then
-        err "could not fetch precompiled ${name}; build-external will attempt to rebuild from source"
-        return 0
-    fi
-    tar -xzf "${tar}" -C "${SRC_DIR}/external/"
-    if [ -f "${SRC_DIR}/external/${sentinel}" ]; then
-        log "${name} binary staged; build-external will skip recompilation"
-    else
-        err "${name} tarball extracted but sentinel ${sentinel} not present; CMakeLists short-circuit will not fire"
-    fi
-}
-
-if { [ "${SYSTEM}" = "deb" ] || [ "${SYSTEM}" = "rpm" ]; }; then
-    # libffi now builds from source on the manager legs (see
-    # src/external/CMakeLists.txt), so it no longer needs staging.
-    #
-    # libbpf-bootstrap still cannot be built here: its source needs kernel
-    # UAPI headers >= 4.13 (linux/bpf_perf_event.h) and a BPF-capable
-    # clang, neither of which the legacy agent builder image provides — a
-    # from-source attempt fails with "linux/bpf_perf_event.h: No such file
-    # or directory". Wazuh builds it in a dedicated centos:7 +
-    # clang-15-from-source image (issue 28626); here we reuse that
-    # precompiled tarball. Staged on every Linux leg regardless of
-    # BUILD_TARGET so the per-leg output is binary-complete; the
-    # CMakeLists.txt if(EXISTS ...) short-circuit decides whether the
-    # current leg actually consumes it, so staging it unused is harmless.
-    stage_precompiled libbpf-bootstrap libbpf-bootstrap/build/modern.bpf.o
-fi
 
 log "building externals via 'make build-external TARGET=${MAKE_TARGET}'"
 # `build-external` (defined at src/Makefile:372) configures cmake then builds
