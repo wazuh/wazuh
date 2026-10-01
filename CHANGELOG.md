@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `run_as` authorization-context regex rules matching only a prefix of the value instead of the whole value, including a trailing `$` anchor being dropped from the expression. ([#39770](https://github.com/wazuh/wazuh/pull/39770))
 - Fixed a bug in the RBAC login path. ([#39664](https://github.com/wazuh/wazuh/pull/39664))
 - Fixed a directory-naming collision in the multigroup shared-configuration path. ([#39773](https://github.com/wazuh/wazuh/pull/39773))
+- Fixed `run_as` authorization-context regex rules without a closing quote being evaluated as a partial expression, and rejected such rules when creating or updating security rules. ([#39855](https://github.com/wazuh/wazuh/pull/39855))
 
 ### Agent
 

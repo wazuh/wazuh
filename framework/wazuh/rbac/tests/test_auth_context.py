@@ -216,3 +216,12 @@ def test_match_item_rejects_trailing_newline():
     assert checker.match_item("r'^admin$'", "admin\n") == 0
     assert checker.match_item({"r'^auth$'": "x"}, {"auth\n": "x"}) == 0
     assert checker.process_lists(["r'^admin$'"], ["admin\n"], "MATCH") == 0
+
+
+@pytest.mark.parametrize('expression', ["r'^a|b", "r'", "r'^admin$"])
+def test_check_regex_rejects_unterminated_expression(expression):
+    """A rule without its closing quote is not a regex and must not be compiled from a partial pattern."""
+    checker = _make_checker()
+    assert checker.check_regex(expression) is False
+    assert checker.match_item(expression, "") == 0
+    assert checker.process_lists([expression], [""], "MATCH") == 0
