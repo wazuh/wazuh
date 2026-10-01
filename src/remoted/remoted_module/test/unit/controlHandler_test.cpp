@@ -36,8 +36,10 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <json.hpp>
 #include <memory>
 #include <mutex>
@@ -229,8 +231,12 @@ namespace
                                    { res.set_content(taskResp(req.body), "application/json"); });
 
             registry = std::make_shared<AgentRegistry>();
-            wdbClient = std::make_shared<WazuhDBClient>(
-                cfg.wdbSocketPath, cfg.wdbRequestConnections, cfg.wdbRoundtripDeadlineMs, cfg.wdbMaxQueueSize, metrics);
+            wdbClient = std::make_shared<WazuhDBClient>(cfg.wdbSocketPath,
+                                                        cfg.wdbRequestConnections,
+                                                        cfg.wdbRoundtripDeadlineMs,
+                                                        cfg.wdbMaxQueueSize,
+                                                        metrics,
+                                                        cfg.wdbRequestDeadlineMs);
             taskClient = std::make_shared<TaskClient>(
                 cfg.taskSocketPath, cfg.tmConcurrency, cfg.tmDeadlineMs, cfg.tmMaxQueueSize, metrics);
             hashCache = std::make_shared<HashCache>(cfg);
@@ -406,7 +412,27 @@ TEST(ControlHandlerTest, StartupFallsBackToDefaultGroupOnEmptyWdbCsv)
     EXPECT_EQ(j["agent"]["groups"][0], "default");
 }
 
-TEST(ControlHandlerTest, StartupReturns500OnWdbProtocolError)
+TEST(ControlHandlerTest, StartupMapsNoRowToDefaultForCompatibility)
+{
+    // No row in the local wazuh-db ("ok []") is its own answer now; /control keeps handing out
+    // "default" for it, exactly as before the client told the two cases apart.
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok []"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
+
+    StartupData data;
+    data.version = "5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleStartup(1, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(w.wait(3000ms));
+
+    EXPECT_EQ(w.value.status, 200);
+    auto j = nlohmann::json::parse(w.value.body);
+    ASSERT_EQ(j["agent"]["groups"].size(), 1U);
+    EXPECT_EQ(j["agent"]["groups"][0], "default");
+}
+
+TEST(ControlHandlerTest, StartupReturns503OnWdbProtocolError)
 {
     auto wdb = std::make_shared<WdbRouter>();
     wdb->onSelectAgentGroup([](const std::string&) { return "err some failure"; });
@@ -451,7 +477,7 @@ TEST(ControlHandlerTest, NotifyInvalidHostReturns400)
 TEST(ControlHandlerTest, NotifyReturnsGroupsSettingsHashAndTasks)
 {
     auto wdb = std::make_shared<WdbRouter>();
-    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default\"}]"; });
 
     HandlerFixture h(wdb,
                      [](const std::string&) -> std::string
@@ -506,7 +532,7 @@ TEST(ControlHandlerTest, NotifyReturnsGroupsSettingsHashAndTasks)
 TEST(ControlHandlerTest, NotifyReturnsEmptyTasksOnTaskManagerFailure)
 {
     auto wdb = std::make_shared<WdbRouter>();
-    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default\"}]"; });
 
     HandlerFixture h(wdb, [](const std::string&) { return "{}"; });
     h.taskServer->setHandler([](const httplib::Request&, httplib::Response& res) { res.status = 500; });
@@ -527,7 +553,7 @@ TEST(ControlHandlerTest, NotifyReturnsEmptyTasksOnTaskManagerFailure)
 TEST(ControlHandlerTest, NotifyReturnsRealConfigHashWhenMergedMgExists)
 {
     auto wdb = std::make_shared<WdbRouter>();
-    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default\"}]"; });
     HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
 
     // Materialise the merged.mg file for group "default" so getConfigHash
@@ -591,7 +617,7 @@ TEST(ControlHandlerTest, NotifyConfigTokenIsTheFullMultigroupSelectorInWdbOrder)
 TEST(ControlHandlerTest, NotifyFirstHostMetadataBypassesKeepaliveThrottle)
 {
     auto wdb = std::make_shared<WdbRouter>();
-    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default\"}]"; });
     HandlerFixture h(
         wdb, [](const std::string&) { return "{\"tasks\":[]}"; }, [](Config& c) { c.keepaliveThrottleSec = 3600; });
 
@@ -673,7 +699,7 @@ TEST(ControlHandlerTest, NotifyFirstHostMetadataBypassesKeepaliveThrottle)
 TEST(ControlHandlerTest, NotifyReportsCaGenerationTimestampFromProvider)
 {
     auto wdb = std::make_shared<WdbRouter>();
-    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default\"}]"; });
     HandlerFixture h(
         wdb,
         [](const std::string&) { return "{\"tasks\":[]}"; },
@@ -700,7 +726,7 @@ TEST(ControlHandlerTest, NotifyReportsCaGenerationTimestampFromProvider)
 TEST(ControlHandlerTest, NotifyReportsCaGenerationZeroFromProvider)
 {
     auto wdb = std::make_shared<WdbRouter>();
-    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default\"}]"; });
     HandlerFixture h(
         wdb,
         [](const std::string&) { return "{\"tasks\":[]}"; },
@@ -727,7 +753,7 @@ TEST(ControlHandlerTest, NotifyReportsCaGenerationZeroFromProvider)
 TEST(ControlHandlerTest, NotifyReportsCaGenerationNullWhenProviderHasNoBundle)
 {
     auto wdb = std::make_shared<WdbRouter>();
-    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default\"}]"; });
     HandlerFixture h(
         wdb,
         [](const std::string&) { return "{\"tasks\":[]}"; },
@@ -757,7 +783,7 @@ TEST(ControlHandlerTest, NotifyReportsCaGenerationNullWhenProviderHasNoBundle)
 TEST(ControlHandlerTest, NotifyOmitsCaGenerationWithoutProvider)
 {
     auto wdb = std::make_shared<WdbRouter>();
-    wdb->onSelectAgentGroup([](const std::string&) { return "ok {\"group\":\"default\"}"; });
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"default\"}]"; });
     // No tweakCfg: makeConfig() leaves caGenerationProvider default-constructed (empty), exactly
     // as buildControlConfig() does today on a build with no HTTPS listener behind it.
     HandlerFixture h(wdb,
@@ -864,7 +890,7 @@ TEST(ControlHandlerTest, ShutdownTouchesRegistryLastActivity)
 // Downstream failures must not be reported as success
 // =============================================================================
 
-TEST(ControlHandlerTest, NotifyWithNoCachedGroupsReturns500OnWdbError)
+TEST(ControlHandlerTest, NotifyWithNoCachedGroupsReturns503OnWdbError)
 {
     // Nothing cached and wazuh-db down: "default" here would be a wrong answer served as
     // authoritative, which is what every agent gets after a restart with wazuh-db down.
@@ -986,4 +1012,294 @@ TEST(ControlHandlerTest, NotifyAfterStartupBypassesKeepaliveThrottle)
     std::this_thread::sleep_for(50ms); // settle so a stray extra write would be visible
 
     EXPECT_EQ(fullUpdates(), 2);
+}
+
+// =============================================================================
+// wazuh-db refusing connections: every request is answered within the end-to-end deadline
+// =============================================================================
+
+namespace
+{
+    constexpr auto kRequestDeadlineMs = 300U;
+
+    void withShortRequestDeadline(Config& c)
+    {
+        c.wdbRequestDeadlineMs = kRequestDeadlineMs;
+    }
+} // namespace
+
+TEST(ControlHandlerTest, StartupReturns503WithinDeadlineWhenWazuhDbRefusesConnections)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"g1\"}]"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; }, withShortRequestDeadline);
+    h.wdbServer.reset();
+
+    StartupData data;
+    data.version = "5.0.0";
+    for (int attempt = 0; attempt < 2; ++attempt)
+    {
+        Waiter<HttpResponse> w;
+        const auto start = std::chrono::steady_clock::now();
+        h.handler->handleStartup(1, data, [&](const HttpResponse& r) { w.complete(r); });
+        ASSERT_TRUE(w.wait(10000ms)) << "attempt " << attempt << " was never answered";
+        EXPECT_EQ(w.value.status, 503) << "attempt " << attempt;
+        EXPECT_NE(w.value.body.find("dependency_unavailable"), std::string::npos);
+        EXPECT_LT(std::chrono::steady_clock::now() - start, 5s) << "attempt " << attempt;
+    }
+}
+
+TEST(ControlHandlerTest, NotifyServesCachedGroupsWhenWazuhDbRefusesConnections)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"g1\"}]"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; }, withShortRequestDeadline);
+
+    StartupData startup;
+    startup.version = "5.0.0";
+    Waiter<HttpResponse> ws;
+    h.handler->handleStartup(1, startup, [&](const HttpResponse& r) { ws.complete(r); });
+    ASSERT_TRUE(ws.wait(3000ms));
+    ASSERT_EQ(ws.value.status, 200);
+
+    // groupsRefreshIntervalSec is 0 in these fixtures, so every notify asks wazuh-db first.
+    h.wdbServer.reset();
+    NotifyData data;
+    data.version = "5.0.0";
+    for (int attempt = 0; attempt < 2; ++attempt)
+    {
+        Waiter<HttpResponse> w;
+        const auto start = std::chrono::steady_clock::now();
+        h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w.complete(r); });
+        ASSERT_TRUE(w.wait(10000ms)) << "attempt " << attempt << " was never answered";
+        EXPECT_EQ(w.value.status, 200) << "attempt " << attempt;
+        EXPECT_EQ(nlohmann::json::parse(w.value.body)["agent"]["groups"][0], "g1");
+        EXPECT_LT(std::chrono::steady_clock::now() - start, 5s) << "attempt " << attempt;
+    }
+    // Served from the cache, never overwritten by the failed refresh.
+    const auto entry = h.registry->get(1);
+    ASSERT_TRUE(entry);
+    EXPECT_EQ(entry->groups, std::vector<std::string> {"g1"});
+}
+
+TEST(ControlHandlerTest, NotifyWithoutCacheReturns503WhenWazuhDbRefusesConnections)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; }, withShortRequestDeadline);
+    h.wdbServer.reset();
+
+    NotifyData data;
+    data.version = "5.0.0";
+    for (int attempt = 0; attempt < 2; ++attempt)
+    {
+        Waiter<HttpResponse> w;
+        h.handler->handleNotify(2, data, [&](const HttpResponse& r) { w.complete(r); });
+        ASSERT_TRUE(w.wait(10000ms)) << "attempt " << attempt << " was never answered";
+        EXPECT_EQ(w.value.status, 503) << "attempt " << attempt;
+        EXPECT_FALSE(h.registry->get(2));
+    }
+}
+
+// =============================================================================
+// One ordering rule for every groups writer (#39147): a /control lookup never overwrites a newer
+// membership push, and a "no row" answer is never stored as an established membership
+// =============================================================================
+
+namespace
+{
+    std::size_t selectCount(WdbRouter& wdb)
+    {
+        const auto cmds = wdb.commands();
+        return static_cast<std::size_t>(std::count_if(cmds.begin(),
+                                                      cmds.end(),
+                                                      [](const std::string& c)
+                                                      { return c.rfind("global select-agent-group", 0) == 0; }));
+    }
+
+    /// Answers every select-agent-group with `answer`, holding the `gateAt`-th one (1-based) until
+    /// the test calls release(): the query has been issued, and its ticket taken, before the test
+    /// pushes, so "issue -> push -> answer" is the order every run.
+    class GatedSelect
+    {
+    public:
+        GatedSelect(WdbRouter& wdb, std::string answer, int gateAt)
+            : m_releaseFuture(m_release.get_future().share())
+            , m_receivedFuture(m_received.get_future())
+        {
+            wdb.onSelectAgentGroup(
+                [this, answer = std::move(answer), gateAt](const std::string&)
+                {
+                    if (++m_calls == gateAt)
+                    {
+                        m_received.set_value();
+                        m_releaseFuture.wait_for(10s); // bounded: a failing test must not hang the fake
+                    }
+                    return answer;
+                });
+        }
+        bool waitReceived()
+        {
+            return m_receivedFuture.wait_for(5s) == std::future_status::ready;
+        }
+        void release()
+        {
+            m_release.set_value();
+        }
+
+    private:
+        std::promise<void> m_release;
+        std::shared_future<void> m_releaseFuture;
+        std::promise<void> m_received;
+        std::future<void> m_receivedFuture;
+        std::atomic<int> m_calls {0};
+    };
+
+    uint64_t wallSec()
+    {
+        return static_cast<uint64_t>(std::time(nullptr));
+    }
+} // namespace
+
+TEST(ControlHandlerTest, StartupStoresNoRowAsNotEstablished)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok []"; });
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
+
+    StartupData startup;
+    startup.version = "5.0.0";
+    Waiter<HttpResponse> ws;
+    h.handler->handleStartup(1, startup, [&](const HttpResponse& r) { ws.complete(r); });
+    ASSERT_TRUE(ws.wait(3000ms));
+    ASSERT_EQ(ws.value.status, 200);
+    EXPECT_EQ(nlohmann::json::parse(ws.value.body)["agent"]["groups"][0], "default");
+
+    // S25: "default" is /control's compatibility answer, never an established membership.
+    auto entry = h.registry->get(1);
+    ASSERT_TRUE(entry);
+    EXPECT_EQ(entry->groups, std::vector<std::string> {"default"});
+    EXPECT_EQ(entry->groupsRefreshedAtSec, 0U);
+
+    NotifyData data;
+    data.version = "5.0.0";
+    for (int i = 0; i < 2; ++i)
+    {
+        Waiter<HttpResponse> w;
+        h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w.complete(r); });
+        ASSERT_TRUE(w.wait(3000ms));
+        ASSERT_EQ(w.value.status, 200);
+        EXPECT_EQ(nlohmann::json::parse(w.value.body)["agent"]["config_token"], "default");
+    }
+    EXPECT_EQ(h.registry->get(1)->groupsRefreshedAtSec, 0U);
+    // Never established, so every notify asks wazuh-db again until the row exists.
+    EXPECT_EQ(selectCount(*wdb), 3U);
+}
+
+TEST(ControlHandlerTest, StartupRacingAPushAnswersThePushedGroups)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    GatedSelect gate(*wdb, "ok [{\"group\":\"g-old\"}]", 1);
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
+
+    // The entry a push can update: what /control/shutdown mints for an agent it has not seen.
+    Waiter<HttpResponse> wd;
+    h.handler->handleShutdown(1, ShutdownData {}, [&](const HttpResponse& r) { wd.complete(r); });
+    ASSERT_TRUE(wd.wait(3000ms));
+
+    StartupData startup;
+    startup.version = "5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleStartup(1, startup, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(gate.waitReceived());
+    ASSERT_EQ(h.registry->setGroups(1, {"g-new"}, wallSec()), AgentRegistry::PushOutcome::Updated);
+    const auto pushedSeq = h.registry->get(1)->groupsSeq;
+    gate.release();
+    ASSERT_TRUE(w.wait(3000ms));
+
+    ASSERT_EQ(w.value.status, 200);
+    EXPECT_EQ(nlohmann::json::parse(w.value.body)["agent"]["groups"][0], "g-new");
+    const auto entry = h.registry->get(1);
+    EXPECT_EQ(entry->groups, std::vector<std::string> {"g-new"});
+    EXPECT_EQ(entry->groupsSeq, pushedSeq); // the older answer did not write over it
+}
+
+TEST(ControlHandlerTest, NotifyRefreshRacingAPushKeepsThePushedGroups)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    GatedSelect gate(*wdb, "ok [{\"group\":\"g-old\"}]", 2); // 1: startup; 2: the notify refresh
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
+
+    StartupData startup;
+    startup.version = "5.0.0";
+    Waiter<HttpResponse> ws;
+    h.handler->handleStartup(1, startup, [&](const HttpResponse& r) { ws.complete(r); });
+    ASSERT_TRUE(ws.wait(3000ms));
+    ASSERT_EQ(h.registry->get(1)->groups, std::vector<std::string> {"g-old"});
+
+    // groupsRefreshIntervalSec is 0 in these fixtures: the notify refreshes from wazuh-db.
+    NotifyData data;
+    data.version = "5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(gate.waitReceived());
+    ASSERT_EQ(h.registry->setGroups(1, {"g-new"}, wallSec()), AgentRegistry::PushOutcome::Updated);
+    gate.release();
+    ASSERT_TRUE(w.wait(3000ms));
+
+    ASSERT_EQ(w.value.status, 200);
+    EXPECT_EQ(nlohmann::json::parse(w.value.body)["agent"]["config_token"], "g-new");
+    EXPECT_EQ(h.registry->get(1)->groups, std::vector<std::string> {"g-new"});
+}
+
+TEST(ControlHandlerTest, NotifyWithinTheIntervalAfterAPushMakesNoQuery)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"g1\"}]"; });
+    HandlerFixture h(
+        wdb, [](const std::string&) { return "{\"tasks\":[]}"; }, [](Config& c) { c.groupsRefreshIntervalSec = 60; });
+
+    StartupData startup;
+    startup.version = "5.0.0";
+    Waiter<HttpResponse> ws;
+    h.handler->handleStartup(1, startup, [&](const HttpResponse& r) { ws.complete(r); });
+    ASSERT_TRUE(ws.wait(3000ms));
+    ASSERT_EQ(selectCount(*wdb), 1U);
+
+    // A push counts as a refresh (FR-13): the next notify hands out the new token without a query.
+    ASSERT_EQ(h.registry->setGroups(1, {"g2"}, wallSec()), AgentRegistry::PushOutcome::Updated);
+    NotifyData data;
+    data.version = "5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleNotify(1, data, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(w.wait(3000ms));
+
+    ASSERT_EQ(w.value.status, 200);
+    EXPECT_EQ(nlohmann::json::parse(w.value.body)["agent"]["config_token"], "g2");
+    EXPECT_EQ(selectCount(*wdb), 1U);
+}
+
+TEST(ControlHandlerTest, StartupBlockedByASkippedPushAnswersItsOwnReadProvisionally)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    GatedSelect gate(*wdb, "ok [{\"group\":\"g1\"}]", 1);
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
+
+    StartupData startup;
+    startup.version = "5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleStartup(1, startup, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(gate.waitReceived());
+    // While the query is in flight, a push is skipped for an agent this node does not hold -- it
+    // may have been agent 1's, and nothing recorded which.
+    ASSERT_EQ(h.registry->setGroups(1, {"g-pushed"}, wallSec()), AgentRegistry::PushOutcome::Skipped);
+    gate.release();
+    ASSERT_TRUE(w.wait(3000ms));
+
+    ASSERT_EQ(w.value.status, 200);
+    EXPECT_EQ(nlohmann::json::parse(w.value.body)["agent"]["groups"][0], "g1"); // its own read, not "default"
+    const auto entry = h.registry->get(1);
+    ASSERT_TRUE(entry);
+    EXPECT_EQ(entry->groups, std::vector<std::string> {"g1"});
+    EXPECT_EQ(entry->groupsRefreshedAtSec, 0U); // provisional: the next reader looks it up again
+    EXPECT_GT(entry->groupsSeq, 0U);
 }

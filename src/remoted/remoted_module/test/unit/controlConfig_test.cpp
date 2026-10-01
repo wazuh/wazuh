@@ -111,6 +111,18 @@ TEST(ControlConfigTest, PositiveOverridesReplaceDefaults)
     EXPECT_EQ(cfg.keepaliveThrottleSec, 15U);
 }
 
+TEST(ControlConfigTest, WdbRequestDeadlineDefaultsAndOverrides)
+{
+    auto raw = zeroedConfig();
+    EXPECT_EQ(buildControlConfig(raw).wdbRequestDeadlineMs, kWdbRequestDeadlineMs);
+
+    raw.wdb_request_deadline_ms = 1234;
+    EXPECT_EQ(buildControlConfig(raw).wdbRequestDeadlineMs, 1234U);
+
+    raw.wdb_request_deadline_ms = -1;
+    EXPECT_EQ(buildControlConfig(raw).wdbRequestDeadlineMs, kWdbRequestDeadlineMs);
+}
+
 // -----------------------------------------------------------------------------
 // Negative-value guard. remoted's getDefine_Int_default has its own min bound,
 // but a bad caller / test / future migration could still hand us a negative;

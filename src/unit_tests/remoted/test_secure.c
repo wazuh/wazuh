@@ -3736,7 +3736,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_int_equal(rm_config.cacerts_rate_limit, 0);
 }
 
-/* Tests remoted_module_control_config: the eight control_* options plus the two vd_scan_*
+/* Tests remoted_module_control_config: the nine control_* options plus the two vd_scan_*
  * timeouts, in read order. */
 
 static void queue_control_config_defines(int keepalive_throttle)
@@ -3744,6 +3744,7 @@ static void queue_control_config_defines(int keepalive_throttle)
     will_return(__wrap_getDefine_Int_default, 60);    // control_groups_refresh_interval
     will_return(__wrap_getDefine_Int_default, 4);     // control_wdb_request_connections
     will_return(__wrap_getDefine_Int_default, 2000);  // control_wdb_roundtrip_deadline
+    will_return(__wrap_getDefine_Int_default, 5000);  // control_wdb_request_deadline
     will_return(__wrap_getDefine_Int_default, 10000); // control_wdb_max_queue_size
     will_return(__wrap_getDefine_Int_default, 4);     // control_tm_concurrency
     will_return(__wrap_getDefine_Int_default, 2000);  // control_tm_deadline
@@ -3788,6 +3789,9 @@ void test_remoted_module_control_config_silent_below_disconnection_time(void** s
     memset(&rm_config, 0, sizeof(rm_config));
     remoted_module_control_config(&rm_config);
 
+    assert_int_equal(rm_config.wdb_roundtrip_deadline_ms, 2000);
+    assert_int_equal(rm_config.wdb_request_deadline_ms, 5000);
+    assert_int_equal(rm_config.wdb_max_queue_size, 10000);
     assert_int_equal(rm_config.keepalive_throttle_sec, 449);
     assert_int_equal(rm_config.vd_scan_read_timeout_sec, 5);
     assert_int_equal(rm_config.vd_scan_write_timeout_sec, 5);

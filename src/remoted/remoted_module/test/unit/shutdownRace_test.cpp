@@ -20,12 +20,19 @@
 // built with -DFSANITIZE=ON (ASan): without a sanitizer, the freed io_context memory may not be
 // detectably corrupted within this test's short window, so it can "pass" even against the
 // unfixed ordering. Run it under the ASan job, not just a plain Debug/Release build.
+#include "control/agentRegistry.hpp"
+#include "control/controlConfig.hpp"
+#include "control/metrics.hpp"
+#include "control/registryAgentGroupSource.hpp"
+#include "control/registryLookup.hpp"
 #include "decoding/bodyDecoder.hpp"
 #include "downstream/asioUdsHttpClient.hpp"
 #include "downstream/deferredForwarder.hpp"
 #include "downstream/deferredWorkLimiter.hpp"
 #include "downstream/downstreamConfig.hpp"
 #include "endpoints/authGateway.hpp"
+#include "endpoints/downloadEndpoint.hpp"
+#include "fakeUdsServer.hpp"
 #include "http_server/IHttpServer.hpp"
 #include "http_server/httpServerFactory.hpp"
 #include "jwt/canonicalAgentId.hpp"
@@ -33,6 +40,8 @@
 #include "jwt/secureBytes.hpp"
 
 #include "testTlsServer.hpp"
+
+#include <wazuh_metrics/manager.hpp>
 
 #include <gtest/gtest.h>
 
@@ -506,4 +515,93 @@ TEST(ShutdownRace, StopSequenceSurvivesConnectionsAcceptedButNeverWritten)
     }
 
     SUCCEED();
+}
+
+TEST(ShutdownRace, StopSequenceSurvivesADownloadLookupInFlight)
+{
+    // #39147: a config /download whose agent the registry cannot vouch for waits on a wazuh-db
+    // lookup. The facade's stop order must answer that waiter (503) while the HTTP runtime is still
+    // alive -- accepts closed (phase 1), the lookup drained (phase 1b), the transport torn down
+    // (phase 4) -- and nothing may touch freed state afterwards (ASan).
+    auto certOpt = remoted::test::generateTestCertificate("rmt_shutdown_lookup");
+    if (!certOpt)
+    {
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
+    }
+    remoted::test::ScratchFileCleanup certCleanup {{certOpt->certPath, certOpt->keyPath}};
+
+    // wazuh-db holds the select-agent-group query until the test is done with it.
+    std::promise<void> release;
+    auto released = release.get_future().share();
+    std::promise<void> received;
+    auto queryReceived = received.get_future();
+    std::atomic<bool> receivedSet {false};
+    const auto wdbPath = remoted::test::makeUniqueSocketPath("sr_wdb");
+    auto wdb =
+        std::make_unique<remoted::test::FakeUdsServer>(wdbPath,
+                                                       [&](const std::string& request)
+                                                       {
+                                                           if (request.rfind("global select-agent-group", 0) == 0)
+                                                           {
+                                                               if (!receivedSet.exchange(true))
+                                                               {
+                                                                   received.set_value();
+                                                               }
+                                                               released.wait_for(std::chrono::seconds {10});
+                                                           }
+                                                           return std::string("ok [{\"group\":\"default\"}]");
+                                                       });
+
+    remoted::control::Config controlConfig;
+    controlConfig.wdbSocketPath = wdbPath;
+    controlConfig.wdbRoundtripDeadlineMs = 300;
+    controlConfig.wdbRequestDeadlineMs = 300;
+    remoted::control::ControlMetrics controlMetrics {};
+    auto registry = std::make_shared<remoted::control::AgentRegistry>();
+    auto lookup = std::make_shared<remoted::control::RegistryLookup>(registry, controlConfig, controlMetrics);
+    wazuh::metrics::Manager metricsManager;
+    const auto downloadMetrics = remoted::endpoints::download::makeDownloadMetrics(metricsManager);
+
+    auto server = makeHttpServer();
+    AuthGateway gateway {remoted::auth::AuthConfig {},
+                         std::make_shared<remoted::test::FakeKeystore>(),
+                         std::make_shared<const remoted::decoding::BodyDecoder>(*server, /*enabled=*/true)};
+    gateway.addAuthenticatedRoute(
+        *server,
+        Method::Post,
+        "/download",
+        remoted::endpoints::download::makeHandler(
+            {}, downloadMetrics, std::make_shared<remoted::control::RegistryAgentGroupSource>(registry, lookup, 60)),
+        remoted::http::ResponseMode::Streamable);
+
+    HttpServerConfig config;
+    config.port = static_cast<std::uint16_t>(29000 + (::getpid() % 5000));
+    config.certificatePath = certOpt->certPath;
+    config.privateKeyPath = certOpt->keyPath;
+    server->start(config);
+
+    std::thread clientThread(
+        [&]
+        {
+            remoted::test::sendSignedRequest(config.port,
+                                             remoted::test::testAgentKey(),
+                                             "/download",
+                                             R"({"resource_type":"config","resource_id":"default"})");
+        });
+    ASSERT_EQ(queryReceived.wait_for(std::chrono::seconds {5}), std::future_status::ready)
+        << "the download never reached wazuh-db; the test would prove nothing";
+
+    server->stopAccepting(); // phase 1
+    lookup->stop();          // phase 1b: the in-flight query times out, the download is answered
+    EXPECT_EQ(downloadMetrics.unavailable->get(), 1U);
+    server->stop();
+
+    if (clientThread.joinable())
+    {
+        clientThread.join();
+    }
+    server.reset(); // phase 4: the route table, its source and their reference to the lookup
+    release.set_value();
+    lookup.reset();
+    wdb.reset();
 }
