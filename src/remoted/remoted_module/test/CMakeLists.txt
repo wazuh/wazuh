@@ -65,7 +65,11 @@ target_include_directories(
           ${SRC_FOLDER}/external/nlohmann
           # vdClient_test.cpp's fakeVdServer.hpp spins up a real httplib::Server over a UDS socket
           # to stand in for the VD module; remoted_module gets cpp-httplib PRIVATE, same gap as above.
-          ${SRC_FOLDER}/external/cpp-httplib)
+          ${SRC_FOLDER}/external/cpp-httplib
+          # agentGroupsRoute_test.cpp drives the admin route handler directly (HttpRequest,
+          # IHttpResponder); remoted_module links wazuh_uds_http_server PRIVATE, same gap -- the
+          # header needs only the standard library, so no second copy of the archive is linked.
+          ${SRC_FOLDER}/shared_modules/uds_http_server/include)
 
 add_test(NAME remoted_module_utest COMMAND remoted_module_utest)
 # The suite normally finishes in well under a minute; the TIMEOUT is a backstop so a parked
