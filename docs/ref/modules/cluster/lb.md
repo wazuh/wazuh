@@ -120,7 +120,7 @@ replicated on a timer, or never replicated at all.
 | **`etc/certs/`** | **no** | **Every node needs its own listener certificate, issued externally** |
 | **`var/upgrade/`** | **no** | **A custom WPK must be placed on every node by hand** |
 | **`queue/tasks/`** | **no** | Each node tracks task delivery on its own |
-| **remoted's in-memory agent registry** | **no** | See [§7](#7-what-an-agent-observes-while-the-cluster-catches-up) |
+| remoted's in-memory agent registry | no | Nothing to align: a node that has not met an agent reads its groups from its own replicated database. See [§7](#7-what-an-agent-observes-while-the-cluster-catches-up) |
 
 The replicated set is defined in
 [`framework/wazuh/core/cluster/cluster.json`](https://github.com/wazuh/wazuh/blob/5.0.0/framework/wazuh/core/cluster/cluster.json)
@@ -234,17 +234,17 @@ reconnect during the window.
 **Read this section before deploying.** Everything in it is expected behaviour that resolves on its
 own. Not knowing about it is what turns a normal startup into an incident call.
 
-There are two distinct effects, with two distinct causes, and they are often confused.
+There are two distinct effects, replicated by the cluster along two different paths.
 
 ```mermaid
 flowchart TB
-    subgraph R["Replicated state — closed by the cluster"]
+    subgraph R["Credentials — copied as files"]
         R1["client.keys, authd.pass,<br/>enrollment_tokens.json"] --> R2["wazuh-manager-clusterd copies them<br/>on a 9 s interval"]
         R2 --> R3["Bounded window.<br/>Same duration at 3 nodes or 30."]
     end
-    subgraph L["Node-local state — closed by the agent"]
-        L1["remoted's in-memory<br/>agent registry"] --> L2["Nothing replicates it.<br/>A node learns an agent only when<br/>it serves that agent a /control."]
-        L2 --> L3["Window grows with node count."]
+    subgraph G["Group memberships — copied into each node's database"]
+        G1["Agent groups,<br/>assigned on the master"] --> G2["wazuh-manager-clusterd sends the changes<br/>to every worker's wazuh-manager-db<br/>every 10 s"]
+        G2 --> G3["remoted reads them on demand.<br/>Bounded window, same at any node count."]
     end
 ```
 
@@ -281,11 +281,16 @@ certificate is not misissued.
 > first case: `unknown_agent`, `enrollment_key_unavailable` (the `authd.pass` row) and
 > `token_unknown` (the token row).
 
-### 7.2 Node-local state: `403` on configuration download
+### 7.2 Group memberships: configuration download on any node
 
-`POST /control` registers an agent **in the memory of the node that handled it**. Nothing replicates
-that registry. `POST /download` for `resource_type: config` authorises against it, so a download
-routed to a node that has not yet served this agent a `/control` is refused with `403`.
+`POST /download` for `resource_type: config` is served only for the selector the agent's own groups
+produce. Each node keeps the groups of the agents it serves **in its own memory**, and nothing
+replicates that cache. But a node that holds no fresh membership for the agent (it never served
+it a `/control`, it restarted, or the cached entry is older than
+[`remoted.control_groups_refresh_interval`](../remoted/configuration.md#remotedcontrol_groups_refresh_interval),
+60 s by default) reads the agent's groups from its own `wazuh-manager-db`, which the cluster keeps
+in sync, and answers from that read. A download can land on any node, whichever node served the
+agent's `/control`.
 
 ```mermaid
 sequenceDiagram
@@ -295,41 +300,30 @@ sequenceDiagram
     participant W2 as worker 2
     A->>LB: POST /control
     LB->>W1: routed here
-    W1->>W1: records the agent, in memory
-    W1-->>A: 200
+    W1-->>A: 200, config_token
     A->>LB: POST /download (config)
     LB->>W2: routed elsewhere
-    W2-->>A: 403 Forbidden
+    W2->>W2: reads the agent's groups<br/>from its local wazuh-manager-db
+    W2-->>A: 200, the file
 ```
 
-**This also converges**, but by a different route: the agent's own notify cycle eventually reaches
-every node. Measured, one notify plus six downloads per round:
+What can still appear, and why:
 
-| Round | Downloads denied | Nodes that know the agent |
+| Answer | Cause | Clears |
 |---|---|---|
-| 1 | 4 / 6 | 1 of 3 |
-| 2 | 2 / 6 | 2 of 3 |
-| 3 | 2 / 6 | 2 of 3 |
-| 4 | **0 / 6** | 3 of 3 |
-| 5 and after | **0 / 6** | 3 of 3 |
+| `503`, body `{"error":"dependency_unavailable","dependency":"wazuh-db"}` | This node's database has no row for the agent yet. A node adds new agents to its database as `client.keys` reaches it, so this falls inside the [§7.1](#71-replicated-state-brief-401s-after-enrollment) window | On its own. The agent retries, and is never served `default` meanwhile |
+| The same `503` | This node's `wazuh-manager-db` did not answer in time | When the database answers again. Sustained on one node, that node is degraded ([troubleshooting §9](lb-troubleshooting.md#9-some-agents-work-some-do-not-with-no-pattern)) |
+| `403` | The agent's groups changed and this node has not applied the change yet: the master sends group changes to the workers every 10 seconds. Also right after an agent enrolls into a group other than `default`, while a worker holds its row but not its groups yet | Once the node applies the change, within a round or two |
 
-**The window scales with cluster size**, because covering every node with random routing is the
-coupon-collector problem — `N·H(N)` notifies for `N` nodes:
-
-| Nodes | Notifies to cover them all | At `notify_time` 10 s |
-|---|---|---|
-| 3 | 5.5 | ~1 minute |
-| 10 | 29.3 | ~5 minutes |
-| 20 | 72.0 | ~12 minutes |
-
-Plan for it on large clusters: a freshly enrolled agent may not be able to fetch its configuration
-from **every** node for that long. It can always fetch it from the nodes it has already contacted.
+The three are counted apart on each node: `remoted.download.no_row`, `remoted.download.unavailable`
+and `remoted.download.denied` (see [troubleshooting §4](lb-troubleshooting.md#4-403-but-only-on-configuration-download)
+and [§7](lb-troubleshooting.md#7-503-service-unavailable)).
 
 Two further properties worth knowing:
 
 * It affects **only** `resource_type: config`. WPK downloads are not gated this way.
-* Registry entries are evicted after **6 hours** of that node not serving the agent. An agent
-  notifying regularly never reaches that, but a long-idle agent can be re-registered from scratch.
+* A node evicts an agent's entry after **6 hours** without serving it. The agent loses nothing: the
+  node reads its groups from the database again on its next request.
 
 ### 7.3 Per-node values an agent may see differ
 
@@ -614,8 +608,8 @@ Two conditions apply, and both are properties of the certificates rather than of
 ### 8.7 Enrol one agent and watch it settle
 
 Expect the behaviour in [§7](#7-what-an-agent-observes-while-the-cluster-catches-up): a few seconds
-of `401`, possibly a `503`, and `403` on configuration download until the agent's notify cycle has
-reached every node. Do not change anything during that window.
+of `401` and possibly a `503`, including `503 dependency_unavailable` on configuration download from
+a node whose database has not received the agent yet. Do not change anything during that window.
 
 Confirm it settled rather than assuming it did:
 

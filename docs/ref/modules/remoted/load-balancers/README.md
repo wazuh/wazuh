@@ -373,13 +373,15 @@ Everything else about a balanced cluster is on the cluster pages, which own it:
 
 * what is replicated between nodes and what is not (`etc/certs/`, `var/upgrade/`, remoted's
   in-memory agent registry) — [What the cluster replicates](../../cluster/lb.md#4-what-the-cluster-replicates-and-what-it-does-not);
-* the brief `401`s after enrollment, the `403` on configuration download from a node that has not
-  yet seen the agent's `/control`, and the values that must match across nodes (`global_prefix`, the
-  `limits` internal options, `<cluster><name>`, clocks) —
+* the brief `401`s after enrollment, configuration downloads on a node the agent has not contacted
+  (served from that node's own `wazuh-manager-db`; a `503` while it has no row for the agent yet),
+  and the values that must match across nodes (`global_prefix`, the `limits` internal options,
+  `<cluster><name>`, clocks) —
   [What an agent observes while the cluster catches up](../../cluster/lb.md#7-what-an-agent-observes-while-the-cluster-catches-up);
 * which CA agents trust, and why `GET /cacerts` must not bootstrap trust under termination with a
   balancer certificate from another CA — [What agents trust](../../cluster/lb.md#what-agents-trust);
-* a node that answers the health probe but fails `/control` —
+* a node that answers the health probe but fails `/control` and configuration downloads with
+  `503 dependency_unavailable` —
   [One node is degraded](../../cluster/lb-troubleshooting.md#9-some-agents-work-some-do-not-with-no-pattern).
 
 ## 8. Checklist before going to production
