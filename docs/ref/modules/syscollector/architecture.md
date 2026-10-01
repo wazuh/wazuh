@@ -439,8 +439,7 @@ Recovery behavior is controlled by the `integrity_interval` parameter:
 ```
 
 **Default**: 86400 seconds (24 hours)
-**Minimum**: 60 seconds (1 minute)
-**Disabled**: Set to 0 to disable integrity checks
+**Allowed values**: 0 to 4294967295 seconds. There is no minimum, and `0` does not disable the check: each table is then validated after every successful synchronization
 
 ---
 
@@ -967,13 +966,17 @@ Syscollector validates data for the following Wazuh indices:
 |------------|---------------|-------------|
 | `dbsync_hwinfo` | `wazuh-states-inventory-hardware` | Hardware information |
 | `dbsync_osinfo` | `wazuh-states-inventory-system` | Operating system details |
-| `dbsync_netinfo_iface` | `wazuh-states-inventory-network` | Network interfaces |
-| `dbsync_netinfo_proto` | `wazuh-states-inventory-network` | Network protocols |
-| `dbsync_netinfo_addr` | `wazuh-states-inventory-network` | Network addresses |
+| `dbsync_network_iface` | `wazuh-states-inventory-interfaces` | Network interfaces |
+| `dbsync_network_protocol` | `wazuh-states-inventory-protocols` | Network protocols |
+| `dbsync_network_address` | `wazuh-states-inventory-networks` | Network addresses |
 | `dbsync_packages` | `wazuh-states-inventory-packages` | Installed packages |
 | `dbsync_hotfixes` | `wazuh-states-inventory-hotfixes` | System hotfixes (Windows) |
 | `dbsync_ports` | `wazuh-states-inventory-ports` | Open network ports |
 | `dbsync_processes` | `wazuh-states-inventory-processes` | Running processes |
+| `dbsync_users` | `wazuh-states-inventory-users` | System users |
+| `dbsync_groups` | `wazuh-states-inventory-groups` | System groups |
+| `dbsync_services` | `wazuh-states-inventory-services` | System services |
+| `dbsync_browser_extensions` | `wazuh-states-inventory-browser-extensions` | Browser extensions |
 
 ### Deferred Deletion Pattern
 
