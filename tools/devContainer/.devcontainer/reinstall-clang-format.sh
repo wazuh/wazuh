@@ -16,8 +16,8 @@ Usage:
   $0 <branch-or-tag> [options]
 
 Examples:
-  $0 llvmorg-22.1.4
-  $0 release/22.1.4 --install-dir "\$HOME/.local/bin"
+  $0 llvmorg-22.1.1
+  $0 release/22.x --install-dir "\$HOME/.local/bin"
   $0 main --jobs 8 --clean
 
 Options:
@@ -103,8 +103,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$REF" ]] || {
-  echo "No ref specified, using default: llvmorg-22.1.4"
-  REF="llvmorg-22.1.4"
+  echo "No ref specified, using default: llvmorg-22.1.1"
+  REF="llvmorg-22.1.1"
 }
 
 [[ "$JOBS" =~ ^[0-9]+$ ]] || die "--jobs must be numeric"
