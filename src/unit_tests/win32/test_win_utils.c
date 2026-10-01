@@ -28,7 +28,7 @@
 extern sysinfo_networks_func sysinfo_network_ptr;
 extern sysinfo_free_result_func sysinfo_free_result_ptr;
 
-static agent global_config = { .main_ip_update_interval = (int)TIME_INCREMENT };
+static agent global_config = { 0 };
 static int test_case_selector = 0;
 static int error_code_sysinfo_network = 0;
 

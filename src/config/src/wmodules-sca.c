@@ -119,6 +119,8 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
 {
     unsigned int i;
     wm_sca_t *sca;
+    /* 4.x scheduling options: an upgrade keeps ossec.conf, so they are recognized but ignored */
+    char *const xml_deprecated[] = {"day", "wday", "time", NULL};
 
     /* On the manager, agent.conf parsing must not activate the local ruleset. */
     #ifdef CLIENT
@@ -132,7 +134,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
         sca->enabled = 1;
         sca->scan_on_start = 1;
         sca->max_eps = 50;
-        sched_scan_init(&(sca->scan_config));
+        sca->interval = WM_DEF_INTERVAL;
         sca->policies = NULL;
         module->context = &WM_SCA_CONTEXT;
         module->tag = strdup(module->context->name);
@@ -310,7 +312,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
                 case '\0': break;
                 default: merror("Invalid interval at module '%s'", WM_SCA_CONTEXT.name); return OS_INVALID;
             }
-            sca->scan_config.interval = interval;
+            sca->interval = interval;
         }
         else if (!strcmp(nodes[i]->element, XML_POLICIES))
         {
@@ -434,14 +436,13 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
                 OS_ClearNode(children);
             }
         }
-        else if (is_sched_tag(nodes[i]->element)) {
-            // Do nothing
+        else if (w_is_str_in_array(xml_deprecated, nodes[i]->element)) {
+            mwarn("The <%s> option is deprecated and no longer has any effect.", nodes[i]->element);
         } else {
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_SCA_CONTEXT.name);
             return OS_INVALID;
         }
     }
 
-    const int sched_read = sched_scan_read(&(sca->scan_config), nodes, module->context->name);
-    return sched_read;
+    return 0;
 }

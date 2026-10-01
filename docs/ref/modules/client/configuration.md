@@ -240,14 +240,6 @@ The agent never edits it in place: it only ever replaces the whole file, which i
 directory is group-writable with the sticky bit set -- the agent can replace its own anchor
 but nothing root-owned beside it.
 
-### ip_update_interval
-
-Interval in seconds for updating agent's IP address with the manager.
-
-- **Default value:** `0` (disabled)
-- **Allowed values:** `0` (disabled) or positive integer (seconds)
-- **Note:** When `0`, IP updates are disabled; set to positive value (e.g., `3600`) to enable periodic IP update messages
-
 ### config-profile
 
 Agent configuration profile (used with centralized configuration via `agent.conf`).

@@ -1657,6 +1657,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_max_eps = "max_eps";
     const char *xml_notify_first_scan = "notify_first_scan";
     const char *xml_diff = "diff";
+    /* 4.x options: an upgrade keeps ossec.conf, so they are recognized but ignored */
+    char *const xml_deprecated[] = {"scan_on_start", "alert_new_files", "auto_ignore", "database", "prefilter_cmd",
+                                    "allow_remote_prefilter_cmd", "remove_old_diff", NULL};
 
     /* Configuration example
         <directories check_all="yes">/etc,/usr/bin</directories>
@@ -2132,6 +2135,19 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             }
             syscheck->max_files_per_second = atoi(node[i]->content);
 
+        } else if (strcmp(node[i]->element, xml_restart_audit) == 0) {
+            mwarn("The <%s> tag is deprecated, please use <whodata><restart_audit> instead.", xml_restart_audit);
+
+            if (strcmp(node[i]->content, "yes") == 0) {
+                syscheck->restart_audit = 1;
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                syscheck->restart_audit = 0;
+            } else {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+        } else if (w_is_str_in_array(xml_deprecated, node[i]->element)) {
+            mwarn("The <%s> option is deprecated and no longer has any effect.", node[i]->element);
         } else {
             minfo(XML_INVELEM, node[i]->element);
         }

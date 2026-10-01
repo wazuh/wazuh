@@ -42,7 +42,7 @@ Run a security assessment scan immediately when the agent starts.
 
 Time interval between security configuration assessment scans.
 
-- **Default value:** Inherited from scan schedule
+- **Default value:** `1d`
 - **Allowed values:** Time format strings (`s` for seconds, `m` for minutes, `h` for hours, `d` for days)
 - **Note:** Valid range is `60s` (1 minute) to `1d` (1 day). Examples: `12h`, `30m`, `1d`
 

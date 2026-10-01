@@ -1268,8 +1268,8 @@ static void test_legacy_client_warns_for_every_ignored_option(void **state) {
                   "<force_reconnect_interval> inside the legacy <client> block is ignored: only "
                   "<server> and <enrollment> are read from it.");
     expect_string(__wrap__mwarn, formatted_msg,
-                  "<ip_update_interval> inside the legacy <client> block is ignored. "
-                  "Configure it under <agent>.");
+                  "<ip_update_interval> inside the legacy <client> block is ignored: only "
+                  "<server> and <enrollment> are read from it.");
     expect_string(__wrap__mwarn, formatted_msg,
                   "<auto_restart> inside the legacy <client> block is ignored. "
                   "Configure it under <agent>.");
@@ -1284,7 +1284,6 @@ static void test_legacy_client_warns_for_every_ignored_option(void **state) {
     assert_int_equal(cfg.notify_time, 0);
     assert_int_equal(cfg.execdq, 0);
     assert_int_equal(cfg.flags.auto_restart, 0);
-    assert_int_equal(cfg.main_ip_update_interval, 0);
 
     cleanup(&xml, nodes, &cfg);
 }

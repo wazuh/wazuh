@@ -202,15 +202,7 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
         } else if (strcmp(node[i]->element, "force_reconnect_interval") == 0) {
             mwarn("Deprecated option 'force_reconnect_interval' is not longer available.");
         } else if (strcmp(node[i]->element, xml_main_ip_update_interval) == 0) {
-            if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-            logr->main_ip_update_interval = atoi(node[i]->content);
-            if (logr->main_ip_update_interval < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
+            mwarn("The <%s> option is deprecated and no longer has any effect.", xml_main_ip_update_interval);
         } else if (strcmp(node[i]->element, xml_ar_disabled) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {
                 logr->execdq = -1;
@@ -270,8 +262,7 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
 
 /* Direct children of a 4.x <client> block that 5.x reads under <agent> instead. */
 static const char * LEGACY_CLIENT_MOVED_OPTIONS[] = {
-    "config-profile", "notify_time", "auto_restart", "disable-active-response",
-    "ip_update_interval", NULL
+    "config-profile", "notify_time", "auto_restart", "disable-active-response", NULL
 };
 
 /**
