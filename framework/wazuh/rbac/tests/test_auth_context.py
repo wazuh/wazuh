@@ -154,7 +154,7 @@ def test_process_lists_handles_regex_timeout():
     """process_lists must not propagate a regex timeout; it should skip and continue."""
     checker = _make_checker()
     fake_pattern = MagicMock()
-    fake_pattern.match.side_effect = TimeoutError('regex timed out')
+    fake_pattern.fullmatch.side_effect = TimeoutError('regex timed out')
     with patch.object(checker, 'check_regex', return_value=fake_pattern):
         result = checker.process_lists(["ignored"], ["anything"], 'MATCH')
     assert result == 0
@@ -174,3 +174,45 @@ def test_match_item_survives_catastrophic_backtracking():
     with patch.object(checker, 'check_regex', return_value=evil_pattern):
         result = checker.match_item("irrelevant", [evil_input], 'MATCH')
     assert result in (0, False)
+
+
+def test_check_regex_keeps_trailing_anchor():
+    """check_regex must strip only the closing quote, keeping the pattern's own trailing '$'."""
+    checker = _make_checker()
+    assert checker.check_regex(r"r'^admin$'").pattern == "^admin$"
+
+
+@pytest.mark.parametrize('candidate, expected', [
+    ('admin', 1),
+    ('administrator', 0),
+    ('admin-prod', 0),
+])
+def test_check_regex_rejects_prefix_extension(candidate, expected):
+    """A '$'-anchored rule must only match the exact value, not values extending it as a prefix."""
+    checker = _make_checker()
+    assert checker.match_item(r"r'^admin$'", [candidate], mode='MATCH') == expected
+
+
+def test_check_regex_requires_full_match_without_anchor():
+    """A rule regex without a trailing '$' must still match the whole value, not just a prefix."""
+    checker = _make_checker()
+    assert checker.match_item(r"r'^admin'", ["admin"], mode='MATCH') == 1
+    assert checker.match_item(r"r'^admin'", ["administrator"], mode='MATCH') == 0
+    assert checker.process_lists([r"r'^admin'"], ["administrator"], 'MATCH') == 0
+
+
+def test_match_item_regex_key_requires_full_match():
+    """A regex rule key must match the whole authorization-context key, not just a prefix of it."""
+    checker = _make_checker()
+    assert checker.match_item({"r'^auth$'": "x"}, {"auth": "x"}) == 1
+    assert checker.match_item({"r'^auth$'": "x"}, {"authx": "x"}) == 0
+    assert checker.match_item({"r'^auth'": "x"}, {"authx": "x"}) == 0
+
+
+def test_match_item_rejects_trailing_newline():
+    """`$` matches before a trailing newline, so only a full match rejects `admin\\n`."""
+    checker = _make_checker()
+    assert checker.match_item("r'^admin$'", "admin") == 1
+    assert checker.match_item("r'^admin$'", "admin\n") == 0
+    assert checker.match_item({"r'^auth$'": "x"}, {"auth\n": "x"}) == 0
+    assert checker.process_lists(["r'^admin$'"], ["admin\n"], "MATCH") == 0

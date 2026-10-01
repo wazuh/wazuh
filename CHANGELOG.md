@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - Fixed a root-level OS command injection in the rootcheck promiscuous-interface check. ([#39622](https://github.com/wazuh/wazuh/pull/39622))
 - Fixed a memory leak in `wazuh-remoted` when parsing repeated OS/version records in an agent keepalive. ([#39614](https://github.com/wazuh/wazuh/pull/39614))
 - Fixed logcollector following symbolic links and opening non-regular files without validating them on Linux and macOS. ([#39649](https://github.com/wazuh/wazuh/pull/39649))
+- Fixed `run_as` authorization-context regex rules matching only a prefix of the value instead of the whole value, including a trailing `$` anchor being dropped from the expression. ([#39770](https://github.com/wazuh/wazuh/pull/39770))
 
 ### Agent
 
