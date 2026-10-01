@@ -430,7 +430,18 @@ public:
      * @param serverAddress Server's address.
      * @return true unless the last health check found the server Down.
      */
-    bool isAvailable(std::string_view serverAddress)
+    bool isAvailable(std::string_view serverAddress) const
+    {
+        return state(serverAddress) != HostState::Down;
+    }
+
+    /**
+     * @brief State of a server as of its last health check.
+     *
+     * @param serverAddress Server's address.
+     * @return HostState Available, Throttled or Down.
+     */
+    HostState state(std::string_view serverAddress) const
     {
         // Wait-free, and on the hot path: TServerSelector::getNext() calls this for every operation
         // against the indexer. Safe without a lock because the map's structure is frozen after
@@ -440,7 +451,7 @@ public:
         {
             throw std::out_of_range("Server not found in monitoring");
         }
-        return it->second.load(std::memory_order_acquire) != HostState::Down;
+        return it->second.load(std::memory_order_acquire);
     }
 
     std::string getUnavailableServersDetails()
