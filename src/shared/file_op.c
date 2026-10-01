@@ -3469,7 +3469,9 @@ static int w_win_final_path(HANDLE hFile, wchar_t * path) {
     DWORD len = GetFinalPathNameByHandleW(hFile, path, W_VETTED_WIN_PATH_MAX, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
 
     if (len == 0) {
-        errno = w_win_race_errno(GetLastError());
+        // The handle is already open, so a failure is not a vanished path: only a sharing violation is transient.
+        DWORD error = GetLastError();
+        errno = error == ERROR_SHARING_VIOLATION ? EAGAIN : w_win32_to_errno(error);
         return -1;
     }
 
@@ -3479,7 +3481,7 @@ static int w_win_final_path(HANDLE hFile, wchar_t * path) {
     }
 
     if (!wcsncmp(path, W_VETTED_WIN_UNC_PREFIX, wcslen(W_VETTED_WIN_UNC_PREFIX))) {
-        errno = EACCES;
+        errno = EPERM;
         return -1;
     }
 
@@ -3493,7 +3495,7 @@ static int w_win_final_path(HANDLE hFile, wchar_t * path) {
     }
 
     if (is_network_path(narrow)) {
-        errno = EACCES;
+        errno = EPERM;
         return -1;
     }
 
@@ -3579,6 +3581,102 @@ static bool w_win_owner_trusted(PSID owner, PSID file_owner, PSID trusted[W_VETT
 }
 
 /**
+ * Reports whether a principal other than a trusted one may re-point or replace @p hReparse, which a trusted
+ * owner alone does not prevent on Windows. The Windows counterpart of the POSIX "a link is trusted only in a
+ * directory only root can write to" rule; the owner's own implicit rights are covered by w_win_owner_trusted().
+ *
+ * Deny ACEs are not subtracted and inherit-only ACEs are skipped, so the decision errs toward rejecting; an
+ * allow ACE that cannot be parsed, or any DACL read failure, counts as writable.
+ *
+ * @return true if an untrusted principal may modify it (so it must not be trusted), false otherwise.
+ */
+static bool w_win_reparse_untrusted_writable(HANDLE hReparse, PSID file_owner, PSID trusted[W_VETTED_WIN_TRUSTED_SIDS]) {
+    PSECURITY_DESCRIPTOR sd = NULL;
+    PACL dacl = NULL;
+    ACL_SIZE_INFORMATION size_info;
+    GENERIC_MAPPING file_map = {FILE_GENERIC_READ, FILE_GENERIC_WRITE, FILE_GENERIC_EXECUTE, FILE_ALL_ACCESS};
+    const DWORD modify_mask = FILE_WRITE_DATA | FILE_APPEND_DATA | FILE_WRITE_EA | FILE_WRITE_ATTRIBUTES |
+                              DELETE | WRITE_DAC | WRITE_OWNER;
+    SID_IDENTIFIER_AUTHORITY creator_authority = SECURITY_CREATOR_SID_AUTHORITY;
+    PSID creator_owner = NULL;
+    bool writable = false;
+    DWORD i;
+
+    if (GetSecurityInfo(hReparse, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &dacl, NULL, &sd) !=
+        ERROR_SUCCESS) {
+        return true;
+    }
+
+    // A NULL (not empty) DACL grants everyone full access.
+    if (dacl == NULL || !GetAclInformation(dacl, &size_info, sizeof(size_info), AclSizeInformation)) {
+        LocalFree(sd);
+        return true;
+    }
+
+    // CREATOR OWNER on an applied ACE resolves to the owner, already covered by w_win_owner_trusted().
+    AllocateAndInitializeSid(&creator_authority, 1, SECURITY_CREATOR_OWNER_RID, 0, 0, 0, 0, 0, 0, 0, &creator_owner);
+
+    for (i = 0; i < size_info.AceCount; i++) {
+        ACCESS_ALLOWED_ACE * ace = NULL;
+        PSID ace_sid;
+        DWORD mask;
+
+        if (!GetAce(dacl, i, (void **)&ace)) {
+            writable = true;
+            break;
+        }
+
+        // Inherit-only ACEs do not apply to this object.
+        if (ace->Header.AceFlags & INHERIT_ONLY_ACE) {
+            continue;
+        }
+
+        if (ace->Header.AceType != ACCESS_ALLOWED_ACE_TYPE) {
+            // A plain allow ACE is the only kind parsed here. Deny, audit and system ACEs grant nothing and
+            // are skipped; an allow ACE of another kind (compound, object or callback) cannot be read, so fail
+            // closed.
+            if (ace->Header.AceType == ACCESS_ALLOWED_COMPOUND_ACE_TYPE ||
+                ace->Header.AceType == ACCESS_ALLOWED_OBJECT_ACE_TYPE ||
+                ace->Header.AceType == ACCESS_ALLOWED_CALLBACK_ACE_TYPE ||
+                ace->Header.AceType == ACCESS_ALLOWED_CALLBACK_OBJECT_ACE_TYPE) {
+                writable = true;
+                break;
+            }
+            continue;
+        }
+
+        mask = ace->Mask;
+        MapGenericMask(&mask, &file_map);
+
+        if (!(mask & modify_mask)) {
+            continue;
+        }
+
+        ace_sid = (PSID) &ace->SidStart;
+
+        if (!IsValidSid(ace_sid)) {
+            writable = true;
+            break;
+        }
+
+        if (w_win_owner_trusted(ace_sid, file_owner, trusted) ||
+            (creator_owner && EqualSid(ace_sid, creator_owner))) {
+            continue;
+        }
+
+        writable = true;
+        break;
+    }
+
+    if (creator_owner) {
+        FreeSid(creator_owner);
+    }
+
+    LocalFree(sd);
+    return writable;
+}
+
+/**
  * Walks @p full, an absolute normalized path, one component at a time without following reparse points,
  * and checks that every junction or symlink on it is trusted. A component that vanishes mid-walk means
  * the path is changing, so it is reported as EAGAIN, not ENOENT.
@@ -3643,7 +3741,9 @@ static int w_win_check_reparse_points(const wchar_t * full, PSID file_owner, PSI
             return -1;
         }
 
-        trusted = w_win_owner_trusted(owner, file_owner, trusted_sids);
+        // Trusted only if a trusted account owns it and no other principal may modify it.
+        trusted = w_win_owner_trusted(owner, file_owner, trusted_sids) &&
+                  !w_win_reparse_untrusted_writable(hComponent, file_owner, trusted_sids);
         LocalFree(sd);
         CloseHandle(hComponent);
 
@@ -3673,6 +3773,7 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
     BY_HANDLE_FILE_INFORMATION info;
     BY_HANDLE_FILE_INFORMATION info_again;
     PSID file_owner = NULL;
+    wchar_t * converted;
     HANDLE hFile;
     HANDLE hAgain;
     DWORD len;
@@ -3680,15 +3781,27 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
     int rc;
 
     if (is_network_path(path)) {
-        errno = EACCES;
-        mwarn(NETWORK_PATH_EXECUTED, path);
+        // Reported as EPERM like the trust checks: a policy rejection, not a missing file.
+        errno = EPERM;
         return INVALID_HANDLE_VALUE;
     }
 
-    if (!MultiByteToWideChar(CP_UTF8, 0, path, -1, wide, W_VETTED_WIN_PATH_MAX)) {
-        errno = GetLastError() == ERROR_INSUFFICIENT_BUFFER ? ENAMETOOLONG : EINVAL;
+    // auto_to_wide() falls back to the ANSI code page for non-UTF-8 bytes, as wfopen() does.
+    converted = auto_to_wide(path);
+
+    if (converted == NULL) {
+        errno = EINVAL;
         return INVALID_HANDLE_VALUE;
     }
+
+    if (wcslen(converted) >= W_VETTED_WIN_PATH_MAX) {
+        os_free(converted);
+        errno = ENAMETOOLONG;
+        return INVALID_HANDLE_VALUE;
+    }
+
+    wcscpy(wide, converted);
+    os_free(converted);
 
     hFile = CreateFileW(wide, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
                         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -3700,6 +3813,17 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
 
     if (GetFileType(hFile) != FILE_TYPE_DISK) {
         errno = EINVAL;
+        goto fail;
+    }
+
+    if (!GetFileInformationByHandle(hFile, &info)) {
+        errno = w_win32_to_errno(GetLastError());
+        goto fail;
+    }
+
+    // Reject a file reached by more than one hard link, as the POSIX walk does, with the same EPERM.
+    if (info.nNumberOfLinks != 1) {
+        errno = EPERM;
         goto fail;
     }
 
@@ -3719,6 +3843,12 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
 
     if (len == 0 || len >= W_VETTED_WIN_PATH_MAX) {
         wcscpy(requested, full);
+    }
+
+    // GetFinalPathNameByHandleW() upper-cases the drive letter; a lower-case letter in the configured path
+    // must not force the slow walk, so normalize it before the comparison.
+    if (requested[0] >= L'a' && requested[0] <= L'z' && requested[1] == L':') {
+        requested[0] -= L'a' - L'A';
     }
 
     // An identical path means no reparse point was traversed.
@@ -3752,7 +3882,7 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
     rc = w_win_final_path(hAgain, again);
     saved_errno = errno;
 
-    if (rc == 0 && (!GetFileInformationByHandle(hFile, &info) || !GetFileInformationByHandle(hAgain, &info_again))) {
+    if (rc == 0 && !GetFileInformationByHandle(hAgain, &info_again)) {
         rc = -1;
         saved_errno = w_win32_to_errno(GetLastError());
     }
