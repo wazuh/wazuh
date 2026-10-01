@@ -51,7 +51,7 @@ the input, the handoff between components, and the record you read to find a gen
 * The manager checks it at every start, restart and reload, before it validates the configuration,
   even when it no longer needs to read it (everything is already resolved), and refuses to start on
   an unsafe one, as the indexer and the dashboard do. The check covers ownership, mode and shape,
-  not syntax. A file that is absent (for example deleted after the installation) is fine, as long as
+  not the syntax of the keys. A file that is absent (for example deleted after the installation) is fine, as long as
   `/etc/wazuh`, if it is still there, passes the same directory rule.
 * One `KEY=VALUE` per line. The file is **parsed, never sourced**: nothing in it is ever executed.
 * The packages own a delimited block and nothing else. Lines you write outside it are never
@@ -277,7 +277,9 @@ $ systemctl status wazuh-manager
 last line, and `logs/wazuh-manager.log` gets `wazuh-manager-control: ERROR: unsafe credentials file`
 and the lines above. `systemctl restart` stops the manager first (`ExecStop`, then `ExecStart`), so a
 refusal leaves it stopped; `wazuh-manager-control restart` and `reload`, and `systemctl reload`, check
-before stopping and leave it running.
+before stopping and leave it running. When the check itself cannot run (its shared helper is
+missing), the start is refused all the same with `Cannot check the credentials file. Exiting`
+(`-j`: `{"error":22,"message":"Cannot check the credentials file."}`).
 
 Validation covers **presence and format only**. The pre-start step never opens a network connection,
 because making a service's start depend on reaching its peer would break boot ordering and cluster

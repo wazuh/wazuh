@@ -86,7 +86,8 @@ It runs in five modes:
 | `--clear` | nothing in the product | remove | remove |
 
 `--check` asks the shared helper for the reserved name `WAZUH_MANAGER_CREDENTIALS_CHECK`, which is
-never written to the file and must not be set.
+never written to the file: a well-formed line with it is ignored, a malformed one refuses the file. It
+must run as root (the credentials directory is root-only) and exits 2 otherwise.
 
 Each caller already knows which of the first two applies: `$2` is empty in a DEB `postinst
 configure` on a fresh install, `$1` is `1` in an RPM `%post`, and `install.sh` has `update_only`.

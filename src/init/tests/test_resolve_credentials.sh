@@ -865,8 +865,8 @@ if [ -n "${has_daemon}" ]; then
     write_credentials "${root}" "WAZUH_MANAGER_CREDENTIALS_CHECK='Sentinel.Val1'"
     chown daemon "${root}/base/credentials.env"
     run_resolver "${root}" --check
-    check "a check refuses a file not owned by root" "1:yes:yes:yes:" \
-        "${RC}:$(out_has 'wazuh-credentials:'):$(out_has 'file must be owned by root:root'):$(out_has "UNSAFE ${root}/base/credentials.env"):$(out_has 'Sentinel.Val1')"
+    check "a check refuses a file not owned by root" "1:yes:yes:yes:yes:" \
+        "${RC}:$(out_has 'wazuh-credentials:'):$(out_has 'file must be owned by root:root'):$(out_has "UNSAFE ${root}/base/credentials.env"):$(out_has 'it must be a regular file, 0600 root:root'):$(out_has 'Sentinel.Val1')"
     cleanup "${root}"
 
     root="$(make_tree)"
@@ -986,6 +986,20 @@ cleanup "${root}"
 root="$(make_tree)"
 run_resolver "${root}" -h
 check "the usage lists --check" "yes" "$(out_has '--check')"
+cleanup "${root}"
+
+# Another user cannot see into the 0700 credentials directory, so the helper would call an unsafe
+# file "absent": --check must refuse to answer rather than pass. `id` is faked on PATH so the case
+# runs as root like the rest of the suite.
+root="$(make_tree)"
+write_credentials "${root}" "WAZUH_MANAGER_CREDENTIALS_CHECK='Sentinel.Val1'"
+chmod 0640 "${root}/base/credentials.env"
+mkdir -p "${root}/fakebin"
+printf '#!/bin/sh\n[ "$1" = "-u" ] && { echo 1000; exit 0; }\nexec /usr/bin/id "$@"\n' > "${root}/fakebin/id"
+chmod +x "${root}/fakebin/id"
+PATH="${root}/fakebin:${PATH}" run_resolver "${root}" --check
+check "a check refuses to answer when not run as root" "2:yes:" \
+    "${RC}:$(out_has '--check must run as root'):$(out_has 'UNSAFE')"
 cleanup "${root}"
 
 # --------------------------------------------------------------------------------------------

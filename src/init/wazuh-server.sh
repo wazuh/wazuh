@@ -272,19 +272,26 @@ checkcredentials()
     if [ -n "${CHECK_VERDICT}" ]; then
         echo "${CHECK_VERDICT}" >&2
     fi
-    echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: unsafe credentials file" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
+    # The resolver says UNSAFE when the helper refused the file; anything else (its helpers missing,
+    # not run as root) means the check itself could not run, which refuses the start just the same
+    # but must not be reported as a verdict about the file.
+    case "${CHECK_VERDICT}" in
+        *UNSAFE*) CHECK_REASON="Unsafe credentials file"; CHECK_LOG="unsafe credentials file" ;;
+        *)        CHECK_REASON="Cannot check the credentials file"; CHECK_LOG="cannot check the credentials file" ;;
+    esac
+    echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: ${CHECK_LOG}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
     if [ -n "${CHECK_VERDICT}" ]; then
         echo "${CHECK_VERDICT}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
     fi
     if [ $USE_JSON = true ]; then
-        echo -n '{"error":22,"message":"Unsafe credentials file."}'
+        echo -n '{"error":22,"message":"'"${CHECK_REASON}"'."}'
     else
-        echo "Unsafe credentials file. Exiting"
+        echo "${CHECK_REASON}. Exiting"
     fi
     rm -f ${DIR}/var/run/*.start
     rm -f ${DIR}/var/run/.restart
     # Like testconfig(), this runs before lock() on both paths: unlock() is `rm -rf ${LOCK}`, so it
-    # releases nothing of ours.
+    # releases nothing of ours -- and, as there, it would also remove a lock another invocation holds.
     unlock;
     exit 1;
 }

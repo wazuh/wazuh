@@ -126,7 +126,8 @@ migration has to get right.
 > the API password is the one the installation assistant prints, and a missing listener pair stops
 > the start with `(1244): Invalid configuration at '/remote/https/certificate': file not found`.
 > The same `(1244)` follows an install that met an unsafe credentials file, after the start has
-> named that file; see
+> named that file. A 5.0 manager also refuses to start, at every start, when `/etc/wazuh` or
+> `credentials.env` breaks the ownership and mode rules, even if nothing needs to read it any more; see
 > [When the manager does not start](../../ref/getting-started/credentials.md#when-the-manager-does-not-start).
 
 **The indexer password.** The one credential the manager cannot invent is its `wazuh-manager`

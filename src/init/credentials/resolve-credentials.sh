@@ -285,7 +285,7 @@ check_credentials_file() {
         0|1) return 0 ;;
     esac
 
-    _ccf_file=$(wazuh_env_get_file 2>/dev/null) || _ccf_file="/etc/wazuh/credentials.env"
+    _ccf_file=$(wazuh_env_get_file 2>/dev/null) || _ccf_file="${WAZUH_BASE_DIR:-/etc/wazuh}/credentials.env"
     err "UNSAFE ${_ccf_file}: refused by the shared credentials helper (see the wazuh-credentials: line above, when there is one)"
     err "        it must be a regular file, 0600 root:root, in a 0700 root:root directory whose ancestors are root-owned and not group- or world-writable; fix it and start again"
     return 1
@@ -701,6 +701,12 @@ if [ "${MODE}" = "clear" ]; then
 fi
 
 if [ "${MODE}" = "check" ]; then
+    # Only root can answer. The credentials directory is 0700 root:root, so any other user cannot even
+    # see whether the file exists, and the helper would report an unreadable unsafe file as "absent".
+    if [ "$(id -u)" != 0 ]; then
+        err "--check must run as root: the credentials file and its directory are readable by root only"
+        exit 2
+    fi
     check_credentials_file
     exit $?
 fi

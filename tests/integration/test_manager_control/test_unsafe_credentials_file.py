@@ -37,6 +37,7 @@ tags:
 '''
 import json
 import os
+import pwd
 import shutil
 import subprocess
 import tempfile
@@ -52,11 +53,19 @@ from wazuh_testing.constants.paths.variables import VAR_PATH
 # Marks
 pytestmark = [pytest.mark.server, pytest.mark.linux, pytest.mark.tier(level=0)]
 
+try:
+    pwd.getpwnam('daemon')
+    HAS_DAEMON_USER = True
+except KeyError:
+    HAS_DAEMON_USER = False
+
 RUN_DIR = Path(VAR_PATH, 'run')
+SHARED_HELPER = Path(VAR_PATH).parent / 'lib' / 'wazuh-credentials.sh'
 MANAGER_LOG = Path(WAZUH_LOG_PATH)
 CREDENTIALS_CONTENT = "WAZUH_INDEXER_MANAGER_PASSWORD='Unused.Value01'\n"
 UNSAFE_MESSAGE = 'Unsafe credentials file. Exiting'
 RESOLVER_VERDICT = 'resolve-credentials: UNSAFE'
+RESOLVER_RULE = 'it must be a regular file, 0600 root:root'
 LOG_ERROR = 'wazuh-manager-control: ERROR: unsafe credentials file'
 INVALID_CONFIG = 'Invalid configuration at'
 JSON_ERROR = {'error': 22, 'message': 'Unsafe credentials file.'}
@@ -153,11 +162,22 @@ def _stop_plain():
     assert _wait_for_no_daemons(), f"Daemons still alive after stop: {_alive_pids()}"
 
 
+def _restore_moved_helper():
+    """Put back a shared helper an interrupted run of test_refuses_when_the_check_cannot_run left aside."""
+    aside = SHARED_HELPER.with_name(SHARED_HELPER.name + '.moved-by-test')
+    if aside.exists() and not SHARED_HELPER.exists():
+        aside.rename(SHARED_HELPER)
+
+
 def _build_tree(case=None):
     """Create tmp/base/credentials.env (0600 root:root) and break the one rule 'case' names.
 
     Returns (tmp, base).
     """
+    parent = os.stat('/root')
+    if (parent.st_uid, parent.st_gid) != (0, 0) or parent.st_mode & 0o022:
+        pytest.skip('/root must be root:root and not group- or world-writable: the shared helper validates every '
+                    'ancestor of the tree')
     tmp = Path(tempfile.mkdtemp(dir='/root'))
     tmp.chmod(0o700)
     base = tmp / 'base'
@@ -213,6 +233,7 @@ def _assert_refused(result, case, tmp, base):
     assert result.returncode != 0, f"Unsafe '{case}' was accepted:\n{result.stdout}\n{result.stderr}"
     assert expected in result.stderr, f"Missing '{expected}' in stderr:\n{result.stderr}"
     assert RESOLVER_VERDICT in result.stderr, f"Missing '{RESOLVER_VERDICT}' in stderr:\n{result.stderr}"
+    assert RESOLVER_RULE in result.stderr, f"Missing '{RESOLVER_RULE}' in stderr:\n{result.stderr}"
     assert UNSAFE_MESSAGE in result.stdout, f"Missing '{UNSAFE_MESSAGE}' in stdout:\n{result.stdout}"
     assert INVALID_CONFIG not in result.stdout + result.stderr
 
@@ -227,18 +248,17 @@ def tree_factory():
         trees.append(tmp)
         return tmp, base
 
+    _restore_moved_helper()
     try:
         yield make
     finally:
         for tmp in trees:
             _remove_tree(tmp)
-        for marker in RUN_DIR.glob('*.failed'):
-            if marker.read_text().strip() == 'refused':
-                marker.unlink()
         if _STARTED_WITH_PRIVATE_BASE['value']:
             _STARTED_WITH_PRIVATE_BASE['value'] = False
             _stop_plain()
             _control('start')
+        _restore_moved_helper()
         _ensure_running_plain()
 
 
@@ -273,6 +293,8 @@ def test_start_refuses_unsafe_file(case, tree_factory):
     tags:
         - manager_control
     '''
+    if case in ('owner', 'group') and not HAS_DAEMON_USER:
+        pytest.skip("no 'daemon' user to own the file")
     tmp, base = tree_factory(case)
     _stop_plain()
 
@@ -367,7 +389,7 @@ def test_refusal_clears_stale_failed_markers(tree_factory):
         marker.unlink(missing_ok=True)
 
 
-@pytest.mark.parametrize('action', ['start', 'restart'])
+@pytest.mark.parametrize('action', ['start', 'restart', 'reload'])
 def test_json_reports_error_22(action, tree_factory):
     '''
     description: Check that '-j' reports the refusal as a single JSON document with error 22.
@@ -404,7 +426,7 @@ def test_json_reports_error_22(action, tree_factory):
     assert result.returncode != 0
     assert json.loads(result.stdout) == JSON_ERROR, result.stdout
     assert result.stdout.strip() == json.dumps(JSON_ERROR, separators=(',', ':'))
-    if action == 'restart':
+    if action != 'start':
         assert _alive_pids() == before, 'The daemons changed during a refused restart'
     else:
         assert not _alive_pids()
@@ -485,7 +507,7 @@ def test_environment_does_not_exempt(tree_factory):
     assert not _alive_pids()
 
 
-@pytest.mark.parametrize('action', ['start', 'restart'])
+@pytest.mark.parametrize('action', ['start', 'restart', 'reload'])
 def test_check_runs_before_configuration_validation(action, tree_factory):
     '''
     description: Check that the credentials file is refused before the configuration is validated, so a
@@ -518,5 +540,52 @@ def test_check_runs_before_configuration_validation(action, tree_factory):
     assert result.returncode != 0, f"{action} was accepted:\n{result.stdout}\n{result.stderr}"
     assert RESOLVER_VERDICT in result.stderr, result.stderr
     assert 'Configuration error' not in result.stdout + result.stderr, result.stdout + result.stderr
-    if action == 'restart':
+    if action != 'start':
         assert _alive_pids() == before, 'The daemons changed during a refused restart'
+
+
+
+@pytest.mark.parametrize('json_output', [False, True], ids=['text', 'json'])
+def test_refuses_when_the_check_cannot_run(json_output, tree_factory):
+    '''
+    description: Check that a start is refused, and reported as such, when the credentials check itself cannot
+                 run: the verdict is not "unsafe", but a check that did not answer is no reason to start.
+    wazuh_min_version: 5.0.0
+    test_phases:
+        - setup: Stop the manager and move the installed shared credentials helper aside.
+        - test: Run 'start' (or '-j start') with the plain environment.
+        - teardown: Put the helper back and start the manager with the plain environment.
+    assertions:
+        - The exit code is not zero and no daemon is alive.
+        - The output says 'Cannot check the credentials file', never 'Unsafe credentials file'.
+        - The manager log gained the control script's error and the resolver's reason.
+    input_description: A manager whose lib/wazuh-credentials.sh is missing.
+    expected_output:
+        - 'Cannot check the credentials file. Exiting'
+        - 'wazuh-manager-control: ERROR: cannot check the credentials file'
+        - 'resolve-credentials: cannot find wazuh-credentials.sh'
+        - '{"error":22,"message":"Cannot check the credentials file."}'
+    tags:
+        - manager_control
+    '''
+    _stop_plain()
+    aside = SHARED_HELPER.with_name(SHARED_HELPER.name + '.moved-by-test')
+    offset = MANAGER_LOG.stat().st_size
+    SHARED_HELPER.rename(aside)
+    try:
+        args = ('-j', 'start') if json_output else ('start',)
+        result = _control(*args)
+        with open(MANAGER_LOG, 'rb') as log:
+            log.seek(offset)
+            gained = log.read().decode(errors='replace')
+        assert 'wazuh-manager-control: ERROR: cannot check the credentials file' in gained, gained
+        assert 'cannot find wazuh-credentials.sh' in gained, gained
+        assert result.returncode != 0, f"start was accepted:\n{result.stdout}\n{result.stderr}"
+        if json_output:
+            assert json.loads(result.stdout) == {'error': 22, 'message': 'Cannot check the credentials file.'}
+        else:
+            assert 'Cannot check the credentials file. Exiting' in result.stdout, result.stdout
+        assert UNSAFE_MESSAGE not in result.stdout
+        assert not _alive_pids(), f"A daemon was started: {_alive_pids()}"
+    finally:
+        aside.rename(SHARED_HELPER)
