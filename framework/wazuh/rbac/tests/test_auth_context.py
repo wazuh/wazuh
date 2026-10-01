@@ -207,3 +207,12 @@ def test_match_item_regex_key_requires_full_match():
     assert checker.match_item({"r'^auth$'": "x"}, {"auth": "x"}) == 1
     assert checker.match_item({"r'^auth$'": "x"}, {"authx": "x"}) == 0
     assert checker.match_item({"r'^auth'": "x"}, {"authx": "x"}) == 0
+
+
+def test_match_item_rejects_trailing_newline():
+    """`$` matches before a trailing newline, so only a full match rejects `admin\\n`."""
+    checker = _make_checker()
+    assert checker.match_item("r'^admin$'", "admin") == 1
+    assert checker.match_item("r'^admin$'", "admin\n") == 0
+    assert checker.match_item({"r'^auth$'": "x"}, {"auth\n": "x"}) == 0
+    assert checker.process_lists(["r'^admin$'"], ["admin\n"], "MATCH") == 0
