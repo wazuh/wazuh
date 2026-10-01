@@ -218,7 +218,15 @@ if [ $1 = 0 ];then
     rmgroup wazuh
   fi
 
-  rm -rf %{_localstatedir}/ruleset
+  # Remove lingering folders and files
+  rm -rf %{_localstatedir}/etc/shared/
+  rm -rf %{_localstatedir}/queue/
+  rm -rf %{_localstatedir}/var/
+  rm -rf %{_localstatedir}/bin/
+  rm -rf %{_localstatedir}/logs/
+  rm -rf %{_localstatedir}/backup/
+  rm -rf %{_localstatedir}/ruleset/
+  rm -rf %{_localstatedir}/tmp
 fi
 
 %clean
