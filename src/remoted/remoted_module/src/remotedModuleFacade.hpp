@@ -302,6 +302,18 @@ public:
 
             LOGFN_INFO(moduleLogFn(), "Stopping remoted module.");
 
+            // Phase 0: drain the /download fallback while the listener still runs. Its waiters
+            // answer from a wazuh-db client worker, and a granted one starts its transfer on the
+            // HTTP worker pool -- the pool phase 1 joins and frees. Stopped here, every in-flight
+            // lookup completes (or times out) while that pool is alive, and phase 1's join drains
+            // the transfers it started; a request that needs a lookup from now on is refused
+            // inline (503). The object itself goes with the route table (phase 4).
+            if (m_registryLookup)
+            {
+                m_registryLookup->stop();
+                m_registryLookup.reset();
+            }
+
             // Phase 1: stop ACCEPTING new connections/requests and drain the handler worker
             // pool. After this returns, no RouteHandler -- and therefore no forward() call --
             // will ever run again, but the HTTP server's I/O runtime is deliberately still
@@ -330,13 +342,7 @@ public:
             // client stop so that its own stop() does not race with wdb-worker joins that touch
             // the same io_context runtime via the response send path.
             m_controlHandler.reset();
-            // The /download fallback: refuse new lookups and answer every waiting request (503)
-            // while the HTTP runtime is alive; the object itself goes with the route table.
-            if (m_registryLookup)
-            {
-                m_registryLookup->stop();
-                m_registryLookup.reset();
-            }
+            // (The /download fallback was drained in phase 0, before the pool went.)
             m_scanVdHandler.reset();
             // /enroll has no async callback machinery of its own to race with a wdb-worker join
             // (unlike ControlHandler above) -- reset here anyway, alongside every other
@@ -684,14 +690,15 @@ private:
         // string /control hands it as config_token -- and anything else is 403 (#38683). A fresh
         // registry entry answers with no wazuh-db round trip; a missing, expired or never
         // established one is looked up in the local wazuh-db asynchronously (#39147): a row is
-        // served, no row is 403, a failed lookup is 503. WPK requests are NOT authorized here:
+        // served; no row and a failed lookup are both 503. WPK requests are NOT authorized here:
         // their authority is the pending upgrade task, which /control does not carry. What
         // contains those remains the resource-id grammars plus O_NOFOLLOW, and the packages are
         // signature-verified by the agent against wpk_root.pem.
         //
         // The lookup is shared: the route's source holds it until phase 4 releases the route
         // table (it must outlive any handler still inside lookup()); m_registryLookup is kept only
-        // so stop() phase 1b can answer every waiter while the HTTP runtime is still alive.
+        // so stop() can drain it in phase 0, before phase 1 joins and frees the worker pool its
+        // granted waiters stream on.
         m_registryLookup =
             std::make_shared<remoted::control::RegistryLookup>(agentRegistry, controlConfig, m_controlMetrics);
         m_authGateway->addAuthenticatedRoute(
@@ -1803,6 +1810,13 @@ private:
     /// Unwinds a partially-built HTTPS stack after a failed/incomplete start().
     void resetHttpServerStack()
     {
+        // The /download fallback first, for stop()'s phase-0 reason: its in-flight lookups answer
+        // (and may start a transfer) while the listener and its worker pool are still alive.
+        if (m_registryLookup)
+        {
+            m_registryLookup->stop();
+            m_registryLookup.reset();
+        }
         m_httpServer.reset();
         // The admin server (when it came up) goes with the stack; its dtor runs the two-phase
         // stop, and its handlers only reach m_metricsManager, which is never reset, and weak
@@ -1812,11 +1826,6 @@ private:
         // thread and the wdb/task client workers) before startHttpServer() threw further down.
         // Reset it here so those threads join before the next retry constructs a fresh one.
         m_controlHandler.reset();
-        if (m_registryLookup)
-        {
-            m_registryLookup->stop();
-            m_registryLookup.reset();
-        }
         // ScanVdHandlerImpl is stateless (a synchronous passthrough of VD's admission), but the
         // next retry constructs a fresh one, so drop the old instance alongside its siblings.
         m_scanVdHandler.reset();
@@ -1977,7 +1986,7 @@ private:
         remoted::control::makeControlMetrics(*m_metricsManager)};       ///< /control counters.
     std::unique_ptr<remoted::control::ControlHandler> m_controlHandler; ///< Startup/notify/shutdown pipeline.
     /// The /download fallback (#39147). Shared with the route's group source, which keeps it alive
-    /// until the route table goes; this reference exists so stop() phase 1b can drain it.
+    /// until the route table goes; this reference exists so stop() can drain it in phase 0.
     std::shared_ptr<remoted::control::RegistryLookup> m_registryLookup;
 
     // /scan/vd lifecycle: handles VD scan requests from agents. Metric struct on the facade for
