@@ -75,14 +75,19 @@ The two halves are apart in the source tree and together once installed:
 | `../../external/wazuh-credentials/wazuh-credentials.sh` (downloaded) | `<manager-home>/lib/wazuh-credentials.sh` | `0640 root:wazuh-manager` |
 | `wazuh-manager-certificates.sh` | `<manager-home>/lib/wazuh-manager-certificates.sh` | `0640 root:wazuh-manager` |
 
-It runs in four modes:
+It runs in five modes:
 
 | Mode | Called from | Passwords, keystore | Certificates |
 | --- | --- | --- | --- |
 | `--install` | DEB `postinst` / RPM `%post` / `install.sh`, **fresh install only** | resolve | **issue** (`wazuh_manager_certificates_ensure`) |
 | `--upgrade` | the same three, when a previous version was installed | resolve | untouched |
 | `--prestart` | `resolvecredentials()` in `../wazuh-server.sh` — that is, `wazuh-manager-control start`, which is what the unit's `ExecStart` runs, and `restart`/`reload` after the daemons are stopped | resolve, fail naming the key | untouched |
+| `--check` | `checkcredentials()` in `../wazuh-server.sh`, before `testconfig` on `start`, `restart` and `reload`; read-only, refuses naming the rule | untouched | untouched |
 | `--clear` | nothing in the product | remove | remove |
+
+`--check` asks the shared helper for the reserved name `WAZUH_MANAGER_CREDENTIALS_CHECK`, which is
+never written to the file: a well-formed line with it is ignored, a malformed one refuses the file. It
+must run as root (the credentials directory is root-only) and exits 2 otherwise.
 
 Each caller already knows which of the first two applies: `$2` is empty in a DEB `postinst
 configure` on a fresh install, `$1` is `1` in an RPM `%post`, and `install.sh` has `update_only`.

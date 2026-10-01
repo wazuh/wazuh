@@ -829,6 +829,180 @@ check "and says why" "yes" \
 cleanup "${root}"
 
 # --------------------------------------------------------------------------------------------
+# --check
+#
+# The start-time question "may the credentials file be read at all?", answered by the shared
+# helper and reported once, ahead of any service. It never creates, repairs or prints anything.
+# --------------------------------------------------------------------------------------------
+
+has_daemon=""
+getent passwd daemon > /dev/null 2>&1 && has_daemon=yes
+
+# One-line verdicts over the combined output of the last run.
+out_has() { grep -qF -- "$1" "${RESOLVER_OUT}" && echo yes; }
+
+root="$(make_tree)"
+run_resolver "${root}" --check
+check "a check with no credentials file passes" "0:" "${RC}:$(resolver_output)"
+cleanup "${root}"
+
+root="$(make_tree)"
+rm -rf "${root}/base"
+run_resolver "${root}" --check
+check "a check never creates the base directory" "0:" "${RC}:$([ -e "${root}/base" ] && echo exists)"
+cleanup "${root}"
+
+root="$(make_tree)"
+write_credentials "${root}" "WAZUH_MANAGER_API_PASSWORD='Real.Value01'
+WAZUH_MANAGER_CREDENTIALS_CHECK='Sentinel.Val1'"
+run_resolver "${root}" --check
+check "a check on a safe file passes without printing it" "0::" \
+    "${RC}:$(out_has 'Sentinel.Val1'):$(out_has 'Real.Value01')"
+cleanup "${root}"
+
+if [ -n "${has_daemon}" ]; then
+    root="$(make_tree)"
+    write_credentials "${root}" "WAZUH_MANAGER_CREDENTIALS_CHECK='Sentinel.Val1'"
+    chown daemon "${root}/base/credentials.env"
+    run_resolver "${root}" --check
+    check "a check refuses a file not owned by root" "1:yes:yes:yes:yes:" \
+        "${RC}:$(out_has 'wazuh-credentials:'):$(out_has 'file must be owned by root:root'):$(out_has "UNSAFE ${root}/base/credentials.env"):$(out_has 'it must be a regular file, 0600 root:root'):$(out_has 'Sentinel.Val1')"
+    cleanup "${root}"
+
+    root="$(make_tree)"
+    write_credentials "${root}" "WAZUH_MANAGER_CREDENTIALS_CHECK='Sentinel.Val1'"
+    chgrp daemon "${root}/base/credentials.env"
+    run_resolver "${root}" --check
+    check "a check refuses a file whose group is not root" "1:yes:yes:yes:" \
+        "${RC}:$(out_has 'wazuh-credentials:'):$(out_has 'file must be owned by root:root'):$(out_has "UNSAFE ${root}/base/credentials.env"):$(out_has 'Sentinel.Val1')"
+    cleanup "${root}"
+else
+    echo "skip - a check refuses a file not owned by root (no 'daemon' user)"
+    echo "skip - a check refuses a file whose group is not root (no 'daemon' user)"
+fi
+
+root="$(make_tree)"
+write_credentials "${root}" "WAZUH_MANAGER_CREDENTIALS_CHECK='Sentinel.Val1'"
+chmod 0640 "${root}/base/credentials.env"
+run_resolver "${root}" --check
+check "a check refuses a file with a mode other than 0600" "1:yes:yes" \
+    "${RC}:$(out_has 'must have mode 600 (found 640)'):$(out_has 'UNSAFE')"
+cleanup "${root}"
+
+root="$(make_tree)"
+printf "WAZUH_MANAGER_CREDENTIALS_CHECK='Sentinel.Val1'\n" > "${root}/real.env"
+chmod 0600 "${root}/real.env"
+ln -s "${root}/real.env" "${root}/base/credentials.env"
+run_resolver "${root}" --check
+check "a check refuses a symbolic link" "1:yes:yes" \
+    "${RC}:$(out_has 'refusing symbolic-link file'):$(out_has 'UNSAFE')"
+cleanup "${root}"
+
+root="$(make_tree)"
+write_credentials "${root}" "WAZUH_MANAGER_CREDENTIALS_CHECK='Sentinel.Val1'"
+chmod 0770 "${root}/base"
+run_resolver "${root}" --check
+check "a check refuses a group-writable base directory" "1:yes:yes" \
+    "${RC}:$(out_has "directory must not be group- or world-writable: ${root}/base"):$(out_has 'UNSAFE')"
+cleanup "${root}"
+
+root="$(make_tree)"
+write_credentials "${root}" "WAZUH_MANAGER_CREDENTIALS_CHECK='Sentinel.Val1'"
+chmod g+w "${root}"
+run_resolver "${root}" --check
+_rc=${RC}; _has="$(out_has "must not be group- or world-writable: ${root}")"
+chmod 0700 "${root}"
+check "a check refuses a group-writable ancestor" "1:yes" "${_rc}:${_has}"
+cleanup "${root}"
+
+root="$(make_tree)"
+chmod 0770 "${root}/base"
+run_resolver "${root}" --check
+check "a check refuses an unsafe base with no file" "1:yes" \
+    "${RC}:$(out_has "directory must not be group- or world-writable: ${root}/base")"
+cleanup "${root}"
+
+root="$(make_tree)"
+cat > "${root}/home/bin/wazuh-manager-keystore" <<STUB
+#!/bin/sh
+echo "\$*" >> "${root}/home/keystore-calls.log"
+exit 1
+STUB
+chmod +x "${root}/home/bin/wazuh-manager-keystore"
+write_credentials "${root}" "WAZUH_MANAGER_CREDENTIALS_CHECK='Sentinel.Val1'"
+run_resolver "${root}" --check
+if [ -n "${has_daemon}" ]; then
+    chown daemon "${root}/base/credentials.env"
+    run_resolver "${root}" --check
+else
+    chmod 0640 "${root}/base/credentials.env"
+    run_resolver "${root}" --check
+fi
+check "a check touches neither the keystore nor the lock" "::" \
+    "$([ -e "${root}/home/keystore-calls.log" ] && echo keystore):$([ -e "${root}/base/.credentials.lock" ] && echo lock):"
+cleanup "${root}"
+
+root="$(make_tree)"
+write_credentials "${root}" "WAZUH_MANAGER_CREDENTIALS_CHECK='unterminated"
+run_resolver "${root}" --check
+check "a check refuses a malformed sentinel line without printing it" "1:yes:" \
+    "${RC}:$(out_has 'UNSAFE'):$(out_has 'unterminated')"
+cleanup "${root}"
+
+root="$(make_tree)"
+WAZUH_BASE_DIR='' WAZUH_MANAGER_USER=root WAZUH_MANAGER_GROUP=root \
+    "${root}/home/bin/resolve-credentials" --check -H "${root}/home" > "${RESOLVER_OUT}" 2>&1
+RC=$?
+check "a check with an empty base directory setting fails closed" "1:yes:" \
+    "${RC}:$(out_has 'UNSAFE /etc/wazuh/credentials.env'):$(out_has 'UNSAFE :')"
+cleanup "${root}"
+
+root="$(make_tree)"
+chmod 0755 "${root}/base"
+run_resolver "${root}" --check
+check "a check refuses a base directory with a mode other than 0700" "1:yes" \
+    "${RC}:$(out_has 'must have mode 700 (found 755)')"
+cleanup "${root}"
+
+if [ -n "${has_daemon}" ]; then
+    root="$(make_tree)"
+    write_credentials "${root}" "WAZUH_MANAGER_CREDENTIALS_CHECK='Sentinel.Val1'"
+    chown daemon "${root}"
+    run_resolver "${root}" --check
+    _rc=${RC}; _has="$(out_has "directory must be owned by root:root: ${root}")"
+    chown root:root "${root}"
+    check "a check refuses an ancestor not owned by root" "1:yes" "${_rc}:${_has}"
+    cleanup "${root}"
+else
+    echo "skip - a check refuses an ancestor not owned by root (no 'daemon' user)"
+fi
+
+root="$(make_tree)"
+mkdir "${root}/base/credentials.env"
+run_resolver "${root}" --check
+check "a check refuses a directory in place of the file" "1:yes" "${RC}:$(out_has 'not a regular file')"
+cleanup "${root}"
+
+root="$(make_tree)"
+run_resolver "${root}" -h
+check "the usage lists --check" "yes" "$(out_has '--check')"
+cleanup "${root}"
+
+# Another user cannot see into the 0700 credentials directory, so the helper would call an unsafe
+# file "absent": --check must refuse to answer rather than pass. `id` is faked on PATH so the case
+# runs as root like the rest of the suite.
+root="$(make_tree)"
+write_credentials "${root}" "WAZUH_MANAGER_CREDENTIALS_CHECK='Sentinel.Val1'"
+chmod 0640 "${root}/base/credentials.env"
+mkdir -p "${root}/fakebin"
+printf '#!/bin/sh\n[ "$1" = "-u" ] && { echo 1000; exit 0; }\nexec /usr/bin/id "$@"\n' > "${root}/fakebin/id"
+chmod +x "${root}/fakebin/id"
+PATH="${root}/fakebin:${PATH}" run_resolver "${root}" --check
+check "a check refuses to answer when not run as root" "2:yes:" \
+    "${RC}:$(out_has '--check must run as root'):$(out_has 'UNSAFE')"
+cleanup "${root}"
+
+# --------------------------------------------------------------------------------------------
 
 echo ""
 echo "${checks} checks, ${failures} failure(s)"

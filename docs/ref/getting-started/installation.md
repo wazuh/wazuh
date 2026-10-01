@@ -199,7 +199,9 @@ Replace `127.0.0.1` with your indexer IP address if it's running on a different 
 
 Neither the packages nor `install.sh` start or enable the service: you start it when the deployment
 is ready. This is also the moment the passwords and the indexer credential are validated. Set
-`USER_AUTO_START="y"` in `etc/preloaded-vars.conf` to have `install.sh` start it anyway.
+`USER_AUTO_START="y"` in `etc/preloaded-vars.conf` to have `install.sh` start it anyway. A fresh package
+install ends by printing where the Server API passwords are and the command to start the service (and to
+enable it at boot, when systemd is running).
 
 ```bash
 sudo systemctl daemon-reload

@@ -45,8 +45,14 @@ the one key that commonly leaves a fresh manager unresolved until the indexer pu
 the input, the handoff between components, and the record you read to find a generated password.
 
 * `0600 root:root`, in a `0700 root:root` directory. It is refused outright — with the reason
-  logged — when its owner, group or mode is wrong, when it is a symlink, or when any directory above
-  it is group- or world-writable. `$WAZUH_CA_DIR` is held to the same directory rule.
+  logged — when its owner or group is not root, when its mode is not `0600`, when it is a symlink or
+  not a regular file, when `/etc/wazuh` is not `0700`, or when `/etc/wazuh` or any directory above it
+  is a symlink, is not root-owned or is group- or world-writable. `$WAZUH_CA_DIR` is held to the same directory rule.
+* The manager checks it at every start, restart and reload, before it validates the configuration,
+  even when it no longer needs to read it (everything is already resolved), and refuses to start on
+  an unsafe one, as the indexer and the dashboard do. The check covers ownership, mode and shape,
+  not the syntax of the keys. A file that is absent (for example deleted after the installation) is fine, as long as
+  `/etc/wazuh`, if it is still there, passes the same directory rule.
 * One `KEY=VALUE` per line. The file is **parsed, never sourced**: nothing in it is ever executed.
 * The packages own a delimited block and nothing else. Lines you write outside it are never
   touched, reordered or reformatted, even when they carry the same key.
@@ -127,7 +133,7 @@ That trap is why the file, not the command line, is the documented way to choose
 > dashboard authenticates as `wazuh-wui` and reads the value from there — publishing only generated
 > values would mean a deployment that chose its own passwords never hands them over. What protects
 > it is the file: `0600 root:root` inside a `0700 root:root` directory, refused outright on every
-> read and every write when the owner, the mode, a symlink or any ancestor is wrong. Only root can
+> read, every write and every start when the owner, the mode, a symlink or any ancestor is wrong. Only root can
 > read it, and [deleting it](#the-credentials-file) once every component is running is the last step
 > of an installation, not an optional one.
 >
@@ -257,6 +263,24 @@ $ systemctl status wazuh-manager
 2. Set the missing key in `/etc/wazuh/credentials.env`.
 3. `sudo systemctl start wazuh-manager`.
 
+An unsafe credentials file is refused before anything else, with the helper's reason first:
+
+```
+$ systemctl status wazuh-manager
+  wazuh-credentials: file must be owned by root:root: /etc/wazuh/credentials.env
+  resolve-credentials: UNSAFE /etc/wazuh/credentials.env: refused by the shared credentials helper (see the wazuh-credentials: line above, when there is one)
+  resolve-credentials:         it must be a regular file, 0600 root:root, in a 0700 root:root directory whose ancestors are root-owned and not group- or world-writable; fix it and start again
+  Unsafe credentials file. Exiting
+```
+
+`wazuh-manager-control -j` prints `{"error":22,"message":"Unsafe credentials file."}` instead of the
+last line, and `logs/wazuh-manager.log` gets `wazuh-manager-control: ERROR: unsafe credentials file`
+and the lines above. `systemctl restart` stops the manager first (`ExecStop`, then `ExecStart`), so a
+refusal leaves it stopped; `wazuh-manager-control restart` and `reload`, and `systemctl reload`, check
+before stopping and leave it running. When the check itself cannot run (its shared helper is
+missing), the start is refused all the same with `Cannot check the credentials file. Exiting`
+(`-j`: `{"error":22,"message":"Cannot check the credentials file."}`).
+
 Validation covers **presence and format only**. The pre-start step never opens a network connection,
 because making a service's start depend on reaching its peer would break boot ordering and cluster
 restarts. A credential that is present but wrong still fails as a `401` at runtime.
@@ -349,6 +373,12 @@ provisioned externally, e.g. with wazuh-certs-tool)
 ```
 
 Provision the pair and start the service again; nothing has to be reinstalled.
+
+If the install issued nothing because the credentials file was unsafe, the first start names the
+file instead (see [When the manager does not start](#when-the-manager-does-not-start)). Fix it and
+start again: the next start shows the `(1244)` above, because no pair was issued. With the manager
+stopped, issue the pair with `sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials
+--install`, reinstall the package, or provision your own pair; then start the service.
 
 To supply a pre-issued pair, place it in `etc/certs` **before** installing, or afterwards — either
 way it is used as it is and never replaced.
