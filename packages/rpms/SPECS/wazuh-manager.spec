@@ -459,6 +459,19 @@ if getent group ossec > /dev/null 2>&1; then
   fi
 fi
 
+# Next steps, last thing a fresh install prints (the indexer and the dashboard end the same way): the
+# package neither starts nor enables the service, and nothing else says where the Server API passwords
+# went. Only on a fresh install ($1 = 1): an upgrade or a reinstall finds the passwords already set.
+# install.sh prints its own start hint, so this lives in the package only.
+if [ "$1" -eq 1 ]; then
+  echo "Server API passwords saved in ${WAZUH_BASE_DIR:-/etc/wazuh}/credentials.env (readable by root only)."
+  if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
+    echo "Start the manager and enable it at boot: systemctl enable --now wazuh-manager"
+  else
+    echo "Start the manager: service wazuh-manager start"
+  fi
+fi
+
 %preun
 
 if [ $1 = 0 ]; then
