@@ -57,9 +57,8 @@ std::vector<MappingConfig> loadMappingConfigs(const json::Json& config)
     std::vector<MappingConfig> mappingConfigs {};
     mappingConfigs.reserve(collection.size());
 
-    const auto parseEcsPath = [](const json::Json& value,
-                                  const std::string& jsonField,
-                                  std::optional<std::string>& dest)
+    const auto parseEcsPath =
+        [](const json::Json& value, const std::string& jsonField, std::optional<std::string>& dest)
     {
         std::string fieldStr;
         if (value.getString(fieldStr, jsonField) == json::RetGet::Success)

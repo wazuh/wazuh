@@ -15,7 +15,7 @@ struct ValidationInfo
     ValueValidator validator;                   ///< Validator for the json value.
     /// Compatible types. The bool value indicates whether the compatible type needs additional validation.
     std::unordered_map<schemf::Type, bool> compatibles;
-    bool skipArrayWrap {false};                 ///< When true, validator is not wrapped in asArray().
+    bool skipArrayWrap {false}; ///< When true, validator is not wrapped in asArray().
 };
 
 /**

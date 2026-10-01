@@ -202,7 +202,8 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
-            []() {
+            []()
+            {
                 return userErrorResponse<eEngine::GenericStatus_Response>(
                     "Invalid policy name: Invalid namespace ID: ");
             },
@@ -221,7 +222,8 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
-            []() {
+            []()
+            {
                 return userErrorResponse<eEngine::GenericStatus_Response>(
                     "Invalid policy name: Invalid namespace ID: not-valid");
             },
@@ -458,10 +460,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
             []()
-            {
-                return userErrorResponse<eEngine::tester::RunPost_Response>(
-                    "Metadata should contain 'wazuh' as root");
-            },
+            { return userErrorResponse<eEngine::tester::RunPost_Response>("Metadata should contain 'wazuh' as root"); },
             []() { return makeSchemaValidator(false); },
         },
         // Additional fail case with invalid metadata
@@ -482,10 +481,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
             []()
-            {
-                return userErrorResponse<eEngine::tester::RunPost_Response>(
-                    "Metadata should contain 'wazuh' as root");
-            },
+            { return userErrorResponse<eEngine::tester::RunPost_Response>("Metadata should contain 'wazuh' as root"); },
             []() { return makeSchemaValidator(false); },
         },
         LogtestPostCase {
@@ -509,7 +505,8 @@ INSTANTIATE_TEST_SUITE_P(
                 // Handler should fail before calling ingestTest
                 EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0);
             },
-            []() {
+            []()
+            {
                 return userErrorResponse<eEngine::tester::RunPost_Response>(
                     "queue is required and must be non-zero (1..255)");
             },
@@ -938,7 +935,8 @@ INSTANTIATE_TEST_SUITE_P(
         OutputValidationCase {
             "GEO_POINTarrayCorrectCase",
             R"({"observer_geo_location": [-74.00, 40.71]})",
-            []() -> std::shared_ptr<schemf::IValidator> { return makeSchemaMock({{"observer_geo_location", schemf::Type::GEO_POINT}}); },
+            []() -> std::shared_ptr<schemf::IValidator>
+            { return makeSchemaMock({{"observer_geo_location", schemf::Type::GEO_POINT}}); },
             [](const eEngine::tester::Result_Validation& v)
             {
                 ASSERT_TRUE(v.valid());
@@ -950,9 +948,7 @@ INSTANTIATE_TEST_SUITE_P(
             "NullLeafKnownField",
             R"({"agent.id":null,"source.port":null})",
             []() -> std::shared_ptr<schemf::IValidator>
-            {
-                return makeSchemaMock({{"agent.id", schemf::Type::KEYWORD}, {"source.port", schemf::Type::INTEGER}});
-            },
+            { return makeSchemaMock({{"agent.id", schemf::Type::KEYWORD}, {"source.port", schemf::Type::INTEGER}}); },
             [](const eEngine::tester::Result_Validation& v)
             {
                 EXPECT_TRUE(v.valid());

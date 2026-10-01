@@ -22,7 +22,6 @@ public:
      * @brief Requests graceful shutdown for in-flight or future sync operations.
      */
     virtual void requestShutdown() = 0;
-
 };
 
 } // namespace confremote

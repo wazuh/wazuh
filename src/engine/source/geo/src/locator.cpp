@@ -11,7 +11,6 @@
 #include "dbInstance.hpp"
 #include "manager.hpp"
 
-
 namespace
 {
 /**
