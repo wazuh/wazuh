@@ -97,6 +97,19 @@ void PersistentQueue::flushLoop()
 
 bool PersistentQueue::flushActiveBuffer()
 {
+    // Early exit under m_mutex alone, so an idle background thread (or a shutdown) never waits on
+    // the storage lock behind a long storage call only to find nothing to flush. It takes no other
+    // lock, so it adds nothing to the lock order. The check under both locks below is the one the
+    // swap relies on; this one only skips the common empty case.
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+
+        if (m_buffers[m_currentIdx].empty())
+        {
+            return false;
+        }
+    }
+
     // Held across the swap, the write and the clear. Only the holder can swap, and it clears the
     // slot it took before releasing it, so no swap can hand producers a slot that another
     // flusher (the background thread or a sync) is still writing and is about to clear.
