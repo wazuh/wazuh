@@ -390,9 +390,9 @@ TEST_F(RetrySenderTest, AuthGateEscalatesOnlyAfterTheRetryAlsoFails)
     .WillOnce(Return(authFail("unknown_agent")))
     .WillOnce(Return(authFail("unknown_agent")));
 
-    guarded.send(makeSpec(), m_waiter, 1);
+    EXPECT_FALSE(guarded.send(makeSpec(), m_waiter, 1).credentialRejected);
     EXPECT_FALSE(gate.paused()); // Retry recovered: no pause.
-    guarded.send(makeSpec(), m_waiter, 1);
+    EXPECT_TRUE(guarded.send(makeSpec(), m_waiter, 1).credentialRejected);
     EXPECT_TRUE(gate.paused()); // Retry also 401: paused.
 }
 
@@ -422,6 +422,7 @@ TEST_F(RetrySenderTest, OnlyUnknownAgentEscalatesToTheAuthGate)
 
         const auto result = guarded.send(makeSpec(), m_waiter, 1);
         EXPECT_EQ(OutcomeClass::AuthFail, result.outcome) << code;
+        EXPECT_FALSE(result.credentialRejected) << code;
         EXPECT_FALSE(gate.paused()) << code;
         EXPECT_FALSE(reenrollRequested) << code;
         ::testing::Mock::VerifyAndClearExpectations(&m_performer);

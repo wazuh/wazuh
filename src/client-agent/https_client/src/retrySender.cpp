@@ -125,6 +125,8 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
 
         if (authClass == AuthFailClass::UnknownAgent)
         {
+            result.credentialRejected = true;
+
             if (m_authGate != nullptr)
             {
                 m_authGate->reportAuthFailure(); // Once per incident. #37828.
