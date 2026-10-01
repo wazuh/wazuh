@@ -728,9 +728,12 @@ paths:
         **A `config` download is authorized against the requesting agent's own groups.**
         `resource_id` must equal the selector `/control` handed that agent as `config_token` -- the
         same string `config_hash` was computed over -- and anything else is `403`. The selector is
-        resolved from the agent registry `/control` maintains, so no wazuh-db round trip is added
-        here; an agent whose membership was never established (no `/control/startup`, or an evicted
-        entry) is denied rather than served. The comparison is exact, multigroup order included.
+        resolved from the agent registry `/control` maintains when the agent's membership there is
+        fresh (established within `remoted.control_groups_refresh_interval`); otherwise -- first
+        contact with this node, a restarted manager, an expired or never-established entry -- it is
+        read from the node's local `wazuh-manager-db` before answering. An agent that database has no
+        row for is denied (`403`), never served `default`; when the database does not answer in time
+        the answer is `503`. The comparison is exact, multigroup order included.
 
         **`wpk` downloads are not authorized this way.** A package's authority is the agent's
         pending upgrade task, which `/control` does not carry, so any authenticated agent may still
@@ -816,7 +819,21 @@ paths:
               examples:
                 internalError:
                   value: { error: "Internal server error", code: 500 }
-        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+        "503":
+          description: |
+            Either the server shed the request (its in-flight byte budget is exhausted), or -- for a
+            `config` download -- the agent's group membership could not be read from the node's
+            local `wazuh-manager-db` in time (the fallback used when the agent registry cannot vouch
+            for the agent). Both clear by themselves; the agent retries a `503` as back-pressure. No
+            `Retry-After` is sent. The manager's log names the dependency when it is `wazuh-manager-db`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                dependencyUnavailable:
+                  value: { error: "dependency_unavailable", dependency: "wazuh-db" }
+                serviceUnavailable:
+                  value: { error: "Service unavailable", code: 503 }
 
   /stats:
     post:
