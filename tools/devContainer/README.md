@@ -196,7 +196,7 @@ After each run, a cleanup step deletes the untagged versions of the package that
 **`denied` or `unauthorized` when pulling or inspecting the image.** You are not logged in to `ghcr.io`, or your account has no access to the package. Log in as described in [Logging in to ghcr.io](#logging-in-to-ghcrio); if your organization enforces SSO, authorize the token for it. Without a stored credential the script offers the login menu (in a terminal); when Docker already has a credential for the registry and access is still denied, it reports:
 
 ```
-Error: <IMAGE> is still not accessible with the credentials stored for <REGISTRY>: the tag is not published for this branch, or your account has no access to the package. If the stored credential is old, run 'docker logout <REGISTRY>' and try again (README: "Troubleshooting").
+Error: <IMAGE> is still not accessible with the credentials stored for <REGISTRY>: your account has no access to the package, or the stored credential is old (a gh auth refresh revokes the previous token): run 'docker logout <REGISTRY>' and try again (README: "Troubleshooting").
 ```
 
 **An old or revoked credential.** The script does not offer the login again when Docker already has a credential for `ghcr.io`. Remove it and run the script again:

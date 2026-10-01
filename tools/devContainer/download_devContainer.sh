@@ -405,7 +405,7 @@ fail_unless_denied() {
 
 # Function to make sure Docker can read IMAGE, offering to log in when it has no credential
 ensure_registry_access() {
-    local still_denied="${IMAGE} is still not accessible with the credentials stored for ${REGISTRY}: the tag is not published for this branch, or your account has no access to the package. If the stored credential is old, run 'docker logout ${REGISTRY}' and try again (README: \"Troubleshooting\")."
+    local still_denied="${IMAGE} is still not accessible with the credentials stored for ${REGISTRY}: your account has no access to the package, or the stored credential is old (a gh auth refresh revokes the previous token): run 'docker logout ${REGISTRY}' and try again (README: \"Troubleshooting\")."
 
     echo "Checking access to ${IMAGE}..."
     inspect_manifest && return 0
