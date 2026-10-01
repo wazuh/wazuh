@@ -12,15 +12,62 @@ This development container provides a complete, ready-to-use environment for dev
 
 ## Getting Started
 
+### Supported platforms
+
+- **Linux x64**
+- **macOS ARM** (Apple silicon) with Docker Desktop
+
+The devContainer runs a prebuilt image published for `amd64` and `arm64`, so each platform pulls its own architecture.
+
 ### Prerequisites
 
 The following tools must be installed and running on your system before using the download script:
 
-- **Docker**: Must be installed and the Docker daemon must be running
+- **Docker**: Must be installed and the Docker daemon must be running (Docker Desktop on macOS)
 - **Git**: Must be installed
+- **A GitHub account with access to `ghcr.io/wazuh`**: the image is a private package, see [Logging in to ghcr.io](#logging-in-to-ghcrio)
+- **GitHub CLI (`gh`)**: optional, one of the two ways to log in to `ghcr.io`
+- **Node.js >= 20**: only to rebuild the image yourself, see [Working on the image](#working-on-the-image)
 
 > [!NOTE]
-> If your user is not in the `docker` group, the script will warn you and you may need `sudo` privileges.
+> If your user is not in the `docker` group, the script will warn you and you may need `sudo` privileges. The warning is skipped on macOS.
+
+### Logging in to ghcr.io
+
+The devContainer image lives under `ghcr.io/wazuh`, and packages there are private. `ghcr.io` answers `denied` or `unauthorized` both for a private package and for one that does not exist, so a missing login and a missing tag look the same until you are logged in.
+
+You do not need to log in beforehand: when the image is not accessible with your current Docker credentials, the script asks, and offers the same menu in both cases. To log in first, use any of the two ways below.
+
+```
+The devContainer image <IMAGE> is not accessible with your current Docker credentials.
+Packages under <REGISTRY>/<OWNER> are private: you need a GitHub account with access to them.
+How do you want to log in to <REGISTRY>?
+  1) With the GitHub CLI (gh auth refresh -s read:packages, then docker login with its token)
+  2) With a personal access token (classic) with the read:packages scope
+  3) Exit
+Choice:
+```
+
+The menu always shows the three options. When the GitHub CLI route is not available (`gh` is not installed, `gh auth status -h github.com` fails, `GH_TOKEN` or `GITHUB_TOKEN` is set, or the registry is not `ghcr.io`), the first line ends with ` (unavailable: gh is not installed or not logged in to github.com)`; choosing `1` then prints `option 1 is unavailable` and asks again; any other answer than `1`, `2` or `3` prints `Please answer 1, 2 or 3.`
+
+**Option 1: GitHub CLI.** The script runs `gh auth refresh -h github.com -s read:packages`, reads your login with `gh api user -q .login`, and passes the token of `gh auth token` to `docker login` on stdin.
+
+- `gh auth refresh` is interactive: it opens the browser and asks about git credentials.
+- It creates a **new** token every time. The one stored earlier in Docker is revoked, so a second run of `gh auth refresh` invalidates the credential of the first.
+- The token it stores is an OAuth token with the `repo` scope in addition to `read:packages`: broader than this needs.
+- It does not work when `GH_TOKEN` or `GITHUB_TOKEN` is defined.
+
+**Option 2: personal access token (classic).** `ghcr.io` only accepts a **classic** token. Create one with the `read:packages` scope and nothing else: it is the least privilege that works. The script asks for your GitHub user and the token, and passes the token to `docker login` on stdin. The token is never an argument of a command, nor written to a file or printed.
+
+Manually, the equivalent is:
+
+```bash
+echo "$TOKEN" | docker login ghcr.io -u <github-user> --password-stdin
+```
+
+If your organization enforces SAML single sign-on, authorize the token for it in your GitHub token settings, or the registry keeps answering `denied`.
+
+Docker stores the credential itself, not the script: in the credential helper named by `credHelpers["ghcr.io"]` or `credsStore` (Docker Desktop on macOS usually uses `credsStore: desktop`), or else in the `auths` entry of `${DOCKER_CONFIG:-$HOME/.docker}/config.json`. `docker logout ghcr.io` removes it.
 
 ### Quick Start
 
@@ -34,9 +81,9 @@ chmod +x download_devContainer.sh
 
 **Options:**
 - `-d <destination>`: Specify destination directory (default: `./devContainer`)
-- `-b <branch>`: Specify Git branch to download from (default: `5.0.0`). The devContainer also clones this branch of the repository on creation
+- `-b <branch>`: Specify Git branch to download from (default: `5.0.0`). The devContainer also clones this branch of the repository on creation. The branch must ship the prebuilt image (see [How the image is published](#how-the-image-is-published))
 - `-c <claude.tar.gz>`: Copy a Claude Code setup exported with `claude-portable.sh export` into the destination and print the command that imports it once the devContainer is up
-- `-h`: Show help message
+- `-h`: Show help message (covers the login, the pull and `WAZUH_DEVCONTAINER_IMAGE`)
 
 **Example:**
 ```bash
@@ -44,13 +91,29 @@ chmod +x download_devContainer.sh
 ```
 
 > [!NOTE]
-> The destination directory must not already exist — the script exits with an error if it does.
+> The destination directory must not already exist — the script exits with an error if it does. It is only created after the image has been pulled; if the script fails, it does not leave a destination behind.
 
 > [!NOTE]
-> After the download completes, the script will interactively ask whether you want to open the devContainer in VS Code. If VS Code and the Remote - Containers extension are available, it will open the workspace automatically; otherwise it will print a warning to open manually.
+> After the download completes, when the script runs in a terminal it asks whether you want to open the devContainer in VS Code. If VS Code and the Remote - Containers extension are available, it will open the workspace automatically; otherwise it will print a warning to open manually. Without a terminal it does not ask: it prints the `code --folder-uri …` command to run yourself.
 
 > [!NOTE]
-> This setup currently only works on Linux systems.
+> Without a terminal the script cannot ask you to log in either: log in first ([Logging in to ghcr.io](#logging-in-to-ghcrio)) and run it again.
+
+### What the script does
+
+In order:
+
+1. Checks the prerequisites.
+2. Clones the branch given with `-b` into a temporary directory.
+3. Checks the clone, **before touching Docker**: that `devcontainer.json` and `VERSION.json` exist, and that `devcontainer.json` has an `"image"` line. Older branches (`4.14.10` has no `.devcontainer/devcontainer.json`; `5.0.0` and `main` still carried the previous `devcontainer.json` until the one with the `"image"` line reaches them) stop here with an error.
+4. Computes the image: the repository of the `"image"` line (or `$WAZUH_DEVCONTAINER_IMAGE`) plus the tag `<major>.<minor>` of `VERSION.json` (`5.0` for `5.0.0`).
+5. Checks access to the registry with `docker manifest inspect`. If the image is not accessible, it offers the login menu once (only in a terminal) and tries again.
+6. Pulls the image with `docker pull`.
+7. Copies the configuration to the destination and patches the name, the branch and the `"image"` line of `devcontainer.json`.
+8. Copies the Claude Code package, when `-c` is given.
+9. Offers to open the workspace in VS Code.
+
+When the image is ready, it prints `The devContainer image <IMAGE> is ready.` before the download message.
 
 ### What gets downloaded
 
@@ -58,16 +121,18 @@ The script downloads only the core devContainer configuration:
 
 ```
 <destination>/
-├── .devcontainer/          # Dockerfile, devcontainer.json, fix-dind.sh, reinstall-cmake.sh, reinstall-clang-format.sh
+├── .devcontainer/          # Dockerfile, devcontainer.json, image.devcontainer.json, build-image.sh, fix-dind.sh, reinstall-cmake.sh, reinstall-clang-format.sh
 ├── .vscode/                # VS Code tasks, launch, and settings
 └── claude-portable.tar.gz  # only with -c
 ```
+
+`devcontainer.json` is what VS Code opens: it names the prebuilt image. `image.devcontainer.json`, the Dockerfile and `build-image.sh` are the recipe to rebuild that image (see [Working on the image](#working-on-the-image)).
 
 The `scripts/` and `e2e/` directories are **not** included in the download. They are available in the full Wazuh repository under `tools/devContainer/`.
 
 ### First start
 
-On the first start ("Reopen in Container" or `devcontainer up`), `postCreateCommand` runs two steps in sequence:
+On the first start ("Reopen in Container" or `devcontainer up`), the devContainer runs the image the script already pulled: there is no image build. If the image were not in the local Docker, VS Code would pull it, several GB, which is what the script did beforehand so that a missing login shows up before the destination is created. Then `postCreateCommand` runs two steps in sequence:
 
 1. `.devcontainer/fix-dind.sh`: Docker-in-Docker on the nftables backend with the cgroupfs driver; it waits until dockerd answers.
 2. The clone of the repository, on the branch given with `-b`, submodules included, into `wazuh.partial/`. It is renamed to
@@ -75,7 +140,82 @@ On the first start ("Reopen in Container" or `devcontainer up`), `postCreateComm
    - an existing `wazuh/` checkout is kept, and its submodules are updated;
    - a non-empty `wazuh/` that is not a git checkout is left untouched, and the step fails.
 
-Then `postStartCommand` sets `vm.max_map_count`, which the indexer needs, and `fs.inotify.max_user_watches`. If either step fails, the creation log shows a failed `postCreateCommand`, and the devContainer skips `postStartCommand`.
+Then `postStartCommand` sets `vm.max_map_count`, which the indexer needs, and `fs.inotify.max_user_watches`, and prints which image the container runs (`devContainer image: ci` for the published one, `local` for one built with `build-image.sh`). If either step fails, the creation log shows a failed `postCreateCommand`, and the devContainer skips `postStartCommand`.
+
+### Updating the image
+
+The image tag (`5.0`) is rebuilt when the recipe changes, so the image you pulled can get old. To update it:
+
+```bash
+docker pull ghcr.io/wazuh/wazuh-devcontainer:5.0
+```
+
+then run **Dev Containers: Rebuild Container** in VS Code. Use the repository and tag of the `"image"` line in your `devcontainer.json`.
+
+> [!NOTE]
+> **Rebuild Without Cache** does not pull the image; run `docker pull` first.
+
+### Working on the image
+
+To change the image (the Dockerfile, the `*.sh` it copies, or the features in `image.devcontainer.json`), build it locally from the `.devcontainer/` folder; this needs Node.js >= 20 (or the `devcontainer` CLI) and Docker:
+
+```bash
+.devcontainer/build-image.sh
+```
+
+The script builds for your host's platform with the devcontainer CLI and leaves `<repository>:<tag>` of the `"image"` line of `devcontainer.json` in your local Docker. Then run **Dev Containers: Rebuild Container**: the container uses your image, and the startup line says `devContainer image: local`. Options: `--platform`, `--image`, `--tag` (see `build-image.sh --help`).
+
+To go back to the published image, pull it again (`docker pull ghcr.io/wazuh/wazuh-devcontainer:5.0`) and rebuild the container.
+
+> [!NOTE]
+> Without a login to `ghcr.io`, the local build may print an `ERROR … cache importer` line: it tries to use the published image as a layer cache. It is not fatal; the build continues without the cache.
+
+On a fork, point both the download script and `build-image.sh` to your own registry with `WAZUH_DEVCONTAINER_IMAGE`, the image repository without a tag:
+
+```bash
+WAZUH_DEVCONTAINER_IMAGE=ghcr.io/<owner>/wazuh-devcontainer ./download_devContainer.sh -b <branch>
+WAZUH_DEVCONTAINER_IMAGE=ghcr.io/<owner>/wazuh-devcontainer .devcontainer/build-image.sh --tag 5.0
+```
+
+### How the image is published
+
+> [!NOTE]
+> Provisional: this section describes the workflow as designed and is reconciled with the final one afterwards.
+
+The workflow `.github/workflows/5_builderprecompiled_devcontainer-image.yml` builds `ghcr.io/wazuh/wazuh-devcontainer` with `build-image.sh`, for `amd64` and `arm64`, and publishes a single multi-platform tag, `<major>.<minor>` of `VERSION.json` (`5.0` today). It runs:
+
+- on a push to `5.x.y` branches or `main` that changes `tools/devContainer/.devcontainer/**` or the workflow itself;
+- on demand, with `workflow_dispatch`, which only re-runs the build for a branch that already has the right configuration.
+
+The workflow fails if the tag in the `"image"` line of `.devcontainer/devcontainer.json` is not the `<major>.<minor>` of `VERSION.json`. For that reason, a new release line (for example `5.1.0`, and `main` after the forward-merge) first needs a commit that bumps the tag of the `"image"` line to the new `<major>.<minor>`. That commit touches `.devcontainer/**`, so it is what triggers the build. Launching `workflow_dispatch` alone does not work around it.
+
+After each run, a cleanup step deletes the untagged versions of the package that are no longer in use. Deleted versions can be restored for 30 days.
+
+### Troubleshooting
+
+**`denied` or `unauthorized` when pulling or inspecting the image.** You are not logged in to `ghcr.io`, or your account has no access to the package. Log in as described in [Logging in to ghcr.io](#logging-in-to-ghcrio); if your organization enforces SSO, authorize the token for it. Without a stored credential the script offers the login menu (in a terminal); when Docker already has a credential for the registry and access is still denied, it reports:
+
+```
+Error: <IMAGE> is still not accessible with the credentials stored for <REGISTRY>: the tag is not published for this branch, or your account has no access to the package. If the stored credential is old, run 'docker logout <REGISTRY>' and try again (README: "Troubleshooting").
+```
+
+**An old or revoked credential.** The script does not offer the login again when Docker already has a credential for `ghcr.io`. Remove it and run the script again:
+
+```bash
+docker logout ghcr.io
+```
+
+This also happens after `gh auth refresh`, which revokes the token stored earlier.
+
+**`manifest unknown`.** The registry answers, but the tag does not exist: the image is not published for that branch. The script says `<IMAGE> is not published (manifest unknown)`. See [How the image is published](#how-the-image-is-published).
+
+**`branch '<B>' predates the prebuilt devContainer image`.** The branch given with `-b` has no `"image"` line in its `devcontainer.json`. Pick a branch that ships it.
+
+**`Docker is configured to use the credential helper 'docker-credential-<H>', which is not in PATH.`** The helper named in your Docker configuration is not installed or not in `PATH`, so Docker cannot read its credentials. Install it or fix `PATH`; until then the script treats the registry as having no credential and offers the login menu (in a terminal).
+
+**`cannot reach <REGISTRY>`.** Docker could not contact the registry (the message continues with the first line of the Docker error): check the network and the Docker daemon.
+
+**`... is not accessible and there is no terminal to log in`.** The script cannot ask without a terminal. Log in first and run it again.
 
 ### Importing a Claude Code setup (`-c`)
 
