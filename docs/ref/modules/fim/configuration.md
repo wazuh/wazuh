@@ -492,7 +492,7 @@ Defines Windows registry paths to monitor. Supports wildcards (`?` and `*`) for 
 |---|---|---|---|
 | `arch` | `32bit` | `32bit`, `64bit`, `both` | Registry view (32-bit or 64-bit hive). |
 | `tags` | N/A | Comma-separated strings | Custom tags for all alerts from this registry path. |
-| `report_changes` | `no` | `yes`, `no` | Report value diffs for supported types: `REG_SZ`, `REG_MULTI_SZ`, `REG_DWORD`, `REG_DWORD_BIG_ENDIAN`, `REG_QWORD`. |
+| `report_changes` | `no` | `yes`, `no` | Report value diffs for supported types: `REG_SZ`, `REG_EXPAND_SZ`, `REG_MULTI_SZ`, `REG_DWORD`, `REG_DWORD_BIG_ENDIAN`, `REG_QWORD`. |
 | `diff_size_limit` | `50MB` | Positive number + `KB`/`MB`/`GB` | Per-entry override for the maximum value size eligible for diff. |
 | `check_all` | `yes` | `yes`, `no` | Master toggle for all `check_*` attributes. |
 | `check_sum` | `yes` | `yes`, `no` | Enable MD5, SHA-1, and SHA-256 hashing. |
@@ -525,15 +525,17 @@ Specific key configurations take precedence over wildcard configurations:
 
 ## Internal Options
 
-Internal options for fine-tuning FIM behavior are configured in `/var/ossec/etc/internal_options.conf`. All FIM-related options use the `syscheck.*` prefix.
+FIM reads its internal options with the `syscheck.` prefix. Set them in `local_internal_options.conf`, next to `ossec.conf` (`/var/ossec/etc/` on Linux, `C:\Program Files (x86)\ossec-agent\` on Windows), since an upgrade replaces `internal_options.conf`.
 
-Common internal options include:
-
-- `syscheck.sleep` - Time to sleep between scans
-- `syscheck.debug` - Enable debug-level logging for FIM
-- `syscheck.rt_delay` - Delay before processing real-time events
-
-Refer to the internal options documentation for a complete list of available tuning parameters.
+| Option | Default | Allowed values | Description |
+|---|---|---|---|
+| `syscheck.rt_delay` | `5` | `0`–`1000` (milliseconds) | Delay before a real-time or who-data event is processed, so short-lived files such as editor swap files do not trigger events. |
+| `syscheck.max_fd_win_rt` | `256` | `1`–`1024` | Windows only. Maximum number of directories monitored in real time. |
+| `syscheck.max_audit_entries` | `256` | `1`–`4096` | Linux only. Maximum number of directories monitored with who-data. |
+| `syscheck.default_max_depth` | `256` | `1`–`320` | Recursion level used when a directory sets no `recursion_level`. |
+| `syscheck.symlink_scan_interval` | `600` | `1`–`2592000` (seconds) | Linux and Unix only. How often the directories set with `follow_symbolic_link` are checked for a changed link target. |
+| `syscheck.file_max_size` | `1024` | `0`–`4095` (MB) | Largest file whose hashes are calculated. `0` disables the limit. |
+| `syscheck.debug` | `0` | `0`–`2` | FIM debug level. |
 
 ---
 
