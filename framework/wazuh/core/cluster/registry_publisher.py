@@ -2,14 +2,16 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-"""Publish the agent-group memberships a worker applied to its local wazuh-manager-db to the local remoted.
+"""Tell the local remoted which agents' group memberships a worker just wrote to its local wazuh-manager-db.
 
 remoted authorizes configuration downloads against an in-memory registry of agent memberships. On a worker, the
-master's agent-group memberships reach the local wazuh-manager-db in chunks; after each applied chunk, clusterd tells
-the local remoted what it wrote (`POST /_internal/agents/groups` on remoted's admin socket), so a revoked group stops
-being served at once instead of when remoted's cached membership expires. Publication is best effort by design: it
-never blocks or delays the apply, and a publication that cannot be delivered is dropped -- remoted then follows the
-database when the membership expires.
+master's agent-group memberships reach the local wazuh-manager-db in chunks; after each chunk, clusterd names its
+agents to the local remoted (`POST /_internal/agents/groups` on remoted's admin socket), which withdraws their cached
+memberships and reads them from the database on their next request, so a revoked group stops being served at once
+instead of when remoted's cached membership expires. A publication never carries the groups themselves: it may reach
+remoted after a newer read, which it must not overwrite. Publication is best effort by design: it never blocks or
+delays the apply, and a publication that cannot be delivered is dropped -- remoted then follows the database when the
+membership expires.
 """
 
 import asyncio
@@ -98,10 +100,11 @@ class RegistryPublisher:
         Parameters
         ----------
         publications : iterable of dict
-            One publication per applied chunk, in the chunk order: `{"set": [...]}` or `{"invalidate": [...]}`.
+            One publication per chunk, in the chunk order: `{"invalidate": [ids]}`. Anything without a non-empty
+            `invalidate` is skipped: remoted applies nothing else.
         """
         for publication in publications:
-            if not publication.get('set') and not publication.get('invalidate'):
+            if not publication.get('invalidate'):
                 continue
             try:
                 self._queue.put_nowait(publication)
@@ -149,8 +152,8 @@ class RegistryPublisher:
             return
 
         counts = counts if isinstance(counts, dict) else {}
-        self.logger.debug(f'Published agent groups to the local remoted: updated={counts.get("updated")}, '
-                          f'invalidated={counts.get("invalidated")}, skipped={counts.get("skipped")}.')
+        self.logger.debug(f'Published agent groups to the local remoted: invalidated={counts.get("invalidated")}, '
+                          f'skipped={counts.get("skipped")}.')
 
     async def _reset_client(self) -> None:
         """Drop the current client so the next publication builds a new one."""

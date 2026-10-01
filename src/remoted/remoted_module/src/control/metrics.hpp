@@ -44,8 +44,8 @@ namespace remoted::control
     constexpr auto METRIC_NO_ROW {"remoted.control.no_row"};
     // Membership publications on the local admin socket (POST /_internal/agents/groups): per-agent
     // outcomes plus the publications refused whole. Same family as the registry they write, so the
-    // dump reads as one remoted.control.* namespace.
-    constexpr auto METRIC_PUSH_UPDATED {"remoted.control.registry.push.updated"};
+    // dump reads as one remoted.control.* namespace. A publication only invalidates, so there is no
+    // "updated" outcome: only a wazuh-db read establishes a membership.
     constexpr auto METRIC_PUSH_INVALIDATED {"remoted.control.registry.push.invalidated"};
     constexpr auto METRIC_PUSH_SKIPPED {"remoted.control.registry.push.skipped"};
     constexpr auto METRIC_PUSH_REJECTED {"remoted.control.registry.push.rejected"};
@@ -103,7 +103,6 @@ namespace remoted::control
      */
     struct PushMetrics
     {
-        std::shared_ptr<wazuh::metrics::ICounter> updated;     ///< Agents whose entry took the published groups.
         std::shared_ptr<wazuh::metrics::ICounter> invalidated; ///< Agents whose membership was invalidated.
         std::shared_ptr<wazuh::metrics::ICounter> skipped;     ///< Agents this node holds no entry for: nothing
                                                                ///< is created, their first download looks them up.
@@ -115,8 +114,6 @@ namespace remoted::control
     inline PushMetrics makePushMetrics(wazuh::metrics::IManager& manager)
     {
         return PushMetrics {
-            manager.getOrCreateCounter(
-                METRIC_PUSH_UPDATED, "Agents whose registry entry took a published membership", "agents"),
             manager.getOrCreateCounter(
                 METRIC_PUSH_INVALIDATED, "Agents whose membership a publication invalidated", "agents"),
             manager.getOrCreateCounter(

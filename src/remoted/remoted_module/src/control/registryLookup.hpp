@@ -36,9 +36,12 @@ namespace remoted::control
     {
         enum class Kind
         {
-            Groups,     ///< The agent's groups, wazuh-db order (empty = a row with no groups).
-            NoRow,      ///< The local replica has no row for the agent. Never a membership: retry.
-            Unavailable ///< wazuh-db did not answer in time, refused, or the lookup was refused.
+            Groups,      ///< The agent's groups, wazuh-db order (empty = a row with no groups).
+            NoRow,       ///< The local replica has no row for the agent. Never a membership: retry.
+            Unavailable, ///< wazuh-db did not answer in time, refused, or the lookup was refused.
+            Superseded   ///< The membership changed while the query was in flight (an invalidation, or
+                         ///< a push this node could not place) and nothing newer is established: the
+                         ///< read may predate the change, so it never answers. Retry.
         };
         Kind kind {Kind::Unavailable};
         std::vector<std::string> groups;
@@ -58,8 +61,9 @@ namespace remoted::control
      * Concurrent lookups for one agent share a single query; the requests waiting on lookups are
      * bounded per agent and in total, and one over a bound is answered Unavailable at once. What a
      * query reads is written into the registry under its ordering rule (the ticket is taken when
-     * the query is issued): a newer write wins, a read that may be older than a skipped push is
-     * answered but not written, and a row with no groups is stored as {"default"}. "No row" is never
+     * the query is issued): a newer established write is the answer, a read that may be older than a
+     * change that landed meanwhile (an invalidation, a skipped push) is Superseded -- neither written
+     * nor answered -- and a row with no groups is stored as {"default"}. "No row" is never
      * a membership and never creates an entry; it invalidates the membership an existing entry
      * holds, under the same rule.
      *

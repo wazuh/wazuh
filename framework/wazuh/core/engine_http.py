@@ -332,19 +332,18 @@ class AsyncRemotedHTTPClient:
         await self._client.aclose()
 
     async def post_agent_groups(self, publication: dict) -> dict:
-        """Publish agent-group memberships applied to the local wazuh-manager-db to remoted.
+        """Tell remoted which agents' group memberships were just written to the local wazuh-manager-db.
 
         Parameters
         ----------
         publication : dict
-            `{"set": [{"id": 1, "groups": ["default"]}], "invalidate": [5]}` -- either key may be
-            absent, not both. `set` replaces the groups of agents remoted tracks; `invalidate` makes
-            remoted read those agents' groups from the database again.
+            `{"invalidate": [1, 5]}`: remoted withdraws the cached memberships of the agents it tracks and
+            reads their groups from the database on their next request. Other keys are ignored.
 
         Returns
         -------
         dict
-            remoted's per-agent counts: `updated`, `invalidated` and `skipped` (agents it does not track).
+            remoted's per-agent counts: `invalidated` and `skipped` (agents it does not track).
 
         Raises
         ------
