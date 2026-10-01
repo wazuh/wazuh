@@ -33,8 +33,9 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
-- Fixed two inverted checks in the Debian 10 SCA policy: single user mode authentication and the remote login warning banner. ([#39339](https://github.com/wazuh/wazuh/issues/39339))
-- Fixed the `/etc/security/opasswd` permission check failing when the optional `opasswd.old` file is absent in Debian 10, 12, 13 and Ubuntu 20.04, 22.04, 24.04 SCA policies. ([#39338](https://github.com/wazuh/wazuh/issues/39338))
+- Fixed two inverted checks in the Debian 10 SCA policy: single user mode authentication and the remote login warning banner. ([#39768](https://github.com/wazuh/wazuh/pull/39768))
+- Fixed the `/etc/security/opasswd` permission check failing when the optional `opasswd.old` file is absent in Debian 10, 12, 13 and Ubuntu 20.04, 22.04, 24.04 SCA policies. ([#39762](https://github.com/wazuh/wazuh/pull/39762))
+- Fixed MTA check in multiple SCA files. ([#39771](https://github.com/wazuh/wazuh/pull/39771))
 
 ## [v4.14.9]
 

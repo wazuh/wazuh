@@ -1879,7 +1879,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'c:ss -lntu -> r:\.*:25\.*LISTEN && !r:127.0.0.1:25\.+LISTEN|::1:25\.*LISTEN'
+      - 'not c:ss -lntu -> r::25\s && !r:\s127.0.0.1:25\s|\s[::1]:25\s|\s::1:25\s'
 
   # 2.2.17 Ensure rsync service is either not installed or is masked. (Automated)
   - id: 2579
