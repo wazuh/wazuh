@@ -50,11 +50,14 @@ wazuh-manager_*.deb   wazuh-agent_*.deb   wazuh-indexer_*.deb
 
 **Always confirm the package carries what you intend to measure.** A build older than the
 feature under test answers as if the defect did not exist, which is worse than failing loudly.
-`setup_lab.sh` extracts the staged manager `.deb` and refuses to continue unless both of these hold
+`setup_lab.sh` extracts the staged manager `.deb` and refuses to continue unless all of these hold
 inside it:
 
 ```bash
 strings /var/wazuh-manager/lib/libremoted_module.so | grep -c 'Cannot authorize /download'   # /download authz + wazuh-db fallback (#39147)
+strings /var/wazuh-manager/lib/libremoted_module.so | grep -c 'Cannot authorize /download for agent'   # a missing row is a retryable 503 (#39147)
+strings /var/wazuh-manager/lib/libremoted_module.so | grep -c '/_internal/agents/groups'   # the admin route clusterd publishes to (#39147)
+find /var/wazuh-manager -name registry_publisher.py                                        # the worker's publisher (#39147)
 grep -c '"ca_certificate"' /var/wazuh-manager/etc/wazuh-manager.schema.json
 ```
 
@@ -150,21 +153,36 @@ Enrolls, then asks every node every 250 ms until it accepts the key. `POST /stat
 oracle: `401` means the node does not have the key yet, `202` or `503` means it does; transport
 errors never reached the manager, so they are counted separately as inconclusive.
 
-### The cross-node `/download` 403, and whether it converges
+### A configuration is served by every node (#39147)
 
 ```bash
 docker exec lab-probe python3 /probe/cross_node_download.py \
-  --agent-id <id> --key <key> --control-on worker1 \
+  --password labpassword --control-on worker1 \
   --node master=https://wazuh-master:1517 \
   --node worker1=https://wazuh-worker1:1517 \
   --node worker2=https://wazuh-worker2:1517
 
-docker exec lab-probe python3 /probe/download_convergence.py --password labpassword
+docker exec lab-probe python3 /probe/revocation_by_push.py --password labpassword
+docker exec lab-probe python3 /probe/download_status.py --password labpassword --node https://wazuh-worker2:1517
 ```
 
-The first sends `/control` to one node and then the same download to all three. The second
-measures whether the denial closes on its own, and how many notify rounds it takes — which is
-the part that scales with cluster size.
+`cross_node_download.py` enrolls a fresh agent (or takes `--agent-id/--key`), downloads its
+configuration on every node **before** any `/control`, sends `/control` to one node, and downloads
+again everywhere. It **asserts**: every node must end at `200` with the body's sha256 equal to the
+`config_hash` `/control` handed out — a node that never saw the agent reads its groups from its own
+database. While the agent's key or its database row has not reached a node yet, that node answers
+`401` or `503` (retry, never a denial) for up to `--within` seconds; **a `403` is always a failure**.
+`--download-on worker2` limits it to one node (the restart check).
+
+`revocation_by_push.py` gives worker1 a fresh cached membership (`/control`), moves the agent to a
+new group through the master's API, and requires worker1 to refuse the old selector before that
+membership could expire (`--expiry`, the 60 s `remoted.control_groups_refresh_interval`): only the
+worker's cluster daemon publishing the applied change (`POST /_internal/agents/groups`) can do
+that. `download_status.py` is one timed download against one node, for the checks that need a node
+in a given state (`run_issue_checks.sh` section 9 freezes a worker's `wazuh-manager-db` with it).
+
+`download_convergence.py --password labpassword` still measures the per-round 403 rate through the
+balancer; with #39147 every round is expected to read `0/N`.
 
 ### Enrollment credential modes
 
