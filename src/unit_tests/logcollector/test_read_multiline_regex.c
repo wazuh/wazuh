@@ -1678,11 +1678,8 @@ void test_read_multiline_regex_invalid_context(void ** state) {
     will_return(__wrap_w_ftell, (int64_t) 10);
 
     expect_any(__wrap_w_fseek, x);
-    expect_value(__wrap_w_fseek, pos, 5);
+    expect_value(__wrap_w_fseek, pos, 10);
     will_return(__wrap_w_fseek, 0);
-
-    will_return(__wrap_fread, "test0");
-    will_return(__wrap_fread, 5);
 
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
@@ -1763,10 +1760,31 @@ void test_read_multiline_regex_log_ignored(void ** state) {
 // Test hash_file_span
 void test_hash_file_span_fseek_fail(void ** state) {
 
-    int64_t initial_pos = 10;
-    int64_t final_pos = 5;
+    EVP_MD_CTX * context = EVP_MD_CTX_new();
 
-    assert_false(hash_file_span(NULL, NULL, initial_pos, final_pos));
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 5);
+    will_return(__wrap_w_fseek, -1);
+
+    assert_false(hash_file_span(NULL, context, 5, 10));
+    EVP_MD_CTX_free(context);
+}
+
+/* An empty span has nothing to hash and does not touch the stream */
+void test_hash_file_span_empty(void ** state) {
+
+    EVP_MD_CTX * context = EVP_MD_CTX_new();
+
+    assert_true(hash_file_span(NULL, context, 10, 10));
+    EVP_MD_CTX_free(context);
+}
+
+void test_hash_file_span_negative(void ** state) {
+
+    EVP_MD_CTX * context = EVP_MD_CTX_new();
+
+    assert_false(hash_file_span(NULL, context, 10, 5));
+    EVP_MD_CTX_free(context);
 }
 
 void test_hash_file_span_size_reduce(void ** state) {
@@ -1839,14 +1857,11 @@ void test_hash_file_span_several_blocks(void ** state) {
     EVP_MD_CTX_free(context);
 }
 
-/* Bytes after the first NUL of the span are read, to reach the end of the span, but not hashed */
+/* Bytes after the first NUL of the span are not hashed, the stream is moved to the end of the span instead */
 void test_hash_file_span_stops_hashing_after_nul(void ** state) {
 
-    static char data[OS_MAXSTR + 1];
     EVP_MD_CTX * context = EVP_MD_CTX_new();
 
-    memset(data, 'A', OS_MAXSTR);
-    data[OS_MAXSTR] = '\0';
     sha1_stream_bytes = 0;
     sha1_stream_max_block = 0;
 
@@ -1858,27 +1873,33 @@ void test_hash_file_span_stops_hashing_after_nul(void ** state) {
     will_return(__wrap_fread, "0123456789");
     will_return(__wrap_fread, OS_MAXSTR);
     expect_function_call(__wrap_OS_SHA1_Stream);
-    /* Second and third blocks: read but not hashed */
-    will_return(__wrap_fread, data);
-    will_return(__wrap_fread, OS_MAXSTR);
-    will_return(__wrap_fread, data);
-    will_return(__wrap_fread, 7);
+    /* Second and third blocks: skipped */
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 2 * (int64_t) OS_MAXSTR + 7);
+    will_return(__wrap_w_fseek, 0);
 
     assert_true(hash_file_span(NULL, context, 0, 2 * (int64_t) OS_MAXSTR + 7));
     assert_int_equal(sha1_stream_bytes, 10);
     EVP_MD_CTX_free(context);
 }
 
-/* Without a hash context the span is only read */
+/* Without a hash context nothing is read, the stream is only moved to the end of the span */
 void test_hash_file_span_no_context(void ** state) {
 
     expect_any(__wrap_w_fseek, x);
-    expect_value(__wrap_w_fseek, pos, 5);
+    expect_value(__wrap_w_fseek, pos, 10);
     will_return(__wrap_w_fseek, 0);
-    will_return(__wrap_fread, "test0");
-    will_return(__wrap_fread, 5);
 
     assert_true(hash_file_span(NULL, NULL, 5, 10));
+}
+
+void test_hash_file_span_no_context_fseek_fail(void ** state) {
+
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 10);
+    will_return(__wrap_w_fseek, -1);
+
+    assert_false(hash_file_span(NULL, NULL, 5, 10));
 }
 
 int main(void) {
@@ -1979,11 +2000,14 @@ int main(void) {
         cmocka_unit_test(test_read_multiline_regex_log_ignored),
         // Test hash_file_span
         cmocka_unit_test(test_hash_file_span_fseek_fail),
+        cmocka_unit_test(test_hash_file_span_empty),
+        cmocka_unit_test(test_hash_file_span_negative),
         cmocka_unit_test(test_hash_file_span_size_reduce),
         cmocka_unit_test(test_hash_file_span_ok),
         cmocka_unit_test(test_hash_file_span_several_blocks),
         cmocka_unit_test(test_hash_file_span_stops_hashing_after_nul),
         cmocka_unit_test(test_hash_file_span_no_context),
+        cmocka_unit_test(test_hash_file_span_no_context_fseek_fail),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

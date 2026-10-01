@@ -109,14 +109,14 @@ STATIC int multiline_getlog_all(char * buffer, int length, FILE * stream, w_mult
  * @brief Feed the file bytes between two positions to a hash context, in blocks of at most OS_MAXSTR bytes
  *
  * The memory used does not depend on the distance between the positions. As the span is hashed as a
- * NUL-terminated string, the bytes after the first NUL of the span are read but not hashed.
- * On success the stream is left at `final_pos`.
+ * NUL-terminated string, the bytes after the first NUL of the span are not hashed, and are skipped
+ * instead of read. On success the stream is left at `final_pos`.
  *
  * @param stream File stream
- * @param context Hash context to update. If NULL, the span is read but not hashed.
+ * @param context Hash context to update. If NULL, nothing is read and the stream is moved to `final_pos`.
  * @param initial_pos initial position
  * @param final_pos final position
- * @return true if the whole span was read. false on error
+ * @return true if the span was processed, including an empty span. false on error
  */
 STATIC bool hash_file_span(FILE * stream, EVP_MD_CTX * context, int64_t initial_pos, int64_t final_pos);
 
@@ -538,9 +538,21 @@ STATIC bool hash_file_span(FILE * stream, EVP_MD_CTX * context, int64_t initial_
 
     char block[OS_MAXSTR + 1];
     int64_t remaining = final_pos - initial_pos;
-    bool hashing = (context != NULL);
 
-    if (remaining <= 0 || w_fseek(stream, initial_pos, SEEK_SET) != 0) {
+    if (remaining == 0) {
+        return true;
+    }
+
+    if (remaining < 0) {
+        return false;
+    }
+
+    /* Nothing to hash, only leave the stream at the end of the span */
+    if (context == NULL) {
+        return w_fseek(stream, final_pos, SEEK_SET) == 0;
+    }
+
+    if (w_fseek(stream, initial_pos, SEEK_SET) != 0) {
         return false;
     }
 
@@ -553,16 +565,14 @@ STATIC bool hash_file_span(FILE * stream, EVP_MD_CTX * context, int64_t initial_
             return false;
         }
 
-        if (hashing) {
-            block[readed] = '\0';
-            OS_SHA1_Stream(context, NULL, block);
-            /* The hash covers the span up to its first NUL, as when it was hashed as a single string */
-            if (strlen(block) < readed) {
-                hashing = false;
-            }
-        }
-
+        block[readed] = '\0';
+        OS_SHA1_Stream(context, NULL, block);
         remaining -= (int64_t) readed;
+
+        /* The hash covers the span up to its first NUL, as when it was hashed as a single string */
+        if (strlen(block) < readed) {
+            return remaining == 0 || w_fseek(stream, final_pos, SEEK_SET) == 0;
+        }
     }
 
     return true;
