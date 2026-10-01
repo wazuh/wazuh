@@ -936,6 +936,9 @@ facade's shared `wazuh_metrics` registry (`shared_modules/metrics`) via `makeCon
   row for the agent (`ok []`); disjoint from `wdb_error`, which counts lookups that failed
 - `remoted.control.registry.agents` — pull metric over `AgentRegistry::size()` (registered by
   the facade; weak target, quiesces to 0 once the control plane is torn down)
+- `remoted.control.registry.push.{updated,invalidated,skipped}` — per-agent outcomes of the
+  membership publications on the admin socket, and `…push.rejected` — publications refused whole
+  (`PushMetrics`, see `POST /_internal/agents/groups` under **Local admin socket**)
 
 Each `inc*` helper is a single relaxed atomic op (and a silent no-op on a default-constructed,
 all-null struct — the null object the unit tests use). The registry is dumped as JSON to the debug
@@ -2294,6 +2297,7 @@ linked into the settings' own documentation — is the official docs page:
 | Family | What it answers | Counted at |
 |---|---|---|
 | `remoted.control.*` (6 counters + `rejected` + `no_row` + `wdb.latency` histogram) | control-plane health, wazuh-db sizing | `controlHandler`/`controlEndpoint`/`wazuhDBClient`/`taskClient` (see the /control section) |
+| `remoted.control.registry.push.{updated, invalidated, skipped, rejected}` | do clusterd's membership publications reach this node, and do they find the agents they name (a high `skipped` share is normal on a worker most agents never contact) | `admin/agentGroupsRoute.cpp` |
 | `remoted.control.registry.agents` (pull) | how many agents this node currently tracks — diagnostic only: the registry TTL (6 h) and eviction cadence (5 min) are compile-time constants, not settings | `AgentRegistry::size()` |
 | `remoted.scanvd.*` (7 counters) | VD scan admission split | `scanVdHandler` (see the /scan/vd section) |
 | `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed, token_unknown, token_expired, token_revoked}` | WHY authentication failed, finer than the class the wire names (see [401 classes](#401-classes)); the three `token_*` cells are `/enroll`'s enrollment-token states | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
@@ -2337,9 +2341,9 @@ per interval, and `tools/devContainer/scripts/bench_samples.py`'s
 
 The module's management plane: a second, independent HTTP server (the shared
 `shared_modules/uds_http_server` library — the public HTTPS server keeps its own RESTinio stack)
-brought up by `startAdminServer()` right after the public server. It serves exactly four
-read-only routes, all **Liveness** class (answered inline from resident state — or, for `/tls`,
-one bounded read of a few-KB file — exempt from the byte budget):
+brought up by `startAdminServer()` right after the public server. It serves four read-only
+routes, all **Liveness** class (answered inline from resident state — or, for `/tls`, one bounded
+read of a few-KB file — exempt from the byte budget), and one write route, **Control** class:
 
 | Route | Answer |
 |---|---|
@@ -2347,6 +2351,36 @@ one bounded read of a few-KB file — exempt from the byte budget):
 | `GET /metrics` | JSON dump of the module's whole `wazuh_metrics` registry (every family in **Metrics catalog** above), same envelope as inventory sync's `/metrics` |
 | `GET /status` | Readiness, not bare liveness — see below |
 | `GET /tls` | The served TLS certificate and the CA bundle `GET /cacerts` hands out: dates, identities, which CA signs the leaf — see below |
+| `POST /_internal/agents/groups` | A membership publication from the local cluster daemon, applied to the `AgentRegistry` — see below |
+
+### `POST /_internal/agents/groups`: membership publications (#39147)
+
+On a worker, clusterd applies the master's agent-group memberships to the local wazuh-db in chunks;
+after each chunk it publishes what it applied here, so `/control` and `/download` follow the
+database at once instead of when an entry expires. `src/admin/agentGroupsRoute.{hpp,cpp}`
+(`makeAgentGroupsHandler()`), registered in `startAdminServer()` with
+`RouteOptions {RouteClass::Control, kAgentGroupsMaxBodyBytes}` (256 KiB, over the class's 64 KiB).
+
+- **Body**: `{"set":[{"id":1,"groups":["default","g1"]}],"invalidate":[5]}` — either key may be
+  absent, not both. Ids are JSON unsigned integers `1..2^32-1`; group names are non-empty strings
+  without `,`; unknown keys (a chunk's `name`) are ignored. The **whole** body is validated before
+  anything is applied: any defect is `400 {"error":"<reason>","code":400}` with the registry
+  untouched.
+- **Apply**: every `set`, in order, through `AgentRegistry::setGroups()` (the list through
+  `membershipGroups()`: empty ⇒ `{"default"}`), then every `invalidate` through
+  `invalidateGroups()`; a repeated id ends with its last write. Both update **existing** entries
+  only — an absent agent is skipped and never created (its first download looks it up) — and stamp
+  the entry under the registry's ordering rule, so a lookup that read wazuh-db before the
+  publication never overwrites it. Activity fields are never touched.
+- **Answer**: `200 {"updated":n,"invalidated":k,"skipped":m}`, counted per agent in
+  `remoted.control.registry.push.{updated,invalidated,skipped}`; a refused publication (400, or 503
+  once the registry is gone during shutdown) counts once in `…push.rejected`. The transport answers a
+  larger body `413` before the handler runs.
+- **Threading and lifetime**: inline on an admin I/O thread (validation + O(batch) registry updates,
+  no I/O). The handler holds the registry by `weak_ptr` — the same target as the
+  `remoted.control.registry.agents` pull — and locks it per request.
+- **Trust**: the socket's `0660` permissions (`wazuh-manager:wazuh-manager`) — the principals that
+  can reach it can already rewrite memberships through `wdb.sock`. No auth code.
 
 ### `GET /status`: readiness, not liveness
 
@@ -2512,8 +2546,9 @@ Contract points:
   `$WAZUH_HOME/queue/sockets/remote-admin-http.sock` (mode 0660). Internal options only carry ints,
   so a path knob has nowhere to live — the same criterion that fixed inventory sync's path.
 - **Warn-on-failure**: a failed bind/start is a `WARN` and the module continues without the
-  admin plane — metrics are optional, and remoted must never die for them. (The public HTTPS
-  server keeps the opposite policy: its failure is fatal.)
+  admin plane — metrics are optional, and remoted must never die for them. Membership publications
+  are then dropped too (clusterd warns and carries on): the registry follows wazuh-db only as entries
+  expire. (The public HTTPS server keeps the opposite policy: its failure is fatal.)
 - **Local-only by construction**: agents can never reach it — no route on the public HTTPS
   endpoint exposes it (that endpoint is agent-facing, not an admin plane), and the C-side stats
   served by remcom's legacy `getstats` are untouched (decision U6).
@@ -2522,7 +2557,8 @@ Contract points:
   registered once per process — pulls cannot be unregistered), so `GET /metrics` also reports
   the transport serving it.
 - **Shutdown**: `stopAccepting()` in `stop()`'s phase 1 alongside the HTTPS server's, full
-  `stop()` + reset in the teardown phase — the metrics manager its handlers read outlives it.
+  `stop()` + reset in the teardown phase — the metrics manager its handlers read outlives it, and
+  every other target they read (the registry, the keystore, the public server) is weak.
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
@@ -2762,7 +2798,9 @@ sole gate on top-level `ready` (present only when Password-mode enrollment is en
 `keystore.readable` as purely informational — including the case where `client.keys` fails to
 load but Password-mode is disabled, asserting `ready:true` alongside `keystore:{readable:false,...}`
 to prove a keystore failure alone never drags `ready` down, and `enrollment_tokens:{loaded:0,
-last_reload_ok:true}` reported whenever enrollment is enabled without ever gating `ready`, 404/405 exact-match routing, the
+last_reload_ok:true}` reported whenever enrollment is enabled without ever gating `ready`, 404/405 exact-match routing,
+`POST /_internal/agents/groups` over the socket (skipped agents counted, a malformed body 400, a
+declared body over the route's 256 KiB cap 413 at headers-complete while a 100 KiB one passes), the
 warn-and-continue policy when the bind fails with the public listener unaffected, and `stop()`
 unlinking the socket with a restart cycle bringing the plane back; `GET /tls` describing the
 listener the facade started and the bundle `/cacerts` serves, following a bundle rewritten on disk
@@ -2773,7 +2811,9 @@ every key, both timestamp spellings, failure-only fields, no verdicts); the per-
 descriptor and the identities are `certificateDescriptor_test.cpp`; the per-entry
 `signsLeaf`/sizes/`contentSha256` of the snapshot and the transport's `tlsInventory()` (empty unless
 accepting; CA file followed, leaf file not) are in `caCertificateSource_test.cpp` and
-`httpServer_test.cpp`.
+`httpServer_test.cpp`. The publication route's own contract (sets before invalidations, existing
+entries only, `default` for an empty list, whole-body validation, 503 without a registry, per-agent
+counters) is `agentGroupsRoute_test.cpp`, driving the handler directly.
 
 **Two files in `test/unit/` are spikes, not contracts.** They characterize a third-party library
 fetched by `make deps`; their purpose is to pin observed dependency behaviour, and

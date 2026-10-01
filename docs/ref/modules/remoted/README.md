@@ -54,26 +54,32 @@ keep-alives, enriches and batches events, and forwards them to the engine.
 
 The C++ module serves its own metrics and readiness status over a manager-local Unix socket,
 `queue/sockets/remote-admin-http.sock` (fixed path, mode `0660`), separate by design from the
-agent-facing HTTPS endpoint — neither is ever exposed on the public listener.
+agent-facing HTTPS endpoint — neither is ever exposed on the public listener. On a cluster worker,
+the local cluster daemon also uses it to tell remoted which group memberships it just wrote to the
+node's database.
 
 | Route | Response |
 |---|---|
 | `GET /` | `200` `{"status":"ok","module":"remoted_module"}` |
 | `GET /metrics` | `200` — JSON dump of every metric family the module keeps (request outcomes and latency per endpoint, auth-rejection and downstream-failure taxonomies, backpressure, keystore health, ...) — see [Metrics](metrics.md) for the full catalog and the settings each metric relates to |
 | `GET /tls` | `200` — validity of the TLS material served to agents: the listener certificate (dates, `x509-sha256` identity, `loaded_at`) and every certificate of the CA bundle `GET /cacerts` hands out, with whether it signs the served one. No thresholds. `503` while the HTTPS listener is not up. Field by field in [Certificate validity](certificate-validity.md); the Server API serves it per node as `GET /cluster/{node_id}/daemons/remoted/tls` |
+| `POST /_internal/agents/groups` | Internal, for the cluster daemon: the agent-group memberships a worker just applied to its local `wazuh-manager-db`, so `/control` and `/download` use them at once instead of when the cached membership expires (`remoted.control_groups_refresh_interval`). Body `{"set":[{"id":1,"groups":["default","web"]}],"invalidate":[5]}` (either key may be absent, not both): `set` replaces the groups of an agent this node already tracks (an empty list is `default`), `invalidate` makes remoted read the agent's groups from the database again on its next request; an agent the node does not track is skipped, never added. `200 {"updated":1,"invalidated":0,"skipped":0}` (counts per agent); `400 {"error":"…","code":400}` for a malformed body — nothing is applied; `413` above 256 KiB; `503` while remoted is stopping. Authorization is the socket's permissions: whoever can write to it can already change memberships in the database directly. Counted in `remoted.control.registry.push.*` ([Metrics](metrics.md#control-plane--remotedcontrol)) |
 | `GET /status` | `200` — readiness, not bare liveness: `ready` reflects whether an enrollment password key is currently available, when enrollment is administratively enabled and Password-mode enrollment is on; it is `true` whenever remoted answers at all if either flag is off. `{"ready":true,"enrollment_password":{"ready":true},"keystore":{"readable":true,"agents_loaded":12,"entries_skipped":0},"enrollment_tokens":{"loaded":3,"last_reload_ok":true}}` (`enrollment_password` is omitted entirely unless both flags are on; `enrollment_tokens` is omitted when enrollment is off). `keystore` reports whether `client.keys` last reloaded successfully — informational only, it never gates `ready`, since remoted cannot tell an empty-but-fine `client.keys` apart from a stale one still serving the old table. `enrollment_tokens` does the same for the replica of `etc/enrollment_tokens.json` that verifies enrollment-token bearers (`loaded` = credential-bearing tokens in the replica; an absent file is a valid empty replica): informational, never gates `ready`. `503` before the module's keystore is up. `GET /cluster/{node_id}/status` embeds `ready`, `keystore` and `enrollment_password` from it under `wazuh-manager-remoted` |
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/status
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/tls | jq
+curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock -X POST \
+  -H 'Content-Type: application/json' -d '{"invalidate":[1]}' http://localhost/_internal/agents/groups
 ```
 
 A failure to bring this socket up only logs a warning: the admin plane is optional and remoted
-keeps serving agents without it. When the admin socket is unreachable while remoted itself is
-running, `GET /cluster/{node_id}/status` falls back to plain liveness (`ready: true`) with a
-`reason: "admin socket unreachable"` field, rather than reporting the node not ready — the admin
-plane failing to come up is not the same as remoted being unready.
+keeps serving agents without it. The cluster daemon's membership updates are then lost too, and a
+node follows its database only as cached memberships expire. When the admin socket is unreachable
+while remoted itself is running, `GET /cluster/{node_id}/status` falls back to plain liveness
+(`ready: true`) with a `reason: "admin socket unreachable"` field, rather than reporting the node not
+ready — the admin plane failing to come up is not the same as remoted being unready.
 
 A caller that needs Password-mode enrollment to be usable — not just remoted to be alive — should
 poll `/status` (or `/cluster/{node_id}/status`) until `ready: true` with a bounded timeout before
