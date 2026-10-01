@@ -758,18 +758,26 @@ Supports:
 - `update(id, updateFn)` — atomic read-modify-write via a lambda (returns the new entry)
 - `get(id)` — read-only lookup (returns `shared_ptr<const AgentEntry>`)
 - `evictExpiredEntries(ttlSec)` — periodic cleanup (two-phase: read-lock scan, then write-lock erase)
-- `setGroups(id, groups, now)` / `invalidateGroups(id)` — membership writers for a push: they update
-  an **existing** entry only (an absent agent is `Skipped`, never created) and touch nothing but the
-  membership fields
+- `invalidateGroups(id)` — the one write of a membership push: it makes an **existing** entry's
+  membership not established (groups kept, `groupsRefreshedAtSec = 0`, a new stamp); an absent agent
+  is `Skipped`, never created; nothing but the membership fields is touched. A push never
+  establishes groups: it describes the database as it was when clusterd wrote it, and a read made
+  since may already be newer — only a wazuh-db read establishes a membership, fresh from the
+  query's issue time
 - `groupsTicket()` / `mayStoreLookup(current, ticket)` / `nextGroupsSeq()` — the ordering rule below
 - free `groupsFresh(entry, now, interval)` — established and younger than `interval`
 
 **One ordering rule for every membership writer.** A caller takes `groupsTicket()` before it queries
 wazuh-db. When the answer arrives it writes the groups only if no newer write stamped the entry after
-the ticket (a push that landed while the query was in flight wins, and the caller answers from the
-entry). If a push skipped some absent agent after the ticket and the entry holds no established
-membership, the answer is kept for that reply only, not established. `/control` startup and the notify
-refresh follow the rule, and so does a "no row" answer (`AgentGroupsResult::noRow`): it **invalidates** the
+the ticket. A newer **established** write — another read, stored first: a `/control` query and a
+`/download` lookup for the same agent can be in flight together — wins, and the caller answers from the
+entry (both reads follow every invalidation delivered before them). A newer write that established
+nothing (an invalidation), or a push that skipped some absent agent after the ticket while the entry
+holds no established membership, means the local database changed after the query was issued —
+possibly for this agent — so the answer may predate the change: it is **discarded**, nothing is
+written, and the request gets `503` (the agent's next request reads the database again). A push that
+arrives late therefore costs one extra read and never overwrites or renews a newer one. `/control`
+startup and the notify refresh follow the rule, and so does a "no row" answer (`AgentGroupsResult::noRow`): it **invalidates** the
 membership an existing entry holds (groups and activity kept) unless a newer write stamped the entry after
 the ticket — an established one then answers — and it never creates an entry. A row with no groups is
 stored as `{"default"}` by every writer (`membershipGroups()`, `groupSelector.hpp`). `groupsFresh()` is the
@@ -820,14 +828,17 @@ facade keeps a second reference only to `stop()` it in phase 1b. It owns its **o
 (`kLookupConnections` = 2, the `/control` round-trip and request deadlines), so a burst of downloads never
 queues behind `/control`. Outcomes: `Groups` (wazuh-db order; a row with no groups is `{"default"}`),
 `NoRow` (never a membership, never an entry; it invalidates an existing one), `Unavailable` (wazuh-db
-failed or timed out, or the lookup was refused).
+failed or timed out, or the lookup was refused), `Superseded` (the membership changed while it was being
+read; `/download` answers it `503`, counted as `remoted.download.unavailable`, logged at debug level).
 
 - **Coalescing and bounds**: concurrent lookups for one agent share a single query; at most
   `kLookupMaxWaitersPerAgent` (32) requests wait on one agent and `kLookupMaxWaiters` (1024) on all of
   them — one over a bound is answered `Unavailable` at once. No new internal option.
 - **Writes** follow the registry's ordering rule: the ticket is taken when the query is issued; a
-  newer write wins (an established one is also the answer), a read that may be older than a skipped
-  push is answered but not written, otherwise the groups are stored established at the request time
+  newer established write (another read, stored first) wins and is the answer; a read that may be older than a change that landed
+  meanwhile (an invalidation, or a skipped push while the entry holds no established membership) is
+  `Superseded` — neither written nor answered, every waiter gets `503`; otherwise the groups are stored
+  established at the request time
   (an absent agent gets an entry with no activity fields). `NoRow` follows the same rule: an existing
   entry is invalidated unless a newer write stamped it, in which case an established one answers.
 - **Threads**: waiters run with no lock held — on a client worker, or inline when refused. A waiter
@@ -936,8 +947,9 @@ facade's shared `wazuh_metrics` registry (`shared_modules/metrics`) via `makeCon
   row for the agent (`ok []`); disjoint from `wdb_error`, which counts lookups that failed
 - `remoted.control.registry.agents` — pull metric over `AgentRegistry::size()` (registered by
   the facade; weak target, quiesces to 0 once the control plane is torn down)
-- `remoted.control.registry.push.{updated,invalidated,skipped}` — per-agent outcomes of the
-  membership publications on the admin socket, and `…push.rejected` — publications refused whole
+- `remoted.control.registry.push.{invalidated,skipped}` — per-agent outcomes of the membership
+  publications on the admin socket (a publication only invalidates, so there is no `updated`), and
+  `…push.rejected` — publications refused whole
   (`PushMetrics`, see `POST /_internal/agents/groups` under **Local admin socket**)
 
 Each `inc*` helper is a single relaxed atomic op (and a silent no-op on a default-constructed,
@@ -2297,7 +2309,7 @@ linked into the settings' own documentation — is the official docs page:
 | Family | What it answers | Counted at |
 |---|---|---|
 | `remoted.control.*` (6 counters + `rejected` + `no_row` + `wdb.latency` histogram) | control-plane health, wazuh-db sizing | `controlHandler`/`controlEndpoint`/`wazuhDBClient`/`taskClient` (see the /control section) |
-| `remoted.control.registry.push.{updated, invalidated, skipped, rejected}` | do clusterd's membership publications reach this node, and do they find the agents they name (a high `skipped` share is normal on a worker most agents never contact) | `admin/agentGroupsRoute.cpp` |
+| `remoted.control.registry.push.{invalidated, skipped, rejected}` | do clusterd's membership publications reach this node, and do they find the agents they name (a high `skipped` share is normal on a worker most agents never contact) | `admin/agentGroupsRoute.cpp` |
 | `remoted.control.registry.agents` (pull) | how many agents this node currently tracks — diagnostic only: the registry TTL (6 h) and eviction cadence (5 min) are compile-time constants, not settings | `AgentRegistry::size()` |
 | `remoted.scanvd.*` (7 counters) | VD scan admission split | `scanVdHandler` (see the /scan/vd section) |
 | `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed, token_unknown, token_expired, token_revoked}` | WHY authentication failed, finer than the class the wire names (see [401 classes](#401-classes)); the three `token_*` cells are `/enroll`'s enrollment-token states | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
@@ -2356,26 +2368,30 @@ read of a few-KB file — exempt from the byte budget), and one write route, **C
 ### `POST /_internal/agents/groups`: membership publications (#39147)
 
 On a worker, clusterd applies the master's agent-group memberships to the local wazuh-db in chunks;
-after each chunk it publishes what it applied here, so `/control` and `/download` follow the
-database at once instead of when an entry expires. `src/admin/agentGroupsRoute.{hpp,cpp}`
-(`makeAgentGroupsHandler()`), registered in `startAdminServer()` with
-`RouteOptions {RouteClass::Control, kAgentGroupsMaxBodyBytes}` (256 KiB, over the class's 64 KiB).
+after each chunk it names the chunk's agents here, so `/control` and `/download` stop trusting their
+cached memberships at once and read them from the database on their next request, instead of when an
+entry expires. `src/admin/agentGroupsRoute.{hpp,cpp}` (`makeAgentGroupsHandler()`), registered in
+`startAdminServer()` with `RouteOptions {RouteClass::Control, kAgentGroupsMaxBodyBytes}` (256 KiB, over
+the class's 64 KiB; an id list is a fraction of the chunk it comes from).
 
-- **Body**: `{"set":[{"id":1,"groups":["default","g1"]}],"invalidate":[5]}` — either key may be
-  absent, not both. Ids are JSON unsigned integers `1..2^32-1`; group names are non-empty strings
-  without `,`; unknown keys (a chunk's `name`) are ignored. The **whole** body is validated before
-  anything is applied: any defect is `400 {"error":"<reason>","code":400}` with the registry
-  untouched.
-- **Apply**: every `set`, in order, through `AgentRegistry::setGroups()` (the list through
-  `membershipGroups()`: empty ⇒ `{"default"}`), then every `invalidate` through
-  `invalidateGroups()`; a repeated id ends with its last write. Both update **existing** entries
-  only — an absent agent is skipped and never created (its first download looks it up) — and stamp
-  the entry under the registry's ordering rule, so a lookup that read wazuh-db before the
-  publication never overwrites it. Activity fields are never touched.
-- **Answer**: `200 {"updated":n,"invalidated":k,"skipped":m}`, counted per agent in
-  `remoted.control.registry.push.{updated,invalidated,skipped}`; a refused publication (400, or 503
-  once the registry is gone during shutdown) counts once in `…push.rejected`. The transport answers a
-  larger body `413` before the handler runs.
+- **A publication only invalidates.** It never carries groups: it describes the database as it was when
+  clusterd wrote the chunk, and it can arrive after this node made a newer read — which it must not
+  overwrite, or keep alive for another interval. Only a wazuh-db read establishes a membership. So a
+  late publication costs one extra read, and a lost one leaves the entry bounded by
+  `remoted.control_groups_refresh_interval` after the read that established it.
+- **Body**: `{"invalidate":[1,5]}`. Ids are JSON unsigned integers `1..2^32-1`. Every other key is
+  ignored — `set` included, so `{"set":[…]}` on its own is refused for the missing `invalidate`. The
+  **whole** body is validated before anything is applied: any defect is
+  `400 {"error":"<reason>","code":400}` with the registry untouched.
+- **Apply**: every id, in order, through `AgentRegistry::invalidateGroups()`: an **existing** entry's
+  membership becomes not established (groups kept), stamped under the registry's ordering rule, so a
+  lookup in flight across it is superseded (`503`) instead of storing a read that may predate the
+  change. An absent agent is skipped and never created (its first download looks it up). Activity
+  fields are never touched.
+- **Answer**: `200 {"invalidated":k,"skipped":m}`, counted per agent in
+  `remoted.control.registry.push.{invalidated,skipped}`; a refused publication (400, or 503 once the
+  registry is gone during shutdown) counts once in `…push.rejected`. The transport answers a larger
+  body `413` before the handler runs.
 - **Threading and lifetime**: inline on an admin I/O thread (validation + O(batch) registry updates,
   no I/O). The handler holds the registry by `weak_ptr` — the same target as the
   `remoted.control.registry.agents` pull — and locks it per request.
@@ -2811,9 +2827,10 @@ every key, both timestamp spellings, failure-only fields, no verdicts); the per-
 descriptor and the identities are `certificateDescriptor_test.cpp`; the per-entry
 `signsLeaf`/sizes/`contentSha256` of the snapshot and the transport's `tlsInventory()` (empty unless
 accepting; CA file followed, leaf file not) are in `caCertificateSource_test.cpp` and
-`httpServer_test.cpp`. The publication route's own contract (sets before invalidations, existing
-entries only, `default` for an empty list, whole-body validation, 503 without a registry, per-agent
-counters) is `agentGroupsRoute_test.cpp`, driving the handler directly.
+`httpServer_test.cpp`. The publication route's own contract (invalidations only, a fresh read
+withdrawn and never renewed, `set` ignored like any unknown key, existing entries only, whole-body
+validation, 503 without a registry, per-agent counters) is `agentGroupsRoute_test.cpp`, driving the
+handler directly.
 
 **Two files in `test/unit/` are spikes, not contracts.** They characterize a third-party library
 fetched by `make deps`; their purpose is to pin observed dependency behaviour, and

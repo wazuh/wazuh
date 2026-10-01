@@ -590,8 +590,9 @@ paths:
             `remoted.control_groups_refresh_interval`): `startup` and `notify` both answer this way
             when it does not answer in time -- an expired membership is never served instead -- and
             also when it answers that it has **no row for the agent** (the agent is not, or not yet,
-            in this node's database). No row is never read as membership of `default`; the agent
-            retries until its row arrives. A fresh membership answers without asking, so neither
+            in this node's database), and when the agent's membership changed on the node while it
+            was being read (that read may be out of date, so it is never served). No row is never read
+            as membership of `default`; the agent retries until its row arrives. A fresh membership answers without asking, so neither
             call is refused while it lasts.
 
             `remoted` itself is healthy in this state: it keeps accepting connections, and keeps
@@ -828,7 +829,8 @@ paths:
             Either the server shed the request (its in-flight byte budget is exhausted), or -- for a
             `config` download -- the agent's group membership could not be established from the
             node's local `wazuh-manager-db` (the fallback used when the agent registry cannot vouch
-            for the agent): the database did not answer in time, or it has no row for the agent yet.
+            for the agent): the database did not answer in time, it has no row for the agent yet, or
+            the agent's membership changed on the node while it was being read.
             Both clear by themselves; the agent retries a `503` as back-pressure. No `Retry-After` is
             sent. The manager's log names the dependency when it is `wazuh-manager-db`.
           content:

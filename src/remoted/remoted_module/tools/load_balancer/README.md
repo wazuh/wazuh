@@ -57,6 +57,7 @@ inside it:
 strings /var/wazuh-manager/lib/libremoted_module.so | grep -c 'Cannot authorize /download'   # /download authz + wazuh-db fallback (#39147)
 strings /var/wazuh-manager/lib/libremoted_module.so | grep -c 'Cannot authorize /download for agent'   # a missing row is a retryable 503 (#39147)
 strings /var/wazuh-manager/lib/libremoted_module.so | grep -c '/_internal/agents/groups'   # the admin route clusterd publishes to (#39147)
+strings /var/wazuh-manager/lib/libremoted_module.so | grep -c 'Body must carry an "invalidate" array'   # a publication only invalidates (#39147)
 find /var/wazuh-manager -name registry_publisher.py                                        # the worker's publisher (#39147)
 grep -c '"ca_certificate"' /var/wazuh-manager/etc/wazuh-manager.schema.json
 ```
@@ -177,8 +178,8 @@ database. While the agent's key or its database row has not reached a node yet, 
 `revocation_by_push.py` gives worker1 a fresh cached membership (`/control`), moves the agent to a
 new group through the master's API, and requires worker1 to refuse the old selector before that
 membership could expire (`--expiry`, the 60 s `remoted.control_groups_refresh_interval`): only the
-worker's cluster daemon publishing the applied change (`POST /_internal/agents/groups`) can do
-that. `download_status.py` is one timed download against one node, for the checks that need a node
+worker's cluster daemon naming the agent after applying the change (`POST /_internal/agents/groups`,
+which withdraws the cached membership so the next download reads the new groups) can do that. `download_status.py` is one timed download against one node, for the checks that need a node
 in a given state (`run_issue_checks.sh` section 9 freezes a worker's `wazuh-manager-db` with it).
 
 `download_convergence.py --password labpassword` still measures the per-round 403 rate through the
