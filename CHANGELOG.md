@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - Fixed logcollector following symbolic links and opening non-regular files without validating them on Linux and macOS. ([#39649](https://github.com/wazuh/wazuh/pull/39649))
 - Fixed `run_as` authorization-context regex rules matching only a prefix of the value instead of the whole value, including a trailing `$` anchor being dropped from the expression. ([#39770](https://github.com/wazuh/wazuh/pull/39770))
 - Fixed `run_as` authorization-context regex rules without a closing quote being evaluated as a partial expression, and rejected such rules when creating or updating security rules. ([#PRNUM](https://github.com/wazuh/wazuh/pull/PRNUM))
+- Fixed `MATCH` and `MATCH$` security rules granting a role when a rule item was not satisfied, because matches were counted instead of checked per rule item. ([#PRNUM](https://github.com/wazuh/wazuh/pull/PRNUM))
 
 ### Agent
 

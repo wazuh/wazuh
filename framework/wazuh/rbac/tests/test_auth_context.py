@@ -225,3 +225,22 @@ def test_check_regex_rejects_unterminated_expression(expression):
     assert checker.check_regex(expression) is False
     assert checker.match_item(expression, "") == 0
     assert checker.process_lists([expression], [""], "MATCH") == 0
+
+
+@pytest.mark.parametrize('role_chunk, auth_chunk, mode, expected', [
+    # A rule item not satisfied by any value must not be compensated by another item matching twice
+    (["r'^team-.*$'", "admin"], ["team-a", "team-b"], 'MATCH', 0),
+    (["r'^team-.*$'", "admin"], ["team-a", "team-b"], 'MATCH$', 0),
+    (["admin", "x"], ["admin", "admin"], 'MATCH', 0),
+    (["admin", "x"], ["admin", "admin"], 'MATCH$', 0),
+    # Every rule item satisfied
+    (["r'^team-.*$'", "admin"], ["team-a", "admin"], 'MATCH', 1),
+    (["r'^team-.*$'", "admin"], ["team-a", "admin"], 'MATCH$', 1),
+    # MATCH accepts extra context values, MATCH$ does not
+    (["admin"], ["admin", "other"], 'MATCH', 1),
+    (["admin"], ["admin", "other"], 'MATCH$', 0),
+])
+def test_process_lists_requires_every_rule_item(role_chunk, auth_chunk, mode, expected):
+    """Each item of the rule must be satisfied by some value, not just reach the same number of matches."""
+    checker = _make_checker()
+    assert checker.process_lists(role_chunk, auth_chunk, mode) == expected
