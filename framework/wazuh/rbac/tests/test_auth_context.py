@@ -206,3 +206,4 @@ def test_match_item_regex_key_requires_full_match():
     checker = _make_checker()
     assert checker.match_item({"r'^auth$'": "x"}, {"auth": "x"}) == 1
     assert checker.match_item({"r'^auth$'": "x"}, {"authx": "x"}) == 0
+    assert checker.match_item({"r'^auth'": "x"}, {"authx": "x"}) == 0
