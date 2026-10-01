@@ -34,6 +34,7 @@
 #else
 #include <aclapi.h>
 #include <winreg.h>
+#include <lm.h>
 #endif
 
 /* Vista product information */
@@ -3556,11 +3557,133 @@ static void w_win_free_trusted_sids(PSID sids[W_VETTED_WIN_TRUSTED_SIDS]) {
     }
 }
 
+// netapi32 is loaded at run time so this file needs no extra link dependency.
+typedef NET_API_STATUS (WINAPI * NetLocalGroupGetMembers_t)(LPCWSTR, LPCWSTR, DWORD, LPBYTE *, DWORD, LPDWORD,
+                                                            LPDWORD, PDWORD_PTR);
+typedef NET_API_STATUS (WINAPI * NetApiBufferFree_t)(LPVOID);
+
+// The members of the local Administrators group, used to trust a reparse point an administrator owns.
+typedef struct w_win_admins {
+    HMODULE lib;
+    LOCALGROUP_MEMBERS_INFO_0 * members;
+    DWORD count;
+    NetApiBufferFree_t free_buffer;
+} w_win_admins_t;
+
 /**
- * An owner is trusted when it is one of @p trusted or the owner of the file finally read: a link its own
- * owner made grants nothing that owner could not already read. A missing owner is never trusted.
+ * Loads the SIDs of the direct members of the local Administrators group (found via its well-known SID, so
+ * it works on localized systems); groups nested inside it are not expanded. Any failure leaves the list
+ * empty, which only makes the trust check stricter. Release with w_win_admins_free().
  */
-static bool w_win_owner_trusted(PSID owner, PSID file_owner, PSID trusted[W_VETTED_WIN_TRUSTED_SIDS]) {
+static void w_win_admins_load(w_win_admins_t * admins) {
+    SID_IDENTIFIER_AUTHORITY nt = SECURITY_NT_AUTHORITY;
+    NetLocalGroupGetMembers_t get_members;
+    PSID admins_sid = NULL;
+    wchar_t lib_path[MAX_PATH];
+    wchar_t name[256];
+    wchar_t domain[256];
+    DWORD name_len = 256;
+    DWORD domain_len = 256;
+    SID_NAME_USE use;
+    LPBYTE buffer = NULL;
+    DWORD read = 0;
+    DWORD total = 0;
+    UINT dir_len;
+    NET_API_STATUS rc;
+
+    memset(admins, 0, sizeof(*admins));
+
+    // Load from System32 by full path, not through the default DLL search order.
+    dir_len = GetSystemDirectoryW(lib_path, MAX_PATH);
+
+    if (dir_len == 0 || dir_len >= MAX_PATH - wcslen(L"\\netapi32.dll") - 1) {
+        return;
+    }
+
+    wcscat(lib_path, L"\\netapi32.dll");
+    admins->lib = LoadLibraryW(lib_path);
+
+    if (admins->lib == NULL) {
+        return;
+    }
+
+    get_members = (NetLocalGroupGetMembers_t) GetProcAddress(admins->lib, "NetLocalGroupGetMembers");
+    admins->free_buffer = (NetApiBufferFree_t) GetProcAddress(admins->lib, "NetApiBufferFree");
+
+    if (get_members == NULL || admins->free_buffer == NULL) {
+        FreeLibrary(admins->lib);
+        admins->lib = NULL;
+        return;
+    }
+
+    if (!AllocateAndInitializeSid(&nt, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0,
+                                  &admins_sid)) {
+        return;
+    }
+
+    if (!LookupAccountSidW(NULL, admins_sid, name, &name_len, domain, &domain_len, &use)) {
+        FreeSid(admins_sid);
+        return;
+    }
+
+    FreeSid(admins_sid);
+
+    // ERROR_MORE_DATA still returns a usable, if partial, list.
+    rc = get_members(NULL, name, 0, &buffer, MAX_PREFERRED_LENGTH, &read, &total, NULL);
+
+    if (rc != NERR_Success && rc != ERROR_MORE_DATA) {
+        if (buffer != NULL) {
+            admins->free_buffer(buffer);
+        }
+        return;
+    }
+
+    admins->members = (LOCALGROUP_MEMBERS_INFO_0 *) buffer;
+    admins->count = read;
+}
+
+static void w_win_admins_free(w_win_admins_t * admins) {
+    if (admins->members != NULL && admins->free_buffer != NULL) {
+        admins->free_buffer(admins->members);
+    }
+
+    if (admins->lib != NULL) {
+        FreeLibrary(admins->lib);
+    }
+
+    memset(admins, 0, sizeof(*admins));
+}
+
+/**
+ * True if @p sid is a direct member of the local Administrators group loaded in @p admins.
+ */
+static bool w_win_sid_is_admin(PSID sid, const w_win_admins_t * admins) {
+    DWORD i;
+
+    if (sid == NULL || admins == NULL || admins->members == NULL) {
+        return false;
+    }
+
+    for (i = 0; i < admins->count; i++) {
+        PSID member = admins->members[i].lgrmi0_sid;
+
+        if (member != NULL && IsValidSid(member) && EqualSid(sid, member)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * An owner is trusted when it is one of @p trusted, a member of the local Administrators group, or the owner
+ * of the file finally read: a link its own owner made grants nothing that owner could not already read. A
+ * missing owner is never trusted. @p admins may be NULL, which skips the group-membership check.
+ *
+ * Not declared in file_op.h: given external linkage only so the unit tests can reach it.
+ */
+bool w_win_owner_trusted(PSID owner, PSID file_owner, PSID trusted[W_VETTED_WIN_TRUSTED_SIDS],
+                         const w_win_admins_t * admins) {
     int i;
 
     if (!owner || !file_owner) {
@@ -3577,7 +3700,7 @@ static bool w_win_owner_trusted(PSID owner, PSID file_owner, PSID trusted[W_VETT
         }
     }
 
-    return false;
+    return w_win_sid_is_admin(owner, admins);
 }
 
 /**
@@ -3590,7 +3713,8 @@ static bool w_win_owner_trusted(PSID owner, PSID file_owner, PSID trusted[W_VETT
  *
  * @return true if an untrusted principal may modify it (so it must not be trusted), false otherwise.
  */
-static bool w_win_reparse_untrusted_writable(HANDLE hReparse, PSID file_owner, PSID trusted[W_VETTED_WIN_TRUSTED_SIDS]) {
+static bool w_win_reparse_untrusted_writable(HANDLE hReparse, PSID file_owner, PSID trusted[W_VETTED_WIN_TRUSTED_SIDS],
+                                              const w_win_admins_t * admins) {
     PSECURITY_DESCRIPTOR sd = NULL;
     PACL dacl = NULL;
     ACL_SIZE_INFORMATION size_info;
@@ -3659,7 +3783,7 @@ static bool w_win_reparse_untrusted_writable(HANDLE hReparse, PSID file_owner, P
             break;
         }
 
-        if (w_win_owner_trusted(ace_sid, file_owner, trusted) ||
+        if (w_win_owner_trusted(ace_sid, file_owner, trusted, admins) ||
             (creator_owner && EqualSid(ace_sid, creator_owner))) {
             continue;
         }
@@ -3686,7 +3810,8 @@ static bool w_win_reparse_untrusted_writable(HANDLE hReparse, PSID file_owner, P
  *
  * @return 0 if every reparse point is trusted, -1 on error or rejection (sets errno).
  */
-static int w_win_check_reparse_points(const wchar_t * full, PSID file_owner, PSID trusted_sids[W_VETTED_WIN_TRUSTED_SIDS]) {
+static int w_win_check_reparse_points(const wchar_t * full, PSID file_owner, PSID trusted_sids[W_VETTED_WIN_TRUSTED_SIDS],
+                                      const w_win_admins_t * admins) {
     wchar_t component[W_VETTED_WIN_PATH_MAX];
     const size_t prefix_len = wcslen(W_VETTED_WIN_EXTENDED_PREFIX);
     const size_t len = wcslen(full);
@@ -3742,8 +3867,8 @@ static int w_win_check_reparse_points(const wchar_t * full, PSID file_owner, PSI
         }
 
         // Trusted only if a trusted account owns it and no other principal may modify it.
-        trusted = w_win_owner_trusted(owner, file_owner, trusted_sids) &&
-                  !w_win_reparse_untrusted_writable(hComponent, file_owner, trusted_sids);
+        trusted = w_win_owner_trusted(owner, file_owner, trusted_sids, admins) &&
+                  !w_win_reparse_untrusted_writable(hComponent, file_owner, trusted_sids, admins);
         LocalFree(sd);
         CloseHandle(hComponent);
 
@@ -3770,6 +3895,7 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
     wchar_t again[W_VETTED_WIN_PATH_MAX];
     PSID trusted_sids[W_VETTED_WIN_TRUSTED_SIDS] = {NULL};
     PSECURITY_DESCRIPTOR sd = NULL;
+    w_win_admins_t admins;
     BY_HANDLE_FILE_INFORMATION info;
     BY_HANDLE_FILE_INFORMATION info_again;
     PSID file_owner = NULL;
@@ -3860,8 +3986,10 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
         goto fail;
     }
 
-    rc = w_win_check_reparse_points(full, file_owner, trusted_sids);
+    w_win_admins_load(&admins);
+    rc = w_win_check_reparse_points(full, file_owner, trusted_sids, &admins);
     saved_errno = errno;
+    w_win_admins_free(&admins);
     LocalFree(sd);
 
     if (rc < 0) {

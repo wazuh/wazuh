@@ -580,6 +580,12 @@ void LogCollectorStart()
 
                     if (current->file && current->exists) {
                         if (reload_file(current) == -1) {
+                            if (errno == EAGAIN) {
+                                // Transient change (e.g. a rotation in progress), not a reason to forget it:
+                                // keep the file and retry on the next pass.
+                                mdebug1("File '%s' changed while being reopened. Trying again later.", current->file);
+                                continue;
+                            }
                             minfo(FORGET_FILE, current->file);
                             os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
                             free_files_status_data(old_file_status);

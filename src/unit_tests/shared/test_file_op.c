@@ -1522,6 +1522,53 @@ void test_w_stat64_network_path(void **state) {
     assert_int_equal(errno, EACCES);
 }
 
+// Reaches the reparse-point owner trust decision in file_op.c; admins is NULL to skip the live group lookup.
+struct w_win_admins;
+extern bool w_win_owner_trusted(PSID owner, PSID file_owner, PSID trusted[], const struct w_win_admins * admins);
+
+void test_w_win_owner_trusted(void **state) {
+    (void) state;
+    SID_IDENTIFIER_AUTHORITY nt = SECURITY_NT_AUTHORITY;
+    PSID system = NULL;
+    PSID administrators = NULL;
+    PSID trusted_installer = NULL;
+    PSID file_owner = NULL;
+    PSID other = NULL;
+    PSID trusted[3];
+
+    assert_true(AllocateAndInitializeSid(&nt, 1, SECURITY_LOCAL_SYSTEM_RID, 0, 0, 0, 0, 0, 0, 0, &system));
+    assert_true(AllocateAndInitializeSid(&nt, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0,
+                                         0, &administrators));
+    assert_true(AllocateAndInitializeSid(&nt, 6, 80, 956008885, 3418522649, 1831038044, 1853292631, 2271478464, 0,
+                                         0, &trusted_installer));
+    assert_true(AllocateAndInitializeSid(&nt, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_USERS, 0, 0, 0, 0, 0,
+                                         0, &file_owner));
+    assert_true(AllocateAndInitializeSid(&nt, 1, SECURITY_INTERACTIVE_RID, 0, 0, 0, 0, 0, 0, 0, &other));
+
+    trusted[0] = system;
+    trusted[1] = administrators;
+    trusted[2] = trusted_installer;
+
+    // A trusted account owns it.
+    assert_true(w_win_owner_trusted(system, file_owner, trusted, NULL));
+    assert_true(w_win_owner_trusted(administrators, file_owner, trusted, NULL));
+    assert_true(w_win_owner_trusted(trusted_installer, file_owner, trusted, NULL));
+
+    // The owner of the file finally read owns it.
+    assert_true(w_win_owner_trusted(file_owner, file_owner, trusted, NULL));
+
+    // Any other owner is rejected, and a missing owner or file owner is never trusted.
+    assert_false(w_win_owner_trusted(other, file_owner, trusted, NULL));
+    assert_false(w_win_owner_trusted(NULL, file_owner, trusted, NULL));
+    assert_false(w_win_owner_trusted(other, NULL, trusted, NULL));
+
+    FreeSid(system);
+    FreeSid(administrators);
+    FreeSid(trusted_installer);
+    FreeSid(file_owner);
+    FreeSid(other);
+}
+
 #endif
 
 /* ===================== Tests for cldir_ex and cldir_ex_ignore ===================== */
@@ -2786,6 +2833,7 @@ int main(void) {
         cmocka_unit_test(test_w_stat_network_path),
         cmocka_unit_test(test_w_stat64_local_path),
         cmocka_unit_test(test_w_stat64_network_path),
+        cmocka_unit_test(test_w_win_owner_trusted),
 
 #endif
     };
