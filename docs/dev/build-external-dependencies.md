@@ -8,18 +8,20 @@ Supporting scripts under `packages/externals/`:
 
 | File | Purpose |
 |------|---------|
-| `external_sources.sh` | Manifest: upstream URL template + archive format + target dir for each dep. |
-| `build_external.sh` | Container-side build script. Seeds `src/external/` via `make deps EXTERNAL_SRC_ONLY=yes`, applies overrides from `--dependencies`, runs the per-leg build, and re-ships the published `cpython` blob, see [Caveats](#caveats). |
-| `generate_external.sh` | Wrapper that runs `build_external.sh` and packs the result into `externals-<leg>.tar.gz` with the S3 layout `make deps` expects. |
+| `dependencies.json` | Inventory: version, revision, URL, sha256, archive format, patches, targets, platforms, CPE, purl and license of every `EXTERNAL_RES` dependency. |
+| `patches/<dep>/` | Wazuh changes to upstream sources, applied with `git apply` after download. |
+| `deps.py` | Inventory tool: `check` (schema and names against `make print-EXTERNAL_RES`), `flatten` (bash arrays for the builder images), `readme` (README table), `sbom` (CycloneDX), `manifest` (set `manifest.json`), `drift` (inventory against the published manifest). |
+| `build_external.sh` | Container-side build script. Downloads every dependency of the leg from the inventory, checks its sha256, applies its patches, runs the per-leg build, and re-ships the published `cpython` and `libbpf-bootstrap` blobs, see [Caveats](#caveats). |
+| `generate_external.sh` | Wrapper that flattens the inventory, runs `build_external.sh` and packs the result into `externals-<leg>.tar.gz` with the S3 layout `make deps` expects. |
 | `ebpf/build_ebpf.sh` | Builds `libbpf-bootstrap.tar.gz` (`modern.bpf.o` + `libbpf.so`) for amd64, aarch64, arm32, i386 and ppc64le on one x86_64 host, with clang 20 and Zig. See [libbpf-bootstrap](#libbpf-bootstrap-is-built-by-the-build-ebpf-job). |
 | `smoke_build.sh` | Sanity check: builds the agent/manager from source against the freshly built consolidated tree to confirm the precompiled tarballs are actually consumable. |
 
 ## When to use it
 
-- You need to bump one or more upstream library versions (e.g. CVE patch, new feature).
-- You need to refresh the full deps tarball from currently vendored sources (e.g. after a toolchain change that affects how everything compiles).
+- You changed `packages/externals/dependencies.json` (a version bump, a new dependency, a patch).
+- You need to rebuild the whole set (e.g. after a toolchain change that affects how everything compiles).
 
-The output of a successful run is the artifact you upload to `packages.wazuh.com/deps/<new-DEPS_VERSION>/`. A separate PR then bumps `DEPS_VERSION` in `src/Makefile` to point at that new directory.
+The output of a successful run is the artifact you upload to `packages.wazuh.com/deps/<new-DEPS_VERSION>/`; the same PR then bumps `DEPS_VERSION` in `src/Makefile`, see [Publishing](#publishing-a-new-deps_version--the-safe-order).
 
 ## Running the workflow
 
@@ -28,20 +30,15 @@ From the Actions UI: pick **5.X - Package - Build external dependencies**, click
 Or from the CLI:
 
 ```bash
-# Clean rebuild of every dep from currently vendored sources (no overrides).
-gh workflow run 5_builderpackage_externals.yml --ref <branch>
-
-# Override one or more dep versions; bare upstream sources are pulled from
-# the URLs in packages/externals/external_sources.sh.
-gh workflow run 5_builderpackage_externals.yml --ref <branch> \
-  -f dependencies="curl:8.13.0;openssl:3.5.2"
+# Build every dependency of the branch's dependencies.json for the set that will be published as 5/<N>.
+gh workflow run 5_builderpackage_externals.yml --ref <branch> -f deps_version=5/<N>
 ```
 
 ### Inputs
 
 | Input | Purpose | Default |
 |-------|---------|---------|
-| `dependencies` | Semicolon-separated `name:version` overrides. Each named dep is re-fetched from the upstream URL in `external_sources.sh` and replaces what `make deps` extracted. Unlisted deps are rebuilt from the vendored source. | `""` (rebuild only) |
+| `deps_version` | Set this build will be published as, `<line>/<number>` (e.g. `5/2`); written into `manifest.json`. | `""` (`unassigned`) |
 | `docker_image_tag` | GHCR builder image tag for the Linux legs. `auto` derives it from `VERSION.json`; `developer` uses the branch name; anything else is a literal tag. | `auto` |
 
 There is intentionally no per-leg dispatch input. A deps release is whole-or-nothing — partial output would publish a tarball that breaks `make deps` on any platform whose leg is missing. To re-run a single failed leg, use GitHub's **Re-run failed jobs** on the workflow run.
@@ -74,9 +71,9 @@ build-externals (matrix, 7 jobs) ─┐
 build-ebpf ───────────────────────┘
 ```
 
-- **`build-externals`** — each leg seeds `src/external/`, applies `--dependencies` overrides, runs the build, and uploads `externals-<leg>-<target>.tar.gz`.
+- **`build-externals`** — each leg downloads its dependencies from the inventory (sha256 checked, patches applied), runs the build, and uploads `externals-<leg>-<target>.tar.gz`. A download, checksum or patch failure fails the leg.
 - **`build-ebpf`**: installs clang 20 (`apt.llvm.org`) and the Zig version pinned in `build_ebpf.sh`, runs it, and uploads `libbpf-bootstrap` (`<arch>/libbpf-bootstrap.tar.gz`).
-- **`consolidate`** — downloads every per-leg tarball, merges into the canonical `libraries/{linux,darwin,windows,sources}/` layout, places the `build-ebpf` tarballs under `libraries/linux/<arch>/`, and uploads `externals-all.tar.gz` (the artifact you publish to `packages.wazuh.com/deps/<version>/`).
+- **`consolidate`** — downloads every per-leg tarball, merges into the canonical `libraries/{linux,darwin,windows,sources}/` layout, places the `build-ebpf` tarballs under `libraries/linux/<arch>/`, writes `manifest.json` (the inventory entries plus the sha256 of every file) with `deps.py manifest`, and uploads `externals-all.tar.gz` (the artifact you publish to `packages.wazuh.com/deps/<version>/`).
 - **`smoke-build`** — for each of the 4 Linux combinations (amd64/arm64 × agent/manager) plus a windows-i686 leg, pulls `externals-all.tar.gz`, points `make deps RESOURCES_URL=file://…` at the local tree, then runs the real Wazuh build inside the matching builder image (`pkg_rpm_<target>_builder_<arch>` for Linux, `compile_windows_agent` for windows). Confirms the precompiled tarballs you just packed actually get consumed. Emits `::warning::` for any dep that fell back to source compile — that means the binary was packed at a path `src/external/CMakeLists.txt` doesn't expect. The windows leg is what catches host-side tools shipped in `libraries/windows/<dep>.tar.gz` (e.g. flatbuffers' `flatc`, invoked during `make TARGET=winagent` schema codegen) that were built against a newer glibc/libstdc++ than the consumer image — without it, that mismatch only surfaces downstream when the windows agent build runs.
 
 ## Output
@@ -86,6 +83,7 @@ Per-leg artifacts (`externals-rpm-amd64-agent`, `externals-macos-arm64-agent`, �
 The artifact to publish is `externals-all` → `externals-all.tar.gz`. Its layout matches the S3 directory it gets uploaded into:
 
 ```
+manifest.json                            ← what the set contains (deps.py manifest)
 libraries/
 ├── linux/{amd64,aarch64}/<dep>.tar.gz   ← precompiled binaries
 ├── linux/{arm32,i386,ppc64le}/libbpf-bootstrap.tar.gz
@@ -210,22 +208,21 @@ the download behind a flag drops them from the bundle and breaks every test buil
 
 ## Publishing a new DEPS_VERSION — the safe order
 
-1. Open a branch, optionally edit `external_sources.sh` if you're changing a manifest URL.
-2. Dispatch the workflow with `dependencies="…"` (or empty for a clean rebuild). **Do not bump `DEPS_VERSION` in this branch.** See the caveat below.
-3. Wait for `build-externals`, `consolidate`, and all 4 `smoke-build` jobs to go green.
-4. Download `externals-all.tar.gz`. Pick a new `DEPS_VERSION` (the team's convention is `99-<gh-run-id>` or a hand-picked monotonic number). Upload the tarball contents into `s3://…/deps/<new-DEPS_VERSION>/libraries/…`.
-5. Open a second PR that bumps `DEPS_VERSION` in `src/Makefile` to the new value. That single change is enough — `build_external.sh` reads `DEPS_VERSION` straight out of the Makefile for both the `make deps` seed and the cpython re-ship URL.
+Sets live under one directory per release line, numbered from 1: `deps/5/1`, `deps/5/2`, … for 5.x (`deps/4.14/<n>` and `deps/4.10/<n>` for the 4.x lines), and `DEPS_VERSION` holds that path (`DEPS_VERSION = 5/2`). A set may be rebuilt while no merged branch points at it; once one does, it is never modified, and a change is the next number. Older sets (`54`, `55`, `99-37702`, …) stay where they are.
+
+1. Open a branch and edit `packages/externals/dependencies.json` (version, revision, `url`, sha256 of the downloaded archive, patches). Run `python3 packages/externals/deps.py check` and `python3 packages/externals/deps.py readme`, and commit both files.
+2. Take the next number of the line (`aws s3 ls s3://…/deps/5/`) and dispatch the workflow with `deps_version=5/<N>`. Keep `DEPS_VERSION` at the currently published set while it runs, see the caveat below.
+3. Wait for `build-externals`, `consolidate`, and all `smoke-build` jobs to go green.
+4. Download `externals-all.tar.gz` and upload its contents (`manifest.json` and `libraries/…`) to `s3://…/deps/5/<N>/`, never over an existing key (`aws s3api put-object --if-none-match '*'`).
+5. Set `DEPS_VERSION = 5/<N>` in `src/Makefile` in the same PR. The drift check (`5_codequality_externals-drift.yml`) then compares the inventory with `deps/5/<N>/manifest.json`.
 
 ## Caveats
 
-### Do not bump `DEPS_VERSION` in the same branch that runs the workflow
+### Bump `DEPS_VERSION` only after the new set is uploaded
 
-`DEPS_VERSION` (defined in `src/Makefile`) is the single source of truth for every blob this workflow downloads:
+The inventory decides every dependency source, but `DEPS_VERSION` (defined in `src/Makefile`) still decides what the workflow takes from the currently published set: `cpython`, the `libbpf-bootstrap` source tree, the shared modules and the other non-dependency prerequisites of `make deps`, fetched with `make EXTERNAL_SRC_ONLY=yes <goals>`.
 
-- `make deps EXTERNAL_SRC_ONLY=yes` (the source seed for `src/external/`) reads `RESOURCES_URL = packages.wazuh.com/deps/$(DEPS_VERSION)/`.
-- The cpython pass-through block pulls `…/deps/${DEPS_VERSION}/libraries/sources/cpython_<arch>.tar.gz`.
-
-If your branch has bumped `DEPS_VERSION` to the version you're trying to *produce*, both fetches 404 and the run fails. Always dispatch the workflow with `DEPS_VERSION` pointing at the *currently published* deps release; bump it in a follow-up PR after you've uploaded the new tarball.
+If your branch points `DEPS_VERSION` at the set you're trying to *produce*, those fetches fail and the run fails. Dispatch the workflow while `DEPS_VERSION` points at the *currently published* set, and bump it once the new set is uploaded.
 
 ### `libbpf-bootstrap` is built by the `build-ebpf` job
 
@@ -241,7 +238,7 @@ bash packages/externals/ebpf/build_ebpf.sh   # writes ./output/<arch>/libbpf-boo
 
 ### `cpython` is re-shipped, not rebuilt
 
-`cpython` has its own dedicated pipeline (`5_builderpackage_embedded-python.yml`, runs `framework/cpython/compile.sh`). Manager legs only; the agent `EXTERNAL_RES` has no `$(CPYTHON)`. `build_external.sh` downloads the prebuilt blob from `packages.wazuh.com/deps/${DEPS_VERSION}/…` and packs it into the per-leg tarballs. To bump it:
+`cpython` has its own dedicated pipeline (`5_builderpackage_embedded-python.yml`, runs `framework/cpython/compile.sh`). Manager legs only; the agent `EXTERNAL_RES` has no `$(CPYTHON)`. `build_external.sh` fetches the prebuilt blob from `packages.wazuh.com/deps/${DEPS_VERSION}/…` through `make` and packs it into the per-leg tarballs. Its inventory entry describes the upstream release that is scanned, not what the workflow downloads. To bump it:
 
 1. Run `5_builderpackage_embedded-python.yml`.
 2. Upload the new blob into `packages.wazuh.com/deps/<new-DEPS_VERSION>/libraries/…` alongside the rest of the externals tree this workflow produces.

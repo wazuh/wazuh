@@ -42,6 +42,13 @@ name: 5.X - Package - Build external dependencies
 on:
   workflow_dispatch:
     inputs:
+      deps_version:
+        description: |
+          Set this build will be published as, <line>/<number> (e.g. 5/2 for
+          packages.wazuh.com/deps/5/2/). Written into manifest.json.
+        type: string
+        required: false
+        default: ""
       docker_image_tag:
         description: |
           GHCR builder image tag. "auto" derives it from VERSION.json,
@@ -312,11 +319,21 @@ jobs:
         run: |
           cp -rv libbpf-bootstrap/. consolidated/libraries/linux/
 
+      - name: Write the set manifest
+        env:
+          DEPS_VERSION_INPUT: ${{ inputs.deps_version }}
+        run: |
+          python3 packages/externals/deps.py manifest \
+            --deps-version "${DEPS_VERSION_INPUT:-unassigned}" \
+            --wazuh-commit "${{ github.sha }}" --workflow-run "${{ github.run_id }}" \
+            --files consolidated > manifest.json
+          mv manifest.json consolidated/manifest.json
+
       - name: Pack consolidated tarball
         run: |
           tar -czf externals-all.tar.gz \
               --owner=0 --group=0 --no-same-owner \
-              -C consolidated libraries
+              -C consolidated manifest.json libraries
           ls -lh externals-all.tar.gz
 
       - name: Upload consolidated tarball
