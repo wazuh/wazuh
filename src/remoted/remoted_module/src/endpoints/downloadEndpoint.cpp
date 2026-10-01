@@ -287,7 +287,7 @@ namespace remoted::endpoints::download
     }
 
     /// The answer to every authorization failure, whatever its cause: the agent asked for a
-    /// selector that is not its own, its id is unknown to the group source, or no source is wired.
+    /// selector that is not its own, the group source cannot vouch for its id, or no source is wired.
     /// One shape for all three on purpose -- a caller must not be able to tell "not yours" from
     /// "does not exist", which is what removes the 200-vs-404 group enumeration oracle.
     remoted::http::HttpResponse forbiddenResponse()
@@ -295,10 +295,11 @@ namespace remoted::endpoints::download
         return remoted::http::HttpResponse::json(403, R"({"error":"Forbidden","code":403})");
     }
 
-    /// The answer when the agent's membership cannot be established right now (the local
-    /// wazuh-db did not answer the fallback lookup in time, or too many requests already wait on
-    /// lookups). The same body and status as /control's, and for the same reason: remoted is fine,
-    /// a dependency is not, and the agent's back-pressure class retries a 503.
+    /// The answer when the agent's membership cannot be established right now: the local wazuh-db
+    /// did not answer the fallback lookup in time, too many requests already wait on lookups, or it
+    /// has no row for the agent yet. The same body and status as /control's, and for the same
+    /// reason: remoted is fine, a dependency is not (or not synchronized), and the agent's
+    /// back-pressure class retries a 503. The two causes are told apart by metrics and logs only.
     remoted::http::HttpResponse unavailableResponse()
     {
         return remoted::http::HttpResponse::json(503, R"({"error":"dependency_unavailable","dependency":"wazuh-db"})");
@@ -538,6 +539,14 @@ namespace remoted::endpoints::download
             return instance;
         }
 
+        // Its own window: a missing row is not a failing dependency, and an operator reading the
+        // log must be able to tell "wazuh-db is down" from "this node has not received the agent".
+        remoted::common::LogThrottle& noRowThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+
         // Everything after authorization: locate, open, stream. Runs on the HTTP worker for a fresh
         // registry hit or a WPK, and on a lookup worker when the verdict needed wazuh-db --
         // IHttpResponder is thread-safe and exactly-once, and the payload is already released.
@@ -655,6 +664,25 @@ namespace remoted::endpoints::download
                                    "Cannot authorize /download: the agent's groups could not be read from "
                                    "wazuh-manager-db in time (%llu request(s) in the last %d s). Agents are being "
                                    "told to retry; check that wazuh-manager-db is running.",
+                                   throttle.total,
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
+                    responder->send(unavailableResponse());
+                    return;
+                }
+
+                if (verdict.kind == GroupVerdictKind::NoRow)
+                {
+                    // Same answer as a failed lookup -- the agent retries both alike -- but never a
+                    // denial: the row may simply not have reached this node's database yet.
+                    incNoRow(metrics);
+                    if (const auto throttle = noRowThrottle().record())
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "Cannot authorize /download for agent '%s': the local wazuh-manager-db has no "
+                                   "row for it (%llu such request(s) in the last %d s). Agents are being told to "
+                                   "retry until their row reaches this node's database.",
+                                   agentId.c_str(),
                                    throttle.total,
                                    remoted::common::LogThrottle::kDefaultWindowSeconds);
                     }

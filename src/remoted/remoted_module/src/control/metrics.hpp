@@ -42,6 +42,7 @@ namespace remoted::control
     constexpr auto METRIC_TASK_FETCH_ERROR {"remoted.control.task_fetch_error"};
     constexpr auto METRIC_REJECTED {"remoted.control.rejected"};
     constexpr auto METRIC_WDB_LATENCY {"remoted.control.wdb.latency"};
+    constexpr auto METRIC_NO_ROW {"remoted.control.no_row"};
 
     /**
      * @brief The /control counter set, pre-resolved from one manager.
@@ -64,6 +65,11 @@ namespace remoted::control
         /// healthy round trip takes", the number that sizes the internal options
         /// 'remoted.control_wdb_roundtrip_deadline' and 'remoted.control_wdb_request_connections'.
         std::shared_ptr<wazuh::metrics::IHistogram> wdbLatency;
+        /// 503s because the local wazuh-db has no row for the agent (`ok []`): a startup or notify
+        /// whose membership had to be read and could not be, because the agent is not (yet) in the
+        /// node's replica. Disjoint from wdbError, which counts lookups that FAILED. Appended last:
+        /// the struct is brace-initialized positionally by makeControlMetrics().
+        std::shared_ptr<wazuh::metrics::ICounter> noRow;
     };
 
     /// Resolves the remoted.control.* family on @p manager (creating it on first call; totals
@@ -79,7 +85,9 @@ namespace remoted::control
             manager.getOrCreateCounter(METRIC_TASK_FETCH_ERROR, "Pending-task fetches that failed", "count"),
             manager.getOrCreateCounter(
                 METRIC_REJECTED, "400 rejections: malformed /control body/JSON/agent-id/type", "count"),
-            manager.getOrCreateHistogram(METRIC_WDB_LATENCY, "Successful wazuh-db round-trip time", "microseconds")};
+            manager.getOrCreateHistogram(METRIC_WDB_LATENCY, "Successful wazuh-db round-trip time", "microseconds"),
+            manager.getOrCreateCounter(
+                METRIC_NO_ROW, "503s: the local wazuh-db has no row for the agent (not yet synchronized)", "count")};
     }
 
     inline void incStartup(ControlMetrics& m)
@@ -131,6 +139,13 @@ namespace remoted::control
         if (m.rejected)
         {
             m.rejected->add();
+        }
+    }
+    inline void incNoRow(const ControlMetrics& m)
+    {
+        if (m.noRow)
+        {
+            m.noRow->add();
         }
     }
     /// Records one SUCCESSFUL wazuh-db round trip (see the wdbLatency member note).

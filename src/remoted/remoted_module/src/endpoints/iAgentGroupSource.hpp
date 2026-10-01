@@ -20,9 +20,10 @@ namespace remoted::endpoints
     /// What a group source could establish about the agent a request came from.
     enum class GroupVerdictKind
     {
-        Selector,   ///< The agent's own selector (e.g. "default", "web,db") is in `selector`.
-        Deny,       ///< The source cannot vouch for the agent (no local row, malformed id, no source).
-        Unavailable ///< The membership could not be established now (its store did not answer).
+        Selector,    ///< The agent's own selector (e.g. "default", "web,db") is in `selector`.
+        Deny,        ///< The source cannot vouch for the agent at all (malformed id, no source).
+        Unavailable, ///< The membership could not be established now (its store did not answer).
+        NoRow        ///< The store answered that it holds no record of the agent (not synchronized yet).
     };
 
     struct GroupVerdict
@@ -57,8 +58,10 @@ namespace remoted::endpoints
          * @note Deny means DENY, never "allow by default": an agent whose membership the source
          *       cannot establish has nothing to authorize it against. Do not "fix" a caller that
          *       refuses on Deny into falling through to the request's own claim -- that is
-         *       precisely the defect this interface exists to close. Unavailable is not a Deny
-         *       either: it says "retry", and it never authorizes.
+         *       precisely the defect this interface exists to close. Unavailable and NoRow are not
+         *       a Deny either: both say "retry" (a missing record may not have been synchronized
+         *       yet), and neither ever authorizes -- in particular, no record is never membership
+         *       of "default".
          */
         virtual void resolveSelector(const std::string& agentId, std::function<void(GroupVerdict)> done) const = 0;
     };
