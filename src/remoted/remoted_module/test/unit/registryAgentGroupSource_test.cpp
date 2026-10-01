@@ -58,7 +58,7 @@ namespace
     }
 
     /// What /control/shutdown leaves behind for an agent it has never seen (timestamps only), and
-    /// what S25 leaves for an agent with no local row ("default", never established).
+    /// what an invalidation leaves (the groups kept, never established).
     std::shared_ptr<AgentRegistry> registryWithUnestablishedEntry(AgentId id, std::vector<std::string> groups = {})
     {
         auto registry = std::make_shared<AgentRegistry>();
@@ -276,26 +276,27 @@ TEST(RegistryAgentGroupSourceTest, ExpiredEntryIsLookedUpAndCached)
     EXPECT_EQ(registry->get(1)->groups, std::vector<std::string> {"new"});
 }
 
-TEST(RegistryAgentGroupSourceTest, NoRowIsDenied)
+TEST(RegistryAgentGroupSourceTest, NoRowIsReportedAsNoRow)
 {
-    // Never "default" for an agent the local wazuh-db does not know (S7), and nothing is cached.
+    // Never "default" for an agent the local wazuh-db does not know, and nothing is cached: the
+    // verdict says "retry" (its row may not have reached this node yet), not "deny".
     const auto registry = std::make_shared<AgentRegistry>();
     LookupFixture wdb(registry, "ok []");
     const RegistryAgentGroupSource source {registry, wdb.lookup, kFreshnessSec};
 
-    EXPECT_EQ(resolveAndWait(source, "1").kind, GroupVerdictKind::Deny);
+    EXPECT_EQ(resolveAndWait(source, "1").kind, GroupVerdictKind::NoRow);
     EXPECT_EQ(registry->get(1), nullptr);
 }
 
 TEST(RegistryAgentGroupSourceTest, NotEstablishedEntryIsLookedUp)
 {
-    // What /control stores for an agent with no local row (S25): "default", never established.
-    // The download must not take it as membership -- it asks wazuh-db, which still has no row.
+    // An entry whose membership was invalidated (a push, or an earlier "no row"): the download
+    // must not take its groups as membership -- it asks wazuh-db, which still has no row.
     const auto registry = registryWithUnestablishedEntry(1, {"default"});
     LookupFixture wdb(registry, "ok []");
     const RegistryAgentGroupSource source {registry, wdb.lookup, kFreshnessSec};
 
-    EXPECT_EQ(resolveAndWait(source, "1").kind, GroupVerdictKind::Deny);
+    EXPECT_EQ(resolveAndWait(source, "1").kind, GroupVerdictKind::NoRow);
     EXPECT_EQ(wdb.selects->load(), 1);
 }
 

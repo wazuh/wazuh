@@ -1187,6 +1187,31 @@ TEST(DownloadHandlerTest, AnswersServiceUnavailableWhenTheSourceIsUnavailable)
     EXPECT_EQ(metrics.denied->get(), 0U); // a failed lookup is not a denial: the agent retries it
 }
 
+TEST(DownloadHandlerTest, AnswersServiceUnavailableForAnAgentWithNoLocalRow)
+{
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+    auto answerFor = [&](remoted::endpoints::GroupVerdictKind kind)
+    {
+        const auto source = std::make_shared<ScriptedAgentGroupSource>();
+        auto responder = std::make_shared<RecordingResponder>();
+        auto body = std::make_shared<std::string>(R"({"resource_type":"config","resource_id":"default"})");
+        makeHandler({}, metrics, source)(authenticatedRequest(body), responder);
+        source->deliver(remoted::endpoints::GroupVerdict {kind, {}});
+        return responder;
+    };
+
+    const auto noRow = answerFor(remoted::endpoints::GroupVerdictKind::NoRow);
+    EXPECT_EQ(noRow->status, 503); // retried like a failed lookup, never a denial
+    EXPECT_EQ(metrics.noRow->get(), 1U);
+    EXPECT_EQ(metrics.unavailable->get(), 0U); // counted apart from a failed lookup...
+    EXPECT_EQ(metrics.denied->get(), 0U);
+
+    const auto failed = answerFor(remoted::endpoints::GroupVerdictKind::Unavailable);
+    EXPECT_EQ(noRow->body, failed->body); // ...but the same answer on the wire
+    EXPECT_EQ(metrics.noRow->get(), 1U);
+}
+
 TEST(DownloadHandlerTest, WpkRequestsNeverResolve)
 {
     TempDir dir;
