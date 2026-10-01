@@ -4970,8 +4970,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/security/opasswd -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
-      - 'c:stat -L /etc/security/opasswd.old -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+      - 'c:stat -c "%a %U %G" /etc/security/opasswd -> r:^600\s+root\s+root$|^600\s+root\s+shadow$|^400\s+root\s+root$|^400\s+root\s+shadow$|^200\s+root\s+root$|^200\s+root\s+shadow$'
+      - 'not c:stat -c "%a %U %G" /etc/security/opasswd.old -> r:^\d+\s && !r:^600\s+root\s+root$|^600\s+root\s+shadow$|^400\s+root\s+root$|^400\s+root\s+shadow$|^200\s+root\s+root$|^200\s+root\s+shadow$'
 
   # 7.1.11 Ensure world writable files and directories are secured. (Automated) - Not Implemented
   # 7.1.12 Ensure no files or directories without an owner and a group exist. (Automated) - Not Implemented

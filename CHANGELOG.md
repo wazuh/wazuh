@@ -28,6 +28,12 @@ All notable changes to this project will be documented in this file.
 - Fixed the Windows agent reporting the operating system it had before an in-place feature update. ([#39547](https://github.com/wazuh/wazuh/pull/39547))
 - Fixed the Windows agent installer not applying the configuration file permissions to the `shared` directory. ([#39734](https://github.com/wazuh/wazuh/pull/39734))
 
+### Ruleset
+
+#### Fixed
+
+- Fixed the `/etc/security/opasswd` permission check failing when the optional `opasswd.old` file is absent in Debian 10, 12, 13 and Ubuntu 20.04, 22.04, 24.04 SCA policies. ([#39338](https://github.com/wazuh/wazuh/issues/39338))
+
 ## [v4.14.9]
 
 ### Manager
