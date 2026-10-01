@@ -149,6 +149,10 @@ void _getLocalfilesListJSON(logreader* reader, cJSON* array, const char *gpath)
         }
         cJSON_AddItemToObject(file, "query", query);
     }
+    if (reader->events != NULL)
+    {
+        cJSON_AddStringToObject(file, "events", reader->events);
+    }
     // Invalid configuration for journal logs
     if (reader->journal_log == NULL)
     {

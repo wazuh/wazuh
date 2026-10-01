@@ -39,6 +39,7 @@
 #include "config.h"
 #include "localfile-config.h"
 #include "macos_log.h"
+#include "macos_es_log.h"
 #include "sha1_op.h"
 #include "shared.h"
 
@@ -126,6 +127,16 @@ void* read_multiline_regex(logreader* lf, int* rc, int drop_it);
  * @return NULL
  */
 void* read_macos(logreader* lf, int* rc, int drop_it);
+
+/**
+ * @brief Read Endpoint Security (`eslogger`) NDJSON output (macos-es log format)
+ *
+ * @param lf status and configuration of the macos-es instance
+ * @param rc output parameter, returns zero
+ * @param drop_it if drop_it is different from 0, the logs will be read and discarded
+ * @return NULL
+ */
+void* read_macos_es(logreader* lf, int* rc, int drop_it);
 #endif
 
 #ifdef __linux__
@@ -372,6 +383,11 @@ void w_macos_release_log_show(void);
  * @brief This function is called to release macOS log's "stream" resources
  */
 void w_macos_release_log_stream(void);
+
+/**
+ * @brief This function is called at process exit to release the `eslogger` (macos-es) resources
+ */
+void w_macos_es_release_env(void);
 #endif
 
 #endif /* LOGREADER_H */

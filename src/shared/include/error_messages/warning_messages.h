@@ -137,6 +137,12 @@
 #define LOGCOLLECTOR_JOURNAL_CONFG_FILTER_EXP_FAIL    "(8021): Error compiling the PCRE2 expression '%s' for field '%s' in journal filter."
 #define LOGCOLLECTOR_JOURNAL_CONFG_DISABLE_FILTER    "(8022): The filters of the journald log will be disabled in the merge, because one of the configuration does not have filters."
 
+#define LOGCOLLECTOR_INV_ES_EVENT                    "(8023): Invalid event value '%s' for '%s' option. Value will be ignored."
+#define LOGCOLLECTOR_MACOS_ES_INV_JSON                "(8024): macOS ES: Discarding non-JSON line: '%s'."
+#define LOGCOLLECTOR_NO_VALID_ES_EVENTS               "(8025): No valid value in '%s' option. Default events will be used."
+#define LOGCOLLECTOR_MACOS_ES_UNAVAILABLE             "(8026): '%s' not found. The 'macos-es' log format will be disabled."
+#define LOGCOLLECTOR_MACOS_ES_OVERSIZE                "(8027): macOS ES: Discarding an event larger than %d bytes."
+
 /* Remoted */
 #define REMOTED_NET_PROTOCOL_ERROR              "(9000): Error getting protocol. Default value (%s) will be used."
 #define REMOTED_INV_VALUE_IGNORE                "(9001): Ignored invalid value '%s' for '%s'."
