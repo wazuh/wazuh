@@ -45,6 +45,13 @@ endif()
 list(APPEND shared_tests_names "test_integrity_op")
 list(APPEND shared_tests_flags " ")
 
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_cryptography")
+list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
+                                -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize \
+                                -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
+endif()
+
 list(APPEND shared_tests_names "test_rbtree_op")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck ${DEBUG_OP_WRAPPERS}")

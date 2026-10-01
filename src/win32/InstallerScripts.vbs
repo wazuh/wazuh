@@ -400,6 +400,39 @@ Private Function IsStateRunning(scOutput)
     Next
 End Function
 
+' Sets WAZUH_PENDING_CONFLICT to the first pending restart file operation that touches the install folder.
+Public Function CheckPendingConflict()
+    On Error Resume Next
+    CheckPendingConflict = 0
+    installDir = Session.Property("APPLICATIONFOLDER")
+    If installDir = "" Then installDir = Session.Property("ProgramFilesFolder") & Session.Property("ApplicationFolderName")
+    If Right(installDir, 1) <> "\" Then installDir = installDir & "\"
+    shortDir = installDir
+    Set objFSO = CreateObject("Scripting.FileSystemObject")
+    If objFSO.FolderExists(installDir) Then shortDir = objFSO.GetFolder(installDir).ShortPath & "\"
+
+    ' WScript.Shell.RegRead stops at the first empty string of a REG_MULTI_SZ, so read it through WMI.
+    Err.Clear
+    Set objReg = GetObject("winmgmts:{impersonationLevel=impersonate}!\\.\root\default:StdRegProv")
+    If Err.Number <> 0 Then
+        If Session.Property("MsiSystemRebootPending") = "1" Then Session.Property("WAZUH_PENDING_CONFLICT") = "PendingFileRenameOperations"
+        Exit Function
+    End If
+
+    For Each valueName In Array("PendingFileRenameOperations", "PendingFileRenameOperations2")
+        entries = Empty
+        objReg.GetMultiStringValue &H80000002, "SYSTEM\CurrentControlSet\Control\Session Manager", valueName, entries
+        If IsArray(entries) Then
+            hits = Filter(entries, installDir, True, vbTextCompare)
+            If UBound(hits) < 0 Then hits = Filter(entries, shortDir, True, vbTextCompare)
+            If UBound(hits) >= 0 Then
+                Session.Property("WAZUH_PENDING_CONFLICT") = hits(0)
+                Exit Function
+            End If
+        End If
+    Next
+End Function
+
 Public Function KillGUITask()
     Set WshShell = CreateObject("WScript.Shell")
 

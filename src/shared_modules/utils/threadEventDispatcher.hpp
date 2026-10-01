@@ -19,6 +19,7 @@
 #include "threadSafeMultiQueue.hpp"
 #include "threadSafeQueue.h"
 #include <atomic>
+#include <functional>
 #include <iostream>
 #include <thread>
 
@@ -34,10 +35,12 @@ public:
                                     const std::string& dbPath,
                                     const uint64_t bulkSize = 1,
                                     const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
-                                    bool useSharedBuffers = false)
+                                    bool useSharedBuffers = false,
+                                    std::function<void(const std::string&)> onDiscard = {})
         : m_functor {std::move(functor)}
         , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
+        , m_onDiscard {std::move(onDiscard)}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath, useSharedBuffers))}
     {
         m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this};
@@ -45,9 +48,11 @@ public:
 
     explicit TThreadEventDispatcher(const std::string& dbPath,
                                     const uint64_t bulkSize = 1,
-                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
+                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
+                                    std::function<void(const std::string&)> onDiscard = {})
         : m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
+        , m_onDiscard {std::move(onDiscard)}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
     {
     }
@@ -69,9 +74,18 @@ public:
     {
         if constexpr (!std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
         {
-            if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size() < m_maxQueueSize))
+            if (m_running)
             {
-                m_queue->push(value);
+                const auto queueSize = m_queue->size();
+                if (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || queueSize < m_maxQueueSize)
+                {
+                    m_queue->push(value);
+                    rearmDiscardReport(queueSize);
+                }
+                else
+                {
+                    reportDiscard(queueSize, "");
+                }
             }
         }
         else
@@ -86,9 +100,18 @@ public:
     {
         if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
         {
-            if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size(prefix) < m_maxQueueSize))
+            if (m_running)
             {
-                m_queue->push(prefix, value);
+                const auto queueSize = m_queue->size(prefix);
+                if (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || queueSize < m_maxQueueSize)
+                {
+                    m_queue->push(prefix, value);
+                    rearmDiscardReport(queueSize);
+                }
+                else
+                {
+                    reportDiscard(queueSize, prefix);
+                }
             }
         }
         else
@@ -228,6 +251,26 @@ private:
         }
     }
 
+    // Reports the first discard of an overflow through the injected callback (silent without one). The report is
+    // re-armed once the queue is found empty, so a queue that hovers around its limit is reported once per overflow.
+    void reportDiscard(const size_t queueSize, std::string_view prefix)
+    {
+        if (m_onDiscard && !m_discardReported.exchange(true))
+        {
+            m_onDiscard((prefix.empty() ? std::string {"Queue"} : "Queue '" + std::string {prefix} + "'") +
+                        " is full (size: " + std::to_string(queueSize) + ", max: " + std::to_string(m_maxQueueSize) +
+                        "). Starting to discard events.");
+        }
+    }
+
+    void rearmDiscardReport(const size_t queueSize)
+    {
+        if (queueSize == 0)
+        {
+            m_discardReported = false;
+        }
+    }
+
     void joinThread()
     {
         if (m_thread.joinable())
@@ -240,9 +283,12 @@ private:
     Functor m_functor;
     const size_t m_maxQueueSize;
     std::atomic<uint64_t> m_bulkSize;
+    std::function<void(const std::string&)> m_onDiscard;
     std::unique_ptr<TSafeQueueType> m_queue;
     std::thread m_thread;
     std::atomic_bool m_running = true;
+
+    std::atomic_bool m_discardReported {false};
 };
 
 template<typename Type, typename Functor>
