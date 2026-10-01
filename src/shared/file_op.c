@@ -2674,12 +2674,14 @@ static HANDLE w_createfile_nofollow_vetted(const char * basedir, const char * fi
  *
  * @param basedir Base directory holding the file.
  * @param filename Bare file name inside @p basedir.
- * @param oflags open()/openat() flags; must include O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK (the latter to
- *               keep a FIFO from blocking the open) on top of whichever of O_RDONLY/O_WRONLY/O_CREAT the
- *               caller needs. Deliberately never includes O_TRUNC: truncating at open time would destroy
- *               the target before anything about it can be checked, which is precisely how a hard link
- *               slips through — it is a regular file, so no file type test can tell it apart. A caller
- *               that needs the file truncated must do so only after this returns a vetted descriptor.
+ * @param oflags open()/openat() flags; must include O_CLOEXEC | O_NONBLOCK | O_NOCTTY (the last two so
+ *               a FIFO cannot block the open and a terminal cannot become the daemon's controlling tty)
+ *               on top of whichever of O_RDONLY/O_WRONLY/O_CREAT the caller needs.
+ *               O_NOFOLLOW is added here, or emulated on AIX, which does not define it. Deliberately
+ *               never includes O_TRUNC: truncating at open time would destroy the target before
+ *               anything about it can be checked, which is precisely how a hard link slips through —
+ *               it is a regular file, so no file type test can tell it apart. A caller that needs the
+ *               file truncated must do so only after this returns a vetted descriptor.
  * @param mode Permission bits, used only when oflags includes O_CREAT.
  * @return A vetted file descriptor, with O_NONBLOCK already cleared, on success; -1 on error (sets errno).
  */
@@ -2689,16 +2691,54 @@ static int w_openat_nofollow_vetted(const char * basedir, const char * filename,
     int saved_errno;
     int flags;
 
-#ifdef HPUX
-    // HP-UX has no openat(): open by path. filename is a bare name, so the path stays inside basedir.
+#if defined(HPUX) || defined(AIX)
+    // Neither has openat(): open by path. filename is a bare name, so the path stays inside basedir.
     char path[PATH_MAX + 1];
 
     if (snprintf(path, sizeof(path), "%s/%s", basedir, filename) >= (int) sizeof(path)) {
         errno = ENAMETOOLONG;
         return -1;
     }
+#endif
 
-    if (fd = open(path, oflags, mode), fd < 0) {
+#ifdef AIX
+    // AIX 6.1 has no O_NOFOLLOW either: refuse a symlink seen by lstat(), then check that the descriptor
+    // is the file lstat() saw, so a symlink swapped in between is caught too.
+    struct stat linkbuf;
+
+    if (lstat(path, &linkbuf) == 0) {
+        if (S_ISLNK(linkbuf.st_mode)) {
+            errno = ELOOP;
+            return -1;
+        }
+
+        // Without O_CREAT, a dangling symlink swapped in meanwhile cannot create its target.
+        if (fd = open(path, oflags & ~O_CREAT, mode), fd < 0) {
+            return -1;
+        }
+
+        if (fstat(fd, &statbuf) < 0) {
+            saved_errno = errno;
+            close(fd);
+            errno = saved_errno;
+            return -1;
+        }
+
+        if (statbuf.st_dev != linkbuf.st_dev || statbuf.st_ino != linkbuf.st_ino) {
+            close(fd);
+            errno = ELOOP;
+            return -1;
+        }
+    } else if (errno == ENOENT && (oflags & O_CREAT)) {
+        // O_EXCL fails on anything created at path meanwhile, a symlink included.
+        if (fd = open(path, oflags | O_EXCL, mode), fd < 0) {
+            return -1;
+        }
+    } else {
+        return -1;
+    }
+#elif defined(HPUX)
+    if (fd = open(path, oflags | O_NOFOLLOW, mode), fd < 0) {
         return -1;
     }
 #else
@@ -2708,7 +2748,7 @@ static int w_openat_nofollow_vetted(const char * basedir, const char * filename,
         return -1;
     }
 
-    fd = openat(dirfd, filename, oflags, mode);
+    fd = openat(dirfd, filename, oflags | O_NOFOLLOW, mode);
     saved_errno = errno;
     close(dirfd);
 
@@ -2801,7 +2841,7 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 #else
     FILE * fp;
     int saved_errno;
-    int fd = w_openat_nofollow_vetted(basedir, filename, O_WRONLY | O_CREAT | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK, 0640);
+    int fd = w_openat_nofollow_vetted(basedir, filename, O_WRONLY | O_CREAT | O_CLOEXEC | O_NONBLOCK | O_NOCTTY, 0640);
 
     if (fd < 0) {
         return NULL;
@@ -2859,7 +2899,7 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
 #else
     gzFile gzfp;
     int saved_errno;
-    int fd = w_openat_nofollow_vetted(basedir, filename, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK, 0);
+    int fd = w_openat_nofollow_vetted(basedir, filename, O_RDONLY | O_CLOEXEC | O_NONBLOCK | O_NOCTTY, 0);
 
     if (fd < 0) {
         return NULL;
