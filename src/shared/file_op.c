@@ -2674,8 +2674,9 @@ static HANDLE w_createfile_nofollow_vetted(const char * basedir, const char * fi
  *
  * @param basedir Base directory holding the file.
  * @param filename Bare file name inside @p basedir.
- * @param oflags open()/openat() flags; must include O_CLOEXEC | O_NONBLOCK (the latter to keep a FIFO
- *               from blocking the open) on top of whichever of O_RDONLY/O_WRONLY/O_CREAT the caller needs.
+ * @param oflags open()/openat() flags; must include O_CLOEXEC | O_NONBLOCK | O_NOCTTY (the last two so
+ *               a FIFO cannot block the open and a terminal cannot become the daemon's controlling tty)
+ *               on top of whichever of O_RDONLY/O_WRONLY/O_CREAT the caller needs.
  *               O_NOFOLLOW is added here, or emulated on AIX, which does not define it. Deliberately
  *               never includes O_TRUNC: truncating at open time would destroy the target before
  *               anything about it can be checked, which is precisely how a hard link slips through —
@@ -2840,7 +2841,7 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 #else
     FILE * fp;
     int saved_errno;
-    int fd = w_openat_nofollow_vetted(basedir, filename, O_WRONLY | O_CREAT | O_CLOEXEC | O_NONBLOCK, 0640);
+    int fd = w_openat_nofollow_vetted(basedir, filename, O_WRONLY | O_CREAT | O_CLOEXEC | O_NONBLOCK | O_NOCTTY, 0640);
 
     if (fd < 0) {
         return NULL;
@@ -2898,7 +2899,7 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
 #else
     gzFile gzfp;
     int saved_errno;
-    int fd = w_openat_nofollow_vetted(basedir, filename, O_RDONLY | O_CLOEXEC | O_NONBLOCK, 0);
+    int fd = w_openat_nofollow_vetted(basedir, filename, O_RDONLY | O_CLOEXEC | O_NONBLOCK | O_NOCTTY, 0);
 
     if (fd < 0) {
         return NULL;
