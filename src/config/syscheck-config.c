@@ -1548,13 +1548,15 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                 }
                 else if (strcmp(children[j]->element, xml_disk_quota_limit) == 0) {
                     if (children[j]->content) {
-                        syscheck->disk_quota_limit = read_data_unit(children[j]->content);
+                        int limit = read_data_unit(children[j]->content);
 
-                        if (syscheck->disk_quota_limit == -1) {
+                        if (limit == -1) {
                             mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                             OS_ClearNode(children);
                             return;
                         }
+
+                        syscheck->disk_quota_limit = limit;
 
                         if (syscheck->disk_quota_limit < 1) {
                             syscheck->disk_quota_limit = 1;     // 1 KB is the minimum
@@ -1591,13 +1593,15 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                 }
                 else if (strcmp(children[j]->element, xml_file_size_limit) == 0) {
                     if (children[j]->content) {
-                        syscheck->file_size_limit = read_data_unit(children[j]->content);
+                        int limit = read_data_unit(children[j]->content);
 
-                        if (syscheck->file_size_limit == -1) {
+                        if (limit == -1) {
                             mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                             OS_ClearNode(children);
                             return;
                         }
+
+                        syscheck->file_size_limit = limit;
 
                         if (syscheck->file_size_limit < 1) {
                             syscheck->file_size_limit = 1;      // 1 KB is the minimum

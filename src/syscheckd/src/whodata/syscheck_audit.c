@@ -449,7 +449,7 @@ int audit_init(void) {
 
     // Perform Audit healthcheck
     if (syscheck.audit_healthcheck) {
-        if(audit_health_check(audit_data.socket)) {
+        if(audit_health_check(&audit_data.socket)) {
             merror(FIM_ERROR_WHODATA_HEALTHCHECK_START);
             return -1;
         }
@@ -637,7 +637,7 @@ void *audit_parse_thread() {
 }
 
 void audit_read_events(int *audit_sock, atomic_int_t *running) {
-    size_t byteRead;
+    ssize_t byteRead;
     char * cache;
     char * cache_id = NULL;
     char * line;
@@ -651,6 +651,7 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
     int conn_retries;
     char * eoe_found = NULL;
     char * cache_dup = NULL;
+    bool discard = false;
 
     char *buffer;
     os_malloc(BUF_SIZE * sizeof(char), buffer);
@@ -693,9 +694,13 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
             break;
         }
 
-        if (byteRead = recv(*audit_sock, buffer + buffer_i, BUF_SIZE - buffer_i - 1, 0), !byteRead) {
+        if (byteRead = recv(*audit_sock, buffer + buffer_i, BUF_SIZE - buffer_i - 1, 0), byteRead <= 0) {
             // Connection closed
             mwarn(FIM_WARN_AUDIT_CONNECTION_CLOSED);
+            close(*audit_sock);
+            buffer_i = 0;
+            cache_i = 0;
+            discard = false;
             // Reconnect
             conn_retries = 0;
             sleep(1);
@@ -732,7 +737,6 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
         line = buffer;
 
         char * id;
-        char *event_too_long_id = NULL;
 
         do {
             *endline = '\0';
@@ -740,8 +744,8 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
             if (id = audit_get_id(line), id) {
                 // If there was cached data and the ID is different, parse cache first
 
-                if (cache_id && strcmp(cache_id, id) && cache_i) {
-                    if (!event_too_long_id) {
+                if (cache_id && strcmp(cache_id, id)) {
+                    if (cache_i) {
                         os_strdup(cache, cache_dup);
                         if (queue_push_ex(audit_queue, cache_dup)) {
                             if (!audit_queue_full_reported) {
@@ -752,18 +756,20 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
                         }
                     }
                     cache_i = 0;
+                    discard = false;
                 }
 
                 // Append to cache
                 len = endline - line;
-                if (cache_i + len + 1 < BUF_SIZE) {
+                if (!discard && cache_i + len + 1 < BUF_SIZE) {
                     strncpy(cache + cache_i, line, len);
                     cache_i += len;
                     cache[cache_i++] = '\n';
                     cache[cache_i] = '\0';
-                } else if (!event_too_long_id){
+                } else if (!discard) {
                     mwarn(FIM_WARN_WHODATA_EVENT_TOOLONG, id);
-                    os_strdup(id, event_too_long_id);
+                    discard = true;
+                    cache_i = 0;
                 }
                 eoe_found = strstr(line, "type=EOE");
 
@@ -777,7 +783,7 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
         } while (*line && (endline = strchr(line, '\n'), endline));
 
         // If some audit log remains in the cache and it is complet (line "end of event" is found), flush cache
-        if (eoe_found && !event_too_long_id){
+        if (eoe_found && cache_i) {
             os_strdup(cache, cache_dup);
             if (queue_push_ex(audit_queue, cache_dup)) {
                 if (!audit_queue_full_reported) {
@@ -796,8 +802,6 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
         } else {
             buffer_i = 0;
         }
-
-        os_free(event_too_long_id);
     }
 
     free(cache_id);
