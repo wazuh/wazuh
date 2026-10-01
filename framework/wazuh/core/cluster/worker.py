@@ -17,8 +17,10 @@ from typing import Union
 
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.cluster import client, cluster, common as c_common
+from wazuh.core.cluster import utils as cluster_utils
 from wazuh.core.cluster.common import IndexerTaskManager
 from wazuh.core.cluster.dapi import dapi
+from wazuh.core.cluster.registry_publisher import RegistryPublisher
 from wazuh.core.cluster.utils import log_subprocess_execution, safe_join
 from wazuh.core.configuration import get_manager_conf
 from wazuh.core.exception import WazuhException
@@ -530,6 +532,22 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         return response
 
+    def publish_agent_groups(self, publications: list) -> None:
+        """Queue the per-chunk publications of an agent-groups apply for the local remoted.
+
+        Called by `update_chunks_wdb` after every apply -- the periodic reception, the full resync and the retry of
+        rejected chunks -- so remoted's registry of memberships follows this node's wazuh-manager-db without waiting
+        for its cached memberships to expire. Synchronous and never raises: the publisher posts them from its own task.
+
+        Parameters
+        ----------
+        publications : list of dict
+            One publication per chunk, in chunk order.
+        """
+        publisher = getattr(self.server, 'registry_publisher', None)
+        if publisher is not None:
+            publisher.enqueue(publications)
+
     @staticmethod
     def _agent_groups_chunk_agent_ids(data: dict) -> Set[int]:
         """Collect the IDs of every agent referenced in an agent-groups chunk list.
@@ -995,6 +1013,11 @@ class Worker(client.AbstractClientManager):
         self.run_active_response_job = None
         self.active_response_task = ActiveResponseFetchTask(self)
         self.indexer_task_manager = IndexerTaskManager()
+        # Publishes the agent-groups memberships this node applies to the local remoted. Owned here, not by the
+        # handler, so its queue survives reconnections to the master.
+        publisher_logger = self.logger.getChild('Registry publish')
+        publisher_logger.addFilter(cluster_utils.ClusterFilter(tag=self.tag, subtag='Registry publish'))
+        self.registry_publisher = RegistryPublisher(logger=publisher_logger)
 
     def add_tasks(self) -> List[Tuple[Awaitable[Any], Tuple]]:
         """Define the tasks that the worker will always run in an infinite loop.
@@ -1007,7 +1030,8 @@ class Worker(client.AbstractClientManager):
         """
         tasks = super().add_tasks() + [(self.client.sync_integrity, tuple()),
                                       (self.client.sync_agent_info, tuple()),
-                                      (self.dapi.run, tuple())]
+                                      (self.dapi.run, tuple()),
+                                      (self.registry_publisher.run, tuple())]
         try:
             _indexer_conf = get_manager_conf(section="indexer")["indexer"].get("hosts")
         except Exception:
