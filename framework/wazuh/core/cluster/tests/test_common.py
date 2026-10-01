@@ -1932,6 +1932,142 @@ async def test_send_data_to_wdb(WazuhDBConnection_mock):
         assert result['error_messages']['others'] == ['Error while processing agent-groups chunks: ']
 
 
+class _ScriptedWazuhDBConnection:
+    """A WazuhDBConnection whose `send` answers each chunk from a script: None (ok) or an exception to raise."""
+
+    def __init__(self, script):
+        self.script = list(script)
+        self.sent = []
+
+    def send(self, data, raw):
+        self.sent.append(data)
+        outcome = self.script.pop(0) if self.script else None
+        if outcome is not None:
+            raise outcome
+        return ''
+
+    def close(self):
+        pass
+
+
+def _agent_groups_chunk(*agents):
+    """One agent-groups chunk as the master sends it: `[{"data": [{"id": ..., "groups": [...]}, ...]}]`."""
+    return json.dumps([{'data': [{'id': agent_id, 'groups': groups} for agent_id, groups in agents]}])
+
+
+def _agent_groups_data(*chunks):
+    return {'chunks': list(chunks), 'payload': {'mode': 'override', 'sync_status': 'synced'},
+            'set_data_command': 'global set-agent-groups'}
+
+
+@pytest.mark.asyncio
+@patch("wazuh.core.cluster.common.WazuhDBConnection")
+async def test_send_data_to_wdb_publishes_each_applied_chunk(WazuhDBConnection_mock):
+    """Every applied agent-groups chunk yields one `set` publication, in chunk order, groups in wazuh-db order."""
+    WazuhDBConnection_mock.return_value = _ScriptedWazuhDBConnection([None, None])
+    data = _agent_groups_data(_agent_groups_chunk((1, ['web', 'default']), (2, [])),
+                              _agent_groups_chunk((3, ['db'])))
+
+    result = await cluster_common.send_data_to_wdb(data=data, timeout=15, info_type='agent-groups')
+
+    assert result['updated_chunks'] == 2
+    assert result['registry_publications'] == [
+        {'set': [{'id': 1, 'groups': ['web', 'default']}, {'id': 2, 'groups': []}]},
+        {'set': [{'id': 3, 'groups': ['db']}]}]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('error', [
+    Exception('Cannot execute Global database query; some other failure'),
+    # The ignored error is not reported as a chunk error, but its effect is just as uncertain.
+    Exception('Cannot execute Global database query; FOREIGN KEY constraint failed'),
+])
+@patch("wazuh.core.cluster.common.WazuhDBConnection")
+async def test_send_data_to_wdb_publishes_an_errored_chunk_as_invalidate(WazuhDBConnection_mock, error):
+    """A chunk whose apply raised invalidates its agents; the chunks around it are still published as applied."""
+    WazuhDBConnection_mock.return_value = _ScriptedWazuhDBConnection([None, error, None])
+    data = _agent_groups_data(_agent_groups_chunk((1, ['a'])), _agent_groups_chunk((2, ['b']), (3, ['c'])),
+                              _agent_groups_chunk((4, ['d'])))
+
+    result = await cluster_common.send_data_to_wdb(data=data, timeout=15, info_type='agent-groups')
+
+    assert result['registry_publications'] == [{'set': [{'id': 1, 'groups': ['a']}]}, {'invalidate': [2, 3]},
+                                               {'set': [{'id': 4, 'groups': ['d']}]}]
+
+
+@pytest.mark.asyncio
+@patch("wazuh.core.cluster.common.WazuhDBConnection")
+async def test_send_data_to_wdb_timeout_invalidates_the_chunk_and_stops(WazuhDBConnection_mock):
+    """A timeout on a chunk invalidates that chunk; the chunks never sent yield nothing."""
+    WazuhDBConnection_mock.return_value = _ScriptedWazuhDBConnection([None, TimeoutError()])
+    data = _agent_groups_data(_agent_groups_chunk((1, ['a'])), _agent_groups_chunk((2, ['b'])),
+                              _agent_groups_chunk((3, ['c'])))
+
+    result = await cluster_common.send_data_to_wdb(data=data, timeout=15, info_type='agent-groups')
+
+    assert result['error_messages']['others'] == ['Timeout while processing agent-groups chunks.']
+    assert result['registry_publications'] == [{'set': [{'id': 1, 'groups': ['a']}]}, {'invalidate': [2]}]
+    assert len(WazuhDBConnection_mock.return_value.sent) == 2
+
+
+@pytest.mark.asyncio
+@patch("wazuh.core.cluster.common.WazuhDBConnection")
+async def test_send_data_to_wdb_publication_filters_items(WazuhDBConnection_mock):
+    """Items wazuh-db skips are left out; a group name remoted would refuse turns that agent into an invalidation."""
+    # The unparseable chunk never reaches send(): the script's second entry is the third chunk's.
+    WazuhDBConnection_mock.return_value = _ScriptedWazuhDBConnection([None, Exception('boom')])
+    applied = json.dumps([{'data': [
+        {'id': 'x', 'groups': ['a']},        # no numeric id: wazuh-db skips it
+        {'id': True, 'groups': ['a']},       # a bool is not an id
+        {'id': 0, 'groups': ['a']},          # the manager, never an agent
+        {'id': 4, 'groups': 'a'},            # groups not a list: wazuh-db skips it
+        {'id': 5, 'groups': ['a,b']},        # names another list: remoted would refuse it
+        {'id': 6, 'groups': ['']},
+        {'id': 7, 'groups': ['ok']},
+    ]}])
+    data = _agent_groups_data(applied, 'not json', json.dumps([{'data': [{'groups': ['a']}]}]))
+
+    result = await cluster_common.send_data_to_wdb(data=data, timeout=15, info_type='agent-groups')
+
+    # The unparseable chunk and the errored chunk that names no agent yield nothing.
+    assert result['registry_publications'] == [{'set': [{'id': 7, 'groups': ['ok']}], 'invalidate': [5, 6]}]
+
+
+@pytest.mark.asyncio
+@patch("wazuh.core.cluster.common.get_wdb_http_client")
+async def test_send_data_to_wdb_agent_info_publishes_nothing(get_wdb_http_client_mock):
+    """Only agent-groups applies are published: agent-info carries no publications."""
+    get_wdb_http_client_mock.return_value.__aenter__.return_value = AsyncMock()
+
+    result = await cluster_common.send_data_to_wdb(data={'chunks': ['{}']}, timeout=15, info_type='agent-info')
+
+    assert result['updated_chunks'] == 1
+    assert 'registry_publications' not in result
+
+
+@pytest.mark.asyncio
+@patch('wazuh.core.cluster.common.Handler.send_request')
+async def test_handler_update_chunks_wdb_hands_publications_over(send_request_mock):
+    """The publications go to publish_agent_groups, once, and never back to the peer with the result."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    publications = [{'set': [{'id': 1, 'groups': ['default']}]}, {'invalidate': [2]}]
+
+    with patch('wazuh.core.cluster.common.send_data_to_wdb', new_callable=AsyncMock) as send_data_to_wdb_mock, \
+            patch.object(cluster_common.Handler, 'publish_agent_groups') as publish_mock:
+        send_data_to_wdb_mock.return_value = {'updated_chunks': 2, 'time_spent': 1,
+                                              'error_messages': {'chunks': [], 'others': []},
+                                              'registry_publications': publications}
+        result = await handler.update_chunks_wdb(data={'chunks': [0, 1]}, info_type='agent-groups',
+                                                 logger=logging.getLogger('testing'), error_command=b'ERROR',
+                                                 timeout=10)
+
+    publish_mock.assert_called_once_with(publications)
+    assert result == {'updated_chunks': 2, 'time_spent': 1, 'error_messages': []}
+
+    # The base class publishes nothing: only a worker does.
+    assert cluster_common.Handler(fernet_key, cluster_items).publish_agent_groups(publications) is None
+
+
 @patch.object(logging, "error")
 @patch('asyncio.new_event_loop')
 @patch('traceback.format_tb', return_value="traceback")

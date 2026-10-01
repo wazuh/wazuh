@@ -26,7 +26,7 @@ with patch('wazuh.core.common.wazuh_uid'):
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from wazuh.core.cluster import client, worker, common as cluster_common
+        from wazuh.core.cluster import client, worker, common as cluster_common, registry_publisher
         from wazuh.core import common as core_common
         from wazuh.core.wdb import AsyncWazuhDBConnection
         from wazuh.core.cluster.utils import get_cluster_items
@@ -248,6 +248,21 @@ async def test_sync_wazuh_db_sync_ko(send_string_mock, json_dumps_mock, event_lo
 
 
 # Test WorkerHandler class methods.
+@pytest.mark.asyncio
+async def test_worker_handler_publish_agent_groups_enqueues(event_loop):
+    """Check that the per-chunk publications of an apply go to the Worker's registry publisher."""
+    worker_handler = get_worker_handler(event_loop)
+    publications = [{'set': [{'id': 1, 'groups': ['default']}]}, {'invalidate': [2]}]
+
+    worker_handler.server = MagicMock()
+    worker_handler.publish_agent_groups(publications)
+    worker_handler.server.registry_publisher.enqueue.assert_called_once_with(publications)
+
+    # A server without a publisher (a partial setup) is a no-op, never an error in the apply path.
+    worker_handler.server = object()
+    worker_handler.publish_agent_groups(publications)
+
+
 @pytest.mark.asyncio
 async def test_worker_handler_init(event_loop):
     """Test '__init__' method from WorkerHandler class."""
@@ -1499,6 +1514,9 @@ async def test_worker_init(api_request_queue, event_loop):
     assert nested_worker.extra_args["node_type"] == nested_worker.node_type
     assert nested_worker.dapi == api_request_queue.return_value
     assert nested_worker.version == "1.0.0"
+    # The agent-groups publisher lives on the Worker, so its queue survives reconnections to the master.
+    assert isinstance(nested_worker.registry_publisher, registry_publisher.RegistryPublisher)
+    assert nested_worker.registry_publisher.logger.name.endswith('Registry publish')
 
 
 @pytest.mark.asyncio
@@ -1543,12 +1561,14 @@ async def test_worker_add_tasks(ar_task, api_request_queue, get_manager_conf_moc
 
     tasks = nested_worker.add_tasks()
     assert tasks[:4] == ['task', ('0101', ()), ('info', ()), ('True', ())]
-    assert callable(tasks[4][0])
-    assert tasks[4][1] == ()
+    # The registry publisher's consumer, started with every connection like the other tasks.
+    assert tasks[4] == (nested_worker.registry_publisher.run, ())
+    assert callable(tasks[5][0])
+    assert tasks[5][1] == ()
     get_manager_conf_mock.assert_called_once_with(section="indexer")
 
     # Indexer tasks are lazily executed through the callable added to tasks.
-    run_active_response_job = tasks[4][0]
+    run_active_response_job = tasks[5][0]
     assert run_active_response_job() == ("True", ())
     manage_indexer_tasks_mock.assert_called_once_with([nested_worker.active_response_task.run])
 

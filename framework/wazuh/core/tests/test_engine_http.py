@@ -2,12 +2,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import httpx
 
-from wazuh.core.engine_http import EngineHTTPClient, RemotedHTTPClient, VdHTTPClient, RemotedAdminHTTPError
+from wazuh.core.engine_http import (AsyncRemotedHTTPClient, EngineHTTPClient, RemotedAdminHTTPError,
+                                    RemotedHTTPClient, VdHTTPClient)
 from wazuh.core.exception import WazuhError, WazuhInternalError
 
 
@@ -633,3 +634,95 @@ def test_remoted_get_metrics_dump_request_error():
     with pytest.raises(WazuhError) as exc_info:
         client.get_metrics_dump()
     assert exc_info.value.code == 2013
+
+
+# ── AsyncRemotedHTTPClient ───────────────────────────────────────────────
+
+AGENT_GROUPS_PUBLICATION = {'set': [{'id': 1, 'groups': ['default']}], 'invalidate': [5]}
+
+
+def _make_async_remoted_client() -> AsyncRemotedHTTPClient:
+    with patch('wazuh.core.common.REMOTED_ADMIN_SOCKET', '/var/wazuh-manager/queue/sockets/remote-admin-http.sock'):
+        with patch('httpx.AsyncHTTPTransport'), patch('httpx.AsyncClient'):
+            client = AsyncRemotedHTTPClient()
+
+    client._client = MagicMock()
+    client._client.post = AsyncMock()
+    client._client.aclose = AsyncMock()
+    return client
+
+
+async def test_async_remoted_post_agent_groups_ok():
+    client = _make_async_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.return_value = {'updated': 1, 'invalidated': 0, 'skipped': 1}
+    client._client.post.return_value = mock_response
+
+    result = await client.post_agent_groups(AGENT_GROUPS_PUBLICATION)
+
+    assert result == {'updated': 1, 'invalidated': 0, 'skipped': 1}
+    client._client.post.assert_awaited_once_with(url='http://localhost/_internal/agents/groups',
+                                                 json=AGENT_GROUPS_PUBLICATION,
+                                                 headers={'Content-Type': 'application/json'})
+
+
+@pytest.mark.parametrize('error, expected_type, expected_code', [
+    (httpx.TimeoutException('timeout'), WazuhInternalError, 2030),
+    (httpx.ConnectError('connect'), WazuhInternalError, 2031),
+    (httpx.RequestError('request'), WazuhError, 2013),
+])
+async def test_async_remoted_post_agent_groups_transport_errors(error, expected_type, expected_code):
+    client = _make_async_remoted_client()
+    client._client.post.side_effect = error
+
+    with pytest.raises(expected_type) as exc_info:
+        await client.post_agent_groups(AGENT_GROUPS_PUBLICATION)
+
+    assert exc_info.value.code == expected_code
+
+
+@pytest.mark.parametrize('status_code', [400, 404, 503])
+async def test_async_remoted_post_agent_groups_http_error(status_code):
+    client = _make_async_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = True
+    mock_response.status_code = status_code
+    mock_response.text = '{"error":"...","code":%d}' % status_code
+    client._client.post.return_value = mock_response
+
+    with pytest.raises(RemotedAdminHTTPError) as exc_info:
+        await client.post_agent_groups(AGENT_GROUPS_PUBLICATION)
+
+    # The status travels with the error, so the publisher can tell an older remoted (404) apart.
+    assert exc_info.value.code == 2029
+    assert exc_info.value.status_code == status_code
+
+
+async def test_async_remoted_post_agent_groups_invalid_json():
+    client = _make_async_remoted_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.side_effect = ValueError('bad json')
+    client._client.post.return_value = mock_response
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        await client.post_agent_groups(AGENT_GROUPS_PUBLICATION)
+
+    assert exc_info.value.code == 2032
+
+
+async def test_async_remoted_close():
+    client = _make_async_remoted_client()
+
+    await client.close()
+
+    client._client.aclose.assert_awaited_once()
+
+
+def test_async_remoted_client_init_error():
+    with patch('httpx.AsyncHTTPTransport', side_effect=Exception('no transport')):
+        with pytest.raises(WazuhInternalError) as exc_info:
+            AsyncRemotedHTTPClient()
+
+    assert exc_info.value.code == 2028
