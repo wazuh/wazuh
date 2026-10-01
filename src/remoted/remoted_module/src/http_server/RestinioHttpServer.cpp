@@ -1091,6 +1091,45 @@ namespace
     };
 
     /**
+     * @brief The worker pool as a streamable responder reaches it: open while the listener accepts,
+     *        closed by stopAccepting() before it joins and frees the pool.
+     *
+     * A responder may answer from any thread and at any time -- the /download fallback answers from
+     * a wazuh-db client worker once a lookup completes -- so a transfer can be asked for after the
+     * pool is gone. Every responder of one start() shares this gate: a transfer is started (pump
+     * created and posted) under its lock, and the gate is closed under the same lock, so a transfer
+     * started before the close is drained by the pool's join, and one asked for after it never
+     * reaches the pool at all.
+     */
+    class StreamPoolGate
+    {
+    public:
+        explicit StreamPoolGate(asio::thread_pool& pool)
+            : m_pool {&pool}
+        {
+        }
+
+        /// The lock under which a transfer is started, and the pool to start it on -- null once
+        /// closed. The pointer is only valid while the returned lock is held.
+        std::pair<std::unique_lock<std::mutex>, asio::thread_pool*> acquire()
+        {
+            std::unique_lock<std::mutex> lock {m_mutex};
+            auto* pool = m_pool;
+            return {std::move(lock), pool};
+        }
+
+        void close()
+        {
+            const std::lock_guard<std::mutex> lock {m_mutex};
+            m_pool = nullptr;
+        }
+
+    private:
+        std::mutex m_mutex;
+        asio::thread_pool* m_pool;
+    };
+
+    /**
      * @brief Responder for a route registered ResponseMode::Streamable.
      *
      * Unlike RestinioResponder, this one holds the request handle and creates the response builder
@@ -1103,10 +1142,10 @@ namespace
     {
     public:
         RestinioStreamableResponder(restinio::request_handle_t request,
-                                    asio::thread_pool& pool,
+                                    std::shared_ptr<StreamPoolGate> poolGate,
                                     std::size_t defaultChunkSize)
             : m_request {std::move(request)}
-            , m_pool {&pool}
+            , m_poolGate {std::move(poolGate)}
             , m_defaultChunkSize {defaultChunkSize}
         {
         }
@@ -1147,6 +1186,21 @@ namespace
                 return;
             }
 
+            // Held until the pump is posted: stopAccepting() cannot close the gate -- and then join
+            // and free the pool -- between this check and the post.
+            auto [gateLock, pool] = m_poolGate->acquire();
+            if (pool == nullptr)
+            {
+                // The listener stopped accepting and its pool is gone (or about to be): a late
+                // answer, typically a wazuh-db lookup that completed during shutdown. There is
+                // nothing left to run a transfer on, so it is a 503 the agent retries elsewhere --
+                // send() stays safe until stop() (IHttpServer::stopAccepting()).
+                gateLock.unlock();
+                LOGFN_DEBUG2(logFn(), "A streamed response was requested after the listener stopped accepting.");
+                send(remoted::http::HttpResponse::json(503, R"({"error":"Service unavailable","code":503})"));
+                return;
+            }
+
             if (m_answered.test_and_set())
             {
                 return;
@@ -1171,12 +1225,12 @@ namespace
             // (remoted.http_stream_chunk_size); an endpoint may still pin its own.
             const auto chunkSize = response.chunkSize != 0 ? response.chunkSize : m_defaultChunkSize;
 
-            std::make_shared<StreamPump>(std::move(builder), std::move(response.source), chunkSize, *m_pool)->start();
+            std::make_shared<StreamPump>(std::move(builder), std::move(response.source), chunkSize, *pool)->start();
         }
 
     private:
         restinio::request_handle_t m_request;
-        asio::thread_pool* m_pool;
+        std::shared_ptr<StreamPoolGate> m_poolGate;
         std::size_t m_defaultChunkSize;
         std::atomic_flag m_answered = ATOMIC_FLAG_INIT;
     };
@@ -1218,6 +1272,9 @@ namespace remoted::http
         HttpServerConfig m_config;
         ServerHandle m_server;
         std::unique_ptr<asio::thread_pool> m_workerPool;
+        /// How this start()'s streamable responders reach m_workerPool; closed by stopAccepting()
+        /// before the pool is joined, and shared with every responder so a late stream() finds it.
+        std::shared_ptr<StreamPoolGate> m_streamGate;
         std::unique_ptr<InFlightBudget> m_budget;
         bool m_acceptingStopped {false}; ///< Guards stopAccepting()'s one-shot server->stop()/wait().
 
@@ -1271,6 +1328,7 @@ namespace remoted::http
             for (const auto& route : m_routes)
             {
                 auto* pool = m_workerPool.get();
+                auto streamGate = m_streamGate;
                 auto* budget = m_budget.get();
                 auto rejectedConnections = m_rejectedConnections;
                 auto* budgetThrottle = &m_budgetRejectThrottle;
@@ -1296,6 +1354,7 @@ namespace remoted::http
                     toRestinioMethod(method),
                     routePath,
                     [pool,
+                     streamGate,
                      budget,
                      budgetThrottle,
                      handler,
@@ -1380,7 +1439,7 @@ namespace remoted::http
                                 // body buffer survives into the worker queue. Bounded by design:
                                 // only routes whose requests are tiny should ever stream.
                                 responder =
-                                    std::make_shared<RestinioStreamableResponder>(request, *pool, streamChunkSize);
+                                    std::make_shared<RestinioStreamableResponder>(request, streamGate, streamChunkSize);
                             }
                             else
                             {
@@ -1676,6 +1735,9 @@ namespace remoted::http
         }
 
         m_impl->m_workerPool = std::make_unique<asio::thread_pool>(config.workerThreads);
+        // A fresh gate per start(): responders of an earlier listener keep the one stopAccepting()
+        // closed, so they can never reach this new pool.
+        m_impl->m_streamGate = std::make_shared<StreamPoolGate>(*m_impl->m_workerPool);
 
         // Only Full needs somewhere to record rejected connections. Left null otherwise, which is
         // what makes the connection-state listener a no-op in the other two modes.
@@ -1779,6 +1841,8 @@ namespace remoted::http
         catch (...)
         {
             // Tear down the worker pool and budget so a failed start leaves nothing running.
+            m_impl->m_streamGate->close();
+            m_impl->m_streamGate.reset();
             m_impl->m_workerPool->stop();
             m_impl->m_workerPool->join();
             m_impl->m_workerPool.reset();
@@ -1869,6 +1933,7 @@ namespace remoted::http
             // only stop() below actually tears the io_context down.
             decltype(m_impl->m_server.get()) server = nullptr;
             std::unique_ptr<asio::thread_pool> workerPool;
+            std::shared_ptr<StreamPoolGate> streamGate;
             std::string bindAddress;
             std::uint16_t port {0};
             // The CA collaborators, taken under the same lock as everything else here: the close
@@ -1889,6 +1954,7 @@ namespace remoted::http
                 port = m_impl->m_config.port;
                 server = m_impl->m_server.get();
                 workerPool = std::move(m_impl->m_workerPool);
+                streamGate = std::move(m_impl->m_streamGate);
                 caSource = m_impl->m_caSource;
                 caMailbox = m_impl->m_caMailbox;
             }
@@ -1902,6 +1968,15 @@ namespace remoted::http
             // listener owns, and nothing that runs after this point should still be logging a
             // certificate status for a listener that is gone. Its last snapshot stays readable.
             m_impl->m_certMonitor.stop();
+
+            // Closed BEFORE the join, never after: a responder can answer from a thread this
+            // listener does not own (a wazuh-db lookup worker), so a transfer can be asked for at
+            // any time. One started before the close is outstanding work the join waits for; one
+            // asked for after it is answered 503 without touching the pool, which is freed below.
+            if (streamGate)
+            {
+                streamGate->close();
+            }
 
             if (workerPool)
             {
