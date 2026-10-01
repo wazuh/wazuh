@@ -3800,18 +3800,41 @@ static bool w_win_reparse_untrusted_writable(HANDLE hReparse, PSID file_owner, P
     return writable;
 }
 
+// A path cannot have more components than half its length (each is at least a separator and one character).
+#define W_VETTED_WIN_MAX_COMPONENTS (W_VETTED_WIN_PATH_MAX / 2)
+
+/**
+ * Handles kept open on the directories and links of the path being walked. Held without FILE_SHARE_DELETE
+ * so none of them can be renamed, deleted or replaced between the check and the caller's final comparison.
+ * The caller releases them all at once with w_win_held_release().
+ */
+typedef struct {
+    HANDLE handles[W_VETTED_WIN_MAX_COMPONENTS];
+    size_t count;
+} w_win_held_t;
+
+static void w_win_held_release(w_win_held_t * held) {
+    while (held->count > 0) {
+        CloseHandle(held->handles[--held->count]);
+    }
+}
+
 /**
  * Walks @p full, an absolute normalized path, one component at a time without following reparse points,
- * and checks that every junction or symlink on it is trusted. A component that vanishes mid-walk means
- * the path is changing, so it is reported as EAGAIN, not ENOENT.
+ * and checks that every junction or symlink on it is trusted. Each directory and each link on the path is
+ * kept open in @p held (no FILE_SHARE_DELETE) so it cannot change until the caller finishes vetting. The
+ * final plain file is not held, to keep rotation working; it is matched against @p file_info, the file
+ * already opened, instead. A component that vanishes, changes type or is in a sharing violation means the
+ * path is changing: EAGAIN, not ENOENT. The caller releases @p held on every path.
  *
  * Known limit, a follow-up: only the reparse points on @p full are vetted. The path a trusted link
  * points into is not walked again, so a reparse point inside it is not checked.
  *
  * @return 0 if every reparse point is trusted, -1 on error or rejection (sets errno).
  */
-static int w_win_check_reparse_points(const wchar_t * full, PSID file_owner, PSID trusted_sids[W_VETTED_WIN_TRUSTED_SIDS],
-                                      const w_win_admins_t * admins) {
+static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE_INFORMATION * file_info,
+                                      PSID file_owner, PSID trusted_sids[W_VETTED_WIN_TRUSTED_SIDS],
+                                      const w_win_admins_t * admins, w_win_held_t * held) {
     wchar_t component[W_VETTED_WIN_PATH_MAX];
     const size_t prefix_len = wcslen(W_VETTED_WIN_EXTENDED_PREFIX);
     const size_t len = wcslen(full);
@@ -3832,17 +3855,57 @@ static int w_win_check_reparse_points(const wchar_t * full, PSID file_owner, PSI
         PSECURITY_DESCRIPTOR sd = NULL;
         PSID owner = NULL;
         HANDLE hComponent;
+        bool last;
         bool trusted;
 
         if (full[end] != L'\\' && full[end] != L'\0') {
             continue;
         }
 
+        last = full[end] == L'\0';
+
         wcscpy(component, W_VETTED_WIN_EXTENDED_PREFIX);
         wcsncat(component, full, end);
 
+        if (last) {
+            // Probe the last entry without holding it: a plain file must stay rotatable, so it is matched
+            // by identity; a link at the last hop is pinned and vetted below like any other.
+            hComponent = CreateFileW(component, READ_CONTROL | FILE_READ_ATTRIBUTES,
+                                     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
+                                     FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+            if (hComponent == INVALID_HANDLE_VALUE) {
+                errno = w_win_race_errno(GetLastError());
+                return -1;
+            }
+
+            if (!GetFileInformationByHandle(hComponent, &info)) {
+                errno = w_win32_to_errno(GetLastError());
+                CloseHandle(hComponent);
+                return -1;
+            }
+
+            if (!(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+                // The prefix is pinned, so this entry must be the file already opened.
+                bool same = info.dwVolumeSerialNumber == file_info->dwVolumeSerialNumber &&
+                            info.nFileIndexHigh == file_info->nFileIndexHigh &&
+                            info.nFileIndexLow == file_info->nFileIndexLow;
+                CloseHandle(hComponent);
+
+                if (!same) {
+                    errno = EAGAIN;
+                    return -1;
+                }
+
+                continue;
+            }
+
+            CloseHandle(hComponent);
+        }
+
+        // Pin it: reopened without FILE_SHARE_DELETE so it cannot change while held.
         hComponent = CreateFileW(component, READ_CONTROL | FILE_READ_ATTRIBUTES,
-                                 FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
+                                 FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
                                  FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
         if (hComponent == INVALID_HANDLE_VALUE) {
@@ -3856,13 +3919,27 @@ static int w_win_check_reparse_points(const wchar_t * full, PSID file_owner, PSI
             return -1;
         }
 
-        if (!(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+        if (last && !(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+            // The last-hop link turned into a plain file between the two opens: the path is changing.
             CloseHandle(hComponent);
+            errno = EAGAIN;
+            return -1;
+        }
+
+        if (held->count >= W_VETTED_WIN_MAX_COMPONENTS) {
+            errno = ENAMETOOLONG;
+            CloseHandle(hComponent);
+            return -1;
+        }
+
+        // Held from here on: the caller releases it, so the error paths below must not close it.
+        held->handles[held->count++] = hComponent;
+
+        if (!(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
             continue;
         }
 
         if (w_win_get_owner(hComponent, &owner, &sd) < 0) {
-            CloseHandle(hComponent);
             return -1;
         }
 
@@ -3870,7 +3947,6 @@ static int w_win_check_reparse_points(const wchar_t * full, PSID file_owner, PSI
         trusted = w_win_owner_trusted(owner, file_owner, trusted_sids, admins) &&
                   !w_win_reparse_untrusted_writable(hComponent, file_owner, trusted_sids, admins);
         LocalFree(sd);
-        CloseHandle(hComponent);
 
         if (!trusted) {
             errno = EPERM;
@@ -3902,6 +3978,7 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
     wchar_t * converted;
     HANDLE hFile;
     HANDLE hAgain;
+    w_win_held_t held = {0};
     DWORD len;
     int saved_errno;
     int rc;
@@ -3987,7 +4064,7 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
     }
 
     w_win_admins_load(&admins);
-    rc = w_win_check_reparse_points(full, file_owner, trusted_sids, &admins);
+    rc = w_win_check_reparse_points(full, &info, file_owner, trusted_sids, &admins, &held);
     saved_errno = errno;
     w_win_admins_free(&admins);
     LocalFree(sd);
@@ -4028,11 +4105,13 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
         goto fail;
     }
 
+    w_win_held_release(&held);
     w_win_free_trusted_sids(trusted_sids);
     return hFile;
 
 fail:
     saved_errno = errno;
+    w_win_held_release(&held);
     w_win_free_trusted_sids(trusted_sids);
     CloseHandle(hFile);
     errno = saved_errno;
