@@ -59,6 +59,21 @@ else
     echo "[entrypoint] this build has no remote.https.ca_certificate; leaving it unset"
 fi
 
+# ---------------------------------------------------------------- membership cache
+# How long remoted trusts a cached agent membership before reading wazuh-db again
+# (remoted.control_groups_refresh_interval, 60 s by default). The lab lengthens it to an hour so
+# that no check can be passed by the cache simply expiring: when the revocation check sees the
+# old selector refused within its window, only the cluster daemon's publication can have caused
+# it. LAB_GROUPS_REFRESH_INTERVAL=default keeps the product default. Written idempotently
+# (the entrypoint runs on every boot); the probes read the effective value back from this file.
+INTERNAL="$DIR/etc/wazuh-manager-internal-options.conf"
+REFRESH="${LAB_GROUPS_REFRESH_INTERVAL:-3600}"
+sed -i '/^remoted\.control_groups_refresh_interval=/d' "$INTERNAL"
+if [[ "$REFRESH" != "default" ]]; then
+    printf 'remoted.control_groups_refresh_interval=%s\n' "$REFRESH" >> "$INTERNAL"
+    echo "[entrypoint] remoted.control_groups_refresh_interval=$REFRESH"
+fi
+
 # ---------------------------------------------------------------- indexer
 # Pointed at the lab's own single-node indexer. It is needed for exactly one measurement:
 # vd_feed_offset divergence between nodes while their vulnerability feeds load. Set
