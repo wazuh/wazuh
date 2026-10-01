@@ -203,6 +203,13 @@ admin_metric() {  # admin_metric <container> <metric>
 d = json.load(sys.stdin)
 print(next((int(m["value"]) for m in d.get("metrics", []) if m.get("name") == sys.argv[1]), "absent"))' "$2" 2>/dev/null
 }
+# The node's effective remoted.control_groups_refresh_interval, as its entrypoint wrote it (60 when unset).
+refresh_interval() {  # refresh_interval <container>
+    local v
+    v="$(docker exec "$1" sed -n 's/^remoted\.control_groups_refresh_interval=//p' \
+            /var/wazuh-manager/etc/wazuh-manager-internal-options.conf 2>/dev/null | tail -1)"
+    [[ "$v" =~ ^[0-9]+$ ]] && echo "$v" || echo 60
+}
 json_field() { python3 -c 'import json, sys; print(json.loads(sys.stdin.read()).get(sys.argv[1], ""))' "$1" 2>/dev/null; }
 delta() { [[ "$1" =~ ^[0-9]+$ && "$2" =~ ^[0-9]+$ ]] && echo $(( $2 - $1 )) || echo "absent"; }
 check_at_least() {  # check_at_least <description> <minimum> <actual>
@@ -224,9 +231,14 @@ check "cross-node config download is served everywhere (AC1)" "0" "$RC"
 # AC2: moving the agent to another group on the master reaches worker1's cached membership through
 # the cluster daemon's publication, before that membership could have expired. The publication only
 # withdraws the cached membership (only a wazuh-db read establishes one), so the next download reads
-# the new groups.
+# the new groups. The lab's long refresh interval (entrypoint, LAB_GROUPS_REFRESH_INTERVAL) keeps the
+# cache from expiring inside the probe's window, and the probe judges every refusal against a
+# conservative expiry bound, so the cache's TTL can never pass this check in the publication's place.
+REFRESH="$(refresh_interval wazuh-worker1)"
+echo "  worker1 remoted.control_groups_refresh_interval = ${REFRESH} s"
 BEFORE="$(admin_metric wazuh-worker1 remoted.control.registry.push.invalidated)"
-OUT="$(probe /probe/revocation_by_push.py --password labpassword --json-out /results/e6a_revocation.json)"; RC=$?
+OUT="$(probe /probe/revocation_by_push.py --password labpassword --expiry "$REFRESH" \
+        --json-out /results/e6a_revocation.json)"; RC=$?
 sed 's/^/  /' <<<"$OUT"
 AFTER="$(admin_metric wazuh-worker1 remoted.control.registry.push.invalidated)"
 check "a revoked selector is refused before expiry (AC2)" "0" "$RC"
