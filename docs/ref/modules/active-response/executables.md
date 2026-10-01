@@ -4,7 +4,7 @@ This document provides a complete inventory of all Active Response executables a
 
 ## Overview
 
-Wazuh provides **5 Active Response executables** covering IP blocking and account management across multiple platforms. Each executable is compiled from platform-specific C source code optimized for the target operating system.
+Wazuh provides two Active Response executables, **`block-ip`** and **`disable-account`**, covering IP blocking and account management. `block-ip` has a platform-specific implementation for Unix/Linux, macOS and Windows, so the inventory below lists four source variants; a given installation ships the ones built for its platform (`disable-account` is not built on Windows).
 
 ## Executable Inventory
 

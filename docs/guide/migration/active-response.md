@@ -804,6 +804,6 @@ Manager-side execution does not exist in 5.x. If the manager host runs a co-loca
 
 ## Rollback
 
-AR cannot be rolled back independently — restore it as part of the full stack rollback . 4.x and 5.x AR pipelines do not coexist: a 5.x manager does not parse the legacy XML, and a 5.x agent invokes scripts with the new JSON contract, so restoring 4.x config or scripts on a 5.x install does **not** recover 4.x behavior.
+AR cannot be rolled back independently — restore it as part of the full stack rollback. 4.x and 5.x AR pipelines do not coexist: a 5.x manager does not parse the legacy XML, and a 5.x agent invokes scripts with the new JSON contract, so restoring 4.x config or scripts on a 5.x install does **not** recover 4.x behavior.
 
 ---

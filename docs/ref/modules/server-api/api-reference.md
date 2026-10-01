@@ -565,7 +565,7 @@ All exceptions inherit from `WazuhException` (defined in `core/exception.py`), w
 
 | Range | Category | Examples |
 |-------|----------|----------|
-| 900–999 | API-level errors | Child process terminated, executor failure, endpoint restricted to master |
+| 900–998 | API-level errors | Child process terminated, executor failure, endpoint restricted to master |
 | 999–1099 | Core Wazuh errors | Incompatible Python, internal error, command errors, socket issues |
 | 1100–1199 | Configuration errors | Invalid section/field/type, XML syntax, missing config |
 | 1700–1799 | Agent errors | Agent not found, duplicate, version mismatch |

@@ -30,9 +30,9 @@ Responsibilities:
 * Manages persistent queue for reliable message delivery
 * Uses `IAgentSyncProtocol` interface for better C++ integration
 
-**Note on Vulnerability Detector Separation (v5.0+):**
+**Note on Vulnerability Scanner Separation (v5.0+):**
 
-Starting in version 5.0, the Vulnerability Detector (VD) operates as an independent module with its own sync protocol instance. While Syscollector continues to collect inventory data (packages, OS, hotfixes), VD independently handles vulnerability detection and CVE correlation. This architectural change provides:
+Starting in version 5.0, the Vulnerability Scanner (VD) operates as an independent module with its own sync protocol instance. While Syscollector continues to collect inventory data (packages, OS, hotfixes), VD independently handles vulnerability detection and CVE correlation. This architectural change provides:
 
 * **Independent synchronization**: VD has its own sync protocol instance with separate persistent queue
 * **DataContext support**: VD uses DataContext messages for vulnerability data synchronization
@@ -41,7 +41,7 @@ Starting in version 5.0, the Vulnerability Detector (VD) operates as an independ
 
 ### **VD Context Integration (v5.0+)**
 
-Syscollector integrates with the Vulnerability Detector through a dual database system and context-aware event routing.
+Syscollector integrates with the Vulnerability Scanner through a dual database system and context-aware event routing.
 Responsibilities:
 
 * **Context Evaluation**: Determines whether inventory data requires VD processing via `is_data_context` parameter
@@ -331,8 +331,6 @@ if (isVDTable && m_spSyncProtocolVD) {
 - Use specific sync indexes for each inventory type
 
 ### VD DataContext Processing (Post-Scan)
-
-Additional context data generated after scan completion for VD analysis:
 
 Additional context data generated after scan completion for VD analysis:
 

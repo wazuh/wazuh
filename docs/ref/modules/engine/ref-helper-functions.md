@@ -8693,9 +8693,9 @@ field: downcase(upper_characters)
 
 ## Description
 
-The operation converts any uppercase character to an lowercase character.
+The operation converts any uppercase character to a lowercase character.
 The result of the lowercase (+downcase) operation is mapped to “field”.
-If the field field already exists, then it will be replaced. In case of errors “field” will not be modified.
+If the field already exists, then it will be replaced. In case of errors “field” will not be modified.
 
 
 ## Keywords
@@ -11001,7 +11001,7 @@ field: ip_version(ip)
 
 Checks the protocol version of an IP. If the version is IPv4 then it maps the IPv4 value to field.
 If the version is IPv6 then it maps the IPv6 value to field.
-If the field field already exists, then it will be replaced. In case of errors target field will not be modified.
+If the field already exists, then it will be replaced. In case of errors target field will not be modified.
   - IPv4: support address in dotted-decimal format, "ddd.ddd.ddd.ddd" where ddd is a decimal number of up to three digits in the range  0  to  255
   - IPv6: support RFC 2373 representation of addresses
 

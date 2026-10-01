@@ -443,9 +443,9 @@ Field 'file.size' expected type 'long', got 'string'
 
 ---
 
-## Supported Elasticsearch Types
+## Supported Wazuh-indexer Types
 
-The validator supports all Elasticsearch data types:
+The validator supports all Wazuh-indexer data types:
 
 | Type | Description | Example |
 |------|-------------|---------|

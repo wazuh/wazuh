@@ -44,7 +44,7 @@ flowchart LR
     A5 --> LB
     A4 --> LB
     LB --> M & W1 & W2
-    M -.->|"wazuh-clusterd<br/>replicates a fixed file list"| W1 & W2
+    M -.->|"wazuh-manager-clusterd<br/>replicates a fixed file list"| W1 & W2
     M & W1 & W2 --> IDX
 ```
 
@@ -236,7 +236,7 @@ There are two distinct effects, with two distinct causes, and they are often con
 ```mermaid
 flowchart TB
     subgraph R["Replicated state — closed by the cluster"]
-        R1["client.keys, authd.pass,<br/>enrollment_tokens.json"] --> R2["wazuh-clusterd copies them<br/>on a 9 s interval"]
+        R1["client.keys, authd.pass,<br/>enrollment_tokens.json"] --> R2["wazuh-manager-clusterd copies them<br/>on a 9 s interval"]
         R2 --> R3["Bounded window.<br/>Same duration at 3 nodes or 30."]
     end
     subgraph L["Node-local state — closed by the agent"]
@@ -554,7 +554,7 @@ issued in [§8.2](#82-issue-certificates).
 ```xml
 <agent>
   <manager>
-    <endpoint><agent-facing address>:1517/wazuh-manager</endpoint>
+    <endpoint>AGENT_FACING_ADDRESS:1517/wazuh-manager</endpoint>
   </manager>
   <enrollment>
     <enabled>yes</enabled>
@@ -628,7 +628,7 @@ flowchart LR
 Enable the legacy listener on every manager node:
 
 ```xml
-<remote><legacy><enabled>yes</enabled></remote>
+<remote><legacy><enabled>yes</enabled></legacy></remote>
 ```
 
 `<auth><legacy_enrollment>` has no default of its own: when absent it **follows
@@ -637,7 +637,7 @@ explicitly only to diverge from that — for instance to keep the `1514` channel
 new 4.x registrations:
 
 ```xml
-<remote><legacy><enabled>yes</enabled></remote>
+<remote><legacy><enabled>yes</enabled></legacy></remote>
 <auth><legacy_enrollment>no</legacy_enrollment></auth>
 ```
 

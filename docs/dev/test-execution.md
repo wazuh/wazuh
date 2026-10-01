@@ -141,32 +141,19 @@ sudo make install
 If you need to rebuild cmocka, remember to remove all files from the `build` directory first.
 
 #### Installing wine
-On Ubuntu, run the following commands:
+On Ubuntu 24.04 (the recommended development platform), run the following commands:
 ```
 # Add 32 bit architecture
 sudo dpkg --add-architecture i386
 
-# Add key
-wget -qO - https://dl.winehq.org/wine-builds/winehq.key | sudo apt-key add -
+# Add the WineHQ key and repository
+sudo mkdir -pm755 /etc/apt/keyrings
+sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
+sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources
 
-###  Add repository (Ubuntu 19.10)
-sudo apt-add-repository 'deb https://dl.winehq.org/wine-builds/ubuntu/ eoan main'
-
-###  Add repository (Ubuntu 18.04)
-sudo apt-add-repository 'deb https://dl.winehq.org/wine-builds/ubuntu/ bionic main'
-sudo add-apt-repository ppa:cybermax-dexter/sdl2-backport
-
-
-###  Add repository (Ubuntu 16.04)
-sudo apt-add-repository 'deb https://dl.winehq.org/wine-builds/ubuntu/ xenial main'
-
-# Install
+# Install
 sudo apt update
 sudo apt install --install-recommends winehq-stable
-
-### If unmet dependencies error, use aptitude
-sudo apt install aptitude
-sudo aptitude install winehq-stable
 
 # Check version
 wine --version
@@ -175,7 +162,7 @@ wine --version
 sudo ln -s /opt/wine-stable/bin/wine /usr/bin/
 ```
 
-Commands above have been taken from the following guide: https://tecadmin.net/install-wine-on-ubuntu/
+The key and repository setup above is the one the CI uses; the CI additionally pins the wine package versions and installs the i386 runtime libraries (`.github/actions/install_build_deps/action.yml`).
 If you need to run the tests on a CentOS 7 machine, you can follow these instructions in order to build a 32 bit wine: https://www.systutorials.com/239913/install-32-bit-wine-1-8-centos-7/
 
 After installing wine, the `WINEPATH` and `WINEARCH` variables need to be created in order for it to know it should run on 32 bit mode and find all required dlls for the tests. On an Ubuntu system, the following commands need to be executed and/or added into the user's `.bashrc` file.
@@ -244,7 +231,7 @@ pip install --upgrade pip
 
 #### Install Wazuh
 
-Install the Wazuh version untder testing, either from sources or from packages
+Install the Wazuh version under testing, either from sources or from packages
 
 
 #### Install the integration test framework

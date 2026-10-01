@@ -12,7 +12,7 @@ Complete configuration reference for the Syscollector module that collects syste
 
 For module overview and architecture, see [Syscollector Module](README.md).
 
-> **Important:** Starting in version 5.0, vulnerability detection is handled by a separate Vulnerability Detector module. Syscollector focuses exclusively on inventory collection (packages, OS, hotfixes, etc.), while vulnerability detection and CVE correlation are performed independently.
+> **Important:** Starting in version 5.0, vulnerability detection is handled by a separate Vulnerability Scanner module. Syscollector focuses exclusively on inventory collection (packages, OS, hotfixes, etc.), while vulnerability detection and CVE correlation are performed independently.
 
 ---
 

@@ -15,7 +15,7 @@ For module overview and architecture, see [Cluster Module](README.md).
 > **Important: how `<cluster>` is validated**
 > The `<cluster>` section is part of the manager configuration schema
 > (`etc/wazuh-manager.schema.json`): every consumer — the C daemons, the engine,
-> `wazuh-clusterd` and the framework/API — receives the same **effective**
+> `wazuh-manager-clusterd` and the framework/API — receives the same **effective**
 > section (schema-validated, defaults applied) from the `manager_config`
 > loader. An invalid or incomplete block is rejected at startup with the JSON
 > pointer of the offending option (`(1244): Invalid configuration at

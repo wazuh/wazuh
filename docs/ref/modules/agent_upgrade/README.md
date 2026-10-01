@@ -3,7 +3,7 @@
 The agent-side half of remote agent upgrades. It receives a WPK the agent has already downloaded,
 verifies its signature, and runs the installer that replaces the agent.
 
-**Daemon:** Part of `wazuh-agent-modulesd`
+**Daemon:** Part of `wazuh-modulesd`
 
 **Platform:** Agent only (Linux, Unix, macOS, Windows)
 
