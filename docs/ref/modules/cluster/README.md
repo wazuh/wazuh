@@ -96,6 +96,7 @@ Periodic tasks, with their intervals (internal, not configurable):
 | Agent-info sync | worker | 10 s | Sends the agent information held by its local `wazuh-manager-db` (status, keep-alive, agent metadata) to the master's `wazuh-manager-db`. |
 | Local agent-groups | master | 10 s, after a 30 s start delay | Reads the agent-group assignments not yet synchronized from its `wazuh-manager-db` and broadcasts them to every connected worker. |
 | Agent-groups recv / recv full | worker | on each broadcast | Applies the assignments and compares its agent-groups checksum with the master's; after 5 mismatches in a row the worker requests the whole table. |
+| Registry publish | worker | after each applied chunk | Tells the local `wazuh-manager-remoted` which agents it updated (`POST /_internal/agents/groups` on remoted's local admin socket), so that configuration downloads authorized by remoted follow the new groups at once instead of when remoted's cached membership expires (`remoted.control_groups_refresh_interval`). |
 
 When `<indexer><hosts>` is configured, `wazuh-manager-clusterd` also runs indexer-dependent tasks,
 started only while the indexer is reachable: on every node, the
