@@ -59,15 +59,17 @@ TEST(ControlMetricsTest, MakeRegistersFamilyAtZero)
                              METRIC_TASK_FETCH,
                              METRIC_TASK_FETCH_ERROR,
                              METRIC_REJECTED,
-                             METRIC_WDB_LATENCY})
+                             METRIC_WDB_LATENCY,
+                             METRIC_NO_ROW})
     {
         EXPECT_TRUE(manager.exists(name)) << name;
     }
-    EXPECT_EQ(manager.count(), 8U);
+    EXPECT_EQ(manager.count(), 9U);
     EXPECT_EQ(m.startup->get(), 0U);
     EXPECT_EQ(m.taskFetchError->get(), 0U);
     EXPECT_EQ(m.rejected->get(), 0U);
     EXPECT_EQ(m.wdbLatency->snapshot().count, 0U);
+    EXPECT_EQ(m.noRow->get(), 0U);
 }
 
 // Each inc helper touches exactly its own counter; a regression in the wrong counter
@@ -100,6 +102,9 @@ TEST(ControlMetricsTest, IncHelpersEachTouchOneCounter)
     EXPECT_EQ(valueOf(METRIC_TASK_FETCH_ERROR), 1U);
     incRejected(m);
     EXPECT_EQ(valueOf(METRIC_REJECTED), 1U);
+    incNoRow(m);
+    EXPECT_EQ(valueOf(METRIC_NO_ROW), 1U);
+    EXPECT_EQ(valueOf(METRIC_WDB_ERROR), 1U); // a missing row is not a failed round trip
 
     // The histogram helper records exactly one observation with the given value -- and, like
     // every helper here, is a safe no-op on the null object.
@@ -109,6 +114,7 @@ TEST(ControlMetricsTest, IncHelpersEachTouchOneCounter)
     EXPECT_EQ(snapshot.sum, 2500U);
     ControlMetrics nullObject;
     incRejected(nullObject);
+    incNoRow(nullObject);
     observeWdbLatency(nullObject, 1U); // not crashing IS the contract
 }
 
