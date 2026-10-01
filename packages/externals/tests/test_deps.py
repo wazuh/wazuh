@@ -346,3 +346,11 @@ def test_sbom_skips_unpinned_requirements(tmp_path):
     result = run("sbom", "--inventory", str(inventory), "--requirements", str(requirements))
     assert result.returncode == 0 and "WARNING:" in result.stderr and "chardet>=3.0.4" in result.stderr
     assert [c["bom-ref"] for c in json.loads(result.stdout)["components"]] == ["pypi:pyyaml", "zlib"]
+
+
+def test_sbom_skips_validation(tmp_path):
+    inventory = tmp_path / "deps.json"
+    inventory.write_text(json.dumps(doc(entry("cpython", version="3.0.0"))))
+    assert run("check", "--no-make", "--inventory", str(inventory)).returncode == 1
+    result = run("sbom", "--inventory", str(inventory))
+    assert result.returncode == 0 and json.loads(result.stdout)["components"][0]["version"] == "3.0.0"

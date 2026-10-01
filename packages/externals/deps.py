@@ -381,7 +381,8 @@ def main(argv=None):
     except (OSError, ValueError) as exc:
         print(f"ERROR: <inventory>: cannot read {args.inventory}: {exc}", file=sys.stderr)
         return 1
-    if doc is not None and args.command != "check":
+    # sbom also reads other branches' inventories, whose version pins are not this tree's.
+    if doc is not None and args.command not in ("check", "sbom"):
         errors = validate(doc)
         if errors:
             return _report(errors)

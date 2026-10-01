@@ -1,0 +1,68 @@
+# Version-independent verdicts: CVEs that NVD attaches to a product but that do not
+# affect it. Grype reports them under ignoredMatches. Used through GRYPE_CONFIG by
+# .github/workflows/5_codeanalysis_externals-vulns.yml.
+ignore:
+  - vulnerability: CVE-2009-2940
+    package:
+      name: cpython
+    reason: "PyGreSQL, a third-party module"
+  - vulnerability: CVE-2009-3720
+    package:
+      name: cpython
+    reason: "Bundled libexpat from 2009, not CPython"
+  - vulnerability: CVE-2020-29396
+    package:
+      name: cpython
+    reason: "Odoo vulnerability, not CPython"
+  - vulnerability: CVE-2021-32052
+    package:
+      name: cpython
+    reason: "Django vulnerability, not CPython"
+  - vulnerability: CVE-2023-36632
+    package:
+      name: cpython
+    reason: "Disputed by CPython upstream as intended behavior"
+  - vulnerability: CVE-2026-12003
+    package:
+      name: cpython
+    reason: "Windows legacy installer issue scoped to 3.11 and later"
+  - vulnerability: CVE-2026-3479
+    package:
+      name: cpython
+    reason: "Disputed by CPython: pkgutil.get_data() has the same security model as open()"
+  - vulnerability: CVE-2021-32921
+    package:
+      name: lua
+    reason: "Prosody XMPP server vulnerability, not Lua"
+  - vulnerability: CVE-2009-1390
+    package:
+      name: openssl
+    reason: "Mutt vulnerability; NVD lists OpenSSL only because Mutt links against it"
+  - vulnerability: CVE-2009-3765
+    package:
+      name: openssl
+    reason: "Mutt vulnerability; NVD lists OpenSSL only because Mutt links against it"
+  - vulnerability: CVE-2009-3766
+    package:
+      name: openssl
+    reason: "Mutt vulnerability; NVD lists OpenSSL only because Mutt links against it"
+  - vulnerability: CVE-2009-3767
+    package:
+      name: openssl
+    reason: "OpenLDAP vulnerability; NVD lists OpenSSL only because OpenLDAP links against it"
+  - vulnerability: CVE-2019-0190
+    package:
+      name: openssl
+    reason: "Apache HTTP Server vulnerability, not OpenSSL"
+  - vulnerability: CVE-2022-31631
+    package:
+      name: sqlite
+    reason: "PHP PDO vulnerability, not SQLite"
+  - vulnerability: CVE-2025-71316
+    package:
+      name: sqlite
+    reason: "Affects sqldiff.exe, a Windows CLI tool Wazuh does not build or ship"
+  - vulnerability: CVE-2026-22184
+    package:
+      name: zlib
+    reason: "Affects untgz, a demo utility in the zlib tree that Wazuh does not compile"
