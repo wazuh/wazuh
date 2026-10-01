@@ -18,10 +18,10 @@ flowchart TD
     S -->|"401, intermittent,<br/>right after enrolling"| A["§1 Expected.<br/>Clears within ~25 s."]
     S -->|"401, every request,<br/>not new agents"| B["§2 Clock drift or<br/>a key that did not replicate"]
     S -->|"404 on every request"| C["§3 global_prefix mismatch"]
-    S -->|"403, only on<br/>configuration download"| D["§4 Expected while the agent<br/>has not reached every node"]
+    S -->|"403, only on<br/>configuration download"| D["§4 Brief around a group change;<br/>otherwise not the agent's selector"]
     S -->|"413"| E["§5 Batch over the body cap"]
     S -->|"502"| F["§6 May be an oversized batch,<br/>not a failing node"]
-    S -->|"503"| G["§7 Back-pressure, or the master<br/>is unreachable"]
+    S -->|"503"| G["§7 Back-pressure, the master is<br/>unreachable, or wazuh-db"]
     S -->|"TLS error,<br/>no HTTP status"| H["§8 Certificate or SAN"]
     S -->|"Some agents fine,<br/>some not, no pattern"| I["§9 One node is degraded"]
 ```
@@ -139,25 +139,37 @@ A proxy that strips or adds a path segment produces the same `404`.
 
 ## 4. `403`, but only on configuration download
 
-**Expected while a freshly enrolled agent has not yet contacted every node.**
+**Expected only briefly, around a group change.** Routing does not cause it: a node that has not
+served the agent a `/control` reads the agent's groups from its own database instead of refusing
+(see [§7.2 of the architecture page](lb.md#72-group-memberships-configuration-download-on-any-node)).
 
-`POST /control` registers the agent in the memory of the node that handled it. Nothing replicates
-that. A configuration download routed elsewhere is refused until the agent's notify cycle has
-reached that node too.
+A configuration download is served only for the selector the agent's groups produce **on the node
+that answers**. Nodes can disagree on those groups for a short while:
 
-It clears on its own. How long depends on the number of nodes — about a minute on three nodes and
-twelve on twenty at the default `notify_time` of 10 s; the table is in
-[§7.2 of the architecture page](lb.md#72-node-local-state-403-on-configuration-download).
+* The agent's groups changed on the master. The agent got its new `config_token` from a node that
+  has applied the change, and the download reached one that has not. The master sends group changes
+  to the workers every **10 seconds**; the refusing node accepts the new selector once it applies
+  them.
+* The reverse: a token issued before the change, presented to a node that has already applied it.
+  That refusal is the change taking effect; the agent's next notify hands it the new token.
+* Right after an agent enrolls into a group other than `default`, a worker can hold the agent's row
+  before its groups and read it as `default` until the next round.
 
 **Confirm it is this and not something else:**
 
 * It affects only configuration downloads. WPK downloads are not gated this way.
-* `remoted.download.denied` increments on the refusing node.
-* The same request succeeds against a node the agent has already contacted.
+* `remoted.download.denied` increments on the refusing node:
 
-**Escalate only if** it persists well beyond the window above, or affects an agent that has been
-running for hours. An agent idle for more than **6 hours** against a given node is evicted from that
-node's registry and has to re-register there, which is normal.
+  ```bash
+  curl -s --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock \
+    http://localhost/metrics | grep -E 'remoted\.download\.(denied|no_row|unavailable)'
+  ```
+
+* It stops within a round or two of the change.
+
+**Escalate if** it persists for an agent whose groups have not changed. Either the nodes disagree on
+the agent's groups (a worker that is not receiving group updates from the master), or something is
+requesting a selector that is not the agent's own.
 
 ---
 
@@ -237,8 +249,19 @@ message, which is why agent-side and proxy-side timeouts must be above that valu
 
 ### `{"error":"dependency_unavailable","dependency":"wazuh-db"}`
 
-On `POST /control`: the node's `wazuh-manager-db` is not answering, so it cannot read the agent's
-groups. The agent retries. If it persists on one node, that node is degraded — see §9.
+Only on `/control` and on configuration downloads, and only for an agent this node holds no fresh
+group membership for (one read within `remoted.control_groups_refresh_interval`, 60 s by default).
+The node needed the agent's groups from its local `wazuh-manager-db` and did not get them. A cached
+membership older than that is never served in their place.
+
+| Cause | Counted in | Expect |
+|---|---|---|
+| The database has no row for the agent yet | `remoted.control.no_row`, `remoted.download.no_row` | A new agent: it clears as `client.keys` reaches the node (§1). The agent retries, and is never served `default` meanwhile |
+| The database did not answer in time | `remoted.control.wdb_error`, `remoted.download.unavailable` | Transient under load. Sustained on one node: that node's `wazuh-manager-db` is down, see §9 |
+
+The node also logs both causes, throttled: `the local wazuh-manager-db has no row for it` for the
+first, and `wazuh-manager-db is not answering` or `could not be read from wazuh-manager-db in time`
+for the second.
 
 ### Back-pressure
 
@@ -361,9 +384,11 @@ A node can lose a dependency and keep answering the liveness probe. With `wazuh-
 |---|---|
 | `GET /wazuh-manager/` (the health probe) | `200` |
 | `POST /stateless` | `202` |
-| `POST /control` | `503` `{"error":"dependency_unavailable","dependency":"wazuh-db"}` (a notify is still served from cached group membership when the node has it) |
+| `POST /control` | `503 dependency_unavailable`, for every agent once its cached group membership is older than `remoted.control_groups_refresh_interval` (60 s) |
+| `POST /download` (configuration) | `503 dependency_unavailable`, for any agent the node holds no fresh group membership for |
 
-Events keep flowing while groups, configuration hashes and task delivery all fail.
+Events keep flowing while groups, configuration hashes, configuration downloads and task delivery
+all fail.
 
 **No central layer flags it.** Verified on a node in exactly that state:
 
@@ -416,11 +441,12 @@ from the balancer yourself and restart it.
 | `401` right after enrolling | replication window | **yes**, clears within ~25 s |
 | `401` persistent | clock drift | no |
 | `401 token_unknown` | token not replicated yet | **yes**, clears within ~15 s |
-| `403` on configuration download | node has not met the agent yet | **yes**, scales with node count |
+| `403` on configuration download | a group change that node has not applied yet | **briefly**, within a round or two (10 s each) |
 | `404` on everything | `global_prefix` mismatch, or path rewriting | no |
 | `413` | batch over the 5 MiB auth cap | **yes**, the agent splits it |
 | `502` | oversized batch, or backend down | check size first |
 | `503` with `9016` | master unreachable | only during a master outage |
+| `503 dependency_unavailable` | agent's row not on that node yet, or its `wazuh-manager-db` not answering | **yes** for a new agent, clears with `client.keys`; no if sustained |
 | `503` on events | back-pressure | transient |
 | `503 dependency_unavailable` on `/control` | `wazuh-manager-db` down on that node | no, if it persists |
 | TLS error, no status | CA, expiry or SAN | no |
