@@ -23,7 +23,6 @@ class MockFileSystem
         MOCK_METHOD(bool, exists, (const std::filesystem::path&), ());
         MOCK_METHOD(bool, is_regular_file, (const std::filesystem::path&), ());
         MOCK_METHOD(bool, is_directory, (const std::filesystem::path&), ());
-        MOCK_METHOD(bool, is_symlink, (const std::filesystem::path&), ());
         MOCK_METHOD(std::uintmax_t, file_size, (const std::filesystem::path&), ());
         MOCK_METHOD(T, directory_iterator, (const std::filesystem::path&), ());
 };

@@ -120,13 +120,44 @@ TEST_F(PackageMetadataFileTest, FileAtSizeLimitIsRead)
     EXPECT_EQ(content.size(), PACKAGE_METADATA_MAX_FILE_SIZE);
 }
 
-TEST_F(PackageMetadataFileTest, SymlinkIsSkipped)
+TEST_F(PackageMetadataFileTest, SymlinkToRegularFileIsRead)
 {
 #ifdef _WIN32
-    GTEST_SKIP() << "Symbolic links are not checked on the descriptor on Windows";
+    GTEST_SKIP() << "Creating symbolic links needs extra privileges on Windows";
 #else
     const auto target {m_dir / "target"};
     std::ofstream(target) << "Name: test\nVersion: 1.0\n";
+    const auto path {m_dir / "METADATA"};
+    std::filesystem::create_symlink(target, path);
+
+    std::string content;
+    EXPECT_TRUE(PackageMetadataFile::read(path, content));
+    EXPECT_EQ(content, "Name: test\nVersion: 1.0\n");
+#endif
+}
+
+TEST_F(PackageMetadataFileTest, SymlinkToEmptyFileIsSkipped)
+{
+#ifdef _WIN32
+    GTEST_SKIP() << "Creating symbolic links needs extra privileges on Windows";
+#else
+    const auto target {m_dir / "target"};
+    std::ofstream {target};
+    const auto path {m_dir / "METADATA"};
+    std::filesystem::create_symlink(target, path);
+
+    std::string content;
+    EXPECT_FALSE(PackageMetadataFile::read(path, content));
+#endif
+}
+
+TEST_F(PackageMetadataFileTest, SymlinkToNamedPipeIsSkipped)
+{
+#ifdef _WIN32
+    GTEST_SKIP() << "Named pipes are not created in the filesystem on Windows";
+#else
+    const auto target {m_dir / "target"};
+    ASSERT_EQ(::mkfifo(target.c_str(), 0600), 0);
     const auto path {m_dir / "METADATA"};
     std::filesystem::create_symlink(target, path);
 

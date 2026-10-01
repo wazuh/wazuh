@@ -30,9 +30,10 @@
 
 /**
  * @brief Reads package metadata files (PyPI METADATA/PKG-INFO, npm package.json).
- * @details Only non-empty regular files of at most PACKAGE_METADATA_MAX_FILE_SIZE bytes are read. On POSIX
- * systems the file is opened without following a final symbolic link and in non-blocking mode, and the type
- * and size checks are done on the opened descriptor.
+ * @details Only non-empty regular files of at most PACKAGE_METADATA_MAX_FILE_SIZE bytes are read. Symbolic
+ * links are followed, since package managers such as Homebrew install metadata files as links. On POSIX
+ * systems the file is opened in non-blocking mode and the type and size checks are done on the opened
+ * descriptor, so they apply to the file that is actually read.
  */
 class PackageMetadataFile final
 {
@@ -65,7 +66,7 @@ class PackageMetadataFile final
             }
 
 #else
-            const int fd {::open(path.c_str(), O_RDONLY | O_NONBLOCK | O_NOFOLLOW | O_CLOEXEC)};
+            const int fd {::open(path.c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC)};
 
             if (fd < 0)
             {

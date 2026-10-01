@@ -105,8 +105,8 @@ class PYPI final : public TFileSystem, public TFileIO
                             correctPath = path / value;
                         }
 
-                        // Only read regular, non-symlinked files of a bounded size
-                        if (TFileSystem::is_symlink(correctPath) || !TFileSystem::is_regular_file(correctPath) ||
+                        // Only read regular files of a bounded size
+                        if (!TFileSystem::is_regular_file(correctPath) ||
                                 TFileSystem::file_size(correctPath) > PACKAGE_METADATA_MAX_FILE_SIZE)
                         {
                             continue;

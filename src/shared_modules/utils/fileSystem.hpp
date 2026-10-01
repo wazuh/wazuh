@@ -64,16 +64,6 @@ class RealFileSystemT
         }
 
         /**
-         * @brief Is symbolic link
-         * @param path Path to check, the link itself is not followed
-         * @return True if the path is a symbolic link, false otherwise
-         */
-        static bool is_symlink(const std::filesystem::path& path)
-        {
-            return std::filesystem::is_symlink(path);
-        }
-
-        /**
          * @brief Get the size of a file
          * @param path Path to check
          * @return The size of the file in bytes
