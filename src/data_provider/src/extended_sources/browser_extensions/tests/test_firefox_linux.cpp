@@ -73,8 +73,16 @@ TEST(FirefoxAddonsTests, CollectReturnsExpectedJson)
 
 namespace
 {
-    // Creates a fake home with one Firefox profile whose extensions.json is either a regular file or a symlink.
-    size_t collectFromTempHome(bool symlinkedAddonsFile)
+    enum class AddonsLayout
+    {
+        REGULAR,
+        SYMLINKED_FILE,
+        SYMLINKED_PROFILE
+    };
+
+    // Creates a fake home with one Firefox profile, collects it and returns the number of add-ons reported.
+    // Returns (size_t)-1 if the fake home cannot be created.
+    size_t collectFromTempHome(AddonsLayout layout)
     {
         char tmpl[] = "/tmp/firefox_ext_test_XXXXXX";
 
@@ -84,30 +92,44 @@ namespace
         }
 
         const std::string root = tmpl;
-        const std::string profile = root + "/home/user/snap/firefox/common/.mozilla/firefox/abc.default";
-        const std::string mkdirCmd = "mkdir -p '" + profile + "'";
-        (void)!std::system(mkdirCmd.c_str());
+        const std::string firefoxDir = root + "/home/user/snap/firefox/common/.mozilla/firefox";
+        const std::string profile = firefoxDir + "/abc.default";
+        const std::string realProfile = layout == AddonsLayout::SYMLINKED_PROFILE ? root + "/outside/abc.default" : profile;
+        const std::string mkdirCmd = "mkdir -p '" + firefoxDir + "' '" + realProfile + "'";
 
         const std::string source = Utils::joinPaths(Utils::getParentPath((__FILE__)),
                                                     "linux/mock-user/snap/firefox/common/.mozilla/firefox/pwd5bwxx.default/extensions.json");
+        bool ready = std::system(mkdirCmd.c_str()) == 0;
 
-        if (symlinkedAddonsFile)
+        if (ready && layout == AddonsLayout::SYMLINKED_FILE)
         {
-            (void)!symlink(source.c_str(), (profile + "/extensions.json").c_str());
+            ready = symlink(source.c_str(), (profile + "/extensions.json").c_str()) == 0;
         }
-        else
+        else if (ready)
         {
             std::ifstream in(source, std::ios::binary);
-            std::ofstream out(profile + "/extensions.json", std::ios::binary);
+            std::ofstream out(realProfile + "/extensions.json", std::ios::binary);
             out << in.rdbuf();
+            out.close();
+            ready = in.good() && out.good();
+
+            if (ready && layout == AddonsLayout::SYMLINKED_PROFILE)
+            {
+                ready = symlink(realProfile.c_str(), profile.c_str()) == 0;
+            }
         }
 
-        auto mockAddonsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
-        EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(root + "/home"));
-        EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::_)).WillRepeatedly(::testing::Return("1000"));
+        size_t count = static_cast<size_t>(-1);
 
-        FirefoxAddonsProvider firefoxAddonsProvider(mockAddonsWrapper);
-        const size_t count = firefoxAddonsProvider.collect().size();
+        if (ready)
+        {
+            auto mockAddonsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
+            EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(root + "/home"));
+            EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::_)).WillRepeatedly(::testing::Return("1000"));
+
+            FirefoxAddonsProvider firefoxAddonsProvider(mockAddonsWrapper);
+            count = firefoxAddonsProvider.collect().size();
+        }
 
         const std::string rmCmd = "rm -rf '" + root + "'";
         (void)!std::system(rmCmd.c_str());
@@ -117,10 +139,15 @@ namespace
 
 TEST(FirefoxAddonsTests, RegularExtensionsFileInTempHomeIsReported)
 {
-    EXPECT_EQ(collectFromTempHome(false), static_cast<size_t>(10));
+    EXPECT_EQ(collectFromTempHome(AddonsLayout::REGULAR), static_cast<size_t>(10));
 }
 
 TEST(FirefoxAddonsTests, SymlinkedExtensionsFileIsNotFollowed)
 {
-    EXPECT_EQ(collectFromTempHome(true), static_cast<size_t>(0));
+    EXPECT_EQ(collectFromTempHome(AddonsLayout::SYMLINKED_FILE), static_cast<size_t>(0));
+}
+
+TEST(FirefoxAddonsTests, SymlinkedProfileDirectoryIsNotFollowed)
+{
+    EXPECT_EQ(collectFromTempHome(AddonsLayout::SYMLINKED_PROFILE), static_cast<size_t>(0));
 }

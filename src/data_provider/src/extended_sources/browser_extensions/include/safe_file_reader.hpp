@@ -15,7 +15,6 @@
 
 #ifdef _WIN32
 #include <fstream>
-#include <iterator>
 #else
 #include <cerrno>
 #include <fcntl.h>
@@ -44,15 +43,31 @@ namespace browser_extensions
         content.clear();
 
 #ifdef _WIN32
-        std::ifstream file(path, std::ios::binary);
+        std::ifstream file(path, std::ios::binary | std::ios::ate);
 
         if (!file)
         {
             return false;
         }
 
-        content.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-        return !file.bad() && content.size() <= MAX_PROFILE_FILE_SIZE;
+        // Check the size before reading, so that a large file is never loaded
+        const std::streamoff size = file.tellg();
+
+        if (size < 0 || static_cast<unsigned long long>(size) > MAX_PROFILE_FILE_SIZE)
+        {
+            return false;
+        }
+
+        content.resize(static_cast<size_t>(size));
+        file.seekg(0, std::ios::beg);
+
+        if (size > 0 && (!file.read(&content[0], size) || file.gcount() != size))
+        {
+            content.clear();
+            return false;
+        }
+
+        return true;
 #else
         const int fd = ::open(path.c_str(), O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
 
@@ -124,6 +139,40 @@ namespace browser_extensions
         struct stat st;
         return ::lstat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 #endif
+    }
+
+    /**
+     * @brief Tells whether every directory from `base` down to `base`/`relativePath` is a directory that is
+     * not a symbolic link. `base` itself is not checked.
+     */
+    inline bool isPlainDirectoryChain(const std::string& base, const std::string& relativePath)
+    {
+        std::string current = base;
+        size_t start = 0;
+
+        while (start < relativePath.size())
+        {
+            size_t end = relativePath.find('/', start);
+
+            if (end == std::string::npos)
+            {
+                end = relativePath.size();
+            }
+
+            if (end > start)
+            {
+                current += "/" + relativePath.substr(start, end - start);
+
+                if (!isPlainDirectory(current))
+                {
+                    return false;
+                }
+            }
+
+            start = end + 1;
+        }
+
+        return true;
     }
 }
 

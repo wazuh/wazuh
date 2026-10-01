@@ -236,15 +236,8 @@ namespace chrome
         return oss.str();
     }
 
-    std::string ChromeExtensionsProvider::sha256File(const std::string& filepath)
+    std::string ChromeExtensionsProvider::sha256Content(const std::string& content)
     {
-        std::string content;
-
-        if (!browser_extensions::readRegularFile(filepath, content))
-        {
-            return "";
-        }
-
         EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
 
         if (!mdctx)
@@ -348,11 +341,11 @@ namespace chrome
         extension.referenced_identifier = key;
     }
 
-    void ChromeExtensionsProvider::getCommonSettings(ChromeExtension& extension, const std::string& manifestPath)
+    void ChromeExtensionsProvider::getCommonSettings(ChromeExtension& extension, const std::string& manifestContent)
     {
         extension.browser_type = m_currentBrowserType;
         extension.uid = m_currentUid;
-        extension.manifest_hash = sha256File(manifestPath);
+        extension.manifest_hash = sha256Content(manifestContent);
     }
 
     ChromeExtensionList ChromeExtensionsProvider::getExtensionsFromPreferences(const std::string& profilePath, const std::string& preferencesFilePath, const std::string& profileName)
@@ -397,6 +390,8 @@ namespace chrome
                 std::string extensionPath = item.value()["path"];
 
                 const bool insideProfile = !Utils::isAbsolutePath(extensionPath);
+                const std::string extensionsDir = Utils::joinPaths(profilePath, EXTENSIONS_DIR);
+                const std::string relativePath = extensionPath;
 
                 if (insideProfile)
                 {
@@ -407,14 +402,14 @@ namespace chrome
                         return ChromeExtensionList();
                     }
 
-                    extensionPath = Utils::joinPaths(Utils::joinPaths(profilePath, EXTENSIONS_DIR), extensionPath);
+                    extensionPath = Utils::joinPaths(extensionsDir, extensionPath);
                 }
 
                 std::string manifestPath = Utils::joinPaths(extensionPath, EXTENSION_MANIFEST_FILE);
                 std::string manifestContent;
 
                 if (Utils::existsDir(extensionPath) &&
-                        (!insideProfile || browser_extensions::isPlainDirectory(extensionPath)) &&
+                        (!insideProfile || browser_extensions::isPlainDirectoryChain(extensionsDir, relativePath)) &&
                         browser_extensions::readRegularFile(manifestPath, manifestContent))
                 {
                     ChromeExtension extension;
@@ -424,7 +419,7 @@ namespace chrome
                     extension.path = std::move(extensionPath);
                     extension.referenced = std::to_string(1);
 
-                    getCommonSettings(extension, manifestPath);
+                    getCommonSettings(extension, manifestContent);
                     parsePreferenceSettings(extension, item.key(), item.value());
 
                     nlohmann::json manifestJson;
@@ -599,7 +594,7 @@ namespace chrome
                     extension.referenced = "0";
                     extension.install_timestamp = "";
 
-                    getCommonSettings(extension, manifestPath);
+                    getCommonSettings(extension, manifestContent);
 
                     nlohmann::json manifestJson;
 

@@ -233,10 +233,10 @@ namespace chrome
             /// @param key
             /// @return A string representing the unique identifier for the extension.
             std::string generateIdentifier(const std::string& key);
-            /// @brief Computes the SHA-256 hash of a file.
-            /// @param filepath
+            /// @brief Computes the SHA-256 hash of a file content already read.
+            /// @param content
             /// @return The generated SHA-256 hash as a hexadecimal string.
-            std::string sha256File(const std::string& filepath);
+            std::string sha256Content(const std::string& content);
             /// @brief Retrieves the profile name from the preferences files.
             std::string getProfileFromPreferences(const std::string& preferencesFilePath, const std::string& securePreferencesFilePath);
             /// @brief Parses the manifest JSON of a Chrome extension and populates the extension data structure.
@@ -244,7 +244,7 @@ namespace chrome
             /// @brief Parses preference settings for a Chrome extension and populates the extension data structure.
             void parsePreferenceSettings(chrome::ChromeExtension& extension, const std::string& key, const nlohmann::json& value);
             /// @brief Retrieves common settings for a Chrome extension and populates the extension data structure.
-            void getCommonSettings(chrome::ChromeExtension& extension, const std::string& manifestPath);
+            void getCommonSettings(chrome::ChromeExtension& extension, const std::string& manifestContent);
             /// @brief Retrieves extensions from the preferences file of a Chrome profile.
             chrome::ChromeExtensionList getExtensionsFromPreferences(const std::string& profilePath, const std::string& preferencesFilePath, const std::string& profileName);
             /// @brief Retrieves extensions from the given profile path that are referenced in the Preferences files.

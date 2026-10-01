@@ -101,7 +101,7 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
             {
                 const std::string entity = Utils::joinPaths(firefoxInstallationPath, entry);
 
-                if (!Utils::existsDir(entity) || !isValidPath(entity))
+                if (!Utils::existsDir(entity) || !browser_extensions::isPlainDirectory(entity) || !isValidPath(entity))
                 {
                     continue;
                 }

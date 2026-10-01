@@ -81,6 +81,7 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
 #include <fstream>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <stdexcept>
 
 namespace
 {
@@ -113,16 +114,27 @@ namespace
                 }
             }
 
+            // The helpers throw on failure, so that the calling test stops and is reported as failed
             static void makeDirs(const std::string& path)
             {
                 const std::string cmd = "mkdir -p '" + path + "'";
-                ASSERT_EQ(std::system(cmd.c_str()), 0);
+
+                if (std::system(cmd.c_str()) != 0)
+                {
+                    throw std::runtime_error("cannot create " + path);
+                }
             }
 
             static void writeFile(const std::string& path, const std::string& content)
             {
                 std::ofstream file(path, std::ios::binary);
                 file << content;
+                file.close();
+
+                if (!file)
+                {
+                    throw std::runtime_error("cannot write " + path);
+                }
             }
 
             nlohmann::json collect()
@@ -203,6 +215,41 @@ TEST_F(ChromeTempHomeTests, SymlinkedVersionDirectoryIsNotFollowed)
     ASSERT_EQ(symlink((m_outside + "/1.0").c_str(), (m_profile + "/Extensions/abc/1.0").c_str()), 0);
 
     EXPECT_EQ(collect().size(), static_cast<size_t>(0));
+}
+
+TEST_F(ChromeTempHomeTests, ReferencedRelativePathRegularManifestIsReported)
+{
+    makeDirs(m_profile + "/Extensions/abc/1.0");
+    writeFile(m_profile + "/Extensions/abc/1.0/manifest.json", VALID_MANIFEST);
+    writeFile(m_profile + "/Preferences",
+              R"({"profile": {"name": "Test"}, "extensions": {"settings": {"abc": {"path": "abc/1.0"}}}})");
+
+    const auto result = collect();
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
+    EXPECT_EQ(result[0]["referenced"], "1");
+}
+
+// Every directory of a relative path is checked, not only the last one
+TEST_F(ChromeTempHomeTests, ReferencedRelativePathThroughSymlinkedDirectoryIsNotFollowed)
+{
+    makeDirs(m_outside + "/abc/1.0");
+    writeFile(m_outside + "/abc/1.0/manifest.json", VALID_MANIFEST);
+    ASSERT_EQ(symlink((m_outside + "/abc").c_str(), (m_profile + "/Extensions/abc").c_str()), 0);
+    writeFile(m_profile + "/Preferences",
+              R"({"profile": {"name": "Test"}, "extensions": {"settings": {"abc": {"path": "abc/1.0"}}}})");
+
+    EXPECT_EQ(collect().size(), static_cast<size_t>(0));
+}
+
+// The reported hash is the SHA-256 of the manifest content that was parsed
+TEST_F(ChromeTempHomeTests, ManifestHashMatchesManifestContent)
+{
+    makeDirs(m_profile + "/Extensions/abc/1.0");
+    writeFile(m_profile + "/Extensions/abc/1.0/manifest.json", VALID_MANIFEST);
+
+    const auto result = collect();
+    ASSERT_EQ(result.size(), static_cast<size_t>(1));
+    EXPECT_EQ(result[0]["manifest_hash"], "92e4e520f1143566b2603019e73cbcfa3a9bf61e17c7c47aa86acbf1bb85d9e3");
 }
 
 TEST_F(ChromeTempHomeTests, FifoManifestDoesNotBlock)
