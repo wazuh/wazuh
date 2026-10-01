@@ -64,11 +64,11 @@ Standard agent info settings for most deployments:
 
 ### High-Frequency Scanning
 
-Collect metadata more frequently for dynamic environments:
+Scan at the minimum interval and check integrity every hour, for dynamic environments:
 
 ```xml
 <agent-info>
-  <interval>30</interval>
+  <interval>60</interval>
   <integrity_interval>3600</integrity_interval>
 </agent-info>
 ```
@@ -127,14 +127,9 @@ See [Architecture](architecture.md) for the full protocol.
 
 ### Scan Intervals
 
-**Frequent scans (30-60 seconds):**
-- Suitable for dynamic cloud environments
-- Faster detection of configuration changes
-- Higher resource usage
-
-**Standard scans (60-120 seconds):**
-- Balanced for most deployments
-- Default recommended setting
+**Default scans (60 seconds, also the minimum):**
+- Fastest detection of configuration changes
+- Suitable for most deployments, including dynamic cloud environments
 
 **Infrequent scans (300+ seconds):**
 - Suitable for static environments
