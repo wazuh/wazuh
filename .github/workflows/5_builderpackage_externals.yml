@@ -1,4 +1,3 @@
-run-name: External deps - ${{ inputs.dependencies && format('{0}', inputs.dependencies) || '(no version overrides)' }}
 name: 5.X - Package - Build external dependencies
 
 # Rebuilds Wazuh's external dependencies across every (system, architecture)
@@ -43,15 +42,6 @@ name: 5.X - Package - Build external dependencies
 on:
   workflow_dispatch:
     inputs:
-      dependencies:
-        description: |
-          Semicolon-separated list of deps to update, in "name:version" form.
-          Example: "curl:8.13.0;openssl:3.5.2".
-          Empty = rebuild all deps from currently vendored sources without
-          replacing any.
-        type: string
-        required: false
-        default: ""
       docker_image_tag:
         description: |
           GHCR builder image tag. "auto" derives it from VERSION.json,
@@ -137,7 +127,6 @@ jobs:
             --architecture "${{ matrix.architecture }}" \
             --target "${{ matrix.target }}" \
             --tag "${TAG:-}" \
-            --dependencies "${{ inputs.dependencies }}" \
             --jobs "${jobs}" \
             --verbose
 

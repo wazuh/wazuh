@@ -22,7 +22,6 @@ ARCHITECTURE=""
 SYSTEM=""
 TARGET="manager"
 DOCKER_TAG="latest"
-DEPS_TO_UPDATE=""
 JOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
 VERBOSE=""
 OUTDIR="${WAZUH_PATH}/packages/output_externals"
@@ -35,9 +34,6 @@ Usage: $0 [OPTIONS]
   -a, --architecture <amd64|arm64> [Required] Target architecture.
   -t, --target <agent|manager>     [Optional] Build set. Default: manager.
       --tag <tag>                  [Optional] Docker image tag. Default: latest.
-      --dependencies "<spec>"      [Optional] "name:version;name:version;..."
-                                   Empty = rebuild all from currently vendored
-                                   sources; nothing is replaced.
       --jobs <n>                   [Optional] Parallel make jobs.
       --output <path>              [Optional] Host output dir (collected zips).
                                    Default: <repo>/packages/output_externals.
@@ -53,7 +49,6 @@ while [ -n "$1" ]; do
         -a|--architecture)   ARCHITECTURE="$2"; shift 2 ;;
         -t|--target)         TARGET="$2"; shift 2 ;;
         --tag)               DOCKER_TAG="$2"; shift 2 ;;
-        --dependencies)      DEPS_TO_UPDATE="$2"; shift 2 ;;
         --jobs)              JOBS="$2"; shift 2 ;;
         --output)            OUTDIR="$2"; shift 2 ;;
         --verbose)           VERBOSE="yes"; shift 1 ;;
@@ -108,8 +103,12 @@ fi
 mkdir -p "${OUTDIR}"
 
 echo "[generate_external] target=${TARGET} system=${SYSTEM} arch=${ARCHITECTURE}"
-echo "[generate_external] deps='${DEPS_TO_UPDATE}'"
 echo "[generate_external] output=${OUTDIR}"
+
+# Sources come from packages/externals/dependencies.json. The builder images
+# have no python3, so the host flattens it to bash arrays the leg sources.
+DEPS_ENV_FILE="external_sources.env"
+python3 "${CURRENT_PATH}/deps.py" flatten > "${OUTDIR}/${DEPS_ENV_FILE}"
 
 # macOS runs natively on the macOS runner (no Docker available, host toolchain
 # is what we ship against). Every other leg runs inside a pinned Wazuh builder
@@ -132,7 +131,7 @@ if [ "${SYSTEM}" = "macos" ]; then
         SYSTEM="${SYSTEM}" \
         BUILD_TARGET="${TARGET}" \
         ARCHITECTURE_TARGET="${ARCHITECTURE}" \
-        DEPS_TO_UPDATE="${DEPS_TO_UPDATE}" \
+        DEPS_ENV="${OUTDIR}/${DEPS_ENV_FILE}" \
         JOBS="${JOBS}" \
         WAZUH_VERBOSE="${VERBOSE}" \
         bash "${WAZUH_PATH}/packages/externals/build_external.sh"
@@ -157,7 +156,7 @@ else
         -e SYSTEM="${SYSTEM}" \
         -e BUILD_TARGET="${TARGET}" \
         -e ARCHITECTURE_TARGET="${ARCHITECTURE}" \
-        -e DEPS_TO_UPDATE="${DEPS_TO_UPDATE}" \
+        -e DEPS_ENV="/var/local/wazuh/${DEPS_ENV_FILE}" \
         -e JOBS="${JOBS}" \
         -e WAZUH_VERBOSE="${VERBOSE}" \
         --entrypoint /bin/bash \

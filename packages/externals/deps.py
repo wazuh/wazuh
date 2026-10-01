@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Validate the external dependencies inventory.
+"""Validate the external dependencies inventory and export it for the build scripts.
 
     deps.py check [--inventory PATH] [--src DIR] [--no-make]
+    deps.py flatten [--inventory PATH]
 
 `check` prints one `ERROR: <name>: <message>` line per problem to stderr and exits 1 if
-there is any, 0 otherwise.
+there is any, 0 otherwise. `flatten` prints the inventory as bash associative arrays
+(EXT_URL, EXT_SHA256, ...) for build_external.sh, whose builder images have no python3.
 """
 
 import argparse
 import json
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -203,6 +206,36 @@ def validate(doc, external=None, patches_dir=PATCHES_DIR, repo_root=REPO):
     return errors
 
 
+def expand_url(url, version, revision):
+    """Same substitutions as the URL templates always had, plus {revision}."""
+    major, minor, patch = (version.split(".") + ["0", "0", "0"])[:3]
+    concat = "%d%02d%02d00" % tuple(int(x) if x.isdigit() else 0 for x in (major, minor, patch))
+    for key, value in (("version_concat", concat), ("version_us", version.replace(".", "_")),
+                       ("version_dash", version.replace(".", "-")), ("version", version), ("revision", revision)):
+        url = url.replace("{" + key + "}", value)
+    return url
+
+
+def flatten(doc):
+    """Return bash `declare -A` lines describing every entry of a valid inventory."""
+    columns = {
+        "EXT_URL": lambda e: expand_url(e["url"], e["version"], e["revision"]),
+        "EXT_SHA256": lambda e: e.get("upstream_sha256") or e["snapshot_sha256"],
+        "EXT_SOURCE": lambda e: e["source"],
+        "EXT_VERSION": lambda e: e["version"],
+        "EXT_FORMAT": lambda e: e["format"],
+        "EXT_STRIP": lambda e: str(e["strip"]),
+        "EXT_TARGET": lambda e: e.get("target_dir", e["name"]),
+        "EXT_PATCHES": lambda e: " ".join(e["patches"]),
+        "EXT_PLATFORMS": lambda e: " ".join(e["platforms"]),
+    }
+    lines = []
+    for var, value in columns.items():
+        items = " ".join(f"[{shlex.quote(e['name'])}]={shlex.quote(value(e))}" for e in doc["entries"])
+        lines.append(f"declare -A {var}=({items})")
+    return "\n".join(lines) + "\n"
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -210,6 +243,8 @@ def main(argv=None):
     check.add_argument("--inventory", default=str(DEFAULT_INVENTORY))
     check.add_argument("--src", default=str(REPO / "src"))
     check.add_argument("--no-make", action="store_true", help="skip the EXTERNAL_RES comparison")
+    flat = sub.add_parser("flatten", help="print the inventory as bash associative arrays")
+    flat.add_argument("--inventory", default=str(DEFAULT_INVENTORY))
     args = parser.parse_args(argv)
 
     try:
@@ -217,6 +252,15 @@ def main(argv=None):
     except (OSError, ValueError) as exc:
         print(f"ERROR: <inventory>: cannot read {args.inventory}: {exc}", file=sys.stderr)
         return 1
+
+    if args.command == "flatten":
+        errors = validate(doc)
+        for error in errors:
+            print(f"ERROR: {error}", file=sys.stderr)
+        if errors:
+            return 1
+        sys.stdout.write(flatten(doc))
+        return 0
 
     warnings = []
     external = None

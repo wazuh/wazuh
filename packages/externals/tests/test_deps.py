@@ -201,3 +201,46 @@ def test_repo_inventory(tmp_path):
     path.write_text(json.dumps(trimmed))
     result = run("check", "--inventory", str(path), "--src", str(SRC))
     assert result.returncode == 1 and "zlib: in EXTERNAL_RES" in result.stderr
+
+
+def bash_lookup(env_text, *expressions, tmp_path):
+    env = tmp_path / "deps.env"
+    env.write_text(env_text)
+    script = f"source {env}; " + "; ".join(f"printf '%s\\n' \"{x}\"" for x in expressions)
+    return subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=True).stdout.splitlines()
+
+
+def test_flatten_expands_urls():
+    document = doc(entry("asio", version="1.38.2", url="https://x/asio-{version_dash}.tar.gz"),
+                   entry("date", revision="8a93211", url="https://x/{revision}.tar.gz"),
+                   entry("sqlite", version="3.51.1", url="https://x/sqlite-{version_concat}-{version_us}.tar.gz"))
+    text = deps.flatten(document)
+    assert "[asio]=https://x/asio-1-38-2.tar.gz" in text
+    assert "[date]=https://x/8a93211.tar.gz" in text
+    assert "[sqlite]=https://x/sqlite-3510100-3_51_1.tar.gz" in text
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash")
+def test_flatten_sources_in_bash(tmp_path):
+    result = run("flatten", "--inventory", str(INVENTORY))
+    assert result.returncode == 0, result.stderr
+    values = bash_lookup(result.stdout, "${EXT_PATCHES[rpm]}", "${EXT_TARGET[nlohmann]}", "${EXT_FORMAT[nlohmann]}",
+                         "${EXT_SHA256[zlib]}", "${#EXT_URL[@]}", tmp_path=tmp_path)
+    zlib = next(e for e in deps.load(INVENTORY)["entries"] if e["name"] == "zlib")
+    assert values == ["rpm/0001-wazuh.patch", "nlohmann", "file", zlib["upstream_sha256"],
+                      str(len(deps.load(INVENTORY)["entries"]))]
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash")
+def test_flatten_quotes(tmp_path):
+    odd = "https://x/it's $HOME `id` {version}.tar.gz"
+    text = deps.flatten(doc(entry("zlib", url=odd, target_dir="z lib")))
+    assert bash_lookup(text, "${EXT_URL[zlib]}", "${EXT_TARGET[zlib]}", tmp_path=tmp_path) == [
+        "https://x/it's $HOME `id` 1.0.0.tar.gz", "z lib"]
+
+
+def test_flatten_rejects_invalid(tmp_path):
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps(doc(entry("zlib", format="rar"))))
+    result = run("flatten", "--inventory", str(bad))
+    assert result.returncode == 1 and result.stdout == "" and "ERROR: zlib:" in result.stderr
