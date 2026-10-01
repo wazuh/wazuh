@@ -12,8 +12,8 @@
 #ifndef _PACKAGES_PYPI_HPP
 #define _PACKAGES_PYPI_HPP
 
-#include "fileIO.hpp"
 #include "fileSystem.hpp"
+#include "packageMetadataFile.hpp"
 #include "stdFileSystemHelper.hpp"
 #include "json.hpp"
 #include "sharedDefs.h"
@@ -25,7 +25,7 @@
 
 const static std::map<std::string, std::string> FILE_MAPPING_PYPI {{"egg-info", "PKG-INFO"}, {"dist-info", "METADATA"}};
 
-template<typename TFileSystem = RealFileSystem, typename TFileIO = FileIO>
+template<typename TFileSystem = RealFileSystem, typename TFileIO = PackageMetadataFileIO>
 class PYPI final : public TFileSystem, public TFileIO
 {
         std::unordered_set<std::string> m_pathsToExclude;
@@ -103,6 +103,13 @@ class PYPI final : public TFileSystem, public TFileIO
                         else if (TFileSystem::is_directory(path))
                         {
                             correctPath = path / value;
+                        }
+
+                        // Only read regular, non-symlinked files of a bounded size
+                        if (TFileSystem::is_symlink(correctPath) || !TFileSystem::is_regular_file(correctPath) ||
+                                TFileSystem::file_size(correctPath) > PACKAGE_METADATA_MAX_FILE_SIZE)
+                        {
+                            continue;
                         }
 
                         if (m_pathsToExclude.find(correctPath.string()) != m_pathsToExclude.end())

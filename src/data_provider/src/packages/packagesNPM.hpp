@@ -15,14 +15,14 @@
 #include "fileSystem.hpp"
 #include "stdFileSystemHelper.hpp"
 #include "json.hpp"
-#include "jsonIO.hpp"
+#include "packageMetadataFile.hpp"
 #include "sharedDefs.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <set>
 
-template<typename TFileSystem = RealFileSystem, typename TJsonReader = JsonIO<nlohmann::json>>
+template<typename TFileSystem = RealFileSystem, typename TJsonReader = PackageMetadataJsonReader>
 class NPM final
     : public TFileSystem
     , public TJsonReader
@@ -41,7 +41,9 @@ class NPM final
 
             try
             {
-                if (TFileSystem::exists(path))
+                // Only read regular, non-symlinked files of a bounded size
+                if (!TFileSystem::is_symlink(path) && TFileSystem::is_regular_file(path) &&
+                        TFileSystem::file_size(path) <= PACKAGE_METADATA_MAX_FILE_SIZE)
                 {
                     // Read json from filesystem path.
                     const auto packageJson = TJsonReader::readJson(path);
