@@ -16,7 +16,7 @@ For module overview and architecture, see [Agent Info Module](README.md).
 
 **Module:** Agent-only
 
-**Internal Options:** None
+**Internal Options:** `agent_info.max_entries`, `agent_info.ttl` (see [Internal Options](#internal-options))
 
 The `<agent-info>` block is only parsed on agent builds. If it is present in a manager's `ossec.conf`, the manager silently ignores it (it is not read or applied in any way) and logs a debug-level message noting that the module is not supported on managers.
 
@@ -35,6 +35,17 @@ Time between integrity checks to verify that the agent's state is synchronized w
 - **Default value:** `86400` (24 hours)
 - **Allowed values:** Integer from 60 to 604800 (seconds, 1 minute to 7 days). Out-of-range values are ignored with a warning and the previous value is kept
 - **Note:** Periodic verification ensures consistency between agent and manager state
+
+---
+
+## Internal Options
+
+Set these in `local_internal_options.conf`, next to `ossec.conf` (`/var/ossec/etc/` on Linux, `C:\Program Files (x86)\ossec-agent\` on Windows). They bound the [`tasks`](database-schema.md#tasks) table, which remembers the `/control` task IDs already handled so a redelivered task is not run twice. Both limits are applied on every `interval` cycle.
+
+| Option | Default | Allowed values | Description |
+|---|---|---|---|
+| `agent_info.max_entries` | `4096` | `1`–`1000000` | Maximum number of task IDs kept. The oldest are removed first. |
+| `agent_info.ttl` | `86400` | `1`–`31536000` (seconds) | How long a task ID is kept. |
 
 ---
 
