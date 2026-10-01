@@ -56,8 +56,10 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed the vulnerability scanner stalling while the CTI feed applies a backlog of offsets, by releasing the feed lock between offset files instead of holding it for the whole backlog. ([#39051](https://github.com/wazuh/wazuh/issues/39051))
 - Bounded the agent control message copy to the source string length in `wazuh-remoted`. ([#38427](https://github.com/wazuh/wazuh/pull/38427))
 - Fixed the cluster server keeping pre-authentication connections open indefinitely by adding a handshake deadline and a global connection limit. ([#38449](https://github.com/wazuh/wazuh/pull/38449))
+- Fixed `wazuh-authd` keeping idle enrolment connections open indefinitely by closing any connection that has not completed its request within 30 seconds. ([#39539](https://github.com/wazuh/wazuh/pull/39539))
 - Fixed a memory leak in the `wazuh-analysisd` JSON decoder when an event repeats a static field. ([#38548](https://github.com/wazuh/wazuh/pull/38548))
 - Fixed integer underflows and an overflow in the `OS_StrBreak()` string splitter. ([#38625](https://github.com/wazuh/wazuh/pull/38625))
 - Restricted the Azure Graph wodle pagination to the Microsoft Graph endpoint, so the authentication token is not sent to another host. ([#38594](https://github.com/wazuh/wazuh/pull/38594))
@@ -72,9 +74,12 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
+- Narrowed the Windows agent MSI pending-restart check to the agent's own files. ([#39746](https://github.com/wazuh/wazuh/pull/39746))
+- Added a script that builds the eBPF precompiled dependency with Zig for every Linux architecture. ([#39577](https://github.com/wazuh/wazuh/issues/39577))
 - Raised from 64 to 1024 the number of active response commands that `wazuh-execd` can load from `etc/shared/ar.conf`. ([#38509](https://github.com/wazuh/wazuh/pull/38509))
 - Added the missing compiler hardening flags (stack canary, PIE, full RELRO and FORTIFY_SOURCE) to the Linux binaries. ([#38571](https://github.com/wazuh/wazuh/pull/38571))
 - Removed the per-comparison JSON serialisation from the macOS ports deduplication in syscollector. ([#39167](https://github.com/wazuh/wazuh/issues/39167))
+- Allowed FIM eBPF whodata on capable kernels older than 5.8, such as RHEL 8.10. ([#39591](https://github.com/wazuh/wazuh/issues/39591))
 
 #### Fixed
 
@@ -108,9 +113,9 @@ All notable changes to this project will be documented in this file.
 - Fixed the macOS agent reporting zeroed password aging values for local users, where macOS defines no such policy. ([#39356](https://github.com/wazuh/wazuh/pull/39356))
 - Fixed the users inventory misreporting sudoers, missing group-based grants (e.g. macOS's `%admin`, Linux's `%sudo`/`%wheel`) and flagging unrelated accounts. ([#39165](https://github.com/wazuh/wazuh/issues/39165))
 - Fixed the users inventory never reading sudo grants placed in sudoers drop-in files (`/etc/sudoers.d/*`). ([#39165](https://github.com/wazuh/wazuh/issues/39165))
-- Fixed the macOS agent shipping preinstalled empty `logs/ossec.log`/`ossec.json` placeholders. ([#39120](https://github.com/wazuh/wazuh/issues/39120))
 - Fixed the Windows agent accepting `<whodata><provider>ebpf</provider></whodata>` and silently disabling whodata. ([#39353](https://github.com/wazuh/wazuh/issues/39353))
 - Fixed the FIM eBPF whodata healthcheck failing on RHEL 9 kernels and discarding the eBPF provider. ([#39570](https://github.com/wazuh/wazuh/pull/39570))
+- Fixed FIM eBPF whodata dropping events for files outside the root mount. ([#39708](https://github.com/wazuh/wazuh/pull/39708))
 
 ### Ruleset
 
@@ -252,7 +257,7 @@ All notable changes to this project will be documented in this file.
 - Improved cluster non-merged file path validation during worker file processing. ([#36296](https://github.com/wazuh/wazuh/pull/36296))
 - Improved cluster node name format validation in the hello handler. ([#36460](https://github.com/wazuh/wazuh/pull/36460))
 - Fixed missing `agent.host.ip` in inventory documents when agent IP is empty. ([#35475](https://github.com/wazuh/wazuh/pull/35475))
-- Fixed stale agent `synced` status after hot reload on cluster worker nodes. ([#6726](https://github.com/wazuh/external-devel-requests/issues/6726))
+- Fixed stale agent `synced` status after hot reload on cluster worker nodes. ([#36164](https://github.com/wazuh/wazuh/pull/36164))
 
 ### Agent
 
