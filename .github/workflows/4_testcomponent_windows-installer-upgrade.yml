@@ -66,7 +66,7 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     strategy:
           matrix:
-              wazuh_version: [4.5.2-1]
+              wazuh_version: [4.5.2-1, 4.14.8-1]
     runs-on: windows-2025
     needs: build
     steps:
@@ -118,7 +118,7 @@ jobs:
           aws_region: ${{ secrets.CI_AWS_REGION }}
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
-          name: release_log
+          name: release_log_${{ matrix.wazuh_version }}
           path: C:\win-agent-released\win-agent-released.log
       - name: Upload base installation log
         if: always()
@@ -127,5 +127,5 @@ jobs:
           aws_region: ${{ secrets.CI_AWS_REGION }}
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
-          name: base_log
+          name: base_log_${{ matrix.wazuh_version }}
           path: C:\win-agent-base\win-agent-base.log
