@@ -44,7 +44,7 @@ Time interval between security configuration assessment scans.
 
 - **Default value:** `1d`
 - **Allowed values:** Time format strings (`s` for seconds, `m` for minutes, `h` for hours, `d` for days)
-- **Note:** Valid range is `60s` (1 minute) to `1d` (1 day). Examples: `12h`, `30m`, `1d`
+- **Note:** Any positive value. `0` and any suffix other than `s`, `m`, `h` or `d` are rejected. Examples: `12h`, `30m`, `1d`
 
 ### max_eps
 
@@ -104,7 +104,7 @@ Interval between integrity checks for automatic recovery.
 
 ## Internal Options
 
-**Configuration file:** `/var/ossec/etc/internal_options.conf` (Linux/Unix) or `C:\Program Files (x86)\ossec-agent\internal_options.conf` (Windows)
+**Configuration file:** `/var/ossec/etc/local_internal_options.conf` (Linux/Unix) or `C:\Program Files (x86)\ossec-agent\local_internal_options.conf` (Windows). An upgrade replaces `internal_options.conf`, so set overrides in `local_internal_options.conf`.
 
 Internal options provide advanced tuning for the SCA module. These options are global and apply to all SCA operations.
 
@@ -296,7 +296,7 @@ Time-based configuration options support flexible time format specifications:
 | Days | `1d` | 1 day |
 
 **Valid ranges:**
-- **Scan interval:** Minimum `60s` (1 minute), maximum `1d` (1 day)
+- **Scan interval:** Any positive value; `0` is rejected
 - **Synchronization interval:** Minimum `1s`, recommended `60s` or higher
 
 ---
