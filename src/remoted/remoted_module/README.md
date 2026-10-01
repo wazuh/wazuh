@@ -738,8 +738,10 @@ ignoring everything after `-` or `+`.
 Thread-safe **sharded hash map** (`std::unordered_map` per shard, each with its own `shared_mutex`)
 that caches agent metadata to avoid repeated wazuh-db lookups on every keepalive. Each `AgentEntry`
 stores:
-- `groups` — agent's assigned groups (vector of strings)
-- `groupsRefreshedAtSec` — timestamp of last groups refresh
+- `groups` — agent's assigned groups (vector of strings, wazuh-db order)
+- `groupsRefreshedAtSec` — when `groups` was last established from wazuh-db; `0` = not established
+  (never read, minted by `/control/shutdown`, invalidated, or a "no row" answer)
+- `groupsSeq` — stamp of the last write to the two fields above, from a registry-wide counter
 - `lastKeepaliveUpdateSec` — timestamp of last wazuh-db write (for throttling)
 - `lastActivitySec` — timestamp of last control message (any type)
 - `createdAtSec` — timestamp of first insertion into registry
@@ -748,24 +750,79 @@ Supports:
 - `update(id, updateFn)` — atomic read-modify-write via a lambda (returns the new entry)
 - `get(id)` — read-only lookup (returns `shared_ptr<const AgentEntry>`)
 - `evictExpiredEntries(ttlSec)` — periodic cleanup (two-phase: read-lock scan, then write-lock erase)
+- `setGroups(id, groups, now)` / `invalidateGroups(id)` — membership writers for a push: they update
+  an **existing** entry only (an absent agent is `Skipped`, never created) and touch nothing but the
+  membership fields
+- `groupsTicket()` / `mayStoreLookup(current, ticket)` / `nextGroupsSeq()` — the ordering rule below
+- free `groupsFresh(entry, now, interval)` — established and younger than `interval`
+
+**One ordering rule for every membership writer.** A caller takes `groupsTicket()` before it queries
+wazuh-db. When the answer arrives it writes the groups only if no newer write stamped the entry after
+the ticket (a push that landed while the query was in flight wins, and the caller answers from the
+entry). If a push skipped some absent agent after the ticket and the entry holds no established
+membership, the answer is kept for that reply only, not established. `/control` startup and the notify
+refresh follow the rule; a "no row" answer (`AgentGroupsResult::noRow`) is still answered as `default`
+but stored not established, so it never becomes a membership a download could be authorized against.
+`groupsFresh()` is the refresh test of `/control` notify (`remoted.control_groups_refresh_interval`).
 
 Sharding (8 shards) minimizes lock contention on high-frequency keepalives from many agents.
 
 #### WazuhDBClient (`wazuhDBClient.hpp/.cpp`)
 
-Async UDS client to `queue/sockets/wdb.sock` with a **pool of worker threads**
-(`wdbRequestConnections`, default 4) and a **bounded request queue**. Exposes:
-- `getAgentGroups(id, callback)` — queued async round trip with a callback; called on `startup` and on
-  a `notify` whose cached group membership is older than `groupsRefreshIntervalSec`
+Async UDS client to `queue/sockets/wdb.sock` with a **pool of worker threads** (one persistent
+connection each; `wdbRequestConnections`, from `remoted.control_wdb_request_connections`, default 4),
+a **bounded request queue** and a **reaper** thread.
+Exposes:
+- `getAgentGroups(id, callback)` — async `global select-agent-group`, used by `/control` startup and
+  by the notify refresh. It answers an `AgentGroupsResult`: `noRow` when the local replica has no
+  row for the agent (`ok []`), otherwise the groups in wazuh-db order (empty for a row with no
+  groups). A reply that is not the documented array shape is `SocketError::ProtocolError`, never an
+  empty membership. `/control` maps no row, and a row with no groups, to `default` itself
+  (`controlGroupsFrom()` in `controlHandler.cpp`); that compatibility answer is `/control`'s only.
 - `updateAgentData(...)` — fire-and-forget async write (full agent metadata)
 - `updateKeepalive(...)` — fire-and-forget async write (lightweight)
 - `updateStatusCode(...)` — fire-and-forget async write (e.g., invalid_version rejection)
 
 Internally:
-- Maintains a persistent connection (reconnects on error)
-- Request queue bounded by `maxQueueSize` (`remoted.control_wdb_max_queue_size`) — drops requests with `SocketError::QueueFull` when full
-- Per-request deadline (`deadlineMs`, `remoted.control_wdb_roundtrip_deadline`) — reports `SocketError::Timeout` if wazuh-db doesn't respond
-- Uses `LogThrottle` to avoid flooding logs with repeated errors (connection failures, timeouts, queue full)
+- Each worker keeps a persistent connection and recreates it after a timeout or an I/O error.
+  `SocketClient` retries the connect on its own thread and swallows send failures, so while
+  wazuh-db is down a worker still dequeues and waits on a dead connection.
+- Request queue bounded by `maxQueueSize` (`remoted.control_wdb_max_queue_size`) — rejects requests
+  with `SocketError::QueueFull` when full (synchronously, on the caller's thread)
+- **Two deadlines.** `deadlineMs` (`remoted.control_wdb_roundtrip_deadline`) bounds one round trip
+  once sent. The request deadline (`remoted.control_wdb_request_deadline`) bounds the whole request
+  from the moment it is queued, and caps the first. The reaper fails every queued request that
+  outlives it with `SocketError::Timeout`, and a worker never sends one that has already expired, so
+  a burst queued while wazuh-db is down is answered within the deadline instead of one round trip at
+  a time, and is not replayed once wazuh-db is back.
+- **Exactly once.** Each request is owned by exactly one of the reaper, a worker or the destructor's
+  drain (`SocketError::Stopping`), each of which takes it off the queue under the queue's mutex
+  before calling back.
+- Uses `LogThrottle` to avoid flooding logs with repeated errors (connection failures, timeouts,
+  expired requests, queue full)
+
+#### RegistryLookup (`registryLookup.hpp/.cpp`)
+
+The `/download` fallback (#39147): answers "what are agent N's groups?" asynchronously from the local
+wazuh-db when its `AgentRegistry` entry is missing or expired. Built in `startHttpServer()`; the
+`/download` route's `RegistryAgentGroupSource` holds it (until the route table goes, phase 4) and the
+facade keeps a second reference only to `stop()` it in phase 1b. It owns its **own** `WazuhDBClient`
+(`kLookupConnections` = 2, the `/control` round-trip and request deadlines), so a burst of downloads never
+queues behind `/control`. Outcomes: `Groups` (wazuh-db order), `NoRow` (never a membership, never
+cached), `Unavailable` (wazuh-db failed or timed out, or the lookup was refused).
+
+- **Coalescing and bounds**: concurrent lookups for one agent share a single query; at most
+  `kLookupMaxWaitersPerAgent` (32) requests wait on one agent and `kLookupMaxWaiters` (1024) on all of
+  them — one over a bound is answered `Unavailable` at once. No new internal option.
+- **Writes** follow the registry's ordering rule: the ticket is taken when the query is issued; a
+  newer write wins (an established one is also the answer), a read that may be older than a skipped
+  push is answered but not written, otherwise the groups are stored established at the request time
+  (an absent agent gets an entry with no activity fields).
+- **Threads**: waiters run with no lock held — on a client worker, or inline when refused. A waiter
+  may call `lookup()` again; never `stop()`.
+- **Shutdown**: `stop()` refuses new lookups, then destroys the client: in-flight queries complete or
+  time out, queued ones fail — every waiter is answered once. The object is destroyed only when no
+  thread can still call `lookup()`. `stats()` exposes query / coalesced / rejected counts.
 
 #### TaskClient (`taskClient.hpp/.cpp`)
 
@@ -834,6 +891,7 @@ from C-ABI struct fields in `remoted_module_config_t`; the tunable ones are fed 
 | `groupsRefreshIntervalSec` | 60 s | `remoted.control_groups_refresh_interval` (1–3600) |
 | `wdbRequestConnections` | 4 | `remoted.control_wdb_request_connections` (1–64) |
 | `wdbRoundtripDeadlineMs` | 2000 ms | `remoted.control_wdb_roundtrip_deadline` (100–30000) |
+| `wdbRequestDeadlineMs` | 5000 ms | `remoted.control_wdb_request_deadline` (100–30000) — end to end from enqueue |
 | `wdbMaxQueueSize` | 10000 | `remoted.control_wdb_max_queue_size` (100–1000000) |
 | `tmConcurrency` | 4 | `remoted.control_tm_concurrency` (1–64) |
 | `tmDeadlineMs` | 2000 ms | `remoted.control_tm_deadline` (100–30000) |
@@ -851,7 +909,8 @@ facade's shared `wazuh_metrics` registry (`shared_modules/metrics`) via `makeCon
 - `remoted.control.startup` — total `POST /control {"type":"startup"}` messages
 - `remoted.control.notify` — total `POST /control {"type":"notify"}` messages
 - `remoted.control.shutdown` — total `POST /control {"type":"shutdown"}` messages
-- `remoted.control.wdb_error` — wazuh-db operation failures (connection, timeout, queue full)
+- `remoted.control.wdb_error` — wazuh-db operation failures (connection, round-trip timeout, queue
+  full, or a request that expired end to end before wazuh-db answered)
 - `remoted.control.task_fetch` — successful task fetches from task-manager
 - `remoted.control.task_fetch_error` — task-manager operation failures
 - `remoted.control.rejected` — the endpoint's own 400s (invalid body/JSON/agent-id/type), one
@@ -873,7 +932,9 @@ families, lives in **Metrics catalog** below.
 ### Error handling
 
 - **Version rejection**: `{"error":"invalid_version"}` + wazuh-db update (status_code=`invalid_version`); `409` when too high for policy, `400` when malformed
-- **Database errors**: `503 {"error":"dependency_unavailable","dependency":"wazuh-db"}` when a `startup` (or a `notify` with no cached groups) cannot read the agent's groups
+- **Database errors**: `503 {"error":"dependency_unavailable","dependency":"wazuh-db"}` when startup,
+  or a notify with no cached groups, cannot read the agent's groups (wazuh-db down, round-trip timeout,
+  request expired, queue full); a notify with cached groups keeps serving them
 - **Queue full** (wazuh-db or task-manager): drops the operation, logs warning (throttled), continues
 - **Invalid JSON/malformed request**: `400` with specific error code (invalid_body, invalid_json, etc.)
 
@@ -884,7 +945,9 @@ All errors use `LogThrottle` (90-second windows) to avoid log flooding:
 ### Thread safety
 
 - **AgentRegistry**: sharded with per-shard `shared_mutex` (concurrent reads, exclusive writes)
-- **WazuhDBClient / TaskClient**: a pool of worker threads per client (`wdbRequestConnections` / `tmConcurrency`), requests queued via `std::queue` + mutex + CV
+- **WazuhDBClient / TaskClient**: a pool of worker threads per client (`wdbRequestConnections` /
+  `tmConcurrency`), requests queued via `std::queue` + mutex + CV; `WazuhDBClient` adds a reaper that
+  fails expired queued requests
 - **ControlHandler**: stateless (all state in registry + clients), thread-safe via client APIs
 - **HashCache**: two independent `std::shared_mutex` (one for `m_settingsHash`, one for `m_configCache`)
 
@@ -1696,7 +1759,8 @@ Most endpoints answer with one in-memory body. `/download` serves `merged.mg` an
 which can be hundreds of megabytes, so it streams with **HTTP chunked transfer encoding** (64 KiB
 chunks) and memory that does not grow with file size.
 
-Metrics: `remoted.download.*` (admission outcomes + started transfers/offered bytes, all counted
+Metrics: `remoted.download.*` (admission outcomes incl. `unavailable` for the fallback's 503s, the
+fallback's wazuh-db queries as the `lookups` pull, started transfers/offered bytes, all counted
 before the pump runs; the per-chunk loop is deliberately uninstrumented) — catalog in
 `endpoints/downloadMetrics.hpp`, overview in the [Metrics catalog](#metrics-catalog).
 
@@ -1728,12 +1792,17 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   A `config` request is authorized against the requesting agent's own groups: `resource_id` must
   equal `makeConfigToken(toGroupsCsv(entry->groups))` for that agent's registry entry -- the same
   string `/control` handed it as `config_token` -- and anything else is **403**, decided before the
-  path is resolved. The groups come from the registry `/control` already maintains
-  (`control/registryAgentGroupSource.hpp`), so there is no wazuh-db round trip on this path, and an
-  entry whose groups never came from wazuh-db (`groupsRefreshedAtSec == 0`, which is what
-  `/control/shutdown` leaves behind for an unknown agent) is denied rather than treated as
-  "no groups, so default". A `wpk` request is **not** authorized here: its authority is the agent's
-  pending upgrade task, which `/control` does not carry.
+  path is resolved. The groups come from the registry `/control` maintains
+  (`control/registryAgentGroupSource.hpp`): an entry established less than
+  `remoted.control_groups_refresh_interval` ago answers without querying wazuh-db. Anything else —
+  no entry (a node the agent never sent `/control` to, a restarted remoted), an expired one, or one
+  whose groups never came from wazuh-db (`groupsRefreshedAtSec == 0`: what `/control/shutdown` leaves
+  for an unknown agent, and the `default` `/control` answers an agent with no local row) — is looked up
+  in the local wazuh-db **asynchronously** by `RegistryLookup`, without holding the HTTP worker: a row
+  is the answer (and is cached), no row is **403** (never "default"), and a lookup that fails or times
+  out is **503** `dependency_unavailable`. The body is released before that wait. A `wpk` request is
+  **not** authorized here: its authority is the agent's pending upgrade task, which `/control` does
+  not carry.
 
   The agent never picks the value it sends: it relays the `config_token` `/control` handed it (see
   the notify response above), so `/control` must report `config_hash` over the file this resolves to
@@ -2214,7 +2283,7 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|enroll.secret\|cacerts>.responses.{2xx,400,403,409,413,429,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
-| `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total}` | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector, or the manager has no established membership for it). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request) and from `not_found` (an *entitled* request whose file is not on disk) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
+| `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total, unavailable}`, `remoted.download.lookups` (pull) | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector, or the manager has no established membership for it). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request) and from `not_found` (an *entitled* request whose file is not on disk) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
 | `remoted.cacerts.{served, not_found, ca_mismatch, rate_limited}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, refused because the served leaf does not chain to any CA of the bundle (`ca_mismatch`: a signature alone is not enough, C33), or refused by the route's rate limit before the CA was even read | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch; `rate_limited` is bumped by the gate (`endpoints/rateLimitGate.cpp`), which runs before the handler |
 | `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does it CHAIN to `remote.https.ca_certificate` (0 when it does not — including a CA that signs it but is expired, not a CA, or under another subject — or when the last successful read yielded no certificate; a read that fails after a good one keeps that bundle's verdict) | `IHttpServer::certificateStatus()`: `cert_expiry_days` from the transport's `TlsCertificateMonitor` snapshot (evaluated at start and every 24 h); `ca_matches_leaf` re-read from the same `CaCertificateSource` `/cacerts` answers from, on every scrape; registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |

@@ -1180,7 +1180,8 @@ database.
 
 #### remoted.control_groups_refresh_interval
 
-Seconds between refreshes of the cached shared-group listing used to answer `/control`.
+Seconds between refreshes of the cached shared-group listing used to answer `/control`, and the
+freshness bound of `/download`'s authorization.
 
 - **Default value:** `60`
 - **Allowed values:** Integer from `1` to `3600`
@@ -1198,6 +1199,13 @@ Seconds between refreshes of the cached shared-group listing used to answer `/co
   `control_groups_refresh_interval` stale with no sign of it, which is the worse trade for a
   security product. The retry rate is visible as `remoted.control.wdb.*` in
   [`GET /metrics`](metrics.md#control-plane--remotedcontrol).
+
+- **Note:** `/download` trusts the cached membership of an agent for this long. After that, and for
+  an agent the node has no cached membership for (it never sent `/control` here, or remoted
+  restarted), a `config` download first reads the agent's groups from the local wazuh-db — one
+  query per agent, shared by concurrent downloads — and answers `503` if that read fails. A lower
+  value tightens how long a revoked group can still be downloaded on this node, at the cost of
+  more of those reads.
 
 #### remoted.control_wdb_request_connections
 
@@ -1220,6 +1228,24 @@ Milliseconds a single wazuh-db round-trip may take before the control handler gi
   [`GET /metrics`](metrics.md#control-plane--remotedcontrol). The healthy-round-trip
   distribution that sizes this deadline is `remoted.control.wdb.latency` (timeouts are
   deliberately excluded from the histogram).
+
+#### remoted.control_wdb_request_deadline
+
+Milliseconds a control-plane wazuh-db request may take end to end, counted from the moment it is
+queued: the wait for a free connection, any reconnection, and the round trip.
+
+- **Default value:** `5000`
+- **Allowed values:** Integer from `100` to `30000`
+- **Note:** A request still queued when it runs out is failed without ever being sent, so work
+  queued while wazuh-db is down is not replayed against it once it comes back. An expired group
+  lookup answers `/control` startup, and a notify with no cached groups, with `503`
+  `dependency_unavailable`; a notify that has cached groups keeps serving them. Each expiry counts
+  as `remoted.control.wdb_error` in [`GET /metrics`](metrics.md#control-plane--remotedcontrol) and
+  is reported, throttled, as a `WazuhDB request expired before wazuh-db answered` warning.
+- **Note:** `remoted.control_wdb_roundtrip_deadline` still bounds the round trip itself, inside this
+  budget. remoted warns at startup when this deadline plus `remoted.control_tm_deadline` does not fit
+  below the HTTPS listener's request timeout, because the connection would be closed before
+  `/control` could answer.
 
 #### remoted.control_wdb_max_queue_size
 
