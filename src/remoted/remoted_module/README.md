@@ -147,7 +147,10 @@ src/http_server/
 - **Two-phase shutdown:** `stopAccepting()` closes the acceptor and drains the handler worker pool
   while deliberately leaving the I/O runtime alive (so an in-flight deferred reply can still be
   delivered); `stop()` calls `stopAccepting()` first, then releases the I/O runtime. See *Deferred
-  forwarding*'s Lifecycle note below for why the order matters.
+  forwarding*'s Lifecycle note below for why the order matters. A streamed transfer runs on that
+  worker pool, so `stream()` reaches it through a gate `stopAccepting()` closes before the join: a
+  `stream()` asked for afterwards (a late answer from a thread the listener does not own) is answered
+  `503` through `send()` and never touches the freed pool.
 - **Async handlers (non-blocking I/O threads):** a raw handler is
   `void(std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder>)`. Each request is
   dispatched to a bounded worker pool with a **deferred response**, so RESTinio's I/O threads never
@@ -824,7 +827,10 @@ Internally:
 The `/download` fallback (#39147): answers "what are agent N's groups?" asynchronously from the local
 wazuh-db when its `AgentRegistry` entry is missing or expired. Built in `startHttpServer()`; the
 `/download` route's `RegistryAgentGroupSource` holds it (until the route table goes, phase 4) and the
-facade keeps a second reference only to `stop()` it in phase 1b. It owns its **own** `WazuhDBClient`
+facade keeps a second reference only to `stop()` it in phase 0, **before** `stopAccepting()`: a granted
+waiter starts its transfer from the lookup's worker, on the HTTP worker pool that phase 1 joins and
+frees, so every in-flight lookup must complete while that pool is alive (`resetHttpServerStack()`
+stops it first for the same reason). It owns its **own** `WazuhDBClient`
 (`kLookupConnections` = 2, the `/control` round-trip and request deadlines), so a burst of downloads never
 queues behind `/control`. Outcomes: `Groups` (wazuh-db order; a row with no groups is `{"default"}`),
 `NoRow` (never a membership, never an entry; it invalidates an existing one), `Unavailable` (wazuh-db
