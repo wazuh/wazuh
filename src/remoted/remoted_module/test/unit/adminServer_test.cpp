@@ -33,6 +33,7 @@
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -41,6 +42,8 @@
 #include <string>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/un.h>
 #include <unistd.h>
 #include <vector>
 
@@ -326,7 +329,11 @@ TEST_F(AdminServerTest, GetMetricsDumpsTheModuleFamilies)
                              "remoted.download.started",
                              "remoted.download.bytes.total",
                              "remoted.control.no_row",
-                             "remoted.download.no_row"})
+                             "remoted.download.no_row",
+                             "remoted.control.registry.push.updated",
+                             "remoted.control.registry.push.invalidated",
+                             "remoted.control.registry.push.skipped",
+                             "remoted.control.registry.push.rejected"})
     {
         EXPECT_NE(response->body.find(name), std::string::npos) << name;
     }
@@ -368,12 +375,140 @@ TEST_F(AdminServerTest, UnknownRouteAnswers404AndWrongVerb405)
     ASSERT_TRUE(wrongVerbTls) << "POST /tls failed: " << httplib::to_string(wrongVerbTls.error());
     EXPECT_EQ(wrongVerbTls->status, 405);
     EXPECT_EQ(wrongVerbTls->get_header_value("Allow"), "GET");
+
+    // The membership publication route is POST-only, the other way round.
+    const auto wrongVerbGroups = client->Get("/_internal/agents/groups");
+    ASSERT_TRUE(wrongVerbGroups) << "GET /_internal/agents/groups failed: "
+                                 << httplib::to_string(wrongVerbGroups.error());
+    EXPECT_EQ(wrongVerbGroups->status, 405);
+    EXPECT_EQ(wrongVerbGroups->get_header_value("Allow"), "POST");
 }
 
-// GET /tls (issue #39320): the served certificate and the CA bundle, as the issue's document. The
-// exact shape is tlsInventory_test.cpp's; over the socket this pins that the route serves the
-// listener the facade started (its configured paths, a self-consistent clock) and the bundle
-// /cacerts would hand out, with no threshold verdicts anywhere.
+namespace
+{
+    /// One metric's value from the admin socket's GET /metrics dump ({"metrics":[{"name":...,
+    /// "value":...}]}); 0 when absent. The facade is a process-lifetime singleton whose metrics
+    /// manager is never reset (totals survive restart cycles on purpose), so the cases below
+    /// assert DELTAS across their own requests, never absolute totals.
+    double metricValue(httplib::Client& client, const std::string& name)
+    {
+        const auto response = client.Get("/metrics");
+        if (!response || response->status != 200)
+        {
+            ADD_FAILURE() << "GET /metrics failed";
+            return -1;
+        }
+        const auto document = nlohmann::json::parse(response->body, nullptr, false);
+        if (document.is_object() && document.contains("metrics"))
+        {
+            for (const auto& metric : document.at("metrics"))
+            {
+                if (metric.value("name", "") == name && metric.contains("value"))
+                {
+                    return metric.at("value").get<double>();
+                }
+            }
+        }
+        return 0;
+    }
+
+    /// Sends only a request HEAD declaring `contentLength` body bytes, never the body, and returns
+    /// the status the server answers (0 on a transport failure). The way to observe a 413 decided
+    /// at headers-complete: a client that also wrote the body would race the server's close and
+    /// take a SIGPIPE, which kills the test binary (httplib does not suppress it on a UDS socket).
+    int postHeadOnly(const std::string& target, std::size_t contentLength)
+    {
+        const int fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+        if (fd < 0)
+        {
+            return 0;
+        }
+        sockaddr_un address {};
+        address.sun_family = AF_UNIX;
+        std::snprintf(address.sun_path, sizeof(address.sun_path), "%s", kAdminSocketPath);
+        int status = 0;
+        if (::connect(fd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == 0)
+        {
+            const std::string head = "POST " + target +
+                                     " HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n"
+                                     "Content-Length: " +
+                                     std::to_string(contentLength) + "\r\n\r\n";
+            timeval timeout {5, 0};
+            ::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+            if (::send(fd, head.data(), head.size(), MSG_NOSIGNAL) == static_cast<ssize_t>(head.size()))
+            {
+                char buffer[256] {};
+                const auto n = ::recv(fd, buffer, sizeof(buffer) - 1, 0);
+                // "HTTP/1.1 413 ..." -- the status is the second token of the status line.
+                if (n > 12 && std::string(buffer, 5) == "HTTP/")
+                {
+                    status = std::atoi(buffer + 9);
+                }
+            }
+        }
+        ::close(fd);
+        return status;
+    }
+} // namespace
+
+// POST /_internal/agents/groups is served over the socket: a freshly started module tracks no agent,
+// so a publication is accepted and every agent in it skipped -- nothing is created -- and the dump
+// counts them. The per-case contract (sets, invalidations, validation) is agentGroupsRoute_test.cpp's.
+TEST_F(AdminServerTest, PostAgentGroupsSkipsAgentsThisNodeNeverSaw)
+{
+    startModule();
+
+    const auto client = makeAdminClient();
+    const auto skippedBefore = metricValue(*client, "remoted.control.registry.push.skipped");
+    const auto response = client->Post(
+        "/_internal/agents/groups", R"({"set":[{"id":1,"groups":["default"]}],"invalidate":[2]})", "application/json");
+    ASSERT_TRUE(response) << "POST /_internal/agents/groups failed: " << httplib::to_string(response.error());
+    EXPECT_EQ(response->status, 200) << response->body;
+    const auto body = nlohmann::json::parse(response->body);
+    EXPECT_EQ(body.at("updated").get<int>(), 0);
+    EXPECT_EQ(body.at("invalidated").get<int>(), 0);
+    EXPECT_EQ(body.at("skipped").get<int>(), 2);
+
+    EXPECT_EQ(metricValue(*client, "remoted.control.registry.push.skipped") - skippedBefore, 2.0);
+    EXPECT_EQ(metricValue(*client, "remoted.control.registry.agents"), 0.0) << "a publication creates no entry";
+}
+
+TEST_F(AdminServerTest, PostAgentGroupsRejectsMalformedBodies)
+{
+    startModule();
+
+    const auto client = makeAdminClient();
+    const auto rejectedBefore = metricValue(*client, "remoted.control.registry.push.rejected");
+    const auto response = client->Post("/_internal/agents/groups", "not json", "application/json");
+    ASSERT_TRUE(response) << "POST /_internal/agents/groups failed: " << httplib::to_string(response.error());
+    EXPECT_EQ(response->status, 400);
+    EXPECT_EQ(nlohmann::json::parse(response->body).at("code").get<int>(), 400);
+
+    EXPECT_EQ(metricValue(*client, "remoted.control.registry.push.rejected") - rejectedBefore, 1.0);
+}
+
+// The route's own body cap (256 KiB, above the Control class's 64 KiB) is the transport's to enforce:
+// a larger declared body is a 413 before the handler runs, so the handler never counts it.
+TEST_F(AdminServerTest, PostAgentGroupsOverTheBodyCapIs413)
+{
+    startModule();
+
+    const auto client = makeAdminClient();
+    const auto rejectedBefore = metricValue(*client, "remoted.control.registry.push.rejected");
+    const auto skippedBefore = metricValue(*client, "remoted.control.registry.push.skipped");
+
+    EXPECT_EQ(postHeadOnly("/_internal/agents/groups", 300U * 1024U), 413);
+
+    // Under the cap but over the Control class default: accepted by the transport, parsed by the route.
+    const std::string padded = R"({"invalidate":[1],"pad":")" + std::string(100U * 1024U, 'x') + R"("})";
+    const auto accepted = client->Post("/_internal/agents/groups", padded, "application/json");
+    ASSERT_TRUE(accepted) << "POST /_internal/agents/groups failed: " << httplib::to_string(accepted.error());
+    EXPECT_EQ(accepted->status, 200) << accepted->body;
+
+    EXPECT_EQ(metricValue(*client, "remoted.control.registry.push.rejected") - rejectedBefore, 0.0);
+    EXPECT_EQ(metricValue(*client, "remoted.control.registry.push.skipped") - skippedBefore, 1.0);
+}
+
 TEST_F(AdminServerTest, GetTlsDescribesTheListenerAndTheCaBundle)
 {
     startModule(/*enrollUsePassword=*/false, /*enrollmentEnabled=*/true, /*serveOwnCertificateAsCa=*/true);
