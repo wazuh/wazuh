@@ -836,9 +836,7 @@ cJSON *wm_sca_dump(const wm_sca_t * data) {
     // Database synchronization values
     cJSON * synchronization = cJSON_CreateObject();
     cJSON_AddStringToObject(synchronization, "enabled", data->sync.enable_synchronization ? "yes" : "no");
-    cJSON_AddNumberToObject(synchronization, "sync_end_delay", data->sync.sync_end_delay);
     cJSON_AddNumberToObject(synchronization, "interval", data->sync.sync_interval);
-    cJSON_AddNumberToObject(synchronization, "max_eps", data->sync.sync_max_eps);
     cJSON_AddItemToObject(wm_wd, "synchronization", synchronization);
 
     cJSON_AddItemToObject(root,"sca",wm_wd);

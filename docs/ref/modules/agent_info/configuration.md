@@ -45,42 +45,6 @@ Enables or disables the module coordination and synchronization features.
 - **Parent:** `<synchronization>`
 - **Note:** Controls whether the module participates in coordination with other modules
 
-### sync_end_delay (synchronization)
-
-Delay before sending the synchronization end message.
-
-- **Default value:** `1s`
-- **Allowed values:** Time string with suffix: `s` (seconds), `m` (minutes), `h` (hours), `d` (days)
-- **Parent:** `<synchronization>`
-- **Note:** Allows buffering before signaling completion
-
-### response_timeout (synchronization)
-
-Timeout to wait for a response from other modules during coordination.
-
-- **Default value:** `30s`
-- **Allowed values:** Time string with suffix: `s` (seconds), `m` (minutes), `h` (hours), `d` (days)
-- **Parent:** `<synchronization>`
-- **Note:** Controls how long to wait for coordination responses
-
-### retries (synchronization)
-
-Number of retry attempts when a coordination command fails.
-
-- **Default value:** `5`
-- **Allowed values:** Positive integer
-- **Parent:** `<synchronization>`
-- **Note:** Prevents transient failures from blocking synchronization
-
-### max_eps (synchronization)
-
-Maximum events per second to send during synchronization.
-
-- **Default value:** `50`
-- **Allowed values:** Positive integer
-- **Parent:** `<synchronization>`
-- **Note:** Rate limiting prevents overwhelming the receiver during bulk updates
-
 ---
 
 ## Configuration Examples
@@ -95,10 +59,6 @@ Standard agent info settings for most deployments:
   <integrity_interval>86400</integrity_interval>
   <synchronization>
     <enabled>yes</enabled>
-    <sync_end_delay>1s</sync_end_delay>
-    <response_timeout>30s</response_timeout>
-    <retries>5</retries>
-    <max_eps>50</max_eps>
   </synchronization>
 </agent-info>
 ```
@@ -111,13 +71,6 @@ Collect metadata more frequently for dynamic environments:
 <agent-info>
   <interval>30</interval>
   <integrity_interval>3600</integrity_interval>
-  <synchronization>
-    <enabled>yes</enabled>
-    <sync_end_delay>1s</sync_end_delay>
-    <response_timeout>30s</response_timeout>
-    <retries>5</retries>
-    <max_eps>100</max_eps>
-  </synchronization>
 </agent-info>
 ```
 
@@ -129,31 +82,6 @@ Reduce scanning frequency to minimize resource usage:
 <agent-info>
   <interval>300</interval>
   <integrity_interval>86400</integrity_interval>
-  <synchronization>
-    <enabled>yes</enabled>
-    <sync_end_delay>2s</sync_end_delay>
-    <response_timeout>60s</response_timeout>
-    <retries>3</retries>
-    <max_eps>25</max_eps>
-  </synchronization>
-</agent-info>
-```
-
-### Unreliable Networks
-
-Adjust timeouts and retries for networks with high latency or packet loss:
-
-```xml
-<agent-info>
-  <interval>60</interval>
-  <integrity_interval>86400</integrity_interval>
-  <synchronization>
-    <enabled>yes</enabled>
-    <sync_end_delay>5s</sync_end_delay>
-    <response_timeout>120s</response_timeout>
-    <retries>10</retries>
-    <max_eps>25</max_eps>
-  </synchronization>
 </agent-info>
 ```
 
@@ -201,20 +129,12 @@ The agent info module collects:
 
 When agent metadata changes (e.g., group assignment, label update):
 
-1. **Initiate sync:** Agent info module detects change
-2. **Notify peers:** Sends coordination messages to other modules
-3. **Wait for responses:** Collects acknowledgments within `response_timeout`
-4. **Retry on failure:** Retries up to `retries` times if responses fail
-5. **Complete sync:** Sends end message after `sync_end_delay`
-6. **Rate limiting:** Respects `max_eps` limit during bulk updates
+1. **Pause:** Pauses FIM, SCA and Syscollector and has them flush pending data
+2. **Version:** Reads each module's synchronization version and sets the new one on all of them
+3. **Synchronize:** Sends the changed metadata to the manager
+4. **Resume:** Resumes the paused modules
 
-### Rate Limiting
-
-The `max_eps` setting prevents synchronization storms:
-
-- Controls maximum events per second during sync
-- Prevents overwhelming the manager during mass updates
-- Useful when many agents synchronize simultaneously
+See [Architecture](architecture.md) for the full protocol.
 
 ---
 
@@ -274,17 +194,9 @@ tail -f /var/ossec/logs/ossec.log | grep agent-info
 
 ### Synchronization Failures
 
-**Check coordination timeouts:**
+**Check synchronization settings:**
 ```bash
 grep -A10 "<synchronization>" /var/ossec/etc/ossec.conf
-```
-
-**Increase timeout and retries:**
-```xml
-<synchronization>
-  <response_timeout>120s</response_timeout>
-  <retries>10</retries>
-</synchronization>
 ```
 
 ### High Resource Usage
@@ -292,13 +204,6 @@ grep -A10 "<synchronization>" /var/ossec/etc/ossec.conf
 **Reduce scan frequency:**
 ```xml
 <interval>300</interval>  <!-- 5 minutes -->
-```
-
-**Lower event rate during sync:**
-```xml
-<synchronization>
-  <max_eps>25</max_eps>
-</synchronization>
 ```
 
 ---

@@ -281,7 +281,6 @@ def test_syscollector_invalid_configurations(test_configuration, test_metadata, 
     '''
     field = test_metadata['field']
     attribute = test_metadata['attribute']
-    non_critical_fields = ('max_eps')
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     # Skip test if the field is hotfixes and the platform is not Windows.
@@ -294,7 +293,6 @@ def test_syscollector_invalid_configurations(test_configuration, test_metadata, 
     if field is not None:
 
         callbacks_options = {
-            'max_eps': patterns.CB_FIELDS_MAX_EPS,
             'interval': patterns.CB_FIELDS_INTERVAL,
             'all': patterns.CB_FIELDS_ALL.format(field)
         }
@@ -305,11 +303,7 @@ def test_syscollector_invalid_configurations(test_configuration, test_metadata, 
         assert log_monitor.callback_result
 
         log_monitor.start(callback=callbacks.generate_callback(patterns.CB_MODULE_STARTING), timeout=5)
-        # Check that the module has started if the field is not critical
-        if field in non_critical_fields:
-            assert log_monitor.callback_result
-        else:
-            assert not log_monitor.callback_result
+        assert not log_monitor.callback_result
     else:
         callback = f"ERROR: Invalid content for attribute '{attribute}' at module 'syscollector'."
         callback =  fr'{patterns.WMODULES_PREFIX}{callback}'

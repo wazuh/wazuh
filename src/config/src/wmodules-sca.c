@@ -81,8 +81,6 @@ static void parse_synchronization_section(wm_sca_t * sca, XML_NODE node)
 {
     const char *XML_DB_SYNC_ENABLED = "enabled";
     const char *XML_DB_SYNC_INTERVAL = "interval";
-    const char *XML_DB_SYNC_END_DELAY = "sync_end_delay";
-    const char *XML_DB_SYNC_MAX_EPS = "max_eps";
     const char *XML_DB_SYNC_INTEGRITY_INTERVAL = "integrity_interval";
 
     for (int i = 0; node[i]; ++i) {
@@ -101,23 +99,6 @@ static void parse_synchronization_section(wm_sca_t * sca, XML_NODE node)
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 sca->sync.sync_interval = (uint32_t) t;
-            }
-        } else if (strcmp(node[i]->element, XML_DB_SYNC_END_DELAY) == 0) {
-            long sync_end_delay = w_parse_time(node[i]->content);
-
-            if (sync_end_delay < 0 || (unsigned long)sync_end_delay > UINT32_MAX) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                sca->sync.sync_end_delay = (uint32_t) sync_end_delay;
-            }
-        } else if (strcmp(node[i]->element, XML_DB_SYNC_MAX_EPS) == 0) {
-            char * end;
-            const long value = strtol(node[i]->content, &end, 10);
-
-            if (value < 0 || value > 1000000 || *end) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                sca->sync.sync_max_eps = value;
             }
         } else if (strcmp(node[i]->element, XML_DB_SYNC_INTEGRITY_INTERVAL) == 0) {
             long integrity_interval = w_parse_time(node[i]->content);
@@ -161,8 +142,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
         // Database synchronization config values
         sca->sync.enable_synchronization = 1;
         sca->sync.sync_interval = 300;
-        sca->sync.sync_end_delay = 1;
-        sca->sync.sync_max_eps = 75;
         sca->sync.integrity_interval = 86400;
     }
 

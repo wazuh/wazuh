@@ -92,14 +92,6 @@ Time interval between database synchronization cycles.
 - **Allowed values:** Time format strings in seconds (e.g., `300s`, `600s`)
 - **Note:** Controls how frequently the agent synchronizes SCA state with the manager
 
-### synchronization/max_eps
-
-Maximum events per second for synchronization operations.
-
-- **Default value:** `75`
-- **Allowed values:** Positive integer
-- **Note:** Separate rate limit for synchronization events, independent of `max_eps`
-
 ### synchronization/integrity_interval
 
 Interval between integrity checks for automatic recovery.
@@ -203,7 +195,6 @@ Complete configuration including synchronization settings:
   <synchronization>
     <enabled>yes</enabled>
     <interval>300</interval>
-    <max_eps>75</max_eps>
     <integrity_interval>86400</integrity_interval>
   </synchronization>
 </sca>
@@ -222,7 +213,6 @@ Configuration for environments requiring frequent security assessments:
   <synchronization>
     <enabled>yes</enabled>
     <interval>180</interval>
-    <max_eps>150</max_eps>
     <integrity_interval>43200</integrity_interval>  <!-- 12 hours -->
   </synchronization>
 </sca>
@@ -241,7 +231,6 @@ Optimized configuration for systems with limited resources:
   <synchronization>
     <enabled>yes</enabled>
     <interval>600</interval>
-    <max_eps>25</max_eps>
     <integrity_interval>172800</integrity_interval>  <!-- 48 hours -->
   </synchronization>
 </sca>

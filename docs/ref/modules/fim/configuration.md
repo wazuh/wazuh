@@ -226,7 +226,7 @@ Controls the maximum number of FIM alert events sent to the manager per second. 
 
 - **Default value:** `50`
 - **Allowed values:** Integer `0`–`1000000`
-- **Note:** This is separate from `synchronization > max_eps`, which limits synchronization messages only
+- **Note:** Synchronization messages are not limited by this option
 
 ```xml
 <max_eps>50</max_eps>
@@ -418,7 +418,6 @@ Controls how the agent synchronizes its local FIM database with the manager to e
 <synchronization>
   <enabled>yes</enabled>
   <interval>300</interval>
-  <max_eps>75</max_eps>
   <integrity_interval>86400</integrity_interval>
 </synchronization>
 ```
@@ -429,7 +428,6 @@ Controls how the agent synchronizes its local FIM database with the manager to e
 |---|---|---|---|
 | `enabled` | `yes` | `yes`, `no` | Enable or disable FIM synchronization persistence. When disabled, FIM only generates stateless events. |
 | `interval` | `300` (5 minutes) | Any integer ≥ 1, with optional suffix `s`, `m`, `h`, `d` | How often the agent initiates a sync with the manager. |
-| `max_eps` | `75` | Integer `0`–`1000000` (`0` = unlimited) | Maximum synchronization messages per second. |
 | `integrity_interval` | `86400` (24h)| Any integer ≥ 1, with optional suffix `s`, `m`, `h`, `d` | How often the agent performs a full integrity validation by comparing checksums with the manager. |
 
 **Note:** Database files are stored at fixed paths: `queue/fim/db/fim.db` and `queue/fim/db/fim_sync.db`.
@@ -558,9 +556,6 @@ Refer to the internal options documentation for a complete list of available tun
   <nodiff>/etc/ssl/private.key</nodiff>
   <process_priority>10</process_priority>
   <max_eps>50</max_eps>
-  <synchronization>
-    <max_eps>75</max_eps>
-  </synchronization>
 </syscheck>
 ```
 
@@ -581,9 +576,6 @@ Refer to the internal options documentation for a complete list of available tun
   <windows_audit_interval>300</windows_audit_interval>
   <process_priority>10</process_priority>
   <max_eps>50</max_eps>
-  <synchronization>
-    <max_eps>75</max_eps>
-  </synchronization>
 </syscheck>
 ```
 
@@ -598,9 +590,6 @@ Refer to the internal options documentation for a complete list of available tun
   <ignore type="sregex">.log$|.swp$</ignore>
   <process_priority>10</process_priority>
   <max_eps>50</max_eps>
-  <synchronization>
-    <max_eps>75</max_eps>
-  </synchronization>
 </syscheck>
 ```
 
@@ -622,7 +611,6 @@ For systems with high file change rates (CI/CD nodes, busy web servers):
   <synchronization>
     <enabled>yes</enabled>
     <interval>60</interval>
-    <max_eps>500</max_eps>
     <integrity_interval>43200</integrity_interval>  <!-- Integrity check every 12 hours -->
   </synchronization>
 </syscheck>
@@ -666,7 +654,6 @@ For environments that require full audit trails on critical configuration files:
   <synchronization>
     <enabled>yes</enabled>
     <interval>5m</interval>
-    <max_eps>75</max_eps>
     <integrity_interval>86400</integrity_interval>
   </synchronization>
 </syscheck>

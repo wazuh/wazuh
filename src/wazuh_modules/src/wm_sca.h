@@ -29,8 +29,6 @@ typedef struct wm_sca_policy_t {
 typedef struct wm_sca_db_sync_flags_t {
     unsigned int enable_synchronization:1;  // Enable database synchronization
     uint32_t sync_interval;                 // Synchronization interval
-    uint32_t sync_end_delay;                // Delay for synchronization end message
-    long sync_max_eps;                      // Maximum events per second for synchronization messages.
     uint32_t integrity_interval;            // Integrity check interval (0 = disabled)
 } wm_sca_db_sync_flags_t;
 

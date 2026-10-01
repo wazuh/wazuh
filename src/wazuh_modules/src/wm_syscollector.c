@@ -947,8 +947,6 @@ cJSON* wm_sys_dump(const wm_sys_t* sys)
     cJSON* synchronization = cJSON_CreateObject();
     cJSON_AddStringToObject(synchronization, "enabled", sys->sync.enable_synchronization ? "yes" : "no");
     cJSON_AddNumberToObject(synchronization, "interval", sys->sync.sync_interval);
-    cJSON_AddNumberToObject(synchronization, "max_eps", sys->sync.sync_max_eps);
-    cJSON_AddNumberToObject(synchronization, "sync_end_delay", sys->sync.sync_end_delay);
     cJSON_AddNumberToObject(synchronization, "integrity_interval", sys->sync.integrity_interval);
 
     cJSON_AddItemToObject(wm_sys, "synchronization", synchronization);

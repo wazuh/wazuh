@@ -595,8 +595,6 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_string_equal(cJSON_GetStringValue(enabled), "yes");
     cJSON *interval = cJSON_GetObjectItem(synchronization, "interval");
     assert_int_equal(interval->valueint, 300);
-    cJSON *sync_max_eps = cJSON_GetObjectItem(synchronization, "max_eps");
-    assert_int_equal(sync_max_eps->valueint, 75);
 }
 #endif
 
