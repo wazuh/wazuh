@@ -611,6 +611,26 @@ namespace
             std::vector<std::string> m_ids;
     };
 
+    /// Releases the recorder when a test scope unwinds, so an early ASSERT_* return cannot leave
+    /// a flusher waiting in onBatch() while the queue's or a future's destructor joins its thread.
+    /// Declare it after the queue and the futures so it is destroyed first.
+    class ReleaseOnExit
+    {
+        public:
+            explicit ReleaseOnExit(BlockingBatchRecorder& recorder)
+                : m_recorder(recorder)
+            {
+            }
+
+            ~ReleaseOnExit()
+            {
+                m_recorder.release();
+            }
+
+        private:
+            BlockingBatchRecorder& m_recorder;
+    };
+
     // Longer than the queue's 500 ms flush interval, so the background thread has woken up.
     constexpr std::chrono::milliseconds BACKGROUND_FLUSH_WAIT {800};
 
@@ -643,12 +663,14 @@ TEST(PersistentQueueTest, SyncFlushWhileBackgroundFlushIsWritingKeepsNewSubmits)
 
     {
         PersistentQueue queue(":memory:", logger, mockStorage);
+        std::future<void> sync;
+        ReleaseOnExit releaseOnExit(recorder);
 
         queue.submit("a1", "idx", "{}", Operation::CREATE, 1);
         ASSERT_TRUE(recorder.waitBlocked(FLUSH_START_TIMEOUT)) << "The background thread never wrote.";
 
         queue.submit("b1", "idx", "{}", Operation::CREATE, 1);
-        auto sync = std::async(std::launch::async, [&queue]
+        sync = std::async(std::launch::async, [&queue]
         {
             t_isSyncThread = true;
             queue.fetchAndMarkForSync();
@@ -688,6 +710,7 @@ TEST(PersistentQueueTest, BackgroundFlushWhileSyncFlushIsWritingKeepsNewSubmits)
         // takes the item first, the sync finds nothing to write and returns, so submit another
         // item and sync again.
         std::future<void> sync;
+        ReleaseOnExit releaseOnExit(recorder);
         bool syncIsWriting = false;
 
         for (int attempt = 1; attempt <= MAX_SYNC_ATTEMPTS && !syncIsWriting; ++attempt)
