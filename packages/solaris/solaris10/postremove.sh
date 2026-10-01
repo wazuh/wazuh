@@ -9,3 +9,5 @@ fi
 if getent group wazuh > /dev/null 2>&1; then
   groupdel wazuh
 fi
+
+rm -rf /var/ossec
