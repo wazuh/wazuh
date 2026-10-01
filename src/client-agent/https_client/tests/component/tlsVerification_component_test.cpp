@@ -293,7 +293,7 @@ namespace
 
 TEST(TlsVerificationTest, FullVerificationAgainstAMatchingCaCompletesTheHandshake)
 {
-    constexpr uint16_t port = 44857;
+    constexpr uint16_t port = 24857;
     EVP_PKEY* key = nullptr;
     X509* cert = nullptr;
     makeSelfSigned(&key, &cert);
@@ -318,7 +318,7 @@ TEST(TlsVerificationTest, FullVerificationAgainstAMatchingCaCompletesTheHandshak
 
 TEST(TlsVerificationTest, FullVerificationRejectsAnUntrustedCertificate)
 {
-    constexpr uint16_t port = 44858;
+    constexpr uint16_t port = 24858;
     // The server presents cert A; the client is told to trust an unrelated
     // cert B as its only CA. Full verification must fail the handshake --
     // proving the positive test is not passing with verification disabled.
@@ -361,7 +361,7 @@ TEST(TlsVerificationTest, FullVerificationRejectsAnUntrustedCertificate)
 // this, since the leaf's signature only verifies against its own key.
 TEST(TlsVerificationTest, FullVerificationRejectsASelfSignedLeafWithTheGenuineCaAppended)
 {
-    constexpr uint16_t port = 44861;
+    constexpr uint16_t port = 24861;
     EVP_PKEY* caKey = nullptr;
     X509* caCert = nullptr;
     makeSelfSigned(&caKey, &caCert);
@@ -401,7 +401,7 @@ TEST(TlsVerificationTest, FullVerificationRejectsASelfSignedLeafWithTheGenuineCa
 // signature chain alone must not be sufficient.
 TEST(TlsVerificationTest, FullVerificationRejectsACaSignedCertForTheWrongHostname)
 {
-    constexpr uint16_t port = 44862;
+    constexpr uint16_t port = 24862;
     EVP_PKEY* caKey = nullptr;
     X509* caCert = nullptr;
     makeSelfSigned(&caKey, &caCert);
@@ -444,7 +444,7 @@ TEST(TlsVerificationTest, FullVerificationRejectsACaSignedCertForTheWrongHostnam
 // is still in the future.
 TEST(TlsVerificationTest, FullVerificationRejectsACertificateNotYetValid)
 {
-    constexpr uint16_t port = 44863;
+    constexpr uint16_t port = 24863;
     EVP_PKEY* caKey = nullptr;
     X509* caCert = nullptr;
     makeSelfSigned(&caKey, &caCert);
@@ -479,7 +479,7 @@ TEST(TlsVerificationTest, FullVerificationRejectsACertificateNotYetValid)
 // As above, isolating the opposite date failure: a leaf whose notAfter has already passed.
 TEST(TlsVerificationTest, FullVerificationRejectsAnExpiredCertificate)
 {
-    constexpr uint16_t port = 44864;
+    constexpr uint16_t port = 24864;
     EVP_PKEY* caKey = nullptr;
     X509* caCert = nullptr;
     makeSelfSigned(&caKey, &caCert);
@@ -518,7 +518,7 @@ TEST(TlsVerificationTest, FullVerificationRejectsAnExpiredCertificate)
 
 TEST(TlsVerificationTest, SystemVerificationAgainstAnOsTrustedCaCompletesTheHandshake)
 {
-    constexpr uint16_t port = 44859;
+    constexpr uint16_t port = 24859;
     EVP_PKEY* key = nullptr;
     X509* cert = nullptr;
     makeSelfSigned(&key, &cert);
@@ -547,7 +547,7 @@ TEST(TlsVerificationTest, SystemVerificationAgainstAnOsTrustedCaCompletesTheHand
 
 TEST(TlsVerificationTest, SystemVerificationRejectsACertificateNotInTheOsBundle)
 {
-    constexpr uint16_t port = 44860;
+    constexpr uint16_t port = 24860;
     // Same shape as FullVerificationRejectsAnUntrustedCertificate: the server
     // presents cert A, but the "OS bundle" the agent is told to trust only has
     // unrelated cert B -- system must fail closed exactly like full does.
@@ -588,7 +588,7 @@ TEST(TlsVerificationTest, SystemVerificationRejectsACertificateNotInTheOsBundle)
 // (one warning, no operator action) instead of leaving the connection unverified or failing.
 TEST(TlsVerificationTest, SystemVerificationFallsBackToTheLocalAnchorWhenTheOsBundleDoesNotVerify)
 {
-    constexpr uint16_t port = 44863;
+    constexpr uint16_t port = 24863;
     EVP_PKEY* serverKey = nullptr;
     X509* serverCert = nullptr;
     makeSelfSigned(&serverKey, &serverCert);
@@ -631,7 +631,7 @@ TEST(TlsVerificationTest, SystemVerificationFallsBackToTheLocalAnchorWhenTheOsBu
 // caller backs off and retries.
 TEST(TlsVerificationTest, SystemVerificationFailsWhenNeitherTheOsBundleNorTheFallbackAnchorVerify)
 {
-    constexpr uint16_t port = 44864;
+    constexpr uint16_t port = 24864;
     EVP_PKEY* serverKey = nullptr;
     X509* serverCert = nullptr;
     makeSelfSigned(&serverKey, &serverCert);
@@ -679,7 +679,7 @@ TEST(TlsVerificationTest, SystemVerificationFailsWhenNeitherTheOsBundleNorTheFal
 // way an admin's corrupted/partially-written AGENT_ANCHOR_CA would fail in production.
 TEST(TlsVerificationTest, SystemVerificationFailsClosedWhenTheFallbackAnchorFileIsCorrupt)
 {
-    constexpr uint16_t port = 44869;
+    constexpr uint16_t port = 24869;
     EVP_PKEY* serverKey = nullptr;
     X509* serverCert = nullptr;
     makeSelfSigned(&serverKey, &serverCert);
@@ -742,7 +742,7 @@ TEST(TlsVerificationTest, SystemVerificationFailsClosedWhenTheFallbackAnchorFile
 // limitation.
 TEST(TlsVerificationTest, SystemVerificationFallsBackWhenTheUntrustedCaIsAnIntermediateNotTheLeaf)
 {
-    constexpr uint16_t port = 44865;
+    constexpr uint16_t port = 24865;
 
     // The intermediate CA that actually signs the leaf below -- and the exact CA the
     // fallback anchor is configured to trust, further down. A distinct CN
