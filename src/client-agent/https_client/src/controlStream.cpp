@@ -295,7 +295,7 @@ OutcomeClass ControlStream::sendStartup(Waiter& waiter)
 
     const auto event = (result.outcome == OutcomeClass::Ok)
                        ? ControlStateMachine::Event::StartupAccepted
-                       : eventFor(result.outcome);
+                       : eventFor(result);
     const auto effects = m_machine.onEvent(event);
     applyEffects(effects, result.response.body);
 
@@ -346,7 +346,7 @@ OutcomeClass ControlStream::sendNotify(Waiter& waiter)
     const auto result = m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter,
                                       m_config.controlMaxAttempts);
     updateConnectionInfo(result.response);
-    const auto effects = m_machine.onEvent(eventFor(result.outcome));
+    const auto effects = m_machine.onEvent(eventFor(result));
     applyEffects(effects, {});
 
     if (result.outcome == OutcomeClass::Ok)
@@ -890,8 +890,10 @@ void ControlStream::updateConnectionInfo(const HttpResponse& response)
     m_lastCertVerificationFailed = isCertificateVerificationFailure(response);
 }
 
-ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const
+ControlStateMachine::Event ControlStream::eventFor(const RetrySender::Result& result) const
 {
+    const OutcomeClass outcome = result.outcome;
+
     if (outcome == OutcomeClass::Ok)
     {
         return ControlStateMachine::Event::NotifyOk;
@@ -899,10 +901,10 @@ ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const
 
     if (outcome == OutcomeClass::AuthFail)
     {
-        // Since #39064 only `unknown_agent` costs the agent its identity, and the AuthGate is where
-        // that decision is made (RetrySender::send reads the class off the body). So the gate, not
-        // the status, is what says whether this 401 was fatal: OutcomeClass::AuthFail is still
-        // "a 401 was observed" for all eight classes.
+        // Since #39064 only `unknown_agent` costs the agent its identity (RetrySender::send reads the
+        // class off the body and latches the AuthGate for that class alone), so OutcomeClass::AuthFail
+        // by itself is still just "a 401 was observed" for all eight classes. What makes it fatal is
+        // that this 401 named unknown_agent, or that another stream already holds the gate paused.
         //
         // A 401 the gate did not latch is retryable -- the credential is intact and the very next
         // attempt may work -- and must NOT reach AuthError, which sends nothing (nextAction() is
@@ -911,7 +913,11 @@ ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const
         // lie when nothing was renewed. The net effect was a full re-registration and an
         // AUTH_ERROR -> REGISTERED flap on every retryable 401 -- the disruption #39064 set out to
         // remove for exactly these classes.
-        return m_authGate.paused() ? ControlStateMachine::Event::AuthFailed
+        //
+        // The class has to come from this 401 itself, not from re-reading the gate: when the consumer
+        // renews the key from inside on_reenroll_required, the gate can already be released here,
+        // and a dead credential would pass as a retryable 401 that never re-registers (#38329).
+        return (result.credentialRejected || m_authGate.paused()) ? ControlStateMachine::Event::AuthFailed
                : ControlStateMachine::Event::TransientFailure;
     }
 
