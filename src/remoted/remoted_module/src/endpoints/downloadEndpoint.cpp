@@ -10,6 +10,7 @@
  */
 
 #include "downloadEndpoint.hpp"
+#include "common/logThrottle.hpp"
 
 #include "loggerHelper.h"
 
@@ -294,6 +295,15 @@ namespace remoted::endpoints::download
         return remoted::http::HttpResponse::json(403, R"({"error":"Forbidden","code":403})");
     }
 
+    /// The answer when the agent's membership cannot be established right now (the local
+    /// wazuh-db did not answer the fallback lookup in time, or too many requests already wait on
+    /// lookups). The same body and status as /control's, and for the same reason: remoted is fine,
+    /// a dependency is not, and the agent's back-pressure class retries a 503.
+    remoted::http::HttpResponse unavailableResponse()
+    {
+        return remoted::http::HttpResponse::json(503, R"({"error":"dependency_unavailable","dependency":"wazuh-db"})");
+    }
+
     remoted::http::HttpResponse errorResponseFor(LocateError error)
     {
         if (error == LocateError::Internal)
@@ -520,58 +530,24 @@ namespace remoted::endpoints::download
     // Handler
     // -----------------------------------------------------------------------
 
-    remoted::endpoints::AuthenticatedHandler
-    makeHandler(ResourcePaths paths, DownloadMetrics metrics, std::shared_ptr<const IAgentGroupSource> groups)
+    namespace
     {
-        return [paths = std::move(paths), metrics = std::move(metrics), groups = std::move(groups)](
-                   std::shared_ptr<const remoted::auth::AuthenticatedRequest> request,
-                   std::shared_ptr<remoted::http::IHttpResponder> responder)
+        remoted::common::LogThrottle& unavailableThrottle()
         {
-            const auto parsed = parseRequest(request->payload.bytes());
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
 
-            if (const auto* error = std::get_if<RequestError>(&parsed))
-            {
-                // Client fault, fully attacker-controlled in volume: debug only.
-                LOGFN_DEBUG2(logFn(), "Rejected a /download request from agent '%s'.", request->agentId.c_str());
-                incRejected(metrics);
-                responder->send(errorResponseFor(*error));
-                return;
-            }
-
-            const auto& downloadRequest = std::get<DownloadRequest>(parsed);
-            const std::string agentId = request->agentId;
-
-            // Authorization, before ANY filesystem access. Config downloads are served only for the
-            // selector this agent's own groups produce -- the very string /control handed it as
-            // config_token, so the legitimate flow matches exactly and needs no extra round trip.
-            // WPK requests are deliberately not authorized here: their authority is the agent's
-            // pending upgrade task, which /control does not carry (see the header's note).
-            if (downloadRequest.type == ResourceType::Config)
-            {
-                const auto expected = (groups != nullptr) ? groups->expectedSelectorFor(agentId) : std::nullopt;
-
-                if (!expected.has_value() || *expected != downloadRequest.resourceId)
-                {
-                    // Debug only, like the parse rejection above: any enrolled agent can trigger
-                    // this at will, so a per-request warning would be a log-flood vector. The
-                    // operator-facing signal is remoted.download.denied.
-                    LOGFN_DEBUG2(logFn(),
-                                 "Denied a /download request from agent '%s' for resource '%s': not its own.",
-                                 agentId.c_str(),
-                                 downloadRequest.resourceId.c_str());
-                    incDenied(metrics);
-                    responder->send(forbiddenResponse());
-                    return;
-                }
-            }
-
+        // Everything after authorization: locate, open, stream. Runs on the HTTP worker for a fresh
+        // registry hit or a WPK, and on a lookup worker when the verdict needed wazuh-db --
+        // IHttpResponder is thread-safe and exactly-once, and the payload is already released.
+        void serve(const DownloadRequest& downloadRequest,
+                   const std::string& agentId,
+                   const ResourcePaths& paths,
+                   const DownloadMetrics& metrics,
+                   const std::shared_ptr<remoted::http::IHttpResponder>& responder)
+        {
             const auto located = locateResource(downloadRequest, paths);
-
-            // The body has served its purpose. Releasing here -- rather than letting the request die
-            // with the handler -- returns its in-flight byte reservation before a transfer that may
-            // run for minutes begins.
-            request->payload.release();
-            request.reset();
 
             // Opened BEFORE the response starts: once a 200 and a chunk are on the wire the status
             // can no longer be corrected, so a missing file has to be discovered here to be a clean
@@ -626,6 +602,89 @@ namespace remoted::endpoints::download
             response.source = std::move(*source);
 
             responder->stream(std::move(response));
+        }
+    } // namespace
+
+    remoted::endpoints::AuthenticatedHandler
+    makeHandler(ResourcePaths paths, DownloadMetrics metrics, std::shared_ptr<const IAgentGroupSource> groups)
+    {
+        return [paths = std::move(paths), metrics = std::move(metrics), groups = std::move(groups)](
+                   std::shared_ptr<const remoted::auth::AuthenticatedRequest> request,
+                   std::shared_ptr<remoted::http::IHttpResponder> responder)
+        {
+            auto parsed = parseRequest(request->payload.bytes());
+
+            if (const auto* error = std::get_if<RequestError>(&parsed))
+            {
+                // Client fault, fully attacker-controlled in volume: debug only.
+                LOGFN_DEBUG2(logFn(), "Rejected a /download request from agent '%s'.", request->agentId.c_str());
+                incRejected(metrics);
+                responder->send(errorResponseFor(*error));
+                return;
+            }
+
+            auto downloadRequest = std::get<DownloadRequest>(std::move(parsed));
+            std::string agentId = request->agentId;
+
+            // The body has served its purpose. Releasing it here -- before an authorization that may
+            // wait on wazuh-db and a transfer that may run for minutes -- returns its in-flight byte
+            // reservation at once. DownloadRequest owns its strings.
+            request->payload.release();
+            request.reset();
+
+            // WPK requests are deliberately not authorized here: their authority is the agent's
+            // pending upgrade task, which /control does not carry (see the header's note).
+            if (downloadRequest.type != ResourceType::Config)
+            {
+                serve(downloadRequest, agentId, paths, metrics, responder);
+                return;
+            }
+
+            // Authorization, before ANY filesystem access. A config download is served only for the
+            // selector this agent's own groups produce -- the string /control hands it as
+            // config_token. A fresh registry entry answers inline; anything else asks the local
+            // wazuh-db without holding this worker (the verdict may arrive on another thread).
+            auto onVerdict = [downloadRequest, agentId, paths, metrics, responder](GroupVerdict verdict)
+            {
+                if (verdict.kind == GroupVerdictKind::Unavailable)
+                {
+                    incUnavailable(metrics);
+                    if (const auto throttle = unavailableThrottle().record())
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "Cannot authorize /download: the agent's groups could not be read from "
+                                   "wazuh-manager-db in time (%llu request(s) in the last %d s). Agents are being "
+                                   "told to retry; check that wazuh-manager-db is running.",
+                                   throttle.total,
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
+                    responder->send(unavailableResponse());
+                    return;
+                }
+
+                if (verdict.kind != GroupVerdictKind::Selector || verdict.selector != downloadRequest.resourceId)
+                {
+                    // Debug only: any enrolled agent can trigger this at will, so a per-request
+                    // warning would be a log-flood vector. The operator-facing signal is
+                    // remoted.download.denied.
+                    LOGFN_DEBUG2(logFn(),
+                                 "Denied a /download request from agent '%s' for resource '%s': not its own.",
+                                 agentId.c_str(),
+                                 downloadRequest.resourceId.c_str());
+                    incDenied(metrics);
+                    responder->send(forbiddenResponse());
+                    return;
+                }
+
+                serve(downloadRequest, agentId, paths, metrics, responder);
+            };
+
+            if (groups == nullptr)
+            {
+                onVerdict(GroupVerdict {GroupVerdictKind::Deny, {}});
+                return;
+            }
+            groups->resolveSelector(agentId, std::move(onVerdict));
         };
     }
 

@@ -14,6 +14,7 @@
 #include "groupSelector.hpp"
 
 #include <charconv>
+#include <ctime>
 #include <string_view>
 #include <utility>
 
@@ -37,44 +38,65 @@ namespace remoted::control
         }
     } // namespace
 
-    RegistryAgentGroupSource::RegistryAgentGroupSource(std::shared_ptr<const AgentRegistry> registry)
+    RegistryAgentGroupSource::RegistryAgentGroupSource(std::shared_ptr<const AgentRegistry> registry,
+                                                       std::shared_ptr<RegistryLookup> lookup,
+                                                       uint32_t freshnessSec)
         : m_registry(std::move(registry))
+        , m_lookup(std::move(lookup))
+        , m_freshnessSec(freshnessSec)
     {
     }
 
-    std::optional<std::string> RegistryAgentGroupSource::expectedSelectorFor(const std::string& agentId) const
+    void RegistryAgentGroupSource::resolveSelector(const std::string& agentId,
+                                                   std::function<void(remoted::endpoints::GroupVerdict)> done) const
     {
-        if (m_registry == nullptr)
-        {
-            return std::nullopt;
-        }
+        using remoted::endpoints::GroupVerdict;
+        using remoted::endpoints::GroupVerdictKind;
 
         AgentId id = 0;
-        if (!parseAgentId(agentId, id))
+        if (m_registry == nullptr || !parseAgentId(agentId, id))
         {
-            return std::nullopt;
+            done(GroupVerdict {GroupVerdictKind::Deny, {}});
+            return;
         }
 
-        const auto entry = m_registry->get(id);
-        if (entry == nullptr)
+        const auto now = static_cast<uint64_t>(std::time(nullptr));
+
+        // An entry is not the same thing as a known membership: /control/shutdown mints one with no
+        // groups, an invalidation or a "no row" answer leaves groupsRefreshedAtSec at 0, and an old
+        // one may no longer be true. Only a fresh, established entry answers without asking
+        // wazuh-db -- and then it is the same two steps /control runs before a notify, from the same
+        // entry, so it matches the config_token it handed out. (An agent whose groups really are
+        // empty still gets "default": that membership WAS established.)
+        if (const auto entry = m_registry->get(id); entry && groupsFresh(*entry, now, m_freshnessSec))
         {
-            return std::nullopt;
+            done(GroupVerdict {GroupVerdictKind::Selector, makeConfigToken(toGroupsCsv(entry->groups))});
+            return;
         }
 
-        // An entry is not the same thing as a known membership. /control/shutdown creates one with
-        // no groups at all when it has never seen the agent (controlHandler.cpp handleShutdown),
-        // and groupsRefreshedAtSec is written ONLY by the two wazuh-db-backed paths -- startup and
-        // the notify refresh. Without this guard an agent could mint itself an empty entry with a
-        // shutdown and then be handed the "default" selector by makeConfigToken(""), which is
-        // exactly the fail-open this check exists to prevent. Note the distinction: an agent whose
-        // wdb groups really are empty still gets "default", because that refresh DID happen.
-        if (entry->groupsRefreshedAtSec == 0)
+        if (m_lookup == nullptr)
         {
-            return std::nullopt;
+            done(GroupVerdict {GroupVerdictKind::Deny, {}});
+            return;
         }
 
-        // Same two steps /control runs before answering a notify, in the same order, from the same
-        // entry: whatever it handed the agent as config_token is what this reproduces.
-        return makeConfigToken(toGroupsCsv(entry->groups));
+        m_lookup->lookup(
+            id,
+            now,
+            [done = std::move(done)](LookupOutcome outcome)
+            {
+                switch (outcome.kind)
+                {
+                    case LookupOutcome::Kind::Groups:
+                        done(GroupVerdict {GroupVerdictKind::Selector, makeConfigToken(toGroupsCsv(outcome.groups))});
+                        return;
+                    case LookupOutcome::Kind::NoRow:
+                        // No local row is never membership of "default" (S7).
+                        done(GroupVerdict {GroupVerdictKind::Deny, {}});
+                        return;
+                    case LookupOutcome::Kind::Unavailable:
+                    default: done(GroupVerdict {GroupVerdictKind::Unavailable, {}}); return;
+                }
+            });
     }
 } // namespace remoted::control

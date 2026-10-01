@@ -37,6 +37,7 @@
 #include "control/hashCache.hpp"
 #include "control/metrics.hpp"
 #include "control/registryAgentGroupSource.hpp"
+#include "control/registryLookup.hpp"
 #include "control/taskClient.hpp"
 #include "control/wazuhDBClient.hpp"
 #include "decoding/bodyDecoder.hpp"
@@ -327,6 +328,13 @@ public:
             // client stop so that its own stop() does not race with wdb-worker joins that touch
             // the same io_context runtime via the response send path.
             m_controlHandler.reset();
+            // The /download fallback: refuse new lookups and answer every waiting request (503)
+            // while the HTTP runtime is alive; the object itself goes with the route table.
+            if (m_registryLookup)
+            {
+                m_registryLookup->stop();
+                m_registryLookup.reset();
+            }
             m_scanVdHandler.reset();
             // /enroll has no async callback machinery of its own to race with a wdb-worker join
             // (unlike ControlHandler above) -- reset here anyway, alongside every other
@@ -600,21 +608,8 @@ private:
         // registerControlRegistryDiagnostics() documents for the pull metric.
         auto agentRegistry = std::make_shared<remoted::control::AgentRegistry>();
 
-        // resource_id is what the agent requests, but it is no longer taken on trust: a config
-        // download is served only when it equals the selector this agent's own groups produce --
-        // the same string /control handed it as config_token -- and anything else is 403. The
-        // groups come from the registry /control already maintains, so there is no wazuh-db round
-        // trip on this path. An agent with no registry entry is DENIED, not served (#38683).
-        // WPK requests are NOT authorized here: their authority is the pending upgrade task, which
-        // /control does not carry. What contains those remains the resource-id grammars plus
-        // O_NOFOLLOW, and the packages are signature-verified by the agent against wpk_root.pem.
-        m_authGateway->addAuthenticatedRoute(
-            *m_httpServer,
-            remoted::http::Method::Post,
-            "/download",
-            remoted::endpoints::download::makeHandler(
-                {}, m_downloadMetrics, std::make_shared<remoted::control::RegistryAgentGroupSource>(agentRegistry)),
-            remoted::http::ResponseMode::Streamable);
+        // POST /download is registered below, once controlConfig exists: its fallback lookup takes
+        // the wazuh-db socket, deadlines and the refresh interval from it.
 
         // /stateless takes the client's default response deadline (its target leaves the override
         // at 0), so that is what gets checked against the transport's request cap.
@@ -682,6 +677,32 @@ private:
         // carry over too -- desirable for observability.
         auto controlConfig = remoted::control::buildControlConfig(m_config);
 
+        // resource_id is what the agent requests, but it is not taken on trust: a config download
+        // is served only when it equals the selector this agent's own groups produce -- the same
+        // string /control hands it as config_token -- and anything else is 403 (#38683). A fresh
+        // registry entry answers with no wazuh-db round trip; a missing, expired or never
+        // established one is looked up in the local wazuh-db asynchronously (#39147): a row is
+        // served, no row is 403, a failed lookup is 503. WPK requests are NOT authorized here:
+        // their authority is the pending upgrade task, which /control does not carry. What
+        // contains those remains the resource-id grammars plus O_NOFOLLOW, and the packages are
+        // signature-verified by the agent against wpk_root.pem.
+        //
+        // The lookup is shared: the route's source holds it until phase 4 releases the route
+        // table (it must outlive any handler still inside lookup()); m_registryLookup is kept only
+        // so stop() phase 1b can answer every waiter while the HTTP runtime is still alive.
+        m_registryLookup =
+            std::make_shared<remoted::control::RegistryLookup>(agentRegistry, controlConfig, m_controlMetrics);
+        m_authGateway->addAuthenticatedRoute(
+            *m_httpServer,
+            remoted::http::Method::Post,
+            "/download",
+            remoted::endpoints::download::makeHandler(
+                {},
+                m_downloadMetrics,
+                std::make_shared<remoted::control::RegistryAgentGroupSource>(
+                    agentRegistry, m_registryLookup, controlConfig.groupsRefreshIntervalSec)),
+            remoted::http::ResponseMode::Streamable);
+
         // The CA generation an agent is told about on every notify (RF-3). Same weak server pointer
         // as /cacerts above, for the same two reasons: the handler must not keep the listener alive,
         // and after stop() resets m_httpServer the provider answers "no servable bundle" instead of
@@ -726,7 +747,8 @@ private:
                                                               controlConfig.wdbRequestConnections,
                                                               controlConfig.wdbRoundtripDeadlineMs,
                                                               controlConfig.wdbMaxQueueSize,
-                                                              m_controlMetrics),
+                                                              m_controlMetrics,
+                                                              controlConfig.wdbRequestDeadlineMs),
             std::make_shared<remoted::control::TaskClient>(controlConfig.taskSocketPath,
                                                            controlConfig.tmConcurrency,
                                                            controlConfig.tmDeadlineMs,
@@ -745,10 +767,12 @@ private:
 
         // Not a DeferredForwarder, so it takes the shape-agnostic check. The two deadlines add
         // up rather than overlap: past the group-refresh window getAgentGroups() runs first and
-        // gates the response. The wazuh-db write is fire-and-forget and is not in the budget.
+        // gates the response. Its bound is the end-to-end request deadline (queue wait and
+        // reconnection included), not the round trip alone. The wazuh-db write is
+        // fire-and-forget and is not in the budget.
         warnIfBudgetExceedsRequestTimeout("/control",
-                                          "control_wdb_roundtrip_deadline'/'control_tm_deadline",
-                                          static_cast<long long>(controlConfig.wdbRoundtripDeadlineMs) +
+                                          "control_wdb_request_deadline'/'control_tm_deadline",
+                                          static_cast<long long>(controlConfig.wdbRequestDeadlineMs) +
                                               controlConfig.tmDeadlineMs,
                                           static_cast<long long>(config.requestTimeoutSec) * 1000);
 
@@ -933,7 +957,7 @@ private:
         m_httpServer->start(config);
 
         registerPublicTransportDiagnostics();
-        registerControlRegistryDiagnostics(agentRegistry);
+        registerControlRegistryDiagnostics(agentRegistry, m_registryLookup);
     }
 
     /**
@@ -1194,11 +1218,13 @@ private:
      * behind it (the registry TTL and eviction cadence are compile-time constants -- see
      * controlConfig.hpp).
      */
-    void registerControlRegistryDiagnostics(const std::shared_ptr<remoted::control::AgentRegistry>& registry)
+    void registerControlRegistryDiagnostics(const std::shared_ptr<remoted::control::AgentRegistry>& registry,
+                                            const std::shared_ptr<remoted::control::RegistryLookup>& lookup)
     {
         {
             std::lock_guard<std::mutex> lock {m_controlDiagMutex};
             m_registryDiagTarget = registry;
+            m_lookupDiagTarget = lookup;
         }
         if (m_controlPullsRegistered)
         {
@@ -1216,6 +1242,19 @@ private:
             },
             "Agents currently tracked by the /control registry",
             "agents");
+
+        // wazuh-db queries the /download fallback issued (one per coalesced lookup, not per waiting
+        // request). Monotonic since the module started; reads 0 once the lookup is gone.
+        m_metricsManager->registerPullMetric(
+            "remoted.download.lookups",
+            [this]
+            {
+                std::lock_guard<std::mutex> lock {m_controlDiagMutex};
+                const auto target = m_lookupDiagTarget.lock();
+                return target ? target->stats().queries : 0U;
+            },
+            "wazuh-db queries issued by the /download fallback lookup",
+            "count");
     }
 
     /**
@@ -1747,6 +1786,11 @@ private:
         // thread and the wdb/task client workers) before startHttpServer() threw further down.
         // Reset it here so those threads join before the next retry constructs a fresh one.
         m_controlHandler.reset();
+        if (m_registryLookup)
+        {
+            m_registryLookup->stop();
+            m_registryLookup.reset();
+        }
         // ScanVdHandlerImpl is stateless (a synchronous passthrough of VD's admission), but the
         // next retry constructs a fresh one, so drop the old instance alongside its siblings.
         m_scanVdHandler.reset();
@@ -1846,6 +1890,7 @@ private:
     /// Same plumbing for the /control agent registry (see registerControlRegistryDiagnostics()).
     std::mutex m_controlDiagMutex;
     std::weak_ptr<remoted::control::AgentRegistry> m_registryDiagTarget;
+    std::weak_ptr<remoted::control::RegistryLookup> m_lookupDiagTarget;
     bool m_controlPullsRegistered {false};
     /// Same plumbing for the keystore's health (see registerKeystoreDiagnostics()).
     /// Weak target + guard for the authd queue pulls (same shape as the keystore ones below).
@@ -1905,6 +1950,9 @@ private:
     remoted::control::ControlMetrics m_controlMetrics {
         remoted::control::makeControlMetrics(*m_metricsManager)};       ///< /control counters.
     std::unique_ptr<remoted::control::ControlHandler> m_controlHandler; ///< Startup/notify/shutdown pipeline.
+    /// The /download fallback (#39147). Shared with the route's group source, which keeps it alive
+    /// until the route table goes; this reference exists so stop() phase 1b can drain it.
+    std::shared_ptr<remoted::control::RegistryLookup> m_registryLookup;
 
     // /scan/vd lifecycle: handles VD scan requests from agents. Metric struct on the facade for
     // the same reason as m_controlMetrics: a stable address across HTTP-server retries.

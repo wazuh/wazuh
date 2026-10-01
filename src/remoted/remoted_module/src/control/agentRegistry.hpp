@@ -14,6 +14,7 @@
 
 #include "controlTypes.hpp"
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -33,7 +34,20 @@ namespace remoted::control
         uint64_t lastActivitySec = 0;
         uint64_t createdAtSec = 0;
         bool hostPersisted = false;
+        /// Stamp of the last write to `groups`/`groupsRefreshedAtSec`, from the registry-wide
+        /// counter (AgentRegistry::nextGroupsSeq()); 0 = never written. It orders every writer of
+        /// the membership: a wazuh-db answer read before a newer write must not overwrite it.
+        uint64_t groupsSeq = 0;
     };
+
+    /// @brief Whether `entry`'s groups came from wazuh-db (or a membership push) less than
+    /// `intervalSec` ago. A never-established entry (groupsRefreshedAtSec == 0) is not fresh; a
+    /// wall clock stepping back makes the difference wrap, which reads as "expired" (one extra
+    /// lookup, never a stale authorization).
+    inline bool groupsFresh(const AgentEntry& entry, uint64_t nowSec, uint64_t intervalSec)
+    {
+        return entry.groupsRefreshedAtSec != 0 && nowSec - entry.groupsRefreshedAtSec < intervalSec;
+    }
 
     class AgentRegistry
     {
@@ -44,6 +58,38 @@ namespace remoted::control
         update(AgentId id, std::function<std::shared_ptr<AgentEntry>(std::shared_ptr<const AgentEntry>)> updater);
 
         void evictExpiredEntries(uint64_t ttlSec);
+
+        /// Outcome of a membership push for one agent.
+        enum class PushOutcome
+        {
+            Updated,     ///< An existing entry took the pushed groups.
+            Invalidated, ///< An existing entry is no longer an established membership.
+            Skipped      ///< No entry for the agent: nothing is created (the fallback covers it).
+        };
+
+        /// @brief Sets an existing entry's groups (wazuh-db order) as freshly established at
+        /// `nowSec`, stamping it. Activity, keepalive and host fields are left as they are. An
+        /// absent agent is skipped and leaves the skip mark mayStoreLookup() reads.
+        PushOutcome setGroups(AgentId id, std::vector<std::string> groups, uint64_t nowSec);
+
+        /// @brief Marks an existing entry's membership as not established (groupsRefreshedAtSec
+        /// = 0, groups kept), stamping it, so the next reader looks it up. Absent ⇒ skipped.
+        PushOutcome invalidateGroups(AgentId id);
+
+        /// @brief The counter as it is now. A caller about to query wazuh-db takes it BEFORE the
+        /// query and hands it to mayStoreLookup() when the answer arrives.
+        uint64_t groupsTicket() const;
+
+        /// @brief A new stamp, strictly larger than every ticket handed out so far. Call it only
+        /// from inside an update() updater, when the updater writes groups.
+        uint64_t nextGroupsSeq();
+
+        /// @brief Whether a wazuh-db answer whose query was issued at `ticket` may be written over
+        /// `current` (the value an update() updater receives). False when a newer groups write
+        /// stamped `current` after the ticket, and when a push skipped some absent agent after the
+        /// ticket while `current` holds no established membership (the push may have been this
+        /// agent's, and nothing recorded it).
+        bool mayStoreLookup(const std::shared_ptr<const AgentEntry>& current, uint64_t ticket) const;
 
         /// @brief Number of agents currently tracked, summed across the shards (each under its
         /// shared lock, so concurrent updates make this a best-effort snapshot, not a fence).
@@ -58,6 +104,11 @@ namespace remoted::control
         };
 
         std::array<Shard, 8> m_shards;
+        std::atomic<uint64_t> m_groupsSeq {0};
+        std::atomic<uint64_t> m_lastSkipSeq {0};
+
+        /// Records that a push skipped an absent agent, as the new stamp it takes.
+        void markSkipped();
 
         Shard& getShard(AgentId id)
         {
