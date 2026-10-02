@@ -194,6 +194,8 @@ namespace chrome
             std::string base64Decode(const std::string& input);
             /// @brief Checks if a string is in snake_case format.
             bool isSnakeCase(const std::string& s);
+            /// @brief Checks if a string is a plain locale name (letters, digits, '_' and '-' only), such as "en" or "pt_BR".
+            bool isValidLocaleName(const std::string& locale);
             /// @brief Localizes parameters for a Chrome extension.
             /// This method retrieves the locales for a Chrome extension and sets the current locale based on the
             /// default locale. It reads the messages file for the current locale and sets the extension's

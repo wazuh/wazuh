@@ -12,6 +12,8 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include "filesystemHelper.h"
+#include <filesystem>
+#include <fstream>
 
 class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
@@ -65,4 +67,106 @@ TEST(FirefoxAddonsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["visible"], true);
         }
     }
+}
+
+class FirefoxAddonsMalformedFilesTests : public ::testing::Test
+{
+    protected:
+        std::filesystem::path m_homePath;
+
+        void SetUp() override
+        {
+            m_homePath = std::filesystem::temp_directory_path() /
+                         ("firefox_addons_test_" + std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()));
+            std::filesystem::remove_all(m_homePath);
+        }
+
+        void TearDown() override
+        {
+            std::filesystem::remove_all(m_homePath);
+        }
+
+        void writeFile(const std::filesystem::path& relativePath, const std::string& content)
+        {
+            const auto fullPath = m_homePath / relativePath;
+            std::filesystem::create_directories(fullPath.parent_path());
+            std::ofstream file(fullPath);
+            file << content;
+        }
+};
+
+TEST_F(FirefoxAddonsMalformedFilesTests, UnexpectedFieldTypesDoNotDropOtherAddons)
+{
+    writeFile("bad-user/.mozilla/firefox/abc.default/extensions.json", R"({"addons": [
+        {"id": 5, "version": 1, "type": [], "sourceURI": 9, "location": 3, "path": false,
+         "defaultLocale": {"name": ["x"], "creator": {"n": 1}, "description": 2},
+         "softDisabled": "yes", "visible": "true", "active": 1, "applyBackgroundUpdates": "1"},
+        {"id": "typed@addon", "version": "1.0", "defaultLocale": "not an object",
+         "userDisabled": true, "visible": true, "active": true, "applyBackgroundUpdates": 1},
+        {"id": "soft@addon", "version": "1.0", "softDisabled": true, "userDisabled": false, "appDisabled": false},
+        "not an object"
+    ]})");
+    writeFile("good-user/.mozilla/firefox/def.default/extensions.json",
+              R"({"addons": [{"id": "good@addon", "version": "2.0", "defaultLocale": {"name": "Good"}}]})");
+
+    auto mockAddonsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
+    EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(m_homePath.string()));
+    EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::_)).WillRepeatedly(::testing::Return("1000"));
+
+    FirefoxAddonsProvider firefoxAddonsProvider(mockAddonsWrapper);
+    nlohmann::json extensionsJson;
+    ASSERT_NO_THROW(extensionsJson = firefoxAddonsProvider.collect());
+
+    ASSERT_EQ(extensionsJson.size(), static_cast<size_t>(5));
+
+    const auto findById = [&extensionsJson](const std::string & id) -> const nlohmann::json *
+    {
+        for (const auto& extension : extensionsJson)
+        {
+            if (extension["identifier"] == id)
+            {
+                return &extension;
+            }
+        }
+
+        return nullptr;
+    };
+
+    const auto* typed = findById("typed@addon");
+    ASSERT_NE(typed, nullptr);
+    EXPECT_EQ((*typed)["name"], "");
+    EXPECT_EQ((*typed)["version"], "1.0");
+    EXPECT_EQ((*typed)["disabled"], true);
+    EXPECT_EQ((*typed)["visible"], true);
+    EXPECT_EQ((*typed)["active"], true);
+    EXPECT_EQ((*typed)["autoupdate"], true);
+
+    const auto* soft = findById("soft@addon");
+    ASSERT_NE(soft, nullptr);
+    EXPECT_EQ((*soft)["disabled"], true);
+
+    const auto* good = findById("good@addon");
+    ASSERT_NE(good, nullptr);
+    EXPECT_EQ((*good)["name"], "Good");
+    EXPECT_EQ((*good)["version"], "2.0");
+
+    size_t emptyIdentifiers = 0;
+
+    for (const auto& extension : extensionsJson)
+    {
+        if (extension["identifier"] == "")
+        {
+            ++emptyIdentifiers;
+            EXPECT_EQ(extension["name"], "");
+            EXPECT_EQ(extension["version"], "");
+            EXPECT_EQ(extension["creator"], "");
+            EXPECT_EQ(extension["path"], "");
+            EXPECT_EQ(extension["disabled"], false);
+            EXPECT_EQ(extension["visible"], false);
+            EXPECT_EQ(extension["active"], false);
+            EXPECT_EQ(extension["autoupdate"], false);
+        }
+    }
+
+    EXPECT_EQ(emptyIdentifiers, static_cast<size_t>(2));
 }

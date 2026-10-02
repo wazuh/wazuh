@@ -11,13 +11,19 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <limits>
 #include <openssl/evp.h>
 #include <vector>
 #include <string>
 #include "stringHelper.h"
 #include "filesystemHelper.h"
+#include "json_field_helpers.hpp"
 
 #define MAX_PATH_LENGTH 4096
+
+using JsonFieldHelpers::getBoolField;
+using JsonFieldHelpers::getObjectField;
+using JsonFieldHelpers::getStringField;
 
 namespace chrome
 {
@@ -95,8 +101,21 @@ namespace chrome
         return has_underscore; // must contain at least one underscore
     }
 
+    bool ChromeExtensionsProvider::isValidLocaleName(const std::string& locale)
+    {
+        return !locale.empty() && std::all_of(locale.begin(), locale.end(), [](unsigned char c)
+        {
+            return std::isalnum(c) || c == '_' || c == '-';
+        });
+    }
+
     void ChromeExtensionsProvider::localizeParameters(ChromeExtension& extension)
     {
+        if (!isValidLocaleName(extension.default_locale))
+        {
+            return;
+        }
+
         const std::string& extensionPath = extension.path;
         std::string localesPath = Utils::joinPaths(extensionPath, EXTENSION_LOCALES_DIR);
         std::string defaultLocalePath = Utils::joinPaths(localesPath, extension.default_locale);
@@ -118,9 +137,26 @@ namespace chrome
             }
 
             std::ifstream messagesFile(messagesFilePath);
-            nlohmann::json messagesJson = nlohmann::json::parse(messagesFile);
-            extension.name = messagesJson.contains(nameKey) ? messagesJson[nameKey]["message"].get<std::string>() : extension.name;
-            extension.description = messagesJson.contains(descriptionKey) ? messagesJson[descriptionKey]["message"].get<std::string>() : extension.description;
+            const nlohmann::json messagesJson = nlohmann::json::parse(messagesFile, nullptr, false, true);
+
+            if (messagesJson.is_discarded())
+            {
+                return;
+            }
+
+            const auto localize = [&messagesJson](const std::string & key, std::string & field)
+            {
+                const auto& entry = getObjectField(messagesJson, key.c_str());
+                const auto it = entry.find("message");
+
+                if (it != entry.end() && it->is_string())
+                {
+                    field = it->get<std::string>();
+                }
+            };
+
+            localize(nameKey, extension.name);
+            localize(descriptionKey, extension.description);
         }
     }
 
@@ -150,7 +186,8 @@ namespace chrome
         // Build lookup table
         for (int i = 0; i < 64; i++) T[chars[i]] = i;
 
-        int val = 0, valb = -8;
+        unsigned int val = 0;
+        int valb = -8;
 
         for (unsigned char c : input)
         {
@@ -303,45 +340,42 @@ namespace chrome
 
     void ChromeExtensionsProvider::parseManifest(nlohmann::json& manifestJson, ChromeExtension& extension)
     {
-        extension.name = manifestJson.contains("name") ? manifestJson["name"].get<std::string>() : "";
-        extension.update_url = manifestJson.contains("update_url") ? manifestJson["update_url"].get<std::string>() : "";
-        extension.version = manifestJson.contains("version") ? manifestJson["version"].get<std::string>() : "";
-        extension.author = (manifestJson.contains("author") && manifestJson["author"].is_string()) ? manifestJson["author"].get<std::string>() : "";
-        extension.default_locale = manifestJson.contains("default_locale") ? manifestJson["default_locale"].get<std::string>() : "";
-        extension.current_locale = manifestJson.contains("current_locale") ? manifestJson["current_locale"].get<std::string>() : "";
-
-        if (manifestJson.contains("background") && manifestJson["background"].contains("persistent"))
-        {
-            bool isPersistent = manifestJson["background"]["persistent"].get<bool>();
-            extension.persistent = isPersistent ? "1" : "0";
-        }
-        else
-        {
-            extension.persistent = "0";
-        }
-
-        extension.description = manifestJson.contains("description") ? manifestJson["description"].get<std::string>() : "";
+        extension.name = getStringField(manifestJson, "name");
+        extension.update_url = getStringField(manifestJson, "update_url");
+        extension.version = getStringField(manifestJson, "version");
+        extension.author = getStringField(manifestJson, "author");
+        extension.default_locale = getStringField(manifestJson, "default_locale");
+        extension.current_locale = getStringField(manifestJson, "current_locale");
+        extension.persistent = getBoolField(getObjectField(manifestJson, "background"), "persistent", false) ? "1" : "0";
+        extension.description = getStringField(manifestJson, "description");
         extension.permissions = manifestJson.contains("permissions") ? jsonArrayToString(manifestJson["permissions"]) : "";
         extension.optional_permissions = manifestJson.contains("optional_permissions") ? jsonArrayToString(manifestJson["optional_permissions"]) : "";
-        extension.key = manifestJson.contains("key") ? manifestJson["key"].get<std::string>() : "";
+        extension.key = getStringField(manifestJson, "key");
 
         localizeParameters(extension);
     }
 
     void ChromeExtensionsProvider::parsePreferenceSettings(ChromeExtension& extension, const std::string& key, const nlohmann::json& value)
     {
-        extension.state = value.contains("state") ? std::to_string(value["state"].get<int>()) : "1";
+        const auto stateIt = value.find("state");
+        extension.state = "1";
 
-        if (value.contains("from_webstore"))
+        if (stateIt != value.end() && stateIt->is_number_integer())
         {
-            extension.from_webstore = value["from_webstore"].get<bool>() ? "1" : "0";
+            extension.state = std::to_string(stateIt->get<int>());
         }
-        else
+        else if (stateIt != value.end() && stateIt->is_number_float())
         {
-            extension.from_webstore = "0";
+            const auto state = stateIt->get<double>();
+
+            if (state >= std::numeric_limits<int>::min() && state <= std::numeric_limits<int>::max())
+            {
+                extension.state = std::to_string(static_cast<int>(state));
+            }
         }
 
-        extension.install_time = value.contains("first_install_time") ? value["first_install_time"].get<std::string>() : "";
+        extension.from_webstore = getBoolField(value, "from_webstore", false) ? "1" : "0";
+        extension.install_time = getStringField(value, "first_install_time");
         extension.install_timestamp = webkitToUnixTime(extension.install_time);
         extension.referenced_identifier = key;
     }
@@ -379,14 +413,14 @@ namespace chrome
             return ChromeExtensionList();
         }
 
-        const nlohmann::json& settings = preferencesJson["extensions"]["settings"];
+        const nlohmann::json& settings = getObjectField(getObjectField(preferencesJson, "extensions"), "settings");
         ChromeExtensionList extensions;
 
         for (const auto& item : settings.items())
         {
             if (item.value().contains("path"))
             {
-                std::string extensionPath = item.value()["path"];
+                std::string extensionPath = getStringField(item.value(), "path");
 
                 if (!Utils::isAbsolutePath(extensionPath))
                 {
@@ -394,7 +428,7 @@ namespace chrome
                             extensionPath.find("//") != std::string::npos ||
                             extensionPath.empty() || extensionPath.length() > MAX_PATH_LENGTH)
                     {
-                        return ChromeExtensionList();
+                        continue;
                     }
 
                     extensionPath = Utils::joinPaths(Utils::joinPaths(profilePath, EXTENSIONS_DIR), extensionPath);
@@ -412,27 +446,22 @@ namespace chrome
                     extension.referenced = std::to_string(1);
 
                     getCommonSettings(extension, manifestPath);
-                    parsePreferenceSettings(extension, item.key(), item.value());
-
-                    std::ifstream manifestFile(manifestPath);
-                    nlohmann::json manifestJson;
 
                     try
                     {
-                        manifestJson = nlohmann::json::parse(manifestFile);
-                    }
-                    catch (const nlohmann::json::parse_error& e)
-                    {
-                        continue; // Skip this extension and continue with next
+                        parsePreferenceSettings(extension, item.key(), item.value());
+
+                        std::ifstream manifestFile(manifestPath);
+                        nlohmann::json manifestJson = nlohmann::json::parse(manifestFile, nullptr, true, true);
+
+                        parseManifest(manifestJson, extension);
+
+                        extension.identifier = generateIdentifier(extension.key);
                     }
                     catch (const std::exception& e)
                     {
-                        continue;
+                        continue; // Skip this extension and continue with next
                     }
-
-                    parseManifest(manifestJson, extension);
-
-                    extension.identifier = generateIdentifier(extension.key);
 
                     extensions.emplace_back(extension);
                 }
@@ -485,13 +514,11 @@ namespace chrome
             return "";
         }
 
-        if (preferencesJson.contains("profile") && preferencesJson["profile"].contains("name"))
+        profileName = getStringField(getObjectField(preferencesJson, "profile"), "name");
+
+        if (profileName.empty())
         {
-            profileName = preferencesJson["profile"]["name"].get<std::string>();
-        }
-        else if (securePreferencesJson.contains("profile") && securePreferencesJson["profile"].contains("name"))
-        {
-            profileName = securePreferencesJson["profile"]["name"].get<std::string>();
+            profileName = getStringField(getObjectField(securePreferencesJson, "profile"), "name");
         }
 
         return profileName;
@@ -581,21 +608,19 @@ namespace chrome
 
                     getCommonSettings(extension, manifestPath);
 
-                    std::ifstream manifestFile(manifestPath);
-                    nlohmann::json manifestJson;
-
                     try
                     {
-                        manifestJson = nlohmann::json::parse(manifestFile);
+                        std::ifstream manifestFile(manifestPath);
+                        nlohmann::json manifestJson = nlohmann::json::parse(manifestFile, nullptr, true, true);
+
+                        parseManifest(manifestJson, extension);
+
+                        extension.identifier = generateIdentifier(extension.key);
                     }
-                    catch (const nlohmann::json::parse_error& e)
+                    catch (const std::exception& e)
                     {
-                        return ChromeExtensionList();
+                        continue; // Skip this extension and continue with next
                     }
-
-                    parseManifest(manifestJson, extension);
-
-                    extension.identifier = generateIdentifier(extension.key);
 
                     extensions.emplace_back(extension);
                 }
