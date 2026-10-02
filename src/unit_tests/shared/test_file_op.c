@@ -1522,6 +1522,238 @@ void test_w_stat64_network_path(void **state) {
     assert_int_equal(errno, EACCES);
 }
 
+// Reaches the reparse-point owner trust decision in file_op.c; admins is NULL to skip the live group lookup.
+struct w_win_admins;
+extern bool w_win_owner_trusted(PSID owner, PSID file_owner, PSID trusted[], const struct w_win_admins * admins);
+
+void test_w_win_owner_trusted(void **state) {
+    (void) state;
+    SID_IDENTIFIER_AUTHORITY nt = SECURITY_NT_AUTHORITY;
+    PSID system = NULL;
+    PSID administrators = NULL;
+    PSID trusted_installer = NULL;
+    PSID file_owner = NULL;
+    PSID other = NULL;
+    PSID trusted[3];
+
+    assert_true(AllocateAndInitializeSid(&nt, 1, SECURITY_LOCAL_SYSTEM_RID, 0, 0, 0, 0, 0, 0, 0, &system));
+    assert_true(AllocateAndInitializeSid(&nt, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0,
+                                         0, &administrators));
+    assert_true(AllocateAndInitializeSid(&nt, 6, 80, 956008885, 3418522649, 1831038044, 1853292631, 2271478464, 0,
+                                         0, &trusted_installer));
+    assert_true(AllocateAndInitializeSid(&nt, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_USERS, 0, 0, 0, 0, 0,
+                                         0, &file_owner));
+    assert_true(AllocateAndInitializeSid(&nt, 1, SECURITY_INTERACTIVE_RID, 0, 0, 0, 0, 0, 0, 0, &other));
+
+    trusted[0] = system;
+    trusted[1] = administrators;
+    trusted[2] = trusted_installer;
+
+    // A trusted account owns it.
+    assert_true(w_win_owner_trusted(system, file_owner, trusted, NULL));
+    assert_true(w_win_owner_trusted(administrators, file_owner, trusted, NULL));
+    assert_true(w_win_owner_trusted(trusted_installer, file_owner, trusted, NULL));
+
+    // The owner of the file finally read owns it.
+    assert_true(w_win_owner_trusted(file_owner, file_owner, trusted, NULL));
+
+    // Any other owner is rejected, and a missing owner or file owner is never trusted.
+    assert_false(w_win_owner_trusted(other, file_owner, trusted, NULL));
+    assert_false(w_win_owner_trusted(NULL, file_owner, trusted, NULL));
+    assert_false(w_win_owner_trusted(other, NULL, trusted, NULL));
+
+    FreeSid(system);
+    FreeSid(administrators);
+    FreeSid(trusted_installer);
+    FreeSid(file_owner);
+    FreeSid(other);
+}
+
+// Reaches the one-level reparse-target parser in file_op.c with crafted FSCTL_GET_REPARSE_POINT buffers.
+#ifndef IO_REPARSE_TAG_MOUNT_POINT
+#define IO_REPARSE_TAG_MOUNT_POINT 0xA0000003L
+#endif
+#ifndef IO_REPARSE_TAG_SYMLINK
+#define IO_REPARSE_TAG_SYMLINK 0xA000000CL
+#endif
+#ifndef SYMLINK_FLAG_RELATIVE
+#define SYMLINK_FLAG_RELATIVE 1
+#endif
+#ifndef MAXIMUM_REPARSE_DATA_BUFFER_SIZE
+#define MAXIMUM_REPARSE_DATA_BUFFER_SIZE (16 * 1024)
+#endif
+
+// This layout must match w_win_reparse_data_t in file_op.c.
+typedef struct {
+    DWORD ReparseTag;
+    WORD ReparseDataLength;
+    WORD Reserved;
+    union {
+        struct {
+            WORD SubstituteNameOffset;
+            WORD SubstituteNameLength;
+            WORD PrintNameOffset;
+            WORD PrintNameLength;
+            DWORD Flags;
+            WCHAR PathBuffer[1];
+        } SymbolicLinkReparseBuffer;
+        struct {
+            WORD SubstituteNameOffset;
+            WORD SubstituteNameLength;
+            WORD PrintNameOffset;
+            WORD PrintNameLength;
+            WCHAR PathBuffer[1];
+        } MountPointReparseBuffer;
+    } u;
+} test_reparse_data_t;
+
+extern int w_win_reparse_target(const test_reparse_data_t * data, DWORD got, wchar_t * path, size_t end);
+
+static DWORD test_build_reparse(BYTE * raw, int symlink, int relative, DWORD tag_override, const wchar_t * subst) {
+    test_reparse_data_t * d = (test_reparse_data_t *) raw;
+    size_t n = wcslen(subst);
+
+    d->Reserved = 0;
+
+    if (symlink) {
+        d->ReparseTag = tag_override ? tag_override : (DWORD) IO_REPARSE_TAG_SYMLINK;
+        d->u.SymbolicLinkReparseBuffer.SubstituteNameOffset = 0;
+        d->u.SymbolicLinkReparseBuffer.SubstituteNameLength = (WORD) (n * sizeof(WCHAR));
+        d->u.SymbolicLinkReparseBuffer.PrintNameOffset = (WORD) ((n + 1) * sizeof(WCHAR));
+        d->u.SymbolicLinkReparseBuffer.PrintNameLength = 0;
+        d->u.SymbolicLinkReparseBuffer.Flags = relative ? SYMLINK_FLAG_RELATIVE : 0;
+        wmemcpy(d->u.SymbolicLinkReparseBuffer.PathBuffer, subst, n + 1);
+        d->ReparseDataLength = (WORD) (12 + (n + 1) * sizeof(WCHAR));
+    } else {
+        d->ReparseTag = tag_override ? tag_override : (DWORD) IO_REPARSE_TAG_MOUNT_POINT;
+        d->u.MountPointReparseBuffer.SubstituteNameOffset = 0;
+        d->u.MountPointReparseBuffer.SubstituteNameLength = (WORD) (n * sizeof(WCHAR));
+        d->u.MountPointReparseBuffer.PrintNameOffset = (WORD) ((n + 1) * sizeof(WCHAR));
+        d->u.MountPointReparseBuffer.PrintNameLength = 0;
+        wmemcpy(d->u.MountPointReparseBuffer.PathBuffer, subst, n + 1);
+        d->ReparseDataLength = (WORD) (8 + (n + 1) * sizeof(WCHAR));
+    }
+
+    return 8 + d->ReparseDataLength;
+}
+
+void test_w_win_reparse_target(void **state) {
+    (void) state;
+    union {
+        test_reparse_data_t data;
+        BYTE bytes[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+    } buf;
+    BYTE * raw = buf.bytes;
+    wchar_t path[4096];
+    DWORD got;
+
+    // Absolute junction, link is the last component: the path becomes the target.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\C:\\ProgramData\\App\\switch\\logs");
+    wcscpy(path, L"C:\\logs\\app");
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), 1);
+    assert_true(wcscmp(path, L"C:\\ProgramData\\App\\switch\\logs") == 0);
+
+    // Components after the link are re-attached to the target.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\C:\\ProgramData\\App\\switch\\logs");
+    wcscpy(path, L"C:\\logs\\app\\sub\\x.log");
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(L"C:\\logs\\app")), 1);
+    assert_true(wcscmp(path, L"C:\\ProgramData\\App\\switch\\logs\\sub\\x.log") == 0);
+
+    // A relative symbolic link resolves against the directory holding the link.
+    got = test_build_reparse(raw, 1, 1, 0, L"..\\sibling");
+    wcscpy(path, L"C:\\a\\b\\link");
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), 1);
+    assert_true(wcscmp(path, L"C:\\a\\sibling") == 0);
+
+    // A network target, an unprefixed target and an alternate-data-stream name are all rejected.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\UNC\\server\\share");
+    wcscpy(path, L"C:\\link");
+    errno = 0;
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), -1);
+    assert_int_equal(errno, EPERM);
+
+    got = test_build_reparse(raw, 0, 0, 0, L"C:\\foo");
+    wcscpy(path, L"C:\\link");
+    errno = 0;
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), -1);
+    assert_int_equal(errno, EPERM);
+
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\C:\\a\\b:stream");
+    wcscpy(path, L"C:\\link");
+    errno = 0;
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), -1);
+    assert_int_equal(errno, EPERM);
+
+    // A Microsoft reparse point that keeps the name (deduplication) is left in place, not followed.
+    got = test_build_reparse(raw, 0, 0, 0x80000013, L"\\??\\C:\\x");
+    wcscpy(path, L"C:\\link");
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), 0);
+    assert_true(wcscmp(path, L"C:\\link") == 0);
+
+    // A malformed buffer whose name runs past its declared length is rejected.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\C:\\x");
+    ((test_reparse_data_t *) raw)->u.MountPointReparseBuffer.SubstituteNameLength =
+        ((test_reparse_data_t *) raw)->ReparseDataLength;
+    wcscpy(path, L"C:\\link");
+    errno = 0;
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), -1);
+    assert_int_equal(errno, EPERM);
+
+    // ".." in a target never climbs above the volume root.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\C:\\..\\..\\x");
+    wcscpy(path, L"C:\\link");
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), 1);
+    assert_true(wcscmp(path, L"C:\\x") == 0);
+
+    // A mounted-folder target names its volume by GUID.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\Volume{12345678-1234-1234-1234-123456789abc}\\data");
+    wcscpy(path, L"C:\\link");
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), 1);
+    assert_true(wcscmp(path, L"Volume{12345678-1234-1234-1234-123456789abc}\\data") == 0);
+
+    // An embedded NUL in the target name is rejected: it would truncate the name silently.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\C:\\abc");
+    ((test_reparse_data_t *) raw)->u.MountPointReparseBuffer.PathBuffer[7] = L'\0';
+    wcscpy(path, L"C:\\link");
+    errno = 0;
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), -1);
+    assert_int_equal(errno, EPERM);
+
+    // An odd (non-WCHAR-aligned) name offset is rejected.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\C:\\x");
+    ((test_reparse_data_t *) raw)->u.MountPointReparseBuffer.SubstituteNameOffset = 1;
+    wcscpy(path, L"C:\\link");
+    errno = 0;
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, got, path, wcslen(path)), -1);
+    assert_int_equal(errno, EPERM);
+
+    // A buffer shorter than the reparse header is rejected.
+    got = test_build_reparse(raw, 0, 0, 0, L"\\??\\C:\\x");
+    wcscpy(path, L"C:\\link");
+    errno = 0;
+    assert_int_equal(w_win_reparse_target((test_reparse_data_t *) raw, 4, path, wcslen(path)), -1);
+    assert_int_equal(errno, EPERM);
+}
+
+extern bool w_win_reparse_tag_is_plain(DWORD tag);
+
+void test_w_win_reparse_tag_is_plain(void **state) {
+    (void) state;
+
+    // Deduplication, WOF and cloud files keep the name: not a link.
+    assert_true(w_win_reparse_tag_is_plain(0x80000013));
+    assert_true(w_win_reparse_tag_is_plain(0x80000017));
+    assert_true(w_win_reparse_tag_is_plain(0x9000601A));
+
+    // Junctions and symbolic links redirect the name: a link to vet.
+    assert_false(w_win_reparse_tag_is_plain(IO_REPARSE_TAG_MOUNT_POINT));
+    assert_false(w_win_reparse_tag_is_plain(IO_REPARSE_TAG_SYMLINK));
+
+    // A non-Microsoft tag is never treated as plain.
+    assert_false(w_win_reparse_tag_is_plain(0x00000001));
+    assert_false(w_win_reparse_tag_is_plain(0x20000001));
+}
+
 #endif
 
 /* ===================== Tests for cldir_ex and cldir_ex_ignore ===================== */
@@ -2786,6 +3018,9 @@ int main(void) {
         cmocka_unit_test(test_w_stat_network_path),
         cmocka_unit_test(test_w_stat64_local_path),
         cmocka_unit_test(test_w_stat64_network_path),
+        cmocka_unit_test(test_w_win_owner_trusted),
+        cmocka_unit_test(test_w_win_reparse_target),
+        cmocka_unit_test(test_w_win_reparse_tag_is_plain),
 
 #endif
     };
