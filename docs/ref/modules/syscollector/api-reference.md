@@ -63,7 +63,7 @@ SyncModuleResult Syscollector::syncModule(Mode mode);
 - `mode`: Sync mode
 
 **Returns:**
-- `SyncModuleResult` whose `success` field is `true` if synchronization succeeded and `false` otherwise (a WARNING with the reason is logged)
+- `SyncModuleResult` whose `success` field is `true` if synchronization succeeded and `false` otherwise, including when it is skipped because the module is paused, stopping, flushing or running a DataClean
 
 **Usage Example:**
 ```cpp
