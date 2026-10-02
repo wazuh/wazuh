@@ -68,12 +68,15 @@ bool __wrap_check_ignore_and_restrict(const char *ignore_regex, const char *rest
 
 /* Helpers */
 
-/* Tab-indented continuation line of len bytes, not terminated by '\n' (last line of the file). */
-static char * build_last_line(size_t len) {
-    char *line = calloc(len + 1, sizeof(char));
+/* Tab-indented continuation line of len bytes, plus '\n' unless it is the unterminated last line of the file. */
+static char * build_cont_line(size_t len, bool newline) {
+    char *line = calloc(len + 2, sizeof(char));
     assert_non_null(line);
     memset(line, 'A', len);
     line[0] = '\t';
+    if (newline) {
+        line[len] = '\n';
+    }
     return line;
 }
 
@@ -85,7 +88,7 @@ static void expect_line(char *line) {
 }
 
 /* Reads "<header>\n<continuation>" and expects a single message of expected_len bytes. */
-static void run_reader(void *(*reader)(logreader *, int *, int), const char *header, size_t cont_len, size_t expected_len) {
+static void run_reader(void *(*reader)(logreader *, int *, int), const char *header, size_t cont_len, bool newline, size_t expected_len) {
     logreader lf = {0};
     lf.file = "test.log";
     lf.fp = (FILE *) 1;
@@ -93,7 +96,7 @@ static void run_reader(void *(*reader)(logreader *, int *, int), const char *hea
 
     char line1[OS_SIZE_256];
     snprintf(line1, sizeof(line1), "%s\n", header);
-    char *line2 = build_last_line(cont_len);
+    char *line2 = build_cont_line(cont_len, newline);
 
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) 0);
@@ -128,33 +131,48 @@ void test_read_mssql_log_last_line_fills_buffer(void **state) {
     size_t cont_len = OS_MAX_LOG_SIZE - strlen(MSSQL_HEADER) - 1;
 
     // No room left for the terminator: the continuation is dropped
-    run_reader(read_mssql_log, MSSQL_HEADER, cont_len, strlen(MSSQL_HEADER));
+    run_reader(read_mssql_log, MSSQL_HEADER, cont_len, false, strlen(MSSQL_HEADER));
 }
 
 void test_read_mssql_log_last_line_fits(void **state) {
     size_t cont_len = OS_MAX_LOG_SIZE - strlen(MSSQL_HEADER) - 2;
 
-    run_reader(read_mssql_log, MSSQL_HEADER, cont_len, strlen(MSSQL_HEADER) + 1 + cont_len);
+    run_reader(read_mssql_log, MSSQL_HEADER, cont_len, false, strlen(MSSQL_HEADER) + 1 + cont_len);
+}
+
+void test_read_mssql_log_newline_line_fits(void **state) {
+    size_t cont_len = OS_MAX_LOG_SIZE - strlen(MSSQL_HEADER) - 2;
+
+    // The '\n' is stripped before appending, so it must not count against the free space
+    run_reader(read_mssql_log, MSSQL_HEADER, cont_len, true, strlen(MSSQL_HEADER) + 1 + cont_len);
 }
 
 void test_read_postgresql_log_last_line_fills_buffer(void **state) {
     size_t cont_len = OS_MAX_LOG_SIZE - strlen(PGSQL_HEADER) - 1;
 
-    run_reader(read_postgresql_log, PGSQL_HEADER, cont_len, strlen(PGSQL_HEADER));
+    run_reader(read_postgresql_log, PGSQL_HEADER, cont_len, false, strlen(PGSQL_HEADER));
 }
 
 void test_read_postgresql_log_last_line_fits(void **state) {
     size_t cont_len = OS_MAX_LOG_SIZE - strlen(PGSQL_HEADER) - 2;
 
-    run_reader(read_postgresql_log, PGSQL_HEADER, cont_len, strlen(PGSQL_HEADER) + 1 + cont_len);
+    run_reader(read_postgresql_log, PGSQL_HEADER, cont_len, false, strlen(PGSQL_HEADER) + 1 + cont_len);
+}
+
+void test_read_postgresql_log_newline_line_fits(void **state) {
+    size_t cont_len = OS_MAX_LOG_SIZE - strlen(PGSQL_HEADER) - 2;
+
+    run_reader(read_postgresql_log, PGSQL_HEADER, cont_len, true, strlen(PGSQL_HEADER) + 1 + cont_len);
 }
 
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_read_mssql_log_last_line_fills_buffer),
         cmocka_unit_test(test_read_mssql_log_last_line_fits),
+        cmocka_unit_test(test_read_mssql_log_newline_line_fits),
         cmocka_unit_test(test_read_postgresql_log_last_line_fills_buffer),
         cmocka_unit_test(test_read_postgresql_log_last_line_fits),
+        cmocka_unit_test(test_read_postgresql_log_newline_line_fits),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
