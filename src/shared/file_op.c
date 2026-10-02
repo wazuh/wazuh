@@ -4434,6 +4434,13 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
         goto fail;
     }
 
+    // GetFullPathNameW() keeps a "\\?\" prefix, which w_win_final_path() strips and the walk adds itself; drop it
+    // from a drive path so the comparison and the walk see the same form.
+    if (!wcsncmp(full, W_VETTED_WIN_EXTENDED_PREFIX, wcslen(W_VETTED_WIN_EXTENDED_PREFIX)) &&
+        w_win_root_len(full + wcslen(W_VETTED_WIN_EXTENDED_PREFIX)) == 3) {
+        wmemmove(full, full + wcslen(W_VETTED_WIN_EXTENDED_PREFIX), len - wcslen(W_VETTED_WIN_EXTENDED_PREFIX) + 1);
+    }
+
     // Expand 8.3 names so the requested path compares against the long form the final path uses.
     len = GetLongPathNameW(full, requested, W_VETTED_WIN_PATH_MAX);
 
