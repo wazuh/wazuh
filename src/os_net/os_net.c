@@ -138,6 +138,8 @@ int OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid
 {
     struct sockaddr_un n_us;
     int ossock = 0;
+    int bind_ret;
+    mode_t old_mask;
 
     /* Make sure the path isn't there */
     unlink(path);
@@ -150,19 +152,17 @@ int OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid
         return (OS_SOCKTERR);
     }
 
-    if (bind(ossock, (struct sockaddr *)&n_us, SUN_LEN(&n_us)) < 0) {
+    /* Set the mode at bind() time and never follow the path afterwards: it can be swapped for a symlink */
+    old_mask = umask(~mode & 0777);
+    bind_ret = bind(ossock, (struct sockaddr *)&n_us, SUN_LEN(&n_us));
+    umask(old_mask);
+
+    if (bind_ret < 0) {
         OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
     }
 
-    /* Change permissions */
-    if (chmod(path, mode) < 0) {
-        OS_CloseSocket(ossock);
-        return (OS_SOCKTERR);
-    }
-
-    /* Change owner */
-    if (chown(path, uid, gid) < 0) {
+    if (lchown(path, uid, gid) < 0) {
         OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
     }

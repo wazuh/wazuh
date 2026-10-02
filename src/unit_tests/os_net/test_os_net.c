@@ -483,15 +483,33 @@ void test_bind_unix_domain(void **state) {
     will_return(__wrap_getsockopt, 0);
     will_return(__wrap_fcntl, 0);
 
-    expect_string(__wrap_chmod, path, data->socket_path);
-    will_return(__wrap_chmod, 0);
-    expect_string(__wrap_chown, __file, data->socket_path);
-    expect_value(__wrap_chown, __owner, 0);
-    expect_value(__wrap_chown, __group, 995);
-    will_return(__wrap_chown, 0);
+    expect_value(__wrap_umask, mode, 0117);
+    will_return(__wrap_umask, 0022);
+    expect_value(__wrap_umask, mode, 0022);
+    will_return(__wrap_umask, 0117);
+    expect_string(__wrap_lchown, __file, data->socket_path);
+    expect_value(__wrap_lchown, __owner, 0);
+    expect_value(__wrap_lchown, __group, 995);
+    will_return(__wrap_lchown, 0);
 
     data->server_socket = OS_BindUnixDomain(data->socket_path, SOCK_DGRAM, msg_size);
     assert_return_code(data->server_socket, 0);
+}
+
+void test_bind_unix_domain_bind_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_getuid, 0);
+    will_return(__wrap_getgid, 995);
+    will_return(__wrap_socket, 3);
+    will_return(__wrap_bind, -1);
+
+    expect_value(__wrap_umask, mode, 0117);
+    will_return(__wrap_umask, 0022);
+    expect_value(__wrap_umask, mode, 0022);
+    will_return(__wrap_umask, 0117);
+
+    assert_int_equal(OS_BindUnixDomain(data->socket_path, SOCK_DGRAM, 1), OS_SOCKTERR);
 }
 
 void test_getsocketsize(void **state) {
@@ -1010,6 +1028,7 @@ int main(void) {
 
         /* Bind a unix domain */
         cmocka_unit_test_setup_teardown(test_bind_unix_domain, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_bind_unix_domain_bind_error, test_setup, test_teardown),
 
         /* Get current maximum size */
         cmocka_unit_test_setup_teardown(test_getsocketsize, test_setup, test_teardown),

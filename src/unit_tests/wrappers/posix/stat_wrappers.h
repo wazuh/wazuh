@@ -21,6 +21,8 @@ int __wrap_fchmod(int fd, mode_t mode);
 
 int __wrap_chown(const char *__file, int __owner, int __group);
 
+int __wrap_lchown(const char *__file, int __owner, int __group);
+
 int __wrap_lstat(const char *filename, struct stat *buf);
 
 int __wrap_fstat (int __fd, struct stat *__buf);
