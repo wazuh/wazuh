@@ -33,6 +33,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the Windows agent reporting the operating system it had before an in-place feature update. ([#39547](https://github.com/wazuh/wazuh/pull/39547))
 - Fixed the Windows agent installer not applying the configuration file permissions to the `shared` directory. ([#39734](https://github.com/wazuh/wazuh/pull/39734))
 - Fixed the Solaris 10 and AIX agent packages leaving files in `/var/ossec` after removal. ([#39807](https://github.com/wazuh/wazuh/pull/39807))
+- Fixed the browser extensions inventory dropping entries when an extension metadata file contains unexpected values. ([#39931](https://github.com/wazuh/wazuh/pull/39931))
 
 ### Ruleset
 
