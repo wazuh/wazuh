@@ -151,7 +151,7 @@ namespace chrome
                 return;
             }
 
-            const nlohmann::json messagesJson = nlohmann::json::parse(messagesContent, nullptr, false);
+            const nlohmann::json messagesJson = nlohmann::json::parse(messagesContent, nullptr, false, true);
 
             if (messagesJson.is_discarded())
             {
@@ -450,7 +450,7 @@ namespace chrome
                     {
                         parsePreferenceSettings(extension, item.key(), item.value());
 
-                        nlohmann::json manifestJson = nlohmann::json::parse(manifestContent);
+                        nlohmann::json manifestJson = nlohmann::json::parse(manifestContent, nullptr, true, true);
 
                         parseManifest(manifestJson, extension);
 
@@ -621,7 +621,7 @@ namespace chrome
 
                     try
                     {
-                        nlohmann::json manifestJson = nlohmann::json::parse(manifestContent);
+                        nlohmann::json manifestJson = nlohmann::json::parse(manifestContent, nullptr, true, true);
 
                         parseManifest(manifestJson, extension);
 
