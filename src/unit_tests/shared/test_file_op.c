@@ -1735,6 +1735,25 @@ void test_w_win_reparse_target(void **state) {
     assert_int_equal(errno, EPERM);
 }
 
+extern bool w_win_reparse_tag_is_plain(DWORD tag);
+
+void test_w_win_reparse_tag_is_plain(void **state) {
+    (void) state;
+
+    // Deduplication, WOF and cloud files keep the name: not a link.
+    assert_true(w_win_reparse_tag_is_plain(0x80000013));
+    assert_true(w_win_reparse_tag_is_plain(0x80000017));
+    assert_true(w_win_reparse_tag_is_plain(0x9000601A));
+
+    // Junctions and symbolic links redirect the name: a link to vet.
+    assert_false(w_win_reparse_tag_is_plain(IO_REPARSE_TAG_MOUNT_POINT));
+    assert_false(w_win_reparse_tag_is_plain(IO_REPARSE_TAG_SYMLINK));
+
+    // A non-Microsoft tag is never treated as plain.
+    assert_false(w_win_reparse_tag_is_plain(0x00000001));
+    assert_false(w_win_reparse_tag_is_plain(0x20000001));
+}
+
 #endif
 
 /* ===================== Tests for cldir_ex and cldir_ex_ignore ===================== */
@@ -3001,6 +3020,7 @@ int main(void) {
         cmocka_unit_test(test_w_stat64_network_path),
         cmocka_unit_test(test_w_win_owner_trusted),
         cmocka_unit_test(test_w_win_reparse_target),
+        cmocka_unit_test(test_w_win_reparse_tag_is_plain),
 
 #endif
     };

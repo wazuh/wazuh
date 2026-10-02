@@ -3889,6 +3889,14 @@ typedef struct {
 #endif
 
 /**
+ * True for a name-preserving reparse point (deduplication, WOF, cloud files) that redirects nothing and needs no
+ * vetting. Not declared in file_op.h: given external linkage only so the unit tests can reach it.
+ */
+bool w_win_reparse_tag_is_plain(DWORD tag) {
+    return IsReparseTagMicrosoft(tag) && !IsReparseTagNameSurrogate(tag);
+}
+
+/**
  * Length of the volume root at the start of a prefix-less path: 3 for "X:\", 45 for "Volume{GUID}\", or 0
  * for anything else. The second form is how a mounted-folder junction names its target.
  */
@@ -4017,7 +4025,7 @@ int w_win_reparse_target(const w_win_reparse_data_t * data, DWORD got, wchar_t *
         length = data->u.SymbolicLinkReparseBuffer.SubstituteNameLength;
         base = data->u.SymbolicLinkReparseBuffer.PathBuffer;
         relative = (data->u.SymbolicLinkReparseBuffer.Flags & SYMLINK_FLAG_RELATIVE) != 0;
-    } else if (IsReparseTagMicrosoft(tag) && !IsReparseTagNameSurrogate(tag)) {
+    } else if (w_win_reparse_tag_is_plain(tag)) {
         // Deduplication, cloud files and the like keep the name: there is nothing to follow.
         return 0;
     } else {
@@ -4082,27 +4090,32 @@ int w_win_reparse_target(const w_win_reparse_data_t * data, DWORD got, wchar_t *
     return 1;
 }
 
-/**
- * Reads the target of @p hLink, a reparse point already vetted and held, with FSCTL_GET_REPARSE_POINT and
- * rewrites @p path through w_win_reparse_target(). Issued on the held handle, so the bytes read belong to
- * the exact object just vetted.
- *
- * @return 1 if @p path was rewritten, 0 if nothing to follow, -1 on error or rejection (sets errno).
- */
-static int w_win_follow_reparse_point(HANDLE hLink, wchar_t * path, size_t end) {
-    union {
-        w_win_reparse_data_t data;
-        BYTE raw[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-    } buf;
-    DWORD got = 0;
+typedef union {
+    w_win_reparse_data_t data;
+    BYTE raw[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+} w_win_reparse_buf_t;
 
-    if (!DeviceIoControl(hLink, FSCTL_GET_REPARSE_POINT, NULL, 0, &buf, sizeof(buf), &got, NULL)) {
+/**
+ * Reads the reparse data of @p hLink, a reparse point already held, with FSCTL_GET_REPARSE_POINT. Issued on the
+ * held handle, so the bytes read belong to the exact object about to be vetted.
+ *
+ * @return 0 on success, -1 on error (sets errno).
+ */
+static int w_win_read_reparse_point(HANDLE hLink, w_win_reparse_buf_t * buf, DWORD * got) {
+    *got = 0;
+
+    if (!DeviceIoControl(hLink, FSCTL_GET_REPARSE_POINT, NULL, 0, buf, sizeof(*buf), got, NULL)) {
         // Held without delete sharing, it can only have stopped being a reparse point in place.
         errno = GetLastError() == ERROR_NOT_A_REPARSE_POINT ? EAGAIN : EPERM;
         return -1;
     }
 
-    return w_win_reparse_target(&buf.data, got, path, end);
+    if (*got < W_VETTED_WIN_REPARSE_HEADER) {
+        errno = EPERM;
+        return -1;
+    }
+
+    return 0;
 }
 
 /**
@@ -4149,6 +4162,9 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
         PSECURITY_DESCRIPTOR sd = NULL;
         PSID owner = NULL;
         HANDLE hComponent;
+        w_win_reparse_buf_t reparse;
+        DWORD reparse_len;
+        DWORD tag;
         bool last;
         bool trusted;
 
@@ -4197,8 +4213,9 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
             CloseHandle(hComponent);
         }
 
-        // Pin it: reopened without FILE_SHARE_DELETE so it cannot change while held.
-        hComponent = CreateFileW(component, READ_CONTROL | FILE_READ_ATTRIBUTES,
+        // Pin it: reopened without FILE_SHARE_DELETE so it cannot change while held. FILE_TRAVERSE makes the share
+        // mode apply; attribute and security access alone would leave the component renamable.
+        hComponent = CreateFileW(component, READ_CONTROL | FILE_READ_ATTRIBUTES | FILE_TRAVERSE,
                                  FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
                                  FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
@@ -4233,6 +4250,24 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
             continue;
         }
 
+        if (w_win_read_reparse_point(hComponent, &reparse, &reparse_len) < 0) {
+            return -1;
+        }
+
+        tag = reparse.data.ReparseTag;
+
+        if (w_win_reparse_tag_is_plain(tag)) {
+            // Name-preserving: nothing to vet or follow; the last one must still be the opened file.
+            if (last && (info.dwVolumeSerialNumber != file_info->dwVolumeSerialNumber ||
+                         info.nFileIndexHigh != file_info->nFileIndexHigh ||
+                         info.nFileIndexLow != file_info->nFileIndexLow)) {
+                errno = EAGAIN;
+                return -1;
+            }
+
+            continue;
+        }
+
         if (w_win_get_owner(hComponent, &owner, &sd) < 0) {
             return -1;
         }
@@ -4248,7 +4283,7 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
         }
 
         // Walk on from the target so reparse points inside it are vetted too, not followed unseen.
-        rc = w_win_follow_reparse_point(hComponent, path, end);
+        rc = w_win_reparse_target(&reparse.data, reparse_len, path, end);
 
         if (rc < 0) {
             return -1;
