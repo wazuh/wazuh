@@ -420,9 +420,9 @@ ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-all-errors'))
 	FETCH_CURL_FLAGS += --retry-all-errors
 endif
 FETCH_CURL := curl $(FETCH_CURL_FLAGS) -o
-DEPS_VERSION = 99-37702
+DEPS_VERSION = 5/externals/1
 # The embedded Python and its wheels are published apart: they change far more often.
-PYTHON_DEPS_VERSION = 99-37702
+PYTHON_DEPS_VERSION = 5/python/1
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 PYTHON_RESOURCES_URL := $(RESOURCES_URL_BASE)$(PYTHON_DEPS_VERSION)
