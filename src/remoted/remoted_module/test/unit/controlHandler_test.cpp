@@ -1455,6 +1455,44 @@ TEST(ControlHandlerTest, StartupRacingAnInvalidationAnswers503)
     EXPECT_EQ(writeCount(*wdb), 1U) << "a 503 startup persists no status";
 }
 
+// invalidate -> evict -> response on /control: an agent back after more than the eviction TTL
+// offline whose entry the sweep has not erased yet. Startup refreshes activity only once its answer
+// is stored, so the sweep can erase the invalidated entry while the query is in flight.
+TEST(ControlHandlerTest, StartupRacingAnInvalidationThenAnEvictionAnswers503)
+{
+    auto wdb = std::make_shared<WdbRouter>();
+    GatedSelect gate(*wdb, "ok [{\"group\":\"g-old\"}]", 1);
+    HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
+    h.registry->update(1,
+                       [&h](std::shared_ptr<const AgentEntry>)
+                       {
+                           auto e = std::make_shared<AgentEntry>();
+                           e->groups = {"g-old"};
+                           e->groupsRefreshedAtSec = 100;
+                           e->groupsSeq = h.registry->nextGroupsSeq();
+                           e->lastActivitySec = 300; // long idle
+                           e->createdAtSec = 50;
+                           return e;
+                       });
+
+    StartupData startup;
+    startup.version = "5.0.0";
+    Waiter<HttpResponse> w;
+    h.handler->handleStartup(1, startup, [&](const HttpResponse& r) { w.complete(r); });
+    ASSERT_TRUE(gate.waitReceived());
+    ASSERT_EQ(h.registry->invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated);
+    h.registry->evictExpiredEntries(/*ttlSec=*/60);
+    ASSERT_FALSE(h.registry->get(1));
+    gate.release();
+    ASSERT_TRUE(w.wait(3000ms));
+
+    EXPECT_EQ(w.value.status, 503);
+    EXPECT_EQ(w.value.body, R"({"error":"dependency_unavailable","dependency":"wazuh-db"})");
+    EXPECT_FALSE(h.registry->get(1)) << "the read that may predate the change is not cached";
+    std::this_thread::sleep_for(100ms);
+    EXPECT_EQ(writeCount(*wdb), 0U) << "a 503 startup persists no status";
+}
+
 TEST(ControlHandlerTest, NotifyRefreshRacingAnInvalidationAnswers503)
 {
     auto wdb = std::make_shared<WdbRouter>();

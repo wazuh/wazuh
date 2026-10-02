@@ -433,6 +433,87 @@ TEST(AgentRegistryTest, AbsentAtIssueLookupIsNotCachedAfterASkippedPush)
     EXPECT_TRUE(reg.mayStoreLookup(nullptr, reg.groupsTicket())); // a later ticket is past the skip
 }
 
+// Eviction erases an entry's groups stamp with it. An agent that only downloads on a node keeps
+// lastActivitySec == 0 there and ages out from its creation, even while a lookup for it is in flight.
+TEST(AgentRegistryTest, EvictingAnInvalidatedEntrySupersedesAnEarlierLookup)
+{
+    AgentRegistry reg;
+    putActive(reg, 1, {"g-old"}); // activity at 300: long past any TTL below
+    reg.update(2,
+               [&reg](std::shared_ptr<const AgentEntry>)
+               {
+                   auto entry = std::make_shared<AgentEntry>(); // an unrelated agent, active now
+                   entry->groups = {"g1"};
+                   entry->groupsRefreshedAtSec = 100;
+                   entry->groupsSeq = reg.nextGroupsSeq();
+                   entry->lastActivitySec = static_cast<uint64_t>(std::time(nullptr));
+                   return entry;
+               });
+    const auto ticket = reg.groupsTicket(); // agent 1's query is issued here...
+
+    ASSERT_EQ(reg.invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated); // ...a push lands...
+    reg.evictExpiredEntries(/*ttlSec=*/60);                                      // ...and agent 1 ages out
+    ASSERT_EQ(reg.get(1), nullptr);
+    ASSERT_NE(reg.get(2), nullptr);
+
+    EXPECT_FALSE(reg.mayStoreLookup(nullptr, ticket));            // the empty slot vouches for nothing
+    EXPECT_TRUE(reg.mayStoreLookup(reg.get(2), ticket));          // established and kept: unaffected
+    EXPECT_TRUE(reg.mayStoreLookup(nullptr, reg.groupsTicket())); // a later ticket is past the eviction
+}
+
+TEST(AgentRegistryTest, EvictingANewerReadSupersedesAnOlderLookup)
+{
+    AgentRegistry reg;
+    putActive(reg, 1, {"g-old"});
+    const auto ticket = reg.groupsTicket(); // read A is issued...
+    ASSERT_EQ(reg.invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated);
+    reg.update(1,
+               [&reg](std::shared_ptr<const AgentEntry> old)
+               {
+                   auto entry = std::make_shared<AgentEntry>(*old); // ...read B, issued after the change, stores first
+                   entry->groups = {"g-new"};
+                   entry->groupsRefreshedAtSec = 400;
+                   entry->groupsSeq = reg.nextGroupsSeq();
+                   return entry;
+               });
+
+    reg.evictExpiredEntries(/*ttlSec=*/60);
+    ASSERT_EQ(reg.get(1), nullptr);
+
+    EXPECT_FALSE(reg.mayStoreLookup(nullptr, ticket)); // A may predate the change B saw
+}
+
+TEST(AgentRegistryTest, EvictionOnlyBindsLookupsTicketedBeforeTheErasedWrite)
+{
+    AgentRegistry reg;
+    putActive(reg, 1, {"g-old"});
+    ASSERT_EQ(reg.invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated);
+    const auto ticket = reg.groupsTicket(); // issued after the entry's last groups write
+
+    reg.evictExpiredEntries(/*ttlSec=*/60);
+    ASSERT_EQ(reg.get(1), nullptr);
+
+    EXPECT_TRUE(reg.mayStoreLookup(nullptr, ticket)); // this read already follows the invalidation
+}
+
+TEST(AgentRegistryTest, EvictingAnEntryWithNoGroupsWriteLeavesNoMark)
+{
+    AgentRegistry reg;
+    const auto ticket = reg.groupsTicket();
+    reg.update(3,
+               [](std::shared_ptr<const AgentEntry>)
+               {
+                   auto entry = std::make_shared<AgentEntry>(); // what /control/shutdown mints: groupsSeq 0
+                   entry->lastActivitySec = 300;
+                   return entry;
+               });
+
+    reg.evictExpiredEntries(/*ttlSec=*/60);
+    ASSERT_EQ(reg.get(3), nullptr);
+
+    EXPECT_TRUE(reg.mayStoreLookup(nullptr, ticket)); // no groups write went with it
+}
+
 TEST(AgentRegistryTest, GroupsSequenceIsStrictlyIncreasingUnderConcurrency)
 {
     constexpr int kThreads = 8;

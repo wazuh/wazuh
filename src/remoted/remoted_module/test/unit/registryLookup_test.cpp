@@ -474,6 +474,39 @@ TEST(RegistryLookupTest, SkippedPushMakesTheLookupSuperseded)
     EXPECT_EQ(f.registry->get(1), nullptr);
 }
 
+// invalidate -> evict -> response. An agent that only downloads on this node keeps lastActivitySec
+// == 0 here and ages out from its creation, so eviction can erase its invalidated entry while a
+// lookup for it is still in flight; the answer must not land on the empty slot as fresh.
+TEST(RegistryLookupTest, EvictionAfterAnInvalidationMakesTheLookupSuperseded)
+{
+    Options options;
+    options.gateAt = 1;
+    Fixture f(options);
+    f.putEstablished(1, {"g-old"}, 10); // activity at 300: long past the TTL below
+    Outcomes out;
+
+    f.lookup->lookup(1, 1000, out.waiter());
+    ASSERT_TRUE(f.wdb->waitReceived());
+    ASSERT_EQ(f.registry->invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated);
+    f.registry->evictExpiredEntries(/*ttlSec=*/60);
+    ASSERT_EQ(f.registry->get(1), nullptr);
+    f.wdb->release();
+    ASSERT_TRUE(out.waitFor(1));
+
+    // The read may predate the change the invalidation announced: it answers nobody, nothing is cached.
+    EXPECT_EQ(out.first().kind, Kind::Superseded);
+    EXPECT_EQ(f.registry->get(1), nullptr);
+
+    // The next request reads the database again, and that read is the answer.
+    f.lookup->lookup(1, 1100, out.waiter());
+    ASSERT_TRUE(out.waitFor(2));
+    EXPECT_EQ(out.count(Kind::Groups), 1U);
+    const auto entry = f.registry->get(1);
+    ASSERT_NE(entry, nullptr);
+    EXPECT_EQ(entry->groups, std::vector<std::string> {"g1"});
+    EXPECT_EQ(entry->groupsRefreshedAtSec, 1100U);
+}
+
 TEST(RegistryLookupTest, StopAnswersEveryWaiterOnceAndRefusesNewLookups)
 {
     Options options;
