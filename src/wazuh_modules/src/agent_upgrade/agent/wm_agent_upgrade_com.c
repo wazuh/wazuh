@@ -195,7 +195,10 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
 
 STATIC int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename) {
 
-    if (w_ref_parent_folder(filename)) {
+    // A bare file name is all that is ever legitimate here. Rejecting separators also keeps the
+    // directory-relative open in w_fopen_nofollow() confined to basedir, since a separator-containing
+    // or absolute name would otherwise be resolved ignoring the directory descriptor.
+    if (!w_is_bare_filename(filename)) {
         return -1;
     }
 
@@ -261,7 +264,7 @@ STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNSIGN_FILE_ERROR, "unsign()", source_j);
         output = -1;
     }
-    unlink(source);
+    unlink(source_j);
     return output;
 }
 
