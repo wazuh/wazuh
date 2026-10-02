@@ -12,6 +12,7 @@
 #ifndef _FILESYSTEM_HELPER_HPP
 #define _FILESYSTEM_HELPER_HPP
 
+#include <cstdint>
 #include <filesystem>
 
 /**
@@ -60,6 +61,16 @@ class RealFileSystemT
         static bool is_directory(const std::filesystem::path& path)
         {
             return std::filesystem::is_directory(path);
+        }
+
+        /**
+         * @brief Get the size of a file
+         * @param path Path to check
+         * @return The size of the file in bytes
+         */
+        static std::uintmax_t file_size(const std::filesystem::path& path)
+        {
+            return std::filesystem::file_size(path);
         }
 
         /**
