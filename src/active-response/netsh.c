@@ -58,6 +58,16 @@ static void getFirewallProfile(const char * output_buf, firewallData_t *firewall
 */
 static void getStatusFirewallProfile(const char * output_buf, firewallData_t *firewallData);
 
+/**
+ * @brief Resolve a fixed Windows system tool directly under the system directory
+ * (e.g. C:\Windows\System32), instead of searching PATH. On failure, falls back to
+ * the bare binary name, matching get_binary_path()'s own fallback convention.
+ * @param binary Name of the binary to resolve
+ * @param validated_comm Output parameter for the resolved path (caller must free)
+ * @return OS_SUCCESS if resolved under the system directory, OS_INVALID otherwise
+ */
+static int resolve_system_tool(const char *binary, char **validated_comm);
+
 int main (int argc, char **argv) {
     // This must be always the first instruction
     enable_dll_verification();
@@ -115,7 +125,7 @@ int main (int argc, char **argv) {
     snprintf(remoteip, OS_MAXSTR -1, "remoteip=%s/32", srcip);
 
     // Checking if netsh.exe is present
-    if (get_binary_path("netsh.exe", &netsh_path) < 0) {
+    if (resolve_system_tool("netsh.exe", &netsh_path) < 0) {
         memset(log_msg, '\0', OS_MAXSTR);
         snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", netsh_path);
         write_debug_file(argv[0], log_msg);
@@ -244,7 +254,7 @@ static int getAllProfilesStatus(const char *argv) {
 
 
     // Checking if reg.exe is present
-    if (get_binary_path("reg.exe", &reg_path) < 0) {
+    if (resolve_system_tool("reg.exe", &reg_path) < 0) {
         memset(log_msg, '\0', OS_MAXSTR);
         snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", reg_path);
         write_debug_file(argv, log_msg);
@@ -343,6 +353,32 @@ static void getStatusFirewallProfile(const char * output_buf, firewallData_t *fi
     } else {
         firewallData->isEnabled = false;
     }
+}
+
+static int resolve_system_tool(const char *binary, char **validated_comm) {
+    char sys_dir[MAX_PATH];
+    char full_path[OS_MAXSTR];
+
+    if (GetSystemDirectoryA(sys_dir, sizeof(sys_dir)) == 0) {
+        if (validated_comm) {
+            *validated_comm = strdup(binary);
+        }
+        return OS_INVALID;
+    }
+
+    snprintf(full_path, OS_MAXSTR - 1, "%s\\%s", sys_dir, binary);
+
+    if (IsFile(full_path) != 0) {
+        if (validated_comm) {
+            *validated_comm = strdup(binary);
+        }
+        return OS_INVALID;
+    }
+
+    if (validated_comm) {
+        *validated_comm = strdup(full_path);
+    }
+    return OS_SUCCESS;
 }
 
 #endif

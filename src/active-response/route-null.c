@@ -10,6 +10,42 @@
 #include "active_responses.h"
 #include "dll_load_notify.h"
 
+#ifdef WIN32
+/**
+ * @brief Resolve a fixed Windows system tool directly under the system directory
+ * (e.g. C:\Windows\System32), instead of searching PATH. On failure, falls back to
+ * the bare binary name, matching get_binary_path()'s own fallback convention.
+ * @param binary Name of the binary to resolve
+ * @param validated_comm Output parameter for the resolved path (caller must free)
+ * @return OS_SUCCESS if resolved under the system directory, OS_INVALID otherwise
+ */
+static int resolve_system_tool(const char *binary, char **validated_comm) {
+    char sys_dir[MAX_PATH];
+    char full_path[OS_MAXSTR];
+
+    if (GetSystemDirectoryA(sys_dir, sizeof(sys_dir)) == 0) {
+        if (validated_comm) {
+            *validated_comm = strdup(binary);
+        }
+        return OS_INVALID;
+    }
+
+    snprintf(full_path, OS_MAXSTR - 1, "%s\\%s", sys_dir, binary);
+
+    if (IsFile(full_path) != 0) {
+        if (validated_comm) {
+            *validated_comm = strdup(binary);
+        }
+        return OS_INVALID;
+    }
+
+    if (validated_comm) {
+        *validated_comm = strdup(full_path);
+    }
+    return OS_SUCCESS;
+}
+#endif
+
 int main (int argc, char **argv) {
 #ifdef WIN32
     // This must be always the first instruction
@@ -125,7 +161,7 @@ int main (int argc, char **argv) {
     char log_msg[OS_MAXSTR];
     char *route_path = NULL;
 
-    if (get_binary_path("route.exe", &route_path) < 0) {
+    if (resolve_system_tool("route.exe", &route_path) < 0) {
         memset(log_msg, '\0', OS_MAXSTR);
         snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", route_path);
         write_debug_file(argv[0], log_msg);
