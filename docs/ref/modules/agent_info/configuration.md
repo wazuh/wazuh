@@ -307,19 +307,24 @@ grep -A10 "<synchronization>" /var/ossec/etc/ossec.conf
 
 ### View Collected Metadata
 
-**On manager (query agent info):**
+**On manager (query the agent metadata synchronized to the indexer):**
 ```bash
-# View agent system information
-/var/wazuh-manager/bin/wazuh-control info agent 001
+# View the wazuh.agent fields stamped on agent 001's state documents
+sudo curl --cacert /var/wazuh-manager/etc/certs/root-ca.pem \
+          --cert /var/wazuh-manager/etc/certs/indexer-connector.pem \
+          --key /var/wazuh-manager/etc/certs/indexer-connector-key.pem \
+          -u admin:password \
+          "https://127.0.0.1:9200/wazuh-states-*/_search?q=wazuh.agent.id:001&size=1&_source=wazuh.agent"
 ```
 
-**Check synchronization status:**
+**On agent (check synchronization status):**
 ```bash
 tail -f /var/ossec/logs/ossec.log | grep "agent-info.*sync"
 ```
 
 ### Monitor Scan Activity
 
+**On agent:**
 ```bash
 # View metadata collection events
 tail -f /var/ossec/logs/ossec.log | grep "agent-info.*scan"
