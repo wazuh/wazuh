@@ -200,9 +200,10 @@ TEST(FirefoxAddonsTests, UnexpectedFieldTypesDoNotDropOtherAddons)
     writeFile("bad-user/.mozilla/firefox/abc.default/extensions.json", R"({"addons": [
         {"id": 5, "version": 1, "type": [], "sourceURI": 9, "location": 3, "path": false,
          "defaultLocale": {"name": ["x"], "creator": {"n": 1}, "description": 2},
-         "softDisable": "yes", "visible": "true", "active": 1, "applyBackgroundUpdates": "1"},
+         "softDisabled": "yes", "visible": "true", "active": 1, "applyBackgroundUpdates": "1"},
         {"id": "typed@addon", "version": "1.0", "defaultLocale": "not an object",
          "userDisabled": true, "visible": true, "active": true, "applyBackgroundUpdates": 1},
+        {"id": "soft@addon", "version": "1.0", "softDisabled": true, "userDisabled": false, "appDisabled": false},
         "not an object"
     ]})");
     writeFile("good-user/.mozilla/firefox/def.default/extensions.json",
@@ -217,7 +218,7 @@ TEST(FirefoxAddonsTests, UnexpectedFieldTypesDoNotDropOtherAddons)
     ASSERT_NO_THROW(extensionsJson = firefoxAddonsProvider.collect());
     std::filesystem::remove_all(homePath);
 
-    ASSERT_EQ(extensionsJson.size(), static_cast<size_t>(4));
+    ASSERT_EQ(extensionsJson.size(), static_cast<size_t>(5));
 
     const auto findById = [&extensionsJson](const std::string & id) -> const nlohmann::json *
     {
@@ -240,6 +241,10 @@ TEST(FirefoxAddonsTests, UnexpectedFieldTypesDoNotDropOtherAddons)
     EXPECT_EQ((*typed)["visible"], true);
     EXPECT_EQ((*typed)["active"], true);
     EXPECT_EQ((*typed)["autoupdate"], true);
+
+    const auto* soft = findById("soft@addon");
+    ASSERT_NE(soft, nullptr);
+    EXPECT_EQ((*soft)["disabled"], true);
 
     const auto* good = findById("good@addon");
     ASSERT_NE(good, nullptr);
