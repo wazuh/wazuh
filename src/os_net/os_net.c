@@ -137,35 +137,49 @@ int OS_Bindportudp(u_int16_t _port, const char *_ip, int ipv6)
 int OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t mode)
 {
     struct sockaddr_un n_us;
+    char tmp_dir[sizeof(n_us.sun_path) - 2];
+    const char *base = strrchr(path, '/');
+    int prefix_len = base ? (int)(base - path + 1) : 0;
+    const int pid = (int)getpid();
+    int dir_len;
     int ossock = 0;
-    int bind_ret;
-    mode_t old_mask;
+    int i;
 
-    /* Make sure the path isn't there */
-    unlink(path);
+    /* Bind and set perms in a private directory, then move into place: others can write in the final directory */
+    for (i = 0; ; i++) {
+        dir_len = snprintf(tmp_dir, sizeof(tmp_dir), "%.*s.w%d_%d", prefix_len, path, pid, i);
+        if (dir_len < 0 || dir_len >= (int)sizeof(tmp_dir) || i == 100) {
+            return (OS_SOCKTERR);
+        }
+        if (mkdir(tmp_dir, 0700) == 0) {
+            break;
+        }
+        if (errno != EEXIST) {
+            return (OS_SOCKTERR);
+        }
+    }
 
     memset(&n_us, 0, sizeof(n_us));
     n_us.sun_family = AF_UNIX;
-    strncpy(n_us.sun_path, path, sizeof(n_us.sun_path) - 1);
+    memcpy(n_us.sun_path, tmp_dir, dir_len);
+    memcpy(n_us.sun_path + dir_len, "/s", 2);
 
     if ((ossock = socket(AF_UNIX, type, 0)) < 0) {
+        rmdir(tmp_dir);
         return (OS_SOCKTERR);
     }
 
-    /* Set the mode at bind() time and never follow the path afterwards: it can be swapped for a symlink */
-    old_mask = umask(~mode & 0777);
-    bind_ret = bind(ossock, (struct sockaddr *)&n_us, SUN_LEN(&n_us));
-    umask(old_mask);
-
-    if (bind_ret < 0) {
+    if (bind(ossock, (struct sockaddr *)&n_us, SUN_LEN(&n_us)) < 0
+        || chmod(n_us.sun_path, mode) < 0
+        || chown(n_us.sun_path, uid, gid) < 0
+        || rename(n_us.sun_path, path) < 0) {
+        unlink(n_us.sun_path);
+        rmdir(tmp_dir);
         OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
     }
 
-    if (lchown(path, uid, gid) < 0) {
-        OS_CloseSocket(ossock);
-        return (OS_SOCKTERR);
-    }
+    rmdir(tmp_dir);
 
     if (type == SOCK_STREAM && listen(ossock, 128) < 0) {
         OS_CloseSocket(ossock);
