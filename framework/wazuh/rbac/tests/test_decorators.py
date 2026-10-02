@@ -5,6 +5,7 @@
 import json
 import os
 import re
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,7 +13,7 @@ from sqlalchemy import create_engine
 from importlib import reload
 
 from wazuh.core.exception import WazuhError, WazuhInternalError
-from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.rbac.tests.utils import init_db
 
 test_path = os.path.dirname(os.path.realpath(__file__))
@@ -139,10 +140,10 @@ def _conf_payload():
             "use_password": "yes",
             "ssl_manager_key": "etc/certs/remoted-key.pem"
         },
-        "integration": {
-            "secret": "topsecret",
-            "token": "abcd-1234"
-        },
+        "integration": [{
+            "name": "slack",
+            "hook_url": "https://hooks.slack.com/services/T000/B000/XXXX"
+        }],
         "authd.pass": "P4ssW0rd!"
     }
 
@@ -151,7 +152,7 @@ def _conf_result_payload():
     r = AffectedItemsWazuhResult(all_msg="ok", some_msg="ok", none_msg="ok")
     r.affected_items.append({
         "auth": {"use_password": "no", "ssl_manager_key": "etc/certs/remoted-key.pem"},
-        "integration": {"secret": "topsecret"},
+        "integration": [{"name": "virustotal", "api_key": "VTAPIKEY"}],
         "authd.pass": "P4ssW0rd!"
     })
     r.total_affected_items = 1
@@ -167,7 +168,75 @@ def test_mask_sensitive_config_without_permissions(db_setup):
 
     result = get_conf()
     assert result["authd.pass"] == "*****"
-    assert result["integration"]["secret"] == "topsecret"
+    assert result["integration"] == [{"name": "slack", "hook_url": "*****"}]
+
+
+@pytest.mark.parametrize('wrap', [False, True])
+def test_mask_sensitive_config_haproxy_helper_passwords(db_setup, wrap):
+    """HAProxy helper passwords are masked with and without the "cluster" wrapper."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+    helper = {"haproxy_password": "HAPROXYSECRET", "client_cert_password": "CERTSECRET", "port": 5555}
+
+    @db_setup.mask_sensitive_config()
+    def get_conf():
+        return {"cluster": {"haproxy_helper": helper}} if wrap else {"haproxy_helper": helper}
+
+    result = get_conf()
+    result = result["cluster"]["haproxy_helper"] if wrap else result["haproxy_helper"]
+    assert result["haproxy_password"] == "*****"
+    assert result["client_cert_password"] == "*****"
+    assert result["port"] == 5555
+
+
+def test_mask_sensitive_config_raw_xml_haproxy_helper_password_with_escaped_lt(db_setup):
+    """A backslash-escaped '<' is part of the value, so the whole password is masked."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+    xml = (
+        "<ossec_config><cluster><haproxy_helper><haproxy_password>Xy7\\<%kLTAIL</haproxy_password>"
+        "</haproxy_helper></cluster></ossec_config>"
+    )
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return xml
+
+    result = get_conf_raw()
+    assert "Xy7" not in result and "TAIL" not in result
+    assert "<haproxy_password>*****</haproxy_password>" in result
+
+
+def test_mask_sensitive_config_raw_xml_haproxy_helper_password_ending_in_backslash(db_setup):
+    """A value ending in a backslash right before the closing tag is still masked."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+    xml = (
+        "<ossec_config><cluster><haproxy_helper><haproxy_password>Xy7\\</haproxy_password>"
+        "</haproxy_helper></cluster></ossec_config>"
+    )
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return xml
+
+    result = get_conf_raw()
+    assert "Xy7" not in result
+    assert "<haproxy_password>*****</haproxy_password>" in result
+
+
+def test_mask_sensitive_config_raw_xml_haproxy_helper_passwords(db_setup):
+    """HAProxy helper passwords are masked in raw XML for unprivileged users."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+    xml = (
+        "<ossec_config><cluster><haproxy_helper><haproxy_password>HAPROXYSECRET</haproxy_password>"
+        "<client_cert_password>CERTSECRET</client_cert_password></haproxy_helper></cluster></ossec_config>"
+    )
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return xml
+
+    result = get_conf_raw()
+    assert "HAPROXYSECRET" not in result and "CERTSECRET" not in result
+    assert "<haproxy_password>*****</haproxy_password>" in result
 
 
 def test_mask_sensitive_config_with_permissions(db_setup):
@@ -179,6 +248,7 @@ def test_mask_sensitive_config_with_permissions(db_setup):
 
     result = get_conf()
     assert result["authd.pass"] == "P4ssW0rd!"
+    assert result["integration"][0]["hook_url"] == "https://hooks.slack.com/services/T000/B000/XXXX"
 
 
 def test_mask_sensitive_config_on_affected_items_result(db_setup):
@@ -191,7 +261,63 @@ def test_mask_sensitive_config_on_affected_items_result(db_setup):
     res = get_conf_result()
     item = res.affected_items[0]
     assert item["authd.pass"] == "*****"
-    assert item["integration"]["secret"] == "topsecret"
+    assert item["integration"] == [{"name": "virustotal", "api_key": "*****"}]
+
+
+def _agent_conf_wazuh_result_payload():
+    """Shape returned by `get_agent_config`: the active configuration under 'data'."""
+    return WazuhResult({'data': {
+        "name": "wazuh",
+        "node_name": "node01",
+        "node_type": "master",
+        "key": "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH",
+        "port": 1516,
+        "authd.pass": "P4ssW0rd!"
+    }})
+
+
+def _labels_wazuh_result_payload():
+    """Shape returned by `get_agent_config` for the agent/labels pair, where 'key' is a label name."""
+    return WazuhResult({'data': {
+        "labels": [{"value": "north", "key": "site"}, {"value": "prod", "key": "env"}]
+    }})
+
+
+def test_mask_sensitive_config_on_wazuh_result(db_setup):
+    """Sensitive values under 'data' are masked; a WazuhResult is a MutableMapping, not a dict."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_result():
+        return _agent_conf_wazuh_result_payload()
+
+    res = get_conf_result()
+    assert res['data']["key"] == "*****"
+    assert res['data']["authd.pass"] == "*****"
+    assert res['data']["node_name"] == "node01"
+
+
+def test_mask_sensitive_config_on_wazuh_result_with_permissions(db_setup):
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:read_secrets': {'node:id:master-node': 'allow'}})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_result():
+        return _agent_conf_wazuh_result_payload()
+
+    res = get_conf_result()
+    assert res['data']["key"] == "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH"
+
+
+def test_mask_sensitive_config_keeps_label_names(db_setup):
+    """Label names are members called 'key' that carry no secret and must survive masking."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_result():
+        return _labels_wazuh_result_payload()
+
+    res = get_conf_result()
+    assert [label["key"] for label in res['data']["labels"]] == ["site", "env"]
 
 
 # ---------------------------------------------------------------------------
@@ -655,3 +781,442 @@ def test_unmask_xml_by_path_without_the_field(db_setup):
     text = "<wazuh_config>\n  <cluster>\n    <name>wazuh</name>\n  </cluster>\n</wazuh_config>\n"
 
     assert db_setup.unmask_xml_by_path(text, 'cluster.key', _UNMASK_KEY) == text
+
+
+_CREDENTIAL_JSON = {"wmodules": [
+    {"aws-s3": {"buckets": [{"access_key": "S", "secret_key": "S", "aws_profile": "default"},
+                            {"access_key": "S", "secret_key": "S"}]}},
+    {"azure-logs": {"content": [{"application_id": "id", "application_key": "S"}, {"account_key": "S"}]}},
+    {"office365": {"api_auth": [{"client_id": "id", "client_secret": "S"}]}},
+    {"github": {"api_auth": [{"org_name": "org", "api_token": "S"}]}},
+    {"ms-graph": {"api_auth": {"client_id": "id", "secret_value": "S"}}},
+    {"fluent-forward": {"shared_key": "S", "user": "user", "password": "S"}},
+    {"integration": [{"name": "slack", "hook_url": "S", "api_key": "S"}]},
+    {"cluster": {"haproxy_helper": {"haproxy_user": "user", "haproxy_password": "S",
+                                    "client_cert_password": "S"}}}
+]}
+
+_XML_WITH_CREDENTIALS = """\
+<ossec_config>
+  <wodle name="aws-s3">
+    <bucket type="cloudtrail">
+      <aws_profile>default</aws_profile>
+      <access_key>S</access_key>
+      <secret_key>S</secret_key>
+    </bucket>
+    <bucket type="guardduty">
+      <access_key>S</access_key>
+      <secret_key>S</secret_key>
+    </bucket>
+  </wodle>
+  <wodle name="azure-logs">
+    <log_analytics><application_key>S</application_key></log_analytics>
+    <storage><account_key>S</account_key></storage>
+  </wodle>
+  <office365><api_auth><client_secret>S</client_secret></api_auth></office365>
+  <github><api_auth><org_name>org</org_name><api_token>S</api_token></api_auth></github>
+  <ms-graph><api_auth><secret_value>S</secret_value></api_auth></ms-graph>
+  <fluent-forward><shared_key>S</shared_key><user>user</user><password>S</password></fluent-forward>
+  <integration><name>slack</name><hook_url>S</hook_url><api_key>S</api_key></integration>
+  <cluster><haproxy_helper><haproxy_password>S</haproxy_password>
+    <client_cert_password>S</client_cert_password></haproxy_helper></cluster>
+</ossec_config>"""
+
+
+@pytest.mark.parametrize('payload', [
+    pytest.param(lambda: json.loads(json.dumps(_CREDENTIAL_JSON)), id='json'),
+    pytest.param(lambda: WazuhResult({'data': json.loads(json.dumps(_CREDENTIAL_JSON))}), id='wazuh_result'),
+    pytest.param(lambda: _XML_WITH_CREDENTIALS, id='raw_xml'),
+])
+def test_mask_sensitive_config_masks_credential_fields(db_setup, payload):
+    """Every credential field is masked wherever each module nests it; its siblings survive."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'manager:read': {'*:*': 'allow'}})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf():
+        return payload()
+
+    result = get_conf()
+    text = result if isinstance(result, str) else json.dumps(result.render() if isinstance(result, WazuhResult)
+                                                             else result)
+    assert '"S"' not in text and '>S<' not in text
+    for name in db_setup.SENSITIVE_FIELD_NAMES:
+        assert f'"{name}"' in text or f'<{name}>' in text
+    for name, value in (('aws_profile', 'default'), ('name', 'slack'), ('org_name', 'org'), ('user', 'user')):
+        assert f'"{name}": "{value}"' in text or f'<{name}>{value}</{name}>' in text
+
+
+@pytest.mark.parametrize('data', [
+    pytest.param(lambda: _XML_WITH_CREDENTIALS, id='raw'),
+    pytest.param(lambda: [{'file_name': 'agent.conf', 'file_size': 1, 'file_content': _XML_WITH_CREDENTIALS}],
+                 id='merged_mg_json'),
+])
+@pytest.mark.parametrize('group_perms, masked', [
+    ({'group:read': {'group:id:*': 'allow'}}, True),
+    ({'group:update_config': {'group:id:default': 'allow'}}, True),
+    ({'cluster:read_secrets': {'node:id:master-node': 'allow'}}, False),
+])
+def test_mask_sensitive_config_group_file(db_setup, group_perms, masked, data):
+    """A group file under 'data', raw or packed in merged.mg, is masked unless the user can read the secrets.
+
+    Being allowed to update the group is not enough: only 'cluster:read_secrets' lifts the mask.
+    """
+    db_setup.rbac.set({'rbac_mode': 'white', **group_perms})
+
+    @db_setup.mask_sensitive_config()
+    def get_file_conf(group_list=None):
+        return WazuhResult({'data': data()})
+
+    result = get_file_conf(group_list=['default'])
+    text = result['data'] if isinstance(result['data'], str) else result['data'][0]['file_content']
+    assert ('>S<' not in text) is masked
+    assert '<aws_profile>default</aws_profile>' in text
+
+
+def test_mask_sensitive_config_raw_xml_escaped_less_than(db_setup):
+    """A value holding the '\\<' escape accepted by os_xml is masked whole."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return '<ossec_config><fluent-forward><password>ab\\<cd</password></fluent-forward></ossec_config>'
+
+    assert get_conf_raw() == '<ossec_config><fluent-forward><password>*****</password></fluent-forward></ossec_config>'
+
+
+def test_mask_sensitive_config_raw_xml_black_mode_without_deny(db_setup):
+    """A black mode user no policy denies 'cluster:read_secrets' over this node reads it unmasked."""
+    db_setup.rbac.set({'rbac_mode': 'black'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return _XML_WITH_CREDENTIALS
+
+    assert get_conf_raw() == _XML_WITH_CREDENTIALS
+
+
+@pytest.mark.parametrize('repeated', ['<cluster>' * 40000, '\\<api_key>' * 10000], ids=['parent_tag', 'escaped_leaf'])
+def test_mask_all_sensitive_fields_repeated_open_tags_is_linear(db_setup, repeated):
+    """Many openings of a path's parent tag, or escaped openings of a leaf, must not make the masking quadratic."""
+    payload = '<agent_config><!--' + repeated + '--></agent_config>'
+
+    start = time.perf_counter()
+    result = db_setup._mask_all_sensitive_fields(payload, '*****')
+
+    assert time.perf_counter() - start < 2.0
+    assert result == payload
+
+
+def test_mask_sensitive_config_xml_inside_nested_list(db_setup):
+    """XML carried by a string element of a nested list is masked like any other embedded XML."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf():
+        return {'files': [['<api_key>SECRET</api_key>']]}
+
+    assert get_conf() == {'files': [['<api_key>*****</api_key>']]}
+
+
+# ---------------------------------------------------------------------------
+# Tests for whitespace/attribute variants of the masked tags (regression for
+# the mask regex missing tags written as <cluster >, <cluster\t> or with
+# attributes, which the manager's own XML parser still treats as <cluster>)
+# ---------------------------------------------------------------------------
+
+_XML_CLUSTER_TAG_WITH_SPACE = """\
+<ossec_config>
+  <cluster >
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+_XML_CLUSTER_TAG_WITH_TAB = "<ossec_config>\n  <cluster\t>\n    <key>SECRETCLUSTERKEY</key>\n  </cluster>\n</ossec_config>"
+
+_XML_CLUSTER_TAG_WITH_ATTRIBUTE = """\
+<ossec_config>
+  <cluster foo="bar">
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+_XML_KEY_TAG_WITH_SPACE = """\
+<ossec_config>
+  <cluster>
+    <key >SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+_XML_CLUSTER_TAG_WITH_LT_IN_ATTRIBUTE = """\
+<ossec_config>
+  <cluster note="a < b">
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+_XML_KEY_TAG_WITH_LT_IN_ATTRIBUTE = """\
+<ossec_config>
+  <cluster>
+    <key note="<">SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+_XML_DECOY_TAG_WITH_CLUSTER_PREFIX = """\
+<ossec_config>
+  <clusterx>
+    <key>NOTSECRET</key>
+  </clusterx>
+</ossec_config>"""
+
+
+@pytest.mark.parametrize('xml_payload', [
+    _XML_CLUSTER_TAG_WITH_SPACE,
+    _XML_CLUSTER_TAG_WITH_TAB,
+    _XML_CLUSTER_TAG_WITH_ATTRIBUTE,
+    _XML_KEY_TAG_WITH_SPACE,
+    _XML_CLUSTER_TAG_WITH_LT_IN_ATTRIBUTE,
+    _XML_KEY_TAG_WITH_LT_IN_ATTRIBUTE,
+])
+def test_mask_sensitive_config_raw_xml_tag_whitespace_variants(db_setup, xml_payload):
+    """Whitespace/attributes on the opening tag must not bypass the mask, and the mask must land in place."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return xml_payload
+
+    result = get_conf_raw()
+    assert "SECRETCLUSTERKEY" not in result
+    assert "<key" in result and "</key" in result
+    assert "*****" in result
+
+
+def test_mask_sensitive_config_raw_xml_decoy_tag_not_masked(db_setup):
+    """A different tag sharing the `cluster` prefix must not be matched."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return _XML_DECOY_TAG_WITH_CLUSTER_PREFIX
+
+    result = get_conf_raw()
+    assert result == _XML_DECOY_TAG_WITH_CLUSTER_PREFIX
+
+
+_XML_COMMENTED_KEY_BEFORE_REAL_KEY = """\
+<ossec_config>
+  <cluster>
+    <!-- <key note>OLDKEY</key> -->
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+_XML_DUPLICATE_KEY_TAGS = """\
+<ossec_config>
+  <cluster>
+    <key>OLDKEY</key>
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+_XML_KEY_VALUE_WITH_EMBEDDED_COMMENT = """\
+<ossec_config>
+  <cluster>
+    <key>SECRETCLUSTERKEY<!-- rotate me --></key>
+  </cluster>
+</ossec_config>"""
+
+_XML_KEY_CLOSING_TAG_WITH_SPACE = """\
+<ossec_config>
+  <cluster>
+    <key>SECRETCLUSTERKEY</key >
+  </cluster>
+</ossec_config>"""
+
+_XML_COMMENT_WITH_APOSTROPHE_BEFORE_REAL_KEY = """\
+<ossec_config>
+  <cluster>
+    <!-- <key is the cluster's shared secret -->
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+  <indexer>
+    <ssl>
+      <key>/etc/filebeat/certs/filebeat-key.pem<!-- don't move --></key>
+    </ssl>
+  </indexer>
+  <!-- <cluster></cluster> -->
+</ossec_config>"""
+
+
+@pytest.mark.parametrize('xml_payload', [
+    _XML_COMMENTED_KEY_BEFORE_REAL_KEY,
+    _XML_DUPLICATE_KEY_TAGS,
+    _XML_KEY_VALUE_WITH_EMBEDDED_COMMENT,
+    _XML_KEY_CLOSING_TAG_WITH_SPACE,
+    _XML_COMMENT_WITH_APOSTROPHE_BEFORE_REAL_KEY,
+])
+def test_mask_sensitive_config_raw_xml_all_key_occurrences_masked(db_setup, xml_payload):
+    """A prior <key> (commented-out or duplicated) or a comment inside the value must not leave the real key in clear text."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return xml_payload
+
+    result = get_conf_raw()
+    assert "SECRETCLUSTERKEY" not in result
+    assert "OLDKEY" not in result
+
+
+@pytest.mark.parametrize('xml_payload, secrets', [
+    (_XML_MULTIPLE_CLUSTER_BLOCKS, ('FIRSTKEY', 'SECONDKEY')),
+    (_XML_MULTILINE_KEY, ('MULTILINE', 'SECRET')),
+])
+def test_mask_sensitive_config_raw_xml_every_block_masked(db_setup, xml_payload, secrets):
+    """Every <cluster> block is masked, and a key value spanning several lines is masked whole."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return xml_payload
+
+    result = get_conf_raw()
+    assert all(secret not in result for secret in secrets)
+
+
+@pytest.mark.parametrize('payload', [
+    "<ossec_config><cluster><!-- " + "<key><!" * 8000 + " --></cluster></ossec_config>",
+    "<ossec_config><cluster><node_name>" + "\\<key>" * 8000 + "</node_name></cluster></ossec_config>",
+], ids=['inside_comment', 'escaped'])
+def test_mask_sensitive_config_raw_xml_repeated_leaf_openings_are_linear(db_setup, payload):
+    """Leaf openings inside a comment or after a backslash must not make every match attempt rescan the block."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return payload
+
+    start = time.perf_counter()
+    assert get_conf_raw() == payload
+    assert time.perf_counter() - start < 2.0
+
+
+_XML_CLUSTER_NEVER_CLOSES = """\
+<ossec_config>
+  <cluster>
+    <key>SECRETCLUSTERKEY</key>
+"""
+
+_XML_CLUSTER_CLOSING_TAG_TYPO = """\
+<ossec_config>
+  <cluster>
+    <key>SECRETCLUSTERKEY</key>
+  </clustr>
+</ossec_config>"""
+
+_XML_CLUSTER_CLOSE_INSIDE_COMMENT = """\
+<ossec_config>
+  <cluster>
+    <!-- old block: </cluster> -->
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+_XML_CLUSTER_NESTED_IN_NODES = """\
+<ossec_config>
+  <cluster>
+    <nodes><cluster>10.0.0.1</cluster></nodes>
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+
+@pytest.mark.parametrize('xml_payload', [
+    _XML_CLUSTER_NEVER_CLOSES,
+    _XML_CLUSTER_CLOSING_TAG_TYPO,
+    _XML_CLUSTER_CLOSE_INSIDE_COMMENT,
+    _XML_CLUSTER_NESTED_IN_NODES,
+])
+def test_mask_sensitive_config_raw_xml_missing_or_fake_block_close(db_setup, xml_payload):
+    """A missing, misspelled, or commented-out </cluster> must not leave the whole block unmasked."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return xml_payload
+
+    result = get_conf_raw()
+    assert "SECRETCLUSTERKEY" not in result
+
+
+_XML_MIXED_CASE_TAGS = """\
+<ossec_config>
+  <Cluster>
+    <Key>SECRETCLUSTERKEY</Key>
+  </Cluster>
+</ossec_config>"""
+
+
+def test_mask_sensitive_config_raw_xml_mixed_case_tags(db_setup):
+    """<Cluster>/<Key> must mask too: configuration.py lowercases tags when it reads them back."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return _XML_MIXED_CASE_TAGS
+
+    result = get_conf_raw()
+    assert "SECRETCLUSTERKEY" not in result
+
+
+def test_mask_sensitive_config_raw_xml_unclosed_key_many_comments_is_fast(db_setup):
+    """An unclosed <key> followed by many comments must not trigger catastrophic regex backtracking (ReDoS guard)."""
+    db_setup.rbac.set({'rbac_mode': 'white'})
+    payload = "<ossec_config><cluster><key>" + "<!--c-->" * 40 + "</cluster></ossec_config>"
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return payload
+
+    start = time.perf_counter()
+    get_conf_raw()
+    elapsed = time.perf_counter() - start
+    assert elapsed < 2.0
+
+
+_XML_CLUSTER_CLOSE_INSIDE_OSXML_COMMENT = """\
+<ossec_config>
+  <cluster>
+    <! old block: </cluster> !>
+    <key>SECRETCLUSTERKEY</key>
+  </cluster>
+</ossec_config>"""
+
+
+def test_mask_sensitive_config_raw_xml_close_inside_osxml_style_comment(db_setup):
+    """A </cluster> written inside an os_xml-style <! ... !> comment must not truncate the block early.
+
+    os_xml's own comment reader (_oscomment) closes a comment opened with '<!' at the first
+    '-->' or '!>', not only the W3C '-->' form.
+    """
+    db_setup.rbac.set({'rbac_mode': 'white'})
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return _XML_CLUSTER_CLOSE_INSIDE_OSXML_COMMENT
+
+    result = get_conf_raw()
+    assert "SECRETCLUSTERKEY" not in result
+
+
+def test_mask_xml_by_path_three_level_path_missing_middle_tag_is_fast(db_setup):
+    """A 3-tag path whose middle tag is absent from the block must not backtrack exponentially over trailing
+    comments (ReDoS guard for the cluster.haproxy_helper.* paths)."""
+    payload = "<cluster>" + "<!--c-->" * 40
+
+    start = time.perf_counter()
+    result = db_setup._mask_xml_by_path(payload, "cluster.haproxy_helper.haproxy_password", "*****")
+    elapsed = time.perf_counter() - start
+
+    assert elapsed < 2.0
+    assert result == payload

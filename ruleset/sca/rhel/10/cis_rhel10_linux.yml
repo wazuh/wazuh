@@ -3071,7 +3071,7 @@ checks:
           - "Hide Artifacts"
     condition: all
     rules:
-      - 'not c:ss -lntu -> r:\s*127\.0\.0\.1:25\s*|\s*::1:25\s*'
+      - 'not c:ss -lntu -> r::25\s && !r:\s127\.0\.0\.1:25\s|\s\[::1\]:25\s|\s::1:25\s'
 
   # 2.2.16 Ensure nfs-utils is not installed or the nfs-server service is masked (Automated)
   - id: 37067

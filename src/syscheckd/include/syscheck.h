@@ -146,6 +146,7 @@ typedef struct diff_data
 
     char* tmp_folder;
     char* file_origin;
+    char* new_file;
     char* uncompress_file;
     char* compress_tmp_file;
     char* diff_file;

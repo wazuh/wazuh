@@ -7,10 +7,8 @@
         <!-- Never restart the machine nor prompt for a restart during install, upgrade or uninstall. -->
         <Property Id="REBOOT" Value="ReallySuppress" />
 
-        <!-- Do not run while a system restart is pending: abort before making any change so the
-             install is never left half-committed and later broken by the pending restart. Uninstall
-             and repair of an already-installed product are still allowed. -->
-        <Condition Message="A system restart is pending on this computer. Please reboot and run the Wazuh agent installer again."><![CDATA[Installed OR NOT MsiSystemRebootPending]]></Condition>
+        <!-- Block only pending restart operations on the install folder; uninstall and repair are still allowed. -->
+        <Condition Message="Pending restart conflict: a file operation waiting for a system restart affects the Wazuh agent ([WAZUH_PENDING_CONFLICT]). Please reboot once and run the Wazuh agent installer again."><![CDATA[Installed OR NOT WAZUH_PENDING_CONFLICT]]></Condition>
 
         <!-- Registration. The enrollment token is the only way to register an agent;
              every address and credential property it replaced is gone. -->
@@ -127,6 +125,7 @@
         <CustomAction Id="CustomAction_RemoveAllScript" BinaryKey="RemoveAllScript" VBScriptCall="removeAll" Return="check" Execute="commit" Impersonate="no"/>
 
         <CustomAction Id="CheckSvcRunning" BinaryKey="InstallerScripts" VBScriptCall="CheckSvcRunning" Return="check" Execute="immediate" Impersonate="no"/>
+        <CustomAction Id="CheckPendingConflict" BinaryKey="InstallerScripts" VBScriptCall="CheckPendingConflict" Return="check" Execute="immediate"/>
 
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;/+/&quot;[OS_VERSION]&quot;/+/&quot;[WAZUH_ENROLLMENT_TOKEN]&quot;/+/&quot;[WAZUH_AGENT_NAME]&quot;/+/&quot;[WAZUH_AGENT_GROUP]&quot;/+/&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;/+/&quot;[WAZUH_TIME_RECONNECT]&quot;/+/&quot;[ENROLLMENT_DELAY]&quot;/+/&quot;[WAZUH_SSL_VERIFICATION]&quot;/+/&quot;[WAZUH_MANAGER]&quot;/+/&quot;[WAZUH_MANAGER_PORT]&quot;/+/&quot;[WAZUH_MANAGER_ENDPOINT]&quot;/+/&quot;[WAZUH_REGISTRATION_SERVER]&quot;/+/&quot;[WAZUH_REGISTRATION_PORT]&quot;/+/&quot;[WAZUH_REGISTRATION_PASSWORD]&quot;/+/&quot;[WAZUH_REGISTRATION_CA]&quot;/+/&quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;/+/&quot;[WAZUH_REGISTRATION_KEY]&quot;/+/&quot;[SSL_VERIFICATION]&quot;/+/&quot;[ADDRESS]&quot;/+/&quot;[SERVER_PORT]&quot;/+/&quot;[AUTHD_SERVER]&quot;/+/&quot;[AUTHD_PORT]&quot;/+/&quot;[PASSWORD]&quot;/+/&quot;[CERTIFICATE]&quot;/+/&quot;[PEM]&quot;/+/&quot;[KEY]&quot;" />
         <CustomAction Id="SetCustomActionDataForSetWazuhPermissions" Return="check" Property="SetWazuhPermissions" Value="&quot;[APPLICATIONFOLDER]&quot;" />
@@ -155,9 +154,13 @@
             <Publish Dialog="CustomCheckDialog" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" />
             <Publish Dialog="CustomCheckDialog" Control="Back" Event="NewDialog" Value="InstallDirDlg" />
         </UI>
+        <InstallUISequence>
+            <Custom Action="CheckPendingConflict" Before="LaunchConditions">NOT Installed</Custom>
+        </InstallUISequence>
         <InstallExecuteSequence>
             <!-- Prevent upgrades from unsupported versions -->
             <Custom Action="PreventUnsupportedUpgrade" After="FindRelatedProducts">IS_UPGRADING_FROM_UNSUPPORTED_VERSION</Custom>
+            <Custom Action="CheckPendingConflict" Before="LaunchConditions">NOT Installed</Custom>
 
             <!-- Set OS VERSION -->
             <Custom Action="SetOSVersion0" Before="SetCustomActionDataValue">( VersionNT = 600 OR VersionNT64 = 600 ) AND  MsiNTProductType &gt; 1</Custom>
