@@ -184,19 +184,34 @@ TEST(FirefoxAddonsTests, UnknownUserNameUsesHomeDirectoryOwner)
     EXPECT_EQ(collectFromTempHome(AddonsLayout::REGULAR, "", homeOwner), static_cast<size_t>(10));
 }
 
-TEST(FirefoxAddonsTests, UnexpectedFieldTypesDoNotDropOtherAddons)
+class FirefoxAddonsMalformedFilesTests : public ::testing::Test
 {
-    const auto homePath = std::filesystem::temp_directory_path() / "firefox_addons_test_unexpected_field_types";
-    std::filesystem::remove_all(homePath);
+    protected:
+        std::filesystem::path m_homePath;
 
-    const auto writeFile = [&homePath](const std::string & relativePath, const std::string & content)
-    {
-        const auto fullPath = homePath / relativePath;
-        std::filesystem::create_directories(fullPath.parent_path());
-        std::ofstream file(fullPath);
-        file << content;
-    };
+        void SetUp() override
+        {
+            m_homePath = std::filesystem::temp_directory_path() /
+                         ("firefox_addons_test_" + std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()));
+            std::filesystem::remove_all(m_homePath);
+        }
 
+        void TearDown() override
+        {
+            std::filesystem::remove_all(m_homePath);
+        }
+
+        void writeFile(const std::filesystem::path& relativePath, const std::string& content)
+        {
+            const auto fullPath = m_homePath / relativePath;
+            std::filesystem::create_directories(fullPath.parent_path());
+            std::ofstream file(fullPath);
+            file << content;
+        }
+};
+
+TEST_F(FirefoxAddonsMalformedFilesTests, UnexpectedFieldTypesDoNotDropOtherAddons)
+{
     writeFile("bad-user/.mozilla/firefox/abc.default/extensions.json", R"({"addons": [
         {"id": 5, "version": 1, "type": [], "sourceURI": 9, "location": 3, "path": false,
          "defaultLocale": {"name": ["x"], "creator": {"n": 1}, "description": 2},
@@ -210,13 +225,12 @@ TEST(FirefoxAddonsTests, UnexpectedFieldTypesDoNotDropOtherAddons)
               R"({"addons": [{"id": "good@addon", "version": "2.0", "defaultLocale": {"name": "Good"}}]})");
 
     auto mockAddonsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
-    EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(homePath.string()));
+    EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(m_homePath.string()));
     EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::_)).WillRepeatedly(::testing::Return(std::to_string(geteuid())));
 
     FirefoxAddonsProvider firefoxAddonsProvider(mockAddonsWrapper);
     nlohmann::json extensionsJson;
     ASSERT_NO_THROW(extensionsJson = firefoxAddonsProvider.collect());
-    std::filesystem::remove_all(homePath);
 
     ASSERT_EQ(extensionsJson.size(), static_cast<size_t>(5));
 
