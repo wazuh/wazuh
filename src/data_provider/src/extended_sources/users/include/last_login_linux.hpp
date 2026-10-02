@@ -70,9 +70,11 @@ class LastLoginProvider
         /// @return Epoch seconds of the most recent recorded login, 0 when no source has one.
         uint32_t lastLogin(uid_t uid, const std::string& userName) const;
 
-        /// Tells whether the host offers any source of last logins.
+        /// Tells whether the host offers any source of last logins that actually holds records.
         /// Without one every account looks as if it had never logged in, which makes "failures since
-        /// the last login" unanswerable rather than zero.
+        /// the last login" unanswerable rather than zero. The file merely existing is not enough:
+        /// Debian, Ubuntu and derivatives ship an empty /var/log/lastlog, and a distribution that has
+        /// moved to lastlog2 can leave an unused one behind on upgrade.
         bool hasSource() const;
 
     private:
@@ -84,6 +86,9 @@ class LastLoginProvider
 
         /// The lastlog file descriptor, -1 when the file cannot be opened.
         int m_lastlogFd;
+
+        /// Whether the lastlog file holds at least one record, probed once at construction.
+        bool m_lastlogHasRecords;
 
         /// Last login by account name, from lastlog2.
         std::unordered_map<std::string, uint32_t> m_lastlog2;

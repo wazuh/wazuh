@@ -141,6 +141,10 @@ TEST(LastLoginProviderOffsetTests, HighestUidIsRequestedAsA64BitOffset)
     EXPECT_CALL(*reader, open(::testing::_)).WillOnce(::testing::Return(3));
     // 4294967294 records in, which does not fit in 32 bits whichever stride the platform uses.
     constexpr auto RECORD = sizeof(struct lastlog);
+    // The constructor probes record 0 to tell an empty lastlog from a populated one.
+    EXPECT_CALL(*reader, pread(3, ::testing::_, sizeof(struct lastlog), 0ull)).WillOnce(::testing::Return(
+                                                                                            static_cast<ssize_t>(sizeof(struct lastlog))));
+
     EXPECT_CALL(*reader, pread(3, ::testing::_, RECORD, 4294967294ull * RECORD)).WillOnce(::testing::Return(0));
     EXPECT_CALL(*reader, close(3)).Times(1);
 
@@ -153,6 +157,9 @@ TEST(LastLoginProviderOffsetTests, ShortReadGivesNoLogin)
     auto reader = std::make_shared<MockPreadWrapper>();
 
     EXPECT_CALL(*reader, open(::testing::_)).WillOnce(::testing::Return(3));
+    // The constructor probes record 0 to tell an empty lastlog from a populated one.
+    EXPECT_CALL(*reader, pread(3, ::testing::_, sizeof(struct lastlog), 0ull)).WillOnce(::testing::Return(
+                                                                                            static_cast<ssize_t>(sizeof(struct lastlog))));
     EXPECT_CALL(*reader, pread(3, ::testing::_, sizeof(struct lastlog), 1000ull * sizeof(struct lastlog)))
     .WillOnce(::testing::Return(100));
     EXPECT_CALL(*reader, close(3)).Times(1);
@@ -220,4 +227,37 @@ TEST(LastLoginRecordTimeTests, SixtyFourBitRejectsNegativesAndHoldsTheMaximum)
     // Past what the reported field can hold, kept at the maximum rather than wrapping round.
     EXPECT_EQ(lastLoginFromRecordTime(static_cast<int64_t>(4294967296LL)), 4294967295u);
     EXPECT_EQ(lastLoginFromRecordTime(INT64_MAX), 4294967295u);
+}
+
+TEST_F(LastLoginProviderTests, AnEmptyLastlogIsNotASource)
+{
+    // Debian, Ubuntu and derivatives ship /var/log/lastlog as a zero byte file, and a distribution
+    // that has moved to lastlog2 can leave an unused one behind on upgrade. Opening it says nothing.
+    std::ofstream(m_lastlog, std::ios::binary);
+
+    auto provider = makeProvider();
+    EXPECT_FALSE(provider.hasSource());
+}
+
+TEST_F(LastLoginProviderTests, APopulatedLastlogIsASource)
+{
+    writeLastlog(0, 1000);
+
+    auto provider = makeProvider();
+    EXPECT_TRUE(provider.hasSource());
+}
+
+TEST_F(LastLoginProviderTests, Lastlog2AloneIsASource)
+{
+    std::ofstream(m_lastlog, std::ios::binary);
+    writeLastlog2({{"alice", 2000}});
+
+    auto provider = makeProvider();
+    EXPECT_TRUE(provider.hasSource());
+}
+
+TEST_F(LastLoginProviderTests, NoFileAtAllIsNotASource)
+{
+    auto provider = makeProvider();
+    EXPECT_FALSE(provider.hasSource());
 }

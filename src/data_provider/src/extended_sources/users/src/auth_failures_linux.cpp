@@ -32,14 +32,16 @@ AuthFailuresProvider::AuthFailuresProvider()
 {
 }
 
-bool AuthFailuresProvider::loadBtmp(const std::unordered_map<std::string, uint32_t>& lastLoginByName)
+bool AuthFailuresProvider::readBtmpFile(const std::string& path,
+                                        const std::unordered_map<std::string, uint32_t>& lastLoginByName,
+                                        size_t& budgetBytes)
 {
-    if (!Utils::existsRegular(m_btmpPath))
+    if (budgetBytes == 0 || !Utils::existsRegular(path))
     {
         return false;
     }
 
-    std::ifstream btmp(m_btmpPath, std::ios::binary | std::ios::ate);
+    std::ifstream btmp(path, std::ios::binary | std::ios::ate);
 
     if (!btmp.is_open())
     {
@@ -50,24 +52,27 @@ bool AuthFailuresProvider::loadBtmp(const std::unordered_map<std::string, uint32
     const auto fileSize = static_cast<uint64_t>(btmp.tellg());
     const auto totalRecords = fileSize / recordSize;
 
-    // A btmp holding no record is not evidence that nobody failed to authenticate, only that nothing
-    // has been written to it. Every distro ships the file empty, and a system whose sshd does not
-    // record failures there keeps it that way, so answering zero here is the false zero this collector
-    // exists to avoid. Report the count as unknown until the file carries at least one record.
     if (totalRecords == 0)
     {
         return false;
     }
 
     // Records are appended in time order, so the tail holds the newest ones. A partial record at the end is ignored.
-    const auto readRecords = std::min<uint64_t>(totalRecords, m_btmpTailBytes / recordSize);
+    const auto readRecords = std::min<uint64_t>(totalRecords, budgetBytes / recordSize);
+
+    if (readRecords == 0)
+    {
+        return false;
+    }
 
     btmp.seekg(static_cast<std::streamoff>((totalRecords - readRecords) * recordSize));
 
     struct utmpx entry {};
+    uint64_t consumed = 0;
 
-    while (btmp.read(reinterpret_cast<char*>(&entry), recordSize))
+    while (consumed < readRecords && btmp.read(reinterpret_cast<char*>(&entry), recordSize))
     {
+        ++consumed;
         const auto user = std::string(entry.ut_user, strnlen(entry.ut_user, sizeof(entry.ut_user)));
         const auto lastLogin = lastLoginByName.find(user);
         const auto failureTime = static_cast<uint32_t>(entry.ut_tv.tv_sec);
@@ -82,10 +87,36 @@ bool AuthFailuresProvider::loadBtmp(const std::unordered_map<std::string, uint32
         }
     }
 
+    budgetBytes -= std::min<size_t>(budgetBytes, static_cast<size_t>(consumed * recordSize));
+
     // Reaching the end of the file is not an error, a read failure before it is. A torn record at the
     // end is normal for an append-only log and is ignored, but a read that stopped for any other
-    // reason leaves eofbit clear and is reported as unknown rather than as a complete count.
-    return btmp.eof();
+    // reason leaves eofbit clear, and the count from this file is then not trustworthy.
+    return consumed == readRecords || btmp.eof();
+}
+
+bool AuthFailuresProvider::loadBtmp(const std::unordered_map<std::string, uint32_t>& lastLoginByName)
+{
+    auto budget = m_btmpTailBytes;
+    auto known = false;
+
+    // The rotated file is read as well as the live one. logrotate replaces btmp with an empty file
+    // every month and keeps one generation beside it, so reading only the live file loses up to a
+    // month of failures and, worse, makes every account on the host flip to unknown and back as soon
+    // as the next failure is recorded. With the rotated generation included the count survives a
+    // rotation, which is what "since the account last logged in" is supposed to mean.
+    //
+    // Newest first, so the byte budget is spent on the most recent failures when both files are large.
+    // A rotated file that the distribution compresses is not read, and if the live file is empty the
+    // count is then correctly reported as unknown rather than as zero.
+    const std::string paths[] {m_btmpPath, m_btmpPath + ".1"};
+
+    for (const auto& path : paths)
+    {
+        known = readBtmpFile(path, lastLoginByName, budget) || known;
+    }
+
+    return known;
 }
 
 void AuthFailuresProvider::load(const std::unordered_map<std::string, uint32_t>& lastLoginByName, bool lastLoginKnown)
