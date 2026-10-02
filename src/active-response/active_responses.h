@@ -150,6 +150,26 @@ int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, co
  * */
 int get_ip_version(const char *ip);
 
+/**
+ * Canonicalize a numeric IP into its standard text form (e.g. "012.0.0.1" -> "12.0.0.1")
+ * @param ip Numeric IP to canonicalize
+ * @param output Buffer that receives the canonical form
+ * @param output_size Size of output
+ * @retval true on success
+ * @retval false on error or invalid IP
+ * */
+bool canonicalize_ip(const char *ip, char *output, size_t output_size);
+
+/**
+ * Check whether a hosts.deny file line is exactly the Wazuh-managed rule
+ * (trailing EOL/whitespace ignored), so substrings never match
+ * @param line Line read from hosts.deny
+ * @param rule Exact rule Wazuh writes (e.g. "ALL:12.0.0.1")
+ * @retval true if the line is that rule
+ * @retval false otherwise
+ * */
+bool hosts_deny_rule_matches(const char *line, const char *rule);
+
 #ifndef WIN32
 
 /**
