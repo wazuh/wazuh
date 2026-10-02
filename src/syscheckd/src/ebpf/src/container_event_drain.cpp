@@ -409,6 +409,15 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
      * filter would trade a bounded cost for a silent gap. */
     filter.cgroup_mode = RT_CGROUP_MODE_ALL;
 
+    /* This consumer reads cgroup_id, filename, pid, event_type and flags, and
+     * nothing else. The process-context fields exist for host FIM whodata's
+     * "who" attribution and cost two dentry walks per event to produce — the
+     * dominant per-event cost on the kprobe path, which is the majority
+     * configuration. Opting out is why running unfiltered (ALL, above) stays
+     * affordable: the cost that cannot be avoided by filtering is avoided by
+     * not computing it. */
+    filter.skip_mask = RT_SKIP_PROC_CONTEXT;
+
     impl->handle = rt_open(&filter);
 
     if (impl->handle == nullptr)

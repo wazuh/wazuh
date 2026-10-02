@@ -140,12 +140,21 @@ struct
 #define RT_CGROUP_MODE_ALL       0
 #define RT_CGROUP_MODE_ALLOWLIST 1
 
+/* filter_cfg slots. Two scalars in one array rather than a struct value, so
+ * rt_set_cgroup_mode() can keep rewriting the mode on a live handle without a
+ * read-modify-write of anything else. */
+#define FILTER_CFG_KEY_MODE 0
+#define FILTER_CFG_KEY_SKIP 1
+
+/* Mirrors RT_SKIP_PROC_CONTEXT in rt_engine.h; the two must stay in step. */
+#define RT_SKIP_PROC_CONTEXT (1u << 0)
+
 struct
 {
     __uint(type, BPF_MAP_TYPE_ARRAY);
     __type(key, __u32);
     __type(value, __u32);
-    __uint(max_entries, 1);
+    __uint(max_entries, 2);
 } filter_cfg SEC(".maps");
 
 struct
@@ -163,7 +172,7 @@ extern int LINUX_KERNEL_VERSION __kconfig;
  * 12 KB reservation. */
 statfunc int event_is_wanted(__u64 cgroup_id)
 {
-    __u32 key = 0;
+    __u32 key = FILTER_CFG_KEY_MODE;
     __u32* mode = bpf_map_lookup_elem(&filter_cfg, &key);
 
     /* No config yet (or the lookup failed) means submit: an engine whose
@@ -174,6 +183,18 @@ statfunc int event_is_wanted(__u64 cgroup_id)
     }
 
     return bpf_map_lookup_elem(&cgroup_allow_map, &cgroup_id) != NULL;
+}
+
+/* Per-event work this handle's consumer has opted out of. Read after the filter
+ * and after the reservation, so a filtered-out event never pays for it; an
+ * absent or unwritten slot means "skip nothing", which is the behaviour every
+ * consumer had before the mask existed. */
+statfunc __u32 skip_mask(void)
+{
+    __u32 key = FILTER_CFG_KEY_SKIP;
+    __u32* mask = bpf_map_lookup_elem(&filter_cfg, &key);
+
+    return mask ? *mask : 0;
 }
 
 statfunc void bump_drop_counter(void)
@@ -428,15 +449,30 @@ statfunc void submit_event(__u16 event_type, const char* filename, __u64 ino, __
     evt->parent_cwd[0] = '\0';
     evt->parent_comm[0] = '\0';
 
-    get_task_cwd(evt->cwd, RT_PATH_MAX, current_task);
+    /* Two full dentry walks live below. A consumer that routes on cgroup_id and
+     * filename reads none of what they produce, and on the kprobe path they are
+     * the dominant per-event cost. The fields stay in the record and stay
+     * null-terminated; they just arrive empty. */
+    const int want_proc_context = (skip_mask() & RT_SKIP_PROC_CONTEXT) == 0;
+
+    if (want_proc_context)
+    {
+        get_task_cwd(evt->cwd, RT_PATH_MAX, current_task);
+    }
 
     evt->ppid = 0;
     struct task_struct* parent_task = BPF_CORE_READ(current_task, real_parent);
     if (parent_task)
     {
+        /* ppid is one field read, not a walk, so it is never skipped. */
         evt->ppid = BPF_CORE_READ(parent_task, tgid);
-        bpf_probe_read_kernel_str(evt->parent_comm, RT_COMM_MAX, (const char*)BPF_CORE_READ(parent_task, comm));
-        get_task_cwd(evt->parent_cwd, RT_PATH_MAX, parent_task);
+
+        if (want_proc_context)
+        {
+            bpf_probe_read_kernel_str(
+                evt->parent_comm, RT_COMM_MAX, (const char*)BPF_CORE_READ(parent_task, comm));
+            get_task_cwd(evt->parent_cwd, RT_PATH_MAX, parent_task);
+        }
     }
 
     bpf_ringbuf_submit(evt, 0);
