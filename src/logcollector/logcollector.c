@@ -26,6 +26,8 @@
 #define MAX_ASCII_LINES 10
 #define MAX_UTF8_CHARS 1400
 #define OFFSET_SIZE     21  ///< Maximum 64-bit integer is 20-char long, plus 1 because of the '\0'
+#define RELOAD_EAGAIN_RETRIES 3     ///< Times a reload that hits a transient change is retried before the file is forgotten
+#define RELOAD_EAGAIN_DELAY_MS 50   ///< Wait between those retries
 
 /* Prototypes */
 static int update_fname(int i, int j);
@@ -579,13 +581,21 @@ void LogCollectorStart()
                     }
 
                     if (current->file && current->exists) {
-                        if (reload_file(current) == -1) {
-                            if (errno == EAGAIN) {
-                                // Transient change (e.g. a rotation in progress), not a reason to forget it:
-                                // keep the file and retry on the next pass.
-                                mdebug1("File '%s' changed while being reopened. Trying again later.", current->file);
-                                continue;
-                            }
+                        int reloaded = reload_file(current);
+                        int retries;
+
+                        // A transient change (e.g. a rotation in progress) is retried here: a file left unopened
+                        // would not be reopened later, as only date-named entries are. The wait is short and only
+                        // paid by a file that is changing at that moment.
+                        for (retries = 0; reloaded == -1 && errno == EAGAIN && retries < RELOAD_EAGAIN_RETRIES; retries++) {
+                            struct timespec retry_delay = { 0, RELOAD_EAGAIN_DELAY_MS * 1000000L };
+
+                            mdebug1("File '%s' changed while being reopened. Trying again.", current->file);
+                            nanosleep(&retry_delay, NULL);
+                            reloaded = reload_file(current);
+                        }
+
+                        if (reloaded == -1) {
                             minfo(FORGET_FILE, current->file);
                             os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
                             free_files_status_data(old_file_status);
