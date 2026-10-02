@@ -7,14 +7,17 @@ any of them, and whether the bundle was stamped by `wazuh-manager-certs`. Pure f
 header** (`X509` stays an incomplete type, as in remoted's `tlsCertificateStatus.hpp`).
 
 It is not a certificate store and it never writes a file: the caller reads the bundle — remoted
-through its own bounded, injectable reader — and only `wazuh-manager-certs` writes one back. It does
+through its own bounded, injectable reader — and at runtime only `wazuh-manager-certs` writes one
+back (the installer's credential ladder creates the initial, unstamped `root-ca.pem` in shell,
+without this library). It does
 verify one thing, because the publication depends on it: whether the served leaf chains to the bundle
 (`leafChainsToAnyCa()`, C33). The operator-facing chain verdict, which also weighs the server
 purpose, stays in remoted's `chainValidates()`.
 
 Consumers: `remoted_module` (linked inside `libremoted_module.so`, see
-[its README](../../remoted/remoted_module/README.md)) and, from PR 2 of issue #39319, the
-`wazuh-manager-certs` tool. It exists because those two must answer the same questions with the
+[its README](../../remoted/remoted_module/README.md)) and `manager_certs_core`, the library behind
+the `wazuh-manager-certs` tool (it links `ca_bundle` PUBLIC, see
+[its README](../manager_certs/README.md)). It exists because those two must answer the same questions with the
 same code: the tool stamps a publication the manager then has to agree with, and two
 implementations of "is this bundle publishable" would drift into an agent trusting a CA the
 manager never vouched for.
@@ -81,6 +84,27 @@ src/shared_modules/ca_bundle/
 | `describe(cert, leaf) -> CertificateFacts` | Subject, issuer, identity, validity window, `isCa`, `signsLeaf` (the plain **signature** fact, deliberately not the chain verdict) — the tool's `inspect`/`check` |
 | `kMaxCertificates` (6), `kMaxSerializedBytes` (8191) | The caps `vouch()` enforces |
 
+### Publication block
+
+`renderBlock()` writes, and `parseBundle()` recognises, exactly these eight lines (literals in
+`src/ca_bundle.cpp`); `wazuh-manager-certs` puts the block before the certificates:
+
+```
+##
+## Wazuh CA bundle
+##
+## Publication: 1789840456
+## Content-SHA256: <contentSha256() of the certificates, 64 lowercase hex>
+## Updated: 2026-09-19T17:54:16Z
+## Written by: wazuh-manager-certs <version>
+##
+```
+
+`Publication` is the generation (Unix seconds) and must parse as a 64-bit integer; all four fields
+must be present on their own lines, in this order, between the fences, or the block is no block
+(D-3). `Updated` and `Written by` are for the operator reading the file; nothing is decided from
+them.
+
 `vouch()` evaluates in exactly this order and stops at the first failure:
 `no_certificates` → `no_block` → `hash_mismatch` → `no_ca_signs_leaf` → `too_many_certificates` →
 `too_many_bytes`. Callers name the cause in their logs and exit codes, so the order is part of the
@@ -126,9 +150,10 @@ mean "does not chain" now, which is what their log lines say.
 
 ## Tests
 
-`ca_bundle_utest` (`cmake --build $WAZUH_REPO/src/build -j --target ca_bundle_utest`, then the
-binary in `src/build/shared_modules/ca_bundle/test/`, or `ctest -L ca_bundle`), suite
-`CaBundleTest`:
+`ca_bundle_utest` (`cmake --build $WAZUH_REPO/src/build -j --target ca_bundle_utest` in a
+`UNIT_TEST=ON` tree, then the binary in `src/build/shared_modules/ca_bundle/test/`, or
+`ctest -L ca_bundle`; labels `ca_bundle_utest;ca_bundle`), suite `CaBundleTest`. CI:
+`.github/workflows/5_testunit_cabundle.yml` (coverage and ASAN; Valgrind off):
 
 | Area | Cases |
 |---|---|
@@ -149,5 +174,6 @@ answered by a unit test, so it is checked against the real consumers: with `CA_B
 set to a directory, `CaBundleTest.RenderBlockRoundTripsThroughParseBundle` writes the sealed
 `bundle.pem` and the `leaf.pem` it signs there, and that pair is then loaded with
 `openssl storeutl -noout -certs`, verified with `openssl verify -CAfile bundle.pem leaf.pem` and
-handed to Python's `ssl.create_default_context(cafile=...)`. Issue #39319 keeps that script and its
-output as the stage's evidence.
+handed to Python's `ssl.create_default_context(cafile=...)`. That external check is manual: no
+script in this repository and no CI job sets `CA_BUNDLE_SEALED_DIR` (issue #39319 keeps the script
+and its output).

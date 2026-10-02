@@ -816,8 +816,10 @@ void CMSync::synchronize()
         {
             nsState.setSyncStatus(base::SyncStatus::FAILED);
             updateSpacesStatusSnapshot();
-            LOG_WARNING(
-                "[{}] Failed to synchronize namespace for space '{}': {}", LOG_MODULE_NAME, nsState.getOriginSpace(), e.what());
+            LOG_WARNING("[{}] Failed to synchronize namespace for space '{}': {}",
+                        LOG_MODULE_NAME,
+                        nsState.getOriginSpace(),
+                        e.what());
         }
     }
 

@@ -26,7 +26,7 @@ the language).
 | RF-2 | Canonical JSON with the schema's types: `yes`/`no` → boolean, digits → integer where allowed, repeated or comma-separated values → arrays, the attribute forms of the dialect (`<backup database="…">`, `<disconnected_time enabled="…">`) → nested objects, lowercase enums normalized | `src/xmlToJson.cpp` |
 | RF-3 | Validation against the embedded draft-04 schema; the first error is reported with its JSON pointer and keyword | `src/schemaValidate.cpp` |
 | RF-4 | Defaults declared in the schema are filled into the effective document (a missing section = its defaults) | `src/defaults.cpp` |
-| RF-5 | Uniform, fatal cross-field rules: certificate/key pairing, no `.`/`..` prefix segments, distinct listener ports, existence of the HTTPS/authd certificate files (relative to the manager home; the manager never generates them — the operator provisions them, e.g. with wazuh-certs-tool — so the `file not found` verdict carries that hint; `indexer.ssl.*` is not checked, the connector reports those files at runtime) | `src/semantics.cpp` |
+| RF-5 | Uniform, fatal cross-field rules: certificate/key pairing, no `.`/`..` prefix segments, distinct listener ports, existence of the HTTPS/authd certificate files (relative to the manager home; nothing recreates them at start — the credential resolver issues them once at installation, or the operator provisions them, e.g. with wazuh-certs-tool — so the `file not found` verdict carries that hint; `indexer.ssl.*` is not checked, the connector reports those files at runtime) | `src/semantics.cpp` |
 | RF-6 | `sectionJson()` / `documentJson()` canonical JSON (cJSON-parseable); C API without exceptions or C++ types across the boundary | `src/manager_config.cpp`, `src/manager_config_c.cpp` |
 | RNF-1 | C++17, STATIC, manager only, pugixml + rapidjson PRIVATE | `CMakeLists.txt` |
 | RNF-2 | Schema embedded at build time (`generated/embeddedSchema.hpp`) | `CMakeLists.txt` |
@@ -53,11 +53,14 @@ the language).
   crash for those; there is no more general re-validation of the effective document.
 - **Defaults algorithm**: for every property of an object schema missing in the document, insert its
   `default` when declared (property or resolved `$ref`), else an empty object when it is an object schema; recurse into
-  object properties. Options without `default` (`verification_mode`, `ciphers`, `max_body_size`, `dual_stack`) stay absent:
-  absence is meaningful ("module default / inferred").
-- **Ports**: a disabled listener (`remote.legacy.enabled: no`, `auth.disabled: yes`) does not reserve its port.
+  object properties. Options without `default` (`remote.legacy.local_ip`, `remote.https.verification_mode`, `ciphers`,
+  `max_body_size`, `dual_stack`, `auth.legacy_enrollment`, `task-manager.wpk_repository`) stay absent: absence is
+  meaningful ("module default / inferred"); the required `cluster.key` and `indexer.hosts` have none either.
+- **Ports**: a disabled listener (`remote.legacy.enabled: no`, `auth.disabled: yes`) does not reserve its port;
+  `remote.https.port` and `cluster.port` always do.
 - **Files**: `LoadOptions::checkFiles` (default on) resolves relative paths against `LoadOptions::home`; unit tests turn it
-  off or create the files under a temporary home. Only `remote.https.*` and `auth.ssl_*` are checked.
+  off or create the files under a temporary home. Only `remote.https.{certificate,key,ca,ca_certificate}` and
+  `auth.{ssl_agent_ca,ssl_manager_cert,ssl_manager_key}` are checked, and an empty value is skipped.
 - **`cluster.key` is required and has no default**: a well-known default key would be a shared secret; the installer
   always generates one. `cluster` and `indexer` are the only `required` properties at the document root:
   every manager runs as a cluster node, and `wazuh-manager-analysisd` cannot start with zero indexer hosts,
@@ -164,6 +167,6 @@ it is the reference for the Python framework and the seed of the 5.0→5.1 conve
 
 | Situation | Message |
 |---|---|
-| file missing / oversized | plain message (the CLI maps it to `(1239)` in a later stage) |
+| file missing, unreadable or larger than 1 MiB | plain message, empty JSON pointer (`configuration file not found: <path>`, `… cannot be read: …`, `… larger than 1048576 bytes: …`). The CLI checks the file itself first and reports a missing one as `(1239): Configuration file not found: '<path>'.`; the C daemons render the loader's message under `(1244)` |
 | malformed XML, raw `&`, `--` in a comment, second root, wrong root | `invalid XML: … (line N)` / specific message with the line, empty JSON pointer |
-| schema / semantics | JSON pointer + violated keyword (`/remote/https/port: does not satisfy 'maximum' …`); consumers render it as `(1244): Invalid configuration at '<pointer>': <reason>` |
+| schema / semantics | JSON pointer + violated keyword (`/remote/https/port: does not satisfy 'maximum' … [schema …]`). `bin/wazuh-manager-conf` renders it as `(1244): Invalid configuration at '<pointer>': <reason>.` (`'/'` for an empty pointer); the C daemons put the file path in the subject and `Error::what()` (`<pointer>: <reason>`) in the reason |

@@ -32,6 +32,7 @@
 #define TOKEN_BOOTSTRAP_H
 
 #include <stdbool.h>
+#include <time.h>
 #include "https_client.h"
 
 /* Largest enrollment token this agent will read, wherever it comes from. Shared so the
@@ -121,6 +122,9 @@ typedef struct {
      *  request, and re-presenting it cannot change the answer. Acted on only by the caller,
      *  which is the only party that owns the token and can dispose of it. */
     bool token_rejected;
+    /** A 401 `token_unknown` or `stale_token` from /enroll: the node does not accept the token
+     *  yet (its copy of the token store has not caught up, or the clocks disagree). */
+    bool pending;
     /** The named reason the failing step logged, verbatim. The command runs with the log's stderr
      *  echo off (main-agent-auth.c's nowDaemon()), so without this an operator is shown the
      *  failure class and not the cause -- "the CA could not be established" reads identically for
@@ -193,12 +197,21 @@ char *w_agent_token_read_file(const char *path);
  * AgentdStart() already runs for the legacy enrollment loop (agt->enrollment.retry_delta/
  * retry_max), not to fall through to it: the legacy loop enrolls unverified, and the whole point
  * of the token path is that it never does.
+ *
+ * W_TOKEN_BOOTSTRAP_PENDING is the one 4xx that may clear on its own: /enroll answered a 401
+ * `token_unknown` or `stale_token` (see w_token_enroll_report_t.pending). It is retried like
+ * TRANSIENT, but only for W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S (see w_token_bootstrap_bound_pending()).
  */
 typedef enum {
     W_TOKEN_BOOTSTRAP_DONE = 0,
     W_TOKEN_BOOTSTRAP_TRANSIENT,
-    W_TOKEN_BOOTSTRAP_PERMANENT
+    W_TOKEN_BOOTSTRAP_PERMANENT,
+    W_TOKEN_BOOTSTRAP_PENDING
 } w_token_bootstrap_result_t;
+
+/** How long a first start keeps retrying a token the manager does not accept yet. Checked after
+ *  each attempt, so the first failed attempt past it is the last one (75 s with the default ramp). */
+#define W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S 60
 
 /**
  * @brief Runs the first-boot enrollment-token bootstrap, if one is configured and nothing has
@@ -227,5 +240,17 @@ typedef enum {
  * @return See w_token_bootstrap_result_t.
  */
 w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid);
+
+/**
+ * @brief Turns a W_TOKEN_BOOTSTRAP_PENDING result into TRANSIENT while the pending window lasts,
+ *        and into PERMANENT (with a logged error) once it has run out.
+ *
+ * @param result What w_agent_token_bootstrap() returned. Anything but PENDING is returned as is.
+ * @param pending_since Owned by the caller, 0 before the first call. Set on the first PENDING.
+ * @param now Monotonic seconds (w_get_monotonic_time()), so a clock step cannot stretch the window.
+ * @return W_TOKEN_BOOTSTRAP_DONE, W_TOKEN_BOOTSTRAP_TRANSIENT or W_TOKEN_BOOTSTRAP_PERMANENT.
+ */
+w_token_bootstrap_result_t w_token_bootstrap_bound_pending(w_token_bootstrap_result_t result,
+                                                           time_t *pending_since, time_t now);
 
 #endif /* TOKEN_BOOTSTRAP_H */

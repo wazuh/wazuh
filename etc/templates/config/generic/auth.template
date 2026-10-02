@@ -1,4 +1,4 @@
-  <!-- Configuration for wazuh-authd -->
+  <!-- Configuration for wazuh-manager-authd -->
   <auth>
     <disabled>no</disabled>
     <port>1515</port>

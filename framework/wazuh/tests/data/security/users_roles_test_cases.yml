@@ -116,7 +116,7 @@ create_user:
           - new_user1
   - params:
       username: new_user2
-      password: WazuhWazuh123
+      password: WazuhWazuhWazuh
     result:
       affected_items: []
       failed_items:
@@ -164,6 +164,52 @@ update_user:
       failed_items:
         "5011":
           - 1
+  - params:
+      user_id:
+        - 1
+      password: HackedPassword1!
+      current_user: wazuh-wui
+      run_as: true
+    result:
+      affected_items: []
+      failed_items:
+        "5011":
+          - 1
+  - params:
+      user_id:
+        - 2
+      password: HackedPassword1!
+      current_user: wazuh-wui
+      run_as: true
+    result:
+      affected_items: []
+      failed_items:
+        "5011":
+          - 2
+  - params:
+      user_id:
+        - 1
+      password: HackedPassword1!
+      current_user: unknown-user
+    result:
+      affected_items: []
+      failed_items:
+        "5011":
+          - 1
+  - params:
+      user_id:
+        - 1
+      password: HackedPassword1!
+      current_user: wazuh-wui
+      run_as: false
+    result:
+      affected_items:
+        - id: 1
+          username: wazuh
+          allow_run_as: false
+          roles:
+            - 1
+      failed_items: {}
   - params:
       user_id:
         - 1

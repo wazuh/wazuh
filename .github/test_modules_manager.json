@@ -7,7 +7,7 @@
       "tiers": ["0 1"],
       "timeout_minutes": 120,
       "_comment_tiers": "Each element produces one matrix row; space-separated values become individual --tier flags",
-      "_comment_rbac": "rbac tests live under test_api/test_rbac/ — covered as a subset of test_api/. framework/wazuh/rbac/** is listed here so rbac-only changes also trigger this suite.",
+      "_comment_rbac": "rbac tests live under test_api/test_rbac/ — covered as a subset of test_api/. The whole framework is listed because apid serves every request through it (DAPI, RBAC, sockets), and manager_config because test_config uploads wazuh-manager.conf.",
       "paths": [
         ".github/workflows/5_builderpackage_manager-multiples.yml",
         ".github/workflows/5_testintegration_manager.yml",
@@ -15,7 +15,9 @@
         ".github/workflows/.python-version-it",
         ".github/actions/reinstall_cmake/**",
         "api/**",
-        "framework/wazuh/rbac/**",
+        "framework/wazuh/**",
+        "framework/scripts/**",
+        "src/shared_modules/manager_config/**",
         "src/Makefile",
         "tests/integration/conftest.py",
         "tests/integration/test_api/**"

@@ -11,8 +11,8 @@ node: the certificate its HTTPS listener presents, and the CA bundle it hands ou
 
 The document carries **dates and identities, no verdicts**: there is no `warning` or `critical`
 field and no threshold. What "expiring soon" means is the consumer's decision (the Dashboard's, a
-runbook's). The daily log line remoted writes about its certificate (see
-[Metrics](metrics.md#tls-listener-certificate--remotedservertls)) is unchanged and separate.
+runbook's). The log lines remoted writes about its certificate at start and every 24 hours (see
+[Metrics](metrics.md#tls-listener-certificate--remotedservertls)) are separate from it.
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/tls | jq
@@ -63,13 +63,13 @@ Every timestamp comes in two spellings: RFC 3339 UTC, and `_ts` as epoch seconds
 | `listener.seconds_until_expiry` | `not_after_ts − evaluated_at_ts`. **Signed: negative once expired.** |
 | `listener.fingerprint` | The certificate's identity, see [Identities](#identities). |
 | `listener.serial` | Serial number, `0x` + lowercase hex. |
-| `listener.path` | The configured path, relative to the installation directory. |
+| `listener.path` | The configured path as written (`remote.https.certificate`); a relative path resolves against the installation directory. |
 | `listener.loaded_at` | When remoted loaded this certificate: its last start. See [Freshness](#freshness). |
 | `ca_bundle.path` | [`https.ca_certificate`](configuration.md#httpsca_certificate), the file `GET /cacerts` serves from. |
 | `ca_bundle.publication`, `publication_vouched` | The publication `wazuh-manager-certs` stamped in the bundle's `##` block, the same value the manager advertises to agents as `ca_generation`: `null` when there is no servable bundle, `0` when a bundle is served but no guard vouches for it, else the vouched Unix timestamp. `publication_vouched` is that guard's verdict (block present, hash matches, the leaf chains to a CA of the bundle, count and size within the agent limits), judged against the clock on every request: a CA that expires with the file untouched reads `0` / `false` on the next one. See the [CA rotation runbook](ca-rotation.md). |
 | `ca_bundle.content_sha256` | The bundle's identity: SHA-256 (bare hex) over the DER encoding of every certificate, sorted and concatenated, so it does not depend on the order the files were concatenated in. |
 | `ca_bundle.certificates_count`, `certificates_limit` | Certificates in the bundle, and the most a bundle may carry and still reach every agent (6). |
-| `ca_bundle.serialized_bytes`, `serialized_bytes_limit` | Size of the PEM `GET /cacerts` sends, and the largest bundle an agent accepts (8191 bytes). Whichever limit binds first is the room left before adding a CA. Nothing here enforces them: the rotation tool refuses to publish past them. |
+| `ca_bundle.serialized_bytes`, `serialized_bytes_limit` | Size of the PEM `GET /cacerts` sends, and the largest bundle an agent accepts (8191 bytes). Whichever limit binds first is the room left before adding a CA. Serving does not enforce them, but a bundle past either one is not vouched (`publication` `0`, `publication_vouched` `false`), and the rotation tool refuses to publish past them. |
 | `ca_bundle.matches_active_leaf` | Whether the listener certificate chains to some CA of this bundle: the `503 ca_mismatch` decision of `GET /cacerts`, see [Three different questions](#three-different-questions). Judged against the clock on every request. `null` when there is nothing to check against. |
 | `ca_bundle.chain_valid`, `chain_error` | Whether the listener certificate validates with this bundle as its **only** trust store; see [Three different questions](#three-different-questions). `null` when there is nothing to validate against; `chain_error` present only when `false`. |
 | `ca_bundle.certificates[]` | One entry per certificate, same fields as the listener minus `sans`, `path` and `loaded_at`, plus `signs_active_leaf`. |
@@ -102,17 +102,18 @@ this bundle let an agent trust the listener", and each answers a different part 
   `remoted.server.tls.ca_matches_leaf` exposes.
 - **`chain_valid`** is what a verifying agent would conclude with this bundle as its only trust
   store: path building, validity dates, `basicConstraints`/`keyUsage` of every CA on the path,
-  TLS-server purpose.
+  TLS-server purpose — with any certificate of the bundle accepted as an anchor, self-signed or not.
 
 They disagree on purpose in the cases an operator most needs to see: a CA that signed the listener
 but has expired, or that lacks `CA:TRUE`, reads `signs_active_leaf: true` while `matches_active_leaf`
-and `chain_valid` are both `false`, `chain_error` saying why (`certificate has expired`, `invalid CA certificate`). During a
-rotation the new CA typically reads `signs_active_leaf: false` until the listener is reissued under
-it: that is the expected intermediate state, not a fault. All three are evaluated at request time,
+and `chain_valid` are both `false`, `chain_error` saying why (`certificate has expired`, `invalid CA certificate`). A bundle that
+holds only the intermediate that signed the listener reads `matches_active_leaf: false` (so
+`GET /cacerts` answers `503`) with `chain_valid: true`. During a rotation the new CA typically reads
+`signs_active_leaf: false` until the listener is reissued under it: that is the expected intermediate state, not a fault. All three are evaluated at request time,
 from the certificates already parsed: a CA that expires while the file stays untouched reads
 `matches_active_leaf: false`, `chain_valid: false` and `publication: 0` on the next request -- the
-same moment `GET /cacerts` starts answering `503` -- and the log says so once, in the request that
-noticed it. Only the parse is cached by the file's content hash, never a verdict with a date term.
+same moment `GET /cacerts` starts answering `503` -- and the log says so once, from whichever read
+noticed it first: a request, a metrics scrape, or the listener's own 60-second recheck. Only the parse is cached by the file's content hash, never a verdict with a date term.
 
 ## When the bundle cannot be read
 
@@ -137,8 +138,9 @@ openssl x509 -in /var/wazuh-manager/etc/certs/remoted.pem -noout -fingerprint -s
   | cut -d= -f2 | tr -d ':' | tr 'A-F' 'a-f'
 ```
 
-`ca_bundle.content_sha256` identifies the bundle as a whole (see the table above). Both are the
-strings the rotation tool takes and prints, so a value copied from this document can be pasted
+`ca_bundle.content_sha256` identifies the bundle as a whole (see the table above); it is the value
+of the bundle's `## Content-SHA256:` line. The `fingerprint` is the string `wazuh-manager-certs
+inspect` prints as `identity:` and `remove` takes, so a value copied from this document can be pasted
 into it.
 
 ## Server API

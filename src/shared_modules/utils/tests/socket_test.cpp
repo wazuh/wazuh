@@ -12,8 +12,12 @@
 #include "socket_test.hpp"
 #include "../socketClient.hpp"
 #include "../socketServer.hpp"
+#include <algorithm>
 #include <chrono>
 #include <future>
+#include <mutex>
+#include <thread>
+#include <vector>
 
 TYPED_TEST_SUITE_P(SocketTest);
 
@@ -400,6 +404,58 @@ TYPED_TEST_P(SocketTest, SingleDelayedClientWithReconnectionServerReset)
     EXPECT_EQ(counter, MESSAGE_QUANTITY);
 }
 
+TYPED_TEST_P(SocketTest, NoRecoveredLogWhileBacklogIsPending)
+{
+    std::string socketPath {std::string("/tmp/echo_sock/") +
+                            ::testing::UnitTest::GetInstance()->current_test_info()->name()};
+
+    std::mutex logMutex;
+    std::vector<std::string> logs;
+    auto count = [&](const std::string& prefix)
+    {
+        std::lock_guard<std::mutex> lock(logMutex);
+        return std::count_if(
+            logs.begin(), logs.end(), [&](const std::string& line) { return line.rfind(prefix, 0) == 0; });
+    };
+
+    auto server = std::make_unique<SocketServer<Socket<OSPrimitives, TypeParam>, EpollWrapper>>(socketPath);
+    server->listen([](const int, const char*, uint32_t, const char*, uint32_t) {});
+
+    SocketClient<Socket<OSPrimitives, TypeParam>, EpollWrapper> client {socketPath,
+                                                                        [&](const std::string& message)
+                                                                        {
+                                                                            std::lock_guard<std::mutex> lock(logMutex);
+                                                                            logs.push_back(message);
+                                                                        }};
+    client.connect([](const char*, uint32_t, const char*, uint32_t) {});
+
+    // Take the peer away and keep sending until the first failure is reported.
+    server.reset();
+    for (auto i {0}; i < 500 && count("Failed to send") == 0; ++i)
+    {
+        client.send("x", 1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    ASSERT_EQ(count("Failed to send"), 1);
+
+    // Later sends are only queued and do not throw: that must not be reported as a recovery.
+    for (auto i {0}; i < 50; ++i)
+    {
+        client.send("x", 1);
+    }
+    EXPECT_EQ(count("Recovered"), 0);
+
+    // Once the peer is back and the backlog is flushed, the recovery is reported exactly once.
+    server = std::make_unique<SocketServer<Socket<OSPrimitives, TypeParam>, EpollWrapper>>(socketPath);
+    server->listen([](const int, const char*, uint32_t, const char*, uint32_t) {});
+    for (auto i {0}; i < 300 && count("Recovered") == 0; ++i)
+    {
+        client.send("x", 1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    EXPECT_EQ(count("Recovered"), 1);
+}
+
 // All tests must be registered
 
 REGISTER_TYPED_TEST_SUITE_P(SocketTest,
@@ -408,7 +464,8 @@ REGISTER_TYPED_TEST_SUITE_P(SocketTest,
                             MultipleClients,
                             SingleDelayedClientWithReconnectionSendMessageOffline,
                             SingleDelayedClientWithReconnectionOnline,
-                            SingleDelayedClientWithReconnectionServerReset);
+                            SingleDelayedClientWithReconnectionServerReset,
+                            NoRecoveredLogWhileBacklogIsPending);
 
 // Configuring typed-tests
 using ProtocolTypes = ::testing::Types<AppendHeaderProtocol, SizeHeaderProtocol>;

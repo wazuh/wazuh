@@ -822,9 +822,11 @@ stages:
 
   # DELETE /security/roles
   - name: Restore default configuration
+    max_retries: 5
+    delay_before: 1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
+      url: "{protocol:s}://{host:s}:{master_port:d}/security/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -837,9 +839,11 @@ test_name: CHECK /security/config
 stages:
 
   - name: Get security configuration to check if DELETE method worked correctly
+    max_retries: 5
+    delay_before: 1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
+      url: "{protocol:s}://{host:s}:{master_port:d}/security/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -857,10 +861,11 @@ test_name: CLEANER DELETE /security/{policies}
 stages:
 
   - name: Try to delete all policies
+    max_retries: 5
     delay_before: 10
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{master_port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -876,9 +881,11 @@ stages:
 
   # DELETE /security/roles
   - name: Try to delete all roles
+    max_retries: 5
+    delay_before: 1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{master_port:d}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -886,3 +893,50 @@ stages:
       method: DELETE
     response:
       status_code: 200
+
+---
+test_name: DELETE security relations bad parameters
+
+stages:
+
+  - name: Unlink roles from a user, invalid role id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/100/roles"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        role_ids: wrong!
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Unlink policies from a role, invalid policy id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/100/policies"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        policy_ids: wrong!
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Unlink rules from a role, invalid rule id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/100/rules"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        rule_ids: wrong!
+    response:
+      status_code: 400
+      json:
+        title: Bad Request

@@ -22,6 +22,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -111,7 +112,11 @@ int __wrap_OS_RecvUnix(int socket, int size, char *buffer) {
 
     const char *message = mock_type(const char *);
     const int length = mock_type(int);
-    memcpy(buffer, message, length);
+    if (length > 0) {
+        memcpy(buffer, message, length);
+    } else if (length == -1) {
+        errno = ECONNRESET;
+    }
     received_commands++;
     wm_shutdown_requested = 1;
     return length;
@@ -257,6 +262,54 @@ static void test_control_peer_unrelated_uid_is_rejected(void **state) {
     WM_CONTROL_CONTEXT.start(NULL);
 
     assert_int_equal(received_commands, 0);
+    assert_int_equal(sent_responses, 0);
+    assert_int_equal(closed_fds_count, 2);
+    assert_int_equal(closed_fds[0], peer);
+    assert_int_equal(closed_fds[1], socket);
+}
+
+static void test_control_peer_closed_on_receive_error(void **state) {
+    const int socket = 100;
+    const int peer = 101;
+    char expected_msg[OS_SIZE_256];
+
+    expect_control_peer(getuid(), socket, peer);
+
+    expect_value(__wrap_OS_RecvUnix, socket, peer);
+    expect_value(__wrap_OS_RecvUnix, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvUnix, NULL);
+    will_return(__wrap_OS_RecvUnix, -1);
+
+    snprintf(expected_msg, sizeof(expected_msg), "At process_control(): OS_RecvUnix(): %s", strerror(ECONNRESET));
+    expect_string(__wrap__mterror, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, expected_msg);
+
+    WM_CONTROL_CONTEXT.start(NULL);
+
+    assert_int_equal(received_commands, 1);
+    assert_int_equal(sent_responses, 0);
+    assert_int_equal(closed_fds_count, 2);
+    assert_int_equal(closed_fds[0], peer);
+    assert_int_equal(closed_fds[1], socket);
+}
+
+static void test_control_peer_closed_on_empty_message(void **state) {
+    const int socket = 100;
+    const int peer = 101;
+
+    expect_control_peer(getuid(), socket, peer);
+
+    expect_value(__wrap_OS_RecvUnix, socket, peer);
+    expect_value(__wrap_OS_RecvUnix, size, OS_MAXSTR);
+    will_return(__wrap_OS_RecvUnix, NULL);
+    will_return(__wrap_OS_RecvUnix, 0);
+
+    expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "Empty message from local client.");
+
+    WM_CONTROL_CONTEXT.start(NULL);
+
+    assert_int_equal(received_commands, 1);
     assert_int_equal(sent_responses, 0);
     assert_int_equal(closed_fds_count, 2);
     assert_int_equal(closed_fds[0], peer);
@@ -524,6 +577,8 @@ int main(void) {
         /* process_control peer authorization */
         cmocka_unit_test_setup_teardown(test_control_peer_uid_matches_process_uid,       setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_control_peer_unrelated_uid_is_rejected,     setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_control_peer_closed_on_receive_error,       setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_control_peer_closed_on_empty_message,       setup_test_mode, teardown_test_mode),
         /* wm_control_dispatch */
         cmocka_unit_test_setup_teardown(test_dispatch_restart,            setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_dispatch_reload,             setup_test_mode, teardown_test_mode),

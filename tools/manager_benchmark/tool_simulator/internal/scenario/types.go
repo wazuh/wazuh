@@ -50,9 +50,10 @@ type Defaults struct {
 	Module string `json:"module"`
 	Option string `json:"option"`
 	// ClusterName is the only cluster field a session declares. cluster_node was
-	// retired: the manager never validated it and is dropping its last consumer,
-	// and the value the tool used to send was read out of the manager's own
-	// config and handed straight back to it. See the conventions in docu/07.
+	// retired and is no longer in the inventorySync schema: the manager never
+	// validated it, and the value the tool used to send was read out of the
+	// manager's own config and handed straight back to it. See the conventions
+	// in docu/07.
 	ClusterName string   `json:"cluster_name"`
 	Documents   *DocSpec `json:"documents"`
 	Control     Control  `json:"control"`

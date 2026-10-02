@@ -12,7 +12,7 @@ The rootcheck module performs anomaly and behavior-based detection on monitored 
 
 **Internal Options:** `rootcheck.*`
 
-For module overview and architecture, see [Rootcheck Module](index.html).
+For module overview and architecture, see [Rootcheck Module](README.md).
 
 ---
 
@@ -297,8 +297,8 @@ Prevent all rootcheck detection:
 
 ## See Also
 
-- [Rootcheck Module](index.html) - Module overview and features
+- [Rootcheck Module](README.md) - Module overview and features
 - [Architecture](architecture.md) - Technical architecture and detection methods
 - [Output Samples](output-samples.md) - Alert formats and examples
-- [Security Configuration Assessment (SCA)](../sca/index.html) - Policy and configuration compliance checking
-- [File Integrity Monitoring (FIM)](../fim/index.html) - File change detection and monitoring
+- [Security Configuration Assessment (SCA)](../sca/README.md) - Policy and configuration compliance checking
+- [File Integrity Monitoring (FIM)](../fim/README.md) - File change detection and monitoring

@@ -4,7 +4,7 @@ Complete configuration reference for the Security Configuration Assessment (SCA)
 
 The SCA module evaluates system security posture against predefined policies, implementing a dual event system for both real-time alerts and reliable state synchronization with the manager.
 
-For module overview and architecture, see [SCA Module](index.html).
+For module overview and architecture, see [SCA Module](README.md).
 
 ---
 
@@ -338,7 +338,7 @@ Check `/var/ossec/logs/ossec.log` for SCA configuration validation messages.
 
 ## See Also
 
-- [SCA Module](index.html) - Module overview and features
+- [SCA Module](README.md) - Module overview and features
 - [SCA Architecture](architecture.md) - Module architecture and synchronization protocol
 - [Custom Policies](custom-policies.md) - Creating custom SCA policies
 - [Database Schema](database-schema.md) - SCA database structure

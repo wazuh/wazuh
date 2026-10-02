@@ -208,7 +208,7 @@ int main(int argc, char* argv[])
 
     // Raise the soft file descriptor limit; the hard limit belongs to whoever started the manager
     {
-        constexpr rlim_t target = 65536;
+        constexpr rlim_t target = 8192;
         struct rlimit limit {};
         if (getrlimit(RLIMIT_NOFILE, &limit) == 0 && limit.rlim_cur < target)
         {
@@ -447,8 +447,6 @@ int main(int argc, char* argv[])
             {
                 wiconnector::Config icConfig {};
                 icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
-                icConfig.username = confManager.get<std::string>(conf::key::INDEXER_USER);
-                icConfig.password = confManager.get<std::string>(conf::key::INDEXER_PASSWORD);
                 // SSL config
                 {
                     icConfig.ssl.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);

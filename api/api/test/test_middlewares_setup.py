@@ -13,6 +13,7 @@ at the same position as the ceiling and therefore below it, with no test coverin
 """
 
 import re
+from os import path
 from unittest.mock import patch
 
 import pytest
@@ -25,11 +26,18 @@ from starlette.testclient import TestClient
 from api import middlewares
 from api.api_exception import ExpectFailedException
 from api.error_handler import content_size_handler, expect_failed_error_handler, problem_error_handler
-from api.middlewares import setup_middlewares
+from api.middlewares import CORS_ALLOW_METHODS, cors_list, setup_middlewares
 from connexion.exceptions import ProblemException
 from content_size_limit_asgi.errors import ContentSizeExceeded
 
 MAX_UPLOAD_SIZE = 1024
+
+
+def api_spec() -> dict:
+    """Return the API's own spec.yaml."""
+    import yaml
+    with open(path.join(path.dirname(path.dirname(path.abspath(__file__))), 'spec', 'spec.yaml')) as f:
+        return yaml.safe_load(f)
 
 # Mirrors the two body shapes the real spec has. `/groups` declares a JSON schema, so
 # RequestValidationMiddleware reads its body; `/upload` mirrors the configuration uploads
@@ -253,3 +261,70 @@ def test_body_below_the_ceiling_reaches_the_endpoint(path, method, content_type,
 
     assert response.status_code == 200
     assert response.json() == expected
+
+
+@pytest.mark.parametrize('value, expected', [
+    ('*', ['*']),
+    ('https://allowed.example', ['https://allowed.example']),
+    ('https://a.example, https://b.example', ['https://a.example', 'https://b.example']),
+    ('X-Custom,,X-Other ', ['X-Custom', 'X-Other']),
+    (['https://a.example', ' https://b.example '], ['https://a.example', 'https://b.example']),
+    ('', []),
+])
+def test_cors_list(value, expected):
+    """Check that a CORS setting becomes one entry per origin or header, whatever its shape."""
+    assert cors_list(value) == expected
+
+
+@pytest.mark.parametrize('source_route', ['https://allowed.example', ['https://allowed.example']])
+@pytest.mark.parametrize('origin, allowed', [
+    ('https://allowed.example', True),
+    # A string source_route used to reach CORSMiddleware as is, which then allowed every origin
+    # contained in it
+    ('https://allowed.ex', False),
+    ('h', False),
+    ('https://evil.example', False),
+])
+def test_cors_origin_is_matched_exactly(source_route, origin, allowed, clean_rate_limit_state):
+    """Check that only the configured origin is allowed, for a preflight and for a simple request."""
+    api_conf = build_api_conf(cors=True)
+    api_conf['cors'].update(source_route=source_route, expose_headers='X-A, X-B', allow_headers='Content-Type')
+
+    with patch.object(middlewares.configuration, 'api_conf', new=api_conf), \
+         patch('api.middlewares.access_log'):
+        with TestClient(build_app(api_conf)) as client:
+            preflight = client.options('/groups', headers={'Origin': origin,
+                                                           'Access-Control-Request-Method': 'POST'})
+            simple = client.post('/groups', json={'group_id': 'g'}, headers={'Origin': origin})
+
+    assert (preflight.status_code == 200) is allowed
+    assert ('access-control-allow-origin' in preflight.headers) is allowed
+    assert (simple.headers.get('access-control-allow-origin') == origin) is allowed
+    if allowed:
+        assert simple.headers['access-control-expose-headers'] == 'X-A, X-B'
+
+
+def test_cors_allow_methods_match_the_spec():
+    """Check that a preflight is answered for every method the API declares, and only for those."""
+    methods = {method.upper() for path in api_spec()['paths'].values() for method in path
+               if method in ('get', 'put', 'post', 'delete', 'patch', 'head', 'options')}
+    assert set(CORS_ALLOW_METHODS) == methods
+
+
+@pytest.mark.parametrize('method, allowed', [('GET', True), ('POST', True), ('PUT', True), ('DELETE', True),
+                                             ('PATCH', False)])
+def test_cors_preflight_methods(method, allowed, clean_rate_limit_state):
+    """Check that an allowed origin gets a preflight for the API's methods and not for others."""
+    api_conf = build_api_conf(cors=True)
+    api_conf['cors'].update(source_route='https://allowed.example')
+
+    with patch.object(middlewares.configuration, 'api_conf', new=api_conf), \
+         patch('api.middlewares.access_log'):
+        with TestClient(build_app(api_conf)) as client:
+            preflight = client.options('/groups', headers={'Origin': 'https://allowed.example',
+                                                           'Access-Control-Request-Method': method})
+
+    assert (preflight.status_code == 200) is allowed
+    if allowed:
+        assert method in preflight.headers['access-control-allow-methods']
+

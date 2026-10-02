@@ -44,6 +44,9 @@
 #define SERVER_INDEX 0
 #define STOP_FD (AUTH_POOL+1)
 
+#define AUTH_IDLE_CONN_TIMEOUT 30   /* Seconds a connection may stay idle before completing its enrolment request */
+#define AUTH_EPOLL_WAIT_MS     1000 /* epoll_wait tick used to sweep idle connections */
+
 #define full(i, j) ((i + 1) % AUTH_POOL == j)
 #define empty(i, j) (i == j)
 #define forward(x) x = (x + 1) % AUTH_POOL
@@ -59,6 +62,7 @@ struct client {
     SSL *ssl;
     bool handshake_done;
     bool enrollment_ok;
+    time_t connected_at;
     char ip[IPSIZE + 1];
 
     char* read_buffer;

@@ -13,7 +13,14 @@
 #include "ipersistent_queue_storage.hpp"
 #include "persistent_queue.hpp"
 
+#include <chrono>
+#include <condition_variable>
+#include <future>
+#include <mutex>
+#include <thread>
+
 using ::testing::_;
+using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::SaveArg;
 
@@ -91,7 +98,7 @@ TEST(PersistentQueueTest, SubmitRollbackSequenceOnPersistError)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
-    // With double-buffer design, submitBatch errors are caught in flushBuffer().
+    // With double-buffer design, submitBatch errors are caught in flushActiveBuffer().
     // submit() itself never throws — events are buffered and flushed asynchronously.
     EXPECT_CALL(*mockStorage, submitBatch(_))
     .WillOnce(testing::Throw(std::runtime_error("Simulated DB error")))
@@ -138,7 +145,7 @@ TEST(PersistentQueueTest, FailedBatchIsRetainedAndRetriedOnNextFlushCycle)
     // submitted events on the next flush of that slot.
     //
     // Drives every flush explicitly via fetchAndMarkForSync() (which calls the
-    // synchronous flushPendingBuffer()) so the sequence is deterministic and
+    // synchronous flushActiveBuffer()) so the sequence is deterministic and
     // never depends on the background flush thread's timing.
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
     LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
@@ -521,6 +528,229 @@ TEST(PersistentQueueTest, DestructorFlushesBufferedEventsOnGracefulShutdown)
     EXPECT_EQ(flushedBatch[0].id, "id1");
     EXPECT_EQ(flushedBatch[1].id, "id2");
     EXPECT_EQ(flushedBatch[2].id, "id3");
+}
+
+// ========================================
+// Tests for concurrent flushes
+// ========================================
+
+namespace
+{
+    // Set on the threads a test runs syncs on, so the recorder can tell them apart from the
+    // queue's background flush thread.
+    thread_local bool t_isSyncThread = false;
+
+    /// Records every batch handed to submitBatch() and holds the first call made by the chosen
+    /// flusher open until the test releases it, so a test can act while that flush is writing.
+    /// Calls from the other flusher are recorded and pass through.
+    class BlockingBatchRecorder
+    {
+        public:
+            enum class Flusher { Background, Sync };
+
+            explicit BlockingBatchRecorder(Flusher blockOn)
+                : m_blockOn(blockOn)
+            {
+            }
+
+            void onBatch(const std::vector<PersistedData>& batch)
+            {
+                std::unique_lock<std::mutex> lock(m_mutex);
+
+                for (const auto& item : batch)
+                {
+                    m_ids.push_back(item.id);
+                }
+
+                if (!m_blocked && t_isSyncThread == (m_blockOn == Flusher::Sync))
+                {
+                    m_blocked = true;
+                    m_cv.notify_all();
+                    m_cv.wait(lock, [this] { return m_released; });
+                }
+            }
+
+            /// Called by a sync thread once fetchAndMarkForSync() has returned.
+            void syncReturned()
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                m_syncReturned = true;
+                m_cv.notify_all();
+            }
+
+            /// Waits until the chosen flusher is held inside submitBatch() or a sync has returned.
+            /// @return true if the flusher is held, false if a sync returned first or on timeout.
+            bool waitBlocked(std::chrono::milliseconds timeout)
+            {
+                std::unique_lock<std::mutex> lock(m_mutex);
+                m_cv.wait_for(lock, timeout, [this] { return m_blocked || m_syncReturned; });
+                m_syncReturned = false;
+                return m_blocked;
+            }
+
+            void release()
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                m_released = true;
+                m_cv.notify_all();
+            }
+
+            std::vector<std::string> ids()
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                return m_ids;
+            }
+
+        private:
+            const Flusher m_blockOn;
+            std::mutex m_mutex;
+            std::condition_variable m_cv;
+            bool m_blocked {false};
+            bool m_syncReturned {false};
+            bool m_released {false};
+            std::vector<std::string> m_ids;
+    };
+
+    /// Releases the recorder when a test scope unwinds, so an early ASSERT_* return cannot leave
+    /// a flusher waiting in onBatch() while the queue's or a future's destructor joins its thread.
+    /// Declare it after the queue and the futures so it is destroyed first.
+    class ReleaseOnExit
+    {
+        public:
+            explicit ReleaseOnExit(BlockingBatchRecorder& recorder)
+                : m_recorder(recorder)
+            {
+            }
+
+            ~ReleaseOnExit()
+            {
+                m_recorder.release();
+            }
+
+        private:
+            BlockingBatchRecorder& m_recorder;
+    };
+
+    // Longer than the queue's 500 ms flush interval, so the background thread has woken up.
+    constexpr std::chrono::milliseconds BACKGROUND_FLUSH_WAIT {800};
+
+    // Time for a flush started on another thread to reach the point where it waits for storage.
+    constexpr std::chrono::milliseconds CONCURRENT_FLUSH_WAIT {200};
+
+    // How long a flush may take to show up in submitBatch() before the test treats it as hung.
+    constexpr std::chrono::seconds FLUSH_START_TIMEOUT {5};
+
+    // Attempts at getting the sync, not the background thread, to write the first batch.
+    constexpr int MAX_SYNC_ATTEMPTS {10};
+}
+
+TEST(PersistentQueueTest, SyncFlushWhileBackgroundFlushIsWritingKeepsNewSubmits)
+{
+    // The background thread is still writing one slot when a sync flushes the other one. An
+    // item submitted meanwhile must reach storage: neither flusher may point producers at a
+    // slot the other one is writing, because that one clears it once its write returns.
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
+    BlockingBatchRecorder recorder(BlockingBatchRecorder::Flusher::Background);
+
+    EXPECT_CALL(*mockStorage, submitBatch(_))
+    .WillRepeatedly(Invoke([&recorder](const std::vector<PersistedData>& batch)
+    {
+        recorder.onBatch(batch);
+    }));
+    EXPECT_CALL(*mockStorage, fetchAndMarkForSync(_))
+    .WillRepeatedly(Return(std::vector<PersistedData> {}));
+
+    {
+        PersistentQueue queue(":memory:", logger, mockStorage);
+        std::future<void> sync;
+        ReleaseOnExit releaseOnExit(recorder);
+
+        queue.submit("a1", "idx", "{}", Operation::CREATE, 1);
+        ASSERT_TRUE(recorder.waitBlocked(FLUSH_START_TIMEOUT)) << "The background thread never wrote.";
+
+        queue.submit("b1", "idx", "{}", Operation::CREATE, 1);
+        sync = std::async(std::launch::async, [&queue]
+        {
+            t_isSyncThread = true;
+            queue.fetchAndMarkForSync();
+        });
+        std::this_thread::sleep_for(CONCURRENT_FLUSH_WAIT);
+
+        queue.submit("c1", "idx", "{}", Operation::CREATE, 1);
+
+        recorder.release();
+        sync.get();
+    }
+
+    EXPECT_THAT(recorder.ids(), ::testing::UnorderedElementsAre("a1", "b1", "c1"));
+}
+
+TEST(PersistentQueueTest, BackgroundFlushWhileSyncFlushIsWritingKeepsNewSubmits)
+{
+    // The mirror case: a sync is still writing its slot when the background thread's interval
+    // fires and flushes the other one. An item submitted meanwhile must still reach storage.
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
+    BlockingBatchRecorder recorder(BlockingBatchRecorder::Flusher::Sync);
+
+    EXPECT_CALL(*mockStorage, submitBatch(_))
+    .WillRepeatedly(Invoke([&recorder](const std::vector<PersistedData>& batch)
+    {
+        recorder.onBatch(batch);
+    }));
+    EXPECT_CALL(*mockStorage, fetchAndMarkForSync(_))
+    .WillRepeatedly(Return(std::vector<PersistedData> {}));
+
+    std::vector<std::string> submitted;
+    {
+        PersistentQueue queue(":memory:", logger, mockStorage);
+
+        // The sync has to be the flusher held inside submitBatch(). If the background thread
+        // takes the item first, the sync finds nothing to write and returns, so submit another
+        // item and sync again.
+        std::future<void> sync;
+        ReleaseOnExit releaseOnExit(recorder);
+        bool syncIsWriting = false;
+
+        for (int attempt = 1; attempt <= MAX_SYNC_ATTEMPTS && !syncIsWriting; ++attempt)
+        {
+            submitted.push_back("a" + std::to_string(attempt));
+            queue.submit(submitted.back(), "idx", "{}", Operation::CREATE, 1);
+
+            sync = std::async(std::launch::async, [&queue, &recorder]
+            {
+                t_isSyncThread = true;
+                queue.fetchAndMarkForSync();
+                recorder.syncReturned();
+            });
+
+            syncIsWriting = recorder.waitBlocked(FLUSH_START_TIMEOUT);
+
+            if (!syncIsWriting)
+            {
+                // Not held inside a write, so the sync must have returned; anything else is a hang.
+                ASSERT_EQ(sync.wait_for(std::chrono::seconds(0)), std::future_status::ready)
+                        << "The sync neither wrote nor returned within " << FLUSH_START_TIMEOUT.count() << " s.";
+                sync.get();
+            }
+        }
+
+        ASSERT_TRUE(syncIsWriting) << "The background thread took the batch before the sync in all "
+                                   << MAX_SYNC_ATTEMPTS << " attempts.";
+
+        submitted.push_back("d1");
+        queue.submit("d1", "idx", "{}", Operation::CREATE, 1);
+        std::this_thread::sleep_for(BACKGROUND_FLUSH_WAIT);
+
+        submitted.push_back("e1");
+        queue.submit("e1", "idx", "{}", Operation::CREATE, 1);
+
+        recorder.release();
+        sync.get();
+    }
+
+    EXPECT_THAT(recorder.ids(), ::testing::UnorderedElementsAreArray(submitted));
 }
 
 TEST(PersistentQueueTest, DestructorWithEmptyBufferDoesNotCallSubmitBatch)

@@ -710,6 +710,11 @@ else
   echo "==> --no-listeners: leaving ${WAZUH_MANAGER_HOME}/etc/wazuh-manager.conf untouched."
 fi
 
+# Credentials file (.credentials.env, read by docker compose and wazuh_install_manager.sh)
+echo ""
+echo "==> Credentials file"
+bash "$SCRIPT_DIR/wazuh_credentials.sh"
+
 echo ""
 echo "==========================================================="
 echo "  init.sh finished at $(date '+%Y-%m-%d %H:%M:%S')"

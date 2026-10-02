@@ -252,7 +252,8 @@ void Server::start(const std::filesystem::path& socketPath, bool useThread)
     }
     else
     {
-        LOG_INFO("[Server] Starting {} with {} threads, at {}", m_id, CPPHTTPLIB_THREAD_POOL_COUNT, socketPath.string());
+        LOG_INFO(
+            "[Server] Starting {} with {} threads, at {}", m_id, CPPHTTPLIB_THREAD_POOL_COUNT, socketPath.string());
         if (!bindAndListen())
         {
             throw std::runtime_error(fmt::format("[Server] {} failed to start at {}", m_id, socketPath.string()));

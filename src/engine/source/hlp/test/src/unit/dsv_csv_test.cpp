@@ -5,6 +5,22 @@
 auto constexpr NAME = "dsvcsvParser";
 static const std::string TARGET = "/TargetField";
 
+namespace
+{
+
+// Header of `segments` names k0..k{segments-1} joined by '.': the parser writes it to a path of `segments` tokens.
+std::string deepHeader(std::size_t segments)
+{
+    std::string header;
+    for (std::size_t i = 0; i < segments; ++i)
+    {
+        header += fmt::format("{}k{}", i == 0 ? "" : ".", i);
+    }
+    return header;
+}
+
+} // namespace
+
 /************************************
  *  CSV Parser
  ************************************/
@@ -237,7 +253,21 @@ INSTANTIATE_TEST_SUITE_P(
                              TARGET.substr(1))),
                14,
                getCSVParser,
-               {NAME, TARGET, {""}, {"f1.key", "f2/key", "f3.key/subkey"}})));
+               {NAME, TARGET, {""}, {"f1.key", "f2/key", "f3.key/subkey"}}),
+
+        // Depth limit: a header written to a path of 257 tokens fails at its field.
+        ParseT(FAILURE, "hi,hi2", {}, 3, getCSVParser, {NAME, TARGET, {""}, {"field_1", deepHeader(257)}})));
+
+// The depth failure is a syntax-stage failure whose trace names the limit and whose remaining input starts at the
+// offending field (a mutation that fell back to the plain parser name would survive the ParseT row alone).
+TEST(CsvParserDepth, TraceNamesLimit)
+{
+    const auto parser = getCSVParser({NAME, TARGET, {""}, {"field_1", deepHeader(257)}});
+    const auto result = parser("hi,hi2");
+    ASSERT_TRUE(result.failure());
+    EXPECT_EQ(result.trace(), "dsvcsvParser: field path nesting depth exceeds the limit (256)");
+    EXPECT_EQ(result.remaining(), "hi2");
+}
 
 /************************************
  *  DSV Parser

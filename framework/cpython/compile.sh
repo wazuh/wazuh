@@ -108,7 +108,13 @@ parse_args() {
                 BUILD_DEPS=true
                 ;;
             --wazuh-branch)
+                if [[ $# -lt 2 || -z "$2" || "$2" == --* ]]; then
+                    echo "ERROR: --wazuh-branch requires a branch name" >&2
+                    return 1
+                fi
                 WAZUH_BRANCH="$2"
+                # Consume the value too; the shift below consumes the option
+                shift
                 ;;
             *)
                 echo "ERROR: Unrecognized parameter: $1" >&2

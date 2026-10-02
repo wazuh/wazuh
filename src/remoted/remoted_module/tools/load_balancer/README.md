@@ -1,6 +1,6 @@
 # Load balancer lab: a real cluster, real agents, non-sticky balancing
 
-One master and two workers with real `wazuh-clusterd`, behind HAProxy **and** NGINX, each
+One master and two workers with real `wazuh-manager-clusterd`, behind HAProxy **and** NGINX, each
 serving TLS passthrough and TLS termination at the same time, with real 4.x and 5.x agents and
 a single-node indexer.
 
@@ -15,7 +15,7 @@ than nothing, but it is configured in a way that **hides** everything this lab l
 
 | There | Here | Why it matters |
 |---|---|---|
-| `balance source`, consistent hash | `roundrobin` | Source hashing pins each agent to one node. The cross-node `/download` 403 never appears |
+| `balance source` | `roundrobin` | Source hashing pins each agent to one node. The cross-node `/download` 403 never appears |
 | `mode tcp` only | passthrough **and** termination | Only termination balances per request; TCP balances per connection |
 | `1517` not published | published | — |
 | Keys pre-seeded, enrollment off | real enrollment with `authd.pass` | Without enrolling there is no propagation to measure |
@@ -30,7 +30,7 @@ run_issue_checks.sh     every assertion as PASS/FAIL
 generate_certs.sh       the PKI: one leaf per node, plus deliberately broken ones
 cert_drill.sh           install a broken certificate on one node and measure every front end
 build_wpk.sh            a WPK signed by the lab CA, for a real end-to-end upgrade
-base/                   one image per role: manager, agent5, agent4, indexer, probe, proxies
+base/                   one image per role (manager, agent5, agent4, indexer, probe), plus the two proxy configurations
 probe/                  scripts that drive scenarios an agent does not perform on demand
 scenarios/              per-node configuration overrides for failure injection
 migrate/                a 5.x agent booted with a 4.x configuration, for the in-place upgrade path
@@ -50,7 +50,8 @@ wazuh-manager_*.deb   wazuh-agent_*.deb   wazuh-indexer_*.deb
 
 **Always confirm the package carries what you intend to measure.** A build older than the
 feature under test answers as if the defect did not exist, which is worse than failing loudly.
-`setup_lab.sh` refuses to continue unless both of these hold:
+`setup_lab.sh` extracts the staged manager `.deb` and refuses to continue unless both of these hold
+inside it:
 
 ```bash
 strings /var/wazuh-manager/lib/libremoted_module.so | grep -c expectedSelectorFor   # /download authz
@@ -85,6 +86,8 @@ setup always reinstalls from the current PKI so that cannot happen halfway.
 | 31517 / 31518 | NGINX | Passthrough / termination |
 | 21514 / 21515 | HAProxy | Legacy: `1514` to every node, `1515` to the master only |
 | 41517 / 41518 / 41519 | master / worker1 / worker2 | Direct, bypassing the balancer |
+| 31514 / 31515 | NGINX | Legacy: `1514` / `1515` |
+| 45000 | master | Server API (`55000`), used to mint tokens |
 | 28404 | HAProxy | Statistics, `/stats` |
 | 49200 | Indexer | OpenSearch, client certificate required |
 
@@ -127,7 +130,8 @@ docker exec lab-probe python3 /probe/route_matrix.py \
   --agent-id <id> --key <key> --password labpassword
 ```
 
-All ten routes through all four front ends. `/control` is one route: `startup`, `notify` and
+Ten of the eleven routes (every one but `POST /enroll/secret`, which the probe does not drive yet)
+through all four front ends. `/control` is one route: `startup`, `notify` and
 `shutdown` are values of the body's `type`, and they return **different fields** — the hashes
 appear only on `notify`.
 
@@ -143,7 +147,8 @@ docker exec lab-probe python3 /probe/measure_propagation.py \
 ```
 
 Enrolls, then asks every node every 250 ms until it accepts the key. `POST /stateless` is the
-oracle: `401` means the node does not have the key yet, anything else means it does.
+oracle: `401` means the node does not have the key yet, `202` or `503` means it does; transport
+errors never reached the manager, so they are counted separately as inconclusive.
 
 ### The cross-node `/download` 403, and whether it converges
 
@@ -187,7 +192,8 @@ the question is not "is it up" but "what stops and what continues".
 docker exec lab-probe python3 /probe/body_limits.py --agent-id <id> --key <key>
 ```
 
-The same batch at 1, 9, 11 and 21 MiB, direct and through all four front ends. Above the
+The same batch at 1, 4, 6 and 11 MiB by default (`--sizes`), straddling the 5 MiB authenticated-body
+cap and the 10 MiB transport cap, direct and through all four front ends. Above the
 transport cap the three paths answer differently, and only one of those answers is actionable
 by the agent.
 

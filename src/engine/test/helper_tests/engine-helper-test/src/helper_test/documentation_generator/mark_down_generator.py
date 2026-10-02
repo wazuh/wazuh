@@ -5,6 +5,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import List
 import json
+import yaml
 
 class MarkdownGenerator(IExporter):
     def __init__(self):
@@ -32,7 +33,25 @@ class MarkdownGenerator(IExporter):
         """
         if v is None:
             return "null"
+        # The engine's helper parser reads objects, arrays and booleans as JSON (the test
+        # generator passes them through json.dumps); a Python repr ({'k': 'v'}, True) is not JSON.
+        # Compact separators keep ": " out of the call so it stays a plain YAML scalar.
+        if isinstance(v, (bool, dict, list)):
+            return json.dumps(v, separators=(',', ':'))
         return repr(v)
+
+    @staticmethod
+    def _yaml_scalar(value: str) -> str:
+        """
+        Render a helper call as a YAML scalar, single-quoting it only when a plain scalar
+        would not load back as the same string.
+        """
+        try:
+            if yaml.safe_load(f"k: {value}") == {"k": value}:
+                return value
+        except yaml.YAMLError:
+            pass
+        return "'" + value.replace("'", "''") + "'"
 
     def create_table(self, arguments: dict, headers: list):
         """
@@ -183,6 +202,7 @@ class MarkdownGenerator(IExporter):
                 event_data[target_field_name] = example.target_field
 
             call_str = f"{doc.name}({', '.join(args_values)})" if args_values else f"{doc.name}()"
+            call_str = self._yaml_scalar(call_str)
             target_field_name = getattr(doc.target_field, "path", None) or "target_field"
 
             self.content.append(f"{description}\n")

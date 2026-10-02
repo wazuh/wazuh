@@ -106,7 +106,7 @@ The `types` section defines configuration for each IOC type. Each type can be in
 
 Detects malicious IP:port pairs. It looks for sibling fields where an IP and port exist under the same parent.
 
-```json
+```json,fragment
 "connection": {
   "enabled": true,
   "include": {
@@ -130,7 +130,7 @@ Detects malicious IP:port pairs. It looks for sibling fields where an IP and por
 **How it works:** The tool scans for fields like `source.ip` + `source.port` or `destination.ip` + `destination.port` and creates pairs.
 
 **Generated output:**
-```json
+```json,fragment
 "connection": {
   "sources": [
     {"ip_field": "source.ip", "port_field": "source.port"},
@@ -143,7 +143,7 @@ Detects malicious IP:port pairs. It looks for sibling fields where an IP and por
 
 Checks complete URLs against IOC databases.
 
-```json
+```json,fragment
 "url_full": {
   "enabled": true,
   "include": {
@@ -163,7 +163,7 @@ Checks complete URLs against IOC databases.
 - `exclude.exclude_trees`: Field prefixes to exclude
 
 **Generated output:**
-```json
+```json,fragment
 "url_full": {
   "sources": ["url.full", "url.original"]
 }
@@ -173,7 +173,7 @@ Checks complete URLs against IOC databases.
 
 Checks domain names, subdomains, and hostnames against IOC databases.
 
-```json
+```json,fragment
 "url_domain": {
   "enabled": true,
   "include": {
@@ -209,7 +209,7 @@ Checks domain names, subdomains, and hostnames against IOC databases.
 - `exclude.exclude_trees`: Additional field prefixes to exclude
 
 **Generated output:**
-```json
+```json,fragment
 "url_domain": {
   "sources": [
     "dns.question.name",
@@ -224,7 +224,7 @@ Checks domain names, subdomains, and hostnames against IOC databases.
 
 Checks file hashes against IOC databases. Supports multiple hash algorithms.
 
-```json
+```json,fragment
 "hash": {
   "enabled": true,
   "algorithms": {
@@ -273,7 +273,7 @@ Checks file hashes against IOC databases. Supports multiple hash algorithms.
 All three levels are merged (union) when filtering fields.
 
 **Generated output:**
-```json
+```json,fragment
 "hash_md5": {
   "sources": ["file.hash.md5", "process.hash.md5", "dll.hash.md5"]
 },

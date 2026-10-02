@@ -138,15 +138,18 @@ getPreinstalledDirByType()
     fi
     # Checking for Darwin
     if [ "X${NUNAME}" = "XDarwin" ]; then
-        if [ -f /Library/StartupItems/WAZUH/WAZUH ]; then
-            PREINSTALLEDDIR=`sed -n 's/^ *//; s|^\\s*\\(.*\\)/bin/[^[:space:]]*control start$|\\1|p' /Library/StartupItems/WAZUH/WAZUH`
-            if [ -d "$PREINSTALLEDDIR" ]; then
-                return 0;
-            else
-                return 1;
-            fi
-        else
+        if [ ! -f /Library/LaunchDaemons/com.wazuh.agent.plist ]; then
             return 1;
+        fi
+        PREINSTALLEDDIR=$(ReadServiceInstallDir /Library/LaunchDaemons/com.wazuh.agent.plist)
+        if [ -d "${PREINSTALLEDDIR}" ]; then
+            return 0;
+        elif [ -n "${PREINSTALLEDDIR}" ]; then
+            PREINSTALL_DETECTION_ERROR="Detected /Library/LaunchDaemons/com.wazuh.agent.plist pointing to '${PREINSTALLEDDIR}', but that directory does not exist."
+            return 2;
+        else
+            PREINSTALL_DETECTION_ERROR="Detected /Library/LaunchDaemons/com.wazuh.agent.plist, but no installation directory could be extracted from it or from /Library/StartupItems/WAZUH/WAZUH."
+            return 2;
         fi
     fi
     # Checking for BSD

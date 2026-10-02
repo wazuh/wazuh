@@ -6,12 +6,15 @@ info:
   description: |
     The agent-facing HTTPS API exposed by `wazuh-manager-remoted`. This is the agent-manager
     transport in 5.0: a 5.x agent enrolls, reports and receives work over these routes exclusively.
-    The legacy AES-encrypted TCP/UDP channel on port 1514 is a separate, opt-in compatibility path
-    for 4.x agents and is not described here.
+    The legacy AES-encrypted TCP/UDP channel on port 1514 is a separate compatibility path for 4.x
+    agents (`<remote><legacy><enabled>`: off in the schema, written as `yes` by the installer) and is
+    not described here.
 
     The listener only runs when a TLS certificate and key are present on disk and readable by the
-    service user. The manager does not generate them: the operator provisions them (Wazuh
-    installation assistant, `wazuh-certs-tool`) and the manager fails closed until they exist.
+    service user. The installer issues them once, from the install-time CA (the credential
+    resolver), or the operator provides their own (Wazuh installation assistant,
+    `wazuh-certs-tool`); nothing reissues them at start, and the manager fails closed while they are
+    missing or unreadable.
 
     All requests MUST use HTTP/1.1 over TLS 1.3, and every route except `GET /` and `GET /cacerts`
     MUST carry the `protocol-version` header. Every route except `GET /`, `GET /cacerts` and
@@ -31,18 +34,26 @@ info:
     the listener's own certificate, so an agent can bootstrap trust in the manager before it holds
     any credential at all -- by construction it cannot require one.
 
-    `429 Too Many Requests` is returned only by the two routes with no credential to rate-limit by
-    identity, `POST /enroll` and `GET /cacerts`, each behind its own rate limit and carrying
-    `Retry-After`; no other route returns it. `426 Upgrade Required` is never returned by any route.
+    `429 Too Many Requests` is returned only by `POST /enroll` and `GET /cacerts`, the two routes
+    with no credential to rate-limit by identity, each behind its own rate limit, and by
+    `POST /enroll/secret`, which shares `POST /enroll`'s bucket; every `429` carries `Retry-After`,
+    and no other route returns it. `426 Upgrade Required` is never returned by any route.
     Capacity is shed with `503`. An agent that receives a `429` from any other route, or a `426`
     from any route, has been answered by an intermediary, not by remoted.
+
+    With `<remote><https><verification_mode>full`, any route (including `GET /` and `GET /cacerts`)
+    answers `403` `{"error":"Client certificate does not match the peer address","code":403}` when
+    the client certificate does not carry the connecting peer's address. A path that matches no
+    route answers `404` `{"error":"not_found"}` and closes the connection. Any route can also
+    answer `500` `{"error":"Internal server error","code":500}` when its handler fails
+    unexpectedly, whether or not the route lists it.
 
     The module's own statistics are not served here. They live on a separate manager-local Unix
     socket (`queue/sockets/remote-admin-http.sock`), unreachable from an agent.
 
 servers:
   - url: "https://{host}:{port}{globalPrefix}"
-    description: Default local bind (configurable via <remote><https>)
+    description: The manager's listener (bind address `0.0.0.0` by default; configurable via <remote><https>)
     variables:
       host:
         default: "127.0.0.1"
@@ -54,7 +65,7 @@ servers:
           Value of <remote><https><global_prefix> without its trailing slash. The default is
           /wazuh-manager, materialised by the schema, so an absent tag means the prefix IS
           applied. Serving unprefixed endpoints requires setting the tag to / explicitly.
-          The signed request target includes this prefix.
+          Agents must send the full prefixed target; the token does not sign it.
 
 tags:
   - name: Health
@@ -99,9 +110,9 @@ paths:
       summary: The CA that signs the listener certificate (unauthenticated)
       description: |
         Returns the `CERTIFICATE` blocks found in the file configured as
-        `<remote><https><ca_certificate>` (by default `etc/certs/root-ca.pem`: the CA the operator
-        provisions together with the listener certificate it signs -- the manager generates
-        neither), re-serialised by the manager -- never the file's raw bytes, and never a private
+        `<remote><https><ca_certificate>` (by default `etc/certs/root-ca.pem`: the CA that signs the
+        listener certificate, both installed at installation by the credential resolver or
+        provided by the operator), re-serialised by the manager -- never the file's raw bytes, and never a private
         key or any other non-certificate material the file might also carry --
         so an agent can bootstrap trust in the manager without an out-of-band copy of the CA: fetch
         it once, then verify every later connection against it. A bundle (several `CERTIFICATE`
@@ -256,10 +267,12 @@ paths:
         The token follows the closed `wazuh-agent+jwt` profile: header exactly
         `{"alg":"HS256","kid":"<agent-id>","typ":"wazuh-agent+jwt"}`, claims exactly `exp`, `iat`,
         `iss` (`wazuh-agent/<agent-id>`), `jti` (16 random bytes, base64url), `nbf` (= `iat`) and
-        `sub` (= `<agent-id>`), `exp - iat = 60`, base64url without padding, at most 4096 bytes;
-        HMAC-SHA256 with the 32-byte key the 64-hex `client.keys` secret decodes to. A token is
-        accepted while `now - iat <= jwt_max_age + jwt_clock_skew` (60 + 30 s by default) and is
-        never accepted more than `jwt_clock_skew` seconds before its `iat`. Anything outside the
+        `sub` (= `<agent-id>`), `0 < exp - iat <= 60` (agents send 60), base64url without padding, at
+        most 4096 bytes; HMAC-SHA256 with the 32-byte key the 64-hex `client.keys` secret decodes to.
+        A token is accepted while `now <= exp + jwt_clock_skew` and
+        `now - iat <= jwt_max_age + jwt_clock_skew` (60 + 30 s by default), and is never accepted
+        more than `jwt_clock_skew` seconds before its `iat`; raising `jwt_max_age` above 60 s
+        therefore does not widen the window. Anything outside the
         profile (an extra member, a padded segment, a duplicate key, a string where an integer is
         expected) is an invalid token.
 
@@ -274,7 +287,8 @@ paths:
         as it is produced) are charged against the server's live in-flight memory capacity -- so a
         `413` here means the frame didn't fit in the capacity free at that moment, and a
         highly-compressed body can never balloon past it in memory first. Any `Content-Encoding`
-        value other than `zstd` is rejected with `415`; a missing header is treated as an
+        value other than `zstd` is rejected with `415` (so is `zstd` itself when
+        `remoted.http_content_encoding_enabled` is `0`); a missing header is treated as an
         uncompressed body, unchanged from today.
 
         Before forwarding, the module parses the H line's JSON and resolves `wazuh` -> `agent` ->
@@ -321,7 +335,8 @@ paths:
             `wazuh.agent.id` doesn't match the authenticated `agent-id` (or the H line is
             missing/malformed/non-numeric), `Content-Encoding: zstd` is set but the body isn't a
             valid/complete zstd frame, or the downstream engine rejected the forwarded H/E batch as
-            invalid. The middle two share the same `Invalid event batch` message by design.
+            invalid. The agent-id mismatch and the engine rejection share the same
+            `Invalid event batch` message by design; the zstd case answers `Malformed compressed body`.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -373,8 +388,8 @@ paths:
                   value: { error: "Request payload is too large", code: 413 }
         "415":
           description: |
-            `Content-Encoding` is present but not (case-insensitively) `zstd`. `gzip` is not
-            supported.
+            `Content-Encoding` is present but not (case-insensitively) `zstd`, or it is `zstd` and
+            `remoted.http_content_encoding_enabled` is `0`. `gzip` is not supported.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -386,7 +401,8 @@ paths:
             The server is temporarily out of capacity (its in-flight byte budget is exhausted or too
             many requests are already parked awaiting the downstream service), or the downstream engine
             was unreachable / errored. Server-side load-shedding, not rate limiting: no
-            `Retry-After` is sent — the agent applies its own retry/backoff. The connection is closed.
+            `Retry-After` is sent — the agent applies its own retry/backoff. The in-flight-budget
+            shed also closes the connection.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -434,9 +450,8 @@ paths:
         (nothing configured, or the configured file yields no certificate); and the key itself
         **absent** on a manager whose build predates this feature -- absent means *unknown*, not
         the same as the confirmed-empty `null`. `nlohmann::json` serialises object keys in
-        alphabetical order, so on the wire `ca_generation` lands between `agent` and `settings_hash`
-        (see the examples below); nothing in this contract depends on that order, and neither should
-        a client.
+        alphabetical order, so on the wire `ca_generation` lands between `agent` and `settings_hash`;
+        nothing in this contract depends on that order, and neither should a client.
 
         Note the parse asymmetry between the two: `startup` reads `version` at the top level, while
         `notify` reads it at `agent.version`.
@@ -480,34 +495,34 @@ paths:
                 type: object
               examples:
                 startup:
+                  summary: Limits abridged (every entry defaults to 30000)
                   value:
+                    agent: { groups: [default, web-servers] }
+                    cluster: { name: wazuh-cluster }
                     limits:
                       fim: { file: 30000, registry_key: 30000, registry_value: 30000 }
-                      syscollector: { hotfixes: 30000, packages: 30000, processes: 30000, ports: 30000 }
                       sca: { checks: 30000 }
-                    cluster: { name: wazuh-cluster }
-                    agent: { groups: [default, web-servers] }
+                      syscollector: { hotfixes: 30000, packages: 30000, ports: 30000, processes: 30000 }
                 notifyNoTasks:
                   summary: |
-                    No pending work -- `tasks` is an empty array, never an absent key. `ca_generation`
-                    lands here, between `agent` and `settings_hash`: that is the wire order, not an
-                    authoring choice (see the `ca_generation` paragraph above).
+                    No pending work -- `tasks` is an empty array, never an absent key. Keys are shown
+                    in wire (alphabetical) order.
                   value:
-                    agent: { groups: [web-servers], config_token: web-servers, config_hash: "e3b0c442..." }
+                    agent: { config_hash: "e3b0c442...", config_token: web-servers, groups: [web-servers] }
                     ca_generation: 1758000000
                     settings_hash: "d7a8fbb3..."
                     tasks: []
                     vd_feed_offset: 12345678
                 notifyWithTasks:
                   value:
-                    agent: { groups: [web-servers], config_token: web-servers, config_hash: "e3b0c442..." }
+                    agent: { config_hash: "e3b0c442...", config_token: web-servers, groups: [web-servers] }
                     ca_generation: 1758000000
                     settings_hash: "d7a8fbb3..."
-                    vd_feed_offset: 12345678
                     tasks:
                       - task_id: "42"
                         task_type: active_response
                         payload: {}
+                    vd_feed_offset: 12345678
                 shutdown:
                   value: {}
         "400":
@@ -515,30 +530,33 @@ paths:
             Control-specific rejections, in addition to the shared `protocol-version` and
             `Content-Encoding` ones.
 
-            A **malformed** `version` (anything outside `MAJOR.MINOR.PATCH`) is rejected here, on
+            A **malformed** `version` (empty, over 64 characters, or not matching
+            `^[vV]?\d+(\.\d+){0,3}([+\-][A-Za-z0-9.\-]+)?$`) is rejected here, on
             `startup` only -- `notify` deliberately skips the version check to keep the hot path
             fast. A well-formed version that is merely too high for this manager's policy is a `409`
             instead; see that response.
+            The route's own rejections carry only `error` (no `code`); the shared ones keep the
+            `ErrorResponse` shape.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              schema: { $ref: "#/components/schemas/CodeOnlyError" }
               examples:
                 invalidBody:
                   summary: Empty body or over 64 KiB
-                  value: { error: "invalid_body", code: 400 }
+                  value: { error: "invalid_body" }
                 invalidJson:
-                  value: { error: "invalid_json", code: 400 }
+                  value: { error: "invalid_json" }
                 invalidAgentId:
-                  value: { error: "invalid_agent_id", code: 400 }
+                  value: { error: "invalid_agent_id" }
                 unknownMessageType:
                   summary: "`type` is not startup, notify or shutdown"
-                  value: { error: "unknown_message_type", code: 400 }
+                  value: { error: "unknown_message_type" }
                 invalidVersion:
                   summary: startup only, malformed version
-                  value: { error: "invalid_version", code: 400 }
+                  value: { error: "invalid_version" }
                 invalidHostInfo:
-                  summary: notify only
-                  value: { error: "invalid_host_info", code: 400 }
+                  summary: notify only (a host field over its length limit)
+                  value: { error: "invalid_host_info" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "409":
           description: |
@@ -555,10 +573,10 @@ paths:
             sentinel.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              schema: { $ref: "#/components/schemas/CodeOnlyError" }
               examples:
                 invalidVersion:
-                  value: { error: "invalid_version", code: 409 }
+                  value: { error: "invalid_version" }
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
         "503":
@@ -580,7 +598,12 @@ paths:
             The manager's log names the dependency and what to check.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              schema:
+                type: object
+                required: [error, dependency]
+                properties:
+                  error: { type: string, enum: [dependency_unavailable] }
+                  dependency: { type: string, example: wazuh-db }
               examples:
                 dependencyUnavailable:
                   value: { error: "dependency_unavailable", dependency: "wazuh-db" }
@@ -602,8 +625,8 @@ paths:
         authenticated identity as `X-Wazuh-Agent-Id`.
 
         Because the downstream answer **is** the session result, this is the one route whose
-        statuses and bodies are passed through as produced by the sync server, and the one route
-        that can return a `Retry-After` (digits-only, on a `503`). The sync server cross-checks the
+        statuses and bodies are passed through as produced by the sync server, and the only route
+        whose `503` may carry a `Retry-After` (relayed when digits-only, at most 6 digits). The sync server cross-checks the
         FlatBuffer's `Start.agentid` against the forwarded header and answers `403` on a mismatch.
 
         It also carries its own, longer response deadline
@@ -627,7 +650,9 @@ paths:
             application/json:
               schema: { type: object }
         "400":
-          description: The sync server rejected the session. Body passed through.
+          description: |
+            An empty body, answered by remoted itself (`{"error":"Empty request body","code":400}`),
+            or the sync server rejected the session (body passed through).
           content:
             application/json:
               schema: { type: object }
@@ -643,7 +668,13 @@ paths:
             application/json:
               schema: { type: object }
         "401": { $ref: "#/components/responses/Unauthorized" }
-        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "413":
+          description: |
+            Either remoted's own authenticated-body cap (see the shared `PayloadTooLarge`) or the
+            sync server's own `413`, passed through.
+          content:
+            application/json:
+              schema: { type: object }
         "415": { $ref: "#/components/responses/UnsupportedContentEncoding" }
         "500":
           description: The sync server failed to apply the session. Body passed through.
@@ -653,8 +684,8 @@ paths:
         "503":
           description: |
             Out of capacity, the sync server was unreachable or did not answer in time, or it shed
-            the session itself. The only route that may carry a `Retry-After`, relayed from the sync
-            server when it sends a digits-only value.
+            the session itself. The only route whose `503` may carry a `Retry-After`, relayed from the
+            sync server when it sends a digits-only value of at most 6 digits.
           headers:
             Retry-After:
               description: Seconds to wait before retrying. Relayed from the sync server only.
@@ -752,9 +783,9 @@ paths:
               requesting agent's own selector, or the manager has no established group membership
               for it. Decided before the path is resolved, so it is indistinguishable from a request
               for a group that does not exist -- there is no oracle for enumerating group names.
-            - **the shared transport**, in mTLS mode, when the client certificate does not match the
-              connecting peer's address (see the note on `POST /enroll`). That one rejects the whole
-              connection, every route included.
+            - **the shared transport**, with `verification_mode` `full`, when the client certificate
+              does not carry the connecting peer's address (see the API description). That one
+              applies to every route.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -763,7 +794,7 @@ paths:
                   summary: The requested selector is not this agent's
                   value: { error: "Forbidden", code: 403 }
                 peerAddressMismatch:
-                  summary: mTLS only -- rejected by the transport, before any route
+                  summary: verification_mode full only -- rejected by the transport, before any route
                   value: { error: "Client certificate does not match the peer address", code: 403 }
         "404":
           description: |
@@ -833,6 +864,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
               examples:
+                emptyBody:
+                  value: { error: "Empty request body", code: 400 }
                 invalidStatsDocument:
                   value: { error: "Invalid stats document", code: 400 }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -880,6 +913,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
               examples:
+                emptyBody:
+                  value: { error: "Empty request body", code: 400 }
                 invalidConfigDocument:
                   value: { error: "Invalid config document", code: 400 }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -905,11 +940,13 @@ paths:
         Stateless HTTPS load-balances every request independently, so no node can know which agents
         are "its own": the agent is the source of truth for "do I need a re-scan," and it asks
         whichever node it is routed to. remoted holds no scan state -- it makes one inline call to
-        the `vulnerability_scanner` module and relays that answer verbatim, never retrying. The
-        agent's notify cycle is the retry loop.
+        the `vulnerability_scanner` module, never retrying: a `200` from VD is relayed as `200`, and
+        any other answer becomes a `503` carrying VD's error code (or `vd_error`). The agent's notify
+        cycle is the retry loop.
 
-        A `200` is a promise the scan will run: it is relayed from VD's admission into its bounded
-        dispatch lane, never invented here.
+        A `200` is a promise the scan will run: VD answers it once the scan is recorded as a durable
+        `vd_scan` task in the Task Manager (a repeated request for the same agent coalesces into the
+        pending one), never invented here.
       requestBody:
         required: true
         content:
@@ -929,25 +966,28 @@ paths:
                 queued:
                   value: {}
         "400":
-          description: Malformed or rejected request.
+          description: |
+            Malformed or rejected request (including agent id `000`, which is `invalid_agent_id`).
+            The route's own rejections carry only `error`; the shared ones keep the `ErrorResponse`
+            shape.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              schema: { $ref: "#/components/schemas/CodeOnlyError" }
               examples:
                 invalidBody:
                   summary: Empty or over 4 KiB
-                  value: { error: "invalid_body", code: 400 }
+                  value: { error: "invalid_body" }
                 invalidJson:
-                  value: { error: "invalid_json", code: 400 }
+                  value: { error: "invalid_json" }
                 invalidAgentId:
-                  value: { error: "invalid_agent_id", code: 400 }
+                  value: { error: "invalid_agent_id" }
                 missingType:
-                  value: { error: "missing_type", code: 400 }
+                  value: { error: "missing_type" }
                 invalidType:
                   summary: "`type` other than feed_update"
-                  value: { error: "invalid_type", code: 400 }
+                  value: { error: "invalid_type" }
                 missingFeedOffset:
-                  value: { error: "missing_feed_offset", code: 400 }
+                  value: { error: "missing_feed_offset" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "409":
           description: |
@@ -977,10 +1017,10 @@ paths:
                   summary: Also scanner_not_ready
                   value: { error: "feed_not_ready" }
                 vdUnreachable:
-                  summary: Also vd_error -- the round trip to VD itself failed or its answer was unparseable
+                  summary: Also vd_error, or VD's own code for any other VD answer
                   value: { error: "vd_unreachable" }
                 vdNotInitialized:
-                  summary: Permanent
+                  summary: The scanner never initialized on this node
                   value: { error: "vd_not_initialized" }
 
   /enroll:
@@ -1015,20 +1055,21 @@ paths:
         certificate nor `use_password` configured, a request that presents no `kid` credential needs no
         credential at all -- matching `authd`'s own behavior on port 1515 in that configuration.
 
-        `protocol-version` is validated first, exactly as on every other authenticated route, and in
-        every mode -- including the credential-less one, since the version is a property of the
-        protocol rather than of the credential. The same value is the second line of the signed
-        canonical sequence, so the header and the signed bytes are the same field.
+        `protocol-version` is validated first after the rate limit and the disabled check, exactly as
+        on every other authenticated route, and in every mode -- including the credential-less one,
+        since the version is a property of the protocol rather than of the credential.
 
         The route is **always registered**, answering `403` rather than a bare `404` when enrollment
         is administratively disabled -- "an operator turned this off" is a different statement from
-        "this manager doesn't support enrollment at all". Decoded bodies are capped at 16 KiB.
+        "this manager doesn't support enrollment at all". Bodies are capped at 16 KiB: an
+        uncompressed body over it is a `400`, a zstd body decoding past it a `413`.
 
         Errors from this endpoint use a **nested** shape,
         `{"error":{"code":<authd-code>,"message":"<text>"}}`, distinct from every other route's flat
         `{"error":"...","code":...}`, so `authd`'s numeric codes survive for diagnostics. `code` is
         `0` for rows that carry no `authd` code. The shared transport's own rejections (`500`, the
-        capacity `503`, and the mTLS peer-address `403`) still use the flat shape.
+        capacity `503`, and the `verification_mode full` peer-address `403`) still use the flat
+        shape.
       requestBody:
         required: true
         content:
@@ -1061,16 +1102,21 @@ paths:
                     reenroll_secret: 0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0
         "400":
           description: |
-            A missing or unsupported `protocol-version` header (checked before anything else), a
-            malformed body, a missing `name`/`version`, an invalid `ip`, an agent version newer than
-            allowed, or an `authd` bad-argument code (9003-9006, 9014, 9017, 9019) passed through with its
-            message.
+            A missing or unsupported `protocol-version` header (checked before the credential and the
+            body cap), a malformed compressed body, a malformed body, a missing `name`/`version`, an
+            invalid `groups`/`ip`/`key_hash`, an agent version newer than allowed, or an `authd`
+            bad-argument code (9003-9006, 9014, 9017, 9019, 9020) passed through with its message.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
               examples:
                 invalidBody:
-                  value: { error: { code: 0, message: "Invalid request body" } }
+                  summary: |
+                    Also "Malformed JSON body", "Missing or invalid field: name" / "version",
+                    "Invalid field: groups" / "ip" / "key_hash", "Malformed compressed body"
+                  value: { error: { code: 0, message: "Missing or invalid request body" } }
+                versionTooNew:
+                  value: { error: { code: 0, message: "Agent version is newer than this manager allows" } }
                 missingProtocolVersion:
                   value: { error: { code: 0, message: "Missing required header: protocol-version" } }
                 unsupportedProtocolVersion:
@@ -1125,17 +1171,28 @@ paths:
                 tokenExhausted:
                   value: { error: { code: 9024, message: "Enrollment token uses exhausted" } }
         "409":
-          description: "`authd` reported a duplicate ip, name or id (9007/9008/9012)."
+          description: |
+            `authd` reported a duplicate ip, name or id (9007/9008/9012), or a re-enrollment for this
+            agent is already in progress (9030).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
         "413":
           description: |
-            Body exceeds `remoted.auth_max_body_size` (5 MiB default). Checked before the bearer is
-            examined, in every mode including the credential-less one.
+            Body exceeds `remoted.auth_max_body_size` (5 MiB default), checked right after the
+            `protocol-version` header and before the bearer is examined, in every mode including the
+            credential-less one; or a zstd body decoding past the 16 KiB cap.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
+        "415":
+          description: "`Content-Encoding` other than `zstd` (checked after the credential)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
+              examples:
+                unsupportedContentEncoding:
+                  value: { error: { code: 0, message: "Unsupported Content-Encoding" } }
         "429":
           description: |
             The endpoint was asked faster than `<remote><https><enroll_rate_limit>` allows (100/s
@@ -1159,14 +1216,15 @@ paths:
                   value:
                     error: { code: 0, message: "Enrollment is rate limited on this manager, retry later" }
         "500":
-          description: "`authd` internal, parse or key-generation failure (9001/9002/9009)."
+          description: "`authd` internal, parse or key-generation failure (9001/9002/9009), or any other code this route does not map."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
         "503":
           description: |
             `authd` reached `max_agents` (9013), a worker rejected the request (9015) or its forward
-            to the master failed (9016), the request never reached `authd` (code -1), or it reached
+            to the master failed (9016), `authd` could not record the identity transition (9031 --
+            nothing handed out), the request never reached `authd` (code -1), or it reached
             `authd` but no well-formed answer came back in time (code -2) -- `authd` may have
             processed it anyway.
           content:
@@ -1193,6 +1251,7 @@ paths:
         - WazuhAuthentication: []
       parameters:
         - $ref: "#/components/parameters/ProtocolVersion"
+        - $ref: "#/components/parameters/ContentEncoding"
       description: |
         For an agent that already has a `client.keys` identity but no re-enrollment secret. Three
         populations are in that state, because `reenroll_secret` is only ever minted by an
@@ -1240,14 +1299,15 @@ paths:
                     id: "001"
                     reenroll_secret: 0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0
         "400":
-          description: Missing or unsupported `protocol-version` header.
+          description: Missing or unsupported `protocol-version` header, or a malformed zstd body.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
         "401":
           description: |
-            The middleware's own classes, unchanged -- plus `unknown_agent` for `authd`'s 9026,
-            which folds "no such agent" and "the agent has no row in `global.db` yet" together. The
+            The middleware's own classes, unchanged -- plus `unknown_agent` for `authd`'s 9026 and
+            9032 (the bearer verified against a key that is no longer the agent's current one). 9026
+            folds "no such agent" and "the agent has no row in `global.db` yet" together. The
             second is reachable for a freshly migrated agent whose row `wm_database` has not yet
             rebuilt from `client.keys`; it is an honest refusal rather than a secret nothing would
             store, and the agent's next start succeeds once that pass has run.
@@ -1259,7 +1319,7 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
               examples:
                 unknownAgent:
-                  value: { error: "Unauthorized", code: unknown_agent }
+                  value: { error: "Invalid client authentication", code: unknown_agent }
         "409":
           description: |
             A credential rotation for this agent is already accepted and not yet persisted (`authd`
@@ -1311,15 +1371,16 @@ paths:
             `authd` could not record the transition and so handed out nothing (9031,
             `identity_unrecorded`); a worker's forward to the master failed (9015/9016,
             `master_unreachable`); or `authd` was unreachable, timed out, answered unparseably, or
-            its bounded request queue was full (`authd_unavailable`). All retryable, none the
-            agent's fault.
+            its bounded request queue was full (`authd_unavailable`). The shared transport's capacity
+            shed answers `{"error":"Service unavailable","code":503}` here too. All retryable, none
+            the agent's fault.
           content:
             application/json:
               schema:
                 type: object
                 required: [error]
                 properties:
-                  error: { type: string, enum: [identity_unrecorded, master_unreachable, authd_unavailable] }
+                  error: { type: string, enum: [identity_unrecorded, master_unreachable, authd_unavailable, "Service unavailable"] }
               examples:
                 unrecorded:
                   value: { error: identity_unrecorded }
@@ -1344,11 +1405,12 @@ components:
           the canonical zero-padded agent id (digits only; the key is selected by it from
           `client.keys` and is never sent)
         - claims: exactly `exp`, `iat`, `iss` (`wazuh-agent/<agent-id>`), `jti` (16 random bytes,
-          base64url, fresh per request), `nbf` (= `iat`), `sub` (= `<agent-id>`); `exp - iat = 60`
+          base64url, fresh per request), `nbf` (= `iat`), `sub` (= `<agent-id>`); `0 < exp - iat <= 60`
+          (agents send 60)
         - signature: HMAC-SHA256 with the 32-byte key the 64-hex `client.keys` secret decodes to
-        - acceptance window: `now - iat <= jwt_max_age + jwt_clock_skew` (60 + 30 s by default,
-          `remoted.jwt_max_age` / `remoted.jwt_clock_skew`), never more than `jwt_clock_skew` s
-          before `iat`
+        - acceptance window: `now <= exp + jwt_clock_skew` and
+          `now - iat <= jwt_max_age + jwt_clock_skew` (60 + 30 s by default, `remoted.jwt_max_age` /
+          `remoted.jwt_clock_skew`), never more than `jwt_clock_skew` s before `iat`
         - the JSON text of header and claims is ASCII; any non-ASCII byte is an invalid token
 
         The token authenticates identity and freshness only: method, target and body are not signed
@@ -1372,7 +1434,7 @@ components:
           that selects the key (three forms below); a `kid` of neither shape, or any other member,
           is not a `wazuh-enroll+jwt` at all
         - claims: exactly `exp`, `iat`, `jti`, `nbf` (= `iat`) -- no `iss`/`sub` in any form (a
-          re-enrolling agent names itself through `kid`); `exp - iat = 60`; same acceptance window
+          re-enrolling agent names itself through `kid`); `0 < exp - iat <= 60`; same acceptance window
           and the same `remoted.jwt_max_age` / `remoted.jwt_clock_skew` as the agent scheme
         - key: one construction, `HKDF-SHA256(IKM, salt = 32 x 0x00, info = <label> || 0x01, 32
           bytes)`, with the input and label the `kid` selects. The secret bytes are never used
@@ -1431,8 +1493,10 @@ components:
     PayloadTooLarge:
       description: |
         The request body exceeds the configured auth body limit (5 MiB default). For
-        `Content-Encoding: zstd` it instead means the frame did not fit in the server's live
-        in-flight memory capacity. Retryable.
+        `Content-Encoding: zstd` it instead means the frame declares a window over 8 MiB, or did not
+        fit in the server's live in-flight memory capacity. Retryable. A body over the transport cap
+        (`<remote><https><max_body_size>`, 10 MiB by default) gets no response at all: the
+        connection is closed.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -1488,6 +1552,17 @@ components:
       example: "zstd"
 
   schemas:
+    CodeOnlyError:
+      type: object
+      additionalProperties: false
+      required: [error]
+      description: A route's own rejection, identified by a machine-readable code and no `code` member.
+      properties:
+        error:
+          type: string
+          minLength: 1
+          example: invalid_body
+
     ErrorResponse:
       type: object
       additionalProperties: false

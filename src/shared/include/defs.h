@@ -319,6 +319,12 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AGENT_ANCHOR_MARKER "certs/.anchor-committed"
 #endif
 
+/* Where a remote upgrade stages the manager's CA. The Linux installer leaves it here when it
+ * cannot validate it; the Windows one always removes it. */
+#ifndef WIN32
+#define AGENT_DELIVERED_CA "var/incoming/root-ca.pem"
+#endif
+
 /* Enrollment-token bootstrap: the one-shot file src/init/register_configure_agent.sh's
  * WAZUH_ENROLLMENT_TOKEN_PATH writes at install time. w_agent_token_bootstrap() reads it once,
  * before AGENT_ANCHOR_CA exists, and deletes it once a committed success is already in place

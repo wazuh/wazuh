@@ -58,11 +58,7 @@ static void print_stderr_msg(char* timestamp, const char *tag, const char * file
     } else {
         (void)fprintf(stderr, "%s", msg);
     }
-#ifdef WIN32
-    (void)fprintf(stderr, "\r\n");
-#else
     (void)fprintf(stderr, "\n");
-#endif
 }
 
 static void _log_function(int level, const char *tag, const char * file, int line, const char * func, const char *msg, bool plain_only, va_list args)
@@ -691,12 +687,7 @@ void print_out(const char *msg, ...)
 
     /* Print to stderr */
     (void)vfprintf(stderr, msg, args);
-
-#ifdef WIN32
-    (void)fprintf(stderr, "\r\n");
-#else
     (void)fprintf(stderr, "\n");
-#endif
 
     va_end(args);
 }

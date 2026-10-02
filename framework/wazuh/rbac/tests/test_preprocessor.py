@@ -46,6 +46,24 @@ def test_expose_resources(db_setup, input_, output):
     assert preprocessed_policies == output
 
 
+def test_process_policy_canonicalizes_numeric_ids(db_setup):
+    """Policies store numeric ids as the decorator compares them, so a later policy spelled differently
+    still overrides an earlier one."""
+    preprocessor = db_setup()
+    preprocessor.process_policy({'actions': ['agent:read'], 'resources': ['agent:id:*'], 'effect': 'allow'})
+    preprocessor.process_policy({'actions': ['agent:read'], 'resources': ['agent:id:5', 'agent:group:007'],
+                                 'effect': 'deny'})
+    preprocessor.process_policy({'actions': ['security:update'], 'resources': ['role:id:01&user:id:0100'],
+                                 'effect': 'deny'})
+    preprocessor.process_policy({'actions': ['security:update'], 'resources': ['role:id:1&user:id:100'],
+                                 'effect': 'allow'})
+
+    assert preprocessor.get_optimize_dict() == {
+        'agent:read': {'agent:id:*': 'allow', 'agent:id:005': 'deny', 'agent:group:007': 'deny'},
+        'security:update': {'role:id:1&user:id:100': 'allow'},
+    }
+
+
 @pytest.fixture(scope='function')
 def preprocessor_module():
     """Import the preprocessor module with the security DB stubbed out."""

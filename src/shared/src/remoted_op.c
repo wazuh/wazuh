@@ -212,6 +212,7 @@ int parse_agent_update_msg (char *msg,
         case '\"':
             // Extract agent IP from legacy text keepalive format.
             if (!strncmp(line, agent_ip_label, strlen(agent_ip_label))) {
+                os_free(agent_data->agent_ip);
                 os_strdup(line + strlen(agent_ip_label), agent_data->agent_ip);
             }
             break;
@@ -221,6 +222,10 @@ int parse_agent_update_msg (char *msg,
             {
                 *str_tmp = '\0';
                 str_tmp += 3;
+
+                if (agent_data->osd) {
+                    continue;
+                }
 
                 os_calloc(1, sizeof(os_data), agent_data->osd);
                 parse_uname_string(line, agent_data->osd);
@@ -243,6 +248,7 @@ int parse_agent_update_msg (char *msg,
                 str_tmp++;
 
                 if (strncmp(str_tmp, SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME)-1) == 0) {
+                    os_free(agent_data->merged_sum);
                     os_strdup(line, agent_data->merged_sum);
                 }
             }

@@ -326,11 +326,6 @@ std::string Config::toJson() const
 {
     nlohmann::json config {};
     config["hosts"] = hosts;
-    if (!username.empty() && !password.empty())
-    {
-        config["username"] = username;
-        config["password"] = password;
-    }
 
     if (!ssl.cacert.empty() || !ssl.cert.empty() || !ssl.key.empty())
     {

@@ -166,15 +166,15 @@ InstallSecurityConfigurationAssessmentFiles()
 ##########
 # CheckListenerCerts()
 ##########
-# The manager does not generate TLS certificates. The certificate and key of the HTTPS
-# agent listener (remoted_module) are provisioned externally, e.g. with the Wazuh
-# installation assistant (wazuh-certs-tool), like the indexer trust material; authd's
+# The certificate and key of the HTTPS agent listener (remoted_module) are issued by the
+# credential resolver (bin/wazuh-manager-resolve-credentials --install) later in this same
+# installation, from the CA in $WAZUH_CA_DIR, or deployed by the operator beforehand; authd's
 # <ssl_manager_cert>/<ssl_manager_key> point at the same pair (see auth.template and
 # DisableAuthd() above), so both listeners present one manager identity. This step only
-# creates etc/certs, fixes the ownership of whatever the operator already deployed
-# (remoted opens the pair after dropping privileges, so ${WAZUH_USER} owns it) and prints
-# a NOTICE when the pair is missing: wazuh-manager-control refuses to start until it
-# exists. Manager only -- the listener does not exist on agents. Custom paths supplied
+# creates etc/certs and fixes the ownership of whatever is already there (remoted opens the
+# pair after dropping privileges, so ${WAZUH_USER} owns it); it prints nothing when the pair
+# is missing (see the note at the end of the function): wazuh-manager-control refuses to
+# start until it exists. Manager only -- the listener does not exist on agents. Custom paths supplied
 # through the WAZUH_REMOTE_HTTPS_CERTIFICATE / WAZUH_REMOTE_HTTPS_KEY installation
 # variables are honoured (relative paths resolve against the installation directory,
 # as the configuration validator does).
@@ -183,11 +183,6 @@ CheckListenerCerts()
     if [ "X${INSTYPE}" = "Xagent" ]; then
         return
     fi
-
-    CERT="${WAZUH_REMOTE_HTTPS_CERTIFICATE:-etc/certs/remoted.pem}"
-    KEY="${WAZUH_REMOTE_HTTPS_KEY:-etc/certs/remoted-key.pem}"
-    case "${CERT}" in /*) ;; *) CERT="${INSTALLDIR}/${CERT}";; esac
-    case "${KEY}" in /*) ;; *) KEY="${INSTALLDIR}/${KEY}";; esac
 
     # Unified certificate directory: root-owned and sticky (drwxrwx--T), shared with the
     # root-owned indexer trust material (see SetIndexerCertsOwnership()).
@@ -203,15 +198,13 @@ CheckListenerCerts()
         fi
     done
 
-    if [ ! -f "${CERT}" ] || [ ! -f "${KEY}" ]; then
-        echo "NOTICE: no TLS certificate for the HTTPS agent listener was found"
-        echo "        (${CERT}, ${KEY})."
-        echo "        wazuh-manager does not generate certificates. Provision root-ca.pem,"
-        echo "        remoted.pem and remoted-key.pem with the Wazuh installation assistant"
-        echo "        (wazuh-certs-tool) before starting the service; wazuh-manager-control"
-        echo "        refuses to start until they exist. See 'Deploy certificates' in the"
-        echo "        installation guide (docs/ref/getting-started/installation.md)."
-    fi
+    # No notice when the pair is absent. The credential resolver issues it later in this same
+    # installation, from whatever is in $WAZUH_CA_DIR -- and only there, never at a service start
+    # or an upgrade. It reports for itself when it could not, and the service then refuses to start
+    # on the configuration validator's (1244) verdict naming the file, which is where someone
+    # looks. A notice here fires before the step that resolves the very state it describes, and
+    # warning about a state that is about to be resolved is what trains operators to ignore
+    # installer output.
 }
 
 ##########
@@ -1231,8 +1224,8 @@ InstallCommon()
         if [ -f ../etc/wazuh.mc ]; then
             if [ "X${INSTYPE}" = "Xmanager" ]; then
                 # The generated etc/wazuh-manager.conf must validate against the embedded schema before it is
-                # installed (file existence is not checked: the certificates are provisioned by the operator,
-                # not by the installer -- see CheckListenerCerts()).
+                # installed (file existence is not checked: the certificates are issued later in the installation by
+                # the credential resolver, or deployed by the operator -- see CheckListenerCerts()).
                 if ! build/bin/wazuh-manager-conf --skip-file-checks validate -f ../etc/wazuh.mc; then
                     echo "ERROR: the generated ${WAZUH_CONF} is not a valid manager configuration."
                     exit 1
@@ -1623,6 +1616,37 @@ InstallServer()
     # Keystore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-keystore ${INSTALLDIR}/bin/wazuh-manager-keystore
+
+    # Credential resolution ladder. Installed inside the prefix rather than at a fixed system path
+    # so that parallel installs under different USER_DIR values do not collide, which also keeps it
+    # inside the tree .github/actions/check_files/manager_base.csv pins.
+    #
+    # The scripts are INSTALLED here; whether install.sh then RUNS the resolver is decided by
+    # USER_RESOLVE_CREDENTIALS, which the DEB and RPM recipes set to "n". They invoke install.sh at
+    # *package build* time and ship the resulting tree wholesale (`cp -r $(INSTALLATION_DIR)/.` in
+    # debian/rules), so resolving there would seed one rbac.db, one bootstrap CA private key and one
+    # certificate set inside the package, and every installation in the world would share them.
+    # Their postinst/%post resolves on the target host instead.
+    #
+    # wazuh-credentials.sh is not in this repository. It is the half of the ladder the manager, the
+    # indexer and the dashboard must agree on exactly, so it is owned by wazuh-installation-assistant
+    # and downloaded by `make deps` into external/wazuh-credentials/ (see CREDENTIALS_LIB_* in
+    # src/Makefile). The two halves are still a pair at runtime: wazuh-manager-certificates.sh
+    # checks for the credential half's functions at call time and refuses to run without them.
+    #
+    # A missing download is fatal rather than a warning: unlike the indexer templates, a manager
+    # without this file has a resolver that cannot source its own library, so it would fail in
+    # postinst and again at every single start -- an install that looks like it worked and cannot.
+    CREDENTIALS_LIB_SRC="external/wazuh-credentials/wazuh-credentials.sh"
+    if [ ! -f "${CREDENTIALS_LIB_SRC}" ]; then
+        echo "ERROR: ${CREDENTIALS_LIB_SRC} not found."
+        echo "       It is downloaded from wazuh-installation-assistant by 'make -C src deps TARGET=manager'."
+        exit 1
+    fi
+
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} init/credentials/resolve-credentials.sh ${INSTALLDIR}/bin/wazuh-manager-resolve-credentials
+    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} "${CREDENTIALS_LIB_SRC}" ${INSTALLDIR}/lib/wazuh-credentials.sh
+    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} init/credentials/wazuh-manager-certificates.sh ${INSTALLDIR}/lib/wazuh-manager-certificates.sh
 }
 
 InstallAgent()

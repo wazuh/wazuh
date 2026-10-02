@@ -10,38 +10,41 @@ This directory contains a helper script and a Dockerfile for running [Coverity s
 ## Usage
 
 ```bash
-./coverity.sh [--build-image] [--build] [--upload] [--clean] [--jobs N]
+./coverity.sh [--build-image] [--build] [--upload] [--clean] [--jobs N] [--tag <tag>]
 ```
 
 If run without arguments, the script will **compile** the project with Coverity and **upload** the results.
+
+The analysis builds the manager (`make -C src TARGET=manager COVERITY=YES`) inside the image, whose entrypoint is `cov-build --dir cov-int`. It does not fetch the external dependencies: run `make -C src deps TARGET=manager` once before the first `--build`.
 
 ### Options
 
 * `--build-image`
   Download the Coverity analysis tool and build the Docker image.
   The script exits immediately after this step.
-  **Requires** `TOKEN` to be set.
+  **Requires** `COVERITY_TOKEN` to be set.
 
 * `--build`
-  Compile the project using the Coverity Docker image and generate the output in `wazuh.tgz`.
+  Run `make clean-internals` and `make clean-windows`, compile the manager using the Coverity Docker image, and pack the output in `wazuh.tgz`.
 * `--upload`
   Upload `wazuh.tgz` to Coverity Scan.
-  **Requires** `TOKEN` to be set.
+  **Requires** `COVERITY_TOKEN` to be set.
   Fails if the tarball does not exist.
 * `--clean`
   Remove generated files (`cov-int/` directory and `wazuh.tgz` tarball).
 * `--jobs N`
   Set the number of parallel jobs used during compilation (default: system `nproc`).
+* `--tag <tag>`
+  Tag of the analysis image, `ghcr.io/wazuh/coverity-scan:<tag>` (default: `latest`).
 * `--help`
   Show usage information.
 
 ### Environment variables
 
 * `PROJECT`
-  Coverity project name. Must be either `wazuh` or `ossec-wazuh`.
+  Coverity project name, used as `wazuh/<PROJECT>` (the script does not validate it).
   Default: `wazuh`.
-  Allowed: `wazuh` and `ossec-wazuh`.
-* `TOKEN`
+* `COVERITY_TOKEN`
   Coverity project token.
   Required for `--build-image` and `--upload`.
 * `EMAIL`
@@ -58,7 +61,7 @@ If run without arguments, the script will **compile** the project with Coverity 
 The uploaded analysis includes metadata extracted from the project:
 
 * `VERSION` is taken from `VERSION.json` using `.version + "-" + .stage`.
-* `DESCRIPTION` is set to: `Version $VERSION - Git ref <branch>`.
+* `DESCRIPTION` is set to: `Version $VERSION - Git ref <ref>`, where `<ref>` is the exact tag of `HEAD`, or the branch name when there is none.
 
 ## Example: full workflow
 
@@ -78,4 +81,4 @@ COVERITY_TOKEN=your_token PROJECT=ossec-wazuh ./coverity.sh --upload
 
 ## Notes
 
-You can run this same scan from GitHub Actions, in the [4_codeanalysis_coverity](https://github.com/wazuh/wazuh/actions/workflows/4_codeanalysis_coverity.yml) workflow.
+You can run this same scan from GitHub Actions, in the `5_codeanalysis_coverity.yml` workflow; `5_codeanalysis_coverity-image.yml` builds the image.

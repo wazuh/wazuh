@@ -12,9 +12,8 @@ from api import __path__ as api_path
 from api.authentication import change_keypair
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh import WazuhInternalError, WazuhError
-from wazuh.core.common import DEFAULT_RBAC_RESOURCES
 from wazuh.core.decorators import dapi_allower
-from wazuh.rbac.orm import AuthenticationManager, TokenManager, check_database_integrity, DB_FILE
+from wazuh.rbac.orm import TokenManager, check_database_integrity, DB_FILE
 
 REQUIRED_FIELDS = ['id']
 SORT_FIELDS = ['id', 'name']
@@ -61,6 +60,18 @@ def invalid_run_as_tokens():
     """Add the necessary rules to invalidate all affected run_as's tokens."""
     with TokenManager() as tm:
         tm.add_user_roles_rules(run_as=True)
+
+
+def invalid_run_as_context_tokens(contexts: list = None):
+    """Add the necessary rules to invalidate the run_as tokens granted for the given authorization contexts.
+
+    Parameters
+    ----------
+    contexts : list
+        List of hashes of the affected authorization contexts.
+    """
+    with TokenManager() as tm:
+        tm.add_user_roles_rules(contexts=set(contexts))
 
 
 def invalid_users_tokens(users: list = None):
@@ -123,7 +134,12 @@ def sanitize_rbac_policy(policy):
 
 
 def rbac_db_factory_reset():
-    """Reset the RBAC database to default values."""
+    """Reset the RBAC database to default values.
+
+    Each default user is given a newly generated password rather than a shipped one, so a reset
+    deployment is as unique as a freshly installed one. The new values are not returned or logged:
+    recover access with `rbac_control change-password`.
+    """
     try:
         os.remove(DB_FILE)
     except FileNotFoundError:
@@ -132,20 +148,3 @@ def rbac_db_factory_reset():
     check_database_integrity()
     revoke_tokens()
     return {'reset': True}
-
-
-def get_users_with_default_password() -> list:
-    """Get the default users whose password is still the one shipped with the package.
-
-    Returns
-    -------
-    list
-        Names of the default users that keep their shipped password, in the order they are declared
-        in the default users file.
-    """
-    with open(os.path.join(DEFAULT_RBAC_RESOURCES, 'users.yaml')) as f:
-        default_users = yaml.safe_load(f)['default_users']
-
-    with AuthenticationManager() as auth:
-        return [username for username, payload in default_users.items()
-                if auth.check_user(username, payload['password'])]

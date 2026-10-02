@@ -110,24 +110,6 @@ def configure_ssl(params):
             raise exc from exc
 
 
-def warn_about_default_passwords():
-    """Log a warning for each default API user that still has the password shipped with the package.
-
-    The API is started either way: the default credentials are documented, and refusing to serve
-    would break the deployments that configure them after the first start.
-    """
-    try:
-        users = get_users_with_default_password()
-    except Exception as exc:
-        logger.debug(f'Could not check whether the default API users keep their default password: {exc}')
-        return
-
-    for username in users:
-        logger.warning(f"The '{username}' API user still has its default password. Anyone able to reach the API "
-                       f"can use it. Change it with "
-                       f"'{os.path.join(common.WAZUH_PATH, 'bin', 'rbac_control')} change-password'")
-
-
 def _bind_listening_sockets(hosts, port: int, retries: int = BIND_MAX_RETRIES,
                             backoff: int = BIND_BACKOFF_BASE_SECONDS) -> list:
     """Bind one listening socket per configured host, retrying while the port is still in use.
@@ -265,17 +247,37 @@ def start(params: dict):
     Raises
     ------
     APIError
-        Code 2012 if the RBAC database integrity check fails, or code 2010 if the configured
-        port is still in use after every bind attempt.
+        Code 2012 if `rbac.db` is absent or its integrity check fails, or code 2010 if the
+        configured port is still in use after every bind attempt.
     SystemExit
         A shutdown was requested before the server started, or the server never started.
     """
+    # `rbac.db` belongs to the credential resolver, which seeds it through `rbac_control seed` and
+    # publishes the two default users' passwords to /etc/wazuh/credentials.env. Creating it here
+    # instead -- which `check_database_integrity()` does when the file is absent -- seeds those users
+    # with generated passwords that are published NOWHERE: not to the credentials file, not to the
+    # log. The result is an API that starts cleanly and that nobody can authenticate against, with no
+    # record of the credential on the host.
+    #
+    # An empty file is what a failed creation leaves behind, not a database, so it is treated as
+    # absent -- the same test `rbac_control seed` applies.
+    #
+    # Nothing legitimate reaches this with the file missing: `wazuh-manager-control start` runs
+    # `resolvecredentials()` before `start_service()`, and refuses the whole start when a credential
+    # is unresolved. Failing here names the step that owns the file rather than quietly inventing one.
+    if not os.path.exists(DB_FILE) or os.path.getsize(DB_FILE) == 0:
+        raise APIError(
+            2012,
+            details=f"'{DB_FILE}' does not exist. It is created by the credential resolver, not by "
+                    f"the API: start the manager with 'wazuh-manager-control start', or run "
+                    f"'{os.path.join(common.WAZUH_PATH, 'bin', 'wazuh-manager-resolve-credentials')} "
+                    f"--prestart'",
+        )
+
     try:
         check_database_integrity()
     except Exception as db_integrity_exc:
         raise APIError(2012, details=str(db_integrity_exc)) from db_integrity_exc
-
-    warn_about_default_passwords()
 
     pools = common.mp_pools.get()
 
@@ -483,8 +485,7 @@ if __name__ == '__main__':
     from connexion.options import SwaggerUIOptions
     from content_size_limit_asgi.errors import ContentSizeExceeded
     from wazuh.core import common, pyDaemonModule, utils
-    from wazuh.core.security import get_users_with_default_password
-    from wazuh.rbac.orm import check_database_integrity
+    from wazuh.rbac.orm import DB_FILE, check_database_integrity
 
     from api import __path__ as api_path
     from api import error_handler

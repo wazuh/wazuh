@@ -40,8 +40,13 @@ public:
 
 Dimensions are encoded in the metric name (`sync.requests.total.200`). For a closed set
 (HTTP status codes, worker ids), pre-create one metric per member and select with a
-`switch` — never format a metric name per event. Keep the whole catalog in one
-`metricNames.hpp` per module.
+`switch` — never format a metric name per event.
+
+Names are `constexpr` literals in a catalog header beside the subsystem that owns the
+family, never spelled at the call site. A module with one family keeps a single
+`metricNames.hpp` (inventory sync: `src/wazuh_modules/inventory_sync_server/src/common/metricNames.hpp`). A multi-family module
+keeps one header per family (remoted: `control/metrics.hpp`, `enrollment/metrics.hpp`,
+`endpoints/downloadMetrics.hpp`, …).
 
 ## Pull metrics capture lifetimes
 
@@ -63,7 +68,14 @@ per event.
 Reusable GMock mocks live in `src/shared_modules/metrics/test/mocks/wazuh_metrics/`
 (`mockManager.hpp`, `mockCounter.hpp`, `mockGauge.hpp`, `mockHistogram.hpp`): add
 `shared_modules/metrics/test/mocks` to your test include path. Library semantics are
-pinned by `wazuh_metrics_utest`.
+pinned by `wazuh_metrics_utest` (ctest label `wazuh_metrics_utest`).
+
+## Serving the dump
+
+Expose `dumpJson(manager, {"<module_name>"})` on a `GET` route of your
+[UDS HTTP Server](../uds-http-server/integration-guide.md) socket, registered as
+`RouteClass::Liveness` so it is budget-exempt. Capture the manager as a `weak_ptr`, and
+answer 503 if it has expired.
 
 ## Documenting
 

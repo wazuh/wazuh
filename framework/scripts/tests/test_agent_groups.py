@@ -133,38 +133,66 @@ async def test_show_group_files(print_mock):
 async def test_unset_group(print_mock):
     """Check the unassignment of one or more groups for an agent."""
     class AffectedItems:
-        called = False
-
-        def __init__(self, affected_items, failed_items):
+        def __init__(self, affected_items, failed_items=None):
             self.affected_items = affected_items
-            self.failed_items = failed_items
-            self.total_affected_items = 0 if AffectedItems.called else len(affected_items)
-            AffectedItems.called = True
+            self.failed_items = failed_items or {}
+            self.total_affected_items = len(affected_items)
 
-    async def forward_function(func, f_kwargs, is_async):
-        return AffectedItems(affected_items=[{'filename': 'a', 'hash': 'aa'}, {'filename': 'b', 'hash': 'bb'}],
-                             failed_items={'a': 'b'})
-
-    with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
+    # A single group
+    with patch('scripts.agent_groups.cluster_utils.forward_function',
+               return_value=AffectedItems(['testing'])) as forward_mock:
         with patch('scripts.agent_groups.get_stdin', return_value='y') as get_stdin_mock:
-            agent_id = '99'
-            group_id = 'testing'
-            await agent_groups.unset_group(agent_id=agent_id, group_id=group_id)
+            await agent_groups.unset_group(agent_id='99', group_id='testing')
             forward_mock.assert_called_once_with(func=agent.remove_agent_from_groups,
-                                        f_kwargs={'agent_list': [agent_id], 'group_list': [group_id]}, is_async=True)
-            get_stdin_mock.assert_has_calls([call("Do you want to delete the group 'testing' of agent '99'? [y/N]: ")])
-            print_mock.assert_has_calls([call("Agent '99' removed from testing.")])
+                                                 f_kwargs={'agent_list': ['99'], 'group_list': ['testing']},
+                                                 is_async=True)
+            get_stdin_mock.assert_called_once_with("Do you want to delete the group 'testing' of agent '99'? [y/N]: ")
+            print_mock.assert_called_once_with("Agent '99' removed from testing.")
             print_mock.reset_mock()
-            get_stdin_mock.reset_mock()
 
+    # All groups: the agent's own groups are looked up and sent, never a `None` group
+    with patch('scripts.agent_groups.cluster_utils.forward_function',
+               side_effect=[AffectedItems([{'id': '999', 'group': ['g1', 'g2']}]),
+                            AffectedItems(['g1', 'g2'])]) as forward_mock:
+        with patch('scripts.agent_groups.get_stdin', return_value='y') as get_stdin_mock:
             await agent_groups.unset_group(agent_id='999')
-            get_stdin_mock.assert_has_calls([call("Do you want to delete all groups of agent '999'? [y/N]: ")])
-            print_mock.assert_has_calls([call("a")])
+            get_stdin_mock.assert_called_once_with("Do you want to delete all groups of agent '999'? [y/N]: ")
+            forward_mock.assert_has_calls([
+                call(func=agent.get_agents, f_kwargs={'agent_list': ['999'], 'select': ['group']}),
+                call(func=agent.remove_agent_from_groups,
+                     f_kwargs={'agent_list': ['999'], 'group_list': ['g1', 'g2']}, is_async=True)])
+            print_mock.assert_called_once_with("Agent '999' removed from g1, g2.")
             print_mock.reset_mock()
 
-            await agent_groups.unset_group(agent_id='999', quiet=True)
-            print_mock.assert_has_calls([call("a")])
-            print_mock.reset_mock()
+    # All groups of an agent that has none
+    with patch('scripts.agent_groups.cluster_utils.forward_function',
+               return_value=AffectedItems([{'id': '999'}])) as forward_mock:
+        await agent_groups.unset_group(agent_id='999', quiet=True)
+        forward_mock.assert_called_once()
+        print_mock.assert_called_once_with("Agent '999' does not belong to any group.")
+        print_mock.reset_mock()
+
+    # All groups of an unknown agent
+    with patch('scripts.agent_groups.cluster_utils.forward_function',
+               return_value=AffectedItems([], {'Agent does not exist': {'999'}})) as forward_mock:
+        await agent_groups.unset_group(agent_id='999', quiet=True)
+        forward_mock.assert_called_once()
+        print_mock.assert_called_once_with('Agent does not exist')
+        print_mock.reset_mock()
+
+    # The removal fails
+    with patch('scripts.agent_groups.cluster_utils.forward_function',
+               return_value=AffectedItems([], {'a': {'testing'}})):
+        await agent_groups.unset_group(agent_id='99', group_id='testing', quiet=True)
+        print_mock.assert_called_once_with('a')
+        print_mock.reset_mock()
+
+    # Cancelled
+    with patch('scripts.agent_groups.cluster_utils.forward_function') as forward_mock:
+        with patch('scripts.agent_groups.get_stdin', return_value='n'):
+            await agent_groups.unset_group(agent_id='99')
+            forward_mock.assert_not_called()
+            print_mock.assert_called_once_with('Cancelled.')
 
 
 @pytest.mark.asyncio
@@ -295,13 +323,13 @@ def test_usage(basename_mock, print_mock):
     Params:
     \t-l, --list
     \t-c, --list-files
-    \t-a, --add-group
-    \t-f, --force-single-group
+    \t-a, --add
+    \t-f, --force (single group)
     \t-s, --show-group
-    \t-r, --remove-group
+    \t-r, --remove
 
     \t-i, --agent-id
-    \t-g, --group
+    \t-g, --group-id
 
     \t-q, --quiet (no confirmation)
     \t-d, --debug

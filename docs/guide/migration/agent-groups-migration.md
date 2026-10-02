@@ -6,13 +6,16 @@ Starting with Wazuh 5.0, the manager installation path changed from `/var/ossec/
 
 > There is no automatic migration tooling for agent groups. You must manually transfer your group configuration files to the new manager before reconnecting any agents.
 
+> [!IMPORTANT]
+> This guide covers the case where agents **re-enroll** against the 5.0 manager and therefore get new ids and only the groups their own `ossec.conf` declares. If you can carry `client.keys` and `global.db` from the 4.x manager, follow [Manager migration from 4.x to 5.0](manager-4x-to-5x.md) instead: agents keep their ids and every group assignment, including those made from the manager side, and nothing in this guide is needed.
+
 ## How group assignment works
 
 Group assignment in Wazuh 5.0 is driven by the agent's enrollment:
 
-1. **Enrollment (the handshake that carries the group).** When an agent enrolls (registers) with the manager, it includes the group(s) configured in its `ossec.conf` under `<enrollment><groups>`. The manager's enrollment service (`wazuh-manager-authd`) validates the group and writes the assignment into `global.db`. If the declared group does not exist on the manager, **enrollment is rejected and the agent cannot connect**.
+1. **Enrollment (the handshake that carries the group).** When an agent enrolls (registers) with the manager, it includes the group(s) configured in its `ossec.conf` under `<enrollment><groups>`. The manager's enrollment service (`wazuh-manager-authd`) validates the group and writes the assignment into `global.db`; an enrollment that declares no group is recorded in `default`. If a declared group has no folder under `etc/shared/` on the manager, **enrollment is rejected and the agent cannot connect**; the agent keeps retrying with a backoff, so it enrolls on its own once the group exists.
 2. **Persistence.** The assignment persists in `global.db` and survives agent and manager restarts, so it does not need to be resent on every connection.
-3. **Reconnection.** On each keepalive, the manager looks up the agent's group in `global.db` and, if found, compiles and pushes that group's shared configuration. If no group is recorded for the agent, the manager assigns the `default` group.
+3. **Reconnection.** On each keepalive, the manager looks up the agent's groups in `global.db` and sends the agent the merged shared configuration (`merged.mg`) of those groups when the agent's copy differs.
 
 > [!IMPORTANT]
 > Earlier Wazuh versions could *guess* an agent's group by matching its `merged.mg` checksum against the groups present on the manager (the `remoted.guess_agent_group` internal option). **This mechanism has been removed in Wazuh 5.0.** A reconnecting agent that has no group configured in its `ossec.conf` and no prior assignment in `global.db` will be placed in the `default` group. To restore its original group you must either re-enroll the agent with the group configured, or assign the group manually (see [Workaround: manual group assignment](#workaround-manual-group-assignment)).
@@ -37,14 +40,14 @@ Before proceeding, make sure you have:
 
 ### 1. Back up group configurations from the 4.x manager
 
-On the **4.x manager**, archive the group folders under `shared/`, excluding the runtime-generated `merged.mg`:
+On the **4.x manager**, archive the custom group folders under `shared/`, excluding the runtime-generated `merged.mg` and the `default` group:
 
 ```bash
 cd /var/ossec/etc
-tar -cvzf /tmp/wazuh_groups_backup.tar.gz --exclude='*/merged.mg' shared/*/
+tar -cvzf /tmp/wazuh_groups_backup.tar.gz --exclude='*/merged.mg' --exclude='shared/default' shared/*/
 ```
 
-The `shared/*/` glob matches only the group folders, so non-group files in `shared/` (such as `ar.conf` and `agent-template.conf`) are left out.
+The `shared/*/` glob matches only the group folders, so non-group files in `shared/` (such as `ar.conf` and `agent-template.conf`) are left out. `default` is excluded because the 5.0 package ships its own `default` folder and the 4.x one would replace it with 4.x files; if you customized `shared/default/agent.conf`, copy that single file and merge it into the 5.0 one by hand.
 
 To migrate only specific groups, replace `shared/*/` with the folder names:
 
@@ -63,12 +66,18 @@ Keep this archive somewhere that **survives the reinstall** (for example, off th
 > [!IMPORTANT]
 > Complete this step **before** connecting any agents to the 5.0 manager. The manager validates the declared group during enrollment: if an agent enrolls with a `<groups>` value that does not yet exist on the manager, **enrollment is rejected and the agent cannot connect**. (An agent with no `<groups>` tag still connects and lands in `default`.)
 
-After installing Wazuh 5.0, copy the backup archive back onto the manager host, then extract it and fix ownership:
+After installing Wazuh 5.0, copy the backup archive back onto the manager host. Stop the manager, extract the archive and fix ownership, then start it again:
 
 ```bash
+systemctl stop wazuh-manager
 tar -xvzf /tmp/wazuh_groups_backup.tar.gz -C /var/wazuh-manager/etc/
-chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/shared/
+chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/shared/*/
+systemctl start wazuh-manager
 ```
+
+The `chown` covers the group folders only: `etc/shared/` itself stays `root:wazuh-manager`, mode `0770`, as the package installs it.
+
+Extract with the manager stopped: the extracted folders carry the 4.x owner until the `chown` runs, and a running `wazuh-manager-modulesd` that checks a group folder it cannot read in that window logs `Couldn't open directory 'etc/shared/<group>' ... a 'delete-group' will be sent anyway` and removes the group from the database until the next synchronization.
 
 Verify the group folders were restored:
 
@@ -77,7 +86,7 @@ ls /var/wazuh-manager/etc/shared/
 ```
 
 > [!WARNING]
-> **Configuration validity:** The restored `agent.conf` files must be valid for Wazuh 5.0. Any deprecated options or renamed tags from the 4.x configuration format will cause the shared configuration to fail to compile. Review each group's `agent.conf` against the Wazuh 5.0 reference documentation and remove or update any incompatible settings before proceeding.
+> **Configuration validity:** The restored `agent.conf` files must be valid for the agents that receive them. The manager distributes the file as it is; a 5.0 agent tests what it downloads and, when a section fails, keeps its current configuration and logs `Downloaded configuration failed validation; not reloading.` Review each group's `agent.conf` against [Centralized configuration](../../ref/modules/agent-management/centralized-configuration.md#supported-configuration-sections) and remove or update any incompatible settings before proceeding.
 
 ### 3. Ensure each agent has its group configured
 
@@ -100,7 +109,7 @@ On every **agent** that should belong to a non-default group, confirm the group 
 With the group folders in place and each agent's group configured, start each agent. The group is only sent when the agent **enrolls**, so an agent still holding a stale key from the old manager must enroll fresh.
 
 > [!IMPORTANT]
-> Starting with Wazuh 5.0, the enrollment service requires a password by default. Before starting each agent, copy the enrollment password from the manager:
+> Starting with Wazuh 5.0, the configuration shipped by the installer makes the enrollment service require a password (`auth.use_password` is `yes` there; the option itself defaults to `no`). Before starting each agent, copy the enrollment password from the manager:
 >
 > ```bash
 > # On the manager
@@ -113,6 +122,13 @@ With the group folders in place and each agent's group configured, start each ag
 > ```
 >
 > Without this file the enrollment request will be rejected. See [`use_password`](../../ref/modules/authd/configuration.md#use_password) for details.
+>
+> This is the path for an agent that already exists and has to enroll again. An agent **installed**
+> fresh against a 5.0 manager takes an enrollment token instead, which carries the credential along
+> with the manager address and its CA, and needs no password file: see
+> [Agent enrollment lifecycle](../../ref/modules/authd/enrollment-lifecycle.md). Note also that the
+> 5.0 package upgrade deletes `etc/authd.pass` from the endpoint, so an agent upgraded after you
+> place it here needs it placed again.
 
 Clear its key first, then start it:
 
@@ -125,7 +141,7 @@ systemctl start wazuh-agent
 During enrollment the agent sends its configured group to the manager, which records the assignment in `global.db`. On the following keepalive the manager compiles and pushes the matching group's shared configuration.
 
 > [!WARNING]
-> If an agent declares a group that does not exist on the manager, **enrollment is rejected** and the agent cannot connect (`ERROR: Invalid group: <group>. Unable to add agent`). See [Workaround: agent fails to connect (missing group)](#workaround-agent-fails-to-connect-missing-group) to resolve it.
+> If an agent declares a group that does not exist on the manager, **enrollment is rejected** and the agent cannot connect (`wazuh-manager-authd` logs `ERROR: Invalid group: <group>`). See [Workaround: agent fails to connect (missing group)](#workaround-agent-fails-to-connect-missing-group) to resolve it.
 
 To verify, view the group assignments from the Wazuh dashboard under **Agents management -> Summary**.
 
@@ -149,17 +165,25 @@ You have now migrated your agent groups from Wazuh 4.x to Wazuh 5.0.
 
 ## Workaround: agent fails to connect (missing group)
 
-If an agent declares a group that does not exist on the manager, **enrollment is rejected** and the agent cannot connect. The agent log shows:
+If an agent declares a group that does not exist on the manager, **enrollment is rejected** and the agent cannot connect. The manager's `/var/wazuh-manager/logs/wazuh-manager.log` shows:
 
 ```
-wazuh-agentd: ERROR: Invalid group: <group>. Unable to add agent (from manager)
+wazuh-manager-authd: ERROR: Invalid group: <group>
 ```
+
+On a 5.0 agent, which enrolls over HTTPS on `1517`, `ossec.log` shows the rejection relayed by `wazuh-manager-remoted` (HTTP `400`, authd code `9014`), and the agent keeps retrying:
+
+```
+wazuh-agentd: ERROR: Enrollment rejected by the manager: invalid request. Invalid Group(s) Name(s)
+```
+
+A 4.x agent, which enrolls on `1515`, logs `ERROR: Invalid group: <group>. Unable to add agent (from manager)` instead.
 
 To resolve it, do one of the following:
 
 ### Option 1: Restore the group first
 
-Make sure the group folder is in place on the manager ([step 2](#2-restore-group-configurations-on-the-5x-manager)), then restart the agent so it re-enrolls.
+Make sure the group folder is in place on the manager ([step 2](#2-restore-group-configurations-on-the-5x-manager)). The agent's next retry enrolls it; restart the agent to retry at once.
 
 ### Option 2: Create the group manually
 
@@ -176,7 +200,7 @@ curl -k -X POST "https://<manager-ip>:55000/groups" \
      -d '{"group_id": "<group-name>"}'
 ```
 
-Then restart the agent so it re-enrolls with the new group available on the manager.
+The agent's next enrollment retry succeeds once the group exists; restart the agent to retry at once.
 
 To add the configuration afterward, either complete the migration of that group ([step 2](#2-restore-group-configurations-on-the-5x-manager)) or edit it from the dashboard: go to **Agents management -> Groups** and, in the **Actions** column, select the pencil icon (**Edit group configuration**) to edit it manually. Once you have finished, click **Save**:
 
@@ -277,11 +301,11 @@ drwx------ wazuh/wazuh       0 2026-06-02 18:39 shared/linux-servers/
 # tar -xvzf /tmp/wazuh_groups_backup.tar.gz -C /var/wazuh-manager/etc/
 shared/linux-servers/
 shared/linux-servers/agent.conf
-# chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/shared/
+# chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc/shared/*/
 # ls -la /var/wazuh-manager/etc/shared/linux-servers/
 total 8
 drwx------ 1 wazuh-manager wazuh-manager  38 Jun  2 19:31 .
-drwxrwx--- 1 wazuh-manager wazuh-manager  78 Jun  2 19:31 ..
+drwxrwx--- 1 root          wazuh-manager  78 Jun  2 19:31 ..
 -rw-rw---- 1 wazuh-manager wazuh-manager 215 Jun  2 18:39 agent.conf
 -rw-r--r-- 1 wazuh-manager wazuh-manager 246 Jun  2 19:31 merged.mg
 ```

@@ -611,10 +611,8 @@ TEST(CurlPerformerTest, SystemModeFallsBackToLocalAnchorOnVerifyFailure)
 }
 
 // The mirror of the test above: the fallback anchor does not verify the manager either.
-// Both trust sources are exhausted within the one call -- no third attempt, and the
-// returned status is still a verification failure so the caller's normal fail-closed
-// handling applies (the LOGFN_CRITICAL this path also emits is a no-op here: this test
-// binary never assigns GLOBAL_LOG_FUNCTION, see tests/unit/main.cpp).
+// Both trust sources are exhausted within the one call -- no third attempt -- and the
+// verification failure is returned for the caller to back off and retry.
 TEST(CurlPerformerTest, SystemModeReportsVerifyFailureWhenFallbackAlsoFails)
 {
     auto config = makeConfig(HC_VERIFY_SYSTEM);
@@ -648,12 +646,104 @@ TEST(CurlPerformerTest, SystemModeReportsVerifyFailureWhenFallbackAlsoFails)
     EXPECT_EQ(2, callCount); // OS bundle, then the fallback anchor -- never a third attempt.
 }
 
+// A fallback attempt that times out before any certificate was verified (empty TLS details)
+// is no evidence the anchor verifies this manager, so it is not latched either.
+TEST(CurlPerformerTest, SystemModeDoesNotLatchWhenTheFallbackFailsForAnotherReason)
+{
+    auto config = makeConfig(HC_VERIFY_SYSTEM);
+    config.systemFallbackCaPath = "/var/ossec/etc/certs/root-ca.pem";
+    NiceMock<MockFsProbe> fsProbe;
+    ON_CALL(fsProbe, findSystemCaBundle()).WillByDefault(Return("/etc/ssl/certs/ca-certificates.crt"));
+
+    int callCount = 0;
+    CurlHandleFactory factory = [&]() -> std::unique_ptr<ICurlHandle>
+    {
+        auto handle = std::make_unique<NiceMock<MockCurlHandle>>();
+        allowOtherOptions(*handle);
+        ++callCount;
+        ON_CALL(*handle, trustSelfSignedRoot()).WillByDefault(Return(true));
+
+        if (callCount == 1)
+        {
+            ON_CALL(*handle, perform()).WillByDefault(Return(TransportStatus::TlsFail));
+            ON_CALL(*handle, tlsFailureDetail()).WillByDefault(Return(chainTrustFailure()));
+        }
+        else if (callCount == 2)
+        {
+            EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, "/var/ossec/etc/certs/root-ca.pem"));
+            ON_CALL(*handle, perform()).WillByDefault(Return(TransportStatus::Timeout));
+        }
+        else
+        {
+            EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, "/etc/ssl/certs/ca-certificates.crt"));
+            ON_CALL(*handle, perform()).WillByDefault(Return(TransportStatus::Ok));
+        }
+
+        return handle;
+    };
+
+    CurlPerformer performer {config, factory, fsProbe};
+
+    EXPECT_EQ(TransportStatus::Timeout, performer.perform(HttpRequestSpec {}).status);
+    EXPECT_EQ(2, callCount);
+
+    EXPECT_EQ(TransportStatus::Ok, performer.perform(HttpRequestSpec {}).status);
+    EXPECT_EQ(3, callCount); // One attempt, against the OS bundle.
+}
+
+// The mirror of the test above: the anchor verified the certificate and the transfer then
+// timed out. That is evidence enough, so it latches and the next call dials the anchor
+// directly with the full budget.
+TEST(CurlPerformerTest, SystemModeLatchesWhenTheFallbackVerifiesButTheTransferTimesOut)
+{
+    auto config = makeConfig(HC_VERIFY_SYSTEM);
+    config.systemFallbackCaPath = "/var/ossec/etc/certs/root-ca.pem";
+    NiceMock<MockFsProbe> fsProbe;
+    ON_CALL(fsProbe, findSystemCaBundle()).WillByDefault(Return("/etc/ssl/certs/ca-certificates.crt"));
+
+    int callCount = 0;
+    CurlHandleFactory factory = [&]() -> std::unique_ptr<ICurlHandle>
+    {
+        auto handle = std::make_unique<NiceMock<MockCurlHandle>>();
+        allowOtherOptions(*handle);
+        ++callCount;
+        ON_CALL(*handle, trustSelfSignedRoot()).WillByDefault(Return(true));
+
+        if (callCount == 1)
+        {
+            ON_CALL(*handle, perform()).WillByDefault(Return(TransportStatus::TlsFail));
+            ON_CALL(*handle, tlsFailureDetail()).WillByDefault(Return(chainTrustFailure()));
+        }
+        else if (callCount == 2)
+        {
+            EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, "/var/ossec/etc/certs/root-ca.pem"));
+            ON_CALL(*handle, perform()).WillByDefault(Return(TransportStatus::Timeout));
+            ON_CALL(*handle, tlsFailureDetail()).WillByDefault(Return(chainVerifiedButUnrelatedFailure()));
+        }
+        else
+        {
+            EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo, "/var/ossec/etc/certs/root-ca.pem"));
+            ON_CALL(*handle, perform()).WillByDefault(Return(TransportStatus::Ok));
+        }
+
+        return handle;
+    };
+
+    CurlPerformer performer {config, factory, fsProbe};
+
+    EXPECT_EQ(TransportStatus::Timeout, performer.perform(HttpRequestSpec {}).status);
+    EXPECT_EQ(2, callCount);
+
+    EXPECT_EQ(TransportStatus::Ok, performer.perform(HttpRequestSpec {}).status);
+    EXPECT_EQ(3, callCount); // One attempt, directly against the anchor.
+}
+
 // External review finding: a fallback anchor libcurl cannot even LOAD (missing, unreadable,
 // not a certificate it can parse -- CURLE_SSL_CACERT_BADFILE) never reaches sawDepth0 (no
 // chain to build without a loadable CA), so isUnclassifiedChainFailure() alone would never
 // treat it as fallback-eligible-and-exhausted -- it would look exactly like a pure transport
-// failure and just be retried forever with ordinary backoff, never reaching the fail-closed
-// CRITICAL exit this module exists to reach. isCaFileLoadFailure() must catch this on its own,
+// failure and just be retried forever with ordinary backoff instead of stopping the agent with
+// a named reason. isCaFileLoadFailure() must catch this on its own,
 // ahead of that gate, the very first time the fallback anchor is dialed and turns out unusable.
 TEST(CurlPerformerTest, SystemModeFailsClosedWhenFallbackAnchorCannotBeLoaded)
 {
@@ -797,11 +887,10 @@ TEST(CurlPerformerTest, SystemModeDoesNotRetryWithoutAFallbackPathConfigured)
 
 // A TlsFail that never reached certificate inspection at all (sawDepth0 false -- a
 // cipher-negotiation failure, a mid-handshake reset, a corrupt local CA file: none of them a
-// chain/CA-trust problem) must NOT trigger the fallback, the WARN, or the eventual
-// LOGFN_CRITICAL: retrying against a different anchor cannot fix a failure that has nothing to
-// do with which anchor was configured, and treating two such transient failures as "neither
-// trust source works" would kill the agent over what any other verify_mode leaves as an
-// ordinary Unreachable/retry-with-backoff outcome. One attempt, whatever the OS bundle attempt
+// chain/CA-trust problem) must NOT trigger the fallback or its WARN: retrying against a
+// different anchor cannot fix a failure that has nothing to do with which anchor was
+// configured -- any other verify_mode leaves it as an ordinary Unreachable/retry-with-backoff
+// outcome. One attempt, whatever the OS bundle attempt
 // returned is what the caller sees -- exactly like SystemModeDoesNotFallBackOnAClassifiedFailure,
 // but for the OTHER situation that also leaves tlsFailure.kind == None.
 TEST(CurlPerformerTest, SystemModeDoesNotFallBackOnATransportFailureThatNeverReachedTheCertificate)
@@ -1118,13 +1207,11 @@ TEST(CurlPerformerTest, SystemModeUsesFallbackAnchorDirectlyWhenNoOsBundleExists
     EXPECT_EQ(1, callCount); // No OS store to try first -- one attempt, not two.
 }
 
-// The failure mirror of the test above (code-config-reviewer, round 5): with no OS bundle at
-// all, the one and only attempt is already against the fallback anchor -- if THAT fails too,
-// perform() must still reach the LOGFN_CRITICAL/exit(1) path (never retry a second time, since
-// there was never a second trust source to try), and it must do so with wording that does not
-// claim an OS trust store was consulted (noOsStoreToTry() in curlPerformer.hpp) -- this test
-// pins the observable half of that (one attempt, TlsFail out); the log text itself is not
-// capturable from this mock-based suite, see the component test for the real-TLS coverage.
+// The failure mirror of the test above: with no OS bundle at all, the one and only attempt is
+// already against the fallback anchor -- if THAT fails too, perform() returns the failure for
+// the caller to retry, without a second attempt (there was never a second trust source to
+// try). The log wording (noOsStoreToTry() in curlPerformer.hpp) is not capturable from this
+// mock-based suite.
 TEST(CurlPerformerTest, SystemModeReportsVerifyFailureDirectlyWhenNoOsBundleExists)
 {
     auto config = makeConfig(HC_VERIFY_SYSTEM);
@@ -1157,9 +1244,9 @@ TEST(CurlPerformerTest, SystemModeReportsVerifyFailureDirectlyWhenNoOsBundleExis
 // trust anchor IT actually dialed, never against whatever m_usingSystemFallbackAnchor says by
 // the time it gets around to interpreting the response -- another thread can flip that flag
 // while this call's first attempt is still in flight (HttpsClientFacade's four streams share
-// one CurlPerformer). An earlier version of the fix re-read the flag after the fact and could
-// send a call straight to LOGFN_CRITICAL on a fallback it had never itself tried, just because
-// a concurrent call had already adopted it. Reproduced deterministically (not via timing, per
+// one CurlPerformer). Re-reading the flag after the fact would let a call conclude "both
+// failed" on a fallback it had never itself tried, just because a concurrent call had
+// already adopted it. Reproduced deterministically (not via timing, per
 // this module's own lesson from #38440/SkewCorrectedClock: races this narrow are not reliably
 // hit by chance, real or stress-tested) by blocking "thread B"'s first handle mid-flight until
 // "thread A" has completed an entire fail -> flip -> retry-succeeds cycle on its own.
@@ -1245,8 +1332,8 @@ TEST(CurlPerformerTest, SystemModeConcurrentCallerJudgesItsOwnAttemptNotAnotherT
     {
         const auto response = performer.perform(HttpRequestSpec {});
         EXPECT_EQ(TransportStatus::Ok, response.status)
-                << "Thread B must retry against the fallback on its OWN evidence, not skip "
-                "straight to critical because thread A already flipped the flag mid-flight.";
+                << "Thread B must retry against the fallback on its OWN evidence, not treat it as "
+                "already failed because thread A flipped the flag mid-flight.";
     });
 
     bEntered.wait(); // Do not start "thread A" until B is confirmed blocked inside its first
@@ -1311,6 +1398,41 @@ TEST(CurlPerformerTest, SystemModeFallsBackRegardlessOfPlatform)
 
     EXPECT_EQ(TransportStatus::Ok, response.status);
     EXPECT_EQ(2, callCount);
+
+    // Latched on the anchor's success: the next call dials it directly.
+    EXPECT_EQ(TransportStatus::Ok, performer.perform(HttpRequestSpec {}).status);
+    EXPECT_EQ(3, callCount);
+}
+
+// Platform-agnostic counterpart of SystemModeReportsVerifyFailureWhenFallbackAlsoFails: when
+// the anchor fails too, nothing is latched and the next call starts from caPath again.
+TEST(CurlPerformerTest, SystemModeDoesNotLatchAFailedFallbackRegardlessOfPlatform)
+{
+    auto config = makeConfig(HC_VERIFY_SYSTEM);
+    config.caPath = "/etc/ssl/certs/ca-certificates.crt";
+    config.systemFallbackCaPath = "/var/ossec/etc/certs/root-ca.pem";
+
+    int callCount = 0;
+    CurlHandleFactory factory = [&]() -> std::unique_ptr<ICurlHandle>
+    {
+        auto handle = std::make_unique<NiceMock<MockCurlHandle>>();
+        allowOtherOptions(*handle);
+        ++callCount;
+        ON_CALL(*handle, perform()).WillByDefault(Return(TransportStatus::TlsFail));
+        ON_CALL(*handle, tlsFailureDetail()).WillByDefault(Return(chainTrustFailure()));
+
+        // Odd attempts are each call's first, even ones its fallback.
+        EXPECT_CALL(*handle, setOptionString(CurlOption::CaInfo,
+                                             callCount % 2 == 1 ? "/etc/ssl/certs/ca-certificates.crt"
+                                             : "/var/ossec/etc/certs/root-ca.pem"));
+        return handle;
+    };
+
+    CurlPerformer performer {config, factory};
+
+    EXPECT_EQ(TransportStatus::TlsFail, performer.perform(HttpRequestSpec {}).status);
+    EXPECT_EQ(TransportStatus::TlsFail, performer.perform(HttpRequestSpec {}).status);
+    EXPECT_EQ(4, callCount);
 }
 
 // Platform-agnostic counterpart of SystemModeDoesNotLatchTheFallbackWhenNoBudgetRemains above

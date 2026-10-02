@@ -2,7 +2,10 @@
 
 ## Overview
 
-Active Response is implemented through `wazuh-execd`, a daemon running on agents, that receives and executes security response commands. The architecture follows a message-driven model where JSON commands are sent from the manager to agents, parsed, validated, and executed with proper lifecycle management.
+A response is decided in the Wazuh Indexer, turned into Task Manager tasks by
+`wazuh-manager-clusterd`, delivered to the agent in the response to its `POST /control`, and run by
+the agent's `wazuh-execd`. Everything `wazuh-execd` needs — which executable, stateful or stateless,
+for how long — travels in the message under `wazuh.active_response`.
 
 ## Component Architecture
 
@@ -23,10 +26,10 @@ sequenceDiagram
     participant CD as wazuh-manager-clusterd<br/>ActiveResponseFetchTask, every node
     participant TM as Task Manager<br/>queue/sockets/task-http.sock
     participant RM as wazuh-manager-remoted<br/>POST /control
-    participant AG as agent<br/>wazuh-execd
+    participant AG as agent<br/>wazuh-agentd + wazuh-execd
 
     AL->>NO: matching event (index, document id)
-    NO->>NO: copy the event's `wazuh` object add `wazuh.active_response` from the channel, `event`, `@timestamp`
+    NO->>NO: copy the event's wazuh object, add wazuh.active_response from the channel, event, @timestamp
     NO->>DS: index (op_type=create)
     loop every active_response_polling seconds, on every node
         CD->>DS: search after the bookmark, sorted by [@timestamp, _id], bounded at now
@@ -39,9 +42,9 @@ sequenceDiagram
     end
     AG->>RM: POST /control (notify)
     RM->>TM: POST /v1/tasks/pending
-    TM-->>RM: [{task_id, task_type, payload}]
+    TM-->>RM: [{task_id, task_type, payload}], marked delivered
     RM-->>AG: pending tasks in the response
-    AG->>AG: hand the payload to wazuh-execd, run wazuh.active_response.executable
+    AG->>AG: agentd forwards the payload to wazuh-execd, which runs wazuh.active_response.executable
 ```
 
 Where each step lives:
@@ -49,9 +52,9 @@ Where each step lives:
 | Steps | Component | Source |
 |---|---|---|
 | 1-3 | Indexer Alerting and Notifications plugins | `wazuh/wazuh-indexer-notifications` (`SendMessageActionHelper.sendActiveResponseMessage`); the stream template and retention policy are in `wazuh/wazuh-indexer-plugins` |
-| 4-10 | `ActiveResponseFetchTask` in `wazuh-manager-clusterd`, started by the master and by every worker | [active_response.py](../../../../framework/wazuh/core/indexer/active_response.py), [master.py](../../../../framework/wazuh/core/cluster/master.py), [worker.py](../../../../framework/wazuh/core/cluster/worker.py) |
+| 4-10 | `ActiveResponseFetchTask` in `wazuh-manager-clusterd`, started by the master and by every worker | `framework/wazuh/core/indexer/active_response.py`, `framework/wazuh/core/cluster/master.py`, `framework/wazuh/core/cluster/worker.py` |
 | 11-14 | Task Manager and remoted | [Task Manager](../task_manager/README.md), [remoted architecture](../remoted/architecture.md) |
-| 15 | `wazuh-execd` on the agent | the rest of this page |
+| 15 | `wazuh-agentd` and `wazuh-execd` on the agent | [Agent Side](#agent-side) |
 
 The manager's part in detail — the document contract, the read, the cursor and every message it
 logs — is in [Manager-side ingestion](#manager-side-ingestion).
@@ -60,84 +63,81 @@ logs — is in [Manager-side ingestion](#manager-side-ingestion).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        wazuh-agentd                                 │
-│                                                                     │
-│  Receives encrypted messages from manager                          │
+│ wazuh-agentd (HTTPS client)                                         │
+│   POST /control → task {task_type: active_response, payload}        │
+│   payload without a top-level "wazuh" key → dropped                 │
 └────────────────────────────────┬────────────────────────────────────┘
-                                 │
-                                 │ Decrypts and forwards
+                                 │ queue/sockets/execq (one datagram)
+                                 │ Windows: in-process queue
                                  ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        wazuh-execd                                  │
+│ wazuh-execd                                                         │
+│   read wazuh.active_response.{executable, type, stateful_timeout}   │
+│   check active-response/bin/<executable> exists                     │
+│   append "command": "enable", run it, write the message on stdin    │
+│   read check_keys on stdout → answer continue / abort on stdin      │
+│   wait for it to exit; log a non-zero exit                          │
 │                                                                     │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │                    Command Receiver                           │  │
-│  │  ┌──────────────┐      ┌─────────────────┐                    │  │
-│  │  │ Message      │      │ JSON Parser     │                    │  │
-│  │  │ Queue        │─────▶│ & Validator     │                    │  │
-│  │  └──────────────┘      └────────┬────────┘                    │  │
-│  └──────────────────────────────────┼───────────────────────────┘  │
-│                                     │                               │
-│  ┌──────────────────────────────────▼───────────────────────────┐  │
-│  │                  Execution Engine                            │  │
-│  │  ┌─────────────┐   ┌──────────────┐   ┌─────────────────┐   │  │
-│  │  │Deduplication│   │   Process     │   │    Timeout      │   │  │
-│  │  │   System    │──▶│   Executor    │──▶│   Management    │   │  │
-│  │  └─────────────┘   └──────────────┘   └─────────────────┘   │  │
-│  └───────────────────────────────────────────────────────────────┘  │
+│   timeout list (stateful only), checked every second:               │
+│     expired entry → run it again with "command": "disable"          │
 └────────────────────────────────┬────────────────────────────────────┘
-                                 │
-                                 │ fork + exec
+                                 │ fork + exec (Windows: CreateProcess)
                                  ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    AR Script (block-ip, etc.)                       │
-│                                                                     │
-│  Receives JSON via stdin, parses, executes firewall commands       │
-└────────────────────────────────┬────────────────────────────────────┘
-                                 │
-                                 ▼
-                          ┌──────────────┐
-                          │   Firewall   │
-                          │   Commands   │
-                          └──────────────┘
+│ executable (block-ip, disable-account, custom)                      │
+│   reads the message from stdin, acts, logs to active-responses.log  │
+└─────────────────────────────────────────────────────────────────────┘
 ```
+
+On Unix `wazuh-execd` is its own process, listening on `queue/sockets/execq` under the agent's
+installation directory. On Windows it runs inside the agent service: a thread takes the messages
+from an in-process queue and the agent's main thread runs the timeout check every second.
 
 ## Message Flow
 
-### Enable (Block) Command Flow (v5.0+ Task-Based)
+### Enable flow
 
-1. **Trigger**: an Alerting monitor in the Wazuh Indexer matches an event; its Active Response channel writes one response document to `wazuh-active-responses`
-2. **Ingestion**: `wazuh-manager-clusterd` reads the document on its next polling cycle, validates it, merges the referenced event into the payload and resolves the target agents (see [Manager-side ingestion](#manager-side-ingestion))
-3. **Task Creation**: clusterd creates one Task Manager task per target agent:
-   - Task type: `active_response`
-   - Payload: the response document merged with the event it references
-   - Deterministic task id, so every cluster node creates the same task
-   - Status: `pending`, stored in the Task Manager database
-4. **Agent Polling**: Agent polls `/control` HTTPS endpoint for pending tasks
-5. **Task Retrieval**: Task Manager returns AR task to agent
-6. **Agent Reception**: Agent's `wazuh-agentd` receives the AR task
-7. **Execd Processing**: `wazuh-execd` validates and queues the command
-8. **Deduplication Check**: Executes key verification to prevent duplicates
-9. **Script Execution**: Forks and executes the AR script (e.g., `block-ip`)
-10. **Script Input**: Script receives JSON via stdin
-11. **Script Parsing**: Script extracts `source.ip` from JSON
-12. **Firewall Action**: Script executes firewall commands to block the IP
-13. **Timeout Registration**: If stateful, execd registers the timeout for automatic reversion
-14. **Task Acknowledgment**: Task marked as `delivered` in Task Manager (fire-and-forget)
+1. **Trigger**: an Alerting monitor in the Wazuh Indexer matches an event; its Active Response
+   channel writes one response document to `wazuh-active-responses`.
+2. **Ingestion**: `wazuh-manager-clusterd` reads the document on its next polling cycle, validates
+   it, merges the referenced event into the payload and resolves the target agents (see
+   [Manager-side ingestion](#manager-side-ingestion)).
+3. **Task creation**: clusterd creates one Task Manager task per target agent: type
+   `active_response`, the merged payload, and a task id derived from the document `_id`, so every
+   cluster node creates the same task.
+4. **Delivery**: on the agent's next `POST /control`, remoted asks the Task Manager for the agent's
+   pending tasks (`POST /v1/tasks/pending`), which marks them `delivered` as it returns them. There
+   is no acknowledgment after execution: the task is fire-and-forget.
+5. **Forwarding**: `wazuh-agentd` hands the payload unchanged to `wazuh-execd`. A payload that is not
+   JSON or has no top-level `wazuh` key is dropped with an ERROR; when execd's queue is not available (Active
+   Response disabled on the agent) the task is dropped at debug level.
+6. **Validation**: `wazuh-execd` parses the message and reads `wazuh.active_response.executable`,
+   `type` and `stateful_timeout` (see [What wazuh-execd reads](#what-wazuh-execd-reads)).
+7. **Execution**: execd appends `"command": "enable"`, starts
+   `active-response/bin/<executable>` and writes the message, one line, to its stdin.
+8. **Keys**: the executable answers on stdout with one `check_keys` line naming its keys (for
+   `block-ip`, the IP address).
+9. **Decision**: for a stateful response execd checks its timeout list (see
+   [Deduplication and timeouts](#deduplication-and-timeouts)), then writes the message again with
+   `command` set to `continue` or `abort`.
+10. **Action**: on `continue` the executable acts; on `abort` it exits without acting.
+11. **Exit**: execd waits for the executable to exit and logs a WARNING if it exited non-zero.
 
-### Disable (Unblock) Command Flow
+### Disable flow
 
-1. **Timeout Expiry**: Execd's timeout manager detects expired stateful response
-2. **Command Modification**: Execd modifies the original JSON, changing `"command": "enable"` to `"command": "disable"`
-3. **Script Re-Execution**: Forks and executes the same AR script
-4. **Script Input**: Script receives modified JSON via stdin
-5. **Firewall Reversion**: Script executes firewall commands to unblock the IP
-6. **Cleanup**: Execd removes the entry from the active response list
+1. **Expiry**: once a second execd walks its timeout list; an entry whose age is greater than its
+   timeout is due.
+2. **Re-run**: execd runs the same executable with the stored message, whose `command` is now
+   `disable`. Only stdin is connected: there is no `check_keys` exchange on this path.
+3. **Cleanup**: the entry is removed from the list.
+
+Pending reversals are not lost on a clean stop: when execd shuts down (`(1314): Shutdown received.
+Deleting responses.`) it runs every entry still in the list with `disable` straight away.
 
 ## Manager-side ingestion
 
 Everything in this section is `ActiveResponseFetchTask` and its helpers in
-[active_response.py](../../../../framework/wazuh/core/indexer/active_response.py). It runs inside
+`framework/wazuh/core/indexer/active_response.py`. It runs inside
 `wazuh-manager-clusterd` on **every** node, master and workers alike, and logs to `logs/cluster.log`
 under the `[Active Response]` tag. The one-paragraph summary is flow 4 of the
 [server architecture](../../architecture.md).
@@ -311,370 +311,246 @@ reached counts as held, together with the not-visible-yet case.
 | ERROR | `Error fetching agents: <error>` | `wazuh-db` did not answer the agent list; a `location: all` response on this page is dispatched to nobody and lost | check `wazuh-manager-db` |
 | ERROR | `Error during active response processing: <error>.` | an exception escaped the cycle; the cursor did not move | a poller defect; report it with the `_id`s on the page |
 
-## Deduplication System
+## JSON protocol
 
-The deduplication mechanism prevents redundant executions of the same response:
+### What wazuh-execd receives
 
-### Keys Protocol
+The task payload, unchanged: the response document with the referenced event merged over it, except
+under `wazuh`, where the response's keys win (see [The read](#the-read)). An abridged example for a
+`block-ip` channel with `location: local`:
 
-1. **Keys Extraction**: AR script extracts unique identifiers (keys) from the alert:
-   ```c
-   keys[0] = srcip;  // e.g., "192.168.1.100"
-   keys[1] = NULL;
-   ```
-
-2. **Keys Message**: Script sends keys to execd for verification:
-   ```json
-   {
-     "version": 1,
-     "origin": {
-       "name": "block-ip",
-       "module": "active-response"
-     },
-     "command": "check_keys",
-     "parameters": {
-       "keys": ["192.168.1.100"]
-     }
-   }
-   ```
-
-3. **Execd Response**: Execd checks if keys are already in the active responses table:
-   - **Not Found**: `{"command": "continue"}` → Script proceeds
-   - **Found**: `{"command": "abort"}` → Script exits without executing
-
-4. **Registration**: If continuing, execd adds keys to the active responses table
-
-### Active Responses Table
-
-Execd maintains an in-memory table of active responses:
-
-```c
-typedef struct _active_response {
-    char *keys[MAX_AR_KEYS];     // Unique identifiers (e.g., IP addresses)
-    char *command;                // Original JSON command
-    int timeout;                  // Timeout in seconds (0 = stateless)
-    time_t time_added;            // Timestamp when added
-    struct _active_response *next;
-} active_response;
-```
-
-**Table Operations**:
-- **Add**: When `check_keys` returns `continue`, add entry to table
-- **Lookup**: On `check_keys` request, search table for matching keys
-- **Remove**: When timeout expires or disable completes, remove entry
-
-## Timeout Management
-
-For stateful responses, execd implements a timeout system:
-
-### Timeout Registration
-
-When a stateful AR executes:
-1. Execd receives `"command": "enable"` with embedded timeout metadata
-2. Creates active response entry with timeout value
-3. Records `time_added` timestamp
-4. Continues with execution
-
-### Timeout Monitoring
-
-Execd runs a timeout checker thread:
-1. Periodically scans the active responses table (every 60 seconds)
-2. For each entry, calculates elapsed time: `current_time - time_added`
-3. If elapsed time >= timeout:
-   - Modifies the original JSON command to `"command": "disable"`
-   - Re-executes the AR script with modified command
-   - Removes entry from table
-
-### Timeout Example
-
-```
-T=0s    : IP 192.168.1.100 blocked (timeout=600s)
-          - Execd adds to table: {keys=["192.168.1.100"], timeout=600, time_added=T0}
-          - Script executes: iptables -I INPUT -s 192.168.1.100 -j DROP
-
-T=300s  : Timeout checker runs, elapsed=300s < 600s → No action
-
-T=600s  : Timeout checker runs, elapsed=600s >= 600s
-          - Execd modifies command to "disable"
-          - Script executes: iptables -D INPUT -s 192.168.1.100 -j DROP
-          - Execd removes from table
-```
-
-## JSON Protocol Specification
-
-### Message Structure
-
-All Active Response messages follow this structure:
-
-```json
+```json,fragment
 {
+  "@timestamp": "2026-03-31T15:30:45.000Z",
+  "source": {"ip": "192.168.1.100"},
   "wazuh": {
     "active_response": {
-      "name": "string",
-      "executable": "string",
-      "location": "string",
-      "agent_id": "string",
-      "type": "stateless" | "stateful",
-      "stateful_timeout": integer
+      "name": "block-ip",
+      "executable": "block-ip",
+      "extra_arguments": null,
+      "type": "stateful",
+      "stateful_timeout": 600,
+      "location": "local",
+      "agent_id": null
     },
-    "agent": {
-      "id": "string",
-      "name": "string"
-    }
-  },
-  "source": {
-    "ip": "string",
-    "port": integer,
-    "address": "string"
-  },
-  "user": {
-    "name": "string"
-  },
-  "command": "enable" | "disable" | "continue" | "abort"
+    "agent": {"id": "001", "name": "test-agent"}
+  }
 }
 ```
 
-### Command Types
+Everything else the event carries (`user.name`, `file.path`, …) travels along at the same paths.
+
+### What wazuh-execd reads
+
+| Field | Requirement | Effect |
+|---|---|---|
+| `wazuh` | object | otherwise `(1316): Invalid AR command`, message dropped |
+| `wazuh.active_response` | object | same |
+| `wazuh.active_response.executable` | non-empty string, no parent-folder reference | the file run is `active-response/bin/<executable>`, plus `.exe` on Windows when the name has no `.`; it must exist and be readable, otherwise `(1311): Invalid command name` |
+| `wazuh.active_response.type` | `"stateful"` makes the response stateful; any other value or none is stateless | stateless responses never enter the timeout list |
+| `wazuh.active_response.stateful_timeout` | a number of seconds, read only when `type` is `stateful` | missing, `null` or `0` runs the response once, as stateless |
+
+execd reads nothing else. `extra_arguments`, `location` and `agent_id` reach the executable but no
+shipped executable uses them; a custom executable can read `wazuh.active_response.extra_arguments`
+from its input. The payload must fit in 64 KiB (`OS_MAXSTR`): agentd sends it to execd as one
+datagram, and the shipped executables read one line of at most that size.
+
+### What the executable receives
+
+Line 1 on stdin is the message above with `"command": "enable"` appended (execd adds the key; the
+manager never sends one). After the executable's `check_keys` line, line 2 is the same message with
+`command` replaced by `continue` or `abort`. On reversion, the only line is the message with
+`command` set to `disable`.
+
+The `check_keys` line the executable writes on stdout:
+
+```json
+{"version":1,"origin":{"name":"block-ip","module":"active-response"},"command":"check_keys","parameters":{"keys":["192.168.1.100"]}}
+```
+
+execd reads only `command` and the string items of `parameters.keys`.
 
 | Command | Direction | Purpose |
 |---------|-----------|---------|
-| `enable` | Manager → Agent | Activate response action |
-| `disable` | Manager → Agent or Execd (timeout) | Revert response action |
-| `check_keys` | Script → Execd | Request deduplication check |
-| `continue` | Execd → Script | Proceed with execution |
-| `abort` | Execd → Script | Skip execution (duplicate) |
+| `enable` | execd → executable, stdin line 1 | Apply the action |
+| `check_keys` | executable → execd, stdout | Name the keys of this action |
+| `continue` | execd → executable, stdin line 2 | Proceed |
+| `abort` | execd → executable, stdin line 2 | Exit without acting (stateful duplicate) |
+| `disable` | execd → executable, only stdin line | Revert the action (timeout expired, or execd stopping) |
 
-### Field Mapping (WCS Compatibility)
+The shipped executables accept only `enable` and `disable` on line 1 and only `continue` and
+`abort` on line 2, and refuse a line 1 that has no string `command` or no `wazuh` object.
 
-Active Response uses WCS-compatible field names:
+### Fields used by the shipped executables
 
-| Field | Description |
-|-------|-------------|
-| `source.ip` | Source IP address |
-| `user.name` | Target username |
-| `rule.level` | Rule severity level |
-| `rule.id` | Rule identifier |
+| Field | Used by |
+|-------|---------|
+| `source.ip` | `block-ip` |
+| `user.name` | `disable-account` |
 
-## Script Implementation
+## Deduplication and timeouts
 
-### Standard AR Script Structure
+Only a stateful response with a timeout greater than zero enters execd's timeout list, and only if
+the executable sends its `check_keys` line: a stateful executable that writes nothing on stdout is
+run once and never reverted (`Active response won't be added to timeout list. Message not received
+with alert keys from script '<path>'` at debug level).
 
-All Active Response scripts follow this pattern:
+Each entry is identified by a key built from the executable's file name followed by `-<key>` for
+each key, e.g. `block-ip-192.168.1.100` (at most 4095 characters; longer keys are truncated with a
+WARNING). For a stateful response:
+
+- **Key not in the list**: execd stores the message with `command` set to `disable`, the timeout and
+  the current time, and answers `continue`.
+- **Key already in the list** (its reversion is pending): execd answers `abort`, so the action is not
+  applied twice, and restarts the countdown: the entry's time becomes now and its timeout the one
+  just computed.
+
+A stateless response is always answered `continue` and leaves nothing behind.
+
+`<repeated_offenders>` in the agent's `ossec.conf` changes the timeout of a stateful response whose
+key execd has seen before, counted for as long as execd runs: the n-th repetition uses the n-th
+value of the list, in minutes, and the last value once the list is exhausted (see
+[Configuration](configuration.md#repeated_offenders)).
+
+### Timeout example
+
+`block-ip`, stateful, `stateful_timeout: 600`, on a Linux host without firewalld:
+
+```
+T=0s    : enable received; block-ip sends check_keys ["192.168.1.100"]
+          - execd adds entry block-ip-192.168.1.100 (timeout 600s), answers continue
+          - block-ip runs: iptables -I INPUT -s 192.168.1.100 -j DROP
+                           iptables -I FORWARD -s 192.168.1.100 -j DROP
+T=300s  : the same response arrives again: execd answers abort and restarts the
+          countdown (the entry's time becomes T=300s)
+T=901s  : the entry is older than 600s
+          - execd runs block-ip with "command": "disable"
+          - block-ip runs: iptables -D INPUT -s 192.168.1.100 -j DROP
+                           iptables -D FORWARD -s 192.168.1.100 -j DROP
+          - the entry is removed
+```
+
+## Writing an executable in C
+
+The shipped executables share the helpers in `src/active-response/src/active_responses.c` and follow
+the same shape:
 
 ```c
 int main(int argc, char **argv) {
-    int action;
     cJSON *input_json = NULL;
 
-    // 1. Parse JSON input and determine action (enable/disable)
-    action = setup_and_check_message(argv, &input_json);
-    if (action != ADD_COMMAND && action != DELETE_COMMAND) {
+    // Read line 1 from stdin; ENABLE_COMMAND, DISABLE_COMMAND or OS_INVALID
+    int action = setup_and_check_message(argv, &input_json);
+    if (action != ENABLE_COMMAND && action != DISABLE_COMMAND) {
         return OS_INVALID;
     }
 
-    // 2. Extract parameters (e.g., source IP)
     const char *srcip = get_srcip_from_json(input_json);
     if (!srcip) {
         return OS_INVALID;
     }
 
-    // 3. For ADD: Send keys for deduplication check
-    if (action == ADD_COMMAND) {
-        char **keys = NULL;
-        os_calloc(2, sizeof(char *), keys);
-        os_strdup(srcip, keys[0]);
-        keys[1] = NULL;
-
+    // Keys are exchanged on enable only: a disable has no second line to read
+    if (action == ENABLE_COMMAND) {
+        char *keys[] = {(char *)srcip, NULL};
         int action2 = send_keys_and_check_message(argv, keys);
         if (action2 == ABORT_COMMAND) {
-            // Duplicate found, exit without executing
-            return OS_SUCCESS;
+            return OS_SUCCESS;   // duplicate: nothing to do
+        }
+        if (action2 != CONTINUE_COMMAND) {
+            return OS_INVALID;
         }
     }
 
-    // 4. Execute the actual response (block/unblock IP)
-    if (action == ADD_COMMAND) {
-        block_ip(srcip);
-    } else {
-        unblock_ip(srcip);
-    }
-
+    // Apply or revert the action here
     return OS_SUCCESS;
 }
 ```
 
-### Helper Functions
-
-Active Response scripts use shared helper functions from `active_responses.c`:
-
 | Function | Purpose |
 |----------|---------|
-| `setup_and_check_message()` | Parse JSON from stdin, extract command |
-| `get_srcip_from_json()` | Extract source IP from JSON |
-| `get_username_from_json()` | Extract username from JSON |
-| `send_keys_and_check_message()` | Send keys to execd, check for abort |
-| `write_debug_file()` | Write debug logs to active-responses.log |
+| `setup_and_check_message()` | On Unix, change to the installation directory; log `Starting`; read line 1 and return the command |
+| `get_srcip_from_json()` | `source.ip` as a string, or NULL |
+| `get_username_from_json()` | `user.name`, or NULL when it is not a valid local user name (see [disable-account](executables.md#4-disable-account-linux-macos)) |
+| `send_keys_and_check_message()` | Write the `check_keys` line, read line 2, return `CONTINUE_COMMAND` or `ABORT_COMMAND` |
+| `write_debug_file()` | Append a line to `active-responses.log` |
 
-## Metadata-Driven Execution
+## Process lifecycle
 
-Active Response uses a metadata-driven approach where all execution metadata is embedded in the JSON message:
+1. execd starts the executable with its stdin and stdout connected to execd (fork and exec on Unix,
+   `CreateProcess` on Windows); the working directory is the agent's installation directory.
+2. execd writes line 1, reads one line from the executable's stdout, and writes line 2.
+3. execd waits for the executable to exit.
 
-```json
-{
-  "wazuh": {
-    "active_response": {
-      "name": "block-ip",
-      "executable": "block-ip",
-      "type": "stateful",
-      "stateful_timeout": 600
-    }
-  },
-  "source": {
-    "ip": "192.168.1.100"
-  },
-  "command": "enable"
-}
-```
+execd handles one message at a time and sets no run-time limit: an executable that never exits
+stalls every response after it, and on Unix the timeout check too, since both run in the same loop.
 
-**Benefits**:
-- No configuration file needed on agents (no `ar.conf`)
-- Centralized metadata management
-- Simplified agent deployment
-- WCS compatibility
+### Exit status
 
-### Execd Implementation
+execd logs a non-zero exit as a WARNING in the agent's `ossec.log` and reports nothing to the
+manager. The shipped executables exit `0` on success and on `abort`, and `OS_INVALID` (`-1`, exit
+status 255 on Unix) when the input is invalid or every method failed.
 
-`ExecdRun()` function in `os_execd/src/execd.c` extracts metadata directly from the JSON message:
+## Agent-side messages
 
-```c
-// Extract metadata directly from JSON
-exec_cmd = cJSON_GetObjectItem(json_root, "executable")->valuestring;
-timeout = cJSON_GetObjectItem(json_root, "timeout")->valueint;
-```
+`wazuh-execd` logs to the agent's `logs/ossec.log` under the tag `wazuh-execd`; the agentd lines are
+under the agent's own tag. Debug lines need `execd.debug` (see
+[Internal options](configuration.md#internal-options)).
 
-This approach eliminates the need for configuration lookups and reduces agent-side complexity.
-
-## Process Lifecycle
-
-### Fork and Execute
-
-When execd executes an AR script:
-
-1. **Fork Process**: `fork()` creates child process
-2. **Setup Pipes**: Create stdin pipe for JSON input
-3. **Write JSON**: Parent writes JSON to stdin pipe
-4. **Execute Script**: `execvp()` replaces child with AR script
-5. **Read Output**: Parent optionally reads stdout for continue/abort responses
-6. **Wait**: Parent calls `waitpid()` to collect child exit status
-
-### Exit Status Handling
-
-AR scripts return:
-- `0` (OS_SUCCESS): Operation completed successfully
-- `1` (OS_INVALID): Invalid input or operation failed
-
-Execd logs script exit status but does not propagate errors to the manager.
+| Level | Message | Meaning |
+|---|---|---|
+| ERROR | `(1315): Invalid JSON message: '<message>'` | the payload is not JSON |
+| ERROR | `(1316): Invalid AR command: '<message>'` | `wazuh` or `wazuh.active_response` is not an object, or `executable` is missing, empty or not a string |
+| ERROR | `Active response command '<name>' vulnerable to directory traversal attack. Ignoring.` | `executable` references a parent folder |
+| ERROR | `Active response command path too long for '<name>'. Ignoring.` | the resolved path does not fit |
+| ERROR | `(1311): Invalid command name '<name>' provided.` | `active-response/bin/<name>` does not exist or cannot be read |
+| ERROR | `(1317): Could not launch command <error> (<errno>)` | the executable could not be started |
+| WARNING | `Active response command '<path>' reported failure (exit code <n>).` | the executable exited non-zero |
+| WARNING | `Active response command '<path>' terminated abnormally.` | the executable was killed by a signal |
+| WARNING | `Active response key exceeds maximum size (4096). Truncating keys.` | the keys do not fit in the entry key |
+| INFO | `(1350): Active response disabled.` | `<disabled>yes</disabled>`; nothing is executed |
+| INFO | `Adding offenders timeout: <n> (for #<k>)` | one `repeated_offenders` value read at start |
+| INFO | `(1314): Shutdown received. Deleting responses.` | execd is stopping and reverts every pending entry |
+| DEBUG | `Stateful AR '<name>' has timeout value of 0. AR will be treated as stateless.` | stateful with no usable `stateful_timeout` |
+| DEBUG | `Executing command '<path> <message>'` | an enable is starting |
+| DEBUG | `Adding command '<path> <message>' to the timeout list, with a timeout of '<n>s'.` | a stateful response was registered |
+| DEBUG | `Command already received, updating time of addition to now.` | a stateful duplicate: `abort`, countdown restarted |
+| DEBUG | `Repeated offender. Setting timeout to '<n>s'` | `repeated_offenders` applied |
+| DEBUG | `Executing command '<path> <message>' after a timeout of '<n>s'` | a reversion is starting |
+| ERROR | `https_client: active_response task <id> has a malformed payload; dropping.` | agentd: the payload is not JSON or has no top-level `wazuh` key |
+| DEBUG | `https_client: active_response task <id> dropped: execd queue not available.` | agentd: Active Response is disabled, or execd is not running |
+| DEBUG | `https_client: active_response task <id>: error communicating with execd.` | agentd: the message could not be sent to execd (for example, larger than 64 KiB) |
 
 ## Platform-Specific Considerations
 
-### Unix/Linux
-
-- **Process Model**: Fork/exec model
-- **Privileges**: Requires root for most operations
-- **Sockets**: Unix domain sockets for inter-process communication
-- **Logs**: `/var/ossec/logs/active-responses.log`
-
-### macOS
-
-- **Firewall**: Prefers `pfctl` (Packet Filter)
-- **Fallback**: `hosts.deny`, then `route` (blackhole) if `pf` is unavailable or not enabled
-- **Privileges**: Requires root for firewall operations
-
-### Windows
-
-- **Process Model**: CreateProcess API
-- **Privileges**: Requires Administrator
-- **Firewall**: `netsh advfirewall` (preferred), `route` (fallback)
-- **Logs**: `C:\Program Files (x86)\ossec-agent\active-response\active-responses.log`
+| | Linux / BSD | macOS | Windows |
+|---|---|---|---|
+| Installation directory | `/var/ossec` | `/Library/Ossec` | `C:\Program Files (x86)\ossec-agent` |
+| execd | own process, runs as root with group `wazuh` | same | thread of the agent service (`WazuhSvc`) |
+| Executables | `active-response/bin/block-ip`, `disable-account` | same | `active-response\bin\block-ip.exe` |
+| Executable log | `logs/active-responses.log` | same | `active-response\active-responses.log` |
 
 ## Security Considerations
 
-### Input Validation
+- **Executables**: execd runs only files under `active-response/bin/` and refuses an `executable`
+  that references a parent folder. The installer creates that directory and the shipped executables
+  `root:wazuh` mode `0750`.
+- **Privileges**: executables inherit execd's privileges (root on Unix, the agent service's account
+  on Windows).
+- **Input validation**: `block-ip` accepts only a numeric IP address (resolved with `getaddrinfo`
+  and no DNS on Unix and macOS, a character whitelist on Windows); `disable-account` accepts only a
+  valid local user name and never `root`.
+- **Commands**: the shipped executables accept only `enable` and `disable`, and only `continue` and
+  `abort` as execd's answer.
+- **Log file**: `logs/active-responses.log` is created `wazuh:wazuh` mode `0660`.
 
-All AR scripts validate:
-- JSON structure correctness
-- Command field presence and valid values (`enable`/`disable` only)
-- Required parameters (source IP, username, etc.)
-- IP address format validation
-
-### Command Whitelisting
-
-Only the following commands are accepted:
-- `enable` - Activate response
-- `disable` - Revert response
-- `continue` - Proceed with execution (execd → script)
-- `abort` - Skip execution (execd → script)
-
-Any other command value results in immediate rejection.
-
-### Privilege Separation
-
-- **Execd**: Runs as root/Administrator (required for script execution)
-- **Scripts**: Inherit privileges from execd
-- **Logging**: Logs written with appropriate permissions (0640)
-
-### Firewall Safety
-
-IP blocking scripts implement safety measures:
-- **IP Validation**: Reject invalid IP formats
-- **Duplicate Prevention**: Deduplication system prevents redundant blocks
-- **Graceful Fallback**: Try multiple firewall methods before failing
-- **Reversion Guarantee**: Timeout system ensures blocks are eventually removed
-
-## Performance Characteristics
-
-### Throughput
-
-- **Message Processing**: ~1000 messages/second (single-threaded)
-- **Execution Overhead**: ~50ms per AR script execution (fork/exec)
-- **Deduplication Lookup**: O(n) linear search over active responses table
-
-### Memory Usage
-
-- **Active Responses Table**: ~500 bytes per entry
-- **Maximum Entries**: Configurable (default: 256 simultaneous responses)
-- **JSON Parsing**: Temporary allocations freed after processing
-
-### Scalability
-
-- **Single-Threaded**: Execd processes messages sequentially
-- **Blocking Operations**: Fork/exec blocks during script execution
-- **Timeout Checker**: Runs every 60 seconds in separate thread
-
-## Troubleshooting
-
-### Common Issues
-
-**AR script not executing**:
-- Check execd is running: `ps aux | grep execd`
-- Verify script permissions: `ls -la /var/ossec/active-response/bin/`
-- Review logs: `tail -f /var/ossec/logs/active-responses.log`
-
-**Firewall commands failing**:
-- Verify root/Administrator privileges
-- Check firewall tool availability: `which iptables` / `which firewalld-cmd`
-- Test manually: `/var/ossec/active-response/bin/block-ip < test.json`
-
-**Duplicate not detected**:
-- Verify keys are correctly extracted in script
-- Check execd deduplication logs
-- Ensure same keys are used for enable/disable
+Troubleshooting procedures are in [Configuration](configuration.md#troubleshooting).
 
 ## See Also
 
-- [Active Response README](README.md) - Module overview and usage
-- [Configuration](configuration.md) - Agent-side options and the manager's polling setting
-- [Executables Reference](executables.md) - Detailed executable inventory
+- [Active Response README](README.md) - Module overview
+- [Configuration](configuration.md) - The agent's `<active-response>` block and the manager's polling settings
+- [Executables Reference](executables.md) - `block-ip` and `disable-account` per platform
 - [Server architecture, flow 4](../../architecture.md) - Where Active Response sits among the manager daemons
 - [Task Manager](../task_manager/README.md) - Agent task storage and delivery
-- [Control Module](../control/index.html) - Agent restart/reload (separated in v5.0)
+- [Control Module](../control/README.md) - Agent restart/reload (separated in v5.0)

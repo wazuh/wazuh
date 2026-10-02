@@ -79,8 +79,7 @@ public:
     /**
      * @copydoc IBuilder::buildPolicy
      */
-    std::shared_ptr<IPolicy>
-    buildPolicy(const cm::store::NamespaceId& namespaceId, bool isTestMode) const override;
+    std::shared_ptr<IPolicy> buildPolicy(const cm::store::NamespaceId& namespaceId, bool isTestMode) const override;
 
     /**
      * @copydoc IValidator::softIntegrationValidate

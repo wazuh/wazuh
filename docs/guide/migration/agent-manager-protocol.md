@@ -7,7 +7,9 @@ AES, carried over UDP or a persistent TCP connection on port `1514` — has been
 **HTTPS API on port 1517**. A 5.x agent enrolls, reports and receives work over that API
 exclusively; it has no legacy code path at all.
 
-The manager keeps serving 4.x agents on the old channel, but only when it is explicitly enabled.
+The manager keeps serving 4.x agents on the old channel while `<remote><legacy>` is enabled. An
+absent `<legacy>` block leaves it off, but the configuration the installer generates enables it, so a freshly installed
+manager serves both channels until you [retire the legacy one](#retiring-the-legacy-channel).
 
 This guide covers the **channel**: which listeners exist, what moved where on the wire, and what an
 operator has to change around the manager. For the `wazuh-manager.conf` edits themselves, see
@@ -30,21 +32,23 @@ to**. Anything that relied on that mapping is gone or reworked.
 | Port | Listener | 5.0 status |
 | --- | --- | --- |
 | `1517` | Remoted HTTPS agent API | **Default.** Always enabled. Serves 5.x agents, enrollment included. |
-| `1514` | Remoted legacy AES TCP/UDP | Opt-in. Only bound when `<remote><legacy>` is present and enabled. Serves 4.x agents. |
-| `1515` | `authd` TLS enrollment | Opt-in. Follows `<remote><legacy>` unless `<auth><legacy_enrollment>` sets it explicitly. Only needed by 4.x agents. |
+| `1514` | Remoted legacy AES TCP/UDP | Bound only when `<remote><legacy>` is present and enabled. Absent from the configuration it is off, but the installer writes `<legacy><enabled>yes</enabled>` (`WAZUH_REMOTE_LEGACY_ENABLED=no` at install time writes `no`). Serves 4.x agents. |
+| `1515` | `authd` TLS enrollment | Follows `<remote><legacy>` unless `<auth><legacy_enrollment>` sets it explicitly, so it is open on an installed manager too. Only needed by 4.x agents. |
 
 Open `1517/tcp` on the manager before migrating any agent. If your fleet is fully on 5.x, `1514` and
 `1515` can both be closed — see [Retiring the legacy channel](#retiring-the-legacy-channel).
 
 > Both listeners default to every IPv4 interface: `<remote><https><bind_addr>` and
-> `<remote><legacy><local_ip>` are `0.0.0.0` unless set, so a fresh manager accepts agents from other
-> hosts out of the box. Set a specific address to restrict a listener -- see
+> `<remote><legacy><local_ip>` are `0.0.0.0` unless set (`::` for `local_ip` when `<legacy><ipv6>` is
+> `yes`), so a fresh manager accepts agents from other hosts out of the box. Set a specific address to restrict a listener -- see
 > [Manager configuration migration](manager-configuration-migration.md#remote-section).
 
 ## Message mapping
 
-Everything the legacy channel carried now maps onto a route. Full contracts in
-[HTTPS Agent API](../../ref/modules/remoted/https-events-api.md).
+Everything the legacy channel carried now maps onto a route. Routes are written here by their
+logical path; on the wire every one is served under `<remote><https><global_prefix>`, `/wazuh-manager/`
+by default (`POST /wazuh-manager/control`). Full contracts in
+[HTTPS Agent API](../../ref/modules/remoted/https-events-api.md#endpoints).
 
 | 4.x mechanism | 5.0 equivalent |
 | --- | --- |
@@ -60,7 +64,8 @@ Everything the legacy channel carried now maps onto a route. Full contracts in
 | WPK package pushed for remote upgrade | `POST /download` with `{"resource_type":"wpk"}` |
 | `u:upgrade_module:` upgrade acknowledgment | Still honored on the legacy channel, so remote upgrade of a 4.x agent keeps working |
 | Feed-update rescan driven by the manager | `POST /scan/vd`, requested by the agent when a `notify` response reports a newer `vd_feed_offset` |
-| `GET /agents/{id}/stats/{component}` on the server API | `POST /stats`, reported by the agent and read from the `wazuh-agent-stats` index |
+| `GET /agents/{id}/stats/{component}` on the server API | `POST /stats`, reported by the agent when `<agent><stats_report>` enables it (off by default) and indexed into `wazuh-agent-stats` |
+| `GET /agents/{id}/config/{component}/{configuration}` on the server API | `POST /config`, reported by the agent (`<agent><config_report>`) and indexed into `wazuh-agent-config` |
 
 ### Authentication
 
@@ -90,14 +95,13 @@ between agent and manager does not invalidate it.
 
 ### Error semantics
 
-Two differences worth knowing before reading logs:
+Three differences worth knowing before reading logs:
 
 - Every credential failure — unknown agent, key mismatch, address not allowed, bad signature, stale
   or malformed token — collapses to a single generic **`401`** (with `WWW-Authenticate: Bearer`). The specific cause is deliberately not
   exposed to the client; it is in the manager log and in the `remoted.auth.reject.*` metrics.
-- Capacity is shed with **`503`**, never `429`. The manager processes what it has capacity for
-  instead of buffering into a fixed queue, which is why `<queue_size>` no longer applies to this
-  channel. If an agent ever logs a `429`, something between it and the manager produced it.
+- Capacity is shed with **`503`**. The manager processes what it has capacity for instead of buffering into a fixed queue, which is why `<queue_size>` no longer applies to this channel.
+- Rate limiting is a separate mechanism that answers **`429 Too Many Requests`** with a `Retry-After`. It applies only to `POST /enroll`, `GET /cacerts` and `POST /enroll/secret` (which shares `POST /enroll`'s bucket); see [HTTPS Agent API](../../ref/modules/remoted/https-events-api.md) and [the `remote.https` rate options](../../ref/modules/remoted/configuration.md#rate-limits-of-the-unauthenticated-routes).
 
 ## What the legacy channel still carries
 
@@ -139,22 +143,27 @@ there is no automatic migration.
 | `<remote><denied-ips>` | Same |
 
 **New** — the HTTPS listener's own block, `<remote><https>`: `port`, `bind_addr`, `global_prefix`,
-`certificate`, `key`, `ca`, `verification_mode`, `ciphers`, `max_body_size`, `dual_stack`.
-`<remote><agents>` is unchanged. See
+`certificate`, `key`, `ca`, `ca_certificate`, `verification_mode`, `ciphers`, `max_body_size`,
+`dual_stack`, `enroll_rate_limit`, `cacerts_rate_limit`; and `<remote><legacy><enabled>` and
+`<ca_delivery>` for the legacy channel. `<remote><agents>` is unchanged. See
 [Remoted configuration](../../ref/modules/remoted/configuration.md#https-configuration).
 
-On the agent side, a 4.x `ossec.conf` is **accepted and ignored** rather than rejected, so an
-in-place upgrade still starts: options that no longer apply (`<time-reconnect>`, `<max_retries>`,
-`<retry_interval>`, `<protocol>`, `<crypto_method>`, and the `<enrollment>` address/port/certificate
-options) log a notice and are skipped. No script rewrites the file for you.
+On the agent side, a 4.x `ossec.conf` still starts a 5.x agent, so an in-place upgrade works: the
+5.x agent reads its manager from `<agent><manager>`, and from a 4.x `<client>` block it still takes the
+`<server><address>` and the whole `<enrollment>` block. Every other child of `<client>` is ignored
+with a warning (`<option> inside the legacy <client> block is ignored: …`), and the `<enrollment>`
+address, port and certificate options are ignored with a notice because enrollment now uses the same
+target and TLS material as every other HTTPS request. No script rewrites the file for you; see
+[Agent configuration](../../ref/modules/client/configuration.md).
 
 ## Certificates
 
-The HTTPS listener requires a certificate and key, and the manager does not generate them: they are
+The HTTPS listener requires a certificate and key. The manager issues a pair for itself at installation, but a
+distributed deployment normally replaces it: they are
 issued with the Wazuh installation assistant's `wazuh-certs-tool` — a `remoted.pem` leaf of the same
 `root-ca.pem` the assistant issues for the rest of the platform, so agents can pin that CA — and
 deployed under `etc/certs` before the first start (see
-[Deploy certificates](../../ref/getting-started/installation.md#deploy-certificates)). Starting is
+[Deploy certificates](../../ref/getting-started/installation.md#using-certificates-issued-elsewhere)). Starting is
 **fail-closed**: without them `wazuh-manager-control start` refuses (`(1244): Invalid configuration at
 '/remote/https/certificate': file not found: …`), and a pair the service user cannot read stops
 `remoted` at startup (`Cannot start the HTTPS agent listener: …`) rather than coming up without the
@@ -173,8 +182,9 @@ requires the peer's address to appear in the certificate's SAN).
 ## Behind a load balancer
 
 HTTPS changes what a load balancer has to do. TLS 1.3 on the backend, aligned body-size and timeout
-limits, no PROXY protocol, and **no URL path prefix** — remoted serves its routes at the root. The
-worked configurations are in
+limits, no PROXY protocol, and the **path forwarded untouched** — remoted serves every route under
+`global_prefix` (`/wazuh-manager/` by default), the token does not cover the path, and a rewritten
+path is answered `404`. The worked configurations are in
 [Remoted load balancers](../../ref/modules/remoted/load-balancers/README.md).
 
 Because requests are independent, an agent's traffic may be spread across nodes, and that is the
@@ -192,15 +202,15 @@ Once no 4.x agents remain:
    configuration sets `<legacy_enrollment>yes</legacy_enrollment>` explicitly, remove it or set it to `no`.
 3. Close `1514` and `1515` on the firewall.
 
-Verify with the manager log at startup: it reports either
-`Legacy listener disabled ('<remote><legacy>' absent or disabled).` or
-`Listening on port <port>/<protocol> (secure).`
+Verify with `wazuh-manager-remoted`'s startup line in `/var/wazuh-manager/logs/wazuh-manager.log`:
+it reads either `Started (pid: <pid>). Legacy listener disabled (remote.legacy.enabled is false).` or
+`Started (pid: <pid>). Listening on port <port>/<protocol> (secure).`
 
 ## Verification
 
 ```bash
-# The HTTPS listener answers its unauthenticated liveness probe
-curl -k https://<manager>:1517/
+# The HTTPS listener answers its unauthenticated liveness probe under the default global_prefix
+curl -k https://<manager>:1517/wazuh-manager/
 # -> {"status":"ok","module":"remoted"}
 ```
 
@@ -223,7 +233,7 @@ for reading them.
 
 ## References
 
-- [HTTPS Agent API](../../ref/modules/remoted/https-events-api.md) — the protocol and all nine endpoints
+- [HTTPS Agent API](../../ref/modules/remoted/https-events-api.md) — the protocol and all eleven agent-facing routes
 - [Remoted architecture](../../ref/modules/remoted/architecture.md) — how the two channels sit side by side
 - [Remoted configuration](../../ref/modules/remoted/configuration.md) — every `<remote>` option and internal option
 - [Manager configuration migration](manager-configuration-migration.md) — the `wazuh-manager.conf` edits

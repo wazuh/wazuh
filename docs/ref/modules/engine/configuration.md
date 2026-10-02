@@ -2,13 +2,13 @@
 
 Complete configuration reference for the Wazuh Engine (analysisd) module.
 
-The Wazuh Engine is the core event processing and detection module that handles log analysis, rule matching, decoder execution, and alert generation. It is configured primarily through internal options, with no dedicated XML or YAML configuration section of its own — though a subset of keys, such as indexer connection settings, are populated from the manager's central configuration rather than set directly as internal options.
+The Wazuh Engine is the core event processing and detection module that handles log analysis, decoder execution, enrichment, and event output. It has no configuration section of its own: its connection to `wazuh-indexer` comes from the manager's shared `<indexer>` section, its credentials from the keystore, and every other setting from `analysisd.*` internal options, each of which can be overridden by an environment variable.
 
 - **Daemon:** `wazuh-manager-analysisd`
 - **Module:** Manager-only
-- **Configuration method:** Internal options only
+- **Configuration method:** Internal options (`analysisd.*`) and environment variables, plus the shared `<indexer>` section and the keystore
 
-For module overview, architecture, and implementation details, see [Engine Module](index.html).
+For module overview, architecture, and implementation details, see [Engine Module](README.md).
 
 ---
 
@@ -16,21 +16,34 @@ For module overview, architecture, and implementation details, see [Engine Modul
 
 **Configuration file:** `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`
 
-**XML Section:** None
+**XML Section:** `<indexer>` of `/var/wazuh-manager/etc/wazuh-manager.conf` (shared with the rest of the manager; not engine-specific)
 
 **YAML Section:** None
 
 **Internal Options:** `analysisd.*`
 
-The Engine is configured primarily through internal options; there is no dedicated XML block or YAML configuration file for this module. However, a subset of keys — such as the indexer host, credentials, and SSL settings — are populated from the manager's central configuration rather than set directly as internal options (see [Architecture - Configuration](architecture.md#configuration)). All other settings are tuned via the internal options file.
+### Configuration sources
+
+| What | Where it comes from |
+|------|---------------------|
+| Indexer hosts and TLS material | The `<indexer>` section of `wazuh-manager.conf` (`hosts` and `ssl`). See [`indexer`](../../configuration/manager/reference.md#indexer). |
+| Indexer username and password | The manager keystore only (`wazuh-manager-keystore -f indexer -k username` / `-k password`). See [Store the credentials in the keystore](../../../guide/migration/filebeat-to-indexer-connector.md#3-store-the-credentials-in-the-keystore). |
+| Every other engine setting | `analysisd.*` lines in `wazuh-manager-internal-options.conf`. |
+| Overrides | Each `analysisd.*` setting has a `WAZUH_*` environment variable that takes precedence over the file. |
+
+For each `analysisd.*` setting the engine uses, in order: its environment variable, the line in the internal options file, and the built-in default. The shipped file contains no `analysisd.*` lines, so every setting starts at its built-in default. Changes take effect after restarting the `wazuh-manager` service.
+
+When the engine runs standalone (`WAZUH_ENGINE_STANDALONE=true`, as inside `wazuh-indexer`), it does not read the internal options file at all: only environment variables and built-in defaults apply, and the indexer connection comes from the `WAZUH_INDEXER_HOSTS` and `WAZUH_INDEXER_SSL_*` variables instead of `<indexer>`.
+
+The engine has no `analysisd.indexer_username` or `analysisd.indexer_password` setting. A line with either key in the internal options file is ignored; set the credentials in the keystore.
 
 ---
 
 ## Internal Options Reference
 
-All engine settings are configured through internal options prefixed with `analysisd.*` in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`.
+The engine's own settings are internal options prefixed with `analysisd.*` in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`.
 
-**Complete internal options documentation:** See [Internal options reference](index.html#internal-options-reference) in the Engine Module documentation.
+**Complete internal options documentation:** See [Internal options reference](README.md#internal-options-reference) in the Engine Module documentation — every setting with its environment variable, default and allowed values.
 
 ### Key Configuration Areas
 
@@ -93,6 +106,39 @@ files owned by `wazuh-manager`. To avoid the problem altogether, restore the
 ownership right after every debugging session run with
 `analysisd.drop_privileges=false`.
 
+#### Process Limits
+
+At startup the engine raises its own soft file-descriptor limit to a fixed
+**`8192`**. This is not configurable — there is no option or environment
+variable for it. The engine only ever raises the soft limit, and never above
+the hard limit, which belongs to whatever starts the process (`LimitNOFILE=`
+in the service unit, `ulimit -n`, container `ulimits`); it never lowers a soft
+limit that is already higher. When the hard limit is below `8192`, the engine
+keeps the hard limit and logs one warning:
+
+```
+File descriptor limit is 4096, below the 8192 requested by the engine. Raise the limit the process is started with (LimitNOFILE, ulimit -n, container ulimits) to go higher.
+```
+
+To go higher, raise the limit the process is started with: a drop-in with
+`LimitNOFILE=` for `wazuh-manager.service` (or `wazuh-indexer.service` for the
+engine embedded in wazuh-indexer), `ulimit -n` before the init script, or
+`ulimits` in the container definition. The limits of every manager daemon are
+described in
+[File descriptor limits](../../configuration/manager/README.md#file-descriptor-limits).
+
+**Stack size.** The engine does not set the stack size of any of its threads.
+Every thread takes the soft `RLIMIT_STACK` the process was started with, read
+once at startup (`8 MiB` by default on Linux, inherited from systemd or from the
+shell that launches the process). The engine requires that limit to be
+**finite and at least `8 MiB`**. To set it, use a drop-in with `LimitSTACK=` for
+`wazuh-manager.service` (or `wazuh-indexer.service` for the engine embedded in
+wazuh-indexer), or `ulimit -s` before the init script. Do not set it to
+`infinity` (`unlimited`): with an unlimited limit glibc ignores it and gives each
+thread only `2 MiB`, below the requirement. The parsers limit their nesting to
+256 levels (see [Parser reference](ref-parser.md)), a bound sized for this
+minimum stack.
+
 #### Event Queue Management
 
 Control event queue sizing and processing rate limiting:
@@ -124,7 +170,7 @@ Configure database update frequencies:
 - **`analysisd.ioc_sync_interval`** - Indicator of Compromise database sync interval
 - **`analysisd.geo_sync_interval`** - GeoIP database update interval
 
-For complete details, default values, allowed ranges, and additional internal options, see the [Internal options reference](index.html#internal-options-reference) section in the Engine Module documentation.
+For complete details, default values, allowed ranges, and additional internal options, see the [Internal options reference](README.md#internal-options-reference) section in the Engine Module documentation.
 
 ---
 
@@ -220,7 +266,7 @@ The engine exposes an internal HTTP API over a **Unix domain socket** (default: 
 
 ### Key API Endpoints
 
-- **Content Management** - Create, update, and validate namespaces, policies, and resources (decoders, rules, filters, outputs, integrations) under `/content/*` and `/_internal/content/*`
+- **Content Management** - Create, update, and validate namespaces, policies, and resources (decoders, filters, outputs, integrations, KVDBs) under `/content/*` and `/_internal/content/*`
 - **Schema Validation** - Validate a policy or resource before deployment (`/content/validate/policy`, `/content/validate/resource`)
 - **Metrics** - Query engine performance metrics and statistics (`/metrics/get`, `/metrics/list`, `/metrics/dump`)
 - **Router/Tester** - Manage routes and run test sessions against policies (`/_internal/router/*`, `/_internal/tester/*`)
@@ -319,8 +365,8 @@ Monitor engine activity and errors:
 # Engine logs
 tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep analysisd
 
-# Alert generation logs
-tail -f /var/wazuh-manager/logs/alerts/alerts.log
+# Events written by a `file` output (one directory per streamlog channel)
+tail -f /var/wazuh-manager/logs/<channel>/<YYYY>/<MMM>/wazuh-<channel>-<DD>.json
 ```
 
 ### Performance Metrics
@@ -411,14 +457,14 @@ ps aux | grep analysisd
 
 ### High CPU Usage
 
-**Cause:** Processing too many events or complex rules
+**Cause:** Processing too many events or complex decoders
 
 **Solution:**
 1. Enable rate limiting:
    ```ini
    analysisd.event_queue_eps=200
    ```
-2. Review and optimize rules
+2. Review and optimize decoders
 3. Consider horizontal scaling with cluster
 
 ### Synchronization Failures
@@ -440,7 +486,7 @@ ps aux | grep analysisd
 
 ## See Also
 
-- [Engine Module](index.html) - Complete module documentation with internal options reference
+- [Engine Module](README.md) - Complete module documentation with internal options reference
 - [API Reference](api-reference.md) - Engine API endpoints and usage
 - [Architecture](architecture.md) - Engine design and implementation
 - [Helper Functions Reference](ref-helper-functions.md) - Available helper functions

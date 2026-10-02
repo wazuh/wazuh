@@ -5,13 +5,18 @@ manager to monitor remote hosts directly over SSH without deploying a Wazuh
 agent on them. The daemon ran on the manager, established SSH sessions using
 Expect scripts, and forwarded results to the analysis pipeline.
 
-Starting with Wazuh 5.0, the Agentless module has been fully removed. This
+Starting with Wazuh 5.0, the Agentless module has been fully removed: no
+`wazuh-agentlessd` is built or installed, and the manager's configuration
+(`etc/wazuh-manager.conf`) has no `<agentless>` section. This
 guide describes what Agentless did, identifies the most common use cases, and
 maps each one to a supported alternative available in 5.0.
 
 > **Manual migration required.** There is no automated converter. Every
-> agentless entry in `ossec.conf` must be replaced by an equivalent 5.x
-> mechanism.
+> `<agentless>` entry of the 4.x manager's `ossec.conf` must be replaced by an
+> equivalent 5.x mechanism. On a 5.x agent, an `<agentless>` block left in
+> `ossec.conf` or `agent.conf` is ignored with the warning `(1223): 'agentless'
+> is no longer supported and will be ignored. The wazuh-agentlessd daemon was
+> removed in 5.0.0.`
 
 ## What Agentless did in 4.x
 
@@ -97,7 +102,7 @@ The agent provides:
 - **SCA** (`<sca>`), replaces periodic configuration auditing
 - **Logcollector** (`<localfile>`), replaces periodic command execution
 
-See the [installation documentation](../../INSTALLATION.md) for how to deploy
+See [Installation — Agent](../../ref/getting-started/installation.md#agent) for how to deploy
 and enroll agents.
 
 ### FIM configuration replacing ssh_integrity_check_linux
@@ -426,25 +431,21 @@ on the relay host:
 
 ## Rule migration
 
-In 4.x, Agentless diff alerts were generated with the message prefix
-`ossec: agentless: Change detected:` and matched by built-in rules in the
-`agentless` rule group. With the wrapper script approach above, the same prefix
-is preserved so existing rules continue to fire:
+In 4.x, Agentless diff alerts carried the message prefix
+`ossec: agentless: Change detected:` and were matched by XML rules in the
+`agentless` rule group. 5.x does not run 4.x XML rules: the manager's engine
+decodes and evaluates events with YAML decoders and rules, so keeping that
+prefix in the wrapper scripts above does **not** make any 4.x agentless rule
+fire. It only gives your own 5.x decoder and rule a stable string to match.
 
-```sh
-echo "ossec: agentless: Change detected:"
-```
+- Alternative 2 (Logcollector `command` / `full_command`) delivers the script
+  output as plain log text, under the `<alias>` you configured.
+- Alternative 3 (command wodle) delivers a JSON event with the script output in
+  `process.io.text`, next to `process.command_line`, `process.exit_code` and the
+  `<tag>` value in `tags`.
 
-If you relied on rules that matched on the `agentless` group or on specific
-agentless rule IDs from the 4.x default ruleset, verify that your custom rules
-still trigger against the new log source. Adjust the `<match>` or `<regex>`
-field if needed.
-
-> **Alternative 3 (command wodle) does not preserve rule compatibility.** The
-> wodle emits a JSON event with the script output in `process.io.text` rather
-> than as a plain log line, so text-based agentless rules will not fire against
-> it. Use Alternative 2 (Logcollector) if you need compatibility with your
-> existing agentless rule set, or write new rules that match on
-> `<field name="process.io.text">` for Alternative 3 output.
+Write the decoder and the detection rule for whichever shape you chose; see
+[XML decoders to YAML decoders](xml-decoders-migration.md) and
+[Rules 4.x to 5.x](rules-4x-to-5x.md).
 
 ---

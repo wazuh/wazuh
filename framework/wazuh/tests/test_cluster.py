@@ -27,7 +27,7 @@ default_config = {'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
                   'key': '', 'port': 1516, 'bind_addr': '127.0.0.1', 'nodes': ['127.0.0.1'], 'hidden': 'no'}
 
 
-@patch('wazuh.rbac.decorators._can_read_secrets', return_value=True)
+@patch('wazuh.rbac.decorators.can_read_secrets', return_value=True)
 def test_read_config_wrapper(mock_perms):
     """Verify that the read_config_wrapper returns the default configuration."""
     fresh_config = dict(default_config)
@@ -61,13 +61,27 @@ def _cluster_config_with_key():
 ])
 def test_read_config_wrapper_key_visibility(has_perms, expected_key):
     """Key is masked for readonly users and exposed for admins."""
-    with patch('wazuh.rbac.decorators._can_read_secrets', return_value=has_perms):
+    with patch('wazuh.rbac.decorators.can_read_secrets', return_value=has_perms):
         with patch('wazuh.cluster.read_config', return_value=_cluster_config_with_key()):
             result = cluster.read_config_wrapper()
     assert result.affected_items[0]['key'] == expected_key
 
 
-@patch('wazuh.rbac.decorators._can_read_secrets', return_value=False)
+def test_read_config_wrapper_masking_keeps_cached_config():
+    """Masking a readonly response must not alter the cached config later returned to an admin."""
+    cached_config = {**_cluster_config_with_key(),
+                     'haproxy_helper': {'haproxy_user': 'user', 'haproxy_password': 'REAL_HAPROXY_SECRET'}}
+    with patch('wazuh.cluster.read_config', return_value=cached_config):
+        with patch('wazuh.rbac.decorators.can_read_secrets', return_value=False):
+            readonly = cluster.read_config_wrapper()
+        with patch('wazuh.rbac.decorators.can_read_secrets', return_value=True):
+            admin = cluster.read_config_wrapper()
+    assert readonly.affected_items[0]['haproxy_helper']['haproxy_password'] == '*****'
+    assert admin.affected_items[0]['haproxy_helper']['haproxy_password'] == 'REAL_HAPROXY_SECRET'
+    assert cached_config['haproxy_helper']['haproxy_password'] == 'REAL_HAPROXY_SECRET'
+
+
+@patch('wazuh.rbac.decorators.can_read_secrets', return_value=False)
 def test_read_config_wrapper_masking_preserves_other_fields(mock_perms):
     """Masking only touches the key field, not other config fields."""
     with patch('wazuh.cluster.read_config', return_value=_cluster_config_with_key()):
@@ -86,14 +100,14 @@ def test_read_config_wrapper_no_cache_poisoning():
 
     with patch('wazuh.cluster.read_config', return_value=shared_config):
         # Readonly: the response is masked, but the shared (cached) dict must stay intact
-        with patch('wazuh.rbac.decorators._can_read_secrets', return_value=False):
+        with patch('wazuh.rbac.decorators.can_read_secrets', return_value=False):
             ro_result = cluster.read_config_wrapper()
 
         assert ro_result.affected_items[0]['key'] == '*****'
         assert shared_config['key'] == 'REAL_CLUSTER_SECRET'
 
         # A subsequent admin read still sees the real key (cache was not poisoned).
-        with patch('wazuh.rbac.decorators._can_read_secrets', return_value=True):
+        with patch('wazuh.rbac.decorators.can_read_secrets', return_value=True):
             result = cluster.read_config_wrapper()
 
         assert result.affected_items[0]['key'] == 'REAL_CLUSTER_SECRET'

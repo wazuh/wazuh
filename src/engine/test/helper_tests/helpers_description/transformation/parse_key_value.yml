@@ -13,6 +13,7 @@ metadata:
     The “escaping” character is used to escape the “quoting” characters that are intended to be used as literal characters.
     This helper function is typically used in the map stage.
     Checks whether an input fits a keys-values list format and, if it does, such pairs of keys and values are stored as new fields of the event.
+    Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
   keywords:
     - parser
 

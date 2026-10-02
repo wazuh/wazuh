@@ -287,19 +287,12 @@ namespace
         }
     }
 
-    /// Whether an OpenSSL X509_V_ERR_* observed at a depth ABOVE the leaf (an intermediate or
-    /// root certificate, never depth 0 -- see TlsVerifyCapture::chainTrustRejectedAboveDepth0)
-    /// indicates the verify callback could not establish trust for THAT certificate's issuer
-    /// -- the exact class of rejection a different trust anchor (#39123's fallback) exists to
-    /// fix. Deliberately narrow, an ALLOWLIST -- the opposite choice from
-    /// classifyDepth0ErrorAsChainTrustRelated() just above, and deliberately so: that denylist
-    /// guards a signal the fallback already depends on (sawDepth0), so understating it risks
-    /// silently EXCLUDING a real trust failure. This signal is purely additive -- widening
-    /// what sawDepth0 alone already covers -- so missing an unenumerated cause here only means
-    /// today's KNOWN LIMITATION (curlPerformer.cpp's isUnclassifiedChainFailure()) persists
-    /// for that one cause, never a regression; a false positive here, on the other hand, would
-    /// retry or fail closed for something the fallback was never meant to catch, which is why
-    /// this stays a short, deliberate list rather than "everything not already classified."
+    /// Whether an OpenSSL X509_V_ERR_* seen ABOVE the leaf (an intermediate or root) means the
+    /// verify callback could not establish trust for that certificate's issuer: the rejection
+    /// a different trust anchor can fix. An allowlist, unlike the denylist above: this signal
+    /// only adds to what the depth-0 check already covers, so a missed cause is merely not
+    /// caught above the leaf, while a false positive would try the anchor for a failure it
+    /// cannot fix.
     bool isChainBuildingTrustFailure(int error)
     {
         switch (error)

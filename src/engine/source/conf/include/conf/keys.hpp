@@ -26,8 +26,6 @@ constexpr std::string_view GEO_MANIFEST_URL = "analysisd.geo_manifest_url";
 constexpr std::string_view GEO_DOWNLOAD_TIMEOUT = "analysisd.geo_download_timeout";
 
 constexpr std::string_view INDEXER_HOST = "analysisd.indexer_hosts";
-constexpr std::string_view INDEXER_USER = "analysisd.indexer_username";
-constexpr std::string_view INDEXER_PASSWORD = "analysisd.indexer_password";
 constexpr std::string_view INDEXER_SSL_CA_BUNDLE = "analysisd.indexer_ssl_certificate_authorities";
 constexpr std::string_view INDEXER_SSL_CERTIFICATE = "analysisd.indexer_ssl_certificate";
 constexpr std::string_view INDEXER_SSL_KEY = "analysisd.indexer_ssl_key";

@@ -23,8 +23,12 @@ namespace
     // http_request_timeout (30 s) so a stock install starts warning-free; calibration with real
     // session sizes is F9's job (inventory_sync_server_docs 13 §3.3).
     constexpr int DEFAULT_STATEFUL_RESPONSE_TIMEOUT_SEC {20};
-    // 11 MiB, not 10: strictly larger than the agent-request cap because /stats and /config echo
-    // the agent's document back enriched (see DownstreamConfig::maxResponseBodySize).
+    // Fallback only, used when the caller passes 0: 11 MiB, strictly larger than the 10 MiB
+    // agent-request cap because /stats and /config echo the agent's document back enriched (see
+    // DownstreamConfig::maxResponseBodySize). remoted never passes 0 -- secure.c reads
+    // remoted.downstream_max_response_body_size with a 10 MiB default -- so on a stock install the
+    // effective cap EQUALS the default request cap, and a near-cap /stats or /config document can
+    // come back as ResponseTooLarge.
     constexpr std::size_t DEFAULT_MAX_RESPONSE_BODY_SIZE {11U * 1024U * 1024U};
 
     // A positive caller value wins; otherwise the built-in default (seconds).

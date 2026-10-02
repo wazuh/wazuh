@@ -10,11 +10,13 @@
 - [Package generation](dev/package-generation.md)
 - [Build external dependencies](dev/build-external-dependencies.md)
 - [Test execution](dev/test-execution.md)
+- [Build the documentation](dev/build-documentation.md)
 
 # User Guides
 
 - [Overview](guide/README.md)
 - [Migration](guide/migration/README.md)
+  - [Manager migration from 4.x to 5.0](guide/migration/manager-4x-to-5x.md)
   - [SCA policies from 4.x to 5.x](guide/migration/sca-policies-4x-to-5x.md)
   - [CIS-CAT and OpenSCAP to SCA](guide/migration/ciscat-openscap-to-sca.md)
   - [Mail Forwarding and Reporting to Dashboard Notifications](guide/migration/mail-forwarding-reporting.md)
@@ -33,6 +35,7 @@
   - [Vulnerability Detection to CTI-Based Feeds](guide/migration/vulnerability-detection-cti-feeds.md)
   - [Remote Agent Upgrade Migration](guide/migration/remote-agent-upgrade.md)
   - [Migrating CDB lists to KVDB lists](guide/migration/cdb-to-kvdb-migration.md)
+  - [Migrating rules from 4.x to 5.x](guide/migration/rules-4x-to-5x.md)
   - [Migrating decoders from XML to YAML](guide/migration/xml-decoders-migration.md)
 
 # Reference Manual
@@ -46,6 +49,7 @@
   - [Requirements](ref/getting-started/requirements.md)
   - [Packages](ref/getting-started/packages.md)
   - [Installation](ref/getting-started/installation.md)
+  - [Credentials](ref/getting-started/credentials.md)
 - [Configuration](ref/configuration/README.md)
   - [Manager Configuration](ref/configuration/manager/README.md)
     - [Manager Configuration Reference](ref/configuration/manager/reference.md)
@@ -78,6 +82,8 @@
     - [Configuration](ref/modules/engine/configuration.md)
     - [Architecture](ref/modules/engine/architecture.md)
     - [API Reference](ref/modules/engine/api-reference.md)
+      - [Public API](ref/modules/engine/public-api-reference.md)
+      - [Private API](ref/modules/engine/private-api-reference.md)
     - [API Events Reference](ref/modules/engine/api-events-reference.md)
     - [Outputs Reference](ref/modules/engine/ref-output.md)
     - [Parsers Reference](ref/modules/engine/ref-parser.md)
@@ -116,6 +122,7 @@
     - [Architecture](ref/modules/vulnerability-scanner/architecture.md)
     - [API Reference](ref/modules/vulnerability-scanner/api-reference.md)
     - [Configuration](ref/modules/vulnerability-scanner/configuration.md)
+    - [Metrics](ref/modules/vulnerability-scanner/metrics.md)
     - [Schemas](ref/modules/vulnerability-scanner/flatbuffers.md)
     - [Test Tools](ref/modules/vulnerability-scanner/test-tools.md)
     - [Events description](ref/modules/vulnerability-scanner/events.md)
@@ -191,13 +198,14 @@
     - [Agent upgrades](ref/modules/task_manager/agent-upgrades.md)
     - [Manager tasks](ref/modules/task_manager/manager-tasks.md)
     - [Recurring manager tasks](ref/modules/task_manager/schedules.md)
+    - [API Reference](ref/modules/task_manager/api-reference.md)
+    - [Metrics](ref/modules/task_manager/metrics.md)
   - [Keystore](ref/modules/keystore/README.md)
 - [Upgrade](ref/upgrade.md)
 - [Uninstall](ref/uninstall.md)
 - [Back Up and Restore](ref/backup-restore.md)
 - [Security](ref/security/README.md)
   - [Cluster Security Model](ref/security/cluster-model.md)
-- [Performance](ref/performance.md)
 - [Glossary](ref/glossary.md)
 
 # Diagnostic Documentation

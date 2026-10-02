@@ -57,36 +57,18 @@ INSTANTIATE_TEST_SUITE_P(
     FilterOperationTest,
     testing::Values(
         // Value cases
-        FilterT(R"({"target": "0xF0"})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeValue(R"("0xF0")")},
-                SUCCESS()),
-        FilterT(R"({"target": "0x0F"})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeValue(R"("0xF0")")},
-                FAILURE()),
-        FilterT(R"({"target": "0xFF"})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeValue(R"("0xF0")")},
-                SUCCESS()),
-        FilterT(R"({"target": "0x00"})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeValue(R"("0xF0")")},
-                FAILURE()),
-        FilterT(R"({"target": "0x10"})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeValue(R"("0x10")")},
-                SUCCESS()),
-        FilterT(R"({"target": "0x20"})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeValue(R"("0x10")")},
-                FAILURE()),
+        FilterT(
+            R"({"target": "0xF0"})", opfilter::opBuilderHelperBinaryAnd, "target", {makeValue(R"("0xF0")")}, SUCCESS()),
+        FilterT(
+            R"({"target": "0x0F"})", opfilter::opBuilderHelperBinaryAnd, "target", {makeValue(R"("0xF0")")}, FAILURE()),
+        FilterT(
+            R"({"target": "0xFF"})", opfilter::opBuilderHelperBinaryAnd, "target", {makeValue(R"("0xF0")")}, SUCCESS()),
+        FilterT(
+            R"({"target": "0x00"})", opfilter::opBuilderHelperBinaryAnd, "target", {makeValue(R"("0xF0")")}, FAILURE()),
+        FilterT(
+            R"({"target": "0x10"})", opfilter::opBuilderHelperBinaryAnd, "target", {makeValue(R"("0x10")")}, SUCCESS()),
+        FilterT(
+            R"({"target": "0x20"})", opfilter::opBuilderHelperBinaryAnd, "target", {makeValue(R"("0x10")")}, FAILURE()),
         // Missing target field
         FilterT(R"({"othe(R": "0x10"})",
                 opfilter::opBuilderHelperBinaryAnd,

@@ -1462,7 +1462,7 @@ parse|event.original:
 
 ```json
 {
-  "event.original": "deny from 1.1.1.1",
+  "event.original": "deny from 1.1.1.1"
 }
 ```
 
@@ -1650,9 +1650,9 @@ Output after parse
 {
   "input": "'value-|-1'|'value-''-2'|'value-|''-3'",
   "outField": {
-    "out1": "value-\|-1",
+    "out1": "value-|-1",
     "out2": "value-'-2",
-    "out3": "value-\|'-3"
+    "out3": "value-|'-3"
   }
 }
 ```
@@ -1780,7 +1780,10 @@ strings, numbers, and booleans.
 ### Behavior
 
 - Extracts and parses JSON objects embedded within input strings.
-- Supports nested JSON structures.
+- Supports nested JSON structures up to the nesting limit below.
+- Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
+  The root container is level 1: 256 nested containers (objects and arrays) parse, the 257th fails. The limit is
+  fixed (not configurable) and is not an input-size limit; the event size is capped by remoted.
 - No end token is required.
 
 ### Signature
@@ -1873,9 +1876,15 @@ Windows event logs which often contain complex and repetitive tag structures.
 - Depending on the selected mode, it converts XML nodes to JSON objects, preserving the original hierarchy and
   attributes.
 - XML attributes are prefixed with '@' and integrated into their respective JSON objects.
-- Text within XML elements is identified with a '#text' key in the JSON output. If no text is present, the key is ignored.
+- Text and CDATA content of an XML element is identified with a '#text' key in the JSON output. If no text or CDATA is
+  present, the key is ignored. A CDATA section is a leaf: it does not create a member of its own (for example,
+  `<a><![CDATA[x]]></a>` produces `{"a":{"#text":"x"}}`).
 - Ignores the root 'Event' object and maps 'Data' elements using their 'Name' attributes as keys, avoiding array
   tructures for multiple data elements and directly integrating their values into the JSON output.
+- Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
+  Depth is counted in nested XML elements: 256 nested elements parse, the 257th fails; text and CDATA are leaves
+  (`#text`) and add no level. In `windows` mode the root `Event`, although omitted from the output, is level 1. The
+  limit is fixed (not configurable) and is not an input-size limit; the event size is capped by remoted.
 
 - End token is required.
 
@@ -2061,6 +2070,10 @@ nested delimiters or escape sequences.
   - All the characters contained between the `quote` characters will be considered part of a single value,
     even the `separator` and `delimiter` tokens
 - Customizable delimiters and separator tokens.
+- Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
+  For a key that has a value, each `.` in the key creates one nested level in the output, so the destination path has
+  one level per `.` plus one and the limit counts those levels: a key with 255 dots is mapped, a key with 256 dots
+  fails. The limit is fixed (not configurable) and is not an input-size limit; the event size is capped by remoted.
 - It does not require an end token.
 
 ### Signature
@@ -2255,6 +2268,7 @@ Output after parse
   	"fragment": "top",
   	"username": "john.doe",
   	"port": "123"
+  }
 }
 ```
 

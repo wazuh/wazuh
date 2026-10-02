@@ -1395,7 +1395,7 @@ private:
             // remoted's own daemon name (unlike inventory sync, which kept its historical value).
             config.logTag = "wazuh-manager-remoted:remoted-module:admin";
             config.serverName = "remoted admin";
-            config.serverHeader = "wazuh-remoted";
+            config.serverHeader = "wazuh-manager-remoted";
             // Four liveness routes serving one local operator: sized far below the library's
             // data-plane defaults, everything else left at them.
             config.ioThreads = 2;

@@ -5,6 +5,7 @@
 #include <sca_policy.hpp>
 #include <sca_policy_loader.hpp>
 #include <sca_sync_manager.hpp>
+#include "defer.hpp"
 
 #include <dbsync.hpp>
 #include <filesystem_wrapper.hpp>
@@ -78,6 +79,9 @@ constexpr auto SCA_FIRST_SCAN_COMPLETED_METADATA_KEY {"first_scan_completed"};
 // as a number: OS_IsValidID() has already rejected anything but at most 8 digits by the time an
 // id reaches client.keys, so it fits the INTEGER column the table already has.
 constexpr auto SCA_SYNCED_AGENT_ID_METADATA_KEY {"synced_agent_id"};
+// How long the identity resend waits for Run() to apply the document limits before giving the
+// cycle up; the sync thread's next identity poll tries again.
+constexpr std::chrono::seconds RUN_INITIALIZED_WAIT {30};
 
 SecurityConfigurationAssessment::SecurityConfigurationAssessment(std::string dbPath,
                                                                  std::shared_ptr<IDBSync> dbSync,
@@ -149,6 +153,21 @@ void SecurityConfigurationAssessment::Run()
         m_spSyncProtocol->reset();
     }
 
+    // The identity resend waits for the document limits below (see checkAgentIdentity()). Closed
+    // again for a restarted Run(), and opened on every way out, a throw included: once Run() is
+    // gone nothing else demotes rows, and a waiter must not sit out its whole timeout for it.
+    {
+        std::lock_guard<std::mutex> lock(m_pauseMutex);
+        m_runInitialized.store(false);
+    }
+
+    DEFER([this]()
+    {
+        std::lock_guard<std::mutex> lock(m_pauseMutex);
+        m_runInitialized.store(true);
+        m_pauseCv.notify_all();
+    });
+
     LoggingHelper::getInstance().log(LOG_DEBUG, "SCA module running.");
 
     refreshFirstSyncCompletedState();
@@ -158,6 +177,14 @@ void SecurityConfigurationAssessment::Run()
     {
         const auto limitResult = m_syncManager->initialize();
         handleLimitEvents(limitResult.demotedIds, limitResult.promotedIds);
+    }
+
+    // From here on a resync reads settled rows; see checkAgentIdentity(). The DEFER above covers a
+    // Run() that throws before getting here.
+    {
+        std::lock_guard<std::mutex> lock(m_pauseMutex);
+        m_runInitialized.store(true);
+        m_pauseCv.notify_all();
     }
 
     // Reset the in-memory scan-completed flag only when the first sync has not yet happened.
@@ -606,6 +633,18 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
             return false;
         }
 
+        if (m_flushInProgress.load())
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync skipped - flush in progress");
+            return false;
+        }
+
+        if (m_recoveryInProgress.load())
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync skipped - DataClean in progress");
+            return false;
+        }
+
         if (!m_spSyncProtocol)
         {
             return false;
@@ -622,7 +661,19 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
     // has not changed underneath us. Runs inside the sync entry point so it cannot interleave
     // with this module's own cycle, and it may complete the whole snapshot itself -- in which
     // case first_sync_completed is already true below and the delta branch is the right one.
-    checkAgentIdentity();
+    if (!checkAgentIdentity())
+    {
+        // Neither the resend nor a delta: a delta now would go out under an id the manager holds
+        // no baseline for. The next cycle, or the next identity poll, tries again.
+        {
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_syncInProgress.store(false);
+            m_pauseCv.notify_all();
+        }
+
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA synchronization postponed: the agent id change was not resent");
+        return false;
+    }
 
     refreshFirstSyncCompletedState();
 
@@ -942,6 +993,39 @@ int SecurityConfigurationAssessment::executeFlushSync()
         return 0;  // Not an error - just nothing to flush
     }
 
+    // Never overlap a synchronization of the sync thread's. agent-info flushes right after a
+    // re-enrollment, which is also when the sync thread resends the whole snapshot, and that
+    // snapshot's DataClean has no session guard in the sync protocol: overlapping this session it
+    // would clear the queue this flush is still sending. So the flush waits for a sync already
+    // running, or for a recovery DataClean (m_recoveryInProgress) for the same reason, and
+    // syncModule() and the integrity check stand back while the flush runs. A flag
+    // of its own rather than m_syncInProgress: pause() waits for that one, and agent-info resumes
+    // SCA while its flush is still running, so scans must not stay blocked behind it. agent-info
+    // polls the flush without a deadline, so waiting here only delays its version handover.
+    {
+        std::unique_lock<std::mutex> lock(m_pauseMutex);
+        m_pauseCv.wait(lock, [this]
+        {
+            return (!m_syncInProgress.load() && !m_recoveryInProgress.load()) || !m_keepRunning.load();
+        });
+
+        if (!m_keepRunning.load())
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "SCA flush aborted: the module is stopping");
+            return -1;
+        }
+
+        m_flushInProgress.store(true);
+    }
+
+    // Released on every path out, exceptions included.
+    DEFER([this]()
+    {
+        std::lock_guard<std::mutex> lock(m_pauseMutex);
+        m_flushInProgress.store(false);
+        m_pauseCv.notify_all();
+    });
+
     // Trigger immediate synchronization to flush pending messages
     SyncModuleResult result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
 
@@ -1088,6 +1172,15 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
                 response["data"]["module"] = "sca";
             }
         }
+        else if (command == "get_identity_changed")
+        {
+            response["error"] = 0;
+            response["message"] = "SCA identity change retrieved successfully";
+            response["data"]["action"] = "get_identity_changed";
+            response["data"]["module"] = "sca";
+            response["data"]["identity_changed"] = agentIdentityChangeState();
+            response["data"]["resync_attempts"] = m_identityResyncAttempts.load();
+        }
         else if (command == "get_scan_completed")
         {
             const int64_t scanCompleted = m_scanCompleted.load();
@@ -1147,8 +1240,46 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
         else if (command == "check_integrity")
         {
             int64_t currentTime = Utils::getSecondsFromEpoch();
+            const bool intervalElapsed = integrityIntervalElapsed(currentTime);
 
-            if (integrityIntervalElapsed(currentTime))
+            // The recovery below sends a DataClean, which has no session guard in the sync
+            // protocol: beside a running flush it would reset that session and clear its queue. So
+            // it stands back from a flush, and a flush waits for it. Claimed under the mutex the
+            // flush checks it with, so the two never both start.
+            bool recoverySlotClaimed = false;
+
+            if (intervalElapsed)
+            {
+                std::lock_guard<std::mutex> lock(m_pauseMutex);
+
+                if (!m_flushInProgress.load() && !m_recoveryInProgress.load())
+                {
+                    m_recoveryInProgress.store(true);
+                    recoverySlotClaimed = true;
+                }
+            }
+
+            DEFER([this, recoverySlotClaimed]()
+            {
+                if (recoverySlotClaimed)
+                {
+                    std::lock_guard<std::mutex> lock(m_pauseMutex);
+                    m_recoveryInProgress.store(false);
+                    m_pauseCv.notify_all();
+                }
+            });
+
+            if (intervalElapsed && !recoverySlotClaimed)
+            {
+                // The check time is left alone, so the next cycle runs it.
+                LoggingHelper::getInstance().log(LOG_DEBUG, "SCA integrity check deferred - flush or DataClean in progress");
+                response["error"] = 0;
+                response["message"] = "Integrity check deferred: flush in progress";
+                response["data"]["module"] = "sca";
+                response["data"]["action"] = "check_integrity";
+                response["data"]["recovery_performed"] = false;
+            }
+            else if (intervalElapsed)
             {
                 LoggingHelper::getInstance().log(LOG_DEBUG, "Integrity interval elapsed, performing integrity check");
 
@@ -1182,6 +1313,7 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
                     {
                         // Perform full recovery
                         bool success = performRecovery();
+
                         response["error"] = success ? 0 : 1;
                         response["message"] = success ? "Recovery completed successfully" : "Recovery failed";
                         response["data"]["module"] = "sca";
@@ -1507,18 +1639,18 @@ void SecurityConfigurationAssessment::refreshFirstSyncCompletedState()
     }
 }
 
-void SecurityConfigurationAssessment::checkAgentIdentity()
+SecurityConfigurationAssessment::AgentIdentity SecurityConfigurationAssessment::readAgentIdentity(long& currentId,
+                                                                                                  int64_t& syncedId)
 {
-    const long currentId = AgentSyncProtocol::currentAgentId();
+    currentId = AgentSyncProtocol::currentAgentId();
+    syncedId = 0;
 
     if (currentId == 0)
     {
         // Nothing published yet. "Unknown" -- an unavailable provider, or one still holding the
         // previous id, must never read as a new identity.
-        return;
+        return AgentIdentity::Unknown;
     }
-
-    int64_t syncedId = 0;
 
     if (!getMetadataValue(SCA_SYNCED_AGENT_ID_METADATA_KEY, syncedId))
     {
@@ -1526,23 +1658,57 @@ void SecurityConfigurationAssessment::checkAgentIdentity()
         // worst outcome available: a single transient failure in the window right after a
         // re-enrollment would record the new id as already synchronized and suppress the resync
         // permanently. Treat it like an unknown id and try again next cycle.
-        return;
+        return AgentIdentity::Unknown;
     }
 
     if (syncedId == 0)
     {
         // Read cleanly, and nothing recorded: a clean install, or a database from before this
-        // marker existed. Adopt it and resync nothing -- on a clean install first_sync_completed
-        // is absent too and the ordinary snapshot covers it, and on an upgraded agent the
-        // manager's copy is exactly the one this agent has been maintaining all along.
-        updateMetadataValue(SCA_SYNCED_AGENT_ID_METADATA_KEY, currentId);
-        return;
+        // marker existed. The caller adopts it and resyncs nothing -- on a clean install
+        // first_sync_completed is absent too and the ordinary snapshot covers it, and on an
+        // upgraded agent the manager's copy is exactly the one this agent has been maintaining
+        // all along.
+        return AgentIdentity::Unrecorded;
     }
 
-    if (syncedId == currentId)
+    return syncedId == currentId ? AgentIdentity::Unchanged : AgentIdentity::Changed;
+}
+
+bool SecurityConfigurationAssessment::checkAgentIdentity()
+{
+    long currentId = 0;
+    int64_t syncedId = 0;
+    const auto identity = readAgentIdentity(currentId, syncedId);
+
+    if (identity == AgentIdentity::Unrecorded)
     {
-        return;
+        updateMetadataValue(SCA_SYNCED_AGENT_ID_METADATA_KEY, currentId);
+        return true;
     }
+
+    if (identity != AgentIdentity::Changed)
+    {
+        return true;
+    }
+
+    // The sync thread starts before Run(), and asks about the id right away: wait until Run() has
+    // applied the document limits, or the snapshot could send rows that are about to be demoted.
+    // Bounded, since this runs holding m_syncInProgress, which pause() waits for: a Run() that
+    // never gets there (it threw, or returned early) must not keep the slot taken for good.
+    {
+        std::unique_lock<std::mutex> lock(m_pauseMutex);
+        m_pauseCv.wait_for(lock, RUN_INITIALIZED_WAIT, [this]
+        {
+            return m_runInitialized.load() || !m_keepRunning.load();
+        });
+    }
+
+    if (!m_keepRunning.load() || !m_runInitialized.load())
+    {
+        return false;
+    }
+
+    m_identityResyncAttempts.fetch_add(1);
 
     LoggingHelper::getInstance().log(
         LOG_INFO,
@@ -1560,8 +1726,14 @@ void SecurityConfigurationAssessment::checkAgentIdentity()
     {
         // Leave both markers untouched so this re-fires next cycle. Recording it now would
         // claim the manager holds data it never received -- and on shutdown the snapshot is
-        // cut short rather than finished.
-        return;
+        // cut short rather than finished. Nor does a delta follow: it would go out under an id
+        // the manager holds no baseline for.
+        if (!result.success && m_keepRunning.load())
+        {
+            logSyncFailure(result, "agent id change resync");
+        }
+
+        return false;
     }
 
     // Advanced together, and only here: synchronizeDatabaseSnapshot() reports success only
@@ -1571,6 +1743,34 @@ void SecurityConfigurationAssessment::checkAgentIdentity()
     updateMetadataValue(SCA_SYNCED_AGENT_ID_METADATA_KEY, currentId);
     updateMetadataValue(SCA_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
     m_firstSyncCompleted.store(true);
+    return true;
+}
+
+int SecurityConfigurationAssessment::agentIdentityChangeState()
+{
+    // Without a sync protocol syncModule() returns before checkAgentIdentity(), so a change would
+    // never be acted on and the sync thread would wake for it every poll period.
+    if (!m_spSyncProtocol)
+    {
+        return -1;
+    }
+
+    long currentId = 0;
+    int64_t syncedId = 0;
+
+    switch (readAgentIdentity(currentId, syncedId))
+    {
+        case AgentIdentity::Changed:
+            return 1;
+
+        case AgentIdentity::Unknown:
+            return -1;
+
+        case AgentIdentity::Unrecorded:
+        case AgentIdentity::Unchanged:
+        default:
+            return 0;
+    }
 }
 
 void SecurityConfigurationAssessment::refreshFirstScanCompletedState()
@@ -1798,27 +1998,24 @@ bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
         return false;
     }
 
-    // Wait for any in-progress sync to complete before sending DataClean.
-    // We must lock m_pauseMutex BEFORE checking m_syncInProgress to avoid TOCTOU race:
-    // Otherwise, sync could start between our check and the wait.
+    // Same reason as the integrity recovery: a flush must not start beside this DataClean. Held
+    // for each attempt, and on success until the databases are deleted, so a flush cannot resend
+    // the removed policies' queued rows after the DataClean. Released while a failed attempt
+    // waits to retry, so a flush is not held off for a whole scan interval.
+    bool recoverySlotHeld = false;
+
+    const auto releaseRecoverySlot = [this, &recoverySlotHeld]()
     {
-        std::unique_lock<std::mutex> lock(m_pauseMutex);
-
-        if (m_syncInProgress.load())
+        if (recoverySlotHeld)
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Waiting for sync to complete before DataClean...");
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_recoveryInProgress.store(false);
+            recoverySlotHeld = false;
+            m_pauseCv.notify_all();
         }
+    };
 
-        m_pauseCv.wait(lock, [this] { return !m_syncInProgress.load() || !m_keepRunning; });
-
-        if (!m_keepRunning)
-        {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "DataClean aborted - module shutdown during sync wait");
-            return false;
-        }
-    }
-
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Proceeding with DataClean (sync not in progress)");
+    DEFER(releaseRecoverySlot);
 
     // Send DataClean notification to manager with retry logic (similar to FIM)
     std::vector<std::string> indices = {SCA_SYNC_INDEX};
@@ -1826,7 +2023,38 @@ bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
 
     while (!dataCleanSent && m_keepRunning)
     {
+        // Wait for any in-progress sync, flush or integrity recovery to complete before sending
+        // DataClean. We must lock m_pauseMutex BEFORE checking the flags to avoid TOCTOU race:
+        // Otherwise, sync could start between our check and the wait.
+        {
+            std::unique_lock<std::mutex> lock(m_pauseMutex);
+
+            if (m_syncInProgress.load())
+            {
+                LoggingHelper::getInstance().log(LOG_DEBUG, "Waiting for sync to complete before DataClean...");
+            }
+
+            m_pauseCv.wait(lock, [this]
+            {
+                return (!m_syncInProgress.load() && !m_flushInProgress.load() && !m_recoveryInProgress.load()) || !m_keepRunning;
+            });
+
+            if (!m_keepRunning)
+            {
+                break;
+            }
+
+            m_recoveryInProgress.store(true);
+            recoverySlotHeld = true;
+        }
+
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Proceeding with DataClean (sync not in progress)");
         dataCleanSent = m_spSyncProtocol->notifyDataClean(indices).success;
+
+        if (!dataCleanSent)
+        {
+            releaseRecoverySlot();
+        }
 
         if (!dataCleanSent && m_keepRunning)
         {

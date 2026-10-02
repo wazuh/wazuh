@@ -390,6 +390,11 @@ stages:
                 - "008"
                 - "009"
                 - "010"
+            # 011 and 012 have never connected, so no node holds a version for them: the answer is
+            # that no node has information about them, not that their version is too old.
+            - error:
+                code: 1774
+              id:
                 - "011"
                 - "012"
           total_affected_items: 4
@@ -405,6 +410,210 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *resource_not_found_group
+---
+test_name: PUT /agents/group/{group_id}/reload
+
+stages:
+
+  # Same state as PUT /agents/group/{group_id}/restart: group1 is empty, group2 holds every agent
+  - name: Reload all agents from group1
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group/group1/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          total_affected_items: 0
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Reload all agents from group2
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group/group2/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - "001"
+            - "002"
+            - "003"
+            - "004"
+          failed_items:
+            - error:
+                code: 1761
+              id:
+                - "005"
+                - "006"
+                - "007"
+                - "008"
+                - "009"
+                - "010"
+            - error:
+                code: 1774
+              id:
+                - "011"
+                - "012"
+          total_affected_items: 4
+          total_failed_items: 8
+
+  - name: Reload all agents from a group which does not exist
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group/not_exists/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *resource_not_found_group
+
+  - name: Reload a group with an invalid name
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group/wrong!group/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+  - name: Restart a group with an invalid name
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group/wrong!group/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+---
+test_name: PUT /agents/reload
+
+stages:
+
+  - name: Try to reload agent with wrong_id
+    request: &agent_reload_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "wrong_id"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+  - name: Try to reload non existing agents
+    request:
+      verify: False
+      <<: *agent_reload_request
+      params:
+        agents_list: "998,999"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  - name: Reload agents 001, 002 and 999
+    request:
+      verify: False
+      <<: *agent_reload_request
+      params:
+        agents_list: "001,002,999"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "001"
+            - "002"
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+
+  - name: Reload a pre-5.0 agent and a never connected one
+    request:
+      verify: False
+      <<: *agent_reload_request
+      params:
+        agents_list: "005,011"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1761
+              id:
+                - "005"
+            - error:
+                code: 1774
+              id:
+                - "011"
+          total_affected_items: 0
+          total_failed_items: 2
+
+  - name: Reload all agents
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - "001"
+            - "002"
+            - "003"
+            - "004"
+          failed_items:
+            - error:
+                code: 1761
+              id:
+                - "005"
+                - "006"
+                - "007"
+                - "008"
+                - "009"
+                - "010"
+            - error:
+                code: 1774
+              id:
+                - "011"
+                - "012"
+          total_affected_items: 4
+          total_failed_items: 8
+
 ---
 test_name: PUT /agents/restart
 
@@ -509,6 +718,11 @@ stages:
                 - "008"
                 - "009"
                 - "010"
+            # 011 and 012 have never connected, so no node holds a version for them: the answer is
+            # that no node has information about them, not that their version is too old.
+            - error:
+                code: 1774
+              id:
                 - "011"
                 - "012"
           total_affected_items: 4
@@ -542,6 +756,16 @@ stages:
           total_failed_items: 1
 
     # PUT /agents/wrong_id/group/group1
+  - name: Try to assign an agent to a non existing group
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/group/wrong_group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *resource_not_found_group
+
   - name: Try to assign an agent with an invalid id
     request:
       verify: False
@@ -650,6 +874,81 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "003"
+          total_affected_items: 1
+
+---
+test_name: PUT /agents/{agent_id}/reload
+
+stages:
+
+  - name: Try to reload a not existing agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/999/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "999"
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Try to reload an agent with an invalid id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/wrong_id/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+  - name: Reload a pre-5.0 agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/005/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1761
+              id:
+                - "005"
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Reload an agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/003/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
       status_code: 200
       json:
         error: 0
@@ -1133,3 +1432,73 @@ stages:
           total_failed_items: 0
           failed_items: []
         message: !anystr
+
+---
+test_name: PUT /agents/scan/vulnerability
+
+stages:
+
+  - name: Try to scan an agent with an invalid id
+    request: &agent_scan_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/scan/vulnerability"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "wrong_id"
+    response:
+      status_code: 400
+      json:
+        <<: *error_spec
+
+  - name: Scan a non existing agent
+    request:
+      verify: False
+      <<: *agent_scan_request
+      params:
+        agents_list: "999"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          total_affected_items: 0
+
+  - name: Scan pre-5.0 agents
+    request:
+      verify: False
+      <<: *agent_scan_request
+      params:
+        agents_list: "005,006"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1764
+              id:
+                - "005"
+                - "006"
+          total_affected_items: 0
+          total_failed_items: 2
+
+  # Whether the vulnerability detector accepts the request for a 5.x agent depends on the module,
+  # which runs without an indexer here: only that every agent is answered for is asserted.
+  - name: Scan 5.x and pre-5.0 agents
+    request:
+      verify: False
+      <<: *agent_scan_request
+      params:
+        agents_list: "001,002,005"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_every_agent_answered
+          extra_kwargs:
+            agents_list: ["001", "002", "005"]
+            failed_codes:
+              "005": 1764

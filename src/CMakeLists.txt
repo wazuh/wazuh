@@ -244,9 +244,11 @@ set(CURL_DEP wazuhext)
 add_subdirectory(shared_modules/http-request)
 add_subdirectory(shared_modules/schema_validator)
 add_subdirectory(shared_modules/utils)
-# Before wazuh_modules: inventory_sync_server links it, and registering it here (rather than via
-# that module's standalone-build guard) keeps one canonical configuration. Manager-only, like its
-# ext_asio/ext_llhttp dependencies.
+# NOTE: this gate never fires -- IS_LINUX is set only inside external/CMakeLists.txt's own scope
+# (no PARENT_SCOPE). The library is actually registered, EXCLUDE_FROM_ALL, by whichever consumer's
+# `if(NOT TARGET wazuh_uds_http_server)` guard runs first (inventory_sync_server,
+# vulnerability_scanner or wazuh_db -- any of the three registers it), so options set here change
+# nothing and uds_http_server_utest is not part of `all`.
 if(IS_LINUX AND NOT IS_AGENT)
   add_subdirectory(shared_modules/uds_http_server)
 endif()

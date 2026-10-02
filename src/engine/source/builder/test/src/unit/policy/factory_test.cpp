@@ -1675,7 +1675,8 @@ public:
     Asset operator()(const json::Json& document) const override
     {
         std::string nameStr;
-        if (document.getString(nameStr, json::Json::formatJsonPath(builder::syntax::asset::NAME_KEY)) != json::RetGet::Success)
+        if (document.getString(nameStr, json::Json::formatJsonPath(builder::syntax::asset::NAME_KEY))
+            != json::RetGet::Success)
         {
             throw std::runtime_error("Test asset json missing name");
         }
@@ -1925,8 +1926,8 @@ TEST(BuildAssetsRootDecoder, DisabledRootDecoderIsReportedExplicitly)
     const std::string integUUID = "550e8400-e29b-41d4-a716-446655440501";
     const std::string rootUUID = "550e8400-e29b-41d4-a716-446655440599";
 
-    auto policy = dataType::Policy(
-        "test_policy", true, rootUUID, {integUUID}, {}, {}, {}, "UNDEFINED", "", false, false, true);
+    auto policy =
+        dataType::Policy("test_policy", true, rootUUID, {integUUID}, {}, {}, {}, "UNDEFINED", "", false, false, true);
 
     auto reader = std::make_shared<MockICMStoreNSReader>();
     auto buildCtx = std::make_shared<builder::builders::BuildCtx>();

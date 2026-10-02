@@ -2,15 +2,18 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import copy
 import json
 import logging
 import os
 import re
+import secrets
+import string
 from datetime import datetime
 from enum import IntEnum
 from shutil import chown
 from time import time
-from typing import Union
+from typing import Optional, Union
 
 import yaml
 from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey, Boolean, or_, \
@@ -24,8 +27,8 @@ from sqlalchemy.sql.expression import select, delete
 from sqlalchemy.sql import text
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from api.configuration import security_conf
-from api.constants import SECURITY_PATH
+from api.configuration import default_security_configuration, read_yaml_config
+from api.constants import SECURITY_CONFIG_PATH, SECURITY_PATH
 from wazuh.core.common import wazuh_uid, wazuh_gid, DEFAULT_RBAC_RESOURCES
 from wazuh.core.utils import get_utc_now, safe_move
 from wazuh.rbac.utils import clear_tokens_cache
@@ -40,6 +43,42 @@ CLOUD_RESERVED_RANGE = 89
 
 # Dummy hash for constant-time username enumeration protection
 _DUMMY_HASH = generate_password_hash("wazuh-dummy-constant-never-matches-any-real-password")
+
+# Generated-password shape. This is the same alphabet and length as wazuh_password_generate() in
+# wazuh-credentials.sh -- the shared credential library downloaded from wazuh-installation-assistant
+# by `make deps` into src/external/wazuh-credentials/ -- because the resolver and this module are two
+# entry points to the same seeding and a value from either must satisfy the same policy the Server
+# API enforces in wazuh/security.py. The omitted punctuation (quotes, backslash, backtick, $, ! and
+# #) keeps a value safe to paste through shell, YAML, JSON and docker-compose interpolation without
+# escaping.
+_PASSWORD_SYMBOLS = '.,_+:@%^=~-'  # nosec B105 - the generator's symbol set, not a password
+_PASSWORD_ALPHABET = string.ascii_letters + string.digits + _PASSWORD_SYMBOLS
+_PASSWORD_LENGTH = 32
+
+
+def generate_password() -> str:
+    """Generate a random password that satisfies the Server API password policy.
+
+    One lowercase letter, one uppercase letter, one digit and one symbol are placed first and the
+    result is shuffled with a CSPRNG, so the policy is met by construction rather than by
+    generate-and-retry.
+
+    Returns
+    -------
+    str
+        A 32-character password.
+    """
+    rand = secrets.SystemRandom()
+    chars = [
+        secrets.choice(string.ascii_lowercase),
+        secrets.choice(string.ascii_uppercase),
+        secrets.choice(string.digits),
+        secrets.choice(_PASSWORD_SYMBOLS),
+    ]
+    chars += [secrets.choice(_PASSWORD_ALPHABET) for _ in range(_PASSWORD_LENGTH - len(chars))]
+    rand.shuffle(chars)
+
+    return ''.join(chars)
 
 # Start a session and set the default security elements
 DB_FILE = os.path.join(SECURITY_PATH, "rbac.db")
@@ -147,6 +186,25 @@ class UserRoles(_Base):
 
 # Blacklists
 
+def token_exp_timeout_ms() -> int:
+    """Return the token lifetime currently configured in security.yaml, in milliseconds.
+
+    A token rule has to last as long as the tokens it covers, so it is sized from the file rather
+    than from the `security_conf` object imported at start-up: `update_security_conf` only writes
+    the file, and the process that creates the rule (the API's local request pool, `rbac_control`)
+    is not the one that refreshes that object before signing tokens.
+
+    Returns
+    -------
+    int
+        Current `auth_token_exp_timeout`, in milliseconds.
+    """
+    # `read_yaml_config` merges the file into `default_conf` in place, so it gets a copy.
+    configuration = read_yaml_config(config_file=SECURITY_CONFIG_PATH,
+                                     default_conf=copy.deepcopy(default_security_configuration))
+    return configuration['auth_token_exp_timeout'] * 1000
+
+
 class RunAsTokenBlacklist(_Base):
     """Class that represents the table containing the tokens given through the run_as login endpoint that are considered
     invalid. An invalid token is an expired or revoked token.
@@ -162,7 +220,7 @@ class RunAsTokenBlacklist(_Base):
 
     def __init__(self):
         self.nbf_invalid_until = int(time() * 1000)
-        self.is_valid_until = self.nbf_invalid_until + (security_conf['auth_token_exp_timeout'] * 1000)
+        self.is_valid_until = self.nbf_invalid_until + token_exp_timeout_ms()
 
     def to_dict(self) -> dict:
         """Return the information of the RunAsTokenBlacklist object.
@@ -173,6 +231,40 @@ class RunAsTokenBlacklist(_Base):
             Dictionary with the object information.
         """
         return {'nbf_invalid_until': self.nbf_invalid_until, 'is_valid_until': self.is_valid_until}
+
+
+class RunAsContextTokenBlacklist(_Base):
+    """Class that represents the table containing the authorization contexts whose run_as tokens are invalid.
+    A run_as token's subject is the account that called the run_as login (the dashboard's), shared by
+    every end user it logs in, so revoking one end user's session by subject would end all of them.
+    The authorization context identifies the end user instead, and its hash travels in the token.
+    The information stored is:
+        hash_auth_context: Hash of the authorization context affected by the token
+        nbf_invalid_until: Time of the issue that caused the tokens to be invalidated
+        is_valid_until: Token's expiration date
+    """
+    __tablename__ = "runas_context_token_blacklist"
+
+    hash_auth_context = Column('hash_auth_context', String(64), primary_key=True)
+    nbf_invalid_until = Column('nbf_invalid_until', Integer, nullable=False)
+    is_valid_until = Column('is_valid_until', Integer, nullable=False)
+    __table_args__ = (UniqueConstraint('hash_auth_context', name='runas_context_invalidation_rule'),)
+
+    def __init__(self, hash_auth_context: str):
+        self.hash_auth_context = hash_auth_context
+        self.nbf_invalid_until = int(time() * 1000)
+        self.is_valid_until = self.nbf_invalid_until + token_exp_timeout_ms()
+
+    def to_dict(self) -> dict:
+        """Return the information of the token rule.
+
+        Returns
+        -------
+        dict
+            Dictionary with the object information.
+        """
+        return {'hash_auth_context': self.hash_auth_context, 'nbf_invalid_until': self.nbf_invalid_until,
+                'is_valid_until': self.is_valid_until}
 
 
 class UsersTokenBlacklist(_Base):
@@ -193,7 +285,7 @@ class UsersTokenBlacklist(_Base):
     def __init__(self, user_id):
         self.user_id = user_id
         self.nbf_invalid_until = int(time() * 1000)
-        self.is_valid_until = self.nbf_invalid_until + (security_conf['auth_token_exp_timeout'] * 1000)
+        self.is_valid_until = self.nbf_invalid_until + token_exp_timeout_ms()
 
     def to_dict(self):
         """Return the information of the token rule
@@ -224,7 +316,7 @@ class RolesTokenBlacklist(_Base):
     def __init__(self, role_id):
         self.role_id = role_id
         self.nbf_invalid_until = int(time() * 1000)
-        self.is_valid_until = self.nbf_invalid_until + (security_conf['auth_token_exp_timeout'] * 1000)
+        self.is_valid_until = self.nbf_invalid_until + token_exp_timeout_ms()
 
     def to_dict(self):
         """Return the information of the token rule
@@ -601,7 +693,7 @@ class TokenManager(RBACManager):
         return timestamp * 1000 if timestamp < 10_000_000_000 else timestamp
 
     def is_token_valid(self, token_nbf_time: int, user_id: int = None, role_id: int = None,
-                       run_as: bool = False) -> bool:
+                       run_as: bool = False, hash_auth_context: str = None) -> bool:
         """Check if the specified token is valid.
 
         Every rule is looked up only when the argument selecting it is given, so a caller that
@@ -618,6 +710,9 @@ class TokenManager(RBACManager):
         run_as : bool
             Indicate if the token has been granted through run_as endpoint. The run_as rule is
             not read when it is False.
+        hash_auth_context : str, optional
+            Hash of the authorization context a run_as token was granted for. The context rule is
+            not read when it is omitted.
 
         Returns
         -------
@@ -636,19 +731,26 @@ class TokenManager(RBACManager):
                 select(RolesTokenBlacklist).filter_by(role_id=role_id).limit(1)).first() \
                 if role_id is not None else None
             runas_rule = self.session.query(RunAsTokenBlacklist).first() if run_as else None
+            context_rule = self.session.scalars(
+                select(RunAsContextTokenBlacklist).filter_by(hash_auth_context=hash_auth_context).limit(1)).first() \
+                if hash_auth_context is not None else None
 
             user_nbf_invalid_until = self._normalize_timestamp(user_rule.nbf_invalid_until) if user_rule else None
             role_nbf_invalid_until = self._normalize_timestamp(role_rule.nbf_invalid_until) if role_rule else None
             runas_nbf_invalid_until = self._normalize_timestamp(runas_rule.nbf_invalid_until) if runas_rule else None
+            context_nbf_invalid_until = self._normalize_timestamp(context_rule.nbf_invalid_until) \
+                if context_rule else None
 
             return (not user_rule or (token_nbf_time > user_nbf_invalid_until)) and \
                    (not role_rule or (token_nbf_time > role_nbf_invalid_until)) and \
-                   (not run_as or (not runas_rule or (token_nbf_time > runas_nbf_invalid_until)))
+                   (not run_as or (not runas_rule or (token_nbf_time > runas_nbf_invalid_until))) and \
+                   (not context_rule or (token_nbf_time > context_nbf_invalid_until))
         except IntegrityError:
             return True
 
-    def add_user_roles_rules(self, users: set = None, roles: set = None, run_as: bool = False) -> Union[bool, int]:
-        """Add new rules for users-token or roles-token.
+    def add_user_roles_rules(self, users: set = None, roles: set = None, run_as: bool = False,
+                             contexts: set = None) -> Union[bool, int]:
+        """Add new rules for users-token, roles-token or run_as context-token.
         The values nbf_invalid_until and is_valid_until are generated automatically.
 
         Parameters
@@ -659,6 +761,8 @@ class TokenManager(RBACManager):
             Set with the affected roles.
         run_as : bool
             Indicate if the token has been granted through the run_as login endpoint.
+        contexts : set
+            Set with the hashes of the affected run_as authorization contexts.
 
         Returns
         -------
@@ -669,6 +773,8 @@ class TokenManager(RBACManager):
             users = set()
         if roles is None:
             roles = set()
+        if contexts is None:
+            contexts = set()
 
         try:
             self.delete_all_expired_rules()
@@ -684,6 +790,10 @@ class TokenManager(RBACManager):
                 self.delete_rule(run_as=run_as)
                 self.session.add(RunAsTokenBlacklist())
                 self.session.commit()
+            for hash_auth_context in contexts:
+                self.delete_rule(hash_auth_context=hash_auth_context)
+                self.session.add(RunAsContextTokenBlacklist(hash_auth_context=hash_auth_context))
+                self.session.commit()
 
             clear_tokens_cache()
             return True
@@ -691,8 +801,9 @@ class TokenManager(RBACManager):
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
 
-    def delete_rule(self, user_id: int = None, role_id: int = None, run_as: bool = False) -> Union[bool, int]:
-        """Remove the rule for the specified role and user.
+    def delete_rule(self, user_id: int = None, role_id: int = None, run_as: bool = False,
+                    hash_auth_context: str = None) -> Union[bool, int]:
+        """Remove the rule for the specified role, user or run_as authorization context.
 
         Parameters
         ----------
@@ -702,6 +813,8 @@ class TokenManager(RBACManager):
             ID of the role for which the rule is going to be deleted.
         run_as : bool
             Indicate if the token has been granted through the run_as login endpoint.
+        hash_auth_context : str
+            Hash of the run_as authorization context for which the rule is going to be deleted.
 
         Returns
         -------
@@ -711,6 +824,9 @@ class TokenManager(RBACManager):
         try:
             self.session.execute(delete(UsersTokenBlacklist).filter_by(user_id=user_id))
             self.session.execute(delete(RolesTokenBlacklist).filter_by(role_id=role_id))
+            if hash_auth_context is not None:
+                self.session.execute(
+                    delete(RunAsContextTokenBlacklist).filter_by(hash_auth_context=hash_auth_context))
             if run_as:
                 run_as_rule = self.session.query(RunAsTokenBlacklist).first()
                 run_as_rule and self.session.delete(run_as_rule)
@@ -756,6 +872,10 @@ class TokenManager(RBACManager):
                 self.session.delete(runas_token_in_blacklist)
                 self.session.commit()
 
+            self.session.execute(delete(RunAsContextTokenBlacklist).where(
+                RunAsContextTokenBlacklist.is_valid_until < current_time))
+            self.session.commit()
+
             return list_users, list_roles
         except IntegrityError:
             self.session.rollback()
@@ -786,6 +906,8 @@ class TokenManager(RBACManager):
             runas_rule = self.session.query(RunAsTokenBlacklist).first()
             if runas_rule:
                 self.session.delete(runas_rule)
+                clean = True
+            if self.session.execute(delete(RunAsContextTokenBlacklist)).rowcount:
                 clean = True
 
             clean and self.session.commit()
@@ -2080,21 +2202,35 @@ class DatabaseManager:
         """
         return str(self.sessions[database].execute(text("pragma user_version")).first()[0])
 
-    def insert_default_resources(self, database: str):
+    def insert_default_resources(self, database: str, passwords: Optional[dict] = None):
         """Insert default security resources into the given database.
 
         Parameters
         ----------
         database : str
             Name of the stored database.
+        passwords : dict, optional
+            Mapping of default username to the password to seed it with, supplied by the credential
+            resolver. A user absent from the mapping is seeded with a freshly generated password.
+
+        Notes
+        -----
+        `users.yaml` carries no password: one shipped in a packaged file would be a password every
+        installation shares. A user without a supplied value therefore gets a generated one, which
+        makes a deployment that bypasses the resolver entirely still end up unique rather than
+        falling back to a known default.
         """
+        passwords = passwords or {}
+
         # Create default users if they don't exist yet
         with open(os.path.join(DEFAULT_RBAC_RESOURCES, "users.yaml"), 'r') as stream:
             default_users = yaml.safe_load(stream)
 
             with AuthenticationManager(self.sessions[database]) as auth:
                 for d_username, payload in default_users[next(iter(default_users))].items():
-                    auth.add_user(username=d_username, password=payload['password'], check_default=False)
+                    auth.add_user(username=d_username,
+                                  password=passwords.get(d_username) or generate_password(),
+                                  check_default=False)
                     auth.edit_run_as(user_id=auth.get_user(username=d_username)['id'],
                                      allow_run_as=payload['allow_run_as'])
 
@@ -2458,10 +2594,17 @@ class DatabaseManager:
         self.sessions[database].execute(text(f'pragma user_version={version}'))
 
 
-def check_database_integrity():
+def check_database_integrity(passwords: Optional[dict] = None):
     """Check RBAC database integrity.
     If the database does not exist, it must be created properly.
     If the database exists, the RBAC DB migration process is applied.
+
+    Parameters
+    ----------
+    passwords : dict, optional
+        Mapping of default username to the password to seed it with, supplied by the credential
+        resolver. Only consulted when the database does not exist yet: an already-seeded database
+        is never reseeded, so the keys are ignored from that point on however they are set.
 
     Raises
     ------
@@ -2490,6 +2633,9 @@ def check_database_integrity():
             logger.info(f"{DB_FILE} file was detected")
             _set_permissions_and_ownership(DB_FILE)
             db_manager.connect(DB_FILE)
+            # Create the tables added since the database was created. `create_all` skips the ones
+            # that already exist and never alters them, so this touches no data.
+            db_manager.create_database(DB_FILE)
             current_version = int(db_manager.get_database_version(DB_FILE))
             expected_version = CURRENT_ORM_VERSION
 
@@ -2501,7 +2647,9 @@ def check_database_integrity():
                 # Remove tmp database if present
                 os.path.exists(DB_FILE_TMP) and os.remove(DB_FILE_TMP)
 
-                # Create new tmp database and populate it with default resources
+                # Create new tmp database and populate it with default resources. The passwords
+                # generated here are throwaway: migrate_data() below copies the existing users
+                # across with their hashes intact, so an upgrade never changes a credential.
                 db_manager.connect(DB_FILE_TMP)
                 db_manager.create_database(DB_FILE_TMP)
                 _set_permissions_and_ownership(DB_FILE_TMP)
@@ -2528,7 +2676,7 @@ def check_database_integrity():
             db_manager.connect(DB_FILE)
             db_manager.create_database(DB_FILE)
             _set_permissions_and_ownership(DB_FILE)
-            db_manager.insert_default_resources(DB_FILE)
+            db_manager.insert_default_resources(DB_FILE, passwords=passwords)
             db_manager.set_database_version(DB_FILE, CURRENT_ORM_VERSION)
             db_manager.close_sessions()
             logger.info(f"{DB_FILE} database created successfully")

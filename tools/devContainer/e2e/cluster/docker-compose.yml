@@ -24,6 +24,10 @@ services:
       NODE_TYPE: "worker"
       MASTER_ADDR: "host.docker.internal"
       INDEXER_HOST: "wazuh-indexer"
+      # OBSOLETE: admin/admin no longer authenticates against the main stack, whose
+      # credentials are generated into ../.credentials.env. This cluster overlay is still
+      # the old demo and was not moved to that model: export INDEXER_USER/INDEXER_PASSWORD
+      # by hand if you point it at an indexer with generated credentials.
       INDEXER_USER: "${INDEXER_USER:-admin}"
       INDEXER_PASSWORD: "${INDEXER_PASSWORD:-admin}"
     # Time for the entrypoint to run wazuh-manager-control stop on docker stop.

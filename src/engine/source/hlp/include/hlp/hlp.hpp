@@ -20,7 +20,8 @@ struct Params
     Options options;         ///< Extra arguments required for specific parsers (optional).
 };
 
-using ParserBuilder = std::function<parser::Parser(const Params&)>; ///< Factory function that creates a Parser from Params.
+using ParserBuilder =
+    std::function<parser::Parser(const Params&)>; ///< Factory function that creates a Parser from Params.
 
 /**
  * @brief Initializes the Timezone Database (TZDB) with the given path.

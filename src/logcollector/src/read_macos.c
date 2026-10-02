@@ -135,7 +135,10 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
             }
 
             w_msg_hash_queues_push(read_buffer, MACOS_LOG_NAME, size + 1, lf->log_target, LOCALFILE_MQ);
-            memcpy(full_timestamp, read_buffer, OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN);
+
+            if (size >= OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN) {
+                memcpy(full_timestamp, read_buffer, OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN);
+            }
         } else {
             mdebug2("macOS ULS: Discarding empty message.");
         }

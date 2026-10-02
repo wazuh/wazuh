@@ -1315,7 +1315,10 @@ static int setup_local_defines(void **state)
     FILE *fp = fopen("./local_internal_options.conf", "w");
     assert_non_null(fp);
     fputs("agent.blank_value=\n"
-          "agent.good_value=7\n",
+          "agent.good_value=7\n"
+          "agent.negative_value=-5\n"
+          "agent.lone_minus=-\n"
+          "agent.inner_minus=1-2\n",
           fp);
     fclose(fp);
 
@@ -1353,6 +1356,41 @@ void getDefine_Int_default_present_value_is_read(void **state)
     (void)state;
 
     assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 7);
+}
+
+/* A negative value is read where the declared range allows it (e.g. wazuh_modules.task_nice). */
+void getDefine_Int_default_negative_value_in_range_is_read(void **state)
+{
+    (void)state;
+
+    assert_int_equal(getDefine_Int_default("agent", "negative_value", -20, 19, 0), -5);
+}
+
+void getDefine_Int_default_negative_value_out_of_range_exits(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.negative_value: '-5'.");
+
+    expect_assert_failure(getDefine_Int_default("agent", "negative_value", 0, 10, 5));
+}
+
+void getDefine_Int_default_lone_minus_exits(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.lone_minus: '-'.");
+
+    expect_assert_failure(getDefine_Int_default("agent", "lone_minus", -20, 19, 0));
+}
+
+void getDefine_Int_default_inner_minus_exits(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__merror_exit, formatted_msg, "(2302): Invalid definition for agent.inner_minus: '1-2'.");
+
+    expect_assert_failure(getDefine_Int_default("agent", "inner_minus", -20, 19, 0));
 }
 
 int main(void) {
@@ -1422,6 +1460,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(getDefine_Int_default_absent_key_returns_default, setup_local_defines,
                                         teardown_local_defines),
         cmocka_unit_test_setup_teardown(getDefine_Int_default_present_value_is_read, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_negative_value_in_range_is_read, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_negative_value_out_of_range_exits, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_lone_minus_exits, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_default_inner_minus_exits, setup_local_defines,
                                         teardown_local_defines),
     };
 

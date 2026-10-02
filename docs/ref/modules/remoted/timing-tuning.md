@@ -118,14 +118,15 @@ at the shipped defaults (60 s throttle, 10 s notify) that is 6×; the campaign m
 rather than quoting either number. Detection latency is governed by `agents_disconnection_time`
 alone (§4). Budget outage recovery at ~6.5 TLS handshakes/min per disconnected agent, and check
 that against [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections)
-(512) before a fleet-wide restart.
+(256) before a fleet-wide restart.
 
 **Manager outages and event loss.** Short outages are transparent (measured: a 25 s outage
 delivered every buffered event exactly once). On longer ones the loss point is **not** the HTTPS
 producer pause — `agent.https_producer_pause_threshold` does stop the agent's send path, which is
 exactly why the backlog lands one layer up — but `logcollector.queue_size` (1024 lines), which
-drops new lines on a full queue with **one** warning ever emitted per target
-(`Target '...' message queue is full`) and a debug-level line per discard afterwards. Size it as
+drops new lines on a full queue and warns at most once a minute per target with the count lost since
+the previous warning (`Target '<target>' message queue is full (<size>). <n> log line(s) lost since
+the last warning.`). Size it as
 `peak EPS × required outage window`: the default tolerates ≈100 s at 20 eps (measured: 33% of a
 3-minute outage's events lost).
 

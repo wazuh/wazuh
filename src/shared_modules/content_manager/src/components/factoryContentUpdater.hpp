@@ -29,10 +29,10 @@
  *   IndexerDownloader  →  UpdateIndexerCursor
  *
  * IndexerDownloader fetches CVE documents from the Indexer (initial full load via PIT
- * or incremental update via @timestamp range) and delivers them directly to the
+ * or incremental update via offset range) and delivers them directly to the
  * fileProcessingCallback without writing intermediate files to disk.
  *
- * UpdateIndexerCursor persists the @timestamp cursor returned by the downloader so
+ * UpdateIndexerCursor persists the `offset` cursor returned by the downloader so
  * that subsequent scheduler cycles perform incremental fetches only.
  */
 class FactoryContentUpdater final

@@ -9,7 +9,7 @@ set -uo pipefail
 #
 # Usage:
 #   sudo ./prepare_manager.sh              # once: reachable enrollment + the fleet's token
-#   ./run_matrix.sh                        # 12 runs -> results_<label>/
+#   ./run_matrix.sh                        # 14 runs -> results_<label>/
 #   ./make_report_tables.py > tables.md    # the report's tables, from the artifacts
 #
 # The cluster name is read from the local manager's config (the server answers 403
@@ -35,8 +35,10 @@ cd "$SCRIPT_DIR"
 # Empty means "let run_benchmark.sh read it from the manager's own config"; pass
 # --cluster only for a remote manager, or to override what the config says.
 CLUSTER=""
-# The manager's <remote><https><global_prefix>, when it has one. Unlike the cluster name
-# it is never read from the config: pass it, or every agent-mode run in the matrix 404s.
+# The manager's <remote><https><global_prefix>. Empty lets run_benchmark.sh read it from a
+# local manager's config, like the cluster name; when the tag is absent there the manager
+# still serves under its default '/wazuh-manager/' while the run sends no prefix, so pass
+# it explicitly (or every agent-mode run in the matrix 404s).
 GLOBAL_PREFIX=""
 SOCKET="/var/wazuh-manager/queue/sockets/inventory-sync-http.sock"
 SEED=4242
@@ -77,11 +79,12 @@ MATRIX=(
     "syscollector_agent  agent  scenarios/real_syscollector_debian.json"
     "fim_uds             uds    scenarios/real_fim_first_sync_ubuntu.json"
     "fim_agent           agent  scenarios/real_fim_first_sync_ubuntu.json"
-    # Vulnerability-detection scan lane (single worker by default)
+    # Vulnerability-detection scan lane (vd_workers workers; default half the host's cores)
     "vd_uds              uds    scenarios/real_vd_debian.json"
     # First connection at full fidelity (Windows: the 27,726-item registry
     # corpus in ONE ~26 MB session). The agent twin rides the agent-mode zstd
-    # default: uncompressed it cannot pass remoted's 10 MiB body cap, so the
+    # default: uncompressed it cannot pass remoted's authenticated-body cap
+    # (remoted.auth_max_body_size, 5 MiB by default), so the
     # pair also isolates the relay + decompression cost of the heaviest
     # realistic session.
     "first_connect_uds   uds    scenarios/real_first_connect_uds.json"
