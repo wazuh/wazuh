@@ -271,6 +271,59 @@ list` run_cnt/run_time_ns; if unacceptable, A4 stops being optional.
 > Blocks: A3-vs-A4 ordering. Should be stated in the commit message either way, not left for a
 > reviewer to discover.
 
+> ### Measured 2026-10-01 — **D = 1.78%; the pre-registered rule says escalate**
+>
+> The measurement D9 has been waiting on since 2026-09-03. Taken on `wazuh_manager`
+> (kernel 7.0.0-31, 10 cores, cgroup v2, `bpf` **in** the active LSM list), four arms, three reps of
+> the decisive two, `kernel.bpf_stats_enabled=1`, 20 s of create/write/chmod/unlink against a
+> monitored host directory and an unmonitored one.
+>
+> | Arm | provider | container FIM | kprobe+lsm programs | eBPF share of CPU |
+> | --- | --- | --- | --- | --- |
+> | A | audit | off | **0** | — (floor) |
+> | B | audit | on | 4 | 1.47% |
+> | C | ebpf | off | 4 | **1.77%** (median of 3) |
+> | D | ebpf | on | **8** | whodata 1.78% + container 1.66% = **3.44%** |
+>
+> **The duplication is exact, and additive.** In arm D, `file_open_dpath` (whodata's
+> `modern.bpf.o`) and `lsm_file_open` (the container path's `rt_file.bpf.o`) each fired
+> **169,326** times — the same number, on the same events, processed twice. And whodata's share is
+> **1.77% alone (arm C) versus 1.78% inside arm D**: loading the second stack does not make the
+> first cheaper or dearer. Each pays its full cost, so a collapse recovers very close to the whole
+> of one stack's share.
+>
+> Throughput, ops completed in a fixed 20 s against the monitored directory: arm A 4170, arm C 3870
+> (−7.2% vs the no-eBPF floor), arm D 3320 (**−20.4%**). Adding the second stack roughly triples the
+> throughput cost of the first.
+>
+> **Verdict against the rule stated before the numbers existed** (`D < 0.5%` → acceptable;
+> `D ≥ 2%` → ship blocker; between → escalate): **D = 1.78% is in the escalation band.** It is not
+> engineering's call, and the threshold must not be retrofitted to reach a convenient answer. What
+> engineering can say is that the band is narrow and the result sits at its top edge, that the cost
+> is additive rather than shared, and that two independent considerations push the real figure
+> *upward* — see the caveats.
+>
+> **Two caveats that matter more than the headline number.**
+>
+> 1. **This host is LSM-active, so neither stack used its kprobe open path.** Both used an LSM
+>    `file_open` variant. The filter divergence recorded against the two kprobe programs —
+>    `modern.bpf.c:418` fires on creation only, `rt_file.bpf.c:460` on *every* write-intent open —
+>    was therefore never exercised. On a stock Ubuntu/Debian host, which is kprobe-mode and the
+>    majority of the estate, the container program would see far more events than the whodata one.
+>    **1.78% is a lower bound for the common case**, and that is an inference from the code, not a
+>    measurement. The kprobe-mode arm is the obvious next measurement and is cheap.
+> 2. **`bpf_stats_enabled` inflates `run_time_ns`** with its own per-invocation accounting, so the
+>    absolute percentages are an upper bound on the true cost. The *ratios* between arms, the
+>    identical run counts, and the additivity are unaffected.
+>
+> Also settled in passing, with `readelf` and `/proc/<pid>/maps`: syscheckd maps
+> `/usr/lib/x86_64-linux-gnu/libbpf.so.1.3.0` — the **system** libbpf. `libfimebpf.so`'s RPATH
+> points at build-machine paths (`/build_wazuh/agent/...`) that do not exist on a target host, so
+> `dlopen("libbpf.so")` falls through to the loader cache. The bundled `/var/ossec/lib/libbpf.so`
+> (554 KB, installed on every Linux agent) is **never loaded**. The "bundled versus system libbpf"
+> question that the collapse was expected to reconcile is therefore already decided, in favour of
+> system, by accident.
+
 **D10 — Accept that item 22 lands *with or before* item 20.** *(owner: this project)*
 
 [08](08-roadmap.md#p2--architecture-make-it-a-baseline) has this dependency backwards.
