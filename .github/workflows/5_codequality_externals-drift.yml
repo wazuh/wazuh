@@ -29,6 +29,9 @@ jobs:
       - name: Install the MinGW cross-compiler
         run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-i686
 
+      - name: Run the inventory tool tests
+        run: pipx run pytest packages/externals/tests -q
+
       - name: Check the inventory against EXTERNAL_RES
         run: python3 packages/externals/deps.py check
 

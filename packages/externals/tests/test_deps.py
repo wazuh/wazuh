@@ -236,9 +236,9 @@ def test_flatten_sources_in_bash(tmp_path):
 @pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash")
 def test_flatten_quotes(tmp_path):
     odd = "https://x/it's $HOME `id` {version}.tar.gz"
-    text = deps.flatten(doc(entry("zlib", url=odd, target_dir="z lib")))
+    text = deps.flatten(doc(entry("zlib", url=odd)))
     assert bash_lookup(text, "${EXT_URL[zlib]}", "${EXT_TARGET[zlib]}", tmp_path=tmp_path) == [
-        "https://x/it's $HOME `id` 1.0.0.tar.gz", "z lib"]
+        "https://x/it's $HOME `id` 1.0.0.tar.gz", "zlib"]
 
 
 def test_flatten_rejects_invalid(tmp_path):
@@ -408,3 +408,45 @@ def test_manifest_python_needs_built_against(tmp_path):
     inventory.write_text(json.dumps(with_cpython()))
     result = run("manifest", "--inventory", str(inventory), "--deps-version", "5/python/1", "--python")
     assert result.returncode == 1 and "--built-against" in result.stderr
+
+
+def test_drift_targets_and_platforms():
+    published = {"entries": copy.deepcopy(minimal()["entries"]), "patches": {}}
+    published["entries"][2]["platforms"] = ["linux", "darwin"]
+    assert deps.drift(minimal(), published) == [
+        "zlib: `platforms` is ['linux'] here but ['linux', 'darwin'] in the set manifest"]
+
+
+def test_drift_patch_edited_in_place(tmp_path):
+    (tmp_path / "rpm").mkdir()
+    patch = tmp_path / "rpm" / "0001-wazuh.patch"
+    patch.write_text("old\n")
+    inventory = doc(entry("rpm", patches=["rpm/0001-wazuh.patch"]))
+    published = deps.manifest(inventory, "5/externals/1", patches_dir=tmp_path)
+    assert deps.drift(inventory, published, patches_dir=tmp_path) == []
+    patch.write_text("new\n")
+    assert deps.drift(inventory, published, patches_dir=tmp_path) == [
+        "rpm: patch rpm/0001-wazuh.patch differs from the one the set was built with"]
+
+
+def test_flatten_checksum_follows_source():
+    item = entry("procps", source="snapshot", snapshot_sha256="b" * 64)
+    assert "[procps]=" + "b" * 64 in deps.flatten(doc(item))
+
+
+def test_purl_rules():
+    assert errors(doc(entry("llhttp", purl="pkg:github/nodejs/llhttp@release%2Fv9.4.2"))) == []
+    assert errors(doc(entry("llhttp", purl="pkg:github/nodejs/llhttp@release/v9.4.2"))) == [
+        "llhttp: `purl` 'pkg:github/nodejs/llhttp@release/v9.4.2' is not pkg:<type>/<name>@<version> with an encoded version"]
+
+
+def test_sbom_extra_cpes():
+    item = entry("procps", cpe=["cpe:2.3:a:procps_project:procps:*:*:*:*:*:*:*:*",
+                                "cpe:2.3:a:procps-ng_project:procps-ng:*:*:*:*:*:*:*:*"])
+    component = deps.sbom([item], [])["components"][0]
+    assert component["cpe"].startswith("cpe:2.3:a:procps_project")
+    assert {"name": "syft:cpe23", "value": "cpe:2.3:a:procps-ng_project:procps-ng:*:*:*:*:*:*:*:*"} in component["properties"]
+
+
+def test_linux_combos_force_uname():
+    assert all("uname_S=Linux" in args for (target, platform), args in deps.MAKE_COMBOS.items() if platform == "linux")

@@ -34,6 +34,8 @@ jobs:
     name: Checking Python vulnerabilies
     runs-on: ubuntu-24.04
     strategy:
+      # One branch failing to build its SBOM must not cancel the others.
+      fail-fast: false
       matrix: ${{ fromJSON(needs.pick-branches.outputs.matrix) }}
     permissions:
       contents: read

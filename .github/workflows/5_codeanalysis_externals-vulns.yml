@@ -12,6 +12,9 @@ on:
     # Tuesday, before the weekly operational bootstrap (06:00 UTC) reads the results.
     - cron: '0 3 * * 2'
 
+permissions:
+  contents: read
+
 jobs:
   pick-branches:
     name: Get branches to analyze

@@ -59,10 +59,10 @@ mkdir -p "${ARTIFACTS_DIR}" "${DOWNLOAD_DIR}"
 log() { echo "[external] $*"; }
 err() { echo "[external][ERROR] $*" >&2; }
 
-# What this workflow does not build (libbpf-bootstrap, the embedded Python and
-# the other make deps prerequisites) comes from the published sets src/Makefile
-# points at, so DEPS_VERSION and PYTHON_DEPS_VERSION must name existing sets
-# while it runs. See docs/dev/build-external-dependencies.md.
+# What this workflow does not build comes through make: libbpf-bootstrap from
+# the DEPS_VERSION set and the embedded Python from the PYTHON_DEPS_VERSION set,
+# so both must name existing sets while it runs. See
+# docs/dev/build-external-dependencies.md.
 DEPS_VERSION="$(sed -n 's/^DEPS_VERSION[[:space:]]*=[[:space:]]*\([^[:space:]]*\).*/\1/p' "${SRC_DIR}/Makefile" | head -n1)"
 if [ -z "${DEPS_VERSION}" ]; then
     err "could not extract DEPS_VERSION from ${SRC_DIR}/Makefile"
@@ -320,8 +320,9 @@ for name in ${DEPS_FOR_LEG}; do
 done
 
 # cpython and libbpf-bootstrap are built by their own pipelines, and the
-# other prerequisites of `make deps` (shared modules, indexer templates, ...)
-# are not in the inventory: let make fetch them exactly as `make deps` does.
+# other prerequisites of `make deps` (http-request, indexer templates, ...,
+# downloaded from GitHub) are not dependencies: let make fetch them exactly as
+# `make deps` does.
 # cpython comes from the PYTHON_DEPS_VERSION set: the build-external configure
 # step reads its tree, but it is not part of this set.
 make_goals=""
@@ -332,13 +333,15 @@ for name in ${DEPS_FOR_LEG}; do
     case "${name}" in
         cpython|libbpf-bootstrap) make_goals="${make_goals} external/${name}.tar.gz" ;;
         *)
-            if on_leg "${name}"; then
-                fetch_dep "${name}" || exit 1
+            if ! on_leg "${name}"; then
+                err "${name} is in EXTERNAL_RES for this leg but dependencies.json does not declare it for ${LEG_PLATFORM}"
+                exit 1
             fi
+            fetch_dep "${name}" || exit 1
             ;;
     esac
 done
-log "fetching from deps/${DEPS_VERSION} through make:${make_goals}"
+log "fetching through make:${make_goals}"
 # shellcheck disable=SC2086
 make -C "${SRC_DIR}" EXTERNAL_SRC_ONLY=yes TARGET="${MAKE_TARGET}" ${make_goals}
 

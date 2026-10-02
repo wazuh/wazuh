@@ -215,13 +215,13 @@ the download behind a flag drops them from the bundle and breaks every test buil
 3. Wait for `build-externals`, `consolidate`, and all `smoke-build` jobs to go green.
 4. Download `externals-all.tar.gz` and upload its contents (`manifest.json` and `libraries/…`) to `s3://…/deps/5/externals/<N>/`, never over an existing key (`aws s3api put-object --if-none-match '*'`).
 5. Set `DEPS_VERSION = 5/externals/<N>` in `src/Makefile` in the same PR. The drift check (`5_codequality_externals-drift.yml`) then compares the inventory with `deps/5/externals/<N>/manifest.json`.
-6. If openssl, sqlite or libffi changed, the embedded Python must be rebuilt against the new set (see below): the drift check fails while the Python set was built against another `DEPS_VERSION`.
+6. Rebuild and publish the embedded Python against the new set in the same PR (see below): the drift check fails while the Python set was built against another `DEPS_VERSION`.
 
 ## Caveats
 
 ### Bump `DEPS_VERSION` only after the new set is uploaded
 
-The inventory decides every dependency source, but `DEPS_VERSION` (defined in `src/Makefile`) still decides what the workflow takes from the currently published set: the `libbpf-bootstrap` source tree, the shared modules and the other non-dependency prerequisites of `make deps`, fetched with `make EXTERNAL_SRC_ONLY=yes <goals>`.
+The inventory decides every dependency source, but `DEPS_VERSION` (defined in `src/Makefile`) still decides what the workflow takes from the currently published set: the `libbpf-bootstrap` source tree, fetched with `make EXTERNAL_SRC_ONLY=yes <goals>` together with the embedded Python (from `PYTHON_DEPS_VERSION`) and the other prerequisites of `make deps` (http-request, indexer templates, WCS file and credentials library, from GitHub).
 
 If your branch points `DEPS_VERSION` at the set you're trying to *produce*, those fetches fail and the run fails. Dispatch the workflow while `DEPS_VERSION` points at the *currently published* set, and bump it once the new set is uploaded.
 
@@ -239,7 +239,7 @@ bash packages/externals/ebpf/build_ebpf.sh   # writes ./output/<arch>/libbpf-boo
 
 ### The embedded Python is its own set
 
-`cpython` and the wheels of `framework/requirements.txt` are built by `5_builderpackage_embedded-python.yml` (`framework/cpython/compile.sh`) against the libraries of `DEPS_VERSION`, and published as `deps/5/python/<n>` (`libraries/sources/cpython_<arch>.tar.gz` and `libraries/linux/<arch>/cpython.tar.gz`). `make deps` downloads them from `PYTHON_RESOURCES_URL` (`PYTHON_DEPS_VERSION`), so a `RESOURCES_URL` override does not affect them. Manager only; the agent `EXTERNAL_RES` has no `$(CPYTHON)`. The externals workflow only fetches the Python tree for its configure step and does not ship it. Its inventory entry describes the upstream release that is scanned. To publish a new one (a wheel bump, a new Python, or new libraries):
+`cpython` and the wheels of `framework/requirements.txt` are built by `5_builderpackage_embedded-python.yml` (`framework/cpython/compile.sh`) against the libraries of `DEPS_VERSION`, and published as `deps/5/python/<n>` (`libraries/sources/cpython_<arch>.tar.gz` and `libraries/linux/<arch>/cpython.tar.gz`). `make deps` downloads them from `PYTHON_RESOURCES_URL` (`PYTHON_DEPS_VERSION`), so a `RESOURCES_URL` override (a local mirror, `smoke_build.sh`) does not affect them: set `PYTHON_RESOURCES_URL` too to take Python from elsewhere. Manager only; the agent `EXTERNAL_RES` has no `$(CPYTHON)`. The externals workflow only fetches the Python tree for its configure step and does not ship it. Its inventory entry describes the upstream release that is scanned. To publish a new one (a wheel bump, a new Python, or new libraries):
 
 1. Run `5_builderpackage_embedded-python.yml` with `python_deps_version=5/python/<N>`, with `DEPS_VERSION` already at the externals set it must link against.
 2. Upload the contents of its `python-all.tar.gz` (`manifest.json`, with `built_against` and the wheels, and `libraries/…`) to `s3://…/deps/5/python/<N>/`, never over an existing key.

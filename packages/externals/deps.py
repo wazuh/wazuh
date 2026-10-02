@@ -38,7 +38,8 @@ REQUIREMENTS = REPO / "framework" / "requirements.txt"
 MIRROR = "https://packages.wazuh.com/deps"
 TABLE_BEGIN, TABLE_END = "<!-- deps-table:begin -->", "<!-- deps-table:end -->"
 # Fields that define what a set contains; metadata (license, CPE, notes) can be fixed without a new set.
-CONTENT_FIELDS = ("version", "revision", "source", "url", "upstream_sha256", "snapshot_sha256", "patches")
+CONTENT_FIELDS = ("version", "revision", "source", "url", "upstream_sha256", "snapshot_sha256", "patches",
+                  "targets", "platforms")
 # Built by 5_builderpackage_embedded-python.yml and published in the PYTHON_DEPS_VERSION set.
 PYTHON_ENTRY = "cpython"
 
@@ -53,15 +54,15 @@ REQUIRED = {
     "homepage": str,
 }
 OPTIONAL = {
-    "upstream_sha256": str, "snapshot_sha256": str, "target_dir": str, "prebuilt": bool, "scan": bool,
+    "upstream_sha256": str, "snapshot_sha256": str, "prebuilt": bool, "scan": bool,
     "reason": str, "notes": str,
 }
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 # (target, platform) -> extra make arguments; windows needs the MinGW cross-compiler.
 MAKE_COMBOS = {
-    ("manager", "linux"): ["TARGET=manager"],
-    ("agent", "linux"): ["TARGET=agent"],
+    ("manager", "linux"): ["TARGET=manager", "uname_S=Linux"],
+    ("agent", "linux"): ["TARGET=agent", "uname_S=Linux"],
     ("agent", "darwin"): ["TARGET=agent", "uname_S=Darwin"],
     ("agent", "windows"): ["TARGET=winagent"],
 }
@@ -157,6 +158,9 @@ def _check_entry(entry, patches_dir, repo_root):
         problem = _check_url(entry["url"])
         if problem:
             err(problem)
+    # pkg:<type>/<namespace>/<name>@<version>; a "/" inside the version must be percent-encoded.
+    if isinstance(entry.get("purl"), str) and not re.match(r"^pkg:[a-z]+/[^@]+@[^/@]+$", entry["purl"]):
+        err(f"`purl` {entry['purl']!r} is not pkg:<type>/<name>@<version> with an encoded version")
     if isinstance(entry.get("format"), str) and entry["format"] not in FORMATS:
         err(f"`format` must be one of {sorted(FORMATS)}")
     if isinstance(entry.get("strip"), int) and not isinstance(entry["strip"], bool) and entry["strip"] < 0:
@@ -240,12 +244,12 @@ def flatten(doc):
     """Return bash `declare -A` lines describing every entry of a valid inventory."""
     columns = {
         "EXT_URL": lambda e: expand_url(e["url"], e["version"], e["revision"]),
-        "EXT_SHA256": lambda e: e.get("upstream_sha256") or e["snapshot_sha256"],
+        "EXT_SHA256": lambda e: e["upstream_sha256" if e["source"] == "upstream" else "snapshot_sha256"],
         "EXT_SOURCE": lambda e: e["source"],
         "EXT_VERSION": lambda e: e["version"],
         "EXT_FORMAT": lambda e: e["format"],
         "EXT_STRIP": lambda e: str(e["strip"]),
-        "EXT_TARGET": lambda e: e.get("target_dir", e["name"]),
+        "EXT_TARGET": lambda e: e["name"],
         "EXT_PATCHES": lambda e: " ".join(e["patches"]),
         "EXT_PLATFORMS": lambda e: " ".join(e["platforms"]),
     }
@@ -298,7 +302,8 @@ def sbom(entries, requirements):
         component["purl"] = e["purl"]
         component["licenses"] = [{"license": {"name": e["license"]}}]
         component["properties"] = [{"name": "syft:location:0:path", "value": "packages/externals/dependencies.json"}]
-        component["properties"] += [{"name": "wazuh:cpe", "value": c} for c in cpes[1:]]
+        # Syft and Grype read additional CPEs from this property only.
+        component["properties"] += [{"name": "syft:cpe23", "value": c} for c in cpes[1:]]
         components.append(component)
     for name, version in requirements:
         components.append({"bom-ref": f"pypi:{name}", "type": "library", "name": name, "version": version,
@@ -308,7 +313,13 @@ def sbom(entries, requirements):
     return {"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1, "components": components}
 
 
-def manifest(doc, deps_version, wazuh_commit=None, workflow_run=None, files_dir=None, python=None):
+def patch_hashes(entries, patches_dir=PATCHES_DIR):
+    return {patch: hashlib.sha256((Path(patches_dir) / patch).read_bytes()).hexdigest()
+            for e in entries for patch in e.get("patches", [])}
+
+
+def manifest(doc, deps_version, wazuh_commit=None, workflow_run=None, files_dir=None, python=None,
+             patches_dir=PATCHES_DIR):
     """Manifest of an externals set, or with python={"built_against", "requirements"} of a Python set."""
     files = {}
     if files_dir:
@@ -318,6 +329,8 @@ def manifest(doc, deps_version, wazuh_commit=None, workflow_run=None, files_dir=
     result = {"schema": 1, "deps_version": deps_version, "wazuh_commit": wazuh_commit, "workflow_run": workflow_run}
     if python is None:
         result["entries"] = [e for e in doc["entries"] if e["name"] != PYTHON_ENTRY]
+        # A patch edited in place keeps its name; its hash is what the set was built with.
+        result["patches"] = patch_hashes(result["entries"], patches_dir)
     else:
         result["built_against"] = python["built_against"]
         result["entries"] = [e for e in doc["entries"] if e["name"] == PYTHON_ENTRY]
@@ -336,7 +349,7 @@ def load_manifest(source):
         raise RuntimeError(f"no manifest at {source}: {exc}") from exc
 
 
-def drift(doc, published, python=False):
+def drift(doc, published, python=False, patches_dir=PATCHES_DIR):
     """Return the differences in content fields between the inventory and a set manifest."""
     ours = {e["name"]: e for e in doc["entries"] if (e["name"] == PYTHON_ENTRY) == python}
     theirs = {e["name"]: e for e in published.get("entries", [])}
@@ -347,6 +360,11 @@ def drift(doc, published, python=False):
             if ours[name].get(field) != theirs[name].get(field):
                 errors.append(f"{name}: `{field}` is {ours[name].get(field)!r} here but "
                               f"{theirs[name].get(field)!r} in the set manifest")
+    if not python:
+        built = published.get("patches", {})
+        for patch, digest in sorted(patch_hashes(ours.values(), patches_dir).items()):
+            if built.get(patch) != digest:
+                errors.append(f"{patch.split('/')[0]}: patch {patch} differs from the one the set was built with")
     return errors
 
 
@@ -462,7 +480,7 @@ def main(argv=None):
             for warning in warnings:
                 print(f"WARNING: {warning}", file=sys.stderr)
             return _report(validate(doc, external))
-    except (OSError, ValueError, RuntimeError) as exc:
+    except (OSError, ValueError, RuntimeError, KeyError) as exc:
         return _report([f"<inventory>: {exc}"])
     return 0
 

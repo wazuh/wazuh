@@ -702,7 +702,7 @@
         "linux"
       ],
       "cpe": "cpe:2.3:a:llhttp:llhttp:*:*:*:*:*:*:*:*",
-      "purl": "pkg:github/nodejs/llhttp@release/v9.4.2",
+      "purl": "pkg:github/nodejs/llhttp@release%2Fv9.4.2",
       "license": "MIT",
       "author": "Fedor Indutny",
       "homepage": "https://github.com/nodejs/llhttp"

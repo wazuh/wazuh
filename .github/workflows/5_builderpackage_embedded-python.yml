@@ -22,7 +22,9 @@ on:
       python_deps_version:
         description: |
           Set this build will be published as, 5/python/<number> (e.g. 5/python/2
-          for packages.wazuh.com/deps/5/python/2/). Written into manifest.json.
+          for packages.wazuh.com/deps/5/python/2/). When given, the run also
+          assembles that set and its manifest.json; it needs both architectures
+          and build_cpython.
         type: string
         default: ""
         required: false
@@ -147,6 +149,7 @@ jobs:
     # manifest.json; `make deps` reads these paths through PYTHON_DEPS_VERSION.
     name: Assemble the embedded Python set
     needs: build-embedded-python
+    if: ${{ inputs.python_deps_version != '' }}
     runs-on: ubuntu-24.04
     permissions:
       id-token: write
@@ -154,6 +157,14 @@ jobs:
     steps:
       - name: Checkout Wazuh repository
         uses: actions/checkout@v4
+
+      # Without build_cpython, compile.sh repacks the interpreter and wheels of the
+      # current Python set, which the manifest written below would not describe.
+      - name: Check that the set is built in this run
+        if: ${{ inputs.build_cpython != true }}
+        run: |
+          echo "::error::publishing ${{ inputs.python_deps_version }} needs build_cpython"
+          exit 1
 
       - name: Download amd64 sources
         uses: ./.github/actions/download_s3_artifact
@@ -214,7 +225,18 @@ jobs:
         run: |
           set -euo pipefail
           built_against="$(sed -n 's/^DEPS_VERSION[[:space:]]*=[[:space:]]*\([^[:space:]]*\).*/\1/p' src/Makefile | head -n1)"
-          python3 packages/externals/deps.py manifest --python \
+          # The wheels actually packed with the interpreter, as name==version.
+          tar -tzf set/libraries/sources/cpython_x86_64.tar.gz | grep -E '^cpython/Dependencies/[^/]+\.whl$' \
+            | sed -E 's|.*/||; s|^([^-]+)-([^-]+)-.*|\1==\2|' | sort > shipped-requirements.txt
+          python3 - <<'EOF'
+          import re
+          norm = lambda line: re.sub(r"[-_.]+", "-", line.split("==")[0]).lower() + "==" + line.split("==")[1].strip()
+          shipped = {norm(l) for l in open("shipped-requirements.txt") if "==" in l}
+          wanted = {norm(l) for l in open("framework/requirements.txt") if "==" in l}
+          if shipped != wanted:
+              raise SystemExit(f"wheels differ from framework/requirements.txt: missing {sorted(wanted - shipped)}, extra {sorted(shipped - wanted)}")
+          EOF
+          python3 packages/externals/deps.py manifest --python --requirements shipped-requirements.txt \
             --deps-version "${PYTHON_DEPS_VERSION_INPUT:-unassigned}" --built-against "${built_against}" \
             --wazuh-commit "${{ github.sha }}" --workflow-run "${{ github.run_id }}" \
             --files set > manifest.json
