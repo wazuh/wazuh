@@ -83,11 +83,8 @@ int teardown_jailfile(void **state) {
 
 void test_jailfile_invalid_path(void **state) {
     char finalpath[PATH_MAX + 1];
-    char *filename = *state;
 
-    expect_string(__wrap_w_ref_parent_folder, path, filename);
-    will_return(__wrap_w_ref_parent_folder, 1);
-    int ret = _jailfile(finalpath, TMP_DIR, filename);
+    int ret = _jailfile(finalpath, TMP_DIR, "../test_filename");
     assert_int_equal(ret, -1);
 }
 
@@ -95,8 +92,6 @@ void test_jailfile_valid_path(void **state) {
     char finalpath[PATH_MAX + 1];
     char *filename = *state;
 
-    expect_string(__wrap_w_ref_parent_folder, path, filename);
-    will_return(__wrap_w_ref_parent_folder, 0);
     int ret = _jailfile(finalpath, TMP_DIR, filename);
     assert_int_equal(ret, 0);
 #ifdef TEST_WINAGENT
@@ -106,29 +101,60 @@ void test_jailfile_valid_path(void **state) {
 #endif
 }
 
-void test_unsign_invalid_source_incomming(void **state) {
+void test_jailfile_empty_name(void **state) {
     char finalpath[PATH_MAX + 1];
-    char *source =  *state;
 
-    expect_string(__wrap_w_ref_parent_folder, path, source);
-    will_return(__wrap_w_ref_parent_folder, 1);
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8126): At unsign(): Invalid file name.");
-    int ret = _unsign(source, finalpath);
+    int ret = _jailfile(finalpath, TMP_DIR, "");
     assert_int_equal(ret, -1);
 }
 
-void test_unsign_invalid_source_temp(void **state) {
+void test_jailfile_current_folder(void **state) {
     char finalpath[PATH_MAX + 1];
-    char *source =  *state;
 
-    expect_string(__wrap_w_ref_parent_folder, path, source);
-    will_return(__wrap_w_ref_parent_folder, 0);
-    expect_string(__wrap_w_ref_parent_folder, path, source);
-    will_return(__wrap_w_ref_parent_folder, 1);
+    int ret = _jailfile(finalpath, TMP_DIR, ".");
+    assert_int_equal(ret, -1);
+}
+
+void test_jailfile_path_separator(void **state) {
+    char finalpath[PATH_MAX + 1];
+
+    int ret = _jailfile(finalpath, TMP_DIR, "subfolder/test_filename");
+    assert_int_equal(ret, -1);
+
+#ifdef TEST_WINAGENT
+    ret = _jailfile(finalpath, TMP_DIR, "subfolder\\test_filename");
+    assert_int_equal(ret, -1);
+#endif
+}
+
+void test_jailfile_absolute_path(void **state) {
+    char finalpath[PATH_MAX + 1];
+
+    int ret = _jailfile(finalpath, TMP_DIR, "/etc/test_filename");
+    assert_int_equal(ret, -1);
+
+#ifdef TEST_WINAGENT
+    ret = _jailfile(finalpath, TMP_DIR, "C:\\test_filename");
+    assert_int_equal(ret, -1);
+#endif
+}
+
+void test_unsign_absolute_source(void **state) {
+    char finalpath[PATH_MAX + 1];
+
+    // Rejected before any file is touched: no unlink() is expected.
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8126): At unsign(): Invalid file name.");
-    int ret = _unsign(source, finalpath);
+    int ret = _unsign("/etc/test_filename", finalpath);
+    assert_int_equal(ret, -1);
+}
+
+void test_unsign_invalid_source_incomming(void **state) {
+    char finalpath[PATH_MAX + 1];
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8126): At unsign(): Invalid file name.");
+    int ret = _unsign("../test_filename", finalpath);
     assert_int_equal(ret, -1);
 }
 
@@ -136,11 +162,6 @@ void test_unsign_invalid_source_temp(void **state) {
 void test_unsign_invalid_source_len(void **state) {
     char finalpath[PATH_MAX + 1];
     char *source =  *state;
-
-    expect_string(__wrap_w_ref_parent_folder, path, source);
-    will_return(__wrap_w_ref_parent_folder, 0);
-    expect_string(__wrap_w_ref_parent_folder, path, source);
-    will_return(__wrap_w_ref_parent_folder, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8137): At unsign(): Too long temp file.");
@@ -154,10 +175,6 @@ void test_unsign_temp_file_fail(void **state) {
     char finalpath[PATH_MAX + 1];
     char *source =  *state;
 
-    expect_string(__wrap_w_ref_parent_folder, path, source);
-    will_return(__wrap_w_ref_parent_folder, 0);
-    expect_string(__wrap_w_ref_parent_folder, path, source);
-    will_return(__wrap_w_ref_parent_folder, 0);
 
 #ifdef TEST_WINAGENT
     will_return(wrap_mktemp_s, 1);
@@ -167,7 +184,11 @@ void test_unsign_temp_file_fail(void **state) {
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8138): At unsign(): Could not create temporary compressed file.");
 
-    expect_any(__wrap_unlink, file);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_unlink, file, "incoming\\test_filename");
+#else
+    expect_string(__wrap_unlink, file, "var/incoming/test_filename");
+#endif
     will_return(__wrap_unlink, 0);
 
     int ret = _unsign(source, finalpath);
@@ -178,10 +199,6 @@ void test_unsign_wpk_using_fail(void **state) {
     char finalpath[PATH_MAX + 1];
     char *source =  *state;
 
-    expect_string(__wrap_w_ref_parent_folder, path, source);
-    will_return(__wrap_w_ref_parent_folder, 0);
-    expect_string(__wrap_w_ref_parent_folder, path, source);
-    will_return(__wrap_w_ref_parent_folder, 0);
 
 #ifdef TEST_WINAGENT
     will_return(wrap_mktemp_s,  NULL);
@@ -199,7 +216,12 @@ void test_unsign_wpk_using_fail(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "(8139): At unsign(): Could not unsign package file 'var/incoming/test_filename'");
 #endif
     will_return(__wrap_w_wpk_unsign, -1);
-    expect_any_count(__wrap_unlink, file, 2);
+    expect_any(__wrap_unlink, file);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_unlink, file, "incoming\\test_filename");
+#else
+    expect_string(__wrap_unlink, file, "var/incoming/test_filename");
+#endif
     will_return_count(__wrap_unlink, 0, 2);
 
     int ret = _unsign(source, finalpath);
@@ -210,17 +232,13 @@ void test_unsign_temp_chmod_fail(void **state) {
     char finalpath[PATH_MAX + 1];
     char *source =  *state;
 
-    expect_string(__wrap_w_ref_parent_folder, path, source);
-    will_return(__wrap_w_ref_parent_folder, 0);
-    expect_string(__wrap_w_ref_parent_folder, path, source);
-    will_return(__wrap_w_ref_parent_folder, 0);
-
     will_return(__wrap_mkstemp, 8);
     expect_value(__wrap_fchmod, fd, 8);
     expect_value(__wrap_fchmod, mode, 0640);
     will_return(__wrap_fchmod, -1);
 
-    expect_any_count(__wrap_unlink, file, 2);
+    expect_string(__wrap_unlink, file, "tmp/test_filename.gz.XXXXXX");
+    expect_string(__wrap_unlink, file, "var/incoming/test_filename");
     will_return_count(__wrap_unlink, 0, 2);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
@@ -234,10 +252,6 @@ void test_unsign_success(void **state) {
     char finalpath[PATH_MAX + 1];
     char *source =  *state;
 
-    expect_string(__wrap_w_ref_parent_folder, path, source);
-    will_return(__wrap_w_ref_parent_folder, 0);
-    expect_string(__wrap_w_ref_parent_folder, path, source);
-    will_return(__wrap_w_ref_parent_folder, 0);
 
 #ifdef TEST_WINAGENT
     will_return(wrap_mktemp_s,  NULL);
@@ -251,7 +265,11 @@ void test_unsign_success(void **state) {
     will_return(__wrap_fchmod, 0);
 #endif
     will_return(__wrap_w_wpk_unsign, 0);
-    expect_any(__wrap_unlink, file);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_unlink, file, "incoming\\test_filename");
+#else
+    expect_string(__wrap_unlink, file, "var/incoming/test_filename");
+#endif
     will_return(__wrap_unlink, 0);
 
     int ret = _unsign(source, finalpath);
@@ -262,24 +280,17 @@ void test_unsign_success(void **state) {
 void test_uncompress_invalid_filename(void **state) {
     char compressed[PATH_MAX + 1];
     char merged[PATH_MAX + 1];
-    char *package =  *state;
-
-    expect_string(__wrap_w_ref_parent_folder, path, package);
-    will_return(__wrap_w_ref_parent_folder, 1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8126): At uncompress(): Invalid file name.");
 
-    int ret = _uncompress(compressed, package, merged);
+    int ret = _uncompress(compressed, "../test_filename", merged);
     assert_int_equal(ret, -1);
 }
 
 void test_uncompress_invalid_file_len(void **state) {
     char merged[PATH_MAX + 1];
     char *package =  *state;
-
-    expect_string(__wrap_w_ref_parent_folder, path, package);
-    will_return(__wrap_w_ref_parent_folder, 0);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8137): At uncompress(): Too long temp file.");
@@ -291,8 +302,6 @@ void test_uncompress_invalid_file_len(void **state) {
 void test_uncompress_gzopen_fail(void **state) {
     char merged[PATH_MAX + 1];
     char *package =  *state;
-    expect_string(__wrap_w_ref_parent_folder, path, package);
-    will_return(__wrap_w_ref_parent_folder, 0);
 #ifdef TEST_WINAGENT
     const char * source = "tmp\\compressed_test";
 #else
@@ -315,8 +324,6 @@ void test_uncompress_gzopen_fail(void **state) {
 void test_uncompress_fopen_fail(void **state) {
     char merged[PATH_MAX + 1];
     char *package =  *state;
-    expect_string(__wrap_w_ref_parent_folder, path, package);
-    will_return(__wrap_w_ref_parent_folder, 0);
 #ifdef TEST_WINAGENT
     const char * source = "tmp\\compressed_test";
 #else
@@ -356,8 +363,6 @@ void test_uncompress_fopen_fail(void **state) {
 void test_uncompress_fwrite_fail(void **state) {
     char merged[PATH_MAX + 1];
     char *package =  *state;
-    expect_string(__wrap_w_ref_parent_folder, path, package);
-    will_return(__wrap_w_ref_parent_folder, 0);
 #ifdef TEST_WINAGENT
     const char * source = "tmp\\compressed_test";
 #else
@@ -406,8 +411,6 @@ void test_uncompress_fwrite_fail(void **state) {
 void test_uncompress_gzread_fail(void **state) {
     char merged[PATH_MAX + 1];
     char *package =  *state;
-    expect_string(__wrap_w_ref_parent_folder, path, package);
-    will_return(__wrap_w_ref_parent_folder, 0);
 #ifdef TEST_WINAGENT
     const char * source = "tmp\\compressed_test";
 #else
@@ -453,8 +456,6 @@ void test_uncompress_gzread_fail(void **state) {
 void test_uncompress_success(void **state) {
     char merged[PATH_MAX + 1];
     char *package =  *state;
-    expect_string(__wrap_w_ref_parent_folder, path, package);
-    will_return(__wrap_w_ref_parent_folder, 0);
 #ifdef TEST_WINAGENT
     const char * source = "tmp\\compressed_test";
 #else
@@ -515,13 +516,12 @@ int teardown_commands(void **state) {
 
 void test_wm_agent_upgrade_com_upgrade_unsign_error(void **state) {
     cJSON * command = *state;
+    cJSON_ReplaceItemInObject(command, "file", cJSON_CreateString("/etc/test_file"));
 
     will_return(__wrap_getDefine_Int, 3600);
 
     // Unsign
     {
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 1);
         expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
         expect_string(__wrap__mterror, formatted_msg, "(8126): At unsign(): Invalid file name.");
     }
@@ -542,10 +542,6 @@ void test_wm_agent_upgrade_com_upgrade_uncompress_error(void **state) {
 
     // Unsign
     {
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
             will_return(wrap_mktemp_s,  NULL);
@@ -565,10 +561,13 @@ void test_wm_agent_upgrade_com_upgrade_uncompress_error(void **state) {
 
     // Uncompress
     {
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 1);
+        expect_w_gzopen_nofollow(TMP_DIR, "test_file.gz.XXXXXX", "rb", NULL);
         expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-        expect_string(__wrap__mterror, formatted_msg, "(8126): At uncompress(): Invalid file name.");
+        #ifdef TEST_WINAGENT
+            expect_string(__wrap__mterror, formatted_msg, "(8140): At uncompress(): Unable to open 'tmp\\test_file.gz.XXXXXX'");
+        #else
+            expect_string(__wrap__mterror, formatted_msg, "(8140): At uncompress(): Unable to open 'tmp/test_file.gz.XXXXXX'");
+        #endif
     }
 
     expect_any(__wrap_unlink, file);
@@ -592,10 +591,6 @@ void test_wm_agent_upgrade_com_upgrade_clean_directory_error(void **state) {
 
     // Unsign
     {
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
             will_return(wrap_mktemp_s,  NULL);
@@ -615,8 +610,6 @@ void test_wm_agent_upgrade_com_upgrade_clean_directory_error(void **state) {
 
     // Uncompress
     {
-        expect_any(__wrap_w_ref_parent_folder, path);
-        will_return(__wrap_w_ref_parent_folder, 0);
 
         expect_w_gzopen_nofollow(TMP_DIR, "test_file.gz.XXXXXX", "rb", (gzFile)4);
 
@@ -669,10 +662,6 @@ void test_wm_agent_upgrade_com_unmerge_error(void **state) {
 
     // Unsign
     {
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
             will_return(wrap_mktemp_s,  NULL);
@@ -692,8 +681,6 @@ void test_wm_agent_upgrade_com_unmerge_error(void **state) {
 
     // Uncompress
     {
-        expect_any(__wrap_w_ref_parent_folder, path);
-        will_return(__wrap_w_ref_parent_folder, 0);
 
         expect_w_gzopen_nofollow(TMP_DIR, "test_file.gz.XXXXXX", "rb", (gzFile)4);
 
@@ -749,14 +736,11 @@ void test_wm_agent_upgrade_com_unmerge_error(void **state) {
 
 void test_wm_agent_upgrade_com_installer_error(void **state) {
     cJSON * command = *state;
+    cJSON_ReplaceItemInObject(command, "installer", cJSON_CreateString("../install.sh"));
 
     will_return(__wrap_getDefine_Int, 3600);
     // Unsign
     {
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
             will_return(wrap_mktemp_s,  NULL);
@@ -775,8 +759,6 @@ void test_wm_agent_upgrade_com_installer_error(void **state) {
     }
     // Uncompress
     {
-        expect_any(__wrap_w_ref_parent_folder, path);
-        will_return(__wrap_w_ref_parent_folder, 0);
 
         expect_w_gzopen_nofollow(TMP_DIR, "test_file.gz.XXXXXX", "rb", (gzFile)4);
 
@@ -820,9 +802,6 @@ void test_wm_agent_upgrade_com_installer_error(void **state) {
     expect_any(__wrap_unlink, file);
     will_return(__wrap_unlink, 0);
 
-    expect_any(__wrap_w_ref_parent_folder, path);
-    will_return(__wrap_w_ref_parent_folder, 1);
-
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8126): At upgrade: Invalid file name.");
 
@@ -840,10 +819,6 @@ void test_wm_agent_upgrade_com_chmod_error(void **state) {
     will_return(__wrap_getDefine_Int, 3600);
     // Unsign
     {
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
             will_return(wrap_mktemp_s,  NULL);
@@ -862,8 +837,6 @@ void test_wm_agent_upgrade_com_chmod_error(void **state) {
     }
     // Uncompress
     {
-        expect_any(__wrap_w_ref_parent_folder, path);
-        will_return(__wrap_w_ref_parent_folder, 0);
 
         expect_w_gzopen_nofollow(TMP_DIR, "test_file.gz.XXXXXX", "rb", (gzFile)4);
 
@@ -909,8 +882,6 @@ void test_wm_agent_upgrade_com_chmod_error(void **state) {
 
     // Jailfile
     {
-        expect_string(__wrap_w_ref_parent_folder, path, "install.sh");
-        will_return(__wrap_w_ref_parent_folder, 0);
     }
 
     expect_string(__wrap_chmod, path, "var/upgrade/install.sh");
@@ -933,10 +904,6 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
     will_return(__wrap_getDefine_Int, 3600);
     // Unsign
     {
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
             will_return(wrap_mktemp_s,  NULL);
@@ -955,8 +922,6 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
     }
     // Uncompress
     {
-        expect_any(__wrap_w_ref_parent_folder, path);
-        will_return(__wrap_w_ref_parent_folder, 0);
 
         expect_w_gzopen_nofollow(TMP_DIR, "test_file.gz.XXXXXX", "rb", (gzFile)4);
 
@@ -1002,8 +967,6 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
 
     // Jailfile
     {
-        expect_string(__wrap_w_ref_parent_folder, path, "install.sh");
-        will_return(__wrap_w_ref_parent_folder, 0);
     }
 
     #ifndef TEST_WINAGENT
@@ -1014,7 +977,6 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
     #else
     expect_string(__wrap_wm_exec, command, "upgrade\\install.sh");
     #endif
-
 
     expect_value(__wrap_wm_exec, secs, 3600);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -1043,10 +1005,6 @@ void test_wm_agent_upgrade_com_success(void **state) {
     will_return(__wrap_getDefine_Int, 3600);
     // Unsign
     {
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
-        expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-        will_return(__wrap_w_ref_parent_folder, 0);
 
         #ifdef TEST_WINAGENT
             will_return(wrap_mktemp_s,  NULL);
@@ -1065,8 +1023,6 @@ void test_wm_agent_upgrade_com_success(void **state) {
     }
     // Uncompress
     {
-        expect_any(__wrap_w_ref_parent_folder, path);
-        will_return(__wrap_w_ref_parent_folder, 0);
 
         expect_w_gzopen_nofollow(TMP_DIR, "test_file.gz.XXXXXX", "rb", (gzFile)4);
 
@@ -1112,8 +1068,6 @@ void test_wm_agent_upgrade_com_success(void **state) {
 
     // Jailfile
     {
-        expect_string(__wrap_w_ref_parent_folder, path, "install.sh");
-        will_return(__wrap_w_ref_parent_folder, 0);
     }
 
     #ifndef TEST_WINAGENT
@@ -1124,7 +1078,6 @@ void test_wm_agent_upgrade_com_success(void **state) {
     #else
     expect_string(__wrap_wm_exec, command, "upgrade\\install.sh");
     #endif
-
 
     expect_value(__wrap_wm_exec, secs, 3600);
     expect_value(__wrap_wm_exec, add_path, NULL);
@@ -1226,10 +1179,6 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state) {
         will_return(__wrap_getDefine_Int, 3600);
         // Unsign
         {
-            expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-            will_return(__wrap_w_ref_parent_folder, 0);
-            expect_string(__wrap_w_ref_parent_folder, path, "test_file");
-            will_return(__wrap_w_ref_parent_folder, 0);
 
             #ifdef TEST_WINAGENT
                 will_return(wrap_mktemp_s,  NULL);
@@ -1248,8 +1197,6 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state) {
         }
         // Uncompress
         {
-            expect_any(__wrap_w_ref_parent_folder, path);
-            will_return(__wrap_w_ref_parent_folder, 0);
 
             expect_w_gzopen_nofollow(TMP_DIR, "test_file.gz.XXXXXX", "rb", (gzFile)4);
 
@@ -1295,8 +1242,6 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state) {
 
         // Jailfile
         {
-            expect_string(__wrap_w_ref_parent_folder, path, "install.sh");
-            will_return(__wrap_w_ref_parent_folder, 0);
         }
 
         #ifndef TEST_WINAGENT
@@ -1307,7 +1252,6 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state) {
         #else
         expect_string(__wrap_wm_exec, command, "upgrade\\install.sh");
         #endif
-
 
         expect_value(__wrap_wm_exec, secs, 3600);
         expect_value(__wrap_wm_exec, add_path, NULL);
@@ -1353,10 +1297,14 @@ void test_wm_agent_upgrade_process_unknown(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_jailfile_invalid_path, setup_jailfile, teardown_jailfile),
+        cmocka_unit_test(test_jailfile_invalid_path),
         cmocka_unit_test_setup_teardown(test_jailfile_valid_path, setup_jailfile, teardown_jailfile),
-        cmocka_unit_test_setup_teardown(test_unsign_invalid_source_incomming, setup_jailfile, teardown_jailfile),
-        cmocka_unit_test_setup_teardown(test_unsign_invalid_source_temp, setup_jailfile, teardown_jailfile),
+        cmocka_unit_test(test_jailfile_empty_name),
+        cmocka_unit_test(test_jailfile_current_folder),
+        cmocka_unit_test(test_jailfile_path_separator),
+        cmocka_unit_test(test_jailfile_absolute_path),
+        cmocka_unit_test(test_unsign_absolute_source),
+        cmocka_unit_test(test_unsign_invalid_source_incomming),
         #ifdef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_unsign_invalid_source_len, setup_jailfile_long_name, teardown_jailfile),
         #endif
@@ -1366,7 +1314,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_unsign_temp_chmod_fail, setup_jailfile, teardown_jailfile),
         #endif
         cmocka_unit_test_setup_teardown(test_unsign_success, setup_jailfile, teardown_jailfile),
-        cmocka_unit_test_setup_teardown(test_uncompress_invalid_filename, setup_jailfile, teardown_jailfile),
+        cmocka_unit_test(test_uncompress_invalid_filename),
         cmocka_unit_test_setup_teardown(test_uncompress_invalid_file_len, setup_jailfile_long_name2, teardown_jailfile),
         cmocka_unit_test_setup_teardown(test_uncompress_gzopen_fail, setup_jailfile, teardown_jailfile),
         cmocka_unit_test_setup_teardown(test_uncompress_fopen_fail, setup_jailfile, teardown_jailfile),
