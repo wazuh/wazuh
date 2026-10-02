@@ -16,6 +16,7 @@
 #include <string>
 #include "stringHelper.h"
 #include "filesystemHelper.h"
+#include "safe_file_reader.hpp"
 
 #define MAX_PATH_LENGTH 4096
 
@@ -98,6 +99,14 @@ namespace chrome
     void ChromeExtensionsProvider::localizeParameters(ChromeExtension& extension)
     {
         const std::string& extensionPath = extension.path;
+        const std::string& defaultLocale = extension.default_locale;
+
+        // The locale is a single directory name inside the extension
+        if (defaultLocale.find_first_of("/\\") != std::string::npos || defaultLocale.find("..") != std::string::npos)
+        {
+            return;
+        }
+
         std::string localesPath = Utils::joinPaths(extensionPath, EXTENSION_LOCALES_DIR);
         std::string defaultLocalePath = Utils::joinPaths(localesPath, extension.default_locale);
         std::string messagesFilePath = Utils::joinPaths(defaultLocalePath, EXTENSION_LOCALES_MESSAGES_FILE);
@@ -117,8 +126,14 @@ namespace chrome
                 descriptionKey = Utils::toLowerCase(descriptionKey);
             }
 
-            std::ifstream messagesFile(messagesFilePath);
-            nlohmann::json messagesJson = nlohmann::json::parse(messagesFile);
+            std::string messagesContent;
+
+            if (!browser_extensions::readRegularFile(messagesFilePath, messagesContent, m_currentOwnerUid))
+            {
+                return;
+            }
+
+            nlohmann::json messagesJson = nlohmann::json::parse(messagesContent);
             extension.name = messagesJson.contains(nameKey) ? messagesJson[nameKey]["message"].get<std::string>() : extension.name;
             extension.description = messagesJson.contains(descriptionKey) ? messagesJson[descriptionKey]["message"].get<std::string>() : extension.description;
         }
@@ -229,15 +244,8 @@ namespace chrome
         return oss.str();
     }
 
-    std::string ChromeExtensionsProvider::sha256File(const std::string& filepath)
+    std::string ChromeExtensionsProvider::sha256Content(const std::string& content)
     {
-        std::ifstream file(filepath, std::ios::binary);
-
-        if (!file)
-        {
-            return "";
-        }
-
         EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
 
         if (!mdctx)
@@ -251,15 +259,10 @@ namespace chrome
             return "";
         }
 
-        std::vector<char> buffer(8192);
-
-        while (file.read(buffer.data(), buffer.size()) || file.gcount() > 0)
+        if (EVP_DigestUpdate(mdctx, content.data(), content.size()) != 1)
         {
-            if (EVP_DigestUpdate(mdctx, buffer.data(), file.gcount()) != 1)
-            {
-                EVP_MD_CTX_free(mdctx);
-                return "";
-            }
+            EVP_MD_CTX_free(mdctx);
+            return "";
         }
 
         unsigned char hash[EVP_MAX_MD_SIZE];
@@ -346,11 +349,11 @@ namespace chrome
         extension.referenced_identifier = key;
     }
 
-    void ChromeExtensionsProvider::getCommonSettings(ChromeExtension& extension, const std::string& manifestPath)
+    void ChromeExtensionsProvider::getCommonSettings(ChromeExtension& extension, const std::string& manifestContent)
     {
         extension.browser_type = m_currentBrowserType;
         extension.uid = m_currentUid;
-        extension.manifest_hash = sha256File(manifestPath);
+        extension.manifest_hash = sha256Content(manifestContent);
     }
 
     ChromeExtensionList ChromeExtensionsProvider::getExtensionsFromPreferences(const std::string& profilePath, const std::string& preferencesFilePath, const std::string& profileName)
@@ -362,12 +365,18 @@ namespace chrome
             return ChromeExtensionList();
         }
 
-        std::ifstream preferencesFile(preferencesFilePath);
+        std::string preferencesContent;
+
+        if (!browser_extensions::readRegularFile(preferencesFilePath, preferencesContent, m_currentOwnerUid))
+        {
+            return ChromeExtensionList();
+        }
+
         nlohmann::json preferencesJson;
 
         try
         {
-            preferencesJson = nlohmann::json::parse(preferencesFile);
+            preferencesJson = nlohmann::json::parse(preferencesContent);
         }
         catch (const nlohmann::json::parse_error& e)
         {
@@ -388,7 +397,11 @@ namespace chrome
             {
                 std::string extensionPath = item.value()["path"];
 
-                if (!Utils::isAbsolutePath(extensionPath))
+                const bool insideProfile = !Utils::isAbsolutePath(extensionPath);
+                const std::string extensionsDir = Utils::joinPaths(profilePath, EXTENSIONS_DIR);
+                const std::string relativePath = extensionPath;
+
+                if (insideProfile)
                 {
                     if (extensionPath.find("..") != std::string::npos ||
                             extensionPath.find("//") != std::string::npos ||
@@ -397,12 +410,15 @@ namespace chrome
                         return ChromeExtensionList();
                     }
 
-                    extensionPath = Utils::joinPaths(Utils::joinPaths(profilePath, EXTENSIONS_DIR), extensionPath);
+                    extensionPath = Utils::joinPaths(extensionsDir, extensionPath);
                 }
 
                 std::string manifestPath = Utils::joinPaths(extensionPath, EXTENSION_MANIFEST_FILE);
+                std::string manifestContent;
 
-                if (Utils::existsDir(extensionPath) && Utils::existsRegular(manifestPath))
+                if (Utils::existsDir(extensionPath) &&
+                        (!insideProfile || browser_extensions::isPlainDirectoryChain(extensionsDir, relativePath)) &&
+                        browser_extensions::readRegularFile(manifestPath, manifestContent, m_currentOwnerUid))
                 {
                     ChromeExtension extension;
 
@@ -411,15 +427,14 @@ namespace chrome
                     extension.path = std::move(extensionPath);
                     extension.referenced = std::to_string(1);
 
-                    getCommonSettings(extension, manifestPath);
+                    getCommonSettings(extension, manifestContent);
                     parsePreferenceSettings(extension, item.key(), item.value());
 
-                    std::ifstream manifestFile(manifestPath);
                     nlohmann::json manifestJson;
 
                     try
                     {
-                        manifestJson = nlohmann::json::parse(manifestFile);
+                        manifestJson = nlohmann::json::parse(manifestContent);
                     }
                     catch (const nlohmann::json::parse_error& e)
                     {
@@ -460,14 +475,20 @@ namespace chrome
             return profileName;
         }
 
-        std::ifstream preferencesFile(preferencesFilePath);
-        std::ifstream securePreferencesFile(securePreferencesFilePath);
+        std::string preferencesContent;
+        std::string extraPreferencesContent;
+
+        if (!browser_extensions::readRegularFile(preferencesFilePath, preferencesContent, m_currentOwnerUid) ||
+                !browser_extensions::readRegularFile(securePreferencesFilePath, extraPreferencesContent, m_currentOwnerUid))
+        {
+            return "";
+        }
 
         nlohmann::json preferencesJson;
 
         try
         {
-            preferencesJson = nlohmann::json::parse(preferencesFile);
+            preferencesJson = nlohmann::json::parse(preferencesContent);
         }
         catch (const nlohmann::json::parse_error& e)
         {
@@ -478,7 +499,7 @@ namespace chrome
 
         try
         {
-            securePreferencesJson = nlohmann::json::parse(securePreferencesFile);
+            securePreferencesJson = nlohmann::json::parse(extraPreferencesContent);
         }
         catch (const nlohmann::json::parse_error& e)
         {
@@ -559,17 +580,19 @@ namespace chrome
         {
             const std::string subDir = Utils::joinPaths(extensionPath, entry);
 
-            if (!Utils::existsDir(subDir)) continue;
+            if (!Utils::existsDir(subDir) || !browser_extensions::isPlainDirectory(subDir)) continue;
 
             for (const auto& subEntry : Utils::enumerateDir(subDir))
             {
                 std::string subSubDir = Utils::joinPaths(subDir, subEntry);
 
-                if (!Utils::existsDir(subSubDir)) continue;
+                if (!Utils::existsDir(subSubDir) || !browser_extensions::isPlainDirectory(subSubDir)) continue;
 
                 std::string manifestPath = Utils::joinPaths(subSubDir, EXTENSION_MANIFEST_FILE);
 
-                if (Utils::existsRegular(manifestPath))
+                std::string manifestContent;
+
+                if (browser_extensions::readRegularFile(manifestPath, manifestContent, m_currentOwnerUid))
                 {
                     ChromeExtension extension;
 
@@ -579,14 +602,13 @@ namespace chrome
                     extension.referenced = "0";
                     extension.install_timestamp = "";
 
-                    getCommonSettings(extension, manifestPath);
+                    getCommonSettings(extension, manifestContent);
 
-                    std::ifstream manifestFile(manifestPath);
                     nlohmann::json manifestJson;
 
                     try
                     {
-                        manifestJson = nlohmann::json::parse(manifestFile);
+                        manifestJson = nlohmann::json::parse(manifestContent);
                     }
                     catch (const nlohmann::json::parse_error& e)
                     {
@@ -678,6 +700,7 @@ namespace chrome
 
             m_currentUid = m_chromeExtensionsWrapper->getUserId(user);
             const std::string userHomePath = Utils::joinPaths(homePath, user);
+            m_currentOwnerUid = m_currentUid.empty() ? browser_extensions::homeDirectoryOwner(userHomePath) : m_currentUid;
 
 #if defined(_WIN32) || defined(_WIN64)
 
