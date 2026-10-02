@@ -19,6 +19,15 @@ on:
         type: boolean
         default: true
         required: false
+      python_deps_version:
+        description: |
+          Set this build will be published as, 5/python/<number> (e.g. 5/python/2
+          for packages.wazuh.com/deps/5/python/2/). When given, the run also
+          assembles that set and its manifest.json; it needs both architectures
+          and build_cpython.
+        type: string
+        default: ""
+        required: false
 
 jobs:
   pick-architecture:
@@ -131,6 +140,115 @@ jobs:
         with:
           name: ${{ env.ARCH }}-compiled
           path: /tmp/cpython.tar.gz
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+  python-set:
+    # Lay out both architectures as packages.wazuh.com/deps/5/python/<n>/ with its
+    # manifest.json; `make deps` reads these paths through PYTHON_DEPS_VERSION.
+    name: Assemble the embedded Python set
+    needs: build-embedded-python
+    if: ${{ inputs.python_deps_version != '' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout Wazuh repository
+        uses: actions/checkout@v4
+
+      # Without build_cpython, compile.sh repacks the interpreter and wheels of the
+      # current Python set, which the manifest written below would not describe.
+      - name: Check that the set is built in this run
+        if: ${{ inputs.build_cpython != true }}
+        run: |
+          echo "::error::publishing ${{ inputs.python_deps_version }} needs build_cpython"
+          exit 1
+
+      - name: Download amd64 sources
+        uses: ./.github/actions/download_s3_artifact
+        with:
+          name: amd64-sources
+          path: downloaded/amd64-sources
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Download amd64 compiled
+        uses: ./.github/actions/download_s3_artifact
+        with:
+          name: amd64-compiled
+          path: downloaded/amd64-compiled
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Download arm64 sources
+        uses: ./.github/actions/download_s3_artifact
+        with:
+          name: arm64-sources
+          path: downloaded/arm64-sources
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Download arm64 compiled
+        uses: ./.github/actions/download_s3_artifact
+        with:
+          name: arm64-compiled
+          path: downloaded/arm64-compiled
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Lay out the set
+        run: |
+          set -euo pipefail
+          # <artifact arch>:<cpython_ archive suffix>:<PRECOMPILED_RES arch>
+          for spec in amd64:x86_64:amd64 arm64:arm64:aarch64; do
+            IFS=: read -r arch archive_arch res_arch <<< "${spec}"
+            sources="$(find "downloaded/${arch}-sources" -name "cpython_${archive_arch}.tar.gz" 2>/dev/null | head -n1 || true)"
+            compiled="$(find "downloaded/${arch}-compiled" -name cpython.tar.gz 2>/dev/null | head -n1 || true)"
+            if [ -z "${sources}" ] || [ -z "${compiled}" ]; then
+              echo "::error::${arch} artifacts missing: a Python set needs both architectures"
+              exit 1
+            fi
+            mkdir -p set/libraries/sources "set/libraries/linux/${res_arch}"
+            cp "${sources}" set/libraries/sources/
+            cp "${compiled}" "set/libraries/linux/${res_arch}/cpython.tar.gz"
+          done
+
+      - name: Write the set manifest
+        env:
+          PYTHON_DEPS_VERSION_INPUT: ${{ inputs.python_deps_version }}
+        run: |
+          set -euo pipefail
+          built_against="$(sed -n 's/^DEPS_VERSION[[:space:]]*=[[:space:]]*\([^[:space:]]*\).*/\1/p' src/Makefile | head -n1)"
+          # The wheels actually packed with the interpreter, as name==version.
+          tar -tzf set/libraries/sources/cpython_x86_64.tar.gz | grep -E '^cpython/Dependencies/[^/]+\.whl$' \
+            | sed -E 's|.*/||; s|^([^-]+)-([^-]+)-.*|\1==\2|' | sort > shipped-requirements.txt
+          python3 - <<'EOF'
+          import re
+          norm = lambda line: re.sub(r"[-_.]+", "-", line.split("==")[0]).lower() + "==" + line.split("==")[1].strip()
+          shipped = {norm(l) for l in open("shipped-requirements.txt") if "==" in l}
+          wanted = {norm(l) for l in open("framework/requirements.txt") if "==" in l}
+          if shipped != wanted:
+              raise SystemExit(f"wheels differ from framework/requirements.txt: missing {sorted(wanted - shipped)}, extra {sorted(shipped - wanted)}")
+          EOF
+          python3 packages/externals/deps.py manifest --python --requirements shipped-requirements.txt \
+            --deps-version "${PYTHON_DEPS_VERSION_INPUT:-unassigned}" --built-against "${built_against}" \
+            --wazuh-commit "${{ github.sha }}" --workflow-run "${{ github.run_id }}" \
+            --files set > manifest.json
+          mv manifest.json set/manifest.json
+          tar -czf python-all.tar.gz --owner=0 --group=0 --no-same-owner -C set manifest.json libraries
+          ls -lh python-all.tar.gz
+
+      - name: Upload the embedded Python set
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: python-all
+          path: python-all.tar.gz
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}

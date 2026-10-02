@@ -1,0 +1,105 @@
+name: 5.X - External dependencies vulnerability checks
+
+# Scans the vendored C/C++ dependencies and the framework wheels of every maintained
+# branch with Grype. 5.x branches are described by packages/externals/dependencies.json;
+# older branches by the manifest.json of the set their DEPS_VERSION points at. Each
+# branch gets a code scanning analysis (category externals-vulns-<ref>), which the
+# weekly operational report reads through the code scanning API.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Tuesday, before the weekly operational bootstrap (06:00 UTC) reads the results.
+    - cron: '0 3 * * 2'
+
+permissions:
+  contents: read
+
+jobs:
+  pick-branches:
+    name: Get branches to analyze
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate dynamic matrix
+        id: set-matrix
+        run: |
+          VERSIONED_BRANCHES_REGEX="^main$|^[0-9]{1,3}\.[0-9]{1,2}\.[0-9]{1,2}$"
+
+          BRANCHES=$(git branch -r | awk '{print $1}' | sed 's|origin/||' | grep -E "$VERSIONED_BRANCHES_REGEX")
+
+          JSON_ARRAY=$(printf '%s\n' "$BRANCHES" | while read -r ref; do
+            sha=$(git rev-parse "origin/$ref")
+            jq -c -n --arg ref "$ref" --arg sha "$sha" '{ref: $ref, sha: $sha}'
+          done | jq -c -s '{include: .}')
+
+          echo "matrix=$JSON_ARRAY" >> "$GITHUB_OUTPUT"
+          echo Picked branches: $JSON_ARRAY
+
+  checking-externals-vulns:
+    needs: pick-branches
+    name: Checking external dependencies vulnerabilities
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.pick-branches.outputs.matrix) }}
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    env:
+      # Read from the workflow's ref so every branch gets the same verdicts.
+      GRYPE_CONFIG: tools/packages/externals/.grype.yaml
+    steps:
+      - name: Checkout the tooling
+        uses: actions/checkout@v4
+        with:
+          path: tools
+
+      - name: Checkout the branch to scan
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+          path: branch
+
+      - name: Build the SBOM
+        id: sbom
+        run: |
+          deps="python3 tools/packages/externals/deps.py"
+          requirements="branch/framework/requirements.txt"
+          if [ -f branch/packages/externals/dependencies.json ]; then
+            $deps sbom --inventory branch/packages/externals/dependencies.json --requirements "$requirements" --output sbom.cdx.json
+          else
+            deps_version=$(sed -n 's/^DEPS_VERSION[[:space:]]*=[[:space:]]*\([^[:space:]]*\).*/\1/p' branch/src/Makefile | head -n1)
+            manifest="https://packages.wazuh.com/deps/${deps_version}/manifest.json"
+            if ! curl -fsI "$manifest" > /dev/null; then
+              echo "::notice::${{ matrix.ref }} has no dependencies.json and set ${deps_version} has no manifest.json; skipping"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            $deps sbom --manifest "$manifest" --requirements "$requirements" --output sbom.cdx.json
+          fi
+
+      - name: Scan the SBOM
+        if: steps.sbom.outputs.skip != 'true'
+        uses: anchore/scan-action@v6
+        with:
+          sbom: sbom.cdx.json
+          fail-build: false
+          output-format: sarif
+          output-file: grype.sarif
+
+      - name: Upload scan results to GitHub
+        if: steps.sbom.outputs.skip != 'true'
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          ref: refs/heads/${{ matrix.ref }}
+          sha: ${{ matrix.sha }}
+          sarif_file: grype.sarif
+          checkout_path: branch
+          category: externals-vulns-${{ matrix.ref }}

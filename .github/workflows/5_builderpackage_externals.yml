@@ -1,4 +1,3 @@
-run-name: External deps - ${{ inputs.dependencies && format('{0}', inputs.dependencies) || '(no version overrides)' }}
 name: 5.X - Package - Build external dependencies
 
 # Rebuilds Wazuh's external dependencies across every (system, architecture)
@@ -43,12 +42,10 @@ name: 5.X - Package - Build external dependencies
 on:
   workflow_dispatch:
     inputs:
-      dependencies:
+      deps_version:
         description: |
-          Semicolon-separated list of deps to update, in "name:version" form.
-          Example: "curl:8.13.0;openssl:3.5.2".
-          Empty = rebuild all deps from currently vendored sources without
-          replacing any.
+          Set this build will be published as, 5/externals/<number> (e.g. 5/externals/2
+          for packages.wazuh.com/deps/5/externals/2/). Written into manifest.json.
         type: string
         required: false
         default: ""
@@ -137,7 +134,6 @@ jobs:
             --architecture "${{ matrix.architecture }}" \
             --target "${{ matrix.target }}" \
             --tag "${TAG:-}" \
-            --dependencies "${{ inputs.dependencies }}" \
             --jobs "${jobs}" \
             --verbose
 
@@ -323,11 +319,21 @@ jobs:
         run: |
           cp -rv libbpf-bootstrap/. consolidated/libraries/linux/
 
+      - name: Write the set manifest
+        env:
+          DEPS_VERSION_INPUT: ${{ inputs.deps_version }}
+        run: |
+          python3 packages/externals/deps.py manifest \
+            --deps-version "${DEPS_VERSION_INPUT:-unassigned}" \
+            --wazuh-commit "${{ github.sha }}" --workflow-run "${{ github.run_id }}" \
+            --files consolidated > manifest.json
+          mv manifest.json consolidated/manifest.json
+
       - name: Pack consolidated tarball
         run: |
           tar -czf externals-all.tar.gz \
               --owner=0 --group=0 --no-same-owner \
-              -C consolidated libraries
+              -C consolidated manifest.json libraries
           ls -lh externals-all.tar.gz
 
       - name: Upload consolidated tarball

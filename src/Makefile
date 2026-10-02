@@ -269,6 +269,7 @@ help: failtarget
 	@echo "   make DEBUG=yes               						Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make INSTALLDIR=/path        						Wazuh's installation path. Mandatory when compiling the python interpreter from sources using PYTHON_SOURCE."
 	@echo "   make RESOURCES_URL           						Set the Wazuh resources URL"
+	@echo "   make PYTHON_RESOURCES_URL    						Set the URL of the embedded Python set"
 	@echo "   make EXTERNAL_SRC_ONLY=yes   						Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building."
 	@echo "   make USE_INOTIFY=yes         						Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_BIG_ENDIAN=yes      						Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
@@ -297,6 +298,7 @@ settings:
 	@echo "    DEBUG:              ${DEBUG}"
 	@echo "    INSTALLDIR:         ${INSTALLDIR}"
 	@echo "    RESOURCES_URL:      ${RESOURCES_URL}"
+	@echo "    PYTHON_RESOURCES_URL: ${PYTHON_RESOURCES_URL}"
 	@echo "    EXTERNAL_SRC_ONLY:  ${EXTERNAL_SRC_ONLY}"
 	@echo "    HTTP_REQUEST_BRANCH:${HTTP_REQUEST_BRANCH}"
 	@echo "User settings:"
@@ -418,9 +420,12 @@ ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-all-errors'))
 	FETCH_CURL_FLAGS += --retry-all-errors
 endif
 FETCH_CURL := curl $(FETCH_CURL_FLAGS) -o
-DEPS_VERSION = 99-37702
+DEPS_VERSION = 5/externals/1
+# The embedded Python and its wheels are published apart: they change far more often.
+PYTHON_DEPS_VERSION = 5/python/1
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
+PYTHON_RESOURCES_URL := $(RESOURCES_URL_BASE)$(PYTHON_DEPS_VERSION)
 CPYTHON := cpython
 PYTHON_SOURCE := no
 
@@ -616,18 +621,18 @@ ifneq (,$(PRECOMPILED_RES))
 external/$(CPYTHON).tar.gz: external-precompiled/$(CPYTHON).tar.gz
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
 	@test -e $(patsubst %.gz,%,$@) ||\
-	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz &&\
+	($(CURL) $@ $(PYTHON_RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz &&\
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
 	@test -d $(patsubst %.tar.gz,%,$@) || (cd external && $(GZIP) $(patsubst external/%.gz,%,$@))
 	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"
 
 external-precompiled/$(CPYTHON).tar.gz:
-	-@$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
+	-@$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(PYTHON_RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
 	-@cd external && [ -f $(patsubst external-precompiled/%,%,$@) ] && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
 else
 external/$(CPYTHON).tar.gz:
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
-	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz || { printf "\033[31m[-] Dependency %s failed installation\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"; exit 1; }
+	@$(CURL) $@ $(PYTHON_RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz || { printf "\033[31m[-] Dependency %s failed installation\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"; exit 1; }
 	 @cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	 @cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	 @rm $(patsubst %.gz,%,$@)
@@ -636,7 +641,7 @@ endif
 else
 external/$(CPYTHON).tar.gz:
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
-	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz || { printf "\033[31m[-] Dependency %s failed installation\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"; exit 1; }
+	@$(CURL) $@ $(PYTHON_RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz || { printf "\033[31m[-] Dependency %s failed installation\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"; exit 1; }
 	 @cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	 @cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	 @rm $(patsubst %.gz,%,$@)
