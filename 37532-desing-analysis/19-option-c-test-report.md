@@ -255,7 +255,44 @@ classified against an unidentified cgroup and discarded before anyone knew whose
 answer was always a walk of current on-disk state. A file created *and* deleted inside the
 discovery window is missed under both settings.
 
-### 4.4 A claim in three design documents was wrong
+### 4.4 Startup: the drain does not wait for the first container snapshot
+
+Worth stating because it is easy to assume otherwise. `start()` makes **one** synchronous
+`listContainers()` call, bounded by the client's 1 s timeout, and proceeds whatever it returns. It
+does not block for the connector and does not retry.
+
+The component immediately after it *does* retry. `fim_run_container_baseline()` waits up to
+10 x 500 ms, because the `container_instances` socket **binds before its first enumeration
+completes** — so "reachable but empty" is a normal cold-start answer, not a failure
+(`container_baseline_scanner.cpp`). The drain runs *first*, with no such protection, which makes it
+strictly more exposed to the race than the component designed around it.
+
+The three outcomes:
+
+| Seed result | Kernel allowlist after `start()` | Consequence |
+| --- | --- | --- |
+| Containers returned | populated | Clean. Filtering is enabled *after* seeding, so none of them escalate |
+| Reachable, empty | empty | Correct if the node really has no containers |
+| Unreachable | empty | Nothing is delivered until the resolver's first successful refresh — which runs immediately, then every 5 s |
+
+In the second and third rows **with containers actually present**, the first non-empty list marks
+every container as newly listed, so every container is escalated and the node is walked a second
+time just after the baseline walked it.
+
+**That is wasteful, not wrong**, and it is a widening of existing behaviour rather than a new one:
+before this change a failed seed also escalated every container that happened to emit an event. A
+re-walk reads current state and produces no alerts for unchanged rows, so the cost is CPU and I/O,
+once per agent start.
+
+It is also the deliberate choice. Suppressing those escalations would mean trusting that the
+baseline covered every container — and the baseline takes its list at a single instant, so a
+container created while the walk is still running would be in neither that list nor the suppressed
+set, and would end up allowlisted but never walked. **A duplicated walk is recoverable; a container
+whose rootfs is never enumerated is not.**
+
+Item 20's create trigger removes this class of problem rather than narrowing it.
+
+### 4.5 A claim in three design documents was wrong
 
 [10 §10.0](10-container-instances-delta-plan.md), [12 §12.16](12-blocking-decisions.md) and
 [15](15-spike-resume.md) all stated that an allowlist "has nothing to put in it" until
@@ -284,6 +321,7 @@ Stated plainly, because a test report that only lists passes is not a test repor
 | **The stale-object retry never ran.** `rt_open()` refuses allowlist mode on a BPF object without the filtering maps; the drain retries unfiltered. Not exercised | `rt_file.bpf.o` is in no packaging manifest, so a stale object is a real configuration, not a hypothetical — this path is likelier than it looks |
 | **cgroup v1 untested** | Out of scope: the drain already refuses v1 hosts before reaching any of this |
 | **One host.** Both variants were measured, but on a single 10-core VM with virtualised storage | Nothing here speaks to a different kernel, a different filesystem, or bare metal |
+| **The cold-start seeding race was reasoned about, not observed** (§4.4) | The startup path most likely to behave unexpectedly is the one with no test |
 
 ---
 
