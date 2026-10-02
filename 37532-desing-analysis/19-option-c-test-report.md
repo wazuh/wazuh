@@ -6,9 +6,10 @@ step with the container list it already polls.
 
 **Date:** 2026-10-02 · **Branch:** `37532-o7-ebpf-engine-convergence` · **Issues:** #37532 / #37396
 
-**Verdict:** the change does what it was proposed to do, by a wide and consistent margin, and the
-discovery regression it was expected to cause does not materialise as a correctness regression.
-Three failure modes are covered by tests; four are not covered by anything and are listed in §5.
+**Verdict:** the change does what it was proposed to do, by a wide and consistent margin on **both**
+`file_open` variants, and the discovery regression it was expected to cause does not materialise as
+a correctness regression. Three failure modes are covered by tests; five are not covered by anything
+and are listed in §5 — the largest being the absence of any end-to-end run against real containers.
 
 ---
 
@@ -43,7 +44,9 @@ would have caught it.
 | | |
 | --- | --- |
 | Kernel-level tests and benchmark | `wazuh_manager` VM — Ubuntu 24.04, kernel 7.0.0-34-generic, 10 cores, cgroup v2 |
-| Active LSM list | `lockdown,capability,landlock,yama,apparmor,bpf,ima,evm` — **includes `bpf`, so the engine attached the LSM variant, not kprobe** |
+| Active LSM list | `lockdown,capability,landlock,yama,apparmor,bpf,ima,evm` — includes `bpf`, so the engine attaches the **LSM** `file_open` variant by default |
+| Forcing the kprobe path | The engine picks its variant from that list, which cannot be changed without a reboot. A temporary VM-only patch made `is_bpf_lsm_active()` honour a `WAZUH_FORCE_KPROBE` environment variable. Never committed; reverted afterwards and the file's hash re-checked against the repo |
+| Variant confirmation | Every run echoes the engine's own selection line (`preferring LSM` / `preferring kprobe`). This is not decoration: three runs earlier in this work were labelled kprobe and were actually LSM, because `sudo` strips the environment. All runs below use `sudo -E` and are confirmed individually |
 | Unit tests | WSL2, g++ 17, `-fsanitize=address,undefined` |
 | Background load | The installed agent was left running (5 daemons, load average ≈ 1.0). It is realistic background, and it is identical in both arms of every pair |
 
@@ -77,6 +80,11 @@ arriving, then `rt_deny_cgroup()` it and confirm they stop.
 > deny assertion would pass against a completely broken `rt_deny_cgroup()`. The first version of
 > this test had that hole; it was found by re-reading the test rather than by it failing.
 
+Run on **both** `file_open` variants. The five properties hold identically on each — same counts,
+to the event — which matters because the kprobe and LSM paths build an event's `filename` by
+completely different means (a manual dentry walk versus `bpf_d_path`), and the filter decision sits
+upstream of both.
+
 ### 2.4 Benchmark — C3
 
 A standalone binary, not the full agent. The full-agent harness was tried for the earlier option D
@@ -93,6 +101,9 @@ measurement and rejected: a ±20% run-to-run spread cannot resolve an effect thi
   accidentally benchmarking an empty-map fast path.
 - **Measured in-process** with `getrusage`: `RUSAGE_SELF` for the consumer, `RUSAGE_CHILDREN` for
   the writer.
+- **Run twice over, once per `file_open` variant** — 5 pairs on LSM and 5 pairs on kprobe, 20 runs
+  in total. kprobe is the majority configuration in the field, so measuring only LSM would have
+  left the common case to inference.
 
 > **A first attempt at the kernel-side cost was discarded, not reported.** It read
 > `bpftool prog list` run_time_ns deltas, snapshotting *after* the benchmark exited — by which time
@@ -106,15 +117,18 @@ measurement and rejected: a ±20% run-to-run spread cannot resolve an effect thi
 
 ### 3.1 Correctness
 
-| Test | Result |
-| --- | --- |
-| `rt_engine_filter_test` (5 properties) | **pass**, 3 consecutive clean runs, identical counts each time |
-| `rt_engine_leak_test`, `_drops_test`, `_creds_test`, `_skip_test` | **pass** |
-| `rt_engine_contract_test` | **pass** |
-| `cgroup_container_map_test` | **24/24 pass** (ASan + UBSan) |
-| `container_event_router_test` | **23/23 pass** (ASan + UBSan) |
+| Test | LSM path | kprobe path |
+| --- | --- | --- |
+| `rt_engine_filter_test` (5 properties) | **pass**, 3 consecutive clean runs, identical counts | **pass** |
+| `rt_engine_leak_test` | **pass** | **pass** |
+| `rt_engine_drops_test` | **pass** | **pass** |
+| `rt_engine_creds_test` | **pass** | **pass** |
+| `rt_engine_skip_test` | **pass** | **pass** |
+| `rt_engine_contract_test` | **pass** | n/a (no kernel) |
+| `cgroup_container_map_test` | **24/24 pass** (ASan + UBSan) | n/a (no kernel) |
+| `container_event_router_test` | **23/23 pass** (ASan + UBSan) | n/a (no kernel) |
 
-Filter test output, stable across all three runs:
+Filter test output — **byte-identical on both paths**, and stable across runs:
 
 ```text
   events from the allowlisted cgroup: 300
@@ -130,8 +144,13 @@ was running a full agent at the time.
 
 ### 3.2 Cost
 
-Five alternating pairs. **The allowlist won every pair on every metric** — there is no overlap
-between the two distributions on any column.
+Ten alternating pairs, five per `file_open` variant. **The allowlist won every pair on every
+metric, on both paths** — twenty runs, sixty comparisons, no exceptions. On every column the two
+distributions do not overlap: the worst allowlist run still beats the best unfiltered one.
+
+All figures in seconds, for the whole 20,000-iteration arm.
+
+**LSM path**
 
 | Pair | wall ALL | wall ALLOW | consumer ALL | consumer ALLOW | writer ALL | writer ALLOW |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -141,14 +160,49 @@ between the two distributions on any column.
 | 4 | 10.788 | 5.333 | 0.575 | 0.022 | 9.913 | 4.477 |
 | 5 | 8.720 | 5.831 | 0.387 | 0.101 | 7.842 | 4.805 |
 
-All figures in seconds, for the whole 20,000-iteration arm.
+**kprobe path** (the majority configuration)
 
-| Metric (median) | mode ALL | allowlist | Change |
+| Pair | wall ALL | wall ALLOW | consumer ALL | consumer ALLOW | writer ALL | writer ALLOW |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 13.115 | 5.927 | 0.714 | 0.032 | 12.298 | 4.938 |
+| 2 | 10.268 | 7.361 | 0.551 | 0.052 | 9.518 | 6.429 |
+| 3 | 13.255 | 6.961 | 0.590 | 0.031 | 12.194 | 5.948 |
+| 4 | 11.853 | 5.588 | 0.614 | 0.033 | 10.696 | 4.673 |
+| 5 | 9.411 | 4.858 | 0.436 | 0.023 | 8.232 | 3.801 |
+
+**Medians**
+
+| Metric | | mode ALL | allowlist | Change |
+| --- | --- | ---: | ---: | ---: |
+| Consumer CPU | LSM | 0.493 s | 0.032 s | **−93.5%** |
+| | kprobe | 0.590 s | 0.032 s | **−94.6%** |
+| Writer CPU | LSM | 9.913 s | 4.559 s | **−54.0%** |
+| | kprobe | 10.696 s | 4.938 s | **−53.8%** |
+| Wall clock | LSM | 10.788 s | 5.572 s | **−48.3%** |
+| | kprobe | 11.853 s | 5.927 s | **−50.0%** |
+| Events delivered | both | ~39,942 | 0 | — |
+
+### 3.3 LSM versus kprobe
+
+The two paths differ less than expected, and the difference is not where it was predicted.
+
+| | LSM | kprobe | kprobe is |
 | --- | ---: | ---: | ---: |
-| Consumer CPU | 0.493 s | 0.032 s | **−93%** |
-| Writer CPU | 9.913 s | 4.559 s | **−54%** |
-| Wall clock | 10.788 s | 5.572 s | **−48%** |
-| Events delivered | 39,942 | 0 | — |
+| Unfiltered writer CPU | 9.913 s | 10.696 s | +7.9% dearer |
+| Unfiltered consumer CPU | 0.493 s | 0.590 s | +19.7% dearer |
+| **Filtered** writer CPU | 4.559 s | 4.938 s | +8.3% dearer |
+| Absolute writer saving | 5.354 s | 5.758 s | +7.5% larger |
+| **Proportional** writer saving | 54.0% | 53.8% | **the same** |
+
+kprobe is uniformly ~8% dearer — filtered and unfiltered alike — which is consistent with D9's
+finding that the kprobe path costs more per event. But because the *floor* rises by the same
+proportion as the *ceiling*, the filter removes the same **fraction** of the cost on both paths.
+
+**This corrects a speculation made before the measurement.** The first version of this report said
+the saving on kprobe was "plausibly larger" because kprobe is dearer per event. In absolute seconds
+that is weakly true (+7.5%); as a proportion it is **not true at all**. The honest summary is that
+option C's benefit is insensitive to which variant is attached, which is a better result than the
+one guessed at — it means the figure does not need qualifying by deployment.
 
 ---
 
@@ -176,9 +230,9 @@ argument for the change.
   which is far too large to be the BPF program alone; cache pressure and scheduling under a
   40,000-event-per-arm load are mixed into it. The aggregate ratio is defensible, a per-event
   attribution is not.
-- **This was measured on the LSM path**, because `bpf` is in this host's active LSM list. D9 found
-  the kprobe path dearer per event, so the saving there is plausibly larger — **but it was not
-  measured, and "plausibly larger" is not a result.**
+- **Both `file_open` variants were measured** (§3.3), so the result does not rest on which one a
+  given host attaches. What is still a single data point is the *host*: one VM, one kernel, one
+  storage stack.
 
 ### 4.3 The discovery change is latency, not correctness
 
@@ -228,8 +282,8 @@ Stated plainly, because a test report that only lists passes is not a test repor
 | **Discovery latency was not measured.** §4.3's "≤ 5 s" is derived from `resolver_interval_ms`, not timed from `docker run` to the walk | The claim is structural rather than empirical |
 | **The map-full fallback never ran.** `disableAllowlist()` — which turns filtering off for the whole handle — has no test. The BPF map holds 4,096 entries against a `max_containers` of 512, so it is hard to reach and correspondingly easy to get wrong | A node with thousands of containers would take an untested path |
 | **The stale-object retry never ran.** `rt_open()` refuses allowlist mode on a BPF object without the filtering maps; the drain retries unfiltered. Not exercised | `rt_file.bpf.o` is in no packaging manifest, so a stale object is a real configuration, not a hypothetical — this path is likelier than it looks |
-| **kprobe path unmeasured** (§4.2) | The majority configuration in the field is the one not benchmarked |
 | **cgroup v1 untested** | Out of scope: the drain already refuses v1 hosts before reaching any of this |
+| **One host.** Both variants were measured, but on a single 10-core VM with virtualised storage | Nothing here speaks to a different kernel, a different filesystem, or bare metal |
 
 ---
 
@@ -244,12 +298,14 @@ Stated plainly, because a test report that only lists passes is not a test repor
    measurement had seen.
 3. **It attacks the duplicate-engine cost at the root.** Option D removed per-event work; option C
    removes the events. The two compose — both are active, and the benchmark measured C *on top of* D.
-4. **No correctness regression.** The outcome for a late-discovered container is unchanged (§4.3).
-5. **It fails loudly in both directions it can fail.** A map that cannot take a container turns
+4. **The benefit does not depend on which `file_open` variant is attached.** LSM and kprobe give the
+   same proportional saving (§3.3), so the figure needs no deployment-specific qualification.
+5. **No correctness regression.** The outcome for a late-discovered container is unchanged (§4.3).
+6. **It fails loudly in both directions it can fail.** A map that cannot take a container turns
    filtering off rather than leaving that container silently unmonitored; a BPF object too old to
    filter gets an unfiltered retry rather than leaving container FIM off entirely.
-6. **Reversible.** `cgroup_allowlist: false` restores the previous behaviour exactly.
-7. **It unblocks nothing else, and blocks nothing else.** It does not depend on item 20 and does not
+7. **Reversible.** `cgroup_allowlist: false` restores the previous behaviour exactly.
+8. **It unblocks nothing else, and blocks nothing else.** It does not depend on item 20 and does not
    prevent it.
 
 ### Cons
@@ -265,7 +321,8 @@ Stated plainly, because a test report that only lists passes is not a test repor
    where there were none, three of which have unit tests and one of which (§5, map-full) does not.
 4. **The benchmark is synthetic.** It establishes the ratio under write pressure, not the saving on
    a representative node (§4.2).
-5. **Untested on the majority configuration.** The kprobe path was not measured (§4.2, §5).
+5. **Measured on one host.** Both `file_open` variants were covered, but a single VM with
+   virtualised storage is one data point for the absolute figures (§4.2, §5).
 6. **A new config surface that is not reachable from `ossec.conf`.** `cgroup_allowlist` is a
    `DrainConfig` field with no XML binding, so the escape hatch requires a rebuild. Deliberate —
    the knob exists for bisecting a field problem, not for operators — but it is a half-wired option
@@ -274,5 +331,9 @@ Stated plainly, because a test report that only lists passes is not a test repor
 ### Recommendation
 
 **Keep it, and close the §5 gaps before the change ships** — specifically the end-to-end run with
-real containers and a timed discovery measurement. The cost case is settled; the integration
-evidence is thinner than the component evidence, and that asymmetry is the thing to fix.
+real containers and a timed discovery measurement.
+
+The cost case is now settled on both `file_open` variants and needs no further benchmarking. What
+remains thin is integration evidence: every layer has been tested in isolation and the seams
+between them have not been observed working together against live container traffic. That
+asymmetry, not the performance, is what should gate the merge.
