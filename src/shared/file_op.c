@@ -34,6 +34,7 @@
 #else
 #include <aclapi.h>
 #include <winreg.h>
+#include <winioctl.h>
 #include <lm.h>
 #endif
 
@@ -2886,9 +2887,10 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
 // Walks retried when an entry changes between its checks, as a symlink re-pointed during rotation does.
 #define W_VETTED_RACE_RETRIES 3
 
-#ifndef WIN32
-// Same limit as Linux's MAXSYMLINKS; bounds a symlink loop the kernel would stop with ELOOP.
+// Same limit as Linux's MAXSYMLINKS; bounds a chain of junctions or symbolic links on either platform.
 #define W_VETTED_MAX_SYMLINKS 40
+
+#ifndef WIN32
 
 /**
  * A hard link can be made by anyone who can write to its directory, so an entry with more than one link
@@ -3819,16 +3821,286 @@ static void w_win_held_release(w_win_held_t * held) {
     }
 }
 
+/* The REPARSE_DATA_BUFFER of the DDK's ntifs.h, which the user-mode MinGW headers do not provide. The
+ * Microsoft field names are kept so the layout can be checked against the documentation. */
+typedef struct {
+    DWORD ReparseTag;
+    WORD ReparseDataLength;
+    WORD Reserved;
+    union {
+        struct {
+            WORD SubstituteNameOffset;
+            WORD SubstituteNameLength;
+            WORD PrintNameOffset;
+            WORD PrintNameLength;
+            DWORD Flags;
+            WCHAR PathBuffer[1];
+        } SymbolicLinkReparseBuffer;
+        struct {
+            WORD SubstituteNameOffset;
+            WORD SubstituteNameLength;
+            WORD PrintNameOffset;
+            WORD PrintNameLength;
+            WCHAR PathBuffer[1];
+        } MountPointReparseBuffer;
+    } u;
+} w_win_reparse_data_t;
+
+#define W_VETTED_WIN_REPARSE_HEADER 8   // ReparseTag + ReparseDataLength + Reserved.
+
+#ifndef FSCTL_GET_REPARSE_POINT
+#define FSCTL_GET_REPARSE_POINT CTL_CODE(FILE_DEVICE_FILE_SYSTEM, 42, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#endif
+#ifndef MAXIMUM_REPARSE_DATA_BUFFER_SIZE
+#define MAXIMUM_REPARSE_DATA_BUFFER_SIZE (16 * 1024)
+#endif
+#ifndef IO_REPARSE_TAG_MOUNT_POINT
+#define IO_REPARSE_TAG_MOUNT_POINT 0xA0000003L
+#endif
+#ifndef IO_REPARSE_TAG_SYMLINK
+#define IO_REPARSE_TAG_SYMLINK 0xA000000CL
+#endif
+#ifndef SYMLINK_FLAG_RELATIVE
+#define SYMLINK_FLAG_RELATIVE 1
+#endif
+#ifndef IsReparseTagMicrosoft
+#define IsReparseTagMicrosoft(tag) (((DWORD)(tag) & 0x80000000) != 0)
+#endif
+#ifndef IsReparseTagNameSurrogate
+#define IsReparseTagNameSurrogate(tag) (((DWORD)(tag) & 0x20000000) != 0)
+#endif
+#ifndef ERROR_NOT_A_REPARSE_POINT
+#define ERROR_NOT_A_REPARSE_POINT 4390L
+#endif
+
+/**
+ * Length of the volume root at the start of a prefix-less path: 3 for "X:\", 45 for "Volume{GUID}\", or 0
+ * for anything else. The second form is how a mounted-folder junction names its target.
+ */
+static size_t w_win_root_len(const wchar_t * p) {
+    if (((p[0] >= L'A' && p[0] <= L'Z') || (p[0] >= L'a' && p[0] <= L'z')) && p[1] == L':' && p[2] == L'\\') {
+        return 3;
+    }
+
+    if (!wcsncmp(p, L"Volume{", 7) && wcslen(p) >= 45 && p[43] == L'}' && p[44] == L'\\') {
+        return 45;
+    }
+
+    return 0;
+}
+
+/**
+ * Appends the backslash-separated components of @p rel to @p out, whose first @p root characters are its
+ * volume root. "." is dropped and ".." pops a component but never above the root, matching how the I/O
+ * manager re-parses a relative reparse target by name. A ':' in a component is refused, so no stream or
+ * drive-relative name can be formed. GetFullPathNameW is deliberately not used: it would also strip
+ * trailing dots and spaces, which the kernel does not do to a reparse target.
+ *
+ * @return 0 on success, -1 on error (sets errno).
+ */
+static int w_win_append_lexical(wchar_t * out, size_t root, const wchar_t * rel) {
+    size_t out_len = wcslen(out);
+    const size_t rel_len = wcslen(rel);
+    size_t i = 0;
+
+    while (i < rel_len) {
+        size_t start, seg_len, k;
+
+        while (i < rel_len && rel[i] == L'\\') {
+            i++;
+        }
+
+        start = i;
+
+        while (i < rel_len && rel[i] != L'\\') {
+            i++;
+        }
+
+        seg_len = i - start;
+
+        if (seg_len == 0 || (seg_len == 1 && rel[start] == L'.')) {
+            continue;
+        }
+
+        if (seg_len == 2 && rel[start] == L'.' && rel[start + 1] == L'.') {
+            while (out_len > root && out[out_len - 1] != L'\\') {
+                out_len--;
+            }
+
+            if (out_len > root) {
+                out_len--;
+            }
+
+            continue;
+        }
+
+        for (k = 0; k < seg_len; k++) {
+            if (rel[start + k] == L':') {
+                errno = EPERM;
+                return -1;
+            }
+        }
+
+        if (out_len > 0 && out[out_len - 1] != L'\\') {
+            if (out_len + 1 >= W_VETTED_WIN_PATH_MAX) {
+                errno = ENAMETOOLONG;
+                return -1;
+            }
+
+            out[out_len++] = L'\\';
+        }
+
+        if (out_len + seg_len >= W_VETTED_WIN_PATH_MAX) {
+            errno = ENAMETOOLONG;
+            return -1;
+        }
+
+        wmemcpy(out + out_len, rel + start, seg_len);
+        out_len += seg_len;
+    }
+
+    out[out_len] = L'\0';
+    return 0;
+}
+
+/**
+ * Parses @p data (@p got bytes, as returned by FSCTL_GET_REPARSE_POINT) and, for a junction or symlink,
+ * rewrites @p path to the target joined with the components that followed the link (@p end is the offset
+ * in @p path just past the link). One level only: no reparse point inside the target is resolved, so the
+ * walk can vet each one in turn. Not declared in file_op.h: given external linkage only so the unit tests
+ * can feed it crafted buffers.
+ *
+ * @return 1 if @p path was rewritten, 0 if the reparse point does not redirect the name (nothing to
+ *         follow), -1 on error or rejection (sets errno).
+ */
+int w_win_reparse_target(const w_win_reparse_data_t * data, DWORD got, wchar_t * path, size_t end) {
+    wchar_t next[W_VETTED_WIN_PATH_MAX];
+    wchar_t name[W_VETTED_WIN_PATH_MAX];
+    const WCHAR * base;
+    DWORD tag;
+    size_t fixed, root, start, count;
+    WORD offset, length;
+    bool relative = false;
+
+    if (got < W_VETTED_WIN_REPARSE_HEADER || (DWORD)W_VETTED_WIN_REPARSE_HEADER + data->ReparseDataLength > got) {
+        errno = EPERM;
+        return -1;
+    }
+
+    tag = data->ReparseTag;
+
+    // fixed: bytes of fixed fields before PathBuffer in the union variant -- four WORDs for a mount point,
+    // four WORDs plus the Flags DWORD for a symlink -- so ReparseDataLength - fixed is the PathBuffer size.
+    if (tag == (DWORD)IO_REPARSE_TAG_MOUNT_POINT) {
+        fixed = 8;
+        offset = data->u.MountPointReparseBuffer.SubstituteNameOffset;
+        length = data->u.MountPointReparseBuffer.SubstituteNameLength;
+        base = data->u.MountPointReparseBuffer.PathBuffer;
+    } else if (tag == (DWORD)IO_REPARSE_TAG_SYMLINK) {
+        fixed = 12;
+        offset = data->u.SymbolicLinkReparseBuffer.SubstituteNameOffset;
+        length = data->u.SymbolicLinkReparseBuffer.SubstituteNameLength;
+        base = data->u.SymbolicLinkReparseBuffer.PathBuffer;
+        relative = (data->u.SymbolicLinkReparseBuffer.Flags & SYMLINK_FLAG_RELATIVE) != 0;
+    } else if (IsReparseTagMicrosoft(tag) && !IsReparseTagNameSurrogate(tag)) {
+        // Deduplication, cloud files and the like keep the name: there is nothing to follow.
+        return 0;
+    } else {
+        // It redirects the name in a way that cannot be read one level at a time.
+        errno = EPERM;
+        return -1;
+    }
+
+    count = (size_t)length / sizeof(WCHAR);
+
+    if (data->ReparseDataLength < fixed || ((offset | length) & 1) || length == 0 ||
+        (size_t)offset + length > (size_t)data->ReparseDataLength - fixed || count >= W_VETTED_WIN_PATH_MAX) {
+        errno = EPERM;
+        return -1;
+    }
+
+    wmemcpy(name, base + offset / sizeof(WCHAR), count);
+    name[count] = L'\0';
+
+    if (wcslen(name) != count) {
+        // An embedded NUL would truncate the name silently.
+        errno = EPERM;
+        return -1;
+    }
+
+    if (relative) {
+        // Relative to the directory holding the link, or to the volume root for a leading backslash.
+        root = w_win_root_len(path);
+
+        for (start = end; start > root && path[start - 1] != L'\\'; start--);
+
+        wmemcpy(next, path, start);
+        next[start > root ? start - 1 : root] = L'\0';
+
+        if (name[0] == L'\\') {
+            next[root] = L'\0';
+        }
+
+        if (w_win_append_lexical(next, root, name) < 0) {
+            return -1;
+        }
+    } else {
+        // An absolute target is an NT path ("\??\X:\..."); only a local volume is followed.
+        if (wcsncmp(name, L"\\??\\", 4) || (root = w_win_root_len(name + 4)) == 0) {
+            errno = EPERM;
+            return -1;
+        }
+
+        wmemcpy(next, name + 4, root);
+        next[root] = L'\0';
+
+        if (w_win_append_lexical(next, root, name + 4 + root) < 0) {
+            return -1;
+        }
+    }
+
+    if (w_win_append_lexical(next, root, path + end) < 0) {
+        return -1;
+    }
+
+    wcscpy(path, next);
+    return 1;
+}
+
+/**
+ * Reads the target of @p hLink, a reparse point already vetted and held, with FSCTL_GET_REPARSE_POINT and
+ * rewrites @p path through w_win_reparse_target(). Issued on the held handle, so the bytes read belong to
+ * the exact object just vetted.
+ *
+ * @return 1 if @p path was rewritten, 0 if nothing to follow, -1 on error or rejection (sets errno).
+ */
+static int w_win_follow_reparse_point(HANDLE hLink, wchar_t * path, size_t end) {
+    union {
+        w_win_reparse_data_t data;
+        BYTE raw[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+    } buf;
+    DWORD got = 0;
+
+    if (!DeviceIoControl(hLink, FSCTL_GET_REPARSE_POINT, NULL, 0, &buf, sizeof(buf), &got, NULL)) {
+        // Held without delete sharing, it can only have stopped being a reparse point in place.
+        errno = GetLastError() == ERROR_NOT_A_REPARSE_POINT ? EAGAIN : EPERM;
+        return -1;
+    }
+
+    return w_win_reparse_target(&buf.data, got, path, end);
+}
+
 /**
  * Walks @p full, an absolute normalized path, one component at a time without following reparse points,
- * and checks that every junction or symlink on it is trusted. Each directory and each link on the path is
- * kept open in @p held (no FILE_SHARE_DELETE) so it cannot change until the caller finishes vetting. The
- * final plain file is not held, to keep rotation working; it is matched against @p file_info, the file
- * already opened, instead. A component that vanishes, changes type or is in a sharing violation means the
- * path is changing: EAGAIN, not ENOENT. The caller releases @p held on every path.
- *
- * Known limit, a follow-up: only the reparse points on @p full are vetted. The path a trusted link
- * points into is not walked again, so a reparse point inside it is not checked.
+ * and checks that every junction or symlink on it is trusted. Each junction or symlink met is vetted, then
+ * its target is read one level only and the walk continues from that target with the components that
+ * followed the link, so the reparse points inside a link's destination are vetted in turn; no link is ever
+ * followed before it is vetted. At most W_VETTED_MAX_SYMLINKS links are followed. Each directory and each
+ * link on the way is kept open in @p held (no FILE_SHARE_DELETE) so it cannot change until the caller
+ * finishes vetting. The final plain file is not held, to keep rotation working; it is matched against
+ * @p file_info, the file already opened, instead. A component that vanishes, changes type or is in a
+ * sharing violation means the path is changing: EAGAIN, not ENOENT. The caller releases @p held on every
+ * path.
  *
  * @return 0 if every reparse point is trusted, -1 on error or rejection (sets errno).
  */
@@ -3836,21 +4108,28 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
                                       PSID file_owner, PSID trusted_sids[W_VETTED_WIN_TRUSTED_SIDS],
                                       const w_win_admins_t * admins, w_win_held_t * held) {
     wchar_t component[W_VETTED_WIN_PATH_MAX];
+    wchar_t path[W_VETTED_WIN_PATH_MAX];
     const size_t prefix_len = wcslen(W_VETTED_WIN_EXTENDED_PREFIX);
-    const size_t len = wcslen(full);
+    size_t len = wcslen(full);
+    size_t root;
     size_t end;
-
-    if (len < 3 || full[1] != L':' || full[2] != L'\\') {
-        errno = EINVAL;
-        return -1;
-    }
+    int hops = 0;
+    int rc;
 
     if (prefix_len + len >= W_VETTED_WIN_PATH_MAX) {
         errno = ENAMETOOLONG;
         return -1;
     }
 
-    for (end = 3; end <= len; end++) {
+    wcscpy(path, full);
+    root = w_win_root_len(path);
+
+    if (root == 0) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    for (end = root; end <= len; end++) {
         BY_HANDLE_FILE_INFORMATION info;
         PSECURITY_DESCRIPTOR sd = NULL;
         PSID owner = NULL;
@@ -3858,14 +4137,14 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
         bool last;
         bool trusted;
 
-        if (full[end] != L'\\' && full[end] != L'\0') {
+        if (path[end] != L'\\' && path[end] != L'\0') {
             continue;
         }
 
-        last = full[end] == L'\0';
+        last = path[end] == L'\0';
 
         wcscpy(component, W_VETTED_WIN_EXTENDED_PREFIX);
-        wcsncat(component, full, end);
+        wcsncat(component, path, end);
 
         if (last) {
             // Probe the last entry without holding it: a plain file must stay rotatable, so it is matched
@@ -3952,6 +4231,38 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
             errno = EPERM;
             return -1;
         }
+
+        // Walk on from the target so reparse points inside it are vetted too, not followed unseen.
+        rc = w_win_follow_reparse_point(hComponent, path, end);
+
+        if (rc < 0) {
+            return -1;
+        }
+
+        if (rc > 0) {
+            // Bounds a link cycle.
+            if (++hops > W_VETTED_MAX_SYMLINKS) {
+                errno = EPERM;
+                return -1;
+            }
+
+            len = wcslen(path);
+            root = w_win_root_len(path);
+
+            if (prefix_len + len >= W_VETTED_WIN_PATH_MAX) {
+                errno = ENAMETOOLONG;
+                return -1;
+            }
+
+            // A target with no volume root, or one that ends on a root rather than a file, is not valid.
+            if (root == 0 || len <= root) {
+                errno = EINVAL;
+                return -1;
+            }
+
+            // Resume at the target's first component; the loop's end++ advances past the root slot.
+            end = root - 1;
+        }
     }
 
     return 0;
@@ -3959,7 +4270,8 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
 
 /**
  * Opens @p path for reading, following reparse points, and vets what was reached: a disk file, on a
- * local volume, with every junction or symlink on the way trusted (see w_win_check_reparse_points()).
+ * local volume, with every junction or symlink on the way, including those inside the destination of
+ * another link, trusted (see w_win_check_reparse_points()).
  *
  * @return A vetted handle on success, or INVALID_HANDLE_VALUE on error (sets errno).
  */
