@@ -421,6 +421,28 @@ void test_realtime_adddir_realtime_failure(void **state) {
     assert_int_equal(ret, -1);
 }
 
+static int setup_realtime_not_started(void **state) {
+    *state = syscheck.realtime;
+    syscheck.realtime = NULL;
+    return 0;
+}
+
+static int teardown_realtime_not_started(void **state) {
+    syscheck.realtime = *state;
+    return 0;
+}
+
+void test_realtime_adddir_realtime_not_started(void **state) {
+    int ret;
+    directory_t config = { .options = REALTIME_ACTIVE };
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    ret = realtime_adddir("/etc/folder", &config);
+
+    assert_int_equal(ret, -1);
+}
 
 void test_realtime_adddir_realtime_watch_max_reached_failure(void **state) {
     int ret;
@@ -1974,6 +1996,7 @@ int main(void) {
         /* realtime_adddir */
         cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_start_failure, setup_realtime_adddir_realtime_start_error, teardown_realtime_adddir_realtime_start_error),
         cmocka_unit_test(test_realtime_adddir_realtime_failure),
+        cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_not_started, setup_realtime_not_started, teardown_realtime_not_started),
         cmocka_unit_test(test_realtime_adddir_realtime_watch_max_reached_failure),
         cmocka_unit_test(test_realtime_adddir_realtime_watch_generic_failure),
         cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_add, setup_OSHash, teardown_OSHash),

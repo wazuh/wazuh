@@ -897,7 +897,6 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_GOOGLE_BENCHMARK)build
 	rm -rf $(EXTERNAL_ROCKSDB)build
 	rm -rf $(EXTERNAL_SIMDJSON)build
-	rm -rf $(EXTERNAL_LIBBPF)build
 	rm -rf $(EXTERNAL_FLATBUFFERS)build
 	rm -rf $(EXTERNAL_FMT)build
 	rm -rf $(EXTERNAL_SPDLOG)build

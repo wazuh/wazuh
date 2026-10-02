@@ -23,7 +23,7 @@ from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException,
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_with_mode, process_array, clear_temporary_caches, \
     full_copy, validate_query_parentheses
-from wazuh.rbac.decorators import audit_agent_keys_read, expose_resources, async_list_handler
+from wazuh.rbac.decorators import audit_agent_keys_read, expose_resources, async_list_handler, mask_sensitive_config
 
 logger = logging.getLogger('wazuh')
 
@@ -1594,6 +1594,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
     return result
 
 
+@mask_sensitive_config()
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_file_conf(group_list: list = None, type_conf: str = None, raw: bool = False,
                   filename: str = None) -> WazuhResult:
@@ -1623,6 +1624,7 @@ def get_file_conf(group_list: list = None, type_conf: str = None, raw: bool = Fa
                                                             raw=raw)})
 
 
+@mask_sensitive_config()
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_agent_conf(group_list: list = None, filename: str = 'agent.conf', offset: int = 0,
                    limit: int = common.DATABASE_LIMIT) -> WazuhResult:
