@@ -71,13 +71,20 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
+    char canonical_ip[NI_MAXHOST];
+    if (!canonicalize_ip(srcip, canonical_ip, sizeof(canonical_ip))) {
+        write_debug_file(argv[0], "Cannot canonicalize source IP");
+        cJSON_Delete(input_json);
+        return OS_INVALID;
+    }
+
     memset(hosts_deny_rule, '\0', COMMANDSIZE_4096);
     memset(hosts_deny_path, '\0', COMMANDSIZE_4096);
     if (!strcmp("FreeBSD", uname_buffer.sysname)) {
-        snprintf(hosts_deny_rule, COMMANDSIZE_4096 -1, "ALL : %s : deny", srcip);
+        snprintf(hosts_deny_rule, COMMANDSIZE_4096 -1, "ALL : %s : deny", canonical_ip);
         strcpy(hosts_deny_path, FREEBSD_HOSTS_DENY_PATH);
     } else {
-        snprintf(hosts_deny_rule, COMMANDSIZE_4096 -1, "ALL:%s", srcip);
+        snprintf(hosts_deny_rule, COMMANDSIZE_4096 -1, "ALL:%s", canonical_ip);
         strcpy(hosts_deny_path, DEFAULT_HOSTS_DENY_PATH);
     }
 
@@ -109,7 +116,7 @@ int main (int argc, char **argv) {
         // Looking for duplication
         memset(output_buf, '\0', OS_MAXSTR - 25);
         while (fgets(output_buf, OS_MAXSTR - 25, host_deny_fp)) {
-            if (strstr(output_buf, srcip) != NULL) {
+            if (hosts_deny_rule_matches(output_buf, hosts_deny_rule)) {
                 memset(log_msg, '\0', OS_MAXSTR);
                 snprintf(log_msg, OS_MAXSTR -1, "IP %s already exists on '%s'", srcip, hosts_deny_path);
                 write_debug_file(argv[0], log_msg);
@@ -158,6 +165,7 @@ int main (int argc, char **argv) {
         }
 
         bool write_fail = false;
+        bool entry_removed = false;
 
         host_deny_fp = wfopen(hosts_deny_path, "r");
         if (!host_deny_fp) {
@@ -183,7 +191,7 @@ int main (int argc, char **argv) {
 
         memset(output_buf, '\0', OS_MAXSTR - 25);
         while (fgets(output_buf, OS_MAXSTR - 25, host_deny_fp)) {
-            if (strstr(output_buf, srcip) == NULL) {
+            if (!hosts_deny_rule_matches(output_buf, hosts_deny_rule)) {
                 if (fwrite(output_buf, 1, strlen(output_buf), temp_host_deny_fp) != strlen(output_buf)) {
                     memset(log_msg, '\0', OS_MAXSTR);
                     snprintf(log_msg, OS_MAXSTR -1, "Unable to write line '%s'", output_buf);
@@ -191,6 +199,8 @@ int main (int argc, char **argv) {
                     write_fail = true;
                     break;
                 }
+            } else {
+                entry_removed = true;
             }
             memset(output_buf, '\0', OS_MAXSTR - 25);
         }
@@ -198,7 +208,11 @@ int main (int argc, char **argv) {
         fclose(host_deny_fp);
         fclose(temp_host_deny_fp);
 
-        if (write_fail || OS_MoveFile(temp_hosts_deny_path, hosts_deny_path) != 0) {
+        // Only replace the original file when an entry was actually removed, to
+        // avoid changing its inode and mode on every expiring block.
+        if (write_fail) {
+            write_debug_file(argv[0], "Unable to update hosts.deny");
+        } else if (entry_removed && OS_MoveFile(temp_hosts_deny_path, hosts_deny_path) != 0) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR -1, "Unable to write file '%s'", hosts_deny_path);
             write_debug_file(argv[0], log_msg);
