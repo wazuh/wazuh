@@ -87,6 +87,8 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
         }
 
         std::string username = Utils::getFilename(userHome);
+        const std::string userId = m_firefoxAddonsWrapper->getUserId(username);
+        const std::string ownerUid = userId.empty() ? browser_extensions::homeDirectoryOwner(userHome) : userId;
 
         for (const auto& path : FIREFOX_PATHS)
         {
@@ -126,7 +128,7 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
 
                 std::string extensionsContent;
 
-                if (!browser_extensions::readRegularFile(extensionsFilePath, extensionsContent))
+                if (!browser_extensions::readRegularFile(extensionsFilePath, extensionsContent, ownerUid))
                 {
                     // Skip this profile if the file cannot be read or is not a regular file
                     continue;
@@ -160,7 +162,7 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
                 for (const auto& addon : addons.items())
                 {
                     FirefoxAddon firefoxAddon;
-                    firefoxAddon.uid = m_firefoxAddonsWrapper->getUserId(username);
+                    firefoxAddon.uid = userId;
 
                     if (
                         // If any of "softDisable", "appDisabled" or "userDisabled" are true, then the addon is disabled.

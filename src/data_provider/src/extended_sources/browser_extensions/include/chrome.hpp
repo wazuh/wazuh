@@ -259,6 +259,8 @@ namespace chrome
             std::shared_ptr<IBrowserExtensionsWrapper> m_chromeExtensionsWrapper;
             std::string m_currentBrowserType;
             std::string m_currentUid;
+            // Owner required for the files read from the current user's profiles
+            std::string m_currentOwnerUid;
     };
 
 } // namespace chrome

@@ -99,6 +99,14 @@ namespace chrome
     void ChromeExtensionsProvider::localizeParameters(ChromeExtension& extension)
     {
         const std::string& extensionPath = extension.path;
+        const std::string& defaultLocale = extension.default_locale;
+
+        // The locale is a single directory name inside the extension
+        if (defaultLocale.find_first_of("/\\") != std::string::npos || defaultLocale.find("..") != std::string::npos)
+        {
+            return;
+        }
+
         std::string localesPath = Utils::joinPaths(extensionPath, EXTENSION_LOCALES_DIR);
         std::string defaultLocalePath = Utils::joinPaths(localesPath, extension.default_locale);
         std::string messagesFilePath = Utils::joinPaths(defaultLocalePath, EXTENSION_LOCALES_MESSAGES_FILE);
@@ -120,7 +128,7 @@ namespace chrome
 
             std::string messagesContent;
 
-            if (!browser_extensions::readRegularFile(messagesFilePath, messagesContent))
+            if (!browser_extensions::readRegularFile(messagesFilePath, messagesContent, m_currentOwnerUid))
             {
                 return;
             }
@@ -359,7 +367,7 @@ namespace chrome
 
         std::string preferencesContent;
 
-        if (!browser_extensions::readRegularFile(preferencesFilePath, preferencesContent))
+        if (!browser_extensions::readRegularFile(preferencesFilePath, preferencesContent, m_currentOwnerUid))
         {
             return ChromeExtensionList();
         }
@@ -410,7 +418,7 @@ namespace chrome
 
                 if (Utils::existsDir(extensionPath) &&
                         (!insideProfile || browser_extensions::isPlainDirectoryChain(extensionsDir, relativePath)) &&
-                        browser_extensions::readRegularFile(manifestPath, manifestContent))
+                        browser_extensions::readRegularFile(manifestPath, manifestContent, m_currentOwnerUid))
                 {
                     ChromeExtension extension;
 
@@ -470,8 +478,8 @@ namespace chrome
         std::string preferencesContent;
         std::string extraPreferencesContent;
 
-        if (!browser_extensions::readRegularFile(preferencesFilePath, preferencesContent) ||
-                !browser_extensions::readRegularFile(securePreferencesFilePath, extraPreferencesContent))
+        if (!browser_extensions::readRegularFile(preferencesFilePath, preferencesContent, m_currentOwnerUid) ||
+                !browser_extensions::readRegularFile(securePreferencesFilePath, extraPreferencesContent, m_currentOwnerUid))
         {
             return "";
         }
@@ -584,7 +592,7 @@ namespace chrome
 
                 std::string manifestContent;
 
-                if (browser_extensions::readRegularFile(manifestPath, manifestContent))
+                if (browser_extensions::readRegularFile(manifestPath, manifestContent, m_currentOwnerUid))
                 {
                     ChromeExtension extension;
 
@@ -692,6 +700,7 @@ namespace chrome
 
             m_currentUid = m_chromeExtensionsWrapper->getUserId(user);
             const std::string userHomePath = Utils::joinPaths(homePath, user);
+            m_currentOwnerUid = m_currentUid.empty() ? browser_extensions::homeDirectoryOwner(userHomePath) : m_currentUid;
 
 #if defined(_WIN32) || defined(_WIN64)
 

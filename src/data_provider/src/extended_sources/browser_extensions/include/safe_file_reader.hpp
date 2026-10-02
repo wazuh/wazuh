@@ -17,6 +17,7 @@
 #include <fstream>
 #else
 #include <cerrno>
+#include <cstdlib>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -27,22 +28,45 @@ namespace browser_extensions
     // Upper bound for any file read from a user profile. Real manifests and preference files are far smaller.
     constexpr size_t MAX_PROFILE_FILE_SIZE = 16 * 1024 * 1024;
 
+#ifndef _WIN32
+    /**
+     * @brief Tells whether a file is owned by the given numeric user ID.
+     *
+     * @param st File status.
+     * @param ownerUid Numeric user ID, as a decimal string. An empty or invalid value never matches.
+     */
+    inline bool isOwnedBy(const struct stat& st, const std::string& ownerUid)
+    {
+        if (ownerUid.empty() || ownerUid.find_first_not_of("0123456789") != std::string::npos)
+        {
+            return false;
+        }
+
+        errno = 0;
+        const unsigned long long uid = std::strtoull(ownerUid.c_str(), nullptr, 10);
+
+        return errno == 0 && static_cast<unsigned long long>(st.st_uid) == uid;
+    }
+#endif
+
     /**
      * @brief Reads a regular file from a user profile into a string.
      *
      * The final path component is not followed if it is a symbolic link, the descriptor is validated with
-     * fstat() after opening (so no other file type can be read or block the caller) and at most
-     * MAX_PROFILE_FILE_SIZE bytes are accepted.
+     * fstat() after opening (so no other file type can be read or block the caller), the file must be owned
+     * by the owner of the profile and at most MAX_PROFILE_FILE_SIZE bytes are accepted.
      *
      * @param path File to read.
      * @param content Receives the file content on success.
-     * @return true if the file is a regular file within the size limit and was fully read.
+     * @param ownerUid Numeric user ID of the profile owner. Not checked on Windows.
+     * @return true if the file is a regular file owned by `ownerUid`, within the size limit, and was fully read.
      */
-    inline bool readRegularFile(const std::string& path, std::string& content)
+    inline bool readRegularFile(const std::string& path, std::string& content, const std::string& ownerUid)
     {
         content.clear();
 
 #ifdef _WIN32
+        (void)ownerUid;
         std::ifstream file(path, std::ios::binary | std::ios::ate);
 
         if (!file)
@@ -78,7 +102,8 @@ namespace browser_extensions
 
         struct stat st;
 
-        if (::fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || static_cast<size_t>(st.st_size) > MAX_PROFILE_FILE_SIZE)
+        if (::fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || !isOwnedBy(st, ownerUid) ||
+                static_cast<size_t>(st.st_size) > MAX_PROFILE_FILE_SIZE)
         {
             ::close(fd);
             return false;
@@ -89,7 +114,9 @@ namespace browser_extensions
 
         while (true)
         {
-            const ssize_t n = ::read(fd, buffer, sizeof(buffer));
+            // One byte past the limit is enough to detect a file that grew after fstat()
+            const size_t room = MAX_PROFILE_FILE_SIZE + 1 - content.size();
+            const ssize_t n = ::read(fd, buffer, room < sizeof(buffer) ? room : sizeof(buffer));
 
             if (n < 0)
             {
@@ -124,6 +151,31 @@ namespace browser_extensions
         }
 
         return ok;
+#endif
+    }
+
+    /**
+     * @brief Returns the owner of a user home directory, to use as the profile owner when the user name of
+     * the directory is not known to the system.
+     *
+     * @param path Home directory.
+     * @return The numeric user ID as a decimal string, or an empty string if the path is not a directory, is a
+     * symbolic link or belongs to root. Always empty on Windows.
+     */
+    inline std::string homeDirectoryOwner(const std::string& path)
+    {
+#ifdef _WIN32
+        (void)path;
+        return "";
+#else
+        struct stat st;
+
+        if (::lstat(path.c_str(), &st) != 0 || !S_ISDIR(st.st_mode) || st.st_uid == 0)
+        {
+            return "";
+        }
+
+        return std::to_string(st.st_uid);
 #endif
     }
 
