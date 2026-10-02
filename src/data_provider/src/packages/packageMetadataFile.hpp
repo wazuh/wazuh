@@ -16,6 +16,7 @@
 #include "sharedDefs.h"
 #include <filesystem>
 #include <functional>
+#include <iostream>
 #include <sstream>
 #include <string>
 
@@ -32,8 +33,9 @@
  * @brief Reads package metadata files (PyPI METADATA/PKG-INFO, npm package.json).
  * @details Only non-empty regular files of at most PACKAGE_METADATA_MAX_FILE_SIZE bytes are read. Symbolic
  * links are followed, since package managers such as Homebrew install metadata files as links. On POSIX
- * systems the file is opened in non-blocking mode and the type and size checks are done on the opened
- * descriptor, so they apply to the file that is actually read.
+ * systems the file is opened with O_NONBLOCK, so opening a named pipe or a device returns at once, and the
+ * type and size checks are done on the opened descriptor, so they apply to the file that is actually read.
+ * A file rejected after it was opened is reported on standard error.
  */
 class PackageMetadataFile final
 {
@@ -66,7 +68,7 @@ class PackageMetadataFile final
             }
 
 #else
-            const int fd {::open(path.c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC)};
+            const int fd {::open(path.c_str(), O_RDONLY | O_NONBLOCK | O_NOCTTY | O_CLOEXEC)};
 
             if (fd < 0)
             {
@@ -79,6 +81,8 @@ class PackageMetadataFile final
                     static_cast<std::uintmax_t>(fileStat.st_size) > PACKAGE_METADATA_MAX_FILE_SIZE)
             {
                 ::close(fd);
+                std::cerr << "Skipping package metadata file: " << path.string()
+                          << ", not a non-empty regular file within the size limit" << std::endl;
                 return false;
             }
 
@@ -113,6 +117,8 @@ class PackageMetadataFile final
             if (readError || total != expectedSize)
             {
                 content.clear();
+                std::cerr << "Skipping package metadata file: " << path.string()
+                          << ", read failed or the file changed while reading" << std::endl;
                 return false;
             }
 
@@ -121,6 +127,8 @@ class PackageMetadataFile final
             if (content.empty() || content.size() > PACKAGE_METADATA_MAX_FILE_SIZE)
             {
                 content.clear();
+                std::cerr << "Skipping package metadata file: " << path.string()
+                          << ", empty or larger than the size limit" << std::endl;
                 return false;
             }
 
@@ -172,7 +180,11 @@ class PackageMetadataJsonReader
                 return nlohmann::json();
             }
 
-            return nlohmann::json::parse(content);
+            // Stream extraction, as the previous reader did, accepts trailing data after the JSON value
+            std::istringstream stream {content};
+            nlohmann::json json;
+            stream >> json;
+            return json;
         }
 };
 

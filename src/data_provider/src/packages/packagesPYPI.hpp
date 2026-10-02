@@ -109,6 +109,8 @@ class PYPI final : public TFileSystem, public TFileIO
                         if (!TFileSystem::is_regular_file(correctPath) ||
                                 TFileSystem::file_size(correctPath) > PACKAGE_METADATA_MAX_FILE_SIZE)
                         {
+                            std::cerr << "Skipping PYPI package metadata: " << (correctPath.empty() ? path : correctPath).string()
+                                      << ", not a regular file within the size limit" << std::endl;
                             continue;
                         }
 

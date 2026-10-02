@@ -74,6 +74,16 @@ TEST_F(PackageMetadataFileTest, JsonIsParsed)
     EXPECT_EQ(json.at("version"), "1.0.0");
 }
 
+TEST_F(PackageMetadataFileTest, JsonWithTrailingDataIsParsed)
+{
+    const auto path {m_dir / "package.json"};
+    std::ofstream(path) << "{\"name\": \"test\", \"version\": \"1.0.0\"}\ntrailing";
+
+    const auto json = PackageMetadataJsonReader::readJson(path);
+    EXPECT_EQ(json.at("name"), "test");
+    EXPECT_EQ(json.at("version"), "1.0.0");
+}
+
 TEST_F(PackageMetadataFileTest, MissingFileIsSkipped)
 {
     std::string content;
@@ -160,6 +170,25 @@ TEST_F(PackageMetadataFileTest, SymlinkToNamedPipeIsSkipped)
     ASSERT_EQ(::mkfifo(target.c_str(), 0600), 0);
     const auto path {m_dir / "METADATA"};
     std::filesystem::create_symlink(target, path);
+
+    std::string content;
+    EXPECT_FALSE(PackageMetadataFile::read(path, content));
+#endif
+}
+
+TEST_F(PackageMetadataFileTest, SymlinkToCharacterDeviceIsSkipped)
+{
+#ifdef _WIN32
+    GTEST_SKIP() << "Character devices are not exposed in the filesystem on Windows";
+#else
+
+    if (!std::filesystem::is_character_file("/dev/zero"))
+    {
+        GTEST_SKIP() << "/dev/zero is not available";
+    }
+
+    const auto path {m_dir / "METADATA"};
+    std::filesystem::create_symlink("/dev/zero", path);
 
     std::string content;
     EXPECT_FALSE(PackageMetadataFile::read(path, content));

@@ -42,7 +42,13 @@ class NPM final
             try
             {
                 // Only read regular files of a bounded size
-                if (TFileSystem::is_regular_file(path) && TFileSystem::file_size(path) <= PACKAGE_METADATA_MAX_FILE_SIZE)
+                if (TFileSystem::exists(path) &&
+                        (!TFileSystem::is_regular_file(path) || TFileSystem::file_size(path) > PACKAGE_METADATA_MAX_FILE_SIZE))
+                {
+                    std::cerr << "Skipping NPM package metadata: " << path.string()
+                              << ", not a regular file within the size limit" << std::endl;
+                }
+                else if (TFileSystem::is_regular_file(path))
                 {
                     // Read json from filesystem path.
                     const auto packageJson = TJsonReader::readJson(path);
