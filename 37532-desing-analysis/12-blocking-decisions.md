@@ -324,6 +324,44 @@ list` run_cnt/run_time_ns; if unacceptable, A4 stops being optional.
 > question that the collapse was expected to reconcile is therefore already decided, in favour of
 > system, by accident.
 
+> ### Measured 2026-10-02 — the kprobe-mode arm, and a correction
+>
+> The caveat above said 1.78% was a lower bound because the LSM-active host never exercised the
+> kprobe path. That arm has now been run. Same VM, same load, same binary; the LSM-versus-kprobe
+> program selection was **forced** rather than obtained from a natively kprobe-only host, so the
+> attached program set is exactly what such a host would load while the kernel still has bpf-LSM
+> compiled in. Three repetitions.
+>
+> | | whodata alone (arm C) | whodata half of arm D — **the D9 metric** | arm D total |
+> | --- | --- | --- | --- |
+> | LSM mode | 1.77% | **1.78%** | 3.44% |
+> | kprobe mode | 2.00% | **2.00%** (spread 1.86 – 2.11) | 3.89% |
+>
+> **The conclusion holds and the reasoning behind it was wrong.** kprobe mode *is* dearer, so
+> "lower bound" was right — but not because of the filter divergence cited above. The two open
+> programs in arm D fired **96,427 and 96,428** times, with means of 40,213 ns and 43,311 ns:
+> near-identical on both counts. `run_cnt` counts hook invocations, and both programs attach to the
+> same kprobe, so the counts must match; the divergence could only appear as extra *work* after the
+> early return, and it did not. The reason is the load: every open it generates carries `O_CREAT`,
+> which passes the creation-only filter just as readily as the broader one. **The divergence is
+> therefore untested, not disproven** — exercising it needs opens of existing files for write
+> without `O_CREAT`, which this generator never produces.
+>
+> What actually makes kprobe mode dearer is the path derivation: ~40–43 µs per open against ~20–22 µs
+> for the LSM variants, because the kprobe programs walk dentries by hand where `lsm/file_open` calls
+> `bpf_d_path` once. Roughly double, per invocation, on both engines equally.
+>
+> **The throughput gap is the result that should carry weight.** Adding the second engine cost 14% of
+> completed operations in LSM mode. In kprobe mode it cost **51%** — arm C completed 2,390 operations
+> in the window, arm D 1,180. On the configuration most of the estate runs, loading both engines
+> roughly halves the work the host gets done under file-heavy load.
+>
+> **Against the pre-registered rule, the metric now straddles the boundary** rather than sitting
+> inside the band: median exactly 2.00%, one repetition above at 2.11% and one below at 1.86%. That
+> is not a clean crossing and it should not be reported as one. It does move the picture: the
+> escalation now carries a measured majority-configuration number and a halved-throughput result
+> beside it, which is a materially better basis for the decision than the LSM figure alone.
+
 **D10 — Accept that item 22 lands *with or before* item 20.** *(owner: this project)*
 
 [08](08-roadmap.md#p2--architecture-make-it-a-baseline) has this dependency backwards.
