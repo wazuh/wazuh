@@ -186,7 +186,8 @@ namespace chrome
         // Build lookup table
         for (int i = 0; i < 64; i++) T[chars[i]] = i;
 
-        int val = 0, valb = -8;
+        unsigned int val = 0;
+        int valb = -8;
 
         for (unsigned char c : input)
         {
