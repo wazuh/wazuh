@@ -187,7 +187,8 @@ namespace remoted::control
                                if (!m_registry->mayStoreLookup(old, pending.ticket))
                                {
                                    // A push skipped an agent this node does not hold after the
-                                   // ticket -- possibly this one: the read may predate it too.
+                                   // ticket, or eviction erased an entry written after it --
+                                   // possibly this one's: the read may predate that change too.
                                    outcome = LookupOutcome {LookupOutcome::Kind::Superseded, {}};
                                    return nullptr;
                                }
