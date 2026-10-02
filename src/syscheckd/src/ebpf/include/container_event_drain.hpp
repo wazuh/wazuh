@@ -84,6 +84,33 @@ struct DrainConfig
     /* Resolves attempted per resolver cycle. Bounded because each one is its own
      * connect/send/recv/close against a 2-worker server. */
     std::size_t max_resolves_per_cycle{32};
+
+    /* Discard events from cgroups that are not containers in the KERNEL, before
+     * a 12,416-byte ring reservation is attempted, instead of in this process.
+     *
+     * Worth having because the ratio is lopsided: unfiltered, this consumer
+     * receives every file write on the host and discards the overwhelming
+     * majority of them as host traffic, having paid a ring reservation, a copy
+     * and a hash lookup for each. Filtering turns that into one map lookup in
+     * the kernel.
+     *
+     * The cost is where a new container is discovered. Unfiltered, a container
+     * announces itself: its runtime's own startup writes arrive from a cgroup
+     * nobody knows, and resolving that cgroup escalates it to a walk, roughly a
+     * second after it starts. Filtered, those writes never arrive, so discovery
+     * falls entirely to the connector's container list and takes up to
+     * `resolver_interval_ms`.
+     *
+     * That is a latency change and not a correctness one, because the OUTCOME
+     * is the same either way: a container identified after the fact is re-walked
+     * rather than having its early paths replayed — they were discarded before
+     * anyone knew whose they were. A walk reads current on-disk state, so
+     * nothing that still exists is missed. A file created and deleted inside the
+     * discovery window is lost under both settings.
+     *
+     * Set false to restore the unfiltered behaviour. The drain also falls back
+     * to it on its own if the kernel allowlist cannot be populated. */
+    bool cgroup_allowlist{true};
 };
 
 /* Invoked on the consumer thread, once per batch, after release(). */

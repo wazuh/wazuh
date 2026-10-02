@@ -40,6 +40,11 @@ void LogDebug(const std::string& message)
     fim_container_baseline_log_debug(message.c_str());
 }
 
+void LogWarn(const std::string& message)
+{
+    fim_container_baseline_log_warn(message.c_str());
+}
+
 void LogError(const std::string& message)
 {
     fim_container_baseline_log_error(message.c_str());
@@ -117,6 +122,13 @@ struct ContainerEventDrain::Impl
      * would re-baseline every container for one container's loss — the exact
      * thing D14's counter map exists to avoid. */
     std::atomic<bool> per_cgroup_drops_unavailable{false};
+
+    /* The kernel is discarding events from cgroups that are not on the
+     * allowlist. Set in start() before any thread exists, and afterwards only
+     * cleared, on the resolver thread, by disableAllowlist(). Read on that same
+     * thread; the drain thread never looks at it, which is why it needs no
+     * synchronisation. */
+    bool allowlist_active{false};
 
     std::thread drain_thread;
     std::thread resolver_thread;
@@ -255,7 +267,65 @@ struct ContainerEventDrain::Impl
             containers.emplace_back(ref.cgroupId, ref.containerId);
         }
 
-        router.applyContainerList(containers);
+        syncAllowlist(router.applyContainerList(containers));
+    }
+
+    /* Mirror a list refresh into the kernel filter.
+     *
+     * The two sets are disjoint by construction — `removed` holds only cgroups
+     * absent from the new list, so an inode handed to a different container is
+     * in `added` alone and never in both. Adding first regardless, because the
+     * cost of being wrong about that is a live container going unmonitored. */
+    void syncAllowlist(const CgroupListDelta& delta)
+    {
+        if (!allowlist_active) return;
+
+        for (const auto& entry : delta.added)
+        {
+            if (rt_allow_cgroup(handle, entry.first) != 0)
+            {
+                disableAllowlist(entry.first);
+                return;
+            }
+        }
+
+        for (const auto cgroup_id : delta.removed)
+        {
+            /* Cgroup ids are inodes and are reused. An allowlist that only grew
+             * would eventually admit whatever inherits a dead container's
+             * inode, and those events would be attributed by the map — which
+             * has dropped the entry — to nobody. */
+            rt_deny_cgroup(handle, cgroup_id);
+        }
+    }
+
+    /* The allowlist could not take a container. Left alone that container's
+     * events are discarded in the kernel with nothing but an engine log to say
+     * so, which is precisely the silent gap this filter is not allowed to
+     * introduce — so stop filtering and go back to delivering everything.
+     *
+     * Unfiltered costs CPU. This would cost a container's change detection. */
+    void disableAllowlist(std::uint64_t cgroup_id)
+    {
+        if (rt_set_cgroup_mode(handle, RT_CGROUP_MODE_ALL) != 0)
+        {
+            /* Still filtering, and still unable to admit this cgroup. The
+             * router keeps filtering mode on deliberately: escalating every
+             * newly listed container to a walk is the only change detection
+             * left, and turning it off here would remove that too. */
+            LogError("Container eBPF drain: cgroup " + std::to_string(cgroup_id) +
+                     " could not be added to the kernel event filter, and the filter could not be "
+                     "turned off either. Containers beyond the filter's capacity will only be "
+                     "re-walked when they are first listed, not when their files change.");
+            return;
+        }
+
+        allowlist_active = false;
+        router.setFiltering(false);
+
+        LogWarn("Container eBPF drain: cgroup " + std::to_string(cgroup_id) + " did not fit the "
+                "kernel event filter, so filtering has been turned off and every file event on the "
+                "host is delivered again. Container change detection is unaffected; this costs CPU.");
     }
 
     void resolvePending()
@@ -292,6 +362,21 @@ struct ContainerEventDrain::Impl
                     else
                     {
                         router.applyContainerResolution(cgroup_id, container_id);
+
+                        /* Not the path by which a container normally reaches the
+                         * allowlist — that is syncAllowlist() — because under
+                         * filtering an event can only arrive from a cgroup that
+                         * is already allowed. It covers the one race that can
+                         * still land here: a container the connector omitted
+                         * from one list was denied in the kernel while an event
+                         * of its was already in the ring, and resolving that
+                         * event puts it back in the map. Without this it would
+                         * be attributable but undeliverable until the next
+                         * refresh. */
+                        if (allowlist_active)
+                        {
+                            rt_allow_cgroup(handle, cgroup_id);
+                        }
                     }
                     break;
                 }
@@ -401,24 +486,55 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
     filter.log          = &EngineLog;
     filter.log_user     = nullptr;
 
-    /* Deliberately ALL, not ALLOWLIST. In allowlist mode an event from a cgroup
-     * that has not been added is invisible rather than merely unattributed,
-     * which removes "an event arrived for a cgroup I do not know" as a discovery
-     * path — the fallback that covers a container created after startup. Until
-     * container_instances has a create-time trigger (item 20), narrowing the
-     * filter would trade a bounded cost for a silent gap. */
-    filter.cgroup_mode = RT_CGROUP_MODE_ALL;
+    /* Open already filtering, rather than opening in ALL and narrowing once the
+     * map is seeded. Both end in the same place, but the narrowing order has a
+     * window — between rt_open() and the switch nothing is polling the ring yet,
+     * so the whole host's file traffic lands in it, and the overflow that
+     * follows sets RT_F_DROPS_BEFORE on the first events the drain ever sees.
+     * Starting closed makes that window deliver nothing instead.
+     *
+     * Nothing is lost by it: the seeding refresh below runs before the drain
+     * thread exists, and the baseline walk that follows start() reads every
+     * container's current state anyway. */
+    filter.cgroup_mode = config.cgroup_allowlist ? RT_CGROUP_MODE_ALLOWLIST : RT_CGROUP_MODE_ALL;
 
     /* This consumer reads cgroup_id, filename, pid, event_type and flags, and
      * nothing else. The process-context fields exist for host FIM whodata's
      * "who" attribution and cost two dentry walks per event to produce — the
      * dominant per-event cost on the kprobe path, which is the majority
-     * configuration. Opting out is why running unfiltered (ALL, above) stays
-     * affordable: the cost that cannot be avoided by filtering is avoided by
-     * not computing it. */
+     * configuration.
+     *
+     * Still worth setting with the filter above in place: the two attack the
+     * same cost from opposite ends. The filter removes events; this removes
+     * per-event work from the events that remain, and from every event when the
+     * filter has had to turn itself off. */
     filter.skip_mask = RT_SKIP_PROC_CONTEXT;
 
     impl->handle = rt_open(&filter);
+
+    if (impl->handle == nullptr && filter.cgroup_mode == RT_CGROUP_MODE_ALLOWLIST)
+    {
+        /* rt_open() REFUSES allowlist mode on a BPF object that has no filtering
+         * maps, rather than quietly delivering everything. That is the right
+         * call for the engine — a consumer that asked to filter and silently got
+         * the whole host is a correctness surprise — and the wrong outcome for
+         * this one, where it would mean no container change detection at all.
+         *
+         * Worth retrying rather than treating as impossible: rt_file.bpf.o is in
+         * no packaging manifest (14 §14.6), so an object older than the running
+         * agent is a real configuration and not a hypothetical. Unfiltered is
+         * what this consumer did until this release, and it works. */
+        filter.cgroup_mode = RT_CGROUP_MODE_ALL;
+        impl->handle       = rt_open(&filter);
+
+        if (impl->handle != nullptr)
+        {
+            LogWarn("Container eBPF drain: the loaded BPF object cannot filter events in the "
+                    "kernel, so every file event on the host is delivered and discarded in the "
+                    "agent instead. Container file monitoring is unaffected; this costs CPU. "
+                    "Rebuild rt_file.bpf.o to avoid it.");
+        }
+    }
 
     if (impl->handle == nullptr)
     {
@@ -450,10 +566,25 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
 
     impl->handler = std::move(handler);
 
+    impl->allowlist_active = (filter.cgroup_mode == RT_CGROUP_MODE_ALLOWLIST);
+
     /* Seed the map before the drain starts, so containers that already exist are
      * attributable from the first event rather than each producing an
-     * escalation. A failure here is survivable: the resolver retries. */
+     * escalation. A failure here is survivable: the resolver retries.
+     *
+     * Under filtering this also seeds the KERNEL, and it has to happen with the
+     * router's filtering mode still off. On it, every container in this first
+     * list would be "newly listed" and escalate to a walk — a whole-node
+     * re-walk, immediately after the baseline walk that already read all of
+     * them.
+     *
+     * If the connector is unreachable right now this seeds nothing and the
+     * resolver's first cycle escalates every container it then finds. That is
+     * the correct outcome rather than the one above: the baseline walk resolves
+     * containers through the same connector, so an unreachable connector means
+     * none of them were walked either. */
     impl->refreshContainerList();
+    impl->router.setFiltering(impl->allowlist_active);
 
     m_impl = impl;
 

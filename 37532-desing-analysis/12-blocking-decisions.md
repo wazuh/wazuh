@@ -672,7 +672,7 @@ may already be answered there.
 | 4 | A2 item 9 — the ABI pin and rt_open's contracts | `eade929f57` | **done** |
 | 5 | VM loss proof ([11 §11.10 test 5](11-ebpf-provider-import-plan.md#vm-only-wazuh_manager)) | `1a87dba137` + [§12.9](#129-d4-answered--the-loss-proof-measured) | **done** — D4 answered, and the teardown fix is now proven on a real kernel |
 | 6a | A2 item 2 — per-cgroup drop attribution | `9e884232c5` | **done**, D14 → counter map. Also settled [11 open question 2](11-ebpf-provider-import-plan.md#1111-open-questions-and-what-i-could-not-verify) |
-| 6b | A2 item 1 — in-kernel cgroup filtering | `619ecb670c` | **done**. 300 delivered from the allowlisted cgroup, 0 from the excluded one, 0 counted as drops. Note it makes item 20's create trigger a hard prerequisite for A3: an unlisted cgroup becomes invisible, not merely unattributed |
+| 6b | A2 item 1 — in-kernel cgroup filtering | `619ecb670c` | **done**. 300 delivered from the allowlisted cgroup, 0 from the excluded one, 0 counted as drops. ~~Note it makes item 20's create trigger a hard prerequisite for A3~~ — superseded 2026-10-02: the connector's list populates the allowlist, so item 20 is a latency optimisation. The test now also proves the allowlist is live (a cgroup added mid-flight is delivered; one removed is not) |
 | 7 | Correct [06](06-proposed-architecture.md) against the contradiction tables | — | **done** — [06 §6.10](06-proposed-architecture.md#610-corrections--the-sketch-versus-the-implemented-contract). Grew in the doing: two rows of [11](11-ebpf-provider-import-plan.md)'s table were no longer true (the provider gained cgroup filtering and per-cgroup drops), and two new corrections came from C21/C22 |
 | 8 | Port order steps 4–9 (the spike's unintegrated tail) | `0de54d92fc`, `f689f33094`, `998fd0ce5a` | **done, and mostly by deciding not to** — see [§12.13](#1213-the-port-order-finished-2026-09-07) |
 
@@ -1551,6 +1551,24 @@ Less than the first write-up implied, and the difference is the point:
   — "until `container_instances` has a create-time trigger (item 20), narrowing the filter would
   trade a bounded cost for a silent gap" — is correct and not merely cautious. An allowlist has
   nothing to put in it until a create trigger exists.
+
+  > **Correction, 2026-10-02.** The last sentence is wrong, and it was repeated from here into
+  > [10 §10.0](10-container-instances-delta-plan.md) and [16 Q8](16-open-design-questions.md)
+  > without being re-examined. The allowlist has had something to put in it all along: the
+  > connector's container list, which `refreshContainerList()` already polls every 5 s to drive
+  > attribution. What item 20 supplies is a *create event*, and the mistake was treating "there is
+  > no create event" as "there is nothing to populate the allowlist with".
+  >
+  > The filter now ships narrowed (`cgroup_allowlist`, default on). Discovery moves from the
+  > runtime's incidental startup writes to the connector's list, so its latency goes from ~1 s to
+  > at most `resolver_interval_ms`. That is a latency change and not a correctness one, because a
+  > container identified after the fact gets the *same* treatment either way — a re-walk, never a
+  > replay of paths nobody could attribute — and a walk reads current on-disk state. A file created
+  > and deleted inside the discovery window is missed under both settings, which is the honest
+  > statement of what is and is not lost.
+  >
+  > Item 20 is therefore an **optimisation of this, not a prerequisite for it**: it would cut the
+  > discovery window to near zero and remove the dependency on a 5 s poll.
 - **But discovery is incidental, not designed.** All four writes are the *runtime's* behaviour, not
   the container's: `oom_score_adj` and the two sysctls are Docker defaults, and the AppArmor label
   write needs an enforcing LSM. Reliable on Docker + Ubuntu; guaranteed by nothing. A runtime that
