@@ -1,0 +1,39 @@
+// Recipe of the devContainer image (ghcr.io/wazuh/wazuh-devcontainer): the Dockerfile plus
+// the features baked into it. VS Code never opens this file (it only offers devcontainer.json);
+// the devContainer runs the published image named in devcontainer.json.
+// Build it with build-image.sh, next to this file (local build, or push by digest in CI).
+{
+	"build": {
+		"dockerfile": "Dockerfile",
+		// Image provenance, read from the environment of build-image.sh, which always sets the
+		// three variables. No defaults here: ${localEnv:VAR:default} cuts the default at its
+		// first ':'. The marker is a build arg (the Dockerfile defaults it to "local"); the
+		// repository URL and the commit are labels, so a new commit never invalidates a layer.
+		"args": {
+			"WAZUH_DEVCONTAINER_SOURCE": "${localEnv:WAZUH_DEVCONTAINER_SOURCE}"
+		},
+		"options": [
+			"--label=org.opencontainers.image.source=${localEnv:WAZUH_DEVCONTAINER_REPO_URL}",
+			"--label=org.opencontainers.image.revision=${localEnv:WAZUH_DEVCONTAINER_REVISION}"
+		]
+	},
+
+	// The features are installed for the last remoteUser of the image metadata; without this
+	// they would go to the base image's vscode user. devcontainer.json keeps its own.
+	"remoteUser": "root",
+
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	"features": {
+		"ghcr.io/nils-geistmann/devcontainers-features/zsh:0": {
+			"theme": "bira",
+			"plugins": "git docker docker-compose",
+			"setLocale": true,
+			"desiredLocale": "en_US.UTF-8"
+		},
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		"ghcr.io/devcontainers/features/go:1": {},
+		"ghcr.io/devcontainers/features/python:1": {},
+		"ghcr.io/devcontainers/features/sshd:1": {},
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
+	}
+}

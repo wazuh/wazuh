@@ -2,8 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-"""Verify `offset` is bounded by the spec and that rejecting a parameter discloses neither the
-schema that rejected it nor the submitted value. Uses the production parameter validator and error
+"""Verify `offset`, `q`, `select` and `daemons_list` are bounded by the spec and that rejecting a
+parameter discloses neither the schema that rejected it nor the submitted value. Uses the production parameter validator and error
 handler, so the body is what a client receives."""
 
 import os
@@ -53,6 +53,40 @@ def test_offset_at_int32_max_is_not_rejected_by_the_validator():
     response = _get({'offset': INT32_MAX})
 
     assert not (response.status_code == 400 and 'offset' in response.text)
+
+
+def test_q_above_max_length_is_rejected_before_reaching_the_framework():
+    """`q` is parsed in the API's single data worker at a cost that grows faster than its length, so
+    an oversized query must be refused by the spec validator."""
+    response = _get({'q': 'id=1;' + 'a' * 1020})
+
+    assert response.status_code == 400
+    assert response.json()['detail'] == "Invalid value for query parameter 'q': must be at most 1024 characters long"
+
+
+def test_q_at_max_length_is_not_rejected_by_the_validator():
+    """A `q` exactly at the limit must not be rejected by the length check."""
+    response = _get({'q': 'id=1;' + 'a' * 1019})
+
+    assert not (response.status_code == 400 and "parameter 'q'" in response.text)
+
+
+def test_select_above_max_items_is_rejected():
+    """Every `select` field is looked up in every item, so the list is bounded."""
+    response = _get({'select': ','.join(f'os.x{i}' for i in range(101))})
+
+    assert response.status_code == 400
+    assert response.json()['detail'] == "Invalid value for query parameter 'select': must contain at most 100 items"
+
+
+def test_daemons_list_with_duplicates_is_rejected():
+    """Each listed daemon is one socket round trip, so a daemon may be listed only once."""
+    response = _get({'daemons_list': 'wazuh-manager-analysisd,wazuh-manager-analysisd'},
+                    path='/cluster/node01/daemons/stats')
+
+    assert response.status_code == 400
+    assert response.json()['detail'] == ("Invalid value for query parameter 'daemons_list': must not contain "
+                                         "duplicate items")
 
 
 def test_rejected_parameter_does_not_disclose_the_schema():

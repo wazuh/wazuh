@@ -1,6 +1,6 @@
 # API Reference
 
-The `agent_info` module exposes a C-style API for integration with `wazuh-manager-modulesd` and uses a C++ implementation for its core logic. It also relies on a query-based API to coordinate with other modules.
+The `agent_info` module exposes a C-style API for integration with `wazuh-modulesd` and uses a C++ implementation for its core logic. It also relies on a query-based API to coordinate with other modules.
 
 ---
 
@@ -36,7 +36,7 @@ Stops the main loop in `AgentInfoImpl`, resets the `DBSync` and `AgentSyncProtoc
 
 ### Callback-Setter Functions
 
-These functions are used by `wazuh-manager-modulesd` to provide the necessary callbacks for logging, reporting, and inter-module communication.
+These functions are used by `wazuh-modulesd` to provide the necessary callbacks for logging, reporting, and inter-module communication.
 
 ```c
 // Sets the logging callback function.
@@ -53,13 +53,13 @@ void agent_info_set_query_module_function(query_module_callback_t query_module_c
 
 ### Synchronization Functions
 
-These functions integrate `agent_info` with the Agent Sync Protocol managed by `wazuh-manager-modulesd`.
+These functions integrate `agent_info` with the Agent Sync Protocol managed by `wazuh-modulesd`.
 
 #### `agent_info_init_sync_protocol()`
-Initializes the synchronization protocol handle. This function is called by `wazuh-manager-modulesd` before `agent_info_start` to provide the necessary message queue functions.
+Initializes the synchronization protocol handle. This function is called by `wazuh-modulesd` before `agent_info_start` to provide the necessary message queue functions.
 
 ```c
-void agent_info_init_sync_protocol(const char* module_name, const MQ_Functions* mq_funcs);
+void agent_info_init_sync_protocol(const char* module_name);
 ```
 
 ---
@@ -83,7 +83,7 @@ The core logic is encapsulated within the `AgentInfoImpl` class.
 Starts the main processing loop of the module.
 
 ```cpp
-void start(int interval, int integrityInterval, std::function<bool()> shouldContinue = nullptr);
+void start(int interval, int integrityInterval = 86400, const std::function<bool()>& shouldContinue = nullptr);
 ```
 **Description:**
 Periodically calls `populateAgentMetadata` to gather data, triggers delta or integrity synchronization when needed, and waits for the next cycle.
@@ -103,7 +103,7 @@ void stop();
 Initializes the `AgentSyncProtocol` instance for manager communication.
 
 ```cpp
-void initSyncProtocol(const std::string& moduleName, const MQ_Functions& mqFuncs);
+void initSyncProtocol(const std::string& moduleName);
 ```
 ---
 
@@ -116,14 +116,6 @@ bool parseResponseBuffer(const uint8_t* data, size_t length);
 **Description:**
 Delegates the call to the `AgentSyncProtocol` instance to process a response from the manager.
 
----
-
-### `setSyncParameters()`
-Configures the parameters for the synchronization protocol.
-
-```cpp
-void setSyncParameters(uint32_t syncEndDelay, uint32_t timeout, uint32_t retries, long maxEps);
-```
 ---
 
 ### `processEvent()`

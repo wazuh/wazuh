@@ -8,16 +8,20 @@ claimed.
 ## Running
 
 ```bash
-# Build the module and its testtool first.
-cd src && make TARGET=server UNIT_TEST=1 -j$(nproc)
+# The testtool is built unconditionally with the module (no UNIT_TEST needed) and lands in
+# src/build/bin/. After a configured build, the target alone is enough:
+cmake --build src/build --target task_manager_testtool -j$(nproc)
 
-pip install -r wazuh_modules/task_manager/qa/requirements.txt
-cd wazuh_modules/task_manager/qa
-WAZUH_BUILD=../../../build pytest
+pip install -r src/wazuh_modules/task_manager/qa/requirements.txt
+cd src/wazuh_modules/task_manager/qa
+WAZUH_BUILD=../../../build python -m pytest -vv --log-cli-level=INFO
 ```
 
-`--testtool /path/to/task_manager_testtool` overrides the lookup. The suite skips rather than fails
-when the binary is absent, so a unit-test-only job is not turned red by it.
+This is what [5_testintegration_taskmanager.yml](../../../../.github/workflows/5_testintegration_taskmanager.yml)
+runs. The testtool is looked up at `$WAZUH_BUILD/bin/task_manager_testtool` (`WAZUH_BUILD` defaults to
+`build`, relative to the working directory); `--testtool /path/to/task_manager_testtool` overrides the
+lookup. When the binary is absent every test is **skipped** and pytest still exits 0, so a green run
+proves nothing until the summary shows tests passed.
 
 ## What is here
 
@@ -25,7 +29,9 @@ when the binary is absent, so a unit-test-only job is not turned red by it.
 | --- | --- |
 | `test_agent_tasks.py` | Creation, one-shot delivery, deterministic ids, bulk, payload and timestamp limits, restart durability |
 | `test_manager_tasks.py` | Claim to completion, the retry and deferral ladders, coalescing, admission shedding, paging, and the recovery cases |
+| `test_agent_upgrade.py` | The two upgrade routes against a stub repository: one fetch and one download per platform for a whole fleet, SHA-1 verification, the delivery gates, custom WPKs, the always-200 envelope, the disabled module and shutdown answering parked requests |
 | `helpers/task_client.py` | The HTTP-over-UDS client, and the stub consumer whose answers each test scripts |
+| `helpers/wpk_repo.py` | `StubWpkRepository`: a TCP server serving `versions` files and WPK bodies, counting every request |
 
 ## The stub consumer
 

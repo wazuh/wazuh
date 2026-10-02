@@ -1,239 +1,95 @@
 # Active Response
 
-The **Active Response** module enables automated response actions triggered by security events detected in the Wazuh Indexer. When an Alerting monitor matches, the response reaches the agent as a task and the agent executes a script to block IPs, disable accounts, or perform other security-relevant actions.
-
-Active Response is implemented through `wazuh-execd`, which receives commands from the manager, executes response scripts on the agent, and manages response lifecycle including timeouts for stateful responses.
+The **Active Response** module runs a response action on an agent — block an IP address, lock a user
+account, or run a script of your own — when an event indexed in the Wazuh Indexer matches an Alerting
+monitor. The decision is made in the Indexer, the manager relays the response to the agent as a Task
+Manager task, and the agent's `wazuh-execd` daemon runs the executable and, for a stateful response,
+reverts it when its timeout expires.
 
 ## Key Features
 
-- **IP Blocking**: Block malicious IPs using various firewall mechanisms (iptables, firewalld, pf, ipfw, npf, netsh, etc.)
-- **Account Management**: Disable user accounts in response to suspicious activity
-- **Stateful/Stateless Responses**: Support for temporary (stateful) or permanent (stateless) actions
-- **Multi-Platform**: Cross-platform support for Linux, macOS, and Windows
-- **Deduplication**: Prevents duplicate executions of the same response
-- **Timeout Management**: Automatic reversion of stateful responses after configured duration
-- **Metadata-Driven**: Uses WCS-compatible metadata format (no `ar.conf` dependency)
+- **IP blocking**: `block-ip` tries the platform's mechanisms in order and stops at the first that
+  succeeds — firewalld then iptables on Linux, ipfw/pf/npf on the BSDs, pf on macOS, each followed by
+  `hosts.deny` and `route`; netsh then `route` on Windows
+- **Account locking**: `disable-account` locks a local account (`passwd -l` on Linux, `pwpolicy` on macOS)
+- **Stateful or stateless**: a stateful response is reverted by `wazuh-execd` after its
+  `stateful_timeout`; a stateless one runs once
+- **Deduplication**: a stateful response repeated for the same keys (IP address, user name) while its
+  reversion is pending is not run again; its countdown restarts instead
+- **Metadata-driven**: what to run and for how long travels in the message under
+  `wazuh.active_response`; the agent needs no per-response configuration
+- **Custom executables**: any program in the agent's `active-response/bin/` that follows the JSON
+  protocol on stdin/stdout
 
 ## Overview
 
-Active Response operates in a manager-agent communication model:
-
-1. **Event Detection**: an Alerting monitor in the Wazuh Indexer matches an indexed event
-2. **Command Generation**: the monitor's Active Response channel writes a response document to `wazuh-active-responses`; `wazuh-manager-clusterd` reads it and creates one Task Manager task per target agent (see [Manager-side ingestion](architecture.md#manager-side-ingestion))
-3. **Agent Execution**: Agent's `wazuh-execd` receives the command and executes the appropriate script
-4. **Lifecycle Management**: For stateful responses, execd manages timeouts and automatic reversion
+1. **Event detection**: an Alerting monitor in the Wazuh Indexer matches an indexed event.
+2. **Response document**: the monitor's Active Response notification channel writes a response
+   document to the `wazuh-active-responses` data stream.
+3. **Task creation**: `wazuh-manager-clusterd`, on every cluster node, reads the document and creates
+   one Task Manager task of type `active_response` per target agent (see
+   [Manager-side ingestion](architecture.md#manager-side-ingestion)).
+4. **Delivery**: the agent receives the task in the response to its next `POST /control` and forwards
+   the payload to `wazuh-execd`.
+5. **Execution**: `wazuh-execd` runs `active-response/bin/<executable>` with the message on stdin and
+   `"command": "enable"`; for a stateful response it runs it again with `"command": "disable"` once
+   the timeout expires.
 
 ```
-┌─────────────┐         ┌──────────────┐         ┌─────────────┐
-│   Manager   │ ──────> │ wazuh-execd  │ ──────> │  AR Script  │
-│ (Task relay)│  JSON   │   (Agent)    │  stdin  │ (block-ip)  │
-└─────────────┘         └──────────────┘         └─────────────┘
-                               │                         │
-                               │ Timeout Management      │ Firewall
-                               └─────────────────────────┘
+┌──────────────────┐  task   ┌──────────────────┐ execq  ┌──────────────┐  stdin  ┌────────────┐
+│ Manager          │ ──────> │ wazuh-agentd     │ ─────> │ wazuh-execd  │ ──────> │ executable │
+│ (clusterd + Task │  POST   │ (HTTPS client)   │  JSON  │ (agent)      │  JSON   │ (block-ip) │
+│  Manager)        │ /control└──────────────────┘        └──────┬───────┘ <────── └────────────┘
+└──────────────────┘                                            │        check_keys
+                                                                │ timeout list:
+                                                                └ re-run with "disable"
 ```
 
-## Command Protocol
+The message format, the `check_keys` exchange and the timeout handling are specified in
+[Architecture](architecture.md#json-protocol).
 
-Active Response uses a JSON-based protocol with **enable/disable** commands:
+## Executables
 
-### Enable Command
+| Executable | Platforms | Action |
+|---|---|---|
+| `block-ip` | Linux, FreeBSD, OpenBSD, NetBSD, macOS, Windows | Blocks `source.ip`; one binary per platform family with its own method chain |
+| `disable-account` | Linux, macOS | Locks `user.name` |
 
-Activates a response action (e.g., block an IP):
+Method chains, commands and per-platform behaviour: [Executables Reference](executables.md).
 
-```json
-{
-  "wazuh": {
-    "active_response": {
-      "name": "block-ip",
-      "executable": "block-ip",
-      "location": "defined-agent",
-      "agent_id": "001",
-      "type": "stateless"
-    },
-    "agent": {
-      "id": "001",
-      "name": "test-agent"
-    }
-  },
-  "source": {
-    "ip": "192.168.1.100"
-  },
-  "user": {
-    "name": "username"
-  },
-  "command": "enable"
-}
-```
+## Configuration
 
-### Disable Command
+What runs and when is configured in the Wazuh dashboard: a notification channel of the Active
+Response type says what to run, and an Alerting monitor says when. There is no `<active-response>`
+section in the manager configuration. On the agent, the `<active-response>` block of the local
+`ossec.conf` can disable execution or set `repeated_offenders`; see [Configuration](configuration.md).
 
-Reverts a response action (e.g., unblock an IP):
+## Restart and reload are not Active Response
 
-```json
-{
-  "wazuh": {
-    "active_response": {
-      "name": "block-ip",
-      "executable": "block-ip",
-      "location": "defined-agent",
-      "agent_id": "001",
-      "type": "stateful",
-      "stateful_timeout": 600
-    },
-    "agent": {
-      "id": "001",
-      "name": "test-agent"
-    }
-  },
-  "source": {
-    "ip": "192.168.1.100"
-  },
-  "user": {
-    "name": "username"
-  },
-  "command": "disable"
-}
-```
-
-## Response Types
-
-### Stateful Responses
-
-Stateful responses are **temporary** actions that automatically revert after a configured timeout:
-
-- **Enable**: Blocks the IP/disables the account
-- **Disable**: Automatically sent by execd after timeout expires
-- **Use Cases**: Temporary IP blocks, temporary account lockouts
-
-Example: Block IP for 600 seconds, then automatically unblock.
-
-### Stateless Responses
-
-Stateless responses are **permanent** actions that do not automatically revert:
-
-- **Enable**: Applies the action
-- **No Disable**: No automatic reversion
-- **Use Cases**: Permanent bans, notification systems
-
-Example: Add IP to permanent blocklist.
-
-## Available Executables
-
-Active Response provides the following executables:
-
-### IP Blocking (Cross-Platform)
-
-- **block-ip** (Unix/Linux): Blocks IPs using iptables, firewalld, pf, ipfw, npf, route, or hosts.deny
-- **block-ip** (macOS): Blocks IPs using pf, hosts.deny, or route
-- **block-ip** (Windows): Blocks IPs using netsh or route
-
-### Account Management
-
-- **disable-account** (Unix/Linux): Disables user accounts using `passwd -l`
-
-### Platform-Specific Details
-
-See [Executables Reference](executables.md) for detailed information about each executable, including:
-- Supported platforms
-- Firewall methods and fallback order
-- Input/output formats
-- Platform-specific behaviors
-
-## WCS Metadata Format
-
-Active Response uses a **metadata-driven approach** where all execution metadata is embedded in the JSON command:
-
-```json
-{
-  "wazuh": {
-    "active_response": {
-      "name": "block-ip",
-      "executable": "block-ip",
-      "type": "stateful",
-      "stateful_timeout": 600
-    }
-  },
-  "source": {
-    "ip": "192.168.1.100"
-  },
-  "command": "enable"
-}
-```
-
-**Benefits**:
-- **No ar.conf needed**: Executable name, type, and timeout are embedded in the `wazuh.active_response` object
-- **WCS Compatibility**: Field names aligned with Wazuh Cloud Standards
-- **Simplified Configuration**: Reduces agent-side configuration complexity
-- **Centralized Metadata**: All execution parameters come from the notification channel
-
-## Deduplication Mechanism
-
-Active Response includes a deduplication system to prevent redundant executions:
-
-1. **Keys Generation**: Extracts unique identifiers (e.g., source IP, username) from the alert
-2. **Keys Verification**: Sends keys to execd for duplicate checking
-3. **Response Check**: Execd responds with:
-   - `continue`: Proceed with execution (no duplicate found)
-   - `abort`: Skip execution (duplicate already active)
-
-This prevents multiple concurrent blocks of the same IP or account.
-
-## Integration Points
-
-### Configuration
-
-Active Response is configured from the Wazuh dashboard: a notification channel of the Active Response type says what to run, and an Alerting monitor says when. There is no `<active-response>` section in the manager configuration; see [Configuration](configuration.md).
-
-### Agent Execution
-
-The agent's `wazuh-execd` daemon:
-1. Listens for commands from the manager
-2. Validates the JSON structure and command
-3. Executes the appropriate script with JSON input via stdin
-4. Manages timeout-based reversions for stateful responses
-
-### Separation from Control Operations
-
-**Important**: Agent restart and reload operations are **not** part of Active Response. These control operations are handled by the [Control Module (wm_control)](../control/index.html), which provides a dedicated control channel for operational commands.
-
-**Architecture**:
-- **Active Response (execd)**: Security response actions (block IP with enable/disable commands, disable account)
-- **Control Module (wm_control)**: Operational control commands (restart, reload)
-- Clear separation between security responses and operational control
-
-## Security Considerations
-
-- **Privilege Requirements**: Most Active Response scripts require elevated privileges (root/Administrator)
-- **Input Validation**: All scripts validate JSON input structure before execution
-- **Command Whitelisting**: Only `enable` and `disable` commands are accepted
-- **Firewall Safety**: IP blocking scripts use safe methods and validate IP addresses
-- **Logging**: All operations logged to `/var/ossec/logs/active-responses.log`
+Agent restart and reload are `agent_restart` / `agent_reload` tasks handled by the
+[Control Module](../control/README.md), not Active Response executables.
 
 ## Logging
 
-Active Response operations are logged to:
-- **Linux/macOS**: `/var/ossec/logs/active-responses.log`
-- **Windows**: `C:\Program Files (x86)\ossec-agent\active-response\active-responses.log`
+| Where | What |
+|---|---|
+| Agent: `logs/active-responses.log` under the agent's installation directory (`/var/ossec`, `/Library/Ossec` on macOS); `C:\Program Files (x86)\ossec-agent\active-response\active-responses.log` on Windows | What each executable did, written by the executable |
+| Agent: `logs/ossec.log` (`ossec.log` on Windows), tag `wazuh-execd` | What `wazuh-execd` received, ran and reverted, and why a message was refused |
+| Manager: `/var/wazuh-manager/logs/cluster.log`, tag `[Active Response]` | What the poller read, dispatched, held or discarded |
 
-Log format:
-```
-2026-03-31 15:30:45 block-ip: Starting
-2026-03-31 15:30:45 block-ip: {"wazuh":{"active_response":{...}},"source":{...},"command":"enable"}
-2026-03-31 15:30:46 block-ip: INFO - firewalld - success - IP 192.168.1.100 blocked successfully
-2026-03-31 15:30:46 block-ip: Ended
-```
+The agent's default `ossec.conf` also monitors `logs/active-responses.log` with a `<localfile>`
+block, so its lines reach the manager as events.
 
 ## Documentation
 
 | Document | Description |
 |----------|-------------|
-| [Architecture](architecture.md) | Technical architecture, implementation details, and protocol specifications |
-| [Configuration](configuration.md) | Agent-side options, and where the manager-side settings live |
-| [Executables Reference](executables.md) | Complete inventory of Active Response executables with platform details |
+| [Architecture](architecture.md) | Manager-side ingestion, delivery, `wazuh-execd`, the JSON protocol and every log message |
+| [Configuration](configuration.md) | The agent's `<active-response>` block, internal options and troubleshooting |
+| [Executables Reference](executables.md) | `block-ip` and `disable-account` per platform, and how to write a custom executable |
 
 ## See Also
 
-- [Control Module](../control/index.html) - Agent restart/reload operations
-- [Remoted](../remoted/index.html) - Manager-agent communication layer
-- [Server API Reference](../server-api/api-reference.md) - API endpoints for triggering responses
+- [Control Module](../control/README.md) - Agent restart/reload operations
+- [Task Manager](../task_manager/README.md) - Storage and delivery of agent tasks
+- [Remoted](../remoted/README.md) - The agent-facing `POST /control` endpoint

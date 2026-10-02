@@ -6,6 +6,7 @@ metadata:
     This parser is designed to interpret and convert strings formatted in XML notation into a JSON object.
     It preserves the structure of the original XML in the default mode and provides a specialized
     transformation for Windows Event Log XML when the optional "windows" argument is used.
+    Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
   keywords:
     - parser
 

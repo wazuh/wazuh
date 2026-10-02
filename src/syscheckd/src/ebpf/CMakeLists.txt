@@ -7,7 +7,6 @@ if(NOT DEFINED WAZUH_MAIN_PROJECT)
   get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../../ ABSOLUTE)
 endif()
 
-include_directories(${SRC_FOLDER}/external/libbpf-bootstrap/build/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../db/include/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../ebpf/include/)

@@ -9,6 +9,7 @@ from wazuh.core.exception import WazuhError, WazuhPermissionError
 from wazuh.core.results import WazuhResult
 from wazuh.rbac.auth_context import RBAChecker, get_policies_from_roles
 from wazuh.rbac.orm import AuthenticationManager
+from wazuh.rbac.utils import canonical_resource
 from wazuh.core.decorators import dapi_allower
 
 
@@ -93,7 +94,9 @@ class PreProcessor:
                 resource_type = PreProcessor.is_combination(resource)
                 if len(resource_type[1]) > 2:
                     raise WazuhError(4500, extra_remediation="The maximum length for permission combinations is two")
-                resource = resource_type[1] if resource != '*' else ['*:*:*']
+                # Canonical ids, as the decorator compares them: a policy on `agent:id:5` or `role:id:01`
+                # must reach agent 005 and role 1, and override a previous policy spelled differently
+                resource = [canonical_resource(r) for r in resource_type[1]] if resource != '*' else ['*:*:*']
                 self.remove_previous_elements(resource, action)
                 self.odict[action]['&'.join(resource)] = policy['effect']
 

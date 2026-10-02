@@ -19,6 +19,9 @@ services:
       - wazuh-indexer-data:/var/lib/wazuh-indexer
       - wazuh-indexer-config:/etc/wazuh-indexer-init
       - wazuh-indexer-engine:/usr/share/wazuh-indexer/engine
+    env_file:
+      - path: ./.credentials.env
+        required: false
     ports:
       - 9200:9200
 
@@ -33,6 +36,9 @@ services:
     volumes:
       - ./wazuh-dashboard/entrypoint.sh:/entrypoint.sh:ro
       - ./certs:/certs:ro
+    env_file:
+      - path: ./.credentials.env
+        required: false
     ports:
       - 443:443
     extra_hosts:

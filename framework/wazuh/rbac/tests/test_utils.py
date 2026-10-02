@@ -29,6 +29,40 @@ def _make_cached_lookup(cache, backing):
     return lookup
 
 
+@pytest.mark.parametrize('resource_type, value, expected', [
+    ('agent:id', '5', '005'),
+    ('agent:id', '0005', '005'),
+    ('agent:id', '000', '000'),
+    ('agent:id', '01000', '1000'),
+    ('role:id', '01', '1'),
+    ('user:id', '0100', '100'),
+    ('rule:id', '000', '0'),
+    ('policy:id', '7', '7'),
+    ('agent:id', '*', '*'),
+    ('role:id', None, None),
+    ('role:id', 1, 1),
+    ('role:id', '١', '١'),
+    ('agent:group', '007', '007'),
+    ('group:id', '01', '01'),
+    ('node:id', '01', '01'),
+])
+def test_canonical_id(resource_type, value, expected):
+    """Only ASCII digit ids of the numeric resource types are rewritten; anything else is left alone."""
+    assert rbac_utils.canonical_id(resource_type, value) == expected
+
+
+@pytest.mark.parametrize('resource, expected', [
+    ('agent:id:5', 'agent:id:005'),
+    ('role:id:01', 'role:id:1'),
+    ('agent:id:*', 'agent:id:*'),
+    ('agent:group:007', 'agent:group:007'),
+    ('*:*:*', '*:*:*'),
+    ('*', '*'),
+])
+def test_canonical_resource(resource, expected):
+    assert rbac_utils.canonical_resource(resource) == expected
+
+
 def test_policies_cache_ttl_is_bounded():
     """The TTL must not be the token lifetime, so a missed invalidation is always recovered from."""
     assert rbac_utils.POLICIES_CACHE.ttl == rbac_utils.POLICIES_CACHE_TTL

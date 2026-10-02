@@ -12,9 +12,9 @@
  */
 namespace hlp::syntax
 {
-using ResultT = std::string_view;         ///< Result value type for syntax parsers.
-using Result = abs::Result<ResultT>;      ///< Syntax parser result type.
-using Parser = abs::Parser<ResultT>;      ///< Syntax parser type.
+using ResultT = std::string_view;    ///< Result value type for syntax parsers.
+using Result = abs::Result<ResultT>; ///< Syntax parser result type.
+using Parser = abs::Parser<ResultT>; ///< Syntax parser type.
 
 /**
  * @brief Given a syntax parser result and the original input, returns the parsed string.

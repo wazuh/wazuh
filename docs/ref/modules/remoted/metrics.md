@@ -92,8 +92,8 @@ never in the per-endpoint `remoted.http.*.responses.*` cells (see
 | `remoted.server.budget.inflight.bytes` | gauge (pull) | bytes | Bytes currently reserved (request payloads plus zstd decompression scratch) | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
 | `remoted.server.budget.inflight.requests` | gauge (pull) | requests | Admitted requests currently resident — exactly one per request, compressed or not | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections), [`https.max_body_size`](configuration.md#httpsmax_body_size) |
 | `remoted.server.budget.rejected.total` | counter (pull) | requests | Requests the budget refused to admit (503, admission only) — cumulative | [`remoted.max_inflight_bytes`](configuration.md#remotedmax_inflight_bytes) |
-| `remoted.server.connections.open` | gauge | connections | Connections currently open on the listener. **Not** the same as `budget.inflight.requests`: a connection is held from accept to close, which on a streamed `POST /download` is the whole transfer | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections) |
-| `remoted.server.connections.max` | gauge | connections | What that ceiling is set to. Reaching it refuses nothing — the accept is postponed and the connection waits in the kernel backlog — so this pair is the **only** way to see the limit being approached; there is no rejection counter for it | as above; if `open` rides near `max`, raise it or shorten what holds connections (downloads) |
+| `remoted.server.connections.open` | gauge (pull) | connections | Connections currently open on the listener. **Not** the same as `budget.inflight.requests`: a connection is held from accept to close, which on a streamed `POST /download` is the whole transfer | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections) |
+| `remoted.server.connections.max` | gauge (pull) | connections | What that ceiling is set to. Reaching it refuses nothing — the accept is postponed and the connection waits in the kernel backlog — so this pair is the **only** way to see the limit being approached; there is no rejection counter for it | as above; if `open` rides near `max`, raise it or shorten what holds connections (downloads) |
 
 Running with `inflight.bytes` near the configured cap at peak, or `rejected.total` moving,
 means the budget is the active bottleneck: raise
@@ -176,8 +176,10 @@ it alone: [timing tuning, invariant 2](timing-tuning.md#3-invariants).
 
 ### Request outcomes — `remoted.http.<endpoint>.responses.<code>`
 
-What each endpoint actually answered its agents. Six endpoints carry this family — `stateless`,
-`stateful`, `stats`, `config`, `enroll` and `cacerts` (the only `GET` route with this family) — each with the same
+What each endpoint actually answered its agents. Seven endpoints carry this family — `stateless`,
+`stateful`, `stats`, `config`, `enroll`, `enroll.secret` (`POST /enroll/secret`, hence
+`remoted.http.enroll.secret.responses.<code>`) and `cacerts` (the only `GET` route with this
+family) — each with the same
 closed set of nine status cells, so a scraper's columns line up across endpoints (some cells
 are structurally zero for a given endpoint, e.g. `/stateless` never answers 409, and
 `/cacerts`'s `404` lands in `other`). Every response is counted exactly once, at the single
@@ -197,7 +199,7 @@ useful than the status —
 | `403` | Identity rejection relayed from the sync server (`/stateful` contract), or enrollment administratively disabled (`/enroll`) | diagnostic — the sync server's own view is [`sync.requests.total.*`](../inventory-sync-server/metrics.md#request-outcomes--syncrequeststotalcode); for `/enroll` see [`remoted.enroll.disabled`](#agent-enrollment--remotedenroll) |
 | `409` | Checksum mismatch relayed from the sync server (`/stateful` contract) | diagnostic — same cross-reference as `403` |
 | `413` | Body over the accepted size | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size), [`https.max_body_size`](configuration.md#httpsmax_body_size) |
-| `429` | The endpoint's rate limit refused the request before the handler ran. Structurally zero except on `/enroll` and `/cacerts`, the two unauthenticated routes | [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes); the cause is [`remoted.<endpoint>.rate_limited`](#rate-limits--remotedendpointrate_limit) |
+| `429` | The endpoint's rate limit refused the request before the handler ran. Structurally zero except on `/enroll`, `/enroll/secret` and `/cacerts`, the three rate-limited routes | [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes); the cause is [`remoted.<endpoint>.rate_limited`](#rate-limits--remotedendpointrate_limit) |
 | `500` | Internal error while building the reply | diagnostic — a bug signal, report it |
 | `503` | Downstream failure or a deferred-limiter shed | [`remoted.max_deferred_requests`](configuration.md#remotedmax_deferred_requests) for the limiter share; the [downstream failures](#downstream-failures--remotedforwarder) family for the rest |
 | `other` | Any status outside the set above. Includes `/enroll` authentication `401`/encoding `415` responses and `/cacerts`'s `404`; other routes' gateway rejections are excluded | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled) for the `415` share, which [`remoted.auth.reject.bad_encoding`](#authentication-rejections--remotedauthreject) counts by cause |
@@ -351,9 +353,10 @@ whenever enrollment is enabled, `0` otherwise):
 | `remoted.enroll.token_store.reloads.total` | counter (pull) | count | Successful loads of the store (the startup load included; an absent file counts as a successful, empty load). `authd` rewrites the file on every consumed use, so this moves with enrollment traffic | [`remoted.enroll_password_refresh_interval`](configuration.md#remotedenroll_password_refresh_interval) sets the fallback poll cadence (inotify reacts first) |
 | `remoted.enroll.token_store.reload_failures.total` | counter (pull) | count | Loads that kept the **previous** replica: a document that is not a store at all (not JSON, another `version`, no `tokens` array, two records with one id — the store is written by `authd` and must not be edited by hand), a read that kept changing across every retry, or an unreadable/oversized file. A single **record** that cannot be read is not one of these: it is dropped with a warning naming how many were, and the rest of the file is replicated, so one bad token cannot cost a worker every other one (issue #39133) | diagnostic — restore the file on the master; the previous replica keeps serving meanwhile, and `GET /status` reports `enrollment_tokens.last_reload_ok: false` |
 
-The three subsets above are read from the admin socket dump; the
-[API projection](#api-projection)'s `enrollment` group carries the six outcome counters and the
-`authd` queue pulls only.
+The enrollment-token, re-enrollment and token-store metrics are read from the admin socket dump
+only; the [API projection](#api-projection)'s `enrollment` group carries the six outcome counters,
+`rate_limited`, the `authd` queue pulls, the `rate_limit` pulls and the re-enrollment secret
+subset (under `secret`).
 
 The queue in front of `authd` (pulls, so they read as levels):
 
@@ -489,8 +492,8 @@ never charges the bucket, so scraping cannot cost an agent its enrollment.
 ### Admin transport — `remoted.admin.server.*`
 
 The admin socket's own transport diagnostics (the server dogfooding itself). **Entirely
-diagnostic**: its thread count, connection cap and socket path are fixed by design. Both admin
-routes are liveness-class, so the budget lanes, the data/control session lanes and
+diagnostic**: its thread count, connection cap and socket path are fixed by design. All four admin
+routes (`/`, `/metrics`, `/status`, `/tls`) are liveness-class, so the budget lanes, the data/control session lanes and
 `rejected.budget` with them are structurally zero. What moves is `sessions.live`,
 `sessions.liveness` and the rest of the `rejected.*` family; the full set is published so every
 `uds_http_server` consumer reports the same vocabulary.
@@ -521,8 +524,8 @@ exception, counted after a handler returned without answering.
 
 ## API projection
 
-The catalog above is also reported through the server API, so it can be read remotely and per
-cluster node without shell access to the admin socket:
+Most of the catalog above is also reported through the server API, so it can be read remotely and
+per cluster node without shell access to the admin socket:
 
 ```bash
 GET /cluster/{node_id}/daemons/stats?daemons_list=wazuh-manager-remoted
@@ -546,7 +549,7 @@ legacy daemon counters that same response has always carried:
         "stateless": { "total": 98220, "2xx": 98213, "400": 2, "403": 0, "409": 0,
                        "413": 1, "429": 0, "500": 0, "503": 4, "other": 0 },
         "stateful":  { "...": 0 }, "stats": { "...": 0 },
-        "config":    { "...": 0 }, "enroll": { "...": 0 },
+        "config":    { "...": 0 }, "enroll": { "...": 0 }, "enroll.secret": { "...": 0 },
         "cacerts":   { "total": 34, "2xx": 34, "...": 0 }
       },
       "latency": {
@@ -555,12 +558,13 @@ legacy daemon counters that same response has always carried:
         "stateful": { "...": 0 }, "enroll": { "...": 0 }
       },
       "auth_rejections": { "total": 5, "unknown_agent": 3, "bad_token": 1, "...": 0 },
-      "enrollment":      { "accepted": 34, "authd_queue": { "depth": 0, "capacity": 128, "...": 0 },
+      "enrollment":      { "accepted": 34, "authd_queue": { "depth": 0, "capacity": 256, "...": 0 },
                            "rate_limited": 0,
-                           "rate_limit": { "limit": 100, "burst": 200, "available": 200 } },
+                           "rate_limit": { "limit": 100, "burst": 200, "available": 200 },
+                           "secret": { "issued": 3, "...": 0 } },
       "control":         { "notify": 421337, "registry_agents": 32, "wdb_latency": { "...": 0 } },
       "keystore":        { "agents": 34, "reloads_total": 3, "...": 0 },
-      "downstream":      { "errors": { "...": 0 }, "deferred": { "capacity": 512, "...": 0 } },
+      "downstream":      { "errors": { "...": 0 }, "deferred": { "capacity": 128, "...": 0 } },
       "backpressure":    { "available_bytes": 67099136, "inflight_requests": 3, "...": 0 },
       "downloads":       { "started": 12, "bytes_total": 48213004, "...": 0 },
       "tls":             { "cert_expiry_days": 3649, "ca_matches_leaf": 1 },
@@ -576,21 +580,24 @@ The group names map onto the catalog sections above one-for-one:
 
 | API group under `metrics.http_server` | Catalog family |
 |---|---|
-| `responses.<endpoint>` | [`remoted.http.<endpoint>.responses.<code>`](#request-outcomes--remotedhttpendpointresponsescode), plus a `total` rollup |
+| `responses.<endpoint>` | [`remoted.http.<endpoint>.responses.<code>`](#request-outcomes--remotedhttpendpointresponsescode), plus a `total` rollup (`/enroll/secret` under the key `enroll.secret`) |
 | `latency.<endpoint>` | [`remoted.http.<endpoint>.latency`](#request-latency--remotedhttpendpointlatency) |
-| `auth_rejections` | [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject), plus a `total` rollup |
-| `enrollment` | [`remoted.enroll.*`](#agent-enrollment--remotedenroll), with `remoted.enroll.authd.queue.*` under `authd_queue` and [`remoted.enroll.rate_limit.*`](#rate-limits--remotedendpointrate_limit) under `rate_limit` |
+| `auth_rejections` | [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject) except the three `token_*` causes, plus a `total` rollup |
+| `enrollment` | [`remoted.enroll.*`](#agent-enrollment--remotedenroll) outcome counters and `rate_limited`, with `remoted.enroll.authd.queue.*` under `authd_queue`, [`remoted.enroll.rate_limit.*`](#rate-limits--remotedendpointrate_limit) under `rate_limit` and `remoted.enroll.secret.*` under `secret` |
 | `control` | [`remoted.control.*`](#control-plane--remotedcontrol), with `registry.agents` as `registry_agents` and `wdb.latency` as `wdb_latency` |
 | `keystore` | [`remoted.auth.keystore.*`](#keystore-health--remotedauthkeystore) |
 | `downstream` | [`remoted.forwarder.*`](#downstream-failures--remotedforwarder), with `error.*` under `errors` and [`deferred.*`](#deferred-forwarding--remotedforwarderdeferred) under `deferred` |
 | `backpressure` | [`remoted.server.budget.*`](#public-transport-backpressure--remotedserverbudget) |
-| `downloads` | [`remoted.download.*`](#downloads--remoteddownload) |
+| `downloads` | [`remoted.download.*`](#downloads--remoteddownload) except `denied` |
 | `tls` | [`remoted.server.tls.*`](#tls-listener-certificate--remotedservertls) — `cert_expiry_days` is the catalog's one signed integer |
 | `cacerts` | [`remoted.cacerts.*`](#ca-distribution--remotedcacerts), with [`remoted.cacerts.rate_limit.*`](#rate-limits--remotedendpointrate_limit) under `rate_limit` |
 | `vd_scan` | [`remoted.scanvd.*`](#vd-scan-admission--remotedscanvd) |
 
 Conventions worth knowing before reading a response:
 
+- **Not projected:** `remoted.enroll.token.*`, `remoted.enroll.reenroll.*`,
+  `remoted.enroll.token_store.*`, `remoted.auth.reject.token_{unknown,expired,revoked}` and
+  `remoted.download.denied` are served by the admin socket only.
 - **`remoted.admin.server.*` is deliberately not projected.** Those metrics
   ([Admin transport](#admin-transport--remotedadminserver)) describe the very socket the API
   reads the dump from; they are only meaningful when queried directly. The admin socket remains
@@ -603,7 +610,7 @@ Conventions worth knowing before reading a response:
   are omitted when the daemon does not report the metric behind them. A zero in the response is
   therefore a real, observed zero — which is what makes the legacy caveat below detectable.
 - **The legacy counters are a different channel.** Everything directly under `metrics` counts
-  legacy TCP/UDP traffic and stays `0` unless `remote.legacy.enabled` is set. `metrics.bytes`
+  legacy TCP/UDP traffic and stays `0` when `remote.legacy.enabled` is off. `metrics.bytes`
   and `metrics.tcp_sessions` in particular are **not** the HTTPS figures: the HTTPS transport
   keeps no byte or session counters, so there is nothing to project onto them.
 - **Names are flattened with underscores.** A dot inside a leaf name becomes an underscore

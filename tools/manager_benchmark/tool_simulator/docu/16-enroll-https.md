@@ -58,7 +58,9 @@ prefix, which is what lets `cleanup_agents.sh` remove everything a run created.
 
 A bootstrap answered anything but `200` fails the run as a setup error (exit 2) naming the remedy:
 `401` a token that is unknown, expired or revoked (or a clock outside the window), `403` a token out
-of uses, `409` a previous run's agents still registered — `./cleanup_agents.sh`.
+of uses or revoked (or enrollment disabled), `409` a previous run's agents still registered —
+`./cleanup_agents.sh`. The fleet enrolls one agent at a time, so a 100-agent bootstrap is 100
+sequential round trips before the clock starts.
 
 ## The token is environment config, not scenario content
 
@@ -110,16 +112,17 @@ time. The step takes **only** the timing fields; anything describing a payload i
 |---|---|---|---|
 | Agent created | `200 {"id","name","ip","key","reenroll_secret"}` | `enroll_https_200` | no |
 | The manager refused the bearer: unknown, expired or revoked token; wrong key; clock outside the window | `401` (generic body, `WWW-Authenticate: Bearer`) | `enroll_https_401` | no |
-| `authd` refused the use of a bearer remoted had verified: no uses left (`9024`), or revoked/expired between remoted's check and `authd`'s (`9022`/`9023`) | `403 {"error":{"code":902x,…}}` | `enroll_https_403` | no |
+| `authd` refused the use of a bearer remoted had verified: no uses left (`9024`), or revoked/expired between remoted's check and `authd`'s (`9022`/`9023`). Also enrollment disabled on the manager (`<auth><disabled>` or `remote_enrollment` off), `code` `0` | `403 {"error":{"code":…,…}}` | `enroll_https_403` | no |
 | Duplicate name (`9008`) | `409` | `enroll_https_409` | no |
 | The route's rate limit refused it before `authd` was contacted (`remote.https.enroll_rate_limit`, `100` req/s for the whole endpoint by default) | `429 {"error":{"code":0,…}}` + `Retry-After` | `enroll_https_429` | no |
 | A `200` without the agent record (or for another name) | `200` | `enroll_https_other` | **yes** |
-| Any other status (`400`: the sender built a body remoted rejects; `5xx`) | — | `enroll_https_other` | **yes** |
+| Any other status: `400` (the sender built a body remoted rejects), `503` (`max_agents` reached, a worker that cannot reach its master, authd unable to journal the key, authd unreachable), `500` | — | `enroll_https_other` | **yes** |
 
 `401`/`403`/`409`/`429` are **ordinary results**: they are what a fleet meets with a stale or
 exhausted token, or against a manager already serving enrollments at its configured rate, and a
 scenario's `expected` block decides whether they are acceptable
-(`scenarios/enroll_https.json` says no to all four).
+(`scenarios/enroll_https.json` pins `s401`, `s403`, `s409` and `other` at 0 and `s200` at 100,
+which rules out a `429` as well, without naming it).
 
 The `429` is refused **before** any `authd` round trip, so it costs the manager almost nothing and
 must not be read as a slow or failing enrollment — its latency is kept out of

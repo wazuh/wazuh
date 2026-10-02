@@ -4,12 +4,12 @@
 
 The **Schema Validator** is a shared module that validates JSON messages against Wazuh-indexer index template mappings. It ensures that data sent to the Wazuh indexer conforms to the expected schema, preventing indexing errors and maintaining data integrity across Wazuh components.
 
-The validator supports Wazuh-indexer mapping syntax including all data types, nested objects, and strict validation mode. It provides detailed error messages for debugging and integrates seamlessly with multiple Wazuh modules (FIM, SCA, Syscollector).
+The validator supports Wazuh-indexer mapping syntax, including nested objects and strict validation mode. It provides detailed error messages for debugging and integrates seamlessly with multiple Wazuh modules (FIM, SCA, Syscollector on the agent; Vulnerability Scanner on the manager).
 
 ## Key Features
 
 - **Wazuh-indexer Mapping Support**: Validates against Wazuh-indexer index template mappings
-- **Type Validation**: Supports all Wazuh-indexer data types (text, keyword, long, integer, float, boolean, date, object, etc.)
+- **Type Validation**: Checks string, integer, number, boolean, date, IP and object types; other types (such as `float`) pass unchecked. See [API Reference](api-reference.md)
 - **Nested Object Validation**: Recursively validates nested object structures
 - **Embedded Schemas**: Schemas are embedded at compile-time for zero-configuration deployment
 - **Detailed Error Messages**: Provides specific field paths and validation failures
@@ -58,11 +58,12 @@ The module follows a factory pattern with three main components:
 Each Wazuh module integrates with the Schema Validator independently:
 
 ```
-┌────────────┐  ┌────────────┐  ┌──────────────┐
-│    FIM     │  │    SCA     │  │ Syscollector │
-└─────┬──────┘  └─────┬──────┘  └──────┬───────┘
-      │               │                │
-      └───────────────┴────────────────┘
+┌────────────┐  ┌────────────┐  ┌──────────────┐  ┌───────────────┐
+│    FIM     │  │    SCA     │  │ Syscollector │  │ Vulnerability │
+│            │  │            │  │              │  │    Scanner    │
+└─────┬──────┘  └─────┬──────┘  └──────┬───────┘  └───────┬───────┘
+      │               │                │                  │
+      └───────────────┴────────────────┴──────────────────┘
                       │
           ┌───────────▼────────────┐
           │  SchemaValidatorFactory│
@@ -77,7 +78,7 @@ Each Wazuh module integrates with the Schema Validator independently:
 
 ## Supported Indices
 
-The validator supports schemas for all Wazuh state indices:
+The validator embeds every template in `src/external/indexer-plugins` except `metrics-*.json`. `make deps` downloads them from `wazuh-indexer-plugins` (`INDEXER_TEMPLATES_BASE` in `src/Makefile`); a manager build adds `vulnerabilities.json` (`INDEXER_TEMPLATES_SERVER_STATES`):
 
 - `wazuh-states-inventory-hardware`
 - `wazuh-states-inventory-system`
@@ -96,11 +97,9 @@ The validator supports schemas for all Wazuh state indices:
 - `wazuh-states-fim-files`
 - `wazuh-states-fim-registry-keys`
 - `wazuh-states-fim-registry-values`
+- `wazuh-states-vulnerabilities` (manager only)
 
-> **Note:** This list is cross-referenced against [`docs/ref/modules/indexer_connector/README.md`](../../indexer_connector/README.md#indices)
-> rather than the ground-truth schema JSON, since the `indexer-plugins` submodule
-> (`src/external/indexer-plugins`) is not checked out in this working tree. Re-verify
-> against the actual schema definitions there once available.
+The lookup is an exact match on the name above: `wazuh-states-fim-file` finds no validator.
 
 ## Documentation Structure
 
@@ -119,7 +118,7 @@ auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
 
 if (validatorFactory.initialize())
 {
-    m_logFunction(LOG_INFO, "Schema validator initialized successfully");
+    m_logFunction(LOG_DEBUG, "Schema validator initialized successfully from embedded resources");
 }
 
 // 2. Get a validator for a specific index
@@ -129,7 +128,7 @@ if (validator)
 {
     // 3. Validate a JSON message
     std::string jsonMessage = R"({
-        "agent": {"id": "001"},
+        "wazuh": {"agent": {"id": "001"}},
         "package": {"name": "nginx", "version": "1.18.0"}
     })";
 
@@ -162,12 +161,12 @@ if (validator)
 // 1. Initialize the factory
 if (schema_validator_initialize())
 {
-    minfo("Schema validator initialized successfully");
+    mdebug1("Schema validator initialized successfully from embedded resources");
 }
 
 // 2. Validate a message
 char* errorMessage = NULL;
-const char* index = "wazuh-states-fim-file";
+const char* index = "wazuh-states-fim-files";
 const char* message = "{\"file\":{\"path\":\"/etc/passwd\"}}";
 
 if (schema_validator_validate(index, message, &errorMessage))
@@ -193,7 +192,7 @@ else
 1. **Initialize Once**: Call `initialize()` once during module startup
 2. **Check Initialization**: Always check `isInitialized()` before getting validators
 3. **Cache Validators**: Get validators once and reuse them (they're thread-safe)
-4. **Handle Gracefully**: If validator is not available, log a warning and skip validation
+4. **Handle a Missing Schema**: If the factory is not initialized, skip validation; if it is initialized but has no schema for the index, discard the message: the C API rejects it with `No schema validator found for index` (FIM then logs that at ERROR), and SCA and Syscollector log `No schema validator found for index: <index>. Discarding message.` at WARNING
 5. **Delete Invalid Data**: Remove data that fails validation from local databases to prevent integrity sync loops
 
 ## Error Handling
@@ -217,6 +216,9 @@ The module gracefully handles initialization and validation failures:
 | Syscollector | Integrated | [Architecture](../../syscollector/architecture.md#schema-validation-integration) |
 | SCA | Integrated | [Architecture](../../sca/architecture.md#schema-validation-integration) |
 | FIM | Integrated | [Architecture](../../fim/architecture.md#schema-validation-integration) |
+| Vulnerability Scanner (manager) | Integrated | — |
+
+The Vulnerability Scanner validates each upserted detection against `wazuh-states-vulnerabilities`; a failure is logged at WARNING and the detection is not indexed. Unlike FIM, SCA and Syscollector, it also indexes without validation when the factory is initialized but has no `wazuh-states-vulnerabilities` schema.
 
 ## Building
 
@@ -239,6 +241,5 @@ ctest -L schema_validator -V
 
 ## References
 
-- [Wazuh-indexer Mapping Documentation](https://www.elastic.co/guide/en/Wazuh-indexer/reference/current/mapping.html)
+- [OpenSearch Field Types](https://docs.opensearch.org/latest/field-types/)
 - [Wazuh Indexer Templates](https://documentation.wazuh.com/current/user-manual/wazuh-indexer/index.html)
-- [JSON Schema Validation](https://json-schema.org/)

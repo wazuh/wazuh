@@ -430,9 +430,9 @@ void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data)
              * data->vulnerability_detection (never mutates it in place -- see
              * wm_vulnerability_scanner_apply_config_defaults()'s comment), so this object is
              * write-once from wm_config() time on, regardless of which of the two module threads
-             * gets here first. Absent module (no <vulnerability-detection> section at all,
-             * "no section means no module" per Read_Vulnerability_Detection_JSON()) -> not
-             * configured. Present with no "enabled" key -> defaults enabled, matching the scanner's
+             * gets here first. Absent module -> not configured (defensive only: on a manager the
+             * effective document always carries the section, so the module always exists).
+             * Present with no "enabled" key -> defaults enabled, matching the scanner's
              * own default. A string value w_parse_bool() does not recognize as "yes" -> treated as
              * disabled: the scanner's own Utils::parseStrToBool() throws on the same input, which
              * leaves it permanently failed rather than started, so this must not wait on it. This

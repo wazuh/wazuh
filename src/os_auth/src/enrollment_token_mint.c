@@ -80,14 +80,16 @@ static void etoken_detail(char *detail, size_t detail_size, const char *fmt, ...
  * newline, and the command line applies no format at all -- so the check belongs here, where the
  * socket and the CLI have already met (issue #39133).
  *
+ * `address` obeys the same rule for the same reason: a refused mint is logged with the address it
+ * was asked for, and an address carrying a newline is refused (no certificate names it) -- so
+ * without this check the refusal itself is the forged line.
+ *
  * @param text The field, or NULL (always acceptable: these fields are optional).
  * @param name How to name it in the refusal.
  * @param max Longest text accepted, in characters.
  * @return 0 when the text is acceptable, -1 otherwise (@p detail says which rule it broke).
  */
 static int etoken_text_check(const char *text, const char *name, size_t max, char *detail, size_t detail_size) {
-    const char *c;
-
     if (text == NULL) {
         return 0;
     }
@@ -97,17 +99,31 @@ static int etoken_text_check(const char *text, const char *name, size_t max, cha
         return -1;
     }
 
+    if (!etoken_text_is_printable(text)) {
+        etoken_detail(detail, detail_size, "%s contains a control character", name);
+        return -1;
+    }
+
+    return 0;
+}
+
+int etoken_text_is_printable(const char *text) {
+    const char *c;
+
+    if (text == NULL) {
+        return 1;
+    }
+
     for (c = text; *c != '\0'; c++) {
         /* Every control byte (0x00-0x1F) and DEL. A space is deliberately allowed: this is free
          * text an operator writes, and it is only the bytes that can forge a record -- a newline, a
          * carriage return, a terminal escape -- that have no place in it */
         if ((unsigned char) *c < 0x20 || (unsigned char) *c == 0x7F) {
-            etoken_detail(detail, detail_size, "%s contains a control character", name);
-            return -1;
+            return 0;
         }
     }
 
-    return 0;
+    return 1;
 }
 
 /**
@@ -280,7 +296,8 @@ int etoken_mint_prepare(const etoken_mint_request_t *req, etoken_mint_t *out, ch
         return -1;
     }
 
-    if (etoken_text_check(req->description, "description", ETOKEN_DESCRIPTION_MAX, detail, detail_size) < 0 ||
+    if (etoken_text_check(req->address, "address", ETOKEN_ADDRESS_MAX, detail, detail_size) < 0 ||
+        etoken_text_check(req->description, "description", ETOKEN_DESCRIPTION_MAX, detail, detail_size) < 0 ||
         etoken_text_check(req->prefix, "prefix", ETOKEN_PREFIX_MAX, detail, detail_size) < 0) {
         return -1;
     }

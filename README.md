@@ -131,7 +131,6 @@ Here you can find all the automation tools maintained by the Wazuh team.
 
 | Software                                                                | Version | Author                        | License                                       |
 | ----------------------------------------------------------------------- | ------- | ----------------------------- | --------------------------------------------- |
-| [bpftool](https://github.com/libbpf/bpftool)                            | 7.7.0   | libbpf                        | GNU Public License version 2                  |
 | [bzip2](https://github.com/libarchive/bzip2)                            | 1.0.8   | Julian Seward                 | BSD License                                   |
 | [cJSON](https://github.com/DaveGamble/cJSON)                            | 1.7.18  | Dave Gamble                   | MIT License                                   |
 | [cpp-httplib](https://github.com/yhirose/cpp-httplib)                   | 0.25.0  | yhirose                       | MIT License                                   |

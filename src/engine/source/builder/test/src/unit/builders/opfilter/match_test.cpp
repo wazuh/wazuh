@@ -106,11 +106,8 @@ INSTANTIATE_TEST_SUITE_P(
                 "target",
                 {makeRef("ref")},
                 SUCCESS()),
-        FilterT(R"({"target": 1, "ref": [1]})",
-                opfilter::opBuilderHelperMatchValue,
-                "target",
-                {makeRef("ref")},
-                SUCCESS()),
+        FilterT(
+            R"({"target": 1, "ref": [1]})", opfilter::opBuilderHelperMatchValue, "target", {makeRef("ref")}, SUCCESS()),
         FilterT(R"({"target": true, "ref": [true]})",
                 opfilter::opBuilderHelperMatchValue,
                 "target",

@@ -6,8 +6,16 @@ on:
     paths:
       - '.github/workflows/5_testunit_api.yml'
       - 'api/**'
-      - 'framework/requirements-dev.txt'
+      # The API imports the framework
+      - 'framework/**'
+      - 'framework/requirements*.txt'
+      # The job builds wazuh-manager-conf, and test_spec_manager_configuration.py reads its schema
+      - 'src/shared_modules/manager_config/**'
+      - 'src/CMakeLists.txt'
       - 'src/Makefile'
+      # Tavern suite (5_testintegration_api-endpoints.yml) and framework unit tests
+      - '!api/test/**'
+      - '!framework/**/tests/**'
   workflow_dispatch:
     inputs:
       generate_report:

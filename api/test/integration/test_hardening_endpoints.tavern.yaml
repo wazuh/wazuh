@@ -1,0 +1,196 @@
+# Upload limit and CORS, with env/configurations/hardening/manager/config/api/configuration/api.yaml:
+# max_upload_size 10240 bytes, CORS enabled for https://allowed.example only.
+
+---
+test_name: 413 on every body operation
+
+marks:
+  - parametrize:
+      key: [method, path]
+      vals:
+        - [POST, /agents]
+        - [POST, /agents/insert]
+        - [POST, /agents/enrollment-tokens]
+        - [POST, /groups]
+        - [POST, /security/users]
+        - [PUT, /security/users/1]
+        - [POST, /security/roles]
+        - [PUT, /security/roles/1]
+        - [POST, /security/rules]
+        - [PUT, /security/rules/1]
+        - [POST, /security/policies]
+        - [PUT, /security/policies/1]
+        - [PUT, /security/config]
+
+stages:
+  - name: A JSON body over max_upload_size
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
+      method: "{method}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        Content-Type: application/json
+      data: '{{"name": "{oversized_auth_context_padding:s}"}}'
+    response: &too_large
+      status_code: 413
+      json:
+        title: Request Entity Too Large
+        error: 413
+      verify_response_with:
+        - function: tavern_utils:test_no_internal_details
+
+---
+test_name: 413 on the configuration uploads
+
+stages:
+  - name: A group configuration over max_upload_size
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/default/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        Content-Type: application/xml
+      data: "<agent_config><!-- {oversized_auth_context_padding:s} --></agent_config>"
+    response:
+      <<: *too_large
+
+  - name: A group configuration under max_upload_size is accepted
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/default/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        Content-Type: application/xml
+      data: "{file_xml:s}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+
+  - name: A node configuration over max_upload_size
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        Content-Type: application/octet-stream
+      data: "<wazuh_config><!-- {oversized_auth_context_padding:s} --></wazuh_config>"
+    response:
+      <<: *too_large
+
+  - name: A node configuration under max_upload_size is accepted
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        Content-Type: application/octet-stream
+      data: "{valid_wazuh_conf:s}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - worker1
+
+---
+test_name: CORS
+
+stages:
+  - name: The allowed origin gets the CORS header
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        Origin: https://allowed.example
+    response:
+      status_code: 200
+      headers:
+        access-control-allow-origin: https://allowed.example
+
+  - name: A preflight from the allowed origin is accepted
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
+      method: OPTIONS
+      headers:
+        Origin: https://allowed.example
+        Access-Control-Request-Method: GET
+    response:
+      status_code: 200
+      headers:
+        access-control-allow-origin: https://allowed.example
+
+  - name: A preflight of a write from the allowed origin is accepted
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
+      method: OPTIONS
+      headers:
+        Origin: https://allowed.example
+        Access-Control-Request-Method: DELETE
+    response:
+      status_code: 200
+      headers:
+        access-control-allow-origin: https://allowed.example
+
+  - name: Another origin gets no CORS header
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        Origin: https://evil.example
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_no_cors_header
+
+  - name: A preflight from another origin is refused
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
+      method: OPTIONS
+      headers:
+        Origin: https://evil.example
+        Access-Control-Request-Method: GET
+    response:
+      status_code: 400
+      verify_response_with:
+        - function: tavern_utils:test_no_cors_header
+
+  # source_route is compared as an exact origin, never as a substring of the configured one
+  - name: An origin that is a prefix of the allowed one gets no CORS header
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        Origin: https://allowed.ex
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_no_cors_header
+
+  - name: A preflight from a prefix of the allowed origin is refused
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
+      method: OPTIONS
+      headers:
+        Origin: https://allowed.ex
+        Access-Control-Request-Method: GET
+    response:
+      status_code: 400
+      verify_response_with:
+        - function: tavern_utils:test_no_cors_header

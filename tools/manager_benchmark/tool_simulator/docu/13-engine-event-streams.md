@@ -35,7 +35,8 @@ E 1:/var/log/syslog:Oct  6 14:02:12 host sudo: pam_unix(sudo:session): session o
 - Each **`E ` line** is one event: `E <location-id>:<location>:<raw log line>`. The `<location>` is
   the source path the events belong to (`/var/log/syslog`, a Windows channel name, …), and the
   remainder is the raw line verbatim. A lane's engine source (a sample log file) provides these
-  lines; the sender frames each into an `E` line.
+  lines; the sender frames each into an `E` line, always with location id `1` and the step's
+  `location` (`internal/engine/batch.go`).
 
 ## Response mapping
 
@@ -44,9 +45,9 @@ smaller set of codes than `/stateful`:
 
 | Status | Meaning | Sender behavior |
 |---|---|---|
-| `202` | The engine enqueued the batch (empty body). NOT "fully processed" | Count as success; record latency and byte size |
-| `400` | Invalid batch (missing/malformed `H` line, identity mismatch) | Count; a sender bug outside a deliberate scenario |
-| `413` | Batch over the body cap | Count; the sender **MUST** size batches under the cap (10 MiB default) |
+| `202` | The engine enqueued the batch (empty body). NOT "fully processed" | Count as success; record latency and the event count (`stateless_*` has no byte counter) |
+| `400` | Invalid batch (missing/malformed `H` line, identity mismatch) | Count, then invalidate the run: no scenario sends a deliberately invalid batch, so it is a sender bug |
+| `413` | Batch over the body cap | Count; the sender **MUST** size batches under the cap: remoted's authenticated-body cap, `remoted.auth_max_body_size` (5 MiB default). Past the 10 MiB transport cap there is no `413`, only a closed connection (a transport error) |
 | `503` | Engine unreachable, downstream timeout, or a 5xx from it | Count as backpressure; **MUST NOT** retry |
 
 Note the success code is **`202`**, not `200`: the engine ingest is fire-and-forget from the agent's
@@ -76,3 +77,8 @@ Three rules keep an event lane honest:
 - Sustained pressure comes from the run's own repetition (`repeat_count` on the step or the run's
   `repeat_until`), the same mechanism every other lane uses; the stream stops at drain with
   everything else.
+
+The step needs `engine` (the sample file, relative to the scenario file) and `location`;
+`events_per_second` and `events_per_batch` default to `0` (unlimited, and the whole file in one
+batch). A sample file that cannot be read sends nothing and is not reported, so check `events_sent`
+(`--validate` does catch a path that does not exist).

@@ -7,14 +7,16 @@ makes sure that agent's documents leave the indexer too.
 Three documentation layers cover authd, each with its own job:
 
 - **This README** — the developer's map: the [requirements catalog](#requirements) and
-  [design decisions](#design-decisions-d1d13), how the threads divide the work, which invariants are
+  [design decisions](#design-decisions-d1d14), how the threads divide the work, which invariants are
   load-bearing, and *why* it is built this way ([threads](#threads),
   [agent removal](#agent-removal), [invariants](#invariants), [operational notes](#operational-notes)).
 - **[`docs/ref/modules/authd/`](../../docs/ref/modules/authd/README.md)** — the operator-facing
   reference: [overview](../../docs/ref/modules/authd/README.md),
   [architecture](../../docs/ref/modules/authd/architecture.md) (the diagrams: the two stores, the
   enrollment sequence, the force-guard chain, cluster forwarding, the removal path) and
-  [configuration](../../docs/ref/modules/authd/configuration.md).
+  [configuration](../../docs/ref/modules/authd/configuration.md), and the
+  [enrollment lifecycle](../../docs/ref/modules/authd/enrollment-lifecycle.md) (one `POST /enroll`
+  followed end to end).
 - **[`inventory_sync_server`](../wazuh_modules/inventory_sync_server/README.md)** — the peer on the
   other side of the deletion route; its
   [agent deletion section](../wazuh_modules/inventory_sync_server/README.md#agent-deletion-endpointsdeleteagentendpoint)
@@ -39,12 +41,12 @@ it would erase why.
 | RF-7 | Remove an agent from the keystore, `client.keys`, wazuh-db, its rids counter and its timestamp | kept ([agent removal](#agent-removal)) |
 | RF-8 | Delete a removed agent's documents from the indexer, retriably | kept — **recorded, not relayed** (D3): authd creates a durable Task Manager row and the dispatcher executes it against inventory-sync's `POST /_internal/agents/delete` |
 | RF-9 | Forward enrollment to the master on a worker node; the master decides | kept (`local_add_clustered`, `w_request_agent_add_clustered`) |
-| RF-10 | Accept an insertion that names an explicit id (`manage_agents`, `POST /agents/insert`) | kept, but **refuses rather than reassigns** when the id is taken (`9012`), owes a purge (`9018`), or is outside the storable range (`9020`) — D6, D9 |
+| RF-10 | Accept an insertion that names an explicit id (`POST /agents/insert`) | kept, but **refuses rather than reassigns** when the id is taken (`9012`), owes a purge (`9018`), or is outside the storable range (`9020`) — D6, D9 |
 | RF-11 | Answer the indexer purge synchronously so the caller learns whether the documents are gone | **superseded by D3** — authd's ownership ends at the durable row; the purge's own outcome is the task's status, not this daemon's business |
 | RF-12 | Survive a restart without losing work the system has no other record of | partially met — the deletion journal ([the journal](#the-journal), including `last_id`/`last_seq`) and identity journal (RNF-9) are replayed at startup; the identity recovery gaps are listed in [Enrollment](#enrollment) |
 | RF-13 | Expose the enrollment password to workers as the cluster syncs it down | kept (the authpass watcher; fails closed until the file arrives) |
 | RF-14 | Reject an id, whether caller-supplied or auto-assigned, that would not fit the width `client.keys` and the database store it in | kept (`OS_IsValidAgentInsertID`, `OS_ADDAGENT_LIMIT_REACHED`) — D9 |
-| RF-15 | Mint and revoke enrollment tokens on the master, mint only for an address the listener certificate names, and consume one use when an agent enrolls with one; list tokens on either node role | kept ([enrollment](#enrollment); `token_cli.c`, `enrollment_token_mint.c`, `enrollment_token_store.c`) — D11. `manage_agents` has no part in it |
+| RF-15 | Mint and revoke enrollment tokens on the master, mint only for an address the listener certificate names, and consume one use when an agent enrolls with one; list tokens on either node role | kept ([enrollment](#enrollment); `token_cli.c`, `enrollment_token_mint.c`, `enrollment_token_store.c`) — D11 |
 | RF-16 | Return a re-enrollment secret with local-socket enrollments and let those agents rotate their keys under the same id without a deletion | kept (`local_reenroll`, `add_rotate`, `global set-agent-credentials`) — D12; port 1515 does not deliver this secret to the agent |
 | RF-17 | Issue a re-enrollment secret to an agent that already holds a `client.keys` key, **without changing that key**, for the populations an enrollment never reached | kept (`local_issue_reenroll_secret`, `issue_reenroll_secret` verb) — D14; remoted's `POST /enroll/secret` proves the identity, this daemon mints and records |
 
@@ -58,7 +60,7 @@ it would erase why.
 | RNF-4 | An id is never handed out twice, across restarts and across a rebuilt counter | `last_id` in the state file + in-memory reservation; invariant 4 |
 | RNF-5 | Fail towards "cleaned up later", never towards "deleted something alive" | every ordering decision in the removal path; invariant 5 |
 | RNF-6 | Deterministic shutdown: no thread can park the daemon on a network budget | there is no network call left in this daemon's deletion path; the writer's wazuh-db calls are bounded by `authd.wdb_timeout` |
-| RNF-7 | Every refusal is observable and attributable to one guard | one message per guard in `w_auth_replace_agent()`; the `9001`–`9031` table |
+| RNF-7 | Every refusal is observable and attributable to one guard | one message per guard in `w_auth_replace_agent()`; the `9001`–`9032` table |
 | RNF-8 | Unit-testable orchestration without a live indexer or manager | seams + the suites in [Tests](#tests) |
 | RNF-9 | Record local-socket credentials before returning them, and retry pending database persistence | the identity journal (`identity_journal.c`) records the transition before the answer and the writer replays it until `global commit`; a line that cannot be written refuses the operation (`9031`) — invariant 7, D13, `test_identity_journal.c`; recovery gaps are listed below |
 
@@ -101,11 +103,11 @@ it, inventory-sync applies it — and all three depend on these:
 | Path | Contents |
 |---|---|
 | `src/main-server.c` | `main()`, the thread bodies (remote server, writer), the deletion's phase 3/4 and startup reconciliation |
-| `src/local-server.c` | the local Unix-socket protocol: `add`, `remove`, `get`, the four `token_*` verbs, and their error table (`9001`–`9031`) |
+| `src/local-server.c` | the local Unix-socket protocol: `add`, `remove`, `get`, `issue_reenroll_secret`, the four `token_*` verbs, and their error table (`9001`–`9032`) |
 | `src/authcom.c` | the plain-text side of the same socket: `getconfig auth`, answered outside the JSON protocol |
-| `src/auth.c` | shared state (`keys`, `config`, the queues), enrollment validation, force-replacement, the deletion journal and the reusable-id guard |
+| `src/auth.c` | shared state (`keys`, `config`, the queues), the port-1515 request parser (`w_auth_parse_data()`), enrollment validation, force-replacement, the enrollment password (load, generate, read), the deletion journal and the reusable-id guard |
 | `src/identity_journal.c` | `queue/authd/pending-identities`: the credential written down before it is handed out. Append on the request path, compaction during writer/startup/failed-rotation cleanup, and startup reconciliation that judges each line against `client.keys` (D13) |
-| `src/config.c` | `<auth>` block plus the `authd.*` internal options, and the two `remoted.jwt_*` ones the re-enrollment window is read from |
+| `src/config.c` | loads the `auth` section through `Read_Authd_JSON()` (`src/config/src/authd-config.c`, shared with remoted) and resolves `legacy_enrollment`; reads the `authd.*` and `auth.timeout_*` internal options, `wazuh_modules.manager_task_max_pending_deletes`, and the two `remoted.jwt_*` ones the re-enrollment window is read from; `getAuthdConfig()` answers `getconfig auth` |
 | `src/token_cli.c` | the `--create/--list/--revoke-enrollment-token`, `--purge-enrollment-tokens` and `--show-token` utility mode: a client of the socket verbs, run by `main()` before the daemon starts (so before any configuration is read or privileges dropped). The minted token goes to stdout alone; everything describing it goes to stderr, so a script can capture one without parsing |
 | `src/enrollment_token_mint.c` | whether a token can be minted: the listener certificate's SAN, loopback and CA-signature checks, and the `adr` the token will carry |
 | `src/enrollment_token_store.c` | `etc/enrollment_tokens.json` and its in-memory replica: load (refused above either limit), mtime-driven reload, atomic rewrite, consume/release, revoke with its pending-write retry |
@@ -125,9 +127,10 @@ libcrypto next to the one `libwazuhext.so` already provides.
 
 | Thread | Role |
 |---|---|
-| Local server | serves `queue/sockets/auth.sock`: `add` / `remove` / `get`, for the server API and for remoted's `/enroll` route, and the `token_*` verbs for the token CLI and the API |
-| Remote server | TLS enrollment on port 1515, when `remote_enrollment` is enabled |
-| Writer | the only thread that persists `client.keys`; also removes rows from wazuh-db and records each deletion as a Task Manager row |
+| Local server | serves `queue/sockets/auth.sock`: `add` / `remove` / `get`, for the server API and for remoted's `/enroll` route, `issue_reenroll_secret` for remoted's `/enroll/secret`, and the `token_*` verbs for the token CLI and the API. Each accepted connection is served on its own detached thread |
+| Remote server | TLS enrollment on port 1515, when `remote_enrollment` and `legacy_enrollment` are both on |
+| Writer | master only: the only thread that persists `client.keys`; also writes and removes rows in wazuh-db, commits and forgets identity-journal entries, and records each deletion as a Task Manager row |
+| authpass watcher | workers with `use_password` only: re-reads `etc/authd.pass` as the cluster syncs it down; the worker rejects port-1515 enrollments until it arrives |
 
 The writer runs on the master only — a worker node has no keystore to persist, and therefore no
 deletions to record. **There is no longer a thread in this daemon that talks to the network.**
@@ -183,6 +186,10 @@ thread validates the request, and under `mutex_keys`:
 3. appends the new key to `queue_insert`, sets `write_pending` and signals `cond_pending`;
 4. releases the mutex and answers the caller with the key.
 
+Port 1515 differs in one step: `w_auth_add_agent()` only adds the entry, and `enqueue_pending_key()`
+queues it after the `OSSEC K:` answer has been written — or deletes it from the keystore again when
+that write fails.
+
 The agent has a usable key at that point, but **remoted does not know about it yet**: the key reaches
 `client.keys` on the writer's next pass, and remoted reloads the file on its own cadence. Enrollment
 latency is therefore the writer's pass time plus remoted's reload — which is exactly why nothing slow
@@ -219,22 +226,23 @@ cleanup can also discard entries that are no longer owed. The rules that follow 
 
 **Current recovery gaps (implementation, not guarantees):**
 
-- `src/main-server.c:1649` records key-file success, but the credential loop (`:1676`) and
-  `identity_commit_and_forget()` (`:1791`) run even when it fails. Only deletion-task creation is
-  gated. A credential can leave the journal without reaching `client.keys`.
-- `wdb_global_set_agent_credentials()` (`src/wazuh_db/src/wdb_global.c:237`, from the repo root)
-  does not check affected rows. The first writer pass (`src/main-server.c:1694`) can mark a zero-row
-  UPDATE applied and skip the repair read (`:1466`), then forget its journal entry on commit.
-- `local_add()` force-deletes collisions (`src/local-server.c:908`, `:927`) before its journal append
-  (`:968`). Append failure removes only the new entry; the initial capacity check does not reserve
-  a slot or test filesystem writability.
-- `identity_commit_and_forget()` (`src/main-server.c:1537`) doubles 32 to 64 before applying the
-  nominal 60-second cap on the next failure.
-- The journal has no group field (`src/identity_journal.c:137`); `identity_apply()` retries credentials
-  only (`src/main-server.c:1390`). Failed requested group assignments are not recovered by it.
-- `identity_journal_load()` (`src/identity_journal.c:497`) uses the eight-digit `OS_IsValidID()`
-  check, although `OS_AddNewAgent()` can assign up to `INT_MAX` (ten digits). Recovery skips those
-  larger ids (`src/shared/src/agent_validate_op.c:138`, `:176`, from the repo root).
+- `run_writer()` (`src/main-server.c`) records whether `OS_WriteKeys()` succeeded (`keys_written`),
+  but the credential loop and `identity_commit_and_forget()` run even when it failed. Only
+  deletion-task creation is gated. A credential can leave the journal without reaching `client.keys`.
+- `wdb_global_set_agent_credentials()` (`src/wazuh_db/src/wdb_global.c`, from the repo root) does
+  not check affected rows. The writer's first pass (`wdb_set_agent_credentials()` in `run_writer()`)
+  can mark a zero-row UPDATE applied, so `identity_apply_pending()` skips the repair read
+  (`identity_apply()`), and the entry is forgotten on commit.
+- `local_add()` force-deletes colliding agents (`w_auth_replace_agent()`) before its
+  `identity_journal_append()`. Append failure removes only the new entry; the initial capacity check
+  (`identity_journal_full()`) does not reserve a slot or test filesystem writability.
+- `identity_commit_and_forget()` doubles the retry delay from 32 to 64 seconds before applying the
+  nominal 60-second cap (`IDENTITY_RETRY_MAX_SECONDS`) on the next failure.
+- The journal entry has no group field (`src/identity_journal.c`), and `identity_apply()` retries
+  credentials only. Failed requested group assignments are not recovered by it.
+- `identity_journal_load()` (`src/identity_journal.c`) uses the eight-digit `OS_IsValidID()` check,
+  although `OS_AddNewAgent()` (`src/shared/src/agent_validate_op.c`, from the repo root) can assign up
+  to `INT_MAX` (ten digits). Recovery skips those larger ids.
 
 The operator-facing [identity-journal reference](../../docs/ref/modules/authd/architecture.md#the-identity-journal)
 explains startup reconciliation, the legacy-worker exception and the difference between the
@@ -551,9 +559,11 @@ same operation, and cancelling that purge is not an option — see the FAQ.
 The `<force>` sub-block decides whether an enrollment may take over a name or IP that already exists.
 All guards are evaluated together and every one has to allow it. With the defaults (`enabled` yes,
 `key_mismatch` yes, `disconnected_time` 1 h, `after_registration_time` 1 h) the existing agent is
-replaced when it has never connected or has been disconnected for at least an hour, was registered at
-least an hour ago, and the enrolling agent presents a different key. **A connected agent is never
-replaced.**
+replaced when it has never connected or the disconnection guard allows it, was registered at least
+an hour ago, and the enrolling agent presents no `key_hash` or a different one. The disconnection
+guard refuses an agent whose `disconnection_time` is `0` and a `disconnected` agent whose
+disconnection is younger than the threshold; it does not look at the status otherwise, so an agent
+reported `active` with a nonzero `disconnection_time` (one that reconnected) passes it.
 
 Two consequences worth knowing:
 
@@ -597,25 +607,14 @@ The ones that shape the behaviour described here:
 | `authd.wdb_timeout` | `10` | seconds authd allows for one wazuh-db round trip. Bounded so a wedged database cannot hang the writer |
 | `wazuh_modules.manager_task_max_pending_deletes` | `20000` | deletion rows outstanding before phase 0 refuses new deletions. The Task Manager's key, read by both halves so they cannot drift |
 | `<force>` | enabled | when an enrollment may take over an existing name or IP |
-| `<purge>` | `no` | when `yes`, removed keys are dropped from `client.keys` instead of being kept as `!name` lines |
+| `<purge>` | `no` (the installer's generated configuration sets `yes`) | when `yes`, removed keys are dropped from `client.keys` instead of being kept as `!name` lines |
 | `remoted.jwt_max_age` / `remoted.jwt_clock_skew` | `60` / `30` | the window `local_reenroll()` accepts a re-enrollment bearer in — remoted's own keys, read here so the two daemons judge one bearer alike |
 
 ## Logs worth knowing
 
-| Line | Meaning |
-|---|---|
-| `Recovered N agent deletion(s) that were interrupted...` | reconciliation found rows that were owed and is creating them — the window this design closes |
-| `Dropped N journaled deletion(s) whose agents are still listed in client.keys` | those deletions never became final; nothing is owed |
-| `Converted N deletion(s) from the previous file format` | a journal written before sequences existed; they were numbered by position |
-| `Raising the agent id counter from X to Y` | the counter would have gone backwards; ids are not reused |
-| `The deletion of agent 'N' could not be recorded...` | phase 3 failed; the journal line stays and the next cycle retries |
-| `Refusing the deletion: N are already in progress` / `...still waiting to be applied` | phase 0 said no (`9021`); the agent is untouched. Also reachable through a force replacement, which is refused with `Agent 'N' can't be replaced: too many deletions are in progress` |
-| `Shutting down with N agent deletion(s) still being recorded` | they stay in the journal and are reconciled on the next start |
-| `Agent ID 'N' still has a pending deletion, rejecting the insertion` | the `9018` path |
-| `Unable to add agent: NAME. Agent limit (N) reached.` | also fires when `id_counter` reached `INT_MAX`; the enrollment is refused instead of wrapping to a negative id |
-| `Enrollment token 'X' consumed by agent 'N'.` / `Enrollment token 'X' revoked.` | the token paths. A refused token goes through the dispatcher's error path and logs `ERROR 902x: …`; a re-enrollment the master's verification refuses (`9026`–`9028`) logs at debug level only |
-| `Agent 'N' (id 'I') re-enrolled: key and re-enrollment secret rotated.` | a rotation in place; nothing was deleted |
-| `Could not load the enrollment tokens from '…'` | a malformed store; enrollments presenting a token are refused until it is fixed |
+The log lines an operator meets — deletion recovery, the id mark, the identity journal, the token
+store and re-enrollment — are catalogued, with their meaning, in the operator reference's
+[Observability](../../docs/ref/modules/authd/architecture.md#observability) table.
 
 ## Tests
 
@@ -630,10 +629,12 @@ The ones that shape the behaviour described here:
 | `unit_tests/os_auth/test_authd-config.c` | the `<auth>` block |
 | `unit_tests/os_auth/test_local-server.c` | the local-socket `add`/`remove`/`get` protocol: malformed key/id rejection (`9019`/`9020`), clustered forwarding; the `token_*` verbs and `add` with `token_id`/`reenroll` (`w_mconf_section`, `wdb_get_agent_info` and `w_reenroll_verify` wrapped; the store and the X509 checks run for real on temporary files) |
 | `unit_tests/os_auth/test_enrollment_token_store.c` | the store on real temporary files: mode, atomicity, what the file never contains, consume/release/revoke, reload, the purge (what it removes, what it leaves and the file it does not rewrite when there is nothing to remove) and both limits: the cap of 5000 with its automatic purge, and the byte ceiling that undoes the entry instead of writing a store remoted would refuse |
+| `unit_tests/os_auth/test_enrollment_token_concurrency.c` | the store under real threads: a token with `max_uses` N admits exactly N concurrent enrollments (links the real logger, since cmocka's log expectations are thread-local) |
 | `unit_tests/os_auth/test_token_cli.c` | the utility mode with the three socket calls wrapped: the JSON each option sends and how the answer is read; `--show-token` on the real codec, and the confirmation `--all` asks for unless `--force` is given |
 | `unit_tests/os_auth/test_reenroll_verify.c` | the C bridge against the frozen vector — real verifier, real HKDF, nothing wrapped |
 | `unit_tests/os_auth/test_authd-getconfig.c` | `authd_read_config()`/`getAuthdConfig()` over the configuration document (`w_mconf_*` wrapped), including the `remoted.jwt_*` reads |
 | `tests/integration/test_authd/test_enrollment_token/` | the lifecycle on a running manager — master: mint over the socket and the CLI, the listing hides the secret, `--show-token`, consume then revoke, refusals, the IP warning; worker: `9015` on mint, `token_id` forwarded, the synced store readable |
+| `tests/integration/test_authd/` (the other suites) | on a running manager: `test_api_registration`, `test_cluster`, `test_common`, `test_drop_privileges`, `test_force_options`, `test_remote_enrollment`, `test_ssl`, `test_use_password`, `test_use_source_ip` |
 | `unit_tests/shared/test_agent_validate_op.c` | outside `os_auth`, but pins the id-assignment logic this module depends on: `OS_AddNewAgent()`'s key generation and `INT_MAX` counter guard, `OS_IsValidAgentInsertID()`'s range check |
 
 Two things to know before writing a case here. The log functions are wrapped, so **every** line the

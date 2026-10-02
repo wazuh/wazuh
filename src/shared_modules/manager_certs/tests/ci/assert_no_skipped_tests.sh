@@ -2,9 +2,9 @@
 # assert_no_skipped_tests.sh — the manager_certs suite has to RUN, not report success for cases it
 # never executed.
 #
-# Why this exists. 59 of the suite's 84 GTest cases need a root-owned lock file (G0/C36f) and skip
-# themselves without euid 0, and both shell suites skip their writing half the same way. GitHub's
-# runners are not root, so `ctest` came back green with 25 cases run out of 84 — the atomic write,
+# Why this exists. Most of the suite's GTest cases (every one guarded by SKIP_UNLESS_ROOT()) need a
+# root-owned lock file (G0/C36f) and skip themselves without euid 0, and both shell suites skip their writing half the same way. GitHub's
+# runners are not root, so `ctest` came back green having run only about a quarter of them — the atomic write,
 # the lock, the guards, the C29 invariant and the whole component suite never executed, and the job
 # was green anyway. The missing `sudo` was the smaller half of that failure: the larger half is that
 # nobody could tell from the outside. Running the tests elevated fixes today; this fixes tomorrow,
@@ -33,7 +33,7 @@ awk '
         sub(/^[ \t]*[0-9]+: /, "", line)
     }
 
-    # "[  PASSED  ] 84 tests." — the proof that this log really carries the suites own output.
+    # "[  PASSED  ] <n> tests." — the proof that this log really carries the suites own output.
     line ~ /^\[ *PASSED *\] [0-9]+ tests?\./ {
         summaries++
         count = line
@@ -43,7 +43,7 @@ awk '
         next
     }
 
-    # "[  SKIPPED ] 59 tests, listed below:" — the count GoogleTest itself reports.
+    # "[  SKIPPED ] <n> tests, listed below:" — the count GoogleTest itself reports.
     line ~ /^\[ *SKIPPED *\] [0-9]+ tests?,/ {
         count = line
         sub(/^\[ *SKIPPED *\] /, "", count)

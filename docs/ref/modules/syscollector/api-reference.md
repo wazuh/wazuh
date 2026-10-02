@@ -29,25 +29,23 @@ Initializes the Agent Sync Protocol for Syscollector.
 ```cpp
 void Syscollector::initSyncProtocol(const std::string& moduleName,
                                     const std::string& syncDbPath,
-                                    MQ_Functions mqFuncs);
+                                    const std::string& syncDbPathVD,
+                                    uint32_t integrityInterval);
 ```
 
 **Parameters:**
-- `moduleName`: Module name (`"syscollector"`)
-- `syncDbPath`: Path to sync protocol database
-- `mqFuncs`: Message queue function pointers structure
+- `moduleName`: Module name (`"syscollector"`). The VD instance uses `moduleName + "_vd"`
+- `syncDbPath`: Path to the sync protocol database
+- `syncDbPathVD`: Path to the sync protocol database of the VD instance
+- `integrityInterval`: Seconds between integrity checks of each table
 
 **Usage Example:**
 ```cpp
-// Initialize sync protocol in Syscollector
-MQ_Functions mq_funcs = {
-    .start = syscollector_startmq,
-    .send_binary = syscollector_send_binary_msg
-};
-
+// Initialize sync protocol in Syscollector (called through syscollector_init_sync())
 Syscollector::instance().initSyncProtocol("syscollector",
-                                          SYSCOLLECTOR_SYNC_PROTOCOL_DB_PATH,
-                                          mq_funcs);
+                                          "queue/syscollector/db/syscollector_sync.db",
+                                          "queue/syscollector/db/syscollector_vd_sync.db",
+                                          integrity_interval);
 ```
 
 ### Synchronization Methods
@@ -58,30 +56,19 @@ Triggers synchronization of all pending inventory differences.
 
 **Signature:**
 ```cpp
-bool Syscollector::syncModule(Mode mode,
-                              std::chrono::seconds timeout,
-                              unsigned int retries,
-                              size_t maxEps);
+SyncModuleResult Syscollector::syncModule(Mode mode);
 ```
 
 **Parameters:**
 - `mode`: Sync mode
-- `timeout`: Response timeout in seconds
-- `retries`: Maximum retry attempts
-- `maxEps`: Maximum events per second (0 = unlimited)
 
 **Returns:**
-- `true` if synchronization succeeded
-- `false` if synchronization failed
+- `SyncModuleResult` whose `success` field is `true` if synchronization succeeded and `false` otherwise, including when it is skipped because the module is paused, stopping, flushing or running a DataClean
 
 **Usage Example:**
 ```cpp
 // Syscollector sync thread triggers periodic synchronization
-bool sync_success = Syscollector::instance().syncModule(
-    MODE_DELTA,                           // sync mode
-    std::chrono::seconds(timeout_config), // timeout
-    SYSCOLLECTOR_SYNC_RETRIES,            // retries
-    max_eps_config);                      // max events/sec
+bool sync_success = Syscollector::instance().syncModule(Mode::DELTA).success;
 ```
 
 #### `persistDifference()`
@@ -93,14 +80,18 @@ Persists an inventory difference for later synchronization.
 void Syscollector::persistDifference(const std::string& id,
                                      Operation operation,
                                      const std::string& index,
-                                     const std::string& data);
+                                     const std::string& data,
+                                     uint64_t version,
+                                     bool isDataContext = false);
 ```
 
 **Parameters:**
 - `id`: Unique identifier (calculated hash of inventory item)
-- `operation`: Operation type (`OPERATION_CREATE`, `OPERATION_UPDATE`, `OPERATION_DELETE`)
+- `operation`: Operation type (`Operation::CREATE`, `Operation::MODIFY`, `Operation::DELETE_`)
 - `index`: Sync index name for the inventory type
 - `data`: JSON string containing inventory data
+- `version`: Version of the data
+- `isDataContext`: `true` to queue the item as DataContext instead of DataValue
 
 **Usage Example:**
 ```cpp
@@ -111,9 +102,10 @@ void Syscollector::processEvent(ReturnTypeCallback result,
         std::string id = calculateHashId(data, table);
         Operation operation = getOperationFromResult(result);
         std::string index = getIndexForTable(table);
+        auto [newData, version] = ecsData(data, table);
 
         // Persist the difference for synchronization
-        persistDifference(id, operation, index, data.dump());
+        persistDifference(id, operation, index, newData.dump(), version);
     }
 }
 ```
@@ -148,17 +140,11 @@ Notifies the manager that specific inventory indices have been cleaned and shoul
 
 **Signature:**
 ```cpp
-bool Syscollector::notifyDataClean(const std::vector<std::string>& indices,
-                                   std::chrono::seconds timeout,
-                                   unsigned int retries,
-                                   size_t maxEps);
+bool Syscollector::notifyDataClean(const std::vector<std::string>& indices);
 ```
 
 **Parameters:**
 - `indices`: Vector of index names to clean
-- `timeout`: Response timeout duration
-- `retries`: Maximum retry attempts
-- `maxEps`: Maximum events per second (0 = unlimited)
 
 **Returns:**
 - `true` if notification succeeded
@@ -173,11 +159,7 @@ std::vector<std::string> indices_to_clean = {
     SYSCOLLECTOR_SYNC_INDEX_PORTS
 };
 
-bool notify_success = Syscollector::instance().notifyDataClean(
-    indices_to_clean,
-    std::chrono::seconds(timeout_config),
-    SYSCOLLECTOR_SYNC_RETRIES,
-    max_eps_config);
+bool notify_success = Syscollector::instance().notifyDataClean(indices_to_clean);
 ```
 
 #### `deleteDatabase()`
@@ -288,7 +270,8 @@ Triggers an immediate synchronization session to send all pending inventory chan
 **Behavior:**
 - Checks if sync protocol is initialized
 - If not initialized, returns `0` (not an error, just nothing to flush)
-- If initialized, calls `synchronizeModule()` with `Mode::DELTA`
+- If initialized, waits for any synchronization or recovery already in progress (such as a resend of every table after an agent ID change) and keeps new ones from starting until it is done
+- Calls `synchronizeModule()` with `Mode::DELTA`
 - Returns result of synchronization operation
 
 **Usage Example:**
@@ -395,11 +378,11 @@ if (rowsUpdated >= 0) {
 Syscollector uses the following operation types defined in the Agent Sync Protocol:
 
 ```cpp
-enum class Operation {
-    CREATE = 0,    // New inventory item
-    UPDATE = 1,    // Modified inventory item
-    DELETE = 2,    // Deleted inventory item
-    NO_OP = 3      // No operation (internal use)
+enum class Operation : int {
+    CREATE = OPERATION_CREATE,  // 0: New inventory item
+    MODIFY = OPERATION_MODIFY,  // 1: Modified inventory item
+    DELETE_ = OPERATION_DELETE, // 2: Deleted inventory item
+    NO_OP  = OPERATION_NO_OP    // 3: No operation (internal use)
 };
 ```
 

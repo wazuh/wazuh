@@ -8,6 +8,7 @@ metadata:
     Upon invocation, the parser reads the input string and attempts to validate it as a proper JSON format.
     If the validation is successful, the input is transformed into a JSON object
     which is then assigned to the specified field. If the input is not valid JSON, the parser does not modify the output.
+    Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
   keywords:
     - parser
 

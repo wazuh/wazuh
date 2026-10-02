@@ -5,12 +5,12 @@ driver for the whole-agent deletion, a full integration driver that exercises th
 with the real vulnerability scanner (doubling as the QA suite's server harness), and the
 integration QA suite itself.
 
-## `tools/send_sync.py` — UDS smoke sender
+## `send_sync.py` — UDS smoke sender
 
-A standard-library-only Python script (it runs on the manager's embedded interpreter without
-installing anything) that speaks the same bytes remoted puts on the wire: HTTP/1.1 over an
+`src/wazuh_modules/inventory_sync_server/tools/send_sync.py` is a standard-library-only Python
+script (it runs on the manager's embedded interpreter without installing anything) that speaks the same bytes remoted puts on the wire: HTTP/1.1 over an
 `AF_UNIX` stream, `Content-Length` delimited, `Connection: close`. Useful to probe a live module
-and to reproduce every transport-level rejection by hand.
+and to reproduce the transport-level rejections below by hand.
 
 Run it from the manager's home directory so the default relative socket path resolves, or pass
 `--socket` with an absolute path.
@@ -44,16 +44,18 @@ response was a 2xx, so it can anchor a shell check.
 Sending a VALID session requires a FlatBuffers `FullSession` body, which this script deliberately
 does not build — that is the integration driver's job below.
 
-## `tools/send_delete_agent.py` — whole-agent deletion driver
+## `send_delete_agent.py` — whole-agent deletion driver
 
-Same standard-library-only approach, aimed at `POST /_internal/agents/delete`: it speaks the bytes
+`src/wazuh_modules/inventory_sync_server/tools/send_delete_agent.py` takes the same
+standard-library-only approach, aimed at `POST /_internal/agents/delete`: it speaks the bytes
 **the Task Manager's dispatcher** puts on the wire — the agent id in the body, no headers — so it
 exercises the real deletion rather than an approximation. The endpoint is manager-internal and
-UDS-local (remoted has no downstream route to it), so this script is the only way to drive it by
-hand.
+UDS-local (remoted has no downstream route to it), so this script (or `curl --unix-socket`) is how
+to drive it by hand.
 
-The deletion covers the whole scope — `wazuh-states-*`, `wazuh-agent-config` and
-`wazuh-agent-stats` — one delete-by-query per index. `--verify` counts the agent's documents on the
+The deletion covers the whole scope — `wazuh-states-*` by delete-by-query, `wazuh-agent-config` and
+`wazuh-agent-stats` by document id (see the
+[deletion semantics](api-reference.md#whole-agent-deletion-semantics)). `--verify` counts the agent's documents on the
 indexer before and after, which is the only way to see what the `200` actually did: the endpoint
 answers the same `{"status":"ok"}` whether it deleted thousands of documents or none.
 
@@ -74,16 +76,16 @@ sudo ./send_delete_agent.py --agent-id 900 --verify
 # Prove the deletion is per agent: 900 goes, 901 is untouched
 sudo ./send_delete_agent.py --agent-id 900 --verify --witness 901
 
-# The POST alias authd uses, because its HTTP helper only speaks POST
-./send_delete_agent.py --agent-id 900 --alias
-
 # Contract checks: missing and non-numeric ids (both expect 400)
 ./send_delete_agent.py --agent-id ''
 ./send_delete_agent.py --agent-id not-numeric
 ```
 
-Options: `--socket`, `--agent-id`, `--alias`, `--timeout` (default 60 s — the deletion does indexer
-I/O), `--verify`, `--witness`, `--indexer`, `--cert`, `--key`, `--client-keys`, `--force`.
+Options: `--socket`, `--agent-id` (default `900`), `--timeout` (default 60 s — the deletion does
+indexer I/O), `--verify`, `--witness`, `--indexer` (default `https://127.0.0.1:9200`), `--cert` /
+`--key` (default the indexer's `admin.pem` / `admin-key.pem` under `/etc/wazuh-indexer/certs/`),
+`--client-keys` (default `etc/client.keys`), `--force`. It exits `0` on a `200` (with `--verify`, only when no document is left), `1` otherwise, and
+`2` when it refuses to run or cannot read the indexer.
 
 Three guards worth knowing, all of them there because their absence produces a *reassuring* wrong
 answer:
@@ -94,20 +96,20 @@ answer:
   instead of reporting every count as zero.
 - **It warns when the agent has no documents to begin with.** A deletion that answers `200` having
   found nothing proves nothing; seed first with `POST /config` and `POST /stats` (see
-  `remoted_module/tools/send_agent_json.py`), and remember both write through the ASYNC connector,
+  `src/remoted/remoted_module/tools/send_agent_json.py`), and remember both write through the ASYNC connector,
   so wait for the documents to appear before deleting.
 
 ## `inventory_sync_server_testtool` — integration driver
 
 The C++ driver behind the vulnerability-detection integration workflow
-(`wazuh_modules/vulnerability_scanner/qa/test_efficacy_log.py`). It boots the REAL module pair —
+(`src/wazuh_modules/vulnerability_scanner/qa/test_efficacy_log.py`). It boots the REAL module pair —
 the vulnerability scanner and this server, in one process — converts a JSON description into one
 FlatBuffers `Message{FullSession}` per input file, and POSTs it to the server's real UDS socket
 with the `X-Wazuh-Agent-Id` header, exactly as remoted would. Because a VD `200` guarantees
 scan-then-ingest, the driver needs no scan-completion polling: the HTTP status IS the outcome.
 
-Built as the `inventory_sync_server_testtool` CMake target (into `build/bin/`); sources in the
-module's `testtool/` directory.
+Built as the `inventory_sync_server_testtool` CMake target (into `src/build/bin/`); sources in
+`src/wazuh_modules/inventory_sync_server/testtool/`.
 
 ```text
 inventory_sync_server_testtool <input.json>|<directory>
@@ -138,30 +140,39 @@ Behavior worth knowing:
 {
   "Start": {
     "agentid": "001",
-    "option": "VDFirst | VDSync | Sync",      // default VDSync
-    "mode": "delta",                           // default delta
-    "agentname": "test-agent-001",             // every Start metadata field is optional,
-    "agentversion": "5.0.0",                   // with sensible defaults
+    "module": "syscollector",
+    "option": "VDFirst",
+    "mode": "delta",
+    "agentname": "test-agent-001",
+    "agentversion": "5.0.0",
     "architecture": "x86_64",
     "hostname": "test-host",
-    "osname": "Ubuntu", "osplatform": "ubuntu", "ostype": "linux", "osversion": "22.04",
+    "osname": "Ubuntu",
+    "osplatform": "ubuntu",
+    "ostype": "linux",
+    "osversion": "22.04",
     "groups": ["default"],
-    "indices": ["wazuh-states-inventory-packages"],  // optional; inferred from the data if omitted
-    "feed_offset": 12345                             // optional; VDFirst/VDSync only, see below
+    "indices": ["wazuh-states-inventory-packages"],
+    "feed_offset": 12345
   },
   "data_values": [
     {
-      "operation": "upsert | delete",
-      "index": "wazuh-states-inventory-packages",    // optional; inferred from the payload shape
+      "operation": "upsert",
+      "index": "wazuh-states-inventory-packages",
       "id": "document-id-1",
-      "payload": { "package": { "...": "..." }, "checksum": { "...": "..." } }
+      "payload": {"package": {"name": "openssl"}, "checksum": {"hash": {"sha1": "..."}}}
     }
   ],
   "data_context": [
-    { "index": "wazuh-states-inventory-system", "id": "os-1", "payload": { "host": { "...": "..." } } }
+    {"index": "wazuh-states-inventory-system", "id": "os-1", "payload": {"host": {"os": {"name": "Ubuntu"}}}}
   ]
 }
 ```
+
+Only `Start` is required. Every `Start` field has a default: `option` is `VDSync` (`VDFirst`,
+`VDSync` or `Sync`), `mode` is `delta` (`check` or `ModuleCheck` select `ModuleCheck`), `module` is
+`syscollector`, `agentid` is `001`, `groups` is `["default"]`, and `indices` is inferred from the
+data. `operation` is `upsert` or `delete`.
 
 Index inference when `index` is omitted: a payload with `package.hotfix` maps to
 `wazuh-states-inventory-hotfixes`, any other `package` to `wazuh-states-inventory-packages`, and a

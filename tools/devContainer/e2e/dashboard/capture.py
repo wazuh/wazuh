@@ -26,8 +26,9 @@ right edge is in the PNG, a container that scrolls on its own is as it was drawn
 was (inside the viewport, a column cut with '…') is measured and reported as the assertion's `frame_note`, never as a verdict.
 
 Safety: nothing is interpolated into a shell (`--exec-docker` passes argv and feeds the line
-through stdin); credentials come from the environment only (a URL carrying them is rejected
-by check 0) and every string is redacted before it is printed or serialized.
+through stdin); credentials come from the environment, else from ../.credentials.env (a URL
+carrying them is rejected by check 0) and every string is redacted before it is printed or
+serialized.
 
 The decisions (which checks run, where a view had to land, which rows match, what the VD
 probe means) live in capture_logic.py and are unit-tested without network, without a browser
@@ -1703,6 +1704,28 @@ def vd_poll(args, rep):
 # --------------------------------------------------------------------------- CLI
 
 
+def stack_credentials():
+    """Fallback credentials of the e2e stack: {"user", "password"}, never logged.
+
+    Read from ../.credentials.env (relative to this script; KEY=value lines, no quotes,
+    split at the FIRST '=' because the password alphabet may contain '='):
+    WAZUH_INDEXER_ADMIN_PASSWORD is the password of both the indexer and the dashboard
+    admin user. When the file or the key is missing the historical admin/admin literals
+    are returned (stacks generated before .credentials.env existed). An environment
+    variable set by the caller always wins over this; see parse_args().
+    """
+    fallback = {"user": "admin", "password": "admin"}
+    try:
+        with open(script_dir().parent / ".credentials.env", encoding="utf-8") as fh:
+            for line in fh:
+                key, sep, value = line.rstrip("\r\n").partition("=")
+                if sep and key.strip() == "WAZUH_INDEXER_ADMIN_PASSWORD" and value:
+                    return {"user": "admin", "password": value}
+    except OSError:
+        pass
+    return fallback
+
+
 def parse_args(argv=None):
     workspace = workspace_root()
     parser = argparse.ArgumentParser(
@@ -1770,10 +1793,11 @@ def parse_args(argv=None):
                         help="file with {agent_id: count} used instead of querying the indexer")
     args = parser.parse_args(argv)
     args.vd_socket = args.vd_socket or os.path.join(args.home, VD_SOCKET)
-    args.dashboard_user = os.environ.get("DASHBOARD_USER", "admin")
-    args.dashboard_password = os.environ.get("DASHBOARD_PASSWORD", "admin")
-    args.indexer_user = os.environ.get("INDEXER_USER", "admin")
-    args.indexer_password = os.environ.get("INDEXER_PASSWORD", "admin")
+    stack = stack_credentials()
+    args.dashboard_user = os.environ.get("DASHBOARD_USER", stack["user"])
+    args.dashboard_password = os.environ.get("DASHBOARD_PASSWORD", stack["password"])
+    args.indexer_user = os.environ.get("INDEXER_USER", stack["user"])
+    args.indexer_password = os.environ.get("INDEXER_PASSWORD", stack["password"])
     args.secrets = secrets_of(args.dashboard_user, args.dashboard_password,
                               args.indexer_user, args.indexer_password)
     return args

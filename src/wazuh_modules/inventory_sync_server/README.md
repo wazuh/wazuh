@@ -7,15 +7,17 @@ session result. There are no acknowledgment messages, no retransmission protocol
 session store: re-applying a session is idempotent, so the whole retry story is "the agent
 re-POSTs".
 
-The module also hosts the whole-agent deletion endpoint (`POST /_internal/agents/delete`, called by
-the Task Manager's dispatcher) and runs vulnerability-detection sessions through a scan lane where the scan **gates** indexing: a
-`200` for a VD session guarantees the scan ran AND the inventory was flushed.
+The module also hosts two manager-internal routes for the Task Manager's dispatcher — whole-agent
+deletion (`POST /_internal/agents/delete`) and on-demand rescans (`POST /_internal/vd/scan`) — and
+runs vulnerability-detection sessions through a scan lane where the scan **gates** indexing: a `200`
+for a VD session guarantees the scan ran (unless the node runs no scanner, D23) AND the inventory was
+flushed.
 
 Three documentation layers cover this module, each with its own job:
 
 - **This README** — the developer's map: how the pieces fit, which invariants are load-bearing,
   where to touch what, and WHY it is built this way ([requirements](#requirements),
-  [design decisions](#design-decisions-d1d22), [developer FAQ](#developer-faq)).
+  [design decisions](#design-decisions-d1d23), [developer FAQ](#developer-faq)).
 - **[`docs/ref/modules/inventory-sync-server/`](../../../docs/ref/modules/inventory-sync-server/README.md)**
   — the operator- and integrator-facing reference:
   [architecture](../../../docs/ref/modules/inventory-sync-server/architecture.md),
@@ -27,15 +29,16 @@ Three documentation layers cover this module, each with its own job:
 - **[`tools/manager_benchmark/`](../../../tools/manager_benchmark/README.md)** — the load and
   contract harness that measures this module end to end (see
   [Load & benchmarking](#load--benchmarking)).
-- **[`os_auth`](../../os_auth/README.md)** — where a deletion comes from: why authd records it as a
-  Task Manager row instead of calling this module, why it delays it, and what an id that still owes a
-  purge means for enrollment.
+
+Where a deletion comes from is [`os_auth`](../../os_auth/README.md)'s story: why authd records it as a
+Task Manager row instead of calling this module, why it delays it, and what an id that still owes a
+purge means for enrollment.
 
 ## Requirements
 
 Distilled (and translated) from the migration's design corpus, where they were extracted from the
 legacy module's observable behavior before this rewrite. They are inlined here because the corpus
-is not part of the repository, and the D-numbers they cite are the [design decisions](#design-decisions-d1d22)
+is not part of the repository, and the D-numbers they cite are the [design decisions](#design-decisions-d1d23)
 below. Status: **kept** = the module provides it; **superseded by D-n** = deliberately replaced.
 
 ### Functional (RF)
@@ -50,8 +53,8 @@ below. Status: **kept** = the module provides it; **superseded by D-n** = delibe
 | RF-6 | `ModuleCheck`: checksum-of-checksums (SHA-1 of the ordered concatenation of `checksum.hash.sha1`), answering ok/mismatch/error | kept (single attempt — D16) |
 | RF-7 | Metadata/Group delta with the `state.document_version <= global_version` guard + check repair; mutual exclusion with same-agent data sessions | kept (exclusion is free: shard FIFO) |
 | RF-8 | Answer with the `Status` semantics the agent implements, including `Processing` vs terminal | **superseded by D2** — the HTTP response IS the result; no ack messages |
-| RF-9 | VD orchestration: trigger VDFirst/VDSync with their gates (feed ready, `feed_offset` validation, VDFirst dedup) and expose in-flight-session queries + per-agent lock to the scanner | kept (as the scan lane + `ServerScanCoordinator`) |
-| RF-10 | Whole-agent deletion sweeping the agent's indices, retriable | kept, and widened past the original `wazuh-states-*` to `AGENT_DELETION_SCOPE` (`POST /_internal/agents/delete`; the Task Manager's dispatcher is the only caller, authd the only producer — D21) |
+| RF-9 | VD orchestration: trigger VDFirst/VDSync with their gates (feed ready, `feed_offset` validation, VDFirst dedup) and expose in-flight-session queries + per-agent lock to the scanner | kept (as the scan lane + `ServerScanCoordinator`; the scanner gets the per-agent fence and quiesce wait, not a query of in-flight sessions) |
+| RF-10 | Whole-agent deletion sweeping the agent's indices, retriable | kept, and widened past the original `wazuh-states-*` to `AGENT_DELETION_SCOPE_BY_QUERY` + `AGENT_DELETION_SCOPE_BY_ID` (`POST /_internal/agents/delete`; the Task Manager's dispatcher is the only caller, authd the only producer — D21) |
 | RF-11 | `_id = {cluster}_{agent}_{id}` and cluster scoping on every operation | kept |
 | RF-12 | Admission limits: session cap and a global byte budget | kept (`max_inflight_bytes`, `max_parallel_connections`, `sync_queue_bytes`) |
 | RF-13 | Recovery on agent restart (new session replaces the old) and on modulesd restart (transient state is discardable) | kept (trivially: there is no session state — D1/D9) |
@@ -98,7 +101,7 @@ pipeline satisfies it structurally rather than by discipline:
 | REQ-VDQ-5 | Redefine the ack contract for VD sessions (scan decoupled from ack) | **superseded by D22** — the OPPOSITE was chosen: the scan gates the response; `200` guarantees scan + ingest |
 | REQ-VDQ-6 | Two-phase shutdown: stop admitting → drain/abort → reset the orchestrator | kept (lane stop before scanner reset; coordinator unregisters first) |
 | REQ-VDQ-7 | REAL scan parallelism needs scanner work (shared_lock + per-worker chains), not just a queue | **kept** — `ScanOrchestrator` now takes a `shared_lock` and checks out a per-slot `Slot` (its own chains + its own `IndexerConnectorSync`) for each scan; `vd_workers`/the scanner's `scanWorkers` both default to half the host's cores (minimum 1) and can be overridden with an explicit value |
-| REQ-VDQ-8 | Feed-update coordination reformulated over queue state, not module internals | kept (`ServerScanCoordinator` answers from lane + registry state) |
+| REQ-VDQ-8 | Feed-update coordination reformulated over queue state, not module internals | kept (`ServerScanCoordinator` answers from the shared `AgentInFlightRegistry` alone: pause + bounded quiesce wait) |
 | REQ-VDQ-9 | No RocksDB in the VD path (or at all) | kept (D9 — the module has NO local store) |
 | REQ-VDQ-10 | Queue observability: depth, ages, outcomes, durations | kept (`vd.lane.*`, `vd.scans.*` metrics — see [Statistics](#statistics-d18)) |
 
@@ -146,8 +149,8 @@ inventory_sync_server/
 │   ├── inventorySyncServer.cpp        # extern "C" entry points -> facade
 │   ├── inventorySyncServerFacade.hpp  # lifecycle: worker thread, startup gate, build/teardown order
 │   ├── schema/syncSchema.hpp          # THE binding to the generated FlatBuffers code (alias fb::)
-│   ├── common/                        # clusterIdentity, logThrottle, socketPathCheck, metricNames (D18)
-│   ├── http_server/                   # HTTP/1.1-over-UDS transport (asio + llhttp, own interface)
+│   ├── common/                        # clusterIdentity, metricNames (D18)
+│   ├── http_server/                   # udsHttpServerConfig: C-ABI config -> the shared transport's config
 │   ├── endpoints/                     # route policies: syncEndpoint (POST /stateful),
 │   │                                  #   deleteAgentEndpoint (POST /_internal/agents/delete),
 │   │                                  #   vdScanEndpoint (POST /_internal/vd/scan), stats, config
@@ -159,12 +162,12 @@ inventory_sync_server/
 │   │   ├── stateIndexAllowlist.hpp    #   which indices an agent session may touch
 │   │   └── syncQueryBuilder.hpp       #   the update/check queries (metadata, groups, cluster scope)
 │   └── vd/                            # the vulnerability-detection lane:
-│       ├── IVdScanner.hpp             #   what the lane needs from a scanner (feedReady, scan)
+│       ├── IVdScanner.hpp             #   what the lane needs from a scanner (feedReady, scan, scanAgent)
 │       ├── vdScannerFactory.hpp       #   declares makeProductionVdScanner()
 │       ├── vdScannerAdapter.cpp       #   the ONE TU that includes the scanner's headers
 │       ├── vdScanLane.*               #   bounded queue + workers: scan -> ok -> index -> respond
 │       ├── agentInFlightRegistry.hpp  #   per-agent cross-lane exclusion (pipeline <-> lane)
-│       └── serverScanCoordinator.hpp  #   what feed-update scans see of in-flight sessions
+│       └── serverScanCoordinator.hpp  #   the per-agent fence feed-update scans put on sessions
 ├── test/unit/                         # one GTest binary: inventory_sync_server_utest
 ├── testtool/                          # inventory_sync_server_testtool (VD integration driver
 │                                      #   + the QA suite's --serve/--no-vd server harness)
@@ -199,7 +202,7 @@ mean chasing that schema forever. The extern "C" layer converts it once (print/p
 Sentinel convention: an int `<= 0` or an empty string means "the caller has no opinion, use the
 module default" — so every default lives in exactly one place, this module. Ranges are enforced
 by the shim at CONFIGURATION time (`getDefine_Int_default` aborts on out-of-range), which is what
-makes `wazuh-modulesd -t` catch bad values instead of the module dying later.
+makes `wazuh-manager-modulesd -t` catch bad values instead of the module dying later.
 
 `start()` returning non-zero (or the .so failing to load) is treated by the shim as fatal to
 modulesd: a manager that looks healthy while silently lacking inventory ingress is worse than one
@@ -211,28 +214,28 @@ that refuses to start.
 thread and the canonical cooperative-shutdown lifecycle (atomic flag + condition_variable +
 join). Its start path is split in two phases on purpose:
 
-- **Phase A — synchronous, fail-fast**: validate the socket path (a path that can never bind is
-  fatal, not retriable), resolve every tunable, snapshot the config. Errors here are returned to
-  the shim, which refuses the module.
+- **Phase A — synchronous, fail-fast** (`start()`): validate the socket path (a path that can never
+  bind is fatal, not retriable), copy the config, launch the worker thread. Errors here are
+  returned to the shim, which refuses the module.
 - **Phase B — asynchronous, retried**: build the indexer stack and the processing stages, then
   open the socket. This runs on the worker thread and is retried on every heartbeat
   (`INVENTORY_SYNC_SERVER_HEARTBEAT_SECS`, 60 s), because its usual failure mode — an indexer
   that has not started yet — heals on its own.
 
-Phase B builds in dependency order, and each successfully built stage is memoised so a retry
-never rebuilds what already works:
+Phase B resolves every tunable, then builds in dependency order; each successfully built stage is
+memoised so a retry never rebuilds what already works:
 
-1. `IndexerSession` (shared by both connectors) — its constructor validates the `<indexer>`
+1. `AgentInFlightRegistry` — created FIRST (in the attempt's configuration snapshot) and reset
+   LAST, because both the pipeline and the lane hold release listeners pointing into it.
+2. `IndexerSession` (shared by both connectors) — its constructor validates the `<indexer>`
    configuration synchronously and throws on nonsense, but does NOT require the indexer to be
    reachable. That split is the startup gate's contract: **gate on "configuration is valid",
    never on "host is up"**, so the indexer is free to start after modulesd.
-2. The **async** connector (used by `/stats` and `/config`) and the **sync** connector slots.
-   The pipeline gets ONE sync connector PER WORKER (worker 0's connector doubles as the
-   admission-check slot the endpoint sees); the VD lane gets its own set.
-3. `AgentInFlightRegistry` — created FIRST among the processing stages and reset LAST, because
-   both the pipeline and the lane hold release listeners pointing into it.
-4. `SyncPipeline` (with the registry), then — when the scanner is linked — the `VdScanLane`, the
-   production `IVdScanner` adapter, and the `ServerScanCoordinator` registration.
+3. The **sync** connector, then the **async** connector (used by `/stats` and `/config`).
+4. `SyncPipeline` (with the registry): ONE sync connector PER WORKER, worker 0 reusing the sync
+   connector above, which also serves as the admission-check slot the endpoint sees. Then the
+   `VdScanLane` with its own `vd_workers` connectors and the production `IVdScanner` adapter, and
+   the `ServerScanCoordinator` registration.
 5. The HTTP server, with routes capturing every dependency **weakly**.
 
 The weak captures are the shutdown design: `stop()` walks the stages in reverse (coordinator
@@ -353,8 +356,8 @@ keep the `HttpRequest` alive, which is exactly what a pipeline `Item` does (and 
 request also holds its in-flight byte reservation).
 
 `padAgentId()` left-pads to 3 characters — the historical `wazuh.agent.id` form every document
-`_id` and every query uses. `isNumericAgentId()` is shared with the deletion endpoint, which
-validates the same header the same way.
+`_id` and every query uses. `isNumericAgentId()` is shared with the two `_internal` endpoints, which
+validate the `agent_id` of their BODY the same way.
 
 ### The pipeline (`sync/syncPipeline.*`, `sync/sessionProcessor.*`)
 
@@ -426,8 +429,9 @@ because a half-staged session inside a shared buffer is unrecoverable state; ide
 are what make that safe.
 
 The checksum verification (`executeChecksum`) pages the agent's documents with `search_after`
-(1000 per page, deterministic order), aggregates SHA-1, and answers `200`/`409
-{"status":"checksum_mismatch"}`. One attempt, no retry loop.
+(1000 per page by default — `inventory_sync_server_session_query_batch_size` —, deterministic
+order), aggregates SHA-1, and answers `200`/`409 {"status":"checksum_mismatch"}`. One attempt, no
+retry loop.
 
 ### The allowlist (`sync/stateIndexAllowlist.hpp`)
 
@@ -435,11 +439,12 @@ The per-document authorization layer: agent sessions may only touch
 `wazuh-states-inventory-*`, `wazuh-states-fim-*`, `wazuh-states-sca`(`-*`), and — clean-only —
 `wazuh-states-vulnerabilities` (its documents are produced exclusively by the scanner). Documents
 outside it are skipped with a WARN; a session whose every document was skipped answers a no-op
-`200`. Whole-agent deletions use `AGENT_DELETION_SCOPE` instead — `wazuh-states-*` plus
-`wazuh-agent-config` and `wazuh-agent-stats`: they are manager-initiated (authd), not agent
-sessions, and must reach every index holding the agent's documents, including ones no session
-writes to. The two endpoints that WRITE those indices take their names from that same constant, so
-the deletion scope cannot drift away from what is being written.
+`200`. Whole-agent deletions use their own scope instead — `AGENT_DELETION_SCOPE_BY_QUERY`
+(`wazuh-states-*`) plus `AGENT_DELETION_SCOPE_BY_ID` (`wazuh-agent-config` and
+`wazuh-agent-stats`): they are manager-initiated (authd), not agent sessions, and must reach every
+index holding the agent's documents, including ones no session writes to. The two endpoints that
+WRITE those indices take their names from the same constants, so the deletion scope cannot drift
+away from what is being written.
 
 ## The VD scan lane (`src/vd/`)
 
@@ -473,9 +478,11 @@ inside a try/catch (a throw
 answers `500` with ZERO indexing), then stage the inventory bulk and `flush()` — one session per
 flush, no group commit in this lane — and answer `200`.
 
-**`IVdScanner`** is the lane's entire view of the scanner: `feedReady()`, `currentFeedOffset()`
-(this node's current VD feed offset, backing the `feed_offset` check above), and
-`scan() -> Ok | Skipped`. `feedReady()` is `feedGateOpen()`: a scanner that will never run here
+**`IVdScanner`** is the lane's entire view of the scanner: `feedReady()`, `scannerRunning()`
+(whether this node runs a scanner at all — what gates the `feed_offset` check, D23),
+`currentFeedOffset()` (this node's current VD feed offset, backing that check),
+`scan() -> Ok | Skipped` for a session, and `scanAgent()` for an on-demand scan
+([below](#on-demand-scans-endpointsvdscanendpoint)). `feedReady()` is `feedGateOpen()`: a scanner that will never run here
 (disabled — by this node's own config or by the running scanner's — or one that started and
 failed) passes the gate and `scan()` reports `Skipped`, so inventory keeps flowing with VD off
 (the only legitimate skip; it still indexes and answers `200`). A scanner that WILL run here but
@@ -499,9 +506,9 @@ worker's cv predicate uses; `pause/resume` + `waitUntilIdle` serve the coordinat
 feed-update-triggered scan (per-agent, on-demand via `/scan/vd`, or the master-only sweep over
 disconnected agents — see [vulnerability-scanner's
 architecture.md](../../../docs/ref/modules/vulnerability-scanner/architecture.md#feed-update-rescan-scanvd--rescandisconnectedagents)
-for both paths) and a session scan for the SAME agent never race: it exposes which agents have
-sessions in flight, can pause an agent (with a bounded quiesce wait, configurable for tests) and
-drain what is running. There is no fleet-wide coordination here — each feed-update rescan fences
+for both paths) and a session scan for the SAME agent never race: it can pause an agent (both
+lanes then treat it as busy) and wait, bounded (30 s, configurable for tests), for what is running
+to drain; on timeout it lifts the fence and reports failure. There is no fleet-wide coordination here — each feed-update rescan fences
 only the one agent it is about to scan, the same way a lane session does. On `stop()` it
 unregisters FIRST, before the lane dies under the scanner's feet.
 
@@ -540,9 +547,11 @@ acquiring immediately after is benign, because it degrades to exactly the parked
 
 `scanAgent()` reports failure **by return value**, unlike `scan()`, which throws. There is no session
 to poison, and every failure is something the caller has to tell apart to decide whether to come
-back: `NotReady` → 503, `NotFound` → 404 (permanent), `Failed` → 500, `Skipped` → 200. That last one
-is the interesting choice — no scanner on this node is a completion, not a failure, because retrying
-could never change the answer and the task would never terminate.
+back: `NotReady` → 503, `NotFound` → 404 (permanent), `Failed` → 500, `Skipped` → 503
+`no vulnerability scanner on this node`. That last one is the interesting choice — a `200` would make
+the dispatcher record `completed` for a scan that never ran, while a retryable `503` lets a scanner
+that returns after a restart still do the work, and `vd_scan`'s attempt budget dead-letters the row if
+it never does.
 
 ## Agent deletion (`endpoints/deleteAgentEndpoint.*`)
 
@@ -607,8 +616,8 @@ globally keeps the leak backstop intact for everyone else. It must stay above
 `manager_task_delete_timeout`.
 
 **Capacity is the caller's.** `RouteClass::Control` requires a route doing real work to shed its own
-capacity module-side; this one has no queue, so the bound is the dispatcher's delete-lane depth of 4 —
-at most four deletions in flight.
+capacity module-side; this one has no queue, so the bound is the Task Manager's concurrency cap of 4
+for `agent_delete_indexer` — at most four deletions in flight.
 
 ### What replaced what
 
@@ -654,27 +663,17 @@ pipeline. They accumulate and push in batches by design.
 
 ## Transport (`src/http_server/`)
 
-A hand-written HTTP/1.1 server over standalone asio + llhttp, behind the module's own
-`IUdsHttpServer` interface (so the library never leaks into handlers). The details that matter:
+The HTTP/1.1-over-UDS server is the shared
+[`uds_http_server`](../../shared_modules/uds_http_server/README.md) library (standalone asio +
+llhttp behind `IUdsHttpServer`), extracted from this module and now also used by other manager
+modules. Per-connection strands, admission at headers-complete (404/405, in-flight byte budget →
+`503`, declaring more than the TOTAL budget → `413`), route classes, deferred responders, two-phase
+shutdown and the 90-second throttled diagnostics are its contract and documented there.
 
-- **Per-connection strands.** An accepted socket inherits the acceptor's executor; without
-  re-binding each session to its own strand, every connection would serialize onto the acceptor's
-  strand and the I/O thread count would buy nothing.
-- **Admission at headers-complete.** Route resolution (404/405+Allow), then the declared
-  `Content-Length` plus a DERIVED per-request overhead is reserved from the in-flight byte budget
-  (over the available budget → `503`; declaring more than the TOTAL budget → `413` — with no
-  explicit `max_body_size`, the parser's effective cap is the budget minus the overhead, so the
-  413 arrives at headers, before any body byte). Only then is the body read.
-- **Deferred responses by contract.** Handlers get an `IHttpResponder` they may answer from any
-  thread, later; `send()` is send-once and thread-safe; the byte reservation lives until the
-  response is delivered. A peer that disconnects while its response is deferred is detected and
-  released immediately.
-- **Two-phase shutdown.** `stopAccepting()` guarantees no handler runs again while the I/O
-  runtime stays alive (so late `send()`s from workers are safe); `stop()` then drains bounded,
-  force-closes the rest, joins. Every wait is named and sized to fit inside the daemon's
-  shutdown budget.
-- **Throttled diagnostics.** Every rejection class keeps one 90-second-windowed log line whose
-  first occurrence always emits — transitions are visible immediately, floods are not.
+What stays here is `http_server/udsHttpServerConfig.*`: `buildServerConfig()` turns the C-ABI
+config into the library's `UdsHttpServerConfig` — the fixed socket path and mode, this module's
+log tag and option-name hints, and every `<= 0` sentinel resolved to its default (an explicit
+`max_inflight_bytes=0` becomes "effectively unlimited").
 
 ## Endpoints (`src/endpoints/`)
 
@@ -685,7 +684,7 @@ A hand-written HTTP/1.1 server over standalone asio + llhttp, behind the module'
 | `POST /_internal/vd/scan` | `vdScanEndpoint` | On-demand rescan of one agent on the VD scan lane, for the same dispatcher and with the same contract: agent id in the body, answered at COMPLETION, its own 450 s response backstop. See [On-demand scans](#on-demand-scans-endpointsvdscanendpoint). |
 | `POST /stats`, `POST /config` | `statsEndpoint` / `configEndpoint` | Validate the agent's `modules`-keyed report, overlay the authoritative identity (agent id from the header, cluster identity, timestamp — never from the body) and index ONE document per agent (`wazuh-agent-stats` / `wazuh-agent-config`, agent id as document id, replace-on-push). Full contract in [the API reference](../../../docs/ref/modules/inventory-sync-server/api-reference.md). |
 | `GET /` | inline in the facade | Liveness probe, exempt from the byte budget so it answers under memory pressure. |
-| `GET /metrics` | `metricsEndpoint` | The D18 statistics dump (`wazuh_metrics::dumpJson` of the module's registry). Budget-exempt like the probe: metrics matter most under pressure. NOT `/stats` — that is the agent-stats ingest route. |
+| `GET /metrics` | `metricsEndpoint` | The D18 statistics dump (`wazuh::metrics::dumpJson` of the module's registry). Budget-exempt like the probe: metrics matter most under pressure. NOT `/stats` — that is the agent-stats ingest route. |
 
 Every route captures its dependencies weakly and answers `503` when they are gone — the
 shutdown-safety story in one line. The identity header is `x-wazuh-agent-id`
@@ -760,21 +759,21 @@ shared fixtures:
   "scan appears before bulkIndex", "a failed scan produces zero ops".
 - **`testSessionBuilder.hpp`** — FlatBuffers builders for every session shape (including a
   forgeable raw operation byte for the invalid-enum tests).
-- **`udsTestClient.hpp` / `testLogRecorder.hpp`** — a raw UDS HTTP client (the peer's exact wire
-  shape) and a log-line recorder for asserting operator-visible behavior.
+- **`testLogRecorder.hpp`** — a log-line recorder for asserting operator-visible behavior.
 
 What lives where, roughly: request-level validation (`fullSessionValidator_test`), per-session
 application (`sessionProcessor_test`), workers/ordering/group-commit/failure mapping
 (`syncPipeline_test`), strand-side routing and gates (`syncEndpoint_test`), the lane's D-contract
 and the cross-lane interlock (`vdScanLane_test`), deletion (`deleteAgentEndpoint_test`), the
 startup gate and teardown order (`indexerGating_test`), schema pinning (`schemaRoundtrip_test`),
-transport (`udsHttpServer_test`, `udsShutdown_test`, `requestParser_test`, `inFlightBudget_test`)
-— and `statefulEndpointE2E_test`, which boots the REAL module through the C ABI and drives the
-full contract matrix over a real socket with only the indexer faked.
+the transport configuration (`udsHttpServerConfig_test`; the transport itself is tested in
+`src/shared_modules/uds_http_server/test/`) — and `statefulEndpointE2E_test`, which boots the REAL
+module through the C ABI and drives the full contract matrix over a real socket with only the
+indexer faked.
 
 ```bash
-cmake --build build -j --target inventory_sync_server_utest
-ctest --test-dir build -R inventory_sync_server_utest -V     # or run the binary with --gtest_filter
+cmake --build src/build -j --target inventory_sync_server_utest
+ctest --test-dir src/build -L inventory_sync_server_utest -V     # or run the binary with --gtest_filter
 ```
 
 ## Tools
@@ -790,7 +789,7 @@ ctest --test-dir build -R inventory_sync_server_utest -V     # or run the binary
 - `testtool/` — `inventory_sync_server_testtool`, the vulnerability-detection integration driver:
   boots the real scanner + this server in one process, converts JSON descriptions into
   `FullSession` buffers and POSTs them to the real socket. Used by
-  `wazuh_modules/vulnerability_scanner/qa/test_efficacy_log.py`. Stamps each VDFirst/VDSync
+  `src/wazuh_modules/vulnerability_scanner/qa/test_efficacy_log.py`. Stamps each VDFirst/VDSync
   session's `Start.feed_offset` from the scanner's actual current offset unless the input JSON
   sets one explicitly — queried fresh on every `503`-retry attempt, not just once, so a session
   built before the feed finished loading never goes stale by the time it's resent.

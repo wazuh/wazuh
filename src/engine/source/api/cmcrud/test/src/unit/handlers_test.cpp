@@ -325,7 +325,8 @@ INSTANTIATE_TEST_SUITE_P(
                 return createRequest<eContent::resourceGet_Request>(protoReq);
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceGet(crud); },
-            []() {
+            []()
+            {
                 return helpers::buildJsonContentResponse(
                     json::Json {R"({"id":"6093809a-6285-5cf8-9284-63bd68f796e9"})"});
             },

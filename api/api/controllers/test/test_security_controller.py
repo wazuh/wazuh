@@ -52,7 +52,7 @@ def mock_request():
             m_req.query_params = MagicMock()
             m_req.query_params.get = MagicMock(return_value=None)
             m_req.context = {
-                'token_info': {'sub': 'wazuh', 'run_as': 'manager', 'rbac_policies': {}}
+                'token_info': {'sub': 'wazuh', 'run_as': 'manager', 'rbac_policies': {}, 'auth_time_ms': 1234}
             }
             yield m_req
 
@@ -76,8 +76,8 @@ async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfu
                                       )
     mock_remove.assert_called_once_with(f_kwargs)
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
-    mock_token.assert_called_once_with(user_id=f_kwargs['user_id'],
-                                       data=mock_exc.return_value.dikt)
+    mock_token.assert_called_once_with(issued_at_ms=mock_request.context['token_info']['auth_time_ms'],
+                                       user_id=f_kwargs['user_id'], data=mock_exc.return_value.dikt)
     assert isinstance(result, ConnexionResponse)
     assert result.content_type == 'text/plain' if raw else result.content_type == JSON_CONTENT_TYPE
 
@@ -127,7 +127,8 @@ async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_d
                                       )
     mock_remove.assert_called_once_with(f_kwargs)
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
-    mock_token.assert_called_once_with(user_id=f_kwargs['user_id'], data=mock_exc.return_value.dikt,
+    mock_token.assert_called_once_with(issued_at_ms=mock_request.context['token_info']['auth_time_ms'],
+                                       user_id=f_kwargs['user_id'], data=mock_exc.return_value.dikt,
                                        auth_context=auth_context)
     assert isinstance(result, ConnexionResponse)
     assert result.content_type == 'text/plain' if raw else result.content_type == JSON_CONTENT_TYPE
@@ -152,7 +153,8 @@ async def test_run_as_login_auth_context(mock_token, mock_exc, mock_dapi, mock_r
 
     f_kwargs = {'user_id': '001', 'auth_context': auth_context}
     mock_remove.assert_called_once_with(f_kwargs)
-    mock_token.assert_called_once_with(user_id='001', data=mock_exc.return_value.dikt,
+    mock_token.assert_called_once_with(issued_at_ms=mock_request.context['token_info']['auth_time_ms'],
+                                       user_id='001', data=mock_exc.return_value.dikt,
                                        auth_context=auth_context)
     assert isinstance(result, ConnexionResponse)
 
@@ -224,6 +226,8 @@ async def test_logout_user(mock_exc, mock_dapi, mock_dfunc, mock_request):
     """Verify 'logout_user' endpoint is working as expected."""
     result = await logout_user()
     mock_dapi.assert_called_once_with(f=security.revoke_current_user_tokens,
+                                      f_kwargs={'run_as': mock_request.context['token_info']['run_as'],
+                                                'hash_auth_context': None},
                                       request_type='local_master',
                                       is_async=False,
                                       logger=ANY,
@@ -232,6 +236,18 @@ async def test_logout_user(mock_exc, mock_dapi, mock_dfunc, mock_request):
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_logout_user_run_as(mock_exc, mock_dapi, mock_dfunc, mock_request):
+    """Verify 'logout_user' hands a run_as token's authorization context to the revocation."""
+    mock_request.context['token_info'] = mock_request.context['token_info'] | {'run_as': True,
+                                                                               'hash_auth_context': 'abc'}
+    await logout_user()
+    assert mock_dapi.call_args.kwargs['f_kwargs'] == {'run_as': True, 'hash_auth_context': 'abc'}
 
 
 @pytest.mark.asyncio
@@ -273,9 +289,12 @@ async def test_get_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_edit_run_as(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'edit_run_as' endpoint is working as expected."""
+    mock_request.context['token_info'].update({'sub': 'wazuh-wui', 'run_as': True})
     result = await edit_run_as(user_id='001', allow_run_as=False)
     f_kwargs = {'user_id': '001',
-                'allow_run_as': False
+                'allow_run_as': False,
+                'current_user': 'wazuh-wui',
+                'run_as': True
                 }
     mock_dapi.assert_called_once_with(f=security.edit_run_as,
                                       f_kwargs=mock_remove.return_value,
@@ -323,6 +342,7 @@ async def test_create_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'update_user' endpoint is working as expected."""
+    mock_request.context['token_info'].update({'sub': 'wazuh-wui', 'run_as': True})
     with patch('api.controllers.security_controller.Body.validate_content_type'):
         with patch('api.controllers.security_controller.UpdateUserModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
@@ -334,6 +354,7 @@ async def test_update_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
             assert 'additional_kwargs' in call_kwargs
             assert call_kwargs['additional_kwargs']['user_id'] == '001'
             assert call_kwargs['additional_kwargs']['current_user'] == mock_request.context['token_info']['sub']
+            assert call_kwargs['additional_kwargs']['run_as'] is True
 
             mock_dapi.assert_called_once_with(
                 f=security.update_user,

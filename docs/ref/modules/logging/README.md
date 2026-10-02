@@ -2,55 +2,43 @@
 
 ## Overview
 
-The Logging module controls the format and output of Wazuh daemon logs for both manager and agent components. It provides flexible log formatting options to support human-readable plain text output, structured JSON for integration with log aggregation tools, or both simultaneously.
+The `logging` section selects the format of the Wazuh daemons' own log: human-readable plain text,
+one JSON object per line, or both at once. It is not a daemon: the shared logging code in
+`src/shared/src/debug_op.c` (part of `libwazuhshared`) reads the setting the first time a process
+logs, and every C/C++ daemon writes its log lines through that code.
 
-## Key Features
+| | Manager | Agent |
+|---|---|---|
+| Configuration | `<logging>` in `/var/wazuh-manager/etc/wazuh-manager.conf` (root `<wazuh_config>`) | `<logging>` in `/var/ossec/etc/ossec.conf` (root `<ossec_config>`) |
+| Plain log | `/var/wazuh-manager/logs/wazuh-manager.log` | `/var/ossec/logs/ossec.log` |
+| JSON log | `/var/wazuh-manager/logs/wazuh-manager.json` | `/var/ossec/logs/ossec.json` |
+| Default | `plain` | `plain` |
 
-- **Plain text format** - Human-readable logs for troubleshooting and manual review
-- **JSON format** - Structured logs for SIEM integration (Elasticsearch, Splunk, etc.)
-- **Dual output** - Produce both formats simultaneously for maximum flexibility
-- **Global scope** - Applies to all Wazuh daemons (remoted, analysisd, logcollector, etc.)
+On the manager the setting covers every C/C++ daemon, the engine (`wazuh-manager-analysisd`)
+included. The two Python daemons keep their own logs and are not affected by it:
+`wazuh-manager-apid` writes `logs/api.log` (its format is set in `api.yaml`) and
+`wazuh-manager-clusterd` writes `logs/cluster.log`.
 
-## Configuration
+## Quick example
 
-The logging module is configured via the `<logging>` XML block in the main configuration file:
+Both default configuration files already contain a `<logging>` block; change its `<log_format>`
+rather than adding a second block.
 
-- **Manager:** `/var/wazuh-manager/etc/wazuh-manager.conf`
-- **Agent:** `/var/ossec/etc/ossec.conf`
-
-### Quick Example
-
-```xml
-<ossec_config>
+```xml,fragment
+<wazuh_config>
   <logging>
-    <log_format>plain</log_format>
+    <log_format>plain,json</log_format>
   </logging>
-</ossec_config>
+  <!-- cluster, indexer and the other sections -->
+</wazuh_config>
 ```
-
-## Log Files
-
-Wazuh daemon logs are written to:
-
-- **Manager:** `/var/wazuh-manager/logs/wazuh-manager.log` (plain) or `.json` (JSON format)
-- **Agent:** `/var/ossec/logs/ossec.log` (plain) or `.json` (JSON format)
-
-## Use Cases
-
-- **Plain text logs** - Default format for human readability and troubleshooting
-- **JSON logs** - Enable structured logging for centralized log management systems
-- **Dual output** - Maintain both formats when you need human-readable logs for support while feeding JSON to your SIEM
 
 ## Documentation
 
-- [Configuration Reference](configuration.md) - Complete configuration options and examples
-
-## Implementation
-
-The logging configuration parser is implemented in `src/shared/src/debug_op.c` and is loaded during daemon initialization. Invalid `log_format` values will prevent daemon startup.
+- [Configuration Reference](configuration.md) - The `log_format` option, line formats and examples
 
 ## See Also
 
-- [Recurring manager tasks](../task_manager/schedules.md) - Daily and size-based log rotation on the manager
+- [Recurring manager tasks](../task_manager/schedules.md) - Daily and size-based rotation of `wazuh-manager.log` and `wazuh-manager.json`
 - [Manager Configuration](../../configuration/manager/README.md) - Manager configuration overview
 - [Agent Configuration](../../configuration/agent/README.md) - Agent configuration overview

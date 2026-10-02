@@ -33,6 +33,42 @@ class SCAMock : public SecurityConfigurationAssessment
             m_syncInProgress.store(inProgress);
         }
 
+        /// @brief Mark a flush as sending or done, waking waiters the way executeFlushSync() does.
+        void setFlushInProgressForTest(bool inProgress)
+        {
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_flushInProgress.store(inProgress);
+            m_pauseCv.notify_all();
+        }
+
+        /// @brief Mark a recovery DataClean as running or done, waking waiters the way it does.
+        void setRecoveryInProgressForTest(bool inProgress)
+        {
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_recoveryInProgress.store(inProgress);
+            m_pauseCv.notify_all();
+        }
+
+        /// @brief Whether a recovery DataClean holds its slot.
+        bool recoveryInProgressForTest() const
+        {
+            return m_recoveryInProgress.load();
+        }
+
+        /// @brief Agent id change resends started so far.
+        uint32_t identityResyncAttemptsForTest() const
+        {
+            return m_identityResyncAttempts.load();
+        }
+
+        /// @brief Mark Run() as past its initialization (or not), which the identity resend waits for.
+        void setRunInitializedForTest(bool initialized)
+        {
+            std::lock_guard<std::mutex> lock(m_pauseMutex);
+            m_runInitialized.store(initialized);
+            m_pauseCv.notify_all();
+        }
+
         /// @brief Notify pause condition variable (to simulate sync completion)
         void notifySyncComplete()
         {
@@ -58,6 +94,12 @@ class SCAMock : public SecurityConfigurationAssessment
         int callExecuteFlushSync()
         {
             return executeFlushSync();
+        }
+
+        /// @brief Testing helper to drive the all-policies-removed DataClean synchronously.
+        bool callHandleAllPoliciesRemoved()
+        {
+            return handleAllPoliciesRemoved();
         }
 
         /// @brief Testing helper to drive full recovery synchronously.

@@ -627,11 +627,8 @@ TEST(TlsVerificationTest, SystemVerificationFallsBackToTheLocalAnchorWhenTheOsBu
 }
 
 // #39123: neither the OS bundle nor the fallback anchor verifies the server -- the result
-// must still be a verification failure (never a silent unverified connection), so the
-// caller's normal fail-closed handling applies. The LOGFN_CRITICAL this path also emits is
-// a safe no-op in this test binary (GLOBAL_LOG_FUNCTION is never assigned, see
-// tests/unit/main.cpp/tests/component/main.cpp) -- only the real agent's bridge wires it to
-// mtLoggingFunctionsWrapper's exit(1).
+// must still be a verification failure (never a silent unverified connection), which the
+// caller backs off and retries.
 TEST(TlsVerificationTest, SystemVerificationFailsWhenNeitherTheOsBundleNorTheFallbackAnchorVerify)
 {
     constexpr uint16_t port = 44864;

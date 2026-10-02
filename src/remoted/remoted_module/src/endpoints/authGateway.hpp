@@ -41,7 +41,7 @@ namespace remoted::endpoints
      * registered lambda instead, before authenticate() and before the `receivedAt` stamp, with
      * wrap()'s semantics reproduced exactly (see authGateway.cpp).
      *
-     * Default-constructed it is inert, which is what keeps the six existing authenticated routes
+     * Default-constructed it is inert, which is what keeps the seven other authenticated routes
      * untouched: a null or disabled limiter is resolved once at registration and costs one pointer
      * test per request.
      */

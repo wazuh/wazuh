@@ -620,6 +620,15 @@ class DistributedAPI:
 
         if allowed_nodes.total_affected_items > 1:
             response = reduce(or_, response)
+            if isinstance(response, wresults.AffectedItemsWazuhResult):
+                # A node asked about an agent that has never connected to it answers 1774, which
+                # says it has nothing to say rather than anything about the agent. Every node the
+                # agent has not connected to answers it, so once the merge above has collected the
+                # nodes that DO know the agent -- an affected item, or a real error such as 1761 --
+                # the placeholder would list that agent a second time and count it a second time.
+                # Dropped here and not in the merge itself: each node's own answer stays untouched
+                # in `nodes`, where "this node has no information about it" is the point.
+                response.drop_uninformative_failures(common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE)
             if isinstance(response, wresults.AbstractWazuhResult):
                 response = response.limit(limit=self.f_kwargs.get('limit', common.DATABASE_LIMIT),
                                           offset=self.f_kwargs.get('offset', 0)) \

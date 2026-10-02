@@ -48,11 +48,12 @@ The following components should be included in your Wazuh manager backup strateg
 
 - **Pending agent deletions**: `/var/wazuh-manager/queue/authd/`
   - `pending-purges` - agent deletions not yet relayed to the indexer
+  - `pending-identities` - agent credentials handed out but not yet stored in the database
   - Losing it leaves the corresponding indexer documents orphaned
 
 - **Detection content**: `/var/wazuh-manager/data/`
   - `store/` - engine content store (schemas, enrichment definitions)
-  - `ruleset/` - ruleset content written by the Content Manager
+  - `ruleset/` - ruleset content the engine's content manager synchronizes from the indexer
   - `kvdb-ioc/` - IOC key-value store
   - `mmdb/`, `tzdb/` - GeoIP and timezone databases, reinstalled with the package
 
@@ -359,15 +360,14 @@ fi
 sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc
 
 # The files and directories the installer keeps root-owned, which the recursive
-# chown above takes: the WPK signing anchor, the internal options, the schema that
-# validates the configuration, the configuration itself, and the shared tree.
+# chown above takes: the internal options, the schema that validates the
+# configuration, the configuration itself, and the shared tree.
 sudo chown root:wazuh-manager /var/wazuh-manager/etc \
     /var/wazuh-manager/etc/shared \
     /var/wazuh-manager/etc/indexer-plugins \
     /var/wazuh-manager/etc/wazuh-manager.conf \
     /var/wazuh-manager/etc/wazuh-manager-internal-options.conf \
     /var/wazuh-manager/etc/wazuh-manager.schema.json \
-    /var/wazuh-manager/etc/wpk_root.pem \
     /var/wazuh-manager/etc/localtime
 
 # client.keys stays with the service account: authd appends to it after dropping
@@ -396,6 +396,8 @@ sudo chown -R wazuh-manager:wazuh-manager \
     /var/wazuh-manager/data
 sudo chmod 660 /var/wazuh-manager/queue/db/global.db
 sudo chmod 640 /var/wazuh-manager/queue/tasks/tasks.db
+# The two GeoIP directories the installer keeps root-owned, which the recursive chown takes
+sudo chown root:wazuh-manager /var/wazuh-manager/data/mmdb /var/wazuh-manager/data/store/geo/mmdb
 
 # API configuration: root-owned directories, database owned by the manager user
 sudo chown root:wazuh-manager /var/wazuh-manager/api/configuration /var/wazuh-manager/api/configuration/security
@@ -440,8 +442,9 @@ sudo tail -f /var/wazuh-manager/logs/wazuh-manager.log
 
 ```bash
 sudo systemctl stop wazuh-manager
+# Run as root, tar restores the owners and modes recorded in the archive. Do not
+# chown etc/ recursively: it mixes root- and wazuh-manager-owned files.
 sudo tar -xzf wazuh-manager-config-YYYYMMDD.tar.gz -C /var/wazuh-manager
-sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc
 sudo systemctl start wazuh-manager
 ```
 
@@ -557,15 +560,14 @@ sudo tar -xzf $BACKUP_DIR/wazuh-worker-config.tar.gz -C /var/wazuh-manager
 sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc /var/wazuh-manager/queue/keystore
 
 # The files and directories the installer keeps root-owned, which the recursive
-# chown above takes: the WPK signing anchor, the internal options, the schema that
-# validates the configuration, the configuration itself, and the shared tree.
+# chown above takes: the internal options, the schema that validates the
+# configuration, the configuration itself, and the shared tree.
 sudo chown root:wazuh-manager /var/wazuh-manager/etc \
     /var/wazuh-manager/etc/shared \
     /var/wazuh-manager/etc/indexer-plugins \
     /var/wazuh-manager/etc/wazuh-manager.conf \
     /var/wazuh-manager/etc/wazuh-manager-internal-options.conf \
     /var/wazuh-manager/etc/wazuh-manager.schema.json \
-    /var/wazuh-manager/etc/wpk_root.pem \
     /var/wazuh-manager/etc/localtime
 
 sudo sh -c 'cd /var/wazuh-manager/etc/certs || exit 1
@@ -814,7 +816,7 @@ sudo systemctl status wazuh-agent
 
 ```powershell
 # Stop the agent service
-Stop-Service -Name wazuh
+Stop-Service -Name WazuhSvc
 
 # Restore configuration files
 Copy-Item -Path "$BackupDir\ossec.conf" -Destination "C:\Program Files (x86)\ossec-agent\ossec.conf" -Force
@@ -822,10 +824,10 @@ Copy-Item -Path "$BackupDir\client.keys" -Destination "C:\Program Files (x86)\os
 Copy-Item -Path "$BackupDir\local_internal_options.conf" -Destination "C:\Program Files (x86)\ossec-agent\local_internal_options.conf" -Force -ErrorAction SilentlyContinue
 
 # Start the agent service
-Start-Service -Name wazuh
+Start-Service -Name WazuhSvc
 
 # Verify agent status
-Get-Service -Name wazuh
+Get-Service -Name WazuhSvc
 ```
 
 **macOS agents:**
@@ -881,15 +883,14 @@ sudo /Library/Ossec/bin/wazuh-control status
 sudo chown -R wazuh-manager:wazuh-manager /var/wazuh-manager/etc
 
 # The files and directories the installer keeps root-owned, which the recursive
-# chown above takes: the WPK signing anchor, the internal options, the schema that
-# validates the configuration, the configuration itself, and the shared tree.
+# chown above takes: the internal options, the schema that validates the
+# configuration, the configuration itself, and the shared tree.
 sudo chown root:wazuh-manager /var/wazuh-manager/etc \
     /var/wazuh-manager/etc/shared \
     /var/wazuh-manager/etc/indexer-plugins \
     /var/wazuh-manager/etc/wazuh-manager.conf \
     /var/wazuh-manager/etc/wazuh-manager-internal-options.conf \
     /var/wazuh-manager/etc/wazuh-manager.schema.json \
-    /var/wazuh-manager/etc/wpk_root.pem \
     /var/wazuh-manager/etc/localtime
 
 # client.keys stays with the service account: authd appends to it after dropping
@@ -991,15 +992,17 @@ sudo tail -50 /var/ossec/logs/ossec.log
 # Verify client.keys exists and has correct permissions
 sudo ls -l /var/ossec/etc/client.keys
 
-# Check manager IP configuration
-sudo grep "<address>" /var/ossec/etc/ossec.conf
+# Check the manager endpoint (<address> is the deprecated spelling, still read)
+sudo grep -E "<endpoint>|<address>" /var/ossec/etc/ossec.conf
 
 # Restart agent
 sudo systemctl restart wazuh-agent
 
-# Check connection logs
-sudo tail -f /var/ossec/logs/ossec.log | grep "Connected to"
+# Check the connection messages
+sudo grep -E "TLS verification|cacerts|pin_mismatch|\(41[0-9]{2}\)" /var/ossec/logs/ossec.log | tail -20
 ```
+
+[Agent Not Connecting](modules/client/README.md#agent-not-connecting) maps each of those messages to its cause.
 
 **Issue: Agent databases not accessible after restore**
 

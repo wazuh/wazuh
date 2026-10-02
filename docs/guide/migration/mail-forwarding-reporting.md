@@ -2,7 +2,7 @@
 
 In previous Wazuh versions (4.x), email alerts and reporting were configured directly in the Wazuh manager's `ossec.conf` file using the `<email_alerts>`, `<reports>`, and related global SMTP configuration blocks.
 
-Starting with Wazuh 5.0, these backend mail forwarding capabilities have been removed from the manager. Mail forwarding and scheduled reporting must now be configured directly through the Wazuh dashboard using the **Notifications**, **Alerting**, and **Reporting** dashboard plugins.
+Starting with Wazuh 5.0, these backend mail forwarding capabilities have been removed from the manager: it runs no mail or reporting daemon (the 4.x `wazuh-maild` and `wazuh-reportd`), and its configuration file, `wazuh-manager.conf`, has no `<email_alerts>`, `<reports>` or `<alerts>` section and no SMTP option under `<global>`. A leftover block is rejected as an unknown option and the manager does not start. Mail forwarding and scheduled reporting must now be configured directly through the Wazuh dashboard using the **Notifications**, **Alerting**, and **Reporting** dashboard plugins.
 
 > **Note:** There is no automatic upgrade tooling to migrate your existing Wazuh 4.x email configurations. You must manually recreate your alerting and reporting logic in the Wazuh dashboard. Use the mapping tables below to identify which Wazuh 5.x feature corresponds to each element in your `ossec.conf`.
 
@@ -172,9 +172,9 @@ With your sender and recipient group created, you can now set up the Notificatio
 
 In Wazuh 4.x, you used [`<email_alerts>`](#email-alerts-mapping) blocks in `ossec.conf` with filters like `<level>`, `<group>`, `<rule_id>`, and `<event_location>` to determine which alerts triggered email notifications. In Wazuh 5.0, there is no separate "alerts" entity - the Alerting plugin operates on **monitor queries** that can target any index pattern you choose.
 
-> **Monitor data sources:** In Wazuh 4.x, alerts were stored in a dedicated alerts index (`wazuh-alerts-*`). In Wazuh 5.0, that index no longer exists. Instead, the Alerting plugin can query any index pattern you configure - for example, `wazuh-findings-v5*`, `wazuh-events-v5*`, or a custom index. If your query relies on rule metadata fields (`wazuh.rule.*`), you must target a findings index, since only findings carry those fields. For other use cases, you can create monitors against other index patterns.
+> **Monitor data sources:** In Wazuh 4.x, alerts were stored in a dedicated alerts index (`wazuh-alerts-*`). In Wazuh 5.0, that index no longer exists. The manager indexes events into `wazuh-events-v5*`, and the Wazuh Indexer's Security Analytics detectors evaluate them against Sigma-based detection rules, indexing each match as a finding into `wazuh-findings-v5*` (the manager's engine has no rules). The Alerting plugin can query any index pattern you configure - for example, `wazuh-findings-v5*`, `wazuh-events-v5*`, or a custom index. If your query relies on rule metadata fields (`wazuh.rule.*`), you must target a findings index, since only findings carry those fields. For other use cases, you can create monitors against other index patterns.
 
-In Wazuh 4.x, alert severity was expressed as a numeric `rule.level` (0–15), and the `<level>` filter in `<email_alerts>` selected a threshold. In Wazuh 5.0, the monitor **query** determines which documents match - there is no separate severity filter on the trigger. The trigger severity level (1–Highest to 5–Lowest) sets the action severity, not the data filter.
+In Wazuh 4.x, alert severity was expressed as a numeric `rule.level`, and the `<level>` filter in `<email_alerts>` selected a threshold. In Wazuh 5.0, the monitor **query** determines which documents match, so a severity threshold is a query condition on `wazuh.rule.level` in a findings index - there is no separate severity filter on the trigger. The trigger severity level (1–Highest to 5–Lowest) sets the action severity, not the data filter.
 
 A Monitor evaluates documents against the configured query, and when the trigger condition is met, executes an action - for example, sending an email through your notification channel.
 

@@ -34,7 +34,8 @@ def get_daemons_stats(daemons_list: list = None) -> AffectedItemsWazuhResult:
                                       some_msg='Could not read statistical information for some daemons',
                                       none_msg='Could not read statistical information for any daemon')
 
-    for daemon in daemons_list or daemon_socket_mapping.keys():
+    # Each daemon is queried once, however many times it is listed: every query is a socket round trip.
+    for daemon in dict.fromkeys(daemons_list or daemon_socket_mapping):
         try:
             if daemon == 'wazuh-manager-analysisd':
                 client = EngineHTTPClient()

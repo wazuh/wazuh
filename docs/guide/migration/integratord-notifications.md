@@ -1,17 +1,17 @@
 # Migrating Integratord to Dashboard Notifications
 
-In Wazuh 4.x, third-party integrations were configured directly in `ossec.conf` on the manager using `<integration>` blocks, handled by the `integratord` daemon.
+In Wazuh 4.x, third-party integrations were configured directly in the manager's `ossec.conf` using `<integration>` blocks, handled by the `wazuh-integratord` daemon.
 
-Wazuh 5.x replaces this approach with two dashboard plugins:
+Wazuh 5.x has no integratord: the manager runs no integration daemon, and its configuration file, `wazuh-manager.conf`, has no `<integration>` section (a leftover block is rejected as an unknown option, and the manager does not start). It is replaced by two dashboard plugins:
 
 - **Notifications** — manages shared channels and connection settings for third-party services.
-- **Alerting** — creates monitors that scan data and send messages through those channels.
+- **Alerting** — creates monitors that query indexed data and send messages through those channels.
 
-All integration configuration is now done from the dashboard, with no changes required to `ossec.conf`.
+All integration configuration is now done from the dashboard; nothing is configured on the manager.
 
 ---
 
-> **⚠️ Warning:** The Notifications plugin does not support bi-directional integrations such as Maltiverse or Virustotal, which were previously supported by `integratord`. See [Security Analytics enrichments](#enrichment-integrations).
+> **⚠️ Warning:** The Notifications plugin does not support bi-directional integrations such as Maltiverse or Virustotal, which were previously supported by `wazuh-integratord`. See [Enrichment integrations](#enrichment-integrations) and the [VirusTotal migration](virustotal-migration.md) guide.
 
 > **Note:** This migration must be performed manually. There is no automatic tool to convert `<integration>` blocks from `ossec.conf` to the Wazuh 5.x dashboard configuration.
 
@@ -24,22 +24,22 @@ The following table maps each `<integration>` field from Wazuh 4.x to its equiva
 | `<name>`           | Notifications | Channel name             | Identifies the channel                                                                                                                   |
 | `<hook_url>`       | Notifications | Webhook URL              | Some 4.x built-in scripts (e.g. PagerDuty) had the endpoint hardcoded and did not require this field                                     |
 | `<api_key>`        | Notifications | Webhook URL / Headers    | Depending on the service, credentials may be placed in the URL, request headers, or not be needed at all                                 |
-| `<alert_format>`   | —             | No match                 | This depends on the configurated message in the channel.                                                                                 |
-| `<rule_id>`        | Alerting      | Monitor query            | Monitors use queries on index patterns instead of rule matching. The matching field is `wazuh.rule.id`.                                  |
+| `<alert_format>`   | —             | No match                 | The payload format is whatever message you configure in the monitor's action.                                                            |
+| `<rule_id>`        | Alerting      | Monitor query            | Monitors use queries on index patterns instead of rule matching. The matching field is `wazuh.rule.id`, the id of the 5.x detection rule. |
 | `<level>`          | Alerting      | Monitor query            | In 4.x the field was `rule.level`; see the note below.                                                                                   |
 | `<group>`          | Alerting      | Monitor query            | The group tag referred to the internal Wazuh component that generated the data. Now, it's represented by `wazuh.integration.name`.       |
 | `<event_location>` | Alerting      | Monitor query            | The 4.x tag used a sregex expression to match Wazuh modules or log sources/files; In 5.x, there is no direct conversion. See note below. |
 | `<options>`        | Alerting      | Trigger → Action message | See below                                                                                                                                |
 
-> **Note:** In 5.x, `rule.level` is now called `wazuh.rule.level` and uses categorical values (low, medium, high) instead of an integer from 0 to 16. Because there is no direct conversion, you must review your existing alert thresholds and determine how best to map your legacy numeric levels to these new categories based on your organization's specific routing needs.
+> **Note:** In 5.x, alerts are replaced by **findings**: the Wazuh Indexer's Security Analytics detectors evaluate indexed events against Sigma-based detection rules and index each match into `wazuh-findings-v5-*` (the manager's engine has no rules). The 4.x `rule.level` corresponds to the findings field `wazuh.rule.level`, which uses categorical values (low, medium, high) instead of a number. Because there is no direct conversion, you must review your existing alert thresholds and determine how best to map your legacy numeric levels to these new categories based on your organization's specific routing needs.
 
-> **Note:** The `<event_location>` tag has no direct 1-to-1 replacement in 5.x. Because 5.x parses alerts into highly structured documents, the legacy `location` field is split across multiple independent fields. You should review your current use cases to determine which specific 5.x fields ( e.g: `wazuh.protocol.location`, `file.path`, `wazuh.agent.name`, ... ) align best with your implementation.
+> **Note:** The `<event_location>` tag has no direct 1-to-1 replacement in 5.x. Because 5.x parses events into highly structured documents, the legacy `location` field is split across multiple independent fields. You should review your current use cases to determine which specific 5.x fields ( e.g: `wazuh.protocol.location`, `file.path`, `wazuh.agent.name`, ... ) align best with your implementation.
 
 ![Configuration mapping index pattern and queries](../../images/integratord-notifications/data_queries.png)
 
 ### From `<options>` to trigger actions
 
-In 4.x, the `<options>` block allowed to the users customize the behavior of the script. This was defined as a **JSON** string.The integration script would read the JSON provided in `<options>` and apply the custom behavior.
+In 4.x, the `<options>` block allowed users to customize the behavior of the script. This was defined as a **JSON** string. The integration script would read the JSON provided in `<options>` and apply the custom behavior.
 
 In 5.x, this concept is completely replaced by:
 
@@ -444,7 +444,7 @@ For building message payloads with dynamic variables, refer to:
 
 In 4.x, `Maltiverse` and `Virustotal` worked as a bi-directional callback loop: the built-in script sent the alert to the external service, received an enriched response, and re-injected it into Wazuh as a new alert. **There is no equivalent mechanism in 5.x — these integrations cannot be migrated.**
 
-Enrichment is now handled inline by the [Engine](../../ref/modules/engine/#security-enrichment-process) during event processing, before events reach the indexer. The Engine provides exactly two built-in enrichment plugins (Geo/ASN and IOC), and they cannot be extended with custom third-party services. See [Security enrichment process](../../ref/modules/engine/#security-enrichment-process) for details.
+Enrichment is now handled inline by the Engine during event processing, before events reach the indexer. The Engine provides exactly two built-in kinds of enrichment (Geo/ASN and IOC), and they cannot be extended with custom third-party services. See [Security enrichment process](../../ref/modules/engine/README.md#security-enrichment-process) for details.
 
 ---
 

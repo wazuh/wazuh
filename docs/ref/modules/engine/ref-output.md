@@ -17,17 +17,16 @@ outputs:
     - check: A
       then:
         - wazuh-indexer:
-            index: "A"
+            index: "wazuh-events-v5-a"
 
     - check: B
       then:
         - wazuh-indexer:
-            index: "B"
+            index: "wazuh-events-v5-b"
 
     - check: true
       then:
-        - wazuh-indexer:
-            file: "C"
+        - file: "c"
 ```
 
 ### Parameters
@@ -129,10 +128,19 @@ wazuh-indexer:
 
 | Name | type | required | Description |
 |------|------|----------|-------------|
-| index | string | yes | Data Stream name where the alerts will be indexed. Should be a valid wazuh-indexer data stream name and start with `wazuh-events-v5-`. |
+| index | string | yes | Data stream where the events are indexed. Must follow the index name rules below. |
 
-Index name can be expanded with placeholders like `index-name-${PH1}-${PH2}`. If PHX results in an existing string reference to the event it will be replaced in runtime if not will be fail and the alert will not be sent to the indexer.
-The replacement text is not sanitized, so referenced field values must already contain only valid index characters.
+#### Index name rules
+
+- The name must start with `wazuh-events-v5-`.
+- After the prefix it may only contain lowercase letters, digits, `.`, `-` and `${field}` placeholders, for example
+  `wazuh-events-v5-${wazuh.integration.category}-custom`. A name that breaks these rules makes the asset fail to build.
+- Each `${field}` placeholder is replaced, for every event, with the value of that event field. The field must exist and
+  hold a string; otherwise the event is not indexed (trace: `Couldn't get field ${field} from event`).
+- The replacement is not sanitized: referenced field values must already contain only valid index-name characters.
+- After the replacement the name must be at most 255 characters; a longer name is not indexed (trace:
+  `Index name '<name>' exceeds 255 characters limit`).
+- There is no date placeholder: apart from the `${field}` replacement, the name is used as written.
 
 ### Asset example
 
@@ -157,6 +165,3 @@ outputs:
   - wazuh-indexer:
       index: "wazuh-events-v5-${wazuh.integration.category}"
 ```
-
-> [!TIP]
-> The `$(DATE)` is special placeholder and replaced by the current date in the format `YYYY.MM.DD` when the alert is indexed.

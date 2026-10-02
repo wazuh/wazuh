@@ -28,6 +28,10 @@ from api.parameter_validator import WazuhParameterValidator
      "Invalid value for query parameter 'groups_list': must match the 'group_names' format"),
     ('agent_list', {'type': 'array', 'minItems': 1, 'items': {'type': 'string'}}, [],
      "Invalid value for query parameter 'agent_list': must contain at least 1 item"),
+    ('select', {'type': 'array', 'maxItems': 2, 'items': {'type': 'string'}}, ['a', 'b', 'c'],
+     "Invalid value for query parameter 'select': must contain at most 2 items"),
+    ('daemons_list', {'type': 'array', 'uniqueItems': True, 'items': {'type': 'string'}}, ['a', 'a'],
+     "Invalid value for query parameter 'daemons_list': must not contain duplicate items"),
 ])
 def test_validate_parameter_names_the_violated_constraint(name, schema, value, expected):
     """A rejected parameter reports which parameter failed and which constraint it violated."""

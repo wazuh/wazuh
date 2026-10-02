@@ -2,14 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import os
 from contextvars import ContextVar
 from unittest.mock import patch
 
 import pytest
-import yaml
 
-from wazuh.core.common import DEFAULT_RBAC_RESOURCES
 from wazuh.tests.test_security import db_setup  # noqa
 
 
@@ -86,6 +83,42 @@ def test_invalid_run_as_tokens(mock_add_user_roles_rules, db_setup):
     mock_add_user_roles_rules.assert_called_with(run_as=True)
 
 
+@patch('wazuh.core.security.TokenManager.add_user_roles_rules')
+def test_invalid_run_as_context_tokens(mock_add_user_roles_rules, db_setup):
+    """Check that only the given run_as authorization contexts are handed to add_user_roles_rules."""
+    _, _, core_security = db_setup
+    core_security.invalid_run_as_context_tokens(contexts=['abc', 'abc', 'def'])
+    mock_add_user_roles_rules.assert_called_with(contexts={'abc', 'def'})
+
+
+def test_revoke_run_as_tokens_by_authorization_context(db_setup):
+    """Logging out with a run_as token revokes its authorization context, never the account it names."""
+    security, WazuhResult, _ = db_setup
+    mock_current_user = ContextVar('current_user', default='wazuh-wui')
+    with patch("wazuh.core.common.current_user", new=mock_current_user), \
+            patch('wazuh.security.invalid_users_tokens') as mock_users, \
+            patch('wazuh.security.invalid_run_as_context_tokens') as mock_contexts:
+        result = security.revoke_current_user_tokens(run_as=True, hash_auth_context='abc')
+
+    assert isinstance(result, WazuhResult)
+    mock_contexts.assert_called_once_with(contexts=['abc'])
+    mock_users.assert_not_called()
+
+
+def test_revoke_non_run_as_tokens_by_user(db_setup):
+    """Logging out with a regular token still revokes every token of its user."""
+    security, _, _ = db_setup
+    mock_current_user = ContextVar('current_user', default='wazuh')
+    with patch("wazuh.core.common.current_user", new=mock_current_user), \
+            patch('wazuh.security.invalid_users_tokens') as mock_users, \
+            patch('wazuh.security.invalid_run_as_context_tokens') as mock_contexts:
+        security.revoke_current_user_tokens()
+
+    mock_users.assert_called_once()
+    assert len(mock_users.call_args.kwargs['users']) == 1
+    mock_contexts.assert_not_called()
+
+
 @pytest.mark.parametrize('user_list, expected_users', [
     ([104], {104}),
     ([102, 103], {102, 103}),
@@ -120,37 +153,3 @@ def test_rbac_db_factory_reset(remove_mock, db_integrity_mock, revoke_mock, db_s
     assert remove_mock.call_args[0][0].endswith("rbac.db")
     db_integrity_mock.assert_called_once()
     revoke_mock.assert_called_once()
-
-
-@pytest.mark.parametrize('unchanged_users', [2, 1, 0])
-def test_get_users_with_default_password(db_setup, unchanged_users):
-    """Check that only the default users that keep their shipped password are reported.
-
-    Parameters
-    ----------
-    db_setup: callable
-        This function creates the rbac.db file.
-    unchanged_users : int
-        Number of default users that keep the password shipped with the package.
-    """
-    _, _, core_security = db_setup
-
-    with open(os.path.join(DEFAULT_RBAC_RESOURCES, 'users.yaml')) as f:
-        shipped_passwords = {username: payload['password']
-                             for username, payload in yaml.safe_load(f)['default_users'].items()}
-
-    expected_users = list(shipped_passwords)[:unchanged_users]
-
-    class AuthenticationManagerMock:
-        """Authentication manager whose users kept their password only if they are expected to."""
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *exc_info):
-            return False
-
-        def check_user(self, username: str, password: str) -> bool:
-            return username in expected_users and password == shipped_passwords[username]
-
-    with patch('wazuh.core.security.AuthenticationManager', AuthenticationManagerMock):
-        assert core_security.get_users_with_default_password() == expected_users

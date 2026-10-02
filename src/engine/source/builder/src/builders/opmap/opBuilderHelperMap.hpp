@@ -331,8 +331,8 @@ TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
  * @throw std::runtime_error if target field is not wazuh.space.event_discarded or if parameters are provided
  */
 TransformOp opBuilderHelperDiscardEvents(const Reference& targetField,
-                                          const std::vector<OpArg>& opArgs,
-                                          const std::shared_ptr<const IBuildCtx>& buildCtx);
+                                         const std::vector<OpArg>& opArgs,
+                                         const std::shared_ptr<const IBuildCtx>& buildCtx);
 //*************************************************
 //*           Regex tranform                      *
 //*************************************************

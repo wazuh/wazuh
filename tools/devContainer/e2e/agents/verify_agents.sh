@@ -32,7 +32,8 @@ Usage: sudo $0 [--expect N] [--wait 120] [--out DIR] [--api] [--home DIR] [--com
   --expect N        number of agents that must end up active (default: every container of the compose project)
   --wait SEC        how long to wait for connection_status=active before judging (default 120)
   --out DIR         evidence directory (default \$TMPDIR/wazuh-e2e-evidence/<timestamp>/agents)
-  --api             also list the agents through the server API (wazuh:wazuh on the installed port)
+  --api             also list the agents through the server API as wazuh on the installed port, with
+                    WAZUH_API_PASSWORD or else WAZUH_MANAGER_API_PASSWORD from /etc/wazuh/credentials.env
   --home DIR        installed manager (default /var/wazuh-manager, or WAZUH_MANAGER_HOME)
   --compose FILE    compose file (default $SCRIPT_DIR/docker-compose.yml)
   --services a,b    only these compose services (default: all)
@@ -143,8 +144,15 @@ else
 fi | grep -E "Enrollment token '.*' consumed by agent|Recorded credentials of agent|Invalid password|Duplicate name|Duplicate IP|enrollment-endpoint|Agent key generated|Enrollment token store loaded|agent-auth|New connection from|Agent '.*' connected" > "$OUT/manager-enroll.log" || true
 if [ "$API" -eq 1 ]; then
   API_PORT=$(grep -E '^port:' "$HOME_DIR/api/configuration/api.yaml" 2>/dev/null | awk '{print $2}'); API_PORT="${API_PORT:-55000}"
-  tok=$(curl -sk --max-time 15 -u wazuh:wazuh -X POST "https://127.0.0.1:${API_PORT}/security/user/authenticate" 2>/dev/null \
-        | python3 -c 'import json,sys;print(json.load(sys.stdin)["data"]["token"])' 2>/dev/null || true)
+  API_PASS="${WAZUH_API_PASSWORD:-$(sed -n "s/^WAZUH_MANAGER_API_PASSWORD=[\"']\{0,1\}\(.*[^\"']\)[\"']\{0,1\}$/\1/p" \
+             /etc/wazuh/credentials.env 2>/dev/null | tail -n 1)}"
+  tok=""
+  if [ -n "$API_PASS" ]; then
+    # Through curl's config on stdin, not -u, so the password never reaches the process list.
+    tok=$(printf 'user = "wazuh:%s"\n' "$API_PASS" \
+          | curl -sk --max-time 15 -K - -X POST "https://127.0.0.1:${API_PORT}/security/user/authenticate" 2>/dev/null \
+          | python3 -c 'import json,sys;print(json.load(sys.stdin)["data"]["token"])' 2>/dev/null || true)
+  fi
   if [ -n "$tok" ]; then
     curl -sk --max-time 15 -H "Authorization: Bearer $tok" "https://127.0.0.1:${API_PORT}/agents?select=id,name,status,version&limit=500" > "$OUT/api-agents.json" 2>/dev/null || true
   else

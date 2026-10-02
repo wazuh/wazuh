@@ -37,9 +37,13 @@ you need the payload, drop it before replying if you are done with the bytes.
 
 ## Route classes
 
-Declare each route's class: **Data** (budget-charged, sheddable), **Control** (reserved
-session headroom), **Liveness** (probes, `/metrics` — budget-exempt). A Control route
-that does real work still sheds its own capacity module-side (bounded queue → 503).
+Declare each route's class with `RouteOptions`: **Data** (budget-charged, sheddable),
+**Control** (budget-exempt, own body and session caps, reserved headroom), **Liveness**
+(probes, `/metrics` — budget-exempt, answered from resident state). The older
+`addRoute(method, path, handler, bool)` spelling maps `true` (the default) to Data and
+`false` to Liveness. A Control route that does real work still sheds its own capacity
+module-side (bounded queue → 503). Routes are exact `method + path` matches and must be
+registered before `start()`; `addRoute()` afterwards throws `std::logic_error`.
 
 ## Shutdown order
 
@@ -50,8 +54,11 @@ that does real work still sheds its own capacity module-side (bounded queue → 
 ## Diagnostics as metrics
 
 The library does not depend on `wazuh_metrics`; it exposes a `diagnostics()` snapshot
-(budget available/in-flight bytes, in-flight requests, live sessions — relaxed atomic
-loads, callable at any point between construction and destruction). Publish those
+(budget available/in-flight bytes, in-flight requests, live sessions, sessions per route
+class, and cumulative transport-level 503s by cause: budget exhausted, session cap,
+shutdown, no response). These are relaxed atomic loads, callable at any point between
+construction and destruction. The 503 counters matter because those requests never reach
+a handler, so your endpoint metrics cannot see them. Publish those
 fields as pull metrics through your own `wazuh::metrics::IManager`. Mind the pull
 lifetime rule (pulls cannot be unregistered): capture a `weak_ptr` resolved under your
 own lock, register once, and let an expired target read as zeros — reference wiring:
@@ -64,6 +71,6 @@ One-shot lifecycle: `start()` throws if reused — build a fresh instance per st
 
 ## Test support
 
-The library's own suite is `uds_http_server_utest` (pinned to C++17 — the floor's
-enforcement point). Consumer tests typically drive their endpoints against a real
+The library's own suite is `uds_http_server_utest` (ctest label `uds_http_server_utest`,
+pinned to C++17 — the floor's enforcement point). Consumer tests typically drive their endpoints against a real
 instance on a temp socket path; see `inventory_sync_server/test/unit/` for patterns.

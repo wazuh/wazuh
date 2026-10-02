@@ -14,12 +14,14 @@ from jsonschema import Draft4Validator, ValidationError
 CONSTRAINT_MESSAGES = {
     'enum': lambda value: f"must be one of: {', '.join(str(item) for item in value)}",
     'format': lambda value: f"must match the '{value}' format",
+    'maxItems': lambda value: f"must contain at most {value} item{'s' if value != 1 else ''}",
     'maxLength': lambda value: f'must be at most {value} characters long',
     'maximum': lambda value: f'must be less than or equal to {value}',
     'minItems': lambda value: f"must contain at least {value} item{'s' if value != 1 else ''}",
     'minLength': lambda value: f'must be at least {value} characters long',
     'minimum': lambda value: f'must be greater than or equal to {value}',
     'type': lambda value: f"must be of type {' or '.join(value) if isinstance(value, list) else value}",
+    'uniqueItems': lambda _: 'must not contain duplicate items',
 }
 
 

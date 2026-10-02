@@ -35,8 +35,9 @@ namespace remoted::endpoints::scanvd
         ScanVdOutcome outcome;
         uint64_t currentOffset; ///< Meaningful only when outcome == VersionMismatch.
         std::string errorCode;  ///< Meaningful only when outcome == VdRejected: VD's own error code
-                                ///< passed through (scan_queue_full, feed_not_ready, shutting_down,
-                                ///< ...) or vd_unreachable when the POST itself failed.
+                                ///< passed through (scan_queue_full, feed_not_ready,
+                                ///< scanner_not_ready, ...) or vd_unreachable when the POST
+                                ///< itself failed.
     };
 
     using ScanVdCallback = std::function<void(const ScanVdResponse&)>;

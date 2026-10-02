@@ -450,8 +450,14 @@ def select_array(array: list, select: list = None, required_fields: set = None,
         required_fields = set()
 
     select_nested, select_no_nested = detect_nested_select(set(select))
-    if allowed_select_fields and not select_no_nested.issubset(allowed_select_fields):
-        raise WazuhError(1724, "{}".format(', '.join(select_no_nested)))
+    if allowed_select_fields:
+        # A nested field must hang from an allowed field: every select field is looked up in every item, so an
+        # unchecked dotted name would cost one lookup per item without ever being able to return anything.
+        invalid_fields = {field for field in select_no_nested if field not in allowed_select_fields} | \
+                         {field for field in select_nested if field not in allowed_select_fields and
+                          field.split('.', 1)[0] not in allowed_select_fields}
+        if invalid_fields:
+            raise WazuhError(1724, "{}".format(', '.join(sorted(invalid_fields))))
     select = select_nested.union(select_no_nested)
 
     result_list = list()
@@ -943,6 +949,32 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
         return element
 
+    # Every clause is checked against every element, so the same literal and the same field value are
+    # converted many times. The type is part of the key: 1, 1.0 and True are equal keys to a dict.
+    converted_dates = {}
+
+    def to_date(element: typing.Any) -> typing.Any:
+        """Memoized check_date_format. Unhashable values are converted every time.
+
+        Parameters
+        ----------
+        element : any
+            Item to check.
+
+        Returns
+        -------
+        any
+            Result of check_date_format for the element.
+        """
+        key = (type(element), element)
+        try:
+            return converted_dates[key]
+        except KeyError:
+            converted_dates[key] = check_date_format(element)
+            return converted_dates[key]
+        except TypeError:
+            return check_date_format(element)
+
     def check_clause(value1: typing.Union[str, int], op: str, value2: str) -> bool:
         """Check an operation between value1 and value2. 'value1' could be an integer, it is necessary cast value2 to
         integer if this happens
@@ -986,9 +1018,9 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
                     # never raise, they just correctly evaluate to False/True.
                     continue
                 # cast value2 to integer if value1 is integer
-                value2 = check_date_format(value2)
+                value2 = to_date(value2)
                 if type(value2) == datetime:
-                    val = check_date_format(val)
+                    val = to_date(val)
                 value2 = int(value2) if type(val) == int else value2
                 if type(val) == bool and isinstance(value2, str):
                     if value2.lower() not in ('true', 'false', '1', '0'):
@@ -1057,8 +1089,41 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
         r"\)?"
     )
 
-    # get a list with OR clauses
-    or_clauses = q.split(',')
+    def parse_clause(and_clause: str) -> tuple:
+        """Split an AND clause into its field, subfields, operator and value.
+
+        Parameters
+        ----------
+        and_clause : str
+            Clause to parse.
+
+        Raises
+        ------
+        WazuhError(1407)
+            Parameter q is not valid.
+
+        Returns
+        -------
+        tuple
+            The clause itself, field name, nested field names, operator and value.
+        """
+        try:
+            field_name, field_subnames, op, value = re_get_elements.match(and_clause).groups()
+        except AttributeError:
+            raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
+
+        # The regex matches any two of the operator characters, so `>=`, `<=` or `==` parse
+        # as an operator that check_clause has no entry for. That is a malformed query, not
+        # a record that fails to match, so it is reported whatever the collection holds.
+        if op not in operators:
+            raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
+
+        return and_clause, field_name, field_subnames, op, value
+
+    # get a list with OR clauses, each one a list of parsed AND clauses. The query is parsed once, before
+    # the array is walked, so its cost does not grow with the number of elements and a malformed clause
+    # is reported whatever the collection holds.
+    or_clauses = [[parse_clause(and_clause) for and_clause in or_clause.split(';')] for or_clause in q.split(',')]
     output_array = []
     # A literal the field's type cannot address is a property of the record, not of the query: the
     # same clause evaluates fine against a differently-typed record. So a mismatch only excludes its
@@ -1070,23 +1135,10 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
     # process elements of input_array
     for elem in input_array:
         # if an element matches an OR clause, it will be added to output
-        for or_clause in or_clauses:
+        for and_clauses in or_clauses:
             # all AND clauses should match for adding an element to output
-            and_clauses = or_clause.split(';')
             match = True  # flag for checking clauses
-            for and_clause in and_clauses:
-                # get elements in a clause
-                try:
-                    field_name, field_subnames, op, value = re_get_elements.match(and_clause).groups()
-                except AttributeError:
-                    raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
-
-                # The regex matches any two of the operator characters, so `>=`, `<=` or `==` parse
-                # as an operator that check_clause has no entry for. That is a malformed query, not
-                # a record that fails to match, so it is reported whatever the collection holds.
-                if op not in operators:
-                    raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
-
+            for and_clause, field_name, field_subnames, op, value in and_clauses:
                 # check if a clause is satisfied
                 match_candidates = list()
                 # get_match_candidates/deepcopy run outside the try below: a failure here is a bug
@@ -1219,8 +1271,66 @@ class WazuhDBBackend(AbstractDatabaseBackend):
         return self.conn.execute(query=self._render_query(query), count=count)
 
 
+QUERY_OPERATORS = {"=": "=", "!=": "!=", "<": "<", ">": ">", "~": 'LIKE'}
+QUERY_SEPARATORS = {',': 'OR', ';': 'AND', '': ''}
+# To correctly turn a query into SQL, a regex is used. This regex will extract all necessary information:
+# For example, the following regex -> (name!=wazuh;id>5),group=webserver <- would return 3 different matches:
+#   (name != wazuh ;
+#    id   > 5      ),
+#    group=webserver
+QUERY_REGEX = re.compile(
+    # One or more ( characters.
+    r"(\(+)?" +
+    # Field name: name of the field to look on DB.
+    r"([\w.]+)" +
+    # Operator: looks for '=', '!=', '<', '>' or '~'.
+    rf"([{''.join(QUERY_OPERATORS.keys())}]{{1,2}})" +
+    # Value: A string.
+    r"((?:(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}$]*)\))*"
+    r"(?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}$]+)"
+    r"(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}$]*)\))*)+)"
+    # One or more ) characters.
+    r"(\)+)?" +
+    # Separator: looks for ';', ',' or nothing.
+    rf"([{''.join(QUERY_SEPARATORS.keys())}])?"
+)
+
+
+def validate_query_parentheses(q: str):
+    """Check that every group in a q query is closed, and closed after it was opened.
+
+    WazuhDBQuery renders the q terms as one parenthesised group ANDed with the RBAC and legacy filters, and callers
+    wrap the user's q the same way (e.g. `group=X;(q)`). A ')' closing a group the query never opened would close
+    that enclosing group instead, letting an OR in q escape the conditions ANDed with it. Callers that wrap a q must
+    validate it before wrapping it, since the wrapped query can be balanced when the user's part is not.
+
+    Parameters
+    ----------
+    q : str
+        Query to check.
+
+    Raises
+    ------
+    WazuhError(1407)
+        If the parentheses of the query are not balanced.
+    """
+    level = 0
+    for open_level, _, _, _, close_level, _ in QUERY_REGEX.findall(q):
+        level += len(open_level) - len(close_level)
+        if level < 0:
+            raise WazuhError(1407, q)
+
+    if level != 0:
+        raise WazuhError(1407, q)
+
+
 class WazuhDBQuery(object):
     """This class describes a database query for wazuh."""
+
+    # Field holding the RBAC resource, used by oversized_run. None means the query does not support that path.
+    oversized_rbac_field = None
+    # Whether the RBAC resources are agent IDs, compared zero-padded to three digits.
+    oversized_rbac_zfill = False
 
     def __init__(self, offset: int, limit: int, table: str, sort: dict, search: dict, select: list, query: str,
                  fields: dict, default_sort_field: str, count: bool, get_data: bool, backend: str,
@@ -1282,36 +1392,17 @@ class WazuhDBQuery(object):
         self.default_sort_field = default_sort_field
         self.default_sort_order = default_sort_order
         self.query_filters = []
+        self._q_filters_start = 0
         self.count = count
         self.data = get_data
         self.total_items = 0
         # Do not include any fields when we are looking for distinct values
         self.min_select_fields = set() if distinct else min_select_fields
-        self.query_operators = {"=": "=", "!=": "!=", "<": "<", ">": ">", "~": 'LIKE'}
-        self.query_separators = {',': 'OR', ';': 'AND', '': ''}
+        self.query_operators = QUERY_OPERATORS
+        self.query_separators = QUERY_SEPARATORS
         self.special_characters = "\'\""
         self.wildcard_equal_fields = set()
-        # To correctly turn a query into SQL, a regex is used. This regex will extract all necessary information:
-        # For example, the following regex -> (name!=wazuh;id>5),group=webserver <- would return 3 different matches:
-        #   (name != wazuh ;
-        #    id   > 5      ),
-        #    group=webserver
-        self.query_regex = re.compile(
-            # One or more ( characters.
-            r"(\(+)?" +
-            # Field name: name of the field to look on DB.
-            r"([\w.]+)" +
-            # Operator: looks for '=', '!=', '<', '>' or '~'.
-            rf"([{''.join(self.query_operators.keys())}]{{1,2}})" +
-            # Value: A string.
-            r"((?:(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}$]*)\))*"
-            r"(?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}$]+)"
-            r"(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}$]*)\))*)+)"
-            # One or more ) characters.
-            r"(\)+)?" +
-            # Separator: looks for ';', ',' or nothing.
-            rf"([{''.join(self.query_separators.keys())}])?"
-        )
+        self.query_regex = QUERY_REGEX
         self.date_fields = date_fields
         self.extra_fields = extra_fields
         self.q = query
@@ -1376,8 +1467,8 @@ class WazuhDBQuery(object):
         if self.search:
             self.query += " AND NOT" if bool(self.search['negation']) else ' AND'
             self.query += " (" + " OR ".join(
-                f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)' for x in
-                self.fields.values()) + ')'
+                f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)'
+                for k, x in self.fields.items() if k not in self.extra_fields) + ')'
             self.query = self.query.replace('WHERE  AND', 'WHERE')
             self.request['search'] = "%{0}%".format(re.sub(f"[{self.special_characters}]", '_', self.search['value']))
 
@@ -1413,6 +1504,7 @@ class WazuhDBQuery(object):
         """
         if not self.query_regex.match(self.q):
             raise WazuhError(1407, self.q)
+        validate_query_parentheses(self.q)
 
         level = 0
         allowed_query_fields = set(self.fields.keys()) - self.extra_fields
@@ -1470,6 +1562,9 @@ class WazuhDBQuery(object):
     def _parse_filters(self):
         if self.legacy_filters:
             self._parse_legacy_filters()
+        # q filters are rendered as one parenthesised group, so an OR inside q cannot escape the legacy and RBAC
+        # filters ANDed before it
+        self._q_filters_start = len(self.query_filters)
         if self.q:
             self._parse_query()
         if self.search or self.query_filters:
@@ -1501,15 +1596,18 @@ class WazuhDBQuery(object):
         self._parse_filters()
 
         curr_level = 0
-        for q_filter in self.query_filters:
+        last_index = len(self.query_filters) - 1
+        for index, q_filter in enumerate(self.query_filters):
             self._clean_filter(q_filter)
             field_name = q_filter['field'].split('$', 1)[0]
             field_filter = q_filter['field'].replace('.', '_')
             level = q_filter['level']
 
-            repeat_open = level + 1 - curr_level
-            if level == 0 or repeat_open == 0:
-                repeat_open = 1
+            if index == self._q_filters_start:
+                self.query += '('
+
+            # Each filter leaves exactly `level` parentheses open, so the q group is closed by its own ')'
+            repeat_open = max(level + 1 - curr_level, 1)
 
             self.query += '(' * repeat_open
 
@@ -1520,6 +1618,8 @@ class WazuhDBQuery(object):
                 repeat_close += curr_level - level
 
             self.query += ')' * repeat_close
+            if index == last_index and index >= self._q_filters_start:
+                self.query += ')'
             self.query += ' {} '.format(q_filter['separator'])
             curr_level = level
 
@@ -1597,49 +1697,56 @@ class WazuhDBQuery(object):
         WazuhInternalError(1123)
             Error communicating with socket. Query too long.
         """
+        resource = self.oversized_rbac_field
+        if resource is None:
+            raise WazuhInternalError(1123)
+
+        def normalize(value) -> str:
+            return str(value).zfill(3) if self.oversized_rbac_zfill else str(value)
+
         self._add_select_to_query()
         original_select = self.select
-        rbac_ids = set(self.legacy_filters.pop('rbac_ids', set()))
+        rbac_ids = {normalize(item) for item in self.legacy_filters.pop('rbac_ids', set())}
         self._add_filters_to_query()
         self._add_search_to_query()
         self._add_sort_to_query()
 
-        resource = None
-        final_ids = list()
-        resources = list()
-        if self.__class__.__name__ == 'WazuhDBQueryAgents':
-            resource = 'id'
-        elif self.__class__.__name__ == 'WazuhDBQueryGroups':
-            resource = 'name'
-        else:
-            raise WazuhInternalError(1123)
         self.select = [resource]
         self._add_select_to_query()
         self._execute_data_query()
-        try:
-            resources = list(map(lambda d: str(d[resource]).zfill(3), self._data))
-            maximum_value = min(self.limit, len(resources)) if self.limit is not None else len(resources)
-            for item in resources:
-                if self.rbac_negate:
-                    if item.zfill(3) not in rbac_ids:
-                        final_ids.append(item)
-                else:
-                    if item.zfill(3) in rbac_ids:
-                        final_ids.append(item)
-                if len(final_ids) >= maximum_value:
-                    break
-        except NameError:
-            pass
+        resources = [normalize(d[resource]) for d in self._data]
 
-        count = len(resources) - len(set(rbac_ids).intersection(set(resources))) if self.rbac_negate else \
-            len(set(rbac_ids).intersection(set(resources)))
+        # Resolve the RBAC filter here, keeping only the allowed resources in the query's order. The second pass pages
+        # over this list with its own LIMIT/OFFSET, so it must hold every allowed resource up to the end of the page.
+        maximum_value = len(resources) if self.limit is None else min(self.offset + self.limit, len(resources))
+        final_ids = list()
+        for item in resources:
+            if len(final_ids) >= maximum_value:
+                break
+            if (item not in rbac_ids) if self.rbac_negate else (item in rbac_ids):
+                final_ids.append(item)
+
+        count = len(resources) - len(rbac_ids.intersection(resources)) if self.rbac_negate else \
+            len(rbac_ids.intersection(resources))
 
         self.select = original_select
         self.reset()
-        self.legacy_filters['rbac_ids'] = final_ids
+
+        # Nothing is allowed. An empty filter would be dropped rather than match nothing, so do not run the query.
+        if not final_ids:
+            return {'items': [], 'totalItems': 0} if self.data else {'totalItems': 0}
+
+        # final_ids holds the allowed resources whatever the original filter was, so the second pass must use IN.
+        original_negate = self.rbac_negate
         original_count = self.count
+        self.legacy_filters['rbac_ids'] = final_ids
+        self.rbac_negate = False
         self.count = False
-        result = self.general_run()
+        try:
+            result = self.general_run()
+        finally:
+            self.rbac_negate = original_negate
+            self.count = original_count
         if original_count:
             result['totalItems'] = count
 

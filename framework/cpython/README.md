@@ -1,16 +1,18 @@
 # Wazuh server embedded Python Builder Script
 
-This Bash script is used to **build Embedded CPython and/or its dependencies for Wazuh** using a preconfigured Docker container.
+`generate-cpython.sh` builds the **embedded CPython for the Wazuh manager and/or its Python dependencies** inside a
+preconfigured Docker container.
 
-It automatically detects the host architecture, pulls the correct image from **GitHub Container Registry (GHCR)**, and runs the compilation process inside the container.
+It detects the host architecture, pulls the matching builder image from **GitHub Container Registry (GHCR)**, and runs
+`compile.sh` inside the container.
 
 ## Main Features
 
-- Automatically detects the host architecture (`amd64` / `arm64`)
-- Reads the Wazuh version from `VERSION.json`
-- Pulls the appropriate Docker image for the detected architecture and version
-- Runs the `compile.sh` build script inside the container
-- Exports generated artifacts to the `./output` directory
+- Detects the host architecture (`x86_64`/`amd64` or `aarch64`/`arm64`)
+- Reads the Wazuh version from `VERSION.json` (`.version`)
+- Pulls `ghcr.io/wazuh/pkg_rpm_manager_builder_amd64:<version>` or `ghcr.io/wazuh/pkg_rpm_manager_builder_arm64:<version>`
+- Runs `compile.sh` inside the container, with the repository mounted at `/wazuh_host`
+- Exports the generated artifacts to the `./output` directory
 
 ## Requirements
 
@@ -20,9 +22,12 @@ It automatically detects the host architecture, pulls the correct image from **G
 - docker
 - jq
 
+The container is started with `docker run -it`, so the script must be run from an interactive terminal.
+
 ### Required environment variables
 
-The following variables must be defined **before running the script**, either in the environment or in a `config.env` file:
+The following variables must be defined **before running the script**, either in the environment or in a
+`config.env` file in the current directory:
 
 - `GITHUB_USER` – GitHub username
 - `GHCR_TOKEN` – GitHub token with permission to pull images from GHCR
@@ -40,9 +45,9 @@ GHCR_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 
 | Variable        | Value          | Description |
 |-----------------|----------------|-------------|
-| `WAZUH_BRANCH`  | `<branch>`     | Wazuh branch to use during the build. Optional to not use local code. |
-| `BUILD_CPYTHON` | `true/false`   | Enables CPython build |
-| `BUILD_DEPS`    | `true/false`   | Enables dependency build |
+| `WAZUH_BRANCH`  | `<branch>`     | Branch to clone from GitHub inside the container instead of copying the local repository. When unset, the local repository is copied and left unmodified. |
+| `BUILD_CPYTHON` | `true/false`   | Builds CPython from the sources of the version in `framework/.python-version`, with the module setup in `custom/`. Default `false`. |
+| `BUILD_DEPS`    | `true/false`   | Downloads the wheels in `framework/requirements.txt`. Default `false`; also done whenever `BUILD_CPYTHON=true`. |
 
 Example:
 
@@ -64,27 +69,27 @@ BUILD_CPYTHON=[true/false] BUILD_DEPS=[true/false] WAZUH_BRANCH=[wazuh-branch] .
 
 The script will:
 
-1. Validate required environment variables
+1. Validate the required environment variables
 2. Detect the host architecture
 3. Log in to GitHub Container Registry
-4. Pull the appropriate Docker image
-5. Run the compilation process
+4. Pull the builder image
+5. Run the compilation (`make deps`, the optional CPython build and wheel download, then an install of the
+   interpreter and its dependencies under `/var/wazuh-manager` inside the container)
 6. Store the generated artifacts in `./output`
 
 ---
 
 ## Output
 
-All build artifacts are written to `./output/` with the following naming convension:
+All build artifacts are written to `./output/` with the following naming convention:
 
-- Sources: `cpython_[amd64/x86_64].tar.gz`
-- Compiled: `cpython.tar.gz`
-
+- CPython source and build tree (`src/external/cpython`): `cpython_x86_64.tar.gz` or `cpython_arm64.tar.gz`
+- Ready-to-use interpreter with its dependencies (`/var/wazuh-manager/framework/python`): `cpython.tar.gz`
 
 ## Common Errors
 
 - **Unsupported architecture**
-  The script exits if `uname -m` is not `amd64/x86_64` or `arm64/aarch64`
+  The script exits with `Unsupported architecture (<arch>)` if `uname -m` is not `amd64`/`x86_64` or `arm64`/`aarch64`.
 
 - **Missing credentials**
-  If `GITHUB_USER` or `GHCR_TOKEN` are not set, the script exits immediately
+  If `GITHUB_USER` or `GHCR_TOKEN` is not set, the script lists the missing variables and exits.

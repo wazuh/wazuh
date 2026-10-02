@@ -141,7 +141,7 @@ Check if integrity_interval elapsed
 The SCA module operates with the following threads:
 
 * **Main Thread** (`wm_sca_main`): Runs the SCA implementation and handles policy execution
-* **Sync Thread** (`wm_sca_sync_module`): Handles periodic synchronization with the manager (when enabled)
+* **Sync Thread** (`wm_sca_sync_module`): Handles periodic synchronization with the manager (when enabled). The wait before each cycle restarts with every agent start, so the thread also asks whether the agent ID changed since the last full synchronization (for example after the agent was removed and re-enrolled): at startup, and every 30 seconds while it waits. On a change it runs its cycle at once, which resends the full snapshot under the new ID. While that resend keeps failing, the 30 seconds double on each failed attempt, up to the synchronization interval; a cycle that could not try (for example because a flush was sending) keeps the period
 
 ---
 
@@ -192,7 +192,7 @@ Configure SCA module minimally
       ├─► Set logging callback ─────────► sca_set_log_function(sca_log_callback)
       │
       ├─► Set sync parameters ──────────► sca_set_sync_parameters()
-      │   (module name, DB path, MQ funcs)
+      │   (module name, DB path, integrity interval)
       │
       └─► Initialize module ─────────────► sca_init()
       │
@@ -267,6 +267,8 @@ No enabled policies found?
                               └─► Exit module
 ```
 
+A failed DataClean is retried one scan interval later. Each attempt waits for a running synchronization or flush and holds a flush off only while it sends, so a flush requested while the module waits to retry is not delayed by that wait.
+
 ---
 
 ## Coordination Commands Architecture
@@ -337,6 +339,9 @@ Check if Sync Protocol Initialized
          └─► Initialized
              │
              ▼
+Wait for any SCA synchronization or recovery DataClean in progress, then hold both off until done
+             │
+             ▼
 Call synchronizeModule(Mode::DELTA)
              │
              ├─► Waits for manager acknowledgment
@@ -402,7 +407,7 @@ Return 0 (success) or -1 (error)
 
 ## Schema Validation Integration
 
-SCA integrates with the [Schema Validator](../utils/schema-validator/index.html) module to ensure all security check results conform to the expected Wazuh indexer schema before transmission.
+SCA integrates with the [Schema Validator](../utils/schema-validator/README.md) module to ensure all security check results conform to the expected Wazuh indexer schema before transmission.
 
 ### Purpose
 
@@ -655,13 +660,12 @@ LoggingHelper::getInstance().log(LOG_DEBUG,
 
 **Initialization:**
 ```
-[INFO] Schema validator initialized successfully from embedded resources
+[DEBUG] Schema validator initialized successfully from embedded resources
 ```
 
 **Validation Failure:**
 ```
-[ERROR] Schema validation failed for SCA message (checkId: cis_rhel7_1.1.1, index: wazuh-states-sca). Errors:
-  - Field 'check.result' expected type 'keyword', got 'integer'
+[ERROR] Schema validation failed for SCA message (checkId: cis_rhel7_1.1.1, index: wazuh-states-sca). Errors:   - check.result: Expected string, got number with value: 1
 [ERROR] Raw event that failed validation: {"check":{"id":"cis_rhel7_1.1.1","result":1}}
 [DEBUG] Marking SCA check for deferred deletion due to validation failure
 ```
@@ -713,6 +717,6 @@ Stores individual security checks:
 
 ### References
 
-- [Schema Validator Overview](../utils/schema-validator/index.html)
+- [Schema Validator Overview](../utils/schema-validator/README.md)
 - [Schema Validator API Reference](../utils/schema-validator/api-reference.md)
 - [Schema Validator Integration Guide](../utils/schema-validator/integration-guide.md)

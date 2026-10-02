@@ -67,6 +67,11 @@ The engine's behaviour can be tuned via environment variables before launching `
 | `WAZUH_SERVER_API_MAX_RESOURCE_PAYLOAD_SIZE` | `50000` | Max payload size (bytes) for API resource requests |
 | `WAZUH_SERVER_API_MAX_RESOURCE_KVDB_PAYLOAD_SIZE` | `100000` | Max payload size (bytes) for KVDB API requests |
 
+Inside wazuh-indexer the engine inherits the unit's `LimitNOFILE=65535` and only raises its soft
+limit to `8192` when it starts lower; there is no variable for it.
+
+The engine also needs the soft stack limit (`RLIMIT_STACK`) it inherits from wazuh-indexer.service to be finite and at least `8 MiB` (`infinity` does not qualify), as described in [Process Limits](../../../docs/ref/modules/engine/configuration.md#process-limits).
+
 ### Log file and rotation
 
 These variables map to the Log4j2 configuration used internally by the engine:

@@ -51,20 +51,20 @@ Reading notes:
   and no rates in the dump: derive events-per-second by diffing counters between polls (the
   in-repo scraper `tools/devContainer/scripts/monitor.py` does exactly this).
 - **The catalog is dynamic**: the `sync.shard.<i>.*` gauges exist once the pipeline is built
-  (one pair per worker), and the seven `server.*` pulls appear only after the transport's
+  (one pair per worker), and the eleven `server.*` pulls appear only after the transport's
   first successful start. A manager still waiting on its startup gate answers `200` with a
   partial catalog — that is not an error.
-- `GET /metrics` itself answers `503` if the registry is gone (module shutting down); that
-  response is not counted anywhere.
+- `GET /metrics` itself would answer `503` only if the registry no longer existed, which cannot
+  happen while the process runs (the registry is created once and never reset).
 
 ## Catalog
 
 ### Request outcomes — `sync.requests.total.<code>`
 
-What the `/stateful` and agent-deletion handlers answered, one counter per contract status:
-`200`, `400`, `403`, `409`, `500`, `503`, plus an `other` catch-all. Every handler-sent
-response is counted exactly once, at the site that sends it (the endpoint's inline rejection,
-the pipeline worker, or the VD scan lane). All counters, unit `count`.
+What the `/stateful`, agent-deletion and on-demand scan (`/_internal/vd/scan`) handlers answered,
+one counter per contract status: `200`, `400`, `403`, `409`, `500`, `503`, plus an `other`
+catch-all. Every handler-sent response is counted exactly once, at the site that sends it (the
+endpoint's inline rejection, the pipeline worker, or the VD scan lane). All counters, unit `count`.
 
 **There is no `413` cell**: the contract's `413` (declared bytes over the budget) — like every
 transport-level answer (`504`, `400` malformed HTTP, `431`, `503` from the connection cap or
@@ -74,12 +74,12 @@ in this family** (see [Accounting boundaries](#accounting-boundaries)).
 | Cell | Meaning | Tuning |
 |---|---|---|
 | `200` | Session applied (or deletion flushed) | — |
-| `400` | Malformed session / bad agent-id header | diagnostic — producer-side content |
+| `400` | Malformed session / bad agent-id header, or an `_internal` body without a usable `agent_id` | diagnostic — producer-side content |
 | `403` | Identity rejection: the session's agent id does not match the authenticated one | diagnostic |
-| `409` | Checksum or feed-offset mismatch (the agent retries with a fresh session) | diagnostic |
+| `409` | Checksum or feed-offset mismatch (the agent retries with a fresh session), or an on-demand scan refused as `scan_in_progress` | diagnostic |
 | `500` | Scan or apply failed server-side | diagnostic — check the indexer and the logs |
 | `503` | Shed or unavailable: any of the admission gates | the gate counters below say which: [`…sync_queue_bytes`](configuration.md#wazuh_modulesinventory_sync_server_sync_queue_bytes), [`…vd_scan_queue_slots`](configuration.md#wazuh_modulesinventory_sync_server_vd_scan_queue_slots); the transport's own gates are counted in [`server.rejected.*`](#transport--server), except the accept-time connection cap, which shows only in the `server.sessions.*` levels |
-| `other` | Any status outside the set (structurally zero today) | diagnostic — a bug signal |
+| `other` | Any status outside the set: today only the on-demand scan's `404 agent_not_found` | diagnostic — anything else here is a bug signal |
 
 ### Sync pipeline — `sync.pipeline.*`, `sync.shard.<i>.*`, `sync.session.duration.*`
 
@@ -91,8 +91,8 @@ The sharded ingestion pipeline behind `POST /stateful`: sessions land on
 | `sync.pipeline.shed.total` | counter | count | Enqueue refusals: the pipeline queue **byte** cap was reached (the endpoint answers the 503) | [`…sync_queue_bytes`](configuration.md#wazuh_modulesinventory_sync_server_sync_queue_bytes); drain rate: [`…sync_workers`](configuration.md#wazuh_modulesinventory_sync_server_sync_workers) |
 | `sync.shard.<i>.depth` (one per worker) | gauge_int | items | Items queued on shard `i` (sessions **and** deletions ride the same queue) | [`…sync_workers`](configuration.md#wazuh_modulesinventory_sync_server_sync_workers) sets the shard count |
 | `sync.shard.<i>.bytes` | gauge_int | bytes | Request payload bytes queued on shard `i` — the sum across shards is the quantity `sync_queue_bytes` caps | [`…sync_queue_bytes`](configuration.md#wazuh_modulesinventory_sync_server_sync_queue_bytes) |
-| `sync.session.duration.bulk` | histogram | microseconds | Enqueue-to-response time of bulk sessions, all outcomes (failures included) | [`…sync_workers`](configuration.md#wazuh_modulesinventory_sync_server_sync_workers), [`…indexer_sync_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_bulk_size) (batch hold time), [`…session_query_batch_size`](configuration.md#wazuh_modulesinventory_sync_server_session_query_batch_size) (indexer search pages while draining the session: fewer, larger pages mean fewer round trips per session); bounded by [`…response_timeout`](configuration.md#wazuh_modulesinventory_sync_server_response_timeout) (the transport's 504) |
-| `sync.session.duration.immediate` | histogram | microseconds | Same, for immediate (non-batched) sessions — deletions and pre-enqueue rejections are never sampled | as above |
+| `sync.session.duration.bulk` | histogram | microseconds | Enqueue-to-response time of bulk sessions, all outcomes (failures included) | [`…sync_workers`](configuration.md#wazuh_modulesinventory_sync_server_sync_workers), [`…indexer_sync_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_bulk_size) (batch hold time); bounded by [`…response_timeout`](configuration.md#wazuh_modulesinventory_sync_server_response_timeout) (the transport's 504) |
+| `sync.session.duration.immediate` | histogram | microseconds | Same, for immediate (non-batched) sessions — deletions and pre-enqueue rejections are never sampled | [`…sync_workers`](configuration.md#wazuh_modulesinventory_sync_server_sync_workers); for checksum sessions, [`…session_query_batch_size`](configuration.md#wazuh_modulesinventory_sync_server_session_query_batch_size) (fewer, larger search pages mean fewer round trips per verification) |
 
 VD data sessions are routed to the scan lane and land in `vd.lane.time`, never in these two
 histograms.
@@ -135,20 +135,21 @@ fixed allowlist policy — no knob).
 ### Vulnerability-detection lane — `vd.*`
 
 VD data sessions take a dedicated lane: scan first, index only on an OK (or a legitimate
-skip). The scan itself is the vulnerability-scanner module's work — its duration and verdicts
-are diagnostic **from this module's side**.
+skip). On-demand scans (`POST /_internal/vd/scan`) ride the same lane, so they share its queue,
+its capacity counter and the scan counters. The scan itself is the vulnerability-scanner
+module's work — its duration and verdicts are diagnostic **from this module's side**.
 
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
-| `vd.lane.depth` | gauge_int | items | VD sessions queued in the lane | [`…vd_workers`](configuration.md#wazuh_modulesinventory_sync_server_vd_workers) (drain), [`…vd_scan_queue_slots`](configuration.md#wazuh_modulesinventory_sync_server_vd_scan_queue_slots) (cap) |
-| `vd.capacity.503.total` | counter | count | VD sessions refused because the scan queue was full (the endpoint answers the 503). **Not** `remoted.scanvd.queue_full`, which remoted raises for the agent-initiated `POST /scan/vd` path on a different socket ([remoted metrics](../remoted/metrics.md#vd-scan-admission--remotedscanvd)) | [`…vd_scan_queue_slots`](configuration.md#wazuh_modulesinventory_sync_server_vd_scan_queue_slots) |
-| `vd.lane.time` | histogram | microseconds | Enqueue-to-response time of VD data sessions, **all outcomes** (including the feed-not-ready 503 and offset-mismatch 409) | [`…vd_workers`](configuration.md#wazuh_modulesinventory_sync_server_vd_workers); bounded by [`…response_timeout`](configuration.md#wazuh_modulesinventory_sync_server_response_timeout) |
+| `vd.lane.depth` | gauge_int | items | VD sessions and on-demand scan requests queued in the lane | [`…vd_workers`](configuration.md#wazuh_modulesinventory_sync_server_vd_workers) (drain), [`…vd_scan_queue_slots`](configuration.md#wazuh_modulesinventory_sync_server_vd_scan_queue_slots) (cap) |
+| `vd.capacity.503.total` | counter | count | VD sessions and on-demand scans refused because the scan queue was full (the endpoint answers the 503). **Not** `remoted.scanvd.queue_full`, which remoted raises for the agent-initiated `POST /scan/vd` path on a different socket ([remoted metrics](../remoted/metrics.md#vd-scan-admission--remotedscanvd)) | [`…vd_scan_queue_slots`](configuration.md#wazuh_modulesinventory_sync_server_vd_scan_queue_slots) |
+| `vd.lane.time` | histogram | microseconds | Enqueue-to-response time of VD data sessions, **all outcomes** (including the feed-not-ready 503 and offset-mismatch 409). On-demand scans are not sampled | [`…vd_workers`](configuration.md#wazuh_modulesinventory_sync_server_vd_workers); bounded by [`…response_timeout`](configuration.md#wazuh_modulesinventory_sync_server_response_timeout) |
 | `vd.retry_after.total` | counter | count | 503s carrying a `Retry-After` header: the CVE feed was not ready, or the scanner is enabled here but still starting up (counted at both gates — strand-side admission and the dispatch-time re-check) | [`…vd_feed_retry_after_seconds`](configuration.md#wazuh_modulesinventory_sync_server_vd_feed_retry_after_seconds) sets the header **value** only — the *rate* is driven by the CVE-feed download state and the scanner's own startup time, which this module does not configure |
 | `vd.offset_mismatch.total` | counter | count | VD data sessions rejected (409) for a stale or ahead-of-node feed offset | diagnostic — offsets realign as feeds settle |
-| `vd.scan.duration` | histogram | microseconds | Time inside the vulnerability scanner (success and throw both sampled) | diagnostic — owned by the vulnerability-scanner module |
+| `vd.scan.duration` | histogram | microseconds | Time inside the vulnerability scanner, session and on-demand scans alike (success and failure both sampled) | diagnostic — owned by the vulnerability-scanner module |
 | `vd.scans.ok` | counter | count | Scans completed | diagnostic |
-| `vd.scans.failed` | counter | count | Scans failed (the scanner threw); the session is answered 500 with nothing indexed | diagnostic |
-| `vd.scans.skipped` | counter | count | Scans skipped legitimately (scanner disabled); the inventory is indexed anyway | diagnostic |
+| `vd.scans.failed` | counter | count | Scans failed; a session is answered 500 with nothing indexed, an on-demand scan 500 | diagnostic |
+| `vd.scans.skipped` | counter | count | Scans skipped because this node runs no scanner; a session's inventory is indexed anyway, an on-demand scan is answered 503 | diagnostic |
 
 ### Transport — `server.*`
 
@@ -171,7 +172,7 @@ is all there is and it under-reports. Three of the four are decided before any r
 | `server.budget.inflight.requests` | pull | requests | Requests currently holding a budget reservation | as above |
 | `server.sessions.live` | pull | connections | Open transport connections, deferred replies included — a **superset**: the three per-class counts below exclude connections still reading their head, so they need not sum to this | [`…max_parallel_connections`](configuration.md#wazuh_modulesinventory_sync_server_max_parallel_connections) |
 | `server.sessions.data` | pull | connections | Sessions on data-class routes (`/stateful`, `/stats`, `/config`) | effective cap = `max_parallel_connections` − [`…reserved_control_connections`](configuration.md#wazuh_modulesinventory_sync_server_reserved_control_connections) |
-| `server.sessions.control` | pull | connections | Sessions on control-class routes (agent deletion) | [`…control_max_sessions`](configuration.md#wazuh_modulesinventory_sync_server_control_max_sessions) |
+| `server.sessions.control` | pull | connections | Sessions on control-class routes (`/_internal/agents/delete`, `/_internal/vd/scan`) | [`…control_max_sessions`](configuration.md#wazuh_modulesinventory_sync_server_control_max_sessions) |
 | `server.sessions.liveness` | pull | connections | Sessions on liveness-class routes (`GET /`, `GET /metrics`) | diagnostic — the liveness cap is fixed in the shared transport |
 | `server.rejected.budget` | pull | requests | Requests answered `503` because the in-flight byte budget could not admit them | [`…max_inflight_bytes`](configuration.md#wazuh_modulesinventory_sync_server_max_inflight_bytes) |
 | `server.rejected.session_cap` | pull | requests | Requests answered `503` because their class session cap was reached | the class caps above |
@@ -182,8 +183,8 @@ is all there is and it under-reports. Three of the four are decided before any r
 
 These rules say what sums to what — read them before comparing families:
 
-- **Handler-sent responses only.** `sync.requests.total.*` counts what the `/stateful` and
-  deletion handlers (endpoint, pipeline, scan lane) answered. Responses the shared transport
+- **Handler-sent responses only.** `sync.requests.total.*` counts what the `/stateful`,
+  deletion and on-demand scan handlers (endpoint, pipeline, scan lane) answered. Responses the shared transport
   sends on its own never reach it. Four of them are counted separately, as
   [`server.rejected.*`](#transport--server): the byte-budget shed, the class session cap, the
   shutdown answer and the handler that returned without answering. The rest appear in **no
@@ -195,8 +196,8 @@ These rules say what sums to what — read them before comparing families:
   is availability-gate and shutdown 503s).
 - **VD data sessions live in the lane's numbers**: their durations are `vd.lane.time`, never
   `sync.session.duration.*`; their documents still count in `sync.docs.*`.
-- `/stats`, `/config` and `GET /` have no counters of their own (only one of the module's
-  routes — the `/stateful`+deletion plane — is instrumented per-response).
+- `/stats`, `/config`, `GET /` and `GET /metrics` have no counters of their own (only the
+  `/stateful` + `_internal` plane is instrumented per-response).
 - No rates in the dump: derive them externally by diffing counters per interval.
 
 ## See Also

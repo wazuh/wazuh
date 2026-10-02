@@ -316,17 +316,17 @@ TEST(ManagerCertsCheck, NoCaSignsLeafExitsNonZeroNamingTheGuard)
     EXPECT_NE(err.str().find("no CA signs the served leaf"), std::string::npos) << err.str();
 }
 
-// RF-12 / 02-diseno.md §2.6: ca_bundle::vouch() does not evaluate isCa or the validity window, so
-// check() owns both itself, per certificate (commands.hpp). These two cases pin that: vouch()'s own
-// six guards all pass (the certificate signs the leaf, the hash matches, the bundle is small), and
-// only the per-certificate guard added on top of vouch() is what fails.
+// RF-12 / 02-diseno.md §2.6: check() runs its per-certificate guards (isCa, validity window) BEFORE
+// vouch() (commands.hpp). Since the leaf-signing guard verifies the chain (C33), vouch() would refuse
+// these bundles too, as "no CA signs the served leaf"; these two cases pin that check() reports the
+// per-certificate reason, naming the certificate, instead.
 
 TEST(ManagerCertsCheck, ExpiredCertificateExitsNonZeroNamingTheIdentity)
 {
     auto caKey = makeTestKey();
     auto leafKey = makeTestKey();
-    // Valid window entirely in the past: expired one day ago. anyCaSignsLeaf() is a signature
-    // check only (no dates), so vouch() still passes on this certificate.
+    // Valid window entirely in the past: expired one day ago. The per-certificate guard runs
+    // first, so the expiry is what is reported, not vouch()'s chain failure.
     auto ca = makeCertificate("ca-expired", -400 * kDay, -1 * kDay, caKey.get(), caKey.get(), nullptr, true, 1);
     auto leaf = makeCertificate("leaf-expired", -kDay, 90 * kDay, leafKey.get(), caKey.get(), ca.get(), false, 2);
     const std::string expectedIdentity = ca_bundle::identityOf(ca.get());
@@ -359,9 +359,8 @@ TEST(ManagerCertsCheck, NonCaCertificateExitsNonZeroNamingTheIdentity)
     auto leafKey = makeTestKey();
     // isCa=false (the default): no basicConstraints/keyUsage extensions at all, so describe()
     // reads isCa=false -- the same X509_check_ca() behaviour ca_bundle_test.cpp's own leaf case
-    // pins (ca_bundle_test.cpp:728). Signing a leaf does not require the CA extension either
-    // (OpenSSL only enforces it at chain-validation time, which ca_bundle deliberately skips), so
-    // vouch()'s no_ca_signs_leaf guard still passes.
+    // pins (ca_bundle_test.cpp:728). The per-certificate guard runs first, so "not a CA" is what
+    // is reported, not vouch()'s chain failure.
     auto notCa = makeCertificate("not-a-ca", -kDay, 400 * kDay, notCaKey.get(), notCaKey.get(), nullptr, false, 1);
     auto leaf = makeCertificate("leaf-not-ca", -kDay, 90 * kDay, leafKey.get(), notCaKey.get(), notCa.get(), false, 2);
     const std::string expectedIdentity = ca_bundle::identityOf(notCa.get());

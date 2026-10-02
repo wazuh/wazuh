@@ -83,8 +83,8 @@ namespace invsync::endpoints::vd_scan
      *
      * This is a leak backstop, not a quality-of-service deadline: the real bound on a scan is the
      * dispatcher's own request timeout, and there is no ground truth for scan duration in the tree
-     * to set either from. Calibrate from `vd.dispatch.scan.duration`, the microsecond histogram VD
-     * already records around `triggerAgentScan`.
+     * to set either from. Calibrate from `vd.scan.duration`, the histogram this module's VD scan
+     * lane records around each on-demand scan.
      */
     constexpr std::size_t responseTimeoutSeconds()
     {

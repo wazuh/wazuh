@@ -15,7 +15,8 @@ list(APPEND os_crypto_sha1_tests_names "test_sha1_op")
 # whitespace (CMP0004 hard error).
 set(_sha1_base_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
 -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf \
--Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,wfopen -Wl,--wrap,popen")
+-Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,wfopen -Wl,--wrap,popen \
+-Wl,--wrap,w_fopen_vetted_follow")
 if(${TARGET} STREQUAL "winagent")
     set(_sha1_base_flags "${_sha1_base_flags} -Wl,--wrap=w_fopen_r")
 endif()

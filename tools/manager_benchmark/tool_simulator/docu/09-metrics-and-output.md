@@ -32,7 +32,9 @@ cacerts_latency_ms_p50,cacerts_latency_ms_p99,
 enroll_https_latency_ms_p50,enroll_https_latency_ms_p99
 ```
 
-- `timestamp` is ISO-8601 UTC with a `Z`; `elapsed_s` is seconds since the run started.
+- `timestamp` is ISO-8601 UTC with a `Z`; `elapsed_s` is whole seconds since the sender started
+  (the CSV clock starts before enrollment, unlike `meta.start_time`, which restarts once the fleet
+  is authenticated). A final row is written when the run ends.
 - Every count column is a **cumulative** counter, monotonically non-decreasing (deltas are the
   consumer's job — that keeps rows independent of sampling jitter).
 - `sessions_503_retry_after` is a **subset** of `sessions_503` (the feed-not-ready case, separated
@@ -46,10 +48,11 @@ enroll_https_latency_ms_p50,enroll_https_latency_ms_p99
 - `stateless_*` are the engine-stream counters ([13](13-engine-event-streams.md)); `events_sent` is
   the number of `E` lines shipped, distinct from `stateless_sent` (the number of batches).
 - `scan_*` are the `POST /scan/vd` counters ([14](14-scan-vd.md)): the feed-update re-scan requests
-  a `scan_vd` step sends. `scan_200` counts requests **queued by VD** (the scan will run), not scans
-  that ran yet — the manager answers at admission and scans afterward, so `scan_latency_ms_*` is
-  admission time and NOT a scan duration. `scan_409` (a stale `feed_offset`) and `scan_503` (VD did
-  not queue it: lane full / indexer unavailable / not ready / unreachable) are contract outcomes;
+  a `scan_vd` step sends. `scan_200` counts requests **recorded by VD as a `vd_scan` task** (the
+  scan will run), not scans that ran yet — the manager answers at admission and scans afterward, so
+  `scan_latency_ms_*` is admission time and NOT a scan duration. `scan_409` (a stale `feed_offset`)
+  and `scan_503` (VD did not record it: pending-scan queue full / indexer unavailable / not ready /
+  task not recorded / unreachable) are contract outcomes;
   `scan_other` holds the `400`/`401` that also invalidate the run. A `scan_vd` step never retries,
   so requests and attempts are the same number here.
 - `cacerts_*` are the `GET /cacerts` counters ([15](15-cacerts.md)): the CA-distribution requests a
@@ -82,11 +85,14 @@ enroll_https_latency_ms_p50,enroll_https_latency_ms_p99
   not loaded that fleet's keys yet, so those requests measured nothing. It also **invalidates the
   run** — a run full of unauthenticated requests must never read as a result.
 - `transport_errors` counts responses that never arrived (connection closed, read timeout), never
-  folded into an HTTP bucket.
+  folded into an HTTP bucket. A transport error on a `/control` request is counted in
+  `control_*_err` instead.
 - `bytes_sent` counts the WIRE bytes: with `compression: "zstd"` it is the compressed size (what
   the manager actually received), not the FlatBuffer's. `meta.compression` records the mode, so a
   with/without pair is comparable at a glance.
 - The latency columns are percentiles **over the whole run so far**, so a row is self-contained.
+- `control_*` and `deletes_*` count requests by outcome: `_ok` is a `200`, `_err` anything else
+  (for `/control`, also a request that got no answer).
 
 This top-level CSV is the aggregate. The per-lane and per-fleet breakdowns below are where a mixed
 fleet's detail lives — the CSV would be unreadable with a column per (fleet × lane × status).
@@ -97,31 +103,36 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
 {
   "meta": {
     "scenario_name": "mixed_fleet_windows_linux",
-    "scenario_path": "scenarios/mixed_fleet_windows_linux.json",
+    "scenario_path": "/path/to/tools/manager_benchmark/scenarios/mixed_fleet_windows_linux.json",
     "mode": "agent",
     "manager": "127.0.0.1", "port": 1517, "reg_port": 1515,
     "bootstrap": "enroll-token",
+    "target": "127.0.0.1:1517",
+    "global_prefix": "/wazuh-manager",
     "cluster_name": "cluster01",
     "agents_requested": 100, "agents_enrolled": 100, "agents_failed": 0,
     "concurrent_agents": 0, "requests_per_second_target": 0,
     "keepalive_interval": "10s", "control_enabled": true, "connection_reuse": true,
+    "compression": "zstd",
     "document_seed": 1234567,
-    "server_vd_workers": 1,
     "start_time": "2026-08-06T18:00:00Z", "end_time": "2026-08-06T18:05:00Z", "duration_sec": 300.0,
-    "sender_version": "<git describe>", "go_version": "go1.22.x"
+    "sender_version": "<git describe>", "go_version": "go1.26.2"
   },
   "totals": {
     "sessions": { "sent": 240000, "ok": 239880, "noop": 120, "s400": 0, "s403": 0, "s409": 0,
                   "s401": 0, "s413": 0, "s500": 0, "s503": 120, "s503_retry_after": 0, "other": 0,
-                  "abandoned_on_drain": 0 },
+                  "abandoned_on_drain": 0, "retries_feed": 0, "retries_503": 120,
+                  "retries_exhausted": 0, "transport_errors": 0,
+                  "bytes_sent": 3145728000, "documents_sent": 12000000 },
     "stateless": { "sent": 6000, "s202": 6000, "s400": 0, "s413": 0, "s503": 0, "other": 0,
                    "events_sent": 1500000 },
     "scan": { "sent": 100, "s200": 100, "s409": 0, "s503": 0, "other": 0 },
-    "cacerts": { "sent": 100, "s200": 100, "s404": 0, "s503": 0, "other": 0 },
-    "enroll_https": { "sent": 100, "s200": 100, "s401": 0, "s403": 0, "s409": 0, "other": 0 },
+    "cacerts": { "sent": 100, "s200": 100, "s404": 0, "s503": 0, "s429": 0, "other": 0 },
+    "enroll_https": { "sent": 100, "s200": 100, "s401": 0, "s403": 0, "s409": 0, "s429": 0, "other": 0 },
     "control": { "startup_ok": 100, "startup_err": 0, "notify_ok": 1500, "notify_err": 0,
                  "shutdown_ok": 100, "shutdown_err": 0 },
-    "deletes": { "ok": 0, "err": 0 }
+    "deletes": { "ok": 0, "err": 0 },
+    "latency_ms": { "session": { "count": 240000, "p50": 4.1, "p99": 31.2, "...": 0 } }
   },
   "throughput": { "sessions_per_second": 800.0, "mib_per_second": 60.0,
                   "documents_per_second": 40000.0, "events_per_second": 5000.0,
@@ -152,8 +163,12 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
 }
 ```
 
-- `totals`, `by_fleet` and `by_lane` carry the **same counter shape**, so a consumer parses one
-  structure at three granularities. `by_lane` is where the VD lane's `503`s and the engine lane's
+- `totals`, `by_fleet` and `by_lane` carry the **same counter shape**, each with its own
+  `latency_ms`, so a consumer parses one structure at three granularities (the example abbreviates
+  `by_fleet` and `by_lane`; the real file has every counter in every bucket). Control traffic is
+  recorded per fleet but under no lane, and `abandoned_on_drain` in `totals` only.
+  `meta.global_prefix` is the normalized prefix (no trailing `/`), and `meta.start_time` is when
+  measurement started (after enrollment and the readiness probe). `by_lane` is where the VD lane's `503`s and the engine lane's
   events show up isolated from the FIM lane's clean stream — the whole reason a mixed fleet is worth
   running.
 - `latency_ms` **MUST** carry one histogram per request kind, never one merged number: a notify, a
@@ -169,11 +184,16 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
   conditions only ([10](10-error-handling-and-shutdown.md)), not from these numbers.
 - `meta` **MUST** record everything needed to reproduce the run: the document seed, the effective
   pacing, `connection_reuse`, and `server_vd_workers` read from `GET /metrics` when available (the
-  VD worker count changes what the lane numbers mean).
+  VD worker count changes what the lane numbers mean). **`server_vd_workers` is not implemented:**
+  the sender reads no server metric and `meta` has no such field, so the worker count has to come
+  from the manager's configuration and be stated in the report by hand. `meta` also does not record
+  `drain_timeout`, `repeat_until`, `--feed-timeout` or `--timeout`; the scenario copy and
+  `params.json` that `run_benchmark.sh` writes cover the first two, unless `--drain-timeout`
+  overrode the scenario's `drain_timeout`.
 
 ## `samples/metrics.ndjson` — the scrape
 
-The sender **MAY** scrape `GET /metrics` (F9a) itself in `uds` mode; in `agent` mode the socket may not be reachable from where the sender runs, and the orchestration's monitor does it (F9c-3).
+The sender **MAY** scrape `GET /metrics` (F9a) itself in `uds` mode; in `agent` mode the socket may not be reachable from where the sender runs, and the orchestration's monitor does it (F9c-3). As implemented, the sender never scrapes: `samples/metrics.ndjson` is written only by the orchestration (`monitor.py`, or `scrape_metrics.sh` when the monitor cannot run).
 
 The format is NDJSON, one object per scrape, defined by `tools/devContainer/scripts/bench_samples.py` — the orchestration's monitor and the `scrape_metrics.sh` fallback write the same lines, and every source shares one file:
 
@@ -191,7 +211,7 @@ The file is append-only and a reused label reuses its results directory, so it *
 
 The capture **MUST** be lossless: the module's original response has to be reconstructible from the file. Per-metric descriptors (`type`, `unit`, `description`) are registration-time constants and go on the `meta` line once, re-emitted if one changes; `d` holds the dump's own top-level scalars, including the server's clock; `off` names the metrics that reported `enabled: false`, whose `m` value is stale rather than measured. Metric names are the module's own; a histogram's distribution is in `h`, never among the scalars, so no consumer has to recognise a percentile by the shape of its name. A metric the dump did not carry is ABSENT from `m` rather than zero, and a failed scrape carries no metrics at all — writing zeros for either would read as a counter reset to anything computing a delta.
 
-This replaced a long-format `server_metrics.csv` (`timestamp,elapsed_s,metric,value`) that the fallback scraper wrote while the monitor wrote a wide one, so the same numbers reached the collator under two naming conventions. Per-daemon CSV files are no longer written during collection. They **MAY** be exported on demand from `samples/metrics.ndjson` using `python3 bench_samples.py <results_dir>`. By default, exports are written as `<results_dir>/stats-api-*.csv`; `--out-dir` selects a different destination. The orchestration also accepts `run_benchmark.sh --export-csv` to export the latest run after collection ends (requires `pandas`). This export is optional and disabled by default.
+This replaced a long-format `server_metrics.csv` (`timestamp,elapsed_s,metric,value`) that the fallback scraper wrote while the monitor wrote a wide one, so the same numbers reached the collator under two naming conventions. Per-daemon CSV files are no longer written during collection. They **MAY** be exported on demand from `samples/metrics.ndjson` using `python3 tools/devContainer/scripts/bench_samples.py <results_dir>`. By default, exports are written as `<results_dir>/stats-api-*.csv`; `--out-dir` selects a different destination. The orchestration also accepts `run_benchmark.sh --export-csv` to export the latest run after collection ends (requires `pandas`). This export is optional and disabled by default.
 
 ## Console output
 
@@ -200,6 +220,14 @@ final block **MUST** print: mode, achieved rate, the session, stateless and `/sc
 distributions (the last two only when the run produced any), the session p50/p99, and whether the
 run was valid (not whether it "passed" — that distinction is the
 point). Enough that a run can be judged from the terminal, with the files for the detail.
+
+As implemented, the sender prints **no progress lines** (only setup messages and the final
+block). The final block (`printFinal()` in `cmd/benchmark_sender/main.go`) prints the mode, agents
+enrolled/requested and the duration but **not the achieved rate**; then the session line (sent, ok,
+noop and each status), the stateless and `scan/vd` lines when there was any such traffic, the
+control and retry lines when non-zero, the session p50/p99 with `transport_errors` and `abandoned`,
+the `expected` verdict when the scenario has one, and `run: VALID|INVALID (exit N)`. It prints no
+`/cacerts` or `/enroll` line; those counters are in the artifacts only.
 
 ## What is not measured here
 
