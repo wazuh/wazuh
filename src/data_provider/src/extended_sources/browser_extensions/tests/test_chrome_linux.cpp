@@ -226,3 +226,35 @@ TEST_F(ChromeExtensionsMalformedFilesTests, InvalidManifestOnlySkipsThatExtensio
     EXPECT_NE(findByName(extensionsJson, "Good"), nullptr);
     EXPECT_EQ(findByPathSuffix(extensionsJson, "broken/1.0"), nullptr);
 }
+
+TEST_F(ChromeExtensionsMalformedFilesTests, DefaultLocaleMustBeAPlainLocaleName)
+{
+    const std::string profile = "user/.config/google-chrome/Default/";
+    const std::string messages = R"({"appName": {"message": "Localized"}})";
+
+    writeFile(profile + "Preferences", "{}");
+    writeFile(profile + "Secure Preferences", "{}");
+
+    writeFile(profile + "Extensions/nested/1.0/manifest.json", R"({"name": "__MSG_appName__", "version": "1.0", "default_locale": "en/US"})");
+    writeFile(profile + "Extensions/nested/1.0/_locales/en/US/messages.json", messages);
+    writeFile(profile + "Extensions/empty/1.0/manifest.json", R"({"name": "__MSG_appName__", "version": "1.0", "default_locale": ""})");
+    writeFile(profile + "Extensions/empty/1.0/_locales/messages.json", messages);
+    writeFile(profile + "Extensions/valid/1.0/manifest.json", R"({"name": "__MSG_appName__", "version": "1.0", "default_locale": "pt_BR"})");
+    writeFile(profile + "Extensions/valid/1.0/_locales/pt_BR/messages.json", messages);
+
+    nlohmann::json extensionsJson;
+    ASSERT_NO_THROW(extensionsJson = collect());
+    ASSERT_EQ(extensionsJson.size(), static_cast<size_t>(3));
+
+    const auto* nested = findByPathSuffix(extensionsJson, "nested/1.0");
+    ASSERT_NE(nested, nullptr);
+    EXPECT_EQ((*nested)["name"], "__MSG_appName__");
+
+    const auto* empty = findByPathSuffix(extensionsJson, "empty/1.0");
+    ASSERT_NE(empty, nullptr);
+    EXPECT_EQ((*empty)["name"], "__MSG_appName__");
+
+    const auto* valid = findByPathSuffix(extensionsJson, "valid/1.0");
+    ASSERT_NE(valid, nullptr);
+    EXPECT_EQ((*valid)["name"], "Localized");
+}
