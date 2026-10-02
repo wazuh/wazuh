@@ -73,7 +73,7 @@ static void _log_function(int level, const char *tag, const char * file, int lin
     char jsonstr[OS_MAXSTR];
     char *output;
     char logfile[PATH_MAX + 1];
-    char * filename;
+    const char * filename;
     char *timestamp = w_get_timestamp(time(NULL));
 
     const char *strlevel[5]={

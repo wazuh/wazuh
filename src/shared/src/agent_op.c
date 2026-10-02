@@ -186,7 +186,7 @@ int w_validate_group_name(const char *group, char *response) {
     char valid_chars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.:;_-=+!@(),";
     int offset = 0;
     int valid_chars_length = strlen(valid_chars);
-    char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
+    const char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
     char *multi_group_cpy = NULL;
     char *save_ptr = NULL;
 
