@@ -20,7 +20,9 @@
 #include "../../wrappers/wazuh/shared/file_op_wrappers.h"
 
 static int setup_group(void ** state) {
+#ifdef WIN32
     test_mode = 1;
+#endif
     return 0;
 }
 
@@ -31,6 +33,7 @@ static int teardown_group(void ** state) {
 
 // Tests
 
+#ifdef WIN32
 void test_md5_sha1_sha256_file(void **state)
 {
     char *string = "teststring";
@@ -93,11 +96,72 @@ void test_md5_sha1_sha256_file_max_size_fail(void **state)
     assert_int_equal(OS_MD5_SHA1_SHA256_File(file_name, md5buffer, sha1buffer, sha256buffer, OS_TEXT, 1), -1);
 }
 
+#else
+static char file_name[] = "/tmp/tmp_file-XXXXXX";
+
+static int setup_file(void ** state) {
+    int fd = mkstemp(file_name);
+
+    if (fd < 0 || write(fd, "teststring", 10) != 10) {
+        return -1;
+    }
+
+    return close(fd);
+}
+
+static int teardown_file(void ** state) {
+    unlink(file_name);
+    strcpy(file_name, "/tmp/tmp_file-XXXXXX");
+    return 0;
+}
+
+void test_md5_sha1_sha256_file(void **state)
+{
+    os_md5 md5buffer;
+    os_sha1 sha1buffer;
+    os_sha256 sha256buffer;
+
+    assert_int_equal(OS_MD5_SHA1_SHA256_File(file_name, md5buffer, sha1buffer, sha256buffer, OS_TEXT, 20), 0);
+
+    assert_string_equal(md5buffer, "d67c5cbf5b01c9f91932e3b8def5e5f8");
+    assert_string_equal(sha1buffer, "b8473b86d4c2072ca9b08bd28e373e8253e865c4");
+    assert_string_equal(sha256buffer, "3c8727e019a42b444667a587b6001251becadabbb36bfed8087a92c18882d111");
+}
+
+void test_md5_sha1_sha256_file_fail(void **state)
+{
+    os_md5 md5buffer;
+    os_sha1 sha1buffer;
+    os_sha256 sha256buffer;
+
+    assert_int_equal(OS_MD5_SHA1_SHA256_File("/nonexistent/file_name", md5buffer, sha1buffer, sha256buffer, OS_TEXT, 20), -1);
+}
+
+void test_md5_sha1_sha256_file_max_size_fail(void **state)
+{
+    os_md5 md5buffer;
+    os_sha1 sha1buffer;
+    os_sha256 sha256buffer;
+    char msg[OS_SIZE_256];
+
+    snprintf(msg, sizeof(msg), "'%s' filesize is larger than the maximum allowed (0 MB). File skipped.", file_name);
+    expect_string(__wrap__mwarn, formatted_msg, msg);
+
+    assert_int_equal(OS_MD5_SHA1_SHA256_File(file_name, md5buffer, sha1buffer, sha256buffer, OS_TEXT, 1), -1);
+}
+#endif
+
 int main(void) {
     const struct CMUnitTest tests[] = {
+#ifdef WIN32
         cmocka_unit_test(test_md5_sha1_sha256_file),
         cmocka_unit_test(test_md5_sha1_sha256_file_fail),
         cmocka_unit_test(test_md5_sha1_sha256_file_max_size_fail),
+#else
+        cmocka_unit_test_setup_teardown(test_md5_sha1_sha256_file, setup_file, teardown_file),
+        cmocka_unit_test(test_md5_sha1_sha256_file_fail),
+        cmocka_unit_test_setup_teardown(test_md5_sha1_sha256_file_max_size_fail, setup_file, teardown_file),
+#endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

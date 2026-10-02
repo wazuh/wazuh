@@ -42,10 +42,24 @@ int OS_MD5_SHA1_SHA256_File(const char *fname,
     sha256output[0] = '\0';
     buf[OS_BUFFER_SIZE + 1] = '\0';
 
+#ifdef WIN32
     fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
     if (!fp) {
         return (-1);
     }
+#else
+    struct stat statbuf;
+    int fd = open(fname, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
+
+    if (fd < 0) {
+        return (-1);
+    }
+
+    if (fstat(fd, &statbuf) < 0 || !S_ISREG(statbuf.st_mode) || (fp = fdopen(fd, "r"), !fp)) {
+        close(fd);
+        return (-1);
+    }
+#endif
 
     /* Initialize all hashes */
     sha1_ctx = EVP_MD_CTX_new();
