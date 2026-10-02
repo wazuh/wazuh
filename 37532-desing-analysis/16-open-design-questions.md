@@ -59,7 +59,7 @@ repeated here.
 | **Q12** | What does the agent do on cgroup v1? *(D11)* | #37533 | this project + product | decision |
 | **Q13** | What kernel and LSM configuration is *claimed* supported? | #37533 | this project + product | decision + test matrix |
 | **Q14** | What privileges does the feature require, and what degrades without them? | #37203 | this project + product | decision + code |
-| **Q15** | Do two eBPF engines ship, or does A4 land first? *(D9)* | #37533 | this project | measurement |
+| **Q15** | Do two eBPF engines ship, or does A4 land first? *(D9)* — **measured 2026-10-01: D = 1.78%, escalation band; awaiting a product call** | #37533 | this project | ~~measurement~~ decision |
 | **Q16** | What is v1's supported container count, and what happens above it? | #37203 | product + this project | measurement (item 39) |
 | **Q17** | Which shipped defaults are still placeholders? | #37532 / #37534 | this project | measurement (item 39) |
 | ~~**Q18**~~ | ~~What is the operator-facing configuration surface across two consumers?~~ **ANSWERED: one `<container_security>` block, one `<enabled>` per consumer.** | #37203 | product + this project | decision |
@@ -386,7 +386,7 @@ pattern [03](03-findings-correctness.md) names as the root cause of several find
 
 *(owner: this project · issue: #37533)*
 
-**True today.** Two, still. `ebpf_whodata.cpp` does its own libbpf loading of
+**True today.** Two, still — and now measured: 8 kprobe/LSM programs loaded where 4 would do. `ebpf_whodata.cpp` does its own libbpf loading of
 `lib/modern.bpf.o` (`#define BPF_OBJ_INSTALL_PATH` at line 33, twelve libbpf references in the file)
 alongside `rt_engine`'s object. Two `bpf_object` loads, two 8 MiB rings, two drain threads, duplicate
 kprobes on the same hooks — roughly double kernel-side file-hook work while both coexist. ADR-001
@@ -398,6 +398,18 @@ cleanup. If it is not, WP5 becomes a ship blocker and joins Tier A.
 
 **Answerable by:** one measurement on the VM, then a decision. Should be stated in the commit
 message either way rather than left for a reviewer to discover.
+
+> **Measured 2026-10-01 — the measurement exists now; the decision does not.**
+> `D = 1.78%` of a 10-core budget for the whodata stack inside the dual-load arm, against a
+> pre-registered rule of `<0.5%` = acceptable / `≥2%` = ship blocker / between = escalate. It lands
+> in the **escalation band**, at its top edge. Full method, four arms and caveats in
+> [12 D9](12-blocking-decisions.md). Three facts for whoever takes the decision: the duplication is
+> **exact** (both open hooks fired 169,326 times on the same events) and **additive** (whodata costs
+> 1.77% alone and 1.78% alongside the container stack, so a collapse recovers nearly a whole
+> stack's share); throughput fell **20.4%** against the no-eBPF floor with both loaded, versus 7.2%
+> with whodata alone; and the host measured was **LSM-active**, so the kprobe-mode filter divergence
+> that would make the duplication worse on the majority of the estate was never exercised —
+> 1.78% is a lower bound for the common case.
 
 ---
 
