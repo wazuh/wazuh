@@ -261,13 +261,19 @@ meant to remove.
 **What changed since doc 10 was written, and why the question is narrower now.** Container FIM
 reached the goal by another route and does **not** need the delta to discover new containers
 (measured — see Q9). So the delta is no longer a correctness prerequisite for FIM. It remains the
-prerequisite for *Syscollector* baseline-once, and for switching the eBPF filter from
+prerequisite for *Syscollector* baseline-once, and ~~for switching the eBPF filter from
 `RT_CGROUP_MODE_ALL` to `RT_CGROUP_MODE_ALLOWLIST`, which is what would stop the whole host's
-write-intent opens flowing through the ring.
+write-intent opens flowing through the ring~~.
+
+**Updated 2026-10-02.** The filter has been switched without the delta: the allowlist is populated
+from the connector's container list, which the drain already polls. The whole host's write-intent
+opens no longer flow through the ring. What the delta would still buy the filter is a shorter
+discovery window — at most `resolver_interval_ms` today, near zero with a create event.
 
 **Answerable by:** a decision from `container_instances`' owner. The consumer side is specified.
 
-**Blocks:** roadmap item 20 in its entirety, item 22, item 23, and the allowlist filter mode.
+**Blocks:** roadmap item 20 in its entirety, item 22, item 23. (No longer the allowlist filter
+mode — shipped 2026-10-02 without it.)
 
 ### Q9 — What is the *guaranteed* create trigger for container FIM?
 

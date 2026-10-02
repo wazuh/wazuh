@@ -86,6 +86,37 @@ struct CgroupResolution
     std::string container_id;
 };
 
+/* What a connector list refresh changed.
+ *
+ * `escalate` is the historical return value and keeps its exact meaning. The
+ * two cgroup sets are for a consumer that filters in the kernel: there, a
+ * container's events are not delivered at all until its cgroup reaches the
+ * allowlist, so the map's own view of "who exists" has to be mirrored into the
+ * kernel rather than merely consulted. */
+struct CgroupListDelta
+{
+    /* Containers whose cgroups had produced events before this refresh
+     * identified them. Those paths were classified and discarded before anyone
+     * knew whose they were, so the container is re-walked instead. */
+    std::vector<std::string> escalate;
+
+    /* Entries that were not in the positive map before this refresh. A cgroup
+     * whose inode was reused by a DIFFERENT container counts as added, because
+     * for every purpose here it is one.
+     *
+     * Note what this is not: it is not "containers created since the last
+     * refresh". A container the connector failed to list for one cycle and
+     * listed again in the next appears here too. That is deliberate — the
+     * kernel-side effect of its absence was the same either way. */
+    std::vector<std::pair<std::uint64_t, std::string>> added;
+
+    /* Cgroups that were in the positive map and are not any more. Tracked so a
+     * filtering consumer can take them back out of the kernel: cgroup ids are
+     * inodes and are reused, so an allowlist that only ever grows would end up
+     * admitting whatever inherits the inode. */
+    std::vector<std::uint64_t> removed;
+};
+
 struct CgroupMapStats
 {
     unsigned long long hits_container{0};
@@ -271,16 +302,24 @@ class CgroupContainerMap
          * is authoritative: a cgroup absent from it stops being a container
          * here, because its inode may already have been reused by a new one.
          *
-         * Returns the container ids that need escalating to Suspect — those
-         * whose cgroups had produced events before this refresh identified
-         * them. */
-        std::vector<std::string> install(const std::vector<std::pair<std::uint64_t, std::string>>& containers)
+         * Returns what changed: the container ids that need escalating to
+         * Suspect — those whose cgroups had produced events before this refresh
+         * identified them — and the cgroups this refresh added and dropped, for
+         * a caller that has to mirror the positive map into a kernel filter. */
+        CgroupListDelta install(const std::vector<std::pair<std::uint64_t, std::string>>& containers)
         {
-            std::vector<std::string> escalate;
+            CgroupListDelta delta;
 
             std::lock_guard<std::mutex> lock(m_mutex);
 
             ++m_stats.installs;
+
+            /* Kept to diff against, not to merge with. The rebuild below is
+             * still a wholesale replacement for the inode-reuse reason in this
+             * file's header; the previous contents exist only so the caller can
+             * be told which cgroups entered and left. */
+            const std::map<std::uint64_t, std::string> previous = m_container;
+
             m_container.clear();
 
             for (const auto& entry : containers)
@@ -297,11 +336,26 @@ class CgroupContainerMap
 
                 if (noteContainerLocked(entry.first, entry.second))
                 {
-                    escalate.push_back(entry.second);
+                    delta.escalate.push_back(entry.second);
+                }
+
+                const auto before = previous.find(entry.first);
+
+                if (before == previous.end() || before->second != entry.second)
+                {
+                    delta.added.emplace_back(entry.first, entry.second);
                 }
             }
 
-            return escalate;
+            for (const auto& entry : previous)
+            {
+                if (m_container.find(entry.first) == m_container.end())
+                {
+                    delta.removed.push_back(entry.first);
+                }
+            }
+
+            return delta;
         }
 
         /* True once since the last call when the pending set overflowed: some

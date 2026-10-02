@@ -64,9 +64,15 @@ scoped here too.
 > non-regular files are dropped in the kernel (`rt_file.bpf.c:460`).
 >
 > So for container FIM this plan buys **latency, cost, and a guarantee**: bounded discovery latency
-> instead of "whenever the runtime or the workload happens to write"; the ability to narrow
+> instead of "whenever the runtime or the workload happens to write"; ~~the ability to narrow
 > `cgroup_mode` to `ALLOWLIST`, which is currently *unsafe* because the allowlist would have nothing
-> in it; and a discovery path that does not depend on runc's startup behaviour. That last one is a
+> in it~~; and a discovery path that does not depend on runc's startup behaviour.
+>
+> **Correction, 2026-10-02.** The struck clause was wrong. The allowlist is populated from the
+> connector's container list, which the drain already polls every 5 s — item 20 supplies a create
+> *event*, not the only possible source of entries. The filter now ships narrowed, with discovery
+> driven by that list, and item 20 would reduce the discovery window rather than enable it. See
+> [12 §12.16](12-blocking-decisions.md)'s dated correction. That last one is a
 > weaker version of what an earlier revision of this note claimed — it said a container quiet enough
 > to miss discovery "cannot exist", which is true of runc on Ubuntu and is not a property of this
 > design. Full measurement in

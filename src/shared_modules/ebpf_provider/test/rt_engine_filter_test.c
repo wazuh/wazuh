@@ -11,8 +11,8 @@
  * cgroup v2, a built rt_file.bpf.o and root; exits 77 otherwise.
  *
  * The method: two cgroups, one allowlisted and one not, each with a child
- * process generating file events, and a parent that polls. Three properties
- * have to hold, and only the third is obvious:
+ * process generating file events, and a parent that polls. Five properties
+ * have to hold, and only the first two are obvious:
  *
  *   1. The allowlisted cgroup's events arrive.
  *   2. The other cgroup's events do NOT — this is the whole point, and it is
@@ -22,6 +22,12 @@
  *      asked". Conflating them would make every unmonitored container's
  *      activity look like loss and, under the planned escalation, re-baseline
  *      everything forever.
+ *   4. The allowlist is LIVE: a cgroup added to an already-open handle starts
+ *      being delivered, and one removed stops. Containers outlive no agent and
+ *      no agent outlives every container, so a snapshot taken at rt_open()
+ *      could only ever monitor what existed at startup.
+ *   5. The mode is a live switch too, so a consumer that cannot keep the
+ *      allowlist accurate can fall back to delivering everything.
  */
 
 #include "rt_engine.h"
@@ -151,12 +157,38 @@ static void rm_tree(const char* dir)
     rmdir(dir);
 }
 
+/* Runs one child inside `cg` creating files in `dir`, draining around it so the
+ * ring cannot fill and turn a filter miss into a genuine drop. Returns 0 when
+ * the child could not join the cgroup. */
+static int run_in_cgroup(rt_handle_t h, struct counts* c, const char* cg, const char* dir);
+
 static void drain(rt_handle_t h, struct counts* c, int rounds)
 {
     for (int i = 0; i < rounds; ++i)
     {
         rt_poll(h, on_event, c, 200);
     }
+}
+
+static int run_in_cgroup(rt_handle_t h, struct counts* c, const char* cg, const char* dir)
+{
+    const pid_t pid = fork();
+    if (pid == 0)
+    {
+        if (!join_cgroup(cg))
+        {
+            _exit(2);
+        }
+        generate_events(dir);
+        _exit(0);
+    }
+
+    drain(h, c, 4);
+    int status = 0;
+    waitpid(pid, &status, 0);
+    drain(h, c, 4);
+
+    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
 }
 
 static void note_drop(unsigned long long cgroup_id, unsigned int drops, void* user)
@@ -279,26 +311,54 @@ int main(int argc, char** argv)
                               "were filtered rather than lost — a filter miss must not read as loss",
           dropped_total);
 
-    /* And the mode is a live switch: back to ALL, the excluded cgroup appears. */
-    CHECK(rt_set_cgroup_mode(h, RT_CGROUP_MODE_ALL) == 0, "rt_set_cgroup_mode(ALL) failed");
-    memset(&c.allowed_events, 0, sizeof(c.allowed_events));
+    /* Property 4: the allowlist is live, not a snapshot taken at rt_open().
+     *
+     * This is the one a container consumer actually depends on, and nothing
+     * above covers it. A container created after the engine opened is found by
+     * its runtime's list, added to the allowlist on the open handle, and has to
+     * start being delivered — without reopening and without widening the mode.
+     * If this failed, in-kernel filtering could only ever monitor the
+     * containers that happened to exist at startup, and every later one would
+     * be baselined once and silently never updated. */
+    c.allowed_events = 0;
     c.denied_events = 0;
     c.other_events = 0;
 
-    const pid_t pid = fork();
-    if (pid == 0)
-    {
-        if (!join_cgroup(cg_deny))
-        {
-            _exit(2);
-        }
-        generate_events(dir_deny);
-        _exit(0);
-    }
-    drain(h, &c, 4);
-    int status = 0;
-    wait(&status);
-    drain(h, &c, 4);
+    CHECK(rt_allow_cgroup(h, inode_deny) == 0, "rt_allow_cgroup failed on an already-open handle");
+    const int allow_phase_ran = run_in_cgroup(h, &c, cg_deny, dir_deny);
+    CHECK(allow_phase_ran, "the child could not join the second cgroup, so this phase proved nothing");
+
+    printf("  after allowlisting the second cgroup mid-flight, its events: %lu\n", c.denied_events);
+    CHECK(c.denied_events > 0, "a cgroup added to the allowlist on a live handle produced no events, "
+                               "so a container created after startup could never be monitored");
+
+    /* ...and removing it stops delivery again. Cgroup ids are inodes and are
+     * reused, so an allowlist that could only grow would eventually deliver
+     * whatever inherited a dead container's inode. */
+    c.denied_events = 0;
+
+    CHECK(rt_deny_cgroup(h, inode_deny) == 0, "rt_deny_cgroup failed");
+
+    /* The success of the child is the negative control, and it is not optional:
+     * "no events from that cgroup" is also what a child that never joined it
+     * produces, which would let a broken rt_deny_cgroup pass unnoticed. */
+    const int deny_phase_ran = run_in_cgroup(h, &c, cg_deny, dir_deny);
+    CHECK(deny_phase_ran, "the child could not join the second cgroup, so this phase proved nothing");
+
+    printf("  after removing it from the allowlist again, its events: %lu\n", c.denied_events);
+    CHECK(c.denied_events == 0, "%lu event(s) arrived from a cgroup removed from the allowlist",
+          c.denied_events);
+
+    /* Property 5: the mode is a live switch too. Back to ALL, the excluded
+     * cgroup appears without being allowlisted — the fallback a consumer takes
+     * when it cannot keep the allowlist accurate. */
+    CHECK(rt_set_cgroup_mode(h, RT_CGROUP_MODE_ALL) == 0, "rt_set_cgroup_mode(ALL) failed");
+    c.allowed_events = 0;
+    c.denied_events = 0;
+    c.other_events = 0;
+
+    const int all_phase_ran = run_in_cgroup(h, &c, cg_deny, dir_deny);
+    CHECK(all_phase_ran, "the child could not join the second cgroup, so this phase proved nothing");
 
     printf("  after switching to mode ALL, events from the previously excluded cgroup: %lu\n",
            c.denied_events);

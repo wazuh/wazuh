@@ -368,6 +368,92 @@ TEST(ContainerEventRouterTest, AHostCgroupsRenameIsDiscarded)
     EXPECT_EQ(0u, f.router.stats().global_escalations);
 }
 
+/* --- kernel-side filtering --------------------------------------------------
+ *
+ * When the owner discards events in the kernel for any cgroup not on an
+ * allowlist, the connector's list stops being a convenience and becomes the
+ * only way a container is ever discovered. These cover the three ways that goes
+ * wrong: not walking a container that was never delivered, walking every
+ * container repeatedly, and walking the whole node at startup.
+ */
+
+TEST(ContainerEventRouterTest, UnfilteredANewlyListedContainerThatWasQuietIsNotWalked)
+{
+    Fixture f;
+
+    // The default. Its events have been arriving all along and were either
+    // attributed or filed as unknown, so "new to the list" implies nothing was
+    // missed and a walk would be pure cost.
+    f.router.applyContainerList({{200, "container-quiet"}});
+
+    f.staging.release();
+    EXPECT_TRUE(DrainBatches(f.staging).empty());
+    EXPECT_EQ(0u, f.router.stats().discovery_escalations);
+}
+
+TEST(ContainerEventRouterTest, FilteredANewlyListedContainerIsWalkedWithoutAnyEvent)
+{
+    Fixture f;
+    f.router.setFiltering(true);
+
+    // The same list, and now it is the only evidence this container exists:
+    // everything it did before this moment was discarded in the kernel. Not
+    // walking it would leave it baselined-and-never-updated, silently.
+    f.router.applyContainerList({{210, "container-new"}});
+
+    f.staging.release();
+    const auto batches = DrainBatches(f.staging);
+
+    ASSERT_EQ(1u, batches.size());
+    EXPECT_EQ("container-new", batches[0].container_id);
+    EXPECT_TRUE(batches[0].suspect);
+    EXPECT_TRUE(batches[0].paths.empty());
+    EXPECT_EQ(1u, f.router.stats().discovery_escalations);
+}
+
+TEST(ContainerEventRouterTest, FilteredASteadyListDoesNotKeepWalkingTheSameContainers)
+{
+    Fixture f;
+    f.router.setFiltering(true);
+
+    f.router.applyContainerList({{220, "container-a"}, {221, "container-b"}});
+
+    f.staging.release();
+    ASSERT_EQ(2u, DrainBatches(f.staging).size());
+
+    // The resolver re-applies the list every few seconds for the life of the
+    // agent. If an unchanged list escalated, every container on the node would
+    // be re-walked on every refresh — a far worse regression than the host
+    // traffic the filter was added to avoid.
+    f.router.applyContainerList({{220, "container-a"}, {221, "container-b"}});
+
+    EXPECT_TRUE(DrainBatches(f.staging).empty());
+    EXPECT_EQ(2u, f.router.stats().discovery_escalations);
+}
+
+TEST(ContainerEventRouterTest, FilteredTheSeedingListIsAppliedBeforeFilteringIsAnnounced)
+{
+    Fixture f;
+
+    // How the drain starts: seed the map (and the kernel allowlist) with what
+    // already exists, THEN turn filtering on. The other order would escalate
+    // every pre-existing container at once, immediately after the baseline walk
+    // that has just read all of them.
+    f.router.applyContainerList({{230, "container-a"}, {231, "container-b"}});
+    f.router.setFiltering(true);
+
+    f.staging.release();
+    EXPECT_TRUE(DrainBatches(f.staging).empty());
+
+    // A container that appears after that point is still walked.
+    f.router.applyContainerList({{230, "container-a"}, {231, "container-b"}, {232, "container-later"}});
+
+    const auto batches = DrainBatches(f.staging);
+    ASSERT_EQ(1u, batches.size());
+    EXPECT_EQ("container-later", batches[0].container_id);
+    EXPECT_TRUE(batches[0].suspect);
+}
+
 TEST(ContainerEventRouterTest, AnEventForACgroupWhoseContainerDiedIsNoLongerAttributed)
 {
     Fixture f;

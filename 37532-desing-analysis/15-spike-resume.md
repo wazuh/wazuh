@@ -380,8 +380,36 @@ ordinary path — no escalation, no walk.
 > would leave a container undiscovered until its workload happened to open a regular file for
 > writing. That is the strongest argument for
 > [10](10-container-instances-delta-plan.md)'s Phase 0 and its reconciliation floor, and it is why
-> `RT_CGROUP_MODE_ALL` cannot be narrowed to an allowlist first: the allowlist has nothing to put in
-> it until a create trigger exists.
+> ~~`RT_CGROUP_MODE_ALL` cannot be narrowed to an allowlist first: the allowlist has nothing to put
+> in it until a create trigger exists.~~
+
+**Superseded 2026-10-02 — the drain now opens in `RT_CGROUP_MODE_ALLOWLIST`.**
+
+The struck claim was wrong: the allowlist is populated from the connector's container list, the same
+one `refreshContainerList()` already polls every 5 s. A create trigger supplies an *event*, not the
+only possible source of entries.
+
+What that changes, exactly:
+
+| | Before | After |
+| --- | --- | --- |
+| Discovery trigger | runc's four startup writes, from an unknown cgroup | the connector's list refresh |
+| Discovery latency | ~1 s, and only on a runtime that performs those writes | ≤ `resolver_interval_ms`, on any runtime the connector lists |
+| What a discovered container gets | `rewalkContainer` | `rewalkContainer` — unchanged |
+| Host traffic through the ring | all of it | none |
+
+The third row is why this is a latency change and not a correctness one. A container identified
+after its events have already happened has never had those paths replayed — they were classified
+against an unknown cgroup and discarded — so the outcome was always a walk of current on-disk state.
+A file created *and* deleted inside the discovery window is missed under both settings.
+
+The honest cost: discovery now depends on `container_instances` listing the container, where before
+it had a second, independent path through the event stream. That path was itself incidental — it
+relied on runc's behaviour, as the note above says — and a container the connector never lists was
+never baselined either, so the blindness remains shared rather than introduced. The engine's live
+allowlist is what makes it work at all, and that is now asserted on a real kernel:
+`rt_engine_filter_test` properties 4 and 5.
+
 
 ---
 

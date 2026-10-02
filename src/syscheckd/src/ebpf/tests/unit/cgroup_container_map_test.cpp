@@ -252,11 +252,16 @@ TEST(CgroupContainerMapTest, InstallReportsContainersWhoseEventsPrecededIt)
     map.classify(1000); // events from a container the connector had not listed yet
     map.classify(2000); // events from something still unidentified
 
-    const auto escalate = map.install({{1000, "seen-first"}, {3000, "never-seen"}});
+    const auto delta = map.install({{1000, "seen-first"}, {3000, "never-seen"}});
 
-    EXPECT_EQ(1u, escalate.size());
-    EXPECT_TRUE(Contains(escalate, std::string("seen-first")));
-    EXPECT_FALSE(Contains(escalate, std::string("never-seen")));
+    EXPECT_EQ(1u, delta.escalate.size());
+    EXPECT_TRUE(Contains(delta.escalate, std::string("seen-first")));
+    EXPECT_FALSE(Contains(delta.escalate, std::string("never-seen")));
+
+    // Both are new to the positive map, though, and a caller that filters in
+    // the kernel has to hear about both: "never-seen" produced no events
+    // precisely because the kernel was discarding them.
+    EXPECT_EQ(2u, delta.added.size());
 
     // 2000 was not identified, so it stays queued for the resolver.
     EXPECT_EQ(1u, map.unresolvedCount());
@@ -269,9 +274,14 @@ TEST(CgroupContainerMapTest, InstallIgnoresUnresolvableCgroupIds)
     // cgroup_id 0 is the connector saying "I could not determine it" (cgroup v1,
     // kata, cgroupns-host). Indexing on it would collapse every such container
     // onto one key.
-    const auto escalate = map.install({{0, "kata-container"}, {0, "cgroupns-host-container"}, {1, "real"}});
+    const auto delta = map.install({{0, "kata-container"}, {0, "cgroupns-host-container"}, {1, "real"}});
 
-    EXPECT_TRUE(escalate.empty());
+    EXPECT_TRUE(delta.escalate.empty());
+
+    // An id the connector could not determine must not reach a kernel allowlist
+    // either — there is nothing to add, and 0 is not an inode.
+    EXPECT_EQ(1u, delta.added.size());
+    EXPECT_EQ(1u, delta.added.front().first);
     EXPECT_EQ(1u, map.containerCount());
     EXPECT_EQ("real", map.classify(1).container_id);
     EXPECT_EQ(CgroupClass::unknown, map.classify(0).klass);
@@ -284,6 +294,65 @@ TEST(CgroupContainerMapTest, InstallIgnoresEmptyContainerIds)
     map.install({{1, ""}});
 
     EXPECT_EQ(0u, map.containerCount());
+}
+
+TEST(CgroupContainerMapTest, InstallReportsWhichCgroupsEnteredAndLeft)
+{
+    CgroupContainerMap map;
+
+    const auto first = map.install({{10, "container-a"}, {11, "container-b"}});
+
+    EXPECT_EQ(2u, first.added.size());
+    EXPECT_TRUE(first.removed.empty());
+
+    // b is gone, c has appeared, a is unchanged. Only the two that moved are
+    // reported: re-adding a cgroup that never left would be harmless but
+    // re-walking its container every five seconds would not.
+    const auto second = map.install({{10, "container-a"}, {12, "container-c"}});
+
+    ASSERT_EQ(1u, second.added.size());
+    EXPECT_EQ(12u, second.added.front().first);
+    EXPECT_EQ("container-c", second.added.front().second);
+
+    ASSERT_EQ(1u, second.removed.size());
+    EXPECT_EQ(11u, second.removed.front());
+}
+
+TEST(CgroupContainerMapTest, AnInodeReusedByAnotherContainerCountsAsAdded)
+{
+    CgroupContainerMap map;
+
+    map.install({{20, "container-old"}});
+
+    // Same cgroup id, different container: the cgroup was removed and the
+    // kernel handed its inode to a new one. The id is already in any allowlist,
+    // so nothing has to be added there — but the CONTAINER is new and has never
+    // been walked, which is what the caller acts on.
+    const auto delta = map.install({{20, "container-new"}});
+
+    ASSERT_EQ(1u, delta.added.size());
+    EXPECT_EQ(20u, delta.added.front().first);
+    EXPECT_EQ("container-new", delta.added.front().second);
+
+    // And it is not also reported as removed, which would have a filtering
+    // caller deny the cgroup it had just allowed.
+    EXPECT_TRUE(delta.removed.empty());
+    EXPECT_EQ("container-new", map.classify(20).container_id);
+}
+
+TEST(CgroupContainerMapTest, AnUnchangedListProducesNoDelta)
+{
+    CgroupContainerMap map;
+
+    map.install({{30, "container-a"}, {31, "container-b"}});
+    const auto delta = map.install({{30, "container-a"}, {31, "container-b"}});
+
+    // The resolver applies a list every few seconds for the life of the agent.
+    // If a steady state produced entries here, a filtering caller would re-walk
+    // every container on the node on every refresh, forever.
+    EXPECT_TRUE(delta.added.empty());
+    EXPECT_TRUE(delta.removed.empty());
+    EXPECT_TRUE(delta.escalate.empty());
 }
 
 TEST(CgroupContainerMapTest, PendingSetOverflowIsSurfacedExactlyOnce)

@@ -38,6 +38,7 @@
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Stopped scanning container monitored directories on the host filesystem as well. |
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Made container file monitoring and container inventory opt-in and independently switchable. |
 | [#37396](https://github.com/wazuh/wazuh/issues/37396) | Stopped resolving process working directories for container file events, which never used them. |
+| [#37396](https://github.com/wazuh/wazuh/issues/37396) | Stopped delivering file events from outside any container to container file monitoring. |
 
 #### Removed
 
