@@ -162,7 +162,8 @@ How strictly the agent verifies the manager's TLS certificate.
   - `full` -- verify the certificate against the CA AND check that it matches the manager's
     hostname (strictest).
   - `certificate` -- verify the certificate against the CA, but do not check the hostname.
-  - `none` -- no TLS verification at all. Insecure; intended for quick testing only.
+  - `none` -- no TLS verification at all. Insecure; intended for quick testing only. Does not
+    apply to enrollment with a token, which is always verified (see the note below).
   - `system` -- verify the certificate (and hostname, like `full`) against the operating
     system's own trusted CA store instead of `<certificate_authorities>`, the way a web
     browser trusts a public website. Useful when the manager's certificate is issued by a
@@ -177,6 +178,17 @@ How strictly the agent verifies the manager's TLS certificate.
 
   ```console
   WARNING: (4122): <ssl><verification_mode> is 'none' and the trust anchor 'etc/certs/root-ca.pem' is present: TLS verification stays disabled, as configured, and the anchor is not used. Remove <verification_mode>none</verification_mode> to verify against it.
+  ```
+
+- **Note:** the mode applies to the agent's connections after enrollment. Enrollment with a token,
+  on first start or through `wazuh-agent-auth`, is always verified as `full` against the token's
+  CA -- the one it embeds, or the one it pins -- whatever `<verification_mode>` says, so an
+  explicit `none` does not let an agent enroll with a manager whose certificate that CA does not
+  vouch for. Before it enrolls, the agent logs this to `ossec.log` (`wazuh-agent-auth` does not
+  print it):
+
+  ```console
+  WARNING: (4127): <ssl><verification_mode> is 'none', but that only applies once the agent is enrolled: token enrollment still verifies the manager's certificate against the enrollment token's CA.
   ```
 
 - **Note:** the resolution runs once, at startup. An anchor written while the agent is running is

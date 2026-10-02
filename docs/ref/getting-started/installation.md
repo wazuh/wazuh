@@ -561,6 +561,8 @@ Writes `<agent><ssl><verification_mode>`. Exactly one of `full`, `certificate`, 
 
 Most installs do not need it. A token install resolves to `full` against the anchor it just received, and this variable only overrides that. It matters in two cases: a manager fronted by a publicly trusted certificate, where `system` needs no anchor at all; and an install being configured by hand, where it is the only TLS input a variable can supply.
 
+The mode it writes governs the agent's connections once it is enrolled, not the token enrollment itself. That enrollment is always fully verified against the token's CA, the one it embeds or the one it pins, whatever this variable says, so `none` does not let an agent enroll with a manager whose certificate the token's CA does not vouch for. An agent with an explicit `none` says so before it enrolls, with `(4127)`.
+
 > [!NOTE]
 > In 5.0 this variable is named `WAZUH_SSL_VERIFICATION`. The 4.x spelling `SSL_VERIFICATION` is not read and has no alias.
 
