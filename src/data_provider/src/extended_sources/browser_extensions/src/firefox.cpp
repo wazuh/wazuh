@@ -169,8 +169,8 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
                     FirefoxAddon firefoxAddon;
                     firefoxAddon.uid = m_firefoxAddonsWrapper->getUserId(username);
 
-                    // If any of "softDisable", "appDisabled" or "userDisabled" are true, then the addon is disabled.
-                    firefoxAddon.disabled = getBoolField(addonJson, "softDisable", false) ||
+                    // If any of "softDisabled", "appDisabled" or "userDisabled" are true, then the addon is disabled.
+                    firefoxAddon.disabled = getBoolField(addonJson, "softDisabled", false) ||
                                             getBoolField(addonJson, "appDisabled", false) ||
                                             getBoolField(addonJson, "userDisabled", false);
 
