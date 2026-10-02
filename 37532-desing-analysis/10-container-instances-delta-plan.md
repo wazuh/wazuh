@@ -12,6 +12,20 @@ scoped here too.
 - **Read-only analysis:** no code was changed to produce this document
 - **Date:** 2026-09-03
 
+> **Line references are as of `03bca26e9a`, and have since split into two classes.** The
+> **producer** side this plan analyses — `metadata_store.cpp`, `docker_connector.cpp`,
+> `kubernetes_connector.cpp`, `reconciler.hpp`, `query_service.cpp`, `ipc_server.cpp` — is
+> **unchanged** since that commit, so the references in §10.2, §10.3 and §10.4 still resolve and the
+> analysis built on them still holds. The **consumer** side has moved a long way
+> (`syscollectorImp.cpp` +806 lines, `container_baseline_fim.cpp` +468,
+> `container_baseline_fim_bridge.c` +301, `container_baseline_scanner.cpp` +263), so references into
+> those files in §10.1, §10.5 and §10.10 are approximate. Current anchors for the load-bearing ones:
+> `Syscollector::scanContainerBaseline()` `syscollectorImp.cpp:2279` (called from `:2266` and
+> `:2648`), `sweepContainerRowsNotIn()` `:2179`, `detectDeletionsFor()` `:2342`;
+> `BaselineDriver::sweepStale()` `container_baseline_fim.cpp:352`;
+> `fim_container_baseline_available()` `container_baseline_fim_bridge.c:302`;
+> `DiscoverContainers()` `container_baseline_scanner.cpp:164`.
+
 > ### Status, 2026-09-08 — **not implemented, and one premise is falsified**
 >
 > **Nothing in this plan is in the code.** No `LifecycleJournal`, no cursor, no `epoch`/`seq`/
@@ -24,12 +38,14 @@ scoped here too.
 >
 > - **syscollector** — the polling §10.1 set out to remove, kept and made configurable.
 >   `scanContainerBaseline()` still re-scans every container × every data class per cycle; what
->   changed is only the cadence (`<container_baseline_interval>` decouples it from the host scan,
->   `0` keeps them coupled). Lifecycle is still reconstructed by diffing `list` against
+>   changed is only the cadence (a container interval decouples it from the host scan, `0` keeps
+>   them coupled — spelled `<container_baseline_interval>` in the syscollector wodle when this was
+>   written, and `<container_security><syscollector><interval>` since the configuration was
+>   unified). Lifecycle is still reconstructed by diffing `list` against
 >   `m_knownContainerIds` and sweeping with `sweepContainerRowsNotIn(keep)`. For syscollector,
 >   **item 20 is genuinely not done.**
 > - **container FIM** — item 20's *goal* reached by a different mechanism entirely.
->   `fim_run_container_baseline()` runs once from `main.c:493`; after that the change signal is the
+>   `fim_run_container_baseline()` runs once from `main.c:499`; after that the change signal is the
 >   kernel, not a lifecycle delta, classified into `rebaselineAll` / `rewalkContainer` /
 >   `rereadPaths` / `deletePaths`.
 >
@@ -58,7 +74,7 @@ scoped here too.
 >
 > **What did land from here, from elsewhere:** [D5](#d5--what-authorises-a-deletion-decided)'s last
 > row. Both consumers now refuse to sweep against a set they could not obtain
-> (`container_baseline_fim.cpp:672-685`, `syscollectorImp.cpp:2451-2466`), which closes §10.5's
+> (`container_baseline_fim.cpp:711-723`, `syscollectorImp.cpp:2538-2563`), which closes §10.5's
 > false-delete hole — the one defect here that never needed the journal. Its converse is now
 > [C28](03-findings-correctness.md#c28--with-no-containers-list-reads-as-connector-unavailable): the
 > server never sent an empty `containers` array, so "no containers" was indistinguishable from "no
@@ -82,6 +98,52 @@ scoped here too.
 > touches a monitored path is still never baselined. syscollector's retained polling self-heals that
 > within one interval, which is the honest reason its polling should not be removed before this
 > plan's floor exists.
+
+> ### Review, 2026-10-01 — the design is ratified; the need is not yet proven
+>
+> D1–D7 were re-verified against the tree and stand: the pull-cursor choice (D1), the published-set
+> invariant (D2), the resync machinery (D3), the mandatory floor (D4 — since vindicated twice: the
+> FIM path shipped baseline-once *without* a floor and shows exactly the predicted gap, and C16 was
+> measured stranding removed containers), the deletion authority (D5, whose last row has landed),
+> and the additive wire (D7, verified against the `list` parser). **If a lifecycle delta is built,
+> build this one.** Whether to build it is a separate question, and three facts have moved since
+> 2026-09-03:
+>
+> 1. **FIM no longer needs it for discovery** (the 2026-09-08 status above): 2 s discovery via
+>    ALL-mode + escalation. The residual FIM value — a *guarantee* instead of a runc behaviour, and
+>    narrowing to `ALLOWLIST` (item 21) — is deferred to Phase 5 behind item 14 by this plan
+>    itself. The journal's only near-term consumer is syscollector.
+> 2. **Syscollector's cost case shrank.** Container inventory is now opt-in, off by default, and
+>    separately scheduled under `<container_security><syscollector>` — see
+>    [16 Q18](16-open-design-questions.md#q18--what-is-the-operator-facing-configuration-surface-across-two-consumers--answered),
+>    answered. The hourly full rescan is a chosen, tunable cost rather than a fleet-wide tax; the
+>    efficiency argument now needs item 39's numbers to stand on.
+> 3. **The identity plumbing has a second claimant.** Per-container selector filtering
+>    (`container_name=` on a container-scoped `<directories>`, issue O14) needs container identity
+>    carried to the consumers and a per-container baseline ABI — the same
+>    `cbaseline_run_*_for()` shape §10.7 proposes. Built separately these become two overlapping
+>    identity channels; they should be designed as one.
+>
+> **The alternative this plan does not price.** `list` already returns full records and the client
+> already parses them (P1 item 12, §10.4). Upgrading syscollector's id-diff to a record-fingerprint
+> diff yields `added`/`removed`/`changed`-with-mask over exactly the published set — D2's invariant
+> satisfied by construction — with no wire change, no journal, no cursor, and the existing poll as
+> D4's floor. With D6's `startedAt` it detects Docker restarts as well as the journal does (both
+> are blind to in-grace restarts until D6 lands either way — §10.2's liveness note). What the
+> journal buys over it: not shipping ~100–200 KB of records per poll at N=100 (noise at any
+> plausible cadence, and §10.11's stat-hint is the cheaper latency fix if one is ever wanted), and
+> store observability for tests. That is a thin margin for a ring, cursor persistence, a wire
+> extension, and a test tree §10.12 says does not exist yet.
+>
+> **Recommended order.** Phase 0 item 2 now — C16 is a live bug independent of item 20. Extract
+> D7's version-check relaxation as its own small change; it is the protocol's only forward path.
+> Pull Phase 4's `pid`/`startedAt` forward — they fix restart blindness for *every* consumer
+> strategy and complete item 11; hold `instance_id` until open question 5 is answered. Deliver
+> item 20 for syscollector as the consumer-side record diff plus the `_for` scan ABI plus the
+> floor, with item 22 landing with or before it (§10.9's inversion holds unchanged). Build
+> Phases 1–3 only when item 39's measurement, or a second consumer — item 21 plus item 14 making
+> FIM want sub-interval latency — demands them. The floor knob belongs under
+> `<container_security><syscollector>`, not a new wodle option.
 
 ## 10.1 Problem statement
 
@@ -180,7 +242,7 @@ of a burst is missing from the *store*, so `list` does not report it either. Fix
 
 Wire format: one line of JSON in, one line of JSON out, **connection closed after one exchange**
 (`ipc_server.cpp:199-241`, close at `:240`). Request cap 8192 bytes (`:24`), client read timeout 5 s
-(`:25`). Worker pool default **2** (`ipc_server.hpp:26`).
+(`:25`). Worker pool default **2** (`ipc_server.hpp:25`).
 
 ```jsonc
 // requests  (wire_protocol.hpp:79-143)
@@ -238,7 +300,11 @@ Both consumers derive deletions from set difference:
 - **FIM**: `sweepStale(known)` (`container_baseline_fim.cpp:246-280`), same shape, over
   `fim_db_get_distinct_container_ids("file_entry")`.
 
-**Live defect, not previously recorded in [03](03-findings-correctness.md).**
+**Live defect when this was written, ~~not previously recorded in~~ now
+[C28](03-findings-correctness.md#c28--with-no-containers-list-reads-as-connector-unavailable) in
+[03](03-findings-correctness.md) — and since fixed.** The paragraph below describes the hole as it
+stood at `03bca26e9a`; both consumers now check the return and skip the sweep
+(`container_baseline_fim.cpp:719`, `syscollectorImp.cpp:2555`), which is Phase 0 item 1 of §10.10.
 `DiscoverContainers` collapses "socket unavailable" into "empty vector"
 (`container_baseline_scanner.cpp:135-150`; after the first success `g_everSawContainers` cuts the
 retry to a single attempt, `:136`), `ListContainers` returns only a count
@@ -250,10 +316,10 @@ every table are deleted**. FIM is partly shielded by `fim_container_baseline_ava
 (`container_baseline_fim_bridge.c:280-299`, a 5 s socket-existence poll) but only up to the moment of
 the check; syscollector has no availability gate at all. This is the same severity class as
 [C1](03-findings-correctness.md#c1--fim-deletes-the-state-of-merely-stopped-containers-false-delete-storm)
-and it exists **today**, independent of item 20.
+and it existed **at `03bca26e9a`**, independent of item 20.
 
-FIM's driver runs exactly once, at startup, on syscheckd's `main()` thread (`main.c:486`), before
-`realtime_start()` (`main.c:490-492`) — so FIM has no cycle to hang a delta poll on. That is item
+FIM's driver runs exactly once, at startup, on syscheckd's `main()` thread (`main.c:499`), before
+`realtime_start()` (`main.c:509`) — so FIM has no cycle to hang a delta poll on. That is item
 14's thread-ownership decision, and item 20 cannot be delivered for FIM without it.
 
 ## 10.6 Decisions
@@ -683,18 +749,24 @@ Ordered so each phase is independently mergeable and the first one is a standalo
 
 ### Phase 0 — de-risk, no new API (S)
 
-1. `cbaseline_list_containers` returns `-1` on transport failure; `DiscoverContainers`
-   (`container_baseline_scanner.cpp:130-163`) stops collapsing unavailability into an empty vector;
-   both consumers skip the sweep on a negative return (`syscollectorImp.cpp:2338-2347`,
-   `container_baseline_fim.cpp:386-388`). **Fixes a live false-delete class** (§10.5), independent of
-   everything below.
+1. ~~`cbaseline_list_containers` returns `-1` on transport failure~~ — **DONE.**
+   `DiscoverContainers` (`container_baseline_scanner.cpp:164`) no longer collapses unavailability
+   into an empty vector, and both consumers skip the sweep on a negative return
+   (`syscollectorImp.cpp:2555`, `container_baseline_fim.cpp:719`). The false-delete class of §10.5
+   is closed; its converse, an empty `containers` array reading as "no connector", was
+   [C28](03-findings-correctness.md#c28--with-no-containers-list-reads-as-connector-unavailable)
+   and is fixed in `976c7459c0`.
 2. Make `docker_connector.cpp`'s deferred reconcile actually fire: `m_reconcilePending` is write-only
    (`:93`), so the last event of a burst is dropped. Either check it after `streamEvents` returns (as
    `kubernetes_connector.cpp:195` does) *and* on a read deadline inside the stream loop, or drop the
    debounce for lifecycle-relevant actions. **Without this the delta has an unbounded-latency hole at
    its source.**
 
-Deliverable: two contained fixes, both testable, neither touching the wire.
+Deliverable: ~~two contained fixes~~ **one remaining fix** (item 2), testable, not touching the
+wire. Item 2 is the one that still matters, and §10.3's note now understates it: measurement on
+2026-09-08 showed the dead flag also strands *removed* containers, because `REMOVAL_GRACE` only
+expires inside `applySnapshot()` and nothing re-runs that on the Docker path without another event
+([C16](03-findings-correctness.md#c16--dockers-deferred-reconcile-is-dropped-not-deferred)).
 
 ### Phase 1 — the journal, internal only (S–M)
 
@@ -882,8 +954,11 @@ Recorded explicitly so they can be corrected rather than propagated:
 5. **`docker_connector.hpp:20-23`'s class comment** implies the reconcile-on-event path is
    gap-covered. `m_reconcilePending` is write-only (`docker_connector.cpp:93`), so the last event of
    any 500 ms burst is dropped with no periodic floor to recover it (§10.3).
-6. **Not previously recorded anywhere:** if `container_instances` is unreachable at the moment either
-   consumer asks, the empty list is treated as authoritative and **every container's rows are
-   deleted** (§10.5). Severity class of
-   [C1](03-findings-correctness.md#c1--fim-deletes-the-state-of-merely-stopped-containers-false-delete-storm);
-   belongs in [03](03-findings-correctness.md) and in P0.
+6. ~~**Not previously recorded anywhere:**~~ **Recorded and fixed.** If `container_instances` was
+   unreachable at the moment either consumer asked, the empty list was treated as authoritative and
+   **every container's rows were deleted** (§10.5). Severity class of
+   [C1](03-findings-correctness.md#c1--fim-deletes-the-state-of-merely-stopped-containers-false-delete-storm).
+   Both consumers now check the return before sweeping, and the converse case — a genuinely
+   container-free host reading as "no connector", which suppressed the sweep that *should* have
+   run — is
+   [C28](03-findings-correctness.md#c28--with-no-containers-list-reads-as-connector-unavailable).
