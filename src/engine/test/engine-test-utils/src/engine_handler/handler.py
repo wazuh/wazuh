@@ -108,6 +108,11 @@ class EngineHandler:
 
         return True
 
+    def _home(self) -> str:
+        """Directory the engine runs from: in standalone mode it is the home that queue/keystore is
+        resolved against, and setupEnvironment.py places the binary and the keystore there."""
+        return os.path.dirname(os.path.abspath(self.binary_path))
+
     def start(self, log_file_path: str = "") -> None:
         """Starts the engine process
 
@@ -123,10 +128,11 @@ class EngineHandler:
                 self.process = subprocess.Popen(
                     shlex.split(f"{self.binary_path} -f"),
                     stdout=log_file,
-                    stderr=log_file
+                    stderr=log_file,
+                    cwd=self._home()
                 )
         else:
-            self.process = subprocess.Popen(shlex.split(f"{self.binary_path} -f"))
+            self.process = subprocess.Popen(shlex.split(f"{self.binary_path} -f"), cwd=self._home())
 
         # Check if the process has started successfully
         if self.process.returncode is not None and self.process.returncode != 0:

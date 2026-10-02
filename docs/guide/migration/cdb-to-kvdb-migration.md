@@ -1,10 +1,10 @@
 # Migrating CDB lists to KVDB
 
-In Wazuh 4.x,  rules looked up threat data using CDB (Constant Database) lists stored in `/var/ossec/etc/lists/`. In Wazuh 5.0, the Engine replaces these rules and uses KVDB (Key-Value Database) for the same purpose. CDB lists are not carried over automatically — you must convert each list to a KVDB and rewrite the rules that used it as decoder `check` and `map` stages.
+In Wazuh 4.x, rules looked up threat data using CDB (Constant Database) lists stored in `/var/ossec/etc/lists/`. In Wazuh 5.0, the Engine replaces these rules and uses KVDB (Key-Value Database) for the same purpose. CDB lists are not carried over automatically — you must convert each list to a KVDB and rewrite the rules that used it as decoder `check` and `map` stages.
 
 ## 0. Migration prerequisites
 
-In order to have a better experience on migrating your custom decoders, please take a look on [this engine introduction](engine-introduction.md)
+Read the [Engine introduction for related migrations](engine-introduction.md) first: it explains the decoder stages (`check`, `normalize`) and the content spaces this guide relies on.
 
 ## 1. Structural differences between CDB and KVDB
 
@@ -21,9 +21,9 @@ In order to have a better experience on migrating your custom decoders, please t
 | `not_match_key` | `kvdb_not_match('db_name')` | `check` |
 | `match_key_value` | `kvdb_get('db_name', $field)` + filter on the retrieved value | `normalize` (`map` + `check`) |
 | `address_match_key` (exact IPs) | `kvdb_match('db_name')` | `check` |
-| `address_match_key` (subnets) | No direct equivalent — use `ip_cidr_match` instead | `check` |
+| `address_match_key` (subnets) | No KVDB equivalent — use `ip_cidr_match` instead (IPv4 only) | `check` |
 | `not_address_match_key` (exact IPs) | `kvdb_not_match('db_name')` | `check` |
-| `not_address_match_key` (subnets) | No direct equivalent | `check` |
+| `not_address_match_key` (subnets) | No KVDB equivalent — negate `ip_cidr_match` in a conditional expression: `NOT ip_cidr_match($source.ip, '10.0.0.0', '8')` | `check` |
 
 ## 3. How to migrate CDB files to KVDB files
 
@@ -32,9 +32,10 @@ In order to have a better experience on migrating your custom decoders, please t
 1. Make a backup of your CDB lists.
 
 ```bash
+# On the 4.x manager
 sudo mkdir -p /tmp/cdb-migration
-cp -r /var/ossec/etc/lists /tmp/cdb-migration
-cp -r /var/ossec/etc/rules/ /tmp/cdb-migration
+sudo cp -r /var/ossec/etc/lists /tmp/cdb-migration
+sudo cp -r /var/ossec/etc/rules/ /tmp/cdb-migration
 ```
 
 2. **Structure**: Write the skeletal structure of your kvdb:
@@ -115,9 +116,11 @@ normalize:
 > [!NOTE]
 > `kvdb_match` works for exact IP keys. If your CDB list contained subnet entries (e.g. `192.168.0.0/16:`), there is no KVDB equivalent — replace those entries with explicit `ip_cidr_match` checks in the decoder's `check` stage:
 > ```yaml
-> check: 
->   - ip_cidr_match/192.168.0.0/16/$source.ip
+> check:
+>   - source.ip: ip_cidr_match('192.168.0.0', '16')
 > ```
+>
+> The second argument is a prefix length or a dotted mask (`'255.255.0.0'`); the helper handles IPv4 only.
 > If a single CDB list mixed exact IPs and CIDR blocks, split them into a KVDB (for exact IPs) and explicit `ip_cidr_match` entries (for subnets) in the same `check` block.
 
 #### Example: allowlist check (not_match_key)
@@ -163,11 +166,11 @@ normalize:
       - wazuh.threat.groups: array_append(auth)
 ```
 
-The decoder only proceeds when `source.user.name` is **not** a key in the `authorized_ed users are silently dropped at the `check` stage.
+The decoder only proceeds when `source.user.name` is **not** a key in the `authorized_users` KVDB; matched (authorized) users are silently dropped at the `check` stage.
 
 #### Example: key lookup with value check
 
-`match_key_value` checked that a key existed in the CDB **and** its stored value matched a pattern. In 5.x, use `kvdb_get` in a `map` block to retrieve the value, then filter on it in a following `check` block.
+`match_key_value` checked that a key existed in the CDB **and** its stored value matched a pattern. In 5.x, use `kvdb_get` in a `normalize` block to retrieve the value, then test it in the `check` of a following `normalize` block.
 
 **4.x rule:**
 
@@ -202,9 +205,13 @@ metadata:
 normalize:
   - map:
       - source.threat_type: kvdb_get('threat_types', $source.ip)
+  - check:
+      - source.threat_type: malware
+    map:
+      - tags: array_append(malware)
 ```
 
-The first `normalize` block maps the KVDB value into `source.threat_type`; the second block filters to only proceed when the value equals `malware`. A failed `normalize` block is skipped without rejecting the event, so if the key is absent the decoder continues normally.
+The first `normalize` block maps the KVDB value into `source.threat_type` (a custom field: it is not in the schema); the second block only applies its `map` when that value equals `malware`. A `normalize` block whose `check` fails is skipped without rejecting the event, and `kvdb_get` leaves the field unset when the key is absent, so the decoder still accepts every JSON event and only tags the matching ones.
 
 #### Example: AND across two lists
 
@@ -270,7 +277,7 @@ Two independent 4.x rules that each check a different list — with no `<if_sid>
 
 **5.x decoder equivalent:**
 
-Two sibling decoders under the same parent implement OR logic. The Engine evaluates siblings in order and follows the first one that matches, so each decoder fires independently on events that satisfy its own `check`.
+Two sibling decoders under the same parent implement OR logic. The Engine evaluates siblings in order and follows the first one whose stages succeed, so an event in either list is accepted by one of them.
 
 ```yaml
 name: decoder/ip-blacklist-list-one/0

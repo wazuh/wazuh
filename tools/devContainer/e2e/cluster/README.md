@@ -3,6 +3,11 @@
 Multi-node cluster add-on for the e2e environment. It is an overlay on the base
 `../docker-compose.yml`. The default single-node setup is unchanged.
 
+> **Note (credentials):** the main e2e stack now generates its credentials into
+> `../.credentials.env`. This cluster overlay is still the old demo: its `admin`/`admin`
+> defaults (compose and `node/entrypoint.sh`) do not authenticate against an indexer with
+> generated credentials, and migrating it is out of scope.
+
 ## Topology
 
 - **Master**: the manager running on the host (the one you build and debug).
@@ -44,10 +49,10 @@ docker compose --env-file cluster/.env -f docker-compose.yml -f cluster/docker-c
 ## Assigning agents to nodes
 
 The `../agents/` compose is a separate project with its own network, so it cannot
-resolve the worker container names, and 5.x agents bake the enrollment target at
-install time (changing `MANAGER_HOST` only rewrites `<address>`, not the
-enrollment). As shipped, agents therefore enroll and report against the master on
-the host (`host.docker.internal`). Pinning an agent to a specific worker is not
+resolve the worker container names, and 5.x agents take the manager address from
+the enrollment token (`create_token.sh --address`, `host.docker.internal` by
+default; `MANAGER_HOST` applies to the 4.x agents only). As shipped, agents
+therefore enroll and report against the master on the host (`host.docker.internal`). Pinning an agent to a specific worker is not
 wired up in this overlay.
 
 ## Parameters

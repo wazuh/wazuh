@@ -1,0 +1,172 @@
+# Which tavern files a changed file selects in 5_testintegration_api-endpoints.yml.
+#
+# Evaluated by select_tests.py, first matching rule wins. Paths are GitHub `paths:` globs relative
+# to the repository root. `tests` is `none`, `self` (the changed tavern file), `all`, or a list of
+# test groups; a group is a tavern file name without `test_`, `_endpoints.tavern.yaml` and the
+# method suffix (test_agent_GET_endpoints -> agent, test_rbac_black_agent_endpoints ->
+# rbac_black_agent), and a list entry may use `*` (rbac_*_agent).
+#
+# A changed file outside the workflow's `paths:` selects nothing: it cannot reach the environment.
+# A changed file inside `paths:` that matches no rule selects everything; tests/test_select_tests.py
+# fails while any tracked file does that, so every file the lane triggers on has a rule here.
+
+rules:
+  - name: Unit tests, docs and tools other lanes own
+    tests: none
+    paths:
+      # Mirrors the negated entries of the workflow paths
+      - "**/*.md"
+      - "api/api/**/test/**"
+      - "api/tools/**"
+      - "framework/**/tests/**"
+      - "framework/examples/**"
+      - "src/win32/**"
+      - "src/unit_tests/**"
+      - "src/**/tests/**"
+      - "src/**/qa/**"
+      - "src/**/integrationTests/**"
+      - "src/**/testtool/**"
+      - "src/engine/test/**"
+      - "src/engine/docs/**"
+      # Triggered, but nothing the environment builds or the tavern files run
+      - "**/.gitignore"
+      - "src/Doxyfile"
+      - "api/api/pytest.ini"
+      - "api/test/__init__.py"
+      - "framework/pytest.ini"
+      # The guard, the selection and their own tests run in the setup job of the lane
+      - "api/test/integration/mapping/**"
+      - "api/test/integration/run_tests.py"
+      - "api/test/integration/_test_smoke.tavern.yaml"
+
+  - name: The changed tavern file itself
+    tests: self
+    paths:
+      - "api/test/integration/test_*.tavern.yaml"
+
+  - name: Agents and groups
+    tests: [agent, rbac_*_agent, rbac_white_all, overview, rbac_*_overview]
+    paths:
+      - "api/api/controllers/agent_controller.py"
+      - "api/api/models/agent_added_model.py"
+      - "api/api/models/agent_group_added_model.py"
+      - "api/api/models/agent_inserted_model.py"
+      - "api/api/models/enrollment_token_model.py"
+      - "framework/wazuh/agent.py"
+      - "framework/wazuh/vulnerability_scan.py"
+      - "framework/wazuh/core/agent.py"
+      - "framework/wazuh/core/agent_tasks.py"
+      - "framework/wazuh/core/enrollment_token.py"
+      - "framework/wazuh/core/task_http.py"
+      - "api/test/integration/env/configurations/agent/**"
+
+  - name: Cluster and manager
+    tests: [cluster, rbac_*_cluster, rbac_white_all]
+    paths:
+      - "api/api/controllers/cluster_controller.py"
+      - "api/api/models/configuration_model.py"
+      - "framework/wazuh/cluster.py"
+      - "framework/wazuh/manager.py"
+      - "framework/wazuh/stats.py"
+      - "framework/wazuh/core/manager.py"
+      - "framework/wazuh/core/manager_conf_policy.py"
+      - "framework/wazuh/core/stats.py"
+
+  - name: MITRE
+    tests: [mitre, rbac_*_mitre, rbac_white_all]
+    paths:
+      - "api/api/controllers/mitre_controller.py"
+      - "framework/wazuh/mitre.py"
+      - "framework/wazuh/core/mitre.py"
+      - "tools/mitre/**"
+
+  - name: Overview
+    tests: [overview, rbac_*_overview, rbac_white_all]
+    paths:
+      - "api/api/controllers/overview_controller.py"
+
+  - name: API info
+    tests: [default, auth]
+    paths:
+      - "api/api/controllers/default_controller.py"
+      - "api/api/models/basic_info_model.py"
+
+  - name: Security, users and RBAC data
+    tests: [security, auth, default, rbac_*]
+    paths:
+      - "api/api/controllers/security_controller.py"
+      - "api/api/models/security_model.py"
+      - "api/api/models/security_token_response_model.py"
+      - "framework/wazuh/security.py"
+      - "framework/wazuh/core/security.py"
+      - "framework/wazuh/rbac/orm.py"
+      - "framework/wazuh/rbac/default/**"
+      - "api/test/integration/env/configurations/security/**"
+
+  - name: RBAC overlay of the agent tests
+    tests: [rbac_*_agent]
+    paths:
+      - "api/test/integration/env/configurations/rbac/agent/**"
+
+  - name: RBAC overlay of the cluster tests
+    tests: [rbac_*_cluster]
+    paths:
+      - "api/test/integration/env/configurations/rbac/cluster/**"
+
+  - name: RBAC overlay of the MITRE tests
+    tests: [rbac_*_mitre]
+    paths:
+      - "api/test/integration/env/configurations/rbac/mitre/**"
+
+  - name: RBAC overlay of the overview tests
+    tests: [rbac_*_overview]
+    paths:
+      - "api/test/integration/env/configurations/rbac/overview/**"
+
+  - name: RBAC overlay of the security tests
+    tests: [rbac_*_security]
+    paths:
+      - "api/test/integration/env/configurations/rbac/security/**"
+
+  - name: No-role user overlay
+    tests: [rbac_white_all]
+    paths:
+      - "api/test/integration/env/configurations/all/**"
+
+  - name: Upload size and CORS overlay
+    tests: [hardening]
+    paths:
+      - "api/test/integration/env/configurations/hardening/**"
+
+  - name: Rate limit and login block overlay
+    tests: [ratelimit]
+    paths:
+      - "api/test/integration/env/configurations/ratelimit/**"
+
+  - name: Cross-cutting API, framework, environment and build
+    tests: all
+    paths:
+      # Every request goes through these
+      - "api/api/*.py"
+      - "api/api/spec/**"
+      - "api/api/configuration/**"
+      - "api/api/controllers/__init__.py"
+      - "api/api/controllers/util.py"
+      - "api/api/models/__init__.py"
+      - "api/api/models/base_model_.py"
+      - "api/scripts/**"
+      - "api/service/**"
+      - "api/wrappers/**"
+      - "api/*"
+      # DAPI, cluster, sockets, RBAC enforcement and everything else under the framework
+      - "framework/**"
+      # The environment and the harness
+      - "api/test/integration/*"
+      - "api/test/integration/env/**"
+      - ".github/workflows/5_testintegration_api-endpoints.yml"
+      # The manager and the 5.x agents are compiled from the tree by install.sh
+      - "src/**"
+      - "etc/**"
+      - "install.sh"
+      - "VERSION.json"
+      - "tools/devContainer/scripts/wazuh-certs-tool.sh"

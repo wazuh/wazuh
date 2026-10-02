@@ -53,7 +53,6 @@ public:
     PullMetric(PullMetric&&) = delete;
     PullMetric& operator=(PullMetric&&) = delete;
 
-
     /// \copydoc fastmetrics::IMetric::name()
     const std::string& name() const override { return m_name; }
 
@@ -106,7 +105,7 @@ public:
     {
         if (!m_enabled.load(std::memory_order_relaxed) || !m_getter)
         {
-            return T{};
+            return T {};
         }
 
         try
@@ -115,7 +114,7 @@ public:
         }
         catch (...)
         {
-            return T{};
+            return T {};
         }
     }
 };

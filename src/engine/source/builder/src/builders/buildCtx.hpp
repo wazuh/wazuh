@@ -14,8 +14,8 @@ namespace builder::builders
 class BuildCtx final : public IBuildCtx
 {
 private:
-    bool m_isTestMode {false};            ///< Policy-level immutable: true for test/tester, false for production.
-    Context m_context;                    ///< Context
+    bool m_isTestMode {false}; ///< Policy-level immutable: true for test/tester, false for production.
+    Context m_context;         ///< Context
 
     std::shared_ptr<const RegistryType> m_registry; ///< Builders registry
 

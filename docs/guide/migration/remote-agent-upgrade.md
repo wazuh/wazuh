@@ -1,9 +1,9 @@
 # Remote Agent Upgrade Migration Guide (4.x to 5.x)
 
-The remote agent upgrade mechanism is preserved in 5.x. The same `PUT /agents/upgrade` and `PUT /agents/upgrade_custom` API endpoints exist, and the `/var/wazuh-manager/bin/agent_upgrade` binary is still available as a command-line alternative that calls the same framework. WPK files themselves are unchanged. What did change is the delivery path: the manager no longer drives the WPK transfer from the API request path. Instead, it stores a `remote_upgrade` task in the Task Manager, and `remoted`'s own task-polling thread delivers it to agents confirmed below v5.0.0 by pushing the WPK over the agent's existing 1514 session (see [`remoted.legacy_task_polling_interval`](../../ref/modules/remoted/configuration.md)). Two breaking requirements must be met before any remote upgrade to 5.0.0+ can succeed:
+The remote agent upgrade mechanism is preserved in 5.x. The same `PUT /agents/upgrade` and `PUT /agents/upgrade_custom` API endpoints exist, and the `/var/wazuh-manager/bin/agent_upgrade` binary is still available as a command-line alternative that calls the same framework. WPK files keep their format and are still installed by the agent's own upgrade module. What did change is the delivery path: the manager no longer drives the WPK transfer from the API request path. Instead, it stores a `remote_upgrade` task in the Task Manager, and `remoted`'s own task-polling thread delivers it to agents confirmed below v5.0.0 by pushing the WPK over the agent's existing legacy session on port 1514 (see [`remoted.legacy_task_polling_interval`](../../ref/modules/remoted/configuration.md#remotedlegacy_task_polling_interval)). The manager side is described end to end in [Agent upgrades](../../ref/modules/task_manager/agent-upgrades.md). Two breaking requirements must be met before any remote upgrade to 5.0.0+ can succeed:
 
-1. **TCP-only agent connectivity on port 1514.** In Wazuh 5.x, the agent ignores the `<protocol>` configuration option and always connects to the manager over TCP, regardless of what it was set to in 4.x. The manager still accepts UDP, but no 5.x agent will initiate a UDP connection. The risk arises after an agent that was connecting over UDP is upgraded: it restarts in TCP mode, and if outbound TCP on port 1514 is blocked in the firewall, the agent cannot reconnect and appears as `disconnected`, not `active`. Firewall rules must be updated to allow outbound TCP on port 1514 from the agent to the manager **before** the agent is upgraded to 5.x, or the agent will be unreachable after the upgrade.
-2. **Intermediate version requirement.** Direct remote upgrade to v5.0.0+ from agents older than v4.14.0 is blocked by the upgrade module and cannot be overridden with `--force`. Agents on v4.13.x or earlier must be upgraded to v4.14.x first.
+1. **HTTPS connectivity on port 1517.** A 4.x agent reaches the manager over the legacy protocol on port 1514 (TCP or UDP); once upgraded to 5.x it talks HTTPS to the manager's agent listener, on port `1517` by default (`<remote><https><port>`). The 4.x `<client><server><port>` and `<protocol>` are not read any more: an upgraded agent keeps the manager address and connects to `<address>:1517/wazuh-manager`. The WPK installer checks that this endpoint answers **before** installing, and aborts the upgrade (`upgrade_result` `2`, the agent stays on 4.x) when it does not. Open outbound TCP `1517` from the agents to the manager before upgrading; port 1514 stays needed for as long as agents remain on 4.x, since that is where the WPK is pushed.
+2. **Intermediate version requirement.** Direct remote upgrade to v5.0.0+ from agents older than v4.14.0 is rejected by the manager and cannot be overridden with `--force`. Agents on v4.13.x or earlier must be upgraded to v4.14.x first.
 
 ---
 
@@ -11,17 +11,17 @@ The remote agent upgrade mechanism is preserved in 5.x. The same `PUT /agents/up
 
 | Area                                         | 4.x behavior                                                                                 | 5.x behavior                                                                                                                                                                                                                                                                       |
 | -------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Agent-manager transport                      | TCP or UDP selectable via `<protocol>`                                                       | Agent always uses TCP; `<protocol>` is silently ignored by the agent (manager still accepts UDP)                                                                                                                                                                                   |
+| Agent-manager transport                      | Legacy protocol on port 1514, TCP or UDP selectable via `<protocol>`                         | An upgraded agent talks HTTPS to port `1517` (`<address>:1517/wazuh-manager`). `<protocol>` and the 4.x `<client><server><port>` are not read; the WPK installer aborts when that endpoint does not answer. The manager keeps serving 4.x agents on 1514 while `<remote><legacy><enabled>` is `yes` (the installer writes `yes`) |
 | Minimum agent version for 5.x remote upgrade | Not applicable (4.x managers only upgraded to 4.x)                                           | v4.14.0, older agents are rejected with `"Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first"`                                                                                                                                                             |
 | `force` flag                                 | Bypasses same-version and version-exceeds-manager checks                                     | Same as before, but **cannot** bypass the intermediate version requirement                                                                                                                                                                                                         |
 | WPK delivery to the agent                    | Manager pushes the WPK to the agent through Remoted (open/write/close/sha1/upgrade commands) | Manager stores a `remote_upgrade` task in the Task Manager. `remoted`'s own task-polling thread delivers it to agents confirmed below v5.0.0 by pushing the WPK over the agent's existing session, using the same open/write/close/sha1/upgrade commands as 4.x. |
-| Upgrade result reporting                     | Agent reported success/failure back to the manager                                           | The agent's ack (`upgrade_update_status`) is logged by `remoted` (at `WARNING` when the agent reports a genuine failure: the delivery itself succeeded, so this is not the manager's own error, but it must stay visible to severity-filtered monitoring) and replied to with `clear_upgrade_result` — it is not forwarded to the Engine's event pipeline. A push failure the manager itself detects is handled two ways depending on cost: a rejection (the agent answered, just not with success) is retried in-memory up to 5 times within the same poll cycle; a true no-response (nothing came back at all) is deferred, after a single attempt, to a small in-memory retry list that a later poll cycle picks back up, instead of blocking that cycle's sweep of every other agent. Either way, once every avenue is exhausted (or the failure can't be retried at all, or the entry ages out of the retry list), the task is simply logged and dropped — the manager never reports a task's outcome back to the Task Manager, so `tasks.db` has no way to distinguish that failure from a successful delivery; both stay `delivered`. Neither case is sent to the Engine. Upgrade progress is observable through the reported agent version, the agent-side log, and `remoted`'s own log (`WARNING` on a genuine failure) — not through the tasks table, which no longer carries a `failed` status |
+| Upgrade result reporting                     | Agent reported success/failure back to the manager, which recorded it as the task's status   | No outcome is recorded: tasks stay `delivered` whether the push and the install succeed or not, and `tasks.db` has no `failed` status. A 4.x agent's result ack (`upgrade_update_status`) is logged by `remoted` (`WARNING` when the agent reports a failure), answered with `clear_upgrade_result`, and also passed to the Engine like any other agent event. A push failure the manager itself detects is retried and then logged by `remoted`. Follow progress through the reported agent version, the agent's log and `remoted`'s log — see [Delivery to agents below v5.0.0](#delivery-to-agents-below-v500) |
 | HTTPS `verification_mode` vs. upgrade target  | Not applicable (no HTTPS transport in 4.x)                                                    | Upgrading to v5.0.0+ while `remoted`'s `<remote><https><verification_mode>` is not `none` is rejected (repo-based path: unless `force_upgrade` is set; custom-WPK path: unconditionally)       |
 | Manager trust anchor on the agent            | Not applicable (no TLS between agent and manager in 4.x)                                     | An agent upgraded to 5.x has no enrollment token to take an anchor from, so `remoted` pushes the manager's CA over the same upgrade channel, to `var/incoming/root-ca.pem`, before issuing `upgrade`. Controlled by `<remote><legacy><ca_delivery>` (default `yes`); never fails the upgrade. See [Trust anchor delivery](#trust-anchor-delivery-to-legacy-agents) |
 | Custom WPK location                          | `file_path` could be any absolute path on the manager; the manager pushed that file directly | `file_path` must resolve **inside** `/var/wazuh-manager/var/upgrade/` (symlinks followed). Anything else is rejected with `The WPK file does not exist`. The agent now fetches the file by name from that directory, so a path outside it named a file the delivery side would never find |
 | When `<remote>` changes take effect for upgrades | Read per request                                                                          | Read once when `wazuh-manager-modulesd` starts. Changing `<remote><legacy>` or `<remote><https><verification_mode>` needs modulesd restarted as well as remoted, or upgrade requests keep applying the previous value |
 | Manager-side upgrade configuration | `<agent-upgrade>` section, with `<enabled>` and `<wpk_repository>` | Moved into `<task-manager>` as `<upgrade_enabled>` and `<wpk_repository>`. **`<agent-upgrade>` is no longer a valid manager section and the schema rejects it** — a manager configuration still carrying one is refused with `Invalid configuration at '/agent-upgrade'` and the manager will not start. See [Configuration changes](#configuration-changes) below |
-| Manager-side upgrade socket | Its own `task-upgrade.sock`, framed length-prefixed JSON | Served on the Task Manager's `task-http.sock` as `POST /v1/agents/upgrade` and `POST /v1/agents/upgrade-custom`. `task-upgrade.sock` no longer exists |
+| Manager-side upgrade socket | `queue/tasks/upgrade`, served by the agent-upgrade module of `wazuh-modulesd` | Served on the Task Manager's `queue/sockets/task-http.sock` as `POST /v1/agents/upgrade` and `POST /v1/agents/upgrade-custom`. `queue/tasks/upgrade` no longer exists |
 
 ---
 
@@ -37,11 +37,13 @@ Before (4.x):
 ```xml
 <agent-upgrade>
   <enabled>yes</enabled>
-  <wpk_repository>packages.wazuh.com/5.x/wpk/</wpk_repository>
+  <wpk_repository>packages.wazuh.com/4.x/wpk/</wpk_repository>
 </agent-upgrade>
 ```
 
-After:
+After (5.x; both options are optional — `upgrade_enabled` defaults to `yes`, and with no
+`wpk_repository` the repository is picked from the target version, `packages.wazuh.com/5.x/wpk/` for
+a 5.x target):
 
 ```xml
 <task-manager>
@@ -55,34 +57,29 @@ it can be upgraded remotely, and how it verifies the WPK signature. Only the man
 see the [Agent Upgrade configuration reference](../../ref/modules/agent_upgrade/configuration.md).
 
 The resolved values are reported under the Task Manager in `getconfig`, as
-`task-manager.agent_upgrade`, rather than under an `agent-upgrade` module of their own.
-
-### Renamed internal options
-
-The recurring manager work that used to belong to `wazuh-manager-monitord` — log rotation and agent
-monitoring — is now the Task Manager's, and its internal options were renamed from `monitord.*` to
-`wazuh_modules.manager_task_*`. An override left under the old name is **silently ignored**: the
-lookup compares the part before the first `.` as well as the part after it, so the old key simply
-never matches. The full list is in the
-[Task Manager configuration reference](../../ref/modules/task_manager/configuration.md#where-their-settings-come-from).
-The agent keeps its own `monitord.*` keys.
+`task-manager.agent_upgrade`, rather than under an `agent-upgrade` module of their own. Every option
+and the internal options of the upgrade path are in the
+[Task Manager configuration reference](../../ref/modules/task_manager/configuration.md#agent-upgrades).
 
 ---
 
 ## Pre-migration
 
-### 1. Verify TCP connectivity on port 1514
+### 1. Verify HTTPS connectivity on port 1517
 
-Once an agent restarts as 5.x it will only try to connect to the manager over TCP on port 1514. To confirm TCP reachability, run this check from each agent host (or from a host in the same network segment as the agent):
+Once an agent restarts as 5.x it connects to the manager over HTTPS on port 1517 (the manager's
+`<remote><https><port>`), and the WPK installer refuses to upgrade an agent that cannot reach it. To
+confirm reachability, run this check from each agent host (or from a host in the same network segment
+as the agent):
 
 ```bash
 # Linux / macOS
-nc -zv <MANAGER_IP> 1514
+nc -zv <MANAGER_IP> 1517
 ```
 
 ```powershell
 # Windows (PowerShell)
-Test-NetConnection -ComputerName <MANAGER_IP> -Port 1514
+Test-NetConnection -ComputerName <MANAGER_IP> -Port 1517
 ```
 
 If the connection is refused or times out, update the firewall rules on the agent host and any network devices between agent and manager before proceeding:
@@ -90,34 +87,37 @@ If the connection is refused or times out, update the firewall rules on the agen
 **Linux, iptables**
 
 ```bash
-sudo iptables -A OUTPUT -p tcp --dport 1514 -d <MANAGER_IP> -j ACCEPT
+sudo iptables -A OUTPUT -p tcp --dport 1517 -d <MANAGER_IP> -j ACCEPT
 ```
 
 **Linux, firewalld**
 
 ```bash
-sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" destination address="<MANAGER_IP>" port port="1514" protocol="tcp" accept'
+sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" destination address="<MANAGER_IP>" port port="1517" protocol="tcp" accept'
 sudo firewall-cmd --reload
 ```
 
 **Windows, netsh (cmd as Administrator)**
 
 ```cmd
-netsh advfirewall firewall add rule name="Wazuh agent outbound 1514" dir=out action=allow protocol=TCP remoteip=<MANAGER_IP> remoteport=1514
+netsh advfirewall firewall add rule name="Wazuh agent outbound 1517" dir=out action=allow protocol=TCP remoteip=<MANAGER_IP> remoteport=1517
 ```
 
 **macOS, pf**
 
 ```bash
 # Add to /etc/pf.conf (or a file included from it)
-pass out proto tcp from any to <MANAGER_IP> port 1514
+pass out proto tcp from any to <MANAGER_IP> port 1517
 
 # Reload the ruleset
 sudo pfctl -f /etc/pf.conf
 ```
 
 > [!NOTE]
-> Port 1514 must allow **outbound TCP** from the agent to the manager. If agents sit behind NAT, ensure the return path from the manager is also open.
+> Port 1517 must allow **outbound TCP** from the agent to the manager, and the manager's own
+> firewall must accept it. Keep 1514 open as well until every agent runs 5.x: the WPK is pushed to
+> 4.x agents over their legacy session. See
+> [Agent-manager protocol from 4.x to 5.x](agent-manager-protocol.md) for the full port list.
 
 ### 2. Check agent versions
 
@@ -149,6 +149,18 @@ The `-l` flag lists all outdated agents with their current version. Agents on v4
 
 The manager downloads the WPK from the Wazuh repository before making it available to the agent. If the manager does not have outbound access to the WPK repository, prepare a custom WPK and use the custom upgrade method instead, see [Custom WPK upgrade](#custom-wpk-upgrade).
 
+### 4. Confirm the `openssl` command on Linux agents
+
+The Linux upgrade script validates the [CA the manager delivers](#trust-anchor-delivery-to-legacy-agents) with the `openssl` command-line tool. The agent package does not depend on it, and some supported images ship only the library (`openssl-libs`) or keep a custom build outside root's `PATH`. Without it the upgrade still succeeds, but the agent comes up verifying nothing (see [When the CA cannot be validated on the agent](#when-the-ca-cannot-be-validated-on-the-agent)).
+
+The script runs with the `PATH` of the agent's own daemons, which on some distributions is shorter than a root login shell's (on CentOS 7, for example, it has no `/root/bin`). Check each Linux agent with that `PATH` before upgrading, and install the distribution's `openssl` package where this prints nothing:
+
+```bash
+sudo env -i PATH="$(sudo tr '\0' '\n' < /proc/$(pgrep -xo wazuh-execd)/environ | sed -n 's/^PATH=//p')" sh -c 'command -v openssl'
+```
+
+macOS ships `openssl` (LibreSSL) and Windows agents validate the CA with .NET, so neither needs anything extra.
+
 ---
 
 ## Remote upgrade workflow in 5.x - legacy agents
@@ -167,7 +179,7 @@ API request or agent_upgrade binary (target: an agent below v5.0.0)
                                     session (open/write/close/sha1/upgrade)
 ```
 
-## Remote upgrade workflow in 5.x
+## Remote upgrade workflow in 5.x - 5.x agents
 
 ```
 API request or agent_upgrade binary
@@ -191,12 +203,38 @@ The agent-facing task payload contains four fields:
 | `installer`   | Installer script inside the WPK (`upgrade.sh` on Linux/macOS, `upgrade.bat` on Windows) |
 | `wpk_version` | Version the WPK installs. Consulted only by the legacy delivery path, to decide whether to send the manager's CA (see [Trust anchor delivery](#trust-anchor-delivery-to-legacy-agents)). Empty on the custom-WPK path, where the file name is not authoritative about what it installs |
 
-For agents below v5.0.0, `remoted` streams the WPK bytes to the agent directly, the same way it always has (see [`remoted.legacy_task_polling_interval`](../../ref/modules/remoted/configuration.md)). Wire-level hiccups are handled two ways depending on how they cost: a rejection (the agent answered, just not with success — a lost step acknowledgment counts here too when the agent still replies to a later step) is retried in-memory up to 5 times, all within the same poll cycle; a true no-response (nothing came back from the agent at all) is deferred, after a single attempt, to a small in-memory retry list that a later poll cycle picks back up, so one unresponsive agent never blocks that cycle's sweep of every other agent. Failures a retry can't fix at all (a missing local WPK file, the agent's installer already ran and reported failure) are never retried, in either cycle. Each retried attempt is logged at `debug` level except the last one, which logs a `warning`; a task that exhausts every retry avenue, or ages out of the retry list, is simply logged at `warning`/`error` and dropped — this poller never reports a task's outcome back to the Task Manager, so nothing in `tasks.db` is ever sent to the Engine either way. Progress is observable through:
+### Delivery to agents below v5.0.0
 
-- The agent's reported version once the upgrade completes and the agent reconnects, and `remoted`'s own log for a failure the manager detects — `tasks.db` itself has no way to distinguish that outcome from a successful delivery: the task's `STATUS` stays `delivered` regardless (`delivery_time` is populated by the manager's own `get_pending_tasks` read, a side effect of the poller retrieving the task, not by anything agent-driven, so it never meant the agent had actually installed the WPK in the first place).
-- The agent's own upgrade result, forwarded to the Engine's event pipeline like any other agent event (`upgrade_update_status`, one of "Upgrade was successful" / "Upgrade failed due missing dependency" / "Upgrade failed"). `remoted` replies to the agent with `clear_upgrade_result` within a few seconds of receiving a well-formed acknowledgment, regardless of whether it reports success or failure — this is what stops the agent's own retry loop (an agent resends the same acknowledgment on a growing backoff until it gets this reply back). The reply is handled by `remoted`'s own background poller rather than inline on receipt, so a burst of acknowledgments never competes with other agents' traffic for processing.
-- The agent version reported by `GET /agents/<id>` once the upgrade completes and the agent reconnects.
-- The agent-side upgrade log (`/var/ossec/logs/ossec.log`).
+For agents below v5.0.0, `remoted` pushes the WPK bytes to the agent itself, with the same
+`open`/`write`/`close`/`sha1`/`upgrade` commands as 4.x (see
+[`remoted.legacy_task_polling_interval`](../../ref/modules/remoted/configuration.md#remotedlegacy_task_polling_interval)):
+
+- **A rejection** (the agent answered, but not with success) is retried up to 5 times within the same
+  poll cycle.
+- **No response at all** is not retried in that cycle: the task goes to an in-memory retry list (at
+  most 100 entries, each kept for up to an hour) that later cycles pick up, so one unresponsive agent
+  does not hold up the others.
+- **Failures a retry cannot fix** (a missing local WPK file, an installer that already ran and
+  reported failure) are not retried.
+
+Retried attempts are logged at `debug` level except the last, which is a `warning`; a task that runs
+out of attempts or ages out of the retry list is logged and dropped. Its row in `tasks.db` stays
+`delivered` either way: the manager records no outcome.
+
+An agent that is still on 4.x after the attempt (a step to 4.14.x, or a 5.x install that failed)
+reports its result over the legacy session as `upgrade_update_status`. `remoted` logs it (`INFO` on
+success, `WARNING` on a failure the agent reports), replies with `clear_upgrade_result` — which stops
+the agent from resending it — and passes the message on to the Engine like any other agent event. An
+agent that comes up as 5.x reports its result once, as a stateless `upgrade_result` event (see
+[Agent Upgrade](../../ref/modules/agent_upgrade/README.md#flow)).
+
+Progress is observable through:
+
+- The agent version reported by `GET /agents?agents_list=<id>&select=id,version,status` once the
+  upgrade completes and the agent reconnects.
+- `remoted`'s log (`legacy_task_delivery:` lines) for push failures and the agent's reported result.
+- The agent-side logs (`/var/ossec/logs/ossec.log`, and `/var/ossec/logs/upgrade.log` for the
+  installer).
 
 ---
 
@@ -250,6 +288,54 @@ The manager refuses to send the CA, and logs an actionable error, when:
 Delivery status is visible in the manager log only. As with WPK delivery itself, `tasks.db` records
 no per-task outcome — see the "Upgrade result reporting" row in [Breaking changes at a
 glance](#breaking-changes-at-a-glance).
+
+### When the CA cannot be validated on the agent
+
+On Linux the upgrade script checks the delivered CA with the `openssl` command, and then checks that
+it verifies the manager's certificate at the address the agent dials, before installing it as the
+agent's anchor. If it does not verify the manager (the CA was rotated, the address is not in the
+certificate, or something else answered on that port), the upgrade aborts with `upgrade_result` `2`,
+the CA is kept in `var/incoming`, and the agent keeps running its current version, so neither a stale
+CA nor an impostor on the network can take the agent off the air or leave it unverified. Fix the
+manager certificate and retry, or, on a 5.x agent, install the anchor with `--certs-only` (below).
+The check runs only where the agent will verify against the anchor: it is skipped with the agent's
+own `<certificate_authorities>` and under `none` or `certificate`. When it is skipped, or when `curl`
+cannot run it (missing, or no TLS 1.3 support, as on macOS), the CA is installed on its own validation. When `openssl` is not found, the script leaves the CA in
+`var/incoming/root-ca.pem`, installs no anchor, and the upgrade still reports success. If an anchor
+is already present, the delivered copy is discarded instead. The upgraded agent runs with
+`verification_mode` resolved to `none`:
+
+- `upgrade.log` says `cannot be validated: openssl was not found on this host` and how to recover.
+- `ossec.log` logs `(4126)` on every start until an anchor is installed, next to the generic
+  `TLS verification is DISABLED (verification_mode=none).` warning.
+- Later remote upgrades of that agent abort at the installer's certificate trust check
+  (`upgrade_result` `2`) unless the OS trust store already verifies the manager's certificate: a
+  5.x agent with no anchor is not given the pass a 4.x one gets. The agent keeps running on its
+  current version.
+
+To recover an agent already upgraded this way, install the anchor with an enrollment token. The
+agent keeps its id and `client.keys`, and the step needs no `openssl` command:
+
+1. On the master, mint a token for the address the agent already connects to. `--no-credential`
+   is enough, since the token is only used to fetch and pin the CA:
+   ```bash
+   sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <manager address> --no-credential --ttl 1h > token
+   ```
+2. Copy the token to the agent and install the anchor with the agent stopped:
+   ```bash
+   sudo systemctl stop wazuh-agent
+   sudo /var/ossec/bin/wazuh-agent-auth --token-file token --certs-only
+   sudo systemctl start wazuh-agent
+   ```
+3. Confirm that `/var/ossec/etc/certs/root-ca.pem` exists and that `ossec.log` no longer logs
+   `(4126)`. `--certs-only` also removes `/var/ossec/var/incoming/root-ca.pem`, so a later upgrade
+   cannot install that copy over the anchor.
+
+Do not copy the file from `var/incoming` into place by hand or re-run the upgrade to pick it up. A
+hand-copied anchor does not get the ownership and marker `--certs-only` writes (see the
+[client module reference](../../ref/modules/client/README.md)). Once the agent runs 5.x the manager
+no longer delivers its CA, so installing `openssl` afterwards changes nothing for that agent; install
+it on the agents still waiting to be upgraded.
 
 ### Certificate requirements
 
@@ -310,12 +396,10 @@ Example response:
 {
    "data": {
       "affected_items": [
-         {
-            "agent": "002",
-            "task_id": "7e4b1a2c-8f3d-46a1-9b0e-6d2f8c9a1234"
-         }
+         "001",
+         "002"
       ],
-      "total_affected_items": 1,
+      "total_affected_items": 2,
       "total_failed_items": 0,
       "failed_items": []
    },
@@ -335,21 +419,22 @@ If an agent below v4.14.0 is included, it appears in `failed_items`:
       "failed_items": [
          {
             "error": {
-               "code": 1822,
+               "code": 1819,
                "message": "Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first"
             },
             "id": ["002"]
          }
       ]
    },
-   "message": "Some upgrade tasks were not created",
+   "message": "No upgrade task was created",
    "error": 1
 }
 ```
 
 ### Via binary
 
-The binary is fire-and-forget: it creates the upgrade task(s) and returns immediately, without waiting for or reporting the outcome:
+The binary is fire-and-forget in 5.x: it creates the upgrade task(s) and returns immediately, without
+waiting for or reporting the outcome (4.x waited and printed each agent's result):
 
 ```bash
 /var/wazuh-manager/bin/agent_upgrade -a 001 002
@@ -361,22 +446,19 @@ To target a specific version:
 /var/wazuh-manager/bin/agent_upgrade -a 001 002 -v v5.0.0
 ```
 
-Available flags:
+```text
+Upgrade tasks created for 2 agent(s).
+Note: Agents will execute upgrades autonomously. Use agent logs to track progress.
+```
 
-| Flag                | Description                                                                                                      |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `-a`/`--agents`     | One or more agent IDs to upgrade                                                                                 |
-| `-v`/`--version`    | Target version; defaults to the manager version                                                                  |
-| `-r`/`--repository` | WPK repository base URL                                                                                          |
-| `-F`/`--force`      | Bypass same-version and version-exceeds-manager checks; does **not** bypass the v4.14.0 intermediate requirement |
-| `--http`            | Use HTTP instead of HTTPS to fetch WPK                                                                           |
-| `--package_type`    | Package type override (`deb`, `rpm`)                                                                             |
-| `-s`/`--silent`     | Suppress output                                                                                                  |
-| `-d`/`--debug`      | Debug mode                                                                                                       |
+Agents that cannot be upgraded are listed first, as `Agent <ID> upgrade failed. Status: <error>`.
+`-F`/`--force` skips the same-version and version-above-manager checks but, like `force` in the API,
+not the v4.14.0 intermediate requirement. Every flag is listed in the
+[`agent_upgrade` reference](../../ref/modules/agent_upgrade/README.md#agent_upgrade).
 
 ## Two-step upgrade path (agents below v4.14.0)
 
-Agents on v4.13.x or earlier require an intermediate upgrade to v4.14.x before they can be upgraded to 5.0. The 5.x `agent_upgrade` module allows targeting a version below the manager version via the `-v`/`--version` parameter (or `upgrade_version` in the API).
+Agents on v4.13.x or earlier require an intermediate upgrade to v4.14.x before they can be upgraded to 5.0. The 5.x manager accepts a target below its own version, given with `-v`/`--version` (or `upgrade_version` in the API).
 
 ### Step 1: Upgrade to v4.14.x
 
@@ -393,14 +475,8 @@ Via binary:
 /var/wazuh-manager/bin/agent_upgrade -a 002 -v v4.14.5
 ```
 
-```
-/var/wazuh-manager/bin/agent_upgrade -a 002 -v v4.14.5
-
-Upgrading...
-
-Upgraded agents:
-        Agent 002 upgraded: v4.13.1 -> v4.14.5
-```
+Wait until the agent reports `v4.14.5` (`GET /agents?agents_list=002&select=id,version,status`)
+before running step 2.
 
 > [!NOTE]
 > Using `--force` / `force=true` on step 1 is only needed if the agent reports a version equal to or higher than the target. It is not required for a normal version step-up.
@@ -439,15 +515,18 @@ curl -k -X PUT "https://localhost:55000/agents/upgrade_custom?pretty=true&agents
 ### Via binary
 
 ```bash
-/var/wazuh-manager/bin/agent_upgrade -a 001 -f /var/wazuh-manager/var/upgrade/wazuh_agent_v5.0.0_linux_x86_64.wpk -x upgrade.sh
+/var/wazuh-manager/bin/agent_upgrade -a 001 -f wazuh_agent_v5.0.0_linux_x86_64.wpk -x upgrade.sh
 ```
 
-| Flag             | Description                                                                               |
-| ---------------- | ----------------------------------------------------------------------------------------- |
-| `-f`/`--file`    | Path to the WPK file on the manager filesystem                                            |
-| `-x`/`--execute` | Installer script inside the WPK (`upgrade.sh` for Linux/macOS, `upgrade.bat` for Windows) |
+`-f` takes the bare file name or a path inside `/var/wazuh-manager/var/upgrade/`; the CLI exits with
+an error before creating any task when the file is not there. `-x` names the installer inside the WPK
+(`upgrade.sh` for Linux/macOS, `upgrade.bat` for Windows). See the
+[`agent_upgrade` reference](../../ref/modules/agent_upgrade/README.md#agent_upgrade).
 
-The `agent_upgrade` module still validates the intermediate version requirement for custom WPK files whose filename follows the canonical pattern `wazuh_agent_v<VERSION>_<rest>.wpk`. Files with non-standard names skip the manager-side version check and rely on the agent-side pre-install script to block an incompatible version.
+The manager still enforces the intermediate version requirement for custom WPK files whose name
+carries a `_v<VERSION>_` token, as in `wazuh_agent_v<VERSION>_<rest>.wpk`. Files without one skip the
+manager-side version check and rely on the agent-side pre-install script to block an incompatible
+version. See [Version constraints](../../ref/modules/task_manager/agent-upgrades.md#version-constraints).
 
 ---
 
@@ -455,12 +534,16 @@ The `agent_upgrade` module still validates the intermediate version requirement 
 
 After triggering the upgrade, confirm all conditions below are met before declaring the migration complete:
 
-- Agent version reported in `GET /agents/<id>` matches `5.0.0`.
+- Agent version reported in `GET /agents?agents_list=<id>&select=id,version,status` is the target (for example `v5.0.0`).
 - Agent connection status is `active`.
 - `ossec.log` on the agent contains no errors related to the upgrade (`grep -i "upgrade" /var/ossec/logs/ossec.log`).
 - The manager log records the CA step for each upgraded agent, and no warning or error against it
   (`grep "legacy_task_delivery.*CA" /var/wazuh-manager/logs/wazuh-manager.log`). An agent whose CA delivery
   failed is still upgraded and connected, but verifies nothing — worth catching before the migration
   is declared complete.
+- On each Linux or macOS agent, the trust anchor is in place (`sudo ls -l /var/ossec/etc/certs/root-ca.pem`)
+  and `ossec.log` has no `(4126)`. A delivered CA the agent could not validate leaves the agent
+  upgraded and connected but unverified, and the manager log does not show it. See
+  [When the CA cannot be validated on the agent](#when-the-ca-cannot-be-validated-on-the-agent).
 
 ---

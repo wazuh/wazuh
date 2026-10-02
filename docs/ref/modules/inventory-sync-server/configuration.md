@@ -12,7 +12,7 @@ tuned through internal options.
 | `<cluster>` in the manager configuration | The cluster name stamped onto every document |
 | Internal options | Every transport and connector tunable listed below |
 
-Two values are deliberately NOT configurable:
+Three values are deliberately NOT configurable:
 
 - **The socket path** is fixed at `queue/sockets/inventory-sync-http.sock`, relative to the installation
   directory. Internal options can only carry integers, so there is no mechanism to set a path; remoted
@@ -40,9 +40,9 @@ An option present in `wazuh-manager-internal-options.conf` but out of its allowe
 non-numeric -- prevents `wazuh-manager-modulesd` from starting, and is reported by
 `wazuh-manager-modulesd -t`. Values are parsed as decimal; a leading zero does not mean octal.
 
-The shipped `wazuh-manager-internal-options.conf` template lists every option below commented out
-with its compiled default and range; uncomment an entry only to override it. The file is never
-overwritten during upgrades.
+The shipped `wazuh-manager-internal-options.conf` carries only a comment header: every default below
+is compiled into the module. Add a line only to override one. The file is never overwritten during
+upgrades.
 
 ### Transport
 
@@ -228,7 +228,7 @@ wazuh_modules.inventory_sync_server_reserved_control_connections=64
 
 - **Default value:** `64`
 - **Allowed values:** 0 to 256 (`0`/absent: the default; clamped to at most a quarter of `max_parallel_connections`)
-- **Note:** The route-class model's decisive knob: the data class's session cap resolves to `max_parallel_connections` minus this reserve, so a saturated `POST /stateful` plane alone can never fill the accept queue — control-class requests (agent deletions) and liveness probes always find a slot. Per-class occupancy is visible as `server.sessions.{data,control,liveness}` in [`GET /metrics`](metrics.md#transport--server).
+- **Note:** The route-class model's decisive knob: the data class's session cap resolves to `max_parallel_connections` minus this reserve, so a saturated `POST /stateful` plane alone can never fill the accept queue — control-class requests (agent deletions and on-demand scans) and liveness probes always find a slot. Per-class occupancy is visible as `server.sessions.{data,control,liveness}` in [`GET /metrics`](metrics.md#transport--server).
 
 ### wazuh_modules.inventory_sync_server_control_max_body_bytes
 
@@ -240,7 +240,7 @@ wazuh_modules.inventory_sync_server_control_max_body_bytes=65536
 
 - **Default value:** `65536` (64 KiB)
 - **Allowed values:** 0 to 1048576 (`0`/absent: the default)
-- **Note:** Control-class requests (the agent-deletion routes) carry their identity in a header and an empty body by contract, so anything above this cap is a client error answered `413` from the declared length, before a single body byte is read. Control-class requests are exempt from the in-flight byte budget; this cap is what bounds them instead.
+- **Note:** Control-class requests (`POST /_internal/agents/delete` and `POST /_internal/vd/scan`) carry only a small JSON body naming the agent (`{"agent_id":"7"}`), so anything above this cap is a client error answered `413` from the declared length, before a single body byte is read. Control-class requests are exempt from the in-flight byte budget; this cap is what bounds them instead.
 
 ### wazuh_modules.inventory_sync_server_control_max_sessions
 
@@ -295,7 +295,8 @@ wazuh_modules.inventory_sync_server_sync_queue_bytes=67108864
 
 ### wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds
 
-`Retry-After` value, in seconds, answered with `503` while the vulnerability feed is not ready.
+`Retry-After` value, in seconds, answered with `503` while the vulnerability feed is not ready (or the
+scanner is enabled here but still starting up).
 
 ```ini
 wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds=10
@@ -303,7 +304,8 @@ wazuh_modules.inventory_sync_server_vd_feed_retry_after_seconds=10
 
 - **Default value:** `10`
 - **Allowed values:** 10 to 1800
-- **Note:** Only VD sessions get this header; the agent re-sends the same session after the delay.
+- **Note:** Only VD sessions (and on-demand scans that reach a lane worker while the feed is not ready)
+  get this header; the agent re-sends the same session after the delay.
   The minimum is 10 because a smaller value tells the whole fleet to hammer the endpoint. This
   setting fixes the header **value** only — how often it fires is driven by the CVE-feed download
   state and is visible as `vd.retry_after.total` in
@@ -325,7 +327,7 @@ wazuh_modules.inventory_sync_server_vd_workers=0
 
 ### wazuh_modules.inventory_sync_server_vd_scan_queue_slots
 
-Sessions allowed to wait for a VD worker.
+Sessions and on-demand scan requests allowed to wait for a VD worker.
 
 ```ini
 wazuh_modules.inventory_sync_server_vd_scan_queue_slots=0
@@ -333,7 +335,7 @@ wazuh_modules.inventory_sync_server_vd_scan_queue_slots=0
 
 - **Default value:** `0` (twice `vd_workers`)
 - **Allowed values:** 0 to 256
-- **Note:** A VD session arriving with the queue full is answered `503` ("scan capacity exhausted") —
+- **Note:** A VD session (or an on-demand scan) arriving with the queue full is answered `503` ("scan capacity exhausted") —
   scans run synchronously inside the request, so queueing more than the lane can drain only trades a
   fast `503` for a slow timeout. Refusals count as `vd.capacity.503.total` in
   [`GET /metrics`](metrics.md#vulnerability-detection-lane--vd).
@@ -342,14 +344,15 @@ wazuh_modules.inventory_sync_server_vd_scan_queue_slots=0
 
 ### wazuh_modules.inventory_sync_server_session_query_batch_size
 
-Indexer search page size used while draining a session.
+Indexer search page size of the checksum verification (`ModuleCheck` sessions), which pages the agent's
+documents with `search_after`.
 
 ```ini
 wazuh_modules.inventory_sync_server_session_query_batch_size=0
 ```
 
 - **Default value:** `0` (1000 documents)
-- **Allowed values:** `0` (module default), or `100` to `10000` (the indexer rejects pages above `index.max_result_window`, default `10000`)
+- **Allowed values:** `0` (module default), or `100` to `10000` (the indexer rejects pages above `index.max_result_window`, default `10000`); `1`–`99` is rejected at startup
 - **Note:** Larger pages mean fewer round-trips to the indexer but a bigger response held in memory
   per query.
 
@@ -619,11 +622,16 @@ never land.
 
 ## Troubleshooting
 
-### The module logs that it cannot use its socket path
+### The module logs that it cannot use or bind its socket path
 
-The manager will not start. The path is fixed, so the fault is always its parent directory: it is
-missing, is not writable, or a file that is not a socket is sitting at the path. Check
-`/var/wazuh-manager/queue/sockets/`.
+The path is fixed, so the fault is always on disk. Check `/var/wazuh-manager/queue/sockets/`:
+
+- `cannot use its socket path`: the parent directory is missing, or a file that is not a socket sits at
+  the path. `wazuh-manager-modulesd` exits instead of running without inventory ingress. This happens
+  after `wazuh-manager-control start` has already reported success, so it shows in `status` and in
+  `logs/wazuh-manager.log`.
+- `could not bind`: the bind itself failed (for example, the directory is not writable). The module
+  keeps running and retries every 60 s.
 
 ### `/stats` and `/config` answer 503
 
@@ -651,8 +659,10 @@ descriptor-limit note on `max_parallel_connections`, and prefer raising `sync_wo
 
 ### Confirming what the module is running with
 
-Enable `wazuh_modules.debug=1` and restart: the module logs every resolved tunable at startup. The values
-are also reported by `getconfig wmodules` on the modulesd socket.
+Enable `wazuh_modules.debug=1` and restart: the module logs, at debug level, the value read for every
+option above except `session_query_batch_size` (`0` meaning "the module default"). `getconfig wmodules` on the
+modulesd socket reports the same values, except `reserved_control_connections`,
+`control_max_body_bytes`, `control_max_sessions` and `session_query_batch_size`.
 
 ## Related options in other daemons
 

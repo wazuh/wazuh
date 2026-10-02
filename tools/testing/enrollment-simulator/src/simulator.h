@@ -28,11 +28,9 @@ private:
     // Available groups
     std::vector<std::string> groups = {"default"};
 
-    // Random number generators
-    std::mt19937 gen;
-    std::uniform_real_distribution<> dis_ratio;
-    std::uniform_int_distribution<> dis_char;
-    std::uniform_int_distribution<> dis_group;
+    // Random number generator: one engine per thread, since every worker thread draws from it
+    // (a shared std::mt19937 and its distributions are not safe to use concurrently).
+    static std::mt19937& rng();
 
     // SSL context
     SSL_CTX* ssl_ctx;

@@ -1,131 +1,150 @@
 # Control Module (wm_control)
 
-The **Control Module** provides control operations for both the Wazuh manager and agents, handling restart and reload requests through a Unix domain socket interface. It is implemented in a single source file (`wm_control.c`) that compiles differently depending on the build target:
+The **Control Module** restarts or reloads the Wazuh manager, or a Unix agent, on request. It listens
+on a local Unix domain socket and accepts exactly two commands, `restart` and `reload`. It is
+implemented in a single source file (`src/wazuh_modules/src/wm_control.c`) that compiles differently
+depending on the build target:
 
-- **Manager build** (`TARGET=manager`): `process_control()` runs directly in the main thread, binding to the manager control socket. Commands are dispatched to `wm_control_dispatch()` with `"wazuh-manager"` as the service name.
-- **Agent build** (`CLIENT` defined, Unix): `process_control()` is spawned as a thread within `wazuh-modulesd`, binding to the agent control socket. Commands are dispatched to `wm_control_dispatch()` with `"wazuh-agent"` as the service name.
+- **Manager** (`TARGET=manager`): runs inside `wazuh-manager-modulesd` and hands every accepted
+  command to the setuid helper [`wazuh-manager-service-control`](#wazuh-manager-service-control),
+  because modulesd itself runs unprivileged as `wazuh-manager`.
+- **Unix agent** (`CLIENT` defined): runs inside the agent's `wazuh-modulesd` and runs
+  `systemctl <action> wazuh-agent` or `bin/wazuh-control <action>` itself (on macOS it asks the
+  launcher to do it, see [Architecture](architecture.md#agent-side-unix)).
 
-On **Windows agents**, the equivalent logic is implemented in `control_dispatch()` within `client-agent/src/control.c`. The Windows path is called directly in-process by `request.c` rather than via a separate socket listener.
+On **Windows agents** the equivalent logic is `control_dispatch()` in `src/client-agent/src/control.c`,
+called in-process by `wazuh-agentd`; there is no socket.
 
-## Key Features
+The module has no configuration section: it is always added on Linux, macOS and the BSDs
+(`wm_config()` in `src/wazuh_modules/src/wmodules.c`) and logs under the tag
+`wazuh-manager-modulesd:control` on the manager (`wazuh-modulesd:control` on an agent).
 
-- **Manager Restart/Reload**: Graceful manager restart or config reload via systemctl or wazuh-control
-- **Remote Agent Restart/Reload**: Manager can send restart/reload commands to individual agents via the control channel
-- **Systemd Integration**: Automatic detection and use of systemd when available
-- **Socket-Based Control**: Unix domain socket for inter-process communication
-- **Cross-Platform Agent Support**: Unix (`wm_control` with `CLIENT` defined) and Windows (`control_dispatch`) implementations
-- **Strict Command Validation**: Unknown commands are rejected with an error response
+## Socket interface
 
-## Overview
+| Component | Socket path | Framing |
+|-----------|-------------|---------|
+| Manager | `/var/wazuh-manager/queue/sockets/control.sock` | Raw bytes: one command per connection, no length header |
+| Agent (Unix) | `/var/ossec/queue/sockets/control` | Wazuh secure framing (4-byte length header) |
 
-The control module serves as the control plane for operational commands. It:
+Both are `SOCK_STREAM` sockets created with mode `0660`, owned by the daemon's user and the Wazuh
+group. The paths are `CONTROL_SOCK` in `src/shared/include/defs.h`; the framework uses
+`common.CONTROL_SOCKET` for the manager one.
 
-1. **Manager**: Listens on `$WAZUH_HOME/queue/sockets/control.sock` (default: `/var/wazuh-manager/queue/sockets/control.sock`)
-2. **Agent (Unix)**: Listens on `$WAZUH_HOME/queue/sockets/control` (default: `/var/ossec/queue/sockets/control`)
-3. **Receives control commands** from the API, framework, or remoted
-4. **Executes system operations** (restart/reload) via systemctl or wazuh-control
-5. **Returns operation status** to the caller
+### Manager commands
 
-Manager-side is enabled for manager builds (`TARGET=manager`) on Unix-like systems.
-Agent-side (Unix) is the same `wm_control.c` compiled with `CLIENT` defined; Windows agents use `control_dispatch()` in `client-agent`.
+| Request | Response | Meaning |
+|---------|----------|---------|
+| `restart` | `ok accepted` | `wazuh-manager-service-control` validated the request and is about to restart the manager |
+| `reload` | `ok accepted` | Same, for a reload |
+| `restart` / `reload` | `err Service control rejected action` | The helper refused the request, or did not confirm it within 5 seconds |
+| `restart` / `reload` | `err Cannot create service control pipe`, `err Cannot fork` | modulesd could not start the helper |
+| `<command> <args>` | `err Unexpected arguments` | Any argument after the command is rejected |
+| anything else | `Err` | Unknown command (logged as `Unknown command: '<command>'`) |
 
-## Socket Interface
+The manager also checks the peer's credentials (`SO_PEERCRED`): a connection from any user other than
+`root` or `wazuh-manager` is closed without an answer and logged as
+`Rejected unauthorized control socket peer.`
 
-**Socket Type**: Unix domain stream socket (`SOCK_STREAM`)
-**Protocol**: Simple text-based command protocol
+`ok accepted` means the action was **accepted**, not that it finished: the restart or reload runs
+afterwards, in a process modulesd does not wait for.
 
-| Component | Socket Path |
-|-----------|-------------|
-| Manager | `$WAZUH_HOME/queue/sockets/control.sock` (default: `/var/wazuh-manager/queue/sockets/control.sock`) |
-| Agent (Unix) | `$WAZUH_HOME/queue/sockets/control` (default: `/var/ossec/queue/sockets/control`) |
+### Agent commands
 
-### Manager-Side Commands
+| Request | Response (Unix) | Response (Windows) |
+|---------|-----------------|--------------------|
+| `restart` | `ok ` | `ok ` |
+| `reload` | `ok ` | `ok ` |
+| anything else | `Err` | `err Unrecognized command` |
 
-| Command | Description | Response |
-|---------|-------------|----------|
-| `restart` | Restart the Wazuh manager | `ok ` (immediate) |
-| `reload` | Reload manager configuration | `ok ` (immediate) |
-| *(other)* | Any unrecognized command | `Err` |
+On the agent, anything after the first space is ignored rather than rejected. On Windows, `reload` is a
+full stop and start of the service, as `restart` is.
 
-### Agent-Side Commands (Unix: `wm_control_dispatch` / Windows: `control_dispatch`)
+## Manager restart and reload
 
-| Command | Description | Response |
-|---------|-------------|----------|
-| `restart` | Restart the Wazuh agent | `ok ` (immediate) |
-| `reload` | Reload agent configuration | `ok ` (immediate) |
-| *(other)* | Any unrecognized command | `Err` (Unix) / `err Unrecognized command` (Windows) |
+The Server API is the usual client: `PUT /cluster/restart` and `PUT /cluster/reload` call
+`manager_restart()` / `manager_reload()` in `framework/wazuh/core/cluster/utils.py`, which send the
+command to `control.sock` and require an answer starting with `ok`.
 
-## How It Works
+| Error | When |
+|-------|------|
+| `1901` *Control socket has not been created* | `control.sock` does not exist (modulesd is not running) |
+| `1902` *Connection to control socket failed* | The socket exists but the connection failed |
+| `1014` *Error communicating with socket* | The answer did not start with `ok` (for example `err Service control rejected action`), or the exchange failed |
 
-### Manager Control
+Both routes require the `cluster:read` and `cluster:restart` RBAC actions.
 
-1. **Request Received**: Client (API/framework) sends command to the manager control socket
-2. **Systemd Detection**: Module checks if systemd is available
-3. **Command Selection**:
-   - **With systemd**: `systemctl restart/reload wazuh-manager`
-   - **Without systemd**: `bin/wazuh-control restart/reload`
-4. **Fork and Execute**: Spawns child process to execute command
-5. **Immediate Response**: Returns success immediately (non-blocking)
+### wazuh-manager-service-control
 
-### Remote Agent Control (Task-Based - v5.0+)
+`/var/wazuh-manager/bin/wazuh-manager-service-control` (source `src/util/manager_service_control/main.c`)
+is the only path from `wm_control` to the manager service. It is installed `root:wazuh-manager`, mode
+`4750` (set-user-ID root).
 
-**For agents running version 5.0.0 or higher**, restart and reload operations use the **Task Manager** instead of direct control messages:
+```text
+Usage: wazuh-manager-service-control {restart|reload}
+       wazuh-manager-service-control -h
+```
 
-1. **API Request**: Client calls `PUT /agents/{agent_id}/restart` or `PUT /agents/{agent_id}/reload`
-2. **Framework**: Creates a task via Task Manager socket (`/queue/sockets/task-http.sock`)
-   - Task type: `agent_restart` or `agent_reload`
-   - Payload: `{}`
-   - Task stored in Task Manager database with status `pending`
-3. **Agent Polling**: Agent polls Task Manager for pending tasks via HTTPS
-4. **Task Retrieval**: Agent receives task from manager
-5. **Agent Dispatch**: Agent's `request.c` forwards to control socket (Unix) or calls `control_dispatch()` (Windows)
-6. **Execution**: The agent runs restart/reload via systemctl or wazuh-control
-7. **Fire-and-Forget**: No status reported back to manager (task marked as `delivered` locally)
+It accepts exactly one argument. It runs only when the **real** user is `root` or `wazuh-manager`
+(the effective user being `root` through the setuid bit), and only if its own file, the install
+directory, `bin/`, `bin/wazuh-manager-control` and, when present, `bin/.process_list` are owned by
+`root` and not group- or world-writable — and its own file still carries the setuid bit. It then
+clears the environment (`PATH=/usr/sbin:/usr/bin:/sbin:/bin`, `LANG=C`), reports acceptance to
+modulesd and becomes `root` before running:
 
-**Key Differences from Legacy Approach**:
-- **Asynchronous**: API returns immediately after task creation
-- **No status tracking**: Fire-and-forget model, no upgrade-style result queries
-- **Batch operations**: Multiple agents can be restarted/reloaded efficiently
-- **Version check**: API validates agent version ≥ 5.0.0 before creating tasks
+| Action | systemd is PID 1 | No systemd |
+|--------|------------------|------------|
+| `restart` | `/usr/bin/systemctl restart wazuh-manager.service` | `bin/wazuh-manager-control restart` |
+| `reload` | polls `systemctl is-active wazuh-manager.service` once a second, up to 60 times: `active` → `systemctl reload wazuh-manager.service`; `inactive` or `failed` → `bin/wazuh-manager-control reload`; any other state → wait | `bin/wazuh-manager-control reload` |
 
-**Framework Code**:
-- Task creation: `framework/wazuh/core/agent_tasks.py::core_restart_agents()` / `core_reload_agents()`
-- High-level API: `framework/wazuh/agent.py::restart_agents()` / `reload_agents()`
+The unit's `ExecReload` is `wazuh-manager-control reload`, which restarts every daemon except
+`wazuh-manager-remoted`, so agent connections stay up.
 
-### Systemd Detection
+On any refusal it prints `wazuh-manager-service-control: <reason>` on standard error and exits `1`;
+`-h` prints the usage and exits `0`. When modulesd runs it, standard error is not the manager log, so
+the only trace there is modulesd's `Privileged service control rejected or could not execute '<action>'`.
+A failure after acceptance (for example `cannot determine a safe manager service state` when the unit
+never settles during the 60 seconds) leaves no trace in `logs/wazuh-manager.log` at all; check
+`systemctl status wazuh-manager` or `wazuh-manager-control status`.
 
-The module detects systemd by checking:
-- Existence of `/run/systemd/system` directory
-- PID 1 process name is `systemd` (read from `/proc/1/comm`)
+Run by hand (as `root`), it does exactly what an API restart does:
 
-### Reload Safety
+```bash
+/var/wazuh-manager/bin/wazuh-manager-service-control restart
+```
 
-For reload operations with systemd, the module:
-1. Waits for service to be in "active" state (up to 60 seconds)
-2. Ensures service is not "inactive" or "failed"
-3. Executes reload only when service is ready
+## Agent restart and reload
 
-## Integration Points
+The API never connects to an agent's control socket. For agents on **v5.0.0 or later**,
+`PUT /agents/restart`, `PUT /agents/{agent_id}/restart`, `PUT /agents/group/{group_id}/restart` and the
+matching `reload` routes create one `agent_restart` or `agent_reload` task per agent in the Task
+Manager (`POST /v1/tasks/bulk` on `queue/sockets/task-http.sock`, up to 500 agents per request, empty
+payload). The agent fetches the task on its next `POST /control` poll to `wazuh-manager-remoted`, and
+`wazuh-agentd` hands it to the control socket (Unix) or to `control_dispatch()` (Windows). The Task
+Manager marks the task delivered when it hands it out; **no result comes back to the manager**. The
+full flow is in [Architecture](architecture.md#remote-agent-restartreload-request-flow).
 
-### API Usage
+The routes require `agent:restart` or `agent:reload`. Framework code:
+`framework/wazuh/agent.py` (`restart_agents()`, `reload_agents()` and their `_by_group` variants) and
+`framework/wazuh/core/agent_tasks.py` (`core_restart_agents()`, `core_reload_agents()`).
 
-The Wazuh RESTful API uses the control channel for:
-- `PUT /cluster/restart` — Manager restart
-- `PUT /agents/restart` / `PUT /agents/{agent_id}/restart` — Agent restart (requires agent v5.0.0+)
-- `PUT /agents/reload` / `PUT /agents/{agent_id}/reload` — Agent reload (requires agent v5.0.0+)
-- `PUT /agents/group/{group_id}/reload` — Reload agents in a group
+### Agent version requirement and error codes
 
-**Framework Code**:
-- Manager: `framework/wazuh/core/cluster/utils.py::manager_restart()`
-- Agents: `framework/wazuh/core/agent_tasks.py::core_restart_agents()` / `core_reload_agents()`
+The target agent must run **v5.0.0 or later**; an older agent is answered with error `1761`.
 
-### Agent Version Requirement
+A manager only knows the version of the agents that have connected to **it**, and it answers error `1774` ("the agent has never connected to this node, which holds no information about it") for any agent it has no version for, rather than `1761`, which would blame a version it has never seen. This applies to a single manager as much as to a cluster: **an agent that is registered but has never connected is answered with `1774`, on every deployment.**
 
-Agent restart and reload via the API require the target agent to be running **version 5.0.0 or higher**. Agents on older versions will return error `1761`.
+**`1774` does not mean the command was dropped.** The task is created either way, and the agent runs it on its first poll within `task-manager.task_ttl` (1 h by default), after which the unfetched copy expires and is logged at debug level. The response message ("Restart command was not sent to some agents", or "Reload …") is the generic one for a result with failed items — **do not send the request again on account of a `1774`**: task ids are derived from the request's timestamp, so a second request creates a second task and the agent runs both. `1775` ("The task could not be created") is the answer when the task could *not* be created: nothing was queued, so that request can be sent again.
 
-### Communication Examples
+In a cluster this is what makes the per-node breakdown readable. The request is broadcast to every node — 5.x agents connect over stateless, load-balanced HTTPS and have no fixed owning node, so the task is created everywhere and the agent, which discards a task id it has already run, runs it once wherever it polls. `1774` is then a per-node answer, so read it in the `nodes` field: a merge drops it as soon as any node reports that agent as affected, and it reaches the top level only when no node has ever seen the agent.
 
-**Manager Control (Direct Socket)**:
+### Verifying the result
+
+Nothing reports completion. A restarted agent reconnects; check its status and `lastKeepAlive` with
+`GET /agents?agents_list=<id>`, or the agent's own log (`/var/ossec/logs/ossec.log`), where
+`wazuh-agentd` logs `https_client: task <id> (agent_restart) dispatched.` or `... failed to dispatch.`
+
+## Example: the manager socket
+
 ```python
 import socket
 
@@ -137,58 +156,26 @@ def send_control_command(command):
     sock.close()
     return response
 
-result = send_control_command('restart')  # Returns: "ok "
+result = send_control_command('restart')  # "ok accepted"
 ```
 
-**Agent Control (Task Manager - v5.0+)**:
-```python
-from wazuh.core.agent_tasks import core_restart_agents
-import time
+Run it as `root` or `wazuh-manager`; any other user is disconnected without an answer.
 
-# Create restart tasks for agents
-agent_ids = ['001', '002', '003']
-request_time = int(time.time())
-result = core_restart_agents(agents_chunk=agent_ids, request_time=request_time)
+## Related modules
 
-# Result format: {"data": [{"agent": "001", "error": 0, "message": "..."}, ...]}
-```
-
-## Related Modules
-
-- **wazuh-manager-modulesd / wazuh-modulesd**: Host daemon for `wm_control` (manager and agent Unix builds, respectively)
-- **wazuh-manager-remoted**: Forwards control messages from manager to agents
-- **wazuh-agentd**: Routes incoming `"control"` requests — forwards to control socket (Unix) or calls `control_dispatch()` directly (Windows)
-- **wazuh-manager-apid**: Calls control socket/framework for restart and reload API endpoints
-
-## Architecture Changes
-
-**Previous Architecture (v4.x)**:
-- Control functionality in `wazuh-execd` daemon
-- Socket: `/var/ossec/queue/sockets/com`
-- Agent restart/reload triggered via Active Response scripts (`restart.sh`, `restart-wazuh.exe`)
-
-**Current Architecture (v5.0)**:
-- Manager control in `wm_control` (within modulesd); socket: `$WAZUH_HOME/queue/sockets/control.sock`
-- Agent control (Unix): same `wm_control.c` compiled with `CLIENT`, running as a thread in `wazuh-modulesd`; socket: `$WAZUH_HOME/queue/sockets/control`
-- Agent control (Windows): `control_dispatch()` in `client-agent`, called in-process by `request.c`
-- Agent restart/reload via direct control channel — no Active Response scripts required
-- `wcom_restart()` and `wcom_reload()` removed from `wazuh-execd`
-
-## Security Considerations
-
-- **Socket Permissions**: The control socket is created with `0660` permissions
-- **Group Access**: Socket owned by wazuh group for API/framework access
-- **No Authentication**: Local Unix socket provides implicit authentication via filesystem permissions
-- **Immediate Response**: Operations return immediately before completion to prevent timeout issues
+- **wazuh-manager-modulesd / wazuh-modulesd**: host daemon for `wm_control` (manager and Unix agent)
+- **wazuh-manager-remoted**: serves the agent's `POST /control` poll that delivers restart and reload tasks
+- **wazuh-agentd**: receives the task and forwards it to the control socket (Unix) or calls `control_dispatch()` (Windows)
+- **wazuh-manager-apid**: calls the control socket for `PUT /cluster/restart` and `PUT /cluster/reload`
+- [Task Manager](../task_manager/README.md): stores the `agent_restart` / `agent_reload` tasks
 
 ## Documentation
 
 | Document | Description |
 |----------|-------------|
-| [Architecture](architecture.md) | Technical architecture and implementation details |
+| [Architecture](architecture.md) | Components, data flows, privilege model and the 4.x migration |
 
 ## See Also
 
-- [Manager Installation](../../getting-started/installation.md) - Manager installation and systemctl usage
 - [Server API Reference](../server-api/api-reference.md) - API endpoints that use the control channel
-- [RBAC](../rbac/index.html) - `agent:reload` and `agent:restart` RBAC actions
+- [RBAC](../rbac/README.md) - `agent:reload`, `agent:restart` and `cluster:restart` RBAC actions

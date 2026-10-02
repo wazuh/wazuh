@@ -15,15 +15,71 @@
 #include "metadata_provider.h"
 
 #include <flatbuffers/flatbuffers.h>
+#include "json.hpp"
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <set>
 
+namespace
+{
+    // The manager's own 409 bodies are not consistent about which key carries the mismatch kind
+    // (vdScanLane.cpp uses "error", sessionProcessor.cpp's checksum path uses "status") -- checked
+    // in that order so both shapes resolve. Never throws: a malformed/unexpected body (a proxy
+    // that strips it, a future manager change) must fall back to the caller's default wording, not
+    // crash the sync thread.
+    std::optional<std::string> jsonMismatchKind(const std::string& body)
+    {
+        try
+        {
+            const auto json = nlohmann::json::parse(body);
+
+            for (const char* key :
+                    {"error", "status"
+                    })
+            {
+                const auto it = json.find(key);
+
+                if (it != json.end() && it->is_string())
+                {
+                    return it->get<std::string>();
+                }
+            }
+        }
+        catch (const nlohmann::json::exception&)
+        {
+            // Not JSON, or not an object -- treated the same as "no recognizable field" below.
+        }
+
+        return std::nullopt;
+    }
+
+    // "current_version" is only meaningful on the version_mismatch shape; absent otherwise.
+    std::optional<uint64_t> jsonCurrentVersion(const std::string& body)
+    {
+        try
+        {
+            const auto json = nlohmann::json::parse(body);
+            const auto it = json.find("current_version");
+
+            if (it != json.end() && it->is_number_unsigned())
+            {
+                return it->get<uint64_t>();
+            }
+        }
+        catch (const nlohmann::json::exception&)
+        {
+        }
+
+        return std::nullopt;
+    }
+} // namespace
+
 // Various synchronization functions write a SyncResult into `m_syncState.lastSyncResult`
 // We use that to generate a std::string message which will be reported as a warning by each module (FIM, SCA, Syscollector, AgentInfo).
-static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result, bool isFeedBased)
+static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result, bool isFeedBased,
+                                                               const std::string& failureBody)
 {
     std::string failureReason;
 
@@ -56,21 +112,64 @@ static std::string determineSyncFailureReasonBasedOnSyncResult(SyncResult result
 
         // Reached by synchronizeModule()/synchronizeMetadataOrGroups() themselves, never by the
         // dedicated Mode::CHECK integrity flow (requiresFullSync(), which tracks its own
-        // isChecksumMismatch locally and never calls this function at all). What actually triggers
-        // it here is always a position/version disagreement, not a literal data-checksum compare --
-        // syscollector's VD feed offset for the one instance built with isFeedBased == true, or (for
-        // every other instance: FIM, SCA, agent-info, syscollector's own regular inventory sync)
-        // agent-info's metadata/groups global_version counter (synchronizeMetadataOrGroups()'s own
-        // `globalVersion` parameter), unrelated to any feed. "Checksum mismatch" for the non-feed
-        // wording is a deliberate simplification, not a literal description of the wire mechanism --
-        // chosen for a generic, module-agnostic term shared by FIM/SCA/agent-info alike. Do NOT
-        // describe this as triggering a full resync -- that retry-budget mechanism belongs to
-        // requiresFullSync() alone and is not what happens here: this session is simply dropped.
+        // isChecksumMismatch locally and never calls this function at all). Do NOT describe this
+        // as triggering a full resync -- that retry-budget mechanism belongs to requiresFullSync()
+        // alone and is not what happens here: this session is simply dropped.
+        //
+        // The manager's own body tells us which of the (at least) two distinct causes this is --
+        // a real feed-offset mismatch (VD) or a data-checksum mismatch (FIM/SCA/agent-info/regular
+        // syscollector) -- so read it instead of guessing from isFeedBased, which only says which
+        // protocol instance this is, not what the manager actually rejected. isFeedBased is kept
+        // as a fallback for a body this code does not recognize (older manager, stripped by a
+        // proxy, or a shape introduced after this code was written).
         case SyncResult::CHECKSUM_ERROR:
-            failureReason = isFeedBased
-                            ? "Manager reported a feed version mismatch (409) for this session; it will be retried on the next sync cycle."
-                            : "Manager reported a checksum mismatch (409) for this session.";
-            break;
+            {
+                const auto kind = jsonMismatchKind(failureBody);
+
+                if (kind == "version_mismatch")
+                {
+                    const auto currentVersion = jsonCurrentVersion(failureBody);
+                    agent_metadata_t metadata {};
+                    const bool haveOwnOffset = metadata_provider_get(&metadata) == 0;
+
+                    failureReason = "Manager reported a feed version mismatch (409) for this session";
+                    std::string separator = ": ";
+
+                    if (haveOwnOffset)
+                    {
+                        failureReason += separator + "agent's feed offset is " + std::to_string(metadata.vd_feed_offset);
+                        separator = ", ";
+                    }
+
+                    if (currentVersion)
+                    {
+                        failureReason += separator + "manager's is " + std::to_string(*currentVersion);
+                    }
+
+                    failureReason += "; it will be retried on the next sync cycle.";
+
+                    // Unconditional and safe regardless of haveOwnOffset: metadata_provider_get()
+                    // only allocates metadata.groups on success (matches every other call site in
+                    // this file, e.g. currentAgentId() above), and metadata_provider_free_metadata()
+                    // is itself a no-op on an already-null groups pointer.
+                    metadata_provider_free_metadata(&metadata);
+                }
+                else if (kind == "checksum_mismatch")
+                {
+                    failureReason = "Manager reported a checksum mismatch (409) for this session.";
+                }
+                else
+                {
+                    // "Checksum mismatch" for the non-feed fallback wording is a deliberate
+                    // simplification, not a literal description of the wire mechanism -- chosen for a
+                    // generic, module-agnostic term shared by FIM/SCA/agent-info alike.
+                    failureReason = isFeedBased
+                                    ? "Manager reported a feed version mismatch (409) for this session; it will be retried on the next sync cycle."
+                                    : "Manager reported a checksum mismatch (409) for this session.";
+                }
+
+                break;
+            }
 
         default:
             break;
@@ -394,7 +493,8 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
         // clearSyncState() below), so reading them without the lock races
         // against a late/duplicate HCRESULT for this session. (CID 562615)
         std::lock_guard<std::mutex> lock(m_syncState.mtx);
-        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult, m_isFeedBased);
+        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult, m_isFeedBased,
+                                                                    m_syncState.lastSyncFailureBody);
         managerNotReady = m_syncState.lastSyncManagerNotReady;
         awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
     }
@@ -599,7 +699,8 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
         // Same unlocked-read race as synchronizeDeltaByBlocks(); see the
         // comment there. (CID 562619)
         std::lock_guard<std::mutex> lock(m_syncState.mtx);
-        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult, m_isFeedBased);
+        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult, m_isFeedBased,
+                                                                    m_syncState.lastSyncFailureBody);
         managerNotReady = m_syncState.lastSyncManagerNotReady;
         awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
     }
@@ -714,7 +815,8 @@ SyncModuleResult AgentSyncProtocol::notifyDataClean(const std::vector<std::strin
     {
         // Same unlocked-read race as synchronizeModule(); see the comment there. (CID 562619)
         std::lock_guard<std::mutex> lock(m_syncState.mtx);
-        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult, m_isFeedBased);
+        failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult, m_isFeedBased,
+                                                                    m_syncState.lastSyncFailureBody);
         managerNotReady = m_syncState.lastSyncManagerNotReady;
         awaitingPrerequisite = m_syncState.lastSyncAwaitingPrerequisite;
     }
@@ -1252,6 +1354,7 @@ bool AgentSyncProtocol::applyHttpResult(int httpCode, std::string_view body, uin
     {
         case 409: // checksum_mismatch: full resync will be triggered by the caller.
             m_syncState.lastSyncResult = SyncResult::CHECKSUM_ERROR;
+            m_syncState.lastSyncFailureBody = std::string(body);
             m_logger(LOG_DEBUG, "Checksum mismatch detected by manager (409): " + std::string(body));
             break;
 

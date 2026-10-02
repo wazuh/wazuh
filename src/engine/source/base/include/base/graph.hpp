@@ -56,17 +56,20 @@ private:
             std::vector<std::string> cycle;
             if (it != stack.end())
             {
-                std::transform(it, stack.end(), std::back_inserter(cycle), [](const K& name)
-                {
-                    if constexpr (std::is_convertible_v<K, std::string>)
-                    {
-                        return std::string(name);
-                    }
-                    else
-                    {
-                        return name.toStr();
-                    }
-                });
+                std::transform(it,
+                               stack.end(),
+                               std::back_inserter(cycle),
+                               [](const K& name)
+                               {
+                                   if constexpr (std::is_convertible_v<K, std::string>)
+                                   {
+                                       return std::string(name);
+                                   }
+                                   else
+                                   {
+                                       return name.toStr();
+                                   }
+                               });
             }
 
             if constexpr (std::is_convertible_v<K, std::string>)

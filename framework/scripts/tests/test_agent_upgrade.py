@@ -35,8 +35,10 @@ def test_get_script_arguments(mock_ArgumentParser):
     mock_ArgumentParser.assert_called_once_with()
     mock_ArgumentParser.return_value.add_argument.assert_has_calls([
         call('-a', '--agents', nargs='+', help='Agent IDs to upgrade.'),
-        call('-r', '--repository', type=str, help='Specify a repository URL. [Default: packages.wazuh.com/4.x/wpk/]'),
-        call('-v', '--version', type=str, help='Version to upgrade. [Default: latest Wazuh version]'),
+        call('-r', '--repository', type=str,
+             help='Specify a repository URL. [Default: task-manager.wpk_repository if set, otherwise '
+                  'packages.wazuh.com/<major>.x/wpk/ for the target version]'),
+        call('-v', '--version', type=str, help="Version to upgrade. [Default: the manager's version]"),
         call('-F', '--force', action='store_true', help='Forces the agents to upgrade, ignoring version validations.'),
         call('-s', '--silent', action='store_true', help='Do not show output.'),
         call('-l', '--list_outdated', action='store_true', help='Generates a list with all outdated agents.'),

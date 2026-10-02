@@ -127,7 +127,9 @@ static void wm_task_manager_read_tunables(wm_task_manager *data) {
     data->keep_log_days = wm_task_manager_zeroable("manager_task_log_keep_days", 0, 500);
     data->size_rotate_mb = wm_task_manager_zeroable("manager_task_log_size_rotate", 0, 4096);
     data->daily_rotations = getDefine_Int_default("wazuh_modules", "manager_task_log_daily_rotations", 1, 256, 0);
-    data->day_wait = getDefine_Int_default("wazuh_modules", "manager_task_log_day_wait", 0, 600, 0);
+    /* Minimum 1, not 0: the module's valueOr() reads 0 as "unset" and substitutes the 10 s default,
+     * so accepting 0 here would let an operator ask for midnight and silently get 00:00:10. */
+    data->day_wait = getDefine_Int_default("wazuh_modules", "manager_task_log_day_wait", 1, 600, 0);
     data->delete_old_batch = getDefine_Int_default("wazuh_modules", "manager_task_delete_old_batch", 1, 100000, 0);
     data->delete_old_budget = getDefine_Int_default("wazuh_modules", "manager_task_delete_old_budget", 1, 3600, 0);
 

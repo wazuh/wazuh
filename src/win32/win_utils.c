@@ -406,7 +406,9 @@ int local_start()
      * the legacy enrollment loop uses on POSIX (agt->enrollment.retry_delta/retry_max) -- mirrors
      * agentd.c's own gate exactly, since w_agent_token_bootstrap()'s classification is shared
      * across both platforms and this caller must not collapse TRANSIENT and PERMANENT into the
-     * same outcome the way a bare "!= 0" check would.
+     * same outcome the way a bare "!= 0" check would. A token the manager does not accept yet
+     * (W_TOKEN_BOOTSTRAP_PENDING) is retried the same way, but only for
+     * W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S.
      *
      * Only a token that was present and (after any transient retries) still failed does this. An
      * install with no token at all returns W_TOKEN_BOOTSTRAP_DONE from the gate, so the normal
@@ -417,9 +419,12 @@ int local_start()
      * neither file the bootstrap writes is handed over to a second user (token_bootstrap.c). */
     const bool anchor_before = (IsFile(AGENT_ANCHOR_CA) == 0);
     int token_bootstrap_delay = 0;
+    time_t token_pending_since = 0;
     w_token_bootstrap_result_t token_bootstrap_result;
 
-    while ((token_bootstrap_result = w_agent_token_bootstrap(0, 0)) == W_TOKEN_BOOTSTRAP_TRANSIENT) {
+    while ((token_bootstrap_result =
+                w_token_bootstrap_bound_pending(w_agent_token_bootstrap(0, 0), &token_pending_since,
+                                                w_get_monotonic_time())) == W_TOKEN_BOOTSTRAP_TRANSIENT) {
         if (token_bootstrap_delay < agt->enrollment.retry_max) {
             token_bootstrap_delay += agt->enrollment.retry_delta;
         }

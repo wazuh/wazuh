@@ -1,20 +1,29 @@
 # Unit Tests
 
-Docker-based unit testing suite for Wazuh components with automated report generation.
+Docker-based runner for Wazuh's C unit test suites and the agent RTR checks, with a Markdown report.
 
 ## Overview
 
-Runs Wazuh's complete unit test suite using Docker, including CMocka tests, RTR toolset, and CTest integration for Linux/Windows components.
+`unit-tests.sh` runs, inside the `ghcr.io/wazuh/unit-tests:latest` image (Ubuntu 22.04 with GCC, MinGW, CMocka, Wine, lcov, cppcheck, astyle and valgrind) and on the checkout this script belongs to:
+
+1. A clean build (`make clean-deps`, `make clean`), then `make deps` and `make TARGET=manager TEST=1`.
+2. The manager CMocka suites under `src/unit_tests/` (configured with `-DTARGET=manager`), with coverage.
+3. `ctest` over the main build tree.
+4. The RTR checks (`python3 build.py -r <component>`) of `data_provider`, `shared_modules/dbsync`, `wazuh_modules/syscollector` and `syscheckd`.
+5. An agent build (`TARGET=agent TEST=1`) and its CMocka suites, with coverage.
+6. A clean Windows agent build (`TARGET=winagent TEST=1`) and its CMocka suites under Wine.
+
+Each step writes `result-*.txt` and a `*.log` into `src/`, and the report is generated from the result files.
 
 ## Prerequisites
 
 - Docker with permission to run containers
-- Access to `ghcr.io/wazuh/unit-tests:latest` image
+- Access to the `ghcr.io/wazuh/unit-tests:latest` image, or build it locally with `--build-image`
 
 ## Usage
 
 ```bash
-# Run all unit tests (default)
+# Run everything in the Docker image and print the report (default)
 ./unit-tests.sh
 
 # Run with parallel compilation
@@ -25,26 +34,23 @@ Runs Wazuh's complete unit test suite using Docker, including CMocka tests, RTR 
 
 | Option | Description |
 |--------|-------------|
-| `--build-image` | Build the Docker image and exit |
-| `--results` | Generate markdown results from existing result-\*.txt files |
-| `--clean` | Remove generated files (result-\*.txt and \*.log) |
-| `--jobs N` | Number of parallel compilation jobs (default: 1) |
-| `--help` | Show help message |
+| `--build-image` | Build the Docker image from the `Dockerfile` next to the script and exit |
+| `--build` | Run the steps directly on the current host, without Docker (this is what the container runs) |
+| `--results` | Generate the Markdown report from existing `result-*.txt` files in `src/` |
+| `--clean` | Remove the generated files (`result-*.txt` and `*.log` in `src/`) |
+| `--jobs N` | Number of parallel compilation jobs (default: `THREADS`, or 1) |
+| `--help` | Show the help message |
 
-## Test Components
-
-- **Linux Manager CMocka tests**: Core Wazuh manager functionality
-- **Linux Agent CMocka tests**: Agent components for Linux
-- **Windows Agent CMocka tests**: Agent components for Windows
-- **RTR Components**: Data provider, DBsync, Rsync, Syscollector, FIM
-- **CTest Integration**: Standardized test execution
+With no option, or with only `--jobs`, the script runs in Docker and then prints the report.
 
 ## Output
 
-Generates markdown report with test results and coverage statistics:
+The report has one section per result file found: the RTR components, the `ctest` run, and the CMocka suites of each target with their coverage:
 
 ```markdown
 ## Linux Manager cmocka tests
+
+### Tests
 
 |Test|Status|
 |---|:-:|
@@ -52,9 +58,10 @@ Generates markdown report with test results and coverage statistics:
 |test_error_handling|🔴|
 
 ### Coverage
+
 |Coverage type|Percentage|Result|
 |---|---|---|
-|Lines|85.4%|🟢|
+|Lines|85.4%|1234 of 1445 lines|
 ```
 
 ## Examples

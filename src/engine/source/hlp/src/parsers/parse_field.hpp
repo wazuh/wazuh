@@ -70,14 +70,21 @@ void unescape(bool is_escaped, std::string& vs, std::string_view escape);
 /**
  * @brief Adds a key:value pair to a JSON document. Unescapes the value if necessary.
  *
+ * An empty value is written as null under @p key as given (its dots are not converted); any other value is written
+ * under @p key with every '.' converted into '/'. Each branch counts the tokens of the path it writes, one per '/'
+ * (std::count; the escapes ~0 and ~1 add none), and writes nothing if there are more than json::Json::MAX_DEPTH.
+ *
  * @param doc The JSON document to update.
  * @param key The key to be added to the document.
  * @param value The value to be added to the document.
  * @param is_escaped Whether the value should be unescaped.
  * @param escape The character used to unescape quote or escape characters inside the string value.
- * @param is_quoted Whether the value is quoted. If false, it tries to parse the value as int or double.
+ * @param is_quoted Whether the value was quoted in the source. Currently not consulted: a non-empty value is
+ * always stored as a string (unescaped when @p is_escaped) and an empty one as null; no numeric conversion is done.
+ * @return true if the pair was written; false, without touching @p doc, if the path it would be written to has more
+ * than json::Json::MAX_DEPTH tokens.
  */
-void updateDoc(json::Json& doc,
+bool updateDoc(json::Json& doc,
                std::string_view key,
                std::string_view value,
                bool is_escaped,

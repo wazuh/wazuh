@@ -17,17 +17,12 @@ shared Fernet key. Possession of this key is what defines membership in the
 cluster.
 
 > **Note:** The `<cluster>` XML section (where the key and other cluster
-> settings are configured) is not parsed or validated by the shared C
-> configuration library — it is recognized but otherwise ignored at that
-> layer. All parsing and validation happen later, in Python (lenient parsing
-> via `utils.read_cluster_config`, used generally; strict validation via
-> `cluster.check_cluster_config`, used only at daemon startup / CLI). This is
-> relevant to the key-handling caveat described in
-> [Cluster Configuration](../modules/cluster/configuration.md): a manually
-> written, incomplete `<cluster>` block will pass through the C parser
-> without error, and a missing `<key>` field silently falls back to a
-> hardcoded, shared value rather than causing a validation failure or a new
-> random key being generated.
+> settings are configured) is validated against the manager configuration
+> schema like every other section of `wazuh-manager.conf`. `key` is a
+> **required** field there — a missing or malformed `<key>` (it must match
+> `^[A-Za-z0-9]{32}$`) fails configuration validation outright rather than
+> falling back to a hardcoded or shared value; see
+> [Cluster Configuration](../modules/cluster/configuration.md).
 
 ## Trust Boundary
 

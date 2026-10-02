@@ -8,24 +8,30 @@ configuration files into the structures each daemon consumes.
 | Consumer | File | Entry point | Format |
 |---|---|---|---|
 | Agent daemons (`-DCLIENT`) | `etc/ossec.conf`, `etc/shared/agent.conf` | `ReadConfig(modules, cfgfile, ...)` (`src/config.c`) | XML (`os_xml`) |
-| Manager, on behalf of agents | `etc/shared/<group>/agent.conf` (`CAGENT_CONFIG`) | `ReadConfig()` | XML |
+| Manager, on behalf of agents (the `Test_*()` checks behind `verify-agent-conf`) | `etc/shared/<group>/agent.conf` (`CAGENT_CONFIG`) | `ReadConfig()` | XML |
 | Manager daemons | `etc/wazuh-manager.conf` | `w_mconf_load()` / `w_mconf_section()` (`src/mconf-config.c`, manager only) | strict XML validated against `etc/wazuh-manager.schema.json` |
 
 `ReadConfig()` dispatches each XML top-level element to its reader (`Read_Syscheck`, `Read_Localfile`, `Read_Client`,
 `Read_WModule`...). The manager's own sections (`global`, `remote`, `auth`, `wdb`, `indexer`, `vulnerability-detection`,
-`task-manager`) have no XML reader anymore: an agent file that still carries one gets
-`<section> configuration is only set in the manager.` and the block is ignored. `agent-upgrade` is the
-mirror image and the only one: it is an **agent-only** section, so `Read_AgentUpgrade` is compiled for
-the agent alone and a manager file carrying `<agent-upgrade>` gets
-`agent-upgrade configuration is only set in the agent.` — a manager has no agent-upgrade module, and
-configures the upgrades it serves under `task-manager`. Elements removed in 5.x are listed in
-`OBSOLETE_ELEMENTS` (`src/config.c`) and are ignored with a warning; anything else unknown is still fatal.
+the 4.x `vulnerability-detector`, `task-manager`: `manager_sections[]` in `src/config.c`) have no XML reader anymore:
+an agent file that still carries one gets `<section> configuration is only set in the manager.` and the block is
+ignored. `<logging>` and `<cluster>` are accepted and skipped without a message. `agent-upgrade` is the mirror image
+and the only one: it is an **agent-only** section, so `Read_AgentUpgrade` is compiled for the agent alone and the
+manager build of `ReadConfig()` (which only ever parses a group's `agent.conf`) warns
+`agent-upgrade configuration is only set in the agent.` — a manager has no agent-upgrade module, and configures the
+upgrades it serves under `task-manager`; in `etc/wazuh-manager.conf` the element is an unknown option, rejected with
+`(1244)` by the schema. Elements removed in 5.x are listed in `OBSOLETE_ELEMENTS` (`src/config.c`) and are ignored
+with a warning; anything else unknown is still fatal.
 
 `mconf-config.c` wraps `shared_modules/manager_config` (pugixml + JSON Schema): `w_mconf_load()` parses and validates
-the XML, fills the schema defaults and keeps the effective document as cJSON; `w_mconf_section("remote")` returns one
-section. The daemons hand that section to the JSON readers below. The engine (`wazuh-manager-analysisd`) does not link
-this library: it reads the same file through `manager_config` and publishes the document to `libwazuhshared.so` with
-`w_mconf_hook_set()` (`src/shared/src/mconf_hook.c`), which `w_mconf_section()` also honours.
+the XML (without the certificate-file checks; `w_mconf_validate()`, behind each daemon's `-t`, runs them), fills the
+schema defaults and keeps the loaded document, one per process; `w_mconf_section("remote")` returns a new cJSON copy of
+one section (the caller deletes it). The daemons hand that section to the JSON readers below. An invalid file is
+logged as `(1244): Invalid configuration at '<file>': <pointer>: <reason>.`. Inside `libwazuhshared.so`,
+`cluster_utils.c` and `debug_op.c` read `cluster` and `logging` through `w_mconf_hook_section()`
+(`src/shared/src/mconf_hook.c`): `mconf-config.c` registers its own loader as that provider (a constructor), and the
+engine (`wazuh-manager-analysisd`), which does not link this library, reads the same file through `manager_config` and
+registers itself with `w_mconf_hook_set()`.
 
 ## Manager sections (effective document → struct)
 
@@ -40,8 +46,9 @@ this library: it reads the same file through `manager_config` and publishes the 
 | `task-manager` | `wm_task_manager_read_json` (`src/wmodules-task-manager.c`) | `wm_task_manager` | modulesd |
 
 `wm_task_manager_read_json()` also reads `global` and `remote` for itself, which is why those two rows
-name more than one consumer: the disconnection sweep's interval and the gates that decide whether an
-agent upgrade could be delivered are both other sections' values. It reads them there rather than in
+name more than one consumer: the disconnection sweep's window (its polling interval is derived from it) and
+the gates that decide whether an agent upgrade could be delivered are both other sections' values; both are
+read once, so a change to `remote` reaches those gates only when modulesd restarts. It reads them there rather than in
 `wm_task_manager_read()` because `wm_config()` initialises the default modules **before**
 `w_mconf_load()`, so no effective document exists yet at that point.
 
@@ -70,4 +77,4 @@ the types this file uses there.
 ## Documentation
 
 * Manager configuration reference: `docs/ref/configuration/manager/`.
-* Agent configuration: [online documentation](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html).
+* Agent configuration: `docs/ref/configuration/agent/README.md`.

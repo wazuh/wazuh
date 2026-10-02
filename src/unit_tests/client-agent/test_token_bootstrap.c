@@ -388,6 +388,7 @@ static void remove_test_paths(void) {
     unlink("etc/client.keys");
     unlink("etc/other-file");
     unlink(AGENT_REENROLL_SECRET);
+    unlink(AGENT_DELIVERED_CA);
     remove_staged_siblings("etc/certs", "root-ca.pem.");
     remove_staged_siblings("etc", "client.keys.");
 }
@@ -396,7 +397,16 @@ static int group_setup(void **state) {
     (void) state;
     mkdir("etc", 0755);
     mkdir("etc/certs", 0755);
+    mkdir("var", 0755);
+    mkdir("var/incoming", 0755);
     remove_test_paths();
+    return 0;
+}
+
+static int group_teardown(void **state) {
+    (void) state;
+    remove_test_paths();
+    rmdir("var/incoming");
     return 0;
 }
 
@@ -760,6 +770,45 @@ static void test_empty_placeholder_keys_file_is_not_already_enrolled(void **stat
     assert_int_equal(IsFile("etc/certs/root-ca.pem"), 0);
 }
 
+/* An enrollment that commits an anchor also supersedes a CA a WPK upgrade left staged. */
+static void test_enrollment_removes_a_ca_staged_by_an_upgrade(void **state) {
+    (void) state;
+    write_file("etc/client.keys", "");
+    write_file(AGENT_DELIVERED_CA, "STALE-CA");
+    write_token_file(true, true, NULL);
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    /* Only AGENT_ANCHOR_CA hits TempFile()'s benign FSTAT_ERROR mdebug1 here -- KEYS_FILE
+     * already exists (the placeholder), so fstat() on it succeeds and that debug line
+     * doesn't fire twice. */
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Removed the CA a remote upgrade left at '" AGENT_DELIVERED_CA "': the trust "
+                  "anchor supersedes it.");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_fetch_call_count, 1);
+    assert_int_equal(g_spki_call_count, 1);
+    assert_int_equal(g_enroll_call_count, 1);
+    assert_int_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_int_not_equal(IsFile(AGENT_DELIVERED_CA), 0);
+}
+
 static void test_malformed_token_logs_named_error_and_writes_nothing(void **state) {
     (void) state;
     write_file("etc/enrollment_token", "not-a-valid-token!!!");
@@ -914,6 +963,122 @@ static void test_disabled_enrollment_keeps_the_token(void **state) {
     assert_int_equal(IsFile("etc/enrollment_token"), 0);
 }
 
+/* Mocks a verified /enroll that answers 401 with the given class, and the log lines it produces. */
+static void expect_enroll_401(const char *auth_class) {
+    static char body[128];
+    static char line[200];
+    const bool final_class = (strcmp(auth_class, "token_revoked") == 0 || strcmp(auth_class, "token_expired") == 0);
+
+    snprintf(body, sizeof(body),
+             "{\"error\":{\"code\":\"%s\",\"message\":\"Invalid client authentication\"}}", auth_class);
+    snprintf(line, sizeof(line), "Enrollment rejected by the manager: %s: Invalid client authentication. %s", auth_class,
+             final_class ? "This enrollment token can no longer be used; mint a new one." : "Retrying.");
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 401L);
+    will_return(__wrap_hc_enroll, body);
+    will_return(__wrap_hc_enroll, 1);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_enrolling_as_line();
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, line);
+}
+
+/* A worker whose copy of the token store has not caught up answers token_unknown: retried, and the
+ * token is kept for the next attempt. */
+static void test_token_unknown_is_pending_and_keeps_the_token(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    expect_enroll_401("token_unknown");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PENDING);
+    assert_int_equal(g_enroll_call_count, 1);
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+    assert_int_not_equal(IsFile("etc/certs/root-ca.pem"), 0);
+    assert_int_not_equal(IsFile("etc/client.keys"), 0);
+}
+
+static void test_stale_token_is_pending(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    expect_enroll_401("stale_token");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PENDING);
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+/* The other 401 classes cannot clear on their own on a first start, so they still end it. */
+static void test_token_revoked_401_is_permanent_and_keeps_the_token(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    expect_enroll_401("token_revoked");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_int_equal(IsFile("etc/enrollment_token"), 0);
+}
+
+static void test_bound_pending_passes_other_results_through(void **state) {
+    (void) state;
+    time_t since = 0;
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_DONE, &since, 1000), W_TOKEN_BOOTSTRAP_DONE);
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PERMANENT, &since, 1000),
+                     W_TOKEN_BOOTSTRAP_PERMANENT);
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_TRANSIENT, &since, 1000),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(since, 0);
+}
+
+static void test_bound_pending_retries_within_the_window(void **state) {
+    (void) state;
+    time_t since = 0;
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since, 1000),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(since, 1000);
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since,
+                                                     1000 + W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S - 1),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(since, 1000);
+}
+
+/* The window is checked after each attempt, so the one that crosses it (here +75 s, the default
+ * ramp's) gives up, and the error reports the time that actually passed. */
+static void test_bound_pending_gives_up_after_the_window(void **state) {
+    (void) state;
+    time_t since = 1000;
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "The manager still does not accept the enrollment token after 75 seconds. It may "
+                  "not have reached this node, or it was deleted: mint a new token, or restart the "
+                  "agent to try again.");
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since, 1075),
+                     W_TOKEN_BOOTSTRAP_PERMANENT);
+}
+
+/* A transient failure between two pending ones neither restarts nor extends the window. */
+static void test_bound_pending_window_survives_transient_results(void **state) {
+    (void) state;
+    time_t since = 0;
+
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since, 1000),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_TRANSIENT, &since, 1200),
+                     W_TOKEN_BOOTSTRAP_TRANSIENT);
+    assert_int_equal(since, 1000);
+
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_token_bootstrap_bound_pending(W_TOKEN_BOOTSTRAP_PENDING, &since,
+                                                     1000 + W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S),
+                     W_TOKEN_BOOTSTRAP_PERMANENT);
+}
+
 static void test_full_happy_path_via_pin(void **state) {
     (void) state;
     write_token_file(true, true, NULL);
@@ -995,6 +1160,70 @@ static void test_full_happy_path_via_pin(void **state) {
      * ownership to the runtime user. */
     assert_int_equal(g_keys_chown_uid, 0);
     assert_int_equal(g_keys_chown_gid, getgid());
+}
+
+/* An explicit 'none' does not reach the token's enrollment, which stays fully verified -- and the
+ * operator is told so before it runs. */
+static void test_explicit_none_warns_and_still_enrolls_verified(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    agt->ssl.verification_mode = AGENT_VERIFY_NONE;
+    agt->ssl.verification_mode_explicit = true;
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    expect_string(__wrap__mwarn, formatted_msg, AG_SSL_NONE_TOKEN_ENROLL_VERIFIED);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
+    assert_int_equal(g_enroll_call_count, 1);
+    assert_int_equal(g_enroll_config.verify_mode, HC_VERIFY_FULL);
+}
+
+/* A 'none' the agent resolved to on its own, because it had no anchor yet, is what every
+ * first-boot token install has: it must not warn. No mwarn is expected, so one fails the test. */
+static void test_inferred_none_does_not_warn(void **state) {
+    (void) state;
+    write_token_file(true, true, NULL);
+    agt->ssl.verification_mode = AGENT_VERIFY_NONE;
+    agt->ssl.verification_mode_explicit = false;
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    expect_string(__wrap__minfo, formatted_msg, "Enrolling as 'test-agent'. Groups: none.");
+    expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
+    expect_string(__wrap__minfo, formatted_msg, "Valid key received");
+    expect_string(__wrap__minfo, formatted_msg,
+                  "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's "
+                  "trust anchor.");
+
+    assert_int_equal(w_agent_token_bootstrap(getuid(), getgid()), 0);
 }
 
 /* Regression test: unlike the two repair call sites (quiet_on_failure=true, covered above), the
@@ -1503,6 +1732,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_anchor_latch_keys_chown_failure_is_quiet, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_anchor_latch_repairs_pre_39321_ownership, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_empty_placeholder_keys_file_is_not_already_enrolled, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enrollment_removes_a_ca_staged_by_an_upgrade, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_malformed_token_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_adr_unreachable_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fetch_not_found_logs_named_error_and_writes_nothing, setup_test, teardown_test),
@@ -1510,7 +1740,18 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_pin_mismatch_logs_named_error_and_writes_nothing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_fatal_token_refusal_discards_the_dead_token, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_disabled_enrollment_keeps_the_token, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_token_unknown_is_pending_and_keeps_the_token, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_stale_token_is_pending, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_token_revoked_401_is_permanent_and_keeps_the_token, setup_test,
+                                        teardown_test),
+        cmocka_unit_test(test_bound_pending_passes_other_results_through),
+        cmocka_unit_test(test_bound_pending_retries_within_the_window),
+        cmocka_unit_test(test_bound_pending_gives_up_after_the_window),
+        cmocka_unit_test(test_bound_pending_window_survives_transient_results),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_pin, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_explicit_none_warns_and_still_enrolls_verified, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_inferred_none_does_not_warn, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_restores_the_previous_key, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_without_a_previous_key_reports_no_rollback, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_leaves_no_staged_anchor, setup_test, teardown_test),
@@ -1528,5 +1769,5 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_embedded_ca_token_larger_than_the_old_cap_is_read, setup_test, teardown_test),
     };
 
-    return cmocka_run_group_tests(tests, group_setup, NULL);
+    return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }

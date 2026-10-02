@@ -1,8 +1,8 @@
 #ifndef _FASTMETRICS_MOCK_COUNTER_HPP
 #define _FASTMETRICS_MOCK_COUNTER_HPP
 
-#include <gmock/gmock.h>
 #include <fastmetrics/iMetric.hpp>
+#include <gmock/gmock.h>
 
 namespace fastmetrics
 {

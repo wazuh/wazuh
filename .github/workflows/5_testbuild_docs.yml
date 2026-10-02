@@ -3,9 +3,17 @@ name: 5.X - Docs build check
 on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
+    # check-docs.py reads every tracked .md under src/, framework/, api/ and tools/, the repository
+    # paths the docs name, and the installed-file inventory: a rename anywhere there can break a
+    # link, so the check runs with the change that makes it.
     paths:
       - "docs/**"
-      - "src/shared_modules/manager_config/schema/**"
+      - "src/**"
+      - "framework/**"
+      - "api/**"
+      - "tools/**"
+      - "packages/**"
+      - ".github/actions/check_files/manager_base.csv"
       - ".github/workflows/5_testbuild_docs.yml"
 
 concurrency:
@@ -29,5 +37,14 @@ jobs:
           curl -sSL https://github.com/badboy/mdbook-mermaid/releases/download/v0.13.0/mdbook-mermaid-v0.13.0-x86_64-unknown-linux-gnu.tar.gz \
             | tar -xz -C /usr/local/bin
 
+      - name: Install Python dependencies
+        run: python3 -m pip install --break-system-packages PyYAML==6.0.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       - name: Build docs
+        env:
+          WAZUH_DOCS_NODE_DIR: ${{ runner.temp }}/wazuh-docs-tools
         run: cd docs && sh build.sh

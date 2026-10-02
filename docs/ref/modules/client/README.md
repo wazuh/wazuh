@@ -146,11 +146,9 @@ Look for `wazuh-agentd is running...`
 /var/ossec/bin/wazuh-control info
 ```
 
-Shows:
-- Agent ID
-- Manager address
-- Connection status
-- Configuration version
+Prints `WAZUH_VERSION`, `WAZUH_REVISION` and `WAZUH_TYPE` (`-v`, `-r` or `-t` prints just one).
+The connection state is in `/var/ossec/var/run/wazuh-agentd.state` (`status='connected'`, last
+keepalive, event counters), rewritten every `agent.state_interval` seconds.
 
 ### Enrolling or re-pointing an agent
 
@@ -219,7 +217,7 @@ Behind a load balancer there is nothing to re-point between nodes: the agent add
 Start with the agent's own log:
 
 ```bash
-sudo grep -E "cacerts|pin_mismatch|TLS verification|\(41[0-9]{2}\)" /var/ossec/logs/ossec.log | tail -20
+sudo grep -E "cacerts|pin_mismatch|verified enrollment|TLS verification|\(41[0-9]{2}\)" /var/ossec/logs/ossec.log | tail -20
 ```
 
 | What the agent says | What it means | What to do |
@@ -227,7 +225,8 @@ sudo grep -E "cacerts|pin_mismatch|TLS verification|\(41[0-9]{2}\)" /var/ossec/l
 | `/cacerts adr_unreachable` | The address in the token answers nothing | Check routing, and that the manager is listening on 1517 |
 | `/cacerts not_found` | The manager answered, but has no CA to hand out | Nothing on the endpoint changes this. The manager has to be given its CA before any agent can bootstrap against it |
 | `/cacerts ca_mismatch` | The certificate the manager serves does not chain to the CA it would hand out — a CA that expired, or whose validity window has not opened yet, counts as not chaining | Nothing on the endpoint changes this. Retrying will keep failing until the manager's certificate and CA match (a CA that is merely not yet valid heals on its own once its window opens) |
-| `pin_mismatch` | The CA the manager served is not the one the token pins | Wrong token, wrong manager, or the CA was rotated. Use a fresh token |
+| `pin_mismatch` | The CA the manager served is not the one the token pins | Wrong token, wrong manager, or the CA was rotated after the token was minted (see [Enrollment tokens and a rotation](../remoted/ca-rotation.md#enrollment-tokens-and-a-rotation)). Use a fresh token |
+| `The verified enrollment request could not be sent: (60) SSL peer certificate … was not OK` | The certificate of the manager node the agent enrolls through failed verification: it does not chain to the CA the token gave the agent, or it does not name the token's address | The detail after `(60)` says which. A chain error usually means a token minted before a CA rotation (see [Enrollment tokens and a rotation](../remoted/ca-rotation.md#enrollment-tokens-and-a-rotation)); use a fresh token. A name error means that node's certificate lacks the token's address in its SAN |
 | `(4118)` | The mode needs a CA, and neither `<certificate_authorities>` nor the trust anchor is present | Enroll with a token, or name a CA |
 | `(4120)` | `system` together with an explicit `<certificate_authorities>` | Drop one of the two: remove the CA to use the OS trust store, or keep it and set the mode to `full` |
 | `(4121)` | `system` on a host with no OS CA bundle | Use `full` against the trust anchor instead |
@@ -235,15 +234,17 @@ sudo grep -E "cacerts|pin_mismatch|TLS verification|\(41[0-9]{2}\)" /var/ossec/l
 | `(4124)` | `system`, and the trust anchor is readable but holds no certificate the agent can parse | Replace the anchor, or enroll with a token to reinstall it; truncated copies are the usual cause |
 | `(4125)` | The trust anchor is gone, but this install has held one (`.anchor-committed` is still beside it) | Restore the anchor, or set `<verification_mode>` explicitly to say what was intended. Starting unverified is refused rather than done silently |
 | `(4122)` | An explicit `none` on a host that holds a usable anchor | Remove `<verification_mode>none</verification_mode>` to verify against it |
+| `(4126)` | No anchor, but a remote upgrade delivered the manager's CA and could not install it (usually the `openssl` command is missing), so it is still in `var/incoming/root-ca.pem`. The agent runs with `none` | Install the anchor with [`--certs-only`](#enrolling-or-re-pointing-an-agent); a token minted with `--no-credential` is enough. See [When the CA cannot be validated on the agent](../../../guide/migration/remote-agent-upgrade.md#when-the-ca-cannot-be-validated-on-the-agent) |
+| `(4127)` | An explicit `none` on an agent enrolling with a token. `none` applies only after enrollment, and the enrollment is still verified against the token's CA | Nothing, if the enrollment succeeds. If it then fails with `pin_mismatch` or `The verified enrollment request could not be sent: (60)`, see those rows: `none` does not bypass either. Logged once per run, then at debug level |
 | `TLS verification failed connecting to …: the certificate does not include that name` | The address the agent dials is not in the certificate | The line lists the names the certificate does carry |
 | `TLS verification failed connecting to …: the certificate has expired` / `is not valid yet` | The manager's certificate is outside its validity window, or the clock is wrong | The line gives the date it checked against |
 | `TLS verification is DISABLED (verification_mode=none)` | The resolved mode is `none` | See the resolution table under [`verification_mode`](configuration.md#verification_mode) |
-| `verification_mode=system: … falling back to the local trust anchor ('…')` | The OS trust store did not vouch for the manager, so the agent verified against its own anchor instead | Nothing, if the agent connects after it. Add the manager's CA to the OS trust store to verify there instead |
+| `verification_mode=system: … falling back to the local trust anchor ('…')` | The OS trust store did not vouch for the manager, so the agent verified against its own anchor instead | Nothing, if the agent connects after it. To verify against the OS trust store instead, add the manager's CA there and restart the agent |
 | `verification_mode=system: … no local trust anchor is configured to fall back to` | The OS trust store does not vouch for this manager, and there is no anchor to fall back to | Add the manager's CA to the OS trust store, or enroll with a token so the agent holds an anchor. Logged once per run; the agent keeps retrying and recovers once the store carries the CA |
 | `verification_mode=system: … no time remains in this attempt's budget to try the local fallback anchor ('…')` | The attempt against the OS trust store used the whole request timeout, so the anchor was never tried | Usually a slow or overloaded manager. Logged once per run, then at debug level |
 | `local fallback anchor ('…') could not be loaded (missing, unreadable, or not a certificate this agent can parse)` | The anchor was present when the agent started and is not usable now | The agent stops. Restore the anchor file, or enroll with a token to reinstall it, then start the agent |
-| `local fallback anchor ('…') does not verify the manager's certificate either` | Neither the OS trust store nor the anchor vouches for this manager | The agent stops. Usually the manager's CA was rotated: enroll with a fresh token |
-| `verification_mode=system found no OS trust store on this system … and the local fallback anchor ('…') does not verify it either` | There is no OS trust store to consult, and the anchor does not match this manager | The agent stops. Enroll with a fresh token, or use `full` against a correct anchor |
+| `local fallback anchor ('…') does not verify the manager's certificate either` | Neither the OS trust store nor the anchor vouches for this manager | The agent keeps retrying. Usually the manager's CA was rotated: add the new CA to the OS trust store and restart the agent. If nothing changed on the manager, something between the agent and the manager is presenting its own certificate |
+| `verification_mode=system found no OS trust store on this system … and the local fallback anchor ('…') does not verify it either` | There is no OS trust store to consult, and the anchor does not match this manager | The agent keeps retrying. Install the OS CA bundle, add the manager's CA to it, and restart the agent. Alternatively, set the mode to `full`, stop the agent, refresh the anchor with [`wazuh-agent-auth --certs-only`](#enrolling-or-re-pointing-an-agent) and a fresh token, and start it; under `full` the agent follows later CA rotations on its own. If nothing changed on the manager, something between the agent and the manager is presenting its own certificate |
 
 > [!NOTE]
 > If nothing above matches, raise the agent's log level with `agent.debug=1` in `local_internal_options.conf` and restart it. Not every TLS failure is reported at normal level so a connection problem with nothing in the log is a reason to turn debug on rather than to rule TLS out.
@@ -257,7 +258,7 @@ sudo grep -A4 "<ssl>" /var/ossec/etc/ossec.conf
 
 The trust anchor should be `0640 root:wazuh`. A root-owned file the `wazuh` user cannot read fails closed just as a missing one does, and a directory listing looks right until the group is checked.
 
-If the agent has no anchor, or the manager's has changed, refresh it with [`wazuh-agent-auth --certs-only`](#enrolling-or-re-pointing-an-agent) rather than copying the file by hand.
+If the agent has no anchor, or the manager's has changed, refresh it with [`wazuh-agent-auth --certs-only`](#enrolling-or-re-pointing-an-agent) rather than copying the file by hand. That includes a CA a remote upgrade left in `var/incoming/root-ca.pem` without installing it: once an anchor is in place, `--certs-only` (and a token enrollment) removes that staged copy, so a later upgrade cannot install it over the anchor.
 
 #### Auditing a fleet
 
@@ -276,6 +277,12 @@ The log corroborates it, with the caveat that `ossec.log` spans earlier boots un
 
 ```bash
 sudo grep "TLS verification is DISABLED" /var/ossec/logs/ossec.log | tail -1
+```
+
+A CA still in `var/incoming` names the cause for an agent upgraded remotely: the manager delivered it but the installer could not validate it, usually for lack of the `openssl` command:
+
+```bash
+sudo test -f /var/ossec/var/incoming/root-ca.pem && echo "DELIVERED CA NOT INSTALLED"
 ```
 
 See [Trust anchor delivery to legacy agents](../../../guide/migration/remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents) for the delivery and for confirming it ran.
@@ -302,6 +309,6 @@ If anti-tampering is triggering false positives:
 
 - [Client Configuration Reference](configuration.md) - Complete configuration options
 - [Manager Configuration Reference](../../configuration/manager/reference.md) - Manager-side `<remote>` settings
-- [Centralized Configuration](../../configuration/centralized/index.html) - Remote agent configuration
+- [Centralized Configuration](../agent-management/centralized-configuration.md) - Remote agent configuration
 - [Enrollment lifecycle](../authd/enrollment-lifecycle.md) - Agent registration, end to end
 - [Trust anchor delivery to legacy agents](../../../guide/migration/remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents) - How an agent upgraded from 4.x receives its CA

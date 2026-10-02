@@ -77,8 +77,12 @@ def check_user(user: str, password: str, required_scopes=None) -> Union[dict, No
     Returns
     -------
     dict or None
-        Dictionary with the username and its status or None.
+        Dictionary with the username, its status and the time the credential check started or None.
     """
+    # Taken before the stored hash is read, and used as the issue time of the token this login
+    # gets, so the token is ordered against user token rules by when its credentials were checked
+    # rather than by when it was signed.
+    auth_time_ms = int(core_utils.get_utc_now().timestamp() * 1000)
     dapi = DistributedAPI(f=check_user_master,
                           f_kwargs={'user': user, 'password': password},
                           request_type='local_master',
@@ -89,7 +93,7 @@ def check_user(user: str, password: str, required_scopes=None) -> Union[dict, No
     data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
 
     if data['result']:
-        return {'sub': user, 'active': True }
+        return {'sub': user, 'active': True, 'auth_time_ms': auth_time_ms}
 
 
 # Set JWT settings
@@ -498,11 +502,14 @@ def get_security_conf() -> dict:
     return conf.security_conf
 
 
-def generate_token(user_id: str = None, data: dict = None, auth_context: dict = None) -> str:
+def generate_token(issued_at_ms: int, user_id: str = None, data: dict = None, auth_context: dict = None) -> str:
     """Generate an encoded JWT token. This method should be called once a user is properly logged on.
 
     Parameters
     ----------
+    issued_at_ms : int
+        Time the credential check of this login started (milliseconds), as returned by
+        `check_user`. It is the token's issue time, never the signing time: see `check_user`.
     user_id : str
         Unique username.
     data : dict
@@ -522,16 +529,14 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
                           logger=logging.getLogger('wazuh-api')
                           )
     result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
-    # Get timestamp with millisecond precision directly
-    now_ms = int(core_utils.get_utc_now().timestamp() * 1000)
-    now_seconds = now_ms // 1000
+    issued_at_seconds = issued_at_ms // 1000
 
     payload = {
                   "iss": JWT_ISSUER,
                   "aud": "Wazuh API REST",
-                  "nbf": now_seconds,  # Standard claim: integer seconds since epoch (RFC 7519)
-                  "nbf_ms": now_ms,  # Private claim: milliseconds for precise validation
-                  "exp": now_seconds + result['auth_token_exp_timeout'],
+                  "nbf": issued_at_seconds,  # Standard claim: integer seconds since epoch (RFC 7519)
+                  "nbf_ms": issued_at_ms,  # Private claim: milliseconds for precise validation
+                  "exp": issued_at_seconds + result['auth_token_exp_timeout'],
                   "sub": str(user_id),
                   "run_as": auth_context is not None,
                   "rbac_roles": data['roles'],
@@ -566,7 +571,7 @@ def get_optimized_policies(roles: tuple) -> dict:
 
 @dapi_allower()
 def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool,
-                origin_node_type: str) -> dict:
+                origin_node_type: str, hash_auth_context: str = None) -> dict:
     """Check the validity of a token with the current time and the generation time of the token.
 
     The validity decision is never cached. Caching it meant that deleting a user, changing its
@@ -587,6 +592,9 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool,
     origin_node_type : str
         Type of the node the request originated from. Only requests coming from the master node
         may be served the cached policies.
+    hash_auth_context : str, optional
+        Hash of the authorization context a run_as token was granted for. Logging out with a
+        run_as token revokes this context, not the account the token names.
 
     Returns
     -------
@@ -605,8 +613,10 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool,
             if not am.user_allow_run_as(user['username']) and set(user_roles) != set(roles):
                 return {'valid': False}
             with TokenManager() as tm:
-                # Always validate the user and run_as blacklists, even when the token carries no roles.
-                if not tm.is_token_valid(user_id=user_id, token_nbf_time=int(token_nbf_time), run_as=run_as):
+                # Always validate the user, run_as and run_as context blacklists, even when the
+                # token carries no roles.
+                if not tm.is_token_valid(user_id=user_id, token_nbf_time=int(token_nbf_time), run_as=run_as,
+                                         hash_auth_context=hash_auth_context):
                     return {'valid': False}
                 # Validate every role carried by the token, not only the statically-linked ones.
                 # run_as users have their roles assigned dynamically, so those roles travel in the
@@ -649,13 +659,20 @@ def decode_token(token: str) -> dict:
         # Decode JWT token with local secret
         payload = jwt.decode(token, generate_keypair()[1], algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
 
+        # A run_as token is revoked on logout by its authorization context (see
+        # `wazuh.security.revoke_current_user_tokens`), so one without it could not be logged out.
+        # Every run_as token `generate_token` issues carries it.
+        if payload['run_as'] and not payload.get('hash_auth_context'):
+            raise Unauthorized(INVALID_TOKEN)
+
         # Check token and add processed policies in the Master node
         # Use nbf_ms for millisecond precision validation, fallback to nbf * 1000 for backward compatibility
         token_nbf_time = payload.get('nbf_ms', int(payload['nbf'] * 1000))
         dapi = DistributedAPI(f=check_token,
                               f_kwargs={'username': payload['sub'],
                                         'roles': tuple(payload['rbac_roles']), 'token_nbf_time': token_nbf_time,
-                                        'run_as': payload['run_as'], 'origin_node_type': read_config()['node_type']},
+                                        'run_as': payload['run_as'], 'origin_node_type': read_config()['node_type'],
+                                        'hash_auth_context': payload.get('hash_auth_context')},
                               request_type='local_master',
                               is_async=False,
                               wait_for_complete=False,

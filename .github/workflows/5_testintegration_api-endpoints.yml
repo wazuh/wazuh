@@ -14,32 +14,34 @@ on:
 
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
+    # The environment compiles the manager and the 5.x agents from the tree with install.sh, so
+    # every source it builds is here. What each change then runs is decided by
+    # api/test/integration/mapping/selection_rules.yaml; its tests fail when these paths and the
+    # rules disagree, so change both together.
     paths:
       - ".github/workflows/5_testintegration_api-endpoints.yml"
-      - "api/api/**"
-      - "api/scripts/**"
-      - "api/test/**"
-      - "framework/.python-version"
-      - "framework/requirements*.txt"
-      - "framework/scripts/**"
-      - "framework/wazuh/**"
-      # The environment builds the manager and the 5.x agent from the PR branch with
-      # install.sh, so changes to the pieces the agents need to enroll, connect and
-      # be managed have to run these tests too.
-      - "install.sh"
+      - "api/**"
+      - "framework/**"
+      - "src/**"
       - "etc/**"
-      - "src/Makefile"
-      - "src/CMakeLists.txt"
-      - "src/init/**"
-      - "src/config/**"
-      - "src/shared/**"
-      - "src/shared_modules/manager_config/**"
-      - "src/client-agent/**"
-      - "src/os_auth/**"
-      - "src/os_execd/**"
-      - "src/remoted/**"
-      - "src/wazuh_db/**"
-      - "src/wazuh_modules/agent_info/**"
+      - "install.sh"
+      - "VERSION.json"
+      - "tools/mitre/**"
+      - "tools/devContainer/scripts/wazuh-certs-tool.sh"
+      # Unit tests, docs and dev tools of those trees never reach the environment
+      - "!api/api/**/test/**"
+      - "!api/tools/**"
+      - "!framework/**/tests/**"
+      - "!framework/examples/**"
+      - "!src/win32/**"
+      - "!src/unit_tests/**"
+      - "!src/**/tests/**"
+      - "!src/**/qa/**"
+      - "!src/**/integrationTests/**"
+      - "!src/**/testtool/**"
+      - "!src/engine/test/**"
+      - "!src/engine/docs/**"
+      - "!**/*.md"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -60,99 +62,42 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # The selection diffs against the merge-base with the base branch
+          fetch-depth: 0
 
-      - name: Generate integration test api endpoint JSON file
-        id: test_files
+      - uses: actions/setup-python@v4
+        with:
+          python-version-file: "framework/.python-version"
+
+      - name: Install dependencies
+        run: pip install PyYAML==6.0.3 pytest==7.3.1
+
+      - name: Check the selection rules and the endpoint coverage
         run: |
-          TEST_LIST="${{ github.event.inputs.test_list || '' }}"
           cd api/test/integration/mapping
-          python3 _test_mapping.py
+          python -m pytest -q tests
+          python select_tests.py --check
+          python endpoint_coverage.py --check
 
-          # Valid test files
-          full_file_list=$(jq -c '([.[].files[].tests[]] | unique | sort)' ./integration_test_api_endpoints.json)
-
-          # Validate the input tests in workflow_dispatch
-          function validate_tests_files_input() {
-            local files=$1
-            local str=$2
-
-            IFS=',' read -r -a tests <<< "${str}"
-            prefix="test_"
-            suffix=".tavern.yaml"
-
-            valid_tests=""
-            for test in ${tests[@]}; do
-              input_filename="${prefix}${test}${suffix}"
-              matched=false
-              for file in $(echo "$files" | jq -r '.[]'); do
-                if [[ "${input_filename,,}" == "${file,,}" ]]; then
-                matched=true
-                valid_tests+="\"${file}\","
-                break
-                fi
-              done
-
-              if [[ "$matched" == false ]]; then
-                echo "$input_filename is not valid"
-                exit 1
-              fi
-            done
-
-            echo "[${valid_tests::-1}]"
-          }
-
-          function parse_integration_test_json_file() {
-            local json_file="integration_test_api_endpoints.json"
-            local basename=$1
-            local parent_dir=$2
-            local matched_files=$(jq -r --arg basename "$basename" --arg parent_dir "$parent_dir" '[.[]|select(.path == $parent_dir).files[]|select(.name == $basename).tests[]] | join(",")' integration_test_api_endpoints.json)
-            if [[ ! -z "$matched_files" ]]; then
-              echo "$matched_files"
-            fi
-          }
-
-          # Get the list of tests to run based on the modified files in the pull request
-          function get_tests_files() {
-            local base_ref="${{ github.base_ref }}"
-            git fetch --depth=1 origin "${base_ref}"
-            local modified_files=$(git diff --name-only FETCH_HEAD..HEAD)
-            total_files=""
-            while read -r file; do
-              parent_dir="${file%/*}"
-              file_name="${file##*/}"
-              result="$(parse_integration_test_json_file "$file_name" "$parent_dir")"
-              if [[ ! -z "$result" ]]; then
-                total_files+="$result,"
-              fi
-            done <<< "$modified_files"
-            if [[ -z "$total_files" ]]; then
-              echo "[]"
-            else
-              echo "${total_files::-1}" | tr ',' '\n' | jq -R . | jq -sc '[.[]]|unique'
-            fi
-          }
-
-          if [[ ${{ github.event_name }} == 'pull_request' ]]; then
-            selected_files=$(get_tests_files)
-            if [[ -z "$selected_files" || "$selected_files" == "[]" ]]; then
-              echo "No relevant files modified, running all tests"
-              echo "Selected tests: $full_file_list"
-              echo "files=$full_file_list" >> $GITHUB_OUTPUT
-            else
-              echo "Selected tests: $selected_files"
-              echo "files=$selected_files" >> $GITHUB_OUTPUT
-            fi
+      - name: Select the test files
+        id: test_files
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          TEST_LIST: ${{ github.event.inputs.test_list }}
+        run: |
+          cd api/test/integration/mapping
+          if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+            git fetch --no-tags origin "${BASE_REF}"
+            files=$(python select_tests.py --base FETCH_HEAD)
+          elif [[ -n "${TEST_LIST}" ]]; then
+            files=$(python select_tests.py --test-list "${TEST_LIST}")
           else
-            if [[ -z ${TEST_LIST} ]]; then
-              echo "No tests specified, running all tests"
-              echo "Selected tests: $full_file_list"
-              echo "files=$full_file_list" >> $GITHUB_OUTPUT
-            else
-              selected_files=$(validate_tests_files_input "$full_file_list" "${TEST_LIST}")
-              echo "Selected tests: $selected_files"
-              echo "files=$selected_files" >> $GITHUB_OUTPUT
-            fi
+            files=$(python select_tests.py --all)
           fi
+          echo "Selected tests: ${files}"
+          echo "files=${files}" >> "$GITHUB_OUTPUT"
         shell: bash
 
   build_docker_images:
@@ -192,7 +137,9 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           cd api/test/integration/env
-          docker compose build --build-arg WAZUH_BRANCH=${{ github.head_ref || github.ref_name }} --no-cache
+          # The commit under test: on a pull request, the merge commit, which the tarball
+          # endpoint also serves for a fork
+          docker compose build --build-arg WAZUH_BRANCH=${{ github.sha }} --no-cache
           mkdir -p /tmp/docker-images
           readarray -t images < <(docker images | awk '/integration/ {print $1}')
           for image in "${images[@]}"; do
@@ -253,7 +200,7 @@ jobs:
 
   api_endpoints_integration_tests_execution:
     needs: [api_endpoints_integration_tests_setup, build_docker_images, smoke_test]
-    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && needs.api_endpoints_integration_tests_setup.outputs.custom_matrix != '[]' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
@@ -292,9 +239,17 @@ jobs:
           wait
 
       - name: Run tests
+        env:
+          TEST_FILE: ${{ matrix.test_file }}
+          EXTRA_ARGS: ${{ github.event.inputs.pytest_extra_args }}
         run: |
           cd api/test/integration
-          pytest --nobuild -vvv --reruns 3 --reruns-delay 5 ${{ github.event.inputs.pytest_extra_args }} "${{ matrix.test_file }}"
+          # A rerun of these files would start with the limits they exhaust already spent
+          case "${TEST_FILE}" in
+            test_ratelimit_*|test_hardening_*) reruns="" ;;
+            *) reruns="--reruns 3 --reruns-delay 5" ;;
+          esac
+          pytest --nobuild -vvv ${reruns} ${EXTRA_ARGS} "${TEST_FILE}"
 
       - name: Upload manager/cluster/agent logs on failure
         if: failure()

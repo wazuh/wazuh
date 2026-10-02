@@ -260,12 +260,32 @@ Example flow for `getIPParser`:
 - Semantic: validates via `inet_pton(AF_INET)` and `inet_pton(AF_INET6)`
 - Mapper: `event.setString(parsed, targetField)`
 
+### Nesting depth cap
+
+The JSON, XML and KV parsers (`getJSONParser`, `getXMLParser`, `getKVParser`) build JSON structure from event text, so they share one nesting cap: `json::Json::MAX_DEPTH = 256`, declared in `src/engine/source/base/include/base/json.hpp` next to `json::Json::parseBounded`, which the `json::Json` constructors from text use as well. It is a compile-time constant: it is not configurable, and it is not a size limit (the size of the input is capped by remoted, before the engine).
+
+Input nested deeper than 256 levels (json::Json::MAX_DEPTH) is rejected: the parser fails as on invalid input, the field is not set and nothing is logged; the nesting depth exceeds the limit (256) message names the cap in test traces.
+
+The root container is level 1: 256 nested containers (objects and arrays) parse, the 257th fails. What is counted and what each parser returns:
+
+| Parser | Depth unit | Fails at | Returns |
+|--------|------------|----------|---------|
+| `getJSONParser` | open JSON containers (objects and arrays), counted by `json::Json::parseBounded` | the 257th nested container | Syntax-phase failure (`makeFailure`) whose trace names the limit; no document is built |
+| `getXMLParser` | nested XML elements, counted by `xmlToJson` (in `windows` mode the root `Event`, omitted from the output, is level 1) | the 257th nested element | Semantic-phase `base::Error`, the same contract as `Invalid XML` |
+| `getKVParser` | tokens of the destination path of a key with a value: one level per `.` plus one | a key with 256 dots (a key with 255 dots maps) | Semantic-phase `base::Error` |
+
+`parser::run()` turns either failure into a `base::Error` that carries the message only when tracing is enabled (test mode) and is empty otherwise, exactly as for any other parse failure.
+
+XML text and CDATA are leaves (`#text`) and do not add a level. A CDATA child is a leaf and does not produce a member of its own: `<a><![CDATA[x]]></a>` maps to `{"a":{"#text":"x"}}`.
+
+**Invariant**: building the document and walking it afterwards (parse, copy, serialization, merge) costs one recursion per level, and the cap is sized so that this recursion fits the default 8 MiB process stack. The stack requirement is part of the operator contract and lives in [Process limits](../../../../docs/ref/modules/engine/configuration.md#process-limits); the per-parser behavior is in the [parser reference](../../../../docs/ref/modules/engine/ref-parser.md). Neither is repeated here.
+
 ### Field Parsing (parse_field.hpp/cpp)
 
 Used by DSV/CSV and KV parsers to split delimited fields while respecting quoting and escaping:
 - `getField()` — parses a single field from input with configurable delimiter, quote, and escape characters
 - `unescape()` — removes escape characters from parsed values
-- `updateDoc()` — adds key-value to JSON, auto-detecting numeric types for unquoted values
+- `updateDoc()` — adds a key-value to the JSON (`setNull` for an empty value, `setString` otherwise); rejects destination paths deeper than the nesting cap
 
 ### External Libraries
 
@@ -275,7 +295,7 @@ Used by DSV/CSV and KV parsers to split delimited fields while respecting quotin
 | `date::date-tz` | Date parser | Chrono-based date/time parsing with timezone support |
 | `CURL::libcurl` | URI parser | URL parsing |
 | `pugixml` | XML parser | XML document parsing |
-| `rapidjson` | JSON parser | Streaming JSON parsing |
+| `rapidjson` | JSON parser | Streaming JSON parsing, bounded by `json::Json::parseBounded` |
 
 ## CMake Targets
 
@@ -290,6 +310,7 @@ Each parser has a dedicated test file (`*_test.cpp`) testing:
 - Valid inputs → successful parse and correct JSON mapping
 - Invalid inputs → parse failure with appropriate error traces
 - Edge cases: empty input, missing stop tokens, partial matches
+- Depth boundary cases (256/257) and a stack probe (`*Depth*`, `*StackProbe`)
 
 ## Consumers
 

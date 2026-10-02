@@ -1,10 +1,21 @@
 # Active Response Executables Reference
 
-This document provides a complete inventory of all Active Response executables available in Wazuh 5.0, including their purpose, supported platforms, input requirements, and implementation details.
+The Active Response executables shipped with the Wazuh agent: what each does on each platform, what
+it reads from its input and what it logs, and how to write your own.
 
 ## Overview
 
-Wazuh provides **5 Active Response executables** covering IP blocking and account management across multiple platforms. Each executable is compiled from platform-specific C source code optimized for the target operating system.
+Wazuh provides two Active Response executables, **`block-ip`** and **`disable-account`**.
+`block-ip` has a platform-specific implementation for Unix/Linux, macOS and Windows, so the
+inventory below lists four source variants; a given installation ships the ones built for its
+platform (`disable-account` is not built on Windows). The installer places them in
+`active-response/bin/` under the agent's installation directory, owned `root:wazuh` with mode
+`0750`.
+
+All of them read the message described in [JSON protocol](architecture.md#json-protocol) from
+stdin, accept `enable` and `disable`, and on `enable` send `wazuh-execd` a `check_keys` line before
+acting. Whether a response is reverted depends on the channel's `type`, not on the executable: each
+one handles both commands.
 
 ## Executable Inventory
 
@@ -12,61 +23,38 @@ Wazuh provides **5 Active Response executables** covering IP blocking and accoun
 
 **Source**: `src/active-response/src/block-ip-unix.c`
 
-**Purpose**: Blocks or unblocks IP addresses using various firewall mechanisms on Unix and Linux systems.
+**Purpose**: Blocks or unblocks `source.ip` on Linux, FreeBSD, OpenBSD and NetBSD. The method chain
+is chosen when the binary is built for its operating system.
 
-**Supported Platforms**:
-- Amazon Linux
-- Ubuntu
-- RedHat
-- CentOS
-- CentOS Stream
-- Debian
-- Fedora
-- openSUSE Leap
-- SLES
-- Oracle Linux
-- AlmaLinux
-- Rocky Linux
+**Keys**: the IP address.
 
-**Type**: Stateful (supports timeout-based reversion)
+**Methods** (tried in order; a method that is unavailable or fails passes to the next):
 
-**Firewall Methods** (tried in order):
+| Platform | Chain |
+|---|---|
+| Linux | firewalld → iptables → hosts.deny → route |
+| FreeBSD | ipfw → pf → hosts.deny → route |
+| OpenBSD | pf → hosts.deny → route |
+| NetBSD | npf → hosts.deny → route |
 
-| Priority | Method | Tool | Command Example |
-|----------|--------|------|-----------------|
-| 1 | firewalld | `firewall-cmd` | `firewall-cmd --add-rich-rule='rule family="ipv4" source address="192.168.1.100" reject'` |
-| 2 | iptables | `iptables` / `ip6tables` | `iptables -I INPUT -s 192.168.1.100 -j DROP` |
-| 3 | pf | `pfctl` | `pfctl -t wazuh_fwtable -T add 192.168.1.100` |
-| 4 | ipfw | `ipfw` | `ipfw table 00001 add 192.168.1.100` |
-| 5 | npf | `npfctl` | `npfctl table wazuh_blacklist add 192.168.1.100` |
-| 6 | route | `route` | `route add 192.168.1.100 reject` |
-| 7 | hosts.deny | edit file | `ALL: 192.168.1.100` (appended to `/etc/hosts.deny`) |
+| Method | Block (enable) | Unblock (disable) | Preconditions |
+|---|---|---|---|
+| firewalld | `firewall-cmd --add-rich-rule "rule family=ipv4 source address=192.168.1.100 drop"` (`ipv6` for an IPv6 address) | `--remove-rich-rule` with the same rule | `firewall-cmd` found and `systemctl is-active firewalld` answers `active`; retried up to 4 times with a growing pause |
+| iptables | `iptables -I INPUT -s 192.168.1.100 -j DROP` and the same on `FORWARD` (`ip6tables` for IPv6) | `-D` instead of `-I` | `iptables` / `ip6tables` found |
+| ipfw | `ipfw -q table 00001 add 192.168.1.100`; creates rules `00001` denying traffic from and to `table(00001)` when `ipfw show` lacks them | `ipfw -q table 00001 delete 192.168.1.100` | `ipfw` found |
+| pf | `pfctl -t wazuh_fwtable -T add 192.168.1.100`, then `pfctl -k 192.168.1.100` | `pfctl -t wazuh_fwtable -T delete 192.168.1.100` | `pfctl` found, `/dev/pf` present, `pfctl -s info` reports `Status: Enabled` |
+| npf | `npfctl table wazuh_blacklist add 192.168.1.100` | `npfctl table wazuh_blacklist del 192.168.1.100` | `npfctl` found, `npfctl show` reports filtering active and a `wazuh_blacklist` table |
+| hosts.deny | appends `ALL:192.168.1.100` to `/etc/hosts.deny`; FreeBSD appends `ALL : 192.168.1.100 : deny` to `/etc/hosts.allow`; a file that already names the address is left as it is | removes every line containing the address | the file exists |
+| route | Linux: `route add 192.168.1.100 reject`; BSD: `route -q add 192.168.1.100 127.0.0.1 -blackhole` | Linux: `route del 192.168.1.100 reject`; FreeBSD: `route -q delete 192.168.1.100 127.0.0.1 -blackhole`; OpenBSD/NetBSD: `route -q delete 192.168.1.100` | `route` found |
 
-**Input Fields**:
-```json
-{
-  "wazuh": {
-    "active_response": {
-      "name": "block-ip",
-      "executable": "block-ip",
-      "type": "stateless"
-    }
-  },
-  "source": {
-    "ip": "192.168.1.100"
-  },
-  "command": "enable" | "disable"
-}
-```
+The `pf`, `npf` and `wazuh_blacklist` tables and their block rules are not created by `block-ip`;
+`ipfw`'s are. firewalld, iptables and hosts.deny take a lock directory under `active-response/bin/`
+(`block-ip-lock`, `block-ip-hostsdeny-lock`) so two runs do not edit the firewall at once.
 
-**Platform-Specific Behavior**:
-- **Linux**: Prefers firewalld or iptables, falls back to route/hosts.deny
+**Input validation**: after the key exchange, `source.ip` must parse as a numeric IPv4 or IPv6
+address (`getaddrinfo` without name resolution), otherwise `Invalid IP address: '<value>'`.
 
-**Return Codes**:
-- `0`: Success (IP blocked/unblocked)
-- `1`: Failure (invalid input or all methods failed)
-
-**Logging**: All operations logged to `/var/ossec/logs/active-responses.log`
+**Logging**: `logs/active-responses.log` under the agent's installation directory.
 
 ---
 
@@ -74,37 +62,17 @@ Wazuh provides **5 Active Response executables** covering IP blocking and accoun
 
 **Source**: `src/active-response/src/block-ip-macos.c`
 
-**Purpose**: Blocks or unblocks IP addresses using macOS-specific firewall mechanisms.
+**Purpose**: Blocks or unblocks `source.ip` using macOS-specific mechanisms.
 
-**Supported Platforms**:
-- macOS 10.10+
+**Keys**: the IP address.
 
-**Type**: Stateful (supports timeout-based reversion)
-
-**Firewall Methods** (tried in order):
+**Methods** (tried in order):
 
 | Priority | Method | Tool | Command Example |
 |----------|--------|------|-----------------|
 | 1 | pf | `pfctl` | `pfctl -t wazuh_fwtable -T add 192.168.1.100` |
-| 2 | hosts.deny | edit file | `ALL: 192.168.1.100` (appended to `/etc/hosts.deny`) |
+| 2 | hosts.deny | edit file | `ALL:192.168.1.100` (appended to `/etc/hosts.deny`) |
 | 3 | route | `route` | IPv4: `route -q add 192.168.1.100 127.0.0.1 -blackhole` · IPv6: `route -q add -inet6 2001:db8::1 ::1 -blackhole` |
-
-**Input Fields**:
-```json
-{
-  "wazuh": {
-    "active_response": {
-      "name": "block-ip",
-      "executable": "block-ip",
-      "type": "stateless"
-    }
-  },
-  "source": {
-    "ip": "192.168.1.100"
-  },
-  "command": "enable" | "disable"
-}
-```
 
 **macOS-Specific Details**:
 - **PF Table**: Uses table name `wazuh_fwtable`
@@ -112,6 +80,7 @@ Wazuh provides **5 Active Response executables** covering IP blocking and accoun
 - **Table Precondition**: The `wazuh_fwtable` table and its block rules are a one-time setup owned by the administrator, the same way `wazuh_blacklist` is for `npf` on NetBSD. `block-ip` does not use a PF anchor file, never edits `/etc/pf.conf` and never reloads the packet filter ruleset: if the table is absent it declines and the next method in the chain is tried. The macOS package does not apply or announce it — `install.sh`'s notice runs at package build time, not on the endpoint — so it has to be applied by hand.
 - **Fallback**: Falls back to `hosts.deny`, then to a `route` blackhole if `pf` is unavailable, not enabled or missing its table — the same no-configuration-needed fallback the Unix/Linux chain has, so a stock macOS install (pf disabled, no `/etc/hosts.deny`) still blocks the address
 - **Unblocking**: Each method declines when the address is not the one it holds (`pf` reports `0/1 addresses deleted.`, `hosts.deny` finds no matching line), so the unblock walks the chain until it reaches the method that actually applied the block. Without this a block applied by `route` would never be lifted once `pf` or `hosts.deny` became available.
+- **route results**: `route` exits 0 whatever happens, so the result is read from its stderr; `File exists` on a block and `not in table` on an unblock count as success.
 - **Permissions**: Requires root privileges
 
 **Example pf.conf setup** (added by the administrator, then `sudo pfctl -f /etc/pf.conf`):
@@ -122,11 +91,9 @@ block in quick from <wazuh_fwtable> to any
 block out quick from any to <wazuh_fwtable>
 ```
 
-**Return Codes**:
-- `0`: Success (IP blocked/unblocked)
-- `1`: Failure (invalid input or all methods failed)
+**Input validation**: same as the Unix/Linux binary.
 
-**Logging**: All operations logged to `/var/ossec/logs/active-responses.log`
+**Logging**: `/Library/Ossec/logs/active-responses.log`
 
 ---
 
@@ -134,15 +101,13 @@ block out quick from any to <wazuh_fwtable>
 
 **Source**: `src/active-response/src/block-ip-windows.c`
 
-**Purpose**: Blocks or unblocks IP addresses using Windows firewall mechanisms.
+**Purpose**: Blocks or unblocks `source.ip` using Windows firewall mechanisms. Installed as
+`active-response\bin\block-ip.exe`; a channel `executable` of `block-ip` finds it, because
+`wazuh-execd` appends `.exe` to a name without a `.`.
 
-**Supported Platforms**:
-- Windows 7+
-- Windows Server 2008 R2+
+**Keys**: the IP address.
 
-**Type**: Stateful (supports timeout-based reversion)
-
-**Firewall Methods** (ENABLE tries them in order; DISABLE removes **both** — see Removal below):
+**Methods** (ENABLE tries them in order; DISABLE removes **both** — see Removal below):
 
 | Priority | Method | Tool | Command Example |
 |----------|--------|------|-----------------|
@@ -151,209 +116,120 @@ block out quick from any to <wazuh_fwtable>
 
 The `remoteip` prefix matches the address family: `/32` for IPv4 and `/128` for IPv6.
 
-**Input Fields**:
-```json
-{
-  "wazuh": {
-    "active_response": {
-      "name": "block-ip",
-      "executable": "block-ip",
-      "type": "stateless"
-    }
-  },
-  "source": {
-    "ip": "192.168.1.100"
-  },
-  "command": "enable" | "disable"
-}
-```
-
 **Windows-Specific Details**:
-- **Firewall Rules**: Creates rules named `"WAZUH ACTIVE RESPONSE BLOCKED IP"` — one inbound (`dir=in`) and one outbound (`dir=out`) for bidirectional blocking.
+- **Firewall Rules**: Creates rules named `"WAZUH ACTIVE RESPONSE BLOCKED IP"` — one inbound (`dir=in`) and one outbound (`dir=out`) for bidirectional blocking. A failed outbound rule is logged and does not fail the block.
 - **Effective firewall-state detection**: On **ENABLE only**, netsh is used only if the Windows Firewall is *effectively* enabled. The state is read directly from the registry `EnableFirewall` DWORD (locale-independent), evaluated per profile (Domain/Standard/Public):
   - The GPO policy value (`HKLM\SOFTWARE\Policies\Microsoft\WindowsFirewall\<profile>`) wins if present;
   - otherwise the local SharedAccess value (`HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\<profile>`);
   - otherwise, an **absent** value defaults to **enabled** (the Windows default).
 
   If any profile is effectively enabled, netsh is used; if the firewall is effectively off, netsh is skipped and the chain defers to the `route` fallback (adding a rule that would sit dormant is avoided). This check is **not** applied on DISABLE, so an unblock always attempts to remove the rule.
-- **Route Fallback (best-effort)**: When netsh is unavailable, or the firewall is effectively off, the target is **null-routed to loopback** (`route -p ADD <IP> MASK 255.255.255.255 127.0.0.1`) so the host discards packets destined to it. This is **best-effort**: it can break routed/remote attackers but does **not** block a host on a directly-connected subnet (on-link traffic is delivered via ARP, which the loopback route does not redirect). The `route add` exit code is checked, so the method no longer reports a false success. **Windows Firewall (netsh) remains the only comprehensive blocking mechanism.**
+- **Route Fallback (best-effort)**: When netsh is unavailable, or the firewall is effectively off, the target is **null-routed to loopback** (`route -p ADD <IP> MASK 255.255.255.255 127.0.0.1`) so the host discards packets destined to it. This is **best-effort**: it can break routed/remote attackers but does **not** block a host on a directly-connected subnet (on-link traffic is delivered via ARP, which the loopback route does not redirect). The `route add` exit code is checked: a failed `route add` is reported as a failure. **Windows Firewall (netsh) remains the only comprehensive blocking mechanism.**
 - **IPv4-only fallback**: The `route` fallback applies to **IPv4 targets only**; IPv6 targets are skipped (netsh already covers IPv6).
+- **Input validation**: `source.ip` must consist only of the characters of a numeric IPv4 address, or of hex digits, `:` and `.` for IPv6, 2 to 45 characters long, so nothing else reaches the netsh or route command line.
 - **Permissions**: Requires Administrator privileges
 
 **Removal**:
 
 DISABLE is **not** a fallback chain — because a block may have been applied by *either* netsh (firewall on) *or* the null-route (firewall off), unblock unconditionally attempts to remove **both**, each best-effort (a missing rule/route is the expected, non-failure case):
-- netsh: `netsh advfirewall firewall delete rule name="WAZUH ACTIVE RESPONSE BLOCKED IP" remoteip=192.168.1.100/32`
+- netsh: `netsh advfirewall firewall delete rule name="WAZUH ACTIVE RESPONSE BLOCKED IP" remoteip=192.168.1.100/32`; for an IPv6 address the `/128` rule and then a `/32` rule, the prefix older agents wrote for IPv6
 - route: `route DELETE 192.168.1.100`
 
-The unblock is reported successful if **either** removal actually took effect; if nothing matched, a warning is logged (the IP may already be unblocked).
+The unblock logs `IP <ip> successfully unblocked` if **either** removal took effect; if nothing matched, a warning is logged (the IP may already be unblocked). It exits `0` in both cases.
 
-**Return Codes**:
-- `0`: Success (IP blocked/unblocked)
-- `1`: Failure (invalid input or all methods failed)
-
-**Logging**: All operations logged to `C:\Program Files (x86)\ossec-agent\active-response\active-responses.log`
+**Logging**: `C:\Program Files (x86)\ossec-agent\active-response\active-responses.log`
 
 ---
 
-### 4. disable-account (Unix/Linux)
+### 4. disable-account (Linux, macOS)
 
 **Source**: `src/active-response/src/disable-account.c`
 
-**Purpose**: Disables or re-enables user accounts on Unix/Linux systems.
+**Purpose**: Locks or unlocks the local account named in `user.name`.
 
-**Supported Platforms**:
-- Amazon Linux
-- Ubuntu
-- RedHat
-- CentOS
-- CentOS Stream
-- Debian
-- Fedora
-- openSUSE Leap
-- SLES
-- Oracle Linux
-- AlmaLinux
-- Rocky Linux
-
-**Type**: Stateful (supports timeout-based reversion)
+**Keys**: the user name.
 
 **Implementation**:
 
-| Platform | Enable (Disable Account) | Disable (Re-enable Account) |
+| Platform | Enable (lock the account) | Disable (unlock the account) |
 |----------|--------------------------|---------------------------|
-| Linux | `passwd -l <username>` | `passwd -u <username>` |
+| Linux | `passwd -l -- <username>` | `passwd -u -- <username>` |
+| macOS | `pwpolicy -u <username> -disableuser` | `pwpolicy -u <username> -enableuser` |
 
-**Input Fields**:
-```json
-{
-  "wazuh": {
-    "active_response": {
-      "name": "disable-account",
-      "executable": "disable-account",
-      "type": "stateless"
-    }
-  },
-  "user": {
-    "name": "suspicious_user"
-  },
-  "command": "enable" | "disable"
-}
-```
+On any other system (the binary is also built on the BSDs) it logs `Invalid system: '<name>'` and
+exits with failure.
 
-**Behavior**:
-- **Enable Command**: Locks/disables the user account
-- **Disable Command**: Unlocks/re-enables the user account
-- **Deduplication**: Uses username as key to prevent duplicate locks
-- **Safety**: Validates username exists before attempting to lock/unlock
+**Input validation**: `user.name` must be 1 to 256 characters from `A-Z`, `a-z`, `0-9`, `.`, `_`,
+`-` and `$`, must not start with `-`, and must not be `root`; otherwise `Cannot read 'user.name'
+from data or invalid username format`. The name is not checked against the account database: an
+account that does not exist makes `passwd` or `pwpolicy` fail, which is logged as
+`Command '<path>' failed to disable the account '<username>' (exit code <n>): <first output line>`.
 
 **Limitations**:
-- **Existing Sessions**: Does not terminate existing user sessions
-- **Root Account**: Should not be used on root/administrator accounts
-- **System Accounts**: May fail on system accounts with special configurations
+- **Existing Sessions**: Locking the account does not end the user's existing sessions
+- **Local accounts only**: a name qualified with `@realm` is rejected
 
-**Return Codes**:
-- `0`: Success (account disabled/re-enabled)
-- `1`: Failure (invalid input, command not found, or operation failed)
-
-**Logging**: All operations logged to `/var/ossec/logs/active-responses.log`
+**Logging**: `logs/active-responses.log` under the agent's installation directory.
 
 ---
 
 ## Agent Restart and Reload
 
-Agent restart and reload operations are **not** implemented as Active Response executables. These control operations are handled by the [Control Module (wm_control)](../control/index.html).
+Agent restart and reload operations are **not** implemented as Active Response executables. These control operations are handled by the [Control Module (wm_control)](../control/README.md).
 
 **Control Operations**:
 - Agent restart via `PUT /agents/{agent_id}/restart` API endpoint
 - Agent reload via `PUT /agents/{agent_id}/reload` API endpoint
-- Handled through dedicated control channel, not Active Response
+- Handled through dedicated `agent_restart` / `agent_reload` tasks, not Active Response
 
-**See**: [Control Module Documentation](../control/index.html) for details on agent control operations.
+**See**: [Control Module Documentation](../control/README.md) for details on agent control operations.
 
 ---
 
 ## Common Features
 
-All Active Response executables share the following characteristics:
+### Input and keys
 
-### JSON Input
-
-All executables read JSON from **stdin** with this structure:
-
-```json
-{
-  "wazuh": {
-    "active_response": {
-      "name": "string",
-      "executable": "string",
-      "type": "stateless" | "stateful",
-      "stateful_timeout": integer
-    },
-    "agent": {
-      "id": "string",
-      "name": "string"
-    }
-  },
-  "source": {
-    "ip": "string",
-    "port": integer,
-    "address": "string"
-  },
-  "user": {
-    "name": "string"
-  },
-  "command": "enable" | "disable"
-}
-```
-
-### Deduplication
-
-All executables implement key-based deduplication:
-
-1. Extract unique keys (IP address, username, etc.)
-2. Send keys to execd via stdout:
-   ```json
-   {
-     "command": "check_keys",
-     "parameters": {
-       "keys": ["192.168.1.100"]
-     }
-   }
-   ```
-3. Wait for execd response:
-   - `{"command": "continue"}` → Proceed with execution
-   - `{"command": "abort"}` → Exit without action (duplicate)
+The message format, the `check_keys` line and execd's `continue` / `abort` answer are specified in
+[JSON protocol](architecture.md#json-protocol); how execd uses the keys is in
+[Deduplication and timeouts](architecture.md#deduplication-and-timeouts). The keys are exchanged on
+`enable` only.
 
 ### Logging
 
-All executables log to `active-responses.log` with this format:
+Every executable appends to `active-responses.log`, one line per message:
 
 ```
-<timestamp> <executable>: <level> - <method> - <status> - <message>
+<YYYY/MM/DD HH:MM:SS> <path>: <message>
 ```
 
-Examples:
+`<path>` is the executable as execd started it (`active-response/bin/block-ip`). A `block-ip` run
+logs `Starting`, the input line, the `check_keys` line and execd's answer, then one line per method
+in the form `[<LEVEL>] Method=<method> Action=<action> Details=<details>`, and `Ended`:
+
 ```
-2026-03-31 15:30:45 block-ip: INFO - iptables - success - IP 192.168.1.100 blocked successfully
-2026-03-31 15:35:50 block-ip: INFO - iptables - success - IP 192.168.1.100 unblocked successfully
-2026-03-31 15:40:12 disable-account: INFO - usermod - success - Account 'baduser' disabled successfully
+2026/03/31 15:30:45 active-response/bin/block-ip: Starting
+2026/03/31 15:30:45 active-response/bin/block-ip: {"source":{"ip":"192.168.1.100"},"wazuh":{"active_response":{...}},"command":"enable"}
+2026/03/31 15:30:45 active-response/bin/block-ip: {"version":1,"origin":{"name":"block-ip","module":"active-response"},"command":"check_keys","parameters":{"keys":["192.168.1.100"]}}
+2026/03/31 15:30:45 active-response/bin/block-ip: {"source":{"ip":"192.168.1.100"},"wazuh":{"active_response":{...}},"command":"continue"}
+2026/03/31 15:30:45 active-response/bin/block-ip: [INFO] Method=firewalld Action=start Details=Attempting method: firewalld (lock=yes)
+2026/03/31 15:30:46 active-response/bin/block-ip: [INFO] Method=firewalld Action=success Details=IP 192.168.1.100 successfully blocked
+2026/03/31 15:30:46 active-response/bin/block-ip: Ended
 ```
 
 ### Error Handling
 
-All executables implement graceful error handling:
-- **Invalid JSON**: Log error, exit with code 1
-- **Missing Fields**: Log error, exit with code 1
-- **Command Failure**: Try next method (for block-ip), or exit with code 1
-- **All Methods Failed**: Log all attempts, exit with code 1
+| Situation | Log line | Exit |
+|---|---|---|
+| No input, or input that is not JSON with a string `command` and a `wazuh` object | `Cannot read input from stdin` / `Invalid input format` | failure |
+| `command` other than `enable` / `disable` | `Invalid value of 'command'` | failure |
+| Missing field | `Cannot read 'source.ip' from data` / `Cannot read 'user.name' from data or invalid username format` | failure |
+| execd answers `abort` | `Aborted` | success |
+| A `block-ip` method unavailable or failing | `[WARNING] Method=<m> Action=<a> …` with `<a>` `skipped`, `failed` or `invalid_state`, then the next method | — |
+| Every `block-ip` method failed | `WARNING: All <n> firewall methods failed or unavailable (<u> unavailable, <e> execution errors)` | failure |
 
-### Platform Detection
-
-All executables automatically detect:
-- **IP Version**: IPv4 vs IPv6 (for block-ip)
-- **Available Tools**: Check which firewall tools are installed
-- **Operating System**: Adjust commands based on platform
+Success is exit status `0`; failure is `OS_INVALID` (`-1`, exit status 255 on Unix), which
+`wazuh-execd` logs as `Active response command '<path>' reported failure (exit code <n>).`
 
 ---
 
@@ -363,14 +239,14 @@ Users can create custom Active Response scripts following these guidelines:
 
 ### Requirements
 
-1. **Executable**: Script must have execute permissions (chmod 750)
-2. **Location**: Place in `/var/ossec/active-response/bin/` (without file extension)
-3. **Ownership**: Set owner to `root:wazuh`
-4. **Shebang**: Include proper shebang line (e.g., `#!/bin/bash` or `#!/usr/bin/python3`)
-5. **JSON Input**: Read JSON from stdin using `read -r` (bash) or `sys.stdin` (Python)
-6. **Commands**: Support both `enable` and `disable` commands
-7. **Exit Codes**: Return 0 on success, 1 on failure
-8. **Logging**: Write to `/var/ossec/logs/active-responses.log`
+1. **Location**: Place the file in `active-response/bin/` under the agent's installation directory; its file name is the channel's `executable`, exactly (on Windows, `.exe` is appended when the name has no `.`)
+2. **Executable**: Owner `root:wazuh`, mode `0750`, with a proper shebang line (e.g. `#!/bin/bash` or `#!/usr/bin/python3`) on Unix
+3. **JSON Input**: Read **one line** from stdin using `read -r` (bash) or `sys.stdin.readline()` (Python)
+4. **Keys**: On `enable`, write one `check_keys` line on stdout and read execd's answer as a second line; without it a stateful response is never reverted
+5. **Commands**: Support both `enable` and `disable`
+6. **Exit Codes**: Return 0 on success, non-zero on failure
+7. **Logging**: Write to `logs/active-responses.log`
+8. **Run time**: Bound your own run time: execd waits for the script to exit and runs one at a time
 
 ### Example 1: Stateful Bash Script (FIM Response)
 
@@ -521,10 +397,7 @@ def write_debug_file(ar_name, msg):
 def setup_and_check_message(argv):
 
     # get alert from stdin
-    input_str = ""
-    for line in sys.stdin:
-        input_str = line
-        break
+    input_str = sys.stdin.readline()
 
     write_debug_file(argv[0], input_str)
 
@@ -545,7 +418,7 @@ def setup_and_check_message(argv):
         message.command = DISABLE_COMMAND
     else:
         message.command = OS_INVALID
-        write_debug_file(argv[0], 'Not valid command: ' + command)
+        write_debug_file(argv[0], 'Not valid command: ' + str(command))
 
     return message
 
@@ -553,7 +426,7 @@ def setup_and_check_message(argv):
 def send_keys_and_check_message(argv, keys):
 
     # build and send message with keys
-    keys_msg = json.dumps({"version": 1,"origin":{"name": argv[0],"module":"active-response"},"command":"check_keys","parameters":{"keys":keys}})
+    keys_msg = json.dumps({"version": 1,"origin":{"name": os.path.basename(argv[0]),"module":"active-response"},"command":"check_keys","parameters":{"keys":keys}})
 
     write_debug_file(argv[0], keys_msg)
 
@@ -561,12 +434,7 @@ def send_keys_and_check_message(argv, keys):
     sys.stdout.flush()
 
     # read the response of previous message
-    input_str = ""
-    while True:
-        line = sys.stdin.readline()
-        if line:
-            input_str = line
-            break
+    input_str = sys.stdin.readline()
 
     write_debug_file(argv[0], input_str)
 
@@ -574,7 +442,7 @@ def send_keys_and_check_message(argv, keys):
         data = json.loads(input_str)
     except ValueError:
         write_debug_file(argv[0], 'Decoding JSON has failed, invalid input format')
-        return message
+        return OS_INVALID
 
     action = data.get("command")
 
@@ -607,8 +475,8 @@ def main(argv):
 
         alert = msg.alert
 
-        rule_id = alert.get("rule", {}).get("id", "unknown")
-        keys = [rule_id]
+        source_ip = alert.get("source", {}).get("ip", "unknown")
+        keys = [source_ip]
 
         """ End Custom Key """
 
@@ -628,7 +496,7 @@ def main(argv):
 
         # Replace this section with your custom action
         with open("ar-test-result.txt", mode="a") as test_file:
-            test_file.write("Active response triggered by rule ID: <" + str(keys) + ">\n")
+            test_file.write("Active response triggered for: <" + str(keys) + ">\n")
 
         """ End Custom Action Enable """
 
@@ -656,23 +524,27 @@ if __name__ == "__main__":
     main(sys.argv)
 ```
 
+`ar-test-result.txt` is relative to the working directory, which execd sets to the agent's
+installation directory.
+
 **Customization Guide**:
 
-1. **Custom Keys (Line 124-129)**: Define which fields uniquely identify your alert
+1. **Custom Keys** (between `Start Custom Key` and `End Custom Key`): define which fields identify
+   the action; execd treats two responses with the same keys as the same action
    ```python
    # Example: Use IP and username as keys
    source_ip = alert.get("source", {}).get("ip", "unknown")
    username = alert.get("user", {}).get("name", "unknown")
-   keys = [rule_id, source_ip, username]
+   keys = [source_ip, username]
    ```
 
-2. **Enable Action (Line 145-149)**: Replace with your custom action
+2. **Enable Action** (`Start Custom Action Enable`): replace with your custom action
    ```python
    # Example: Add firewall rule, lock account, etc.
    subprocess.run(["iptables", "-I", "INPUT", "-s", source_ip, "-j", "DROP"])
    ```
 
-3. **Disable Action (Line 155-161)**: Implement reversion logic
+3. **Disable Action** (`Start Custom Action Disable`): implement the reversion
    ```python
    # Example: Remove firewall rule, unlock account, etc.
    subprocess.run(["iptables", "-D", "INPUT", "-s", source_ip, "-j", "DROP"])
@@ -694,18 +566,15 @@ sudo chown root:wazuh /var/ossec/active-response/bin/custom-ar
 
 ### Best Practices
 
-- **⚠️ stdin Reading**: ALWAYS use `read -r INPUT` in bash (never `$(</dev/stdin)` - causes deadlock)
-- **Python stdin**: Use `for line in sys.stdin: input_str = line; break` or `sys.stdin.readline()`
-- **No File Extension**: Save scripts without extension in `/var/ossec/active-response/bin/`
+- **⚠️ stdin Reading**: ALWAYS read one line (`read -r INPUT` in bash, `sys.stdin.readline()` in Python), never to end of file (`$(</dev/stdin)`): execd keeps stdin open while it waits for your `check_keys` line, so reading to EOF deadlocks
 - **Path Processing**: Use `PurePosixPath(PureWindowsPath())` for cross-platform path handling
 - **Validate Input**: Check JSON structure and required fields before processing
-- **Implement Deduplication**: For stateful scripts, always use the keys protocol
-- **WCS Fields**: Access fields using Wazuh Common Schema (`rule.id`, `source.ip`, `user.name`, `file.path`)
+- **Implement Deduplication**: For stateful scripts, always send the keys
+- **Field paths**: Read fields at the paths the monitored event uses (`source.ip`, `user.name`, `file.path`, …) and the response metadata under `wazuh.active_response`
 - **Log Everything**: Detailed logging to `active-responses.log` aids troubleshooting
 - **Test Thoroughly**: Test both enable and disable commands with real alerts
 - **Handle Errors**: Gracefully handle missing fields, invalid JSON, and failed operations
 - **Use Absolute Paths**: Don't rely on PATH environment variable for external commands
-- **Check Privileges**: Verify script has necessary permissions (root/wazuh ownership)
 - **Python3**: Ensure Python 3 is installed on all agents before deployment
 - **Dependencies**: Document any required libraries or external tools (e.g., `jq` for bash)
 
@@ -715,16 +584,21 @@ sudo chown root:wazuh /var/ossec/active-response/bin/custom-ar
 
 ### Manual Testing
 
-Test AR scripts directly:
+Run an executable as execd would, from the installation directory. An `enable` reads two lines —
+the message, then execd's answer to its `check_keys` line — so give it both:
 
 ```bash
-# Test enable command
-echo '{"wazuh":{"active_response":{"name":"block-ip","executable":"block-ip","type":"stateless"}},"source":{"ip":"192.168.1.100"},"command":"enable"}' | \
-  /var/ossec/active-response/bin/block-ip
+cd /var/ossec
 
-# Test disable command
+# Test enable command
+printf '%s\n' \
+  '{"wazuh":{"active_response":{"name":"block-ip","executable":"block-ip","type":"stateless"}},"source":{"ip":"192.168.1.100"},"command":"enable"}' \
+  '{"wazuh":{"active_response":{"name":"block-ip","executable":"block-ip","type":"stateless"}},"source":{"ip":"192.168.1.100"},"command":"continue"}' \
+  | active-response/bin/block-ip
+
+# Test disable command (one line: no key exchange on disable)
 echo '{"wazuh":{"active_response":{"name":"block-ip","executable":"block-ip","type":"stateless"}},"source":{"ip":"192.168.1.100"},"command":"disable"}' | \
-  /var/ossec/active-response/bin/block-ip
+  active-response/bin/block-ip
 ```
 
 ### Verify Firewall Changes
@@ -757,37 +631,8 @@ tail -f /var/ossec/logs/active-responses.log
 
 ---
 
-## Performance Considerations
-
-### Execution Time
-
-| Executable | Platform | Typical Execution Time |
-|------------|----------|------------------------|
-| block-ip | Linux (iptables) | ~50ms |
-| block-ip | Linux (firewalld) | ~200ms |
-| block-ip | macOS (pf) | ~100ms |
-| block-ip | Windows (netsh) | ~150ms |
-| disable-account | Unix/Linux | ~100ms |
-
-### Resource Usage
-
-- **CPU**: Minimal (< 1% per execution)
-- **Memory**: ~2-5 MB per process
-- **Disk I/O**: Minimal (log writes only, except hosts.deny method)
-
-### Scalability
-
-- **Concurrent Executions**: Limited by execd (single-threaded)
-- **Maximum AR Table Size**: 256 entries (configurable)
-- **Firewall Rule Limits**: Depends on platform:
-  - iptables: ~10,000 rules before performance degradation
-  - pf: ~100,000 table entries
-  - netsh: ~1,000 rules before performance degradation
-
----
-
 ## See Also
 
 - [Active Response README](README.md) - Module overview and features
 - [Architecture](architecture.md) - Technical implementation details
-- [Control Module](../control/index.html) - Agent restart/reload (separated in v5.0)
+- [Control Module](../control/README.md) - Agent restart/reload (separated in v5.0)

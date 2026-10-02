@@ -1744,7 +1744,7 @@ checks:
           - "Pass the Hash"
     condition: all
     rules:
-      - 'f:/etc/shadow -> r:^root:\*:|^root:\$'
+      - 'f:/etc/shadow -> r:^root:\$'
 
   # 1.5.1 Ensure address space layout randomization (ASLR) is enabled. (Automated) - Not Implemented
   # 1.5.2 Ensure ptrace_scope is restricted. (Automated) - Not Implemented
@@ -2143,9 +2143,9 @@ checks:
           - "Active Scanning"
           - "Network Service Discovery"
           - "Account Discovery"
-    condition: all
+    condition: none
     rules:
-      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s && r:Debian'
+      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Debian'
 
   # 1.7.4 Ensure permissions on /etc/motd are configured. (Automated)
   - id: 2545
@@ -3594,7 +3594,7 @@ checks:
           - "Hide Artifacts"
     condition: all
     rules:
-      - 'c:ss -lntu -> r:.*:25.*LISTEN && !r:127\.0\.0\.1:25.+LISTEN|::1:25.*LISTEN'
+      - 'not c:ss -lntu -> r::25\s && !r:\s127\.0\.0\.1:25\s|\s\[::1\]:25\s|\s::1:25\s'
 
   # 2.2.17 Ensure rsync service is either not installed or is masked. (Automated)
   - id: 2579
@@ -10184,8 +10184,8 @@ checks:
           - "Credentials In Files"
     condition: all
     rules:
-      - 'c:stat -c "%a %U %G" /etc/security/opasswd -> r:^600\s+root\s+root$'
-      - 'c:stat -c "%a %U %G" /etc/security/opasswd.old -> r:^600\s+root\s+root$'
+      - 'c:stat -c "%a %U %G" /etc/security/opasswd -> r:^600\s+root\s+root$|^400\s+root\s+root$|^200\s+root\s+root$'
+      - 'not c:stat -c "%a %U %G" /etc/security/opasswd.old -> r:^\d+\s && !r:^600\s+root\s+root$|^400\s+root\s+root$|^200\s+root\s+root$'
 
   # 6.1.11 Ensure world writable files and directories are secured. (Automated) - Not Implemented
   # 6.1.12 Ensure no unowned or ungrouped files or directories exist. (Automated) - Not Implemented

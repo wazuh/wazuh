@@ -37,17 +37,17 @@ public:
         Type type = Type::ERROR;
         std::map<std::string, Field> properties = {};
 
-    /**
-     * @brief Stream insertion operator for Field::Parameters.
-     *
-     * @param os Output stream.
-     * @param parameters The parameters to print.
-     * @return std::ostream& The output stream.
-     */
-    friend std::ostream& operator<<(std::ostream& os, const Parameters& parameters)
+        /**
+         * @brief Stream insertion operator for Field::Parameters.
+         *
+         * @param os Output stream.
+         * @param parameters The parameters to print.
+         * @return std::ostream& The output stream.
+         */
+        friend std::ostream& operator<<(std::ostream& os, const Parameters& parameters)
         {
             os << "FieldParameters(" << "Type:" << typeToStr(parameters.type) << std::boolalpha
-                << "Properties:" << parameters.properties.size() << ")";
+               << "Properties:" << parameters.properties.size() << ")";
 
             return os;
         }
@@ -95,8 +95,8 @@ public:
      */
     friend std::ostream& operator<<(std::ostream& os, const Field& field)
     {
-        os << "Field(Type:" << typeToStr(field.m_type) << std::boolalpha
-            << ", Properties:" << field.m_properties.size() << ")";
+        os << "Field(Type:" << typeToStr(field.m_type) << std::boolalpha << ", Properties:" << field.m_properties.size()
+           << ")";
 
         return os;
     }

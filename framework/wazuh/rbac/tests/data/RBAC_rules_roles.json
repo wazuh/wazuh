@@ -148,7 +148,7 @@
           "AND": [
             {
               "MATCH": {
-                "office": "r'^[0-9]*'$"
+                "office": "r'^[0-9]*$'"
               }
             }
           ]
@@ -201,7 +201,7 @@
           "AND": [
             {
               "MATCH$": {
-                "office": "r'^[0-9]*'$",
+                "office": "r'^[0-9]*$'",
                 "disabled": false,
                 "department": ["Technical"]
               }
@@ -262,7 +262,7 @@
           "AND": [
             {
               "MATCH$": {
-                "office": "r'^[0-9]*'$",
+                "office": "r'^[0-9]*$'",
                 "disabled": false
               }
             }
@@ -476,7 +476,7 @@
         },
         {
           "MATCH": {
-            "user": "r'^[a-z]{2}ep"
+            "user": "r'^[a-z]{2}ep$'"
           }
         },
         {
@@ -517,7 +517,7 @@
           },
           {
             "MATCH": {
-              "user": "r'^[a-z]{2}ep"
+              "user": "r'^[a-z]{2}ep$'"
             }
           },
           {

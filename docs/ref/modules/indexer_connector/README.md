@@ -10,30 +10,34 @@ For configuration options see [Indexer Configuration](configuration.md).
 
 The Indexer Connector is not a standalone daemon. It is linked into the processes that need to write to or query the Indexer:
 
-- **Vulnerability Scanner** — indexes CVE detections into `wazuh-states-vulnerabilities`
-- **Inventory Sync Server** — indexes agent state into `wazuh-states-inventory-*` and `wazuh-states-fim-*`
-- **Engine** — indexes SCA results and other engine-generated events
+- **Vulnerability Scanner** (`wazuh-manager-modulesd`) — indexes detections into `wazuh-states-vulnerabilities`, and reads its feed through the [Content Manager](../content_manager/README.md)
+- **Inventory Sync Server** (`wazuh-manager-modulesd`) — indexes the agents' state (inventory, FIM, SCA) and the `wazuh-agent-config`/`wazuh-agent-stats` documents
+- **Engine** (`wazuh-manager-analysisd`) — indexes processed events through its outputs, and reads its content from the `wazuh-threatintel-*` indices
 
-The library provides two classes depending on the use case:
+The Python framework does not use this library: its indexer client reads the same `indexer` section, and the same keystore credentials through the `keystore_server` socket (see [Keystore](../keystore/README.md#keystore_server)).
+
+The library provides these classes:
 
 | Class | Mode | Queue | Use case |
 |-------|------|-------|----------|
-| `IndexerConnectorSync` | Synchronous | In-memory (up to 10 MB) | Low-latency, bounded writes |
-| `IndexerConnectorAsync` | Asynchronous | In-memory (byte-bounded via `max_queue_bytes`) | Non-blocking writes; buffered events are discarded on shutdown |
+| `IndexerConnectorSync` | Synchronous | In-memory staging buffer (flushed at `max_bulk_size`, default 10 MB) | Bounded writes the caller flushes and answers for; searches, PIT, by-query operations |
+| `IndexerConnectorAsync` | Asynchronous | In-memory (byte-bounded via `max_queue_bytes`; unlimited when 0) | Non-blocking writes; buffered events are discarded on shutdown |
+| `IndexerSession` | — | — | One health monitor and one credential read shared by several connectors of the same process |
 
 ## How it works
 
-1. The caller instantiates a connector with a JSON configuration (derived from the `<indexer>` XML block).
-2. Credentials (`username`/`password`) are read from the RocksDB keystore (`queue/keystore/`).
-3. A background health-monitor thread polls `/_cat/health` on all configured hosts every 60 seconds and marks nodes available or unavailable.
+1. The caller instantiates a connector with a JSON configuration built from the `indexer` section of `wazuh-manager.conf` (see [Configuration](configuration.md)). A connector without `hosts` fails (`No hosts found in the configuration`), and so does one whose single CA file does not exist (`The CA root certificate file: '<path>' does not exist.`). With several CA files, they are concatenated into `tmp/root-ca-merged.pem` under the manager home.
+2. Credentials (`username`/`password`) are read once per process from the `indexer` column family of the [keystore](../keystore/README.md) and cached: changing them takes a restart. If either is empty, the connector fails with `No indexer credentials found in the keystore. ...`.
+3. A background health-monitor thread polls `GET /_cat/health` on every configured host (5-second timeout) every `monitoring_interval_seconds` (default 10; the engine sets it from `analysisd.indexer_monitoring_interval`, range 1–3600). A host answering `green` or `yellow` is available; any other answer or error marks it unavailable, logged once as `Indexer node '<host>' is no longer available. Reason: <reason>` (a `401` gives `Unauthorized - Check indexer credentials`) and again as `Indexer node '<host>' is available again.` when it recovers. An unreachable host does not fail the construction.
 4. A server-selector performs round-robin load balancing across available nodes. Selection has no side effects: availability probes (`isAvailable()`) never advance the round-robin cursor, and a host is consumed from the rotation only by the request actually sent to it, so traffic distributes uniformly across healthy nodes.
 5. Documents are accumulated in memory (both sync and async) and flushed as OpenSearch Bulk API requests.
 
 ### Sync flush behavior
 
-- Buffer up to 10 MB of serialized events before flushing (configurable: `wazuh_modules.indexer_bulk_size_bytes` for Vulnerability Scanner, `wazuh_modules.inventory_sync_server_indexer_sync_connector_max_bulk_size` for Inventory Sync Server).
-- Flush automatically after 20 seconds of inactivity (configurable: `wazuh_modules.indexer_flush_interval` for Vulnerability Scanner; the Inventory Sync Server deliberately overrides its periodic flush — its ingestion workers own every flush, see its [configuration reference](../inventory-sync-server/configuration.md)).
-- `flush_interval_seconds = 0` means **no background flush thread at all**: the connector is never created with one and every flush is the caller's. Use it when the caller has to answer for a failed flush — a timer flush that fails discards the staging buffer and has no caller to report to, so a later `flush()` finds an empty buffer and returns success for data that never landed. The value is set directly by the Inventory Sync Server; it is not reachable through the Vulnerability Scanner's `wazuh_modules.indexer_flush_interval`, whose range is 1–3600.
+- Buffer up to `max_bulk_size` bytes of serialized events (default 10 MB) before flushing.
+- A background thread flushes whatever is staged every `flush_interval_seconds` (default 20).
+- `flush_interval_seconds = 0` means **no background flush thread at all**: the connector is never created with one and every flush is the caller's. Use it when the caller has to answer for a failed flush — a timer flush that fails discards the staging buffer and has no caller to report to, so a later `flush()` finds an empty buffer and returns success for data that never landed. The Inventory Sync Server sets it this way: its ingestion workers own every flush.
+- Each consumer sets these values from its own internal options: the Vulnerability Scanner's are in its [Internal Options](../vulnerability-scanner/configuration.md#internal-options), the Inventory Sync Server's in its [configuration reference](../inventory-sync-server/configuration.md).
 - If the indexer returns HTTP 413 (payload too large), the batch is split and retried.
 - Version conflicts at the document level are handled per-document.
 
@@ -48,13 +52,13 @@ The library provides two classes depending on the use case:
 - A `deleteById()` of a document that is not there is a per-item `404 not_found`, which is not an
   error and is not reported: deletes are idempotent.
 - Up to `analysisd.indexer_bulk_max_bytes` bytes per flush batch (default 8 MB; always takes at least one item, even if it exceeds the threshold on its own).
-- Flush automatically after 20 seconds of inactivity (configurable via `analysisd.indexer_flush_interval`).
+- A batch is sent as soon as the queue holds `bulk_max_bytes`, and otherwise at least every 20 seconds (configurable via `analysisd.indexer_flush_interval`, range 1–3600).
 - If the queue exceeds `analysisd.indexer_queue_max_bytes` (default 64 MB, maps to `max_queue_bytes` in the connector config), new events are dropped and counted until it drains.
 - The queue is in-memory only: buffered events are discarded (not retried) if the manager stops or restarts.
 
 ### Retry and backoff behavior
 
-Both connectors retry transient failures (HTTP 429 Too Many Requests, connection errors, and - async only - HTTP 409 document version conflicts) using an exponential backoff with jitter (`IndexerExponentialBackoff`, `src/exponentialBackoff.hpp`). Other errors are not retried:
+Both connectors retry transient failures (HTTP 429 Too Many Requests, connection errors, and - async only - HTTP 409 document version conflicts) using an exponential backoff with jitter (`IndexerExponentialBackoff`, `src/shared_modules/indexer_connector/src/exponentialBackoff.hpp`). Other errors are not retried:
 
 - HTTP 413 (Payload Too Large) is handled separately: the batch is split (sync) or the bulk-size threshold is halved (async) and resent immediately, with no backoff delay.
 - Sync: an HTTP 409 at the request level, or any other status code, drops the current batch and throws immediately (no retry). Delete-by-query is the exception — see [Delete-by-query](#delete-by-query) below.
@@ -132,53 +136,34 @@ achieve leaves documents nothing will ever overwrite:
 
 ## Indices
 
-| Index | Written by |
-|-------|------------|
-| `wazuh-states-vulnerabilities` | Vulnerability Scanner |
-| `wazuh-states-inventory-system` | Inventory Sync Server |
-| `wazuh-states-inventory-hardware` | Inventory Sync Server |
-| `wazuh-states-inventory-packages` | Inventory Sync Server |
-| `wazuh-states-inventory-hotfixes` | Inventory Sync Server (Windows) |
-| `wazuh-states-inventory-processes` | Inventory Sync Server |
-| `wazuh-states-inventory-ports` | Inventory Sync Server |
-| `wazuh-states-inventory-interfaces` | Inventory Sync Server |
-| `wazuh-states-inventory-protocols` | Inventory Sync Server |
-| `wazuh-states-inventory-networks` | Inventory Sync Server |
-| `wazuh-states-inventory-users` | Inventory Sync Server |
-| `wazuh-states-inventory-groups` | Inventory Sync Server |
-| `wazuh-states-inventory-services` | Inventory Sync Server |
-| `wazuh-states-inventory-browser-extensions` | Inventory Sync Server |
-| `wazuh-states-fim-files` | Inventory Sync Server (FIM) |
-| `wazuh-states-fim-registry-keys` | Inventory Sync Server (FIM, Windows) |
-| `wazuh-states-fim-registry-values` | Inventory Sync Server (FIM, Windows) |
-| `wazuh-states-sca` | Engine (SCA) |
-| `wazuh-agent-config` | Inventory Sync Server (`POST /config`, one document per agent) |
-| `wazuh-agent-stats` | Inventory Sync Server (`POST /stats`, one document per agent) |
-| `wazuh-threatintel-*` | Read-only (Content Manager) |
+| Index | Used by |
+|-------|---------|
+| `wazuh-states-vulnerabilities` | Vulnerability Scanner (writes) |
+| `wazuh-states-inventory-*`, `wazuh-states-fim-*`, `wazuh-states-sca` | Inventory Sync Server (writes the indices agents synchronize; the allowed names are these prefixes) |
+| `wazuh-agent-config`, `wazuh-agent-stats` | Inventory Sync Server (`POST /config`, `POST /stats`: one document per agent) |
+| `wazuh-states-*`, `wazuh-agent-config`, `wazuh-agent-stats` | Inventory Sync Server (on agent deletion: delete-by-query on `wazuh-states-*`, delete by document id on the two `wazuh-agent-*` indices) |
+| `.wazuh-threatintel-vulnerabilities`, `.wazuh-cti-consumers` | Content Manager (reads, for the Vulnerability Scanner) |
+| `wazuh-threatintel-*` (kvdbs, decoders, filters, integrations, policies, enrichments) | Engine (reads its content) |
+
+Which agent module feeds which index family is described in the
+[Inventory Sync Server reference](../inventory-sync-server/README.md).
 
 ## Key source files
 
 | File | Purpose |
 |------|---------|
-| `include/indexerConnector.hpp` | Public API: `IndexerConnectorSync`, `IndexerConnectorAsync` |
-| `src/indexerConnectorSyncImpl.hpp` | Sync implementation: in-memory buffer, bulk flush, 413 splitting |
-| `src/indexerConnectorAsyncImpl.hpp` | Async implementation: in-memory bulk queue, background flusher |
-| `src/exponentialBackoff.hpp` | Exponential backoff with jitter, shared by both retry paths |
-| `src/serverSelector.hpp` | Round-robin load balancer with health tracking |
-| `src/monitoring.hpp` | Background health-monitor thread (60s interval) |
-| `testtool/` | CLI test tool: `push-events`, `export-policy`, `generate-full-policy` |
+| `src/shared_modules/indexer_connector/include/indexerConnector.hpp` | Public API: `IndexerConnectorSync`, `IndexerConnectorAsync`, `IndexerSession` |
+| `src/shared_modules/indexer_connector/src/indexerConnectorSyncImpl.hpp` | Sync implementation: in-memory buffer, bulk flush, 413 splitting, by-query operations |
+| `src/shared_modules/indexer_connector/src/indexerConnectorAsyncImpl.hpp` | Async implementation: in-memory bulk queue, background flusher |
+| `src/shared_modules/indexer_connector/src/exponentialBackoff.hpp` | Exponential backoff with jitter, shared by both retry paths |
+| `src/shared_modules/indexer_connector/src/serverSelector.hpp` | Round-robin load balancer with health tracking |
+| `src/shared_modules/indexer_connector/src/monitoring.hpp` | Background health-monitor thread (default 10 s interval) |
+| `src/shared_modules/indexer_connector/src/indexerTransport.cpp` | TLS material and keystore credentials |
+| `src/shared_modules/indexer_connector/testtool/` | CLI test tool: `push-events`, `export-policy`, `generate-full-policy` |
 
 ## Test tool
 
-```bash
-# Build
-make indexer_connector_tool -j$(nproc)
-
-# Push events to an index (sync)
-./indexer_connector_tool push-events -c config.json -e events.json
-
-# Push events (async)
-./indexer_connector_tool push-events -c config.json -e events.json -m async -w 5
-```
-
-See `testtool/README.md` for the full reference.
+`indexer_connector_tool` is a developer tool built in the build tree
+(`cmake --build src/build --target indexer_connector_tool`, output `src/build/bin/indexer_connector_tool`);
+it is not installed with the manager. Its reference is
+`src/shared_modules/indexer_connector/testtool/README.md`.

@@ -4,7 +4,7 @@ Complete configuration reference for the Logcollector module.
 
 The Logcollector module collects logs from monitored endpoints and forwards them to the Wazuh server for analysis. It supports multiple log sources including plain text files, JSON logs, Windows Event Logs, macOS Unified Logging System, and systemd journal.
 
-For module overview and architecture, see [Logcollector Module](index.html).
+For module overview and architecture, see [Logcollector Module](README.md).
 
 ---
 
@@ -64,7 +64,8 @@ Defines the format of the log source to determine how logs are read and parsed.
   - `mysql_log` - MySQL logs
   - `postgresql_log` - PostgreSQL logs
   - `djb-multilog` - DJB multilog format
-  - `multi-line` - Multi-line log entries
+  - `multi-line: N` - Multi-line log entries of exactly `N` lines (for example, `multi-line: 3`)
+  - `multi-line-regex` - Multi-line log entries delimited by `multiline_regex`
 - **Note:** The format determines which collector is used to read the log source
 
 ### query
@@ -103,11 +104,13 @@ Filter journal entries by field (journald only).
 
 ### only-future-events
 
-Collect only events generated after the agent starts (Windows Event Channel only).
+Collect only events generated after the agent starts.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-- **Note:** When set to `yes`, ignores historical events. When set to `no`, processes all available events from the channel
+- **Attributes:** `max-size` (files only) - largest backlog read after a restart when set to `no`. Default `10M`, maximum `2G`; takes bytes or a `K`, `M` or `G` suffix. An invalid value logs a warning and keeps the default
+- **Note:** When set to `yes`, ignores historical events. When set to `no`, a file resumes from its saved bookmark, or skips to its end if it grew by more than `max-size` meanwhile; a file whose content changed (for example, rotated) is read from the start, and a file with no bookmark starts at its end; a Windows Event Channel processes all available events from the channel
+- **Example:** `<only-future-events max-size="50M">no</only-future-events>`
 
 ### target
 
@@ -157,6 +160,45 @@ Excludes files matching a pattern when using wildcards.
 - **Default value:** None (optional)
 - **Allowed values:** Regex pattern
 - **Note:** Files matching this pattern are excluded from monitoring
+
+### alias
+
+Name shown instead of the command in events from `command` and `full_command` sources.
+
+- **Default value:** The command itself
+- **Allowed values:** Any string
+- **Note:** Replaces the command in the `wazuh: output: '<alias>':` header of each event and in the event location
+- **Example:** `<alias>disk usage</alias>`
+
+### ignore
+
+Drops events that match an expression.
+
+- **Default value:** None (optional)
+- **Allowed values:** Regular expression. The `type` attribute selects its syntax: `pcre2` (default), `osregex` or `osmatch`
+- **Note:** Repeat the tag to add expressions; an event that matches any of them is dropped. The expression is tested against the text as read, before labels or reformatting: each line for files (the raw JSON line for `json`, the `@`-timestamped line for `djb-multilog`), the whole event for `multi-line: N` and `multi-line-regex`, each output line with its `wazuh: output: '<alias>':` header in front for `command`, and the whole output with that header for `full_command`. Not applied to `eventchannel` or `eventlog`; ignored with a warning for `journald`
+- **Example:** `<ignore type="osmatch">DEBUG</ignore>`
+
+### restrict
+
+Keeps only events that match an expression.
+
+- **Default value:** None (optional)
+- **Allowed values:** Regular expression. The `type` attribute selects its syntax: `pcre2` (default), `osregex` or `osmatch`
+- **Note:** Repeat the tag to add expressions; an event must match all of them to be kept. Tested against the same text as `ignore`, with the same format limits
+- **Example:** `<restrict>sshd|sudo</restrict>`
+
+### multiline_regex
+
+PCRE2 expression that splits a `multi-line-regex` source into events.
+
+- **Default value:** None (required with `multi-line-regex`, ignored with a warning for any other `log_format`)
+- **Allowed values:** PCRE2 regular expression
+- **Attributes:**
+  - `match` - `start` (default): a matching line starts a new event; `end`: a matching line ends the current event; `all`: the event ends once the lines read so far match
+  - `replace` - what replaces the line breaks inside an event: `no-replace` (default, keeps them), `none` (removes them), `wspace` (a space) or `tab` (a tab)
+  - `timeout` - seconds to wait for more lines before sending an incomplete event. Default `5`, allowed `1` to `120`
+- **Example:** `<multiline_regex replace="wspace">^\d{4}-\d{2}-\d{2} </multiline_regex>`
 
 ### reconnect_time
 
@@ -219,7 +261,7 @@ Internal options provide advanced tuning for the Logcollector module. These opti
 File check interval for detecting log file changes.
 
 - **Default value:** `2` (seconds)
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `1` to `120`
 - **Format:** `logcollector.loop_timeout=2`
 - **Note:** Controls how frequently Logcollector checks monitored files for changes
 
@@ -228,7 +270,7 @@ File check interval for detecting log file changes.
 Number of attempts to open a log file before giving up.
 
 - **Default value:** `0` (infinite retries)
-- **Allowed values:** Integer from `2` to `998`, or `0` for infinite
+- **Allowed values:** Integer from `0` to `998` (`0` means infinite retries)
 - **Format:** `logcollector.open_attempts=0`
 - **Note:** Set to `0` for continuous retry on file open failures
 
@@ -282,7 +324,7 @@ Wait time before reattempting a socket connection after failure.
 Number of threads for reading log files.
 
 - **Default value:** `4`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from 1 to 128
 - **Format:** `logcollector.input_threads=4`
 - **Note:** Higher values improve throughput for high-volume log collection
 
@@ -571,12 +613,13 @@ Create a Unix socket for receiving syslog messages:
 
 ### Multi-Line Log Collection
 
-Collect multi-line log entries (e.g., Java stack traces):
+Collect multi-line log entries (e.g., Java stack traces) where each entry starts with a date:
 
 ```xml
 <localfile>
   <location>/var/log/app.log</location>
-  <log_format>multi-line</log_format>
+  <log_format>multi-line-regex</log_format>
+  <multiline_regex match="start" replace="wspace">^\d{4}-\d{2}-\d{2} </multiline_regex>
 </localfile>
 ```
 
@@ -676,7 +719,7 @@ systemctl restart wazuh-agent
 ls -la /var/log/application.log
 ```
 
-Ensure the Wazuh agent user (`wazuh` or `ossec`) has read permissions.
+Ensure the Wazuh agent group (`wazuh`) has read permissions.
 
 **Verify configuration:**
 
@@ -722,8 +765,10 @@ logcollector.queue_size=2048
 **Verify agent connectivity:**
 
 ```bash
-/var/ossec/bin/agent_control -ls
+grep "^status=" /var/ossec/var/run/wazuh-agentd.state
 ```
+
+It reads `status='connected'` when the agent is connected to the manager.
 
 **Check for rate limiting:**
 
@@ -791,7 +836,7 @@ logcollector.sock_fail_time=60
 
 ## See Also
 
-- [Logcollector Module](index.html) - Module overview and architecture
+- [Logcollector Module](README.md) - Module overview and architecture
 - [Log Collectors](collectors.md) - Detailed collector documentation
 - [Client Configuration](../client/configuration.md) - Agent connectivity settings
 - [Agent Configuration Reference](../../configuration/agent/README.md) - All agent configuration options

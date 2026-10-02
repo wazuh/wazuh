@@ -26,7 +26,9 @@ These put one module's traffic on the socket in isolation — the cleanest read 
 | `checksum_reconcile` | The checksum path both ways: a `"correct"` checksum (matches what the agent sent) and a `"mismatch"` (forces a resync) |
 | `vd_first_then_sync_debian` / `vd_first_then_sync_windows` | The VD lane: a `VDFirst` first scan then a `VDSync` delta stream (the feed gate → scan lane path) |
 | `dump_replay_syscollector_full_debian` | A large-dataset first scan + delta (bulk bytes, group commit). Despite the name it GENERATES 2000 synthetic documents — for real captured payloads see the `real_*` scenarios |
-| `mega_burst` | A big single fleet, unpaced, one delta lane — maximum session rate |
+| `mega_burst` | A big single fleet, unpaced, one delta lane — maximum session rate (retry off) |
+| `session_storm` | 50 agents replaying a one-document syscollector delta as fast as the manager answers, for a fixed 60 s, retry off — the sustained flood that makes the server shed (see the `contract_ramp_503` note below for what that shedding actually comes from) |
+| `session_fifo_concurrent` | Each of 8 agents runs a small syscollector lane and a large FIM lane **concurrently**, 40 sessions each, so two sessions of one agent are in flight at once on the same shard. `expected` pins all 640 sessions `200`, no `5xx`, no transport errors — the per-agent FIFO and the no-crossed-documents guarantee |
 
 ## Mixed fleet (the flagship pair)
 
@@ -34,6 +36,8 @@ These put one module's traffic on the socket in isolation — the cleanest read 
 |---|---|
 | `mixed_fleet_windows_linux` (agent) | Two fleets, each agent running FIM + SCA + syscollector + VD **and** a syslog engine lane in parallel, with `/control` keepalives — production-shaped, heterogeneous, simultaneous load |
 | `mixed_fleet_windows_linux_uds` (uds) | The same inventory lanes straight to the socket, no engine, no control. Run as a pair, the difference isolates the remoted relay cost (F9c-4) |
+| `mixed_fleet_windows_linux_only_stateful` (agent) | The flagship without the engine lane, doubled to 50 + 50 agents: the stateful sync path alone under `/control` keepalives |
+| `mixed_fleet_windows_linux_only_stateless` (agent) | The flagship's engine lane alone (50 + 50 agents at 250 events/s each), repeated for 20 min (`repeat_until`) under `/control` keepalives |
 
 ## Engine event streams (agent)
 
@@ -57,9 +61,11 @@ scenario carries an `expected` block (counter assertions; a failure exits `3` �
 `tool_simulator/docu/07-scenario-schema.md`); where it depends on server config or live load, it
 deliberately does not. Two footnotes from running these against a real manager:
 
-- `contract_oversized_413` has **no** `expected`: the default `max_body_size` is unlimited, so on a
-  default manager the sessions are simply accepted — the `413` only appears when the server is
-  configured with a cap (F9c-4 measured exactly that).
+- `contract_oversized_413` has **no** `expected`. With the default
+  `wazuh_modules.inventory_sync_server_max_body_size=0`, the body cap is derived from the 256 MiB
+  in-flight budget (`max_inflight_bytes`). Its ~13 MB sessions are therefore simply accepted on a
+  default manager. The `413` appears only when the server is configured with a smaller cap (F9c-4
+  measured exactly that).
 - The shed-measuring scenarios (`contract_ramp_503`, `contract_vd_saturation`, plus `session_storm`
   and `mega_burst`) set `retry: {"enabled": false}`: the agent-like default retry would convert the
   `503`s they exist to count into eventual `200`s.
@@ -90,8 +96,8 @@ deliberately does not. Two footnotes from running these against a real manager:
 | `contract_delete_under_load` | `POST /_internal/agents/delete` (uds) while a delta lane is mid-load | 120 sessions + 4 deletes all OK |
 | `contract_feed_not_ready_retry` | `503` + `Retry-After` when the VD feed is still downloading; the sender re-encodes `Start.feed_offset` on each retry rather than resending the original buffer, bounded by `--feed-timeout` (**uds mode needs `-vd-feed-offset` set to the target's real offset once it settles, or this ends `409` instead** — see [05](tool_simulator/docu/05-flatbuffers-messages.md)) | all 8 logical sessions end `200`, no budget exhausted (holds cold or warm) |
 | `contract_ramp_503` | The pipeline's own admission queue (`sync_queue_bytes`, 64 MiB default) — an 80-agent unpaced fleet of large (~2.4 MiB) sessions for a fixed 60s, retry off. `503`s here are expected backpressure, not a failure | `sessions.s503 >= 1`, no transport errors |
-| `contract_vd_saturation` | The VD scan lane ceiling (`D22`): a large fleet firing `VDFirst` back to back, retry off. The lane is single-worker until F9d, so this measures that limit. Needs `-vd-feed-offset` set correctly (uds mode) or sessions fast-reject with `409` before reaching the scanner instead of measuring real scan-lane pressure | none (load dependent) |
-| `contract_vd_version_mismatch` | The `feed_offset` gate itself (`vdScanLane.cpp`): a deliberately wrong `feed_offset` (1) on every `VDFirst` session, pinning the `409 {"error":"version_mismatch","current_version":N}` contract — distinct from `checksum_reconcile`'s `409 checksum_mismatch` | all 4 sessions end `409`, none `200` |
+| `contract_vd_saturation` | The VD scan lane ceiling (`D22`): 40 agents firing `VDFirst` back to back, retry off. The lane's worker count is `wazuh_modules.inventory_sync_server_vd_workers`, whose default `0` resolves to half the host's cores (at least one), so the ceiling scales with the host and the report must state it. Needs `-vd-feed-offset` set correctly (uds mode) or sessions fast-reject with `409` before reaching the scanner instead of measuring real scan-lane pressure | none (load dependent) |
+| `contract_vd_version_mismatch` | The `feed_offset` gate itself (`src/wazuh_modules/inventory_sync_server/src/vd/vdScanLane.cpp`): a deliberately wrong `feed_offset` (1) on every `VDFirst` session, pinning the `409 {"error":"version_mismatch","current_version":N}` contract — distinct from `checksum_reconcile`'s `409 checksum_mismatch` | all 4 sessions end `409`, none `200` |
 | `cacerts` | `GET /cacerts` (RF-27), the unauthenticated CA-distribution route: 20 agents × 10 fetches of the manager's CA PEM over the HTTPS listener — the trust-bootstrap contract, and the floor of the listener's fixed per-request cost (no downstream). `agent` mode only; needs the manager's `remote.https.ca_certificate` in place, and its 200 unpaced requests only stay under the route's rate limit because `prepare_manager.sh` clears it — with the shipped `cacerts_rate_limit` of 50 req/s (a fleet-wide ceiling, burst twice that) roughly half would be answered `429` | all 200 answered `200` with an `application/x-pem-file` body, none `429`/`other`, no transport errors |
 | `enroll_https` | `POST /enroll` with an **enrollment token** (issue #38993): 20 agents × 5 fresh agent names, each request carrying the `wazuh-enroll+jwt` bearer minted from the token — remoted's replica of the token store, the signature, authd consuming a use and writing `client.keys`. `agent` mode only; needs the same enrollment token the fleet's own bootstrap uses (`prepare_manager.sh` mints it; `--enroll-token-file` / `WAZUH_ENROLLMENT_TOKEN` override), and its 100 uses are on top of the one per agent the bootstrap spent; run `cleanup_agents.sh` afterwards (the names carry the `bench-` prefix). Its 100 requests fit inside the default `enroll_rate_limit` burst, and `prepare_manager.sh` clears the limit anyway | all 100 answered `200` with the agent record, none `401`/`403`/`409`/`429`/`other`, no transport errors |
 
@@ -112,8 +118,10 @@ matter, and volume is reached with `repeat_count` and fleet size). A step names 
 | `real_sca_full` (uds) | Real SCA full syncs for Ubuntu, CentOS and Windows at once (large check documents → bulk-bytes path) |
 | `real_mixed_fleet` (agent) | The production-shaped flagship: Windows and Linux fleets each replaying real FIM + SCA + syscollector + VD sessions in parallel, plus an engine lane and `/control` keepalives |
 | `real_first_connect_uds` (uds) | **A freshly connected Windows agent + Linux agent at FULL fidelity**: FIM first sync (Windows: the whole 27,726-item registry corpus — 21,091 registry-values + 6,625 registry-keys — in ONE ~26 MB session), syscollector, SCA full and VDFirst, each as its first-connection shape. `expected` pins all 14 sessions OK and the exact 31,950 documents |
-| `real_first_connect` (agent) | The same first connection over remoted, **with zstd riding the agent-mode default**: uncompressed, the Windows FIM session exceeds remoted's 10 MiB body cap — this payload is the use case remoted's `Content-Encoding: zstd` exists for (~2 MB on the wire). Paired with the uds twin it isolates relay + decompression cost |
+| `real_first_connect` (agent) | The same first connection over remoted, **with zstd riding the agent-mode default**. Uncompressed, the Windows FIM session exceeds both of remoted's caps: the 5 MiB authenticated-body cap (`remoted.auth_max_body_size`, a `413`) and the 10 MiB transport cap (`<remote><https><max_body_size>`, where the connection closes with no response). This payload is the use case remoted's `Content-Encoding: zstd` exists for (~2 MB on the wire). Paired with the uds twin it isolates relay + decompression cost |
 | `real_vd_rescan_storm` (agent) | **100 agents (50 Windows + 50 Linux) that sync their whole inventory and only then all ask for a re-scan at once**: real FIM + syscollector + SCA `full_resync`es plus a `syscollector_vd` VDFirst delta, then one `scan_vd` step per agent 90 s later — the `POST /scan/vd` feed-update path, a DIFFERENT manager path from the scan a VDFirst session triggers (see the note below). `expected` pins 700 sessions OK, ≥92,850 documents, no exhausted retry budget, and 100 re-scan requests with no malformed one |
+| `vd_rescan_storm_isolated` (agent) | `real_vd_rescan_storm` with only its VD lanes (a VDFirst `delta`, then `scan_vd` 90 s later), so the re-scan path is measured without the FIM/syscollector/SCA ingest storm competing for modulesd. `expected` pins 100 re-scan requests with no malformed one |
+| `storm_160` (agent) | `real_vd_rescan_storm` scaled to 160 agents (80 Windows + 80 Linux), same lanes. `expected` is the base one scaled by 1.6: 1,120 sessions OK, ≥148,560 documents, no exhausted retry budget, and 160 re-scan requests (one `scan_vd` per agent) with no malformed one |
 | `real_inspect_fleet` (agent) | A **dashboard-inspection showcase, not a measurement**: the same `real_first_connect` full-fidelity payload (1 Windows + 1 Linux agent, all 31,950 documents across FIM/syscollector/SCA/VD) plus a basic syslog `engine` lane, kept connected on `/control` keepalives for several extra minutes after the inventory sessions finish — see the note below |
 
 **Keeping a fleet connected without replaying its dumps.** `real_inspect_fleet` wants the two agents
@@ -134,13 +142,15 @@ scan entry points, in the order a real agent does. Its `vd_*` lane first sends t
 `option=VDFirst` scan per agent in modulesd's log. Then, after `initial_delay: "90s"`
 (the gap that lets the documents actually land in the indexer), the `scan_vd` step sends
 `POST /scan/vd {"type":"feed_update","feed_offset":N}` with the offset the agent learned from
-`/control`, and **remoted relays VD's admission** of a re-scan of that already-indexed inventory —
-VD queues it in its dispatch lane and runs one `reason=feed_update` scan per agent. Two things to
-keep in mind when reading a run:
+`/control`. **remoted relays VD's admission** of a re-scan of that already-indexed inventory: VD
+records a durable `vd_scan` task in the Task Manager, whose dispatcher later runs it through the
+inventory sync server's `POST /_internal/vd/scan`, one `reason=feed_update` scan per agent. Two
+things to keep in mind when reading a run:
 
-- **`200` means queued, not scanned.** VD answers at admission into its dispatch queue and scans
-  afterward, one agent at a time (`ScanOrchestrator::runScanAfterFeedUpdate()` holds an exclusive
-  lock), so the sender's `scan_latency_ms_*` is admission time. remoted's admin socket exposes the
+- **`200` means recorded, not scanned.** VD answers at admission, once the task row exists, and
+  the scan runs afterward. The `vd_scan` task type runs one task at a time (its concurrency group
+  is capped at 1) and keeps one pending task per agent, so 100 requests are 100 serialized scans
+  and the sender's `scan_latency_ms_*` is admission time. remoted's admin socket exposes the
   `remoted.scanvd.*` admission counters over `GET /metrics`, and modulesd's log is the evidence the
   scans ran: `grep -c "reason=feed_update" /var/wazuh-manager/logs/wazuh-manager.log`.
 - **The feed must be loaded**, or every request answers `409 version_mismatch` against offset 0.
@@ -163,6 +173,15 @@ probes here). Full contract in [`docu/14-scan-vd.md`](tool_simulator/docu/14-sca
 
 ## First-id ranges
 
-Each scenario uses a distinct `first_id` block so a single run never collides agent ids. Runs are one
-scenario at a time, but the blocks are kept disjoint for tidiness and so ad-hoc combinations do not
-overlap.
+`first_id` sets the ids a scenario's agents get in `uds` mode and the numbers in their `bench-*`
+names in both modes (in agent mode the manager assigns the real ids). The scenarios
+`run_matrix.sh` runs use disjoint blocks, so one pass of the matrix never reuses a name. The rest of
+the library does **not** keep them disjoint. Several pairs share a block: `cacerts` and
+`contract_oversized_413` (27000), `enroll_https` and `contract_invalid_bodies` (28000),
+`control_notify_storm_with_sessions` and `contract_vd_version_mismatch` (26000), `session_storm` and
+`real_first_connect_uds` (46000), `storm_160` and `real_vd_rescan_storm` (48000 / 48100), and the
+four `mixed_fleet_windows_linux*` files (1000 / 2000). Where both scenarios of a pair run in agent
+mode with the same fleet names (`storm_160` / `real_vd_rescan_storm`, and the three agent-mode
+`mixed_fleet_*` files), running them back to back with `--keep-agents` fails enrollment with a
+duplicate name (`409`), so clean up with `./cleanup_agents.sh` between them. Where both are uds
+runs, the synthetic agent ids coincide and the second run writes over the first one's documents.

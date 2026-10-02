@@ -20,6 +20,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
@@ -338,6 +339,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// @ref SyncModuleResult::awaitingPrerequisite.
             bool lastSyncAwaitingPrerequisite = false;
 
+            /// @brief Raw HTTP body of the last non-2xx response, captured for CHECKSUM_ERROR
+            /// (409) so determineSyncFailureReasonBasedOnSyncResult() can tell a real feed-offset
+            /// mismatch apart from a checksum mismatch instead of guessing from isFeedBased alone.
+            std::string lastSyncFailureBody;
+
             /// @brief Numeric session ID of the current in-flight session.
             ///
             /// Set by runSession() before the first send attempt and cleared on reset().
@@ -367,6 +373,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                 lastSyncResult = SyncResult::SUCCESS;
                 lastSyncManagerNotReady = false;
                 lastSyncAwaitingPrerequisite = false;
+                lastSyncFailureBody.clear();
                 currentSession = 0;
             }
         };

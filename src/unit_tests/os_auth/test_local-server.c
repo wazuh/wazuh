@@ -945,6 +945,60 @@ static void test_token_create_refuses_a_description_that_could_forge_a_log_line(
     assert_int_equal(etoken_store_count(), before);
 }
 
+// A warning that holds a single line: no control byte anywhere in what reaches the log.
+static int check_single_line(const LargestIntegralType value, __attribute__((unused)) const LargestIntegralType data) {
+    for (const char *c = (const char *)value; *c != '\0'; c++) {
+        if ((unsigned char)*c < 0x20 || (unsigned char)*c == 0x7F) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+static void test_token_create_refuses_an_address_that_could_forge_a_log_line(void **state) {
+    (void)state;
+    int before = etoken_store_count();
+    // A refused mint is logged WITH the address it was asked for, and an address carrying a newline
+    // is always refused -- no certificate names it. Refusing it for the control character is not
+    // enough on its own: the warning that records the refusal must not write the address either,
+    // or the refusal is itself the forged line.
+    const char *forgeries[] = {
+        "wazuh-1\\n2026/09/09 12:00:00 wazuh-manager-authd: INFO: Enrollment token minted",
+        "wazuh-1\\r\\nsecond line",
+        "wazuh-1\\u001b[2K",
+    };
+
+    for (size_t i = 0; i < sizeof(forgeries) / sizeof(forgeries[0]); i++) {
+        char request[512];
+        snprintf(request, sizeof(request),
+                 "{\"function\":\"token_create\",\"arguments\":{\"address\":\"%s\"}}", forgeries[i]);
+        expect_check(__wrap__mwarn, formatted_msg, check_single_line, NULL);
+        cJSON *response = dispatch(request);
+        assert_int_equal(response_error(response), 9025);
+        cJSON *message = cJSON_GetObjectItem(response, "message");
+        assert_true(cJSON_IsString(message));
+        assert_non_null(strstr(message->valuestring, "address contains a control character"));
+        cJSON_Delete(response);
+    }
+
+    // Bounded like the other free text, to the longest DNS name: the command line has no format.
+    char address[ETOKEN_ADDRESS_MAX + 2];
+    char request[ETOKEN_ADDRESS_MAX + 128];
+    memset(address, 'a', ETOKEN_ADDRESS_MAX + 1);
+    address[ETOKEN_ADDRESS_MAX + 1] = '\0';
+    snprintf(request, sizeof(request), "{\"function\":\"token_create\",\"arguments\":{\"address\":\"%s\"}}", address);
+    expect_check(__wrap__mwarn, formatted_msg, check_single_line, NULL);
+    cJSON *response = dispatch(request);
+    assert_int_equal(response_error(response), 9025);
+    cJSON *message = cJSON_GetObjectItem(response, "message");
+    assert_true(cJSON_IsString(message));
+    assert_non_null(strstr(message->valuestring, "address is longer than"));
+    cJSON_Delete(response);
+
+    assert_int_equal(etoken_store_count(), before);
+}
+
 static void test_token_create_bounds_the_free_text_it_persists(void **state) {
     (void)state;
     EXPECT_LOG_WARN();
@@ -2355,6 +2409,7 @@ int main(void) {
         cmocka_unit_test(test_token_create_refuses_a_lifetime_out_of_range),
         cmocka_unit_test(test_token_create_accepts_the_longest_lifetime),
         cmocka_unit_test(test_token_create_refuses_a_description_that_could_forge_a_log_line),
+        cmocka_unit_test(test_token_create_refuses_an_address_that_could_forge_a_log_line),
         cmocka_unit_test(test_token_create_bounds_the_free_text_it_persists),
         cmocka_unit_test(test_token_verbs_on_worker_9015),
         cmocka_unit_test(test_token_list_and_revoke),

@@ -8,7 +8,7 @@ certificates each node needs, and — the part that surprises people — **what 
 the cluster is still catching up with itself**. The propagation windows and convergence figures were
 measured on a three-node cluster; interval, timeout and cap values are the shipped defaults. The
 procedure to reproduce the measurements is in
-[`src/remoted/remoted_module/tools/load_balancer/`](https://github.com/wazuh/wazuh/tree/main/src/remoted/remoted_module/tools/load_balancer).
+[`src/remoted/remoted_module/tools/load_balancer/`](https://github.com/wazuh/wazuh/tree/5.0.0/src/remoted/remoted_module/tools/load_balancer).
 
 Related pages:
 
@@ -44,7 +44,7 @@ flowchart LR
     A5 --> LB
     A4 --> LB
     LB --> M & W1 & W2
-    M -.->|"wazuh-clusterd<br/>replicates a fixed file list"| W1 & W2
+    M -.->|"wazuh-manager-clusterd<br/>replicates a fixed file list"| W1 & W2
     M & W1 & W2 --> IDX
 ```
 
@@ -58,21 +58,21 @@ operation that creates or changes identity.
 | Port | Channel | Balanced to | Notes |
 |---|---|---|---|
 | `1517` | HTTPS agent API (5.x) | **every node** | The only channel a 5.x agent uses |
-| `1514` | Legacy agent traffic (4.x) | **every node** | Requires `<remote><legacy><enabled>yes` |
-| `1515` | Legacy enrollment (4.x) | **every node** | Requires `<auth><legacy_enrollment>`; workers forward to the master |
+| `1514` | Legacy agent traffic (4.x) | **every node** | Only when a `<remote><legacy>` block is present and not `<enabled>no` |
+| `1515` | Legacy enrollment (4.x) | **every node** | Only when `auth.legacy_enrollment` (which follows the legacy listener when unset) and `auth.remote_enrollment` are on; workers forward to the master |
 | `1516` | Cluster transport | not balanced | Node to node; never exposed to agents |
-| `55000` | Server API | not covered here | Different API and authentication model |
+| `55000` | Server API | not covered here | Runs on the master only; different API and authentication model |
 | `9200` | Indexer | not balanced by this front end | — |
 
 **Both enrollment channels can land on any node.** A worker opens the `1515` listener like the
 master does and forwards the request over the cluster link, exactly as it does for `1517`, so
 identity creation stays master-owned without the balancer having to know which node is the master.
 
-There is one asymmetry, and it is on the legacy channel: the legacy response carries only id, name,
-IP and key, so **a worker discards the master's re-enrollment secret**. An agent enrolled through a
-worker on `1515` cannot later use secret-based re-enrollment. Pointing `1515` at the master avoids
-that, at the cost of a single point of failure for legacy enrollment. Either choice is workable;
-`1517` has no such trade-off.
+The legacy response carries only id, name, IP and key, so **no agent enrolled over `1515` receives a
+re-enrollment secret**, whichever node served it: the master generates none on that channel, and a
+worker drops the one the master returns for the forwarded request. Routing `1515` to the master
+alone therefore gains nothing and makes the master a single point of failure for legacy
+enrollment.
 
 ```mermaid
 flowchart LR
@@ -123,8 +123,9 @@ replicated on a timer, or never replicated at all.
 | **remoted's in-memory agent registry** | **no** | See [§7](#7-what-an-agent-observes-while-the-cluster-catches-up) |
 
 The replicated set is defined in
-[`framework/wazuh/core/cluster/cluster.json`](https://github.com/wazuh/wazuh/blob/main/framework/wazuh/core/cluster/cluster.json).
-Workers poll it on a `sync_integrity` interval of **9 seconds**.
+[`framework/wazuh/core/cluster/cluster.json`](https://github.com/wazuh/wazuh/blob/5.0.0/framework/wazuh/core/cluster/cluster.json)
+and listed in [What is synchronized](README.md#what-is-synchronized). Workers poll it on a
+`sync_integrity` interval of **9 seconds**.
 
 ---
 
@@ -167,8 +168,10 @@ is. Neither is wrong; the deployment has to know which one it picked.
 
 ## 6. Certificates
 
-`etc/certs/` is **not** replicated, so every node needs its own listener pair, issued externally
-with the Wazuh installation assistant's `wazuh-certs-tool`.
+`etc/certs/` is **not** replicated, so every node needs its own listener pair, from one CA. Each
+node's installation issues its pair when that CA is staged in `/etc/wazuh/ca` beforehand (see
+[Cluster deployments](../../getting-started/credentials.md#cluster-deployments)); otherwise issue the
+pairs externally, for example with the Wazuh installation assistant's `wazuh-certs-tool`.
 
 ### The SAN rule
 
@@ -187,8 +190,8 @@ certificate it checks belongs to whichever node answered. A node issued only wit
 refused by every agent that verifies, with a TLS error and **no HTTP status**.
 
 The same address is validated again when an enrollment token is minted:
-`wazuh-manager-authd --create-enrollment-token --address <host>` refuses a host the listener
-certificate does not name. So a missing SAN blocks token enrollment as well as reporting.
+`wazuh-manager-authd --create-enrollment-token --address <host>` refuses a host the master's
+listener certificate does not name. So a missing SAN blocks token enrollment as well as reporting.
 
 > The agent-facing address belongs to no single node, so `wazuh-certs-tool` takes it separately:
 > `--agent-san` under passthrough, which adds it to every manager node's listener certificate, and
@@ -205,7 +208,7 @@ CA certificates, which is what makes a rotation possible without downtime.
 > certificate. The agent's TLS peer is the balancer, so the anchor cannot verify the peer it is
 > talking to, and an agent that adopts it loses the connection it had.
 >
-> An enrollment token does not rescue that case either: it pins the same
+> An enrollment token does not rescue that case either: it pins the master's
 > `<remote><https><ca_certificate>`. **Signing the balancer leaf with the same CA as the nodes is
 > what makes either mechanism work** — which is what §8.2's termination recipe does. Otherwise
 > distribute the anchor out of band.
@@ -236,7 +239,7 @@ There are two distinct effects, with two distinct causes, and they are often con
 ```mermaid
 flowchart TB
     subgraph R["Replicated state — closed by the cluster"]
-        R1["client.keys, authd.pass,<br/>enrollment_tokens.json"] --> R2["wazuh-clusterd copies them<br/>on a 9 s interval"]
+        R1["client.keys, authd.pass,<br/>enrollment_tokens.json"] --> R2["wazuh-manager-clusterd copies them<br/>on a 9 s interval"]
         R2 --> R3["Bounded window.<br/>Same duration at 3 nodes or 30."]
     end
     subgraph L["Node-local state — closed by the agent"]
@@ -313,11 +316,11 @@ every node. Measured, one notify plus six downloads per round:
 **The window scales with cluster size**, because covering every node with random routing is the
 coupon-collector problem — `N·H(N)` notifies for `N` nodes:
 
-| Nodes | Notifies to cover them all | At `notify_time` 60 s |
+| Nodes | Notifies to cover them all | At `notify_time` 10 s |
 |---|---|---|
-| 3 | 5.5 | ~5 minutes |
-| 10 | 29.3 | ~30 minutes |
-| 20 | 72.0 | ~70 minutes |
+| 3 | 5.5 | ~1 minute |
+| 10 | 29.3 | ~5 minutes |
+| 20 | 72.0 | ~12 minutes |
 
 Plan for it on large clusters: a freshly enrolled agent may not be able to fetch its configuration
 from **every** node for that long. It can always fetch it from the nodes it has already contacted.
@@ -338,9 +341,9 @@ Two further properties worth knowing:
 | `vd_feed_offset` | only when feeds are level | Read from each node's local vulnerability module |
 
 `settings_hash` is the one an operator can break. Its `limits` inputs are **internal options**, not
-a section of `wazuh-manager.conf`: `fim.file_limit`, `syscollector.*_limit` and their siblings, read
-from `etc/internal_options.conf` and `etc/local_internal_options.conf`. A node whose local
-overrides differ, or whose `<cluster><name>` differs, reports a different value for the same agent.
+a section of `wazuh-manager.conf`: `fim.file_limit`, `syscollector.*_limit`, `sca.checks_limit` and
+their siblings, read from `etc/wazuh-manager-internal-options.conf`. A node whose values differ, or
+whose `<cluster><name>` differs, reports a different value for the same agent.
 
 ---
 
@@ -355,20 +358,35 @@ them.
 
 ### 8.2 Issue certificates
 
-Whatever tool issues them, these are the properties the deployment requires. They are verifiable
+Whatever issues them, these are the properties the deployment requires. They are verifiable
 with `openssl` alone, so the check does not depend on the issuing tool.
 
 | | Passthrough | Termination |
 |---|---|---|
 | Balancer certificate | not used | SAN contains the agent-facing address |
 | Every manager node's SAN | **contains the agent-facing address** | contains the name the balancer dials |
-| Signed by | a CA the agents trust | balancer leaf: a CA the agents trust; node leaves: a CA the balancer trusts |
+| Signed by | one CA, which the agents trust | node leaves: one CA, which the balancer trusts; balancer leaf: that same CA if agents enroll with a token or fetch `/cacerts` (see [What agents trust](#what-agents-trust)) |
 
 The passthrough row is the one that trips people up, and the one the tooling does not make easy:
 **the same address must appear in the SAN of every manager node**, because the agent dials the
 balancer and validates whichever node answered.
 
-#### Procedure
+#### Issued at installation
+
+When each node's installation issues its own pair from a shared CA staged in `/etc/wazuh/ca`, put
+the agent-facing address in the node's listener certificate by setting
+`WAZUH_MANAGER_REMOTED_CERT_SANS` in `/etc/wazuh/credentials.env` before installing. An explicit
+value **replaces** address discovery, so list the node's own names and addresses as well:
+
+```bash
+WAZUH_MANAGER_REMOTED_CERT_SANS='DNS:<agent-facing name>,DNS:manager-1,IP:10.0.0.21'
+```
+
+This covers passthrough, where every node's certificate needs the agent-facing address. A
+balancer's own certificate (termination) is not issued by the manager. See
+[Subject alternative names](../../getting-started/credentials.md#subject-alternative-names).
+
+#### Issued externally with `wazuh-certs-tool`
 
 `wazuh-certs-tool` has one option for each TLS model. Which one you need follows directly from
 [§5](#5-tls-choose-a-model-before-issuing-certificates): whoever terminates the agent's TLS session
@@ -510,7 +528,7 @@ Verify the effective value per node rather than trusting the file:
 Each node logs its effective prefix at startup. Compare that line across nodes:
 
 ```
-INFO: All HTTP endpoints are served under the global prefix '/wazuh-manager'
+INFO: All HTTP endpoints are served under the global prefix '/wazuh-manager' (e.g. https://<address>:1517/wazuh-manager/stateless); unprefixed paths answer 404; agents must send the full prefixed target.
 ```
 
 ### 8.4 Configure the balancer
@@ -520,8 +538,7 @@ rules — TLS 1.3 to the backend, no path rewriting, no PROXY protocol, body siz
 cluster-specific requirements are:
 
 * `1517` to every node.
-* `1515` to every node if legacy enrollment is enabled, or to the master alone if you need agents
-  enrolled on that channel to keep secret-based re-enrollment (see [§2](#2-port-map)).
+* `1515` to every node, if legacy enrollment is enabled (see [§2](#2-port-map)).
 * `1514` to every node, if the legacy channel is enabled.
 * Backend certificate verification **on**, against the same CA.
 
@@ -554,7 +571,7 @@ issued in [§8.2](#82-issue-certificates).
 ```xml
 <agent>
   <manager>
-    <endpoint><agent-facing address>:1517/wazuh-manager</endpoint>
+    <endpoint>agents.example.com:1517/wazuh-manager</endpoint>
   </manager>
   <enrollment>
     <enabled>yes</enabled>
@@ -567,7 +584,7 @@ issued in [§8.2](#82-issue-certificates).
 </agent>
 ```
 
-Three things decide whether this works:
+`agents.example.com` stands for the agent-facing address. Three things decide whether this works:
 
 | Setting | Why it matters here |
 |---|---|
@@ -584,11 +601,13 @@ from one value, rather than asking the peer for an anchor it has not verified.
 
 Two conditions apply, and both are properties of the certificates rather than of the token:
 
-* **The token's address must appear in a manager listener certificate's SAN**, or minting is
-  refused with `address not in certificate SAN`. Under passthrough, `--agent-san` puts it there.
+* **The token's address must appear in the master's listener certificate SAN**, because tokens are
+  minted there, or minting is refused with `address not in certificate SAN`. Under passthrough,
+  `--agent-san` puts it there. A token for one worker's own address needs that address on the
+  master's certificate as well as the worker's; the shared agent-facing address avoids the issue.
   Under termination the agent-facing address is on the *balancer's* leaf, not on the nodes', so mint
   against a name the node certificates do carry, or add the agent-facing address to them as well.
-* **The CA it pins is the manager's** `<remote><https><ca_certificate>`. It is only a usable anchor
+* **The CA it pins is the master's** `<remote><https><ca_certificate>`. It is only a usable anchor
   for the agent when the certificate the agent actually validates chains to that same CA — which,
   under termination, means issuing the balancer leaf from it.
 
@@ -602,7 +621,7 @@ Confirm it settled rather than assuming it did:
 
 ```bash
 # On the agent: it connected and is using the HTTPS channel.
-grep -E "Valid key received|https_client: INFO: Starting" /var/ossec/logs/ossec.log
+grep -E "Valid key received|Starting https_client" /var/ossec/logs/ossec.log
 
 # On the master: the agent is active and reports a 5.x version.
 /var/wazuh-manager/bin/cluster_control -a
@@ -623,10 +642,11 @@ flowchart LR
     L4 -.->|"1515: any node, forwarded to the master"| C
 ```
 
-Enable the legacy listener on every manager node:
+Enable the legacy listener on every manager node. It is off while the `<remote><legacy>` block is
+absent; a present block is enabled unless it says `<enabled>no</enabled>`:
 
-```xml
-<remote><legacy><enabled>yes</enabled></remote>
+```xml,fragment
+<remote><legacy><enabled>yes</enabled></legacy></remote>
 ```
 
 `<auth><legacy_enrollment>` has no default of its own: when absent it **follows
@@ -634,8 +654,8 @@ Enable the legacy listener on every manager node:
 explicitly only to diverge from that — for instance to keep the `1514` channel open while refusing
 new 4.x registrations:
 
-```xml
-<remote><legacy><enabled>yes</enabled></remote>
+```xml,fragment
+<remote><legacy><enabled>yes</enabled></legacy></remote>
 <auth><legacy_enrollment>no</legacy_enrollment></auth>
 ```
 
@@ -658,7 +678,8 @@ The inherited `<port>1514</port>` is **not** carried over to the HTTPS channel.
 
 Certificates:
 
-- [ ] One listener pair per node, from one CA, issued externally.
+- [ ] One listener pair per node, from one CA (issued at installation from a staged CA, or
+      externally).
 - [ ] Under passthrough, every node's SAN contains the agent-facing address.
 - [ ] Under termination, the balancer certificate carries the agent-facing address and every node's
       SAN carries the name the balancer dials.
@@ -675,13 +696,10 @@ Configuration:
 
 Balancer:
 
-- [ ] `1517` to every node; `1514` to every node if enabled; `1515` routed per the decision in
-      [§2](#2-port-map).
-- [ ] Backend TLS 1.3 with certificate verification enabled.
-- [ ] Proxy body limit at or above the manager's transport cap
-      (`<remote><https><max_body_size>`, 10 MiB by default).
-- [ ] Response timeout above 30 s, and above 9 s for enrollment specifically.
-- [ ] No PROXY protocol towards remoted.
+- [ ] `1517` to every node; `1514` and `1515` to every node if enabled.
+- [ ] Every item of the
+      [load-balancer checklist](../remoted/load-balancers/README.md#8-checklist-before-going-to-production)
+      (TLS 1.3 to the backend, body size, timeouts above 30 s, health check, no PROXY protocol).
 
 Cluster:
 
@@ -707,6 +725,8 @@ The configurations below balance the **legacy** channel only. They apply to a cl
 stream {
     upstream enrollment {
         server <MASTER_NODE_IP>:1515;
+        server <WORKER_NODE_IP>:1515;
+        server <WORKER_NODE_IP>:1515;
     }
     upstream agents {
         server <MASTER_NODE_IP>:1514;
@@ -734,7 +754,9 @@ frontend enrollment
 
 backend enrollment_nodes
     mode tcp
-    server master <MASTER_NODE>:1515 check
+    server master  <MASTER_NODE>:1515 check
+    server worker1 <WORKER_NODE>:1515 check
+    server worker2 <WORKER_NODE>:1515 check
 
 frontend agents
     bind :1514
@@ -749,5 +771,5 @@ backend agent_nodes
     server worker2 <WORKER_NODE>:1514 check
 ```
 
-The examples point `1515` at the master alone. A worker can serve it too, forwarding to the master;
-see [§2](#2-port-map) for the trade-off.
+Both examples send `1515` to every node: a worker forwards the enrollment to the master, so the
+master does not have to be the only backend (see [§2](#2-port-map)).

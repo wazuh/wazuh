@@ -4,7 +4,7 @@ Complete configuration reference for the Agent Info module.
 
 The agent info module collects and synchronizes agent metadata including system information, network configuration, and group memberships. This module is agent-only.
 
-For module overview and architecture, see [Agent Info Module](index.html).
+For module overview and architecture, see [Agent Info Module](README.md).
 
 ---
 
@@ -25,7 +25,7 @@ The `<agent-info>` block is only parsed on agent builds. If it is present in a m
 Time between periodic scans to collect agent metadata.
 
 - **Default value:** `60`
-- **Allowed values:** Positive integer (seconds)
+- **Allowed values:** Integer from 60 to 86400 (seconds). Out-of-range values are ignored with a warning and the previous value is kept
 - **Note:** Lower values increase metadata freshness but consume more resources
 
 ### integrity_interval
@@ -33,7 +33,7 @@ Time between periodic scans to collect agent metadata.
 Time between integrity checks to verify that the agent's state is synchronized with the manager.
 
 - **Default value:** `86400` (24 hours)
-- **Allowed values:** Positive integer (seconds)
+- **Allowed values:** Integer from 60 to 604800 (seconds, 1 minute to 7 days). Out-of-range values are ignored with a warning and the previous value is kept
 - **Note:** Periodic verification ensures consistency between agent and manager state
 
 ### enabled (synchronization)
@@ -307,19 +307,22 @@ grep -A10 "<synchronization>" /var/ossec/etc/ossec.conf
 
 ### View Collected Metadata
 
-**On manager (query agent info):**
+**On manager (query agent info through the Server API, master node):**
 ```bash
 # View agent system information
-/var/wazuh-manager/bin/wazuh-control info agent 001
+TOKEN=$(curl -s -k -u wazuh:<WAZUH_PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+curl -s -k -X GET "https://localhost:55000/agents?agents_list=001&pretty=true" \
+    -H "Authorization: Bearer $TOKEN"
 ```
 
-**Check synchronization status:**
+**On agent (check synchronization status):**
 ```bash
 tail -f /var/ossec/logs/ossec.log | grep "agent-info.*sync"
 ```
 
 ### Monitor Scan Activity
 
+**On agent:**
 ```bash
 # View metadata collection events
 tail -f /var/ossec/logs/ossec.log | grep "agent-info.*scan"
@@ -342,6 +345,6 @@ If the configuration is invalid, the module will log a warning and use default v
 
 ## See Also
 
-- [Agent Info Module](index.html) - Module overview and architecture
+- [Agent Info Module](README.md) - Module overview and architecture
 - [Agent Configuration Reference](../../configuration/agent/README.md) - All agent configuration options
 - [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options

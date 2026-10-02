@@ -8,7 +8,7 @@ distinction comes first:
 |---|---|---|
 | What it carries | The inventory itself (packages, system, hotfixes) | Nothing but `type` + `feed_offset` (4 KiB body cap) |
 | What is scanned | The inventory in **that** session | The inventory the manager **already** holds for that agent |
-| Manager-side path | `inventory_sync_server`'s VD scan lane (`src/vd/vdScanLane.cpp`) | remoted as a synchronous passthrough of VD's admission (`src/scanvd/scanVdHandler.cpp`) → one inline `POST /vulnerability-detector/scan` over the modulesd UDS |
+| Manager-side path | `inventory_sync_server`'s VD scan lane (`src/wazuh_modules/inventory_sync_server/src/vd/vdScanLane.cpp`) | remoted as a synchronous passthrough of VD's admission (`src/remoted/remoted_module/src/scanvd/scanVdHandler.cpp`) → one inline `POST /vulnerability-detector/scan` on `queue/sockets/vd-http.sock`, where VD records a durable `vd_scan` task (`src/wazuh_modules/vulnerability_scanner/src/vulnerabilityScanner.cpp`) → later, the Task Manager's dispatcher runs it through the inventory sync server's `POST /_internal/vd/scan`, on that same VD scan lane |
 | When a real agent does it | On connect, and on every inventory change | When a `/control` notify reports a `vd_feed_offset` **higher** than the one it last synced against |
 | Sender step | `delta` / `full_resync` with `option: VDFirst`/`VDSync` (or a dump that declares it) | `kind: "scan_vd"` |
 
@@ -35,8 +35,9 @@ scenario carrying a `scan_vd` step is refused at load time, exactly like an `eng
 {"type": "feed_update", "feed_offset": 849527}
 ```
 
-`type` is the only value the manager accepts (anything else is `400 invalid_type`; the field exists
-for trigger reasons the design anticipates but has not implemented). `feed_offset` resolves exactly
+`feed_update` is the only `type` value the manager accepts (anything else is `400 invalid_type`, a
+missing one `400 missing_type`; the field exists for trigger reasons the design anticipates but has
+not implemented). `feed_offset` resolves exactly
 like a VD session's `Start.feed_offset` — one order for both, so a lane cannot end up declaring two
 different offsets:
 
@@ -51,11 +52,12 @@ different offsets:
 
 | Outcome | Status | Recorded as | Fails the run? |
 |---|---|---|---|
-| Queued | `200 {}` | `scan_200` | no |
+| Recorded (the scan will run) | `200 {}` | `scan_200` | no |
 | `feed_offset` != the node's offset | `409 {"error":"version_mismatch","current_version":N}` | `scan_409` | no |
-| VD did not queue it | `503 {"error":"<cause>"}` — `scan_queue_full` (dispatch lane at capacity) \| `indexer_unavailable` (no healthy indexer host) \| `feed_not_ready` \| `scanner_not_ready` \| `vd_not_initialized` \| `shutting_down` \| `vd_unreachable` \| `vd_error` | `scan_503` | no |
-| Malformed request (`invalid_body`/`invalid_json`/`invalid_type`/`missing_feed_offset`/`invalid_agent_id`) | `400` | `scan_other` | **yes** |
+| VD did not record it | `503 {"error":"<cause>"}` — `scan_queue_full` (the bounded number of pending scans is reached) \| `indexer_unavailable` (no healthy indexer host) \| `feed_not_ready` \| `scanner_not_ready` \| `vd_not_initialized` \| `task_create_failed` (the task row could not be written, or the write timed out) \| `vd_unreachable` \| `vd_error` | `scan_503` | no |
+| Malformed request (`invalid_body`/`invalid_json`/`missing_type`/`invalid_type`/`missing_feed_offset`/`invalid_agent_id`) | `400` | `scan_other` | **yes** |
 | Credentials (keys not loaded yet, bad MAC) | `401` | `scan_other` | **yes** |
+| Any other status | — | `scan_other` | no |
 
 `409` and `503` are ordinary results: they are what a real fleet gets when its offset knowledge went
 stale or when a node cannot queue the scan right now, and a scenario may assert them. A real agent's
@@ -68,32 +70,35 @@ act on it**: a real agent adopts it and retries, but a load generator that resha
 the system under test produces runs that cannot be compared ([03](03-control-protocol.md#what-the-sender-does-with-the-response)).
 The one server value that does steer the sender is still notify's `vd_feed_offset`.
 
-## `200` means queued, not scanned
+## `200` means recorded, not scanned
 
 remoted is a synchronous passthrough of VD's **admission**: it validates the agent id and the
-offset, makes one inline `POST /vulnerability-detector/scan` over the modulesd UDS, and relays the
-answer. VD's own preflight also requires a healthy indexer host, answering `503
-indexer_unavailable` instead of queueing when none is; a scan already queued when the indexer goes
-down is HELD, not dropped, and resumes once a host answers healthy again. Otherwise, VD answers at
-admission into its bounded dispatch queue (64 slots, per-agent dedup of queued items, a single
-worker), so a `200 {}` means "VD queued the scan and it **will** run" — only a manager shutdown
-sheds it. There is no tracking table, no worker pool and no retry in remoted;
-any VD refusal or a failed round trip is an honest `503` naming the cause. Two consequences the
-report must respect:
+offset, makes one inline `POST /vulnerability-detector/scan` on the VD module's socket, and relays
+the answer (`scanVdHandler.cpp`). VD checks its readiness first (feed loaded, scanner initialized,
+at least one healthy indexer host), answering `503` with the cause instead of admitting. Otherwise
+it records the scan as a durable `vd_scan` task in the Task Manager and answers `200 {}` at once
+(`vulnerabilityScanner.cpp`). That type keeps one pending task per agent (a repeat request
+coalesces into it and is still a `200`), at most 64 pending by default (`scan_queue_full` beyond
+that), and runs one at a time (`src/wazuh_modules/task_manager/src/registry/builtinTypes.cpp`). The
+dispatcher then POSTs each task to the inventory sync server's `/_internal/vd/scan`, which runs it on
+the VD scan lane and answers when the scan has run; if the indexer is down at that point, the task
+is retried under the Task Manager's retry policy rather than dropped. So a `200 {}` means "VD
+recorded the scan and it **will** run". There is no tracking table, no worker pool and no retry in
+remoted; any VD refusal or a failed round trip is an honest `503` naming the cause. Two
+consequences the report must respect:
 
-- The recorded latency (`scan_latency_ms_*`) is admission time — the offset check plus one local
-  UDS round trip — **not** scan duration. A p99 of 2 ms says nothing about how long the scans took.
-- Concurrency is an illusion at that layer: the dispatch queue has a single worker, and
-  `ScanOrchestrator::runScanAfterFeedUpdate()` takes an exclusive lock for the whole scan, so the VD
-  module runs **one scan at a time**. A 100-agent storm is 100 serialized scans.
+- The recorded latency (`scan_latency_ms_*`) is admission time — the offset check, one local UDS
+  round trip and VD's task-row write — **not** scan duration. A p99 of a few milliseconds says
+  nothing about how long the scans took.
+- Concurrency is an illusion at that layer: the `vd_scan` task type runs one task at a time, so a
+  100-agent storm is 100 serialized scans.
 
 What became of the scans **is** observable, on two channels. remoted's admin socket exposes the
 admission split over `GET /metrics` — `remoted.scanvd.requests.total`, `remoted.scanvd.accepted`,
 `remoted.scanvd.queue_full`, `remoted.scanvd.indexer_unavailable`,
-`remoted.scanvd.version_mismatch`, `remoted.scanvd.invalid_agent`, `remoted.scanvd.vd_error` —
-and the per-agent outcomes are in modulesd's log
-(`wazuh-manager-modulesd:vulnerability_scanner`: `VD scan succeeded for agent N` /
-`VD scan failed for agent N: ...`, plus the scan lines themselves):
+`remoted.scanvd.version_mismatch`, `remoted.scanvd.invalid_agent`, `remoted.scanvd.vd_error` (every
+other refusal, `task_create_failed` included) — and the scans themselves are in modulesd's log,
+tagged `wazuh-manager-modulesd:vulnerability-scanner`:
 
 ```text
 Vulnerability scan start: agent='005' (5.0.0) type=full reason=feed_update
@@ -101,7 +106,9 @@ Vulnerability scan completed: agent='005' type=full reason=feed_update
 ```
 
 `reason=feed_update` is what distinguishes a `/scan/vd`-triggered scan from the `option=VDFirst` one
-a session triggers.
+a session triggers. The task rows themselves (pending, running, completed, dead-lettered) are the
+Task Manager's; see the operator page on
+[manager tasks](../../../../docs/ref/modules/task_manager/manager-tasks.md).
 
 ## Scenario shape
 
@@ -112,10 +119,14 @@ are sequential, so the real order is expressed by putting it after the inventory
 `initial_delay` as the gap that lets the indexing land first:
 
 ```json
-"vd_linux": [
-  { "kind": "delta",   "dump": "../sample_payloads/dumps/vd_first_debian.json" },
-  { "kind": "scan_vd", "initial_delay": "90s" }
-]
+{
+  "lanes": {
+    "vd_linux": [
+      { "kind": "delta",   "dump": "../sample_payloads/dumps/vd_first_debian.json" },
+      { "kind": "scan_vd", "initial_delay": "90s" }
+    ]
+  }
+}
 ```
 
 A `delta`, not a `full_resync`, on purpose: a `Cleans` session built from a VD dump inherits
@@ -128,7 +139,8 @@ cover the updated feed)`) — the storm read as 100 × `200` with a third of the
 re-scan storm's numbers look too clean, check `sessions.retries_exhausted` before believing them.
 
 Each request takes one `requests_per_second` token, like a `/stateful` session — which is what makes
-a 100-agent re-scan storm shapeable (`0` = all at once, the saturating case).
+a 100-agent re-scan storm shapeable (`0` = all at once, the saturating case). The token is taken
+after the offset is resolved, so the wait for the first notify is not priced as load.
 
 ## Metrics
 

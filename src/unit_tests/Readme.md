@@ -20,7 +20,7 @@ The sections below walk through each target end-to-end. The one appendix at the 
 5. [Appendix: Cleaning the environment before building a different target](#appendix-cleaning-the-environment-before-building-a-different-target)
 
 ## Requirements
-1. **GCC 14** (`gcc-14` / `g++-14`) — required on Linux for all targets. On macOS the build uses Apple Clang from Xcode Command Line Tools (Apple Clang 16 on macos-15).
+1. **GCC 14** (`gcc-14` / `g++-14`) — the compiler CI builds every Linux target with (it installs GCC 14.3 under `/opt/gcc-14`). On macOS the build uses Apple Clang from Xcode Command Line Tools (Apple Clang 16 on macos-15).
 2. **MinGW** (`i686-w64-mingw32-gcc` / `g++-posix`) — required for the Windows agent.
 3. **CMake** 3.22.1 or higher. Ubuntu 22.04+ and macOS Homebrew both ship a recent enough version by default.
 4. **CMocka** (C unit testing framework). For Linux/macOS targets the distribution package is enough; for the Windows agent it must be cross-built with MinGW (step 0.2 of the [Windows agent section](#compile-and-run-unit-tests-for-windows-agent)).
@@ -59,7 +59,7 @@ sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100 \
 ```
 
 ### 1. Fetch the external dependencies
-The repo only checks in `src/external/CMakeLists.txt`; OpenSSL, libcurl, audit-userspace, libplist, jemalloc, msgpack, sqlite, etc. are downloaded and extracted on demand. The exact list is target-dependent, so pass the same `TARGET=` you intend to build (one-time per checkout — re-run after `make clean-deps` or a fresh clone):
+The repo only checks in `src/external/CMakeLists.txt`; OpenSSL, libcurl, sqlite, cJSON, etc. are downloaded and extracted on demand. The exact list is target-dependent (`EXTERNAL_RES` in `src/Makefile`), so pass the same `TARGET=` you intend to build (one-time per checkout — re-run after `make clean-deps` or a fresh clone):
 ```
 make TARGET=manager|agent deps
 ```
@@ -96,7 +96,7 @@ If all tests pass, a `coverage-report/` directory with an HTML report will be ge
 **Note:** To get more accurate coverage mapping on the report, you'll have to add the `DEBUG=1` flag to the `make TARGET=manager|agent` command, so that it compiles without optimizations. Note that this build configuration can take twice as long as the regular test build.
 
 #### Running a specific test
-Navigate into the subdirectory where the test resides and run the binary directly. For example, to run tests on `create_db.c`:
+`ctest -R` matches test names, not directories; `ctest --test-dir <dir>` runs one directory. To run a single binary, navigate into the subdirectory where the test resides and run the binary directly. For example, to run tests on `create_db.c`:
 ```
 cd syscheckd
 ./test_create_db
@@ -142,7 +142,7 @@ Forgetting this step surfaces as `fatal error: cmocka.h: No such file or directo
 #### 0.3 Install wine
 Wine is needed at **build time** (cmake invokes it as the cross-compile emulator for try-runs in externals — missing wine surfaces as *"compiled but failed to run"* or *"Failed to determine the source files for the regular expression backend"*) and at **test time** to execute the `.exe` binaries. The runtime configuration (`WINEPATH`/`WINEARCH`) is covered in step 3.
 
-The install recipe matches is pinned to wine `10.0.0.0~noble-1`. On Ubuntu 24.04 (noble):
+The recipe is the one CI uses (`.github/actions/install_build_deps/action.yml`), pinned to wine `10.0.0.0~noble-1`. On Ubuntu 24.04 (noble):
 
 ```
 # Enable 32-bit packages (Wazuh's wine targets win32)
@@ -174,7 +174,7 @@ mv ~/.wine ~/.wine.bak
 ```
 
 #### 0.4 Clear native `CC`/`CXX` before the cross-compile
-If you've been doing Linux builds in this shell, you likely have `CC=gcc-14` and `CXX=g++-14` exported (per the [Pointing the build at GCC 14](#pointing-the-build-at-gcc-14) section). Those need to be **unset** before `make TARGET=winagent`
+If you've been doing Linux builds in this shell, you likely have `CC=gcc-14` and `CXX=g++-14` exported (per [step 0 of the Linux section](#0-point-the-build-at-gcc-14)). Those need to be **unset** before `make TARGET=winagent`
 
 Just unset them and let the Makefile's defaults select the mingw cross-compiler:
 ```
@@ -182,7 +182,7 @@ unset CC CXX
 ```
 
 ### 1. Fetch the external dependencies
-The repo only checks in `src/external/CMakeLists.txt`; OpenSSL, libcurl, audit-userspace, libplist, msgpack, sqlite, etc. are downloaded and extracted on demand. From `wazuh/src` (one-time per checkout — re-run after `make clean-deps` or a fresh clone):
+The repo only checks in `src/external/CMakeLists.txt`; OpenSSL, libcurl, sqlite, cJSON, etc. are downloaded and extracted on demand. From `wazuh/src` (one-time per checkout — re-run after `make clean-deps` or a fresh clone):
 ```
 make TARGET=winagent deps
 ```
@@ -253,7 +253,7 @@ make coverage
 ```
 The wrapper intercepts `--version` queries from lcov and reports a known-compatible string; every other invocation passes through to the real mingw gcov. `.github/actions/legacy_unit_tests.sh` generates the same wrapper inline in CI. If `make coverage` succeeds, the HTML report lands under `coverage-report/`.
 
-**Note:** To get more accurate coverage mapping on the report, you'll have to add the `DEBUG=1` flag to the `make TARGET=agent` command, so that it compiles without optimizations. Note that this build configuration can take twice as long as the regular test build.
+**Note:** To get more accurate coverage mapping on the report, you'll have to add the `DEBUG=1` flag to the `make TARGET=winagent` command, so that it compiles without optimizations. Note that this build configuration can take twice as long as the regular test build.
 
 #### Running a specific test
 Useful for iterating on a single failure. From `wazuh/src/unit_tests/build`:
@@ -290,13 +290,13 @@ sudo make install
 Headers land at `/usr/local/include/cmocka.h`, the static lib at `/usr/local/lib/libcmocka.a`.
 
 ### 1. Fetch the external dependencies
-The repo only checks in `src/external/CMakeLists.txt`; OpenSSL, libcurl, msgpack, sqlite, etc. are downloaded and extracted on demand. From `wazuh/src` (one-time per checkout — re-run after `make clean-deps` or a fresh clone):
+The repo only checks in `src/external/CMakeLists.txt`; OpenSSL, libcurl, libplist, sqlite, etc. are downloaded and extracted on demand. From `wazuh/src` (one-time per checkout — re-run after `make clean-deps` or a fresh clone):
 ```
 make TARGET=agent deps
 ```
 
 ### 2. Compile Wazuh with the test flag
-Set the env vars and run from `wazuh/src`. There's no separate "build the unit tests" step — `make TARGET=agent TEST=1` produces the test binaries in `src/build/` alongside the main wazuh build:
+Set the env vars and run from `wazuh/src`. There's no separate "build the unit tests" step — `make TARGET=agent TEST=1` produces the test binaries in the main build tree (src/build) alongside the main wazuh build:
 
 ```
 export CMAKE_POLICY_VERSION_MINIMUM=3.5
@@ -311,7 +311,7 @@ What each env var does:
 - `LIBRARY_PATH=/usr/local/lib:$(brew --prefix)/lib` — `/usr/local/lib` for the cmocka you just installed there; `$(brew --prefix)/lib` for everything else brew installs (on Apple Silicon these are different directories; on Intel they're the same `/usr/local/lib` and the duplicate is harmless).
 
 ### 3. Run the tests
-The test binaries are under `src/build/`. From `wazuh/src`:
+The test binaries are under the main build tree (src/build). From `wazuh/src`:
 ```
 export DYLD_LIBRARY_PATH="/usr/local/lib:$DYLD_LIBRARY_PATH"
 cd build
@@ -328,11 +328,11 @@ export DYLD_LIBRARY_PATH="/usr/local/lib:$DYLD_LIBRARY_PATH"
 ```
 
 ## Appendix: Cleaning the environment before building a different target
-Build artifacts produced by `make TARGET=…` are not interchangeable across targets. Three things go stale when you switch (e.g. agent → winagent or agent → server) and will cause confusing link errors or compiler-mismatch problems if you don't wipe them first:
+Build artifacts produced by `make TARGET=…` are not interchangeable across targets. The build tree, the coverage data and the fetched externals go stale when you switch (e.g. agent → winagent or agent → manager) and will cause confusing link errors or compiler-mismatch problems if you don't wipe them first:
 
 Run these from `src/` before starting the per-target steps for the new target:
 ```
-make clean        # build/, unit_tests/build*, generated headers, *.gcda/*.gcno, autotools distclean
+make clean        # build/, unit_tests/build*, generated headers, *.gcda/*.gcno, external build artifacts
 make clean-deps   # external/* sources + tarballs (no TARGET needed — wipes the superset)
 ```
 

@@ -1,8 +1,12 @@
 # 02 — Functional requirements
 
 The HTTP contract of `POST /stateful` as the sender must treat it. The contract itself is defined by
-the server (`docs/ref/modules/inventory-sync-server/api-reference.md`) and relayed verbatim by
-remoted's `statefulEndpoint`; this document says what the CLIENT does with each answer.
+the server ([`api-reference.md`](../../../../docs/ref/modules/inventory-sync-server/api-reference.md#the-stateful-session-semantics))
+and relayed verbatim by remoted's `statefulEndpoint`; this document says what the CLIENT does with
+each answer.
+
+Each requirement was checked against the implemented sender. Two are **not met as written** and are
+marked in place (FR-12, FR-14). The others hold.
 
 ## The session contract
 
@@ -24,20 +28,20 @@ remoted's `statefulEndpoint`; this document says what the CLIENT does with each 
 | **FR-9** | `413` | The session declares more bytes than the total in-flight budget | Count; **MUST NOT** retry, **MUST NOT** split. This is the measurement in the budget-limit scenario |
 | **FR-10** | `500` | Failed with nothing indexed (including a failed vulnerability scan) | Count; **MUST NOT** retry within the run. A non-zero count **SHOULD** be reported prominently: it is the server failing, not backpressure |
 | **FR-11** | `503` **with** `Retry-After` | The CVE feed is still downloading (D17) | **MUST** retry after honoring the header, up to `--feed-timeout` (default 300 s); each retry **MUST** be counted as such, not as a fresh session. This is manager bring-up, not load. For a VDFirst/VDSync session the sender **MUST** re-encode `Start.feed_offset` from the current value (step/CLI/learned) before each such retry rather than resending the original bytes — the feed can finish loading, and therefore the server's current offset can change, during a wait this long |
-| **FR-12** | `503` **without** `Retry-After` | Indexer unavailable, queue/budget full, scan capacity exhausted, or shutting down | Count; **MUST NOT** retry. This is backpressure — the signal the saturation scenarios exist to find |
+| **FR-12** | `503` **without** `Retry-After` | Indexer unavailable, queue/budget full, scan capacity exhausted, or shutting down | Count; **MUST NOT** retry. This is backpressure — the signal the saturation scenarios exist to find. **Not implemented as written:** the sender re-sends the same buffer by default, as a real agent does. `defaults.retry` controls it (on by default, 500 ms apart, 10 attempts in all), each re-send is counted in `retries_503` and a spent budget in `retries_exhausted`. Only scenarios that set `retry.enabled: false` get the count-and-stop behavior this row asks for (see [07](07-scenario-schema.md#retry-defaultsretry)) |
 
 ## Transport-level answers
 
 | FR | Requirement |
 |---|---|
-| **FR-13** | `404`, `405`, `411`, `414`, `431`, `504` **MUST** be counted under a single `other` bucket and reported: none of them is reachable by a correct sender, so any occurrence indicates a sender bug or a server regression. |
-| **FR-14** | A connection closed without a response, or a read timeout, **MUST** be counted as a transport error distinct from every HTTP status, and **MUST** fail the run when it exceeds a configurable threshold (default: any occurrence in `uds` mode). It was exactly this signal that exposed a real server-side race during F9b, so it **MUST NOT** be silently retried away. |
+| **FR-13** | `404`, `405`, `411`, `414`, `431`, `504` **MUST** be counted under a single `other` bucket and reported: none of them is reachable by a correct sender, so any occurrence indicates a sender bug or a server regression. A `401` is not one of them: it has its own counter (`sessions_401`) and invalidates the run, because it means remoted has not loaded the fleet's keys. |
+| **FR-14** | A connection closed without a response, or a read timeout, **MUST** be counted as a transport error distinct from every HTTP status, and **MUST** fail the run when it exceeds a configurable threshold (default: any occurrence in `uds` mode). It was exactly this signal that exposed a real server-side race during F9b, so it **MUST NOT** be silently retried away. **Partly implemented:** transport errors are counted and never retried, and any transport error fails a `uds` run (exit `1`). The threshold is not configurable, and in `agent` mode transport errors never fail the run (assert `transport_errors` in an `expected` block instead). |
 
 ## Deletion and control
 
 | FR | Requirement |
 |---|---|
 | **FR-15** | Scenarios **MAY** issue `POST /_internal/agents/delete` with the agent id in the body (no headers — that is what the Task Manager's dispatcher sends); `200` means the delete-by-query ran and flushed. Manager-internal and UDS-local — there is no route to it through remoted, so this is a `uds`-mode capability. |
-| **FR-16** | In `agent` mode the sender **MUST** send `startup` once per agent before its first session, `notify` at the configured interval, and `shutdown` during drain. See [03-control-protocol.md](03-control-protocol.md). |
+| **FR-16** | In `agent` mode, when the scenario enables control traffic (`defaults.control.enabled`), the sender **MUST** send `startup` once per agent before its first session, `notify` at the configured interval, and `shutdown` once that agent's lanes finish (at the latest, during drain). See [03-control-protocol.md](03-control-protocol.md). |
 | **FR-17** | An engine-stream lane (`agent` mode only) **MUST** ship its events as an H/E batch to `POST /stateless`; success is `202` (not `200`), counted in its own bucket. See [13-engine-event-streams.md](13-engine-event-streams.md). |
-| **FR-18** | A `scan_vd` step (`agent` mode only) **MUST** send `POST /scan/vd {"type":"feed_update","feed_offset":N}` with the offset resolved exactly as a VD session's `Start.feed_offset` is. `200` means the re-scan was **queued in VD's dispatch lane** (it will run), never that it ran yet, so the sender **MUST NOT** report its latency as a scan duration; `409 version_mismatch` and `503` (whose body names the cause, `scan_queue_full` among others) are counted as ordinary outcomes, and the sender **MUST NOT** adopt the `current_version` a `409` returns (a real agent does; a load generator that reshapes itself from the answer stops being comparable). `400` and `401` **MUST** fail the run. See [14-scan-vd.md](14-scan-vd.md). |
+| **FR-18** | A `scan_vd` step (`agent` mode only) **MUST** send `POST /scan/vd {"type":"feed_update","feed_offset":N}` with the offset resolved exactly as a VD session's `Start.feed_offset` is. `200` means the re-scan was **recorded as a durable `vd_scan` task** (it will run), never that it ran yet, so the sender **MUST NOT** report its latency as a scan duration; `409 version_mismatch` and `503` (whose body names the cause, `scan_queue_full` among others) are counted as ordinary outcomes, and the sender **MUST NOT** adopt the `current_version` a `409` returns (a real agent does; a load generator that reshapes itself from the answer stops being comparable). `400` and `401` **MUST** fail the run. See [14-scan-vd.md](14-scan-vd.md). |

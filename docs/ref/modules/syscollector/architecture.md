@@ -30,9 +30,9 @@ Responsibilities:
 * Manages persistent queue for reliable message delivery
 * Uses `IAgentSyncProtocol` interface for better C++ integration
 
-**Note on Vulnerability Detector Separation (v5.0+):**
+**Note on Vulnerability Scanner Separation (v5.0+):**
 
-Starting in version 5.0, the Vulnerability Detector (VD) operates as an independent module with its own sync protocol instance. While Syscollector continues to collect inventory data (packages, OS, hotfixes), VD independently handles vulnerability detection and CVE correlation. This architectural change provides:
+Starting in version 5.0, the Vulnerability Scanner (VD) operates as an independent module with its own sync protocol instance. While Syscollector continues to collect inventory data (packages, OS, hotfixes), VD independently handles vulnerability detection and CVE correlation. This architectural change provides:
 
 * **Independent synchronization**: VD has its own sync protocol instance with separate persistent queue
 * **DataContext support**: VD uses DataContext messages for vulnerability data synchronization
@@ -41,7 +41,7 @@ Starting in version 5.0, the Vulnerability Detector (VD) operates as an independ
 
 ### **VD Context Integration (v5.0+)**
 
-Syscollector integrates with the Vulnerability Detector through a dual database system and context-aware event routing.
+Syscollector integrates with the Vulnerability Scanner through a dual database system and context-aware event routing.
 Responsibilities:
 
 * **Context Evaluation**: Determines whether inventory data requires VD processing via `is_data_context` parameter
@@ -334,8 +334,6 @@ if (isVDTable && m_spSyncProtocolVD) {
 
 Additional context data generated after scan completion for VD analysis:
 
-Additional context data generated after scan completion for VD analysis:
-
 ```cpp
 void Syscollector::processVDDataContext() {
     // Clear previous DataContext
@@ -441,8 +439,7 @@ Recovery behavior is controlled by the `integrity_interval` parameter:
 ```
 
 **Default**: 86400 seconds (24 hours)
-**Minimum**: 60 seconds (1 minute)
-**Disabled**: Set to 0 to disable integrity checks
+**Allowed values**: 0 to 4294967295 seconds. There is no minimum, and `0` does not disable the check: each table is then validated after every successful synchronization
 
 ---
 
@@ -498,6 +495,8 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock) {
     }
 }
 ```
+
+The wodle's sync thread (`wm_sync_module`) runs the synchronization cycle and, after each successful one, the recovery process. The wait before each cycle restarts with every agent start, so the thread also asks whether the agent ID changed since the last full synchronization (for example after the agent was removed and re-enrolled): at startup, and every 30 seconds while it waits. On a change it runs its cycle at once, and the recovery process resends every table under the new ID. While that resend keeps failing (a failed synchronization counts, since the resend only follows a successful one), the 30 seconds double on each attempt, up to the synchronization interval; a cycle skipped because a flush was sending keeps the period.
 
 ### Manager Response Handling
 
@@ -718,6 +717,9 @@ Check if Sync Protocol Initialized
          └─► Initialized
              │
              ▼
+Wait for any synchronization or recovery in progress, then hold both off until done
+             │
+             ▼
 Call synchronizeModule(Mode::DELTA)
              │
              ├─► Sends all pending differences
@@ -725,7 +727,7 @@ Call synchronizeModule(Mode::DELTA)
              └─► Returns sync result
 ```
 
-The flush operation does not wait for an ongoing sync to complete—it triggers a new sync session immediately.
+The flush operation waits for an ongoing synchronization or recovery to complete before it opens its own session, and a synchronization or recovery due while it sends is skipped until the next cycle. The DataClean for disabled collectors sent at startup waits for a running flush, synchronization or recovery instead of skipping; while it sends, a flush waits for it and a synchronization or recovery due is skipped until the next cycle.
 
 #### Version Management Commands
 
@@ -784,7 +786,7 @@ Return Total Rows Updated
 
 ## Schema Validation Integration
 
-Syscollector integrates with the [Schema Validator](../utils/schema-validator/index.html) module to ensure all inventory data conforms to the expected Wazuh indexer schema before transmission.
+Syscollector integrates with the [Schema Validator](../utils/schema-validator/README.md) module to ensure all inventory data conforms to the expected Wazuh indexer schema before transmission.
 
 ### Purpose
 
@@ -964,13 +966,17 @@ Syscollector validates data for the following Wazuh indices:
 |------------|---------------|-------------|
 | `dbsync_hwinfo` | `wazuh-states-inventory-hardware` | Hardware information |
 | `dbsync_osinfo` | `wazuh-states-inventory-system` | Operating system details |
-| `dbsync_netinfo_iface` | `wazuh-states-inventory-network` | Network interfaces |
-| `dbsync_netinfo_proto` | `wazuh-states-inventory-network` | Network protocols |
-| `dbsync_netinfo_addr` | `wazuh-states-inventory-network` | Network addresses |
+| `dbsync_network_iface` | `wazuh-states-inventory-interfaces` | Network interfaces |
+| `dbsync_network_protocol` | `wazuh-states-inventory-protocols` | Network protocols |
+| `dbsync_network_address` | `wazuh-states-inventory-networks` | Network addresses |
 | `dbsync_packages` | `wazuh-states-inventory-packages` | Installed packages |
 | `dbsync_hotfixes` | `wazuh-states-inventory-hotfixes` | System hotfixes (Windows) |
 | `dbsync_ports` | `wazuh-states-inventory-ports` | Open network ports |
 | `dbsync_processes` | `wazuh-states-inventory-processes` | Running processes |
+| `dbsync_users` | `wazuh-states-inventory-users` | System users |
+| `dbsync_groups` | `wazuh-states-inventory-groups` | System groups |
+| `dbsync_services` | `wazuh-states-inventory-services` | System services |
+| `dbsync_browser_extensions` | `wazuh-states-inventory-browser-extensions` | Browser extensions |
 
 ### Deferred Deletion Pattern
 
@@ -1028,13 +1034,12 @@ Syscollector uses a deferred deletion pattern to safely remove invalid entries:
 
 **Initialization:**
 ```
-[INFO] Schema validator initialized successfully from embedded resources
+[DEBUG] Schema validator initialized successfully from embedded resources
 ```
 
 **Validation Failure:**
 ```
-[ERROR] Schema validation failed for Syscollector message (table: dbsync_packages, index: wazuh-states-inventory-packages). Errors:
-  - Field 'package.version' expected type 'keyword', got 'object'
+[ERROR] Schema validation failed for Syscollector message (table: dbsync_packages, index: wazuh-states-inventory-packages). Errors:   - package.version: Expected string, got object with value: {"major":1}
 [ERROR] Raw event that failed validation: {"package":{"version":{"major":1}}}
 [ERROR] Discarding invalid Syscollector message (table: dbsync_packages)
 [DEBUG] Marking entry from table dbsync_packages for deferred deletion due to validation failure
@@ -1073,6 +1078,6 @@ If the schema validator is not initialized:
 
 ### References
 
-- [Schema Validator Overview](../utils/schema-validator/index.html)
+- [Schema Validator Overview](../utils/schema-validator/README.md)
 - [Schema Validator API Reference](../utils/schema-validator/api-reference.md)
 - [Schema Validator Integration Guide](../utils/schema-validator/integration-guide.md)

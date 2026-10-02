@@ -2,7 +2,7 @@
 
 The `test suites` set of **os_regex_execute** is defined in [test_os_regex_execute.json](test_os_regex_execute.json) as an array as follows:
 
-```json
+```json,fragment
 [
     test_suite_1,
     test_suite_2,
@@ -15,7 +15,7 @@ The `test suites` set of **os_regex_execute** is defined in [test_os_regex_execu
 
 Each `test suite` uses a [regex_matching](https://github.com/wazuh/wazuh/blob/v4.3.5/src/os_regex/os_regex.h#L45-L49) structure, which is initially empty and is shared between its `unit tests`, allowing to test the memory usage. These suites are JSON objects with the following structure:
 
-```json
+```json,fragment
 {
   "description": "Here it should be explained what is the functionality or use case that is being tested.",
   "batch_test": [

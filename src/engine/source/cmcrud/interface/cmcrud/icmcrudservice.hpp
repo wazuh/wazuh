@@ -103,9 +103,9 @@ public:
      * TODO: Change jsonDocument from string_view to json::Json
      */
     virtual cm::store::dataType::Policy importNamespace(const cm::store::NamespaceId& nsId,
-                                 std::string_view jsonDocument,
-                                 std::string_view originSpace,
-                                 bool force) = 0;
+                                                        std::string_view jsonDocument,
+                                                        std::string_view originSpace,
+                                                        bool force) = 0;
 
     /**
      * @brief Import a full namespace from individual components.
@@ -189,8 +189,7 @@ public:
      *
      * @throws std::runtime_error if the namespace or resource does not exist.
      */
-    virtual json::Json
-    getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid) const = 0;
+    virtual json::Json getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid) const = 0;
 
     /**
      * @brief Upsert a resource (asset, integration or KVDB) from a JSON object.

@@ -10,9 +10,9 @@ Complete configuration reference for the Syscollector module that collects syste
 
 **Internal Options:** None
 
-For module overview and architecture, see [Syscollector Module](index.html).
+For module overview and architecture, see [Syscollector Module](README.md).
 
-> **Important:** Starting in version 5.0, vulnerability detection is handled by a separate Vulnerability Detector module. Syscollector focuses exclusively on inventory collection (packages, OS, hotfixes, etc.), while vulnerability detection and CVE correlation are performed independently.
+> **Important:** Starting in version 5.0, vulnerability detection is handled by a separate Vulnerability Scanner module. Syscollector focuses exclusively on inventory collection (packages, OS, hotfixes, etc.), while vulnerability detection and CVE correlation are performed independently.
 
 ---
 
@@ -185,7 +185,7 @@ Maximum events per second for synchronization messages.
 Time between integrity checks for each inventory table.
 
 - **Default value:** `86400` (24 hours)
-- **Allowed values:** `60` to unlimited (seconds)
+- **Allowed values:** `0` to `4294967295` (seconds). There is no minimum, and `0` does not disable the check: each table is then validated after every successful synchronization
 - **Note:** Each of the 13 inventory tables (osinfo, hwinfo, packages, processes, ports, network_iface, network_protocol, network_address, users, groups, services, browser_extensions, hotfixes) is checked independently. When the interval elapses for a table:
   1. Agent calculates checksum-of-checksums for the table
   2. Sends checksum to manager for validation
@@ -538,7 +538,7 @@ grep -i "sync.*error" /var/ossec/logs/ossec.log
 
 ## See Also
 
-- [Syscollector Module](index.html) - Module overview and features
+- [Syscollector Module](README.md) - Module overview and features
 - [Syscollector Architecture](architecture.md) - Technical architecture and design
 - [Syscollector Events](events.md) - Event format and structure
 - [Syscollector Database Schema](database-schema.md) - Database tables and fields

@@ -2,23 +2,9 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/cpp
 {
 	"name": "Wazuh 5.x Development",
-	"build": {
-		"dockerfile": "Dockerfile"
-	},
-	// Features to add to the dev container. More info: https://containers.dev/features.
-	"features": {
-		"ghcr.io/nils-geistmann/devcontainers-features/zsh:0": {
-			"theme": "bira",
-			"plugins": "git docker docker-compose",
-			"setLocale": true,
-			"desiredLocale": "en_US.UTF-8"
-		},
-		"ghcr.io/devcontainers/features/github-cli:1": {},
-		"ghcr.io/devcontainers/features/go:1": {},
-		"ghcr.io/devcontainers/features/python:1": {},
-		"ghcr.io/devcontainers/features/sshd:1": {},
-		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
-	},
+	// Prebuilt image. Its recipe (Dockerfile + features) is image.devcontainer.json; rebuild it
+	// locally with build-image.sh, which reads the repository and tag from the next line.
+	"image": "ghcr.io/wazuh/wazuh-devcontainer:5.0",
 	// Configure tool-specific properties.
 	"customizations": {
 		"vscode": {
@@ -114,7 +100,9 @@
 		"set-max-file-descriptors": "/bin/sh -c 'ulimit -n 65536'",
 		"welcome": "echo '\\e[1;33mWelcome to the Wazuh Manager 5.x Development container!\\n\\e[0mRun task \\e[1;32m'Build clean python env'\\e[0m to install the python dependencies.'",
 		// Set fs.inotify.max_user_watches
-		"set-max-inotify-watches": "/bin/sh -c 'sysctl -w fs.inotify.max_user_watches=524288'"
+		"set-max-inotify-watches": "/bin/sh -c 'sysctl -w fs.inotify.max_user_watches=524288'",
+		// Provenance of the running image: local (build-image.sh) or ci (published)
+		"image-source": "echo \"devContainer image: $(cat /etc/wazuh-devcontainer-source 2>/dev/null || echo unknown)\""
 	}
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.

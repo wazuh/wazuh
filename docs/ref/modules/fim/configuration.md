@@ -9,13 +9,13 @@ FIM operates in two complementary modes:
 - **Scheduled scans**: Periodic baseline comparisons triggered by the `frequency` setting
 - **Real-time monitoring**: Continuous event-driven monitoring via `realtime` or `whodata` directory attributes
 
-For module overview and architecture, see [File Integrity Monitoring Overview](index.html).
+For module overview and architecture, see [File Integrity Monitoring Overview](README.md).
 
 ---
 
 ## Metadata
 
-**Configuration file:** `/var/ossec/etc/ossec.conf` (agent) or `/var/wazuh-manager/etc/wazuh-manager.conf` (manager)
+**Configuration file:** `/var/ossec/etc/ossec.conf` (agent only; the manager does not run FIM)
 
 **XML Section:** `<syscheck>`
 
@@ -541,26 +541,7 @@ Refer to the internal options documentation for a complete list of available tun
 
 ## Configuration Examples
 
-**Note:** These are representative examples. For the exact shipped defaults, refer to `etc/ossec.conf` and `etc/ossec-agent.conf` in the Wazuh installation directory.
-
-### Wazuh Manager
-
-```xml
-<!-- File integrity monitoring -->
-<syscheck>
-  <disabled>no</disabled>
-  <frequency>43200</frequency>
-  <directories>/etc,/usr/bin,/usr/sbin</directories>
-  <ignore>/etc/mtab</ignore>
-  <ignore type="sregex">.log$|.swp$</ignore>
-  <nodiff>/etc/ssl/private.key</nodiff>
-  <process_priority>10</process_priority>
-  <max_eps>50</max_eps>
-  <synchronization>
-    <max_eps>75</max_eps>
-  </synchronization>
-</syscheck>
-```
+**Note:** These are representative examples. For the exact shipped defaults, refer to `etc/templates/config/generic/syscheck.agent.template` in the source tree, from which the agent's `ossec.conf` is generated.
 
 ### Wazuh Agent - Linux/Unix
 
@@ -1035,8 +1016,8 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 
 ## See Also
 
-- [File Integrity Monitoring Overview](index.html) - Module overview and architecture
-- [Who-data Monitoring](https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/auditing-whodata.html) - Detailed who-data implementation guide
-- [FIM Alerts Reference](https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/fim-alerts.html) - Alert rules and event types
+- [File Integrity Monitoring Overview](README.md) - Module overview and architecture
+- [Who-data Monitoring](https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/advanced-settings.html#who-data-monitoring) - Detailed who-data implementation guide
+- [Interpreting FIM scans](https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/interpreting-fim-module-analysis.html) - FIM events and how they are shown
 - [Centralized Agent Configuration](https://documentation.wazuh.com/current/user-manual/reference/centralized-configuration.html) - Using agent.conf for FIM
 - [Wazuh Rules Reference](https://documentation.wazuh.com/current/user-manual/ruleset/ruleset-xml-syntax/rules.html) - Rule syntax and customization

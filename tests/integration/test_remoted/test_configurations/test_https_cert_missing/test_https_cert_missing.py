@@ -49,7 +49,7 @@ def break_listener_tls_files(test_metadata):
     '''
     Stop the manager and apply the case's mutation to the listener's TLS files, then restore them exactly.
 
-    The manager does not generate certificates, so whatever the mutation removes has to be put back by
+    Nothing reissues a certificate at start, so whatever the mutation removes has to be put back by
     hand: `missing_certificate` moves the certificate aside (same directory), `unreadable_key` makes the
     private key root-owned 0600 so only the validator (root) can read it. Ownership and mode are read
     before touching anything and restored in `finally`, whatever the test outcome.
@@ -95,7 +95,7 @@ def test_https_cert_missing(test_configuration, test_metadata, configure_local_i
                             restart_wazuh_expect_error):
     '''
     description: Check that the manager refuses to start when the HTTPS agent listener's certificate is
-                 missing, and that the verdict tells the operator the manager does not generate certificates.
+                 missing, and that the verdict tells the operator where the file is meant to come from.
                  For this purpose, the test moves etc/certs/remoted.pem aside, starts the service and checks
                  the manager log with a FileMonitor for the 1244 verdict wazuh-manager-control dumps there
                  (pointer '/remote/https/certificate', 'file not found' with the resolved path, and the

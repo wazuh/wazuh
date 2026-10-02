@@ -61,8 +61,12 @@ INSTANTIATE_TEST_SUITE_P(
         StageT(R"({"index": "alerts"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
         StageT(R"({"index": "wazuh-Alerts"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
         StageT(R"({"index": "wazuh-alerts-#"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
-        StageT(R"({"index": "wazuh-events-v5-#Someth/ng"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
-        StageT(R"({"index": "wazuh-events-v5-some-${}"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
+        StageT(R"({"index": "wazuh-events-v5-#Someth/ng"})",
+               getIndexerOutputBuilder(getMockIndexerConnector()),
+               FAILURE()),
+        StageT(R"({"index": "wazuh-events-v5-some-${}"})",
+               getIndexerOutputBuilder(getMockIndexerConnector()),
+               FAILURE()),
         StageT(R"({"index": "wazuh-events-v5-${}${"})", getIndexerOutputBuilder(getMockIndexerConnector()), FAILURE()),
         // Valid string
         StageT(R"({"index": "wazuh-events-v5-applications"})",
@@ -172,8 +176,7 @@ TEST_F(IndexerOutputOperationTest, output_several_references)
     // Check the expression
     ASSERT_TRUE(expression->isTerm());
     auto term = expression->getPtr<base::Term<base::EngineOp>>();
-    ASSERT_EQ(term->getName(),
-              "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.a}${wazuh.b}${wazuh.c})");
+    ASSERT_EQ(term->getName(), "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.a}${wazuh.b}${wazuh.c})");
 
     // Check the operation
     auto operation = term->getFn();
@@ -203,8 +206,7 @@ TEST_F(IndexerOutputOperationTest, output_several_references_separators)
     // Check the expression
     ASSERT_TRUE(expression->isTerm());
     auto term = expression->getPtr<base::Term<base::EngineOp>>();
-    ASSERT_EQ(term->getName(),
-              "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.a}---somecrazystring--${wazuh.c})");
+    ASSERT_EQ(term->getName(), "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.a}---somecrazystring--${wazuh.c})");
 
     // Check the operation
     auto operation = term->getFn();
@@ -226,7 +228,8 @@ TEST_F(IndexerOutputOperationTest, output_success_with_complex_category_referenc
 
     EXPECT_CALL(*(mocks->ctx), isTestMode());
 
-    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}-${wazuh.integration.name}"})");
+    auto definition =
+        json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}-${wazuh.integration.name}"})");
     auto expression = builder(definition, this->mocks->ctx);
 
     const std::string messageStr {R"({"wazuh":{"integration":{"category":"cloud-services","name":"aws"}}})"};
@@ -235,7 +238,8 @@ TEST_F(IndexerOutputOperationTest, output_success_with_complex_category_referenc
     // Check the expression
     ASSERT_TRUE(expression->isTerm());
     auto term = expression->getPtr<base::Term<base::EngineOp>>();
-    ASSERT_EQ(term->getName(), "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.integration.category}-${wazuh.integration.name})");
+    ASSERT_EQ(term->getName(),
+              "write.output(wazuh-indexer/wazuh-events-v5-${wazuh.integration.category}-${wazuh.integration.name})");
 
     // Check the operation
     auto operation = term->getFn();
@@ -347,7 +351,8 @@ TEST_F(IndexerOutputOperationTest, validate_azure_cloud_integration)
 
     EXPECT_CALL(*(mocks->ctx), isTestMode());
 
-    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}-${wazuh.integration.name}"})");
+    auto definition =
+        json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}-${wazuh.integration.name}"})");
     auto expression = builder(definition, this->mocks->ctx);
 
     const std::string messageStr {R"({"wazuh":{"integration":{"category":"cloud-services","name":"azure-ad"}}})"};
@@ -377,7 +382,8 @@ TEST_F(IndexerOutputOperationTest, validate_gcp_cloud_integration)
 
     EXPECT_CALL(*(mocks->ctx), isTestMode());
 
-    auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}-${wazuh.integration.name}"})");
+    auto definition =
+        json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}-${wazuh.integration.name}"})");
     auto expression = builder(definition, this->mocks->ctx);
 
     const std::string messageStr {R"({"wazuh":{"integration":{"category":"cloud-services","name":"gcp-pubsub"}}})"};

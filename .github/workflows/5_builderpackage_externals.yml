@@ -35,6 +35,10 @@ name: 5.X - Package - Build external dependencies
 # a compiled binary beats a source-only snapshot, and where both legs
 # compiled a dep the agent copy wins on glibc compatibility. Sources are
 # identical across legs.
+#
+# libbpf-bootstrap is built apart by the `build-ebpf` job, which cross-compiles
+# it for every Linux arch on one ubuntu-24.04 runner; `consolidate` ships that
+# copy under libraries/linux/<arch>/.
 
 on:
   workflow_dispatch:
@@ -153,6 +157,36 @@ jobs:
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
 
+  build-ebpf:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang and Zig
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libelf-dev zlib1g-dev
+          wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s 20
+          zig_version="$(sed -n 's/^ZIG_VERSION="\(.*\)"/\1/p' packages/externals/ebpf/build_ebpf.sh)"
+          curl -fsSL "https://ziglang.org/download/${zig_version}/zig-x86_64-linux-${zig_version}.tar.xz" | tar -xJ -C "${RUNNER_TEMP}"
+          echo "${RUNNER_TEMP}/zig-x86_64-linux-${zig_version}" >> "${GITHUB_PATH}"
+
+      - name: Build libbpf-bootstrap
+        run: bash packages/externals/ebpf/build_ebpf.sh
+
+      - name: Upload libbpf-bootstrap tarballs
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: libbpf-bootstrap
+          path: output
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
   consolidate:
     # Merge every per-leg tarball into a single libraries/ tree shaped
     # like the packages.wazuh.com/deps/<version>/ layout: sources/ holds
@@ -166,7 +200,7 @@ jobs:
     # their per-leg tarballs overlap. The merge picks a winner per dep from
     # the build output itself — no dep lists — so changing a dependency
     # never needs a workflow change.
-    needs: build-externals
+    needs: [build-externals, build-ebpf]
     runs-on: ubuntu-24.04
     permissions:
       id-token: write
@@ -274,6 +308,20 @@ jobs:
             n="$(find "${d}" -maxdepth 1 -name '*.tar.gz' | wc -l | xargs)"
             [ "${n}" -gt 0 ] && echo "  ${d}  ${n} tarballs"
           done
+
+      - name: Download libbpf-bootstrap tarballs
+        uses: ./.github/actions/download_s3_artifact
+        with:
+          name: libbpf-bootstrap
+          path: libbpf-bootstrap
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Place libbpf-bootstrap tarballs
+        # Replaces the copy the Linux legs re-ship from the current deps release.
+        run: |
+          cp -rv libbpf-bootstrap/. consolidated/libraries/linux/
 
       - name: Pack consolidated tarball
         run: |

@@ -16,7 +16,8 @@ namespace wiconnector
 /**
  * @brief Thin interface that mirrors the subset of IndexerConnectorAsync used by WIndexerConnector.
  *
- * For decoupling and testability, WIndexerConnector depends on this interface instead of the full IndexerConnectorAsync.
+ * For decoupling and testability, WIndexerConnector depends on this interface instead of the full
+ * IndexerConnectorAsync.
  */
 class IIndexerConnectorAsync
 {

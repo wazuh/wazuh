@@ -24,6 +24,14 @@ std::shared_ptr<Argument> ref(const std::string& dotPath)
     return std::make_shared<Reference>(dotPath);
 }
 
+/**
+ * @brief Build a JSON literal of @p depth nested arrays around a scalar: "[[...1...]]"
+ */
+std::string deepArrayLiteral(std::size_t depth)
+{
+    return std::string(depth, '[') + "1" + std::string(depth, ']');
+}
+
 /******************************************************************************/
 /* Tests definitions */
 /******************************************************************************/
@@ -383,7 +391,29 @@ INSTANTIATE_TEST_SUITE_P(
                     JsonArgT(R"({"key":"value"})", makeSuccess<OpArg>(val(R"({"key":"value"})"), 15)),
                     JsonArgT(R"({"key":"value"}leftover)", makeSuccess<OpArg>(val(R"({"key":"value"})"), 15)),
                     JsonArgT(R"(")", makeError<OpArg>("", 0)),
-                    JsonArgT(R"({"key":"value")", makeError<OpArg>("", 0))));
+                    JsonArgT(R"({"key":"value")", makeError<OpArg>("", 0)),
+                    // Depth cap (json::Json::MAX_DEPTH = 256): 256 nested levels parse, 257 are rejected
+                    JsonArgT(deepArrayLiteral(256) + ",",
+                             makeSuccess<OpArg>(val(deepArrayLiteral(256)), deepArrayLiteral(256).size())),
+                    JsonArgT(deepArrayLiteral(257) + ",", makeError<OpArg>("", 0))));
+
+TEST(HelperArgParser, DeepLiteralDoesNotCrash)
+{
+    // A literal deeper than json::Json::MAX_DEPTH makes the json alternative fail without building a DOM; the chain
+    // quoted | ref | json | raw then falls back to the raw argument, which takes the text as a string up to the first
+    // end character (',', ')' or ' '). Only "returns a result (raw or error) without throwing or crashing" is asserted.
+    const auto literal = deepArrayLiteral(257);
+    const auto input = literal + ",";
+    Result<OpArg> result;
+    ASSERT_NO_THROW(result = getHelperArgParser()(input, 0));
+    // Today the raw alternative is taken: success, a string value spanning the whole literal (index == literal.size()).
+    ASSERT_TRUE(result.success());
+    ASSERT_EQ(result.index(), literal.size());
+    ASSERT_TRUE(result.value()->isValue());
+    std::string_view rawValue;
+    ASSERT_EQ(std::static_pointer_cast<Value>(result.value())->getString(rawValue), json::RetGet::Success);
+    ASSERT_EQ(rawValue, literal);
+}
 
 INSTANTIATE_TEST_SUITE_P(
     Builder,
@@ -915,11 +945,16 @@ INSTANTIATE_TEST_SUITE_P(
         TermT(R"(helper_name123())", makeError<HelperToken>("", 0)),
         TermT(R"(helper_name123(rawvalue))", makeError<HelperToken>("", 0)),
         TermT(R"(hp($wazuh.protocol.queue) )", makeSuccess<HelperToken>({"hp", Reference("wazuh.protocol.queue")}, 25)),
-        TermT(R"(hp($wazuh.protocol.queue) ())", makeSuccess<HelperToken>({"hp", Reference("wazuh.protocol.queue")}, 25)),
-        TermT(R"(hp($wazuh.protocol.queue)==())", makeSuccess<HelperToken>({"hp", Reference("wazuh.protocol.queue")}, 25)),
-        TermT(R"(hp($wazuh.protocol.queue) AND)", makeSuccess<HelperToken>({"hp", Reference("wazuh.protocol.queue")}, 25)),
-        TermT(R"(hp($wazuh.protocol.queue)==)", makeSuccess<HelperToken>({"hp", Reference("wazuh.protocol.queue")}, 25)),
-        TermT(R"(hp($wazuh.protocol.queue)!!)", makeSuccess<HelperToken>({"hp", Reference("wazuh.protocol.queue")}, 25)),
+        TermT(R"(hp($wazuh.protocol.queue) ())",
+              makeSuccess<HelperToken>({"hp", Reference("wazuh.protocol.queue")}, 25)),
+        TermT(R"(hp($wazuh.protocol.queue)==())",
+              makeSuccess<HelperToken>({"hp", Reference("wazuh.protocol.queue")}, 25)),
+        TermT(R"(hp($wazuh.protocol.queue) AND)",
+              makeSuccess<HelperToken>({"hp", Reference("wazuh.protocol.queue")}, 25)),
+        TermT(R"(hp($wazuh.protocol.queue)==)",
+              makeSuccess<HelperToken>({"hp", Reference("wazuh.protocol.queue")}, 25)),
+        TermT(R"(hp($wazuh.protocol.queue)!!)",
+              makeSuccess<HelperToken>({"hp", Reference("wazuh.protocol.queue")}, 25)),
         TermT(R"(hp($wazuh.protocol.queue)>)", makeSuccess<HelperToken>({"hp", Reference("wazuh.protocol.queue")}, 25)),
         TermT(R"(hp($wazuh.protocol.queue, ,\ \,) )",
               makeSuccess<HelperToken>({"hp", Reference("wazuh.protocol.queue"), {val(), val(R"(" ,")")}}, 32)),

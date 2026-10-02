@@ -826,7 +826,8 @@ TEST_F(CMSyncSynchronizeTest, SkipsStandardWhenConsumerNotReadyButCustomProceeds
 TEST_F(CMSyncConstructorTest, InitialStatusAllReady)
 {
     EXPECT_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(false));
-    EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, ::testing::_)).WillOnce(::testing::Return(store::mocks::storeOk()));
+    EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, ::testing::_))
+        .WillOnce(::testing::Return(store::mocks::storeOk()));
     // updateSpacesStatusSnapshot checks router for each space
     EXPECT_CALL(*router, existsEntry(::testing::_)).WillRepeatedly(::testing::Return(false));
 
@@ -895,8 +896,8 @@ TEST_F(CMSyncSynchronizeTest, RestoresEnabledFromStoreButNotAvailable)
     auto status = sync->getSpacesStatus();
     ASSERT_EQ(status.size(), 1U);
     EXPECT_EQ(status[0].name, "standard");
-    EXPECT_TRUE(status[0].enabled);     // restored from store
-    EXPECT_FALSE(status[0].available);  // not persisted → false until re-derived from the router
+    EXPECT_TRUE(status[0].enabled);    // restored from store
+    EXPECT_FALSE(status[0].available); // not persisted → false until re-derived from the router
 }
 
 // 'enabled' must reflect the remote policy (remoteEnabled), NOT the router route state. Here the route
@@ -940,16 +941,16 @@ TEST_F(CMSyncSynchronizeTest, MarksUnavailableWhenRouteRemovedOutOfBand)
 
     auto entry = makeRouterEntry("cmsync_standard", "current_ns", 1, router::env::State::ENABLED, "h");
     EXPECT_CALL(*router, existsEntry("cmsync_standard"))
-        .WillOnce(::testing::Return(true))    // 1st sync: route present (up-front check + reused by routeConfig)
-        .WillOnce(::testing::Return(false));  // 2nd sync: route removed out-of-band
+        .WillOnce(::testing::Return(true))   // 1st sync: route present (up-front check + reused by routeConfig)
+        .WillOnce(::testing::Return(false)); // 2nd sync: route removed out-of-band
     EXPECT_CALL(*router, getEntry("cmsync_standard"))
         .WillOnce(::testing::Return(base::RespOrError<router::prod::Entry>(entry))); // 1st sync routeConfig
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard")))
-        .WillOnce(::testing::Return(true))    // 1st sync
-        .WillOnce(::testing::Return(false));  // 2nd sync: aborts here; up-front check already refreshed availability
+        .WillOnce(::testing::Return(true))   // 1st sync
+        .WillOnce(::testing::Return(false)); // 2nd sync: aborts here; up-front check already refreshed availability
     EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true)); // 1st sync only
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
-        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("h"), true))));       // 1st sync only
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("h"), true)))); // 1st sync only
 
     // 1st sync: no-change → standard becomes available.
     sync->synchronize();

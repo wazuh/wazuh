@@ -7,8 +7,9 @@ Agents can also enroll over HTTPS, through `remoted_module`'s `POST /enroll` (po
 is a bridge, not a second implementation: it forwards to this same daemon's local socket (see
 [Local socket enrollment protocol](#local-socket-enrollment-protocol) below), so every enrollment —
 however it arrives — goes through the one business-logic path documented on this page. Port 1515
-(this document) remains fully supported for legacy 4.x agents; `/enroll` is the manager's intended
-long-term enrollment path going forward.
+(this document) serves legacy 4.x agents and is open only while
+[`legacy_enrollment`](configuration.md#legacy_enrollment) allows it; `/enroll` is the manager's
+intended long-term enrollment path going forward.
 
 Source: `src/os_auth/`
 
@@ -25,26 +26,38 @@ material; that one is the order things happen in.
 ## How it works
 
 1. Agent connects to port 1515 over TLS.
-2. If `use_password` is enabled (the default for new installations), the agent must send the enrollment password (`OSSEC PASS: <password>`). The password is auto-generated on the manager at first start and must be copied to each agent before enrollment; see [use_password configuration](configuration.md#use_password).
-3. If mutual TLS is configured (`ssl_agent_ca`), the agent's certificate is verified.
-4. The agent sends an enrollment request:
-   ```
+2. If mutual TLS is configured (`ssl_agent_ca`), the agent's certificate is verified during the
+   handshake.
+3. The agent sends an enrollment request:
+   ```text
    OSSEC A:'<agent_name>' V:'<version>' G:'<groups>' IP:'<ip>' K:'<key_hash>'
    ```
-   Only `A:'<agent_name>'` is mandatory; the rest are optional fields and may appear in any
-   combination:
-   - `A:'<agent_name>'` — the name the agent wants to register under (required).
-   - `V:'<version>'` — the agent's Wazuh version, used for the version-compatibility check.
+   If `use_password` is enabled, the request must be prefixed with the enrollment password,
+   `OSSEC PASS: <password> OSSEC A:'…'`, or it is answered `ERROR: Invalid password`. The schema
+   default is `no`; the configuration the installer generates sets it to `yes`. The master
+   generates the password at first start; see [use_password configuration](configuration.md#use_password).
+
+   Only `A:'<agent_name>'` is mandatory. The other fields are optional, but those present must
+   appear in the order shown:
+   - `A:'<agent_name>'` — the name the agent wants to register under (required). It must pass
+     `OS_IsValidName()`, or the answer is `ERROR: Invalid agent name`.
+   - `V:'<version>'` — the agent's Wazuh version. A version newer than the manager's is refused
+     unless [`<agents><allow_higher_versions>`](configuration.md#agents--allow_higher_versions) is `yes`.
    - `G:'<groups>'` — comma-separated centralized group(s) to assign the agent to at enrollment
-     time, instead of the default group.
-   - `IP:'<ip>'` — a client-supplied source IP to register the agent with, overriding the
-     connection's actual source address (ignored if the value is `src`).
+     time, instead of the `default` group.
+   - `IP:'<ip>'` — the address to register the agent with. `IP:'src'` registers the connection's
+     source address; any other value must be a valid IP and is registered as given. Without this
+     field the agent is registered as `any`, or with its source address when
+     [`use_source_ip`](configuration.md#use_source_ip) is `yes`.
    - `K:'<key_hash>'` — the SHA-1 hash of the agent's current key, if it already has one. It is
      compared against the manager's stored key when deciding whether a `force` re-enrollment
      applies (see [Force re-enrollment](#force-re-enrollment)).
-5. Authd validates the agent name, checks for existing registrations (applying `force` rules if configured), generates the agent key (32 bytes from OpenSSL's CSPRNG, stored as 64 lowercase hex chars -- the HS256 secret of remoted's `wazuh-agent+jwt` bearer profile), and queues the entry for persistence. If the request included a `G:` field, the agent is assigned to those centralized groups as part of this same enrollment.
-6. The agent key is written to `/var/wazuh-manager/etc/client.keys` by a background writer thread.
-7. The response is sent back to the agent over the same TLS connection.
+5. On the master, authd validates the groups, checks for existing registrations (applying the `force` rules), and generates the agent key (32 bytes from OpenSSL's CSPRNG, stored as 64 lowercase hex chars -- the HS256 secret of remoted's `wazuh-agent+jwt` bearer profile). If the request included a `G:` field, the agent is assigned to those centralized groups as part of this same enrollment. A worker forwards the request to the master instead (see [Cluster](#cluster)).
+6. The response, `OSSEC K:'<id> <name> <ip> <key>'`, is sent back over the same TLS connection;
+   a refusal is `ERROR: <reason>. Unable to add agent`.
+7. Only once the answer has been written is the entry queued for the writer thread, which persists
+   it to `/var/wazuh-manager/etc/client.keys`. If the answer cannot be written, the new entry is
+   removed from the keystore again.
 
 Over `POST /enroll` the request can carry, instead of the enrollment password, an
 [enrollment token](#enrollment-tokens) (a `wazuh-enroll+jwt` bearer whose `kid` is the token id) or
@@ -57,9 +70,9 @@ the same local-socket `add`, and every enrollment answered over that socket carr
 | Thread | Role |
 |--------|------|
 | Remote server | Accepts TLS connections on port 1515 (when `remote_enrollment` and [`legacy_enrollment`](configuration.md#legacy_enrollment) are both `yes`) |
-| Local server | Handles enrollment via the local Unix socket `queue/sockets/auth.sock` |
-| Writer | Flushes the in-memory key queue to `client.keys` on disk, deletes each removed agent from wazuh-db, and records the indexer purge of every removed agent as a Task Manager task. It never waits on the network |
-| authpass watcher | On a worker with `use_password`, re-reads `etc/authd.pass` as the cluster syncs it down from the master. Until it arrives the worker fails closed and rejects enrollments |
+| Local server | Handles enrollment via the local Unix socket `queue/sockets/auth.sock` (every node) |
+| Writer | Flushes the in-memory key queue to `client.keys` on disk, writes the agents' rows to wazuh-db, deletes each removed agent from wazuh-db, and records the indexer purge of every removed agent as a Task Manager task. It never waits on the network |
+| authpass watcher | On a worker with `use_password`, re-reads `etc/authd.pass` as the cluster syncs it down from the master. Until it arrives the worker fails closed and rejects port-1515 enrollments with `ERROR: Enrollment password not available` |
 
 The writer runs on the **master only**. See [Cluster](#cluster) below.
 
@@ -90,8 +103,8 @@ answers `9016`.
 | File | Contents |
 |------|----------|
 | `/var/wazuh-manager/etc/client.keys` | One line per agent: `<id> <name> <ip> <key>` |
-| `/var/wazuh-manager/etc/agents-timestamp` | Per-agent registration timestamp |
-| `/var/wazuh-manager/etc/authd.pass` | Enrollment password (auto-generated on first start; required by default) |
+| `/var/wazuh-manager/queue/agents-timestamp` | Per-agent registration timestamp |
+| `/var/wazuh-manager/etc/authd.pass` | Enrollment password, mode `0640`. Generated by the master at start when `use_password` and `remote_enrollment` are both on and the file is absent; see [use_password](configuration.md#use_password) |
 | `/var/wazuh-manager/etc/enrollment_tokens.json` | The [enrollment token](#enrollment-tokens) store, `{"version":1,"tokens":[…]}`: per token `id`, `secret` (`null` when minted with `--no-credential`), `adr`, `pin` or `ca`, `created`, `expires`, `max_uses`, `uses`, `revoked`, `description`. Written by the master only, whole, through a temporary file `chmod`ed to `0640` and renamed into place |
 | `/var/wazuh-manager/queue/authd/pending-purges` | Deletions authd has begun recording but not yet finished, plus the highest agent id and sequence ever handed out. Normally empty |
 | `/var/wazuh-manager/queue/authd/pending-identities` | Credentials already handed out but not yet committed to `global.db`, one JSON line each, **in the clear** (mode `0640`) — see [Durability](#durability) and [the identity journal](architecture.md#the-identity-journal). Normally empty; a persistent nonempty file warrants checking database writes and journal-compaction errors |
@@ -190,9 +203,11 @@ The `<force>` sub-block controls when an agent may overwrite an existing registr
 
 All four guards are evaluated together, and every one of them has to allow the replacement. With the
 defaults (`enabled` on, `key_mismatch` on, `disconnected_time` 1 h, `after_registration_time` 1 h) an
-agent is replaced when the one holding its name has never connected or has been disconnected for at
-least an hour, was registered at least an hour ago, and either omits `key_hash` or supplies a
-nonmatching hash. The disconnection check can be disabled; see the exact
+agent holding the name or IP is replaced when it has never connected or the disconnection guard
+allows it, was registered at least an hour ago, and the newcomer either omits `key_hash` or supplies a
+nonmatching hash. The disconnection guard refuses an agent whose recorded disconnection time is zero,
+and a `disconnected` agent whose disconnection is younger than `disconnected_time`; it can be
+disabled. The exact order is the
 [guard chain](enrollment-lifecycle.md#a-collision-and-what-key_hash-changes).
 
 **A replacement is a deletion.** The agent that loses its name is removed exactly as if it had been
@@ -215,6 +230,38 @@ its purge finish, and then the id can be reused.
 `9018` also covers a wazuh-db that cannot answer whether the id still owes a deletion: the guard fails
 closed, because allowing the reuse risks an outstanding purge deleting the new agent's documents.
 Auto-assigned ids are unaffected — the id counter comes from authd's own journal.
+
+## Command-line options
+
+`wazuh-manager-control` starts the daemon without arguments; the flags below are for running
+`/var/wazuh-manager/bin/wazuh-manager-authd` by hand, typically for troubleshooting. The long
+options belong to the token utility and are described in [Enrollment tokens](#enrollment-tokens).
+
+```text
+wazuh-manager-authd -[VhdtfP] [-u user] [-g group] [-D dir] [-p port] [-c ciphersuites] [-v path [-s]] [-x path] [-k path]
+```
+
+| Flag | Effect | Default |
+| --- | --- | --- |
+| `-V` | Print the version and license, then exit. | — |
+| `-h` | Print the help message, then exit. | — |
+| `-d` | Enable debug logging. Repeat it (`-dd`) to raise the level. When given, `authd.debug` in the internal options is not read. | off |
+| `-t` | Read and validate `etc/wazuh-manager.conf`, then exit `0` on success. Unlike a normal start, it also checks that the configured certificate and CA files exist (`auth.ssl_*` and `remote.https.*`). Nothing is bound or started. | — |
+| `-f` | Run in the foreground instead of daemonizing. **Also forces [`disabled`](configuration.md#disabled) to `no`**, so the daemon starts even when the configuration disables it. | off |
+| `-u <user>` | User the daemon switches to after startup. | `wazuh-manager` |
+| `-g <group>` | Group the daemon switches to after startup. | `wazuh-manager` |
+| `-D <dir>` | Accepted, but does not change the working directory: the daemon has already moved into the installation directory before it reads its options, and resolves every path from there. The value only shows up in a debug message. | `/var/wazuh-manager` |
+| `-p <port>` | Listening port. Overrides [`port`](configuration.md#port); `0` or a non-numeric value is rejected. | `1515` |
+| `-P` | Require the shared enrollment password. Overrides [`use_password`](configuration.md#use_password), but can only turn it on. | off |
+| `-c <suites>` | TLS 1.3 cipher suites. Overrides [`ciphers`](configuration.md#ciphers); validated the same way. | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` |
+| `-v <path>` | CA certificate used to verify agent certificates. Overrides [`ssl_agent_ca`](configuration.md#ssl_agent_ca). | none |
+| `-s` | Verify that the agent certificate's CN matches its IP. Overrides [`ssl_verify_host`](configuration.md#ssl_verify_host), but can only turn it on; it needs a CA from `-v` or `ssl_agent_ca`. | off |
+| `-x <path>` | Manager certificate. Overrides [`ssl_manager_cert`](configuration.md#ssl_manager_cert). | `etc/certs/remoted.pem` |
+| `-k <path>` | Manager private key. Overrides [`ssl_manager_key`](configuration.md#ssl_manager_key). | `etc/certs/remoted-key.pem` |
+
+The overrides are applied after the configuration file is read, so a flag always wins over the
+matching `<auth>` option. `-P`, `-s` and `-f` can only enable their setting: no flag turns one off.
+The configuration file still has to be valid; the flags do not replace it.
 
 ## Enrollment tokens
 
@@ -250,9 +297,10 @@ The CLI prints the token alone on stdout and its id, endpoint,
 expiry and pin on stderr; `--show-token` decodes one offline (argument, `--token-file` or stdin) without
 its credential. An inline token requires `--show-token=<token>`; a separate positional argument
 is not consumed. `--purge-enrollment-tokens` removes dead tokens by default; `--all` also removes
-usable tokens and requires interactive confirmation or `--force`. The server API offers the same operations as `POST`/`GET /agents/enrollment-tokens`
-and `DELETE /agents/enrollment-tokens/{token_id}` (RBAC `enrollment_token:create`/`read`/`delete`).
-The token text is returned once and never listed again.
+usable tokens and requires interactive confirmation or `--force`. The server API offers the same
+operations as `POST`/`GET /agents/enrollment-tokens`, `DELETE /agents/enrollment-tokens/{token_id}`
+(revoke) and `DELETE /agents/enrollment-tokens?status=dead|all` (purge), with RBAC
+`enrollment_token:create`/`read`/`delete`. The token text is returned once and never listed again.
 
 A mint is checked against the listener as it is on disk, and a failed check answers `9025` with the
 reason (`Enrollment token refused: address not in certificate SAN`): `--address` must be a subject
@@ -261,6 +309,8 @@ subject; an IP literal only against `iPAddress` entries, and accepted with a war
 must name something **other than loopback only** — a certificate whose entire SAN set is loopback (or
 that carries no SAN extension at all) is refused, while `--address localhost` against a certificate that
 also names something reachable is minted normally — and `remote.https.ca_certificate` must have signed it.
+In a cluster these checks run on the master, where tokens are minted, against the master's own files:
+a token for one worker's own address is refused unless the master's certificate carries it too.
 `--port`/`--prefix` default to the running `remote.https` values, `--ttl` to 30 days (`N[d|h|m|s]`),
 `--max-uses` to unlimited.
 
@@ -271,9 +321,9 @@ the CLI and the API (issue #39133):
 |------|-----|
 | `--ttl` at most **3650 days** (315360000 s) | A token's expiry is stored as an absolute time in a signed `time_t`. A longer lifetime does not produce a distant expiry, it produces a **negative** one, which the store's own loader refuses — and a record like that is one every node carries, because the cluster replicates the file |
 | `--description` and `--prefix` at most **256 characters** | Both are persisted in `etc/enrollment_tokens.json`, re-serialized on every consumed use and shipped to every worker |
-| `--address` at most **253 characters** | `adr_is_dns_name()` refuses any DNS name longer than that regardless of caller; an IP literal is accepted instead and is never this long |
-| `--max-uses` at most **4294967295** (`UINT_MAX`) | The use counter is stored as an `unsigned int`; anything above wraps |
-| No control character (`\n`, `\r`, `\t`, DEL, terminal escapes) in `--description` or `--prefix` | The description is written into the INFO line that records who minted which token, so a newline there forges a second record. Spaces and ordinary punctuation are free text as before |
+| `--address` at most **253 characters** | The longest DNS name, and the API's `maxLength`. Refused up front, before the certificate is read: `adr_is_dns_name()` would refuse it too, but only after the SAN match, and the CLI applies no format of its own |
+| `max_uses` at most **4294967295** (`UINT_MAX`) on the socket and the API | The use counter is stored as an `unsigned int`; anything above wraps. The socket answers `9002` rather than `9025` for this one, and the CLI's `--max-uses` accepts at most 1000000000 |
+| No control character (`\n`, `\r`, `\t`, DEL, terminal escapes) in `--address`, `--description` or `--prefix` | The description is written into the INFO line that records who minted which token, and the address into the WARN line that records a refused mint, so a newline in either forges a second record. The refusal of such an address is logged without it. Spaces and ordinary punctuation are free text as before |
 
 A refusal is `9025` with the reason (`Enrollment token refused: ttl must be between 1 and 315360000
 seconds (3650 days); 0 takes the default`). The CLI refuses an out-of-range `--ttl` locally, without
@@ -342,8 +392,9 @@ accepts) is **not loaded at all**, with a warning naming which limit it crossed.
 removed from the file. `--purge-enrollment-tokens` (`DELETE /agents/enrollment-tokens?status=dead`)
 removes only what can no longer authorise an enrollment — revoked, expired, or out of uses — and never
 a token that is merely unused: one minted this morning and not handed out yet is a live token, not a
-leftover. `--all` (`status=all`) empties the store instead, and asks for confirmation unless `--force`
-is given or there is no terminal to ask from. A purge that finds nothing to remove does not rewrite the
+leftover. `--all` (`status=all`) empties the store instead. The CLI asks for confirmation unless
+`--force` is given, and without a terminal to ask from it refuses (exit `1`) instead of assuming
+consent. A purge that finds nothing to remove does not rewrite the
 file, so it does not make every node reload a store that has not changed. Like minting and revoking,
 purging is master-only (`9015` on a worker); the workers receive the pruned file through the cluster.
 
@@ -376,7 +427,7 @@ groups are kept unless the request named some, and the `<force>` guards play no 
 **Agent ids of up to eight digits.** The `kid` is validated with `OS_IsValidID()`, which accepts at most
 eight characters, and the agent applies the same rule to the answer, so an agent whose id has **nine or
 ten digits cannot re-enroll**: its bearer is refused as malformed. Administrative insertion is
-deliberately *not* restricted to match — `POST /agents` and `manage_agents` still accept ids up to
+deliberately *not* restricted to match — `POST /agents/insert` still accepts ids up to
 2147483647 — because restricting it would not remove the mismatch: the automatic id counter follows the
 highest id present in `client.keys`, so the next self-enrollment would hand out a long id again, and the
 agent would reject that too. Eight digits is what re-enrollment supports; widening the range is a change
@@ -403,8 +454,8 @@ An operator needs to do nothing: the agent does this by itself on its first star
 
 **Changing the master node invalidates every stored secret**, and for the same root cause as the note
 below: the secret lives in the master's `global.db`, which the cluster does **not** replicate
-(`cluster.json` carries `client.keys`, `etc/authd.pass` and `etc/enrollment_tokens.json`, and nothing
-else). A promoted node rebuilds its agent rows from the `client.keys` it received, with a NULL secret
+(of authd's files, `cluster.json` carries only `client.keys`, `etc/authd.pass` and
+`etc/enrollment_tokens.json`). A promoted node rebuilds its agent rows from the `client.keys` it received, with a NULL secret
 — the third population above, fleet-wide.
 
 The agents themselves keep working: `client.keys` *is* replicated, so their keys still authenticate,
@@ -424,17 +475,18 @@ covers the transitions this manager actually handed out.
 ## Local socket enrollment protocol
 
 In addition to the TLS enrollment path on port 1515, authd exposes a local-only enrollment API over
-the Unix domain socket `queue/sockets/auth.sock`. This is what `manage_agents`, the API's agent
-registration endpoints, and `remoted_module`'s `POST /enroll` bridge (see
-[HTTPS enrollment](../remoted/https-events-api.md#enrollment-endpoint-post-enroll)) all use to add,
-remove, and query agents without going through TLS or the enrollment password directly.
+the Unix domain socket `queue/sockets/auth.sock`. Its clients are the server API (agent
+registration and deletion, and the enrollment-token endpoints), the token CLI described above, and
+`remoted_module`'s `POST /enroll` and `POST /enroll/secret` bridges (see
+[HTTPS enrollment](../remoted/https-events-api.md#enrollment-endpoint-post-enroll)). Access to the
+socket is the only authorization: none of them goes through TLS or the enrollment password.
 
 On a cluster **worker** node: a self-enrollment-shaped `add` request (no caller-supplied `id` or
 `key` — the only shape `/enroll` and port 1515 ever produce) is forwarded to the master over the
 same cluster protocol port 1515's own worker-to-master enrollment forwarding already uses, and
 answered with the master's result — a transport failure during that forward answers `9016` ("Cannot
 communicate with master node"). An `add` that DOES carry a caller-chosen `id` and/or `key` (an
-admin/restore-style add — `manage_agents`/the API can send this shape, self-enrollment never does)
+admin/restore-style add — the API's `POST /agents/insert` sends this shape, self-enrollment never does)
 is rejected outright with `9015`, same as `remove`/`get`: there is no cluster RPC to honor a
 caller-chosen identity on a worker, so this is an explicit rejection rather than silently returning a
 different id/key than the one requested. An `add` carrying `token_id` or `reenroll` is **not** in that
@@ -462,8 +514,9 @@ A request is a single-line JSON object:
     argument was absent. This is deliberately a narrower rule than the `OS_IsValidName()` charset
     the two *enrollment* paths (port 1515 and `POST /enroll`) enforce on the names they mint: it
     refuses only what the `<id> <name> <ip> <key>` line format cannot represent, so names that
-    `manage_agents` and the API have always accepted — containing `%`, a single character, or a
-    leading `.` — keep working.
+    the API has always accepted — containing `%`, a single character, or a leading `.` — keep
+    working. The local socket applies neither `use_source_ip` nor the agent-version check: the
+    `ip` is registered as given, and the request carries no version.
   - `id` (optional) — request a specific agent ID instead of letting authd assign the next one; must
     be a positive integer no greater than `2147483647` (the width `client.keys` and the database
     store it in) and other than `0` (reserved for the manager), or the request fails with
@@ -505,8 +558,10 @@ A request is a single-line JSON object:
 - **`token_create`** — mint an [enrollment token](#enrollment-tokens) (master only). Arguments:
   `address` (required), `port`, `prefix`, `ttl` (seconds, `0` = the 30 day default, at most
   315360000), `max_uses` (`0` = unlimited), `description`, `embed_ca`, `no_credential` (booleans).
-  `ttl` out of range, and a `description` or `prefix` over 256 characters or carrying a control
-  character, answer `9025` with the reason. Answers
+  `ttl` out of range, an `address` over 253 characters, and a `description` or `prefix` over 256
+  characters, or any of the three carrying a control character, answer `9025` with the reason; a
+  missing `address` answers `9004`, and an argument of the wrong type or a `max_uses` above
+  4294967295 answers `9002`. Answers
   `{"error": 0, "data": {"token": "<token>", "id": "<id>", "adr": "<endpoint>", "expires": <epoch>, "pin_hex": "<sha256>"}}`
   (`pin_hex` only when the token pins rather than embeds the CA)
 - **`token_list`** — no arguments. Answers `{"error": 0, "data": [{"id", "adr", "created", "expires",
@@ -528,7 +583,7 @@ A successful `add` responds with:
 it changes none of them. `get` answers the `add` shape without `reenroll_secret`, a successful `remove` responds with
 `{"error": 0, "data": "Agent deleted successfully."}`, and any failure responds with
 `{"error": <code>, "message": "<description>"}` (for example `9007` "Duplicate IP", `9013` "Maximum
-number of agents reached", or `9022`–`9031` for the token, re-enrollment and identity-journal paths — see the
+number of agents reached", or `9022`–`9032` for the token, re-enrollment and identity-journal paths — see the
 [error code table](architecture.md#error-codes)).
 
 **Per-request force override:** the `force` object on an `add` request, when present, completely
@@ -547,54 +602,45 @@ omitted, the configured `<force>` settings apply as usual. Shape:
 }
 ```
 
-`disconnected_time.value` and `after_registration_time` each accept either a number of seconds or
-a string with a time suffix (`s`, `m`, `h`, `d`), the same as their XML configuration equivalents.
+Every member shown is required once `force` is present: a missing `enabled`, `key_mismatch`,
+`disconnected_time`, `disconnected_time.enabled`, `disconnected_time.value` or
+`after_registration_time` answers `9002`. `disconnected_time.value` and `after_registration_time`
+each accept either a number of seconds or a string with a time suffix (`s`, `m`, `h`, `d`), the
+same as their XML configuration equivalents. A worker ignores the override: it forwards the
+request and the master applies its own `<force>` block.
 
 The socket also accepts a small set of plain-text (non-JSON) administrative commands, handled
 separately from the JSON API above: `getconfig auth` returns the daemon's current effective
-`<auth>` configuration as JSON (`ok {"auth": {...}}`); any other section name or unrecognized
-command returns an `err <message>` response.
+`auth` section as JSON (`ok {"auth": {...}}`, schema defaults applied; the internal options are not
+included); any other section name or unrecognized command returns an `err <message>` response.
 
 ## Manager certificate
 
-authd has no certificate-generation mode (the `-C/-B/-K/-X/-S` flags of earlier builds are gone) and
-the manager generates no TLS material at all. The pair referenced by
-[`ssl_manager_cert` and `ssl_manager_key`](configuration.md#ssl_manager_cert) is the HTTPS agent
-listener's, provisioned by the operator with the Wazuh installation assistant's `wazuh-certs-tool`
-(see [Deploy certificates](../../getting-started/installation.md#deploy-certificates)). Without it
-the manager fails closed before authd runs (`wazuh-manager-control start` reports the validator's
-`(1244) … file not found` verdict); when the files exist but the SSL context cannot be built — most
+authd has no certificate-generation mode (the `-C/-B/-K/-X/-S` flags of earlier builds are gone). The
+pair referenced by [`ssl_manager_cert` and `ssl_manager_key`](configuration.md#ssl_manager_cert) is
+the HTTPS agent listener's: the manager's credential resolver issues it at installation and nothing
+reissues it afterwards; a deployment on its own PKI replaces it out of band, for example with the
+Wazuh installation assistant's `wazuh-certs-tool` (see
+[Using certificates issued elsewhere](../../getting-started/installation.md#using-certificates-issued-elsewhere)).
+Without the files the manager fails closed before authd runs (`wazuh-manager-control start` reports
+the validator's `(1244) … file not found` verdict); when the files exist but the SSL context cannot be built — most
 often because the service user cannot read them — authd logs
-`SSL context setup failed (certificate '<cert>', key '<key>'). wazuh-manager does not generate TLS
-certificates: provision them with wazuh-certs-tool (Wazuh installation assistant); see 'Deploy
-certificates' in the installation guide. Exiting.` and exits.
-
-## Key source files
-
-| File | Purpose |
-|------|---------|
-| `src/main-server.c` | Main loop, thread management, client pool, CLI argument parsing |
-| `src/auth.c` | Protocol parsing, agent validation, key generation |
-| `src/local-server.c` | Local socket enrollment handler (JSON `add`/`remove`/`get`/`issue_reenroll_secret` and the `token_create`/`token_list`/`token_revoke`/`token_purge` API) |
-| `src/identity_journal.c` | `queue/authd/pending-identities`: the credential recorded before it is handed out, and replayed until `global.db` has committed it |
-| `src/token_cli.c` | The `--*-enrollment-token` / `--show-token` utility mode: a client of the socket verbs above |
-| `src/enrollment_token_mint.c` | What may be minted: the SAN, loopback and CA-signature checks against the listener certificate |
-| `src/enrollment_token_store.c` | `etc/enrollment_tokens.json` and its in-memory replica: load, atomic rewrite, consume, revoke |
-| `src/reenroll_verify.cpp` | The re-enrollment bearer check: a C bridge over the shared JWT verifier in `shared_modules/utils/jwt/` |
-| `src/authcom.c` | Local socket admin commands (e.g. `getconfig`) |
-| `src/config.c` | Configuration bootstrap: calls the `<auth>` XML parser and exports the live config as JSON |
-| `include/auth.h` | Shared struct/function declarations (`struct client`, `struct keynode`, protocol and config prototypes) |
-
-The actual `<auth>` XML element parsing, validation, and default values live in the shared config
-subsystem at `src/config/src/authd-config.c`, not in `os_auth` itself; the token codec (the JSON
-document, its base64url wrapping and the HKDF) is shared with the agent side at
-`src/shared/src/enrollment_token.c`.
+`SSL context setup failed (certificate '<cert>', key '<key>'). authd reuses the HTTPS agent
+listener's pair, issued at installation and never reissued at start: check that both files are owned
+by the service user and mode 0640, or provision them; see 'Credentials' in the installation guide.
+Exiting.` and exits. authd builds that context only when it opens port 1515
+(`remote_enrollment` and `legacy_enrollment` both on).
 
 ## Development
 
 The in-repo companion to these pages (a plain path — it lives outside this book):
 
-- `src/os_auth/README.md` — the developer's map of the module: the functional/non-functional
-  requirements catalog (RF, RNF, and the `REQ-PURGE` contract with inventory-sync), the design
-  decisions (D1–D13) with the reasoning behind each, the load-bearing invariants, the operational
-  notes, and which test suite covers what.
+- `src/os_auth/README.md` — the developer's map of the module: its source layout, the
+  functional/non-functional requirements catalog (RF, RNF, and the `REQ-PURGE` contract with
+  inventory-sync), the design decisions (D1–D14) with the reasoning behind each, the load-bearing
+  invariants, the operational notes, and which test suite covers what.
+- `src/config/src/authd-config.c` — the reader of the `auth` section (`Read_Authd_JSON()`), shared
+  by authd and remoted's enrollment bridge; the option names, types and defaults themselves come
+  from the manager configuration schema, `src/shared_modules/manager_config/schema/wazuh-manager.schema.json`.
+- `src/shared/src/enrollment_token.c` — the token codec (the JSON document, its base64url wrapping
+  and the HKDF), shared with the agent side.

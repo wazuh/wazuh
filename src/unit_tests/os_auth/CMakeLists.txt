@@ -84,3 +84,30 @@ foreach(counter RANGE ${count})
     endif()
     add_test(NAME ${os_auth_test_name} COMMAND ${os_auth_test_name})
 endforeach()
+
+# main-server.c is excluded from authd_lib (it carries authd's main()), so it cannot be
+# tested through the shared library like the rest of os_auth. Compile it directly for this one
+# target instead, renaming its main() at compile time so it does not collide with cmocka's own.
+set_source_files_properties(
+    ${SRC_FOLDER}/os_auth/src/main-server.c
+    PROPERTIES
+    COMPILE_DEFINITIONS "main=wazuh_authd_main_unused"
+)
+
+add_executable(test_main-server test_main-server.c ${SRC_FOLDER}/os_auth/src/main-server.c)
+
+target_link_libraries(
+    test_main-server
+    ${WAZUHLIB}
+    ${WAZUHEXT}
+    authd_lib
+    ${TEST_DEPS}
+    -lpthread
+)
+
+target_link_libraries(
+    test_main-server
+    "${DEBUG_OP_WRAPPERS} -Wl,--wrap,w_get_monotonic_time"
+)
+
+add_test(NAME test_main-server COMMAND test_main-server)
