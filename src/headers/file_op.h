@@ -744,8 +744,10 @@ char **expand_win32_wildcards(const char *path);
  * - Extended-length paths: \\\\?\\C:\\...
  * - Mapped network drives: Z:\\folder\\file.txt
  *
- * Any path starting with \\\\ is considered a network path, as there are no
- * legitimate local file paths in Windows that begin with this prefix.
+ * Any path starting with two separators is considered a network path, as there
+ * are no legitimate local file paths in Windows that begin with this prefix.
+ * Forward slashes are treated like backslashes, so forms such as //server/share
+ * or /\\server\\share are caught as well.
  *
  * @param path A null-terminated string containing the file path to check.
  * @return true if the path points to a network location, false otherwise.
