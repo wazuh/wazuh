@@ -760,7 +760,9 @@ stores:
 Supports:
 - `update(id, updateFn)` — atomic read-modify-write via a lambda (returns the new entry)
 - `get(id)` — read-only lookup (returns `shared_ptr<const AgentEntry>`)
-- `evictExpiredEntries(ttlSec)` — periodic cleanup (two-phase: read-lock scan, then write-lock erase)
+- `evictExpiredEntries(ttlSec)` — periodic cleanup (two-phase: read-lock scan, then write-lock erase).
+  An erased entry takes its groups stamp with it, so it leaves an eviction mark (the largest stamp
+  erased) that the ordering rule below reads like a skipped push
 - `invalidateGroups(id)` — the one write of a membership push: it makes an **existing** entry's
   membership not established (groups kept, `groupsRefreshedAtSec = 0`, a new stamp); an absent agent
   is `Skipped`, never created; nothing but the membership fields is touched. A push never
@@ -775,8 +777,10 @@ wazuh-db. When the answer arrives it writes the groups only if no newer write st
 the ticket. A newer **established** write — another read, stored first: a `/control` query and a
 `/download` lookup for the same agent can be in flight together — wins, and the caller answers from the
 entry (both reads follow every invalidation delivered before them). A newer write that established
-nothing (an invalidation), or a push that skipped some absent agent after the ticket while the entry
-holds no established membership, means the local database changed after the query was issued —
+nothing (an invalidation), or, while the entry holds no established membership, a push that skipped
+some absent agent after the ticket or an eviction that erased an entry whose groups were written after
+it (an agent that only downloads on a node ages out from its creation, so its invalidated entry can be
+erased while a lookup for it is in flight), means the local database changed after the query was issued —
 possibly for this agent — so the answer may predate the change: it is **discarded**, nothing is
 written, and the request gets `503` (the agent's next request reads the database again). A push that
 arrives late therefore costs one extra read and never overwrites or renews a newer one. `/control`
@@ -842,7 +846,8 @@ read; `/download` answers it `503`, counted as `remoted.download.unavailable`, l
   them — one over a bound is answered `Unavailable` at once. No new internal option.
 - **Writes** follow the registry's ordering rule: the ticket is taken when the query is issued; a
   newer established write (another read, stored first) wins and is the answer; a read that may be older than a change that landed
-  meanwhile (an invalidation, or a skipped push while the entry holds no established membership) is
+  meanwhile (an invalidation, or, while the entry holds no established membership, a skipped push or
+  an evicted entry written after the ticket) is
   `Superseded` — neither written nor answered, every waiter gets `503`; otherwise the groups are stored
   established at the request time
   (an absent agent gets an entry with no activity fields). `NoRow` follows the same rule: an existing
@@ -2730,7 +2735,9 @@ with that read instead of overwriting it), `controlConfig_test.cpp` (non-positiv
 values fall back instead of casting a negative into a huge unsigned; a malformed `limits_json`
 collapses to `{}`), `controlTypes_test.cpp` (the version grammar and `compareVersions` ordering
 shared with `/enroll`), `agentRegistry_test.cpp` (an updater returning null is a no-op that never
-erases; eviction keys off `max(lastActivity, createdAt)`; concurrent refresh is tolerated),
+erases; eviction keys off `max(lastActivity, createdAt)`; concurrent refresh is tolerated; an evicted
+entry's groups stamp still refuses a lookup ticketed before it, so invalidate → evict → answer never
+caches the answer),
 `wazuhDBClient_test.cpp` (`"ok"`/`"ok "` accepted but `"okabc"` rejected; `os_major`/`os_minor`
 derived from real strings like `15-SP7`; latency observed only on successful round trips),
 `taskClient_test.cpp` (the request body is the zero-padded agent id with no `action` member; a
