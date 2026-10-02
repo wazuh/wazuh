@@ -41,19 +41,21 @@ build_wazuh_unit_tests() {
     elif [[ $target == "manager" ]]; then
         cmake -DTARGET=${target} -DGCOV_PATH="${gcov_path}" ..
     elif [[ $target == "winagent" ]]; then
-        # winagent is cross-compiled with mingw 10.3; the matching gcov is the
+        # winagent is cross-compiled with mingw GCC 13 (the 13-posix runtime
+        # WINEPATH points at below); the matching gcov is the
         # cross tool, not the host's GCC 14.x. We pin to the -posix variant
         # because that's what `g++-mingw-w64-i686-posix` (the toolchain's
         # default in winagent.cmake) was built with.
         #
         # lcov 2.x detects the gcov version by parsing `<gcov> --version` with
         # a `[0-9.]+` regex. The mingw cross-gcov prints
-        #   gcov (GCC) 10-posix YYYYMMDD
+        #   gcov (GCC) 13-posix YYYYMMDD
         # The `-posix` suffix breaks the regex, lcov silently falls back to
-        # GCOV 4.2 format and can't parse the GCOV 10 .gcno files (every file
+        # GCOV 4.2 format and can't parse the GCOV 13 .gcno files (every file
         # ends up as "no functions found"). We wrap the cross-gcov so
-        # `--version` emits a parseable banner; all other invocations pass
-        # through unchanged.
+        # `--version` emits a parseable banner (its fixed "10.3.0" only has to
+        # select lcov's modern .gcno reader, not match the toolchain); all
+        # other invocations pass through unchanged.
         local win_gcov_wrapper="${PWD}/winagent-gcov-wrapper.sh"
         cat > "${win_gcov_wrapper}" <<'EOF'
 #!/bin/bash

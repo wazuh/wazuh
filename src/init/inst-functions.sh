@@ -166,15 +166,15 @@ InstallSecurityConfigurationAssessmentFiles()
 ##########
 # CheckListenerCerts()
 ##########
-# The manager does not generate TLS certificates. The certificate and key of the HTTPS
-# agent listener (remoted_module) are provisioned externally, e.g. with the Wazuh
-# installation assistant (wazuh-certs-tool), like the indexer trust material; authd's
+# The certificate and key of the HTTPS agent listener (remoted_module) are issued by the
+# credential resolver (bin/wazuh-manager-resolve-credentials --install) later in this same
+# installation, from the CA in $WAZUH_CA_DIR, or deployed by the operator beforehand; authd's
 # <ssl_manager_cert>/<ssl_manager_key> point at the same pair (see auth.template and
 # DisableAuthd() above), so both listeners present one manager identity. This step only
-# creates etc/certs, fixes the ownership of whatever the operator already deployed
-# (remoted opens the pair after dropping privileges, so ${WAZUH_USER} owns it) and prints
-# a NOTICE when the pair is missing: wazuh-manager-control refuses to start until it
-# exists. Manager only -- the listener does not exist on agents. Custom paths supplied
+# creates etc/certs and fixes the ownership of whatever is already there (remoted opens the
+# pair after dropping privileges, so ${WAZUH_USER} owns it); it prints nothing when the pair
+# is missing (see the note at the end of the function): wazuh-manager-control refuses to
+# start until it exists. Manager only -- the listener does not exist on agents. Custom paths supplied
 # through the WAZUH_REMOTE_HTTPS_CERTIFICATE / WAZUH_REMOTE_HTTPS_KEY installation
 # variables are honoured (relative paths resolve against the installation directory,
 # as the configuration validator does).
@@ -1224,8 +1224,8 @@ InstallCommon()
         if [ -f ../etc/wazuh.mc ]; then
             if [ "X${INSTYPE}" = "Xmanager" ]; then
                 # The generated etc/wazuh-manager.conf must validate against the embedded schema before it is
-                # installed (file existence is not checked: the certificates are provisioned by the operator,
-                # not by the installer -- see CheckListenerCerts()).
+                # installed (file existence is not checked: the certificates are issued later in the installation by
+                # the credential resolver, or deployed by the operator -- see CheckListenerCerts()).
                 if ! build/bin/wazuh-manager-conf --skip-file-checks validate -f ../etc/wazuh.mc; then
                     echo "ERROR: the generated ${WAZUH_CONF} is not a valid manager configuration."
                     exit 1

@@ -10,6 +10,7 @@
 - [Package generation](dev/package-generation.md)
 - [Build external dependencies](dev/build-external-dependencies.md)
 - [Test execution](dev/test-execution.md)
+- [Build the documentation](dev/build-documentation.md)
 
 # User Guides
 
@@ -205,7 +206,6 @@
 - [Back Up and Restore](ref/backup-restore.md)
 - [Security](ref/security/README.md)
   - [Cluster Security Model](ref/security/cluster-model.md)
-- [Performance](ref/performance.md)
 - [Glossary](ref/glossary.md)
 
 # Diagnostic Documentation

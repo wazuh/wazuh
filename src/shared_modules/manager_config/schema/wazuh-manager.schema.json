@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "id": "wazuh-manager.schema.json",
-  "title": "Wazuh manager configuration (etc/wazuh-manager.yml)",
+  "title": "Wazuh manager configuration (etc/wazuh-manager.conf)",
   "description": "Single source of truth for the manager configuration: types, ranges, defaults and documentation of every option. Consumed by the manager_config C++ module (embedded) and by the Python framework (installed copy).",
   "type": "object",
   "additionalProperties": false,
@@ -26,6 +26,15 @@
       ],
       "minimum": 0,
       "pattern": "^[0-9]+[smhdw]?$"
+    },
+    "duration_nonzero": {
+      "description": "A duration (same grammar as duration) that must be at least 1 second: zero, in any unit, is rejected.",
+      "type": [
+        "integer",
+        "string"
+      ],
+      "minimum": 1,
+      "pattern": "^0*[1-9][0-9]*[smhdw]?$"
     },
     "duration_no_weeks": {
       "description": "Seconds as an integer, or a string with a unit suffix: s, m, h, d (authd get_time_interval grammar).",
@@ -68,11 +77,11 @@
         "agents_disconnection_time": {
           "allOf": [
             {
-              "$ref": "#/definitions/duration"
+              "$ref": "#/definitions/duration_nonzero"
             }
           ],
           "default": "15m",
-          "description": "Time without keep-alives after which an agent is marked disconnected (minimum 1 second)."
+          "description": "Time without keep-alives after which an agent is marked disconnected (minimum 1 second; 0 is rejected)."
         }
       }
     },
@@ -238,7 +247,7 @@
                 }
               ],
               "default": "",
-              "description": "CA bundle used to verify agent certificates. Empty = client certificate verification disabled."
+              "description": "CA bundle used to verify agent certificates. Empty = client certificate verification disabled, unless 'verification_mode' is set explicitly, in which case etc/certs/root-ca.pem is used."
             },
             "ca_certificate": {
               "allOf": [
@@ -473,11 +482,11 @@
                 "interval": {
                   "allOf": [
                     {
-                      "$ref": "#/definitions/duration"
+                      "$ref": "#/definitions/duration_nonzero"
                     }
                   ],
                   "default": "1d",
-                  "description": "Time between backups (minimum 1 second)."
+                  "description": "Time between backups (minimum 1 second; 0 is rejected)."
                 },
                 "max_files": {
                   "type": "integer",
@@ -588,7 +597,7 @@
           "type": "integer",
           "minimum": 0,
           "default": 3600,
-          "description": "Seconds a finished task is kept."
+          "description": "Seconds a pending agent task may wait, from its creation, before it is expired. Manager tasks never expire."
         },
         "cleanup_interval": {
           "type": "integer",
@@ -616,7 +625,7 @@
         "wpk_repository": {
           "type": "string",
           "minLength": 1,
-          "description": "WPK repository (host/path, no scheme). No default: left unset, the repository is picked from the target agent version."
+          "description": "WPK repository (host/path). A value with an http:// or https:// scheme is kept as given; without one, https:// (or http:// when the upgrade asks for it) is prepended. No default: left unset, the repository is picked from the target agent version."
         }
       }
     },
@@ -665,7 +674,7 @@
             }
           ],
           "default": "127.0.0.1",
-          "description": "Bind address."
+          "description": "Address the master listens on for worker connections. Ignored on workers."
         },
         "nodes": {
           "type": "array",
@@ -682,7 +691,7 @@
         "hidden": {
           "type": "boolean",
           "default": false,
-          "description": "Hide this node in cluster listings."
+          "description": "Hide this node in cluster listings. Currently read by no component: setting it has no effect."
         }
       }
     }

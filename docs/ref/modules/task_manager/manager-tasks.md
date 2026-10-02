@@ -84,7 +84,8 @@ queue exists to survive. Only terminal rows are ever removed, by retention.
 
 ## Retry, deferral and giving up
 
-A handler reports one of six outcomes, and the row's next state follows from it:
+A handler reports one of seven outcomes (`ok`, `retryable`, `timeout`, `terminal`, `not_ready`,
+`busy`, `incomplete`), and the row's next state follows from it:
 
 | Outcome | Effect | Costs an attempt? |
 | --- | --- | --- |
@@ -93,6 +94,14 @@ A handler reports one of six outcomes, and the row's next state follows from it:
 | terminal | `failed` | no — it is not being given up on after trying, it is being declared impossible |
 | not ready / busy | back to `pending`, after a *deferral* delay | no |
 | incomplete | back to `pending`, eligible immediately | no |
+
+For the two routed types the outcome comes from the consumer's answer: `2xx` is ok; a refused
+connection is not ready; a timeout is timeout; `409` is busy; `5xx`, `408` and `429` are retryable;
+any other `4xx` is terminal — or retryable when the body carries `"retryable": true`, or for a type
+that does not allow terminal failure.
+
+A real attempt (retryable or timeout) resets the consecutive-deferral count; the retry delay doubles
+per attempt, the deferral delay per consecutive deferral.
 
 **Two ladders, not one.** Retry backoff doubles from `manager_task_backoff_base` (30 s) to
 `manager_task_backoff_cap` (900 s) — at the defaults, eight attempts span about forty-five minutes.
@@ -117,13 +126,17 @@ There is no way to make that atomic across two processes, so the design absorbs 
 A claimed row records an `OWNER` naming the process instance and the worker inside it. Every
 `manager_task_sweep_interval` (60 s) the scheduler checks its own workers' claimed rows and returns
 to `pending` any whose owner is not actually running them. At startup it does the same over *every*
-claimed row, whoever owns it — those are the rows the previous process left behind.
+claimed row, whoever owns it — those are the rows the previous process left behind — without charging
+them an attempt. It then retires every pending row whose type this build has no handler for as
+`failed` (`last_error` `unknown task type`), logging `Retired <n> pending manager tasks of unknown type
+'<type>'.` at ERROR.
 
 **A watchdog observes; it cannot fix.** There is no cancellation primitive available, so a handler
 that overruns is reported, not stopped. What handlers do get is a cooperative stop token, checked
 between units of work, which is what lets a multi-batch sweep honour the 30-second shutdown budget
 instead of only stopping between tasks. The stall report runs on the sweep's cadence
-(`manager_task_sweep_interval`, 60 s).
+(`manager_task_sweep_interval`, 60 s): a handler running more than 30 s past its type's budget is
+reported at WARN on every sweep until it finishes — see [If a run overruns](schedules.md#if-a-run-overruns).
 
 ---
 
@@ -135,8 +148,13 @@ the log line carries the id, and the id can be looked up afterwards.
 The log line is at ERROR and names the task:
 
 ```
-Manager task '<task_id>' of type '<type>' dead-lettered after <n> attempts: <reason>
+Manager task '<task_id>' of type '<type>' dead-lettered after <n> attempts and <m> deferrals: <reason>
 ```
+
+The lines before it are warnings worth catching early. A row that keeps deferring is reported at
+WARN on its 3rd consecutive deferral and at ERROR on its 20th (`Manager task '<task_id>' of type
+'<type>' has deferred <n> times in a row: <reason>`), and a row that fails terminally at WARN
+(`Manager task '<task_id>' of type '<type>' failed: <reason>`).
 
 To fetch one by id, or to list what failed without having caught the line, ask the Task Manager
 directly. These are manager-internal routes on the Task Manager's own socket, not REST endpoints:
@@ -172,15 +190,20 @@ So the usual sequence is: list the dead letters of a type, then fetch the intere
 
 ## Retention
 
-Terminal rows are retired by the scheduler, on the same tick that expires agent tasks, because they
+Terminal rows are retired by the scheduler, on the same cleanup pass that expires agent tasks, because they
 live in the same database and nothing else prunes them. Four rules apply, in order:
 
-| Rule | Option | Default |
-| --- | --- | --- |
-| Terminal rows older than N days, measured from when they *reached* a terminal state | `wazuh_modules.manager_task_retention_days` | 7 |
-| `dead_letter` rows older than N days | `wazuh_modules.manager_task_dead_letter_retention_days` | 30 |
-| Keep at most N finished runs per schedule | `wazuh_modules.manager_task_history_per_schedule` | 20 |
-| Hard ceiling on the table, evicting terminal rows | `wazuh_modules.manager_task_max_rows` | 100000 |
+| Rule | Option | Default | Range |
+| --- | --- | --- | --- |
+| Terminal rows older than N days, measured from when they *reached* a terminal state | `wazuh_modules.manager_task_retention_days` | 7 | 1–3650 |
+| `dead_letter` rows older than N days | `wazuh_modules.manager_task_dead_letter_retention_days` | 30 | 1–3650 |
+| Keep at most N finished runs per schedule (dead letters are not counted or removed by this rule) | `wazuh_modules.manager_task_history_per_schedule` | 20 | 1–100000 |
+| Hard ceiling on the table, evicting terminal rows oldest first — `completed`, then `superseded`, then `failed`, `dead_letter` last | `wazuh_modules.manager_task_max_rows` | 100000 | 1–100000000 |
+
+Retention runs on the Task Manager's cleanup pass, every
+[`cleanup_interval`](configuration.md#cleanup_interval). If the ceiling cannot be met because the
+excess is pending, claimed or dead-lettered work, the pass logs `MANAGER_TASKS still holds <n> rows
+after retention, above the <max> ceiling.` at WARN.
 
 Dead letters outlive ordinary terminal rows because they are the only record of work that was
 abandoned. Retention is measured from `END_TIME`, not `CREATE_TIME` — a task created eight days ago
@@ -192,21 +215,23 @@ and completed a minute ago would otherwise be evicted immediately.
 
 Everything below is an internal option in `wazuh-manager-internal-options.conf`. **None of them
 ships in a file**: the manager reads only that overrides file, so the defaults here live in code and
-an option you have not written is at the value shown.
+an option you have not written is at the value shown. They are read once when
+`wazuh-manager-modulesd` starts, and a value outside its range stops it with `(2302): Invalid
+definition for wazuh_modules.<option>: '<value>'.`
 
 ### Queue mechanics
 
-| Option | Default | Meaning |
-| --- | --- | --- |
-| `wazuh_modules.manager_task_max_attempts` | 8 | Attempts before `dead_letter`, for types that have a budget |
-| `wazuh_modules.manager_task_max_defer` | 48 | Consecutive deferrals before `dead_letter` |
-| `wazuh_modules.manager_task_backoff_base` | 30 s | First retry delay; doubles from here |
-| `wazuh_modules.manager_task_backoff_cap` | 900 s | Ceiling for both ladders |
-| `wazuh_modules.manager_task_defer_base` | 5 s | First deferral delay |
-| `wazuh_modules.manager_task_poll_interval` | 60 s | Maximum scheduler sleep. A backstop, not the mechanism: the scheduler wakes at the exact instant the earliest backed-off row becomes eligible, and producers wake it on insert |
-| `wazuh_modules.manager_task_sweep_interval` | 60 s | How often ownership is swept |
-| `wazuh_modules.manager_task_claim_grace` | 30 s | Slack before a claimed row is considered reclaimable |
-| `wazuh_modules.manager_task_wdb_timeout` | 10 s | Deadline on the wazuh-db calls the recurring handlers make through modulesd |
+| Option | Default | Range | Meaning |
+| --- | --- | --- | --- |
+| `wazuh_modules.manager_task_max_attempts` | 8 | 1–1000 | Attempts before `dead_letter`, for types that have a budget |
+| `wazuh_modules.manager_task_max_defer` | 48 | 1–10000 | Consecutive deferrals before `dead_letter` |
+| `wazuh_modules.manager_task_backoff_base` | 30 s | 1–3600 | First retry delay; doubles from here |
+| `wazuh_modules.manager_task_backoff_cap` | 900 s | 1–86400 | Ceiling for both ladders |
+| `wazuh_modules.manager_task_defer_base` | 5 s | 1–3600 | First deferral delay |
+| `wazuh_modules.manager_task_poll_interval` | 60 s | 1–3600 | Maximum scheduler sleep. A backstop, not the mechanism: the scheduler wakes at the exact instant the earliest backed-off row becomes eligible, and producers wake it on insert |
+| `wazuh_modules.manager_task_sweep_interval` | 60 s | 1–3600 | How often ownership is swept and stalls are reported |
+| `wazuh_modules.manager_task_claim_grace` | 30 s | 1–3600 | Slack before a claimed row is considered reclaimable |
+| `wazuh_modules.manager_task_wdb_timeout` | 10 s | 1–600 | Deadline on each agent-removal request the retention sweep sends to `wazuh-manager-authd`. The recurring handlers' wazuh-db queries use a fixed 10 s socket deadline instead |
 
 `manager_task_max_attempts` and `manager_task_max_defer` are **defaults**. The registry carries
 per-type overrides, and `agent_delete_indexer` sets both to unbounded. Those overrides are not
@@ -215,13 +240,13 @@ the orphaned documents this feature exists to prevent.
 
 ### Per-type bounds
 
-| Option | Default | Meaning |
-| --- | --- | --- |
-| `wazuh_modules.manager_task_delete_timeout` | 600 s | Deadline on one deletion call. Must exceed the scan timeout; asserted at startup |
-| `wazuh_modules.manager_task_vd_scan_timeout` | 300 s | Deadline on one scan call |
-| `wazuh_modules.manager_task_max_pending_deletes` | 20000 | Admission bound on pending deletions. `0` removes the bound |
-| `wazuh_modules.manager_task_max_pending_scans` | 64 | Admission bound on pending on-demand scans. `0` removes the bound |
-| `wazuh_modules.manager_task_create_timeout` | 2 s | Deadline on the scanner's own call to create a row |
+| Option | Default | Range | Meaning |
+| --- | --- | --- | --- |
+| `wazuh_modules.manager_task_delete_timeout` | 600 s | 1–7200 | Deadline on one deletion call, and the type's watchdog budget. Must exceed the scan timeout; otherwise the module refuses to start (`manager_task_delete_timeout (<n>s) must exceed manager_task_vd_scan_timeout (<m>s): …`) |
+| `wazuh_modules.manager_task_vd_scan_timeout` | 300 s | 1–3600 | Deadline on one scan call, and the type's watchdog budget |
+| `wazuh_modules.manager_task_max_pending_deletes` | 20000 | 0–1000000 | Admission bound on pending deletions. `0` removes the bound |
+| `wazuh_modules.manager_task_max_pending_scans` | 64 | 0–1000000 | Admission bound on pending on-demand scans. `0` removes the bound |
+| `wazuh_modules.manager_task_create_timeout` | 2 s | 1–60 | Deadline on the vulnerability scanner's own call to create a row; read by the scanner, not by this module |
 
 The delete timeout must exceed the scan timeout because a scan holding an agent parks that agent's
 deletion behind it in the consumer's per-agent queue; with both deadlines equal, the deletion would
@@ -229,10 +254,10 @@ expire while parked and be re-queued over work that was never its own fault.
 
 ### Threading
 
-| Option | Default | Meaning |
-| --- | --- | --- |
-| `wazuh_modules.manager_task_executor_threads` | `clamp(cores, 2, 8)` | Workers that claim and run manager tasks |
-| `wazuh_modules.manager_task_io_threads` | 2 | Reactor threads serving the socket. They never block |
+| Option | Default | Range | Meaning |
+| --- | --- | --- | --- |
+| `wazuh_modules.manager_task_executor_threads` | `clamp(cores, 2, 8)` | 1–64 | Workers that claim and run manager tasks |
+| `wazuh_modules.manager_task_io_threads` | 2 | 1–64 | Reactor threads serving the socket. They never block |
 
 Raising `manager_task_executor_threads` does not raise throughput on its own: what a type may run at
 once is its own `maxConcurrent`, and those are code constants rather than operator knobs. More

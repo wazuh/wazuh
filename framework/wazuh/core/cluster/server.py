@@ -553,9 +553,10 @@ class AbstractServer:
             curr_timestamp = utils.get_utc_now().timestamp()
             # Iterate all clients and close the connection when their last keepalive is older than allowed.
             for client_name, client in self.clients.copy().items():
-                if curr_timestamp - client.last_keepalive > self.cluster_items['intervals']['master']['max_allowed_time_without_keepalive']:
-                    keep_alive_logger.error("No keep alives have been received from {} in the last minute. "
-                                            "Disconnecting".format(client_name), exc_info=False)
+                max_allowed = self.cluster_items['intervals']['master']['max_allowed_time_without_keepalive']
+                if curr_timestamp - client.last_keepalive > max_allowed:
+                    keep_alive_logger.error("No keep alives have been received from {} in the last {} seconds. "
+                                            "Disconnecting".format(client_name, max_allowed), exc_info=False)
                     client.transport.close()
             keep_alive_logger.debug("Calculated.")
             await asyncio.sleep(self.cluster_items['intervals']['master']['check_worker_lastkeepalive'])

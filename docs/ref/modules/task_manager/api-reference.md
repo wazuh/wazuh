@@ -26,10 +26,11 @@ The [README](README.md#http-interface) summarises the surface; this page is the 
 | `GET` | `/v1/metrics` | Control | The metrics dump — see [Metrics](metrics.md) |
 
 Every path is versioned, the two `GET`s included; an unversioned or unknown path answers `404`
-`{"error":"Unknown endpoint","code":404}`. The upgrade routes are registered only when the upgrade
-subsystem is built, and `/v1/metrics` only when a metrics registry is attached.
+`{"error":"Unknown endpoint","code":404}`. All twelve routes are registered on every start; the
+upgrade routes stay registered with `<upgrade_enabled>no</upgrade_enabled>` and refuse every agent
+instead.
 
-**Classes** are the transport's shedding contract ([uds_http_server](../utils/uds-http-server/)):
+**Classes** are the transport's shedding contract ([uds_http_server](../utils/uds-http-server/README.md)):
 
 - **Data** — the agent-task routes carry producer-authored payloads whose volume something outside
   the manager can drive, so they are charged the in-flight byte budget and shed first (`503`) under
@@ -46,21 +47,23 @@ subsystem is built, and `/v1/metrics` only when a metrics registry is attached.
 | `POST /v1/manager-tasks` body cap | `max_payload_bytes` + 64 KiB of envelope | `413` from the transport, before the handler |
 | Other Control routes' body cap | the Control class default (64 KiB) | `413` from the transport |
 | Serialized `payload` | [`max_payload_bytes`](configuration.md#max_payload_bytes) (1 MiB) | `413` `payload_too_large` from the handler |
-| Concurrent `POST /v1/manager-tasks` connections | 128 | `503` from the transport |
-| Concurrent connections per upgrade route | 32 (over the class cap) | `503` from the transport |
+| Concurrent Control-class connections | 256 (the transport's class default) | `503` from the transport |
+| Concurrent `POST /v1/manager-tasks` connections | 128, in addition to the class cap | `503` from the transport |
+| Concurrent connections per upgrade route | 32, in addition to the class cap | `503` from the transport (the Server API retries it like a per-agent error 4) |
 | Tasks handed out per poll | [`max_tasks_per_poll`](configuration.md#max_tasks_per_poll) (100) | the rest stay `pending` for the next poll |
 
 ## Errors
 
 Every JSON route (all but the upgrade routes and the two `GET`s) answers errors as
-`{"error": "<code>", "message": "<text>"}`:
+`{"error": "<code>", "message": "<text>"}`; the transport's own refusals (`404`, `413`, `503`) are
+`{"error": "<text>", "code": <status>}` instead:
 
 | Status | `error` | When |
 |---|---|---|
 | `400` | `invalid_json` | the body is not valid JSON (a valid non-object body is treated as `{}`) |
 | `400` | `parsing_error` | a required field is missing, empty or out of range — the message names it |
 | `404` | `not_found` | `/v1/manager-tasks/get` for an id with no row |
-| `413` | `payload_too_large` | the serialized `payload` exceeds `max_payload_bytes` |
+| `413` | `payload_too_large` | the serialized `payload` exceeds `max_payload_bytes` (message `payload exceeds max_payload_bytes`) |
 | `500` | `create_failed` | `/v1/tasks` could not store the row |
 | `500` | `internal_error` | an unexpected exception in the handler (logged; the message says "see the manager log") |
 | `503` | `queue_full` | `/v1/manager-tasks`: the type's admission bound is reached (body also carries `"result":"queue_full"`) |
@@ -123,8 +126,14 @@ Rows are described in [Manager tasks](manager-tasks.md). Statuses: `pending`, `c
 | `coalesce`, `max_pending` | no | **honoured only for a task type this build does not know** — a registered type takes both from its descriptor |
 
 Answers `200` `{"result": "created"|"coalesced"|"collided", "task_id": "<id>"}`, or `503` with
-`"result": "queue_full"`. On `coalesced` the `task_id` is the **surviving** row's, not the requested one.
-A `created` row is handed to the executor immediately — there is no poll interval.
+`"result": "queue_full"`. `collided` means a row with that `task_id` already exists and nothing was
+written. On `coalesced` the `task_id` is the **surviving** row's, not the requested one — returning the
+requested one would hand the caller an id with no row behind it. A `created` row is handed to the
+executor immediately — there is no poll interval.
+
+`task_type` is not validated against the registered types. A row of a type this build has no handler
+for is stored and never run; the next start of the module retires it as `failed` with `last_error`
+`unknown task type`, and logs it at ERROR.
 
 ### `POST /v1/manager-tasks/get`
 
@@ -142,7 +151,7 @@ asks).
 ### `POST /v1/manager-tasks/list`
 
 `{"task_type"}` (required), plus optional `status` (an unknown value is a `400`), `last_task_id` and
-`limit` (default 100). Answers `200` `{"tasks": [{"task_id", "status", "create_time", "agent_id"?,
+`limit` (default 100, at most 1000; a value of 0 or less means the default). Answers `200` `{"tasks": [{"task_id", "status", "create_time", "agent_id"?,
 "last_error"?}, …]}` — deliberately narrow; use `/get` for the full row. Paged on task id: pass the last
 id back as `last_task_id` until a page comes back empty.
 
@@ -153,7 +162,62 @@ id back as `last_task_id` until a page comes back empty.
 ## Agent upgrade routes
 
 `POST /v1/agents/upgrade` and `POST /v1/agents/upgrade-custom` differ from every other route in two
-deliberate ways: they are **asynchronous** (the batch is handed to a worker pool and answered later),
-and they **always answer `200`** with a per-agent envelope, including for a body that could not be
-parsed. The request fields and the envelope are in the [README](README.md#agent-upgrades); the flow in
-[Agent upgrades](agent-upgrades.md); the options in [configuration](configuration.md#agent-upgrades).
+deliberate ways:
+
+- **They are asynchronous.** The handler parses the body, hands the batch to the upgrade worker pool
+  and returns without answering; the reply is sent from the pool when the batch finishes, at most
+  [`upgrade_batch_deadline`](configuration.md#internal-options-the-upgrade-path-adds) (180 s) later.
+- **They always answer `200`**, including for a body that could not be parsed. The verdicts are in
+  the body, and the Server API turns each per-agent `error` into an exception code by adding 1810; a
+  non-2xx would make that client raise before it ever read them.
+
+### Request
+
+| Field | Route | Required | Rule |
+|---|---|---|---|
+| `agents` | both | yes | non-empty array of positive integer agent ids |
+| `request_time` | both | yes | number, Unix seconds, non-zero, within `[now - 1 year, now + 60 s]`; it becomes the task's `create_time`, so every cluster node derives the same task id |
+| `version` | `/upgrade` | no | target version; defaults to the manager's own |
+| `wpk_repo` | `/upgrade` | no | repository for this request; overrides [`<wpk_repository>`](configuration.md#xml-options) |
+| `use_http` | `/upgrade` | no | boolean; `http://` instead of `https://` when the repository names no scheme |
+| `force_upgrade` | `/upgrade` | no | boolean; lifts the version gates that can be forced ([Version constraints](agent-upgrades.md#version-constraints)) |
+| `package_type` | `/upgrade` | no | `rpm` or `deb` |
+| `file_path` | `/upgrade-custom` | yes | the WPK, which must resolve to a file directly inside `var/upgrade/` |
+| `installer` | `/upgrade-custom` | no | installer script name; defaults to `upgrade.bat` on Windows and `upgrade.sh` elsewhere |
+
+### Response
+
+```json
+{"error": 0,
+ "data": [{"error": 0,  "message": "Success", "agent": 4},
+          {"error": 12, "message": "The repository is not reachable", "agent": 5}],
+ "message": "Success"}
+```
+
+One `data` entry per requested agent, in order. A body that cannot be admitted at all (invalid JSON,
+a missing or malformed field) answers with that error at the top level and a single `data` entry
+without an `agent`. The per-agent codes:
+
+| `error` | Server API code | Message |
+|---|---|---|
+| 0 | — | `Success` |
+| 1 | 1811 | `Could not parse message JSON` |
+| 2 | 1812 | `Required parameters in json message where not found` (or the parser's own text) |
+| 3 | 1813 | `JSON parameter not recognized` (or the parser's own text) |
+| 4 | 1814 | `Task manager communication error` — the batch queue is full, the module is shutting down, or the rows could not be stored; the Server API halves the chunk and retries |
+| 6 | 1816 | `Agent information not found in database` |
+| 7 | 1817 | `The WPK for this platform is not available` |
+| 8 | 1818 | `Remote upgrade is not available for this agent version` |
+| 9 | 1819 | `Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first` |
+| 10 | 1820 | `Current agent version is greater or equal` |
+| 11 | 1821 | `Upgrading an agent to a version higher than the manager requires the force flag` |
+| 12 | 1822 | `The repository is not reachable` — also when the batch runs out of `upgrade_batch_deadline` |
+| 13 | 1823 | `The version of the WPK does not exist in the repository` |
+| 14 | 1824 | `The WPK file does not exist` |
+| 15 | 1825 | `The WPK sha1 of the file is not valid` |
+| 16 | 1826 | `The manager's HTTPS verification_mode is not 'none'; …` |
+| 17 | 1827 | `Upgrade procedure could not start` — also the answer to every agent while `<upgrade_enabled>` is `no` |
+| 18 | 1828 | `The agent is below v5.0.0 and the manager's legacy delivery (remote.legacy.enabled) is disabled; …` |
+
+The flow is in [Agent upgrades](agent-upgrades.md); the options in
+[configuration](configuration.md#agent-upgrades).

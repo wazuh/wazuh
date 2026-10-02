@@ -260,7 +260,7 @@ TEST_F(AdminServerTest, GetRootAnswersTheLivenessProbe)
     EXPECT_NE(response->body.find(R"("module":"remoted_module")"), std::string::npos) << response->body;
     EXPECT_EQ(response->get_header_value("Content-Type"), "application/json");
     // The injected identity of a NEW server with no prior wire contract.
-    EXPECT_EQ(response->get_header_value("Server"), "wazuh-remoted");
+    EXPECT_EQ(response->get_header_value("Server"), "wazuh-manager-remoted");
 
     // A default start must be warning-free: the facade sets reservedControlConnections to the
     // value the library's quarter-of-the-cap clamp would pick anyway (16 of 64), so the

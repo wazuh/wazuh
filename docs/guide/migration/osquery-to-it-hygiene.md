@@ -1080,7 +1080,7 @@ default, so in most cases no configuration change is needed:
     <os>yes</os>
     <network>yes</network>
     <packages>yes</packages>
-    <ports all="yes">yes</ports>
+    <ports all="no">yes</ports>
     <processes>yes</processes>
     <users>yes</users>
     <groups>yes</groups>
@@ -1134,7 +1134,8 @@ wazuh-modulesd:syscollector: INFO: Syscollector synchronization process finished
 ```
 
 Wait until you see **"Syscollector synchronization process finished
-successfully."** before proceeding to the next step. On the first run after
+successfully."** (or `Syscollector synchronization process finished: nothing to
+send.` when there was nothing new to synchronize) before proceeding to the next step. On the first run after
 enabling new categories this can take up to a minute depending on the number
 of items in the inventory.
 

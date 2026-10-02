@@ -3,8 +3,8 @@
 ## Server
 
 Below is a list of versions supported in this version (5.X.X):
-- Amazon Linux (x86_64, ARM64): 2, 2023
-- Ubuntu (x86_64, ARM64): 22.04, 24.04
+- Amazon Linux (x86_64, ARM64): 2023
+- Ubuntu (x86_64, ARM64): 24.04, 26.04
 - Red Hat (x86_64, ARM64): 9, 10
 
 ## Agent

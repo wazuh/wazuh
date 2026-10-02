@@ -35,30 +35,37 @@ whose `cluster_name` is not its own, and the scenarios only ship a placeholder, 
 means 100 % `403` and a run that measures nothing. Rather than make every caller repeat it,
 `run_benchmark.sh` reads `<cluster><name>` from
 `/var/wazuh-manager/etc/wazuh-manager.conf` — `--conf` points it elsewhere — and prints which value it
-used. `--cluster` overrides it. The cluster **node** is not sent at all: sessions declare no
-`cluster_node` (the manager never validated it and is dropping its last consumer), so there is no
-`--cluster-node` and nothing to detect.
+used. `--cluster` overrides it. There is no cluster **node** to send: the `Start` table of
+`inventorySync.fbs` has no `cluster_node` field any more, so there is no `--cluster-node` and
+nothing to detect.
 
 A **remote** `--manager` is deliberately never auto-detected: the local config would then describe a
 different manager, and silently declaring the wrong cluster is worse than stopping. In that case pass
 `--cluster` explicitly; the effective value is recorded in each run's `params.json`.
 
-If the manager configures a **global endpoint prefix** (`<remote><https><global_prefix>`), agent mode
-needs it too — and, exactly like the cluster name, it is read from the local manager's config when
-`--global-prefix` is not given, so a default installation needs no flag. A **remote** `--manager` is
-not auto-detected for the same reason, and `/` forces the unprefixed paths against a manager that
-does have one configured. Getting it wrong is not a soft failure: the prefix is part of the signed
-request target, so every request answers `404` and the run looks like a broken manager. A malformed
-prefix (an empty segment, a character the manager rejects) is warned about but still sent, so the
-tool can reproduce one on purpose. The effective value is recorded in `params.json` and in
-`sender_summary.json` under `meta.global_prefix`. The uds transport is never prefixed.
+Every HTTPS route of the manager lives under a **global endpoint prefix**
+(`<remote><https><global_prefix>`, default `/wazuh-manager/`), and agent mode must send it too.
+Exactly like the cluster name, it is read from the local manager's config when `--global-prefix` is
+not given. The installer always writes the tag, so a default installation needs no flag. One case is
+not covered: the script reads only the tag. If an operator deletes `<global_prefix>`, the manager
+falls back to the schema default `/wazuh-manager/` while the script finds nothing and sends bare
+paths, so pass `--global-prefix /wazuh-manager/` in that case. A **remote** `--manager` is not
+auto-detected, for the same reason as the cluster name, and `/` forces the unprefixed paths. Getting
+it wrong is not a soft failure: the prefix is part of the route, so every request answers `404` and
+the run looks like a broken manager. The prefix is not signed, because the bearer token binds only
+the agent's identity, so a prefix mismatch is never a `401`. A malformed prefix (an empty segment, a
+character the manager rejects) is warned about but still sent, so the tool can reproduce one on
+purpose. The effective value is recorded in `params.json` and in `sender_summary.json` under
+`meta.global_prefix`. The uds transport is never prefixed.
 
-Agent-mode runs also **wait until remoted actually accepts a signed request** before the clock starts,
-retrying within `--enroll-settle`. That is not a formality: remoted only knows a freshly enrolled agent
-after it reloads `client.keys`, and that took **~100 s** on the reference manager — nothing like the
-10 s `remoted.keyupdate_interval` implies. Until then every request is `401`, which has its own counter
-and invalidates the run rather than being counted as load. Give big fleets a generous budget
-(`--enroll-settle 240s`).
+Agent-mode runs also **wait until remoted actually accepts a signed request** before the clock starts.
+The sender probes with one `POST /control` `startup` every 2 s, and the budget is `--enroll-settle`
+with a 30 s floor (the 12 s default therefore waits up to 30 s). That is not a formality: remoted
+only knows a freshly enrolled agent after it reloads `client.keys`, and that took **~100 s** on the
+reference manager, far longer than the 10 s `remoted.keyupdate_interval` implies. Until then every
+request is `401`, which has its own counter and invalidates the run rather than being counted as
+load. Give big fleets a generous budget (`--enroll-settle 240s`, which is what `run_matrix.sh`
+passes).
 
 Each run creates `results_<label>/` with `bench.csv` (per-second cumulative counters + latency percentiles), `sender_summary.json` (metadata, totals, the same counters broken down `by_fleet` and `by_lane`, and the scenario's `expected` verdict), `scenario.json` (the exact scenario, copied for reproducibility), `samples/metrics.ndjson` (every daemon's `GET /metrics`, one JSON object per scrape), `summary.json` (what those inputs add up to), `monitor/` (process, disk and log samples) and `charts/`. The sender's formats are pinned by [`docu/09-metrics-and-output.md`](tool_simulator/docu/09-metrics-and-output.md).
 
@@ -113,11 +120,11 @@ Exports go to `results_<label>/stats-api-*.csv` and include only the latest run 
 You can also export an existing run separately:
 
 ```bash
-python3 $WAZUH_DEV_SCRIPTS/bench_samples.py results_<label>              # every daemon
-python3 $WAZUH_DEV_SCRIPTS/bench_samples.py results_<label> --src remoted --out-dir /tmp
+python3 ../devContainer/scripts/bench_samples.py results_<label>              # every daemon
+python3 ../devContainer/scripts/bench_samples.py results_<label> --src remoted --out-dir /tmp
 ```
 
-It writes the full projection, so the export has every metric rather than the aliased subset. The format and that projection are defined by `tools/devContainer/scripts/bench_samples.py`.
+(Inside the devcontainer, `$WAZUH_DEV_SCRIPTS` points at the same directory.) It writes the full projection, so the export has every metric rather than the aliased subset. The format and that projection are defined by `tools/devContainer/scripts/bench_samples.py`.
 
 A run recorded before the samples file existed is **not chartable by this build**: the legacy CSV readers went with the CSVs. Re-run the scenario.
 
@@ -149,14 +156,17 @@ A level gets no delta at all. Five live sessions then two is not "-3 sessions"; 
 ```bash
 cd tool_simulator
 make all                       # flatc --go bindings + go build -> ./benchmark_sender
-make test                      # wazuh-agent+jwt frozen vector + FlatBuffers round-trip
+make test                      # go test ./... (JWT frozen vectors, FlatBuffers round-trip, ...)
 
 ./benchmark_sender --scenario ../scenarios/<scenario>.json --validate      # load + strict-check only
 ./benchmark_sender --scenario ../scenarios/<scenario>.json --mode uds \
                    --socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock
 ```
 
-The FlatBuffers Go bindings are generated by `make`, never committed. The design is documented before
+The FlatBuffers Go bindings are generated by `make`, never committed. `make generate` runs the
+`flatc` at the Makefile's default `FLATC` path (`src/external/flatbuffers/build/flatc`, in the
+dependency tree); set `FLATC=` to use another one. `run_benchmark.sh` rebuilds a stale binary with `make build` only, so run `make all`
+once on a fresh checkout. The design is documented before
 the code on purpose: the sender reproduces the manager's authentication and wire contracts byte for
 byte, and those are worth pinning down in prose (and cross-checking against the manager's sources)
 before they are implemented.
@@ -185,16 +195,19 @@ the offset live from remoted's `/control` (the same signal a real agent uses); `
 `/control` to learn it from, so pass `--vd-feed-offset <value>` explicitly — query the live value
 with `curl --unix-socket queue/sockets/vd-http.sock http://localhost/vulnerability-detector/offset` —
 against a target whose feed offset is not 0, or every VD scenario's sessions fast-reject with `409`
-instead of exercising a real scan. See `SCENARIOS.md` for which scenarios this affects.
+instead of exercising a real scan. `run_benchmark.sh` has no `--vd-feed-offset` option of its own,
+so for a uds VD run call the sender directly (see [The sender on its own](#the-sender-on-its-own)).
+See `SCENARIOS.md` for which scenarios this affects.
 
 The same offset gates the **other** way a scan reaches the VD module: `POST /scan/vd`, the
 feed-update re-scan a real agent asks for once `/control` reports a higher `vd_feed_offset`. A
 scenario sends one with a `scan_vd` step (agent mode only), typically right after the VD inventory
 step and with an `initial_delay` so the documents it re-scans have landed first —
 `scenarios/real_vd_rescan_storm.json` does exactly that with 100 agents. It is a different manager
-path from a VDFirst session's scan (remoted relaying VD's admission instead of the inventory
-pipeline's VD scan lane), and its `200` means **queued by VD**, not scanned: the scans themselves
-show up in the manager's log as `reason=feed_update`. Full contract in
+path from a VDFirst session's scan: remoted relays the VD module's admission, which records a
+durable `vd_scan` task in the Task Manager, and the Task Manager's dispatcher later runs it through
+the inventory sync server. Its `200` means **recorded and will run**, not scanned: the scans
+themselves show up in the manager's log as `reason=feed_update`. Full contract in
 [`docu/14-scan-vd.md`](tool_simulator/docu/14-scan-vd.md).
 
 ## Manager preparation (agent mode)
@@ -205,7 +218,8 @@ policy it was installed with**. `prepare_manager.sh` does three things; the firs
 nothing, and the third removes a rate ceiling deliberately:
 
 1. makes remote enrollment reachable: `<auth>` gets `disabled=no`, `remote_enrollment=yes`
-   (optionally `max_agents=N`) — remoted serves `/enroll` only while both hold;
+   (optionally `max_agents=N`). The `/enroll` route is always registered, but it answers `403`
+   unless both hold;
 2. mints **one multi-use enrollment token** for the fleet (`wazuh-manager-authd
    --create-enrollment-token`, authd's defaults: 30 days, unlimited uses) and writes it to
    `.enrollment_token` next to the script, which `run_benchmark.sh` picks up by itself;
@@ -230,8 +244,9 @@ writes a one-time `.bak`.
 ### Bootstrapping over the legacy 1515 listener
 
 `--bootstrap 1515` enrolls the fleet through authd's plaintext-inside-TLS listener instead, which is
-kept for comparing the two first-contact paths. That protocol carries no credential, so it needs the
-old flip — which is now explicit:
+kept for comparing the two first-contact paths. The listener must be up: `<auth><legacy_enrollment>`
+follows `<remote><legacy><enabled>` when it is not set, and the installer enables the legacy
+block. That protocol carries no credential, so it needs the old flip, which is now explicit:
 
 ```bash
 sudo ./prepare_manager.sh --open-1515      # ALSO sets use_password=no and removes etc/authd.pass
@@ -296,7 +311,7 @@ committed instead, so any environment can regenerate the whole thing:
 
 ```bash
 sudo ./prepare_manager.sh              # reachable enrollment + the fleet's token (agent mode)
-./run_matrix.sh                        # 12 runs -> results_<label>/
+./run_matrix.sh                        # 14 runs -> results_<label>/
 ./make_report_tables.py > tables.md    # environment + status + latency + throughput tables
 ```
 
@@ -350,7 +365,9 @@ documented for a synthetic client until now).
 ## Related
 
 - System under test: [`docs/ref/modules/inventory-sync-server/`](../../docs/ref/modules/inventory-sync-server/README.md)
-- The module's developer map (requirements, design decisions D1–D22, developer FAQ):
+- The module's developer map (requirements, design decisions D1–D23, developer FAQ):
   [`inventory_sync_server/README.md`](../../src/wazuh_modules/inventory_sync_server/README.md)
 - Correctness (not performance): the integration QA in [`inventory_sync_server/qa/`](../../src/wazuh_modules/inventory_sync_server/qa/README.md)
-- Runtime statistics the monitor scrapes: `GET /metrics`, documented in the API reference
+- Runtime statistics the monitor scrapes: `GET /metrics`, documented in the inventory sync server's
+  [API reference](../../docs/ref/modules/inventory-sync-server/api-reference.md#get-metrics) and in
+  [remoted's metric catalog](../../docs/ref/modules/remoted/metrics.md)

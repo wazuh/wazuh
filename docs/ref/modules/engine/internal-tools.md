@@ -49,7 +49,7 @@ automatically. The tool also generates documentation for helper functions.
 - Simplifies testing of helper functions.
 - Generate documentation for helper functions.
 
-For more details, see the [helper tests README](../../../../src/engine/test/helper_tests/README.md).
+For more details, see the [helper tests README](https://github.com/wazuh/wazuh/blob/5.0.0/src/engine/test/helper_tests/README.md).
 
 ---
 

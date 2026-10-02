@@ -530,7 +530,8 @@ time /usr/local/bin/script.sh
 **Check manager logs:**
 ```bash
 # On manager, search for command tag
-tail -f /var/wazuh-manager/logs/alerts/alerts.log | grep "command-tag"
+# (requires a policy with a `file` output; see ../engine/ref-output.md)
+tail -f /var/wazuh-manager/logs/<channel>/$(date +%Y/%b)/wazuh-<channel>-$(date +%d).json | grep "command-tag"
 ```
 
 ### Permission Errors
@@ -572,7 +573,8 @@ tail -f /var/ossec/logs/ossec.log | grep "system-check"
 grep "output:" /var/ossec/logs/ossec.log
 
 # On manager (in alerts)
-tail -f /var/wazuh-manager/logs/alerts/alerts.log | grep "command-tag"
+# (requires a policy with a `file` output; see ../engine/ref-output.md)
+tail -f /var/wazuh-manager/logs/<channel>/$(date +%Y/%b)/wazuh-<channel>-$(date +%d).json | grep "command-tag"
 ```
 
 ### Monitor Execution Frequency

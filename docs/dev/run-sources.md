@@ -149,7 +149,17 @@ USER_UPDATE="y" \
 ./install.sh
 ```
 
-**Important**: Set `USER_AGENT_MANAGER_IP` to the correct server address.
+**Important**: Set `USER_AGENT_MANAGER_IP` (or `USER_AGENT_MANAGER_NAME` for a host name) to the manager address. The installer writes it into `<agent><manager><endpoint>`.
+
+### Enrolling the Agent
+
+A source install does not register the agent. Mint an enrollment token on the manager (`sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address <host>`), save it to a file on the agent, and enroll with `wazuh-agent-auth`, which installs the manager's CA as the trust anchor, registers the agent and writes the address the token names:
+
+```bash
+sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token
+```
+
+See [Enrolling or re-pointing an agent](../ref/modules/client/README.md#enrolling-or-re-pointing-an-agent) for the other actions and options.
 
 ### Starting the Agent
 
@@ -169,9 +179,9 @@ To verify the agent is running:
 
 ### Requirements
 
-WiX Toolset 3.14 is required to build the Windows installer package.
+WiX Toolset v3 is required to build the Windows installer package (`candle.exe` and `light.exe`). `wazuh-installer-build-msi.bat` adds `C:\Program Files (x86)\WiX Toolset v3.11\bin` to `PATH`; with another 3.x release installed elsewhere, put its `bin` directory on `PATH` first.
 
-Download from: https://github.com/wixtoolset/wix3/releases/tag/wix3141rtm
+Download from: https://github.com/wixtoolset/wix3/releases
 
 ### Build
 
@@ -189,10 +199,10 @@ Copy all files to a Windows machine.
 Navigate to the `src/win32` directory and execute:
 
 ```batch
-wazuh-installer-build-msi.bat
+wazuh-installer-build-msi.bat <version> <revision>
 ```
 
-This will generate the MSI installer package.
+The script asks for the version and the revision when they are not given, and generates `wazuh-agent-<version>-<revision>.msi`. It then signs the package with `signtool sign /a`, which fails without a code-signing certificate available; the MSI is generated before that step either way.
 
 ### Installation
 
@@ -281,9 +291,10 @@ Stop-Service -Name WazuhSvc
 
 Logs are located in `/var/wazuh-manager/logs/`:
 
-- `wazuh-manager.log` - Main Wazuh log
-- `wazuh-manager.json` - Structured Wazuh log
-- Individual component logs in `/var/wazuh-manager/logs/`
+- `wazuh-manager.log` - Log of every C/C++ daemon
+- `wazuh-manager.json` - The same log, in JSON
+- `api.log` - Server API log
+- `cluster.log` - Cluster daemon log
 
 To monitor logs in real-time:
 
@@ -295,9 +306,8 @@ tail -f /var/wazuh-manager/logs/wazuh-manager.log
 
 Logs are located in `/var/ossec/logs/`:
 
-- `ossec.log` - Main Wazuh log
-- `ossec.json` - Structured Wazuh log
-- Individual component logs in `/var/ossec/logs/`
+- `ossec.log` - Main agent log
+- `ossec.json` - The same log, in JSON
 
 To monitor logs in real-time:
 
@@ -313,7 +323,15 @@ Logs are located in `C:\Program Files (x86)\ossec-agent\`:
 
 ## Troubleshooting
 
-### Service Won't Start
+### Manager Won't Start
+
+`wazuh-manager-control start` validates the configuration and resolves the credentials before starting any daemon, and appends the reason it refused to `/var/wazuh-manager/logs/wazuh-manager.log`. Check the configuration on its own with:
+
+```bash
+sudo /var/wazuh-manager/bin/wazuh-manager-conf validate
+```
+
+### Agent Won't Start
 
 Check the logs for error messages:
 
@@ -329,27 +347,23 @@ Verify the configuration file syntax:
 
 ### Agent Not Connecting to Server
 
-1. Verify network connectivity:
+1. Verify network connectivity to the manager's agent listener (HTTPS, port 1517 by default):
    ```bash
-   ping <server_ip>
-   telnet <server_ip> 1514
+   curl -sk https://<server_ip>:1517/wazuh-manager/
    ```
 
-2. Check firewall rules allow traffic on port 1514
+2. Check firewall rules allow traffic on port 1517
 
-3. Verify the server address in the agent configuration
+3. Verify the address in `<agent><manager><endpoint>` of the agent configuration
 
-4. Check authentication:
-   ```bash
-   /var/ossec/bin/manage_agents -l
-   ```
+4. Check the agent is enrolled (it holds a key in `/var/ossec/etc/client.keys`), and list it from the manager's side with the Server API, as described in [Verifying the agent connected](../ref/getting-started/installation.md#verifying-the-agent-connected)
 
 ### Permission Errors
 
-Ensure Wazuh is running with appropriate permissions:
+Ensure the agent files keep their ownership:
 
 ```bash
 ls -l /var/ossec/
 ```
 
-Wazuh typically runs as the `ossec` user.
+The agent daemons run as the `wazuh` user; the manager daemons run as `wazuh-manager`.

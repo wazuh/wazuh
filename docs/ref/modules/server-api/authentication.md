@@ -6,13 +6,12 @@ All access to the Wazuh Server API is protected by JWT authentication and RBAC a
 
 ## JWT Authentication
 
-- All endpoints require a JWT token (except `/security/user/authenticate`)
-- Tokens are short-lived (default: **900 seconds**)
+- All endpoints require a JWT token, except `POST /security/user/authenticate` and `POST /security/user/authenticate/run_as`, which take HTTP basic authentication
+- Tokens are short-lived: `auth_token_exp_timeout`, **900 seconds** by default (see [Configuration](configuration.md#auth_token_exp_timeout))
 - Tokens must be included in every request: `Authorization: Bearer <JWT_TOKEN>`
-- Tokens are signed using **Elliptic Curve (EC) keys** generated at startup
-- Authentication logic uses `PyJWT` for token encoding/decoding
-- Credentials are validated against the RBAC ORM database
-- Authentication **must run on the master node** in cluster deployments
+- Tokens are signed with **ES512** (an EC P-521 key pair) by `PyJWT`. The keys are `api/configuration/security/private_key.pem` and `public_key.pem`, generated when missing and regenerated whenever every token is revoked (`PUT /security/user/revoke`, `PUT` or `DELETE /security/config`)
+- Credentials are validated against the users in `rbac.db`
+- The API, and so authentication, runs **only on the master node**
 
 ### Authentication Flow
 
@@ -68,19 +67,21 @@ path from 4.x, and an `rbac.db` left by an earlier 5.0 development build keeps w
 was seeded with — its owner recreates it, or adds the missing policy. New default policies therefore
 reach an installation through a fresh database, and nothing in the manager rewrites one in place.
 
+`rbac.db` is created by the credential resolver with `bin/rbac_control seed`, which reads a JSON object mapping the default usernames to their passwords from `--passwords-file` (`-` for the standard input), generates a password for any user left out, and leaves an existing, non-empty database untouched.
+
 Change them with `bin/rbac_control change-password`, which prompts for each password when run without options (an empty answer leaves that one unchanged) and can also be driven from a file so that installers and password tools can use it:
 
 ```bash
 # One user, password read from the first line of a file (use '-' for the standard input)
-bin/rbac_control change-password --user wazuh-wui --password-file /root/wui.pass
+bin/rbac_control change-password -u wazuh-wui -p /root/wui.pass
 
 # Every default user in a single execution
 echo '{"wazuh": "...", "wazuh-wui": "..."}' | bin/rbac_control change-password --passwords-file -
 ```
 
-Passwords are never accepted as a command-line argument, so they do not reach the process list. The command exits non-zero if any requested change was not applied. A new password must satisfy the policy enforced by `framework/wazuh/security.py`: 12 to 64 printable ASCII characters without spaces, with at least one letter and one digit (PCI DSS v4.0 requirement 8.3.6). Changing `wazuh-wui`'s password requires updating the dashboard configuration to match.
+Passwords are never accepted as a command-line argument, so they do not reach the process list. The command exits non-zero if any requested change was not applied. It always changes the master's database: run on a worker, the change is forwarded to the master (see [Cluster deployments](../../getting-started/credentials.md#cluster-deployments) for what that means after a promotion). A new password must satisfy the policy enforced by `framework/wazuh/security.py`: 12 to 64 printable ASCII characters without spaces, with at least one letter and one digit (PCI DSS v4.0 requirement 8.3.6). Changing `wazuh-wui`'s password requires updating the dashboard configuration to match.
 
-`bin/rbac_control factory-reset` recreates `rbac.db` and gives both default users new random passwords that are neither printed nor written to `/etc/wazuh/credentials.env`. The running API keeps authenticating against the previous database until the manager restarts, so run `change-password` and then restart the manager.
+`bin/rbac_control factory-reset` (asks for confirmation unless `-f`/`--force` is given) recreates `rbac.db` and gives both default users new random passwords that are neither printed nor written to `/etc/wazuh/credentials.env`. The running API keeps authenticating against the previous database until the manager restarts, so run `change-password` and then restart the manager.
 
 ### What a password change does and does not do
 
@@ -170,10 +171,9 @@ mask is not served.
 
 ## Rate Limiting & Brute-Force Protection
 
-- The API tracks failed login attempts per IP address
-- After exceeding a configurable threshold, the IP is added to a blocked set
-- Blocked IPs receive `403 Forbidden` on every login attempt for `block_time` seconds; `429 Too Many Requests` is returned only when `max_request_per_minute` is exceeded
-- Rate limiting state is managed in-memory within `middlewares.py` and `error_handler.py`
+- **Brute-force protection**: every request to `POST /security/user/authenticate` or `POST /security/user/authenticate/run_as` counts as a login attempt for its client IP, and a successful login gives its attempt back. When an IP reaches `access.max_login_attempts` (50) failed attempts, its logins answer `403` with error `6000` until `access.block_time` (300 seconds) has passed since its last attempt.
+- **Request rate**: each client address may make `access.max_request_per_minute` (300) authenticated requests per minute, and `access.max_unauthenticated_request_per_minute` (10) unauthenticated or failed-authentication ones. Beyond them the API answers `429` with error `6001` or `6005`. See [Configuration](configuration.md#request-rate-limiting).
+- The state is kept in memory by `api/api/middlewares.py`, so it is lost when `wazuh-manager-apid` restarts.
 
 ---
 
@@ -196,5 +196,5 @@ These are applied via the `secure` Python library in `middlewares.py`.
 - Handle token expiration gracefully — re-authenticate before the token expires
 - Treat `403` as RBAC errors, not authentication failures
 - Never embed credentials in scripts — use environment variables or secret managers
-- In cluster deployments, ensure authentication calls reach the master node
+- In cluster deployments, send every request to the master node: workers do not run the API
 - Use the `rbac_mode` setting appropriate for your security posture (`white` for strict environments)

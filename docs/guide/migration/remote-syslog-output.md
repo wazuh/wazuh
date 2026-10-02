@@ -2,7 +2,7 @@
 
 In previous Wazuh versions (4.x), forwarding alerts to remote log servers via Syslog was managed directly in the Wazuh manager's `ossec.conf` file using `<syslog_output>` configuration blocks handled by the internal `csyslogd` daemon.
 
-Starting with Wazuh 5.0, these legacy backend Syslog forwarding capabilities have been removed from the manager. Alert forwarding logic must now be configured directly through the Wazuh dashboard using the **Notifications** and **Alerting** dashboard plugins via webhooks.
+Starting with Wazuh 5.0, these legacy backend Syslog forwarding capabilities have been removed from the manager: there is no `csyslogd` daemon, and `<syslog_output>` is not a section of the manager's `wazuh-manager.conf`. Leaving the block in place is a startup error (`(1244): Invalid configuration at '/syslog_output': unknown option ...`, or `duplicate element <syslog_output>` when there are several), so remove it. Alert forwarding logic must now be configured directly through the Wazuh dashboard using the **Notifications** and **Alerting** dashboard plugins via webhooks.
 
 > **Note:** There is no automatic upgrade tooling to migrate your existing Wazuh 4.x `<syslog_output>` configurations. You must manually recreate your data filtering and forwarding logic in the Wazuh dashboard. Use the mapping table below to identify which Wazuh 5.x feature corresponds to each element in your `ossec.conf`.
 
@@ -20,14 +20,15 @@ The following table maps each `ossec.conf` element from Wazuh 4.x to the corresp
 | `syslog_output.port`     | Notifications > Channels > Custom Webhook (target port) | [Step 1](#1-setting-up-a-custom-webhook-notification-channel)         |
 | `syslog_output.format`   | Alerting > Monitor > Action > Message (Mustache Template)  | [Step 2.2](#22-configuring-triggers-and-actions)                      |
 | `<syslog_output>` filter | Alerting > Monitor > Query (data filter)                | [Step 2.1](#21-creating-a-monitor)                                    |
-| `syslog_output.level`    | Alerting > Monitor > Trigger / data threshold filter    | [Step 2.2](#22-configuring-triggers-and-actions)                      |
+| `syslog_output.level`    | Alerting > Monitor > Query / data filter (`wazuh.rule.level`) | [Step 2.1](#21-creating-a-monitor)                              |
 | `syslog_output.group`    | Alerting > Monitor > Query / data filter (`wazuh.rule.tags`) | [Step 2.1](#21-creating-a-monitor)                                |
 | `syslog_output.rule_id`  | Alerting > Monitor > Query / data filter (`wazuh.rule.id`) | [Step 2.1](#21-creating-a-monitor)                                  |
+
 > **Option scope note:** `protocol` is not a valid `<syslog_output>` option in Wazuh 4.x `ossec.conf` (the documented options are `server`, `port`, `level`, `group`, `rule_id`, `location`, `use_fqdn`, and `format`).
 
 > **Wazuh 4.x protocol note:** In Wazuh 4.x, `syslog_output` forwarding uses Syslog transport (UDP by default on port `514`). In Wazuh 5.x, Notifications uses HTTP/HTTPS POST webhooks for outbound routing. Target endpoints must support HTTP webhook ingestion, or you must deploy a webhook-to-syslog translation layer on the receiving side.
 
-> **Note on Output Formats**: In Wazuh 4.x, the <format> tag automatically converted the data layout into predefined profiles (json, cef, or splunk). In Wazuh 5.x, the Notifications plugin does not include these pre-configured encoding profiles. To migrate specific formats (such as ArcSight CEF, Splunk key-value pairs, or custom JSON payloads), the structure must be manually designed inside the Message text block using Mustache syntax variables during the Action configuration phase.
+> **Note on Output Formats**: In Wazuh 4.x, the `<format>` tag automatically converted the data layout into predefined profiles (json, cef, or splunk). In Wazuh 5.x, the Notifications plugin does not include these pre-configured encoding profiles. To migrate specific formats (such as ArcSight CEF, Splunk key-value pairs, or custom JSON payloads), the structure must be manually designed inside the Message text block using Mustache syntax variables during the Action configuration phase.
 
 ## Wazuh 4.x ossec.conf reference
 
@@ -87,16 +88,17 @@ In Wazuh 4.x, you used `<syslog_output>` blocks with tags such as `<level>`, `<g
   - **Indexes:** Use `wazuh-findings-v5*` when your filters depend on `wazuh.rule.*` fields (for example, `wazuh.rule.level`, `wazuh.rule.tags`, or `wazuh.rule.id`).
 4. Under **Query / Data filter**, translate your old XML rules into dashboard filter conditions.
   For example, to replicate a legacy `<group>` filter, add a condition where `wazuh.rule.tags` contains the expected value.
+  To replicate a legacy `<level>` threshold, add a condition on `wazuh.rule.level` (`informational`, `low`, `medium`, `high`, or `critical`): the query is what selects documents by severity, as in [Recreating email alerts with monitors](mail-forwarding-reporting.md#4-recreating-email-alerts-with-monitors).
 
 ![Notification Monitor](../../images/remote-syslog-output/create-notification-monitor.png)
 
 
 ### 2.2. Configuring triggers and actions
 
-Triggers act as threshold selectors (similar to legacy `<level>` intent), while actions define the outbound payload format.
+The trigger decides when the monitor fires on what the query matched; it has no severity filter of its own, and its severity level (1–Highest to 5–Lowest) only sets the action's severity. Actions define the outbound payload format.
 
 1. Add a trigger and set its condition.
-2. Configure the trigger so it activates when your query matches events, and add a severity filter for the desired keywords in `wazuh.rule.level` (for example, `low`, `medium`, `high`, or `critical`). If you use a **Per document monitor**, use a document-level trigger condition.
+2. Configure the trigger so it activates when your query matches events. If you use a **Per document monitor**, use a document-level trigger condition.
 3. Under **Actions**, click **Add notification** and configure:
    - **Action name:** Provide a label (for example, `Send-Syslog-Payload`).
    - **Channel:** Select the custom webhook channel created in [Step 1](#1-setting-up-a-custom-webhook-notification-channel).
@@ -146,12 +148,11 @@ You can replicate this behavior with the following dashboard workflow:
 
 - **Type:** Per query monitor
 - **Index pattern:** `wazuh-findings-v5*`
-- **Data filter:** `wazuh.rule.tags` contains `authentication_failed`
+- **Data filter:** `wazuh.rule.tags` contains `authentication_failed`, and `wazuh.rule.level` is one of the severities that correspond to your old threshold (for example `high` or `critical`; adjust to the severity values present in your environment)
 
 **Trigger setup:**
 
 - **Condition:** Trigger when the query returns at least one matching document
-- **Data threshold filter:** `wazuh.rule.level` is one of `informational`, `low`, `medium`, `high`, or `critical` (adjust to the severity values present in your environment)
 
 **Action setup:**
 

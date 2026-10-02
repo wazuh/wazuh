@@ -2,21 +2,22 @@
 
 This document covers the key API endpoints with practical examples, the `q` query filter syntax, error handling, and input validation.
 
-> All paths are validated against `api/api/spec/spec.yaml` (OpenAPI 3.0).
-> For the complete endpoint specification, refer to the [official Wazuh API Reference](https://documentation.wazuh.com/current/user-manual/api/reference.html).
+> All paths are validated against `api/api/spec/spec.yaml` (OpenAPI 3.0), which is the complete
+> endpoint specification: parameters, bodies, responses and the RBAC actions of each operation
+> (`x-rbac-actions`). The actions themselves are listed in [RBAC](../rbac/README.md#actions-reference).
 
 ---
 
 ## Common Query Parameters
 
-Most `GET` endpoints accept these standard parameters:
+Most `GET` endpoints that return a list accept these standard parameters (`pretty` and `wait_for_complete` are accepted by almost every endpoint):
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `pretty` | boolean | `false` | Human-readable output |
-| `wait_for_complete` | boolean | `false` | Disable timeout response |
+| `wait_for_complete` | boolean | `false` | Disable the request timeout (`intervals.request_timeout`) |
 | `offset` | int | `0` | First element to return (max: 2,147,483,647) |
-| `limit` | int | `500` | Max elements to return (max: 100,000) |
+| `limit` | int | `500` | Max elements to return (1 to 100,000) |
 | `search` | string | — | Free-text search (prefix `-` for complementary) |
 | `sort` | string | — | Sort by fields (`+` asc, `-` desc, dot notation for nested) |
 | `select` | string | — | Fields to return (comma-separated) |
@@ -49,7 +50,11 @@ curl -k -X <METHOD> "https://localhost:55000/<ENDPOINT>" \
   -H "Authorization: Bearer <YOUR_JWT_TOKEN>"
 ```
 
+The token expires after `auth_token_exp_timeout` seconds (900 by default). `DELETE /security/user/authenticate` logs out, invalidating every token of the current user.
+
 ### Update token expiration
+
+`auth_token_exp_timeout` takes an integer of at least `30` through this endpoint.
 
 ```bash
 curl -k -X PUT "https://localhost:55000/security/config" \
@@ -58,7 +63,7 @@ curl -k -X PUT "https://localhost:55000/security/config" \
   -d '{"auth_token_exp_timeout": 1800}'
 ```
 
-> **Note:** Changing security config revokes all existing tokens.
+> **Note:** Changing (`PUT`) or resetting (`DELETE`) the security configuration revokes all existing tokens.
 
 ---
 
@@ -66,7 +71,7 @@ curl -k -X PUT "https://localhost:55000/security/config" \
 
 ### API Info
 
-**`GET /`** — Returns API version, hostname, and timestamp.
+**`GET /`** — Returns the API title, version, revision, license, hostname, and timestamp. It needs a token but no RBAC action.
 
 ```bash
 curl -k -X GET "https://localhost:55000/?pretty=true" \
@@ -101,8 +106,8 @@ curl -k -X GET "https://localhost:55000/?pretty=true" \
 curl -k -X GET "https://localhost:55000/agents?status=active&limit=5&pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 
-# Filter with q: active Ubuntu agents
-curl -k -X GET "https://localhost:55000/agents?q=status%3Dactive%3Bos.name~ubuntu&pretty=true" \
+# Filter with q: active agents whose OS name contains "Ubuntu"
+curl -k -X GET "https://localhost:55000/agents?q=status%3Dactive%3Bos.name~Ubuntu&pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 
 # Select specific fields
@@ -110,11 +115,11 @@ curl -k -X GET "https://localhost:55000/agents?select=id,name,status,ip&sort=-id
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Key filters: `status`, `os.platform`, `os.name`, `os.version`, `version`, `group`, `name`, `ip`, `registerIP`, `older_than`.
+Key filters: `agents_list`, `status`, `older_than`, `os.type`, `os.platform`, `os.version`, `os.major`, `os.minor`, `os.arch`, `os.name`, `version`, `group`, `name`, `ip`, `registerIP`.
 
 #### Add agent
 
-**`POST /agents`** — Create a new agent. Returns the agent ID and registration key.
+**`POST /agents`** — Create a new agent (`name` required; `ip` defaults to the one detected). Returns the agent ID and registration key.
 
 ```bash
 curl -k -X POST "https://localhost:55000/agents?pretty=true" \
@@ -135,7 +140,7 @@ curl -k -X POST "https://localhost:55000/agents?pretty=true" \
 
 #### Restart agent
 
-**`PUT /agents/{agent_id}/restart`** — Restart a specific agent. Requires agent v5.0.0+.
+**`PUT /agents/{agent_id}/restart`** — Restart a specific agent. Requires agent v5.0.0+: an older agent fails with error `1761`.
 
 ```bash
 curl -k -X PUT "https://localhost:55000/agents/002/restart?pretty=true" \
@@ -176,7 +181,7 @@ curl -k -X PUT "https://localhost:55000/agents/group/web-servers/reload?pretty=t
 
 #### Delete agents
 
-**`DELETE /agents`** — Delete agents by ID or criteria. Requires `agents_list` and `status`.
+**`DELETE /agents`** — Delete agents by ID or criteria. Requires `agents_list` and `status`. `older_than` defaults to `7d`, so only agents whose last keep alive (register date for `never_connected` ones) is older than 7 days are deleted unless another value is given; `older_than=0s` selects every agent.
 
 Deleting an agent also removes its documents from the Wazuh Indexer (inventory state, reported
 configuration and statistics), which is why its data disappears from the dashboard. That cleanup is
@@ -189,8 +194,8 @@ moment the documents can survive and authd logs an error naming the agent — se
 curl -k -X DELETE "https://localhost:55000/agents?agents_list=all&status=disconnected&older_than=30d&pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 
-# Delete specific agent permanently
-curl -k -X DELETE "https://localhost:55000/agents?agents_list=009&status=all&purge=true&pretty=true" \
+# Delete a specific agent permanently, whatever its last keep alive
+curl -k -X DELETE "https://localhost:55000/agents?agents_list=009&status=all&older_than=0s&purge=true&pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -485,7 +490,10 @@ field operator value[;connector field operator value]
 | `!=` | Not equals |
 | `>` | Greater than |
 | `<` | Less than |
-| `~` | Contains (like) |
+| `~` | Contains (SQL `LIKE`) |
+
+Any other operator (`>=`, `<=`, `~=`) is rejected with error `1409` (*Invalid query operator*).
+Clauses can be grouped with parentheses: `(status=active,status=pending);os.platform=ubuntu`.
 
 ### Connectors
 
@@ -530,12 +538,12 @@ matches the exact rendered value (`q=revoked~True`, `q=revoked~False`), not `tru
 curl -k -X GET "https://localhost:55000/agents?q=status%3Dactive" \
   -H "Authorization: Bearer $TOKEN"
 
-# Active agents on Ubuntu
-curl -k -X GET "https://localhost:55000/agents?q=status%3Dactive%3Bos.name~ubuntu" \
+# Active agents whose OS name contains "Ubuntu"
+curl -k -X GET "https://localhost:55000/agents?q=status%3Dactive%3Bos.name~Ubuntu" \
   -H "Authorization: Bearer $TOKEN"
 
-# Agents with version not equal to 5.0.0
-curl -k -X GET "https://localhost:55000/agents?q=version!%3Dwazuh%205.0.0" \
+# Agents whose OS platform is not Windows
+curl -k -X GET "https://localhost:55000/agents?q=os.platform!%3Dwindows" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -550,12 +558,12 @@ Errors follow a structured JSON response format.
 | HTTP Code | Meaning           | Notes                    |
 |-----------|-------------------|--------------------------|
 | 400       | Bad Request       | Invalid parameters       |
-| 401       | Unauthorized      | Invalid or expired token |
-| 403       | Forbidden         | RBAC denied              |
+| 401       | Unauthorized      | Invalid credentials, or an invalid or expired token |
+| 403       | Forbidden         | RBAC denied, or the client IP is blocked after too many failed logins (`6000`) |
 | 404       | Not Found         | Invalid endpoint, or the named resource (group, cluster node) does not exist |
 | 405       | Method Not Allowed | Invalid HTTP method     |
 | 413       | Payload Too Large | Request body too large   |
-| 429       | Too Many Requests | Rate limit exceeded      |
+| 429       | Too Many Requests | Rate limit exceeded (`6001` authenticated, `6005` unauthenticated) |
 | 500       | Internal Error    | Check manager logs       |
 
 ### Exception Hierarchy
@@ -564,18 +572,29 @@ All exceptions inherit from `WazuhException` (defined in `core/exception.py`), w
 
 | Range | Category | Examples |
 |-------|----------|----------|
-| 900–998 | API-level errors | Child process terminated, executor failure, endpoint restricted to master |
+| 900–901 | API process pool errors | Child process terminated, executor failure |
 | 999–1099 | Core Wazuh errors | Incompatible Python, internal error, command errors, socket issues |
-| 1100–1199 | Configuration errors | Invalid section/field/type, XML syntax, missing config |
+| 1100–1199 | Configuration errors | Invalid section/field/type, validation, protected options (`1127`, `1129`, `1132`) |
+| 1300–1399 | Statistics errors | Invalid parameters |
+| 1400–1499 | Query and pagination errors | Invalid offset/limit/sort, invalid `q` query filter or operator, invalid time frame |
 | 1700–1799 | Agent errors | Agent not found, duplicate, version mismatch |
-| 2000–2999 | Internal service errors | wazuh-db, engine, modulesd and remoted admin sockets, indexer |
+| 1900–1999 | Manager errors | Control socket, configuration validation, request body |
+| 2000–2099 | Internal service errors | wazuh-db, engine, modulesd and remoted admin sockets |
+| 2200–2299 | Indexer errors | Connection, credentials |
 | 3000–3999 | Cluster errors | Cluster configuration, distributed API requests, worker not connected |
-| 4000–4999 | RBAC errors | Permission denied, invalid role/policy |
+| 4000–4500 | RBAC errors | Permission denied, invalid role/policy/resources |
 | 5000–5999 | User management errors | User not found, insecure password, invalid `allow_run_as` |
 | 6000–6999 | Security errors | Blocked IP, request rate limit reached, `run_as` not enabled for the user |
 | 8000–8999 | Vulnerability scan errors | Scanner or feed not ready, scan queue full |
 
 Error responses include a `dapi_errors` field in cluster deployments.
+
+These codes are the framework's catalog (`framework/wazuh/core/exception.py`). The API process has a
+separate, startup-only catalog (`api/api/api_exception.py`) whose codes overlap numerically: `2000`
+invalid `api.yaml`, `2003` TLS certificate errors, `2004` configuration file not loadable, `2010`
+address already in use, `2011` logger setup error, `2012` `rbac.db` integrity check failed. They stop
+`wazuh-manager-apid` from starting and are printed as *Error when trying to start the Wazuh API* (or
+logged in `api.log` once the logger is set up); they are never returned to a client.
 
 ---
 
@@ -590,5 +609,5 @@ The API layer (`api/validator.py`) validates all inputs with pre-compiled regex 
 | Base64 | Standard base64 encoded strings |
 | Dates | Date and datetime format validation |
 | `q` filter | Query syntax (`field operator value;connector`) |
-| XML | Validated via `lxml` and `defusedxml` |
+| XML | Parsed with `defusedxml` |
 | Special chars | Separate patterns for names vs. paths |

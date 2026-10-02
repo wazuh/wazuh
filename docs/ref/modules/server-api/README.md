@@ -2,22 +2,24 @@
 
 The **Server API** is the REST interface used to manage and interact with the Wazuh manager. It is backed by a **Python Framework** that implements all business logic, RBAC enforcement, and communication with internal daemons.
 
-The API exposes endpoints for agent and group management, cluster operations and configuration, MITRE ATT&CK data, security (users, roles, policies and tokens) and an overview of the deployment. All requests are authenticated via **JWT tokens** and authorized through a **Role-Based Access Control (RBAC)** system.
+The API exposes endpoints for agent and group management, enrollment tokens, cluster operations and node configuration, security (users, roles, policies, rules), and the MITRE ATT&CK database. Every request except the two login endpoints is authenticated with a **JWT token** and authorized through a **Role-Based Access Control (RBAC)** system.
+
+The API is served by `wazuh-manager-apid`, on port `55000` by default, and **only on the master node**: `wazuh-manager-control` skips `wazuh-manager-apid` on a worker, so a cluster has a single API endpoint, and requests that concern a worker reach it through the [Distributed API](architecture.md#distributed-api-dapi).
 
 ## Key Features
 
 - **REST API**: Full management interface over HTTPS
-- **JWT Authentication**: Short-lived EC-signed tokens
+- **JWT Authentication**: Short-lived tokens signed with ES512 (900 seconds by default)
 - **RBAC**: Fine-grained permission control per endpoint and resource, including a separate action for reading the configuration secrets in clear (see [Authentication](authentication.md#sensitive-configuration-values))
 - **Distributed API (DAPI)**: Transparent request routing across cluster nodes
-- **`q` query filter**: Server-side filtering syntax for large datasets
-- **OpenAPI 3.0**: Fully specified API contract (`spec/spec.yaml`)
+- **`q` query filter**: Server-side query language for filtering large datasets
+- **OpenAPI 3.0**: Fully specified API contract (`api/api/spec/spec.yaml`)
 
 ## Key Concepts
 
 | Concept | Description |
 |---------|-------------|
-| Server API | REST API used to manage agents, manager, cluster, and security |
+| Server API | REST API used to manage agents, groups, cluster nodes, and security |
 | Framework | Python backend implementing API behavior and business logic |
 | Core Layer | Low-level logic and system interactions |
 | RBAC | Role-Based Access Control enforced per endpoint |
@@ -37,19 +39,20 @@ The API exposes endpoints for agent and group management, cluster operations and
 
 | Component | Technology |
 |-----------|------------|
-| Web Framework | Starlette + Connexion |
+| Web Framework | Starlette + Connexion, served by uvicorn |
 | API Specification | OpenAPI 3.0 (`spec.yaml`) |
 | Authentication | PyJWT with EC keys |
-| Async HTTP | aiohttp (for WDB HTTP client) |
-| Database | Wazuh DB (SQLite via Unix sockets) |
+| HTTP clients to the daemons | httpx (Unix-socket HTTP APIs of wazuh-manager-db, analysisd, remoted, task manager, vulnerability scanner) |
+| Databases | Wazuh DB (through its Unix sockets); `rbac.db` (SQLite, through SQLAlchemy) |
 | Security Headers | secure (Python library) |
-| File Watching | asyncio + inotify |
-| XML Parsing | lxml + defusedxml |
+| File Watching | asyncinotify (JWT key rotation) |
+| XML Parsing | defusedxml |
 | Testing | pytest |
 
 ## Related Modules
 
-- **wazuh-db**: Stores agent, group, and security data queried by the framework
-- **authd**: Handles agent registration triggered via `/agents` endpoints
-- **remoted**: Agent communication managed through the API
-- **Wazuh Dashboard**: Consumes the same Server API for its UI
+- **wazuh-manager-db**: Stores the agent and group data queried by the framework
+- **wazuh-manager-authd**: Handles the agent registrations, deletions and enrollment tokens requested through the `/agents` endpoints
+- **wazuh-manager-remoted**: Reports its statistics and TLS listener state to the `/cluster/{node_id}/daemons/*` endpoints
+- **[RBAC](../rbac/README.md)**: The authorization model the API enforces
+- **Wazuh Dashboard**: Consumes the same Server API for its UI, as the `wazuh-wui` user

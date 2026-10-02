@@ -22,10 +22,13 @@ The API system spans five tightly-coupled locations in the repository:
 │  (engine-suite)      │  ◄─────────────────────────  │   (C++ HTTP server)  │
 │                      │                               │                      │
 │  Uses APIClient      │   Unix socket path            │  httplib server on  │
-│  from                │   /run/wazuh-server/analysis  │  UDS, routes to     │
+│  from                │                               │  UDS, routes to     │
 │  api-communication   │                               │  handler functions   │
 └──────────────────────┘                               └──────────────────────┘
 ```
+
+On a manager the socket is `/var/wazuh-manager/queue/sockets/engine-api-http.sock` (setting
+`analysisd.server_api_socket`, env `WAZUH_SERVER_API_SOCKET`).
 
 **Wire format**: All messages are serialized as **JSON** (not binary protobuf). Protobuf is used as a **schema and validation layer** on both sides:
 - **C++ side**: `eMessage::eMessageFromJson` / `eMessageToJson` converts between protobuf objects and JSON strings. Use `eMessageToJson` for response serialization; request handlers that need a `json::Json` payload should parse `req.body` and extract the relevant subtree directly.
@@ -268,7 +271,7 @@ pip install -e src/engine/tools/api-communication
 ```python
 from api_communication.client import APIClient
 
-client = APIClient("/run/wazuh-server/analysis")  # UDS path
+client = APIClient("/var/wazuh-manager/queue/sockets/engine-api-http.sock")  # UDS path
 
 # Option 1: send_recv (returns raw dict)
 error, response_dict = client.send_recv(proto_request_message)
@@ -460,6 +463,8 @@ The engine API is split into two OpenAPI 3.0.3 contracts:
 ## Step-by-Step Guide: Adding a New Endpoint
 
 This section provides a complete walkthrough for adding a new API endpoint with all the required artifacts.
+It uses a hypothetical domain named `example` (no such module exists in the tree): where a path says
+`<module>`, substitute your module's name; the code samples spell it `example`.
 
 ### Step 1: Define the Protobuf Messages
 
@@ -499,9 +504,9 @@ This generates:
 
 ### Step 3: Create the C++ Handler Module
 
-Create a new directory `src/engine/source/api/example/` with this structure:
+Create a new directory `src/engine/source/api/<module>/` with this structure:
 
-#### `include/api/example/handlers.hpp`
+#### `<module>/include/api/<module>/handlers.hpp`
 
 ```cpp
 #ifndef API_EXAMPLE_HANDLERS_HPP
@@ -527,7 +532,7 @@ inline void registerHandlers(const std::shared_ptr<::example::IExample>& example
 #endif // API_EXAMPLE_HANDLERS_HPP
 ```
 
-#### `src/handlers.cpp`
+#### `<module>/src/handlers.cpp`
 
 ```cpp
 #include <api/example/handlers.hpp>
@@ -569,7 +574,7 @@ adapter::RouteHandler exampleAction(const std::shared_ptr<::example::IExample>& 
 } // namespace api::example::handlers
 ```
 
-#### `CMakeLists.txt`
+#### `<module>/CMakeLists.txt`
 
 ```cmake
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
@@ -633,7 +638,7 @@ The `shared.dumpers` module provides:
 
 #### Command Module: Write-Only Example (no response data)
 
-`src/engine/tools/engine-suite/src/engine_public/cmds/example/action.py`
+`src/engine/tools/engine-suite/src/engine_public/cmds/<module>/action.py`
 
 ```python
 import sys
@@ -681,7 +686,7 @@ def configure(subparsers):
 
 #### Command Module: Read Example (returns data, YAML/JSON output)
 
-`src/engine/tools/engine-suite/src/engine_public/cmds/example/get.py`
+`src/engine/tools/engine-suite/src/engine_public/cmds/<module>/get.py`
 
 ```python
 import sys
@@ -736,7 +741,7 @@ def configure(subparsers):
 
 #### Command Module: Content Upsert Example (stdin support)
 
-`src/engine/tools/engine-suite/src/engine_private/cmds/example/upsert.py`
+`src/engine/tools/engine-suite/src/engine_private/cmds/<module>/upsert.py`
 
 ```python
 import sys

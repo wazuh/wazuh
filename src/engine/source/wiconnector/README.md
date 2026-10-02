@@ -133,9 +133,9 @@ Credentials are not part of `Config`: the connector reads them from the keystore
 An alternative constructor accepts a raw JSON OSSEC configuration string directly.
 
 Beyond the `Config` struct fields above, `main.cpp` reads eight more settings
-from the same `conf` mechanism (env var, `internal_options.conf`, or
+from the same `conf` mechanism (env var, `wazuh-manager-internal-options.conf`, or
 default — env var wins) and folds them into the JSON handed to
-`IndexerConnectorAsync`. They're documented by their `internal_options.conf`
+`IndexerConnectorAsync`. They're documented by their `wazuh-manager-internal-options.conf`
 key in [Engine Module — Internal options reference § Indexer connector](../../../../docs/ref/modules/engine/README.md#indexer-connector);
 here's the env-var equivalent for each:
 

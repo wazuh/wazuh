@@ -719,7 +719,7 @@ systemctl restart wazuh-agent
 ls -la /var/log/application.log
 ```
 
-Ensure the Wazuh agent user (`wazuh` or `ossec`) has read permissions.
+Ensure the Wazuh agent group (`wazuh`) has read permissions.
 
 **Verify configuration:**
 
@@ -765,8 +765,10 @@ logcollector.queue_size=2048
 **Verify agent connectivity:**
 
 ```bash
-/var/ossec/bin/agent_control -ls
+grep "^status=" /var/ossec/var/run/wazuh-agentd.state
 ```
+
+It reads `status='connected'` when the agent is connected to the manager.
 
 **Check for rate limiting:**
 

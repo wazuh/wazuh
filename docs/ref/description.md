@@ -10,12 +10,15 @@ Its main responsibilities are:
 - **Agent management**: enrollment, connection handling, agent groups, and
   centralized configuration distribution (`wazuh-manager-authd`,
   `wazuh-manager-remoted`).
-- **Event processing**: decoding, enrichment, and detection through the
+- **Event processing**: decoding, normalization and enrichment through the
   **Engine** (`wazuh-manager-analysisd`), which in 5.0 replaces the legacy
-  rules pipeline with YAML decoders and rules, KVDB lookups, and structured
-  findings indexed as `wazuh-findings-v5-*`.
-- **Security modules**: orchestration of inventory (Syscollector / IT Hygiene),
-  configuration assessment (SCA), file integrity monitoring (FIM), and
+  `analysisd` pipeline with YAML decoders and KVDB lookups and indexes the
+  resulting events as `wazuh-events-v5-*`. Detection rules run in the Wazuh
+  Indexer, whose Security Analytics detectors turn matching events into
+  findings (`wazuh-findings-v5-*`).
+- **Security modules**: ingestion of the state agents synchronize — inventory
+  (Syscollector / IT Hygiene), configuration assessment (SCA), file integrity
+  monitoring (FIM) — into the Wazuh Indexer (Inventory Sync Server), and
   vulnerability detection fed by CVE/CTI data served from the Wazuh Indexer.
 - **Management plane**: a RESTful Server API (`wazuh-manager-apid`) with RBAC,
   and mandatory clustering (`wazuh-manager-clusterd`) — every Wazuh Server

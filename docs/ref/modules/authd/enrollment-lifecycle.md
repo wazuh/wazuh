@@ -317,6 +317,7 @@ The node that answers the agent is not always the node that decides. What a work
 | `add` with no `id`/`key` — the only shape `/enroll` produces | **forwarded to the master**, along with `key_hash`, `token_id` and `reenroll` alike, and answered with the master's result |
 | `add` carrying a caller-chosen `id` or `key` | refused with `9015` — there is no cluster call that could honour a chosen identity, and forwarding anyway would report success having created a different agent |
 | `remove`, `get` | refused with `9015` |
+| `issue_reenroll_secret` | forwarded to the master, which owns `global.db`; a failed forward answers `9016` |
 | `token_create`, `token_revoke`, `token_purge` | refused with `9015` — the store has one writer, the master |
 | `token_list` | answered locally, from the replica |
 

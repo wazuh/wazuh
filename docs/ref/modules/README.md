@@ -10,7 +10,7 @@
 - [Command](command/README.md) - Scheduled command execution through the command wodle
 - [Content Manager](content_manager/README.md) - CTI feed fetcher for Vulnerability Detection
 - [Control](control/README.md) - Manager control operations (restart, reload) via wm_control module
-- [Database Sync](database-sync/README.md) - Differential database synchronization library (DBSync) for inventory-type modules
+- [Database Sync](database-sync/README.md) - modulesd `database` module that keeps `global.db` in step with `client.keys` and `etc/shared/`
 - [Engine](engine/README.md) - Event decoding, enrichment, and detection pipeline
 - [FIM](fim/README.md) - File Integrity Monitoring with persistent state synchronization
 - [Indexer Connector](indexer_connector/README.md) - OpenSearch indexing library (Filebeat replacement)
@@ -27,7 +27,7 @@
 - [Syscollector](syscollector/README.md) - System inventory collection and monitoring
 - [Task Manager](task_manager/README.md) - Generic manager-side task broker for asynchronous agent operations
 - [Vulnerability Scanner](vulnerability-scanner/README.md) - CVE detection and vulnerability assessment
-- [Wazuh DB](wazuh_db/README.md) - Persistent SQLite database daemon for agent and task state
+- [Wazuh DB](wazuh_db/README.md) - SQLite database daemon for the agent registry and groups (`global.db`)
 - [Agent Sync Protocol](utils/sync-protocol/README.md) - Agent-side library for synchronizing data with the manager
 - [FlatBuffers](utils/flatbuffers/README.md) - High-performance serialization for synchronization protocol
 - [Schema Validator](utils/schema-validator/README.md) - JSON schema validation for synchronized data

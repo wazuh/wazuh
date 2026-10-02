@@ -106,7 +106,7 @@ The Builder turns the declarative content stored in the Engine Content Manager �
 
 ### Backend
 
-The Backend is the runtime that executes the compiled graph for every event. It walks the stages described in [Policy processing](./README.md#policy-processing): pre-filter, decoders (including KVDB lookups), enrichment (Geo and IOC), post-filter, and outputs. The Backend is policy-agnostic — it has no domain knowledge of decoders or rules; it only knows how to evaluate the graph the Builder produced.
+The Backend is the runtime that executes the compiled graph for every event. It walks the stages described in [Policy processing](./README.md#policy-processing): pre-filter, decoders (including KVDB lookups), enrichment (Geo and IOC), post-filter, and outputs. The Backend is policy-agnostic — it has no domain knowledge of decoders or outputs; it only knows how to evaluate the graph the Builder produced.
 
 ### Engine Content Manager
 

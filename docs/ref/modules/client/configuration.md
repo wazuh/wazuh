@@ -253,7 +253,8 @@ Interval between agent keep-alive notifications to the manager.
 - **Allowed values:** Positive integer (seconds).
 - **Note:** This is not what decides when the agent is marked `disconnected`. The manager uses
   `<global><agents_disconnection_time>` (default `15m`) against the last keepalive it recorded, so
-  `notify_time` only has to be comfortably below that figure — see the
+  `notify_time` only has to be comfortably below that figure — see
+  [agents_disconnection_time](../task_manager/configuration.md#agents_disconnection_time) and the
   [manager configuration reference](../../configuration/manager/reference.md#global).
 
 ### time-reconnect
@@ -458,7 +459,7 @@ agent normally: each is recognized and logged at `INFO`, not rejected.
 
 ### batch
 
-Size and cadence of the HTTPS `/events/stateless` accumulator. The same size is the ceiling held
+Size and cadence of the accumulator behind the HTTPS `POST /stateless` route. The same size is the ceiling held
 for one `/stateful` session.
 
 ```xml

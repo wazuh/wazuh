@@ -1,10 +1,9 @@
 # Wazuh DB Configuration Reference
 
-Complete configuration reference for Wazuh DB (wazuh-db).
+Configuration reference for `wazuh-manager-db`, the daemon that stores the agent registry and group
+assignments (`global.db`) and the MITRE ATT&CK reference data (`mitre.db`).
 
-Wazuh DB is the central database service that stores agent information, vulnerability data, file integrity monitoring data, and other module state. It provides a unified query interface and automatic backup capabilities.
-
-For module overview, architecture, and database schemas, see [Wazuh DB Module](README.md).
+For the daemon overview, socket protocol and database tables, see [Wazuh DB](README.md).
 
 ---
 
@@ -14,41 +13,52 @@ For module overview, architecture, and database schemas, see [Wazuh DB Module](R
 
 **XML Section:** `<wdb>`
 
-**Internal Options:** `wazuh_database.*`
+**Internal Options:** `wazuh_db.*`
 
-The Wazuh DB configuration controls automatic database backups and retention policies.
-
+The `<wdb>` section configures the periodic backups of `global.db`. The installer writes no `<wdb>`
+section, so the defaults below apply until you add one.
 
 ### backup
 
-Database backup configuration block. Use the `database` attribute to specify which database to configure.
+Backup block. The `database` attribute names the database it configures, and `global` is the only
+value the schema accepts (any other is rejected when the configuration is validated). In the effective
+configuration the block is `wdb.backup.global`.
 
-- **Attribute:** `database` - Which database to back up (currently only `global` is supported)
 - **Sub-options:** `enabled`, `interval`, `max_files`
 
 #### enabled
 
-Enable automatic backups of the selected database.
+Enable periodic backups of the global database.
 
 - **Default value:** `yes`
 - **Allowed values:** `yes`, `no`
-- **Note:** When disabled, no automatic backups are created. Manual backups are still possible
+- **Note:** When `no`, the backup thread is not started. On-demand backups (`global backup create` on
+  `wdb.sock`, see [the socket protocol](README.md#socket-protocol)) still work.
 
 #### interval
 
-How often a backup is created.
+Time between two backups.
 
 - **Default value:** `1d` (86400 seconds)
-- **Allowed values:** Positive time value with optional suffix: `s` (seconds), `m` (minutes), `h` (hours), `d` (days)
-- **Note:** More frequent backups provide better recovery points but consume more disk space
+- **Allowed values:** a number of seconds, or a number with a suffix `s`, `m`, `h`, `d` or `w`
+  (seconds, minutes, hours, days, weeks). Minimum 1 second: `0` (in any unit, such as `0s` or `0d`)
+  is rejected by `wazuh-manager-conf validate` and by the pre-start check of `wazuh-manager-control`
+  with `(1244): Invalid configuration at '/wdb/backup/global/interval': ...`, so no daemon starts.
 
 #### max_files
 
-Maximum number of backup files to keep. Older backups are removed when this limit is exceeded.
+Number of backup files kept. After each backup, the oldest files are deleted until this many remain.
 
 - **Default value:** `3`
-- **Allowed values:** Positive integer (no enforced upper bound)
-- **Note:** Adjust based on available disk space and backup frequency. Total space = database size × max_files
+- **Allowed values:** integer ≥ 1 (no upper bound)
+- **Note:** Every file whose name starts with `global.db-backup` counts, including `-pre_restore`
+  backups.
+
+To see the effective values:
+
+```bash
+/var/wazuh-manager/bin/wazuh-manager-conf get wdb.backup.global
+```
 
 ---
 
@@ -56,44 +66,48 @@ Maximum number of backup files to keep. Older backups are removed when this limi
 
 **Configuration file:** `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`
 
-Additional wazuh-db settings can be configured in the internal options file:
+The file ships with comments only; these keys take their defaults until set. Each value must be a plain
+non-negative integer inside its range: anything else makes `wazuh-manager-db` exit at start with
+`(2302): Invalid definition for wazuh_db.<key>: '<value>'.` Restart the manager after a change.
 
 ```ini
-# Wazuh DB debug level (0-2)
+# Debug level (0-2, default: 0)
 wazuh_db.debug=0
 
 # Worker thread pool size (1-32, default: 8)
 wazuh_db.worker_pool_size=8
 
-# Minimum commit interval for transactions (seconds, 1-3600, default: 10)
+# Commit an open transaction once this many seconds pass without a query (1-3600, default: 10)
 wazuh_db.commit_time_min=10
 
-# Maximum commit interval for transactions (seconds, 1-3600, default: 60)
+# Commit an open transaction once it is this many seconds old (1-3600, default: 60)
 wazuh_db.commit_time_max=60
 
-# Maximum number of open database connections (1-4096, default: 64)
+# Databases kept open before idle ones are closed; global.db is never closed (1-4096, default: 64)
 wazuh_db.open_db_limit=64
 
 # Soft file descriptor limit, capped by the hard limit the daemon inherits (1024-1048576, default: 65536)
 wazuh_db.rlimit_nofile=65536
 
-# Database fragmentation threshold percentage (0-100, default: 75)
+# Fragmentation percentage above which a vacuum is considered (0-100, default: 75)
 wazuh_db.fragmentation_threshold=75
 
-# Fragmentation delta for triggering vacuum (0-100, default: 5)
+# Growth in fragmentation since the last vacuum needed to vacuum again (0-100, default: 5)
 wazuh_db.fragmentation_delta=5
 
-# Free pages percentage to maintain (0-99, default: 0)
+# Minimum free-pages percentage required before any vacuum (0-99, default: 0)
 wazuh_db.free_pages_percentage=0
 
-# Maximum allowed fragmentation percentage (0-100, default: 90)
+# Fragmentation percentage that forces a vacuum (0-100, default: 90)
 wazuh_db.max_fragmentation=90
 
-# Interval to check database fragmentation in seconds (1-30758400, default: 7200 = 2 hours)
+# Seconds between fragmentation checks (1-30758400, default: 7200 = 2 hours)
 wazuh_db.check_fragmentation_interval=7200
 ```
 
-**Note:** Use `wazuh-manager-internal-options.conf` instead of modifying the default `internal_options.conf` to preserve settings across upgrades.
+A database is vacuumed when its free-pages percentage is at least `free_pages_percentage` and either
+its fragmentation exceeds `max_fragmentation`, or it exceeds `fragmentation_threshold` and it has never
+been vacuumed or has grown more than `fragmentation_delta` points since the last vacuum.
 
 ---
 
@@ -101,116 +115,85 @@ wazuh_db.check_fragmentation_interval=7200
 
 ### Default Configuration
 
-Standard backup settings:
+The effective configuration when no `<wdb>` section is present:
 
 ```xml
-<wdb>
-  <backup database="global">
-    <enabled>yes</enabled>
-    <interval>1d</interval>
-    <max_files>3</max_files>
-  </backup>
-</wdb>
+<wazuh_config>
+  <wdb>
+    <backup database="global">
+      <enabled>yes</enabled>
+      <interval>1d</interval>
+      <max_files>3</max_files>
+    </backup>
+  </wdb>
+</wazuh_config>
 ```
-
-Backup files are written to `/var/wazuh-manager/backup/db/`.
 
 ### Frequent Backups
 
-For critical environments requiring more frequent backups:
-
 ```xml
-<wdb>
-  <backup database="global">
-    <enabled>yes</enabled>
-    <interval>6h</interval>
-    <max_files>8</max_files>
-  </backup>
-</wdb>
+<wazuh_config>
+  <wdb>
+    <backup database="global">
+      <interval>6h</interval>
+      <max_files>8</max_files>
+    </backup>
+  </wdb>
+</wazuh_config>
 ```
 
 ### Extended Retention
 
-Keep more backup history:
-
 ```xml
-<wdb>
-  <backup database="global">
-    <enabled>yes</enabled>
-    <interval>1d</interval>
-    <max_files>30</max_files>
-  </backup>
-</wdb>
+<wazuh_config>
+  <wdb>
+    <backup database="global">
+      <interval>1d</interval>
+      <max_files>30</max_files>
+    </backup>
+  </wdb>
+</wazuh_config>
 ```
 
 ### Disable Backups
 
-For testing or storage-constrained environments:
-
 ```xml
-<wdb>
-  <backup database="global">
-    <enabled>no</enabled>
-  </backup>
-</wdb>
+<wazuh_config>
+  <wdb>
+    <backup database="global">
+      <enabled>no</enabled>
+    </backup>
+  </wdb>
+</wazuh_config>
 ```
+
+These examples show only the `<wdb>` section; a real `wazuh-manager.conf` also carries the required
+`cluster` and `indexer` sections.
 
 ---
 
 ## Database Location
 
-Wazuh DB stores its databases in:
-
-**Global database:** `/var/wazuh-manager/queue/db/global.db`
-
-**Agent databases (4.x legacy):** `/var/wazuh-manager/queue/db/{id}.db`
-
-> In Wazuh 4.x, each agent had a dedicated SQLite database at `queue/db/{agent_id}.db` storing per-agent inventory data (FIM events, packages, processes, network interfaces). In Wazuh 5.0 this data is shipped directly to OpenSearch indices via the Indexer Connector instead. The per-agent SQLite databases are **no longer created or used**; existing files from a 4.x installation can be removed after migration. See the [Wazuh DB Module](README.md) overview for details.
-
-**Backup location:** `/var/wazuh-manager/backup/db/`
+| File | Path |
+|---|---|
+| Global database | `/var/wazuh-manager/queue/db/global.db` (`wazuh-manager`, mode `0640`) |
+| MITRE database | `/var/wazuh-manager/var/db/mitre.db` |
+| Backups | `/var/wazuh-manager/backup/db/` |
 
 ---
 
 ## Backup Management
 
-### Manual Backup
+### Backup files
 
-Create a manual backup of the global database:
+Each backup is written with SQLite's `VACUUM INTO` after committing the open transaction, then
+gzip-compressed, as `backup/db/global.db-backup-<YYYY-MM-DD-hh:mm:ss>.gz`. A backup taken before a
+restore has the suffix `-pre_restore` before `.gz`.
 
-```bash
-# Stop wazuh-db to ensure consistency
-systemctl stop wazuh-manager
-
-# Create backup directory if it doesn't exist
-mkdir -p /var/wazuh-manager/backup/db/manual
-
-# Copy global database
-cp /var/wazuh-manager/queue/db/global.db \
-   /var/wazuh-manager/backup/db/manual/global-$(date +%Y%m%d-%H%M%S).db
-
-# Restart wazuh-manager
-systemctl start wazuh-manager
-```
-
-### Restore from Backup
-
-To restore from a backup:
-
-```bash
-# Stop wazuh-manager
-systemctl stop wazuh-manager
-
-# Restore backup (replace TIMESTAMP with actual backup filename)
-cp /var/wazuh-manager/backup/db/global-TIMESTAMP.db \
-   /var/wazuh-manager/queue/db/global.db
-
-# Restore ownership and permissions
-chown wazuh:wazuh /var/wazuh-manager/queue/db/global.db
-chmod 660 /var/wazuh-manager/queue/db/global.db
-
-# Start wazuh-manager
-systemctl start wazuh-manager
-```
+The first periodic backup is due `interval` seconds after the newest file already in `backup/db/`
+(or about one second after start when there is none). A successful backup is logged at debug level as
+`Created Global database backup "<path>"`, each deletion as `Deleted Global database backup: "<path>"`,
+and a failure as `Creating Global DB snapshot by interval failed: <reason>`.
 
 ### View Backup Files
 
@@ -218,55 +201,53 @@ systemctl start wazuh-manager
 ls -lh /var/wazuh-manager/backup/db/
 ```
 
----
+### Manual Backup
 
-## Performance Considerations
+With the manager stopped, a plain copy is consistent:
 
-### Backup Impact
+```bash
+systemctl stop wazuh-manager
+cp /var/wazuh-manager/queue/db/global.db /root/global-$(date +%Y%m%d-%H%M%S).db
+systemctl start wazuh-manager
+```
 
-- Backups create a snapshot of the database using SQLite's backup API
-- Minimal performance impact during backup operation
-- Brief lock on database during snapshot creation
+### Restore from Backup
+
+```bash
+systemctl stop wazuh-manager
+
+# Replace <TIMESTAMP> with the timestamp of the backup file to restore
+gunzip -c /var/wazuh-manager/backup/db/global.db-backup-<TIMESTAMP>.gz \
+  > /var/wazuh-manager/queue/db/global.db
+
+chown wazuh-manager:wazuh-manager /var/wazuh-manager/queue/db/global.db
+chmod 640 /var/wazuh-manager/queue/db/global.db
+
+systemctl start wazuh-manager
+```
+
+A running daemon can also restore in place with `global backup restore` on `wdb.sock` (see
+[the socket protocol](README.md#socket-protocol)).
 
 ### Storage Requirements
 
-Each backup is a full copy of the database. Monitor disk usage:
+Each backup is a full, compressed copy of `global.db`. Monitor disk usage:
 
 ```bash
-du -sh /var/wazuh-manager/backup/db/
-du -sh /var/wazuh-manager/queue/db/
-```
-
-Typical sizes:
-- Small deployments (<100 agents): ~50-200 MB
-- Medium deployments (100-1000 agents): ~200 MB - 2 GB
-- Large deployments (1000+ agents): 2+ GB
-
-### Tuning for Large Deployments
-
-For deployments with large databases:
-
-```xml
-<wdb>
-  <backup database="global">
-    <enabled>yes</enabled>
-    <interval>12h</interval>     <!-- Less frequent -->
-    <max_files>5</max_files>     <!-- Fewer retained backups -->
-  </backup>
-</wdb>
+du -sh /var/wazuh-manager/backup/db/ /var/wazuh-manager/queue/db/
 ```
 
 ---
 
 ## Troubleshooting
 
-### Check wazuh-db Status
+### Check wazuh-manager-db Status
 
 ```bash
-# Check if wazuh-db is running
+# Check if wazuh-manager-db is running
 /var/wazuh-manager/bin/wazuh-manager-control status | grep wazuh-manager-db
 
-# Check wazuh-db sockets
+# Check the sockets
 ls -l /var/wazuh-manager/queue/sockets/wdb.sock /var/wazuh-manager/queue/sockets/wdb-http.sock
 
 # Test that the global database can serve queries
@@ -279,38 +260,32 @@ running; see [`GET /v1/status`](api-reference.md#get-v1status). The `wazuh-manag
 read queries from standard input: `wdb.sock` speaks a length-prefixed protocol, so a plain `echo`
 into the binary or the socket does not reach the database.
 
-### View wazuh-db Logs
+### View wazuh-manager-db Logs
 
 ```bash
-tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep wazuh-manager-db
+grep wazuh-manager-db /var/wazuh-manager/logs/wazuh-manager.log
 ```
 
-### Database Integrity Check
-
-Check global database integrity:
-
-```bash
-sqlite3 /var/wazuh-manager/queue/db/global.db "PRAGMA integrity_check;"
-```
-
-Expected output: `ok`
+For more detail set `wazuh_db.debug=1` (or `2`) and restart the manager.
 
 ### Common Issues
 
 **Issue:** Backup files not being created
-**Solution:** Check disk space, verify `<enabled>yes</enabled>`, check logs for errors
+**Solution:** Check that `wazuh-manager-conf get wdb.backup.global.enabled` prints `true`, check free
+space in `backup/db/`, and look for `Creating Global DB snapshot by interval failed` in the log.
 
-**Issue:** wazuh-db high CPU usage
-**Solution:** Reduce query frequency from other modules, increase `worker_pool_size` in internal options
+**Issue:** The daemon exits at start with `Invalid configuration block for Wazuh-DB.`
+**Solution:** Run `wazuh-manager-conf validate` and fix the option it names; it rejects every value
+of the `wdb` section the daemon would refuse, a zero `wdb.backup.global.interval` included.
 
-**Issue:** Database locked errors
-**Solution:** Check for long-running queries, increase `commit_time` in internal options
+**Issue:** The daemon exits at start with `(2302): Invalid definition for wazuh_db.…`
+**Solution:** Fix that key in `wazuh-manager-internal-options.conf` to an integer inside its range.
 
 ---
 
 ## See Also
 
-- [Wazuh DB Module](README.md) - Module overview, architecture, and database schemas
+- [Wazuh DB](README.md) - Daemon overview, socket protocol, database tables
+- [Wazuh DB API Reference](api-reference.md) - Routes on `wdb-http.sock`
+- [Database Sync](../database-sync/README.md) - The modulesd module that keeps `global.db` in step with `client.keys` and `etc/shared/`
 - [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options
-- [Vulnerability Scanner Configuration](../vulnerability-scanner/configuration.md) - Uses wazuh-db for vulnerability data
-- [Task Manager Configuration](../task_manager/configuration.md) - Uses wazuh-db for task storage

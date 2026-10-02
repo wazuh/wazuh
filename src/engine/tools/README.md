@@ -8,20 +8,19 @@
     - [EVTX to XML](#evtx-to-xml)
     - [Check valgrind](#check-valgrind)
     - [Check ASAN](#check-asan)
-    - [Check events diff](#check-events-diff)
 
 # Summary
 
-This directory includes several bash packages and scripts designed to make development easier.
-and management of related tools. The following describes the directory structure and provides
+This directory includes several packages and scripts designed to make development, and the
+management of related tools, easier. The following describes the directory structure and provides
 detailed information about each component.
 
 # Directory structure
 
 ```plaintext
-tool/
+tools/
 │
-├── api_communication/
+├── api-communication/
 ├── engine-suite/
 ├── evtx2xml/
 ```
@@ -42,7 +41,7 @@ The `api-communication` package is a tool designed to facilitate communication w
 
 ### Installation
 ```bash
-pip3 install tools/api_communication
+pip3 install tools/api-communication
 ```
 
 ## Engine suite
@@ -59,12 +58,12 @@ The `engine-suite` package is a comprehensive tool designed to manage, clean, an
 
 ### Installation
 ```bash
-pip3 install tools/engine_suite
+pip3 install tools/engine-suite
 ```
 
 ## EVTX to XML
 
-This module converts event files in EVTX format (used by Windows for event logs) to XML format. This allows you to view and work with Windows event logs in a more accessible and standard format. [By more information check herereadme](./evtx2xml/README.md)
+This module converts event files in EVTX format (used by Windows for event logs) to XML format. This allows you to view and work with Windows event logs in a more accessible and standard format. For more information see the [evtx2xml README](./evtx2xml/README.md).
 
 ## Check valgrind
 

@@ -1369,7 +1369,7 @@ Invalid escape sequences will always fail.
 
 For example:
 ```yaml
-target.field: helper_name('string', $reference, 123, {"key": "value"})
+target.field: "helper_name('string', $reference, 123, {\"key\": \"value\"})"
 ```
 
 This call applies `helper_name` to the `target.field` with arguments:
@@ -1435,7 +1435,7 @@ check: cidr_match($source.ip, "192.168.0.0", 24)
 To facilitate the reuse of constructors when building large assets—such as parsing code for events with common headers or repeated constructs like IP/port definitions—definitions can be introduced at the specification level. For example:
 ```yaml
 definitions:
-  header: <timestamp> <host.hostname> <daemon>:
+  header: "<timestamp> <host.hostname> <daemon>:"
   source: <source.ip>:<source.port>
   destination: <destination.ip>:<destination.port>
   a-list:
@@ -1627,24 +1627,22 @@ kanban
 - **Name**: Identifies the decoder and follows the pattern `<asset_type>/<name>/<version>`. The component type is
   `decoder`, and the version must be 0, since versioning is not implemented.
 
-- **Metadata**: Provides descriptive information about the decoder. Common fields include:
-    - `module` (string): The associated module (e.g., `syslog`, `windows`, `apache`).
+- **Metadata**: Provides descriptive information about the decoder. The decoder schema
+  (`src/engine/ruleset/schemas/wazuh-decoders.json`, `metadata`) accepts only these fields; `title`, `author` and
+  `description` are required:
     - `title` (string): Human-readable label (e.g., `Windows Event Log Decoder`).
+    - `author` (string): Author of the decoder (e.g., `Wazuh, Inc.`).
     - `description` (string): Brief description of the decoder.
-    - `compatibility` (string): Compatible products, versions, and formats.
-    - `version` (array): Tested and supported versions (e.g., `2.2.x`, `3.x`).
-    - `author` (object): Author information:
-        ```yaml
-        name: Wazuh, Inc.
-        email: info@wazuh.com
-        url: https://wazuh.com
-        date: 2022-11-15
-        ```
-    - `reference` (array): Links to product documentation:
+    - `compatibility` (array of strings): Compatible products, versions, and formats.
+    - `supports` (array of strings): Tested and supported versions (e.g., `2.2.x`, `3.x`).
+    - `references` (array of strings): Links to product documentation:
       ```yaml
       - https://httpd.apache.org/docs/2.2/logs.html
       - https://httpd.apache.org/docs/2.4/logs.html
       ```
+    - `documentation` (string): Further documentation for the decoder.
+    - `date` and `modified` (string): Creation and last-modification dates, ISO 8601 (`2022-11-15` or
+      `2022-11-15T10:00:00Z`).
 
 - **Parents**: Defines the position of this decoder in the decoder tree. A decoder can declare multiple parents,
   meaning it can appear as a potential child under each of them. The engine evaluates sibling decoders under a parent
@@ -1910,16 +1908,14 @@ id: fef71314-00c6-41f5-ab26-15e271e9f913
 enabled: true
 type: pre-filter
 metadata:
-  module: wazuh
   title: Platform filter
   description: Filter events by platform
-  compatibility: Wazuh 5.*
-  versions:
+  compatibility:
     - Wazuh 5.*
-  author:
-    name: Wazuh, Inc.
-    url: https://wazuh.com
-    date: 2024-01-31
+  supports:
+    - Wazuh 5.*
+  author: Wazuh, Inc.
+  date: 2024-01-31
   references:
     - https://documentation.wazuh.com/
 check: $host.os.platform == 'ubuntu'

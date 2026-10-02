@@ -279,10 +279,10 @@ Creates the directory structure required for running the engine in standalone mo
 Mounts the `/proc` filesystem inside the Wazuh installation directory for development and testing purposes.
 
 ### toggle_event_dumper.sh
-Enables or disables the event dumper functionality in the Wazuh engine.
+Enables, disables or reports (`enable|disable|status`) the engine's event dumper, through the engine API socket (`queue/sockets/engine-api-http.sock`).
 
 ### pr-clang.sh
-Formats (or checks formatting of) all `.cpp`/`.hpp` files changed in the current PR against `src/engine/source/`. Accepts an optional `--check` flag to only verify without modifying files.
+Formats (or checks the formatting of) the `.cpp`/`.hpp` files under `src/` that the current PR changes — committed against the PR's base branch (`gh` finds it; without a PR, against the inferred base branch), staged, unstaged and untracked. `--check` only verifies and exits 1 when a file needs formatting. It uses the `clang-format` on `PATH` (override with `CLANG_FORMAT`), so its result can differ from the CI format check, whose binary is not reproducible on every host.
 
 ### wazuh-certs-tool.sh / wazuh-certs-tool.yml
 Devcontainer copy of the installation assistant's certificate tool (`wazuh-certs-tool-5.0.0-beta5.sh`). The script header records the origin URL, its sha256 and the numbered list of local changes; every changed hunk is marked `# DEVCONTAINER:`, so `diff <(curl -sSL <origin URL>) wazuh-certs-tool.sh` is a readable patch. Driven by `wazuh-certs-tool.yml` (`nodes.indexer|manager|dashboard[] {name, ip, dns}`, the same shape as the assistant's `config.yml`), it issues:
@@ -298,8 +298,11 @@ bash scripts/wazuh-certs-tool.sh -A ca.pem ca.key -c scripts/wazuh-certs-tool.ym
 The output directory is 755 with private keys 600 and certificates 644, plus `config.yml` (LF copy of the input YAML) and `wazuh-certificates-tool.log`; a non-empty output directory is refused unless `-f` is given. The node names in the YAML are load-bearing (`node-1` for the indexer's `nodes_dn` and entrypoint, `dashboard` for its entrypoint, the first manager node for `e2e/wazuh_copy_certs.sh`); the comments in the file name the consumer that pins each one. `e2e/init.sh` is the normal caller.
 
 ### Other utilities
-- `event_sock_v2.go`: Tools for testing event socket communication
-- `wazuh_stream_socket.go`: WebSocket streaming utility for engine events
+- `event_sock_v2.go`: sends a log file (or one message) to the engine's ingest socket, `queue/sockets/engine-ingest-http.sock`, over HTTP (`-f` file, `-m` message, `-l` loops, `-s` socket)
+- `wazuh_stream_socket.go`: sends a raw message to a Unix socket (`-f`) or a TCP/UDP address (`-s`, `-p`)
+- `wazuh_sec_socket.go`: sends a message to a framed Unix socket and prints the answer, for example `-f /var/wazuh-manager/queue/sockets/remote.sock -m '{"command": "getstats"}'`
+- `monitor.py`, `setup_monitor.sh`, `monitor_graphics_generator.py`, `bench_collect.py`, `bench_samples.py`: resource monitoring and metrics collection for the manager benchmark (`tools/manager_benchmark/`); `tests/` holds their unit tests
+- `clean-unused-containers.sh`: lists stopped containers (all with `--all`) and deletes the ones you choose, after confirmation
 
 ### purge_wazuh.sh
 Located at `tools/purge_wazuh.sh` (Wazuh repository root), this script provides a comprehensive cleanup for local Wazuh manager/agent installations:
@@ -310,6 +313,7 @@ Located at `tools/purge_wazuh.sh` (Wazuh repository root), this script provides 
 - Cleans up all Wazuh-related files and directories
 - Removes Wazuh user and group from the system
 - Falls back to a full filesystem cleanup when the installation was created from sources instead of packages
+- Deletes `/etc/wazuh` (`credentials.env` and the bootstrap CA) unconditionally, even when an indexer or dashboard on the same host shares it
 
 ## E2E Testing Environment
 
@@ -324,8 +328,11 @@ Initializes the E2E environment by running these steps in order:
 
 1. **Package download** (skipped with `--certs-only`) — downloads the Wazuh Indexer and Dashboard `.deb` packages into `wazuh-indexer/` and `wazuh-dashboard/` respectively. By default, package URLs are resolved from the staging nightly manifest, falling back to the nightly backup manifest when a package is missing. Use `--from-wf` to download from the latest successful GitHub Actions workflows instead.
 2. **Certificate generation** — runs `scripts/wazuh-certs-tool.sh -A -v -c scripts/wazuh-certs-tool.yml -o certs/` (see [wazuh-certs-tool.sh](#wazuh-certs-toolsh--wazuh-certs-toolyml)) and post-checks the result: the files the docker entrypoints and `wazuh_copy_certs.sh` copy by name exist, every leaf passes `openssl verify -CAfile certs/root-ca.pem`, and the SAN/EKU/KU/BC of the agent-listener leaf are printed. If `certs/` already exists the script prompts before replacing it (`--regen-certs` skips the prompt). The existing `certs/root-ca.pem` / `root-ca.key` are **reused** so the indexer/dashboard containers and the installed manager keep trusting the same CA; `--rotate-ca` issues a new CA instead, after which everything that trusted the old one must be redeployed (`docker compose down -v && docker compose up -d`, `sudo ./wazuh_copy_certs.sh`).
-3. **Manager listeners** — when a manager is installed under `WAZUH_MANAGER_HOME` (default `/var/wazuh-manager`), binds both remoted listeners to `0.0.0.0` in `etc/wazuh-manager.conf` so containerised agents can reach it.
-4. **Logging** — all output is mirrored to `init.log` in the same directory.
+3. **Manager listeners** — unless `--no-listeners` is given and when a manager is installed under `WAZUH_MANAGER_HOME` (default `/var/wazuh-manager`), binds both remoted listeners to `0.0.0.0` in `etc/wazuh-manager.conf` so containerised agents can reach it, and resets the file to `root:wazuh-manager 660`.
+4. **Credentials** — generates `.credentials.env` with `wazuh_credentials.sh`, also on `--certs-only` re-runs; see [e2e/README.md](e2e/README.md).
+5. **Logging** — all output is appended to `init.log` in the same directory.
+
+Without a TTY (another script, a task), pass `--reuse-certs` or `--regen-certs`: with `certs/` present, the question it asks otherwise fails.
 
 **Prerequisites:**
 - Default mode: `curl`, `openssl`
@@ -347,7 +354,7 @@ Orchestrates the E2E environment. Both images are **built locally** from their s
 **wazuh-indexer**
 - OpenSearch-based search and analytics engine
 - Exposed on port `9200` (HTTPS)
-- Mounts certificates from `./certs` (read-only)
+- Mounts certificates from `./certs` (read-only) and takes its passwords from `./.credentials.env` (`env_file:`)
 - Three named volumes: `wazuh-indexer-data`, `wazuh-indexer-config`, `wazuh-indexer-engine`
 
 **wazuh-dashboard**
@@ -397,20 +404,22 @@ cd e2e/agents
 
 Defines four agent services, all connecting to the manager on the host via `host.docker.internal`:
 
-| Service | Image base | Agent version | Ports used |
+| Service | Image base | Agent version | Enrollment and connection |
 |---|---|---|---|
-| `agent_4x_centos` | CentOS | 4.x | 1514 (connect), 1515 (authd) |
-| `agent_4x_ubuntu` | Ubuntu | 4.x | 1514, 1515 |
-| `agent_5x_centos` | CentOS | 5.x | 1514, 1515 |
-| `agent_5x_ubuntu` | Ubuntu | 5.x | 1514, 1515 |
+| `agent_4x_centos` | CentOS | 4.x | authd on 1515 with the shared password, events on 1514 |
+| `agent_4x_ubuntu` | Ubuntu | 4.x | authd on 1515 with the shared password, events on 1514 |
+| `agent_5x_centos` | CentOS | 5.x | enrollment token, `POST /enroll` and events on 1517 |
+| `agent_5x_ubuntu` | Ubuntu | 5.x | enrollment token, `POST /enroll` and events on 1517 |
 
-Each service mounts a persistent volume for `/var/ossec`. There is no restart policy: like the indexer and the dashboard, the agents stay stopped when the devContainer restarts, and `docker compose start` brings them back with their keys once the manager is running. Use `docker-compose down -v` for a clean start that discards agent state.
+The credentials come from an env file that `create_token.sh` writes (the token for 5.x, the authd password for 4.x). Each service mounts a persistent volume for `/var/ossec`. There is no restart policy: like the indexer and the dashboard, the agents stay stopped when the devContainer restarts, and `docker compose start` brings them back with their keys once the manager is running. Use `docker compose down -v` for a clean start that discards agent state.
 
 **Usage:**
 ```bash
 cd e2e/agents
-docker-compose up -d --build        # start all agents
-docker-compose up -d --build agent_5x_ubuntu  # start a single agent
+sudo ./create_token.sh --env-file /tmp/wazuh-e2e-agents.env
+docker compose --env-file /tmp/wazuh-e2e-agents.env -f docker-compose.yml up -d --build                  # start all agents
+docker compose --env-file /tmp/wazuh-e2e-agents.env -f docker-compose.yml up -d --build agent_5x_ubuntu  # start a single agent
+sudo ./verify_agents.sh --api
 ```
 
 For full details, see [agents/README.md](e2e/agents/README.md).
@@ -431,6 +440,15 @@ Deploys the certificates issued by `init.sh` into an existing wazuh-manager inst
 **Important:** run it after installing wazuh-manager and before starting the service, or restart it afterwards (`wazuh-manager-control restart`).
 
 **VS Code Tasks:** "E2E Scripts: [Manager] Copy wazuh-manager certs" and, to re-issue the leaves while keeping the CA, "E2E Scripts: [Manager] Regenerate certs (keep CA)" (`Ctrl+Shift+P` → `Tasks: Run Task`)
+
+### wazuh_install_manager.sh / wazuh_verify_manager.sh
+`wazuh_install_manager.sh` is an unattended install of the manager from this checkout (mode `fresh` purges the manager at `--dir` first; it refuses to run without `--yes`), with the certificates and the credentials of the E2E stack, a start and a verification. `wazuh_verify_manager.sh` is the verification on its own: one `PASS|FAIL|SKIP` line per check and an exit status of 0 only when nothing failed. VS Code tasks: "E2E Scripts: [Manager] Fresh install from branch (purge!)" and "E2E Scripts: [Manager] Verify installed manager".
+
+### cluster/
+An opt-in overlay that turns the host manager into a cluster master and runs worker managers in containers; see [cluster/README.md](e2e/cluster/README.md).
+
+### dashboard/
+Reproducible dashboard captures with Playwright; see [dashboard/README.md](e2e/dashboard/README.md).
 
 ### purge_wazuh.sh
 Use the repo-level `tools/purge_wazuh.sh` script before re-running the E2E setup if you need to reset a local Wazuh installation completely.

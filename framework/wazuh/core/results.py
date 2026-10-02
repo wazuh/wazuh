@@ -655,7 +655,7 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
             entry['affected_items'] = sorted(self._affected_items, key=str)
         if self._failed_items:
             # Keyed by exception, and two exceptions with the same code but a per-item
-            # extra_message are different keys (1824/1727 carry the task manager's message per
+            # extra_message are different keys (1824/1775 carry the task manager's message per
             # agent): union them, or each code keeps only the last exception's ids.
             failed_by_code = {}
             for error, ids in self._failed_items.items():

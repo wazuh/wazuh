@@ -12,14 +12,20 @@ connection, exact-match routing, no TLS, no keep-alive, no chunked encoding.
 
 ## Consumers
 
-| Consumer | Socket | Configuration |
-|---|---|---|
-| Inventory Sync Server | `queue/sockets/inventory-sync-http.sock` | [inventory-sync-server/configuration.md](../../inventory-sync-server/configuration.md) |
-| Remoted module admin socket (`GET /`, `GET /metrics`, `GET /status`) | `queue/sockets/remote-admin-http.sock` | [remoted/configuration.md](../../remoted/configuration.md) |
+Five servers, each on its own socket under `/var/wazuh-manager/queue/sockets/`:
 
-This library has **no standalone configuration**: each consumer exposes the transport
-knobs (I/O threads, in-flight byte budget, connection caps, timeouts, reserved control
-connections...) as its own settings and documents them in its own configuration page.
+| Consumer | Daemon | Socket | Routes | Transport settings |
+|---|---|---|---|---|
+| Inventory Sync Server | `wazuh-manager-modulesd` | `inventory-sync-http.sock` | [API reference](../../inventory-sync-server/api-reference.md) | `wazuh_modules.inventory_sync_server_*` internal options — [configuration](../../inventory-sync-server/configuration.md) |
+| Task Manager | `wazuh-manager-modulesd` | `task-http.sock` | [API reference](../../task_manager/api-reference.md) | I/O threads: `wazuh_modules.manager_task_io_threads` ([threading](../../task_manager/manager-tasks.md#threading)); the rest fixed in code |
+| Vulnerability Scanner | `wazuh-manager-modulesd` | `vd-http.sock` | [Local HTTP API](../../vulnerability-scanner/api-reference.md#local-http-api-vd-httpsock) | Fixed in code: 2 I/O threads, 3600 s response backstop |
+| Wazuh DB | `wazuh-manager-db` | `wdb-http.sock` | [API reference](../../wazuh_db/api-reference.md) | Fixed in code: the library defaults |
+| Remoted admin socket | `wazuh-manager-remoted` | `remote-admin-http.sock` | `GET /`, `GET /metrics`, `GET /status`, `GET /tls` — [Local admin socket](../../remoted/README.md#local-admin-socket) | Fixed in code: 2 I/O threads, 64 connections, 16 reserved for control |
+
+This library has **no configuration of its own**. Each consumer sets the transport knobs
+(I/O threads, in-flight byte budget, connection caps, timeouts, reserved control
+connections) in code. Inventory Sync exposes most of them as internal options, and Task
+Manager exposes its I/O thread count. The other three consumers expose none.
 
 ## What an operator sees
 
@@ -31,15 +37,17 @@ suppress another kind's first line):
 | `400` | Malformed request | Broken client |
 | `404` | No route for that path | Routes are `method + exact path` — no patterns |
 | `405` + `Allow` | Path exists, wrong method | The `Allow` header lists what the route accepts |
-| `411` | No `Content-Length` | Chunked encoding is refused by design — the byte budget must know the size at headers-complete |
+| `411` | `Transfer-Encoding: chunked` | Chunked bodies are refused by design. The byte budget must know the size at headers-complete, so send `Content-Length` |
 | `413` | Declared body over the route-class cap | The peer is wrong; raising limits is a consumer setting |
 | `414` / `431` | URI / headers too large | Parser limits |
 | `500` | The consumer's handler threw | Check the consumer's log (lines carry the consumer's own name) |
 | `503` | Load shed | Byte budget exhausted, connection cap, per-class session cap, a dropped responder, or shutdown in progress |
 | `504` | Handler never answered | The response-timer backstop fired |
 
-Liveness routes (probes, `/metrics`) are budget-exempt and have reserved connection
-headroom — they keep answering exactly while the data plane sheds 503s.
+Only Data routes are charged the byte budget. Control and Liveness routes (health
+probes, `/metrics`, status queries) are exempt, and connection headroom is reserved for
+them. They keep answering while the data plane sheds 503s. Every response closes its
+connection: one request per connection.
 
 ## Related
 

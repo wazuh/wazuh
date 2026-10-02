@@ -29,7 +29,10 @@ this repository is a copy that can drift.
 location it determines would be circular. `WAZUH_CA_DIR` and the SAN settings
 use **process environment > credentials.env > default**. Explicitly empty
 settings are errors, not defaults. `WAZUH_CA_DIR` does **not** move the ENV file.
-Only the base resolver contains the literal default path in executable code.
+Outside the shared helper the literal default appears only where the helper cannot be asked: the
+DEB `postrm` (`purge` runs after dpkg has removed the helper), the fallback in
+`resolve-credentials.sh`'s start-refusal message, and `tools/purge_wazuh.sh` (which reads the
+relocated base from `WAZUH_CRED_DIR`, not `WAZUH_BASE_DIR`).
 
 Writers create missing parents and targets. Existing insecure directories are
 rejected, not repaired. No symlinks, relative paths or writable ancestors are
@@ -39,8 +42,9 @@ a private subdirectory: `/tmp` itself is writable by other users.
 The base and CA are `root:root 0700`; ENV/lock are `0600`, CA certificate `0644`,
 CA private key `0400`. Newly created manager parent directories are
 `root:<service-group> 0750`, while `certs` is `1770` to match the existing
-manager contract. Its ancestors must remain root-owned and not group/world
-writable; their traversal permissions must also allow the service to reach it.
+manager contract. Its ancestors must remain root-owned, not world writable, and not
+group writable except by the service group; their traversal permissions must also allow the
+service to reach it.
 The service user/group must exist before issuance; no accounts are created.
 
 ## In this repository
@@ -79,11 +83,11 @@ It runs in five modes:
 
 | Mode | Called from | Passwords, keystore | Certificates |
 | --- | --- | --- | --- |
-| `--install` | DEB `postinst` / RPM `%post` / `install.sh`, **fresh install only** | resolve | **issue** (`wazuh_manager_certificates_ensure`) |
-| `--upgrade` | the same three, when a previous version was installed | resolve | untouched |
-| `--prestart` | `resolvecredentials()` in `../wazuh-server.sh` — that is, `wazuh-manager-control start`, which is what the unit's `ExecStart` runs, and `restart`/`reload` after the daemons are stopped | resolve, fail naming the key | untouched |
+| `--install` | DEB `postinst` / RPM `%post` / `install.sh` on a fresh install — and a DEB reinstall from the config-files state that finds neither `etc/certs/remoted.pem` nor `etc/certs/indexer-connector.pem` | resolve; exits 0 whatever it resolved | **issue** (`wazuh_manager_certificates_ensure`) |
+| `--upgrade` | the same three, when a previous version was installed | resolve; exits 0 | untouched |
+| `--prestart` | `resolvecredentials()` in `../wazuh-server.sh` — that is, `wazuh-manager-control start`, which is what the unit's `ExecStart` runs, and `restart`/`reload` after the daemons are stopped; skipped while `wazuh-manager-modulesd` runs | resolve, exit 1 with an `INVALID <key>` / `MISSING <key>` line per unresolved key | untouched |
 | `--check` | `checkcredentials()` in `../wazuh-server.sh`, before `testconfig` on `start`, `restart` and `reload`; read-only, refuses naming the rule | untouched | untouched |
-| `--clear` | nothing in the product | remove | remove |
+| `--clear` (default when no mode is given is `--prestart`) | nothing in the product; refuses while any `var/run` pidfile is alive | remove `rbac.db`, the keystore contents and the two API password keys (not the `*_CERT_SANS` keys) | remove the five `etc/certs` PEMs, and the CA only if this host minted it |
 
 `--check` asks the shared helper for the reserved name `WAZUH_MANAGER_CREDENTIALS_CHECK`, which is
 never written to the file: a well-formed line with it is ignored, a malformed one refuses the file. It
@@ -91,6 +95,11 @@ must run as root (the credentials directory is root-only) and exits 2 otherwise.
 
 Each caller already knows which of the first two applies: `$2` is empty in a DEB `postinst
 configure` on a fresh install, `$1` is `1` in an RPM `%post`, and `install.sh` has `update_only`.
+The DEB `postinst` adds one case: `apt remove` renames `etc/` files to `*.save`, so a reinstall
+from the config-files state passes the old version in `$2` but finds no pair, and runs `--install`.
+Every caller appends `|| true`; the resolver exits 2 only on an unknown option (or `-H` without a
+directory) or a helper it cannot find, and `-H <home>` overrides the installation directory it
+otherwise derives from its own location.
 
 `install.sh` skips the call entirely under `USER_RESOLVE_CREDENTIALS="n"`, which the DEB and RPM
 recipes set — they run it to stage a tree they then copy into the package, and resolving there would
@@ -116,8 +125,10 @@ its own pair with `access(R_OK)` **after** dropping privileges
 The gap is the Indexer Connector pair, and it is wider than the validator's exclusion alone.
 `semantics.cpp` deliberately keeps `indexer.ssl.*` out of its file list so that a manager without an
 indexer can still start, and its comment says the connector reports those files at runtime. The
-connector reports *one* of them: `buildSecureCommunication()` calls `std::filesystem::exists()` on
-`certificate_authorities` and throws when it is absent. `certificate` and `key` are read from the
+connector reports *one* of them: `buildSecureCommunication()`
+(`shared_modules/indexer_connector/src/indexerTransport.cpp`) calls `std::filesystem::exists()` on
+a single `certificate_authorities` entry and throws when it is absent (several entries are merged
+instead). `certificate` and `key` are read from the
 configuration and handed to the TLS layer **unchecked** — no existence test, and nowhere any
 readability test, since `exists()` is a stat and not `access(R_OK)`.
 
@@ -198,8 +209,11 @@ component owns. Do not use `wazuh_env_set` as a password rotation mechanism.
 - Indexer Connector: `clientAuth`, RSA-2048/SHA-256, 3650 days.
 - Remoted/Authd: `serverAuth`, RSA-2048/SHA-256, leaf plus CA chain, notBefore
   backdated one day, notAfter 3650 days ahead. Trust-chain validity is still
-  limited by CA validity; a newly created CA is not backdated.
-- `WAZUH_MANAGER_CERT_SANS` configures the connector.
+  limited by CA validity.
+- `WAZUH_MANAGER_CERT_SANS` configures the connector. Absent, it is the hostname/FQDN, loopback and
+  the global-scope addresses of the interfaces carrying a default route (`ip route show default`),
+  or the output of `hostname -I` when `ip` is unavailable.
+- Both leaves take `WAZUH_MANAGER_NODE_NAME` (default `hostname -s`) as their CN.
 - `WAZUH_MANAGER_REMOTED_CERT_SANS` configures Remoted. Explicit values replace
   discovery; loopback is appended to them. Absent values include every **global-scope** IPv4/IPv6 address
   reported by `ip -o addr show` — including addresses on interfaces that are not
@@ -225,8 +239,9 @@ with the other `src/init` shell tests, and the helpers are not even in the same
 place as each other, so it resolves them through two variables instead of
 upstream's one: `WAZUH_HELPER_DIR` (the certificate half, defaulting to
 `../credentials`) and `WAZUH_SHARED_HELPER_DIR` (the downloaded half, defaulting
-to `../../external/wazuh-credentials`). Each falls back to the suite's own
-directory, which is the upstream layout, so a verbatim upstream copy still runs
+to `../../external/wazuh-credentials`). The certificate half falls back to the suite's own
+directory and the shared half to wherever the certificate half was found — in upstream's layout,
+both beside the suite — so a verbatim upstream copy still runs
 unchanged. That resolution block is the only local modification to the file.
 
 ```sh
@@ -236,8 +251,9 @@ sudo env TEST_SHELL=/bin/bash TEST_PIPEFAIL=1 sh ../tests/test-wazuh-helpers.sh
 ```
 
 `../tests/test_resolve_credentials.sh` covers `resolve-credentials.sh` on top of
-these helpers: the ladder, the two moments, and what it reports when a credential
-is missing. It also requires root, for the same reason.
+these helpers: the ladder at install and at start, what it reports when a credential
+is missing or invalid, the certificates belonging to the install alone, the cluster-role gate on
+`rbac.db`, the indexer username, and `--clear`. It also requires root, for the same reason.
 
 The suite runs each case in a separate `set -eu` shell, creates an isolated
 `/root/wazuh-helper-tests.XXXXXX`, and never changes `/etc/wazuh` or the manager
@@ -253,7 +269,8 @@ precedence, operator preservation, malformed blocks, missing final newline,
 permissions/symlinks, concurrent writes/issuance, password constraints,
 CA-only and orphan-key states, chain/EKU/hostname verification, idempotence,
 invalid SANs, canonical IPv6, simulated all-interface discovery, discovery
-failure, mismatched keys and existing material with a missing shared CA.
+failure, mismatched keys, existing material with a missing shared CA, a
+certificate symlink, and reissue over a `wazuh-manager-certs`-stamped bundle.
 
 This is not a live Wazuh, RPM/DEB, SELinux or real-network integration suite.
 The interface test deliberately stubs `ip` for deterministic coverage.

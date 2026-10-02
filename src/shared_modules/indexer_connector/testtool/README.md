@@ -8,10 +8,13 @@ from a running wazuh-indexer instance.
 
 ## Building
 
+The tool is built with the `indexer_connector` module in the main build tree (it is not installed
+with the manager):
+
 ```bash
-cd /workspaces/devContainer/wazuh/src/build
-make indexer_connector_tool -j$(nproc)
-# Binary is placed at: src/build/bin/indexer_connector_tool
+cmake --build src/build --target indexer_connector_tool
+# Binary: src/build/bin/indexer_connector_tool
+# input/ is copied to src/build/shared_modules/indexer_connector/testtool/input/
 ```
 
 ---
@@ -20,7 +23,7 @@ make indexer_connector_tool -j$(nproc)
 
 | Subcommand | Description |
 |---|---|
-| `push-events` | Push documents to an index/data-stream (default if no subcommand given) |
+| `push-events` | Push documents to an index (default if no subcommand given) |
 | `export-policy` | Dump all raw policy documents for a space from `wazuh-threatintel-policies` |
 | `generate-full-policy` | Build a structured full-policy asset (kvdbs, decoders, filters, integrations, policy) across all 5 policy aliases using a consistent PIT snapshot |
 
@@ -38,12 +41,16 @@ Every subcommand requires a **config JSON** passed with `-c`. Fields:
 | `ssl.certificate_authorities` | For HTTPS | Array with path(s) to the CA root cert |
 | `ssl.certificate` | Optional | Path to client TLS certificate (mutual TLS) |
 | `ssl.key` | Optional | Path to client TLS private key (mutual TLS) |
-| `name` | Optional | Connector instance name (informational) |
-| `index` | Optional | Default index name for `push-events` |
-| `max_queue_bytes` | Optional | Async mode — max pending bytes before dropping (0 = unlimited) |
-| `bulk_max_bytes` | Optional | Async mode — target byte threshold for each bulk request |
-| `flush_interval_seconds` | Optional | Async mode — flush interval in seconds |
-| `max_retry_delay_seconds` | Optional | Async/sync — cap (seconds) for exponential-backoff retries (default: 15) |
+| `index` | Optional | Target index for `push-events` (default: `wazuh-test`) |
+| `max_bulk_size` | Optional | Sync mode — staged bytes that trigger a flush (default: 10 MB) |
+| `max_queue_bytes` | Optional | Async mode — max pending bytes before dropping (default/0 = unlimited) |
+| `bulk_max_bytes` | Optional | Async mode — target byte threshold for each bulk request (default: 4 MB) |
+| `flush_interval_seconds` | Optional | Flush interval in seconds (default: 20; `0` in sync mode = no background flush) |
+| `max_retry_delay_seconds` | Optional | Cap (seconds) for exponential-backoff retries (default: 15) |
+| `request_timeout_seconds` | Optional | Per-request timeout (default: 60; 0 = none) |
+| `monitoring_interval_seconds` | Optional | Health-check period (default: 10) |
+
+Any other field (`name`, `enabled` in the examples below) is ignored.
 
 ### Example: dev e2e environment (HTTPS + TLS)
 
@@ -52,7 +59,7 @@ Every subcommand requires a **config JSON** passed with `-c`. Fields:
 {
   "name": "wazuh-states-vulnerabilities-cluster",
   "enabled": "yes",
-  "hosts": ["https://127.0.0.1:9200"],
+  "hosts": ["https://172.19.0.2:9200"],
   "username": "admin",
   "password": "admin",
   "ssl": {
@@ -63,7 +70,10 @@ Every subcommand requires a **config JSON** passed with `-c`. Fields:
 }
 ```
 
-### Example: plain HTTP (no TLS, no auth — local dev OpenSearch)
+The shipped file is a template: point `hosts` at the indexer (`https://127.0.0.1:9200` for the e2e
+stack below), and use a real password (see [Credentials](#credentials) for the e2e stack).
+
+### Example: plain HTTP (local OpenSearch with the security plugin disabled)
 
 ```json
 {
@@ -78,15 +88,22 @@ Every subcommand requires a **config JSON** passed with `-c`. Fields:
 
 ## Credentials & Keystore
 
-The connector reads credentials from a **RocksDB keystore** (`queue/keystore/` relative to CWD).
-The tool automatically seeds `username`/`password` from the config JSON into the keystore before
-constructing any connector, so no manual keystore management is needed.
+The connector reads credentials from a **RocksDB keystore** (`queue/keystore/` relative to the current
+working directory). The tool writes `username`/`password` from the config JSON into that keystore
+before constructing any connector, so no manual keystore management is needed, and the connector
+refuses to start without them.
+
+> **Warning:** never run the tool from `/var/wazuh-manager`: it would overwrite the manager's own
+> Indexer credentials in `queue/keystore/`.
 
 ---
 
 ## Subcommand: `push-events`
 
-Push documents to an index. Supports sync (bulk HTTP) and async (in-memory queued) modes.
+Push documents to the `index` of the config file (default `wazuh-test`). Supports sync (bulk HTTP)
+and async (in-memory queued) modes. Each element of the events file is indexed **as is**, as the whole
+document body, with the ids `doc-0`, `doc-1`, … Sync mode flushes once after staging everything; async
+mode waits for the queue to drain.
 
 > **Important:** The async queue is not persistent. Pending events do not survive process
 > crashes or restarts and are discarded when the connector shuts down.
@@ -96,14 +113,16 @@ Push documents to an index. Supports sync (bulk HTTP) and async (in-memory queue
 | Flag | Description |
 |---|---|
 | `-c CONFIG` | Config file (required) |
-| `-e EVENTS_FILE` | JSON file: array of documents to index |
-| `-a true` | Auto-generate random events from a template instead of indexing the file as-is |
-| `-n COUNT` | Number of random events to generate (requires `-a true`) |
+| `-e EVENTS_FILE` | JSON file: array of documents to index (with `-a true`: the template) |
+| `-a true` | Treat the `-e` file as an index-mapping template and index random documents built from it: every `properties` object is walked and each `type` of `keyword`, `long`, `float` or `date` gets a random value |
+| `-n COUNT` | Number of random documents to generate (required with `-a true`) |
 | `-m async` | Use async mode (default: `sync`) |
-| `-w SECONDS` | Wait N seconds before exiting (0 = wait for Enter) |
-| `-l LOG_FILE` | Write logs to file |
-| `-L COUNT` | Run N flush cycles after indexing (sync only) |
-| `-D SECONDS` | Delay between flush cycles (sync only) |
+| `-w SECONDS` | Wait N seconds before exiting (default `0` = wait for Enter) |
+| `-l LOG_FILE` | Also write the logs to this file |
+| `-L COUNT` | Call `flush()` N more times after indexing (sync only; ignored in async mode) |
+| `-D SECONDS` | Delay between those flush calls (sync only) |
+| `-I CONFIG` | Deprecated (async only): one more connector per extra config file, each fed the same events |
+| `-t FILE` | Deprecated and ignored |
 
 ### Examples
 
@@ -120,10 +139,10 @@ Push documents to an index. Supports sync (bulk HTTP) and async (in-memory queue
   -e input/example.json \
   -m async -w 5
 
-# Auto-generate 1000 random events from a template
+# Auto-generate 1000 random documents from a mapping template
 ./indexer_connector_tool push-events \
   -c input/config.json \
-  -e input/example.json \
+  -e <mapping-template>.json \
   -a true -n 1000 -w 5
 
 # Push events and run 10 flush cycles spaced 2s apart (sync, stress test)
@@ -139,6 +158,9 @@ Push documents to an index. Supports sync (bulk HTTP) and async (in-memory queue
 ```
 
 ### Example events file (`input/example.json`)
+
+The `id`, `operation` and `data` keys of the shipped example are not interpreted: they become fields of
+the indexed document.
 
 ```json
 [
@@ -185,8 +207,8 @@ and writes them to a JSON file. Useful for inspecting what is currently stored.
 
 ### Output format
 
-An array of raw `_source` documents:
-```json
+An array of raw `_source` documents (pretty-printed, 4-space indent):
+```json,fragment
 [
   {
     "space": { "name": "standard", "hash": { "sha256": "abc123..." } },
@@ -200,7 +222,8 @@ An array of raw `_source` documents:
 ## Subcommand: `generate-full-policy`
 
 Retrieves all resources for a space across **all 5 policy aliases** using a
-Point-In-Time (PIT) snapshot for consistency, then writes a structured JSON asset.
+Point-In-Time (PIT) snapshot for consistency, then writes a structured JSON asset. Only the
+`document` of each hit is kept; a hit without one is skipped.
 
 Aliases queried:
 - `wazuh-threatintel-kvdbs`
@@ -228,7 +251,7 @@ Aliases queried:
 
 ### Output format
 
-```json
+```json,fragment
 {
   "space": "standard",
   "kvdbs": [ { ... }, { ... } ],
@@ -241,60 +264,35 @@ Aliases queried:
 
 ---
 
-## Using engine's dev environment setup (e2e)
+## Using the dev e2e stack
 
-The dev e2e stack is in `tools/devContainer/e2e/`.
+The dev e2e stack is in `tools/devContainer/e2e/` (see its `README.md`).
 
 ### Start the indexer
 
 ```bash
-docker compose \
-  -f tools/devContainer/e2e/docker-compose.yml \
-  -p dev-env-engine up -d
+cd tools/devContainer/e2e
+./init.sh            # certificates into certs/ and the passwords into .credentials.env
+docker compose up -d
 ```
 
-### Get the container IP
-
-```bash
-docker inspect wazuh-indexer \
-  --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
-```
-
-Update `hosts` in `input/config.json` with this IP.
+The indexer container publishes port 9200 on the host, and its node certificate (`certs/node-1.pem`)
+carries `IP:127.0.0.1` and `DNS:wazuh-indexer` in its SAN (from
+`tools/devContainer/scripts/wazuh-certs-tool.yml`). Use `"hosts": ["https://127.0.0.1:9200"]` and
+`tools/devContainer/e2e/certs/root-ca.pem` as the CA.
 
 ### Credentials
 
-The `admin` password after a fresh `indexer-security-init.sh` run is `admin`.
-Check `tools/devContainer/e2e/certs/wazuh-passwords.txt` if it differs.
+The indexer passwords are generated into `tools/devContainer/e2e/.credentials.env` (mode 0600):
+`WAZUH_INDEXER_ADMIN_PASSWORD` for `admin`, `WAZUH_INDEXER_MANAGER_PASSWORD` for `wazuh-manager`.
+Copy one pair into the config file's `username`/`password`.
 
 ### TLS certificate note
 
-The e2e node cert (`certs/node-1.pem`) has been updated to include the container IP
-in its SAN (`IP:127.0.0.1, IP:127.0.0.1`). If the container IP changes, regenerate
-the cert:
-
-```bash
-CERTS=tools/devContainer/e2e/certs
-
-# Generate new CSR (reuse existing key)
-openssl req -new -key $CERTS/node-1-key.pem \
-  -out /tmp/node-1.csr \
-  -subj "/C=US/L=California/O=Wazuh/OU=Wazuh/CN=node-1"
-
-# Sign with SAN including the new IP (replace 127.0.0.X)
-printf "[v3_req]\nsubjectAltName=IP:127.0.0.1,IP:127.0.0.X\n" > /tmp/san.cnf
-openssl x509 -req -in /tmp/node-1.csr \
-  -CA $CERTS/root-ca.pem -CAkey $CERTS/root-ca.key -CAcreateserial \
-  -out $CERTS/node-1.pem -days 3650 \
-  -extensions v3_req -extfile /tmp/san.cnf
-
-# Deploy to running container
-docker exec wazuh-indexer cp /certs/node-1.pem /etc/wazuh-indexer/certs/indexer.pem
-docker exec wazuh-indexer chown wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/certs/indexer.pem
-docker exec wazuh-indexer chmod 640 /etc/wazuh-indexer/certs/indexer.pem
-docker exec wazuh-indexer service wazuh-indexer restart
-docker exec wazuh-indexer /usr/share/wazuh-indexer/bin/indexer-security-init.sh
-```
+To reach the indexer through another address, add it to the `indexer` node in
+`tools/devContainer/scripts/wazuh-certs-tool.yml` and regenerate the certificates with
+`./init.sh --certs-only --regen-certs`, then recreate the stack (`docker compose down -v && docker
+compose up -d`).
 
 ---
 
@@ -329,9 +327,9 @@ EOF
 
 | Error | Cause | Fix |
 |---|---|---|
-| `No username and password found in the keystore` | `username`/`password` missing from config JSON | Add them to the config file |
+| `No indexer credentials found in the keystore. ...` | `username`/`password` missing from config JSON | Add them to the config file |
 | `SSL peer certificate or SSH remote key was not OK` | Cert SAN doesn't include the target IP/hostname | Regenerate cert with correct SAN (see above) |
-| `No available server` | Wrong IP, wrong port, or indexer not running | Check `docker ps` and container IP |
-| `Health check failed … status: 401` | Wrong password | Check `wazuh-passwords.txt` or use `admin:admin` after fresh init |
-| `Space name is required` | Missing `-s` flag on policy subcommands | Add `-s <space_name>` |
-| Output file is empty / 0 documents | Space name doesn't exist in the indexer | Verify with `curl` directly against the index |
+| `No available server. Unavailable nodes: ...` | Wrong address or port, or indexer not running | Check `docker ps` and `hosts` |
+| `Health check failed for '<host>' - Unauthorized - Check indexer credentials` | Wrong user or password | Check `.credentials.env` |
+| `Space name is required: use -s <space>` | Missing `-s` flag on policy subcommands | Add `-s <space_name>` |
+| `[export-policy] Warning: no policy documents found for space '<space>'` | Space name doesn't exist in the indexer | Verify with `curl` directly against the index |

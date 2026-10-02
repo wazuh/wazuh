@@ -48,8 +48,22 @@ sudo ./wazuh-migrate-identity.py import /root/wazuh-4x-bundle
 sudo ./wazuh-migrate-identity.py check /root/wazuh-4x-bundle
 ```
 
-Both read the API password the manager published at install; `--api-password-file` is for when it
-is somewhere else.
+`import` and `check` read the API password the manager published at install; `--api-password-file`
+is for when it is somewhere else.
+
+| Option | Commands | Default | Effect |
+|---|---|---|---|
+| `--source-dir DIR` | `export` | `/var/ossec` | The 4.x installation to read |
+| `--target-dir DIR` | `import`, `check` | `/var/wazuh-manager` | The 5.0 installation |
+| `--api-url URL` | `import`, `check` | `https://localhost:55000` | The manager's Server API |
+| `--api-user USER` | `import`, `check` | `wazuh` | The API user |
+| `--api-password-file FILE` | `import`, `check` | — | File holding the API password, `-` for standard input |
+| `--api-ca FILE` | `import`, `check` | — | CA bundle to verify the API certificate; without it the connection is not verified |
+| `--with-password` | `export`, `import` | off | Carry `etc/authd.pass`, the shared enrollment password |
+| `--with-rbac` | `export`, `import` | off | Carry the API users, roles and policies |
+| `--dry-run` | `export`, `import` | off | Report what would happen and change nothing |
+| `--force` | `export`, `import` | off | Proceed past this tool's safety checks |
+| `--version` | — | — | Print the tool version |
 
 `--dry-run` reports what `export` and `import` would do and changes nothing. Run it first.
 

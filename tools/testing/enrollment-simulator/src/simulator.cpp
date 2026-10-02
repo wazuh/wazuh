@@ -21,8 +21,7 @@
 WazuhAuthSimulator::WazuhAuthSimulator(const std::string& host_addr, int port_num,
                                       const std::string& password)
     : host(host_addr), port(port_num), correct_password(password),
-      progress_counter(0), gen(std::random_device{}()),
-      dis_ratio(0.0, 1.0), dis_char(0, 35), dis_group(0, groups.size() - 1) {
+      progress_counter(0) {
 
     // Initialize OpenSSL (OpenSSL 1.1.0+ auto-initializes, but we keep for compatibility)
     OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, nullptr);
@@ -89,11 +88,17 @@ bool WazuhAuthSimulator::resolve_hostname() {
     return true;
 }
 
+std::mt19937& WazuhAuthSimulator::rng() {
+    thread_local std::mt19937 engine(std::random_device{}());
+    return engine;
+}
+
 std::string WazuhAuthSimulator::generate_random_name(int length) {
     std::string name;
     const char charset[] = "abcdefghijklmnopqrstuvwxyz0123456789";
+    std::uniform_int_distribution<> dis_char(0, sizeof(charset) - 2);
     for (int i = 0; i < length; ++i) {
-        name += charset[dis_char(gen)];
+        name += charset[dis_char(rng())];
     }
     return name;
 }
@@ -107,7 +112,7 @@ std::string WazuhAuthSimulator::generate_agent_name(bool is_new) {
         return name;
     } else {
         auto it = registered_agents.begin();
-        std::advance(it, std::uniform_int_distribution<>(0, registered_agents.size() - 1)(gen));
+        std::advance(it, std::uniform_int_distribution<>(0, registered_agents.size() - 1)(rng()));
         return *it;
     }
 }
@@ -115,19 +120,20 @@ std::string WazuhAuthSimulator::generate_agent_name(bool is_new) {
 AgentConfig WazuhAuthSimulator::create_agent_config(double new_ratio, double incorrect_pass_ratio,
                                                    double modern_version_ratio, double group_ratio) {
     AgentConfig config;
+    std::uniform_real_distribution<> dis_ratio(0.0, 1.0);
 
-    config.is_new = dis_ratio(gen) < new_ratio;
+    config.is_new = dis_ratio(rng()) < new_ratio;
     config.name = generate_agent_name(config.is_new);
 
-    config.has_correct_password = dis_ratio(gen) >= incorrect_pass_ratio;
+    config.has_correct_password = dis_ratio(rng()) >= incorrect_pass_ratio;
     config.password = config.has_correct_password ? correct_password : "wrongpass";
 
-    config.is_modern_version = dis_ratio(gen) < modern_version_ratio;
+    config.is_modern_version = dis_ratio(rng()) < modern_version_ratio;
     config.version = config.is_modern_version ? "v4.15.0" : "v4.12.0";
 
-    config.has_group = dis_ratio(gen) < group_ratio;
+    config.has_group = dis_ratio(rng()) < group_ratio;
     if (config.has_group) {
-        config.group = groups[dis_group(gen)];
+        config.group = groups[std::uniform_int_distribution<size_t>(0, groups.size() - 1)(rng())];
     }
 
     return config;
@@ -164,8 +170,8 @@ RegistrationResult WazuhAuthSimulator::register_agent(const AgentConfig& config,
     result.success = false;
 
     // Get random delays for this connection
-    int actual_connect_delay = connect_delay.get_random_value(gen);
-    int actual_send_delay = send_delay.get_random_value(gen);
+    int actual_connect_delay = connect_delay.get_random_value(rng());
+    int actual_send_delay = send_delay.get_random_value(rng());
 
     // Create socket with RAII management
     SocketRAII sock(AF_INET, SOCK_STREAM, 0);

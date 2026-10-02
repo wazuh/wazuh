@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Send messages to the main Wazuh queue (analysisd/agentd).
+Send messages to the agent's queue socket (bound by wazuh-agentd).
 Created: November 1, 2016
 
 Usage:
-    sendmsg.py [-L] [message]
+    sendmsg.py [-L] [-s SOCKET] [message]
     echo "msg" | sendmsg.py
 
 Standard message format: <id>:<location>:<log>
@@ -14,7 +14,8 @@ import argparse
 import sys
 from socket import socket, AF_UNIX, SOCK_DGRAM, SO_SNDBUF, SOL_SOCKET
 
-ADDR = '/var/wazuh-manager/queue/sockets/queue'
+# The agent's DEFAULTQUEUE: no manager daemon binds a queue socket.
+ADDR = '/var/ossec/queue/sockets/queue'
 BLEN = 212992
 
 
@@ -53,7 +54,11 @@ def get_message(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Send messages to the main Wazuh queue (analysisd/agentd)."
+        description="Send messages to the agent's queue socket (bound by wazuh-agentd)."
+    )
+    parser.add_argument(
+        '-s', '--socket', default=ADDR,
+        help=f'Path of the queue socket (default: {ADDR})'
     )
     parser.add_argument(
         '-L', action='store_true',
@@ -68,7 +73,7 @@ def main():
     message = get_message(args)
 
     sock = socket(AF_UNIX, SOCK_DGRAM)
-    sock.connect(ADDR)
+    sock.connect(args.socket)
     expand_socket_buffer(sock)
 
     if args.L:

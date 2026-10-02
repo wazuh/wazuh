@@ -315,7 +315,7 @@ Deferring cleanup to post-compression avoids a race where the still-uncompressed
 
 ### Configuration
 
-Set via `internal_options.conf` or environment variables:
+Set via `wazuh-manager-internal-options.conf` or environment variables:
 
 | Key | Env var | Default |
 |-----|---------|---------|

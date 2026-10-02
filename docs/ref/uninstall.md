@@ -6,17 +6,27 @@ This guide provides instructions for uninstalling Wazuh server and agent compone
 
 ### Debian-based platforms
 
-Remove the package:
+Remove the package and everything it left behind:
 
 ```bash
 sudo dpkg --purge wazuh-manager
 ```
 
-To remove the package but keep configuration files:
+`--purge` deletes `/var/wazuh-manager` and the `wazuh-manager` user and group. It also takes the
+manager's own keys out of the managed block of `/etc/wazuh/credentials.env`, and, when neither
+`wazuh-indexer` nor `wazuh-dashboard` is still installed, deletes `credentials.env`, the CA directory
+`/etc/wazuh/ca` and, if it is then empty, `/etc/wazuh` itself.
+
+To remove the package but keep the configuration files:
 
 ```bash
 sudo dpkg --remove wazuh-manager
 ```
+
+`--remove` deletes `queue/` (the wazuh-db databases, `tasks.db`, the keystore), `var/`, `logs/`,
+`data/` and the API directory, and keeps `etc/` with every file outside `etc/shared/` renamed to
+`<name>.save` (`api.yaml` is kept as `api/configuration/api.yaml.save`). The user, the group and
+`/etc/wazuh` are left untouched.
 
 ### Red Hat-based platforms
 
@@ -25,6 +35,14 @@ Remove the package:
 ```bash
 sudo rpm -e wazuh-manager
 ```
+
+`rpm -e` removes the manager's keys from `/etc/wazuh/credentials.env` and, with no `wazuh-indexer` or
+`wazuh-dashboard` left, the credentials file and `/etc/wazuh/ca`, as `dpkg --purge` does. It deletes
+the `wazuh-manager` user and group and every directory under `/var/wazuh-manager` except `etc/`.
+Under `etc/`, RPM removes the files the package lists (`wazuh-manager.conf` and `client.keys`
+included), and the files it does not own, such as the certificates under `etc/certs/`, are kept
+renamed to `<name>.save`. Back up anything you want to keep before running it, and delete
+`/var/wazuh-manager` by hand when the leftovers are no longer needed.
 
 ## Agent
 
