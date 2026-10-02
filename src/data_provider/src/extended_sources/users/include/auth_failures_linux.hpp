@@ -14,7 +14,7 @@
 #include <string>
 #include <unordered_map>
 
-/// Failed authentications of an account. When known is false, no source exists on the host.
+/// Failed authentications of an account. When known is false, the host offers no usable source.
 struct AuthFailures
 {
     bool known;
@@ -24,47 +24,43 @@ struct AuthFailures
 
 /// AuthFailuresProvider class
 /// This class is responsible for counting the failed authentications of an account.
-/// It reads pam_faillock when the host enforces it, and otherwise the failures in btmp since the last login.
+///
+/// The count is the failed attempts recorded in btmp since the account last logged in, which matches
+/// what macOS reports from its account policy: a figure that a successful login clears. pam_faillock
+/// is deliberately not read. Its tally is a lockout counter rather than a record of attempts: it is
+/// cleared only by a successful password authentication, so a login by public key leaves it standing,
+/// it lives on tmpfs and is lost on reboot, and its directory exists on RHEL whether or not the module
+/// is in use. None of those answer "how many failed authentications has this account had".
 class AuthFailuresProvider
 {
     public:
         /// Constructor
-        /// @param faillockConf Path of the faillock configuration.
-        /// @param pamDir Directory of the PAM stacks.
         /// @param btmpPath Path of the btmp file.
         /// @param btmpTailBytes Maximum number of bytes read from the end of btmp.
-        AuthFailuresProvider(const std::string& faillockConf, const std::string& pamDir, const std::string& btmpPath, size_t btmpTailBytes);
+        AuthFailuresProvider(const std::string& btmpPath, size_t btmpTailBytes);
 
         /// Default constructor
-        /// This constructor uses /etc/security/faillock.conf, /etc/pam.d and /var/log/btmp.
+        /// This constructor uses /var/log/btmp.
         AuthFailuresProvider();
 
-        /// Selects the source and, for btmp, reads it. It has to be called once before get().
-        /// @param lastLoginByName Epoch seconds of the last login of every collected account, 0 when unknown.
-        void load(const std::unordered_map<std::string, uint32_t>& lastLoginByName);
+        /// Reads btmp. It has to be called once before get().
+        /// @param lastLoginByName Epoch seconds of the last login of every collected account, 0 when the
+        ///        account has never logged in.
+        /// @param lastLoginKnown Whether the host offers any source of last logins. Without one the
+        ///        count cannot be anchored to anything and is reported as unknown.
+        void load(const std::unordered_map<std::string, uint32_t>& lastLoginByName, bool lastLoginKnown);
 
         /// Returns the failed authentications of an account.
         /// @param userName The name of the account.
         AuthFailures get(const std::string& userName) const;
 
     private:
-        /// Tells whether an uncommented auth line of the PAM stacks calls pam_faillock.
-        bool isFaillockActive() const;
-
-        /// Reads the failures of an account from its faillock tally file.
-        AuthFailures readFaillock(const std::string& userName) const;
-
         /// Reads btmp and counts, per collected account, the failures newer than its last login.
-        /// @return false when btmp cannot be read.
+        /// @return false when btmp cannot be read or holds no record.
         bool loadBtmp(const std::unordered_map<std::string, uint32_t>& lastLoginByName);
 
-        std::string m_faillockConf;
-        std::string m_pamDir;
         std::string m_btmpPath;
         size_t m_btmpTailBytes;
-
-        /// The faillock tally directory, empty when faillock is not the source.
-        std::string m_faillockDir;
 
         bool m_btmpKnown;
         std::unordered_map<std::string, AuthFailures> m_btmpFailures;

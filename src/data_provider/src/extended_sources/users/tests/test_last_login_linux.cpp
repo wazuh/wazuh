@@ -15,7 +15,10 @@
 
 #include <sqlite3.h>
 
+#include <lastlog.h>
+
 #include <cstring>
+#include <utility>
 #include <filesystem>
 #include <fstream>
 
@@ -44,11 +47,15 @@ class LastLoginProviderTests : public ::testing::Test
             std::filesystem::remove_all(m_tempDir);
         }
 
-        /// @brief Writes the 292-byte record of a uid, leaving a hole before it when the file is shorter.
-        void writeLastlog(uint32_t uid, int32_t time) const
+        /// @brief Writes the record of a uid, leaving a hole before it when the file is shorter.
+        void writeLastlog(uint32_t uid, int64_t time) const
         {
-            char record[292] = {};
-            std::memcpy(record, &time, sizeof(time));
+            // Sized from the system struct on purpose: glibc picks ll_time's width per platform, so a
+            // fixture hardcoded to one width would read back correctly under a stride that does not
+            // match what shadow and pam actually write on this architecture.
+            char record[sizeof(struct lastlog)] = {};
+            const auto onDisk = static_cast<decltype(std::declval<struct lastlog>().ll_time)>(time);
+            std::memcpy(record, &onDisk, sizeof(onDisk));
             std::fstream file(m_lastlog, std::ios::in | std::ios::out | std::ios::binary);
 
             if (!file.is_open())
@@ -56,7 +63,7 @@ class LastLoginProviderTests : public ::testing::Test
                 file.open(m_lastlog, std::ios::out | std::ios::binary);
             }
 
-            file.seekp(static_cast<std::streamoff>(uid) * 292);
+            file.seekp(static_cast<std::streamoff>(uid) * static_cast<std::streamoff>(sizeof(struct lastlog)));
             file.write(record, sizeof(record));
         }
 
@@ -119,7 +126,9 @@ TEST_F(LastLoginProviderTests, HoleZeroTimeAndPastEndGiveNoLogin)
 
 TEST_F(LastLoginProviderTests, TimeAfter2038IsNotNegative)
 {
-    writeLastlog(1000, static_cast<int32_t>(0x80000000u));
+    // 2038-01-19 03:14:08 UTC. On a 32-bit ll_time this is stored negative and has to read back
+    // unsigned; on a 64-bit one it is stored as-is. Either way the reported value is the same.
+    writeLastlog(1000, 2147483648LL);
 
     auto provider = makeProvider();
     EXPECT_EQ(provider.lastLogin(1000, "alice"), 2147483648u);
@@ -130,8 +139,9 @@ TEST(LastLoginProviderOffsetTests, HighestUidIsRequestedAsA64BitOffset)
     auto reader = std::make_shared<MockPreadWrapper>();
 
     EXPECT_CALL(*reader, open(::testing::_)).WillOnce(::testing::Return(3));
-    // 4294967294 * 292, which does not fit in 32 bits.
-    EXPECT_CALL(*reader, pread(3, ::testing::_, 292u, 1254130449848ull)).WillOnce(::testing::Return(0));
+    // 4294967294 records in, which does not fit in 32 bits whichever stride the platform uses.
+    constexpr auto RECORD = sizeof(struct lastlog);
+    EXPECT_CALL(*reader, pread(3, ::testing::_, RECORD, 4294967294ull * RECORD)).WillOnce(::testing::Return(0));
     EXPECT_CALL(*reader, close(3)).Times(1);
 
     LastLoginProvider provider("lastlog", "/nonexistent/lastlog2.db", reader);
@@ -143,7 +153,8 @@ TEST(LastLoginProviderOffsetTests, ShortReadGivesNoLogin)
     auto reader = std::make_shared<MockPreadWrapper>();
 
     EXPECT_CALL(*reader, open(::testing::_)).WillOnce(::testing::Return(3));
-    EXPECT_CALL(*reader, pread(3, ::testing::_, 292u, 292000ull)).WillOnce(::testing::Return(100));
+    EXPECT_CALL(*reader, pread(3, ::testing::_, sizeof(struct lastlog), 1000ull * sizeof(struct lastlog)))
+    .WillOnce(::testing::Return(100));
     EXPECT_CALL(*reader, close(3)).Times(1);
 
     LastLoginProvider provider("lastlog", "/nonexistent/lastlog2.db", reader);
@@ -185,4 +196,28 @@ TEST_F(LastLoginProviderTests, CorruptLastlog2IsIgnored)
     auto provider = makeProvider();
     EXPECT_EQ(provider.lastLogin(1000, "alice"), 2000u);
     EXPECT_EQ(provider.lastLogin(1001, "bob"), 0u);
+}
+
+// The production branch is chosen at compile time, so CI on x86_64 never reaches the 64-bit path.
+// These exercise both widths on whatever architecture runs them.
+TEST(LastLoginRecordTimeTests, ThirtyTwoBitWrapsForwardPast2038)
+{
+    EXPECT_EQ(lastLoginFromRecordTime(static_cast<int32_t>(0)), 0u);
+    EXPECT_EQ(lastLoginFromRecordTime(static_cast<int32_t>(1700000000)), 1700000000u);
+    // 2038-01-19 03:14:08 UTC, stored negative in a signed 32-bit field.
+    EXPECT_EQ(lastLoginFromRecordTime(static_cast<int32_t>(0x80000000)), 2147483648u);
+    EXPECT_EQ(lastLoginFromRecordTime(static_cast<int32_t>(-1)), 4294967295u);
+}
+
+TEST(LastLoginRecordTimeTests, SixtyFourBitRejectsNegativesAndHoldsTheMaximum)
+{
+    EXPECT_EQ(lastLoginFromRecordTime(static_cast<int64_t>(0)), 0u);
+    EXPECT_EQ(lastLoginFromRecordTime(static_cast<int64_t>(1700000000)), 1700000000u);
+    EXPECT_EQ(lastLoginFromRecordTime(static_cast<int64_t>(2147483648LL)), 2147483648u);
+    // A negative time cannot be a login where the field does not wrap.
+    EXPECT_EQ(lastLoginFromRecordTime(static_cast<int64_t>(-1)), 0u);
+    EXPECT_EQ(lastLoginFromRecordTime(static_cast<int64_t>(-2147483648LL)), 0u);
+    // Past what the reported field can hold, kept at the maximum rather than wrapping round.
+    EXPECT_EQ(lastLoginFromRecordTime(static_cast<int64_t>(4294967296LL)), 4294967295u);
+    EXPECT_EQ(lastLoginFromRecordTime(INT64_MAX), 4294967295u);
 }

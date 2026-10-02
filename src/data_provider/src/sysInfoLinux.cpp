@@ -723,8 +723,10 @@ nlohmann::json SysInfo::getUsers() const
     // The last login is the newest of lastlog, lastlog2 and the sessions open now. It is known for
     // every account before the loop because the failed attempts are counted since that login.
     std::unordered_map<std::string, uint32_t> lastLoginByName;
+    auto lastLoginKnown = false;
     {
         LastLoginProvider lastLoginProvider;
+        lastLoginKnown = lastLoginProvider.hasSource();
 
         for (const auto& user : collectedUsers)
         {
@@ -747,7 +749,7 @@ nlohmann::json SysInfo::getUsers() const
     }
 
     AuthFailuresProvider authFailuresProvider;
-    authFailuresProvider.load(lastLoginByName);
+    authFailuresProvider.load(lastLoginByName, lastLoginKnown);
 
     for (auto& user : collectedUsers)
     {
