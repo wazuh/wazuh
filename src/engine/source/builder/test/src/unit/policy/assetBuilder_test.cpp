@@ -1,3 +1,4 @@
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <base/behaviour.hpp>
@@ -530,13 +531,13 @@ using Expc = Expected<SuccessExpected, FailureExpected>;
 auto SUCCESS = Expc::success();
 auto FAILURE = Expc::failure();
 
-using BuildT = std::tuple<std::string, Expc>;
+using BuildT = std::tuple<std::string, std::string, Expc>;
 
 using BuildAsset = AssetBuilderTest<BuildT>;
 
 TEST_P(BuildAsset, Build)
 {
-    auto [assetStr, expected] = GetParam();
+    auto [assetStr, expectedMsg, expected] = GetParam();
     auto asset = json::Json(assetStr.c_str());
 
     if (expected)
@@ -551,42 +552,80 @@ TEST_P(BuildAsset, Build)
     else
     {
         expected.failCase()(m_mocks);
-        EXPECT_THROW(m_assetBuilder->operator()(asset), std::runtime_error);
+        if (!expectedMsg.empty())
+        {
+            EXPECT_THROW(
+                {
+                    try
+                    {
+                        m_assetBuilder->operator()(asset);
+                    }
+                    catch (const std::runtime_error& e)
+                    {
+                        EXPECT_THAT(e.what(), ::testing::HasSubstr(expectedMsg));
+                        throw;
+                    }
+                },
+                std::runtime_error);
+        }
+        else
+        {
+            EXPECT_THROW(m_assetBuilder->operator()(asset), std::runtime_error);
+        }
     }
 }
 
 INSTANTIATE_TEST_SUITE_P(
     AssetBuilder,
     BuildAsset,
-    ::testing::Values(BuildT(R"({})", FAILURE()),
-                      BuildT(R"({"noName": "name"})", FAILURE()),
-                      BuildT(R"({"name": 1})", FAILURE()),
-                      BuildT(R"({"name": "name"})",
+    ::testing::Values(BuildT(R"({})", "", FAILURE()),
+                      BuildT(R"({"noName": "name"})", "", FAILURE()),
+                      BuildT(R"({"name": 1})", "", FAILURE()),
+                      BuildT(R"({"name": "output/wazuh/0"})",
+                             "",
                              SUCCESS(
                                  [](Mocks mocks)
                                  {
                                      EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
                                          .WillOnce(testing::Return(mocks.m_mockDefs));
-                                     return Asset(base::Name("name"), assetExpr, {});
+                                     auto condition = base::And::create(base::Name("condition"), {traceExpr});
+                                     auto consequence = base::And::create(base::Name("stages"), {});
+                                     return Asset(base::Name("output/wazuh/0"),
+                                                  base::Implication::create(
+                                                      base::Name("output/wazuh/0"), condition, consequence),
+                                                  {});
                                  })),
-                      BuildT(R"({"name": "name", "metadata": {}})",
+                      BuildT(R"({"name": "output/wazuh/0", "metadata": {}})",
+                             "",
                              SUCCESS(
                                  [](Mocks mocks)
                                  {
                                      EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
                                          .WillOnce(testing::Return(mocks.m_mockDefs));
-                                     return Asset(base::Name("name"), assetExpr, {});
+                                     auto condition = base::And::create(base::Name("condition"), {traceExpr});
+                                     auto consequence = base::And::create(base::Name("stages"), {});
+                                     return Asset(base::Name("output/wazuh/0"),
+                                                  base::Implication::create(
+                                                      base::Name("output/wazuh/0"), condition, consequence),
+                                                  {});
                                  })),
-                      BuildT(R"({"name": "name", "parents": ["parent"]})",
+                      BuildT(R"({"name": "output/wazuh/0", "parents": ["parent"]})",
+                             "",
                              SUCCESS(
                                  [](Mocks mocks)
                                  {
                                      EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
                                          .WillOnce(testing::Return(mocks.m_mockDefs));
-                                     return Asset(base::Name("name"), assetExpr, {base::Name("parent")});
+                                     auto condition = base::And::create(base::Name("condition"), {traceExpr});
+                                     auto consequence = base::And::create(base::Name("stages"), {});
+                                     return Asset(base::Name("output/wazuh/0"),
+                                                  base::Implication::create(
+                                                      base::Name("output/wazuh/0"), condition, consequence),
+                                                  {base::Name("parent")});
                                  })),
-                      BuildT(R"({"name": "name", "parents": {}})", FAILURE()),
-                      BuildT(R"({"name": "name", "check": {}})",
+                      BuildT(R"({"name": "output/wazuh/0", "parents": {}})", "", FAILURE()),
+                      BuildT(R"({"name": "output/wazuh/0", "check": {}})",
+                             "",
                              SUCCESS(
                                  [](Mocks mocks)
                                  {
@@ -604,17 +643,247 @@ INSTANTIATE_TEST_SUITE_P(
                                      auto condition =
                                          base::And::create(base::Name("condition"), {checkExpr, traceExpr});
                                      auto consequence = base::And::create(base::Name("stages"), {});
-                                     return Asset(base::Name("name"),
-                                                  base::Implication::create(base::Name("name"), condition, consequence),
+                                     return Asset(base::Name("output/wazuh/0"),
+                                                  base::Implication::create(
+                                                      base::Name("output/wazuh/0"), condition, consequence),
                                                   {});
                                  })),
-                      BuildT(R"({"name": "name", "check": {}})",
+                      BuildT(R"({"name": "output/wazuh/0", "check": {}})",
+                             "",
                              FAILURE(
                                  [](Mocks mocks)
                                  {
                                      EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
                                          .WillOnce(testing::Throw(std::runtime_error("")));
                                      return None {};
-                                 }))));
+                                 })),
+                    // Stage validation: invalid cases (should fail)
+                    // filter + normalize
+                    BuildT(R"({"name": "filter/wazuh/0", "type": "pre-filter", "normalize": []})",
+                        "Invalid stage 'normalize' for filter asset",
+                        FAILURE()),
+                    // filter + parse|message
+                    BuildT(R"({"name": "filter/wazuh/0", "type": "pre-filter", "parse|message": []})",
+                        "Invalid stage 'parse|message' for filter asset",
+                        FAILURE()),
+                    // filter + outputs
+                    BuildT(R"({"name": "filter/wazuh/0", "type": "pre-filter", "outputs": []})",
+                        "Invalid stage 'outputs' for filter asset",
+                        FAILURE()),
+                    // decoder + outputs
+                    BuildT(R"({"name": "decoder/wazuh/0", "outputs": []})",
+                        "Invalid stage 'outputs' for decoder asset",
+                        FAILURE()),
+                    // output + normalize
+                    BuildT(R"({"name": "output/wazuh/0", "normalize": []})",
+                        "Invalid stage 'normalize' for output asset",
+                        FAILURE()),
+                    // output + parse|message
+                    BuildT(R"({"name": "output/wazuh/0", "parse|message": []})",
+                        "Invalid stage 'parse|message' for output asset",
+                        FAILURE()),
+                    // outputs + invalid operation
+                    BuildT(R"({"name": "output/wazuh/0", "outputs": [{"invalid_op": {}}]})",
+                        "Invalid output operation 'invalid_op' for output asset",
+                        FAILURE()),
+
+                    // Stage validation: valid cases (should pass)
+                    // filter + check
+                    BuildT(R"({"name": "filter/wazuh/0", "type": "pre-filter", "check": []})",
+                        "",
+                        SUCCESS(
+                            [](Mocks mocks)
+                            {
+                                EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
+                                    .WillOnce(testing::Return(mocks.m_mockDefs));
+                                auto checkExpr = base::Term<base::EngineOp>::create(
+                                    "check", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); });
+                                EXPECT_CALL(mocks.m_mockRegistry->getRegistry<StageBuilder>(), get("check"))
+                                    .WillOnce(testing::Return(
+                                        [checkExpr](const json::Json& value,
+                                                    const std::shared_ptr<const IBuildCtx>& ctx) -> base::Expression
+                                        { return checkExpr; }));
+                                auto condition = base::And::create(base::Name("condition"), {checkExpr, traceExpr});
+                                auto consequence = base::And::create(base::Name("stages"), {});
+                                return Asset(base::Name("filter/wazuh/0"),
+                                            base::Implication::create(base::Name("filter/wazuh/0"), condition, consequence),
+                                            {});
+                            })),
+                    // decoder + normalize
+                    BuildT(R"({"name": "decoder/wazuh/0", "normalize": []})",
+                        "",
+                        SUCCESS(
+                            [](Mocks mocks)
+                            {
+                                EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
+                                    .WillOnce(testing::Return(mocks.m_mockDefs));
+                                auto normalizeExpr = base::Term<base::EngineOp>::create(
+                                    "normalize", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); });
+                                EXPECT_CALL(mocks.m_mockRegistry->getRegistry<StageBuilder>(), get("normalize"))
+                                    .WillOnce(testing::Return(
+                                        [normalizeExpr](const json::Json& value,
+                                                        const std::shared_ptr<const IBuildCtx>& ctx) -> base::Expression
+                                        { return normalizeExpr; }));
+                                auto condition = base::And::create(base::Name("condition"), {traceExpr});
+                                auto consequence = base::And::create(base::Name("stages"), {normalizeExpr, automappingExpr});
+                                return Asset(base::Name("decoder/wazuh/0"),
+                                            base::Implication::create(base::Name("decoder/wazuh/0"), condition, consequence),
+                                            {});
+                            })),
+                    // decoder + parse|message
+                    BuildT(R"({"name": "decoder/wazuh/0", "parse|message": []})",
+                        "",
+                        SUCCESS(
+                            [](Mocks mocks)
+                            {
+                                EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
+                                    .WillOnce(testing::Return(mocks.m_mockDefs));
+                                auto parseExpr = base::Term<base::EngineOp>::create(
+                                    "parse", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); });
+                                EXPECT_CALL(mocks.m_mockRegistry->getRegistry<StageBuilder>(), get("parse"))
+                                    .WillOnce(testing::Return(
+                                        [parseExpr](const json::Json& value,
+                                                    const std::shared_ptr<const IBuildCtx>& ctx) -> base::Expression
+                                        { return parseExpr; }));
+                                auto condition = base::And::create(base::Name("condition"), {parseExpr, traceExpr});
+                                auto consequence = base::And::create(base::Name("stages"), {automappingExpr});
+                                return Asset(base::Name("decoder/wazuh/0"),
+                                            base::Implication::create(base::Name("decoder/wazuh/0"), condition, consequence),
+                                            {});
+                            })),
+                    // output + check
+                    BuildT(R"({"name": "output/wazuh/0", "check": []})",
+                        "",
+                        SUCCESS(
+                            [](Mocks mocks)
+                            {
+                                EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
+                                    .WillOnce(testing::Return(mocks.m_mockDefs));
+                                auto checkExpr = base::Term<base::EngineOp>::create(
+                                    "check", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); });
+                                EXPECT_CALL(mocks.m_mockRegistry->getRegistry<StageBuilder>(), get("check"))
+                                    .WillOnce(testing::Return(
+                                        [checkExpr](const json::Json& value,
+                                                    const std::shared_ptr<const IBuildCtx>& ctx) -> base::Expression
+                                        { return checkExpr; }));
+                                auto condition = base::And::create(base::Name("condition"), {checkExpr, traceExpr});
+                                auto consequence = base::And::create(base::Name("stages"), {});
+                                return Asset(base::Name("output/wazuh/0"),
+                                            base::Implication::create(base::Name("output/wazuh/0"), condition, consequence),
+                                            {});
+                            })),
+                    // output + outputs with first_of
+                    BuildT(R"({"name": "output/wazuh/0", "outputs": [{"first_of": {}}]})",
+                        "",
+                        SUCCESS(
+                            [](Mocks mocks)
+                            {
+                                EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
+                                    .WillOnce(testing::Return(mocks.m_mockDefs));
+                                auto outputsExpr = base::Term<base::EngineOp>::create(
+                                    "outputs", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); });
+                                EXPECT_CALL(mocks.m_mockRegistry->getRegistry<StageBuilder>(), get("outputs"))
+                                    .WillOnce(testing::Return(
+                                        [outputsExpr](const json::Json& value,
+                                                    const std::shared_ptr<const IBuildCtx>& ctx) -> base::Expression
+                                        { return outputsExpr; }));
+                                auto condition = base::And::create(base::Name("condition"), {traceExpr});
+                                auto consequence = base::And::create(base::Name("stages"), {outputsExpr});
+                                return Asset(base::Name("output/wazuh/0"),
+                                            base::Implication::create(base::Name("output/wazuh/0"), condition, consequence),
+                                            {});
+                            })),
+                    // decoder + parse| (empty field after pipe)
+                    BuildT(R"({"name": "decoder/wazuh/0", "parse|": []})",
+                        "Invalid parse stage 'parse|' for decoder asset 'decoder/wazuh/0': missing field",
+                        FAILURE()),
+                    // decoder + parse|field..invalid (invalid DotPath)
+                    BuildT(R"({"name": "decoder/wazuh/0", "parse|field..invalid": []})",
+                        "Invalid parse stage 'parse|field..invalid' for decoder asset",
+                        FAILURE()),
+                    // output + outputs: null (not an array)
+                    BuildT(R"({"name": "output/wazuh/0", "outputs": null})",
+                        "Invalid outputs stage for output asset 'output/wazuh/0'. Expected a non-empty array of objects",
+                        FAILURE()),
+                    // output + outputs: [] (empty array)
+                    BuildT(R"({"name": "output/wazuh/0", "outputs": []})",
+                        "Invalid outputs stage for output asset 'output/wazuh/0'. Expected a non-empty array of objects",
+                        FAILURE()),
+                    // output + outputs: ["string"] (item is not an object)
+                    BuildT(R"({"name": "output/wazuh/0", "outputs": ["string"]})",
+                        "Invalid outputs stage for output asset 'output/wazuh/0'. Expected every item to be an object",
+                        FAILURE()),
+                    // output + outputs: [{}] (empty object — no operation)
+                    BuildT(R"({"name": "output/wazuh/0", "outputs": [{}]})",
+                        "Invalid outputs stage for output asset 'output/wazuh/0'. Each item must contain exactly one operation",
+                        FAILURE()),
+                    // output + outputs: [{"first_of": {}, "file": {}}] (multiple operations in one item)
+                    BuildT(R"({"name": "output/wazuh/0", "outputs": [{"first_of": {}, "file": {}}]})",
+                        "Invalid outputs stage for output asset 'output/wazuh/0'. Each item must contain exactly one operation",
+                        FAILURE()),
+                    // output + outputs: [{"file": {}}]
+                    BuildT(R"({"name": "output/wazuh/0", "outputs": [{"file": {}}]})",
+                        "",
+                        SUCCESS(
+                            [](Mocks mocks)
+                            {
+                                EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
+                                    .WillOnce(testing::Return(mocks.m_mockDefs));
+                                auto outputsExpr = base::Term<base::EngineOp>::create(
+                                    "outputs", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); });
+                                EXPECT_CALL(mocks.m_mockRegistry->getRegistry<StageBuilder>(), get("outputs"))
+                                    .WillOnce(testing::Return(
+                                        [outputsExpr](const json::Json& value,
+                                                    const std::shared_ptr<const IBuildCtx>& ctx) -> base::Expression
+                                        { return outputsExpr; }));
+                                auto condition = base::And::create(base::Name("condition"), {traceExpr});
+                                auto consequence = base::And::create(base::Name("stages"), {outputsExpr});
+                                return Asset(base::Name("output/wazuh/0"),
+                                            base::Implication::create(base::Name("output/wazuh/0"), condition, consequence),
+                                            {});
+                            })),
+                    // output + outputs: [{"wazuh-indexer": {}}]
+                    BuildT(R"({"name": "output/wazuh/0", "outputs": [{"wazuh-indexer": {}}]})",
+                        "",
+                        SUCCESS(
+                            [](Mocks mocks)
+                            {
+                                EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
+                                    .WillOnce(testing::Return(mocks.m_mockDefs));
+                                auto outputsExpr = base::Term<base::EngineOp>::create(
+                                    "outputs", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); });
+                                EXPECT_CALL(mocks.m_mockRegistry->getRegistry<StageBuilder>(), get("outputs"))
+                                    .WillOnce(testing::Return(
+                                        [outputsExpr](const json::Json& value,
+                                                    const std::shared_ptr<const IBuildCtx>& ctx) -> base::Expression
+                                        { return outputsExpr; }));
+                                auto condition = base::And::create(base::Name("condition"), {traceExpr});
+                                auto consequence = base::And::create(base::Name("stages"), {outputsExpr});
+                                return Asset(base::Name("output/wazuh/0"),
+                                            base::Implication::create(base::Name("output/wazuh/0"), condition, consequence),
+                                            {});
+                            })),
+                    // decoder + definitions + normalize (definitions should be skipped)
+                    BuildT(R"({"name": "decoder/wazuh/0", "definitions": {"foo": "bar"}, "normalize": []})",
+                        "",
+                        SUCCESS(
+                            [](Mocks mocks)
+                            {
+                                EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_))
+                                    .WillOnce(testing::Return(mocks.m_mockDefs));
+                                auto normalizeExpr = base::Term<base::EngineOp>::create(
+                                    "normalize", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); });
+                                EXPECT_CALL(mocks.m_mockRegistry->getRegistry<StageBuilder>(), get("normalize"))
+                                    .WillOnce(testing::Return(
+                                        [normalizeExpr](const json::Json& value,
+                                                        const std::shared_ptr<const IBuildCtx>& ctx) -> base::Expression
+                                        { return normalizeExpr; }));
+                                auto condition = base::And::create(base::Name("condition"), {traceExpr});
+                                auto consequence = base::And::create(base::Name("stages"), {normalizeExpr, automappingExpr});
+                                return Asset(base::Name("decoder/wazuh/0"),
+                                            base::Implication::create(base::Name("decoder/wazuh/0"), condition, consequence),
+                                            {});
+                            }))
+                        ));
 
 } // namespace assetbuildtest
