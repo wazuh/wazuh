@@ -12,6 +12,9 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include "filesystemHelper.h"
+#include "stringHelper.h"
+#include <filesystem>
+#include <fstream>
 
 class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
@@ -75,4 +78,151 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["version"], "1.0.0.6");
         }
     }
+}
+
+class ChromeExtensionsMalformedFilesTests : public ::testing::Test
+{
+    protected:
+        std::filesystem::path m_homePath;
+
+        void SetUp() override
+        {
+            m_homePath = std::filesystem::temp_directory_path() /
+                         ("chrome_extensions_test_" + std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()));
+            std::filesystem::remove_all(m_homePath);
+        }
+
+        void TearDown() override
+        {
+            std::filesystem::remove_all(m_homePath);
+        }
+
+        void writeFile(const std::filesystem::path& relativePath, const std::string& content)
+        {
+            const auto fullPath = m_homePath / relativePath;
+            std::filesystem::create_directories(fullPath.parent_path());
+            std::ofstream file(fullPath);
+            file << content;
+        }
+
+        nlohmann::json collect()
+        {
+            auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
+            EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(m_homePath.string()));
+            EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::_)).WillRepeatedly(::testing::Return("1000"));
+
+            chrome::ChromeExtensionsProvider chromeExtensionsProvider(mockExtensionsWrapper);
+            return chromeExtensionsProvider.collect();
+        }
+
+        static const nlohmann::json* findByName(const nlohmann::json& extensions, const std::string& name)
+        {
+            for (const auto& extension : extensions)
+            {
+                if (extension["name"] == name)
+                {
+                    return &extension;
+                }
+            }
+
+            return nullptr;
+        }
+
+        static const nlohmann::json* findByPathSuffix(const nlohmann::json& extensions, const std::string& suffix)
+        {
+            for (const auto& extension : extensions)
+            {
+                if (Utils::endsWith(extension["path"].get<std::string>(), suffix))
+                {
+                    return &extension;
+                }
+            }
+
+            return nullptr;
+        }
+};
+
+TEST_F(ChromeExtensionsMalformedFilesTests, UnexpectedFieldTypesDoNotDropOtherExtensions)
+{
+    const std::string profile = "bad-user/.config/google-chrome/Default/";
+
+    writeFile(profile + "Preferences", R"({
+        "profile": {"name": 5},
+        "extensions": {"settings": {
+            "refbad": {"path": "refbad/1.0", "state": "enabled", "from_webstore": "yes", "first_install_time": 13394392373345452},
+            "refparent": {"path": "../../other"},
+            "refnonstring": {"path": 42}
+        }}
+    })");
+    writeFile(profile + "Secure Preferences", "{}");
+    writeFile(profile + "Extensions/refbad/1.0/manifest.json", R"({"name": "Ref Bad", "version": "1.0", "background": {"persistent": "true"}})");
+    writeFile(profile + "Extensions/unrefbad/1.0/manifest.json",
+              R"({"name": ["x"], "version": 1, "description": {"a": 1}, "key": 7, "author": 3, "update_url": false, "default_locale": "en", "background": 1})");
+    writeFile(profile + "Extensions/unrefbad/1.0/_locales/en/messages.json", "{not json");
+    writeFile(profile + "Extensions/unreflocale/2.0/manifest.json", R"({"name": "__MSG_appName__", "version": "2.0", "default_locale": "en"})");
+    writeFile(profile + "Extensions/unreflocale/2.0/_locales/en/messages.json", R"({"appName": "not an object"})");
+    writeFile(profile + "Extensions/broken/1.0/manifest.json", "{not json");
+
+    writeFile("good-user/.config/google-chrome/Default/Preferences", R"({"extensions": "not an object"})");
+    writeFile("good-user/.config/google-chrome/Default/Secure Preferences", "{}");
+    writeFile("good-user/.config/google-chrome/Default/Extensions/good/1.0/manifest.json", R"({"name": "Good", "version": "1.0"})");
+
+    nlohmann::json extensionsJson;
+    ASSERT_NO_THROW(extensionsJson = collect());
+    ASSERT_EQ(extensionsJson.size(), static_cast<size_t>(4));
+
+    const auto* refBad = findByName(extensionsJson, "Ref Bad");
+    ASSERT_NE(refBad, nullptr);
+    EXPECT_EQ((*refBad)["referenced"], "1");
+    EXPECT_EQ((*refBad)["state"], "1");
+    EXPECT_EQ((*refBad)["from_webstore"], "0");
+    EXPECT_EQ((*refBad)["install_time"], "");
+    EXPECT_EQ((*refBad)["persistent"], "0");
+    EXPECT_EQ((*refBad)["profile"], "");
+
+    const auto* unrefBad = findByPathSuffix(extensionsJson, "unrefbad/1.0");
+    ASSERT_NE(unrefBad, nullptr);
+    EXPECT_EQ((*unrefBad)["referenced"], "0");
+    EXPECT_EQ((*unrefBad)["name"], "");
+    EXPECT_EQ((*unrefBad)["version"], "");
+    EXPECT_EQ((*unrefBad)["description"], "");
+    EXPECT_EQ((*unrefBad)["author"], "");
+    EXPECT_EQ((*unrefBad)["update_url"], "");
+    EXPECT_EQ((*unrefBad)["identifier"], "");
+    EXPECT_EQ((*unrefBad)["persistent"], "0");
+
+    const auto* unrefLocale = findByPathSuffix(extensionsJson, "unreflocale/2.0");
+    ASSERT_NE(unrefLocale, nullptr);
+    EXPECT_EQ((*unrefLocale)["name"], "__MSG_appName__");
+    EXPECT_EQ((*unrefLocale)["version"], "2.0");
+
+    const auto* good = findByName(extensionsJson, "Good");
+    ASSERT_NE(good, nullptr);
+    EXPECT_EQ((*good)["version"], "1.0");
+    EXPECT_EQ((*good)["uid"], "1000");
+
+    EXPECT_EQ(findByPathSuffix(extensionsJson, "broken/1.0"), nullptr);
+}
+
+TEST_F(ChromeExtensionsMalformedFilesTests, InvalidManifestOnlySkipsThatExtension)
+{
+    const std::string profile = "user/.config/google-chrome/Default/";
+
+    writeFile(profile + "Preferences", "{}");
+    writeFile(profile + "Secure Preferences", "{}");
+    writeFile(profile + "Extensions/broken/1.0/manifest.json", "{not json");
+    writeFile(profile + "Extensions/array/1.0/manifest.json", "[1, 2, 3]");
+    writeFile(profile + "Extensions/good/1.0/manifest.json", R"({"name": "Good", "version": "1.0"})");
+
+    nlohmann::json extensionsJson;
+    ASSERT_NO_THROW(extensionsJson = collect());
+    ASSERT_EQ(extensionsJson.size(), static_cast<size_t>(2));
+
+    const auto* arrayManifest = findByPathSuffix(extensionsJson, "array/1.0");
+    ASSERT_NE(arrayManifest, nullptr);
+    EXPECT_EQ((*arrayManifest)["name"], "");
+    EXPECT_EQ((*arrayManifest)["version"], "");
+
+    EXPECT_NE(findByName(extensionsJson, "Good"), nullptr);
+    EXPECT_EQ(findByPathSuffix(extensionsJson, "broken/1.0"), nullptr);
 }
