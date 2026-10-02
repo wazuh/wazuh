@@ -101,8 +101,21 @@ namespace chrome
         return has_underscore; // must contain at least one underscore
     }
 
+    bool ChromeExtensionsProvider::isValidLocaleName(const std::string& locale)
+    {
+        return !locale.empty() && std::all_of(locale.begin(), locale.end(), [](unsigned char c)
+        {
+            return std::isalnum(c) || c == '_' || c == '-';
+        });
+    }
+
     void ChromeExtensionsProvider::localizeParameters(ChromeExtension& extension)
     {
+        if (!isValidLocaleName(extension.default_locale))
+        {
+            return;
+        }
+
         const std::string& extensionPath = extension.path;
         const std::string& defaultLocale = extension.default_locale;
 
