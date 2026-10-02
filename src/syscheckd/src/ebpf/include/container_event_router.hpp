@@ -40,6 +40,27 @@
  * not a gap this class can close: the baseline walk resolves containers through
  * the same connector, so such a container was never baselined either and has no
  * stored state to reconcile against. The blindness is shared, not introduced.
+ *
+ * WHEN THE OWNER FILTERS IN THE KERNEL (setFiltering), one thing above changes
+ * and one thing does not.
+ *
+ * What changes: a container the connector has not yet listed produces no events
+ * here at all, rather than events filed under an unknown cgroup. So the unknown
+ * path stops being how a new container is discovered, and the connector's list
+ * becomes the only discovery mechanism. applyContainerList() takes that over.
+ *
+ * What does not change: what a newly discovered container actually gets. Today
+ * its early events are classified against an unidentified cgroup and discarded
+ * — their paths are not recoverable — and the container is re-walked once it is
+ * identified. Under filtering those same events are discarded one layer lower,
+ * and the container is re-walked once it is listed. Both end in a walk of
+ * current on-disk state; only the latency to the trigger differs. A file
+ * created and deleted inside that window is missed either way, which is why
+ * this is a latency change rather than a correctness one.
+ *
+ * The reasoning about unattributed drops above is unchanged but largely moot
+ * under filtering: with the host's own cgroups discarded in the kernel, there
+ * is very little left that can drop events without being identifiable.
  */
 
 #ifndef _CONTAINER_EVENT_ROUTER_HPP
@@ -68,6 +89,7 @@ struct RouterStats
     unsigned long long global_escalations{0}; /* whole-node re-baselines requested */
     unsigned long long late_escalations{0};   /* containers identified after their events */
     unsigned long long renames_routed{0};     /* renames escalated (source path is never reported) */
+    unsigned long long discovery_escalations{0}; /* containers walked because the kernel filter had not reached them */
 };
 
 class ContainerEventRouter
@@ -236,13 +258,46 @@ class ContainerEventRouter
         /* --- resolver thread ---------------------------------------------- */
 
         /* Apply a connector list refresh and escalate every container whose
-         * events (or losses) predated its identification. */
-        void applyContainerList(const std::vector<std::pair<std::uint64_t, std::string>>& containers)
+         * events (or losses) predated its identification. Returns the cgroup
+         * delta, so a caller that filters in the kernel can keep its allowlist
+         * in step with the map.
+         *
+         * When filtering is on, a container that is merely NEW to the list
+         * escalates as well, and that difference is the whole reason this
+         * returns anything. In RT_CGROUP_MODE_ALL "new to the list" says
+         * nothing about what was missed: its events had been arriving all
+         * along, either attributed or filed as unknown, and the unknown path
+         * already escalates. In allowlist mode they were discarded in the
+         * kernel before anyone could file anything, so the only honest account
+         * of what changed inside that container is a walk.
+         *
+         * This costs one walk per newly listed container, which is also the
+         * cost today — an unlisted container's first event escalates it by the
+         * other route. What changes is the trigger, not the work. */
+        CgroupListDelta applyContainerList(const std::vector<std::pair<std::uint64_t, std::string>>& containers)
         {
-            escalate(m_map.install(containers));
+            auto delta = m_map.install(containers);
+
+            escalate(delta.escalate);
+
+            if (m_filtering)
+            {
+                for (const auto& entry : delta.added)
+                {
+                    bump(m_stats.discovery_escalations);
+                    m_staging.onDrops(entry.second);
+                }
+            }
+
+            return delta;
         }
 
-        /* Apply one on-demand resolution. */
+        /* Apply one on-demand resolution.
+         *
+         * Deliberately NOT given the filtering treatment above: reaching here
+         * at all means an event for this cgroup was delivered, so either
+         * filtering is off or the cgroup was already allowed. There is no
+         * "never saw its events" case to cover. */
         void applyContainerResolution(std::uint64_t cgroup_id, const std::string& container_id)
         {
             if (m_map.noteContainer(cgroup_id, container_id))
@@ -268,6 +323,15 @@ class ContainerEventRouter
             }
         }
 
+        /* Tell the router that its owner discards events in the kernel for any
+         * cgroup not on an allowlist, which changes what a newly listed
+         * container means. Set before the first refresh that should act on it;
+         * see applyContainerList(). */
+        void setFiltering(bool filtering)
+        {
+            m_filtering = filtering;
+        }
+
         RouterStats stats() const
         {
             RouterStats out;
@@ -278,6 +342,7 @@ class ContainerEventRouter
             out.drops_host = m_stats.drops_host.load(std::memory_order_relaxed);
             out.drops_deferred = m_stats.drops_deferred.load(std::memory_order_relaxed);
             out.global_escalations = m_stats.global_escalations.load(std::memory_order_relaxed);
+            out.discovery_escalations = m_stats.discovery_escalations.load(std::memory_order_relaxed);
             out.late_escalations = m_stats.late_escalations.load(std::memory_order_relaxed);
             out.renames_routed = m_stats.renames_routed.load(std::memory_order_relaxed);
             return out;
@@ -299,6 +364,7 @@ class ContainerEventRouter
             std::atomic<unsigned long long> global_escalations{0};
             std::atomic<unsigned long long> late_escalations{0};
             std::atomic<unsigned long long> renames_routed{0};
+            std::atomic<unsigned long long> discovery_escalations{0};
         };
 
         void bump(std::atomic<unsigned long long>& counter)
@@ -321,6 +387,10 @@ class ContainerEventRouter
 
         CgroupContainerMap& m_map;
         ContainerEventStaging& m_staging;
+
+        /* Written once at startup, before the resolver thread exists, and read
+         * on that thread only. Not atomic because there is no second writer. */
+        bool m_filtering{false};
 
         Counters m_stats;
 };
