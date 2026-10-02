@@ -578,11 +578,28 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
      * re-walk, immediately after the baseline walk that already read all of
      * them.
      *
-     * If the connector is unreachable right now this seeds nothing and the
-     * resolver's first cycle escalates every container it then finds. That is
-     * the correct outcome rather than the one above: the baseline walk resolves
-     * containers through the same connector, so an unreachable connector means
-     * none of them were walked either. */
+     * This is ONE attempt, bounded by the client's 1 s timeout. It is not
+     * retried, and that is worth stating because the component immediately
+     * after it does retry: the baseline scanner waits up to 10 x 500 ms for the
+     * connector, because the container_instances socket binds BEFORE its first
+     * enumeration completes, so "reachable but empty" is a normal cold-start
+     * answer rather than a failure
+     * (container_baseline_scanner.cpp's kListRetryAttempts).
+     *
+     * So the two can disagree: this seed can come back empty while the baseline,
+     * a moment later, waits and gets the full list. When that happens the
+     * resolver's first non-empty refresh sees every container as newly listed
+     * and escalates all of them, and the node is walked a second time just after
+     * the baseline walked it.
+     *
+     * That is wasteful, not wrong - a walk re-reads current state and produces
+     * no alerts for rows that have not changed - and it is deliberately
+     * preferred to the alternative. Suppressing those escalations would mean
+     * trusting that the baseline covered every container, and the baseline takes
+     * its list at a single instant: a container created while the walk is still
+     * running is in neither that list nor the suppressed set, and would be
+     * allowlisted but never walked. A duplicated walk is recoverable; a
+     * container whose rootfs is never enumerated is not. */
     impl->refreshContainerList();
     impl->router.setFiltering(impl->allowlist_active);
 
