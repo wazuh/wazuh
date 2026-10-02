@@ -26,38 +26,13 @@ class AuthFailuresProviderTests : public ::testing::Test
         {
             m_tempDir = std::filesystem::temp_directory_path() / "auth_failures_provider_test";
             std::filesystem::remove_all(m_tempDir);
-            std::filesystem::create_directories(m_tempDir / "pam.d");
-            std::filesystem::create_directories(m_tempDir / "faillock");
-            m_conf = (m_tempDir / "faillock.conf").string();
-            m_pamDir = (m_tempDir / "pam.d").string();
+            std::filesystem::create_directories(m_tempDir);
             m_btmp = (m_tempDir / "btmp").string();
         }
 
         void TearDown() override
         {
             std::filesystem::remove_all(m_tempDir);
-        }
-
-        /// @brief Wires pam_faillock in a PAM stack and points the configuration at the tally directory.
-        void enableFaillock(const std::string& pamLine = "auth required pam_faillock.so preauth") const
-        {
-            std::ofstream(m_pamDir + "/system-auth") << "auth sufficient pam_unix.so\n" << pamLine << "\n";
-            std::ofstream(m_conf) << "# dir = /nonexistent\ndir = " << (m_tempDir / "faillock").string() << "\n";
-        }
-
-        /// @brief Writes a tally file, one 64-byte record per {status, time}.
-        void writeTally(const std::string& user, const std::vector<std::pair<uint16_t, uint64_t>>& records) const
-        {
-            std::ofstream file(m_tempDir / "faillock" / user, std::ios::binary);
-
-            for (const auto& record : records)
-            {
-                char raw[64] = {};
-                std::strcpy(raw, "127.0.0.1");
-                std::memcpy(raw + 54, &record.first, sizeof(record.first));
-                std::memcpy(raw + 56, &record.second, sizeof(record.second));
-                file.write(raw, sizeof(raw));
-            }
         }
 
         /// @brief Writes btmp with one record per {user, time}, then appends a truncated record.
@@ -83,89 +58,19 @@ class AuthFailuresProviderTests : public ::testing::Test
 
         AuthFailuresProvider makeProvider(size_t tailBytes = 1024 * 1024) const
         {
-            return AuthFailuresProvider(m_conf, m_pamDir, m_btmp, tailBytes);
+            return AuthFailuresProvider(m_btmp, tailBytes);
         }
 
         std::filesystem::path m_tempDir;
-        std::string m_conf;
-        std::string m_pamDir;
         std::string m_btmp;
 };
-
-TEST_F(AuthFailuresProviderTests, FaillockCountsValidRecords)
-{
-    enableFaillock();
-    // Three valid records in any order and one already expired.
-    writeTally("alice", {{1, 100}, {1, 300}, {0, 999}, {1, 200}});
-
-    auto provider = makeProvider();
-    provider.load({{"alice", 0}});
-
-    const auto failures = provider.get("alice");
-    EXPECT_TRUE(failures.known);
-    EXPECT_EQ(failures.count, 3u);
-    EXPECT_EQ(failures.latest, 300u);
-}
-
-TEST_F(AuthFailuresProviderTests, FaillockWithoutTallyFileMeansNoFailures)
-{
-    enableFaillock();
-
-    auto provider = makeProvider();
-    provider.load({{"alice", 0}});
-
-    const auto failures = provider.get("alice");
-    EXPECT_TRUE(failures.known);
-    EXPECT_EQ(failures.count, 0u);
-    EXPECT_EQ(failures.latest, 0u);
-}
-
-TEST_F(AuthFailuresProviderTests, FaillockWinsOverBtmp)
-{
-    enableFaillock();
-    writeTally("alice", {{1, 100}});
-    writeBtmp({{"alice", 500}, {"alice", 600}});
-
-    auto provider = makeProvider();
-    provider.load({{"alice", 0}});
-
-    EXPECT_EQ(provider.get("alice").count, 1u);
-}
-
-TEST_F(AuthFailuresProviderTests, CommentedFaillockIsNotActive)
-{
-    enableFaillock("# auth required pam_faillock.so preauth");
-    writeTally("alice", {{1, 100}, {1, 200}, {1, 300}});
-    writeBtmp({{"alice", 500}});
-
-    auto provider = makeProvider();
-    provider.load({{"alice", 0}});
-
-    // btmp answers, not the tally.
-    const auto failures = provider.get("alice");
-    EXPECT_TRUE(failures.known);
-    EXPECT_EQ(failures.count, 1u);
-    EXPECT_EQ(failures.latest, 500u);
-}
-
-TEST_F(AuthFailuresProviderTests, FaillockWithoutTallyDirectoryFallsBackToBtmp)
-{
-    enableFaillock();
-    std::filesystem::remove_all(m_tempDir / "faillock");
-    writeBtmp({{"alice", 500}});
-
-    auto provider = makeProvider();
-    provider.load({{"alice", 0}});
-
-    EXPECT_EQ(provider.get("alice").count, 1u);
-}
 
 TEST_F(AuthFailuresProviderTests, BtmpCountsFailuresSinceTheLastLogin)
 {
     writeBtmp({{"alice", 500}, {"alice", 1500}, {"alice", 2000}, {"mallory", 1600}, {"bob", 100}}, true);
 
     auto provider = makeProvider();
-    provider.load({{"alice", 1000}, {"bob", 0}, {"dave", 0}});
+    provider.load({{"alice", 1000}, {"bob", 0}, {"dave", 0}}, true);
 
     const auto alice = provider.get("alice");
     EXPECT_TRUE(alice.known);
@@ -191,19 +96,33 @@ TEST_F(AuthFailuresProviderTests, BtmpIsReadFromTheTailOnly)
 
     // Room for the last two records only.
     auto provider = makeProvider(2 * sizeof(struct utmpx));
-    provider.load({{"alice", 0}});
+    provider.load({{"alice", 0}}, true);
 
     const auto failures = provider.get("alice");
     EXPECT_EQ(failures.count, 2u);
     EXPECT_EQ(failures.latest, 500u);
 }
 
-TEST_F(AuthFailuresProviderTests, EmptyBtmpMeansNoFailures)
+TEST_F(AuthFailuresProviderTests, EmptyBtmpIsUnknownNotZero)
 {
+    // Every distribution ships /var/log/btmp empty, and it stays that way where nothing records
+    // failures into it. Answering zero there would report a confident "no failed logins" for every
+    // account on the host, which is the false zero this collector exists to avoid.
     writeBtmp({});
 
     auto provider = makeProvider();
-    provider.load({{"alice", 0}});
+    provider.load({{"alice", 0}}, true);
+
+    EXPECT_FALSE(provider.get("alice").known);
+}
+
+TEST_F(AuthFailuresProviderTests, BtmpWithOnlyUnattributableRecordsIsKnown)
+{
+    // The file is being written, so a count of zero for an account with no entry is a real zero.
+    writeBtmp({{"mallory", 500}});
+
+    auto provider = makeProvider();
+    provider.load({{"alice", 0}}, true);
 
     const auto failures = provider.get("alice");
     EXPECT_TRUE(failures.known);
@@ -213,7 +132,7 @@ TEST_F(AuthFailuresProviderTests, EmptyBtmpMeansNoFailures)
 TEST_F(AuthFailuresProviderTests, NoSourceIsUnknown)
 {
     auto provider = makeProvider();
-    provider.load({{"alice", 0}});
+    provider.load({{"alice", 0}}, true);
 
     EXPECT_FALSE(provider.get("alice").known);
 }
@@ -223,7 +142,19 @@ TEST_F(AuthFailuresProviderTests, BtmpThatIsNotAFileIsUnknown)
     std::filesystem::create_directories(m_btmp);
 
     auto provider = makeProvider();
-    provider.load({{"alice", 0}});
+    provider.load({{"alice", 0}}, true);
+
+    EXPECT_FALSE(provider.get("alice").known);
+}
+
+TEST_F(AuthFailuresProviderTests, WithoutALastLoginSourceTheCountIsUnknown)
+{
+    // Debian 13 ships no /var/log/lastlog. Without one every account reads as never having logged in,
+    // so every failure btmp still holds would be counted against it however long ago it happened.
+    writeBtmp({{"alice", 100}, {"alice", 200}, {"alice", 300}});
+
+    auto provider = makeProvider();
+    provider.load({{"alice", 0}}, false);
 
     EXPECT_FALSE(provider.get("alice").known);
 }

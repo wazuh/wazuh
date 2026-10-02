@@ -11,11 +11,37 @@
 
 #include <cstdint>
 #include <memory>
+#include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <sys/types.h>
 
 #include "ipread_wrapper.hpp"
+
+/// Converts a lastlog timestamp to the type the inventory reports.
+///
+/// glibc sizes the on-disk field per platform. Where it is 32 bits a time past 2038-01-19 is stored
+/// negative and has to be read back unsigned to recover it. Where it is 64 bits it does not wrap, so
+/// a negative value is not a login at all, and a value past the reported range is held at the maximum
+/// rather than wrapping round. Templated so both branches can be exercised on either architecture.
+/// @param raw The timestamp as held in the record.
+template<typename T>
+uint32_t lastLoginFromRecordTime(T raw)
+{
+    if constexpr (sizeof(T) <= sizeof(int32_t))
+    {
+        return static_cast<uint32_t>(raw);
+    }
+    else
+    {
+        if (raw <= 0)
+        {
+            return 0;
+        }
+
+        return static_cast<uint32_t>(std::min<int64_t>(static_cast<int64_t>(raw), UINT32_MAX));
+    }
+}
 
 /// LastLoginProvider class
 /// This class is responsible for finding the most recent login of an account, whether or not it has a session open.
@@ -43,6 +69,11 @@ class LastLoginProvider
         /// @param userName The name of the account.
         /// @return Epoch seconds of the most recent recorded login, 0 when no source has one.
         uint32_t lastLogin(uid_t uid, const std::string& userName) const;
+
+        /// Tells whether the host offers any source of last logins.
+        /// Without one every account looks as if it had never logged in, which makes "failures since
+        /// the last login" unanswerable rather than zero.
+        bool hasSource() const;
 
     private:
         /// Reads every account of the lastlog2 database into m_lastlog2.

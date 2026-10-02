@@ -11,23 +11,26 @@
 #include "pread_wrapper.hpp"
 #include "filesystemHelper.h"
 
+#include <lastlog.h>
+
 #include <sqlite3.h>
 
 #include <algorithm>
+#include <cstdint>
 
 constexpr const char* DEFAULT_LASTLOG_PATH = "/var/log/lastlog";
 constexpr const char* DEFAULT_LASTLOG2_PATH = "/var/lib/lastlog/lastlog2.db";
 constexpr int LASTLOG2_BUSY_TIMEOUT_MS = 100;
 
-// On-disk record of lastlog. <lastlog.h> is not used because glibc changes ll_time to 64 bits on some builds.
-struct LastlogRecord
-{
-    int32_t ll_time;
-    char ll_line[32];
-    char ll_host[256];
-};
+// On-disk record of lastlog, taken from the system so the layout matches what shadow and pam write.
+// glibc selects ll_time's width from __WORDSIZE_TIME64_COMPAT32, so the record is 292 bytes where
+// that macro is 1 (x86_64) and 296 where it is 0 (aarch64 among others). Hardcoding either width
+// shifts every offset by 4 bytes per uid on the other, which reads a different account's record.
+using LastlogRecord = struct lastlog;
 
-static_assert(sizeof(LastlogRecord) == 292, "lastlog records are 292 bytes");
+static_assert(sizeof(LastlogRecord) == sizeof(int32_t) + 32 + 256 ||
+              sizeof(LastlogRecord) == sizeof(int64_t) + 32 + 256,
+              "unexpected lastlog record layout");
 
 LastLoginProvider::LastLoginProvider(const std::string& lastlogPath, const std::string& lastlog2Path, std::shared_ptr<IPreadWrapper> reader)
     : m_reader(std::move(reader))
@@ -83,6 +86,11 @@ void LastLoginProvider::loadLastlog2(const std::string& lastlog2Path)
     sqlite3_close(db);
 }
 
+bool LastLoginProvider::hasSource() const
+{
+    return m_lastlogFd >= 0 || !m_lastlog2.empty();
+}
+
 uint32_t LastLoginProvider::lastLogin(uid_t uid, const std::string& userName) const
 {
     uint32_t lastLogin = 0;
@@ -95,8 +103,7 @@ uint32_t LastLoginProvider::lastLogin(uid_t uid, const std::string& userName) co
 
         if (m_reader->pread(m_lastlogFd, &record, sizeof(record), offset) == static_cast<ssize_t>(sizeof(record)))
         {
-            // Unsigned, so a login after 2038-01-19 is not read as negative.
-            lastLogin = static_cast<uint32_t>(record.ll_time);
+            lastLogin = lastLoginFromRecordTime(record.ll_time);
         }
     }
 
