@@ -3,8 +3,8 @@
 ## Server
 
 Below is a list of versions supported in this version (5.X.X):
-- Amazon Linux (x86_64, ARM64): 2, 2023
-- Ubuntu (x86_64, ARM64): 22.04, 24.04
+- Amazon Linux (x86_64, ARM64): 2023
+- Ubuntu (x86_64, ARM64): 24.04, 26.04
 - Red Hat (x86_64, ARM64): 9, 10
 
 ## Agent
@@ -18,9 +18,9 @@ Below is a list of versions supported in this version (5.X.X):
   - Amazon Linux: 1 and later
   - Debian: 7 and later
   - Fedora: 41 and later
-  - openSUSE Leap: 15
+  - openSUSE Leap: 15, 16
   - Oracle Linux: 6 and later
-  - SUSE / SLES: 15
+  - SUSE / SLES: 15, 16
   - Ubuntu: 18.04 and later
 - macOS: 14 or later
 - Windows: 7 and later

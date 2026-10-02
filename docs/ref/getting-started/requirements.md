@@ -7,7 +7,7 @@
 The following operating systems are recommended for Wazuh 5.x:
 
 - Amazon Linux 2023
-- Ubuntu 22.04, 24.04
+- Ubuntu 24.04, 26.04
 - Red Hat Enterprise Linux 9, 10
 
 ### Hardware Requirements
