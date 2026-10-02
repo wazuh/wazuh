@@ -17,33 +17,13 @@
 #include "stringHelper.h"
 #include "filesystemHelper.h"
 #include "safe_file_reader.hpp"
+#include "json_field_helpers.hpp"
 
 #define MAX_PATH_LENGTH 4096
 
-namespace
-{
-    // Returns the string stored under key, or an empty string if it is missing or has another type.
-    std::string getStringField(const nlohmann::json& object, const char* key)
-    {
-        const auto it = object.find(key);
-        return (it != object.end() && it->is_string()) ? it->get<std::string>() : "";
-    }
-
-    // Returns the boolean stored under key, or defaultValue if it is missing or has another type.
-    bool getBoolField(const nlohmann::json& object, const char* key, bool defaultValue)
-    {
-        const auto it = object.find(key);
-        return (it != object.end() && it->is_boolean()) ? it->get<bool>() : defaultValue;
-    }
-
-    // Returns the object stored under key, or an empty object if it is missing or has another type.
-    const nlohmann::json& getObjectField(const nlohmann::json& object, const char* key)
-    {
-        static const nlohmann::json EMPTY_OBJECT = nlohmann::json::object();
-        const auto it = object.find(key);
-        return (it != object.end() && it->is_object()) ? *it : EMPTY_OBJECT;
-    }
-}
+using JsonFieldHelpers::getBoolField;
+using JsonFieldHelpers::getObjectField;
+using JsonFieldHelpers::getStringField;
 
 namespace chrome
 {
