@@ -396,9 +396,14 @@ statfunc void submit_event(__u16 event_type, const char* filename, __u64 ino, __
     evt->timestamp_ns = bpf_ktime_get_boot_ns();
 
     evt->pid = BPF_CORE_READ(current_task, tgid);
+    /* bpf_get_current_uid_gid() packs the pair as (gid << 32 | uid), so the uid
+     * is the LOW half. Reading them the other way round reported every event's
+     * gid as its uid and vice versa. Nothing caught it because the only consumer
+     * discards both fields, but host FIM whodata maps them straight onto an
+     * alert's user and group attribution. */
     __u64 uid_gid = bpf_get_current_uid_gid();
-    evt->uid = uid_gid >> 32;
-    evt->gid = uid_gid;
+    evt->uid = (__u32)uid_gid;
+    evt->gid = (__u32)(uid_gid >> 32);
 
     evt->inode = ino;
     evt->dev = dev;

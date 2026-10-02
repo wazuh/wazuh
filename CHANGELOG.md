@@ -49,6 +49,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#37396](https://github.com/wazuh/wazuh/issues/37396) | Corrected the user and group reported by the container file monitoring engine, which were interchanged. |
 
 ## Prior versions
 
