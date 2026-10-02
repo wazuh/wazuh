@@ -59,7 +59,7 @@ repeated here.
 | **Q12** | What does the agent do on cgroup v1? *(D11)* | #37533 | this project + product | decision |
 | **Q13** | What kernel and LSM configuration is *claimed* supported? | #37533 | this project + product | decision + test matrix |
 | **Q14** | What privileges does the feature require, and what degrades without them? | #37203 | this project + product | decision + code |
-| **Q15** | Do two eBPF engines ship, or does A4 land first? *(D9)* — **measured 2026-10-01: D = 1.78%, escalation band; awaiting a product call** | #37533 | this project | ~~measurement~~ decision |
+| **Q15** | Do two eBPF engines ship, or does A4 land first? *(D9)* — **measured: 1.78% under LSM, 2.00% under kprobe (the majority configuration), where throughput halves; straddles the ship-blocker boundary, awaiting a product call** | #37533 | this project | ~~measurement~~ decision |
 | **Q16** | What is v1's supported container count, and what happens above it? | #37203 | product + this project | measurement (item 39) |
 | **Q17** | Which shipped defaults are still placeholders? | #37532 / #37534 | this project | measurement (item 39) |
 | ~~**Q18**~~ | ~~What is the operator-facing configuration surface across two consumers?~~ **ANSWERED: one `<container_security>` block, one `<enabled>` per consumer.** | #37203 | product + this project | decision |
@@ -408,8 +408,15 @@ message either way rather than left for a reviewer to discover.
 > 1.77% alone and 1.78% alongside the container stack, so a collapse recovers nearly a whole
 > stack's share); throughput fell **20.4%** against the no-eBPF floor with both loaded, versus 7.2%
 > with whodata alone; and the host measured was **LSM-active**, so the kprobe-mode filter divergence
-> that would make the duplication worse on the majority of the estate was never exercised —
-> 1.78% is a lower bound for the common case.
+> that would make the duplication worse on the majority of the estate was never exercised.
+>
+> **Kprobe arm, 2026-10-02.** Now run, with forced program selection. The metric rises to a median
+> of **2.00%** (spread 1.86 – 2.11), so it straddles the ship-blocker boundary rather than sitting
+> inside the band. The predicted filter divergence did **not** appear and remains untested; the real
+> cost is the path derivation, roughly double per invocation because the kprobe programs walk
+> dentries where the LSM variant calls `bpf_d_path` once. The figure that should carry weight is
+> throughput: loading the second engine costs 14% of completed operations under LSM and **51%**
+> under kprobe, which is the configuration most of the estate runs.
 
 ---
 
