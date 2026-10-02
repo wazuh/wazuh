@@ -239,7 +239,8 @@ int MergeAppendFile(FILE *finalfp, const char *files, int path_offset) __attribu
  * @param finalpath Path of the merged file.
  * @param optdir Path of the folder to unmerge the files. If not specified, the files will be unmerged in the current working directory.
  * @param mode Indicates if the merged file must be readed as a binary file  or not. Use `#OS_TEXT`, `#OS_BINARY`.
- * @return 1 if the file was unmerged, 0 on error.
+ * @param unmerged_files Optional list to which successfully extracted names are appended, including on error.
+ * @return 1 if every entry was unmerged, 0 if any entry failed. Successful entries are retained.
  */
 int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***unmerged_files) __attribute__((nonnull(1)));
 

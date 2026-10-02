@@ -17,6 +17,12 @@
 #include "../external/zlib/zlib.h"
 
 #ifdef WAZUH_UNIT_TESTING
+#define STATIC
+#else
+#define STATIC static
+#endif
+
+#ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
 #include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
 #include "unit_tests/wrappers/windows/fileapi_wrappers.h"
@@ -735,268 +741,312 @@ void DeleteState() {
 }
 
 
+/* Separators follow the local platform, as in mkdir_ex() and w_ref_parent_folder(). */
+#ifdef WIN32
+#define UNMERGE_SEPARATORS "/\\"
+#else
+#define UNMERGE_SEPARATORS "/"
+#endif
+
+/* Reject components the local filesystem would not create under their literal name. */
+static int unmerge_valid_component(const char *component, size_t length)
+{
+    if (!length) {
+        return 0;
+    }
+#ifdef WIN32
+    /* Win32 strips trailing dots and spaces, so the created file would not match the entry. */
+    if (component[length - 1] == '.' || component[length - 1] == ' ') {
+        return 0;
+    }
+#endif
+    for (size_t i = 0; i < length; ++i) {
+        unsigned char c = component[i];
+
+        if (c < 32 || c == 127) {
+            return 0;
+        }
+#ifdef WIN32
+        /* Reserved by Win32; ':' would also select a drive or an alternate data stream. */
+        if (strchr(":<>\"|?*", c)) {
+            return 0;
+        }
+#endif
+    }
+    return 1;
+}
+
+/* Validation and extraction share these rules. Empty, absolute and '..' names and control characters
+ * are rejected on every platform; names that are only invalid on Windows stay valid elsewhere. */
+STATIC int unmerge_normalize_name(char *name)
+{
+    char *src = name;
+    char *dst = name;
+
+    if (!*name || strchr(UNMERGE_SEPARATORS, *name)) {
+        return 0;
+    }
+
+    while (*src) {
+        char *end = src + strcspn(src, UNMERGE_SEPARATORS);
+        size_t length = end - src;
+        int last = !*end;
+
+        if (length == 2 && src[0] == '.' && src[1] == '.') {
+            return 0;
+        }
+        if (length == 1 && src[0] == '.') {
+            if (last) {
+                return 0;
+            }
+        } else {
+            if (!unmerge_valid_component(src, length)) {
+                return 0;
+            }
+            if (dst != name) {
+                *dst++ = '/';
+            }
+            memmove(dst, src, length);
+            dst += length;
+        }
+        if (last) {
+            break;
+        }
+        src = end + strspn(end, UNMERGE_SEPARATORS);
+        if (!*src) {
+            return 0;
+        }
+    }
+    *dst = '\0';
+    return dst != name;
+}
+
+static int unmerge_parse_header(char *buf, size_t *size, char **name)
+{
+    char *end = strchr(buf, '\n');
+    char *p = buf + 1;
+
+    if (buf[0] != '!' || !end || *p < '0' || *p > '9') {
+        return 0;
+    }
+    *end = '\0';
+    *size = 0;
+    for (; *p >= '0' && *p <= '9'; ++p) {
+        unsigned int digit = *p - '0';
+        if (*size > (SIZE_MAX - digit) / 10) {
+            return 0;
+        }
+        *size = *size * 10 + digit;
+    }
+    if (*p != ' ') {
+        return 0;
+    }
+    *name = p + 1;
+    return 1;
+}
+
+static int unmerge_size_available(FILE *fp, long bundle_size, size_t size)
+{
+    long offset = ftell(fp);
+    return offset >= 0 && offset <= bundle_size && size <= (unsigned long)(bundle_size - offset);
+}
+
+static void unmerge_invalid_name(const char *bundle, const char *name)
+{
+    char display[129];
+    size_t i;
+
+    for (i = 0; i < sizeof(display) - 1 && name[i]; ++i) {
+        unsigned char c = name[i];
+        display[i] = c < 32 || c == 127 ? '?' : c;
+    }
+    display[i] = '\0';
+    merror("Unmerging '%s': invalid entry name '%s'.", bundle, display);
+}
+
 int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***unmerged_files)
 {
     int ret = 1;
-    int state_ok;
     int file_count = 0;
-    size_t i = 0, n = 0, files_size = 0;
-    size_t optdir_len = 0;
-    char *files;
-    char * copy;
+    size_t optdir_len = optdir ? strlen(optdir) : 0;
     char final_name[2048 + 1];
     char buf[2048 + 1];
-    char *file_name;
-    FILE *fp;
     FILE *finalfp;
+    long bundle_size;
 
     finalfp = wfopen(finalpath, mode == OS_BINARY ? "rb" : "r");
     if (!finalfp) {
         merror("Unable to read merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
-        return (0);
+        return 0;
+    }
+    if ((bundle_size = get_fp_size(finalfp)) < 0) {
+        merror("Unable to determine merged file size: '%s'.", finalpath);
+        fclose(finalfp);
+        return 0;
     }
 
-    /* Calculate optdir length once for optimization */
-    if (optdir) {
-        optdir_len = strlen(optdir);
-    }
-
-    /* Finds index of the last element on the list */
     if (unmerged_files != NULL) {
-        for(file_count = 0; *(*unmerged_files + file_count); file_count++);
+        for (file_count = 0; (*unmerged_files)[file_count]; file_count++);
     }
 
-    while (1) {
-        /* Read header portion */
-        if (fgets(buf, sizeof(buf) - 1, finalfp) == NULL) {
+    while (fgets(buf, sizeof(buf), finalfp)) {
+        int state_ok = 1;
+        int tmp_created = 0;
+        size_t files_size;
+        FILE *fp = NULL;
+        char *files;
+
+        if (buf[0] == '#' && strchr(buf, '\n')) {
+            continue;
+        }
+        if (!unmerge_parse_header(buf, &files_size, &files)) {
+            merror("Unmerging '%s': invalid entry header.", finalpath);
+            ret = 0;
             break;
         }
-
-        /* Initiator */
-        if (buf[0] != '!') {
-            continue;
-        }
-
-        /* Get file size and name */
-        files_size = (size_t) atol(buf + 1);
-
-        files = strchr(buf, '\n');
-        if (files) {
-            *files = '\0';
-        }
-
-        files = strchr(buf, ' ');
-        if (!files) {
+        if (!unmerge_size_available(finalfp, bundle_size, files_size)) {
+            merror("Unmerging '%s': invalid entry size.", finalpath);
             ret = 0;
-            continue;
+            break;
         }
-        files++;
-        state_ok = 1;
-
-        if (optdir) {
-            snprintf(final_name, 2048, "%s/%s", optdir, files);
-
-            // Check that final_name is inside optdir
-
-            if (w_ref_parent_folder(final_name)) {
-                merror("Unmerging '%s': unable to unmerge '%s' (it contains '..')", finalpath, final_name);
-                state_ok = 0;
-            }
-        } else {
-            strncpy(final_name, files, 2048);
-            final_name[2048] = '\0';
-        }
-
-        // Create directory
-
-        copy = strdup(final_name);
-
-        if (mkdir_ex(dirname(copy))) {
-            merror("Unmerging '%s': couldn't create directory '%s'", finalpath, files);
+        if (!unmerge_normalize_name(files)) {
+            unmerge_invalid_name(finalpath, files);
             state_ok = 0;
         }
 
-        free(copy);
-
-        /* Create temporary file */
-        char tmp_file[strlen(final_name) + 7];
+        int length = optdir_len ? snprintf(final_name, sizeof(final_name), "%s/%s", optdir, files) :
+                     snprintf(final_name, sizeof(final_name), "%s", files);
+        if (length < 0 || (size_t)length >= sizeof(final_name)) {
+            if (state_ok) {
+                unmerge_invalid_name(finalpath, files);
+            }
+            state_ok = 0;
+        }
+        char tmp_file[sizeof(final_name) + 6];
         snprintf(tmp_file, sizeof(tmp_file), "%sXXXXXX", final_name);
 
-        if (mkstemp_ex(tmp_file) == -1) {
-            merror("Unmerging '%s': could not create temporary file for '%s'", finalpath, files);
+        if (state_ok) {
+            char *copy;
+            os_strdup(final_name, copy);
+            if (mkdir_ex(dirname(copy))) {
+                merror("Unmerging '%s': couldn't create directory '%s'", finalpath, files);
+                state_ok = 0;
+            }
+            free(copy);
+        }
+        if (state_ok) {
+            if (mkstemp_ex(tmp_file) == -1) {
+                merror("Unmerging '%s': could not create temporary file for '%s'", finalpath, files);
+                state_ok = 0;
+            } else {
+                tmp_created = 1;
+            }
+        }
+        if (state_ok) {
+            fp = wfopen(tmp_file, mode == OS_BINARY ? "wb" : "w");
+            if (!fp) {
+                merror("Unable to unmerge file '%s' due to [(%d)-(%s)].", tmp_file, errno, strerror(errno));
+                state_ok = 0;
+            }
+        }
+
+        /* Consume complete entries even when their destination is unavailable. */
+        while (files_size > 0) {
+            size_t count = files_size < sizeof(buf) ? files_size : sizeof(buf);
+            size_t n = fread(buf, 1, count, finalfp);
+            if (n == 0) {
+                merror("Unmerging '%s': incomplete entry data.", finalpath);
+                state_ok = 0;
+                break;
+            }
+            files_size -= n;
+            if (fp && state_ok && fwrite(buf, 1, n, fp) != n) {
+                merror("Unable to write unmerged file '%s'.", final_name);
+                state_ok = 0;
+            }
+        }
+        if (fp && fclose(fp) != 0) {
+            merror("Unable to close unmerged file '%s'.", final_name);
             state_ok = 0;
         }
-
-        /* Open filename */
-
-        if (state_ok) {
-            if (fp = wfopen(tmp_file, mode == OS_BINARY ? "wb" : "w"), !fp) {
-                ret = 0;
-                merror("Unable to unmerge file '%s' due to [(%d)-(%s)].", tmp_file, errno, strerror(errno));
+        if (!state_ok) {
+            if (tmp_created) {
+                unlink(tmp_file);
             }
-        } else {
-            fp = NULL;
             ret = 0;
-        }
-
-        if (files_size < sizeof(buf) - 1) {
-            i = files_size;
-            files_size = 0;
-        } else {
-            i = sizeof(buf) - 1;
-            files_size -= sizeof(buf) - 1;
-        }
-
-        while ((n = fread(buf, 1, i, finalfp)) > 0) {
-            buf[n] = '\0';
-
-            if (fp) {
-                fwrite(buf, n, 1, fp);
-            }
-
-            if (files_size == 0) {
+            if (files_size > 0) {
                 break;
-            } else {
-                if (files_size < sizeof(buf) - 1) {
-                    i = files_size;
-                    files_size = 0;
-                } else {
-                    i = sizeof(buf) - 1;
-                    files_size -= sizeof(buf) - 1;
-                }
             }
+            continue;
         }
-
-        if (fp) {
-            fclose(fp);
-        }
-
-        /* Mv to original name */
         if (rename_ex(tmp_file, final_name) != 0) {
             unlink(tmp_file);
             ret = 0;
-            break;
+            continue;
         }
-
         if (unmerged_files != NULL) {
-            char *file_name_copy = NULL;
-
-            /* Calculate relative path from optdir to preserve directory structure */
-            if (optdir_len > 0) {
-                /* Skip optdir and the following '/' to get relative path */
-                if (strncmp(final_name, optdir, optdir_len) == 0 && final_name[optdir_len] == '/') {
-                    file_name = final_name + optdir_len + 1;
-                } else {
-                    /* Fallback: remove path from file name */
-                    file_name = strrchr(final_name, '/');
-                    file_name = file_name ? file_name + 1 : final_name;
-                }
-            } else {
-                /* No optdir specified, use full path */
-                file_name = final_name;
-            }
-
-            /* Append relative file path to unmerged files list */
+            char *file_name_copy;
+            const char *file_name = optdir_len ? final_name + optdir_len + 1 : final_name;
             os_strdup(file_name, file_name_copy);
-            *unmerged_files = w_strarray_append(*unmerged_files, file_name_copy, file_count);
-            file_count++;
+            *unmerged_files = w_strarray_append(*unmerged_files, file_name_copy, file_count++);
         }
     }
-
-    fclose(finalfp);
-    return (ret);
+    if (ferror(finalfp)) {
+        ret = 0;
+    }
+    if (fclose(finalfp) != 0) {
+        ret = 0;
+    }
+    return ret;
 }
-
 
 int TestUnmergeFiles(const char *finalpath, int mode)
 {
     int ret = 1;
-    size_t i = 0, n = 0, files_size = 0, read_bytes = 0,data_size = 0;
-    char *files;
     char buf[2048 + 1];
-    FILE *finalfp;
+    FILE *fp = wfopen(finalpath, mode == OS_BINARY ? "rb" : "r");
+    long bundle_size;
 
-    finalfp = wfopen(finalpath, mode == OS_BINARY ? "rb" : "r");
-    if (!finalfp) {
+    if (!fp) {
         merror("Unable to read merged file: '%s'.", finalpath);
-        return (0);
+        return 0;
     }
+    if ((bundle_size = get_fp_size(fp)) < 0) {
+        fclose(fp);
+        return 0;
+    }
+    while (fgets(buf, sizeof(buf), fp)) {
+        size_t size;
+        char *name;
 
-    while (1) {
-        /* Read header portion */
-        if (fgets(buf, sizeof(buf) - 1, finalfp) == NULL) {
-            break;
-        }
-
-        /* Initiator */
-        switch(buf[0]) {
-            case '#':
-                continue;
-            case '!':
-                goto parse;
-            default:
-                ret = 0;
-                goto end;
-        }
-
-parse:
-        /* Get file size and name */
-        files_size = (size_t) atol(buf + 1);
-        data_size = files_size;
-
-        files = strchr(buf, '\n');
-        if (files) {
-            *files = '\0';
-        }
-
-        files = strchr(buf, ' ');
-        if (!files) {
-            ret = 0;
+        if (buf[0] == '#' && strchr(buf, '\n')) {
             continue;
         }
-        files++;
-
-        /* Check for file name */
-        if(*files == '\0') {
+        if (!unmerge_parse_header(buf, &size, &name) ||
+            !unmerge_size_available(fp, bundle_size, size) || !unmerge_normalize_name(name)) {
             ret = 0;
-            goto end;
+            break;
         }
-
-        if (files_size < sizeof(buf) - 1) {
-            i = files_size;
-            files_size = 0;
-        } else {
-            i = sizeof(buf) - 1;
-            files_size -= sizeof(buf) - 1;
-        }
-
-        read_bytes = 0;
-        while ((n = fread(buf, 1, i, finalfp)) > 0) {
-            buf[n] = '\0';
-            read_bytes += n;
-
-            if (files_size == 0) {
+        while (size > 0) {
+            size_t count = size < sizeof(buf) ? size : sizeof(buf);
+            size_t n = fread(buf, 1, count, fp);
+            if (!n) {
+                ret = 0;
                 break;
-            } else {
-                if (files_size < sizeof(buf) - 1) {
-                    i = files_size;
-                    files_size = 0;
-                } else {
-                    i = sizeof(buf) - 1;
-                    files_size -= sizeof(buf) - 1;
-                }
             }
+            size -= n;
         }
-
-        if(read_bytes != data_size){
-            ret = 0;
-            goto end;
+        if (!ret) {
+            break;
         }
-
     }
-end:
-    fclose(finalfp);
-    return (ret);
+    if (ferror(fp)) {
+        ret = 0;
+    }
+    if (fclose(fp) != 0) {
+        ret = 0;
+    }
+    return ret;
 }
 
 
