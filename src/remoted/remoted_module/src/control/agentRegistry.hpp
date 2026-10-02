@@ -58,6 +58,8 @@ namespace remoted::control
         std::shared_ptr<const AgentEntry>
         update(AgentId id, std::function<std::shared_ptr<AgentEntry>(std::shared_ptr<const AgentEntry>)> updater);
 
+        /// @brief Erases the entries idle for more than `ttlSec`. An erased entry's groups stamp
+        /// leaves the eviction mark mayStoreLookup() reads, as a skipped push leaves its own.
         void evictExpiredEntries(uint64_t ttlSec);
 
         /// Outcome of a membership push for one agent.
@@ -85,9 +87,11 @@ namespace remoted::control
 
         /// @brief Whether a wazuh-db answer whose query was issued at `ticket` may be written over
         /// `current` (the value an update() updater receives). False when a newer groups write
-        /// stamped `current` after the ticket, and when a push skipped some absent agent after the
-        /// ticket while `current` holds no established membership (the push may have been this
-        /// agent's, and nothing recorded it).
+        /// stamped `current` after the ticket, and, while `current` holds no established membership,
+        /// when a push skipped some absent agent after the ticket (the push may have been this
+        /// agent's, and nothing recorded it) or when eviction erased an entry whose groups were
+        /// written after the ticket (it may have been this agent's, taking that write's stamp
+        /// with it).
         bool mayStoreLookup(const std::shared_ptr<const AgentEntry>& current, uint64_t ticket) const;
 
         /// @brief Number of agents currently tracked, summed across the shards (each under its
@@ -105,6 +109,8 @@ namespace remoted::control
         std::array<Shard, 8> m_shards;
         std::atomic<uint64_t> m_groupsSeq {0};
         std::atomic<uint64_t> m_lastSkipSeq {0};
+        /// The largest groups stamp an evicted entry held (0 = none yet).
+        std::atomic<uint64_t> m_lastEvictSeq {0};
 
         /// Records that a push skipped an absent agent, as the new stamp it takes.
         void markSkipped();

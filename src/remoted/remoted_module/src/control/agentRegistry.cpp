@@ -15,6 +15,19 @@
 
 namespace remoted::control
 {
+    namespace
+    {
+        // A monotonic maximum, never a plain store: two writers racing could otherwise leave the
+        // smaller stamp behind, and a lookup ticketed between them would pass the check.
+        void raiseTo(std::atomic<uint64_t>& mark, uint64_t seq)
+        {
+            auto prev = mark.load();
+            while (prev < seq && !mark.compare_exchange_weak(prev, seq))
+            {
+            }
+        }
+    } // namespace
+
     std::shared_ptr<const AgentEntry> AgentRegistry::get(AgentId id) const
     {
         auto& shard = getShard(id);
@@ -61,18 +74,12 @@ namespace remoted::control
             return false;
         }
         const bool established = current && current->groupsRefreshedAtSec != 0;
-        return established || m_lastSkipSeq.load() <= ticket;
+        return established || (m_lastSkipSeq.load() <= ticket && m_lastEvictSeq.load() <= ticket);
     }
 
     void AgentRegistry::markSkipped()
     {
-        // A monotonic maximum, never a plain store: two skips racing could otherwise leave the
-        // smaller stamp behind, and a lookup ticketed between them would pass the check.
-        const auto seq = nextGroupsSeq();
-        auto prev = m_lastSkipSeq.load();
-        while (prev < seq && !m_lastSkipSeq.compare_exchange_weak(prev, seq))
-        {
-        }
+        raiseTo(m_lastSkipSeq, nextGroupsSeq());
     }
 
     AgentRegistry::PushOutcome AgentRegistry::invalidateGroups(AgentId id)
@@ -158,6 +165,14 @@ namespace remoted::control
                     entry->lastActivitySec > entry->createdAtSec ? entry->lastActivitySec : entry->createdAtSec;
                 if (reference > 0 && now >= reference && (now - reference) > ttlSec)
                 {
+                    // The entry's stamp goes with it, so record it first: a lookup ticketed before
+                    // the entry's last groups write (an invalidation, or a newer read) must not
+                    // store its answer on the empty slot (mayStoreLookup()). Under the shard's
+                    // write lock, so a store for this agent, which takes the same lock, sees it.
+                    if (entry->groupsSeq > 0)
+                    {
+                        raiseTo(m_lastEvictSeq, entry->groupsSeq);
+                    }
                     shard.map.erase(it);
                 }
             }

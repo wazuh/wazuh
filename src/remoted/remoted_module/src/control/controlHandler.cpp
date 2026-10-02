@@ -471,11 +471,12 @@ namespace remoted::control
         //  - A newer established write stamped `old` after the ticket (another read -- a /download
         //    lookup or another /control -- stored first; a push never establishes groups): leave the
         //    groups alone; the caller answers from the entry.
-        //  - A newer write that established nothing (an invalidation), or a push that skipped an
-        //    absent agent after the ticket while `old` holds no established membership: the local
-        //    database changed after the query was issued -- possibly for this agent -- so this read
-        //    may predate the change. Nothing is written and the caller answers 503; the next
-        //    request reads the database again.
+        //  - A newer write that established nothing (an invalidation), or, while `old` holds no
+        //    established membership, a push that skipped an absent agent after the ticket or an
+        //    eviction that erased an entry written after it: the local database changed after the
+        //    query was issued -- possibly for this agent -- so this read may predate the change.
+        //    Nothing is written and the caller answers 503; the next request reads the database
+        //    again.
         //  - Otherwise established at the issue time.
         GroupsWrite storeLookedUpGroups(AgentEntry& e,
                                         const std::shared_ptr<const AgentEntry>& old,
