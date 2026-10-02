@@ -131,7 +131,7 @@ static void test_reports_every_section(void **state)
     test_agt.profile = "ubuntu, ubuntu24";
 
     const char *const expected[] = {
-        "config-profile", "notify_time", "time-reconnect", "ip_update_interval",
+        "config-profile", "notify_time", "time-reconnect",
         "auto_restart", "remote_conf", "manager", "enrollment", "ssl", "batch",
         "stats_report", "config_report"
     };
@@ -151,7 +151,6 @@ static void test_reports_scalars_and_flags(void **state)
     test_agt.profile = "ubuntu, ubuntu24";
     test_agt.notify_time = 10;
     test_agt.max_time_reconnect_try = 60;
-    test_agt.main_ip_update_interval = 30;
     test_agt.flags.remote_conf = 1;
 
     cJSON *section = get_agent_section(&root);
@@ -159,7 +158,6 @@ static void test_reports_scalars_and_flags(void **state)
     assert_string_field(section, "config-profile", "ubuntu, ubuntu24");
     assert_number_field(section, "notify_time", 10);
     assert_number_field(section, "time-reconnect", 60);
-    assert_number_field(section, "ip_update_interval", 30);
     assert_string_field(section, "auto_restart", "yes");
     assert_string_field(section, "remote_conf", "yes");
 

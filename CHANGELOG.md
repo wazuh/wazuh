@@ -180,6 +180,7 @@
 | [#31582](https://github.com/wazuh/wazuh/issues/31582) | Removed NSIS-based Windows agent installer; Windows agent now ships exclusively as an MSI package. |
 | [#38091](https://github.com/wazuh/wazuh/issues/38091) | Removed the `<enrollment><auto_method>` option; enrollment now always requires TLS 1.3, so there is nothing left for it to negotiate down to. The `ssl_cipher` option now expects a TLS 1.3 ciphersuite list instead of an OpenSSL cipher-list string. |
 | [#38465](https://github.com/wazuh/wazuh/issues/38465) | Removed the `<enrollment>` `manager_address`, `port`, `interface_index`, `ssl_cipher`, `server_certificate_path`, `agent_certificate_path`, and `agent_key_path` options; enrollment now always targets the same manager and TLS configuration as the rest of the agent's HTTPS traffic. A 4.x `ossec.conf` carrying them still parses without error after an in-place upgrade. |
+| [#39674](https://github.com/wazuh/wazuh/issues/39674) | Deprecated the 4.x FIM, Syscollector, SCA and agent options that no longer have any effect; an upgraded `ossec.conf` that still sets them loads with a deprecation warning. |
 
 #### Fixed
 

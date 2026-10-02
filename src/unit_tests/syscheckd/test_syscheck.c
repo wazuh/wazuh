@@ -101,8 +101,6 @@ static int teardown_group_win(void **state) {
 void test_fim_initialize(void **state)
 {
     syscheck_config *syscheck_conf = *state;
-    syscheck.sync_end_delay = 1;
-    syscheck.sync_max_eps = 3;
 
 #ifdef TEST_WINAGENT
     // fim_initialize() guards its synced_docs counters with synced_docs_mutex; only the
@@ -221,8 +219,6 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
 
     expect_wrapper_fim_db_init(0, 100000, 100000);
 
-    syscheck.sync_end_delay = 1;
-    syscheck.sync_max_eps = 3;
     expect_string(__wrap_asp_create, module, "fim");
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
@@ -269,8 +265,6 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
-    syscheck.sync_end_delay = 1;
-    syscheck.sync_max_eps = 3;
     expect_string(__wrap_asp_create, module, "fim");
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
@@ -318,8 +312,6 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
-    syscheck.sync_end_delay = 1;
-    syscheck.sync_max_eps = 3;
     expect_string(__wrap_asp_create, module, "fim");
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
@@ -400,8 +392,6 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
 
     expect_wrapper_fim_db_init(0, 100000, 100000);
 
-    syscheck.sync_end_delay = 1;
-    syscheck.sync_max_eps = 3;
     expect_string(__wrap_asp_create, module, "fim");
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
@@ -463,8 +453,6 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 
     expect_wrapper_fim_db_init(0, 100000, 100000);
 
-    syscheck.sync_end_delay = 1;
-    syscheck.sync_max_eps = 3;
     expect_string(__wrap_asp_create, module, "fim");
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 

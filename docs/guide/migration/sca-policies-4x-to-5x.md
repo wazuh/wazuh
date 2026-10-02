@@ -48,7 +48,6 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
        <enabled>yes</enabled>
        <interval>5m</interval>
        <integrity_interval>24h</integrity_interval>
-       <max_eps>75</max_eps>
      </synchronization>
    </sca>
    ```

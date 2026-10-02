@@ -32,6 +32,14 @@ These schemas define the standardized format for inventory data that is sent to 
 
 ## Database Tables
 
+Every inventory table ends with the same three columns:
+
+- `sync`: `1` once the row is synchronized; `0` while a per-index document limit holds it back.
+- `checksum`: hash of the row, used to detect changes.
+- `version`: version of the row, sent as `document_version` in its stateful event.
+
+The package version columns are named `version_` (`dbsync_packages`) and `package_version_` (`dbsync_browser_extensions`), so they do not clash with `version`.
+
 ### Operating System Information (`dbsync_osinfo`)
 
 Stores operating system details and characteristics.

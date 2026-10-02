@@ -226,7 +226,7 @@ Controls the maximum number of FIM alert events sent to the manager per second. 
 
 - **Default value:** `50`
 - **Allowed values:** Integer `0`–`1000000`
-- **Note:** This is separate from `synchronization > max_eps`, which limits synchronization messages only
+- **Note:** Synchronization messages are not limited by this option
 
 ```xml
 <max_eps>50</max_eps>
@@ -418,7 +418,6 @@ Controls how the agent synchronizes its local FIM database with the manager to e
 <synchronization>
   <enabled>yes</enabled>
   <interval>300</interval>
-  <max_eps>75</max_eps>
   <integrity_interval>86400</integrity_interval>
 </synchronization>
 ```
@@ -429,7 +428,6 @@ Controls how the agent synchronizes its local FIM database with the manager to e
 |---|---|---|---|
 | `enabled` | `yes` | `yes`, `no` | Enable or disable FIM synchronization persistence. When disabled, FIM only generates stateless events. |
 | `interval` | `300` (5 minutes) | Any integer ≥ 1, with optional suffix `s`, `m`, `h`, `d` | How often the agent initiates a sync with the manager. |
-| `max_eps` | `75` | Integer `0`–`1000000` (`0` = unlimited) | Maximum synchronization messages per second. |
 | `integrity_interval` | `86400` (24h)| Any integer ≥ 1, with optional suffix `s`, `m`, `h`, `d` | How often the agent performs a full integrity validation by comparing checksums with the manager. |
 
 **Note:** Database files are stored at fixed paths: `queue/fim/db/fim.db` and `queue/fim/db/fim_sync.db`.
@@ -494,7 +492,7 @@ Defines Windows registry paths to monitor. Supports wildcards (`?` and `*`) for 
 |---|---|---|---|
 | `arch` | `32bit` | `32bit`, `64bit`, `both` | Registry view (32-bit or 64-bit hive). |
 | `tags` | N/A | Comma-separated strings | Custom tags for all alerts from this registry path. |
-| `report_changes` | `no` | `yes`, `no` | Report value diffs for supported types: `REG_SZ`, `REG_MULTI_SZ`, `REG_DWORD`, `REG_DWORD_BIG_ENDIAN`, `REG_QWORD`. |
+| `report_changes` | `no` | `yes`, `no` | Report value diffs for supported types: `REG_SZ`, `REG_EXPAND_SZ`, `REG_MULTI_SZ`, `REG_DWORD`, `REG_DWORD_BIG_ENDIAN`, `REG_QWORD`. |
 | `diff_size_limit` | `50MB` | Positive number + `KB`/`MB`/`GB` | Per-entry override for the maximum value size eligible for diff. |
 | `check_all` | `yes` | `yes`, `no` | Master toggle for all `check_*` attributes. |
 | `check_sum` | `yes` | `yes`, `no` | Enable MD5, SHA-1, and SHA-256 hashing. |
@@ -525,17 +523,30 @@ Specific key configurations take precedence over wildcard configurations:
 
 ---
 
+### Deprecated options
+
+**DEPRECATED:** these 4.x options are still recognized, so an upgraded `ossec.conf` keeps loading, but they have no effect. Each one logs `The <option> option is deprecated and no longer has any effect.`
+
+- Under `<syscheck>`: `scan_on_start` (a scan always runs on start), `alert_new_files`, `auto_ignore`, `database`, `prefilter_cmd`, `allow_remote_prefilter_cmd` and `remove_old_diff`.
+- Under `<synchronization>`: `max_eps`, `max_interval`, `response_timeout`, `queue_size`, `registry_enabled` and `thread_pool`.
+
+A `<restart_audit>` directly under `<syscheck>` is still applied, but logs a warning; set it under [`<whodata>`](#whodata) instead. When both are present, the `<whodata>` value is used.
+
+---
+
 ## Internal Options
 
-Internal options for fine-tuning FIM behavior are configured in `/var/ossec/etc/internal_options.conf`. All FIM-related options use the `syscheck.*` prefix.
+FIM reads its internal options with the `syscheck.` prefix. Set them in `local_internal_options.conf`, next to `ossec.conf` (`/var/ossec/etc/` on Linux, `C:\Program Files (x86)\ossec-agent\` on Windows), since an upgrade replaces `internal_options.conf`.
 
-Common internal options include:
-
-- `syscheck.sleep` - Time to sleep between scans
-- `syscheck.debug` - Enable debug-level logging for FIM
-- `syscheck.rt_delay` - Delay before processing real-time events
-
-Refer to the internal options documentation for a complete list of available tuning parameters.
+| Option | Default | Allowed values | Description |
+|---|---|---|---|
+| `syscheck.rt_delay` | `5` | `0`–`1000` (milliseconds) | Delay before a real-time or who-data event is processed, so short-lived files such as editor swap files do not trigger events. |
+| `syscheck.max_fd_win_rt` | `256` | `1`–`1024` | Windows only. Maximum number of directories monitored in real time. |
+| `syscheck.max_audit_entries` | `256` | `1`–`4096` | Linux only. Maximum number of directories monitored with who-data. |
+| `syscheck.default_max_depth` | `256` | `1`–`320` | Recursion level used when a directory sets no `recursion_level`. |
+| `syscheck.symlink_scan_interval` | `600` | `1`–`2592000` (seconds) | Linux and Unix only. How often the directories set with `follow_symbolic_link` are checked for a changed link target. |
+| `syscheck.file_max_size` | `1024` | `0`–`4095` (MB) | Largest file whose hashes are calculated. `0` disables the limit. |
+| `syscheck.debug` | `0` | `0`–`2` | FIM debug level. |
 
 ---
 
@@ -558,9 +569,6 @@ Refer to the internal options documentation for a complete list of available tun
   <nodiff>/etc/ssl/private.key</nodiff>
   <process_priority>10</process_priority>
   <max_eps>50</max_eps>
-  <synchronization>
-    <max_eps>75</max_eps>
-  </synchronization>
 </syscheck>
 ```
 
@@ -581,9 +589,6 @@ Refer to the internal options documentation for a complete list of available tun
   <windows_audit_interval>300</windows_audit_interval>
   <process_priority>10</process_priority>
   <max_eps>50</max_eps>
-  <synchronization>
-    <max_eps>75</max_eps>
-  </synchronization>
 </syscheck>
 ```
 
@@ -598,9 +603,6 @@ Refer to the internal options documentation for a complete list of available tun
   <ignore type="sregex">.log$|.swp$</ignore>
   <process_priority>10</process_priority>
   <max_eps>50</max_eps>
-  <synchronization>
-    <max_eps>75</max_eps>
-  </synchronization>
 </syscheck>
 ```
 
@@ -622,7 +624,6 @@ For systems with high file change rates (CI/CD nodes, busy web servers):
   <synchronization>
     <enabled>yes</enabled>
     <interval>60</interval>
-    <max_eps>500</max_eps>
     <integrity_interval>43200</integrity_interval>  <!-- Integrity check every 12 hours -->
   </synchronization>
 </syscheck>
@@ -666,7 +667,6 @@ For environments that require full audit trails on critical configuration files:
   <synchronization>
     <enabled>yes</enabled>
     <interval>5m</interval>
-    <max_eps>75</max_eps>
     <integrity_interval>86400</integrity_interval>
   </synchronization>
 </syscheck>

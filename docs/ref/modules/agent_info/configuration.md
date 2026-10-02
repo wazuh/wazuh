@@ -16,7 +16,7 @@ For module overview and architecture, see [Agent Info Module](README.md).
 
 **Module:** Agent-only
 
-**Internal Options:** None
+**Internal Options:** `agent_info.max_entries`, `agent_info.ttl` (see [Internal Options](#internal-options))
 
 The `<agent-info>` block is only parsed on agent builds. If it is present in a manager's `ossec.conf`, the manager silently ignores it (it is not read or applied in any way) and logs a debug-level message noting that the module is not supported on managers.
 
@@ -36,50 +36,16 @@ Time between integrity checks to verify that the agent's state is synchronized w
 - **Allowed values:** Integer from 60 to 604800 (seconds, 1 minute to 7 days). Out-of-range values are ignored with a warning and the previous value is kept
 - **Note:** Periodic verification ensures consistency between agent and manager state
 
-### enabled (synchronization)
+---
 
-Enables or disables the module coordination and synchronization features.
+## Internal Options
 
-- **Default value:** `yes`
-- **Allowed values:** `yes`, `no`
-- **Parent:** `<synchronization>`
-- **Note:** Controls whether the module participates in coordination with other modules
+Set these in `local_internal_options.conf`, next to `ossec.conf` (`/var/ossec/etc/` on Linux, `C:\Program Files (x86)\ossec-agent\` on Windows). They bound the [`tasks`](database-schema.md#tasks) table, which remembers the `/control` task IDs already handled so a redelivered task is not run twice. Both limits are applied on every `interval` cycle.
 
-### sync_end_delay (synchronization)
-
-Delay before sending the synchronization end message.
-
-- **Default value:** `1s`
-- **Allowed values:** Time string with suffix: `s` (seconds), `m` (minutes), `h` (hours), `d` (days)
-- **Parent:** `<synchronization>`
-- **Note:** Allows buffering before signaling completion
-
-### response_timeout (synchronization)
-
-Timeout to wait for a response from other modules during coordination.
-
-- **Default value:** `30s`
-- **Allowed values:** Time string with suffix: `s` (seconds), `m` (minutes), `h` (hours), `d` (days)
-- **Parent:** `<synchronization>`
-- **Note:** Controls how long to wait for coordination responses
-
-### retries (synchronization)
-
-Number of retry attempts when a coordination command fails.
-
-- **Default value:** `5`
-- **Allowed values:** Positive integer
-- **Parent:** `<synchronization>`
-- **Note:** Prevents transient failures from blocking synchronization
-
-### max_eps (synchronization)
-
-Maximum events per second to send during synchronization.
-
-- **Default value:** `50`
-- **Allowed values:** Positive integer
-- **Parent:** `<synchronization>`
-- **Note:** Rate limiting prevents overwhelming the receiver during bulk updates
+| Option | Default | Allowed values | Description |
+|---|---|---|---|
+| `agent_info.max_entries` | `4096` | `1`–`1000000` | Maximum number of task IDs kept. The oldest are removed first. |
+| `agent_info.ttl` | `86400` | `1`–`31536000` (seconds) | How long a task ID is kept. |
 
 ---
 
@@ -93,31 +59,17 @@ Standard agent info settings for most deployments:
 <agent-info>
   <interval>60</interval>
   <integrity_interval>86400</integrity_interval>
-  <synchronization>
-    <enabled>yes</enabled>
-    <sync_end_delay>1s</sync_end_delay>
-    <response_timeout>30s</response_timeout>
-    <retries>5</retries>
-    <max_eps>50</max_eps>
-  </synchronization>
 </agent-info>
 ```
 
 ### High-Frequency Scanning
 
-Collect metadata more frequently for dynamic environments:
+Scan at the minimum interval and check integrity every hour, for dynamic environments:
 
 ```xml
 <agent-info>
-  <interval>30</interval>
+  <interval>60</interval>
   <integrity_interval>3600</integrity_interval>
-  <synchronization>
-    <enabled>yes</enabled>
-    <sync_end_delay>1s</sync_end_delay>
-    <response_timeout>30s</response_timeout>
-    <retries>5</retries>
-    <max_eps>100</max_eps>
-  </synchronization>
 </agent-info>
 ```
 
@@ -129,45 +81,6 @@ Reduce scanning frequency to minimize resource usage:
 <agent-info>
   <interval>300</interval>
   <integrity_interval>86400</integrity_interval>
-  <synchronization>
-    <enabled>yes</enabled>
-    <sync_end_delay>2s</sync_end_delay>
-    <response_timeout>60s</response_timeout>
-    <retries>3</retries>
-    <max_eps>25</max_eps>
-  </synchronization>
-</agent-info>
-```
-
-### Unreliable Networks
-
-Adjust timeouts and retries for networks with high latency or packet loss:
-
-```xml
-<agent-info>
-  <interval>60</interval>
-  <integrity_interval>86400</integrity_interval>
-  <synchronization>
-    <enabled>yes</enabled>
-    <sync_end_delay>5s</sync_end_delay>
-    <response_timeout>120s</response_timeout>
-    <retries>10</retries>
-    <max_eps>25</max_eps>
-  </synchronization>
-</agent-info>
-```
-
-### Disable Synchronization
-
-Run metadata collection without coordination features:
-
-```xml
-<agent-info>
-  <interval>60</interval>
-  <integrity_interval>86400</integrity_interval>
-  <synchronization>
-    <enabled>no</enabled>
-  </synchronization>
 </agent-info>
 ```
 
@@ -201,20 +114,12 @@ The agent info module collects:
 
 When agent metadata changes (e.g., group assignment, label update):
 
-1. **Initiate sync:** Agent info module detects change
-2. **Notify peers:** Sends coordination messages to other modules
-3. **Wait for responses:** Collects acknowledgments within `response_timeout`
-4. **Retry on failure:** Retries up to `retries` times if responses fail
-5. **Complete sync:** Sends end message after `sync_end_delay`
-6. **Rate limiting:** Respects `max_eps` limit during bulk updates
+1. **Pause:** Pauses FIM, SCA and Syscollector and has them flush pending data
+2. **Version:** Reads each module's synchronization version and sets the new one on all of them
+3. **Synchronize:** Sends the changed metadata to the manager
+4. **Resume:** Resumes the paused modules
 
-### Rate Limiting
-
-The `max_eps` setting prevents synchronization storms:
-
-- Controls maximum events per second during sync
-- Prevents overwhelming the manager during mass updates
-- Useful when many agents synchronize simultaneously
+See [Architecture](architecture.md) for the full protocol.
 
 ---
 
@@ -222,14 +127,9 @@ The `max_eps` setting prevents synchronization storms:
 
 ### Scan Intervals
 
-**Frequent scans (30-60 seconds):**
-- Suitable for dynamic cloud environments
-- Faster detection of configuration changes
-- Higher resource usage
-
-**Standard scans (60-120 seconds):**
-- Balanced for most deployments
-- Default recommended setting
+**Default scans (60 seconds, also the minimum):**
+- Fastest detection of configuration changes
+- Suitable for most deployments, including dynamic cloud environments
 
 **Infrequent scans (300+ seconds):**
 - Suitable for static environments
@@ -272,33 +172,11 @@ tail -f /var/ossec/logs/ossec.log | grep agent-info
 /var/ossec/bin/wazuh-control restart
 ```
 
-### Synchronization Failures
-
-**Check coordination timeouts:**
-```bash
-grep -A10 "<synchronization>" /var/ossec/etc/ossec.conf
-```
-
-**Increase timeout and retries:**
-```xml
-<synchronization>
-  <response_timeout>120s</response_timeout>
-  <retries>10</retries>
-</synchronization>
-```
-
 ### High Resource Usage
 
 **Reduce scan frequency:**
 ```xml
 <interval>300</interval>  <!-- 5 minutes -->
-```
-
-**Lower event rate during sync:**
-```xml
-<synchronization>
-  <max_eps>25</max_eps>
-</synchronization>
 ```
 
 ---
@@ -334,7 +212,6 @@ tail -f /var/ossec/logs/ossec.log | grep "agent-info.*scan"
 
 The module performs the following validation at startup:
 
-- **Boolean Values:** Ensures boolean values are either `yes` or `no`
 - **Time Values:** Validates time format and acceptable ranges
 - **Integer Values:** Ensures integer values are within valid ranges
 - **Interval Constraints:** Verifies `interval` and `integrity_interval` are positive

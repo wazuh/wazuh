@@ -20,7 +20,9 @@ For module overview and architecture, see [SCA Module](README.md).
 
 ## Configuration Options
 
-**Deprecated option:** `<skip_nfs>` (parsed but no longer has any effect; NFS scanning behavior is no longer configurable)
+**Deprecated options:**
+
+- `<skip_nfs>`, `<day>`, `<wday>` and `<time>`: parsed but no longer have any effect, each logging `The <option> option is deprecated and no longer has any effect.` NFS scanning is not configurable, and SCA scans on its `<interval>` only.
 
 ### enabled
 
@@ -42,9 +44,9 @@ Run a security assessment scan immediately when the agent starts.
 
 Time interval between security configuration assessment scans.
 
-- **Default value:** Inherited from scan schedule
+- **Default value:** `1d`
 - **Allowed values:** Time format strings (`s` for seconds, `m` for minutes, `h` for hours, `d` for days)
-- **Note:** Valid range is `60s` (1 minute) to `1d` (1 day). Examples: `12h`, `30m`, `1d`
+- **Note:** Any positive value up to `4294967294` seconds. `0`, larger values and any suffix other than `s`, `m`, `h` or `d` are rejected. Examples: `12h`, `30m`, `1d`
 
 ### max_eps
 
@@ -92,14 +94,6 @@ Time interval between database synchronization cycles.
 - **Allowed values:** Time format strings in seconds (e.g., `300s`, `600s`)
 - **Note:** Controls how frequently the agent synchronizes SCA state with the manager
 
-### synchronization/max_eps
-
-Maximum events per second for synchronization operations.
-
-- **Default value:** `75`
-- **Allowed values:** Positive integer
-- **Note:** Separate rate limit for synchronization events, independent of `max_eps`
-
 ### synchronization/integrity_interval
 
 Interval between integrity checks for automatic recovery.
@@ -112,7 +106,7 @@ Interval between integrity checks for automatic recovery.
 
 ## Internal Options
 
-**Configuration file:** `/var/ossec/etc/internal_options.conf` (Linux/Unix) or `C:\Program Files (x86)\ossec-agent\internal_options.conf` (Windows)
+**Configuration file:** `/var/ossec/etc/local_internal_options.conf` (Linux/Unix) or `C:\Program Files (x86)\ossec-agent\local_internal_options.conf` (Windows). An upgrade replaces `internal_options.conf`, so set overrides in `local_internal_options.conf`.
 
 Internal options provide advanced tuning for the SCA module. These options are global and apply to all SCA operations.
 
@@ -203,7 +197,6 @@ Complete configuration including synchronization settings:
   <synchronization>
     <enabled>yes</enabled>
     <interval>300</interval>
-    <max_eps>75</max_eps>
     <integrity_interval>86400</integrity_interval>
   </synchronization>
 </sca>
@@ -222,7 +215,6 @@ Configuration for environments requiring frequent security assessments:
   <synchronization>
     <enabled>yes</enabled>
     <interval>180</interval>
-    <max_eps>150</max_eps>
     <integrity_interval>43200</integrity_interval>  <!-- 12 hours -->
   </synchronization>
 </sca>
@@ -241,7 +233,6 @@ Optimized configuration for systems with limited resources:
   <synchronization>
     <enabled>yes</enabled>
     <interval>600</interval>
-    <max_eps>25</max_eps>
     <integrity_interval>172800</integrity_interval>  <!-- 48 hours -->
   </synchronization>
 </sca>
@@ -307,7 +298,7 @@ Time-based configuration options support flexible time format specifications:
 | Days | `1d` | 1 day |
 
 **Valid ranges:**
-- **Scan interval:** Minimum `60s` (1 minute), maximum `1d` (1 day)
+- **Scan interval:** Any positive value up to `4294967294` seconds; `0` and larger values are rejected
 - **Synchronization interval:** Minimum `1s`, recommended `60s` or higher
 
 ---

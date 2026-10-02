@@ -54,7 +54,6 @@ int ClientConf(const char *cfgfile)
     agt->flags.auto_restart = 1;
     agt->notify_time = 0;
     agt->max_time_reconnect_try = 0;
-    agt->main_ip_update_interval = 0;
     agt->server_count = 0;
 
     /* Left UNSET so w_agent_resolve_ssl_posture() can tell "the operator said nothing" from
@@ -421,7 +420,6 @@ cJSON *getAgentConfig(void) {
     if (agt->profile) cJSON_AddStringToObject(agent_config,"config-profile",agt->profile);
     cJSON_AddNumberToObject(agent_config,"notify_time",agt->notify_time);
     cJSON_AddNumberToObject(agent_config,"time-reconnect",agt->max_time_reconnect_try);
-    cJSON_AddNumberToObject(agent_config,"ip_update_interval",agt->main_ip_update_interval);
     if (agt->flags.auto_restart) cJSON_AddStringToObject(agent_config,"auto_restart","yes"); else cJSON_AddStringToObject(agent_config,"auto_restart","no");
     if (agt->flags.remote_conf) cJSON_AddStringToObject(agent_config,"remote_conf","yes"); else cJSON_AddStringToObject(agent_config,"remote_conf","no");
     if (agt->server) {

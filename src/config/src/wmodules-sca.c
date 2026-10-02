@@ -18,7 +18,6 @@ static const char* XML_INTERVAL = "interval";
 static const char *XML_MAX_EPS = "max_eps";
 static const char *XML_POLICIES = "policies";
 static const char *XML_POLICY = "policy";
-static const char *XML_SKIP_NFS = "skip_nfs";
 static const char *XML_SYNC = "synchronization";
 
 #ifdef WAZUH_UNIT_TESTING
@@ -81,8 +80,6 @@ static void parse_synchronization_section(wm_sca_t * sca, XML_NODE node)
 {
     const char *XML_DB_SYNC_ENABLED = "enabled";
     const char *XML_DB_SYNC_INTERVAL = "interval";
-    const char *XML_DB_SYNC_END_DELAY = "sync_end_delay";
-    const char *XML_DB_SYNC_MAX_EPS = "max_eps";
     const char *XML_DB_SYNC_INTEGRITY_INTERVAL = "integrity_interval";
 
     for (int i = 0; node[i]; ++i) {
@@ -101,23 +98,6 @@ static void parse_synchronization_section(wm_sca_t * sca, XML_NODE node)
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 sca->sync.sync_interval = (uint32_t) t;
-            }
-        } else if (strcmp(node[i]->element, XML_DB_SYNC_END_DELAY) == 0) {
-            long sync_end_delay = w_parse_time(node[i]->content);
-
-            if (sync_end_delay < 0 || (unsigned long)sync_end_delay > UINT32_MAX) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                sca->sync.sync_end_delay = (uint32_t) sync_end_delay;
-            }
-        } else if (strcmp(node[i]->element, XML_DB_SYNC_MAX_EPS) == 0) {
-            char * end;
-            const long value = strtol(node[i]->content, &end, 10);
-
-            if (value < 0 || value > 1000000 || *end) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                sca->sync.sync_max_eps = value;
             }
         } else if (strcmp(node[i]->element, XML_DB_SYNC_INTEGRITY_INTERVAL) == 0) {
             long integrity_interval = w_parse_time(node[i]->content);
@@ -138,6 +118,8 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
 {
     unsigned int i;
     wm_sca_t *sca;
+    /* 4.x options: an upgrade keeps ossec.conf, so they are recognized but ignored */
+    char *const xml_deprecated[] = {"skip_nfs", "day", "wday", "time", NULL};
 
     /* On the manager, agent.conf parsing must not activate the local ruleset. */
     #ifdef CLIENT
@@ -151,7 +133,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
         sca->enabled = 1;
         sca->scan_on_start = 1;
         sca->max_eps = 50;
-        sched_scan_init(&(sca->scan_config));
+        sca->interval = WM_DEF_INTERVAL;
         sca->policies = NULL;
         module->context = &WM_SCA_CONTEXT;
         module->tag = strdup(module->context->name);
@@ -161,8 +143,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
         // Database synchronization config values
         sca->sync.enable_synchronization = 1;
         sca->sync.sync_interval = 300;
-        sca->sync.sync_end_delay = 1;
-        sca->sync.sync_max_eps = 75;
         sca->sync.integrity_interval = 86400;
     }
 
@@ -314,9 +294,9 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
                 return OS_INVALID;
             }
             char* endptr;
-            unsigned int interval = strtoul(nodes[i]->content, &endptr, 0);
+            unsigned long long interval = strtoull(nodes[i]->content, &endptr, 0);
 
-            if (interval == 0 || interval == UINT_MAX)
+            if (interval == 0 || interval >= UINT_MAX)
             {
                 merror("Invalid interval at module '%s'", WM_SCA_CONTEXT.name);
                 return OS_INVALID;
@@ -331,7 +311,13 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
                 case '\0': break;
                 default: merror("Invalid interval at module '%s'", WM_SCA_CONTEXT.name); return OS_INVALID;
             }
-            sca->scan_config.interval = interval;
+
+            if (interval >= UINT_MAX)
+            {
+                merror("Invalid interval at module '%s'", WM_SCA_CONTEXT.name);
+                return OS_INVALID;
+            }
+            sca->interval = (unsigned int)interval;
         }
         else if (!strcmp(nodes[i]->element, XML_POLICIES))
         {
@@ -443,10 +429,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
             }
             OS_ClearNode(children);
         }
-        else if (!strcmp(nodes[i]->element, XML_SKIP_NFS))
-        {
-            minfo("Detected a deprecated configuration for SCA: 'skip_nfs' is no longer available.");
-        }
         else if (!strcmp(nodes[i]->element, XML_SYNC)) {
             // Synchronization section - Let's get the children node and iterate the values
             xml_node **children = OS_GetElementsbyNode(xml, nodes[i]);
@@ -455,14 +437,13 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
                 OS_ClearNode(children);
             }
         }
-        else if (is_sched_tag(nodes[i]->element)) {
-            // Do nothing
+        else if (w_is_str_in_array(xml_deprecated, nodes[i]->element)) {
+            mwarn(XML_DEPRECATED, nodes[i]->element);
         } else {
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_SCA_CONTEXT.name);
             return OS_INVALID;
         }
     }
 
-    const int sched_read = sched_scan_read(&(sca->scan_config), nodes, module->context->name);
-    return sched_read;
+    return 0;
 }
