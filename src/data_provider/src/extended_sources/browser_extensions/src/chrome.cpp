@@ -11,6 +11,7 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <limits>
 #include <openssl/evp.h>
 #include <vector>
 #include <string>
@@ -356,7 +357,22 @@ namespace chrome
     void ChromeExtensionsProvider::parsePreferenceSettings(ChromeExtension& extension, const std::string& key, const nlohmann::json& value)
     {
         const auto stateIt = value.find("state");
-        extension.state = (stateIt != value.end() && stateIt->is_number_integer()) ? std::to_string(stateIt->get<int>()) : "1";
+        extension.state = "1";
+
+        if (stateIt != value.end() && stateIt->is_number_integer())
+        {
+            extension.state = std::to_string(stateIt->get<int>());
+        }
+        else if (stateIt != value.end() && stateIt->is_number_float())
+        {
+            const auto state = stateIt->get<double>();
+
+            if (state >= std::numeric_limits<int>::min() && state <= std::numeric_limits<int>::max())
+            {
+                extension.state = std::to_string(static_cast<int>(state));
+            }
+        }
+
         extension.from_webstore = getBoolField(value, "from_webstore", false) ? "1" : "0";
         extension.install_time = getStringField(value, "first_install_time");
         extension.install_timestamp = webkitToUnixTime(extension.install_time);
@@ -497,16 +513,11 @@ namespace chrome
             return "";
         }
 
-        const nlohmann::json& profile = getObjectField(preferencesJson, "profile");
-        const nlohmann::json& secureProfile = getObjectField(securePreferencesJson, "profile");
+        profileName = getStringField(getObjectField(preferencesJson, "profile"), "name");
 
-        if (profile.contains("name"))
+        if (profileName.empty())
         {
-            profileName = getStringField(profile, "name");
-        }
-        else if (secureProfile.contains("name"))
-        {
-            profileName = getStringField(secureProfile, "name");
+            profileName = getStringField(getObjectField(securePreferencesJson, "profile"), "name");
         }
 
         return profileName;
