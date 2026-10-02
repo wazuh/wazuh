@@ -72,7 +72,27 @@ struct rt_filter
      * this struct selects RT_CGROUP_MODE_ALL, i.e. the unfiltered behaviour
      * every existing consumer already has. */
     int cgroup_mode;
+
+    /* Bitmask of RT_SKIP_* — per-event work this consumer does NOT want done.
+     * Zero (the zero-initialised default) computes every field, which is what
+     * every existing consumer already gets.
+     *
+     * This exists because the record is shared by consumers that read very
+     * different parts of it. The process-context fields were added for host
+     * FIM whodata's "who" attribution; a container consumer that routes on
+     * cgroup_id and filename pays for them on every event and reads none of
+     * them. Skipping is per-handle, so one engine can serve both without the
+     * cheaper consumer subsidising the dearer one. */
+    unsigned int skip_mask;
 };
+
+/* Skip the process-context fields: cwd, parent_cwd and parent_comm. They cost
+ * two full dentry walks per event, which on the kprobe path — the majority
+ * configuration — is the dominant per-event cost. The fields are still present
+ * in the record and still null-terminated; they simply arrive empty, so a
+ * consumer that sets this must not read them. `ppid` is unaffected: it is a
+ * single field read, not a walk. */
+#define RT_SKIP_PROC_CONTEXT (1u << 0)
 
 enum rt_cgroup_mode
 {

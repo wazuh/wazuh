@@ -46,6 +46,11 @@
 #include <string.h>
 #include <sys/stat.h>
 
+/* filter_cfg slots, mirroring the same names in bpf/rt_file.bpf.c. The two
+ * must stay in step: the BPF side reads these keys. */
+#define FILTER_CFG_KEY_MODE 0
+#define FILTER_CFG_KEY_SKIP 1
+
 #define BPF_OBJ_PATH_FALLBACK "rt_file.bpf.o"
 #define LSM_LIST_FILE "/sys/kernel/security/lsm"
 #define LIBBPF_SONAME_PRIMARY "libbpf.so.1"
@@ -565,9 +570,29 @@ rt_handle_t rt_open(const struct rt_filter* filter)
         return NULL;
     }
 
-    rt_log(&h->log, RT_LOG_INFO, "eBPF engine ready: %u program(s) attached, ABI %d.%d, cgroup filter %s",
+    /* Per-event work this consumer opted out of. An object that predates the
+     * mask has a one-slot filter_cfg, so the write fails: that is a degradation
+     * (every field is computed, as before) and not a correctness problem, so it
+     * warns rather than refusing the open — the opposite of the mode above,
+     * which changes which events arrive. */
+    if (filter->skip_mask != 0 && h->filter_cfg_fd >= 0)
+    {
+        const unsigned int key = FILTER_CFG_KEY_SKIP;
+        const unsigned int value = filter->skip_mask;
+
+        if (g_libbpf.map_update_elem(h->filter_cfg_fd, &key, &value, 0 /* BPF_ANY */) != 0)
+        {
+            rt_log(&h->log, RT_LOG_WARN,
+                   "could not apply skip mask 0x%x; every per-event field will be computed. Rebuild "
+                   "rt_file.bpf.o to honour it.",
+                   filter->skip_mask);
+        }
+    }
+
+    rt_log(&h->log, RT_LOG_INFO,
+           "eBPF engine ready: %u program(s) attached, ABI %d.%d, cgroup filter %s, skip mask 0x%x",
            h->link_count, RT_ABI_MAJOR, RT_ABI_MINOR,
-           filter->cgroup_mode == RT_CGROUP_MODE_ALLOWLIST ? "allowlist" : "off");
+           filter->cgroup_mode == RT_CGROUP_MODE_ALLOWLIST ? "allowlist" : "off", filter->skip_mask);
     return (rt_handle_t)h;
 }
 
@@ -584,7 +609,7 @@ int rt_set_cgroup_mode(rt_handle_t handle, int mode)
         return -1;
     }
 
-    const unsigned int key = 0;
+    const unsigned int key = FILTER_CFG_KEY_MODE;
     const unsigned int value = (unsigned int)mode;
     if (g_libbpf.map_update_elem(h->filter_cfg_fd, &key, &value, 0 /* BPF_ANY */) != 0)
     {
