@@ -56,6 +56,21 @@ class AuthFailuresProviderTests : public ::testing::Test
             }
         }
 
+        /// @brief Writes the rotated generation that logrotate keeps beside btmp.
+        void writeRotatedBtmp(const std::vector<std::pair<std::string, int32_t>>& records) const
+        {
+            std::ofstream file(m_btmp + ".1", std::ios::binary);
+
+            for (const auto& record : records)
+            {
+                struct utmpx entry {};
+                entry.ut_type = LOGIN_PROCESS;
+                std::strncpy(entry.ut_user, record.first.c_str(), sizeof(entry.ut_user) - 1);
+                entry.ut_tv.tv_sec = record.second;
+                file.write(reinterpret_cast<const char*>(&entry), sizeof(entry));
+            }
+        }
+
         AuthFailuresProvider makeProvider(size_t tailBytes = 1024 * 1024) const
         {
             return AuthFailuresProvider(m_btmp, tailBytes);
@@ -155,6 +170,60 @@ TEST_F(AuthFailuresProviderTests, WithoutALastLoginSourceTheCountIsUnknown)
 
     auto provider = makeProvider();
     provider.load({{"alice", 0}}, false);
+
+    EXPECT_FALSE(provider.get("alice").known);
+}
+
+TEST_F(AuthFailuresProviderTests, RotatedBtmpIsCountedToo)
+{
+    // logrotate replaces btmp with an empty file monthly and keeps one generation beside it. Reading
+    // only the live file would lose those failures and flip every account to unknown until the next one.
+    writeBtmp({});
+    writeRotatedBtmp({{"alice", 500}, {"alice", 600}});
+
+    auto provider = makeProvider();
+    provider.load({{"alice", 100}}, true);
+
+    const auto failures = provider.get("alice");
+    EXPECT_TRUE(failures.known);
+    EXPECT_EQ(failures.count, 2u);
+    EXPECT_EQ(failures.latest, 600u);
+}
+
+TEST_F(AuthFailuresProviderTests, LiveAndRotatedBtmpAreCombined)
+{
+    writeBtmp({{"alice", 700}});
+    writeRotatedBtmp({{"alice", 500}, {"alice", 600}});
+
+    auto provider = makeProvider();
+    provider.load({{"alice", 100}}, true);
+
+    const auto failures = provider.get("alice");
+    EXPECT_EQ(failures.count, 3u);
+    EXPECT_EQ(failures.latest, 700u);
+}
+
+TEST_F(AuthFailuresProviderTests, RotatedBtmpStillRespectsTheLastLoginFilter)
+{
+    writeBtmp({});
+    writeRotatedBtmp({{"alice", 500}, {"alice", 600}});
+
+    auto provider = makeProvider();
+    // The account logged in after both failures, so neither counts.
+    provider.load({{"alice", 900}}, true);
+
+    const auto failures = provider.get("alice");
+    EXPECT_TRUE(failures.known);
+    EXPECT_EQ(failures.count, 0u);
+}
+
+TEST_F(AuthFailuresProviderTests, BothBtmpFilesEmptyIsUnknown)
+{
+    writeBtmp({});
+    writeRotatedBtmp({});
+
+    auto provider = makeProvider();
+    provider.load({{"alice", 0}}, true);
 
     EXPECT_FALSE(provider.get("alice").known);
 }

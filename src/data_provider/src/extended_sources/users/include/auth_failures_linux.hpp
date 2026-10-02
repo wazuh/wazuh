@@ -55,9 +55,19 @@ class AuthFailuresProvider
         AuthFailures get(const std::string& userName) const;
 
     private:
-        /// Reads btmp and counts, per collected account, the failures newer than its last login.
-        /// @return false when btmp cannot be read or holds no record.
+        /// Reads btmp and its rotated generation, counting per account the failures newer than its
+        /// last login.
+        /// @return false when neither file can be read or both hold no record.
         bool loadBtmp(const std::unordered_map<std::string, uint32_t>& lastLoginByName);
+
+        /// Counts the failures of one btmp file, newest records first, spending from a shared budget.
+        /// @param path Path of the file.
+        /// @param lastLoginByName Epoch seconds of the last login of every collected account.
+        /// @param budgetBytes Bytes still available to read, reduced by what this file consumed.
+        /// @return false when the file is missing, empty, or could not be read to the end.
+        bool readBtmpFile(const std::string& path,
+                          const std::unordered_map<std::string, uint32_t>& lastLoginByName,
+                          size_t& budgetBytes);
 
         std::string m_btmpPath;
         size_t m_btmpTailBytes;

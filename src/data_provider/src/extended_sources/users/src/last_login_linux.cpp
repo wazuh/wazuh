@@ -35,7 +35,17 @@ static_assert(sizeof(LastlogRecord) == sizeof(int32_t) + 32 + 256 ||
 LastLoginProvider::LastLoginProvider(const std::string& lastlogPath, const std::string& lastlog2Path, std::shared_ptr<IPreadWrapper> reader)
     : m_reader(std::move(reader))
     , m_lastlogFd(m_reader->open(lastlogPath.c_str()))
+    , m_lastlogHasRecords(false)
 {
+    // An empty lastlog opens like any other, so opening it says nothing about whether the host keeps
+    // last logins there. Reading the first record tells them apart: a file holding no record returns
+    // nothing, while one extended to any uid returns bytes, zeroed or not, from the hole or the record.
+    if (m_lastlogFd >= 0)
+    {
+        LastlogRecord probe {};
+        m_lastlogHasRecords = m_reader->pread(m_lastlogFd, &probe, sizeof(probe), 0) > 0;
+    }
+
     loadLastlog2(lastlog2Path);
 }
 
@@ -88,7 +98,7 @@ void LastLoginProvider::loadLastlog2(const std::string& lastlog2Path)
 
 bool LastLoginProvider::hasSource() const
 {
-    return m_lastlogFd >= 0 || !m_lastlog2.empty();
+    return m_lastlogHasRecords || !m_lastlog2.empty();
 }
 
 uint32_t LastLoginProvider::lastLogin(uid_t uid, const std::string& userName) const
