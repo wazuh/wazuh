@@ -286,6 +286,73 @@ TEST_F(ServerSelectorTest, TestGetNextWhenThereAreNoAvailableServers)
     EXPECT_THROW(selector->getNext(), std::runtime_error);
 }
 
+/**
+ * @brief A host whose health check answers 429 is busy, not gone: getNext() still returns it.
+ */
+TEST_F(ServerSelectorTest, GetNextReturnsAHostThatAnswered429)
+{
+    const std::string server {"http://localhost:9212"};
+    setupProbeAnswers({{"9212", {429, R"({"error":{"type":"circuit_breaking_exception"},"status":429})"}}});
+
+    const auto selector = std::make_shared<TestServerSelector>(std::vector<std::string> {server},
+                                                               SERVER_SELECTOR_HEALTH_CHECK_INTERVAL,
+                                                               SecureCommunication {},
+                                                               m_mockHttpRequest.get());
+
+    EXPECT_EQ(selector->getNext(), server);
+    EXPECT_TRUE(selector->isAvailable());
+}
+
+/**
+ * @brief With a healthy host available, a throttled one gets no traffic.
+ */
+TEST_F(ServerSelectorTest, GetNextPrefersAnAvailableHostOverAThrottledOne)
+{
+    const std::string throttled {"http://localhost:9213"};
+    const std::string available {"http://localhost:9214"};
+    setupProbeAnswers(
+        {{"9213", {429, R"({"error":{"type":"circuit_breaking_exception"},"status":429})"}}, {"9214", {200, ""}}});
+
+    const auto selector = std::make_shared<TestServerSelector>(std::vector<std::string> {throttled, available},
+                                                               SERVER_SELECTOR_HEALTH_CHECK_INTERVAL,
+                                                               SecureCommunication {},
+                                                               m_mockHttpRequest.get());
+
+    for (int call = 0; call < 20; ++call)
+    {
+        EXPECT_EQ(selector->getNext(), available);
+    }
+}
+
+/**
+ * @brief With nothing available, throttled hosts share the traffic and a down host gets none.
+ */
+TEST_F(ServerSelectorTest, GetNextFallsBackToThrottledWhenNothingIsAvailable)
+{
+    const std::string throttled1 {"http://localhost:9215"};
+    const std::string down {"http://localhost:9216"};
+    const std::string throttled2 {"http://localhost:9217"};
+    const std::string breaker {R"({"error":{"type":"circuit_breaking_exception"},"status":429})"};
+    setupProbeAnswers({{"9215", {429, breaker}}, {"9216", {503, ""}}, {"9217", {429, breaker}}});
+
+    const auto selector = std::make_shared<TestServerSelector>(std::vector<std::string> {throttled1, down, throttled2},
+                                                               SERVER_SELECTOR_HEALTH_CHECK_INTERVAL,
+                                                               SecureCommunication {},
+                                                               m_mockHttpRequest.get());
+
+    std::map<std::string, int> hits;
+    for (int call = 0; call < 20; ++call)
+    {
+        std::string_view server;
+        ASSERT_NO_THROW(server = selector->getNext());
+        ++hits[std::string {server}];
+    }
+
+    EXPECT_GT(hits[throttled1], 0);
+    EXPECT_GT(hits[throttled2], 0);
+    EXPECT_EQ(hits.count(down), 0u);
+}
+
 // =============================================================================
 // isAvailable Tests — ServerSelector
 // =============================================================================
