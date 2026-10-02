@@ -5,6 +5,7 @@
 
 import datetime
 import os
+import re
 from collections.abc import KeysView
 from io import StringIO
 from shutil import copyfile
@@ -20,7 +21,7 @@ from freezegun import freeze_time
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh import WazuhException
-        from wazuh.core.agent import WazuhDBQueryAgents
+        from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroup
         from wazuh.core import utils, exception
         from wazuh.core.common import WAZUH_PATH
 
@@ -1088,6 +1089,26 @@ def test_WazuhDBQuery_protected_add_search_to_query(mock_socket_conn, mock_conn_
     mock_conn_db.assert_called_once_with()
 
 
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('glob.glob', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_protected_add_search_to_query_skips_extra_fields(mock_socket_conn, mock_conn_db, mock_glob,
+                                                                       mock_exists):
+    """Test WazuhDBQuery._add_search_to_query function does not search on extra fields."""
+    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
+                               search={"negation": False, "value": "1"}, select=None,
+                               filters=None, fields={'1': 'one', '2': 'two', 'secret': 'secret_col'},
+                               default_sort_field=None, query=None,
+                               backend=utils.WazuhDBBackend(agent_id=1),
+                               count=5, get_data=None, extra_fields={'secret'})
+
+    query._add_search_to_query()
+    assert '(one LIKE :search AND one IS NOT NULL)' in query.query
+    assert '(two LIKE :search AND two IS NOT NULL)' in query.query
+    assert 'secret_col' not in query.query
+
+
 @pytest.mark.parametrize('selector_fields, error, expected_exception', [
     (None, False, None),
     (['1'], False, None),
@@ -1237,7 +1258,9 @@ def test_WazuhDBQuery_protected_parse_query_regex(mock_backend_connect, mock_exi
 
 @pytest.mark.parametrize('q, error, expected_exception', [
     ('os.name=ubuntu;os.version>12e', False, None),
-    ('os.name=debian;os.version>12e),(os.name=ubuntu;os.version>12e)', False, None),
+    ('(os.name=debian;os.version>12e),(os.name=ubuntu;os.version>12e)', False, None),
+    ('os.name=debian;os.version>12e),(os.name=ubuntu;os.version>12e)', True, 1407),
+    ('(os.name=debian;os.version>12e', True, 1407),
     ('bad_query', True, 1407),
     ('os.bad_field=ubuntu', True, 1408),
     ('os.name=!ubuntu', True, 1409),
@@ -1437,6 +1460,55 @@ def test_WazuhDBQuery_protected_add_filters_to_query_final_query(mock_conn_db, m
     assert query.query.rstrip(' ') == expected_query
 
 
+@pytest.mark.parametrize('q, valid', [
+    ('id=001', True),
+    ('(id=001,id=002);status=active', True),
+    ('((id=001),(id=002))', True),
+    ('name=Mozilla Firefox 53.0 (x64 en-US)', True),
+    ('id=001),(id=002', False),
+    ('(id=001', False),
+    ('id=001)', False),
+    ('(id=001));(status=active', False),
+])
+def test_validate_query_parentheses(q, valid):
+    """Test that validate_query_parentheses rejects a q whose groups are not closed after being opened."""
+    if valid:
+        utils.validate_query_parentheses(q)
+    else:
+        with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+            utils.validate_query_parentheses(q)
+
+
+@pytest.mark.parametrize('filters, q, expected_where', [
+    # An OR in q stays inside the q group instead of splitting the legacy filters off
+    ({'status': 'active'}, 'id=001,id=002',
+     "(status = :status$0 COLLATE NOCASE) AND ((id = :id$0 COLLATE NOCASE) OR (id = :id$1 COLLATE NOCASE))"),
+    # A level drop of two that stays above zero opens its own parenthesis
+    ({'status': 'active'}, '(((id=001,id=002)),id=003)',
+     "(status = :status$0 COLLATE NOCASE) AND (((((id = :id$0 COLLATE NOCASE) OR (id = :id$1 COLLATE NOCASE))) "
+     "OR (id = :id$2 COLLATE NOCASE)))"),
+    # Without legacy filters q is still one group
+    (None, 'id=001,id=002', "((id = :id$0 COLLATE NOCASE) OR (id = :id$1 COLLATE NOCASE))"),
+    # Without q nothing is added
+    ({'status': 'active'}, '', "(status = :status$0 COLLATE NOCASE)"),
+])
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('wazuh.core.utils.path.exists', return_value=True)
+def test_WazuhDBQuery_protected_add_filters_to_query_groups_q(mock_conn_db, mock_file_exists,
+                                                              filters, q, expected_where):
+    """Test that the q filters are rendered as one balanced group ANDed with the legacy filters."""
+    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None, search=None, select=None,
+                               fields={'id': 'id', 'status': 'status'}, filters=filters,
+                               default_sort_field=None, query=q, backend=utils.WazuhDBBackend(agent_id=0),
+                               count=5, get_data=None)
+
+    query._add_filters_to_query()
+
+    where = query.query.split(' WHERE ', 1)[1].rstrip()
+    assert where == expected_where
+    assert where.count('(') == where.count(')')
+
+
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('glob.glob', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
@@ -1632,25 +1704,110 @@ def test_WazuhDBQuery_general_run(mock_socket_conn, execute_value, expected_resu
         assert query.general_run() == expected_result
 
 
-@pytest.mark.parametrize('execute_value, rbac_ids, negate, final_rbac_ids, expected_result', [
-    ([{'id': 99}, {'id': 100}], ['001', '099', '101'], False, [{'id': 99}],
+@pytest.mark.parametrize('execute_value, rbac_ids, negate, expected_ids, final_rbac_ids, expected_result', [
+    ([{'id': 99}, {'id': 100}], ['001', '099', '101'], False, ['099'], [{'id': 99}],
      {'items': [{'id': '099'}], 'totalItems': 1}),
-    ([{'id': 1}], [], True, [{'id': 1}], {'items': [{'id': '001'}], 'totalItems': 1}),
+    ([{'id': 1}], [], True, ['001'], [{'id': 1}], {'items': [{'id': '001'}], 'totalItems': 1}),
     ([{'id': i} for i in range(30000)], [str(i).zfill(3) for i in range(15001)], True,
-     [{'id': i} for i in range(15001, 30000)],
+     [str(i).zfill(3) for i in range(15001, 30000)], [{'id': i} for i in range(15001, 30000)],
      {'items': [{'id': str(i).zfill(3)} for i in range(15001, 30000)], 'totalItems': 14999})
 ])
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_oversized_run(mock_socket_conn, execute_value, rbac_ids, negate,
+def test_WazuhDBQuery_oversized_run(mock_socket_conn, execute_value, rbac_ids, negate, expected_ids,
                                     final_rbac_ids, expected_result):
-    """Test utils.WazuhDBQuery.oversized_run function."""
-    with patch('wazuh.core.utils.WazuhDBBackend.execute', side_effect=[execute_value, final_rbac_ids]):
+    """Test utils.WazuhDBQuery.oversized_run function.
+
+    The second pass must select the allowed ids with IN, whatever the original filter was.
+    """
+    with patch('wazuh.core.utils.WazuhDBBackend.execute', side_effect=[execute_value, final_rbac_ids]) as execute:
         query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select={'id'},
                                    query=None, count=True, get_data=True, remove_extra_fields=False)
         query.legacy_filters['rbac_ids'] = rbac_ids
         query.rbac_negate = negate
 
         assert query.oversized_run() == expected_result
+
+        second_query, second_request = execute.call_args_list[1].args
+        assert 'id IN (:rbac_id)' in second_query
+        assert 'NOT IN' not in second_query
+        assert second_request['rbac_id'] == expected_ids
+        assert query.rbac_negate == negate
+
+
+@pytest.mark.parametrize('data, expected_result', [
+    (True, {'items': [], 'totalItems': 0}),
+    (False, {'totalItems': 0}),
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_oversized_run_nothing_allowed(mock_socket_conn, data, expected_result):
+    """Test utils.WazuhDBQuery.oversized_run returns nothing when every resource is denied.
+
+    An empty RBAC filter is dropped from the query, so running the second pass would return every agent.
+    """
+    with patch('wazuh.core.utils.WazuhDBBackend.execute', side_effect=[[{'id': 1}, {'id': 2}]]) as execute:
+        query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select={'id'},
+                                   query=None, count=True, get_data=data, remove_extra_fields=False)
+        query.legacy_filters['rbac_ids'] = ['001', '002']
+        query.rbac_negate = True
+
+        assert query.oversized_run() == expected_result
+        execute.assert_called_once()
+
+
+@pytest.mark.parametrize('negate, rbac_ids', [
+    (False, [str(i).zfill(3) for i in range(2, 10)]),
+    (True, ['000', '001']),
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_oversized_run_offset(mock_socket_conn, negate, rbac_ids):
+    """Test utils.WazuhDBQuery.oversized_run keeps every allowed id up to the end of the requested page."""
+    with patch('wazuh.core.utils.WazuhDBBackend.execute',
+               side_effect=[[{'id': i} for i in range(10)], [{'id': 5}, {'id': 6}]]) as execute:
+        query = WazuhDBQueryAgents(offset=3, limit=2, sort=None, search=None, select={'id'},
+                                   query=None, count=True, get_data=True, remove_extra_fields=False)
+        query.legacy_filters['rbac_ids'] = rbac_ids
+        query.rbac_negate = negate
+
+        assert query.oversized_run() == {'items': [{'id': '005'}, {'id': '006'}], 'totalItems': 8}
+
+        _, second_request = execute.call_args_list[1].args
+        assert second_request['rbac_id'] == ['002', '003', '004', '005', '006']
+        assert second_request['offset'] == 3
+        assert second_request['limit'] == 2
+
+
+@pytest.mark.parametrize('negate, rbac_ids', [
+    (False, ['cd']),
+    (True, ['ab']),
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_oversized_run_groups(mock_socket_conn, negate, rbac_ids):
+    """Test utils.WazuhDBQuery.oversized_run on groups, whose names must not be zero-padded."""
+    with patch('wazuh.core.utils.WazuhDBBackend.execute',
+               side_effect=[[{'name': 'ab', 'count': 1}, {'name': 'cd', 'count': 2}],
+                            [{'name': 'cd', 'count': 2}]]) as execute:
+        query = WazuhDBQueryGroup(count=True, get_data=True)
+        query.legacy_filters['rbac_ids'] = rbac_ids
+        query.rbac_negate = negate
+
+        assert query.oversized_run() == {'items': [{'name': 'cd', 'count': 2}], 'totalItems': 1}
+
+        second_query, second_request = execute.call_args_list[1].args
+        assert 'name IN (:rbac_name)' in second_query
+        assert 'NOT IN' not in second_query
+        assert second_request['rbac_name'] == ['cd']
+
+
+@patch('socket.socket.connect')
+def test_WazuhDBQuery_oversized_run_unsupported(mock_socket_conn):
+    """Test utils.WazuhDBQuery.oversized_run raises 1123 on a query with no RBAC field."""
+    query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select={'id'},
+                               query=None, count=True, get_data=True, remove_extra_fields=False)
+    query.oversized_rbac_field = None
+    query.legacy_filters['rbac_ids'] = ['001']
+
+    with pytest.raises(exception.WazuhInternalError, match='.* 1123 .*'):
+        query.oversized_run()
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
@@ -2114,6 +2271,57 @@ def test_select_array(select, required_fields, expected_result):
             assert element == expected_result
     except utils.WazuhError as e:
         assert e.code == 1724
+
+
+@pytest.mark.parametrize('select, invalid', [
+    (['tag.x0', 'tag.x1'], 'tag.x0, tag.x1'),
+    (['level', 'tag.x0'], 'tag.x0'),
+    (['bad', 'bad.x0'], 'bad, bad.x0'),
+])
+def test_select_array_rejects_nested_fields_outside_the_allowed_ones(select, invalid):
+    """A nested select field must hang from an allowed field; the error lists only the invalid ones."""
+    array = [{'timestamp': 't', 'level': 'info', 'description': {'x0': 'd'}}]
+
+    with pytest.raises(utils.WazuhError, match=f'.* 1724 .*: {invalid}$'):
+        utils.select_array(array, select=select, allowed_select_fields=['timestamp', 'level', 'description'])
+
+
+def test_select_array_accepts_nested_fields_of_allowed_ones():
+    """A nested field of an allowed field, or one allowed by its full name, is selected."""
+    array = [{'timestamp': 't', 'level': 'info', 'description': {'x0': 'd'}, 'os': {'name': 'n'}}]
+
+    result = utils.select_array(array, select=['description.x0', 'os.name'],
+                                allowed_select_fields=['timestamp', 'description', 'os.name'])
+
+    assert result == [{'description': {'x0': 'd'}, 'os': {'name': 'n'}}]
+
+
+@pytest.mark.parametrize('q, array', [
+    ('name=a,nameGfirewall', [{'name': 'a'}]),
+    ('nameGfirewall', []),
+    ('name>=1', []),
+])
+def test_filter_array_by_query_malformed_clause_is_reported_whatever_the_array_holds(q, array):
+    """The query is parsed before the array is walked: a malformed clause is reported even when the
+    array is empty or every element already matched an earlier OR clause."""
+    with pytest.raises(exception.WazuhError, match='.* 1407 .*'):
+        utils.filter_array_by_query(q, array)
+
+
+def test_filter_array_by_query_parses_each_clause_once():
+    """Each clause is matched once, however many elements the array holds."""
+    real_compile = re.compile
+    compiled = []
+
+    def spying_compile(*args, **kwargs):
+        compiled.append(MagicMock(wraps=real_compile(*args, **kwargs)))
+        return compiled[-1]
+
+    with patch('wazuh.core.utils.re.compile', side_effect=spying_compile):
+        result = utils.filter_array_by_query('name=a;id=1,name=b', [{'name': 'c', 'id': '1'} for _ in range(50)])
+
+    assert result == []
+    assert sum(regex.match.call_count for regex in compiled) == 3
 
 
 def test_to_relative_path():

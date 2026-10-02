@@ -26,7 +26,6 @@ namespace
     constexpr auto INDEXER_COLUMN {"indexer"};
     constexpr auto USER_KEY {"username"};
     constexpr auto PASSWORD_KEY {"password"};
-    constexpr auto DEFAULT_CREDENTIAL {"wazuh-manager"};
 } // namespace
 
 SecureCommunication buildSecureCommunication(const nlohmann::json& config, const LogFn& logFn)
@@ -75,17 +74,24 @@ SecureCommunication buildSecureCommunication(const nlohmann::json& config, const
     std::lock_guard lock(G_CREDENTIAL_MUTEX);
     static auto username = Keystore::get(INDEXER_COLUMN, USER_KEY);
     static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY);
-    if (username.empty() && password.empty())
+
+    // No fallback to a built-in "wazuh-manager"/"wazuh-manager" pair. Substituting a credential
+    // every installation shares is what https://github.com/wazuh/wazuh/issues/39554 removes: it
+    // turned a missing key into an authentication attempt with a known password, and the warning
+    // it logged scrolled past unread. The credential resolver refuses to start the manager when
+    // this key is unresolved, so reaching here empty means the keystore was emptied behind a
+    // running manager -- an error, not a default.
+    if (username.empty() || password.empty())
     {
-        username = DEFAULT_CREDENTIAL;
-        password = DEFAULT_CREDENTIAL;
-        LOGFN_WARN(logFn, "No username and password found in the keystore, using default values.");
+        throw IndexerConnectorException(
+            "No indexer credentials found in the keystore. Set them with 'wazuh-manager-keystore -f indexer -k "
+            "username' and '-k password', or supply WAZUH_INDEXER_MANAGER_PASSWORD in /etc/wazuh/credentials.env "
+            "and restart the manager.");
     }
-    if (username.empty())
-    {
-        username = DEFAULT_CREDENTIAL;
-        LOGFN_WARN(logFn, "No username found in the keystore, using default value.");
-    }
+
+    // The account name, never the password: which identity the manager presents is the thing an
+    // operator needs when the indexer answers 401.
+    LOGFN_DEBUG1(logFn, "Authenticating to the indexer as '%s'.", username.c_str());
 
     auto secureCommunication = SecureCommunication::builder();
     secureCommunication.basicAuth(username + ":" + password)

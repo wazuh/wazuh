@@ -45,9 +45,9 @@ jobs:
         uses: ./.github/actions/build_external_deps
 
       # No -DTARGET is passed, so IS_AGENT stays FALSE and the server-only branch that owns
-      # add_subdirectory(shared_modules/metrics) is the one configured. The library is pinned to
-      # C++17 because a consumer is strict-C++17; this job is what keeps a C++20-ism from
-      # reaching it.
+      # add_subdirectory(shared_modules/metrics) is the one configured. The library only declares
+      # `cxx_std_17` as a PUBLIC floor for its strict-C++17 consumers; it is not pinned, so this job
+      # compiles it and its test as C++20 (the tree default) and cannot catch a C++20-ism.
       - name: Wazuh Metrics - Build tests
         uses: ./.github/actions/build_target_cpp
         with:

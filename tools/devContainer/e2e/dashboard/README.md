@@ -132,9 +132,12 @@ per-column match over the rows that were really read.
   (headless, `about:blank`): an installed browser that cannot start must not look like a successful
   setup, so it ends either with `# chromium launch: ok` or with
   `FAIL  0. setup (got: chromium launch failed: …)` and a non-zero exit status.
-- Credentials come from the environment **only**: `DASHBOARD_USER` / `DASHBOARD_PASSWORD` and
-  `INDEXER_USER` / `INDEXER_PASSWORD` (the demo stack ships `admin`/`admin` hardcoded in the indexer
-  image). A `https://user:pass@host` in `--dashboard-url` or `--indexer-url` is **refused**
+- Credentials come from the environment first: `DASHBOARD_USER` / `DASHBOARD_PASSWORD` and
+  `INDEXER_USER` / `INDEXER_PASSWORD`. Any that is unset falls back to the stack's generated
+  `../.credentials.env` (user `admin`, password `WAZUH_INDEXER_ADMIN_PASSWORD` for both the indexer
+  and the dashboard); if the file is missing or unreadable, or the key absent, to the old `admin`/`admin` literals of stacks
+  generated before it existed. Values are never printed.
+  A `https://user:pass@host` in `--dashboard-url` or `--indexer-url` is **refused**
   (`FAIL 0. setup (got: credentials in --dashboard-url are not accepted; use
   DASHBOARD_USER/PASSWORD)`), because such a value is not in the redaction list and the header, the
   manifest and every sidecar would print it. TLS is not verified (`ignore_https_errors`,
@@ -329,7 +332,7 @@ One entry per view. The placeholders resolved per run are `{{nonce}}`, `{{agent_
 that resolves to nothing is a FAIL naming it** (`unresolved placeholder {{agent_id_5x}}`), never an
 empty filter:
 
-```json
+```json,fragment
 "<view>": {
   "app": "it-hygiene",
   "route": "/app/it-hygiene#/overview/?tab=it-hygiene&tabView=software&tabSubView=packages&_a=(filters:!(),query:(language:kuery,query:'wazuh.agent.id:%22{{agent_id_5x}}%22%20and%20package.name:%22{{package_name}}%22'))",

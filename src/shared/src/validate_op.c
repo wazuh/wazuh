@@ -30,7 +30,7 @@
 static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 static void _init_masks(void);
 static const char *__gethour(const char *str, char *ossec_hour, const size_t ossec_hour_len) __attribute__((nonnull));
-static int parse_define_int_value(const char *high_name, const char *low_name, const char *value, int min, int max) __attribute__((nonnull));
+static int parse_define_int_value(const char *high_name, const char *low_name, char *value, int min, int max) __attribute__((nonnull));
 
 /**
  * @brief Convert the netmask from an integer value, valid from 0 to 128.
@@ -289,21 +289,34 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
     return (ret);
 }
 
-static int parse_define_int_value(const char *high_name, const char *low_name, const char *value, int min, int max)
+static int parse_define_int_value(const char *high_name, const char *low_name, char *value, int min, int max)
 {
     int ret;
+    int valid = 1;
     const char *pt = value;
 
-    while (*pt != '\0') {
-        if (!isdigit((int)*pt)) {
-            merror_exit(INV_DEF, high_name, low_name, value);
-        }
+    /* A leading '-' is accepted so that options declared with a negative minimum can take a
+     * negative value; the range check below rejects it everywhere else. */
+    if (*pt == '-') {
         pt++;
+        if (*pt == '\0') {
+            valid = 0;
+        }
+    }
+
+    for (; valid && *pt != '\0'; pt++) {
+        if (!isdigit((int)*pt)) {
+            valid = 0;
+        }
     }
 
     ret = atoi(value);
-    if ((ret < min) || (ret > max)) {
-        merror_exit(INV_DEF, high_name, low_name, value);
+    if (!valid || (ret < min) || (ret > max)) {
+        /* Free the value before exiting: the message needs a copy of it. */
+        char shown[OS_SIZE_256];
+        snprintf(shown, sizeof(shown), "%s", value);
+        free(value);
+        merror_exit(INV_DEF, high_name, low_name, shown);
     }
 
     return ret;

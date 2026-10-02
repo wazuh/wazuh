@@ -1,14 +1,12 @@
 # Database Sync Configuration Reference
 
-Complete configuration reference for the Database Sync module.
+Configuration reference for the `database` module of `wazuh-manager-modulesd`, which keeps the agent
+and group tables of `global.db` in step with `etc/client.keys` and `etc/shared/`. What the module does
+is described in [Database Sync](README.md).
 
-The Database Sync module handles agent status, groups, and connection state synchronization between manager and the global database. It is configured exclusively through internal options, with no XML or YAML configuration sections.
-
-- **Module:** Manager-only (part of `wazuh-manager-modulesd`)
-- **Configuration method:** Internal options only
+- **Component:** Manager-only
 - **Daemon:** `wazuh-manager-modulesd`
-
-For module overview, see [Database Sync Module](index.html).
+- **Configuration method:** Internal options only
 
 ---
 
@@ -18,21 +16,20 @@ For module overview, see [Database Sync Module](index.html).
 
 **XML Section:** None
 
-**YAML Section:** None
-
 **Internal Options:** `wazuh_database.*`
 
-The Database Sync module is configured exclusively through internal options. There is no dedicated XML block or YAML configuration file for this module. All settings are tuned via the internal options file.
+The file ships with comments only, so every key below takes its default until set. Each value must be
+a plain non-negative integer inside its range: anything else makes `wazuh-manager-modulesd` exit at
+start with `(2302): Invalid definition for wazuh_database.<key>: '<value>'.` The options are read once,
+at start: restart the manager after a change.
 
 ---
 
 ## Internal Options Reference
 
-Database sync settings are configured in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`:
-
 ### wazuh_database.sync_agents
 
-Enable or disable agent database synchronization.
+Whether the module runs at all.
 
 ```ini
 wazuh_database.sync_agents=1
@@ -41,11 +38,11 @@ wazuh_database.sync_agents=1
 - **Default value:** `1` (enabled)
 - **Allowed values:** `0` (disabled), `1` (enabled)
 
-When enabled, the manager synchronizes agent status, groups, and connection states to the global database.
+With `0` the module is not created: no reconciliation of agents or groups happens, not even at start.
 
 ### wazuh_database.real_time
 
-Enable real-time synchronization mode.
+How changes to `client.keys` and `etc/shared/` are noticed.
 
 ```ini
 wazuh_database.real_time=1
@@ -54,32 +51,41 @@ wazuh_database.real_time=1
 - **Default value:** `1` (enabled)
 - **Allowed values:** `0` (disabled), `1` (enabled)
 
-When enabled, agent updates are synchronized immediately. When disabled, updates are batched and synchronized at intervals defined by `wazuh_database.interval`.
+With `1`, inotify watches report each change as it happens and `wazuh_database.interval` is not used.
+With `0`, the module polls every `wazuh_database.interval` seconds.
 
 ### wazuh_database.interval
 
-Synchronization interval in seconds (used when real-time mode is disabled).
+Seconds between two polls in interval mode.
 
 ```ini
 wazuh_database.interval=60
 ```
 
-- **Default value:** `60` seconds
-- **Allowed values:** Positive integer (1-86400)
-- **Note:** Only applies when `wazuh_database.real_time=0`
+- **Default value:** `60`
+- **Allowed values:** `0`-`86400`
+- **Note:** Only applies when `wazuh_database.real_time=0`. The first poll happens one interval after
+  start. With `0` the polls run back to back with no pause. A poll that takes longer than the interval
+  logs `Time interval exceeded by <n> seconds.`
 
 ### wazuh_database.max_queued_events
 
-Maximum number of events held in the Database Sync module's internal queue.
+Capacity of the module's internal queue of pending paths in real-time mode.
 
 ```ini
-wazuh_database.max_queued_events=10000
+wazuh_database.max_queued_events=0
 ```
 
 - **Default value:** `0` (use the internal default of `16384` entries)
 - **Allowed values:** `0` or a positive integer
+- **Note:** Only applies when `wazuh_database.real_time=1`.
 
-This option no longer changes the kernel's `fs.inotify.max_queued_events` setting. If the configured value exceeds the kernel limit, the module logs a warning and the system limit must be adjusted separately by an administrator.
+The module never changes the kernel's `fs.inotify.max_queued_events`. When the configured value is
+above the kernel's, the module logs `The system inotify queued events limit is '<kernel>', below the
+configured value '<configured>'. Update '/proc/sys/fs/inotify/max_queued_events' through the operating
+system.`, and the administrator raises the kernel limit separately. When the internal queue is full, a
+change is dropped with `Internal queue is full (<size>).`; when the kernel's queue overflows, the module
+logs `Inotify event queue overflowed.`
 
 ---
 
@@ -87,154 +93,84 @@ This option no longer changes the kernel's `fs.inotify.max_queued_events` settin
 
 ### Default Configuration
 
-Standard real-time synchronization:
+Equivalent to setting nothing:
 
 ```ini
 wazuh_database.sync_agents=1
 wazuh_database.real_time=1
 wazuh_database.interval=60
-wazuh_database.max_queued_events=10000
+wazuh_database.max_queued_events=0
 ```
 
-### Interval-Based Synchronization
+### Interval Mode
 
-For reduced database load in large deployments:
+Poll every 5 minutes instead of reacting to each change:
 
 ```ini
-wazuh_database.sync_agents=1
 wazuh_database.real_time=0
 wazuh_database.interval=300
-wazuh_database.max_queued_events=50000
 ```
 
-This configuration:
-- Disables real-time sync
-- Syncs every 5 minutes
-- Allows larger event queue before forcing sync
-
-### High-Frequency Updates
-
-For environments requiring minimal latency:
-
-```ini
-wazuh_database.sync_agents=1
-wazuh_database.real_time=1
-wazuh_database.interval=30
-wazuh_database.max_queued_events=5000
-```
-
-### Disabled Synchronization
-
-For testing or specific deployment scenarios:
+### Disabled
 
 ```ini
 wazuh_database.sync_agents=0
-wazuh_database.real_time=0
-wazuh_database.interval=60
-wazuh_database.max_queued_events=10000
 ```
 
-**Warning:** Disabling sync may cause agent status and group information to become stale.
-
----
-
-## Performance Considerations
-
-### Real-Time vs Interval Mode
-
-**Real-Time Mode** (`real_time=1`):
-- **Pros:** Immediate updates, current agent status
-- **Cons:** Higher database write frequency
-- **Best for:** Small to medium deployments (<1000 agents)
-
-**Interval Mode** (`real_time=0`):
-- **Pros:** Reduced database load, batched writes
-- **Cons:** Delayed status updates
-- **Best for:** Large deployments (>1000 agents)
-
-### Queue Sizing
-
-The `max_queued_events` parameter controls memory usage and sync frequency:
-
-- **Small (<1000 agents):** 5000-10000 events
-- **Medium (1000-5000 agents):** 10000-25000 events
-- **Large (>5000 agents):** 25000-100000 events
-
-### Database Impact
-
-Agent synchronization involves:
-- INSERT/UPDATE operations on agent table
-- Group hash recalculation
-- Connection status updates
-- SQLite transaction commits
-
-High-frequency sync may increase database file fragmentation. Monitor using `wazuh_db.fragmentation_threshold` settings.
+**Warning:** With the module disabled, groups created or removed under `etc/shared/` and, on a
+worker, agents added or removed in `client.keys` are not reflected in `global.db`.
 
 ---
 
 ## Monitoring
 
-### Check Sync Status
+### Agents in the database
 
-View agent sync status in the database:
-
-```bash
-echo 'global sql SELECT id,name,connection_status,sync_status FROM agent' | \
-  /var/wazuh-manager/bin/wazuh-db
-```
-
-### View Queue Statistics
-
-Monitor `wazuh-manager-modulesd` logs for queue warnings (this module logs under the `database` tag):
+List the agents `global.db` holds, to compare with `client.keys`:
 
 ```bash
-grep "queued_events" /var/wazuh-manager/logs/wazuh-manager.log
+curl -s --unix-socket /var/wazuh-manager/queue/sockets/wdb-http.sock http://localhost/v1/agents/all
 ```
 
-### Database Activity
+See [`GET /v1/agents/all`](../wazuh_db/api-reference.md#get-v1agentsall).
 
-Check database writes:
+### Logs
+
+The module logs under the tag `wazuh-manager-modulesd:database`:
 
 ```bash
-tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep "wazuh-manager-modulesd:database"
+grep "wazuh-manager-modulesd:database" /var/wazuh-manager/logs/wazuh-manager.log
 ```
+
+Set `wazuh_modules.debug=1` (or `2`) and restart to see each synchronization (`Synchronizing
+agents.`, `Agents synchronization completed.`, and with `2` every file event).
 
 ---
 
 ## Troubleshooting
 
-### Agents Showing as Disconnected
+### A group created under `etc/shared/` is missing from the database
 
-**Cause:** Database sync disabled or failing
+1. Verify `wazuh_database.sync_agents=1` (or that it is unset).
+2. In real-time mode, look for `Internal queue is full`, `Inotify event queue overflowed` or
+   `Couldn't watch the shared groups directory` in the log; the next restart reconciles all groups.
+3. In interval mode, wait one `wazuh_database.interval`.
 
-**Solution:**
-1. Verify `wazuh_database.sync_agents=1`
-2. Check wazuh-manager-modulesd is running: `ps aux | grep wazuh-manager-modulesd`
-3. Review logs for database errors
+### A worker's database does not match `client.keys`
 
-### High Database CPU Usage
+1. Verify `wazuh_database.sync_agents=1`.
+2. Look for `Couldn't synchronize the keystore with the DB.` or `Couldn't watch client.keys file` in the
+   log; the former means `wazuh-manager-db` did not answer (check it with
+   [`GET /v1/status`](../wazuh_db/api-reference.md#get-v1status)).
 
-**Cause:** Too frequent synchronization with many agents
-
-**Solution:**
-1. Switch to interval mode: `wazuh_database.real_time=0`
-2. Increase interval: `wazuh_database.interval=300`
-3. Increase queue size: `wazuh_database.max_queued_events=50000`
-
-### Agent Groups Not Updating
-
-**Cause:** Sync queue full or sync disabled
-
-**Solution:**
-1. Check queue size is appropriate for agent count
-2. Verify `wazuh_database.sync_agents=1`
-3. Check logs for "max_queued_events exceeded" warnings
+On the master, agents are reconciled only at start; after that `wazuh-manager-authd` keeps `global.db`
+up to date.
 
 ---
 
 ## See Also
 
-- [Database Sync Module](index.html) - Module overview
-- [Wazuh DB Configuration](../wazuh_db/configuration.md) - Database backup and tuning
-- [Agent Management](../agent-management/index.html) - Agent lifecycle management
+- [Database Sync](README.md) - What the module does
+- [Wazuh DB Configuration](../wazuh_db/configuration.md) - The database daemon's own options
+- [Agent Management](../agent-management/README.md) - Agent lifecycle management
 - [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options

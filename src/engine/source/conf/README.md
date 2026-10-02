@@ -90,7 +90,7 @@ Parsing rules:
 
 ### Standalone Mode
 
-If the engine is running in standalone mode (`ENV_ENGINE_STANDALONE` is set), the file loader is **skipped entirely** — only environment variables and default values are used. This simplifies testing and development scenarios.
+If the engine is running in standalone mode (`WAZUH_ENGINE_STANDALONE=true`, case-insensitive; any other value or unset means manager mode), the file loader is **skipped entirely** — only environment variables and default values are used. This simplifies testing and development scenarios.
 
 ### Registration Phase
 

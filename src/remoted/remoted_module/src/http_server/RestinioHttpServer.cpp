@@ -1809,8 +1809,8 @@ namespace remoted::http
         {
             LOGFN_INFO(logFn(),
                        "All HTTP endpoints are served under the global prefix '%s' (e.g. "
-                       "https://%s:%u%s/stateless); unprefixed paths answer 404; agents must send and sign the "
-                       "full prefixed target.",
+                       "https://%s:%u%s/stateless); unprefixed paths answer 404; agents must send the full "
+                       "prefixed target.",
                        effectivePrefix.c_str(),
                        displayAddress.c_str(),
                        static_cast<unsigned int>(config.port),

@@ -182,6 +182,9 @@ This table stores module-level metadata for tracking operational state, such as 
 
 **Current Keys:**
 - `last_integrity_check`: Unix timestamp (seconds since epoch) of the last integrity check
+- `first_sync_completed`: Unix timestamp (seconds since epoch) of the first completed synchronization with the manager, rewritten after a resync caused by an agent ID change
+- `first_scan_completed`: `1` once SCA has completed a full scan; absent while a first scan is still pending
+- `synced_agent_id`: Agent ID under which the manager holds this module's data; when the agent's current ID differs (for example, after re-enrolling), SCA resends a full snapshot
 
 **Example Data:**
 ```sql

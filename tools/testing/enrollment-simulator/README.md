@@ -6,15 +6,28 @@ A performance testing tool for the Wazuh authentication daemon (`wazuh-manager-a
 
 The enrollment simulator creates multiple threads that simultaneously attempt to register agents with the Wazuh authentication daemon. It supports various agent configurations and provides detailed performance statistics including response times, success rates, and throughput metrics.
 
+It speaks only authd's **legacy TLS protocol on port 1515**, the one 4.x agents use: one request
+line per connection, `[OSSEC PASS: <password> ]OSSEC A:'<name>' V:'<version>'[ G:'<group>']`, and a
+registration counts as successful when the answer starts with `OSSEC K:`. It does not exercise the
+5.x path (`POST /enroll` on the HTTPS listener, port 1517). For that path, use the
+`enroll_https` step of [`tools/manager_benchmark`](../../manager_benchmark/README.md).
+
+Against a 5.x manager the legacy listener must be up (`<auth><legacy_enrollment>`, which follows
+`<remote><legacy><enabled>` when unset), and the installer's configuration sets
+`<use_password>yes</use_password>`, so pass the password from `/var/wazuh-manager/etc/authd.pass`
+with `--password`. Every successful registration creates a real agent (random 12-character names);
+the simulator never deletes them, so remove them afterwards (for example through the server API's
+`DELETE /agents`).
+
 ## Features
 
 - **Multi-threaded simulation** with configurable thread count
 - **SSL/TLS connections** to wazuh-manager-authd
 - **Configurable agent scenarios**:
-  - New vs. repeated agent registrations
-  - Correct vs. incorrect passwords
-  - Different agent versions
-  - Agent group assignments
+  - New vs. repeated agent registrations (a repeated one re-sends a name this run already used)
+  - Correct vs. incorrect passwords (an incorrect one sends `wrongpass`)
+  - Different agent versions (`v4.15.0` for the "modern" share, `v4.12.0` otherwise)
+  - Agent group assignments (the only group sent is `default`)
 - **Configurable delays** for connection and send operations
 - **Detailed statistics** with response time analysis
 - **CSV export** for further analysis
@@ -31,14 +44,17 @@ The enrollment simulator creates multiple threads that simultaneously attempt to
 
 ### Build Instructions
 
+It is a standalone CMake project, not part of the manager build:
+
 ```bash
 cd tools/testing/enrollment-simulator
 
-# Configure the build
+# Configure the build (Debug unless CMAKE_BUILD_TYPE is given; -DFSANITIZE=ON adds ASAN/UBSAN to Debug)
 cmake -B build
 
 # Build the project
 cmake --build build
+```
 
 The executable `enrollment-simulator` will be created in the `build/` directory.
 
@@ -54,7 +70,7 @@ The executable `enrollment-simulator` will be created in the `build/` directory.
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--host HOST` | Target Wazuh server hostname or IP | localhost |
+| `--host HOST` | Target Wazuh server hostname or IPv4 address (resolved to IPv4 only) | localhost |
 | `--port PORT` | Target port for wazuh-manager-authd | 1515 |
 | `--password PASS` | Correct authentication password (optional) | none |
 | `--threads N` | Number of concurrent threads | 4 |
@@ -71,7 +87,14 @@ The executable `enrollment-simulator` will be created in the `build/` directory.
 
 ### Password Behavior
 
-The `--password` option is optional. When omitted, enrollment requests are sent without authentication.
+The `--password` option is optional. When it is omitted, requests drawn as "correct password" are
+sent without an `OSSEC PASS:` field. The `--incorrect-pass-ratio` share still sends
+`OSSEC PASS: wrongpass`, whether or not `--password` is given; set the ratio to `0` for a run with
+no password at all. Without `--password`, a manager with `<use_password>yes</use_password>` (the
+installed default) refuses every request.
+
+Unrecognized options are ignored, and a malformed number aborts with an exception. A completed run
+exits `0` whatever its success rate; read the statistics, not the exit code.
 
 ### Delay Ranges
 
@@ -83,7 +106,8 @@ Both `--connect-delay` and `--send-delay` support range specifications:
 
 ### Basic Load Test
 ```bash
-./enrollment-simulator --host 192.168.1.100 --total 5000 --threads 8
+./enrollment-simulator --host 192.168.1.100 --total 5000 --threads 8 \
+  --password "$(sudo cat /var/wazuh-manager/etc/authd.pass)"
 ```
 
 ### High-Load with Delays
@@ -111,9 +135,10 @@ Both `--connect-delay` and `--send-delay` support range specifications:
 
 ### Console Output
 
-The simulator provides real-time progress updates and comprehensive statistics:
+The simulator provides progress updates (every 100 registrations) and comprehensive statistics:
 
-```
+```text
+Resolved localhost to 127.0.0.1
 Starting simulation with 4 threads...
 Total registrations: 10000
 Target server: localhost:1515
@@ -162,20 +187,25 @@ When using `--csv-file`, detailed metrics are exported including:
 ## Performance Considerations
 
 - The simulator resolves the target hostname once at startup to minimize DNS overhead
-- SSL contexts are reused across connections within each thread
-- Random number generation is thread-local to avoid contention
+- One SSL context is created at startup and shared by every thread; each registration opens its own
+  TCP connection and TLS session (no session reuse), with a 30 s send/receive timeout
+- Registrations are split evenly across threads up front, and each thread runs its share back to
+  back with no pacing other than the configured delays
+- The random generator is a single instance shared by all threads; only the delay distribution is
+  thread-local
 - Memory usage scales linearly with the number of completed registrations
 
 ## Troubleshooting
 
 ### SSL Connection Issues
-- Ensure wazuh-manager-authd is running and accepting SSL connections
+- Ensure wazuh-manager-authd is running and its legacy listener is enabled (`<auth><legacy_enrollment>`, or `<remote><legacy><enabled>` when it is unset)
 - Check firewall settings for the target port
 - Verify SSL certificate configuration (simulator uses `SSL_VERIFY_NONE` for testing)
 
 ### High Error Rates
-- Check wazuh-manager-authd logs for error details
+- Check `/var/wazuh-manager/logs/wazuh-manager.log` (lines tagged `wazuh-manager-authd`) for error details
 - Verify the correct password is configured
+- Repeated names (`--new-ratio` below 1.0) re-register a name this run already enrolled, so they go through authd's duplicate-name policy (`<auth><force>`): depending on it they replace the earlier agent or are refused
 - Ensure sufficient system resources on both client and server
 
 ### Performance Issues

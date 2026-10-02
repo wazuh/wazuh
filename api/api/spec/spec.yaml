@@ -242,7 +242,7 @@ x-rbac-catalog:
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "deny"
     'cluster:read_secrets':
-      description: "Read the sensitive configuration values -- the enrollment password and the cluster key -- in clear instead of masked"
+      description: "Read the sensitive configuration values -- the enrollment password and the cluster key -- in clear instead of masked, and change the cluster key"
       resources:
         - $ref: '#/x-rbac-catalog/resources/node:id'
       example:
@@ -445,10 +445,10 @@ components:
     RequestTooLargeResponse:
       description: "The request body exceeded the size accepted for this endpoint. Two limits can
       produce it. The general one is the `max_upload_size` setting of api.yaml, in bytes, which a
-      value of 0 disables. `POST /security/user/authenticate/run_as` is additionally bounded by a
-      fixed 8192-byte limit on its authorization context, which is not configurable and is **not**
-      lifted by setting `max_upload_size` to 0, so that endpoint can answer 413 for a body every
-      other endpoint would accept. The `detail` field names the limit that rejected the request.
+      value of 0 disables. `POST /security/user/authenticate/run_as` is additionally bounded by the
+      `auth_context_max_payload_size` setting of api.yaml (65536 by default), a limit that setting
+      `max_upload_size` to 0 does **not** lift, so that endpoint can answer 413 for a body every other
+      endpoint would accept. The `detail` field names the limit that rejected the request.
       A body is refused either at the `Content-Length` header, when the request announces it with
       `Expect: 100-continue`, or while it is being read, which is why the reported size is the
       declared one in the first case and the bytes read so far in the second"
@@ -3333,6 +3333,8 @@ components:
       description: "List of daemon names (separated by comma), all daemons selected by default if not specified"
       schema:
         type: array
+        maxItems: 3
+        uniqueItems: true
         items:
           type: string
           enum:
@@ -3592,6 +3594,7 @@ components:
       description: "Query to filter results by. For example q=&quot;status=active&quot;"
       schema:
         type: string
+        maxLength: 1024
     raw:
       in: query
       name: raw
@@ -3689,6 +3692,7 @@ components:
       '{field1: field2}' may be selected with 'field1.field2'"
       schema:
         type: array
+        maxItems: 100
         items:
           type: string
           format: names
@@ -5446,7 +5450,7 @@ paths:
                       - '007'
                       - '008'
                     total_affected_items: 8
-                    total_failed_items: 3
+                    total_failed_items: 4
                     failed_items:
                       - error:
                           code: 1761
@@ -5456,6 +5460,16 @@ paths:
                           - '009'
                           - '010'
                           - '011'
+                      - error:
+                          code: 1774
+                          message: "The agent has never connected to this node, which holds no information about it"
+                          remediation: >-
+                            The command was queued on this node in case the agent connects to it. This is
+                            expected in a cluster, where the request is sent to every node and an agent only
+                            appears on the nodes it has connected to: check the `nodes` field for the outcome
+                            reported by the node the agent does connect to
+                        id:
+                          - '012'
                   message: "Reload command was not sent to some agents"
                   error: 2
 
@@ -5507,7 +5521,7 @@ paths:
                       - '007'
                       - '008'
                     total_affected_items: 8
-                    total_failed_items: 3
+                    total_failed_items: 4
                     failed_items:
                       - error:
                           code: 1761
@@ -5517,6 +5531,16 @@ paths:
                           - '009'
                           - '010'
                           - '011'
+                      - error:
+                          code: 1774
+                          message: "The agent has never connected to this node, which holds no information about it"
+                          remediation: >-
+                            The command was queued on this node in case the agent connects to it. This is
+                            expected in a cluster, where the request is sent to every node and an agent only
+                            appears on the nodes it has connected to: check the `nodes` field for the outcome
+                            reported by the node the agent does connect to
+                        id:
+                          - '012'
                   message: "Restart command was not sent to some agents"
                   error: 2
 
@@ -6637,7 +6661,7 @@ paths:
                   affected_items:
                     - node_name: "master_node"
                       node_api_config:
-                        host: 0.0.0.0
+                        host: ["0.0.0.0", "::"]
                         port: 55000
                         drop_privileges: true
                         max_upload_size: 10485760
@@ -6677,7 +6701,7 @@ paths:
                             allow: true
                     - node_name: "worker1"
                       node_api_config:
-                        host: 0.0.0.0
+                        host: ["0.0.0.0", "::"]
                         port: 55000
                         drop_privileges: true
                         max_upload_size: 10485760
@@ -6716,7 +6740,7 @@ paths:
                             allow: true
                     - node_name: "worker2"
                       node_api_config:
-                        host: 0.0.0.0
+                        host: ["0.0.0.0", "::"]
                         port: 55000
                         drop_privileges: true
                         max_upload_size: 10485760
@@ -7002,10 +7026,11 @@ paths:
       tags:
         - Cluster
       summary: "Update node configuration"
-      description: "Replace the manager configuration (etc/wazuh-manager.conf) of the given node with the XML text contained in the API request. The text is validated (syntax, schema, protected sections) before the file is written."
+      description: "Replace the manager configuration (etc/wazuh-manager.conf) of the given node with the XML text contained in the API request. The text is validated (syntax, schema, protected sections, secret options) before the file is written. A cluster key sent back masked (`*****`), as this API returns it to a caller without `cluster:read_secrets`, keeps the node's current key; changing the key to any other value requires `cluster:read_secrets` over that node and is refused with error 1132 otherwise."
       operationId: api.controllers.cluster_controller.update_configuration
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:update_config'
+        - $ref: '#/x-rbac-catalog/actions/cluster:read_secrets'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8219,7 +8244,10 @@ paths:
       tags:
         - Security
       summary: "Logout current user"
-      description: "This method should be called to invalidate all the current user's tokens"
+      description: "This method should be called to invalidate all the current user's tokens. When called
+        with a token obtained through `POST /security/user/authenticate/run_as`, only the tokens granted for
+        the same authorization context are invalidated; other tokens of the account that performed the
+        run_as login are not affected"
       operationId: api.controllers.security_controller.logout_user
       responses:
         '200':
@@ -8443,7 +8471,10 @@ paths:
       tags:
         - Security
       summary: "Enable/Disable run_as"
-      description: "Modify a user's allow_run_as flag by specifying their ID"
+      description: "Modify a user's allow_run_as flag by specifying their ID. The flag of a reserved user (`wazuh`,
+        `wazuh-wui`) can only be changed by a reserved user authenticated without an authorization context
+        (run_as). Enabling it also requires `security:update` over every role linked to a rule with ID above
+        99 (any rule for `wazuh-wui`), because a run_as login of the user can resolve to any of them"
       operationId: api.controllers.security_controller.edit_run_as
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:edit_run_as'
@@ -8791,7 +8822,9 @@ paths:
       tags:
         - Security
       summary: "Update users"
-      description: "Modify a user's password by specifying their ID"
+      description: "Modify a user's password by specifying their ID. Unless the user is the caller, it also
+        requires `security:update` over every role linked to the user and, when its allow_run_as flag is
+        enabled, over every role a run_as login of the user can resolve to"
       operationId: api.controllers.security_controller.update_user
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:update'

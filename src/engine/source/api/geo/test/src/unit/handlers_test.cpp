@@ -262,8 +262,7 @@ INSTANTIATE_TEST_SUITE_P(
                 auto cityLocator = std::make_shared<::geo::mocks::MockLocator>();
                 auto asnLocator = std::make_shared<::geo::mocks::MockLocator>();
 
-                EXPECT_CALL(*cityLocator, getAll("1.2.3.4"))
-                    .WillOnce(testing::Return(::geo::ErrorCode::IP_NOT_FOUND));
+                EXPECT_CALL(*cityLocator, getAll("1.2.3.4")).WillOnce(testing::Return(::geo::ErrorCode::IP_NOT_FOUND));
 
                 json::Json asnJson;
                 asnJson.setInt(15169, "/number");

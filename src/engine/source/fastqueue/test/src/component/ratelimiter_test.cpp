@@ -85,9 +85,8 @@ TEST_F(RateLimiterTest, MultiConsumerDoesNotExceedRate)
         << "got " << actual << " (" << actualEPS << " EPS with " << NUM_CONSUMERS << " consumers)";
 
     // Sanity: should have gotten a reasonable amount (at least 70% of target)
-    EXPECT_GE(actual, expected * (1.0 - TOLERANCE * 2))
-        << "Rate limiter too restrictive! "
-        << "Expected ~" << expected << " but got " << actual;
+    EXPECT_GE(actual, expected * (1.0 - TOLERANCE * 2)) << "Rate limiter too restrictive! "
+                                                        << "Expected ~" << expected << " but got " << actual;
 }
 
 /**
@@ -104,22 +103,23 @@ TEST_F(RateLimiterTest, SingleConsumerAccuracy)
     std::atomic<int64_t> totalAcquired {0};
     std::atomic<bool> running {true};
 
-    std::thread consumer([&]()
-    {
-        int64_t localCount = 0;
-        while (running.load(std::memory_order_relaxed))
+    std::thread consumer(
+        [&]()
         {
-            if (limiter.tryAcquire(1))
+            int64_t localCount = 0;
+            while (running.load(std::memory_order_relaxed))
             {
-                localCount++;
+                if (limiter.tryAcquire(1))
+                {
+                    localCount++;
+                }
+                else
+                {
+                    std::this_thread::yield();
+                }
             }
-            else
-            {
-                std::this_thread::yield();
-            }
-        }
-        totalAcquired.fetch_add(localCount, std::memory_order_relaxed);
-    });
+            totalAcquired.fetch_add(localCount, std::memory_order_relaxed);
+        });
 
     std::this_thread::sleep_for(std::chrono::milliseconds(TEST_DURATION_MS));
     running.store(false, std::memory_order_relaxed);
@@ -186,10 +186,9 @@ TEST_F(RateLimiterTest, HighEPSManyConsumersStressTest)
     double actual = static_cast<double>(totalAcquired.load());
     double actualEPS = actual / elapsed_seconds;
 
-    EXPECT_LE(actual, expected * (1.0 + TOLERANCE))
-        << "Stress test: rate limiter exceeded configured rate! "
-        << "Expected ~" << expected << " tokens, got " << actual
-        << " (" << actualEPS << " EPS with " << NUM_CONSUMERS << " consumers)";
+    EXPECT_LE(actual, expected * (1.0 + TOLERANCE)) << "Stress test: rate limiter exceeded configured rate! "
+                                                    << "Expected ~" << expected << " tokens, got " << actual << " ("
+                                                    << actualEPS << " EPS with " << NUM_CONSUMERS << " consumers)";
 
     EXPECT_GE(actual, expected * (1.0 - TOLERANCE * 2));
 }
@@ -242,8 +241,7 @@ TEST_F(RateLimiterTest, WaitAcquireMultiConsumer)
     double actual = static_cast<double>(totalAcquired.load());
 
     EXPECT_LE(actual, expected * (1.0 + TOLERANCE))
-        << "waitAcquire: rate limiter exceeded! Expected ~" << expected
-        << ", got " << actual;
+        << "waitAcquire: rate limiter exceeded! Expected ~" << expected << ", got " << actual;
 }
 
 /**
@@ -255,8 +253,8 @@ TEST_F(RateLimiterTest, MultiConsumerRateMatchesSingleConsumer)
 {
     constexpr size_t TARGET_EPS = 2000;
     constexpr int TEST_DURATION_MS = 2000;
-    constexpr double UPPER_TOLERANCE = 0.15; // Neither mode should exceed TARGET_EPS by >15%
-    constexpr double MULTI_LOWER_TOLERANCE = 0.70; // 8 consumers should reach at least 70%
+    constexpr double UPPER_TOLERANCE = 0.15;        // Neither mode should exceed TARGET_EPS by >15%
+    constexpr double MULTI_LOWER_TOLERANCE = 0.70;  // 8 consumers should reach at least 70%
     constexpr double SINGLE_LOWER_TOLERANCE = 0.50; // 1 consumer may be slower due to yield() jitter
 
     auto measureEPS = [&](size_t numConsumers) -> double

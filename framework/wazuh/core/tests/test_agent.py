@@ -182,6 +182,17 @@ def test_WazuhDBQueryAgents_add_search_to_query(mock_socket_conn):
     assert 'OR id LIKE :search_id)' in query_agent.query, 'Query returned does not match the expected one'
 
 
+@pytest.mark.parametrize('negation', [True, False])
+@patch('socket.socket.connect')
+def test_WazuhDBQueryAgents_add_search_to_query_skips_internal_key(mock_socket_conn, negation):
+    """Tests _add_search_to_query of WazuhDBQueryAgents never matches on the agent key"""
+    query_agent = WazuhDBQueryAgents(search={'value': 'test', 'negation': negation})
+    query_agent._add_search_to_query()
+
+    assert 'internal_key' not in query_agent.query, 'Search must not match on the agent key'
+    assert '(name LIKE :search AND name IS NOT NULL)' in query_agent.query
+
+
 @pytest.mark.parametrize('data', [
     [{'id': 0, 'status': 'active', 'group': 'default,group1,group2', 'dateAdd': 1000000000,
       'disconnection_time': 0}],
@@ -222,6 +233,63 @@ def test_WazuhDBQueryAgents_parse_legacy_filters(mock_socket_conn):
 
     assert '(lastKeepAlive>test;status!=never_connected,dateAdd>test;status=never_connected)' in query_agent.q, \
         'Query returned does not match the expected one'
+
+
+@patch('socket.socket.connect')
+def test_WazuhDBQueryAgents_parse_legacy_filters_older_than_keeps_q_grouped(mock_socket_conn):
+    """An OR in the user's q must not absorb the older_than condition appended after it."""
+    query_agent = WazuhDBQueryAgents(filters={'older_than': 'test'}, query='name=a,name=b')
+    query_agent._parse_legacy_filters()
+
+    assert query_agent.q == '(name=a,name=b);' \
+        '(lastKeepAlive>test;status!=never_connected,dateAdd>test;status=never_connected)'
+
+
+@patch('socket.socket.connect')
+def test_WazuhDBQueryAgents_parse_legacy_filters_older_than_rejects_unbalanced_q(mock_socket_conn):
+    """'(q);(older_than)' is balanced even when q is not, so q is checked before it is wrapped."""
+    query_agent = WazuhDBQueryAgents(filters={'older_than': 'test'}, query='name=a),(id>0')
+
+    with pytest.raises(WazuhError, match='.* 1407 .*'):
+        query_agent._parse_legacy_filters()
+
+
+@pytest.mark.parametrize('rbac_negate, rbac_operator', [
+    (False, 'IN'),
+    (True, 'NOT IN'),
+])
+@pytest.mark.parametrize('q, expected_where', [
+    ('name=a,id>0',
+     '((name = :name$0 COLLATE NOCASE) OR (id > :id$1 COLLATE NOCASE))'),
+    ('(name=a,name=b);id>0',
+     '(((name = :name$0 COLLATE NOCASE) OR (name = :name$1 COLLATE NOCASE)) AND (id > :id$1 COLLATE NOCASE))'),
+    ('(((name=a,name=b)),id>0)',
+     '(((((name = :name$0 COLLATE NOCASE) OR (name = :name$1 COLLATE NOCASE))) OR (id > :id$1 COLLATE NOCASE)))'),
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQueryAgents_rbac_filter_is_anded_with_whole_q(mock_socket_conn, q, expected_where,
+                                                               rbac_negate, rbac_operator):
+    """An OR in q must stay inside the q group, so every branch of it is restricted by the RBAC filter."""
+    query_agent = WazuhDBQueryAgents(filters={'rbac_ids': ['001', '002']}, rbac_negate=rbac_negate, query=q)
+    query_agent._add_filters_to_query()
+
+    where = query_agent.query.split(' WHERE ', 1)[1].rstrip()
+    assert where == f'(id {rbac_operator} (:rbac_id)) AND {expected_where}'
+    assert where.count('(') == where.count(')')
+
+
+@pytest.mark.parametrize('q', [
+    'name=a),(id>0',
+    'name=a;(id>0',
+    '(name=a,id>0))',
+])
+@patch('socket.socket.connect')
+def test_WazuhDBQueryAgents_unbalanced_q_is_rejected(mock_socket_conn, q):
+    """A q that closes a group it never opened could otherwise close the group that holds q."""
+    query_agent = WazuhDBQueryAgents(filters={'rbac_ids': ['001']}, rbac_negate=False, query=q)
+
+    with pytest.raises(WazuhError, match='.* 1407 .*'):
+        query_agent._add_filters_to_query()
 
 
 @pytest.mark.parametrize('field_name, field_filter, q_filter', [
@@ -339,6 +407,59 @@ def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary(mock_socket_conn)
 
     result = query_group._format_data_into_dictionary()
     assert all(x['os']['name'] == 'N/A' for x in result['items'])
+
+
+@patch('socket.socket.connect')
+def test_WazuhDBQueryGroupByAgents_keeps_agents_protected_fields(mock_socket_conn):
+    """The GROUP BY constructor must not reset the fields WazuhDBQueryAgents protects or parses as dates."""
+    query_group = WazuhDBQueryGroupByAgents(filter_fields=None, offset=0, limit=None, sort=None, search=None,
+                                            select=None, query='', count=True, get_data=True)
+
+    assert query_group.extra_fields == {'internal_key'}
+    assert query_group.date_fields == {'lastKeepAlive', 'dateAdd'}
+
+
+@pytest.mark.parametrize('kwargs, code', [
+    ({'filter_fields': ['internal_key'], 'select': ['internal_key']}, 1724),
+    ({'filter_fields': ['name', 'internal_key'], 'select': ['name', 'internal_key']}, 1724),
+    ({'sort': {'fields': ['internal_key'], 'order': 'asc'}}, 1403),
+    ({'query': 'internal_key=test'}, 1408),
+])
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_WazuhDBQueryGroupByAgents_rejects_internal_key(mock_socket_conn, send_mock, kwargs, code):
+    """The agent key cannot be selected, sorted or filtered by through the GROUP BY query."""
+    params = {'filter_fields': ['name'], 'offset': 0, 'limit': None, 'sort': None, 'search': None,
+              'select': ['name'], 'query': '', 'count': True, 'get_data': True} | kwargs
+    query_group = WazuhDBQueryGroupByAgents(**params)
+
+    with pytest.raises(WazuhError, match=f'.* {code} .*'):
+        query_group.run()
+
+
+@pytest.mark.parametrize('negation', [True, False])
+@patch('socket.socket.connect')
+def test_WazuhDBQueryGroupByAgents_add_search_to_query_skips_internal_key(mock_socket_conn, negation):
+    """Search through the GROUP BY query never matches on the agent key."""
+    query_group = WazuhDBQueryGroupByAgents(filter_fields=None, offset=0, limit=None, sort=None,
+                                            search={'value': 'test', 'negation': negation}, select=None,
+                                            query='', count=True, get_data=True)
+    query_group._add_search_to_query()
+
+    assert 'internal_key' not in query_group.query, 'Search must not match on the agent key'
+
+
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_WazuhDBQueryGroupByAgents_default_fields_omit_internal_key(mock_socket_conn, send_mock):
+    """Without fields, the GROUP BY query returns every column except the agent key."""
+    query_group = WazuhDBQueryGroupByAgents(filter_fields=None, offset=0, limit=None, sort=None, search=None,
+                                            select=None, query='', count=True, get_data=True)
+    result = query_group.run()
+
+    assert result['items'], 'Expected at least one group'
+    assert all('internal_key' not in item for item in result['items'])
+    assert all('name' in item for item in result['items'])
 
 
 @pytest.mark.parametrize('filter_fields, expected_response', [

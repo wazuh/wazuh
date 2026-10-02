@@ -678,8 +678,7 @@ TEST_F(GeoManagerTest, StatusRestoresLastSuccessfulUpdateFromStore)
     docJson.setInt64(1769111225, "/city/generated_at");
     docJson.setInt64(1700000000, "/city/last_successful_update");
 
-    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
-        .WillOnce(testing::Return(storeReadDocResp(docJson)));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME))).WillOnce(testing::Return(storeReadDocResp(docJson)));
 
     Manager manager(mockStore, mockDownloader);
 

@@ -106,7 +106,8 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePost(router); },
-            []() {
+            []()
+            {
                 return userErrorResponse<eEngine::GenericStatus_Response>(
                     "Invalid namespace id: Invalid namespace ID: not-valid");
             },
@@ -317,7 +318,8 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& router) { return routePatchPriority(router); },
             []() { return userErrorResponse<eEngine::GenericStatus_Response>("error"); },
-            [](auto& mock) {
+            [](auto& mock)
+            {
                 EXPECT_CALL(mock, changeEntryPriority(testing::_, 1)).WillOnce(testing::Return(base::Error {"error"}));
             }),
         // Wrong request type

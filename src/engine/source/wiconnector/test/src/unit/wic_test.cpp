@@ -6,7 +6,33 @@
 
 #include <base/logging.hpp>
 #include <chrono>
+#include <filesystem>
+#include <keyStore.hpp>
 #include <thread>
+
+namespace
+{
+bool seedIndexerCredentials()
+{
+    try
+    {
+        // Keystore::put() opens `queue/keystore` relative to the working directory and creates the
+        // store itself, but not the directory above it.
+        std::filesystem::create_directories("queue");
+        Keystore::put("indexer", "username", "test-user");
+        Keystore::put("indexer", "password", "test-password");
+        return true;
+    }
+    catch (const std::exception&)
+    {
+        return false;
+    }
+}
+
+/// Seeded before main(): the connector caches the indexer credentials on its first use and throws
+/// when they are unset.
+const bool g_credentialsSeeded = seedIndexerCredentials();
+} // namespace
 
 class WIndexerConnectorTest : public ::testing::Test
 {
@@ -35,15 +61,11 @@ TEST_F(ConfigTest, BasicConfigToJson)
 {
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
-    config.username = "admin";
-    config.password = "admin";
 
     std::string jsonStr = config.toJson();
 
     // Verify the JSON contains expected fields
     EXPECT_TRUE(jsonStr.find("\"hosts\"") != std::string::npos);
-    EXPECT_TRUE(jsonStr.find("\"username\"") != std::string::npos);
-    EXPECT_TRUE(jsonStr.find("\"password\"") != std::string::npos);
     EXPECT_TRUE(jsonStr.find("\"max_retry_delay_seconds\"") != std::string::npos);
     EXPECT_TRUE(jsonStr.find("localhost:9200") != std::string::npos);
 }
@@ -52,8 +74,6 @@ TEST_F(ConfigTest, ConfigWithSSLToJson)
 {
     wiconnector::Config config;
     config.hosts = {"https://localhost:9200"};
-    config.username = "admin";
-    config.password = "admin";
     config.ssl.cacert = {"/path/to/ca.crt"};
     config.ssl.cert = "/path/to/client.crt";
     config.ssl.key = "/path/to/client.key";
@@ -74,7 +94,7 @@ TEST_F(ConfigTest, ConfigWithoutCredentialsToJson)
 
     std::string jsonStr = config.toJson();
 
-    // Should not contain username/password when empty
+    // Credentials come from the keystore, never from Config
     EXPECT_TRUE(jsonStr.find("\"username\"") == std::string::npos);
     EXPECT_TRUE(jsonStr.find("\"password\"") == std::string::npos);
 }
@@ -109,8 +129,6 @@ TEST_F(WIndexerConnectorTest, ConstructorWithValidConfig)
 {
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
-    config.username = "admin";
-    config.password = "admin";
 
     EXPECT_NO_THROW({ wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest); });
 }
@@ -118,9 +136,7 @@ TEST_F(WIndexerConnectorTest, ConstructorWithValidConfig)
 TEST_F(WIndexerConnectorTest, ConstructorWithValidJsonConfig)
 {
     std::string validJson = R"({
-        "hosts": ["http://localhost:9200"],
-        "username": "admin",
-        "password": "admin"
+        "hosts": ["http://localhost:9200"]
     })";
 
     EXPECT_NO_THROW({ wiconnector::WIndexerConnector connector(validJson, maxHitsPerRequest); });
@@ -145,8 +161,6 @@ TEST_F(WIndexerConnectorTest, ConstructorMaxHitsToZero)
 {
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
-    config.username = "admin";
-    config.password = "admin";
 
     // Should not throw maxHitsPerRequest set to 0 will fallback to 1.
     EXPECT_NO_THROW({ wiconnector::WIndexerConnector connector(config, logFunction, 0); });
@@ -157,8 +171,6 @@ TEST_F(WIndexerConnectorTest, IndexValidData)
 {
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"}; // This will likely fail to connect, but that's OK for unit test
-    config.username = "admin";
-    config.password = "admin";
 
     wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 
@@ -170,8 +182,6 @@ TEST_F(WIndexerConnectorTest, IndexEmptyIndex)
 {
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
-    config.username = "admin";
-    config.password = "admin";
 
     wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 
@@ -183,8 +193,6 @@ TEST_F(WIndexerConnectorTest, IndexEmptyData)
 {
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
-    config.username = "admin";
-    config.password = "admin";
 
     wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 
@@ -197,8 +205,6 @@ TEST_F(WIndexerConnectorTest, ShutdownConnector)
 {
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
-    config.username = "admin";
-    config.password = "admin";
 
     wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 
@@ -214,8 +220,6 @@ TEST_F(WIndexerConnectorTest, ConcurrentIndexing)
 {
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
-    config.username = "admin";
-    config.password = "admin";
 
     wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 
@@ -252,8 +256,6 @@ TEST_F(WIndexerConnectorTest, ConcurrentIndexingAndShutdown)
 {
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
-    config.username = "admin";
-    config.password = "admin";
 
     wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 
@@ -298,8 +300,6 @@ TEST_F(WIndexerConnectorTest, RequestShutdownIsNonDestructive)
 {
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
-    config.username = "admin";
-    config.password = "admin";
 
     wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 
@@ -316,8 +316,6 @@ TEST_F(WIndexerConnectorTest, RequestShutdownThenShutdown)
 {
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
-    config.username = "admin";
-    config.password = "admin";
 
     wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 
@@ -330,8 +328,6 @@ TEST_F(WIndexerConnectorTest, RequestShutdownIdempotent)
 {
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
-    config.username = "admin";
-    config.password = "admin";
 
     wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 
@@ -346,8 +342,6 @@ TEST_F(WIndexerConnectorTest, DISABLED_IntegrationTest)
     // This test is disabled by default as it requires a real Elasticsearch/OpenSearch instance
     wiconnector::Config config;
     config.hosts = {"http://localhost:9200"};
-    config.username = "admin";
-    config.password = "admin";
 
     wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 

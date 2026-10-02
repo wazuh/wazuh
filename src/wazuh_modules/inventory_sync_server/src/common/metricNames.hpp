@@ -123,9 +123,9 @@ namespace invsync::metrics
             const auto counter = [&manager](const char* code)
             {
                 return manager.getOrCreateCounter(std::string {REQUESTS_TOTAL_PREFIX} + code,
-                                                  "POST /stateful and agent-deletion responses the handlers sent "
-                                                  "with this status (transport-level answers -- 413, 504, malformed "
-                                                  "HTTP -- are not counted)",
+                                                  "POST /stateful, agent-deletion and on-demand VD scan responses "
+                                                  "the handlers sent with this status (transport-level answers -- "
+                                                  "413, 504, malformed HTTP -- are not counted)",
                                                   "count");
             };
             return RequestCounters {counter("200"),

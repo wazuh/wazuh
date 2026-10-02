@@ -21,8 +21,8 @@ set -euo pipefail
 # must pass it explicitly. There is no node knob: a session declares no cluster node.
 #
 # --global-prefix (agent mode only): the manager's <remote><https><global_prefix>. It is
-# part of the request target, so it is SIGNED as well as sent and must match the manager
-# exactly. Against a prefixed manager without it, every request answers 404 and the run
+# part of the request target (sent, not signed: the JWT does not cover the target), so it
+# must match the manager exactly. Against a prefixed manager without it, every request answers 404 and the run
 # reads as a broken manager. Read from the LOCAL manager's config exactly like the
 # cluster name, so a default installation needs no flag; a REMOTE --manager must pass
 # it. "/" forces the unprefixed paths against a manager that does have one configured.
@@ -106,8 +106,9 @@ cluster_name_from_conf() {
 }
 
 # Same idea for <remote><https><global_prefix>, scoped to the <https> block. An absent tag
-# prints nothing, which is not an error here: it is exactly what "no prefix" means to the
-# manager too.
+# prints nothing and the run then sends no prefix -- but that is NOT what an absent tag means
+# to the manager, which then serves under its default '/wazuh-manager/'. Against such a
+# manager pass --global-prefix /wazuh-manager/ explicitly.
 global_prefix_from_conf() {
     [[ -r "$MANAGER_CONF" ]] || return 0
     sed -n '/<https>/,/<\/https>/p' "$MANAGER_CONF" 2>/dev/null \
@@ -217,7 +218,8 @@ if [[ -z "$CLUSTER" ]]; then
 fi
 
 # Same resolution for the global endpoint prefix, with one deliberate difference: not
-# finding it is a valid outcome (no prefix), so it never aborts the run. Only agent mode
+# finding it never aborts the run, which then sends no prefix (see global_prefix_from_conf()
+# for why that 404s against a manager relying on the default). Only agent mode
 # speaks HTTP to the manager; the UDS path never sees a URL.
 if [[ -z "$GLOBAL_PREFIX" ]] && $IS_LOCAL_MANAGER && [[ "$EFFECTIVE_MODE" == "agent" ]]; then
     GLOBAL_PREFIX="$(global_prefix_from_conf)"

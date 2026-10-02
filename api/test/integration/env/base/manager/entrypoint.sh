@@ -55,6 +55,13 @@ if [ "$4" != "standalone" ] && [ "$3" != "master" ]; then
   done
 fi
 
+# The start resolves credentials first and refuses to run without them. The tavern suites log in as
+# wazuh-wui with a known password, and this environment has no indexer, so its value only has to be
+# present. Same values on every node: they share the api_security volume and any of them may seed it.
+export WAZUH_MANAGER_API_PASSWORD='Wazuh-Integration1'
+export WAZUH_MANAGER_WUI_PASSWORD='WazuhWui-Integration1'
+export WAZUH_INDEXER_MANAGER_PASSWORD='Indexer-Integration1'
+
 echo "" > /var/wazuh-manager/logs/api.log
 /var/wazuh-manager/bin/wazuh-manager-control start
 

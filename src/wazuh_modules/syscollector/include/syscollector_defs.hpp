@@ -46,6 +46,25 @@
     FRIEND_TEST(SyscollectorIdentityTest, VDRecoveryAttachesTheDataContext);                                           \
     FRIEND_TEST(SyscollectorIdentityTest, PlainRecoveryLeavesTheVDContextAlone);                                       \
     FRIEND_TEST(SyscollectorIdentityTest, DeferredVDRecoveryDoesNotAttachContext);                                     \
+    FRIEND_TEST(SyscollectorIdentityTest, IdentityChangedQueryReportsAChangedId);                                      \
+    FRIEND_TEST(SyscollectorIdentityTest, IdentityChangedQueryIgnoresAnUnchangedId);                                   \
+    FRIEND_TEST(SyscollectorIdentityTest, IdentityChangedQueryReportsAnUnknownId);                                     \
+    FRIEND_TEST(SyscollectorIdentityTest, IdentityChangedQueryIgnoresAnAbsentMarker);                                  \
+    FRIEND_TEST(SyscollectorIdentityTest, IdentityChangedQueryReportsUnknownWithoutSyncProtocol);                      \
+    FRIEND_TEST(SyscollectorIdentityTest, SyncSkipsWhileAFlushSends);                                                  \
+    FRIEND_TEST(SyscollectorIdentityTest, RecoverySkipsWhileAFlushSends);                                              \
+    FRIEND_TEST(SyscollectorIdentityTest, RecoverySkipsWhileADataCleanHoldsTheSlot);                                   \
+    FRIEND_TEST(SyscollectorIdentityTest, FlushWaitsForARecoveryThenSends);                                            \
+    FRIEND_TEST(SyscollectorIdentityTest, FlushWaitingForARecoveryGivesUpOnShutdown);                                  \
+    FRIEND_TEST(SyscollectorIdentityTest, FlushClearsItsFlagWhenTheSessionThrows);                                     \
+    FRIEND_TEST(SyscollectorIdentityTest, PauseDoesNotWaitForAFlush);                                                  \
+    FRIEND_TEST(SyscollectorIdentityTest, ChangedIdResendCountsAsAResyncAttempt);                                      \
+    FRIEND_TEST(SyscollectorIdentityTest, FailedSyncCountsAsAResyncAttempt);                                           \
+    FRIEND_TEST(SyscollectorIdentityTest, SkippedSyncIsNotAResyncAttempt);                                             \
+    FRIEND_TEST(SyscollectorIdentityTest, SyncSkipsWhileTheStartupDataCleanRuns);                                      \
+    FRIEND_TEST(SyscollectorIdentityTest, DisabledCollectorsDataCleanWaitsForAFlush);                                  \
+    FRIEND_TEST(SyscollectorIdentityTest, DisabledCollectorsDataCleanWaitsForARecovery);                               \
+    FRIEND_TEST(SyscollectorIdentityTest, NoDisabledCollectorsDataLeavesTheRecoverySlotAlone);                        \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableWithinToleranceLogsDeferred);                 \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailableAtToleranceLogsDeferred);                     \
     FRIEND_TEST(SyscollectorImpTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning);                    \

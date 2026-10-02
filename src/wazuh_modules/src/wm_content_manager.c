@@ -93,7 +93,7 @@ cJSON* wm_content_manager_dump()
     cJSON* root = cJSON_CreateObject();
     cJSON* wm_wd = cJSON_CreateObject();
     cJSON_AddStringToObject(wm_wd, "enabled", "yes");
-    cJSON_AddItemToObject(root, "wazuh_control", wm_wd);
+    cJSON_AddItemToObject(root, "content_manager", wm_wd);
     return root;
 }
 

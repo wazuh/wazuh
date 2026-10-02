@@ -17,8 +17,8 @@ type Counters struct {
 	StatelessSent, St202, StBad400, StBad413, St503, StOther, EventsSent uint64
 
 	// Scan* are the POST /scan/vd (feed-update re-scan) counters. Scan200 is
-	// "queued", not "scanned" -- the manager answers at admission into VD's
-	// dispatch lane and the scan runs afterward (docu/14-scan-vd.md). ScanOther
+	// "queued", not "scanned" -- the manager answers once VD has recorded a
+	// durable vd_scan task and the scan runs afterward (docu/14-scan-vd.md). ScanOther
 	// collects the 400/401 that also invalidate the run.
 	ScanSent, Scan200, Scan409, Scan503, ScanOther uint64
 
@@ -188,9 +188,10 @@ func (r *Registry) RecordStateless(fleet, lane string, status int, events uint64
 // RecordScanVD classifies a POST /scan/vd outcome and records its latency.
 //
 // The latency is the ADMISSION time (offset check plus one local UDS round
-// trip), never a scan duration: 200 means VD queued the request in its
-// dispatch lane, and the scan runs afterward on VD's single worker, one agent
-// at a time. 409 (version_mismatch) and 503 (VD did not queue it; the body
+// trip), never a scan duration: 200 means VD recorded the request as a
+// durable vd_scan task (or coalesced it into one already pending), and the
+// scan runs afterward, when task-manager dispatches that task to
+// inventory-sync's VD scan lane. 409 (version_mismatch) and 503 (VD did not queue it; the body
 // names the cause) are contract outcomes of real fleet traffic; anything else
 // lands in ScanOther, which for a 400/401 comes with the run being invalidated
 // by the caller.

@@ -16,6 +16,9 @@ CLUSTER_NAME="${CLUSTER_NAME:-wazuh}"
 MASTER_ADDR="${MASTER_ADDR:-host.docker.internal}"
 INDEXER_HOST="${INDEXER_HOST:-wazuh-indexer}"
 INDEXER_PORT="${INDEXER_PORT:-9200}"
+# OBSOLETE default: admin/admin no longer authenticates against the main e2e stack
+# (its credentials are generated into ../../.credentials.env). The cluster overlay was
+# not migrated; pass INDEXER_USER/INDEXER_PASSWORD explicitly when the indexer needs them.
 INDEXER_USER="${INDEXER_USER:-admin}"
 INDEXER_PASSWORD="${INDEXER_PASSWORD:-admin}"
 : "${CLUSTER_KEY:?CLUSTER_KEY is required and must match the master}"

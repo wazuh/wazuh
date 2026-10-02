@@ -96,14 +96,15 @@ class PersistentQueue : public IPersistentQueue
         /// @brief Mutex protecting m_buffers.
         std::mutex m_mutex;
 
-        /// @brief Mutex serializing all m_storage access across threads.
+        /// @brief Mutex serializing all m_storage access across threads, and every flush as a
+        ///        whole (swap, write and clear). Always taken before m_mutex, never after it.
         std::mutex m_storageMutex;
 
         /// @brief Condition variable signalling the flush thread.
         MonotonicCondition m_cv;
 
-        /// @brief Double buffer (ping-pong): producers write to m_buffers[m_currentIdx],
-        ///        the flush thread swaps the index and drains the old slot.
+        /// @brief Double buffer (ping-pong): producers write to m_buffers[m_currentIdx], and a
+        ///        flush (background thread or sync) swaps the index and drains the old slot.
         std::array<std::vector<PersistedData>, 2> m_buffers;
 
         /// @brief Index (0 or 1) of the buffer currently accepting new events.
@@ -124,10 +125,10 @@ class PersistentQueue : public IPersistentQueue
         /// @brief Main loop executed by m_flushThread.
         void flushLoop();
 
-        /// @brief Writes a batch to storage in a single transaction.
-        /// @return true if the batch was persisted successfully, false otherwise.
-        bool flushBuffer(const std::vector<PersistedData>& batch);
-
-        /// @brief Steals any items currently in m_buffers and flushes them to storage.
-        void flushPendingBuffer();
+        /// @brief Swaps out the active buffer and writes it to storage in a single transaction.
+        ///        Used by both the background thread and the sync paths; a failed batch stays
+        ///        in its slot for the next flush of that slot.
+        /// @return true if the active buffer held items (whether or not the write succeeded),
+        ///         false if it was empty and nothing was flushed.
+        bool flushActiveBuffer();
 };

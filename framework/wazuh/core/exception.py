@@ -99,10 +99,10 @@ class WazuhException(Exception):
                               f'exception: https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
                               f'configuration.html#remote-commands-localfile-and-wodle-command'},
         1125: {'message': 'Invalid manager configuration',
-               'remediation': 'Please, provide a valid manager configuration (etc/wazuh-manager.yml)'
+               'remediation': 'Please, provide a valid manager configuration (etc/wazuh-manager.conf)'
                },
         1126: {'message': 'Error updating manager configuration',
-               'remediation': 'Please, ensure `WAZUH_PATH/etc/wazuh-manager.yml` has the proper permissions and ownership.'
+               'remediation': 'Please, ensure `WAZUH_PATH/etc/wazuh-manager.conf` has the proper permissions and ownership.'
                },
         1127: {'message': 'Protected section was modified',
                'remediation': 'To solve this, either revert the changes made to this section or disable the protection '
@@ -120,6 +120,9 @@ class WazuhException(Exception):
         1131: {'message': 'XML syntax error',
                'remediation': 'Please, provide a well-formed XML file with the single root <wazuh_config>: unescaped '
                               '& or <, legacy comments and multiple roots are not accepted.'},
+        1132: {'message': 'Secret option was modified',
+               'remediation': 'Changing the cluster key requires the `cluster:read_secrets` action over the node. '
+                              'Send the key back as returned by the API (masked as `*****`) to keep the current one.'},
 
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
@@ -276,6 +279,18 @@ class WazuhException(Exception):
                },
         1773: {'message': 'Enrollment token request refused by the manager',
                'remediation': 'Check the request against the field limits in the API spec, then retry'
+               },
+        1774: {'message': 'The agent has never connected to this node, which holds no information about it',
+               'remediation': 'The command is queued on this node and will run when the agent connects to it, '
+                              'within task-manager.task_ttl; do not send it again, as a second request creates a '
+                              'second task and the agent would run both. On a cluster the request is sent to '
+                              'every node and an agent only appears on the nodes it has connected to, so check '
+                              'the `nodes` field for the outcome reported by the node the agent does connect to'
+               },
+        1775: {'message': 'The task could not be created',
+               'remediation': 'The Task Manager did not store the command, so nothing is queued for the agent; '
+                              'see the detail for its answer, check that wazuh-manager-modulesd is running, '
+                              'then send the request again'
                },
 
         # Manager:
@@ -478,8 +493,8 @@ class WazuhException(Exception):
         5004: {'message': 'The user could not be removed or updated',
                'remediation': 'Administrator users cannot be removed or updated'},
         5007: {'message': 'Insecure user password provided',
-               'remediation': 'The password must contain at least one upper and lower case letter, a number and a '
-                              'symbol.'},
+               'remediation': 'The password must contain at least one letter and one number, and only '
+                              'printable ASCII characters without spaces.'},
         5008: {'message': 'The current user cannot be deleted',
                'remediation': 'You can delete this user with the administrator user (wazuh) or '
                               'any other user with the necessary permissions'},

@@ -4,7 +4,7 @@
 
 The **Wazuh Engine** is the decoding, enrichment and routing events of the Wazuh manager (it ships as the `wazuh-manager-analysisd` daemon). It receives raw events from `wazuh-manager-remoted`, normalizes them to the Wazuh Common Schema using user-defined decoders, enriches them (GeoIP, IOC, key-value lookups), evaluates them against one or more security policies, and forwards the resulting documents to `wazuh-indexer`.
 
-The engine never communicates with agents or with Wazuh CTI directly. Its only inbound peer for events is `remoted` and `vd`, and its only outbound peer for event/content flows is `wazuh-indexer`. The only external Internet connectivity it requires is downloading GeoIP/ASN databases from official Wazuh servers for geolocation updates. Content (decoders, integrations, policies, IOC databases) is also pulled from `wazuh-indexer` rather than from a CTI feed. For the runtime concepts referenced throughout this document — events, decoders, security policies, spaces, helper functions, assets — see the [quick-start](./index.html). For the API surface, see [api-reference.md](./api-reference.md).
+The engine never communicates with agents or with Wazuh CTI directly. Its only inbound peer for events is `remoted` and `vd`, and its only outbound peer for event/content flows is `wazuh-indexer`. The only external Internet connectivity it requires is downloading GeoIP/ASN databases from official Wazuh servers for geolocation updates. Content (decoders, integrations, policies, IOC databases) is also pulled from `wazuh-indexer` rather than from a CTI feed. For the runtime concepts referenced throughout this document — events, decoders, security policies, spaces, helper functions, assets — see the [quick-start](./README.md). For the API surface, see [api-reference.md](./api-reference.md).
 
 
 > [!NOTE]
@@ -86,7 +86,7 @@ The diagram shows the engine boundary and its relationships with the outside wor
 | Geo | GeoIP/ASN enrichment using MaxMind databases | [Geo enrichment](./README.md#geo-enrichment) |
 | Indexer Connector | Sole channel to `wazuh-indexer`: outbound events, inbound content, inbound configuration | [Output process](./README.md#output-process) |
 | Stream Log | Async rotating log channels backing file outputs and the event dumper | [Output directory structure](./README.md#output-directory-structure) |
-| Configuration | Local YAML configuration plus runtime settings pulled from `wazuh-indexer` | — |
+| Configuration | Local settings (`analysisd.*` internal options, `WAZUH_*` environment variables, the `<indexer>` section of `wazuh-manager.conf`) plus runtime settings pulled from `wazuh-indexer` | [Engine configuration](./configuration.md) |
 
 ---
 
@@ -106,7 +106,7 @@ The Builder turns the declarative content stored in the Engine Content Manager �
 
 ### Backend
 
-The Backend is the runtime that executes the compiled graph for every event. It walks the stages described in [Policy processing](./README.md#policy-processing): pre-filter, decoders (including KVDB lookups), enrichment (Geo and IOC), post-filter, and outputs. The Backend is policy-agnostic — it has no domain knowledge of decoders or rules; it only knows how to evaluate the graph the Builder produced.
+The Backend is the runtime that executes the compiled graph for every event. It walks the stages described in [Policy processing](./README.md#policy-processing): pre-filter, decoders (including KVDB lookups), enrichment (Geo and IOC), post-filter, and outputs. The Backend is policy-agnostic — it has no domain knowledge of decoders or outputs; it only knows how to evaluate the graph the Builder produced.
 
 ### Engine Content Manager
 
@@ -138,7 +138,7 @@ Stream Log provides asynchronous, rotating log channels with size-based and time
 
 ### Configuration
 
-The local configuration is loaded from the Wazuh manager's XML/ini at startup; every module reads from it. A subset of runtime parameters is also pulled periodically from `wazuh-indexer` as **remote configuration**, so operators can tune behaviour without restarting the engine. Remote configuration changes are applied with rollback if a module rejects the new values.
+The local configuration is loaded once at startup — `analysisd.*` internal options overridable by `WAZUH_*` environment variables, the `<indexer>` section of the XML `wazuh-manager.conf`, and the indexer credentials from the keystore (see [Engine configuration](./configuration.md#configuration-sources)); every module reads from it. A subset of runtime parameters is also pulled periodically from `wazuh-indexer` as **remote configuration**, so operators can tune behaviour without restarting the engine. Remote configuration changes are applied with rollback if a module rejects the new values.
 
 ---
 
@@ -208,5 +208,5 @@ IOC databases follow a parallel, independent pipeline: their own synchronizer pu
 
 ## Notes
 
-- This document covers the structure of the engine and the contracts between its modules. For runtime semantics — stages, helpers, asset structure, examples — read the [quick-start](./index.html). For the API surface, read [api-reference.md](./api-reference.md).
+- This document covers the structure of the engine and the contracts between its modules. For runtime semantics — stages, helpers, asset structure, examples — read the [quick-start](./README.md). For the API surface, read [api-reference.md](./api-reference.md).
 - The diagrams are intentionally simplified. Cross-cutting facilities such as logging, metrics and configuration loading are not drawn but are described in the corresponding module subsection above.

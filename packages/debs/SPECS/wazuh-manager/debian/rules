@@ -51,7 +51,16 @@ override_dh_install:
 	USER_ENABLE_EMAIL="n" \
 	USER_ENABLE_AUTHD="y" \
 	USER_AUTO_START="n" \
+	USER_RESOLVE_CREDENTIALS="n" \
 	./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
+
+	# USER_RESOLVE_CREDENTIALS="n" above, and this scrub behind it: this is a staging install whose
+	# tree is copied into the package, so credential material generated here would be shipped to
+	# every deployment -- and dpkg has no equivalent of rpm's unpackaged-files check to catch it.
+	# postinst resolves them on the target host instead.
+	rm -f  $(INSTALLATION_DIR)/api/configuration/security/rbac.db
+	rm -f  $(INSTALLATION_DIR)/etc/certs/*.pem
+	rm -rf $(INSTALLATION_DIR)/queue/keystore/*
 
 	# Copying init.d script
 	mkdir -p ${TARGET_DIR}/etc/init.d/
@@ -111,10 +120,33 @@ override_dh_fixperms:
 override_dh_installdeb:
 	dh_installdeb
 
+# The manager is installed neither enabled nor started; `systemctl enable --now wazuh-manager` is
+# the documented step, because the manager needs credentials it cannot always resolve at install
+# time and a unit enabled without being started only produces a failed unit at the next reboot.
+#
+# Declared rather than relied upon. Today nothing enables or starts it for two incidental reasons:
+# there is no debian/*.service, and no maintainer script carries a `#DEBHELPER#` token, so
+# dh_installdeb has nowhere to inject a snippet. Neither is a decision, and both are one ordinary
+# edit away from reversing -- dh_installsystemd scans units already in the package build directory
+# (override_dh_install installs one into usr/lib/systemd/system/), so whether it is picked up today
+# depends on the debhelper version in the build container rather than on compat 7.
+#
+# Both command generations are named on purpose: dh_installsystemd exists from debhelper 11, the
+# dh_systemd_* pair before it, and an override for a command that is not in the sequence is simply
+# never called. So this stays correct whichever debhelper builds the package.
+override_dh_installsystemd:
+	dh_installsystemd --no-enable --no-start
+
+override_dh_systemd_enable:
+	dh_systemd_enable --no-enable
+
+override_dh_systemd_start:
+	dh_systemd_start --no-start
+
 override_dh_auto_clean:
 	$(MAKE) -C src clean
 
 override_dh_strip:
 	dh_strip --dbg-package=wazuh-manager-dbg --exclude=${PKG_DIR}${INSTALLATION_DIR}/framework/python
 
-.PHONY: override_dh_install override_dh_strip override_dh_auto_clean override_dh_auto_build override_dh_auto_configure override_dh_fixperms override_dh_installdeb
+.PHONY: override_dh_install override_dh_strip override_dh_auto_clean override_dh_auto_build override_dh_auto_configure override_dh_fixperms override_dh_installdeb override_dh_installsystemd override_dh_systemd_enable override_dh_systemd_start

@@ -1,0 +1,1168 @@
+# Authentication, method, content-type and input-hardening checks common to every endpoint.
+#
+# The 401, 405 and 415 matrices below list every operation, path and body operation of
+# api/api/spec/spec.yaml; mapping/endpoint_coverage.py fails when a new one is missing from them.
+# Path parameters use values that pass request validation, so each case reaches the check it is about.
+
+---
+test_name: 401 on every JWT operation
+
+marks:
+  - parametrize:
+      key: [method, path]
+      vals:
+        - ["GET", "/"]
+        - ["DELETE", "/agents"]
+        - ["GET", "/agents"]
+        - ["POST", "/agents"]
+        - ["DELETE", "/agents/001/group"]
+        - ["DELETE", "/agents/001/group/default"]
+        - ["PUT", "/agents/001/group/default"]
+        - ["GET", "/agents/001/key"]
+        - ["PUT", "/agents/001/restart"]
+        - ["PUT", "/agents/001/reload"]
+        - ["PUT", "/agents/upgrade"]
+        - ["PUT", "/agents/upgrade_custom"]
+        - ["GET", "/agents/uninstall"]
+        - ["DELETE", "/agents/group"]
+        - ["PUT", "/agents/group"]
+        - ["PUT", "/agents/group/default/restart"]
+        - ["PUT", "/agents/group/default/reload"]
+        - ["POST", "/agents/insert"]
+        - ["POST", "/agents/insert/quick"]
+        - ["POST", "/agents/enrollment-tokens"]
+        - ["GET", "/agents/enrollment-tokens"]
+        - ["DELETE", "/agents/enrollment-tokens"]
+        - ["DELETE", "/agents/enrollment-tokens/AAECAwQFBgcICQoLDA0ODw"]
+        - ["GET", "/agents/no_group"]
+        - ["GET", "/agents/outdated"]
+        - ["PUT", "/agents/reload"]
+        - ["PUT", "/agents/restart"]
+        - ["PUT", "/agents/scan/vulnerability"]
+        - ["GET", "/agents/stats/distinct"]
+        - ["GET", "/agents/summary"]
+        - ["GET", "/agents/summary/os"]
+        - ["GET", "/agents/summary/status"]
+        - ["DELETE", "/groups"]
+        - ["GET", "/groups"]
+        - ["POST", "/groups"]
+        - ["GET", "/groups/default/agents"]
+        - ["GET", "/groups/default/configuration"]
+        - ["PUT", "/groups/default/configuration"]
+        - ["GET", "/groups/default/files"]
+        - ["GET", "/groups/default/files/agent.conf"]
+        - ["GET", "/cluster/local/info"]
+        - ["GET", "/cluster/local/config"]
+        - ["GET", "/cluster/nodes"]
+        - ["GET", "/cluster/healthcheck"]
+        - ["GET", "/cluster/status"]
+        - ["GET", "/cluster/api/config"]
+        - ["GET", "/cluster/worker1/status"]
+        - ["GET", "/cluster/worker1/info"]
+        - ["GET", "/cluster/worker1/configuration"]
+        - ["PUT", "/cluster/worker1/configuration"]
+        - ["GET", "/cluster/worker1/daemons/stats"]
+        - ["GET", "/cluster/worker1/daemons/remoted/tls"]
+        - ["GET", "/cluster/worker1/logs"]
+        - ["GET", "/cluster/worker1/logs/summary"]
+        - ["PUT", "/cluster/restart"]
+        - ["PUT", "/cluster/reload"]
+        - ["GET", "/cluster/configuration/validation"]
+        - ["GET", "/cluster/worker1/configuration/wmodules/wmodules"]
+        - ["GET", "/mitre/groups"]
+        - ["GET", "/mitre/metadata"]
+        - ["GET", "/mitre/mitigations"]
+        - ["GET", "/mitre/references"]
+        - ["GET", "/mitre/software"]
+        - ["GET", "/mitre/tactics"]
+        - ["GET", "/mitre/techniques"]
+        - ["DELETE", "/security/user/authenticate"]
+        - ["GET", "/security/users/me"]
+        - ["GET", "/security/users/me/policies"]
+        - ["PUT", "/security/user/revoke"]
+        - ["PUT", "/security/users/1/run_as"]
+        - ["GET", "/security/actions"]
+        - ["GET", "/security/resources"]
+        - ["GET", "/security/users"]
+        - ["POST", "/security/users"]
+        - ["DELETE", "/security/users"]
+        - ["PUT", "/security/users/1"]
+        - ["GET", "/security/roles"]
+        - ["POST", "/security/roles"]
+        - ["DELETE", "/security/roles"]
+        - ["PUT", "/security/roles/1"]
+        - ["GET", "/security/rules"]
+        - ["POST", "/security/rules"]
+        - ["DELETE", "/security/rules"]
+        - ["PUT", "/security/rules/1"]
+        - ["GET", "/security/policies"]
+        - ["POST", "/security/policies"]
+        - ["DELETE", "/security/policies"]
+        - ["PUT", "/security/policies/1"]
+        - ["POST", "/security/users/1/roles"]
+        - ["DELETE", "/security/users/1/roles"]
+        - ["POST", "/security/roles/1/policies"]
+        - ["DELETE", "/security/roles/1/policies"]
+        - ["POST", "/security/roles/1/rules"]
+        - ["DELETE", "/security/roles/1/rules"]
+        - ["GET", "/overview/agents"]
+        - ["GET", "/security/config"]
+        - ["PUT", "/security/config"]
+        - ["DELETE", "/security/config"]
+
+stages:
+  - name: No Authorization header
+    request: &request
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
+      method: "{method}"
+    response: &unauthorized
+      status_code: 401
+      json:
+        title: Unauthorized
+      verify_response_with:
+        - function: tavern_utils:test_no_internal_details
+
+  - name: Not a JWT
+    request:
+      <<: *request
+      headers:
+        Authorization: "Bearer garbage"
+    response:
+      <<: *unauthorized
+
+  - name: Valid header and payload, forged signature
+    request:
+      <<: *request
+      headers:
+        Authorization: "Bearer {test_tampered_token}"
+    response:
+      <<: *unauthorized
+
+  - name: Payload claiming more roles, original signature
+    request:
+      <<: *request
+      headers:
+        Authorization: "Bearer {test_forged_payload_token}"
+    response:
+      <<: *unauthorized
+
+  - name: Unsigned token (alg none)
+    request:
+      <<: *request
+      headers:
+        Authorization: "Bearer {test_unsigned_token}"
+    response:
+      <<: *unauthorized
+
+  - name: Basic credentials instead of a token
+    request:
+      <<: *request
+      headers:
+        Authorization: "Basic {basic_auth}"
+    response:
+      <<: *unauthorized
+
+---
+test_name: 401 on the login endpoints
+
+marks:
+  - parametrize:
+      key: path
+      vals:
+        - /security/user/authenticate
+        - /security/user/authenticate/run_as
+
+stages:
+  - name: No Authorization header
+    request: &login_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
+      method: POST
+    response: &login_unauthorized
+      status_code: 401
+      json:
+        title: Unauthorized
+        detail: Invalid credentials
+      verify_response_with:
+        - function: tavern_utils:test_no_internal_details
+
+  - name: Wrong password
+    request:
+      <<: *login_request
+      auth: ["{user}", "not-the-password"]
+    response:
+      <<: *login_unauthorized
+
+  - name: Unknown user
+    request:
+      <<: *login_request
+      auth: ["no-such-user", "{pass}"]
+    response:
+      <<: *login_unauthorized
+
+  - name: A token instead of Basic credentials
+    request:
+      <<: *login_request
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *login_unauthorized
+
+---
+test_name: 405 on every path
+
+marks:
+  - parametrize:
+      key: path
+      vals:
+        - "/"
+        - "/agents"
+        - "/agents/001/group"
+        - "/agents/001/group/default"
+        - "/agents/001/key"
+        - "/agents/001/restart"
+        - "/agents/001/reload"
+        - "/agents/upgrade"
+        - "/agents/upgrade_custom"
+        - "/agents/uninstall"
+        - "/agents/group"
+        - "/agents/group/default/restart"
+        - "/agents/group/default/reload"
+        - "/agents/insert"
+        - "/agents/insert/quick"
+        - "/agents/enrollment-tokens"
+        - "/agents/enrollment-tokens/AAECAwQFBgcICQoLDA0ODw"
+        - "/agents/no_group"
+        - "/agents/outdated"
+        - "/agents/reload"
+        - "/agents/restart"
+        - "/agents/scan/vulnerability"
+        - "/agents/stats/distinct"
+        - "/agents/summary"
+        - "/agents/summary/os"
+        - "/agents/summary/status"
+        - "/groups"
+        - "/groups/default/agents"
+        - "/groups/default/configuration"
+        - "/groups/default/files"
+        - "/groups/default/files/agent.conf"
+        - "/cluster/local/info"
+        - "/cluster/local/config"
+        - "/cluster/nodes"
+        - "/cluster/healthcheck"
+        - "/cluster/status"
+        - "/cluster/api/config"
+        - "/cluster/worker1/status"
+        - "/cluster/worker1/info"
+        - "/cluster/worker1/configuration"
+        - "/cluster/worker1/daemons/stats"
+        - "/cluster/worker1/daemons/remoted/tls"
+        - "/cluster/worker1/logs"
+        - "/cluster/worker1/logs/summary"
+        - "/cluster/restart"
+        - "/cluster/reload"
+        - "/cluster/configuration/validation"
+        - "/cluster/worker1/configuration/wmodules/wmodules"
+        - "/mitre/groups"
+        - "/mitre/metadata"
+        - "/mitre/mitigations"
+        - "/mitre/references"
+        - "/mitre/software"
+        - "/mitre/tactics"
+        - "/mitre/techniques"
+        - "/security/user/authenticate"
+        - "/security/user/authenticate/run_as"
+        - "/security/users/me"
+        - "/security/users/me/policies"
+        - "/security/user/revoke"
+        - "/security/users/1/run_as"
+        - "/security/actions"
+        - "/security/resources"
+        - "/security/users"
+        - "/security/users/1"
+        - "/security/roles"
+        - "/security/roles/1"
+        - "/security/rules"
+        - "/security/rules/1"
+        - "/security/policies"
+        - "/security/policies/1"
+        - "/security/users/1/roles"
+        - "/security/roles/1/policies"
+        - "/security/roles/1/rules"
+        - "/overview/agents"
+        - "/security/config"
+
+stages:
+  - name: PATCH is declared on no path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
+      method: PATCH
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 405
+      json:
+        title: Method Not Allowed
+      verify_response_with:
+        - function: tavern_utils:test_no_internal_details
+
+---
+test_name: 415 on every body operation
+
+marks:
+  - parametrize:
+      key: [method, path, content_type]
+      vals:
+        - ["POST", "/agents", "text/plain"]
+        - ["POST", "/agents/insert", "text/plain"]
+        - ["POST", "/agents/enrollment-tokens", "text/plain"]
+        - ["POST", "/groups", "text/plain"]
+        - ["PUT", "/groups/default/configuration", "application/json"]
+        - ["PUT", "/cluster/worker1/configuration", "application/json"]
+        - ["POST", "/security/users", "text/plain"]
+        - ["PUT", "/security/users/1", "text/plain"]
+        - ["POST", "/security/roles", "text/plain"]
+        - ["PUT", "/security/roles/1", "text/plain"]
+        - ["POST", "/security/rules", "text/plain"]
+        - ["PUT", "/security/rules/1", "text/plain"]
+        - ["POST", "/security/policies", "text/plain"]
+        - ["PUT", "/security/policies/1", "text/plain"]
+        - ["PUT", "/security/config", "text/plain"]
+
+stages:
+  - name: A content-type the operation does not accept
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
+      method: "{method}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        Content-Type: "{content_type}"
+      data: "x"
+    response: &unsupported_media_type
+      status_code: 415
+      json:
+        title: Unsupported Media Type
+      verify_response_with:
+        - function: tavern_utils:test_no_internal_details
+
+---
+test_name: 415 on POST /security/user/authenticate/run_as
+
+stages:
+  - name: A content-type the operation does not accept
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
+      method: POST
+      headers:
+        Authorization: "Basic {basic_auth_context}"
+        Content-Type: text/plain
+      data: "x"
+    response:
+      <<: *unsupported_media_type
+
+---
+test_name: 404 on routes the spec does not declare
+
+marks:
+  - parametrize:
+      key: path
+      vals:
+        - /nope
+        - /agents/001/nope
+        # connexion's generated UI and spec are disabled (serve_spec=False)
+        - /ui
+        - /openapi.json
+        - /openapi.yaml
+        # An encoded slash is decoded before routing: it reaches no route instead of a parent directory
+        - /groups/default/files/..%2Fagent.conf
+        - /groups/..%2F..%2Fetc/files
+        - /cluster/..%2F..%2Fetc/info
+
+stages:
+  - name: With a token
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response: &not_found
+      status_code: 404
+      json:
+        title: Not Found
+      verify_response_with:
+        - function: tavern_utils:test_no_internal_details
+
+  - name: Without a token, the same answer
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
+      method: GET
+    response:
+      <<: *not_found
+
+---
+test_name: Security headers on success and error responses
+
+stages:
+  - name: On a 200
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      headers: &security_headers
+        x-content-type-options: nosniff
+        x-frame-options: deny
+        content-security-policy: none
+        cache-control: no-store
+        referrer-policy: no-referrer, strict-origin-when-cross-origin
+        strict-transport-security: max-age=63072000; includeSubdomains
+
+  - name: On a 400
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents?limit=0"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      headers:
+        <<: *security_headers
+
+  - name: On a 401
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/"
+      method: GET
+    response:
+      status_code: 401
+      headers:
+        <<: *security_headers
+
+  - name: On a 404
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/nope"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 404
+      headers:
+        <<: *security_headers
+
+---
+test_name: A user's tokens stop working when the user changes
+
+stages:
+  - name: Create the user
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        username: lifecycle_user
+        password: "Lifecycle1A!extra"
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 1
+      save:
+        json:
+          lifecycle_user_id: data.affected_items[0].id
+
+  - name: Give it the administrator role
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/{lifecycle_user_id}/roles"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        role_ids: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 1
+    delay_after: 1
+
+  - name: Log in as the user
+    request: &user_login
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate"
+      method: POST
+      auth: ["lifecycle_user", "Lifecycle1A!extra"]
+    response:
+      status_code: 200
+      save:
+        json:
+          user_token: data.token
+
+  - name: The token works
+    request: &user_me
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/me"
+      method: GET
+      headers:
+        Authorization: "Bearer {user_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - username: lifecycle_user
+
+  # An administrator that is not a reserved user (id above 99) cannot take over a reserved one
+  - name: The user, an administrator, cannot change the password of the reserved user 1
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/1"
+      method: PUT
+      headers:
+        Authorization: "Bearer {user_token}"
+      json:
+        password: "HackedAdmin1!extra"
+    response:
+      status_code: 400
+      json:
+        error: 5011
+
+  - name: Nor the run_as flag of the reserved user 2
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/2/run_as"
+      method: PUT
+      headers:
+        Authorization: "Bearer {user_token}"
+      params:
+        allow_run_as: false
+    response:
+      status_code: 400
+      json:
+        error: 5011
+
+  - name: Change the password
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/{lifecycle_user_id}"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        password: "Lifecycle2A!extra"
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 1
+    delay_after: 1
+
+  - name: The token issued before the password change is refused
+    request:
+      <<: *user_me
+    response: &revoked
+      status_code: 401
+      json:
+        title: Unauthorized
+
+  - name: The old password is refused
+    request:
+      <<: *user_login
+    response:
+      status_code: 401
+
+  - name: Log in with the new password
+    request: &user_login_new
+      <<: *user_login
+      auth: ["lifecycle_user", "Lifecycle2A!extra"]
+    response:
+      status_code: 200
+      save:
+        json:
+          user_token: data.token
+
+  - name: Remove its role
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/{lifecycle_user_id}/roles"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        role_ids: 1
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 1
+    delay_after: 1
+
+  - name: The token issued before the role change is refused
+    request:
+      <<: *user_me
+    response:
+      <<: *revoked
+
+  - name: Log in again
+    request:
+      <<: *user_login_new
+    response:
+      status_code: 200
+      save:
+        json:
+          user_token: data.token
+
+  - name: Log out
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {user_token}"
+    response:
+      status_code: 200
+    delay_after: 1
+
+  - name: The token is refused after the logout
+    request:
+      <<: *user_me
+    response:
+      <<: *revoked
+
+  - name: Log in once more
+    request:
+      <<: *user_login_new
+    response:
+      status_code: 200
+      save:
+        json:
+          user_token: data.token
+
+  - name: Delete the user
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        user_ids: "{lifecycle_user_id}"
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 1
+    delay_after: 1
+
+  - name: The token of a deleted user is refused
+    request:
+      <<: *user_me
+    response:
+      <<: *revoked
+
+  - name: A deleted user cannot log in
+    request:
+      <<: *user_login_new
+    response:
+      status_code: 401
+
+---
+test_name: Changing the security configuration revokes every token
+
+stages:
+  - name: Update the configuration, same values
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        auth_token_exp_timeout: 900
+        rbac_mode: white
+    response:
+      status_code: 200
+    delay_after: 1
+
+  - name: The token issued before is refused
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/me"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 401
+
+  - name: Log in again
+    request: &login
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate"
+      method: POST
+      auth: ["{user}", "{pass}"]
+    response:
+      status_code: 200
+      save:
+        json:
+          new_token: data.token
+
+  - name: Restore the default configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {new_token}"
+    response:
+      status_code: 200
+    delay_after: 1
+
+  - name: The token issued before the restore is refused
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/me"
+      method: GET
+      headers:
+        Authorization: "Bearer {new_token}"
+    response:
+      status_code: 401
+
+  - name: A new login works
+    request:
+      <<: *login
+    response:
+      status_code: 200
+
+---
+test_name: SQL metacharacters in search are data, not SQL
+
+marks:
+  - parametrize:
+      key: path
+      vals:
+        - /agents
+        - /agents/enrollment-tokens
+        - /agents/no_group
+        - /agents/outdated
+        - /groups
+        - /groups/default/agents
+        - /groups/default/files
+        - /cluster/nodes
+        - /cluster/master-node/logs
+        - /mitre/groups
+        - /mitre/mitigations
+        - /mitre/references
+        - /mitre/software
+        - /mitre/tactics
+        - /mitre/techniques
+        - /security/users
+        - /security/roles
+        - /security/rules
+        - /security/policies
+
+stages:
+  - name: A classic injection string matches nothing
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        search: "x' OR '1'='1"
+    response:
+      status_code: 200
+      json:
+        data:
+          total_affected_items: 0
+
+---
+test_name: Query parameter bounds on every list endpoint
+
+marks:
+  - parametrize:
+      key: path
+      vals:
+        - /agents
+        - /agents/enrollment-tokens
+        - /agents/no_group
+        - /agents/outdated
+        - /groups
+        - /groups/default/agents
+        - /groups/default/files
+        - /cluster/nodes
+        - /cluster/master-node/logs
+        - /mitre/groups
+        - /mitre/mitigations
+        - /mitre/references
+        - /mitre/software
+        - /mitre/tactics
+        - /mitre/techniques
+        - /security/users
+        - /security/roles
+        - /security/rules
+        - /security/policies
+
+stages:
+  - name: search longer than 1024 characters
+    request: &list_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        search: "{long_1025:s}"
+    response: &bad_request
+      status_code: 400
+      json:
+        title: Bad Request
+      verify_response_with:
+        - function: tavern_utils:test_no_internal_details
+
+  - name: q longer than 1024 characters
+    request:
+      <<: *list_request
+      params:
+        q: "name={long_1025:s}"
+    response:
+      <<: *bad_request
+
+  - name: select with more than 100 fields
+    request:
+      <<: *list_request
+      params:
+        select: "{select_101:s}"
+    response:
+      <<: *bad_request
+
+---
+test_name: Path traversal in path and query parameters
+
+stages:
+  - name: A group file named ..
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/default/files/%2e%2e"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        error: 1006
+
+  - name: A hidden group file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/default/files/.agent.conf"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        error: 1006
+
+  - name: A group named ..
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/%2e%2e/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: Upload the configuration of a group named ..
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/%2e%2e/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        Content-Type: application/xml
+      data: "{file_xml:s}"
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: A node named ..
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/%2e%2e/info"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 404
+
+  - name: A relative WPK path outside the upgrade directory
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_custom"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "001"
+        file_path: "../../etc/passwd"
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+  - name: An absolute path that is not a WPK
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_custom"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "001"
+        file_path: "/etc/passwd"
+    response:
+      status_code: 400
+      json:
+        title: Bad Request
+
+---
+test_name: Heavy requests answer within 10 seconds
+
+stages:
+  - name: 500 agents sorted on three fields
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
+      method: GET
+      timeout: 10
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 500
+        sort: "-os.name,version,id"
+        select: "id,name,os.name,version,status"
+    response:
+      status_code: 200
+
+  - name: 500 agents, distinct
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
+      method: GET
+      timeout: 10
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 500
+        distinct: true
+        select: "os.name,os.version"
+    response:
+      status_code: 200
+
+  - name: Distinct agent fields
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/stats/distinct"
+      method: GET
+      timeout: 10
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        fields: "os.name,os.version,version"
+        limit: 500
+    response:
+      status_code: 200
+
+  - name: A 1024-character search
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
+      method: GET
+      timeout: 10
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        search: "{long_1024:s}"
+    response:
+      status_code: 200
+
+  - name: A 1024-character q
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
+      method: GET
+      timeout: 10
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        q: "name~{long_1019:s}"
+    response:
+      status_code: 200
+
+  - name: 500 groups
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
+      method: GET
+      timeout: 10
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 500
+        sort: -name
+    response:
+      status_code: 200
+
+  - name: 500 MITRE techniques sorted
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/mitre/techniques"
+      method: GET
+      timeout: 10
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 500
+        sort: -name
+    response:
+      status_code: 200
+
+  - name: 500 MITRE software entries
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/mitre/software"
+      method: GET
+      timeout: 10
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 500
+    response:
+      status_code: 200
+
+  - name: 500 users
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users"
+      method: GET
+      timeout: 10
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 500
+    response:
+      status_code: 200
+
+  - name: Every cluster node
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/nodes"
+      method: GET
+      timeout: 10
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 500
+    response:
+      status_code: 200
+
+  - name: Healthcheck of every node
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/healthcheck"
+      method: GET
+      timeout: 10
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        pretty: false
+    response:
+      status_code: 200
+
+  - name: API configuration of every node
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/api/config"
+      method: GET
+      timeout: 10
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: 'master-node,worker1,worker2'
+    response:
+      status_code: 200
+
+  - name: Configuration validation of every node
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/configuration/validation"
+      method: GET
+      timeout: 10
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: 'master-node,worker1,worker2'
+    response:
+      status_code: 200
+
+  - name: 500 log lines sorted
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/master-node/logs"
+      method: GET
+      timeout: 10
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 500
+        sort: -timestamp
+    response:
+      status_code: 200
+
+---
+test_name: pretty and wait_for_complete on one operation per tag
+
+marks:
+  - parametrize:
+      key: path
+      vals:
+        - /agents
+        - /groups
+        - /cluster/nodes
+        - /mitre/metadata
+        - /overview/agents
+        - /security/users/me
+
+stages:
+  - name: Both flags accepted, output indented
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}{path}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        pretty: true
+        wait_for_complete: true
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_pretty_format

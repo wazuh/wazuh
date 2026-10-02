@@ -71,13 +71,15 @@ The `store::utils::jsonGenerator` function wraps a JSON document with metadata:
 
 ```json
 {
-  "json": { /* original parsed content */ },
-  "original": "raw string content",
-  "format": "json" | "yml"
+  "json": {"name": "decoder/example/0"},
+  "original": "name: decoder/example/0\n",
+  "format": "yml"
 }
 ```
 
-This is used by consumers that need to store both parsed JSON and the original source format.
+`json` is the parsed content, `original` the raw source string and `format` the caller-supplied source
+format (for example `json` or `yml`). It is meant for consumers that need to store both the parsed JSON
+and the original source; nothing in the engine tree calls it at present.
 
 ## Directory Structure
 

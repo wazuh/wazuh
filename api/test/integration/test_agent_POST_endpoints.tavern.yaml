@@ -445,8 +445,8 @@ stages:
         <<: *error_spec
 
     # POST /agents/insert
+  # Body.get_kwargs refuses a field the model does not declare
   - name: Extra field
-    skip: True
     request:
       verify: False
       <<: *agent_insert_request
@@ -457,9 +457,10 @@ stages:
         key: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
         extra: "Nothing"
     response:
-      status_code: 200
+      status_code: 400
       json:
-        <<: *agent_create_response
+        title: Bad Request
+        detail: "Invalid field found {{'extra'}}"
 
     # POST /agents/insert
   - name: Create a new agent using a manual IP

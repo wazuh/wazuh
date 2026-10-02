@@ -1,0 +1,322 @@
+name: 5.X - DevContainer - Build and publish image
+
+# Builds the devContainer image (tools/devContainer/.devcontainer: Dockerfile + features) on native
+# amd64 and arm64 runners, pushes each platform by digest, joins them under
+# ghcr.io/<owner>/wazuh-devcontainer:<major.minor of VERSION.json> and deletes the untagged versions
+# that no tag references any more.
+#
+# A new release line (e.g. 5.1.0) needs the "image" tag of
+# tools/devContainer/.devcontainer/devcontainer.json bumped to <major.minor> first; until then the
+# meta job fails. That commit touches .devcontainer/** and triggers the build; workflow_dispatch only
+# re-launches it.
+
+on:
+  push:
+    branches:
+      - '5.[0-9]+.[0-9]+'
+      - 'main'
+    paths:
+      - 'tools/devContainer/.devcontainer/**'
+      - '.github/workflows/5_builderprecompiled_devcontainer-image.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+# One active run and one pending per owner: the cleanup of a run never races another run's build.
+# GitHub cancels the pending run when a third one arrives; a cancelled run of another branch must be
+# re-launched with workflow_dispatch on that branch.
+concurrency:
+  group: devcontainer-image-${{ github.repository_owner }}
+  cancel-in-progress: false
+
+jobs:
+  meta:
+    name: Image name and tag
+    runs-on: ubuntu-24.04
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+      tag: ${{ steps.meta.outputs.tag }}
+      owner_kind: ${{ steps.meta.outputs.owner_kind }}
+      started_at: ${{ steps.meta.outputs.started_at }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compute image, tag and owner kind
+        id: meta
+        shell: bash
+        env:
+          OWNER: ${{ github.repository_owner }}
+          OWNER_TYPE: ${{ github.event.repository.owner.type }}
+        run: |
+          set -euo pipefail
+          started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          owner_lc="${OWNER,,}"
+          if [[ -z "$owner_lc" ]]; then
+            echo "::error::Empty repository owner"
+            exit 1
+          fi
+          image="ghcr.io/${owner_lc}/wazuh-devcontainer"
+
+          case "$OWNER_TYPE" in
+            Organization) owner_kind="orgs" ;;
+            User) owner_kind="users" ;;
+            *)
+              echo "::error::Unknown repository owner type '${OWNER_TYPE}' (expected Organization or User)"
+              exit 1
+              ;;
+          esac
+
+          version="$(jq -r '.version // empty' VERSION.json)"
+          if [[ ! "$version" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+$ ]]; then
+            echo "::error::VERSION.json has no major.minor.patch version (got '${version}')"
+            exit 1
+          fi
+          tag="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+
+          runtime_config="tools/devContainer/.devcontainer/devcontainer.json"
+          if [[ ! -f "$runtime_config" ]]; then
+            echo "::error::Missing ${runtime_config}"
+            exit 1
+          fi
+          json_image="$(sed -n 's/^[[:space:]]*"image":[[:space:]]*"\([^"]*\)".*$/\1/p' "$runtime_config" | head -n 1)"
+          if [[ -z "$json_image" ]]; then
+            echo "::error::No \"image\" line found in ${runtime_config}"
+            exit 1
+          fi
+          # Same split as build-image.sh: the tag follows the last ':' only if it has no '/'.
+          json_repo="$json_image"
+          json_tag=""
+          case "${json_image##*:}" in
+            "$json_image"|*/*) ;;
+            *)
+              json_tag="${json_image##*:}"
+              json_repo="${json_image%:*}"
+              ;;
+          esac
+
+          if [[ "$json_tag" != "$tag" ]]; then
+            echo "${runtime_config} opens '${json_image}', but this branch publishes the tag ${tag}"
+            echo "::error::bump the \"image\" tag in tools/devContainer/.devcontainer/devcontainer.json to ${tag}"
+            exit 1
+          fi
+          if [[ "$owner_lc" == "wazuh" && "$json_repo" != "$image" ]]; then
+            echo "::error::${runtime_config} opens '${json_image}' but this workflow publishes ${image}:${tag}: set its \"image\" repository to ${image}"
+            exit 1
+          fi
+
+          {
+            echo "image=${image}"
+            echo "tag=${tag}"
+            echo "owner_kind=${owner_kind}"
+            echo "started_at=${started_at}"
+          } >>"$GITHUB_OUTPUT"
+          echo "image=${image} tag=${tag} owner_kind=${owner_kind} started_at=${started_at}"
+
+  build:
+    name: Build ${{ matrix.arch }}
+    needs: meta
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 300
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    env:
+      IMAGE: ${{ needs.meta.outputs.image }}
+      TAG: ${{ needs.meta.outputs.tag }}
+      ARCH: ${{ matrix.arch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Disk usage before the build
+        shell: bash
+        run: df -h /
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build and push by digest
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools/devContainer/.devcontainer/build-image.sh \
+            --platform "linux/${ARCH}" \
+            --image "$IMAGE" \
+            --tag "$TAG" \
+            --push-by-digest "digest-${ARCH}.txt"
+          echo "Pushed ${IMAGE}@$(cat "digest-${ARCH}.txt") for linux/${ARCH}"
+
+      - name: Upload the digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.arch }}
+          path: digest-${{ matrix.arch }}.txt
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
+
+      - name: Prune the builder cache
+        shell: bash
+        run: docker buildx prune -af
+
+      - name: Test the image on this platform
+        shell: bash
+        run: |
+          set -euo pipefail
+          digest="$(cat "digest-${ARCH}.txt")"
+          docker pull "${IMAGE}@${digest}"
+          out="$(docker run --rm --entrypoint bash "${IMAGE}@${digest}" -c \
+            'uname -m && clang-format --version && cmake --version && cat /etc/wazuh-devcontainer-source')"
+          echo "$out"
+          case "$ARCH" in amd64) machine=x86_64 ;; arm64) machine=aarch64 ;; *) machine="" ;; esac
+          if [[ "$(head -n 1 <<<"$out")" != "$machine" ]] \
+            || ! grep -q 'clang-format version 22\.1\.1' <<<"$out" \
+            || ! grep -q 'cmake version 3\.30\.5' <<<"$out" \
+            || [[ "$(tail -n 1 <<<"$out")" != "ci" ]]; then
+            echo "::error::The ${ARCH} image does not have the expected machine (${machine}), clang-format 22.1.1, cmake 3.30.5 and the ci marker"
+            exit 1
+          fi
+
+      - name: Disk usage after the build
+        if: always()
+        shell: bash
+        run: df -h /
+
+  manifest:
+    name: Tag and clean up
+    needs: [meta, build]
+    runs-on: ubuntu-24.04
+    env:
+      IMAGE: ${{ needs.meta.outputs.image }}
+      TAG: ${{ needs.meta.outputs.tag }}
+    steps:
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download the digests
+        uses: actions/download-artifact@v4
+        with:
+          pattern: digest-*
+          merge-multiple: true
+          path: digests
+
+      - name: Create the multi-platform tag
+        id: create
+        shell: bash
+        run: |
+          set -euo pipefail
+          digests=()
+          for arch in amd64 arm64; do
+            digest="$(tr -d '[:space:]' <"digests/digest-${arch}.txt")"
+            if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "::error::Invalid ${arch} digest '${digest}'"
+              exit 1
+            fi
+            digests+=("$digest")
+          done
+          docker buildx imagetools create -t "${IMAGE}:${TAG}" "${IMAGE}@${digests[0]}" "${IMAGE}@${digests[1]}"
+          docker buildx imagetools inspect "${IMAGE}:${TAG}"
+          echo "digests=${digests[*]}" >>"$GITHUB_OUTPUT"
+
+      - name: Delete untagged versions no tag references
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER_KIND: ${{ needs.meta.outputs.owner_kind }}
+          STARTED_AT: ${{ needs.meta.outputs.started_at }}
+          DIGESTS: ${{ steps.create.outputs.digests }}
+        run: |
+          set -euo pipefail
+          # Kept: every tagged version plus the descriptors its index lists. Deleted: untagged versions
+          # outside that set created before this run started (a newer one may belong to a pending
+          # run), plus this run's per-platform indexes (DIGESTS): imagetools create flattened them
+          # into the tag, so they are orphans now. Deleted versions can be restored for 30 days.
+          # DELETE needs the repository to hold the admin role on the package (granted by the first
+          # publish from this workflow) and fails on a public package version with more than 5,000
+          # downloads; the tag is already published when this step runs, even if it fails.
+          rest="${IMAGE#ghcr.io/}"
+          owner="${rest%%/*}"
+          package="${IMAGE##*/}"
+          api="/${OWNER_KIND}/${owner}/packages/container/${package}/versions"
+
+          if [[ ! "$STARTED_AT" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]; then
+            echo "::error::Invalid STARTED_AT '${STARTED_AT}': nothing deleted"
+            exit 1
+          fi
+          read -r -a run_digests <<<"$DIGESTS"
+          if [[ "${#run_digests[@]}" -ne 2 ]]; then
+            echo "::error::Expected the 2 per-platform digests of this run, got '${DIGESTS}': nothing deleted"
+            exit 1
+          fi
+
+          versions="$(gh api --paginate --slurp "${api}?per_page=100" | jq -c '[.[][]]')"
+          echo "Versions: $(jq 'length' <<<"$versions")"
+
+          if ! jq -e --arg tag "$TAG" 'any(.[]; (.metadata.container.tags // []) | any(. == $tag))' <<<"$versions" >/dev/null; then
+            echo "::error::No version tagged ${TAG} in ${api}: nothing deleted"
+            exit 1
+          fi
+
+          keep=()
+          while IFS=$'\t' read -r name tags; do
+            [[ -n "$name" ]] || continue
+            keep+=("$name")
+            if ! children="$(docker buildx imagetools inspect --raw "${IMAGE}@${name}" | jq -r '.manifests[]?.digest')"; then
+              echo "::error::imagetools inspect ${IMAGE}@${name} (${tags}) failed: nothing deleted"
+              exit 1
+            fi
+            echo "Keep ${name} (${tags})"
+            while read -r child; do
+              [[ -n "$child" ]] || continue
+              keep+=("$child")
+              echo "Keep ${child} (listed by ${tags})"
+            done <<<"$children"
+          done < <(jq -r '.[] | select((.metadata.container.tags // []) | length > 0)
+                          | [.name, (.metadata.container.tags | join(","))] | @tsv' <<<"$versions")
+
+          keep_json="$(printf '%s\n' "${keep[@]}" | jq -R . | jq -sc .)"
+          run_json="$(printf '%s\n' "${run_digests[@]}" | jq -R . | jq -sc .)"
+
+          delete="$(jq -r --argjson keep "$keep_json" --argjson run "$run_json" --arg started "$STARTED_AT" '
+            .[]
+            | select((.metadata.container.tags // []) | length == 0)
+            | .name as $n
+            | select(($keep | any(. == $n)) | not)
+            | select(.created_at < $started or ($run | any(. == $n)))
+            | [(.id | tostring), .name, .created_at] | @tsv' <<<"$versions")"
+
+          failed=0
+          while IFS=$'\t' read -r id name created; do
+            [[ -n "$id" ]] || continue
+            echo "Delete ${name} (id ${id}, created ${created})"
+            if ! gh api -X DELETE "${api}/${id}" >/dev/null; then
+              echo "::error::Could not delete version ${id} (${name})"
+              failed=1
+            fi
+          done <<<"$delete"
+          [[ -n "$delete" ]] || echo "Nothing to delete"
+          exit "$failed"

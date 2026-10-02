@@ -4,7 +4,7 @@
 
 The **fastmetrics** module provides a high-performance, lock-free metrics system for the Wazuh engine. It is designed for ultra-low-overhead instrumentation of hot paths (event processing loops, queue operations) using `std::atomic` with `memory_order_relaxed`. Metrics are registered in a thread-safe registry and accessed globally via a singleton pattern (`SingletonLocator`).
 
-The module supports three metric types: **counters** (monotonically increasing), **gauges** (bidirectional integers), and **pull metrics** (on-demand callbacks). All metrics are periodically serialized as JSON lines and written to rotating log files via the `streamlog` subsystem.
+The module supports three metric types: **counters** (monotonically increasing), **gauges** (bidirectional integers), and **pull metrics** (on-demand callbacks). Metrics are not written to a file: they are read on demand through the engine API (`api/metrics`).
 
 ## Architecture
 
@@ -38,22 +38,15 @@ The module supports three metric types: **counters** (monotonically increasing),
                     │  └────────────────────────────────────────────────┘ │
                     └───────────────┬─────────────────────────────────────┘
                                     │
-                          writeAllMetrics(writer)
-                           (scheduled task)
+                           get() / getAllNames()
                                     │
                     ┌───────────────▼──────────────────┐
-                    │   streamlog::WriterEvent          │
-                    │   channel: "engine-metrics"       │
-                    │   → JSON lines to rotating files  │
-                    └──────────────────────────────────┘
-
-                    ┌──────────────────────────────────┐
                     │   API Endpoints (api/metrics)     │
                     │                                   │
-                    │   GET  /metrics/{name}             │
-                    │   GET  /metrics                    │
-                    │   POST /metrics/enable             │
-                    │   POST /metrics/dump               │
+                    │   POST /metrics/get               │
+                    │   POST /metrics/list              │
+                    │   POST /metrics/enable            │
+                    │   POST /metrics/dump              │
                     └──────────────────────────────────┘
 ```
 
@@ -115,14 +108,28 @@ A lock-free circular buffer for computing events-per-second (EPS) over configura
 
 ### Metric Output Format
 
-`writeAllMetrics()` serializes all metrics as JSON lines:
+`POST /metrics/dump` returns a snapshot of every registered metric, split into `global` and per-space
+groups (the `space.<name>.` prefix is stripped inside a space); `name`, `uptime` and `timestamp` are the
+daemon name and ISO 8601 times:
 
 ```json
-{"timestamp":1715270400000,"name":"router.events.processed","value":42}
-{"timestamp":1715270400000,"name":"indexer.queue.size","value":100}
+{
+  "status": "OK",
+  "name": "wazuh-manager-analysisd",
+  "uptime": "2026-10-02T10:00:00.000Z",
+  "timestamp": "2026-10-02T10:05:00.000Z",
+  "global": [
+    {"name": "router.events.processed", "type": "counter", "enabled": true, "value": 42}
+  ],
+  "spaces": [
+    {"name": "wazuh", "metrics": [
+      {"name": "events.discarded", "type": "counter", "enabled": true, "value": 3}
+    ]}
+  ]
+}
 ```
 
-Timestamp is milliseconds since epoch. Value is always `double`.
+`type` is `counter`, `gauge_int` or `pull`. Value is always `double`.
 
 ## Registered Metric Names
 
@@ -154,7 +161,6 @@ Predefined names in `metric_names.hpp`:
 | Dependency | CMake Target | Role |
 |------------|-------------|------|
 | `base` | `base` | `SingletonLocator`, logging |
-| `streamlog` | `streamlogger::streamlogger` | `WriterEvent` and `ILogManager` for `writeAllMetrics()` |
 
 ## Integration in `main.cpp`
 
@@ -170,15 +176,7 @@ FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_USAGE_PERCENT, indexe
 metricsManager = std::shared_ptr<fastmetrics::IManager>(&fastmetrics::manager(), [](auto*) {});
 
 // 4. Register API endpoints
-api::metrics::handlers::registerHandlers(metricsManager, apiServer, ...);
-
-// 5. Schedule periodic metrics dump to streamlog
-scheduler->scheduleTask("MetricsLogger", {
-    .interval = metricsLogInterval,
-    .taskFunction = [metricsWriter, metricsManager]() {
-        metricsManager->writeAllMetrics(metricsWriter);
-    }
-});
+api::metrics::handlers::registerHandlers(metricsManager, apiServer, "wazuh-manager-analysisd", engineUptimeISO);
 ```
 
 ## Consumers
@@ -189,7 +187,7 @@ scheduler->scheduleTask("MetricsLogger", {
 | **builder** | Creates per-space counters for unclassified/discarded events in policy pipelines |
 | **api/event** | Creates counters for bytes/events received on the ingest endpoint |
 | **api/metrics** | Exposes metrics via HTTP API (get, list, enable/disable, dump) |
-| **main.cpp** | Registers indexer pull metrics, schedules periodic JSON dump to `streamlog` |
+| **main.cpp** | Registers indexer pull metrics and the `api/metrics` handlers |
 
 ## Thread Safety
 
@@ -206,7 +204,7 @@ fastmetrics/
 ├── CMakeLists.txt                                          # Build: ifastmetrics (INTERFACE), fastmetrics (STATIC)
 ├── interface/fastmetrics/
 │   ├── iMetric.hpp                                         # IMetric, ICounter, IGaugeInt interfaces
-│   ├── iManager.hpp                                        # IManager interface (registry + writeAllMetrics)
+│   ├── iManager.hpp                                        # IManager interface (registry, enable/disable)
 │   ├── registry.hpp                                        # Singleton access: manager(), registerManager(), FASTMETRICS_PULL
 │   ├── metric_names.hpp                                    # Predefined metric name constants and formatters
 │   └── slidingWindowRate.hpp                               # Lock-free EPS calculator (circular buffer)
@@ -216,7 +214,7 @@ fastmetrics/
 │   ├── pullMetric.hpp                                      # PullMetric<T> (callback-based IMetric)
 │   └── manager.hpp                                         # Manager class (IManager implementation)
 ├── src/
-│   ├── manager.cpp                                         # Manager methods (get, exists, writeAllMetrics, etc.)
+│   ├── manager.cpp                                         # Manager methods (get, exists, getAllNames, etc.)
 │   └── registry.cpp                                        # registerManager() — SingletonLocator wiring
 ├── test/
 │   ├── mocks/fastmetrics/

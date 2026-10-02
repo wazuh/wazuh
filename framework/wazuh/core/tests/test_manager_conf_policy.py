@@ -9,12 +9,14 @@ from copy import deepcopy
 import pytest
 
 from wazuh.core.exception import WazuhError
-from wazuh.core.manager_conf_policy import check_protected_sections
+from wazuh.core.manager_conf_policy import check_protected_sections, check_secret_sections
 
 CURRENT = {
     'indexer': {'hosts': ['https://127.0.0.1:9200'], 'ssl': {'certificate_authorities': [], 'certificate': '', 'key': ''}},
     'auth': {'agents': {'allow_higher_versions': False}},
     'remote': {'agents': {'allow_higher_versions': False}},
+    'cluster': {'name': 'wazuh', 'node_type': 'master', 'key': 'c98b62a9b6169ac5f67dae55ae4a9088',
+                'nodes': ['127.0.0.1'], 'port': 1516, 'bind_addr': ['0.0.0.0']},
 }
 ALLOW_ALL = {'agents': {'allow_higher_versions': {'allow': True}}, 'indexer': {'allow': True}}
 DENY_ALL = {'agents': {'allow_higher_versions': {'allow': False}}, 'indexer': {'allow': False}}
@@ -71,3 +73,30 @@ def test_default_knobs_come_from_api_conf():
     with patch('wazuh.core.manager_conf_policy.api_configuration.api_conf', new=with_deny):
         with pytest.raises(WazuhError, match='.* 1127 .*'):
             check_protected_sections(_changed('/indexer/hosts', []), CURRENT)
+
+
+def test_unchanged_secrets_pass_without_read_secrets():
+    check_secret_sections(deepcopy(CURRENT), CURRENT, can_read_secrets=False)
+
+
+def test_cluster_key_change_is_refused_without_read_secrets():
+    with pytest.raises(WazuhError, match='.* 1132 .*') as exc:
+        check_secret_sections(_changed('/cluster/key', 'd4f1e0a57c2b9368a1e4f7c0b2d85e19'), CURRENT,
+                              can_read_secrets=False)
+    assert str(exc.value).endswith('/cluster/key')
+
+
+def test_cluster_key_change_is_allowed_with_read_secrets():
+    check_secret_sections(_changed('/cluster/key', 'd4f1e0a57c2b9368a1e4f7c0b2d85e19'), CURRENT,
+                          can_read_secrets=True)
+
+
+@pytest.mark.parametrize('pointer, value', [
+    ('/cluster/node_type', 'worker'),
+    ('/cluster/nodes', ['10.0.0.2']),
+    ('/cluster/port', 1600),
+    ('/cluster/bind_addr', ['10.0.0.1']),
+])
+def test_cluster_membership_is_not_a_secret(pointer, value):
+    """Without the key a peer cannot join, so the topology stays writable with cluster:update_config alone."""
+    check_secret_sections(_changed(pointer, value), CURRENT, can_read_secrets=False)

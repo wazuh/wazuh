@@ -17,7 +17,7 @@ The agent's half — verifying the WPK's signature and running the installer —
 API / agent_upgrade CLI
         │  POST /v1/agents/upgrade  (or /v1/agents/upgrade-custom)
         ▼
-queue/sockets/task-http.sock ──► parse, then hand the batch to a worker  ──► answer immediately
+queue/sockets/task-http.sock ──► parse, hand the batch to a worker ──► answer when the batch ends
                                             │
                         ┌───────────────────┴───────────────────┐
                         │  PER AGENT                            │
@@ -42,6 +42,7 @@ queue/sockets/task-http.sock ──► parse, then hand the batch to a worker  �
                         │    wpk_file:  <bare WPK filename>     │
                         │    wpk_sha1:  <hex digest>            │
                         │    installer: upgrade.sh|.bat         │
+                        │    wpk_version: <target, or empty>    │
                         └───────────────────────────────────────┘
 ```
 
@@ -52,6 +53,8 @@ download and one transaction — not 500 of each.
 
 **The response is a per-agent envelope**, so one agent failing its version check does not affect the
 rest of the request.
+
+`wpk_version` is empty for a custom WPK, which the delivery side reads as a 5.x target.
 
 Requests are answered from a pool of batch workers rather than inline: a cold batch may need a
 repository fetch and a 100 MB download before the first task exists, and the same socket is serving
@@ -69,12 +72,15 @@ forwarded by the API, so the same request reaching several cluster nodes produce
 
 | Condition | Behavior |
 | --- | --- |
-| Agent below `v3.0.0` | Rejected — minimum supported version |
-| Upgrade target ≥ `v5.0.0` and current agent version < `v4.14.0` | Rejected with `Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first` |
-| Target version ≤ current agent version | Rejected unless `force_upgrade` is set |
-| Target version > manager version | Rejected unless `force_upgrade` is set |
-| Upgrade target ≥ `v5.0.0` and `remoted`'s `remote.https.verification_mode` is not `none` | Rejected. The repository path allows `force_upgrade` to override, with a logged warning; the custom-WPK path has no `force` parameter and so cannot be overridden |
-| Agent below `v5.0.0` and `remote.legacy.enabled` false | Rejected — there would be no way to deliver the task |
+| Agent below `v3.0.0` | Rejected (error 8) — minimum supported version |
+| Upgrade target ≥ `v5.0.0` and current agent version < `v4.14.0` | Rejected (error 9) with `Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first`, even with `force_upgrade`. On the custom path the target is read from the file name's `_v<version>_` token, and the rule applies only when one is found |
+| Target version ≤ current agent version | Rejected (error 10) unless `force_upgrade` is set; repository path only |
+| Target version > manager version | Rejected (error 11) unless `force_upgrade` is set; repository path only |
+| Upgrade target ≥ `v5.0.0` and the resolved `remote.https.verification_mode` is not `none` (it is `certificate` when `remote.https.ca` is set and the mode is not) | Rejected (error 16). The repository path allows `force_upgrade` to override, with a logged warning; the custom-WPK path treats every file as a 5.x target, has no `force` parameter and so cannot be overridden |
+| Agent below `v5.0.0` and `remote.legacy.enabled` false | Rejected (error 18) — there would be no way to deliver the task. Not overridable |
+
+The two `remote` checks are skipped for every agent when modulesd could not read the `remote`
+section at start-up.
 
 ---
 
@@ -84,8 +90,9 @@ A WPK is a signed, compressed archive holding the agent binaries and an installe
 (`upgrade.sh` on Linux/macOS, `upgrade.bat` on Windows) for one platform and version. Each is
 published alongside a SHA-1 checksum used to validate it end to end.
 
-The repository URL defaults to `packages.wazuh.com/<major>.x/wpk/`, derived from the target version,
-and is overridden with [`<wpk_repository>`](configuration.md#agent-upgrades).
+The repository URL defaults to `packages.wazuh.com/<major>.x/wpk/`, derived from the target version
+(`packages.wazuh.com/wpk/` below v4.0.0), and is overridden with
+[`<wpk_repository>`](configuration.md#xml-options) or, per request, with `wpk_repo`.
 
 **Downloads are staged, verified, then renamed into place**, so a partially written file is never
 visible at the path agents fetch from.
@@ -97,8 +104,9 @@ with no CA bundle has every download refused, and is told so once at start-up.
 
 ### Custom WPK files
 
-`file_path` must resolve **inside `var/upgrade/`** — symlinks are followed before the check, and
-anything landing elsewhere is rejected with *The WPK file does not exist*. The task payload carries
+`file_path` must resolve to a file **directly inside `var/upgrade/`** — symlinks are followed before
+the check, and anything landing elsewhere, in a subdirectory included, is rejected with *The WPK file
+does not exist*. The file is hashed locally; nothing is downloaded. The task payload carries
 only the file's **basename**, and both delivery paths join that name to `var/upgrade/`, so a path
 anywhere else would name a file the agent could never fetch.
 
@@ -133,15 +141,15 @@ of it. Progress is observable through the agent's reported version, the agent's 
 
 | Socket | Direction | Purpose |
 | --- | --- | --- |
-| `queue/sockets/task-http.sock` | Inbound | `POST /v1/agents/upgrade` and `POST /v1/agents/upgrade-custom` from the Server API |
+| `queue/sockets/task-http.sock` | Inbound | `POST /v1/agents/upgrade` and `POST /v1/agents/upgrade-custom` from the Server API (and the `agent_upgrade` CLI, which goes through it) |
 
 Outbound, the only traffic is HTTPS to the WPK repository.
 
 **Both routes always answer `200`**, including for a body that could not be parsed. The per-agent
 envelope carries every verdict, and the Server API turns each entry into an exception code by adding
 1810; a non-2xx would make that client raise before it ever read the entries, replacing a precise
-per-agent reason with a generic transport error. The route shapes are in
-[the HTTP interface](README.md#agent-upgrades).
+per-agent reason with a generic transport error. The request fields, the envelope and every
+per-agent code are in [Agent upgrade routes](api-reference.md#agent-upgrade-routes).
 
 ---
 

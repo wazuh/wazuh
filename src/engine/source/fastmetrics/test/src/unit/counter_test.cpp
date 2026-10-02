@@ -98,23 +98,23 @@ TEST(CounterTest, MultiThreadedMixedOperations)
 {
     AtomicCounter counter("test.counter");
 
-    std::thread t1([&counter]()
-                   {
-                       for (int i = 0; i < 1000; ++i)
-                           counter.add(1);
-                   });
+    std::thread t1(
+        [&counter]()
+        {
+            for (int i = 0; i < 1000; ++i) counter.add(1);
+        });
 
-    std::thread t2([&counter]()
-                   {
-                       for (int i = 0; i < 1000; ++i)
-                           counter.add(2);
-                   });
+    std::thread t2(
+        [&counter]()
+        {
+            for (int i = 0; i < 1000; ++i) counter.add(2);
+        });
 
-    std::thread t3([&counter]()
-                   {
-                       for (int i = 0; i < 1000; ++i)
-                           counter.add(3);
-                   });
+    std::thread t3(
+        [&counter]()
+        {
+            for (int i = 0; i < 1000; ++i) counter.add(3);
+        });
 
     t1.join();
     t2.join();

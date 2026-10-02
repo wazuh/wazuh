@@ -43,23 +43,25 @@ against its own version unless `allow_higher_versions` is set) and answers:
 ```json
 {
   "limits": { "...": "manager-side limits" },
-  "cluster": { "name": "cluster01", "node": "node01" },
+  "cluster": { "name": "cluster01" },
   "agent": { "groups": ["default"] }
 }
 ```
 
 Errors: `400 {"error":"invalid_version"}` when the version is malformed,
 `409 {"error":"invalid_version"}` when it is well-formed but too new for the manager's
-`allow_higher_versions` policy, `500 {"error":"database_error"}` when wazuh-db is unreachable.
+`allow_higher_versions` policy, and `503 {"error":"dependency_unavailable","dependency":"wazuh-db"}`
+when wazuh-db does not answer (`controlHandler.cpp`).
 
-`cluster` is where a REAL agent learns the values it later echoes in `Start` (it stores them as
-`agent_metadata_t.cluster_name`/`cluster_node`, "received during handshake"). The sender discards
-both, like every other field of this reply: `cluster_name` comes from the run configuration because a
-mismatch is answered `403` and the value belongs to the environment, and `cluster_node` is not sent at
-all — see [05-flatbuffers-messages.md](05-flatbuffers-messages.md).
+`cluster.name` is where a REAL agent learns the value it later echoes in `Start.cluster_name` (it
+stores it as `agent_metadata_t.cluster_name`, "received during handshake"). The sender discards it,
+like every other field of this reply: `cluster_name` comes from the run configuration, because a
+mismatch is answered `403` and the value belongs to the environment. There is no cluster node in
+the reply or in `Start` — see [05-flatbuffers-messages.md](05-flatbuffers-messages.md).
 
-The sender **MUST** send a version the manager accepts (configurable, defaulting to the manager's
-own) so that `startup` failures are never mistaken for load effects.
+The sender **MUST** send a version the manager accepts so that `startup` failures are never mistaken
+for load effects. It is `defaults.control.startup_version` in the scenario, `5.0.0` when absent (the
+manager's own version on this branch, `VERSION.json`).
 
 ### `notify` — the keepalive
 
@@ -91,13 +93,21 @@ Response:
     "config_hash": "<sha or \"0\">"
   },
   "settings_hash": "<sha256 hex>",
-  "tasks": [ { "task_id": 1, "task_type": "...", "payload": {} } ]
+  "ca_generation": 0,
+  "tasks": [ { "task_id": 1, "task_type": "...", "payload": {} } ],
+  "vd_feed_offset": 849527
 }
 ```
 
+`ca_generation` is present only on a manager whose HTTPS listener provides it (`null` when there is
+no servable CA bundle). `vd_feed_offset` is the node's current VD feed offset, the one field the
+sender reads (see [below](#what-the-sender-does-with-the-response)).
+
 Errors: `400 {"error":"invalid_host_info"}` when a field exceeds its bound — hostname ≤ 255, ip
-≤ 45, and the architecture/os fields ≤ 128 bytes. The sender's generated hostnames and metadata
-**MUST** stay inside those bounds.
+≤ 45, and the architecture/os fields ≤ 128 bytes (`controlTypes.hpp`). The sender's generated
+hostnames and metadata **MUST** stay inside those bounds. `503
+{"error":"dependency_unavailable","dependency":"wazuh-db"}` when the agent's groups must be
+refreshed, wazuh-db does not answer, and remoted has no cached membership for that agent.
 
 Two behaviors worth exploiting in scenarios:
 
@@ -126,14 +136,19 @@ Independent of type: `400 invalid_body` (empty body, or larger than 64 KiB),
 `Authorization` is not a plain integer), `400 unknown_message_type` (a `type` other than the three
 above). All four are sender bugs and **MUST** fail the run.
 
+As implemented, the sender is stricter than that for `startup` and `notify`: **any** status other
+than `200` (a `503` from wazuh-db too) invalidates the run (exit `1`). A `shutdown` answer is only
+counted (`control_shutdown_ok`/`_err`). A transport error on a `notify` is counted as
+`control_notify_err` and the loop continues.
+
 ## Cadence
 
 | Knob | Value | Where |
 |---|---|---|
-| Real agent keepalive interval | **10 s** by default | `NOTIFY_TIME` in `src/shared/include/defs.h`, overridable with `<agent><notify_time>` |
-| Sender default | **10 s**, `defaults.control.keepalive_interval` in the scenario JSON | Matches the agent so a fleet of N produces the real N/10 requests per second |
-| Manager write throttle | **60 s** | `kKeepaliveThrottleSec`: how often a `notify` actually writes to wazuh-db |
-| Manager groups refresh | **60 s** | `kGroupsRefreshIntervalSec` |
+| Real agent keepalive interval | **10 s** by default | `NOTIFY_TIME` in `src/shared/include/defs.h`, overridable with `<client><notify_time>` in the agent's `ossec.conf` |
+| Sender default | **10 s**, `defaults.control.keepalive_interval` in the scenario JSON | Matches the agent so a fleet of N produces the real N/10 requests per second. The first notify of each agent is sent immediately, then one per interval |
+| Manager write throttle | **60 s** | `kKeepaliveThrottleSec` (`src/remoted/remoted_module/src/control/controlConfig.hpp`): how often a `notify` actually writes to wazuh-db |
+| Manager groups refresh | **60 s** | `kGroupsRefreshIntervalSec`, same file |
 
 The throttle matters for interpreting results, not for behavior: it does not slow the response, but
 it means a keepalive interval below 60 s produces cheap notifies most of the time and an expensive
@@ -144,7 +159,8 @@ path — the notify-storm scenario **SHOULD** report both, and F9c-4 **MUST** st
 
 **Validate and mostly discard.** For each control request the sender **MUST**:
 
-1. record the status code (and fail the run on `401` or any `400`);
+1. record the status code (and fail the run on `401` or any `400`; as implemented, on any
+   non-`200` answer to `startup` or `notify`);
 2. assert the body parses as JSON — a malformed body is a server regression and **MUST** be
    reported;
 3. record the response latency and byte size into the metrics for this request type.
@@ -160,7 +176,7 @@ that is not what this benchmark measures.
 The exception is `notify`'s `vd_feed_offset`: it is the one piece of server state a real agent
 DOES act on (deciding when to request a VD re-scan through `POST /scan/vd` — see
 [14-scan-vd.md](14-scan-vd.md) and
-[stateless-api.yaml's `/control` docs](../../../../docs/ref/modules/remoted/https-events-api.md)),
+[remoted's https-events-api.md](../../../../docs/ref/modules/remoted/https-events-api.md#scan-endpoint-post-scanvd)),
 and VD sessions' `Start.feed_offset` must match the server's current offset or they are rejected
 with `409 version_mismatch` before ever reaching the scanner (see
 [05-flatbuffers-messages.md](05-flatbuffers-messages.md)). Not tracking it would not make the
@@ -172,4 +188,5 @@ when building a VD session's `Start.feed_offset` — nothing else about session 
 routing depends on any control response.
 
 A scenario **MAY** ask for a sample of control responses to be written to an artifact for manual
-inspection; that is evidence in the report, still not behavior.
+inspection; that is evidence in the report, still not behavior. **Not implemented:** the scenario
+schema has no such field, and the sender writes no control response anywhere.

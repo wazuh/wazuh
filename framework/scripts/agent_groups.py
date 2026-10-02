@@ -138,6 +138,10 @@ async def unset_group(agent_id: str, group_id: str = None, quiet: bool = False):
         assignations will be removed.
     quiet : bool
         Show confirmation message waiting for a stdin answer.
+
+    Notes
+    -----
+    An agent removed from all its groups is reassigned to the 'default' group by the framework.
     """
     if quiet:
         ans = 'y'
@@ -146,18 +150,36 @@ async def unset_group(agent_id: str, group_id: str = None, quiet: bool = False):
         ans = get_stdin(f"Do you want to delete the group '{group_id}' of agent '{agent_id}'? [y/N]: ")
     else:
         ans = get_stdin(f"Do you want to delete all groups of agent '{agent_id}'? [y/N]: ")
-    if ans.lower() == 'y':
-        result = await cluster_utils.forward_function(func=agent.remove_agent_from_groups,
-                                                      f_kwargs={'agent_list': [agent_id], 'group_list': [group_id]},
-                                                      is_async=True)
-        cluster_utils.raise_if_exc(result)
+    if ans.lower() != 'y':
+        print("Cancelled.")
+        return
 
-        if result.total_affected_items != 0:
-            msg = f"Agent '{agent_id}' removed from {group_id}."
-        else:
-            msg = list(result.failed_items.keys())[0]
+    if group_id:
+        group_list = [group_id]
     else:
-        msg = "Cancelled."
+        # Remove the agent from the groups it actually belongs to
+        agent_info = await cluster_utils.forward_function(func=agent.get_agents,
+                                                          f_kwargs={'agent_list': [agent_id], 'select': ['group']})
+        cluster_utils.raise_if_exc(agent_info)
+
+        if agent_info.total_affected_items == 0:
+            print(list(agent_info.failed_items.keys())[0])
+            return
+
+        group_list = agent_info.affected_items[0].get('group') or []
+        if not group_list:
+            print(f"Agent '{agent_id}' does not belong to any group.")
+            return
+
+    result = await cluster_utils.forward_function(func=agent.remove_agent_from_groups,
+                                                  f_kwargs={'agent_list': [agent_id], 'group_list': group_list},
+                                                  is_async=True)
+    cluster_utils.raise_if_exc(result)
+
+    if result.total_affected_items != 0:
+        msg = f"Agent '{agent_id}' removed from {', '.join(result.affected_items)}."
+    else:
+        msg = list(result.failed_items.keys())[0]
 
     print(msg)
 
@@ -272,13 +294,13 @@ def usage():
     Params:
     \t-l, --list
     \t-c, --list-files
-    \t-a, --add-group
-    \t-f, --force-single-group
+    \t-a, --add
+    \t-f, --force (single group)
     \t-s, --show-group
-    \t-r, --remove-group
+    \t-r, --remove
 
     \t-i, --agent-id
-    \t-g, --group
+    \t-g, --group-id
 
     \t-q, --quiet (no confirmation)
     \t-d, --debug

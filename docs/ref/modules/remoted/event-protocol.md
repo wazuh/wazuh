@@ -11,8 +11,6 @@ The Wazuh Event Protocol version 1 (x-wev1) defines how enriched events are tran
   `application/x-ndjson` (the HTTPS `remoted_module` ingestion path,
   `src/remoted/remoted_module/src/endpoints/statelessEndpoint.cpp`) — both carry the same `H`/`E`
   wire format described below
-- **Version**: 1.0
-- **Status**: Active (Wazuh 5.0+)
 
 ## Transport
 
@@ -187,19 +185,21 @@ Then split the remainder on the `\nE ` delimiter rather than on bare newlines, t
 after the leading `E `, and unindent continuation lines by removing one leading space from each.
 Trailing newlines are trimmed from each event; blank lines between events are skipped.
 
-## Error Handling
+## Engine Responses
 
-- `400`: Malformed batch
-- `413`: Batch too large - split and retry
-- `5xx`: Retry with backoff
+- `200`: the batch was parsed and its events queued for processing.
+- `400`: the batch could not be parsed (`{"error": "<parser message>", "code": 400}`); nothing of it
+  is ingested. The engine logs `[API::Event] Failed to parse request: '<message>'`.
+- `500`: internal error in the engine.
 
-## Performance
-
-Batch 100-500 events for optimal throughput. Header generated once per batch.
+The engine's event server sets no request-size limit of its own. On the HTTPS path, remoted maps these
+answers onto what the agent receives (see [HTTPS Agent API](https-events-api.md#error-responses));
+the legacy dispatcher does not retry a failed batch.
 
 ## Security
 
-Unix socket transport (no network exposure). Socket permissions: wazuh-manager:wazuh-manager 0660.
+Unix socket transport (no network exposure). The engine sets the socket to mode `0660` after binding
+it, so only its owner and the `wazuh-manager` group can post events.
 
 ## References
 

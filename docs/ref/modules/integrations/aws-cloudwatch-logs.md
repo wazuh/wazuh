@@ -2,64 +2,69 @@
 
 ## Introduction
 
-The Wazuh AWS module can retrieve logs from AWS CloudWatch log groups. CloudWatch Logs centralizes logs from AWS services and applications, making it possible to monitor and analyze them in one place.
+The AWS module (`<wodle name="aws-s3">`) can read log events from CloudWatch Logs log groups, using a
+`<service type="cloudwatchlogs">` block.
 
-Wazuh connects to the CloudWatch Logs API to pull log events from specified log groups, processes them through the Wazuh rule engine, and generates alerts for relevant security events.
+It is an agent module, configured in the agent's `ossec.conf`, and is not available on Windows agents
+(see [Integrations](README.md)). On each run the agent's `wazuh-modulesd` invokes the
+`wodles/aws/aws-s3` Python script, which reads the new events of every log stream of the configured
+log groups, region by region, and sends each event's message to the manager as is (it is not wrapped
+in an `aws` object).
 
 ## Prerequisites
 
-- An AWS account with CloudWatch Logs enabled and log groups configured.
-- AWS credentials (access key and secret key) or an IAM role with permissions to read CloudWatch log groups.
-- Python 3 and the `boto3` library installed on the Wazuh agent.
+- An AWS account with CloudWatch Logs log groups.
+- AWS credentials that can read those log groups (see
+  [Authentication](aws-cloudtrail.md#authentication)).
+- The `boto3` Python package installed for the agent host's `python3`.
 
 ## Configuration
 
-Configure the AWS module in the Wazuh agent `ossec.conf` file using the `service` element with `type="cloudwatchlogs"`:
+Configure the module in the agent's `ossec.conf`, inside `<ossec_config>`:
 
 ```xml
-  <wodle name="aws-s3">
-    <disabled>no</disabled>
-    <interval>5m</interval>
-    <run_on_start>yes</run_on_start>
-    <skip_on_error>yes</skip_on_error>
-    <service type="cloudwatchlogs">
-      <access_key>YOUR_ACCESS_KEY</access_key>
-      <secret_key>YOUR_SECRET_KEY</secret_key>
-      <regions>us-east-1</regions>
-      <aws_log_groups>my-log-group</aws_log_groups>
-      <only_logs_after>2024-01-01</only_logs_after>
-      <remove_log_streams>no</remove_log_streams>
-    </service>
-  </wodle>
+<wodle name="aws-s3">
+  <disabled>no</disabled>
+  <interval>5m</interval>
+  <run_on_start>yes</run_on_start>
+  <service type="cloudwatchlogs">
+    <aws_profile>default</aws_profile>
+    <regions>us-east-1</regions>
+    <aws_log_groups>my-log-group</aws_log_groups>
+    <only_logs_after>2024-JAN-01</only_logs_after>
+    <remove_log_streams>no</remove_log_streams>
+  </service>
+</wodle>
 ```
 
-### Configuration options
+The module options (`disabled`, `interval`, `run_on_start`, `skip_on_error`) are described in
+[AWS CloudTrail](aws-cloudtrail.md#module-options).
+
+### Service options
 
 | Option | Required | Default | Description |
 |--------|:--------:|---------|-------------|
-| `disabled` | No | `no` | Disables the AWS module when set to `yes`. |
-| `interval` | No | `5s` | Time interval between CloudWatch Logs API queries. |
-| `run_on_start` | No | `yes` | Pull logs immediately when the module starts. |
-| `skip_on_error` | No | `yes` | Continue processing on error instead of stopping. |
-| `service type` | Yes | — | Set to `cloudwatchlogs` to monitor CloudWatch Logs. |
-| `access_key` | No | — | AWS access key ID. Not required if using IAM roles. |
-| `secret_key` | No | — | AWS secret access key. Not required if using IAM roles. |
-| `aws_profile` | No | — | AWS CLI profile name for authentication. |
+| `service` | Yes | — | The `type` attribute is required: `cloudwatchlogs` here (`inspector` is the other valid value). |
+| `aws_log_groups` | Yes | — | Comma-separated list of log group names. Cannot be empty; without it nothing is read. |
+| `regions` | No | — | Comma-separated list of regions. When unset, the region of the profile in `~/.aws/config` of the user running the agent is used (`default` when no `aws_profile` is set), and failing that every region. An invalid region stops the run. |
+| `aws_profile` | No | — | Profile from the agent host's AWS credentials and config files used to authenticate. |
 | `iam_role_arn` | No | — | ARN of an IAM role to assume. |
-| `iam_role_duration` | No | — | Duration in seconds for the assumed IAM role session. |
-| `aws_account_id` | No | — | AWS account ID for alert enrichment. |
-| `aws_account_alias` | No | — | Alias for the AWS account. |
-| `regions` | Yes | — | Comma-separated list of AWS regions containing the log groups. |
-| `aws_log_groups` | Yes | — | Comma-separated list of CloudWatch log group names to monitor. |
-| `only_logs_after` | No | — | Only retrieve logs generated after this date (`YYYY-MM-DD`). |
-| `remove_log_streams` | No | `no` | Delete log streams after processing. |
-| `discard_regex` | No | — | Regular expression to filter out matching events. For CloudWatch Logs, can be used without `field` attribute (filters entire log message). For other services, requires `field` attribute. Format: `<discard_regex field="fieldName">regex</discard_regex>` or `<discard_regex>regex</discard_regex>` (CloudWatch only) |
-| `sts_endpoint` | No | — | Custom AWS STS endpoint URL. |
+| `iam_role_duration` | No | — | Session duration of the assumed role, in seconds, from `900` to `3600`. Requires `iam_role_arn`. |
+| `access_key` | No | — | AWS access key ID. Deprecated since 4.4: a warning is logged. |
+| `secret_key` | No | — | AWS secret access key. Deprecated since 4.4: a warning is logged. |
+| `aws_account_id` | No | — | AWS account ID. Cannot be empty when given. |
+| `aws_account_alias` | No | — | Alias of the account. |
+| `only_logs_after` | No | — | Only read events from this date on, in `YYYY-MMM-DD` format (for example `2024-JAN-01`). |
+| `remove_log_streams` | No | `no` | Delete each log stream after reading it. |
+| `discard_regex` | No | — | Skip matching events. A JSON message is skipped when the `field` attribute's value (dots for nested fields) matches the regex; with no `field` a JSON message is never skipped. A non-JSON message is skipped when the whole message matches. Format: `<discard_regex field="fieldName">regex</discard_regex>` or `<discard_regex>regex</discard_regex>`. |
+| `sts_endpoint` | No | — | Custom STS endpoint (for example a VPC endpoint) used to assume `iam_role_arn`. |
 | `service_endpoint` | No | — | Custom CloudWatch Logs endpoint URL. |
+
+Any other element makes the configuration fail to load.
 
 ### Authentication using IAM role
 
-```xml
+```xml,fragment
 <service type="cloudwatchlogs">
   <aws_profile>default</aws_profile>
   <iam_role_arn>arn:aws:iam::123456789012:role/WazuhRole</iam_role_arn>
@@ -79,10 +84,8 @@ The IAM user or role needs the following permissions:
     {
       "Effect": "Allow",
       "Action": [
-        "logs:DescribeLogGroups",
         "logs:DescribeLogStreams",
-        "logs:GetLogEvents",
-        "logs:FilterLogEvents"
+        "logs:GetLogEvents"
       ],
       "Resource": "arn:aws:logs:*:*:log-group:my-log-group:*"
     }
@@ -94,16 +97,12 @@ If using `remove_log_streams`, add the `logs:DeleteLogStream` permission.
 
 ## Verify the integration
 
-Restart the Wazuh agent after applying the configuration:
+Restart the agent and look for the module's lines (tag `wazuh-modulesd:aws-s3`):
 
 ```bash
 systemctl restart wazuh-agent
-```
-
-Check the module logs:
-
-```bash
 grep "aws-s3" /var/ossec/logs/ossec.log
 ```
 
-CloudWatch log events generate alerts with the `aws` data field.
+Each run logs `Executing Service Analysis: (Service: cloudwatchlogs, …)`; script errors are logged
+under the same tag.

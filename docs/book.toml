@@ -9,6 +9,11 @@ src = "."
 build-dir = "book"
 create-missing = false
 
+# Sources link to README.md chapters (so links work on GitHub); rewrite them to the index.html
+# mdBook actually serves.
+[preprocessor.readme-links]
+command = "python3 tools/readme-links.py"
+
 [preprocessor.mermaid]
 command = "mdbook-mermaid"
 

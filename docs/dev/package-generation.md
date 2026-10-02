@@ -1,17 +1,16 @@
+# Package generation
+
 ## Wazuh Package Builder Script
 
-This script automates the process of building Wazuh packages (manager or agent) for various architectures within a Docker container.
+`packages/generate_package.sh` builds a manager or agent `.deb`/`.rpm` inside a Docker builder image (`pkg_<system>_<target>_builder_<arch>`).
 
 **Features:**
 
 - Supports building packages for different targets (manager/agent).
-- Selectable architectures (amd64, arm64).
+- Selectable architectures (amd64, arm64); any other value is refused.
 - Optional debug builds.
 - Generates checksums for built packages.
-- Uses local source code or downloads from GitHub.
-- Builds future test packages (x.30.0).
-
-***Note:** Only *amd64* and *arm64* architectures are supported.
+- Uses the local checkout, another local source tree, or a branch downloaded from GitHub.
 
 **Requirements:**
 
@@ -27,38 +26,38 @@ wazuh# cd packages
 
 | Option               | Description                                                         | Default                 |
 |----------------------|---------------------------------------------------------------------|-------------------------|
-| -b, --branch         | Git branch to use (optional)                                        | main                    |
-| -t, --target         | Target package to build (required): manager or agent                | -                       |
-| -a, --architecture   | Target architecture (optional): amd64, arm64                        | -                       |
-| -j, --jobs           | Number of parallel jobs (optional)                                  | 2                       |
-| -r, --revision       | Package revision (optional)                                         | 0                       |
-| -s, --store          | Destination path for the package (optional)                         | (output folder created) |
-| -p, --path           | Installation path for the package (optional)                        | /var/ossec              |
-| -d, --debug          | Build binaries with debug symbols (optional)                        | no                      |
-| -c, --checksum       | Generate checksum on the same directory (optional)                  | no                      |
-| --dont-build-docker  | Use a locally built Docker image (optional)                         | no                      |
-| --tag                | Tag to use with the Docker image (optional)                         | -                       |
-| *--sources           | Path containing local Wazuh source code (optional)                  | script path             |
-| **--is_stage         | Use release name in package (optional)                              | no                      |
-| --src                | Generate the source package (optional)                              | no                      |
-| --system             | Package format to build (optional): rpm, deb (default)              | deb                     |
+| -b, --branch         | Git branch to download and build                                    | (none: mounts the local checkout) |
+| -t, --target         | Target package to build: manager or agent                           | agent                   |
+| -a, --architecture   | Target architecture: amd64, arm64                                   | amd64                   |
+| -j, --jobs           | Number of parallel jobs                                             | 2                       |
+| -r, --revision       | Package revision                                                    | 0                       |
+| -s, --store          | Destination path for the package                                    | (output folder created) |
+| -p, --path           | Installation path for the package                                   | /var/wazuh-manager (manager), /var/ossec (agent) |
+| -d, --debug          | Build binaries with debug flags (without optimizations)             | no                      |
+| -c, --checksum       | Generate checksum on the same directory                             | no                      |
+| --dont-build-docker  | Use a locally built Docker image instead of building it             | no                      |
+| --tag                | Tag to use with the Docker image                                    | -                       |
+| --sources            | Absolute path containing the Wazuh source code to mount             | the checkout `generate_package.sh` belongs to |
+| --is_stage           | Use the release name in the package (no commit hash)                | no                      |
+| --src                | Also generate the source package                                    | no                      |
+| --system             | Package format: rpm, deb                                            | deb                     |
+| --future             | Build a test package versioned x.30.0, for development purposes           | no                      |
+| --verbose            | Print commands and their arguments as they run                      | no                      |
+| --force              | Allow a manager package with `-p /var/ossec`, refused otherwise     | no                      |
 | -h, --help           | Show this help message                                              | -                       |
 
-***Note1:** If we don't use this flag, will the script use the current directory where *generate_package.sh* is located.
-
-****Note 2:** If the package is not a release package, a short hash commit based on the git command `git rev-parse --short HEAD` will be appended to the end of the name. The default length of the short hash is determined by the Git command [git rev-parse --short[=length]](https://git-scm.com/docs/git-rev-parse#Documentation/git-rev-parse.txt---shortlength:~:text=interpreted%20as%20usual.-,%2D%2Dshort%5B%3Dlength%5D,-Same%20as%20%2D%2Dverify).
-
+Without `--is_stage`, the 7-character commit hash (`git rev-parse --short=7 HEAD` of the mounted sources, or the GitHub commit of `-b`) is appended to the package name.
 
 **Example Usage:**
 
 1. Build a manager package for amd64 architecture:
-`./wazuh_package_builder.sh -t manager -a amd64 -s /tmp --system rpm`
+`./generate_package.sh -t manager -a amd64 -s /tmp --system rpm`
 
 2. Build a debug agent package for arm64 architecture with checksum generation:
-`./wazuh_package_builder.sh -t agent -a arm64 -s /tmp -d -c --system rpm`
+`./generate_package.sh -t agent -a arm64 -s /tmp -d -c --system rpm`
 
 3. Build a package using local Wazuh source code:
-`./wazuh_package_builder.sh -t manager -a amd64 --sources /path/to/wazuh/source --system rpm`
+`./generate_package.sh -t manager -a amd64 --sources /path/to/wazuh/source --system rpm`
 
 
 **Notes:**
@@ -67,50 +66,61 @@ wazuh# cd packages
     * amd64 -> x86_64
     * arm64 -> aarch64
 
-# Workflow
+## Windows Agent Package
 
-## Generate and push builder images to GH
+`packages/windows/generate_compiled_windows_agent.sh` compiles the Windows agent in a Docker container and packs the build tree into a zip, which `generate_wazuh_msi.ps1` then turns into the MSI on a Windows host.
+
+**Usage:**
+```
+wazuh# cd packages/windows
+./generate_compiled_windows_agent.sh -o <name>.zip [OPTIONS]
+```
+
+**Options:**
+
+| Option                    | Description                                                         | Default                                                          |
+|---------------------------|---------------------------------------------------------------------|------------------------------------------------------------------|
+| -o, --output              | Name of the output zip (required)                                   | -                                                                |
+| -b, --branch              | Git branch to compile (optional)                                    | -                                                                |
+| --sources                 | Path containing local Wazuh source code (optional)                  | ../../src                                                        |
+| -j, --jobs                | Number of parallel jobs (optional)                                  | 4                                                                |
+| -s, --store               | Destination path for the zip (optional)                             | current path                                                     |
+| -d, --debug               | Build binaries with debug symbols (optional)                        | no                                                               |
+| -t, --trust_verification  | Module signature verification: 0, 1 or 2 (optional)                 | 1                                                                |
+| -c, --ca_name             | Root CA required by the module signature verification (optional)    | Microsoft Identity Verification Root Certificate Authority 2020 |
+| --dont-build-docker       | Use a locally built Docker image (optional)                         | no                                                               |
+| --tag                     | Tag to use with the Docker image (optional)                         | -                                                                |
+
+**Module signature verification (`-t`, `-c`):**
+
+At startup, `wazuh-agent.exe`, `win32ui.exe`, `manage_agents.exe` and `active-response\bin\block-ip.exe` verify the signature of every module they load (Authenticode, or the system catalog for Windows files), after checking that the `-c` root is in the Windows `ROOT` store. If the root is not there, the agent verifies its own signature first, which lets Windows install the root when it is trusted, and checks again.
+
+- `-t 0`: disabled.
+- `-t 1`: a failed check or an unverified module is logged as a warning. If the root check fails, no module is verified. Released packages use this mode.
+- `-t 2`: a failed check or an unverified module stops the process.
+
+`-c` must be the root the packages are signed under: `Microsoft Identity Verification Root Certificate Authority 2020` for Azure Artifact Signing. Endpoints that cannot install that root are covered in [Installation](../ref/getting-started/installation.md#module-signature-verification).
+
+## CI workflows
+
+The builder images and the packages are also produced by GitHub Actions workflows.
+
+**Builder images.** `5_builderprecompiled_docker-images-upload.yml` rebuilds and pushes the images whose files changed on every push under `packages/` to a `5.x.y` or `main` branch. The manager images can also be pushed on demand:
 
 ```bash
-curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_WORKFLOW_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" --data-binary "@$(pwd)/wazuh-agent-test-amd64-rpm.json" "https://api.github.com/repos/wazuh/wazuh/actions/workflows/packages-upload-agent-images-amd.yml/dispatches"
+gh workflow run 5_builderprecompiled_docker-images-upload-manager.yml --ref <branch> \
+  -f architecture=amd64 -f system=deb -f source_reference=<branch> -f docker_image_tag=auto
 ```
 
-Where the JSON looks like this:
+`docker_image_tag` is `auto` (the version in `VERSION.json`), `developer` (the branch name) or a literal tag.
 
-```json
-# cat wazuh-agent-test-amd64-rpm.json
-{
-    "ref":"5.0.0",
-    "inputs":
-        {
-         "tag":"auto",
-         "architecture":"amd64",
-         "system":"rpm",
-         "revision":"test",
-         "is_stage":"false",
-        }
-}
-```
-
-## Generate packages
+**Packages.** `5_builderpackage_manager.yml` builds the manager package and `5_builderpackage_agent-linux.yml` the Linux agent package:
 
 ```bash
-curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_WORKFLOW_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" --data-binary "@$(pwd)/wazuh-agent-test-amd64-rpm.json" "https://api.github.com/repos/wazuh/wazuh/actions/workflows/packages-build-linux-agent-amd.yml/dispatches"
+gh workflow run 5_builderpackage_manager.yml --ref <branch> \
+  -f architecture=amd64 -f system=deb -f revision=0 -f docker_image_tag=auto
+gh workflow run 5_builderpackage_agent-linux.yml --ref <branch> \
+  -f architecture=amd64 -f system=rpm -f revision=0
 ```
 
-Where the JSON looks like this:
-```json
-# cat wazuh-agent-test-amd64-rpm.json
-{
-    "ref":"5.0.0",
-    "inputs":
-        {
-         "docker_image_tag":"auto",
-         "architecture":"amd64",
-         "system":"deb",
-         "revision":"test",
-         "is_stage":"false",
-         "checksum":"false",
-     }
-}
-```
+The manager workflow also takes `is_stage`, `debug`, `checksum`, `upload_package` (default `true`) and `id`; the agent one takes `debug` and `checksum`.

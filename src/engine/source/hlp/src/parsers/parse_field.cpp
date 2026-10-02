@@ -1,6 +1,7 @@
 #include "parse_field.hpp"
 #include "fmt/format.h"
 #include "number.hpp"
+#include <algorithm>
 #include <base/json.hpp>
 #include <iostream>
 #include <string_view>
@@ -99,23 +100,44 @@ std::string convertDotToSlash(std::string_view key)
     return s;
 }
 
-void updateDoc(json::Json& doc,
+namespace
+{
+// A JSON Pointer path has one token per '/'; the escapes ~0 and ~1 add none.
+bool exceedsMaxDepth(std::string_view path)
+{
+    return static_cast<std::size_t>(std::count(path.cbegin(), path.cend(), '/')) > json::Json::MAX_DEPTH;
+}
+} // namespace
+
+bool updateDoc(json::Json& doc,
                std::string_view key,
                std::string_view value,
                bool is_escaped,
                std::string_view escape,
                bool is_quoted)
 {
+    // An empty value is written under the key as given: its dots are not converted, so they do not count
     if (value.empty())
     {
+        if (exceedsMaxDepth(key))
+        {
+            return false;
+        }
         doc.setNull(key);
-        return;
+        return true;
+    }
+
+    const auto path = convertDotToSlash(key);
+    if (exceedsMaxDepth(path))
+    {
+        return false;
     }
 
     // If the value is a string, unescape it if necessary and add it to the JSON document
     auto vs = std::string {value.data(), value.size()};
     unescape(is_escaped, vs, escape);
-    doc.setString(vs, convertDotToSlash(key));
+    doc.setString(vs, path);
+    return true;
 }
 
 } // namespace hlp

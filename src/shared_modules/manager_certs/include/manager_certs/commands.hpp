@@ -83,17 +83,18 @@ namespace manager_certs
      *
      * Two guard groups, evaluated in order, stopping at the first failure of either:
      *
-     * 1. `ca_bundle::vouch(bundle, leaf, serializedBytes)`'s own six guards (structure, the
-     *    publication hash, leaf-signing, the two size caps). On failure, writes one line to @p err
-     *    naming that guard -- `too_many_certificates` and `too_many_bytes` name the observed
-     *    count/bytes against the limit (e.g. "7 certificates (max 6)", "8588 bytes (max 8191)"),
-     *    the others name the failure in words (e.g. "no CA signs the served leaf").
-     * 2. Only once (1) passes: every certificate of @p bundle, in order, must be a CA (`isCa`) and
-     *    inside its validity window (`notBefore <= now <= notAfter`) -- properties
-     *    `ca_bundle::vouch()` does not evaluate on its own (02-diseno.md §2.6). On the first
-     *    certificate that fails either, writes one line to @p err naming it by
-     *    `ca_bundle::identityOf()` and the concrete reason: "not a CA", "not yet valid (notBefore
-     *    ...)" or "expired (notAfter ...)".
+     * 1. Per certificate, first: every certificate of @p bundle, in order, must be a CA (`isCa`)
+     *    and inside its validity window (`notBefore <= now <= notAfter`). On the first certificate
+     *    that fails either, writes one line to @p err naming it by `ca_bundle::identityOf()` and
+     *    the concrete reason: "not a CA", "not yet valid (notBefore ...)" or "expired (notAfter
+     *    ...)". These run first so the operator is told which certificate is wrong and why: since
+     *    the leaf-signing guard verifies the chain (C33), vouch() would refuse the same bundle as
+     *    "no CA signs the served leaf".
+     * 2. Only once (1) passes: `ca_bundle::vouch(bundle, leaf, serializedBytes)`'s own six guards
+     *    (structure, the publication hash, leaf-signing, the two size caps). On failure, writes one
+     *    line to @p err naming that guard -- `too_many_certificates` and `too_many_bytes` name the
+     *    observed count/bytes against the limit (e.g. "7 certificates (max 6)", "8588 bytes (max
+     *    8191)"), the others name the failure in words (e.g. "no CA signs the served leaf").
      *
      * Returns 0 and writes nothing only when every guard of both groups passes.
      *
@@ -306,9 +307,9 @@ namespace manager_certs
      * @param command       The word the message starts with.
      * @param effectiveUid  `geteuid()`.
      * @param nodeType      `/cluster/node_type` of the effective configuration.
-     * @return The message to print, or empty when this node may publish. Exit 2 for the euid
-     *         failure (an environment mistake), 1 for the worker one (a refusal, `02-diseno.md`
-     *         §2.6) -- the caller maps them, which is why they are told apart by @p exitCode.
+     * @return The message to print, or empty when this node may publish. Exit 2 for both the
+     *         euid failure and the worker one (wrong account or wrong node, nothing about the
+     *         material); exit 1 stays reserved for rejected material. Set through @p exitCode.
      */
     std::string
     writeEnvironmentFailure(const std::string& command, uid_t effectiveUid, const std::string& nodeType, int& exitCode);

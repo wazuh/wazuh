@@ -68,7 +68,7 @@ Each event travels through the following ordered stages inside a policy:
 1. **Pre-filter** *(optional)*: Evaluated before decoding. If configured, events that do not satisfy the filter
    conditions are discarded immediately, avoiding unnecessary decoding work. If no pre-filter is configured,
    all events proceed to the decoding stage unconditionally.
-2. **Decoders**: Normalize and extract fields from the raw event, mapping them to the [Wazuh Common Schema](#).
+2. **Decoders**: Normalize and extract fields from the raw event, mapping them to the [Wazuh Common Schema](../../glossary.md).
    This stage is mandatory — every event must traverse the decoder tree.
 3. **Enrichment** *(optional)*: Plugins that augment the normalized event with additional context after decoding.
    Built-in plugins include GeoIP geolocation and Indicator of Compromise (IOC) matching. Enrichment can be
@@ -124,7 +124,7 @@ Input event example:
     }
   },
   "event": {
-    "original": "{\"version\":\"1.100000\",\"account_id\":\"123456789023\",\"region\":\"us-east-1\",\"vpc_id\":\"vpc-0000000\",\"query_timestamp\":\"2025-12-11T22:22:22Z\",\"query_name\":\"amazonlinux-2-repos-us-east-1.s3.dualstack.us-east-1.amazonaws.com.\",\"query_type\":\"AAAA\",\"query_class\":\"IN\",\"rcode\":\"NOERROR\",\"answers\":[{\"Rdata\":\"s3-r-w.dualstack.us-east-1.amazonaws.com.\",\"Type\":\"CNAME\",\"Class\":\"IN\"},{\"Rdata\":\"2a02:cf40:add:4444:9191:a9a9:aaaa:cccc\",\"Type\":\"AAAA\",\"Class\":\"IN\"}],\"srcaddr\":\"8.8.8.8\",\"srcport\":\"8010\",\"transport\":\"UDP\",\"srcids\":{}}",
+    "original": "{\"version\":\"1.100000\",\"account_id\":\"123456789023\",\"region\":\"us-east-1\",\"vpc_id\":\"vpc-0000000\",\"query_timestamp\":\"2025-12-11T22:22:22Z\",\"query_name\":\"amazonlinux-2-repos-us-east-1.s3.dualstack.us-east-1.amazonaws.com.\",\"query_type\":\"AAAA\",\"query_class\":\"IN\",\"rcode\":\"NOERROR\",\"answers\":[{\"Rdata\":\"s3-r-w.dualstack.us-east-1.amazonaws.com.\",\"Type\":\"CNAME\",\"Class\":\"IN\"},{\"Rdata\":\"2a02:cf40:add:4444:9191:a9a9:aaaa:cccc\",\"Type\":\"AAAA\",\"Class\":\"IN\"}],\"srcaddr\":\"8.8.8.8\",\"srcport\":\"8010\",\"transport\":\"UDP\",\"srcids\":{}}"
   }
 }
 
@@ -1369,7 +1369,7 @@ Invalid escape sequences will always fail.
 
 For example:
 ```yaml
-target.field: helper_name('string', $reference, 123, {"key": "value"})
+target.field: "helper_name('string', $reference, 123, {\"key\": \"value\"})"
 ```
 
 This call applies `helper_name` to the `target.field` with arguments:
@@ -1435,7 +1435,7 @@ check: cidr_match($source.ip, "192.168.0.0", 24)
 To facilitate the reuse of constructors when building large assets—such as parsing code for events with common headers or repeated constructs like IP/port definitions—definitions can be introduced at the specification level. For example:
 ```yaml
 definitions:
-  header: <timestamp> <host.hostname> <daemon>:
+  header: "<timestamp> <host.hostname> <daemon>:"
   source: <source.ip>:<source.port>
   destination: <destination.ip>:<destination.port>
   a-list:
@@ -1605,7 +1605,7 @@ Use this section as the conceptual overview of the asset itself, and refer to th
 
 ### Decoders
 
-Decoders are the assets responsible for normalizing raw events into structured documents that conform to the [Wazuh Common Schema](#). All events enter the decoder tree through the root decoder and traverse a branch of child decoders, each contributing progressively more specialized field extraction and normalization.
+Decoders are the assets responsible for normalizing raw events into structured documents that conform to the [Wazuh Common Schema](../../glossary.md). All events enter the decoder tree through the root decoder and traverse a branch of child decoders, each contributing progressively more specialized field extraction and normalization.
 
 The decoder tree is evaluated depth-first. After a decoder successfully processes an event, the engine evaluates that decoder's child decoders in order; only the first child that accepts the event is followed (logical OR among siblings). See [Execution Graph Summary](#execution-graph-summary) for traversal order details.
 
@@ -1627,24 +1627,22 @@ kanban
 - **Name**: Identifies the decoder and follows the pattern `<asset_type>/<name>/<version>`. The component type is
   `decoder`, and the version must be 0, since versioning is not implemented.
 
-- **Metadata**: Provides descriptive information about the decoder. Common fields include:
-    - `module` (string): The associated module (e.g., `syslog`, `windows`, `apache`).
+- **Metadata**: Provides descriptive information about the decoder. The decoder schema
+  (`src/engine/ruleset/schemas/wazuh-decoders.json`, `metadata`) accepts only these fields; `title`, `author` and
+  `description` are required:
     - `title` (string): Human-readable label (e.g., `Windows Event Log Decoder`).
+    - `author` (string): Author of the decoder (e.g., `Wazuh, Inc.`).
     - `description` (string): Brief description of the decoder.
-    - `compatibility` (string): Compatible products, versions, and formats.
-    - `version` (array): Tested and supported versions (e.g., `2.2.x`, `3.x`).
-    - `author` (object): Author information:
-        ```yaml
-        name: Wazuh, Inc.
-        email: info@wazuh.com
-        url: https://wazuh.com
-        date: 2022-11-15
-        ```
-    - `reference` (array): Links to product documentation:
+    - `compatibility` (array of strings): Compatible products, versions, and formats.
+    - `supports` (array of strings): Tested and supported versions (e.g., `2.2.x`, `3.x`).
+    - `references` (array of strings): Links to product documentation:
       ```yaml
       - https://httpd.apache.org/docs/2.2/logs.html
       - https://httpd.apache.org/docs/2.4/logs.html
       ```
+    - `documentation` (string): Further documentation for the decoder.
+    - `date` and `modified` (string): Creation and last-modification dates, ISO 8601 (`2022-11-15` or
+      `2022-11-15T10:00:00Z`).
 
 - **Parents**: Defines the position of this decoder in the decoder tree. A decoder can declare multiple parents,
   meaning it can appear as a potential child under each of them. The engine evaluates sibling decoders under a parent
@@ -1894,7 +1892,7 @@ kanban
 
 - **Type**: Defines when the filter is executed in the pipeline:
   - `pre-filter`: evaluated before decoders.
-  - `post-filter`: evaluated after decoders.
+  - `post-filter`: evaluated after enrichment, before the outputs.
 
 - **Metadata**: Provides descriptive information about the filter (module, title, description, compatibility, versions,
   author, references). This metadata does not affect processing stages.
@@ -1910,16 +1908,14 @@ id: fef71314-00c6-41f5-ab26-15e271e9f913
 enabled: true
 type: pre-filter
 metadata:
-  module: wazuh
   title: Platform filter
   description: Filter events by platform
-  compatibility: Wazuh 5.*
-  versions:
+  compatibility:
     - Wazuh 5.*
-  author:
-    name: Wazuh, Inc.
-    url: https://wazuh.com
-    date: 2024-01-31
+  supports:
+    - Wazuh 5.*
+  author: Wazuh, Inc.
+  date: 2024-01-31
   references:
     - https://documentation.wazuh.com/
 check: $host.os.platform == 'ubuntu'
@@ -2549,23 +2545,22 @@ Wazuh components:
 ```
 
 Each log line follows the format `YYYY/MM/DD HH:MM:SS <component>: LEVEL: message`.
-Most Engine messages use the `wazuh-manager-analysisd` component tag, but some subsystems
-(such as the Indexer Connector) use their own tag:
+Engine messages, including those of the Indexer Connector, use the `wazuh-manager-analysisd` component tag:
 
 ```
-2026/04/14 20:07:43 IndexerConnector: WARNING: No username and password found in the keystore, using default values.
-2026/04/14 20:07:44 wazuh-manager-analysisd: INFO: Indexer Connector initialized.
-2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Archiver initialized.
-2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Remote engine's server initialized and started.
-2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Engine started.
+2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Indexer Connector initialized
+2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Stream logger initialized
+2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Orchestrator initialized and started with event queue size: 131072, events per second: unlimited, max bytes: 33554432.
+2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Remote engine's server initialized and started
+2026/09/28 16:39:34 wazuh-manager-analysisd: INFO: Engine started
 ```
 
 Warning and error lines include a context tag in brackets that identifies the internal
 component that produced the message:
 
 ```
-2026/04/14 20:09:16 wazuh-manager-analysisd: WARNING: [CMSync::exist()] Check 'standard' space in wazuh-indexer - Attempt 1/3: No available server
-2026/04/14 20:09:26 wazuh-manager-analysisd: WARNING: [CMSync] Failed to synchronize namespace for space 'standard': No available server
+2026/09/28 19:42:00 wazuh-manager-analysisd: WARNING: [CMSync] Check 'custom' space in wazuh-indexer - Attempt 3/3: No available server. Unavailable nodes: https://127.0.0.1:9200: Could not connect to server
+2026/09/28 19:42:00 wazuh-manager-analysisd: WARNING: [CM::Sync] Failed to synchronize namespace for space 'custom': Check 'custom' space in wazuh-indexer::CMSync failed after 3 attempts: No available server. Unavailable nodes: https://127.0.0.1:9200: Could not connect to server
 2026/04/14 20:09:46 wazuh-manager-analysisd: WARNING: [IOC::Sync] Synchronization cycle failed: No available server
 ```
 
@@ -2759,53 +2754,164 @@ output:
 
 ## Internal options reference
 
-All of the following settings live in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`.
-Edit the file and restart the `wazuh-manager` service for changes to take effect.
+### How values are resolved
+
+- All settings live in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`; edit the file and restart the
+  `wazuh-manager` service for changes to take effect.
+- Precedence for each setting is environment variable > file value > compiled-in default.
+- In standalone mode (`WAZUH_ENGINE_STANDALONE=true`) the file is never loaded: only the environment variable and
+  the default apply.
+- The shipped file has no `analysisd.*` lines — every setting starts at its default until an operator adds one.
+- Boolean settings only accept `true`/`false` (case-insensitive). A value in the file that does not match the
+  setting's type (for example `analysisd.dumper_enabled=yes` or `analysisd.event_queue_size=10k`) stops the engine at
+  start-up; an invalid environment variable is logged as a warning and the file value or the default is used.
+- `Mode` tells where a setting is read: `both`, `manager` (only when the engine runs inside `wazuh-manager`) or
+  `standalone` (only in standalone mode, so only its environment variable can set it).
+- `analysisd.indexer_username`/`analysisd.indexer_password` no longer exist — indexer credentials are stored in the
+  keystore (see
+  [Store the credentials in the keystore](../../../guide/migration/filebeat-to-indexer-connector.md#3-store-the-credentials-in-the-keystore)).
+
+### Logging
+
+| Setting | Env var | Description | Default | Mode |
+|:--|:--|:--|:--:|:--:|
+| `analysisd.debug` | `WAZUH_LOG_LEVEL` | Log verbosity for the manager-mode engine process: `0` info, `1` debug, `2` (or higher) trace. | `0` | manager |
+| `analysisd.logging_level` | `WAZUH_STANDALONE_LOG_LEVEL` | Log verbosity for the standalone engine process, as a level name (`info`, `debug`, `trace`, ...). | `info` | standalone |
+
+### Process
+
+| Setting | Env var | Description | Default | Mode |
+|:--|:--|:--|:--:|:--:|
+| `analysisd.pid_path` | `WAZUH_ENGINE_PID_FILE_PATH` | Directory where the manager-mode engine process writes its PID file. | `/var/wazuh-manager/var/run/` | manager |
+| `analysisd.drop_privileges` | `WAZUH_ENGINE_DROP_PRIVILEGES` | Whether the manager-mode engine process drops root privileges after start-up. Has no effect in standalone mode. | `true` | manager |
+
+### Paths
+
+The manager process creates and writes these paths at start-up; they must remain owned by `wazuh-manager` (see
+[Process Privileges](configuration.md#process-privileges)).
+
+| Setting | Env var | Description | Default | Mode |
+|:--|:--|:--|:--:|:--:|
+| `analysisd.store_path` | `WAZUH_STORE_PATH` | Directory holding the engine's compiled policy store. | `/var/wazuh-manager/data/store` | both |
+| `analysisd.output_path` | `WAZUH_OUTPUTS_PATH` | Directory holding the default output definitions. | `/var/wazuh-manager/etc/outputs/` | both |
+| `analysisd.kvdb_ioc_path` | `WAZUH_KVDB_IOC_PATH` | Directory holding the IoC key-value databases. | `/var/wazuh-manager/data/kvdb-ioc` | both |
+| `analysisd.cm_ruleset_path` | `WAZUH_CM_RULESET_PATH` | Directory holding the content-manager ruleset synced from `wazuh-indexer`. | `/var/wazuh-manager/data/ruleset` | both |
 
 ### Event queue
 
-| Setting | Description | Default |
-|:--------|:------------|:-------:|
-| `analysisd.event_queue_size` | Maximum number of events waiting in the router input queue. Events can be dropped when this queue is full. | `131072` |
-| `analysisd.event_queue_eps` | Maximum event ingestion rate. `0` means unlimited. | `0` |
-| `analysisd.event_queue_max_bytes` | Maximum total byte size of events waiting in the router input queue. Events are dropped when this quota is full. `0` means unlimited. | `32 MB` |
+| Setting | Env var | Description | Default | Mode |
+|:--|:--|:--|:--:|:--:|
+| `analysisd.event_queue_size` | `WAZUH_EVENT_QUEUE_SIZE` | Maximum number of events waiting in the router input queue. Events can be dropped when this queue is full. Minimum `8192`; a smaller value stops the engine at start-up. | `131072` | both |
+| `analysisd.event_queue_eps` | `WAZUH_EVENT_QUEUE_EPS` | Maximum event ingestion rate. `0` means unlimited. | `0` | both |
+| `analysisd.event_queue_max_bytes` | `WAZUH_EVENT_QUEUE_MAX_BYTES` | Maximum total byte size of events waiting in the router input queue. Events are dropped when this quota is full. `0` means unlimited. | `33554432` (32 MB) | both |
 
-## Agent metadata cache
+### Agent metadata cache
 
-| Setting | Description | Default |
-|:--------|:------------|:-------:|
-| `analysisd.agent_metadata_cache_ttl` | Time-to-live in seconds for cached agent metadata. | `300` |
-| `analysisd.agent_metadata_cache_clean_interval` | Interval in seconds between best-effort evictions of stale agent metadata cache entries. | `60` |
+| Setting | Env var | Description | Default | Mode |
+|:--|:--|:--|:--:|:--:|
+| `analysisd.agent_metadata_cache_ttl` | `WAZUH_AGENT_METADATA_CACHE_TTL` | Time-to-live in seconds for cached agent metadata. | `300` | both |
+| `analysisd.agent_metadata_cache_clean_interval` | `WAZUH_AGENT_METADATA_CACHE_CLEAN_INTERVAL` | Interval in seconds between best-effort evictions of stale agent metadata cache entries. | `60` | both |
 
+### Orchestrator
+
+| Setting | Env var | Description | Default | Mode |
+|:--|:--|:--|:--:|:--:|
+| `analysisd.orchestrator_threads` | `WAZUH_ORCHESTRATOR_THREADS` | Number of orchestrator worker threads. `0` uses one worker per CPU core. Allowed range: `0` to `128`, else the engine fails to start. | `0` | both |
 
 ### Indexer connector
 
-| Setting | Description | Default |
-|:--------|:------------|:-------:|
-| `analysisd.indexer_queue_max_bytes` | Maximum number of bytes of events waiting in the indexer output queue. Events can be dropped when this queue is full. | `64MB` |
-| `analysisd.indexer_bulk_max_bytes` | Maximum byte size of the bulk payload accumulated before a `_bulk` request is dispatched to `wazuh-indexer`. When the buffered data reaches this threshold, a batch is flushed. Allowed range: `64KB` to `100MB`. | `8MB` |
-| `analysisd.indexer_flush_interval` | Seconds between periodic flushes of the asynchronous indexer bulk buffer. Drives the background timer that forwards buffered events to `wazuh-indexer` when the byte threshold has not been reached. Allowed range: `1` to `3600`. | `20` |
-| `analysisd.indexer_logger_queue_size` | Maximum number of `_bulk` responses (with their payloads) that can wait in the indexer error-logger queue. Only responses whose bulk reported item errors are queued; when the queue is full the error details are dropped and a warning is logged. Allowed range: `1` to `1024`. | `8` |
-| `analysisd.indexer_logger_threads` | Number of worker threads that parse `_bulk` error responses to log per-item failures. Allowed range: `1` to `16`. | `1` |
-| `analysisd.indexer_max_retry_delay` | Maximum exponential-backoff delay in seconds between retries of a failed `_bulk` request (e.g. `429 Too Many Requests`, connection errors). See [Indexer Connector - Retry and backoff behavior](../indexer_connector/README.md#retry-and-backoff-behavior) for how the delay scales. Allowed range: `1` to `3600`. | `15` |
-| `analysisd.indexer_request_timeout` | Upper bound in seconds for one data request against `wazuh-indexer`. Catches a host that accepted the connection and then never answers; a timed-out bulk request is retried with backoff, not discarded. Allowed range: `0` to `3600` (`0` disables the bound). | `60` |
-| `analysisd.indexer_monitoring_interval` | Polling period in seconds of the indexer health monitor that marks each `wazuh-indexer` host as available or unavailable for the connector. Allowed range: `1` to `3600`. | `10` |
+| Setting | Env var | Description | Default | Mode |
+|:--|:--|:--|:--:|:--:|
+| `analysisd.indexer_queue_max_bytes` | `WAZUH_INDEXER_QUEUE_MAX_BYTES` | Maximum number of bytes of events waiting in the indexer output queue. Events can be dropped when this queue is full. | `67108864` (64 MB) | both |
+| `analysisd.indexer_bulk_max_bytes` | `WAZUH_INDEXER_BULK_MAX_BYTES` | Maximum byte size of the bulk payload accumulated before a `_bulk` request is dispatched to `wazuh-indexer`. When the buffered data reaches this threshold, a batch is flushed. Allowed range: `64KB` to `100MB`. | `8388608` (8 MB) | both |
+| `analysisd.indexer_flush_interval` | `WAZUH_INDEXER_FLUSH_INTERVAL` | Seconds between periodic flushes of the asynchronous indexer bulk buffer. Drives the background timer that forwards buffered events to `wazuh-indexer` when the byte threshold has not been reached. Allowed range: `1` to `3600`. | `20` | both |
+| `analysisd.indexer_logger_queue_size` | `WAZUH_INDEXER_LOGGER_QUEUE_SIZE` | Maximum number of `_bulk` responses (with their payloads) that can wait in the indexer error-logger queue. Only responses whose bulk reported item errors are queued; when the queue is full the error details are dropped and a warning is logged. Allowed range: `1` to `1024`. | `8` | both |
+| `analysisd.indexer_logger_threads` | `WAZUH_INDEXER_LOGGER_THREADS` | Number of worker threads that parse `_bulk` error responses to log per-item failures. Allowed range: `1` to `16`. | `1` | both |
+| `analysisd.indexer_max_retry_delay` | `WAZUH_INDEXER_MAX_RETRY_DELAY` | Maximum exponential-backoff delay in seconds between retries of a failed `_bulk` request (e.g. `429 Too Many Requests`, connection errors). See [Indexer Connector - Retry and backoff behavior](../indexer_connector/README.md#retry-and-backoff-behavior) for how the delay scales. Allowed range: `1` to `3600`. | `15` | both |
+| `analysisd.indexer_request_timeout` | `WAZUH_INDEXER_REQUEST_TIMEOUT` | Upper bound in seconds for one data request against `wazuh-indexer`. Catches a host that accepted the connection and then never answers; a timed-out bulk request is retried with backoff, not discarded. Allowed range: `0` to `3600` (`0` disables the bound). | `60` | both |
+| `analysisd.indexer_monitoring_interval` | `WAZUH_INDEXER_MONITORING_INTERVAL` | Polling period in seconds of the indexer health monitor that marks each `wazuh-indexer` host as available or unavailable for the connector. Allowed range: `1` to `3600`. | `10` | both |
 
-### Synchronization settings
+### Indexer connection (standalone only)
 
-| Setting | Description | Default |
-|:--------|:------------|:-------:|
-| `analysisd.remote_conf_sync_interval` | Seconds between remote engine configuration synchronization cycles. | `120` |
-| `analysisd.remote_conf_indexer_connector_max_retries` | Maximum retry attempts for remote configuration requests to the Wazuh Indexer. | `3` |
-| `analysisd.remote_conf_indexer_connector_retry_interval` | Seconds between retry attempts for remote configuration synchronization. | `5` |
-| `analysisd.cm_sync_interval` | Seconds between content synchronization cycles from the Wazuh Indexer. | `120` |
-| `analysisd.cmsync_indexer_connector_sync_batch_size` | Maximum number of content documents requested per Wazuh Indexer page during content synchronization. | `100` |
-| `analysisd.cmsync_indexer_connector_max_retries` | Maximum retry attempts for content synchronization requests to the Wazuh Indexer. | `3` |
-| `analysisd.cmsync_indexer_connector_retry_interval` | Seconds between retry attempts for content synchronization. | `5` |
-| `analysisd.ioc_sync_interval` | Seconds between IoC database synchronization cycles. `0` disables IoC sync. | `360` |
-| `analysisd.ioc_indexer_connector_max_retries` | Maximum retry attempts for IoC synchronization requests to the Wazuh Indexer. | `3` |
-| `analysisd.ioc_indexer_connector_retry_interval` | Seconds between retry attempts for IoC synchronization. | `5` |
-| `analysisd.ioc_indexer_connector_sync_batch_size` | Maximum number of IoC documents streamed per Wazuh Indexer page while synchronizing IoC databases. | `1000` |
-| `analysisd.geo_sync_interval` | Seconds between GeoIP database synchronization cycles. `0` disables GeoIP sync. | `360` |
+These keys configure the `wazuh-indexer` connection used by the standalone engine process only. In manager mode
+they are not read at all — hosts and TLS material come from the `<indexer>` section of `wazuh-manager.conf`, and
+credentials from the keystore (see [Configuration sources](configuration.md#configuration-sources)).
+
+| Setting | Env var | Description | Default | Mode |
+|:--|:--|:--|:--:|:--:|
+| `analysisd.indexer_hosts` | `WAZUH_INDEXER_HOSTS` | List of `wazuh-indexer` base URLs. | `["http://localhost:9200"]` | standalone |
+| `analysisd.indexer_ssl_certificate_authorities` | `WAZUH_INDEXER_SSL_CA_BUNDLE` | List of CA bundle file paths used to validate the `wazuh-indexer` TLS certificate. | `[]` | standalone |
+| `analysisd.indexer_ssl_certificate` | `WAZUH_INDEXER_SSL_CERTIFICATE` | Path to the client TLS certificate presented to `wazuh-indexer`. | `""` | standalone |
+| `analysisd.indexer_ssl_key` | `WAZUH_INDEXER_SSL_KEY` | Path to the client TLS private key presented to `wazuh-indexer`. | `""` | standalone |
+
+### Synchronization
+
+| Setting | Env var | Description | Default | Mode |
+|:--|:--|:--|:--:|:--:|
+| `analysisd.remote_conf_sync_interval` | `WAZUH_REMOTE_CONF_SYNC_INTERVAL` | Seconds between remote engine configuration synchronization cycles. | `120` | both |
+| `analysisd.remote_conf_indexer_connector_max_retries` | `WAZUH_REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES` | Maximum retry attempts for remote configuration requests to the Wazuh Indexer. | `3` | both |
+| `analysisd.remote_conf_indexer_connector_retry_interval` | `WAZUH_REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL` | Seconds between retry attempts for remote configuration synchronization. | `5` | both |
+| `analysisd.cm_sync_interval` | `WAZUH_CM_SYNC_INTERVAL` | Seconds between content synchronization cycles from the Wazuh Indexer. | `120` | both |
+| `analysisd.cmsync_indexer_connector_sync_batch_size` | `WAZUH_CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE` | Maximum number of content documents requested per Wazuh Indexer page during content synchronization. | `100` | both |
+| `analysisd.cmsync_indexer_connector_max_retries` | `WAZUH_CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES` | Maximum retry attempts for content synchronization requests to the Wazuh Indexer. | `3` | both |
+| `analysisd.cmsync_indexer_connector_retry_interval` | `WAZUH_CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL` | Seconds between retry attempts for content synchronization. | `5` | both |
+| `analysisd.ioc_sync_interval` | `WAZUH_IOC_SYNC_INTERVAL` | Seconds between IoC database synchronization cycles. `0` disables IoC sync. | `360` | both |
+| `analysisd.ioc_indexer_connector_max_retries` | `WAZUH_IOC_INDEXER_CONNECTOR_MAX_RETRIES` | Maximum retry attempts for IoC synchronization requests to the Wazuh Indexer. | `3` | both |
+| `analysisd.ioc_indexer_connector_retry_interval` | `WAZUH_IOC_INDEXER_CONNECTOR_RETRY_INTERVAL` | Seconds between retry attempts for IoC synchronization. | `5` | both |
+| `analysisd.ioc_indexer_connector_sync_batch_size` | `WAZUH_IOC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE` | Maximum number of IoC documents streamed per Wazuh Indexer page while synchronizing IoC databases. | `1000` | both |
+
+### Geo
+
+| Setting | Env var | Description | Default | Mode |
+|:--|:--|:--|:--:|:--:|
+| `analysisd.geo_sync_interval` | `WAZUH_GEO_SYNC_INTERVAL` | Seconds between GeoIP database synchronization cycles. `0` disables GeoIP sync. | `360` | both |
+| `analysisd.geo_db_path` | `WAZUH_GEO_DB_PATH` | Directory holding the downloaded GeoIP (MaxMind) database. Only read while GeoIP sync is enabled. | `/var/wazuh-manager/data/mmdb` | both |
+| `analysisd.geo_manifest_url` | `WAZUH_GEO_MANIFEST_URL` | URL of the GeoIP database manifest used to check for updates. | `https://api.pre.cloud.wazuh.com/maxmind_geoip/manifest.json` | both |
+| `analysisd.geo_download_timeout` | `WAZUH_GEO_DOWNLOAD_TIMEOUT` | Timeout in milliseconds for downloading the GeoIP database. | `60000` (60 s) | both |
+
+### Time-zone database
+
+| Setting | Env var | Description | Default | Mode |
+|:--|:--|:--|:--:|:--:|
+| `analysisd.tzdb_path` | `WAZUH_TZDB_PATH` | Directory holding the local IANA time-zone database used by the engine. | `/var/wazuh-manager/data/tzdb` | both |
+| `analysisd.tzdb_auto_update` | `WAZUH_TZDB_AUTO_UPDATE` | Whether the engine automatically downloads time-zone database updates. | `false` | both |
+| `analysisd.tzdb_force_version_update` | `WAZUH_TZDB_FORCE_VERSION_UPDATE` | Time-zone database version to force-install, overriding auto-detection. Empty means no forced version. | `""` | both |
+
+### Stream log
+
+Events and the dumper share these settings; each one is read once for the events stream and once for the dumper
+stream.
+
+| Setting | Env var | Description | Default | Mode |
+|:--|:--|:--|:--:|:--:|
+| `analysisd.streamlog_base_path` | `WAZUH_STREAMLOG_BASE_PATH` | Base directory for the events and dumper stream-log files. | `/var/wazuh-manager/logs/` | both |
+| `analysisd.streamlog_compress` | `WAZUH_STREAMLOG_SHOULD_COMPRESS` | Whether rotated stream-log files (events and dumper) are compressed. | `true` | both |
+| `analysisd.streamlog_compression_level` | `WAZUH_STREAMLOG_COMPRESSION_LEVEL` | Compression level applied to rotated stream-log files (events and dumper). | `5` | both |
+| `analysisd.streamlog_events_pattern` | `WAZUH_STREAMLOG_EVENTS_PATTERN` | File-name pattern for the events stream log, relative to `analysisd.streamlog_base_path`. | `${YYYY}/${MMM}/wazuh-${name}-${DD}` | both |
+| `analysisd.streamlog_events_max_size` | `WAZUH_STREAMLOG_EVENTS_MAX_SIZE` | Maximum size in bytes of one events stream-log file before rotation. `0` disables size-based rotation; a value below `1048576` (1 MB) is raised to 1 MB. | `0` | both |
+| `analysisd.streamlog_events_buffer_size` | `WAZUH_STREAMLOG_EVENTS_BUFFER_SIZE` | Write-buffer size in bytes for the events stream log. | `1048576` (1 MB) | both |
+| `analysisd.streamlog_dumper_pattern` | `WAZUH_STREAMLOG_DUMPER_PATTERN` | File-name pattern for the dumper stream log, relative to `analysisd.streamlog_base_path`. | `${YYYY}/${MMM}/wazuh-${name}-${DD}` | both |
+| `analysisd.streamlog_dumper_max_size` | `WAZUH_STREAMLOG_DUMPER_MAX_SIZE` | Maximum size in bytes of one dumper stream-log file before rotation. `0` disables size-based rotation; a value below `1048576` (1 MB) is raised to 1 MB. | `0` | both |
+| `analysisd.streamlog_dumper_buffer_size` | `WAZUH_STREAMLOG_DUMPER_BUFFER_SIZE` | Write-buffer size in bytes for the dumper stream log. | `1048576` (1 MB) | both |
+| `analysisd.streamlog_max_files` | `WAZUH_STREAMLOG_MAX_FILES` | Maximum number of rotated stream-log files (events and dumper) kept before the oldest is deleted. | `90` | both |
+| `analysisd.streamlog_max_accumulated_size` | `WAZUH_STREAMLOG_MAX_ACCUMULATED_SIZE` | Maximum total disk size for rotated stream-log files (events and dumper) combined. | `21474836480` (20 GB) | both |
+
+### Event dumper
+
+| Setting | Env var | Description | Default | Mode |
+|:--|:--|:--|:--:|:--:|
+| `analysisd.dumper_enabled` | `WAZUH_DUMPER_ENABLED` | Whether the raw-event dumper (writing incoming events to the dumper stream log) is enabled. | `false` | both |
+
+### Engine API server
+
+| Setting | Env var | Description | Default | Mode |
+|:--|:--|:--|:--:|:--:|
+| `analysisd.server_api_socket` | `WAZUH_SERVER_API_SOCKET` | Unix domain socket path for the engine's HTTP API server. | `/var/wazuh-manager/queue/sockets/engine-api-http.sock` | both |
+| `analysisd.server_api_timeout` | `WAZUH_SERVER_API_TIMEOUT` | Request timeout in milliseconds for the engine's HTTP API server. | `5000` (5 s) | both |
+| `analysisd.server_api_payload_max_bytes` | `WAZUH_SERVER_API_PAYLOAD_MAX_BYTES` | Maximum request payload size in bytes for the engine's HTTP API server. `0` means unlimited. A negative value is clamped to `0` with a warning. | `0` | both |
+| `analysisd.server_enriched_events_socket` | `WAZUH_SERVER_ENRICHED_EVENTS_SOCKET` | Unix domain socket path for the engine's enriched-events HTTP ingest server. | `/var/wazuh-manager/queue/sockets/engine-ingest-http.sock` | both |
+| `analysisd.server_enable_event_processing` | `WAZUH_SERVER_ENABLE_EVENT_PROCESSING` | Master switch for the event-processing pipeline (indexer connector, stream loggers, raw-event indexer, remote-conf and CM/IOC sync, dumper, enriched-events HTTP server). | `true` | both |
+| `analysisd.api_resource_payload_max_bytes` | `WAZUH_SERVER_API_MAX_RESOURCE_PAYLOAD_SIZE` | Maximum payload size in bytes accepted for a resource in the engine's HTTP API server. | `50000` | both |
+| `analysisd.api_resource_kvdb_payload_max_bytes` | `WAZUH_SERVER_API_MAX_RESOURCE_KVDB_PAYLOAD_SIZE` | Maximum payload size in bytes accepted for a KVDB resource in the engine's HTTP API server. | `100000` | both |
 
 ## F.A.Q

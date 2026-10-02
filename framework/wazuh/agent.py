@@ -4,6 +4,7 @@
 
 import logging
 import operator
+import time
 from os import chmod, path, listdir, rename
 from shutil import rmtree
 from typing import Union
@@ -21,8 +22,8 @@ from wazuh.core.wdb_http import get_wdb_http_client
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_with_mode, process_array, clear_temporary_caches, \
-    full_copy
-from wazuh.rbac.decorators import audit_agent_keys_read, expose_resources, async_list_handler
+    full_copy, validate_query_parentheses
+from wazuh.rbac.decorators import audit_agent_keys_read, expose_resources, async_list_handler, mask_sensitive_config
 
 logger = logging.getLogger('wazuh')
 
@@ -68,6 +69,11 @@ ERROR_CODES_UPGRADE_SOCKET = [1819, 1820, 1821, 1822, 1823, 1824, 1826, 1828]
 # node that simply doesn't have this agent's info yet/at all. Skip it silently here instead of
 # failing the whole request: whichever node actually has the agent will report the real outcome.
 ERROR_CODE_UPGRADE_AGENT_NOT_IN_LOCAL_DB = 1816
+
+# common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE (1774) is the restart/reload twin of 1816 above: the same
+# situation, reported instead of skipped. The upgrade socket's answer is one node's share of a task
+# the other nodes still report on, while for restart/reload a silent skip would leave an agent
+# nobody has ever seen out of the response altogether, with the request answered as a success.
 
 STATUS = 'status'
 COUNT = 'count'
@@ -211,13 +217,20 @@ def get_agents_summary_os(agent_list: list[str] = None) -> AffectedItemsWazuhRes
 @expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703]},
                   post_proc_func=async_list_handler)
-async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
+async def restart_agents(agent_list: list = None, request_time: int = None) -> AffectedItemsWazuhResult:
     """Restart a list of agents.
+
+    An agent this node's database holds no version for is reported with error 1774, never as an
+    affected item, and its task is created all the same: the node cannot judge an agent it has
+    never seen, and a merge would let that claim override the verdict of the node that can.
 
     Parameters
     ----------
     agent_list : list
         List of agents IDs.
+    request_time : int
+        Unix timestamp from the API controller, stamped once per request so the deterministic task
+        id comes out the same on every cluster node. Defaults to now for callers of their own.
 
     Returns
     -------
@@ -242,6 +255,9 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
         all_agents = {agent['id']: agent.get('version') for agent in data['items']}
 
         eligible_agents = []
+        # Agents this node holds no version for: their task is created with the rest, but the
+        # result of that creation is not what gets reported. See the check below.
+        agents_unknown_here = set()
         for agent_id in agent_list:
             # Add non existent agents to failed_items
             if agent_id not in system_agents:
@@ -253,7 +269,37 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
                 continue
 
             version = all_agents[agent_id]
-            if not version or version == 'N/A' or WazuhVersion(version) < WazuhVersion('v5.0.0'):
+            if not version:
+                # No version for this agent in THIS node's database, which means the agent has
+                # never connected here: wazuh-db omits NULL columns, so a missing version is an
+                # unset row value, not an unparseable one (that is the 'N/A' sentinel below).
+                #
+                # Agents have no fixed owning node in 5.x -- they connect over stateless,
+                # load-balanced HTTPS -- so this request was broadcast to nodes that know nothing
+                # about the agent, and the agent's next poll may land on any of them. The task is
+                # created here anyway, so that poll finds it: task ids are deterministic across
+                # nodes and the agent's task-id store is durable, so the same restart fetched from
+                # two nodes runs once, and the copies nobody fetches age out at
+                # task-manager.task_ttl.
+                #
+                # It is reported as FAILED with 1774 once the task manager confirms the row was
+                # written (a creation failure answers 1775 instead, below), and never as affected.
+                # Affected is a claim this node is in no position to make -- it cannot tell a v5.x agent from a pre-5.0 one
+                # -- and since a merge lets a success override a failure (see
+                # AffectedItemsWazuhResult.__or__), claiming it would erase the 1761 that the node
+                # which DOES know the agent reports for a pre-5.0 one. As a failure it behaves the
+                # other way round: the merge drops it as soon as any node reports that agent as
+                # affected, so in a cluster it survives only in this node's own `nodes` entry --
+                # and it is the whole answer when no node has ever seen the agent. What it must
+                # not do is answer 1761, which blames the agent's version for what is this node's
+                # own gap, and which the per-node breakdown added in #39428 made visible.
+                logger.debug("restart_agents: no version for agent %s in this node's database; queuing its "
+                             "task, to be answered once the task manager has replied", agent_id)
+                agents_unknown_here.add(agent_id)
+                eligible_agents.append(agent_id)
+                continue
+
+            if version == 'N/A' or WazuhVersion(version) < WazuhVersion('v5.0.0'):
                 result.add_failed_item(id_=agent_id, error=WazuhError(1761))
                 continue
 
@@ -261,20 +307,37 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 
         # Create restart tasks for all eligible agents
         if eligible_agents:
-            import time
-            request_time = int(time.time())
+            # The task id is derived from this timestamp, so it has to be the one the API stamped
+            # on the request and forwarded to every node. A node stamping its own would give the
+            # same logical restart a different id per node, and since the agent skips only a task id
+            # it has already run, an agent polling two nodes would restart twice. Falls back to now
+            # for callers that are a request of their own.
+            if request_time is None:
+                request_time = int(time.time())
+
             responses = create_restart_tasks(eligible_agents, TASK_CHUNK_SIZE, request_time)
 
             for response in responses:
                 for agent_info in response['data']:
                     agent_id = agent_info.get('agent')
-                    if agent_info.get('error') == 0:
-                        result.affected_items.append(agent_id)
-                    else:
-                        # Map task creation errors to Wazuh errors
-                        error_code = agent_info.get('error')
+                    error_code = agent_info.get('error')
+
+                    if error_code != 0:
+                        # Map task creation errors to Wazuh errors. Checked before 1774 and for
+                        # every agent alike: when nothing was written, 1774 would tell the operator
+                        # the command is queued on this node -- which is what its remediation
+                        # promises -- about a row that does not exist. The task manager's own
+                        # failure is what this node knows, and a merge still lets another node's
+                        # success win at the top level.
                         error_msg = agent_info.get('message', f'Task creation failed with error {error_code}')
-                        result.add_failed_item(id_=agent_id, error=WazuhInternalError(1727, extra_message=error_msg))
+                        result.add_failed_item(id_=agent_id, error=WazuhInternalError(1775, extra_message=error_msg))
+                    elif agent_id in agents_unknown_here:
+                        # The task is written; what this node cannot do is judge the agent behind
+                        # it (see the version check above), so it answers that and nothing else.
+                        result.add_failed_item(id_=agent_id,
+                                               error=WazuhError(common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE))
+                    else:
+                        result.affected_items.append(agent_id)
 
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)
@@ -285,32 +348,41 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703], 'force': True},
                   post_proc_func=async_list_handler)
-async def restart_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult:
+async def restart_agents_by_group(agent_list: list = None, request_time: int = None) -> AffectedItemsWazuhResult:
     """Restart all agents belonging to a group.
 
     Parameters
     ----------
     agent_list : list, optional
         List of agents. Default `None`
+    request_time : int, optional
+        Unix timestamp from the API controller. Default `None`
 
     Returns
     -------
     AffectedItemsWazuhResult
         Affected items.
     """
-    return await restart_agents(agent_list=agent_list)
+    return await restart_agents(agent_list=agent_list, request_time=request_time)
 
 
 @expose_resources(actions=["agent:reload"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703]},
                   post_proc_func=async_list_handler)
-async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
+async def reload_agents(agent_list: list = None, request_time: int = None) -> AffectedItemsWazuhResult:
     """Reload a list of agents.
+
+    An agent this node's database holds no version for is reported with error 1774, never as an
+    affected item, and its task is created all the same: the node cannot judge an agent it has
+    never seen, and a merge would let that claim override the verdict of the node that can.
 
     Parameters
     ----------
     agent_list : list
         List of agents IDs.
+    request_time : int
+        Unix timestamp from the API controller, stamped once per request so the deterministic task
+        id comes out the same on every cluster node. Defaults to now for callers of their own.
 
     Returns
     -------
@@ -335,6 +407,9 @@ async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
         all_agents = {agent['id']: agent.get('version') for agent in data['items']}
 
         eligible_agents = []
+        # Agents this node holds no version for: their task is created with the rest, but the
+        # result of that creation is not what gets reported. See the check below.
+        agents_unknown_here = set()
         for agent_id in agent_list:
             # Add non existent agents to failed_items
             if agent_id not in system_agents:
@@ -346,7 +421,37 @@ async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
                 continue
 
             version = all_agents[agent_id]
-            if not version or version == 'N/A' or WazuhVersion(version) < WazuhVersion('v5.0.0'):
+            if not version:
+                # No version for this agent in THIS node's database, which means the agent has
+                # never connected here: wazuh-db omits NULL columns, so a missing version is an
+                # unset row value, not an unparseable one (that is the 'N/A' sentinel below).
+                #
+                # Agents have no fixed owning node in 5.x -- they connect over stateless,
+                # load-balanced HTTPS -- so this request was broadcast to nodes that know nothing
+                # about the agent, and the agent's next poll may land on any of them. The task is
+                # created here anyway, so that poll finds it: task ids are deterministic across
+                # nodes and the agent's task-id store is durable, so the same reload fetched from
+                # two nodes runs once, and the copies nobody fetches age out at
+                # task-manager.task_ttl.
+                #
+                # It is reported as FAILED with 1774 once the task manager confirms the row was
+                # written (a creation failure answers 1775 instead, below), and never as affected.
+                # Affected is a claim this node is in no position to make -- it cannot tell a v5.x agent from a pre-5.0 one
+                # -- and since a merge lets a success override a failure (see
+                # AffectedItemsWazuhResult.__or__), claiming it would erase the 1761 that the node
+                # which DOES know the agent reports for a pre-5.0 one. As a failure it behaves the
+                # other way round: the merge drops it as soon as any node reports that agent as
+                # affected, so in a cluster it survives only in this node's own `nodes` entry --
+                # and it is the whole answer when no node has ever seen the agent. What it must
+                # not do is answer 1761, which blames the agent's version for what is this node's
+                # own gap, and which the per-node breakdown added in #39428 made visible.
+                logger.debug("reload_agents: no version for agent %s in this node's database; queuing its "
+                             "task, to be answered once the task manager has replied", agent_id)
+                agents_unknown_here.add(agent_id)
+                eligible_agents.append(agent_id)
+                continue
+
+            if version == 'N/A' or WazuhVersion(version) < WazuhVersion('v5.0.0'):
                 result.add_failed_item(id_=agent_id, error=WazuhError(1761))
                 continue
 
@@ -354,20 +459,37 @@ async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 
         # Create reload tasks for all eligible agents
         if eligible_agents:
-            import time
-            request_time = int(time.time())
+            # The task id is derived from this timestamp, so it has to be the one the API stamped
+            # on the request and forwarded to every node. A node stamping its own would give the
+            # same logical reload a different id per node, and since the agent skips only a task id
+            # it has already run, an agent polling two nodes would reload twice. Falls back to now
+            # for callers that are a request of their own.
+            if request_time is None:
+                request_time = int(time.time())
+
             responses = create_reload_tasks(eligible_agents, TASK_CHUNK_SIZE, request_time)
 
             for response in responses:
                 for agent_info in response['data']:
                     agent_id = agent_info.get('agent')
-                    if agent_info.get('error') == 0:
-                        result.affected_items.append(agent_id)
-                    else:
-                        # Map task creation errors to Wazuh errors
-                        error_code = agent_info.get('error')
+                    error_code = agent_info.get('error')
+
+                    if error_code != 0:
+                        # Map task creation errors to Wazuh errors. Checked before 1774 and for
+                        # every agent alike: when nothing was written, 1774 would tell the operator
+                        # the command is queued on this node -- which is what its remediation
+                        # promises -- about a row that does not exist. The task manager's own
+                        # failure is what this node knows, and a merge still lets another node's
+                        # success win at the top level.
                         error_msg = agent_info.get('message', f'Task creation failed with error {error_code}')
-                        result.add_failed_item(id_=agent_id, error=WazuhInternalError(1727, extra_message=error_msg))
+                        result.add_failed_item(id_=agent_id, error=WazuhInternalError(1775, extra_message=error_msg))
+                    elif agent_id in agents_unknown_here:
+                        # The task is written; what this node cannot do is judge the agent behind
+                        # it (see the version check above), so it answers that and nothing else.
+                        result.add_failed_item(id_=agent_id,
+                                               error=WazuhError(common.AGENT_NOT_IN_LOCAL_DB_ERROR_CODE))
+                    else:
+                        result.affected_items.append(agent_id)
 
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)
@@ -378,20 +500,22 @@ async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 @expose_resources(actions=["agent:reload"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703], 'force': True},
                   post_proc_func=async_list_handler)
-async def reload_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult:
+async def reload_agents_by_group(agent_list: list = None, request_time: int = None) -> AffectedItemsWazuhResult:
     """Reload all agents belonging to a group.
 
     Parameters
     ----------
     agent_list : list, optional
         List of agents. Default `None`
+    request_time : int, optional
+        Unix timestamp from the API controller. Default `None`
 
     Returns
     -------
     AffectedItemsWazuhResult
         Affected items.
     """
-    return await reload_agents(agent_list=agent_list)
+    return await reload_agents(agent_list=agent_list, request_time=request_time)
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
@@ -499,6 +623,9 @@ def get_agents_in_group(group_list: list, offset: int = 0, limit: int = common.D
         raise WazuhResourceNotFound(1710)
 
     q_group = f'group={group_list[0]}'
+    if q:
+        # A ')' in q closing a group it never opened would close the wrapper and escape the group condition
+        validate_query_parentheses(q)
     q = f'{q_group};({q})' if q else q_group
 
     return get_agents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, q=q,
@@ -1321,6 +1448,9 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
 
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
+        if q:
+            # A ')' in q closing a group it never opened would close the wrapper and escape the version condition
+            validate_query_parentheses(q)
         with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
                                 query=f"version!={manager_version}" + (f";({q})" if q else ''),
                                 **rbac_filters) as db_query:
@@ -1464,6 +1594,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
     return result
 
 
+@mask_sensitive_config()
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_file_conf(group_list: list = None, type_conf: str = None, raw: bool = False,
                   filename: str = None) -> WazuhResult:
@@ -1493,6 +1624,7 @@ def get_file_conf(group_list: list = None, type_conf: str = None, raw: bool = Fa
                                                             raw=raw)})
 
 
+@mask_sensitive_config()
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_agent_conf(group_list: list = None, filename: str = 'agent.conf', offset: int = 0,
                    limit: int = common.DATABASE_LIMIT) -> WazuhResult:

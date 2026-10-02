@@ -533,8 +533,9 @@ STATIC void remoted_module_control_config(remoted_module_config_t *rm_config) {
     // sweep marks any agent whose last_keepalive is older than <agents_disconnection_time>. The
     // staleness the threshold sees is the throttle PLUS the agent's notify interval, which remoted
     // does not know, so the guard fires from half: anything at or above it can cross once the
-    // agent's cadence is added, and half is also the safe setting for detection latency, because
-    // the sweep's period is the threshold itself and detection lands anywhere in [1x, 2x].
+    // agent's cadence is added. The sweep itself runs every quarter of the threshold, bounded to
+    // [60, 300] s and never longer than the threshold (task_manager's sweepPeriod()), so detection
+    // lands within one such period after the threshold is crossed.
     if (rm_config->keepalive_throttle_sec >= logr.global.agents_disconnection_time / 2) {
         mwarn("'remoted.control_keepalive_throttle' (%d s) is at or above half of <agents_disconnection_time> "
               "(%ld s): once the throttle plus the agent's notify interval crosses the threshold, agents that "

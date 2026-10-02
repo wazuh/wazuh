@@ -112,7 +112,9 @@ list(APPEND client-agent_names "test_ca_publication")
 list(APPEND client-agent_flags "-Wl,--wrap,rename ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_agent_ssl_ca")
-list(APPEND client-agent_flags "-Wl,--wrap,w_is_file -Wl,--wrap,os_find_ca_bundle \
+# wfopen is wrapped only so the link succeeds: wrapping IsFile pulls in file_op_wrappers.o, which
+# references __real_wfopen. Its wrapper forwards to the real call unless a test sets test_mode.
+list(APPEND client-agent_flags "-Wl,--wrap,w_is_file -Wl,--wrap,IsFile -Wl,--wrap,IsLink -Wl,--wrap,wfopen -Wl,--wrap,os_find_ca_bundle \
                                 -Wl,--wrap,w_x509_load_all_pem -Wl,--wrap,w_x509_free_all ${DEBUG_OP_WRAPPERS}")
 
 # getAgentConfig() reads the agt globals and builds cJSON, nothing else: no wrappers.

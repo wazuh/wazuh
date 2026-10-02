@@ -29,6 +29,7 @@ from wazuh.core.utils import (
     WazuhDBQuery,
     WazuhDBQueryGroupBy,
     WazuhDBBackend,
+    validate_query_parentheses,
     get_utc_now,
     get_date_from_timestamp,
 )
@@ -74,6 +75,9 @@ UPGRADE_TIMEOUT = 240
 
 class WazuhDBQueryAgents(WazuhDBQuery):
     """Class used to query Wazuh agents."""
+
+    oversized_rbac_field = "id"
+    oversized_rbac_zfill = True
 
     def __init__(
         self,
@@ -272,8 +276,11 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             and self.legacy_filters["older_than"] != "0s"
         ):
             if self.legacy_filters["older_than"]:
+                if self.q:
+                    # A ')' in q closing a group it never opened would escape the older_than condition
+                    validate_query_parentheses(self.q)
                 self.q = (
-                    (self.q + ";" if self.q else "")
+                    (f"({self.q});" if self.q else "")
                     + "(lastKeepAlive>{0};status!=never_connected,dateAdd>{0};status=never_connected)".format(
                         self.legacy_filters["older_than"]
                     )
@@ -367,6 +374,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
 class WazuhDBQueryGroup(WazuhDBQuery):
     """Class used to query Wazuh groups."""
+
+    oversized_rbac_field = "name"
 
     def __init__(
         self,
@@ -484,8 +493,11 @@ class WazuhDBQueryGroup(WazuhDBQuery):
             and self.legacy_filters["older_than"] != "0s"
         ):
             if self.legacy_filters["older_than"]:
+                if self.q:
+                    # A ')' in q closing a group it never opened would escape the older_than condition
+                    validate_query_parentheses(self.q)
                 self.q = (
-                    (self.q + ";" if self.q else "")
+                    (f"({self.q});" if self.q else "")
                     + "(lastKeepAlive>{0};status!=never_connected,dateAdd>{0};status=never_connected)".format(
                         self.legacy_filters["older_than"]
                     )
@@ -550,6 +562,9 @@ class WazuhDBQueryGroup(WazuhDBQuery):
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
     """Class used to query grouping by agents."""
 
+    # The GROUP BY select cannot be narrowed to the RBAC field, so oversized_run is not supported here.
+    oversized_rbac_field = None
+
     def __init__(self, filter_fields: dict, *args: dict, **kwargs: dict):
         """Class constructor.
 
@@ -567,6 +582,8 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
             filter_fields=filter_fields,
             default_sort_field=self.default_sort_field,
             backend=self.backend,
+            date_fields=self.date_fields,
+            extra_fields=self.extra_fields,
             **kwargs,
         )
         self.remove_extra_fields = True

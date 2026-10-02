@@ -79,11 +79,11 @@ struct DbInfo
  */
 struct GeoDbStatus
 {
-    std::string name;                  ///< Database type name (e.g., "city", "asn")
-    bool available {false};            ///< Has a version loaded and available for queries
+    std::string name;                                  ///< Database type name (e.g., "city", "asn")
+    bool available {false};                            ///< Has a version loaded and available for queries
     base::SyncStatus status {base::SyncStatus::READY}; ///< Current state: ready, running, or failed
-    std::string hash;                  ///< Last known content hash (MD5)
-    uint32_t lastSuccessfulUpdate {0};  ///< Unix timestamp of last successful sync (0 if never)
+    std::string hash;                                  ///< Last known content hash (MD5)
+    uint32_t lastSuccessfulUpdate {0};                 ///< Unix timestamp of last successful sync (0 if never)
 };
 
 /**

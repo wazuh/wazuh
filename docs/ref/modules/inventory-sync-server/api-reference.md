@@ -3,9 +3,10 @@
 All routes are served over a Unix domain socket at `queue/sockets/inventory-sync-http.sock`, relative to the
 installation directory. There is no TCP listener.
 
-Agent traffic arrives through [Remoted](../remoted/README.md), which authenticates the agent and
-forwards the request. The `_internal` route below is not agent traffic: it is a manager-internal
-contract, called only by the Task Manager's dispatcher, and carries no compatibility promise.
+Agent traffic (`/stateful`, `/stats`, `/config`) arrives through [Remoted](../remoted/README.md),
+which authenticates the agent and forwards the request. The two `_internal` routes below are not agent
+traffic: they are a manager-internal contract, called only by the Task Manager's dispatcher, and carry
+no compatibility promise.
 Requests are HTTP/1.1, `Content-Length` delimited, one request per connection (`Connection: close`);
 chunked transfer encoding is rejected.
 
@@ -16,13 +17,13 @@ chunked transfer encoding is rejected.
 | `GET` | `/` | `200` | Liveness probe, answers `{"status":"ok","module":"inventory_sync_server"}`. Exempt from the in-flight byte budget, so it keeps answering under memory pressure. |
 | `GET` | `/metrics` | `200` | The module's runtime statistics as JSON (see [`GET /metrics`](#get-metrics) below). Budget-exempt, like the probe. |
 | `POST` | `/stateful` | `200` | One whole synchronization session (FlatBuffers `Message{FullSession}`). `200` `{"status":"ok"}` means applied AND flushed to the indexer (and scanned, for VD sessions); `{"status":"ok","noop":true}` means everything was filtered. Other statuses: `400` invalid session, `403` identity mismatch, `409` `{"status":"checksum_mismatch"}` for a `ModuleCheck` session (the agent full-resyncs) OR `{"error":"version_mismatch","current_version":N}` for a VDFirst/VDSync session whose `feed_offset` doesn't match this node's current VD feed offset (the agent retries with `current_version`; see [vulnerability-scanner's architecture.md](../vulnerability-scanner/architecture.md#feed-update-rescan-scanvd--rescandisconnectedagents)), `413` the session declares more bytes than the total budget, `500` failed with nothing indexed (including a failed vulnerability scan), `503` not ready / no capacity — with a `Retry-After` header when the CVE feed is still downloading or the scanner is enabled here but still starting up. |
-| `POST` | `/_internal/agents/delete` | `200` | Deletes every document of the agent named in the body (`{"agent_id":"7"}`), in two halves: `wazuh-states-*` by delete-by-query (this cluster's scope, deferred to the agent's worker shard so it orders after that agent's in-flight sessions), and the `wazuh-agent-config` / `wazuh-agent-stats` documents by document id, queued on the asynchronous connector that writes them so the deletion orders after a `/config` or `/stats` report that connector has accepted but not yet pushed. `200` `{"status":"ok"}` means the by-query half has run **and flushed**; the by-id half is queued. One documented window can still leave a state document behind — see [Whole-agent deletion semantics](#whole-agent-deletion-semantics). Manager-internal and UDS-local: the only caller is the Task Manager's dispatcher. `400` malformed body or no usable `agent_id`, `503` indexer unavailable or the module is stopping. |
-| `POST` | `/_internal/vd/scan` | `200` | On-demand vulnerability rescan of the agent named in the body (`{"agent_id":"7"}`), executed on the VD scan lane. `200` `{"status":"ok"}` means the scan RAN; `{"status":"ok","skipped":true}` means this node runs no vulnerability scanner, which is a completion rather than a failure. Manager-internal and UDS-local: the only caller is the Task Manager's dispatcher. `400` malformed body or no usable `agent_id`, `409` `scan_in_progress` when that agent already has a scan in flight, `404` `agent_not_found`, `500` the scan failed, `503` scan capacity exhausted, the feed is still loading, or the module is stopping. See [On-demand vulnerability scans](#on-demand-vulnerability-scans). |
+| `POST` | `/_internal/agents/delete` | `200` | Deletes every document of the agent named in the body (`{"agent_id":"7"}`), in two halves: `wazuh-states-*` by delete-by-query (this cluster's scope, deferred to the agent's worker shard so it orders after that agent's in-flight sessions), and the `wazuh-agent-config` / `wazuh-agent-stats` documents by document id, queued on the asynchronous connector that writes them so the deletion orders after a `/config` or `/stats` report that connector has accepted but not yet pushed. `200` `{"status":"ok"}` means the by-query half has run **and flushed**; the by-id half is queued. One documented window can still leave a state document behind — see [Whole-agent deletion semantics](#whole-agent-deletion-semantics). Manager-internal and UDS-local: the only caller is the Task Manager's dispatcher. `400` malformed body or no usable `agent_id`, `503` indexer unavailable, the pipeline queue is full, or the module is stopping. |
+| `POST` | `/_internal/vd/scan` | `200` | On-demand vulnerability rescan of the agent named in the body (`{"agent_id":"7"}`), executed on the VD scan lane. `200` `{"status":"ok"}` means the scan RAN. Manager-internal and UDS-local: the only caller is the Task Manager's dispatcher. `400` malformed body or no usable `agent_id`, `409` `scan_in_progress` when that agent already has a scan in flight, `404` `agent_not_found`, `500` the scan failed, `503` scan capacity exhausted, no healthy indexer host, the feed is still loading (with `Retry-After`), the scanner is not ready, this node runs no vulnerability scanner, or the module is stopping. See [On-demand vulnerability scans](#on-demand-vulnerability-scans). |
 | `POST` | `/stats` | `200` | Indexes the agent's statistics report into `wazuh-agent-stats` (see [`POST /stats`](#post-stats) below). Answers `{}`, which means accepted for indexing, not stored: see [what a `200` promises](#what-a-stats-or-config-200-promises). |
 | `POST` | `/config` | `200` | Indexes the agent's reported configuration into `wazuh-agent-config` (see [Indexing `/config`](#indexing-config) below). Answers `{}`, with the same acceptance semantics as `/stats`: see [what a `200` promises](#what-a-stats-or-config-200-promises). |
 
 The stats and config endpoints take the agent's `modules`-keyed report, move it under their own
-subtree, and index one document per agent (issues #38024 and #38023).
+subtree, and index one document per agent.
 
 ### `POST /stats`
 
@@ -44,18 +45,18 @@ The module moves `modules` under `wazuh.agent.statistics`, adds the envelope bel
 document into `wazuh-agent-stats` whose **document id is the agent id**, so every push replaces the
 agent's previous report:
 
-```json
+```json,fragment
 {
   "state": {"modified_at": "2026-08-02T10:07:12.431Z", "document_version": 1},
   "wazuh": {
-    "schema": {"version": "1"},
+    "schema": {"version": "1.0"},
     "cluster": {"name": "wazuh"},
     "agent": {"id": "001", "statistics": {"agent": {…}, "logcollector": {…}}}
   }
 }
 ```
 
-Three details worth knowing:
+Two details worth knowing:
 
 - The document is built from scratch, so an `agent_id` or `cluster` the agent writes at the root of its
   own report is dropped rather than indexed next to the authoritative `wazuh.agent.id`.
@@ -72,24 +73,23 @@ report with no statistics would replace the agent's last good one.
 
 | Header | Required | Meaning |
 |---|---|---|
-| `X-Wazuh-Agent-Id` | Yes for `/stateful`, `/stats` and `/config` | The agent identity remoted authenticated; the session's own claimed identity must match it, or the answer is `403`. Missing or non-numeric is answered `400`. **Ignored by `/_internal/agents/delete`**, which reads its target from the body — its caller sends no headers of its own. |
+| `X-Wazuh-Agent-Id` | Yes for `/stateful`, `/stats` and `/config` | The agent identity remoted authenticated. Missing or empty is answered `400` on all three. On `/stateful` it must also be numeric (`400` otherwise) and the session's claimed `Start.agentid` must equal it numerically, or the answer is `403`. `/stats` and `/config` use it verbatim as `wazuh.agent.id` and as the document id. **Ignored by both `_internal` routes**, which read their target from the body — their caller sends no headers of its own. |
 | `Content-Type` | No | Recorded, not interpreted. |
 
-## Enrichment (`/stats`)
+## Enrichment (`/stats` and `/config`)
 
 For `/stats` and `/config`, the module writes the identity and the time itself. Every one of these is
 authoritative and replaces whatever the agent sent:
 
-| JSON pointer | Endpoint | Source |
-|---|---|---|
-| `/wazuh/agent/id` | both | The authenticated `X-Wazuh-Agent-Id` header |
-| `/wazuh/cluster/name` | both | `<cluster><name>` in the manager configuration |
-| `/state/modified_at` | `/stats` | The manager's clock, ISO 8601 with milliseconds, UTC |
-| `/state/document_version` | `/stats` | Constant. Versions the stored layout, not the report |
-| `/wazuh/schema/version` | `/stats` | Constant, and a **string**: `wazuh-metrics-agents` declares it `keyword`, so this index follows |
-| `/@timestamp` | `/config` | The manager's clock, same format |
+| JSON pointer | Source |
+|---|---|
+| `/wazuh/agent/id` | The authenticated `X-Wazuh-Agent-Id` header |
+| `/wazuh/cluster/name` | `<cluster><name>` in the manager configuration |
+| `/state/modified_at` | The manager's clock, ISO 8601 with milliseconds, UTC |
+| `/state/document_version` | Constant (`1`). Versions the stored layout, not the report |
+| `/wazuh/schema/version` | Constant, and a **string** (`"1.0"`, a keyword), the same value on both indices |
 
-`/stats` writes `state.modified_at` rather than `@timestamp` because its index follows the schema's
+Both write `state.modified_at` rather than `@timestamp` because their indices follow the schema's
 stateful convention: a stable document id, replaced in place, with no time series behind it.
 
 A cluster name containing bytes that are not valid UTF-8 is sanitized once at startup, with a warning,
@@ -107,11 +107,11 @@ the `wazuh-agent-config` index mapping. An empty `modules` object is rejected, f
 The result is indexed under the agent id as `_id`, via a plain upsert -- each report replaces the
 previous one for that agent in full, there is no delete step:
 
-```json
+```json,fragment
 {
   "state": { "modified_at": "<manager clock, ISO 8601 UTC>", "document_version": 1 },
   "wazuh": {
-    "schema": { "version": "1.0.0" },
+    "schema": { "version": "1.0" },
     "agent": { "id": "<authenticated X-Wazuh-Agent-Id>",
                "configuration": { "modules": ["fim", "logcollector", ...],
                                   "content": { "fim": {...}, "logcollector": {...}, ... } } },
@@ -216,12 +216,13 @@ the per-agent exclusion this module shares with its ingestion pipeline, so a sca
 a session of the same agent is mid-apply. A scan started outside this module would be invisible to
 that exclusion.
 
-Two statuses are worth calling out:
+Three statuses are worth calling out:
 
 | Status | Meaning | What the caller does |
 |---|---|---|
 | `409` `scan_in_progress` | That agent already has a scan in flight | Defers without consuming a retry attempt |
 | `404` `agent_not_found` | The agent has no record to scan, most likely deleted between the request and its execution | Stops; retrying cannot produce one |
+| `503` `no vulnerability scanner on this node` | Vulnerability detection is disabled here, or its scanner failed to start | Retries, and dead-letters the task once `vd_scan`'s attempt budget runs out. Deliberately not a `200`: the task row would read `completed` for a scan that never ran |
 
 The `409` exists because a client-side timeout does not cancel server-side work. The dispatcher gives
 up at `manager_task_vd_scan_timeout` and re-posts while the first scan is very likely still running;
@@ -254,7 +255,7 @@ whole retry contract — there are no acknowledgments and no session state to re
 
 | Status | Body | The agent... |
 |---|---|---|
-| `200` | `{"status":"ok"}` | marks success. The data is FLUSHED to the indexer (and scanned, for VD sessions), not merely queued. |
+| `200` | `{"status":"ok"}` | marks success. The data is FLUSHED to the indexer (and scanned, for VD sessions on a node that runs a vulnerability scanner), not merely queued. |
 | `200` | `{"status":"ok","noop":true}` | ditto — every document was filtered (e.g. unknown indices). |
 | `409` | `{"status":"checksum_mismatch"}` | triggers a full resync of the module (`ModuleCheck`). |
 | `409` | `{"error":"version_mismatch","current_version":N}` | a VDFirst/VDSync session whose `feed_offset` is stale; the agent rebuilds and retries with `current_version` (see [vulnerability-scanner's architecture.md](../vulnerability-scanner/architecture.md#feed-update-rescan-scanvd--rescandisconnectedagents)). |
@@ -296,8 +297,9 @@ relative error, clamped into the exact `[min, max]` of the same snapshot). The f
 [Metrics](metrics.md); where each sits in the pipeline is in the
 [architecture page](architecture.md#statistics-get-metrics). Counters accumulate for the life
 of the process (they survive the module's internal restart retries); there is no reset
-endpoint. During shutdown the route itself can answer `503 {"error":"Service
-unavailable","code":503}` (the registry is gone); that response is not counted anywhere.
+endpoint. The handler answers `503 {"error":"Service unavailable","code":503}` only if the registry
+no longer exists, which cannot happen while the process runs (it is created once and never reset);
+that response would not be counted anywhere.
 
 Note it is NOT `POST /stats`: that route is the *ingest* of agent statistics reports, unrelated
 to this module's own runtime metrics.
@@ -312,11 +314,11 @@ These can be returned on any route, by the transport rather than by a handler:
 | `404` | Unknown path |
 | `405` | Known path, wrong verb. Carries an `Allow` header listing that path's verbs |
 | `411` | Chunked transfer encoding, which is not supported |
-| `413` | A body declaring more bytes than the total in-flight budget (or over `max_body_size`, when one is explicitly configured) |
+| `413` | A body declaring more bytes than the total in-flight budget (or over `max_body_size`, when one is explicitly configured), or, on the two `_internal` routes, more than `control_max_body_bytes` |
 | `414` | Request target over `max_url_size` |
 | `431` | A header name or value over its cap, or more than 32 header lines |
 | `500` | A route handler threw. The server keeps serving |
-| `503` | No healthy indexer host (`/stats`, `/config`), the in-flight byte budget is exhausted, the connection cap is reached, or the module is shutting down |
+| `503` | The in-flight byte budget is exhausted, the connection cap or the route class's session cap is reached, or the module is shutting down. (The handlers add their own `503`s — no healthy indexer host, a full queue — listed per route above.) |
 | `504` | A handler was dispatched but never answered within its response backstop — `response_timeout` server-wide, or the route's own override. The two `_internal` routes raise their own (900 s for the deletion, 450 s for the scan), because their peers wait 600 s and 300 s respectively and the backstop is only meaningful while the peer's deadline is the shorter one |
 
 A `503` is retryable and a `400` is not: validation runs BEFORE the indexer availability check on
@@ -324,9 +326,9 @@ purpose, so a malformed document is never masked as a transient failure the agen
 
 ## Manual testing
 
-`tools/send_sync.py` in the module's source directory drives every route over the socket at the
-transport level (health check, oversized bodies, malformed encodings) but does not build a
-route-specific payload. The liveness probe with curl:
+`src/wazuh_modules/inventory_sync_server/tools/send_sync.py` drives any route over the socket at the
+transport level (health check, oversized bodies, unknown routes and verbs) but does not build a
+route-specific payload — see [Test Tools](test-tools.md). The liveness probe with curl:
 
 ```bash
 curl --unix-socket /var/wazuh-manager/queue/sockets/inventory-sync-http.sock http://localhost/

@@ -58,7 +58,8 @@ async def login_user(user: str, raw: bool = False) -> ConnexionResponse:
 
     token = None
     try:
-        token = generate_token(user_id=user, data=data.dikt)
+        token = generate_token(issued_at_ms=request.context['token_info']['auth_time_ms'],
+                               user_id=user, data=data.dikt)
     except WazuhException as e:
         raise_if_exc(e)
 
@@ -104,7 +105,8 @@ async def run_as_login(user: str, raw: bool = False) -> ConnexionResponse:
 
     token = None
     try:
-        token = generate_token(user_id=user, data=data.dikt, auth_context=auth_context)
+        token = generate_token(issued_at_ms=request.context['token_info']['auth_time_ms'],
+                               user_id=user, data=data.dikt, auth_context=auth_context)
     except WazuhException as e:
         raise_if_exc(e)
 
@@ -183,10 +185,16 @@ async def logout_user(pretty: bool = False, wait_for_complete: bool = False) -> 
         API response.
     """
 
+    # A run_as token names the account that called the run_as login, shared by every end user it
+    # logs in: its authorization context is what identifies the current user.
+    token_info = request.context['token_info']
+    f_kwargs = {'run_as': token_info['run_as'], 'hash_auth_context': token_info.get('hash_auth_context')}
+
     dapi = DistributedAPI(f=security.revoke_current_user_tokens,
+                          f_kwargs=f_kwargs,
                           request_type='local_master',
                           is_async=False,
-                          current_user=request.context['token_info']['sub'],
+                          current_user=token_info['sub'],
                           wait_for_complete=wait_for_complete,
                           logger=logger
                           )
@@ -270,7 +278,9 @@ async def edit_run_as(user_id: str, allow_run_as: bool, pretty: bool = False,
     ConnexionResponse
         API response.
     """
-    f_kwargs = {'user_id': user_id, 'allow_run_as': allow_run_as}
+    f_kwargs = {'user_id': user_id, 'allow_run_as': allow_run_as,
+                'current_user': request.context['token_info']['sub'],
+                'run_as': request.context['token_info']['run_as']}
 
     dapi = DistributedAPI(f=security.edit_run_as,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -338,7 +348,8 @@ async def update_user(user_id: str, pretty: bool = False, wait_for_complete: boo
     f_kwargs = await UpdateUserModel.get_kwargs(request,
                                                 additional_kwargs=
                                                 {'user_id': user_id,
-                                                  'current_user': request.context['token_info']['sub']})
+                                                  'current_user': request.context['token_info']['sub'],
+                                                  'run_as': request.context['token_info']['run_as']})
 
     dapi = DistributedAPI(f=security.update_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

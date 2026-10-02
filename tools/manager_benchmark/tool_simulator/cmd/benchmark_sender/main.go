@@ -45,13 +45,14 @@ func run() int {
 		output       = flag.String("output", "bench.csv", "per-second metrics CSV")
 		summaryJSON  = flag.String("summary-json", "sender_summary.json", "run summary JSON")
 		feedTimeout  = flag.Duration("feed-timeout", 300*time.Second, "budget for feed-not-ready (503+Retry-After) retries")
-		drainTimeout = flag.Duration("drain-timeout", 60*time.Second, "bounded shutdown window")
+		drainTimeout = flag.Duration("drain-timeout", 0, "bounded shutdown window; overrides the scenario's "+
+			"pacing.drain_timeout when > 0 (0 = the scenario's value, or 60s when that is unset too)")
 		timeout      = flag.Duration("timeout", 120*time.Second, "per-request timeout")
 		enrollSettle = flag.Duration("enroll-settle", 12*time.Second,
 			"agent mode: wait after enrollment for remoted to reload client.keys (remoted.keyupdate_interval, 10s default)")
 		cluster      = flag.String("cluster", "", "cluster name the sessions declare (overrides the scenario; the server 403s a foreign cluster)")
 		globalPrefix = flag.String("global-prefix", "", "agent mode: the manager's <remote><https><global_prefix>. "+
-			"It is part of the request target, so it is SIGNED as well as sent and must match the manager "+
+			"It is part of the request target (sent, not signed) and must match the manager "+
 			"exactly -- against a prefixed manager without it every request answers 404. \"\" and \"/\" both "+
 			"mean no prefix. Never applied in uds mode: the module socket is not published under the prefix")
 		compression = flag.String("compression", "",

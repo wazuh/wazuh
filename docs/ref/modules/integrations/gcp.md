@@ -2,37 +2,42 @@
 
 ## Introduction
 
-The Wazuh GCP (Google Cloud Platform) module retrieves logs from Google Cloud services and forwards them to the Wazuh analysis engine. The module supports two collection methods:
+The GCP (Google Cloud Platform) module collects Google Cloud logs and forwards them to the manager.
+It has two independent blocks:
 
-- **Pub/Sub**: Subscribes to a Google Cloud Pub/Sub topic to receive log messages in real time.
-- **Cloud Storage buckets**: Reads logs stored in Google Cloud Storage buckets (for example, access logs).
+- **`<gcp-pubsub>`**: pulls log messages from a Pub/Sub subscription.
+- **`<gcp-bucket>`**: reads Cloud Storage access logs from one or more buckets.
 
-The GCP module runs as a Wazuh wodle on the Wazuh agent. It invokes the `wodles/gcloud/gcloud` Python script to connect to Google Cloud services using a service account credentials file.
+It is an agent module, configured in the agent's `ossec.conf`, and is not available on Windows agents
+(see [Integrations](README.md)). On each run the agent's `wazuh-modulesd` invokes the
+`wodles/gcloud/gcloud` Python script, which authenticates with a service account credentials file.
+Each event is sent with `integration` set to `gcp` and the Google Cloud log under `gcp`.
 
 ## Prerequisites
 
-- A Google Cloud project with the required APIs enabled (Pub/Sub API or Cloud Storage API).
-- A service account with appropriate permissions and a downloaded JSON credentials file.
-- The credentials file must be accessible to the Wazuh agent.
-- Python 3 and the required Google Cloud Python libraries installed on the Wazuh agent.
+- A Google Cloud project with the Pub/Sub API or the Cloud Storage API enabled.
+- A service account and its JSON key file, stored on the agent host.
+- The Google Cloud client libraries for Python (Pub/Sub and Cloud Storage) and `pytz`, installed for
+  the agent host's `python3`.
 
 ## Configuration
 
-The GCP module is configured inside the `<ossec_config>` block of the Wazuh agent configuration file (`ossec.conf`).
+Both blocks go inside `<ossec_config>` in the agent's `ossec.conf`. Any element not listed below
+makes the configuration fail to load.
 
 ### Pub/Sub configuration
 
 ```xml
-  <gcp-pubsub>
-    <enabled>yes</enabled>
-    <project_id>my-gcp-project</project_id>
-    <subscription_name>wazuh-subscription</subscription_name>
-    <credentials_file>/var/ossec/etc/credentials.json</credentials_file>
-    <max_messages>100</max_messages>
-    <num_threads>1</num_threads>
-    <pull_on_start>yes</pull_on_start>
-    <interval>1h</interval>
-  </gcp-pubsub>
+<gcp-pubsub>
+  <enabled>yes</enabled>
+  <project_id>my-gcp-project</project_id>
+  <subscription_name>wazuh-subscription</subscription_name>
+  <credentials_file>/var/ossec/etc/credentials.json</credentials_file>
+  <max_messages>100</max_messages>
+  <num_threads>1</num_threads>
+  <pull_on_start>yes</pull_on_start>
+  <interval>1h</interval>
+</gcp-pubsub>
 ```
 
 #### Pub/Sub options
@@ -41,28 +46,28 @@ The GCP module is configured inside the `<ossec_config>` block of the Wazuh agen
 |--------|:--------:|---------|-------------|
 | `enabled` | No | `yes` | Enables or disables the module. |
 | `project_id` | Yes | — | The Google Cloud project ID. |
-| `subscription_name` | Yes | — | The name of the Pub/Sub subscription to pull messages from. |
-| `credentials_file` | Yes | — | Path to the Google Cloud service account JSON credentials file. |
-| `max_messages` | No | `100` | Maximum number of messages to pull per request. |
-| `num_threads` | No | `1` | Number of threads used for pulling messages. |
-| `pull_on_start` | No | `yes` | Pull messages immediately when the module starts. |
-| `interval` | No | `1h` | Time interval between pull requests. |
+| `subscription_name` | Yes | — | The Pub/Sub subscription to pull messages from. |
+| `credentials_file` | Yes | — | Path to the service account JSON key; use an absolute path. The file must exist when the configuration is loaded, otherwise the configuration fails to load. |
+| `max_messages` | No | `100` | Maximum number of messages pulled per request. Digits only. |
+| `num_threads` | No | `1` | Number of threads pulling messages. Digits only. |
+| `pull_on_start` | No | `yes` | Pull as soon as the module starts instead of waiting for the first `interval`. |
+| `interval` | No | `1h` | Time between pulls. See [Scheduling](README.md#scheduling) for units and the `day`/`wday`/`time` alternatives. |
 
 ### Cloud Storage bucket configuration
 
 ```xml
-  <gcp-bucket>
-    <enabled>yes</enabled>
-    <run_on_start>yes</run_on_start>
-    <interval>1h</interval>
-    <bucket type="access_logs">
-      <name>my-gcp-bucket</name>
-      <credentials_file>/var/ossec/etc/credentials.json</credentials_file>
-      <path>logs/</path>
-      <only_logs_after>2024-01-01</only_logs_after>
-      <remove_from_bucket>no</remove_from_bucket>
-    </bucket>
-  </gcp-bucket>
+<gcp-bucket>
+  <enabled>yes</enabled>
+  <run_on_start>yes</run_on_start>
+  <interval>1h</interval>
+  <bucket type="access_logs">
+    <name>my-gcp-bucket</name>
+    <credentials_file>/var/ossec/etc/credentials.json</credentials_file>
+    <path>logs/</path>
+    <only_logs_after>2024-JAN-01</only_logs_after>
+    <remove_from_bucket>no</remove_from_bucket>
+  </bucket>
+</gcp-bucket>
 ```
 
 #### Bucket options
@@ -70,14 +75,14 @@ The GCP module is configured inside the `<ossec_config>` block of the Wazuh agen
 | Option | Required | Default | Description |
 |--------|:--------:|---------|-------------|
 | `enabled` | No | `yes` | Enables or disables the module. |
-| `run_on_start` | No | `yes` | Process logs immediately when the module starts. |
-| `interval` | No | `1h` | Time interval between bucket scans. |
-| `bucket` | Yes | — | Defines a bucket to monitor. Use `type` attribute to specify the bucket type (for example, `access_logs`). |
+| `run_on_start` | No | `yes` | Process the buckets as soon as the module starts instead of waiting for the first `interval`. |
+| `interval` | No | `1h` | Time between bucket scans. See [Scheduling](README.md#scheduling). |
+| `bucket` | Yes | — | A bucket to read. At least one is required, and several may be given. The `type` attribute is required and its only valid value is `access_logs`. |
 | `name` | Yes | — | Name of the Cloud Storage bucket. |
-| `credentials_file` | Yes | — | Path to the service account credentials file. |
-| `path` | No | — | Prefix (path) filter for objects in the bucket. |
-| `only_logs_after` | No | — | Only process logs created after this date (format: `YYYY-MM-DD`). |
-| `remove_from_bucket` | No | `no` | Delete log objects from the bucket after processing. |
+| `credentials_file` | Yes | — | Path to the service account JSON key, with the same rules as in `<gcp-pubsub>`. |
+| `path` | No | — | Only read objects whose name starts with this prefix. Cannot be empty. |
+| `only_logs_after` | No | — | Only read logs from this date on, in `YYYY-MMM-DD` format (for example `2024-JAN-01`). |
+| `remove_from_bucket` | No | `no` | Delete each object from the bucket after processing it. |
 
 ## Google Cloud setup
 
@@ -91,26 +96,23 @@ The GCP module is configured inside the `<ossec_config>` block of the Wazuh agen
 ### Create a service account
 
 1. In the Google Cloud Console, navigate to **IAM & Admin** > **Service Accounts**.
-2. Create a new service account with the following roles:
-   - `Pub/Sub Subscriber` (for Pub/Sub integration)
-   - `Storage Object Viewer` (for bucket integration)
-3. Generate a JSON key and download it to the Wazuh agent.
+2. Create a new service account. The script checks these permissions before collecting:
+   - `pubsub.subscriptions.consume` on the subscription (for example, the `Pub/Sub Subscriber` role).
+   - `storage.buckets.get` and read access to the objects of the bucket (for example, the
+     `Storage Object Viewer` role); object delete access as well if `remove_from_bucket` is `yes`.
+3. Generate a JSON key and copy it to the agent host, at the path set in `credentials_file`.
 
 ## Verify the integration
 
-After configuring the module, restart the Wazuh agent:
+Restart the agent and look for the module's lines (tags `wazuh-modulesd:gcp-pubsub` and
+`wazuh-modulesd:gcp-bucket`):
 
 ```bash
 systemctl restart wazuh-agent
+grep "gcp-" /var/ossec/logs/ossec.log
 ```
 
-Check the Wazuh agent logs for GCP module activity:
-
-```bash
-grep "gcp" /var/ossec/logs/ossec.log
-```
-
-GCP events appear in the Wazuh alerts with the `gcp` data field populated.
+Errors from the script, such as missing permissions, are logged under the same tags.
 
 ---
 
@@ -121,6 +123,6 @@ GCP events appear in the Wazuh alerts with the `gcp` data field populated.
 **DEPRECATED:** The `<logging>` tag in both `<gcp-pubsub>` and `<gcp-bucket>` blocks is parsed but ignored.
 
 - **Status:** Deprecated
-- **Behavior:** Parser accepts the tag and prints a warning: "Tag 'logging' from the 'gcp-pubsub' (or 'gcp-bucket') module is deprecated. Ignoring."
-- **Replacement:** Use the global Wazuh logging configuration instead
+- **Behavior:** Parser accepts the tag and logs a debug-level message, only visible with `wazuh_modules.debug=1` or higher in `local_internal_options.conf` (or `wazuh-modulesd -d`): "Tag 'logging' from the 'gcp-pubsub' (or 'gcp-bucket') module is deprecated. This setting will be skipped."
+- **Replacement:** Set the GCP script log level with `wazuh_modules.debug` in `local_internal_options.conf` (`0`: warning, `1`: info, `2`: debug)
 - **Note:** This tag has no effect and will be removed in a future version

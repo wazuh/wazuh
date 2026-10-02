@@ -3,6 +3,7 @@ edit_run_as:
   - params:
       user_id: 1
       allow_run_as: False
+      current_user: wazuh
     result:
       affected_items:
         - id: 1
@@ -14,6 +15,7 @@ edit_run_as:
   - params:
       user_id: 2
       allow_run_as: True
+      current_user: wazuh
     result:
       affected_items:
         - id: 2
@@ -23,8 +25,69 @@ edit_run_as:
             - 1
       failed_items: {}
   - params:
+      user_id: 1
+      allow_run_as: True
+      current_user: wazuh-wui
+      run_as: true
+    result:
+      affected_items: []
+      failed_items:
+        "5011":
+          - 1
+  - params:
+      user_id: 2
+      allow_run_as: False
+      current_user: wazuh-wui
+      run_as: true
+    result:
+      affected_items: []
+      failed_items:
+        "5011":
+          - 2
+  - params:
+      user_id: 1
+      allow_run_as: True
+      current_user: administrator
+    result:
+      affected_items: []
+      failed_items:
+        "5011":
+          - 1
+  - params:
+      user_id: 1
+      allow_run_as: True
+      current_user: unknown-user
+    result:
+      affected_items: []
+      failed_items:
+        "5011":
+          - 1
+  - params:
+      user_id: 1
+      allow_run_as: True
+    result:
+      affected_items: []
+      failed_items:
+        "5011":
+          - 1
+  - params:
+      user_id: 100
+      allow_run_as: False
+      current_user: wazuh-wui
+      run_as: true
+    result:
+      affected_items:
+        - id: 100
+          username: administrator
+          allow_run_as: false
+          roles:
+            - 100
+            - 101
+      failed_items: {}
+  - params:
       user_id: 2
       allow_run_as: INVALID
+      current_user: wazuh
     result:
       affected_items: []
       failed_items:

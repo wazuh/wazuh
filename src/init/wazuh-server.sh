@@ -239,6 +239,133 @@ status()
     fi
 }
 
+# The credentials file itself, checked before anything else on the start and restart paths.
+#
+# Read-only: the resolver's --check asks the shared helper whether the credentials file, its
+# directory and every directory above it are acceptable, and touches neither the keystore nor the
+# credentials lock. That is what lets it run ahead of testconfig() -- and so ahead of the stop on the
+# restart path -- where resolvecredentials() cannot (see below). It has to come first: an install
+# that met an unsafe file issued no certificates, and testconfig() would otherwise stop the start on
+# "(1244) file not found" for remoted.pem without ever naming the file that caused it. It refuses
+# the file even when this start would not read it (everything already resolved), as the indexer and
+# the dashboard do: an unsafe credentials file is a problem whether or not anything needs it today.
+#
+# Any non-zero answer refuses the start, including the resolver failing to find its helpers: a
+# verdict we could not obtain is not a reason to start.
+checkcredentials()
+{
+    # Each marker is a verdict from a previous run, and this run's verdict replaces them; testconfig()
+    # clears them too, but this function may exit before it runs. Without this, a refusal here would
+    # leave `status` reporting another run's "refused its configuration".
+    rm -f ${DIR}/var/run/*.failed
+
+    if [ ! -x ${DIR}/bin/wazuh-manager-resolve-credentials ]; then
+        return 0
+    fi
+
+    # Captured and relayed on stderr, as in resolvecredentials(), so that `-j` keeps writing a single
+    # JSON document to stdout. The helper names the rule and the path, never a value.
+    CHECK_VERDICT=$(${DIR}/bin/wazuh-manager-resolve-credentials --check -H ${DIR} 2>&1)
+    if [ $? = 0 ]; then
+        return 0
+    fi
+    if [ -n "${CHECK_VERDICT}" ]; then
+        echo "${CHECK_VERDICT}" >&2
+    fi
+    # The resolver says UNSAFE when the helper refused the file; anything else (its helpers missing,
+    # not run as root) means the check itself could not run, which refuses the start just the same
+    # but must not be reported as a verdict about the file.
+    case "${CHECK_VERDICT}" in
+        *UNSAFE*) CHECK_REASON="Unsafe credentials file"; CHECK_LOG="unsafe credentials file" ;;
+        *)        CHECK_REASON="Cannot check the credentials file"; CHECK_LOG="cannot check the credentials file" ;;
+    esac
+    echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: ${CHECK_LOG}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
+    if [ -n "${CHECK_VERDICT}" ]; then
+        echo "${CHECK_VERDICT}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
+    fi
+    if [ $USE_JSON = true ]; then
+        echo -n '{"error":22,"message":"'"${CHECK_REASON}"'."}'
+    else
+        echo "${CHECK_REASON}. Exiting"
+    fi
+    rm -f ${DIR}/var/run/*.start
+    rm -f ${DIR}/var/run/.restart
+    # Like testconfig(), this runs before lock() on both paths: unlock() is `rm -rf ${LOCK}`, so it
+    # releases nothing of ours -- and, as there, it would also remove a lock another invocation holds.
+    unlock;
+    exit 1;
+}
+
+# Credential resolution, run immediately before the daemons and while we are still root.
+#
+# Deliberately NOT part of testconfig(), and deliberately not run while any daemon is up: the
+# resolver asks the keystore whether the indexer credential is already stored, and that opens the
+# `queue/keystore` RocksDB read-write. keystore_server answers the framework's KeystoreClient from
+# the same database -- once per API request that reaches the indexer -- so a probe issued while the
+# manager is running races it for RocksDB's directory lock. The loser does not merely fail: the
+# wrapper treats an IOError as corruption and runs rocksdb::RepairDB() over a database another
+# process has open. restart_service() therefore calls this AFTER stop_service(), and the start path
+# calls it with nothing running.
+#
+# --prestart does NOT touch the certificates: those are issued once, at installation, and an
+# operator who replaced them with their own PKI must not have them re-examined at every start
+# (issuing one is a signature, not a lookup, so re-deriving the chain would make the shared CA
+# directory a standing dependency of the manager). Missing or unreadable certificates are caught by
+# checkSemantics() in testconfig() and by remoted's own access(R_OK) preflight after it drops
+# privileges; the resolver only answers for the passwords and the keystore.
+#
+# The credentials file's ownership and mode are not this function's job: checkcredentials() has
+# already refused an unsafe one before testconfig().
+#
+# Unresolved credentials fail here rather than at the daemon's own -t: a missing indexer password is
+# not a configuration error and has no JSON pointer to report, and the resolver has already named
+# the key and where to set it.
+resolvecredentials()
+{
+    if [ ! -x ${DIR}/bin/wazuh-manager-resolve-credentials ]; then
+        return 0
+    fi
+
+    # Belt and braces for the call ordering above, so that a future caller cannot reintroduce the
+    # race by moving this. keystore_server lives inside modulesd and answers the framework's
+    # KeystoreClient from the very database this step opens; pstatus returns 1 when it is up. If it
+    # is, this is not a pre-start -- a `start` against a running manager, or a caller out of order --
+    # and there is nothing to resolve, because whatever is running resolved it when it started.
+    pstatus wazuh-manager-modulesd "quiet"
+    if [ $? = 1 ]; then
+        return 0
+    fi
+
+    # Captured rather than left on stdout, for the same reason testconfig() captures the
+    # configuration validator's verdict: `wazuh-manager-control -j start` writes exactly one JSON
+    # document to stdout, and the resolver's progress lines would be prepended to it and break every
+    # parser. They go to stderr instead -- the journal keeps both streams, which is where someone
+    # looks when a unit will not start. The resolver never prints a value, only key names, so
+    # relaying it in full leaks nothing.
+    CREDENTIALS_VERDICT=$(${DIR}/bin/wazuh-manager-resolve-credentials --prestart -H ${DIR} 2>&1)
+    CREDENTIALS_STATUS=$?
+    if [ -n "${CREDENTIALS_VERDICT}" ]; then
+        echo "${CREDENTIALS_VERDICT}" >&2
+    fi
+    if [ ${CREDENTIALS_STATUS} != 0 ]; then
+        echo "$(date '+%Y/%m/%d %H:%M:%S') wazuh-manager-control: ERROR: unresolved credentials" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
+        # No daemon starts, so nothing else records which key was missing where operators (and the
+        # integration tests) look for it.
+        echo "${CREDENTIALS_VERDICT}" >> ${DIR}/logs/wazuh-manager.log 2>/dev/null
+        if [ $USE_JSON = true ]; then
+            echo -n '{"error":21,"message":"Unresolved credentials."}'
+        else
+            echo "Unresolved credentials. Exiting"
+        fi
+        rm -f ${DIR}/var/run/*.start
+        rm -f ${DIR}/var/run/.restart
+        # unlock() is `rm -rf ${LOCK}`, so calling it on the start path -- which has not taken the
+        # lock yet -- is harmless, and on the restart path it releases the lock we are holding.
+        unlock;
+        exit 1;
+    fi
+}
+
 testconfig()
 {
     # Each marker is a verdict from a previous run and this one replaces all of them. Cleared
@@ -246,8 +373,10 @@ testconfig()
     # may never run to clear a marker left by an earlier, unrelated one.
     rm -f ${DIR}/var/run/*.failed
 
-    # The whole file first (XML, schema, cross-field rules and the files it references): fails fast
-    # with the JSON pointer of the offending option before any daemon runs its own -t.
+    # The whole configuration file (XML, schema, cross-field rules and the files it references):
+    # fails fast with the JSON pointer of the offending option before any daemon runs its own -t.
+    # This stays ahead of stop_service() on the restart path, so a configuration mistake is refused
+    # while the manager is still up rather than after it has been taken down.
     MCONF_VERDICT=$(${MCONF} validate 2>&1)
     if [ $? != 0 ]; then
         echo "${MCONF_VERDICT}" >&2
@@ -580,6 +709,7 @@ info()
 restart_service()
 {
     touch ${DIR}/var/run/.restart
+    checkcredentials
     testconfig
     lock
     if [ $USE_JSON = true ]; then
@@ -587,6 +717,9 @@ restart_service()
     else
         stop_service
     fi
+    # After the stop, never before it: see resolvecredentials(). Probing the keystore while
+    # keystore_server is still answering requests races it for the RocksDB directory lock.
+    resolvecredentials
     start_service
     rm -f ${DIR}/var/run/.restart
     unlock
@@ -605,7 +738,9 @@ fi
 
 case "$action" in
 start)
+    checkcredentials
     testconfig
+    resolvecredentials
     lock
     start_service
     unlock

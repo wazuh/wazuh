@@ -48,10 +48,9 @@ type Start struct {
 	Groups        []string
 	GlobalVersion uint64
 	// ClusterName is required by the server (empty -> 400, foreign -> 403). There
-	// is deliberately no ClusterNode: the schema still carries the field, but the
-	// manager never validated it and is dropping its last consumer, and a real
-	// agent only ever echoed back what the manager itself told it during the
-	// /control handshake. The sender leaves it unset -- see docu/05.
+	// is no ClusterNode: cluster_node was removed from the inventorySync schema
+	// (the manager never validated it, and a real agent only ever echoed back what
+	// the manager itself told it during the /control handshake) -- see docu/05.
 	ClusterName string
 	FeedOffset  uint64
 }

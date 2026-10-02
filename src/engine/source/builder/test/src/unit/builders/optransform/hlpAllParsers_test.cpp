@@ -1,6 +1,7 @@
 #include "builders/baseBuilders_test.hpp"
 #include "builders/optransform/hlp.hpp"
 
+#include <fmt/format.h>
 #include <hlp/hlp.hpp>
 
 using namespace builder::builders::optransform;
@@ -371,4 +372,180 @@ TEST_F(HlpAliasingTest, DateParserTargetEqualsSourceWithShortValue)
 
     ASSERT_TRUE(result.success());
     ASSERT_EQ(*result.payload(), *makeEvent(R"({"field": "2023-01-15T10:30:00.000Z"})"));
+}
+
+// =============================================================================
+// Section 5: nesting depth limit of the parsers that build a structure
+// =============================================================================
+//
+// parse_json, parse_xml and parse_key_value build a JSON structure from the
+// source text, and json::Json::MAX_DEPTH bounds how deep it can nest. A source
+// one level over the limit fails with a test-mode trace that names the limit
+// and leaves the event untouched; a source exactly at the limit is mapped.
+namespace
+{
+// The part every depth failure message shares: "nesting depth exceeds the limit (256)"
+// Written as a literal on purpose: a silent change of json::Json::MAX_DEPTH must break these cases too.
+constexpr std::size_t DEPTH_LIMIT = 256;
+
+std::string depthTrace()
+{
+    return fmt::format("{} ({})", json::Json::DEPTH_ERROR_MSG, DEPTH_LIMIT);
+}
+
+// JSON text of `levels` nested arrays: [[...]]
+std::string nestedJsonArrays(std::size_t levels)
+{
+    return std::string(levels, '[') + std::string(levels, ']');
+}
+
+// XML text of `levels` nested elements: <e1><e2>...</e2></e1>
+std::string nestedXmlElements(std::size_t levels)
+{
+    std::string xml;
+    for (std::size_t i = 1; i <= levels; ++i)
+    {
+        xml += fmt::format("<e{}>", i);
+    }
+    for (std::size_t i = levels; i >= 1; --i)
+    {
+        xml += fmt::format("</e{}>", i);
+    }
+    return xml;
+}
+
+// Pointer to the innermost element of nestedXmlElements(levels) mapped to /target: /target/e1/.../e<levels>
+std::string nestedXmlPath(std::size_t levels)
+{
+    std::string path {"/target"};
+    for (std::size_t i = 1; i <= levels; ++i)
+    {
+        path += fmt::format("/e{}", i);
+    }
+    return path;
+}
+
+// Key-value text whose key has `tokens` dot-separated tokens: k.k...k=v
+std::string dottedKeyValue(std::size_t tokens)
+{
+    std::string key {"k"};
+    for (std::size_t i = 1; i < tokens; ++i)
+    {
+        key += ".k";
+    }
+    return key + "=v";
+}
+
+// JSON pointer made of `base` followed by `count` times "/<token>"
+std::string repeatedPath(const std::string& base, const std::string& token, std::size_t count)
+{
+    std::string path {base};
+    for (std::size_t i = 0; i < count; ++i)
+    {
+        path += "/" + token;
+    }
+    return path;
+}
+
+std::vector<OpArg> kvArgs()
+{
+    return {makeValue(R"("=")"), makeValue(R"(" ")"), makeValue(R"("\"")"), makeValue(R"("\\")")};
+}
+} // namespace
+
+class HlpDepthTest : public BaseBuilderTest
+{
+protected:
+    // The op captures isTestMode() when it is built, so the expectation goes before the builder call
+    TransformOp buildInTestMode(const TransformBuilder& builder, const std::vector<OpArg>& extraArgs = {})
+    {
+        EXPECT_CALL(*mocks->ctx, context()).Times(testing::AtLeast(1));
+        EXPECT_CALL(*mocks->ctx, isTestMode()).WillRepeatedly(testing::Return(true));
+        EXPECT_CALL(*mocks->ctx, validator());
+        EXPECT_CALL(*mocks->validator, hasField(DotPath("source"))).WillOnce(testing::Return(false));
+
+        std::vector<OpArg> opArgs {makeRef("source")};
+        opArgs.insert(opArgs.end(), extraArgs.begin(), extraArgs.end());
+        return builder(Reference("target"), opArgs, mocks->ctx);
+    }
+
+    // The deep text travels as a JSON string, never as a nested structure
+    static base::Event sourceEvent(const std::string& text)
+    {
+        auto event = makeEvent(R"({})");
+        event->setString(text, "/source");
+        return event;
+    }
+
+    static void expectTooDeep(const TransformOp& op, const std::string& text)
+    {
+        auto event = sourceEvent(text);
+        const json::Json original {*event};
+
+        auto result = op(event);
+
+        EXPECT_FALSE(result.success());
+        EXPECT_THAT(result.trace(), testing::HasSubstr(depthTrace()));
+        EXPECT_TRUE(result.payload()->exists("/source"));
+        EXPECT_FALSE(result.payload()->exists("/target"));
+        EXPECT_EQ(*result.payload(), original);
+    }
+
+    static void expectMapped(const TransformOp& op, const std::string& text, const std::string& leafPath)
+    {
+        auto result = op(sourceEvent(text));
+
+        EXPECT_TRUE(result.success()) << result.trace();
+        EXPECT_TRUE(result.payload()->exists("/target"));
+        EXPECT_TRUE(result.payload()->exists(leafPath)) << leafPath;
+    }
+};
+
+TEST_F(HlpDepthTest, JsonOverLimitFailsWithTrace)
+{
+    auto op = buildInTestMode(jsonParseBuilder);
+    expectTooDeep(op, nestedJsonArrays(DEPTH_LIMIT + 1));
+}
+
+TEST_F(HlpDepthTest, JsonAtLimitIsMapped)
+{
+    auto op = buildInTestMode(jsonParseBuilder);
+    // The outer array is /target itself: the innermost one is MAX_DEPTH - 1 indexes below it
+    expectMapped(op, nestedJsonArrays(DEPTH_LIMIT), repeatedPath("/target", "0", DEPTH_LIMIT - 1));
+}
+
+TEST_F(HlpDepthTest, XmlOverLimitFailsWithTrace)
+{
+    auto op = buildInTestMode(xmlParseBuilder);
+    expectTooDeep(op, nestedXmlElements(DEPTH_LIMIT + 1));
+}
+
+TEST_F(HlpDepthTest, XmlAtLimitIsMapped)
+{
+    auto op = buildInTestMode(xmlParseBuilder);
+    expectMapped(op, nestedXmlElements(DEPTH_LIMIT), nestedXmlPath(DEPTH_LIMIT));
+}
+
+TEST_F(HlpDepthTest, XmlWindowsOverLimitFailsWithTrace)
+{
+    auto op = buildInTestMode(xmlParseBuilder, {makeValue(R"("windows")")});
+    expectTooDeep(op, nestedXmlElements(DEPTH_LIMIT + 1));
+}
+
+TEST_F(HlpDepthTest, XmlWindowsAtLimitIsMapped)
+{
+    auto op = buildInTestMode(xmlParseBuilder, {makeValue(R"("windows")")});
+    expectMapped(op, nestedXmlElements(DEPTH_LIMIT), nestedXmlPath(DEPTH_LIMIT));
+}
+
+TEST_F(HlpDepthTest, KeyValueOverLimitFailsWithTrace)
+{
+    auto op = buildInTestMode(keyValueParseBuilder, kvArgs());
+    expectTooDeep(op, dottedKeyValue(DEPTH_LIMIT + 1));
+}
+
+TEST_F(HlpDepthTest, KeyValueAtLimitIsMapped)
+{
+    auto op = buildInTestMode(keyValueParseBuilder, kvArgs());
+    expectMapped(op, dottedKeyValue(DEPTH_LIMIT), repeatedPath("/target", "k", DEPTH_LIMIT));
 }

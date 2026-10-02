@@ -48,7 +48,7 @@ target_link_libraries(wIndexerConnector_utest
     wIndexerConnector::wIndexerConnector
     wIndexerConnector::mocks
 )
-target_include_directories(wIndexerConnector_utest PRIVATE ${SRC_DIR})
+target_include_directories(wIndexerConnector_utest PRIVATE ${SRC_DIR} ${SHARED_MODULES}/keystore/include)
 gtest_discover_tests(wIndexerConnector_utest PROPERTIES RESOURCE_LOCK "rocks_db_lock")
 
 endif(ENGINE_BUILD_TEST)

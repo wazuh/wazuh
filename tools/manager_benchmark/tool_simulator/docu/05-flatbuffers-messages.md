@@ -3,12 +3,13 @@
 The body of every `/stateful` request is one `Message{FullSession}`. The schema is shared with the
 manager: `src/shared_modules/utils/flatbuffers/schemas/inventorySync.fbs`, namespace
 `Wazuh.SyncSchema`; the field-by-field reference is
-`docs/ref/modules/inventory-sync-server/flatbuffers.md`.
+[`flatbuffers.md`](../../../../docs/ref/modules/inventory-sync-server/flatbuffers.md).
 
 ## Generated bindings
 
 The Go bindings **MUST** be generated from that schema at build time
-(`flatc --go -o internal/fb <schema>`) and **MUST NOT** be committed. The retired simulator
+(`make generate`, which runs `flatc --go -o internal/fb <schema>`) and **MUST NOT** be committed
+(`internal/fb/` is gitignored). The retired simulator
 committed its generated package and it silently drifted from the schema — regenerating is the only
 way a schema change becomes a compile error instead of a wrong wire.
 
@@ -38,20 +39,20 @@ Built once per session from the scenario's agent identity plus its `start` block
 | `index` | The indices the session targets. Required for the metadata/group modes, which have no payload |
 | `module` | e.g. `syscollector`, `fim`, `sca` — recorded, and part of what the scenario describes |
 
-The schema also has a `cluster_node`, and the sender **MUST NOT** set it. The manager never validated
-it, its last consumer is being removed, and the only value that was ever correct for it is the
-manager's own configured node name — which is precisely what the tool used to read out of the
-manager's config and hand straight back. A real agent does not know it either: its `cluster_node` is
-whatever the manager told it during the `/control` handshake
-(`agent_metadata_t.cluster_node`, "received during handshake"). With stateless HTTPS the node that
-processes a session need not even be the one that answered that handshake, so an agent-declared node
-is at best redundant and at worst stale.
+There is no cluster node in `Start`. The schema used to carry a `cluster_node`, which the manager
+never validated and whose only correct value was the manager's own node name, so the sender used to
+read it from the manager's config and hand it straight back. The field is gone from both the schema
+and the agent's `agent_metadata_t`, and a scenario that still declares `defaults.cluster_node` is
+refused at load time (unknown field).
 
 Fields that are metadata stamped onto documents (`agentname`, `agentversion`, `architecture`,
 `hostname`, `osname`, `osplatform`, `ostype`, `osversion`, `groups`) **SHOULD** be filled with
 plausible per-agent values: they inflate the session and are overlaid onto every document, so
-omitting them makes payload sizes unrealistic. `global_version` **MUST** be set for the
-metadata/group modes (it is the stale-writer guard).
+omitting them makes payload sizes unrealistic. The sender fills them from the fleet's `start` block,
+with built-in defaults (`5.0.0`, `x86_64`, `Ubuntu`/`ubuntu`/`linux`/`22.04`), the agent's name as
+`hostname`/`agentname`, and `groups: ["default"]`. `global_version` **MUST** be set for the
+metadata/group modes (it is the stale-writer guard). The sender takes it from the step's
+`global_version`; the loader does not require it, and a step that leaves it out sends none.
 
 `feed_offset` matters only when `option` is `VDFirst`/`VDSync`: the server rejects a mismatch
 against its own current VD feed offset with `409 {"error":"version_mismatch","current_version":N}`
@@ -71,8 +72,8 @@ explicitly, or every VD session gets the version_mismatch 409 instead of a real 
 | `ModuleDelta` | `SyncData{values[], contexts[]}` | The bulk ingestion path: sharded workers, group commit. `values` **MUST** be ≥ 1 |
 | `ModuleDelta` | `Cleans{items[]}` | Agent-scoped deletion by index; also the first half of a full resync |
 | `ModuleCheck` | `ChecksumModule{index, checksum}` | The integrity path: a paged search plus a SHA-1 aggregate, the most read-heavy session there is |
-| `MetadataDelta` / `MetadataCheck` | *(none)* | One update-by-query across the declared indices |
-| `GroupDelta` / `GroupCheck` | *(none)* | Same, for group membership |
+| `MetadataDelta` / `MetadataCheck` | *(none)* | One update-by-query across the declared indices. The sender builds only `MetadataDelta` (`kind: "metadata"`) |
+| `GroupDelta` / `GroupCheck` | *(none)* | Same, for group membership. The sender builds only `GroupDelta` (`kind: "groups"`) |
 
 Anything outside that matrix is `400` before any I/O — cheap, and therefore useful only as a
 deliberate rejection scenario.

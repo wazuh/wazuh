@@ -485,6 +485,21 @@ STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid) {
 
 #endif /* !WIN32 */
 
+/* The anchor now in place supersedes a CA a WPK upgrade staged but could not validate; left
+ * behind, a later upgrade would install that one over it. */
+static void token_discard_delivered_ca(void) {
+#ifndef WIN32
+    if (unlink(AGENT_DELIVERED_CA) == 0) {
+        minfo("Removed the CA a remote upgrade left at '%s': the trust anchor supersedes it.",
+              AGENT_DELIVERED_CA);
+    } else if (errno != ENOENT) {
+        mwarn("Could not remove the CA a remote upgrade left at '%s': %s (%d). Remove it, or a "
+              "later upgrade may install it over the trust anchor.", AGENT_DELIVERED_CA,
+              strerror(errno), errno);
+    }
+#endif
+}
+
 /**
  * @brief Whether the anchor already on disk is byte-for-byte what this token would install.
  *
@@ -766,6 +781,23 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         report->used_pin = token.has_pin;
     }
 
+    /* The configured mode is not consulted: the token decides how its own enrollment is
+     * verified. Said before the CA is fetched and checked, so a pin or certificate failure does
+     * not read as 'none' being ignored. Only an explicit 'none' -- an inferred one just means
+     * there was no anchor yet. */
+    if (!opts->anchor_only && agt->ssl.verification_mode_explicit
+            && agt->ssl.verification_mode == AGENT_VERIFY_NONE) {
+        /* The bootstrap retries, and the configuration cannot change between attempts. */
+        static bool warned = false;
+
+        if (!warned) {
+            mwarn(AG_SSL_NONE_TOKEN_ENROLL_VERIFIED);
+            warned = true;
+        } else {
+            mdebug1(AG_SSL_NONE_TOKEN_ENROLL_VERIFIED);
+        }
+    }
+
     memset(&fetch_result, 0, sizeof(fetch_result));
 
     if (token.has_pin) {
@@ -879,6 +911,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
      * management loop rather than rewriting the same bytes on every run. */
     if (opts->anchor_only && !anchor_changed) {
         w_etoken_free(&token);
+        token_discard_delivered_ca();
         return W_TOKEN_ENROLL_OK;
     }
 
@@ -960,6 +993,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         /* Only now: the marker says an anchor has been committed, so it must not appear before
          * one has. */
         w_token_bootstrap_mark_anchor_committed(opts->gid);
+        token_discard_delivered_ca();
 
         minfo("The manager's CA is now the agent's trust anchor.");
 
@@ -1081,10 +1115,14 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
             cJSON *body = cJSON_Parse(enroll_result.body);
             cJSON *error = body ? cJSON_GetObjectItem(body, "error") : NULL;
             const char *text = cJSON_GetStringValue(cJSON_GetObjectItem(error, "message"));
+            const char *code = cJSON_GetStringValue(cJSON_GetObjectItem(error, "code"));
 
             if (text != NULL) {
                 strncpy(report->manager_message, text, sizeof(report->manager_message) - 1);
             }
+
+            report->pending = (enroll_result.http_code == 401 && code != NULL &&
+                               (strcmp(code, "token_unknown") == 0 || strcmp(code, "stale_token") == 0));
 
             cJSON_Delete(body);
         }
@@ -1103,7 +1141,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
          * are the manager's or the network's problem and may clear on their own; the manager has
          * already made a final decision about this exact request in every other case (malformed
          * request, bad credential, enrollment disabled, duplicate agent), and repeating it
-         * verbatim cannot change that. */
+         * verbatim cannot change that -- except for report->pending, set above. */
         if (report != NULL) {
             report->transient = (enroll_status == W_ENROLL_ERR_TRANSPORT ||
                                  enroll_status == W_ENROLL_ERR_SERVER);
@@ -1177,6 +1215,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     /* Only now: the marker says an anchor has been committed, so it must not appear before one
      * has. */
     w_token_bootstrap_mark_anchor_committed(opts->gid);
+    token_discard_delivered_ca();
 
     /* enrollment.c's TempFile()+OS_MoveFile() replace only chmod()s client.keys to a fixed 0640
      * on the temp file, never its group, so it inherits this root process's group instead of
@@ -1227,14 +1266,6 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     return W_TOKEN_ENROLL_OK;
 }
 
-/**
- * @brief Documents, not implements, the only reset that works today: a fresh bootstrap only
- *        re-runs once AGENT_ANCHOR_CA is removed, client.keys is emptied or removed, AND a new
- *        enrollment-token file is placed -- each latch (anchor exists / keys non-empty / no
- *        token file) independently blocks it otherwise, so clearing any one or two alone is not
- *        enough. This is today's actual behavior; it has no dedicated interface or name of its
- *        own.
- */
 w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
     w_token_enroll_opts_t opts = {0};
     w_token_enroll_report_t report = {0};
@@ -1322,6 +1353,10 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
             unlink(AGENT_ENROLLMENT_TOKEN_FILE);
         }
 
+        if (report.pending) {
+            return W_TOKEN_BOOTSTRAP_PENDING;
+        }
+
         /* Unchanged either way: this boot still refuses to enroll unverified. What changes is
          * that the next one starts with no token and takes the "legacy install" path. */
         return report.transient ? W_TOKEN_BOOTSTRAP_TRANSIENT : W_TOKEN_BOOTSTRAP_PERMANENT;
@@ -1331,4 +1366,25 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
     unlink(AGENT_ENROLLMENT_TOKEN_FILE);
 
     return W_TOKEN_BOOTSTRAP_DONE;
+}
+
+w_token_bootstrap_result_t w_token_bootstrap_bound_pending(w_token_bootstrap_result_t result,
+                                                           time_t *pending_since, time_t now) {
+    if (result != W_TOKEN_BOOTSTRAP_PENDING) {
+        return result;
+    }
+
+    if (*pending_since == 0) {
+        *pending_since = now;
+    }
+
+    if (now - *pending_since < W_TOKEN_BOOTSTRAP_PENDING_WINDOW_S) {
+        return W_TOKEN_BOOTSTRAP_TRANSIENT;
+    }
+
+    merror("The manager still does not accept the enrollment token after %ld seconds. It may not "
+           "have reached this node, or it was deleted: mint a new token, or restart the agent to "
+           "try again.", (long)(now - *pending_since));
+
+    return W_TOKEN_BOOTSTRAP_PERMANENT;
 }

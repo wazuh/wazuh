@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include <memory>
 #include <string>
@@ -39,8 +39,7 @@ bool evalExpression(const base::Expression& expression, const base::Event& event
     if (expression->isChain())
     {
         auto op = expression->getPtr<base::Chain>();
-        for (auto& operand : op->getOperands())
-            evalExpression(operand, event);
+        for (auto& operand : op->getOperands()) evalExpression(operand, event);
         return true;
     }
 
@@ -77,8 +76,7 @@ bool evalExpression(const base::Expression& expression, const base::Event& event
     if (expression->isBroadcast())
     {
         auto op = expression->getPtr<base::Broadcast>();
-        for (auto& operand : op->getOperands())
-            evalExpression(operand, event);
+        for (auto& operand : op->getOperands()) evalExpression(operand, event);
         return true;
     }
 

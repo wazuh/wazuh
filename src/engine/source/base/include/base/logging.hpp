@@ -325,14 +325,13 @@ constexpr inline const char* default_tag()
  *
  * @see isStandaloneModeEnable(), getDefaultLogger(), log_bridge()
  */
-inline void
-backend_log(logging::Level lvl,
-            const char* file,
-            int line,
-            const char* funcName,
-            const char* text,
-            size_t len,
-            const char* tag = nullptr)
+inline void backend_log(logging::Level lvl,
+                        const char* file,
+                        int line,
+                        const char* funcName,
+                        const char* text,
+                        size_t len,
+                        const char* tag = nullptr)
 {
     const char* effectiveTag = (tag && tag[0] != '\0') ? tag : default_tag();
 
@@ -361,9 +360,7 @@ backend_log(logging::Level lvl,
         case logging::Level::Critical:
             Log::Logger::error(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
             break;
-        default:
-            Log::Logger::info(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
-            break;
+        default: Log::Logger::info(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text); break;
     }
 }
 

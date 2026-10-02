@@ -10,7 +10,7 @@ import re
 import shutil
 import subprocess
 import time
-from base64 import b64encode
+from base64 import b64encode, urlsafe_b64decode, urlsafe_b64encode
 
 import _pytest.fixtures
 import pytest
@@ -56,11 +56,45 @@ def get_token_login_api():
         raise Exception(f"Error obtaining login token: {response.json()}")
 
 
+def forge_tokens(token: str) -> dict:
+    """Derive from a valid token the forged ones the API must refuse.
+
+    Parameters
+    ----------
+    token : str
+        Valid API token (header.payload.signature).
+
+    Returns
+    -------
+    dict
+        `test_tampered_token`: same header and payload, another signature.
+        `test_forged_payload_token`: payload claiming other RBAC roles, original signature.
+        `test_unsigned_token`: `alg: none` header, original payload, no signature.
+    """
+    header, payload, signature = token.split('.')
+
+    def b64url(data: bytes) -> str:
+        return urlsafe_b64encode(data).rstrip(b'=').decode()
+
+    claims = json.loads(urlsafe_b64decode(payload + '=' * (-len(payload) % 4)))
+    claims['rbac_roles'] = [1, 2, 3, 4, 5, 6, 7]
+    claims['run_as'] = True
+    forged_payload = b64url(json.dumps(claims).encode())
+    unsigned_header = b64url(json.dumps({'alg': 'none', 'typ': 'JWT'}).encode())
+
+    return {
+        'test_tampered_token': f"{header}.{payload}.{('B' if signature[0] == 'A' else 'A') * len(signature)}",
+        'test_forged_payload_token': f'{header}.{forged_payload}.{signature}',
+        'test_unsigned_token': f'{unsigned_header}.{payload}.',
+    }
+
+
 @pytest.hookimpl(optionalhook=True)
 def pytest_tavern_beta_before_every_test_run(test_dict, variables):
-    """Disable HTTPS verification warnings."""
+    """Disable HTTPS verification warnings, log in and derive the forged tokens from the login token."""
     urllib3.disable_warnings()
     variables["test_login_token"] = get_token_login_api()
+    variables.update(forge_tokens(variables["test_login_token"]))
 
 
 def build_and_up(interval: int = 10, build: bool = True):
@@ -73,14 +107,16 @@ def build_and_up(interval: int = 10, build: bool = True):
     build : bool
         Flag to indicate if images need to be built.
     """
-    # Get current branch or tag
-    with open('../../../.git/HEAD', 'r') as f:
-        ref = f.readline().strip()
+    # Get the ref to build from: WAZUH_BRANCH (a branch, tag or commit sha), else the current branch or commit
+    current_branch = os.environ.get('WAZUH_BRANCH', '')
+    if not current_branch:
+        with open('../../../.git/HEAD', 'r') as f:
+            ref = f.readline().strip()
 
-    if ref.startswith("ref:"):
-        current_branch = ref.split("refs/heads/")[1]
-    else:
-        current_branch = ref.split("/")[-1]
+        if ref.startswith("ref:"):
+            current_branch = ref.split("refs/heads/")[1]
+        else:
+            current_branch = ref.split("/")[-1]
 
     if build:
         # Ping the current branch tarball used to build the manager image.
@@ -524,39 +560,3 @@ def pytest_html_results_summary(prefix, summary, postfix):
                 HTMLStyle.td(v['error']),
             ])
         ) for k, v in results.items()])])
-
-
-@pytest.fixture(scope='function', autouse=True)
-def big_events_payload() -> list:
-    """Return a payload with a number of events larger than the maximum allowed.
-
-    Returns
-    -------
-    list
-        Events payload.
-    """
-    return [f"Event {i}" for i in range(101)]
-
-
-@pytest.fixture(scope='function', autouse=True)
-def max_size_event() -> str:
-    """Return an event with the max size allowed.
-
-    Returns
-    -------
-    str
-        The max size event.
-    """
-    return " ".join(str(i) for i in range(12772))
-
-
-@pytest.fixture(scope='function', autouse=True)
-def large_event() -> str:
-    """Return an event with the size larger than the maximum allowed.
-
-    Returns
-    -------
-    str
-        The larger event.
-    """
-    return " ".join(str(i) for i in range(12773))

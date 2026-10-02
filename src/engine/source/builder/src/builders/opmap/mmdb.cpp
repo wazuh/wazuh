@@ -132,7 +132,8 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<geo::IManager>& geoManager)
         auto resDB = geoManager->getLocator(geo::Type::CITY);
         if (resDB.isError())
         {
-            throw std::runtime_error(fmt::format("{} -> Failure: Error getting geo city locator: {}", name, resDB.readableStr()));
+            throw std::runtime_error(
+                fmt::format("{} -> Failure: Error getting geo city locator: {}", name, resDB.readableStr()));
         }
 
         const auto isTestMode = buildCtx->isTestMode();
@@ -186,7 +187,8 @@ MapBuilder getMMDBASNBuilder(const std::shared_ptr<geo::IManager>& geoManager)
         auto resDB = geoManager->getLocator(geo::Type::ASN);
         if (resDB.isError())
         {
-            throw std::runtime_error(fmt::format("{} -> Failure: Error getting geo asn locator: {}", name, resDB.readableStr()));
+            throw std::runtime_error(
+                fmt::format("{} -> Failure: Error getting geo asn locator: {}", name, resDB.readableStr()));
         }
         const auto isTestMode = buildCtx->isTestMode();
 

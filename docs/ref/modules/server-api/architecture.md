@@ -12,10 +12,10 @@ graph TD
     B --> C["Wazuh Python Framework"]
     C --> D["Core Logic Layer"]
     
-    D --> E["Unix sockets (daemons)"]
-    D --> F["Wazuh Database (WDB)"]
+    D --> E["Daemon Unix sockets"]
+    D --> F["wazuh-manager-db"]
     D --> G["Configuration files"]
-    D --> H["Internal queues"]
+    D --> H["rbac.db"]
 
     style A fill:#f9f,stroke:#333,stroke-width:2px,color:#fff
     style B fill:#bbf,stroke:#333,stroke-width:2px,color:#fff
@@ -32,7 +32,7 @@ graph TD
 ## Directory Structure
 
 ### API Interface Layer
-`wazuh/framework/wazuh/`
+`framework/wazuh/`
 
 This layer:
 - Exposes API-facing functions
@@ -44,18 +44,19 @@ It **must not** contain business logic.
 
 | Module | Responsibility | Main Endpoints |
 |--------|----------------|----------------|
-| `agent.py` | Agent lifecycle and queries | `/agents` |
+| `agent.py` | Agent lifecycle and queries, groups, enrollment tokens | `/agents`, `/groups`, `/overview/agents` |
 | `manager.py` | Manager status and configuration | used by `cluster_controller.py` (no dedicated route) |
 | `cluster.py` | Cluster operations | `/cluster` |
 | `security.py` | Authentication and users | `/security` |
 | `rbac/` | Authorization logic | `/security/*` |
 | `mitre.py` | MITRE ATT&CK mappings | `/mitre` |
-| `stats.py` | Manager statistics | used by `cluster_controller.py` (no dedicated route) |
+| `stats.py` | Daemon statistics | `/cluster/{node_id}/daemons/stats` |
+| `vulnerability_scan.py` | On-demand vulnerability scans | `/agents/scan/vulnerability` |
 
 ---
 
 ### Core Logic Layer
-`wazuh/framework/wazuh/core/`
+`framework/wazuh/core/`
 
 This layer contains **all real logic**. It is **API-agnostic** and can be reused internally.
 
@@ -66,10 +67,15 @@ This layer contains **all real logic**. It is **API-agnostic** and can be reused
 | `results.py` | Standardized result model (`WazuhResult`, `AffectedItemsWazuhResult`) |
 | `InputValidator.py` | Regex-based input validation (names, lengths) |
 | `utils.py` | General utilities (caching, process management, helpers) |
-| `wazuh_socket.py` | IPC with Wazuh daemons via Unix sockets |
-| `wdb.py` | Async interface to Wazuh DB (length-prefixed Unix socket protocol) |
-| `wdb_http.py` | HTTP-based alternative WDB client (via `aiohttp`) |
-| `configuration.py` | Parse `wazuh-manager.conf` and related files |
+| `wazuh_socket.py` | IPC with `wazuh-manager-authd`, `wazuh-manager-db` and `wazuh-manager-remoted` over length-prefixed Unix sockets |
+| `wdb.py` | Sync and async clients for `wazuh-manager-db`'s `wdb.sock` (length-prefixed protocol) |
+| `wdb_http.py` | HTTP client for `wazuh-manager-db`'s `wdb-http.sock` (via `httpx`) |
+| `engine_http.py` | HTTP clients for the engine, vulnerability scanner, remoted admin and wazuh-db status sockets |
+| `task_http.py` | HTTP client for the task manager (`task-http.sock`): agent restart, reload and upgrade tasks |
+| `manager_conf.py` | Reads, validates and writes `wazuh-manager.conf` by running `bin/wazuh-manager-conf` |
+| `manager_conf_policy.py` | Options of `wazuh-manager.conf` the API refuses to change (`upload_configuration`, the cluster key) |
+| `configuration.py` | Agent group configuration (`agent.conf`), internal options, and the active configuration read from the daemons |
+| `enrollment_token.py` | Enrollment tokens, managed through `wazuh-manager-authd` |
 | `exception.py` | Custom exception hierarchy and error code catalog |
 | `wlogging.py` | Custom log rotation with gzip compression |
 | `pyDaemonModule.py` | UNIX daemonization (double-fork pattern) |
@@ -80,7 +86,7 @@ This layer contains **all real logic**. It is **API-agnostic** and can be reused
 ---
 
 ### API Server Layer
-`wazuh/api/api/`
+`api/api/`
 
 This layer implements the **HTTP server** that exposes the REST API.
 
@@ -90,14 +96,16 @@ This layer implements the **HTTP server** that exposes the REST API.
 | `authentication.py` | JWT token generation and validation using EC keys (PyJWT) |
 | `middlewares.py` | Request/response pipeline (security headers, rate limiting, access logging) |
 | `error_handler.py` | Centralized error handling and brute-force protection |
-| `validator.py` | Comprehensive regex-based validation for all API input parameters |
-| `signals.py` | API lifecycle events and background tasks (key generation, CTI updates) |
+| `validator.py` | Regex-based validation for API input parameters, and the JSON schemas of `api.yaml` and `security.yaml` |
+| `parameter_validator.py` | Connexion parameter validator wiring |
+| `signals.py` | ASGI lifespan: the `Listening on ...` line and background tasks (JWT key rotation watch, rate-limit counters cleanup) |
 | `constants.py` | API filesystem paths (`/api/configuration`, `/api/security`, etc.) |
 | `encoder.py` | Custom JSON serialization |
 | `uri_parser.py` | URI parsing utilities |
 | `alogging.py` | Async-aware API logging |
 | `spec/spec.yaml` | OpenAPI 3.0 specification (defines all endpoints, schemas, parameters) |
-| `configuration/` | API configuration management |
+| `configuration.py` | `api.yaml` and `security.yaml` defaults, loading and validation |
+| `configuration/` | The `api.yaml` template installed with the manager |
 | `models/` | Data models for request/response objects |
 
 #### Controllers
@@ -116,7 +124,7 @@ Each controller wraps framework calls in the **DAPI (Distributed API)** layer to
 ---
 
 ### RBAC Sub-module
-`wazuh/framework/wazuh/rbac/`
+`framework/wazuh/rbac/`
 
 | File | Responsibility |
 |------|----------------|
@@ -126,10 +134,12 @@ Each controller wraps framework calls in the **DAPI (Distributed API)** layer to
 | `default/{roles,policies,rules,relationships,users}.yaml` | Built-in default RBAC data, loaded via `orm.py`'s `insert_default_resources` |
 | `auth_context.py` | Authentication context handling |
 
+The actions, resources and default roles are described in [RBAC](../rbac/README.md).
+
 ---
 
 ### Cluster Sub-module
-`wazuh/framework/wazuh/core/cluster/`
+`framework/wazuh/core/cluster/`
 
 | File | Responsibility |
 |------|----------------|
@@ -148,12 +158,13 @@ Each controller wraps framework calls in the **DAPI (Distributed API)** layer to
 ---
 
 ### Indexer Sub-module
-`wazuh/framework/wazuh/core/indexer/`
+`framework/wazuh/core/indexer/`
 
 | File | Responsibility |
 |------|----------------|
+| `base.py` | Shared base for the indexer clients |
 | `indexer.py` | Main Wazuh Indexer client |
-| `credential_manager.py` | Indexer credential management |
+| `credential_manager.py` | Indexer credentials, read from the keystore (`keystore.sock`) |
 | `disconnected_agents.py` | Handling disconnected agents in the indexer |
 | `active_response.py` | Active response document indexing |
 | `metrics.py` | Indexer metrics collection |
@@ -177,8 +188,8 @@ Example: `GET /agents?status=active`
 9. RBAC permissions are checked via `expose_resources` decorator
 10. Core logic (`core/agent.py`) is executed
 11. Data is fetched from:
-    - WDB (via Unix socket or HTTP)
-    - Manager daemon (via Unix socket)
+    - `wazuh-manager-db` (`wdb.sock` or `wdb-http.sock`)
+    - Other manager daemons (their Unix sockets)
     - Filesystem
 12. Result is wrapped in `AffectedItemsWazuhResult` or `WazuhResult`
 13. Result is serialized to JSON and returned
@@ -234,23 +245,22 @@ The retry wait is backed by a `threading.Event` that `exit_handler`, the `SIGTER
 
 ## Distributed API (DAPI)
 
-In cluster deployments, not all requests can be handled by the node receiving them.
-
-The DAPI layer (`core/cluster/dapi/`) transparently routes requests:
+The API runs only on the master, but some requests concern a worker: its configuration, logs, daemon
+statistics, or the agents whose data it holds. The DAPI layer (`core/cluster/dapi/`) routes each
+request by the type its controller declares:
 
 | Routing Mode | Description |
 |--------------|-------------|
-| `local_master` | Must execute on the master node |
-| `local_any` | Can execute on any node |
-| `distributed_master` | Master distributes to relevant worker nodes |
+| `local_master` | Executed on the master node (a request made on a worker would be sent to the master) |
+| `local_any` | Executed on the node that received it |
+| `distributed_master` | The master forwards it to the worker nodes it concerns (`node_id`, `nodes_list`, or the agents' nodes), or executes it itself, and merges the answers |
 
 ```mermaid
 graph LR
-    A["Client"] --> B["API Node"]
+    A["Client"] --> B["API (master node)"]
     B --> C{"DAPI"}
-    C -->|local_master| D["Master Node"]
-    C -->|local_any| E["Current Node"]
-    C -->|distributed_master| F["Worker Node(s)"]
+    C -->|local_master / local_any| D["Master node"]
+    C -->|distributed_master| F["Worker node(s)"]
 ```
 
 ---
@@ -273,22 +283,31 @@ Results support:
 
 ## Socket Communication Protocol
 
-The framework communicates with Wazuh daemons via **Unix domain sockets** using a length-prefixed protocol.
+The framework communicates with the Wazuh daemons through **Unix domain sockets** under
+`/var/wazuh-manager/queue/sockets/`, whose paths are defined in `framework/wazuh/core/common.py`. Two
+protocols are in use:
 
-### Protocol Details
-- Messages use a **4-byte little-endian header** indicating the payload length
-- The same framing is used for both sending and receiving
-- `WazuhAsyncSocket` (in `core/wdb.py`) handles async socket connections
+- **Length-prefixed**: each message is preceded by a **4-byte little-endian header** holding the
+  payload length, in both directions (`WazuhSocket`/`WazuhSocketJSON` in `core/wazuh_socket.py`,
+  `WazuhDBConnection`/`AsyncWazuhDBConnection` in `core/wdb.py`).
+- **HTTP over the Unix socket**: the `*-http.sock` sockets (`wdb_http.py`, `engine_http.py`,
+  `task_http.py`).
 
-### Key Socket Paths
+### Socket Paths
 
-| Socket | Daemon | Purpose |
-|--------|--------|---------|
-| `queue/sockets/wdb.sock` | wazuh-manager-db | Database queries (length-prefixed socket protocol) |
-| `queue/sockets/wdb-http.sock` | wazuh-manager-db | HTTP-based database queries (`wdb_http.py`), and the daemon's readiness for node status (`GET /v1/status`, read by `engine_http.py`) |
-| `queue/sockets/engine-api-http.sock` | wazuh-manager-analysisd | Engine stats and metrics (HTTP API, `engine_http.py`) |
-| `queue/sockets/auth.sock` | wazuh-manager-authd | Agent registration |
-| `queue/sockets/remote.sock` | wazuh-manager-remoted | Agent communication |
+| Socket | Owner | Used for |
+|--------|-------|----------|
+| `wdb.sock` | wazuh-manager-db | Database queries (length-prefixed), daemon statistics |
+| `wdb-http.sock` | wazuh-manager-db | Agent queries over HTTP (`wdb_http.py`), and the daemon's readiness for node status (`GET /v1/status`, read by `engine_http.py`) |
+| `engine-api-http.sock` | wazuh-manager-analysisd | Engine metrics and status (`engine_http.py`) |
+| `auth.sock` | wazuh-manager-authd | Agent registration and removal, enrollment tokens (length-prefixed) |
+| `remote.sock` | wazuh-manager-remoted | Daemon statistics (length-prefixed) |
+| `remote-admin-http.sock` | wazuh-manager-remoted | Metrics, TLS listener state (`/cluster/{node_id}/daemons/remoted/tls`) and status (`engine_http.py`) |
+| `vd-http.sock` | wazuh-manager-modulesd (vulnerability scanner) | On-demand scans (`/agents/scan/vulnerability`) and status (`engine_http.py`) |
+| `task-http.sock` | wazuh-manager-modulesd (task manager) | Agent restart, reload and upgrade tasks (`task_http.py`) |
+| `keystore.sock` | wazuh-manager-modulesd (keystore server) | Indexer credentials (`core/indexer/credential_manager.py`) |
+| `control.sock` | wazuh-manager-modulesd (control module) | Manager restart and reload (`core/cluster/utils.py`) |
+| `cluster-internal.sock` | wazuh-manager-clusterd | The API's requests to the local cluster daemon (`core/cluster/local_client.py`) |
 
 ---
 

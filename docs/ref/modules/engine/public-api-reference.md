@@ -2,7 +2,6 @@
 
 This page documents the Wazuh Engine public API.
 
-- Interactive ReDoc: [Public API ReDoc](public-api-reference.html)
-- OpenAPI source: `public-api.yaml`
+- OpenAPI source: [`public-api.yaml`](public-api.yaml); the book also publishes a ReDoc viewer of it beside this page, `public-api-redoc.html`, for the interactive reference
 
 Use this contract for supported external consumers, including `wazuh-indexer` when the engine runs in standalone mode.
