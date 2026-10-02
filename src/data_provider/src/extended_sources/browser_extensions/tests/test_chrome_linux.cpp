@@ -573,3 +573,38 @@ TEST_F(ChromeExtensionsMalformedFilesTests, ManifestAndMessagesWithCommentsArePa
     EXPECT_EQ(extensionsJson[0]["name"], "Commented");
     EXPECT_EQ(extensionsJson[0]["version"], "1.0");
 }
+
+TEST_F(ChromeExtensionsMalformedFilesTests, ProfileNameFallbackAndFloatState)
+{
+    const std::string profile = "user/.config/google-chrome/Default/";
+
+    writeFile(profile + "Preferences", R"({
+        "profile": {"name": 5},
+        "extensions": {"settings": {
+            "disabled": {"path": "disabled/1.0", "state": 0.0},
+            "enabled": {"path": "enabled/1.0", "state": 1.0},
+            "huge": {"path": "huge/1.0", "state": 1e300}
+        }}
+    })");
+    writeFile(profile + "Secure Preferences", R"({"profile": {"name": "Work"}})");
+    writeFile(profile + "Extensions/disabled/1.0/manifest.json", R"({"name": "Disabled", "version": "1.0"})");
+    writeFile(profile + "Extensions/enabled/1.0/manifest.json", R"({"name": "Enabled", "version": "1.0"})");
+    writeFile(profile + "Extensions/huge/1.0/manifest.json", R"({"name": "Huge", "version": "1.0"})");
+
+    nlohmann::json extensionsJson;
+    ASSERT_NO_THROW(extensionsJson = collect());
+    ASSERT_EQ(extensionsJson.size(), static_cast<size_t>(3));
+
+    const auto* disabled = findByName(extensionsJson, "Disabled");
+    ASSERT_NE(disabled, nullptr);
+    EXPECT_EQ((*disabled)["state"], "0");
+    EXPECT_EQ((*disabled)["profile"], "Work");
+
+    const auto* enabled = findByName(extensionsJson, "Enabled");
+    ASSERT_NE(enabled, nullptr);
+    EXPECT_EQ((*enabled)["state"], "1");
+
+    const auto* huge = findByName(extensionsJson, "Huge");
+    ASSERT_NE(huge, nullptr);
+    EXPECT_EQ((*huge)["state"], "1");
+}
