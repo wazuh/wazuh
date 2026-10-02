@@ -110,6 +110,10 @@ class IPersistentQueue
         /// @return A vector of pending DataValue messages.
         virtual std::vector<PersistedData> fetchPendingItems(bool onlyDataValues = true) = 0;
 
+        /// @brief Counts the items currently pending synchronization, DataContext items included.
+        /// @return Number of pending items, including submits still buffered in memory.
+        virtual size_t countPendingItems() = 0;
+
         /// @brief Clears items that were successfully synchronized.
         virtual void clearSyncedItems() = 0;
 

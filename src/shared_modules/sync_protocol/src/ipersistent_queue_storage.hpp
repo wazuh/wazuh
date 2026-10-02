@@ -46,6 +46,10 @@ class IPersistentQueueStorage
         /// @return A vector of pending messages.
         virtual std::vector<PersistedData> fetchPending(bool onlyDataValues = true) = 0;
 
+        /// @brief Counts the messages currently PENDING, DataContext messages included.
+        /// @return Number of PENDING messages.
+        virtual size_t countPending() = 0;
+
         /// @brief Deletes all messages for a module currently marked as SYNCING.
         virtual void removeAllSynced() = 0;
 

@@ -23,6 +23,7 @@
 #include <optional>
 #include <thread>
 #include <iostream>
+#include <functional>
 #include <utility>
 
 using ::testing::_;
@@ -41,6 +42,7 @@ class MockPersistentQueue : public IPersistentQueue
                                    bool isDataContext), (override));
         MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (size_t maxItems), (override));
         MOCK_METHOD(std::vector<PersistedData>, fetchPendingItems, (bool onlyDataValues), (override));
+        MOCK_METHOD(size_t, countPendingItems, (), (override));
         MOCK_METHOD(void, clearSyncedItems, (), (override));
         MOCK_METHOD(void, resetSyncingItems, (), (override));
         MOCK_METHOD(void, clearItemsByIndex, (const std::string& index), (override));
@@ -106,6 +108,58 @@ class AgentSyncProtocolTest : public ::testing::Test
         {
             const auto buf = buildHcResult(httpCode, body, forSession);
             return protocol->parseResponseBuffer(buf.data(), buf.size());
+        }
+
+        /// Runs one DELTA synchronizeModule() call and answers every session it sends with
+        /// the HTTP code httpCodeForSend(n) returns for the n-th send (1-based), until the
+        /// call returns. Fails the test if it does not return within the timeout.
+        SyncModuleResult runDeltaSyncAnsweringSends(Option option, const std::function<int(int)>& httpCodeForSend,
+                                                    std::chrono::seconds timeout = std::chrono::seconds(10))
+        {
+            std::atomic<bool> syncDone{false};
+            auto syncFuture = std::async(std::launch::async, [this, option, &syncDone]()
+            {
+                auto result = protocol->synchronizeModule(Mode::DELTA, option);
+                syncDone.store(true, std::memory_order_release);
+                return result;
+            });
+
+            std::thread ackThread([this, &syncDone, &httpCodeForSend]()
+            {
+                int lastSendCount = 0;
+
+                while (true)
+                {
+                    const int currentSendCount = mockSyncTransport->sendCount();
+
+                    if (currentSendCount > lastSendCount)
+                    {
+                        lastSendCount = currentSendCount;
+                        feedHttpResult(httpCodeForSend(currentSendCount));
+                        continue;
+                    }
+
+                    if (syncDone.load(std::memory_order_acquire))
+                    {
+                        break;
+                    }
+
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+            });
+
+            if (syncFuture.wait_for(timeout) == std::future_status::timeout)
+            {
+                protocol->stop();
+                syncFuture.wait();
+                ackThread.join();
+                ADD_FAILURE() << "DELTA synchronization did not return in time";
+                return SyncModuleResult {};
+            }
+
+            SyncModuleResult result = syncFuture.get();
+            ackThread.join();
+            return result;
         }
 
         std::shared_ptr<MockPersistentQueue> mockQueue;
@@ -841,7 +895,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
     syncThread.join();
 }
 
-TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaStopsAfterTenBlocks)
+// The fetch below keeps returning data on every call, as a queue that keeps receiving events
+// would. The cycle must still end: it sends what was pending when it started plus one extra
+// block, and leaves the rest for the next cycle.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaStopsAtPendingBudgetPlusOneExtraBlock)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
@@ -852,62 +909,175 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaStopsAfterTenBlocks)
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
     };
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
-    .Times(10)
+    // Called at the start of the cycle (budget) and again for the closing summary.
+    EXPECT_CALL(*mockQueue, countPendingItems())
+    .WillOnce(Return(3))
+    .WillOnce(Return(5));
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .Times(4)
     .WillRepeatedly(Return(testData));
     EXPECT_CALL(*mockQueue, clearSyncedItems())
-    .Times(10);
+    .Times(4);
     EXPECT_CALL(*mockQueue, resetSyncingItems())
     .Times(0);
 
-    std::atomic<bool> syncDone{false};
-    auto syncFuture = std::async(std::launch::async, [this, &syncDone]()
+    const SyncModuleResult result = runDeltaSyncAnsweringSends(Option::SYNC, [](int)
     {
-        auto result = protocol->synchronizeModule(Mode::DELTA);
-        syncDone.store(true, std::memory_order_release);
-        return result;
+        return 200;
     });
-
-    std::thread ackThread([this, &syncDone]()
-    {
-        int handled = 0;
-        int lastSendCount = 0;
-
-        while (handled < 10)
-        {
-            const int currentSendCount = mockSyncTransport->sendCount();
-
-            if (currentSendCount > lastSendCount)
-            {
-                lastSendCount = currentSendCount;
-
-                feedHttpResult(200);  // was Status::Ok
-                ++handled;
-                continue;
-            }
-
-            if (syncDone.load(std::memory_order_acquire) && currentSendCount == lastSendCount)
-            {
-                break;
-            }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-    });
-
-    if (syncFuture.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
-    {
-        syncDone.store(true, std::memory_order_release);
-        ackThread.join();
-        FAIL() << "Sync thread did not finish in time; block limit may be broken";
-    }
-
-    const SyncModuleResult result = syncFuture.get();
-    syncDone.store(true, std::memory_order_release);
-    ackThread.join();
 
     EXPECT_TRUE(result.success);
-    EXPECT_EQ(mockSyncTransport->sendCount(), 10);
+    EXPECT_TRUE(result.sentAnything);
+    EXPECT_EQ(mockSyncTransport->sendCount(), 4);
+}
+
+// A backlog many blocks deep is drained in a single call, not a fixed number of blocks.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaDrainsWholePendingBacklogInOneCall)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    constexpr int BACKLOG_BLOCKS = 25;
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
+        {0, "test_id_2", "test_index_1", "test_data_2", Operation::CREATE, 1}
+    };
+
+    EXPECT_CALL(*mockQueue, countPendingItems())
+    .WillOnce(Return(BACKLOG_BLOCKS * testData.size()))
+    .WillOnce(Return(0));
+
+    int fetches = 0;
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .Times(BACKLOG_BLOCKS + 1)
+    .WillRepeatedly([&fetches, &testData](size_t)
+    {
+        return ++fetches <= BACKLOG_BLOCKS ? testData : std::vector<PersistedData> {};
+    });
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(BACKLOG_BLOCKS);
+    EXPECT_CALL(*mockQueue, resetSyncingItems())
+    .Times(0);
+
+    const SyncModuleResult result = runDeltaSyncAnsweringSends(Option::SYNC, [](int)
+    {
+        return 200;
+    });
+
+    EXPECT_TRUE(result.success);
+    EXPECT_EQ(mockSyncTransport->sendCount(), BACKLOG_BLOCKS);
+}
+
+// When the budget is met and the extra block comes back empty, the cycle ends without
+// sending anything else.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaEmptyExtraBlockEndsTheCycle)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+
+    EXPECT_CALL(*mockQueue, countPendingItems())
+    .WillOnce(Return(2))
+    .WillOnce(Return(0));
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .WillOnce(Return(testData))
+    .WillOnce(Return(testData))
+    .WillOnce(Return(std::vector<PersistedData> {}));
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(2);
+
+    const SyncModuleResult result = runDeltaSyncAnsweringSends(Option::SYNC, [](int)
+    {
+        return 200;
+    });
+
+    EXPECT_TRUE(result.success);
+    EXPECT_EQ(mockSyncTransport->sendCount(), 2);
+}
+
+// An empty queue still makes exactly one fetch and reports nothing sent.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaWithNothingPendingFetchesOnce)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    EXPECT_CALL(*mockQueue, countPendingItems())
+    .WillOnce(Return(0));
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .WillOnce(Return(std::vector<PersistedData> {}));
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(0);
+
+    const SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA, Option::SYNC);
+
+    EXPECT_TRUE(result.success);
+    EXPECT_FALSE(result.sentAnything);
+    EXPECT_EQ(mockSyncTransport->sendCount(), 0);
+}
+
+// Counting the budget is the first queue access of the cycle; if it fails, the cycle fails
+// without fetching or sending anything.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaFailsWhenThePendingCountFails)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    EXPECT_CALL(*mockQueue, countPendingItems())
+    .WillOnce(::testing::Throw(std::runtime_error("count failed")));
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+    .Times(0);
+
+    const SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA, Option::SYNC);
+
+    EXPECT_FALSE(result.success);
+    EXPECT_FALSE(result.sentAnything);
+    EXPECT_EQ(mockSyncTransport->sendCount(), 0);
+}
+
+// The vulnerability detector flows stay one session per call: the first, uncapped fetch takes
+// the whole queue, and nothing else is fetched even if more data shows up meanwhile.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaSendsOneSessionForVDOptions)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+
+    EXPECT_CALL(*mockQueue, countPendingItems())
+    .Times(0);
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(0))
+    .Times(2)
+    .WillRepeatedly(Return(testData));
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(2);
+
+    for (const Option option :
+            {
+                Option::VDFIRST, Option::VDSYNC
+            })
+    {
+        const int sendsBefore = mockSyncTransport->sendCount();
+        const SyncModuleResult result = runDeltaSyncAnsweringSends(option, [](int)
+        {
+            return 200;
+        });
+
+        EXPECT_TRUE(result.success);
+        EXPECT_EQ(mockSyncTransport->sendCount(), sendsBefore + 1);
+    }
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaUsesBytePrefilterBudgetForSyncOption)
@@ -1057,10 +1227,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaBypassesBytePrefilterBudgetF
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync(0))
-    .WillOnce(Return(testData))
-    .WillOnce(Return(std::vector<PersistedData> {}))
-    .WillOnce(Return(testData))
-    .WillOnce(Return(std::vector<PersistedData> {}));
+    .Times(2)
+    .WillRepeatedly(Return(testData));
     EXPECT_CALL(*mockQueue, clearSyncedItems())
     .Times(2);
     EXPECT_CALL(*mockQueue, resetSyncingItems())
@@ -1109,9 +1277,9 @@ TEST_F(AgentSyncProtocolTest, ConcurrentCallReportsThatItRanNoSession)
     {
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
     };
+    // A VD flow is one session: the uncapped first fetch takes the whole queue and the cycle ends.
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
-    .WillOnce(Return(testData))
-    .WillOnce(Return(std::vector<PersistedData> {}));
+    .WillOnce(Return(testData));
     EXPECT_CALL(*mockQueue, clearSyncedItems())
     .Times(1);
 
@@ -1160,8 +1328,7 @@ TEST_F(AgentSyncProtocolTest, VdSyncWithoutAFeedOffsetIsStillSent)
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
     };
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
-    .WillOnce(Return(testData))
-    .WillOnce(Return(std::vector<PersistedData> {}));
+    .WillOnce(Return(testData));
     EXPECT_CALL(*mockQueue, clearSyncedItems())
     .Times(1);
 
@@ -1267,6 +1434,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaAbortsRemainingBlocksAfterSe
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
     };
 
+    // Five blocks pending: block 1 succeeds, block 2 fails. Block 1 is cleared, only block 2 is
+    // reset, and blocks 3-5 are never fetched, so the next cycle resumes at block 2.
+    EXPECT_CALL(*mockQueue, countPendingItems())
+    .WillRepeatedly(Return(5));
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
     .Times(2)
     .WillOnce(Return(testData))

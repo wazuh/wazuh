@@ -383,9 +383,54 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
     bool success = true;
     bool sentAny = false;
     size_t blocksSent = 0;
+    size_t itemsSent = 0;
+    size_t pendingBudget = 0;
+    bool extraBlockFetched = false;
 
-    while (!shouldStop() && blocksSent < FULLSESSION_MAX_BLOCKS_PER_SYNC)
+    // A byte-capped (non-VD) cycle sends what was already pending when it started, however
+    // many blocks that takes, so a backlog bigger than a few blocks is not left for later cycles.
+    // Items queued while the cycle runs land behind that budget and wait for the next one,
+    // which keeps the cycle bounded under continuous event production.
+    if (!uncapped)
     {
+        try
+        {
+            pendingBudget = m_persistentQueue->countPendingItems();
+        }
+        catch (const std::exception& e)
+        {
+            const std::string reason = std::string("Failed to count pending items for sync: ") + e.what();
+            m_logger(LOG_ERROR, reason);
+            success = false;
+        }
+    }
+
+    while (success && !shouldStop())
+    {
+        if (blocksSent > 0)
+        {
+            // The vulnerability detector flows must reach the manager as one session, and
+            // their uncapped fetch already took the whole queue in the first block.
+            if (uncapped)
+            {
+                break;
+            }
+
+            // Once the budget is met, ask for one more block. The count can drift a little
+            // during the cycle (a row updated while its block was in flight is sent again,
+            // rows can be deleted before they are fetched), and sending a few extra items
+            // is safer than leaving pre-existing ones for the next cycle.
+            if (itemsSent >= pendingBudget)
+            {
+                if (extraBlockFetched)
+                {
+                    break;
+                }
+
+                extraBlockFetched = true;
+            }
+        }
+
         std::vector<PersistedData> dataToSync;
 
         try
@@ -409,6 +454,8 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
 
             break;
         }
+
+        const size_t blockItems = dataToSync.size();
 
         for (size_t i = 0; i < dataToSync.size(); ++i)
         {
@@ -454,6 +501,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
             {
                 sentAny = true;
                 ++blocksSent;
+                itemsSent += blockItems;
                 m_persistentQueue->clearSyncedItems();
             }
             else
@@ -477,6 +525,26 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
             success = false;
             break;
         }
+    }
+
+    if (sentAny && !uncapped)
+    {
+        std::string summary = "DELTA synchronization sent " + std::to_string(itemsSent) + " items in " +
+                              std::to_string(blocksSent) + " blocks (" + std::to_string(pendingBudget) +
+                              " pending at start)";
+
+        try
+        {
+            summary += "; " + std::to_string(m_persistentQueue->countPendingItems()) +
+                       " items left for the next cycle.";
+        }
+        catch (const std::exception&)
+        {
+            // Only a log detail: the count failure itself was already logged by the queue.
+            summary += ".";
+        }
+
+        m_logger(LOG_DEBUG, summary);
     }
 
     if (shouldStop() && !sentAny)

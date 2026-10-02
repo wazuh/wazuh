@@ -177,6 +177,24 @@ std::vector<PersistedData> PersistentQueue::fetchPendingItems(bool onlyDataValue
     }
 }
 
+size_t PersistentQueue::countPendingItems()
+{
+    // Buffered submits are not in storage yet; flush them so the count covers everything
+    // the caller has already handed to the queue.
+    flushActiveBuffer();
+
+    try
+    {
+        std::lock_guard<std::mutex> storageLock(m_storageMutex);
+        return m_storage->countPending();
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error counting pending items: ") + ex.what());
+        throw;
+    }
+}
+
 void PersistentQueue::clearSyncedItems()
 {
     try

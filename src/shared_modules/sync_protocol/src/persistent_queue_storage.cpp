@@ -458,6 +458,31 @@ std::vector<PersistedData> PersistentQueueStorage::fetchPending(bool onlyDataVal
     return result;
 }
 
+size_t PersistentQueueStorage::countPending()
+{
+    try
+    {
+        SQLite3Wrapper::Statement countStmt(m_connection,
+                                            "SELECT COUNT(*) FROM persistent_queue WHERE sync_status = ?;");
+        countStmt.bind(1, static_cast<int>(SyncStatus::PENDING));
+
+        if (countStmt.step() == SQLITE_ROW)
+        {
+            return static_cast<size_t>(countStmt.value<int64_t>(0));
+        }
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Failed to count pending items: ") + e.what());
+        throw;
+    }
+
+    // LCOV_EXCL_STOP
+
+    return 0; // LCOV_EXCL_LINE
+}
+
 void PersistentQueueStorage::removeAllSynced()
 {
     m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");

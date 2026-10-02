@@ -429,7 +429,6 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         size_t m_sessionMaxBytes {FULLSESSION_MAX_BYTES};
 
         static constexpr size_t FULLSESSION_PREFILTER_GRACE_BYTES = 64U * 1024U;
-        static constexpr size_t FULLSESSION_MAX_BLOCKS_PER_SYNC = 10U;
         static constexpr std::string_view HTTP_RESULT_PREFIX = "HCRESULT:";
 };
 

@@ -86,9 +86,9 @@ struct SyncModuleResult
     /// any block fails), so the pair proves "every block this cycle sent actually round-tripped",
     /// closing the exact #38899 symptom (an empty-queue cycle no longer masquerades as a
     /// completed sync). It is still not the same claim as "the manager has the agent's complete
-    /// current state": a first sync bigger than AgentSyncProtocol's own
-    /// `FULLSESSION_MAX_BLOCKS_PER_SYNC` (10 blocks) leaves items queued for a later cycle, and
-    /// this cycle's `success && sentAnything` is already true by the time that happens. Accepted
+    /// current state": a DELTA cycle sends what was pending when it started (plus at most one
+    /// extra block), so items queued while it runs are left for a later cycle, and this cycle's
+    /// `success && sentAnything` is already true by the time that happens. Accepted
     /// for these two markers specifically (see run_check.c and
     /// syscollectorImp.cpp) because the alternative -- notifyDataClean(), an ad hoc
     /// index-clearing call, not something wired into the periodic DELTA path -- would need a

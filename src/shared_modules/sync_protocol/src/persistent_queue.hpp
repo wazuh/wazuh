@@ -69,6 +69,10 @@ class PersistentQueue : public IPersistentQueue
         /// @return A vector of pending messages.
         std::vector<PersistedData> fetchPendingItems(bool onlyDataValues = true) override;
 
+        /// @brief Counts the items currently pending synchronization, DataContext items included.
+        /// @return Number of pending items, including submits still buffered in memory.
+        size_t countPendingItems() override;
+
         /// @brief Clears items that were successfully synchronized.
         void clearSyncedItems() override;
 

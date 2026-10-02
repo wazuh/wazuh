@@ -491,6 +491,80 @@ TEST_F(PersistentQueueStorageTest, FetchAndMarkForSyncWithoutByteBudgetReturnsAl
     EXPECT_EQ(rows[2].id, "id3");
 }
 
+TEST_F(PersistentQueueStorageTest, CountPendingCountsDataContextRowsAndSkipsSyncingOnes)
+{
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "payload1", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData{0, "id2", "index1", "payload2", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData{0, "id3", "index1", "context3", Operation::CREATE, 1, true});
+
+    EXPECT_EQ(storage->countPending(), static_cast<size_t>(3));
+
+    ASSERT_EQ(storage->fetchAndMarkForSync(1).size(), static_cast<size_t>(1));
+    EXPECT_EQ(storage->countPending(), static_cast<size_t>(2));
+
+    storage->resetAllSyncing();
+    EXPECT_EQ(storage->countPending(), static_cast<size_t>(3));
+
+    ASSERT_EQ(storage->fetchAndMarkForSync(1).size(), static_cast<size_t>(1));
+    storage->removeAllSynced();
+    EXPECT_EQ(storage->countPending(), static_cast<size_t>(2));
+}
+
+TEST_F(PersistentQueueStorageTest, CountPendingOnEmptyQueueIsZero)
+{
+    EXPECT_EQ(storage->countPending(), static_cast<size_t>(0));
+}
+
+// The per-block contract a DELTA cycle relies on: a block that succeeded is gone, a block that
+// failed goes back to PENDING alone, rows never fetched are untouched, and the next fetch
+// resumes at the failed block.
+TEST_F(PersistentQueueStorageTest, FailedBlockIsResetAloneAndTheNextFetchResumesAtIt)
+{
+    for (int i = 1; i <= 5; ++i)
+    {
+        storage->submitOrCoalesce(PersistedData{0, "id" + std::to_string(i), "index1", "payload", Operation::CREATE, 1});
+    }
+
+    const auto firstBlock = storage->fetchAndMarkForSync(1);
+    ASSERT_EQ(firstBlock.size(), static_cast<size_t>(1));
+    EXPECT_EQ(firstBlock[0].id, "id1");
+    storage->removeAllSynced();
+
+    const auto failedBlock = storage->fetchAndMarkForSync(1);
+    ASSERT_EQ(failedBlock.size(), static_cast<size_t>(1));
+    EXPECT_EQ(failedBlock[0].id, "id2");
+    EXPECT_EQ(storage->countPending(), static_cast<size_t>(3));
+    storage->resetAllSyncing();
+
+    EXPECT_EQ(storage->countPending(), static_cast<size_t>(4));
+
+    const auto resumed = storage->fetchAndMarkForSync(0);
+    ASSERT_EQ(resumed.size(), static_cast<size_t>(4));
+    EXPECT_EQ(resumed[0].id, "id2");
+    EXPECT_EQ(resumed[3].id, "id5");
+}
+
+// A row updated while its block is in flight comes back as PENDING at its original position
+// once the block is cleared, so it is sent again with the new data. This is the drift the
+// DELTA cycle's extra block absorbs.
+TEST_F(PersistentQueueStorageTest, RowUpdatedWhileSyncingReturnsToPendingAtItsPosition)
+{
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "payload1", Operation::CREATE, 1});
+    storage->submitOrCoalesce(PersistedData{0, "id2", "index1", "payload2", Operation::CREATE, 1});
+
+    ASSERT_EQ(storage->fetchAndMarkForSync(1).size(), static_cast<size_t>(1));
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "payload1-updated", Operation::MODIFY, 2});
+    EXPECT_EQ(storage->countPending(), static_cast<size_t>(1));
+
+    storage->removeAllSynced();
+    EXPECT_EQ(storage->countPending(), static_cast<size_t>(2));
+
+    const auto next = storage->fetchAndMarkForSync(1);
+    ASSERT_EQ(next.size(), static_cast<size_t>(1));
+    EXPECT_EQ(next[0].id, "id1");
+    EXPECT_EQ(next[0].data, "payload1-updated");
+}
+
 // Test class for testing deleteDatabase method with mock filesystem wrapper
 class PersistentQueueStorageDeleteDatabaseTest : public ::testing::Test
 {
