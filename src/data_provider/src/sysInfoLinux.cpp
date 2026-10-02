@@ -31,6 +31,8 @@
 #include "linuxInfoHelper.h"
 #include "groups_linux.hpp"
 #include "user_groups_linux.hpp"
+#include "auth_failures_linux.hpp"
+#include "last_login_linux.hpp"
 #include "logged_in_users_linux.hpp"
 #include "shadow_linux.hpp"
 #include "sudoers_unix.hpp"
@@ -718,6 +720,37 @@ nlohmann::json SysInfo::getUsers() const
                              ? nlohmann::json::object()
                              : userGroupsProvider.getGroupNamesByUid(allUids);
 
+    // The last login is the newest of lastlog, lastlog2 and the sessions open now. It is known for
+    // every account before the loop because the failed attempts are counted since that login.
+    std::unordered_map<std::string, uint32_t> lastLoginByName;
+    auto lastLoginKnown = false;
+    {
+        LastLoginProvider lastLoginProvider;
+        lastLoginKnown = lastLoginProvider.hasSource();
+
+        for (const auto& user : collectedUsers)
+        {
+            if (user.contains("username") && !user["username"].get<std::string>().empty())
+            {
+                auto& lastLogin = lastLoginByName[user["username"].get<std::string>()];
+                lastLogin = std::max(lastLogin, lastLoginProvider.lastLogin(user["uid"].get<uid_t>(), user["username"]));
+            }
+        }
+
+        for (const auto& item : collectedLoggedInUser)
+        {
+            const auto entry = lastLoginByName.find(item["user"].get<std::string>());
+
+            if (entry != lastLoginByName.end())
+            {
+                entry->second = std::max(entry->second, static_cast<uint32_t>(std::max<int32_t>(item["time"].get<int32_t>(), 0)));
+            }
+        }
+    }
+
+    AuthFailuresProvider authFailuresProvider;
+    authFailuresProvider.load(lastLoginByName, lastLoginKnown);
+
     for (auto& user : collectedUsers)
     {
         nlohmann::json userItem {};
@@ -791,8 +824,14 @@ nlohmann::json SysInfo::getUsers() const
         // Macos
         userItem["user_is_hidden"] = 0;
         userItem["user_created"] = 0;
-        userItem["user_auth_failed_count"] = 0;
-        userItem["user_auth_failed_timestamp"] = 0;
+
+        // Without a source the count is -1, which the inventory harvester drops, and the timestamp is 0.
+        const auto authFailures = authFailuresProvider.get(username);
+        userItem["user_auth_failed_count"] = authFailures.known ? static_cast<int64_t>(authFailures.count) : -1;
+        userItem["user_auth_failed_timestamp"] = authFailures.known ? static_cast<double>(authFailures.latest) : 0.0;
+
+        const auto lastLoginEntry = lastLoginByName.find(username);
+        userItem["user_last_login"] = lastLoginEntry != lastLoginByName.end() ? lastLoginEntry->second : 0;
 
         auto matched = false;
         auto lastLogin = 0;
@@ -813,7 +852,6 @@ nlohmann::json SysInfo::getUsers() const
                 if (newDate > lastLogin)
                 {
                     lastLogin = newDate;
-                    userItem["user_last_login"] = newDate;
                     userItem["login_tty"] = item["tty"].get<std::string>();
                     userItem["login_type"] = item["type"].get<std::string>();
                     userItem["process_pid"] = item["pid"].get<int32_t>();
@@ -836,7 +874,6 @@ nlohmann::json SysInfo::getUsers() const
             userItem["login_tty"] = UNKNOWN_VALUE;
             userItem["login_type"] = UNKNOWN_VALUE;
             userItem["process_pid"] = 0;
-            userItem["user_last_login"] = 0;
         }
 
         matched = false;
