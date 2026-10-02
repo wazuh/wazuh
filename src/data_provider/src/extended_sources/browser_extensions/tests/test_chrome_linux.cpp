@@ -93,6 +93,7 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
 
 namespace
 {
+    const uid_t NOBODY_UID = 65534;
     const char* const VALID_MANIFEST = R"({"name": "Fake Extension", "version": "1.0", "description": "fake"})";
 
     // Builds a fake home with one Chrome profile in a temporary directory and removes it afterwards.
@@ -275,14 +276,16 @@ TEST_F(ChromeTempHomeTests, FilesOwnedByAnotherUserAreSkipped)
 // A home directory whose name is not a known user name takes the owner of the directory as the profile owner
 TEST_F(ChromeTempHomeTests, UnknownUserNameUsesHomeDirectoryOwner)
 {
-    if (geteuid() == 0)
-    {
-        GTEST_SKIP() << "a home directory owned by root is never used as the profile owner";
-    }
-
     makeDirs(m_profile + "/Extensions/abc/1.0");
     writeFile(m_profile + "/Extensions/abc/1.0/manifest.json", VALID_MANIFEST);
     m_uid = "";
+
+    // A home directory owned by root is never used as the profile owner, so as root the home is given to nobody
+    if (geteuid() == 0)
+    {
+        const std::string cmd = "chown -R " + std::to_string(NOBODY_UID) + " '" + m_home + "/user'";
+        ASSERT_EQ(std::system(cmd.c_str()), 0);
+    }
 
     const auto result = collect();
     ASSERT_EQ(result.size(), static_cast<size_t>(1));

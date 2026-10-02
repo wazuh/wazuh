@@ -91,7 +91,9 @@ namespace
 
     // Creates a fake home with one Firefox profile, collects it and returns the number of add-ons reported.
     // Returns (size_t)-1 if the fake home cannot be created.
-    size_t collectFromTempHome(AddonsLayout layout, const std::string& ownerUid = std::to_string(geteuid()))
+    // If `homeOwner` is not the current user, the fake home is given to that user before collecting.
+    size_t collectFromTempHome(AddonsLayout layout, const std::string& ownerUid = std::to_string(geteuid()),
+                               uid_t homeOwner = geteuid())
     {
         char tmpl[] = "/tmp/firefox_ext_test_XXXXXX";
 
@@ -126,6 +128,12 @@ namespace
             {
                 ready = symlink(realProfile.c_str(), profile.c_str()) == 0;
             }
+        }
+
+        if (ready && homeOwner != geteuid())
+        {
+            const std::string chownCmd = "chown -R " + std::to_string(homeOwner) + " '" + root + "/home/user'";
+            ready = std::system(chownCmd.c_str()) == 0;
         }
 
         size_t count = static_cast<size_t>(-1);
@@ -168,10 +176,8 @@ TEST(FirefoxAddonsTests, ExtensionsFileOwnedByAnotherUserIsSkipped)
 
 TEST(FirefoxAddonsTests, UnknownUserNameUsesHomeDirectoryOwner)
 {
-    if (geteuid() == 0)
-    {
-        GTEST_SKIP() << "a home directory owned by root is never used as the profile owner";
-    }
+    // A home directory owned by root is never used as the profile owner, so as root the home is given to nobody
+    const uid_t homeOwner = geteuid() == 0 ? 65534 : geteuid();
 
-    EXPECT_EQ(collectFromTempHome(AddonsLayout::REGULAR, ""), static_cast<size_t>(10));
+    EXPECT_EQ(collectFromTempHome(AddonsLayout::REGULAR, "", homeOwner), static_cast<size_t>(10));
 }
