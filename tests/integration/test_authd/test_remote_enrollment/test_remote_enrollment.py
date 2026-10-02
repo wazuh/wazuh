@@ -174,8 +174,10 @@ def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configur
         expected_log = ".*Port 1515 was set as disabled.*"
         expectation = pytest.raises(ConnectionRefusedError)
 
-    file_monitor.FileMonitor(WAZUH_LOG_PATH).start(timeout=5,
-                                     callback=callbacks.generate_callback(f'{PREFIX}{expected_log}'))
+    matched_line = file_monitor.FileMonitor(WAZUH_LOG_PATH).start(timeout=5,
+                                     callback=callbacks.generate_callback(f'{PREFIX}{expected_log}'),
+                                     return_matched_line=True)
+    assert matched_line, f"Expected log '{expected_log}' was not found before opening the enrollment socket"
     with expectation:
         ssl_socket = SocketController(remote_enrollment_address, family='AF_INET', connection_protocol='SSL_TLSv1_2')
 
