@@ -529,6 +529,33 @@ void test_sync_keys_with_wdb_null(void **state) {
     sync_keys_with_wdb(&keys);
 }
 
+// wm_clean_agent_artifacts
+
+void test_wm_clean_agent_artifacts_valid_name(void **state) {
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, "wazuhdb remove 1");
+    expect_value(__wrap_wdbc_query_ex, len, OS_SIZE_1024);
+    will_return(__wrap_wdbc_query_ex, "ok");
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/agent01");
+    will_return(__wrap_rmdir_ex, 0);
+
+    wm_clean_agent_artifacts(1, "agent01");
+}
+
+void test_wm_clean_agent_artifacts_invalid_name(void **state) {
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, "wazuhdb remove 1");
+    expect_value(__wrap_wdbc_query_ex, len, OS_SIZE_1024);
+    will_return(__wrap_wdbc_query_ex, "ok");
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Refusing to remove diff folder for invalid agent name '..'.");
+
+    wm_clean_agent_artifacts(1, "..");
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -548,6 +575,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_delete, setup_keys_to_db, teardown_keys_to_db),
         cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_insert_delete, setup_keys_to_db, teardown_keys_to_db),
         cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_null, setup_keys_to_db, teardown_keys_to_db),
+        // wm_clean_agent_artifacts
+        cmocka_unit_test_setup_teardown(test_wm_clean_agent_artifacts_valid_name, setup_wmdb, teardown_wmdb),
+        cmocka_unit_test_setup_teardown(test_wm_clean_agent_artifacts_invalid_name, setup_wmdb, teardown_wmdb),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
