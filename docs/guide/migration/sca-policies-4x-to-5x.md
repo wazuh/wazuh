@@ -12,8 +12,8 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 |---|---|---|---|
 | Regular expression engine | `osregex` was the default SCA regex engine. Policies and checks could set `regex_type`. | All SCA rules are evaluated with PCRE2. The `regex_type` field is ignored: the engine is always PCRE2 and OSRegex is no longer available. | Rewrite every `r:` and `n:` expression that depends on OSRegex syntax so it is valid PCRE2. The now-ignored `regex_type` field can be removed. |
 | Policy and check names | Requirements and checks used `title`. | `name` is the canonical field; stock policies, runtime state, and generated events use `name`. A `title` field is still accepted and automatically mapped to `name`, but is deprecated. | Rename `requirements.title` and each `checks[*].title` to `name`. The rename is recommended rather than mandatory, since legacy `title` is still mapped to `name`. |
-| Compliance metadata | Many stock policies used an array of single-key objects, often with versioned keys such as `pci_dss_v4.0`. | `compliance` is an object. Only normalized keys are accepted: `cmmc`, `fedramp`, `gdpr`, `hipaa`, `iso_27001`, `nis2`, `nist_800_171`, `nist_800_53`, `pci_dss`, and `tsc`. | Convert the array format to an object and use only supported keys. Unsupported keys are ignored with a warning. |
-| MITRE metadata | MITRE values were commonly stored under compliance keys such as `mitre_tactics`, `mitre_techniques`, and `mitre_mitigations`. | MITRE data is stored in a separate `mitre` object. Only the `tactic`, `technique`, and `subtechnique` keys are recognized. | Move MITRE values out of `compliance` and into `mitre`, using only `tactic`, `technique`, and `subtechnique`. |
+| Compliance metadata | Many stock policies used an array of single-key objects, often with versioned keys such as `pci_dss_v4.0`. | `compliance` is an object. Only normalized keys are accepted: `cmmc`, `fedramp`, `gdpr`, `hipaa`, `iso_27001`, `nis2`, `nist_800_171`, `nist_800_53`, `pci_dss`, and `tsc`. | Convert the array format to an object and use only supported keys. An unsupported key is dropped with an `Invalid compliance key` warning; a `compliance` that is not an object (the 4.x array) is dropped whole with an `Unexpected compliance format` warning. |
+| MITRE metadata | MITRE values were commonly stored under compliance keys such as `mitre_tactics`, `mitre_techniques`, and `mitre_mitigations`. | MITRE data is stored in a separate `mitre` object with the keys `tactic`, `technique`, and `subtechnique`, each an object holding parallel `id` and `name` arrays. | Move MITRE values out of `compliance` and into `mitre`, as `id`/`name` arrays. A key whose value is not an object (for example a plain array of IDs) is dropped from the check's results without a warning. |
 | Numeric comparisons | Some stock 4.x rules used forms such as `compare =`, `compare =>`, `compare =<`, missing spaces, or an escaped `\!=`. | Numeric expressions require `compare <`, `compare <=`, `compare ==`, `compare !=`, `compare >=`, or `compare >` followed by a value. Spaces are required around `compare` and the operator. | Normalize every `n:` expression and make sure the regex captures the numeric value in a group. |
 | SCA configuration | Some 4.x configurations included `<skip_nfs>`. | `<skip_nfs>` is deprecated for SCA and is logged at INFO level as no longer available. SCA synchronization settings are available under `<synchronization>`. | Remove `<skip_nfs>` from SCA configuration. Keep or tune synchronization settings as needed. |
 | Stock policies | Stock policy files under `ruleset/sca` were package-managed. | Upgrades replace stock policies. Some legacy stock policies were removed, including HP-UX, RHEL 5, SLES/SUSE 11, and Solaris/SunOS policies. | Do not customize files under `ruleset/sca`. Keep custom policies in a separate managed path and reference them explicitly. |
@@ -24,7 +24,7 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 
    Include policies referenced from `<sca><policies>` and any policy copied into a shared agent group. Check both local agent policies and manager-distributed policies.
 
-   Watch for `<policy>` entries that reference legacy filenames ending in `_rcl.yml`, such as `cis_rhel7_linux_rcl.yml`, `system_audit_rcl.yml`, or `win_audit_rcl.yml`. These are old policy names carried over from earlier Wazuh versions, not 5.x SCA policy files. The SCA configuration reader keeps a built-in list of these filenames and silently skips them, without logging a warning, if they are still referenced in `<sca><policies>`, so remove or replace those references. Note that only the exact filenames in that built-in list are skipped silently; any other missing or unresolved policy path instead logs a `File '...' not found` or `Policy file '...' not found` warning.
+   Watch for `<policy>` entries that reference legacy filenames ending in `_rcl.yml`, such as `cis_rhel7_linux_rcl.yml`, `system_audit_rcl.yml`, or `win_audit_rcl.yml`. These are old policy names carried over from earlier Wazuh versions, not 5.x SCA policy files. The SCA configuration reader keeps a built-in list of these filenames and silently skips them, without logging a warning, if they are still referenced in `<sca><policies>`, so remove or replace those references. Note that only the exact filenames in that built-in list are skipped silently; any other missing or unresolved policy path instead logs a `File '...' not found.` warning when the configuration is read, or `Policy file does not exist: ...` when the module loads its policies.
 
 2. Back up policies and move custom files out of package-managed paths.
 
@@ -89,7 +89,7 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 
 5. Convert compliance and MITRE metadata.
 
-   Use only supported compliance keys and move MITRE values to the `mitre` object:
+   Use only supported compliance keys and move MITRE values to the `mitre` object, giving each ID its ATT&CK name at the same position:
 
    ```yaml
    compliance:
@@ -97,9 +97,15 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
      nist_800_53: ["CM-6"]
      tsc: ["CC6.6"]
    mitre:
-     tactic: ["TA0005"]
-     technique: ["T1036"]
+     tactic:
+       id: ["TA0005"]
+       name: ["Defense Evasion"]
+     technique:
+       id: ["T1036"]
+       name: ["Masquerading"]
    ```
+
+   See [MITRE keys](../../ref/modules/sca/custom-policies.md#mitre-keys) in the custom policy reference.
 
 6. Remove deprecated SCA configuration.
 
@@ -107,7 +113,7 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 
 7. Validate the migrated policy on Wazuh 5.x.
 
-   Install the policy on a non-production 5.x agent or manager, restart the service, and run a scan. Check the Wazuh logs for policy parsing, invalid compliance keys, and PCRE2 errors. Search for messages such as `Failed to parse policy`, `Invalid compliance key`, `Unexpected compliance format`, and `PCRE2 compilation failed`.
+   Install the policy on a non-production 5.x agent (SCA runs on agents only: a 5.x manager has no SCA module), restart the agent, and run a scan. Check the Wazuh logs for policy parsing, invalid compliance keys, and PCRE2 errors. Search for messages such as `Failed to parse policy`, `Invalid compliance key`, `Unexpected compliance format`, and `PCRE2 compilation failed`.
 
 8. Roll out incrementally.
 
@@ -169,8 +175,12 @@ checks:
       pci_dss: ["2.2.6"]
       nist_800_53: ["CM-6"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036"]
+      tactic:
+        id: ["TA0005"]
+        name: ["Defense Evasion"]
+      technique:
+        id: ["T1036"]
+        name: ["Masquerading"]
     condition: all
     rules:
       - 'f:/etc/pam.d/system-auth -> r:pam_unix\.so && n:remember=(\d+) compare >= 5'
@@ -185,6 +195,6 @@ checks:
 - The `regex_type` field is removed (it is ignored in 5.x; all patterns are PCRE2).
 - All regex and numeric expressions compile as PCRE2.
 - `compliance` is an object with supported keys only.
-- MITRE metadata is under `mitre`.
+- MITRE metadata is under `mitre`, as `id`/`name` arrays per category.
 - `<skip_nfs>` is removed from SCA configuration.
 - A non-production 5.x validation scan completes without SCA parsing or PCRE2 errors.

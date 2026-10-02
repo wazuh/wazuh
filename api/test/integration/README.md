@@ -2,80 +2,78 @@
 
 ## General information
 
-An integration test is used to check that the behavior of the different application modules is the expected one when
-they are integrated. In other words, the integration tests check the correct interaction between the application
-components.
+An integration test checks that the application modules behave as expected when they are integrated, that is, that
+the components interact correctly.
 
-The API integration tests are used to verify that the API is working properly in a complete Wazuh environment.
-This environment is built using [`docker`](https://www.docker.com/).
+The API integration tests verify that the API works in a complete Wazuh environment, built with
+[`docker`](https://www.docker.com/) and Docker Compose V2 (`docker compose`, the plugin).
 
-The `wazuh/api/test/integration` directory contains all the API integration tests files and directories used for the
-environment deployment.
+The `api/test/integration` directory contains the API integration test files and the files used to deploy the
+environment.
 
 ## API integration tests files
 
-The API integration tests files use the [`tavern`](https://tavern.readthedocs.io/en/latest/) framework. Tavern is
-a [`pytest`](https://docs.pytest.org/en/7.1.x/) based API testing framework for HTTP, MQTT, or other protocols. These
-files are written in the `yaml` language and their names can follow the following formats:
+The API integration tests use the [`tavern`](https://tavern.readthedocs.io/en/latest/) framework, a
+[`pytest`](https://docs.pytest.org/) plugin for testing HTTP APIs. The test files are YAML and their names follow one
+of these formats:
 
-`test_{module}_endpoints.tavern.yaml` or `test_rbac_{rbac_mode}_{module}_endpoints.tavern.yaml`
+`test_{module}_endpoints.tavern.yaml`, `test_{module}_{METHOD}_endpoints.tavern.yaml` or
+`test_rbac_{rbac_mode}_{module}_endpoints.tavern.yaml`
 
-where `module` is the module which the endpoints tested belong; and `rbac_mode` is the RBAC mode (white or black) used
-for the test (see [RBAC API integration tests](#RBAC-API-integration-tests)).
+where `module` is the module the tested endpoints belong to (`agent`, `cluster`, `default`, `mitre`, `overview`,
+`security`, `all` for RBAC, and the cross-cutting `auth`, `hardening` and `ratelimit` described in
+[Test groups and overlays](#test-groups-and-overlays)), `METHOD` splits a module's tests by HTTP method, and `rbac_mode` is the RBAC mode
+(`white` or `black`) used for the test (see [RBAC API integration tests](#rbac-api-integration-tests)).
+
+Variables shared by every test (ports, the test user and password, endpoints) are in `common.yaml`, loaded through
+`tavern-global-cfg` in `pytest.ini`. `_test_smoke.tavern.yaml` is the smoke test CI runs before the rest.
 
 ## Docker environment
 
-The Wazuh environment used to perform the API integration tests is built using `docker`.
+The environment is described by `env/docker-compose.yml` and is composed of **12 containers**:
 
-This environment is composed of **12 docker containers**. These containers have the following components installed: 3
-Wazuh managers, that compose a Wazuh cluster (1 master, 2 workers); 4 Wazuh agents with the same version as the managers
-forming the cluster; 4 Wazuh agents with version 4.14.1 (old); and 1 HAProxy load balancer.
+- 3 Wazuh managers forming a cluster: `wazuh-master` (API published on host port `55000`), `wazuh-worker1` and
+  `wazuh-worker2`.
+- 4 Wazuh agents (`wazuh-agent1` to `wazuh-agent4`) built from the same branch as the managers.
+- 4 old Wazuh agents (`wazuh-agent5` to `wazuh-agent8`), installed from the 4.x package repository at version
+  `4.14.1` (`env/base/agent/old.Dockerfile`).
+- 1 HAProxy load balancer, `haproxy-lb`, that publishes `1514`, `1515` and the API as host port `55010`.
 
-The Wazuh version used for the managers and non-old agents is the one specified by the branch used to perform the API
-integration tests.
+The managers and the new agents are built from the GitHub tarball of the **current branch**, or of the branch, tag or
+commit set in the `WAZUH_BRANCH` environment variable (`https://github.com/wazuh/wazuh/tarball/<branch>`), not from
+the local working tree, so the branch must be pushed:
+`conftest.py` fails the run with *Current branch tarball doesn't exist* otherwise. The Dockerfiles, entrypoints and
+other configuration files are in `env/base/`.
 
-The `docker-compose.yml` file used to deploy the environment is at `wazuh/api/test/integration/env`. The `Dockerfile`,
-`entrypoint.sh`, and other configuration files can be found in the `base` directory.
+Each test also applies **specific configurations and health checks**, found in `env/configurations/`. Python scripts
+used by those health checks are in `env/tools/`.
 
-We also use specific **configurations and health checks depending on the test executed**. These configurations can be
-found at the `configurations` directory. Python scripts commonly used by some of these health checks and files are
-located in the `tools` directory.
-
-Apart from this setup, we simulate 2 disconnected and 2 never-connected agents.
+Apart from this setup, two disconnected agents (`wazuh-agent9` and `wazuh-agent10`) are inserted on the master from
+`env/configurations/base/manager/configuration_files/master_only/agent_info.yaml`.
 
 ### How is the environment deployed?
 
-The environment deployment is done automatically when performing an API integration test. The tests are executed
-with `pytest <test_name>`.
+The environment is deployed automatically when an API integration test is run with `pytest <test_name>` from this
+directory.
 
-The `conftest.py` file is the one in charge of deploying the API integration tests environment. When a test is
-performed, the `api_test` function is also executed. This function is responsible for setting up the environment and
-cleaning temporary folders, stopping and removing containers; and saving log and environment status, once the test has
-finished. The execution of `api_test` is done automatically thanks to the `pytest.fixture` decorator.
+`conftest.py` deploys it. The session-scoped, autouse fixture `api_test` prepares the configuration for the test
+being run (the RBAC mode and resources for an RBAC test), builds the images and brings the containers up
+(`docker compose build --build-arg WAZUH_BRANCH=<branch> --no-cache`, then `docker compose up -d`), and waits for
+the managers, agents and load balancer to be healthy. When the test finishes it cleans the temporary folders, saves
+the logs if any test failed, records the environment status, and stops and removes the containers.
 
-In the `conftest.py` file, we can also find functions used to make the HTML report,
-configure [RBAC](#RBAC-API-integration-tests), etc.
+`conftest.py` also holds the functions that build the HTML report and configure [RBAC](#rbac-api-integration-tests).
 
-The environment is brought up automatically when running an API integration test. As seen in the table, the environment runs in **cluster** mode and tests are executed with `pytest`:
-
-| Command                          | Environment                                          |
-|----------------------------------|------------------------------------------------------|
-| `pytest TEST_NAME`               | Wazuh cluster environment                            |
-
-
-Talking about [RBAC API integration tests](#RBAC-API-integration-tests), they don't have any marks, so there is no need
-to specify one when running them. If a mark is specified, no tests will be run due to the filters. In other words,
-**RBAC tests are always going to be performed in the default cluster setup**.
+The environment always runs in **cluster** mode; the tests have no marks.
 
 ## RBAC API integration tests
 
-As said in previous sections, some test names follow the structure
-`test_rbac_{rbac_mode}_{module}_endpoints.tavern.yaml`.
+Some test names follow the structure `test_rbac_{rbac_mode}_{module}_endpoints.tavern.yaml`.
 
-These tests are used to check the proper functioning of a Wazuh environment with RBAC configurations. The `conftest.py`
-file includes functions in charge of changing the RBAC mode and creating the specified RBAC resources for the test in
-execution. The `env/configurations/rbac` directory includes all the specific configurations for each RBAC API
-integration test, for both **white** and **black** modes.
+These tests check a Wazuh environment configured with RBAC resources. `conftest.py` changes the RBAC mode and
+creates the RBAC resources the test in execution needs. The `env/configurations/rbac` directory holds the specific
+configuration of each RBAC API integration test, for both **white** and **black** modes. Every other test runs in
+white mode.
 
 ## Test groups and overlays
 
@@ -110,38 +108,20 @@ To perform a Wazuh API integration test, install the dependencies CI uses:
 pip install -r framework/requirements-dev.txt
 ```
 
-Docker Compose v2 (`docker compose`) is required.
+Then run a test from this directory:
 
-Once these requirements are satisfied, we can perform the API integration tests:
-
-```text
-$ python3 -m pytest test_agent_GET_endpoints.tavern.yaml --disable-warnings
-========================================== test session starts ===========================================
-platform linux -- Python 3.9.9, pytest-5.4.3, py-1.11.0, pluggy-0.13.1
-rootdir: /home/user/git/wazuh/api/test/integration, inifile: pytest.ini
-plugins: html-2.1.1, metadata-2.0.1, tavern-1.0.0
-collected 92 items
-
-test_agent_GET_endpoints.tavern.yaml ............................................................. [ 66%]
-...............................                                                                    [100%]
-
-============================== 92 passed, 98 warnings in 217.61s (0:03:37) ===============================
+```bash
+cd api/test/integration
+python3 -m pytest test_agent_GET_endpoints.tavern.yaml --disable-warnings
 ```
 
-```text
-API integration tests
+`conftest.py` adds one option:
 
-optional arguments:
-  --build-managers-only
-                  Recreates only the managers' image once the AIT test environment is built.
-  --nobuild
-                  Prevents rebuilding the environment when running tests once the images are already created.
-  --disable-warnings
-                  Disables warnings during test execution.
-```
+| Option | Effect |
+|--------|--------|
+| `--nobuild` | Skip `docker compose build` and bring the environment up from the images already built. |
 
-We can also use the `wazuh/api/test/integration/run_tests.py` script. This script includes the possibility to collect a
-group of tests to be passed. Script arguments:
+The `run_tests.py` script runs a group of tests and saves their reports:
 
 ```text
 $ python3 run_tests.py -h
@@ -149,7 +129,7 @@ usage: run_tests.py [options]
 
 API integration tests
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -l TEST_LIST, --list TEST_LIST
                         Specify a list of tests separated by a comma.
@@ -163,6 +143,7 @@ optional arguments:
                         Specify how many times will every test be run. Default 1.
 ```
 
-The `run_test.py` script does not show the tests' full output. The full reports are saved
-at `wazuh/api/test/integration/_test_results`. Containers' logs (`wazuh-manager.log`, agent's `ossec.conf`, `api.log` and `cluster.log`) are stored
-at `_test_results/logs`. Reports in HTML format are also generated and can be found at `_test_results/html_reports`.
+`run_tests.py` does not show the tests' full output. The reports are saved in `api/test/integration/_test_results`,
+and HTML reports in `_test_results/html_reports`. When a test fails, the containers' logs are copied to
+`_test_results/logs`: `api.log`, `cluster.log` and `wazuh-manager.log` from each manager, `ossec.log` from each
+agent, and the HAProxy container log. The Docker build and startup output is in `_test_results/logs/docker.log`.

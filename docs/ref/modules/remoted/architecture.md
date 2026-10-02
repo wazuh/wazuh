@@ -14,13 +14,14 @@ authentication, their threading, nor their code:
 | Transport | TLS 1.3 over TCP | TCP or UDP, AES-encrypted payloads |
 | Authentication | per-request `wazuh-agent+jwt` bearer token (HS256) self-signed with the agent's pre-shared key | AES session key derived from `client.keys` |
 | Direction | agent-initiated requests only; work is handed back in responses | persistent connection, manager can push |
-| Enabled | always | only when `<remote><legacy>` is present and enabled |
+| Enabled | always | only when `<remote><legacy>` is present and enabled — an absent `<legacy>` block is off, the installer writes it on ([`legacy.enabled`](configuration.md#legacyenabled)) |
 | Serves | 5.x agents | 4.x agents |
 | Implemented in | C++ (`remoted_module`) | C |
 
 A 5.x agent uses the HTTPS API exclusively — it has no legacy code path at all. The legacy channel
-exists to keep 4.x agents working during a migration, and when `<remote><legacy>` is absent or
-disabled, `start_legacy_subsystems()` is a no-op: no listener is bound, and the legacy keystore,
+exists to keep 4.x agents working during a migration. The installer writes
+`<legacy><enabled>yes</enabled>`, so it runs on an installed manager until an operator turns it off;
+when `<remote><legacy>` is absent or disabled, `start_legacy_subsystems()` is a no-op: no listener is bound, and the legacy keystore,
 metadata cache, event queue and dispatcher threads are never created.
 
 ## High-Level Architecture
@@ -34,10 +35,10 @@ flowchart LR
         direction TB
         subgraph HTTPS["HTTPS server (C++, remoted_module) — :1517"]
             AUTH["Auth middleware<br/>JWT bearer + registered address"]
-            EP["Endpoints<br/>/ · cacerts · enroll · stateless · stateful<br/>control · download · stats · config · scan/vd"]
+            EP["Endpoints<br/>/ · cacerts · enroll · enroll/secret · stateless<br/>stateful · control · download · stats · config · scan/vd"]
             BUD["In-flight byte budget<br/>+ deferred-work limiter"]
         end
-        subgraph LEG["Legacy pipeline (C) — :1514, opt-in"]
+        subgraph LEG["Legacy pipeline (C) — :1514"]
             LIS["TCP/UDP listener<br/>+ AES decryption"]
             META["Metadata cache<br/>(OSHash)"]
             EQ["Event queue<br/>(round-robin)"]
@@ -62,15 +63,15 @@ flowchart LR
     EP -->|"/stateful · /stats · /config"| SYNC
     EP -->|"/control"| WDB
     EP -->|"/control"| TASK
-    EP -->|"/enroll"| AUTHD
+    EP -->|"/enroll · /enroll/secret"| AUTHD
     EP -->|"/scan/vd"| VD
     DISP --> ENG
     META --> WDB
 ```
 
-*Diagram source of truth: `src/remoted/remoted_module/README.md`.*
-
-Every downstream hop is HTTP over a Unix-domain socket.
+Every downstream hop is HTTP over a Unix-domain socket, except `authd`'s local socket
+(`queue/sockets/auth.sock`), which `POST /enroll` and `POST /enroll/secret` speak authd's own
+framed JSON protocol over.
 
 ## HTTPS agent API (`remoted_module`)
 
@@ -101,8 +102,10 @@ when it silently is not.
 
 ### Endpoints
 
-Eleven agent-facing routes. Full request/response contracts in
-[HTTPS Agent API](https-events-api.md); machine-readable in [`agent-api.yaml`](agent-api.yaml).
+Eleven agent-facing routes, each served under the
+[`https.global_prefix`](configuration.md#httpsglobal_prefix) (`/wazuh-manager/` by default). Full
+request/response contracts in [HTTPS Agent API](https-events-api.md); machine-readable in
+[`agent-api.yaml`](agent-api.yaml).
 
 | Route | Purpose | Downstream |
 | --- | --- | --- |
@@ -132,9 +135,8 @@ Neither sends `Retry-After`: this is server-side load-shedding, not rate limitin
 agent runs its own retry/backoff. See [Configuration](configuration.md) for the sizing knobs and
 [Metrics](metrics.md) for what to watch.
 
-Rate limiting is the third, separate bound: a token bucket per **endpoint** in front of
-`POST /enroll` and `GET /cacerts`, the two routes whose callers hold no credential to gate them
-with. It caps how fast each route is served at all — a fleet-wide ceiling, not a per-caller
+Rate limiting is the third, separate bound: two token buckets, one in front of `GET /cacerts` and
+one shared by `POST /enroll` and `POST /enroll/secret` (charged before authentication on both). It caps how fast each route is served at all — a fleet-wide ceiling, not a per-caller
 allowance — and answers `429` with a `Retry-After` —
 [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes).
 
@@ -144,10 +146,10 @@ The module's own metrics are served on a manager-local Unix socket
 (`queue/sockets/remote-admin-http.sock`), never on the agent-facing listener — see
 [the admin socket](README.md#local-admin-socket).
 
-## Legacy pipeline (opt-in)
+## Legacy pipeline
 
-Everything in this section runs **only** when `<remote><legacy>` is present and enabled. It exists
-to serve 4.x agents.
+Everything in this section runs **only** when `<remote><legacy>` is present and enabled (as the
+installer writes it). It exists to serve 4.x agents.
 
 ### 1. Network listener
 
@@ -161,14 +163,14 @@ Accepts agent connections over TCP (port `1514` by default) or UDP.
 
 Control messages carry the `#!-` header: keep-alive, startup, shutdown, and `req` requests.
 
-Three 4.x message types are **discarded** rather than processed, because their 5.0 replacements are
-HTTPS-only:
+Two 4.x message types are **discarded** rather than processed, because their 5.0 replacements are
+HTTPS-only; a third keeps working:
 
 | Legacy header | Meaning | 5.0 disposition |
 | --- | --- | --- |
 | `5:` (`DBSYNC_HEADER`) | dbsync deltas | Discarded — not supported in 5.0 |
 | `s:` (`INVENTORY_SYNC_HEADER`) | incremental inventory sync | Discarded — the manager only accepts whole sessions, via `POST /stateful` |
-| `u:upgrade_module:` (`UPGRADE_ACK_HEADER`) | WPK upgrade acknowledgment | **Still honored** — acked and forwarded, so remote upgrade of a 4.x agent keeps working |
+| `u:upgrade_module:` (`UPGRADE_ACK_HEADER`) | WPK upgrade acknowledgment | **Still honored** — answered with `clear_upgrade_result` and also forwarded to the engine as an event, so remote upgrade of a 4.x agent keeps working |
 
 ### 3. Metadata database
 
@@ -176,7 +178,7 @@ In-memory cache of the agent metadata extracted from keep-alives:
 
 - OSHash table indexed by agent ID
 - Thread-safe with read/write locks
-- Holds agent name, version, OS details, groups, hostname
+- Holds agent name, version, OS details, architecture and hostname (the `groups` member exists but the keep-alive path never fills it — see [Stateless Metadata](stateless-metadata.md#group-updates))
 
 ### 4. Event queue and dispatcher
 
@@ -230,7 +232,7 @@ For the complete set, see [Configuration](configuration.md).
 ## References
 
 - [HTTPS Agent API](https-events-api.md) — the agent-facing protocol and all eleven endpoints
-- [Endpoint reference](agent-api-reference.html) — the same contract as OpenAPI
+- [OpenAPI contract](agent-api.yaml) — the same contract as OpenAPI 3 (rendered in the book by the `agent-api-reference.html` viewer beside this page)
 - [Configuration](configuration.md)
 - [Metrics](metrics.md)
 - [Load balancers](load-balancers/README.md)

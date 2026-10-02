@@ -69,9 +69,10 @@ defaults
     timeout client  60s
 
     # [!] How long to wait for the manager's answer. remoted gives itself 30 s per
-    # request, so anything lower cuts off work that was still in progress -- and a retry
-    # of it could reach a second manager. See 3.4.
-    timeout server  30s
+    # request (remoted.http_request_timeout), so this must be above it: anything lower
+    # cuts off work that was still in progress -- and a retry of it could reach a second
+    # manager. See README.md#45-align-the-timeouts (Getting started, 4.5).
+    timeout server  60s
 
 # =====================================================================
 #  TLS PASSTHROUGH (:8444) -- layer 4
@@ -118,9 +119,10 @@ frontend termination_in
 backend remoted_nodes_http
     mode http
 
-    # Health check: remoted answers GET / with 200, unauthenticated.
+    # Health check: remoted answers GET on its global prefix (/wazuh-manager/ by default)
+    # with 200, unauthenticated. A bare 'uri /' gets 404 and marks every server DOWN.
     option httpchk
-    http-check send meth GET uri /
+    http-check send meth GET uri /wazuh-manager/
     http-check expect status 200
 
     # Informational. Safe to add: headers are not covered by the bearer token.
@@ -146,8 +148,10 @@ backend remoted_nodes_http
 ```
 
 Note what the configuration does **not** contain: there is no body-size limit (HAProxy has none by
-default, so remoted's own `<remote><https><max_body_size>` (10 MiB by default) applies) and no path handling, because HAProxy forwards the request
-target unchanged unless you explicitly tell it not to.
+default, so remoted's own caps apply: its JSON `413` above `remoted.auth_max_body_size`, 5 MiB by
+default, and a dropped connection — logged by HAProxy as `502` — above
+`<remote><https><max_body_size>`, 10 MiB by default) and no path handling, because HAProxy forwards
+the request target unchanged unless you explicitly tell it not to.
 
 ## 3. HAProxy specifics
 
@@ -211,17 +215,18 @@ retry-on conn-failure 503
 
 ### 3.6. Active health checks (and their limitation)
 
-With `check` on the server lines plus `option httpchk`, HAProxy probes every manager on its own
+With `check` on the server lines plus `option httpchk` pointed at the global prefix, HAProxy probes
+every manager on its own
 (every 2 s by default) and takes a failed one out of rotation **before** agent traffic reaches it —
 no client request is spent discovering the failure, unlike NGINX Open Source.
 
 ```mermaid
 flowchart LR
-    H["HAProxy<br/>GET / every 2 s"] -->|"200 → in rotation"| N1["manager 1"]
+    H["HAProxy<br/>GET /wazuh-manager/ every 2 s"] -->|"200 → in rotation"| N1["manager 1"]
     H -.->|"no answer → out of rotation"| N2["manager 2"]
 ```
 
-The limitation is remoted's, not HAProxy's: `GET /` reports that the process is alive, not that the
+The limitation is remoted's, not HAProxy's: the health probe reports that the process is alive, not that the
 pipeline works. A manager whose analysis engine is down still answers `200` and stays in rotation.
 
 ## 4. Coming from NGINX
@@ -262,15 +267,15 @@ openssl s_client -connect wazuh-manager.example.com:8443 </dev/null 2>/dev/null 
 openssl s_client -connect wazuh-manager.example.com:8444 </dev/null 2>/dev/null | openssl x509 -noout -subject
 #    :8443 must show the BALANCER's certificate, :8444 the MANAGER's
 
-# 3. The health check endpoint answers, unauthenticated
-#    (with remote.https.global_prefix configured, probe /<prefix>/ instead — e.g. /wazuh-manager/)
-curl -k https://wazuh-manager.example.com:8443/
+# 3. The health probe answers, unauthenticated (under remote.https.global_prefix,
+#    /wazuh-manager/ by default)
+curl -k https://wazuh-manager.example.com:8443/wazuh-manager/
 #    -> {"status":"ok","module":"remoted"}
 ```
 
-In the access log, the field after the server name is
-`actconn/feconn/beconn/srvconn/retries` — a `+` there means the request was retried and
-redispatched to another manager:
+In the access log, the connection counters `actconn/feconn/beconn/srvconn/retries` come after the
+termination state (`----`) — a `+` on `retries` means the request was retried and redispatched to
+another manager:
 
 ```
 ... termination_in~ remoted_nodes_http/node1 0/0/2/40/42 202 115 - - ---- 1/1/0/0/+1 ...
@@ -281,14 +286,15 @@ What each status code tells you:
 
 | Code | Meaning |
 |---|---|
-| `202` | token valid **and** the event was ingested |
-| `401` | token rejected — unknown agent, wrong key or clock drift |
+| `202` | token valid **and** the engine accepted the batch |
+| `401` | token rejected — unknown agent, wrong key, clock drift, or an agent registered with a fixed address (the manager sees HAProxy's) |
 | `404` | no such route — if it is *every* request, something is rewriting the target |
-| `413` | body too large — remoted's own body cap |
-| `502` / `503` | HAProxy could not get an answer — suspect TLS 1.3, certificate verification, or every manager being down |
+| `413` | body too large — remoted's JSON `413` above `remoted.auth_max_body_size` (5 MiB) |
+| `502` / `503` | HAProxy could not get an answer — suspect TLS 1.3, certificate verification, every manager being down, or a body above `max_body_size`, which remoted drops without answering |
 
 ## 6. Reference configurations
 
-Ready-to-run configurations covering these scenarios — including the ones written to fail, so you
-can see each trap in action — ship with the source under
-`src/remoted/remoted_module/tools/load_balancer/base/haproxy/`.
+The load-balancer lab in the source tree runs one working configuration,
+`src/remoted/remoted_module/tools/load_balancer/base/haproxy/haproxy.cfg` (passthrough on 1517,
+termination on 1518, termination with a leaf from another CA on 1519, legacy 1514/1515, statistics
+on 8404).

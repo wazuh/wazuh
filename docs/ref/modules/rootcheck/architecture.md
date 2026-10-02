@@ -68,7 +68,7 @@ Rootcheck is an agent-side anomaly detection module that performs periodic scans
 │               ▼                          │
 │  ┌────────────────────────────────────┐ │
 │  │   Alert Logs & Indexer             │ │
-│  │   (alerts.log, alerts.json)        │ │
+│  │   (indexer, file outputs)          │ │
 │  └────────────────────────────────────┘ │
 └──────────────────────────────────────────┘
 ```
@@ -116,16 +116,16 @@ if (pid exists in system call) AND (pid NOT in /proc or ps) {
 #### Hidden Port Detection Engine
 
 **Method:**
-1. Iterate through all possible ports (1-65535)
+1. Iterate through every TCP port and then every UDP port (0-65535); skipped when `netstat` is not available
 2. For each port:
    - Attempt to bind using `bind()` system call
-   - Check if port appears in `netstat` output
-   - Compare results
-3. If bind fails (port in use) but port not in netstat, trigger alert
+   - If the bind fails (port in use), check if port appears in `netstat` output
+   - If not, sleep `rootcheck.sleep` and re-check both
+3. If bind still fails but port is still not in netstat, trigger alert (more than 20 hidden ports in one protocol raises an "Excessive number" alert and stops that protocol)
 
 **Detection Logic:**
 ```
-for port in 1..65535 {
+for port in 0..65535 {
     if (bind(port) == EADDRINUSE) AND (port NOT in netstat) {
         Alert: Hidden port detected
     }
@@ -133,8 +133,8 @@ for port in 1..65535 {
 ```
 
 **Optimization:**
-- Sleeps between checks to reduce CPU usage (configurable in internal options)
-- Skip reserved/privileged ports if running as non-root
+- Sleeps before re-checking a suspicious port (configurable in internal options)
+- Not implemented on Windows
 
 #### File System Anomaly Detection Engine
 
@@ -254,8 +254,8 @@ ossec: output: 'rootcheck' message: <detection_details>
 ### Manager-Side
 
 **No Persistent State (5.0):**
-- Alerts processed through rules engine
-- Logged to `alerts.log` and `alerts.json`
+- Events processed by the engine (`wazuh-manager-analysisd`)
+- Sent to the Wazuh indexer, and to a file under `/var/wazuh-manager/logs/<channel>/` only when a policy has a `file` output
 - Not stored in wazuh-manager-db
 
 ## Performance Characteristics
@@ -375,7 +375,7 @@ Rootcheck is designed to detect common evasion techniques:
          ↓
 9. Generate indexed alert
          ↓
-10. Store in alerts.log, alerts.json, indexer
+10. Send to the indexer (and file outputs, if configured)
 ```
 
 ### Alert Processing on Manager

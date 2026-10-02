@@ -146,11 +146,9 @@ Look for `wazuh-agentd is running...`
 /var/ossec/bin/wazuh-control info
 ```
 
-Shows:
-- Agent ID
-- Manager address
-- Connection status
-- Configuration version
+Prints `WAZUH_VERSION`, `WAZUH_REVISION` and `WAZUH_TYPE` (`-v`, `-r` or `-t` prints just one).
+The connection state is in `/var/ossec/var/run/wazuh-agentd.state` (`status='connected'`, last
+keepalive, event counters), rewritten every `agent.state_interval` seconds.
 
 ### Enrolling or re-pointing an agent
 

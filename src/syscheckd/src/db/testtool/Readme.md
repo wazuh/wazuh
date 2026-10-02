@@ -1,17 +1,11 @@
 # FIMDB Testing Tool
 ## Index
 1. [Purpose](#purpose)
-2. [Architecture Diagram](#architecture-diagram)
-3. [Compile Wazuh](#compile-wazuh)
-4. [How to use the tool](#how-to-use-the-tool)
+2. [Compile Wazuh](#compile-wazuh)
+3. [How to use the tool](#how-to-use-the-tool)
 
 ## Purpose
 The FIMDB Testing Tool was created to test and validate the fimdb module. This tool works as a black box where an user will be able execute it with different arguments and analyze the output data as desired.
-
-## Architecture Diagram
-
-![alt text](../../../../../architecture/FIM/db/001-class-testtool.puml)
-![alt text](../../../../../architecture/FIM/db/002-sequence-testtool.puml)
 
 ## Compile Wazuh
 In order to run tests on a specific wazuh target, the project needs to be built either in release or debug mode.

@@ -33,13 +33,8 @@ flowchart TD
 **Expected.** Not a misconfiguration.
 
 A newly enrolled agent is known to the master immediately and to the workers a few seconds later.
-Requests routed to a worker in between are rejected.
-
-| What replicated | Workers accept after |
-|---|---|
-| `etc/client.keys` | 8 – 13 s |
-| `etc/authd.pass` | ~23 s |
-| `etc/enrollment_tokens.json` | 7 – 13 s |
+Requests routed to a worker in between are rejected. The measured windows, per replicated file, are
+in [§7.1 of the architecture page](lb.md#71-replicated-state-brief-401s-after-enrollment).
 
 The agent recovers unattended. A real agent enrolling through a balancer typically meets **three
 different errors in the same burst** — a `503`, a `401`, and possibly a TLS error under passthrough
@@ -77,8 +72,9 @@ every other node accepts, which reads as intermittent failure tied to no agent i
 for n in <node1> <node2> <node3>; do echo -n "$n: "; ssh $n date -u +%s; done
 ```
 
-They must agree within a few seconds. Fix with NTP, and keep `remoted.jwt_max_age` and
-`remoted.jwt_clock_skew` identical across nodes.
+They must agree within a few seconds. Fix with NTP, and keep the `remoted.jwt_max_age` (default
+`60`) and `remoted.jwt_clock_skew` (default `30`) internal options identical across nodes, in
+`etc/wazuh-manager-internal-options.conf`.
 
 ### The key never replicated
 
@@ -149,13 +145,9 @@ A proxy that strips or adds a path segment produces the same `404`.
 that. A configuration download routed elsewhere is refused until the agent's notify cycle has
 reached that node too.
 
-It clears on its own. How long depends on the number of nodes:
-
-| Nodes | Notifies needed | At `notify_time` 10 s |
-|---|---|---|
-| 3 | ~6 | ~1 minute |
-| 10 | ~30 | ~5 minutes |
-| 20 | ~72 | ~12 minutes |
+It clears on its own. How long depends on the number of nodes — about a minute on three nodes and
+twelve on twenty at the default `notify_time` of 10 s; the table is in
+[§7.2 of the architecture page](lb.md#72-node-local-state-403-on-configuration-download).
 
 **Confirm it is this and not something else:**
 
@@ -242,6 +234,11 @@ message, which is why agent-side and proxy-side timeouts must be above that valu
 ```bash
 /var/wazuh-manager/bin/cluster_control -l     # is the master listed?
 ```
+
+### `{"error":"dependency_unavailable","dependency":"wazuh-db"}`
+
+On `POST /control`: the node's `wazuh-manager-db` is not answering, so it cannot read the agent's
+groups. The agent retries. If it persists on one node, that node is degraded — see §9.
 
 ### Back-pressure
 
@@ -358,17 +355,17 @@ hostname check — which then requires the SAN rule above. See
 
 Usually **one node is degraded** while the balancer still considers it healthy.
 
-A node can lose a dependency and keep answering the liveness probe. Observed with `wazuh-db` down:
+A node can lose a dependency and keep answering the liveness probe. With `wazuh-manager-db` down:
 
 | Request to that node | Answer |
 |---|---|
-| `GET /` | `200` |
+| `GET /wazuh-manager/` (the health probe) | `200` |
 | `POST /stateless` | `202` |
-| `POST /control` | `500 database_error` |
+| `POST /control` | `503` `{"error":"dependency_unavailable","dependency":"wazuh-db"}` (a notify is still served from cached group membership when the node has it) |
 
 Events keep flowing while groups, configuration hashes and task delivery all fail.
 
-**No layer flags it.** Verified on a node in exactly that state:
+**No central layer flags it.** Verified on a node in exactly that state:
 
 | Where you would look | What it reports |
 |---|---|
@@ -377,8 +374,8 @@ Events keep flowing while groups, configuration hashes and task delivery all fai
 | Server API `/cluster/nodes` | the node is present, and carries no status field |
 | Agent list | agents still `active` |
 
-So the node cannot be found by asking anything centrally. It has to be found by asking each node
-directly, which is what the commands below do.
+So the node cannot be found by asking anything centrally. Only its own log says so. It has to be
+found by asking each node directly, which is what the commands below do.
 
 ### Find it by asking every node directly
 
@@ -386,11 +383,12 @@ directly, which is what the commands below do.
 for n in <node1> <node2> <node3>; do
   echo "== $n"
   ssh $n "ps -eo args | grep -c '[w]azuh-manager-db'"
-  ssh $n "tail -n 20 /var/wazuh-manager/logs/wazuh-manager.log | grep -i 'wdb\|database'"
+  ssh $n "tail -n 50 /var/wazuh-manager/logs/wazuh-manager.log | grep -i 'wdb\|wazuh-manager-db'"
 done
 ```
 
-A node logging `Cannot connect to 'queue/sockets/wdb.sock'` in a loop is the one.
+A node logging `Cannot serve /control startup: wazuh-manager-db is not answering` (remoted), or
+`Cannot connect to 'queue/sockets/wdb.sock'` in a loop (the C daemons), is the one.
 
 ### Verify the daemons really started
 
@@ -401,7 +399,8 @@ not caught. Check the process list rather than the startup output:
 ps -eo args | grep -oE 'wazuh-manager-[a-z]+' | sort -u
 ```
 
-Expect `analysisd`, `apid`, `authd`, `db`, `modulesd`, `remoted` and, on a cluster, `clusterd`.
+Expect `analysisd`, `clusterd`, `db`, `modulesd` and `remoted` on every node, `authd` unless
+`auth.disabled` is set, and `apid` on the master only.
 
 ### Take it out of rotation manually
 
@@ -423,5 +422,6 @@ from the balancer yourself and restart it.
 | `502` | oversized batch, or backend down | check size first |
 | `503` with `9016` | master unreachable | only during a master outage |
 | `503` on events | back-pressure | transient |
+| `503 dependency_unavailable` on `/control` | `wazuh-manager-db` down on that node | no, if it persists |
 | TLS error, no status | CA, expiry or SAN | no |
 | No pattern across agents | one degraded node | no |

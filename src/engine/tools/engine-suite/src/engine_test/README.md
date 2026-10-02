@@ -44,7 +44,7 @@ Contains the commands to add, remove and get integrations. It also adds the comm
 ## Formats
 Contains the different formats of handled events, such as syslog, json, macos, eventchannel, multiline etc.
 
-# Install
+# Installation
 The script is packaged along the engine-suite python packaged, to install simply run:
 ```bash
 pip install wazuh/src/engine/tools/engine-suite

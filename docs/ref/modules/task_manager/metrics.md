@@ -20,17 +20,18 @@ unversioned request answers `404`. (`inventory-sync-http.sock` does use a bare `
 not interchangeable.)
 
 The envelope is the shared `wazuh_metrics` dump: the daemon name, a UTC timestamp and one entry per
-metric.
+metric, sorted by name. A histogram's `value` is its observation count, and it adds a `summary`
+object (`count`, `sum`, `min`, `max`, `p50`, `p90`, `p99`).
 
 ```json
 {
   "name": "task_manager",
   "timestamp": "2026-09-04T12:44:54Z",
   "metrics": [
-    {"name": "task_manager.agent_tasks.created", "type": "counter", "value": 0,
+    {"name": "task_manager.agent_tasks.created", "type": "counter", "enabled": true, "value": 0,
      "description": "Agent tasks stored", "unit": "count"},
-    {"name": "task_manager.queue.pending.agent_delete_indexer", "type": "pull", "value": 0.0,
-     "description": "Pending manager tasks of type agent_delete_indexer", "unit": "tasks"}
+    {"name": "task_manager.queue.pending.agent_delete_indexer", "type": "pull", "enabled": true,
+     "value": 0.0, "description": "Pending manager tasks of type agent_delete_indexer", "unit": "tasks"}
   ]
 }
 ```
@@ -49,7 +50,7 @@ gauges, by contrast, exist for every registered type from start-up.
 
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
-| `task_manager.agent_tasks.created` | counter | count | Agent tasks stored (a repeated id counts once per request) | *diagnostic* — producer volume |
+| `task_manager.agent_tasks.created` | counter | count | Agent tasks accepted by `POST /v1/tasks` and `/v1/tasks/bulk`; a repeated id is counted again. Rows written by the upgrade routes are not counted | *diagnostic* — producer volume |
 | `task_manager.agent_tasks.delivered` | counter | count | Agent tasks handed to a poller (and marked delivered) | [`max_tasks_per_poll`](configuration.md#max_tasks_per_poll) bounds each hand-out |
 | `task_manager.agent_tasks.empty_cache_entries` | pull | agents | Agents the negative cache knows have nothing pending — their polls never touch the database | *diagnostic* |
 
@@ -92,8 +93,9 @@ gauges, by contrast, exist for every registered type from start-up.
 ## Triage
 
 - **Is anything stuck?** `queue.pending.<type>` that does not fall, with `executor.busy_workers` at
-  zero, means nothing is eligible yet — check `next_attempt_at` on a row through
-  [`/v1/manager-tasks/list`](api-reference.md#post-v1manager-taskslist).
+  zero, means nothing is eligible yet — list the pending ids through
+  [`/v1/manager-tasks/list`](api-reference.md#post-v1manager-taskslist) and read `next_attempt_at`
+  on one through [`/v1/manager-tasks/get`](api-reference.md#post-v1manager-tasksget).
 - **Is a consumer down?** `handler.outcome.<type>.not_ready` climbing means the consumer socket is not
   listening; `.busy` means it answered `409`.
 - **Is work being abandoned?** Any increase in `manager_tasks.retired.<type>.dead_letter` deserves a

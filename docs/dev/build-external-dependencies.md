@@ -2,7 +2,7 @@
 
 This document describes the GitHub Actions workflow that rebuilds Wazuh's vendored external dependencies (curl, openssl, rocksdb, …) across every platform we ship, and produces the consolidated `externals-all.tar.gz` blob that gets published to `packages.wazuh.com/deps/<DEPS_VERSION>/`.
 
-Workflow file: [`.github/workflows/5_builderpackage_externals.yml`](../../.github/workflows/5_builderpackage_externals.yml)
+Workflow file: `.github/workflows/5_builderpackage_externals.yml`
 
 Supporting scripts under `packages/externals/`:
 
@@ -60,7 +60,7 @@ The `build-externals` matrix is fixed at 7 entries:
 | `rpm-amd64` | manager | `wz-linux-amd64` | CentOS 7 manager builder image (glibc 2.17). |
 | `rpm-arm64` | manager | `wz-linux-arm64` | CentOS 7 manager builder image. |
 
-Why each Linux arch runs twice: the manager image (CentOS 7) can build a couple of deps the agent image (CentOS 6) can't (newer toolchain), but the agent image's older glibc is the safe baseline for everything else. Both legs build their full dep set; the `consolidate` job picks the agent-image copy when both exist, so we ship glibc-2.12-compatible binaries wherever possible.
+Why each Linux arch runs twice: the manager image (CentOS 7) can build a couple of deps the agent image (CentOS 6) can't (newer toolchain), but the agent image's older glibc is the safe baseline for everything else. Both legs build their full dep set; where both compiled a dep, the `consolidate` job ships the agent-image copy, so we ship glibc-2.12-compatible binaries wherever possible.
 
 We don't build separate `deb` legs because rpm glibc is forward-compatible with deb's.
 
@@ -81,7 +81,7 @@ build-ebpf ───────────────────────
 
 ## Output
 
-Per-leg artifacts (`externals-rpm-amd64-agent`, `externals-macos-arm64-agent`, …) are kept 14 days for debugging.
+Every job stores its output with the `upload_s3_artifact` action, in the CI's internal S3 bucket (`<repository>/<workflow>/<run_id>/<name>.zip`), not as a GitHub Actions artifact. Per-leg artifacts (`externals-rpm-amd64-agent`, `externals-macos-arm64-agent`, …) are kept there for debugging.
 
 The artifact to publish is `externals-all` → `externals-all.tar.gz`. Its layout matches the S3 directory it gets uploaded into:
 
@@ -96,14 +96,16 @@ libraries/
 
 `make deps` walks this exact tree; the path layout is not negotiable. If you change `generate_external.sh`'s `S3_PATH` mapping, you must update `PRECOMPILED_RES` in `src/Makefile` to match (and vice versa).
 
-Smoke build logs (`smoke-build-<target>-<arch>`) are also retained 14 days and are the first place to look when a downstream build starts pulling deps from source unexpectedly.
+Smoke build logs (`smoke-build-<target>-<arch>`) are uploaded the same way and are the first place to look when a downstream build starts pulling deps from source unexpectedly.
 
 ## Dependency matrix
 
 Which dependency each platform/target actually builds and links, and how it is
 published. The download set per target lives in `EXTERNAL_RES` (`src/Makefile`)
-and the build/link guards in `src/external/CMakeLists.txt`; the two are kept in
-sync — a dep is downloaded for exactly the targets that compile it.
+and the build/link guards in `src/external/CMakeLists.txt`. A dep is downloaded
+for the targets that compile it, with three exceptions that are downloaded more
+widely for their headers: bzip2 (every target), audit-userspace and procps (every
+Linux target, manager included), and the test frameworks (every target).
 
 Legend: ✔ built & linked · — not used. Targets: **La** Linux agent · **Lm**
 Linux manager/server · **Ma** macOS agent · **Wa** Windows agent (MinGW).
@@ -141,6 +143,9 @@ everywhere — including the Windows agent. Only non-Windows targets link `libbz
 Consumers are `data_provider`/sysinfo, `syscheckd` (whodata), `rootcheck` — all
 agent-only subdirectories. The server's `wazuh_modules` builds
 inventory_sync_server/keystore_server/vulnerability_scanner instead, so it links none of these.
+audit-userspace and procps are nevertheless downloaded for the Linux manager too: the
+unit-test wrappers under `src/unit_tests/wrappers/externals/` include `<libaudit.h>` and
+`procps/readproc.h` on every Linux target, so only their headers are used there.
 
 | Dependency | La | Lm | Ma | Wa | Published as |
 |------------|----|----|----|----|--------------|
@@ -212,7 +217,7 @@ the download behind a flag drops them from the bundle and breaks every test buil
 
 1. Open a branch, optionally edit `external_sources.sh` if you're changing a manifest URL.
 2. Dispatch the workflow with `dependencies="…"` (or empty for a clean rebuild). **Do not bump `DEPS_VERSION` in this branch.** See the caveat below.
-3. Wait for `build-externals`, `consolidate`, and all 4 `smoke-build` jobs to go green.
+3. Wait for `build-externals`, `build-ebpf`, `consolidate`, and all 5 `smoke-build` jobs to go green.
 4. Download `externals-all.tar.gz`. Pick a new `DEPS_VERSION` (the team's convention is `99-<gh-run-id>` or a hand-picked monotonic number). Upload the tarball contents into `s3://…/deps/<new-DEPS_VERSION>/libraries/…`.
 5. Open a second PR that bumps `DEPS_VERSION` in `src/Makefile` to the new value. That single change is enough — `build_external.sh` reads `DEPS_VERSION` straight out of the Makefile for both the `make deps` seed and the cpython re-ship URL.
 
@@ -253,15 +258,18 @@ There are no manager builder images for darwin or windows. The matrix reflects t
 
 ### Source-rebuild fallbacks are silent
 
-`src/Makefile` lines 602 and 650 (the precompiled-fetch rules) are `-@ … || true` — a missing precompiled tarball is non-fatal and CMake falls back to source compilation. That means a packing-path bug (binary placed under `libraries/linux/amd64/` when `make deps` looked for `libraries/linux/x86_64/`, say) won't fail `make deps` outright. The smoke-build's "Analyze dependency usage" step is what catches this, by grepping the build log for `Performing build step for '<dep>_external'` / `Building … ext_<dep>.dir/` and emitting `::warning::` for each.
+The precompiled-fetch rules in `src/Makefile` (`external-precompiled/%.tar.gz` and its cpython counterpart) are `-@ … || true` — a missing precompiled tarball is non-fatal and CMake falls back to source compilation. That means a packing-path bug (binary placed under `libraries/linux/amd64/` when `make deps` looked for `libraries/linux/x86_64/`, say) won't fail `make deps` outright. The smoke-build's "Analyze dependency usage" step is what catches this, by grepping the build log for `Performing build step for '<dep>_external'` / `Building … ext_<dep>.dir/` and emitting `::warning::` for each.
 
 Treat any smoke-build warning as a blocker. The whole point of a deps release is that everything ships precompiled.
 
 ### Consolidate tie-breaking
 
-On Linux, both the agent and manager legs build the agent dep set, so each Linux arch yields two copies of every agent dep. `consolidate` processes manager legs first, then agent legs, and the first writer wins for each dep — so the agent (older glibc) copy is the one that ships when both exist. For manager-only deps (cpython, jemalloc, simdjson, etc. — see `EXTERNAL_RES` in `src/Makefile`), the manager copy is the only candidate and ships unchanged.
+On Linux, both the agent and manager legs build the agent dep set, so each Linux arch yields two copies of every agent dep. `consolidate` decides per `<dep>.tar.gz` from the build output itself, with no dependency list:
 
-Source zips are byte-identical across legs; first writer wins is fine for those.
+1. A copy that carries a compiled library (`.a`, `.so` or `.lib`) replaces one that carries only sources. This is what keeps a manager-only dep that the agent leg cannot compile (rocksdb, for example) coming from the manager leg.
+2. Between two compiled copies the agent leg wins: manager legs are processed first and agent legs last, and an agent copy replaces an existing compiled one. Its CentOS 6 / glibc 2.12 binaries link in every builder image.
+
+Source snapshots (`libraries/sources/`) are byte-identical across legs, so the first writer wins for those.
 
 ### Debugging a single failed leg
 
@@ -272,5 +280,5 @@ If a leg keeps failing locally, you can reproduce it by pulling the same builder
 ## Related
 
 - [Package generation](package-generation.md) — `generate_package.sh`, the script that turns built sources + deps into shipped `.rpm`/`.deb`.
-- [`src/Makefile`](../../src/Makefile) — `DEPS_VERSION`, `RESOURCES_URL`, `PRECOMPILED_RES`, `EXTERNAL_RES`.
-- [`src/external/CMakeLists.txt`](../../src/external/CMakeLists.txt) — the consumer side; decides which deps short-circuit to precompiled archives vs build from source.
+- `src/Makefile` — `DEPS_VERSION`, `RESOURCES_URL`, `PRECOMPILED_RES`, `EXTERNAL_RES`.
+- `src/external/CMakeLists.txt` — the consumer side; decides which deps short-circuit to precompiled archives vs build from source.

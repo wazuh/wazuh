@@ -2,7 +2,7 @@
 
 Complete configuration reference for the Wazuh Engine (analysisd) module.
 
-The Wazuh Engine is the core event processing and detection module that handles log analysis, rule matching, decoder execution, and alert generation. It has no configuration section of its own: its connection to `wazuh-indexer` comes from the manager's shared `<indexer>` section, its credentials from the keystore, and every other setting from `analysisd.*` internal options, each of which can be overridden by an environment variable.
+The Wazuh Engine is the core event processing and detection module that handles log analysis, decoder execution, enrichment, and event output. It has no configuration section of its own: its connection to `wazuh-indexer` comes from the manager's shared `<indexer>` section, its credentials from the keystore, and every other setting from `analysisd.*` internal options, each of which can be overridden by an environment variable.
 
 - **Daemon:** `wazuh-manager-analysisd`
 - **Module:** Manager-only
@@ -266,7 +266,7 @@ The engine exposes an internal HTTP API over a **Unix domain socket** (default: 
 
 ### Key API Endpoints
 
-- **Content Management** - Create, update, and validate namespaces, policies, and resources (decoders, rules, filters, outputs, integrations) under `/content/*` and `/_internal/content/*`
+- **Content Management** - Create, update, and validate namespaces, policies, and resources (decoders, filters, outputs, integrations, KVDBs) under `/content/*` and `/_internal/content/*`
 - **Schema Validation** - Validate a policy or resource before deployment (`/content/validate/policy`, `/content/validate/resource`)
 - **Metrics** - Query engine performance metrics and statistics (`/metrics/get`, `/metrics/list`, `/metrics/dump`)
 - **Router/Tester** - Manage routes and run test sessions against policies (`/_internal/router/*`, `/_internal/tester/*`)
@@ -365,8 +365,8 @@ Monitor engine activity and errors:
 # Engine logs
 tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep analysisd
 
-# Alert generation logs
-tail -f /var/wazuh-manager/logs/alerts/alerts.log
+# Events written by a `file` output (one directory per streamlog channel)
+tail -f /var/wazuh-manager/logs/<channel>/<YYYY>/<MMM>/wazuh-<channel>-<DD>.json
 ```
 
 ### Performance Metrics
@@ -457,14 +457,14 @@ ps aux | grep analysisd
 
 ### High CPU Usage
 
-**Cause:** Processing too many events or complex rules
+**Cause:** Processing too many events or complex decoders
 
 **Solution:**
 1. Enable rate limiting:
    ```ini
    analysisd.event_queue_eps=200
    ```
-2. Review and optimize rules
+2. Review and optimize decoders
 3. Consider horizontal scaling with cluster
 
 ### Synchronization Failures

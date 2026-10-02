@@ -1,8 +1,13 @@
 # benchmark_sender — design documentation
 
-Design set for the load-generation tool of `inventory_sync_server`. It is written **before** the
-implementation: F9c-2 implements against these documents, so a disagreement between code and
+Design set for the load-generation tool of `inventory_sync_server`. It was written **before** the
+implementation: F9c-2 implemented against these documents, so a disagreement between code and
 document is a bug in one of them, to be resolved rather than tolerated.
+
+The set has since been checked against the implemented sender (`cmd/` and `internal/`). Where the
+sender does something the original design did not say, the documents describe what it does. Where
+it still does not meet a stated requirement, the requirement is kept and marked **Not implemented**
+next to it, so the gap stays visible instead of being quietly rewritten away.
 
 Requirement levels follow RFC 2119: **MUST**, **MUST NOT**, **SHOULD**, **MAY**.
 
@@ -11,7 +16,7 @@ Requirement levels follow RFC 2119: **MUST**, **MUST NOT**, **SHOULD**, **MAY**.
 | Doc | Read it for |
 |---|---|
 | [01-overview.md](01-overview.md) | What the tool measures, its two modes, and what it deliberately does not do |
-| [02-functional-requirements.md](02-functional-requirements.md) | The HTTP contract the sender must honor (FR-1…FR-14) |
+| [02-functional-requirements.md](02-functional-requirements.md) | The HTTP contract the sender must honor (FR-1…FR-18) |
 | [03-control-protocol.md](03-control-protocol.md) | `POST /control`: startup, keepalives, shutdown — shapes, auth, cadence |
 | [04-wire-protocol.md](04-wire-protocol.md) | Enrollment, the `wazuh-agent+jwt` bearer token, HTTPS and UDS transports |
 | [05-flatbuffers-messages.md](05-flatbuffers-messages.md) | Building `Message{FullSession}` from a scenario |
@@ -28,9 +33,10 @@ Requirement levels follow RFC 2119: **MUST**, **MUST NOT**, **SHOULD**, **MAY**.
 | [16-enroll-https.md](16-enroll-https.md) | `POST /enroll` with an enrollment token: the fleet's bootstrap and the measured step, and how the token reaches the sender |
 
 Operator-facing documentation of the system under test lives in
-`docs/ref/modules/inventory-sync-server/` (architecture, API reference, schemas) and
-`docs/ref/modules/remoted/`. This set documents the **client**, and cites those where the contract
-originates.
+[`docs/ref/modules/inventory-sync-server/`](../../../../docs/ref/modules/inventory-sync-server/README.md)
+(architecture, API reference, schemas) and
+[`docs/ref/modules/remoted/`](../../../../docs/ref/modules/remoted/README.md). This set documents
+the **client**, and cites those where the contract originates.
 
 ## Glossary
 
@@ -39,18 +45,20 @@ originates.
 | **Sender** | The `benchmark_sender` binary: the whole load generator |
 | **Mode** | Which transport the run exercises: `uds` (the server alone) or `agent` (through remoted) |
 | **Agent** | One simulated agent: an identity (id + key), a keepalive loop, and its fleet's lanes running in parallel |
-| **Fleet** | A group of agents (usually `bench-<n>`) that share a lane set and a metadata profile — a run may have several (a Windows fleet and a Linux fleet at once) |
+| **Fleet** | A group of agents (named `bench-<fleet>-<NNNN>`) that share a lane set and a metadata profile — a run may have several (a Windows fleet and a Linux fleet at once) |
 | **Lane** | A named, ordered list of steps one agent runs. An agent runs all of its fleet's lanes **in parallel** (FIM, SCA, syscollector, VD, engine…), the way a real agent does |
 | **Scenario** | A JSON file describing a run: mode, lanes, fleets, pacing |
 | **Session** | ONE `POST /stateful` request carrying one whole `Message{FullSession}`, and its response |
 | **Keepalive** | A `POST /control` of type `notify`, sent periodically per agent (default every 10 s) |
 | **Engine stream** | A lane that ships log events to `POST /stateless` (the engine ingress) instead of inventory sessions |
 | **Re-scan request** | A `POST /scan/vd` (`kind: "scan_vd"`): asks the manager to re-scan the inventory it ALREADY holds for that agent, against a newer CVE feed — not the scan a VDFirst/VDSync session triggers over the inventory it carries |
-| **EPS** | Requests per second the sender aims for, enforced by a leaky bucket |
+| **EPS** | A rate target enforced by a leaky bucket: `requests_per_second` for the shared request bucket, `events_per_second` for an engine lane |
 | **Drain** | The bounded shutdown window: stop starting work, let in-flight responses land, then report |
 | **Artifacts** | The files a run produces: `bench.csv`, `sender_summary.json`, `samples/metrics.ndjson`, … |
 
 ## What is NOT here
 
 The orchestration scripts (`run_benchmark.sh`, the resource monitor, the chart generators) and the
-scenario corpus are F9c-3; the load report is F9c-4. This set covers only the sender itself.
+scenario corpus are F9c-3, documented in [the harness README](../../README.md) and
+[`SCENARIOS.md`](../../SCENARIOS.md); the load report is F9c-4. This set covers only the sender
+itself.

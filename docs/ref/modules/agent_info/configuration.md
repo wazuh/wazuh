@@ -307,14 +307,12 @@ grep -A10 "<synchronization>" /var/ossec/etc/ossec.conf
 
 ### View Collected Metadata
 
-**On manager (query the agent metadata synchronized to the indexer):**
+**On manager (query agent info through the Server API, master node):**
 ```bash
-# View the wazuh.agent fields stamped on agent 001's state documents
-sudo curl --cacert /var/wazuh-manager/etc/certs/root-ca.pem \
-          --cert /var/wazuh-manager/etc/certs/indexer-connector.pem \
-          --key /var/wazuh-manager/etc/certs/indexer-connector-key.pem \
-          -u admin:password \
-          "https://127.0.0.1:9200/wazuh-states-*/_search?q=wazuh.agent.id:001&size=1&_source=wazuh.agent"
+# View agent system information
+TOKEN=$(curl -s -k -u wazuh:<WAZUH_PASSWORD> -X POST "https://localhost:55000/security/user/authenticate?raw=true")
+curl -s -k -X GET "https://localhost:55000/agents?agents_list=001&pretty=true" \
+    -H "Authorization: Bearer $TOKEN"
 ```
 
 **On agent (check synchronization status):**

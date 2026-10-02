@@ -18,7 +18,8 @@ writes that straight to wazuh-db — see
 [HTTPS Agent API](https-events-api.md#control-endpoint-post-control).
 
 **The cache below belongs to the legacy channel.** It runs only when `<remote><legacy>` is
-present and enabled; on a manager serving 5.x agents exclusively, none of it is active.
+present and enabled — as the installer writes it; with `<legacy><enabled>no</enabled>`, none of it
+is active.
 
 <a id="how-it-works"></a>
 
@@ -49,7 +50,7 @@ configuration over `POST /download`.
 
 - **Memory**: varies with the copied strings and allocations; there is no fixed per-agent byte bound
 - **Hash table**: 2048 buckets. This is a compile-time constant, not a setting — see
-  [Configuration](configuration.md#hash-table-tuning)
+  [Configuration](configuration.md#stateless-metadata-cache)
 - **Batching**: the header is generated once per batch, not once per event
 
 ## Configuration
@@ -60,7 +61,7 @@ What is tunable is the cache's entry lifetime and the queues feeding it —
 `remoted.enrich_cache_expire_time`, `remoted.control_msg_queue_size` and
 `remoted.batch_events_capacity` in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`.
 
-See the [Configuration guide](configuration.md#stateless-metadata-cache) for defaults and sizing.
+See the [Configuration guide](configuration.md#stateless-metadata-cache) for defaults and the cleanup cadence.
 
 ## References
 

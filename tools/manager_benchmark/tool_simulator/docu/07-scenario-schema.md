@@ -34,6 +34,14 @@ production-shaped pressure.
       { "kind": "delta", "option": "VDSync", "documents": { "count": 30 },
         "repeat_count": 20, "repeat_delay": "5s", "initial_delay": "10s" }
     ],
+    "fim_linux": [
+      { "kind": "full_resync", "module": "fim", "indices": ["wazuh-states-fim-files"],
+        "documents": { "count": 300, "size_bytes": 512 } }
+    ],
+    "vd_linux": [
+      { "kind": "delta", "module": "syscollector", "option": "VDFirst",
+        "indices": ["wazuh-states-inventory-packages"], "documents": { "count": 300 } }
+    ],
     "engine": [
       { "kind": "engine", "engine": "../sample_payloads/engine/syslog.log", "location": "syslog",
         "events_per_second": 250, "events_per_batch": 100 }
@@ -66,9 +74,15 @@ a real 5.x agent does), plain in uds mode (its ingress has no decoder); `"none"`
 `"zstd"` = forced (agent mode only). The `--compression zstd|none` CLI flag overrides it per run,
 which makes the with/without A/B one scenario instead of two.
 
-Anything a fleet or a step does not set is taken from `defaults`; anything `defaults` does not set
-has a built-in default. This three-level inheritance (built-in → `defaults` → fleet/step) is what
-lets one file carry a Windows fleet and a Linux fleet with different metadata but shared lane logic.
+A step's `module`, `option` and `documents` fall back to `defaults`; the session's cluster name is
+`--cluster`, else `defaults.cluster_name`. A fleet's `start` metadata falls back to built-in values
+(`5.0.0`, `x86_64`, `Ubuntu`/`ubuntu`/`linux`/`22.04`), not to `defaults`. A step with no
+`indices` targets `wazuh-states-inventory-packages`. This layering (built-in → `defaults` →
+fleet/step) is what lets one file carry a Windows fleet and a Linux fleet with different metadata
+but shared lane logic.
+
+The loader validates only the lanes some fleet references: a lane no fleet lists is never run and
+never checked.
 
 ## Lanes run in parallel
 
@@ -88,14 +102,14 @@ independent.
 | `delta` | `ModuleDelta` + `SyncData` | `documents` controls count and size (`checksum.hash.sha1` is always present — see the conventions); `contexts` **MAY** add VD context items; `option` picks `Sync`/`VDFirst`/`VDSync`; for `VDFirst`/`VDSync`, `feed_offset` **MAY** override `Start.feed_offset` (see [05](05-flatbuffers-messages.md)) |
 | `cleans` | `ModuleDelta` + `Cleans` | `indices` overrides the defaults |
 | `checksum` | `ModuleCheck` + `ChecksumModule` | `checksum` is `"correct"` (computed from what this agent sent), `"mismatch"`, or a literal |
-| `metadata` / `groups` | `MetadataDelta` / `GroupDelta` (or `*Check`) | Start-only; needs `indices` and `global_version` |
+| `metadata` / `groups` | `MetadataDelta` / `GroupDelta` | Start-only; the loader requires `indices`. Set `global_version` too: the server needs it for these modes, but the loader does not check it. The `*Check` variants cannot be built from a scenario |
 | `full_resync` | Expands to `cleans` + `delta` | The D19 composition, as two sequential sessions on the same lane |
 | `delete_agent` | `POST /_internal/agents/delete` | `uds` mode only |
 | `engine` | An H/E event batch to `POST /stateless` | `agent` mode only; see [13](13-engine-event-streams.md) |
 | `scan_vd` | A feed-update re-scan request to `POST /scan/vd` | `agent` mode only; takes ONLY `feed_offset` and the timing fields — no payload; see [14](14-scan-vd.md) |
 | `cacerts` | A body-less `GET /cacerts` (the CA that signs the listener certificate) | `agent` mode only; takes ONLY the timing fields (`repeat_count`, `repeat_delay`, `initial_delay`); see [15](15-cacerts.md) |
 | `enroll_https` | A `POST /enroll` of a FRESH agent name with the `wazuh-enroll+jwt` bearer of an enrollment token | `agent` mode only; takes ONLY the timing fields; the token comes from `--enroll-token-file` / `WAZUH_ENROLLMENT_TOKEN`, never from the scenario; see [16](16-enroll-https.md) |
-| `raw` | A deliberately invalid body | Rejection paths: `not_full_session`, `garbage`, `empty`, `oversized` |
+| `raw` | A deliberately invalid body | Rejection paths: `not_full_session`, `garbage`, `empty`, `oversized`. `garbage` is the default, and `oversized` sends a 1-byte body (it does not trip a size limit; use a large `documents` spec for the `413`) |
 
 Concurrency is expressed with lanes, never with a step kind: an agent that must POST two sessions
 at once runs two lanes (the FIFO-ordering scenario). An earlier `parallel` kind was accepted
@@ -138,10 +152,11 @@ Durations are Go duration strings (`"3s"`, `"5m"`).
 | `concurrent_agents` | How many agents are Active at once. `0` = all of them |
 | `requests_per_second` | Aggregate session rate through a shared leaky bucket. `0` = unlimited (correct for saturation, wrong for latency) |
 | `repeat_until` | Keep replaying every fleet's lanes until this duration elapses (`"0"` = one pass of each lane's steps) |
-| `drain_timeout` | The bounded shutdown window (see [10](10-error-handling-and-shutdown.md)) |
+| `drain_timeout` | The bounded shutdown window (see [10](10-error-handling-and-shutdown.md)); `60s` when unset. This field is the only way to set it: the sender's `--drain-timeout` flag is not wired to the runner |
 
-**What `requests_per_second` counts**: `/stateful` sessions, `POST /_internal/agents/delete` and `POST /scan/vd`
-requests, one token each. A session's document count does NOT weigh against it — a VD full sync of 500 documents is one
+**What `requests_per_second` counts**: `/stateful` sessions, `POST /_internal/agents/delete`,
+`POST /scan/vd`, `GET /cacerts` and measured `POST /enroll` requests, one token each (not
+`/control`, not `/stateless`, not the bootstrap enrollment). A session's document count does NOT weigh against it — a VD full sync of 500 documents is one
 FlatBuffer, one request, one token. Session *volume* is shaped with `documents.count`/`size_bytes`
 and observed in the summary's `documents_per_second`; the rate knob shapes how often the server sees
 a session. Engine lanes have their own knob in real event units (`events_per_second`, [13](13-engine-event-streams.md)),
@@ -166,21 +181,27 @@ budget spent).
 ## Expected (optional verdict)
 
 ```json
-"expected": {
-  "sessions":  { "ok": { "eq": 48 }, "s5xx": { "eq": 0 }, "s503_retry_after": { "gte": 1 } },
-  "stateless": { "s202": { "gte": 1 } },
-  "scan":      { "sent": { "eq": 100 }, "other": { "eq": 0 } },
-  "cacerts":   { "sent": { "eq": 200 }, "s200": { "eq": 200 }, "other": { "eq": 0 } },
-  "enroll_https": { "sent": { "eq": 100 }, "s200": { "eq": 100 }, "s401": { "eq": 0 }, "other": { "eq": 0 } },
-  "control":   { "startup_err": { "eq": 0 } },
-  "deletes":   { "err": { "eq": 0 } },
-  "transport_errors": { "eq": 0 },
-  "retries_exhausted": { "eq": 0 }
+{
+  "expected": {
+    "sessions":  { "ok": { "eq": 48 }, "s5xx": { "eq": 0 }, "s503_retry_after": { "gte": 1 } },
+    "stateless": { "s202": { "gte": 1 } },
+    "scan":      { "sent": { "eq": 100 }, "other": { "eq": 0 } },
+    "cacerts":   { "sent": { "eq": 200 }, "s200": { "eq": 200 }, "other": { "eq": 0 } },
+    "enroll_https": { "sent": { "eq": 100 }, "s200": { "eq": 100 }, "s401": { "eq": 0 }, "other": { "eq": 0 } },
+    "control":   { "startup_err": { "eq": 0 } },
+    "deletes":   { "err": { "eq": 0 } },
+    "transport_errors": { "eq": 0 },
+    "retries_exhausted": { "eq": 0 }
+  }
 }
 ```
 
 Assertions run against the run's **final total counters** (the summary's `totals` section, same
-names; `s5xx` is the derived `s500 + s503`). Operators are `eq`, `gte` and `lte`; several on one
+names; `s5xx` is the derived `s500 + s503`). The group keys and their counters are the tables in
+`internal/verdict/verdict.go`: `sessions` (including `retries_feed`, `retries_503`,
+`retries_exhausted`, `transport_errors`, `documents_sent`, `abandoned_on_drain`), `stateless`,
+`control`, `scan`, `cacerts` (with `s429`), `enroll_https` (with `s429`), `deletes`, and the two
+top-level counters `transport_errors` and `retries_exhausted`. Operators are `eq`, `gte` and `lte`; several on one
 counter form a conjunction. **Counters only, by design**: statuses and counts are properties of the
 protocol contract and hold on any hardware, while latency and throughput belong to the machine that
 produced them — a committed threshold from one laptop would fail on the next. Counts that depend on
@@ -215,17 +236,16 @@ already invalid — judging counters produced by an unauthenticated fleet would 
   session whose `cluster_name` is not its own, so the value in the file is only a default:
   `--cluster` overrides it per run, which is what makes one scenario library usable against any
   manager. There is **no cluster node**: `defaults.cluster_node` was retired (a file that still
-  declares it is refused at load time) and no session sets `Start.cluster_node`, because the manager
-  never validated it and the tool was only echoing back a value it had read from the manager's own
-  configuration — see [05](05-flatbuffers-messages.md).
+  declares it is refused at load time), and `Start` no longer has such a field — see
+  [05](05-flatbuffers-messages.md).
 - Document generation is deterministic from a seed recorded in the run metadata: two runs of one
   scenario send byte-identical payloads, or the comparison is not one.
 - **There is no pass/fail gate unless the scenario opts in.** A scenario declares *what to send*;
   the sender records every outcome (every status code, every latency, per lane and per fleet) and
   reports it. A saturation run that is *supposed* to produce `503`s is not mislabeled a failure.
   The one opt-in exception is the `expected` block above — counter-only contract assertions, exit
-  `3` on failure. What the sender always fails on is a broken run (a `401`, a `400 invalid_json` to
-  `/control`, transport errors past the threshold), because those mean the measurement itself is
-  invalid — see [10](10-error-handling-and-shutdown.md).
+  `3` on failure. What the sender always fails on is a broken run (a `401`, a non-`200` answer to a
+  `/control` `startup` or `notify`, any transport error in `uds` mode), because those mean the
+  measurement itself is invalid — see [10](10-error-handling-and-shutdown.md).
 - The scenario file used **MUST** be copied into the run's artifacts verbatim (F9c-3), together with
   the effective CLI parameters.

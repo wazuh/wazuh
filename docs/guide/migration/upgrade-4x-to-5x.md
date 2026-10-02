@@ -7,6 +7,23 @@ This guide describes how to migrate Wazuh agents from 4.X to 5.0.0, including:
 - Observed startup warnings and errors and their corresponding workarounds.
 - Notes about `local_internal_options.conf` compatibility.
 
+> [!IMPORTANT]
+> This page covers **agents** only. A Wazuh **manager** cannot be upgraded in place from 4.x: `install.sh`, the
+> DEB `preinst` and the RPM `%pre` all refuse a manager whose installed version is older than 5.x, and nothing
+> is changed:
+>
+> ```console
+> ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.
+>
+> Detected installed version: 4.14.0
+>
+> A clean installation of Wazuh manager 5.x is required.
+> Refer to the 5.x migration guide for more information.
+> ```
+>
+> A 5.0 manager is always a fresh installation, to which the 4.x data and configuration are carried over by
+> hand — see [Manager migration from 4.x to 5.0](manager-4x-to-5x.md).
+
 ## Upgrade path requirements
 
 Wazuh Agent 5.0.0 cannot be installed directly on agents running versions earlier than 4.14.0.
@@ -16,7 +33,7 @@ Required path:
 1. Upgrade `4.X` -> `4.14.X`
 2. Upgrade `4.14.X` -> `5.0.0`
 
-If you attempt a direct `4.13.X` -> `5.0.0` package upgrade, installation is blocked by pre-install validation,
+If you attempt a direct `4.13.X` -> `5.0.0` package upgrade, installation is blocked by pre-install validation:
 
 On the Dashboard:
 
@@ -63,7 +80,7 @@ The following changes were identified during agent startup validation after upgr
 | `<client>...</client>` | Renamed | `WARNING: <config-profile> inside the legacy <client> block is ignored. Configure it under <agent>.` | Rename the block to `<agent>` and its inner `<server>` to `<manager>`. Only `<server><address>` and the `<enrollment>` sub-block are read out of a `<client>` block; every other option in it (`<config-profile>`, `<notify_time>`, `<crypto_method>`) stops taking effect until the block is renamed, and each one is named in a startup warning. |
 | `<client><server><address>` | Read as fallback | `INFO: <agent><manager><endpoint> is not configured. Using <client><server><address> 'MANAGER_IP' with the default port 1517 and the default endpoint prefix 'wazuh-manager'. Replace the <client><server> block with a single <endpoint>MANAGER_IP:1517/wazuh-manager</endpoint>` | None, to keep connecting: the port defaults to `1517` and the request path to the manager's default prefix. Move it to `<agent><manager><endpoint>` for the supported end state — the message quotes the exact line to write. |
 | `<client><enrollment>...</enrollment>` | Read | — | None, if the groups it names exist on the manager the agent enrolls against — see the note below. The enrollment identity — `<agent_name>`, `<groups>`, `<agent_address>`, `<authorization_pass_path>` — is read out of the legacy block, so an upgraded agent that has to re-enroll presents the same identity instead of registering again under its hostname with no group. Move it under `<agent>` when renaming the block. |
-| `<client><server><port>1514</port></server></client>` | Changed default | — | The agent talks HTTPS to the manager on `1517`. Inside `<agent><manager>`, remove the port to take the new default or set `1517` explicitly; inside a legacy `<client>` block the port is not read at all. |
+| `<client><server><port>1514</port></server></client>` | Changed default | — | The agent talks HTTPS to the manager on `1517`. Under `<agent><manager>` the port is part of `<endpoint>` (`MANAGER_IP:1517/wazuh-manager`, `1517` when omitted); inside a legacy `<client>` block the port is not read at all. |
 | `<client><server><protocol>...</protocol></server></client>` | Ignored | — | Remove `<protocol>`. TCP is used. Inside a legacy `<client><server>` block only the address is read, and its siblings are dropped without a message; the `INFO: Ignoring the 'protocol' option. Switching to TCP.` line comes from `<protocol>` under `<agent>`. |
 | `<client><crypto_method>...</crypto_method></client>` | Ignored | `WARNING: <crypto_method> inside the legacy <client> block is ignored: only <server> and <enrollment> are read from it.` | Remove `<crypto_method>`. AES is used. Under `<agent>` the same option reports `INFO: Ignoring the 'crypto_method' option. Switching to AES.` instead. |
 | `<client_buffer>...</client_buffer>` (top level, a sibling of `<client>`) | Moved | `INFO: 'client_buffer' is no longer used and will be ignored. Event batching is configured under <agent><batch>.` | Remove `<client_buffer>`; configure batching under `<agent><batch>` if the defaults do not suit you. Nested inside `<client>` instead, it is reported by that block's own message: `WARNING: <client_buffer> inside the legacy <client> block is ignored: only <server> and <enrollment> are read from it.` |
@@ -76,6 +93,7 @@ The following changes were identified during agent startup validation after upgr
 | `<wodle name="osquery">...</wodle>` | Removed in 5.0 | `INFO: The 'osquery' module is deprecated. Use the Syscollector module instead.` | Migrate to IT Hygiene, then remove the `osquery` wodle block. See [Migrating from OSquery to IT Hygiene](osquery-to-it-hygiene.md). |
 | `<sca><skip_nfs>...</skip_nfs></sca>` | Deprecated/Unavailable | `INFO: Detected a deprecated configuration for SCA: 'skip_nfs' is no longer available.` | Remove `<skip_nfs>` from `sca`. See [SCA policies from 4.x to 5.x](sca-policies-4x-to-5x.md). |
 | `<client><enrollment><auto_method>...</auto_method></enrollment></client>` | Ignored | `INFO: <auto_method> under <enrollment> is no longer used: enrollment always negotiates TLS 1.3. Ignoring.` | None required. The option was removed entirely and is accepted-but-ignored so an upgraded file still starts; remove it when convenient. See [TLS 1.3 enrollment enforcement](#tls-13-enrollment-enforcement-wazuh-manager-authd) below. |
+| `<enrollment>`'s `<manager_address>`, `<port>`, `<interface_index>`, `<ssl_cipher>`, `<server_ca_path>`, `<agent_certificate_path>`, `<agent_key_path>` | Ignored | `INFO: <ssl_cipher> under <enrollment> is no longer used: enrollment reuses <agent><manager>/<agent><ssl>. Ignoring.` (one line per option, naming it) | None required; remove them when convenient. A 5.0 agent enrolls against the same `<agent><manager><endpoint>` and with the same `<agent><ssl>` material as every other request. |
 
 ### Additional observed parser side-effects
 
@@ -200,9 +218,9 @@ After upgrading and cleaning configuration, verify:
 2. Agent and manager versions are both compatible with 5.0 communication protocol.
 3. The agent holds a trust anchor at `/var/ossec/etc/certs/root-ca.pem` and verifies the manager. A remote upgrade delivers one — see [Trust anchor delivery to legacy agents](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents); a local package upgrade does not. On Linux, a `(4126)` in `ossec.log` means one was delivered but never installed, usually because the `openssl` command is missing — see [When the CA cannot be validated on the agent](remote-agent-upgrade.md#when-the-ca-cannot-be-validated-on-the-agent).
 
-Port `1515` is the legacy enrollment listener. An upgraded agent keeps the identity it already has and does not enroll again, so it never uses that port; a 5.0 agent registering for the first time does so over `POST /enroll` on `1517`, with an enrollment token.
+Port `1515` is the legacy enrollment listener, used only by 4.x agents, and `1514` is the legacy session listener that 4.x agents (and the remote upgrade of a 4.x agent) use. A 5.0 manager opens `1514` only when `<remote><legacy>` is configured, and `1515` follows it unless `<auth><legacy_enrollment>` is set explicitly. An upgraded agent never uses either: it keeps the identity it already has and does not enroll again, and a 5.0 agent registering for the first time does so over `POST /enroll` on `1517`, with an enrollment token.
 
-Typical connectivity symptoms requiring action:
+The following are the messages of an agent still running **4.x** (not yet upgraded, or whose upgrade aborted) that cannot reach those legacy listeners, for example because the 5.0 manager was installed without `<remote><legacy>`. A 5.0 agent does not log them:
 
 ```console
 ERROR: (1208): Unable to connect to enrollment service at '[MANAGER_IP]:1515'
@@ -213,8 +231,8 @@ ERROR: (1216): Unable to connect to '[MANAGER_IP]:1514/tcp': 'Transport endpoint
 Workaround checklist:
 
 - Confirm manager is up and reachable from the agent host.
-- Confirm manager has been migrated to a compatible 5.0 deployment.
-- Confirm firewall/network rules allow `1517/tcp` (agent to manager). `1515/tcp` is needed only while agents still on 4.x are enrolling.
+- Confirm the manager is a 5.0 installation (see [Manager migration from 4.x to 5.0](manager-4x-to-5x.md)).
+- Confirm firewall/network rules allow `1517/tcp` (agent to manager). `1514/tcp` and `1515/tcp` are needed only while agents still on 4.x connect, enroll or are remotely upgraded.
 - Confirm the agent points to the correct manager address. A carried-over 4.X file spells it `<client><server><address>`, which is read as a fallback; the 5.0 spelling is `<agent><manager><endpoint>`.
 - Confirm the URL prefix matches the manager's `remote.https.global_prefix`. A mismatch answers every request `404`, never `401`, and is the single most commonly missed cause here.
 - Confirm the trust anchor arrived. If verification is the problem, the agent names which check failed — see the message table in [Agent Not Connecting](../../ref/modules/client/README.md#agent-not-connecting).
@@ -230,7 +248,7 @@ Two things to plan for when the upgrade is not run by hand on a terminal:
 
 A package upgrade supplies no CA and checks nothing: the manager pushes its `root-ca.pem` only on the remote-upgrade path (see [Trust anchor delivery](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents)), and the pre-install gate described under [Certificate trust check](#certificate-trust-check) belongs to the WPK installer, which does not run here.
 
-The consequence is quiet rather than loud. A 4.X `ossec.conf` carries no `<ssl>` block, so the upgraded agent lands on the last row of the resolution table: with no anchor on disk it resolves to `none`, connects, and verifies nothing, logging `TLS verification is DISABLED (verify_mode=none)`. It does not refuse to start and it does not fail to connect, so a fleet upgraded this way is working and unverified unless you look. Place the manager's CA at `/var/ossec/etc/certs/root-ca.pem` (`<installdir>\certs\root-ca.pem` on Windows) before the upgrade, `0640 root:wazuh` so the agent can read it, or set `<certificate_authorities>` explicitly; the same agent then comes up verifying with `full`.
+The consequence is quiet rather than loud. A 4.X `ossec.conf` carries no `<ssl>` block, so the upgraded agent lands on the last row of the resolution table: with no anchor on disk it resolves to `none`, connects, and verifies nothing, logging `TLS verification is DISABLED (verification_mode=none).` It does not refuse to start and it does not fail to connect, so a fleet upgraded this way is working and unverified unless you look. Place the manager's CA at `/var/ossec/etc/certs/root-ca.pem` (`<installdir>\certs\root-ca.pem` on Windows) before the upgrade, `0640 root:wazuh` so the agent can read it, or set `<certificate_authorities>` explicitly; the same agent then comes up verifying with `full`.
 
 ## Remote upgrade (WPK)
 
@@ -268,68 +286,59 @@ Before installing anything, the WPK installer checks that the combination the up
 - a `system` that the host's own trust store does not verify the manager against, whether it was set explicitly or resolved by default;
 - a `<verification_mode>` that is not one of the four accepted values.
 
-A 4.X agent carries none of that: a `<client>` block cannot express TLS verification. A migration therefore lands on the last row of the table, and on Linux **it does not abort** — the installer recognises the installed agent as pre-5.0 through `dpkg-query` or `rpm`, and lets the upgrade proceed with the agent running unverified, stating so in `logs/upgrade.log`:
+A 4.X agent carries none of that: a `<client>` block cannot express TLS verification. With no anchor available, the installer checks whether the host's own trust store verifies the manager's certificate, and when it does not, the outcome depends on whether it can tell that the installed agent predates 5.0:
 
-```console
-2026/09/14 10:12:33 - No trust anchor is present at ./etc/certs/root-ca.pem; the upgraded agent will run unverified unless <ssl><verification_mode> and <certificate_authorities> are configured explicitly. To enable verification: place the manager's CA at ./etc/certs/root-ca.pem and re-run the upgrade, or configure <certificate_authorities> explicitly and restart the agent.
-```
+- **Linux** (the version comes from `dpkg-query` or `rpm`) and **Windows** (from the installed version): the upgrade proceeds, and the agent lands on the last row of the table — running unverified. `logs/upgrade.log` (`upgrade\upgrade.log` on Windows) says so:
 
-That exception depends on identifying the installed version, so it does not apply everywhere: on macOS there is no package query to answer it, and the same 4.X migration aborts instead. Placing the CA beforehand avoids both outcomes.
+  ```console
+  2026/09/14 10:12:33 - No trust anchor is present at ./etc/certs/root-ca.pem; the upgraded agent will run unverified unless <ssl><verification_mode> and <certificate_authorities> are configured explicitly. To enable verification: place the manager's CA at ./etc/certs/root-ca.pem and re-run the upgrade, or configure <certificate_authorities> explicitly and restart the agent.
+  ```
 
-The anchor is what changes that outcome, and it reaches the agent in one of two ways:
+- **macOS**: there is no package query to answer it, so the same 4.X migration aborts instead.
 
-- the manager sends it over the upgrade channel, on by default — see [Trust anchor delivery](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents). The installer validates it first and installs it only if it verifies the manager's certificate at the address the agent dials; if it does not, the upgrade aborts and the agent keeps its current version. On Linux that validation needs the `openssl` command; without it the CA stays in `var/incoming`, no anchor is installed and the agent runs unverified — see [When the CA cannot be validated on the agent](remote-agent-upgrade.md#when-the-ca-cannot-be-validated-on-the-agent);
-- or you place it at the path above before upgrading.
-
-The file is the entire cutover either way: `ossec.conf` is never edited by the upgrade, and an agent that finds the anchor without a `<verification_mode>` of its own comes up verifying with `full` against it.
+The anchor is what changes that outcome. The manager sends it over the upgrade channel by default, and the installer validates it before installing it — see [Trust anchor delivery to legacy agents](remote-agent-upgrade.md#trust-anchor-delivery-to-legacy-agents) and, for the cases where it cannot be validated (including a Linux host without the `openssl` command), [When the CA cannot be validated on the agent](remote-agent-upgrade.md#when-the-ca-cannot-be-validated-on-the-agent). Or you place it at the path above before upgrading. Either way, `ossec.conf` is never edited by the upgrade, and an agent that finds the anchor without a `<verification_mode>` of its own comes up verifying with `full` against it.
 
 As with the connectivity check, an abort happens before the package manager runs: the agent stays on 4.14.X, keeps running, and the upgrade can be retried. `upgrade_result` is `2`.
 
-This matters specifically for an **on-prem fleet whose manager certificate is issued by the deployment's own CA** (the `root-ca.pem` of the Wazuh installation assistant's `wazuh-certs-tool`, which also issues the listener certificate, replacing the bootstrap pair the manager issues for itself at installation) — the typical case outside a publicly-trusted CA. Since a 4.X agent never checked the certificate, upgrading in place without first placing the manager's CA at the default path (or configuring `<certificate_authorities>` explicitly) leaves the new agent unable to connect. Place the CA ahead of a fleet-wide upgrade rather than discovering the gap one aborted upgrade at a time.
+This matters most for a fleet whose manager certificate is issued by the deployment's own CA rather than a publicly-trusted one, so that no host's trust store verifies it: without an anchor, Linux and Windows agents upgrade into an unverified connection and macOS upgrades abort. Place the CA (or make sure the delivered one validates) ahead of a fleet-wide upgrade rather than discovering the gap one agent at a time.
 
 ## TLS 1.3 enrollment enforcement (`wazuh-manager-authd`)
 
-Wazuh 5.0 raises the minimum TLS protocol version accepted by the manager's enrollment service (`wazuh-manager-authd`) to TLS 1.3 and removes the `ssl_auto_negotiate` fallback that previously allowed negotiating down to TLS 1.0. This affects the manager's `wazuh-manager.conf` and the agent's `<enrollment>` block in `ossec.conf`.
+Wazuh 5.0 raises the minimum TLS protocol version of the manager's legacy enrollment listener (`wazuh-manager-authd`, port `1515`) to TLS 1.3 and removes the `ssl_auto_negotiate` fallback that previously allowed negotiating down to TLS 1.0. That listener serves only agents still on 4.x, and only while it is open (see [Connectivity and interoperability checks](#connectivity-and-interoperability-checks)); a 5.0 agent enrolls over `POST /enroll` on `1517`, whose TLS settings are `<remote><https>`'s.
 
 ### Manager: `<auth><ciphers>` must use a TLS 1.3 ciphersuite list
 
-`wazuh-manager-authd` validates `<ciphers>` against a fixed set of TLS 1.3 ciphersuite names: `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`. A 4.x-style OpenSSL cipher-list string (for example the previous default, `HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH`) is rejected at config load:
+Do not carry a 4.x `<auth><ciphers>` value into `wazuh-manager.conf`. In 5.0 it is a colon-separated list of TLS 1.3 ciphersuite names, and `wazuh-manager-authd` accepts only these: `TLS_AES_128_GCM_SHA256`, `TLS_AES_256_GCM_SHA384`, `TLS_CHACHA20_POLY1305_SHA256`, `TLS_AES_128_CCM_SHA256`, `TLS_AES_128_CCM_8_SHA256`. Omit the option to use the default, `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`.
+
+A 4.x-style OpenSSL cipher-list string (for example the 4.x default, `HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH`) does not match the schema's `TLS_<NAME>[:TLS_<NAME>...]` pattern, so `wazuh-manager-control start` refuses the configuration before starting any daemon, logging:
 
 ```console
-ERROR: Invalid TLS 1.3 cipher suite 'HIGH' in 'ciphers' option
+(1244): Invalid configuration at '/auth/ciphers': does not satisfy 'pattern' [...]
 ```
 
-If an invalid value somehow reaches the TLS setup step, the manager fails the same way at startup instead:
+A value of the right shape that names a ciphersuite outside the list above passes that check and is refused by `wazuh-manager-authd`'s own configuration check, which `wazuh-manager-control start` also runs before starting anything (`wazuh-manager-authd: Configuration error. Exiting`):
 
 ```console
-ERROR: Invalid TLS 1.3 cipher suite list: '<value>'
-ERROR: SSL context setup failed. Exiting.
+ERROR: Invalid TLS 1.3 cipher suite 'TLS_AES_256_CBC_SHA' in 'ciphers' option
 ```
 
-Either way, `wazuh-manager-authd` does not start and no agent can enroll until `<ciphers>` is updated to a colon-separated list of the values above (default: `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`) or removed to use that default.
-
-`<auth><ssl_auto_negotiate>` was also removed entirely. Leaving it in `wazuh-manager.conf` is now an unknown option (the manager configuration is validated against its schema) and blocks the manager from starting:
+`<auth><ssl_auto_negotiate>` was removed entirely. Carried into `wazuh-manager.conf` it is an unknown option, and the manager refuses to start:
 
 ```console
-ERROR: (1244): Invalid configuration at '/auth/ssl_auto_negotiate': unknown option (does not satisfy 'additionalProperties') [schema /properties/auth].
+(1244): Invalid configuration at '/auth/ssl_auto_negotiate': unknown option (does not satisfy 'additionalProperties') [schema /properties/auth].
 ```
 
-Remove `<ssl_auto_negotiate>` from `<auth>` before upgrading the manager.
+### Agent: `<enrollment><ssl_cipher>` is no longer read
 
-### Agent: `<enrollment><ssl_cipher>` must also use a TLS 1.3 ciphersuite list
-
-The agent's `ssl_cipher` option has the same new format requirement, but no config-time validation: a legacy value is accepted at startup and only fails when the agent actually tries to enroll:
+A 5.0 agent ignores `<ssl_cipher>` under `<enrollment>` (in `<agent>` or in a legacy `<client>` block), logging `INFO: <ssl_cipher> under <enrollment> is no longer used: enrollment reuses <agent><manager>/<agent><ssl>. Ignoring.`, and `<auto_method>` likewise (see the configuration table above). Enrollment uses the same TLS settings as every other request to the manager. To restrict the agent's TLS 1.3 ciphersuites, set `<agent><ssl><ciphers>` to a colon-separated list of the names above; it is checked when the configuration is read, and an unknown name stops the agent from starting:
 
 ```console
-ERROR: Invalid TLS 1.3 cipher suite list: '<value>'
-ERROR: Could not set up SSL connection! Check certification configuration.
+ERROR: Invalid TLS 1.3 cipher suite 'HIGH' in the 'ciphers' option.
 ```
-
-Update `ssl_cipher` to a colon-separated TLS 1.3 ciphersuite list (same values as the manager's `<ciphers>`) before or during the upgrade, or remove it to use the default. `<enrollment><auto_method>` was removed outright (see the configuration table above) — it has no TLS 1.3 equivalent to negotiate down to.
 
 ### Agents not yet upgraded past 4.14.x
 
-An agent still running a pre-5.0 build predates this enforcement and applies `ssl_cipher`/`auto_method` through OpenSSL's legacy `SSL_CTX_set_cipher_list()` API, which only affects TLS 1.2-and-below negotiation. Once the manager forces TLS 1.3, that legacy cipher list has no effect on the ciphersuite actually negotiated — OpenSSL falls back to its own TLS 1.3 defaults regardless of the configured value. This follows from documented OpenSSL behavior rather than something exercised against this codebase (the pre-5.0 agent code implementing this path is not part of this repository), so treat `ssl_cipher`/`auto_method` as inert, not broken, on agents older than this change: they do not need to be removed for enrollment to keep working, but they also no longer do anything. Upgrading the agent to a 5.0-compatible build brings it under the stricter validation described above.
+A 4.x agent that enrolls against a 5.0 manager does so on `1515`, which negotiates TLS 1.3 only, with the ciphersuites `<auth><ciphers>` allows.
 
 ## Validation checklist
 
@@ -340,4 +349,4 @@ Migration is complete when all conditions below are met:
 - The connection block is `<agent><manager><endpoint>`, and no `<client>` fallback message remains in `ossec.log`.
 - No deprecated `protocol` or `crypto_method` messages remain.
 - Agent stays connected to the manager and sends events normally.
-- No TLS 1.3 enrollment errors (`Invalid TLS 1.3 cipher suite...`, `Could not set up SSL connection...`) appear in `wazuh-manager-authd` or agent logs, and enrollment against the 5.0 manager succeeds.
+- No `Invalid TLS 1.3 cipher suite ...` error appears in the manager log or in `ossec.log`, and no `under <enrollment> is no longer used` message remains in `ossec.log`.

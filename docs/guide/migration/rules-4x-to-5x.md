@@ -2,10 +2,10 @@
 
 ## Overview
 
-Wazuh 5.0 introduces a fundamentally different architecture for log analysis and threat detection. The legacy XML-based analysis daemon is replaced by a pipeline that separates **event processing** from **threat detection**:
+Wazuh 5.0 introduces a fundamentally different architecture for log analysis and threat detection. In 4.x the manager's analysis daemon decoded each event **and** matched it against the XML rules. In 5.x that work is split between two components, and the manager no longer evaluates rules at all:
 
-1. **Wazuh Engine** — Receives raw logs, decodes them using the new decoder format, normalizes fields to the [Wazuh Common Schema (WCS)](https://github.com/wazuh/wazuh-indexer-plugins/tree/main/wcs/stateless/events/main/docs/README.md), and indexes the resulting events into `wazuh-events-v5-*` indices.
-2. **Security Analytics detectors** — Use a percolator to evaluate indexed events against Sigma-based (YAML) rules stored in the `wazuh-threatintel-rules` index. When an event matches a rule, the detector creates a **finding**, an enriched copy of the event, indexed into `wazuh-findings-v5-*`.
+1. **Wazuh Engine** (on the manager, installed as `wazuh-manager-analysisd`) — Receives raw logs, decodes them using the new decoder format, normalizes fields to the [Wazuh Common Schema (WCS)](https://github.com/wazuh/wazuh-indexer-plugins/tree/5.0.0/wcs/stateless/events/main/docs/README.md), and indexes the resulting events into the `wazuh-events-v5-<category>` indices. Its content is decoders, filters, outputs, integrations and KVDBs: the Engine has no rule asset.
+2. **Ruleset Management detectors** (in the Wazuh Indexer; a fork of the OpenSearch Security Analytics plugin) — Evaluate indexed events against Sigma-based (YAML) rules stored in the `wazuh-threatintel-rules` index. When an event matches a rule, the detector creates a **finding**, an enriched copy of the event, indexed into `wazuh-findings-v5-<category>`.
 
 There is no automatic conversion tool. Rules must be manually rewritten following this guide.
 
@@ -16,22 +16,22 @@ There is no automatic conversion tool. Rules must be manually rewritten followin
 | **Event** | **Event** | The base log entry after decoding. In 4.x the events are the base logs before matching any rule. In 5.x, the Wazuh Engine produces normalized events. |
 | **Alert** | **Finding** | In 5.x, when an event matches a detection rule, a finding is generated and the event is enriched. |
 | **Rule (XML)** | **Rule (YAML)** | Detection rules are now written in the Sigma format with Wazuh extensions. |
-| **Decoder (XML)** | **Decoder (Engine format)** | Decoders still exist but use a new format adapted to the Wazuh Engine. |
-| **Ruleset files on disk** | **Threat intelligence indices** | Rules, KVDBs, decoders, integrations, and enrichments are stored in Wazuh indices (`wazuh-threatintel-*`). |
+| **Decoder (XML)** | **Decoder (Engine format)** | Decoders still exist but use a new YAML format run by the Wazuh Engine — see [Migrating decoders from XML to YAML](xml-decoders-migration.md). |
+| **Ruleset files on disk** | **Threat intelligence indices** | Rules, KVDBs, decoders, filters, integrations, and IOC enrichments are stored in Wazuh Indexer indices (`wazuh-threatintel-*`). The Engine pulls its share (everything but the rules) from there; the rules stay in the Indexer. |
 
 ### Content architecture
 
-In 5.x, detection content is organized into **integrations**, which bundle related decoders, KVDBs and rules:
+In 5.x, detection content is organized into **integrations**, which bundle related decoders, KVDBs and rules (an integration is what the upstream Security Analytics plugin calls a *log type*):
 
 ```
 Integration (e.g., "o365")
 ├── Decoders — Parse raw logs into WCS-normalized events
 ├── Rules — YAML detection rules
 ├── KVDBs — Key-Value Databases used as lookup tables during decoding
-└── Category — Determines the event index (e.g., "cloud-services" → wazuh-events-v5-cloud-services-*)
+└── Category — Determines the event and findings indices (e.g., "cloud-services" → wazuh-events-v5-cloud-services-*)
 ```
 
-Integrations are stored in the `wazuh-threatintel-integrations` index. Each integration has a `category` field that maps to a specific event index:
+Integrations are stored in the `wazuh-threatintel-integrations` index. Each integration has a `category` field, one of the eight below; the Engine refuses any other value. Events are written to the index of the category, and findings to the findings index of the same category:
 
 | Integration category | Event index | Findings index |
 |---|---|---|
@@ -44,6 +44,8 @@ Integrations are stored in the `wazuh-threatintel-integrations` index. Each inte
 | `other` | `wazuh-events-v5-other-*` | `wazuh-findings-v5-other-*` |
 | `unclassified` | `wazuh-events-v5-unclassified-*` | `wazuh-findings-v5-unclassified-*` |
 
+`unclassified` is the category of the catch-all integration whose decoder accepts the events no other integration decoded. Those events are indexed only when the policy's `index_unclassified_events` flag is set (it is `false` by default).
+
 ### Spaces and content lifecycle
 
 All content (rules, decoders, integrations, KVDBs) exists within a **space** that determines its lifecycle stage:
@@ -52,8 +54,8 @@ All content (rules, decoders, integrations, KVDBs) exists within a **space** tha
 |---|---|---|
 | **Standard** | Default | Out-of-the-box content provided by Wazuh. Users can disable items but cannot modify them. |
 | **Draft** | User | Initial workspace for creating new content. Rules in draft are not evaluated. |
-| **Test** | User | Content is loaded into the Engine so it can be validated using logtest. Rules are not yet active in production detectors. |
-| **Custom** | User | Production-ready user content. Rules in this space can be assigned to detectors for active threat detection. |
+| **Test** | User | Decoders, KVDBs and filters are loaded into the Engine's test policy, so logtest can normalize events with them and evaluate the integration's rules against the result. Rules are not yet active in production detectors. |
+| **Custom** | User | Production-ready user content. The Engine processes live events with the decoders of this space (it synchronizes the Standard and Custom spaces), and rules in this space can be assigned to detectors for active threat detection. |
 
 The promotion path for user-created content is: **Draft → Test → Custom**.
 
@@ -62,16 +64,16 @@ The promotion path for user-created content is: **Draft → Test → Custom**.
 | Aspect | 4.x (XML) | 5.x (YAML) |
 |---|---|---|
 | **Format** | XML files on disk (`/var/ossec/ruleset/rules/`) | JSON documents in Wazuh indices (`wazuh-threatintel-rules`) |
-| **Processing** | Single analysis daemon handles decoding + rule matching | Wazuh Engine decodes and indexes events; Security Analytics detectors match rules via percolator queries |
+| **Processing** | Single analysis daemon handles decoding + rule matching | Wazuh Engine decodes and indexes events; Ruleset Management detectors in the Indexer match rules via percolator queries |
 | **Output** | Alerts | Events (all decoded logs) + Findings (events that matched a rule) |
 | **Rule identification** | Numeric ID (1–999999) | UUID, auto-assigned by the system on creation |
 | **Severity** | Numeric level 0–16 | Keyword: `informational`, `low`, `medium`, `high`, `critical` |
 | **Detection logic** | Decoder fields + regex matching + parent rule chaining | Sigma detection blocks with selections, conditions, and value modifiers |
 | **Rule chaining** | `if_sid`, `if_group`, `if_level`, `if_matched_sid` | Not supported — each rule is self-contained |
-| **Correlation** | `frequency`, `timeframe`, `same_*`, `different_*` | Not natively supported in the rule format |
+| **Correlation** | `frequency`, `timeframe`, `same_*`, `different_*` | Not supported in the rule format; no correlation rules are shipped in 5.0 |
 | **Field schema** | Custom decoder-extracted fields — open-ended, no validation | Wazuh Common Schema (WCS) fields — validated closed set; unknown fields are rejected at creation |
 | **Compliance mapping** | Embedded in `<group>` tag as CSV | Dedicated `compliance` object with structured fields |
-| **MITRE mapping** | `<mitre><id>` tags inside rule | Dedicated `mitre` object with arrays of tactic, technique, and subtechnique IDs |
+| **MITRE mapping** | `<mitre><id>` tags inside rule | Dedicated `mitre` object: `tactic`, `technique` and `subtechnique`, each with parallel `id` and `name` arrays |
 | **Management** | File edits + manager restart | API / index operations, no restart required |
 | **Custom rules** | `/var/ossec/etc/rules/local_rules.xml` | Documents promoted through Draft → Test → Custom spaces |
 | **Rule state** | Active when loaded (or `noalert`) | `enabled: true/false` field per rule |
@@ -100,12 +102,14 @@ The promotion path for user-created content is: **Draft → Test → Custom**.
 
 ### 5.x YAML rule structure
 
-Rules are written in Sigma format. The rule content is submitted to the Content Manager API; the system assigns a UUID on creation. The `sigma_id` field is optional and can carry a reference to the upstream Sigma rule origin.
+Rules are written in Sigma format. The rule content is submitted to the Indexer's Content Manager API; the system assigns a UUID on creation. The `sigma_id` field is optional and can carry a reference to the upstream Sigma rule origin.
+
+`logsource.product` is not descriptive in Wazuh: it must hold the `metadata.title` of the integration the rule belongs to, because it selects the detector that evaluates the rule, and the API rejects a rule whose `product` does not match its integration. The examples on this page assume an integration titled as their `product` value; replace it with your own integration's title. `category` and `service` are descriptive and free-form.
 
 ```yaml
 sigma_id: "d166d57a-86e3-49b4-b560-db423b3c156a"   # optional cross-reference
 enabled: true
-status: "experimental"      # experimental | test | stable
+status: "experimental"      # stable | experimental | test | deprecated | unsupported
 level: "high"               # informational | low | medium | high | critical
 
 metadata:
@@ -118,7 +122,7 @@ metadata:
     - "https://documentation.wazuh.com/current/..."
 
 logsource:
-  product: "sshd"
+  product: "sshd"             # the title of the integration the rule belongs to
   service: "sshd"
 
 detection:
@@ -129,10 +133,11 @@ detection:
 
 mitre:
   tactic:
-    - "TA0006"
+    id: ["TA0006"]
+    name: ["Credential Access"]
   technique:
-    - "T1110"
-  subtechnique: []
+    id: ["T1110"]
+    name: ["Brute Force"]
 
 compliance:
   pci_dss:
@@ -181,8 +186,8 @@ For each rule, note:
 | `<rule id="5710">` | *(auto-assigned UUID)* | The rule UUID is assigned by the system on creation and returned in the API response. You do not specify it. |
 | `<rule id="5710">` | `metadata.references` | Optionally record the original 4.x rule number as a reference string, e.g. `"Migrated from 4.x rule 5710"`. |
 | `<rule id="..." level="5">` | `level` | See severity mapping in [Step 3](#step-3-map-severity-levels). |
-| N/A | `status` | Set to `experimental`, `test`, or `stable`. New migrations should start as `experimental`. |
-| N/A | `enabled` | Set to `true` or `false`. Replaces `noalert`. |
+| N/A | `status` | Required. One of `stable`, `experimental`, `test`, `deprecated` or `unsupported`. New migrations should start as `experimental`. |
+| N/A | `enabled` | `true` (the default) or `false`. Replaces `noalert`. |
 
 ### Step 3: Map severity levels
 
@@ -223,7 +228,7 @@ This has two practical consequences:
 1. **You cannot carry over 4.x decoder field names directly.** Fields like `office365.Operation`, `audit.key`, or `sysmon.image` do not exist in WCS and will cause rule creation to fail. You must find the WCS equivalent.
 2. **A rule that passes validation is guaranteed to match on the fields you specified.** There are no silent mismatches from typos or renamed fields.
 
-The complete WCS field list is at the [WCS field reference (CSV)](https://github.com/wazuh/wazuh-indexer-plugins/blob/main/wcs/stateless/events/main/docs/fields.csv).
+The complete WCS field list is at the [WCS field reference (CSV)](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/wcs/stateless/events/main/docs/fields.csv).
 
 #### Finding the right WCS field
 
@@ -251,9 +256,9 @@ The `normalization.output` section of the response is the fully decoded WCS docu
 | 4.x element | 5.x equivalent | Notes |
 |---|---|---|
 | **Log source matching** | | |
-| `<decoded_as>` | `logsource.product` | Log source binding replaces decoder-based matching. The rule is linked to an integration. |
-| `<category>` | `logsource.category` | The decoder type category maps to the logsource object. |
-| `<location>` | `logsource` or `wazuh.integration.name` | Depends on source type. The 4.x location (e.g., `EventChannel`, `syscheck`) is now implicit in the integration. |
+| `<decoded_as>` | The integration the rule belongs to | Log source binding replaces decoder-based matching. The rule is linked to an integration, and its `logsource.product` must be that integration's title. |
+| `<category>` | `logsource.category` | Descriptive only: it does not affect matching. |
+| `<location>` | `wazuh.protocol.location` in detection, or the integration | The 4.x location (e.g., `EventChannel`, `syscheck`) is usually implicit in the integration; the event's own location is in `wazuh.protocol.location`. |
 | `<program_name>` | `process.name: "..."` in detection | |
 | **Pattern matching** | | |
 | `<match>` | See [Translating `<match>` and `<regex>`](#translating-match-and-regex) below | The approach depends on whether the value was decoded into a WCS field. |
@@ -352,14 +357,18 @@ detection:
   selection:
     event.action: "authentication-failed"
     user.name|exists: false   # non-existent user maps to absent field, not specific text
+```
 
+```yaml
 # 5.x option B: keywords (fallback when no WCS field captures the value)
 detection:
   keywords:
     - "illegal user"
     - "invalid user"
   condition: keywords
+```
 
+```yaml
 # 5.x option C: regex on event.original (last resort)
 detection:
   condition: selection
@@ -399,7 +408,7 @@ The `selection and not filter` pattern is the standard Sigma idiom for exclusion
 
 #### Detection modifiers
 
-Modifiers are appended to field names using the pipe (`|`) character and transform how field values are compared. Multiple modifiers can be chained: `field|modifier1|modifier2: value`.
+Modifiers are appended to field names using the pipe (`|`) character and transform how field values are compared. Multiple modifiers can be chained: `field|modifier1|modifier2: value`. String comparison is **case-sensitive** — plain values and `contains`, `startswith`, `endswith` alike — unlike many 4.x `<match>` patterns; list each spelling you need to catch.
 
 | Modifier | Meaning | Example |
 |---|---|---|
@@ -412,10 +421,10 @@ Modifiers are appended to field names using the pipe (`|`) character and transfo
 | `\|re\|s` | Single-line regex (`.` also matches newlines) | `message\|re\|s: "begin.*end"` |
 | `\|exists` | Field is present (`true`) or absent (`false`) | `user.name\|exists: true` |
 | `\|cidr` | IPv4 or IPv6 address falls within the CIDR range | `source.ip\|cidr: "10.0.0.0/8"` |
-| `\|all` | All list values must match (default list logic is OR) | `event.category\|contains\|all: ["authentication", "failure"]` |
+| `\|all` | All list values must match (default list logic is OR); not valid on a single-item list | `event.category\|contains\|all: ["authentication", "failure"]` |
 | `\|base64` | Value is Base64-encoded before comparison | `process.command_line\|base64: "/bin/bash"` |
 | `\|base64offset\|contains` | All three Base64 offsets of the value (for substrings inside encoded streams) | `process.command_line\|base64offset\|contains: "/bin/bash"` |
-| `\|wide\|base64offset\|contains` | UTF-16 encoding then Base64 offsets (Windows-style wide strings) | `process.command_line\|wide\|base64offset\|contains: "ping"` |
+| `\|wide\|base64offset\|contains` | UTF-16 encoding then Base64 offsets (Windows-style wide strings); `wide` must be followed by an encoding modifier | `process.command_line\|wide\|base64offset\|contains: "ping"` |
 | `\|windash\|contains` | Expand Windows dash variants (`-`, `/`, `–`, `—`, `―`) | `process.command_line\|windash\|contains: " -enc "` |
 | `\|lt` | Less than (numeric) | `event.severity\|lt: 10` |
 | `\|lte` | Less than or equal (numeric) | `event.severity\|lte: 3` |
@@ -454,7 +463,7 @@ In 5.x, rules do not operate in isolation — they must be linked to an **integr
 
 When migrating, you must **create a new custom integration** in user space (Draft → Test → Custom). Custom rules cannot be linked to standard integrations — the standard space is read-only.
 
-Rules are linked to an integration at creation time via the API:
+Rules are linked to an integration at creation time via the API. The integration must be in the draft space, `logsource.product` must equal its `metadata.title`, and `metadata.title` must be unique within the draft space (a duplicate is refused with `409`). The example assumes an integration titled `o365`:
 
 ```bash
 curl -sk -u admin:admin -X POST \
@@ -480,14 +489,17 @@ curl -sk -u admin:admin -X POST \
           "wazuh.integration.name": "o365"
         }
       },
-      "mitre": { "tactic": ["TA0010"], "technique": ["T1567"], "subtechnique": [] },
+      "mitre": {
+        "tactic": { "id": ["TA0010"], "name": ["Exfiltration"] },
+        "technique": { "id": ["T1567"], "name": ["Exfiltration Over Web Service"] }
+      },
       "compliance": { "pci_dss": ["3.4", "10.2.5"] },
       "tags": ["attack.exfiltration", "attack.t1567"]
     }
   }'
 ```
 
-The response returns the assigned rule UUID:
+The response returns the assigned rule UUID in `message`:
 
 ```json
 { "message": "6e1c43f1-f09b-4cec-bb59-00e3a52b7930", "status": 201 }
@@ -502,6 +514,7 @@ The response returns the assigned rule UUID:
 | N/A | `metadata.author` | Add attribution |
 | N/A | `metadata.date` / `metadata.modified` | Auto-managed on creation and update |
 | N/A | `metadata.documentation` | Link to extended docs |
+| N/A | `metadata.supports` | Platforms or contexts the rule is meant for |
 
 **New in 5.x — Dynamic event field referencing:** The `title`, `tags`, `mitre.*`, and `compliance.*` fields support `{{ field.path }}` placeholders that resolve against the triggering event at enrichment time. The resulting finding reflects the specific event context rather than the static rule definition:
 
@@ -513,7 +526,7 @@ tags:
   - "{{ wazuh.agent.host.name }}"   # expands to the agent hostname in each finding
 ```
 
-Unresolved placeholders (absent or null fields) are silently dropped. See the [rules reference](https://github.com/wazuh/wazuh-indexer-plugins/blob/main/docs/ref/modules/ruleset-management/rules.md#dynamic-event-field-referencing) for the full specification.
+A placeholder whose field is absent or null resolves to an empty string, and a value made only of such a placeholder is dropped. The `detection` block is never interpolated. See the [rules reference](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/docs/ref/modules/ruleset-management/rules.md#dynamic-event-field-referencing) for the full specification.
 
 ### Step 7: Migrate MITRE ATT&CK mappings
 
@@ -529,30 +542,34 @@ Unresolved placeholders (absent or null fields) are silently dropped. See the [r
 ```yaml
 mitre:
   tactic:
-    - "TA0006"
+    id: ["TA0006"]
+    name: ["Credential Access"]
   technique:
-    - "T1110"
-  subtechnique:       # omit or use [] if not applicable
-    - "T1110.001"
+    id: ["T1110", "T1499"]
+    name: ["Brute Force", "Endpoint Denial of Service"]
+  subtechnique:       # omit when not applicable
+    id: ["T1110.001"]
+    name: ["Brute Force: Password Guessing"]
 ```
 
 Key differences from 4.x:
-- In 4.x, only technique IDs were listed. In 5.x, you must also include the parent **tactic** IDs (e.g., `TA0006`).
-- Each field (`tactic`, `technique`, `subtechnique`) is a plain **array of ID strings**. There are no name fields.
-- Use `subtechnique: []` when no subtechnique applies.
+- In 4.x, only technique IDs were listed. In 5.x, you also include the parent **tactic** IDs (e.g., `TA0006`).
+- Each category (`tactic`, `technique`, `subtechnique`) is an object with two parallel arrays: `id` and `name`, the *n*-th name describing the *n*-th ID. Supply `name` for every entry of a category or for none. The same pairs can also be written as a list of `{id, name}` objects.
+- Omit a category that does not apply.
+- A plain array of IDs (`tactic: ["TA0006"]`) is still accepted as a deprecated shorthand, but it carries no names.
 - A rule with techniques spanning multiple tactics lists all relevant tactic IDs:
 
 ```yaml
 mitre:
   tactic:
-    - "TA0004"
-    - "TA0005"
+    id: ["TA0004", "TA0005"]
+    name: ["Privilege Escalation", "Defense Evasion"]
   technique:
-    - "T1562"
-    - "T1055"
+    id: ["T1562", "T1055"]
+    name: ["Impair Defenses", "Process Injection"]
   subtechnique:
-    - "T1562.001"
-    - "T1055.009"
+    id: ["T1562.001", "T1055.009"]
+    name: ["Impair Defenses: Disable or Modify Tools", "Process Injection: Proc Memory"]
 ```
 
 ### Step 8: Migrate compliance mappings
@@ -630,8 +647,8 @@ Compliance tags go into the `compliance` object (see [Step 8](#step-8-migrate-co
 | 4.x feature | Approach in 5.x |
 |---|---|
 | **Rule chaining** (`if_sid`, `if_group`, `if_level`) | Flatten into a single self-contained rule. See [example below](#flattening-if_sid-chains). |
-| **Correlation rules** (`frequency`, `timeframe`, `same_*`, `different_*`) | Handle via a separate correlation engine or pipeline (outside the rule format). |
-| **CDB list lookups** (`<list>`) | Migrate to KVDBs within the integration. KVDBs serve a similar purpose but operate at the decoder level during normalization, not at rule evaluation time. |
+| **Correlation rules** (`frequency`, `timeframe`, `same_*`, `different_*`) | No equivalent in the rule format, and 5.0 ships no correlation rules; handle it outside Wazuh's detection rules (for example, an Alerting monitor over the findings indices). |
+| **CDB list lookups** (`<list>`) | Migrate to KVDBs within the integration — see [Migrating CDB lists to KVDB lists](cdb-to-kvdb-migration.md). KVDBs serve a similar purpose but operate at the decoder level during normalization, not at rule evaluation time. |
 | **Time-based conditions** (`<time>`, `<weekday>`) | Implement via scheduled queries or external logic. |
 | **Regex on raw log** (`<match>`, `<regex>`) | Ensure logs are properly decoded into WCS fields; match on structured fields. See [Translating `<match>` and `<regex>`](#translating-match-and-regex). |
 | **`overwrite="yes"`** | Not needed — rules are independent documents; update via the API. |
@@ -673,7 +690,7 @@ The most common migration challenge is collapsing a multi-level rule chain into 
 **Migration plan:**
 - Rule 5700: **discard** — its `decoded_as` binding is implicit in the sshd integration.
 - Rule 5710: **migrate** — the integration link replaces `if_sid`; detection logic replaces `<match>`.
-- Rule 5720: **cannot be migrated directly** — `frequency`/`timeframe`/`if_matched_sid` require a correlation engine. Document as a gap.
+- Rule 5720: **cannot be migrated directly** — `frequency`/`timeframe`/`if_matched_sid` have no equivalent in the 5.x rule format. Document as a gap.
 
 ```yaml
 # Migrated rule 5710 — self-contained, linked to the sshd integration
@@ -700,10 +717,11 @@ detection:
 
 mitre:
   tactic:
-    - "TA0006"
+    id: ["TA0006"]
+    name: ["Credential Access"]
   technique:
-    - "T1110"
-  subtechnique: []
+    id: ["T1110"]
+    name: ["Brute Force"]
 
 tags:
   - "attack.credential-access"
@@ -716,13 +734,13 @@ tags:
 
 1. **Create an integration in Draft space** — If there is no matching standard integration, create a new custom integration in draft. Custom rules cannot be attached to standard integrations.
 2. **Create the rule in Draft space** via the API (see [Step 5](#step-5-assign-rules-to-an-integration)).
-3. **Promote to Test space** — the rule and its integration are loaded into the Engine's test policy.
-4. **Validate with logtest** — send sample log events through `POST /_plugins/_content_manager/logtest`. Inspect:
+3. **Promote to Test space** (`GET` then `POST /_plugins/_content_manager/promote`) — decoders, KVDBs and filters in the change set are validated by the Engine and loaded into its test policy; rules and integrations are synchronized to Ruleset Management in the Indexer (they never reach the Engine).
+4. **Validate with logtest** — send sample log events through `POST /_plugins/_content_manager/logtest` with `"space": "test"` and the integration's ID. Inspect:
    - `normalization.output` — verify the decoder produced the WCS fields you expect.
-   - `detection.matches` — verify the rule fired on the correct conditions.
-   - Iterate on the rule in Test space until it behaves as expected.
+   - `detection.matches` — verify the rule fired on the correct conditions (`detection.rules_evaluated` and `detection.rules_matched` give the counts).
+   - Fix the rule in the draft space and promote it again until it behaves as expected.
 5. **Promote to Custom space** — the rule is now available for production use.
-6. **Create or update a detector** to include the rule's integration, enabling active detection against incoming events.
+6. **Create or update a detector** to include the rule's integration, enabling active detection against incoming events. A detector references rules from one space only, Standard or Custom, never both.
 
 ---
 
@@ -769,12 +787,11 @@ detection:
 
 mitre:
   tactic:
-    - "TA0001"
-    - "TA0004"
+    id: ["TA0001", "TA0004"]
+    name: ["Initial Access", "Privilege Escalation"]
   technique:
-    - "T1068"
-    - "T1190"
-  subtechnique: []
+    id: ["T1068", "T1190"]
+    name: ["Exploitation for Privilege Escalation", "Exploit Public-Facing Application"]
 
 compliance:
   pci_dss:
@@ -879,10 +896,11 @@ detection:
 
 mitre:
   tactic:
-    - "TA0010"
+    id: ["TA0010"]
+    name: ["Exfiltration"]
   technique:
-    - "T1567"
-  subtechnique: []
+    id: ["T1567"]
+    name: ["Exfiltration Over Web Service"]
 
 compliance:
   pci_dss:
@@ -973,14 +991,14 @@ detection:
 
 mitre:
   tactic:
-    - "TA0004"
-    - "TA0005"
+    id: ["TA0004", "TA0005"]
+    name: ["Privilege Escalation", "Defense Evasion"]
   technique:
-    - "T1562"
-    - "T1055"
+    id: ["T1562", "T1055"]
+    name: ["Impair Defenses", "Process Injection"]
   subtechnique:
-    - "T1562.001"
-    - "T1055.009"
+    id: ["T1562.001", "T1055.009"]
+    name: ["Impair Defenses: Disable or Modify Tools", "Process Injection: Proc Memory"]
 
 tags:
   - "attack.privilege-escalation"
@@ -1040,10 +1058,11 @@ detection:
 
 mitre:
   tactic:
-    - "TA0007"
+    id: ["TA0007"]
+    name: ["Discovery"]
   technique:
-    - "T1518"
-  subtechnique: []
+    id: ["T1518"]
+    name: ["Software Discovery"]
 
 tags:
   - "attack.discovery"
@@ -1059,7 +1078,7 @@ The 4.x `<match>` regex alternation (`inserted|added|started|...`) becomes a lis
 
 ## WCS field mapping reference
 
-When migrating, 4.x decoder-extracted fields must be mapped to WCS fields. Always verify the mapping with logtest — the `normalization.output` in the response shows the exact field paths produced by your integration's decoder. For the complete field list, see the [WCS field reference (CSV)](https://github.com/wazuh/wazuh-indexer-plugins/blob/main/wcs/stateless/events/main/docs/fields.csv).
+When migrating, 4.x decoder-extracted fields must be mapped to WCS fields. Always verify the mapping with logtest — the `normalization.output` in the response shows the exact field paths produced by your integration's decoder. For the complete field list, see the [WCS field reference (CSV)](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/wcs/stateless/events/main/docs/fields.csv).
 
 Common mappings:
 
@@ -1103,7 +1122,7 @@ Common mappings:
 - [Sigma Rule Specification](https://sigmahq.io/docs/basics/rules.html)
 - [Sigma Conditions](https://sigmahq.io/docs/basics/conditions.html)
 - [Sigma Modifiers](https://sigmahq.io/docs/basics/modifiers.html)
-- [Wazuh Common Schema (WCS) Documentation](https://github.com/wazuh/wazuh-indexer-plugins/tree/main/wcs/stateless/events/main/docs/README.md)
-- [WCS Field Reference (CSV)](https://github.com/wazuh/wazuh-indexer-plugins/blob/main/wcs/stateless/events/main/docs/fields.csv)
-- [Wazuh 5.x Rules Reference](https://github.com/wazuh/wazuh-indexer-plugins/blob/main/docs/ref/modules/ruleset-management/rules.md)
-- [Content Manager Rule Testing Guide](https://github.com/wazuh/wazuh-indexer-plugins/blob/main/docs/ref/modules/content-manager/rule-testing.md)
+- [Wazuh Common Schema (WCS) Documentation](https://github.com/wazuh/wazuh-indexer-plugins/tree/5.0.0/wcs/stateless/events/main/docs/README.md)
+- [WCS Field Reference (CSV)](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/wcs/stateless/events/main/docs/fields.csv)
+- [Wazuh 5.x Rules Reference](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/docs/ref/modules/ruleset-management/rules.md)
+- [Content Manager Rule Testing Guide](https://github.com/wazuh/wazuh-indexer-plugins/blob/5.0.0/docs/ref/modules/content-manager/rule-testing.md)

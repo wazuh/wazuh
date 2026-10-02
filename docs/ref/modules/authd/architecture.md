@@ -5,13 +5,14 @@
 `wazuh-manager-authd` owns the agent keystore. It hands out agent ids and keys, persists them to
 `client.keys`, mirrors every registration into Wazuh DB, and makes sure a removed agent's documents
 leave the indexer too. Enrollment arrives through three doors — the TLS port on 1515, remoted's
-authenticated `/enroll` route and the server API — and all of them converge on the same in-memory
-keystore behind one mutex: the last two both arrive over the local Unix socket.
+`/enroll` route and the server API — and all of them converge on the same in-memory keystore behind
+one mutex: the last two both arrive over the local Unix socket, as do the token CLI and remoted's
+`/enroll/secret` route.
 
 ```mermaid
 flowchart TB
     AG[Agent] -->|"enrollment (TLS 1.3, port 1515)"| REMS
-    REM2[wazuh-manager-remoted\nPOST /enroll] -->|"add (UDS)"| LOCS
+    REM2[wazuh-manager-remoted\nPOST /enroll, /enroll/secret] -->|"add / issue_reenroll_secret (UDS)"| LOCS
     API[wazuh-manager-apid\nserver API] -->|"add / remove / get (UDS)"| LOCS
 
     subgraph AUTHD["wazuh-manager-authd"]
@@ -57,7 +58,7 @@ thread instead of being called inline.
 | Thread | Runs on | Role |
 |---|---|---|
 | Remote server | any node with both `remote_enrollment` and `legacy_enrollment` | TLS enrollment on port 1515 |
-| Local server | every node | `queue/sockets/auth.sock`: `add`, `remove`, `get` — for the server API and for remoted's `/enroll` — plus `token_create`, `token_list`, `token_revoke` and `token_purge` for the token CLI and the API |
+| Local server | every node | `queue/sockets/auth.sock`: `add`, `remove`, `get` — for the server API and for remoted's `/enroll` — `issue_reenroll_secret` for remoted's `/enroll/secret`, plus `token_create`, `token_list`, `token_revoke` and `token_purge` for the token CLI and the API |
 | Writer | master only | persists `client.keys`, removes Wazuh DB rows, records each deletion as a Task Manager task, and settles the credentials the [identity journal](#the-identity-journal) still owes — waking on its own clock while any remain |
 | authpass watcher | workers with `use_password` | re-reads `etc/authd.pass` as the cluster syncs it down from the master |
 
@@ -106,7 +107,7 @@ sequenceDiagram
 
     C->>T: enroll (name, version, ip?, groups?, key_hash?)
     Note over T: parse + credential<br/>(password and/or TLS client cert)
-    T->>T: validate name, ip, groups, agent version
+    T->>T: validate name, ip, groups (agent version: port 1515 only)
     rect rgb(240, 240, 235)
         Note over T,KS: under mutex_keys
         T->>KS: duplicate id / ip / name?
@@ -154,9 +155,9 @@ Checked before the keystore is mutated:
 | Field | Rule |
 |---|---|
 | `name` | two validators, deliberately different — see below |
-| `ip` | a syntactic IPv4/IPv6/CIDR, or `any`. `use_source_ip` overrides whatever the caller claims |
-| `groups` | every group must exist (`9014`) |
-| version | rejected if newer than the manager's, unless `<agents><allow_higher_versions>` is `yes` |
+| `ip` | a syntactic IPv4/IPv6/CIDR, or `any`. On port 1515 an explicit `IP:` is registered as sent, `IP:'src'` means the connection's address, and `use_source_ip` only decides for a request without the field; the local socket registers the `ip` it is given (remoted resolves it for `/enroll`) |
+| `groups` | every group must exist (`9014` on the local socket) |
+| version | port 1515 only: rejected if newer than the manager's, unless `<agents><allow_higher_versions>` is `yes`. The local socket carries no version; remoted applies the same rule to `/enroll` before calling authd |
 
 The agent limit is not on that list because it is not a separate check: `OS_AddNewAgent()` enforces
 `max_agents` itself and returns `OS_ADDAGENT_LIMIT_REACHED`, which becomes `9013`. The same sentinel
@@ -168,10 +169,11 @@ port 1515 path applies `OS_IsValidName()` — 2–128 characters, no leading `.`
 The local socket applies only `is_storable_agent_name()`, a **storage-safety floor**: non-empty, at
 most 128 bytes, no leading `#` or `!` (those mark removed and comment lines in `client.keys`), and no
 control byte, space or `DEL` (any of them would break the file's `<id> <name> <ip> <key>` field
-split). A name that clears the floor but not the stricter rule is rejected with `9017`.
+split). A name that fails the floor is rejected with `9017`; one that clears the floor but not the
+stricter rule is accepted over the local socket.
 
 The looser floor is what lets an operator register a name the self-enrollment path would refuse.
-remoted's `/enroll` applies its own validator, tighter than both, before it ever reaches the socket.
+remoted's `/enroll` applies its own validator, tighter than the floor, before it ever reaches the socket.
 
 ### The identity journal
 
@@ -215,8 +217,8 @@ derives its signing key from the real secret and `client.keys` does not carry it
 that the transition happened and restore nothing. Treat the file as a secret: it is `0640`, and it is
 normally empty.
 
-**Only `local_add()` and `local_reenroll()` append transitions.** This covers the server API and
-remoted's `POST /enroll`. Direct enrollment on the master's TLS port 1515 queues an insert with no
+**Only `local_add()`, `local_reenroll()` and `local_issue_reenroll_secret()` append transitions.**
+This covers the server API and remoted's `POST /enroll` and `POST /enroll/secret`. Direct enrollment on the master's TLS port 1515 queues an insert with no
 secret and no journal sequence. However, port-1515 enrollment received by a **worker** is forwarded
 to the master's local socket and therefore does journal there. The legacy response still returns
 only id/name/IP/key: the worker discards the master's re-enrollment secret, so the agent cannot use
@@ -247,7 +249,7 @@ os_strdup(keys.keyentries[index]->id,      *id);
 os_strdup(keys.keyentries[index]->raw_key, *key);
 ```
 
-An insertion may also *name* an id explicitly (`manage_agents`, `POST /agents/insert`). That path is
+An insertion may also *name* an id explicitly (`POST /agents/insert`). That path is
 refused rather than served when the id is taken (`9012`) or still owes a purge (`9018`); self-enrolling
 agents never send one.
 
@@ -324,7 +326,7 @@ the sync interval; the master's re-check on `add` is what makes a revocation imm
 ## The enrollment password
 
 With `use_password` enabled, `etc/authd.pass` holds the shared secret. The master generates one at
-first start if none exists and logs that it did: `w_generate_random_pass()` takes 32 bytes from the
+start if none exists and `remote_enrollment` is on, and logs that it did: `w_generate_random_pass()` takes 32 bytes from the
 CSPRNG (`RAND_bytes`) and hex-encodes them to 64 characters, the same shape and the same fail-closed
 rule as the agent key (`OS_NewAgentKey()`) — a CSPRNG failure aborts the start rather than falling
 back to a weaker generator. Everything downstream treats the value as an opaque line, so a password
@@ -333,9 +335,10 @@ same cluster sync as `client.keys`, which is why they run the **authpass watcher
 has not received it yet fails closed — it rejects enrollments rather than validating against a
 null password.
 
-remoted's `/enroll` route does not present this password as-is; it derives an AES-256-CMAC key from it
-with HKDF-SHA256 and signs the request (`Authorization: WazuhEnroll <timestamp>:<mac>`). See the
-[agent API reference](../remoted/agent-api.yaml).
+On remoted's `/enroll` route the password never travels: the agent signs a `wazuh-enroll+jwt` bearer
+without `kid` with an HS256 key HKDF-SHA256 derives from it (label `WAZUH-ENROLL-JWT-KEY`), and remoted
+verifies it with the same derivation over the file. See
+[step 3 of the enrollment lifecycle](enrollment-lifecycle.md#step-3-the-agent-derives-a-key-and-signs-a-bearer).
 
 ## Error codes
 
@@ -509,7 +512,7 @@ held their ids before, in the indices they do not resynchronise themselves.
 | Path | Contents |
 |---|---|
 | `etc/client.keys` | one line per agent: `<id> <name> <ip> <key>`; rewritten whole, never edited in place. A removed agent is kept as a `!name` line unless `<purge>` is `yes` |
-| `etc/agents-timestamp` | per-agent registration timestamp |
+| `queue/agents-timestamp` | per-agent registration timestamp |
 | `etc/authd.pass` | enrollment password |
 | `queue/authd/pending-purges` | deletions between phase 1 and phase 4, plus the highest id and sequence ever handed out. Normally empty |
 | `queue/authd/pending-identities` | credentials handed out but not yet committed to `global.db` — see [the identity journal](#the-identity-journal). Mode `0640`, one JSON line per transition, **in the clear**. Normally empty; a persistent nonempty file warrants checking database writes and journal-compaction errors |
@@ -530,6 +533,19 @@ The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` a
 | `The deletion of agent 'N' could not be recorded...` | phase 3 failed; the journal line stays and the next writer cycle retries |
 | `Refusing the deletion: ...` | phase 0 said no (`9021`); the agent is untouched and the request can be repeated. A force replacement refused by the same bound reports `Agent 'N' can't be replaced: too many deletions are in progress` |
 | `Shutting down with N agent deletion(s) still being recorded` | they stay in the journal and are reconciled on the next start |
+| `Agent ID 'N' still has a pending deletion, rejecting the insertion.` | the `9018` path of an explicit-id insertion |
+| `Unable to add agent: NAME. Agent limit (N) reached.` | `9013`; also fires when the id counter reached `INT_MAX`, so the enrollment is refused instead of wrapping to a negative id |
+| `Refusing the identity transition of agent 'N': …` / `Refusing the operation: N identity transitions are still waiting…` | the identity journal is at its 5000-entry admission bound; the request was answered `9031` |
+| `Could not record the identity transition of agent 'N' in '…'` | the append itself failed (for example an unwritable `queue/authd/`); `9031` |
+| `Recovered N identity transition(s) that the previous run did not finish writing to the database.` | startup found credentials still owed; the writer applies them on its own clock |
+| `Discarded N recorded identity transition(s) whose agent is no longer in client.keys and M superseded by a later one.` | startup reconciliation dropped what is no longer owed |
+| `Enrollment token 'X' minted for '…' (expires …, max_uses …, credential …)…` | a mint; never the secret or the token text |
+| `Enrollment token 'X' consumed by agent 'N'.` / `Enrollment token 'X' revoked.` | the token paths. A refused token logs `ERROR 902x: …`; a re-enrollment the master's verification refuses (`9026`–`9028`) logs at debug level only |
+| `The enrollment token store holds N of the 5000 tokens it accepts…` | 80% of the cap reached; purge before it binds |
+| `Could not load the enrollment tokens from '…'` | the store could not be loaded at start; enrollments presenting a token are refused until it is fixed |
+| `Agent 'N' (id 'I') re-enrolled: key and re-enrollment secret rotated.` | a rotation in place; nothing was deleted |
+| `Re-enrollment secret issued for agent 'I' (its key was not changed).` | an `issue_reenroll_secret` answered |
+| `Secret issuance for agent 'I' refused: the request was authenticated with a key that is not the agent's current one…` | `9032`: a worker's `client.keys` replica is behind the master; the agent retries |
 
 The purge's own outcome — the `deleteByQuery` and its flush — is reported by
 [inventory_sync_server](../inventory-sync-server/architecture.md#agent-deletion) and recorded as the
@@ -538,7 +554,7 @@ task's status, not by authd: authd's responsibility ends at the durable task row
 ## Related
 
 - [Authd overview](README.md) and [configuration](configuration.md)
-- [`src/os_auth/README.md`](https://github.com/wazuh/wazuh/blob/main/src/os_auth/README.md) — the
-  developer map: invariants, tests and the reasoning behind each ordering decision
+- `src/os_auth/README.md` (in the repository, outside this book) — the developer map: invariants,
+  tests and the reasoning behind each ordering decision
 - [Inventory Sync Server architecture](../inventory-sync-server/architecture.md) — the module that
   applies the deletion, on the other side of `POST /_internal/agents/delete`

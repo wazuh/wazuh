@@ -332,7 +332,7 @@ One entry per view. The placeholders resolved per run are `{{nonce}}`, `{{agent_
 that resolves to nothing is a FAIL naming it** (`unresolved placeholder {{agent_id_5x}}`), never an
 empty filter:
 
-```json
+```json,fragment
 "<view>": {
   "app": "it-hygiene",
   "route": "/app/it-hygiene#/overview/?tab=it-hygiene&tabView=software&tabSubView=packages&_a=(filters:!(),query:(language:kuery,query:'wazuh.agent.id:%22{{agent_id_5x}}%22%20and%20package.name:%22{{package_name}}%22'))",

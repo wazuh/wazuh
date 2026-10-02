@@ -108,7 +108,7 @@ Unit details:
 1. Register the metric in the engine C++ code (e.g. with `FASTMETRICS_PULL`).
 2. Add one line to `metrics_meta.json`:
 
-```json
+```json,fragment
 "router.queue.new_metric": { "category": "events", "unit": "count" }
 ```
 

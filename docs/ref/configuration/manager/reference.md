@@ -3,17 +3,20 @@
      change the schema and run the tool (docs/build.sh checks that this file is up to date). -->
 # Manager configuration reference
 
-`/var/wazuh-manager/etc/wazuh-manager.conf` is a strict XML document whose root <wazuh_config> holds one element per section below. Sections
-and options marked **required** have no default and must be set explicitly; every other option takes its
-default when absent, and `bin/wazuh-manager-conf dump` prints the effective
-document. The file is validated against `etc/wazuh-manager.schema.json` (this reference is generated from
-that schema) when the manager starts and by `bin/wazuh-manager-conf validate`; an invalid value is
-reported with the JSON pointer of the offending option (`(1244): Invalid configuration at
-'/remote/legacy/port': ...`). Unknown options are rejected in every section.
+`/var/wazuh-manager/etc/wazuh-manager.conf` is a strict XML document whose root `<wazuh_config>` holds one
+element per section below. Sections and options marked **required** have no default and must be set
+explicitly; every other option takes its default when absent, and `bin/wazuh-manager-conf dump` prints the
+effective document. The file is validated against `etc/wazuh-manager.schema.json` (this reference is
+generated from that schema) by `wazuh-manager-control` before any daemon starts and by
+`bin/wazuh-manager-conf validate`; an invalid value is reported with the JSON pointer of the offending
+option (`(1244): Invalid configuration at '/remote/legacy/port': ...`). Unknown options are rejected in
+every section.
 
 Paths are relative to the manager home unless absolute. Durations accept seconds as an integer or a string
-with a unit suffix (`s`, `m`, `h`, `d`, `w`); sizes accept bytes or a `B`/`K`/`M`/`G` suffix.
-
+with a unit suffix: `s`, `m`, `h`, `d`, and `w` only where the option's pattern lists it. Sizes accept bytes
+or a `B`/`K`/`M`/`G` suffix (any case). A mapping is always present in the effective document; any other
+option with no default and no **required** mark stays absent from it, and its description says what applies
+then.
 
 ## Sections
 
@@ -136,7 +139,7 @@ Wazuh indexer connection shared by modulesd, the engine and the cluster. Mandato
 
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
-| `hosts` | list of string |  | at least 1 item; unique; **required** | Indexer URLs (scheme://host:port). |
+| `hosts` | list of string |  | items match `^https?://`; at least 1 item; unique; **required** | Indexer URLs (scheme://host:port). |
 | `ssl` | mapping |  |  | TLS material of the indexer connection (paths relative to the manager home unless absolute). |
 | `ssl.certificate_authorities` | list of string | `[]` |  | CA bundles (PEM). |
 | `ssl.certificate` | string | `""` |  | Client certificate (PEM). Empty = no client certificate. |
@@ -169,5 +172,5 @@ Cluster identity and transport (wazuh-manager-clusterd; name/node_name/node_type
 | `key` | string |  | `^[A-Za-z0-9]{32}$`; **required** | 32-character shared key; the installer generates a random one. |
 | `port` | integer | `1516` | 1025-65534 | Cluster port. |
 | `bind_addr` | string | `127.0.0.1` | not empty | Bind address. |
-| `nodes` | list of string | `["127.0.0.1"]` | at least 1 item | Master node address(es). |
+| `nodes` | list of string | `["127.0.0.1"]` | items not empty; at least 1 item | Master node address(es). |
 | `hidden` | boolean | `false` |  | Hide this node in cluster listings. |

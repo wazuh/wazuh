@@ -1051,7 +1051,7 @@ paths:
                     - router.eps.30m
                     - router.queue.size
                     - router.queue.usage.percent
-                    - server.events.dropped.input
+                    - router.events.dropped
                     - agent.cache.entries
                     - agent.cache.hits
                     - agent.cache.insertions
@@ -1061,7 +1061,6 @@ paths:
                     - space.wazuh.events.unclassified
                     - space.wazuh.events.discarded.prefilter
                     - space.wazuh.events.discarded.postfilter
-                    - space.wazuh.events.dropped.output
                 space_filtered:
                   summary: Only metrics for space 'wazuh'
                   value:
@@ -1071,7 +1070,6 @@ paths:
                     - space.wazuh.events.unclassified
                     - space.wazuh.events.discarded.prefilter
                     - space.wazuh.events.discarded.postfilter
-                    - space.wazuh.events.dropped.output
         '400':
           description: Bad Request
           content:
@@ -1127,7 +1125,7 @@ paths:
                       type: pull
                       enabled: true
                       value: 42
-                    - name: server.events.dropped.input
+                    - name: router.events.dropped
                       type: counter
                       enabled: true
                       value: 3
@@ -1170,10 +1168,6 @@ paths:
                         type: counter
                         enabled: true
                         value: 40
-                      - name: events.dropped.output
-                        type: counter
-                        enabled: true
-                        value: 2
         '500':
           $ref: '#/components/responses/InternalServerError_500'
 components:

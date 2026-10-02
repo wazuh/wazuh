@@ -106,6 +106,8 @@ http {
         # Keeps connections to the managers open and reusable instead of paying a full TLS
         # handshake per event. Requires the two directives marked below.
         keepalive 32;
+        # [!] Below remoted's 10 s idle close (remoted.http_read_timeout) -- see 3.6.
+        keepalive_timeout 5s;
     }
 
     server {
@@ -120,7 +122,7 @@ http {
         # This side may be permissive: it is a different connection from the backend one.
         ssl_protocols TLSv1.2 TLSv1.3;
 
-        # [!] remoted accepts `<remote><https><max_body_size>`, 10 MiB by default; NGINX defaults to 1 MB -- see 3.2.
+        # [!] At or above remoted's `<remote><https><max_body_size>`, 10 MiB by default; NGINX defaults to 1 MB -- see 3.2.
         client_max_body_size 10m;
 
         location / {
@@ -144,14 +146,17 @@ http {
             proxy_ssl_verify on;
             proxy_ssl_verify_depth 2;
 
-            # [!] Which name that certificate is checked against. It must appear in the
-            # manager certificate's SAN, or verification fails.
-            proxy_ssl_name wazuh-manager-node1;
+            # [!] Which name every manager certificate is checked against. One name for the
+            # whole upstream, so it must appear in EVERY node's SAN (for example the
+            # agent-facing name issued into every listener certificate), or verification of
+            # the other nodes fails.
+            proxy_ssl_name wazuh-manager.example.com;
             proxy_ssl_server_name on;
 
             # The client certificate NGINX presents when remoted requires mTLS
             # (verification_mode = certificate). NOTE: this is NGINX's identity, not the
-            # agent's -- see the getting-started page, section 6.
+            # agent's -- see README.md#6-verification_mode-read-this-before-enabling-it
+            # (Getting started, 6).
             proxy_ssl_certificate     /etc/nginx/certs/proxy_client.crt;
             proxy_ssl_certificate_key /etc/nginx/certs/proxy_client.key;
 
@@ -164,8 +169,8 @@ http {
             proxy_next_upstream error timeout http_502 http_503;
 
             proxy_connect_timeout 5s;
-            # [!] At least 30 s: remoted's own per-request budget -- see 3.6.
-            proxy_read_timeout 30s;
+            # [!] Above 30 s, remoted's own per-request budget -- see 3.6.
+            proxy_read_timeout 60s;
         }
     }
 }
@@ -208,7 +213,8 @@ forwarded target as long as `proxy_pass` has no URI component. There is no need 
 
 Without raising `client_max_body_size`, NGINX answers `413 Request Entity Too Large` to events remoted
 would have accepted. The giveaway is that the error page is NGINX's own, not a JSON response from
-the manager.
+the manager. Raise it to remoted's `max_body_size` (10 MiB by default), not to its 5 MiB
+authenticated-body cap: between the two, remoted answers its own JSON `413`, which the agent acts on.
 
 ### 3.3. TLS 1.3 to the backend, and the cipher directive that stops NGINX from starting
 
@@ -254,11 +260,15 @@ proxy_next_upstream error timeout http_502 http_503 non_idempotent;
 (Note: `proxy_next_upstream_non_idempotent` is not a directive; `non_idempotent` is a *value* of
 `proxy_next_upstream`.)
 
-### 3.6. Response timeout below remoted's budget
+### 3.6. Timeouts against remoted's
 
-`proxy_read_timeout` must be at least **30 s**. Below that, NGINX gives up on requests the manager
-was still legitimately processing — and if it retries them elsewhere, the event can be ingested
-twice.
+`proxy_read_timeout` must be **above 30 s** (`remoted.http_request_timeout`). Below that, NGINX gives
+up on requests the manager was still legitimately processing — and if it retries them elsewhere,
+the event can be ingested twice.
+
+In the other direction, remoted closes an idle connection after 10 s (`remoted.http_read_timeout`)
+and after every `404`/`403`. With `keepalive` in the upstream, keep `keepalive_timeout` below that,
+or a request sent on a connection remoted has just closed fails with `502`.
 
 ## 4. Health checks
 
@@ -272,8 +282,8 @@ upstream remoted_nodes_http {
 
 NGINX Open Source only has **passive** health checks: it learns a manager is gone when a real agent
 request fails, which means one request is spent discovering it. `max_fails` / `fail_timeout` control
-how long it stays out of rotation afterwards. Active health checks against `GET /` require NGINX
-Plus; HAProxy does them out of the box, which is worth knowing when choosing.
+how long it stays out of rotation afterwards. Active health checks against remoted's health probe
+(`GET /wazuh-manager/` with the default `global_prefix`) require NGINX Plus; HAProxy does them out of the box, which is worth knowing when choosing.
 
 ## 5. Verifying the deployment
 
@@ -286,8 +296,8 @@ openssl s_client -connect wazuh-manager.example.com:8443 </dev/null 2>/dev/null 
 openssl s_client -connect wazuh-manager.example.com:8444 </dev/null 2>/dev/null | openssl x509 -noout -subject
 #    :8443 must show the BALANCER's certificate, :8444 the MANAGER's
 
-# 3. The health check endpoint answers, unauthenticated
-curl -k https://wazuh-manager.example.com:8443/
+# 3. The health probe answers, unauthenticated (under the global prefix, /wazuh-manager/ by default)
+curl -k https://wazuh-manager.example.com:8443/wazuh-manager/
 #    -> {"status":"ok","module":"remoted"}
 
 # 4. The manager's certificate has a usable SAN (the field hostname verification reads)
@@ -298,22 +308,22 @@ openssl x509 -in /var/wazuh-manager/etc/certs/remoted.pem -noout -ext subjectAlt
 Then send a real authenticated request from an agent and watch the access log:
 
 ```
-[termination] client=10.0.0.50 "POST /stateless HTTP/1.1" -> upstream=10.0.0.11:1517 status=202 ...
+[termination] client=10.0.0.50 "POST /wazuh-manager/stateless HTTP/1.1" -> upstream=10.0.0.11:1517 status=202 ...
 ```
 
 What each status code tells you:
 
 | Code | Meaning |
 |---|---|
-| `202` | token valid **and** the event was ingested |
-| `401` | token rejected — unknown agent, wrong key or clock drift; a rewritten target shows as `404`, not here |
+| `202` | token valid **and** the engine accepted the batch |
+| `401` | token rejected — unknown agent, wrong key, clock drift, or an agent registered with a fixed address (the manager sees NGINX's); a rewritten target shows as `404`, not here |
 | `404` | no such route — if it is *every* request, suspect a rewritten target (3.1) or a prefix mismatch |
-| `413` | body too large — the proxy's limit (3.2) or the manager's cap |
-| `502` | the proxy could not talk to the manager — suspect TLS 1.3 (3.3) or certificate verification |
+| `413` | body too large — the proxy's limit (3.2, an HTML page) or remoted's JSON `413` above `remoted.auth_max_body_size` (5 MiB) |
+| `502` | the proxy could not talk to the manager — suspect TLS 1.3 (3.3), certificate verification, a reused idle connection (3.6), or a body above `max_body_size`, which remoted drops without answering |
 | `503` | the manager accepted the request but could not process it right now |
 
 ## 6. Reference configurations
 
-Ready-to-run configurations covering these scenarios — including the ones written to fail, so you
-can see each trap in action — ship with the source under
-`src/remoted/remoted_module/tools/load_balancer/base/nginx/`.
+The load-balancer lab in the source tree runs one working configuration,
+`src/remoted/remoted_module/tools/load_balancer/base/nginx/nginx.conf` (passthrough on 1517,
+termination on 1518, plus legacy 1514/1515).

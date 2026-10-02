@@ -56,7 +56,7 @@ void agent_info_set_query_module_function(query_module_callback_t query_module_c
 These functions integrate `agent_info` with the Agent Sync Protocol managed by `wazuh-modulesd`.
 
 #### `agent_info_init_sync_protocol()`
-Sets the module name used for the synchronization protocol. This function is called by `wazuh-modulesd` before `agent_info_start`, which then initializes the protocol.
+Initializes the synchronization protocol handle. This function is called by `wazuh-modulesd` before `agent_info_start` to provide the necessary message queue functions.
 
 ```c
 void agent_info_init_sync_protocol(const char* module_name);
