@@ -155,7 +155,7 @@ namespace
                                                         [](const std::string& req) -> std::string
                                                         {
                                                             if (req.find("global select-agent-group") == 0)
-                                                                return "ok {\"group\":\"default\"}";
+                                                                return "ok [{\"group\":\"default\"}]";
                                                             return "ok";
                                                         });
             taskServer = std::make_unique<FakeUdsServer>(

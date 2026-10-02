@@ -17,6 +17,7 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -24,6 +25,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <vector>
 
 using namespace remoted::control;
 using remoted::test::FakeUdsServer;
@@ -139,14 +141,15 @@ TEST(WazuhDBClientTest, GetAgentGroupsParsesCsvFromWdbResponse)
     ControlMetrics metrics;
     WazuhDBClient client(path, 1, 1000, 100, metrics);
 
-    Waiter<std::pair<SocketError, std::vector<std::string>>> w;
-    client.getAgentGroups(7, [&](SocketError e, std::vector<std::string> g) { w.complete({e, std::move(g)}); });
+    Waiter<std::pair<SocketError, AgentGroupsResult>> w;
+    client.getAgentGroups(7, [&](SocketError e, AgentGroupsResult r) { w.complete({e, std::move(r)}); });
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value.first, SocketError::None);
-    ASSERT_EQ(w.value.second.size(), 3U);
-    EXPECT_EQ(w.value.second[0], "default");
-    EXPECT_EQ(w.value.second[1], "web");
-    EXPECT_EQ(w.value.second[2], "dmz");
+    EXPECT_FALSE(w.value.second.noRow);
+    ASSERT_EQ(w.value.second.groups.size(), 3U);
+    EXPECT_EQ(w.value.second.groups[0], "default");
+    EXPECT_EQ(w.value.second.groups[1], "web");
+    EXPECT_EQ(w.value.second.groups[2], "dmz");
 }
 
 TEST(WazuhDBClientTest, GetAgentGroupsReturnsEmptyOnEmptyCsv)
@@ -157,11 +160,13 @@ TEST(WazuhDBClientTest, GetAgentGroupsReturnsEmptyOnEmptyCsv)
     ControlMetrics metrics;
     WazuhDBClient client(path, 1, 1000, 100, metrics);
 
-    Waiter<std::pair<SocketError, std::vector<std::string>>> w;
-    client.getAgentGroups(7, [&](SocketError e, std::vector<std::string> g) { w.complete({e, std::move(g)}); });
+    Waiter<std::pair<SocketError, AgentGroupsResult>> w;
+    client.getAgentGroups(7, [&](SocketError e, AgentGroupsResult r) { w.complete({e, std::move(r)}); });
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value.first, SocketError::None);
-    EXPECT_TRUE(w.value.second.empty());
+    // A row whose group column is empty is a row: found, with no groups -- not "no row".
+    EXPECT_FALSE(w.value.second.noRow);
+    EXPECT_TRUE(w.value.second.groups.empty());
 }
 
 TEST(WazuhDBClientTest, GetAgentGroupsProtocolErrorOnErrResponse)
@@ -172,11 +177,11 @@ TEST(WazuhDBClientTest, GetAgentGroupsProtocolErrorOnErrResponse)
     ControlMetrics metrics;
     WazuhDBClient client(path, 1, 1000, 100, metrics);
 
-    Waiter<std::pair<SocketError, std::vector<std::string>>> w;
-    client.getAgentGroups(7, [&](SocketError e, std::vector<std::string> g) { w.complete({e, std::move(g)}); });
+    Waiter<std::pair<SocketError, AgentGroupsResult>> w;
+    client.getAgentGroups(7, [&](SocketError e, AgentGroupsResult r) { w.complete({e, std::move(r)}); });
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value.first, SocketError::ProtocolError);
-    EXPECT_TRUE(w.value.second.empty());
+    EXPECT_TRUE(w.value.second.groups.empty());
 }
 
 TEST(WazuhDBClientTest, GetAgentGroupsProtocolErrorOnMalformedJson)
@@ -187,11 +192,11 @@ TEST(WazuhDBClientTest, GetAgentGroupsProtocolErrorOnMalformedJson)
     ControlMetrics metrics;
     WazuhDBClient client(path, 1, 1000, 100, metrics);
 
-    Waiter<std::pair<SocketError, std::vector<std::string>>> w;
-    client.getAgentGroups(7, [&](SocketError e, std::vector<std::string> g) { w.complete({e, std::move(g)}); });
+    Waiter<std::pair<SocketError, AgentGroupsResult>> w;
+    client.getAgentGroups(7, [&](SocketError e, AgentGroupsResult r) { w.complete({e, std::move(r)}); });
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value.first, SocketError::ProtocolError);
-    EXPECT_TRUE(w.value.second.empty());
+    EXPECT_TRUE(w.value.second.groups.empty());
 }
 
 TEST(WazuhDBClientTest, UpdateKeepaliveSendsGlobalUpdateKeepaliveCommand)
@@ -614,4 +619,280 @@ TEST(WazuhDBClientTest, UpdateSucceedsOnOk)
     client.updateKeepalive(1, "active", "synced", [&](SocketError e) { w.complete(e); });
     ASSERT_TRUE(w.wait(3000ms));
     EXPECT_EQ(w.value, SocketError::None);
+}
+
+// =============================================================================
+// End-to-end request deadline (#39147). Nothing queued waits past it, whether or not a
+// connection exists; nothing expired is sent afterwards; every request is answered once.
+// Bounds are generous on purpose: the valgrind job runs this suite many times slower.
+// =============================================================================
+
+TEST(WazuhDBClientTest, RequestExpiresWhileWazuhDbRefusesConnections)
+{
+    // No server on the path. SocketClient keeps retrying the connect on its own thread and swallows
+    // the send failure, so the worker waits on a dead connection: the round-trip deadline (2 s) must
+    // not outlive the request's own (300 ms).
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_refused");
+    wazuh::metrics::Manager metricsManager;
+    ControlMetrics metrics {makeControlMetrics(metricsManager)};
+    WazuhDBClient client(path, 1, /*deadlineMs*/ 2000, 100, metrics, /*requestDeadlineMs*/ 300);
+
+    Waiter<SocketError> w;
+    const auto start = std::chrono::steady_clock::now();
+    client.query("global anything", [&](SocketError e, const std::string&) { w.complete(e); });
+    ASSERT_TRUE(w.wait(10000ms)) << "a queued request must be answered by its deadline, connection or not";
+    EXPECT_EQ(w.value, SocketError::Timeout);
+    EXPECT_GE(std::chrono::steady_clock::now() - start, 300ms) << "expired before its deadline";
+    EXPECT_GE(metrics.wdbError->get(), 1U);
+}
+
+TEST(WazuhDBClientTest, BurstWhileWazuhDbIsDownIsAnsweredWithinTheDeadline)
+{
+    // D12's real shape: one worker holds each request for the whole 2 s round-trip deadline while
+    // wazuh-db is down, so ten queued requests used to be answered one every 2 s -- 20 s for the
+    // last. Each has its own 500 ms budget, so all ten are answered well before that.
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_burst");
+    ControlMetrics metrics;
+    WazuhDBClient client(path, 1, /*deadlineMs*/ 2000, 100, metrics, /*requestDeadlineMs*/ 500);
+
+    constexpr int kRequests = 10;
+    std::atomic<int> timeouts {0};
+    std::atomic<int> answered {0};
+    const auto start = std::chrono::steady_clock::now();
+    for (int i = 0; i < kRequests; ++i)
+    {
+        client.query("global anything",
+                     [&](SocketError e, const std::string&)
+                     {
+                         if (e == SocketError::Timeout)
+                         {
+                             timeouts.fetch_add(1);
+                         }
+                         answered.fetch_add(1);
+                     });
+    }
+    for (int i = 0; i < 200 && answered.load() < kRequests; ++i)
+    {
+        std::this_thread::sleep_for(50ms);
+    }
+    EXPECT_EQ(answered.load(), kRequests);
+    EXPECT_EQ(timeouts.load(), kRequests);
+    EXPECT_LT(std::chrono::steady_clock::now() - start, 6s) << "the queue drained one round trip at a time";
+}
+
+TEST(WazuhDBClientTest, ExpiredRequestIsNeverSentAfterRecovery)
+{
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_replay");
+    ControlMetrics metrics;
+    WazuhDBClient client(path, 1, 2000, 100, metrics, /*requestDeadlineMs*/ 3000);
+
+    std::atomic<int> expired {0};
+    for (int i = 0; i < 5; ++i)
+    {
+        client.query("global stale",
+                     [&](SocketError e, const std::string&)
+                     {
+                         if (e == SocketError::Timeout)
+                         {
+                             expired.fetch_add(1);
+                         }
+                     });
+    }
+    for (int i = 0; i < 200 && expired.load() < 5; ++i)
+    {
+        std::this_thread::sleep_for(100ms);
+    }
+    ASSERT_EQ(expired.load(), 5);
+
+    // wazuh-db comes back: the worker reconnects and only new requests reach it. The socket client
+    // reconnects on its own backoff, which can outlast one request deadline under load, so a fresh
+    // request is retried until one is answered; what must never arrive is a stale one.
+    std::mutex receivedMutex;
+    std::vector<std::string> received;
+    FakeUdsServer server(path,
+                         [&](const std::string& request) -> std::string
+                         {
+                             std::lock_guard<std::mutex> lock(receivedMutex);
+                             received.push_back(request);
+                             return "ok fresh";
+                         });
+    SocketError last = SocketError::Timeout;
+    for (int attempt = 0; attempt < 5 && last != SocketError::None; ++attempt)
+    {
+        Waiter<std::pair<SocketError, std::string>> w;
+        client.query("global fresh", [&](SocketError e, const std::string& r) { w.complete({e, r}); });
+        ASSERT_TRUE(w.wait(10000ms));
+        last = w.value.first;
+    }
+    EXPECT_EQ(last, SocketError::None) << "the client recovered";
+
+    std::lock_guard<std::mutex> lock(receivedMutex);
+    EXPECT_FALSE(received.empty());
+    for (const auto& request : received)
+    {
+        EXPECT_EQ(request, "global fresh") << "an expired request must never be sent after recovery";
+    }
+}
+
+TEST(WazuhDBClientTest, QueuedRequestExpiresBehindASlowRoundTrip)
+{
+    // One worker, busy on a reply that takes 5 s: the request queued behind it is answered on its
+    // own deadline, not when the slow reply finally lands.
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_behind");
+    FakeUdsServer server(path,
+                         [](const std::string& req) -> std::string
+                         {
+                             if (req == "global slow")
+                             {
+                                 std::this_thread::sleep_for(5s);
+                             }
+                             return "ok";
+                         });
+    ControlMetrics metrics;
+    WazuhDBClient client(path, 1, /*deadlineMs*/ 10000, 100, metrics, /*requestDeadlineMs*/ 500);
+
+    Waiter<SocketError> first;
+    Waiter<SocketError> second;
+    const auto start = std::chrono::steady_clock::now();
+    client.query("global slow", [&](SocketError e, const std::string&) { first.complete(e); });
+    client.query("global queued", [&](SocketError e, const std::string&) { second.complete(e); });
+    ASSERT_TRUE(second.wait(10000ms));
+    EXPECT_EQ(second.value, SocketError::Timeout);
+    EXPECT_LT(std::chrono::steady_clock::now() - start, 4s) << "the queued request waited for the slow reply";
+    ASSERT_TRUE(first.wait(10000ms));
+    EXPECT_EQ(first.value, SocketError::Timeout);
+}
+
+TEST(WazuhDBClientTest, RoundTripWaitNeverExceedsTheRequestDeadline)
+{
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_cap");
+    FakeUdsServer server(path,
+                         [](const std::string&) -> std::string
+                         {
+                             std::this_thread::sleep_for(5s);
+                             return "ok";
+                         });
+    ControlMetrics metrics;
+    WazuhDBClient client(path, 1, /*deadlineMs*/ 10000, 100, metrics, /*requestDeadlineMs*/ 300);
+
+    Waiter<SocketError> w;
+    const auto start = std::chrono::steady_clock::now();
+    client.query("global anything", [&](SocketError e, const std::string&) { w.complete(e); });
+    ASSERT_TRUE(w.wait(10000ms));
+    EXPECT_EQ(w.value, SocketError::Timeout);
+    EXPECT_LT(std::chrono::steady_clock::now() - start, 4s)
+        << "the 10 s round-trip deadline outlived the 300 ms request deadline";
+}
+
+TEST(WazuhDBClientTest, LateResponseToAnExpiredRequestIsDiscarded)
+{
+    // The first reply arrives after its request expired, on the connection that request used.
+    // The worker must not read it as the answer to the next request.
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_late");
+    FakeUdsServer server(path,
+                         [](const std::string& req) -> std::string
+                         {
+                             if (req == "global first")
+                             {
+                                 std::this_thread::sleep_for(2500ms);
+                                 return "ok A";
+                             }
+                             return "ok B";
+                         });
+    ControlMetrics metrics;
+    WazuhDBClient client(path, 1, /*deadlineMs*/ 10000, 100, metrics, /*requestDeadlineMs*/ 1000);
+
+    Waiter<SocketError> first;
+    client.query("global first", [&](SocketError e, const std::string&) { first.complete(e); });
+    ASSERT_TRUE(first.wait(10000ms));
+    ASSERT_EQ(first.value, SocketError::Timeout);
+
+    Waiter<std::pair<SocketError, std::string>> second;
+    client.query("global second", [&](SocketError e, const std::string& r) { second.complete({e, r}); });
+    ASSERT_TRUE(second.wait(10000ms));
+    EXPECT_EQ(second.value.first, SocketError::None);
+    EXPECT_EQ(second.value.second, "ok B");
+}
+
+TEST(WazuhDBClientTest, EveryRequestCompletesExactlyOnce)
+{
+    // Replies jittered around a short deadline, so the reaper, the workers and the destructor's
+    // drain all race for requests; the client is destroyed with work still in flight.
+    constexpr int kRequests = 200;
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_once");
+    FakeUdsServer server(path,
+                         [](const std::string& req) -> std::string
+                         {
+                             const auto n = std::stoi(req.substr(req.rfind(' ') + 1));
+                             std::this_thread::sleep_for(std::chrono::milliseconds((n * 7) % 60));
+                             return "ok";
+                         });
+    ControlMetrics metrics;
+    std::array<std::atomic<int>, kRequests> calls {};
+    {
+        WazuhDBClient client(path, 4, /*deadlineMs*/ 1000, /*maxQueueSize*/ 1000, metrics, /*requestDeadlineMs*/ 30);
+        for (int i = 0; i < kRequests; ++i)
+        {
+            client.query("global req " + std::to_string(i),
+                         [&calls, i](SocketError, const std::string&) { calls[i].fetch_add(1); });
+        }
+        std::this_thread::sleep_for(100ms);
+    }
+    for (int i = 0; i < kRequests; ++i)
+    {
+        EXPECT_EQ(calls[i].load(), 1) << "request " << i;
+    }
+}
+
+// =============================================================================
+// getAgentGroups result shapes (#39147): "no row" is its own answer, and a reply that
+// cannot be read is an error, never an empty membership.
+// =============================================================================
+
+namespace
+{
+    std::pair<SocketError, AgentGroupsResult> agentGroupsFor(const std::string& tag, const std::string& answer)
+    {
+        const auto path = remoted::test::makeUniqueSocketPath(tag);
+        FakeUdsServer server(path, [answer](const std::string&) -> std::string { return answer; });
+        ControlMetrics metrics;
+        WazuhDBClient client(path, 1, 1000, 100, metrics);
+
+        Waiter<std::pair<SocketError, AgentGroupsResult>> w;
+        client.getAgentGroups(7, [&](SocketError e, AgentGroupsResult r) { w.complete({e, std::move(r)}); });
+        EXPECT_TRUE(w.wait(3000ms));
+        return w.value;
+    }
+} // namespace
+
+TEST(WazuhDBClientTest, GetAgentGroupsReportsNoRowForAnEmptyArray)
+{
+    const auto [err, result] = agentGroupsFor("wdb_norow", "ok []");
+    EXPECT_EQ(err, SocketError::None);
+    EXPECT_TRUE(result.noRow);
+    EXPECT_TRUE(result.groups.empty());
+}
+
+TEST(WazuhDBClientTest, GetAgentGroupsRowWithNullGroupIsFoundWithNoGroups)
+{
+    // A NULL group column used to throw inside nlohmann's value() and surface as ProtocolError.
+    const auto [err, result] = agentGroupsFor("wdb_nullgrp", R"(ok [{"group":null}])");
+    EXPECT_EQ(err, SocketError::None);
+    EXPECT_FALSE(result.noRow);
+    EXPECT_TRUE(result.groups.empty());
+}
+
+TEST(WazuhDBClientTest, GetAgentGroupsProtocolErrorOnNonArrayPayload)
+{
+    // Used to parse as "no groups", which /control then served as "default".
+    const auto [err, result] = agentGroupsFor("wdb_obj", R"(ok {"group":"x"})");
+    EXPECT_EQ(err, SocketError::ProtocolError);
+    EXPECT_FALSE(result.noRow);
+}
+
+TEST(WazuhDBClientTest, GetAgentGroupsProtocolErrorOnBareOk)
+{
+    const auto [err, result] = agentGroupsFor("wdb_bare", "ok");
+    EXPECT_EQ(err, SocketError::ProtocolError);
+    EXPECT_FALSE(result.noRow);
 }

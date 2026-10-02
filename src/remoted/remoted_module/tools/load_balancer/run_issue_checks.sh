@@ -191,6 +191,96 @@ else
 fi
 
 echo
+echo "=== 9. #39147 membership authorization: served everywhere, revoked at once, fail-closed ==="
+NODES=(--node master=https://wazuh-master:1517 --node worker1=https://wazuh-worker1:1517
+       --node worker2=https://wazuh-worker2:1517)
+
+# One metric from a node's admin socket: a local UDS, so it is read from inside the container.
+admin_metric() {  # admin_metric <container> <metric>
+    docker exec "$1" curl -s --max-time 10 \
+        --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock http://localhost/metrics 2>/dev/null |
+        python3 -c 'import json, sys
+d = json.load(sys.stdin)
+print(next((int(m["value"]) for m in d.get("metrics", []) if m.get("name") == sys.argv[1]), "absent"))' "$2" 2>/dev/null
+}
+# The node's effective remoted.control_groups_refresh_interval, as its entrypoint wrote it (60 when unset).
+refresh_interval() {  # refresh_interval <container>
+    local v
+    v="$(docker exec "$1" sed -n 's/^remoted\.control_groups_refresh_interval=//p' \
+            /var/wazuh-manager/etc/wazuh-manager-internal-options.conf 2>/dev/null | tail -1)"
+    [[ "$v" =~ ^[0-9]+$ ]] && echo "$v" || echo 60
+}
+json_field() { python3 -c 'import json, sys; print(json.loads(sys.stdin.read()).get(sys.argv[1], ""))' "$1" 2>/dev/null; }
+delta() { [[ "$1" =~ ^[0-9]+$ && "$2" =~ ^[0-9]+$ ]] && echo $(( $2 - $1 )) || echo "absent"; }
+check_at_least() {  # check_at_least <description> <minimum> <actual>
+    local what="$1" min="$2" got="$3"
+    if [[ "$got" =~ ^[0-9]+$ ]] && (( got >= min )); then
+        printf '  PASS  %-62s %s\n' "$what" "$got"; PASS=$((PASS+1))
+    else
+        printf '  FAIL  %-62s expected >= %s, got %s\n' "$what" "$min" "${got:-<empty>}"; FAIL=$((FAIL+1))
+    fi
+}
+
+# AC1: whichever node the /control went to, every node serves the agent's configuration -- the
+# nodes that never saw the agent read its groups from their own database. Never a 403.
+OUT="$(probe /probe/cross_node_download.py --password labpassword --control-on worker1 "${NODES[@]}" \
+        --json-out /results/e6a_cross_node.json)"; RC=$?
+sed 's/^/  /' <<<"$OUT"
+check "cross-node config download is served everywhere (AC1)" "0" "$RC"
+
+# AC2: moving the agent to another group on the master reaches worker1's cached membership through
+# the cluster daemon's publication, before that membership could have expired. The publication only
+# withdraws the cached membership (only a wazuh-db read establishes one), so the next download reads
+# the new groups. The lab's long refresh interval (entrypoint, LAB_GROUPS_REFRESH_INTERVAL) keeps the
+# cache from expiring inside the probe's window, and the probe judges every refusal against a
+# conservative expiry bound, so the cache's TTL can never pass this check in the publication's place.
+REFRESH="$(refresh_interval wazuh-worker1)"
+echo "  worker1 remoted.control_groups_refresh_interval = ${REFRESH} s"
+BEFORE="$(admin_metric wazuh-worker1 remoted.control.registry.push.invalidated)"
+OUT="$(probe /probe/revocation_by_push.py --password labpassword --expiry "$REFRESH" \
+        --json-out /results/e6a_revocation.json)"; RC=$?
+sed 's/^/  /' <<<"$OUT"
+AFTER="$(admin_metric wazuh-worker1 remoted.control.registry.push.invalidated)"
+check "a revoked selector is refused before expiry (AC2)" "0" "$RC"
+check_at_least "worker1 received the cluster daemon's publications" "1" "$(delta "$BEFORE" "$AFTER")"
+
+# AC3: a restarted remoted holds no membership at all, and still serves without its own /control.
+docker exec wazuh-worker2 /var/wazuh-manager/bin/wazuh-manager-control restart >/dev/null 2>&1
+for _ in $(seq 1 60); do [[ "$(status wazuh-worker2 41519)" == "200" ]] && break; sleep 2; done
+OUT="$(probe /probe/cross_node_download.py --password labpassword --control-on master --download-on worker2 \
+        "${NODES[@]}" --json-out /results/e6a_restart.json)"; RC=$?
+sed 's/^/  /' <<<"$OUT"
+check "a restarted node serves without its own /control (AC3)" "0" "$RC"
+
+# AC4: worker2's wazuh-manager-db frozen (SIGSTOP; thawed on any exit). A fresh cached membership is
+# still served with no query; an agent it holds no membership for is refused with a retryable 503
+# within the request deadline (remoted.control_wdb_request_deadline, 5 s) -- never served, never
+# left hanging. B is enrolled and its key awaited BEFORE the freeze: once the database stops, the
+# worker's cluster daemon can stall on it and the key would never arrive.
+WDB="/var/wazuh-manager/bin/wazuh-manager-db"   # -f: the process name is truncated to 15 characters
+A="$(probe /probe/download_status.py --password labpassword --node https://wazuh-worker2:1517 --fresh --emit-key)"
+B="$(probe /probe/download_status.py --password labpassword --node https://wazuh-worker2:1517 --wait-key \
+        --no-download --emit-key)"
+trap 'docker exec wazuh-worker2 pkill -CONT -f "$WDB" >/dev/null 2>&1' EXIT
+docker exec wazuh-worker2 pkill -STOP -f "$WDB"
+UNAV_BEFORE="$(admin_metric wazuh-worker2 remoted.download.unavailable)"
+FRESH="$(probe /probe/download_status.py --node https://wazuh-worker2:1517 \
+        --agent-id "$(json_field agent_id <<<"$A")" --key "$(json_field key <<<"$A")")"
+COLD="$(probe /probe/download_status.py --node https://wazuh-worker2:1517 \
+        --agent-id "$(json_field agent_id <<<"$B")" --key "$(json_field key <<<"$B")")"
+UNAV_AFTER="$(admin_metric wazuh-worker2 remoted.download.unavailable)"
+docker exec wazuh-worker2 pkill -CONT -f "$WDB"
+trap - EXIT
+echo "  fresh: $FRESH"
+echo "  cold:  $COLD"
+check "wazuh-db frozen: a fresh cached membership is still served (AC4)" "200" "$(json_field status <<<"$FRESH")"
+check "wazuh-db frozen: an agent with no membership gets a 503 (AC4)" "503" "$(json_field status <<<"$COLD")"
+check "wazuh-db frozen: the 503 arrives within the deadline (< 7 s)" "yes" \
+    "$(python3 -c 'import sys; print("yes" if float(sys.argv[1] or 99) < 7 else "no: " + sys.argv[1])' \
+        "$(json_field elapsed <<<"$COLD")")"
+check_at_least "wazuh-db frozen: counted in remoted.download.unavailable" "1" "$(delta "$UNAV_BEFORE" "$UNAV_AFTER")"
+
+echo
 echo "======================================================================"
 printf '  %d passed, %d failed\n' "$PASS" "$FAIL"
 echo "======================================================================"

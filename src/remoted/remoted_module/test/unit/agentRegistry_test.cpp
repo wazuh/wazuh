@@ -13,6 +13,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -332,4 +333,162 @@ TEST(AgentRegistryTest, EvictionWithZeroTtlEvictsAnythingWithReference)
 
     reg.evictExpiredEntries(0);
     EXPECT_EQ(reg.get(5), nullptr);
+}
+
+// -----------------------------------------------------------------------------
+// Membership writers and the one ordering rule (#39147). Every write to an entry's groups is stamped
+// from a registry-wide counter; a wazuh-db answer whose query was ticketed before a newer write must
+// not overwrite it.
+// -----------------------------------------------------------------------------
+namespace
+{
+    // An established entry whose activity fields a membership push must leave alone.
+    void putActive(AgentRegistry& reg, AgentId id, std::vector<std::string> groups)
+    {
+        reg.update(id,
+                   [groups = std::move(groups)](std::shared_ptr<const AgentEntry>)
+                   {
+                       auto entry = std::make_shared<AgentEntry>();
+                       entry->groups = groups;
+                       entry->groupsRefreshedAtSec = 100;
+                       entry->lastKeepaliveUpdateSec = 200;
+                       entry->lastActivitySec = 300;
+                       entry->createdAtSec = 50;
+                       entry->hostPersisted = true;
+                       return entry;
+                   });
+    }
+} // namespace
+
+TEST(AgentRegistryTest, InvalidateGroupsMarksTheEntryNotEstablished)
+{
+    AgentRegistry reg;
+    putActive(reg, 1, {"g1"}); // established at 100
+    ASSERT_TRUE(groupsFresh(*reg.get(1), 110, 60));
+    const auto before = reg.get(1)->groupsSeq;
+
+    EXPECT_EQ(reg.invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated);
+
+    const auto entry = reg.get(1);
+    ASSERT_NE(entry, nullptr);
+    EXPECT_EQ(entry->groupsRefreshedAtSec, 0U);
+    EXPECT_EQ(entry->groups, (std::vector<std::string> {"g1"})); // kept for notify's cached-on-error path
+    EXPECT_GT(entry->groupsSeq, before);
+    EXPECT_FALSE(groupsFresh(*entry, 110, 60));
+    EXPECT_EQ(entry->lastKeepaliveUpdateSec, 200U);
+    EXPECT_EQ(entry->lastActivitySec, 300U);
+    EXPECT_EQ(entry->createdAtSec, 50U);
+    EXPECT_TRUE(entry->hostPersisted);
+}
+
+TEST(AgentRegistryTest, InvalidateGroupsSkipsAnAbsentAgent)
+{
+    AgentRegistry reg;
+
+    EXPECT_EQ(reg.invalidateGroups(7), AgentRegistry::PushOutcome::Skipped);
+    EXPECT_EQ(reg.size(), 0U);
+}
+
+TEST(AgentRegistryTest, LookupTicketTakenBeforeAnInvalidationIsSuperseded)
+{
+    AgentRegistry reg;
+    putActive(reg, 1, {"g-old"});
+    const auto ticket = reg.groupsTicket(); // the query is issued here...
+
+    ASSERT_EQ(reg.invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated); // ...a push lands...
+
+    EXPECT_FALSE(reg.mayStoreLookup(reg.get(1), ticket)); // ...so its answer may predate the change.
+}
+
+TEST(AgentRegistryTest, LookupTicketTakenAfterAnInvalidationMayStore)
+{
+    AgentRegistry reg;
+    putActive(reg, 1, {"g-old"});
+    ASSERT_EQ(reg.invalidateGroups(1), AgentRegistry::PushOutcome::Invalidated);
+
+    const auto ticket = reg.groupsTicket();
+
+    EXPECT_TRUE(reg.mayStoreLookup(reg.get(1), ticket));
+}
+
+TEST(AgentRegistryTest, AbsentAtIssueLookupIsNotCachedAfterASkippedPush)
+{
+    AgentRegistry reg;
+    putActive(reg, 2, {"g1"}); // established, an unrelated agent
+    reg.update(3,
+               [](std::shared_ptr<const AgentEntry>)
+               {
+                   auto entry = std::make_shared<AgentEntry>(); // what /control/shutdown mints
+                   entry->lastActivitySec = 300;
+                   return entry;
+               });
+    const auto ticket = reg.groupsTicket();
+
+    // A push for an agent this node does not hold: nothing records which agent it was.
+    ASSERT_EQ(reg.invalidateGroups(9), AgentRegistry::PushOutcome::Skipped);
+
+    EXPECT_FALSE(reg.mayStoreLookup(nullptr, ticket));
+    EXPECT_FALSE(reg.mayStoreLookup(reg.get(3), ticket));
+    EXPECT_TRUE(reg.mayStoreLookup(reg.get(2), ticket));          // established and not re-stamped: unaffected
+    EXPECT_TRUE(reg.mayStoreLookup(nullptr, reg.groupsTicket())); // a later ticket is past the skip
+}
+
+TEST(AgentRegistryTest, GroupsSequenceIsStrictlyIncreasingUnderConcurrency)
+{
+    constexpr int kThreads = 8;
+    constexpr int kWrites = 1000;
+    AgentRegistry reg;
+    for (AgentId id = 1; id <= kThreads; ++id)
+    {
+        putActive(reg, id, {"g"});
+    }
+
+    std::vector<std::vector<uint64_t>> stamps(kThreads);
+    std::vector<std::thread> threads;
+    for (int t = 0; t < kThreads; ++t)
+    {
+        threads.emplace_back(
+            [&, t]()
+            {
+                const AgentId id = static_cast<AgentId>(t + 1);
+                for (int i = 0; i < kWrites; ++i)
+                {
+                    reg.invalidateGroups(id);
+                    stamps[t].push_back(reg.get(id)->groupsSeq); // only this thread writes this agent
+                }
+            });
+    }
+    for (auto& th : threads)
+    {
+        th.join();
+    }
+
+    std::vector<uint64_t> all;
+    for (const auto& s : stamps)
+    {
+        for (std::size_t i = 1; i < s.size(); ++i)
+        {
+            EXPECT_GT(s[i], s[i - 1]);
+        }
+        all.insert(all.end(), s.begin(), s.end());
+    }
+    std::sort(all.begin(), all.end());
+    EXPECT_EQ(std::adjacent_find(all.begin(), all.end()), all.end());
+    EXPECT_EQ(all.size(), static_cast<std::size_t>(kThreads * kWrites));
+    EXPECT_EQ(reg.groupsTicket(), static_cast<uint64_t>(kThreads * kWrites));
+}
+
+TEST(AgentRegistryTest, GroupsFreshBoundaries)
+{
+    constexpr uint64_t kNow = 10'000;
+    AgentEntry entry;
+
+    entry.groupsRefreshedAtSec = 0;
+    EXPECT_FALSE(groupsFresh(entry, kNow, 60)); // never established
+    entry.groupsRefreshedAtSec = kNow - 59;
+    EXPECT_TRUE(groupsFresh(entry, kNow, 60));
+    entry.groupsRefreshedAtSec = kNow - 60;
+    EXPECT_FALSE(groupsFresh(entry, kNow, 60)); // the interval itself is expired
+    entry.groupsRefreshedAtSec = kNow + 5;
+    EXPECT_FALSE(groupsFresh(entry, kNow, 60)); // clock stepped back: expired, never trusted
 }

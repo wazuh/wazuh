@@ -12,12 +12,13 @@
 #include "controlHandler.hpp"
 #include "common/logThrottle.hpp"
 #include "common/vdClient.hpp"
-#include "groupSelector.hpp" // toGroupsCsv(), makeConfigToken() -- shared with /download's authorization check
+#include "groupSelector.hpp" // toGroupsCsv(), makeConfigToken(), membershipGroups() -- shared with /download
 #include "json.hpp"
 #include "loggerHelper.h"
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -69,18 +70,19 @@ namespace remoted::control
             return instance;
         }
 
+        // One window per condition, so a total is attributable: a notify refresh that cannot read
+        // the agent's groups is a different condition from the startup failure above, even though
+        // both answer 503 (a notify never falls back on an expired membership).
         remoted::common::LogThrottle& notifyWdbErrorThrottle()
         {
             static remoted::common::LogThrottle instance;
             return instance;
         }
 
-        // One window per condition, so a total is attributable. A notify that cannot resolve groups
-        // and has nothing cached is a third condition, distinct from the startup failure above and
-        // from a notify that still serves its cached membership: it is the only one of the three
-        // that answers the agent 500, and sharing a window with startup made the two totals
-        // indistinguishable.
-        remoted::common::LogThrottle& notifyUncachedWdbErrorThrottle()
+        // wazuh-db answered, but the node's replica has no row for the agent (`ok []`). Not a
+        // failure of the dependency, so it has its own window, its own line and its own counter
+        // (remoted.control.no_row), even though the agent gets the same 503 as for a failure.
+        remoted::common::LogThrottle& noRowThrottle()
         {
             static remoted::common::LogThrottle instance;
             return instance;
@@ -90,6 +92,57 @@ namespace remoted::control
         {
             return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
                 .count();
+        }
+
+        // The answer when the agent's membership cannot be established: the lookup failed, or the
+        // local wazuh-db has no row for the agent yet. One body for both on purpose -- the agent
+        // retries them the same way, and the distinction lives in metrics and logs.
+        //
+        // 503, not 500. remoted itself is fine -- it is a dependency that is not answering (or not
+        // synchronized yet), and the condition clears by itself. 500 says "this request cannot be
+        // made to work", which sends the agent down the generic ServerError path; 503 is the
+        // back-pressure class it already knows how to retry with Retry-After (outcomeClassifier.cpp).
+        //
+        // This does NOT take the node out of rotation by itself, deliberately: a balancer rule that
+        // sheds a node on sustained 503 is the operator's to add.
+        HttpResponse membershipUnavailableResponse()
+        {
+            HttpResponse response;
+            response.status = 503;
+            response.body = R"({"error":"dependency_unavailable","dependency":"wazuh-db"})";
+            return response;
+        }
+
+        // What storeLookedUpGroups() did with a wazuh-db row.
+        enum class GroupsWrite
+        {
+            Stored,    ///< Established in the entry: it is the answer.
+            KeptNewer, ///< A newer established write stamped the entry meanwhile: that is the answer.
+            Superseded ///< A change landed meanwhile and nothing newer is established: no answer (503).
+        };
+
+        void logSuperseded(AgentId id, const char* what)
+        {
+            LOGFN_DEBUG1(logFn(),
+                         "Agent %u /control %s: its membership changed while it was being read from "
+                         "wazuh-manager-db; the read is discarded and the agent is told to retry.",
+                         id,
+                         what);
+        }
+
+        void logNoRow(AgentId id, const char* what)
+        {
+            if (const auto throttle = noRowThrottle().record())
+            {
+                LOGFN_WARN(logFn(),
+                           "Cannot serve /control %s for agent %u: the local wazuh-manager-db has no row for it "
+                           "(%llu such answer(s) in the last %d s). Agents are being told to retry until their row "
+                           "reaches this node's database.",
+                           what,
+                           id,
+                           throttle.total,
+                           remoted::common::LogThrottle::kDefaultWindowSeconds);
+            }
         }
 
     } // namespace
@@ -187,10 +240,28 @@ namespace remoted::control
                 return;
             }
 
+            // A fresh membership answers without asking wazuh-db -- also while wazuh-db is down --
+            // exactly as a notify inside the refresh interval does.
+            const uint64_t startedAt = getWallSec();
+            if (const auto entry = m_registry->get(id);
+                entry && groupsFresh(*entry, startedAt, m_config.groupsRefreshIntervalSec))
+            {
+                LOGFN_DEBUG1(logFn(),
+                             "Agent %u startup: version=%s, groups=%s (cached).",
+                             id,
+                             data.version.c_str(),
+                             toGroupsCsv(entry->groups).c_str());
+                completeStartup(id, data.version, startedAt, entry, nullptr, std::move(callback));
+                return;
+            }
+
+            // Taken before the query: an answer read before a newer groups write (an invalidation,
+            // or another read stored first) must not overwrite it (AgentRegistry::mayStoreLookup()).
+            const auto ticket = m_registry->groupsTicket();
             m_wdbClient->getAgentGroups(
                 id,
-                [this, id, version = data.version, callback = std::move(callback)](
-                    SocketError err, std::vector<std::string> groups) mutable
+                [this, id, ticket, version = data.version, callback = std::move(callback)](
+                    SocketError err, AgentGroupsResult result) mutable
                 {
                     if (err != SocketError::None)
                     {
@@ -207,26 +278,26 @@ namespace remoted::control
                                         throttle.total,
                                         remoted::common::LogThrottle::kDefaultWindowSeconds);
                         }
-
-                        // 503, not 500. remoted itself is fine -- it is a dependency that is not
-                        // answering, and the condition clears by itself when that dependency comes
-                        // back. 500 says "this request cannot be made to work", which sends the
-                        // agent down the generic ServerError path; 503 is the back-pressure class
-                        // it already knows how to retry with Retry-After (outcomeClassifier.cpp).
-                        //
-                        // This does NOT take the node out of rotation by itself, deliberately: a
-                        // balancer rule that sheds a node on sustained 503 is the operator's to add.
-                        HttpResponse response;
-                        response.status = 503;
-                        response.body = R"({"error":"dependency_unavailable","dependency":"wazuh-db"})";
-                        callback(response);
+                        callback(membershipUnavailableResponse());
                         return;
                     }
 
-                    if (groups.empty())
+                    if (result.noRow)
                     {
-                        groups = {"default"};
+                        // Never "default": no row is no membership. Another read that established
+                        // one while the query was in flight was stored first, and serves.
+                        if (const auto established = applyNoRow(id, ticket))
+                        {
+                            completeStartup(id, version, getWallSec(), established, nullptr, std::move(callback));
+                            return;
+                        }
+                        incNoRow(m_metrics);
+                        logNoRow(id, "startup");
+                        callback(membershipUnavailableResponse());
+                        return;
                     }
+
+                    const auto groups = membershipGroups(std::move(result.groups));
 
                     LOGFN_DEBUG1(logFn(),
                                  "Agent %u startup: version=%s, groups=%s.",
@@ -235,46 +306,14 @@ namespace remoted::control
                                  toGroupsCsv(groups).c_str());
 
                     const uint64_t now = getWallSec();
-
-                    m_registry->update(id,
-                                       [&](std::shared_ptr<const AgentEntry> old)
-                                       {
-                                           auto updated = old ? std::make_shared<AgentEntry>(*old)
-                                                              : std::make_shared<AgentEntry>();
-                                           updated->groups = groups;
-                                           updated->groupsRefreshedAtSec = now;
-                                           updated->lastActivitySec = now;
-                                           // /startup leaves the agent
-                                           // "pending" in wdb; only a write
-                                           // lifts it, so the next notify
-                                           // must not be throttled.
-                                           updated->lastKeepaliveUpdateSec = 0;
-                                           if (updated->createdAtSec == 0)
-                                           {
-                                               updated->createdAtSec = now;
-                                           }
-                                           return updated;
-                                       });
-
-                    // A single write persists the accepted version together with the
-                    // pending keepalive. The version is not left to the notify path:
-                    // notify only writes it alongside host metadata, which the agent
-                    // omits until agent_info populates it, so the agent would otherwise
-                    // be visible through the API without a version for the first
-                    // keepalives.
-                    const std::string syncStatus = m_config.isWorkerNode ? "syncreq_status" : "synced";
-                    m_wdbClient->updateStatusCode(
-                        id, AgentStatusCode::Ok, version, "pending", syncStatus, [](SocketError) {});
-
-                    nlohmann::json response;
-                    response["limits"] = m_config.limits;
-                    response["cluster"]["name"] = m_config.clusterName;
-                    response["agent"]["groups"] = groups;
-
-                    HttpResponse httpResp;
-                    httpResp.status = 200;
-                    httpResp.body = response.dump();
-                    callback(httpResp);
+                    completeStartup(
+                        id,
+                        version,
+                        now,
+                        nullptr,
+                        [&](AgentEntry& e, const std::shared_ptr<const AgentEntry>& old)
+                        { return storeLookedUpGroups(e, old, ticket, groups, now); },
+                        std::move(callback));
                 });
         }
 
@@ -307,8 +346,7 @@ namespace remoted::control
             auto entry = m_registry->get(id);
             const uint64_t now = getWallSec();
 
-            const bool needsRefresh =
-                !entry || (now - entry->groupsRefreshedAtSec >= m_config.groupsRefreshIntervalSec);
+            const bool needsRefresh = !entry || !groupsFresh(*entry, now, m_config.groupsRefreshIntervalSec);
 
             if (!needsRefresh)
             {
@@ -316,81 +354,72 @@ namespace remoted::control
                 return;
             }
 
+            const auto ticket = m_registry->groupsTicket();
             m_wdbClient->getAgentGroups(
                 id,
-                [this, id, entry, data, callback = std::move(callback), now](SocketError err,
-                                                                             std::vector<std::string> groups) mutable
+                [this, id, ticket, entry, data, callback = std::move(callback), now](SocketError err,
+                                                                                     AgentGroupsResult result) mutable
                 {
-                    // Nothing cached and no answer: "default" would be a wrong answer served as
-                    // authoritative, not a stale one. Fail like /startup does.
-                    if (err != SocketError::None && !entry)
+                    // An expired or invalidated membership is never served in place of an answer:
+                    // the refresh exists because it may no longer be true. Fail like /startup does,
+                    // and write nothing -- no activity, no keepalive.
+                    if (err != SocketError::None)
                     {
-                        if (const auto throttle = notifyUncachedWdbErrorThrottle().record())
+                        if (const auto throttle = notifyWdbErrorThrottle().record())
                         {
                             LOGFN_ERROR(logFn(),
-                                        "Cannot serve /control notify: wazuh-manager-db is not answering and this "
-                                        "agent has no cached group membership to fall back on (%llu failure(s) in "
-                                        "the last %d s). Agents are being told to retry; check that "
-                                        "wazuh-manager-db is running.",
+                                        "Cannot serve /control notify: wazuh-manager-db is not answering, so this "
+                                        "agent's groups cannot be refreshed (%llu failure(s) in the last %d s). "
+                                        "Agents are being told to retry; check that wazuh-manager-db is running.",
                                         throttle.total,
                                         remoted::common::LogThrottle::kDefaultWindowSeconds);
                         }
-
-                        // 503 for the same reason as the startup path above: a dependency is
-                        // unavailable and the condition clears on its own, which is the agent's
-                        // back-pressure class rather than a server fault.
-                        HttpResponse response;
-                        response.status = 503;
-                        response.body = R"({"error":"dependency_unavailable","dependency":"wazuh-db"})";
-                        callback(response);
+                        callback(membershipUnavailableResponse());
                         return;
                     }
 
-                    // On failure the cached membership is served but not written back: `entry` is a
-                    // pre-query snapshot, so it may already be staler than the registry.
-                    const bool refreshed = err == SocketError::None;
-                    std::vector<std::string> finalGroups;
-
-                    if (refreshed)
+                    if (result.noRow)
                     {
-                        finalGroups = groups.empty() ? std::vector<std::string> {"default"} : std::move(groups);
-                    }
-                    else
-                    {
-                        // Throttle wdb errors during notify to avoid flooding on outages. Unlike
-                        // startup, this is not fatal to the request: it just keeps serving the
-                        // agent's last-known (or default) groups until the refresh succeeds.
-                        if (const auto throttle = notifyWdbErrorThrottle().record())
+                        if (const auto established = applyNoRow(id, ticket))
                         {
-                            LOGFN_WARN(logFn(),
-                                       "Failed to get agent groups from wdb for notify: %llu failure(s) in the "
-                                       "last %d s.",
-                                       throttle.total,
-                                       remoted::common::LogThrottle::kDefaultWindowSeconds);
+                            processNotify(id, established, data, now, std::move(callback));
+                            return;
                         }
+                        incNoRow(m_metrics);
+                        logNoRow(id, "notify");
+                        callback(membershipUnavailableResponse());
+                        return;
                     }
 
-                    auto updated = m_registry->update(id,
-                                                      [&](std::shared_ptr<const AgentEntry> old)
-                                                      {
-                                                          // Fall back to `entry`: the eviction
-                                                          // thread may have dropped the agent
-                                                          // while the query was in flight.
-                                                          auto e = old     ? std::make_shared<AgentEntry>(*old)
-                                                                   : entry ? std::make_shared<AgentEntry>(*entry)
-                                                                           : std::make_shared<AgentEntry>();
-                                                          if (refreshed)
-                                                          {
-                                                              e->groups = std::move(finalGroups);
-                                                              e->groupsRefreshedAtSec = now;
-                                                          }
-                                                          e->lastActivitySec = now;
-                                                          if (e->createdAtSec == 0)
-                                                          {
-                                                              e->createdAtSec = now;
-                                                          }
-                                                          return e;
-                                                      });
+                    const auto groups = membershipGroups(std::move(result.groups));
+                    bool superseded = false;
+                    auto updated = m_registry->update(
+                        id,
+                        [&](std::shared_ptr<const AgentEntry> old) -> std::shared_ptr<AgentEntry>
+                        {
+                            // Fall back to `entry`: the eviction thread may have dropped the agent
+                            // while the query was in flight.
+                            auto e = old     ? std::make_shared<AgentEntry>(*old)
+                                     : entry ? std::make_shared<AgentEntry>(*entry)
+                                             : std::make_shared<AgentEntry>();
+                            if (storeLookedUpGroups(*e, old, ticket, groups, now) == GroupsWrite::Superseded)
+                            {
+                                superseded = true;
+                                return nullptr; // A 503 writes nothing, not even activity (S33).
+                            }
+                            e->lastActivitySec = now;
+                            if (e->createdAtSec == 0)
+                            {
+                                e->createdAtSec = now;
+                            }
+                            return e;
+                        });
+                    if (superseded)
+                    {
+                        logSuperseded(id, "notify");
+                        callback(membershipUnavailableResponse());
+                        return;
+                    }
 
                     processNotify(id, updated, data, now, std::move(callback));
                 });
@@ -435,6 +464,132 @@ namespace remoted::control
         uint64_t getVdFeedOffset() const
         {
             return m_vdClient->getOffset();
+        }
+
+        // Writes a wazuh-db row into `e` (a copy of `old`) under the registry's one ordering rule.
+        // `ticket` was taken before the query was issued.
+        //  - A newer established write stamped `old` after the ticket (another read -- a /download
+        //    lookup or another /control -- stored first; a push never establishes groups): leave the
+        //    groups alone; the caller answers from the entry.
+        //  - A newer write that established nothing (an invalidation), or a push that skipped an
+        //    absent agent after the ticket while `old` holds no established membership: the local
+        //    database changed after the query was issued -- possibly for this agent -- so this read
+        //    may predate the change. Nothing is written and the caller answers 503; the next
+        //    request reads the database again.
+        //  - Otherwise established at the issue time.
+        GroupsWrite storeLookedUpGroups(AgentEntry& e,
+                                        const std::shared_ptr<const AgentEntry>& old,
+                                        uint64_t ticket,
+                                        const std::vector<std::string>& groups,
+                                        uint64_t issuedAtSec)
+        {
+            if (old && old->groupsSeq > ticket)
+            {
+                return old->groupsRefreshedAtSec != 0 ? GroupsWrite::KeptNewer : GroupsWrite::Superseded;
+            }
+            if (!m_registry->mayStoreLookup(old, ticket))
+            {
+                return GroupsWrite::Superseded;
+            }
+            e.groups = groups;
+            e.groupsRefreshedAtSec = issuedAtSec;
+            e.groupsSeq = m_registry->nextGroupsSeq();
+            return GroupsWrite::Stored;
+        }
+
+        // A "no row" answer (`ok []`) under the same rule: it invalidates the membership the
+        // registry holds for the agent (groups and activity kept, so only the membership stops
+        // counting) unless a newer write stamped the entry after the ticket, and it never creates
+        // an entry. Returns that newer entry when it holds an established membership -- another read
+        // stored while the query was in flight answers the request -- and null otherwise, when the
+        // caller answers 503.
+        std::shared_ptr<const AgentEntry> applyNoRow(AgentId id, uint64_t ticket)
+        {
+            std::shared_ptr<const AgentEntry> established;
+            m_registry->update(id,
+                               [&](std::shared_ptr<const AgentEntry> old) -> std::shared_ptr<AgentEntry>
+                               {
+                                   if (!old)
+                                   {
+                                       return nullptr;
+                                   }
+                                   if (old->groupsSeq > ticket)
+                                   {
+                                       if (old->groupsRefreshedAtSec != 0)
+                                       {
+                                           established = old;
+                                       }
+                                       return nullptr;
+                                   }
+                                   auto e = std::make_shared<AgentEntry>(*old);
+                                   e->groupsRefreshedAtSec = 0;
+                                   e->groupsSeq = m_registry->nextGroupsSeq();
+                                   return e;
+                               });
+            return established;
+        }
+
+        // The 200 half of /startup, shared by a fresh entry and a queried row: one update()
+        // records the activity (and, through `writeGroups`, the membership), then the accepted
+        // version is persisted with the pending keepalive and the entry's groups are the answer --
+        // another read stored while a query was in flight answers instead of what the query read.
+        // `fallback` is the entry the caller already holds: the eviction thread may drop the agent
+        // between that read and this update, and the answer must still carry its groups.
+        void completeStartup(
+            AgentId id,
+            const std::string& version,
+            uint64_t now,
+            const std::shared_ptr<const AgentEntry>& fallback,
+            const std::function<GroupsWrite(AgentEntry&, const std::shared_ptr<const AgentEntry>&)>& writeGroups,
+            ResponseCallback callback)
+        {
+            bool superseded = false;
+            const auto stored =
+                m_registry->update(id,
+                                   [&](std::shared_ptr<const AgentEntry> old) -> std::shared_ptr<AgentEntry>
+                                   {
+                                       auto updated = old        ? std::make_shared<AgentEntry>(*old)
+                                                      : fallback ? std::make_shared<AgentEntry>(*fallback)
+                                                                 : std::make_shared<AgentEntry>();
+                                       if (writeGroups && writeGroups(*updated, old) == GroupsWrite::Superseded)
+                                       {
+                                           superseded = true;
+                                           return nullptr; // A 503 writes nothing (S33).
+                                       }
+                                       updated->lastActivitySec = now;
+                                       // /startup leaves the agent "pending" in wdb; only a write lifts
+                                       // it, so the next notify must not be throttled.
+                                       updated->lastKeepaliveUpdateSec = 0;
+                                       if (updated->createdAtSec == 0)
+                                       {
+                                           updated->createdAtSec = now;
+                                       }
+                                       return updated;
+                                   });
+
+            if (superseded)
+            {
+                logSuperseded(id, "startup");
+                callback(membershipUnavailableResponse());
+                return;
+            }
+
+            // A single write persists the accepted version together with the pending keepalive.
+            // The version is not left to the notify path: notify only writes it alongside host
+            // metadata, which the agent omits until agent_info populates it, so the agent would
+            // otherwise be visible through the API without a version for the first keepalives.
+            const std::string syncStatus = m_config.isWorkerNode ? "syncreq_status" : "synced";
+            m_wdbClient->updateStatusCode(id, AgentStatusCode::Ok, version, "pending", syncStatus, [](SocketError) {});
+
+            nlohmann::json response;
+            response["limits"] = m_config.limits;
+            response["cluster"]["name"] = m_config.clusterName;
+            response["agent"]["groups"] = stored->groups;
+
+            HttpResponse httpResp;
+            httpResp.status = 200;
+            httpResp.body = response.dump();
+            callback(httpResp);
         }
 
         void processNotify(AgentId id,

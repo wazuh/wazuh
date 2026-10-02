@@ -261,7 +261,9 @@ namespace remoted::test
             size_t sent = 0;
             while (sent < n)
             {
-                ssize_t w = ::write(fd, buf + sent, n - sent);
+                // MSG_NOSIGNAL: a reply that lands after the client gave up and closed its end (a
+                // held reply outliving the client's deadline) must fail here, not SIGPIPE the binary.
+                ssize_t w = ::send(fd, buf + sent, n - sent, MSG_NOSIGNAL);
                 if (w > 0)
                 {
                     sent += static_cast<size_t>(w);

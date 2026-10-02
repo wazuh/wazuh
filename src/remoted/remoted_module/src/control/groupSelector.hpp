@@ -44,10 +44,24 @@ namespace remoted::control
     ///
     /// Never empty: /download needs some resource to name, and an agent with no groups is
     /// implicitly in "default". The substitution is defensive only, since every site that
-    /// writes AgentEntry::groups already falls back to {"default"}.
+    /// writes AgentEntry::groups goes through membershipGroups() below.
     inline std::string makeConfigToken(const std::string& groupsCsv)
     {
         return groupsCsv.empty() ? std::string {"default"} : groupsCsv;
+    }
+
+    /// The membership to store for an agent row wazuh-db answered with: its groups in wazuh-db
+    /// order, or {"default"} for a row with no groups -- the one mapping every writer of
+    /// AgentEntry::groups shares, so /control's groups, config_hash and config_token and the
+    /// /download selector are all computed over the same list. A missing row is not a membership
+    /// at all and never reaches this function.
+    inline std::vector<std::string> membershipGroups(std::vector<std::string> groups)
+    {
+        if (groups.empty())
+        {
+            return {"default"};
+        }
+        return groups;
     }
 } // namespace remoted::control
 

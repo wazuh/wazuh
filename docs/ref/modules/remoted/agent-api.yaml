@@ -585,10 +585,15 @@ paths:
             now -- but the condition clears by itself when that dependency returns, and the agent
             retries it as back-pressure rather than as a server fault.
 
-            Today that dependency is `wazuh-manager-db`, consulted to resolve the agent's groups.
-            `startup` always answers this way when it is unavailable; `notify` only when there is
-            also no cached membership to fall back on (first contact since the module started) --
-            with a cache, the stale membership is served instead.
+            Today that dependency is `wazuh-manager-db`, consulted to resolve the agent's groups
+            whenever the manager holds no fresh membership for the agent (established within
+            `remoted.control_groups_refresh_interval`): `startup` and `notify` both answer this way
+            when it does not answer in time -- an expired membership is never served instead -- and
+            also when it answers that it has **no row for the agent** (the agent is not, or not yet,
+            in this node's database), and when the agent's membership changed on the node while it
+            was being read (that read may be out of date, so it is never served). No row is never read
+            as membership of `default`; the agent retries until its row arrives. A fresh membership answers without asking, so neither
+            call is refused while it lasts.
 
             `remoted` itself is healthy in this state: it keeps accepting connections, and keeps
             answering `GET /` and `POST /stateless`. Whether a sustained `503` should take the node
@@ -728,9 +733,12 @@ paths:
         **A `config` download is authorized against the requesting agent's own groups.**
         `resource_id` must equal the selector `/control` handed that agent as `config_token` -- the
         same string `config_hash` was computed over -- and anything else is `403`. The selector is
-        resolved from the agent registry `/control` maintains, so no wazuh-db round trip is added
-        here; an agent whose membership was never established (no `/control/startup`, or an evicted
-        entry) is denied rather than served. The comparison is exact, multigroup order included.
+        resolved from the agent registry `/control` maintains when the agent's membership there is
+        fresh (established within `remoted.control_groups_refresh_interval`); otherwise -- first
+        contact with this node, a restarted manager, an expired or never-established entry -- it is
+        read from the node's local `wazuh-manager-db` before answering. An agent that database has no
+        row for is never served `default`: like a database that does not answer in time, it is
+        `503`, and the agent retries. The comparison is exact, multigroup order included.
 
         **`wpk` downloads are not authorized this way.** A package's authority is the agent's
         pending upgrade task, which `/control` does not carry, so any authenticated agent may still
@@ -780,9 +788,9 @@ paths:
             Two different producers answer `403` on this route, with the same flat shape:
 
             - **this endpoint**, when `resource_type` is `config` and `resource_id` is not the
-              requesting agent's own selector, or the manager has no established group membership
-              for it. Decided before the path is resolved, so it is indistinguishable from a request
-              for a group that does not exist -- there is no oracle for enumerating group names.
+              requesting agent's own selector. Decided before the path is resolved, so it is
+              indistinguishable from a request for a group that does not exist -- there is no oracle
+              for enumerating group names.
             - **the shared transport**, with `verification_mode` `full`, when the client certificate
               does not carry the connecting peer's address (see the API description). That one
               applies to every route.
@@ -816,7 +824,23 @@ paths:
               examples:
                 internalError:
                   value: { error: "Internal server error", code: 500 }
-        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+        "503":
+          description: |
+            Either the server shed the request (its in-flight byte budget is exhausted), or -- for a
+            `config` download -- the agent's group membership could not be established from the
+            node's local `wazuh-manager-db` (the fallback used when the agent registry cannot vouch
+            for the agent): the database did not answer in time, it has no row for the agent yet, or
+            the agent's membership changed on the node while it was being read.
+            Both clear by themselves; the agent retries a `503` as back-pressure. No `Retry-After` is
+            sent. The manager's log names the dependency when it is `wazuh-manager-db`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                dependencyUnavailable:
+                  value: { error: "dependency_unavailable", dependency: "wazuh-db" }
+                serviceUnavailable:
+                  value: { error: "Service unavailable", code: 503 }
 
   /stats:
     post:

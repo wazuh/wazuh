@@ -129,7 +129,7 @@ namespace
                                                                {
                                                                    if (req.find("global select-agent-group") == 0)
                                                                    {
-                                                                       return "ok {\"group\":\"default\"}";
+                                                                       return "ok [{\"group\":\"default\"}]";
                                                                    }
                                                                    return "ok";
                                                                });

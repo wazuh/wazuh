@@ -45,6 +45,18 @@ namespace remoted::control
                  ///< recognise a clean-shutdown drain instead of a genuine transport failure.
     };
 
+    /// What the local wazuh-db said about an agent's group membership.
+    ///
+    /// `noRow` is an answer of its own: the local replica has no row for the agent (`ok []`), which
+    /// is not the same thing as a row with no groups. A worker whose replica has not received the
+    /// agent yet, or an agent deleted since it authenticated, lands here, and nothing that authorizes
+    /// a download may read it as membership of `default`.
+    struct AgentGroupsResult
+    {
+        bool noRow {false};
+        std::vector<std::string> groups; ///< wazuh-db order; empty when the row has no groups.
+    };
+
     struct HostInfo
     {
         std::string hostname;
