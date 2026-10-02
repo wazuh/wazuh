@@ -9,6 +9,7 @@
 
 #include "firefox.hpp"
 #include <fstream>
+#include "safe_file_reader.hpp"
 
 FirefoxAddonsProvider::FirefoxAddonsProvider(std::shared_ptr<IBrowserExtensionsWrapper> firefoxAddonsWrapper) : m_firefoxAddonsWrapper(std::move(firefoxAddonsWrapper)) {}
 
@@ -86,6 +87,8 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
         }
 
         std::string username = Utils::getFilename(userHome);
+        const std::string userId = m_firefoxAddonsWrapper->getUserId(username);
+        const std::string ownerUid = userId.empty() ? browser_extensions::homeDirectoryOwner(userHome) : userId;
 
         for (const auto& path : FIREFOX_PATHS)
         {
@@ -100,7 +103,7 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
             {
                 const std::string entity = Utils::joinPaths(firefoxInstallationPath, entry);
 
-                if (!Utils::existsDir(entity) || !isValidPath(entity))
+                if (!Utils::existsDir(entity) || !browser_extensions::isPlainDirectory(entity) || !isValidPath(entity))
                 {
                     continue;
                 }
@@ -123,11 +126,11 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
                     continue;
                 }
 
-                std::ifstream extensionsFile(extensionsFilePath);
+                std::string extensionsContent;
 
-                if (!extensionsFile.is_open())
+                if (!browser_extensions::readRegularFile(extensionsFilePath, extensionsContent, ownerUid))
                 {
-                    // Skip this profile if file cannot be opened
+                    // Skip this profile if the file cannot be read or is not a regular file
                     continue;
                 }
 
@@ -135,7 +138,7 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
 
                 try
                 {
-                    extensionsJson = nlohmann::json::parse(extensionsFile);
+                    extensionsJson = nlohmann::json::parse(extensionsContent);
                 }
                 catch (const nlohmann::json::parse_error& e)
                 {
@@ -159,7 +162,7 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
                 for (const auto& addon : addons.items())
                 {
                     FirefoxAddon firefoxAddon;
-                    firefoxAddon.uid = m_firefoxAddonsWrapper->getUserId(username);
+                    firefoxAddon.uid = userId;
 
                     if (
                         // If any of "softDisable", "appDisabled" or "userDisabled" are true, then the addon is disabled.
