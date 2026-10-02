@@ -5,15 +5,17 @@
     deps.py flatten [--inventory PATH]
     deps.py readme [--inventory PATH] [--readme PATH] [--check]
     deps.py sbom [--inventory PATH | --manifest URL|PATH] [--requirements PATH] [--output PATH]
-    deps.py manifest --deps-version N [--inventory PATH] [--wazuh-commit SHA] [--workflow-run ID] [--files DIR]
-    deps.py drift [--inventory PATH] [--manifest URL|PATH]
+    deps.py manifest --deps-version N [--python --built-against SET [--requirements PATH]]
+                     [--inventory PATH] [--wazuh-commit SHA] [--workflow-run ID] [--files DIR]
+    deps.py drift [--inventory PATH] [--manifest URL|PATH] [--python-manifest URL|PATH]
 
 `check` prints one `ERROR: <name>: <message>` line per problem to stderr and exits 1 if
 there is any, 0 otherwise. `flatten` prints the inventory as bash associative arrays
 (EXT_URL, EXT_SHA256, ...) for build_external.sh, whose builder images have no python3.
 `readme` rewrites the dependency table of README.md, `sbom` prints a CycloneDX 1.5 SBOM,
-`manifest` prints the manifest.json of a published set, and `drift` compares the inventory
-with the manifest of the set that src/Makefile's DEPS_VERSION points at.
+`manifest` prints the manifest.json of a published set (the external libraries, or with
+--python the embedded Python and its wheels), and `drift` compares the inventory with the
+manifests of the sets src/Makefile's DEPS_VERSION and PYTHON_DEPS_VERSION point at.
 """
 
 import argparse
@@ -37,6 +39,8 @@ MIRROR = "https://packages.wazuh.com/deps"
 TABLE_BEGIN, TABLE_END = "<!-- deps-table:begin -->", "<!-- deps-table:end -->"
 # Fields that define what a set contains; metadata (license, CPE, notes) can be fixed without a new set.
 CONTENT_FIELDS = ("version", "revision", "source", "url", "upstream_sha256", "snapshot_sha256", "patches")
+# Built by 5_builderpackage_embedded-python.yml and published in the PYTHON_DEPS_VERSION set.
+PYTHON_ENTRY = "cpython"
 
 TARGETS = {"agent", "manager"}
 PLATFORMS = {"linux", "darwin", "windows", "aix", "solaris", "hpux", "el5", "freebsd", "netbsd", "openbsd"}
@@ -304,14 +308,22 @@ def sbom(entries, requirements):
     return {"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1, "components": components}
 
 
-def manifest(doc, deps_version, wazuh_commit=None, workflow_run=None, files_dir=None):
+def manifest(doc, deps_version, wazuh_commit=None, workflow_run=None, files_dir=None, python=None):
+    """Manifest of an externals set, or with python={"built_against", "requirements"} of a Python set."""
     files = {}
     if files_dir:
         root = Path(files_dir)
         for path in sorted(p for p in root.rglob("*") if p.is_file()):
             files[path.relative_to(root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
-    return {"schema": 1, "deps_version": deps_version, "wazuh_commit": wazuh_commit, "workflow_run": workflow_run,
-            "entries": doc["entries"], "files": files}
+    result = {"schema": 1, "deps_version": deps_version, "wazuh_commit": wazuh_commit, "workflow_run": workflow_run}
+    if python is None:
+        result["entries"] = [e for e in doc["entries"] if e["name"] != PYTHON_ENTRY]
+    else:
+        result["built_against"] = python["built_against"]
+        result["entries"] = [e for e in doc["entries"] if e["name"] == PYTHON_ENTRY]
+        result["requirements"] = [f"{name}=={version}" for name, version in python["requirements"]]
+    result["files"] = files
+    return result
 
 
 def load_manifest(source):
@@ -324,9 +336,9 @@ def load_manifest(source):
         raise RuntimeError(f"no manifest at {source}: {exc}") from exc
 
 
-def drift(doc, published):
+def drift(doc, published, python=False):
     """Return the differences in content fields between the inventory and a set manifest."""
-    ours = {e["name"]: e for e in doc["entries"]}
+    ours = {e["name"]: e for e in doc["entries"] if (e["name"] == PYTHON_ENTRY) == python}
     theirs = {e["name"]: e for e in published.get("entries", [])}
     errors = [f"{n}: in the inventory but not in the set manifest" for n in sorted(set(ours) - set(theirs))]
     errors += [f"{n}: in the set manifest but not in the inventory" for n in sorted(set(theirs) - set(ours))]
@@ -338,10 +350,23 @@ def drift(doc, published):
     return errors
 
 
-def deps_version(src_dir):
-    match = re.search(r"^DEPS_VERSION\s*=\s*(\S+)", (Path(src_dir) / "Makefile").read_text(encoding="utf-8"), re.M)
+def drift_python(doc, published, requirements, deps_version_value):
+    """Differences between the inventory, the framework requirements and the Python set manifest."""
+    errors = drift(doc, published, python=True)
+    if published.get("built_against") != deps_version_value:
+        errors.append(f"{PYTHON_ENTRY}: the Python set was built against {published.get('built_against')!r}, "
+                      f"but DEPS_VERSION is {deps_version_value!r}; rebuild it")
+    pins = {f"{name}=={version}" for name, version in requirements}
+    shipped = set(published.get("requirements", []))
+    errors += [f"{PYTHON_ENTRY}: {pin} is in framework/requirements.txt but not in the Python set" for pin in sorted(pins - shipped)]
+    errors += [f"{PYTHON_ENTRY}: {pin} is in the Python set but not in framework/requirements.txt" for pin in sorted(shipped - pins)]
+    return errors
+
+
+def deps_version(src_dir, variable="DEPS_VERSION"):
+    match = re.search(rf"^{variable}\s*=\s*(\S+)", (Path(src_dir) / "Makefile").read_text(encoding="utf-8"), re.M)
     if not match:
-        raise RuntimeError(f"no DEPS_VERSION in {src_dir}/Makefile")
+        raise RuntimeError(f"no {variable} in {src_dir}/Makefile")
     return match.group(1)
 
 
@@ -358,7 +383,7 @@ def main(argv=None):
         ("check", "validate the inventory"), ("flatten", "print the inventory as bash associative arrays"),
         ("readme", "rewrite the dependency table of README.md"), ("sbom", "print a CycloneDX SBOM"),
         ("manifest", "print the manifest.json of a published set"),
-        ("drift", "compare the inventory with the manifest of DEPS_VERSION"))}
+        ("drift", "compare the inventory with the manifests of DEPS_VERSION and PYTHON_DEPS_VERSION"))}
     for command in commands.values():
         command.add_argument("--inventory", default=str(DEFAULT_INVENTORY))
     commands["check"].add_argument("--src", default=str(REPO / "src"))
@@ -372,7 +397,13 @@ def main(argv=None):
     commands["manifest"].add_argument("--wazuh-commit")
     commands["manifest"].add_argument("--workflow-run")
     commands["manifest"].add_argument("--files", help="directory whose files are hashed into `files`")
+    commands["manifest"].add_argument("--python", action="store_true", help="manifest of an embedded Python set")
+    commands["manifest"].add_argument("--built-against", help="with --python: DEPS_VERSION the Python set was built with")
+    commands["manifest"].add_argument("--requirements", default=str(REQUIREMENTS))
     commands["drift"].add_argument("--manifest", help="default: the mirror manifest of src/Makefile's DEPS_VERSION")
+    commands["drift"].add_argument("--python-manifest",
+                                   help="default: the mirror manifest of src/Makefile's PYTHON_DEPS_VERSION")
+    commands["drift"].add_argument("--requirements", default=str(REQUIREMENTS))
     commands["drift"].add_argument("--src", default=str(REPO / "src"))
     args = parser.parse_args(argv)
 
@@ -411,11 +442,20 @@ def main(argv=None):
             else:
                 sys.stdout.write(text)
         elif args.command == "manifest":
-            result = manifest(doc, args.deps_version, args.wazuh_commit, args.workflow_run, args.files)
+            python = None
+            if args.python:
+                if not args.built_against:
+                    raise ValueError("--python needs --built-against")
+                python = {"built_against": args.built_against, "requirements": read_requirements(args.requirements)}
+            result = manifest(doc, args.deps_version, args.wazuh_commit, args.workflow_run, args.files, python)
             sys.stdout.write(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
         elif args.command == "drift":
-            source = args.manifest or f"{MIRROR}/{deps_version(args.src)}/manifest.json"
-            return _report(drift(doc, load_manifest(source)))
+            externals_version = deps_version(args.src)
+            externals = args.manifest or f"{MIRROR}/{externals_version}/manifest.json"
+            python = args.python_manifest or f"{MIRROR}/{deps_version(args.src, 'PYTHON_DEPS_VERSION')}/manifest.json"
+            errors = drift(doc, load_manifest(externals))
+            errors += drift_python(doc, load_manifest(python), read_requirements(args.requirements), externals_version)
+            return _report(errors)
         else:
             warnings = []
             external = None if args.no_make else external_res(args.src, warnings)

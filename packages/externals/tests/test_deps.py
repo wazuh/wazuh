@@ -354,3 +354,57 @@ def test_sbom_skips_validation(tmp_path):
     assert run("check", "--no-make", "--inventory", str(inventory)).returncode == 1
     result = run("sbom", "--inventory", str(inventory))
     assert result.returncode == 0 and json.loads(result.stdout)["components"][0]["version"] == "3.0.0"
+
+
+def with_cpython():
+    return doc(entry("cpython", version="3.12.14"), entry("openssl"), entry("zlib"))
+
+
+def python_manifest(**overrides):
+    result = deps.manifest(with_cpython(), "5/python/1",
+                           python={"built_against": "5/externals/1", "requirements": [("pyyaml", "6.0.1")]})
+    result.update(overrides)
+    return result
+
+
+def test_manifest_excludes_cpython():
+    assert [e["name"] for e in deps.manifest(with_cpython(), "5/externals/1")["entries"]] == ["openssl", "zlib"]
+
+
+def test_python_manifest():
+    result = python_manifest()
+    assert [e["name"] for e in result["entries"]] == ["cpython"]
+    assert (result["built_against"], result["requirements"]) == ("5/externals/1", ["pyyaml==6.0.1"])
+    assert deps.drift_python(with_cpython(), result, [("pyyaml", "6.0.1")], "5/externals/1") == []
+    assert deps.drift(with_cpython(), deps.manifest(with_cpython(), "5/externals/1")) == []
+
+
+def test_drift_python_built_against():
+    assert deps.drift_python(with_cpython(), python_manifest(), [("pyyaml", "6.0.1")], "5/externals/2") == [
+        "cpython: the Python set was built against '5/externals/1', but DEPS_VERSION is '5/externals/2'; rebuild it"]
+
+
+def test_drift_python_requirements():
+    result = deps.drift_python(with_cpython(), python_manifest(), [("pyyaml", "6.0.2"), ("idna", "3.7")], "5/externals/1")
+    assert result == ["cpython: idna==3.7 is in framework/requirements.txt but not in the Python set",
+                      "cpython: pyyaml==6.0.2 is in framework/requirements.txt but not in the Python set",
+                      "cpython: pyyaml==6.0.1 is in the Python set but not in framework/requirements.txt"]
+
+
+def test_drift_python_content():
+    newer = doc(entry("cpython", version="3.12.15"), entry("openssl"), entry("zlib"))
+    assert deps.drift_python(newer, python_manifest(), [("pyyaml", "6.0.1")], "5/externals/1") == [
+        "cpython: `version` is '3.12.15' here but '3.12.14' in the set manifest"]
+
+
+def test_deps_version_vars(tmp_path):
+    (tmp_path / "Makefile").write_text("DEPS_VERSION = 5/externals/1\nPYTHON_DEPS_VERSION = 5/python/1\n")
+    assert deps.deps_version(tmp_path) == "5/externals/1"
+    assert deps.deps_version(tmp_path, "PYTHON_DEPS_VERSION") == "5/python/1"
+
+
+def test_manifest_python_needs_built_against(tmp_path):
+    inventory = tmp_path / "deps.json"
+    inventory.write_text(json.dumps(with_cpython()))
+    result = run("manifest", "--inventory", str(inventory), "--deps-version", "5/python/1", "--python")
+    assert result.returncode == 1 and "--built-against" in result.stderr

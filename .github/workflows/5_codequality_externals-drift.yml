@@ -2,7 +2,8 @@ name: 5.X - Check external dependencies inventory
 
 # packages/externals/dependencies.json must list exactly the EXTERNAL_RES of every
 # target, match the README table, and match the manifest.json of the published set
-# that src/Makefile's DEPS_VERSION points at.
+# that src/Makefile's DEPS_VERSION points at; the embedded Python set (PYTHON_DEPS_VERSION)
+# must carry the same cpython and wheels and have been built against DEPS_VERSION.
 
 on:
   pull_request:
@@ -11,6 +12,7 @@ on:
       - "src/Makefile"
       - "README.md"
       - "framework/requirements.txt"
+      - "framework/.python-version"
       - ".github/workflows/5_codequality_externals-drift.yml"
 
 permissions:
@@ -33,5 +35,5 @@ jobs:
       - name: Check the README table
         run: python3 packages/externals/deps.py readme --check
 
-      - name: Check the inventory against the published set manifest
+      - name: Check the inventory against the published set manifests
         run: python3 packages/externals/deps.py drift

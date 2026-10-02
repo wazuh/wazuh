@@ -59,13 +59,10 @@ mkdir -p "${ARTIFACTS_DIR}" "${DOWNLOAD_DIR}"
 log() { echo "[external] $*"; }
 err() { echo "[external][ERROR] $*" >&2; }
 
-# Source-of-truth for any blob we re-ship rather than build here (currently
-# cpython, see the cpython pass-through block below). Reading from src/Makefile keeps the URLs in
-# lockstep with what `make deps` would download for the same source tree,
-# which means DEPS_VERSION must point at an *existing* publish at the time
-# this workflow runs. Never bump DEPS_VERSION in the same branch that
-# dispatches this workflow — do the bump in a follow-up PR after the new
-# tarball is uploaded. See docs/dev/build-external-dependencies.md.
+# What this workflow does not build (libbpf-bootstrap, the embedded Python and
+# the other make deps prerequisites) comes from the published sets src/Makefile
+# points at, so DEPS_VERSION and PYTHON_DEPS_VERSION must name existing sets
+# while it runs. See docs/dev/build-external-dependencies.md.
 DEPS_VERSION="$(sed -n 's/^DEPS_VERSION[[:space:]]*=[[:space:]]*\([^[:space:]]*\).*/\1/p' "${SRC_DIR}/Makefile" | head -n1)"
 if [ -z "${DEPS_VERSION}" ]; then
     err "could not extract DEPS_VERSION from ${SRC_DIR}/Makefile"
@@ -325,6 +322,8 @@ done
 # cpython and libbpf-bootstrap are built by their own pipelines, and the
 # other prerequisites of `make deps` (shared modules, indexer templates, ...)
 # are not in the inventory: let make fetch them exactly as `make deps` does.
+# cpython comes from the PYTHON_DEPS_VERSION set: the build-external configure
+# step reads its tree, but it is not part of this set.
 make_goals=""
 for var in SHARED_TAR INDEXER_TEMPLATE_FILES WCS_FLAT_FILES CREDENTIALS_LIB_FILES; do
     make_goals="${make_goals} $(make -s -C "${SRC_DIR}" "print-${var}" TARGET="${MAKE_TARGET}")"
@@ -366,40 +365,7 @@ find "${SRC_DIR}/external" -name '._*' -delete
 log "stripping case-collision files that shadow C++ standard headers"
 rm -f "${SRC_DIR}/external/sqlite/VERSION" "${SRC_DIR}/external/sqlite/version" 2>/dev/null || true
 
-# cpython is NOT built by this workflow. It has its own dedicated
-# pipeline — .github/workflows/5_builderpackage_embedded-python.yml, which
-# runs framework/cpython/compile.sh in the manager builder image and
-# publishes cpython_<arch>.tar.gz.
-#
-# This block only re-ships that already-built blob so the consolidated
-# externals tarball is complete for downstream `make deps`. The source
-# version comes from DEPS_VERSION (extracted from src/Makefile above), so
-# the cpython we re-ship is the same one `make deps` would download. See
-# the DEPS_VERSION note near the top of this script — running this workflow
-# on a branch that has bumped DEPS_VERSION to a not-yet-published version
-# will 404 here.
-# Only manager legs trigger this; the agent EXTERNAL_RES has no $(CPYTHON).
-if [ "${BUILD_TARGET}" = "manager" ]; then
-    case "${ARCHITECTURE_TARGET}" in
-        amd64) cpython_arch="x86_64" ;;
-        arm64) cpython_arch="arm64" ;;
-        *)     cpython_arch="" ;;
-    esac
-    if [ -n "${cpython_arch}" ]; then
-        cpython_url="https://packages.wazuh.com/deps/${DEPS_VERSION}/libraries/sources/cpython_${cpython_arch}.tar.gz"
-        cpython_out="${ARTIFACTS_DIR}/cpython_${cpython_arch}.passthrough.tar.gz"
-        log "fetching cpython pass-through from ${cpython_url}"
-        if curl -fsSL "${cpython_url}" -o "${cpython_out}"; then
-            log "staged cpython pass-through: $(basename "${cpython_out}") ($(stat -c %s "${cpython_out}" 2>/dev/null || stat -f %z "${cpython_out}") bytes)"
-        else
-            err "cpython pass-through fetch failed from ${cpython_url}"
-            rm -f "${cpython_out}"
-        fi
-    fi
-fi
-
-# Pre-build source snapshots. cpython ships only as the pass-through blob above:
-# a repacked copy of its tree would add files to the set that nothing reads.
+# Pre-build source snapshots. cpython is published in its own set.
 for name in ${DEPS_FOR_LEG}; do
     if ! on_leg "${name}" || [ "${name}" = "cpython" ]; then
         log "skipping ${name} on ${LEG_PLATFORM}"

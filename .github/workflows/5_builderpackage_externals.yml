@@ -44,8 +44,8 @@ on:
     inputs:
       deps_version:
         description: |
-          Set this build will be published as, <line>/<number> (e.g. 5/2 for
-          packages.wazuh.com/deps/5/2/). Written into manifest.json.
+          Set this build will be published as, 5/externals/<number> (e.g. 5/externals/2
+          for packages.wazuh.com/deps/5/externals/2/). Written into manifest.json.
         type: string
         required: false
         default: ""

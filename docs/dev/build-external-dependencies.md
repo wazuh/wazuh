@@ -11,7 +11,7 @@ Supporting scripts under `packages/externals/`:
 | `dependencies.json` | Inventory: version, revision, URL, sha256, archive format, patches, targets, platforms, CPE, purl and license of every `EXTERNAL_RES` dependency. |
 | `patches/<dep>/` | Wazuh changes to upstream sources, applied with `git apply` after download. |
 | `deps.py` | Inventory tool: `check` (schema and names against `make print-EXTERNAL_RES`), `flatten` (bash arrays for the builder images), `readme` (README table), `sbom` (CycloneDX), `manifest` (set `manifest.json`), `drift` (inventory against the published manifest). |
-| `build_external.sh` | Container-side build script. Downloads every dependency of the leg from the inventory, checks its sha256, applies its patches, runs the per-leg build, and re-ships the published `cpython` and `libbpf-bootstrap` blobs, see [Caveats](#caveats). |
+| `build_external.sh` | Container-side build script. Downloads every dependency of the leg from the inventory, checks its sha256, applies its patches, and runs the per-leg build; `libbpf-bootstrap` comes from the `build-ebpf` job and the embedded Python from its own set, see [Caveats](#caveats). |
 | `generate_external.sh` | Wrapper that flattens the inventory, runs `build_external.sh` and packs the result into `externals-<leg>.tar.gz` with the S3 layout `make deps` expects. |
 | `ebpf/build_ebpf.sh` | Builds `libbpf-bootstrap.tar.gz` (`modern.bpf.o` + `libbpf.so`) for amd64, aarch64, arm32, i386 and ppc64le on one x86_64 host, with clang 20 and Zig. See [libbpf-bootstrap](#libbpf-bootstrap-is-built-by-the-build-ebpf-job). |
 | `smoke_build.sh` | Sanity check: builds the agent/manager from source against the freshly built consolidated tree to confirm the precompiled tarballs are actually consumable. |
@@ -30,15 +30,15 @@ From the Actions UI: pick **5.X - Package - Build external dependencies**, click
 Or from the CLI:
 
 ```bash
-# Build every dependency of the branch's dependencies.json for the set that will be published as 5/<N>.
-gh workflow run 5_builderpackage_externals.yml --ref <branch> -f deps_version=5/<N>
+# Build every dependency of the branch's dependencies.json for the set that will be published as 5/externals/<N>.
+gh workflow run 5_builderpackage_externals.yml --ref <branch> -f deps_version=5/externals/<N>
 ```
 
 ### Inputs
 
 | Input | Purpose | Default |
 |-------|---------|---------|
-| `deps_version` | Set this build will be published as, `<line>/<number>` (e.g. `5/2`); written into `manifest.json`. | `""` (`unassigned`) |
+| `deps_version` | Set this build will be published as, `5/externals/<number>` (e.g. `5/externals/2`); written into `manifest.json`. | `""` (`unassigned`) |
 | `docker_image_tag` | GHCR builder image tag for the Linux legs. `auto` derives it from `VERSION.json`; `developer` uses the branch name; anything else is a literal tag. | `auto` |
 
 There is intentionally no per-leg dispatch input. A deps release is whole-or-nothing — partial output would publish a tarball that breaks `make deps` on any platform whose leg is missing. To re-run a single failed leg, use GitHub's **Re-run failed jobs** on the workflow run.
@@ -161,7 +161,7 @@ inventory_sync_server/keystore_server/vulnerability_scanner instead, so it links
 
 | Dependency | La | Lm | Ma | Wa | Published as |
 |------------|----|----|----|----|--------------|
-| cpython | — | ✔ | — | — | **re-shipped** (`5_builderpackage_embedded-python.yml`) |
+| cpython | — | ✔ | — | — | own set (`5_builderpackage_embedded-python.yml`, `PYTHON_DEPS_VERSION`) |
 | libffi | — | ✔ | — | — | precompiled `.a` (cpython/ctypes) |
 | jemalloc | — | ✔ | — | — | precompiled `.so` |
 | rocksdb | — | ✔ | — | — | precompiled `.so` |
@@ -208,19 +208,20 @@ the download behind a flag drops them from the bundle and breaks every test buil
 
 ## Publishing a new DEPS_VERSION — the safe order
 
-Sets live under one directory per release line, numbered from 1: `deps/5/1`, `deps/5/2`, … for 5.x (`deps/4.14/<n>` and `deps/4.10/<n>` for the 4.x lines), and `DEPS_VERSION` holds that path (`DEPS_VERSION = 5/2`). A set may be rebuilt while no merged branch points at it; once one does, it is never modified, and a change is the next number. Older sets (`54`, `55`, `99-37702`, …) stay where they are.
+5.x publishes two kinds of sets, numbered from 1: `deps/5/externals/<n>` (this workflow, the C/C++ libraries) and `deps/5/python/<n>` (`5_builderpackage_embedded-python.yml`, the embedded Python and its wheels). `src/Makefile` points at one of each: `DEPS_VERSION = 5/externals/<n>` and `PYTHON_DEPS_VERSION = 5/python/<n>`. A set may be rebuilt while no merged branch points at it; once one does, it is never modified, and a change is the next number. The 4.x sets (`55`, `4.10.4`) and older ones (`54`, `99-37702`, …) stay where they are.
 
 1. Open a branch and edit `packages/externals/dependencies.json` (version, revision, `url`, sha256 of the downloaded archive, patches). Run `python3 packages/externals/deps.py check` and `python3 packages/externals/deps.py readme`, and commit both files.
-2. Take the next number of the line (`aws s3 ls s3://…/deps/5/`) and dispatch the workflow with `deps_version=5/<N>`. Keep `DEPS_VERSION` at the currently published set while it runs, see the caveat below.
+2. Take the next number (`aws s3 ls s3://…/deps/5/externals/`) and dispatch the workflow with `deps_version=5/externals/<N>`. Keep `DEPS_VERSION` at the currently published set while it runs, see the caveat below.
 3. Wait for `build-externals`, `consolidate`, and all `smoke-build` jobs to go green.
-4. Download `externals-all.tar.gz` and upload its contents (`manifest.json` and `libraries/…`) to `s3://…/deps/5/<N>/`, never over an existing key (`aws s3api put-object --if-none-match '*'`).
-5. Set `DEPS_VERSION = 5/<N>` in `src/Makefile` in the same PR. The drift check (`5_codequality_externals-drift.yml`) then compares the inventory with `deps/5/<N>/manifest.json`.
+4. Download `externals-all.tar.gz` and upload its contents (`manifest.json` and `libraries/…`) to `s3://…/deps/5/externals/<N>/`, never over an existing key (`aws s3api put-object --if-none-match '*'`).
+5. Set `DEPS_VERSION = 5/externals/<N>` in `src/Makefile` in the same PR. The drift check (`5_codequality_externals-drift.yml`) then compares the inventory with `deps/5/externals/<N>/manifest.json`.
+6. If openssl, sqlite or libffi changed, the embedded Python must be rebuilt against the new set (see below): the drift check fails while the Python set was built against another `DEPS_VERSION`.
 
 ## Caveats
 
 ### Bump `DEPS_VERSION` only after the new set is uploaded
 
-The inventory decides every dependency source, but `DEPS_VERSION` (defined in `src/Makefile`) still decides what the workflow takes from the currently published set: `cpython`, the `libbpf-bootstrap` source tree, the shared modules and the other non-dependency prerequisites of `make deps`, fetched with `make EXTERNAL_SRC_ONLY=yes <goals>`.
+The inventory decides every dependency source, but `DEPS_VERSION` (defined in `src/Makefile`) still decides what the workflow takes from the currently published set: the `libbpf-bootstrap` source tree, the shared modules and the other non-dependency prerequisites of `make deps`, fetched with `make EXTERNAL_SRC_ONLY=yes <goals>`.
 
 If your branch points `DEPS_VERSION` at the set you're trying to *produce*, those fetches fail and the run fails. Dispatch the workflow while `DEPS_VERSION` points at the *currently published* set, and bump it once the new set is uploaded.
 
@@ -236,13 +237,13 @@ To build it locally on `ubuntu:24.04` with `libelf-dev zlib1g-dev`, `apt.llvm.or
 bash packages/externals/ebpf/build_ebpf.sh   # writes ./output/<arch>/libbpf-bootstrap.tar.gz
 ```
 
-### `cpython` is re-shipped, not rebuilt
+### The embedded Python is its own set
 
-`cpython` has its own dedicated pipeline (`5_builderpackage_embedded-python.yml`, runs `framework/cpython/compile.sh`). Manager legs only; the agent `EXTERNAL_RES` has no `$(CPYTHON)`. `build_external.sh` fetches the prebuilt blob from `packages.wazuh.com/deps/${DEPS_VERSION}/…` through `make` and packs it into the per-leg tarballs. Its inventory entry describes the upstream release that is scanned, not what the workflow downloads. To bump it:
+`cpython` and the wheels of `framework/requirements.txt` are built by `5_builderpackage_embedded-python.yml` (`framework/cpython/compile.sh`) against the libraries of `DEPS_VERSION`, and published as `deps/5/python/<n>` (`libraries/sources/cpython_<arch>.tar.gz` and `libraries/linux/<arch>/cpython.tar.gz`). `make deps` downloads them from `PYTHON_RESOURCES_URL` (`PYTHON_DEPS_VERSION`), so a `RESOURCES_URL` override does not affect them. Manager only; the agent `EXTERNAL_RES` has no `$(CPYTHON)`. The externals workflow only fetches the Python tree for its configure step and does not ship it. Its inventory entry describes the upstream release that is scanned. To publish a new one (a wheel bump, a new Python, or new libraries):
 
-1. Run `5_builderpackage_embedded-python.yml`.
-2. Upload the new blob into `packages.wazuh.com/deps/<new-DEPS_VERSION>/libraries/…` alongside the rest of the externals tree this workflow produces.
-3. Bump `DEPS_VERSION` in `src/Makefile`. Because `build_external.sh` reads `DEPS_VERSION` straight from the Makefile, this single bump is what makes the next run pick up the new cpython blob.
+1. Run `5_builderpackage_embedded-python.yml` with `python_deps_version=5/python/<N>`, with `DEPS_VERSION` already at the externals set it must link against.
+2. Upload the contents of its `python-all.tar.gz` (`manifest.json`, with `built_against` and the wheels, and `libraries/…`) to `s3://…/deps/5/python/<N>/`, never over an existing key.
+3. Set `PYTHON_DEPS_VERSION = 5/python/<N>` in `src/Makefile`. The drift check compares the inventory's `cpython` entry and `framework/requirements.txt` with that manifest, and its `built_against` with `DEPS_VERSION`.
 
 ### macOS and Windows are agent-only
 
