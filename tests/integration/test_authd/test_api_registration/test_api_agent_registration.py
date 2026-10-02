@@ -154,7 +154,9 @@ def test_agentd_server_configuration(test_metadata, truncate_monitored_files_mod
         expected = test_metadata['expected'][stage]
 
         url = get_base_url()
-        authentication_headers, _ = login()
+        # wazuh-apid logs "Listening on" from its ASGI lifespan, which uvicorn runs before it
+        # actually binds the socket, so the API may still refuse connections right after restart.
+        authentication_headers, _ = login(login_attempts=6)
         api_query = f"{url}/agents?"
 
         expected_client_keys_ip = request_parameters['agent_ip']
