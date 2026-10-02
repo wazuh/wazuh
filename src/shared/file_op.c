@@ -3438,6 +3438,8 @@ fail:
 #define W_VETTED_WIN_PATH_MAX 4096
 #define W_VETTED_WIN_EXTENDED_PREFIX L"\\\\?\\"
 #define W_VETTED_WIN_UNC_PREFIX L"\\\\?\\UNC\\"
+#define W_VETTED_WIN_NT_MUP L"\\Device\\Mup\\"
+#define W_VETTED_WIN_NT_REDIRECTOR L"\\Device\\LanmanRedirector\\"
 
 #if _WIN32_WINNT < 0x0600
 // file_op.c also builds without -D_WIN32_WINNT=0x600 (file_op_proc.o), where MinGW hides this Vista API.
@@ -3470,6 +3472,19 @@ static bool w_win_same_path(const wchar_t * a, const wchar_t * b) {
 static int w_win_final_path(HANDLE hFile, wchar_t * path) {
     char narrow[W_VETTED_WIN_PATH_MAX * 4];
     DWORD len = GetFinalPathNameByHandleW(hFile, path, W_VETTED_WIN_PATH_MAX, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+
+    if (len == 0 && GetLastError() == ERROR_PATH_NOT_FOUND) {
+        // A folder-mounted volume has no DOS name; its NT name never matches the requested path, so the reparse walk vets it.
+        len = GetFinalPathNameByHandleW(hFile, path, W_VETTED_WIN_PATH_MAX, FILE_NAME_NORMALIZED | VOLUME_NAME_NT);
+
+        if (len > 0 && len < W_VETTED_WIN_PATH_MAX &&
+            (!_wcsnicmp(path, W_VETTED_WIN_NT_MUP, wcslen(W_VETTED_WIN_NT_MUP)) ||
+             !_wcsnicmp(path, W_VETTED_WIN_NT_REDIRECTOR, wcslen(W_VETTED_WIN_NT_REDIRECTOR)))) {
+            // NT form of a network path; see the UNC prefix check below.
+            errno = EPERM;
+            return -1;
+        }
+    }
 
     if (len == 0) {
         // The handle is already open, so a failure is not a vanished path: only a sharing violation is transient.
@@ -4222,7 +4237,7 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
             return -1;
         }
 
-        // Trusted only if a trusted account owns it and no other principal may modify it.
+        // Ownership alone is not enough: anyone with write access can re-point a junction.
         trusted = w_win_owner_trusted(owner, file_owner, trusted_sids, admins) &&
                   !w_win_reparse_untrusted_writable(hComponent, file_owner, trusted_sids, admins);
         LocalFree(sd);
@@ -4266,6 +4281,74 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
     }
 
     return 0;
+}
+
+/**
+ * A hard link can be made by anyone who can write to the directory holding it, so a file with more than one
+ * link is trusted only when its directory is owned by a trusted account and no untrusted principal can write
+ * to it: the Windows counterpart of w_vet_link_count(). A path with no drive or volume root (such as the NT name
+ * of a folder-mounted volume) cannot be told apart from a network one, so it is not trusted.
+ *
+ * @param hFile The file already opened.
+ * @param final_path Its final path, as returned by w_win_final_path().
+ * @return true if the file may be read, false otherwise (sets errno).
+ */
+static bool w_win_hard_link_dir_trusted(HANDLE hFile, const wchar_t * final_path) {
+    wchar_t dir[W_VETTED_WIN_PATH_MAX];
+    PSID trusted_sids[W_VETTED_WIN_TRUSTED_SIDS] = {NULL};
+    PSECURITY_DESCRIPTOR file_sd = NULL;
+    PSECURITY_DESCRIPTOR dir_sd = NULL;
+    PSID file_owner = NULL;
+    PSID dir_owner = NULL;
+    w_win_admins_t admins;
+    HANDLE hDir;
+    wchar_t * slash;
+    size_t root = w_win_root_len(final_path);
+    bool trusted = false;
+    int saved_errno = EPERM;
+
+    if (root == 0 || wcslen(final_path) + wcslen(W_VETTED_WIN_EXTENDED_PREFIX) >= W_VETTED_WIN_PATH_MAX) {
+        errno = EPERM;
+        return false;
+    }
+
+    wcscpy(dir, W_VETTED_WIN_EXTENDED_PREFIX);
+    wcscat(dir, final_path);
+    slash = wcsrchr(dir + wcslen(W_VETTED_WIN_EXTENDED_PREFIX), L'\\');
+
+    // A file in a root keeps the root's trailing separator.
+    if (slash == NULL || (size_t)(slash - dir) < wcslen(W_VETTED_WIN_EXTENDED_PREFIX) + root) {
+        slash = dir + wcslen(W_VETTED_WIN_EXTENDED_PREFIX) + root - 1;
+    }
+
+    slash[1] = L'\0';
+
+    hDir = CreateFileW(dir, READ_CONTROL | FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                       NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+    if (hDir == INVALID_HANDLE_VALUE) {
+        errno = w_win_race_errno(GetLastError());
+        return false;
+    }
+
+    if (w_win_init_trusted_sids(trusted_sids) < 0 || w_win_get_owner(hFile, &file_owner, &file_sd) < 0 ||
+        w_win_get_owner(hDir, &dir_owner, &dir_sd) < 0) {
+        saved_errno = errno;
+        goto end;
+    }
+
+    w_win_admins_load(&admins);
+    trusted = w_win_owner_trusted(dir_owner, file_owner, trusted_sids, &admins) &&
+              !w_win_reparse_untrusted_writable(hDir, file_owner, trusted_sids, &admins);
+    w_win_admins_free(&admins);
+
+end:
+    CloseHandle(hDir);
+    LocalFree(file_sd);
+    LocalFree(dir_sd);
+    w_win_free_trusted_sids(trusted_sids);
+    errno = trusted ? 0 : saved_errno;
+    return trusted;
 }
 
 /**
@@ -4336,13 +4419,11 @@ static HANDLE w_open_vetted_follow_handle(const char * path) {
         goto fail;
     }
 
-    // Reject a file reached by more than one hard link, as the POSIX walk does, with the same EPERM.
-    if (info.nNumberOfLinks != 1) {
-        errno = EPERM;
+    if (w_win_final_path(hFile, final_path) < 0) {
         goto fail;
     }
 
-    if (w_win_final_path(hFile, final_path) < 0) {
+    if (info.nNumberOfLinks != 1 && !w_win_hard_link_dir_trusted(hFile, final_path)) {
         goto fail;
     }
 
