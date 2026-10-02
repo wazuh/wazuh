@@ -185,7 +185,7 @@ Maximum events per second for synchronization messages.
 Time between integrity checks for each inventory table.
 
 - **Default value:** `86400` (24 hours)
-- **Allowed values:** `60` to unlimited (seconds)
+- **Allowed values:** `0` to `4294967295` (seconds). There is no minimum, and `0` does not disable the check: each table is then validated after every successful synchronization
 - **Note:** Each of the 13 inventory tables (osinfo, hwinfo, packages, processes, ports, network_iface, network_protocol, network_address, users, groups, services, browser_extensions, hotfixes) is checked independently. When the interval elapses for a table:
   1. Agent calculates checksum-of-checksums for the table
   2. Sends checksum to manager for validation
