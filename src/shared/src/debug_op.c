@@ -692,11 +692,7 @@ void print_out(const char *msg, ...)
     /* Print to stderr */
     (void)vfprintf(stderr, msg, args);
 
-#ifdef WIN32
-    (void)fprintf(stderr, "\r\n");
-#else
     (void)fprintf(stderr, "\n");
-#endif
 
     va_end(args);
 }
