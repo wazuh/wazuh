@@ -136,7 +136,7 @@ namespace chrome
             }
 
             std::ifstream messagesFile(messagesFilePath);
-            const nlohmann::json messagesJson = nlohmann::json::parse(messagesFile, nullptr, false);
+            const nlohmann::json messagesJson = nlohmann::json::parse(messagesFile, nullptr, false, true);
 
             if (messagesJson.is_discarded())
             {
@@ -435,7 +435,7 @@ namespace chrome
                         parsePreferenceSettings(extension, item.key(), item.value());
 
                         std::ifstream manifestFile(manifestPath);
-                        nlohmann::json manifestJson = nlohmann::json::parse(manifestFile);
+                        nlohmann::json manifestJson = nlohmann::json::parse(manifestFile, nullptr, true, true);
 
                         parseManifest(manifestJson, extension);
 
@@ -599,7 +599,7 @@ namespace chrome
                     try
                     {
                         std::ifstream manifestFile(manifestPath);
-                        nlohmann::json manifestJson = nlohmann::json::parse(manifestFile);
+                        nlohmann::json manifestJson = nlohmann::json::parse(manifestFile, nullptr, true, true);
 
                         parseManifest(manifestJson, extension);
 

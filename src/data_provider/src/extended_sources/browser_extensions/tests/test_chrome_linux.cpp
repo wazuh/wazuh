@@ -258,3 +258,28 @@ TEST_F(ChromeExtensionsMalformedFilesTests, DefaultLocaleMustBeAPlainLocaleName)
     ASSERT_NE(valid, nullptr);
     EXPECT_EQ((*valid)["name"], "Localized");
 }
+
+TEST_F(ChromeExtensionsMalformedFilesTests, ManifestAndMessagesWithCommentsAreParsed)
+{
+    const std::string profile = "user/.config/google-chrome/Default/";
+
+    writeFile(profile + "Preferences", "{}");
+    writeFile(profile + "Secure Preferences", "{}");
+    writeFile(profile + "Extensions/commented/1.0/manifest.json", R"({
+        // Line comment
+        "name": "__MSG_appName__",
+        /* Block comment */
+        "version": "1.0",
+        "default_locale": "en"
+    })");
+    writeFile(profile + "Extensions/commented/1.0/_locales/en/messages.json", R"({
+        // Line comment
+        "appName": {"message": "Commented"}
+    })");
+
+    nlohmann::json extensionsJson;
+    ASSERT_NO_THROW(extensionsJson = collect());
+    ASSERT_EQ(extensionsJson.size(), static_cast<size_t>(1));
+    EXPECT_EQ(extensionsJson[0]["name"], "Commented");
+    EXPECT_EQ(extensionsJson[0]["version"], "1.0");
+}
