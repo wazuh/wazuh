@@ -91,17 +91,17 @@ Use a single comma-separated value as shown. The manager also accepts one `<log_
 ### Plain Format Example
 
 ```
-2026/07/06 12:34:56 wazuh-remoted: INFO: (1409): Reading authentication keys file.
-2026/07/06 12:34:56 wazuh-analysisd: INFO: Started (pid: 12345).
-2026/07/06 12:34:57 wazuh-remoted: INFO: Listening on port 1514 (TCP).
+2026/07/06 12:34:56 wazuh-manager-remoted: INFO: (1409): Reading authentication keys file.
+2026/07/06 12:34:56 wazuh-manager-analysisd: INFO: Started (pid: 12345).
+2026/07/06 12:34:57 wazuh-manager-remoted: INFO: Listening on port 1514 (TCP).
 ```
 
 ### JSON Format Example
 
 ```json
-{"timestamp":"2026-07-06T12:34:56+0000","tag":"wazuh-remoted","level":"info","description":"Reading authentication keys file."}
-{"timestamp":"2026-07-06T12:34:56+0000","tag":"wazuh-analysisd","level":"info","description":"Started (pid: 12345)."}
-{"timestamp":"2026-07-06T12:34:57+0000","tag":"wazuh-remoted","level":"info","description":"Listening on port 1514 (TCP)."}
+{"timestamp":"2026-07-06T12:34:56+0000","tag":"wazuh-manager-remoted","level":"info","description":"Reading authentication keys file."}
+{"timestamp":"2026-07-06T12:34:56+0000","tag":"wazuh-manager-analysisd","level":"info","description":"Started (pid: 12345)."}
+{"timestamp":"2026-07-06T12:34:57+0000","tag":"wazuh-manager-remoted","level":"info","description":"Listening on port 1514 (TCP)."}
 ```
 
 ---

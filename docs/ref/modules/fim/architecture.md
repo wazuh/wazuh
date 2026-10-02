@@ -715,7 +715,7 @@ Run Delta Sync ──► asp_sync_module(MODE_DELTA)
                                                                      │
                                                                      ▼
                                                          Delta Sync with Manager
-    ```
+```
 
 ---
 
