@@ -36,7 +36,7 @@ Options shared by remoted and the task manager's disconnection sweep.
 
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
-| `agents_disconnection_time` | integer or string | `15m` | >= 0; `^[0-9]+[smhdw]?$` | Time without keep-alives after which an agent is marked disconnected (minimum 1 second). |
+| `agents_disconnection_time` | integer or string | `15m` | >= 1; `^0*[1-9][0-9]*[smhdw]?$` | Time without keep-alives after which an agent is marked disconnected (minimum 1 second; 0 is rejected). |
 
 ## `logging`
 
@@ -68,7 +68,7 @@ wazuh-manager-remoted listeners.
 | `https.global_prefix` | string | `/wazuh-manager/` | `^/([A-Za-z0-9._~-]+/)*[A-Za-z0-9._~-]*$` | Path prefix of every HTTPS route. Must start with '/', may only contain A-Z a-z 0-9 . _ ~ - and '/', no empty, '.' or '..' segments. |
 | `https.certificate` | string | `etc/certs/remoted.pem` |  | Server certificate (PEM). |
 | `https.key` | string | `etc/certs/remoted-key.pem` |  | Server private key (PEM). Must be set together with 'certificate'. |
-| `https.ca` | string | `""` |  | CA bundle used to verify agent certificates. Empty = client certificate verification disabled. |
+| `https.ca` | string | `""` |  | CA bundle used to verify agent certificates. Empty = client certificate verification disabled, unless 'verification_mode' is set explicitly, in which case etc/certs/root-ca.pem is used. |
 | `https.ca_certificate` | string | `etc/certs/root-ca.pem` | not empty | CA certificate that signs the listener certificate; served on GET /cacerts and pinned by enrollment tokens. Not the client-verification CA ('ca'). |
 | `https.verification_mode` | enum |  | one of `none`, `certificate`, `full` | Agent certificate verification. Absent: 'certificate' when 'ca' is set, 'none' otherwise. |
 | `https.ciphers` | string |  | `^TLS_[A-Z0-9_]+(:TLS_[A-Z0-9_]+)*$` | TLS 1.3 cipher suites. Absent: library default. |
@@ -117,7 +117,7 @@ wazuh-manager-db.
 | `backup` | mapping |  |  | Periodic backups of the wazuh-db databases (backup/db/). |
 | `backup.global` | mapping |  |  | Periodic backup of the global database. |
 | `backup.global.enabled` | boolean | `true` |  | Whether the global database is backed up periodically. |
-| `backup.global.interval` | integer or string | `1d` | >= 0; `^[0-9]+[smhdw]?$` | Time between backups (minimum 1 second). |
+| `backup.global.interval` | integer or string | `1d` | >= 1; `^0*[1-9][0-9]*[smhdw]?$` | Time between backups (minimum 1 second; 0 is rejected). |
 | `backup.global.max_files` | integer | `3` | >= 1 | Backups kept on disk. |
 
 ## `vulnerability-detection`
@@ -151,12 +151,12 @@ Task manager module. Also serves remote agent upgrades.
 
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
-| `task_ttl` | integer | `3600` | >= 0 | Seconds a finished task is kept. |
+| `task_ttl` | integer | `3600` | >= 0 | Seconds a pending agent task may wait, from its creation, before it is expired. Manager tasks never expire. |
 | `cleanup_interval` | integer | `300` | >= 0 | Seconds between cleanup passes. |
 | `max_payload_bytes` | integer | `1048576` | >= 0 | Maximum task payload. |
 | `max_tasks_per_poll` | integer | `100` | >= 0 | Tasks handed out per poll. |
 | `upgrade_enabled` | boolean | `true` |  | Whether the manager serves remote agent upgrades (WPK upgrades requested through the API). |
-| `wpk_repository` | string |  | not empty | WPK repository (host/path, no scheme). No default: left unset, the repository is picked from the target agent version. |
+| `wpk_repository` | string |  | not empty | WPK repository (host/path). A value with an http:// or https:// scheme is kept as given; without one, https:// (or http:// when the upgrade asks for it) is prepended. No default: left unset, the repository is picked from the target agent version. |
 
 ## `cluster`
 
@@ -171,6 +171,6 @@ Cluster identity and transport (wazuh-manager-clusterd; name/node_name/node_type
 | `node_type` | enum | `master` | one of `master`, `worker` | Role of this node in the cluster. |
 | `key` | string |  | `^[A-Za-z0-9]{32}$`; **required** | 32-character shared key; the installer generates a random one. |
 | `port` | integer | `1516` | 1025-65534 | Cluster port. |
-| `bind_addr` | string | `127.0.0.1` | not empty | Bind address. |
+| `bind_addr` | string | `127.0.0.1` | not empty | Address the master listens on for worker connections. Ignored on workers. |
 | `nodes` | list of string | `["127.0.0.1"]` | items not empty; at least 1 item | Master node address(es). |
-| `hidden` | boolean | `false` |  | Hide this node in cluster listings. |
+| `hidden` | boolean | `false` |  | Hide this node in cluster listings. Currently read by no component: setting it has no effect. |

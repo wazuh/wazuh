@@ -223,7 +223,9 @@ at or above half of it).
 
 - **Default value:** `15m`
 - **Allowed values:** seconds as an integer, or a number with a unit suffix `s`, `m`, `h`, `d` or `w`;
-  at least 1 second.
+  at least 1 second. `0` (in any unit) is rejected by `wazuh-manager-conf validate` and by the
+  pre-start check of `wazuh-manager-control` with `(1244): Invalid configuration at
+  '/global/agents_disconnection_time': ...`, so no daemon starts.
 - **Effect:** an agent whose last keepalive is older than this is marked `disconnected` by the
   [disconnection sweep](schedules.md#agent_disconnect_sweep), which runs on the master node only.
   Read when `wazuh-manager-modulesd` starts; if `global` cannot be read the module logs `Cannot read
@@ -244,7 +246,7 @@ at or above half of it).
 | `wazuh_modules.manager_task_delete_old_agents` | internal option | 0 (disabled) | 0–9600 | retention window in minutes, on top of `agents_disconnection_time` |
 | `wazuh_modules.manager_task_monitor_agents` | internal option | 1 | 0–1 | whether the disconnection sweep runs at all (the retention sweep is governed by `manager_task_delete_old_agents`) |
 | `wazuh_modules.manager_task_log_rotate` | internal option | 1 | 0–1 | whether either kind of log rotation happens — `0` disables the daily schedule *and* the size-triggered one |
-| `wazuh_modules.manager_task_log_day_wait` | internal option | 10 s | 0–600 | offset from local midnight for the daily rotation |
+| `wazuh_modules.manager_task_log_day_wait` | internal option | 10 s | 1–600 | offset from local midnight for the daily rotation; `0` is out of range (the slot cannot sit exactly at midnight) |
 | `wazuh_modules.manager_task_log_compress` | internal option | 1 | 0–1 | whether rotated logs are gzipped |
 | `wazuh_modules.manager_task_log_keep_days` | internal option | 31 | 0–500 | how many days rotated logs are kept; `0` keeps none |
 | `wazuh_modules.manager_task_log_size_rotate` | internal option | 512 (MB) | 0–4096 | threshold for size-based rotation; `0` disables size rotation while leaving the daily one alone |

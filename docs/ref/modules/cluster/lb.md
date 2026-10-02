@@ -528,7 +528,7 @@ Verify the effective value per node rather than trusting the file:
 Each node logs its effective prefix at startup. Compare that line across nodes:
 
 ```
-INFO: All HTTP endpoints are served under the global prefix '/wazuh-manager' (e.g. https://<address>:1517/wazuh-manager/stateless); unprefixed paths answer 404; agents must send and sign the full prefixed target.
+INFO: All HTTP endpoints are served under the global prefix '/wazuh-manager' (e.g. https://<address>:1517/wazuh-manager/stateless); unprefixed paths answer 404; agents must send the full prefixed target.
 ```
 
 ### 8.4 Configure the balancer

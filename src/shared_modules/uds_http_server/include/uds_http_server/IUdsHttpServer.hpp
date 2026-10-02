@@ -46,7 +46,8 @@ namespace wazuh::uds_http
      * These types intentionally MIRROR remoted's own
      * src/remoted/remoted_module/src/http_server/IHttpServer.hpp so both sides of the socket read
      * alike. This library is the SHARED UDS-SERVER side, consumed by manager daemons
-     * (inventory_sync_server, vulnerability_scanner, remoted_module's local admin socket).
+     * (inventory_sync_server, remoted_module's local admin socket, wazuh_db, task_manager,
+     * vulnerability_scanner).
      * remoted's agent-facing TCP/TLS server is a protocol PEER, not a layer of this stack, and
      * stays separate on purpose: its HttpServerConfig is TCP/TLS-shaped and a change one side
      * needs must not be a change the other side is forced to take.

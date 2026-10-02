@@ -152,7 +152,7 @@ Durations are Go duration strings (`"3s"`, `"5m"`).
 | `concurrent_agents` | How many agents are Active at once. `0` = all of them |
 | `requests_per_second` | Aggregate session rate through a shared leaky bucket. `0` = unlimited (correct for saturation, wrong for latency) |
 | `repeat_until` | Keep replaying every fleet's lanes until this duration elapses (`"0"` = one pass of each lane's steps) |
-| `drain_timeout` | The bounded shutdown window (see [10](10-error-handling-and-shutdown.md)); `60s` when unset. This field is the only way to set it: the sender's `--drain-timeout` flag is not wired to the runner |
+| `drain_timeout` | The bounded shutdown window (see [10](10-error-handling-and-shutdown.md)); `60s` when unset. The sender's `--drain-timeout` flag, when set (> 0), overrides it |
 
 **What `requests_per_second` counts**: `/stateful` sessions, `POST /_internal/agents/delete`,
 `POST /scan/vd`, `GET /cacerts` and measured `POST /enroll` requests, one token each (not

@@ -99,7 +99,7 @@ skipped.
 | `disabled` | No | `no` | Disables the Azure module when set to `yes`. |
 | `run_on_start` | No | `yes` | Run as soon as the module starts instead of waiting for the first `interval`. |
 | `interval` | No | `1d` | Time between runs. See [Scheduling](README.md#scheduling) for units and the `day`/`wday`/`time` alternatives. |
-| `timeout` | No | none | Maximum run time of each script invocation, in seconds, for every request and container that does not set its own. Without it the module waits for the script to finish. |
+| `timeout` | No | `3600` | Maximum run time of each script invocation, in seconds, for every request and container that does not set its own. A script still running when it expires is killed and the module logs `Timeout expired at request '<name>'.` |
 
 #### Log Analytics and Graph options
 

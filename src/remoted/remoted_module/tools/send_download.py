@@ -509,7 +509,8 @@ def main():
                         help="Manager installation root (client.keys, global.db, etc/shared, var/upgrade).")
     parser.add_argument("--resource-type", default="config", choices=("config", "wpk"))
     parser.add_argument("--resource-id", default=None,
-                        help="Group name or WPK filename. Defaults to the agent's first group.")
+                        help="Group name or WPK filename. Defaults to 'default' for --resource-type config; "
+                             "required for wpk.")
     parser.add_argument("--all", action="store_true", help="Run every success/failure scenario.")
     parser.add_argument("--simulate", type=int, metavar="N",
                         help="Simulate N enrolled agents downloading concurrently.")

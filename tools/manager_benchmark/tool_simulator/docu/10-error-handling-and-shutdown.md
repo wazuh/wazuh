@@ -67,7 +67,7 @@ exits before either file is created.
 | Per-request (`/control`) | 30 s | Control answers are short; a slow one is a finding. **Not implemented:** `/control` uses the same `--timeout` |
 | Enrollment | 30 s | Per agent. **Not implemented:** enrollment uses the same `--timeout` |
 | `--feed-timeout` | 300 s | Total budget for feed-not-ready retries of one session, from its first attempt |
-| Drain | 60 s | `pacing.drain_timeout` in the scenario; see below. The `--drain-timeout` flag exists but is not wired to the runner, so it has no effect |
+| Drain | 60 s | `--drain-timeout` when set (> 0), else `pacing.drain_timeout` in the scenario, else the default; see below |
 | Readiness | 30 s | `--enroll-settle` (12 s default) with a 30 s floor; see [06](06-agent-state-machine.md) |
 
 ## Shutdown and drain
@@ -76,8 +76,8 @@ SIGINT/SIGTERM and reaching the scenario's end both mean the same thing — drai
 is identical:
 
 1. **Stop admitting**: no new steps, no new agents, keepalive tickers stopped.
-2. **Let in-flight land**, bounded by the drain window (`pacing.drain_timeout`). Requests still
-   outstanding when it expires are counted as `abandoned_on_drain` and reported; they are neither
+2. **Let in-flight land**, bounded by the drain window (`--drain-timeout`, else
+   `pacing.drain_timeout`). Requests still outstanding when it expires are counted as `abandoned_on_drain` and reported; they are neither
    successes nor server failures.
 3. **`shutdown` per agent** (`agent` mode), best-effort and counted. A failure here does not fail the
    run: the manager answers `200` before it updates state anyway.

@@ -90,6 +90,7 @@ unless `-q` is given.
 | `agent_groups -a -i <AGENT_ID> -g <GROUP_NAME> [-q] [-f]` | Add the group to the agent; with `-f`, replace the agent's other groups with it |
 | `agent_groups -s -i <AGENT_ID>` | Show the groups of an agent |
 | `agent_groups -r -i <AGENT_ID> -g <GROUP_NAME> [-q]` | Remove the agent from the group |
+| `agent_groups -r -i <AGENT_ID> [-q]` | Remove the agent from all its groups; an agent left with none is reassigned to `default` (and an agent only in `default` stays there) |
 | `agent_groups -r -g <GROUP_NAME> [-q]` | Delete the group |
 | `agent_groups -u` | Print the usage text |
 

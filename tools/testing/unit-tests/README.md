@@ -6,16 +6,14 @@ Docker-based runner for Wazuh's C unit test suites and the agent RTR checks, wit
 
 `unit-tests.sh` runs, inside the `ghcr.io/wazuh/unit-tests:latest` image (Ubuntu 22.04 with GCC, MinGW, CMocka, Wine, lcov, cppcheck, astyle and valgrind) and on the checkout this script belongs to:
 
-1. A clean build (`make clean-deps`, `make clean`), then `make deps` and `make TARGET=server TEST=1` (the Makefile rewrites `server` to `manager`).
-2. The manager CMocka suites under `src/unit_tests/`, with coverage.
+1. A clean build (`make clean-deps`, `make clean`), then `make deps` and `make TARGET=manager TEST=1`.
+2. The manager CMocka suites under `src/unit_tests/` (configured with `-DTARGET=manager`), with coverage.
 3. `ctest` over the main build tree.
-4. The RTR checks (`python3 build.py -r <component>`) of `data_provider`, `shared_modules/dbsync`, `shared_modules/rsync`, `wazuh_modules/syscollector` and `syscheckd`.
+4. The RTR checks (`python3 build.py -r <component>`) of `data_provider`, `shared_modules/dbsync`, `wazuh_modules/syscollector` and `syscheckd`.
 5. An agent build (`TARGET=agent TEST=1`) and its CMocka suites, with coverage.
 6. A clean Windows agent build (`TARGET=winagent TEST=1`) and its CMocka suites under Wine.
 
 Each step writes `result-*.txt` and a `*.log` into `src/`, and the report is generated from the result files.
-
-> **Note:** two of those steps do not run as written. Step 2 configures `src/unit_tests` with `-DTARGET=server`, which the unit-test CMake project refuses (it accepts only `manager`, `agent` and `winagent`); the script runs with `set -e`, so the run stops there. And `shared_modules/rsync` is not a module of this tree, so `build.py` rejects that RTR run. To run the suites as CI does, follow `src/unit_tests/Readme.md`.
 
 ## Prerequisites
 

@@ -18,7 +18,7 @@
 #   request_timeout: 10
 
 # Logging configuration
-# Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
+# Values for API log level: critical, error, warning, info, debug, debug2 (each level includes the previous levels).
 # Values for API log max_size: <value><unit>. Valid units: K (kilobytes), M (megabytes)
 # Enabling the API log max_size will disable the time based rotation (on midnight)
 # logs:

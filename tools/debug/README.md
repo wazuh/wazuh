@@ -20,31 +20,32 @@ python3 csv-stat.py <DAEMON> <FILE>
 
 ### Description
 
-Man-in-the-middle tool for the queue socket, `queue/sockets/queue`. It connects to the socket, binds its own in its place, and prints and forwards every message the daemons send to it.
+Man-in-the-middle tool for the agent's queue socket, `/var/ossec/queue/sockets/queue` (bound by `wazuh-agentd`). It connects to the socket, binds its own in its place, and prints and forwards every message the daemons send to it.
 
-The path is hard-coded as `/var/wazuh-manager/queue/sockets/queue`, but in 5.x no manager daemon binds that socket: the queue socket belongs to the agent, where `wazuh-agentd` binds it under `/var/ossec`. On a manager the tool exits with `Cannot connect to Analysisd`; on an agent, edit `ADDR` first.
+No manager daemon binds a queue socket in 5.x, so the tool is for agents; on a manager it exits with `Cannot connect to <path>`.
 
 ### Usage
 
 ```sh
-python3 queue-mitm.py
+python3 queue-mitm.py [-s SOCKET]
 ```
-- No arguments required.
-- Restart the daemons that write to the queue after starting the tool, so they reconnect to it.
+- `-s`, `--socket`: Path of the queue socket (default: `/var/ossec/queue/sockets/queue`).
+- Restart the agent daemons that write to the queue after starting the tool, so they reconnect to it.
 
 ## `sendmsg.py`
 
 ### Description
 
-Sends messages to the queue socket, `queue/sockets/queue`. Useful for testing message handling and queue operations. Like `queue-mitm.py`, it targets `/var/wazuh-manager/queue/sockets/queue`, which no 5.x manager daemon binds; the socket exists on the agent (`/var/ossec`), bound by `wazuh-agentd`. To feed events to the manager's engine, use its ingest socket (`queue/sockets/engine-ingest-http.sock`, HTTP) instead.
+Sends messages to the agent's queue socket, `/var/ossec/queue/sockets/queue` (bound by `wazuh-agentd`). Useful for testing message handling and queue operations. No 5.x manager daemon binds a queue socket; to feed events to the manager's engine, use its ingest socket (`queue/sockets/engine-ingest-http.sock`, HTTP) instead.
 
 ### Usage
 
 ```sh
-python3 sendmsg.py [-L] [message]
+python3 sendmsg.py [-L] [-s SOCKET] [message]
 echo "msg" | python3 sendmsg.py
 ```
 - `-L`: Send the message in a loop until interrupted.
+- `-s`, `--socket`: Path of the queue socket (default: `/var/ossec/queue/sockets/queue`).
 - `message`: Message to send (`<id>:<location>:<log>` format).
 
 ## `socket-query.py`

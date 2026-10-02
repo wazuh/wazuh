@@ -99,10 +99,10 @@ class WazuhException(Exception):
                               f'exception: https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
                               f'configuration.html#remote-commands-localfile-and-wodle-command'},
         1125: {'message': 'Invalid manager configuration',
-               'remediation': 'Please, provide a valid manager configuration (etc/wazuh-manager.yml)'
+               'remediation': 'Please, provide a valid manager configuration (etc/wazuh-manager.conf)'
                },
         1126: {'message': 'Error updating manager configuration',
-               'remediation': 'Please, ensure `WAZUH_PATH/etc/wazuh-manager.yml` has the proper permissions and ownership.'
+               'remediation': 'Please, ensure `WAZUH_PATH/etc/wazuh-manager.conf` has the proper permissions and ownership.'
                },
         1127: {'message': 'Protected section was modified',
                'remediation': 'To solve this, either revert the changes made to this section or disable the protection '
@@ -286,6 +286,11 @@ class WazuhException(Exception):
                               'second task and the agent would run both. On a cluster the request is sent to '
                               'every node and an agent only appears on the nodes it has connected to, so check '
                               'the `nodes` field for the outcome reported by the node the agent does connect to'
+               },
+        1775: {'message': 'The task could not be created',
+               'remediation': 'The Task Manager did not store the command, so nothing is queued for the agent; '
+                              'see the detail for its answer, check that wazuh-manager-modulesd is running, '
+                              'then send the request again'
                },
 
         # Manager:

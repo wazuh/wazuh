@@ -406,7 +406,7 @@ TEST_F(WdbHttpEndpointsTest, GetStatusWithoutTheExpectedSchemaReturns503)
 }
 
 // Pin WHICH tables it checks. These three are what an agent-groups lookup joins over, so they
-// are the ones whose absence surfaces as remoted's 500 database_error -- checking a different
+// are the ones whose absence surfaces as remoted's 503 dependency_unavailable -- checking a different
 // set would make this route answer a question nobody asked.
 TEST_F(WdbHttpEndpointsTest, GetStatusChecksTheTablesAgentGroupsLookupNeeds)
 {

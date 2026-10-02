@@ -41,8 +41,8 @@ Enable or disable active response execution on this agent.
 Longer timeouts for stateful responses that recur for the same keys.
 
 - **Default value:** none (every repetition uses the channel's `stateful_timeout`)
-- **Allowed values:** a comma-separated list of up to five durations, in **minutes**; values after
-  the fifth are ignored
+- **Allowed values:** a comma-separated list of up to six durations, in **minutes**; values after
+  the sixth are ignored
 - **Note:** applies only to stateful responses. The first time execd sees a key, the response uses
   its `stateful_timeout`; the n-th repetition of that key uses the n-th value of the list, and the
   last value once the list is exhausted. The count lives in execd's memory and restarts with it.

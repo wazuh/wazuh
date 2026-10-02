@@ -285,7 +285,14 @@ func (r *Runner) concurrency(total int) int {
 	return total
 }
 
+// drainTimeout resolves the drain window: the --drain-timeout flag when set
+// (> 0), else the scenario's pacing.drain_timeout when set, else 60 s. The CLI
+// wins, like --cluster and --compression, so one scenario can be run with a
+// different window without editing it.
 func (r *Runner) drainTimeout() time.Duration {
+	if d := r.cfg.DrainTimeout; d > 0 {
+		return d
+	}
 	if d := r.scn.Pacing.DrainTimeout.D(); d > 0 {
 		return d
 	}

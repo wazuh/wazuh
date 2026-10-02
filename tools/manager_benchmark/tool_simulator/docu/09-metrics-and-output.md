@@ -188,7 +188,8 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
   the sender reads no server metric and `meta` has no such field, so the worker count has to come
   from the manager's configuration and be stated in the report by hand. `meta` also does not record
   `drain_timeout`, `repeat_until`, `--feed-timeout` or `--timeout`; the scenario copy and
-  `params.json` that `run_benchmark.sh` writes cover the first two.
+  `params.json` that `run_benchmark.sh` writes cover the first two, unless `--drain-timeout`
+  overrode the scenario's `drain_timeout`.
 
 ## `samples/metrics.ndjson` — the scrape
 

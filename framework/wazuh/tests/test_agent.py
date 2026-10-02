@@ -377,7 +377,7 @@ async def test_agent_restart_reload_agents_request_time(exit_mock, enter_mock, i
 @patch('wazuh.agent.WazuhDBQueryAgents.__exit__')
 async def test_agent_restart_reload_agents_task_not_stored(exit_mock, enter_mock, init_mock, run_mock,
                                                            agents_info_mock, func, task_mock_name):
-    """A task the manager could not store is answered with 1727, even for an agent this node cannot judge.
+    """A task the manager could not store is answered with 1775, even for an agent this node cannot judge.
 
     1774 tells the operator the command is queued on this node and will run when the agent connects
     there. With nothing written that is a promise about a row that does not exist, so the creation
@@ -397,7 +397,7 @@ async def test_agent_restart_reload_agents_task_not_stored(exit_mock, enter_mock
 
     assert result.affected_items == ['010']
     reported = {error.code: ids for error, ids in result.failed_items.items()}
-    assert reported == {1727: {'004'}}, 'A task that was never written must not be answered with 1774.'
+    assert reported == {1775: {'004'}}, 'A task that was never written must not be answered with 1774.'
 
 
 @pytest.mark.parametrize('agent_list, expected_items', [

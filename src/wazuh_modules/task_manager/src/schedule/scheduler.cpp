@@ -173,9 +173,9 @@ namespace task_manager::schedule
 
     void Scheduler::spawnDueRuns(const Timestamp now)
     {
-        // Cached for this pass. The cluster role is read through a host call that re-parses
-        // ossec.conf, so it must not be asked once per schedule -- and it must never reach the
-        // wake path, which runs far more often than this.
+        // Cached for this pass. The cluster role is read through a host call that reads the
+        // effective cluster section of the manager configuration, so it must not be asked once
+        // per schedule -- and it must never reach the wake path, which runs far more often than this.
         int workerState {-1};
         bool workerStateRead {false};
 

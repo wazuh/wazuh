@@ -179,7 +179,9 @@ honouring `wazuh_modules.manager_task_log_compress`, `wazuh_modules.manager_task
 **The offset is a slot, not a sleep.** `day_wait` is the schedule's next-run time rather than a delay
 the handler blocks on. That matters because the handler shares its concurrency group with
 size-based rotation,
-which a blocking sleep of up to 600 seconds would suspend for its whole duration.
+which a blocking sleep of up to 600 seconds would suspend for its whole duration. The offset is 1–600
+seconds: `0` is refused at start like any other out-of-range internal option, because the module reads
+a zero as "not set" and would otherwise run the slot at the 10 s default.
 
 **Daily rotation survives a same-day restart**, because its baseline is the persisted next run rather
 than a day-change comparison re-seeded from *now* at every start.

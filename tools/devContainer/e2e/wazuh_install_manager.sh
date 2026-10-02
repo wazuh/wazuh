@@ -18,8 +18,9 @@
 #      missing file = degraded, the installer generates its own as before)
 #   4. lib/libwazuhshared.so copied by hand when install.sh did not (inst-functions.sh only copies it
 #      from build/lib at that relative path)
-#   5. certificates: the manager generates none; e2e/init.sh --certs-only (reusing certs/ and its CA)
-#      + wazuh_copy_certs.sh; init.sh also opens the remoted listeners to 0.0.0.0 for docker agents
+#   5. certificates: the e2e PKI replaces whatever the install's credential resolver issued (it issues
+#      the manager's certificates only at install, and only from a CA handed over in /etc/wazuh/ca):
+#      e2e/init.sh --certs-only (reusing certs/ and its CA) + wazuh_copy_certs.sh; init.sh also opens the remoted listeners to 0.0.0.0 for docker agents
 #   5b. indexer credential in the keystore: manual override only (INDEXER_USER/INDEXER_PASSWORD); the
 #      default path is 3b — the resolver stores the env-supplied WAZUH_INDEXER_MANAGER_PASSWORD itself
 #   6. etc/.install-provenance written; start.mark = byte offset of the log before `start`

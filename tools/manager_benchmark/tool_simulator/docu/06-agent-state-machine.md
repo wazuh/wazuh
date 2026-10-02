@@ -125,8 +125,8 @@ Two properties the sender **MUST** preserve so scenarios mean what they claim:
 
 ## Drain
 
-Drain is bounded by `pacing.drain_timeout` (60 s when unset; the `--drain-timeout` flag is parsed
-but not used):
+Drain is bounded by the `--drain-timeout` flag when it is set (> 0), else by the scenario's
+`pacing.drain_timeout`, else by 60 s:
 
 1. stop starting new steps and stop the keepalive loops;
 2. wait for in-flight responses, up to the timeout;

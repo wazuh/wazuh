@@ -283,7 +283,7 @@ async def restart_agents(agent_list: list = None, request_time: int = None) -> A
                 # task-manager.task_ttl.
                 #
                 # It is reported as FAILED with 1774 once the task manager confirms the row was
-                # written (a creation failure answers 1727 instead, below), and never as affected.
+                # written (a creation failure answers 1775 instead, below), and never as affected.
                 # Affected is a claim this node is in no position to make -- it cannot tell a v5.x agent from a pre-5.0 one
                 # -- and since a merge lets a success override a failure (see
                 # AffectedItemsWazuhResult.__or__), claiming it would erase the 1761 that the node
@@ -330,7 +330,7 @@ async def restart_agents(agent_list: list = None, request_time: int = None) -> A
                         # failure is what this node knows, and a merge still lets another node's
                         # success win at the top level.
                         error_msg = agent_info.get('message', f'Task creation failed with error {error_code}')
-                        result.add_failed_item(id_=agent_id, error=WazuhInternalError(1727, extra_message=error_msg))
+                        result.add_failed_item(id_=agent_id, error=WazuhInternalError(1775, extra_message=error_msg))
                     elif agent_id in agents_unknown_here:
                         # The task is written; what this node cannot do is judge the agent behind
                         # it (see the version check above), so it answers that and nothing else.
@@ -435,7 +435,7 @@ async def reload_agents(agent_list: list = None, request_time: int = None) -> Af
                 # task-manager.task_ttl.
                 #
                 # It is reported as FAILED with 1774 once the task manager confirms the row was
-                # written (a creation failure answers 1727 instead, below), and never as affected.
+                # written (a creation failure answers 1775 instead, below), and never as affected.
                 # Affected is a claim this node is in no position to make -- it cannot tell a v5.x agent from a pre-5.0 one
                 # -- and since a merge lets a success override a failure (see
                 # AffectedItemsWazuhResult.__or__), claiming it would erase the 1761 that the node
@@ -482,7 +482,7 @@ async def reload_agents(agent_list: list = None, request_time: int = None) -> Af
                         # failure is what this node knows, and a merge still lets another node's
                         # success win at the top level.
                         error_msg = agent_info.get('message', f'Task creation failed with error {error_code}')
-                        result.add_failed_item(id_=agent_id, error=WazuhInternalError(1727, extra_message=error_msg))
+                        result.add_failed_item(id_=agent_id, error=WazuhInternalError(1775, extra_message=error_msg))
                     elif agent_id in agents_unknown_here:
                         # The task is written; what this node cannot do is judge the agent behind
                         # it (see the version check above), so it answers that and nothing else.

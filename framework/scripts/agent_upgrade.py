@@ -54,9 +54,10 @@ def get_script_arguments() -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--agents", nargs='+', help="Agent IDs to upgrade.")
-    parser.add_argument("-r", "--repository", type=str, help="Specify a repository URL. [Default: {0}]".format(
-        common.WPK_REPO_URL_4_X))
-    parser.add_argument("-v", "--version", type=str, help="Version to upgrade. [Default: latest Wazuh version]")
+    parser.add_argument("-r", "--repository", type=str,
+                        help="Specify a repository URL. [Default: task-manager.wpk_repository if set, otherwise "
+                             "packages.wazuh.com/<major>.x/wpk/ for the target version]")
+    parser.add_argument("-v", "--version", type=str, help="Version to upgrade. [Default: the manager's version]")
     parser.add_argument("-F", "--force", action="store_true",
                         help="Forces the agents to upgrade, ignoring version validations.")
     parser.add_argument("-s", "--silent", action="store_true", help="Do not show output.")

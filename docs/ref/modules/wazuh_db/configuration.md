@@ -41,8 +41,9 @@ Time between two backups.
 
 - **Default value:** `1d` (86400 seconds)
 - **Allowed values:** a number of seconds, or a number with a suffix `s`, `m`, `h`, `d` or `w`
-  (seconds, minutes, hours, days, weeks). Minimum 1 second: `0` passes `wazuh-manager-conf validate`,
-  but `wazuh-manager-db` then refuses to start with `Invalid configuration block for Wazuh-DB.`
+  (seconds, minutes, hours, days, weeks). Minimum 1 second: `0` (in any unit, such as `0s` or `0d`)
+  is rejected by `wazuh-manager-conf validate` and by the pre-start check of `wazuh-manager-control`
+  with `(1244): Invalid configuration at '/wdb/backup/global/interval': ...`, so no daemon starts.
 
 #### max_files
 
@@ -274,8 +275,8 @@ For more detail set `wazuh_db.debug=1` (or `2`) and restart the manager.
 space in `backup/db/`, and look for `Creating Global DB snapshot by interval failed` in the log.
 
 **Issue:** The daemon exits at start with `Invalid configuration block for Wazuh-DB.`
-**Solution:** Run `wazuh-manager-conf validate`; if it passes, check that `wdb.backup.global.interval`
-is not `0`.
+**Solution:** Run `wazuh-manager-conf validate` and fix the option it names; it rejects every value
+of the `wdb` section the daemon would refuse, a zero `wdb.backup.global.interval` included.
 
 **Issue:** The daemon exits at start with `(2302): Invalid definition for wazuh_db.…`
 **Solution:** Fix that key in `wazuh-manager-internal-options.conf` to an integer inside its range.
