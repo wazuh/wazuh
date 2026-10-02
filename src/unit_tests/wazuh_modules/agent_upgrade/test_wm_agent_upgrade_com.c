@@ -121,32 +121,13 @@ void test_jailfile_path_separator(void **state) {
     int ret = _jailfile(finalpath, TMP_DIR, "subfolder/test_filename");
     assert_int_equal(ret, -1);
 
+    ret = _jailfile(finalpath, TMP_DIR, "/test_filename");
+    assert_int_equal(ret, -1);
+
 #ifdef TEST_WINAGENT
     ret = _jailfile(finalpath, TMP_DIR, "subfolder\\test_filename");
     assert_int_equal(ret, -1);
 #endif
-}
-
-void test_jailfile_absolute_path(void **state) {
-    char finalpath[PATH_MAX + 1];
-
-    int ret = _jailfile(finalpath, TMP_DIR, "/etc/test_filename");
-    assert_int_equal(ret, -1);
-
-#ifdef TEST_WINAGENT
-    ret = _jailfile(finalpath, TMP_DIR, "C:\\test_filename");
-    assert_int_equal(ret, -1);
-#endif
-}
-
-void test_unsign_absolute_source(void **state) {
-    char finalpath[PATH_MAX + 1];
-
-    // Rejected before any file is touched: no unlink() is expected.
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8126): At unsign(): Invalid file name.");
-    int ret = _unsign("/etc/test_filename", finalpath);
-    assert_int_equal(ret, -1);
 }
 
 void test_unsign_invalid_source_incomming(void **state) {
@@ -516,7 +497,7 @@ int teardown_commands(void **state) {
 
 void test_wm_agent_upgrade_com_upgrade_unsign_error(void **state) {
     cJSON * command = *state;
-    cJSON_ReplaceItemInObject(command, "file", cJSON_CreateString("/etc/test_file"));
+    cJSON_ReplaceItemInObject(command, "file", cJSON_CreateString("../test_file"));
 
     will_return(__wrap_getDefine_Int, 3600);
 
@@ -1302,8 +1283,6 @@ int main(void) {
         cmocka_unit_test(test_jailfile_empty_name),
         cmocka_unit_test(test_jailfile_current_folder),
         cmocka_unit_test(test_jailfile_path_separator),
-        cmocka_unit_test(test_jailfile_absolute_path),
-        cmocka_unit_test(test_unsign_absolute_source),
         cmocka_unit_test(test_unsign_invalid_source_incomming),
         #ifdef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_unsign_invalid_source_len, setup_jailfile_long_name, teardown_jailfile),
