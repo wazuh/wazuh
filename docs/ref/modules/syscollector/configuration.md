@@ -33,7 +33,7 @@ Enable or disable the Syscollector module.
 How frequently the module performs inventory scans.
 
 - **Default value:** `1h`
-- **Allowed values:** Positive time period; `0` is rejected
+- **Allowed values:** Positive time period up to `4294967294` seconds; `0` and larger values are rejected
 - **Note:** Accepts time suffixes: `s` (seconds), `m` (minutes), `h` (hours), `d` (days)
 
 #### scan_on_start

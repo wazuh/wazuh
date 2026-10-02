@@ -62,7 +62,7 @@ static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node
                 syscollector->sync.integrity_interval = (uint32_t) integrity_interval;
             }
         } else if (w_is_str_in_array(XML_DB_SYNC_DEPRECATED, node[i]->element)) {
-            mwarn("The <%s> option is deprecated and no longer has any effect.", node[i]->element);
+            mwarn(XML_DEPRECATED, node[i]->element);
         } else {
             mwarn(XML_INVELEM, node[i]->element);
         }
@@ -125,22 +125,22 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
                 return OS_INVALID;
             }
             char *endptr;
-            syscollector->interval = strtoul(node[i]->content, &endptr, 0);
+            unsigned long long interval = strtoull(node[i]->content, &endptr, 0);
 
-            if (syscollector->interval == 0 || syscollector->interval == UINT_MAX) {
+            if (interval == 0 || interval >= UINT_MAX) {
                 merror("Invalid interval at module '%s'", WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
 
             switch (*endptr) {
             case 'd':
-                syscollector->interval *= W_DAY_SECONDS;
+                interval *= W_DAY_SECONDS;
                 break;
             case 'h':
-                syscollector->interval *= W_HOUR_SECONDS;
+                interval *= W_HOUR_SECONDS;
                 break;
             case 'm':
-                syscollector->interval *= W_MINUTE_SECONDS;
+                interval *= W_MINUTE_SECONDS;
                 break;
             case 's':
             case '\0':
@@ -149,6 +149,12 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
                 merror("Invalid interval at module '%s'", WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
+
+            if (interval >= UINT_MAX) {
+                merror("Invalid interval at module '%s'", WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            }
+            syscollector->interval = (unsigned int)interval;
 
         } else if (!strcmp(node[i]->element, XML_SCAN_ON_START)) {
             if (!node[i]->content || !strlen(node[i]->content) ||

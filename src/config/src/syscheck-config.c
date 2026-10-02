@@ -1280,7 +1280,7 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
                  syscheck->integrity_interval = t;
              }
          } else if (w_is_str_in_array(xml_deprecated, node[i]->element)) {
-             mwarn("The <%s> option is deprecated and no longer has any effect.", node[i]->element);
+             mwarn(XML_DEPRECATED, node[i]->element);
          } else {
              mwarn(XML_INVELEM, node[i]->element);
          }
@@ -1615,6 +1615,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     int i = 0;
     int j = 0;
     xml_node **children = NULL;
+    bool whodata_restart_audit_set = false;
 
     /* XML Definitions */
     const char *xml_directories = "directories";
@@ -2033,6 +2034,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         return(OS_INVALID);
                     }
                 } else if (strcmp(children[j]->element, xml_restart_audit) == 0) {
+                    whodata_restart_audit_set = true;
                     if(strcmp(children[j]->content, "yes") == 0)
                         syscheck->restart_audit = 1;
                     else if(strcmp(children[j]->content, "no") == 0)
@@ -2138,6 +2140,11 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         } else if (strcmp(node[i]->element, xml_restart_audit) == 0) {
             mwarn("The <%s> tag is deprecated, please use <whodata><restart_audit> instead.", xml_restart_audit);
 
+            /* <whodata><restart_audit> takes precedence wherever it appears */
+            if (whodata_restart_audit_set) {
+                continue;
+            }
+
             if (strcmp(node[i]->content, "yes") == 0) {
                 syscheck->restart_audit = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
@@ -2146,7 +2153,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             }
         } else if (w_is_str_in_array(xml_deprecated, node[i]->element)) {
-            mwarn("The <%s> option is deprecated and no longer has any effect.", node[i]->element);
+            mwarn(XML_DEPRECATED, node[i]->element);
         } else {
             minfo(XML_INVELEM, node[i]->element);
         }

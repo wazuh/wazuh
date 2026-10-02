@@ -46,7 +46,7 @@ typedef struct wm_sys_state_t {
 typedef struct wm_sys_db_sync_flags_t {
     unsigned int enable_synchronization:1;  // Enable database synchronization
     uint32_t sync_interval;                 // Synchronization interval
-    uint32_t integrity_interval;            // Integrity check interval (0 = disabled)
+    uint32_t integrity_interval;            // Integrity check interval (0 = every sync)
 } wm_sys_db_sync_flags_t;
 
 typedef struct wm_sys_t {

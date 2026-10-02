@@ -18,7 +18,6 @@ static const char* XML_INTERVAL = "interval";
 static const char *XML_MAX_EPS = "max_eps";
 static const char *XML_POLICIES = "policies";
 static const char *XML_POLICY = "policy";
-static const char *XML_SKIP_NFS = "skip_nfs";
 static const char *XML_SYNC = "synchronization";
 
 #ifdef WAZUH_UNIT_TESTING
@@ -119,8 +118,8 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
 {
     unsigned int i;
     wm_sca_t *sca;
-    /* 4.x scheduling options: an upgrade keeps ossec.conf, so they are recognized but ignored */
-    char *const xml_deprecated[] = {"day", "wday", "time", NULL};
+    /* 4.x options: an upgrade keeps ossec.conf, so they are recognized but ignored */
+    char *const xml_deprecated[] = {"skip_nfs", "day", "wday", "time", NULL};
 
     /* On the manager, agent.conf parsing must not activate the local ruleset. */
     #ifdef CLIENT
@@ -295,9 +294,9 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
                 return OS_INVALID;
             }
             char* endptr;
-            unsigned int interval = strtoul(nodes[i]->content, &endptr, 0);
+            unsigned long long interval = strtoull(nodes[i]->content, &endptr, 0);
 
-            if (interval == 0 || interval == UINT_MAX)
+            if (interval == 0 || interval >= UINT_MAX)
             {
                 merror("Invalid interval at module '%s'", WM_SCA_CONTEXT.name);
                 return OS_INVALID;
@@ -312,7 +311,13 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
                 case '\0': break;
                 default: merror("Invalid interval at module '%s'", WM_SCA_CONTEXT.name); return OS_INVALID;
             }
-            sca->interval = interval;
+
+            if (interval >= UINT_MAX)
+            {
+                merror("Invalid interval at module '%s'", WM_SCA_CONTEXT.name);
+                return OS_INVALID;
+            }
+            sca->interval = (unsigned int)interval;
         }
         else if (!strcmp(nodes[i]->element, XML_POLICIES))
         {
@@ -424,10 +429,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
             }
             OS_ClearNode(children);
         }
-        else if (!strcmp(nodes[i]->element, XML_SKIP_NFS))
-        {
-            minfo("Detected a deprecated configuration for SCA: 'skip_nfs' is no longer available.");
-        }
         else if (!strcmp(nodes[i]->element, XML_SYNC)) {
             // Synchronization section - Let's get the children node and iterate the values
             xml_node **children = OS_GetElementsbyNode(xml, nodes[i]);
@@ -437,7 +438,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
             }
         }
         else if (w_is_str_in_array(xml_deprecated, nodes[i]->element)) {
-            mwarn("The <%s> option is deprecated and no longer has any effect.", nodes[i]->element);
+            mwarn(XML_DEPRECATED, nodes[i]->element);
         } else {
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_SCA_CONTEXT.name);
             return OS_INVALID;

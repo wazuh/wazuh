@@ -22,8 +22,7 @@ For module overview and architecture, see [SCA Module](README.md).
 
 **Deprecated options:**
 
-- `<skip_nfs>`: parsed but no longer has any effect; NFS scanning behavior is no longer configurable.
-- `<day>`, `<wday>` and `<time>`: parsed but no longer have any effect, each logging `The <option> option is deprecated and no longer has any effect.` SCA scans on its `<interval>` only.
+- `<skip_nfs>`, `<day>`, `<wday>` and `<time>`: parsed but no longer have any effect, each logging `The <option> option is deprecated and no longer has any effect.` NFS scanning is not configurable, and SCA scans on its `<interval>` only.
 
 ### enabled
 
@@ -47,7 +46,7 @@ Time interval between security configuration assessment scans.
 
 - **Default value:** `1d`
 - **Allowed values:** Time format strings (`s` for seconds, `m` for minutes, `h` for hours, `d` for days)
-- **Note:** Any positive value. `0` and any suffix other than `s`, `m`, `h` or `d` are rejected. Examples: `12h`, `30m`, `1d`
+- **Note:** Any positive value up to `4294967294` seconds. `0`, larger values and any suffix other than `s`, `m`, `h` or `d` are rejected. Examples: `12h`, `30m`, `1d`
 
 ### max_eps
 
@@ -299,7 +298,7 @@ Time-based configuration options support flexible time format specifications:
 | Days | `1d` | 1 day |
 
 **Valid ranges:**
-- **Scan interval:** Any positive value; `0` is rejected
+- **Scan interval:** Any positive value up to `4294967294` seconds; `0` and larger values are rejected
 - **Synchronization interval:** Minimum `1s`, recommended `60s` or higher
 
 ---

@@ -530,7 +530,7 @@ Specific key configurations take precedence over wildcard configurations:
 - Under `<syscheck>`: `scan_on_start` (a scan always runs on start), `alert_new_files`, `auto_ignore`, `database`, `prefilter_cmd`, `allow_remote_prefilter_cmd` and `remove_old_diff`.
 - Under `<synchronization>`: `max_eps`, `max_interval`, `response_timeout`, `queue_size`, `registry_enabled` and `thread_pool`.
 
-A `<restart_audit>` directly under `<syscheck>` is still applied, but logs a warning; set it under [`<whodata>`](#whodata) instead.
+A `<restart_audit>` directly under `<syscheck>` is still applied, but logs a warning; set it under [`<whodata>`](#whodata) instead. When both are present, the `<whodata>` value is used.
 
 ---
 

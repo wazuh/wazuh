@@ -198,11 +198,11 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             /* Deprecated with the HTTPS transport (#37702 restriction 4): no
              * persistent connection to reconnect. Accepted so upgraded configs
              * do not fail; it no longer has any effect. */
-            mwarn("The <%s> option is deprecated and no longer has any effect.", xml_max_time_reconnect_try);
+            mwarn(XML_DEPRECATED, xml_max_time_reconnect_try);
         } else if (strcmp(node[i]->element, "force_reconnect_interval") == 0) {
             mwarn("Deprecated option 'force_reconnect_interval' is not longer available.");
         } else if (strcmp(node[i]->element, xml_main_ip_update_interval) == 0) {
-            mwarn("The <%s> option is deprecated and no longer has any effect.", xml_main_ip_update_interval);
+            mwarn(XML_DEPRECATED, xml_main_ip_update_interval);
         } else if (strcmp(node[i]->element, xml_ar_disabled) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {
                 logr->execdq = -1;
@@ -953,7 +953,7 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
             /* Deprecated with the HTTPS transport (#37702 restriction 4): server
              * rotation and the connection-retry loop are removed. Accepted so
              * upgraded configs do not fail; no longer has any effect. */
-            mwarn("The <%s> option is deprecated and no longer has any effect.", node[j]->element);
+            mwarn(XML_DEPRECATED, node[j]->element);
         } else {
             merror(XML_INVELEM, node[j]->element);
             return (OS_INVALID);
