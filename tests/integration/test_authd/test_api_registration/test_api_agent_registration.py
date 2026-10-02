@@ -56,10 +56,9 @@ import ipaddress
 import re
 import requests
 import pytest
-import time
 from pathlib import Path
 
-from wazuh_testing.utils.client_keys import get_client_keys
+from wazuh_testing.utils.client_keys import wait_for_client_keys_entry
 from wazuh_testing.modules.api.utils import get_base_url, login
 from wazuh_testing.utils.configuration import get_test_cases_data
 
@@ -73,17 +72,7 @@ pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_api_agent_registration.yaml')
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 
-client_keys_update_timeout = 1
-
 daemons_handler_configuration = {'all_daemons': True}
-
-def retrieve_client_key_entry(agent_parameters):
-    client_keys_dictionary = get_client_keys()
-    desired_entries = []
-    for client_keys_entry_dict in client_keys_dictionary:
-        if agent_parameters.items() <= client_keys_entry_dict.items():
-            desired_entries.append(agent_parameters)
-    return desired_entries
 
 
 def check_valid_agent_id(id):
@@ -165,7 +154,9 @@ def test_agentd_server_configuration(test_metadata, truncate_monitored_files_mod
         expected = test_metadata['expected'][stage]
 
         url = get_base_url()
-        authentication_headers, _ = login()
+        # wazuh-apid logs "Listening on" from its ASGI lifespan, which uvicorn runs before it
+        # actually binds the socket, so the API may still refuse connections right after restart.
+        authentication_headers, _ = login(login_attempts=6)
         api_query = f"{url}/agents?"
 
         expected_client_keys_ip = request_parameters['agent_ip']
@@ -190,6 +181,5 @@ def test_agentd_server_configuration(test_metadata, truncate_monitored_files_mod
 
         # Ensure client keys is updated
         if response.json()['error'] == 0:
-            time.sleep(client_keys_update_timeout)
-            assert retrieve_client_key_entry(expected_client_keys_entry),\
+            assert wait_for_client_keys_entry(expected_client_keys_entry), \
                 f"Client keys expected {expected_client_keys_entry} but no agent was found for that configuration"
