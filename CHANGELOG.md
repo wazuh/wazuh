@@ -29,6 +29,7 @@ All notable changes to this project will be documented in this file.
 - Fixed logcollector memory usage growing with the length of a line read with the `multi-line-regex` format. ([#39800](https://github.com/wazuh/wazuh/pull/39800))
 - Added macOS support to the disable-account active response. ([#39463](https://github.com/wazuh/wazuh/pull/39463))
 - Fixed the macOS ULS reader losing the stored timestamp after log lines shorter than 31 characters. ([#39171](https://github.com/wazuh/wazuh/issues/39171))
+- Fixed a macOS logcollector crash on agent stop and `log stream` exits going undetected with `logcollector.max_lines=0`. ([#39597](https://github.com/wazuh/wazuh/issues/39597))
 - Fixed the Windows agent reporting the operating system it had before an in-place feature update. ([#39547](https://github.com/wazuh/wazuh/pull/39547))
 - Fixed the Windows agent installer not applying the configuration file permissions to the `shared` directory. ([#39734](https://github.com/wazuh/wazuh/pull/39734))
 - Fixed the Solaris 10 and AIX agent packages leaving files in `/var/ossec` after removal. ([#39807](https://github.com/wazuh/wazuh/pull/39807))
