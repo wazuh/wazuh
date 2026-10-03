@@ -418,7 +418,7 @@ ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-all-errors'))
 	FETCH_CURL_FLAGS += --retry-all-errors
 endif
 FETCH_CURL := curl $(FETCH_CURL_FLAGS) -o
-DEPS_VERSION = 99-37702
+DEPS_VERSION = 99-test
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
