@@ -625,6 +625,10 @@ int local_start()
      * remains of the old receiver loop is expiring the active-response
      * timeouts, which only this thread runs. */
     while (1) {
+        if (w_https_client_failed()) {
+            merror_exit("https_client: unrecoverable error. Exiting.");
+        }
+
         if (agt->execdq >= 0) {
             ExecdTimeoutRun();
         }

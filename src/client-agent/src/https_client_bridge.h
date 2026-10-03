@@ -34,6 +34,14 @@ bool w_https_client_start(void);
 void w_https_client_stop(void);
 
 /**
+ * @brief True once the HTTPS client reported, from a thread other than the one that
+ *        started it, an error it cannot recover from (already logged). Polled by the
+ *        agent's main loop, which must then exit: exiting on that other thread would
+ *        run the atexit w_https_client_stop() there, which joins the module's threads.
+ */
+bool w_https_client_failed(void);
+
+/**
  * @brief Pull the /config reporter's next send in now, instead of waiting out its periodic
  *        cadence. Call once a shared-configuration reload has actually completed (e.g. from
  *        agentd.c's needs_config_reload handling), not right after dispatching the reload.

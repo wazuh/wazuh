@@ -305,6 +305,10 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
      * pending SIGUSR1 reload. */
     while (1) {
 
+        if (w_https_client_failed()) {
+            merror_exit("https_client: unrecoverable error. Exiting.");
+        }
+
         /* Check the flag for pending configuration reload */
         if (needs_config_reload) {
             needs_config_reload = false;

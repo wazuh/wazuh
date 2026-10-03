@@ -59,6 +59,37 @@ void __wrap_hc_destroy(hc_handle *handle)
     check_expected_ptr(handle);
 }
 
+/* Records instead of asserting: it is also reached from a helper thread, where a cmocka
+ * failure could not unwind into the test. */
+static int g_last_log_level = -1;
+
+void __wrap_mtLoggingFunctionsWrapper(int level, const char *tag, const char *file, int line, const char *func,
+                                      const char *msg, va_list args)
+{
+    (void)tag;
+    (void)file;
+    (void)line;
+    (void)func;
+    (void)msg;
+    (void)args;
+    g_last_log_level = level;
+}
+
+static void module_log(int level, const char *msg, ...)
+{
+    va_list args;
+    va_start(args, msg);
+    g_captured_callbacks.log(level, "wazuh-agentd:https-client", __FILE__, __LINE__, __func__, msg, args);
+    va_end(args);
+}
+
+static void *module_log_critical_thread(void *arg)
+{
+    (void)arg;
+    module_log(LOGLEVEL_CRITICAL, "unrecoverable");
+    return NULL;
+}
+
 bool __wrap_hc_set_agent_identity(hc_handle *handle, const char *agent_id, const char *key_hex)
 {
     check_expected_ptr(handle);
@@ -493,6 +524,44 @@ static void test_full_verify_mode_and_ca_reach_the_module(void **state)
     assert_string_equal(g_captured_config.ca_path, "/etc/wazuh/ca.pem");
 
     w_https_client_stop(); /* Consumes the hc_destroy expectation queued above. */
+}
+
+/* #39793: a CRITICAL from a module thread must not exit there; the main loop exits instead. */
+static void test_module_critical_exits_only_on_the_starting_thread(void **state)
+{
+    (void)state;
+    pthread_t module_thread;
+
+    assert_false(w_https_client_failed());
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
+    expect_any(__wrap_hc_create, callbacks);
+    will_return(__wrap_hc_create, FAKE_HANDLE);
+    expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
+    will_return(__wrap_hc_start, true);
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+
+    w_https_client_start();
+
+    module_log(LOGLEVEL_WARNING, "passes through");
+    assert_int_equal(g_last_log_level, LOGLEVEL_WARNING);
+
+    module_log(LOGLEVEL_CRITICAL, "on the starting thread");
+    assert_int_equal(g_last_log_level, LOGLEVEL_CRITICAL);
+    assert_false(w_https_client_failed());
+
+    assert_int_equal(pthread_create(&module_thread, NULL, module_log_critical_thread, NULL), 0);
+    assert_int_equal(pthread_join(module_thread, NULL), 0);
+    assert_int_equal(g_last_log_level, LOGLEVEL_ERROR);
+    assert_true(w_https_client_failed());
+
+    w_https_client_stop();
+
+    module_log(LOGLEVEL_CRITICAL, "during the teardown");
+    assert_int_equal(g_last_log_level, LOGLEVEL_ERROR);
 }
 
 static void test_certificate_verify_mode_maps_to_hc_verify_cert(void **state)
@@ -2905,6 +2974,7 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_full_verify_mode_and_ca_reach_the_module, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_module_critical_exits_only_on_the_starting_thread, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certificate_verify_mode_maps_to_hc_verify_cert, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_none_verify_mode_maps_to_hc_verify_none, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_system_verify_mode_maps_to_hc_verify_system, setup_test, teardown_test),
