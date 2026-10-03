@@ -1,0 +1,181 @@
+/*
+ * Wazuh indexer client
+ * Copyright (C) 2015, Wazuh Inc.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#include <chrono>
+#include <future>
+#include <memory>
+#include <string>
+#include <tuple>
+#include <vector>
+
+#include <gtest/gtest.h>
+
+#include "indexer_client/runtime.hpp"
+
+using namespace indexer_client;
+using namespace std::chrono_literals;
+
+namespace
+{
+    /// Test-owned configuration source: one network thread, one CPU thread, one indexer host.
+    class SmallSource final : public IConfigSource
+    {
+    public:
+        std::optional<std::string> raw(std::string_view key) const override
+        {
+            if (key == "analysisd.indexer_client_network_threads" || key == "analysisd.indexer_client_cpu_threads")
+            {
+                return std::string("1");
+            }
+            return std::nullopt;
+        }
+
+        std::vector<std::string> keysWithPrefix(std::string_view /*prefix*/) const override
+        {
+            return {"analysisd.indexer_client_network_threads", "analysisd.indexer_client_cpu_threads"};
+        }
+
+        std::string indexerSectionJson() const override
+        {
+            return R"({"hosts":["https://127.0.0.1:9200"]})";
+        }
+    };
+
+    Deadline soon()
+    {
+        return std::chrono::steady_clock::now() + 1s;
+    }
+} // namespace
+
+class ClientTest : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        auto started = RuntimeOwner::start(ProcessId::Analysisd, SmallSource {});
+        ASSERT_TRUE(started.ok()) << started.reason;
+        m_ref = started.value;
+        auto client = m_ref.client("client-test", {BucketSpec {"events"}});
+        ASSERT_TRUE(client.ok()) << client.reason;
+        m_client = client.value;
+    }
+
+    void TearDown() override
+    {
+        m_client.reset();
+        RuntimeOwner::shutdown();
+    }
+
+    RuntimeRef m_ref;
+    std::shared_ptr<Client> m_client;
+};
+
+TEST_F(ClientTest, QueryStubReturnsUnavailable)
+{
+    auto query = m_client->query();
+    ASSERT_NE(query, nullptr);
+    const QueryOptions options;
+    EXPECT_EQ(query->search("idx", nlohmann::json::object(), options, soon()).cause, Cause::Unavailable);
+    EXPECT_EQ(
+        query->searchAfter(
+                 "idx", nlohmann::json::object(), [](const nlohmann::json&) { return true; }, options, soon())
+            .cause,
+        Cause::Unavailable);
+    EXPECT_EQ(query->pit({"idx"}, PitOptions {}, options, soon()).cause, Cause::Unavailable);
+    EXPECT_EQ(query->deleteByQuery({"idx"}, nlohmann::json::object(), DbqOptions {}, options, soon()).cause,
+              Cause::Unavailable);
+    EXPECT_EQ(query->updateByQuery({"idx"}, nlohmann::json::object(), options, soon()).cause, Cause::Unavailable);
+    const auto exists = query->indexExists("idx", options, soon());
+    EXPECT_EQ(exists.cause, Cause::Unavailable) << "Unavailable is not 'false' (RF-14)";
+}
+
+TEST_F(ClientTest, HealthIsEmpty)
+{
+    const auto health = m_client->health();
+    EXPECT_TRUE(health.nodes.empty());
+    EXPECT_FALSE(health.clusterRed);
+}
+
+TEST_F(ClientTest, AwaitClosedFromConsumerSucceeds)
+{
+    m_client->requestClose();
+    const auto closed = m_client->awaitClosed(soon());
+    ASSERT_TRUE(closed.ok()) << closed.reason;
+    EXPECT_EQ(closed.value.callbacksInFlight, 0u);
+    EXPECT_EQ(closed.value.droppedClientClosed, 0u);
+    EXPECT_EQ(closed.value.droppedShutdown, 0u);
+    EXPECT_EQ(m_ref.snapshot().clients, 0u) << "a closed client frees its consumer name";
+    EXPECT_TRUE(m_ref.client("client-test", {}).ok());
+}
+
+TEST_F(ClientTest, DestructorReleasesName)
+{
+    EXPECT_EQ(m_ref.snapshot().clients, 1u);
+    m_client.reset();
+    EXPECT_EQ(m_ref.snapshot().clients, 0u);
+}
+
+TEST_F(ClientTest, MovedFromClientIsInert)
+{
+    Client moved(std::move(*m_client));
+    EXPECT_TRUE(moved.valid());
+    EXPECT_FALSE(m_client->valid());
+    EXPECT_EQ(m_client->writer("events"), nullptr);
+    EXPECT_EQ(m_client->query(), nullptr);
+    EXPECT_EQ(m_client->awaitClosed(soon()).cause, Cause::InvalidState);
+    EXPECT_NE(moved.writer("events"), nullptr);
+}
+
+TEST_F(ClientTest, WaitsFromRuntimeThreadAreReentrancy)
+{
+    auto writer = m_client->writer("events");
+    ASSERT_NE(writer, nullptr);
+    auto groupTicket = writer->group().commit();
+    auto cancelTicket = writer->cancel("tag");
+
+    std::promise<std::tuple<Cause, Cause, Cause>> result;
+    ASSERT_TRUE(detail::testing::postToPool(
+        [&]()
+        {
+            result.set_value(
+                {groupTicket.wait(soon()).cause, cancelTicket.wait(soon()).cause, Ticket {}.wait(soon()).cause});
+        }));
+    const auto [group, cancel, ticket] = result.get_future().get();
+    EXPECT_EQ(group, Cause::Reentrancy);
+    EXPECT_EQ(cancel, Cause::Reentrancy);
+    EXPECT_EQ(ticket, Cause::Reentrancy);
+
+    // The same waits from the consumer thread see the stub result.
+    EXPECT_EQ(groupTicket.wait(soon()).cause, Cause::Unavailable);
+    EXPECT_EQ(cancelTicket.wait(soon()).cause, Cause::Unavailable);
+    EXPECT_EQ(Ticket {}.wait(soon()).cause, Cause::InvalidState);
+}
+
+TEST_F(ClientTest, NoHandlesAfterRequestClose)
+{
+    ASSERT_NE(m_client->writer("events"), nullptr);
+    ASSERT_NE(m_client->query(), nullptr);
+    m_client->requestClose();
+    EXPECT_EQ(m_client->writer("events"), nullptr) << "a closing client hands out no writer";
+    EXPECT_EQ(m_client->query(), nullptr) << "a closing client hands out no query";
+    EXPECT_TRUE(m_client->awaitClosed(soon()).ok());
+    EXPECT_EQ(m_client->writer("events"), nullptr);
+    EXPECT_EQ(m_client->query(), nullptr);
+}
+
+TEST_F(ClientTest, GroupCommitTwiceIsInvalidState)
+{
+    auto writer = m_client->writer("events");
+    ASSERT_NE(writer, nullptr);
+    auto group = writer->group();
+    EXPECT_EQ(group.commit().wait(soon()).cause, Cause::Unavailable);
+    EXPECT_EQ(group.add(Op {}), Cause::InvalidState);
+    EXPECT_EQ(group.commit().wait(soon()).cause, Cause::InvalidState);
+}
