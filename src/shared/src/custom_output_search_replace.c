@@ -13,7 +13,7 @@
 
 char *searchAndReplace(const char *orig, const char *search, const char *value)
 {
-    char *p;
+    const char *p;
     const size_t orig_len = strlen(orig);
     const size_t search_len = strlen(search);
     const size_t value_len = strlen(value);

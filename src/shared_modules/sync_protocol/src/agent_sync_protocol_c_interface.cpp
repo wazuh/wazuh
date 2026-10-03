@@ -94,7 +94,7 @@ extern "C" {
     {
         try
         {
-            if (!handle) return {false, {}, false, false, 0};
+            if (!handle) return {};
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
@@ -180,7 +180,7 @@ extern "C" {
     {
         try
         {
-            if (!handle || !indices || indices_count == 0) return {false, {}, false, false, 0};
+            if (!handle || !indices || indices_count == 0) return {};
 
             // Convert C array of strings to C++ vector
             std::vector<std::string> indices_vec;
@@ -195,7 +195,7 @@ extern "C" {
                 }
             }
 
-            if (indices_vec.empty()) return {false, {}, false, false, 0};
+            if (indices_vec.empty()) return {};
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 

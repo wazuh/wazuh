@@ -2265,7 +2265,7 @@ int mkdir_ex(const char * path) {
 
 int w_ref_parent_folder(const char * path) {
     const char * str;
-    char * ptr;
+    const char * ptr;
 
     switch (path[0]) {
     case '\0':
