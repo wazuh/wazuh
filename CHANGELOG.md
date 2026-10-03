@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed Unix socket creation changing permissions through a swapped symbolic link. ([#39870](https://github.com/wazuh/wazuh/pull/39870))
 - Fixed FIM crash on first scan when inotify cannot be initialized. ([#39707](https://github.com/wazuh/wazuh/pull/39707))
 - Fixed `force_reconnect_interval` from centralized configuration not applied on agent hot reload. ([#39573](https://github.com/wazuh/wazuh/pull/39573))
 - Fixed the `report_changes` snapshot following symbolic links and accepting non-regular files on Linux and macOS. ([#39476](https://github.com/wazuh/wazuh/pull/39476))

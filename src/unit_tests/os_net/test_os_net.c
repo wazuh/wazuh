@@ -54,6 +54,12 @@ typedef struct test_struct {
     struct addrinfo *addr;
 } test_struct_t;
 
+int __wrap_rename(const char *__old, const char *__new) {
+    check_expected(__old);
+    check_expected(__new);
+    return mock();
+}
+
 // Setup / Teardown
 
 static int test_setup(void **state) {
@@ -478,20 +484,95 @@ void test_bind_unix_domain(void **state) {
 
     will_return(__wrap_getuid, 0);
     will_return(__wrap_getgid, 995);
+    expect_string(__wrap_mkdir, __path, "/tmp/.w2345_0");
+    expect_value(__wrap_mkdir, __mode, 0700);
+    will_return(__wrap_mkdir, 0);
     will_return(__wrap_socket, 3);
     will_return(__wrap_bind, 1);
     will_return(__wrap_getsockopt, 0);
     will_return(__wrap_fcntl, 0);
 
-    expect_string(__wrap_chmod, path, data->socket_path);
+    expect_string(__wrap_chmod, path, "/tmp/.w2345_0/s");
     will_return(__wrap_chmod, 0);
-    expect_string(__wrap_chown, __file, data->socket_path);
+    expect_string(__wrap_chown, __file, "/tmp/.w2345_0/s");
     expect_value(__wrap_chown, __owner, 0);
     expect_value(__wrap_chown, __group, 995);
     will_return(__wrap_chown, 0);
+    expect_string(__wrap_rename, __old, "/tmp/.w2345_0/s");
+    expect_string(__wrap_rename, __new, data->socket_path);
+    will_return(__wrap_rename, 0);
 
     data->server_socket = OS_BindUnixDomain(data->socket_path, SOCK_DGRAM, msg_size);
     assert_return_code(data->server_socket, 0);
+}
+
+void test_bind_unix_domain_mkdir_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_getuid, 0);
+    will_return(__wrap_getgid, 995);
+    expect_string(__wrap_mkdir, __path, "/tmp/.w2345_0");
+    expect_value(__wrap_mkdir, __mode, 0700);
+    will_return(__wrap_mkdir, -1);
+
+    errno = EACCES;
+    assert_int_equal(OS_BindUnixDomain(data->socket_path, SOCK_DGRAM, 1), OS_SOCKTERR);
+}
+
+void test_bind_unix_domain_tmp_dir_exists(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_getuid, 0);
+    will_return(__wrap_getgid, 995);
+    expect_string(__wrap_mkdir, __path, "/tmp/.w2345_0");
+    expect_value(__wrap_mkdir, __mode, 0700);
+    will_return(__wrap_mkdir, -1);
+    expect_string(__wrap_mkdir, __path, "/tmp/.w2345_1");
+    expect_value(__wrap_mkdir, __mode, 0700);
+    will_return(__wrap_mkdir, 0);
+    will_return(__wrap_socket, 999);
+    will_return(__wrap_bind, -1);
+
+    errno = EEXIST;
+    assert_int_equal(OS_BindUnixDomain(data->socket_path, SOCK_DGRAM, 1), OS_SOCKTERR);
+}
+
+void test_bind_unix_domain_rename_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_getuid, 0);
+    will_return(__wrap_getgid, 995);
+    expect_string(__wrap_mkdir, __path, "/tmp/.w2345_0");
+    expect_value(__wrap_mkdir, __mode, 0700);
+    will_return(__wrap_mkdir, 0);
+    will_return(__wrap_socket, 999);
+    will_return(__wrap_bind, 0);
+
+    expect_string(__wrap_chmod, path, "/tmp/.w2345_0/s");
+    will_return(__wrap_chmod, 0);
+    expect_string(__wrap_chown, __file, "/tmp/.w2345_0/s");
+    expect_value(__wrap_chown, __owner, 0);
+    expect_value(__wrap_chown, __group, 995);
+    will_return(__wrap_chown, 0);
+    expect_string(__wrap_rename, __old, "/tmp/.w2345_0/s");
+    expect_string(__wrap_rename, __new, data->socket_path);
+    will_return(__wrap_rename, -1);
+
+    assert_int_equal(OS_BindUnixDomain(data->socket_path, SOCK_DGRAM, 1), OS_SOCKTERR);
+}
+
+void test_bind_unix_domain_path_too_long(void **state) {
+    char path[128];
+
+    memset(path, 'a', sizeof(path) - 1);
+    path[0] = '/';
+    path[sizeof(path) - 3] = '/';
+    path[sizeof(path) - 1] = '\0';
+
+    will_return(__wrap_getuid, 0);
+    will_return(__wrap_getgid, 995);
+
+    assert_int_equal(OS_BindUnixDomain(path, SOCK_DGRAM, 1), OS_SOCKTERR);
 }
 
 void test_getsocketsize(void **state) {
@@ -1010,6 +1091,10 @@ int main(void) {
 
         /* Bind a unix domain */
         cmocka_unit_test_setup_teardown(test_bind_unix_domain, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_bind_unix_domain_mkdir_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_bind_unix_domain_tmp_dir_exists, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_bind_unix_domain_rename_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_bind_unix_domain_path_too_long, test_setup, test_teardown),
 
         /* Get current maximum size */
         cmocka_unit_test_setup_teardown(test_getsocketsize, test_setup, test_teardown),
