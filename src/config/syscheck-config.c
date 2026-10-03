@@ -1302,9 +1302,13 @@ int read_data_unit(const char *content) {
     int read_value = 0;
     char *value_str;
 
+    if (len_value_str == 0) {
+        return -1;
+    }
+
     // Check that the last character is a 'B' or a 'b', if it is, translate data unit
     // Else, use written value as KB
-    if (content[len_value_str - 1] == 'B' || content[len_value_str - 1] == 'b') {
+    if (len_value_str > 1 && (content[len_value_str - 1] == 'B' || content[len_value_str - 1] == 'b')) {
         if (isalpha(content[len_value_str - 2])){
             os_calloc(len_value_str, sizeof(char), value_str);
             memcpy(value_str, content, len_value_str - 2);
@@ -1544,13 +1548,15 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                 }
                 else if (strcmp(children[j]->element, xml_disk_quota_limit) == 0) {
                     if (children[j]->content) {
-                        syscheck->disk_quota_limit = read_data_unit(children[j]->content);
+                        int limit = read_data_unit(children[j]->content);
 
-                        if (syscheck->disk_quota_limit == -1) {
+                        if (limit == -1) {
                             mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                             OS_ClearNode(children);
                             return;
                         }
+
+                        syscheck->disk_quota_limit = limit;
 
                         if (syscheck->disk_quota_limit < 1) {
                             syscheck->disk_quota_limit = 1;     // 1 KB is the minimum
@@ -1587,13 +1593,15 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                 }
                 else if (strcmp(children[j]->element, xml_file_size_limit) == 0) {
                     if (children[j]->content) {
-                        syscheck->file_size_limit = read_data_unit(children[j]->content);
+                        int limit = read_data_unit(children[j]->content);
 
-                        if (syscheck->file_size_limit == -1) {
+                        if (limit == -1) {
                             mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                             OS_ClearNode(children);
                             return;
                         }
+
+                        syscheck->file_size_limit = limit;
 
                         if (syscheck->file_size_limit < 1) {
                             syscheck->file_size_limit = 1;      // 1 KB is the minimum

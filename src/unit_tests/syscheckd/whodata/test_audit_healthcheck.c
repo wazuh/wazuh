@@ -115,6 +115,8 @@ void prepare_post_audit_healthcheck_thread() {
 }
 
 /* audit_health_check() tests */
+static int hc_socket = 123456;
+
 void test_audit_health_check_fail_to_add_rule(void **state) {
     int ret;
 
@@ -129,7 +131,7 @@ void test_audit_health_check_fail_to_add_rule(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_RULE);
 
-    ret = audit_health_check(123456);
+    ret = audit_health_check(&hc_socket);
 
     assert_int_equal(ret, -1);
     assert_int_equal(hc_thread_active.data, 0);
@@ -170,7 +172,7 @@ void test_audit_health_check_fail_to_create_hc_file(void **state) {
 
     prepare_post_audit_healthcheck_thread();
 
-    ret = audit_health_check(123456);
+    ret = audit_health_check(&hc_socket);
 
     assert_int_equal(ret, -1);
     expect_function_call(__wrap_pthread_mutex_lock);
@@ -212,7 +214,7 @@ void test_audit_health_check_no_creation_event_detected(void **state) {
 
     prepare_post_audit_healthcheck_thread();
 
-    ret = audit_health_check(123456);
+    ret = audit_health_check(&hc_socket);
 
     assert_int_equal(ret, -1);
 
@@ -255,7 +257,7 @@ void test_audit_health_check_success(void **state) {
 
     prepare_post_audit_healthcheck_thread();
 
-    ret = audit_health_check(123456);
+    ret = audit_health_check(&hc_socket);
     assert_int_equal(ret, 0);
 
     expect_function_call(__wrap_pthread_mutex_lock);
@@ -326,7 +328,7 @@ void test_audit_health_check_thread_wait_loop(void **state) {
     
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    ret = audit_health_check(123456);
+    ret = audit_health_check(&hc_socket);
     assert_int_equal(ret, 0);
 
     expect_function_call(__wrap_pthread_mutex_lock);
