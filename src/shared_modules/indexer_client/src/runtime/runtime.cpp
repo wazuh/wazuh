@@ -1,0 +1,665 @@
+/*
+ * Wazuh indexer client
+ * Copyright (C) 2015, Wazuh Inc.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#include "indexer_client/runtime.hpp"
+
+#include <atomic>
+#include <condition_variable>
+#include <csignal>
+#include <deque>
+#include <mutex>
+#include <set>
+#include <string>
+#include <system_error>
+#include <thread>
+#include <utility>
+
+#include <pthread.h>
+
+#include <asio/executor_work_guard.hpp>
+#include <asio/io_context.hpp>
+#include <asio/post.hpp>
+
+#include "runtime/runtimeInternal.hpp"
+
+namespace indexer_client
+{
+    namespace
+    {
+        thread_local bool t_onRuntimeThread = false;
+
+        /// Usage errors detected by the library (I37), process-wide; read through detail::testing::usageErrors().
+        std::atomic<std::uint64_t> g_usageErrors {0};
+
+        /// Joins `thread` if it is joinable. A thread cannot join itself (it would throw from a destructor): if the
+        /// last reference to the runtime ever dies on one of its own threads, that thread is detached instead.
+        void joinIfJoinable(std::thread& thread)
+        {
+            if (!thread.joinable())
+            {
+                return;
+            }
+            if (thread.get_id() == std::this_thread::get_id())
+            {
+                thread.detach();
+                return;
+            }
+            thread.join();
+        }
+
+        void nameThisThread(const char* prefix, std::size_t index)
+        {
+            const auto name = std::string(prefix) + std::to_string(index);
+            // Linux limits names to 15 characters; a failure only loses a diagnostic label.
+            pthread_setname_np(pthread_self(), name.substr(0, 15).c_str());
+        }
+
+        /// Every asynchronous signal: all of them except the synchronous ones a faulting thread cannot avoid and the
+        /// real-time range (glibc reserves part of it for its own use).
+        sigset_t asynchronousSignals()
+        {
+            sigset_t set;
+            sigfillset(&set);
+            for (const int sync : {SIGSEGV, SIGBUS, SIGFPE, SIGILL, SIGTRAP, SIGABRT})
+            {
+                sigdelset(&set, sync);
+            }
+            for (int rt = SIGRTMIN; rt <= SIGRTMAX; ++rt)
+            {
+                sigdelset(&set, rt);
+            }
+            return set;
+        }
+
+        /// Blocks every asynchronous signal on the calling thread for its lifetime and restores the previous mask on
+        /// destruction, so that the threads created meanwhile inherit the blocked mask (k3-2).
+        class ScopedSignalBlock final
+        {
+        public:
+            ScopedSignalBlock()
+            {
+                const auto set = asynchronousSignals();
+                m_active = pthread_sigmask(SIG_BLOCK, &set, &m_previous) == 0;
+            }
+
+            ~ScopedSignalBlock()
+            {
+                if (m_active)
+                {
+                    pthread_sigmask(SIG_SETMASK, &m_previous, nullptr);
+                }
+            }
+
+            ScopedSignalBlock(const ScopedSignalBlock&) = delete;
+            ScopedSignalBlock& operator=(const ScopedSignalBlock&) = delete;
+
+            bool active() const
+            {
+                return m_active;
+            }
+
+        private:
+            sigset_t m_previous {};
+            bool m_active {false};
+        };
+    } // namespace
+
+    namespace detail
+    {
+        /// One network thread: its own io_context, kept alive by a work guard until shutdown (I22c).
+        struct IoLoop final
+        {
+            asio::io_context context {1};
+            std::optional<asio::executor_work_guard<asio::io_context::executor_type>> guard {
+                asio::make_work_guard(context)};
+            std::thread thread;
+        };
+
+        /// The CPU pool: M threads over a single FIFO. On stop, queued tasks still run, then the workers exit.
+        class CpuPool final
+        {
+        public:
+            CpuPool() = default;
+            CpuPool(const CpuPool&) = delete;
+            CpuPool& operator=(const CpuPool&) = delete;
+
+            /// Safety net: a pool destroyed with live workers (a failed or interrupted start) stops and joins them
+            /// instead of letting a joinable std::thread terminate the process.
+            ~CpuPool()
+            {
+                stopAndJoin();
+            }
+
+            void startWorkers(std::uint32_t count)
+            {
+                m_threads.reserve(count);
+                for (std::uint32_t i = 0; i < count; ++i)
+                {
+                    m_threads.emplace_back(
+                        [this, i]()
+                        {
+                            t_onRuntimeThread = true;
+                            nameThisThread("ic-cpu-", i);
+                            work();
+                        });
+                }
+            }
+
+            bool post(std::function<void()> task)
+            {
+                {
+                    std::lock_guard<std::mutex> lock(m_mutex);
+                    if (m_stop)
+                    {
+                        return false;
+                    }
+                    m_queue.push_back(std::move(task));
+                }
+                m_cv.notify_one();
+                return true;
+            }
+
+            void stopAndJoin()
+            {
+                {
+                    std::lock_guard<std::mutex> lock(m_mutex);
+                    m_stop = true;
+                }
+                m_cv.notify_all();
+                for (auto& thread : m_threads)
+                {
+                    joinIfJoinable(thread);
+                }
+                m_threads.clear();
+            }
+
+        private:
+            void work()
+            {
+                for (;;)
+                {
+                    std::function<void()> task;
+                    {
+                        std::unique_lock<std::mutex> lock(m_mutex);
+                        m_cv.wait(lock, [this] { return m_stop || !m_queue.empty(); });
+                        if (m_queue.empty())
+                        {
+                            return;
+                        }
+                        task = std::move(m_queue.front());
+                        m_queue.pop_front();
+                    }
+                    try
+                    {
+                        task();
+                    }
+                    catch (...)
+                    {
+                        // A task must never take a pool thread down; E3a adds the callback accounting.
+                    }
+                }
+            }
+
+            std::mutex m_mutex;
+            std::condition_variable m_cv;
+            std::deque<std::function<void()>> m_queue;
+            bool m_stop {false};
+            std::vector<std::thread> m_threads;
+        };
+
+        struct RuntimeState final
+        {
+            RuntimeState() = default;
+            RuntimeState(const RuntimeState&) = delete;
+            RuntimeState& operator=(const RuntimeState&) = delete;
+
+            /// Safety net: if a RuntimeState is ever destroyed with runtime threads still joinable (a start() that
+            /// failed half-way, a future early return), stop and join them rather than std::terminate.
+            ~RuntimeState()
+            {
+                stopAndJoin();
+            }
+
+            RuntimeConfig config;
+            /// Belt-and-braces only: the identity of a runtime is already given by the weak_ptr (a fresh RuntimeState
+            /// per start(), destroyed at the end of shutdown()), so a stale RuntimeRef/ClientState fails on lock()
+            /// before the epoch is compared. No test exercises a mismatching epoch; keep it as an extra guard.
+            std::uint64_t epoch {0};
+            std::uint32_t networkThreads {0}; ///< Fixed once start() has created the threads.
+            std::uint32_t cpuThreads {0};
+            std::vector<std::unique_ptr<IoLoop>> loops;
+            CpuPool pool;
+
+            std::mutex mutex; ///< Guards everything below.
+            bool accepting {true};
+            std::optional<TimePoint> shutdownDeadline;
+            std::set<std::string> clients;
+
+            bool sameEpoch(std::uint64_t other) const
+            {
+                return epoch == other;
+            }
+
+            /// Stops accepting work, releases the work guards and joins every runtime thread. Never holds `mutex`
+            /// while joining: a task may still need it (client registry, seams).
+            void stopAndJoin()
+            {
+                {
+                    std::lock_guard<std::mutex> lock(mutex);
+                    accepting = false;
+                }
+                for (auto& loop : loops)
+                {
+                    asio::post(loop->context, [g = &loop->guard]() { g->reset(); });
+                }
+                for (auto& loop : loops)
+                {
+                    joinIfJoinable(loop->thread);
+                }
+                pool.stopAndJoin();
+            }
+        };
+
+        void releaseClientName(const std::weak_ptr<RuntimeState>& runtime, std::uint64_t epoch, const std::string& name)
+        {
+            if (auto state = runtime.lock(); state && state->sameEpoch(epoch))
+            {
+                std::lock_guard<std::mutex> lock(state->mutex);
+                state->clients.erase(name);
+            }
+        }
+
+        std::optional<TimePoint> runtimeShutdownDeadline(const std::weak_ptr<RuntimeState>& runtime,
+                                                         std::uint64_t epoch)
+        {
+            if (auto state = runtime.lock(); state && state->sameEpoch(epoch))
+            {
+                std::lock_guard<std::mutex> lock(state->mutex);
+                return state->shutdownDeadline;
+            }
+            return std::nullopt;
+        }
+    } // namespace detail
+
+    namespace
+    {
+        // Process-wide runtime (I37). `g_lifecycle` serializes the owner operations; `g_mutex` guards the pointers and
+        // is never held while joining threads.
+        std::mutex g_lifecycle;
+        std::mutex g_mutex;
+        std::shared_ptr<detail::RuntimeState> g_state;
+        std::thread::id g_owner;
+        std::uint64_t g_epoch {0};
+
+        std::shared_ptr<detail::RuntimeState> current()
+        {
+            std::lock_guard<std::mutex> lock(g_mutex);
+            return g_state;
+        }
+
+        /// UsageError when the caller cannot run an owner operation: a runtime thread, or a thread that is not the
+        /// owner of a running runtime. None otherwise.
+        Cause ownerCheck()
+        {
+            if (t_onRuntimeThread)
+            {
+                return Cause::UsageError;
+            }
+            std::lock_guard<std::mutex> lock(g_mutex);
+            if (g_state && g_owner != std::this_thread::get_id())
+            {
+                return Cause::UsageError;
+            }
+            return Cause::None;
+        }
+
+        std::string validateBucket(const BucketSpec& spec, std::size_t index, std::uint64_t globalQuotaBytes)
+        {
+            const auto field = [&](const char* name)
+            {
+                return "buckets[" + std::to_string(index) + "] ('" + spec.name + "')." + name;
+            };
+            if (spec.name.empty())
+            {
+                return "buckets[" + std::to_string(index) + "].name must not be empty";
+            }
+            if (spec.weight == 0)
+            {
+                return field("weight") + " must be > 0";
+            }
+            if (spec.quotaBytes == 0)
+            {
+                return field("quotaBytes") + " must be > 0";
+            }
+            if (spec.quotaBytes > globalQuotaBytes)
+            {
+                return field("quotaBytes") + " must be <= the runtime's global_quota_bytes (" +
+                       std::to_string(globalQuotaBytes) + ")";
+            }
+            if (spec.bulk.maxBytes == 0)
+            {
+                return field("bulk.maxBytes") + " must be > 0";
+            }
+            if (spec.bulk.maxDocs == 0)
+            {
+                return field("bulk.maxDocs") + " must be > 0";
+            }
+            if (spec.bulk.maxAge <= Duration::zero())
+            {
+                return field("bulk.maxAge") + " must be > 0";
+            }
+            if (spec.bulk.maxBytes > spec.quotaBytes)
+            {
+                return field("bulk.maxBytes") + " must be <= quotaBytes";
+            }
+            if (spec.retry.base <= Duration::zero())
+            {
+                return field("retry.base") + " must be > 0";
+            }
+            if (spec.retry.cap <= Duration::zero())
+            {
+                return field("retry.cap") + " must be > 0";
+            }
+            if (!(spec.retry.jitter >= 0.0 && spec.retry.jitter <= 1.0)) // Also rejects NaN.
+            {
+                return field("retry.jitter") + " must be in [0, 1]";
+            }
+            if (spec.retry.maxAttempts && *spec.retry.maxAttempts == 0)
+            {
+                return field("retry.maxAttempts") + " must be > 0 (or unset for unlimited)";
+            }
+            if (spec.retry.base > spec.retry.cap)
+            {
+                return field("retry.base") + " must be <= retry.cap";
+            }
+            if (spec.overflow.kind == Overflow::Kind::Block && spec.overflow.blockTimeout <= Duration::zero())
+            {
+                return field("overflow.blockTimeout") + " must be > 0 with Overflow::Block";
+            }
+            return {};
+        }
+    } // namespace
+
+    RuntimeRef::RuntimeRef(std::weak_ptr<detail::RuntimeState> state, std::uint64_t epoch)
+        : m_state(std::move(state))
+        , m_epoch(epoch)
+    {
+    }
+
+    bool RuntimeRef::valid() const
+    {
+        auto state = m_state.lock();
+        if (!state || !state->sameEpoch(m_epoch))
+        {
+            return false;
+        }
+        std::lock_guard<std::mutex> lock(state->mutex);
+        return state->accepting;
+    }
+
+    Outcome<std::shared_ptr<Client>> RuntimeRef::client(std::string_view consumer,
+                                                        std::vector<BucketSpec> buckets) const
+    {
+        using Result = Outcome<std::shared_ptr<Client>>;
+        auto state = m_state.lock();
+        if (!state || !state->sameEpoch(m_epoch))
+        {
+            return Result::failure(Cause::InvalidState, "the runtime is not running (stale or empty reference)");
+        }
+        if (consumer.empty())
+        {
+            return Result::failure(Cause::InvalidArgument, "consumer name must not be empty");
+        }
+        std::set<std::string_view> names;
+        for (std::size_t i = 0; i < buckets.size(); ++i)
+        {
+            if (auto reason = validateBucket(buckets[i], i, state->config.globalQuotaBytes); !reason.empty())
+            {
+                return Result::failure(Cause::InvalidArgument, std::move(reason));
+            }
+            if (!names.insert(buckets[i].name).second)
+            {
+                return Result::failure(Cause::InvalidArgument,
+                                       "buckets[" + std::to_string(i) + "].name '" + buckets[i].name +
+                                           "' is duplicated");
+            }
+        }
+
+        auto clientState = std::make_shared<detail::ClientState>();
+        clientState->runtime = state;
+        clientState->epoch = m_epoch;
+        clientState->consumer = std::string(consumer);
+        clientState->buckets = std::move(buckets);
+        clientState->drain = state->config.drain;
+        {
+            std::lock_guard<std::mutex> lock(state->mutex);
+            if (!state->accepting)
+            {
+                clientState->nameReleased = true;
+                return Result::failure(Cause::InvalidState, "the runtime is shutting down");
+            }
+            if (!state->clients.insert(clientState->consumer).second)
+            {
+                clientState->nameReleased = true;
+                return Result::failure(Cause::InvalidArgument,
+                                       "consumer '" + clientState->consumer + "' already has a live client");
+            }
+        }
+        return Result::success(std::make_shared<Client>(std::move(clientState)));
+    }
+
+    MetricsSnapshot RuntimeRef::snapshot() const
+    {
+        MetricsSnapshot snapshot;
+        auto state = m_state.lock();
+        if (!state || !state->sameEpoch(m_epoch))
+        {
+            return snapshot;
+        }
+        snapshot.networkThreads = state->networkThreads;
+        snapshot.cpuThreads = state->cpuThreads;
+        std::lock_guard<std::mutex> lock(state->mutex);
+        snapshot.clients = static_cast<std::uint32_t>(state->clients.size());
+        return snapshot;
+    }
+
+    std::optional<TimePoint> RuntimeRef::shutdownDeadline() const
+    {
+        return detail::runtimeShutdownDeadline(m_state, m_epoch);
+    }
+
+    Outcome<RuntimeRef> RuntimeOwner::start(ProcessId process, const IConfigSource& source)
+    {
+        using Result = Outcome<RuntimeRef>;
+        if (t_onRuntimeThread)
+        {
+            return Result::failure(Cause::UsageError, "start() called from a runtime thread");
+        }
+        std::lock_guard<std::mutex> lifecycle(g_lifecycle);
+        if (auto cause = ownerCheck(); cause != Cause::None)
+        {
+            return Result::failure(cause, "start() called from a thread that does not own the running runtime");
+        }
+        if (current())
+        {
+            return Result::failure(Cause::InvalidState, "the runtime is already running");
+        }
+
+        auto config = RuntimeConfig::from(process, source);
+        if (!config.ok())
+        {
+            return Result::failure(config.cause, std::move(config.reason), config.httpStatus);
+        }
+
+        auto state = std::make_shared<detail::RuntimeState>();
+        state->config = std::move(config.value);
+        state->epoch = ++g_epoch;
+
+        {
+            ScopedSignalBlock blocked;
+            if (!blocked.active())
+            {
+                return Result::failure(Cause::InvalidState, "pthread_sigmask failed: runtime threads not created");
+            }
+            try
+            {
+                for (std::uint32_t i = 0; i < state->config.networkThreads; ++i)
+                {
+                    auto loop = std::make_unique<detail::IoLoop>();
+                    auto* raw = loop.get();
+                    state->loops.push_back(std::move(loop));
+                    raw->thread = std::thread(
+                        [raw, i]()
+                        {
+                            t_onRuntimeThread = true;
+                            nameThisThread("ic-io-", i);
+                            for (;;)
+                            {
+                                try
+                                {
+                                    raw->context.run();
+                                    return;
+                                }
+                                catch (...)
+                                {
+                                    // A handler must never take a network thread down.
+                                }
+                            }
+                        });
+                }
+                state->pool.startWorkers(state->config.cpuThreads);
+                state->networkThreads = state->config.networkThreads;
+                state->cpuThreads = state->config.cpuThreads;
+            }
+            catch (const std::system_error& e)
+            {
+                state->stopAndJoin();
+                return Result::failure(Cause::InvalidState, std::string("cannot create runtime threads: ") + e.what());
+            }
+            catch (...)
+            {
+                // E.g. std::bad_alloc from make_unique/reserve: join whatever was already created, never terminate.
+                state->stopAndJoin();
+                return Result::failure(Cause::InvalidState, "cannot create runtime threads: unexpected exception");
+            }
+        } // The owner's mask is restored here, after every thread exists.
+
+        {
+            std::lock_guard<std::mutex> lock(g_mutex);
+            g_state = state;
+            g_owner = std::this_thread::get_id();
+        }
+        return Result::success(RuntimeRef(state, state->epoch));
+    }
+
+    Cause RuntimeOwner::beginShutdown(TimePoint deadline)
+    {
+        if (auto cause = ownerCheck(); cause != Cause::None)
+        {
+            return cause;
+        }
+        auto state = current();
+        if (!state)
+        {
+            return Cause::InvalidState;
+        }
+        std::lock_guard<std::mutex> lock(state->mutex);
+        if (!state->shutdownDeadline)
+        {
+            state->shutdownDeadline = deadline;
+        }
+        return Cause::None;
+    }
+
+    Cause RuntimeOwner::shutdown()
+    {
+        if (t_onRuntimeThread)
+        {
+            return Cause::UsageError;
+        }
+        std::lock_guard<std::mutex> lifecycle(g_lifecycle);
+        if (auto cause = ownerCheck(); cause != Cause::None)
+        {
+            return cause;
+        }
+        std::shared_ptr<detail::RuntimeState> state;
+        {
+            std::lock_guard<std::mutex> lock(g_mutex);
+            state = std::move(g_state);
+            g_state.reset();
+            g_owner = std::thread::id {};
+        }
+        if (!state)
+        {
+            return Cause::None; // Not running (never started, or already shut down): no-op.
+        }
+        state->stopAndJoin();
+        return Cause::None;
+    }
+
+    bool RuntimeOwner::running()
+    {
+        return current() != nullptr;
+    }
+
+    namespace detail
+    {
+        void countUsageError()
+        {
+            g_usageErrors.fetch_add(1);
+        }
+    } // namespace detail
+
+    namespace detail::testing
+    {
+        bool postToPool(std::function<void()> task)
+        {
+            auto state = current();
+            if (!state)
+            {
+                return false;
+            }
+            {
+                std::lock_guard<std::mutex> lock(state->mutex);
+                if (!state->accepting)
+                {
+                    return false;
+                }
+            }
+            return state->pool.post(std::move(task));
+        }
+
+        bool postToIoLoop(std::function<void()> task, std::uint32_t loopIndex)
+        {
+            auto state = current();
+            if (!state || loopIndex >= state->loops.size())
+            {
+                return false;
+            }
+            std::lock_guard<std::mutex> lock(state->mutex);
+            if (!state->accepting)
+            {
+                return false;
+            }
+            asio::post(state->loops[loopIndex]->context, std::move(task));
+            return true;
+        }
+
+        bool onRuntimeThread()
+        {
+            return t_onRuntimeThread;
+        }
+
+        std::uint64_t usageErrors()
+        {
+            return g_usageErrors.load();
+        }
+    } // namespace detail::testing
+} // namespace indexer_client
