@@ -98,6 +98,35 @@ bool g_https_client_stopping = false;
  * could run long / re-enter). */
 static pthread_mutex_t g_https_client_lock = PTHREAD_MUTEX_INITIALIZER;
 
+/* Who may exit on a CRITICAL from the module (#39793); see bridge_log(). atomic_int_t, not a C11
+ * _Atomic, for the mingw reason given at g_https_client_stopping, and not g_https_client_lock:
+ * the module can log while a caller here holds that lock. */
+enum { BRIDGE_IDLE, BRIDGE_RUNNING, BRIDGE_STOPPING };
+static atomic_int_t g_https_client_phase = ATOMIC_INT_INITIALIZER(BRIDGE_IDLE);
+static atomic_int_t g_https_client_fatal = ATOMIC_INT_INITIALIZER(0);
+static pthread_t g_https_client_owner; /* Written before the phase turns RUNNING. */
+
+/* The module's log sink. The module logs CRITICAL for a condition it can never recover from, and
+ * mtLoggingFunctionsWrapper turns that into exit(1) on the calling thread. While the client runs,
+ * that thread can be one of the module's own: exit() would then run the atexit
+ * w_https_client_stop() on it, and the teardown joins that same thread and aborts. So a CRITICAL
+ * from any thread but the one that started the client, or from any thread once stopping, is
+ * logged as an error and left to the main loop, which polls w_https_client_failed() and exits
+ * from its own thread. */
+static void bridge_log(int level, const char *tag, const char *file, int line, const char *func, const char *msg, va_list args)
+{
+    if (level == LOGLEVEL_CRITICAL) {
+        const int phase = atomic_int_get(&g_https_client_phase);
+
+        if (phase == BRIDGE_STOPPING || (phase == BRIDGE_RUNNING && !pthread_equal(pthread_self(), g_https_client_owner))) {
+            atomic_int_set(&g_https_client_fatal, 1);
+            level = LOGLEVEL_ERROR;
+        }
+    }
+
+    mtLoggingFunctionsWrapper(level, tag, file, line, func, msg, args);
+}
+
 /* Guards the GLOBAL `keys` keystore against its own reload, for the readers that run off the
  * agent's startup thread (#39315).
  *
@@ -2054,6 +2083,10 @@ bool w_https_client_start(void)
     g_https_client_stopping = false;
     w_mutex_unlock(&g_https_client_lock);
 
+    g_https_client_owner = pthread_self();
+    atomic_int_set(&g_https_client_fatal, 0);
+    atomic_int_set(&g_https_client_phase, BRIDGE_RUNNING);
+
     hc_config_t config;
     if (!bridge_build_config(&config)) {
         return false; /* bridge_build_config already logged the reason. */
@@ -2061,7 +2094,7 @@ bool w_https_client_start(void)
 
     hc_callbacks_t callbacks;
     memset(&callbacks, 0, sizeof(callbacks));
-    callbacks.log = mtLoggingFunctionsWrapper;
+    callbacks.log = bridge_log;
     callbacks.on_startup_result = bridge_on_startup_result;
     callbacks.on_reenroll_required = bridge_on_reenroll_required;
     callbacks.on_task = bridge_on_task;
@@ -2113,6 +2146,8 @@ void w_https_client_stop(void)
     g_https_client_stopping = true;
     w_mutex_unlock(&g_https_client_lock);
 
+    atomic_int_set(&g_https_client_phase, BRIDGE_STOPPING);
+
 #ifdef WIN32
     /* Deregister before destroying the handle: any sender call already past this point but
      * still waiting on g_https_client_lock will see g_https_client_stopping above and bail
@@ -2124,6 +2159,11 @@ void w_https_client_stop(void)
         hc_destroy(g_https_client); /* Implies stop + join. */
         g_https_client = NULL;
     }
+}
+
+bool w_https_client_failed(void)
+{
+    return atomic_int_get(&g_https_client_fatal) != 0;
 }
 
 void w_https_client_notify_config_reload_completed(void)
@@ -2199,7 +2239,7 @@ bool w_https_client_enroll(const char *body_json, const char *password, const ch
         strncpy(request.enroll_key_hex, enroll_key_hex, sizeof(request.enroll_key_hex) - 1);
     }
 
-    request.log = mtLoggingFunctionsWrapper;
+    request.log = bridge_log;
 
     return hc_enroll(&config, &request, result);
 }
@@ -2240,7 +2280,7 @@ bool w_https_client_fetch_reenroll_secret(hc_secret_result_t *result)
 
     hc_secret_request_t request;
     memset(&request, 0, sizeof(request));
-    request.log = mtLoggingFunctionsWrapper;
+    request.log = bridge_log;
 
     return hc_fetch_reenroll_secret(&config, &request, result);
 }
