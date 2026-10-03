@@ -576,6 +576,43 @@ int get_ip_version(const char *ip) {
     return version;
 }
 
+bool canonicalize_ip(const char *ip, char *output, size_t output_size) {
+    struct addrinfo hint, *res = NULL;
+
+    if (!ip || !output || output_size == 0) {
+        return false;
+    }
+
+    memset(&hint, '\0', sizeof hint);
+    hint.ai_family = AF_UNSPEC;
+    hint.ai_flags = AI_NUMERICHOST;
+
+    if (getaddrinfo(ip, NULL, &hint, &res) != 0 || res == NULL) {
+        return false;
+    }
+
+    int ret = getnameinfo(res->ai_addr, res->ai_addrlen, output, output_size, NULL, 0, NI_NUMERICHOST);
+    freeaddrinfo(res);
+
+    return ret == 0;
+}
+
+bool hosts_deny_rule_matches(const char *line, const char *rule) {
+    if (!line || !rule) {
+        return false;
+    }
+
+    // Match the exact Wazuh-managed rule, ignoring trailing EOL/whitespace, so an
+    // administrator line that merely contains the IP as a substring is never touched.
+    size_t len = strlen(line);
+    while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r' ||
+                       line[len - 1] == ' ' || line[len - 1] == '\t')) {
+        len--;
+    }
+
+    return strlen(rule) == len && strncmp(line, rule, len) == 0;
+}
+
 #ifndef WIN32
 
 int lock(const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {
