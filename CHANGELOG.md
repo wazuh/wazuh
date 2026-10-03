@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 
 ### Manager
 
+#### Added
+
+- Added the `tcp_sessions_unassociated` counter to the `wazuh-remoted` statistics, reporting TCP connections not yet associated with an agent. ([#39799](https://github.com/wazuh/wazuh/pull/39799))
+
 #### Fixed
 
 - Fixed path traversal in the agent diff-folder cleanup by rejecting agent names that escape `queue/diff`. ([#39723](https://github.com/wazuh/wazuh/pull/39723))

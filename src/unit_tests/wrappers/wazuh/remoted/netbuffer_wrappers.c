@@ -19,8 +19,25 @@
 #include <os_net/os_net.h>
 #include "netbuffer_wrappers.h"
 
-void __wrap_nb_close(__attribute__((unused)) netbuffer_t * buffer, int sock) {
+int __wrap_nb_close_socket(__attribute__((unused)) netbuffer_t * recv,
+                           __attribute__((unused)) netbuffer_t * send,
+                           int sock,
+                           int * was_unassociated) {
     check_expected(sock);
+
+    int retval = mock();
+
+    if (!retval) {
+        *was_unassociated = mock();
+    }
+
+    return retval;
+}
+
+int __wrap_nb_mark_associated(__attribute__((unused)) netbuffer_t * buffer, int sock) {
+    check_expected(sock);
+
+    return mock();
 }
 
 void __wrap_nb_open(__attribute__((unused)) netbuffer_t * buffer, int sock, const struct sockaddr_storage * peer_info) {

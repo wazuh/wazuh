@@ -56,6 +56,7 @@ typedef struct sockbuffer_t {
     unsigned long data_size;
     unsigned long data_len;
     bqueue_t * bqueue;
+    int associated; // Set once a control message ties the socket to an agent
 } sockbuffer_t;
 
 typedef struct netbuffer_t {
@@ -157,7 +158,27 @@ cJSON *getRemoteGlobalConfig(void);
 /* Network buffer */
 
 void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_storage * peer_info);
-void nb_close(netbuffer_t * buffer, int sock);
+
+/**
+ * @brief Close a socket and release its receive and send slots in one critical section.
+ *
+ * @param recv Receive network buffer.
+ * @param send Send network buffer.
+ * @param sock Socket to close.
+ * @param was_unassociated Set on success: 1 if the receive slot was open and never associated, 0 otherwise.
+ * @return close() result. On failure nothing is released and was_unassociated is not set.
+ */
+int nb_close_socket(netbuffer_t * recv, netbuffer_t * send, int sock, int * was_unassociated);
+
+/**
+ * @brief Mark an open socket buffer slot as associated with an agent.
+ *
+ * @param buffer Network buffer.
+ * @param sock Socket to mark.
+ * @return 1 if the slot was open and this call associated it, 0 otherwise.
+ */
+int nb_mark_associated(netbuffer_t * buffer, int sock);
+
 int nb_recv(netbuffer_t * buffer, int sock);
 
 /**

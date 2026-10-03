@@ -2098,6 +2098,7 @@ stages:
             - queue_size: !anyfloat
               total_queue_size: !anyfloat
               tcp_sessions: !anyfloat
+              tcp_sessions_unassociated: !anyfloat
               evt_count: !anyfloat
               ctrl_msg_count: !anyfloat
               discarded_count: !anyfloat
