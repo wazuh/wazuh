@@ -54,7 +54,7 @@ namespace
 
 TEST(CacertsComponentTest, FetchesTheCertificateBodyFromTheFakeManager)
 {
-    constexpr uint16_t port = 44880;
+    constexpr uint16_t port = 24880;
     FakeManager manager {port, "", /*tls=*/true};
 
     const auto config = tlsConfig(port);
@@ -73,7 +73,7 @@ TEST(CacertsComponentTest, FetchesTheCertificateBodyFromTheFakeManager)
 // every other endpoint (e.g. hc_enroll()) fail closed before ever sending.
 TEST(CacertsComponentTest, CacertsFetchIgnoresAConfiguredVerifyModeAndSucceeds)
 {
-    constexpr uint16_t port = 44881;
+    constexpr uint16_t port = 24881;
     FakeManager manager {port, "", /*tls=*/true};
 
     auto config = tlsConfig(port);
@@ -107,7 +107,7 @@ TEST(CacertsComponentTest, NullArgumentsAreRejectedWithoutTouchingTheNetwork)
 // tests, are #39026; this only proves the hand-off is wired correctly.
 TEST(CacertsComponentTest, TheFetchedBodyPinsToTheCertificateTheRouteServed)
 {
-    constexpr uint16_t port = 44882;
+    constexpr uint16_t port = 24882;
     FakeManager manager {port, "", /*tls=*/true};
 
     const auto config = tlsConfig(port);

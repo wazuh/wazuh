@@ -371,6 +371,50 @@ TEST_F(ControlStreamTest, PausedGateSkipsHttpAndReleaseResumesWithAFreshStartup)
     EXPECT_EQ(HC_STATE_REGISTERED, m_stream.connState());
 }
 
+TEST_F(ControlStreamTest, AKeyRenewedInsideTheReenrollCallbackStillReRegisters)
+{
+    // hc_set_agent_identity() may run inside on_reenroll_required, so the gate can be released
+    // before the step that latched it classifies its own 401. That 401 still named
+    // unknown_agent: it must reach AUTH_ERROR and re-register, not pass as retryable (#38329).
+    EXPECT_CALL(m_sink, onReenrollRequired()).WillOnce(Invoke([this] { m_authGate.release(); }));
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"limits":{}})"))) // Startup accepted.
+    .WillOnce(Return(authFail()))                                             // Notify -> 401 unknown_agent.
+    .WillOnce(Return(authFail()))                                             // Auth retry -> latch + release.
+    .WillOnce(Invoke(                                                          // The renewed key re-registers.
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_NE(std::string::npos, bodyOf(spec).find("\"type\":\"startup\""));
+        return response(TransportStatus::Ok, 200, R"({"limits":{}})");
+    }));
+
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_FALSE(m_stream.step(m_waiter));
+    EXPECT_FALSE(m_authGate.paused()); // Already renewed by the callback.
+    EXPECT_EQ(HC_STATE_AUTH_ERROR, m_stream.connState());
+
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_EQ(HC_STATE_REGISTERED, m_stream.connState());
+}
+
+TEST_F(ControlStreamTest, AKeyRenewedInsideTheReenrollCallbackDuringStartupStillGoesAuthError)
+{
+    // The same early renewal on the Startup path: the dead credential still converges to
+    // AUTH_ERROR before the renewed key registers.
+    EXPECT_CALL(m_sink, onReenrollRequired()).WillOnce(Invoke([this] { m_authGate.release(); }));
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(authFail()))                                              // Startup -> 401 unknown_agent.
+    .WillOnce(Return(authFail()))                                              // Auth retry -> latch + release.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"limits":{}})"))); // The renewed key registers.
+
+    EXPECT_FALSE(m_stream.step(m_waiter));
+    EXPECT_FALSE(m_authGate.paused());
+    EXPECT_EQ(HC_STATE_AUTH_ERROR, m_stream.connState());
+
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_EQ(HC_STATE_REGISTERED, m_stream.connState());
+}
+
 TEST_F(ControlStreamTest, NotifyCarriesTypeVersionAndHost)
 {
     // The collector supplies hostname/architecture/os; host.ip is injected by

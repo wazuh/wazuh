@@ -148,7 +148,7 @@ class ControlStream final
         void maybeAdoptCaPublication(std::optional<std::int64_t> advertised);
         void maybeRequestVdRescan(uint64_t offset, Waiter& waiter);
         void updateConnectionInfo(const HttpResponse& response);
-        ControlStateMachine::Event eventFor(OutcomeClass outcome) const;
+        ControlStateMachine::Event eventFor(const RetrySender::Result& result) const;
 
         const ModuleConfig& m_config;
         Backoff m_backoff;
