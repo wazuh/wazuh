@@ -20,6 +20,36 @@ namespace
     /// @brief Consecutive cycles a lone oversized item is resent before it is dropped.
     constexpr unsigned int MAX_OVERSIZED_ATTEMPTS = 5U;
 
+    /// @brief Initial cooldown for an item deferred due to a protocol error (failure 1).
+    constexpr auto DEFERRAL_COOLDOWN_INITIAL = std::chrono::seconds(30);
+
+    /// @brief Second-tier cooldown for an item deferred due to repeated protocol error (failure 2).
+    constexpr auto DEFERRAL_COOLDOWN_STEP2 = std::chrono::seconds(60);
+
+    /// @brief Third-tier cooldown for an item deferred due to repeated protocol error (failure 3).
+    constexpr auto DEFERRAL_COOLDOWN_STEP3 = std::chrono::seconds(300); // 5 minutes
+
+    /// @brief Maximum cooldown ceiling for persistent protocol errors.
+    constexpr auto DEFERRAL_COOLDOWN_MAX = std::chrono::seconds(900); // 15 minutes
+
+    /// @brief Calculates the cooldown duration based on consecutive failure count.
+    std::chrono::seconds calculateCooldown(unsigned int consecutiveFailures)
+    {
+        if (consecutiveFailures <= 1)
+        {
+            return DEFERRAL_COOLDOWN_INITIAL;
+        }
+        if (consecutiveFailures == 2)
+        {
+            return DEFERRAL_COOLDOWN_STEP2;
+        }
+        if (consecutiveFailures == 3)
+        {
+            return DEFERRAL_COOLDOWN_STEP3;
+        }
+        return DEFERRAL_COOLDOWN_MAX;
+    }
+
     size_t estimateSerializedItemBytes(const PersistedData& data)
     {
         return data.id.size()
@@ -33,7 +63,8 @@ PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, Logger
     : m_connection(createOrOpenDatabase(dbPath)),
       m_dbPath(dbPath),
       m_logger(std::move(logger)),
-      m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_shared<file_system::FileSystemWrapper>())
+      m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_shared<file_system::FileSystemWrapper>()),
+      m_clock([]() { return std::chrono::steady_clock::now(); })
 {
     if (!m_logger)
     {
@@ -112,6 +143,9 @@ void PersistentQueueStorage::applyCoalesceLogic(const PersistedData& newData)
         oldOperationSyncing = static_cast<Operation>(findStmt.value<int>(3));
         oldDataFound = true;
     }
+
+    // Fresh update clears any active deferral so it is immediately eligible for synchronization
+    m_deferredItems.erase(newData.id);
 
     if (oldSyncStatus != SyncStatus::PENDING)
     {
@@ -254,6 +288,21 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t ma
 
     try
     {
+        const auto now = m_clock();
+
+        // Clean expired deferrals
+        for (auto it = m_deferredItems.begin(); it != m_deferredItems.end();)
+        {
+            if (it->second.until <= now)
+            {
+                it = m_deferredItems.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
         const std::string selectQuery =
             "SELECT rowid, id, idx, data, operation, version, is_data_context "
             "FROM persistent_queue "
@@ -273,6 +322,14 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t ma
             data.operation = static_cast<Operation>(selectStmt.value<int>(4));
             data.version = static_cast<uint64_t>(selectStmt.value<int64_t>(5));
             data.is_data_context = selectStmt.value<int>(6) != 0;
+
+            // Skip deferred items whose cooldown has not expired
+            const auto defIt = m_deferredItems.find(data.id);
+            if (defIt != m_deferredItems.end() && defIt->second.until > now)
+            {
+                continue;
+            }
+
             const size_t estimatedItemBytes = estimateSerializedItemBytes(data);
 
             if (maxBytes > 0 && estimatedBytes + estimatedItemBytes > maxBytes)
@@ -464,6 +521,17 @@ void PersistentQueueStorage::removeAllSynced()
 
     try
     {
+        if (!m_deferredItems.empty())
+        {
+            const std::string findSyncingQuery = "SELECT id FROM persistent_queue WHERE sync_status = ?;";
+            SQLite3Wrapper::Statement findStmt(m_connection, findSyncingQuery);
+            findStmt.bind(1, static_cast<int>(SyncStatus::SYNCING));
+            while (findStmt.step() == SQLITE_ROW)
+            {
+                m_deferredItems.erase(findStmt.value<std::string>(0));
+            }
+        }
+
         const std::string query = "DELETE FROM persistent_queue WHERE sync_status = ? OR (create_status = ? AND (operation_syncing = ? OR operation_syncing = ?));";
         SQLite3Wrapper::Statement stmt(m_connection, query);
         stmt.bind(1, static_cast<int>(SyncStatus::SYNCING));
@@ -500,6 +568,17 @@ void PersistentQueueStorage::resetAllSyncing()
 
     try
     {
+        if (!m_deferredItems.empty())
+        {
+            const std::string findSyncingUpdatedQuery = "SELECT id FROM persistent_queue WHERE sync_status = ?;";
+            SQLite3Wrapper::Statement findStmt(m_connection, findSyncingUpdatedQuery);
+            findStmt.bind(1, static_cast<int>(SyncStatus::SYNCING_UPDATED));
+            while (findStmt.step() == SQLITE_ROW)
+            {
+                m_deferredItems.erase(findStmt.value<std::string>(0));
+            }
+        }
+
         const std::string queryUpdate = "UPDATE persistent_queue SET sync_status = ?, operation_syncing = ? WHERE sync_status IN (?, ?);";
         SQLite3Wrapper::Statement stmtUpdate(m_connection, queryUpdate);
         stmtUpdate.bind(1, static_cast<int>(SyncStatus::PENDING));
@@ -533,6 +612,17 @@ void PersistentQueueStorage::removeByIndex(const std::string& index)
 
     try
     {
+        if (!m_deferredItems.empty())
+        {
+            const std::string findIndexQuery = "SELECT id FROM persistent_queue WHERE idx = ?;";
+            SQLite3Wrapper::Statement findStmt(m_connection, findIndexQuery);
+            findStmt.bind(1, index);
+            while (findStmt.step() == SQLITE_ROW)
+            {
+                m_deferredItems.erase(findStmt.value<std::string>(0));
+            }
+        }
+
         const std::string query = "DELETE FROM persistent_queue WHERE idx = ?;";
         SQLite3Wrapper::Statement stmt(m_connection, query);
         stmt.bind(1, index);
@@ -557,6 +647,16 @@ void PersistentQueueStorage::removeAllDataContext()
 
     try
     {
+        if (!m_deferredItems.empty())
+        {
+            const std::string findDcQuery = "SELECT id FROM persistent_queue WHERE is_data_context = 1;";
+            SQLite3Wrapper::Statement findStmt(m_connection, findDcQuery);
+            while (findStmt.step() == SQLITE_ROW)
+            {
+                m_deferredItems.erase(findStmt.value<std::string>(0));
+            }
+        }
+
         const std::string query = "DELETE FROM persistent_queue WHERE is_data_context = 1;";
         SQLite3Wrapper::Statement stmt(m_connection, query);
         stmt.step();
@@ -579,10 +679,57 @@ void PersistentQueueStorage::removeAllDataContext()
     // LCOV_EXCL_STOP
 }
 
+void PersistentQueueStorage::deferItems(const std::vector<std::string>& ids)
+{
+    if (ids.empty())
+    {
+        return;
+    }
+
+    try
+    {
+        const auto now = m_clock();
+        const std::string query = "SELECT sync_status FROM persistent_queue WHERE id = ?;";
+        SQLite3Wrapper::Statement stmt(m_connection, query);
+
+        for (const auto& id : ids)
+        {
+            stmt.bind(1, id);
+            if (stmt.step() == SQLITE_ROW)
+            {
+                const auto status = static_cast<SyncStatus>(stmt.value<int>(0));
+                // If the item received a newer update while in-flight, its status is SYNCING_UPDATED.
+                // It must NOT be deferred so the fresh data remains immediately eligible.
+                if (status == SyncStatus::SYNCING_UPDATED)
+                {
+                    stmt.reset();
+                    continue;
+                }
+            }
+            stmt.reset();
+
+            auto& state = m_deferredItems[id];
+            state.consecutiveFailures++;
+            state.until = now + calculateCooldown(state.consecutiveFailures);
+        }
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error in deferItems: ") + ex.what());
+        throw;
+    }
+}
+
+void PersistentQueueStorage::setClockForTesting(ClockFunc clock)
+{
+    m_clock = std::move(clock);
+}
+
 void PersistentQueueStorage::deleteDatabase()
 {
     try
     {
+        m_deferredItems.clear();
         // Close the database connection first
         m_connection.close();
 

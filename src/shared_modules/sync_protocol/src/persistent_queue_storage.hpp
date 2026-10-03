@@ -14,6 +14,10 @@
 #include "agent_sync_protocol_types.hpp"
 #include "ifilesystem_wrapper.hpp"
 
+#include <chrono>
+#include <functional>
+#include <unordered_map>
+
 /// @brief Defines the synchronization status of a persisted message.
 enum class SyncStatus : int
 {
@@ -81,11 +85,36 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @brief Deletes all DataContext messages (where is_data_context = 1).
         void removeAllDataContext() override;
 
+        /// @brief Defers a list of items by their IDs, temporarily preventing them
+        ///        from being selected in fetchAndMarkForSync until their cooldown expires.
+        /// @param ids Vector of item IDs to defer.
+        void deferItems(const std::vector<std::string>& ids) override;
+
+        /// @brief Clock function type for querying monotonic time.
+        using ClockFunc = std::function<std::chrono::steady_clock::time_point()>;
+
+        /// @brief Overrides the clock function for testing expiration logic.
+        /// @param clock Callable returning a steady_clock::time_point.
+        void setClockForTesting(ClockFunc clock);
+
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.
         void deleteDatabase() override;
 
     private:
+        /// @brief Tracks in-memory deferral state for an item that encountered a protocol error.
+        struct DeferralState
+        {
+            std::chrono::steady_clock::time_point until;
+            unsigned int consecutiveFailures{0};
+        };
+
+        /// @brief In-memory map of deferred entity IDs to their deferral state.
+        std::unordered_map<std::string, DeferralState> m_deferredItems;
+
+        /// @brief Clock function for querying monotonic time.
+        ClockFunc m_clock;
+
         /// @brief Active SQLite database connection.
         SQLite3Wrapper::Connection m_connection;
 

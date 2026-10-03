@@ -123,6 +123,10 @@ class IPersistentQueue
         /// @brief Clears all DataContext items (where is_data_context = true).
         virtual void clearAllDataContext() = 0;
 
+        /// @brief Defers specific items from synchronization for a temporary cooldown period.
+        /// @param ids Vector of item IDs to defer.
+        virtual void deferItems(const std::vector<std::string>& ids) = 0;
+
         /// @brief Deletes the database file.
         /// This method closes the database connection and removes the database file from disk.
         virtual void deleteDatabase() = 0;
