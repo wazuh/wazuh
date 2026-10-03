@@ -876,13 +876,29 @@ private:
                 }
                 catch (const std::exception& e)
                 {
+                    // Reported at INFO, not WARNING: the context is bounded by the keep_alive the
+                    // download asked for, so the indexer releases it on its own and there is nothing
+                    // for an operator to do. Saying so in the line itself keeps a failure that
+                    // resolves by itself from reading like one that does not.
                     if (escalateLogs)
                     {
-                        logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                        logInfo(WM_CONTENTUPDATER,
+                                "IndexerDownloader: The point-in-time context could not be deleted on the indexer "
+                                "(%s). The indexer releases it on its own within %.*s of the last search that used "
+                                "it; no operator action is needed.",
+                                e.what(),
+                                static_cast<int>(PIT_KEEP_ALIVE.size()),
+                                PIT_KEEP_ALIVE.data());
                     }
                     else
                     {
-                        logDebug2(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                        logDebug2(WM_CONTENTUPDATER,
+                                  "IndexerDownloader: The point-in-time context could not be deleted on the indexer "
+                                  "(%s). The indexer releases it on its own within %.*s of the last search that used "
+                                  "it.",
+                                  e.what(),
+                                  static_cast<int>(PIT_KEEP_ALIVE.size()),
+                                  PIT_KEEP_ALIVE.data());
                     }
                 }
             });
@@ -984,13 +1000,29 @@ private:
                 }
                 catch (const std::exception& e)
                 {
+                    // Reported at INFO, not WARNING: the context is bounded by the keep_alive the
+                    // download asked for, so the indexer releases it on its own and there is nothing
+                    // for an operator to do. Saying so in the line itself keeps a failure that
+                    // resolves by itself from reading like one that does not.
                     if (escalateLogs)
                     {
-                        logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                        logInfo(WM_CONTENTUPDATER,
+                                "IndexerDownloader: The point-in-time context could not be deleted on the indexer "
+                                "(%s). The indexer releases it on its own within %.*s of the last search that used "
+                                "it; no operator action is needed.",
+                                e.what(),
+                                static_cast<int>(PIT_KEEP_ALIVE.size()),
+                                PIT_KEEP_ALIVE.data());
                     }
                     else
                     {
-                        logDebug2(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                        logDebug2(WM_CONTENTUPDATER,
+                                  "IndexerDownloader: The point-in-time context could not be deleted on the indexer "
+                                  "(%s). The indexer releases it on its own within %.*s of the last search that used "
+                                  "it.",
+                                  e.what(),
+                                  static_cast<int>(PIT_KEEP_ALIVE.size()),
+                                  PIT_KEEP_ALIVE.data());
                     }
                 }
             });
