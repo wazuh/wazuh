@@ -1,0 +1,99 @@
+name: 5.X - Indexer client library - Unit tests
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testunit_indexer_client.yml"
+      - "src/shared_modules/indexer_client/**"
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/coverage_cpp/**"
+      - ".github/actions/test_cpp/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  indexerclient-modules:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      # The library is pinned to C++17 (its headers must build in strict-C++17 consumers), so a
+      # C++20-ism fails here, not in a consumer's build.
+      - name: Indexer client - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "indexer_client_utest"
+          test: "true"
+          asan: "false"
+
+      # Valgrind is off: the runtime tests start and join real thread pools and asio loops against
+      # deadlines; under Valgrind's serialized execution they time out for the wrong reason. The
+      # ASAN job below covers the memory-safety surface (teardown order of the runtime threads).
+      - name: Indexer client - Run tests
+        uses: ./.github/actions/test_cpp
+        with:
+          valgrind: "false"
+          target: "indexer_client_utest"
+
+      - name: Indexer client - Coverage
+        uses: ./.github/actions/coverage_cpp
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          path: src/shared_modules/indexer_client
+          test_directory: src/shared_modules/indexer_client
+          id: indexer_client
+          validate_function_coverage: "false"
+
+  indexerclient-asan:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/build_external_deps
+
+      - name: Indexer client - Build tests
+        uses: ./.github/actions/build_target_cpp
+        with:
+          target: "indexer_client_utest"
+          test: "true"
+          asan: "true"
+
+      # The shutdown and restart tests are only real regression checks under a sanitizer: a thread
+      # left running past shutdown(), or a task touching a destroyed runtime, usually still passes
+      # without one.
+      - name: Indexer client - Run tests
+        uses: ./.github/actions/test_cpp
+        with:
+          target: "indexer_client_utest"
+          valgrind: "false"
