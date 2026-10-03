@@ -35,8 +35,19 @@ static hc_config_t g_captured_config;
 static bool g_captured_config_valid = false;
 static hc_callbacks_t g_captured_callbacks;
 
+static bool g_sigterm_blocked_at_create = false;
+static bool g_sigterm_blocked_at_start = false;
+
+static bool sigterm_blocked(void)
+{
+    sigset_t mask;
+    pthread_sigmask(SIG_BLOCK, NULL, &mask);
+    return sigismember(&mask, SIGTERM) == 1;
+}
+
 hc_handle *__wrap_hc_create(const hc_config_t *config, const hc_callbacks_t *callbacks)
 {
+    g_sigterm_blocked_at_create = sigterm_blocked();
     check_expected_ptr(callbacks);
     if (config) {
         g_captured_config = *config;
@@ -50,6 +61,7 @@ hc_handle *__wrap_hc_create(const hc_config_t *config, const hc_callbacks_t *cal
 
 bool __wrap_hc_start(hc_handle *handle)
 {
+    g_sigterm_blocked_at_start = sigterm_blocked();
     check_expected_ptr(handle);
     return mock();
 }
@@ -271,6 +283,7 @@ extern bool g_https_client_stopping;
  * so a pointer built here is valid when the real code reads it as its own
  * struct. Keep them in sync if the real structs change. */
 extern void *bridge_control_task_thread(void *arg);
+extern void *bridge_fatal_exit_thread(void *arg);
 extern void *bridge_upgrade_thread(void *arg);
 
 struct bridge_control_task_ctx_mirror {
@@ -471,6 +484,49 @@ static void test_full_verify_mode_and_ca_reach_the_module(void **state)
     assert_string_equal(g_captured_config.ca_path, "/etc/wazuh/ca.pem");
 
     w_https_client_stop(); /* Consumes the hc_destroy expectation queued above. */
+}
+
+static void expect_started_client(void)
+{
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
+    expect_any(__wrap_hc_create, callbacks);
+    will_return(__wrap_hc_create, FAKE_HANDLE);
+    expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
+    will_return(__wrap_hc_start, true);
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+}
+
+static void test_module_fatal_is_exited_on_from_the_bridge_thread(void **state)
+{
+    (void)state;
+
+    expect_started_client();
+    assert_true(w_https_client_start());
+    assert_non_null(g_captured_callbacks.on_fatal);
+
+    g_captured_callbacks.on_fatal("https_client: the trust anchor could not be loaded.", g_captured_callbacks.user_data);
+
+    expect_string(__wrap__merror_exit, formatted_msg, "https_client: the trust anchor could not be loaded. Exiting.");
+    expect_assert_failure(bridge_fatal_exit_thread(NULL));
+
+    w_https_client_stop();
+}
+
+static void test_module_threads_start_with_stop_signals_blocked(void **state)
+{
+    (void)state;
+
+    expect_started_client();
+    assert_true(w_https_client_start());
+
+    assert_true(g_sigterm_blocked_at_create);
+    assert_true(g_sigterm_blocked_at_start);
+    assert_false(sigterm_blocked());
+
+    w_https_client_stop();
 }
 
 static void test_certificate_verify_mode_maps_to_hc_verify_cert(void **state)
@@ -2843,6 +2899,8 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_full_verify_mode_and_ca_reach_the_module, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_module_fatal_is_exited_on_from_the_bridge_thread, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_module_threads_start_with_stop_signals_blocked, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certificate_verify_mode_maps_to_hc_verify_cert, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_none_verify_mode_maps_to_hc_verify_none, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_system_verify_mode_maps_to_hc_verify_system, setup_test, teardown_test),
