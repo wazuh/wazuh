@@ -41,6 +41,7 @@
 | [#37396](https://github.com/wazuh/wazuh/issues/37396) | Stopped delivering file events from outside any container to container file monitoring. |
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Detected new containers as soon as the container runtime reports them instead of waiting for the next scheduled check. |
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Refreshed container inventory when a container appears or is removed rather than only on its scan interval. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Inventoried only the containers that changed between full scans instead of every container each time. |
 
 #### Removed
 

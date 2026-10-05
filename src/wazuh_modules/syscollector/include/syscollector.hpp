@@ -43,6 +43,38 @@
 #define EXPORTED
 #endif
 
+/// What a turn of the scan loop should do about the container pass.
+struct ContainerPassDecision
+{
+    bool run{false};
+    /// Scan only what changed. False means walk the whole node.
+    bool delta_only{false};
+    /// Move the scheduled deadline forward.
+    bool advance_deadline{false};
+};
+
+/// Decides a container pass from the two things that can ask for one.
+///
+/// Separated from the loop because the rule it encodes is easy to lose in a
+/// refactor and expensive to lose in production: a notification must NEVER
+/// defer the scheduled pass. That pass is the reconciliation floor — the only
+/// thing that re-establishes what is actually on the node, since no delta can
+/// report a container the module itself never learned about — and a host with
+/// a steady trickle of container churn would otherwise postpone it for ever,
+/// which is precisely when it is most wanted.
+[[nodiscard]] inline ContainerPassDecision decideContainerPass(bool scheduled, bool requested)
+{
+    ContainerPassDecision decision;
+
+    decision.run = scheduled || requested;
+    // Scheduled wins when both are true: the thorough pass subsumes the
+    // targeted one, so doing both would be waste.
+    decision.delta_only = !scheduled;
+    decision.advance_deadline = scheduled;
+
+    return decision;
+}
+
 class EXPORTED Syscollector final
 {
     public:
@@ -111,6 +143,21 @@ class EXPORTED Syscollector final
         /// Waits on container_instances' lifecycle notifications and brings the
         /// next container pass forward when one arrives. Runs until m_stopping.
         void containerNotifyLoop();
+
+        /// Inventories only what container_instances reports as changed since
+        /// the last read, rather than walking every container.
+        ///
+        /// Returns false when it could not be used — nothing was learned, or
+        /// the cursor could not be served — and the caller must fall back to a
+        /// full pass. It deliberately does NOT fall back itself: a full pass is
+        /// the expensive thing, and the decision to pay for it belongs where
+        /// the cadence is known.
+        bool scanContainerBaselineDelta();
+
+        /// Emits DELETED events for exactly these containers' rows.
+        /// Counterpart to sweepContainerRowsNotIn(), for when the set that has
+        /// gone is known directly rather than by absence from a list.
+        std::size_t sweepContainerRows(const std::vector<std::string>& container_ids);
 
         // Sync protocol methods
         void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD,
@@ -269,13 +316,23 @@ class EXPORTED Syscollector final
         /// transactions, so the shared notifyChange/processEvent pipeline computes
         /// deltas and emits stateless + stateful events exactly as for host rows.
         /// See container_baseline_scanner.hpp.
-        void scanContainerBaseline();
+        /// @param only_these   Containers to inventory; empty means the whole
+        ///                     node. A delta pass names what changed.
+        /// @param sweep_absent Whether absence from the connector's list may be
+        ///                     read as removal. Only true for a whole-node
+        ///                     pass: on a partial one, every container not
+        ///                     visited looks absent, which is most of them.
+        void scanContainerBaseline(const std::vector<std::string>& only_these = {}, bool sweep_absent = true);
 
         /// @brief scanContainerBaseline() with the stopping/paused checks and
         /// the ScanGuard that scan() would otherwise have supplied. Used only
         /// by syncLoop(), when <container_baseline_interval> gives the
         /// container pass a cadence of its own.
-        void runContainerBaselinePass();
+        /// @param delta_only Scan only what container_instances reports as
+        ///                   changed. Falls back to a whole-node pass when the
+        ///                   delta cannot be served — declining to read what
+        ///                   changed is not evidence that nothing did.
+        void runContainerBaselinePass(bool delta_only = false);
 
         /// @brief Delete the rows of every container in the DB but absent from
         /// `keep`, emitting DELETED events. `keep` is the set that still
@@ -691,6 +748,13 @@ class EXPORTED Syscollector final
         // Blocks on the notification socket. Started only when the container
         // baseline is enabled: with it off there is nothing to bring forward.
         std::thread                                                              m_containerNotifyThread;
+        // Where the delta pass has read up to in container_instances' journal.
+        // In memory only: on restart the full pass runs first and re-establishes
+        // everything, so a persisted cursor would describe a world this process
+        // has not seen. 0/0 means "no cursor", which the module answers with the
+        // full set.
+        unsigned long long                                                       m_containerCursorEpoch;
+        unsigned long long                                                       m_containerCursorSeq;
         std::atomic<unsigned int>                                                m_dataCleanRetries;
         std::atomic<bool>                                                        m_allCollectorsDisabled;
         bool                                                                     m_vdSyncEnabled;
