@@ -68,25 +68,31 @@ std::string FingerprintImageSources(pid_t pid)
     return fingerprint;
 }
 
-const ImageContentCache::Entry* ImageContentCache::find(const std::string& image_digest,
-                                                        const std::string& fingerprint) const
+std::shared_ptr<const ImageContentCache::Entry> ImageContentCache::find(const std::string& image_digest,
+                                                                        const std::string& fingerprint) const
 {
     if (image_digest.empty())
     {
+        std::lock_guard<std::mutex> lock(m_mutex);
         ++m_misses;
         return nullptr;
     }
 
+    std::lock_guard<std::mutex> lock(m_mutex);
+
     const auto it = m_byDigest.find(image_digest);
 
-    if (it == m_byDigest.end() || it->second.fingerprint != fingerprint)
+    if (it == m_byDigest.end() || !it->second.entry || it->second.entry->fingerprint != fingerprint)
     {
         ++m_misses;
         return nullptr;
     }
 
+    // A hit is a use: it is what keeps a running image resident while images
+    // that have been replaced age out.
+    it->second.used = ++m_clock;
     ++m_hits;
-    return &it->second;
+    return it->second.entry;
 }
 
 void ImageContentCache::store(const std::string& image_digest, Entry entry)
@@ -96,7 +102,64 @@ void ImageContentCache::store(const std::string& image_digest, Entry entry)
         return;
     }
 
-    m_byDigest[image_digest] = std::move(entry);
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    auto& slot = m_byDigest[image_digest];
+    slot.entry = std::make_shared<const Entry>(std::move(entry));
+    slot.used = ++m_clock;
+
+    evictIfNeededLocked();
+}
+
+void ImageContentCache::evictIfNeededLocked()
+{
+    // One at a time: store() is the only growth path, so the map can exceed the
+    // bound by at most one entry per call and a loop would never run twice.
+    if (m_byDigest.size() <= MAX_DIGESTS)
+    {
+        return;
+    }
+
+    auto oldest = m_byDigest.begin();
+
+    for (auto it = m_byDigest.begin(); it != m_byDigest.end(); ++it)
+    {
+        if (it->second.used < oldest->second.used)
+        {
+            oldest = it;
+        }
+    }
+
+    // Erasing drops this map's reference only. A scan still iterating those
+    // rows holds its own and finishes against a consistent snapshot.
+    m_byDigest.erase(oldest);
+}
+
+std::size_t ImageContentCache::hits() const noexcept
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_hits;
+}
+
+std::size_t ImageContentCache::misses() const noexcept
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_misses;
+}
+
+std::size_t ImageContentCache::size() const noexcept
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_byDigest.size();
+}
+
+ImageContentCache& SharedImageContentCache()
+{
+    // Function-local static: constructed on first use, which keeps it out of
+    // static-initialisation order entirely, and never destroyed, which is what
+    // a cache consulted from a scan thread during shutdown needs.
+    static ImageContentCache instance;
+    return instance;
 }
 
 } // namespace wazuh::container_baseline
