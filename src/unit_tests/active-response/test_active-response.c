@@ -392,37 +392,40 @@ void test_write_debug_file_hard_link_not_followed(void **state) {
 }
 
 // Tests for canonicalize_ip
-void test_canonicalize_ip_ipv4(void **state) {
-    test_struct_t *data = (test_struct_t *)*state;
+void test_canonicalize_ip_ipv4_canonical(void **state) {
+    (void)state;
     char out[NI_MAXHOST] = {0};
 
-    struct sockaddr_in *sa = (struct sockaddr_in *)data->addr->ai_addr;
-    sa->sin_family = AF_INET;
-    inet_pton(AF_INET, "10.0.0.1", &sa->sin_addr);
-    data->addr->ai_family = AF_INET;
-    data->addr->ai_addrlen = sizeof(struct sockaddr_in);
-
-    expect_string(__wrap_getaddrinfo, node, "012.0.0.1");
-    will_return(__wrap_getaddrinfo, data->addr);
-    will_return(__wrap_getaddrinfo, 0);
-
-    bool ret = canonicalize_ip("012.0.0.1", out, sizeof(out));
-
-    assert_true(ret);
+    assert_true(canonicalize_ip("10.0.0.1", out, sizeof(out)));
     assert_string_equal(out, "10.0.0.1");
 }
 
-void test_canonicalize_ip_invalid(void **state) {
-    test_struct_t *data = (test_struct_t *)*state;
+void test_canonicalize_ip_ipv6_compressed(void **state) {
+    (void)state;
     char out[NI_MAXHOST] = {0};
 
-    expect_string(__wrap_getaddrinfo, node, "not_an_ip");
-    will_return(__wrap_getaddrinfo, data->addr);
-    will_return(__wrap_getaddrinfo, 1);
+    assert_true(canonicalize_ip("2001:0db8::0001", out, sizeof(out)));
+    assert_string_equal(out, "2001:db8::1");
+}
 
-    bool ret = canonicalize_ip("not_an_ip", out, sizeof(out));
+void test_canonicalize_ip_rejects_non_canonical(void **state) {
+    (void)state;
+    char out[NI_MAXHOST] = {0};
 
-    assert_false(ret);
+    // Octal, hex, short and decimal-integer IPv4 forms must be rejected, not reinterpreted.
+    assert_false(canonicalize_ip("012.0.0.1", out, sizeof(out)));
+    assert_false(canonicalize_ip("0177.0.0.1", out, sizeof(out)));
+    assert_false(canonicalize_ip("127.1", out, sizeof(out)));
+    assert_false(canonicalize_ip("2130706433", out, sizeof(out)));
+    assert_false(canonicalize_ip("192.168.001.010", out, sizeof(out)));
+}
+
+void test_canonicalize_ip_invalid(void **state) {
+    (void)state;
+    char out[NI_MAXHOST] = {0};
+
+    assert_false(canonicalize_ip("not_an_ip", out, sizeof(out)));
+    assert_false(canonicalize_ip(NULL, out, sizeof(out)));
 }
 
 // Tests for hosts_deny_rule_matches
@@ -454,8 +457,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_get_ip_version_success_invalid_ip, test_setup, test_teardown),
 
         // canonicalize_ip tests
-        cmocka_unit_test_setup_teardown(test_canonicalize_ip_ipv4, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_canonicalize_ip_invalid, test_setup, test_teardown),
+        cmocka_unit_test(test_canonicalize_ip_ipv4_canonical),
+        cmocka_unit_test(test_canonicalize_ip_ipv6_compressed),
+        cmocka_unit_test(test_canonicalize_ip_rejects_non_canonical),
+        cmocka_unit_test(test_canonicalize_ip_invalid),
 
         // hosts_deny_rule_matches tests
         cmocka_unit_test(test_hosts_deny_rule_matches_exact),

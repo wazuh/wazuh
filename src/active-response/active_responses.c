@@ -580,25 +580,25 @@ int get_ip_version(const char *ip) {
     return version;
 }
 
+#ifndef WIN32
+
 bool canonicalize_ip(const char *ip, char *output, size_t output_size) {
-    struct addrinfo hint, *res = NULL;
+    unsigned char addr[sizeof(struct in6_addr)];
 
     if (!ip || !output || output_size == 0) {
         return false;
     }
 
-    memset(&hint, '\0', sizeof hint);
-    hint.ai_family = AF_UNSPEC;
-    hint.ai_flags = AI_NUMERICHOST;
-
-    if (getaddrinfo(ip, NULL, &hint, &res) != 0 || res == NULL) {
-        return false;
+    // Strict parsing matching the manager's white_list grammar (inet_pton): octal, hex
+    // and short IPv4 forms are rejected instead of reinterpreted into a different host.
+    if (inet_pton(AF_INET, ip, addr) == 1) {
+        return inet_ntop(AF_INET, addr, output, output_size) != NULL;
+    }
+    if (inet_pton(AF_INET6, ip, addr) == 1) {
+        return inet_ntop(AF_INET6, addr, output, output_size) != NULL;
     }
 
-    int ret = getnameinfo(res->ai_addr, res->ai_addrlen, output, output_size, NULL, 0, NI_NUMERICHOST);
-    freeaddrinfo(res);
-
-    return ret == 0;
+    return false;
 }
 
 bool hosts_deny_rule_matches(const char *line, const char *rule) {
@@ -616,8 +616,6 @@ bool hosts_deny_rule_matches(const char *line, const char *rule) {
 
     return strlen(rule) == len && strncmp(line, rule, len) == 0;
 }
-
-#ifndef WIN32
 
 int lock(const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {
     char log_msg[OS_MAXSTR];
