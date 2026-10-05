@@ -12,7 +12,18 @@
 namespace wazuh::container_instances::wire
 {
 
-    inline constexpr int PROTOCOL_VERSION = 1;
+    /// Version 2 renames the resolve key: `cgroup_id` becomes `key_kind` +
+    /// `key`, because on a legacy cgroup hierarchy the number is a MOUNT
+    /// NAMESPACE inode and a field called `cgroup_id` carrying one is exactly
+    /// the silent lie this work exists to remove.
+    inline constexpr int PROTOCOL_VERSION = 2;
+
+    /// The oldest version still answered. The two sides cannot be upgraded
+    /// atomically — modulesd and syscheckd are separate processes restarted by
+    /// separate units — so for one release the server speaks both and answers
+    /// each caller in the version it asked in. Raise this to 2 once no shipped
+    /// consumer sends 1, and the alias below goes with it.
+    inline constexpr int PROTOCOL_VERSION_MIN = 1;
 
     [[nodiscard]] inline std::string verdictReasonToString(VerdictReason reason)
     {
@@ -40,10 +51,16 @@ namespace wazuh::container_instances::wire
     namespace detail
     {
 
-        [[nodiscard]] inline QueryResponse makeError(QueryResponse::ErrorCode code, std::string message)
+        /// `version` is the one the CALLER asked in, so an error envelope is
+        /// readable by the client that caused it. It defaults to the oldest
+        /// version for the two cases where the request never got far enough to
+        /// say: malformed JSON, and a version this build does not speak.
+        [[nodiscard]] inline QueryResponse
+        makeError(QueryResponse::ErrorCode code, std::string message, int version = PROTOCOL_VERSION_MIN)
         {
             QueryResponse response;
             response.status = QueryResponse::Status::error;
+            response.version = version;
             response.errorCode = code;
             response.errorMessage = std::move(message);
             return response;
@@ -88,19 +105,29 @@ namespace wazuh::container_instances::wire
             return detail::makeError(QueryResponse::ErrorCode::badRequest, "malformed JSON");
         }
 
-        if (!parsed.contains("version") || !parsed["version"].is_number_integer() ||
-            parsed["version"].get<int>() != PROTOCOL_VERSION)
+        if (!parsed.contains("version") || !parsed["version"].is_number_integer())
+        {
+            return detail::makeError(QueryResponse::ErrorCode::unsupportedVersion,
+                                     "missing or unsupported protocol version");
+        }
+
+        // A RANGE, where this was strict equality. Equality meant the two sides
+        // had to move in one step, which they cannot: a consumer may be
+        // restarted minutes after the module, and in between every query it
+        // makes is refused.
+        const auto version = parsed["version"].get<int>();
+        if (version < PROTOCOL_VERSION_MIN || version > PROTOCOL_VERSION)
         {
             return detail::makeError(QueryResponse::ErrorCode::unsupportedVersion,
                                      "missing or unsupported protocol version");
         }
 
         QueryRequest request;
-        request.version = PROTOCOL_VERSION;
+        request.version = version;
 
         if (parsed.contains("op") && !parsed["op"].is_string())
         {
-            return detail::makeError(QueryResponse::ErrorCode::badRequest, "unknown op");
+            return detail::makeError(QueryResponse::ErrorCode::badRequest, "unknown op", version);
         }
         const auto op = parsed.value("op", "");
         if (op == "status")
@@ -129,7 +156,8 @@ namespace wazuh::container_instances::wire
                 if (!epoch || !seq)
                 {
                     return detail::makeError(QueryResponse::ErrorCode::badRequest,
-                                             "since_epoch and since_seq must be decimal strings");
+                                             "since_epoch and since_seq must be decimal strings",
+                                             version);
                 }
                 request.since = LifecycleCursor {*epoch, *seq};
             }
@@ -138,20 +166,56 @@ namespace wazuh::container_instances::wire
         }
         if (op != "resolve")
         {
-            return detail::makeError(QueryResponse::ErrorCode::badRequest, "unknown op");
+            return detail::makeError(QueryResponse::ErrorCode::badRequest, "unknown op", version);
         }
 
         request.op = QueryRequest::Op::resolve;
-        if (!parsed.contains("cgroup_id"))
+
+        /* The key, in either spelling.
+         *
+         * v2 states which space the number is drawn from; v1 had no way to say
+         * so because there was only ever one. The alias is not merely tolerated
+         * — it is how a not-yet-upgraded consumer keeps working for one
+         * release. It means `cgroup`, which is what v1 always meant, and the
+         * store refuses it on a host keyed by anything else rather than
+         * matching an unrelated number that happens to be in range.
+         */
+        if (parsed.contains("key"))
         {
-            return detail::makeError(QueryResponse::ErrorCode::badRequest, "cgroup_id missing");
+            const auto key = detail::parseDecimalU64(parsed["key"]);
+            if (!key)
+            {
+                return detail::makeError(QueryResponse::ErrorCode::badRequest, "key must be a decimal string", version);
+            }
+            request.hostKey = *key;
+
+            if (!parsed.contains("key_kind") || !parsed["key_kind"].is_string() ||
+                !keyKindFromName(parsed["key_kind"].get<std::string>(), request.keyKind))
+            {
+                // Never defaulted. A missing or unknown kind would be guessed
+                // as `cgroup`, and on a legacy host that guess silently asks in
+                // the wrong space — the exact confusion `key_kind` was added to
+                // end.
+                return detail::makeError(QueryResponse::ErrorCode::badRequest,
+                                         "key requires a known key_kind (\"cgroup\" or \"mnt_ns\")",
+                                         version);
+            }
         }
-        const auto hostKey = detail::parseDecimalU64(parsed["cgroup_id"]);
-        if (!hostKey)
+        else if (parsed.contains("cgroup_id"))
         {
-            return detail::makeError(QueryResponse::ErrorCode::badRequest, "cgroup_id must be a decimal string");
+            const auto hostKey = detail::parseDecimalU64(parsed["cgroup_id"]);
+            if (!hostKey)
+            {
+                return detail::makeError(
+                    QueryResponse::ErrorCode::badRequest, "cgroup_id must be a decimal string", version);
+            }
+            request.hostKey = *hostKey;
+            request.keyKind = KeyKind::cgroupInode;
         }
-        request.hostKey = *hostKey;
+        else
+        {
+            return detail::makeError(QueryResponse::ErrorCode::badRequest, "key missing", version);
+        }
 
         if (parsed.contains("container_id") && parsed["container_id"].is_string())
         {
@@ -170,7 +234,7 @@ namespace wazuh::container_instances::wire
     }
 
     /// Docker records omit the Kubernetes-only keys entirely (absent, not null).
-    [[nodiscard]] inline nlohmann::json recordToJson(const ContainerRecord& record)
+    [[nodiscard]] inline nlohmann::json recordToJson(const ContainerRecord& record, KeyKind keyKind)
     {
         nlohmann::json data;
         data["runtime"] = (record.runtime == ContainerRuntime::kubernetes) ? "kubernetes" : "docker";
@@ -194,7 +258,20 @@ namespace wazuh::container_instances::wire
         }
         data["node_name"] = record.nodeName;
         data["labels"] = record.labels;
-        data["cgroup_id"] = std::to_string(record.hostKey);
+        data["key"] = std::to_string(record.hostKey);
+
+        /* `cgroup_id` is emitted ONLY when it is one.
+         *
+         * The obvious back-compat move is to keep writing it unconditionally,
+         * and on a legacy host that writes a mount-namespace inode under a key
+         * named `cgroup_id`. A v1 consumer would take it at face value, hand it
+         * to the kernel allowlist, and monitor nothing — with every log line
+         * reporting success. Omitting it instead makes such a consumer read 0,
+         * which it already understands as "not resolved yet". */
+        if (keyKind == KeyKind::cgroupInode)
+        {
+            data["cgroup_id"] = std::to_string(record.hostKey);
+        }
 
         if (record.runtime == ContainerRuntime::kubernetes)
         {
@@ -262,7 +339,7 @@ namespace wazuh::container_instances::wire
 
     /// Adds the delta keys to a `list` reply. Everything here is additive: a
     /// client that does not know these keys reads the reply exactly as before.
-    inline void serialiseDelta(const LifecycleDelta& delta, nlohmann::json& body)
+    inline void serialiseDelta(const LifecycleDelta& delta, nlohmann::json& body, KeyKind keyKind)
     {
         // The cursor to come back with. Decimal strings for the 2^53 reason
         // above; its presence is also how a client detects that this server
@@ -287,9 +364,14 @@ namespace wazuh::container_instances::wire
             entry["seq"] = std::to_string(event.seq);
             entry["kind"] = lifecycleKindToString(event.kind);
             entry["container_id"] = event.containerId;
-            // Carried on every kind, removals included: a consumer keyed on the
-            // cgroup inode cannot act on a removal it cannot map back to one.
-            entry["cgroup_id"] = std::to_string(event.hostKey);
+            // Carried on every kind, removals included: a consumer cannot act
+            // on a removal it cannot map back to the key it filed the
+            // container under.
+            entry["key"] = std::to_string(event.hostKey);
+            if (keyKind == KeyKind::cgroupInode)
+            {
+                entry["cgroup_id"] = std::to_string(event.hostKey);
+            }
 
             if (event.kind == LifecycleKind::changed)
             {
@@ -297,7 +379,7 @@ namespace wazuh::container_instances::wire
             }
             if (event.record)
             {
-                entry["data"] = recordToJson(*event.record);
+                entry["data"] = recordToJson(*event.record, keyKind);
             }
 
             events.push_back(std::move(entry));
@@ -309,13 +391,15 @@ namespace wazuh::container_instances::wire
     [[nodiscard]] inline std::string serializeResponse(const QueryResponse& response)
     {
         nlohmann::json body;
-        body["version"] = PROTOCOL_VERSION;
+        // The version the CALLER asked in, not this build's newest.
+        body["version"] = response.version;
 
         switch (response.status)
         {
             case QueryResponse::Status::resolved:
                 body["status"] = "resolved";
-                body["data"] = response.record ? recordToJson(*response.record) : nlohmann::json::object();
+                body["data"] =
+                    response.record ? recordToJson(*response.record, response.keyKind) : nlohmann::json::object();
                 break;
             case QueryResponse::Status::pending:
                 body["status"] = "pending";
@@ -336,6 +420,10 @@ namespace wazuh::container_instances::wire
                     data["verdicts"] = response.stats->verdicts;
                 }
                 data["connector"] = response.connectorName;
+
+                // How a consumer learns which key to send, instead of probing
+                // the host itself and risking a different answer.
+                data["key_kind"] = keyKindName(response.keyKind);
                 body["data"] = std::move(data);
 
                 // Unconditional for a `list` reply, empty array included. A
@@ -353,7 +441,7 @@ namespace wazuh::container_instances::wire
                     {
                         if (record)
                         {
-                            containers.push_back(recordToJson(*record));
+                            containers.push_back(recordToJson(*record, response.keyKind));
                         }
                     }
                     body["containers"] = std::move(containers);
@@ -361,7 +449,7 @@ namespace wazuh::container_instances::wire
 
                 if (response.delta)
                 {
-                    serialiseDelta(*response.delta, body);
+                    serialiseDelta(*response.delta, body, response.keyKind);
                 }
                 break;
             }

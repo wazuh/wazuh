@@ -81,14 +81,46 @@ TEST(LifecycleWireTest, ListWithoutACursorIsByteIdenticalToTheV1Reply)
     EXPECT_TRUE(parsed.contains("containers"));
 }
 
-TEST(LifecycleWireTest, ProtocolVersionStaysOne)
+TEST(LifecycleWireTest, BothVersionsAreSpokenSoTheTwoSidesNeedNotMoveTogether)
 {
-    // The check is strict equality, so a bump is not a compatible change: an
-    // agent and a module one release apart would simply refuse each other.
-    EXPECT_EQ(1, wire::PROTOCOL_VERSION);
+    /* This used to assert the version was pinned at 1, for a good reason: the
+     * check was STRICT EQUALITY, so a bump meant an agent and a module one
+     * release apart refused each other outright.
+     *
+     * Version 2 renames the resolve key, which is not an additive change and
+     * cannot ride along inside v1. So the equality went instead: the server
+     * answers a range, and each caller is answered in the version it asked in.
+     * That is what makes the bump safe, and it is what this now pins. */
+    EXPECT_EQ(1, wire::PROTOCOL_VERSION_MIN);
+    EXPECT_EQ(2, wire::PROTOCOL_VERSION);
 
-    const auto rejected = wire::parseRequest(R"({"version":2,"op":"list"})");
-    ASSERT_TRUE(std::holds_alternative<QueryResponse>(rejected));
+    for (const auto* line : {R"({"version":1,"op":"list"})", R"({"version":2,"op":"list"})"})
+    {
+        EXPECT_TRUE(std::holds_alternative<QueryRequest>(wire::parseRequest(line))) << line;
+    }
+
+    // Outside the range in either direction is still refused rather than
+    // guessed at.
+    for (const auto* line : {R"({"version":0,"op":"list"})", R"({"version":3,"op":"list"})"})
+    {
+        EXPECT_TRUE(std::holds_alternative<QueryResponse>(wire::parseRequest(line))) << line;
+    }
+}
+
+TEST(LifecycleWireTest, AReplyIsAnsweredInTheVersionItWasAskedIn)
+{
+    // Answering everyone in the newest version would break exactly the clients
+    // the range exists to keep working: a v1 client checks the reply's version
+    // and rejects anything else.
+    for (const int version : {1, 2})
+    {
+        QueryResponse response;
+        response.status = QueryResponse::Status::ok;
+        response.version = version;
+
+        const auto body = nlohmann::json::parse(wire::serializeResponse(response));
+        EXPECT_EQ(version, body["version"].get<int>());
+    }
 }
 
 TEST(LifecycleWireTest, ACursorIsParsedFromTheListRequest)
