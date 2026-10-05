@@ -3,9 +3,11 @@
 Implementation plan for **O4** of the agent-side integration issue (#37203): what a cgroup v1 host
 does to this feature today, and how to build one resolution engine that serves both hierarchies.
 
-Everything in *Current behaviour* was read from the code on
-`37532-5-0-0-container-integration` @ `f1bfcbd3e6`. Everything under *Proposed* is design, not
-measurement, and is marked as such.
+Everything in *Current behaviour* was **re-read from the code on 2026-10-05**, on
+`37532-container-lifecycle-notify` @ `da972670a1`, after the lifecycle-delta work landed. It was
+first written against `37532-5-0-0-container-integration` @ `f1bfcbd3e6`; §18.1, §18.1.1, WP4, WP5,
+WP6 and §18.6 changed in the re-read, and §18.7 lost one question. Everything under *Proposed* is
+design, not measurement, and is marked as such.
 
 ---
 
@@ -13,7 +15,7 @@ measurement, and is marked as such.
 
 `bpf_get_current_cgroup_id()` collapses to the root cgroup id — one constant for every task — on a
 pure v1 hierarchy. That is a kernel property, not a bug we can fix, and it is why
-`container_event_drain.cpp:429` refuses to start the event-driven reconcile there.
+`container_event_drain.cpp:694` refuses to start the event-driven reconcile there.
 
 The damage is wider than that refusal, and it is silent. Three facts compose:
 
@@ -23,26 +25,59 @@ The damage is wider than that refusal, and it is silent. Three facts compose:
    returns no container entries.
 2. **Every record therefore gets `cgroupId = 0`.** `docker_connector.cpp:66` joins the API snapshot
    against the resolver's inode map; a container absent from that map is assigned zero.
-3. **`list` drops every zero-keyed record.** `metadata_store.cpp:118` skips any record whose
-   `cgroupId == 0`, so the IPC `list` operation returns an empty array.
+3. **`list` drops every zero-keyed *running* record.** `metadata_store.cpp:124` skips a record
+   when `cgroupId == 0 && isRunning(record->state)`. Until the `all=1`/`ContainerState` work it
+   skipped every zero-keyed record outright; the state half was added so a *stopped* container —
+   which has no inode either — stays listed rather than reading to consumers as a deletion. On a v1
+   host **every** record is zero-keyed, so the guard no longer rejects everything, it partitions by
+   state: a v1 `list` returns exactly the containers that are **not running**, and hides every
+   container that is.
 
 The consequence, which #37534 assumed was safe: **IT Hygiene is dead on v1 too.** Its container pass
-discovers containers through `list`, and `list` is itself gated on the key the v1 host cannot
-produce. The reasoning that inventory "does not use cgroup_id" is true of the *collection* path and
-false of the *discovery* path.
+discovers through `list` — now through the lifecycle delta with `list` as its floor — and both are
+gated on the key the v1 host cannot produce. The reasoning that inventory "does not use cgroup_id"
+is true of the *collection* path and false of the *discovery* path.
 
-And `container_instances` never detects cgroup v1 nor mentions it in any log. The module starts,
-binds its socket, the connectors authenticate and return real containers — and then every one is
-dropped for having a zero key. An operator sees a healthy module and no data, with nothing naming
-the cause.
+**The state-aware filter changed the symptom, not the outcome**, and it is worth being precise about
+which. A v1 `list` is no longer empty. But everything in it is unscannable by construction:
+`container_baseline_scanner.cpp:290` and `:437` skip any container with no live PID, which is exactly
+the set a v1 host now publishes. The operator still gets zero inventory — from a module that now
+also looks busy.
+
+And `container_instances` never detects cgroup v1 nor mentions it in any log — re-checked on
+2026-10-05, and still true: the string does not appear anywhere under `ci_impl/src/`. The module
+starts, binds its socket, the connectors authenticate and return real containers — and then every
+*running* one is dropped for having a zero key. An operator sees a healthy module, a list of dead
+containers, and no inventory, with nothing naming the cause.
 
 | Component | On a v1 host today |
 | --- | --- |
-| eBPF engine (`rt_open`) | warns, loads anyway (`rt_engine.c:445`) |
+| eBPF engine (`rt_open`) | warns, loads anyway (`rt_engine.c:450`) |
 | Container FIM drain | refuses, logs ERROR naming cgroup v1 — **the only correct diagnosis emitted** |
 | `container_instances` resolver | finds nothing, says nothing |
-| `list` / IT Hygiene | empty, silently |
-| Container baseline | never runs: no containers discovered |
+| `list` / IT Hygiene | silently useless: only **exited** containers listed, and those have no PID to collect from |
+| Container baseline | never runs: every discovered container is pid-less |
+
+### 18.1.1 A v1-only inversion the lifecycle journal introduced
+
+The journal added for the delta work logs transitions of **what `listContainers()` returns**, not of
+what the store holds. That is the right definition on v2, where visibility tracks resolution. On v1
+it inverts, because the visibility test *is* the state test:
+
+| v1 event | Visibility | Journal emits | What a consumer does with it |
+| --- | --- | --- | --- |
+| `docker stop` | hidden → visible | `added` | baseline the container |
+| `docker start` | visible → hidden | `removed` | **sweep its rows** |
+
+So on a v1 host, starting a container reads as a deletion and stopping it reads as a creation —
+exactly backwards. **Nothing reaches this today**: FIM refuses on v1 before the drain binds, and
+syscollector never writes rows for a pid-less container, so a `removed` has nothing to sweep. It is
+latent, not live.
+
+It matters because **WP4 is the package that would arm it.** Giving v1 records a real host key makes
+`isRunning()` stop being the whole filter, which fixes the inversion at the same stroke — but only if
+WP4 keeps both halves of the guard, which is why that bullet now says so explicitly. A WP4 that
+restored v1 keys while a stale single-term guard survived anywhere would ship the inversion live.
 
 ---
 
@@ -59,8 +94,9 @@ constant. Unifying the two hierarchies means **separating the two roles** and le
 decide which concrete key fills each.
 
 The v1 correlation key already exists in the contract and is already populated: every event carries
-`mnt_ns`, written at `rt_file.bpf.c:407` from `nsproxy->mnt_ns->ns.inum`. `rt_engine.c:460` already
-tells consumers to use it. Nothing consumes it yet.
+`mnt_ns`, written at `bpf/rt_file.bpf.c:433` from `get_mnt_ns_inum()`, which reads
+`nsproxy->mnt_ns->ns.inum` (`:390`). `rt_engine.c:465` already tells consumers to use it, and
+`rt_host_cgroup_v1()` is exported for them to branch on. Nothing consumes either yet.
 
 ### Proposed key abstraction
 
@@ -93,9 +129,16 @@ already how `detect_cgroup_v1()` classifies it.
 
 ### WP1 — One shared host-mode probe *(prerequisite; ship regardless of O4's outcome)*
 
-`detect_cgroup_v1()` lives in `rt_engine.c:138` and is private to the eBPF provider. Extract it to a
+`detect_cgroup_v1()` lives in `rt_engine.c:143` and is private to the eBPF provider. Extract it to a
 shared header so the provider and `container_instances` cannot reach different conclusions about the
 same host — the failure mode ADR-001 warned about for capability probes, applied to cgroups.
+
+There is now a cheaper half-measure, if the extraction is judged too invasive to do first:
+`rt_host_cgroup_v1(NULL)` falls back to a fresh `detect_cgroup_v1()` (`rt_engine.c:796`), so it works
+as a standalone probe with no handle. It is a real option but a worse one — it makes
+`container_instances` link the eBPF provider for a question that has nothing to do with eBPF, and it
+leaves the one implementation private, which is the thing ADR-001 objects to. Prefer the extraction;
+record the fallback so the choice is a choice.
 
 Report three modes: `unified`, `legacy`, `hybrid`.
 
@@ -142,7 +185,12 @@ Effort: S.
 
 - `m_byCgroup` → `m_byHostKey`
 - `lookupByCgroup(std::uint64_t)` → `lookup(HostKey)`
-- `listContainers()`'s `record->cgroupId == 0` guard → "record has a valid host key"
+- `listContainers()`'s guard → "**no** valid host key **and** running". Note the second half. The
+  guard is `cgroupId == 0 && isRunning(record->state)` today, and an earlier draft of this package
+  said to replace it with a plain key test — which would drop the state term and silently undo
+  stopped-container retention (#37203 D20), re-teaching every consumer that a stop is a delete. The
+  same two-part guard appears **three** times (`metadata_store.cpp:124`, `:394`, `:505`); they move
+  together, and a missed one is the §18.1.1 inversion shipped live
 
 The verdict and pending machinery (`upsertVerdict`, `upsertPending`, liveness eviction against
 `allInodes`) is already key-agnostic — it stores and compares an opaque integer. `allInodes` becomes
@@ -155,8 +203,16 @@ Effort: M.
 
 ### WP5 — Protocol version 2
 
-The wire carries a field literally named `cgroup_id`, and `PROTOCOL_VERSION` is checked by **strict
-equality**, so client and server must move together.
+The wire carries a field literally named `cgroup_id` in **four** places now, not the one this
+package was scoped against: the `resolve` request, where it is mandatory
+(`wire_protocol.hpp:145-152`); the per-record reply payload (`:197`); the per-event payload on
+lifecycle deltas (`:287`); and both of those again on the consumer side
+(`container_instances_client.hpp:280`, `:426`) plus `cb_lifecycle_event_t` in the baseline C ABI.
+Re-estimate from four call sites, not one.
+
+`PROTOCOL_VERSION` is still checked by **strict equality** (`wire_protocol.hpp:92`) — doc 10's
+proposed relaxation to `<=` was not taken when the delta work landed — so client and server must
+still move together, and the one-version alias below is still the only independent-rollout route.
 
 ```jsonc
 // v1 (current)
@@ -182,7 +238,7 @@ Effort: M.
 
 ### WP6 — Drain selects the key by host mode
 
-Replace the refusal at `container_event_drain.cpp:429` with selection:
+Replace the refusal at `container_event_drain.cpp:694` with selection:
 
 ```cpp
 const auto key = (hostMode == CgroupMode::legacy)
@@ -194,13 +250,22 @@ const auto key = (hostMode == CgroupMode::legacy)
 key-kind aware. Keep a refusal for the case where **neither** key is usable, so the "wrong
 attribution is worse than none" rule still has a floor to stand on.
 
-Effort: M–L. This is the largest package and the only one that touches FIM's hot path.
+`cgroup_container_map` now has **two** entry points, not one: `install()` (full list) and
+`applyDelta()` (lifecycle events), both producing the same `CgroupListDelta`. Both are keyed on the
+inode, and `applyDelta()` additionally reads `CgroupDeltaEvent::cgroup_id` and treats a zero there as
+a withdrawal — a rule that is correct for v2 and meaningless under a `HostKey`, so it has to be
+restated in terms of "no valid key" rather than "zero".
+
+Effort: M–L, and larger than when this was written. Still the only package that touches FIM's hot
+path.
 
 ### WP7 — IT Hygiene
 
-No dedicated work. Syscollector discovers through `list` and collects through
-`/proc/<pid>/root` + `setns`, neither of which uses the correlation key. It starts working when WP4
-lands.
+No dedicated work, and the conclusion survives the delta work unchanged — but the mechanism
+sentence does not. Syscollector no longer discovers purely through `list`: it discovers through
+`cbaseline_lifecycle_since()` with a periodic full `list` as its floor. Both are keyed the same way,
+and collection is still `/proc/<pid>/root` + `setns`, which uses no correlation key at all. So it
+still starts working when WP4 lands.
 
 ---
 
@@ -215,6 +280,7 @@ It is a weaker key than the cgroup inode, and the plan should not pretend otherw
 | `unshare -m` inside a container | the process gets a mount namespace the resolver never saw | unknown key → existing pending/escalation path; attribution is lost for that process until the next scan. **Document as a v1 limitation** |
 | Two containers deliberately sharing a mount namespace | one key, two containers | must resolve **ambiguous**, never pick one (delete-safety rule 5) — needs an explicit verdict reason |
 | `cgroupns=host` containers | already a documented v2 limitation | unchanged |
+| Start/stop on v1 *before* WP4 | visibility, and therefore the lifecycle journal, inverts | §18.1.1 — fixed by WP4, not by this table |
 
 There is also an honest asymmetry to record in the release notes: on v1 the feature is *correlating
 on a namespace*, not on a cgroup, and the two do not fail in the same ways.
@@ -247,15 +313,24 @@ kernel command line plus a reboot gives a pure v1 hierarchy on the existing `waz
 new box needed. RHEL/Alma 8 and Amazon Linux 2 boot v1 by default and remain the fleet-accurate
 targets.
 
-**Negative control first, as with every change in this branch.** On the v1 host, with today's build:
-confirm `list` returns `[]` and the container baseline reports zero containers. That failing
-baseline is what the phase-1 build has to flip; without capturing it first, a passing run proves
-nothing.
+**Negative control first, as with every change in this branch — and it is no longer "`list` is
+empty".** Since the state-aware filter (§18.1) a v1 host publishes its *exited* containers, so on any
+box that has ever run a container without `--rm`, `list` returns a non-empty array and an "is it
+empty?" control passes while the feature is still dead. Capture instead, on the v1 host with today's
+build:
+
+1. `list` contains **no container whose state is running**, with at least one running container up —
+   that is the real breakage, and it is what phase 1 has to flip.
+2. The container baseline reports **zero** containers, despite a non-empty `list`.
+3. The lifecycle delta emits `added` for a `docker stop` and `removed` for a `docker start`
+   (§18.1.1). This is the control that proves WP4 fixed the inversion rather than preserving it, and
+   it has no v2 counterpart to compare against — on v2 the same two actions emit `changed` twice.
 
 | Level | What |
 | --- | --- |
 | Unit | `parseCgroupLine()` fixtures: pure v2, pure v1 (multi-controller), hybrid, and a malformed line. Controller-priority selection when `memory` is absent |
 | Unit | `extractContainerId()` against v1 leaves for docker, containerd and CRI-O, systemd and cgroupfs drivers — asserting the existing regexes need no change |
+| Unit | the three `listContainers()`-family guards under a `HostKey`: running-without-a-key hidden, stopped-without-a-key listed, running-with-a-key listed. Pins both halves of the WP4 guard so the §18.1.1 inversion cannot come back |
 | Contract | store keyed by `HostKey`: both kinds, verdict liveness, `list` filtering |
 | Integration | the `~/e2e-int` harness on a v1 host: `list` non-empty, inventory events carry `container.*`, FIM refused in phase 1 and working in phase 2 |
 | Regression | the whole v2 capture from §15.10 re-run unchanged — the v2 path must be byte-identical, since `HostKey{cgroupInode, …}` carries the same number it does today |
@@ -272,8 +347,12 @@ on every supported host. The v2 evidence in §15.10 is the baseline it has to re
    before committing to Phase 2.
 2. **Which controller should be canonical on v1?** The priority list above is a proposal; a survey of
    what RHEL 8 and AL2 actually mount by default would settle it.
-3. **Does the 32-bit `mnt_ns` field need widening?** Namespace inodes are inode numbers; the contract
-   declares `unsigned int`. Confirm against the kernel type before it becomes a wire value.
+3. ~~**Does the 32-bit `mnt_ns` field need widening?**~~ **Closed, 2026-10-05, no.** The BPF side
+   reads `ns.inum` into a `__u32` (`get_mnt_ns_inum()`, `bpf/rt_file.bpf.c:380-390`) and the contract
+   declares `unsigned int mnt_ns` (`rt_event_contract.h:89`) — the two match the kernel's own type
+   for a namespace inode exactly, so there is nothing to widen. It still travels as a decimal string
+   on the wire (WP5): the JSON slot is shared with 64-bit cgroup inodes, and the encoding is a
+   property of the slot, not of the value in it.
 4. **Should Phase 2 exist at all?** Correlating FIM on a namespace rather than a cgroup is a
    different security property. If the answer is no, WP5/WP6 drop and O4 resolves to
    "inventory-only, permanently".
