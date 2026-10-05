@@ -11,7 +11,7 @@
 
 #include "os_win32ui.h"
 
-IDI_OSSECICON ICON "favicon.ico"
+IDI_OSSECICON ICON "brand.ico"
 // This manifest must have ID 1
 1 RT_MANIFEST "os_win32ui.exe.manifest"
 
