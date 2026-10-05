@@ -596,6 +596,57 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     }
 }
 
+/* --- which pass runs, and when ------------------------------------------
+ *
+ * Two things ask for a container pass and they must not be conflated. The
+ * scheduled one is the reconciliation FLOOR: it walks every container, and it
+ * is the only thing that re-establishes what is actually on the node, because
+ * no delta can report a container the module itself never learned about. The
+ * notification-driven one scans what changed and nothing more.
+ *
+ * The rule that is easy to lose in a refactor, and expensive to lose in
+ * production, is that the second must never postpone the first.
+ */
+
+TEST(ContainerPassDecisionTest, ANotificationScansOnlyWhatChanged)
+{
+    const auto decision = decideContainerPass(/*scheduled=*/false, /*requested=*/true);
+
+    EXPECT_TRUE(decision.run);
+    EXPECT_TRUE(decision.delta_only);
+    EXPECT_FALSE(decision.advance_deadline)
+            << "a notification that moved the deadline would let container churn postpone the floor for ever";
+}
+
+TEST(ContainerPassDecisionTest, TheScheduledPassWalksEverything)
+{
+    const auto decision = decideContainerPass(/*scheduled=*/true, /*requested=*/false);
+
+    EXPECT_TRUE(decision.run);
+    EXPECT_FALSE(decision.delta_only);
+    EXPECT_TRUE(decision.advance_deadline);
+}
+
+TEST(ContainerPassDecisionTest, AScheduledPassSubsumesAPendingNotification)
+{
+    // Both at once: doing the targeted pass as well would re-walk containers
+    // the whole-node pass is about to visit anyway.
+    const auto decision = decideContainerPass(/*scheduled=*/true, /*requested=*/true);
+
+    EXPECT_TRUE(decision.run);
+    EXPECT_FALSE(decision.delta_only) << "the thorough pass covers the targeted one";
+    EXPECT_TRUE(decision.advance_deadline);
+}
+
+TEST(ContainerPassDecisionTest, NothingAskedSoNothingRuns)
+{
+    const auto decision = decideContainerPass(/*scheduled=*/false, /*requested=*/false);
+
+    EXPECT_FALSE(decision.run);
+    EXPECT_FALSE(decision.advance_deadline)
+            << "moving the deadline without running would silently skip a floor pass";
+}
+
 TEST_F(SyscollectorImpTest, aLifecycleNotificationBringsTheContainerPassForward)
 {
 #ifndef __linux__
