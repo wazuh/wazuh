@@ -22,6 +22,7 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include <memory>
 #include <set>
 #include <unordered_set>
 #include <utility>
@@ -424,9 +425,11 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
 {
     int baselined = 0;
 
-    // Per-run state that is not the PID index: the image-content cache, and the
-    // shared-netns grouping derived from the index.
-    ImageContentCache  imageContent;
+    // The image-content cache is process-wide, not per-run. Reuse across
+    // replicas of one image is the entire point of it, and a delta-driven pass
+    // may scan a single container — so a cache that died with each invocation
+    // would give that back exactly when scans became smaller and more frequent.
+    auto&              imageContent = SharedImageContentCache();
     const auto         sharedNetns = SharedNetnsContainers(pidIndex.all());
 
     for (const auto& identity : discover()) {
@@ -471,11 +474,7 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
         const auto imageDigest = identity.context ? identity.context->image_digest : std::string {};
         const auto fingerprint = FingerprintImageSources(pid);
 
-        // Holds the rows when this container is not cacheable (no resolved
-        // image digest), so there is exactly one scan path either way.
-        ImageContentCache::Entry standalone;
-
-        const auto* content = imageContent.find(imageDigest, fingerprint);
+        auto content = imageContent.find(imageDigest, fingerprint);
 
         if (content == nullptr) {
             ImageContentCache::Entry fresh;
@@ -486,11 +485,18 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
             fresh.os          = ScanContainerOs(pid);
 
             if (imageDigest.empty()) {
-                standalone = std::move(fresh);
-                content    = &standalone;
+                // Not cacheable — no resolved image digest — so it is held
+                // locally instead. Same shape either way, so there is exactly
+                // one scan path below.
+                content = std::make_shared<const ImageContentCache::Entry>(std::move(fresh));
             } else {
                 imageContent.store(imageDigest, std::move(fresh));
                 content = imageContent.find(imageDigest, fingerprint);
+
+                // An immediate eviction, or a fingerprint that moved under us
+                // between the store and the read. Vanishingly unlikely and not
+                // worth a retry; scanning again next cycle is the cost.
+                if (content == nullptr) continue;
             }
         }
 
