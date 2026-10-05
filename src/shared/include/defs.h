@@ -181,6 +181,20 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Exec queue */
 #define EXECQUEUE "queue/sockets/execq"
 
+/* Container lifecycle change notifications.
+ *
+ * Datagram sockets BOUND BY THE CONSUMER, which container_instances sends to
+ * when its container list changes — the same direction as EXECQUEUE above, and
+ * for the same reason: the producer has nothing to wait for and the consumer
+ * has somewhere to wake up.
+ *
+ * The datagram is a hint and carries no authority. Everything a consumer acts
+ * on is read afterwards from queue/sockets/container_instances, so a lost,
+ * duplicated or malformed datagram costs latency and nothing else, and a
+ * consumer that never binds simply keeps polling as it did before. */
+#define CI_NOTIFY_SYSCHECK     "queue/sockets/syscheck-ci-notify"
+#define CI_NOTIFY_SYSCOLLECTOR "queue/sockets/syscollector-ci-notify"
+
 /* Agent groups location */
 #define GROUPS_DIR "queue/agent-groups"
 
