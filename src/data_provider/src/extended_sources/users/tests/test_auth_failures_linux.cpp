@@ -15,6 +15,7 @@
 #include <utmpx.h>
 
 #include <cstring>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <vector>
@@ -57,9 +58,12 @@ class AuthFailuresProviderTests : public ::testing::Test
         }
 
         /// @brief Writes the rotated generation that logrotate keeps beside btmp.
-        void writeRotatedBtmp(const std::vector<std::pair<std::string, int32_t>>& records) const
+        /// @param records The failures to write.
+        /// @param suffix What logrotate appended: ".1" without dateext, "-YYYYMMDD" with it.
+        void writeRotatedBtmp(const std::vector<std::pair<std::string, int32_t>>& records,
+                              const std::string& suffix = ".1") const
         {
-            std::ofstream file(m_btmp + ".1", std::ios::binary);
+            std::ofstream file(m_btmp + suffix, std::ios::binary);
 
             for (const auto& record : records)
             {
@@ -226,4 +230,53 @@ TEST_F(AuthFailuresProviderTests, BothBtmpFilesEmptyIsUnknown)
     provider.load({{"alice", 0}}, true);
 
     EXPECT_FALSE(provider.get("alice").known);
+}
+
+TEST_F(AuthFailuresProviderTests, DateextRotatedBtmpIsCountedToo)
+{
+    // dateext is the logrotate default on the RHEL family, Fedora and SUSE, so the rotated generation
+    // is btmp-YYYYMMDD rather than btmp.1. Looking only for btmp.1 finds nothing on those systems and
+    // every account flips to unknown after the monthly rotation.
+    writeBtmp({});
+    writeRotatedBtmp({{"alice", 500}, {"alice", 600}}, "-20261005");
+
+    auto provider = makeProvider();
+    provider.load({{"alice", 100}}, true);
+
+    const auto failures = provider.get("alice");
+    EXPECT_TRUE(failures.known);
+    EXPECT_EQ(failures.count, 2u);
+    EXPECT_EQ(failures.latest, 600u);
+}
+
+TEST_F(AuthFailuresProviderTests, CompressedRotatedBtmpIsNotRead)
+{
+    // A compressed generation cannot be read here. It is skipped rather than half read, so the count
+    // is reported as unknown instead of as a confident subset.
+    writeBtmp({});
+    writeRotatedBtmp({{"alice", 500}}, ".1.gz");
+
+    auto provider = makeProvider();
+    provider.load({{"alice", 100}}, true);
+
+    EXPECT_FALSE(provider.get("alice").known);
+}
+
+TEST_F(AuthFailuresProviderTests, TheNewestRotatedGenerationIsUsed)
+{
+    writeBtmp({});
+    writeRotatedBtmp({{"alice", 100}}, "-20260101");
+    writeRotatedBtmp({{"alice", 900}, {"alice", 950}}, "-20261005");
+
+    // Real generations are a month apart. The test writes both in the same instant, so the ages are
+    // set explicitly rather than relying on the order the files happened to be created in.
+    const auto now = std::filesystem::last_write_time(m_btmp + "-20261005");
+    std::filesystem::last_write_time(m_btmp + "-20260101", now - std::chrono::hours(24 * 30));
+
+    auto provider = makeProvider();
+    provider.load({{"alice", 10}}, true);
+
+    const auto failures = provider.get("alice");
+    EXPECT_EQ(failures.count, 2u);
+    EXPECT_EQ(failures.latest, 950u);
 }

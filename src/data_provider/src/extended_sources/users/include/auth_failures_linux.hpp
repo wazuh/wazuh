@@ -60,6 +60,11 @@ class AuthFailuresProvider
         /// @return false when neither file can be read or both hold no record.
         bool loadBtmp(const std::unordered_map<std::string, uint32_t>& lastLoginByName);
 
+        /// Returns the newest uncompressed rotated btmp beside the live file, or an empty string.
+        /// logrotate uses btmp.1, or btmp-YYYYMMDD where dateext is set, which is the default on the
+        /// RHEL family, Fedora and SUSE.
+        std::string rotatedBtmpPath() const;
+
         /// Counts the failures of one btmp file, newest records first, spending from a shared budget.
         /// @param path Path of the file.
         /// @param lastLoginByName Epoch seconds of the last login of every collected account.

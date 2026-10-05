@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <regex>
@@ -726,7 +727,6 @@ nlohmann::json SysInfo::getUsers() const
     auto lastLoginKnown = false;
     {
         LastLoginProvider lastLoginProvider;
-        lastLoginKnown = lastLoginProvider.hasSource();
 
         for (const auto& user : collectedUsers)
         {
@@ -739,6 +739,14 @@ nlohmann::json SysInfo::getUsers() const
 
         for (const auto& item : collectedLoggedInUser)
         {
+            // Only a live session dates a login. utmp also keeps the logout as a DEAD_PROCESS row,
+            // and boot and init rows carry times of their own, so folding every row in would move the
+            // anchor to the logout and hide the failures that happened while the session was open.
+            if (item.value("type", std::string {}) != "user")
+            {
+                continue;
+            }
+
             const auto entry = lastLoginByName.find(item["user"].get<std::string>());
 
             if (entry != lastLoginByName.end())
@@ -747,6 +755,13 @@ nlohmann::json SysInfo::getUsers() const
             }
         }
     }
+
+    // The count is anchored to the last login, so the anchor has to be a time somebody actually has.
+    // A lastlog that opens and reads back as zeros, which a restore or a tool that extends the file
+    // can leave behind, would otherwise anchor every account at the epoch and count every failure
+    // btmp still holds against accounts that have since logged in.
+    lastLoginKnown = std::any_of(lastLoginByName.cbegin(), lastLoginByName.cend(),
+                                 [](const auto & entry) { return entry.second > 0; });
 
     AuthFailuresProvider authFailuresProvider;
     authFailuresProvider.load(lastLoginByName, lastLoginKnown);

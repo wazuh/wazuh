@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 
 constexpr const char* DEFAULT_BTMP_PATH = "/var/log/btmp";
@@ -95,25 +96,80 @@ bool AuthFailuresProvider::readBtmpFile(const std::string& path,
     return consumed == readRecords || btmp.eof();
 }
 
+std::string AuthFailuresProvider::rotatedBtmpPath() const
+{
+    // logrotate names the rotated generation either btmp.1 or, where dateext is set, btmp-YYYYMMDD.
+    // dateext is the default on the RHEL family, Fedora and SUSE, and off on Debian and Ubuntu, so
+    // looking only for btmp.1 finds nothing on about half the distributions we ship to. Take the
+    // newest uncompressed regular sibling instead of assuming either name.
+    const auto slash = m_btmpPath.find_last_of('/');
+    const auto dir = (slash == std::string::npos) ? std::string(".") : m_btmpPath.substr(0, slash);
+    const auto base = (slash == std::string::npos) ? m_btmpPath : m_btmpPath.substr(slash + 1);
+
+    std::string newest;
+    std::filesystem::file_time_type newestTime {};
+
+    for (const auto& name : Utils::enumerateDir(dir))
+    {
+        // btmp.1, btmp.2, btmp-20261005. The live file itself is read separately.
+        if (name.size() <= base.size() + 1 || name.compare(0, base.size(), base) != 0)
+        {
+            continue;
+        }
+
+        const auto separator = name[base.size()];
+
+        if (separator != '.' && separator != '-')
+        {
+            continue;
+        }
+
+        // A compressed generation cannot be read here, so it is left alone rather than half read.
+        const auto suffix = name.substr(name.find_last_of('.') + 1);
+
+        if (suffix == "gz" || suffix == "xz" || suffix == "bz2" || suffix == "zst" || suffix == "Z")
+        {
+            continue;
+        }
+
+        const auto candidate = Utils::joinPaths(dir, name);
+
+        if (!Utils::existsRegular(candidate))
+        {
+            continue;
+        }
+
+        std::error_code ec;
+        const auto when = std::filesystem::last_write_time(candidate, ec);
+
+        if (!ec && (newest.empty() || when > newestTime))
+        {
+            newest = candidate;
+            newestTime = when;
+        }
+    }
+
+    return newest;
+}
+
 bool AuthFailuresProvider::loadBtmp(const std::unordered_map<std::string, uint32_t>& lastLoginByName)
 {
     auto budget = m_btmpTailBytes;
     auto known = false;
 
-    // The rotated file is read as well as the live one. logrotate replaces btmp with an empty file
-    // every month and keeps one generation beside it, so reading only the live file loses up to a
-    // month of failures and, worse, makes every account on the host flip to unknown and back as soon
-    // as the next failure is recorded. With the rotated generation included the count survives a
-    // rotation, which is what "since the account last logged in" is supposed to mean.
+    // The rotated generation is read as well as the live one. logrotate replaces btmp with an empty
+    // file every month and keeps one generation beside it, so reading only the live file loses up to
+    // a month of failures and, worse, makes every account on the host flip to unknown and back as
+    // soon as the next failure is recorded.
     //
     // Newest first, so the byte budget is spent on the most recent failures when both files are large.
-    // A rotated file that the distribution compresses is not read, and if the live file is empty the
-    // count is then correctly reported as unknown rather than as zero.
-    const std::string paths[] {m_btmpPath, m_btmpPath + ".1"};
+    known = readBtmpFile(m_btmpPath, lastLoginByName, budget);
 
-    for (const auto& path : paths)
+    const auto rotated = rotatedBtmpPath();
+
+    if (!rotated.empty())
     {
-        known = readBtmpFile(path, lastLoginByName, budget) || known;
+        known = readBtmpFile(rotated, lastLoginByName, budget) || known;
     }
 
     return known;
