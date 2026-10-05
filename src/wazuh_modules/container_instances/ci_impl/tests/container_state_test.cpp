@@ -25,8 +25,8 @@
  * parsers that produce it.
  */
 
-#include "cache/metadata_store.hpp"
 #include "cache/lifecycle_journal.hpp"
+#include "cache/metadata_store.hpp"
 #include "cache/reconciler.hpp"
 #include "docker/docker_object_parser.hpp"
 #include "kubernetes/k8s_object_parser.hpp"
@@ -43,39 +43,39 @@ using namespace wazuh::container_instances;
 namespace
 {
 
-const SourceId kDocker {"docker"};
+    const SourceId kDocker {"docker"};
 
-ContainerRecord MakeRecord(const std::string& id, std::uint64_t inode, ContainerState state)
-{
-    ContainerRecord record;
-    record.runtime = ContainerRuntime::docker;
-    record.containerId = id;
-    record.containerName = id;
-    record.cgroupId = inode;
-    record.state = state;
-    return record;
-}
-
-std::vector<std::string> ListedIds(MetadataStore& store)
-{
-    std::vector<std::string> out;
-    for (const auto& record : store.listContainers())
+    ContainerRecord MakeRecord(const std::string& id, std::uint64_t inode, ContainerState state)
     {
-        out.push_back(record->containerId);
+        ContainerRecord record;
+        record.runtime = ContainerRuntime::docker;
+        record.containerId = id;
+        record.containerName = id;
+        record.hostKey = inode;
+        record.state = state;
+        return record;
     }
-    std::sort(out.begin(), out.end());
-    return out;
-}
 
-bool Contains(const std::vector<std::string>& haystack, const std::string& needle)
-{
-    return std::find(haystack.begin(), haystack.end(), needle) != haystack.end();
-}
+    std::vector<std::string> ListedIds(MetadataStore& store)
+    {
+        std::vector<std::string> out;
+        for (const auto& record : store.listContainers())
+        {
+            out.push_back(record->containerId);
+        }
+        std::sort(out.begin(), out.end());
+        return out;
+    }
 
-MetadataStore MakeStore()
-{
-    return MetadataStore {[](LogLevel, const std::string&) {}};
-}
+    bool Contains(const std::vector<std::string>& haystack, const std::string& needle)
+    {
+        return std::find(haystack.begin(), haystack.end(), needle) != haystack.end();
+    }
+
+    MetadataStore MakeStore()
+    {
+        return MetadataStore {[](LogLevel, const std::string&) {}};
+    }
 
 } // namespace
 
@@ -83,14 +83,14 @@ TEST(ContainerStateTest, StoppedContainerStaysInList)
 {
     auto store = MakeStore();
 
-    store.applySnapshot(kDocker, {MakeRecord("alpha", 4242, ContainerState::running)}, {4242},
-                        std::chrono::steady_clock::now());
+    store.applySnapshot(
+        kDocker, {MakeRecord("alpha", 4242, ContainerState::running)}, {4242}, std::chrono::steady_clock::now());
     ASSERT_TRUE(Contains(ListedIds(store), "alpha"));
 
     // It stops: no process, so no cgroup inode. The container itself is still
     // there — `docker ps -a` still shows it, its layers are still on disk.
-    store.applySnapshot(kDocker, {MakeRecord("alpha", 0, ContainerState::stopped)}, {},
-                        std::chrono::steady_clock::now());
+    store.applySnapshot(
+        kDocker, {MakeRecord("alpha", 0, ContainerState::stopped)}, {}, std::chrono::steady_clock::now());
 
     EXPECT_TRUE(Contains(ListedIds(store), "alpha"))
         << "a stopped container dropping out of the list reads as a deletion to every consumer, "
@@ -104,13 +104,13 @@ TEST(ContainerStateTest, UnresolvedRunningStaysHidden)
     // Running, but the /proc join has not produced an inode yet. Publishing it
     // now would mean a consumer attributes events to a key of 0 and then has to
     // be told it changed.
-    store.applySnapshot(kDocker, {MakeRecord("beta", 0, ContainerState::running)}, {},
-                        std::chrono::steady_clock::now());
+    store.applySnapshot(
+        kDocker, {MakeRecord("beta", 0, ContainerState::running)}, {}, std::chrono::steady_clock::now());
 
     EXPECT_FALSE(Contains(ListedIds(store), "beta"));
 
-    store.applySnapshot(kDocker, {MakeRecord("beta", 7777, ContainerState::running)}, {7777},
-                        std::chrono::steady_clock::now());
+    store.applySnapshot(
+        kDocker, {MakeRecord("beta", 7777, ContainerState::running)}, {7777}, std::chrono::steady_clock::now());
 
     EXPECT_TRUE(Contains(ListedIds(store), "beta")) << "it must appear once the inode is known";
 }
@@ -122,8 +122,8 @@ TEST(ContainerStateTest, AnUnknownStateIsTreatedAsRunningSoItIsNeverPublishedWit
     // A runtime whose state vocabulary we failed to parse. Erring toward
     // `running` keeps the old behaviour (withhold until resolved) rather than
     // publishing a zero key; erring the other way would publish nonsense.
-    store.applySnapshot(kDocker, {MakeRecord("gamma", 0, ContainerState::unknown)}, {},
-                        std::chrono::steady_clock::now());
+    store.applySnapshot(
+        kDocker, {MakeRecord("gamma", 0, ContainerState::unknown)}, {}, std::chrono::steady_clock::now());
 
     EXPECT_FALSE(Contains(ListedIds(store), "gamma"));
 }
@@ -132,8 +132,8 @@ TEST(ContainerStateTest, ADeletedStoppedContainerLeavesTheListAtOnce)
 {
     auto store = MakeStore();
 
-    store.applySnapshot(kDocker, {MakeRecord("delta", 0, ContainerState::stopped)}, {},
-                        std::chrono::steady_clock::now());
+    store.applySnapshot(
+        kDocker, {MakeRecord("delta", 0, ContainerState::stopped)}, {}, std::chrono::steady_clock::now());
     ASSERT_TRUE(Contains(ListedIds(store), "delta"));
 
     // `docker rm`: now it really is gone, and it must leave immediately rather
@@ -216,7 +216,7 @@ TEST(ContainerStateTest, ARestartIsVisibleEvenWhenNothingElseMoves)
     // run, whose contents nobody has walked.
     EXPECT_FALSE(recordEquals(before, after));
     EXPECT_TRUE((lifecycleChangeMask(before, after) & LIFECYCLE_IDENTITY) != 0)
-            << "a restart has to reach a consumer as an identity change, or the container is never re-scanned";
+        << "a restart has to reach a consumer as an identity change, or the container is never re-scanned";
 }
 
 TEST(ContainerStateTest, RestartCountAloneWouldHaveMissedIt)
