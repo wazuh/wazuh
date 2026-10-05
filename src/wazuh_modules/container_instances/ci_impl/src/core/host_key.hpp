@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cgroup_host_mode.h"
+#include "container_key_kind.h"
 
 #include <cstdint>
 #include <string>
@@ -62,22 +63,21 @@ namespace wazuh::container_instances
     /// must not reintroduce it.
     [[nodiscard]] inline const char* keyKindName(KeyKind kind)
     {
-        return (kind == KeyKind::mntNsInode) ? "mnt_ns" : "cgroup";
+        // Delegated, not spelled again: the consumer library reads the same
+        // strings from the same header, so neither side can drift.
+        return wz_container_key_kind_name(kind == KeyKind::mntNsInode ? WZ_CONTAINER_KEY_MNT_NS
+                                                                      : WZ_CONTAINER_KEY_CGROUP);
     }
 
     [[nodiscard]] inline bool keyKindFromName(const std::string& name, KeyKind& out)
     {
-        if (name == "cgroup")
+        wz_container_key_kind_t kind {};
+        if (wz_container_key_kind_from_name(name.c_str(), &kind) == 0)
         {
-            out = KeyKind::cgroupInode;
-            return true;
+            return false;
         }
-        if (name == "mnt_ns")
-        {
-            out = KeyKind::mntNsInode;
-            return true;
-        }
-        return false;
+        out = (kind == WZ_CONTAINER_KEY_MNT_NS) ? KeyKind::mntNsInode : KeyKind::cgroupInode;
+        return true;
     }
 
 } // namespace wazuh::container_instances
