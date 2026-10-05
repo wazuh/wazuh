@@ -36,8 +36,8 @@ The agent supports a wider set of operating systems and architectures than the s
 #### Minimum Specifications
 
 - **CPU**: 1 core
-- **RAM**: 128 MB available for the agent
-- **Disk**: 200 MB
+- **RAM**: 1 GB
+- **Disk**: 10 GB
 
 #### Measured Usage
 
@@ -49,4 +49,4 @@ Usage measured with the default configuration on an Ubuntu 24.04 server VM (1 CP
 | RAM | About 60 MB | About 40 MB during the startup scans, 25 MB when idle |
 | Disk | About 50 MB | About 50 MB |
 
-Usage grows with the monitored content (directories under file integrity monitoring, installed packages, log volume) and with the modules enabled.
+Usage grows with the monitored content (directories under file integrity monitoring, installed packages, log volume) and with the modules enabled. The minimum specifications leave headroom for high load and for logs, which keep growing as they rotate.
