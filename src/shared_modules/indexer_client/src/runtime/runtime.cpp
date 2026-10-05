@@ -38,8 +38,7 @@ namespace indexer_client
         /// Usage errors detected by the library (I37), process-wide; read through detail::testing::usageErrors().
         std::atomic<std::uint64_t> g_usageErrors {0};
 
-        /// Joins `thread` if it is joinable. A thread cannot join itself (it would throw from a destructor): if the
-        /// last reference to the runtime ever dies on one of its own threads, that thread is detached instead.
+        /// Joins `thread` if it is joinable.
         void joinIfJoinable(std::thread& thread)
         {
             if (!thread.joinable())
@@ -48,6 +47,10 @@ namespace indexer_client
             }
             if (thread.get_id() == std::this_thread::get_id())
             {
+                // Unreachable by construction: shutdown() refuses runtime threads and the owner holds the last
+                // strong reference until every join has returned. A self-join would throw from a destructor, so
+                // detach only avoids std::terminate; it is counted as a usage error, never a supported path.
+                detail::countUsageError();
                 thread.detach();
                 return;
             }
@@ -375,6 +378,10 @@ namespace indexer_client
             {
                 return field("retry.maxAttempts") + " must be > 0 (or unset for unlimited)";
             }
+            if (spec.retry.maxDuration && *spec.retry.maxDuration <= Duration::zero())
+            {
+                return field("retry.maxDuration") + " must be > 0 (or unset for unlimited)";
+            }
             if (spec.retry.base > spec.retry.cap)
             {
                 return field("retry.base") + " must be <= retry.cap";
@@ -382,6 +389,10 @@ namespace indexer_client
             if (spec.overflow.kind == Overflow::Kind::Block && spec.overflow.blockTimeout <= Duration::zero())
             {
                 return field("overflow.blockTimeout") + " must be > 0 with Overflow::Block";
+            }
+            if (spec.onConflict.kind == ConflictPolicy::Kind::Retry && spec.onConflict.retryOnConflict == 0)
+            {
+                return field("onConflict.retryOnConflict") + " must be > 0 with ConflictPolicy::Retry";
             }
             return {};
         }
