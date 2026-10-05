@@ -43,7 +43,7 @@ int gen_server_info(HWND hwnd)
     SetDlgItemText(hwnd, UI_SERVER_TEXT, config_inst.server);
 
     /* Set status data */
-    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"https://wazuh.com");
+    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)BRAND_URL);
     if (config_inst.revision) {
         SendMessage(hStatus, SB_SETTEXT, 1, (LPARAM)config_inst.revision);
     }
@@ -221,16 +221,8 @@ int config_read(__attribute__((unused)) HWND hwnd)
     /* Get version/revision */
     if ((tmp_str = read_version_file_field("version"), tmp_str))
     {
-        // The old VERSION file had a 'v' prefix. The new VERSION.json does not.
-        if (tmp_str[0] != 'v') {
-            size_t len = strlen(tmp_str);
-            char prefixed_version[len + 2];
-            snprintf(prefixed_version, sizeof(prefixed_version), "v%s", tmp_str);
-            snprintf(buffer, sizeof(buffer), "Wazuh %s", prefixed_version);
-        } else {
-            snprintf(buffer, sizeof(buffer), "Wazuh %s", tmp_str);
-        }
-
+        // The box shows the product's own version text; a readable VERSION.json still gates it.
+        snprintf(buffer, sizeof(buffer), "%s %s", BRAND_NAME, BRAND_VERSION);
         os_strdup(buffer, config_inst.version);
     }
 
