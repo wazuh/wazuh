@@ -93,7 +93,13 @@ namespace invsync::sync
         {
             return badRequest("Unsupported message type: expected FullSession");
         }
+        // The verifier accepts a union whose type is set but whose value is absent, so the
+        // discriminator alone does not guarantee a table: null-check every union accessor.
         const auto* session = message->content_as_FullSession();
+        if (session == nullptr)
+        {
+            return badRequest("Message is missing its FullSession table");
+        }
 
         // 3. Shape: a session says nothing without its Start.
         const auto* start = session->start();
@@ -144,6 +150,10 @@ namespace invsync::sync
                 // D8: a data session must carry at least one DataValue. DataContext items are
                 // vulnerability-detection side data and cannot stand alone.
                 const auto* payload = session->payload_as_SyncData();
+                if (payload == nullptr)
+                {
+                    return badRequest("FullSession is missing its SyncData table");
+                }
                 if (payload->values() == nullptr || payload->values()->size() == 0)
                 {
                     return badRequest("SyncData must carry at least one value");
@@ -153,6 +163,10 @@ namespace invsync::sync
             case fb::SessionPayload_Cleans:
             {
                 const auto* payload = session->payload_as_Cleans();
+                if (payload == nullptr)
+                {
+                    return badRequest("FullSession is missing its Cleans table");
+                }
                 if (payload->items() == nullptr || payload->items()->size() == 0)
                 {
                     return badRequest("Cleans must carry at least one item");
@@ -162,6 +176,10 @@ namespace invsync::sync
             case fb::SessionPayload_ChecksumModule:
             {
                 const auto* payload = session->payload_as_ChecksumModule();
+                if (payload == nullptr)
+                {
+                    return badRequest("FullSession is missing its ChecksumModule table");
+                }
                 const auto index = viewOf(payload->index());
                 if (index.empty() || !isAgentScopedStateIndex(index))
                 {

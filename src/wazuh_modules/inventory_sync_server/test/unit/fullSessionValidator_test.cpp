@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include <string>
+#include <utility>
 #include <variant>
 
 using invsync::sync::ValidatedSession;
@@ -57,6 +58,33 @@ TEST(FullSessionValidatorTest, ALegacyDirectMemberIsRejectedWith400)
     const auto& failure = failureOf(result);
     EXPECT_EQ(400, failure.status);
     EXPECT_NE(std::string::npos, failure.reason.find("FullSession"));
+}
+
+TEST(FullSessionValidatorTest, AnAbsentFullSessionValueIs400)
+{
+    // content_type says FullSession but the union value is absent: it passes the verifier.
+    const auto result = validateFullSession(invsync::test::buildMessageWithAbsentFullSession(), "1", CLUSTER);
+    const auto& failure = failureOf(result);
+    EXPECT_EQ(400, failure.status);
+    EXPECT_NE(std::string::npos, failure.reason.find("FullSession"));
+}
+
+TEST(FullSessionValidatorTest, AnAbsentPayloadValueIs400)
+{
+    namespace fb = invsync::schema::fb;
+
+    // payload_type passes the mode x payload matrix, but the union value is absent.
+    const std::pair<fb::Mode, fb::SessionPayload> cases[] {{fb::Mode_ModuleDelta, fb::SessionPayload_SyncData},
+                                                           {fb::Mode_ModuleDelta, fb::SessionPayload_Cleans},
+                                                           {fb::Mode_ModuleCheck, fb::SessionPayload_ChecksumModule}};
+    for (const auto& [mode, payloadType] : cases)
+    {
+        SessionSpec spec;
+        spec.mode = mode;
+        const auto body = invsync::test::buildSessionWithAbsentPayload(spec, payloadType);
+        EXPECT_EQ(400, failureOf(validateFullSession(body, "1", CLUSTER)).status)
+            << "payload " << static_cast<int>(payloadType);
+    }
 }
 
 TEST(FullSessionValidatorTest, AMissingModuleNameIs400)
