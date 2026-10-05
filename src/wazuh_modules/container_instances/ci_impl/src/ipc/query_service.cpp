@@ -58,6 +58,19 @@ namespace wazuh::container_instances
 
     QueryResponse QueryService::handle(const QueryRequest& request)
     {
+        /* Stamped once, here, rather than at each of the half-dozen points a
+         * response is constructed below. Those are easy to add to and easy to
+         * forget, and a reply that forgot its version is answered in v1 — which
+         * a v2 client rejects outright, turning a working server into an
+         * unreachable one for the newest consumer only. */
+        auto response = dispatch(request);
+        response.version = request.version;
+        response.keyKind = m_store.keyKind();
+        return response;
+    }
+
+    QueryResponse QueryService::dispatch(const QueryRequest& request)
+    {
         try
         {
             if (request.op == QueryRequest::Op::list)
@@ -108,7 +121,10 @@ namespace wazuh::container_instances
 
     QueryResponse QueryService::resolve(const QueryRequest& request)
     {
-        const auto byCgroup = m_store.lookup(HostKey {m_store.keyKind(), request.hostKey});
+        // request.keyKind, not the store's: asking with the store's own kind
+        // would make every mismatch match, which is precisely the check the
+        // typed key exists to perform.
+        const auto byCgroup = m_store.lookup(HostKey {request.keyKind, request.hostKey});
         if (byCgroup.status != LookupResult::Status::miss)
         {
             return fromLookup(byCgroup);

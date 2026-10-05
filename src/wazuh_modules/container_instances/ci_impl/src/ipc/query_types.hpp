@@ -4,6 +4,7 @@
 #include "../cache/lifecycle_journal.hpp"
 #include "../core/cache_entry.hpp"
 #include "../core/container_record.hpp"
+#include "../core/host_key.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -27,6 +28,11 @@ namespace wazuh::container_instances
         int version {0};
         Op op {Op::resolve};
         std::uint64_t hostKey {0};
+
+        /// Which key space `hostKey` is drawn from, as the CLIENT believes it.
+        /// Carried rather than assumed because the store refuses a mismatch,
+        /// and a refusal is only possible if the claim was stated.
+        KeyKind keyKind {KeyKind::cgroupInode};
         std::optional<std::string> containerId;
         std::optional<std::string> podUid;
         std::optional<std::string> containerName;
@@ -58,6 +64,21 @@ namespace wazuh::container_instances
         };
 
         Status status {Status::error};
+
+        /// The protocol version to answer in — echoed from the request, not
+        /// fixed at the server's own. A v1 client that is told the reply is v2
+        /// rejects it outright, so answering every caller in the newest
+        /// version would break exactly the clients the alias window exists to
+        /// keep working.
+        int version {1};
+
+        /// The key space this server files containers under. Published so a
+        /// consumer DISCOVERS it instead of classifying the host for itself —
+        /// two components reaching that conclusion independently is the defect
+        /// the shared probe exists to prevent, and it must not come back in
+        /// through the protocol.
+        KeyKind keyKind {KeyKind::cgroupInode};
+
         ContainerRecordPtr record;                  ///< resolved.
         std::vector<ContainerRecordPtr> containers; ///< list op.
         /// This response IS a `list` reply, so `containers` must be serialised even

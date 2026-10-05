@@ -5,10 +5,12 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include "container_key_kind.h"
 #include <chrono>
 #include <cstdint>
-#include <json.hpp>
+
 #include <cstring>
+#include <json.hpp>
 #include <optional>
 #include <string>
 #include <utility>
@@ -125,15 +127,36 @@ namespace wazuh::container_instances_client
         {
         }
 
+        /// Resolve by whatever identifier this host uses.
+        ///
+        /// The KIND is sent, not assumed. On a host where the cgroup id is a
+        /// constant the producer files containers under mount namespaces
+        /// instead, and the two are both ordinary 64-bit inode numbers — asked
+        /// for in the wrong space they do not error, they simply never match,
+        /// and the caller is told the container is unknown.
+        [[nodiscard]] LookupResult resolve(wz_container_key_kind_t kind, std::uint64_t key) const
+        {
+            return roundTrip(resolveRequest(kind, key, nullptr));
+        }
+
+        [[nodiscard]] LookupResult
+        resolve(wz_container_key_kind_t kind, std::uint64_t key, const std::string& containerId) const
+        {
+            return roundTrip(resolveRequest(kind, key, &containerId));
+        }
+
+        /// Kept for callers that have not moved yet, and for hosts where the
+        /// cgroup id IS the key. Equivalent to resolve(WZ_CONTAINER_KEY_CGROUP,
+        /// ...), and refused by the producer on a host keyed otherwise — which
+        /// is the correct answer, not a regression.
         [[nodiscard]] LookupResult resolveByCgroupId(std::uint64_t cgroupId) const
         {
-            return roundTrip(R"({"version":1,"op":"resolve","cgroup_id":")" + std::to_string(cgroupId) + R"("})");
+            return resolve(WZ_CONTAINER_KEY_CGROUP, cgroupId);
         }
 
         [[nodiscard]] LookupResult resolveByCgroupId(std::uint64_t cgroupId, const std::string& containerId) const
         {
-            return roundTrip(R"({"version":1,"op":"resolve","cgroup_id":")" + std::to_string(cgroupId) +
-                             R"(","container_id":")" + containerId + R"("})");
+            return resolve(WZ_CONTAINER_KEY_CGROUP, cgroupId, containerId);
         }
 
         /// @brief List every container the connector currently knows about.
@@ -156,7 +179,7 @@ namespace wazuh::container_instances_client
                 *reachable = false;
             }
 
-            const auto reply = roundTrip(R"({"version":1,"op":"list"})");
+            const auto reply = roundTrip(R"({"version":2,"op":"list"})");
             if (reply.json.empty())
             {
                 return result;
@@ -208,7 +231,7 @@ namespace wazuh::container_instances_client
         {
             ContainerDelta delta;
 
-            const auto request = std::string {R"({"version":1,"op":"list","since_epoch":")"} + std::to_string(epoch) +
+            const auto request = std::string {R"({"version":2,"op":"list","since_epoch":")"} + std::to_string(epoch) +
                                  R"(","since_seq":")" + std::to_string(seq) + R"("})";
 
             const auto reply = roundTrip(request);
@@ -277,7 +300,10 @@ namespace wazuh::container_instances_client
                 ContainerEventRef event;
                 event.seq = parseDecimalU64(item.value("seq", std::string {"0"}));
                 event.containerId = item.value("container_id", std::string {});
-                event.cgroupId = parseDecimalU64(item.value("cgroup_id", std::string {"0"}));
+                // `key` first, `cgroup_id` as the fallback for a producer that
+                // predates v2. Note the producer OMITS cgroup_id where it would
+                // not be one, so this never reads a namespace inode as a cgroup.
+                event.cgroupId = parseDecimalU64(item.value("key", item.value("cgroup_id", std::string {"0"})));
 
                 if (event.containerId.empty())
                 {
@@ -330,10 +356,29 @@ namespace wazuh::container_instances_client
 
         [[nodiscard]] std::string status() const
         {
-            return roundTrip(R"({"version":1,"op":"status"})").json;
+            return roundTrip(R"({"version":2,"op":"status"})").json;
         }
 
     private:
+        /// Builds a v2 resolve line. Kept in one place so the key and its kind
+        /// cannot be sent apart — a key with no kind is refused by the
+        /// producer, which is correct but would be a pointless round trip.
+        [[nodiscard]] static std::string
+        resolveRequest(wz_container_key_kind_t kind, std::uint64_t key, const std::string* containerId)
+        {
+            std::string line = R"({"version":2,"op":"resolve","key_kind":")";
+            line += wz_container_key_kind_name(kind);
+            line += R"(","key":")";
+            line += std::to_string(key);
+            line += R"(")";
+            if (containerId != nullptr)
+            {
+                line += R"(,"container_id":")" + *containerId + R"(")";
+            }
+            line += "}";
+            return line;
+        }
+
         [[nodiscard]] LookupResult roundTrip(const std::string& request) const
         {
             LookupResult result;
@@ -423,7 +468,11 @@ namespace wazuh::container_instances_client
             {
                 ref.containerId = it->get<std::string>();
             }
-            if (const auto it = item.find("cgroup_id"); it != item.end() && it->is_string())
+            if (auto it = item.find("key"); it != item.end() && it->is_string())
+            {
+                ref.cgroupId = parseDecimalU64(*it);
+            }
+            else if (it = item.find("cgroup_id"); it != item.end() && it->is_string())
             {
                 ref.cgroupId = parseDecimalU64(*it);
             }
