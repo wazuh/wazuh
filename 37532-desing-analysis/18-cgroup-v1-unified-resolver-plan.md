@@ -267,6 +267,58 @@ sentence does not. Syscollector no longer discovers purely through `list`: it di
 and collection is still `/proc/<pid>/root` + `setns`, which uses no correlation key at all. So it
 still starts working when WP4 lands.
 
+### WP-ISSUE — update the issue description *(last, after the shipped phase is measured)*
+
+`/home/rovogel/wazuh/source/37203-agent-integration-issue.md` is the authoritative index for #37203,
+and this plan is the resolution of **O4**, which that file still carries as open. Updating it is the
+closing step, not a changelog line — several of its recorded statements become wrong, and **which
+ones depends on the phase that actually ships**, so this package is written per phase.
+
+**Owed already, before any phase ships.** O4's note currently reads *"the v1 posture is exactly where
+it was"*. That was written against the running-container case and is right about it, but it is
+understated: §18.1 found that a v1 `list` is no longer empty — it now publishes exited containers.
+Correct the note whether or not the rest of this plan proceeds, so the next reader is not told the
+filter change was a no-op on v1.
+
+**After Phase 0 (WP1).**
+- **O4 narrows, it does not close.** The decision it asks for is still unmade; what changes is that
+  the failure is now diagnosable. Say that, rather than ticking it off.
+- **Add a decision** (next free id is **D21** — D18 sorts after D20 in that table, so read the ids,
+  do not count rows) recording that the host cgroup mode is probed once, in one place, and logged,
+  and that `container_instances` refuses silently no longer. Name the shared-probe choice and why
+  the `rt_host_cgroup_v1(NULL)` shortcut was declined, if it was.
+
+**After Phase 1 (WP2+WP3+WP4).**
+- **O4 closes as "inventory-only".** Record it as the decision taken, with the measured v1 evidence,
+  not as the option the plan listed.
+- **D12 needs splitting.** It currently reads *"cgroup v1 is refused, not degraded"* as a single
+  statement over the whole feature. After Phase 1 that is true of FIM and false of inventory. Amend
+  it to scope the refusal to the event-driven path, and let the new decision carry the inventory
+  half — do not leave D12 standing as written.
+- **§18.1.1's inversion must be recorded as fixed**, with the control from §18.6 that proves it. If
+  WP4 shipped without that control, say so instead.
+- **Compatibility floor table.** Its two v1 rows carry `n/a` under *`cgroup_id` == `st_ino`*, which
+  reads as "untested" where it means "not applicable, and the feature is dead here". Phase 1 makes
+  those rows partially supported; the table needs a column or a footnote, because a support matrix
+  that says `n/a` where the answer is now "inventory yes, FIM no" is the single most misread cell
+  in the file.
+- **Deliverables / Acceptance criteria** — any row that states a supported-platform set.
+
+**After Phase 2 (WP5+WP6).**
+- **D12 is superseded outright**, not amended: v1 is then degraded rather than refused.
+- **Contracts to freeze #2 breaks.** The IPC protocol is published there as version 1 with a
+  `cgroup_id` field; WP5 moves it to version 2 with `key_kind`/`key`. This is the only breaking
+  change to a frozen contract in the whole of #37203 — it gets its own entry, with the one-version
+  alias window spelled out, not a quiet edit to the existing bullet.
+- **Add a decision** that FIM on v1 correlates on a *namespace*, not a cgroup, and that this is a
+  different security property (§18.4). The honest asymmetry belongs in the decision record, where a
+  reader looking for "is v1 supported?" will find it, rather than only in this plan.
+
+**If the decision is "cgroup-v2-only, permanently".** The update is still owed, and is the shortest
+of the four: close O4 with that answer, keep D12 as written, record Phase 0 as shipped, and record
+§18.1.1's inversion as a **known latent defect that will stay latent** — it is only reachable if
+someone later gives v1 records a real key, and the next person to try must find that written down.
+
 ---
 
 ## 18.4 What `mnt_ns` costs us, stated honestly
@@ -296,13 +348,21 @@ The packages split cleanly along the exact line O4 asks about.
 | **0** | WP1 | v1 detected and logged; silent failure becomes diagnosable | ship regardless |
 | **1** | WP2 + WP3 + WP4 | container **inventory and baseline** work on v1. No protocol change, no FIM change | *"inventory-only support"* |
 | **2** | WP5 + WP6 | event-driven container **FIM** works on v1, correlating on `mnt_ns` | *"full support"* |
+| **close** | WP-ISSUE | #37203's index tells the truth about v1 | every option, including "v2-only" |
+
+WP-ISSUE runs **last in whichever phase turns out to be the last**, once that phase is measured —
+its content is phase-dependent, so running it early writes down an outcome that has not happened
+yet. It is not optional on the "declare it v2-only" branch either: that is an answer to O4, and an
+answer still has to be recorded.
 
 Phase 1 needs no wire-protocol change, because syscollector only calls `list`. That is a genuinely
 useful property: **inventory-only v1 support is reachable without touching the IPC contract or FIM's
 hot path**, which makes it a far smaller commitment than Phase 2.
 
 If the decision is instead *"declare the feature cgroup-v2-only"*, **Phase 0 is still required** —
-otherwise RHEL 8 and Amazon Linux 2 operators get a module that appears healthy and produces nothing.
+otherwise RHEL 8 and Amazon Linux 2 operators get a module that appears healthy and produces
+nothing, or, since the state-aware filter, a module that appears healthy and produces a list of dead
+containers. Phase 0 plus WP-ISSUE is then the whole of the work.
 
 ---
 
