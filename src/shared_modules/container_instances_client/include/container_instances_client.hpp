@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <json.hpp>
 #include <cstring>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -55,6 +56,57 @@ namespace wazuh::container_instances_client
         /// so on a 100-container node this is the difference between 101
         /// connections and 1.
         nlohmann::json record;
+    };
+
+    /// One transition of the published container set.
+    struct ContainerEventRef
+    {
+        enum class Kind
+        {
+            added,
+            changed,
+            removed
+        };
+
+        std::uint64_t seq {0};
+        Kind kind {Kind::changed};
+        std::string containerId;
+
+        /// Last known cgroup inode, present on removals too — a consumer keyed
+        /// on the inode cannot act on a removal it cannot map back to one.
+        std::uint64_t cgroupId {0};
+
+        /// Change classes as NAMES, verbatim from the wire. Deliberately not
+        /// decoded into a bitmask here: a class this build does not know must
+        /// stay visible so the consumer can treat it as "re-scan everything"
+        /// rather than silently dropping it, which an unknown bit would do.
+        std::vector<std::string> changed;
+
+        /// Absent for removals.
+        nlohmann::json record;
+    };
+
+    /// Reply to a cursor read. The three unhappy outcomes are deliberately
+    /// distinct, because collapsing any two of them loses data:
+    ///
+    ///   available=false        nothing was obtained. NEVER sweep: this is
+    ///                          indistinguishable from "no containers" only if
+    ///                          the caller lets it be.
+    ///   deltaSupported=false   the server predates cursors. Fall back to
+    ///                          whole-list diffing; `containers` holds the set.
+    ///   resyncRequired         the cursor could not be served. `containers`
+    ///                          holds the full set, already fetched.
+    struct ContainerDelta
+    {
+        bool available {false};
+        bool deltaSupported {false};
+        bool resyncRequired {false};
+
+        std::uint64_t epoch {0};
+        std::uint64_t seq {0};
+
+        std::vector<ContainerEventRef> events;
+        std::vector<ContainerRef> containers;
     };
 
     /// Synchronous, connect-per-request client for the Container Instances query
@@ -131,40 +183,149 @@ namespace wazuh::container_instances_client
 
             for (const auto& item : *containersIt)
             {
+                auto ref = parseContainerRef(item);
+                if (ref)
+                {
+                    result.push_back(std::move(*ref));
+                }
+            }
+
+            return result;
+        }
+
+        /// @brief Read forward from `from`, instead of fetching the whole set.
+        ///
+        /// Rides the same `list` op with two extra fields, so a server that
+        /// predates cursors answers normally and simply omits the epoch —
+        /// which is how `deltaSupported` is detected. There is no error path
+        /// for talking to an old server, by design.
+        ///
+        /// Pass a default-constructed cursor to start following from cold; that
+        /// reports `resyncRequired` with the full set attached, which is the
+        /// same shape as recovering from a gap and so needs no separate
+        /// handling in the caller.
+        [[nodiscard]] ContainerDelta listContainersSince(std::uint64_t epoch, std::uint64_t seq) const
+        {
+            ContainerDelta delta;
+
+            const auto request = std::string {R"({"version":1,"op":"list","since_epoch":")"} + std::to_string(epoch) +
+                                 R"(","since_seq":")" + std::to_string(seq) + R"("})";
+
+            const auto reply = roundTrip(request);
+            if (reply.json.empty())
+            {
+                return delta; // available stays false: do not sweep.
+            }
+
+            const auto parsed = nlohmann::json::parse(reply.json, nullptr, false);
+            if (parsed.is_discarded() || !parsed.is_object() || parsed.value("status", "") != "ok")
+            {
+                return delta;
+            }
+
+            const auto containersIt = parsed.find("containers");
+            if (containersIt == parsed.end() || !containersIt->is_array())
+            {
+                return delta;
+            }
+
+            // A well-formed `ok` list reply: whatever else is true, the
+            // connector answered and its view is authoritative.
+            delta.available = true;
+
+            for (const auto& item : *containersIt)
+            {
+                auto ref = parseContainerRef(item);
+                if (ref)
+                {
+                    delta.containers.push_back(std::move(*ref));
+                }
+            }
+
+            const auto epochIt = parsed.find("epoch");
+            if (epochIt == parsed.end() || !epochIt->is_string())
+            {
+                // An older server. It answered with the full set, which the
+                // caller diffs as it always did.
+                return delta;
+            }
+
+            delta.deltaSupported = true;
+            delta.epoch = parseDecimalU64(*epochIt);
+            delta.seq = parseDecimalU64(parsed.value("seq", std::string {"0"}));
+            delta.resyncRequired = parsed.value("resync_required", false);
+
+            if (delta.resyncRequired)
+            {
+                // containers already holds the full set; events are meaningless.
+                return delta;
+            }
+
+            const auto eventsIt = parsed.find("events");
+            if (eventsIt == parsed.end() || !eventsIt->is_array())
+            {
+                return delta; // supported, nothing changed.
+            }
+
+            for (const auto& item : *eventsIt)
+            {
                 if (!item.is_object())
                 {
                     continue;
                 }
 
-                ContainerRef ref;
-                if (const auto it = item.find("runtime"); it != item.end() && it->is_string())
-                {
-                    ref.runtime = it->get<std::string>();
-                }
-                if (const auto it = item.find("container_id"); it != item.end() && it->is_string())
-                {
-                    ref.containerId = it->get<std::string>();
-                }
-                if (const auto it = item.find("cgroup_id"); it != item.end() && it->is_string())
-                {
-                    try
-                    {
-                        ref.cgroupId = std::stoull(it->get<std::string>());
-                    }
-                    catch (...)
-                    {
-                        ref.cgroupId = 0;
-                    }
-                }
-                if (ref.containerId.empty())
+                ContainerEventRef event;
+                event.seq = parseDecimalU64(item.value("seq", std::string {"0"}));
+                event.containerId = item.value("container_id", std::string {});
+                event.cgroupId = parseDecimalU64(item.value("cgroup_id", std::string {"0"}));
+
+                if (event.containerId.empty())
                 {
                     continue;
                 }
-                ref.record = item;
-                result.push_back(std::move(ref));
+
+                const auto kind = item.value("kind", std::string {});
+                if (kind == "added")
+                {
+                    event.kind = ContainerEventRef::Kind::added;
+                }
+                else if (kind == "removed")
+                {
+                    event.kind = ContainerEventRef::Kind::removed;
+                }
+                else if (kind == "changed")
+                {
+                    event.kind = ContainerEventRef::Kind::changed;
+                }
+                else
+                {
+                    // A kind this build does not know. Skipping it would drop a
+                    // transition silently and leave the caller's view wrong
+                    // with no way to notice; a resync is the conservative read.
+                    delta.resyncRequired = true;
+                    delta.events.clear();
+                    return delta;
+                }
+
+                if (const auto it = item.find("changed"); it != item.end() && it->is_array())
+                {
+                    for (const auto& name : *it)
+                    {
+                        if (name.is_string())
+                        {
+                            event.changed.push_back(name.get<std::string>());
+                        }
+                    }
+                }
+                if (const auto it = item.find("data"); it != item.end())
+                {
+                    event.record = *it;
+                }
+
+                delta.events.push_back(std::move(event));
             }
 
-            return result;
+            return delta;
         }
 
         [[nodiscard]] std::string status() const
@@ -241,6 +402,69 @@ namespace wazuh::container_instances_client
                 result.status = LookupStatus::notContainer;
             }
             return result;
+        }
+
+        /// One container record from a `list` reply or an event's `data`.
+        /// nullopt when it carries no container id, which is the only field
+        /// without which nothing downstream can use it.
+        [[nodiscard]] static std::optional<ContainerRef> parseContainerRef(const nlohmann::json& item)
+        {
+            if (!item.is_object())
+            {
+                return std::nullopt;
+            }
+
+            ContainerRef ref;
+            if (const auto it = item.find("runtime"); it != item.end() && it->is_string())
+            {
+                ref.runtime = it->get<std::string>();
+            }
+            if (const auto it = item.find("container_id"); it != item.end() && it->is_string())
+            {
+                ref.containerId = it->get<std::string>();
+            }
+            if (const auto it = item.find("cgroup_id"); it != item.end() && it->is_string())
+            {
+                ref.cgroupId = parseDecimalU64(*it);
+            }
+            if (ref.containerId.empty())
+            {
+                return std::nullopt;
+            }
+            ref.record = item;
+            return ref;
+        }
+
+        /// 64-bit values travel as decimal strings on this protocol: cJSON
+        /// parses JSON numbers as doubles and silently rounds above 2^53.
+        /// Anything unparseable reads as 0, which every caller already treats
+        /// as "not known".
+        [[nodiscard]] static std::uint64_t parseDecimalU64(const nlohmann::json& value)
+        {
+            if (!value.is_string())
+            {
+                return 0;
+            }
+            try
+            {
+                return std::stoull(value.get<std::string>());
+            }
+            catch (...)
+            {
+                return 0;
+            }
+        }
+
+        [[nodiscard]] static std::uint64_t parseDecimalU64(const std::string& value)
+        {
+            try
+            {
+                return std::stoull(value);
+            }
+            catch (...)
+            {
+                return 0;
+            }
         }
 
         std::string m_socketPath;

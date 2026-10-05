@@ -51,7 +51,11 @@ namespace wazuh::container_instances::wire
 
         /// cgroup_id travels as a decimal string: st_ino is 64-bit and cJSON-based
         /// consumers parse JSON numbers as double (silent corruption above 2^53).
-        [[nodiscard]] inline std::optional<std::uint64_t> parseCgroupId(const nlohmann::json& value)
+        /// Every 64-bit value on this protocol travels as a decimal STRING,
+        /// because cJSON — which some clients use — parses JSON numbers as
+        /// doubles and silently rounds above 2^53. Applies to cgroup inodes and
+        /// to the journal's epoch and sequence alike.
+        [[nodiscard]] inline std::optional<std::uint64_t> parseDecimalU64(const nlohmann::json& value)
         {
             if (!value.is_string())
             {
@@ -107,6 +111,29 @@ namespace wazuh::container_instances::wire
         if (op == "list")
         {
             request.op = QueryRequest::Op::list;
+
+            // Additive, and silently ignored by a server that predates it —
+            // which is the whole reason the delta rides `list` rather than
+            // arriving as a new op. An old server answers with the full set and
+            // no epoch, and the client takes that as "deltas unavailable here"
+            // without an error path on either side.
+            //
+            // Both halves must be present and well-formed to count: a cursor
+            // with one half missing is a client bug, and serving it as "read
+            // from the start" would quietly hand back a full set forever.
+            if (parsed.contains("since_epoch") && parsed.contains("since_seq"))
+            {
+                const auto epoch = detail::parseDecimalU64(parsed["since_epoch"]);
+                const auto seq = detail::parseDecimalU64(parsed["since_seq"]);
+
+                if (!epoch || !seq)
+                {
+                    return detail::makeError(QueryResponse::ErrorCode::badRequest,
+                                             "since_epoch and since_seq must be decimal strings");
+                }
+                request.since = LifecycleCursor {*epoch, *seq};
+            }
+
             return request;
         }
         if (op != "resolve")
@@ -119,7 +146,7 @@ namespace wazuh::container_instances::wire
         {
             return detail::makeError(QueryResponse::ErrorCode::badRequest, "cgroup_id missing");
         }
-        const auto cgroupId = detail::parseCgroupId(parsed["cgroup_id"]);
+        const auto cgroupId = detail::parseDecimalU64(parsed["cgroup_id"]);
         if (!cgroupId)
         {
             return detail::makeError(QueryResponse::ErrorCode::badRequest, "cgroup_id must be a decimal string");
@@ -187,6 +214,80 @@ namespace wazuh::container_instances::wire
         return data;
     }
 
+    /// Names rather than a bitmask integer, because a consumer that meets a
+    /// class it does not know must be able to see that it did. An unrecognised
+    /// NAME is visibly unrecognised; an unrecognised BIT in an integer silently
+    /// reads as zero, and a consumer would skip the re-scan it owed.
+    [[nodiscard]] inline nlohmann::json changeMaskToNames(unsigned int mask)
+    {
+        auto names = nlohmann::json::array();
+
+        if ((mask & LIFECYCLE_IDENTITY) != 0) names.push_back("identity");
+        if ((mask & LIFECYCLE_IMAGE) != 0) names.push_back("image");
+        if ((mask & LIFECYCLE_MOUNTS) != 0) names.push_back("mounts");
+        if ((mask & LIFECYCLE_NETWORK) != 0) names.push_back("network");
+        if ((mask & LIFECYCLE_METADATA) != 0) names.push_back("metadata");
+
+        return names;
+    }
+
+    [[nodiscard]] inline const char* lifecycleKindToString(LifecycleKind kind)
+    {
+        switch (kind)
+        {
+            case LifecycleKind::added: return "added";
+            case LifecycleKind::changed: return "changed";
+            case LifecycleKind::removed: return "removed";
+        }
+        return "changed";
+    }
+
+    /// Adds the delta keys to a `list` reply. Everything here is additive: a
+    /// client that does not know these keys reads the reply exactly as before.
+    inline void serialiseDelta(const LifecycleDelta& delta, nlohmann::json& body)
+    {
+        // The cursor to come back with. Decimal strings for the 2^53 reason
+        // above; its presence is also how a client detects that this server
+        // supports deltas at all.
+        body["epoch"] = std::to_string(delta.cursor.epoch);
+        body["seq"] = std::to_string(delta.cursor.seq);
+
+        if (delta.resyncRequired)
+        {
+            // The full set already rode along in `containers`. Saying so
+            // explicitly rather than letting the client infer it from an empty
+            // event list, which is also what "nothing changed" looks like.
+            body["resync_required"] = true;
+            return;
+        }
+
+        auto events = nlohmann::json::array();
+
+        for (const auto& event : delta.events)
+        {
+            nlohmann::json entry;
+            entry["seq"] = std::to_string(event.seq);
+            entry["kind"] = lifecycleKindToString(event.kind);
+            entry["container_id"] = event.containerId;
+            // Carried on every kind, removals included: a consumer keyed on the
+            // cgroup inode cannot act on a removal it cannot map back to one.
+            entry["cgroup_id"] = std::to_string(event.cgroupId);
+
+            if (event.kind == LifecycleKind::changed)
+            {
+                entry["changed"] = changeMaskToNames(event.changed);
+            }
+            if (event.record)
+            {
+                entry["data"] = recordToJson(*event.record);
+            }
+
+            events.push_back(std::move(entry));
+        }
+
+        body["events"] = std::move(events);
+    }
+
     [[nodiscard]] inline std::string serializeResponse(const QueryResponse& response)
     {
         nlohmann::json body;
@@ -238,6 +339,11 @@ namespace wazuh::container_instances::wire
                         }
                     }
                     body["containers"] = std::move(containers);
+                }
+
+                if (response.delta)
+                {
+                    serialiseDelta(*response.delta, body);
                 }
                 break;
             }
