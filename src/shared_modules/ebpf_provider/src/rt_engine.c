@@ -38,6 +38,8 @@
  * without its headers. See rt_libbpf_shim.h for why the types are shadowed. */
 #include "rt_libbpf_shim.h"
 
+#include "cgroup_host_mode.h"
+
 #include <dlfcn.h>
 
 #include <stdarg.h>
@@ -128,31 +130,15 @@ rt_log(const struct rt_log_target* target, int level, const char* fmt, ...)
     }
 }
 
-/* cgroup v1 vs v2, decided from the mount layout rather than from events.
+/* The hierarchy probe moved to shared_modules/common/cgroup_host_mode.h, so
+ * that container_instances asks the same question of the same code rather
+ * than carrying a second copy that can drift (#37203 O4). What used to be
+ * local to this file is now the policy the whole feature shares; the only
+ * thing kept here is the engine's own reading of the answer.
  *
- * On a v2 (unified) hierarchy the root cgroupfs exposes cgroup.controllers; on
- * a pure v1 host it does not, and bpf_get_current_cgroup_id() collapses to a
- * constant, making every event's cgroup_id useless as a correlation key
- * (spike #37396 ADR-002). A hybrid host mounts v2 at /sys/fs/cgroup/unified,
- * which is treated as v2-capable here: the ids that helper returns are the
- * unified hierarchy's, so they do correlate.
- *
- * Deliberately userspace-side: the version is a host constant, and detecting
- * it in the BPF program would need a config map written at load time — see the
- * RT_F_CGROUP_V1 note in rt_open(). */
-static int detect_cgroup_v1(void)
-{
-    struct stat st;
-    if (stat("/sys/fs/cgroup/cgroup.controllers", &st) == 0)
-    {
-        return 0;
-    }
-    if (stat("/sys/fs/cgroup/unified/cgroup.controllers", &st) == 0)
-    {
-        return 0;
-    }
-    return 1;
-}
+ * Still deliberately userspace-side: the hierarchy is a host constant, and
+ * detecting it in the BPF program would need a config map written at load
+ * time — see the RT_F_CGROUP_V1 note in rt_open(). */
 
 #define RT_RESOLVE_SYM(field, sym)                                                                                   \
     do                                                                                                               \
@@ -246,7 +232,7 @@ struct rt_engine_handle
     int filter_cfg_fd;
     int cgroup_allow_fd;
 
-    int cgroup_v1;
+    wz_cgroup_mode_t cgroup_mode;
 
     /* Rejected-record accounting; reported once per handle so a stale object
      * cannot flood the log. */
@@ -447,8 +433,8 @@ rt_handle_t rt_open(const struct rt_filter* filter)
     h->filter_cfg_fd = -1;
     h->cgroup_allow_fd = -1;
 
-    h->cgroup_v1 = detect_cgroup_v1();
-    if (h->cgroup_v1)
+    h->cgroup_mode = wz_cgroup_mode();
+    if (!wz_cgroup_mode_has_usable_cgroup_id(h->cgroup_mode))
     {
         /* Worth an explicit line: on such a host cgroup_id correlates nothing,
          * so a consumer that keys containers on it silently attributes every
@@ -460,9 +446,22 @@ rt_handle_t rt_open(const struct rt_filter* filter)
          * built or loaded in this development environment; until that lands,
          * rt_host_cgroup_v1() is the only reliable source and a consumer MUST
          * use it rather than testing ev->flags. */
-        rt_log(&h->log, RT_LOG_WARN,
-               "host uses cgroup v1: every event's cgroup_id is a constant, not a correlation key — "
-               "consumers must correlate on mnt_ns instead (see rt_host_cgroup_v1())");
+        rt_log(&h->log,
+               RT_LOG_WARN,
+               "host cgroup hierarchy is %s: every event's cgroup_id is a constant, not a correlation "
+               "key — consumers must correlate on mnt_ns instead (see rt_host_cgroup_v1())",
+               wz_cgroup_mode_name(h->cgroup_mode));
+    }
+    else
+    {
+        /* Say it on the healthy path too. "Which hierarchy did the agent
+         * think it was on?" is the first question asked of any attribution
+         * bug, and an answer that only appears when the answer is bad leaves
+         * the common case indistinguishable from the probe never running. */
+        rt_log(&h->log,
+               RT_LOG_INFO,
+               "host cgroup hierarchy is %s: cgroup_id is a usable correlation key",
+               wz_cgroup_mode_name(h->cgroup_mode));
     }
 
     const char* obj_path = (filter->bpf_obj_path && filter->bpf_obj_path[0]) ? filter->bpf_obj_path : BPF_OBJ_PATH_FALLBACK;
@@ -793,5 +792,6 @@ int rt_abi_minor(void)
 int rt_host_cgroup_v1(rt_handle_t handle)
 {
     const struct rt_engine_handle* h = (const struct rt_engine_handle*)handle;
-    return h ? h->cgroup_v1 : detect_cgroup_v1();
+    const wz_cgroup_mode_t mode = h ? h->cgroup_mode : wz_cgroup_mode();
+    return wz_cgroup_mode_has_usable_cgroup_id(mode) ? 0 : 1;
 }
