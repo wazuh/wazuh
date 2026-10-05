@@ -239,6 +239,12 @@ namespace wazuh::container_instances
         }
 
         m_lastReconcile = now;
+
+        // Released before the notify on purpose: an observer's natural first
+        // move is to read the store back, which would deadlock under this lock,
+        // and a slow one would stall every reader for as long as it ran.
+        lock.unlock();
+        notifyLifecycleUnlocked();
     }
 
     void MetadataStore::upsertPending(std::uint64_t cgroupInode, int attempts, TimePoint now)
@@ -286,11 +292,18 @@ namespace wazuh::container_instances
     {
         std::unique_lock lock(m_mutex);
         insertResolvedLocked(source, std::move(record));
+
+        // The cold path publishes containers too — one first seen through an
+        // on-demand resolve is as new to consumers as one the connector found,
+        // and skipping the notify here would make its discovery wait for the
+        // next unrelated reconcile.
+        lock.unlock();
+        notifyLifecycleUnlocked();
     }
 
-    void MetadataStore::insertResolvedLocked(const SourceId& source, ContainerRecord record)
+    void MetadataStore::insertResolvedRawLocked(const SourceId& source, ContainerRecord record)
     {
-        eraseResolvedLocked(source, record.containerId);
+        eraseResolvedRawLocked(source, record.containerId);
 
         auto shared = std::make_shared<const ContainerRecord>(std::move(record));
 
@@ -328,7 +341,7 @@ namespace wazuh::container_instances
         }
     }
 
-    void MetadataStore::eraseResolvedLocked(const SourceId& source, const std::string& containerId)
+    void MetadataStore::eraseResolvedRawLocked(const SourceId& source, const std::string& containerId)
     {
         const auto sourceIt = m_bySource.find(source);
         if (sourceIt == m_bySource.end())
@@ -363,6 +376,153 @@ namespace wazuh::container_instances
             }
         }
         sourceIt->second.erase(it);
+    }
+
+    ContainerRecordPtr MetadataStore::visibleRecordLocked(const std::string& containerId) const
+    {
+        // Mirrors listContainers()' filter, across every source, because the
+        // journal logs transitions of the set that call returns. A container
+        // known to two sources (cri-dockerd reports the same container through
+        // both APIs) is one member, so it appears here once.
+        for (const auto& [source, records] : m_bySource)
+        {
+            const auto it = records.find(containerId);
+            if (it == records.end() || !it->second)
+            {
+                continue;
+            }
+            if (it->second->cgroupId == 0 && isRunning(it->second->state))
+            {
+                continue; // Running but unresolved: not published yet.
+            }
+            return it->second;
+        }
+        return nullptr;
+    }
+
+    void MetadataStore::journalTransitionLocked(const std::string& containerId,
+                                                const ContainerRecordPtr& before,
+                                                const ContainerRecordPtr& after)
+    {
+        if (!before && !after)
+        {
+            // Invisible before, invisible after. The commonest case by far: an
+            // unresolved running record being rewritten while the resolver
+            // catches up. Nothing a consumer could act on happened.
+            return;
+        }
+
+        LifecycleEvent event;
+        event.containerId = containerId;
+
+        if (!before)
+        {
+            event.kind = LifecycleKind::added;
+            event.cgroupId = after->cgroupId;
+            event.record = after;
+        }
+        else if (!after)
+        {
+            event.kind = LifecycleKind::removed;
+            // The inode it had when it left: a consumer keyed on cgroup id
+            // cannot act on a removal it cannot map back to one.
+            event.cgroupId = before->cgroupId;
+        }
+        else
+        {
+            const auto mask = lifecycleChangeMask(*before, *after);
+
+            if (mask == 0 || mask == LIFECYCLE_METADATA)
+            {
+                // Nothing changed, or only labels/annotations did. Dropped at
+                // append time rather than filtered by the reader: Kubernetes
+                // annotation churn marks records changed on every reconcile, and
+                // letting that into the ring would evict real transitions long
+                // before a consumer's next poll.
+                return;
+            }
+
+            event.kind = LifecycleKind::changed;
+            event.cgroupId = after->cgroupId;
+            event.changed = mask;
+            event.record = after;
+        }
+
+        m_journal.append(std::move(event));
+        m_lifecycleDirty = true;
+    }
+
+    void MetadataStore::insertResolvedLocked(const SourceId& source, ContainerRecord record)
+    {
+        const auto containerId = record.containerId;
+        const auto before = visibleRecordLocked(containerId);
+
+        insertResolvedRawLocked(source, std::move(record));
+
+        journalTransitionLocked(containerId, before, visibleRecordLocked(containerId));
+    }
+
+    void MetadataStore::eraseResolvedLocked(const SourceId& source, const std::string& containerId)
+    {
+        const auto before = visibleRecordLocked(containerId);
+
+        eraseResolvedRawLocked(source, containerId);
+
+        journalTransitionLocked(containerId, before, visibleRecordLocked(containerId));
+    }
+
+    void MetadataStore::notifyLifecycleUnlocked()
+    {
+        bool dirty = false;
+        LifecycleCursor cursor;
+
+        {
+            std::unique_lock lock(m_mutex);
+            dirty = m_lifecycleDirty;
+            m_lifecycleDirty = false;
+            cursor = m_journal.cursor();
+        }
+
+        if (dirty && m_onLifecycleChange)
+        {
+            m_onLifecycleChange(cursor);
+        }
+    }
+
+    LifecycleDelta MetadataStore::lifecycleSince(const LifecycleCursor& from) const
+    {
+        std::shared_lock lock(m_mutex);
+
+        // listContainers() would take the lock again; build the resync set here
+        // under the one we already hold.
+        std::vector<ContainerRecordPtr> current;
+        std::unordered_set<std::string> seen;
+
+        for (const auto& [source, records] : m_bySource)
+        {
+            for (const auto& [containerId, record] : records)
+            {
+                if (!record || (record->cgroupId == 0 && isRunning(record->state)) ||
+                    !seen.insert(containerId).second)
+                {
+                    continue;
+                }
+                current.push_back(record);
+            }
+        }
+
+        return m_journal.since(from, current);
+    }
+
+    LifecycleCursor MetadataStore::lifecycleCursor() const
+    {
+        std::shared_lock lock(m_mutex);
+        return m_journal.cursor();
+    }
+
+    void MetadataStore::setOnLifecycleChange(std::function<void(LifecycleCursor)> callback)
+    {
+        m_onLifecycleChange = std::move(callback);
     }
 
 } // namespace wazuh::container_instances
