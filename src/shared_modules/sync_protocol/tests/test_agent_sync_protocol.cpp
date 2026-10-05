@@ -109,8 +109,9 @@ class AgentSyncProtocolTest : public ::testing::Test
         }
 
         /// Runs one DELTA sync against a queue that never runs dry, acknowledging every block,
-        /// and returns how many blocks the cycle sent before it stopped on its own.
-        int sendBlocksUntilTheCycleStops(size_t expectedBlocks)
+        /// and returns how many blocks the cycle sent before it stopped on its own. With
+        /// @p boundedTo set, the sync goes through synchronizeModuleBounded() instead.
+        int sendBlocksUntilTheCycleStops(size_t expectedBlocks, std::optional<size_t> boundedTo = std::nullopt)
         {
             std::vector<PersistedData> testData =
             {
@@ -126,9 +127,10 @@ class AgentSyncProtocolTest : public ::testing::Test
             .Times(0);
 
             std::atomic<bool> syncDone{false};
-            auto syncFuture = std::async(std::launch::async, [this, &syncDone]()
+            auto syncFuture = std::async(std::launch::async, [this, &syncDone, boundedTo]()
             {
-                auto result = protocol->synchronizeModule(Mode::DELTA);
+                auto result = boundedTo ? protocol->synchronizeModuleBounded(Mode::DELTA, *boundedTo)
+                              : protocol->synchronizeModule(Mode::DELTA);
                 syncDone.store(true, std::memory_order_release);
                 return result;
             });
@@ -952,7 +954,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaStopsAtTheConfiguredBlockLim
 TEST_F(AgentSyncProtocolTest, AnUnsetBlockLimitKeepsTheBuiltInDefault)
 {
     // Zero is what an absent agent.sync_max_blocks_per_cycle reaches the module as.
-    AgentSyncProtocol::setMaxBlocksPerSync(0);
+    const MaxBlocksPerSyncGuard guard {0U};
 
     mockQueue = std::make_shared<MockPersistentQueue>();
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
@@ -970,6 +972,35 @@ TEST_F(AgentSyncProtocolTest, ABlockLimitSetAfterConstructionDoesNotChangeTheIns
     const MaxBlocksPerSyncGuard guard {3U};
 
     EXPECT_EQ(sendBlocksUntilTheCycleStops(50U), 50);
+}
+
+TEST_F(AgentSyncProtocolTest, ABoundedSyncStopsAtTheRequestedLimit)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    EXPECT_EQ(sendBlocksUntilTheCycleStops(10U, 10U), 10);
+}
+
+TEST_F(AgentSyncProtocolTest, ABoundedSyncNeverExceedsTheConfiguredLimit)
+{
+    const MaxBlocksPerSyncGuard guard {3U};
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    EXPECT_EQ(sendBlocksUntilTheCycleStops(3U, 10U), 3);
+}
+
+TEST_F(AgentSyncProtocolTest, ABoundedSyncWithZeroUsesTheConfiguredLimit)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    EXPECT_EQ(sendBlocksUntilTheCycleStops(50U, 0U), 50);
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaUsesBytePrefilterBudgetForSyncOption)

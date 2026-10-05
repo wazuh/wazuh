@@ -215,7 +215,7 @@ Agent (recovery)                        Manager
 
 ### Delta Sync Split Into Multiple Sessions
 
-`Mode::DELTA` reads from the persistent queue in blocks (`AgentSyncProtocol::synchronizeDeltaByBlocks()`), sending one `FullSession` per block until the queue is drained or the per-cycle block limit is reached (`FULLSESSION_MAX_BLOCKS_PER_SYNC`, 50, overridable through the `agent.sync_max_blocks_per_cycle` internal option), each block capped at `FULLSESSION_MAX_BYTES` (`Option::VDFIRST`/`Option::VDSYNC` are exempt from the cap). Each block is its own independent `FullSession`/HTTP-result exchange with its own session id — a failure in one block does not roll back the others.
+`Mode::DELTA` reads from the persistent queue in blocks (`AgentSyncProtocol::synchronizeDeltaByBlocks()`), sending one `FullSession` per block until the queue is drained or the per-cycle block limit is reached (`FULLSESSION_MAX_BLOCKS_PER_SYNC`, 50, overridable through the `agent.sync_max_blocks_per_cycle` internal option, and lowered for a single call by `synchronizeModuleBounded()`), each block capped at `FULLSESSION_MAX_BYTES` (`Option::VDFIRST`/`Option::VDSYNC` are exempt from the cap). Each block is its own independent `FullSession`/HTTP-result exchange with its own session id — a failure in one block does not roll back the others.
 
 ## Transport-Level Timeout and Retry
 

@@ -303,6 +303,17 @@ void AgentSyncProtocol::persistDifference(const std::string& id,
 
 SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 {
+    return synchronizeModuleUpTo(mode, option, m_maxBlocksPerSync);
+}
+
+SyncModuleResult AgentSyncProtocol::synchronizeModuleBounded(Mode mode, size_t maxBlocks)
+{
+    const size_t limit = (maxBlocks > 0 && maxBlocks < m_maxBlocksPerSync) ? maxBlocks : m_maxBlocksPerSync;
+    return synchronizeModuleUpTo(mode, Option::SYNC, limit);
+}
+
+SyncModuleResult AgentSyncProtocol::synchronizeModuleUpTo(Mode mode, Option option, size_t maxBlocks)
+{
     // Validate synchronization mode
     if (mode != Mode::DELTA)
     {
@@ -360,7 +371,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 
     clearSyncState();
 
-    return synchronizeDeltaByBlocks(option);
+    return synchronizeDeltaByBlocks(option, maxBlocks);
 }
 
 bool AgentSyncProtocol::isUncappedSyncOption(Option option) const
@@ -368,7 +379,7 @@ bool AgentSyncProtocol::isUncappedSyncOption(Option option) const
     return option == Option::VDFIRST || option == Option::VDSYNC;
 }
 
-SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
+SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size_t maxBlocks)
 {
     try
     {
@@ -395,7 +406,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
     bool sentAny = false;
     size_t blocksSent = 0;
 
-    while (!shouldStop() && blocksSent < m_maxBlocksPerSync)
+    while (!shouldStop() && blocksSent < maxBlocks)
     {
         std::vector<PersistedData> dataToSync;
 

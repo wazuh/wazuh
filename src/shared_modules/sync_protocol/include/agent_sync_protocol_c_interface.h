@@ -91,6 +91,20 @@ void asp_persist_diff(AgentSyncProtocolHandle* handle,
 SyncModuleResult_t asp_sync_module(AgentSyncProtocolHandle* handle,
                                    Mode_t mode);
 
+/// @brief asp_sync_module() with a tighter block limit for this one call.
+///
+/// For callers that synchronize while holding locks other threads wait on, so the time they
+/// hold them stays bounded. Whatever is left stays queued for the next regular cycle.
+///
+/// @param handle Pointer to the AgentSyncProtocol handle.
+/// @param mode Synchronization mode.
+/// @param max_blocks Most blocks this call may send. Zero, or a value above the configured
+///                   per-cycle limit, uses that limit.
+/// @return Same as asp_sync_module().
+SyncModuleResult_t asp_sync_module_bounded(AgentSyncProtocolHandle* handle,
+                                           Mode_t mode,
+                                           uint32_t max_blocks);
+
 /// @brief Checks if a module index requires full synchronization.
 ///
 /// @param handle Pointer to the AgentSyncProtocol handle.

@@ -656,9 +656,11 @@ agent.sync_max_blocks_per_cycle=50
 Whatever is still queued after the last block waits for the module's next synchronization interval,
 so one cycle carries at most about `sync_max_blocks_per_cycle × <batch><size>` (about 50 MiB with the
 defaults). A first synchronization larger than that, such as the Windows registry baseline, takes
-several intervals to reach the indexer, and items queued after it wait their turn. The vulnerability
-detection sync of Syscollector is not bounded by this option. The value is read once, when the agent
-starts.
+several intervals to reach the indexer, and items queued after it wait their turn. Syscollector's
+vulnerability detection sync is bounded too, but it has no byte budget, so its first block already
+carries everything queued. FIM's recovery resync (after an agent ID change or a failed integrity check)
+runs while it holds the scan locks, so it sends at most 10 blocks per table whatever this option says,
+and the regular cycle sends the rest. The value is read once, when the agent starts.
 
 ### Buffer Settings
 
