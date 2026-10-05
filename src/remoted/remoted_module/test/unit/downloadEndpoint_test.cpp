@@ -18,11 +18,14 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <atomic>
 #include <cerrno>
 #include <chrono>
 #include <cstring>
 #include <fstream>
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -206,13 +209,54 @@ namespace
         {
         }
 
-        std::optional<std::string> expectedSelectorFor(const std::string&) const override
+        void resolveSelector(const std::string&,
+                             std::function<void(remoted::endpoints::GroupVerdict)> done) const override
         {
-            return m_selector;
+            ++calls;
+            if (m_selector)
+            {
+                done(remoted::endpoints::GroupVerdict {remoted::endpoints::GroupVerdictKind::Selector, *m_selector});
+            }
+            else
+            {
+                done(remoted::endpoints::GroupVerdict {remoted::endpoints::GroupVerdictKind::Deny, {}});
+            }
         }
+
+        mutable std::atomic<int> calls {0};
 
     private:
         std::optional<std::string> m_selector;
+    };
+
+    /// A source whose verdict the test controls: held until deliver(), which may run on any thread.
+    class ScriptedAgentGroupSource : public remoted::endpoints::IAgentGroupSource
+    {
+    public:
+        void resolveSelector(const std::string&,
+                             std::function<void(remoted::endpoints::GroupVerdict)> done) const override
+        {
+            std::lock_guard lock(m_mutex);
+            m_pending = std::move(done);
+        }
+        bool pending() const
+        {
+            std::lock_guard lock(m_mutex);
+            return static_cast<bool>(m_pending);
+        }
+        void deliver(remoted::endpoints::GroupVerdict verdict) const
+        {
+            std::function<void(remoted::endpoints::GroupVerdict)> done;
+            {
+                std::lock_guard lock(m_mutex);
+                done = std::move(m_pending);
+            }
+            done(std::move(verdict));
+        }
+
+    private:
+        mutable std::mutex m_mutex;
+        mutable std::function<void(remoted::endpoints::GroupVerdict)> m_pending;
     };
 
     std::shared_ptr<const remoted::endpoints::IAgentGroupSource> sourceFor(std::optional<std::string> selector)
@@ -1083,6 +1127,130 @@ TEST(DownloadHandlerTest, WpkRequestsAreNotAuthorizedAgainstGroups)
 
     const auto responder = runHandlerAs(R"({"resource_type":"wpk","resource_id":"pkg.wpk"})", std::nullopt, paths);
 
+    EXPECT_EQ(responder->status, 200);
+    EXPECT_EQ(responder->body, "package\n");
+}
+
+// -----------------------------------------------------------------------------
+// The verdict may arrive later, from another thread (#39147): a config download whose registry
+// entry is missing or expired waits on a wazuh-db lookup without holding the HTTP worker.
+// -----------------------------------------------------------------------------
+
+TEST(DownloadHandlerTest, ContinuesAfterADeferredVerdict)
+{
+    TempDir dir;
+    dir.makeDir("shared/web-servers");
+    dir.writeFile("shared/web-servers/merged.mg", "own group\n");
+    ResourcePaths paths;
+    paths.sharedDir = dir.path() + "/shared";
+    const auto source = std::make_shared<ScriptedAgentGroupSource>();
+    auto responder = std::make_shared<RecordingResponder>();
+    auto body = std::make_shared<std::string>(R"({"resource_type":"config","resource_id":"web-servers"})");
+    const auto request = authenticatedRequest(body);
+
+    makeHandler(paths, {}, source)(request, responder);
+
+    // The handler returned without an answer, and the body was already released: the wait must not
+    // hold the request's in-flight reservation.
+    ASSERT_TRUE(source->pending());
+    EXPECT_FALSE(responder->answered);
+    EXPECT_TRUE(request->payload.bytes().empty());
+
+    std::thread lookupWorker(
+        [&]
+        {
+            source->deliver(
+                remoted::endpoints::GroupVerdict {remoted::endpoints::GroupVerdictKind::Selector, "web-servers"});
+        });
+    lookupWorker.join();
+
+    EXPECT_EQ(responder->status, 200);
+    EXPECT_TRUE(responder->streamed);
+    EXPECT_EQ(responder->body, "own group\n");
+}
+
+TEST(DownloadHandlerTest, AnswersServiceUnavailableWhenTheSourceIsUnavailable)
+{
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+    const auto source = std::make_shared<ScriptedAgentGroupSource>();
+    auto responder = std::make_shared<RecordingResponder>();
+    auto body = std::make_shared<std::string>(R"({"resource_type":"config","resource_id":"default"})");
+
+    makeHandler({}, metrics, source)(authenticatedRequest(body), responder);
+    source->deliver(remoted::endpoints::GroupVerdict {remoted::endpoints::GroupVerdictKind::Unavailable, {}});
+
+    EXPECT_EQ(responder->status, 503);
+    EXPECT_NE(responder->body.find("dependency_unavailable"), std::string::npos);
+    EXPECT_NE(responder->body.find("wazuh-db"), std::string::npos);
+    EXPECT_EQ(metrics.unavailable->get(), 1U);
+    EXPECT_EQ(metrics.denied->get(), 0U); // a failed lookup is not a denial: the agent retries it
+}
+
+TEST(DownloadHandlerTest, AnswersServiceUnavailableForAnAgentWithNoLocalRow)
+{
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+    auto answerFor = [&](remoted::endpoints::GroupVerdictKind kind)
+    {
+        const auto source = std::make_shared<ScriptedAgentGroupSource>();
+        auto responder = std::make_shared<RecordingResponder>();
+        auto body = std::make_shared<std::string>(R"({"resource_type":"config","resource_id":"default"})");
+        makeHandler({}, metrics, source)(authenticatedRequest(body), responder);
+        source->deliver(remoted::endpoints::GroupVerdict {kind, {}});
+        return responder;
+    };
+
+    const auto noRow = answerFor(remoted::endpoints::GroupVerdictKind::NoRow);
+    EXPECT_EQ(noRow->status, 503); // retried like a failed lookup, never a denial
+    EXPECT_EQ(metrics.noRow->get(), 1U);
+    EXPECT_EQ(metrics.unavailable->get(), 0U); // counted apart from a failed lookup...
+    EXPECT_EQ(metrics.denied->get(), 0U);
+
+    const auto failed = answerFor(remoted::endpoints::GroupVerdictKind::Unavailable);
+    EXPECT_EQ(noRow->body, failed->body); // ...but the same answer on the wire
+    EXPECT_EQ(metrics.noRow->get(), 1U);
+}
+
+TEST(DownloadHandlerTest, AnswersServiceUnavailableForASupersededLookup)
+{
+    wazuh::metrics::Manager manager;
+    const auto metrics = makeDownloadMetrics(manager);
+    auto answerFor = [&](remoted::endpoints::GroupVerdictKind kind)
+    {
+        const auto source = std::make_shared<ScriptedAgentGroupSource>();
+        auto responder = std::make_shared<RecordingResponder>();
+        auto body = std::make_shared<std::string>(R"({"resource_type":"config","resource_id":"default"})");
+        makeHandler({}, metrics, source)(authenticatedRequest(body), responder);
+        source->deliver(remoted::endpoints::GroupVerdict {kind, {}});
+        return responder;
+    };
+
+    // A read that may predate a revocation never authorizes: retried like a failed lookup.
+    const auto superseded = answerFor(remoted::endpoints::GroupVerdictKind::Superseded);
+    EXPECT_EQ(superseded->status, 503);
+    EXPECT_EQ(metrics.unavailable->get(), 1U); // a membership that could not be established now
+    EXPECT_EQ(metrics.denied->get(), 0U);
+    EXPECT_EQ(metrics.noRow->get(), 0U);
+
+    const auto failed = answerFor(remoted::endpoints::GroupVerdictKind::Unavailable);
+    EXPECT_EQ(superseded->body, failed->body); // the same answer on the wire
+}
+
+TEST(DownloadHandlerTest, WpkRequestsNeverResolve)
+{
+    TempDir dir;
+    dir.makeDir("upgrade");
+    dir.writeFile("upgrade/pkg.wpk", "package\n");
+    ResourcePaths paths;
+    paths.wpkDir = dir.path() + "/upgrade";
+    const auto source = std::make_shared<FakeAgentGroupSource>(std::nullopt);
+    auto responder = std::make_shared<RecordingResponder>();
+    auto body = std::make_shared<std::string>(R"({"resource_type":"wpk","resource_id":"pkg.wpk"})");
+
+    makeHandler(paths, {}, source)(authenticatedRequest(body), responder);
+
+    EXPECT_EQ(source->calls.load(), 0); // no group lookup, no wazuh-db round trip, for a WPK
     EXPECT_EQ(responder->status, 200);
     EXPECT_EQ(responder->body, "package\n");
 }

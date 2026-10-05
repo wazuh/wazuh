@@ -26,7 +26,15 @@ namespace remoted::control
     inline constexpr uint32_t kKeepaliveThrottleSec = 60;
     inline constexpr uint32_t kWdbRequestConnections = 4;
     inline constexpr uint32_t kWdbRoundtripDeadlineMs = 2000;
+    /// End-to-end budget of one wazuh-db request, counted from the moment it is queued: queue wait,
+    /// reconnection and the round trip. kWdbRoundtripDeadlineMs bounds only the last of the three.
+    inline constexpr uint32_t kWdbRequestDeadlineMs = 5000;
     inline constexpr uint32_t kWdbMaxQueueSize = 10'000;
+    /// RegistryLookup (the /download fallback): its own wazuh-db connections, and the requests one
+    /// lookup, and all lookups together, may hold before new ones are refused (503).
+    inline constexpr uint32_t kLookupConnections = 2;
+    inline constexpr uint32_t kLookupMaxWaitersPerAgent = 32;
+    inline constexpr uint32_t kLookupMaxWaiters = 1024;
     inline constexpr uint32_t kGroupsRefreshIntervalSec = 60;
     inline constexpr uint32_t kTmConcurrency = 4;
     inline constexpr uint32_t kTaskMaxQueueSize = 10'000;
@@ -50,9 +58,9 @@ namespace remoted::control
     struct Config
     {
         std::string clusterName;
-        bool isWorkerNode;
+        bool isWorkerNode = false;
         std::string managerVersion;
-        bool allowHigherVersions;
+        bool allowHigherVersions = false;
 
         nlohmann::json limits;
 
@@ -63,6 +71,7 @@ namespace remoted::control
 
         uint32_t wdbRequestConnections = kWdbRequestConnections;
         uint32_t wdbRoundtripDeadlineMs = kWdbRoundtripDeadlineMs;
+        uint32_t wdbRequestDeadlineMs = kWdbRequestDeadlineMs;
         uint32_t wdbMaxQueueSize = kWdbMaxQueueSize;
         uint32_t groupsRefreshIntervalSec = kGroupsRefreshIntervalSec;
         uint32_t tmConcurrency = kTmConcurrency;

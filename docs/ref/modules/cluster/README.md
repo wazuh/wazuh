@@ -96,6 +96,21 @@ Periodic tasks, with their intervals (internal, not configurable):
 | Agent-info sync | worker | 10 s | Sends the agent information held by its local `wazuh-manager-db` (status, keep-alive, agent metadata) to the master's `wazuh-manager-db`. |
 | Local agent-groups | master | 10 s, after a 30 s start delay | Reads the agent-group assignments not yet synchronized from its `wazuh-manager-db` and broadcasts them to every connected worker. |
 | Agent-groups recv / recv full | worker | on each broadcast | Applies the assignments and compares its agent-groups checksum with the master's; after 5 mismatches in a row the worker requests the whole table. |
+| Registry publish | worker | after each chunk it writes | After a worker writes a chunk of agent group assignments to its local database, it tells the local `wazuh-manager-remoted` which agents the chunk named (`POST /_internal/agents/groups` on remoted's local admin socket), whether or not the write succeeded. remoted then stops trusting those agents' cached memberships and reads their groups from the database on their next request, so configuration downloads follow the new groups at once instead of when remoted's cached membership expires (`remoted.control_groups_refresh_interval`). The publication never carries the groups themselves: it can reach remoted after a newer read of the database, which it must not overwrite. Publication is best effort: when remoted is unreachable the worker logs a warning under the `Registry publish` tag and remoted falls back on expiry; it never delays or changes the synchronization with the master. |
+
+Registry publish runs on workers only, because a worker's group changes arrive through the cluster.
+On the master, and on a standalone node, group changes are made through the server API (or
+`agent_groups`, which goes through it), and the API tells the local `wazuh-manager-remoted` itself,
+the same way, once it has written them to `wazuh-manager-db`. That covers assigning and removing
+a group, and deleting one: the API then removes the group from the database right away, instead of
+leaving it to `wazuh-manager-modulesd`, so the notification follows the change. Every notification
+is best effort. One that never arrives (remoted down or restarting, its admin socket unreachable, a
+worker's publication queue full), or a change that nothing announces (a group assigned at enrollment,
+or a group directory removed by hand), leaves remoted trusting its cached membership of those agents
+until it expires, at most `remoted.control_groups_refresh_interval`
+([remoted configuration](../remoted/configuration.md#remotedcontrol_groups_refresh_interval)). That
+includes an agent that restarts in the meantime: `/control` startup answers from a fresh cached
+membership without querying the database.
 
 When `<indexer><hosts>` is configured, `wazuh-manager-clusterd` also runs indexer-dependent tasks,
 started only while the indexer is reachable: on every node, the

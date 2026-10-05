@@ -15,7 +15,8 @@ from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, Agent, \
     WazuhDBQueryGroup, create_upgrade_tasks, get_agents_info, get_groups, get_rbac_filters, \
-    GROUP_FIELDS, GROUP_REQUIRED_FIELDS, GROUP_FILES_FIELDS, GROUP_FILES_REQUIRED_FIELDS
+    GROUP_FIELDS, GROUP_REQUIRED_FIELDS, GROUP_FILES_FIELDS, GROUP_FILES_REQUIRED_FIELDS, \
+    batches_registry_invalidations
 from wazuh.core.agent_tasks import create_restart_tasks, create_reload_tasks, TASK_CHUNK_SIZE
 from wazuh.core import enrollment_token
 from wazuh.core.wdb_http import get_wdb_http_client
@@ -1161,6 +1162,7 @@ def create_group(group_id: str) -> WazuhResult:
 
 @expose_resources(actions=["group:delete"], resources=["group:id:{group_list}"],
                   post_proc_kwargs={'exclude_codes': [1710, 1712]})
+@batches_registry_invalidations
 def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
     """Delete a list of groups and remove it from every agent assignations.
 
@@ -1203,6 +1205,7 @@ def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
                   post_proc_func=async_list_handler)
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1751, 1752]}, post_proc_func=async_list_handler)
+@batches_registry_invalidations
 async def assign_agents_to_group(group_list: list = None, agent_list: list = None, replace: bool = False,
                            replace_list: list = None) -> AffectedItemsWazuhResult:
     """Assign a list of agents to a group.
@@ -1268,6 +1271,7 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
                   post_proc_func=async_list_handler)
 @expose_resources(actions=["agent:modify_group"], resources=['agent:id:{agent_list}'],
                   post_proc_func=async_list_handler)
+@batches_registry_invalidations
 async def remove_agent_from_group(group_list: list = None, agent_list: list = None) -> WazuhResult:
     """Removes an agent assignation with a specified group.
 
@@ -1307,6 +1311,7 @@ async def remove_agent_from_group(group_list: list = None, agent_list: list = No
                   post_proc_func=async_list_handler)
 @expose_resources(actions=["group:modify_assignments"], resources=["group:id:{group_list}"],
                   post_proc_kwargs={'exclude_codes': [1710, 1734, 1745]}, post_proc_func=async_list_handler)
+@batches_registry_invalidations
 async def remove_agent_from_groups(agent_list: list = None, group_list: list = None) -> AffectedItemsWazuhResult:
     """Removes an agent assignation with a list of groups.
 
@@ -1363,6 +1368,7 @@ async def remove_agent_from_groups(agent_list: list = None, group_list: list = N
                   post_proc_func=async_list_handler)
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1734]}, post_proc_func=async_list_handler)
+@batches_registry_invalidations
 async def remove_agents_from_group(agent_list: list = None, group_list: list = None) -> AffectedItemsWazuhResult:
     """Remove the assignations of a list of agents with a specified group.
 

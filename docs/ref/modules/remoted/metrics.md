@@ -407,11 +407,15 @@ task-manager clients.
 | `remoted.control.notify` | counter | count | Keepalive messages handled | diagnostic — fleet size × keepalive cadence |
 | `remoted.control.shutdown` | counter | count | `{"type":"shutdown"}` messages handled | diagnostic |
 | `remoted.control.rejected` | counter | count | The endpoint's own 400s (invalid body/JSON/agent-id/type) — an agent/manager version-drift signal | [`agents.allow_higher_versions`](configuration.md#agentsallow_higher_versions) for version drift; otherwise diagnostic |
-| `remoted.control.wdb_error` | counter | count | wazuh-db round trips that failed (connect, timeout, queue full) | [`remoted.control_wdb_roundtrip_deadline`](configuration.md#remotedcontrol_wdb_roundtrip_deadline), [`remoted.control_wdb_max_queue_size`](configuration.md#remotedcontrol_wdb_max_queue_size) |
+| `remoted.control.wdb_error` | counter | count | wazuh-db requests that failed (connect, round-trip timeout, queue full, or expired end to end before wazuh-db answered) | [`remoted.control_wdb_roundtrip_deadline`](configuration.md#remotedcontrol_wdb_roundtrip_deadline), [`remoted.control_wdb_request_deadline`](configuration.md#remotedcontrol_wdb_request_deadline), [`remoted.control_wdb_max_queue_size`](configuration.md#remotedcontrol_wdb_max_queue_size) |
+| `remoted.control.no_row` | counter | count | `startup`/`notify` answered `503` because the node's local wazuh-db has **no row** for the agent (`ok []`: not in this node's replica yet, or removed). Disjoint from `wdb_error`, which counts lookups that failed; the agent gets the same `503` for both | diagnostic — on a worker, a non-zero count that does not drain means agent rows are not reaching this node (cluster sync); a single agent stuck here usually was removed but still holds keys |
 | `remoted.control.wdb.latency` | histogram | microseconds | **Successful** wazuh-db round-trip time (timeouts are counted by `wdb_error`, never observed here — the histogram means "how long a healthy round trip takes") | [`remoted.control_wdb_roundtrip_deadline`](configuration.md#remotedcontrol_wdb_roundtrip_deadline), [`remoted.control_wdb_request_connections`](configuration.md#remotedcontrol_wdb_request_connections) |
 | `remoted.control.task_fetch` | counter | count | Pending-task fetches from the task manager that succeeded | — |
 | `remoted.control.task_fetch_error` | counter | count | Pending-task fetches that failed | [`remoted.control_tm_deadline`](configuration.md#remotedcontrol_tm_deadline), [`remoted.control_tm_concurrency`](configuration.md#remotedcontrol_tm_concurrency), [`remoted.control_tm_max_queue_size`](configuration.md#remotedcontrol_tm_max_queue_size) |
 | `remoted.control.registry.agents` | gauge (pull) | agents | Agents currently tracked by the control registry | diagnostic — the registry TTL (6 h) and eviction cadence (5 min) are compile-time constants, not settings |
+| `remoted.control.registry.push.invalidated` | counter | agents | Agents whose cached membership a publication withdrew (`POST /_internal/agents/groups` on the [admin socket](README.md#local-admin-socket), sent by the cluster daemon on a worker after it writes a chunk of agent-group memberships to the local wazuh-db, whether or not the write succeeded, and by the server API on a master or a standalone node after it assigns, removes or deletes a group). Their next `/control` or `/download` reads the groups from the local wazuh-db. A publication never carries groups: it may arrive after a newer read, which it must not overwrite | diagnostic — flat at 0 while agents change groups means the publications are not arriving; the cluster daemon (worker) or the API (master, standalone) logs why |
+| `remoted.control.registry.push.skipped` | counter | agents | Published agents this node holds no registry entry for — nothing is created; their first `/download` looks them up | diagnostic — a high share is normal on a worker most agents never contact |
+| `remoted.control.registry.push.rejected` | counter | count | Publications refused whole: a malformed body (`400`, nothing applied) or remoted stopping (`503`) | diagnostic — non-zero outside restarts means a publisher (the cluster daemon, the server API) and remoted disagree on the format (mixed versions) |
 
 There is no counter for keepalives the throttle suppressed, and none is needed: on a fleet in
 steady state the control plane's wazuh-db traffic is almost entirely keepalive writes, so the
@@ -448,11 +452,14 @@ the streaming pump runs; the per-chunk loop is deliberately uninstrumented.
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
 | `remoted.download.rejected` | counter | count | 400: the request did not parse | diagnostic |
-| `remoted.download.denied` | counter | count | 403: the agent asked for a `config` selector that is not its own, or the manager has no established group membership for it (no `/control/startup` yet, or an evicted entry) | **the only signal for a denial** — the event itself is logged at debug, so a rising count with `remoted.debug=0` is all an operator sees. Steady non-zero: an agent using a stale `config_token`, or one probing other groups. Distinct from `rejected` (a malformed request) and from `not_found` (an *entitled* request whose file is not on disk yet) |
+| `remoted.download.denied` | counter | count | 403: the agent asked for a `config` selector that is not its own (a missing wazuh-db row is `no_row`, a `503`) | **the only signal for a denial** — the event itself is logged at debug, so a rising count with `remoted.debug=0` is all an operator sees. Steady non-zero: an agent using a stale `config_token`, or one probing other groups. Distinct from `rejected` (a malformed request) and from `not_found` (an *entitled* request whose file is not on disk yet) |
 | `remoted.download.not_found` | counter | count | 404: the requested group/WPK does not exist — the config-drift signal behind agent retry storms | diagnostic — deploy the missing group/WPK |
 | `remoted.download.open_error` | counter | count | 500: the file exists but could not be opened | diagnostic — filesystem/permissions |
 | `remoted.download.started` | counter | count | Streamed transfers started | [`remoted.max_parallel_connections`](configuration.md#remotedmax_parallel_connections) is the only bound on concurrent transfers |
 | `remoted.download.bytes.total` | counter | bytes | Bytes **offered** to started transfers, counted once at start (an aborted transfer overcounts) | [`remoted.http_stream_chunk_size`](configuration.md#remotedhttp_stream_chunk_size), [`remoted.http_write_timeout`](configuration.md#remotedhttp_write_timeout) |
+| `remoted.download.unavailable` | counter | count | 503: a `config` download whose membership had to be read from the local wazuh-db (no fresh registry entry) and the lookup failed, timed out or was refused (too many requests already waiting), or the agent's membership changed on the node while it was being read (the read is never served: the agent retries) | [`remoted.control_wdb_request_deadline`](configuration.md#remotedcontrol_wdb_request_deadline) bounds the wait; a rising count means wazuh-db is down or slow |
+| `remoted.download.no_row` | counter | count | 503: a `config` download whose membership had to be read from the local wazuh-db, which has **no row** for the agent (not synchronized to this node yet, or removed). Same answer as `unavailable`, counted apart | diagnostic — read it with `remoted.control.no_row`: both climbing for the same agents means their rows are not on this node |
+| `remoted.download.lookups` | pull | count | wazuh-db queries the `/download` fallback issued since the module started — one per agent lookup, however many downloads waited on it | [`remoted.control_groups_refresh_interval`](configuration.md#remotedcontrol_groups_refresh_interval): how long an established membership answers without a lookup |
 
 ### CA distribution — `remoted.cacerts.*`
 
@@ -492,10 +499,12 @@ never charges the bucket, so scraping cannot cost an agent its enrollment.
 ### Admin transport — `remoted.admin.server.*`
 
 The admin socket's own transport diagnostics (the server dogfooding itself). **Entirely
-diagnostic**: its thread count, connection cap and socket path are fixed by design. All four admin
-routes (`/`, `/metrics`, `/status`, `/tls`) are liveness-class, so the budget lanes, the data/control session lanes and
-`rejected.budget` with them are structurally zero. What moves is `sessions.live`,
-`sessions.liveness` and the rest of the `rejected.*` family; the full set is published so every
+diagnostic**: its thread count, connection cap and socket path are fixed by design. The four `GET`
+routes (`/`, `/metrics`, `/status`, `/tls`) are liveness-class and the membership publication route
+is control-class; none is data-class, so the budget lanes, the data session lane and
+`rejected.budget` with them are structurally zero.
+What moves is `sessions.live`, `sessions.liveness`, `sessions.control` (the cluster daemon's
+publications) and the rest of the `rejected.*` family; the full set is published so every
 `uds_http_server` consumer reports the same vocabulary.
 
 | Metric | Type | Unit | Meaning |

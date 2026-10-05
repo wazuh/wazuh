@@ -41,6 +41,8 @@ namespace remoted::endpoints::download
     constexpr auto METRIC_DOWNLOAD_OPEN_ERROR {"remoted.download.open_error"};
     constexpr auto METRIC_DOWNLOAD_STARTED {"remoted.download.started"};
     constexpr auto METRIC_DOWNLOAD_BYTES_TOTAL {"remoted.download.bytes.total"};
+    constexpr auto METRIC_DOWNLOAD_UNAVAILABLE {"remoted.download.unavailable"};
+    constexpr auto METRIC_DOWNLOAD_NO_ROW {"remoted.download.no_row"};
 
     /**
      * @brief The /download counter set, pre-resolved from one manager.
@@ -49,23 +51,34 @@ namespace remoted::endpoints::download
      */
     struct DownloadMetrics
     {
-        std::shared_ptr<wazuh::metrics::ICounter> rejected;   ///< 400s: the request line didn't parse.
-        std::shared_ptr<wazuh::metrics::ICounter> denied;     ///< 403s: the agent asked for a selector that is
-                                                              ///< not its own, or it has no known group membership
-                                                              ///< at all. Separate from `rejected` on purpose: a
-                                                              ///< parse failure is a broken client, this is an
-                                                              ///< authorization decision and the only
-                                                              ///< operator-facing signal for it (the denial itself
-                                                              ///< is logged at debug only).
-        std::shared_ptr<wazuh::metrics::ICounter> notFound;   ///< 404s: the group/WPK doesn't exist
-                                                              ///< (config drift -> agent retry storms).
-        std::shared_ptr<wazuh::metrics::ICounter> openError;  ///< 500s: the file exists but won't open.
-        std::shared_ptr<wazuh::metrics::ICounter> started;    ///< Transfers whose stream was started.
-        std::shared_ptr<wazuh::metrics::ICounter> bytesTotal; ///< Bytes OFFERED, added once per started
-                                                              ///< transfer (an aborted transfer therefore
-                                                              ///< overcounts). A counter, not a histogram:
-                                                              ///< AtomicHistogram saturates at 2^32 and is
-                                                              ///< lossy for byte counts.
+        std::shared_ptr<wazuh::metrics::ICounter> rejected;    ///< 400s: the request line didn't parse.
+        std::shared_ptr<wazuh::metrics::ICounter> denied;      ///< 403s: the agent asked for a selector that is
+                                                               ///< not its own (or the source could not vouch for
+                                                               ///< it at all -- a malformed id, no source wired; a
+                                                               ///< missing wazuh-db row is `noRow`, a 503).
+                                                               ///< Separate from `rejected` on purpose: a
+                                                               ///< parse failure is a broken client, this is an
+                                                               ///< authorization decision and the only
+                                                               ///< operator-facing signal for it (the denial itself
+                                                               ///< is logged at debug only).
+        std::shared_ptr<wazuh::metrics::ICounter> notFound;    ///< 404s: the group/WPK doesn't exist
+                                                               ///< (config drift -> agent retry storms).
+        std::shared_ptr<wazuh::metrics::ICounter> openError;   ///< 500s: the file exists but won't open.
+        std::shared_ptr<wazuh::metrics::ICounter> started;     ///< Transfers whose stream was started.
+        std::shared_ptr<wazuh::metrics::ICounter> bytesTotal;  ///< Bytes OFFERED, added once per started
+                                                               ///< transfer (an aborted transfer therefore
+                                                               ///< overcounts). A counter, not a histogram:
+                                                               ///< AtomicHistogram saturates at 2^32 and is
+                                                               ///< lossy for byte counts.
+        std::shared_ptr<wazuh::metrics::ICounter> unavailable; ///< 503s: the agent's membership could not be
+                                                               ///< established in time (the local wazuh-db did
+                                                               ///< not answer the fallback lookup, or too many
+                                                               ///< requests already wait on lookups). Never a
+                                                               ///< denial: the agent retries it.
+        std::shared_ptr<wazuh::metrics::ICounter> noRow;       ///< 503s: the node's local wazuh-db has no row
+                                                               ///< for the agent (not yet synchronized). Same
+                                                               ///< answer as `unavailable`, counted apart: a
+                                                               ///< missing row is not a failed lookup.
     };
 
     /// Resolves the remoted.download.* family on @p manager (creating it on first call; totals
@@ -83,7 +96,13 @@ namespace remoted::endpoints::download
                 METRIC_DOWNLOAD_OPEN_ERROR, "500s: the located resource could not be opened", "count"),
             manager.getOrCreateCounter(METRIC_DOWNLOAD_STARTED, "Streamed transfers started", "count"),
             manager.getOrCreateCounter(
-                METRIC_DOWNLOAD_BYTES_TOTAL, "Bytes offered to started transfers (counted once at start)", "bytes")};
+                METRIC_DOWNLOAD_BYTES_TOTAL, "Bytes offered to started transfers (counted once at start)", "bytes"),
+            manager.getOrCreateCounter(METRIC_DOWNLOAD_UNAVAILABLE,
+                                       "503s: the agent's group membership could not be read from wazuh-db in time",
+                                       "count"),
+            manager.getOrCreateCounter(METRIC_DOWNLOAD_NO_ROW,
+                                       "503s: the local wazuh-db has no row for the agent (not yet synchronized)",
+                                       "count")};
     }
 
     // const&: called from the endpoint's value-capturing (non-mutable) lambda; add() mutates
@@ -114,6 +133,20 @@ namespace remoted::endpoints::download
         if (m.openError)
         {
             m.openError->add();
+        }
+    }
+    inline void incUnavailable(const DownloadMetrics& m)
+    {
+        if (m.unavailable)
+        {
+            m.unavailable->add();
+        }
+    }
+    inline void incNoRow(const DownloadMetrics& m)
+    {
+        if (m.noRow)
+        {
+            m.noRow->add();
         }
     }
     inline void incStarted(const DownloadMetrics& m, std::uint64_t offeredBytes)

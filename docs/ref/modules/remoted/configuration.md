@@ -1180,24 +1180,46 @@ database.
 
 #### remoted.control_groups_refresh_interval
 
-Seconds between refreshes of the cached shared-group listing used to answer `/control`.
+Seconds between refreshes of the cached shared-group listing used to answer `/control`, and the
+freshness bound of `/download`'s authorization.
 
 - **Default value:** `60`
 - **Allowed values:** Integer from `1` to `3600`
-- **Note:** This is the propagation latency an agent sees for a change of group **membership**
-  only. Group **content** travels on a different path: the merged-groups watcher picks up a
-  changed `merged.mg` on inotify plus a poll, so content propagates in seconds while membership
-  waits out this interval. At the defaults that is roughly 60 s against 10 s, and at the maximum
-  of `3600` the two differ by about two orders of magnitude.
+- **Note:** For a change of group **membership** this is the backstop, not the usual latency.
+  When a membership change is written to the node's `wazuh-manager-db`, remoted is told which
+  agents changed (`POST /_internal/agents/groups` on its [admin socket](README.md#local-admin-socket)):
+  on a cluster worker by the cluster daemon, after it applies the master's changes; on a master or
+  a standalone node by the server API, after it assigns or removes a group, and after it deletes a
+  group. remoted then stops trusting those agents' cached memberships, and their next `/control`
+  or configuration download reads the database. That notification is best effort. When it is lost
+  (remoted down or restarting, its admin socket unreachable, a worker's publication queue full),
+  and for changes nothing announces (a group assigned at enrollment, or a group directory removed
+  by hand, which `wazuh-manager-modulesd` applies to the database on its own), the cached
+  membership is trusted until it is this old. That includes `startup`: it answers from a fresh
+  cached membership without querying the database, so inside this window an agent restarted after
+  losing a group can still be handed that group's selector, and download it.
+- **Note:** Group **content** travels on a different path: the merged-groups watcher picks up a
+  changed `merged.mg` on inotify plus a poll, so content propagates in seconds. When a membership
+  change is not announced, the two differ by this interval: roughly 60 s against 10 s at the
+  defaults, about two orders of magnitude at the maximum of `3600`.
 - **Note:** Editing `var/multigroups/<hash>/merged.mg` by hand is not a way to reproduce this:
   `remoted.shared_reload` (default `10`) regenerates the file and reverts the edit.
-- **Note:** A refresh that fails does not mark the cached membership fresh, so while wazuh-db is
-  unreachable **every** notify retries the query: one wazuh-db round trip per notify, for the whole
-  fleet, on top of serving the membership the cache already holds. That retry is deliberate. Marking
-  the cache fresh on failure would stop it, at the cost of serving membership that can be a full
-  `control_groups_refresh_interval` stale with no sign of it, which is the worse trade for a
-  security product. The retry rate is visible as `remoted.control.wdb.*` in
+- **Note:** It is also how long an agent's `/control` keeps answering while wazuh-db is down: a
+  fresh membership answers `startup` and `notify` without a query. Once it expires, a refresh that
+  fails is answered `503` (the agent retries) and does not mark the cached membership fresh, so
+  **every** notify retries the query: one wazuh-db round trip per notify, for the whole fleet. That
+  retry is deliberate. Serving the expired membership instead, or marking it fresh on failure, would
+  hand out membership that can be arbitrarily stale with no sign of it, which is the worse trade for
+  a security product. The retry rate is visible as `remoted.control.wdb.*` in
   [`GET /metrics`](metrics.md#control-plane--remotedcontrol).
+
+- **Note:** `/download` trusts the cached membership of an agent for this long. After that, and for
+  an agent the node has no cached membership for (it never sent `/control` here, or remoted
+  restarted), a `config` download first reads the agent's groups from the local wazuh-db — one
+  query per agent, shared by concurrent downloads — and answers `503` if that read fails or finds
+  no row for the agent. A lower
+  value tightens how long a revoked group can still be downloaded on this node when the change
+  was not announced to remoted (see above), at the cost of more of those reads.
 
 #### remoted.control_wdb_request_connections
 
@@ -1220,6 +1242,24 @@ Milliseconds a single wazuh-db round-trip may take before the control handler gi
   [`GET /metrics`](metrics.md#control-plane--remotedcontrol). The healthy-round-trip
   distribution that sizes this deadline is `remoted.control.wdb.latency` (timeouts are
   deliberately excluded from the histogram).
+
+#### remoted.control_wdb_request_deadline
+
+Milliseconds a control-plane wazuh-db request may take end to end, counted from the moment it is
+queued: the wait for a free connection, any reconnection, and the round trip.
+
+- **Default value:** `5000`
+- **Allowed values:** Integer from `100` to `30000`
+- **Note:** A request still queued when it runs out is failed without ever being sent, so work
+  queued while wazuh-db is down is not replayed against it once it comes back. An expired group
+  lookup answers `/control` startup and notify (and a `config` `/download`) with `503`
+  `dependency_unavailable`; an expired membership is never served in its place. Each expiry counts
+  as `remoted.control.wdb_error` in [`GET /metrics`](metrics.md#control-plane--remotedcontrol) and
+  is reported, throttled, as a `WazuhDB request expired before wazuh-db answered` warning.
+- **Note:** `remoted.control_wdb_roundtrip_deadline` still bounds the round trip itself, inside this
+  budget. remoted warns at startup when this deadline plus `remoted.control_tm_deadline` does not fit
+  below the HTTPS listener's request timeout, because the connection would be closed before
+  `/control` could answer.
 
 #### remoted.control_wdb_max_queue_size
 

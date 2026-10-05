@@ -52,8 +52,32 @@ fail=0
 # grep -c, not grep -q: with `set -o pipefail` a -q that exits early SIGPIPEs the producer
 # and the pipeline reports 141, so every valid package would be rejected.
 if [[ "$(strings "$TMPCHK/var/wazuh-manager/lib/libremoted_module.so" 2>/dev/null |
-         grep -c expectedSelectorFor || true)" -eq 0 ]]; then
-    echo "    !! no /download registry authorization in this build" >&2; fail=1
+         grep -c 'Cannot authorize /download' || true)" -eq 0 ]]; then
+    # A string literal, not a symbol: release builds are stripped. It is the log line of the
+    # /download wazuh-db fallback (#39147), which also implies the registry authorization (#38683).
+    echo "    !! no /download authorization with the wazuh-db fallback in this build" >&2; fail=1
+fi
+# #39147 in full: a missing wazuh-db row is a retryable 503, not a denial (the rework of the
+# fallback), the admin route the worker's cluster daemon publishes applied memberships to, and
+# that publisher itself. Without any of them the cross-node and revocation checks measure an
+# older behaviour and read as failures of this one.
+if [[ "$(strings "$TMPCHK/var/wazuh-manager/lib/libremoted_module.so" 2>/dev/null |
+         grep -c 'Cannot authorize /download for agent' || true)" -eq 0 ]]; then
+    echo "    !! no retryable 503 for an agent the local wazuh-db has no row for in this build" >&2; fail=1
+fi
+if [[ "$(strings "$TMPCHK/var/wazuh-manager/lib/libremoted_module.so" 2>/dev/null |
+         grep -c '/_internal/agents/groups' || true)" -eq 0 ]]; then
+    echo "    !! no POST /_internal/agents/groups on remoted's admin socket in this build" >&2; fail=1
+fi
+# A publication only invalidates (a late one must never overwrite a newer read): a build whose route
+# still applies `set` measures the revocation check against the older behaviour. A build with this
+# also answers 503 for a read an invalidation superseded, which came before it.
+if [[ "$(strings "$TMPCHK/var/wazuh-manager/lib/libremoted_module.so" 2>/dev/null |
+         grep -c 'Body must carry an "invalidate" array' || true)" -eq 0 ]]; then
+    echo "    !! the admin route still applies pushed groups (\"set\") in this build" >&2; fail=1
+fi
+if [[ -z "$(find "$TMPCHK/var/wazuh-manager" -name registry_publisher.py -print -quit 2>/dev/null)" ]]; then
+    echo "    !! no cluster registry publisher (registry_publisher.py) in this build" >&2; fail=1
 fi
 if [[ "$(grep -c '"ca_certificate"' \
          "$TMPCHK/var/wazuh-manager/etc/wazuh-manager.schema.json" 2>/dev/null || true)" -eq 0 ]]; then

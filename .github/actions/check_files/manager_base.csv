@@ -80,6 +80,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/wazuh-manager/framework/wazuh/core/cluster/local_client.py,root,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/framework/wazuh/core/cluster/local_server.py,root,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/framework/wazuh/core/cluster/master.py,root,wazuh-manager,640,file,-rw-r-----,,
+/var/wazuh-manager/framework/wazuh/core/cluster/registry_publisher.py,root,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/framework/wazuh/core/cluster/server.py,root,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/framework/wazuh/core/cluster/utils.py,root,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/framework/wazuh/core/cluster/worker.py,root,wazuh-manager,640,file,-rw-r-----,,

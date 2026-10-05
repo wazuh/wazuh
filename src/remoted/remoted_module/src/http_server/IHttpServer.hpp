@@ -188,7 +188,9 @@ namespace remoted::http
          *
          * Shares send()'s exactly-once guarantee: send() and stream() together may be called once
          * per request, from any thread. Returns immediately -- the transfer proceeds asynchronously
-         * and the source is drained on the worker pool.
+         * and the source is drained on the worker pool. Once the server has stopped accepting
+         * (IHttpServer::stopAccepting()) there is no pool left: the transfer never starts, the
+         * source is released, and the request is answered 503 instead.
          *
          * Only meaningful on a route registered with ResponseMode::Streamable. The default below
          * exists so that responders which never stream (and every test double) need no override;
@@ -534,7 +536,11 @@ namespace remoted::http
          * every handler dispatch that was already queued has completed; (2) the underlying
          * I/O runtime is deliberately left ALIVE, so a response to a request that was already
          * handed off before this call (e.g. to a downstream forwarder) can still be delivered
-         * safely via IHttpResponder::send() from any thread, at any point afterward.
+         * safely via IHttpResponder::send() from any thread, at any point afterward; (3) the
+         * worker pool is gone, so IHttpResponder::stream() called afterward starts no transfer:
+         * it answers 503 through send() instead. A caller that may still stream from its own
+         * threads (the /download fallback's lookup workers) should drain them BEFORE this call,
+         * so their transfers run on a live pool.
          *
          * Call this BEFORE tearing down anything an in-flight handler might still call into
          * (a downstream client/forwarder) -- that is what makes finishing that in-flight work

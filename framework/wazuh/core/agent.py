@@ -2,12 +2,16 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
+import contextvars
+import inspect
 import ipaddress
 import json
 import logging
 import re
 import threading
 from base64 import b64encode
+from contextlib import contextmanager
+from functools import wraps
 from json import loads
 from os import listdir, path
 from shutil import rmtree
@@ -16,6 +20,7 @@ from wazuh.core import common
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.common import DATE_FORMAT
+from wazuh.core.engine_http import REMOTED_PUBLISH_TIMEOUT, AsyncRemotedHTTPClient, RemotedHTTPClient
 from wazuh.core.exception import (
     WazuhException,
     WazuhError,
@@ -1055,11 +1060,38 @@ class Agent:
         -------
         dict
             Confirmation message.
+
+        Notes
+        -----
+        Deleting the directory is what deletes the group: wazuh-manager-modulesd notices it and runs `global
+        delete-group`, which takes the group out of its agents' memberships in wazuh-manager-db. That happens on
+        its own schedule, and the local remoted may only be told about those agents once their memberships have
+        changed -- told earlier, it would read the old membership again and keep it. So this runs the same
+        `global delete-group` itself, right after the directory is gone (the command is idempotent: whichever of
+        the two lands first does the work), and then tells remoted about the agents the group had.
         """
+        try:
+            agent_ids = get_group_agent_ids(group_id)
+        except WazuhException as exc:
+            logger.warning(f"Could not read the agents of group '{group_id}' before deleting it: {exc}. The local "
+                           f"remoted keeps their cached memberships until they expire.")
+            agent_ids = []
+
         # Delete group directory
         group_path = path.join(common.SHARED_PATH, group_id)
         if path.exists(group_path):
             rmtree(group_path)
+
+        try:
+            wdb = WazuhDBConnection()
+            try:
+                wdb.send(f"global delete-group {group_id}", raw=True)
+            finally:
+                wdb.close()
+        except WazuhException as exc:
+            logger.warning(f"Could not remove group '{group_id}' from wazuh-manager-db: {exc}. "
+                           f"wazuh-manager-modulesd removes it once it notices the directory is gone.")
+        note_registry_memberships_written(agent_ids)
 
         msg = "Group '{0}' deleted.".format(group_id)
 
@@ -1249,6 +1281,13 @@ class Agent:
         override : bool
             Set the relationship with the override mode. This option only works if remove is False. If both override and
             remove are False, the mode used is append.
+
+        Notes
+        -----
+        This is the framework's one writer of agent-group memberships, so it is also where the local remoted learns
+        about them: once wazuh-manager-db has the write, remoted is told to stop trusting the agent's cached
+        membership (see `note_registry_memberships_written`). A cluster worker's remoted learns it from its own
+        cluster daemon instead, when the change reaches it.
         """
         if remove:
             mode = "remove"
@@ -1265,6 +1304,9 @@ class Agent:
             wdb.send(command, raw=True)
         finally:
             wdb.close()
+            # Also after a failed write: it may still have reached the database, and an extra withdrawal costs
+            # remoted one read.
+            note_registry_memberships_written([agent_id])
 
     @staticmethod
     async def unset_single_group_agent(
@@ -1411,6 +1453,187 @@ def get_groups() -> set:
         )
 
     return groups
+
+
+# Agents per membership publication to remoted: its admin route caps a body at 256 KiB, and one agent id takes
+# at most 7 bytes of `{"invalidate":[...]}`.
+REGISTRY_INVALIDATION_CHUNK = 5000
+
+# The agents whose memberships the current call has written while it batches them into one publication
+# (`batch_registry_invalidations`); None outside a batch, when every write publishes its own agents at once.
+_pending_registry_invalidations = contextvars.ContextVar('pending_registry_invalidations', default=None)
+
+
+def _registry_invalidation_chunks(agent_ids) -> list:
+    """The publications that tell remoted about these agents: each agent once, as an integer, in chunks."""
+    ids = sorted({int(agent_id) for agent_id in agent_ids})
+    return [ids[start:start + REGISTRY_INVALIDATION_CHUNK] for start in range(0, len(ids), REGISTRY_INVALIDATION_CHUNK)]
+
+
+def _warn_registry_invalidation_failed(untold_chunks: list, exc: Exception) -> None:
+    logger.warning(f"Could not tell the local remoted that the group memberships of "
+                   f"{sum(len(chunk) for chunk in untold_chunks)} agent(s) changed: {exc}. Their cached memberships "
+                   f"expire within remoted.control_groups_refresh_interval.")
+
+
+def invalidate_registry_memberships(agent_ids) -> None:
+    """Tell the local remoted that the group memberships of these agents were just written to wazuh-manager-db.
+
+    remoted withdraws the cached memberships of the agents it tracks (`POST /_internal/agents/groups`,
+    `{"invalidate": [...]}`), so their next `/control` or configuration download reads the database again
+    instead of trusting what it cached for up to `remoted.control_groups_refresh_interval`. A publication only
+    withdraws, never carries groups: it may reach remoted after a newer read, which it must not overwrite.
+
+    Best effort, and it never raises: a remoted that is down, stopping or not answering leaves those
+    memberships to expire on their own, which is logged, and never fails the caller's write. The first failure
+    stops the remaining chunks.
+
+    Parameters
+    ----------
+    agent_ids : Iterable
+        IDs of the agents, as strings (`"001"`) or integers.
+    """
+    chunks = _registry_invalidation_chunks(agent_ids)
+    if not chunks:
+        return
+
+    client = None
+    try:
+        client = RemotedHTTPClient(timeout=REMOTED_PUBLISH_TIMEOUT)
+        while chunks:
+            client.post_agent_groups({'invalidate': chunks[0]})
+            chunks.pop(0)
+    except Exception as exc:
+        _warn_registry_invalidation_failed(chunks, exc)
+    finally:
+        if client is not None:
+            client.close()
+
+
+async def async_invalidate_registry_memberships(agent_ids) -> None:
+    """`invalidate_registry_memberships` for a coroutine.
+
+    The server API runs its asynchronous group writers on its event loop, which a synchronous request to remoted
+    would block for as long as remoted takes to answer.
+
+    Parameters
+    ----------
+    agent_ids : Iterable
+        IDs of the agents, as strings (`"001"`) or integers.
+    """
+    chunks = _registry_invalidation_chunks(agent_ids)
+    if not chunks:
+        return
+
+    client = None
+    try:
+        client = AsyncRemotedHTTPClient(timeout=REMOTED_PUBLISH_TIMEOUT)
+        while chunks:
+            await client.post_agent_groups({'invalidate': chunks[0]})
+            chunks.pop(0)
+    except Exception as exc:
+        _warn_registry_invalidation_failed(chunks, exc)
+    finally:
+        if client is not None:
+            await client.close()
+
+
+def note_registry_memberships_written(agent_ids) -> None:
+    """Record that the group memberships of these agents were just written to wazuh-manager-db.
+
+    Inside `batch_registry_invalidations` the agents are collected and remoted is told once, when the batch
+    ends; outside one, it is told right away.
+
+    Parameters
+    ----------
+    agent_ids : Iterable
+        IDs of the agents, as strings (`"001"`) or integers.
+    """
+    pending = _pending_registry_invalidations.get()
+    if pending is None:
+        invalidate_registry_memberships(agent_ids)
+    else:
+        pending.update(int(agent_id) for agent_id in agent_ids)
+
+
+@contextmanager
+def batch_registry_invalidations():
+    """Collect the memberships written inside this block and tell the local remoted about them once, at its end.
+
+    One publication per call instead of one per agent. A nested batch leaves the work to the outermost one.
+    remoted is told even when the block raises: some writes may have landed before the error.
+    """
+    if _pending_registry_invalidations.get() is not None:
+        yield
+        return
+
+    pending = set()
+    token = _pending_registry_invalidations.set(pending)
+    try:
+        yield
+    finally:
+        _pending_registry_invalidations.reset(token)
+        invalidate_registry_memberships(pending)
+
+
+def batches_registry_invalidations(func):
+    """Decorator: run `func` inside one batch of membership publications, told to remoted when it returns.
+
+    For the framework functions that write the memberships of many agents in one call. A coroutine function is
+    told through the asynchronous client, so the batch never blocks the event loop it runs on.
+    """
+    if inspect.iscoroutinefunction(func):
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            if _pending_registry_invalidations.get() is not None:
+                return await func(*args, **kwargs)
+
+            pending = set()
+            token = _pending_registry_invalidations.set(pending)
+            try:
+                return await func(*args, **kwargs)
+            finally:
+                _pending_registry_invalidations.reset(token)
+                await async_invalidate_registry_memberships(pending)
+
+        return async_wrapper
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with batch_registry_invalidations():
+            return func(*args, **kwargs)
+
+    return wrapper
+
+
+def get_group_agent_ids(group_name: str) -> list:
+    """IDs of the agents wazuh-manager-db lists in a group, read now (unlike the cached `expand_group`).
+
+    Parameters
+    ----------
+    group_name : str
+        Name of the group.
+
+    Returns
+    -------
+    list
+        Agent IDs, as integers.
+    """
+    agent_ids = []
+    wdb_conn = WazuhDBConnection()
+    try:
+        last_id = 0
+        while True:
+            status, payload = wdb_conn.send(f"global get-group-agents {group_name} last_id {last_id}", raw=True)
+            page = json.loads(payload)
+            agent_ids.extend(int(agent_id) for agent_id in page)
+            if status == "ok" or not page:
+                break
+            last_id = agent_ids[-1]
+    finally:
+        wdb_conn.close()
+
+    return agent_ids
 
 
 @resource_cache()

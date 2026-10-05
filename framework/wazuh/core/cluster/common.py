@@ -675,7 +675,22 @@ class Handler(asyncio.Protocol):
                      f'in {result["time_spent"]:.3f}s.')
         result['error_messages'] = [error[1] for error in result['error_messages']['chunks']]
 
+        # Handed to the local remoted and never sent back: callers serialize this dict to the peer as the apply's
+        # result, and that reply stays what it was.
+        self.publish_agent_groups(result.pop('registry_publications', []))
+
         return result
+
+    def publish_agent_groups(self, publications: list) -> None:
+        """Hand the per-chunk publications of an agent-groups apply to the local remoted's registry.
+
+        A no-op here: only a worker publishes (`WorkerHandler` overrides it). Must never block nor raise.
+
+        Parameters
+        ----------
+        publications : list of dict
+            One publication per chunk, in chunk order (see `send_data_to_wdb`).
+        """
 
     async def send_file(self, filename: str, task_id: bytes = None) -> int:
         """Send a file to peer, slicing it into chunks.
@@ -1821,6 +1836,47 @@ def error_receiving_agent_information(logger, response, info_type):
     return b'ok', b'Thanks'
 
 
+# The agent ids remoted's POST /_internal/agents/groups accepts (an unsigned 32-bit id; 0 is the manager).
+_REGISTRY_MAX_AGENT_ID = 2 ** 32 - 1
+
+
+def _registry_agent_id(item: Any) -> Union[int, None]:
+    """Return the agent id of an agent-groups item, or None when it has none the local remoted would accept."""
+    agent_id = item.get('id') if isinstance(item, dict) else None
+    if isinstance(agent_id, bool) or not isinstance(agent_id, int) or not 0 < agent_id <= _REGISTRY_MAX_AGENT_ID:
+        return None
+    return agent_id
+
+
+def _registry_publication(agents: Any) -> dict:
+    """Build the publication of a chunk sent to wazuh-manager-db: invalidate every agent it names.
+
+    The same for an applied chunk and for one whose effect is unknown (an error or a timeout): a publication never
+    carries groups, only which agents changed. It describes the database as it was when this chunk was written, and
+    the local remoted may already hold a newer read, so remoted only withdraws those agents' cached memberships and
+    reads them from wazuh-manager-db on their next request.
+
+    Parameters
+    ----------
+    agents : Any
+        The chunk's `data` list, or None when the chunk could not be parsed (then there is nothing to publish).
+
+    Returns
+    -------
+    dict
+        `{"invalidate": [ids]}`, or empty when the chunk names no agent.
+    """
+    ids = [agent_id for agent_id in map(_registry_agent_id, agents if isinstance(agents, list) else [])
+           if agent_id is not None]
+    return {'invalidate': ids} if ids else {}
+
+
+def _append_registry_publication(publications: list, publication: dict) -> None:
+    """Append `publication` to `publications` unless it is empty."""
+    if publication:
+        publications.append(publication)
+
+
 async def send_data_to_wdb(data, timeout, info_type='agent-info'):
     """Send chunks of data to Wazuh-db socket.
 
@@ -1836,7 +1892,9 @@ async def send_data_to_wdb(data, timeout, info_type='agent-info'):
     Returns
     -------
     result : dict
-        Dict containing number of updated chunks, error messages (if any) and time spent.
+        Dict containing number of updated chunks, error messages (if any) and time spent. For `agent-groups` it also
+        carries `registry_publications`: one publication per chunk, in chunk order, for the local remoted -- an
+        `invalidate` of the chunk's agents for every chunk sent, applied or not, none for the chunks never sent.
     """
     result = {'updated_chunks': 0, 'error_messages': {'chunks': [], 'others': []}, 'time_spent': 0}
     before = time.perf_counter()
@@ -1850,20 +1908,34 @@ async def send_data_to_wdb(data, timeout, info_type='agent-info'):
 
                 result['updated_chunks'] += len(agents_sync)
             elif info_type == 'agent-groups':
+                # What each chunk did to the local database, in chunk order, for the local remoted's registry of
+                # memberships (see update_chunks_wdb). Filled as the loop goes, so a timeout keeps what came before.
+                publications = result.setdefault('registry_publications', [])
                 wdb_conn = WazuhDBConnection()
 
                 for i, chunk in enumerate(data['chunks']):
+                    agents = None
+                    published = False
                     try:
-                        data['payload']['data'] = json.loads(chunk)[0]['data']
+                        agents = json.loads(chunk)[0]['data']
+                        data['payload']['data'] = agents
                         wdb_conn.send(
                             f"{data['set_data_command']} {json.dumps(data['payload'], separators=(',', ':'))}",
                             raw=True
                         )
+                        _append_registry_publication(publications, _registry_publication(agents))
+                        published = True
                         result['updated_chunks'] += 1
                     except TimeoutError as e:
+                        # The chunk may or may not have been applied: remoted must read those agents again.
+                        if not published:
+                            _append_registry_publication(publications, _registry_publication(agents))
                         wdb_conn.close()
                         raise e
                     except Exception as e:
+                        # Errored chunks may be partially applied; the ignored errors are uncertain too.
+                        if not published:
+                            _append_registry_publication(publications, _registry_publication(agents))
                         error = str(e)
 
                         if any(ignored_exception in error for ignored_exception in IGNORED_WDB_EXCEPTIONS):
