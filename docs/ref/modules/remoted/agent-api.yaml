@@ -603,12 +603,7 @@ paths:
             The manager's log names the dependency and what to check.
           content:
             application/json:
-              schema:
-                type: object
-                required: [error, dependency]
-                properties:
-                  error: { type: string, enum: [dependency_unavailable] }
-                  dependency: { type: string, example: wazuh-db }
+              schema: { $ref: "#/components/schemas/DependencyUnavailable" }
               examples:
                 dependencyUnavailable:
                   value: { error: "dependency_unavailable", dependency: "wazuh-db" }
@@ -835,7 +830,10 @@ paths:
             sent. The manager's log names the dependency when it is `wazuh-manager-db`.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ErrorResponse"
+                  - $ref: "#/components/schemas/DependencyUnavailable"
               examples:
                 dependencyUnavailable:
                   value: { error: "dependency_unavailable", dependency: "wazuh-db" }
@@ -1609,6 +1607,17 @@ components:
               maximum: 599
             - $ref: "#/components/schemas/AuthFailureClass"
           example: unknown_agent
+
+    DependencyUnavailable:
+      type: object
+      additionalProperties: false
+      required: [error, dependency]
+      description: |
+        A dependency the request needs did not answer, or could not vouch for the agent. Retryable.
+        Unlike `ErrorResponse`, it carries no `code`.
+      properties:
+        error: { type: string, enum: [dependency_unavailable] }
+        dependency: { type: string, example: wazuh-db }
 
     AuthFailureClass:
       type: string
