@@ -116,6 +116,7 @@ bool updateDoc(json::Json& doc,
                std::string_view escape,
                bool is_quoted)
 {
+    // Keys come from event data: every token is written as an object member, never as an array index.
     // An empty value is written under the key as given: its dots are not converted, so they do not count
     if (value.empty())
     {
@@ -123,7 +124,7 @@ bool updateDoc(json::Json& doc,
         {
             return false;
         }
-        doc.setNull(key);
+        doc.setNullAsMembers(key);
         return true;
     }
 
@@ -136,7 +137,7 @@ bool updateDoc(json::Json& doc,
     // If the value is a string, unescape it if necessary and add it to the JSON document
     auto vs = std::string {value.data(), value.size()};
     unescape(is_escaped, vs, escape);
-    doc.setString(vs, path);
+    doc.setStringAsMembers(vs, path);
     return true;
 }
 

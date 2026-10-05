@@ -269,6 +269,17 @@ TEST(CsvParserDepth, TraceNamesLimit)
     EXPECT_EQ(result.remaining(), "hi2");
 }
 
+// A numeric header is a member name, not an array index
+TEST(CsvNumericHeader, HeadersAreMembers)
+{
+    const auto parser = getCSVParser({NAME, TARGET, {""}, {"1", "2"}});
+    json::Json event;
+    event.setObject();
+    const auto error = hlp::parser::run(parser, "x,y", event, true);
+    ASSERT_FALSE(error.has_value()) << error->message;
+    EXPECT_EQ(event, json::Json {R"({"TargetField":{"1":"x","2":"y"}})"});
+}
+
 /************************************
  *  DSV Parser
  ************************************/

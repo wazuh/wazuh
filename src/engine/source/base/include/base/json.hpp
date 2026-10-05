@@ -1143,6 +1143,29 @@ public:
     void setString(std::string_view value, std::string_view path = "");
 
     /**
+     * @brief Set the String object at the path, reading every token of the path as an object member name.
+     * Unlike setString, a token made only of digits is never an array index: every node on the way that is not an
+     * object becomes one, so the cost does not depend on the value of a numeric token. Use it when the path comes
+     * from event data. As in JSON Pointer, a "-" token on an existing array still appends to it.
+     *
+     * @param value The value to set.
+     * @param path The path to the object.
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void setStringAsMembers(std::string_view value, std::string_view path);
+
+    /**
+     * @brief Set the Null object at the path, reading every token of the path as an object member name.
+     * @see setStringAsMembers
+     *
+     * @param path The path to the object.
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void setNullAsMembers(std::string_view path);
+
+    /**
      * @brief Set the Array object at the path.
      * Parents objects are created if they do not exist.
      *

@@ -1,5 +1,10 @@
 #include <gtest/gtest.h>
 
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "address_space_cap.hpp"
 #include "hlp_test.hpp"
 
 auto constexpr NAME = "kvmapParser";
@@ -509,5 +514,59 @@ TEST(KvParserDepth, TraceNamesLimit)
         auto untraced = result.value().semParser(result.value().parsed, false);
         ASSERT_TRUE(std::holds_alternative<base::Error>(untraced));
         EXPECT_TRUE(std::get<base::Error>(untraced).message.empty());
+    }
+}
+
+namespace
+{
+
+// Keys that rapidjson reads as array indexes: up to 4294967294, plus one whose overflow it does not detect
+const std::string LARGE_NUMERIC_KEYS = "99999999=v 999999999=w 4294967294=x 10000000000=y";
+
+} // namespace
+
+TEST(KvNumericKey, SmallKeyIsMember)
+{
+    json::Json event;
+    ASSERT_NO_FATAL_FAILURE(mapInto("123=v a.5=w", event));
+    EXPECT_EQ(event, json::Json {R"({"TargetField":{"123":"v","a":{"5":"w"}}})"});
+}
+
+// Large numeric keys are mapped as members without allocating in proportion to their value. Parsed in a child
+// whose address space is capped: a regression makes the child die instead of exhausting the host.
+TEST(KvNumericKey, LargeKeysBoundedMemory)
+{
+    SKIP_UNDER_SANITIZER();
+    const DeathTestStyleGuard style {"threadsafe"};
+    EXPECT_EXIT(
+        exitUnderAddressSpaceCap(
+            []
+            {
+                json::Json event;
+                event.setObject();
+                const auto error = hlp::parser::run(depthParser(), LARGE_NUMERIC_KEYS, event, false);
+                return !error.has_value()
+                       && event
+                              == json::Json {
+                                  R"({"TargetField":{"99999999":"v","999999999":"w","4294967294":"x","10000000000":"y"}})"};
+            }),
+        ::testing::ExitedWithCode(0),
+        "");
+}
+
+TEST(KvNumericKey, MixedOrderAndRepeats)
+{
+    const std::vector<std::pair<std::string, std::string>> cases {
+        {"a.x=1 5=2", R"({"TargetField":{"a":{"x":"1"},"5":"2"}})"},
+        {"5=1 a.7=2", R"({"TargetField":{"5":"1","a":{"7":"2"}}})"},
+        {"5=a 5=b", R"({"TargetField":{"5":"b"}})"},
+        {"a/5=v", R"({"TargetField":{"a":{"5":"v"}}})"},
+        {"123= a/7=", R"({"TargetField":{"123":null,"a":{"7":null}}})"},
+    };
+    for (const auto& [input, expected] : cases)
+    {
+        json::Json event;
+        ASSERT_NO_FATAL_FAILURE(mapInto(input, event)) << input;
+        EXPECT_EQ(event, json::Json {expected.c_str()}) << input;
     }
 }

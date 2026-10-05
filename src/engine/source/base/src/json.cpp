@@ -13,6 +13,19 @@ namespace
 {
 constexpr auto INVALID_POINTER_TYPE_MSG = "Invalid pointer path '{}'";
 constexpr auto PATH_NOT_FOUND_MSG = "Path '{}' not found";
+
+// Tokens of a parsed pointer with every one marked as an object member name. rapidjson reads a token made only of
+// digits as an array index, and creating it on a node that is not an object yet reserves index + 1 elements; a name
+// token turns that node into an object instead. The names still point into `pointer`, which must outlive the result.
+std::vector<rapidjson::Pointer::Token> asMemberTokens(const rapidjson::Pointer& pointer)
+{
+    std::vector<rapidjson::Pointer::Token> tokens(pointer.GetTokens(), pointer.GetTokens() + pointer.GetTokenCount());
+    for (auto& token : tokens)
+    {
+        token.index = rapidjson::kPointerInvalidIndex;
+    }
+    return tokens;
+}
 } // namespace
 
 namespace json
@@ -1071,6 +1084,36 @@ void Json::setDouble(double_t value, std::string_view path)
     if (pp.IsValid())
     {
         pp.Set(m_document, value);
+        return;
+    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+}
+
+void Json::setStringAsMembers(std::string_view value, std::string_view path)
+{
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
+
+    if (pp.IsValid())
+    {
+        const auto tokens = asMemberTokens(pp);
+        const auto* data = value.data() ? value.data() : "";
+        rapidjson::Value v(data, static_cast<rapidjson::SizeType>(value.size()), m_document.GetAllocator());
+        rapidjson::Pointer(tokens.data(), tokens.size()).Set(m_document, v);
+        return;
+    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+}
+
+void Json::setNullAsMembers(std::string_view path)
+{
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
+
+    if (pp.IsValid())
+    {
+        const auto tokens = asMemberTokens(pp);
+        rapidjson::Pointer(tokens.data(), tokens.size()).Set(m_document, rapidjson::Value().SetNull());
         return;
     }
 
