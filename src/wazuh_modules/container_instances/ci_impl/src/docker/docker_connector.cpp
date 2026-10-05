@@ -87,11 +87,34 @@ namespace wazuh::container_instances
         }
 
         // Coalesce: churn-heavy hosts get at most one full reconcile per debounce
-        // window. A suppressed reconcile is recovered by the next event or by the
-        // full re-seed on stream reconnect; a quiet, healthy stream can defer it
-        // indefinitely, which only delays removal of already-dead records.
+        // window. What the window defers, flushPendingReconcile() picks up one
+        // window later.
         m_reconcilePending = true;
-        if (std::chrono::steady_clock::now() - m_lastReconcile >= RECONCILE_DEBOUNCE)
+        flushPendingReconcile();
+    }
+
+    /// Runs a deferred reconcile once the debounce window has passed.
+    ///
+    /// This is the trailing edge of the debounce, and without it the leading edge
+    /// alone LOSES WORK rather than merely delaying it. `handleEvent` re-seeds
+    /// only when the window has elapsed; a start event arriving inside the window
+    /// is dropped, and since a re-seed is a full snapshot taken at a point in
+    /// time, a container that began after the previous snapshot is in neither.
+    /// It then stays absent from the store — not stale, absent — until some
+    /// unrelated event or a stream reconnect happens to trigger another snapshot.
+    /// On a host that goes quiet right after a burst, that is indefinite.
+    ///
+    /// Consumers cannot paper over it: they read the store, so neither a faster
+    /// poll nor a change notification can surface a container the store never
+    /// recorded. Grace-expiry sweeps live inside applySnapshot() too, so the same
+    /// gap strands removed records.
+    ///
+    /// Called from two places: every event (leading edge) and the stream's idle
+    /// tick (trailing edge). Both run on the connector's own thread, which is why
+    /// m_reconcilePending and m_lastReconcile need no synchronisation.
+    void DockerConnector::flushPendingReconcile()
+    {
+        if (m_reconcilePending && std::chrono::steady_clock::now() - m_lastReconcile >= RECONCILE_DEBOUNCE)
         {
             reSeed();
         }
@@ -119,13 +142,21 @@ namespace wazuh::container_instances
                     reSeed();
                     backoff = BACKOFF_BASE;
 
-                    const auto outcome = m_client.streamEvents(
-                        sinceSeconds, [this](const DockerEvent& event) { handleEvent(event); }, stop);
+                    const auto outcome =
+                        m_client.streamEvents(sinceSeconds,
+                                              [this](const DockerEvent& event) { handleEvent(event); },
+                                              stop,
+                                              [this] { flushPendingReconcile(); });
 
                     if (outcome.kind == StreamOutcome::Kind::cancelled)
                     {
                         return;
                     }
+
+                    // Mirrors the Kubernetes connector's post-watch flush: a
+                    // disconnect is itself a quiet period, and the re-seed below
+                    // happens only after a backoff wait.
+                    flushPendingReconcile();
 
                     m_logger(LogLevel::warn, "Docker event stream disconnected: " + outcome.message);
                     if (!stop.waitFor(BACKOFF_BASE))

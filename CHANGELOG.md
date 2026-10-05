@@ -62,6 +62,7 @@
 | [#39866](https://github.com/wazuh/wazuh/issues/39866) | Removed trivial compiler warnings from the agent build. |
 | [#40012](https://github.com/wazuh/wazuh/issues/40012) | Reported the CPU name on arm64 and POWER Linux agents, whose `/proc/cpuinfo` has no `model name`, instead of leaving it empty. |
 | [#37396](https://github.com/wazuh/wazuh/issues/37396) | Corrected the user and group reported by the container file monitoring engine, which were interchanged. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Started monitoring containers that were created moments apart on an otherwise idle host, which were previously never detected. |
 
 ## Prior versions
 
