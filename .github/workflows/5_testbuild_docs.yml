@@ -54,6 +54,9 @@ jobs:
           GREP=$(command -v grep); CAT=$(command -v cat); PY=$(command -v python3)
           STRIPPED_PATH=""
           IFS=':' read -ra DIRS <<< "$PATH"
+          # Strip every PATH dir with node/npm, not just one: ubuntu-24.04 ships Node preinstalled
+          # via the n version manager in addition to whatever actions/setup-node adds, so a single
+          # directory is not enough (see the #39955 review history for the runner image evidence).
           for d in "${DIRS[@]}"; do
             [ -x "$d/node" ] || [ -x "$d/npm" ] && continue
             STRIPPED_PATH="${STRIPPED_PATH:+$STRIPPED_PATH:}$d"
