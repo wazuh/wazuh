@@ -26,6 +26,11 @@ namespace wazuh::container_instances
         /// poses: without this it is indistinguishable from one that was
         /// deleted, and its rows get swept.
         ContainerState state {ContainerState::unknown};
+
+        /// From containerStatuses[].state.running.startedAt. The restart
+        /// discriminator: a restart keeps the container id, so without this a
+        /// container that restarted looks like one that never moved.
+        std::string startedAt;
     };
 
     struct PodSnapshot
