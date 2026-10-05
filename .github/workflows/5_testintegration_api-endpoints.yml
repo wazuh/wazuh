@@ -50,6 +50,11 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # The images docker compose builds (api/test/integration/env/docker-compose.yml); save, load and the
+  # presence check iterate this list, so a missing image fails the job instead of being silently skipped
+  IT_IMAGES: integration_test_wazuh-manager integration_test_wazuh-agent integration_test_wazuh-agent_old integration_test_haproxy-lb
+
 jobs:
   api_endpoints_integration_tests_setup:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
@@ -141,11 +146,17 @@ jobs:
           # endpoint also serves for a fork
           docker compose build --build-arg WAZUH_BRANCH=${{ github.sha }} --no-cache
           mkdir -p /tmp/docker-images
-          readarray -t images < <(docker images | awk '/integration/ {print $1}')
-          for image in "${images[@]}"; do
-            docker save ${image}:latest | zstd -T0 > /tmp/docker-images/${image}.tar.zst&
+          pids=(); names=()
+          for image in ${IT_IMAGES}; do
+            docker image inspect "${image}:latest" >/dev/null
+            ( set -o pipefail; docker save "${image}:latest" | zstd -T0 -o "/tmp/docker-images/${image}.tar.zst" ) &
+            pids+=("$!"); names+=("${image}")
           done
-          wait
+          rc=0
+          for i in "${!pids[@]}"; do
+            wait "${pids[$i]}" || { echo "::error::docker save failed for ${names[$i]}"; rc=1; }
+          done
+          exit "${rc}"
 
   smoke_test:
     needs: [api_endpoints_integration_tests_setup, build_docker_images]
@@ -178,10 +189,22 @@ jobs:
 
       - name: Load Docker images
         run: |
-          for file in /tmp/docker-images/*.tar.zst; do
-            docker load --input "$file"&
+          shopt -s nullglob
+          files=(/tmp/docker-images/*.tar.zst)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::no Docker images to load in /tmp/docker-images (the image set of this run is missing)"
+            exit 1
+          fi
+          pids=()
+          for f in "${files[@]}"; do docker load --input "${f}" & pids+=("$!"); done
+          rc=0
+          for i in "${!pids[@]}"; do
+            wait "${pids[$i]}" || { echo "::error::docker load failed for ${files[$i]}"; rc=1; }
           done
-          wait
+          for image in ${IT_IMAGES}; do
+            docker image inspect "${image}:latest" >/dev/null 2>&1 || { echo "::error::image ${image}:latest is not loaded"; rc=1; }
+          done
+          exit "${rc}"
 
       - name: Run smoke test
         run: |
@@ -233,10 +256,22 @@ jobs:
 
       - name: Load Docker images
         run: |
-          for file in /tmp/docker-images/*.tar.zst; do
-            docker load --input "$file"&
+          shopt -s nullglob
+          files=(/tmp/docker-images/*.tar.zst)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::no Docker images to load in /tmp/docker-images (the image set of this run is missing)"
+            exit 1
+          fi
+          pids=()
+          for f in "${files[@]}"; do docker load --input "${f}" & pids+=("$!"); done
+          rc=0
+          for i in "${!pids[@]}"; do
+            wait "${pids[$i]}" || { echo "::error::docker load failed for ${files[$i]}"; rc=1; }
           done
-          wait
+          for image in ${IT_IMAGES}; do
+            docker image inspect "${image}:latest" >/dev/null 2>&1 || { echo "::error::image ${image}:latest is not loaded"; rc=1; }
+          done
+          exit "${rc}"
 
       - name: Run tests
         env:
