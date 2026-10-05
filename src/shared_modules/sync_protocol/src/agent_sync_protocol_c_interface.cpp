@@ -16,6 +16,11 @@ extern "C" {
         AgentSyncProtocol::setSessionMaxBytes(static_cast<size_t>(max_session_bytes));
     }
 
+    void asp_set_max_blocks_per_sync(uint32_t max_blocks)
+    {
+        AgentSyncProtocol::setMaxBlocksPerSync(static_cast<size_t>(max_blocks));
+    }
+
     long asp_get_agent_id(void)
     {
         return AgentSyncProtocol::currentAgentId();

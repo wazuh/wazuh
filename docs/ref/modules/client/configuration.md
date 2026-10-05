@@ -645,6 +645,21 @@ life of the process. Editing either one on a running agent has no effect until i
 out-of-range value refuses the start rather than terminating the agent later, at its first failed
 re-enrollment.
 
+### Stateful Sync Cycle
+
+```ini
+# Most stateful sync sessions (blocks) one FIM, SCA or Syscollector sync cycle
+# sends (default: 50, range 1-1000). Each block is bounded by <agent><batch><size>.
+agent.sync_max_blocks_per_cycle=50
+```
+
+Whatever is still queued after the last block waits for the module's next synchronization interval,
+so one cycle carries at most about `sync_max_blocks_per_cycle × <batch><size>` (about 50 MiB with the
+defaults). A first synchronization larger than that, such as the Windows registry baseline, takes
+several intervals to reach the indexer, and items queued after it wait their turn. The vulnerability
+detection sync of Syscollector is not bounded by this option. The value is read once, when the agent
+starts.
+
 ### Buffer Settings
 
 ```ini

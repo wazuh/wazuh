@@ -188,6 +188,16 @@ void AgentSyncProtocol::setSessionMaxBytes(size_t maxBytes)
     }
 }
 
+std::atomic<size_t> AgentSyncProtocol::s_maxBlocksPerSync {AgentSyncProtocol::FULLSESSION_MAX_BLOCKS_PER_SYNC};
+
+void AgentSyncProtocol::setMaxBlocksPerSync(size_t maxBlocks)
+{
+    if (maxBlocks > 0)
+    {
+        s_maxBlocksPerSync.store(maxBlocks);
+    }
+}
+
 long AgentSyncProtocol::currentAgentId()
 {
     agent_metadata_t metadata {};
@@ -231,7 +241,8 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optiona
       m_isFeedBased(isFeedBased),
       m_persistentQueue(nullptr), // Ensure initialized to nullptr
       m_logger(std::move(logger)),
-      m_sessionMaxBytes(s_sessionMaxBytes.load())
+      m_sessionMaxBytes(s_sessionMaxBytes.load()),
+      m_maxBlocksPerSync(s_maxBlocksPerSync.load())
 {
     if (!m_logger)
     {
@@ -384,7 +395,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
     bool sentAny = false;
     size_t blocksSent = 0;
 
-    while (!shouldStop() && blocksSent < FULLSESSION_MAX_BLOCKS_PER_SYNC)
+    while (!shouldStop() && blocksSent < m_maxBlocksPerSync)
     {
         std::vector<PersistedData> dataToSync;
 

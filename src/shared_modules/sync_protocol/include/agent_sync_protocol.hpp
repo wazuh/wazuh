@@ -91,6 +91,16 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param maxBytes Maximum bytes per session, or 0 to keep the default.
         static void setSessionMaxBytes(size_t maxBytes);
 
+        /// @brief Set how many blocks one DELTA sync cycle may send before the rest waits for the next cycle.
+        ///
+        /// The value belongs to the agent.sync_max_blocks_per_cycle internal option, which the daemon
+        /// hosting the modules reads and hands down before any module builds its protocol instance, like
+        /// setSessionMaxBytes(). Instances take a copy at construction. Zero leaves the built-in default
+        /// in place. The VD options are not bounded by it.
+        ///
+        /// @param maxBlocks Maximum blocks per sync cycle, or 0 to keep the default.
+        static void setMaxBlocksPerSync(size_t maxBlocks);
+
         /// @brief Returns the agent id this process is currently synchronizing under.
         ///
         /// Reads the shared-memory metadata provider -- the same source, through the same call,
@@ -429,7 +439,18 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         size_t m_sessionMaxBytes {FULLSESSION_MAX_BYTES};
 
         static constexpr size_t FULLSESSION_PREFILTER_GRACE_BYTES = 64U * 1024U;
-        static constexpr size_t FULLSESSION_MAX_BLOCKS_PER_SYNC = 10U;
+
+        /// Built-in number of blocks per DELTA sync cycle, used until a daemon calls
+        /// setMaxBlocksPerSync(). 50 blocks of the 1 MiB default session keep about the
+        /// 50 MiB per cycle that 10 blocks of the former 5 MiB session allowed.
+        static constexpr size_t FULLSESSION_MAX_BLOCKS_PER_SYNC = 50U;
+
+        /// Process-wide for the same reason as @ref s_sessionMaxBytes.
+        static std::atomic<size_t> s_maxBlocksPerSync;
+
+        /// This instance's copy, taken at construction.
+        size_t m_maxBlocksPerSync {FULLSESSION_MAX_BLOCKS_PER_SYNC};
+
         static constexpr std::string_view HTTP_RESULT_PREFIX = "HCRESULT:";
 };
 

@@ -29,6 +29,15 @@ extern "C" {
 /// @param max_session_bytes Maximum bytes per session, or 0 to keep the default.
 void asp_set_session_max_bytes(uint64_t max_session_bytes);
 
+/// @brief Sets how many blocks one DELTA sync cycle may send before the rest waits for the next cycle.
+///
+/// The value belongs to the agent.sync_max_blocks_per_cycle internal option. Like
+/// asp_set_session_max_bytes(), the daemon hosting the modules reads it and calls this before
+/// any module builds its protocol instance. Zero leaves the built-in default in place.
+///
+/// @param max_blocks Maximum blocks per sync cycle, or 0 to keep the default.
+void asp_set_max_blocks_per_sync(uint32_t max_blocks);
+
 /// @brief Returns the agent id this process is currently synchronizing under.
 ///
 /// Reads the shared-memory metadata provider -- the same source, through the same call, that

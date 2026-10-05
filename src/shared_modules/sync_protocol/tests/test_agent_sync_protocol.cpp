@@ -108,6 +108,75 @@ class AgentSyncProtocolTest : public ::testing::Test
             return protocol->parseResponseBuffer(buf.data(), buf.size());
         }
 
+        /// Runs one DELTA sync against a queue that never runs dry, acknowledging every block,
+        /// and returns how many blocks the cycle sent before it stopped on its own.
+        int sendBlocksUntilTheCycleStops(size_t expectedBlocks)
+        {
+            std::vector<PersistedData> testData =
+            {
+                {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+            };
+
+            EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+            .Times(static_cast<int>(expectedBlocks))
+            .WillRepeatedly(Return(testData));
+            EXPECT_CALL(*mockQueue, clearSyncedItems())
+            .Times(static_cast<int>(expectedBlocks));
+            EXPECT_CALL(*mockQueue, resetSyncingItems())
+            .Times(0);
+
+            std::atomic<bool> syncDone{false};
+            auto syncFuture = std::async(std::launch::async, [this, &syncDone]()
+            {
+                auto result = protocol->synchronizeModule(Mode::DELTA);
+                syncDone.store(true, std::memory_order_release);
+                return result;
+            });
+
+            // One acknowledgement more than expected, so a cycle that does not stop shows up
+            // as an extra block instead of hanging the test.
+            std::thread ackThread([this, &syncDone, expectedBlocks]()
+            {
+                size_t handled = 0;
+                int lastSendCount = 0;
+
+                while (handled <= expectedBlocks)
+                {
+                    const int currentSendCount = mockSyncTransport->sendCount();
+
+                    if (currentSendCount > lastSendCount)
+                    {
+                        lastSendCount = currentSendCount;
+                        feedHttpResult(200);
+                        ++handled;
+                        continue;
+                    }
+
+                    if (syncDone.load(std::memory_order_acquire))
+                    {
+                        break;
+                    }
+
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+            });
+
+            if (syncFuture.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
+            {
+                protocol->stop();
+                syncFuture.wait();
+                ackThread.join();
+                ADD_FAILURE() << "Sync thread did not finish in time; block limit may be broken";
+                return mockSyncTransport->sendCount();
+            }
+
+            const SyncModuleResult result = syncFuture.get();
+            ackThread.join();
+
+            EXPECT_TRUE(result.success);
+            return mockSyncTransport->sendCount();
+        }
+
         std::shared_ptr<MockPersistentQueue> mockQueue;
         std::shared_ptr<MockSyncTransport> mockSyncTransport =
             std::make_shared<MockSyncTransport>();
@@ -841,73 +910,66 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
     syncThread.join();
 }
 
-TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaStopsAfterTenBlocks)
+/// Puts the built-in block limit back when it goes out of scope. The limit is
+/// process-wide, so a test that changes it would otherwise leak into the next one.
+class MaxBlocksPerSyncGuard final
+{
+    public:
+        explicit MaxBlocksPerSyncGuard(size_t blocks)
+        {
+            AgentSyncProtocol::setMaxBlocksPerSync(blocks);
+        }
+
+        ~MaxBlocksPerSyncGuard()
+        {
+            AgentSyncProtocol::setMaxBlocksPerSync(50U);
+        }
+
+        MaxBlocksPerSyncGuard(const MaxBlocksPerSyncGuard&) = delete;
+        MaxBlocksPerSyncGuard& operator=(const MaxBlocksPerSyncGuard&) = delete;
+};
+
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaStopsAfterFiftyBlocksByDefault)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
 
-    std::vector<PersistedData> testData =
-    {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
-    };
+    EXPECT_EQ(sendBlocksUntilTheCycleStops(50U), 50);
+}
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
-    .Times(10)
-    .WillRepeatedly(Return(testData));
-    EXPECT_CALL(*mockQueue, clearSyncedItems())
-    .Times(10);
-    EXPECT_CALL(*mockQueue, resetSyncingItems())
-    .Times(0);
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaStopsAtTheConfiguredBlockLimit)
+{
+    const MaxBlocksPerSyncGuard guard {3U};
 
-    std::atomic<bool> syncDone{false};
-    auto syncFuture = std::async(std::launch::async, [this, &syncDone]()
-    {
-        auto result = protocol->synchronizeModule(Mode::DELTA);
-        syncDone.store(true, std::memory_order_release);
-        return result;
-    });
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
 
-    std::thread ackThread([this, &syncDone]()
-    {
-        int handled = 0;
-        int lastSendCount = 0;
+    EXPECT_EQ(sendBlocksUntilTheCycleStops(3U), 3);
+}
 
-        while (handled < 10)
-        {
-            const int currentSendCount = mockSyncTransport->sendCount();
+TEST_F(AgentSyncProtocolTest, AnUnsetBlockLimitKeepsTheBuiltInDefault)
+{
+    // Zero is what an absent agent.sync_max_blocks_per_cycle reaches the module as.
+    AgentSyncProtocol::setMaxBlocksPerSync(0);
 
-            if (currentSendCount > lastSendCount)
-            {
-                lastSendCount = currentSendCount;
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
 
-                feedHttpResult(200);  // was Status::Ok
-                ++handled;
-                continue;
-            }
+    EXPECT_EQ(sendBlocksUntilTheCycleStops(50U), 50);
+}
 
-            if (syncDone.load(std::memory_order_acquire) && currentSendCount == lastSendCount)
-            {
-                break;
-            }
+TEST_F(AgentSyncProtocolTest, ABlockLimitSetAfterConstructionDoesNotChangeTheInstance)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-    });
+    const MaxBlocksPerSyncGuard guard {3U};
 
-    if (syncFuture.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
-    {
-        syncDone.store(true, std::memory_order_release);
-        ackThread.join();
-        FAIL() << "Sync thread did not finish in time; block limit may be broken";
-    }
-
-    const SyncModuleResult result = syncFuture.get();
-    syncDone.store(true, std::memory_order_release);
-    ackThread.join();
-
-    EXPECT_TRUE(result.success);
-    EXPECT_EQ(mockSyncTransport->sendCount(), 10);
+    EXPECT_EQ(sendBlocksUntilTheCycleStops(50U), 50);
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaUsesBytePrefilterBudgetForSyncOption)
