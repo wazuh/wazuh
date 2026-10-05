@@ -33,4 +33,20 @@ The agent supports a wider set of operating systems and architectures than the s
 
 ### Hardware Requirements
 
-The agent has no dedicated hardware requirements. It runs on the monitored endpoint with a small footprint; actual CPU, memory and disk usage depend on the modules enabled and on the endpoint's activity.
+#### Minimum Specifications
+
+- **CPU**: 1 core
+- **RAM**: 128 MB available for the agent
+- **Disk**: 200 MB
+
+#### Measured Usage
+
+Usage measured with the default configuration on an Ubuntu 24.04 server VM (1 CPU, 2 GB of RAM) and a Windows 11 VM (2 CPUs, 4 GB of RAM):
+
+| Resource | Linux | Windows |
+| -------- | ----- | ------- |
+| CPU | Under 1% when idle. Up to half a core for about a minute during the startup scans | Under 1% when idle. Up to two cores for a few minutes during the startup scans |
+| RAM | About 60 MB | About 40 MB during the startup scans, 25 MB when idle |
+| Disk | About 50 MB | About 50 MB |
+
+Usage grows with the monitored content (directories under file integrity monitoring, installed packages, log volume) and with the modules enabled.
