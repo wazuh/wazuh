@@ -1002,6 +1002,41 @@ async def test_assign_agents_to_group(socket_mock, group_exists_mock, send_mock,
     assert result.total_failed_items == num_failed
 
 
+@patch('wazuh.core.agent.async_invalidate_registry_memberships', new_callable=AsyncMock)
+@patch('wazuh.core.agent.invalidate_registry_memberships')
+@patch('wazuh.core.agent.WazuhDBConnection')
+@patch('wazuh.core.agent.Agent.get_agent_groups', new_callable=AsyncMock, return_value=[])
+@patch('wazuh.core.agent.Agent.group_exists', return_value=True)
+async def test_assign_agents_to_group_tells_remoted_once(group_exists_mock, agent_groups_mock, wdb_mock,
+                                                        invalidate_mock, async_invalidate_mock):
+    """Test that one API call that writes several memberships tells the local remoted once, after every write, with
+    all the agents it wrote, without blocking the API's event loop."""
+    result = await assign_agents_to_group(['group-1'], ['001', '002', '003'])
+
+    assert result.total_affected_items == 3
+    assert wdb_mock.return_value.send.call_count == 3
+    async_invalidate_mock.assert_awaited_once_with({1, 2, 3})
+    invalidate_mock.assert_not_called()
+
+
+@patch('wazuh.core.agent.invalidate_registry_memberships')
+@patch('wazuh.core.agent.WazuhDBConnection')
+@patch('wazuh.core.agent.get_group_agent_ids', side_effect=lambda group: {'group-1': [1, 2], 'group-2': [2, 9]}[group])
+@patch('wazuh.core.agent.rmtree')
+@patch('wazuh.core.agent.path.exists', return_value=True)
+@patch('wazuh.agent.get_groups', return_value={'group-1', 'group-2'})
+def test_delete_groups_tells_remoted_once(get_groups_mock, exists_mock, rmtree_mock, group_agents_mock, wdb_mock,
+                                          invalidate_mock):
+    """Test that deleting several groups in one call tells the local remoted once, after every group left
+    wazuh-manager-db, about all the agents those groups had."""
+    result = delete_groups(['group-1', 'group-2'])
+
+    assert sorted(result.affected_items) == ['group-1', 'group-2']
+    assert [c.args[0] for c in wdb_mock.return_value.send.call_args_list] == [
+        'global delete-group group-1', 'global delete-group group-2']
+    invalidate_mock.assert_called_once_with({1, 2, 9})
+
+
 @pytest.mark.parametrize('group_list, agent_list, expected_error, catch_exception', [
     (['none-1'], ['001'], WazuhResourceNotFound(1710), True),
     (['group-1'], ['100'], WazuhResourceNotFound(1701), False),

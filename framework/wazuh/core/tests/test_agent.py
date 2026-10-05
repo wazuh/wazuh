@@ -3,11 +3,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import asyncio
+import inspect
 import os
 import sqlite3
 from copy import copy
 from datetime import datetime
-from unittest.mock import AsyncMock, patch, mock_open, call
+from unittest.mock import AsyncMock, MagicMock, patch, mock_open, call
 
 import pytest
 
@@ -20,6 +22,7 @@ with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core.agent import *
         from wazuh.core.exception import WazuhException
+        from wazuh.core.engine_http import RemotedAdminHTTPError
         from api.util import remove_nones_to_dict
         from wazuh.rbac.utils import RESOURCES_CACHE
 
@@ -806,19 +809,62 @@ def test_agent_add_authd_unrecorded_transition(mock_wazuh_socket):
         agent._add_authd('test_add', '192.168.0.1')
 
 
+@patch('wazuh.core.agent.invalidate_registry_memberships')
+@patch('wazuh.core.agent.WazuhDBConnection')
+@patch('wazuh.core.agent.get_group_agent_ids', return_value=[1, 5])
 @patch('wazuh.core.agent.rmtree')
 @patch('wazuh.core.agent.path.exists', return_value=True)
 @patch('wazuh.core.common.SHARED_PATH', new=os.path.join(test_data_path, 'etc', 'shared'))
-def test_agent_delete_single_group(mock_exists, mock_rmtree):
-    """Tests if method delete_single_group() works as expected"""
-
-    agent = Agent('001')
+def test_agent_delete_single_group(mock_exists, mock_rmtree, mock_group_agents, mock_wdb, mock_invalidate):
+    """Test that delete_single_group() removes the group directory, then takes the group out of wazuh-manager-db
+    itself, and only then tells remoted about the agents the group had: told earlier, remoted would read their
+    old memberships again and keep them."""
+    order = MagicMock()
+    order.attach_mock(mock_group_agents, 'read_group_agents')
+    order.attach_mock(mock_rmtree, 'rmtree')
+    order.attach_mock(mock_wdb.return_value.send, 'wdb_send')
+    order.attach_mock(mock_invalidate, 'invalidate')
     group = 'test_group'
 
-    result = agent.delete_single_group(group)
+    result = Agent('001').delete_single_group(group)
+
     assert isinstance(result, dict), 'Result is not a dict'
     assert result['message'] == f"Group '{group}' deleted.", 'Not expected message'
+    assert [name for name, _, _ in order.mock_calls] == ['read_group_agents', 'rmtree', 'wdb_send', 'invalidate']
+    mock_group_agents.assert_called_once_with(group)
     mock_rmtree.assert_called_once_with(os.path.join(common.SHARED_PATH, group))
+    mock_wdb.return_value.send.assert_called_once_with(f'global delete-group {group}', raw=True)
+    mock_wdb.return_value.close.assert_called_once()
+    mock_invalidate.assert_called_once_with([1, 5])
+
+
+@pytest.mark.parametrize('read_error, delete_error, told', [
+    (WazuhInternalError(2005), None, []),
+    (None, WazuhError(2003), [1, 5]),
+    (WazuhInternalError(2005), WazuhInternalError(2005), []),
+])
+@patch('wazuh.core.agent.logger')
+@patch('wazuh.core.agent.invalidate_registry_memberships')
+@patch('wazuh.core.agent.WazuhDBConnection')
+@patch('wazuh.core.agent.get_group_agent_ids')
+@patch('wazuh.core.agent.rmtree')
+@patch('wazuh.core.agent.path.exists', return_value=True)
+def test_agent_delete_single_group_survives_wazuh_db_errors(mock_exists, mock_rmtree, mock_group_agents, mock_wdb,
+                                                          mock_invalidate, mock_logger, read_error, delete_error,
+                                                          told):
+    """Test that delete_single_group() still deletes the group when wazuh-manager-db fails: the directory is what
+    deletes it, and wazuh-manager-modulesd still applies it to the database. A failure is logged, never raised, and
+    remoted is told about whatever agents could be read."""
+    mock_group_agents.side_effect = read_error or (lambda group: [1, 5])
+    mock_wdb.return_value.send.side_effect = delete_error
+
+    result = Agent.delete_single_group('test_group')
+
+    assert result['message'] == "Group 'test_group' deleted."
+    mock_rmtree.assert_called_once()
+    mock_wdb.return_value.send.assert_called_once_with('global delete-group test_group', raw=True)
+    mock_invalidate.assert_called_once_with(told)
+    assert mock_logger.warning.call_count == (read_error is not None) + (delete_error is not None)
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
@@ -1059,9 +1105,11 @@ async def test_agent_get_agent_groups(wdb_http_client_mock: AsyncMock):
     (True, True, 'remove'),
     (False, True, 'override')
 ])
+@patch('wazuh.core.agent.invalidate_registry_memberships')
 @patch('wazuh.core.agent.WazuhDBConnection.send')
 @patch('socket.socket.connect')
-def test_agent_set_agent_group_relationship(socket_connect_mock, send_mock, remove, override, expected_mode):
+def test_agent_set_agent_group_relationship(socket_connect_mock, send_mock, invalidate_mock, remove, override,
+                                            expected_mode):
     """Test if set_agent_group_relationship() uses the correct command to create/remove the relationship between
     an agent and a group.
 
@@ -1085,13 +1133,31 @@ def test_agent_set_agent_group_relationship(socket_connect_mock, send_mock, remo
     assert match, 'WDB command has changed'
     assert (expected_mode, agent_id, group_id) == match.groups(), 'Unexpected mode when setting agent-group ' \
                                                                   'relationship'
+    # Outside a batch, remoted is told about the agent right after the write.
+    invalidate_mock.assert_called_once_with([agent_id])
 
 
+@patch('wazuh.core.agent.invalidate_registry_memberships')
+@patch('wazuh.core.agent.WazuhDBConnection.send', side_effect=WazuhError(2003))
+@patch('socket.socket.connect')
+def test_agent_set_agent_group_relationship_tells_remoted_when_the_write_fails(socket_connect_mock, send_mock,
+                                                                                invalidate_mock):
+    """Test that a failed write still tells remoted: it may have reached the database, and an extra withdrawal
+    costs remoted one read."""
+    with pytest.raises(WazuhError, match='.* 2003 .*'):
+        Agent.set_agent_group_relationship('002', 'test_group')
+
+    invalidate_mock.assert_called_once_with(['002'])
+
+
+@patch('wazuh.core.agent.invalidate_registry_memberships')
 @patch('socket.socket.connect', side_effect=PermissionError)
-def test_agent_set_agent_group_relationship_ko(socket_connect_mock):
+def test_agent_set_agent_group_relationship_ko(socket_connect_mock, invalidate_mock):
     """Test if set_agent_group_relationship() raises expected exception."""
     with pytest.raises(WazuhInternalError, match='.* 2005 .*'):
         Agent.set_agent_group_relationship('002', 'test_group')
+
+    invalidate_mock.assert_not_called()  # no connection: nothing could have been written
 
 
 @pytest.mark.parametrize('agent_id, group_id, force, previous_groups, set_default', [
@@ -1204,6 +1270,215 @@ def test_expand_group(socket_mock, group, wdb_response, expected_agents):
 
     with patch('wazuh.core.wdb.WazuhDBConnection.send', side_effect=wdb_response):
         assert expand_group(group) == expected_agents, 'Agent IDs do not match with the expected result'
+
+
+@pytest.mark.parametrize('wdb_response, expected_agents, expected_commands', [
+    ([('due', '[1,2]'), ('ok', '[3,4]')], [1, 2, 3, 4],
+     ['global get-group-agents g1 last_id 0', 'global get-group-agents g1 last_id 2']),
+    ([('ok', '[]')], [], ['global get-group-agents g1 last_id 0']),
+    ([('due', '[]')], [], ['global get-group-agents g1 last_id 0']),  # an empty page ends the read
+])
+@patch('socket.socket.connect')
+def test_get_group_agent_ids(socket_mock, wdb_response, expected_agents, expected_commands):
+    """Test that get_group_agent_ids() pages through the group's agents and returns them as integers."""
+    with patch('wazuh.core.wdb.WazuhDBConnection.send', side_effect=wdb_response) as send_mock:
+        assert get_group_agent_ids('g1') == expected_agents
+
+    assert send_mock.call_args_list == [call(command, raw=True) for command in expected_commands]
+
+
+@patch('wazuh.core.agent.RemotedHTTPClient')
+def test_invalidate_registry_memberships_posts_each_agent_once(client_mock):
+    """Test that remoted gets one publication with every agent once, as integers."""
+    invalidate_registry_memberships(['005', 1, '001', 3])
+
+    client_mock.assert_called_once_with(timeout=REMOTED_PUBLISH_TIMEOUT)
+    client_mock.return_value.post_agent_groups.assert_called_once_with({'invalidate': [1, 3, 5]})
+    client_mock.return_value.close.assert_called_once()
+
+
+@patch('wazuh.core.agent.REGISTRY_INVALIDATION_CHUNK', 2)
+@patch('wazuh.core.agent.RemotedHTTPClient')
+def test_invalidate_registry_memberships_chunks_large_publications(client_mock):
+    """Test that a publication larger than the chunk is split, so no body reaches remoted's size limit."""
+    invalidate_registry_memberships(range(1, 6))
+
+    assert client_mock.return_value.post_agent_groups.call_args_list == [
+        call({'invalidate': [1, 2]}), call({'invalidate': [3, 4]}), call({'invalidate': [5]})]
+
+
+@patch('wazuh.core.agent.RemotedHTTPClient')
+def test_invalidate_registry_memberships_with_nothing_to_tell(client_mock):
+    """Test that no agents means no connection to remoted."""
+    invalidate_registry_memberships([])
+
+    client_mock.assert_not_called()
+
+
+@pytest.mark.parametrize('error', [
+    WazuhInternalError(2031),       # the admin socket is down
+    WazuhInternalError(2030),       # remoted does not answer in time
+    RemotedAdminHTTPError(503),     # remoted is stopping
+    RemotedAdminHTTPError(404),     # a remoted without the route
+    RuntimeError('unexpected'),
+])
+@patch('wazuh.core.agent.logger')
+@patch('wazuh.core.agent.REGISTRY_INVALIDATION_CHUNK', 2)
+@patch('wazuh.core.agent.RemotedHTTPClient')
+def test_invalidate_registry_memberships_is_best_effort(client_mock, logger_mock, error):
+    """Test that a failed publication is logged with the agents it left untold, stops the rest, and never raises:
+    the write it follows already happened, and the memberships still expire on their own."""
+    client_mock.return_value.post_agent_groups.side_effect = [{'invalidated': 2, 'skipped': 0}, error]
+
+    invalidate_registry_memberships([1, 2, 3, 4, 5])
+
+    assert client_mock.return_value.post_agent_groups.call_count == 2
+    logger_mock.warning.assert_called_once()
+    assert 'group memberships of 3 agent(s) changed' in logger_mock.warning.call_args[0][0]
+    client_mock.return_value.close.assert_called_once()
+
+
+@patch('wazuh.core.agent.logger')
+@patch('wazuh.core.agent.RemotedHTTPClient', side_effect=WazuhInternalError(2028))
+def test_invalidate_registry_memberships_survives_a_client_that_cannot_be_built(client_mock, logger_mock):
+    """Test that a client that cannot even be built is logged, not raised."""
+    invalidate_registry_memberships([7])
+
+    logger_mock.warning.assert_called_once()
+    assert 'group memberships of 1 agent(s) changed' in logger_mock.warning.call_args[0][0]
+
+
+@patch('wazuh.core.agent.invalidate_registry_memberships')
+def test_note_registry_memberships_written_outside_a_batch(invalidate_mock):
+    """Test that a write outside a batch tells remoted at once."""
+    note_registry_memberships_written(['001'])
+
+    invalidate_mock.assert_called_once_with(['001'])
+
+
+@patch('wazuh.core.agent.invalidate_registry_memberships')
+def test_batch_registry_invalidations_tells_remoted_once(invalidate_mock):
+    """Test that a batch collects every write, nested batches included, and tells remoted once, at its end."""
+    with batch_registry_invalidations():
+        note_registry_memberships_written(['001'])
+        note_registry_memberships_written(['002', 1])
+        with batch_registry_invalidations():
+            note_registry_memberships_written([7])
+        invalidate_mock.assert_not_called()
+
+    invalidate_mock.assert_called_once_with({1, 2, 7})
+
+    # Once the batch is over, a write tells remoted at once again.
+    note_registry_memberships_written([4])
+    invalidate_mock.assert_called_with([4])
+
+
+@patch('wazuh.core.agent.invalidate_registry_memberships')
+def test_batch_registry_invalidations_tells_remoted_when_the_block_raises(invalidate_mock):
+    """Test that writes made before an error are still told."""
+    with pytest.raises(ValueError):
+        with batch_registry_invalidations():
+            note_registry_memberships_written([3])
+            raise ValueError('a later agent failed')
+
+    invalidate_mock.assert_called_once_with({3})
+
+
+@patch('wazuh.core.agent.invalidate_registry_memberships')
+def test_batches_registry_invalidations_sync(invalidate_mock):
+    """Test the decorator on a synchronous function: one publication per call."""
+    @batches_registry_invalidations
+    def write(ids):
+        for agent_id in ids:
+            note_registry_memberships_written([agent_id])
+        return 'done'
+
+    assert write([1, 2]) == 'done'
+    invalidate_mock.assert_called_once_with({1, 2})
+
+
+@patch('wazuh.core.agent.async_invalidate_registry_memberships', new_callable=AsyncMock)
+@patch('wazuh.core.agent.invalidate_registry_memberships')
+async def test_batches_registry_invalidations_async(invalidate_mock, async_invalidate_mock):
+    """Test the decorator on a coroutine function: it stays a coroutine function, the batch spans the awaited
+    writes, a nested batch leaves the work to the outer one, and remoted is told through the asynchronous client,
+    never blocking the event loop."""
+    @batches_registry_invalidations
+    async def inner(agent_id):
+        note_registry_memberships_written([agent_id])
+
+    @batches_registry_invalidations
+    async def write(ids):
+        for agent_id in ids:
+            await asyncio.sleep(0)
+            note_registry_memberships_written([agent_id])
+        await inner(9)
+        return 'done'
+
+    assert inspect.iscoroutinefunction(write)
+    assert await write([1, 2]) == 'done'
+    async_invalidate_mock.assert_awaited_once_with({1, 2, 9})
+    invalidate_mock.assert_not_called()
+
+
+@patch('wazuh.core.agent.async_invalidate_registry_memberships', new_callable=AsyncMock)
+async def test_batches_registry_invalidations_async_tells_remoted_when_the_call_raises(async_invalidate_mock):
+    """Test that writes made before an error are still told."""
+    @batches_registry_invalidations
+    async def write():
+        note_registry_memberships_written([3])
+        raise ValueError('a later agent failed')
+
+    with pytest.raises(ValueError):
+        await write()
+
+    async_invalidate_mock.assert_awaited_once_with({3})
+
+
+def _async_remoted_client_mock(post_side_effect=None):
+    client = MagicMock()
+    client.post_agent_groups = AsyncMock(side_effect=post_side_effect)
+    client.close = AsyncMock()
+    return client
+
+
+@patch('wazuh.core.agent.REGISTRY_INVALIDATION_CHUNK', 2)
+@patch('wazuh.core.agent.AsyncRemotedHTTPClient')
+async def test_async_invalidate_registry_memberships_posts_each_agent_once(client_mock):
+    """Test that the asynchronous publication sends each agent once, as integers, in chunks."""
+    client_mock.return_value = _async_remoted_client_mock()
+
+    await async_invalidate_registry_memberships(['003', 1, '001', 2, 5])
+
+    client_mock.assert_called_once_with(timeout=REMOTED_PUBLISH_TIMEOUT)
+    assert client_mock.return_value.post_agent_groups.await_args_list == [
+        call({'invalidate': [1, 2]}), call({'invalidate': [3, 5]})]
+    client_mock.return_value.close.assert_awaited_once()
+
+
+@patch('wazuh.core.agent.AsyncRemotedHTTPClient')
+async def test_async_invalidate_registry_memberships_with_nothing_to_tell(client_mock):
+    """Test that no agents means no connection to remoted."""
+    await async_invalidate_registry_memberships(set())
+
+    client_mock.assert_not_called()
+
+
+@pytest.mark.parametrize('error', [WazuhInternalError(2031), RemotedAdminHTTPError(503), RuntimeError('unexpected')])
+@patch('wazuh.core.agent.logger')
+@patch('wazuh.core.agent.REGISTRY_INVALIDATION_CHUNK', 2)
+@patch('wazuh.core.agent.AsyncRemotedHTTPClient')
+async def test_async_invalidate_registry_memberships_is_best_effort(client_mock, logger_mock, error):
+    """Test that a failed asynchronous publication is logged with the agents it left untold, stops the rest, and
+    never raises."""
+    client_mock.return_value = _async_remoted_client_mock([{'invalidated': 2, 'skipped': 0}, error])
+
+    await async_invalidate_registry_memberships([1, 2, 3, 4, 5])
+
+    assert client_mock.return_value.post_agent_groups.await_count == 2
+    logger_mock.warning.assert_called_once()
+    assert 'group memberships of 3 agent(s) changed' in logger_mock.warning.call_args[0][0]
+    client_mock.return_value.close.assert_awaited_once()
 
 
 @pytest.mark.parametrize('system_resources, permitted_resources, filters, expected_result', [

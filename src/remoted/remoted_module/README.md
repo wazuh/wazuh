@@ -2320,7 +2320,7 @@ linked into the settings' own documentation — is the official docs page:
 | Family | What it answers | Counted at |
 |---|---|---|
 | `remoted.control.*` (6 counters + `rejected` + `no_row` + `wdb.latency` histogram) | control-plane health, wazuh-db sizing | `controlHandler`/`controlEndpoint`/`wazuhDBClient`/`taskClient` (see the /control section) |
-| `remoted.control.registry.push.{invalidated, skipped, rejected}` | do clusterd's membership publications reach this node, and do they find the agents they name (a high `skipped` share is normal on a worker most agents never contact) | `admin/agentGroupsRoute.cpp` |
+| `remoted.control.registry.push.{invalidated, skipped, rejected}` | do the membership publications (clusterd on a worker, the API on a master or standalone node) reach this node, and do they find the agents they name (a high `skipped` share is normal on a worker most agents never contact) | `admin/agentGroupsRoute.cpp` |
 | `remoted.control.registry.agents` (pull) | how many agents this node currently tracks — diagnostic only: the registry TTL (6 h) and eviction cadence (5 min) are compile-time constants, not settings | `AgentRegistry::size()` |
 | `remoted.scanvd.*` (7 counters) | VD scan admission split | `scanVdHandler` (see the /scan/vd section) |
 | `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed, token_unknown, token_expired, token_revoked}` | WHY authentication failed, finer than the class the wire names (see [401 classes](#401-classes)); the three `token_*` cells are `/enroll`'s enrollment-token states | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
@@ -2374,19 +2374,22 @@ read of a few-KB file — exempt from the byte budget), and one write route, **C
 | `GET /metrics` | JSON dump of the module's whole `wazuh_metrics` registry (every family in **Metrics catalog** above), same envelope as inventory sync's `/metrics` |
 | `GET /status` | Readiness, not bare liveness — see below |
 | `GET /tls` | The served TLS certificate and the CA bundle `GET /cacerts` hands out: dates, identities, which CA signs the leaf — see below |
-| `POST /_internal/agents/groups` | A membership publication from the local cluster daemon, applied to the `AgentRegistry` — see below |
+| `POST /_internal/agents/groups` | A membership publication from the local cluster daemon (worker) or the server API (master, standalone), applied to the `AgentRegistry` — see below |
 
 ### `POST /_internal/agents/groups`: membership publications (#39147)
 
 On a worker, clusterd applies the master's agent-group memberships to the local wazuh-db in chunks;
 after each chunk it names the chunk's agents here, so `/control` and `/download` stop trusting their
 cached memberships at once and read them from the database on their next request, instead of when an
-entry expires. `src/admin/agentGroupsRoute.{hpp,cpp}` (`makeAgentGroupsHandler()`), registered in
+entry expires. On a master or a standalone node the server API publishes instead, after it writes a
+membership (`Agent.set_agent_group_relationship()`, one publication per API call) and after it deletes
+a group (`Agent.delete_single_group()` runs `global delete-group` itself first, so the publication
+follows the database change rather than racing `wazuh-manager-modulesd`'s). `src/admin/agentGroupsRoute.{hpp,cpp}` (`makeAgentGroupsHandler()`), registered in
 `startAdminServer()` with `RouteOptions {RouteClass::Control, kAgentGroupsMaxBodyBytes}` (256 KiB, over
 the class's 64 KiB; an id list is a fraction of the chunk it comes from).
 
 - **A publication only invalidates.** It never carries groups: it describes the database as it was when
-  clusterd wrote the chunk, and it can arrive after this node made a newer read — which it must not
+  the publisher wrote it, and it can arrive after this node made a newer read — which it must not
   overwrite, or keep alive for another interval. Only a wazuh-db read establishes a membership. So a
   late publication costs one extra read, and a lost one leaves the entry bounded by
   `remoted.control_groups_refresh_interval` after the read that established it.
