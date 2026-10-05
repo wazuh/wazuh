@@ -58,15 +58,18 @@ namespace wazuh::container_instances
         std::unordered_map<std::string, std::uint64_t> inodeByContainerId;
         for (const auto& entry : scan.containers)
         {
-            inodeByContainerId.emplace(entry.containerId, entry.inode);
+            // The host's key, not simply the cgroup inode: on a legacy hierarchy the
+            // cgroup inode is a number no event ever carries, so keying on it answers
+            // every correlation lookup with a miss while looking entirely healthy.
+            inodeByContainerId.emplace(entry.containerId, hostKeyOf(entry, scan.keyKind));
         }
         for (auto& record : records)
         {
             const auto it = inodeByContainerId.find(record.containerId);
-            record.cgroupId = (it != inodeByContainerId.end()) ? it->second : 0;
+            record.hostKey = (it != inodeByContainerId.end()) ? it->second : 0;
         }
 
-        m_store.applySnapshot(m_source, std::move(records), scan.allInodes, std::chrono::steady_clock::now());
+        m_store.applySnapshot(m_source, std::move(records), scan.allHostKeys, std::chrono::steady_clock::now());
         m_lastReconcile = std::chrono::steady_clock::now();
         m_reconcilePending = false;
     }
@@ -142,11 +145,11 @@ namespace wazuh::container_instances
                     reSeed();
                     backoff = BACKOFF_BASE;
 
-                    const auto outcome =
-                        m_client.streamEvents(sinceSeconds,
-                                              [this](const DockerEvent& event) { handleEvent(event); },
-                                              stop,
-                                              [this] { flushPendingReconcile(); });
+                    const auto outcome = m_client.streamEvents(
+                        sinceSeconds,
+                        [this](const DockerEvent& event) { handleEvent(event); },
+                        stop,
+                        [this] { flushPendingReconcile(); });
 
                     if (outcome.kind == StreamOutcome::Kind::cancelled)
                     {
@@ -191,7 +194,7 @@ namespace wazuh::container_instances
         try
         {
             auto detail = m_client.inspect(containerId);
-            detail.record.cgroupId = cgroupInode;
+            detail.record.hostKey = cgroupInode;
             m_store.upsertResolved(m_source, std::move(detail.record));
             return RefreshOutcome::resolved;
         }
