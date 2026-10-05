@@ -298,6 +298,8 @@ void test_Read_Syscheck_Config_invalid_diff_limit(void **state)
 
     assert_int_equal(syscheck.disk_quota_limit, 1024 * 1024);
     assert_int_equal(syscheck.file_size_limit, 50 * 1024);
+    assert_non_null(syscheck.nodiff);
+    assert_string_equal(syscheck.nodiff[0], "/etc/secret.conf");
 }
 
 void test_read_data_unit_short_values(void **state)

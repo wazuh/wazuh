@@ -1552,8 +1552,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
 
                         if (limit == -1) {
                             mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
-                            OS_ClearNode(children);
-                            return;
+                            continue;
                         }
 
                         syscheck->disk_quota_limit = limit;
@@ -1597,8 +1596,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
 
                         if (limit == -1) {
                             mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
-                            OS_ClearNode(children);
-                            return;
+                            continue;
                         }
 
                         syscheck->file_size_limit = limit;
