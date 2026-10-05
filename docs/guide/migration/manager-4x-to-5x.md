@@ -249,14 +249,13 @@ manager: INFO: Agent key generated for agent 'agent-ubuntu24' (requested locally
 
 And an agent that was refused an enrollment, because its per-agent secret is not something this
 procedure carries, keeps retrying that enrollment once a minute and does not go back to its key on
-its own when the registry reappears. Restart it, and it connects with its key and obtains a new
-secret:
+its own when the registry reappears:
 
 ```console
 wazuh-agentd: INFO: Enrollment rejected by the manager: invalid_request: Invalid client authentication. Retrying.
-...
-wazuh-agentd: INFO: Re-enrollment secret obtained from the manager for agent '001'.
 ```
+
+Restart it, and it connects with the key it holds.
 
 A new agent installed during the window costs you something too, even on a first migration: it
 enrolls legitimately and takes the next free id, which is one the bundle is about to restore. The
@@ -383,15 +382,15 @@ The asymmetry is the reason to think about it rather than copy it by reflex:
   demands a password. Skip this step and `wazuh-manager-authd` generates a new random one on its
   first start, which rejects every 4.x agent still holding the old one. In a cluster the file
   belongs to the master and is distributed to the workers.
-- **5.0 agents do not.** They enroll with an enrollment token and re-enroll with a per-agent secret.
+- **5.0 agents do not.** They enroll with an enrollment token, and an agent that enrolled keeps a per-agent secret it can re-enroll with.
   Nothing on a 5.0 endpoint writes `authd.pass` any more: `WAZUH_REGISTRATION_PASSWORD` is no longer
   a supported install variable, and the package upgrade **deletes** any file it finds. The agent
   still reads one placed there by hand, which is what makes the recovery below work, but it is no
   longer part of how an agent is deployed.
 
 So carrying it extends the life of a fleet-wide shared secret that 5.0 is retiring, and it buys
-nothing once the last 4.x agent is gone: an upgraded agent gets a per-agent secret of its own on its
-first 5.0 start, and anything else an operator needs is done with a token, as
+nothing once the last 4.x agent is gone: an upgraded agent keeps the key it has and holds no secret of its own,
+and anything an operator needs is done with a token, as
 [What the upgrade does to the agent's credentials](#what-the-upgrade-does-to-the-agents-credentials)
 explains. Drop it at that point: delete `/var/wazuh-manager/etc/authd.pass` and restart
 `wazuh-manager-authd` to get a fresh one, or set `<auth><use_password>no</use_password>` once
@@ -616,17 +615,15 @@ it holds on disk still changes, and it is worth knowing before you upgrade a fle
 
 4. The agent restarts, reads the manager address out of its legacy `<client>` block, and connects
    over `1517` with the same id and key, verifying against the anchor from step 1.
-5. On that first start it asks the manager for a re-enrollment secret of its own, proving who it is
-   with the key it already has, and stores the answer at `etc/reenroll.secret`. Nothing to do: the
-   agent does this by itself, the key is not touched, and a lost answer just means it asks again
-   next time.
+5. The agent keeps the key it has and holds no per-agent secret of its own: that secret is only
+   issued when an agent enrolls. Nothing to do while the manager recognises the key.
 
-So the endpoint ends up holding its key and its own per-agent secret, and no fleet-wide credential
-at all. That is the point of the exercise: the shared password is gone from every host, and an agent
-whose key the manager later stops recognising re-enrolls with its secret, keeping its id, without
-anyone visiting it.
+So the endpoint ends up holding its key and no fleet-wide credential at all. That is the point of
+the exercise: the shared password is gone from every host. If the manager later stops recognising
+the key (an `unknown_agent` answer), the agent falls back to the credential it is configured with,
+or is re-pointed with a token, as below.
 
-Two cases still need an operator, and both are handled from the endpoint with `wazuh-agent-auth`
+Two cases need an operator, and both are handled from the endpoint with `wazuh-agent-auth`
 and a token minted on the manager:
 
 ```bash
@@ -641,7 +638,7 @@ sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --addr
   sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --certs-only
   ```
 
-- **The identity is genuinely gone** from the manager, so no secret can help. `--force-enroll`
+- **The identity is gone** from the manager. `--force-enroll`
   registers the agent again; it comes back with a **new id**, which is the cost of that path:
 
   ```bash

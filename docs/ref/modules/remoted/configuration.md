@@ -374,8 +374,6 @@ Two of the HTTPS routes cannot be put behind the bearer-token gateway, because t
 yet have the credential it verifies: `POST /enroll` (an enrolling agent has no `client.keys` entry
 yet) and `GET /cacerts` (a caller fetching the trust anchor does not have one yet by definition).
 For those two, these two options cap how fast the manager serves the route at all.
-`POST /enroll/secret` is authenticated, but it costs the manager the same `authd` round trip as
-`/enroll`, so it shares `/enroll`'s bucket and is charged **before** its bearer is verified.
 
 **Neither is written into the shipped `wazuh-manager.conf`** — the defaults below apply without any
 `<https>` block, and an operator only adds a line to change one.
@@ -413,14 +411,14 @@ counts what was refused.
 
 ### https.enroll_rate_limit
 
-Sustained requests per second the manager serves across `POST /enroll` and `POST /enroll/secret`
-together, counted for the two routes as a whole and not per agent.
+Sustained `POST /enroll` requests per second the manager serves, counted for the endpoint as a
+whole.
 
 - **Default value:** `100`
 - **Allowed values:** Integer from `0` to `100000`. `0` disables the limit.
 - **Note:** Short bursts of up to twice this value are absorbed before the rate paces them.
 - **Effect:** Requests over the limit are answered `429` with `Retry-After` **without reaching
-  authd** (on `/enroll/secret`, without even being authenticated), so a peer with no usable credential can no longer turn `/enroll` into an amplifier onto
+  authd**, so a peer with no usable credential can no longer turn `/enroll` into an amplifier onto
   the cluster's internal socket.
 - **Note:** Higher than `/cacerts`'s default even though it is the more expensive route: every agent
   must pass through it at least once (a bootstrap, or a mass re-enrollment after a credential

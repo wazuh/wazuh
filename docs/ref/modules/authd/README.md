@@ -93,11 +93,6 @@ the agent already holds; see
 an `add` that carries `token_id` or `reenroll` to the master, answers `token_create` and `token_revoke`
 with `9015`, and serves `token_list` from the copy it holds.
 
-`issue_reenroll_secret` is forwarded the same way and for the same reason — the row it writes lives
-in the master's `global.db`. It travels over the existing generic `sendsync` relay, which carries the
-authd payload opaquely, so it needs no cluster-protocol command of its own; a forward that fails
-answers `9016`.
-
 ## Storage
 
 | File | Contents |
@@ -433,37 +428,19 @@ highest id present in `client.keys`, so the next self-enrollment would hand out 
 agent would reject that too. Eight digits is what re-enrollment supports; widening the range is a change
 to the agent, the id assigner and the deletion recovery together.
 
-### Agents that never enrolled, and how they get one
+### Changing the master node
 
-The secret is minted by an enrollment, which leaves three populations holding a key and no way to
-recover on their own: a **4.x agent upgraded to 5.0 over WPK** (it keeps its `client.keys` identity,
-so it never calls `POST /enroll` — and the 5.0 package upgrade removes `etc/authd.pass`, so that key
-becomes its only credential), an agent **enrolled over port 1515**, and a row **rebuilt from
-`client.keys`**. All three are what `9026` names when they try to re-enroll.
-
-Such an agent asks for a secret instead, on
-[`POST /enroll/secret`](../remoted/https-events-api.md#re-enrollment-secret-endpoint-post-enrollsecret),
-which reaches this daemon as the `issue_reenroll_secret` verb. Authorization is possession of the
-agent's own key, proved to remoted; the secret is minted for the identity that bearer names and
-**the key is not touched**, so a lost answer leaves the agent exactly as it was and its next start
-asks again. Reissue is always accepted for the same reason. An agent whose row does not exist yet is
-refused with `9026` rather than handed a secret the writer would silently drop: `set-agent-credentials`
-answers `ok` for an UPDATE matching zero rows, so the row is read before anything is minted.
-
-An operator needs to do nothing: the agent does this by itself on its first start after the upgrade.
-
-**Changing the master node invalidates every stored secret**, and for the same root cause as the note
-below: the secret lives in the master's `global.db`, which the cluster does **not** replicate
+The secret lives in the master's `global.db`, which the cluster does **not** replicate
 (of authd's files, `cluster.json` carries only `client.keys`, `etc/authd.pass` and
-`etc/enrollment_tokens.json`). A promoted node rebuilds its agent rows from the `client.keys` it received, with a NULL secret
-— the third population above, fleet-wide.
+`etc/enrollment_tokens.json`). A promoted node rebuilds its agent rows from the `client.keys` it
+received, with a NULL secret.
 
-The agents themselves keep working: `client.keys` *is* replicated, so their keys still authenticate,
-and `issue_reenroll_secret` still serves them on that key. What is lost is recovery — each agent holds
-a credential the new master has never seen, and it will not ask for another, because it only asks when
-its store is empty. The mismatch surfaces only when the key itself stops being accepted, which is too
-late for an agent with no token and no password. After a master change, re-issue the fleet's secrets:
-removing `etc/reenroll.secret` on an agent makes its next start ask for a fresh one.
+The agents themselves keep working: `client.keys` *is* replicated, so their keys still
+authenticate. What does not carry over is the secret each agent holds: the new master has never
+seen it, so a re-enrollment with it answers `unknown_agent` (`9026`). The agent then discards that
+secret and enrolls again with the credential it is configured with (an enrollment token or a
+password); with neither, it retries without one, which only a manager that accepts
+credential-less enrollment honours — otherwise an operator re-points it with a token.
 
 **There is no upgrade path for `global.db`.** A database created by a 5.0.0 build from before the
 `agent.reenroll_secret` column is recreated, not migrated. And rebuilding the agent rows from
@@ -477,7 +454,7 @@ covers the transitions this manager actually handed out.
 In addition to the TLS enrollment path on port 1515, authd exposes a local-only enrollment API over
 the Unix domain socket `queue/sockets/auth.sock`. Its clients are the server API (agent
 registration and deletion, and the enrollment-token endpoints), the token CLI described above, and
-`remoted_module`'s `POST /enroll` and `POST /enroll/secret` bridges (see
+`remoted_module`'s `POST /enroll` bridge (see
 [HTTPS enrollment](../remoted/https-events-api.md#enrollment-endpoint-post-enroll)). Access to the
 socket is the only authorization: none of them goes through TLS or the enrollment password.
 
@@ -534,27 +511,6 @@ A request is a single-line JSON object:
   meaning as the [`purge`](configuration.md#purge) configuration option, but scoped to this one
   request)
 - **`get`** — look up an agent's stored data. Arguments: `id` (required)
-- **`issue_reenroll_secret`** — mint a re-enrollment secret for an agent that already holds a key
-  (master only; a worker forwards it, see [Cluster](#cluster)). Arguments: `id` (required, at most
-  eight digits) and `key_fingerprint` (SHA-256 of the `client.keys` key remoted authenticated the
-  request against, as 64 lowercase hex chars). **No credential travels with it**: remoted's
-  `POST /enroll/secret` has already proved the identity with the agent's own `client.keys` key,
-  exactly as it proves an enrollment token before authd consumes a use, and the fingerprint is a
-  one-way digest of a key authd already holds — an identity *assertion* authd re-checks, never a
-  credential it trusts. It is what makes "the caller holds **a** key for agent 001" and "the caller
-  holds agent 001's **current** key" different statements: remoted answers from its own copy of
-  `client.keys`, which on a worker node is a replica that can lag this one, so only the master can
-  decide. A request whose fingerprint does not match the keystore entry — or that carries none at
-  all — is refused, and nothing is minted, journaled or queued. Answers
-  `{"error": 0, "data": {"id": "001", "reenroll_secret": "<secret>"}}`. The agent's **key is not
-  rotated** — only `global set-agent-credentials` runs, with the key the keystore already holds, and
-  `client.keys` is unchanged by construction — so repeating the call is safe and is always accepted.
-  Refusals: `9026` (the agent is not in the keystore, **or has no row in `global.db` yet** — the
-  state a migrated agent is in until `wazuh-manager-modulesd` rebuilds its row from `client.keys`),
-  `9030` (a rotation for that agent is already in flight), `9031` (the transition could not be
-  journaled, so nothing was handed out), `9032` (the request authenticated with a key that is no
-  longer the agent's), `9010` (a malformed or absent `id`). See
-  [Re-enrollment secret](#re-enrollment-secret)
 - **`token_create`** — mint an [enrollment token](#enrollment-tokens) (master only). Arguments:
   `address` (required), `port`, `prefix`, `ttl` (seconds, `0` = the 30 day default, at most
   315360000), `max_uses` (`0` = unlimited), `description`, `embed_ca`, `no_credential` (booleans).
@@ -579,11 +535,10 @@ A successful `add` responds with:
 {"error": 0, "data": {"id": "001", "name": "myagent", "ip": "any", "key": "<key>", "reenroll_secret": "<secret>"}}
 ```
 
-`issue_reenroll_secret` answers only `{"id", "reenroll_secret"}` — no `key`, `name` or `ip`, because
-it changes none of them. `get` answers the `add` shape without `reenroll_secret`, a successful `remove` responds with
+`get` answers the `add` shape without `reenroll_secret`, a successful `remove` responds with
 `{"error": 0, "data": "Agent deleted successfully."}`, and any failure responds with
 `{"error": <code>, "message": "<description>"}` (for example `9007` "Duplicate IP", `9013` "Maximum
-number of agents reached", or `9022`–`9032` for the token, re-enrollment and identity-journal paths — see the
+number of agents reached", or `9022`–`9031` for the token, re-enrollment and identity-journal paths — see the
 [error code table](architecture.md#error-codes)).
 
 **Per-request force override:** the `force` object on an `add` request, when present, completely
@@ -637,7 +592,7 @@ The in-repo companion to these pages (a plain path — it lives outside this boo
 
 - `src/os_auth/README.md` — the developer's map of the module: its source layout, the
   functional/non-functional requirements catalog (RF, RNF, and the `REQ-PURGE` contract with
-  inventory-sync), the design decisions (D1–D14) with the reasoning behind each, the load-bearing
+  inventory-sync), the design decisions (D1–D13) with the reasoning behind each, the load-bearing
   invariants, the operational notes, and which test suite covers what.
 - `src/config/src/authd-config.c` — the reader of the `auth` section (`Read_Authd_JSON()`), shared
   by authd and remoted's enrollment bridge; the option names, types and defaults themselves come
