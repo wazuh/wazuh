@@ -39,6 +39,7 @@
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Made container file monitoring and container inventory opt-in and independently switchable. |
 | [#37396](https://github.com/wazuh/wazuh/issues/37396) | Stopped resolving process working directories for container file events, which never used them. |
 | [#37396](https://github.com/wazuh/wazuh/issues/37396) | Stopped delivering file events from outside any container to container file monitoring. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Detected new containers as soon as the container runtime reports them instead of waiting for the next scheduled check. |
 
 #### Removed
 

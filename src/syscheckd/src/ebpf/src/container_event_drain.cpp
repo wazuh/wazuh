@@ -15,12 +15,16 @@
 #include "container_baseline_fim_bridge.h"
 #include "container_event_router.hpp"
 #include "container_event_staging.hpp"
+#include "resolver_wait.hpp"
 #include "container_instances_client.hpp"
+#include "container_instances_notify_socket.hpp"
+#include "defs.h"
 
 #include "rt_engine.h"
 
 #include <json.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <cerrno>
 #include <chrono>
@@ -28,6 +32,10 @@
 #include <thread>
 #include <utility>
 #include <vector>
+
+#include <poll.h>
+#include <sys/eventfd.h>
+#include <unistd.h>
 
 namespace fim_container_events
 {
@@ -113,6 +121,16 @@ struct ContainerEventDrain::Impl
 
     rt_handle_t      handle{nullptr};
     ReconcileHandler handler;
+
+    /* Woken by container_instances when its container list changes. Unbound is
+     * a supported state, not a failure: fd() is then -1 and the resolver falls
+     * back to its interval, which is what it did before this existed. */
+    wazuh::container_instances_client::NotifySocket notify;
+
+    /* Wakes the resolver out of poll() on shutdown. A short poll timeout would
+     * do the same job only while the interval stays small, and it is on its way
+     * to tens of seconds. */
+    int stop_event_fd{-1};
 
     std::atomic<bool> stop{false};
 
@@ -239,12 +257,73 @@ struct ContainerEventDrain::Impl
             resolvePending();
             router.pumpUnknownOverflow();
 
-            /* Sleep in slices so stop() is not held up for a whole interval. */
-            for (int slept = 0; slept < 200 && !stop.load(std::memory_order_relaxed); slept += 50)
+            if (waitForWork(next_list))
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                /* container_instances says its list moved. Refreshing on the
+                 * next pass rather than here keeps one call site for the
+                 * refresh, and the loop head is one statement away. */
+                next_list = std::chrono::steady_clock::now();
             }
         }
+    }
+
+    /* Blocks until container_instances reports a change, the next scheduled
+     * refresh is due, or stop() fires. Returns true only for the first.
+     *
+     * The interval this replaces is now a FLOOR rather than the way changes are
+     * noticed. Discovery used to cost up to a full interval because nothing
+     * else could report a new container; with the kernel filter in place that
+     * was also the only thing admitting its cgroup, so the wait was the
+     * detection latency. Now the common case is a datagram arriving in
+     * milliseconds, and the interval only has to cover what no notification can
+     * report — a container the module itself never learned about.
+     *
+     * Three fds, and each is load-bearing:
+     *   notify   the wake. Absent (unbound) it is -1, which poll() skips, so
+     *            the loop degrades to exactly its previous behaviour.
+     *   stop     an eventfd, not a short timeout. The floor is heading for tens
+     *            of seconds, and without this, shutdown would wait out whatever
+     *            remained of it.
+     *   timeout  bounded by resolvePending()'s pacing while cgroups are still
+     *            unresolved, since those need revisiting on their own cadence
+     *            and no notification is coming for them. */
+    bool waitForWork(std::chrono::steady_clock::time_point next_list)
+    {
+        const auto until_refresh =
+            std::chrono::duration_cast<std::chrono::milliseconds>(next_list - std::chrono::steady_clock::now());
+        const int timeout_ms = resolverWaitMs(until_refresh, map.unresolvedCount() > 0);
+
+        struct pollfd fds[2];
+        fds[0].fd      = notify.fd();
+        fds[0].events  = POLLIN;
+        fds[0].revents = 0;
+        fds[1].fd      = stop_event_fd;
+        fds[1].events  = POLLIN;
+        fds[1].revents = 0;
+
+        const int ready = ::poll(fds, 2, timeout_ms);
+
+        if (ready <= 0)
+        {
+            return false; /* timed out, or EINTR: treat both as "carry on". */
+        }
+
+        if ((fds[1].revents & POLLIN) != 0)
+        {
+            return false; /* stopping; the loop condition picks it up. */
+        }
+
+        if ((fds[0].revents & POLLIN) != 0)
+        {
+            /* Drained and discarded. The payload names a cursor, but acting on
+             * it would make a hint into authority: what actually changed is
+             * read from the query socket. Draining collapses a burst — a
+             * ten-container deploy is one refresh, not ten. */
+            static_cast<void>(notify.drain());
+            return true;
+        }
+
+        return false;
     }
 
     void refreshContainerList()
@@ -603,6 +682,22 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
     impl->refreshContainerList();
     impl->router.setFiltering(impl->allowlist_active);
 
+    /* Bound before the resolver thread starts, so a container created during
+     * the baseline walk is announced rather than waiting out an interval.
+     *
+     * Failure here is not a startup failure. Without it the resolver polls as
+     * it always did and nothing is lost but latency — and refusing to start
+     * container FIM because a convenience socket could not be bound would trade
+     * a bounded delay for an outage. */
+    if (!impl->notify.bind(CI_NOTIFY_SYSCHECK))
+    {
+        LogDebug("Container eBPF drain: could not bind the container lifecycle notification socket; "
+                 "container discovery falls back to polling every " +
+                 std::to_string(config.resolver_interval_ms) + " ms.");
+    }
+
+    impl->stop_event_fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+
     m_impl = impl;
 
     impl->drain_thread    = std::thread([impl] { impl->drainLoop(); });
@@ -632,6 +727,15 @@ void ContainerEventDrain::stop()
     impl->stop.store(true, std::memory_order_relaxed);
     impl->staging.stop();
 
+    /* Wakes the resolver out of poll() immediately rather than at the end of
+     * whatever remained of its interval. Written after the stop flag so the
+     * thread cannot wake, see no stop, and go back to waiting. */
+    if (impl->stop_event_fd >= 0)
+    {
+        const std::uint64_t one = 1;
+        static_cast<void>(::write(impl->stop_event_fd, &one, sizeof(one)));
+    }
+
     if (impl->drain_thread.joinable()) impl->drain_thread.join();
     if (impl->resolver_thread.joinable()) impl->resolver_thread.join();
     if (impl->consumer_thread.joinable()) impl->consumer_thread.join();
@@ -640,6 +744,12 @@ void ContainerEventDrain::stop()
      * the handle owns, and the drain thread is inside rt_poll() on it. */
     rt_close(impl->handle);
     impl->handle = nullptr;
+
+    if (impl->stop_event_fd >= 0)
+    {
+        ::close(impl->stop_event_fd);
+        impl->stop_event_fd = -1;
+    }
 
     delete impl;
 }

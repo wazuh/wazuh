@@ -91,3 +91,19 @@ target_link_libraries(container_reconcile_plan_test
 
 add_test(NAME container_reconcile_plan_test
          COMMAND container_reconcile_plan_test)
+
+# How long the container resolver blocks between passes (#37532 / #37396). Split
+# out of the drain so it is reachable without a thread, a socket or a kernel —
+# the same reason every other component above lives in its own header.
+add_executable(resolver_wait_test resolver_wait_test.cpp)
+
+target_link_libraries(resolver_wait_test
+    debug gtestd
+    debug gtest_maind
+    optimized gtest
+    optimized gtest_main
+    pthread
+)
+
+add_test(NAME resolver_wait_test
+         COMMAND resolver_wait_test)
