@@ -127,7 +127,7 @@ already how `detect_cgroup_v1()` classifies it.
 
 ## 18.3 Work packages
 
-### WP1 — One shared host-mode probe *(prerequisite; ship regardless of O4's outcome)*
+### WP1 — One shared host-mode probe *(prerequisite; ship regardless of O4's outcome)* — **DONE, `718f9ff4fb`**
 
 `detect_cgroup_v1()` lives in `rt_engine.c:143` and is private to the eBPF provider. Extract it to a
 shared header so the provider and `container_instances` cannot reach different conclusions about the
@@ -147,6 +147,24 @@ no v1 support is compiled in**. This one change converts today's silent nothing 
 failure, and it is worth doing before any decision on the rest of this plan.
 
 Effort: S.
+
+**Shipped, and two things came out differently from this write-up.**
+
+The probe went to `shared_modules/common/cgroup_host_mode.h` and takes a **root parameter**, which
+this package did not anticipate and which turned out to be the point: every host the tree builds and
+tests on is unified, so without injection the `legacy` and `hybrid` branches would have shipped
+having never once executed, and the first machine to run them would have been a customer's. They are
+now covered by directory fixtures in `rt_engine_contract_test`.
+
+And the duplicate probe was not one copy, it was **three**: `rt_engine_drops_test.c` and
+`rt_engine_filter_test.c` each carried their own `stat("/sys/fs/cgroup/cgroup.controllers")`. They
+were not converted to the usable-key helper, because they create cgroups directly under
+`/sys/fs/cgroup` and therefore need v2 **at the root** — a hybrid host would pass a usable-key test
+and then fail for an unrelated reason. They compare against `unified` exactly, which is a
+distinction the old two-state probe could not express and this one can.
+
+The message wording lives in `ci_impl/src/core/cgroup_mode_report.hpp` rather than in the facade, so
+"a legacy host is reported at ERROR" is asserted without a v1 host to assert it on.
 
 ### WP2 — Teach the resolver v1 lines
 
@@ -345,7 +363,7 @@ The packages split cleanly along the exact line O4 asks about.
 
 | Phase | Packages | Delivers | O4 option |
 | --- | --- | --- | --- |
-| **0** | WP1 | v1 detected and logged; silent failure becomes diagnosable | ship regardless |
+| **0** | WP1 | v1 detected and logged; silent failure becomes diagnosable | ship regardless — **shipped 2026-10-05** |
 | **1** | WP2 + WP3 + WP4 | container **inventory and baseline** work on v1. No protocol change, no FIM change | *"inventory-only support"* |
 | **2** | WP5 + WP6 | event-driven container **FIM** works on v1, correlating on `mnt_ns` | *"full support"* |
 | **close** | WP-ISSUE | #37203's index tells the truth about v1 | every option, including "v2-only" |
