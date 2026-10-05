@@ -177,6 +177,13 @@ namespace wazuh::container_instances::k8s
                 container.imageDigest = extractImageDigest(containerStatus.value("imageID", ""));
                 container.restartCount = containerStatus.value("restartCount", 0);
                 container.state = detail::parseContainerState(containerStatus);
+                // Only the running state carries a start time. A terminated
+                // container has startedAt too, but under `terminated`, and it
+                // describes a run that has ended — reading it would make a
+                // finished container look freshly started.
+                container.startedAt = containerStatus.value("state", nlohmann::json::object())
+                                      .value("running", nlohmann::json::object())
+                                      .value("startedAt", "");
 
                 const auto specIt = specsByName.find(container.name);
                 if (specIt != specsByName.end())
