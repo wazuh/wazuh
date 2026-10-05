@@ -135,12 +135,8 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
                 p++;
             }
 
-            /* Add additional message to the saved buffer */
-            if (sizeof(buffer) - buffer_len > str_len) {
-                /* Here we make sure that the size of the buffer
-                 * minus what was used (strlen) is greater than
-                 * the length of the received message.
-                 */
+            /* Append to the saved buffer, leaving room for the separator and the terminator */
+            if (sizeof(buffer) - buffer_len > strlen(str) + 1) {
                 buffer[buffer_len] = ' ';
                 buffer[buffer_len + 1] = '\0';
                 strncat(buffer, str, str_len + 3);

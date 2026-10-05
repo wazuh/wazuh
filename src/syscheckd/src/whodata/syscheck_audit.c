@@ -756,7 +756,7 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
 
                 // Append to cache
                 len = endline - line;
-                if (cache_i + len + 1 <= BUF_SIZE) {
+                if (cache_i + len + 1 < BUF_SIZE) {
                     strncpy(cache + cache_i, line, len);
                     cache_i += len;
                     cache[cache_i++] = '\n';
