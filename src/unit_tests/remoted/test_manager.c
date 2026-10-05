@@ -35,7 +35,6 @@
 #include "manager.c"
 
 int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, int* wdb_sock);
-extern OSHash *agent_data_hash;
 
 /* Wrapper for get_cluster_name */
 char* __wrap_get_cluster_name(void) {
@@ -87,21 +86,18 @@ static void free_group_c_group(void *data) {
 }
 
 static int setup_globals(void ** state) {
-    agent_data_hash = __real_OSHash_Create();
     test_mode = 1;
 
     return 0;
 }
 
 static int setup_globals_no_test_mode(void ** state) {
-    agent_data_hash = __real_OSHash_Create();
     test_mode = 0;
 
     return 0;
 }
 
 static int teardown_globals(void ** state) {
-    __real_OSHash_Clean(agent_data_hash, agent_data_hash_cleaner);
     test_mode = 0;
 
     return 0;
@@ -4076,11 +4072,6 @@ void test_validate_control_msg_shutdown_success(void** state)
     expect_string(__wrap__mdebug1, formatted_msg, "Agent agent1 sent HC_SHUTDOWN from '192.168.1.1'");
     expect_function_call(__wrap_rem_inc_recv_ctrl_shutdown);
 
-    // Mock OSHash for agent_data_hash deletion
-    will_return(__wrap_OSHash_Delete_ex, NULL);
-    expect_string(__wrap_OSHash_Delete_ex, key, "001");
-    expect_value(__wrap_OSHash_Delete_ex, self, agent_data_hash);
-
     // Expect mdebug1 to be called with OS_AG_STOPPED format
     expect_string(__wrap__mdebug1, formatted_msg, "wazuh: Agent stopped: [001] (agent1).");
 
@@ -4799,10 +4790,6 @@ void test_save_controlmsg_shutdown_wdb_fail(void **state)
     will_return(__wrap_wdb_update_agent_connection_status, OS_INVALID);
 
     expect_string(__wrap__mwarn, formatted_msg, "Unable to set connection status as disconnected for agent: 001");
-
-    // will_return(__wrap_OSHash_Delete_ex, NULL);
-    // expect_string(__wrap_OSHash_Delete_ex, key, "001");
-    // expect_value(__wrap_OSHash_Delete_ex, self, agent_data_hash);
 
     save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
 

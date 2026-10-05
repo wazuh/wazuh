@@ -51,7 +51,6 @@ extern keystore keys;
 extern remoted logr;
 extern wnotify_t* notify;
 extern char* str_family_address[FAMILY_ADDRESS_SIZE];
-extern OSHash* agent_data_hash;
 
 void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family);
 
@@ -101,7 +100,6 @@ static int setup_remoted_configuration(void** state)
 {
     test_mode = 1;
     node_name = "test_node_name";
-    agent_data_hash = (OSHash*)1;
 
     test_agent_info* agent;
     os_calloc(1, sizeof(test_agent_info), agent);
