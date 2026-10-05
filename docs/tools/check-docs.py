@@ -19,6 +19,7 @@ import json
 import os
 import posixpath
 import re
+import shutil
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -313,6 +314,9 @@ class Checker:
         with open(lock, encoding='utf-8') as f:
             wanted = f.read()
         if not os.path.isfile(stamp) or open(stamp, encoding='utf-8').read() != wanted:
+            if shutil.which('npm') is None:
+                print('check-docs: npm not found on PATH, skipping Mermaid validation', file=sys.stderr)
+                return None
             os.makedirs(NODE_DIR, exist_ok=True)
             for name in ('package.json', 'package-lock.json'):
                 with open(os.path.join(DOCS, 'tools', name), encoding='utf-8') as src, \
@@ -328,7 +332,13 @@ class Checker:
     def check_mermaid(self, blocks):
         if not blocks:
             return
-        env = dict(os.environ, NODE_PATH=self.node_modules())
+        if shutil.which('node') is None:
+            print('check-docs: node not found on PATH, skipping Mermaid validation', file=sys.stderr)
+            return
+        node_modules = self.node_modules()
+        if node_modules is None:
+            return
+        env = dict(os.environ, NODE_PATH=node_modules)
         proc = subprocess.run(['node', MERMAID_CHECKER, os.path.join(DOCS, 'mermaid.min.js')],
                               input=json.dumps([b[2] for b in blocks]), capture_output=True, text=True, env=env)
         if proc.returncode != 0:
