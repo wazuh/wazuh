@@ -15,14 +15,14 @@
 #include "fileSystem.hpp"
 #include "stdFileSystemHelper.hpp"
 #include "json.hpp"
-#include "jsonIO.hpp"
+#include "packageMetadataFile.hpp"
 #include "sharedDefs.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <set>
 
-template<typename TFileSystem = RealFileSystem, typename TJsonReader = JsonIO<nlohmann::json>>
+template<typename TFileSystem = RealFileSystem, typename TJsonReader = PackageMetadataJsonReader>
 class NPM final
     : public TFileSystem
     , public TJsonReader
@@ -41,7 +41,14 @@ class NPM final
 
             try
             {
-                if (TFileSystem::exists(path))
+                // Only read regular files of a bounded size
+                if (TFileSystem::exists(path) &&
+                        (!TFileSystem::is_regular_file(path) || TFileSystem::file_size(path) > PACKAGE_METADATA_MAX_FILE_SIZE))
+                {
+                    std::cerr << "Skipping NPM package metadata: " << path.string()
+                              << ", not a regular file within the size limit" << std::endl;
+                }
+                else if (TFileSystem::is_regular_file(path))
                 {
                     // Read json from filesystem path.
                     const auto packageJson = TJsonReader::readJson(path);
