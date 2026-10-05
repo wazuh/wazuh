@@ -122,6 +122,16 @@ struct ContainerEventDrain::Impl
     rt_handle_t      handle{nullptr};
     ReconcileHandler handler;
 
+    /* Where the drain has read up to in container_instances' journal.
+     *
+     * In memory only, and that is not a shortcut: on restart the drain reopens
+     * the engine with an empty kernel allowlist and has to re-admit every
+     * container anyway, so a persisted cursor would describe a world it no
+     * longer has. Zero means "no cursor", which the module answers with the
+     * full set — the seeding path, reached without a special case. */
+    std::uint64_t cursor_epoch{0};
+    std::uint64_t cursor_seq{0};
+
     /* Woken by container_instances when its container list changes. Unbound is
      * a supported state, not a failure: fd() is then -1 and the resolver falls
      * back to its interval, which is what it did before this existed. */
@@ -326,18 +336,69 @@ struct ContainerEventDrain::Impl
         return false;
     }
 
+    /* Bring the cgroup map up to date with container_instances.
+     *
+     * Reads forward from a cursor where it can, and falls back to the whole
+     * list where it cannot. The three ways it cannot are not interchangeable:
+     *
+     *   unreachable        nothing was obtained. Change NOTHING — install()
+     *                      replaces the positive map, so applying an empty list
+     *                      from a connector that simply did not answer would
+     *                      un-attribute every container at once and turn the
+     *                      next event from each into an escalation. C15's
+     *                      failure shape one level down.
+     *   deltas unsupported an older container_instances, which ignored the
+     *                      cursor and answered with the set. Exactly today's
+     *                      behaviour, reached without an error path.
+     *   resync required    the cursor is from another store lifetime, or its
+     *                      position has been evicted. The set rides the same
+     *                      reply, so this costs no extra round trip. */
     void refreshContainerList()
     {
-        bool       reachable = false;
-        const auto refs      = client.listContainers(&reachable);
+        const auto delta = client.listContainersSince(cursor_epoch, cursor_seq);
 
-        /* GATED on reachability, and this is not defensive coding for its own
-         * sake: install() REPLACES the positive map, so applying an unreachable
-         * connector's empty list would un-attribute every container at once and
-         * turn the next event from each into an escalation. That is C15's
-         * failure shape one level down. */
-        if (!reachable) return;
+        if (!delta.available) return;
 
+        if (!delta.deltaSupported || delta.resyncRequired)
+        {
+            applyFullList(delta.containers);
+        }
+        else
+        {
+            std::vector<CgroupDeltaEvent> events;
+            events.reserve(delta.events.size());
+
+            for (const auto& event : delta.events)
+            {
+                CgroupDeltaEvent translated;
+                translated.container_id = event.containerId;
+                translated.cgroup_id    = event.cgroupId;
+
+                switch (event.kind)
+                {
+                    using Kind = wazuh::container_instances_client::ContainerEventRef::Kind;
+                    case Kind::added: translated.kind = CgroupDeltaEvent::Kind::added; break;
+                    case Kind::removed: translated.kind = CgroupDeltaEvent::Kind::removed; break;
+                    case Kind::changed:
+                    default: translated.kind = CgroupDeltaEvent::Kind::changed; break;
+                }
+
+                events.push_back(std::move(translated));
+            }
+
+            syncAllowlist(router.applyContainerDelta(events));
+        }
+
+        /* Advanced only after the events have been applied. A crash in between
+         * replays them, which is harmless — the map converges to the same place
+         * and a repeated walk costs time, not correctness — whereas advancing
+         * first would drop them silently. */
+        cursor_epoch = delta.epoch;
+        cursor_seq   = delta.seq;
+    }
+
+    void applyFullList(const std::vector<wazuh::container_instances_client::ContainerRef>& refs)
+    {
         std::vector<std::pair<std::uint64_t, std::string>> containers;
         containers.reserve(refs.size());
 
