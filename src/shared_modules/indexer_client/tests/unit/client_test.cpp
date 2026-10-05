@@ -8,9 +8,11 @@
  * Foundation.
  */
 
+#include <cctype>
 #include <chrono>
 #include <future>
 #include <memory>
+#include <set>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -18,6 +20,7 @@
 #include <gtest/gtest.h>
 
 #include "indexer_client/runtime.hpp"
+#include "runtime/runtimeInternal.hpp"
 
 using namespace indexer_client;
 using namespace std::chrono_literals;
@@ -178,4 +181,83 @@ TEST_F(ClientTest, GroupCommitTwiceIsInvalidState)
     EXPECT_EQ(group.commit().wait(soon()).cause, Cause::Unavailable);
     EXPECT_EQ(group.add(Op {}), Cause::InvalidState);
     EXPECT_EQ(group.commit().wait(soon()).cause, Cause::InvalidState);
+}
+
+TEST_F(ClientTest, PitStubs)
+{
+    auto query = m_client->query();
+    ASSERT_NE(query, nullptr);
+    auto fromStub = query->pit({"idx"}, PitOptions {}, QueryOptions {}, soon());
+    ASSERT_EQ(fromStub.cause, Cause::Unavailable);
+
+    auto withState = Pit(std::make_shared<detail::PitState>());
+    for (Pit* pit : {&fromStub.value, &withState})
+    {
+        EXPECT_EQ(pit->generation(), 0u);
+        EXPECT_EQ(pit->search(nlohmann::json::object(), soon()).cause, Cause::Unavailable);
+
+        auto cursor = pit->cursor(CursorQuery {});
+        EXPECT_FALSE(cursor.exhausted()) << "a fresh cursor is not exhausted";
+        EXPECT_EQ(cursor.next(soon()).cause, Cause::Unavailable);
+
+        std::promise<std::tuple<Cause, Cause>> result;
+        ASSERT_TRUE(detail::testing::postToPool(
+            [&]()
+            { result.set_value({cursor.next(soon()).cause, pit->search(nlohmann::json::object(), soon()).cause}); }));
+        const auto [next, search] = result.get_future().get();
+        EXPECT_EQ(next, Cause::Reentrancy);
+        EXPECT_EQ(search, Cause::Reentrancy);
+    }
+
+    PitSession empty;
+    EXPECT_TRUE(empty.exhausted()) << "an empty cursor is exhausted";
+    EXPECT_EQ(empty.next(soon()).cause, Cause::InvalidState);
+    EXPECT_EQ(Pit {}.generation(), 0u);
+}
+
+TEST_F(ClientTest, MoveAssignment)
+{
+    auto other = m_ref.client("client-test-2", {BucketSpec {"other"}});
+    ASSERT_TRUE(other.ok()) << other.reason;
+    EXPECT_EQ(m_ref.snapshot().clients, 2u);
+
+    // The replaced handle closes as a destroyed one would: its consumer name is free again.
+    *m_client = std::move(*other.value);
+    EXPECT_TRUE(m_client->valid());
+    EXPECT_FALSE(other.value->valid());
+    EXPECT_EQ(m_ref.snapshot().clients, 1u);
+    EXPECT_NE(m_client->writer("other"), nullptr);
+    EXPECT_EQ(m_client->writer("events"), nullptr);
+    EXPECT_TRUE(m_ref.client("client-test", {}).ok());
+
+    // Self-assignment keeps the handle.
+    auto& self = *m_client;
+    *m_client = std::move(self);
+    EXPECT_TRUE(m_client->valid());
+    EXPECT_EQ(m_ref.snapshot().clients, 1u);
+}
+
+// The names end up in logs and metric labels (E5): every cause has its own stable, lowercase name.
+TEST(TypesTest, CauseNamesStableAndUnique)
+{
+    std::set<std::string> names;
+    const auto last = static_cast<int>(Cause::UsageError);
+    for (int i = 0; i <= last; ++i)
+    {
+        const std::string name = toString(static_cast<Cause>(i));
+        SCOPED_TRACE(i);
+        EXPECT_NE(name, "unknown");
+        EXPECT_FALSE(name.empty());
+        for (const char c : name)
+        {
+            EXPECT_TRUE(std::islower(static_cast<unsigned char>(c)) || std::isdigit(static_cast<unsigned char>(c)) ||
+                        c == '_')
+                << name;
+        }
+        EXPECT_TRUE(names.insert(name).second) << "duplicated name " << name;
+    }
+    EXPECT_EQ(names.size(), static_cast<std::size_t>(last) + 1);
+    EXPECT_STREQ(toString(Cause::None), "none");
+    EXPECT_STREQ(toString(Cause::UsageError), "usage_error");
+    EXPECT_STREQ(toString(static_cast<Cause>(last + 1)), "unknown");
 }

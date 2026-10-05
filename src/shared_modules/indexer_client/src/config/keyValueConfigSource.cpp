@@ -10,6 +10,7 @@
 
 #include "indexer_client/keyValueConfigSource.hpp"
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -51,38 +52,45 @@ namespace indexer_client
                 text.remove_prefix(end == std::string_view::npos ? text.size() : end + 1);
 
                 // Same rule as wazuh's C internal-options reader (`_read_file`, src/shared/src/validate_op.c): a line
-                // that is empty or starts with '#' or a space is a comment. A CRLF blank line is blank too.
-                if (rawLine.empty() || rawLine.front() == '#' || rawLine.front() == ' ' || rawLine == "\r")
+                // that is empty or starts with '#' or a space is a comment. A line that starts with a tab is a comment
+                // too: the C reader never matches it against any key. A CRLF blank line is blank.
+                if (rawLine.empty() || rawLine.front() == '#' || rawLine.front() == ' ' || rawLine.front() == '\t' ||
+                    rawLine == "\r")
                 {
                     continue;
                 }
                 const auto line = trim(rawLine);
+                const auto where = "line " + std::to_string(lineNumber) + ": ";
 
+                // The C reader judges a line only against the key it is asked for: a line without '=' or with an
+                // empty value is a problem of THAT key, not of the file. So it is recorded here and only
+                // RuntimeConfig::from() decides, for the keys under its process prefix, that it is fatal.
                 const auto equals = line.find('=');
-                if (equals == std::string_view::npos)
-                {
-                    return Outcome<KeyValueConfigSource>::failure(
-                        Cause::InvalidConfig, "line " + std::to_string(lineNumber) + ": expected 'key=value'");
-                }
-                const auto key = trim(line.substr(0, equals));
+                const auto key = equals == std::string_view::npos ? line : trim(line.substr(0, equals));
                 if (key.empty())
                 {
-                    return Outcome<KeyValueConfigSource>::failure(Cause::InvalidConfig,
-                                                                  "line " + std::to_string(lineNumber) + ": empty key");
+                    continue; // No key can ever match it; the C reader logs and skips it.
                 }
-                // A repeated key keeps the FIRST value, as wazuh's C internal-options reader does (it returns on the
-                // first matching line): a later duplicate is never read, so it is neither applied nor validated.
-                if (source.m_values.count(key) != 0)
+                // A repeated key keeps the FIRST occurrence, as wazuh's C internal-options reader does (it returns on
+                // the first matching line): a later duplicate is never read, so it is neither applied nor validated.
+                // This holds for recorded problems too.
+                if (source.m_values.count(key) != 0 || source.m_problems.count(key) != 0)
                 {
+                    continue;
+                }
+                if (equals == std::string_view::npos)
+                {
+                    source.m_problems.emplace(
+                        std::string {key}, where + "'" + std::string {key} + "' is malformed (expected 'key=value')");
                     continue;
                 }
                 const auto value = trim(line.substr(equals + 1));
                 if (value.empty())
                 {
                     // The C reader refuses a key written with no value (merror_exit): an unfinished edit, not unset.
-                    return Outcome<KeyValueConfigSource>::failure(Cause::InvalidConfig,
-                                                                  "line " + std::to_string(lineNumber) + ": key '" +
-                                                                      std::string {key} + "' has an empty value");
+                    source.m_problems.emplace(std::string {key},
+                                              where + "key '" + std::string {key} + "' has an empty value");
+                    continue;
                 }
                 source.m_values.emplace(std::string {key}, std::string {value});
             }
@@ -109,15 +117,29 @@ namespace indexer_client
     std::vector<std::string> KeyValueConfigSource::keysWithPrefix(std::string_view prefix) const
     {
         std::vector<std::string> keys;
-        for (auto it = m_values.lower_bound(prefix); it != m_values.end(); ++it)
+        for (const auto* map : {&m_values, &m_problems})
         {
-            if (it->first.compare(0, prefix.size(), prefix) != 0)
+            for (auto it = map->lower_bound(prefix); it != map->end(); ++it)
             {
-                break;
+                if (it->first.compare(0, prefix.size(), prefix) != 0)
+                {
+                    break;
+                }
+                keys.push_back(it->first);
             }
-            keys.push_back(it->first);
         }
+        std::sort(keys.begin(), keys.end());
         return keys;
+    }
+
+    std::optional<std::string> KeyValueConfigSource::problem(std::string_view key) const
+    {
+        const auto it = m_problems.find(key);
+        if (it == m_problems.end())
+        {
+            return std::nullopt;
+        }
+        return it->second;
     }
 
     std::string KeyValueConfigSource::indexerSectionJson() const
