@@ -145,11 +145,14 @@ namespace wazuh::container_instances
         return docker::parseInspect(body);
     }
 
-    StreamOutcome
-    DockerApiClient::streamEvents(std::int64_t sinceSeconds, const DockerEventSink& sink, const StopController& stop)
+    StreamOutcome DockerApiClient::streamEvents(std::int64_t sinceSeconds,
+                                                const DockerEventSink& sink,
+                                                const StopController& stop,
+                                                const std::function<void()>& onIdle)
     {
         auto spec = specFor("/v" + apiVersion() + "/events?since=" + std::to_string(sinceSeconds));
         spec.totalTimeout = std::chrono::milliseconds {0}; // Intentionally unterminated.
+        spec.onIdle = onIdle;
 
         NdjsonFramer framer;
         const auto result = m_transport.stream(

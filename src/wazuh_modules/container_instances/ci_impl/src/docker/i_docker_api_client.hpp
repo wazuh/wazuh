@@ -72,8 +72,16 @@ namespace wazuh::container_instances
         [[nodiscard]] virtual ContainerDetail inspect(const std::string& containerId) = 0;
 
         /// GET /events?since=<ts>; blocks until cancelled or disconnect.
-        [[nodiscard]] virtual StreamOutcome
-        streamEvents(std::int64_t sinceSeconds, const DockerEventSink& sink, const StopController& stop) = 0;
+        ///
+        /// `onIdle` is invoked periodically on the calling thread for as long as
+        /// the stream is open, whether or not an event arrived. Docker's event
+        /// stream has no keep-alive or bookmark of its own — unlike the
+        /// Kubernetes watch — so a caller that must act after a quiet period has
+        /// no other signal to hang that on. May be empty.
+        [[nodiscard]] virtual StreamOutcome streamEvents(std::int64_t sinceSeconds,
+                                                         const DockerEventSink& sink,
+                                                         const StopController& stop,
+                                                         const std::function<void()>& onIdle = {}) = 0;
     };
 
 } // namespace wazuh::container_instances
