@@ -86,6 +86,30 @@ struct CgroupResolution
     std::string container_id;
 };
 
+/* One transition of the connector's container set, as applyDelta() consumes it.
+ *
+ * Deliberately narrower than the wire event: this map attributes cgroups to
+ * containers and nothing else, so image digests, labels and the change mask are
+ * none of its business. What it needs is which container, which inode, and
+ * whether the container is still there. */
+struct CgroupDeltaEvent
+{
+    enum class Kind
+    {
+        added,
+        changed,
+        removed
+    };
+
+    Kind kind {Kind::changed};
+
+    /* The container's inode NOW. Zero on a `changed` that reports a stop — a
+     * container with no process has no cgroup — and on `removed` it is the last
+     * one it had, which is how the consumer knows what to withdraw. */
+    std::uint64_t cgroup_id {0};
+    std::string container_id;
+};
+
 /* What a connector list refresh changed.
  *
  * `escalate` is the historical return value and keeps its exact meaning. The
@@ -298,6 +322,76 @@ class CgroupContainerMap
             m_not_container.insert(cgroup_id);
         }
 
+        /* Apply transitions instead of a whole list.
+         *
+         * Returns the same shape install() does, so everything downstream — the
+         * kernel allowlist sync, the router's escalation rule — is reused
+         * without knowing which way the list arrived.
+         *
+         * The one case worth stating: a container that STOPS keeps existing but
+         * loses its cgroup, so its inode is withdrawn (nothing can be attributed
+         * to it any more, and the kernel must stop admitting it) while the
+         * container is NOT reported as added. It therefore gets no re-walk — its
+         * files have not changed, it merely has no process — and its stored rows
+         * are left alone. Reporting it as removed here would be the same mistake
+         * one layer up that `all=1` exists to prevent. */
+        CgroupListDelta applyDelta(const std::vector<CgroupDeltaEvent>& events)
+        {
+            CgroupListDelta delta;
+
+            std::lock_guard<std::mutex> lock(m_mutex);
+
+            for (const auto& event : events)
+            {
+                if (event.container_id.empty())
+                {
+                    continue;
+                }
+
+                /* Whatever inode this container held until now. Taken for every
+                 * kind, because all three can move it: a restart gives it a new
+                 * one, a stop takes it away, a removal ends it. */
+                const auto previous = eraseByContainerIdLocked(event.container_id);
+
+                if (event.kind == CgroupDeltaEvent::Kind::removed || event.cgroup_id == 0)
+                {
+                    /* No inode any more — deleted, or stopped. Withdraw what it
+                     * had. Preferring `previous` over the event's own value
+                     * because ours is what the kernel was actually told; they
+                     * agree on a removal and only ours is set on a stop. */
+                    const auto withdraw = (previous != 0) ? previous : event.cgroup_id;
+
+                    if (withdraw != 0)
+                    {
+                        delta.removed.push_back(withdraw);
+                    }
+                    continue;
+                }
+
+                if (previous != 0 && previous != event.cgroup_id)
+                {
+                    /* Restarted: the inode it used to have is dead and may be
+                     * handed to something else, so it must stop being admitted. */
+                    delta.removed.push_back(previous);
+                }
+
+                if (noteContainerLocked(event.cgroup_id, event.container_id))
+                {
+                    delta.escalate.push_back(event.container_id);
+                }
+
+                if (previous != event.cgroup_id)
+                {
+                    /* A new inode for this container: either it has just been
+                     * published, or it restarted and the old one is gone. Both
+                     * are a container whose contents nobody has walked. */
+                    delta.added.emplace_back(event.cgroup_id, event.container_id);
+                }
+            }
+
+            return delta;
+        }
+
         /* Apply a full refresh from the connector's container list. `containers`
          * is authoritative: a cgroup absent from it stops being a container
          * here, because its inode may already have been reused by a new one.
@@ -397,6 +491,26 @@ class CgroupContainerMap
         }
 
     private:
+        /* Drops whatever inode `container_id` is indexed under, returning it, or
+         * 0 when it had none. Linear, and deliberately so: the map is keyed by
+         * inode because that is what every event carries, and the reverse
+         * direction is only ever needed when a container stops or leaves — rare,
+         * against a few hundred entries, and not worth a second index that
+         * would have to be kept in step. */
+        std::uint64_t eraseByContainerIdLocked(const std::string& container_id)
+        {
+            for (auto it = m_container.begin(); it != m_container.end(); ++it)
+            {
+                if (it->second == container_id)
+                {
+                    const auto inode = it->first;
+                    m_container.erase(it);
+                    return inode;
+                }
+            }
+            return 0;
+        }
+
         bool noteContainerLocked(std::uint64_t cgroup_id, const std::string& container_id)
         {
             if (cgroup_id == 0)

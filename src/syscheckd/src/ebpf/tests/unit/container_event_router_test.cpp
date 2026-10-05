@@ -473,3 +473,74 @@ TEST(ContainerEventRouterTest, AnEventForACgroupWhoseContainerDiedIsNoLongerAttr
     ASSERT_EQ(1u, batches[0].paths.size());
     EXPECT_EQ("/before", batches[0].paths[0]);
 }
+
+/* --- delta-driven updates --------------------------------------------------
+ *
+ * The router applies the same escalation rule whichever way the list arrived.
+ * These exist because the two paths could drift apart silently: a container
+ * walked by one and not the other shows up as missing file events, not as a
+ * failure.
+ */
+
+TEST(ContainerEventRouterTest, FilteredADeltaAddedContainerIsWalkedLikeAListedOne)
+{
+    Fixture f;
+    f.router.setFiltering(true);
+
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, 300, "container-new"}});
+
+    f.staging.release();
+    const auto batches = DrainBatches(f.staging);
+
+    ASSERT_EQ(1u, batches.size());
+    EXPECT_EQ("container-new", batches[0].container_id);
+    EXPECT_TRUE(batches[0].suspect);
+}
+
+TEST(ContainerEventRouterTest, StoppedContainerDeniesCgroupWithoutEscalating)
+{
+    // The whole point of telling a stop from a deletion. Its cgroup must stop
+    // being admitted — there is no process behind it — but it must not be
+    // re-walked: nothing in it changed, and its rows stay.
+    Fixture f;
+    f.router.setFiltering(true);
+
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, 310, "container-a"}});
+    f.staging.release();
+    ASSERT_EQ(1u, DrainBatches(f.staging).size()); // the add
+
+    const auto delta =
+        f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::changed, 0, "container-a"}});
+
+    ASSERT_EQ(1u, delta.removed.size());
+    EXPECT_EQ(310u, delta.removed.front()) << "the kernel must stop admitting a cgroup with nothing behind it";
+    EXPECT_TRUE(DrainBatches(f.staging).empty()) << "a stop is not a reason to re-walk";
+}
+
+TEST(ContainerEventRouterTest, ADeltaForAContainerWhoseEventsArrivedFirstStillEscalates)
+{
+    Fixture f;
+
+    f.router.onEvent(320, "/some/path"); // arrives before anyone knows whose it is
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, 320, "container-late"}});
+
+    f.staging.release();
+    const auto batches = DrainBatches(f.staging);
+
+    ASSERT_EQ(1u, batches.size());
+    EXPECT_EQ("container-late", batches[0].container_id);
+    EXPECT_TRUE(batches[0].suspect) << "its early paths were discarded, so only a walk can account for them";
+}
+
+TEST(ContainerEventRouterTest, UnfilteredADeltaAddedContainerIsNotWalked)
+{
+    // Same asymmetry as the whole-list path: without the kernel filter its
+    // events were arriving all along, so there is nothing to make up for.
+    Fixture f;
+
+    f.router.applyContainerDelta({CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, 330, "container-quiet"}});
+
+    f.staging.release();
+    EXPECT_TRUE(DrainBatches(f.staging).empty());
+    EXPECT_EQ(0u, f.router.stats().discovery_escalations);
+}

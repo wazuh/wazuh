@@ -493,3 +493,148 @@ TEST(CgroupContainerMapTest, ConcurrentDrainAndResolverAgreeOnEveryCgroup)
         }
     }
 }
+
+/* --- applyDelta ------------------------------------------------------------
+ *
+ * The delta path and the whole-list path feed the same two consumers — the
+ * kernel allowlist and the router's re-walk rule — so what matters is not that
+ * applyDelta works in isolation but that it AGREES with install(). Where they
+ * disagree, a container is either admitted to the kernel twice or not at all,
+ * and neither shows up until events start going missing.
+ */
+
+namespace
+{
+
+CgroupDeltaEvent Added(std::uint64_t cgroup, const std::string& id)
+{
+    return CgroupDeltaEvent {CgroupDeltaEvent::Kind::added, cgroup, id};
+}
+
+CgroupDeltaEvent Changed(std::uint64_t cgroup, const std::string& id)
+{
+    return CgroupDeltaEvent {CgroupDeltaEvent::Kind::changed, cgroup, id};
+}
+
+CgroupDeltaEvent Removed(std::uint64_t cgroup, const std::string& id)
+{
+    return CgroupDeltaEvent {CgroupDeltaEvent::Kind::removed, cgroup, id};
+}
+
+} // namespace
+
+TEST(CgroupContainerMapTest, ApplyDeltaAddedMatchesInstallSemantics)
+{
+    CgroupContainerMap viaDelta;
+    CgroupContainerMap viaInstall;
+
+    const auto delta = viaDelta.applyDelta({Added(10, "a"), Added(11, "b")});
+    const auto install = viaInstall.install({{10, "a"}, {11, "b"}});
+
+    EXPECT_EQ(install.added.size(), delta.added.size());
+    EXPECT_EQ("a", viaDelta.classify(10).container_id);
+    EXPECT_EQ("b", viaDelta.classify(11).container_id);
+    EXPECT_TRUE(delta.removed.empty());
+}
+
+TEST(CgroupContainerMapTest, ApplyDeltaRemovedWithdrawsTheCgroup)
+{
+    CgroupContainerMap map;
+    map.applyDelta({Added(20, "a")});
+
+    const auto delta = map.applyDelta({Removed(20, "a")});
+
+    ASSERT_EQ(1u, delta.removed.size());
+    EXPECT_EQ(20u, delta.removed.front()) << "the kernel must stop admitting a cgroup that is gone";
+    EXPECT_EQ(CgroupClass::unknown, map.classify(20).klass);
+}
+
+TEST(CgroupContainerMapTest, AStoppedContainerLosesItsCgroupButIsNotReAdded)
+{
+    // A stop takes the process away, so nothing can be attributed to the cgroup
+    // and the kernel must stop admitting it. But the container still exists and
+    // its files have not changed, so it must NOT look newly added — that would
+    // escalate it to a re-walk it does not need, every time one stopped.
+    CgroupContainerMap map;
+    map.applyDelta({Added(30, "a")});
+
+    const auto delta = map.applyDelta({Changed(0, "a")});
+
+    ASSERT_EQ(1u, delta.removed.size());
+    EXPECT_EQ(30u, delta.removed.front());
+    EXPECT_TRUE(delta.added.empty()) << "a stop is not a discovery";
+    EXPECT_EQ(CgroupClass::unknown, map.classify(30).klass);
+}
+
+TEST(CgroupContainerMapTest, ARestartSwapsTheCgroupAndCountsAsNewlyAdded)
+{
+    // Restarting gives the container a different inode. The old one must be
+    // withdrawn — it may be reused by something else — and the new one admitted
+    // and walked, because the container's contents are not what they were.
+    CgroupContainerMap map;
+    map.applyDelta({Added(40, "a")});
+
+    const auto delta = map.applyDelta({Changed(41, "a")});
+
+    ASSERT_EQ(1u, delta.removed.size());
+    EXPECT_EQ(40u, delta.removed.front());
+
+    ASSERT_EQ(1u, delta.added.size());
+    EXPECT_EQ(41u, delta.added.front().first);
+
+    EXPECT_EQ(CgroupClass::unknown, map.classify(40).klass);
+    EXPECT_EQ("a", map.classify(41).container_id);
+}
+
+TEST(CgroupContainerMapTest, AChangeThatKeepsTheSameCgroupMovesNothing)
+{
+    // An image or label change on a running container. Its attribution is
+    // unchanged, so touching the kernel filter would be churn — and reporting
+    // it as added would re-walk a container nothing happened to.
+    CgroupContainerMap map;
+    map.applyDelta({Added(50, "a")});
+
+    const auto delta = map.applyDelta({Changed(50, "a")});
+
+    EXPECT_TRUE(delta.added.empty());
+    EXPECT_TRUE(delta.removed.empty());
+    EXPECT_EQ("a", map.classify(50).container_id);
+}
+
+TEST(CgroupContainerMapTest, ApplyDeltaEscalatesAContainerWhoseEventsArrivedFirst)
+{
+    // Same rule as install(): if events were already seen and discarded against
+    // an unidentified cgroup, those paths are unrecoverable and the container is
+    // re-walked instead.
+    CgroupContainerMap map;
+    map.classify(60); // an event arrived before anyone knew whose it was
+
+    const auto delta = map.applyDelta({Added(60, "late")});
+
+    ASSERT_EQ(1u, delta.escalate.size());
+    EXPECT_EQ("late", delta.escalate.front());
+}
+
+TEST(CgroupContainerMapTest, ApplyDeltaConvergesToTheSameMapAsInstall)
+{
+    // The property that matters. Drive one map with transitions and the other
+    // with the resulting whole list, and they must agree about every cgroup.
+    CgroupContainerMap viaDelta;
+    CgroupContainerMap viaInstall;
+
+    viaDelta.applyDelta({Added(70, "a"), Added(71, "b"), Added(72, "c")});
+    viaDelta.applyDelta({Changed(0, "b")});   // b stops
+    viaDelta.applyDelta({Removed(72, "c")});  // c is deleted
+    viaDelta.applyDelta({Changed(73, "b")});  // b starts again, new inode
+
+    viaInstall.install({{70, "a"}, {73, "b"}});
+
+    for (const std::uint64_t inode : {70ULL, 71ULL, 72ULL, 73ULL})
+    {
+        EXPECT_EQ(viaInstall.classify(inode).klass, viaDelta.classify(inode).klass) << "inode " << inode;
+        EXPECT_EQ(viaInstall.classify(inode).container_id, viaDelta.classify(inode).container_id)
+            << "inode " << inode;
+    }
+
+    EXPECT_EQ(viaInstall.containerCount(), viaDelta.containerCount());
+}

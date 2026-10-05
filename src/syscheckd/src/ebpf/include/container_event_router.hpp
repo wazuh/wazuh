@@ -276,20 +276,17 @@ class ContainerEventRouter
          * other route. What changes is the trigger, not the work. */
         CgroupListDelta applyContainerList(const std::vector<std::pair<std::uint64_t, std::string>>& containers)
         {
-            auto delta = m_map.install(containers);
+            return escalateDelta(m_map.install(containers));
+        }
 
-            escalate(delta.escalate);
-
-            if (m_filtering)
-            {
-                for (const auto& entry : delta.added)
-                {
-                    bump(m_stats.discovery_escalations);
-                    m_staging.onDrops(entry.second);
-                }
-            }
-
-            return delta;
+        /* The same, from transitions rather than a whole list.
+         *
+         * Shares escalateDelta() with applyContainerList deliberately: which
+         * way the list arrived is a transport detail, and the rule for what has
+         * to be re-walked must not be able to drift between the two. */
+        CgroupListDelta applyContainerDelta(const std::vector<CgroupDeltaEvent>& events)
+        {
+            return escalateDelta(m_map.applyDelta(events));
         }
 
         /* Apply one on-demand resolution.
@@ -370,6 +367,24 @@ class ContainerEventRouter
         void bump(std::atomic<unsigned long long>& counter)
         {
             counter.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        /* Escalates what a map update says needs re-walking, and hands the
+         * delta back for the caller to apply to the kernel filter. */
+        CgroupListDelta escalateDelta(CgroupListDelta delta)
+        {
+            escalate(delta.escalate);
+
+            if (m_filtering)
+            {
+                for (const auto& entry : delta.added)
+                {
+                    bump(m_stats.discovery_escalations);
+                    m_staging.onDrops(entry.second);
+                }
+            }
+
+            return delta;
         }
 
         void escalate(const std::vector<std::string>& container_ids)
