@@ -34,6 +34,9 @@ include_directories(${SRC_FOLDER}/external/flatbuffers/include)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
+# Consumer side of container_instances' lifecycle notifications, so a container
+# appearing or leaving can bring the next inventory pass forward.
+include_directories(${SRC_FOLDER}/shared_modules/container_instances_client/include/)
 include_directories(${CMAKE_BINARY_DIR}/shared_modules/sync_protocol)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/schema_validator/include/)

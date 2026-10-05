@@ -108,6 +108,10 @@ class EXPORTED Syscollector final
          */
         void destroy();
 
+        /// Waits on container_instances' lifecycle notifications and brings the
+        /// next container pass forward when one arrives. Runs until m_stopping.
+        void containerNotifyLoop();
+
         // Sync protocol methods
         void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD,
                               uint32_t integrityInterval);
@@ -679,6 +683,14 @@ class EXPORTED Syscollector final
         // One-shot guard so a disabled container baseline purges leftover
         // container rows once, not on every scan interval.
         bool                                                                     m_containerRowsPurged;
+        // Set by the lifecycle watcher when container_instances reports its
+        // list changed, cleared by syncLoop when it acts on it. Lets a new or
+        // removed container be inventoried without waiting out the remainder of
+        // m_containerBaselineInterval, which on a long interval is most of it.
+        std::atomic<bool>                                                        m_containerScanRequested;
+        // Blocks on the notification socket. Started only when the container
+        // baseline is enabled: with it off there is nothing to bring forward.
+        std::thread                                                              m_containerNotifyThread;
         std::atomic<unsigned int>                                                m_dataCleanRetries;
         std::atomic<bool>                                                        m_allCollectorsDisabled;
         bool                                                                     m_vdSyncEnabled;

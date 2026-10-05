@@ -14,6 +14,9 @@
 #include "stringHelper.h"
 #include "hashHelper.h"
 #include "timeHelper.h"
+#include "container_instances_notify_socket.hpp"
+#include "defs.h"
+#include <poll.h>
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
@@ -555,6 +558,7 @@ Syscollector::Syscollector()
     , m_containerBaseline { false }
     , m_containerBaselineInterval { 0 }
     , m_containerRowsPurged { false }
+    , m_containerScanRequested { false }
     , m_vdSyncEnabled { false }
     , m_failedItems { nullptr }
     , m_itemsToUpdateSync { nullptr }
@@ -796,8 +800,22 @@ void Syscollector::start()
         }
     }
 
+    // Only when the container baseline is enabled: with it off there is no
+    // pass to bring forward, so the thread and its socket would be pure cost.
+    if (m_containerBaseline)
+    {
+        m_containerNotifyThread = std::thread{[this] { containerNotifyLoop(); }};
+    }
+
     std::unique_lock<std::mutex> scan_lock{m_scan_mutex};
     syncLoop(scan_lock);
+
+    // syncLoop only returns once m_stopping is set, which is also what ends the
+    // watcher, so joining here needs no additional signal.
+    if (m_containerNotifyThread.joinable())
+    {
+        m_containerNotifyThread.join();
+    }
 }
 
 bool Syscollector::handleNotifyDataClean()
@@ -2683,6 +2701,49 @@ void Syscollector::scan()
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
 
+void Syscollector::containerNotifyLoop()
+{
+    wazuh::container_instances_client::NotifySocket notify;
+
+    if (!notify.bind(CI_NOTIFY_SYSCOLLECTOR))
+    {
+        // Not a failure worth reporting above debug: the interval still covers
+        // everything, so this costs latency rather than coverage, and on a host
+        // where container_instances is absent it is simply the normal state.
+        m_logFunction(LOG_DEBUG, "Container inventory: lifecycle notifications unavailable; the scan "
+                      "interval remains the only trigger.");
+        return;
+    }
+
+    m_logFunction(LOG_DEBUG, "Container inventory: listening for container lifecycle notifications.");
+
+    while (!m_stopping.load())
+    {
+        pollfd fds[1];
+        fds[0].fd      = notify.fd();
+        fds[0].events  = POLLIN;
+        fds[0].revents = 0;
+
+        // Bounded rather than indefinite: this thread has no second descriptor
+        // to be woken through on shutdown, so the timeout IS the shutdown
+        // latency. A second of it is imperceptible next to a scan interval.
+        const int ready = ::poll(fds, 1, 1000);
+
+        if (ready <= 0)
+        {
+            continue; // timeout, or EINTR; re-check m_stopping either way.
+        }
+
+        // Drained and discarded. The payload names a cursor, but this consumer
+        // re-reads the whole container set anyway, and a burst of changes
+        // deserves one scan rather than one each.
+        static_cast<void>(notify.drain());
+
+        m_containerScanRequested.store(true);
+        m_cv.notify_all();
+    }
+}
+
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 {
     // Coupled cadence (<container_baseline_interval> = 0, the default): the
@@ -2732,10 +2793,15 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
     {
         const auto wakeAt = nextHostScan < nextContainerScan ? nextHostScan : nextContainerScan;
 
-        if (m_cv.wait_until(scan_lock, wakeAt, [&]()
+        // The request flag joins the predicate so a notification wakes the loop
+        // immediately rather than at the next deadline — which, on a long
+        // container interval, is most of the point.
+        m_cv.wait_until(scan_lock, wakeAt, [&]()
         {
-            return m_stopping.load();
-        }))
+            return m_stopping.load() || m_containerScanRequested.load();
+        });
+
+        if (m_stopping.load())
         {
             break;
         }
@@ -2760,6 +2826,11 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
                 nextContainerScan = now + std::chrono::seconds{m_containerBaselineInterval};
             }
 
+            // Drop any request that arrived while paused. Keeping it would make
+            // resuming fire an immediate pass for a change the pause already
+            // outlasted, and the deadline above covers it regardless.
+            m_containerScanRequested.store(false);
+
             continue;
         }
 
@@ -2769,7 +2840,10 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
             nextHostScan = now + std::chrono::seconds{m_intervalValue};
         }
 
-        if (now >= nextContainerScan)
+        // exchange, not load: the request is consumed here, so a change
+        // arriving DURING the pass sets it again and is served by the next
+        // iteration rather than being swallowed by this one.
+        if (now >= nextContainerScan || m_containerScanRequested.exchange(false))
         {
             runContainerBaselinePass();
             nextContainerScan = now + std::chrono::seconds{m_containerBaselineInterval};

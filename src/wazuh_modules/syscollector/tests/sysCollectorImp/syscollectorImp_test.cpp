@@ -18,6 +18,10 @@
 #include <mutex>
 #include <sqlite3.h>
 #include <thread>
+#include <cstring>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
@@ -590,6 +594,118 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     {
         t.join();
     }
+}
+
+TEST_F(SyscollectorImpTest, aLifecycleNotificationBringsTheContainerPassForward)
+{
+#ifndef __linux__
+    GTEST_SKIP() << "The container baseline pass is Linux-only";
+#else
+    // With the interval at 100 s and scan_on_start off, NOTHING schedules a
+    // container pass inside this test's lifetime. So any pass observed here was
+    // caused by the notification and nothing else — which is the point: a
+    // container that starts and stops inside one interval would otherwise be
+    // inventoried late or not at all.
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([])"_json));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
+            (nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(testing::AnyNumber()).WillRepeatedly(testing::InvokeArgument<0>
+            (R"({"name":"TEXT", "version_":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper,
+                browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
+
+    // The watcher binds relative to the working directory, so the directory has
+    // to exist before it starts or the bind fails and it gives up.
+    ASSERT_EQ(0, ::system("mkdir -p queue/sockets"));
+
+    LogCapture logCapture;
+    std::mutex logMutex;
+    auto captureLogFunction = [&logCapture, &logMutex](modules_log_level_t level, const std::string & log)
+    {
+        std::lock_guard<std::mutex> lock(logMutex);
+        logCapture.capture(level, log);
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &captureLogFunction]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          persistFunction,
+                                          captureLogFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          100,    // host interval
+                                          false,  // scan_on_start: nothing runs by itself
+                                          true, true, true, true, true, true, true, true, true, true, true, true,
+                                          true,   // container_baseline
+                                          false,  // notify_on_first_scan
+                                          100);   // container interval, far beyond this test
+
+            Syscollector::instance().start();
+        }
+    };
+
+    // Let the watcher bind before anything is sent to it. A datagram to a
+    // socket nobody has bound is silently discarded, which would make this test
+    // pass or fail on timing rather than on behaviour.
+    std::this_thread::sleep_for(std::chrono::seconds{3});
+
+    const int fd = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+    ASSERT_GE(fd, 0);
+
+    sockaddr_un address {};
+    address.sun_family = AF_UNIX;
+    std::strncpy(address.sun_path, "queue/sockets/syscollector-ci-notify", sizeof(address.sun_path) - 1);
+
+    const std::string payload = R"({"epoch":"1","seq":"1"})";
+    const auto sent = ::sendto(fd,
+                               payload.data(),
+                               payload.size(),
+                               0,
+                               reinterpret_cast<const sockaddr*>(&address),
+                               sizeof(address));
+    ::close(fd);
+    ASSERT_GE(sent, 0) << "nothing bound the notification socket, so this test proved nothing";
+
+    // Generous next to the ~4.5 s the first pass costs when no
+    // container_instances socket exists, and still an order of magnitude below
+    // the 100 s interval that is the only other way a pass could happen.
+    std::this_thread::sleep_for(std::chrono::seconds{10});
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    size_t containerPasses = 0;
+    {
+        std::lock_guard<std::mutex> lock(logMutex);
+
+        for (const auto& entry : logCapture.logs)
+        {
+            if (entry.message.find("Starting container baseline scan") != std::string::npos)
+            {
+                ++containerPasses;
+            }
+        }
+    }
+
+    EXPECT_GE(containerPasses, 1u)
+            << "the interval is 100 s and scan_on_start is off, so a pass can only have come from the notification";
+#endif
 }
 
 TEST_F(SyscollectorImpTest, containerBaselineRunsOnItsOwnIntervalNotTheHostOne)
