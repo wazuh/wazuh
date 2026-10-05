@@ -114,7 +114,12 @@ namespace wazuh::container_instances
 
     std::vector<ContainerSummary> DockerApiClient::listContainers()
     {
-        const auto response = get("/v" + apiVersion() + "/containers/json");
+        // all=1: stopped containers too. Without it a stop is indistinguishable
+        // from a deletion — the container simply leaves the list — and consumers
+        // sweep its rows, losing the inventory of a container whose filesystem
+        // is still on disk and which `docker start` may bring straight back.
+        // Retention then mirrors Docker's own: entries persist until `docker rm`.
+        const auto response = get("/v" + apiVersion() + "/containers/json?all=1");
         if (response.status != 200)
         {
             throw DockerApiError(response.status, "container list returned HTTP " + std::to_string(response.status));

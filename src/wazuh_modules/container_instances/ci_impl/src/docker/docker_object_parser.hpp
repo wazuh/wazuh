@@ -22,6 +22,27 @@ namespace wazuh::container_instances::docker
             kRelevant.begin(), kRelevant.end(), [&action](std::string_view relevant) { return action == relevant; });
     }
 
+    /// Docker's own state vocabulary -> ContainerState.
+    ///
+    /// Only "running" has a process. "paused" deliberately does NOT: a paused
+    /// container's tasks are frozen and the cgroup still exists, but nothing can
+    /// be read out of it, so treating it as running would have the resolver
+    /// chase an inode it cannot use. Unrecognised values fall to `unknown`,
+    /// which is treated as running — never as gone.
+    [[nodiscard]] inline ContainerState parseDockerState(const std::string& status)
+    {
+        if (status == "running")
+        {
+            return ContainerState::running;
+        }
+        if (status == "created" || status == "paused" || status == "restarting" || status == "removing" ||
+            status == "exited" || status == "dead")
+        {
+            return ContainerState::stopped;
+        }
+        return ContainerState::unknown;
+    }
+
     /// GET /containers/json response -> summaries. @throws nlohmann::json::exception.
     [[nodiscard]] inline std::vector<ContainerSummary> parseContainerList(const nlohmann::json& body)
     {
@@ -47,6 +68,7 @@ namespace wazuh::container_instances::docker
         record.runtime = ContainerRuntime::docker;
         record.containerId = body.value("Id", "");
         record.restartCount = body.value("RestartCount", 0);
+        record.state = parseDockerState(body.value("State", nlohmann::json::object()).value("Status", ""));
 
         auto name = body.value("Name", "");
         if (!name.empty() && name.front() == '/')

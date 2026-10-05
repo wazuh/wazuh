@@ -35,6 +35,7 @@ namespace wazuh::container_instances
             record.image = container.image;
             record.imageDigest = container.imageDigest;
             record.restartCount = container.restartCount;
+            record.state = container.state;
             record.podUid = pod.uid;
             record.podName = pod.name;
             record.podNamespace = pod.podNamespace;
