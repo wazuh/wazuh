@@ -65,12 +65,19 @@ protected:
         return spec;
     }
 
-    /// Asserts that `buckets` is rejected with InvalidArgument and a reason naming `field`.
-    void expectRejected(std::vector<BucketSpec> buckets, const std::string& field, std::string consumer = "consumer")
+    /// The reason prefix of a field of `buckets[index]` named `name`.
+    static std::string field(const std::string& rest, std::size_t index = 0, const std::string& name = "events")
+    {
+        return "buckets[" + std::to_string(index) + "] ('" + name + "')." + rest;
+    }
+
+    /// Asserts that `buckets` is rejected with InvalidArgument and exactly `reason` (the full message of the rule, so
+    /// that a different rule rejecting the same spec does not keep the case green).
+    void expectRejected(std::vector<BucketSpec> buckets, const std::string& reason, std::string consumer = "consumer")
     {
         auto result = m_ref.client(consumer, std::move(buckets));
         EXPECT_EQ(result.cause, Cause::InvalidArgument) << result.reason;
-        EXPECT_NE(result.reason.find(field), std::string::npos) << "reason '" << result.reason << "' lacks " << field;
+        EXPECT_EQ(result.reason, reason);
         EXPECT_EQ(result.value, nullptr);
         EXPECT_EQ(m_ref.snapshot().clients, 0u) << "a rejected client must not take the consumer name";
     }
@@ -80,7 +87,7 @@ protected:
 
 TEST_F(BucketSpecTest, InvalidEmptyConsumer)
 {
-    expectRejected({valid()}, "consumer", "");
+    expectRejected({valid()}, "consumer name must not be empty", "");
 }
 
 TEST_F(BucketSpecTest, InvalidDuplicateConsumer)
@@ -89,7 +96,7 @@ TEST_F(BucketSpecTest, InvalidDuplicateConsumer)
     ASSERT_TRUE(first.ok());
     auto second = m_ref.client("dup", {valid()});
     EXPECT_EQ(second.cause, Cause::InvalidArgument);
-    EXPECT_NE(second.reason.find("dup"), std::string::npos);
+    EXPECT_EQ(second.reason, "consumer 'dup' already has a live client");
 
     // Once the first client is gone the name is free again.
     first.value.reset();
@@ -98,49 +105,49 @@ TEST_F(BucketSpecTest, InvalidDuplicateConsumer)
 
 TEST_F(BucketSpecTest, InvalidEmptyBucketName)
 {
-    expectRejected({valid("")}, "name");
+    expectRejected({valid("")}, "buckets[0].name must not be empty");
 }
 
 TEST_F(BucketSpecTest, InvalidDuplicateBucketName)
 {
-    expectRejected({valid("a"), valid("b"), valid("a")}, "buckets[2].name");
+    expectRejected({valid("a"), valid("b"), valid("a")}, "buckets[2].name 'a' is duplicated");
 }
 
 TEST_F(BucketSpecTest, InvalidZeroWeight)
 {
     auto spec = valid();
     spec.weight = 0;
-    expectRejected({spec}, "weight");
+    expectRejected({spec}, field("weight must be > 0"));
 }
 
 TEST_F(BucketSpecTest, InvalidZeroQuotaBytes)
 {
     auto spec = valid();
     spec.quotaBytes = 0;
-    expectRejected({spec}, "quotaBytes");
+    expectRejected({spec}, field("quotaBytes must be > 0"));
 }
 
 TEST_F(BucketSpecTest, InvalidZeroBulkMaxBytes)
 {
     auto spec = valid();
     spec.bulk.maxBytes = 0;
-    expectRejected({spec}, "bulk.maxBytes");
+    expectRejected({spec}, field("bulk.maxBytes must be > 0"));
 }
 
 TEST_F(BucketSpecTest, InvalidZeroBulkMaxDocs)
 {
     auto spec = valid();
     spec.bulk.maxDocs = 0;
-    expectRejected({spec}, "bulk.maxDocs");
+    expectRejected({spec}, field("bulk.maxDocs must be > 0"));
 }
 
 TEST_F(BucketSpecTest, InvalidNonPositiveBulkMaxAge)
 {
     auto spec = valid();
     spec.bulk.maxAge = Duration {0};
-    expectRejected({spec}, "bulk.maxAge");
+    expectRejected({spec}, field("bulk.maxAge must be > 0"));
     spec.bulk.maxAge = Duration {-5};
-    expectRejected({spec}, "bulk.maxAge");
+    expectRejected({spec}, field("bulk.maxAge must be > 0"));
 }
 
 TEST_F(BucketSpecTest, InvalidBulkMaxBytesAboveQuota)
@@ -148,7 +155,7 @@ TEST_F(BucketSpecTest, InvalidBulkMaxBytesAboveQuota)
     auto spec = valid();
     spec.quotaBytes = 1024;
     spec.bulk.maxBytes = 1025;
-    expectRejected({spec}, "bulk.maxBytes");
+    expectRejected({spec}, field("bulk.maxBytes must be <= quotaBytes"));
 }
 
 TEST_F(BucketSpecTest, InvalidRetryBaseAboveCap)
@@ -156,7 +163,7 @@ TEST_F(BucketSpecTest, InvalidRetryBaseAboveCap)
     auto spec = valid();
     spec.retry.base = Duration {2000};
     spec.retry.cap = Duration {1000};
-    expectRejected({spec}, "retry.base");
+    expectRejected({spec}, field("retry.base must be <= retry.cap"));
 }
 
 TEST_F(BucketSpecTest, InvalidQuotaAboveGlobalQuota)
@@ -164,25 +171,27 @@ TEST_F(BucketSpecTest, InvalidQuotaAboveGlobalQuota)
     auto spec = valid();
     spec.quotaBytes = RuntimeConfig {}.globalQuotaBytes + 1; // The runtime runs with the default global quota.
     spec.bulk.maxBytes = 1024;
-    expectRejected({spec}, "quotaBytes");
+    expectRejected({spec},
+                   field("quotaBytes must be <= the runtime's global_quota_bytes (" +
+                         std::to_string(RuntimeConfig {}.globalQuotaBytes) + ")"));
 }
 
 TEST_F(BucketSpecTest, InvalidNonPositiveRetryBase)
 {
     auto spec = valid();
     spec.retry.base = Duration {0};
-    expectRejected({spec}, "retry.base");
+    expectRejected({spec}, field("retry.base must be > 0"));
     spec.retry.base = Duration {-1};
-    expectRejected({spec}, "retry.base");
+    expectRejected({spec}, field("retry.base must be > 0"));
 }
 
 TEST_F(BucketSpecTest, InvalidNonPositiveRetryCap)
 {
     auto spec = valid();
     spec.retry.cap = Duration {0};
-    expectRejected({spec}, "retry.cap");
+    expectRejected({spec}, field("retry.cap must be > 0"));
     spec.retry.cap = Duration {-1};
-    expectRejected({spec}, "retry.cap");
+    expectRejected({spec}, field("retry.cap must be > 0"));
 }
 
 TEST_F(BucketSpecTest, InvalidJitterOutOfRange)
@@ -192,7 +201,7 @@ TEST_F(BucketSpecTest, InvalidJitterOutOfRange)
         SCOPED_TRACE(jitter);
         auto spec = valid();
         spec.retry.jitter = jitter;
-        expectRejected({spec}, "retry.jitter");
+        expectRejected({spec}, field("retry.jitter must be in [0, 1]"));
     }
 }
 
@@ -200,7 +209,24 @@ TEST_F(BucketSpecTest, InvalidZeroMaxAttempts)
 {
     auto spec = valid();
     spec.retry.maxAttempts = 0u;
-    expectRejected({spec}, "retry.maxAttempts");
+    expectRejected({spec}, field("retry.maxAttempts must be > 0 (or unset for unlimited)"));
+}
+
+TEST_F(BucketSpecTest, InvalidNonPositiveMaxDuration)
+{
+    auto spec = valid();
+    spec.retry.maxDuration = Duration {0};
+    expectRejected({spec}, field("retry.maxDuration must be > 0 (or unset for unlimited)"));
+    spec.retry.maxDuration = Duration {-1};
+    expectRejected({spec}, field("retry.maxDuration must be > 0 (or unset for unlimited)"));
+}
+
+TEST_F(BucketSpecTest, InvalidZeroRetryOnConflict)
+{
+    auto spec = valid();
+    spec.onConflict.kind = ConflictPolicy::Kind::Retry;
+    spec.onConflict.retryOnConflict = 0;
+    expectRejected({spec}, field("onConflict.retryOnConflict must be > 0 with ConflictPolicy::Retry"));
 }
 
 TEST_F(BucketSpecTest, InvalidBlockWithoutTimeout)
@@ -208,14 +234,14 @@ TEST_F(BucketSpecTest, InvalidBlockWithoutTimeout)
     auto spec = valid();
     spec.overflow.kind = Overflow::Kind::Block;
     spec.overflow.blockTimeout = Duration {0};
-    expectRejected({spec}, "overflow.blockTimeout");
+    expectRejected({spec}, field("overflow.blockTimeout must be > 0 with Overflow::Block"));
 }
 
 TEST_F(BucketSpecTest, InvalidSecondBucketNamesItsIndex)
 {
     auto bad = valid("second");
     bad.weight = 0;
-    expectRejected({valid("first"), bad}, "buckets[1]");
+    expectRejected({valid("first"), bad}, field("weight must be > 0", 1, "second"));
 }
 
 TEST_F(BucketSpecTest, ValidSpecAccepted)
@@ -235,6 +261,11 @@ TEST_F(BucketSpecTest, ValidSpecAccepted)
     blocking.retry.jitter = 0.0;
     blocking.retry.maxAttempts = 1u;
     blocking.quotaBytes = RuntimeConfig {}.globalQuotaBytes; // quotaBytes == global_quota_bytes is allowed.
+    blocking.retry.maxDuration = Duration {1};               // The smallest positive maxDuration is allowed.
+    blocking.onConflict.kind = ConflictPolicy::Kind::Retry;
+    blocking.onConflict.retryOnConflict = 1; // The smallest retryOnConflict with Retry is allowed.
+    edge.onConflict.kind = ConflictPolicy::Kind::Success;
+    edge.onConflict.retryOnConflict = 0; // retryOnConflict is ignored without Retry.
     edge.ordered = true;
 
     auto result = m_ref.client("valid", {valid(), blocking, edge});

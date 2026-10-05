@@ -92,6 +92,10 @@ RuntimeOwner::shutdown()                  owner thread, joins every runtime thre
   first deadline wins. Consumers read it through `RuntimeRef::shutdownDeadline()`.
 - **`shutdown()`** joins every runtime thread. A second call is a no-op (`Cause::None`). Taking a
   `RuntimeRef` from a previous runtime does not make it valid again after a restart.
+- **Exit without `shutdown()`.** A runtime that never went through `shutdown()` is joined during
+  static destruction, at `exit()`. In E1 its threads always leave, but from E2 on a thread blocked
+  in I/O or in a long callback can hang that `exit()`: the owner must call `shutdown()` before the
+  process exits.
 - **`requestClose()` / `awaitClosed(deadline)`.** `Client::requestClose()` never blocks and is
   valid from any thread. `Client::awaitClosed()` blocks and is for consumer threads only. The
   `Client` destructor is `requestClose()` plus `awaitClosed()` with the shutdown deadline (or the
@@ -112,27 +116,39 @@ The library **never opens a file**. All configuration arrives through `IConfigSo
 | Method | Returns |
 |---|---|
 | `raw(key)` | Raw value of an internal option, or `nullopt` when unset |
-| `keysWithPrefix(prefix)` | Every key of the source that starts with `prefix`; used to reject unknown keys |
+| `keysWithPrefix(prefix)` | Every key of the source that starts with `prefix` (including the ones `problem()` reports); used to reject unknown keys |
+| `problem(key)` | Why a present key is unusable (malformed line, empty value), or `nullopt`; defaults to `nullopt` |
 | `indexerSectionJson()` | The `<indexer>` section as canonical JSON |
 
 `KeyValueConfigSource::parse(text, indexerSectionJson)` is the stock implementation: `key=value`
-lines with the semantics of wazuh's C internal-options reader (`_read_file` in
-`src/shared/src/validate_op.c`):
+lines, judged **per key** like wazuh's C internal-options reader (`_read_file` in
+`src/shared/src/validate_op.c`): outside the process prefix nothing is judged. Under the prefix it is
+**stricter than C**: a malformed line is fatal wherever it appears (C logs `FGETS_ERROR` and skips it)
+and values are strict unsigned decimals (C uses `atoi`).
 
-- a line that is empty or starts with `#` or a **space** is a comment (an indented line is never a key);
-- the **first** occurrence of a key wins; later duplicates are not read (nor validated);
-- an empty value (`key=`) is `Cause::InvalidConfig` naming its line number, as is a non-comment line
-  without `=` or with an empty key.
+- a line that is empty or starts with `#`, a **space** or a **tab** is a comment (an indented line is
+  never a key; the C reader never matches a tab-indented line either);
+- the **first** occurrence of a key wins; later duplicates are not read (nor validated). This also
+  holds for an empty value (`k=1` then `k=` → 1; `k=` then `k=2` → problem, both as in C); a line
+  without `=` has the whole line as its key, so it never collides with a real key;
+- parsing never fails on a line. A non-comment line without `=` (its key is the whole trimmed line)
+  or with an empty value (`key=`) is **recorded** against its key, with its line number, and
+  `problem(key)` returns that text. A line with an empty key (`= 5`) can match no key and is skipped.
+- `RuntimeConfig::from()` fails with `Cause::InvalidConfig` and that text **only** when the recorded
+  key is under the process prefix. A broken line of another daemon (`remoted.foo`, or the other
+  process's `indexer_client_*` family) is ignored, as the C reader ignores it for every key it
+  does not match.
 
-The caller reads the file; the class only parses text. Because the first occurrence wins, a caller
-that merges the local and the default internal-options files (E7, modulesd) must pass the text in
-the order the C side resolves them: **`local_internal_options.conf` first**, then the default file,
-so a local override shadows the default exactly as `getDefine_Int` does. The engine is expected to
-wrap its own `conf` in its own `IConfigSource`.
+The caller reads the file; the class only parses text. In the manager build there is one
+internal-options file: E7 (modulesd) passes exactly `etc/wazuh-manager-internal-options.conf`
+(`WAZUH_LDEFINES`, `src/shared/include/defs.h`). The defaults are `kSchema`'s, the same model the C
+side uses with `getDefine_Int_default()`: there is no default file to concatenate. The engine is
+expected to wrap its own `conf` in its own `IConfigSource`.
 
 `RuntimeConfig::from(process, source)` builds the typed configuration. Unknown keys under the
-prefix, non-decimal values, out-of-range values, `uint64` overflow and an invalid `<indexer>` JSON
-are all `Cause::InvalidConfig`, with the offending key in `reason`. Values are strict unsigned
+prefix, keys under the prefix that `problem()` reports, non-decimal values, out-of-range values,
+`uint64` overflow and an invalid `<indexer>` JSON are all `Cause::InvalidConfig`, with the
+offending key in `reason`. Values are strict unsigned
 decimal integers (surrounding blanks allowed).
 
 **`<indexer>` section.** `indexerSectionJson()` must return exactly the `indexer` section of

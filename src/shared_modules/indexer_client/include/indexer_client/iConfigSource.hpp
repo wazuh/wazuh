@@ -33,8 +33,18 @@ namespace indexer_client
         /// modulesd).
         virtual std::optional<std::string> raw(std::string_view key) const = 0;
 
-        /// Every key present in the source that starts with `prefix` (used to reject unknown keys).
+        /// Every key present in the source that starts with `prefix` (used to reject unknown keys), including the keys
+        /// that problem() reports.
         virtual std::vector<std::string> keysWithPrefix(std::string_view prefix) const = 0;
+
+        /// Why `key` is present but unusable (e.g. a malformed line or an empty value), or nullopt when it is fine or
+        /// absent. RuntimeConfig::from() asks it for every key under the process prefix and fails with
+        /// Cause::InvalidConfig and this text; keys outside the prefix are never asked, so another daemon's broken
+        /// line never fails this process. Sources that cannot hold an unusable key keep the default.
+        virtual std::optional<std::string> problem(std::string_view /*key*/) const
+        {
+            return std::nullopt;
+        }
 
         /// The `<indexer>` section as canonical JSON (shape of manager_config's `sectionJson("indexer")`): exactly an
         /// object with `hosts` and, optionally, `ssl`; any other member is Cause::InvalidConfig. The engine's current

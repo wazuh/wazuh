@@ -271,7 +271,18 @@ namespace indexer_client
             for (const auto& key : source.keysWithPrefix(prefix))
             {
                 const bool underPrefix = key.size() >= prefix.size() && key.compare(0, prefix.size(), prefix) == 0;
-                if (!underPrefix || findEntry(std::string_view {key}.substr(prefix.size())) == nullptr)
+                if (!underPrefix)
+                {
+                    return Outcome<RuntimeConfig>::failure(Cause::InvalidConfig,
+                                                           key + ": unknown option under '" + prefix + "'");
+                }
+                // A key under the prefix that the source holds but cannot use (malformed line, empty value) is fatal
+                // for this process only; outside the prefix nobody asks (same per-key scope as the C reader).
+                if (auto why = source.problem(key))
+                {
+                    return Outcome<RuntimeConfig>::failure(Cause::InvalidConfig, std::move(*why));
+                }
+                if (findEntry(std::string_view {key}.substr(prefix.size())) == nullptr)
                 {
                     return Outcome<RuntimeConfig>::failure(Cause::InvalidConfig,
                                                            key + ": unknown option under '" + prefix + "'");
