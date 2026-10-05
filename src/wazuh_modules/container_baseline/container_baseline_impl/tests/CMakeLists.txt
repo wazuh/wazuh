@@ -16,6 +16,7 @@ add_executable(container_baseline_unit_test ${CONTAINER_BASELINE_UNIT_TEST_SRC})
 
 target_include_directories(container_baseline_unit_test PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../include
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -31,6 +32,9 @@ else()
   target_link_libraries(
     container_baseline_unit_test
     CONTAINER_BASELINE_IMPL
+    # The lifecycle delta tests exercise the C entry points, which live here
+    # rather than in the impl archive above.
+    container_baseline
     debug gtestd debug gtest_maind
     optimized gtest optimized gtest_main
     pthread

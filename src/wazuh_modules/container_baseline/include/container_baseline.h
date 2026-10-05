@@ -219,6 +219,89 @@ EXPORTED int cbaseline_run_syscollector_dbsync(const char*                connec
                                                cb_container_status_sink_t status_sink,
                                                void*                      user_data);
 
+/* Baseline inventory for ONLY the named containers.
+ *
+ * What a delta-driven caller needs: having learned that three containers
+ * changed, re-scanning the other ninety-seven is exactly the cost the delta
+ * exists to avoid.
+ *
+ * Ids the connector no longer knows are skipped silently. A container that
+ * disappeared between the delta being read and this being called is an ordinary
+ * race, not an error, and its removal arrives through the delta in its own right.
+ *
+ * Row contiguity and one-status-per-container are unchanged: this selects which
+ * containers are visited, not how each is walked.
+ *
+ * Returns the number baselined, or -1 when the connector could not be reached —
+ * which MUST NOT be read as "none of those containers exist any more". */
+EXPORTED int cbaseline_run_syscollector_dbsync_for(const char*                connector_socket_path,
+                                                   const char* const*         container_ids,
+                                                   int                        container_count,
+                                                   cb_dbsync_row_sink_t       sink,
+                                                   cb_container_status_sink_t status_sink,
+                                                   void*                      user_data);
+
+/* --- container lifecycle delta ------------------------------------------- *
+ *
+ * Lets a caller learn what CHANGED since it last looked, instead of fetching
+ * every container's record and diffing. The cost it removes is per-poll and
+ * proportional to the container count; the cost it adds is a cursor the caller
+ * has to carry.
+ */
+
+/* What differs about a container, as a bitmask on cb_lifecycle_event_t.changed.
+ *
+ * An UNKNOWN BIT MUST BE TREATED AS "re-scan everything". A newer module may
+ * report a class this build has no name for, and the safe reading of "something
+ * changed that I do not understand" is to do the work, not to skip it. */
+#define CB_CHANGED_IDENTITY (1u << 0) /* name, restart count, state, cgroup */
+#define CB_CHANGED_IMAGE    (1u << 1) /* image or its digest */
+#define CB_CHANGED_MOUNTS   (1u << 2)
+#define CB_CHANGED_NETWORK  (1u << 3)
+#define CB_CHANGED_METADATA (1u << 4) /* labels, annotations, pod identity */
+
+#define CB_LIFECYCLE_ADDED   0
+#define CB_LIFECYCLE_CHANGED 1
+#define CB_LIFECYCLE_REMOVED 2
+
+typedef struct
+{
+    const char*  container_id;
+    int          kind;    /* CB_LIFECYCLE_* */
+    unsigned int changed; /* CB_CHANGED_* bitmask; meaningful when kind is CHANGED */
+} cb_lifecycle_event_t;
+
+typedef void (*cb_lifecycle_sink_t)(const cb_lifecycle_event_t* event, void* user_data);
+
+/* Reads transitions after (*epoch, *seq), and updates both to the position to
+ * come back with.
+ *
+ * Returns the number of events reported, or:
+ *
+ *   CB_DELTA_RESYNC       the cursor could not be served — a different module
+ *                         lifetime, or a position already aged out. Every known
+ *                         container is reported as ADDED, so a caller that
+ *                         re-baselines what it is told about recovers by doing
+ *                         what it already does. Absentees MAY then be swept.
+ *   CB_DELTA_UNAVAILABLE  nothing was obtained, or this module predates deltas.
+ *                         The caller MUST NOT sweep: an empty answer here is
+ *                         indistinguishable from "no containers" only if the
+ *                         caller lets it be, and treating it as authority
+ *                         deletes every stored row on a momentary blip.
+ *
+ * Pass 0/0 to start from cold; that reports CB_DELTA_RESYNC with the full set,
+ * which is the same shape as recovering from a gap and so needs no separate
+ * handling. The cursor is advanced only after the caller has applied what it
+ * was given, so a crash in between replays rather than drops. */
+#define CB_DELTA_UNAVAILABLE (-1)
+#define CB_DELTA_RESYNC      (-2)
+
+EXPORTED int cbaseline_lifecycle_since(const char*         connector_socket_path,
+                                       unsigned long long* epoch,
+                                       unsigned long long* seq,
+                                       cb_lifecycle_sink_t sink,
+                                       void*               user_data);
+
 /* Invoked once per container currently known to the container-connector
  * module, independent of whether it has a resolvable live PID right now. */
 typedef void (*cb_container_id_sink_t)(const char* container_id, void* user_data);

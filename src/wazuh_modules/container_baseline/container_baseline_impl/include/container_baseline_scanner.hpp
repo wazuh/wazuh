@@ -224,6 +224,29 @@ int RunSyscollectorDbsyncBaselineFrom(const ContainerDiscoverer& discover,
                                        const DbsyncRowSink&       sink,
                                        const ContainerStatusSink& status_sink = {});
 
+/// @brief Syscollector inventory baseline for ONLY the named containers.
+///
+/// What a delta-driven caller needs: after learning that three containers
+/// changed, re-scanning the other ninety-seven is the cost this exists to
+/// avoid.
+///
+/// Ids the connector does not know are skipped silently rather than reported —
+/// a container that has gone between the delta being read and this being called
+/// is an ordinary race, not an error, and its removal arrives through the delta
+/// in its own right.
+///
+/// Row contiguity and one-status-per-container hold exactly as for the
+/// whole-node variant: this selects which containers are visited and changes
+/// nothing about how each is walked.
+///
+/// @return Number of containers baselined, or **-1 when the connector could not
+///         be reached** — which callers MUST NOT read as "none of those
+///         containers exist any more".
+int RunSyscollectorDbsyncBaselineForContainers(const std::string&              connector_socket_path,
+                                                const std::vector<std::string>& container_ids,
+                                                const DbsyncRowSink&            sink,
+                                                const ContainerStatusSink&      status_sink = {});
+
 using ContainerIdSink = std::function<void(const std::string&)>;
 
 /// @brief Lists every container currently known to container_instances,

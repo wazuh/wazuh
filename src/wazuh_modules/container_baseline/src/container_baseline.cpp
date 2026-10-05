@@ -1,7 +1,9 @@
 #include "container_baseline.h"
 
 #include "container_baseline_scanner.hpp"
+#include "container_instances_client.hpp"
 
+#include <cstddef>
 #include <functional>
 #include <string>
 #include <vector>
@@ -152,6 +154,132 @@ extern "C" int cbaseline_run_syscollector_dbsync(const char*                conn
     return RunSyscollectorDbsyncBaseline(connector_socket_path,
                                          MakeRowSink(sink, user_data),
                                          MakeStatusSink(status_sink, user_data));
+}
+
+extern "C" int cbaseline_run_syscollector_dbsync_for(const char*                connector_socket_path,
+                                                     const char* const*         container_ids,
+                                                     int                        container_count,
+                                                     cb_dbsync_row_sink_t       sink,
+                                                     cb_container_status_sink_t status_sink,
+                                                     void*                      user_data)
+{
+    // -1, matching the whole-node entry points: "no socket configured" is no
+    // more an authorisation to act than "socket unreachable" is.
+    if (connector_socket_path == nullptr) return -1;
+
+    // 0, not -1: an empty or malformed list is a caller bug, and says nothing
+    // about the connector. Nothing was baselined either way.
+    if (container_ids == nullptr || container_count <= 0) return 0;
+
+    std::vector<std::string> ids;
+    ids.reserve(static_cast<std::size_t>(container_count));
+
+    for (int i = 0; i < container_count; ++i)
+    {
+        if (container_ids[i] != nullptr && container_ids[i][0] != '\0')
+        {
+            ids.emplace_back(container_ids[i]);
+        }
+    }
+
+    if (ids.empty()) return 0;
+
+    return RunSyscollectorDbsyncBaselineForContainers(
+        connector_socket_path, ids, MakeRowSink(sink, user_data), MakeStatusSink(status_sink, user_data));
+}
+
+extern "C" int cbaseline_lifecycle_since(const char*         connector_socket_path,
+                                         unsigned long long* epoch,
+                                         unsigned long long* seq,
+                                         cb_lifecycle_sink_t sink,
+                                         void*               user_data)
+{
+    if (connector_socket_path == nullptr || epoch == nullptr || seq == nullptr)
+    {
+        return CB_DELTA_UNAVAILABLE;
+    }
+
+    wazuh::container_instances_client::ContainerInstancesClient client {connector_socket_path};
+    const auto delta = client.listContainersSince(*epoch, *seq);
+
+    if (!delta.available)
+    {
+        // Nothing was obtained. Deliberately NOT distinguished from any other
+        // failure here, because every one of them has the same consequence for
+        // the caller: it learned nothing, so it may not act as though it did.
+        return CB_DELTA_UNAVAILABLE;
+    }
+
+    // An older module answered with the whole set and no cursor. Reporting that
+    // as a resync is exactly right — the caller re-baselines what it is told
+    // about, which is what it would have done anyway — and means this function
+    // has no separate "talking to an old module" path for callers to handle.
+    if (!delta.deltaSupported || delta.resyncRequired)
+    {
+        if (sink != nullptr)
+        {
+            for (const auto& container : delta.containers)
+            {
+                cb_lifecycle_event_t event {};
+                event.container_id = container.containerId.c_str();
+                event.kind = CB_LIFECYCLE_ADDED;
+                event.changed = 0;
+                sink(&event, user_data);
+            }
+        }
+
+        *epoch = delta.epoch;
+        *seq = delta.seq;
+        return CB_DELTA_RESYNC;
+    }
+
+    int reported = 0;
+
+    for (const auto& item : delta.events)
+    {
+        if (sink == nullptr) break;
+
+        cb_lifecycle_event_t event {};
+        event.container_id = item.containerId.c_str();
+        event.changed = 0;
+
+        switch (item.kind)
+        {
+            using Kind = wazuh::container_instances_client::ContainerEventRef::Kind;
+            case Kind::added: event.kind = CB_LIFECYCLE_ADDED; break;
+            case Kind::removed: event.kind = CB_LIFECYCLE_REMOVED; break;
+            case Kind::changed:
+            default: event.kind = CB_LIFECYCLE_CHANGED; break;
+        }
+
+        for (const auto& name : item.changed)
+        {
+            if (name == "identity") event.changed |= CB_CHANGED_IDENTITY;
+            else if (name == "image") event.changed |= CB_CHANGED_IMAGE;
+            else if (name == "mounts") event.changed |= CB_CHANGED_MOUNTS;
+            else if (name == "network") event.changed |= CB_CHANGED_NETWORK;
+            else if (name == "metadata") event.changed |= CB_CHANGED_METADATA;
+            else
+            {
+                // A class this build has no bit for. Setting every known bit is
+                // the conservative reading: the caller re-scans everything,
+                // which is what an unknown change deserves. Dropping it would
+                // silently skip work that was owed.
+                event.changed |= CB_CHANGED_IDENTITY | CB_CHANGED_IMAGE | CB_CHANGED_MOUNTS | CB_CHANGED_NETWORK |
+                                 CB_CHANGED_METADATA;
+            }
+        }
+
+        sink(&event, user_data);
+        ++reported;
+    }
+
+    // Advanced only after every event has been handed over, so a caller that
+    // dies mid-loop replays them rather than losing them.
+    *epoch = delta.epoch;
+    *seq = delta.seq;
+
+    return reported;
 }
 
 extern "C" int cbaseline_list_containers(const char* connector_socket_path, cb_container_id_sink_t sink, void* user_data)
