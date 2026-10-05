@@ -2,6 +2,7 @@
 
 #include "../core/cache_entry.hpp"
 #include "../core/container_record.hpp"
+#include "../core/host_key.hpp"
 #include "lifecycle_journal.hpp"
 
 #include <cstddef>
@@ -47,7 +48,21 @@ namespace wazuh::container_instances
     public:
         virtual ~IMetadataStore() = default;
 
-        [[nodiscard]] virtual LookupResult lookupByCgroup(std::uint64_t cgroupInode) const = 0;
+        /// Look one container up by the key its host uses.
+        ///
+        /// Takes a HostKey rather than a bare integer so a caller asking with
+        /// the WRONG KIND is refused instead of answered. That is not
+        /// hypothetical: the key arrives over IPC from a separate process that
+        /// classified the host itself, and a cgroup inode and a mount-namespace
+        /// inode are both plausible-looking 64-bit numbers. Compared as bare
+        /// integers they simply fail to match, which is reported as "this
+        /// container is unknown" — sending the consumer off to re-resolve a
+        /// container that is sitting right there.
+        [[nodiscard]] virtual LookupResult lookup(HostKey key) const = 0;
+
+        /// Which kind of key this store is filed under, so a consumer can ask
+        /// rather than classify the host for itself.
+        [[nodiscard]] virtual KeyKind keyKind() const = 0;
         [[nodiscard]] virtual LookupResult lookupByContainerId(const std::string& containerId) const = 0;
         [[nodiscard]] virtual LookupResult lookupByPodContainer(const std::string& podUid,
                                                                 const std::string& containerName) const = 0;

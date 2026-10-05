@@ -26,9 +26,16 @@ namespace wazuh::container_instances
     class MetadataStore final : public IMetadataStore
     {
     public:
-        explicit MetadataStore(Logger logger);
+        /// `keyKind` is a host constant, read once at construction. Injectable
+        /// only so the legacy path can be tested on a unified build host.
+        explicit MetadataStore(Logger logger, KeyKind keyKind = keyKindFor(wz_cgroup_mode()));
 
-        [[nodiscard]] LookupResult lookupByCgroup(std::uint64_t cgroupInode) const override;
+        [[nodiscard]] LookupResult lookup(HostKey key) const override;
+
+        [[nodiscard]] KeyKind keyKind() const override
+        {
+            return m_keyKind;
+        }
         [[nodiscard]] LookupResult lookupByContainerId(const std::string& containerId) const override;
         [[nodiscard]] LookupResult lookupByPodContainer(const std::string& podUid,
                                                         const std::string& containerName) const override;
@@ -91,6 +98,7 @@ namespace wazuh::container_instances
         std::unordered_map<std::string, ContainerRecordPtr> m_byPodContainer;
         std::optional<TimePoint> m_lastReconcile;
         Logger m_logger;
+        KeyKind m_keyKind;
 
         LifecycleJournal m_journal;
 

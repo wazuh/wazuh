@@ -1,9 +1,9 @@
 #pragma once
 
 #include "../cache/i_metadata_store.hpp"
+#include "../cache/lifecycle_journal.hpp"
 #include "../core/cache_entry.hpp"
 #include "../core/container_record.hpp"
-#include "../cache/lifecycle_journal.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -13,7 +13,7 @@
 namespace wazuh::container_instances
 {
 
-    /// Wire-independent request. `cgroupId` is the only mandatory lookup key;
+    /// Wire-independent request. `hostKey` is the only mandatory lookup key;
     /// the rest are optional secondary keys for lifecycle/debug use.
     struct QueryRequest
     {
@@ -26,7 +26,7 @@ namespace wazuh::container_instances
 
         int version {0};
         Op op {Op::resolve};
-        std::uint64_t cgroupId {0};
+        std::uint64_t hostKey {0};
         std::optional<std::string> containerId;
         std::optional<std::string> podUid;
         std::optional<std::string> containerName;
@@ -58,7 +58,7 @@ namespace wazuh::container_instances
         };
 
         Status status {Status::error};
-        ContainerRecordPtr record;           ///< resolved.
+        ContainerRecordPtr record;                  ///< resolved.
         std::vector<ContainerRecordPtr> containers; ///< list op.
         /// This response IS a `list` reply, so `containers` must be serialised even
         /// when empty. Omitting the key made "no containers on this host"
@@ -75,8 +75,8 @@ namespace wazuh::container_instances
         /// set in `containers`, so recovery costs no extra round trip against a
         /// set that may have moved on meanwhile.
         std::optional<LifecycleDelta> delta;
-        std::optional<ErrorCode> errorCode;  ///< error.
-        std::string errorMessage;            ///< error.
+        std::optional<ErrorCode> errorCode; ///< error.
+        std::string errorMessage;           ///< error.
     };
 
 } // namespace wazuh::container_instances

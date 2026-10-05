@@ -36,31 +36,31 @@ using namespace wazuh::container_instances;
 namespace
 {
 
-QueryResponse MakeListReply(std::vector<ContainerRecordPtr> containers)
-{
-    QueryResponse response;
-    response.status = QueryResponse::Status::ok;
-    response.listReply = true;
-    response.connectorName = "docker";
-    response.containers = std::move(containers);
-    return response;
-}
+    QueryResponse MakeListReply(std::vector<ContainerRecordPtr> containers)
+    {
+        QueryResponse response;
+        response.status = QueryResponse::Status::ok;
+        response.listReply = true;
+        response.connectorName = "docker";
+        response.containers = std::move(containers);
+        return response;
+    }
 
-ContainerRecordPtr MakeRecord(const std::string& id, std::uint64_t inode)
-{
-    ContainerRecord record;
-    record.runtime = ContainerRuntime::docker;
-    record.containerId = id;
-    record.containerName = id;
-    record.cgroupId = inode;
-    record.state = ContainerState::running;
-    return std::make_shared<const ContainerRecord>(std::move(record));
-}
+    ContainerRecordPtr MakeRecord(const std::string& id, std::uint64_t inode)
+    {
+        ContainerRecord record;
+        record.runtime = ContainerRuntime::docker;
+        record.containerId = id;
+        record.containerName = id;
+        record.hostKey = inode;
+        record.state = ContainerState::running;
+        return std::make_shared<const ContainerRecord>(std::move(record));
+    }
 
-const QueryRequest& AsRequest(const std::variant<QueryRequest, QueryResponse>& parsed)
-{
-    return std::get<QueryRequest>(parsed);
-}
+    const QueryRequest& AsRequest(const std::variant<QueryRequest, QueryResponse>& parsed)
+    {
+        return std::get<QueryRequest>(parsed);
+    }
 
 } // namespace
 
@@ -155,7 +155,7 @@ TEST(LifecycleWireTest, RemovedEventCarriesCgroupIdAndNoRecord)
     removed.seq = 5;
     removed.kind = LifecycleKind::removed;
     removed.containerId = "gone";
-    removed.cgroupId = 4242;
+    removed.hostKey = 4242;
 
     LifecycleDelta delta;
     delta.cursor = LifecycleCursor {1, 5};

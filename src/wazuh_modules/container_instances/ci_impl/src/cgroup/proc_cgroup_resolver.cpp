@@ -2,6 +2,8 @@
 
 #include "cgroup_parse.hpp"
 
+#include "../core/host_key.hpp"
+
 #include <algorithm>
 #include <optional>
 #include <string>
@@ -128,8 +130,6 @@ namespace wazuh::container_instances
                 aggregate.cgroupPath = selection->path;
                 aggregate.keyController = selection->controller;
                 it = byMountPath.emplace(mountPath, std::move(aggregate)).first;
-
-                result.allInodes.insert(*inode);
             }
 
             if (it->second.lowestPid == 0 || pid < it->second.lowestPid)
@@ -146,18 +146,38 @@ namespace wazuh::container_instances
             }
         }
 
+        /* The host key is chosen HERE, once, and from the host mode.
+         *
+         * On a legacy hierarchy the cgroup inode is a perfectly good number
+         * that no event ever carries — `bpf_get_current_cgroup_id()` collapses
+         * to a constant there — so filing records under it would produce a
+         * store that looks healthy, lists containers, and answers every
+         * correlation lookup with a miss. The mount-namespace inode is the one
+         * an event actually carries. */
+        result.keyKind = keyKindFor(m_cgroupMode);
+
         for (const auto& [mountPath, aggregate] : byMountPath)
         {
             static_cast<void>(mountPath);
+
+            CgroupEntry entry;
+            entry.inode = aggregate.inode;
+            entry.mntNsInode = aggregate.mntNsInode;
+
+            const auto hostKey = hostKeyOf(entry, result.keyKind);
+            if (hostKey == 0)
+            {
+                continue; // No usable key: unlisted, exactly as before.
+            }
+            result.allHostKeys.insert(hostKey);
+
             if (auto match = extractContainerId(aggregate.cgroupPath))
             {
-                CgroupEntry containerEntry;
+                CgroupEntry containerEntry = entry;
                 containerEntry.containerId = std::move(match->containerId);
-                containerEntry.inode = aggregate.inode;
                 containerEntry.hint = match->hint;
                 containerEntry.cgroupPath = aggregate.cgroupPath;
                 containerEntry.keyController = aggregate.keyController;
-                containerEntry.mntNsInode = aggregate.mntNsInode;
                 result.containers.push_back(std::move(containerEntry));
             }
         }
@@ -177,7 +197,7 @@ namespace wazuh::container_instances
             }
         }
 
-        if (snapshot.allInodes.count(cgroupInode) > 0)
+        if (snapshot.allHostKeys.count(cgroupInode) > 0)
         {
             CgroupEntry hostEntry; // Observed, but not a container: host-process evidence.
             hostEntry.inode = cgroupInode;

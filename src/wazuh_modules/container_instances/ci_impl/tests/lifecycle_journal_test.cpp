@@ -34,56 +34,55 @@ using namespace wazuh::container_instances;
 namespace
 {
 
-const SourceId kDocker {"docker"};
-const SourceId kK8s {"kubernetes"};
+    const SourceId kDocker {"docker"};
+    const SourceId kK8s {"kubernetes"};
 
-ContainerRecord MakeRecord(const std::string& id,
-                           std::uint64_t inode,
-                           ContainerState state = ContainerState::running)
-{
-    ContainerRecord record;
-    record.runtime = ContainerRuntime::docker;
-    record.containerId = id;
-    record.containerName = id;
-    record.image = "img";
-    record.cgroupId = inode;
-    record.state = state;
-    return record;
-}
-
-MetadataStore MakeStore()
-{
-    return MetadataStore {[](LogLevel, const std::string&) {}};
-}
-
-std::set<std::string> ListedIds(const MetadataStore& store)
-{
-    std::set<std::string> out;
-    for (const auto& record : store.listContainers())
+    ContainerRecord
+    MakeRecord(const std::string& id, std::uint64_t inode, ContainerState state = ContainerState::running)
     {
-        out.insert(record->containerId);
+        ContainerRecord record;
+        record.runtime = ContainerRuntime::docker;
+        record.containerId = id;
+        record.containerName = id;
+        record.image = "img";
+        record.hostKey = inode;
+        record.state = state;
+        return record;
     }
-    return out;
-}
 
-/// Applies a delta's events to a set of ids, exactly as a consumer would.
-void ApplyEvents(const std::vector<LifecycleEvent>& events, std::set<std::string>& ids)
-{
-    for (const auto& event : events)
+    MetadataStore MakeStore()
     {
-        switch (event.kind)
+        return MetadataStore {[](LogLevel, const std::string&) {}};
+    }
+
+    std::set<std::string> ListedIds(const MetadataStore& store)
+    {
+        std::set<std::string> out;
+        for (const auto& record : store.listContainers())
         {
-            case LifecycleKind::added: ids.insert(event.containerId); break;
-            case LifecycleKind::removed: ids.erase(event.containerId); break;
-            case LifecycleKind::changed: break; // membership unaffected
+            out.insert(record->containerId);
+        }
+        return out;
+    }
+
+    /// Applies a delta's events to a set of ids, exactly as a consumer would.
+    void ApplyEvents(const std::vector<LifecycleEvent>& events, std::set<std::string>& ids)
+    {
+        for (const auto& event : events)
+        {
+            switch (event.kind)
+            {
+                case LifecycleKind::added: ids.insert(event.containerId); break;
+                case LifecycleKind::removed: ids.erase(event.containerId); break;
+                case LifecycleKind::changed: break; // membership unaffected
+            }
         }
     }
-}
 
-auto Now()
-{
-    return std::chrono::steady_clock::now();
-}
+    auto Now()
+    {
+        return std::chrono::steady_clock::now();
+    }
 
 } // namespace
 
@@ -126,7 +125,7 @@ TEST(LifecycleJournalTest, AddedIsPublishedOnlyOnceTheCgroupInodeIsKnown)
     const auto delta = store.lifecycleSince(start);
     ASSERT_EQ(1u, delta.events.size());
     EXPECT_EQ(LifecycleKind::added, delta.events[0].kind);
-    EXPECT_EQ(22u, delta.events[0].cgroupId);
+    EXPECT_EQ(22u, delta.events[0].hostKey);
 }
 
 TEST(LifecycleJournalTest, RemovedCarriesTheLastKnownCgroupId)
@@ -147,7 +146,7 @@ TEST(LifecycleJournalTest, RemovedCarriesTheLastKnownCgroupId)
     ASSERT_EQ(1u, delta.events.size());
     EXPECT_EQ(LifecycleKind::removed, delta.events[0].kind);
     EXPECT_EQ("gamma", delta.events[0].containerId);
-    EXPECT_EQ(33u, delta.events[0].cgroupId);
+    EXPECT_EQ(33u, delta.events[0].hostKey);
     EXPECT_EQ(nullptr, delta.events[0].record);
 }
 
@@ -296,20 +295,14 @@ TEST(LifecycleJournalTest, TheCallbackFiresOncePerBatchAndAfterTheLockIsReleased
         });
 
     // One batch, three containers: one signal, not three.
-    store.applySnapshot(kDocker,
-                        {MakeRecord("a", 1), MakeRecord("b", 2), MakeRecord("c", 3)},
-                        {1, 2, 3},
-                        Now());
+    store.applySnapshot(kDocker, {MakeRecord("a", 1), MakeRecord("b", 2), MakeRecord("c", 3)}, {1, 2, 3}, Now());
 
     EXPECT_EQ(1, calls);
     EXPECT_TRUE(reentrantReadWorked);
 
     // A batch that journals nothing must stay silent, or a quiet host would
     // wake its consumers every reconcile for no reason.
-    store.applySnapshot(kDocker,
-                        {MakeRecord("a", 1), MakeRecord("b", 2), MakeRecord("c", 3)},
-                        {1, 2, 3},
-                        Now());
+    store.applySnapshot(kDocker, {MakeRecord("a", 1), MakeRecord("b", 2), MakeRecord("c", 3)}, {1, 2, 3}, Now());
 
     EXPECT_EQ(1, calls);
 }
@@ -340,14 +333,14 @@ TEST(LifecycleJournalTest, JournalMirrorsListContainersMembership)
 
     const auto t0 = Now();
 
-    step({MakeRecord("a", 1)}, {1}, t0);                                     // add
-    step({MakeRecord("a", 1), MakeRecord("b", 0)}, {1}, t0);                 // b unresolved: invisible
-    step({MakeRecord("a", 1), MakeRecord("b", 2)}, {1, 2}, t0);              // b resolves: add
+    step({MakeRecord("a", 1)}, {1}, t0);                                              // add
+    step({MakeRecord("a", 1), MakeRecord("b", 0)}, {1}, t0);                          // b unresolved: invisible
+    step({MakeRecord("a", 1), MakeRecord("b", 2)}, {1, 2}, t0);                       // b resolves: add
     step({MakeRecord("a", 1, ContainerState::stopped), MakeRecord("b", 2)}, {2}, t0); // a stops: still a member
-    step({MakeRecord("b", 2)}, {2}, t0);                                     // a removed (no grace: no inode)
+    step({MakeRecord("b", 2)}, {2}, t0);                                              // a removed (no grace: no inode)
     step({MakeRecord("b", 2)}, {2}, t0 + REMOVAL_GRACE + std::chrono::seconds {1});
-    step({}, {}, t0 + REMOVAL_GRACE + std::chrono::seconds {2});             // b vanishes: grace starts
-    step({}, {}, t0 + REMOVAL_GRACE * 2 + std::chrono::seconds {5});         // grace expires: remove
+    step({}, {}, t0 + REMOVAL_GRACE + std::chrono::seconds {2});     // b vanishes: grace starts
+    step({}, {}, t0 + REMOVAL_GRACE * 2 + std::chrono::seconds {5}); // grace expires: remove
 
     EXPECT_TRUE(expected.empty());
 }

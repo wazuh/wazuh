@@ -23,7 +23,7 @@ namespace wazuh::container_instances
                a.podUid == b.podUid && a.podName == b.podName && a.podNamespace == b.podNamespace &&
                a.nodeName == b.nodeName && a.labels == b.labels && a.annotations == b.annotations &&
                a.ownerRefs == b.ownerRefs && a.network == b.network && a.ociMounts == b.ociMounts &&
-               a.cgroupId == b.cgroupId && a.state == b.state && a.startedAt == b.startedAt && a.pid == b.pid;
+               a.hostKey == b.hostKey && a.state == b.state && a.startedAt == b.startedAt && a.pid == b.pid;
     }
 
     /// Pure full-snapshot diff on the container-id string. The store applies the

@@ -110,7 +110,7 @@ namespace wazuh::container_instances
         /// process has. `state` is what tells those two apart — before it
         /// existed, zero meant only the first, and a stopped container was
         /// indistinguishable from an unresolved one.
-        std::uint64_t cgroupId {0};
+        std::uint64_t hostKey {0};
 
         /// When the current run of this container began, verbatim from the
         /// runtime (RFC 3339).

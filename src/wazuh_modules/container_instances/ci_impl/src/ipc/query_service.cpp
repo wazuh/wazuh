@@ -108,7 +108,7 @@ namespace wazuh::container_instances
 
     QueryResponse QueryService::resolve(const QueryRequest& request)
     {
-        const auto byCgroup = m_store.lookupByCgroup(request.cgroupId);
+        const auto byCgroup = m_store.lookup(HostKey {m_store.keyKind(), request.hostKey});
         if (byCgroup.status != LookupResult::Status::miss)
         {
             return fromLookup(byCgroup);
@@ -133,7 +133,7 @@ namespace wazuh::container_instances
             }
         }
 
-        return coldResolve(request.cgroupId);
+        return coldResolve(request.hostKey);
     }
 
     QueryResponse QueryService::coldResolve(std::uint64_t cgroupInode)
@@ -168,7 +168,7 @@ namespace wazuh::container_instances
                     const auto outcome = binding.refresher->refreshOne(entry->containerId, cgroupInode);
                     if (outcome == RefreshOutcome::resolved)
                     {
-                        const auto lookup = m_store.lookupByCgroup(cgroupInode);
+                        const auto lookup = m_store.lookup(HostKey {m_store.keyKind(), cgroupInode});
                         if (lookup.status != LookupResult::Status::miss)
                         {
                             return fromLookup(lookup);

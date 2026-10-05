@@ -44,21 +44,21 @@ using namespace wazuh::container_instances;
 namespace
 {
 
-constexpr auto DEBOUNCE = std::chrono::milliseconds {500};
+    constexpr auto DEBOUNCE = std::chrono::milliseconds {500};
 
-/// Comfortably past the debounce window without being slow enough to annoy.
-constexpr auto PAST_DEBOUNCE = std::chrono::milliseconds {650};
+    /// Comfortably past the debounce window without being slow enough to annoy.
+    constexpr auto PAST_DEBOUNCE = std::chrono::milliseconds {650};
 
-std::uint64_t InodeFor(const std::string& containerId)
-{
-    // Any stable non-zero mapping; listContainers() hides cgroupId == 0.
-    return 1000 + containerId.size() + static_cast<std::uint64_t>(containerId.back());
-}
+    std::uint64_t InodeFor(const std::string& containerId)
+    {
+        // Any stable non-zero mapping; listContainers() hides hostKey == 0.
+        return 1000 + containerId.size() + static_cast<std::uint64_t>(containerId.back());
+    }
 
-/// Resolver that claims every container the test has "started" is joined to a
-/// cgroup, which is what makes it visible through listContainers().
-class FakeResolver final : public ICgroupResolver
-{
+    /// Resolver that claims every container the test has "started" is joined to a
+    /// cgroup, which is what makes it visible through listContainers().
+    class FakeResolver final : public ICgroupResolver
+    {
     public:
         void setRunning(std::vector<std::string> ids)
         {
@@ -75,7 +75,7 @@ class FakeResolver final : public ICgroupResolver
                 entry.inode = InodeFor(id);
                 entry.hint = RuntimeHint::docker;
                 out.containers.push_back(entry);
-                out.allInodes.insert(entry.inode);
+                out.allHostKeys.insert(entry.inode);
             }
             return out;
         }
@@ -87,13 +87,13 @@ class FakeResolver final : public ICgroupResolver
 
     private:
         std::vector<std::string> m_running;
-};
+    };
 
-/// Drives the connector through a scripted event stream. `streamEvents` is the
-/// whole test: it delivers a burst, then goes silent and only ticks `onIdle`,
-/// which is exactly the shape a quiet host produces.
-class ScriptedDockerApi final : public IDockerApiClient
-{
+    /// Drives the connector through a scripted event stream. `streamEvents` is the
+    /// whole test: it delivers a burst, then goes silent and only ticks `onIdle`,
+    /// which is exactly the shape a quiet host produces.
+    class ScriptedDockerApi final : public IDockerApiClient
+    {
     public:
         explicit ScriptedDockerApi(FakeResolver& resolver)
             : m_resolver(resolver)
@@ -154,33 +154,33 @@ class ScriptedDockerApi final : public IDockerApiClient
     private:
         FakeResolver& m_resolver;
         std::vector<std::string> m_containers;
-};
+    };
 
-struct Fixture
-{
-    FakeResolver resolver;
-    ScriptedDockerApi api {resolver};
-    MetadataStore store {[](LogLevel, const std::string&) {}};
-    StopController stop;
-
-    DockerConnector connector {api, resolver, store, SourceId {"docker"}, [](LogLevel, const std::string&) {}};
-
-    [[nodiscard]] std::vector<std::string> listed()
+    struct Fixture
     {
-        std::vector<std::string> out;
-        for (const auto& record : store.listContainers())
-        {
-            out.push_back(record->containerId);
-        }
-        std::sort(out.begin(), out.end());
-        return out;
-    }
-};
+        FakeResolver resolver;
+        ScriptedDockerApi api {resolver};
+        MetadataStore store {[](LogLevel, const std::string&) {}};
+        StopController stop;
 
-bool Contains(const std::vector<std::string>& haystack, const std::string& needle)
-{
-    return std::find(haystack.begin(), haystack.end(), needle) != haystack.end();
-}
+        DockerConnector connector {api, resolver, store, SourceId {"docker"}, [](LogLevel, const std::string&) {}};
+
+        [[nodiscard]] std::vector<std::string> listed()
+        {
+            std::vector<std::string> out;
+            for (const auto& record : store.listContainers())
+            {
+                out.push_back(record->containerId);
+            }
+            std::sort(out.begin(), out.end());
+            return out;
+        }
+    };
+
+    bool Contains(const std::vector<std::string>& haystack, const std::string& needle)
+    {
+        return std::find(haystack.begin(), haystack.end(), needle) != haystack.end();
+    }
 
 } // namespace
 

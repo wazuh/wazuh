@@ -2,8 +2,8 @@
 
 #include "reconciler.hpp"
 
-#include <unordered_set>
 #include <mutex>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -35,19 +35,28 @@ namespace wazuh::container_instances
 
     } // namespace
 
-    MetadataStore::MetadataStore(Logger logger)
+    MetadataStore::MetadataStore(Logger logger, KeyKind keyKind)
         : m_logger(std::move(logger))
+        , m_keyKind(keyKind)
     {
     }
 
-    LookupResult MetadataStore::lookupByCgroup(std::uint64_t cgroupInode) const
+    LookupResult MetadataStore::lookup(HostKey key) const
     {
-        if (cgroupInode == 0)
+        if (key.value == 0)
         {
             return {};
         }
+        if (key.kind != m_keyKind)
+        {
+            // Refused rather than looked up. The two kinds are both 64-bit
+            // inode numbers, so a mismatched one would simply not be found and
+            // the caller would be told the container is unknown — which it is
+            // not, and which sends it off re-resolving something already here.
+            return {};
+        }
         std::shared_lock lock(m_mutex);
-        const auto it = m_byCgroup.find(cgroupInode);
+        const auto it = m_byCgroup.find(key.value);
         return (it == m_byCgroup.end()) ? LookupResult {} : toLookupResult(it->second);
     }
 
@@ -121,8 +130,7 @@ namespace wazuh::container_instances
                 // that is about to change. A container that is not running has
                 // no inode to wait for and is published as it is — otherwise a
                 // stop would read, to every consumer, exactly like a deletion.
-                if (!record || (record->cgroupId == 0 && isRunning(record->state)) ||
-                    !seen.insert(containerId).second)
+                if (!record || (record->hostKey == 0 && isRunning(record->state)) || !seen.insert(containerId).second)
                 {
                     continue;
                 }
@@ -156,11 +164,11 @@ namespace wazuh::container_instances
         // record is byte-identical to the stored one: clear any grace mark.
         for (const auto& record : snapshot)
         {
-            if (record.cgroupId == 0)
+            if (record.hostKey == 0)
             {
                 continue;
             }
-            const auto entryIt = m_byCgroup.find(record.cgroupId);
+            const auto entryIt = m_byCgroup.find(record.hostKey);
             if (entryIt != m_byCgroup.end())
             {
                 if (auto* resolved = std::get_if<ResolvedEntry>(&entryIt->second);
@@ -181,12 +189,12 @@ namespace wazuh::container_instances
                 continue;
             }
             const auto& record = it->second;
-            if (record->cgroupId == 0)
+            if (record->hostKey == 0)
             {
                 eraseResolvedLocked(source, containerId);
                 continue;
             }
-            const auto entryIt = m_byCgroup.find(record->cgroupId);
+            const auto entryIt = m_byCgroup.find(record->hostKey);
             if (entryIt != m_byCgroup.end())
             {
                 if (auto* resolved = std::get_if<ResolvedEntry>(&entryIt->second);
@@ -312,15 +320,15 @@ namespace wazuh::container_instances
         {
             m_byPodContainer[podContainerKey(shared->podUid, shared->containerName)] = shared;
         }
-        if (shared->cgroupId != 0)
+        if (shared->hostKey != 0)
         {
-            const auto it = m_byCgroup.find(shared->cgroupId);
+            const auto it = m_byCgroup.find(shared->hostKey);
             if (it != m_byCgroup.end())
             {
                 if (std::holds_alternative<VerdictEntry>(it->second))
                 {
                     m_logger(LogLevel::info,
-                             "Verdict for cgroup inode " + std::to_string(shared->cgroupId) +
+                             "Verdict for cgroup inode " + std::to_string(shared->hostKey) +
                                  " superseded by container " + shared->containerId);
                 }
                 else if (const auto* resolved = std::get_if<ResolvedEntry>(&it->second))
@@ -337,7 +345,7 @@ namespace wazuh::container_instances
             ResolvedEntry entry;
             entry.record = shared;
             entry.source = source;
-            m_byCgroup[shared->cgroupId] = std::move(entry);
+            m_byCgroup[shared->hostKey] = std::move(entry);
         }
     }
 
@@ -363,9 +371,9 @@ namespace wazuh::container_instances
                 m_byPodContainer.erase(podIt);
             }
         }
-        if (record->cgroupId != 0)
+        if (record->hostKey != 0)
         {
-            const auto cgroupIt = m_byCgroup.find(record->cgroupId);
+            const auto cgroupIt = m_byCgroup.find(record->hostKey);
             if (cgroupIt != m_byCgroup.end())
             {
                 if (const auto* resolved = std::get_if<ResolvedEntry>(&cgroupIt->second);
@@ -391,7 +399,7 @@ namespace wazuh::container_instances
             {
                 continue;
             }
-            if (it->second->cgroupId == 0 && isRunning(it->second->state))
+            if (it->second->hostKey == 0 && isRunning(it->second->state))
             {
                 continue; // Running but unresolved: not published yet.
             }
@@ -418,7 +426,7 @@ namespace wazuh::container_instances
         if (!before)
         {
             event.kind = LifecycleKind::added;
-            event.cgroupId = after->cgroupId;
+            event.hostKey = after->hostKey;
             event.record = after;
         }
         else if (!after)
@@ -426,7 +434,7 @@ namespace wazuh::container_instances
             event.kind = LifecycleKind::removed;
             // The inode it had when it left: a consumer keyed on cgroup id
             // cannot act on a removal it cannot map back to one.
-            event.cgroupId = before->cgroupId;
+            event.hostKey = before->hostKey;
         }
         else
         {
@@ -443,7 +451,7 @@ namespace wazuh::container_instances
             }
 
             event.kind = LifecycleKind::changed;
-            event.cgroupId = after->cgroupId;
+            event.hostKey = after->hostKey;
             event.changed = mask;
             event.record = after;
         }
@@ -502,8 +510,7 @@ namespace wazuh::container_instances
         {
             for (const auto& [containerId, record] : records)
             {
-                if (!record || (record->cgroupId == 0 && isRunning(record->state)) ||
-                    !seen.insert(containerId).second)
+                if (!record || (record->hostKey == 0 && isRunning(record->state)) || !seen.insert(containerId).second)
                 {
                     continue;
                 }

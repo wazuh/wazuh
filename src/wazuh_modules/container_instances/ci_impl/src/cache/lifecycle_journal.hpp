@@ -57,7 +57,7 @@ namespace wazuh::container_instances
         /// Last known cgroup inode. Carried on `removed` too — and that is the
         /// point: FIM keys its kernel allowlist by inode, so a removal it cannot
         /// map back to an inode is a removal it cannot act on.
-        std::uint64_t cgroupId {0};
+        std::uint64_t hostKey {0};
 
         /// Bitmask of LifecycleField; meaningful only for `changed`.
         unsigned int changed {0};
@@ -107,96 +107,96 @@ namespace wazuh::container_instances
     /// write lock.
     class LifecycleJournal
     {
-        public:
-            explicit LifecycleJournal(std::size_t capacity = LIFECYCLE_RING_CAPACITY)
-                : m_capacity(capacity == 0 ? 1 : capacity)
-            {
-                // Random rather than counted: the point is that a consumer can
-                // tell "same store I was reading" from "a different one", and a
-                // restart counter would have to be persisted to do that.
-                std::random_device device;
-                std::uniform_int_distribution<std::uint64_t> distribution;
-                std::mt19937_64 generator(device());
-                m_epoch = distribution(generator);
+    public:
+        explicit LifecycleJournal(std::size_t capacity = LIFECYCLE_RING_CAPACITY)
+            : m_capacity(capacity == 0 ? 1 : capacity)
+        {
+            // Random rather than counted: the point is that a consumer can
+            // tell "same store I was reading" from "a different one", and a
+            // restart counter would have to be persisted to do that.
+            std::random_device device;
+            std::uniform_int_distribution<std::uint64_t> distribution;
+            std::mt19937_64 generator(device());
+            m_epoch = distribution(generator);
 
-                if (m_epoch == 0)
-                {
-                    m_epoch = 1; // 0 is the "no cursor" sentinel.
-                }
+            if (m_epoch == 0)
+            {
+                m_epoch = 1; // 0 is the "no cursor" sentinel.
             }
+        }
 
-            void append(LifecycleEvent event)
+        void append(LifecycleEvent event)
+        {
+            event.seq = m_nextSeq++;
+            m_events.push_back(std::move(event));
+
+            while (m_events.size() > m_capacity)
             {
-                event.seq = m_nextSeq++;
-                m_events.push_back(std::move(event));
-
-                while (m_events.size() > m_capacity)
-                {
-                    m_events.pop_front();
-                }
+                m_events.pop_front();
             }
+        }
 
-            [[nodiscard]] LifecycleCursor cursor() const
+        [[nodiscard]] LifecycleCursor cursor() const
+        {
+            return LifecycleCursor {m_epoch, m_nextSeq - 1};
+        }
+
+        /// Events after `from`, or a resync demand. `currentSet` is consulted
+        /// only to fill a resync reply, so the caller passes the live set.
+        [[nodiscard]] LifecycleDelta since(const LifecycleCursor& from,
+                                           const std::vector<ContainerRecordPtr>& currentSet) const
+        {
+            LifecycleDelta delta;
+            delta.cursor = cursor();
+
+            if (from.epoch != m_epoch || from.seq > delta.cursor.seq || !canServe(from.seq))
             {
-                return LifecycleCursor {m_epoch, m_nextSeq - 1};
-            }
-
-            /// Events after `from`, or a resync demand. `currentSet` is consulted
-            /// only to fill a resync reply, so the caller passes the live set.
-            [[nodiscard]] LifecycleDelta since(const LifecycleCursor& from,
-                                               const std::vector<ContainerRecordPtr>& currentSet) const
-            {
-                LifecycleDelta delta;
-                delta.cursor = cursor();
-
-                if (from.epoch != m_epoch || from.seq > delta.cursor.seq || !canServe(from.seq))
-                {
-                    // A seq AHEAD of ours is not a bogus client to reject: it is
-                    // this store having restarted and the epoch check being the
-                    // only thing that caught it. Same recovery either way.
-                    delta.resyncRequired = true;
-                    delta.containers = currentSet;
-                    return delta;
-                }
-
-                for (const auto& event : m_events)
-                {
-                    if (event.seq > from.seq)
-                    {
-                        delta.events.push_back(event);
-                    }
-                }
-
+                // A seq AHEAD of ours is not a bogus client to reject: it is
+                // this store having restarted and the epoch check being the
+                // only thing that caught it. Same recovery either way.
+                delta.resyncRequired = true;
+                delta.containers = currentSet;
                 return delta;
             }
 
-            [[nodiscard]] std::uint64_t epoch() const
+            for (const auto& event : m_events)
             {
-                return m_epoch;
-            }
-
-            [[nodiscard]] std::size_t size() const
-            {
-                return m_events.size();
-            }
-
-        private:
-            /// True when everything after `seq` is still in the ring.
-            [[nodiscard]] bool canServe(std::uint64_t seq) const
-            {
-                if (m_events.empty())
+                if (event.seq > from.seq)
                 {
-                    // Nothing has been appended since `seq` — serviceable only if
-                    // the caller is up to date with a journal that never evicted.
-                    return seq + 1 == m_nextSeq;
+                    delta.events.push_back(event);
                 }
-                return seq + 1 >= m_events.front().seq;
             }
 
-            std::size_t m_capacity;
-            std::uint64_t m_epoch {0};
-            std::uint64_t m_nextSeq {1};
-            std::deque<LifecycleEvent> m_events;
+            return delta;
+        }
+
+        [[nodiscard]] std::uint64_t epoch() const
+        {
+            return m_epoch;
+        }
+
+        [[nodiscard]] std::size_t size() const
+        {
+            return m_events.size();
+        }
+
+    private:
+        /// True when everything after `seq` is still in the ring.
+        [[nodiscard]] bool canServe(std::uint64_t seq) const
+        {
+            if (m_events.empty())
+            {
+                // Nothing has been appended since `seq` — serviceable only if
+                // the caller is up to date with a journal that never evicted.
+                return seq + 1 == m_nextSeq;
+            }
+            return seq + 1 >= m_events.front().seq;
+        }
+
+        std::size_t m_capacity;
+        std::uint64_t m_epoch {0};
+        std::uint64_t m_nextSeq {1};
+        std::deque<LifecycleEvent> m_events;
     };
 
     /// Which classes of field differ. Returns 0 when the records are equivalent
@@ -210,7 +210,7 @@ namespace wazuh::container_instances
         // without it a container whose processes and files are entirely new
         // would be reported as unchanged.
         if (before.containerName != after.containerName || before.restartCount != after.restartCount ||
-            before.state != after.state || before.cgroupId != after.cgroupId || before.runtime != after.runtime ||
+            before.state != after.state || before.hostKey != after.hostKey || before.runtime != after.runtime ||
             before.startedAt != after.startedAt)
         {
             mask |= LIFECYCLE_IDENTITY;
