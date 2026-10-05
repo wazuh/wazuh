@@ -185,6 +185,22 @@ namespace invsync::test
         return finishSession(builder, buildStart(builder, spec), fb::SessionPayload_NONE, 0);
     }
 
+    /// Message{FullSession{start}} whose payload_type is `payloadType` but whose payload value is
+    /// ABSENT. The verifier accepts it (a null union value verifies), so the validator must 400.
+    inline std::string buildSessionWithAbsentPayload(const SessionSpec& spec, fb::SessionPayload payloadType)
+    {
+        flatbuffers::FlatBufferBuilder builder;
+        return finishSession(builder, buildStart(builder, spec), payloadType, 0);
+    }
+
+    /// Message{content_type = FullSession} with NO content value -- the validator must answer 400.
+    inline std::string buildMessageWithAbsentFullSession()
+    {
+        flatbuffers::FlatBufferBuilder builder;
+        builder.Finish(fb::CreateMessage(builder, fb::MessageType_FullSession, 0));
+        return {reinterpret_cast<const char*>(builder.GetBufferPointer()), builder.GetSize()};
+    }
+
     /// A legacy-style direct member (Message{Start}) -- the server must answer 400.
     inline std::string buildLegacyStartMessage(const SessionSpec& spec)
     {
