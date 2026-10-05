@@ -205,8 +205,13 @@ namespace wazuh::container_instances
     {
         unsigned int mask = 0;
 
+        // startedAt belongs here and is the reason this class matters: a restart
+        // keeps the container id and may even reuse the cgroup inode, so
+        // without it a container whose processes and files are entirely new
+        // would be reported as unchanged.
         if (before.containerName != after.containerName || before.restartCount != after.restartCount ||
-            before.state != after.state || before.cgroupId != after.cgroupId || before.runtime != after.runtime)
+            before.state != after.state || before.cgroupId != after.cgroupId || before.runtime != after.runtime ||
+            before.startedAt != after.startedAt)
         {
             mask |= LIFECYCLE_IDENTITY;
         }
