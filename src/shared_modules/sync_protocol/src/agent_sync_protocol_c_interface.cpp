@@ -9,11 +9,44 @@
 
 // Excluding from coverage since these are simple wrappers for their C++ counterparts, which are already included in the coverage.
 // LCOV_EXCL_START
+namespace
+{
+    SyncModuleResult_t toCSyncModuleResult(const SyncModuleResult& cppResult)
+    {
+        SyncModuleResult_t cResult;
+
+        cResult.success = cppResult.success;
+
+        strncpy(cResult.failure_reason, cppResult.failureReason.c_str(), SYNC_FAILURE_REASON_MAX_LEN - 1);
+
+        cResult.failure_reason[SYNC_FAILURE_REASON_MAX_LEN - 1] = '\0';
+
+        cResult.stopped = cppResult.stopped;
+
+        cResult.manager_not_ready = cppResult.managerNotReady;
+
+        cResult.consecutive_failures = cppResult.consecutiveFailures;
+
+        cResult.awaiting_prerequisite = cppResult.awaitingPrerequisite;
+
+        cResult.local_transport_unavailable = cppResult.localTransportUnavailable;
+
+        cResult.sent_anything = cppResult.sentAnything;
+
+        return cResult;
+    }
+} // namespace
+
 extern "C" {
 
     void asp_set_session_max_bytes(uint64_t max_session_bytes)
     {
         AgentSyncProtocol::setSessionMaxBytes(static_cast<size_t>(max_session_bytes));
+    }
+
+    void asp_set_max_blocks_per_sync(uint32_t max_blocks)
+    {
+        AgentSyncProtocol::setMaxBlocksPerSync(static_cast<size_t>(max_blocks));
     }
 
     long asp_get_agent_id(void)
@@ -98,29 +131,30 @@ extern "C" {
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
-            SyncModuleResult cppResult = wrapper->impl->synchronizeModule(static_cast<Mode>(mode));
+            return toCSyncModuleResult(wrapper->impl->synchronizeModule(static_cast<Mode>(mode)));
+        }
+        catch (const std::exception& ex)
+        {
+            return {};
+        }
+        catch (...)
+        {
+            return {};
+        }
+    }
 
-            SyncModuleResult_t cResult;
+    SyncModuleResult_t asp_sync_module_bounded(AgentSyncProtocolHandle* handle,
+                                               Mode_t mode,
+                                               uint32_t max_blocks)
+    {
+        try
+        {
+            if (!handle) return {false, {}, false, false, 0};
 
-            cResult.success = cppResult.success;
+            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
-            strncpy(cResult.failure_reason, cppResult.failureReason.c_str(), SYNC_FAILURE_REASON_MAX_LEN - 1);
-
-            cResult.failure_reason[SYNC_FAILURE_REASON_MAX_LEN - 1] = '\0';
-
-            cResult.stopped = cppResult.stopped;
-
-            cResult.manager_not_ready = cppResult.managerNotReady;
-
-            cResult.consecutive_failures = cppResult.consecutiveFailures;
-
-            cResult.awaiting_prerequisite = cppResult.awaitingPrerequisite;
-
-            cResult.local_transport_unavailable = cppResult.localTransportUnavailable;
-
-            cResult.sent_anything = cppResult.sentAnything;
-
-            return cResult;
+            return toCSyncModuleResult(wrapper->impl->synchronizeModuleBounded(static_cast<Mode>(mode),
+                                                                               static_cast<size_t>(max_blocks)));
         }
         catch (const std::exception& ex)
         {

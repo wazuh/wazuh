@@ -95,6 +95,22 @@ if (!result.success) {
 }
 ```
 
+A `Mode::DELTA` call sends at most `agent.sync_max_blocks_per_cycle` sessions (50 by default); whatever is left stays queued for the next call.
+
+##### `synchronizeModuleBounded()`
+
+```cpp
+SyncModuleResult synchronizeModuleBounded(Mode mode, size_t maxBlocks)
+```
+
+`synchronizeModule()` with `Option::SYNC` and a tighter block limit for this one call. It is meant for callers that synchronize while holding locks other threads wait on, so the time they hold them stays bounded. Whatever is left stays queued for the next regular cycle. Not part of `IAgentSyncProtocol`; C callers reach it through `asp_sync_module_bounded()`.
+
+**Parameters:**
+- `mode`: Synchronization mode (only `Mode::DELTA` is valid here)
+- `maxBlocks`: Most blocks this call may send. `0`, or a value above the instance's own limit, uses that limit.
+
+**Returns:** `SyncModuleResult`, same as `synchronizeModule()`
+
 ##### `requiresFullSync()`
 
 ```cpp
@@ -322,6 +338,21 @@ C wrapper for `synchronizeModule()` with the default `Option_t` (`OPTION_SYNC`).
 - `mode`: Sync mode (only `MODE_DELTA` is valid here)
 
 **Returns:** `SyncModuleResult_t` (fields under Result Type below)
+
+#### `asp_sync_module_bounded()`
+
+```c
+SyncModuleResult_t asp_sync_module_bounded(AgentSyncProtocolHandle* handle, Mode_t mode, uint32_t max_blocks)
+```
+
+C wrapper for `synchronizeModuleBounded()`: `asp_sync_module()` with a tighter block limit for this one call. It is meant for callers that synchronize while holding locks other threads wait on, such as FIM's recovery under its scan mutexes. Whatever is left stays queued for the next regular cycle.
+
+**Parameters:**
+- `handle`: Protocol handle
+- `mode`: Sync mode (only `MODE_DELTA` is valid here)
+- `max_blocks`: Most blocks this call may send. `0`, or a value above the configured per-cycle limit (`agent.sync_max_blocks_per_cycle`), uses that limit.
+
+**Returns:** `SyncModuleResult_t`, same as `asp_sync_module()`
 
 #### `asp_requires_full_sync()`
 

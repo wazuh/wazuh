@@ -188,6 +188,16 @@ void AgentSyncProtocol::setSessionMaxBytes(size_t maxBytes)
     }
 }
 
+std::atomic<size_t> AgentSyncProtocol::s_maxBlocksPerSync {AgentSyncProtocol::FULLSESSION_MAX_BLOCKS_PER_SYNC};
+
+void AgentSyncProtocol::setMaxBlocksPerSync(size_t maxBlocks)
+{
+    if (maxBlocks > 0)
+    {
+        s_maxBlocksPerSync.store(maxBlocks);
+    }
+}
+
 long AgentSyncProtocol::currentAgentId()
 {
     agent_metadata_t metadata {};
@@ -231,7 +241,8 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optiona
       m_isFeedBased(isFeedBased),
       m_persistentQueue(nullptr), // Ensure initialized to nullptr
       m_logger(std::move(logger)),
-      m_sessionMaxBytes(s_sessionMaxBytes.load())
+      m_sessionMaxBytes(s_sessionMaxBytes.load()),
+      m_maxBlocksPerSync(s_maxBlocksPerSync.load())
 {
     if (!m_logger)
     {
@@ -292,6 +303,17 @@ void AgentSyncProtocol::persistDifference(const std::string& id,
 
 SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 {
+    return synchronizeModuleUpTo(mode, option, m_maxBlocksPerSync);
+}
+
+SyncModuleResult AgentSyncProtocol::synchronizeModuleBounded(Mode mode, size_t maxBlocks)
+{
+    const size_t limit = (maxBlocks > 0 && maxBlocks < m_maxBlocksPerSync) ? maxBlocks : m_maxBlocksPerSync;
+    return synchronizeModuleUpTo(mode, Option::SYNC, limit);
+}
+
+SyncModuleResult AgentSyncProtocol::synchronizeModuleUpTo(Mode mode, Option option, size_t maxBlocks)
+{
     // Validate synchronization mode
     if (mode != Mode::DELTA)
     {
@@ -349,7 +371,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 
     clearSyncState();
 
-    return synchronizeDeltaByBlocks(option);
+    return synchronizeDeltaByBlocks(option, maxBlocks);
 }
 
 bool AgentSyncProtocol::isUncappedSyncOption(Option option) const
@@ -357,7 +379,7 @@ bool AgentSyncProtocol::isUncappedSyncOption(Option option) const
     return option == Option::VDFIRST || option == Option::VDSYNC;
 }
 
-SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
+SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option, size_t maxBlocks)
 {
     try
     {
@@ -384,7 +406,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeDeltaByBlocks(Option option)
     bool sentAny = false;
     size_t blocksSent = 0;
 
-    while (!shouldStop() && blocksSent < FULLSESSION_MAX_BLOCKS_PER_SYNC)
+    while (!shouldStop() && blocksSent < maxBlocks)
     {
         std::vector<PersistedData> dataToSync;
 

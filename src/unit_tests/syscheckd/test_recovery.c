@@ -227,10 +227,11 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     expect_any(__wrap_asp_persist_diff, data);
     expect_value(__wrap_asp_persist_diff, version, 1);
 
-    // Expect asp_sync_module call - return success
-    expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
-    will_return(__wrap_asp_sync_module, true);
+    // Expect asp_sync_module_bounded call - return success
+    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
+    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
+    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
+    will_return(__wrap_asp_sync_module_bounded, true);
 
     // Call the function
     fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
@@ -292,10 +293,11 @@ static void test_fim_recovery_persist_table_and_resync_failure(void **state) {
     expect_any(__wrap_asp_persist_diff, data);
     expect_value(__wrap_asp_persist_diff, version, 1);
 
-    // Expect asp_sync_module call - return failure
-    expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
-    will_return(__wrap_asp_sync_module, false);
+    // Expect asp_sync_module_bounded call - return failure
+    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
+    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
+    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
+    will_return(__wrap_asp_sync_module_bounded, false);
 
     // Call the function
     fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
@@ -472,9 +474,10 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_paths(void *
     expect_any(__wrap_asp_persist_diff, data);
     expect_value(__wrap_asp_persist_diff, version, 1);
 
-    expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
-    will_return(__wrap_asp_sync_module, true);
+    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
+    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
+    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
+    will_return(__wrap_asp_sync_module_bounded, true);
 
     fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
 
@@ -618,9 +621,10 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_registry_key
     expect_any(__wrap_asp_persist_diff, data);
     expect_value(__wrap_asp_persist_diff, version, 1);
 
-    expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
-    will_return(__wrap_asp_sync_module, true);
+    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
+    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
+    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
+    will_return(__wrap_asp_sync_module_bounded, true);
 
     fim_recovery_persist_table_and_resync(FIMDB_REGISTRY_KEY_TABLENAME, handle, &mock_directories);
 
@@ -739,9 +743,10 @@ static void test_fim_resync_on_agent_id_change_resends_and_records(void **state)
     expect_any(__wrap_asp_persist_diff, data);
     expect_value(__wrap_asp_persist_diff, version, 1);
 
-    expect_value(__wrap_asp_sync_module, handle, handle);
-    expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
-    will_return(__wrap_asp_sync_module, true);
+    expect_value(__wrap_asp_sync_module_bounded, handle, handle);
+    expect_value(__wrap_asp_sync_module_bounded, mode, MODE_DELTA);
+    expect_value(__wrap_asp_sync_module_bounded, max_blocks, 10);
+    will_return(__wrap_asp_sync_module_bounded, true);
 
     expect_string(__wrap_fim_db_update_last_sync_time_value, table_name, FIM_SYNCED_AGENT_ID_METADATA_KEY);
     expect_value(__wrap_fim_db_update_last_sync_time_value, timestamp, 2);

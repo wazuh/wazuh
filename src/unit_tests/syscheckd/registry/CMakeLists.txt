@@ -29,7 +29,7 @@ target_link_libraries(test_registry "${DEBUG_OP_WRAPPERS} \
                                      -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
                                      -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                     -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                                     -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                                      -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                                      -Wl,--wrap,fim_recovery_check_if_full_sync_required \
                                      -Wl,--wrap,fim_recovery_persist_table_and_resync \
@@ -58,7 +58,7 @@ target_link_libraries(test_events "${DEBUG_OP_WRAPPERS} \
                                    -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown \
                                    -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
                                    -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
-                                   -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                                   -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_sync_module_bounded -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                                    -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
                                    -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate")
 

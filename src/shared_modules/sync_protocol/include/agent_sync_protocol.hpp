@@ -58,6 +58,17 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::synchronizeModule
         SyncModuleResult synchronizeModule(Mode mode, Option option = Option::SYNC) override;
 
+        /// @brief synchronizeModule() with a tighter block limit for this one call.
+        ///
+        /// For callers that synchronize while holding locks other threads wait on, so the
+        /// time they hold them stays bounded. Whatever is left stays queued for the next
+        /// regular cycle.
+        ///
+        /// @param mode Synchronization mode.
+        /// @param maxBlocks Most blocks this call may send. Zero, or a value above the
+        ///                  instance's own limit, uses that limit.
+        SyncModuleResult synchronizeModuleBounded(Mode mode, size_t maxBlocks);
+
         /// @copydoc IAgentSyncProtocol::requiresFullSync
         bool requiresFullSync(const std::string& index,
                               const std::string& checksum) override;
@@ -90,6 +101,17 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         ///
         /// @param maxBytes Maximum bytes per session, or 0 to keep the default.
         static void setSessionMaxBytes(size_t maxBytes);
+
+        /// @brief Set how many blocks one DELTA sync cycle may send before the rest waits for the next cycle.
+        ///
+        /// The value belongs to the agent.sync_max_blocks_per_cycle internal option, which the daemon
+        /// hosting the modules reads and hands down before any module builds its protocol instance, like
+        /// setSessionMaxBytes(). Instances take a copy at construction. Zero leaves the built-in default
+        /// in place. The VD options are bounded too, but they fetch with no byte budget, so their first
+        /// block already carries the whole queue.
+        ///
+        /// @param maxBlocks Maximum blocks per sync cycle, or 0 to keep the default.
+        static void setMaxBlocksPerSync(size_t maxBlocks);
 
         /// @brief Returns the agent id this process is currently synchronizing under.
         ///
@@ -252,8 +274,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Whether this synchronization option must bypass FullSession size capping.
         bool isUncappedSyncOption(Option option) const;
 
-        /// @brief Splits DELTA sync into capped FullSessions by fetching blocks from the queue.
-        SyncModuleResult synchronizeDeltaByBlocks(Option option);
+        /// @brief Shared body of synchronizeModule() and synchronizeModuleBounded().
+        SyncModuleResult synchronizeModuleUpTo(Mode mode, Option option, size_t maxBlocks);
+
+        /// @brief Splits DELTA sync into capped FullSessions by fetching blocks from the queue,
+        ///        sending at most @p maxBlocks of them.
+        SyncModuleResult synchronizeDeltaByBlocks(Option option, size_t maxBlocks);
 
         /// @brief Applies the /stateful HTTP result received from https_client callback
         ///        routing. This IS the sync protocol's response path: there is no EndAck
@@ -429,7 +455,18 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         size_t m_sessionMaxBytes {FULLSESSION_MAX_BYTES};
 
         static constexpr size_t FULLSESSION_PREFILTER_GRACE_BYTES = 64U * 1024U;
-        static constexpr size_t FULLSESSION_MAX_BLOCKS_PER_SYNC = 10U;
+
+        /// Built-in number of blocks per DELTA sync cycle, used until a daemon calls
+        /// setMaxBlocksPerSync(). 50 blocks of the 1 MiB default session keep about the
+        /// 50 MiB per cycle that 10 blocks of the former 5 MiB session allowed.
+        static constexpr size_t FULLSESSION_MAX_BLOCKS_PER_SYNC = 50U;
+
+        /// Process-wide for the same reason as @ref s_sessionMaxBytes.
+        static std::atomic<size_t> s_maxBlocksPerSync;
+
+        /// This instance's copy, taken at construction.
+        size_t m_maxBlocksPerSync {FULLSESSION_MAX_BLOCKS_PER_SYNC};
+
         static constexpr std::string_view HTTP_RESULT_PREFIX = "HCRESULT:";
 };
 
