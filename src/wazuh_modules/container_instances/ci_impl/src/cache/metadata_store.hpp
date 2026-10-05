@@ -44,9 +44,40 @@ namespace wazuh::container_instances
         void upsertVerdict(std::uint64_t cgroupInode, VerdictReason reason) override;
         void upsertResolved(const SourceId& source, ContainerRecord record) override;
 
+        [[nodiscard]] LifecycleDelta lifecycleSince(const LifecycleCursor& from) const override;
+        [[nodiscard]] LifecycleCursor lifecycleCursor() const override;
+        void setOnLifecycleChange(std::function<void(LifecycleCursor)> callback) override;
+
     private:
+        /// Raw mutations. These do NOT journal, and nothing outside the two
+        /// journaling wrappers below may call them.
+        ///
+        /// The split exists because insertResolvedLocked has to erase the prior
+        /// entry first, so a journal hook placed inside the erase would emit a
+        /// spurious removed+added pair for every ordinary update. Keeping the
+        /// raw operations free of journaling makes that mistake impossible to
+        /// make by accident rather than merely documented against.
+        void insertResolvedRawLocked(const SourceId& source, ContainerRecord record);
+        void eraseResolvedRawLocked(const SourceId& source, const std::string& containerId);
+
+        /// Journaling wrappers: observe visibility before and after, and append
+        /// the resulting transition.
         void insertResolvedLocked(const SourceId& source, ContainerRecord record);
         void eraseResolvedLocked(const SourceId& source, const std::string& containerId);
+
+        /// The record listContainers() would publish for this id, or null.
+        /// Visibility, not existence — that distinction is the whole contract.
+        [[nodiscard]] ContainerRecordPtr visibleRecordLocked(const std::string& containerId) const;
+
+        /// Appends the transition between two visibility states, dropping the
+        /// ones no consumer acts on.
+        void journalTransitionLocked(const std::string& containerId,
+                                     const ContainerRecordPtr& before,
+                                     const ContainerRecordPtr& after);
+
+        /// Fires the lifecycle callback if this batch journalled anything.
+        /// MUST be called with the write lock released.
+        void notifyLifecycleUnlocked();
 
         static std::string podContainerKey(const std::string& podUid, const std::string& containerName)
         {
@@ -60,6 +91,15 @@ namespace wazuh::container_instances
         std::unordered_map<std::string, ContainerRecordPtr> m_byPodContainer;
         std::optional<TimePoint> m_lastReconcile;
         Logger m_logger;
+
+        LifecycleJournal m_journal;
+
+        /// Set by journalTransitionLocked, consumed by notifyLifecycleUnlocked.
+        /// Guarded by m_mutex like everything else it sits beside.
+        bool m_lifecycleDirty {false};
+
+        /// Set once at startup before any thread races for it, then only read.
+        std::function<void(LifecycleCursor)> m_onLifecycleChange;
     };
 
 } // namespace wazuh::container_instances
