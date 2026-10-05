@@ -21,6 +21,8 @@ TEST_F(NPMTest, getPackages_ValidPackagesTest)
 
     EXPECT_CALL(*npm, exists(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*npm, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, file_size(_)).WillRepeatedly(Return(1024));
     EXPECT_CALL(*npm, directory_iterator(_)).WillRepeatedly(Return(fakePackages));
 
     nlohmann::json fakePackageJson1 = {{"name", "TestPackage1"}, {"version", "1.0.0"}};
@@ -79,6 +81,8 @@ TEST_F(NPMTest, getPackages_NoPackageJsonTest)
 
     EXPECT_CALL(*npm, exists(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*npm, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, file_size(_)).WillRepeatedly(Return(1024));
     EXPECT_CALL(*npm, directory_iterator(_)).WillRepeatedly(Return(fakePackages));
 
     EXPECT_CALL(*npm, readJson(std::filesystem::path("/fake/node_modules/package1/package.json")))
@@ -102,6 +106,8 @@ TEST_F(NPMTest, getPackages_InvalidPackageJsonNameTest)
 
     EXPECT_CALL(*npm, exists(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*npm, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, file_size(_)).WillRepeatedly(Return(1024));
     EXPECT_CALL(*npm, directory_iterator(_)).WillRepeatedly(Return(fakePackages));
 
     EXPECT_CALL(*npm, readJson(std::filesystem::path("/fake/node_modules/package1/package.json")))
@@ -125,6 +131,8 @@ TEST_F(NPMTest, getPackages_InvalidPackageJsonVersionTest)
 
     EXPECT_CALL(*npm, exists(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*npm, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, file_size(_)).WillRepeatedly(Return(1024));
     EXPECT_CALL(*npm, directory_iterator(_)).WillRepeatedly(Return(fakePackages));
 
     EXPECT_CALL(*npm, readJson(std::filesystem::path("/fake/node_modules/package1/package.json")))
@@ -148,6 +156,8 @@ TEST_F(NPMTest, getPackages_ValidPackageJson2Test)
 
     EXPECT_CALL(*npm, exists(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*npm, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, file_size(_)).WillRepeatedly(Return(1024));
     EXPECT_CALL(*npm, directory_iterator(_)).WillOnce(Return(fakePackages));
 
     EXPECT_CALL(*npm, readJson(std::filesystem::path("/fake/node_modules/package1/package.json")))
@@ -182,3 +192,47 @@ TEST_F(NPMTest, getPackages_ValidPackageJson2Test)
     EXPECT_TRUE(callbackCalledSecond);
 }
 
+TEST_F(NPMTest, getPackages_NonRegularPackageJsonIsSkipped)
+{
+    std::vector<std::filesystem::path> fakePackages = {"/fake/node_modules/package1"};
+
+    EXPECT_CALL(*npm, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, is_regular_file(_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*npm, directory_iterator(_)).WillRepeatedly(Return(fakePackages));
+    EXPECT_CALL(*npm, readJson(_)).Times(0);
+
+    bool callbackCalled = false;
+
+    std::set<std::string> folders = {"/fake"};
+
+    npm->getPackages(folders, [&](nlohmann::json&)
+    {
+        callbackCalled = true;
+    });
+
+    EXPECT_FALSE(callbackCalled);
+}
+
+TEST_F(NPMTest, getPackages_OversizedPackageJsonIsSkipped)
+{
+    std::vector<std::filesystem::path> fakePackages = {"/fake/node_modules/package1"};
+
+    EXPECT_CALL(*npm, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*npm, file_size(_)).WillRepeatedly(Return(PACKAGE_METADATA_MAX_FILE_SIZE + 1));
+    EXPECT_CALL(*npm, directory_iterator(_)).WillRepeatedly(Return(fakePackages));
+    EXPECT_CALL(*npm, readJson(_)).Times(0);
+
+    bool callbackCalled = false;
+
+    std::set<std::string> folders = {"/fake"};
+
+    npm->getPackages(folders, [&](nlohmann::json&)
+    {
+        callbackCalled = true;
+    });
+
+    EXPECT_FALSE(callbackCalled);
+}

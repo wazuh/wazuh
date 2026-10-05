@@ -91,6 +91,7 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestEggInfo)
     EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
     EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, file_size(_)).WillRepeatedly(Return(1024));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
     EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/egg-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
@@ -122,7 +123,9 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestNoRegularFileDistInfo)
     EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
-    EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*pypi, is_regular_file(std::filesystem::path("/fake/dir/dist-info"))).WillRepeatedly(Return(false));
+    EXPECT_CALL(*pypi, is_regular_file(std::filesystem::path("/fake/dir/dist-info/METADATA"))).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, file_size(_)).WillRepeatedly(Return(1024));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
     EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/dist-info/METADATA"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
@@ -155,6 +158,7 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestDistInfo)
     EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
     EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, file_size(_)).WillRepeatedly(Return(1024));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
     EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
@@ -186,7 +190,9 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestNoRegularFileEggInfo)
     EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
-    EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*pypi, is_regular_file(std::filesystem::path("/fake/dir/egg-info"))).WillRepeatedly(Return(false));
+    EXPECT_CALL(*pypi, is_regular_file(std::filesystem::path("/fake/dir/egg-info/PKG-INFO"))).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, file_size(_)).WillRepeatedly(Return(1024));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
     EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/egg-info/PKG-INFO"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
@@ -220,6 +226,7 @@ TEST_F(PYPITest, getPackages_MultipleValidPackagesTest)
     EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
     EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, file_size(_)).WillRepeatedly(Return(1024));
 
     std::vector<std::string> fakePackageLines1 = {"Name: TestPackage1", "Version: 1.0.0"};
     std::vector<std::string> fakePackageLines2 = {"Name: TestPackage2", "Version: 2.0.0"};
@@ -272,6 +279,7 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_NoLines)
     EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
     EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, file_size(_)).WillRepeatedly(Return(1024));
 
     std::vector<std::string> fakePackageLines = {};
 
@@ -304,6 +312,7 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_InvalidLines)
     EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
     EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, file_size(_)).WillRepeatedly(Return(1024));
 
     std::vector<std::string> fakePackageLines = {"Invalid: TestPackage", "Invalid: 1.0.0"};
 
@@ -336,6 +345,7 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_MissingName)
     EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
     EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, file_size(_)).WillRepeatedly(Return(1024));
 
     std::vector<std::string> fakePackageLines = {"Version: 1.0.0"};
 
@@ -368,6 +378,7 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_MissingVersion)
     EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
     EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, file_size(_)).WillRepeatedly(Return(1024));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage"};
 
@@ -391,4 +402,125 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_MissingVersion)
 
     std::cout << capturedJson.dump(4) << std::endl;
     EXPECT_TRUE(capturedJson.empty());
+}
+
+TEST_F(PYPITest, getPackages_NonRegularMetadataFileInDistInfoIsSkipped)
+{
+    std::vector<std::filesystem::path> fakeFiles = {"/fake/dir/dist-info"};
+
+    EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
+    EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*pypi, readLineByLine(_, _)).Times(0);
+
+    bool callbackCalled = false;
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+
+    pypi->getPackages(folders, [&](nlohmann::json&)
+    {
+        callbackCalled = true;
+    });
+
+    EXPECT_FALSE(callbackCalled);
+}
+
+TEST_F(PYPITest, getPackages_NonRegularMetadataFileInEggInfoIsSkipped)
+{
+    std::vector<std::filesystem::path> fakeFiles = {"/fake/dir/egg-info"};
+
+    EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
+    EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*pypi, readLineByLine(_, _)).Times(0);
+
+    bool callbackCalled = false;
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+
+    pypi->getPackages(folders, [&](nlohmann::json&)
+    {
+        callbackCalled = true;
+    });
+
+    EXPECT_FALSE(callbackCalled);
+}
+
+TEST_F(PYPITest, getPackages_EntryNeitherFileNorDirectoryIsSkipped)
+{
+    std::vector<std::filesystem::path> fakeFiles = {"/fake/dir/dist-info"};
+
+    EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, is_directory(std::filesystem::path("/usr/local/lib/python3.9/site-packages"))).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, is_directory(std::filesystem::path("/fake/dir/dist-info"))).WillRepeatedly(Return(false));
+    EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
+    EXPECT_CALL(*pypi, is_regular_file(_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*pypi, readLineByLine(_, _)).Times(0);
+
+    bool callbackCalled = false;
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+
+    pypi->getPackages(folders, [&](nlohmann::json&)
+    {
+        callbackCalled = true;
+    });
+
+    EXPECT_FALSE(callbackCalled);
+}
+
+TEST_F(PYPITest, getPackages_OversizedMetadataFileIsSkipped)
+{
+    std::vector<std::filesystem::path> fakeFiles = {"/fake/dir/dist-info"};
+
+    EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
+    EXPECT_CALL(*pypi, is_regular_file(std::filesystem::path("/fake/dir/dist-info"))).WillRepeatedly(Return(false));
+    EXPECT_CALL(*pypi, is_regular_file(std::filesystem::path("/fake/dir/dist-info/METADATA"))).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, file_size(std::filesystem::path("/fake/dir/dist-info/METADATA")))
+    .WillRepeatedly(Return(PACKAGE_METADATA_MAX_FILE_SIZE + 1));
+    EXPECT_CALL(*pypi, readLineByLine(_, _)).Times(0);
+
+    bool callbackCalled = false;
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+
+    pypi->getPackages(folders, [&](nlohmann::json&)
+    {
+        callbackCalled = true;
+    });
+
+    EXPECT_FALSE(callbackCalled);
+}
+
+TEST_F(PYPITest, getPackages_MetadataFileAtSizeLimitIsRead)
+{
+    std::vector<std::filesystem::path> fakeFiles = {"/fake/dir/dist-info"};
+
+    EXPECT_CALL(*pypi, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, is_directory(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, directory_iterator(_)).WillRepeatedly(Return(fakeFiles));
+    EXPECT_CALL(*pypi, is_regular_file(std::filesystem::path("/fake/dir/dist-info"))).WillRepeatedly(Return(false));
+    EXPECT_CALL(*pypi, is_regular_file(std::filesystem::path("/fake/dir/dist-info/METADATA"))).WillRepeatedly(Return(true));
+    EXPECT_CALL(*pypi, file_size(std::filesystem::path("/fake/dir/dist-info/METADATA")))
+    .WillRepeatedly(Return(PACKAGE_METADATA_MAX_FILE_SIZE));
+
+    std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
+    EXPECT_CALL(*pypi, readLineByLine(std::filesystem::path("/fake/dir/dist-info/METADATA"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        for (const auto& line : fakePackageLines)
+        {
+            callback(line);
+        }
+    });
+
+    nlohmann::json capturedJson;
+    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+
+    pypi->getPackages(folders, [&](nlohmann::json & j)
+    {
+        capturedJson = j;
+    });
+
+    EXPECT_EQ(capturedJson.at("name"), "TestPackage");
+    EXPECT_EQ(capturedJson.at("version"), "1.0.0");
 }

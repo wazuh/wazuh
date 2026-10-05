@@ -12,6 +12,7 @@
 #ifndef _SHARED_DEFS_H
 #define _SHARED_DEFS_H
 
+#include <cstdint>
 #include <set>
 #include <string>
 
@@ -39,6 +40,9 @@ constexpr auto APK_DB_PATH {"/lib/apk/db/installed"};
 constexpr auto SNAP_PATH {"/var/lib/snapd"};
 
 constexpr auto UNKNOWN_VALUE {" "};
+
+// Package metadata files (PyPI METADATA/PKG-INFO, npm package.json) larger than this are skipped
+constexpr std::uintmax_t PACKAGE_METADATA_MAX_FILE_SIZE {10 * 1024 * 1024};
 
 // Reported for a numeric field the platform provides no source for, so that consumers can tell
 // it apart from a genuine zero. The manager stores it as NULL.
