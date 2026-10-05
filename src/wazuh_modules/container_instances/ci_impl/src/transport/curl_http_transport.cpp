@@ -206,6 +206,18 @@ namespace wazuh::container_instances
             if (running > 0)
             {
                 curl_multi_poll(multi.get(), nullptr, 0, STREAM_POLL_INTERVAL_MS, nullptr);
+
+                // After the poll, not before: on a silent stream this is the only
+                // thing that happens per interval, and it is the whole reason the
+                // hook exists. Deliberately NOT guarded on the poll having timed
+                // out — a caller that wants "at least every interval" is served by
+                // an occasional extra call, whereas distinguishing the two would
+                // mean trusting curl_multi_poll's numfds, which says nothing about
+                // whether the data that arrived was useful.
+                if (spec.onIdle)
+                {
+                    spec.onIdle();
+                }
             }
         }
 

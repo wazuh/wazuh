@@ -42,6 +42,9 @@ namespace wazuh::container_instances
 
         void handleEvent(const DockerEvent& event);
 
+        /// Trailing edge of the reconcile debounce; see the definition.
+        void flushPendingReconcile();
+
         IDockerApiClient& m_client;
         const ICgroupResolver& m_resolver;
         IMetadataStore& m_store;
@@ -54,6 +57,12 @@ namespace wazuh::container_instances
         std::set<std::tuple<std::string, std::string, std::int64_t>> m_seenEvents;
 
         std::chrono::steady_clock::time_point m_lastReconcile {};
+
+        /// Set when an event arrived inside the debounce window, cleared by
+        /// reSeed(). Touched only from the connector's own thread — events and
+        /// the stream's idle tick are both delivered on it — so it needs no
+        /// synchronisation, unlike m_seenEvents above which refreshOne() also
+        /// reaches from an IPC worker.
         bool m_reconcilePending {false};
     };
 
