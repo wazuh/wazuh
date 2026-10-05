@@ -61,9 +61,12 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <filesystem>
+#include <fstream>
 #include <future>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <unistd.h>
@@ -372,9 +375,9 @@ TEST(ShutdownRace, StopSequenceSurvivesAnInFlightForward)
 }
 
 // A streamed response is the one path that bounces worker-pool <-> connection-strand OUTSIDE the
-// DeferredForwarder that the four-phase shutdown drains. stopAccepting() drains the handler pool,
+// DeferredForwarder that shutdown drains. stopAccepting() drains the handler pool,
 // but a StreamPump that has already handed a chunk to the strand has its continuation queued
-// somewhere neither phase 1 nor phase 3 knows about -- so teardown with a live transfer is exactly
+// outside the handler and post-processing pools -- so teardown with a live transfer is exactly
 // the use-after-free shape this file exists to catch. Until now it was only argued for in a comment
 // ("RESTinio guarantees the write callback always fires"), never executed under ASan.
 namespace
@@ -517,12 +520,86 @@ TEST(ShutdownRace, StopSequenceSurvivesConnectionsAcceptedButNeverWritten)
     SUCCEED();
 }
 
+namespace
+{
+    // Also runs after a fatal assertion: release the fake before joining its client, keep the
+    // HTTP runtime alive until the lookup's callbacks finish, and never leave a joinable thread.
+    class DownloadShutdownCleanup
+    {
+    public:
+        DownloadShutdownCleanup(std::unique_ptr<IHttpServer>& server,
+                                std::shared_ptr<remoted::control::RegistryLookup>& lookup,
+                                std::promise<void>& release,
+                                std::thread& client)
+            : m_server(server)
+            , m_lookup(lookup)
+            , m_release(release)
+            , m_client(client)
+        {
+        }
+
+        ~DownloadShutdownCleanup()
+        {
+            releaseReply();
+            m_lookup->stop();
+            m_server->stop();
+            if (m_client.joinable())
+            {
+                m_client.join();
+            }
+        }
+
+        void releaseReply()
+        {
+            if (!m_released)
+            {
+                m_release.set_value();
+                m_released = true;
+            }
+        }
+
+    private:
+        std::unique_ptr<IHttpServer>& m_server;
+        std::shared_ptr<remoted::control::RegistryLookup>& m_lookup;
+        std::promise<void>& m_release;
+        std::thread& m_client;
+        bool m_released {false};
+    };
+
+    class DownloadConfigFile
+    {
+    public:
+        DownloadConfigFile()
+        {
+            char pattern[] = "/tmp/rmt_shutdown_config_XXXXXX";
+            const auto directory = ::mkdtemp(pattern);
+            if (!directory)
+            {
+                throw std::runtime_error("could not create the shutdown test's config directory");
+            }
+            paths.sharedDir = directory;
+            std::filesystem::create_directory(paths.sharedDir + "/default");
+            std::ofstream file(paths.sharedDir + "/default/merged.mg");
+            file.exceptions(std::ios::badbit | std::ios::failbit);
+            file << "shutdown-test-config-body\n";
+        }
+
+        ~DownloadConfigFile()
+        {
+            std::error_code ec;
+            std::filesystem::remove_all(paths.sharedDir, ec);
+        }
+
+        remoted::endpoints::download::ResourcePaths paths;
+    };
+} // namespace
+
 TEST(ShutdownRace, StopSequenceSurvivesADownloadLookupInFlight)
 {
     // #39147: a config /download whose agent the registry cannot vouch for waits on a wazuh-db
     // lookup. The facade's stop order must answer that waiter (503) while the HTTP runtime is still
-    // alive -- accepts closed (phase 1), the lookup drained (phase 1b), the transport torn down
-    // (phase 4) -- and nothing may touch freed state afterwards (ASan).
+    // alive: drain the lookup, stop accepting and free the worker pool, then destroy the transport.
+    // Nothing may touch freed state afterwards (ASan).
     auto certOpt = remoted::test::generateTestCertificate("rmt_shutdown_lookup");
     if (!certOpt)
     {
@@ -580,28 +657,130 @@ TEST(ShutdownRace, StopSequenceSurvivesADownloadLookupInFlight)
     config.privateKeyPath = certOpt->keyPath;
     server->start(config);
 
-    std::thread clientThread(
+    std::promise<std::string> response;
+    auto responseReceived = response.get_future();
+    std::thread clientThread;
+    DownloadShutdownCleanup cleanup(server, lookup, release, clientThread);
+    clientThread = std::thread(
         [&]
         {
-            remoted::test::sendSignedRequest(config.port,
-                                             remoted::test::testAgentKey(),
-                                             "/download",
-                                             R"({"resource_type":"config","resource_id":"default"})");
+            response.set_value(
+                remoted::test::sendSignedRequest(config.port,
+                                                 remoted::test::testAgentKey(),
+                                                 "/download",
+                                                 R"({"resource_type":"config","resource_id":"default"})"));
         });
     ASSERT_EQ(queryReceived.wait_for(std::chrono::seconds {5}), std::future_status::ready)
         << "the download never reached wazuh-db; the test would prove nothing";
 
-    server->stopAccepting(); // phase 1
-    lookup->stop();          // phase 1b: the in-flight query times out, the download is answered
+    lookup->stop(); // drain the lookup while the HTTP worker pool is still alive
     EXPECT_EQ(downloadMetrics.unavailable->get(), 1U);
-    server->stop();
+    // Observe the answer while I/O still runs: stopAccepting() stops RESTinio's I/O threads too.
+    ASSERT_EQ(responseReceived.wait_for(std::chrono::seconds {5}), std::future_status::ready);
+    const auto reply = responseReceived.get();
+    EXPECT_EQ(reply.find("HTTP/1.1 503"), 0U) << reply;
+    EXPECT_NE(reply.find("dependency_unavailable"), std::string::npos) << reply;
+    server->stopAccepting(); // now the pool can be joined and freed
+    server->stop();          // release the I/O objects; cleanup joins the TLS client and releases the fake
+}
 
-    if (clientThread.joinable())
+TEST(ShutdownRace, GrantedDownloadLookupAfterStopAcceptingDoesNotUseFreedPool)
+{
+    // Exercise the transport's safety net independently of the facade's lookup-before-server shutdown. A valid
+    // lookup completes only AFTER stopAccepting() freed the worker pool. It must reach stream(),
+    // whose closed gate falls back to send(503) without posting into the freed pool (ASan).
+    // RESTinio's stop()/wait() also stops its I/O threads: the context stays allocated, but this
+    // late response is not transmitted. Check memory safety and no config delivery here; an
+    // assertion that the TLS client receives that 503 requires a different transport shutdown.
+    auto certOpt = remoted::test::generateTestCertificate("rmt_shutdown_granted_lookup");
+    if (!certOpt)
     {
-        clientThread.join();
+        GTEST_SKIP() << "openssl not available to generate a test certificate";
     }
-    server.reset(); // phase 4: the route table, its source and their reference to the lookup
-    release.set_value();
-    lookup.reset();
-    wdb.reset();
+    remoted::test::ScratchFileCleanup certCleanup {{certOpt->certPath, certOpt->keyPath}};
+    DownloadConfigFile resource;
+
+    std::promise<void> release;
+    const auto released = release.get_future().share();
+    std::promise<void> received;
+    auto queryReceived = received.get_future();
+    std::atomic<bool> receivedSet {false};
+    const auto wdbPath = remoted::test::makeUniqueSocketPath("sr_granted_wdb");
+    remoted::test::FakeUdsServer wdb(
+        wdbPath,
+        [&](const std::string& request)
+        {
+            if (request.rfind("global select-agent-group", 0) == 0)
+            {
+                if (!receivedSet.exchange(true))
+                {
+                    received.set_value();
+                }
+                released.wait(); // cleanup releases this on every exit, including failed assertions
+            }
+            return std::string("ok [{\"group\":\"default\"}]");
+        });
+
+    remoted::control::Config controlConfig;
+    controlConfig.wdbSocketPath = wdbPath;
+    // Generous deadlines: this test must grant the lookup, never pass through its timeout path.
+    controlConfig.wdbRoundtripDeadlineMs = 30000;
+    controlConfig.wdbRequestDeadlineMs = 30000;
+    remoted::control::ControlMetrics controlMetrics {};
+    auto registry = std::make_shared<remoted::control::AgentRegistry>();
+    auto lookup = std::make_shared<remoted::control::RegistryLookup>(registry, controlConfig, controlMetrics);
+    wazuh::metrics::Manager metricsManager;
+    const auto downloadMetrics = remoted::endpoints::download::makeDownloadMetrics(metricsManager);
+
+    auto server = makeHttpServer();
+    AuthGateway gateway {remoted::auth::AuthConfig {},
+                         std::make_shared<remoted::test::FakeKeystore>(),
+                         std::make_shared<const remoted::decoding::BodyDecoder>(*server, /*enabled=*/true)};
+    gateway.addAuthenticatedRoute(
+        *server,
+        Method::Post,
+        "/download",
+        remoted::endpoints::download::makeHandler(
+            resource.paths,
+            downloadMetrics,
+            std::make_shared<remoted::control::RegistryAgentGroupSource>(registry, lookup, 60)),
+        remoted::http::ResponseMode::Streamable);
+
+    HttpServerConfig config;
+    config.port = static_cast<std::uint16_t>(30000 + (::getpid() % 5000));
+    config.certificatePath = certOpt->certPath;
+    config.privateKeyPath = certOpt->keyPath;
+    server->start(config);
+
+    std::promise<std::string> response;
+    auto responseReceived = response.get_future();
+    std::thread clientThread;
+    DownloadShutdownCleanup cleanup(server, lookup, release, clientThread);
+    clientThread = std::thread(
+        [&]
+        {
+            response.set_value(
+                remoted::test::sendSignedRequest(config.port,
+                                                 remoted::test::testAgentKey(),
+                                                 "/download",
+                                                 R"({"resource_type":"config","resource_id":"default"})"));
+        });
+    ASSERT_EQ(queryReceived.wait_for(std::chrono::seconds {5}), std::future_status::ready)
+        << "the download never reached wazuh-db; the test would prove nothing";
+
+    server->stopAccepting(); // pool freed, I/O threads stopped; their context stays allocated
+    cleanup.releaseReply();  // now the real lookup grants default and the download calls stream()
+    lookup->stop();          // all lookup callbacks finish before checking counters or destroying I/O
+
+    EXPECT_EQ(downloadMetrics.unavailable->get(), 0U) << "a lookup timeout must not satisfy this test";
+    EXPECT_EQ(downloadMetrics.started->get(), 1U) << "the granted download must reach stream()";
+    const auto entry = registry->get(remoted::test::kTestAgentId);
+    ASSERT_NE(entry, nullptr) << "the successful lookup must have established the membership";
+    EXPECT_EQ(entry->groups, (std::vector<std::string> {"default"}));
+    EXPECT_NE(entry->groupsRefreshedAtSec, 0U);
+    server->stop(); // destroy the retained context/connections so the TLS client can finish
+    ASSERT_EQ(responseReceived.wait_for(std::chrono::seconds {5}), std::future_status::ready);
+    const auto reply = responseReceived.get();
+    EXPECT_EQ(reply.find("HTTP/1.1 200"), std::string::npos) << reply;
+    EXPECT_EQ(reply.find("shutdown-test-config-body"), std::string::npos) << reply;
 }
