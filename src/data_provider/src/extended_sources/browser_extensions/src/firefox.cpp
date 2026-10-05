@@ -8,8 +8,13 @@
  */
 
 #include "firefox.hpp"
+#include "json_field_helpers.hpp"
 #include <fstream>
 #include "safe_file_reader.hpp"
+
+using JsonFieldHelpers::getBoolField;
+using JsonFieldHelpers::getObjectField;
+using JsonFieldHelpers::getStringField;
 
 FirefoxAddonsProvider::FirefoxAddonsProvider(std::shared_ptr<IBrowserExtensionsWrapper> firefoxAddonsWrapper) : m_firefoxAddonsWrapper(std::move(firefoxAddonsWrapper)) {}
 
@@ -161,139 +166,34 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
 
                 for (const auto& addon : addons.items())
                 {
+                    const nlohmann::json& addonJson = addon.value();
+                    const nlohmann::json& defaultLocale = getObjectField(addonJson, "defaultLocale");
+
                     FirefoxAddon firefoxAddon;
                     firefoxAddon.uid = userId;
 
-                    if (
-                        // If any of "softDisable", "appDisabled" or "userDisabled" are true, then the addon is disabled.
-                        (addon.value().contains("softDisable") && !addon.value()["softDisable"].is_null() && addon.value()["softDisable"].get<bool>()) ||
-                        (addon.value().contains("appDisabled") && !addon.value()["appDisabled"].is_null() && addon.value()["appDisabled"].get<bool>()) ||
-                        (addon.value().contains("userDisabled") && !addon.value()["userDisabled"].is_null() && addon.value()["userDisabled"].get<bool>())
-                    )
-                    {
-                        firefoxAddon.disabled = true;
-                    }
-                    else
-                    {
-                        firefoxAddon.disabled = false;
-                    }
+                    // If any of "softDisabled", "appDisabled" or "userDisabled" are true, then the addon is disabled.
+                    firefoxAddon.disabled = getBoolField(addonJson, "softDisabled", false) ||
+                                            getBoolField(addonJson, "appDisabled", false) ||
+                                            getBoolField(addonJson, "userDisabled", false);
 
-                    if (!addon.value().contains("defaultLocale") || addon.value()["defaultLocale"].is_null())
-                    {
-                        firefoxAddon.name = "";
-                        firefoxAddon.creator = "";
-                        firefoxAddon.description = "";
-                    }
-                    else
-                    {
-                        if (!addon.value()["defaultLocale"].contains("name") || addon.value()["defaultLocale"]["name"].is_null())
-                        {
-                            firefoxAddon.name = "";
-                        }
-                        else
-                        {
-                            firefoxAddon.name = addon.value()["defaultLocale"]["name"].get<std::string>();
-                        }
+                    firefoxAddon.name = getStringField(defaultLocale, "name");
+                    firefoxAddon.creator = getStringField(defaultLocale, "creator");
+                    firefoxAddon.description = getStringField(defaultLocale, "description");
+                    firefoxAddon.identifier = getStringField(addonJson, "id");
+                    firefoxAddon.type = getStringField(addonJson, "type");
+                    firefoxAddon.version = getStringField(addonJson, "version");
+                    firefoxAddon.source_url = getStringField(addonJson, "sourceURI");
+                    firefoxAddon.visible = getBoolField(addonJson, "visible", false);
+                    firefoxAddon.active = getBoolField(addonJson, "active", false);
 
-                        if (!addon.value()["defaultLocale"].contains("creator") || addon.value()["defaultLocale"]["creator"].is_null())
-                        {
-                            firefoxAddon.creator = "";
-                        }
-                        else
-                        {
-                            firefoxAddon.creator = addon.value()["defaultLocale"]["creator"].get<std::string>();
-                        }
+                    const auto autoupdateIt = addonJson.find("applyBackgroundUpdates");
+                    firefoxAddon.autoupdate = autoupdateIt != addonJson.end() &&
+                                              (autoupdateIt->is_number_integer() || autoupdateIt->is_boolean()) &&
+                                              static_cast<bool>(autoupdateIt->get<int8_t>());
 
-                        if (!addon.value()["defaultLocale"].contains("description") || addon.value()["defaultLocale"]["description"].is_null())
-                        {
-                            firefoxAddon.description = "";
-                        }
-                        else
-                        {
-                            firefoxAddon.description = addon.value()["defaultLocale"]["description"].get<std::string>();
-                        }
-                    }
-
-                    if (!addon.value().contains("id") || addon.value()["id"].is_null())
-                    {
-                        firefoxAddon.identifier = "";
-                    }
-                    else
-                    {
-                        firefoxAddon.identifier = addon.value()["id"].get<std::string>();
-                    }
-
-                    if (!addon.value().contains("type") || addon.value()["type"].is_null())
-                    {
-                        firefoxAddon.type = "";
-                    }
-                    else
-                    {
-                        firefoxAddon.type = addon.value()["type"].get<std::string>();
-                    }
-
-                    if (!addon.value().contains("version") || addon.value()["version"].is_null())
-                    {
-                        firefoxAddon.version = "";
-                    }
-                    else
-                    {
-                        firefoxAddon.version = addon.value()["version"].get<std::string>();
-                    }
-
-                    if (!addon.value().contains("sourceURI") || addon.value()["sourceURI"].is_null())
-                    {
-                        firefoxAddon.source_url = "";
-                    }
-                    else
-                    {
-                        firefoxAddon.source_url = addon.value()["sourceURI"].get<std::string>();
-                    }
-
-                    if (!addon.value().contains("visible") || addon.value()["visible"].is_null())
-                    {
-                        firefoxAddon.visible = false;
-                    }
-                    else
-                    {
-                        firefoxAddon.visible = addon.value()["visible"].get<bool>();
-                    }
-
-                    if (!addon.value().contains("active") || addon.value()["active"].is_null())
-                    {
-                        firefoxAddon.active = false;
-                    }
-                    else
-                    {
-                        firefoxAddon.active = addon.value()["active"].get<bool>();
-                    }
-
-                    if (!addon.value().contains("applyBackgroundUpdates") || addon.value()["applyBackgroundUpdates"].is_null())
-                    {
-                        firefoxAddon.autoupdate = false;
-                    }
-                    else
-                    {
-                        firefoxAddon.autoupdate = static_cast<bool>(addon.value()["applyBackgroundUpdates"].get<int8_t>());
-                    }
-
-                    if (!addon.value().contains("location") || addon.value()["location"].is_null())
-                    {
-                        firefoxAddon.location = "";
-                    }
-                    else
-                    {
-                        firefoxAddon.location = addon.value()["location"].get<std::string>();
-                    }
-
-                    if (!addon.value().contains("path") || addon.value()["path"].is_null())
-                    {
-                        firefoxAddon.path = "";
-                    }
-                    else
-                    {
-                        firefoxAddon.path = addon.value()["path"].get<std::string>();
-                    }
+                    firefoxAddon.location = getStringField(addonJson, "location");
+                    firefoxAddon.path = getStringField(addonJson, "path");
 
                     firefoxAddons.emplace_back(firefoxAddon);
                 }
