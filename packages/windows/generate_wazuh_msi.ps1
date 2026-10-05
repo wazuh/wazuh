@@ -90,7 +90,7 @@ function BuildWazuhMsi(){
     Write-Host "Building MSI installer..."
 
     & $CANDLE_EXE -nologo .\wazuh-installer.wxs -out "wazuh-installer.wixobj" -ext WixUtilExtension -ext WixUiExtension
-    & $LIGHT_EXE ".\wazuh-installer.wixobj" -out $MSI_NAME -ext WixUtilExtension -ext WixUiExtension
+    & $LIGHT_EXE ".\wazuh-installer.wixobj" -out $MSI_NAME -ext WixUtilExtension -ext WixUiExtension -loc .\wazuh-installer.wxl
 
     if($SIGN -eq "yes"){
         Write-Host "Signing $MSI_NAME..."

@@ -710,12 +710,12 @@
     <Fragment>
         <Binary Id="CustomImage" SourceFile="ui\bannrbmp.jpg" />
         <UI>
-	        <Dialog Id="CustomCheckDialog" Width="370" Height="270" Title="Wazuh Agent Setup">
+	        <Dialog Id="CustomCheckDialog" Width="370" Height="270" Title="!(loc.CustomCheckDialog_Title)">
                 <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44"
                     Text="CustomImage" />
 
                 <Control Id="Description" Type="Text" X="20" Y="60" Width="330" Height="60"
-                    Text="Enabling this option allows Wazuh to generate debug information in the event of an agent failure.&#x0A;This information could be useful to detect and fix the problem that caused it." />
+                    Text="!(loc.CustomCheckDialogDescription)" />
 
                 <Control Id="GenerateDumpCheckbox" Type="CheckBox" X="20" Y="150" Width="330" Height="17"
                     Property="GENERATE_DUMP" CheckBoxValue="1"

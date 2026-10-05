@@ -12,7 +12,7 @@ IF [%REVISION%] == [] set /p REVISION=Enter the revision of the Wazuh agent:
 SET MSI_NAME=wazuh-agent-%VERSION%-%REVISION%.msi
 
 candle.exe -nologo "wazuh-installer.wxs" -out "wazuh-installer.wixobj" -ext WixUtilExtension -ext WixUiExtension
-light.exe "wazuh-installer.wixobj" -out "%MSI_NAME%"  -ext WixUtilExtension -ext WixUiExtension
+light.exe "wazuh-installer.wixobj" -out "%MSI_NAME%"  -ext WixUtilExtension -ext WixUiExtension -loc "wazuh-installer.wxl"
 
 signtool sign /a /tr http://timestamp.digicert.com /fd SHA256 /d "%MSI_NAME%" /td SHA256 "%MSI_NAME%"
 

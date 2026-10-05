@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Installer wizard text. The WixUI strings that show [ProductName] (taken from WiX 3.11.2
+  WixUI_en-us.wxl) with the product name written out, plus the CustomCheckDialog strings.
+  Product/@Name stays "Wazuh Agent", so nothing that is keyed on it changes.
+-->
+<WixLocalization Culture="en-US" Codepage="1252" xmlns="http://schemas.microsoft.com/wix/2006/localization">
+    <String Id="AdvancedWelcomeEulaDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="AdvancedWelcomeEulaDlgTitle">{\WixUI_Font_Title}Please read the Nokia NEDR Agent License Agreement</String>
+    <String Id="BrowseDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="CancelDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="CancelDlgText">Are you sure you want to cancel Nokia NEDR Agent installation?</String>
+    <String Id="CustomizeDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="DiskCostDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="ErrorDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="ExitDialog_Title">Nokia NEDR Agent Setup</String>
+    <String Id="ExitDialogTitle">{\WixUI_Font_Bigger}Completed the Nokia NEDR Agent Setup Wizard</String>
+    <String Id="FatalError_Title">Nokia NEDR Agent Setup</String>
+    <String Id="FatalErrorTitle">{\WixUI_Font_Bigger}Nokia NEDR Agent Setup Wizard ended prematurely</String>
+    <String Id="FatalErrorDescription1">Nokia NEDR Agent Setup Wizard ended prematurely because of an error. Your system has not been modified. To install this program at a later time, run Setup Wizard again.</String>
+    <String Id="FeaturesDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="FilesInUse_Title">Nokia NEDR Agent Setup</String>
+    <String Id="InstallDirDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="InstallDirDlgFolderLabel">Install Nokia NEDR Agent to:</String>
+    <String Id="InstallScopeDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="InstallScopeDlgPerUserDescription">Nokia NEDR Agent will be installed in a per-user folder and be available just for your user account. You do not need local Administrator privileges.</String>
+    <String Id="InstallScopeDlgNoPerUserDescription">Nokia NEDR Agent does not support per-user installation.</String>
+    <String Id="InstallScopeDlgPerMachineDescription">Nokia NEDR Agent will be installed in a per-machine folder by default and be available for all users. You can change the default installation folder. You must have local Administrator privileges.</String>
+    <String Id="InvalidDirDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="LicenseAgreementDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="MaintenanceTypeDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="MaintenanceTypeDlgChangeDisabledText">Nokia NEDR Agent has no independently selectable features.</String>
+    <String Id="MaintenanceTypeDlgRemoveText">Removes Nokia NEDR Agent from your computer.</String>
+    <String Id="MaintenanceTypeDlgRemoveDisabledText">Nokia NEDR Agent cannot be removed.</String>
+    <String Id="MaintenanceTypeDlgRepairDisabledText">Nokia NEDR Agent cannot be repaired.</String>
+    <String Id="MaintenanceWelcomeDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="MaintenanceWelcomeDlgDescription">The Setup Wizard allows you to change the way Nokia NEDR Agent features are installed on your computer or to remove it from your computer. Click Next to continue or Cancel to exit the Setup Wizard.</String>
+    <String Id="MaintenanceWelcomeDlgTitle">{\WixUI_Font_Bigger}Welcome to the Nokia NEDR Agent Setup Wizard</String>
+    <String Id="MsiRMFilesInUse_Title">Nokia NEDR Agent Setup</String>
+    <String Id="OutOfDiskDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="OutOfRbDiskDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="PrepareDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="PrepareDlgTitle">{\WixUI_Font_Bigger}Welcome to the Nokia NEDR Agent Setup Wizard</String>
+    <String Id="ProgressDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="ProgressDlgTextInstalling">Please wait while the Setup Wizard installs Nokia NEDR Agent.</String>
+    <String Id="ProgressDlgTitleInstalling">{\WixUI_Font_Title}Installing Nokia NEDR Agent</String>
+    <String Id="ProgressDlgTextChanging">Please wait while the Setup Wizard changes Nokia NEDR Agent.</String>
+    <String Id="ProgressDlgTitleChanging">{\WixUI_Font_Title}Changing Nokia NEDR Agent</String>
+    <String Id="ProgressDlgTextRepairing">Please wait while the Setup Wizard repairs Nokia NEDR Agent.</String>
+    <String Id="ProgressDlgTitleRepairing">{\WixUI_Font_Title}Repairing Nokia NEDR Agent</String>
+    <String Id="ProgressDlgTextRemoving">Please wait while the Setup Wizard removes Nokia NEDR Agent.</String>
+    <String Id="ProgressDlgTitleRemoving">{\WixUI_Font_Title}Removing Nokia NEDR Agent</String>
+    <String Id="ProgressDlgTextUpdating">Please wait while the Setup Wizard updates Nokia NEDR Agent.</String>
+    <String Id="ProgressDlgTitleUpdating">{\WixUI_Font_Title}Updating Nokia NEDR Agent</String>
+    <String Id="ResumeDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="ResumeDlgDescription">The Setup Wizard will complete the installation of Nokia NEDR Agent on your computer. Click Install to continue or Cancel to exit the Setup Wizard.</String>
+    <String Id="ResumeDlgTitle">{\WixUI_Font_Bigger}Resuming the Nokia NEDR Agent Setup Wizard</String>
+    <String Id="SetupTypeDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="UserExit_Title">Nokia NEDR Agent Setup</String>
+    <String Id="UserExitTitle">{\WixUI_Font_Bigger}Nokia NEDR Agent Setup Wizard was interrupted</String>
+    <String Id="UserExitDescription1">Nokia NEDR Agent setup was interrupted. Your system has not been modified. To install this program at a later time, please run the installation again.</String>
+    <String Id="VerifyReadyDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="VerifyReadyDlgInstallTitle">{\WixUI_Font_Title}Ready to install Nokia NEDR Agent</String>
+    <String Id="VerifyReadyDlgChangeTitle">{\WixUI_Font_Title}Ready to change Nokia NEDR Agent</String>
+    <String Id="VerifyReadyDlgRepairText">Click Repair to repair the installation of Nokia NEDR Agent. Click Back to review or change any of your installation settings. Click Cancel to exit the wizard.</String>
+    <String Id="VerifyReadyDlgRepairTitle">{\WixUI_Font_Title}Ready to repair Nokia NEDR Agent</String>
+    <String Id="VerifyReadyDlgRemoveText">Click Remove to remove Nokia NEDR Agent from your computer. Click Back to review or change any of your installation settings. Click Cancel to exit the wizard.</String>
+    <String Id="VerifyReadyDlgRemoveTitle">{\WixUI_Font_Title}Ready to remove Nokia NEDR Agent</String>
+    <String Id="VerifyReadyDlgUpdateText">Click Update to update Nokia NEDR Agent from your computer. Click Back to review or change any of your installation settings. Click Cancel to exit the wizard.</String>
+    <String Id="VerifyReadyDlgUpdateTitle">{\WixUI_Font_Title}Ready to update Nokia NEDR Agent</String>
+    <String Id="WaitForCostingDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="WelcomeDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="WelcomeDlgDescription">The Setup Wizard will install Nokia NEDR Agent on your computer. Click Next to continue or Cancel to exit the Setup Wizard.</String>
+    <String Id="WelcomeUpdateDlgDescriptionUpdate">The Setup Wizard will update Nokia NEDR Agent on your computer. Click Next to continue or Cancel to exit the Setup Wizard.</String>
+    <String Id="WelcomeDlgTitle">{\WixUI_Font_Bigger}Welcome to the Nokia NEDR Agent Setup Wizard</String>
+    <String Id="WelcomeEulaDlg_Title">Nokia NEDR Agent Setup</String>
+    <String Id="WelcomeEulaDlgTitle">{\WixUI_Font_Title}Please read the Nokia NEDR Agent License Agreement</String>
+    <String Id="Error9">Nokia NEDR Agent</String>
+    <String Id="Error20">Please wait while Windows configures Nokia NEDR Agent</String>
+    <String Id="Error32">{Nokia NEDR Agent }Setup completed successfully.</String>
+    <String Id="Error33">{Nokia NEDR Agent }Setup failed.</String>
+
+    <!-- CustomCheckDialog, wazuh-installer.wxs -->
+    <String Id="CustomCheckDialog_Title">Nokia NEDR Agent Setup</String>
+    <String Id="CustomCheckDialogDescription">Enabling this option allows Nokia NEDR Agent to generate debug information in the event of an agent failure.&#x0A;This information could be useful to detect and fix the problem that caused it.</String>
+</WixLocalization>
