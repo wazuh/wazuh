@@ -36,6 +36,12 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 add_library(rt_engine STATIC src/rt_engine.c)
 target_include_directories(rt_engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+# The shared cgroup hierarchy probe (header-only, no link dependency). PRIVATE:
+# it is how this library answers the question internally, not part of what it
+# publishes — consumers that need the answer call rt_host_cgroup_v1(), and
+# consumers that are not this library include the header themselves.
+target_include_directories(rt_engine PRIVATE ${SRC_FOLDER}/shared_modules/common)
+
 # libbpf is dlopen()'d at rt_open() time (see rt_engine.c's top comment) —
 # no -lbpf here on purpose. -ldl for dlopen/dlsym/dlclose/dlerror.
 target_link_libraries(rt_engine PUBLIC dl)
@@ -198,5 +204,9 @@ if(UNIT_TEST)
   # teardown accounting (11-ebpf-provider-import-plan.md §11.9 item 9, §11.10).
   add_executable(rt_engine_contract_test test/rt_engine_contract_test.c)
   target_link_libraries(rt_engine_contract_test rt_engine)
+  # rt_engine keeps the shared probe PRIVATE, so the test includes it directly
+  # — which is what lets it assert the two agree rather than trusting that
+  # they do.
+  target_include_directories(rt_engine_contract_test PRIVATE ${SRC_FOLDER}/shared_modules/common)
   add_test(NAME rt_engine_contract_test COMMAND rt_engine_contract_test)
 endif()

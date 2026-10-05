@@ -42,6 +42,7 @@
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Detected new containers as soon as the container runtime reports them instead of waiting for the next scheduled check. |
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Refreshed container inventory when a container appears or is removed rather than only on its scan interval. |
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Inventoried only the containers that changed between full scans instead of every container each time. |
+| [#37203](https://github.com/wazuh/wazuh/issues/37203) | Reported when a host's cgroup layout prevents container security from working, which previously failed silently. |
 
 #### Removed
 

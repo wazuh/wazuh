@@ -6,6 +6,10 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
+ * Build (ad hoc — this test is not in CMakeLists, it needs root to run):
+ *     gcc -Iinclude -I../common -o /tmp/rt_engine_drops_test test/rt_engine_drops_test.c src/rt_engine.c -ldl
+ * The -I../common is for the shared cgroup hierarchy probe.
+ *
  * eBPF Module (#37396) — proves per-cgroup drop attribution, and with it the
  * cgroup_id join every container consumer depends on. Needs a real kernel,
  * cgroup v2, a built rt_file.bpf.o and root; exits 77 (CTest's skip
@@ -28,6 +32,8 @@
  */
 
 #include "rt_engine.h"
+
+#include "cgroup_host_mode.h"
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -165,10 +171,18 @@ int main(int argc, char** argv)
 
     printf("rt_engine per-cgroup drop attribution test (object: %s)\n", obj);
 
-    struct stat st;
-    if (stat("/sys/fs/cgroup/cgroup.controllers", &st) != 0)
+    /* These tests create cgroups directly under /sys/fs/cgroup, so they need
+     * the unified hierarchy mounted AT THE ROOT — which is a stricter
+     * requirement than "cgroup_id is usable". A hybrid host has a working v2
+     * hierarchy at /sys/fs/cgroup/unified and would pass
+     * wz_cgroup_mode_has_usable_cgroup_id(), but make_cgroup() below would
+     * write into a v1 tmpfs there and the test would fail for a reason that
+     * has nothing to do with what it is checking. Hence the exact comparison
+     * against UNIFIED rather than the usable-key helper. */
+    if (wz_cgroup_mode() != WZ_CGROUP_MODE_UNIFIED)
     {
-        printf("not a cgroup v2 unified hierarchy — skipping\n");
+        printf("not a cgroup v2 unified hierarchy at the root (%s) — skipping\n",
+               wz_cgroup_mode_name(wz_cgroup_mode()));
         return SKIP_EXIT;
     }
 
