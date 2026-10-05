@@ -525,12 +525,12 @@ Specific key configurations take precedence over wildcard configurations:
 
 ### Deprecated options
 
-**DEPRECATED:** these 4.x options are still recognized, so an upgraded `ossec.conf` keeps loading, but they have no effect. Each one logs `The <option> option is deprecated and no longer has any effect.`
+**DEPRECATED:** these 4.x options are still recognized, so an upgraded `ossec.conf` keeps loading, but they have no effect. Each one logs `The <option> option is deprecated and no longer has any effect.`, at info level for `scan_on_start`, `max_eps` and `max_interval`, which the 4.x default configuration sets, and as a warning for the rest.
 
 - Under `<syscheck>`: `scan_on_start` (a scan always runs on start), `alert_new_files`, `auto_ignore`, `database`, `prefilter_cmd`, `allow_remote_prefilter_cmd` and `remove_old_diff`.
 - Under `<synchronization>`: `max_eps`, `max_interval`, `response_timeout`, `queue_size`, `registry_enabled` and `thread_pool`.
 
-A `<restart_audit>` directly under `<syscheck>` is still applied, but logs a warning; set it under [`<whodata>`](#whodata) instead. When both are present, the `<whodata>` value is used.
+A `<restart_audit>` directly under `<syscheck>` is still applied, but logs an info message; set it under [`<whodata>`](#whodata) instead. When both are present, the `<whodata>` value is used.
 
 ---
 

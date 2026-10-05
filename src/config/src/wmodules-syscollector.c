@@ -33,7 +33,9 @@ static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node
     const char *XML_DB_SYNC_ENABLED = "enabled";
     const char *XML_DB_SYNC_INTERVAL = "interval";
     const char *XML_INTEGRITY_INTERVAL = "integrity_interval";
-    /* 4.x synchronization options: an upgrade keeps ossec.conf, so they are recognized but ignored */
+    /* 4.x synchronization options: an upgrade keeps ossec.conf, so they are recognized but ignored.
+     * The 4.x default ossec.conf sets them, so every upgraded agent carries them: they are reported
+     * at INFO, as other harmless 4.x leftovers are. */
     char *const XML_DB_SYNC_DEPRECATED[] = {"max_eps", NULL};
 
     for (int i = 0; node[i]; ++i) {
@@ -62,7 +64,7 @@ static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node
                 syscollector->sync.integrity_interval = (uint32_t) integrity_interval;
             }
         } else if (w_is_str_in_array(XML_DB_SYNC_DEPRECATED, node[i]->element)) {
-            mwarn(XML_DEPRECATED, node[i]->element);
+            minfo(XML_DEPRECATED, node[i]->element);
         } else {
             mwarn(XML_INVELEM, node[i]->element);
         }
