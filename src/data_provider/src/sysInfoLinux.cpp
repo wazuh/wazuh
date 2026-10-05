@@ -761,7 +761,10 @@ nlohmann::json SysInfo::getUsers() const
     // can leave behind, would otherwise anchor every account at the epoch and count every failure
     // btmp still holds against accounts that have since logged in.
     lastLoginKnown = std::any_of(lastLoginByName.cbegin(), lastLoginByName.cend(),
-                                 [](const auto & entry) { return entry.second > 0; });
+                                 [](const auto & entry)
+    {
+        return entry.second > 0;
+    });
 
     AuthFailuresProvider authFailuresProvider;
     authFailuresProvider.load(lastLoginByName, lastLoginKnown);
