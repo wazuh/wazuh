@@ -3,6 +3,7 @@
 #include "../cache/i_metadata_store.hpp"
 #include "../core/cache_entry.hpp"
 #include "../core/container_record.hpp"
+#include "../cache/lifecycle_journal.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -29,6 +30,11 @@ namespace wazuh::container_instances
         std::optional<std::string> containerId;
         std::optional<std::string> podUid;
         std::optional<std::string> containerName;
+
+        /// `list` only: read forward from here instead of returning the whole
+        /// set. Absent means a client that does not know about the cursor, or
+        /// one deliberately asking for everything — both get today's reply.
+        std::optional<LifecycleCursor> since;
     };
 
     /// Wire-independent response covering the three-outcome contract plus the
@@ -63,6 +69,12 @@ namespace wazuh::container_instances
         int retryAfterMs {0};                ///< pending.
         std::optional<StoreStats> stats;     ///< ok.
         std::string connectorName;           ///< ok.
+
+        /// `list` answered with a cursor. Carries the events, the cursor to
+        /// come back with, and — when the cursor could not be served — the full
+        /// set in `containers`, so recovery costs no extra round trip against a
+        /// set that may have moved on meanwhile.
+        std::optional<LifecycleDelta> delta;
         std::optional<ErrorCode> errorCode;  ///< error.
         std::string errorMessage;            ///< error.
     };

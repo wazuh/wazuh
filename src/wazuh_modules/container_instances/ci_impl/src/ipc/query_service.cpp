@@ -64,9 +64,25 @@ namespace wazuh::container_instances
             {
                 QueryResponse response;
                 response.status = QueryResponse::Status::ok;
-                response.containers = m_store.listContainers();
                 response.listReply = true;
                 response.connectorName = m_connectorName;
+
+                if (!request.since)
+                {
+                    // No cursor: the reply this op has always given.
+                    response.containers = m_store.listContainers();
+                    return response;
+                }
+
+                auto delta = m_store.lifecycleSince(*request.since);
+
+                // On resync the journal hands back the full set, which goes out
+                // through `containers` — the key every client already reads —
+                // so recovery needs no second call and no special case beyond
+                // noticing the flag.
+                response.containers = delta.resyncRequired ? delta.containers : std::vector<ContainerRecordPtr> {};
+                response.delta = std::move(delta);
+
                 return response;
             }
             if (request.op == QueryRequest::Op::status)
