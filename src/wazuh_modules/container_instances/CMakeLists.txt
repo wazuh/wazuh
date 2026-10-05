@@ -68,6 +68,14 @@ set_target_properties(
                                                              "$ORIGIN/../lib")
 
 if(UNIT_TEST)
+  # FilesystemWrapper and FileIO are built --coverage under UNIT_TEST, and this
+  # library links them — so its objects reference __gcov_* whether or not it
+  # wanted coverage, and every consumer's link fails on the undefined symbols
+  # unless gcov is linked here too. container_baseline already calls this for
+  # the same reason; container_instances never did, which is why its unit tests
+  # could not be linked with TEST=yes.
+  add_coverage_libraries(container_instances)
+
   enable_testing()
   # The test tree did not survive the rebase onto 5.0.0, and an unconditional
   # add_subdirectory() on a missing directory is a hard CMake error — which made
