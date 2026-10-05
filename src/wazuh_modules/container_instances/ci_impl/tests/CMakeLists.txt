@@ -23,6 +23,11 @@ target_include_directories(container_instances_unit_test PRIVATE
   # together because what matters about that transport is the pair's behaviour,
   # not either side in isolation.
   ${SRC_FOLDER}/shared_modules/container_instances_client/include
+  # The repo's own IFileSystemWrapper / IFileIOUtils mocks, so the resolver can
+  # be driven against a synthetic /proc tree instead of this host's real one —
+  # which is unified, and would exercise one of the three hierarchy paths.
+  ${SRC_FOLDER}/shared_modules/file_helper/filesystem/tests/mocks
+  ${SRC_FOLDER}/shared_modules/file_helper/file_io/tests/mocks
 )
 
 target_link_libraries(
@@ -30,6 +35,7 @@ target_link_libraries(
   container_instances
   debug gtestd debug gtest_maind
   optimized gtest optimized gtest_main
+  debug gmockd optimized gmock
   pthread
   dl)
 
