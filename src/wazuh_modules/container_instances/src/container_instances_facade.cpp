@@ -3,6 +3,7 @@
 #include "../ci_impl/src/cache/metadata_store.hpp"
 #include "../ci_impl/src/cgroup/inode_reader.hpp"
 #include "../ci_impl/src/cgroup/proc_cgroup_resolver.hpp"
+#include "../ci_impl/src/core/cgroup_mode_report.hpp"
 #include "../ci_impl/src/core/module_config.hpp"
 #include "../ci_impl/src/core/stop_controller.hpp"
 #include "../ci_impl/src/docker/docker_api_client.hpp"
@@ -30,6 +31,27 @@ namespace wazuh::container_instances
 
     namespace
     {
+
+        /* The module's first line, before any connector speaks.
+         *
+         * Until now this module never named the host's cgroup hierarchy, and
+         * on a v1 host that silence WAS the bug report: the connectors
+         * authenticate, return real containers, and every running one is then
+         * dropped for having no cgroup inode, because the resolver only
+         * parses v2 `0::` lines. The operator sees a healthy module, an
+         * inventory that never fills, and nothing anywhere naming the cause
+         * (#37203 O4).
+         *
+         * The probe is the one in shared_modules/common, the same code the
+         * eBPF engine reads its answer from — so an operator comparing the
+         * two logs is comparing two readings, not two implementations. The
+         * wording lives in cgroup_mode_report.hpp, where it can be tested
+         * without a v1 host. */
+        void logCgroupHostMode(const Logger& logger)
+        {
+            const auto report = describeCgroupHostMode(wz_cgroup_mode());
+            logger(report.level, report.message);
+        }
 
         ModuleConfig parseConfig(const nlohmann::json& configuration)
         {
@@ -73,6 +95,8 @@ namespace wazuh::container_instances
             , m_store(m_logger)
             , m_transport(m_logger)
         {
+            logCgroupHostMode(m_logger);
+
             std::vector<RefresherBinding> refreshers;
             std::string connectorNames;
 
