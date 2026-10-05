@@ -115,7 +115,14 @@ namespace wazuh::container_instances
         {
             for (const auto& [containerId, record] : records)
             {
-                if (!record || record->cgroupId == 0 || !seen.insert(containerId).second)
+                // Hide only UNRESOLVED RUNNING records. A running container with
+                // no inode yet is one the resolver has not caught up with, and
+                // publishing it would let a consumer act on an attribution key
+                // that is about to change. A container that is not running has
+                // no inode to wait for and is published as it is — otherwise a
+                // stop would read, to every consumer, exactly like a deletion.
+                if (!record || (record->cgroupId == 0 && isRunning(record->state)) ||
+                    !seen.insert(containerId).second)
                 {
                     continue;
                 }
