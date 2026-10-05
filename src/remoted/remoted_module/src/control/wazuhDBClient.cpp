@@ -312,12 +312,12 @@ namespace remoted::control
             using SocketType = Socket<OSPrimitives, SizeHeaderProtocol>;
             using ClientType = SocketClient<SocketType, EpollWrapper>;
 
-            std::unique_ptr<ClientType> client;
             std::string response;
             std::mutex responseMutex;
             std::condition_variable responseCv;
             bool responseReady = false;
             bool needsReconnect = true;
+            std::unique_ptr<ClientType> client;
 
             auto connectClient = [&]() -> bool
             {
