@@ -8,6 +8,7 @@
 #include "../ci_impl/src/docker/docker_api_client.hpp"
 #include "../ci_impl/src/docker/docker_connector.hpp"
 #include "../ci_impl/src/ipc/ipc_server.hpp"
+#include "../ci_impl/src/ipc/lifecycle_notifier.hpp"
 #include "../ci_impl/src/ipc/query_service.hpp"
 #include "../ci_impl/src/kubernetes/kubernetes_api_client.hpp"
 #include "../ci_impl/src/kubernetes/kubernetes_connector.hpp"
@@ -114,6 +115,12 @@ namespace wazuh::container_instances
                 m_store, std::move(refreshers), m_resolver, RetryPolicy {}, connectorNames, m_logger);
             m_ipcServer = std::make_unique<IpcServer>(*m_queryService, config.ipcSocketPath, m_logger);
 
+            // Wired before any connector thread starts, so the first reconcile
+            // already notifies rather than being the one change consumers have
+            // to wait a full poll interval to notice.
+            m_notifier = std::make_unique<LifecycleNotifier>(config.notifySocketPaths, m_logger);
+            m_store.setOnLifecycleChange([this](LifecycleCursor cursor) { m_notifier->notify(cursor); });
+
             if (m_ownershipPoller)
             {
                 m_ownershipPoller->start(m_stop);
@@ -176,6 +183,11 @@ namespace wazuh::container_instances
         std::vector<std::unique_ptr<IContainerConnector>> m_connectors;
         std::unique_ptr<QueryService> m_queryService;
         std::unique_ptr<IpcServer> m_ipcServer;
+
+        /// Outlives the store's callback by being destroyed after it: members
+        /// are torn down in reverse declaration order, and the connector threads
+        /// that can trigger a notification are joined before either.
+        std::unique_ptr<LifecycleNotifier> m_notifier;
         std::vector<std::thread> m_connectorThreads;
     };
 
