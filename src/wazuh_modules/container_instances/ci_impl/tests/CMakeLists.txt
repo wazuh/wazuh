@@ -19,6 +19,10 @@ add_executable(container_instances_unit_test ${CONTAINER_INSTANCES_UNIT_TEST_SRC
 target_include_directories(container_instances_unit_test PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../src
   ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+  # The consumer half of the notification channel. Both ends are exercised
+  # together because what matters about that transport is the pair's behaviour,
+  # not either side in isolation.
+  ${SRC_FOLDER}/shared_modules/container_instances_client/include
 )
 
 target_link_libraries(
