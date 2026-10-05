@@ -26,6 +26,7 @@
  */
 
 #include "cache/metadata_store.hpp"
+#include "cache/lifecycle_journal.hpp"
 #include "cache/reconciler.hpp"
 #include "docker/docker_object_parser.hpp"
 #include "kubernetes/k8s_object_parser.hpp"
@@ -191,4 +192,86 @@ TEST(ContainerStateTest, AStateChangeAloneCountsAsAChangedRecord)
 
     EXPECT_FALSE(recordEquals(running, stopped));
     EXPECT_TRUE(recordEquals(running, MakeRecord("eps", 0, ContainerState::running)));
+}
+
+/* --- restart detection ----------------------------------------------------
+ *
+ * A restart keeps the container id and may reuse the cgroup inode, so without
+ * a start time nothing in the record distinguishes a container whose processes
+ * and files are entirely new from one that never moved.
+ *
+ * restartCount does not serve: it is driven by the restart POLICY, so a
+ * container restarted by hand leaves it where it was.
+ */
+
+TEST(ContainerStateTest, ARestartIsVisibleEvenWhenNothingElseMoves)
+{
+    auto before = MakeRecord("alpha", 4242, ContainerState::running);
+    before.startedAt = "2026-10-05T10:00:00Z";
+
+    auto after = MakeRecord("alpha", 4242, ContainerState::running);
+    after.startedAt = "2026-10-05T11:30:00Z";
+
+    // Same id, same inode, same image, same restart count — and yet a different
+    // run, whose contents nobody has walked.
+    EXPECT_FALSE(recordEquals(before, after));
+    EXPECT_TRUE((lifecycleChangeMask(before, after) & LIFECYCLE_IDENTITY) != 0)
+            << "a restart has to reach a consumer as an identity change, or the container is never re-scanned";
+}
+
+TEST(ContainerStateTest, RestartCountAloneWouldHaveMissedIt)
+{
+    // Pinning why startedAt was added rather than leaning on what was already
+    // there: a manual `docker restart` does not touch restartCount, which only
+    // the restart policy increments.
+    auto before = MakeRecord("beta", 1, ContainerState::running);
+    before.startedAt = "2026-10-05T10:00:00Z";
+    before.restartCount = 0;
+
+    auto after = before;
+    after.startedAt = "2026-10-05T12:00:00Z";
+
+    EXPECT_EQ(before.restartCount, after.restartCount);
+    EXPECT_FALSE(recordEquals(before, after)) << "restartCount is unchanged, so only startedAt can catch this";
+}
+
+TEST(ContainerStateTest, DockerInspectSuppliesTheStartTimeAndPid)
+{
+    const auto detail = docker::parseInspect(nlohmann::json::parse(R"({
+        "Id": "abc123",
+        "Name": "/demo",
+        "State": {"Status": "running", "Pid": 4321, "StartedAt": "2026-10-05T10:00:00.123456789Z"},
+        "Config": {"Image": "alpine:latest"}
+    })"));
+
+    EXPECT_EQ(ContainerState::running, detail.record.state);
+    EXPECT_EQ("2026-10-05T10:00:00.123456789Z", detail.record.startedAt);
+    EXPECT_EQ(4321, detail.record.pid) << "the runtime knew the pid all along; consumers walk /proc to rediscover it";
+}
+
+TEST(ContainerStateTest, AStoppedDockerContainerReportsNoPid)
+{
+    const auto detail = docker::parseInspect(nlohmann::json::parse(R"({
+        "Id": "abc123",
+        "Name": "/demo",
+        "State": {"Status": "exited", "Pid": 0, "StartedAt": "2026-10-05T10:00:00Z"},
+        "Config": {"Image": "alpine:latest"}
+    })"));
+
+    EXPECT_EQ(ContainerState::stopped, detail.record.state);
+    EXPECT_EQ(0, detail.record.pid);
+}
+
+TEST(ContainerStateTest, KubernetesTakesTheStartTimeFromTheRunningStateOnly)
+{
+    // A terminated container carries startedAt too, under `terminated`, and it
+    // describes a run that has ENDED. Reading it would make a finished
+    // container look freshly started.
+    const auto running = k8s::detail::parseContainerState(
+        nlohmann::json::parse(R"({"state":{"running":{"startedAt":"2026-10-05T10:00:00Z"}}})"));
+    EXPECT_EQ(ContainerState::running, running);
+
+    const auto terminated = k8s::detail::parseContainerState(
+        nlohmann::json::parse(R"({"state":{"terminated":{"startedAt":"2026-10-05T09:00:00Z","exitCode":0}}})"));
+    EXPECT_EQ(ContainerState::stopped, terminated);
 }

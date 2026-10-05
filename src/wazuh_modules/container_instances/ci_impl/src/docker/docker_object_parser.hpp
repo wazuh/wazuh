@@ -68,7 +68,10 @@ namespace wazuh::container_instances::docker
         record.runtime = ContainerRuntime::docker;
         record.containerId = body.value("Id", "");
         record.restartCount = body.value("RestartCount", 0);
-        record.state = parseDockerState(body.value("State", nlohmann::json::object()).value("Status", ""));
+        const auto state = body.value("State", nlohmann::json::object());
+        record.state = parseDockerState(state.value("Status", ""));
+        record.startedAt = state.value("StartedAt", "");
+        record.pid = state.value("Pid", 0);
 
         auto name = body.value("Name", "");
         if (!name.empty() && name.front() == '/')

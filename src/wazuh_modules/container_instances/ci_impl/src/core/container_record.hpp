@@ -112,6 +112,23 @@ namespace wazuh::container_instances
         /// indistinguishable from an unresolved one.
         std::uint64_t cgroupId {0};
 
+        /// When the current run of this container began, verbatim from the
+        /// runtime (RFC 3339).
+        ///
+        /// This is THE restart discriminator, and nothing else in the record
+        /// is. A restart keeps the container id, so without it a container that
+        /// stopped and started again is indistinguishable from one that never
+        /// moved — its files and processes are new, and nothing would say so.
+        /// `restartCount` does not serve: it is driven by the restart POLICY,
+        /// so a container restarted by hand does not increment it.
+        std::string startedAt;
+
+        /// Main process id of the current run, 0 when it has none.
+        ///
+        /// Carried because the consumers already need it and currently each
+        /// rediscover it by walking /proc: the runtime knew it all along.
+        int pid {0};
+
         /// Lifecycle state as the runtime reports it, normalised across Docker
         /// and Kubernetes.
         ///

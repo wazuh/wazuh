@@ -179,6 +179,19 @@ namespace wazuh::container_instances::wire
         data["image"] = record.image;
         data["image_digest"] = record.imageDigest;
         data["restart_count"] = record.restartCount;
+
+        // Additive, and omitted when the runtime did not report them rather
+        // than sent empty: an absent key is how every optional field on this
+        // protocol already reads, and a consumer that knows neither is
+        // unaffected either way.
+        if (!record.startedAt.empty())
+        {
+            data["started_at"] = record.startedAt;
+        }
+        if (record.pid != 0)
+        {
+            data["pid"] = record.pid;
+        }
         data["node_name"] = record.nodeName;
         data["labels"] = record.labels;
         data["cgroup_id"] = std::to_string(record.cgroupId);
