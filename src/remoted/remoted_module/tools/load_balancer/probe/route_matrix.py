@@ -7,8 +7,7 @@ and what the agent does next. This covers the first three; the fourth is a prope
 status and is annotated per route below.
 
 All TEN routes remoted registers. Note that /control is ONE route: startup, notify and
-shutdown are values of the body's `type` field, not separate paths -- a correction to the
-issue's own route list, which counts eleven.
+shutdown are values of the body's `type` field, not separate paths.
 
 Bodies for /stats and /config are the ones send_agent_json.py uses, so a valid document
 really does get 202 rather than a 400 that would hide a routing problem.
