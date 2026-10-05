@@ -22,6 +22,7 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include <set>
 #include <unordered_set>
 #include <utility>
 
@@ -626,6 +627,49 @@ int RunSyscollectorDbsyncBaseline(const std::string&         connector_socket_pa
     return RunSyscollectorDbsyncBaselineFrom(
         [&connector_socket_path]() { return DiscoverContainers(connector_socket_path); },
         pids, sink, status_sink);
+}
+
+int RunSyscollectorDbsyncBaselineForContainers(const std::string&              connector_socket_path,
+                                               const std::vector<std::string>& container_ids,
+                                               const DbsyncRowSink&            sink,
+                                               const ContainerStatusSink&      status_sink)
+{
+    if (container_ids.empty())
+    {
+        return 0;
+    }
+
+    bool reachable = false;
+    const auto all = DiscoverContainers(connector_socket_path, &reachable);
+
+    // -1 for the same reason the whole-node entry points return it: the caller
+    // is about to act on what this reports, and an unreachable connector must
+    // not present as "none of those containers exist any more".
+    if (!reachable)
+    {
+        return -1;
+    }
+
+    const std::set<std::string> wanted(container_ids.begin(), container_ids.end());
+
+    std::vector<ContainerIdentity> selected;
+    selected.reserve(container_ids.size());
+
+    for (const auto& identity : all)
+    {
+        if (wanted.count(identity.container_id) > 0)
+        {
+            selected.push_back(identity);
+        }
+    }
+
+    // A filtered discoverer rather than a second orchestrator: scanning a
+    // subset differs from scanning everything only in WHICH containers are
+    // visited, and duplicating the walk would be two places for the
+    // row-contiguity and one-status-per-container contracts to drift apart.
+    const auto pids = PidIndex::Build();
+
+    return RunSyscollectorDbsyncBaselineFrom([&selected]() { return selected; }, pids, sink, status_sink);
 }
 
 int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink)
