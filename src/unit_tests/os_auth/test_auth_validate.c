@@ -435,6 +435,55 @@ static void test_w_auth_replace_agent_not_disconnected(void **state) {
     os_free(str_result);
 }
 
+static void assert_replace_refused_with_stale_disconnection_time(char *connection_status) {
+    w_err_t err;
+    bool warn = false;
+    keyentry key;
+    keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
+    char* str_result = NULL;
+    time_t date_add = 1632255744;
+    time_t disconnection_time = 1632258049;
+    cJSON *j_agent_info_array = NULL;
+    cJSON *j_agent_info = NULL;
+
+    j_agent_info_array = cJSON_CreateArray();
+    j_agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(j_agent_info, "connection_status", connection_status);
+    cJSON_AddNumberToObject(j_agent_info, "disconnection_time", disconnection_time);
+    cJSON_AddNumberToObject(j_agent_info, "date_add", date_add);
+    cJSON_AddItemToArray(j_agent_info_array, j_agent_info);
+
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info_array);
+
+    // time since disconnected: well past the threshold
+    will_return(__wrap_difftime, 1000);
+
+    config.force_options.disconnected_time_enabled = true;
+    config.force_options.disconnected_time = 100;
+
+    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result, &warn);
+
+    config.force_options.disconnected_time_enabled = false;
+    config.force_options.disconnected_time = 0;
+
+    assert_int_equal(err, OS_INVALID);
+    assert_true(warn);
+    assert_string_equal(str_result, "Agent '001' can't be replaced since it is not disconnected.");
+    free_keyentry(&key);
+    os_free(str_result);
+}
+
+static void test_w_auth_replace_agent_active_with_stale_disconnection_time(void **state) {
+    /* remoted stamps every agent disconnected on start; a live agent that is set active again by a
+     * write that does not clear disconnection_time must still not be replaceable. */
+    assert_replace_refused_with_stale_disconnection_time("active");
+}
+
+static void test_w_auth_replace_agent_pending_with_stale_disconnection_time(void **state) {
+    assert_replace_refused_with_stale_disconnection_time("pending");
+}
+
 static void test_w_auth_replace_agent_not_disconnected_long_enough(void **state) {
     w_err_t err;
     keyentry key;
@@ -648,6 +697,8 @@ int main(void) {
         cmocka_unit_test_setup(test_w_auth_replace_agent_agent_info_failed, setup_validate_force_disabled),
         cmocka_unit_test_setup(test_w_auth_replace_agent_not_disconnected_long_enough, setup_validate_force_enabled),
         cmocka_unit_test_setup(test_w_auth_replace_agent_not_disconnected, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_active_with_stale_disconnection_time, setup_validate_force_enabled),
+        cmocka_unit_test_setup(test_w_auth_replace_agent_pending_with_stale_disconnection_time, setup_validate_force_enabled),
         cmocka_unit_test_setup(test_w_auth_replace_agent_not_old_enough, setup_validate_force_enabled),
         cmocka_unit_test_setup(test_w_auth_replace_agent_existent_key_hash, setup_validate_force_enabled),
         cmocka_unit_test_setup(test_w_auth_replace_agent_success, setup_validate_force_enabled),
