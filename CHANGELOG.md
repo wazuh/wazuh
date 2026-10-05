@@ -239,3 +239,4 @@
 | [#40571](https://github.com/wazuh/wazuh/pull/40571) | Fixed SCA `remediation` text stored as flattened single-line prose, which collapsed lists, warnings, and multi-step commands into one run-on sentence; converted all 11,258 remediation fields across all 72 SCA policies to structured Markdown (lists, bold, fenced code blocks), matching the dashboard's new Markdown renderer for the SCA Check Details view. |
 | [#37396](https://github.com/wazuh/wazuh/issues/37396) | Corrected the user and group reported by the container file monitoring engine, which were interchanged. |
 | [#37532](https://github.com/wazuh/wazuh/issues/37532) | Started monitoring containers that were created moments apart on an otherwise idle host, which were previously never detected. |
+| [#37532](https://github.com/wazuh/wazuh/issues/37532) | Kept the file and inventory data of a stopped container instead of discarding it as if the container had been deleted. |
