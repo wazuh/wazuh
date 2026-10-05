@@ -146,12 +146,12 @@ namespace wazuh::container_instances::wire
         {
             return detail::makeError(QueryResponse::ErrorCode::badRequest, "cgroup_id missing");
         }
-        const auto cgroupId = detail::parseDecimalU64(parsed["cgroup_id"]);
-        if (!cgroupId)
+        const auto hostKey = detail::parseDecimalU64(parsed["cgroup_id"]);
+        if (!hostKey)
         {
             return detail::makeError(QueryResponse::ErrorCode::badRequest, "cgroup_id must be a decimal string");
         }
-        request.cgroupId = *cgroupId;
+        request.hostKey = *hostKey;
 
         if (parsed.contains("container_id") && parsed["container_id"].is_string())
         {
@@ -194,7 +194,7 @@ namespace wazuh::container_instances::wire
         }
         data["node_name"] = record.nodeName;
         data["labels"] = record.labels;
-        data["cgroup_id"] = std::to_string(record.cgroupId);
+        data["cgroup_id"] = std::to_string(record.hostKey);
 
         if (record.runtime == ContainerRuntime::kubernetes)
         {
@@ -235,11 +235,16 @@ namespace wazuh::container_instances::wire
     {
         auto names = nlohmann::json::array();
 
-        if ((mask & LIFECYCLE_IDENTITY) != 0) names.push_back("identity");
-        if ((mask & LIFECYCLE_IMAGE) != 0) names.push_back("image");
-        if ((mask & LIFECYCLE_MOUNTS) != 0) names.push_back("mounts");
-        if ((mask & LIFECYCLE_NETWORK) != 0) names.push_back("network");
-        if ((mask & LIFECYCLE_METADATA) != 0) names.push_back("metadata");
+        if ((mask & LIFECYCLE_IDENTITY) != 0)
+            names.push_back("identity");
+        if ((mask & LIFECYCLE_IMAGE) != 0)
+            names.push_back("image");
+        if ((mask & LIFECYCLE_MOUNTS) != 0)
+            names.push_back("mounts");
+        if ((mask & LIFECYCLE_NETWORK) != 0)
+            names.push_back("network");
+        if ((mask & LIFECYCLE_METADATA) != 0)
+            names.push_back("metadata");
 
         return names;
     }
@@ -284,7 +289,7 @@ namespace wazuh::container_instances::wire
             entry["container_id"] = event.containerId;
             // Carried on every kind, removals included: a consumer keyed on the
             // cgroup inode cannot act on a removal it cannot map back to one.
-            entry["cgroup_id"] = std::to_string(event.cgroupId);
+            entry["cgroup_id"] = std::to_string(event.hostKey);
 
             if (event.kind == LifecycleKind::changed)
             {

@@ -283,7 +283,7 @@ TEST(ProcCgroupResolverTest, AProcessThatExitsMidScanIsSkippedNotFatal)
 
 TEST(ProcCgroupResolverTest, AHostProcessContributesToAllInodesButIsNotAContainer)
 {
-    // allInodes drives verdict liveness eviction, so a host cgroup must still
+    // allHostKeys drives verdict liveness eviction, so a host cgroup must still
     // be observed even though it resolves to no container.
     FakeProc proc;
     proc.pids = {"100"};
@@ -295,7 +295,70 @@ TEST(ProcCgroupResolverTest, AHostProcessContributesToAllInodesButIsNotAContaine
     const auto scan = resolver.scan();
 
     EXPECT_TRUE(scan.containers.empty());
-    EXPECT_EQ(1U, scan.allInodes.count(55));
+
+    // In the HOST'S key space, which on a legacy hierarchy is mount
+    // namespaces. Liveness eviction compares these against the keys records
+    // are filed under, so a set drawn from a different space would evict
+    // everything on every scan — the cgroup inode here is a real number that
+    // simply means nothing to anything else in the store.
+    EXPECT_EQ(KeyKind::mntNsInode, scan.keyKind);
+    EXPECT_EQ(1U, scan.allHostKeys.count(4026531840));
+    EXPECT_EQ(0U, scan.allHostKeys.count(55));
+}
+
+TEST(ProcCgroupResolverTest, AUnifiedHostKeepsTrackingLivenessByCgroupInode)
+{
+    // The other half of the same rule, so neither direction can be changed
+    // without the other being noticed.
+    FakeProc proc;
+    proc.pids = {"100"};
+    proc.cgroupFileByPid["100"] = {"0::/system.slice/sshd.service"};
+    proc.inodeByPath["/sys/fs/cgroup/system.slice/sshd.service"] = 55;
+    proc.inodeByPath["/proc/100/ns/mnt"] = 4026531840;
+
+    const ProcCgroupResolver resolver {proc, proc, proc, Log, "/proc", "/sys/fs/cgroup", WZ_CGROUP_MODE_UNIFIED};
+    const auto scan = resolver.scan();
+
+    EXPECT_EQ(KeyKind::cgroupInode, scan.keyKind);
+    EXPECT_EQ(1U, scan.allHostKeys.count(55));
+}
+
+TEST(ProcCgroupResolverTest, OnALegacyHostTheContainerIsKeyedByItsMountNamespace)
+{
+    /* The point of the whole exercise, and the thing that looks fine when it
+     * is wrong: a legacy host HAS a perfectly good cgroup inode, so a store
+     * keyed on it lists containers and answers `status` happily — and then
+     * misses every correlation lookup, because no event on that host carries
+     * that number. */
+    FakeProc proc;
+    proc.pids = {"100"};
+    proc.cgroupFileByPid["100"] = {"10:memory:" + ContainerLeaf()};
+    proc.inodeByPath["/sys/fs/cgroup/memory" + ContainerLeaf()] = 4242;
+    proc.inodeByPath["/proc/100/ns/mnt"] = 4026532281;
+
+    const ProcCgroupResolver resolver {proc, proc, proc, Log, "/proc", "/sys/fs/cgroup", WZ_CGROUP_MODE_LEGACY};
+    const auto scan = resolver.scan();
+
+    ASSERT_EQ(1U, scan.containers.size());
+    EXPECT_EQ(4026532281U, hostKeyOf(scan.containers.front(), scan.keyKind));
+    EXPECT_EQ(4242U, scan.containers.front().inode) << "the cgroup inode is still carried, just not used as the key";
+}
+
+TEST(ProcCgroupResolverTest, ALegacyContainerWithNoReadableNamespaceIsNotPublished)
+{
+    // Better unlisted than keyed on 0, which every consumer reads as
+    // "unresolved, ask again shortly" rather than "this host cannot key it".
+    FakeProc proc;
+    proc.pids = {"100"};
+    proc.cgroupFileByPid["100"] = {"10:memory:" + ContainerLeaf()};
+    proc.inodeByPath["/sys/fs/cgroup/memory" + ContainerLeaf()] = 4242;
+    // no /proc/100/ns/mnt
+
+    const ProcCgroupResolver resolver {proc, proc, proc, Log, "/proc", "/sys/fs/cgroup", WZ_CGROUP_MODE_LEGACY};
+    const auto scan = resolver.scan();
+
+    EXPECT_TRUE(scan.containers.empty());
+    EXPECT_TRUE(scan.allHostKeys.empty());
 }
 
 TEST(ProcCgroupResolverTest, ALegacyHostWithNoUsableControllerResolvesNothing)
@@ -309,5 +372,5 @@ TEST(ProcCgroupResolverTest, ALegacyHostWithNoUsableControllerResolvesNothing)
     const auto scan = resolver.scan();
 
     EXPECT_TRUE(scan.containers.empty()) << "unlisted rather than keyed on an arbitrary hierarchy";
-    EXPECT_TRUE(scan.allInodes.empty());
+    EXPECT_TRUE(scan.allHostKeys.empty());
 }

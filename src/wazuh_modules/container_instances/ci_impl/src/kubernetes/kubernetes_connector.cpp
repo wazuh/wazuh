@@ -72,7 +72,10 @@ namespace wazuh::container_instances
         std::unordered_map<std::string, std::uint64_t> inodeByContainerId;
         for (const auto& entry : scan.containers)
         {
-            inodeByContainerId.emplace(entry.containerId, entry.inode);
+            // The host's key, not simply the cgroup inode: on a legacy hierarchy the
+            // cgroup inode is a number no event ever carries, so keying on it answers
+            // every correlation lookup with a miss while looking entirely healthy.
+            inodeByContainerId.emplace(entry.containerId, hostKeyOf(entry, scan.keyKind));
         }
         const auto inodeFor = [&inodeByContainerId](const std::string& containerId)
         {
@@ -107,12 +110,13 @@ namespace wazuh::container_instances
             for (const auto& container : pod.containers)
             {
                 auto record = makeRecord(pod, container, ownerChain, m_nodeName);
-                record.cgroupId = inodeFor(container.containerId);
+                record.hostKey = inodeFor(container.containerId);
                 records.push_back(std::move(record));
             }
         }
 
-        m_store.applySnapshot(KUBERNETES_SOURCE, std::move(records), scan.allInodes, std::chrono::steady_clock::now());
+        m_store.applySnapshot(
+            KUBERNETES_SOURCE, std::move(records), scan.allHostKeys, std::chrono::steady_clock::now());
         for (const auto& [inode, reason] : verdicts)
         {
             m_store.upsertVerdict(inode, reason);
@@ -284,7 +288,7 @@ namespace wazuh::container_instances
                                              container,
                                              workloads ? k8s::resolveOwnerChain(pod, *workloads) : pod.ownerRefs,
                                              m_nodeName);
-                    record.cgroupId = cgroupInode;
+                    record.hostKey = cgroupInode;
                     m_store.upsertResolved(KUBERNETES_SOURCE, std::move(record));
                     return RefreshOutcome::resolved;
                 }
