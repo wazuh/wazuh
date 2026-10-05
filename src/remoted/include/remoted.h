@@ -40,9 +40,6 @@
 #define REMOTED_TLS_FILES_MISSING_KEY "Cannot start the HTTPS agent listener: the TLS private key '%s' is " \
     "missing or unreadable by the service user." REMOTED_TLS_FILES_HINT
 
-/* Hash table for agent data */
-extern OSHash* agent_data_hash;
-
 /* Pending data structure */
 
 typedef struct pending_data_t
