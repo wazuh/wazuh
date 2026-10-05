@@ -272,8 +272,11 @@ discovery window — at most `resolver_interval_ms` today, near zero with a crea
 
 **Answerable by:** a decision from `container_instances`' owner. The consumer side is specified.
 
-**Blocks:** roadmap item 20 in its entirety, item 22, item 23. (No longer the allowlist filter
-mode — shipped 2026-10-02 without it.)
+**Blocks:** ~~roadmap item 20 in its entirety, item 22, item 23.~~ **Nothing, as of 2026-10-05.**
+Items 20 and 22 both landed on `37532-container-lifecycle-notify`; item 23's trigger table is
+implemented in the reduced form the single-tier scanner allows (any non-metadata change re-scans).
+The question itself — whether `container_instances` should publish a lifecycle delta — is answered
+by building it. (The allowlist filter mode left this list on 2026-10-02, before the rest.)
 
 ### Q9 — What is the *guaranteed* create trigger for container FIM?
 

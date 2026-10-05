@@ -324,9 +324,14 @@ the check; syscollector has no availability gate at all. This is the same severi
 [C1](03-findings-correctness.md#c1--fim-deletes-the-state-of-merely-stopped-containers-false-delete-storm)
 and it existed **at `03bca26e9a`**, independent of item 20.
 
-FIM's driver runs exactly once, at startup, on syscheckd's `main()` thread (`main.c:499`), before
+~~FIM's driver runs exactly once, at startup, on syscheckd's `main()` thread (`main.c:499`), before
 `realtime_start()` (`main.c:509`) — so FIM has no cycle to hang a delta poll on. That is item
-14's thread-ownership decision, and item 20 cannot be delivered for FIM without it.
+14's thread-ownership decision, and item 20 cannot be delivered for FIM without it.~~
+
+**Corrected 2026-10-05.** Only the *baseline* runs on `main()`. The eBPF drain starts three threads
+of its own, one of which — the resolver — already owns every `container_instances` round trip and
+loops for the life of the process. FIM has had the cycle this paragraph says it lacks ever since;
+item 14 was never a prerequisite, and item 20 shipped for FIM without it.
 
 ## 10.6 Decisions
 
@@ -968,3 +973,59 @@ Recorded explicitly so they can be corrected rather than propagated:
    container-free host reading as "no connector", which suppressed the sweep that *should* have
    run — is
    [C28](03-findings-correctness.md#c28--with-no-containers-list-reads-as-connector-unavailable).
+
+---
+
+## 10.14 Implemented 2026-10-05 — what the code does, and where it diverges
+
+The journal, its wire cursor, a push notification and both consumers landed on
+`37532-container-lifecycle-notify`. Five places where the implementation differs from what is
+specified above; each was found by writing the code or the test, not by review.
+
+**D2's hook placement is not implementable as written.** It says to append inside
+`insertResolvedLocked()` and `eraseResolvedLocked()`. `insertResolvedLocked()` calls
+`eraseResolvedLocked()` on its own first line, so that emits a spurious `removed` + `added` pair for
+every ordinary update — and a consumer acting on that `removed` sweeps a live container's rows. The
+mutations are now split into raw operations that cannot journal and wrappers that observe visibility
+before and after, so the mistake is structurally unavailable rather than warned against. Verified by
+reverting to the naive placement: four tests fail, including the invariant property test.
+
+**The invariant is weaker than stated, deliberately.** `recordEquals` compares labels and
+annotations, so Kubernetes metadata churn marks a record `updated` on every reconcile; at roughly
+two reconciles a second against a hundred containers, a 4096-entry ring holds about twenty seconds
+of history and a consumer on a thirty-second floor would hit `resync_required` routinely. A change
+whose only class is `metadata` is therefore dropped **at append time**. Membership transitions are
+still mirrored exactly; record *contents* may lag, and the floor closes that.
+
+**`removed` carries the last known cgroup inode.** §10.7's wire example omits it. FIM keys its
+kernel allowlist by inode, so a removal it cannot map back to one is a removal it cannot act on.
+
+**A push leg exists after all, and D1 still stands.** D1 rejected a *subscription* — a held
+connection would occupy one of the two IPC workers that serve the eBPF enrichment hot path, and
+that reasoning is unchanged. What ships is a datagram to a socket the consumer binds, carrying
+`{epoch, seq}` and no authority: it says the list moved, never how. A lost, duplicated or garbled
+datagram costs latency until the consumer's next floor read and nothing else. Authority stays with
+the cursor pull exactly as D1 requires. Measured on the VM: **1262 ms median** from `docker run` to
+the container being walked, against **5202 ms** with the notification suppressed, with no overlap
+between the two distributions.
+
+**Open question 2 is closed, and it was not free.** Docker is listed with `all=1`, and a stopped
+container keeps its rows. The query parameter alone does not achieve that: a stopped container has
+no process and so no cgroup inode, and the store hid every record whose inode was zero — it would
+have been in the snapshot and still absent from `list`. That filter was right for its original
+reason, so `all=1` gives zero a second meaning and an explicit lifecycle state now tells the two
+apart. `removed` fires only on actual deletion.
+
+### What is not here
+
+`instance_id` is not composed. Its fields (`pid`, `started_at`) are parsed and published, and
+`started_at` is in the identity change class because it is the only thing that distinguishes a
+restart — `restartCount` is driven by the restart policy, so a manual `docker restart` leaves it
+untouched. The token itself waits on open question 5: composing it before anyone has to join
+against it would freeze a format for nothing.
+
+Syscollector's **floor is every scheduled pass**, not a 24 h interval. A scheduled pass walks the
+whole node; only a notification-driven pass uses the delta. D4 said the floor is mandatory, and this
+is the strongest reading of that: the delta makes the response to change fast, and takes nothing
+away from the periodic reconciliation. A notification never moves the scheduled deadline, or a host
+with steady churn would postpone the floor for ever.

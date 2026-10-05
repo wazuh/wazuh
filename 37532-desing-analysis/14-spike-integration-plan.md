@@ -446,6 +446,12 @@ and D18's fix.
 **That gate is now cleared too**: C27 is fixed in `ccf47ab93c` and D18 is decided. What remains is
 [D9](12-blocking-decisions.md) alone, which is a decision, not a defect. Note the measurement WP5
 inherits from [12 §12.16](12-blocking-decisions.md#1216-the-lifecycle-question-answered-by-measurement-2026-09-08):
+> **Superseded 2026-10-05.** Both halves of this paragraph are now wrong. The allowlist shipped on
+> 2026-10-02 without item 20 — the connector's own container list populates it — and item 20 itself
+> landed on 2026-10-05, so discovery rides a push notification rather than either. Measured on the
+> VM: 1262 ms median from `docker run` to the container being walked, against 5202 ms when the
+> notification is suppressed. The text below is kept for the reasoning it records.
+
 `RT_CGROUP_MODE_ALL` is load-bearing until item 20 lands, because post-startup container discovery
 depends on seeing events from cgroups the map has never heard of. A collapse that narrows the filter
 to serve host whodata more cheaply would silently remove container discovery, so the filter mode is

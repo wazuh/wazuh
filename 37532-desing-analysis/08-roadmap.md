@@ -54,7 +54,15 @@ Ordered by "what would block a release" first, then "what makes it viable at 100
 >   because the grace only expires inside `applySnapshot()` and nothing re-runs it on the Docker path
 >   without another event. The rescan masks the missed create; nothing masks the missed expiry, so on
 >   an idle host a removed container's FIM and inventory rows are never swept.
-> - **Item 20 has a constraint the tables do not record.** Post-startup container discovery works
+> - ~~**Item 20 has a constraint the tables do not record.**~~ **Resolved 2026-10-05.** Both halves
+>   of what follows were overtaken: the allowlist shipped on 2026-10-02 without item 20, because the
+>   connector's own container list populates it, and item 20 landed on 2026-10-05, so discovery no
+>   longer depends on runc's incidental startup writes at all. It now rides a push notification from
+>   `container_instances` — measured at 1262 ms median from `docker run` to the container being
+>   walked, against 5202 ms with the notification suppressed. The C16 bullet above is fixed in the
+>   same series. Kept below for the measurement it records.
+>
+>   Post-startup container discovery works
 >   today only because `RT_CGROUP_MODE_ALL` lets the drain see events from cgroups it has never heard
 >   of. The events that expose a new container come from **runc's init** — measured: four write-intent
 >   opens of procfs/sysfs files within a second of `docker run` — and resolving that unknown cgroup
