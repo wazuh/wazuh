@@ -2458,11 +2458,13 @@ TEST_F(SyscollectorImpTest, invalidUtf8DoesNotAbortScan)
     badProcess["name"] = std::string{"bad\xff"};
     const auto goodProcess = R"({"name":"good","scan_time":"2020/12/28 21:49:50","pid":"2","ppid":0,"state":"S"})"_json;
 
-    auto ports = R"([{"inode":1,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50","local_port":631,"pid":1,"process_name":"","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},
-                   {"inode":2,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50","local_port":632,"pid":2,"process_name":"good","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])"_json;
-    ports[0]["process_name"] = std::string{"bad\xff"};
+    auto badPort =
+        R"({"inode":1,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50","local_port":631,"pid":1,"process_name":"","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0})"_json;
+    badPort["process_name"] = std::string{"bad\xff"};
+    const auto goodPort =
+        R"({"inode":2,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50","local_port":632,"pid":2,"process_name":"good","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0})"_json;
 
-    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(ports));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::array({badPort, goodPort})));
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::DoAll(::testing::InvokeArgument<0>(badProcess),
