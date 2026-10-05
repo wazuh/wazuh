@@ -1895,8 +1895,8 @@ Windows event logs which often contain complex and repetitive tag structures.
 ```
 
 - `mode`: Optional parameter specifying the parser mode. If omitted, the default mode is used. For Windows Event Logs,
-  use `windows` mode. This mode processes complex XML structures by ignoring repetitive tags like <Event> and uses the
-  unique identifiers from <Data> tags directly as keys in the resulting JSON object.
+  use `windows` mode. This mode processes complex XML structures by ignoring repetitive tags like `<Event>` and uses the
+  unique identifiers from `<Data>` tags directly as keys in the resulting JSON object.
 
 ### Examples of Default Mode
 
