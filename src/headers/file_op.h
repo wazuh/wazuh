@@ -572,7 +572,21 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
  * A rejection sets errno to EINVAL (file type) or EPERM (trust), never ENOENT, so a caller that treats
  * ENOENT as "file gone" is not misled by it. A path that keeps changing while it is checked, as a symlink
  * re-pointed during rotation does, is retried a few times and then fails with EAGAIN: it was not rejected,
- * and may be opened again later. Windows falls back to wfopen().
+ * and may be opened again later.
+ *
+ * Windows follows junctions and symlinks too, and accepts a path that traverses none without further
+ * checks. When it does, the path is resolved one component at a time, as on POSIX: each junction or
+ * symlink met is checked, then its target is read one level only and the walk continues from there, so the
+ * junctions and symlinks inside a link's destination are checked too. Each directory and link on the way
+ * is held open, without delete sharing, so it cannot be renamed, deleted or replaced until the file has
+ * been matched against it. Every junction or symlink met must be owned by SYSTEM, BUILTIN\Administrators,
+ * TrustedInstaller, a member of the local Administrators group or the owner of the file finally read, and
+ * no other principal may modify it, else the open fails with EPERM. The same rejection applies to a
+ * reparse point that redirects the path in a way that cannot be read one level at a time, a link to
+ * anything but a local volume, a chain of more than 40 junctions or symbolic links, and a file reached by
+ * more than one hard link. A component that changes, vanishes or is in a sharing violation while it is
+ * checked is retried and then fails with EAGAIN. The file must be on disk (EINVAL otherwise) and on a
+ * local volume (EPERM otherwise).
  *
  * Solaris 10 and HP-UX lack the *at() calls the component walk needs. There the path is followed as
  * wfopen() would, still non-blocking, and the same rules are applied to the opened file, but only the
