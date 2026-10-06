@@ -331,11 +331,18 @@ needs a *constant* index — CO-RE computes a field offset at load time. A varia
 the array's base offset with `bpf_core_field_offset(struct css_set, subsys)` and reading at
 `base + idx * sizeof(void *)`, with `idx` bounds-checked first so the verifier accepts it.
 
-**Unverified, and the first thing this package must do:** that
-`subsys[idx]->cgroup->kn->id` equals the `stat()` inode of that controller's directory. It is
-expected by the same kernfs mechanism that makes it true on v2 — where it is *measured*, not
-assumed (`rt_engine_drops_test`, 28126/28206, pinned since `9e884232c5`) — but it has not been
-measured on a v1 host. Extend that test rather than writing a new one.
+**Measured 2026-10-06 on a host rebooted into a non-unified layout** (`20-…` §20.4.4). For a real
+container's cgroups, `subsys[4]->cgroup->kn->id` and `stat /sys/fs/cgroup/memory/docker/<id>` both
+returned **8387**, while `bpf_get_current_cgroup_id()` and `stat /sys/fs/cgroup/unified/docker/<id>`
+both returned **6225**. The premise holds and the two key spaces are demonstrably distinct — this
+package no longer rests on an expectation. Still extend `rt_engine_drops_test` to pin it, as it
+pins the v2 equivalent (28126/28206, since `9e884232c5`).
+
+**One trap the same measurement exposed, which WP6a must guard.** On a *unified* host
+`css_set.subsys[i]` points at the nearest ancestor where controller `i` is enabled, not necessarily
+the task's own cgroup — a second subsystem read on the same task returned an ancestor. The walk is
+therefore only valid on a host with real v1 hierarchies, where every task is in exactly one cgroup
+per mounted hierarchy. Assert that gate; do not leave it implied.
 
 **Cost:** four pointer dereferences per event before the ring-buffer reservation, on a path that
 already performs a map lookup and a bounded dentry walk. Plus — and this is the real price — a
