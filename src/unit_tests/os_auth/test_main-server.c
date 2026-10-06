@@ -18,13 +18,15 @@
 #include "auth.h"
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
 
 /* main-server.c is compiled with WAZUH_UNIT_TESTING, which turns its file-scope
  * `static` declarations into externally-linkable ones (see auth.c for the same
- * pattern). g_client_pool and sweep_idle_clients() have no header of their own,
- * so they are declared here directly. */
+ * pattern). g_client_pool, sweep_idle_clients() and handle_ssl_read() have no
+ * header of their own, so they are declared here directly. */
 extern struct client * g_client_pool[AUTH_POOL];
 extern void sweep_idle_clients(void);
+extern int handle_ssl_read(struct client *client);
 
 #define TEST_SLOT 1
 
@@ -127,8 +129,87 @@ static void test_sweep_idle_clients_closes_completed_handshake_with_partial_requ
     assert_null(g_client_pool[TEST_SLOT]);
 }
 
+/* handle_ssl_read() */
+
+static void expect_ssl_read(struct client * client, int offset, const char * data, int ret) {
+    expect_value(__wrap_SSL_read, ssl, client->ssl);
+    expect_value(__wrap_SSL_read, buf, client->read_buffer + offset);
+    expect_value(__wrap_SSL_read, num, MAX_SSL_MSG_SIZE - offset);
+    will_return(__wrap_SSL_read, data);
+    will_return(__wrap_SSL_read, ret);
+}
+
+static void expect_ssl_read_drained(struct client * client) {
+    expect_value(__wrap_SSL_read, ssl, client->ssl);
+    expect_any(__wrap_SSL_read, buf);
+    expect_any(__wrap_SSL_read, num);
+    will_return(__wrap_SSL_read, "");
+    will_return(__wrap_SSL_read, -1);
+    expect_value(__wrap_SSL_get_error, i, -1);
+    will_return(__wrap_SSL_get_error, SSL_ERROR_WANT_READ);
+    expect_string(__wrap__mdebug2, formatted_msg, "SSL read in progress for socket=-1");
+}
+
+static int teardown_read_client(void ** state) {
+    struct client * client = *state;
+
+    os_free(client->read_buffer);
+    os_free(client);
+    return 0;
+}
+
+static struct client * make_read_client(void ** state, int read_offset) {
+    struct client * client = make_client(TRUE, 1000, read_offset, 0);
+
+    os_calloc(MAX_SSL_MSG_SIZE + 1, sizeof(char), client->read_buffer);
+    *state = client;
+    return client;
+}
+
+static void test_handle_ssl_read_partial_record_waits_without_error(void ** state) {
+    /* A record with no '\n' is an incomplete request, not an error: no merror may be
+     * emitted (the wrapper fails the test on an unexpected call), the connection stays
+     * open and the bytes are kept for the next read. */
+    struct client * client = make_read_client(state, 0);
+
+    expect_ssl_read(client, 0, "OSSEC", 5);
+    expect_ssl_read_drained(client);
+
+    assert_int_equal(handle_ssl_read(client), 0);
+    assert_int_equal(client->read_offset, 5);
+}
+
+static void test_handle_ssl_read_drains_every_short_record(void ** state) {
+    /* Edge-triggered epoll: stopping after the first short record would strand the rest
+     * until the idle sweep. Every record queued in this burst must be consumed. */
+    struct client * client = make_read_client(state, 0);
+
+    expect_ssl_read(client, 0, "OS", 2);
+    expect_ssl_read(client, 2, "SE", 2);
+    expect_ssl_read(client, 4, "C", 1);
+    expect_ssl_read_drained(client);
+
+    assert_int_equal(handle_ssl_read(client), 0);
+    assert_int_equal(client->read_offset, 5);
+}
+
+static void test_handle_ssl_read_full_buffer_without_newline_closes(void ** state) {
+    struct client * client = make_read_client(state, MAX_SSL_MSG_SIZE - 3);
+
+    expect_ssl_read(client, MAX_SSL_MSG_SIZE - 3, "abc", 3);
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Enrollment request from 127.0.0.1 exceeds 69632 bytes without a newline terminator. "
+                  "Closing connection.");
+
+    assert_int_equal(handle_ssl_read(client), -1);
+    assert_int_equal(client->read_offset, MAX_SSL_MSG_SIZE);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test_teardown(test_handle_ssl_read_partial_record_waits_without_error, teardown_read_client),
+        cmocka_unit_test_teardown(test_handle_ssl_read_drains_every_short_record, teardown_read_client),
+        cmocka_unit_test_teardown(test_handle_ssl_read_full_buffer_without_newline_closes, teardown_read_client),
         cmocka_unit_test_teardown(test_sweep_idle_clients_closes_stale_pre_handshake, teardown_pool),
         cmocka_unit_test_teardown(test_sweep_idle_clients_skips_recent_connection, teardown_pool),
         cmocka_unit_test_teardown(test_sweep_idle_clients_skips_completed_handshake_with_response_queued, teardown_pool),
