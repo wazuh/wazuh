@@ -405,7 +405,7 @@ static void test_entry_name_validation(void** state)
     const char* invalid[] =
     {
         "", ".", "..", "a/../b", "/a", "a/..", "a/", "a/.", "./",
-        "a\rb", "a\tb", "a\177b", "merged.mg", "merged.mg.tmp", "MERGED.MG", "./Merged.mg.TMP"
+        "a\rb", "a\tb", "a\177b", "merged.mg", "merged.mgt", "MERGED.MG", "./Merged.MGT"
     };
 
     for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i)
@@ -423,16 +423,16 @@ static void test_entry_name_validation(void** state)
 static void test_unmerge_reserved_names(void** state)
 {
     sandbox_t* sb = *state;
-    const char* content = "!3 merged.mg.tmp\nbad!3 ./Merged.MG\nbad!2 sub/merged.mg\nok";
+    const char* content = "!3 merged.mgt\nbad!3 ./Merged.MG\nbad!2 sub/merged.mg\nok";
     char bundle[PATH_MAX];
     char accepted[PATH_MAX];
-    snprintf(bundle, sizeof(bundle), "%s/merged.mg.tmp", sb->dest);
+    snprintf(bundle, sizeof(bundle), "%s/merged.mgt", sb->dest);
     snprintf(accepted, sizeof(accepted), "%s/merged.mg", sb->dest);
     write_file(bundle, content);
     write_file(accepted, "previous");
     expect_any_count(__wrap__merror, formatted_msg, 2);
     assert_int_equal(UnmergeFiles(bundle, sb->dest, OS_TEXT, NULL), UNMERGE_NAMES_SKIPPED);
-    assert_content(sb, "merged.mg.tmp", content);
+    assert_content(sb, "merged.mgt", content);
     assert_content(sb, "merged.mg", "previous");
     assert_content(sb, "sub/merged.mg", "ok");
     assert_int_equal(count_entries(sb->dest), 3);
@@ -445,7 +445,7 @@ static void test_names_invalid_only_on_windows(void** state)
     const char* names[] =
     {
         "agent.conf", "rules:v2.txt", "C:a", "a?b", "a<b>c", "a|b", "a\"b", "a*b",
-        "notes.", "space ", "...", "a\\b", "\\a", "a\\..\\b", "sub/a\\b", "COM1", "nul.txt"
+        "notes.", "space ", "...", "a\\b", "\\a", "a\\..\\b", "sub/a\\b", "COM1", "nul.txt", "MERGED~1.TMP"
     };
     const size_t count = sizeof(names) / sizeof(*names);
     char bundle[1024];

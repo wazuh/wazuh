@@ -68,7 +68,7 @@ static char **shared_bundle_files(void)
 
     os_calloc(3, sizeof(char *), list);
     os_strdup(SHAREDCFG_FILENAME, list[0]);
-    os_strdup(SHAREDCFG_FILENAME ".tmp", list[1]);
+    os_strdup(SHAREDCFG_TMPFILENAME, list[1]);
     return list;
 }
 
@@ -314,8 +314,8 @@ int receive_msg()
                 }
 
                 receiving_merged = strcmp(tmp_msg, SHAREDCFG_FILENAME) == 0;
-                snprintf(file, OS_SIZE_1024, "%s/%s%s", SHAREDCFG_DIR, tmp_msg,
-                         receiving_merged ? ".tmp" : "");
+                snprintf(file, OS_SIZE_1024, "%s/%s", SHAREDCFG_DIR,
+                         receiving_merged ? SHAREDCFG_TMPFILENAME : tmp_msg);
 
                 fp = wfopen(file, "w");
                 if (!fp) {

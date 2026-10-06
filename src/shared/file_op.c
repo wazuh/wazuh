@@ -781,6 +781,24 @@ static int unmerge_device_name(const char *component, size_t length)
     }
     return unmerge_port_name(component, base);
 }
+
+/* NTFS can give every name that is not 8.3 a short alias, such as MERGED~1.TMP for merged.mg.tmp, which opens the
+ * same file. An entry with that form could write through the alias of another file, or of its own temporary file. */
+static int unmerge_short_alias(const char *component, size_t length)
+{
+    const char *dot = memchr(component, '.', length);
+    size_t base = dot ? (size_t)(dot - component) : length;
+    size_t extension = dot ? length - base - 1 : 0;
+    size_t digits = 0;
+
+    if (base > 8 || extension > 3 || (dot && memchr(dot + 1, '.', extension))) {
+        return 0;
+    }
+    while (digits < base && isdigit((unsigned char)component[base - 1 - digits])) {
+        ++digits;
+    }
+    return digits > 0 && digits < base && component[base - 1 - digits] == '~';
+}
 #endif
 
 /* Reject components the local filesystem would not create under their literal name. */
@@ -794,7 +812,7 @@ static int unmerge_valid_component(const char *component, size_t length)
     if (component[length - 1] == '.' || component[length - 1] == ' ') {
         return 0;
     }
-    if (unmerge_device_name(component, length)) {
+    if (unmerge_device_name(component, length) || unmerge_short_alias(component, length)) {
         return 0;
     }
 #endif
@@ -818,7 +836,7 @@ static int unmerge_valid_component(const char *component, size_t length)
  * replace them. Case is ignored because Windows and macOS file systems usually ignore it. */
 static int unmerge_reserved_name(const char *name)
 {
-    return !strcasecmp(name, SHAREDCFG_FILENAME) || !strcasecmp(name, SHAREDCFG_FILENAME ".tmp");
+    return !strcasecmp(name, SHAREDCFG_FILENAME) || !strcasecmp(name, SHAREDCFG_TMPFILENAME);
 }
 
 /* Validation and extraction share these rules. Empty, absolute, '..' and reserved names and control characters

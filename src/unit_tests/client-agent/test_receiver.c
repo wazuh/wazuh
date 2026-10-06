@@ -68,14 +68,14 @@ FILE* __wrap_wfopen(const char* path, const char* mode)
         return __real_wfopen(path, mode);
     }
 
-    assert_string_equal(path, SHAREDCFG_FILE ".tmp");
+    assert_string_equal(path, SHAREDCFG_DIR "/" SHAREDCFG_TMPFILENAME);
     assert_string_equal(mode, "w");
     return tmpfile();
 }
 
 int __wrap_OS_MD5_File(const char* path, os_md5 output, int mode)
 {
-    assert_string_equal(path, SHAREDCFG_FILE ".tmp");
+    assert_string_equal(path, SHAREDCFG_DIR "/" SHAREDCFG_TMPFILENAME);
     assert_int_equal(mode, OS_TEXT);
 
     if (real_files)
@@ -89,11 +89,11 @@ int __wrap_OS_MD5_File(const char* path, os_md5 output, int mode)
 
 int __wrap_UnmergeFiles(const char* path, const char* dir, int mode, char*** list)
 {
-    assert_string_equal(path, SHAREDCFG_FILE ".tmp");
+    assert_string_equal(path, SHAREDCFG_DIR "/" SHAREDCFG_TMPFILENAME);
     assert_string_equal(dir, SHAREDCFG_DIR);
     assert_int_equal(mode, OS_TEXT);
     assert_string_equal((*list)[0], SHAREDCFG_FILENAME);
-    assert_string_equal((*list)[1], SHAREDCFG_FILENAME ".tmp");
+    assert_string_equal((*list)[1], SHAREDCFG_TMPFILENAME);
 
     if (real_files)
     {
@@ -112,14 +112,14 @@ int __wrap_cldir_ex_ignore(const char* dir, const char** list)
 {
     assert_string_equal(dir, SHAREDCFG_DIR);
     assert_string_equal(list[0], SHAREDCFG_FILENAME);
-    assert_string_equal(list[1], SHAREDCFG_FILENAME ".tmp");
+    assert_string_equal(list[1], SHAREDCFG_TMPFILENAME);
     ++cleanups;
     return real_files ? __real_cldir_ex_ignore(dir, list) : cleanup_result;
 }
 
 int __wrap_rename_ex(const char* source, const char* destination)
 {
-    assert_string_equal(source, SHAREDCFG_FILE ".tmp");
+    assert_string_equal(source, SHAREDCFG_DIR "/" SHAREDCFG_TMPFILENAME);
     assert_string_equal(destination, SHAREDCFG_FILE);
     assert_true(cleanups > 0);
     int result = real_files ? __real_rename_ex(source, destination) : publish_result;
@@ -135,7 +135,7 @@ int __wrap_rename_ex(const char* source, const char* destination)
 
 int __wrap_unlink(const char* path)
 {
-    if (!strcmp(path, SHAREDCFG_FILE ".tmp"))
+    if (!strcmp(path, SHAREDCFG_DIR "/" SHAREDCFG_TMPFILENAME))
     {
         ++discarded;
     }
@@ -409,7 +409,7 @@ static void test_filesystem_retry(void** state)
     assert_fixture_contents(SHAREDCFG_DIR "/agent.conf", "new");
     assert_fixture_contents(SHAREDCFG_DIR "/obsolete", "old");
     assert_int_equal(IsDir(SHAREDCFG_DIR "/policy"), 0);
-    assert_int_equal(access(SHAREDCFG_FILE ".tmp", F_OK), -1);
+    assert_int_equal(access(SHAREDCFG_DIR "/" SHAREDCFG_TMPFILENAME, F_OK), -1);
 
     assert_int_equal(rmdir(SHAREDCFG_DIR "/policy"), 0);
     extraction_result = UNMERGE_COMPLETE;
@@ -424,7 +424,7 @@ static void test_filesystem_retry(void** state)
     assert_fixture_contents(SHAREDCFG_DIR "/agent.conf", "new");
     assert_fixture_contents(SHAREDCFG_DIR "/policy", "rule");
     assert_int_equal(access(SHAREDCFG_DIR "/obsolete", F_OK), -1);
-    assert_int_equal(access(SHAREDCFG_FILE ".tmp", F_OK), -1);
+    assert_int_equal(access(SHAREDCFG_DIR "/" SHAREDCFG_TMPFILENAME, F_OK), -1);
 }
 
 /* After a failed update the shared directory may match neither bundle. If the group goes back to the previous
@@ -482,7 +482,7 @@ static void test_filesystem_invalid_name(void** state)
     assert_fixture_contents(SHAREDCFG_DIR "/rules.txt", "rule");
     assert_int_equal(access(SHAREDCFG_DIR "/tab\tname.txt", F_OK), -1);
     assert_int_equal(access(SHAREDCFG_DIR "/obsolete", F_OK), -1);
-    assert_int_equal(access(SHAREDCFG_FILE ".tmp", F_OK), -1);
+    assert_int_equal(access(SHAREDCFG_DIR "/" SHAREDCFG_TMPFILENAME, F_OK), -1);
 }
 
 static void test_update_without_restart(void** state)
