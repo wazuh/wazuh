@@ -28,7 +28,11 @@ static cJSON* get_srcip_from_win_eventdata(const cJSON *data);
 void write_debug_file(const char *ar_name, const char *msg) {
     char *timestamp = w_get_timestamp(time(NULL));
 
+#ifndef WIN32
+    FILE *ar_log_file = w_fopen_nofollow(AR_LOG_DIR, AR_LOG_FILE_NAME, "a");
+#else
     FILE *ar_log_file = wfopen(LOG_FILE, "a");
+#endif
 
     if (ar_log_file) {
         fprintf(ar_log_file, "%s %s: %s\n", timestamp, ar_name, msg);

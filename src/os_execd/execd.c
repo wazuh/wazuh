@@ -251,6 +251,7 @@ void ExecdRun(char *exec_msg, int *childcount)
         os_strdup("manager", cmd_api[1]);
     #endif
 
+        ExecdLogRestart(cmd_api);
         ExecCmd(cmd_api);
         return;
     }

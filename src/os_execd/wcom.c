@@ -218,6 +218,7 @@ size_t wcom_restart(char ** output) {
 #else
             exec_cmd[1] = "manager";
 #endif
+            ExecdLogRestart(exec_cmd);
         } else {
             exec_cmd[0] = "bin/wazuh-control";
             exec_cmd[1] = "restart";
@@ -276,6 +277,7 @@ size_t wcom_reload(char ** output) {
             exec_cmd[1] = "manager";
 #endif
             exec_cmd[2] = "reload";
+            ExecdLogRestart(exec_cmd);
         } else {
             exec_cmd[0] = "bin/wazuh-control";
             exec_cmd[1] = "reload";
