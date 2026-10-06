@@ -1078,6 +1078,22 @@ static int unmerge_fill_tmp(unmerge_bundle_t *bundle, FILE *fp, size_t *size, co
     return written;
 }
 
+/* rename_ex() leaves errno, or the Win32 error on Windows, set to the reason of its failure. */
+static void unmerge_rename_failed(const unmerge_bundle_t *bundle, const char *name)
+{
+#ifdef WIN32
+    DWORD error = GetLastError();
+
+    merror("Unmerging '%s': could not save entry '%s' due to [(%lu)-(%s)].", bundle->path, name, error,
+           win_strerror(error));
+#else
+    int error = errno;
+
+    merror("Unmerging '%s': could not save entry '%s' due to [(%d)-(%s)].", bundle->path, name, error,
+           strerror(error));
+#endif
+}
+
 /* Writes an entry to a temporary file, which replaces the destination only once it holds the complete data. */
 static int unmerge_write_entry(unmerge_bundle_t *bundle, const char *name, const char *final_name, size_t size)
 {
@@ -1089,9 +1105,14 @@ static int unmerge_write_entry(unmerge_bundle_t *bundle, const char *name, const
         return unmerge_skip_entry(bundle, size, UNMERGE_ENTRY_FAILED);
     }
     written = unmerge_fill_tmp(bundle, fp, &size, final_name);
-    if (size > 0 || !written || rename_ex(tmp_file, final_name) != 0) {
+    if (size > 0 || !written) {
         unlink(tmp_file);
         return size > 0 ? unmerge_truncated(bundle) : UNMERGE_ENTRY_FAILED;
+    }
+    if (rename_ex(tmp_file, final_name) != 0) {
+        unmerge_rename_failed(bundle, name);
+        unlink(tmp_file);
+        return UNMERGE_ENTRY_FAILED;
     }
     return UNMERGE_ENTRY_EXTRACTED;
 }
@@ -1329,11 +1350,14 @@ char *basename_ex(char *path)
     return (basename(path));
 }
 
-/* Rename file or directory */
+/* Rename file or directory. On failure, errno keeps the reason. */
 int rename_ex(const char *source, const char *destination)
 {
     if (rename(source, destination)) {
-        mferror(RENAME_ERROR, source, destination, errno, strerror(errno));
+        int error = errno;
+
+        mferror(RENAME_ERROR, source, destination, error, strerror(error));
+        errno = error;
 
         return (-1);
     }
@@ -1615,7 +1639,10 @@ int rename_ex(const char *source, const char *destination)
         HANDLE hFile = wCreateFile(destination, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
 
         if (hFile == INVALID_HANDLE_VALUE) {
-            mdebug2("Could not create file (%s) which returned (%lu)", destination, GetLastError());
+            DWORD error = GetLastError();
+
+            mdebug2("Could not create file (%s) which returned (%lu)", destination, error);
+            SetLastError(error);
             return -1;
         }
 
@@ -1624,13 +1651,17 @@ int rename_ex(const char *source, const char *destination)
     }
 
     if (!utf8_ReplaceFile(destination, source, NULL, 0)) {
-        mdebug2("Could not move (%s) to (%s) which returned (%lu)", source, destination, GetLastError());
+        DWORD error = GetLastError();
+
+        mdebug2("Could not move (%s) to (%s) which returned (%lu)", source, destination, error);
 
         if (file_created) {
             // Delete the destination file as it's been created by this function.
             utf8_DeleteFile(destination);
         }
 
+        // Callers can report why the move failed.
+        SetLastError(error);
         return (-1);
     }
 

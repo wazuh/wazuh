@@ -357,11 +357,15 @@ static void test_unmerge_rename_failure(void** state)
 {
     sandbox_t* sb = *state;
     char path[PATH_MAX];
+    char expected[OS_MAXSTR];
     char** list = new_list();
     snprintf(path, sizeof(path), "%s/existing", sb->dest);
     assert_int_equal(mkdir(path, 0700), 0);
     write_file(sb->merged, "!3 existing\none!3 last.conf\ntwo");
+    snprintf(expected, sizeof(expected), "Unmerging '%s': could not save entry 'existing' due to [(%d)-(%s)].",
+             sb->merged, EISDIR, strerror(EISDIR));
     expect_any(__wrap__mferror, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg, expected);
     assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, &list), UNMERGE_FAILED);
     assert_content(sb, "last.conf", "two");
     assert_int_equal(count_entries(path), 0);

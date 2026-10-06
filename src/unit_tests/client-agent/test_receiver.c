@@ -389,6 +389,16 @@ static filesystem_fixture* enter_filesystem_fixture(void** state)
     return fixture;
 }
 
+/* An entry cannot replace a directory, and the agent reports which entry it could not save and why. */
+static void expect_entry_save_error(const char* entry)
+{
+    static char expected[OS_MAXSTR];
+    snprintf(expected, sizeof(expected), "Unmerging '%s': could not save entry '%s' due to [(%d)-(%s)].",
+             SHAREDCFG_DIR "/" SHAREDCFG_TMPFILENAME, entry, EISDIR, strerror(EISDIR));
+    expect_any(__wrap__mferror, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg, expected);
+}
+
 static void test_filesystem_retry(void** state)
 {
     enter_filesystem_fixture(state);
@@ -401,7 +411,7 @@ static void test_filesystem_retry(void** state)
     assert_int_equal(OS_MD5_Str(bundle_data, strlen(bundle_data), new_hash), 0);
     checksum = new_hash;
     extraction_result = UNMERGE_FAILED;
-    expect_any(__wrap__mferror, formatted_msg);
+    expect_entry_save_error("policy");
     receive_bundle();
     assert_update_pending();
     assert_int_equal(cleanups, 0);
@@ -443,7 +453,7 @@ static void test_filesystem_revert_after_failure(void** state)
     assert_int_equal(OS_MD5_Str(bundle_data, strlen(bundle_data), failed_hash), 0);
     checksum = failed_hash;
     extraction_result = UNMERGE_FAILED;
-    expect_any(__wrap__mferror, formatted_msg);
+    expect_entry_save_error("policy");
     receive_bundle();
     assert_fixture_contents(SHAREDCFG_DIR "/agent.conf", "bad");
     assert_int_equal(access(SHAREDCFG_FILE, F_OK), -1);
