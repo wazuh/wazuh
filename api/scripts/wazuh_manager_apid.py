@@ -46,6 +46,17 @@ def assign_wazuh_ownership(filepath: str):
         os.chown(filepath, common.wazuh_uid(), common.wazuh_gid())
 
 
+def drop_privileges():
+    """Switch the process to the wazuh-manager user and group.
+
+    Root's supplementary groups are cleared first: setgid() and setuid() leave them in place, so
+    the dropped process would otherwise keep group access to whatever root's groups can read.
+    """
+    os.setgroups([])
+    os.setgid(common.wazuh_gid())
+    os.setuid(common.wazuh_uid())
+
+
 def configure_ssl(params):
     """Configure https files and permission, and set the uvicorn dictionary configuration keys.
 
@@ -549,8 +560,7 @@ if __name__ == '__main__':
     # Drop privileges to wazuh
     if not args.root:
         if api_conf['drop_privileges']:
-            os.setgid(common.wazuh_gid())
-            os.setuid(common.wazuh_uid())
+            drop_privileges()
     else:
         logger.info('Starting API as root')
 

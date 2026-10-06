@@ -17,7 +17,7 @@ import importlib.util
 import os
 import socket
 import threading
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -564,3 +564,22 @@ def test_start_logs_an_oserror_raised_by_uvicorn_startup(apid):
 
     assert exc_info.value is ssl_error
     apid.logger.error.assert_called_once_with(ssl_error)
+
+
+def test_drop_privileges_clears_supplementary_groups_before_switching_ids(apid):
+    """`drop_privileges()` must clear root's supplementary groups, and must do it while still root.
+
+    `setgid()`/`setuid()` leave the supplementary list untouched, so without `setgroups([])` the
+    API would keep root's groups (gid 0 among them). It has to run first: after `setuid()` the
+    process can no longer change its groups.
+    """
+    apid.common = MagicMock()
+    apid.common.wazuh_gid.return_value = 998
+    apid.common.wazuh_uid.return_value = 997
+    calls = MagicMock()
+    with patch.object(apid.os, 'setgroups', calls.setgroups), \
+            patch.object(apid.os, 'setgid', calls.setgid), \
+            patch.object(apid.os, 'setuid', calls.setuid):
+        apid.drop_privileges()
+
+    assert calls.mock_calls == [call.setgroups([]), call.setgid(998), call.setuid(997)]
