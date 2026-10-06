@@ -338,17 +338,30 @@ both returned **6225**. The premise holds and the two key spaces are demonstrabl
 package no longer rests on an expectation. Still extend `rt_engine_drops_test` to pin it, as it
 pins the v2 equivalent (28126/28206, since `9e884232c5`).
 
+**A constraint found while building it: the priority list is shorter for the engine than for the
+resolver.** `name=systemd` is a *named* hierarchy with no controller, so it has no entry in
+`enum cgroup_subsys_id` and none in `css_set.subsys[]` — `wz_cgroup_subsys_index("systemd")` returns
+-1, confirmed on the test host alongside `memory`=4, `pids`=11, `cpuacct`=2. Userspace can still
+stat its directories, so it stays a valid key for the resolver and for inventory; what it cannot do
+is give the BPF program anything to read. **A host offering only `name=systemd` can be inventoried
+but not filtered in-kernel**, and must fall back to route 2′ or refuse. The engine's usable priority
+is therefore `memory` → `pids` → `cpuacct`.
+
 **One trap the same measurement exposed, which WP6a must guard.** On a *unified* host
 `css_set.subsys[i]` points at the nearest ancestor where controller `i` is enabled, not necessarily
 the task's own cgroup — a second subsystem read on the same task returned an ancestor. The walk is
 therefore only valid on a host with real v1 hierarchies, where every task is in exactly one cgroup
 per mounted hierarchy. Assert that gate; do not leave it implied.
 
-**Cost:** four pointer dereferences per event before the ring-buffer reservation, on a path that
-already performs a map lookup and a bounded dentry walk. Plus — and this is the real price — a
-rebuilt `rt_file.bpf.o` and refreshed prebuilt objects **per architecture**, in an environment that
-has neither clang, nor bpftool, nor a vendored `vmlinux.h` (`ebpf_provider/CMakeLists.txt`). This is
-a scheduling problem, not a design one, and it is why WP6b has a fallback.
+**Cost — and this was overstated when the package was written.** Four pointer dereferences per event
+before the ring-buffer reservation, on a path that already performs a map lookup and a bounded
+dentry walk. The "rebuilt object per architecture" price quoted here originally does **not** apply:
+`prebuilt/x86/` and `prebuilt/arm64/` are both **empty**, and no `check_files` manifest lists
+`rt_file.bpf.o`. Nothing is shipped today — the object is compiled from source wherever clang, libbpf
+headers and a `vmlinux.h` exist, and skipped with a diagnostic where they do not
+(`ebpf_provider/CMakeLists.txt`'s three-way gate). So WP6a is a source change like any other; the
+build environment's lack of a BPF toolchain affects whether it can be *tested* locally, not whether
+it can ship.
 
 Effort: M. Files: `bpf/rt_file.bpf.c`, `include/rt_engine.h` (the new `filter_cfg` key and a setter),
 `src/rt_engine.c`, `prebuilt/<arch>/rt_file.bpf.o`, and the four
