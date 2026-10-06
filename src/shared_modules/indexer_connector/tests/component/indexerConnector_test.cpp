@@ -824,6 +824,60 @@ TEST_F(IndexerConnectorTest, PublishDeletedRemovesDocumentsWithOffsetSuffix)
 }
 
 /**
+ * @brief Test that the requests reach the indexer in the order of the operations: a delete by query must not run after
+ * the documents published behind it, or it would remove them.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishKeepsTheOrderBetweenBulksAndDeletesByQuery)
+{
+    std::mutex requestsMutex;
+    std::vector<std::string> requests;
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&requestsMutex, &requests](const std::string& data)
+        {
+            std::lock_guard<std::mutex> lock {requestsMutex};
+            requests.push_back(data);
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    // Published back to back so that they reach the dispatcher in the same batch.
+    nlohmann::json before;
+    before["id"] = "000_before_CVE-1_1";
+    before["operation"] = "INSERTED";
+    before["data"] = "content";
+    nlohmann::json deleteByQuery;
+    deleteByQuery["id"] = "000";
+    deleteByQuery["operation"] = "DELETED_BY_QUERY";
+    nlohmann::json after;
+    after["id"] = "000_after_CVE-2_1";
+    after["operation"] = "INSERTED";
+    after["data"] = "content";
+
+    ASSERT_NO_THROW(indexerConnector.publish(before.dump()));
+    ASSERT_NO_THROW(indexerConnector.publish(deleteByQuery.dump()));
+    ASSERT_NO_THROW(indexerConnector.publish(after.dump()));
+
+    ASSERT_NO_THROW(waitUntil(
+        [&requestsMutex, &requests]()
+        {
+            std::lock_guard<std::mutex> lock {requestsMutex};
+            return requests.size() >= 3;
+        },
+        MAX_INDEXER_PUBLISH_TIME_MS));
+
+    std::lock_guard<std::mutex> lock {requestsMutex};
+    ASSERT_EQ(requests.size(), 3);
+    EXPECT_NE(requests[0].find(before["id"].get<std::string>()), std::string::npos) << requests[0];
+    EXPECT_NE(requests[1].find("agent.id"), std::string::npos) << requests[1];
+    EXPECT_NE(requests[2].find(after["id"].get<std::string>()), std::string::npos) << requests[2];
+}
+
+/**
  * @brief Test the connection and posterior data publication into a server. The published data is checked against the
  * expected one. The publication contains a DELETED_BY_QUERY operation.
  *
