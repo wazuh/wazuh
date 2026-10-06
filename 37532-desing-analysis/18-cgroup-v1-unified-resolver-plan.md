@@ -117,8 +117,19 @@ this is meant to remove.
 | Host | Store index key | eBPF correlation key |
 | --- | --- | --- |
 | cgroup v2 (unified) | cgroup inode | `ev->cgroup_id` — unchanged, identical value |
-| cgroup v1 (legacy) | canonical-controller cgroup inode | `ev->mnt_ns` |
+| cgroup v1 (legacy) | canonical-controller cgroup inode | **the same inode**, read in BPF from that controller's own `kernfs_node.id` |
 | hybrid (v2 at `/sys/fs/cgroup/unified`) | treated as v2 | `ev->cgroup_id` |
+
+**Revised 2026-10-06.** The legacy row originally read `ev->mnt_ns`, and measurement killed it: a
+mount-namespace inode is recycled by the kernel the moment its namespace dies, so eight consecutive
+containers were handed the same number while their cgroup inodes were all distinct
+(`20-mnt-ns-key-and-legacy-filter-mode.md` §20.2). More usefully, the measurement also showed the
+premise behind that choice was wrong. `bpf_get_current_cgroup_id()` degenerates on a legacy host
+because it reports the task's cgroup in the **v2** hierarchy; the v1 controllers' cgroups are
+kernfs nodes with ids of exactly the same kind, and a BPF program can read one directly. So the two
+roles do **not** have to be filled by different numbers after all — they are filled by the same
+number, read by a different route. `mnt_ns` stays in the contract and is still collected (WP3), as
+a cross-check and as the fallback if the BPF work cannot be scheduled.
 
 Hybrid follows v2 because `bpf_get_current_cgroup_id()` returns unified-hierarchy ids there, which is
 already how `detect_cgroup_v1()` classifies it.
@@ -184,9 +195,15 @@ is the *same* one everywhere; record the choice in the entry so a mismatch is de
 silently wrong. If none of the four is mounted, produce no key — the record is then unlisted exactly
 as today, but the mode log from WP1 explains why.
 
+**The choice has to be reachable from outside this package.** WP6a configures the BPF program to
+read the *same* controller's cgroup, so the selection cannot stay private to the resolver: it must
+expose which controller it settled on, as an index userspace can write into the engine's config map.
+`CgroupEntry::keyController` carries the name per entry already; what WP6a additionally needs is the
+host-level answer, once.
+
 Effort: M.
 
-### WP3 — Read the mount-namespace inode during the same walk
+### WP3 — Read the mount-namespace inode during the same walk *(no longer the key; still worth having)*
 
 The scan already iterates `/proc/<pid>` and opens `/proc/<pid>/cgroup`. Add one `stat` of
 `/proc/<pid>/ns/mnt` per pid and carry `mntNsInode` alongside `cgroupInode` in `CgroupEntry`.
@@ -197,7 +214,14 @@ process.
 Populate **both** keys on **both** hierarchies, not just the one in use. It makes the v1 and v2 paths
 structurally identical, and it lets a v2 host cross-check attribution during testing.
 
-Effort: S.
+**Reframed 2026-10-06.** `mnt_ns` is no longer the planned legacy key — WP6a reads the v1 cgroup id
+instead — so this package's output is now a cross-check and the fallback's key, not the main line.
+It stays in, cheaply: one `stat` per process on a walk that already opens and reads a file per
+process, and it is what route 2′ would need if WP6a slips. Its one genuinely load-bearing
+contribution is unchanged: the lowest-pid rule, which stops `unshare -m` inside a container deciding
+that container's identity.
+
+Effort: S. **Landed** in `56812f73e8`.
 
 ### WP4 — Key the store by `HostKey`
 
@@ -254,28 +278,99 @@ slot that carries 64-bit cgroup inodes, and the cJSON-double hazard has not gone
 
 Effort: M.
 
-### WP6 — Drain selects the key by host mode
+### WP6a — Teach the BPF program to read a legacy host's cgroup id *(the key package)*
 
-Replace the refusal at `container_event_drain.cpp:694` with selection:
+`event_is_wanted()` keys on `bpf_get_current_cgroup_id()` (`bpf/rt_file.bpf.c:173-185`, `:210`),
+which on a legacy host is one constant for every task — so an allowlist there admits the whole node
+or none of it. That is a property of the **helper**, not of the kernel. The v1 controller's cgroup
+is a kernfs node with an id of the same kind, reachable by a CO-RE walk the program is already doing
+longer versions of:
 
-```cpp
-const auto key = (hostMode == CgroupMode::legacy)
-                     ? HostKey{KeyKind::mntNsInode, ev->mnt_ns}
-                     : HostKey{KeyKind::cgroupInode, ev->cgroup_id};
+```
+task_struct -> cgroups              (struct css_set *)
+            -> subsys[<index>]      (struct cgroup_subsys_state *)
+            -> cgroup -> kn -> id   (u64)
 ```
 
-`cgroup_container_map` and the router's `onEvent`/`onUnlink`/`onRename`/`onDrops` signatures become
-key-kind aware. Keep a refusal for the case where **neither** key is usable, so the "wrong
-attribution is worse than none" rule still has a floor to stand on.
+Every link verified in BTF on kernel 6.8 (`20-…` §20.4.1). The value it yields is **the inode WP2
+already keys the store on**, so store and kernel meet on one number again — the property the whole
+design rests on, restored on the hierarchy where it was believed impossible.
 
-`cgroup_container_map` now has **two** entry points, not one: `install()` (full list) and
-`applyDelta()` (lifecycle events), both producing the same `CgroupListDelta`. Both are keyed on the
-inode, and `applyDelta()` additionally reads `CgroupDeltaEvent::cgroup_id` and treats a zero there as
-a withdrawal — a rule that is correct for v2 and meaningless under a `HostKey`, so it has to be
-restated in terms of "no valid key" rather than "zero".
+**The subsystem index is CONFIGURED, not compiled in.** Three reasons, and the third is the one that
+settles it:
 
-Effort: M–L, and larger than when this was written. Still the only package that touches FIM's hot
-path.
+1. `enum cgroup_subsys_id` is generated from `cgroup_subsys.h` and its ordering depends on which
+   controllers the kernel was built with. `memory_cgrp_id` is 4 on the test host and need not be
+   anywhere else.
+2. Reading the wrong controller's cgroup is the worst failure available here — a plausible number
+   for the wrong object, with nothing to notice it.
+3. **WP2 does not always choose `memory`.** Its priority is `memory` → `pids` → `cpu,cpuacct` →
+   `name=systemd`, and it falls down that list on a host where the earlier ones are not mounted. The
+   BPF side must read *whichever controller userspace chose*, so the index cannot be a compile-time
+   constant of any kind — not even a correct one.
+
+So userspace resolves the index for the controller it selected and writes it into the existing
+`filter_cfg` map under a new key; the program reads `subsys[idx]` with a bounds check. Two ways to
+resolve it, and taking both costs almost nothing:
+
+- **`/proc/cgroups` ordering** — the file lists subsystems in enum order, verified against BTF on
+  the test host (`cpuset, cpu, cpuacct, blkio, memory, …` ↔ `0,1,2,3,4,…`; note position 3 is
+  `io_cgrp_id` in the enum and `blkio` in the file, the same subsystem under its v1 name). Userspace
+  counts to its chosen controller. Needs no BTF and handles any controller uniformly, with no switch
+  over enum constants.
+- **`bpf_core_enum_value(enum cgroup_subsys_id, …)`** — the CO-RE relocation built for exactly this,
+  resolved from the *running* kernel's BTF at load. Guard with `bpf_core_enum_value_exists()`, or a
+  kernel lacking the enumerator fails to load rather than degrading.
+
+Use `/proc/cgroups` as the source of truth (it tracks WP2's choice directly) and the CO-RE value as
+a startup cross-check: disagreement means one of the two readings is wrong, which is worth an ERROR
+and a refusal rather than a coin toss.
+
+**One implementation note worth recording before someone hits it.** `BPF_CORE_READ(cset, subsys[i])`
+needs a *constant* index — CO-RE computes a field offset at load time. A variable index means taking
+the array's base offset with `bpf_core_field_offset(struct css_set, subsys)` and reading at
+`base + idx * sizeof(void *)`, with `idx` bounds-checked first so the verifier accepts it.
+
+**Unverified, and the first thing this package must do:** that
+`subsys[idx]->cgroup->kn->id` equals the `stat()` inode of that controller's directory. It is
+expected by the same kernfs mechanism that makes it true on v2 — where it is *measured*, not
+assumed (`rt_engine_drops_test`, 28126/28206, pinned since `9e884232c5`) — but it has not been
+measured on a v1 host. Extend that test rather than writing a new one.
+
+**Cost:** four pointer dereferences per event before the ring-buffer reservation, on a path that
+already performs a map lookup and a bounded dentry walk. Plus — and this is the real price — a
+rebuilt `rt_file.bpf.o` and refreshed prebuilt objects **per architecture**, in an environment that
+has neither clang, nor bpftool, nor a vendored `vmlinux.h` (`ebpf_provider/CMakeLists.txt`). This is
+a scheduling problem, not a design one, and it is why WP6b has a fallback.
+
+Effort: M. Files: `bpf/rt_file.bpf.c`, `include/rt_engine.h` (the new `filter_cfg` key and a setter),
+`src/rt_engine.c`, `prebuilt/<arch>/rt_file.bpf.o`, and the four
+`.github/actions/check_files/*.csv` manifests that pin the object.
+
+### WP6b — Drain selects the key and the engine mode by host mode
+
+Replace the refusal at `container_event_drain.cpp:694` with selection. With WP6a in place the
+selection is almost trivial, because the key kind no longer changes:
+
+```cpp
+// WP6a landed: the kernel reports the host's own cgroup id either way.
+rt_set_v1_subsys_index(handle, resolver.selectedSubsysIndex());   // legacy only
+filter.cgroup_mode = RT_CGROUP_MODE_ALLOWLIST;                    // unchanged from v2
+```
+
+`cgroup_container_map` now has **two** entry points, `install()` and `applyDelta()`, both producing
+the same `CgroupListDelta`; `applyDelta()` additionally treats a zero `cgroup_id` as a withdrawal, a
+rule that needs restating as "no valid key" rather than "zero". Keep a refusal for the case where
+**neither** key is usable, so "wrong attribution is worse than none" still has a floor.
+
+**If WP6a cannot be scheduled**, this package instead opens the engine in `RT_CGROUP_MODE_ALL` on
+legacy hosts and filters on `ev->mnt_ns` in userspace, with the removal grace and pending TTL forced
+to zero there (`20-…` §20.3). That route works, costs what `19-option-c-test-report.md` measured —
+roughly 15× the consumer CPU and about twice the writer CPU — and must say so in the release notes.
+The two routes differ only in which number fills `KeyKind`, which WP4 already made a host constant
+behind one abstraction, so neither forecloses the other.
+
+Effort: M. The only package that touches FIM's hot path.
 
 ### WP7 — IT Hygiene
 
@@ -341,7 +436,16 @@ someone later gives v1 records a real key, and the next person to try must find 
 
 ## 18.4 What `mnt_ns` costs us, stated honestly
 
-It is a weaker key than the cgroup inode, and the plan should not pretend otherwise.
+**This section now describes the FALLBACK route (`20-…` §20.4.2), not the plan.** It is kept because
+the fallback is real and may be taken, and because the first row below is the measurement that moved
+the plan off it.
+
+| Case | Behaviour | Handling |
+| --- | --- | --- |
+| **Sequential containers** | **the inode is REUSED — 8 containers, 1 inode, measured** | fatal for a key held past its container's death: removal grace must be 0, pending TTL likewise, and no key may be cached. The reason this route is the fallback |
+
+It is a weaker key than the cgroup inode in every other respect too, and the plan should not pretend
+otherwise.
 
 | Case | Behaviour | Handling |
 | --- | --- | --- |
@@ -365,7 +469,8 @@ The packages split cleanly along the exact line O4 asks about.
 | --- | --- | --- | --- |
 | **0** | WP1 | v1 detected and logged; silent failure becomes diagnosable | ship regardless — **shipped 2026-10-05** |
 | **1** | WP2 + WP3 + WP4 | container **inventory and baseline** work on v1. No protocol change, no FIM change | *"inventory-only support"* |
-| **2** | WP5 + WP6 | event-driven container **FIM** works on v1, correlating on `mnt_ns` | *"full support"* |
+| **2** | WP5 + **WP6a** + WP6b | event-driven container **FIM** works on v1, correlating on the **same cgroup inode the store uses**, filtered in-kernel exactly as on v2 | *"full support"* — **chosen 2026-10-06** |
+| 2′ | WP5 + WP6b only | the fallback: correlating on `mnt_ns`, filtered in userspace | taken only if WP6a's BPF rebuild cannot be scheduled |
 | **close** | WP-ISSUE | #37203's index tells the truth about v1 | every option, including "v2-only" |
 
 WP-ISSUE runs **last in whichever phase turns out to be the last**, once that phase is measured —
@@ -376,6 +481,14 @@ answer still has to be recorded.
 Phase 1 needs no wire-protocol change, because syscollector only calls `list`. That is a genuinely
 useful property: **inventory-only v1 support is reachable without touching the IPC contract or FIM's
 hot path**, which makes it a far smaller commitment than Phase 2.
+
+**Phase 2 was chosen on 2026-10-06, on route 2 rather than 2′.** The deciding facts were measured,
+not argued: `mnt_ns` is recycled across containers and would need the removal grace and pending TTL
+disabled on legacy hosts, while the v1 cgroup id is not recycled, is the number WP2 already keys the
+store on, and filters with `cgroup_allow_map` untouched — so route 2 carries none of §18.4's
+mitigations and none of `19-option-c-test-report.md`'s cost. Its price is a BPF rebuild per
+architecture in an environment that cannot produce one, which is why 2′ is kept as a fallback rather
+than deleted.
 
 If the decision is instead *"declare the feature cgroup-v2-only"*, **Phase 0 is still required** —
 otherwise RHEL 8 and Amazon Linux 2 operators get a module that appears healthy and produces
@@ -411,6 +524,9 @@ build:
 | Unit | the three `listContainers()`-family guards under a `HostKey`: running-without-a-key hidden, stopped-without-a-key listed, running-with-a-key listed. Pins both halves of the WP4 guard so the §18.1.1 inversion cannot come back |
 | Contract | store keyed by `HostKey`: both kinds, verdict liveness, `list` filtering |
 | Integration | the `~/e2e-int` harness on a v1 host: `list` non-empty, inventory events carry `container.*`, FIM refused in phase 1 and working in phase 2 |
+| Kernel | **WP6a's prerequisite**: on a v1 host, that the id read from `subsys[idx]->cgroup->kn->id` equals `stat()` of that controller's directory. Extend `rt_engine_drops_test`, which already asserts the v2 equivalent; until it passes, WP6a rests on an assumption |
+| Kernel | the configured subsystem index is the controller WP2 chose — assert the `/proc/cgroups` count and the `bpf_core_enum_value()` reading agree, and that a disagreement refuses rather than picks one |
+| Integration | on a v1 host with the allowlist active: an allowlisted container's events arrive, a non-allowlisted container's do not. The same five properties `rt_engine_filter_test` asserts on v2, which is the point — route 2 means legacy hosts behave like unified ones |
 | Regression | the whole v2 capture from §15.10 re-run unchanged — the v2 path must be byte-identical, since `HostKey{cgroupInode, …}` carries the same number it does today |
 
 That last row is the one that matters most: this plan changes the shape of code that currently works
@@ -472,7 +588,12 @@ on every supported host. The v2 evidence in §15.10 is the baseline it has to re
    them and the cost restated against doc 19's medians, in
    [`20-mnt-ns-key-and-legacy-filter-mode.md`](20-mnt-ns-key-and-legacy-filter-mode.md).
 3. **Which controller should be canonical on v1?** The priority list above is a proposal; a survey of
-   what RHEL 8 and AL2 actually mount by default would settle it.
+   what RHEL 8 and AL2 actually mount by default would settle it. **Raised in importance by the
+   route-2 decision:** the choice is no longer merely "any one, as long as it is the same one" — it
+   is now also what the BPF program is configured to read, so a host where the resolver and the
+   engine disagree about it attributes events to the wrong cgroup rather than to none. The mechanism
+   that keeps them in step is WP6a's configured index; this question is about picking well, not
+   about keeping them consistent.
 4. ~~**Does the 32-bit `mnt_ns` field need widening?**~~ **Closed, 2026-10-05, no.** The BPF side
    reads `ns.inum` into a `__u32` (`get_mnt_ns_inum()`, `bpf/rt_file.bpf.c:380-390`) and the contract
    declares `unsigned int mnt_ns` (`rt_event_contract.h:89`) — the two match the kernel's own type
