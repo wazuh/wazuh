@@ -869,6 +869,15 @@ static int handle_ssl_read(struct client *client) {
                 break;
             }
 
+            /* No terminator yet. A request split across TLS records is normal, so keep
+             * draining until SSL_ERROR_WANT_READ (the socket is edge-triggered). Only a full
+             * buffer is final, and it costs the peer a whole buffer per line logged. */
+            if (client->read_offset >= MAX_SSL_MSG_SIZE) {
+                mdebug1("Enrollment request from %s exceeds %d bytes without a newline terminator. "
+                        "Closing connection.", client->ip, MAX_SSL_MSG_SIZE);
+                return -1;
+            }
+
         } else if (ret == 0) {
             // The client closed the connection
             mdebug2("Client closed connection ip: %s fd: %d", client->ip, client->socket);
@@ -884,11 +893,6 @@ static int handle_ssl_read(struct client *client) {
                 merror("SSL read error (%d)", err);
                 return -1;
             }
-        }
-
-        if (ret < (MAX_SSL_MSG_SIZE - client->read_offset) && ret < MAX_SSL_PACKET_SIZE) {
-            merror("Newline terminator not found in message request for %s", client->ip);
-            break;
         }
     }
 
