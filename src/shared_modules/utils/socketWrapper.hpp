@@ -579,6 +579,19 @@ public:
                             auto dataOffset = TCommunicationProtocol::getDataOffset(headerDataSize);
                             auto headerOffset = TCommunicationProtocol::getHeaderOffset();
 
+                            // dataOffset's type depends on TCommunicationProtocol (size_t for
+                            // AppendHeaderProtocol, int for SizeHeaderProtocol/NoHeaderProtocol,
+                            // which always return 0) — cast to match m_totalReadSize's type so the
+                            // comparison itself never warns or behaves differently per protocol.
+                            if (static_cast<uint32_t>(dataOffset) > m_totalReadSize)
+                            {
+                                // A declared header size that pushes the body offset past the
+                                // message length would make m_totalReadSize - dataOffset wrap to
+                                // a huge value, and the body pointer would move past the buffer.
+                                throw std::runtime_error {
+                                    "Declared header size moves the body offset past the message length."};
+                            }
+
                             callback(m_sock,
                                      m_recvDataBuffer.data() + dataOffset,
                                      m_totalReadSize - dataOffset,
