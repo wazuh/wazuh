@@ -334,6 +334,49 @@ premise. Nothing in this work depends on it being *exactly* constant: the design
 helper's value to be unusable for attribution, and on a pure v1 host there is no unified hierarchy
 for it to report from. It is recorded as the one remaining inference.
 
+### 20.4.5 Validated end to end on a PURE v1 host
+
+The earlier runs were on a hybrid host, because `systemd.unified_cgroup_hierarchy=0` alone leaves a
+v2 hierarchy mounted at `/sys/fs/cgroup/unified`. Adding
+`systemd.legacy_systemd_cgroup_controller=1` removes it: **zero cgroup2 mounts**, Docker on
+`Cgroup Version: 1`, and `/proc/self/cgroup`'s `0::` line pointing at `/` — the signature of a host
+with no unified hierarchy at all. The shared probe reported `legacy (v1)`.
+
+**ADR-002's premise, measured for the first time.** It has been asserted since #37396 and taken on
+trust ever since:
+
+| Container | `bpf_get_current_cgroup_id()` | `subsys[4]->cgroup->kn->id` | `stat()` of its memory cgroup |
+| --- | ---: | ---: | ---: |
+| A | **1** | **6403** | 6403 |
+| B | **1** | **6435** | 6435 |
+
+The helper returns **1 — the root cgroup — for every task on the machine**, exactly as the spike
+claimed and nobody had shown. The controller read returns a distinct, correct id per container.
+
+**And in-kernel filtering works there.** `rt_engine_filter_test`, generalised to place its cgroups
+under the selected controller on a host with no unified hierarchy, passes **all five properties**
+with no unified hierarchy present:
+
+```
+  host hierarchy    : legacy (v1)
+  keying controller : memory (subsystem 4)
+  events from the allowlisted cgroup: 300
+  events from the excluded cgroup   : 0
+  events from every other cgroup    : 0
+  after allowlisting the second cgroup mid-flight, its events: 600
+  after removing it from the allowlist again, its events: 0
+```
+
+That is the whole of §20.4's problem dissolved rather than mitigated: a legacy host filters in the
+kernel exactly as a unified one does, so **§20.5's cost is not paid**, and §20.3's three mitigations
+are not needed because the key is a kernfs id and not a recycled namespace inode.
+
+**One stale piece of advice was found by running it.** `rt_open()` logged "consumers must correlate
+on `mnt_ns` instead", written when the helper's limit looked like the kernel's. It now says the
+cgroup_id identifies nothing *until a consumer calls `rt_set_cgroup_v1_subsys()`*, and
+`rt_host_cgroup_v1()`'s contract says plainly that it reports the host's hierarchy and not whether
+attribution is available — `rt_cgroup_id_is_usable()` answers that.
+
 ### 20.4.2 The fallback, if the BPF work cannot be scheduled
 
 On a legacy host, open the engine in `RT_CGROUP_MODE_ALL` and discard unwanted events in userspace
