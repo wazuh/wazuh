@@ -55,26 +55,25 @@ def test_configuration():
     return {}
 
 
-# Declared but never delivered. Before the fix, WazuhAccessLoggerMiddleware read a request's body in
-# full before routing or authentication ever ran, so declaring a length this large and never sending
-# it was enough to make the daemon block trying to read bytes that don't exist -- and, sent for
-# real, to make it allocate memory proportional to whatever length an unauthenticated caller chose.
+# Declared but never sent: the access logger used to block reading this body before authentication
 DECLARED_BODY_SIZE = 200 * 1024 * 1024
 UNROUTED_PATH = "/this-path-does-not-exist"
+ROUTED_PATH = "/security/user/authenticate"
 
 
 @pytest.mark.tier(level=0)
+@pytest.mark.parametrize("path, expected_status", [(UNROUTED_PATH, "404"), (ROUTED_PATH, "401")])
 def test_unrouted_path_ignores_undelivered_declared_body(
+    path,
+    expected_status,
     truncate_monitored_files,
     daemons_handler,
     wait_for_api_start,
 ):
     """
-    description: Send an unauthenticated request to a path that matches no route, declaring a large
-        Content-Length, then close the connection without ever sending that body. The fix in
-        WazuhAccessLoggerMiddleware skips buffering the body once its declared length exceeds the
-        logging cap, regardless of routing; this test just picks a path that also happens to be
-        unrouted.
+    description: Send an unauthenticated request declaring a large Content-Length, then close the
+        connection without ever sending that body. WazuhAccessLoggerMiddleware skips buffering a body
+        whose declared length exceeds the logging cap, whether or not the path is routed.
 
     wazuh_min_version: 4.14.10
 
@@ -85,7 +84,7 @@ def test_unrouted_path_ignores_undelivered_declared_body(
             - Wait for API startup
         - test:
             - Open a raw TLS connection to the API
-            - Send a POST to an unrouted path declaring a large Content-Length
+            - Send a POST to an unrouted or a routed path declaring a large Content-Length
             - Close the connection without sending the declared body
             - Read the response
         - teardown:
@@ -94,7 +93,7 @@ def test_unrouted_path_ignores_undelivered_declared_body(
     tier: 0
 
     assertions:
-        - Verify the API answers 404 without waiting for the undelivered body.
+        - Verify the API answers 404 (unrouted) or 401 (routed) without waiting for the undelivered body.
         - Verify wazuh-apid is still running afterwards.
 
     tags:
@@ -102,7 +101,7 @@ def test_unrouted_path_ignores_undelivered_declared_body(
         - api
     """
     request = (
-        f"POST {UNROUTED_PATH} HTTP/1.1\r\n"
+        f"POST {path} HTTP/1.1\r\n"
         f"Host: {WAZUH_API_HOST}\r\n"
         f"Content-Type: application/json\r\n"
         f"Content-Length: {DECLARED_BODY_SIZE}\r\n"
@@ -114,16 +113,15 @@ def test_unrouted_path_ignores_undelivered_declared_body(
         address=(WAZUH_API_HOST, int(WAZUH_API_PORT)), family="AF_INET", connection_protocol="ssl_tls", timeout=10
     ) as controller:
         controller.send(request)
-        # Never send the declared body. A server that reads it before responding hangs here
-        # until the socket timeout fires, which is exactly the defect under test.
+        # The body is never sent; a server that reads it before responding hangs until the timeout
         try:
             response = controller.receive().decode(errors="replace")
         except socket.timeout:
             pytest.fail("No response within 10s: the API is waiting for the declared body that was never sent")
 
     status_line = response.splitlines()[0] if response else ""
-    assert "404" in status_line, (
-        f"Expected a prompt 404 without the declared body ever being sent, got: {status_line!r}\n"
+    assert expected_status in status_line, (
+        f"Expected a prompt {expected_status} without the declared body ever being sent, got: {status_line!r}\n"
         f"Full response: {response!r}"
     )
 
