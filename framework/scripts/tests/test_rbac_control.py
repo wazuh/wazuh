@@ -158,7 +158,7 @@ async def test_restore_default_passwords_exceptions(safe_load_mock, getpass_mock
 @patch("builtins.print")
 async def test_seed_rbac_database(print_mock, tmp_path, db_setup):
     """Check that `seed_rbac_database` seeds a missing database with the passwords read from the standard input."""
-    passwords = {'wazuh': 'NewPassword12', 'wazuh-wui': 'NewPassword34'}
+    passwords = {'wazuh': 'NewPassword12', 'wazuh-internal-client': 'NewPassword34'}
     with patch('wazuh.rbac.orm.DB_FILE', str(tmp_path / 'rbac.db')), \
             patch('wazuh.rbac.orm.check_database_integrity') as integrity_mock, \
             patch('scripts.rbac_control.sys.stdin.read', return_value=json.dumps(passwords)):
@@ -304,7 +304,7 @@ def test_password_files_are_read_before_privileges_are_dropped(tmp_path, db_setu
             patch('wazuh.core.common.wazuh_gid', return_value=998), \
             patch('wazuh.core.common.wazuh_uid', return_value=997), \
             patch('builtins.open', side_effect=record_open), \
-            patch('sys.argv', new=['rbac_control', 'change-password', '--user', 'wazuh-wui',
+            patch('sys.argv', new=['rbac_control', 'change-password', '--user', 'wazuh-internal-client',
                                    '--password-file', str(password_file)]), \
             patch('builtins.print'), \
             pytest.raises(SystemExit):

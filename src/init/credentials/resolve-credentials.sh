@@ -430,7 +430,7 @@ resolve_api_passwords() {
     #
     # Note that this writes a value the operator supplied through the process environment into the
     # file as well, which is deliberate and not an oversight: the dashboard has to authenticate as
-    # `wazuh-wui`, and it reads the value from here. Publishing only generated values would mean a
+    # `wazuh-internal-client`, and it reads the value from here. Publishing only generated values would mean a
     # deployment that chose its own passwords silently never hands them over. What protects it is
     # the file, not the fact that it was generated: wazuh_env_set() writes 0600 root:root inside a
     # 0700 root:root directory and refuses the file outright -- on every read and every write --
@@ -472,7 +472,7 @@ seed_rbac() {
     # it the operator is left with "MISSING rbac.db" and a service that will not start, which names
     # the symptom and nothing else. It prints usernames and error messages, never a password value
     # (seed_rbac_database() is explicit about that), so relaying it in full leaks nothing.
-    _sr_out=$(printf '{"wazuh": "%s", "wazuh-wui": "%s"}' "${_sr_api}" "${_sr_wui}" \
+    _sr_out=$(printf '{"wazuh": "%s", "wazuh-internal-client": "%s"}' "${_sr_api}" "${_sr_wui}" \
         | "${RBAC_CONTROL}" seed --passwords-file - 2>&1)
     _sr_status=$?
 

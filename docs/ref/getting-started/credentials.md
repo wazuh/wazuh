@@ -32,7 +32,7 @@ silently and leave the deployment holding a credential nobody else has.
 | Key | Account | The manager… |
 |-----|---------|--------------|
 | `WAZUH_MANAGER_API_PASSWORD` | `wazuh` (Server API, in `rbac.db`) | **owns** it — generates one if you do not supply it, and publishes it |
-| `WAZUH_MANAGER_WUI_PASSWORD` | `wazuh-wui` (Server API, read by the dashboard) | **owns** it — generates one if you do not supply it, and publishes it |
+| `WAZUH_MANAGER_WUI_PASSWORD` | `wazuh-internal-client` (Server API, read by the dashboard) | **owns** it — generates one if you do not supply it, and publishes it |
 | `WAZUH_INDEXER_MANAGER_PASSWORD` | `wazuh-manager` (on the indexer) | **consumes** it — never generates it, never publishes it |
 | `WAZUH_MANAGER_CERT_SANS` | the indexer-connector certificate | **owns** it |
 | `WAZUH_MANAGER_REMOTED_CERT_SANS` | the agent-listener certificate | **owns** it |
@@ -138,7 +138,7 @@ That trap is why the file, not the command line, is the documented way to choose
 > Supplying `WAZUH_MANAGER_API_PASSWORD` or `WAZUH_MANAGER_WUI_PASSWORD` through the environment does
 > **not** keep it off disk. The manager publishes every credential it owns into
 > `/etc/wazuh/credentials.env` whether it generated the value or you supplied it, because the
-> dashboard authenticates as `wazuh-wui` and reads the value from there — publishing only generated
+> dashboard authenticates as `wazuh-internal-client` and reads the value from there — publishing only generated
 > values would mean a deployment that chose its own passwords never hands them over. What protects
 > it is the file: `0600 root:root` inside a `0700 root:root` directory, refused outright on every
 > read, every write and every start when the owner, the mode, a symlink or any ancestor is wrong. Only root can

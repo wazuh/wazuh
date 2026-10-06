@@ -209,7 +209,7 @@ stages:
             - id: 100
               name: wazuh
             - id: 101
-              name: wazuh-wui
+              name: wazuh-internal-client
             - id: 102
               name: technical
             - id: 103
@@ -499,7 +499,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        name: wazuh-wuiModified
+        name: wazuh-internal-clientModified
     response:
       <<: *permission_denied
 

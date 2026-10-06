@@ -52,10 +52,10 @@ pytestmark = pytest.mark.server
 daemons_handler_configuration = {"all_daemons": True}
 
 # The run_as login is only available to a user with `allow_run_as`, which among the default users is
-# `wazuh-wui` alone. It is also the only one whose context resolves against the shipped rules, which
+# `wazuh-internal-client` alone. It is also the only one whose context resolves against the shipped rules, which
 # `RBAChecker` skips for every other user, so it is what `matching_context` below needs to match.
 # Its password is the one the manager under test was installed with, resolved at login.
-RUN_AS_API_USER = "wazuh-wui"
+RUN_AS_API_USER = "wazuh-internal-client"
 
 
 @pytest.fixture

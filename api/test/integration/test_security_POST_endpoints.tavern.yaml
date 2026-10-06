@@ -1057,7 +1057,7 @@ stages:
 test_name: POST /security/user/authenticate/run_as
 
 stages:
-  - name: Log in with wazuh-wui and default rules and expect admin permissions (1/2)
+  - name: Log in with wazuh-internal-client and default rules and expect admin permissions (1/2)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
@@ -1073,7 +1073,7 @@ stages:
         extra_kwargs:
           expected_roles: [1]
 
-  - name: Log in with wazuh-wui and default rules and expect admin permissions (2/2)
+  - name: Log in with wazuh-internal-client and default rules and expect admin permissions (2/2)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
@@ -1089,7 +1089,7 @@ stages:
         extra_kwargs:
           expected_roles: [1]
 
-  - name: Log in with wazuh-wui and default rules and expect readonly permissions (wazuh-demo)
+  - name: Log in with wazuh-internal-client and default rules and expect readonly permissions (wazuh-demo)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
@@ -1105,7 +1105,7 @@ stages:
         extra_kwargs:
           expected_roles: [2]
 
-  - name: Log in with wazuh-wui and default rules and expect readonly permissions (wazuh-readonly)
+  - name: Log in with wazuh-internal-client and default rules and expect readonly permissions (wazuh-readonly)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
@@ -1121,7 +1121,7 @@ stages:
         extra_kwargs:
           expected_roles: [2]
 
-  - name: Log in with wazuh-wui and default rules and expect wazuh_indexer_admin permissions (wazuh-admin)
+  - name: Log in with wazuh-internal-client and default rules and expect wazuh_indexer_admin permissions (wazuh-admin)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
@@ -1137,7 +1137,7 @@ stages:
         extra_kwargs:
           expected_roles: [8]
 
-  - name: Log in with wazuh-wui and no matching rule
+  - name: Log in with wazuh-internal-client and no matching rule
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
@@ -1153,7 +1153,7 @@ stages:
         extra_kwargs:
           expected_roles: []
 
-  - name: Log in with wazuh-wui and an empty auth context
+  - name: Log in with wazuh-internal-client and an empty auth context
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
@@ -1171,7 +1171,7 @@ stages:
         json:
           login_token: data.token
 
-  - name: Log in with wazuh-wui and an empty auth context (raw)
+  - name: Log in with wazuh-internal-client and an empty auth context (raw)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"

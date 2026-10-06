@@ -257,7 +257,7 @@ The manager ships two Server API users, both linked to the `administrator` role:
 | User | Used by |
 | ---- | ------- |
 | `wazuh` | Operators and automation calling the Server API |
-| `wazuh-wui` | The Wazuh dashboard, to reach the Server API on port 55000 |
+| `wazuh-internal-client` | The Wazuh dashboard, to reach the Server API on port 55000 |
 
 Neither ships with a password. Each is seeded on the first installation with the value supplied
 through `WAZUH_MANAGER_API_PASSWORD` / `WAZUH_MANAGER_WUI_PASSWORD`, or with a freshly generated one
@@ -280,7 +280,7 @@ sudo /var/wazuh-manager/bin/rbac_control change-password
 ```
 
 The same change can be made through the API, which is the option for automation. `wazuh` has ID `1`
-and `wazuh-wui` has ID `2` (`GET /security/users`). Change `wazuh-wui` first: changing a user's
+and `wazuh-internal-client` has ID `2` (`GET /security/users`). Change `wazuh-internal-client` first: changing a user's
 password invalidates every token that user holds, so once `wazuh`'s own password changes the token
 obtained below stops working.
 

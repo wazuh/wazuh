@@ -278,7 +278,7 @@ def rbac_context():
 
 
 def test_run_as_reachable_roles(db_setup):
-    """Every role with a rule above the reserved range is reachable; wazuh-wui reaches the reserved rules too."""
+    """Every role with a rule above the reserved range is reachable; wazuh-internal-client reaches the reserved rules too."""
     security, _, _ = db_setup
 
     assert security._run_as_reachable_roles(105) == RUN_AS_REACHABLE
