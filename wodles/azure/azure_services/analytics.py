@@ -184,7 +184,7 @@ def get_log_analytics_events(
         If the response for the request is not 200 OK.
     """
     logging.info('Log Analytics: Sending a request to the Log Analytics API.')
-    logging.debug(f"Log Analytics request - URL: {url} - Params: {body} - Headers: {headers}")
+    logging.debug(f"Log Analytics request - URL: {url} - Params: {body}")
     response = get(url, params=body, headers=headers, timeout=10)
     if response.status_code == 200:
         try:
