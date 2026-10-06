@@ -3113,7 +3113,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/security/pwquality.conf -> n:difok\s*\t*=\s*\t*(d+) compare >= 2'
-      - 'd:/etc/security/pwquality.conf.d/* -> r:\.+.conf$ -> n:difok\s*\t*=\s*\t*(d+) compare => 2'
+      - 'd:/etc/security/pwquality.conf.d/* -> r:\.+.conf$ -> n:difok\s*\t*=\s*\t*(d+) compare >= 2'
 
   # 5.3.3.2.2 Ensure minimum password length is configured. (Automated)
   - id: 42130
@@ -3136,7 +3136,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/security/pwquality.conf -> n:minlen\s*\t*=\s*\t*(d+) compare >= 14'
-      - 'd:/etc/security/pwquality.conf.d/* -> r:\.+.conf$ -> n:minlen\s*\t*=\s*\t*(d+) compare => 14'
+      - 'd:/etc/security/pwquality.conf.d/* -> r:\.+.conf$ -> n:minlen\s*\t*=\s*\t*(d+) compare >= 14'
 
   # 5.3.3.2.3 Ensure password complexity is configured. (Manual)
   - id: 42131

@@ -789,8 +789,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:apparmor=1'
-      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor'
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*\s*linux && !r:apparmor=1'
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*\s*linux && !r:security=apparmor'
 
   # 1.7.1.3 Ensure all AppArmor Profiles are in enforce or complain mode. (Automated)
   - id: 40535

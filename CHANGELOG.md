@@ -49,6 +49,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the `/etc/security/opasswd` permission check failing when the optional `opasswd.old` file is absent in Debian 10, 12, 13 and Ubuntu 20.04, 22.04, 24.04 SCA policies. ([#39762](https://github.com/wazuh/wazuh/pull/39762))
 - Fixed MTA check in multiple SCA files. ([#39771](https://github.com/wazuh/wazuh/pull/39771))
 - Fixed the Debian 13 SCA policy reusing the Debian 12 check IDs, renumbering it to a dedicated 42000+ range. ([#39764](https://github.com/wazuh/wazuh/issues/39764))
+- Fixed polarity and matching errors in the Debian 10, Ubuntu 20.04 and RHEL 10 SCA policies (AppArmor bootloader, audit at boot, audit backlog limit and sudo timeout checks), the `compare =>` operator in 16 SCA policies, and GRUB kernel-line matching (tab or mixed indentation, memtest86+ entries) in 10 SCA policies. ([#39342](https://github.com/wazuh/wazuh/issues/39342))
 
 ### RESTful API
 

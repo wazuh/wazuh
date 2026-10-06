@@ -689,8 +689,8 @@ checks:
     condition: all
     rules:
       - 'f:/boot/grub/menu.lst -> r:^\s*kernel && !r:selinux=0|enforcing=0'
-      - 'f:/boot/grub2/grub.cfg -> r:^\s*linux && !r:selinux=0|enforcing=0'
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:selinux=0|enforcing=0'
+      - 'f:/boot/grub2/grub.cfg -> r:^\s*\t*\s*linux && !r:selinux=0|enforcing=0'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*\s*linux && !r:selinux=0|enforcing=0'
 
   # 1.6.2.2 Ensure the SELinux state is enforcing. (Scored)
   - id: 36035
