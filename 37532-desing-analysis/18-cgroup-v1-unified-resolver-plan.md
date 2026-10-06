@@ -456,11 +456,17 @@ on every supported host. The v2 evidence in §15.10 is the baseline it has to re
 
 2. **The in-kernel filter cannot select containers on a legacy host, and WP6 as written does not say
    so.** `event_is_wanted()` looks up `cgroup_allow_map` by `bpf_get_current_cgroup_id()`
-   (`bpf/rt_file.bpf.c:173-185`), which is the collapsed constant there — so an allowlist matches
-   either every event on the node or none of them. Phase 2 on legacy therefore has to run
-   `RT_CGROUP_MODE_ALL` and filter on `ev->mnt_ns` **in userspace**, which is precisely the mode the
-   allowlist change (`541077159e`) moved away from and measured a cost for. Phase 2's real price is
-   that cost, on legacy hosts only; WP6 must state it rather than discover it.
+   (`bpf/rt_file.bpf.c:173-185`), which is the collapsed constant there — so an allowlist built on
+   the **current BPF object** matches either every event on the node or none of them. Phase 2 on
+   that object has to run `RT_CGROUP_MODE_ALL` and filter on `ev->mnt_ns` in userspace, which is
+   precisely the mode the allowlist change (`541077159e`) moved away from and measured a cost for.
+
+   **The helper is the limit, not the kernel.** `bpf_get_current_cgroup_id()` returns the task's
+   cgroup id in the *v2* hierarchy; a BPF program can read the v1 controller's own kernfs id by
+   CO-RE (`task->cgroups->subsys[memory_cgrp_id]->cgroup->kn->id`, every link verified in BTF). That
+   is the **same inode the resolver already keys on** after WP2, it is not recycled, and it filters
+   with `cgroup_allow_map` untouched — so it removes the reuse problem and the cost together. It
+   costs a rebuilt BPF object per architecture, which this build environment cannot produce.
 
    Both of these are set out at length, with the raw probe output, the kernfs/nsfs reason behind
    them and the cost restated against doc 19's medians, in
