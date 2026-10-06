@@ -1566,6 +1566,20 @@ static void expect_stage_validate_publish_ok(void)
     expect_publish_until_copy(0);
 }
 
+static const char *const OTHER_DOWNLOAD_HASH = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+
+static void expect_rejected_config_warning(bool gate_open)
+{
+    expect_string(__wrap__mwarn, formatted_msg,
+                  gate_open
+                  ? "The shared configuration the manager provides (hash="
+                    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85) is invalid; the agent "
+                    "keeps its current configuration until the manager provides a valid one."
+                  : "The shared configuration the manager provides (hash="
+                    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85) is invalid; the modules "
+                    "stay on hold until the manager provides a valid one.");
+}
+
 static void expect_unmerge_failure_report(const char *dir)
 {
     static char expected[256];
@@ -1715,6 +1729,8 @@ static void test_config_downloaded_invalid_config_skips_reload_and_gate(void **s
     expect_rmdir_ex_call(STAGING_DIR, 0);
     expect_string(__wrap__merror, formatted_msg,
                   "Downloaded configuration failed validation; not applying it.");
+    will_return(__wrap_startup_gate_is_ready, false);
+    expect_rejected_config_warning(false);
     /* No second UnmergeFiles, cldir_ex_ignore or w_copy_file expectation:
      * neither SHAREDCFG_DIR nor SHAREDCFG_FILE may be touched, or a restart
      * would find the manager's hash on disk and open the gate on this
@@ -1723,6 +1739,48 @@ static void test_config_downloaded_invalid_config_skips_reload_and_gate(void **s
      * reloadAgent/gate-release expectation: must not be reached. */
 
     g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* Not downloaded again while the manager advertises the same rejected hash, so
+ * the WARNING is what keeps it from going unnoticed: issued with the failure,
+ * repeated only after BRIDGE_REJECTED_CONFIG_WARN_INTERVAL while the manager
+ * keeps advertising that hash, and dropped as soon as it advertises another. */
+static void test_rejected_config_warning_not_repeated_within_interval_and_cleared_on_new_hash(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+    start_client_successfully();
+
+    expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
+    expect_stage(1);
+    expect_validation(-1);
+    expect_rmdir_ex_call(STAGING_DIR, 0);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Downloaded configuration failed validation; not applying it.");
+    will_return(__wrap_startup_gate_is_ready, true); /* Already running: keeps its configuration. */
+    expect_rejected_config_warning(true);
+
+    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+
+    /* Same hash on the next Notify, well inside the interval: no repeat (no
+     * __wrap__mwarn expectation queued, so cmocka fails if one is logged). */
+    expect_value(__wrap_w_agentd_state_update, type, UPDATE_KEEPALIVE);
+    expect_any(__wrap_w_agentd_state_update, data);
+    g_captured_callbacks.on_manager_config_hash(DOWNLOAD_HASH, g_captured_callbacks.user_data);
+
+    /* The manager advertises another configuration: the rejection is dropped... */
+    expect_value(__wrap_w_agentd_state_update, type, UPDATE_KEEPALIVE);
+    expect_any(__wrap_w_agentd_state_update, data);
+    g_captured_callbacks.on_manager_config_hash(OTHER_DOWNLOAD_HASH, g_captured_callbacks.user_data);
+
+    /* ...so even the old hash coming back later is not reported as rejected
+     * until a download of it fails again. */
+    expect_value(__wrap_w_agentd_state_update, type, UPDATE_KEEPALIVE);
+    expect_any(__wrap_w_agentd_state_update, data);
+    g_captured_callbacks.on_manager_config_hash(DOWNLOAD_HASH, g_captured_callbacks.user_data);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
@@ -3014,6 +3072,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_config_downloaded_auto_restart_disabled_stages_without_reloading, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_downloaded_blocked_gate_reloads_despite_auto_restart_disabled, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_downloaded_invalid_config_skips_reload_and_gate, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_rejected_config_warning_not_repeated_within_interval_and_cleared_on_new_hash, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_downloaded_remote_conf_disabled_stages_files_only, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_downloaded_copy_failure_corrects_module_hash, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_downloaded_staging_unmerge_failure_corrects_module_hash, setup_test, teardown_test),

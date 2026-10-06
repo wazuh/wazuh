@@ -1064,6 +1064,33 @@ static void bridge_on_remote_upgrade_ready(const char *task_id, const char *wpk_
 #endif
 }
 
+/* A downloaded configuration that failed validation is not downloaded again
+ * while the manager keeps advertising the same hash: the same bytes would fail
+ * the same way. That leaves the agent waiting on the manager, with the modules
+ * on hold if the startup gate is still closed, so it is announced at WARNING
+ * level when it happens and again every BRIDGE_REJECTED_CONFIG_WARN_INTERVAL
+ * seconds for as long as the manager keeps advertising it. Both callbacks that
+ * touch this state run on the module's single dispatcher thread. */
+#define BRIDGE_REJECTED_CONFIG_WARN_INTERVAL 600
+
+static os_sha256 bridge_rejected_config_hash;
+static time_t bridge_rejected_config_warned_at;
+
+static void bridge_warn_rejected_config(time_t now)
+{
+    if (startup_gate_is_ready()) {
+        mwarn("The shared configuration the manager provides (hash=%s) is invalid; the agent keeps "
+              "its current configuration until the manager provides a valid one.",
+              bridge_rejected_config_hash);
+    } else {
+        mwarn("The shared configuration the manager provides (hash=%s) is invalid; the modules stay "
+              "on hold until the manager provides a valid one.",
+              bridge_rejected_config_hash);
+    }
+
+    bridge_rejected_config_warned_at = now;
+}
+
 /* The startup hash gate (client-agent/src/startup_gate.c) holds syscheckd and
  * the other modules until the manager-validated configuration is in place.
  * Fired on every accepted Notify (whether or not it triggers a download), so
@@ -1084,6 +1111,18 @@ static void bridge_on_manager_config_hash(const char *config_hash, void *user_da
     w_agentd_state_update(UPDATE_KEEPALIVE, &now);
 
     startup_gate_check_manager_config_hash(config_hash);
+
+    if (bridge_rejected_config_hash[0]) {
+        if (config_hash && strcmp(config_hash, bridge_rejected_config_hash) == 0) {
+            if (now - bridge_rejected_config_warned_at >= BRIDGE_REJECTED_CONFIG_WARN_INTERVAL) {
+                bridge_warn_rejected_config(now);
+            }
+        } else {
+            // The manager moved on; whatever it advertises now is downloaded
+            // and validated on its own.
+            bridge_rejected_config_hash[0] = '\0';
+        }
+    }
 }
 
 /* Notify-driven groups refresh: a group-only change never re-triggers a Startup
@@ -1222,8 +1261,9 @@ static void bridge_report_unmerge_failure(hc_handle *handle, const char *dir)
  *
  * A bundle that fails validation leaves the gate as it was: the module keeps
  * the hash it adopted, so it is not downloaded again until the manager
- * advertises a different one, and SHAREDCFG_FILE keeps the previous hash, so
- * the gate cannot open on it either now or after a restart.
+ * advertises a different one (announced meanwhile, see
+ * bridge_warn_rejected_config()), and SHAREDCFG_FILE keeps the previous hash,
+ * so the gate cannot open on it either now or after a restart.
  *
  * Anti-race sequencing between reloadAgent() and the gate release: when
  * reloadAgent() dispatches, the gate is deliberately NOT released here --
@@ -1275,6 +1315,9 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
          * running daemons nor the startup gate see it. */
         rmdir_ex(BRIDGE_SHAREDCFG_STAGING_DIR);
         merror("Downloaded configuration failed validation; not applying it.");
+        snprintf(bridge_rejected_config_hash, sizeof(bridge_rejected_config_hash), "%s",
+                 config_hash ? config_hash : "?");
+        bridge_warn_rejected_config(time(NULL));
         return;
     }
 
