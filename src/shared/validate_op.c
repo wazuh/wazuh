@@ -290,6 +290,14 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
     return (ret);
 }
 
+/* Whether the entry can be compared against an address of the given family.
+ * "any" is stored as a zeroed os_ipv6 with is_ipv6 unset and matches both families.
+ */
+static bool os_ip_family_matches(const os_ip *entry, bool query_is_ipv6)
+{
+    return (entry->is_ipv6 == query_is_ipv6) || (strcmp(entry->ip, "any") == 0);
+}
+
 /* Check if IP_address is present at that_IP
  * Returns 1 on success or 0 on failure
  */
@@ -312,6 +320,11 @@ int OS_IPFound(const char *ip_address, const os_ip *that_ip)
     /* If negate is set */
     if (that_ip->ip[0] == '!') {
         _true = 0;
+    }
+
+    /* An entry of the other family has no matching union arm to read */
+    if (!os_ip_family_matches(that_ip, is_ipv6)) {
+        return (!_true);
     }
 
     /* Check if IP is in thatip & netmask */
@@ -362,6 +375,12 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
 
         if (l_ip->ip[0] == '!') {
             _true = 0;
+        }
+
+        /* An entry of the other family has no matching union arm to read */
+        if (!os_ip_family_matches(l_ip, is_ipv6)) {
+            list_of_ips++;
+            continue;
         }
 
         /* Check if IP is in thatip & netmask */

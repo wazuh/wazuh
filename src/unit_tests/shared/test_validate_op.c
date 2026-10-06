@@ -814,6 +814,7 @@ void OS_IPFound_valid_ipv6(void **state)
     os_calloc(1, sizeof(os_ip), ret_ip);
     os_strdup("1010:1010:1010:1010:1010:1010:1010:1010", ret_ip->ip);
     os_calloc(1, sizeof(os_ipv6), ret_ip->ipv6);
+    ret_ip->is_ipv6 = true;
 
     unsigned int a = 0;
     for(a = 0; a < 16; a++) {
@@ -842,6 +843,7 @@ void OS_IPFound_valid_ipv6_fail(void **state)
     os_calloc(1, sizeof(os_ip), ret_ip);
     os_strdup("1010:1010:1010:1010:1010:1010:1010:1010", ret_ip->ip);
     os_calloc(1, sizeof(os_ipv6), ret_ip->ipv6);
+    ret_ip->is_ipv6 = true;
 
     unsigned int a = 0;
     for(a = 0; a < 16; a++) {
@@ -991,6 +993,7 @@ void OS_IPFoundList_valid_ipv6_fail(void **state)
     for(unsigned int i = 0; i < 2; i++) {
         os_strdup("0101:0101:0101:0101:0101:0101:0101:0101", (*ret_ip[i]).ip);
         os_calloc(1, sizeof(os_ipv6), (*ret_ip[i]).ipv6);
+        (*ret_ip[i]).is_ipv6 = true;
 
         unsigned int a = 0;
         for(a = 0; a < 16; a++) {
@@ -1026,6 +1029,7 @@ void OS_IPFoundList_valid_ipv6(void **state)
     for(unsigned int i = 0; i < 2; i++) {
         os_strdup("0101:0101:0101:0101:0101:0101:0101:0101", (*ret_ip[i]).ip);
         os_calloc(1, sizeof(os_ipv6), (*ret_ip[i]).ipv6);
+        (*ret_ip[i]).is_ipv6 = true;
 
         unsigned int a = 0;
         for(a = 0; a < 16; a++) {
