@@ -148,9 +148,13 @@ namespace Utils
                 // Close current file when going out of scope.
                 DEFER([&spUnzFile]() { unzCloseCurrentFile(spUnzFile.get()); });
 
-                // Check for possible Zip Slip vulnerability.
+                // Check for possible Zip Slip vulnerability. A plain prefix compare against
+                // outputDir would also accept a sibling directory sharing the same text (e.g.
+                // outputDir "/var/out" matching "/var/output-evil/x"), so compare against
+                // outputDir with a trailing separator instead - except when the entry resolves
+                // to outputDir itself, which has no trailing separator to match.
                 const auto outputFilepath {(outputDir / std::string(filename)).lexically_normal()};
-                if (!Utils::startsWith(outputFilepath, outputDir))
+                if (outputFilepath != outputDir && !Utils::startsWith(outputFilepath, outputDir / ""))
                 {
                     throw std::runtime_error {"A potentially insecure path was found: " + outputFilepath.string()};
                 }
