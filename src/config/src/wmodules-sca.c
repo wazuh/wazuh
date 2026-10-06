@@ -118,8 +118,12 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
 {
     unsigned int i;
     wm_sca_t *sca;
-    /* 4.x options: an upgrade keeps ossec.conf, so they are recognized but ignored */
-    char *const xml_deprecated[] = {"skip_nfs", "day", "wday", "time", NULL};
+    /* 4.x options: an upgrade keeps ossec.conf, so they are recognized but ignored.
+     * The 4.x default ossec.conf sets the first list, so every upgraded agent carries them: they
+     * are reported at INFO, as other harmless 4.x leftovers are. Only a user sets the rest, and
+     * they changed the scan schedule, so dropping them deserves a warning. */
+    char *const xml_deprecated_defaults[] = {"skip_nfs", NULL};
+    char *const xml_deprecated[] = {"day", "wday", "time", NULL};
 
     /* On the manager, agent.conf parsing must not activate the local ruleset. */
     #ifdef CLIENT
@@ -436,6 +440,9 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
                 parse_synchronization_section(sca, children);
                 OS_ClearNode(children);
             }
+        }
+        else if (w_is_str_in_array(xml_deprecated_defaults, nodes[i]->element)) {
+            minfo(XML_DEPRECATED, nodes[i]->element);
         }
         else if (w_is_str_in_array(xml_deprecated, nodes[i]->element)) {
             mwarn(XML_DEPRECATED, nodes[i]->element);
