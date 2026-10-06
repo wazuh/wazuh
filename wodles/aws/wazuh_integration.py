@@ -14,6 +14,7 @@ except ImportError:
 
 import aws_tools
 import configparser
+import contextlib
 import copy
 import gzip
 import io
@@ -323,53 +324,14 @@ class WazuhIntegration:
             aws_tools.error("Error sending message to wazuh: {}".format(e))
             sys.exit(13)
 
-    def _decompress_gzip(self, raw_object: io.BytesIO):
-        """Method that decompress gzip compressed data.
-
-        Parameters
-        ----------
-        raw_object : io.BytesIO
-            Buffer with the gzip compressed object.
-
-        Returns
-        -------
-        file_object
-            Decompressed object.
-        """
-        try:
-            gzip_file = gzip.open(filename=raw_object, mode='rt')
-            # Ensure that the file is not corrupted by reading from it
-            gzip_file.read()
-            gzip_file.seek(0)
-            return gzip_file
-        except (gzip.BadGzipFile, zlib.error, TypeError):
-            aws_tools.error(f'Invalid gzip file received.')
-            if not self.skip_on_error:
-                sys.exit(8)
-
-    def _decompress_zip(self, raw_object: io.BytesIO):
-        """Method that decompress zip compressed data.
-
-        Parameters
-        ----------
-        raw_object : io.BytesIO
-            Buffer with the zip compressed object.
-
-        Returns
-        -------
-        file_object
-            Decompressed object.
-        """
-        try:
-            zipfile_object = zipfile.ZipFile(raw_object, compression=zipfile.ZIP_DEFLATED)
-            return io.TextIOWrapper(zipfile_object.open(zipfile_object.namelist()[0]))
-        except zipfile.BadZipFile:
-            aws_tools.error('Invalid zip file received.')
-        if not self.skip_on_error:
-            sys.exit(8)
-
+    @contextlib.contextmanager
     def decompress_file(self, bucket: str, log_key: str):
         """Method that returns a file stored in a bucket decompressing it if necessary.
+
+        There is no separate corruption pre-check: gzip/zip corruption is instead caught around
+        the caller's own read of the yielded object (its "with" block), so a stream too large or
+        too corrupted to use is only ever decompressed once, not once to validate and discarded,
+        then again for real.
 
         Parameters
         ----------
@@ -377,18 +339,36 @@ class WazuhIntegration:
             Path of the bucket to get the log file from.
         log_key : str
             Name of the file that should be returned.
+
+        Yields
+        ------
+        file_object
+            Decompressed (or raw) object, ready to be read by the caller.
         """
         raw_object = io.BytesIO(self.client.get_object(Bucket=bucket, Key=log_key)['Body'].read())
-        if log_key[-3:] == '.gz':
-            return self._decompress_gzip(raw_object)
-        elif log_key[-4:] == '.zip':
-            return self._decompress_zip(raw_object)
-        elif log_key[-7:] == '.snappy':
-            aws_tools.error(f"Couldn't decompress the {log_key} file, snappy compression is not supported.")
+        try:
+            if log_key[-3:] == '.gz':
+                with gzip.open(filename=raw_object, mode='rt') as f:
+                    yield f
+            elif log_key[-4:] == '.zip':
+                with zipfile.ZipFile(raw_object, compression=zipfile.ZIP_DEFLATED) as zipfile_object, \
+                        io.TextIOWrapper(zipfile_object.open(zipfile_object.namelist()[0])) as f:
+                    yield f
+            elif log_key[-7:] == '.snappy':
+                aws_tools.error(f"Couldn't decompress the {log_key} file, snappy compression is not supported.")
+                if not self.skip_on_error:
+                    sys.exit(8)
+            else:
+                with io.TextIOWrapper(raw_object) as f:
+                    yield f
+        except (gzip.BadGzipFile, zlib.error, TypeError):
+            aws_tools.error('Invalid gzip file received.')
             if not self.skip_on_error:
                 sys.exit(8)
-        else:
-            return io.TextIOWrapper(raw_object)
+        except zipfile.BadZipFile:
+            aws_tools.error('Invalid zip file received.')
+            if not self.skip_on_error:
+                sys.exit(8)
 
 
 class WazuhAWSDatabase(WazuhIntegration):
