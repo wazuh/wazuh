@@ -37,6 +37,7 @@ Definitions can reference other definitions. Dependencies are resolved at constr
 2. Resolves leaf definitions first, then works back up
 3. Caches resolved values to avoid recomputation
 4. **Detects circular references** and throws an error if found
+5. **Bounds the expansion** and throws an error beyond any limit (see [Limits](#limits))
 
 ```json
 {
@@ -151,6 +152,19 @@ The algorithm uses `resolveDefinitionDFS()`:
 - If a definition references another, it recursively resolves the dependency first
 - Resolved values are cached in `m_resolvedDefinitions`
 - Circular references (`a → b → a`) throw `std::runtime_error`
+- Each resolved definition records its nesting depth next to its cached value, so the depth check does not depend on the order in which definitions are visited
+
+### Limits
+
+Each definition can reference others several times, so the expanded size grows exponentially with nesting
+(`a: "$b$b"`, `b: "$c$c"`, …: 34 levels of a few hundred bytes expand to 16 GiB). Three compile-time constants in
+`Definitions` bound it, and exceeding any throws `std::runtime_error` naming the limit, which fails the asset build:
+
+| Constant | Value | Bounds |
+|----------|-------|--------|
+| `MAX_DEPTH` | 256 (`json::Json::MAX_DEPTH`) | Longest chain of definitions referencing definitions; also bounds the DFS recursion |
+| `MAX_EXPANDED_SIZE` | 64 KiB | Size of one definition once its references are expanded; checked before each substitution, so memory never grows past it. A literal definition with no references is not limited |
+| `MAX_TOTAL_EXPANSION` | 1 MiB | Bytes added by expansion over the lifetime of one `Definitions` object: pre-resolution plus every `replace()` call, so a large definition referenced many times by the stages of an asset is bounded too |
 
 ### Variable Replacement (`replace`)
 
@@ -214,6 +228,7 @@ Tests are in `test/src/unit/defs_test.cpp` and cover:
 - **Contains**: Existence checks for flat, nested, and array paths
 - **Replace**: Basic substitution, multiple variables, escaped variables, nested definitions, complex dependency chains, prefix conflict handling, special characters, edge cases (`$` at end of string, `$` followed by non-alpha)
 - **Circular references**: Detection of direct cycles (`a→b→a`), transitive cycles (`a→b→c→a`), self-references (`a→a`)
+- **Limits**: Each limit at and over its bound, exponential blocks (2^34, 4^20) rejected without allocating, the `replace()` budget, and literals larger than `MAX_EXPANDED_SIZE` still accepted
 - **Error messages**: Validates that exceptions contain useful diagnostic information
 - **Performance**: Handles 1000+ definitions without issues
 - **Special JSON values**: Numbers, booleans, null, unicode, empty strings
@@ -236,6 +251,6 @@ Tests are in `test/src/unit/defs_test.cpp` and cover:
 
 4. **Escape mechanism**: `\$var` produces the literal `$var`, allowing users to include dollar-sign patterns that should not be treated as variable references.
 
-5. **Fail-fast on cycles**: Circular references are detected at construction time with a clear error message, preventing infinite loops during resolution.
+5. **Fail-fast on cycles and on expansion**: Circular references and expansion past the [limits](#limits) are detected at construction time (or at the `replace()` that crosses the total budget) with a clear error message, preventing infinite loops and unbounded allocation during resolution.
 
 6. **Interface segregation**: `IDefinitions` and `IDefinitionsBuilder` are separated from the implementation, allowing the `builder` module to depend only on the interface and enabling easy mocking for tests.
