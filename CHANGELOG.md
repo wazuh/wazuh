@@ -43,6 +43,7 @@
 
 | Issue | Comment |
 |-------|---------|
+| [#39991](https://github.com/wazuh/wazuh/issues/39991) | Fixed agent daemons using up to 2x memory on aarch64 with glibc 2.43. |
 
 ## Prior versions
 
