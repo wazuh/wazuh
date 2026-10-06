@@ -59,7 +59,7 @@ That is sound. What follows is what it costs, which the plan did not know.
 
 ## 20.2 The measurement
 
-Run on `wazuh_manager` (Ubuntu 24.04, kernel 6.8, Docker 29.1.3) on 2026-10-06. The host is v2, but
+Run on `wazuh_manager` (Ubuntu 24.04, kernel 7.0.0-34, Docker 29.1.3) on 2026-10-06. The host is v2, but
 every property below is a property of **mount namespaces**, not of cgroup versions, so it transfers.
 
 ### What holds
@@ -204,7 +204,7 @@ task_struct -> cgroups                       (struct css_set *)
 ```
 
 **Every link verified in this host's BTF** (`bpftool btf dump file /sys/kernel/btf/vmlinux`,
-kernel 6.8): `css_set.subsys[15]`, `cgroup_subsys_state.cgroup`, `cgroup.kn`, `kernfs_node.id`, and
+kernel 7.0.0-34): `css_set.subsys[15]`, `cgroup_subsys_state.cgroup`, `cgroup.kn`, `kernfs_node.id`, and
 `enum cgroup_subsys_id` with `memory_cgrp_id = 4`.
 
 The one subtlety is that **4 is not a constant across kernels.** The enum is generated from
@@ -246,7 +246,7 @@ hierarchy where it was thought to be impossible.
 
 ### 20.4.3 Measured: the walk works, and one trap came with it
 
-A working CO-RE prototype was built and run on `wazuh_manager` (kernel 6.8) on 2026-10-06 — the
+A working CO-RE prototype was built and run on `wazuh_manager` (kernel 7.0.0-34) on 2026-10-06 — the
 program WP6a would need, not a simulation of it. Against a host process in a nested cgroup
 (`/user.slice/user-1000.slice/session-608.scope`):
 
