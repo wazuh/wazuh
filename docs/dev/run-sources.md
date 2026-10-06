@@ -64,7 +64,7 @@ To move the system service to the new directory on purpose, pass
 
 `install.sh` resolves the manager's credentials at the end of the run: it seeds the
 Server API passwords, stores the indexer credential if one was supplied, and issues
-both TLS pairs under `etc/certs` from a bootstrap CA in `/etc/wazuh/ca`. So a plain
+the three TLS pairs under `etc/certs` from a bootstrap CA in `/etc/wazuh/ca`. So a plain
 source install already has certificates and you can skip this section.
 
 Two cases where you supply them instead:
@@ -77,9 +77,13 @@ Two cases where you supply them instead:
 
 Deploy under `etc/certs` the indexer trust material — `root-ca.pem`,
 `indexer-connector.pem`, `indexer-connector-key.pem` (`root:wazuh-manager 640`) — and
-the HTTPS agent listener pair — `remoted.pem`, `remoted-key.pem`
-(`wazuh-manager:wazuh-manager 640`) — issued by the Wazuh installation assistant's
-certificate tool (`wazuh-certs-tool`). Nothing re-examines them afterwards: overwriting
+the HTTPS agent listener pair — `remoted.pem`, `remoted-key.pem` — and the
+Server API pair — `apid.pem`, `apid-key.pem` (both
+`wazuh-manager:wazuh-manager 640`) — issued by the Wazuh installation assistant's
+certificate tool (`wazuh-certs-tool`), except the apid pair, which the bare
+`wazuh-certs-tool.sh -A` does not issue (the E2E `init.sh` and `wazuh_copy_certs.sh` below handle it).
+With `USER_RESOLVE_CREDENTIALS="n"` nothing issues `apid.pem` unless you provide it, and the Server
+API then stops with error `2003` in `logs/api.log`. Nothing re-examines them afterwards: overwriting
 a resolved pair is enough, and the CA directory can go with it. Until they exist,
 `wazuh-manager-control start` refuses to start
 (`(1244): Invalid configuration at '/remote/https/certificate': file not found: …`).
@@ -103,7 +107,7 @@ For a sandbox install, point the copy script at its directory:
 sudo WAZUH_MANAGER_HOME=/tmp/clean_env/wazuh-manager ./wazuh_copy_certs.sh
 ```
 
-Or run the tool directly and `install` the five files yourself, as the CI does
+Or run the tool directly and `install` the five files it issues, plus an apid pair you issue from the same CA, yourself, as the CI does
 (`.github/workflows/5_testintegration_manager.yml`, step "Provision TLS certificates"):
 
 ```bash

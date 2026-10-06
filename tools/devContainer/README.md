@@ -289,6 +289,7 @@ Devcontainer copy of the installation assistant's certificate tool (`wazuh-certs
 - `root-ca.pem` / `root-ca.key` — or reuses the pair passed after `-A` — and `admin.pem` / `admin-key.pem`
 - `<name>.pem` / `<name>-key.pem` per indexer, manager and dashboard node, with the assistant's unchanged DNs (the indexer package pins `CN=node-1,OU=Wazuh,O=Wazuh,L=California,C=US`)
 - per manager node, additionally **`<name>-remoted.pem`** — the agent-listener leaf followed by the CA (`basicConstraints critical CA:FALSE`, `keyUsage critical digitalSignature,keyEncipherment`, `extendedKeyUsage serverAuth`, SAN = `ip` + `dns` + `<name>`, RSA 2048, SHA-256, 3650 days) — and **`<name>-remoted-key.pem`**, verified with `openssl verify -CAfile root-ca.pem` before the tool exits
+- for the **first** manager node only (the one `init.sh`, `wazuh_copy_certs.sh` and the cluster overlay deploy), **`<name>-apid.pem`** / **`<name>-apid-key.pem`** (Server API leaf, SAN `DNS:localhost`, EKU `serverAuth`, `CA:FALSE`) — not issued by the tool but by `e2e/init.sh` (`ensure_manager_apid_pair`) with the same profile as the manager installer's `etc/certs/apid.pem`; `init.sh` completes an existing PKI that lacks the pair (also with `--reuse-certs`) and fails if the pair is partial or does not verify against `root-ca.pem`
 
 ```bash
 bash scripts/wazuh-certs-tool.sh -A -v -c scripts/wazuh-certs-tool.yml -o /path/to/out                  # new CA
@@ -434,8 +435,10 @@ Deploys the certificates issued by `init.sh` into an existing wazuh-manager inst
 | `<node>-key.pem` | `indexer-connector-key.pem` | `root:wazuh-manager` | 640 |
 | `<node>-remoted.pem` | `remoted.pem` | `wazuh-manager:wazuh-manager` | 640 |
 | `<node>-remoted-key.pem` | `remoted-key.pem` | `wazuh-manager:wazuh-manager` | 640 |
+| `<node>-apid.pem` | `apid.pem` | `wazuh-manager:wazuh-manager` | 640 |
+| `<node>-apid-key.pem` | `apid-key.pem` | `wazuh-manager:wazuh-manager` | 640 |
 
-`<node>` is the first `- name:` under `manager:` in `scripts/wazuh-certs-tool.yml` (`wazuh-1`), overridable with `MANAGER_NODE_NAME`. `etc/certs` is created as `1770 root:wazuh-manager`, like the installer does; `root-ca.key` is never copied. remoted opens its certificate and key after dropping privileges (hence the `wazuh-manager` owner), while the indexer-connector files are read as root. The script then verifies the deployed files (`openssl verify -CAfile root-ca.pem`, expiry check) and prints the `<remote><https>` certificate settings of `etc/wazuh-manager.conf` for review — it **does not edit** the configuration: the defaults already point at `etc/certs/remoted.pem`, `etc/certs/remoted-key.pem` and `etc/certs/root-ca.pem`.
+`<node>` is the first `- name:` under `manager:` in `scripts/wazuh-certs-tool.yml` (`wazuh-1`), overridable with `MANAGER_NODE_NAME`. `etc/certs` is created as `1770 root:wazuh-manager`, like the installer does; `root-ca.key` is never copied. remoted and apid open their certificates and keys after dropping privileges (hence the `wazuh-manager` owner), while the indexer-connector files are read as root. The script then verifies the deployed files (`openssl verify -CAfile root-ca.pem`, expiry check) and prints the `<remote><https>` certificate settings of `etc/wazuh-manager.conf` for review — it **does not edit** the configuration: the defaults already point at `etc/certs/remoted.pem`, `etc/certs/remoted-key.pem` and `etc/certs/root-ca.pem`.
 
 **Important:** run it after installing wazuh-manager and before starting the service, or restart it afterwards (`wazuh-manager-control restart`).
 

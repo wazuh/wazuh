@@ -36,6 +36,10 @@ RUN /wazuh/install.sh
 # scoped to names only this test environment answers to, and the resolver never re-examines a pair
 # once it is in place -- not at service start, not on upgrade. No CA directory is left behind, so
 # no signing key reaches the layer.
+#
+# The same RUN also issues the Server API (apid) pair, signed by that CA: the API no longer
+# generates its own certificate, so every image has to ship one. It is issued before the CA
+# directory is removed, in the same layer, so the CA key still never persists.
 COPY base/manager/certs-config.yml /wazuh/certs-config.yml
 RUN bash /wazuh/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c /wazuh/certs-config.yml -o /tmp/wazuh-certificates && \
     mkdir -p /var/wazuh-manager/etc/certs && \
@@ -44,6 +48,24 @@ RUN bash /wazuh/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c /wazuh/cert
     install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem && \
     install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted.pem /var/wazuh-manager/etc/certs/remoted.pem && \
     install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted-key.pem /var/wazuh-manager/etc/certs/remoted-key.pem && \
+    CA_DIR=/tmp/wazuh-certificates && OUT=/tmp/wazuh-certificates && \
+    printf '%s\n' \
+      'basicConstraints = critical,CA:FALSE' \
+      'keyUsage = critical,digitalSignature,keyEncipherment' \
+      'extendedKeyUsage = serverAuth' \
+      'subjectAltName = DNS:localhost' \
+      'subjectKeyIdentifier = hash' \
+      'authorityKeyIdentifier = keyid,issuer' > "$OUT/apid.ext" && \
+    (umask 077; openssl req -new -nodes -newkey rsa:2048 -sha256 \
+      -subj '/C=US/ST=California/L=San Francisco/O=Wazuh/CN=wazuh.com' \
+      -keyout "$OUT/apid-key.pem" -out "$OUT/apid.csr") && \
+    openssl x509 -req -sha256 -days 3650 -set_serial "0x$(openssl rand -hex 16)" \
+      -in "$OUT/apid.csr" -CA "$CA_DIR/root-ca.pem" -CAkey "$CA_DIR/root-ca.key" \
+      -extfile "$OUT/apid.ext" -out "$OUT/apid.pem" && \
+    rm -f "$OUT/apid.csr" "$OUT/apid.ext" && \
+    openssl verify -purpose sslserver -verify_hostname localhost -CAfile "$CA_DIR/root-ca.pem" "$OUT/apid.pem" && \
+    install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/apid.pem /var/wazuh-manager/etc/certs/apid.pem && \
+    install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/apid-key.pem /var/wazuh-manager/etc/certs/apid-key.pem && \
     rm -rf /tmp/wazuh-certificates /etc/wazuh/ca
 COPY base/manager/entrypoint.sh /scripts/entrypoint.sh
 

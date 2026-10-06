@@ -102,6 +102,12 @@ after the `remove`, and stays that way until `wazuh-manager-remoted` is restarte
 This is why step 4 (reissue + restart) must complete before step 5 (`remove`) runs, never the other
 way around. There is no guard against this in the tool itself — the fix is following the order above.
 
+> [!NOTE]
+> `wazuh-manager-certs` only validates the bundle against the certificate of remoted. Before retiring the
+> old CA (step 5), also reissue `apid.pem` (the Server API certificate) and `indexer-connector.pem` under
+> the new CA: nothing checks them against the bundle. Then restart the API (`wazuh-manager-apid` loads
+> its pair only at start).
+
 ### 2. The monotonicity limit
 
 Every publication is the wall-clock second of the write, and it must be strictly greater than the

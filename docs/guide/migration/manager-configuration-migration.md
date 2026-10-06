@@ -495,9 +495,13 @@ The API certificates moved to the unified `etc/certs` directory and were renamed
 The 5.0 defaults resolve to `/var/wazuh-manager/etc/certs/apid.pem`, `apid-key.pem` and
 `root-ca.pem`. The three values are **file names only** (letters, digits, `_`, `-`, `.`; a directory
 is rejected with error `2000`) and are always looked up in `etc/certs/`. To keep your 4.x API
-certificates, copy them into `/var/wazuh-manager/etc/certs/` and either give them the default names or
-set `https.key`/`https.cert`/`https.ca` to their names. If the key or the certificate is missing when
-`wazuh-manager-apid` starts, it generates a self-signed pair under those names.
+certificates, copy them into `/var/wazuh-manager/etc/certs/` under other file names, readable by `wazuh-manager`,
+and set `https.key`/`https.cert`/`https.ca` to those names. The names `apid.pem` and `apid-key.pem` are
+those of the pair the installer issues, or that you provide signed by the manager's CA, which the
+installer validates (chain to the CA, `serverAuth`, `CA:FALSE`, not expired, with a SAN extension, key, owner and mode). `wazuh-manager-apid`
+generates no certificate: if `https.enabled` is on and the configured pair is missing, not readable by
+`wazuh-manager`, or its key does not match, it logs error `2003` naming the files in `logs/api.log` and
+does not start.
 
 **4.x (`ssl_protocol` is rejected in 5.0):**
 ```yaml
