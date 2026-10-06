@@ -34,6 +34,7 @@
 
 #ifndef WIN32
 #include <regex.h>
+#include <sys/uio.h>
 #ifdef __linux__
 #include <sys/vfs.h>
 #endif
@@ -3290,7 +3291,69 @@ static int w_clear_nonblock(int fd) {
 #define W_VETTED_NO_READLINKAT
 #endif
 
-#ifndef W_VETTED_NO_AT_WALK
+#if defined(W_VETTED_NO_AT_WALK) || defined(W_VETTED_NO_READLINKAT)
+// A forked child must not run the daemon's handlers (e.g. a SIGTERM for the whole process group): the signals are
+// blocked across fork(), reset to their defaults in the child, and unblocked there and in the parent.
+static const int w_fork_signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM, SIGUSR1, SIGUSR2};
+
+static void w_fork_block_signals(sigset_t * previous) {
+    sigset_t blocked;
+    size_t i;
+
+    sigemptyset(&blocked);
+
+    for (i = 0; i < sizeof(w_fork_signals) / sizeof(w_fork_signals[0]); i++) {
+        sigaddset(&blocked, w_fork_signals[i]);
+    }
+
+    pthread_sigmask(SIG_BLOCK, &blocked, previous);
+}
+
+static void w_fork_child_signals(const sigset_t * previous) {
+    size_t i;
+
+    for (i = 0; i < sizeof(w_fork_signals) / sizeof(w_fork_signals[0]); i++) {
+        signal(w_fork_signals[i], SIG_DFL);
+    }
+
+    pthread_sigmask(SIG_SETMASK, previous, NULL);
+}
+
+#endif
+
+#ifdef W_VETTED_NO_AT_WALK
+// HP-UX has no *at() calls; the walk runs in a forked child, so fchdir() into a held descriptor can stand in for
+// dirfd without changing the daemon's directory.
+#ifndef AT_FDCWD
+#define AT_FDCWD (-100)
+#endif
+
+#ifndef AT_SYMLINK_NOFOLLOW
+#define AT_SYMLINK_NOFOLLOW 0x1000
+#endif
+
+static int w_enter_dir(int dirfd) {
+    return dirfd == AT_FDCWD ? 0 : fchdir(dirfd);
+}
+
+// Only the AT_SYMLINK_NOFOLLOW form is used by the walk.
+static int w_emul_fstatat(int dirfd, const char * name, struct stat * buf, int flags) {
+    (void) flags;
+    return w_enter_dir(dirfd) < 0 ? -1 : lstat(name, buf);
+}
+
+static int w_emul_openat(int dirfd, const char * name, int oflags) {
+    return w_enter_dir(dirfd) < 0 ? -1 : open(name, oflags);
+}
+
+static ssize_t w_emul_readlinkat(int dirfd, const char * name, char * buf, size_t size) {
+    return w_enter_dir(dirfd) < 0 ? -1 : readlink(name, buf, size);
+}
+
+#define fstatat w_emul_fstatat
+#define openat w_emul_openat
+#define w_readlinkat w_emul_readlinkat
+#else
 // O_PATH is spelled out for the agent packages, built with headers older than glibc 2.14 that lack it; it has
 // this value on these architectures, and kernels before 2.6.39 ignore it.
 #if defined(O_PATH)
@@ -3311,6 +3374,7 @@ static int w_clear_nonblock(int fd) {
 #define W_VETTED_AT_EMPTY_PATH AT_EMPTY_PATH
 #elif defined(__linux__)
 #define W_VETTED_AT_EMPTY_PATH 0x1000
+#endif
 #endif
 
 /**
@@ -3365,7 +3429,7 @@ static bool w_is_procfs(int dirfd) {
 }
 #endif
 
-#ifdef W_VETTED_NO_READLINKAT
+#if defined(W_VETTED_NO_READLINKAT) && !defined(W_VETTED_NO_AT_WALK)
 /**
  * readlinkat() for Solaris 10. A child fchdir()s into dirfd and readlink()s the bare name, as changing the
  * directory in this process would affect every thread. The child calls only async-signal-safe functions and
@@ -3380,6 +3444,7 @@ static ssize_t w_readlinkat(int dirfd, const char * name, char * buf, size_t siz
     int status;
     pid_t pid;
     pid_t reaped;
+    sigset_t previous;
     ssize_t n;
     ssize_t total = -1;
 
@@ -3394,7 +3459,16 @@ static ssize_t w_readlinkat(int dirfd, const char * name, char * buf, size_t siz
     w_fd_cloexec(fds[0]);
     w_fd_cloexec(fds[1]);
 
-    if (pid = fork(), pid < 0) {
+    w_fork_block_signals(&previous);
+    pid = fork();
+
+    if (pid != 0) {
+        err = errno;
+        pthread_sigmask(SIG_SETMASK, &previous, NULL);
+        errno = err;
+    }
+
+    if (pid < 0) {
         err = errno;
         close(fds[0]);
         close(fds[1]);
@@ -3405,6 +3479,7 @@ static ssize_t w_readlinkat(int dirfd, const char * name, char * buf, size_t siz
     if (pid == 0) {
         ssize_t len = -1;
 
+        w_fork_child_signals(&previous);
         close(fds[0]);
 
         if (fchdir(dirfd) == 0) {
@@ -3464,7 +3539,7 @@ static ssize_t w_readlinkat(int dirfd, const char * name, char * buf, size_t siz
     memcpy(buf, text, total);
     return total;
 }
-#else
+#elif !defined(W_VETTED_NO_AT_WALK)
 #define w_readlinkat readlinkat
 #endif
 
@@ -3531,7 +3606,7 @@ static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat
  * @param follow_last Whether a symlink as the final entry is followed; if not, it fails with ELOOP.
  * @return A vetted descriptor with O_NONBLOCK cleared, or -1 on error (sets errno).
  */
-static int w_open_vetted_follow_fd(const char * path, bool follow_last) {
+static int w_open_vetted_walk_fd(const char * path, bool follow_last) {
     char pending[PATH_MAX + 1];
     char target[PATH_MAX + 1];
     char next[PATH_MAX + 1];
@@ -3655,10 +3730,15 @@ static int w_open_vetted_follow_fd(const char * path, bool follow_last) {
             }
             target[n] = '\0';
 
-            if (snprintf(next, sizeof(next), "%s%s", target, cursor) >= (int) sizeof(next)) {
+            // memcpy() rather than snprintf(), as this may run in a forked child of a threaded process.
+            len = strlen(cursor);
+
+            if ((size_t) n + len > PATH_MAX) {
                 errno = ENAMETOOLONG;
                 goto fail;
             }
+            memcpy(next, target, n);
+            memcpy(next + n, cursor, len + 1);
             strcpy(pending, next);
             cursor = pending;
 
@@ -3751,115 +3831,162 @@ fail:
     errno = saved_errno;
     return -1;
 }
-#else
+#ifdef W_VETTED_NO_AT_WALK
+#undef fstatat
+#undef openat
+#undef w_readlinkat
+
+#ifndef SCM_RIGHTS
+#error "HP-UX needs _XOPEN_SOURCE_EXTENDED for SCM_RIGHTS (set in src/Makefile)"
+#endif
+
 /**
- * dirname() may modify its argument and is not thread-safe everywhere, so the parent is cut out of path by
- * hand. A bare file name resolves to ".".
+ * Sends the result of the walk to the parent: errno (0 on success) in the data, and fd as ancillary data on success.
  *
- * @return 0 on success, -1 on error (sets errno).
+ * @return 0 on success, -1 on error.
  */
-static int w_stat_parent_dir(const char * path, struct stat * dir_stat) {
-    char dir[PATH_MAX + 1];
-    const char * slash = strrchr(path, '/');
-    size_t len;
+static int w_send_walk_result(int sock, int fd, int err) {
+    struct msghdr msg;
+    struct iovec iov;
+    union {
+        struct cmsghdr align;
+        char buf[CMSG_SPACE(sizeof(int))];
+    } control;
+    struct cmsghdr * cmsg;
 
-    if (!slash) {
-        return stat(".", dir_stat);
+    memset(&msg, 0, sizeof(msg));
+    iov.iov_base = &err;
+    iov.iov_len = sizeof(err);
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+
+    if (fd >= 0) {
+        memset(&control, 0, sizeof(control));
+        msg.msg_control = control.buf;
+        msg.msg_controllen = sizeof(control.buf);
+        cmsg = CMSG_FIRSTHDR(&msg);
+        cmsg->cmsg_level = SOL_SOCKET;
+        cmsg->cmsg_type = SCM_RIGHTS;
+        cmsg->cmsg_len = CMSG_LEN(sizeof(int));
+        memcpy(CMSG_DATA(cmsg), &fd, sizeof(int));
     }
 
-    if (len = slash == path ? 1 : (size_t) (slash - path), len > PATH_MAX) {
-        errno = ENAMETOOLONG;
-        return -1;
-    }
-
-    memcpy(dir, path, len);
-    dir[len] = '\0';
-    return stat(dir, dir_stat);
+    return sendmsg(sock, &msg, 0) == (ssize_t) sizeof(err) ? 0 : -1;
 }
 
 /**
- * Path-based stand-in for the component walk, for platforms without its *at() calls. The type, owner and link
- * count rules are applied to the opened descriptor, so a FIFO still cannot block the read. Only the path's
- * last entry is checked as a symlink, and by path, so a symlink swapped in a directory higher up, or swapped
- * and restored between the checks, is not caught.
+ * Receives what w_send_walk_result() sent.
+ *
+ * @return The descriptor, or -1 with errno set to the child's error.
+ */
+static int w_recv_walk_result(int sock) {
+    struct msghdr msg;
+    struct iovec iov;
+    union {
+        struct cmsghdr align;
+        char buf[CMSG_SPACE(sizeof(int))];
+    } control;
+    struct cmsghdr * cmsg;
+    int err = EIO;
+    int fd = -1;
+    ssize_t n;
+
+    memset(&msg, 0, sizeof(msg));
+    iov.iov_base = &err;
+    iov.iov_len = sizeof(err);
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+    memset(&control, 0, sizeof(control));
+    msg.msg_control = control.buf;
+    msg.msg_controllen = sizeof(control.buf);
+
+    while (n = recvmsg(sock, &msg, 0), n < 0 && errno == EINTR) {
+    }
+
+    // Take the descriptor first: the kernel installed it even if the data is short.
+    if (n >= 0 && (cmsg = CMSG_FIRSTHDR(&msg)) && cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
+        memcpy(&fd, CMSG_DATA(cmsg), sizeof(int));
+    }
+
+    if (n < 0) {
+        err = errno;
+    } else if (n != (ssize_t) sizeof(err) || (msg.msg_flags & MSG_CTRUNC) || (err == 0 && fd < 0)) {
+        err = EIO;
+    }
+
+    if (err != 0 || fd < 0) {
+        if (fd >= 0) {
+            close(fd);
+        }
+
+        errno = err ? err : EIO;
+        return -1;
+    }
+
+    // The kernel-made descriptor does not inherit the child's close-on-exec.
+    fcntl(fd, F_SETFD, FD_CLOEXEC);
+    return fd;
+}
+
+/**
+ * Runs the walk in a forked child (no *at() calls on this platform) and receives the vetted descriptor over a
+ * socket pair; the parent never changes directory.
  *
  * @param follow_last Whether a symlink as the final entry is followed; if not, it fails with ELOOP.
  * @return A vetted descriptor with O_NONBLOCK cleared, or -1 on error (sets errno).
  */
 static int w_open_vetted_follow_fd(const char * path, bool follow_last) {
-    char resolved[PATH_MAX + 1];
-    struct stat link_stat;
-    struct stat link_dir_stat;
-    struct stat fd_stat;
-    struct stat dir_stat;
-    struct stat now;
-    uid_t link_uid = 0;
-    bool has_link_uid = false;
-    int saved_errno;
+    int sv[2];
     int fd;
+    int saved_errno;
+    int status;
+    pid_t pid;
+    sigset_t previous;
 
-    if (lstat(path, &link_stat) < 0) {
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0) {
         return -1;
     }
 
-    if (S_ISLNK(link_stat.st_mode)) {
-        if (!follow_last) {
-            errno = ELOOP;
-            return -1;
-        }
+    fcntl(sv[0], F_SETFD, FD_CLOEXEC);
+    fcntl(sv[1], F_SETFD, FD_CLOEXEC);
 
-        if (w_stat_parent_dir(path, &link_dir_stat) < 0) {
-            return -1;
-        }
-
-        if (!w_vet_link_count(&link_stat, &link_dir_stat)) {
-            errno = EPERM;
-            return -1;
-        }
-
-        if (link_stat.st_uid != 0 && !w_vet_root_only_dir(&link_dir_stat)) {
-            link_uid = link_stat.st_uid;
-            has_link_uid = true;
-        }
-    }
-
-    if (fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC), fd < 0) {
-        return -1;
-    }
-
-    // The directory rules need the file's real location, and the inode checks reject a path changed meanwhile.
-    if (fstat(fd, &fd_stat) < 0 || lstat(path, &now) < 0 || !realpath(path, resolved) ||
-        w_stat_parent_dir(resolved, &dir_stat) < 0) {
-        goto fail;
-    }
-
-    if (now.st_dev != link_stat.st_dev || now.st_ino != link_stat.st_ino || now.st_uid != link_stat.st_uid ||
-        (!S_ISLNK(link_stat.st_mode) && (fd_stat.st_dev != link_stat.st_dev || fd_stat.st_ino != link_stat.st_ino))) {
-        errno = EAGAIN;
-        goto fail;
-    }
-
-    if (stat(resolved, &now) < 0) {
-        goto fail;
-    }
-
-    if (now.st_dev != fd_stat.st_dev || now.st_ino != fd_stat.st_ino) {
-        errno = EAGAIN;
-        goto fail;
-    }
-
-    if (w_vet_opened_file(&fd_stat, &dir_stat, has_link_uid ? &link_uid : NULL) < 0) {
-        goto fail;
-    }
-
-    return w_clear_nonblock(fd);
-
-fail:
+    w_fork_block_signals(&previous);
+    pid = fork();
     saved_errno = errno;
-    close(fd);
+
+    if (pid != 0) {
+        pthread_sigmask(SIG_SETMASK, &previous, NULL);
+    }
+
+    if (pid < 0) {
+        close(sv[0]);
+        close(sv[1]);
+        errno = saved_errno;
+        return -1;
+    }
+
+    if (pid == 0) {
+        w_fork_child_signals(&previous);
+        close(sv[0]);
+        fd = w_open_vetted_walk_fd(path, follow_last);
+        w_send_walk_result(sv[1], fd, fd < 0 ? errno : 0);
+        _exit(0);
+    }
+
+    close(sv[1]);
+    fd = w_recv_walk_result(sv[0]);
+    saved_errno = errno;
+    close(sv[0]);
+
+    // SIGCHLD ignored makes the child reap itself, so a failure here is not an error.
+    while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {
+    }
+
     errno = saved_errno;
-    return -1;
+    return fd;
 }
+#else
+#define w_open_vetted_follow_fd w_open_vetted_walk_fd
 #endif
 #endif
 
