@@ -405,6 +405,13 @@ public:
     bool isAvailable() const;
 
     /**
+     * @brief Check have a server that accepts requests now: available, not merely throttled (HTTP 429).
+     *
+     * @return true if some server is available and not throttled, false otherwise.
+     */
+    bool hasAvailableServer() const;
+
+    /**
      * @brief Returns the `_bulk` request counts accumulated since the previous call and resets them.
      */
     IndexerBulkRequestStats takeBulkRequestStats();

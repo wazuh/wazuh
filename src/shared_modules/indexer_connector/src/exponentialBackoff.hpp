@@ -45,7 +45,12 @@ public:
 
         if (failures == 0)
         {
-            return cap;
+            // Never faster than the base delay, but spread over up to half of it again (within the
+            // cap), so connectors that failed in the same instant do not retry in lockstep.
+            const auto upperBound = std::min(cap + cap / 2, m_maxDelay);
+            std::uniform_int_distribution<int64_t> distribution {static_cast<int64_t>(cap.count()),
+                                                                 static_cast<int64_t>(upperBound.count())};
+            return std::chrono::milliseconds {distribution(m_rng)};
         }
 
         const auto lowerBound = previousExponentialDelay(cap);
