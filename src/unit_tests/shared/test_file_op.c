@@ -2195,6 +2195,57 @@ void test_w_fopen_nofollow_truncates_existing_file(void **state) {
     assert_int_equal(nofollow_size("regular"), 0);
 }
 
+void test_w_fopen_nofollow_append_keeps_existing_content(void **state) {
+    FILE * fp;
+
+    nofollow_create_file("regular", "previous ");
+
+    fp = w_fopen_nofollow(nofollow_dir, "regular", "a");
+    assert_non_null(fp);
+    assert_int_equal(fwrite("content", 1, 7, fp), 7);
+    assert_int_equal(fclose(fp), 0);
+    assert_int_equal(nofollow_size("regular"), 16);
+}
+
+void test_w_fopen_nofollow_append_creates_file(void **state) {
+    FILE * fp = w_fopen_nofollow(nofollow_dir, "regular", "ab");
+
+    assert_non_null(fp);
+    assert_int_equal(fwrite("content", 1, 7, fp), 7);
+    assert_int_equal(fclose(fp), 0);
+    assert_int_equal(nofollow_size("regular"), 7);
+}
+
+void test_w_fopen_nofollow_append_symlink_rejected(void **state) {
+    char target[PATH_MAX + 1];
+    char link[PATH_MAX + 1];
+
+    nofollow_create_file("victim", "sensitive data");
+    nofollow_path(target, "victim");
+    nofollow_path(link, "link");
+    assert_int_equal(symlink(target, link), 0);
+
+    errno = 0;
+    assert_null(w_fopen_nofollow(nofollow_dir, "link", "a"));
+    assert_true(errno == ELOOP || errno == EMLINK);
+    assert_int_equal(nofollow_size("victim"), 14);
+}
+
+void test_w_fopen_nofollow_append_hard_link_rejected(void **state) {
+    char target[PATH_MAX + 1];
+    char hardlink[PATH_MAX + 1];
+
+    nofollow_create_file("victim", "sensitive data");
+    nofollow_path(target, "victim");
+    nofollow_path(hardlink, "link");
+    assert_int_equal(link(target, hardlink), 0);
+
+    errno = 0;
+    assert_null(w_fopen_nofollow(nofollow_dir, "link", "a"));
+    assert_int_equal(errno, EMLINK);
+    assert_int_equal(nofollow_size("victim"), 14);
+}
+
 void test_w_fopen_nofollow_symlink_rejected(void **state) {
     char target[PATH_MAX + 1];
     char link[PATH_MAX + 1];
@@ -2285,7 +2336,7 @@ void test_w_fopen_nofollow_invalid_name(void **state) {
 }
 
 void test_w_fopen_nofollow_invalid_mode(void **state) {
-    const char * modes[] = { "r", "rb", "a", "w+", "", NULL };
+    const char * modes[] = { "r", "rb", "a+", "w+", "", NULL };
     int i;
 
     for (i = 0; modes[i]; i++) {
@@ -2937,6 +2988,10 @@ int main(void) {
         // w_fopen_nofollow
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_regular_file, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_truncates_existing_file, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_append_keeps_existing_content, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_append_creates_file, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_append_symlink_rejected, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_append_hard_link_rejected, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_symlink_rejected, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_hard_link_rejected, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_dangling_symlink_rejected, setup_nofollow, teardown_nofollow),

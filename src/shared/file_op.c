@@ -2705,7 +2705,7 @@ static int w_openat_nofollow_vetted(const char * basedir, const char * filename,
         return -1;
     }
 
-    if (fd = open(path, oflags, mode), fd < 0) {
+    if (fd = open(path, oflags | O_NOFOLLOW, mode), fd < 0) {
         return -1;
     }
 #else
@@ -2762,13 +2762,16 @@ static int w_openat_nofollow_vetted(const char * basedir, const char * filename,
 
 
 FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char * mode) {
-    if (!basedir || !mode || (strcmp(mode, "w") && strcmp(mode, "wb")) || !w_is_bare_filename(filename)) {
+    if (!basedir || !mode || (strcmp(mode, "w") && strcmp(mode, "wb") && strcmp(mode, "a") && strcmp(mode, "ab"))
+        || !w_is_bare_filename(filename)) {
         errno = EINVAL;
         return NULL;
     }
 
+    const bool append = mode[0] == 'a';
+
 #ifdef WIN32
-    int flags = strchr(mode, 'b') ? 0 : _O_TEXT;
+    int flags = (strchr(mode, 'b') ? 0 : _O_TEXT) | (append ? _O_APPEND : 0);
     int fd;
     FILE * fp;
 
@@ -2782,7 +2785,7 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 
     // The file pointer sits at the beginning of the file, so this truncates it. Safe now: the handle is
     // known to refer to a lone regular file, so this can no longer destroy a hard link's target early.
-    if (!SetEndOfFile(hFile)) {
+    if (!append && !SetEndOfFile(hFile)) {
         errno = w_win32_to_errno(GetLastError());
         CloseHandle(hFile);
         return NULL;
@@ -2808,7 +2811,9 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 #else
     FILE * fp;
     int saved_errno;
-    int fd = w_openat_nofollow_vetted(basedir, filename, O_WRONLY | O_CREAT | O_CLOEXEC | O_NONBLOCK | O_NOCTTY, 0640);
+    int fd = w_openat_nofollow_vetted(basedir, filename,
+                                      O_WRONLY | O_CREAT | O_CLOEXEC | O_NONBLOCK | O_NOCTTY | (append ? O_APPEND : 0),
+                                      0640);
 
     if (fd < 0) {
         return NULL;
@@ -2816,7 +2821,7 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 
     // Safe now: the descriptor is known to point at a lone regular file. Mirrors what the Windows branch
     // does with OPEN_ALWAYS plus SetEndOfFile() — the file is truncated only once vetted, not at open time.
-    if (ftruncate(fd, 0) < 0) {
+    if (!append && ftruncate(fd, 0) < 0) {
         saved_errno = errno;
         close(fd);
         errno = saved_errno;
