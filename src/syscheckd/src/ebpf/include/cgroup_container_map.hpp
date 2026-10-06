@@ -355,10 +355,20 @@ class CgroupContainerMap
 
                 if (event.kind == CgroupDeltaEvent::Kind::removed || event.cgroup_id == 0)
                 {
-                    /* No inode any more — deleted, or stopped. Withdraw what it
-                     * had. Preferring `previous` over the event's own value
-                     * because ours is what the kernel was actually told; they
-                     * agree on a removal and only ours is set on a stop. */
+                    /* NO VALID KEY any more — deleted, or stopped. Zero is the
+                     * test because zero is what every producer sends for "no
+                     * key", and that stays true whichever hierarchy the host is
+                     * keyed by: on a host with no unified hierarchy the number
+                     * is the chosen v1 controller's cgroup inode rather than the
+                     * helper's, but it is still a cgroup inode and still zero
+                     * when there is none. This map is deliberately key-agnostic
+                     * — it compares opaque integers — which is why supporting a
+                     * second hierarchy needed no change here.
+                     *
+                     * Withdraw what it had, preferring `previous` over the
+                     * event's own value because ours is what the kernel was
+                     * actually told; they agree on a removal and only ours is
+                     * set on a stop. */
                     const auto withdraw = (previous != 0) ? previous : event.cgroup_id;
 
                     if (withdraw != 0)
