@@ -96,6 +96,13 @@ public:
      */
     void decryptAES256(const std::vector<char>& input, std::string& output)
     {
+        if (input.size() < CIPHER_KEY_SIZE + CIPHER_IV_SIZE)
+        {
+            // Too short to even hold a key and IV, let alone any ciphertext: input.size() -
+            // CIPHER_KEY_SIZE - CIPHER_IV_SIZE below would underflow to a huge size_t.
+            throw std::runtime_error("Input too short to contain a key, IV and ciphertext");
+        }
+
         EVP_CIPHER_CTX* ctx;
 
         int len;
