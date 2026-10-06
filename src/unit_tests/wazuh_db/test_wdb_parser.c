@@ -148,6 +148,32 @@ void test_wdb_parse_global_backup_create_success(void **state) {
     os_free(query);
 }
 
+/* Removed commands */
+
+void test_wdb_parse_global_sleep_removed(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char *query = NULL;
+
+    os_strdup("global sleep 3600000", query);
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sleep 3600000");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid DB query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: sleep");
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    result = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'sleep'");
+    assert_int_equal(result, OS_INVALID);
+
+    os_free(query);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -157,6 +183,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_action, test_setup_global, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_create_failed, test_setup_global, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_create_success, test_setup_global, test_teardown),
+        /* Removed commands */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sleep_removed, test_setup_global, test_teardown),
 
     };
 
