@@ -242,11 +242,60 @@ hierarchy where it was thought to be impossible.
   per-architecture prebuilt objects — and the build environment this branch is developed in has
   neither clang, nor bpftool, nor a vendored `vmlinux.h` (see `ebpf_provider/CMakeLists.txt`). This
   is the real reason it is not already done, and it is a scheduling problem, not a design one.
-- **One assumption is unverified.** That `subsys[memory_cgrp_id]->cgroup->kn->id` equals the
-  `stat()` inode of that controller's directory is expected by the same kernfs mechanism that makes
-  it true on v2 — where it is not assumed but **measured** (`rt_engine_drops_test`, observed 28126
-  and 28206, pinned since `9e884232c5`). It has not been measured on a v1 host, and that
-  measurement is the first thing this route needs, not the last.
+- **The assumption was measured on 2026-10-06, and mostly holds. See §20.4.3.**
+
+### 20.4.3 Measured: the walk works, and one trap came with it
+
+A working CO-RE prototype was built and run on `wazuh_manager` (kernel 6.8) on 2026-10-06 — the
+program WP6a would need, not a simulation of it. Against a host process in a nested cgroup
+(`/user.slice/user-1000.slice/session-608.scope`):
+
+| | Value |
+| --- | ---: |
+| `stat()` of the cgroup directory | **73645** |
+| `bpf_get_current_cgroup_id()` | **73645** |
+| `subsys[4]->cgroup->kn->id` (the CO-RE walk) | **73645** |
+| `bpf_core_enum_value(enum cgroup_subsys_id, memory_cgrp_id)` | 4 |
+| `memory`'s index counted from `/proc/cgroups` | 4 |
+
+Four things are settled by that run:
+
+1. **The walk yields the kernfs id, and it equals `stat()`** — the assumption this route rested on.
+2. **A variable index works.** `bpf_core_field_offset(struct css_set, subsys)` plus manual pointer
+   arithmetic, with the index bounds-checked, is accepted by the verifier and returns the right
+   object. This was the part that could not be taken on trust, because `BPF_CORE_READ(cset,
+   subsys[i])` requires a constant.
+3. **Both index-resolution routes agree**, which is the cross-check WP6a specifies — and they agreed
+   on a host where the answer happens to be the documented 4, so the mechanism is confirmed even
+   though the value is unsurprising.
+4. **`bpf_core_enum_value_exists()` guards cleanly**, so a kernel without the enumerator degrades
+   instead of failing to load.
+
+**And a trap that the v2 run exposed by accident.** Reading a *second* subsystem on the same task
+returned a different cgroup:
+
+```
+subsys[4]  (memory) -> 73645     the task's own cgroup
+subsys[0]  (cpuset) -> 217       an ANCESTOR
+```
+
+On cgroup v2 a controller is only enabled in cgroups whose ancestors enabled it through
+`cgroup.subtree_control`, so `css_set.subsys[i]` points at the nearest ancestor where controller `i`
+is enabled — **not necessarily the task's own cgroup**. Had `memory` not been enabled on the
+container's cgroup, the walk would have returned an ancestor's inode: a real, plausible number for
+the wrong cgroup, attributing a container's events to its parent slice.
+
+This does not affect the plan, because on a unified host the engine uses the helper and never takes
+this path. It does mean **the walk must be gated on the host being legacy**, where it cannot happen:
+every task is in exactly one cgroup per mounted v1 hierarchy, which is also precisely the cgroup
+`/proc/<pid>/cgroup` names and the resolver stats. WP6a must assert that gate rather than leave it
+implied.
+
+**What a v2 host cannot settle**, and what still needs a legacy boot (§18.6,
+`systemd.unified_cgroup_hierarchy=0`): that on v1 `subsys[idx]->cgroup` is the task's cgroup in
+*that controller's* hierarchy and its id matches `stat()` of `/sys/fs/cgroup/<controller>/<path>`.
+The `subsys[0]` result above makes this likelier rather than less — the entries are clearly
+per-controller and not a single shared pointer — but "likelier" is not "measured".
 
 ### 20.4.2 The fallback, if the BPF work cannot be scheduled
 
