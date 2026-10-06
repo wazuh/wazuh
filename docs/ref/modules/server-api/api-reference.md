@@ -83,7 +83,7 @@ curl -k -X GET "https://localhost:55000/?pretty=true" \
   "data": {
     "title": "Wazuh API REST",
     "api_version": "5.0.0",
-    "revision": "rc1",
+    "revision": "rc2",
     "license_name": "GPL 2.0",
     "license_url": "https://github.com/wazuh/wazuh/blob/v5.0.0-rc1/LICENSE",
     "hostname": "wazuh-manager",
