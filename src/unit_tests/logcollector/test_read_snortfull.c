@@ -63,12 +63,14 @@ void __wrap_OS_SHA1_Stream(EVP_MD_CTX *c, os_sha1 output, char *buf) {
 }
 
 int __wrap_w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget *log_target, char queue_mq) {
+    check_expected(str);
     check_expected(size);
     return mock_type(int);
 }
 
-bool __wrap_check_ignore_and_restrict(const char *ignore_regex, const char *restrict_regex, const char *str) {
-    return mock_type(bool);
+int __wrap_check_ignore_and_restrict(const char *ignore_regex, const char *restrict_regex, const char *str) {
+    check_expected(str);
+    return mock_type(int);
 }
 
 /* Helpers */
@@ -116,6 +118,24 @@ static void expect_line(char *line) {
     expect_function_call(__wrap_OS_SHA1_Stream);
 }
 
+/* A NULL msg skips the content check, for records too large to spell out. */
+static void expect_queued(const char *msg, size_t size) {
+    if (msg) {
+        expect_string(__wrap_check_ignore_and_restrict, str, msg);
+    } else {
+        expect_any(__wrap_check_ignore_and_restrict, str);
+    }
+    will_return(__wrap_check_ignore_and_restrict, false);
+
+    if (msg) {
+        expect_string(__wrap_w_msg_hash_queues_push, str, msg);
+    } else {
+        expect_any(__wrap_w_msg_hash_queues_push, str);
+    }
+    expect_value(__wrap_w_msg_hash_queues_push, size, size);
+    will_return(__wrap_w_msg_hash_queues_push, 0);
+}
+
 static void expect_prologue(void) {
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) 0);
@@ -140,7 +160,7 @@ static void expect_epilogue(void) {
 
 /**
  * Test: well-formed three-line record.
- * Verifies the normal path is unaffected: the record is composed and pushed.
+ * The whole record is queued as one message, its parts separated by a space.
  */
 void test_read_snortfull_complete_record(void **state) {
     logreader lf = {0};
@@ -158,9 +178,9 @@ void test_read_snortfull_complete_record(void **state) {
     expect_line(line2);
     expect_line(line3);
 
-    will_return(__wrap_check_ignore_and_restrict, false);
-    expect_value(__wrap_w_msg_hash_queues_push, size, strlen(line3));
-    will_return(__wrap_w_msg_hash_queues_push, 0);
+    const char *msg = "[**] [1:1000001:0] Test alert [**] [Classification: Attempted Information Leak] [Priority: 2] "
+                      "10.0.0.1:1234 -> 10.0.0.2:80";
+    expect_queued(msg, strlen(msg) + 1);
 
     expect_epilogue();
 
@@ -188,9 +208,7 @@ void test_read_snortfull_preprocessor_full_buffer(void **state) {
     expect_line(line1);
     expect_line(line2);
 
-    will_return(__wrap_check_ignore_and_restrict, false);
-    expect_value(__wrap_w_msg_hash_queues_push, size, strlen(line2));
-    will_return(__wrap_w_msg_hash_queues_push, 0);
+    expect_queued(NULL, OS_MAX_LOG_SIZE);
 
     expect_epilogue();
 
@@ -222,9 +240,7 @@ void test_read_snortfull_third_line_full_buffer(void **state) {
     expect_line(line2);
     expect_line(line3);
 
-    will_return(__wrap_check_ignore_and_restrict, false);
-    expect_value(__wrap_w_msg_hash_queues_push, size, strlen(line3));
-    will_return(__wrap_w_msg_hash_queues_push, 0);
+    expect_queued(NULL, OS_MAX_LOG_SIZE);
 
     expect_epilogue();
 
@@ -239,9 +255,7 @@ void test_read_snortfull_third_line_full_buffer(void **state) {
 
 /**
  * Test: preprocessor record shorter than its own date line.
- * The queued message must be sized from the line that is actually queued, so
- * that the copy carries its terminator regardless of how long the composed
- * record is.
+ * The queued message is the composed record, sized with its terminator.
  */
 void test_read_snortfull_preprocessor_message_length(void **state) {
     logreader lf = {0};
@@ -257,9 +271,8 @@ void test_read_snortfull_preprocessor_message_length(void **state) {
     expect_line(line1);
     expect_line(line2);
 
-    will_return(__wrap_check_ignore_and_restrict, false);
-    expect_value(__wrap_w_msg_hash_queues_push, size, strlen(line2));
-    will_return(__wrap_w_msg_hash_queues_push, 0);
+    const char *msg = "[**] [ [Classification: Preprocessor] [Priority: 3] abcde";
+    expect_queued(msg, strlen(msg) + 1);
 
     expect_epilogue();
 
@@ -268,6 +281,105 @@ void test_read_snortfull_preprocessor_message_length(void **state) {
     assert_int_equal(rc, 0);
 
     free(line2);
+}
+
+/**
+ * Test: record as written by Snort, with a trailing space after the priority.
+ * No extra separator is added, so the address follows a single space.
+ */
+void test_read_snortfull_snort_trailing_space(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char line1[] = "[**] [1:1054:7] WEB-MISC weblogic/tomcat .jsp view source attempt [**]\n";
+    char line2[] = "[Classification: Web Application Attack] [Priority: 1] \n";
+    char line3[] = "10/06-08:25:55.575491 10.4.12.26:43832 -> 10.4.10.231:8080\n";
+    char line4[] = "TCP TTL:64 TOS:0x0 ID:2148 IpLen:20 DgmLen:139 DF\n";
+    char line5[] = "\n";
+
+    expect_prologue();
+
+    expect_line(line1);
+    expect_line(line2);
+    expect_line(line3);
+
+    const char *msg = "[**] [1:1054:7] WEB-MISC weblogic/tomcat .jsp view source attempt [**] "
+                      "[Classification: Web Application Attack] [Priority: 1] 10.4.12.26:43832 -> 10.4.10.231:8080";
+    expect_queued(msg, strlen(msg) + 1);
+
+    expect_line(line4);
+    expect_line(line5);
+
+    expect_epilogue();
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
+/**
+ * Test: record without classification.
+ * The preprocessor label stands in for the priority line.
+ */
+void test_read_snortfull_priority_only(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char line1[] = "[**] [1:1000003:1] no classtype test [**]\n";
+    char line2[] = "[Priority: 0] \n";
+    char line3[] = "10/06-08:25:55.601399 10.4.12.26:43844 -> 10.4.10.231:8080\n";
+
+    expect_prologue();
+
+    expect_line(line1);
+    expect_line(line2);
+    expect_line(line3);
+
+    const char *msg = "[**] [1:1000003:1] no classtype test [**] [Classification: Preprocessor] [Priority: 3] "
+                      "10.4.12.26:43844 -> 10.4.10.231:8080";
+    expect_queued(msg, strlen(msg) + 1);
+
+    expect_epilogue();
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
+/**
+ * Test: record matched by <ignore>.
+ * The filter is checked against the whole record and nothing is queued.
+ */
+void test_read_snortfull_ignored_record(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char line1[] = "[**] [1:1000001:1] ICMP PING test [**]\n";
+    char line2[] = "[Classification: Misc activity] [Priority: 3] \n";
+    char line3[] = "10/06-08:25:55.608163 10.4.12.26 -> 10.4.10.231\n";
+
+    expect_prologue();
+
+    expect_line(line1);
+    expect_line(line2);
+    expect_line(line3);
+
+    expect_string(__wrap_check_ignore_and_restrict, str,
+                  "[**] [1:1000001:1] ICMP PING test [**] [Classification: Misc activity] [Priority: 3] "
+                  "10.4.12.26 -> 10.4.10.231");
+    will_return(__wrap_check_ignore_and_restrict, true);
+
+    expect_epilogue();
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
 }
 
 /**
@@ -293,9 +405,7 @@ void test_read_snortfull_consecutive_full_records(void **state) {
         expect_line(line2);
         expect_line(line3);
 
-        will_return(__wrap_check_ignore_and_restrict, false);
-        expect_value(__wrap_w_msg_hash_queues_push, size, strlen(line3));
-        will_return(__wrap_w_msg_hash_queues_push, 0);
+        expect_queued(NULL, OS_MAX_LOG_SIZE);
     }
 
     expect_epilogue();
@@ -316,6 +426,9 @@ int main(void) {
         cmocka_unit_test(test_read_snortfull_third_line_full_buffer),
         cmocka_unit_test(test_read_snortfull_preprocessor_message_length),
         cmocka_unit_test(test_read_snortfull_consecutive_full_records),
+        cmocka_unit_test(test_read_snortfull_snort_trailing_space),
+        cmocka_unit_test(test_read_snortfull_priority_only),
+        cmocka_unit_test(test_read_snortfull_ignored_record),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
