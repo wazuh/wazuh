@@ -514,7 +514,9 @@ def main():
     parser.add_argument("--all", action="store_true", help="Run every success/failure scenario.")
     parser.add_argument("--simulate", type=int, metavar="N",
                         help="Simulate N enrolled agents downloading concurrently.")
-    parser.add_argument("--repeat", type=int, default=1, help="Downloads per simulated agent.")
+    parser.add_argument("--repeat", type=int, default=1,
+                        help="Downloads per simulated agent, all in flight at once. Above the manager's "
+                             "remoted.max_requests_per_agent (6 by default) the excess is answered 503 by design.")
     parser.add_argument("--selectors", default="default",
                         help="Semicolon-separated resource_ids to hand the simulated agents, "
                              "round-robin (';' because ',' already separates a multigroup). "

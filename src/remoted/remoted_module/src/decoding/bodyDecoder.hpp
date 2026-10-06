@@ -65,15 +65,14 @@ namespace remoted::decoding
          *                      all config keeps entering through the single C-ABI door and this stays
          *                      testable with a plain bool.
          * @param maxDecodedSize 0 (default) -> no cap beyond whatever the shared in-flight byte budget
-         *                      allows -- what every AuthGateway route uses, since each one already
-         *                      requires a verified credential before decode() ever runs, closing the
-         *                      amplification lever this cap exists for. A nonzero value additionally
-         *                      refuses to grow the decoded output past it, regardless of how much
-         *                      budget is free -- for a route (namely /enroll's Open mode, which has NO
-         *                      credential check by design) where an unauthenticated peer can reach
-         *                      decode() and a small, highly-compressed frame could otherwise hold a
-         *                      large chunk of the SHARED budget (the same one /stateless and friends
-         *                      draw from) for as long as decompression takes.
+         *                      allows. A nonzero value additionally refuses to grow the decoded
+         *                      output past it, regardless of how much budget is free, so a small,
+         *                      highly-compressed frame cannot hold a large chunk of the SHARED budget
+         *                      (the same one every route draws from). Every production instance sets
+         *                      one: the AuthGateway routes use 'remoted.auth_max_decoded_body_size' (a
+         *                      verified credential keeps strangers out, but not an enrolled agent), and
+         *                      /enroll -- whose Open mode has NO credential check by design -- a far
+         *                      tighter kMaxEnrollBodySize.
          */
         explicit BodyDecoder(remoted::http::IHttpServer& server, bool enabled, std::size_t maxDecodedSize = 0);
 

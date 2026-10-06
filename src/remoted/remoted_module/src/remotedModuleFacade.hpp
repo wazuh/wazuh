@@ -131,6 +131,10 @@ constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
 // remoted_module_config_t::max_deferred_requests <= 0).
 constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {128};
 
+// Default cap on requests ONE authenticated agent may have open (used when the caller leaves
+// remoted_module_config_t::max_requests_per_agent <= 0). An honest agent peaks at 5.
+constexpr int REMOTED_MODULE_DEFAULT_MAX_REQUESTS_PER_AGENT {6};
+
 // Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status + GET /tls). RELATIVE on
 // purpose: remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
 // Named "-admin" (not "-http"/"-stats"): remoted's HTTP identity is the public listener, this is
@@ -453,15 +457,28 @@ private:
         // the auth layer stays about authentication only. Built ONCE and shared (BodyDecoder is
         // stateless -- see its own class comment) across every AuthGateway route, so they all get
         // the same policy and none can accidentally opt out or drift out of sync with each other.
+        //
+        // Capped at 'remoted.auth_max_decoded_body_size'. The credential gate keeps strangers away
+        // from the decoder, but not an enrolled agent: uncapped, one agent's zstd frame of a few KB
+        // could reserve nearly the whole in-flight budget and get every other agent a 503/413.
         const auto authConfig = remoted::auth::buildAuthConfig(m_config);
         const auto bodyDecoder = std::make_shared<const remoted::decoding::BodyDecoder>(
-            *m_httpServer, m_config.http_content_encoding_enabled);
-        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(authConfig, m_keystore, bodyDecoder);
+            *m_httpServer, m_config.http_content_encoding_enabled, authConfig.maxDecodedBodySize);
+        // Per-agent open-request cap: every other capacity limit is fleet-wide, so without it one
+        // agent could hold all of them. Owned by the routes (each captures it), not by the facade.
+        const auto maxRequestsPerAgent = m_config.max_requests_per_agent > 0
+                                             ? static_cast<std::size_t>(m_config.max_requests_per_agent)
+                                             : static_cast<std::size_t>(REMOTED_MODULE_DEFAULT_MAX_REQUESTS_PER_AGENT);
+        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(
+            authConfig,
+            m_keystore,
+            bodyDecoder,
+            std::make_shared<remoted::endpoints::AgentRequestLimiter>(maxRequestsPerAgent));
 
         // /enroll gets its OWN BodyDecoder instance, not the shared one above: every AuthGateway
-        // route requires a verified credential before decode() ever runs, which closes the
-        // amplification lever a decoded-size cap exists for -- but /enroll's Open mode has NO
-        // credential check at all by design, so an unauthenticated peer CAN reach decode() there.
+        // route requires a verified credential before decode() ever runs -- but /enroll's Open mode
+        // has NO credential check at all by design, so an unauthenticated peer CAN reach decode()
+        // there, and it gets a far tighter cap than an enrolled agent does.
         // Capped at kMaxEnrollBodySize (the same cap parseAndValidateBody() applies post-decode,
         // enrollmentEndpoint.hpp) so a small, highly-compressed frame can't hold much of the
         // shared in-flight byte budget (the same one /stateless and friends draw from) even

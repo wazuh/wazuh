@@ -12,6 +12,7 @@
 #ifndef _REMOTED_ENDPOINTS_AUTH_GATEWAY_HPP
 #define _REMOTED_ENDPOINTS_AUTH_GATEWAY_HPP
 
+#include "agentRequestLimiter.hpp"     // AgentRequestLimiter
 #include "auth/authMiddleware.hpp"     // remoted::auth::AuthMiddleware
 #include "auth/authTypes.hpp"          // remoted::auth::AuthConfig
 #include "auth/iAgentKeystore.hpp"     // remoted::auth::IAgentKeystore
@@ -34,7 +35,8 @@ namespace remoted::endpoints
      * IHttpServer, a raw async route whose worker-thread body:
      *   1. runs the full validation (protocol-version + `Bearer` wazuh-agent+jwt token:
      *      key lookup + address rule + signature/claims/time policy -- header-only, the
-     *      body is not part of authentication) and the authenticated-body size cap,
+     *      body is not part of authentication), the authenticated-body size cap and the
+     *      per-agent request cap (AgentRequestLimiter, when one is given),
      *   2. on failure, answers with publicErrorFor()'s status/message,
      *   3. on success, runs the injected IBodyDecoder over the verified body and
      *      answers with publicErrorFor() if it rejects, then
@@ -62,10 +64,13 @@ namespace remoted::endpoints
          *                    whole `Content-Encoding` policy -- including deciding that an absent
          *                    header means "pass the body through untouched". Making it optional would
          *                    mean a second copy of that policy here, free to drift from the real one.
+         * @param agentLimiter Per-agent open-request cap, checked after authentication and before
+         *                    decoding. Null means no per-agent cap -- the facade always passes one.
          */
         AuthGateway(remoted::auth::AuthConfig config,
                     std::shared_ptr<remoted::auth::IAgentKeystore> keystore,
-                    std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder);
+                    std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder,
+                    std::shared_ptr<AgentRequestLimiter> agentLimiter = nullptr);
 
         /**
          * @brief Register an authenticated endpoint. Call before IHttpServer::start().
@@ -87,6 +92,7 @@ namespace remoted::endpoints
     private:
         std::shared_ptr<remoted::auth::AuthMiddleware> m_middleware;
         std::shared_ptr<const remoted::decoding::IBodyDecoder> m_bodyDecoder; ///< Post-auth body decoding; never null.
+        std::shared_ptr<AgentRequestLimiter> m_agentLimiter; ///< Per-agent open-request cap; may be null.
     };
 
 } // namespace remoted::endpoints

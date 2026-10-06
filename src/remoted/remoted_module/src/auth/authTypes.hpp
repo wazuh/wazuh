@@ -175,6 +175,11 @@ namespace remoted::auth
                                     ///< operator revoked. Like the two above it is a 401 whose class names
                                     ///< it on the wire (`token_revoked`) and counts in its own
                                     ///< remoted.auth.reject.token_* cell.
+        AgentBusy,                  ///< Raised ONLY by the AuthGateway, after authentication: the
+                                    ///< verified agent already has `remoted.max_requests_per_agent`
+                                    ///< requests open (AgentRequestLimiter). A plain 503 like every
+                                    ///< other capacity shed -- not a credential failure, so no class
+                                    ///< and no challenge.
     };
 
     /**
@@ -268,6 +273,9 @@ namespace remoted::auth
         /// / `jwt_clock_skew`, see buildAuthConfig()).
         jwt_profile::v1::TimePolicy timePolicy {};
         std::size_t maxBodySize = 5 * 1024 * 1024; ///< Hard cap on the authenticated body size (5 MiB).
+        /// Hard cap on that body once `Content-Encoding: zstd` is decoded (32 MiB). Larger than
+        /// maxBodySize on purpose: the agent sizes its batches before compressing them.
+        std::size_t maxDecodedBodySize = 32 * 1024 * 1024;
     };
 
     /**

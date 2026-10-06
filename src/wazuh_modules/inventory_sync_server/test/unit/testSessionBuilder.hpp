@@ -16,6 +16,7 @@
 
 #include <flatbuffers/flatbuffers.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -176,6 +177,98 @@ namespace invsync::test
         const auto payload = fb::CreateChecksumModuleDirect(
             builder, index.empty() ? nullptr : index.c_str(), checksum.empty() ? nullptr : checksum.c_str());
         return finishSession(builder, buildStart(builder, spec), fb::SessionPayload_ChecksumModule, payload.Union());
+    }
+
+    /// Which vector of a session the aliasing builder below repeats one offset into.
+    enum class AliasedVector
+    {
+        Values,
+        Contexts,
+        CleanItems,
+        Groups,
+        Indices
+    };
+
+    /// A session whose `target` vector holds `copies` entries that are ALL the same offset -- one
+    /// table or string, written once and referenced `copies` times. Legal to the FlatBuffers
+    /// Verifier, refused by the validator's reachable-bytes budget (D25). `payload` is the one
+    /// object's size knob: the DataValue/DataContext data, the clean's index, or the string.
+    inline std::string
+    buildAliasedSession(const SessionSpec& spec, AliasedVector target, std::size_t copies, const std::string& payload)
+    {
+        flatbuffers::FlatBufferBuilder builder;
+        const std::vector<std::int8_t> bytes {payload.begin(), payload.end()};
+        const bool aliasesStart = target == AliasedVector::Groups || target == AliasedVector::Indices;
+
+        flatbuffers::Offset<void> payloadOffset;
+        fb::SessionPayload payloadType {fb::SessionPayload_SyncData};
+        if (target == AliasedVector::CleanItems)
+        {
+            const std::vector<flatbuffers::Offset<fb::DataClean>> items(
+                copies, fb::CreateDataCleanDirect(builder, payload.c_str()));
+            payloadOffset = fb::CreateCleansDirect(builder, &items).Union();
+            payloadType = fb::SessionPayload_Cleans;
+        }
+        else
+        {
+            const ValueSpec honest;
+            const std::vector<std::int8_t> honestBytes {honest.data.begin(), honest.data.end()};
+            std::vector<flatbuffers::Offset<fb::DataValue>> values;
+            std::vector<flatbuffers::Offset<fb::DataContext>> contexts;
+            if (target == AliasedVector::Values)
+            {
+                values.assign(copies,
+                              fb::CreateDataValueDirect(
+                                  builder, fb::Operation_Upsert, honest.id.c_str(), honest.index.c_str(), 0, &bytes));
+            }
+            else
+            {
+                values.push_back(fb::CreateDataValueDirect(
+                    builder, fb::Operation_Upsert, honest.id.c_str(), honest.index.c_str(), 0, &honestBytes));
+            }
+            if (target == AliasedVector::Contexts)
+            {
+                const ContextSpec context;
+                contexts.assign(
+                    copies, fb::CreateDataContextDirect(builder, context.id.c_str(), context.index.c_str(), &bytes));
+            }
+            payloadOffset = fb::CreateSyncDataDirect(builder, &values, contexts.empty() ? nullptr : &contexts).Union();
+        }
+
+        if (!aliasesStart)
+        {
+            return finishSession(builder, buildStart(builder, spec), payloadType, payloadOffset);
+        }
+
+        // buildStart() writes one string per list entry, so the aliased list is assembled here: one
+        // string referenced `copies` times, next to the spec's other list written normally.
+        const std::vector<flatbuffers::Offset<flatbuffers::String>> aliased(copies, builder.CreateString(payload));
+        std::vector<flatbuffers::Offset<flatbuffers::String>> other;
+        for (const auto& value : target == AliasedVector::Groups ? spec.indices : spec.groups)
+        {
+            other.push_back(builder.CreateString(value));
+        }
+        const auto& groups = target == AliasedVector::Groups ? aliased : other;
+        const auto& indices = target == AliasedVector::Indices ? aliased : other;
+        const auto start = fb::CreateStartDirect(builder,
+                                                 spec.moduleName.c_str(),
+                                                 spec.mode,
+                                                 indices.empty() ? nullptr : &indices,
+                                                 spec.option,
+                                                 spec.architecture.c_str(),
+                                                 spec.hostname.c_str(),
+                                                 spec.osname.c_str(),
+                                                 spec.osplatform.c_str(),
+                                                 spec.ostype.c_str(),
+                                                 spec.osversion.c_str(),
+                                                 spec.agentVersion.c_str(),
+                                                 spec.agentName.c_str(),
+                                                 spec.agentId.c_str(),
+                                                 groups.empty() ? nullptr : &groups,
+                                                 spec.globalVersion,
+                                                 spec.clusterName.c_str(),
+                                                 spec.feedOffset);
+        return finishSession(builder, start, payloadType, payloadOffset);
     }
 
     /// Message{FullSession{start}} with NO payload (the Metadata*/Group* shape).

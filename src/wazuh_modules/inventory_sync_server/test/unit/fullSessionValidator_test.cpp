@@ -15,9 +15,12 @@
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <variant>
+#include <vector>
 
 using invsync::sync::ValidatedSession;
 using invsync::sync::validateFullSession;
@@ -244,4 +247,116 @@ TEST(FullSessionValidatorTest, AValidatedSessionCarriesThePaddedIdAndTheStartFie
     EXPECT_EQ(2U, session.groups.size());
     ASSERT_NE(nullptr, session.session);
     EXPECT_EQ(invsync::schema::fb::SessionPayload_SyncData, session.payloadType);
+}
+
+TEST(FullSessionValidatorTest, StartGroupsOverTheMultigroupLimitsAre400)
+{
+    SessionSpec tooMany;
+    tooMany.groups.clear();
+    for (std::size_t i = 0; i <= invsync::sync::MAX_START_GROUPS; ++i)
+    {
+        tooMany.groups.push_back("group-" + std::to_string(i));
+    }
+    const auto many = invsync::test::buildSyncDataSession(tooMany, {invsync::test::ValueSpec {}});
+    EXPECT_EQ(400, failureOf(validateFullSession(many, "1", CLUSTER)).status);
+
+    SessionSpec tooLong;
+    tooLong.groups = {std::string(invsync::sync::MAX_START_GROUP_NAME_BYTES + 1, 'g')};
+    const auto longName = invsync::test::buildSyncDataSession(tooLong, {invsync::test::ValueSpec {}});
+    EXPECT_EQ(400, failureOf(validateFullSession(longName, "1", CLUSTER)).status);
+}
+
+TEST(FullSessionValidatorTest, StartIndicesOverTheirLimitsAre400)
+{
+    SessionSpec tooMany;
+    tooMany.indices.assign(invsync::sync::MAX_START_INDICES + 1, "wazuh-states-inventory-packages");
+    const auto many = invsync::test::buildSyncDataSession(tooMany, {invsync::test::ValueSpec {}});
+    EXPECT_EQ(400, failureOf(validateFullSession(many, "1", CLUSTER)).status);
+
+    SessionSpec tooLong;
+    tooLong.indices = {std::string(invsync::sync::MAX_START_INDEX_NAME_BYTES + 1, 'i')};
+    const auto longName = invsync::test::buildSyncDataSession(tooLong, {invsync::test::ValueSpec {}});
+    EXPECT_EQ(400, failureOf(validateFullSession(longName, "1", CLUSTER)).status);
+}
+
+TEST(FullSessionValidatorTest, StartListsAtTheirLimitsValidate)
+{
+    // Both caps are inclusive: an honest agent in 128 groups with maximal names must still sync.
+    SessionSpec spec;
+    spec.groups.clear();
+    for (std::size_t i = 0; i < invsync::sync::MAX_START_GROUPS; ++i)
+    {
+        auto name = std::to_string(i);
+        name.resize(invsync::sync::MAX_START_GROUP_NAME_BYTES, 'g');
+        spec.groups.push_back(std::move(name));
+    }
+    spec.indices.assign(invsync::sync::MAX_START_INDICES, std::string(invsync::sync::MAX_START_INDEX_NAME_BYTES, 'i'));
+    const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
+
+    const auto result = validateFullSession(body, "1", CLUSTER);
+    const auto& session = sessionOf(result);
+    EXPECT_EQ(invsync::sync::MAX_START_GROUPS, session.groups.size());
+    EXPECT_EQ(invsync::sync::MAX_START_INDICES, session.indices.size());
+}
+
+TEST(FullSessionValidatorTest, VectorEntriesAliasingOneObjectAre400)
+{
+    using invsync::test::AliasedVector;
+
+    // D25: every vector the validator walks, each holding ONE object referenced many times. The
+    // FlatBuffers Verifier accepts all of them; the reachable-bytes budget must not. The Start lists
+    // stay within D26's caps so it is the budget, not the caps, that refuses them.
+    const std::string kibibyte(1024, 'x');
+    const std::string groupName(invsync::sync::MAX_START_GROUP_NAME_BYTES, 'g');
+    const std::tuple<AliasedVector, std::size_t, std::string, const char*> cases[] {
+        {AliasedVector::Values, 1000, R"({"a":")" + kibibyte + R"("})", "values"},
+        {AliasedVector::Contexts, 1000, R"({"a":")" + kibibyte + R"("})", "contexts"},
+        {AliasedVector::CleanItems, 1000, "wazuh-states-inventory-packages", "clean items"},
+        {AliasedVector::Groups, invsync::sync::MAX_START_GROUPS, groupName, "groups"},
+        {AliasedVector::Indices, invsync::sync::MAX_START_INDICES, "wazuh-states-inventory-packages", "indices"},
+    };
+    for (const auto& [target, copies, payload, name] : cases)
+    {
+        const auto body = invsync::test::buildAliasedSession(SessionSpec {}, target, copies, payload);
+        const auto result = validateFullSession(body, "1", CLUSTER);
+        const auto& failure = failureOf(result);
+        EXPECT_EQ(400, failure.status) << name;
+        EXPECT_NE(std::string::npos, failure.reason.find("more data than it carries")) << name;
+    }
+}
+
+TEST(FullSessionValidatorTest, AnAliasedVectorOfOneEntryIsJustAnHonestMessage)
+{
+    // The budget refuses sharing by its effect, not by its shape: a single reference is an
+    // ordinary message, so the builder used above is not what is being rejected.
+    using invsync::test::AliasedVector;
+    const auto body = invsync::test::buildAliasedSession(SessionSpec {}, AliasedVector::Values, 1, R"({"a":1})");
+    EXPECT_TRUE(std::holds_alternative<ValidatedSession>(validateFullSession(body, "1", CLUSTER)));
+}
+
+TEST(FullSessionValidatorTest, ManyDistinctSmallObjectsStayWithinTheBudget)
+{
+    // The budget's charges are LOWER bounds of what each object occupies, so a message that shares
+    // nothing always fits its own size -- however many objects it has and however small they are,
+    // including empty strings and absent data.
+    std::vector<invsync::test::ValueSpec> values(5000);
+    for (std::size_t i = 0; i < values.size(); ++i)
+    {
+        values[i].id = std::to_string(i);
+        values[i].data = i % 2 == 0 ? std::string {} : std::string {"{}"};
+        values[i].operation =
+            i % 2 == 0 ? invsync::schema::fb::Operation_Delete : invsync::schema::fb::Operation_Upsert;
+    }
+    std::vector<invsync::test::ContextSpec> contexts(5000);
+    for (std::size_t i = 0; i < contexts.size(); ++i)
+    {
+        contexts[i].id = std::to_string(i);
+        contexts[i].data.clear();
+    }
+    const auto sync = invsync::test::buildSyncDataSession(SessionSpec {}, values, contexts);
+    EXPECT_TRUE(std::holds_alternative<ValidatedSession>(validateFullSession(sync, "1", CLUSTER)));
+
+    const std::vector<std::string> indices(5000, "wazuh-states-inventory-packages");
+    const auto cleans = invsync::test::buildCleansSession(SessionSpec {}, indices);
+    EXPECT_TRUE(std::holds_alternative<ValidatedSession>(validateFullSession(cleans, "1", CLUSTER)));
 }

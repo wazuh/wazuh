@@ -80,6 +80,7 @@ namespace remoted::auth
             case AuthError::TokenUnknown: return "token_unknown";
             case AuthError::TokenExpired: return "token_expired";
             case AuthError::TokenRevoked: return "token_revoked";
+            case AuthError::AgentBusy: return "agent_busy";
         }
         return "unknown";
     }
@@ -129,6 +130,9 @@ namespace remoted::auth
             case AuthError::BodyTooLarge: return {413, "Request payload is too large", nullptr, nullptr};
             case AuthError::MalformedContentEncoding: return {400, "Malformed compressed body", nullptr, nullptr};
             case AuthError::UnsupportedContentEncoding: return {415, "Unsupported Content-Encoding", nullptr, nullptr};
+            // The same body every other capacity shed answers with (endpoints::serviceUnavailable()):
+            // the agent retries, and nothing on the wire tells it which limit fired.
+            case AuthError::AgentBusy: return {503, "Service unavailable", nullptr, nullptr};
 
             // No usable credential was presented: nothing was judged.
             case AuthError::MissingAuthorization:

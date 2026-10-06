@@ -80,9 +80,11 @@ namespace remoted::endpoints
 
     AuthGateway::AuthGateway(remoted::auth::AuthConfig config,
                              std::shared_ptr<remoted::auth::IAgentKeystore> keystore,
-                             std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder)
+                             std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder,
+                             std::shared_ptr<AgentRequestLimiter> agentLimiter)
         : m_middleware {std::make_shared<remoted::auth::AuthMiddleware>(config, std::move(keystore))}
         , m_bodyDecoder {std::move(bodyDecoder)}
+        , m_agentLimiter {std::move(agentLimiter)}
     {
     }
 
@@ -97,12 +99,16 @@ namespace remoted::endpoints
         server.addRoute(
             method,
             path,
-            // Both dependencies are captured as their own shared_ptr copy (a refcount bump), not by
+            // Every dependency is captured as its own shared_ptr copy (a refcount bump), not by
             // reference to the member: the lambda lives in the server's route table and runs per
             // request, long after this call returns. Copying keeps each registered route
             // self-contained instead of tying its validity to this gateway still being alive.
-            [middleware = m_middleware, methodStr, bodyDecoder = m_bodyDecoder, handler = std::move(handler)](
-                std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> responder)
+            [middleware = m_middleware,
+             methodStr,
+             bodyDecoder = m_bodyDecoder,
+             agentLimiter = m_agentLimiter,
+             handler = std::move(handler)](std::shared_ptr<const HttpRequest> request,
+                                           std::shared_ptr<IHttpResponder> responder)
             {
                 // Everything below -- authentication AND the endpoint handler -- runs inside one
                 // try/catch. authenticate() calls into the keystore and OpenSSL (HMAC), either of
@@ -146,6 +152,23 @@ namespace remoted::endpoints
                         return;
                     }
 
+                    auto& agentId = std::get<remoted::auth::VerifiedAgent>(verified).agentId;
+
+                    // The per-agent cap, BEFORE decoding: decoding is where one request can grow
+                    // to the decoded-body cap, so an agent over its share must not get that far.
+                    // From here on the responder carries the slot and gives it back when the reply
+                    // leaves -- every answer below, the handler's included, goes through it.
+                    if (agentLimiter)
+                    {
+                        auto slot = agentLimiter->tryAcquire(agentId);
+                        if (!slot)
+                        {
+                            responder->send(errorResponseFor(remoted::auth::AuthError::AgentBusy, agentId));
+                            return;
+                        }
+                        responder = std::make_shared<AdmittedResponder>(std::move(responder), std::move(*slot));
+                    }
+
                     // Authenticated: hand the verified request AND the responder to the
                     // endpoint handler, which now owns delivering the response (inline or
                     // asynchronously). The gateway no longer sends on the success path.
@@ -156,7 +179,7 @@ namespace remoted::endpoints
                     // becomes the sole owner -- dropping it (or calling payload.release()) then
                     // frees the buffer and restores the budget while the responder lives on to reply.
                     remoted::auth::AuthenticatedRequest authRequest;
-                    authRequest.agentId = std::move(std::get<remoted::auth::VerifiedAgent>(verified).agentId);
+                    authRequest.agentId = std::move(agentId);
                     authRequest.protocolVersion = protocolVersion;
                     authRequest.method = methodStr;
                     authRequest.requestTarget = request->target;

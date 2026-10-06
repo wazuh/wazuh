@@ -244,7 +244,7 @@ The body is a FlatBuffers `Message{FullSession}` (see [Schemas](flatbuffers.md))
 
 | `Start.mode` | Accepted payload | What it does |
 |---|---|---|
-| `ModuleDelta` | `SyncData` (values ≥ 1, contexts optional) | Upserts/deletes state documents. Each value maps to one document: `_id` = `{cluster}_{agent}_{id}`, the document is overlaid with authoritative `wazuh.*` fields (agent id/name/version, groups, cluster) so a payload can never impersonate another agent, and a positive `version` becomes a versioned upsert. Documents targeting an index outside the allowlist, and upserts whose `data` is not a JSON object or nests deeper than 256 levels, are skipped with a warning, never failing the request; if everything was skipped the answer is a no-op `200`. |
+| `ModuleDelta` | `SyncData` (values ≥ 1, contexts optional) | Upserts/deletes state documents. Each value maps to one document: `_id` = `{cluster}_{agent}_{id}`, the document is overlaid with authoritative `wazuh.*` fields (agent id/name/version, groups, cluster) so a payload can never impersonate another agent, and a positive `version` becomes a versioned upsert. Documents targeting an index outside the allowlist, documents whose `_id` would exceed the indexer's 512-byte limit, and upserts whose `data` is not a JSON object or nests deeper than 256 levels, are skipped with a warning, never failing the request; if everything was skipped the answer is a no-op `200`. |
 | `ModuleDelta` | `Cleans` (items ≥ 1) | Deletes this agent's documents from each named index (deduplicated, allowlisted). A full resync is composed by the agent as two requests: a `Cleans` of the module's indices, then a `ModuleDelta` with the complete dataset. |
 | `ModuleCheck` | `ChecksumModule` | Integrity verification of one index: the server pages this agent's documents in deterministic order, aggregates their checksums (SHA-1), and compares with the declared value — `200` on match, `409` on mismatch. One attempt, no retry loop: a mismatch means the agent full-resyncs. |
 | `MetadataDelta` / `GroupDelta` | *(none)* | Reconciles agent metadata (or group membership) across the agent's already-indexed documents with one update-by-query, guarded by `global_version` so a stale update can never overwrite a newer one. |
@@ -253,6 +253,18 @@ The body is a FlatBuffers `Message{FullSession}` (see [Schemas](flatbuffers.md))
 Sessions whose `Start.option` is `VDFirst` or `VDSync` additionally run the vulnerability scanner
 synchronously BEFORE indexing (see [Architecture](architecture.md)); only `SyncData` sessions
 scan — a VD-flagged `Cleans`/`ChecksumModule` follows the normal path.
+
+Two structural limits apply to every session, whatever its payload. Each is answered `400` before
+any document is touched:
+
+- **No shared objects.** The strings, byte vectors and tables a message reaches may not add up to
+  more bytes than the message itself, counting each one at the smallest size it could be encoded in.
+  FlatBuffers allows two vector entries to point at the same string or table. Encoding many entries
+  that point at one large object would make the server repeat work the wire never paid for, so a
+  `FullSession` must be built without deduplicating strings or tables (no `CreateSharedString`). A
+  message built without sharing always passes.
+- **`Start` lists.** `Start.groups` holds at most 128 names of at most 255 bytes each (the manager's
+  multigroup limits), and `Start.index` at most 64 names of at most 255 bytes each.
 
 Re-POSTing any session is idempotent: same `_id`s, same overlay, versioned upserts. That is the
 whole retry contract — there are no acknowledgments and no session state to resume.

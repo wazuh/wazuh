@@ -139,6 +139,7 @@ extern "C"
         long long max_inflight_bytes; ///< Max in-flight request payload bytes; 503 over it (<=0 -> module default).
         int max_parallel_connections; ///< HTTPS max simultaneous connections (<=0 -> module default).
         int max_deferred_requests; ///< Max requests parked awaiting a downstream service; 503 over it (<=0 -> default).
+        int max_requests_per_agent; ///< Max requests one authenticated agent may have open; 503 over it (<=0 -> default).
 
         // Downstream (async UDS client to the engine's event ingress) tunables. <=0 -> module default
         // (see remoted.downstream_*).
@@ -167,6 +168,7 @@ extern "C"
         int jwt_clock_skew_set;       ///< Non-zero when jwt_clock_skew carries a configured value (remoted always
                                       ///< sets it). A zeroed struct therefore still means "module defaults".
         long long auth_max_body_size; ///< Hard cap on the authenticated request body, bytes (<=0 -> default).
+        long long auth_max_decoded_body_size; ///< Hard cap on that body once zstd-decoded, bytes (<=0 -> default).
 
         int keystore_refresh_interval; ///< Seconds between client.keys change checks (hot-reload).
                                        ///< <=0 -> module default (10 s)

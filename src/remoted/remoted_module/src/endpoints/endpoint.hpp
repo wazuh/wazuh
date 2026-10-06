@@ -67,6 +67,7 @@ namespace remoted::endpoints
     constexpr auto METRIC_AUTH_REJECT_TOKEN_UNKNOWN {"remoted.auth.reject.token_unknown"};
     constexpr auto METRIC_AUTH_REJECT_TOKEN_EXPIRED {"remoted.auth.reject.token_expired"};
     constexpr auto METRIC_AUTH_REJECT_TOKEN_REVOKED {"remoted.auth.reject.token_revoked"};
+    constexpr auto METRIC_AUTH_REJECT_AGENT_BUSY {"remoted.auth.reject.agent_busy"};
 
     /**
      * @brief The auth-rejection counter set, pre-resolved from one manager.
@@ -97,6 +98,7 @@ namespace remoted::endpoints
             tokenUnknown; ///< /enroll: the bearer's `kid` names no credential-bearing enrollment token.
         std::shared_ptr<wazuh::metrics::ICounter> tokenExpired; ///< /enroll: the enrollment token has lapsed.
         std::shared_ptr<wazuh::metrics::ICounter> tokenRevoked; ///< /enroll: the enrollment token was revoked.
+        std::shared_ptr<wazuh::metrics::ICounter> agentBusy;    ///< The agent already had its cap of open requests.
     };
 
     /// Resolves the remoted.auth.reject.* family on @p manager (creating it on first call;
@@ -140,8 +142,9 @@ namespace remoted::endpoints
                 "Rejections: an authenticated agent submitted a payload claiming another agent id (security signal)",
                 "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_BODY_TOO_LARGE,
-                                       "Rejections: body over 'remoted.auth_max_body_size', or a zstd frame that "
-                                       "did not fit the 'remoted.max_inflight_bytes' budget",
+                                       "Rejections: body over 'remoted.auth_max_body_size', or a zstd body that "
+                                       "would decode past 'remoted.auth_max_decoded_body_size' or did not fit the "
+                                       "'remoted.max_inflight_bytes' budget",
                                        "count"),
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_BAD_ENCODING,
                                        "Rejections: unsupported or undecodable Content-Encoding (zstd)",
@@ -162,7 +165,13 @@ namespace remoted::endpoints
             manager.getOrCreateCounter(METRIC_AUTH_REJECT_TOKEN_REVOKED,
                                        "Rejections: POST /enroll with a correctly signed enrollment-token bearer "
                                        "whose token was revoked by the operator",
-                                       "count")};
+                                       "count"),
+            manager.getOrCreateCounter(
+                METRIC_AUTH_REJECT_AGENT_BUSY,
+                "Rejections: an authenticated agent already had 'remoted.max_requests_per_agent' "
+                "requests open; answered 503 before its body was decoded (never reached by an "
+                "honest agent with the default -- investigate the agent)",
+                "count")};
     }
 
     /**

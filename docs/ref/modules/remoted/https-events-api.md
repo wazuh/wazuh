@@ -294,7 +294,11 @@ two test matrices for a codec that is dominated on this workload.
   from the headers alone (the body is not part of it — TLS protects it), so an unauthenticated
   request never reaches that decoder. `/enroll` can be open and has its own 16 KiB decoded-body cap.
 - `remoted.auth_max_body_size` caps the **wire body** at 5 MiB by default, including a compressed
-  body. It does not cap the decoded output on authenticated agent routes. **Both** of the decoder's memory costs are charged as real
+  body. The decoded output on authenticated agent routes has its own cap,
+  `remoted.auth_max_decoded_body_size` (32 MiB by default): a frame that declares more is refused
+  with `413` before anything is allocated, and a streamed frame is refused when its output would
+  cross it. The decoded cap is larger than the wire cap because the agent sizes its batches before
+  compressing them, so honest bodies decode past 5 MiB. **Both** of the decoder's memory costs are charged as real
   reservations against the **in-flight byte budget** (`max_inflight_bytes`, see
   [Configuration](#configuration)) — the same pool that bounds unprocessed request payloads. So a
   mostly-idle server admits requests one already near its memory ceiling refuses, and concurrent
@@ -585,12 +589,15 @@ transport:
 | Max in-flight payload bytes (→ `503`)               | `256 MiB` | `remoted.max_inflight_bytes`       |
 | Max simultaneous connections                        | `256`     | `remoted.max_parallel_connections` |
 | Max deferred requests awaiting downstream (→ `503`) | `128`     | `remoted.max_deferred_requests`    |
+| Max open requests per agent (→ `503`)               | `6`       | `remoted.max_requests_per_agent`   |
 
 The capacity limits are **layered**: the transport max body size caps a single request's peak
 (RESTinio rejects an oversized `Content-Length` early by closing the connection), the max connections
 caps how many bodies can be read at once (peak ≈ max connections × max body size), the in-flight byte
 budget caps the total accepted-but-unprocessed payload in memory, and the deferred-request limiter
-caps how many requests are parked awaiting a downstream service. Exhausting either budget → a plain
+caps how many requests are parked awaiting a downstream service. Those four are shared by the whole
+fleet, so the per-agent cap stops one agent from holding all of them: it counts the requests each
+authenticated agent has open and refuses one more before its body is decoded. Exhausting any of them → a plain
 `503` (the agent retries; the two unauthenticated routes, `GET /` and `GET /cacerts`, are exempt
 from the byte budget).
 
@@ -616,6 +623,7 @@ four timeouts are configured in **seconds** and converted to milliseconds intern
 | JWT max accepted token age         | `60 s`            | `remoted.jwt_max_age`                       |
 | JWT clock skew                     | `30 s`            | `remoted.jwt_clock_skew`                    |
 | Auth max body size                 | `5 MiB`           | `remoted.auth_max_body_size`                |
+| Auth max decoded body size         | `32 MiB`          | `remoted.auth_max_decoded_body_size`        |
 
 The two thread-count fields above resolve a `<=0` value via `cpp_get_nproc()` the same way
 `http_io_threads`/`http_worker_threads` do (no `2x` oversubscription here -- both pools are either
@@ -695,7 +703,8 @@ the throttled log line can only sample:
 | Timed out connecting to / sending to / waiting for the downstream service | `remoted.downstream_connect_timeout`, `_write_timeout`, `_response_timeout` | `remoted.forwarder.error.connect_timeout` / `.write_timeout` / `.response_timeout` |
 | Downstream response exceeded the configured cap | `remoted.downstream_max_response_body_size` | `remoted.forwarder.error.response_too_large` |
 | Tokens outside the accepted time window (agent clock drift) | `remoted.jwt_max_age`, `remoted.jwt_clock_skew` | `remoted.auth.reject.clock_skew` |
-| Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` (wire body, compressed or not), or `remoted.max_inflight_bytes` (zstd decoding memory) | `remoted.auth.reject.body_too_large` |
+| Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` (wire body, compressed or not), `remoted.auth_max_decoded_body_size` (zstd output), or `remoted.max_inflight_bytes` (zstd decoding memory) | `remoted.auth.reject.body_too_large` |
+| One agent had too many requests open (503) | `remoted.max_requests_per_agent` — but investigate the agent first; an honest one never reaches the default | `remoted.auth.reject.agent_busy` |
 | Downstream timeouts add up past `http_request_timeout` | `remoted.http_request_timeout` | `remoted.http.<endpoint>.latency` percentiles vs the cap |
 
 Two more, about a registered address that no longer matches:

@@ -180,6 +180,36 @@ TEST_F(SessionProcessorTest, PerDocumentProblemsAreSkippedNotFailed)
 }
 
 /**
+ * The indexer refuses an _id over 512 bytes, and one refused item fails the whole group commit -- the
+ * co-batched sessions of other agents with it (D27). The limit applies to the BUILT _id, cluster and
+ * padded agent included, and to deletes as much as to upserts.
+ */
+TEST_F(SessionProcessorTest, DocumentIdsOverTheIndexerLimitAreSkipped)
+{
+    const std::string prefix {"test-cluster_001_"};
+    const std::size_t idAtTheLimit {512 - prefix.size()};
+
+    ValueSpec atTheLimit;
+    atTheLimit.id = std::string(idAtTheLimit, 'a');
+    ValueSpec overTheLimit;
+    overTheLimit.id = std::string(idAtTheLimit + 1, 'b');
+    ValueSpec deleteOverTheLimit;
+    deleteOverTheLimit.operation = invsync::schema::fb::Operation_Delete;
+    deleteOverTheLimit.id = std::string(idAtTheLimit + 1, 'c');
+
+    const auto prepared =
+        prepare(invsync::test::buildSyncDataSession(SessionSpec {}, {atTheLimit, overTheLimit, deleteOverTheLimit}));
+    const auto outcome = processor.stageBulk(prepared.session, connector);
+
+    EXPECT_EQ(200, outcome.status);
+    EXPECT_TRUE(outcome.staged);
+    const auto ops = events->syncOps();
+    ASSERT_EQ(1U, ops.size()) << "only the _id that fits may reach the bulk";
+    EXPECT_EQ(prefix + atTheLimit.id, std::get<1>(ops[0]));
+    EXPECT_EQ(512U, std::get<1>(ops[0]).size());
+}
+
+/**
  * dump() recurses once per level: a deep enough document would overflow the worker's stack and crash
  * the whole of modulesd (D24). The cap is checked on the raw bytes, so the deepest legal document is
  * still staged and one level more is skipped like any other bad document. The attack-sized one would

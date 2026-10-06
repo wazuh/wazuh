@@ -40,6 +40,9 @@ namespace
     constexpr auto NOOP_BODY {R"({"status":"ok","noop":true})"};
     constexpr auto CHECKSUM_MISMATCH_BODY {R"({"status":"checksum_mismatch"})"};
 
+    /// The indexer's limit on a document _id (D27).
+    constexpr std::size_t MAX_DOCUMENT_ID_BYTES {512};
+
     invsync::sync::ProcessOutcome ok()
     {
         return {200, OK_BODY, false};
@@ -205,6 +208,19 @@ namespace invsync::sync
             elementId.append(session.agentId);
             elementId.append("_");
             elementId.append(viewOf(value->id()));
+
+            // D27: the indexer refuses an _id over 512 bytes, and that one refused item would fail
+            // the whole group commit -- every co-batched session with it, on every re-POST.
+            if (elementId.size() > MAX_DOCUMENT_ID_BYTES)
+            {
+                LOGFN_WARN(logFn(),
+                           "Skipping bulk entry for agent %s: its _id is %zu bytes, over the indexer's %zu-byte limit.",
+                           session.agentId.c_str(),
+                           elementId.size(),
+                           MAX_DOCUMENT_ID_BYTES);
+                ++skipped;
+                continue;
+            }
 
             if (isUpsert)
             {

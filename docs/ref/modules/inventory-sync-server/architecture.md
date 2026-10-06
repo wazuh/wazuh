@@ -65,7 +65,7 @@ sequenceDiagram
     R->>S: POST /stateful (headers)
     Note over S: admission: in-flight byte budget / connection cap → 503<br/>a session declaring more than the TOTAL budget → 413
     R->>S: body (FlatBuffer)
-    Note over S: Verifier + FullSession type + identity + mode×payload matrix<br/>(O(bytes), CPU only — no I/O on the strand)
+    Note over S: Verifier + FullSession type + identity + mode×payload matrix<br/>+ Start list caps + reachable-bytes budget<br/>(O(bytes), CPU only — no I/O on the strand)
     alt validation fails
         S-->>R: 400 / 403
     else VD session and the CVE feed is still downloading
@@ -423,7 +423,7 @@ per process and never reset), so totals read across a retry are cumulative.
 ## Design decisions
 
 The decisions that shape the module, and what each one buys. This is the narrative distillation;
-the complete numbered catalog (D1–D24, plus the functional and non-functional requirements it
+the complete numbered catalog (D1–D27, plus the functional and non-functional requirements it
 answers to) lives in the module's in-tree developer README,
 `src/wazuh_modules/inventory_sync_server/README.md`:
 

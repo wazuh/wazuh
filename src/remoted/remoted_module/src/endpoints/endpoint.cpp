@@ -68,6 +68,7 @@ namespace
                 case remoted::auth::AuthError::TokenUnknown: return m.tokenUnknown;
                 case remoted::auth::AuthError::TokenExpired: return m.tokenExpired;
                 case remoted::auth::AuthError::TokenRevoked: return m.tokenRevoked;
+                case remoted::auth::AuthError::AgentBusy: return m.agentBusy;
                 // MissingProtocolVersion, UnsupportedProtocolVersion, MissingAuthorization,
                 // MalformedAuthorization -- and, defensively, None (errorResponseFor() is never
                 // called with it).
@@ -102,6 +103,9 @@ namespace
         EnrollmentKeyUnavailable, ///< /enroll's Password mode: etc/authd.pass unavailable, or HKDF
                                   ///< unavailable manager-wide. Deliberately NOT UnusableKey -- there
                                   ///< is no agent and no client.keys entry yet to "re-enroll".
+        AgentBusy,                ///< One authenticated agent hit max_requests_per_agent. The client
+                                  ///< pulls the trigger, but it is an AUTHENTICATED one: the operator
+                                  ///< acts on the agent, so it is a throttled WARN naming it.
     };
 
     RejectionKind classify(remoted::auth::AuthError err)
@@ -113,6 +117,7 @@ namespace
             case remoted::auth::AuthError::MissingKey: return RejectionKind::UnusableKey;
             case remoted::auth::AuthError::EnrollmentKeyUnavailable: return RejectionKind::EnrollmentKeyUnavailable;
             case remoted::auth::AuthError::PayloadAgentMismatch: return RejectionKind::AgentMismatch;
+            case remoted::auth::AuthError::AgentBusy: return RejectionKind::AgentBusy;
             // Already reported by AuthMiddleware's own throttled WARN, which names the agent id and
             // the peer address (neither reaches this funnel). Kept at DEBUG2 to avoid a second line.
             case remoted::auth::AuthError::AddressNotAllowed: return RejectionKind::ClientFault;
@@ -133,6 +138,7 @@ namespace
         static LogThrottle unusableKeyThrottle;
         static LogThrottle agentMismatchThrottle;
         static LogThrottle enrollmentKeyUnavailableThrottle;
+        static LogThrottle agentBusyThrottle;
 
         // NOTE: every argument below must stay allocation-free (literals and integers only). This
         // function runs on every rejected request, and LOGFN_DEBUG2's guard does NOT currently
@@ -158,7 +164,8 @@ namespace
                 {
                     LOGFN_WARN(logFn(),
                                "Rejected %llu request(s) with 413 in the last %d s: the body exceeded the "
-                               "authenticated-body cap. Consider increasing the value of 'auth_max_body_size'.",
+                               "authenticated-body cap. Consider increasing the value of 'auth_max_body_size' or, "
+                               "for zstd bodies, 'auth_max_decoded_body_size'.",
                                static_cast<unsigned long long>(d.total),
                                LogThrottle::kDefaultWindowSeconds);
                 }
@@ -199,6 +206,22 @@ namespace
                     LOGFN_WARN(logFn(),
                                "Rejected %llu authenticated request(s) in the last %d s whose payload claimed a "
                                "different agent id than the one that signed them (authenticated agent '%.*s').",
+                               static_cast<unsigned long long>(d.total),
+                               LogThrottle::kDefaultWindowSeconds,
+                               static_cast<int>(agentContext.size()),
+                               agentContext.data());
+                }
+                break;
+
+            case RejectionKind::AgentBusy:
+                if (const auto d = agentBusyThrottle.record())
+                {
+                    // Names the agent of the request that emits the line; the count covers every
+                    // agent shed since the last one. An honest agent never reaches the default cap.
+                    LOGFN_WARN(logFn(),
+                               "Rejected %llu request(s) with 503 in the last %d s from agent(s) that already had "
+                               "'max_requests_per_agent' requests open (agent '%.*s'). Investigate the agent "
+                               "before raising the value.",
                                static_cast<unsigned long long>(d.total),
                                LogThrottle::kDefaultWindowSeconds,
                                static_cast<int>(agentContext.size()),
