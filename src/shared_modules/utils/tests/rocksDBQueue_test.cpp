@@ -11,7 +11,12 @@
 
 #include "rocksDBQueue_test.hpp"
 #include "rocksDBWrapper.hpp"
+#include <cstdarg>
+#include <cstdio>
 #include <filesystem>
+#include <string>
+#include <utility>
+#include <vector>
 
 void RocksDBQueueTest::SetUp()
 {
@@ -177,4 +182,95 @@ TEST_F(RocksDBQueueTest, FrontMethodReturnsFirstElement)
 
     // Verify the value of the front element
     EXPECT_EQ(value, "value1");
+}
+
+// Test that asking for elements the store cannot provide fails instead of waiting for keys that do not exist
+TEST_F(RocksDBQueueTest, FrontQueueFailsWhenTheKeysAreUnreachable)
+{
+    queue.reset();
+    rocksdb::DB* db;
+    rocksdb::Options options;
+    options.create_if_missing = true;
+    rocksdb::Status status = rocksdb::DB::Open(options, TEST_DB, &db);
+    ASSERT_TRUE(status.ok()) << "Failed to open database: " << status.ToString();
+
+    // The queue counts this key as element 5 but the key it builds for it ("5") does not exist.
+    db->Put(rocksdb::WriteOptions(), "5a", "value");
+    delete db;
+
+    queue = std::make_unique<RocksDBQueue<std::string>>(TEST_DB);
+    ASSERT_EQ(queue->size(), 1);
+
+    std::queue<std::string> elements;
+    EXPECT_THROW(queue->frontQueue(elements, 1), std::runtime_error);
+    EXPECT_TRUE(elements.empty());
+}
+
+namespace
+{
+    // Runs `action` with a log function that collects the messages logged meanwhile.
+    template<typename Action>
+    std::string captureLogs(Action&& action)
+    {
+        std::string captured;
+        Log::deassignLogFunction();
+        Log::assignLogFunction(
+            [&captured](const int, const char*, const char*, const int, const char*, const char* message, va_list args)
+            {
+                char buffer[1024] {};
+                vsnprintf(buffer, sizeof(buffer), message, args);
+                captured.append(buffer).append("\n");
+            });
+        action();
+        Log::deassignLogFunction();
+        return captured;
+    }
+
+    void writeRawKeys(const std::vector<std::pair<std::string, std::string>>& keys)
+    {
+        rocksdb::DB* db;
+        rocksdb::Options options;
+        options.create_if_missing = true;
+        ASSERT_TRUE(rocksdb::DB::Open(options, TEST_DB, &db).ok());
+        for (const auto& [key, value] : keys)
+        {
+            db->Put(rocksdb::WriteOptions(), key, value);
+        }
+        delete db;
+    }
+} // namespace
+
+// Test that the startup reports stored keys the queue would never read
+TEST_F(RocksDBQueueTest, StartupWarnsAboutKeysTheQueueCannotReach)
+{
+    queue.reset();
+    writeRawKeys({{"5a", "value"}});
+
+    const auto logs = captureLogs([this]() { queue = std::make_unique<RocksDBQueue<std::string>>(TEST_DB); });
+
+    EXPECT_NE(logs.find("1 of 1 stored keys do not match"), std::string::npos) << logs;
+}
+
+// Test that the startup reports padded keys left unreadable by an unpadded key in the same store
+TEST_F(RocksDBQueueTest, StartupWarnsAboutPaddedKeysInAnUnpaddedStore)
+{
+    queue.reset();
+    writeRawKeys({{"1", "value1"}, {"00000000000000000002", "value2"}, {"00000000000000000003", "value3"}});
+
+    const auto logs = captureLogs([this]() { queue = std::make_unique<RocksDBQueue<std::string>>(TEST_DB); });
+
+    EXPECT_NE(logs.find("2 of 3 stored keys do not match the unpadded"), std::string::npos) << logs;
+}
+
+// Test that a well formed store starts without warnings
+TEST_F(RocksDBQueueTest, StartupIsSilentWithWellFormedKeys)
+{
+    queue->push("value1");
+    queue->push("value2");
+    queue.reset();
+
+    const auto logs = captureLogs([this]() { queue = std::make_unique<RocksDBQueue<std::string>>(TEST_DB); });
+
+    EXPECT_TRUE(logs.empty()) << logs;
+    EXPECT_EQ(queue->size(), 2);
 }
