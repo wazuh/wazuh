@@ -377,8 +377,8 @@ sudo chmod 660 /var/wazuh-manager/etc/client.keys
 
 # Certificates, in the modes the installer applies: root-owned and sticky so the
 # service cannot replace the indexer material. The listener and Server API pairs
-# belong to wazuh-manager (an apid pair restored root-owned stops the API with
-# error 2003). The glob and the test run inside the root shell -- unprivileged
+# belong to wazuh-manager (an apid pair restored root:root, unreadable by the
+# service, stops the API with error 2003). The glob and the test run inside the root shell -- unprivileged
 # they expand to nothing.
 
 sudo sh -c 'cd /var/wazuh-manager/etc/certs || exit 1

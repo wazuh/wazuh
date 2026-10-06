@@ -724,8 +724,8 @@ if [ "${MODE}" = "install" ]; then
     # validator. The helper has already printed which file or which rule was at fault.
     if ! resolve_certificates; then
         err "the manager has no TLS certificates and this install could not issue them"
-        err "        provision the pair into ${DIR}/etc/certs before starting the service"
-        err "        (e.g. with wazuh-certs-tool); the service will not start without it"
+        err "        provision the missing pairs (remoted, indexer-connector, apid) into ${DIR}/etc/certs"
+        err "        before starting the service (e.g. with wazuh-certs-tool); it will not start without them"
     fi
 fi
 

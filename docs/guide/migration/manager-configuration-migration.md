@@ -300,7 +300,9 @@ The `<indexer>` section exists in both 4.x and 5.0 but has two changes.
 
 **`<enabled>` removed**
 
-In 4.x the section had an `<enabled>` flag. In 5.0 the indexer connection is always active and the flag has been removed; left in place it is an unknown option and the manager does not start.
+In 4.x the section had an `<enabled>` flag. In 5.0 the indexer connection is always active and the flag has been removed; left in place it is an unknown option and the manager does not start. The installer still needs an `apid.pem`/`apid-key.pem` pair under the default names to
+complete: when the manager's CA has no private key (an anchor-only deployment), stage one signed by that
+CA even if the API is then pointed at other files.
 
 **Certificate paths changed**
 

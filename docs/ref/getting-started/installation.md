@@ -185,7 +185,9 @@ A wrong certificate is not caught at start: nothing re-examines the pair, and no
 is opened, so it fails at the first peer connection instead. What *is* caught at start is an
 agent-listener file that is missing (`wazuh-manager-conf validate`, with the `(1244)` verdict naming
 it) or unreadable by the `wazuh-manager` user (`wazuh-manager-remoted`, after it drops privileges).
-The indexer pair is not checked at start at all — see
+`wazuh-manager-apid` loads its own pair at start, after dropping privileges and before daemonizing,
+and refuses to start (error `2003` on the terminal and in `logs/api.log`) when it is missing,
+unreadable by `wazuh-manager`, mismatched or encrypted. The indexer pair is not checked at start at all — see
 [Certificates](credentials.md#issued-at-installation-and-at-no-other-moment). Check what a node
 presents with `openssl x509 -in /var/wazuh-manager/etc/certs/remoted.pem -noout -text`.
 

@@ -105,7 +105,10 @@ way around. There is no guard against this in the tool itself — the fix is fol
 > [!NOTE]
 > `wazuh-manager-certs` only validates the bundle against the certificate of remoted. Before retiring the
 > old CA (step 5), also reissue `apid.pem` (the Server API certificate) and `indexer-connector.pem` under
-> the new CA: nothing checks them against the bundle. Then restart the API (`wazuh-manager-apid` loads
+> the new CA: nothing checks them against the bundle. The installer does not reissue them after the
+> installation, so issue them with the new CA and the profiles in
+> [Certificates](../../getting-started/credentials.md), install them with the owners and modes listed in
+> [Installation](../../getting-started/installation.md), then restart the API (`wazuh-manager-apid` loads
 > its pair only at start).
 
 ### 2. The monotonicity limit
