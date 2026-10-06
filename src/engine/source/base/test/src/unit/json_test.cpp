@@ -1680,6 +1680,63 @@ TEST_F(JsonGettersTest, GetJson)
 /****************************************************************************************/
 // SETTERS
 /****************************************************************************************/
+// Every token is a member name: an all-digit token is never an array index, also on a new document (Null root)
+TEST(JsonMemberSettersTest, NumericTokensAreMembers)
+{
+    Json doc;
+    doc.setStringAsMembers("v", "/123");
+    doc.setStringAsMembers("w", "/a/0");
+    doc.setNullAsMembers("/a/7/b");
+    EXPECT_EQ(doc, Json {R"({"123":"v","a":{"0":"w","7":{"b":null}}})"});
+
+    // The same path through setString takes the token as an index
+    Json indexed;
+    indexed.setString("v", "/3");
+    EXPECT_TRUE(indexed.isArray());
+}
+
+TEST(JsonMemberSettersTest, NamesBehaveAsSetString)
+{
+    for (const auto* path : {"/a", "/a/b", "/a~1b/c~0d", "/0123"})
+    {
+        Json members;
+        Json plain;
+        members.setStringAsMembers("v", path);
+        plain.setString("v", path);
+        EXPECT_EQ(members, plain) << path;
+    }
+}
+
+// Like setString with a name token: an existing object keeps its members, a scalar on the way becomes an object
+TEST(JsonMemberSettersTest, ExistingNodes)
+{
+    Json doc {R"({"a":{"x":"1"},"s":"scalar"})"};
+    doc.setStringAsMembers("2", "/a/5");
+    doc.setNullAsMembers("/s/9");
+    EXPECT_EQ(doc, Json {R"({"a":{"x":"1","5":"2"},"s":{"9":null}})"});
+
+    Json root {R"("scalar")"};
+    root.setStringAsMembers("v", "/1");
+    EXPECT_EQ(root, Json {R"({"1":"v"})"});
+}
+
+// "-" keeps its JSON Pointer meaning on an existing array (append); on any other node it is a member name
+TEST(JsonMemberSettersTest, DashToken)
+{
+    Json doc {R"({"arr":[1]})"};
+    doc.setStringAsMembers("v", "/arr/-");
+    doc.setStringAsMembers("w", "/obj/-");
+    EXPECT_EQ(doc, Json {R"({"arr":[1,"v"],"obj":{"-":"w"}})"});
+}
+
+TEST(JsonMemberSettersTest, InvalidPathThrows)
+{
+    Json doc;
+    EXPECT_THROW(doc.setStringAsMembers("v", "/a/~2"), std::runtime_error);
+    EXPECT_THROW(doc.setNullAsMembers("a"), std::runtime_error);
+    EXPECT_EQ(doc, Json {});
+}
+
 TEST_F(JsonSettersTest, SetString)
 {
     Json jObjString {R"({
