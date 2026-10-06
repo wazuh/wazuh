@@ -25,6 +25,7 @@ struct User
     std::string sid;
     std::string username;
     std::string description;
+    std::string full_name;
     std::string type;
     std::string directory;
 
@@ -32,6 +33,7 @@ struct User
     {
         return uid == other.uid && gid == other.gid && sid == other.sid &&
                username == other.username && description == other.description &&
+               full_name == other.full_name &&
                type == other.type && directory == other.directory;
     }
 };

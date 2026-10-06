@@ -8,6 +8,7 @@
  */
 
 #include <iostream>
+#include <set>
 #include <thread>
 
 #include "user_groups_windows.hpp"
@@ -251,12 +252,47 @@ std::vector<std::string> UserGroupsProvider::getLocalGroupNamesForUser(const std
                                                               &totalGroups);
 
     std::vector<std::string> groupNames;
+    std::set<std::string> seenGroups;
+
+    auto addGroup = [&groupNames, &seenGroups](std::string name)
+    {
+        if (seenGroups.insert(name).second)
+        {
+            groupNames.emplace_back(std::move(name));
+        }
+    };
 
     if (ret == NERR_Success && groupInfo != nullptr)
     {
         for (std::size_t i = 0; i < numGroups; ++i)
         {
-            groupNames.emplace_back(Utils::EncodingWindowsHelper::wstringToStringUTF8(groupInfo.get()[i].lgrui0_name));
+            addGroup(Utils::EncodingWindowsHelper::wstringToStringUTF8(groupInfo.get()[i].lgrui0_name));
+        }
+    }
+
+    // On a Domain Controller (or for domain accounts) NetUserGetLocalGroups only returns
+    // broad local machine groups that every domain user belongs to. NetUserGetGroups returns
+    // the user's actual global/domain group memberships, so merge both to report accurate
+    // groups on DCs while preserving the existing local groups on standalone machines.
+    DWORD globalGroupLevel = 0;
+    DWORD numGlobalGroups = 0;
+    DWORD totalGlobalGroups = 0;
+    group_users_info_0_ptr globalGroupInfo;
+
+    DWORD globalRet = m_winapiWrapper->NetUserGetGroupsWrapper(
+                          nullptr,
+                          wUsername.c_str(),
+                          globalGroupLevel,
+                          reinterpret_cast<LPBYTE*>(globalGroupInfo.get_new_ptr()),
+                          MAX_PREFERRED_LENGTH,
+                          &numGlobalGroups,
+                          &totalGlobalGroups);
+
+    if (globalRet == NERR_Success && globalGroupInfo != nullptr)
+    {
+        for (std::size_t i = 0; i < numGlobalGroups; ++i)
+        {
+            addGroup(Utils::EncodingWindowsHelper::wstringToStringUTF8(globalGroupInfo.get()[i].grui0_name));
         }
     }
 

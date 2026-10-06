@@ -39,6 +39,8 @@ class MockWindowsApiWrapper : public IWindowsApiWrapper
         MOCK_METHOD(void, FreeSidWrapper, (LPVOID), (override));
         MOCK_METHOD(DWORD, NetUserGetLocalGroupsWrapper,
                     (LPCWSTR, LPCWSTR, DWORD, DWORD, LPBYTE*, DWORD, LPDWORD, LPDWORD), (override));
+        MOCK_METHOD(DWORD, NetUserGetGroupsWrapper,
+                    (LPCWSTR, LPCWSTR, DWORD, LPBYTE*, DWORD, LPDWORD, LPDWORD), (override));
         MOCK_METHOD(PUCHAR, GetSidSubAuthorityCountWrapper, (PSID), (override));
         MOCK_METHOD(PDWORD, GetSidSubAuthorityWrapper, (PSID, DWORD), (override));
         MOCK_METHOD(LSTATUS, RegEnumKeyWWrapper, (HKEY, DWORD, LPWSTR, DWORD), (override));
@@ -80,9 +82,12 @@ TEST_F(UsersHelperTest, ProcessLocalAccountsSingleUserReturnsExpectedUser)
     auto usersInfo0 = new USER_INFO_0[1];
     usersInfo0[0].usri0_name = const_cast<LPWSTR>(testUsername);
 
+    LPCWSTR testFullName = L"Test Full Name";
+
     auto userInfo4 = new USER_INFO_4;
     userInfo4->usri4_name = const_cast<LPWSTR>(testUsername);
     userInfo4->usri4_comment = const_cast<LPWSTR>(testComment);
+    userInfo4->usri4_full_name = const_cast<LPWSTR>(testFullName);
     userInfo4->usri4_user_sid = fakeSid;
 
     auto userInfo3 = new USER_INFO_3;
@@ -152,6 +157,7 @@ TEST_F(UsersHelperTest, ProcessLocalAccountsSingleUserReturnsExpectedUser)
 
     EXPECT_EQ(user.username, "TestUser");
     EXPECT_EQ(user.description, "Test comment");
+    EXPECT_EQ(user.full_name, "Test Full Name");
     EXPECT_EQ(user.uid, std::uint32_t{1000});
     EXPECT_EQ(user.gid, std::uint32_t{1000});
     EXPECT_EQ(user.sid, "S-1-5-21-1000");
@@ -247,6 +253,7 @@ TEST_F(UsersHelperTest, ProcessRoamingProfilesReturnsExpectedUsers)
 
     auto userInfo = new USER_INFO_2{};
     userInfo->usri2_comment = const_cast<LPWSTR>(L"Comment for RoamingUser");
+    userInfo->usri2_full_name = const_cast<LPWSTR>(L"Full Name for RoamingUser");
     EXPECT_CALL(*mockApi, NetUserGetInfoWrapper(nullptr, ::testing::StrEq(L"RoamingUser"), ::testing::_, ::testing::_))
     .WillOnce(::testing::DoAll(
                   ::testing::Invoke([userInfo](LPCWSTR, LPCWSTR, DWORD, LPBYTE * buffer)
