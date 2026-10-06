@@ -122,7 +122,6 @@ int __wrap_rename_ex(const char* source, const char* destination)
     assert_string_equal(source, SHAREDCFG_FILE ".tmp");
     assert_string_equal(destination, SHAREDCFG_FILE);
     assert_true(cleanups > 0);
-    assert_int_equal(cleanup_result, 0);
     int result = real_files ? __real_rename_ex(source, destination) : publish_result;
 
     if (!result)
@@ -243,7 +242,7 @@ static void receive_bundle(void)
 
     int extracted_all = extraction_result != UNMERGE_FAILED;
 
-    if (extracted_all && !cleanup_result && !publish_result && agt->flags.remote_conf)
+    if (extracted_all && !publish_result && agt->flags.remote_conf)
     {
         expect_any(__wrap__minfo, formatted_msg);
     }
@@ -330,13 +329,20 @@ static void test_retry_after_partial_update(void** state)
     assert_string_equal(accepted_hash, checksum);
 }
 
+/* A file that cannot be removed would still be there on a retry, so the update goes on with a warning. */
 static void test_cleanup_failure(void** state)
 {
     (void)state;
     cleanup_result = -1;
     receive_bundle();
-    assert_update_pending();
+    assert_int_equal(errors, 0);
     assert_int_equal(cleanups, 1);
+    assert_int_equal(publications, 1);
+    assert_int_equal(cache_clears, 1);
+    assert_int_equal(validations, 1);
+    assert_int_equal(reloads, 1);
+    assert_int_equal(discarded, 0);
+    assert_string_equal(accepted_hash, checksum);
 }
 
 static void test_publication_failure(void** state)

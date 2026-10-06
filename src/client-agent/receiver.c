@@ -62,7 +62,8 @@ static char **shared_bundle_files(void)
     return list;
 }
 
-/* Extracts a bundle into the shared directory and removes the files it no longer has */
+/* Extracts a bundle into the shared directory and removes the files it no longer has. A file that cannot be
+ * removed does not fail the update, since sending the bundle again would not remove it either. */
 static int extract_shared_bundle(const char *bundle)
 {
     char **kept = shared_bundle_files();
@@ -70,14 +71,13 @@ static int extract_shared_bundle(const char *bundle)
 
     if (result != UNMERGE_FAILED && cldir_ex_ignore(SHAREDCFG_DIR, (const char **)kept)) {
         mwarn("Could not clean up shared directory.");
-        result = UNMERGE_FAILED;
     }
     free_strarray(kept);
     return result;
 }
 
-/* Publishes a received bundle as the accepted one once the shared directory matches it. Entries with invalid
- * names are skipped, since the manager would send them unchanged again; other failures leave the update pending. */
+/* Publishes a received bundle as the accepted one once its entries are extracted. Entries with invalid names are
+ * skipped, since the manager would send them unchanged again; other failures leave the update pending. */
 static void update_shared_files(const char *bundle)
 {
     int result = extract_shared_bundle(bundle);
