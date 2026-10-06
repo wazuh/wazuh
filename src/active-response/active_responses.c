@@ -552,6 +552,13 @@ int get_ip_version(const char *ip) {
         return OS_INVALID;
     }
 
+#ifdef WIN32
+    // Active-response binaries are short-lived processes that never call WSAStartup().
+    // Without it getaddrinfo() fails with WSANOTINITIALISED, so initialize Winsock here.
+    WSADATA wsaData;
+    int wsa_started = (WSAStartup(MAKEWORD(2, 2), &wsaData) == 0);
+#endif
+
     memset(&hint, '\0', sizeof hint);
 
     hint.ai_family = AF_UNSPEC;
@@ -560,6 +567,11 @@ int get_ip_version(const char *ip) {
     ret = getaddrinfo(ip, NULL, &hint, &res);
     if (ret != 0) {
         // getaddrinfo failed, res may not be initialized
+#ifdef WIN32
+        if (wsa_started) {
+            WSACleanup();
+        }
+#endif
         return OS_INVALID;
     }
 
@@ -572,6 +584,12 @@ int get_ip_version(const char *ip) {
         }
         freeaddrinfo(res);
     }
+
+#ifdef WIN32
+    if (wsa_started) {
+        WSACleanup();
+    }
+#endif
 
     return version;
 }
