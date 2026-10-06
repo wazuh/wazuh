@@ -17,7 +17,7 @@ Three documentation layers cover this module, each with its own job:
 
 - **This README** — the developer's map: how the pieces fit, which invariants are load-bearing,
   where to touch what, and WHY it is built this way ([requirements](#requirements),
-  [design decisions](#design-decisions-d1d23), [developer FAQ](#developer-faq)).
+  [design decisions](#design-decisions-d1d24), [developer FAQ](#developer-faq)).
 - **[`docs/ref/modules/inventory-sync-server/`](../../../docs/ref/modules/inventory-sync-server/README.md)**
   — the operator- and integrator-facing reference:
   [architecture](../../../docs/ref/modules/inventory-sync-server/architecture.md),
@@ -38,7 +38,7 @@ purge means for enrollment.
 
 Distilled (and translated) from the migration's design corpus, where they were extracted from the
 legacy module's observable behavior before this rewrite. They are inlined here because the corpus
-is not part of the repository, and the D-numbers they cite are the [design decisions](#design-decisions-d1d23)
+is not part of the repository, and the D-numbers they cite are the [design decisions](#design-decisions-d1d24)
 below. Status: **kept** = the module provides it; **superseded by D-n** = deliberately replaced.
 
 ### Functional (RF)
@@ -105,7 +105,7 @@ pipeline satisfies it structurally rather than by discipline:
 | REQ-VDQ-9 | No RocksDB in the VD path (or at all) | kept (D9 — the module has NO local store) |
 | REQ-VDQ-10 | Queue observability: depth, ages, outcomes, durations | kept (`vd.lane.*`, `vd.scans.*` metrics — see [Statistics](#statistics-d18)) |
 
-## Design decisions (D1–D23)
+## Design decisions (D1–D24)
 
 The numbered decisions the requirements above refer to, in their original numbering. The
 [official architecture page](../../../docs/ref/modules/inventory-sync-server/architecture.md)
@@ -136,6 +136,7 @@ carries the narrative version of the load-bearing ones; this is the complete cat
 | D21 | Only authd deletes agents: the legacy `wm_database` delete path was removed, not migrated |
 | D22 | VD scans are SYNCHRONOUS and gate the response: scan → ok → index → `200`; scan fails → `500` with nothing indexed; lane full → `503`; legitimate skip (scanner disabled) still indexes and answers `200`. Stronger than the legacy, which indexed even when the scan failed |
 | D23 | A VD session addressed to a node whose scanner is not running (vulnerability detection disabled, or failed to start) skips the `feed_offset` version check and takes D22's legitimate-skip path: the inventory is indexed, nothing is scanned, `200`. Gated on the scanner, NOT on the node's offset reading 0 — a running scanner reports 0 too while the content manager's offset store is not answering yet, and skipping the check there would index packages unscanned on a node whose vulnerability detection IS enabled. A feed that is merely still loading never reaches the gate: D17 answers it `503 + Retry-After`, so packages and vulnerabilities keep going together whenever the module is up |
+| D24 | Agent JSON nested more than 256 levels (`common/jsonNestingDepth.hpp`, the engine's `Json::MAX_DEPTH`) never reaches nlohmann. `/stats` and `/config` answer it with `400`. On `/stateful`, an upsert's `data` string is skipped with a WARN, like any other bad document. The check is a scan of the raw bytes that runs before parsing, not a parser option. nlohmann parses iteratively, but its `dump()` and copy constructor recurse once per level: about 60k levels overflow an 8 MiB stack, and zstd lets that body cross remoted in a few dozen bytes, so no body or byte cap bounds the depth. Checking the bytes keeps any deep DOM from being built, whichever nlohmann version is vendored. The FlatBuffers envelope of `/stateful` needs no cap (the Verifier bounds it), but the JSON strings it carries do. The VD lane reads them with simdjson ondemand, which is iterative and capped at 1024 |
 
 ## Layout
 
@@ -149,7 +150,7 @@ inventory_sync_server/
 │   ├── inventorySyncServer.cpp        # extern "C" entry points -> facade
 │   ├── inventorySyncServerFacade.hpp  # lifecycle: worker thread, startup gate, build/teardown order
 │   ├── schema/syncSchema.hpp          # THE binding to the generated FlatBuffers code (alias fb::)
-│   ├── common/                        # clusterIdentity, metricNames (D18)
+│   ├── common/                        # clusterIdentity, metricNames (D18), jsonNestingDepth (D24)
 │   ├── http_server/                   # udsHttpServerConfig: C-ABI config -> the shared transport's config
 │   ├── endpoints/                     # route policies: syncEndpoint (POST /stateful),
 │   │                                  #   deleteAgentEndpoint (POST /_internal/agents/delete),
@@ -741,7 +742,7 @@ internal delete-to-flush window — eventually consistent either way.
 **What the server deliberately does NOT validate**: declared counts (none exist); duplicate or
 out-of-order `id`s inside `values` (last-write-wins in vector order); a re-POST of the same
 session (re-applied — idempotent by construction, D3). Per-document problems (unlisted index,
-empty id, invalid JSON on upsert) skip that DOCUMENT with a WARN and never fail the request — a
+empty id, invalid JSON on upsert, JSON nested past D24's limit) skip that DOCUMENT with a WARN and never fail the request — a
 session whose every document was skipped answers a no-op `200`.
 
 ## Tests

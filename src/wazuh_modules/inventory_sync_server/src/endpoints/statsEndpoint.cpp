@@ -11,6 +11,7 @@
 
 #include "statsEndpoint.hpp"
 
+#include "common/jsonNestingDepth.hpp"
 #include "loggerHelper.h"
 #include "timeHelper.h"
 #include <uds_http_server/logThrottle.hpp>
@@ -119,6 +120,14 @@ namespace invsync::endpoints::stats
             if (agentIdIt == request->headers.end() || agentIdIt->second.empty())
             {
                 responder->send(badRequest("Missing agent id header"));
+                return;
+            }
+
+            // Before the parse, on the raw bytes: dump() below recurses once per level, so a deep
+            // enough body would overflow this thread's stack and take the whole of modulesd down.
+            if (invsync::common::exceedsNestingDepth(request->body))
+            {
+                responder->send(badRequest("Body nests deeper than the allowed limit"));
                 return;
             }
 
