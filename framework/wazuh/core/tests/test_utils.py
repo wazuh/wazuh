@@ -827,6 +827,34 @@ def test_load_wazuh_xml():
 
         assert elements_equal(original, result.find('dummy_tag'))
 
+def test_load_wazuh_xml_sanitizes_only_comment_bodies():
+    """Test load_wazuh_xml replaces -- inside each comment and leaves text matching a comment body untouched."""
+    data = '<!-- a--b --><item>a--b</item><!------><other>-- a--b --</other>'
+    result = utils.load_wazuh_xml(None, data)
+
+    assert result.find('item').text == 'a--b'
+    assert result.find('other').text == '-- a--b --'
+
+
+@pytest.mark.parametrize('data, expected', [
+    ('<item>a < b</item>', 'a < b'),
+    ('<item>a < b > c</item>', 'a < b > c'),
+    ('<item>\n<\n</item>', '\n<\n'),
+    ('<item>a <!b</item>', 'a <!b'),
+])
+def test_load_wazuh_xml_escapes_lt_outside_tags(data, expected):
+    """Test load_wazuh_xml escapes a < that does not start a tag or a comment."""
+    assert utils.load_wazuh_xml(None, data).find('item').text == expected
+
+
+def test_load_wazuh_xml_many_comments_and_tags():
+    """Test load_wazuh_xml keeps every element of a document with many comments and a long single line."""
+    data = ''.join(f'<!-- comment {i} -- -->\n' for i in range(20000)) + '<item/>' * 20000
+    result = utils.load_wazuh_xml(None, data)
+
+    assert len(result.findall('item')) == 20000
+
+
 @pytest.mark.parametrize('expected_exception', [
     (1113)
 ])
