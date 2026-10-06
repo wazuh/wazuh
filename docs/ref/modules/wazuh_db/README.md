@@ -78,6 +78,11 @@ global backup get
 global backup restore {"snapshot":"global.db-backup-2026-09-30-03:00:00.gz","save_pre_restore_state":true}
 ```
 
+> **Note on `backup restore`:** `snapshot` must be a bare file name in `backup/db/` as `global backup get`
+> lists it: the `global.db-backup` prefix, a `.gz` suffix, only letters, digits and `-_.:`, no `..`. Any
+> other name, including the most recent file when `snapshot` is omitted, is rejected with
+> `err Invalid snapshot name` before any pre-restore backup is taken.
+
 > **Note on `insert-agent`:** `id` (number), `name` (string) and `date_add` (number) are required; `ip`,
 > `register_ip`, `internal_key`, `reenroll_secret` and `group` are optional strings. A missing required
 > field is rejected with `err Invalid JSON data, near '…'`.

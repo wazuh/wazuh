@@ -2023,6 +2023,25 @@ cJSON* wdb_global_get_backups() {
     return j_backups;
 }
 
+/**
+ * @brief Tell whether a name can only denote a backup created by wdb_global_create_backup().
+ *
+ * The name is joined to WDB_BACKUP_FOLDER, so it must be a bare file name: the backup prefix, the
+ * ".gz" suffix, and only the characters a generated name carries — no '/', no "..".
+ */
+static bool wdb_global_is_valid_backup_name(const char* name) {
+    const size_t prefix_len = sizeof(WDB_GLOB_BACKUP_NAME) - 1;
+    const size_t suffix_len = sizeof(".gz") - 1;
+    const size_t len = strlen(name);
+
+    if (len <= prefix_len + suffix_len || strncmp(name, WDB_GLOB_BACKUP_NAME, prefix_len) != 0
+        || strcmp(name + len - suffix_len, ".gz") != 0 || strstr(name, "..") != NULL) {
+        return false;
+    }
+
+    return strspn(name, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.:") == len;
+}
+
 int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore_state, char* output) {
     char* backup_to_restore = NULL;
 
@@ -2034,10 +2053,23 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
     }
 
     char global_path[OS_SIZE_256] = {0};
+    char backup_to_restore_path[OS_SIZE_256] = {0};
 
     snprintf(global_path, OS_SIZE_256, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
 
     int result = OS_INVALID;
+
+    // Checked before the pre-restore backup, so a refused name leaves nothing behind
+    if (backup_to_restore) {
+        int written = snprintf(backup_to_restore_path, OS_SIZE_256, "%s/%s", WDB_BACKUP_FOLDER, backup_to_restore);
+
+        if (!wdb_global_is_valid_backup_name(backup_to_restore) || written < 0 || written >= OS_SIZE_256) {
+            mdebug1("Invalid snapshot name to restore: '%.64s'", backup_to_restore);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid snapshot name");
+            goto end;
+        }
+    }
+
     if (save_pre_restore_state) {
         if (OS_SUCCESS != wdb_global_create_backup(*wdb, output, "-pre_restore")) {
             merror("Creating pre-restore Global DB snapshot failed. Backup restore stopped: %s", output);
@@ -2047,10 +2079,8 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
 
     if (backup_to_restore) {
         char global_tmp_path[OS_SIZE_256] = {0};
-        char backup_to_restore_path[OS_SIZE_256] = {0};
 
         snprintf(global_tmp_path, OS_SIZE_256, "%s/%s.db.back", WDB2_DIR, WDB_GLOB_NAME);
-        snprintf(backup_to_restore_path, OS_SIZE_256, "%s/%s", WDB_BACKUP_FOLDER, backup_to_restore);
 
         if (!w_uncompress_gzfile(backup_to_restore_path, global_tmp_path)) {
             // Preparing DB for restoration.
