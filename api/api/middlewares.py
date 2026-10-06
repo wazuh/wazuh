@@ -61,24 +61,7 @@ events_current_time = None
 
 
 def get_declared_content_length(request: Request) -> Optional[int]:
-    """Get the body size the request declares in its `Content-Length` header.
-
-    The header is readable before a single byte of the body is consumed, and the ASGI server never
-    delivers more body than the request declares, so it is a sound upper bound on what reading the
-    body would cost -- except when the request also carries `Transfer-Encoding`, in which case the
-    server frames the body by chunks and `Content-Length` bounds nothing.
-
-    Parameters
-    ----------
-    request : Request
-        HTTP request.
-
-    Returns
-    -------
-    Optional[int]
-        Declared body length, or None when the header is absent, malformed, negative, or the
-        request is chunked.
-    """
+    """Return the declared Content-Length, or None if absent, invalid, negative or chunked."""
     if 'transfer-encoding' in request.headers:
         return None
 
@@ -87,9 +70,6 @@ def get_declared_content_length(request: Request) -> Optional[int]:
     except (TypeError, ValueError):
         return None
 
-    # A negative length is not a length at all: treating it as unknown sends the request down the
-    # same path as a chunked one instead of letting it slip past an upper-bound comparison it
-    # cannot fail.
     return declared_length if declared_length >= 0 else None
 
 
@@ -106,20 +86,10 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     query = dict(request.query_params) if hasattr(request, 'query_params') else {}
     hash_auth_context = context.get('token_info', {}).get(HASH_AUTH_CONTEXT_KEY, '')
 
-    # Only a caller the security handler accepted gets its payload recorded. connexion writes the
-    # identity into the request context once, and only once, authentication has succeeded, so its
-    # presence is the answer -- not the response status, which cannot distinguish a rejection issued
-    # above the security handler from the same code returned to an authenticated caller further down.
+    # The identity is only in the context once authentication has succeeded
     log_body = bool(context.get('user', None) or context.get('token_info', None))
 
-    # The body is deserialised here, after the response, and no longer in the middleware before the
-    # request was dispatched: nothing should build an object graph out of a payload for a caller
-    # nobody has authenticated yet. It is parsed only where the result is used -- written to the
-    # logs, or hashed into a run_as auth context identifier -- and only from bytes the middleware
-    # already cached, never by reading the stream again. `RecursionError` degrades to an empty body
-    # rather than raising, since this runs after the response has already been sent; a payload that
-    # parses to something other than a mapping (None, a list, a scalar) is kept as-is instead, since
-    # only a mapping can be masked.
+    # Parse only the bytes cached by the middleware, and only if they are going to be used
     body_read = hasattr(request, '_body')
     body = {}
     if body_read and (log_body or path == RUN_AS_LOGIN_ENDPOINT):
@@ -127,13 +97,12 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
             body = await request.json()
         except RecursionError:
             body = {}
+    if not body_read and path == RUN_AS_LOGIN_ENDPOINT and 'run_as_auth_context' in context:
+        body, body_read = dict(context['run_as_auth_context']), True
 
     if 'password' in query:
         query['password'] = '****'
-    # `body` is whatever `request.json()` returned, which is None for a malformed, null or binary
-    # payload and a non-dict for a JSON list or scalar. Only a mapping can carry these fields, and
-    # only a mapping supports the assignment; guard so a small unparsable body from an authenticated
-    # caller degrades to an unmasked log line rather than a 500 raised after the response was sent.
+    # request.json() can return None or a non-dict for malformed or non-object payloads
     if isinstance(body, dict):
         if 'password' in body:
             body['password'] = '****'
@@ -158,15 +127,12 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
         except (KeyError, IndexError, binascii.Error, jwt.exceptions.PyJWTError, OAuthProblem):
             user = UNKNOWN_USER_STRING
 
-    # Create hash if run_as login. Only from a body that was actually read: hashing the empty
-    # placeholder that stands in for a payload nothing cached would stamp every such attempt with
-    # the same constant digest instead of leaving the field empty.
+    # Create hash if run_as login
     if not hash_auth_context and path == RUN_AS_LOGIN_ENDPOINT and body_read:
         hash_auth_context = hashlib.blake2b(json.dumps(body).encode(),
                                             digest_size=16).hexdigest()
 
-    # The auth context hash computed above is kept even when the body is not logged: it is a
-    # fixed-size digest, and it is precisely the useful field for a run_as attempt that failed.
+    # The hash is kept even when the body is not logged
     if not log_body:
         body = {}
 
@@ -302,20 +268,11 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
         """
         prev_time = time.time()
 
-        # connexion passes a shallow copy of the scope downwards; creating `extensions` here makes
-        # the copy share it, so the identity the security handler writes into it is visible to
-        # access_log through `request.context`.
+        # Shared with connexion's copy of the scope, so access_log sees the identity set by the security handler
         request.scope.setdefault('extensions', {})
 
-        # This is the outermost middleware, so reading every body here handed an unauthenticated
-        # caller a max_upload_size buffer, once per request, before the security handler had been
-        # asked who was calling. Only the bytes are buffered, and only when they are small enough to
-        # be worth logging -- access_log runs after the response, when the stream is gone, so they
-        # have to be cached here for it to report them; deserialising them is deferred to access_log,
-        # which by then knows whether the result is needed at all. Reading is bounded by the declared
-        # length, since the ASGI server never delivers more body than the request declares; a
-        # request that declares none, or declares more than is worth logging, is left for the
-        # endpoint to read and its body does not reach the log.
+        # Buffer only small bodies, so access_log can still log them after the stream is consumed.
+        # Larger or chunked ones are left for the endpoint and are not logged.
         content_length = get_declared_content_length(request)
         if content_length is not None and 0 < content_length <= MAX_LOGGED_BODY_SIZE:
             # Related to https://github.com/wazuh/wazuh/issues/24060.

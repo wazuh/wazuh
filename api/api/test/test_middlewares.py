@@ -521,12 +521,7 @@ async def test_wazuh_access_logger_middleware_reads_loggable_body():
 @pytest.mark.asyncio
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
 async def test_access_log_omits_unauthenticated_body(mock_req):
-    """Check that the body is logged for an authenticated caller and omitted otherwise.
-
-    `access_log` decides from the request context connexion writes once authentication succeeds,
-    not from the response status: a rejection issued above the security handler and a genuine
-    error from an authenticated caller can share the same status code.
-    """
+    """Check that the body is logged for an authenticated caller and omitted otherwise."""
     response = MagicMock()
     response.status_code = 401
     body = {'field': 'value'}
@@ -558,13 +553,7 @@ async def test_access_log_omits_unauthenticated_body(mock_req):
 @pytest.mark.parametrize('parsed_body', [None, ['a', 'list']])
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
 async def test_access_log_keeps_a_non_mapping_body_as_is(parsed_body, mock_req):
-    """Check that a body that does not parse as a mapping is logged unmasked, not dropped.
-
-    `ConnexionRequest.json()` returns None for undecodable bytes rather than raising -- the
-    JSONDecodeError this used to guard against never reaches here at all -- and a JSON list or
-    scalar is valid JSON but not a mapping either way. Only a mapping supports the `password`/`key`
-    masking, so anything else is passed through unchanged instead of being coerced into one.
-    """
+    """Check that a body that does not parse as a mapping is logged unmasked, not dropped."""
     response = MagicMock()
     response.status_code = 200
     mock_req._body = b'<xml>not json</xml>'
@@ -581,3 +570,26 @@ async def test_access_log_keeps_a_non_mapping_body_as_is(parsed_body, mock_req):
                          prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
 
     assert mock_custom_logging.call_args.args[5] == parsed_body
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_run_as_auth_context_from_controller(mock_req):
+    """Check that a run_as auth context that was not cached is taken from the request context."""
+    response = MagicMock()
+    response.status_code = 200
+    auth_context = {'groups': ['g'] * 5000}
+    mock_req.query_params = {}
+    mock_req.method = 'POST'
+    mock_req.context = {'user': 'wazuh', 'run_as_auth_context': auth_context}
+    mock_req.scope = {'path': RUN_AS_LOGIN_ENDPOINT}
+    mock_req.headers = {'content-type': 'application/json'}
+    del mock_req._body
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value', side_effect=OAuthProblem):
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    assert mock_custom_logging.call_args.args[5] == auth_context
+    assert mock_custom_logging.call_args.kwargs['hash_auth_context'] != ''

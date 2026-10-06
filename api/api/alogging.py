@@ -16,9 +16,7 @@ request_pattern = re.compile(r'\[.+]|\s+\*\s+')
 
 logger = logging.getLogger('wazuh-api')
 
-# Maximum declared Content-Length, in bytes, that the access logger will buffer for a request
-# whose body might get logged. The same payload is written once to api.log and again to
-# api.json, so buffering it at all is only worth the cost when it is this small.
+# Largest body (bytes) buffered and logged
 MAX_LOGGED_BODY_SIZE = 8 * 1024
 
 # Variable used to specify an unknown user
@@ -245,15 +243,15 @@ def custom_logging(user, remote, method, path, query,
     headers: dict
         Optional dictionary of request headers.
     """
-    # For /events at INFO, log only the event count. Done before the body is serialised so both
-    # log lines carry the same summary and a large batch is not written out in full to api.log.
-    # A body that is not cached (too large, or the caller was never authenticated) stays `{}` and
-    # has no 'events' key, so it must not be summarised into a false zero-event batch. A validated
-    # request can still carry a non-list 'events', so check the type before calling len() on it.
+    # At INFO, /events logs only the event count (if the body was not cached there is no 'events' key)
     if path == '/events' and logger.level >= 20 and isinstance(body, dict) and isinstance(body.get('events'), list):
         body = {'events': len(body['events'])}
 
     body_dump = json.dumps(body)
+    if len(body_dump) > MAX_LOGGED_BODY_SIZE:
+        body = {'body_omitted': f'body of {len(body_dump)} serialised bytes exceeds the '
+                                f'{MAX_LOGGED_BODY_SIZE} byte logging limit'}
+        body_dump = json.dumps(body)
 
     json_info = {
         'user': user,

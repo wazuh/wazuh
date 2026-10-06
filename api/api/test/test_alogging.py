@@ -90,6 +90,7 @@ def test_api_logger_size_exceptions():
     ("/events", 'hashauthcontext', ['foo', 'bar'], 22),
     ("/events", 'hashauthcontext', 'foo', 22),
     ("/events", '', {}, 22),
+    ("/agents", '', {'bodyfield': 'x' * alogging.MAX_LOGGED_BODY_SIZE}, 1),
 ])
 def test_custom_logging(path, hash_auth_context, body, loggerlevel):
     """Test custom access logging calls."""
@@ -119,6 +120,10 @@ def test_custom_logging(path, hash_auth_context, body, loggerlevel):
 
         if path == '/events' and loggerlevel >= 20 and isinstance(body, dict) and isinstance(body.get('events'), list):
             body = {'events': len(body['events'])}
+            json_info['body'] = body
+        if len(json.dumps(body)) > alogging.MAX_LOGGED_BODY_SIZE:
+            body = {'body_omitted': f'body of {len(json.dumps(body))} serialised bytes exceeds the '
+                                    f'{alogging.MAX_LOGGED_BODY_SIZE} byte logging limit'}
             json_info['body'] = body
         log_info += f'with parameters {json.dumps(query)} and body'\
                     f' {json.dumps(body)} done in {elapsed_time:.3f}s: {status}'

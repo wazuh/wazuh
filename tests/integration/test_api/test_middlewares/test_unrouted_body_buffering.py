@@ -55,10 +55,7 @@ def test_configuration():
     return {}
 
 
-# Declared but never delivered. Before the fix, WazuhAccessLoggerMiddleware read a request's body in
-# full before routing or authentication ever ran, so declaring a length this large and never sending
-# it was enough to make the daemon block trying to read bytes that don't exist -- and, sent for
-# real, to make it allocate memory proportional to whatever length an unauthenticated caller chose.
+# Declared but never sent: the access logger used to block reading this body before authentication
 DECLARED_BODY_SIZE = 200 * 1024 * 1024
 UNROUTED_PATH = "/this-path-does-not-exist"
 
@@ -116,8 +113,7 @@ def test_unrouted_path_ignores_undelivered_declared_body(
     with socket.create_connection((WAZUH_API_HOST, int(WAZUH_API_PORT)), timeout=10) as sock:
         with context.wrap_socket(sock, server_hostname=WAZUH_API_HOST) as tls_sock:
             tls_sock.sendall(request)
-            # Never send the declared body. A server that reads it before responding hangs here
-            # until this timeout fires, which is exactly the defect under test.
+            # The body is never sent; a server that reads it before responding hangs until the timeout
             tls_sock.settimeout(10)
             response = tls_sock.recv(4096).decode(errors="replace")
 
