@@ -38,6 +38,7 @@ constexpr auto ELEMENTS_PER_BULK {25000};
 constexpr auto MINIMAL_ELEMENTS_PER_BULK {5};
 
 constexpr auto HTTP_BAD_REQUEST {400};
+constexpr auto HTTP_NOT_FOUND {404};
 constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_VERSION_CONFLICT {409};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
@@ -800,10 +801,48 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
             throw std::runtime_error("Couldn't retrieve current mappings.");
         }
 
+        // The backup is looked up by its own name, which only needs access to that index, instead of listing every
+        // index of the cluster.
+        const auto backupIndexUrl = [&]() { return selector->getNext() + "/" + m_indexName + "-backup"; };
+        const auto backupExists = [&]()
+        {
+            auto exists = true;
+            HTTPRequest::instance().get(
+                RequestParameters {.url = HttpURL(backupIndexUrl() + "/_settings?filter_path=*.settings.index.uuid"),
+                                   .secureCommunication = secureCommunication},
+                PostRequestParameters {.onSuccess = onSuccess,
+                                       .onError = [&exists, &onError](
+                                                      const std::string& error,
+                                                      const long statusCode,
+                                                      const std::string& responseBody)
+                                       {
+                                           if (statusCode != HTTP_NOT_FOUND)
+                                           {
+                                               onError(error, statusCode, responseBody);
+                                           }
+                                           exists = false;
+                                       }},
+                ConfigurationParameters {});
+            return exists;
+        };
+
         // Calculating hashes.
         auto hashTemplateMappings = hashMappings(templateMappings.dump());
         auto hashCurrentMappings = hashMappings(currentMappings[m_indexName]["mappings"].dump());
-        if (hashTemplateMappings != hashCurrentMappings)
+        if (hashTemplateMappings == hashCurrentMappings)
+        {
+            // The mappings match, so a backup left by an earlier migration is no longer needed and the migration
+            // below, which is the only place that removes it, will not run again.
+            if (backupExists())
+            {
+                logInfo(IC_NAME, "Deleting orphan backup index '%s-backup'.", m_indexName.c_str());
+                HTTPRequest::instance().delete_(
+                    RequestParameters {.url = HttpURL(backupIndexUrl()), .secureCommunication = secureCommunication},
+                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                    ConfigurationParameters {});
+            }
+        }
+        else
         {
             logDebug2(IC_NAME,
                       "Current mappings '%s' do not match the expected mappings '%s'.",
@@ -843,21 +882,11 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
                 R"(}}})";
 
             // Remove any previous backup if exists.
-            std::string currentIndices;
-            HTTPRequest::instance().get(
-                RequestParameters {.url = HttpURL(selector->getNext() + "/_cat/indices/"),
-                                   .secureCommunication = secureCommunication},
-                PostRequestParameters {.onSuccess = [&currentIndices](const std::string& response)
-                                       { currentIndices = response; },
-                                       .onError = onError},
-                ConfigurationParameters {});
-
-            if (currentIndices.find(m_indexName + "-backup") != std::string::npos)
+            if (backupExists())
             {
                 logDebug2(IC_NAME, "Deleting previous backup index '%s-backup'.", m_indexName.c_str());
                 HTTPRequest::instance().delete_(
-                    RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName + "-backup"),
-                                       .secureCommunication = secureCommunication},
+                    RequestParameters {.url = HttpURL(backupIndexUrl()), .secureCommunication = secureCommunication},
                     PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                     ConfigurationParameters {});
             }
@@ -1159,12 +1188,6 @@ IndexerConnector::IndexerConnector(
         {
             std::scoped_lock lock(m_syncMutex);
 
-            if (!m_initialized && m_initializeThread.joinable())
-            {
-                logDebug2(IC_NAME, "Waiting for initialization thread to process events.");
-                m_initializeThread.join();
-            }
-
             if (m_stopping.load())
             {
                 logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
@@ -1425,6 +1448,23 @@ IndexerConnector::IndexerConnector(
 
             flushBulk();
             flushQuery();
+
+            // Only what goes to the indexer waits for its initialization: the operations flagged no-index have
+            // already been applied to the local mirror.
+            if (!requests.empty())
+            {
+                if (!m_initialized && m_initializeThread.joinable())
+                {
+                    logDebug2(IC_NAME, "Waiting for initialization thread to process events.");
+                    m_initializeThread.join();
+                }
+
+                if (m_stopping.load())
+                {
+                    logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
+                    throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
+                }
+            }
 
             for (const auto& [isQuery, payload] : requests)
             {

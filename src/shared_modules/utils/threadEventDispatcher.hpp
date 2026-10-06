@@ -24,6 +24,9 @@
 #include <iostream>
 #include <thread>
 
+// Number of queued elements from which a queue is reported as growing.
+constexpr size_t QUEUE_SIZE_WARNING {100000};
+
 template<typename T,
          typename U,
          typename Functor,
@@ -39,6 +42,7 @@ public:
                                     bool useSharedBuffers = false,
                                     std::function<void(const std::string&)> onDiscard = {})
         : m_functor {std::move(functor)}
+        , m_name {dbPath}
         , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
         , m_onDiscard {std::move(onDiscard)}
@@ -51,7 +55,8 @@ public:
                                     const uint64_t bulkSize = 1,
                                     const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
                                     std::function<void(const std::string&)> onDiscard = {})
-        : m_maxQueueSize {maxQueueSize}
+        : m_name {dbPath}
+        , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
         , m_onDiscard {std::move(onDiscard)}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
@@ -82,6 +87,7 @@ public:
                 {
                     m_queue->push(value);
                     rearmDiscardReport(queueSize);
+                    warnQueueSize(queueSize + 1);
                 }
                 else
                 {
@@ -108,6 +114,7 @@ public:
                 {
                     m_queue->push(prefix, value);
                     rearmDiscardReport(queueSize);
+                    warnQueueSize(queueSize + 1);
                 }
                 else
                 {
@@ -276,6 +283,24 @@ private:
         }
     }
 
+    // A queue that keeps growing means its consumer is not draining it. It is reported at QUEUE_SIZE_WARNING elements
+    // and every time its size doubles, and the report is re-armed once the queue is back under the first threshold.
+    void warnQueueSize(const size_t queueSize)
+    {
+        auto threshold = m_nextSizeWarning.load();
+        if (queueSize >= threshold && m_nextSizeWarning.compare_exchange_strong(threshold, threshold * 2))
+        {
+            logWarn(LOGGER_DEFAULT_TAG,
+                    "Queue '%s' holds %llu elements and keeps growing. Check that its consumer is draining it.",
+                    m_name.c_str(),
+                    static_cast<unsigned long long>(queueSize));
+        }
+        else if (queueSize < QUEUE_SIZE_WARNING)
+        {
+            m_nextSizeWarning = QUEUE_SIZE_WARNING;
+        }
+    }
+
     void rearmDiscardReport(const size_t queueSize)
     {
         if (queueSize == 0)
@@ -294,6 +319,7 @@ private:
 
     // Keep this order to avoid warnings during compilation
     Functor m_functor;
+    const std::string m_name;
     const size_t m_maxQueueSize;
     std::atomic<uint64_t> m_bulkSize;
     std::function<void(const std::string&)> m_onDiscard;
@@ -302,6 +328,7 @@ private:
     std::atomic_bool m_running = true;
 
     std::atomic_bool m_discardReported {false};
+    std::atomic<size_t> m_nextSizeWarning {QUEUE_SIZE_WARNING};
 };
 
 template<typename Type, typename Functor>

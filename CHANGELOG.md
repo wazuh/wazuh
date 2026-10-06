@@ -22,6 +22,15 @@ All notable changes to this project will be documented in this file.
 - Fixed the vulnerability scanner outbox queue hanging with a busy thread and no log when its stored keys do not match the ones it reads: the read now fails with an error, the dispatcher reports it through the logger, the startup refuses an incomplete key scan and reports unreadable keys. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 - Fixed the vulnerability scanner re-scan leaving findings in the local mirror that its inventory no longer tracks: each agent is now cleared by prefix, and in a cluster each node scans only the agents that report to it and clears the others. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 - Fixed the single-agent vulnerability re-scan aborting on a NULL agent column after its state had been cleared. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+- Fixed the indexer connector waiting for the initialization of the indexer before applying operations that do not call it, and looking for the mappings backup index by listing every index of the cluster, which needed a cluster-wide permission and left an orphan backup behind. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+
+#### Added
+
+- Added a warning to the log when a queue of the indexer connector or of the vulnerability scanner holds 100000 elements or more, and each time its size doubles. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+
+#### Changed
+
+- Changed the full vulnerability re-scan to scan only the agents that are connected and to leave the stored state of the others untouched. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 
 ### Agent
 
