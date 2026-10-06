@@ -6605,10 +6605,91 @@ void test_wdb_global_restore_backup_pre_restore_failed(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Creating pre-restore Global DB snapshot failed. Backup restore stopped: "
                                                  "err Cannot commit current transaction to create backup");
 
-    result = wdb_global_restore_backup(&data->wdb, "global.db-backup-TIMESTAMP", true, data->output);
+    result = wdb_global_restore_backup(&data->wdb, "global.db-backup-TIMESTAMP.gz", true, data->output);
 
     assert_string_equal(data->output, "err Cannot commit current transaction to create backup");
     assert_int_equal(result, OS_INVALID);
+}
+
+static void restore_backup_rejects(test_struct_t *data, char *snapshot, const char *logged) {
+    char expected_log[OS_SIZE_512];
+
+    snprintf(expected_log, sizeof(expected_log), "Invalid snapshot name to restore: '%s'", logged);
+    expect_string(__wrap__mdebug1, formatted_msg, expected_log);
+
+    // save_pre_restore_state is true: no commit, VACUUM or decompression is mocked, so reaching any of
+    // them fails the test — a refused name must not even take the pre-restore backup
+    int result = wdb_global_restore_backup(&data->wdb, snapshot, true, data->output);
+
+    assert_string_equal(data->output, "err Invalid snapshot name");
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_restore_backup_invalid_name_traversal(void **state) {
+    restore_backup_rejects(*state, "global.db-backup/../../../tmp/evil.gz", "global.db-backup/../../../tmp/evil.gz");
+}
+
+void test_wdb_global_restore_backup_invalid_name_dotdot(void **state) {
+    restore_backup_rejects(*state, "global.db-backup..gz", "global.db-backup..gz");
+}
+
+void test_wdb_global_restore_backup_invalid_name_absolute(void **state) {
+    restore_backup_rejects(*state, "/tmp/global.db-backup-x.gz", "/tmp/global.db-backup-x.gz");
+}
+
+void test_wdb_global_restore_backup_invalid_name_prefix(void **state) {
+    restore_backup_rejects(*state, "evil.gz", "evil.gz");
+}
+
+void test_wdb_global_restore_backup_invalid_name_suffix(void **state) {
+    restore_backup_rejects(*state, "global.db-backup-TIMESTAMP", "global.db-backup-TIMESTAMP");
+}
+
+void test_wdb_global_restore_backup_invalid_name_bare_prefix(void **state) {
+    restore_backup_rejects(*state, "global.db-backup.gz", "global.db-backup.gz");
+}
+
+void test_wdb_global_restore_backup_invalid_name_charset(void **state) {
+    restore_backup_rejects(*state, "global.db-backup-a b.gz", "global.db-backup-a b.gz");
+}
+
+void test_wdb_global_restore_backup_invalid_name_too_long(void **state) {
+    char snapshot[OS_SIZE_512];
+    char logged[65];
+
+    // Valid shape, but "backup/db/" + name does not fit the path buffer: refused, never truncated
+    snprintf(snapshot, sizeof(snapshot), "global.db-backup-%0*d.gz", 250, 0);
+    snprintf(logged, sizeof(logged), "%s", snapshot);
+    restore_backup_rejects(*state, snapshot, logged);
+}
+
+void test_wdb_global_restore_backup_invalid_most_recent_name(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    struct dirent* entry = calloc(1, sizeof(struct dirent));
+    struct stat* file_info = calloc(1, sizeof(struct stat));
+    int result = OS_INVALID;
+
+    // wdb_global_get_most_recent_backup picks a prefixed file that no backup run would have created
+    test_mode = 1;
+    snprintf(entry->d_name, OS_SIZE_256, "%s", "global.db-backup-planted");
+    will_return(__wrap_opendir, (DIR*)1);
+    will_return(__wrap_readdir, entry);
+    will_return(__wrap_readdir, NULL);
+    file_info->st_mtime = 123;
+    expect_string(__wrap_stat, __file, "backup/db/global.db-backup-planted");
+    will_return(__wrap_stat, file_info);
+    will_return(__wrap_stat, OS_SUCCESS);
+    will_return(__wrap_closedir, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid snapshot name to restore: 'global.db-backup-planted'");
+
+    result = wdb_global_restore_backup(&data->wdb, NULL, false, data->output);
+
+    assert_string_equal(data->output, "err Invalid snapshot name");
+    assert_int_equal(result, OS_INVALID);
+    os_free(entry);
+    os_free(file_info);
+    test_mode = 0;
 }
 
 void test_wdb_global_restore_backup_no_snapshot(void **state) {
@@ -8995,6 +9076,15 @@ int main()
         /* Tests wdb_global_restore_backup */
         cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_pre_restore_failed, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_no_snapshot, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_name_traversal, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_name_dotdot, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_name_absolute, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_name_prefix, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_name_suffix, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_name_bare_prefix, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_name_charset, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_name_too_long, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_invalid_most_recent_name, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_compression_failed, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_restore_backup_success, test_setup, test_teardown),
         /* Tests wdb_global_get_most_recent_backup */
