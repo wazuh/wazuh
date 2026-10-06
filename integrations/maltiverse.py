@@ -61,7 +61,7 @@ import os
 import socket
 import sys
 import re
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 try:
     import requests
@@ -117,7 +117,9 @@ class Maltiverse:
         dict
             The Maltiverse Ipv4 information as a dictionary.
         """
-        return self.session.get(os.path.join(self.endpoint, 'ip', ip_addr)).json()
+        # safe=':' -- IPv6 literals use colons; the caller already validates this is a clean
+        # ipaddress.ip_address() value, so a colon here can't be used for path/query injection.
+        return self.session.get(os.path.join(self.endpoint, 'ip', quote(ip_addr, safe=':'))).json()
 
     def hostname_get(self, hostname: str) -> dict:
         """Request Maltiverse hostname via API.
@@ -132,7 +134,7 @@ class Maltiverse:
         dict
             The Maltiverse hostname information as a dictionary.
         """
-        return self.session.get(os.path.join(self.endpoint, 'hostname', hostname)).json()
+        return self.session.get(os.path.join(self.endpoint, 'hostname', quote(hostname, safe=''))).json()
 
     def url_get(self, urlchecksum: str) -> dict:
         """Request Maltiverse URL via API.
@@ -147,7 +149,7 @@ class Maltiverse:
         dict
             The Maltiverse URL information as a dictionary.
         """
-        return self.session.get(os.path.join(self.endpoint, 'url', urlchecksum)).json()
+        return self.session.get(os.path.join(self.endpoint, 'url', quote(urlchecksum, safe=''))).json()
 
     def sample_get(self, sample: str, algorithm: str = 'md5') -> dict:
         """Request Maltiverse sample via API.
@@ -184,7 +186,7 @@ class Maltiverse:
         dict
             The Maltiverse MD5 sample information as a dictionary.
         """
-        return self.session.get(os.path.join(self.endpoint, 'sample', 'md5', md5)).json()
+        return self.session.get(os.path.join(self.endpoint, 'sample', 'md5', quote(md5, safe=''))).json()
 
     def sample_get_by_sha1(self, sha1: str):
         """Request Maltiverse SHA1 sample via API.
@@ -199,7 +201,7 @@ class Maltiverse:
         dict
             The Maltiverse SHA1 sample information as a dictionary.
         """
-        return self.session.get(os.path.join(self.endpoint, 'sample', 'sha1', sha1)).json()
+        return self.session.get(os.path.join(self.endpoint, 'sample', 'sha1', quote(sha1, safe=''))).json()
 
 
 def is_valid_url(url: str) -> bool:
@@ -234,6 +236,28 @@ def is_valid_url(url: str) -> bool:
         return False
 
     return bool(split_url.scheme and split_url.netloc)
+
+
+HOSTNAME_REGEX = re.compile(r'^(?=.{1,253}$)(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))*$')
+
+
+def is_valid_hostname(hostname: str) -> bool:
+    """Check if a hostname has a valid RFC 1123 shape.
+
+    Rejects anything that could change which request path or query string reaches the Maltiverse
+    API (e.g. "../admin", "evil.com?x=1") when later built into the request URL.
+
+    Parameters
+    ----------
+    hostname : str
+        The hostname to check.
+
+    Returns
+    -------
+    bool
+        True if the hostname is valid, False otherwise.
+    """
+    return isinstance(hostname, str) and bool(HOSTNAME_REGEX.match(hostname))
 
 
 def main(args: list):
@@ -630,6 +654,10 @@ def get_hostname_in_alert(alert: dict, maltiverse_api: Maltiverse) -> list[dict]
     if 'data' in alert and 'hostname' in alert['data']:
         hostname = alert['data']['hostname']
         debug(f'# Maltiverse: Hostname present in the alert: {hostname}')
+
+        if not is_valid_hostname(hostname):
+            debug(f'# Maltiverse: Invalid hostname format: {hostname}')
+            return results
 
         if hostname_ioc := maltiverse_api.hostname_get(hostname):
             results.append(
