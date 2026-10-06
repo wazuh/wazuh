@@ -120,11 +120,39 @@ int OS_SetSendTimeout(int socket, int seconds);
  */
 int OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
 
+/**
+ * @brief Send secure TCP message, bounding the whole send with poll()
+ *
+ * For sockets where SO_SNDTIMEO is unsupported (e.g. Solaris 10). The message is written in chunks
+ * of at most 1024 bytes, each after poll() reports the socket writable. Ignored on Windows.
+ *
+ * @param sock Socket file descriptor.
+ * @param size Message length, in bytes.
+ * @param msg Pointer to the message content.
+ * @param timeout Maximum time to send the message, in seconds. If it is not positive, same as OS_SendSecureTCP().
+ * @retval 0 on success.
+ * @retval OS_SOCKTERR on error, with errno set to EAGAIN on timeout.
+ */
+int OS_SendSecureTCPTimeout(int sock, uint32_t size, const void * msg, int timeout);
+
 /* Receive secure TCP message
  * This function reads a header containing message size as 4-byte little-endian unsigned integer.
  * Return recvval on success or OS_SOCKTERR on error.
  */
 int OS_RecvSecureTCP(int sock, char * ret,uint32_t size);
+
+/**
+ * @brief Receive secure TCP message, bounding the whole read with poll()
+ *
+ * For sockets where SO_RCVTIMEO is unsupported (e.g. Solaris 10). Ignored on Windows.
+ *
+ * @param sock Socket file descriptor.
+ * @param ret Buffer to store the message.
+ * @param size Buffer size.
+ * @param timeout Maximum time to receive the message, in seconds. If it is not positive, same as OS_RecvSecureTCP().
+ * @return Same as OS_RecvSecureTCP(), with -1 and errno set to EAGAIN on timeout.
+ */
+int OS_RecvSecureTCPTimeout(int sock, char * ret, uint32_t size, int timeout);
 
 /**
  * @brief Send secure TCP Cluster message

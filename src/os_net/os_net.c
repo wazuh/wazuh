@@ -13,6 +13,9 @@
  */
 
 #include <errno.h>
+#ifndef WIN32
+#include <poll.h>
+#endif
 #include "shared.h"
 #include "os_net.h"
 #include "wazuh_modules/wmodules.h"
@@ -46,6 +49,9 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
 #endif
 
 #endif /* WIN32*/
+
+/* Largest write while bounding a send with poll() */
+#define SEND_CHUNK_SIZE 1024
 
 #define RECV_SOCK 0
 #define SEND_SOCK 1
@@ -622,8 +628,6 @@ void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int i
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPCNT, (void *)&cnt, sizeof(cnt)) < 0) {
             merror("OS_SetKeepalive_Options(TCP_KEEPCNT) failed with error '%s'", strerror(errno));
         }
-#else
-        mwarn("Cannot set up keepalive count parameter: unsupported platform.");
 #endif
     }
 
@@ -635,15 +639,11 @@ void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int i
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPALIVE_THRESHOLD, (void *)&idle, sizeof(idle)) < 0) {
             merror("OS_SetKeepalive_Options(TCP_KEEPALIVE_THRESHOLD) failed with error '%s'", strerror(errno));
         }
-#else
-        mwarn("Cannot set up keepalive idle parameter: unsupported platform.");
 #endif
 #elif !defined(WIN32) && !defined(OpenBSD)
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&idle, sizeof(idle)) < 0) {
-            merror("OS_SetKeepalive_Options(SO_KEEPIDLE) failed with error '%s'", strerror(errno));
+            merror("OS_SetKeepalive_Options(TCP_KEEPIDLE) failed with error '%s'", strerror(errno));
         }
-#else
-        mwarn("Cannot set up keepalive idle parameter: unsupported platform.");
 #endif
     }
 
@@ -655,15 +655,11 @@ void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int i
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPALIVE_ABORT_THRESHOLD, (void *)&intvl, sizeof(intvl)) < 0) {
             merror("OS_SetKeepalive_Options(TCP_KEEPALIVE_ABORT_THRESHOLD) failed with error '%s'", strerror(errno));
         }
-#else
-        mwarn("Cannot set up keepalive interval parameter: unsupported platform.");
 #endif
 #elif !defined(WIN32) && !defined(OpenBSD)
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&intvl, sizeof(intvl)) < 0) {
             merror("OS_SetKeepalive_Options(TCP_KEEPINTVL) failed with error '%s'", strerror(errno));
         }
-#else
-        mwarn("Cannot set up keepalive interval parameter: unsupported platform.");
 #endif
     }
 }
@@ -692,7 +688,70 @@ int OS_SetSendTimeout(int socket, int seconds)
 
 // Send secure TCP message
 
-int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
+#ifndef WIN32
+/* Wait for `events` on sock until `deadline`.
+ * Returns > 0 when ready, 0 on timeout (errno = EAGAIN), -1 on error. */
+static int os_poll_deadline(int sock, short events, time_t deadline) {
+    struct pollfd pfd;
+    time_t now;
+    int ret;
+
+    pfd.fd = sock;
+    pfd.events = events;
+
+    do {
+        now = time(NULL);
+
+        if (now >= deadline) {
+            errno = EAGAIN;
+            return 0;
+        }
+
+        ret = poll(&pfd, 1, (int)(deadline - now) * 1000);
+    } while (ret < 0 && errno == EINTR);
+
+    if (ret == 0) {
+        errno = EAGAIN;
+    }
+
+    return ret;
+}
+
+/* Bounds the whole send by `timeout` seconds. poll() plus chunks of at most
+ * SEND_CHUNK_SIZE (below the send low-water mark) keep send() from blocking,
+ * because Solaris 10 has no SO_SNDTIMEO and MSG_DONTWAIT is recv-only there.
+ * The socket mode is left unchanged as the receiving thread shares it.
+ * Returns 0 or OS_SOCKTERR (errno = EAGAIN on timeout). */
+static int send_all_timeout(int sock, const char * buffer, size_t size, int timeout) {
+    time_t deadline = time(NULL) + timeout;
+    size_t offset = 0;
+
+    while (offset < size) {
+        size_t chunk = size - offset;
+        ssize_t sent;
+
+        if (os_poll_deadline(sock, POLLOUT, deadline) <= 0) {
+            return OS_SOCKTERR;
+        }
+
+        if (chunk > SEND_CHUNK_SIZE) {
+            chunk = SEND_CHUNK_SIZE;
+        }
+
+        sent = send(sock, buffer + offset, chunk, 0);
+
+        if (sent > 0) {
+            offset += sent;
+        } else if (sent == 0 || errno != EINTR) {
+            return OS_SOCKTERR;
+        }
+    }
+
+    return 0;
+}
+#endif
+
+static int send_secure_tcp(int sock, uint32_t size, const void * msg, __attribute__((unused)) int timeout) {
     int retval = OS_SOCKTERR;
     void* buffer = NULL;
     size_t bufsz = size + sizeof(uint32_t);
@@ -711,23 +770,76 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
      * caller would read a stale, unrelated WSA error code instead of
      * correctly seeing "no error, but incomplete" (WSAGetLastError() == 0). */
     WSASetLastError(0);
-#endif
     retval = send(sock, buffer, bufsz, 0) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
+#else
+    if (timeout > 0) {
+        retval = send_all_timeout(sock, buffer, bufsz, timeout);
+    } else {
+        retval = send(sock, buffer, bufsz, 0) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
+    }
+#endif
     free(buffer);
     return retval;
 }
 
+int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
+    return send_secure_tcp(sock, size, msg, 0);
+}
+
+int OS_SendSecureTCPTimeout(int sock, uint32_t size, const void * msg, int timeout) {
+    return send_secure_tcp(sock, size, msg, timeout);
+}
+
+
+#ifndef WIN32
+/* Same as os_recv_waitall(), but gives up once `deadline` is reached. Used
+ * where SO_RCVTIMEO is unsupported (e.g. Solaris 10): poll() guarantees the
+ * following recv() has data to return, so it never blocks.
+ * Returns size on success, 0 on disconnection, -1 on error or timeout
+ * (errno = EAGAIN), like a receive timeout set through SO_RCVTIMEO. */
+static ssize_t recv_waitall_deadline(int sock, void * buf, size_t size, time_t deadline) {
+    size_t offset;
+    ssize_t recvb;
+
+    for (offset = 0; offset < size; offset += recvb) {
+        if (os_poll_deadline(sock, POLLIN, deadline) <= 0) {
+            return -1;
+        }
+
+        recvb = recv(sock, buf + offset, size - offset, 0);
+
+        if (recvb <= 0) {
+            return recvb;
+        }
+    }
+
+    return offset;
+}
+#endif
+
+/* Read exactly `size` bytes, bounded by `deadline` only when timeout > 0 */
+static ssize_t recv_exact(int sock, void * buf, size_t size, __attribute__((unused)) int timeout,
+                          __attribute__((unused)) time_t deadline) {
+#ifndef WIN32
+    if (timeout > 0) {
+        return recv_waitall_deadline(sock, buf, size, deadline);
+    }
+#endif
+    return os_recv_waitall(sock, buf, size);
+}
 
 /* Receive secure TCP message
  * This function reads a header containing message size as 4-byte little-endian unsigned integer.
+ * A timeout > 0 (seconds, for the whole message) bounds the reads with poll() instead of SO_RCVTIMEO.
  * Return recvval on success or OS_SOCKTERR on error.
  */
-int OS_RecvSecureTCP(int sock, char * ret, uint32_t size) {
+static int recv_secure_tcp(int sock, char * ret, uint32_t size, __attribute__((unused)) int timeout) {
     ssize_t recvval, recvb;
     uint32_t msgsize;
+    time_t deadline = timeout > 0 ? time(NULL) + timeout : 0;
 
     /* Get header */
-    recvval = os_recv_waitall(sock, &msgsize, sizeof(msgsize));
+    recvval = recv_exact(sock, &msgsize, sizeof(msgsize), timeout, deadline);
 
     switch(recvval) {
         case -1:
@@ -747,7 +859,7 @@ int OS_RecvSecureTCP(int sock, char * ret, uint32_t size) {
     }
 
     /* Get payload */
-    recvb = os_recv_waitall(sock, ret, msgsize);
+    recvb = recv_exact(sock, ret, msgsize, timeout, deadline);
 
     /* Terminate string if there is space left */
 
@@ -756,6 +868,14 @@ int OS_RecvSecureTCP(int sock, char * ret, uint32_t size) {
     }
 
     return recvb;
+}
+
+int OS_RecvSecureTCP(int sock, char * ret, uint32_t size) {
+    return recv_secure_tcp(sock, ret, size, 0);
+}
+
+int OS_RecvSecureTCPTimeout(int sock, char * ret, uint32_t size, int timeout) {
+    return recv_secure_tcp(sock, ret, size, timeout);
 }
 
 // Byte ordering

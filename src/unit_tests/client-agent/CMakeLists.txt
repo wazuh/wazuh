@@ -39,6 +39,7 @@ set(START_AGENT_BASE_FLAGS "-Wl,--wrap,w_rotate_log -Wl,--wrap,getDefine_Int -Wl
                             -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize \
                             -Wl,--wrap,fprintf -Wl,--wrap,fflush -Wl,--wrap,ReadSecMSG -Wl,--wrap,wnet_select \
                             -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_SendUDPbySize -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS} \
+                            -Wl,--wrap,OS_RecvSecureTCPTimeout -Wl,--wrap,OS_SendSecureTCPTimeout \
                             -Wl,--wrap,w_calloc_expression_t -Wl,--wrap,w_expression_compile -Wl,--wrap,w_expression_match \
                             -Wl,--wrap,w_free_expression_t -Wl,--wrap,OS_CloseSocket")
 if(${TARGET} STREQUAL "winagent")
@@ -120,7 +121,7 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
 list(APPEND client-agent_names "test_sendmsg")
 list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS} \
                                 -Wl,--wrap,CreateSecMSG -Wl,--wrap,sleep -Wl,--wrap,getpid -Wl,--wrap,w_agentd_state_update \
-                                -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_SendUDPbySize -Wl,--wrap,OS_CloseSocket")
+                                -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_SendSecureTCPTimeout -Wl,--wrap,OS_SendUDPbySize -Wl,--wrap,OS_CloseSocket")
 endif()
 
 list(LENGTH client-agent_names count)

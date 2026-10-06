@@ -111,6 +111,21 @@ static void test_send_msg_success(void **state) {
     assert_int_equal(atomic_int_get(&agt->sock), DUMMY_VALID_SOCKET_FD);
 }
 
+/* Socket without SO_SNDTIMEO: the send is bounded with poll() instead. */
+static void test_send_msg_poll_timeout(void **state) {
+    send_set_poll_timeout(30);
+    expect_create_sec_msg_ok();
+    expect_value(__wrap_OS_SendSecureTCPTimeout, sock, DUMMY_VALID_SOCKET_FD);
+    expect_any(__wrap_OS_SendSecureTCPTimeout, size);
+    expect_any(__wrap_OS_SendSecureTCPTimeout, msg);
+    expect_value(__wrap_OS_SendSecureTCPTimeout, timeout, 30);
+    will_return(__wrap_OS_SendSecureTCPTimeout, 0);
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_MSG_SEND);
+
+    assert_int_equal(send_msg("hello", -1), 0);
+    assert_int_equal(atomic_int_get(&agt->sock), DUMMY_VALID_SOCKET_FD);
+}
+
 /* Shared body for the "fatal" errno cases: OS_SendSecureTCP fails, the
  * socket is closed and invalidated, and the failure is logged. */
 static void run_fatal_error_case(int err, void (*expect_log)(void)) {
@@ -186,6 +201,25 @@ static void test_send_msg_eagain(void **state) {
     run_fatal_error_case(EAGAIN, expect_mwarn_any);
 }
 
+/* A poll() send timeout (EAGAIN) invalidates the socket like SO_SNDTIMEO expiring. */
+static void test_send_msg_poll_timeout_expired(void **state) {
+    send_set_poll_timeout(30);
+    expect_create_sec_msg_ok();
+    errno = EAGAIN;
+    expect_value(__wrap_OS_SendSecureTCPTimeout, sock, DUMMY_VALID_SOCKET_FD);
+    expect_any(__wrap_OS_SendSecureTCPTimeout, size);
+    expect_any(__wrap_OS_SendSecureTCPTimeout, msg);
+    expect_value(__wrap_OS_SendSecureTCPTimeout, timeout, 30);
+    will_return(__wrap_OS_SendSecureTCPTimeout, -1);
+    expect_value(__wrap_OS_CloseSocket, sock, DUMMY_VALID_SOCKET_FD);
+    will_return(__wrap_OS_CloseSocket, 0);
+    expect_mwarn_any();
+    expect_value(__wrap_sleep, seconds, 1);
+
+    assert_int_equal(send_msg("hello", -1), -1);
+    assert_int_equal(atomic_int_get(&agt->sock), -1);
+}
+
 /* Unknown/transient error (e.g. ENOMEM) -> socket must NOT be invalidated:
  * only errors that mean the connection itself is dead should tear it down. */
 static void test_send_msg_unknown_error_keeps_socket(void **state) {
@@ -242,6 +276,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_send_msg_create_sec_msg_fail, setup, teardown),
         cmocka_unit_test_setup_teardown(test_send_msg_socket_already_invalid, setup, teardown),
         cmocka_unit_test_setup_teardown(test_send_msg_success, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_send_msg_poll_timeout, setup, teardown),
         cmocka_unit_test_setup_teardown(test_send_msg_epipe, setup, teardown),
         cmocka_unit_test_setup_teardown(test_send_msg_econnreset, setup, teardown),
         cmocka_unit_test_setup_teardown(test_send_msg_enotconn, setup, teardown),
@@ -250,6 +285,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_send_msg_partial_write, setup, teardown),
         cmocka_unit_test_setup_teardown(test_send_msg_etimedout, setup, teardown),
         cmocka_unit_test_setup_teardown(test_send_msg_eagain, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_send_msg_poll_timeout_expired, setup, teardown),
         cmocka_unit_test_setup_teardown(test_send_msg_unknown_error_keeps_socket, setup, teardown),
         cmocka_unit_test_setup_teardown(test_send_msg_udp_success, setup, teardown),
         cmocka_unit_test_setup_teardown(test_send_msg_udp_error_keeps_socket, setup, teardown),

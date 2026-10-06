@@ -32,10 +32,37 @@
 
 int timeout;    //timeout in seconds waiting for a server reply
 
+/* 0 when SO_RCVTIMEO is in effect. */
+STATIC int handshake_poll_timeout = 0;
+STATIC bool poll_fallback_logged = false;
+
 static ssize_t receive_message(char *buffer, unsigned int max_lenght);
+static bool sockopt_unsupported(void);
+static void log_poll_fallback(void);
 static void w_agentd_keys_init (void);
 STATIC bool agent_handshake_to_server(int server_id, bool is_startup);
 STATIC void send_msg_on_startup(void);
+
+/**
+ * @brief Checks whether the last failed setsockopt() was rejected as unsupported (ENOPROTOOPT)
+ * */
+static bool sockopt_unsupported(void) {
+#ifdef WIN32
+    return false;
+#else
+    return errno == ENOPROTOOPT;
+#endif
+}
+
+/**
+ * @brief Logs, once per process, that poll() replaces the unsupported socket timeouts
+ * */
+static void log_poll_fallback(void) {
+    if (!poll_fallback_logged) {
+        poll_fallback_logged = true;
+        mdebug1("Socket timeouts (SO_SNDTIMEO/SO_RCVTIMEO) are not supported on this platform. Using poll() instead.");
+    }
+}
 
 /**
  * @brief Connects to a specified server
@@ -127,6 +154,9 @@ bool connect_server(int server_id, bool verbose)
                 ioctlsocket(new_sock, FIONBIO, (u_long FAR *) &bmode);
             }
         #endif
+        int send_poll_timeout = 0;
+        handshake_poll_timeout = 0;
+
         if (agt->server[server_id].protocol != IPPROTO_UDP) {
             /* Detect a silently half-closed TCP connection (no FIN/RST seen)
              * and bound how long a blocked send() may hold send_mutex. Applied
@@ -140,10 +170,7 @@ bool connect_server(int server_id, bool verbose)
 #endif
             } else {
 #if !defined(WIN32) && !defined(OpenBSD)
-                /* OS_SetKeepalive_Options() only warns "unsupported platform"
-                 * on WIN32/OpenBSD/sun for every single parameter -- skip the
-                 * call there instead of logging the same noise on every
-                 * reconnect. */
+                /* WIN32 and OpenBSD have no tunable keepalive parameters, so skip the call. */
                 int keepidle = getDefine_Int("agent", "tcp_keepidle", 1, 7200);
                 int keepintvl = getDefine_Int("agent", "tcp_keepintvl", 1, 100);
                 int keepcnt = getDefine_Int("agent", "tcp_keepcnt", 1, 50);
@@ -153,11 +180,16 @@ bool connect_server(int server_id, bool verbose)
 
             int send_timeout = getDefine_Int("agent", "send_timeout", 1, 600);
             if (OS_SetSendTimeout(new_sock, send_timeout) < 0) {
+                if (sockopt_unsupported()) {
+                    send_poll_timeout = send_timeout;
+                    log_poll_fallback();
+                } else {
 #ifdef WIN32
-                mwarn("OS_SetSendTimeout failed with error '%s'", win_strerror(WSAGetLastError()));
+                    mwarn("OS_SetSendTimeout failed with error '%s'", win_strerror(WSAGetLastError()));
 #else
-                mwarn("OS_SetSendTimeout failed with error '%s'", strerror(errno));
+                    mwarn("OS_SetSendTimeout failed with error '%s'", strerror(errno));
 #endif
+                }
             }
 
             /* Bound the handshake's blocking receive too (receive_message()
@@ -167,11 +199,16 @@ bool connect_server(int server_id, bool verbose)
              * the same clinical picture (status='connected', stuck forever)
              * this whole fix exists to close on the send side. */
             if (OS_SetRecvTimeout(new_sock, timeout, 0) < 0) {
+                if (sockopt_unsupported()) {
+                    handshake_poll_timeout = timeout;
+                    log_poll_fallback();
+                } else {
 #ifdef WIN32
-                mwarn("OS_SetRecvTimeout failed with error '%s'", win_strerror(WSAGetLastError()));
+                    mwarn("OS_SetRecvTimeout failed with error '%s'", win_strerror(WSAGetLastError()));
 #else
-                mwarn("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
+                    mwarn("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
 #endif
+                }
             }
         }
 
@@ -180,6 +217,7 @@ bool connect_server(int server_id, bool verbose)
          * it ever takes this mutex, so a sender must never be able to see the
          * new socket paired with the previous (possibly different-protocol)
          * server's rip_id. */
+        send_set_poll_timeout(send_poll_timeout);
         send_mutex_lock();
         agt->rip_id = server_id;
         atomic_int_set(&agt->sock, new_sock);
@@ -358,7 +396,11 @@ static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
                 recv_b = recv(sock, buffer, max_lenght, MSG_DONTWAIT);
             } else {
                 /* Receive response TCP*/
-                recv_b = OS_RecvSecureTCP(sock, buffer, max_lenght);
+                if (handshake_poll_timeout > 0) {
+                    recv_b = OS_RecvSecureTCPTimeout(sock, buffer, max_lenght, handshake_poll_timeout);
+                } else {
+                    recv_b = OS_RecvSecureTCP(sock, buffer, max_lenght);
+                }
             }
 
             /* Successful response */
