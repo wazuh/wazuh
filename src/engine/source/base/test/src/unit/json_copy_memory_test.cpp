@@ -14,9 +14,15 @@
 
 #include <base/json.hpp>
 
-#include "address_space_cap.hpp"
+#include <base/addressSpaceCap.hpp>
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
+
+using base::test::addressSpaceCapFits;
+using base::test::CAPPED_SUCCESS;
+using base::test::DeathTestStyleGuard;
+using base::test::exitUnderAddressSpaceCap;
+using base::test::SETUP_ALLOWANCE_FACTOR;
 
 namespace
 {
@@ -669,7 +675,7 @@ TEST(JsonCopyMemoryTest, ArrayUnderAddressSpaceCap)
     SKIP_UNDER_SANITIZER();
     DeathTestStyleGuard guard {"threadsafe"};
     const auto text = makeArrayText(ISSUE_COUNT);
-    if (!addressSpaceCapFits(CAP_FACTOR * text.size()))
+    if (!addressSpaceCapFits(CAP_FACTOR * text.size(), SETUP_ALLOWANCE_FACTOR * text.size()))
     {
         GTEST_SKIP() << "the hard RLIMIT_AS of this host leaves no room for the cap";
     }
@@ -684,7 +690,7 @@ TEST(JsonCopyMemoryTest, ArrayUnderAddressSpaceCap)
                                          return elements && elements->size() == ISSUE_COUNT;
                                      });
         },
-        ::testing::ExitedWithCode(0),
+        ::testing::ExitedWithCode(CAPPED_SUCCESS),
         "");
 }
 
@@ -693,7 +699,7 @@ TEST(JsonCopyMemoryTest, ObjectUnderAddressSpaceCap)
     SKIP_UNDER_SANITIZER();
     DeathTestStyleGuard guard {"threadsafe"};
     const auto text = makeObjectText(ISSUE_COUNT);
-    if (!addressSpaceCapFits(CAP_FACTOR * text.size()))
+    if (!addressSpaceCapFits(CAP_FACTOR * text.size(), SETUP_ALLOWANCE_FACTOR * text.size()))
     {
         GTEST_SKIP() << "the hard RLIMIT_AS of this host leaves no room for the cap";
     }
@@ -708,7 +714,7 @@ TEST(JsonCopyMemoryTest, ObjectUnderAddressSpaceCap)
                                          return members && members->size() == ISSUE_COUNT;
                                      });
         },
-        ::testing::ExitedWithCode(0),
+        ::testing::ExitedWithCode(CAPPED_SUCCESS),
         "");
 }
 
@@ -717,7 +723,7 @@ TEST(JsonCopyMemoryTest, ExhaustionFailsCleanly)
     SKIP_UNDER_SANITIZER();
     DeathTestStyleGuard guard {"threadsafe"};
     const auto text = makeArrayText(ISSUE_COUNT);
-    if (!addressSpaceCapFits(text.size()))
+    if (!addressSpaceCapFits(text.size(), SETUP_ALLOWANCE_FACTOR * text.size()))
     {
         GTEST_SKIP() << "the hard RLIMIT_AS of this host leaves no room for the cap";
     }
