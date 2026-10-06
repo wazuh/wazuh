@@ -2039,8 +2039,21 @@ On `/enroll`, authd's verdicts on a re-enrollment bearer (9026 unknown agent or 
 `remoted.auth.reject.*` cells as a native rejection — the wire never carries authd's code or text
 for them.
 
-The 5.x agent classifies a `401` by status alone today (`client-agent/https_client/src/outcomeClassifier.cpp`)
-and corrects its clock from the `Date` header; acting on the class is the agent's follow-up.
+The 5.x agent corrects its clock from the `Date` header (`client-agent/https_client/src/outcomeClassifier.cpp`)
+and acts on the class (issue #39064): `client-agent/https_client/src/authFailureClass.cpp` parses it,
+only `unknown_agent` latches the agent into its credential-dead state or makes enrollment drop the
+stored re-enrollment secret (`client-agent/src/enrollment.c`), and every other class keeps the
+credential and retries.
+
+Because `unknown_agent` is answered before any signature check, it is an **accepted existence
+oracle**: an unauthenticated peer can tell an enrolled id from a free one, both on the authenticated
+routes and, through authd's 9026 vs 9027, on `/enroll`. That is inherent to the class: an agent whose
+identity was deleted must learn it without being able to prove anything, so the same question is open
+to anyone. Folding it into `invalid_signature` would leave a deleted agent retrying a dead credential
+forever; folding the other way would make every signature failure cost a live agent its identity.
+The disclosure is worth little: ids are sequential (see `AddressNotAllowed` in `auth/authTypes.hpp`),
+and knowing one grants nothing without that agent's key or secret. Probing shows up as a rising
+`remoted.auth.reject.unknown_agent`.
 
 `AuthConfig`'s tunables (`timePolicy` -- accepted token age and clock skew -- and `maxBodySize`) are
 populated from the matching C-ABI fields (`jwt_max_age`, `jwt_clock_skew`,

@@ -118,8 +118,11 @@ static const struct {
     // local_token_create(): the operator needs the reason, the code alone is not actionable.
     { 9025, "Enrollment token refused" },
     // Re-enrollment (#38993): the agent's own bearer, verified here on the master against the secret in its
-    // global.db row. 9026 folds "no such agent" and "no secret on record" on purpose (telling them apart
-    // would let a caller probe ids); remoted answers all three with its uniform 401.
+    // global.db row. 9026 folds "no such agent" and "no secret on record" because the agent's remedy is the
+    // same for both: its stored secret is unusable and only a fresh enrollment recovers it. This is not an
+    // anti-probing measure -- 9026 vs 9027 still tells an existing id from a missing one, by design, since
+    // the agent must learn which it is without proving anything (remoted README, "401 classes"). remoted
+    // answers all three with its uniform 401.
     { 9026, "Unknown agent or no re-enrollment credential" },
     { 9027, "Invalid re-enrollment credential" },
     { 9028, "Re-enrollment credential outside the accepted time window" },
