@@ -3,20 +3,12 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import copy
-import datetime
 import os
 from typing import Dict, Tuple, Any, List
 
 import yaml
-from cryptography import x509
-from cryptography.hazmat.backends import default_backend as crypto_default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509.oid import NameOID
 from jsonschema import validate, ValidationError
 
-import wazuh.core.utils as core_utils
 from api.api_exception import APIError
 from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH, CERTS_PATH
 from api.validator import api_config_schema, security_config_schema
@@ -169,84 +161,6 @@ def fill_dict(default: Dict, config: Dict, json_schema: Dict) -> Dict:
         raise APIError(2000, details=validation_exc.message) from None
 
     return _update_default_config(default, config)
-
-
-def generate_private_key(private_key_path: str, public_exponent: int = 65537,
-                         key_size: int = 2048) -> rsa.RSAPrivateKey:
-    """Generate a private key in 'etc/certs/apid-key.pem'.
-
-    Parameters
-    ----------
-    private_key_path : str
-        Path where the private key will be generated.
-    public_exponent : int, optional
-        Key public exponent. Default `65537`
-    key_size : int, optional
-        Key size. Default `2048`
-
-    Returns
-    -------
-    rsa.RSAPrivateKey
-        Private key.
-    """
-    key = rsa.generate_private_key(
-        public_exponent,
-        key_size,
-        crypto_default_backend()
-    )
-    with open(private_key_path, 'wb') as f:
-        f.write(key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
-        ))
-    os.chmod(private_key_path, 0o640)
-
-    return key
-
-
-def generate_self_signed_certificate(private_key: rsa.RSAPrivateKey, certificate_path: str):
-    """Generate a self-signed certificate using a generated private key. The certificate will be created in
-    'etc/certs/apid.pem'.
-
-    Parameters
-    ----------
-    private_key : RSAPrivateKey
-        Private key.
-    certificate_path : str
-        Path where the self-signed certificate will be generated.
-    """
-    # Generate private key
-    # Various details about who we are. For a self-signed certificate, the subject and issuer are always the same
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, u"San Francisco"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"Wazuh"),
-        x509.NameAttribute(NameOID.COMMON_NAME, u"wazuh.com"),
-    ])
-    cert = x509.CertificateBuilder().subject_name(
-        subject
-    ).issuer_name(
-        issuer
-    ).public_key(
-        private_key.public_key()
-    ).serial_number(
-        x509.random_serial_number()
-    ).not_valid_before(
-        datetime.datetime.now(datetime.timezone.utc)
-    ).not_valid_after(
-        # Our certificate will be valid for one year
-        core_utils.get_utc_now() + datetime.timedelta(days=365)
-    ).add_extension(
-        x509.SubjectAlternativeName([x509.DNSName(u"localhost")]),
-        critical=False,
-        # Sign our certificate with our private key
-    ).sign(private_key, hashes.SHA256(), crypto_default_backend())
-    # Write our certificate out to disk.
-    with open(certificate_path, 'wb') as f:
-        f.write(cert.public_bytes(serialization.Encoding.PEM))
-    os.chmod(certificate_path, 0o640)
 
 
 def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = None) -> Dict:

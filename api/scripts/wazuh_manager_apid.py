@@ -46,79 +46,123 @@ def assign_wazuh_ownership(filepath: str):
         os.chown(filepath, common.wazuh_uid(), common.wazuh_gid())
 
 
-def drop_privileges():
-    """Switch the process to the wazuh-manager user and group.
-
-    Root's supplementary groups are cleared first: setgid() and setuid() leave them in place, so
-    the dropped process would otherwise keep group access to whatever root's groups can read.
-    """
-    os.setgroups([])
-    os.setgid(common.wazuh_gid())
-    os.setuid(common.wazuh_uid())
-
-
 def configure_ssl(params):
-    """Configure https files and permission, and set the uvicorn dictionary configuration keys.
+    """Check the API TLS files, and set the uvicorn dictionary configuration keys.
+
+    The pair is never generated here: the installer issues it signed by the manager CA. The files
+    are loaded once the way uvicorn will load them (certificate chain, client CA when `use_ca` is
+    set, cipher string) with the service's uid/gid: this runs after drop_privileges, before
+    daemonizing, so a missing, unreadable or invalid file is logged by the service user, printed
+    to the terminal and turned into exit code 1 before uvicorn starts.
 
     Parameters
     ----------
-    uvicorn_params : dict
+    params : dict
         uvicorn parameter configuration dictionary.
+
+    Raises
+    ------
+    APIError
+        Code 2003 when a file is missing, unreadable or invalid, or the cipher string selects nothing.
     """
     from api.constants import CONFIG_FILE_PATH
 
-    try:
-        # Generate SSL if it does not exist and HTTPS is enabled
-        if not os.path.exists(api_conf['https']['key']) \
-                or not os.path.exists(api_conf['https']['cert']):
-            logger.info('HTTPS is enabled but cannot find the private key and/or certificate. '
-                        'Attempting to generate them')
-            private_key = generate_private_key(api_conf['https']['key'])
-            logger.info(
-                f"Generated private key file in WAZUH_PATH/{to_relative_path(api_conf['https']['key'])}")
-            generate_self_signed_certificate(private_key, api_conf['https']['cert'])
-            logger.info(
-                f"Generated certificate file in WAZUH_PATH/{to_relative_path(api_conf['https']['cert'])}")
+    key, cert = api_conf['https']['key'], api_conf['https']['cert']
+    use_ca, ca = api_conf['https']['use_ca'], api_conf['https']['ca']
+    ciphers = api_conf['https']['ssl_ciphers'].upper() if api_conf['https']['ssl_ciphers'] else ''
 
-        # Check and assign ownership to wazuh user for the API certificate and key files
-        assign_wazuh_ownership(api_conf['https']['key'])
-        assign_wazuh_ownership(api_conf['https']['cert'])
+    def _files(paths):
+        return ', '.join(f'WAZUH_PATH/{to_relative_path(path)}' for path in paths)
 
-        params['ssl_version'] = ssl.PROTOCOL_TLS_SERVER
+    def _not_found(paths):
+        return APIError(2003, details=f'API certificate or key not found: {_files(paths)}. '
+                                      'The installer issues it signed by the manager CA')
 
-        if api_conf['https']['use_ca']:
-            params['ssl_cert_reqs'] = ssl.CERT_REQUIRED
-            params['ssl_ca_certs'] = api_conf['https']['ca']
-
-        params['ssl_certfile'] = api_conf['https']['cert']
-        params['ssl_keyfile'] = api_conf['https']['key']
-
-        # Load SSL ciphers if any has been specified
-        if api_conf['https']['ssl_ciphers']:
-            params['ssl_ciphers'] = api_conf['https']['ssl_ciphers'].upper()
-
-    except ssl.SSLError as exc:
-        error = APIError(
-            2003, details='Private key does not match with the certificate')
+    def _fail(error, exc=None):
         logger.error(error)
+        if exc is None:
+            raise error
         raise error from exc
+
+    for path in (cert, key):
+        if not os.path.isfile(path):
+            _fail(_not_found([path]))
+    if use_ca and not os.path.isfile(ca):
+        _fail(APIError(2003, details=f'API client CA certificate not found: {_files([ca])}. '
+                                     'It is required by https.use_ca'))
+
+    try:
+        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        # A callback instead of no password: OpenSSL would otherwise prompt for the passphrase of
+        # an encrypted key on the terminal (-f) and hang there.
+        context.load_cert_chain(certfile=cert, keyfile=key, password=lambda: b'')
+        if use_ca:
+            context.load_verify_locations(cafile=ca)
+    except ssl.SSLError as exc:
+        _fail(APIError(2003, details='Private key does not match with the certificate, or a file is not a '
+                                     f'valid unencrypted PEM: {_files([cert, key] + ([ca] if use_ca else []))}'),
+              exc)
     except IOError as exc:
         if exc.errno == 22:
-            error = APIError(2003, details='PEM phrase is not correct')
-            logger.error(error)
-            raise error from exc
+            _fail(APIError(2003, details='PEM phrase is not correct'), exc)
         elif exc.errno == 13:
-            error = APIError(2003,
-                                details='Ensure the certificates have the correct permissions')
-            logger.error(error)
-            raise error from exc
+            _fail(APIError(2003, details='Ensure the certificates have the correct permissions: '
+                                         f'{_files([cert, key] + ([ca] if use_ca else []))}'), exc)
+        elif exc.errno == 2:
+            # A file removed between the check above and the load; ssl gives no filename.
+            _fail(_not_found([exc.filename] if exc.filename else [cert, key] + ([ca] if use_ca else [])), exc)
         else:
             msg = f'Wazuh API SSL ERROR. Please, ensure ' \
-                    f'if path to certificates is correct in the configuration ' \
-                    f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}'
+                  f'if path to certificates is correct in the configuration ' \
+                  f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}'
             print(msg)
             logger.error(msg)
-            raise exc from exc
+            raise APIError(2003, details=msg) from exc
+
+    if ciphers:
+        try:
+            context.set_ciphers(ciphers)
+        except ssl.SSLError as exc:
+            _fail(APIError(2003, details=f'No usable cipher in https.ssl_ciphers: {ciphers}'), exc)
+
+    params['ssl_version'] = ssl.PROTOCOL_TLS_SERVER
+
+    if use_ca:
+        params['ssl_cert_reqs'] = ssl.CERT_REQUIRED
+        params['ssl_ca_certs'] = ca
+
+    params['ssl_certfile'] = cert
+    params['ssl_keyfile'] = key
+
+    # Load SSL ciphers if any has been specified
+    if ciphers:
+        params['ssl_ciphers'] = ciphers
+
+
+def drop_privileges(foreground: bool, run_as_root: bool) -> None:
+    """Switch to the service user and group, then announce how the API runs.
+
+    Nothing is logged before the switch: the first record of a run may rotate the API log files,
+    and the files a rotation creates must belong to the service, not to root. Root's supplementary
+    groups are cleared first: setgid() and setuid() leave them in place, so the dropped process would
+    otherwise keep group access to whatever root's groups can read.
+
+    Parameters
+    ----------
+    foreground : bool
+        The API runs in the foreground (-f).
+    run_as_root : bool
+        The API keeps running as root (-r).
+    """
+    if not run_as_root and api_conf['drop_privileges']:
+        os.setgroups([])
+        os.setgid(common.wazuh_gid())
+        os.setuid(common.wazuh_uid())
+
+    if foreground:
+        logger.info('Starting API in foreground')
+    if run_as_root:
+        logger.info('Starting API as root')
 
 
 def _bind_listening_sockets(hosts, port: int, retries: int = BIND_MAX_RETRIES,
@@ -502,7 +546,7 @@ if __name__ == '__main__':
     from api import error_handler
     from api.alogging import set_logging
     from api.api_exception import APIError, ExpectFailedException
-    from api.configuration import api_conf, generate_private_key, generate_self_signed_certificate, security_conf
+    from api.configuration import api_conf, security_conf
     from api.constants import API_LOG_PATH
     from api.middlewares import setup_middlewares
     from api.parameter_validator import WazuhParameterValidator
@@ -544,25 +588,31 @@ if __name__ == '__main__':
     logging.config.dictConfig(uvicorn_params['log_config'])
     logger = logging.getLogger('wazuh-api')
 
-    # Configure ssl files
-    if api_conf['https']['enabled']:
-        configure_ssl(uvicorn_params)
-
     # Check for unused PID files
     utils.clean_pid_files(pyDaemonModule.API_MAIN_PROCESS)
 
-    # Foreground/Daemon
+    # Drop privileges to wazuh before the first log record and before touching the TLS files. Nothing
+    # is logged if it fails: the switch may not have happened, and a record written as root could
+    # make a pending rotation recreate the API log files as root.
+    try:
+        drop_privileges(args.foreground, args.root)
+    except Exception as e:
+        print(f"Error when trying to start the Wazuh API. {e}")
+        sys.exit(1)
+
+    # Check the TLS files as the service user while still in the foreground: configure_ssl() logs
+    # the error, and the print and the exit code reach the terminal and wazuh-manager-control.
+    if api_conf['https']['enabled']:
+        try:
+            configure_ssl(uvicorn_params)
+        except APIError as e:
+            print(f"Error when trying to start the Wazuh API. {e}")
+            sys.exit(1)
+
+    # Daemonize unless running in the foreground (pyDaemon exits the parent with 0 and sends stdout
+    # and stderr to /dev/null, so every start-up check must come before it)
     if not args.foreground:
         pyDaemonModule.pyDaemon()
-    else:
-        logger.info('Starting API in foreground')
-
-    # Drop privileges to wazuh
-    if not args.root:
-        if api_conf['drop_privileges']:
-            drop_privileges()
-    else:
-        logger.info('Starting API as root')
 
     pid = os.getpid()
     pyDaemonModule.create_pid(pyDaemonModule.API_MAIN_PROCESS, pid)
