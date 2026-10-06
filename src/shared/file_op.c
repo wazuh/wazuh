@@ -4676,14 +4676,115 @@ static int w_win_read_reparse_point(HANDLE hLink, w_win_reparse_buf_t * buf, DWO
     return 0;
 }
 
+// ntdll's NtCreateFile() is the only call that opens a name relative to a directory handle, as openat() does; it
+// is not in the MinGW import libraries, so it is loaded at run time and its types are declared here.
+typedef struct {
+    USHORT Length;
+    USHORT MaximumLength;
+    PWSTR Buffer;
+} w_nt_unicode_t;
+
+typedef struct {
+    ULONG Length;
+    HANDLE RootDirectory;
+    w_nt_unicode_t * ObjectName;
+    ULONG Attributes;
+    PVOID SecurityDescriptor;
+    PVOID SecurityQualityOfService;
+} w_nt_attributes_t;
+
+typedef struct {
+    LONG Status;
+    ULONG_PTR Information;
+} w_nt_iosb_t;
+
+typedef LONG(NTAPI * w_nt_create_file_t)(PHANDLE, ACCESS_MASK, w_nt_attributes_t *, w_nt_iosb_t *, PLARGE_INTEGER, ULONG,
+                                         ULONG, ULONG, ULONG, PVOID, ULONG);
+typedef ULONG(NTAPI * w_nt_status_to_dos_t)(LONG);
+
+#define W_NT_OBJ_CASE_INSENSITIVE 0x40
+#define W_NT_FILE_OPEN 1
+#define W_NT_FILE_SYNCHRONOUS_IO_NONALERT 0x20
+#define W_NT_FILE_OPEN_FOR_BACKUP_INTENT 0x4000
+#define W_NT_FILE_OPEN_REPARSE_POINT 0x200000
+#define W_NT_STATUS_OBJECT_NAME_INVALID ((LONG) 0xC0000033)
+
+/**
+ * Opens one path component. With a held @p parent directory the name is looked up relative to that handle, which is
+ * bound to the directory itself: a reparse point set on it afterwards cannot redirect the lookup, as a lookup by
+ * full path can. Without one, @p full_path is opened by name. Reparse points are not followed either way.
+ *
+ * @return The handle, or INVALID_HANDLE_VALUE with the last error set as CreateFileW() would.
+ */
+static HANDLE w_win_open_component(HANDLE parent, const wchar_t * full_path, const wchar_t * name, size_t name_len,
+                                   DWORD access, DWORD share) {
+    static w_nt_create_file_t create_file = NULL;
+    static w_nt_status_to_dos_t status_to_dos = NULL;
+    HMODULE ntdll;
+    w_nt_unicode_t unicode;
+    w_nt_attributes_t attributes;
+    w_nt_iosb_t iosb;
+    HANDLE handle = INVALID_HANDLE_VALUE;
+    LONG status;
+
+    if (parent == NULL) {
+        return CreateFileW(full_path, access, share, NULL, OPEN_EXISTING,
+                           FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+    }
+
+    // Resolved once; a concurrent first call resolves the same addresses.
+    if (create_file == NULL || status_to_dos == NULL) {
+        ntdll = GetModuleHandleW(L"ntdll.dll");
+        create_file = ntdll ? (w_nt_create_file_t) GetProcAddress(ntdll, "NtCreateFile") : NULL;
+        status_to_dos = ntdll ? (w_nt_status_to_dos_t) GetProcAddress(ntdll, "RtlNtStatusToDosError") : NULL;
+    }
+
+    if (name_len == 0 || name_len >= W_VETTED_WIN_PATH_MAX) {
+        SetLastError(ERROR_INVALID_NAME);
+        return INVALID_HANDLE_VALUE;
+    }
+
+    if (create_file == NULL || status_to_dos == NULL) {
+        SetLastError(ERROR_PROC_NOT_FOUND);
+        return INVALID_HANDLE_VALUE;
+    }
+
+    // A counted string, so the name is used in place within the longer path.
+    unicode.Length = (USHORT)(name_len * sizeof(wchar_t));
+    unicode.MaximumLength = unicode.Length;
+    unicode.Buffer = (PWSTR) name;
+
+    memset(&attributes, 0, sizeof(attributes));
+    attributes.Length = sizeof(attributes);
+    attributes.RootDirectory = parent;
+    attributes.ObjectName = &unicode;
+    attributes.Attributes = W_NT_OBJ_CASE_INSENSITIVE;
+
+    status = create_file(&handle, access | SYNCHRONIZE, &attributes, &iosb, NULL, 0, share, W_NT_FILE_OPEN,
+                         W_NT_FILE_SYNCHRONOUS_IO_NONALERT | W_NT_FILE_OPEN_FOR_BACKUP_INTENT |
+                         W_NT_FILE_OPEN_REPARSE_POINT, NULL, 0);
+
+    if (status < 0 || handle == INVALID_HANDLE_VALUE) {
+        // Invalid relative to the parent means it was turned into a reparse point, or the name is one CreateFileW
+        // would normalise: retry rather than call the path bad.
+        SetLastError(status == W_NT_STATUS_OBJECT_NAME_INVALID ? ERROR_PATH_NOT_FOUND :
+                     (status < 0 ? status_to_dos(status) : ERROR_GEN_FAILURE));
+        return INVALID_HANDLE_VALUE;
+    }
+
+    return handle;
+}
+
 /**
  * Walks @p full, an absolute normalized path, one component at a time without following reparse points,
  * and checks that every junction or symlink on it is trusted. Each junction or symlink met is vetted, then
  * its target is read one level only and the walk continues from that target with the components that
  * followed the link, so the reparse points inside a link's destination are vetted in turn; no link is ever
  * followed before it is vetted. At most W_VETTED_MAX_SYMLINKS links are followed. Each directory and each
- * link on the way is kept open in @p held (no FILE_SHARE_DELETE) so it cannot change until the caller
- * finishes vetting. The final plain file is not held, to keep rotation working; it is matched against
+ * link on the way is kept open in @p held (no FILE_SHARE_DELETE) so it cannot be renamed or deleted until the
+ * caller finishes vetting, and each component after the first (and after each followed link) is opened
+ * relative to the directory held before it, so a reparse point set on that directory later cannot redirect
+ * the lookup. The final plain file is not held, to keep rotation working; it is matched against
  * @p file_info, the file already opened, instead. A component that vanishes, changes type or is in a
  * sharing violation means the path is changing: EAGAIN, not ENOENT. The caller releases @p held on every
  * path.
@@ -4699,6 +4800,8 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
     size_t len = wcslen(full);
     size_t root;
     size_t end;
+    size_t name_start;
+    HANDLE parent = NULL;
     int hops = 0;
     int rc;
 
@@ -4714,6 +4817,8 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
         errno = EINVAL;
         return -1;
     }
+
+    name_start = root;
 
     for (end = root; end <= len; end++) {
         BY_HANDLE_FILE_INFORMATION info;
@@ -4738,9 +4843,9 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
         if (last) {
             // Probe the last entry without holding it: a plain file must stay rotatable, so it is matched
             // by identity; a link at the last hop is pinned and vetted below like any other.
-            hComponent = CreateFileW(component, READ_CONTROL | FILE_READ_ATTRIBUTES,
-                                     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
-                                     FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+            hComponent = w_win_open_component(parent, component, path + name_start, end - name_start,
+                                              READ_CONTROL | FILE_READ_ATTRIBUTES,
+                                              FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE);
 
             if (hComponent == INVALID_HANDLE_VALUE) {
                 errno = w_win_race_errno(GetLastError());
@@ -4773,9 +4878,9 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
 
         // Pin it: reopened without FILE_SHARE_DELETE so it cannot change while held. FILE_TRAVERSE makes the share
         // mode apply; attribute and security access alone would leave the component renamable.
-        hComponent = CreateFileW(component, READ_CONTROL | FILE_READ_ATTRIBUTES | FILE_TRAVERSE,
-                                 FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
-                                 FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+        hComponent = w_win_open_component(parent, component, path + name_start, end - name_start,
+                                          READ_CONTROL | FILE_READ_ATTRIBUTES | FILE_TRAVERSE,
+                                          FILE_SHARE_READ | FILE_SHARE_WRITE);
 
         if (hComponent == INVALID_HANDLE_VALUE) {
             errno = w_win_race_errno(GetLastError());
@@ -4805,6 +4910,9 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
         held->handles[held->count++] = hComponent;
 
         if (!(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+            // Next component is opened relative to this directory.
+            parent = hComponent;
+            name_start = end + 1;
             continue;
         }
 
@@ -4823,6 +4931,8 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
                 return -1;
             }
 
+            parent = (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? hComponent : NULL;
+            name_start = end + 1;
             continue;
         }
 
@@ -4847,6 +4957,9 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
             return -1;
         }
 
+        parent = (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? hComponent : NULL;
+        name_start = end + 1;
+
         if (rc > 0) {
             // Bounds a link cycle.
             if (++hops > W_VETTED_MAX_SYMLINKS) {
@@ -4870,6 +4983,8 @@ static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE
 
             // Resume at the target's first component; the loop's end++ advances past the root slot.
             end = root - 1;
+            name_start = root;
+            parent = NULL;
         }
     }
 
