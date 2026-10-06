@@ -1979,6 +1979,11 @@ void DispatchUpgradeModule(Eventinfo * lf) {
             } else {
                 int agent = atoi(lf->agent_id);
                 cJSON* agents = cJSON_CreateIntArray(&agent, 1);
+
+                // Drop any "agents" key the sender supplied: lookups return the first match, so it would beat ours.
+                while (cJSON_GetObjectItem(message_params, "agents")) {
+                    cJSON_DeleteItemFromObject(message_params, "agents");
+                }
                 cJSON_AddItemToObject(message_params, "agents", agents);
 
                 char *message = cJSON_PrintUnformatted(message_obj);
