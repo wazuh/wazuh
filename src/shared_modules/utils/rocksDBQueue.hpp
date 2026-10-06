@@ -162,14 +162,42 @@ public:
         }
 
         // Valid() is false both at the end of the store and when the iteration fails, so the status tells them apart.
+        // Bounds computed from a partial scan would make push() overwrite queued entries.
         if (const auto status = it->status(); !status.ok())
         {
-            logError(LOGGER_DEFAULT_TAG,
-                     "Queue '%s': the scan of the stored keys failed after %llu keys (%s). The queue bounds may not "
-                     "cover every stored key.",
-                     connectorName.c_str(),
-                     static_cast<unsigned long long>(m_size),
-                     status.ToString().c_str());
+            throw std::runtime_error("Failed to scan the keys of queue '" + connectorName + "' after reading " +
+                                     std::to_string(m_size) + " keys: " + status.ToString());
+        }
+
+        // Independent check of the bounds: a stored key outside them proves the scan did not see the whole store.
+        for (const auto fromEnd : {false, true})
+        {
+            if (fromEnd)
+            {
+                it->SeekToLast();
+            }
+            else
+            {
+                it->SeekToFirst();
+            }
+
+            if (!it->Valid())
+            {
+                if (!it->status().ok())
+                {
+                    throw std::runtime_error("Failed to check the bounds of queue '" + connectorName +
+                                             "': " + it->status().ToString());
+                }
+                continue;
+            }
+
+            if (const auto key = std::stoull(it->key().ToString()); key < m_first || key > m_last)
+            {
+                throw std::runtime_error("The scan of queue '" + connectorName +
+                                         "' did not cover the whole store: key " + std::to_string(key) +
+                                         " is outside the computed bounds " + std::to_string(m_first) + "-" +
+                                         std::to_string(m_last));
+            }
         }
 
         // A stored key the queue would never build cannot be read or removed.
