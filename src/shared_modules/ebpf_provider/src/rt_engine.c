@@ -452,10 +452,18 @@ rt_handle_t rt_open(const struct rt_filter* filter)
          * built or loaded in this development environment; until that lands,
          * rt_host_cgroup_v1() is the only reliable source and a consumer MUST
          * use it rather than testing ev->flags. */
+        /* The advice this used to give — "correlate on mnt_ns instead" — was
+         * written when the helper's limit looked like the kernel's. It is not:
+         * rt_set_cgroup_v1_subsys() points the program at a v1 controller's own
+         * cgroups, and from then on cgroup_id identifies a container and the
+         * allowlist filters normally. Measured on a pure v1 host: the helper
+         * returns 1 for every task, while the controller read returns 6403 and
+         * 6435 for two containers, matching stat() of their directories. */
         rt_log(&h->log,
                RT_LOG_WARN,
-               "host cgroup hierarchy is %s: every event's cgroup_id is a constant, not a correlation "
-               "key — consumers must correlate on mnt_ns instead (see rt_host_cgroup_v1())",
+               "host cgroup hierarchy is %s: bpf_get_current_cgroup_id() reports the unified "
+               "hierarchy, which this host does not have, so an event's cgroup_id identifies nothing "
+               "until a consumer calls rt_set_cgroup_v1_subsys()",
                wz_cgroup_mode_name(h->cgroup_mode));
     }
     else

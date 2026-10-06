@@ -245,10 +245,16 @@ int rt_drain_drops(rt_handle_t handle, rt_drop_fn cb, void* user);
 int rt_abi_major(void);
 int rt_abi_minor(void);
 
-/* Non-zero when this host uses cgroup v1, i.e. when bpf_get_current_cgroup_id()
- * — and therefore every event's cgroup_id — is not a usable correlation key
- * and mnt_ns must be used instead (spike #37396 ADR-002). Determined once at
- * rt_open() from the cgroup mount layout, not from the events.
+/* Non-zero when this host has no unified cgroup hierarchy, i.e. when
+ * bpf_get_current_cgroup_id() — which reports the task's cgroup in THAT
+ * hierarchy — identifies nothing (spike #37396 ADR-002; measured on a pure v1
+ * host, where it returns 1 for every task). Determined once at rt_open() from
+ * the cgroup mount layout, not from the events.
+ *
+ * This reports the HOST'S HIERARCHY, not whether attribution is available:
+ * rt_set_cgroup_v1_subsys() makes cgroup_id usable on exactly these hosts.
+ * Consumers deciding whether they can attribute events want
+ * rt_cgroup_id_is_usable() instead.
  *
  * NOTE: the per-event RT_F_CGROUP_V1 flag is NOT yet set by the BPF program;
  * this accessor is currently the only reliable source. See rt_engine.c. */
