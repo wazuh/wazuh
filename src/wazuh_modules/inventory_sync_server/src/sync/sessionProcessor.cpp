@@ -11,6 +11,7 @@
 
 #include "sync/sessionProcessor.hpp"
 
+#include "common/jsonNestingDepth.hpp"
 #include "sync/stateIndexAllowlist.hpp"
 #include "sync/syncQueryBuilder.hpp"
 
@@ -219,10 +220,23 @@ namespace invsync::sync
                     continue;
                 }
 
-                nlohmann::json document = nlohmann::json::parse(
-                    std::string_view(reinterpret_cast<const char*>(value->data()->data()), value->data()->size()),
-                    nullptr,
-                    /*allow_exceptions=*/false);
+                const std::string_view rawData {reinterpret_cast<const char*>(value->data()->data()),
+                                                value->data()->size()};
+
+                // Before the parse, on the raw bytes (D24): dump() below recurses once per level, so
+                // a deep enough document would overflow this worker's stack and take the whole of
+                // modulesd down.
+                if (common::exceedsNestingDepth(rawData))
+                {
+                    LOGFN_WARN(logFn(),
+                               "Skipping bulk entry for agent %s: DataValue body nests deeper than %zu levels.",
+                               session.agentId.c_str(),
+                               common::MAX_JSON_NESTING_DEPTH);
+                    ++skipped;
+                    continue;
+                }
+
+                nlohmann::json document = nlohmann::json::parse(rawData, nullptr, /*allow_exceptions=*/false);
                 if (document.is_discarded() || !document.is_object())
                 {
                     LOGFN_WARN(logFn(),

@@ -10,10 +10,12 @@
  */
 
 #include "common/clusterIdentity.hpp"
+#include "common/jsonNestingDepth.hpp"
 #include "endpoints/statsEndpoint.hpp"
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <json.hpp>
 #include <memory>
 #include <optional>
@@ -364,6 +366,31 @@ TEST(StatsEndpointTest, MalformedJsonIsRejected)
         const auto response = run(makeRequest(body, "001"));
         EXPECT_EQ(400, response.status) << "body: " << body;
     }
+}
+
+/**
+ * dump() recurses once per level: a deep enough report would overflow the I/O thread's stack and crash
+ * the whole of modulesd. The cap is checked on the raw body, so the deepest legal report still goes
+ * through and one level more never reaches the parser or the indexer. The attack-sized body would
+ * crash this test binary without the cap.
+ */
+TEST(StatsEndpointTest, ReportsNestedPastTheLimitAreRejectedBeforeParsing)
+{
+    // root, modules and the module body are three levels; the rest is arrays under one field.
+    const auto nested = [](std::size_t depth)
+    {
+        const std::size_t arrays = depth - 3;
+        return R"({"modules":{"m":{"x":)" + std::string(arrays, '[') + std::string(arrays, ']') + "}}}";
+    };
+
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    EXPECT_EQ(200, run(makeRequest(nested(invsync::common::MAX_JSON_NESTING_DEPTH), "001"), connector).status);
+    EXPECT_EQ(1U, connector->indexed.size());
+
+    connector = std::make_shared<FakeAsyncConnector>();
+    EXPECT_EQ(400, run(makeRequest(nested(invsync::common::MAX_JSON_NESTING_DEPTH + 1), "001"), connector).status);
+    EXPECT_EQ(400, run(makeRequest(nested(1'000'000), "001"), connector).status);
+    EXPECT_TRUE(connector->indexed.empty());
 }
 
 /**

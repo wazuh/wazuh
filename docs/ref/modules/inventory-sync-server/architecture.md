@@ -423,7 +423,7 @@ per process and never reset), so totals read across a retry are cumulative.
 ## Design decisions
 
 The decisions that shape the module, and what each one buys. This is the narrative distillation;
-the complete numbered catalog (D1–D23, plus the functional and non-functional requirements it
+the complete numbered catalog (D1–D24, plus the functional and non-functional requirements it
 answers to) lives in the module's in-tree developer README,
 `src/wazuh_modules/inventory_sync_server/README.md`:
 

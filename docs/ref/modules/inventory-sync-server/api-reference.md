@@ -69,6 +69,12 @@ Two details worth knowing:
 holds a module whose body is not an object. The empty case is a rejection on purpose: indexing a
 report with no statistics would replace the agent's last good one.
 
+Both `/stats` and `/config` also answer `400` to a body that nests objects and arrays more than **256**
+levels deep, counting the root as level 1. This check runs on the raw bytes before parsing, so such a
+body never reaches the indexer. It protects modulesd: the JSON serializer recurses once per level, and a
+deep enough report would overflow the stack and crash the process. A report under the limit can still
+fail the indexer's own `index.mapping.depth.limit`, which is much lower.
+
 ## Request headers
 
 | Header | Required | Meaning |
@@ -238,7 +244,7 @@ The body is a FlatBuffers `Message{FullSession}` (see [Schemas](flatbuffers.md))
 
 | `Start.mode` | Accepted payload | What it does |
 |---|---|---|
-| `ModuleDelta` | `SyncData` (values ≥ 1, contexts optional) | Upserts/deletes state documents. Each value maps to one document: `_id` = `{cluster}_{agent}_{id}`, the document is overlaid with authoritative `wazuh.*` fields (agent id/name/version, groups, cluster) so a payload can never impersonate another agent, and a positive `version` becomes a versioned upsert. Documents targeting an index outside the allowlist are skipped with a warning, never failing the request; if everything was skipped the answer is a no-op `200`. |
+| `ModuleDelta` | `SyncData` (values ≥ 1, contexts optional) | Upserts/deletes state documents. Each value maps to one document: `_id` = `{cluster}_{agent}_{id}`, the document is overlaid with authoritative `wazuh.*` fields (agent id/name/version, groups, cluster) so a payload can never impersonate another agent, and a positive `version` becomes a versioned upsert. Documents targeting an index outside the allowlist, and upserts whose `data` is not a JSON object or nests deeper than 256 levels, are skipped with a warning, never failing the request; if everything was skipped the answer is a no-op `200`. |
 | `ModuleDelta` | `Cleans` (items ≥ 1) | Deletes this agent's documents from each named index (deduplicated, allowlisted). A full resync is composed by the agent as two requests: a `Cleans` of the module's indices, then a `ModuleDelta` with the complete dataset. |
 | `ModuleCheck` | `ChecksumModule` | Integrity verification of one index: the server pages this agent's documents in deterministic order, aggregates their checksums (SHA-1), and compares with the declared value — `200` on match, `409` on mismatch. One attempt, no retry loop: a mismatch means the agent full-resyncs. |
 | `MetadataDelta` / `GroupDelta` | *(none)* | Reconciles agent metadata (or group membership) across the agent's already-indexed documents with one update-by-query, guarded by `global_version` so a stale update can never overwrite a newer one. |
@@ -310,7 +316,7 @@ These can be returned on any route, by the transport rather than by a handler:
 
 | Status | Cause |
 |---|---|
-| `400` | Malformed HTTP, a missing/invalid agent id header, or a body that does not match the route's shape (for `/stats` and `/config`: a non-empty `modules`-keyed object whose every module value is an object — an empty `modules` is rejected on purpose, since indexing a report with nothing to store would replace the agent's last good document; for `/_internal/agents/delete`: an object carrying a usable `agent_id`) |
+| `400` | Malformed HTTP, a missing/invalid agent id header, or a body that does not match the route's shape (for `/stats` and `/config`: a non-empty `modules`-keyed object whose every module value is an object — an empty `modules` is rejected on purpose, since indexing a report with nothing to store would replace the agent's last good document, and no nesting deeper than 256 levels; for `/_internal/agents/delete`: an object carrying a usable `agent_id`) |
 | `404` | Unknown path |
 | `405` | Known path, wrong verb. Carries an `Allow` header listing that path's verbs |
 | `411` | Chunked transfer encoding, which is not supported |

@@ -11,6 +11,7 @@
 
 #include "sync/sessionProcessor.hpp"
 
+#include "common/jsonNestingDepth.hpp"
 #include "sync/fullSessionValidator.hpp"
 #include "testIndexerConnectorFakes.hpp"
 #include "testSessionBuilder.hpp"
@@ -22,6 +23,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <variant>
@@ -175,6 +177,42 @@ TEST_F(SessionProcessorTest, PerDocumentProblemsAreSkippedNotFailed)
     const auto ops = events->syncOps();
     ASSERT_EQ(1U, ops.size()) << "only the good document may reach the bulk";
     EXPECT_EQ("test-cluster_001_doc-good", std::get<1>(ops[0]));
+}
+
+/**
+ * dump() recurses once per level: a deep enough document would overflow the worker's stack and crash
+ * the whole of modulesd (D24). The cap is checked on the raw bytes, so the deepest legal document is
+ * still staged and one level more is skipped like any other bad document. The attack-sized one would
+ * crash this test binary without the cap.
+ */
+TEST_F(SessionProcessorTest, DocumentsNestedPastTheLimitAreSkippedBeforeParsing)
+{
+    // The root object is one level; the rest is arrays under one field.
+    const auto nested = [](std::size_t depth)
+    {
+        const std::size_t arrays = depth - 1;
+        return R"({"a":)" + std::string(arrays, '[') + std::string(arrays, ']') + "}";
+    };
+
+    ValueSpec atTheLimit;
+    atTheLimit.id = "doc-deepest";
+    atTheLimit.data = nested(invsync::common::MAX_JSON_NESTING_DEPTH);
+    ValueSpec overTheLimit;
+    overTheLimit.id = "doc-over";
+    overTheLimit.data = nested(invsync::common::MAX_JSON_NESTING_DEPTH + 1);
+    ValueSpec attack;
+    attack.id = "doc-attack";
+    attack.data = nested(1'000'000);
+
+    const auto prepared =
+        prepare(invsync::test::buildSyncDataSession(SessionSpec {}, {atTheLimit, overTheLimit, attack}));
+    const auto outcome = processor.stageBulk(prepared.session, connector);
+
+    EXPECT_EQ(200, outcome.status);
+    EXPECT_TRUE(outcome.staged);
+    const auto ops = events->syncOps();
+    ASSERT_EQ(1U, ops.size()) << "only the document within the limit may reach the bulk";
+    EXPECT_EQ("test-cluster_001_doc-deepest", std::get<1>(ops[0]));
 }
 
 TEST_F(SessionProcessorTest, AnOutOfEnumOperationIs400WithNothingStaged)

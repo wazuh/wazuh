@@ -11,6 +11,7 @@
 
 #include "configEndpoint.hpp"
 
+#include "common/jsonNestingDepth.hpp"
 #include "loggerHelper.h"
 #include "sync/stateIndexAllowlist.hpp" // AGENT_CONFIG_INDEX -- shared with the deletion scope
 #include "timeHelper.h"
@@ -143,6 +144,15 @@ namespace invsync::endpoints::config
             if (agentIdIt == request->headers.end() || agentIdIt->second.empty())
             {
                 responder->send(badRequest("Missing agent id header"));
+                return;
+            }
+
+            // Before the parse, on the raw bytes: the copy out of the document and dump() below both
+            // recurse once per level, so a deep enough body would overflow this thread's stack and
+            // take the whole of modulesd down.
+            if (invsync::common::exceedsNestingDepth(request->body))
+            {
+                responder->send(badRequest("Body nests deeper than the allowed limit"));
                 return;
             }
 
