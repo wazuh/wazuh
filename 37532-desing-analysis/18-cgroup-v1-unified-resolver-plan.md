@@ -420,7 +420,7 @@ sentence does not. Syscollector no longer discovers purely through `list`: it di
 and collection is still `/proc/<pid>/root` + `setns`, which uses no correlation key at all. So it
 still starts working when WP4 lands.
 
-### WP-ISSUE — update the issue description *(last, after the shipped phase is measured)*
+### WP-ISSUE — update the issue description *(last, after the shipped phase is measured)* — **DONE**
 
 `/home/rovogel/wazuh/source/37203-agent-integration-issue.md` is the authoritative index for #37203,
 and this plan is the resolution of **O4**, which that file still carries as open. Updating it is the
@@ -457,8 +457,16 @@ filter change was a no-op on v1.
   in the file.
 - **Deliverables / Acceptance criteria** — any row that states a supported-platform set.
 
-**After Phase 2 (WP5+WP6).**
+**After Phase 2 (WP5+WP6).** All of the below was done on 2026-10-06, with one substitution: the
+new decision records correlation on **a v1 controller's own cgroup id**, not on a namespace. This
+package was written expecting `mnt_ns`, and measurement sent it the other way — the entry that went
+into the issue says so explicitly, because two analyses in that file had pointed the wrong way and
+hiding the correction would have cost the reader the reason.
+
 - **D12 is superseded outright**, not amended: v1 is then degraded rather than refused.
+- **D1 needed amending too, which this package did not anticipate.** It named the correlation key
+  "the cgroup **v2** inode, the value `bpf_get_current_cgroup_id()` returns" — conflating the number
+  with the one helper that reports it, which is the same conflation that made v1 look impossible.
 - **Contracts to freeze #2 breaks.** The IPC protocol is published there as version 1 with a
   `cgroup_id` field; WP5 moves it to version 2 with `key_kind`/`key`. This is the only breaking
   change to a frozen contract in the whole of #37203 — it gets its own entry, with the one-version
