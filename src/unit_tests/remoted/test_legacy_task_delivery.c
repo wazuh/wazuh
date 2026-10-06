@@ -2061,6 +2061,162 @@ void test_process_upgrade_ack_duplicate_same_agent_replies_twice(void **state) {
     legacy_task_drain_clear_upgrade_replies();
 }
 
+/* ---------------------------------------------------------------------- */
+/* Log injection: every agent-supplied string is logged with CR/LF escaped */
+/* ---------------------------------------------------------------------- */
+
+/* The formatted log line carries no raw CR/LF and does carry the escaped marker. Used where the
+ * rest of the line holds a value the test does not pin (the CA digest). */
+static int check_log_line_is_escaped(const LargestIntegralType value, const LargestIntegralType check_data) {
+    const char *line = (const char *) value;
+    const char *marker = (const char *) check_data;
+
+    return strpbrk(line, "\r\n") == NULL && strstr(line, marker) != NULL;
+}
+
+void test_process_upgrade_ack_message_newlines_are_escaped(void **state) {
+    (void) state;
+
+    expect_string(__wrap__minfo, formatted_msg,
+        "legacy_task_delivery: agent '007' reported upgrade result (error 0: done\\n2026/10/06 12:00:00 "
+        "wazuh-manager-remoted: INFO: forged\\r), replying with clear_upgrade_result");
+
+    assert_true(legacy_task_process_upgrade_ack("007",
+        "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,"
+        "\"message\":\"done\\n2026/10/06 12:00:00 wazuh-manager-remoted: INFO: forged\\r\"}}"));
+
+    expect_string(__wrap_req_send_and_wait, agent_id, "007");
+    expect_string(__wrap_req_send_and_wait, payload, "upgrade {\"command\":\"clear_upgrade_result\",\"parameters\":{}}");
+    will_return(__wrap_req_send_and_wait, "{\"error\":0}");
+    will_return(__wrap_req_send_and_wait, 0);
+
+    legacy_task_drain_clear_upgrade_replies();
+}
+
+void test_process_upgrade_ack_failure_message_newlines_are_escaped(void **state) {
+    (void) state;
+
+    expect_string(__wrap__mwarn, formatted_msg,
+        "legacy_task_delivery: agent '008' reported upgrade result (error 2: failed\\nforged), replying "
+        "with clear_upgrade_result");
+
+    assert_true(legacy_task_process_upgrade_ack("008",
+        "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,\"message\":\"failed\\nforged\"}}"));
+
+    expect_string(__wrap_req_send_and_wait, agent_id, "008");
+    expect_string(__wrap_req_send_and_wait, payload, "upgrade {\"command\":\"clear_upgrade_result\",\"parameters\":{}}");
+    will_return(__wrap_req_send_and_wait, "{\"error\":0}");
+    will_return(__wrap_req_send_and_wait, 0);
+
+    legacy_task_drain_clear_upgrade_replies();
+}
+
+static void test_deliver_rejection_message_newlines_are_escaped(void **state) {
+    (void) state;
+
+    expect_any(__wrap__minfo, formatted_msg); // "delivering remote_upgrade task..."
+
+    expect_req_step("ok ", 0);                                          // lock_restart
+    expect_req_step("{\"error\":1,\"message\":\"busy\\nforged\"}", 0); // open: rejected
+    expect_string(__wrap__mwarn, formatted_msg,
+        "legacy_task_delivery: agent '060' rejected step targeting 'upgrade': busy\\nforged");
+    expect_any(__wrap__mwarn, formatted_msg); // "'open' step failed, aborting push"
+
+    cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("060", "t-060", payload, true, &no_response), LEGACY_TASK_PUSH_RETRYABLE);
+    cJSON_Delete(payload);
+}
+
+static void test_deliver_sha1_mismatch_newlines_are_escaped(void **state) {
+    (void) state;
+
+    FILE *fake_file = tmpfile();
+    assert_non_null(fake_file);
+
+    expect_any(__wrap__minfo, formatted_msg); // "delivering remote_upgrade task..."
+
+    expect_req_step("ok ", 0);                                  // lock_restart
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // open
+
+    expect_string(__wrap_wfopen, path, "var/upgrade/wazuh_agent.wpk");
+    expect_string(__wrap_wfopen, mode, "rb");
+    will_return(__wrap_wfopen, fake_file);
+
+    expect_fread("hello", 5);
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // write
+    expect_fread("", 0);
+    expect_fclose(fake_file, 0);
+
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);              // close
+    expect_req_step("{\"error\":0,\"message\":\"dead\\nbeef\"}", 0);    // sha1: injected digest
+    expect_string(__wrap__mwarn, formatted_msg,
+        "legacy_task_delivery: agent '061': sha1 mismatch after transfer (expected 'abc123', got "
+        "'dead\\nbeef'), aborting");
+
+    cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("061", "t-061", payload, true, &no_response), LEGACY_TASK_PUSH_RETRYABLE);
+    cJSON_Delete(payload);
+}
+
+static void test_deliver_exit_status_newlines_are_escaped(void **state) {
+    (void) state;
+
+    FILE *fake_file = tmpfile();
+    assert_non_null(fake_file);
+
+    expect_wpk_transfer_up_to_sha1(fake_file);
+    expect_ca_delivery_success();                                       // step 5b
+
+    expect_req_step("{\"error\":0,\"message\":\"1\\nforged\"}", 0);    // upgrade: injected status
+    expect_string(__wrap__merror, formatted_msg,
+        "legacy_task_delivery: agent '062': installer script failed (exit status: 1\\nforged)");
+
+    cJSON *payload = build_payload("wazuh_agent.wpk", "abc123", "upgrade.sh");
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("062", "t-062", payload, true, &no_response), LEGACY_TASK_PUSH_PERMANENT);
+    cJSON_Delete(payload);
+}
+
+static void test_ca_sha1_mismatch_newlines_are_escaped(void **state) {
+    (void) state;
+
+    FILE *fake_file = tmpfile();
+    assert_non_null(fake_file);
+
+    expect_wpk_transfer_up_to_sha1(fake_file);
+    expect_ca_export(LEGACY_TASK_CA_DEFAULT_PATH, TEST_CA_PEM);
+    will_return(__wrap_remoted_module_tls_ca_matches_leaf, 1);
+    expect_any(__wrap__mdebug1, formatted_msg); // "sending the manager CA ..."
+
+    for (int attempt = 1; attempt <= LEGACY_TASK_CA_MAX_ATTEMPTS; attempt++) {
+        expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);              // open
+        expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);              // write
+        expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);              // close
+        expect_req_step("{\"error\":0,\"message\":\"dead\\r\\nbeef\"}", 0);  // sha1: injected digest
+        if (attempt == LEGACY_TASK_CA_MAX_ATTEMPTS) {
+            expect_check(__wrap__mwarn, formatted_msg, check_log_line_is_escaped,
+                         (LargestIntegralType)(uintptr_t)"got 'dead\\r\\nbeef'");
+        } else {
+            expect_check(__wrap__mdebug1, formatted_msg, check_log_line_is_escaped,
+                         (LargestIntegralType)(uintptr_t)"got 'dead\\r\\nbeef'");
+        }
+    }
+
+    expect_any(__wrap__mwarn, formatted_msg); // "could not deliver the manager CA ... after 3 attempt(s)"
+
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // truncate: open
+    expect_req_step("{\"error\":0,\"message\":\"ok\"}", 0);      // truncate: close
+
+    expect_upgrade_step_and_success();
+
+    cJSON *payload = build_payload_versioned("wazuh_agent.wpk", "abc123", "upgrade.sh", "v5.0.0");
+    bool no_response = false;
+    assert_int_equal(legacy_task_deliver_remote_upgrade("063", "t-063", payload, true, &no_response), LEGACY_TASK_PUSH_SUCCESS);
+    cJSON_Delete(payload);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_version_gate_unknown_version_skips, test_setup, test_teardown),
@@ -2122,6 +2278,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_upgrade_ack_burst_of_agents_does_not_block, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_drain_clear_upgrade_replies_empty_queue_is_noop, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_process_upgrade_ack_duplicate_same_agent_replies_twice, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_process_upgrade_ack_message_newlines_are_escaped, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_process_upgrade_ack_failure_message_newlines_are_escaped, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_deliver_rejection_message_newlines_are_escaped, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_deliver_sha1_mismatch_newlines_are_escaped, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_deliver_exit_status_newlines_are_escaped, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_ca_sha1_mismatch_newlines_are_escaped, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
