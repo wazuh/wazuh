@@ -739,6 +739,95 @@ TEST_F(IndexerConnectorTest, PublishDeletedDoesNotCollideWithLongerItemId)
 }
 
 /**
+ * @brief Test that a DELETED operation whose id carries no version suffix removes every document indexed under
+ * "<id>_<suffix>" - the shape the vulnerability scanner publishes, where the documents are versioned with the feed
+ * offset and the deletions are not - while a sibling id that merely shares the byte prefix is left alone, in the
+ * index and in the local mirror.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDeletedRemovesEveryVersionedDocument)
+{
+    const std::string deletedId {"000_openssl_CVE-2023-1"};
+    const std::vector<std::string> versionedIds {"000_openssl_CVE-2023-1_3984622", "000_openssl_CVE-2023-1_4058234"};
+    const std::string siblingId {"000_openssl_CVE-2023-100_3990122"};
+
+    std::atomic<bool> callbackCalled {false};
+    std::mutex deleteRequestsMutex;
+    std::string deleteRequests;
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&callbackCalled, &deleteRequestsMutex, &deleteRequests](const std::string& data)
+        {
+            if (data.find(R"("delete")") != std::string::npos)
+            {
+                std::lock_guard<std::mutex> lock {deleteRequestsMutex};
+                deleteRequests.append(data);
+            }
+            callbackCalled = true;
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    for (const auto& id : {versionedIds[0], versionedIds[1], siblingId})
+    {
+        callbackCalled = false;
+        nlohmann::json publishData;
+        publishData["id"] = id;
+        publishData["operation"] = "INSERTED";
+        publishData["data"] = "content";
+        ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+        ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    }
+
+    callbackCalled = false;
+    nlohmann::json deleteData;
+    deleteData["id"] = deletedId;
+    deleteData["operation"] = "DELETED";
+    ASSERT_NO_THROW(indexerConnector.publish(deleteData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS))
+        << "The DELETED operation matched no document, so no bulk request was sent";
+
+    {
+        std::lock_guard<std::mutex> lock {deleteRequestsMutex};
+        for (const auto& id : versionedIds)
+        {
+            EXPECT_NE(deleteRequests.find(R"("_id":")" + id + R"(")"), std::string::npos)
+                << "Versioned document " << id << " was not deleted from the index";
+        }
+        EXPECT_EQ(deleteRequests.find(R"("_id":")" + siblingId + R"(")"), std::string::npos)
+            << "The sibling document was also deleted from the index";
+    }
+
+    // The mirror must agree with the index: a resync that finds only the sibling there has nothing to delete and
+    // nothing to reindex, so no bulk request fires at all.
+    std::atomic<bool> searchRequested {false};
+    m_indexerServers[A_IDX]->setSearchCallback(
+        [&searchRequested, &siblingId](const std::string&) -> std::string
+        {
+            searchRequested = true;
+            return R"({"_scroll_id":"abcdef","hits":{"total":{"value":1},"hits":[{"_id":")" + siblingId + R"("}]}})";
+        });
+
+    std::atomic<bool> publishCallbackFired {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&publishCallbackFired](const std::string& data)
+        {
+            std::ignore = data;
+            publishCallbackFired = true;
+        });
+
+    indexerConnector.sync("000");
+
+    EXPECT_ANY_THROW(
+        waitUntil([&publishCallbackFired]() { return publishCallbackFired.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_TRUE(searchRequested) << "sync() never queried the index, so the mirror assertion proves nothing";
+    ASSERT_FALSE(publishCallbackFired) << "The local mirror and the index disagree after the versioned deletion";
+}
+
+/**
  * @brief Test the connection and posterior data publication into a server. The published data is checked against the
  * expected one. The publication contains a DELETED_BY_QUERY operation.
  *

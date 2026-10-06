@@ -1189,18 +1189,13 @@ IndexerConnector::IndexerConnector(
                 {
                     if (m_useSeekDelete)
                     {
-                        // The id here is already the full composite key (every element's deleteElement() builds
-                        // it as agentId + "_" + itemId) - no separator needed. seek() is a plain byte-prefix
-                        // scan though, so a longer sibling key starting with this id (e.g. CVE-2023-100 when
-                        // deleting CVE-2023-1) would also match. The default comparator visits the exact match
-                        // first, so stop as soon as the key stops being exactly the id.
-                        for (const auto& [key, _] : m_db->seek(id))
+                        // Seek-delete publishers send the id without the version suffix their documents were
+                        // indexed with ("<id>_<suffix>", see InventorySync::updateElementID in the vulnerability
+                        // scanner), so the match is the exact id plus every key under "<id>_". A plain seek(id)
+                        // would also sweep siblings sharing the byte prefix (CVE-2023-100 when deleting
+                        // CVE-2023-1), and those sort before "<id>_", so the prefix scan has to be its own seek.
+                        const auto deleteKey = [&](const std::string& key)
                         {
-                            if (key != id)
-                            {
-                                break;
-                            }
-
                             logDebug2(IC_NAME, "Added document for deletion with id: %s.", key.c_str());
                             if (!noIndex)
                             {
@@ -1208,6 +1203,19 @@ IndexerConnector::IndexerConnector(
                             }
 
                             m_db->delete_(key);
+                        };
+
+                        if (std::string value; !id.empty() && m_db->get(id, value))
+                        {
+                            deleteKey(id);
+                        }
+
+                        // Named local: seek() only borrows the key as a string_view, read lazily on the loop's
+                        // begin() - a temporary here would already be gone by then.
+                        const auto idPrefix = id + "_";
+                        for (const auto& [key, _] : m_db->seek(idPrefix))
+                        {
+                            deleteKey(key);
                         }
                     }
                     else
@@ -1533,16 +1541,18 @@ IndexerConnector::IndexerConnector(
                 {
                     if (m_useSeekDelete)
                     {
-                        // Same as the index-enabled constructor's DELETED branch: id is already the full
-                        // composite key, no separator appended - stop as soon as the key stops being exactly
-                        // the id, so a longer sibling key sharing the same byte-prefix isn't also deleted.
-                        for (const auto& [key, _] : m_db->seek(id))
+                        // Same match as the index-enabled constructor's DELETED branch: the exact id plus every
+                        // versioned key under "<id>_", never a sibling that merely shares the byte prefix.
+                        if (std::string value; !id.empty() && m_db->get(id, value))
                         {
-                            if (key != id)
-                            {
-                                break;
-                            }
+                            m_db->delete_(id);
+                        }
 
+                        // Named local: seek() only borrows the key as a string_view, read lazily on the loop's
+                        // begin() - a temporary here would already be gone by then.
+                        const auto idPrefix = id + "_";
+                        for (const auto& [key, _] : m_db->seek(idPrefix))
+                        {
                             m_db->delete_(key);
                         }
                     }
