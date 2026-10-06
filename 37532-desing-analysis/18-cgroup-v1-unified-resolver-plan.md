@@ -461,6 +461,10 @@ on every supported host. The v2 evidence in §15.10 is the baseline it has to re
    `RT_CGROUP_MODE_ALL` and filter on `ev->mnt_ns` **in userspace**, which is precisely the mode the
    allowlist change (`541077159e`) moved away from and measured a cost for. Phase 2's real price is
    that cost, on legacy hosts only; WP6 must state it rather than discover it.
+
+   Both of these are set out at length, with the raw probe output, the kernfs/nsfs reason behind
+   them and the cost restated against doc 19's medians, in
+   [`20-mnt-ns-key-and-legacy-filter-mode.md`](20-mnt-ns-key-and-legacy-filter-mode.md).
 3. **Which controller should be canonical on v1?** The priority list above is a proposal; a survey of
    what RHEL 8 and AL2 actually mount by default would settle it.
 4. ~~**Does the 32-bit `mnt_ns` field need widening?**~~ **Closed, 2026-10-05, no.** The BPF side
