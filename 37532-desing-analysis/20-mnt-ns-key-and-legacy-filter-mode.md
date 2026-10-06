@@ -291,11 +291,46 @@ every task is in exactly one cgroup per mounted v1 hierarchy, which is also prec
 `/proc/<pid>/cgroup` names and the resolver stats. WP6a must assert that gate rather than leave it
 implied.
 
-**What a v2 host cannot settle**, and what still needs a legacy boot (§18.6,
-`systemd.unified_cgroup_hierarchy=0`): that on v1 `subsys[idx]->cgroup` is the task's cgroup in
-*that controller's* hierarchy and its id matches `stat()` of `/sys/fs/cgroup/<controller>/<path>`.
-The `subsys[0]` result above makes this likelier rather than less — the entries are clearly
-per-controller and not a single shared pointer — but "likelier" is not "measured".
+### 20.4.4 Closed: measured on a non-unified host
+
+`wazuh_manager` was rebooted with `systemd.unified_cgroup_hierarchy=0` on 2026-10-06 and restored
+to its default afterwards. systemd came up **hybrid** — v1 controllers at `/sys/fs/cgroup/<ctrl>`
+with a v2 hierarchy at `/sys/fs/cgroup/unified` — which is the layout the shared probe calls
+`hybrid`, and it reported exactly that. Docker ran with `Cgroup Version: 1`, driver `cgroupfs`, so
+containers landed in `/docker/<id>` in every v1 hierarchy.
+
+A process was moved into a **real container's** cgroups in both hierarchies, and probed:
+
+| | Value |
+| --- | ---: |
+| `stat /sys/fs/cgroup/memory/docker/<id>` | **8387** |
+| `subsys[4]->cgroup->kn->id` (the CO-RE walk) | **8387** |
+| `stat /sys/fs/cgroup/unified/docker/<id>` | **6225** |
+| `bpf_get_current_cgroup_id()` | **6225** |
+
+**Both equations hold, and they are different numbers.** That settles three things at once:
+
+1. **The open question is closed.** On a host with real v1 controller hierarchies,
+   `subsys[idx]->cgroup` *is* the task's cgroup in that controller's hierarchy, and its `kn->id` is
+   the inode `stat()` returns for the directory the resolver reads from `/proc/<pid>/cgroup`. WP6a
+   rests on a measurement now, not an expectation.
+2. **WP2's hybrid rule is confirmed end to end.** The `0::` path is relative to
+   `/sys/fs/cgroup/unified`, and statting it there yields precisely what the helper reports — which
+   is what the plan asserted and what the pre-WP2 code got wrong by statting it at the root.
+3. **The two key spaces are genuinely distinct** — 8387 and 6225 for the same task at the same
+   instant. The separation this design is built on is not theoretical.
+
+A fourth, smaller result: `subsys[0]` (cpuset) returned **1**, the root cgroup, because this task's
+cpuset line was `/`. Per-controller cgroups are independent, exactly as WP6a's configured index
+assumes.
+
+**What is still not measured:** a *pure* legacy host, with no unified hierarchy at all. systemd's
+`unified_cgroup_hierarchy=0` produces hybrid, not legacy; pure v1 additionally needs
+`systemd.legacy_systemd_cgroup_controller=1`. The one claim that remains inferred rather than
+observed is that `bpf_get_current_cgroup_id()` collapses to a constant there — #37396 ADR-002's
+premise. Nothing in this work depends on it being *exactly* constant: the design only needs the
+helper's value to be unusable for attribution, and on a pure v1 host there is no unified hierarchy
+for it to report from. It is recorded as the one remaining inference.
 
 ### 20.4.2 The fallback, if the BPF work cannot be scheduled
 
