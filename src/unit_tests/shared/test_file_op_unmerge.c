@@ -445,7 +445,7 @@ static void test_names_invalid_only_on_windows(void** state)
     const char* names[] =
     {
         "agent.conf", "rules:v2.txt", "C:a", "a?b", "a<b>c", "a|b", "a\"b", "a*b",
-        "notes.", "space ", "...", "a\\b", "\\a", "a\\..\\b", "sub/a\\b"
+        "notes.", "space ", "...", "a\\b", "\\a", "a\\..\\b", "sub/a\\b", "COM1", "nul.txt"
     };
     const size_t count = sizeof(names) / sizeof(*names);
     char bundle[1024];

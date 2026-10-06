@@ -750,6 +750,39 @@ void DeleteState() {
 #define UNMERGE_SEPARATORS "/"
 #endif
 
+#ifdef WIN32
+/* COM and LPT followed by a digit or by a superscript one, two or three in UTF-8. */
+static int unmerge_port_name(const char *base, size_t length)
+{
+    if (length < 4 || length > 5 || (strncasecmp(base, "COM", 3) && strncasecmp(base, "LPT", 3))) {
+        return 0;
+    }
+    if (length == 4) {
+        return isdigit((unsigned char)base[3]);
+    }
+    return !memcmp(base + 3, "\xC2\xB9", 2) || !memcmp(base + 3, "\xC2\xB2", 2) || !memcmp(base + 3, "\xC2\xB3", 2);
+}
+
+/* Win32 documents device names as reserved in every directory, with or without an extension. Windows 11
+ * creates such entries as files, but older versions may open the device instead. */
+static int unmerge_device_name(const char *component, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL"};
+    const char *dot = memchr(component, '.', length);
+    size_t base = dot ? (size_t)(dot - component) : length;
+
+    while (base > 0 && component[base - 1] == ' ') {
+        --base;
+    }
+    for (size_t i = 0; i < sizeof(devices) / sizeof(*devices); ++i) {
+        if (base == strlen(devices[i]) && !strncasecmp(component, devices[i], base)) {
+            return 1;
+        }
+    }
+    return unmerge_port_name(component, base);
+}
+#endif
+
 /* Reject components the local filesystem would not create under their literal name. */
 static int unmerge_valid_component(const char *component, size_t length)
 {
@@ -759,6 +792,9 @@ static int unmerge_valid_component(const char *component, size_t length)
 #ifdef WIN32
     /* Win32 strips trailing dots and spaces, so the created file would not match the entry. */
     if (component[length - 1] == '.' || component[length - 1] == ' ') {
+        return 0;
+    }
+    if (unmerge_device_name(component, length)) {
         return 0;
     }
 #endif
