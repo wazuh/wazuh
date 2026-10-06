@@ -20,9 +20,15 @@ pure v1 hierarchy. That is a kernel property, not a bug we can fix, and it is wh
 The damage is wider than that refusal, and it is silent. Three facts compose:
 
 1. **The resolver only understands v2.** `parseCgroupV2Line()` accepts a line only if it begins
-   `0::`, and returns `nullopt` otherwise. A pure v1 `/proc/<pid>/cgroup` has no `0::` line at all —
-   only numbered controller lines (`11:devices:/docker/abc…`). Every line is rejected, so the scan
-   returns no container entries.
+   `0::`, and returns `nullopt` otherwise, so every numbered controller line
+   (`11:devices:/docker/abc…`) is rejected and the scan returns no container entries.
+
+   *Corrected 2026-10-06 after measuring one:* a pure v1 host **does** emit a `0::` line — it reads
+   `0::/`, pointing at the root. This paragraph previously said there was none. The consequence is
+   unchanged, because a root path identifies nothing and the resolver skips it, but the distinction
+   matters for the parser: it must handle a unified line that is present and useless, not merely a
+   missing one. `selectCanonicalCgroup()` ignores unified lines entirely on a legacy host, and
+   `scan()` drops a path of `/`, so both cases are covered.
 2. **Every record therefore gets `cgroupId = 0`.** `docker_connector.cpp:66` joins the API snapshot
    against the resolver's inode map; a container absent from that map is assigned zero.
 3. **`list` drops every zero-keyed *running* record.** `metadata_store.cpp:124` skips a record
@@ -533,10 +539,15 @@ containers. Phase 0 plus WP-ISSUE is then the whole of the work.
 
 ## 18.6 Verification
 
-**Reproducing a v1 host cheaply.** Ubuntu boots v2, but `systemd.unified_cgroup_hierarchy=0` on the
-kernel command line plus a reboot gives a pure v1 hierarchy on the existing `wazuh_manager` VM — no
-new box needed. RHEL/Alma 8 and Amazon Linux 2 boot v1 by default and remain the fleet-accurate
-targets.
+**Reproducing a v1 host cheaply — and it takes TWO parameters, not one.** Ubuntu boots v2.
+`systemd.unified_cgroup_hierarchy=0` alone yields a **hybrid** host: v1 controllers at
+`/sys/fs/cgroup/<ctrl>` with a v2 hierarchy still mounted at `/sys/fs/cgroup/unified`, where
+`bpf_get_current_cgroup_id()` keeps working and nothing legacy-specific is exercised. Adding
+`systemd.legacy_systemd_cgroup_controller=1` removes that mount and gives a genuinely pure v1 host —
+verified on `wazuh_manager`: zero cgroup2 mounts, Docker on `Cgroup Version: 1`. Both were used to
+validate this plan (`20-…` §20.4.4 and §20.4.5), and both are reachable on the existing VM with a
+grub edit and a reboot. RHEL/Alma 8 and Amazon Linux 2 boot v1 by default and remain the
+fleet-accurate targets.
 
 **Negative control first, as with every change in this branch — and it is no longer "`list` is
 empty".** Since the state-aware filter (§18.1) a v1 host publishes its *exited* containers, so on any
@@ -558,7 +569,8 @@ build:
 | Unit | the three `listContainers()`-family guards under a `HostKey`: running-without-a-key hidden, stopped-without-a-key listed, running-with-a-key listed. Pins both halves of the WP4 guard so the §18.1.1 inversion cannot come back |
 | Contract | store keyed by `HostKey`: both kinds, verdict liveness, `list` filtering |
 | Integration | the `~/e2e-int` harness on a v1 host: `list` non-empty, inventory events carry `container.*`, FIM refused in phase 1 and working in phase 2 |
-| Kernel | **WP6a's prerequisite**: on a v1 host, that the id read from `subsys[idx]->cgroup->kn->id` equals `stat()` of that controller's directory. Extend `rt_engine_drops_test`, which already asserts the v2 equivalent; until it passes, WP6a rests on an assumption |
+| Kernel | ~~WP6a's prerequisite~~ — **measured 2026-10-06** (`20-…` §20.4.5): on a pure v1 host the walk returned 6403 and 6435 for two containers, matching `stat()` of their memory cgroups, while the helper returned **1 for every task**. Still worth pinning in `rt_engine_drops_test` beside the v2 equivalent |
+| Kernel | **in-kernel filtering on a pure v1 host** — `rt_engine_filter_test` now places its cgroups under the selected controller where there is no unified hierarchy, and passes all five properties there. This is the end-to-end proof that phase 2 does not pay `19-…`'s cost |
 | Kernel | the configured subsystem index is the controller WP2 chose — assert the `/proc/cgroups` count and the `bpf_core_enum_value()` reading agree, and that a disagreement refuses rather than picks one |
 | Integration | on a v1 host with the allowlist active: an allowlisted container's events arrive, a non-allowlisted container's do not. The same five properties `rt_engine_filter_test` asserts on v2, which is the point — route 2 means legacy hosts behave like unified ones |
 | Regression | the whole v2 capture from §15.10 re-run unchanged — the v2 path must be byte-identical, since `HostKey{cgroupInode, …}` carries the same number it does today |
