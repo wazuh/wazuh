@@ -41,6 +41,9 @@ All notable changes to this project will be documented in this file.
 - Fixed a quadratic-time loop in the AWS Macie/custom-bucket JSON parser caused by re-slicing the remaining buffer on every object, and its zero-matching regex backtracking quadratically on long runs of zeros. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
 - Fixed the Maltiverse integration sending an unvalidated alert hostname unescaped in the request path, allowing path or query manipulation within the Maltiverse API. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
 - Fixed the Azure Storage integration resending every record of an append blob each time new records were appended to it. ([#40177](https://github.com/wazuh/wazuh/pull/40177))
+- Fixed the vulnerability scanner outbox queue hanging with a busy thread and no log when its stored keys do not match the ones it reads: the read now fails with an error, the dispatcher reports it through the logger, the startup refuses an incomplete key scan and reports unreadable keys. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+- Fixed the vulnerability scanner re-scan leaving findings in the local mirror that its inventory no longer tracks: each agent is now cleared by prefix, and in a cluster each node scans only the agents that report to it and clears the others. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+- Fixed the single-agent vulnerability re-scan aborting on a NULL agent column after its state had been cleared. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 
 ### Agent
 
