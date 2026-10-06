@@ -3280,9 +3280,14 @@ static int w_clear_nonblock(int fd) {
     return fd;
 }
 
-// Solaris before 11 has no readlinkat(), and HP-UX has none of openat(), fstatat() and readlinkat().
-#if !defined(W_VETTED_NO_AT_WALK) && (defined(HPUX) || (defined(SUN_MAJOR_VERSION) && SUN_MAJOR_VERSION < 11))
+// HP-UX lacks openat(), fstatat() and readlinkat(); Solaris < 11 lacks only readlinkat() (see w_readlinkat()).
+#if !defined(W_VETTED_NO_AT_WALK) && defined(HPUX)
 #define W_VETTED_NO_AT_WALK
+#endif
+
+#if !defined(W_VETTED_NO_READLINKAT) && !defined(W_VETTED_NO_AT_WALK) && \
+    (defined(SUN_MAJOR_VERSION) && SUN_MAJOR_VERSION < 11)
+#define W_VETTED_NO_READLINKAT
 #endif
 
 #ifndef W_VETTED_NO_AT_WALK
@@ -3360,6 +3365,109 @@ static bool w_is_procfs(int dirfd) {
 }
 #endif
 
+#ifdef W_VETTED_NO_READLINKAT
+/**
+ * readlinkat() for Solaris 10. A child fchdir()s into dirfd and readlink()s the bare name, as changing the
+ * directory in this process would affect every thread. The child calls only async-signal-safe functions and
+ * hands the result back over a pipe: first an errno value (0 on success), then the link text.
+ *
+ * @return Target length as readlinkat(), or -1 on error (sets errno).
+ */
+static ssize_t w_readlinkat(int dirfd, const char * name, char * buf, size_t size) {
+    char text[PATH_MAX + 1];
+    int fds[2];
+    int err = 0;
+    int status;
+    pid_t pid;
+    pid_t reaped;
+    ssize_t n;
+    ssize_t total = -1;
+
+    if (size > PATH_MAX) {
+        size = PATH_MAX;
+    }
+
+    if (pipe(fds) < 0) {
+        return -1;
+    }
+
+    w_fd_cloexec(fds[0]);
+    w_fd_cloexec(fds[1]);
+
+    if (pid = fork(), pid < 0) {
+        err = errno;
+        close(fds[0]);
+        close(fds[1]);
+        errno = err;
+        return -1;
+    }
+
+    if (pid == 0) {
+        ssize_t len = -1;
+
+        close(fds[0]);
+
+        if (fchdir(dirfd) == 0) {
+            len = readlink(name, text, size);
+        }
+
+        err = len < 0 ? errno : 0;
+
+        if (write(fds[1], &err, sizeof(err)) == sizeof(err) && len > 0) {
+            if (write(fds[1], text, len) != len) {
+                _exit(1);
+            }
+        }
+
+        _exit(len < 0 ? 1 : 0);
+    }
+
+    close(fds[1]);
+
+    while (n = read(fds[0], &err, sizeof(err)), n < 0 && errno == EINTR) {
+    }
+
+    if (n == sizeof(err) && err == 0) {
+        total = 0;
+
+        while (n = read(fds[0], text + total, size - total), n > 0 || (n < 0 && errno == EINTR)) {
+            if (n > 0) {
+                total += n;
+            }
+        }
+
+        if (n < 0) {
+            err = errno;
+            total = -1;
+        }
+    } else if (n != sizeof(err)) {
+        err = n < 0 ? errno : EIO;
+    }
+
+    close(fds[0]);
+
+    // SIGCHLD ignored makes the child reap itself, so ECHILD is not a failure.
+    while (reaped = waitpid(pid, &status, 0), reaped < 0 && errno == EINTR) {
+    }
+
+    // A child that died between its two writes would otherwise read as an empty target.
+    if (total >= 0 && reaped >= 0 && !(WIFEXITED(status) && WEXITSTATUS(status) == 0)) {
+        total = -1;
+        err = EIO;
+    }
+
+    if (total < 0) {
+        errno = err ? err : EIO;
+        return -1;
+    }
+
+    memcpy(buf, text, total);
+    return total;
+}
+#else
+#define w_readlinkat readlinkat
+#endif
+
 /**
  * Reads the target of symlink name in dirfd, failing unless it is still a symlink with the inode and owner
  * link_stat describes, so an entry swapped in after its owner was checked is not followed, even on inode reuse.
@@ -3369,7 +3477,8 @@ static bool w_is_procfs(int dirfd) {
 static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat * link_stat, char * target) {
     struct stat now;
     ssize_t n;
-#ifdef W_VETTED_O_PATH
+// w_readlinkat() cannot read through a pinned link descriptor (empty name), so the emulation skips the pin.
+#if defined(W_VETTED_O_PATH) && !defined(W_VETTED_NO_READLINKAT)
     // Pin the link itself, so the target read belongs to the inode compared below. O_NONBLOCK is for kernels
     // that ignore O_PATH, where this is a plain open: a FIFO swapped in for the link must not block it.
     int linkfd;
@@ -3383,7 +3492,7 @@ static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat
             errno = EAGAIN;
             n = -1;
         } else {
-            n = readlinkat(linkfd, "", target, PATH_MAX);
+            n = w_readlinkat(linkfd, "", target, PATH_MAX);
         }
 
         saved_errno = errno;
@@ -3398,7 +3507,7 @@ static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat
     }
 #endif
     // No way to pin a link here: check it is the same one after reading it.
-    if (n = readlinkat(dirfd, name, target, PATH_MAX), n < 0) {
+    if (n = w_readlinkat(dirfd, name, target, PATH_MAX), n < 0) {
         return -1;
     }
 
