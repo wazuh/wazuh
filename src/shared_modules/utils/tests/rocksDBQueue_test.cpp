@@ -194,7 +194,7 @@ TEST_F(RocksDBQueueTest, FrontQueueFailsWhenTheKeysAreUnreachable)
     rocksdb::Status status = rocksdb::DB::Open(options, TEST_DB, &db);
     ASSERT_TRUE(status.ok()) << "Failed to open database: " << status.ToString();
 
-    // The queue counts this key as element 5 but the key it builds for it ("5") does not exist.
+    // The queue counts this key as element 5 but neither the padded nor the plain key it builds for it exists.
     db->Put(rocksdb::WriteOptions(), "5a", "value");
     delete db;
 
@@ -248,10 +248,10 @@ TEST_F(RocksDBQueueTest, StartupWarnsAboutKeysTheQueueCannotReach)
 
     const auto logs = captureLogs([this]() { queue = std::make_unique<RocksDBQueue<std::string>>(TEST_DB); });
 
-    EXPECT_NE(logs.find("1 of 1 stored keys do not match"), std::string::npos) << logs;
+    EXPECT_NE(logs.find("1 of 1 stored keys do not match the unpadded"), std::string::npos) << logs;
 }
 
-// Test that the startup reports padded keys left unreadable by an unpadded key in the same store
+// Test that a store mixing unpadded and padded keys reports the keys its format cannot reach
 TEST_F(RocksDBQueueTest, StartupWarnsAboutPaddedKeysInAnUnpaddedStore)
 {
     queue.reset();
@@ -260,6 +260,46 @@ TEST_F(RocksDBQueueTest, StartupWarnsAboutPaddedKeysInAnUnpaddedStore)
     const auto logs = captureLogs([this]() { queue = std::make_unique<RocksDBQueue<std::string>>(TEST_DB); });
 
     EXPECT_NE(logs.find("2 of 3 stored keys do not match the unpadded"), std::string::npos) << logs;
+}
+
+// Test that a store mixing both formats fails to read the keys of the other format instead of looping
+TEST_F(RocksDBQueueTest, FrontQueueFailsOnAMixedStore)
+{
+    queue.reset();
+    writeRawKeys({{"1", "value1"}, {"00000000000000000002", "value2"}, {"00000000000000000003", "value3"}});
+    queue = std::make_unique<RocksDBQueue<std::string>>(TEST_DB);
+    ASSERT_EQ(queue->size(), 3);
+
+    std::queue<std::string> elements;
+    EXPECT_THROW(queue->frontQueue(elements, 3), std::runtime_error);
+}
+
+// Test that a store that already has unpadded keys keeps writing unpadded keys
+TEST_F(RocksDBQueueTest, PushOnUnpaddedKeysKeepsTheUnpaddedFormat)
+{
+    queue.reset();
+    writeRawKeys({{"1", "value1"}, {"2", "value2"}});
+
+    queue = std::make_unique<RocksDBQueue<std::string>>(TEST_DB);
+    queue->push("value3");
+    queue.reset();
+
+    rocksdb::DB* db;
+    rocksdb::Options options;
+    ASSERT_TRUE(rocksdb::DB::OpenForReadOnly(options, TEST_DB, &db).ok());
+    std::string value;
+    EXPECT_TRUE(db->Get(rocksdb::ReadOptions(), "3", &value).ok());
+    EXPECT_EQ(value, "value3");
+    EXPECT_FALSE(db->Get(rocksdb::ReadOptions(), "00000000000000000003", &value).ok());
+    delete db;
+
+    queue = std::make_unique<RocksDBQueue<std::string>>(TEST_DB);
+    for (const auto* expected : {"value1", "value2", "value3"})
+    {
+        EXPECT_EQ(queue->front(), expected);
+        queue->pop();
+    }
+    EXPECT_TRUE(queue->empty());
 }
 
 // Test that a well formed store starts without warnings

@@ -77,6 +77,47 @@ private:
 
             it->Next();
         }
+
+        // Valid() is false both at the end of the store and when the iteration fails, so the status tells them apart.
+        // Metadata computed from a partial scan would make push() overwrite queued entries.
+        if (const auto status = it->status(); !status.ok())
+        {
+            throw std::runtime_error("Failed to scan the keys of the queue: " + status.ToString());
+        }
+
+        // Independent check of the metadata: a stored key outside the range of its queue proves the scan did not see
+        // the whole store.
+        for (const auto fromEnd : {false, true})
+        {
+            if (fromEnd)
+            {
+                it->SeekToLast();
+            }
+            else
+            {
+                it->SeekToFirst();
+            }
+
+            if (!it->Valid())
+            {
+                if (!it->status().ok())
+                {
+                    throw std::runtime_error("Failed to check the bounds of the queue: " + it->status().ToString());
+                }
+                continue;
+            }
+
+            const auto data = Utils::split(it->key().ToString(), '_');
+            const auto metadata = m_queueMetadata.find(data.at(KeyFields::ID_QUEUE));
+            const auto queueNumber = std::stoull(data.at(KeyFields::QUEUE_NUMBER));
+
+            if (metadata == m_queueMetadata.end() || queueNumber < metadata->second.head ||
+                queueNumber > metadata->second.tail)
+            {
+                throw std::runtime_error("The scan of the queue did not cover the whole store: key " +
+                                         it->key().ToString() + " is outside the computed bounds");
+            }
+        }
     }
 
 public:
