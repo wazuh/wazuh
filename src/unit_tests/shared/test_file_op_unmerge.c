@@ -306,7 +306,7 @@ static void check_io_failure(void** state, int selected_fault)
     fault = selected_fault;
     fault_path = target;
     expect_any(__wrap__merror, formatted_msg);
-    assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, &list), 0);
+    assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, &list), UNMERGE_FAILED);
     fault = FAULT_NONE;
     fault_path = NULL;
     assert_int_equal(fault_count, 1);
@@ -345,7 +345,7 @@ static void test_unmerge_read_failure(void** state)
     fault = FAULT_READ;
     fault_path = sb->merged;
     expect_any(__wrap__merror, formatted_msg);
-    assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, NULL), 0);
+    assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, NULL), UNMERGE_FAILED);
     fault = FAULT_NONE;
     fault_path = NULL;
     assert_int_equal(fault_count, 1);
@@ -362,7 +362,7 @@ static void test_unmerge_rename_failure(void** state)
     assert_int_equal(mkdir(path, 0700), 0);
     write_file(sb->merged, "!3 existing\none!3 last.conf\ntwo");
     expect_any(__wrap__mferror, formatted_msg);
-    assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, &list), 0);
+    assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, &list), UNMERGE_FAILED);
     assert_content(sb, "last.conf", "two");
     assert_int_equal(count_entries(path), 0);
     assert_int_equal(count_entries(sb->dest), 2);
@@ -379,7 +379,7 @@ static void test_unmerge_directory_failure(void** state)
     write_file(path, "keep-me");
     write_file(sb->merged, "!3 existing/file\none!3 last.conf\ntwo");
     expect_any_count(__wrap__merror, formatted_msg, 2);
-    assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, NULL), 0);
+    assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, NULL), UNMERGE_FAILED);
     assert_content(sb, "existing", "keep-me");
     assert_content(sb, "last.conf", "two");
     assert_int_equal(count_entries(sb->dest), 2);
@@ -393,7 +393,7 @@ static void test_unmerge_incomplete_entry(void** state)
     write_file(path, "keep-me");
     write_file(sb->merged, "!20 agent.conf\nshort");
     expect_any(__wrap__merror, formatted_msg);
-    assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, NULL), 0);
+    assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, NULL), UNMERGE_FAILED);
     assert_content(sb, "agent.conf", "keep-me");
     assert_int_equal(count_entries(sb->dest), 1);
 }
@@ -431,7 +431,7 @@ static void test_unmerge_reserved_names(void** state)
     write_file(bundle, content);
     write_file(accepted, "previous");
     expect_any_count(__wrap__merror, formatted_msg, 2);
-    assert_int_equal(UnmergeFiles(bundle, sb->dest, OS_TEXT, NULL), 0);
+    assert_int_equal(UnmergeFiles(bundle, sb->dest, OS_TEXT, NULL), UNMERGE_NAMES_SKIPPED);
     assert_content(sb, "merged.mg.tmp", content);
     assert_content(sb, "merged.mg", "previous");
     assert_content(sb, "sub/merged.mg", "ok");
@@ -511,7 +511,7 @@ static void test_invalid_header_validation(void** state)
         write_file(sb->merged, invalid[i]);
         assert_int_equal(TestUnmergeFiles(sb->merged, OS_BINARY), 0);
         expect_any(__wrap__merror, formatted_msg);
-        assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_BINARY, NULL), 0);
+        assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_BINARY, NULL), UNMERGE_FAILED);
     }
 
     assert_int_equal(count_entries(sb->dest), 0);
@@ -524,9 +524,24 @@ static void test_invalid_name_diagnostic(void** state)
     write_file(sb->merged, "!0 a\rb\n!2 valid.conf\nok");
     snprintf(expected, sizeof(expected), "Unmerging '%s': invalid entry name 'a?b'.", sb->merged);
     expect_string(__wrap__merror, formatted_msg, expected);
-    assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, NULL), 0);
+    assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, NULL), UNMERGE_NAMES_SKIPPED);
     assert_content(sb, "valid.conf", "ok");
     assert_int_equal(count_entries(sb->dest), 1);
+}
+
+/* An entry that could not be written fails the bundle even when another one was only skipped. */
+static void test_unmerge_failure_outranks_skipped_name(void** state)
+{
+    sandbox_t* sb = *state;
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/existing", sb->dest);
+    write_file(path, "keep-me");
+    write_file(sb->merged, "!2 a\tb\nno!3 existing/file\none!3 last.conf\ntwo");
+    expect_any_count(__wrap__merror, formatted_msg, 3);
+    assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, NULL), UNMERGE_FAILED);
+    assert_content(sb, "existing", "keep-me");
+    assert_content(sb, "last.conf", "two");
+    assert_int_equal(count_entries(sb->dest), 2);
 }
 
 /* Names that normalization would shorten before rejecting them are logged as the manager sent them. */
@@ -543,7 +558,7 @@ static void test_invalid_name_logged_as_received(void** state)
         write_file(sb->merged, bundle);
         snprintf(expected, sizeof(expected), "Unmerging '%s': invalid entry name '%s'.", sb->merged, names[i]);
         expect_string(__wrap__merror, formatted_msg, expected);
-        assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, NULL), 0);
+        assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, NULL), UNMERGE_NAMES_SKIPPED);
     }
 
     assert_int_equal(count_entries(sb->dest), 0);
@@ -560,6 +575,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_invalid_header_validation, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_invalid_name_diagnostic, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_invalid_name_logged_as_received, setup_sandbox, teardown_sandbox),
+        cmocka_unit_test_setup_teardown(test_unmerge_failure_outranks_skipped_name, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_unmerge_regular_entries, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_unmerge_binary_entry, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_unmerge_open_failure, setup_sandbox, teardown_sandbox),

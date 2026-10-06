@@ -1113,12 +1113,24 @@ static void unmerge_list_append(char ***list, int *count, const char *name)
     }
 }
 
-/* Extracts every entry of an open merged file. Returns 0 if any entry was not extracted. */
+/* A failed entry fails the bundle, while a skipped one only makes it incomplete. */
+static int unmerge_result(int result, int entry)
+{
+    if (entry == UNMERGE_ENTRY_FAILED || entry == UNMERGE_ENTRY_TRUNCATED) {
+        return UNMERGE_FAILED;
+    }
+    if (entry == UNMERGE_ENTRY_SKIPPED && result == UNMERGE_COMPLETE) {
+        return UNMERGE_NAMES_SKIPPED;
+    }
+    return result;
+}
+
+/* Extracts every entry of an open merged file, skipping those with invalid names. */
 static int unmerge_entries(unmerge_bundle_t *bundle, const char *optdir, char ***unmerged_files)
 {
     int file_count = unmerge_list_length(unmerged_files);
     int entry = UNMERGE_ENTRY_EXTRACTED;
-    int result = 1;
+    int result = UNMERGE_COMPLETE;
     int next = 0;
     size_t size;
     char *name;
@@ -1128,13 +1140,12 @@ static int unmerge_entries(unmerge_bundle_t *bundle, const char *optdir, char **
 
         if (entry = unmerge_entry(bundle, optdir, name, size, normalized), entry == UNMERGE_ENTRY_EXTRACTED) {
             unmerge_list_append(unmerged_files, &file_count, normalized);
-        } else {
-            result = 0;
         }
+        result = unmerge_result(result, entry);
     }
     if (next < 0) {
         merror("Unmerging '%s': invalid entry header.", bundle->path);
-        result = 0;
+        return UNMERGE_FAILED;
     }
     return result;
 }
@@ -1145,10 +1156,10 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***un
     int result;
 
     if (!unmerge_open(&bundle)) {
-        return 0;
+        return UNMERGE_FAILED;
     }
     result = unmerge_entries(&bundle, optdir, unmerged_files);
-    return unmerge_close(&bundle) ? result : 0;
+    return unmerge_close(&bundle) ? result : UNMERGE_FAILED;
 }
 
 /* Validates an entry the way UnmergeFiles() reads it, without extracting it. */

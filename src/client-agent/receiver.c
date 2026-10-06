@@ -28,6 +28,71 @@ static int receiving_merged = 0;
 w_queue_t * winexec_queue;
 #endif
 
+/* Reports that the shared files could not be completely updated */
+static void report_unmerge_error(void)
+{
+    char msg_output[OS_MAXSTR];
+
+    snprintf(msg_output, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
+    send_msg(msg_output, -1);
+}
+
+/* Reloads the agent or reports the new shared configuration, according to the agent settings */
+static void apply_shared_configuration(void)
+{
+    clear_merged_hash_cache();
+    if (agt->flags.remote_conf && !verifyRemoteConf()) {
+        if (agt->flags.auto_restart) {
+            minfo("Agent is reloading due to shared configuration changes.");
+            reloadAgent();
+        } else {
+            minfo("Shared agent configuration has been updated.");
+        }
+    }
+}
+
+/* Files kept in the shared directory besides the extracted entries */
+static char **shared_bundle_files(void)
+{
+    char **list;
+
+    os_calloc(3, sizeof(char *), list);
+    os_strdup(SHAREDCFG_FILENAME, list[0]);
+    os_strdup(SHAREDCFG_FILENAME ".tmp", list[1]);
+    return list;
+}
+
+/* Extracts a bundle into the shared directory and removes the files it no longer has */
+static int extract_shared_bundle(const char *bundle)
+{
+    char **kept = shared_bundle_files();
+    int result = UnmergeFiles(bundle, SHAREDCFG_DIR, OS_TEXT, &kept);
+
+    if (result != UNMERGE_FAILED && cldir_ex_ignore(SHAREDCFG_DIR, (const char **)kept)) {
+        mwarn("Could not clean up shared directory.");
+        result = UNMERGE_FAILED;
+    }
+    free_strarray(kept);
+    return result;
+}
+
+/* Publishes a received bundle as the accepted one once the shared directory matches it. Entries with invalid
+ * names are skipped, since the manager would send them unchanged again; other failures leave the update pending. */
+static void update_shared_files(const char *bundle)
+{
+    int result = extract_shared_bundle(bundle);
+
+    if (result == UNMERGE_FAILED || rename_ex(bundle, SHAREDCFG_FILE) != 0) {
+        unlink(bundle);
+        report_unmerge_error();
+        return;
+    }
+    if (result == UNMERGE_NAMES_SKIPPED) {
+        report_unmerge_error();
+    }
+    apply_shared_configuration();
+}
+
 /* Receive events from the server */
 int receive_msg()
 {
@@ -275,37 +340,7 @@ int receive_msg()
                         final_file = strrchr(file, '/');
                         if (final_file) {
                             if (receiving_merged) {
-                                char **ignore_list;
-                                os_calloc(3, sizeof(char *), ignore_list);
-                                os_strdup(SHAREDCFG_FILENAME, ignore_list[0]);
-                                os_strdup(SHAREDCFG_FILENAME ".tmp", ignore_list[1]);
-                                int unmerge_ok = UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT, &ignore_list);
-                                if (unmerge_ok && cldir_ex_ignore(SHAREDCFG_DIR, (const char **)ignore_list)) {
-                                    mwarn("Could not clean up shared directory.");
-                                    unmerge_ok = 0;
-                                }
-                                /* Publish the accepted bundle only after the entire update succeeds. */
-                                if (unmerge_ok && rename_ex(file, SHAREDCFG_FILE) != 0) {
-                                    unmerge_ok = 0;
-                                }
-                                if (!unmerge_ok) {
-                                    char msg_output[OS_MAXSTR];
-
-                                    unlink(file);
-                                    snprintf(msg_output, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
-                                    send_msg(msg_output, -1);
-                                } else {
-                                    clear_merged_hash_cache();
-                                    if (agt->flags.remote_conf && !verifyRemoteConf()) {
-                                        if (agt->flags.auto_restart) {
-                                            minfo("Agent is reloading due to shared configuration changes.");
-                                            reloadAgent();
-                                        } else {
-                                            minfo("Shared agent configuration has been updated.");
-                                        }
-                                    }
-                                }
-                                free_strarray(ignore_list);
+                                update_shared_files(file);
                             }
                         } else {
                             /* Remove file */

@@ -196,7 +196,7 @@ static int setup(void** state)
     agt->server[0].rip = strdup("127.0.0.1");
     agt->flags.remote_conf = 1;
     agt->flags.auto_restart = 1;
-    extraction_result = 1;
+    extraction_result = UNMERGE_COMPLETE;
     extracted = 1;
     errors = cleanups = cache_clears = validations = reloads = 0;
     cleanup_result = publish_result = publications = discarded = 0;
@@ -241,12 +241,14 @@ static void receive_bundle(void)
     message = CONTROL_HEADER FILE_CLOSE_HEADER;
     expect_any(__wrap__mdebug2, formatted_msg);
 
-    if (extraction_result && !cleanup_result && !publish_result && agt->flags.remote_conf)
+    int extracted_all = extraction_result != UNMERGE_FAILED;
+
+    if (extracted_all && !cleanup_result && !publish_result && agt->flags.remote_conf)
     {
         expect_any(__wrap__minfo, formatted_msg);
     }
 
-    if (extraction_result && cleanup_result)
+    if (extracted_all && cleanup_result)
     {
         expect_any(__wrap__mwarn, formatted_msg);
     }
@@ -279,10 +281,26 @@ static void assert_update_pending(void)
     assert_string_equal(accepted_hash, "previous");
 }
 
+/* Entries with invalid names would come back unchanged, so the bundle is accepted and reported once. */
+static void test_update_with_skipped_names(void** state)
+{
+    (void)state;
+    extraction_result = UNMERGE_NAMES_SKIPPED;
+    receive_bundle();
+    assert_int_equal(errors, 1);
+    assert_int_equal(cleanups, 1);
+    assert_int_equal(publications, 1);
+    assert_int_equal(cache_clears, 1);
+    assert_int_equal(validations, 1);
+    assert_int_equal(reloads, 1);
+    assert_int_equal(discarded, 0);
+    assert_string_equal(accepted_hash, checksum);
+}
+
 static void test_partial_update(void** state)
 {
     (void)state;
-    extraction_result = 0;
+    extraction_result = UNMERGE_FAILED;
     receive_bundle();
     assert_update_pending();
     assert_int_equal(cleanups, 0);
@@ -291,7 +309,7 @@ static void test_partial_update(void** state)
 static void test_failed_update(void** state)
 {
     (void)state;
-    extraction_result = 0;
+    extraction_result = UNMERGE_FAILED;
     extracted = 0;
     receive_bundle();
     assert_update_pending();
@@ -301,7 +319,7 @@ static void test_failed_update(void** state)
 static void test_retry_after_partial_update(void** state)
 {
     test_partial_update(state);
-    extraction_result = 1;
+    extraction_result = UNMERGE_COMPLETE;
     receive_bundle();
     assert_int_equal(errors, 1);
     assert_int_equal(cleanups, 1);
@@ -348,7 +366,7 @@ static void assert_fixture_contents(const char* path, const char* contents)
     assert_int_equal(fclose(fp), 0);
 }
 
-static void test_filesystem_retry(void** state)
+static filesystem_fixture* enter_filesystem_fixture(void** state)
 {
     filesystem_fixture* fixture = calloc(1, sizeof(*fixture));
     assert_non_null(fixture);
@@ -359,6 +377,12 @@ static void test_filesystem_retry(void** state)
     real_files = 1;
     assert_int_equal(chdir(fixture->root), 0);
     assert_int_equal(mkdir_ex(SHAREDCFG_DIR), 0);
+    return fixture;
+}
+
+static void test_filesystem_retry(void** state)
+{
+    enter_filesystem_fixture(state);
     write_fixture_file(SHAREDCFG_FILE, "previous bundle");
     write_fixture_file(SHAREDCFG_DIR "/obsolete", "old");
     assert_int_equal(mkdir_ex(SHAREDCFG_DIR "/policy"), 0);
@@ -367,7 +391,7 @@ static void test_filesystem_retry(void** state)
     os_md5 new_hash;
     assert_int_equal(OS_MD5_Str(bundle_data, strlen(bundle_data), new_hash), 0);
     checksum = new_hash;
-    extraction_result = 0;
+    extraction_result = UNMERGE_FAILED;
     expect_any(__wrap__mferror, formatted_msg);
     receive_bundle();
     assert_update_pending();
@@ -379,7 +403,7 @@ static void test_filesystem_retry(void** state)
     assert_int_equal(access(SHAREDCFG_FILE ".tmp", F_OK), -1);
 
     assert_int_equal(rmdir(SHAREDCFG_DIR "/policy"), 0);
-    extraction_result = 1;
+    extraction_result = UNMERGE_COMPLETE;
     receive_bundle();
     assert_int_equal(errors, 1);
     assert_int_equal(cleanups, 1);
@@ -390,6 +414,33 @@ static void test_filesystem_retry(void** state)
     assert_fixture_contents(SHAREDCFG_FILE, bundle_data);
     assert_fixture_contents(SHAREDCFG_DIR "/agent.conf", "new");
     assert_fixture_contents(SHAREDCFG_DIR "/policy", "rule");
+    assert_int_equal(access(SHAREDCFG_DIR "/obsolete", F_OK), -1);
+    assert_int_equal(access(SHAREDCFG_FILE ".tmp", F_OK), -1);
+}
+
+/* A name the agent cannot create, as a tab, no longer makes the manager resend the bundle forever. */
+static void test_filesystem_invalid_name(void** state)
+{
+    enter_filesystem_fixture(state);
+    write_fixture_file(SHAREDCFG_FILE, "previous bundle");
+    write_fixture_file(SHAREDCFG_DIR "/obsolete", "old");
+
+    bundle_data = "!3 agent.conf\nnew!2 tab\tname.txt\nno!4 rules.txt\nrule";
+    os_md5 new_hash;
+    assert_int_equal(OS_MD5_Str(bundle_data, strlen(bundle_data), new_hash), 0);
+    checksum = new_hash;
+    extraction_result = UNMERGE_NAMES_SKIPPED;
+    expect_any(__wrap__merror, formatted_msg);
+    receive_bundle();
+    assert_int_equal(errors, 1);
+    assert_int_equal(cleanups, 1);
+    assert_int_equal(publications, 1);
+    assert_int_equal(reloads, 1);
+    assert_int_equal(discarded, 0);
+    assert_fixture_contents(SHAREDCFG_FILE, bundle_data);
+    assert_fixture_contents(SHAREDCFG_DIR "/agent.conf", "new");
+    assert_fixture_contents(SHAREDCFG_DIR "/rules.txt", "rule");
+    assert_int_equal(access(SHAREDCFG_DIR "/tab\tname.txt", F_OK), -1);
     assert_int_equal(access(SHAREDCFG_DIR "/obsolete", F_OK), -1);
     assert_int_equal(access(SHAREDCFG_FILE ".tmp", F_OK), -1);
 }
@@ -423,12 +474,14 @@ int main(void)
     const struct CMUnitTest tests[] =
     {
         cmocka_unit_test_setup_teardown(test_complete_update, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_update_with_skipped_names, setup, teardown),
         cmocka_unit_test_setup_teardown(test_partial_update, setup, teardown),
         cmocka_unit_test_setup_teardown(test_failed_update, setup, teardown),
         cmocka_unit_test_setup_teardown(test_retry_after_partial_update, setup, teardown),
         cmocka_unit_test_setup_teardown(test_cleanup_failure, setup, teardown),
         cmocka_unit_test_setup_teardown(test_publication_failure, setup, teardown),
         cmocka_unit_test_setup_teardown(test_filesystem_retry, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_filesystem_invalid_name, setup, teardown),
         cmocka_unit_test_setup_teardown(test_update_without_restart, setup, teardown),
         cmocka_unit_test_setup_teardown(test_update_without_remote_conf, setup, teardown),
     };
