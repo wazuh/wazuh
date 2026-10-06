@@ -3176,6 +3176,20 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
 
 #ifndef WIN32
 
+// O_CLOEXEC is 0 on some platforms (see defs.h), so set it here to keep fds out of <localfile><command>
+// children; a failure is ignored, as the descriptor stays usable. Returns fd unchanged.
+static int w_fd_cloexec(int fd) {
+#if O_CLOEXEC == 0
+    int flags;
+
+    if (fd >= 0 && (flags = fcntl(fd, F_GETFD), flags >= 0)) {
+        fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+    }
+#endif
+
+    return fd;
+}
+
 /**
  * A hard link can be made by anyone who can write to its directory, so an entry with more than one link
  * is trusted only when nobody but root and the entry's owner can.
@@ -3327,7 +3341,7 @@ static int w_open_walk_dir(int dirfd, const char * name, int flags) {
     }
 #endif
 
-    return fd;
+    return w_fd_cloexec(fd);
 }
 
 #ifdef __linux__
@@ -3585,6 +3599,8 @@ static int w_open_vetted_follow_fd(const char * path, bool follow_last) {
         goto fail_swapped;
     }
 
+    w_fd_cloexec(fd);
+
     if (fstat(fd, &fd_stat) < 0 || w_fstat_walk(dirfd, &dir_stat) < 0) {
         goto fail;
     }
@@ -3603,9 +3619,19 @@ static int w_open_vetted_follow_fd(const char * path, bool follow_last) {
     return w_clear_nonblock(fd);
 
 fail_swapped:
-    // O_NOFOLLOW reports a symlink as ELOOP (EMLINK on FreeBSD): the entry changed under us.
+    // Not every platform reports a swapped symlink as ELOOP/EMLINK, so re-stat the entry to detect it.
     if (errno == ELOOP || errno == EMLINK) {
         errno = EAGAIN;
+    } else {
+        struct stat swapped;
+        int open_errno = errno;
+
+        if (fstatat(dirfd, name, &swapped, AT_SYMLINK_NOFOLLOW) == 0 &&
+            (S_ISLNK(swapped.st_mode) || swapped.st_dev != entry_stat.st_dev || swapped.st_ino != entry_stat.st_ino)) {
+            open_errno = EAGAIN;
+        }
+
+        errno = open_errno;
     }
 fail:
     saved_errno = errno;
