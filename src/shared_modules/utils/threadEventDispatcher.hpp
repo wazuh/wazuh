@@ -19,6 +19,7 @@
 #include "threadSafeMultiQueue.hpp"
 #include "threadSafeQueue.h"
 #include <atomic>
+#include <chrono>
 #include <functional>
 #include <iostream>
 #include <thread>
@@ -202,6 +203,9 @@ public:
 private:
     void dispatch()
     {
+        std::string lastError;
+        auto lastErrorLog = std::chrono::steady_clock::time_point {};
+
         while (m_running)
         {
             try
@@ -241,7 +245,16 @@ private:
                 if (m_running)
                 {
                     std::this_thread::sleep_for(std::chrono::seconds(1));
-                    std::cerr << "Dispatch handler error, " << ex.what() << "\n";
+
+                    // The same batch is retried every second: log a new error at once and a persistent one once
+                    // a minute.
+                    const auto now = std::chrono::steady_clock::now();
+                    if (lastError != ex.what() || now - lastErrorLog >= std::chrono::minutes(1))
+                    {
+                        logWarn(LOGGER_DEFAULT_TAG, "Dispatch handler error, %s", ex.what());
+                        lastError = ex.what();
+                        lastErrorLog = now;
+                    }
                 }
                 else
                 {

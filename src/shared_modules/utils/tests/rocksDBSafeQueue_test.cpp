@@ -402,6 +402,19 @@ TEST_F(RocksDBSafeQueueTest, PopBulkWithDeletedIndexAndPendingElementsEmpty)
     EXPECT_TRUE(queue->empty());
 }
 
+TEST_F(RocksDBSafeQueueTest, GetBulkPropagatesUnreadableKeys)
+{
+    queue = nullptr;
+    {
+        auto db = std::make_unique<Utils::RocksDBWrapper>("test.db");
+        db->put("5a", "value");
+    }
+    queue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
+        RocksDBQueue<std::string>("test.db"));
+
+    EXPECT_THROW(queue->getBulk(1, std::chrono::seconds(1)), std::runtime_error);
+}
+
 namespace
 {
     size_t getMemoryUsage()

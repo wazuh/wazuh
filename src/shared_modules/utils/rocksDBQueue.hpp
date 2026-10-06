@@ -121,6 +121,9 @@ public:
             m_last = 0;
         }
 
+        uint64_t paddedKeys = 0;
+        uint64_t otherKeys = 0;
+
         while (it->Valid())
         {
             const auto keyString = it->key().ToString();
@@ -129,6 +132,19 @@ public:
             if (keyString.size() < ROCKSDB_QUEUE_PADDING)
             {
                 m_legacyKeyMode = true;
+            }
+
+            // Count the keys that are neither the plain decimal nor the padded form of their index.
+            if (keyString != std::to_string(key))
+            {
+                if (keyString == Utils::padString(std::to_string(key), '0', ROCKSDB_QUEUE_PADDING))
+                {
+                    ++paddedKeys;
+                }
+                else
+                {
+                    ++otherKeys;
+                }
             }
 
             if (key > m_last)
@@ -143,6 +159,29 @@ public:
             ++m_size;
 
             it->Next();
+        }
+
+        // Valid() is false both at the end of the store and when the iteration fails, so the status tells them apart.
+        if (const auto status = it->status(); !status.ok())
+        {
+            logError(LOGGER_DEFAULT_TAG,
+                     "Queue '%s': the scan of the stored keys failed after %llu keys (%s). The queue bounds may not "
+                     "cover every stored key.",
+                     connectorName.c_str(),
+                     static_cast<unsigned long long>(m_size),
+                     status.ToString().c_str());
+        }
+
+        // A stored key the queue would never build cannot be read or removed.
+        if (const auto unreachableKeys = otherKeys + (m_legacyKeyMode ? paddedKeys : 0); unreachableKeys > 0)
+        {
+            logWarn(LOGGER_DEFAULT_TAG,
+                    "Queue '%s': %llu of %llu stored keys do not match the %s key format the queue reads and will "
+                    "not be dequeued.",
+                    connectorName.c_str(),
+                    static_cast<unsigned long long>(unreachableKeys),
+                    static_cast<unsigned long long>(m_size),
+                    m_legacyKeyMode ? "unpadded" : "padded");
         }
     }
 
@@ -225,7 +264,7 @@ public:
         auto index = m_first;
 
         // Get the first "elementsQuantity" elements in increasing order.
-        while (counter < elementsQuantity)
+        while (counter < elementsQuantity && index <= m_last)
         {
             U value;
             if (const auto status =
@@ -243,6 +282,14 @@ public:
                 }
             }
             ++index;
+        }
+
+        // The keys the queue accounts for do not match the ones stored: do not wait for elements that do not exist.
+        if (counter < elementsQuantity)
+        {
+            throw std::runtime_error("Failed to get elements, only " + std::to_string(counter) + " of " +
+                                     std::to_string(elementsQuantity) + " requested elements were found between " +
+                                     std::to_string(m_first) + " and " + std::to_string(m_last));
         }
     }
 
