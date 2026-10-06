@@ -19,6 +19,9 @@ All notable changes to this project will be documented in this file.
 - Fixed a directory-naming collision in the multigroup shared-configuration path. ([#39773](https://github.com/wazuh/wazuh/pull/39773))
 - Fixed `run_as` authorization-context regex rules without a closing quote being evaluated as a partial expression, and rejected such rules when creating or updating security rules. ([#39855](https://github.com/wazuh/wazuh/pull/39855))
 - Fixed `MATCH` and `MATCH$` security rules granting a role when a rule item was not satisfied, because matches were counted instead of checked per rule item. ([#39855](https://github.com/wazuh/wazuh/pull/39855))
+- Fixed the vulnerability scanner outbox queue hanging with a busy thread and no log when its stored keys do not match the ones it reads: the read now fails with an error, the dispatcher reports it through the logger, the startup refuses an incomplete key scan and reports unreadable keys. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+- Fixed the vulnerability scanner re-scan leaving findings in the local mirror that its inventory no longer tracks: each agent is now cleared by prefix, and in a cluster each node scans only the agents that report to it and clears the others. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+- Fixed the single-agent vulnerability re-scan aborting on a NULL agent column after its state had been cleared. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 
 ### Agent
 
