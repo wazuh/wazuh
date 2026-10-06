@@ -143,6 +143,7 @@ int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, co
 /**
  * Check ip version from a string
  * Uses getaddrinfo() with AI_NUMERICHOST to validate IP format
+ * On Windows, starts and cleans up Winsock around the call
  * @param ip Ip to check version
  * @retval 4 If ip is ipv4
  * @retval 6 If ip is ipv6

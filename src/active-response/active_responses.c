@@ -561,14 +561,18 @@ int get_ip_version(const char *ip) {
     hint.ai_family = AF_UNSPEC;
     hint.ai_flags = AI_NUMERICHOST;
 
-    ret = getaddrinfo(ip, NULL, &hint, &res);
-    if (ret != 0) {
-        // getaddrinfo failed, res may not be initialized
+#ifdef WIN32
+    // getaddrinfo fails with WSANOTINITIALISED until Winsock is started
+    WSADATA wsa_data;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0) {
         return OS_INVALID;
     }
+#endif
 
-    // getaddrinfo succeeded, check the address family
-    if (res != NULL) {
+    ret = getaddrinfo(ip, NULL, &hint, &res);
+
+    // getaddrinfo succeeded, check the address family. On failure res may not be initialized
+    if (ret == 0 && res != NULL) {
         if (res->ai_family == AF_INET) {
             version = 4;
         } else if (res->ai_family == AF_INET6) {
@@ -576,6 +580,10 @@ int get_ip_version(const char *ip) {
         }
         freeaddrinfo(res);
     }
+
+#ifdef WIN32
+    WSACleanup();
+#endif
 
     return version;
 }
