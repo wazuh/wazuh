@@ -270,11 +270,13 @@ void ExecdLogRestart(char *const *cmd)
 {
     char *args = w_strcat_list((char **)cmd + 1, ' ');
     char *timestamp = w_get_timestamp(time(NULL));
-    FILE *fp = w_fopen_nofollow(LOG_DIR, LOG_FILE_NAME, "a");
+    FILE *fp = w_fopen_nofollow(AR_LOG_DIR, AR_LOG_FILE_NAME, "a");
 
     if (fp) {
         fprintf(fp, "%s %s %s\n", timestamp, cmd[0], args ? args : "");
         fclose(fp);
+    } else if (errno == ELOOP || errno == EMLINK) {
+        mwarn("Active responses log '%s/%s' is not a regular file: dropping entry.", AR_LOG_DIR, AR_LOG_FILE_NAME);
     }
 
     os_free(timestamp);

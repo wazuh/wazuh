@@ -507,8 +507,8 @@ FILE * wfopen(const char * pathname, const char * mode);
 /**
  * @brief Create, truncate or append to a file inside a base directory, without following symlinks.
  *
- * Intended for directories that only ever hold files written by Wazuh itself (var/incoming and
- * friends): a symlink, hard link, FIFO, device or directory found at the target path is rejected
+ * Intended for directories that only ever hold files written by Wazuh itself (var/incoming, the
+ * active-response log and friends): a symlink, hard link, FIFO, device or directory found at the target path is rejected
  * instead of being written through. @p filename must be a bare file name; it is rejected if it is
  * empty, "." or "..", if it refers to a parent folder, or if it contains a path separator, so the
  * resulting open cannot escape @p basedir.

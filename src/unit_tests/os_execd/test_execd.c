@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 #include "shared.h"
 #include "list_op.h"
@@ -1209,6 +1210,21 @@ void test_ExecdLogRestart_open_fails(void **state) {
     expect_value(__wrap_w_get_timestamp, time, 1000);
     will_return(__wrap_w_get_timestamp, strdup("2026/10/05 12:00:00"));
     expect_w_fopen_nofollow("logs", "active-responses.log", "a", NULL);
+    errno = ENOENT;
+
+    ExecdLogRestart(cmd);
+}
+
+void test_ExecdLogRestart_rejects_symlink(void **state) {
+    char *cmd[] = { "active-response/bin/restart.sh", "agent", NULL };
+
+    will_return(__wrap_time, 1000);
+    expect_value(__wrap_w_get_timestamp, time, 1000);
+    will_return(__wrap_w_get_timestamp, strdup("2026/10/05 12:00:00"));
+    expect_w_fopen_nofollow("logs", "active-responses.log", "a", NULL);
+    errno = ELOOP;
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Active responses log 'logs/active-responses.log' is not a regular file: dropping entry.");
 
     ExecdLogRestart(cmd);
 }
@@ -1227,6 +1243,7 @@ int main(void) {
         cmocka_unit_test(test_ExecdLogRestart_agent),
         cmocka_unit_test(test_ExecdLogRestart_reload),
         cmocka_unit_test(test_ExecdLogRestart_open_fails),
+        cmocka_unit_test(test_ExecdLogRestart_rejects_symlink),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

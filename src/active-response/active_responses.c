@@ -29,7 +29,7 @@ void write_debug_file(const char *ar_name, const char *msg) {
     char *timestamp = w_get_timestamp(time(NULL));
 
 #ifndef WIN32
-    FILE *ar_log_file = w_fopen_nofollow(LOG_DIR, LOG_FILE_NAME, "a");
+    FILE *ar_log_file = w_fopen_nofollow(AR_LOG_DIR, AR_LOG_FILE_NAME, "a");
 #else
     FILE *ar_log_file = wfopen(LOG_FILE, "a");
 #endif

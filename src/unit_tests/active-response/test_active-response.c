@@ -318,7 +318,7 @@ void test_get_username_from_json_rejects_root(void **state) {
 
 // Same rationale as the w_fopen_nofollow tests in test_file_op.c: these run against the real file system.
 
-#define LOG_FILE_PATH LOG_DIR "/" LOG_FILE_NAME
+#define LOG_FILE_PATH AR_LOG_DIR "/" AR_LOG_FILE_NAME
 
 static char ar_log_dir[PATH_MAX + 1];
 static char ar_log_cwd[PATH_MAX + 1];
@@ -347,14 +347,14 @@ static int setup_ar_log(void **state) {
     snprintf(ar_log_dir, sizeof(ar_log_dir), "/tmp/wazuh_ar_log_XXXXXX");
     assert_non_null(mkdtemp(ar_log_dir));
     assert_int_equal(chdir(ar_log_dir), 0);
-    assert_int_equal(mkdir(LOG_DIR, 0770), 0);
+    assert_int_equal(mkdir(AR_LOG_DIR, 0770), 0);
     return 0;
 }
 
 static int teardown_ar_log(void **state) {
     remove(LOG_FILE_PATH);
     remove("other");
-    remove(LOG_DIR);
+    remove(AR_LOG_DIR);
     assert_int_equal(chdir(ar_log_cwd), 0);
     remove(ar_log_dir);
     test_mode = ar_log_saved_test_mode;

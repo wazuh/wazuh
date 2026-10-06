@@ -91,7 +91,15 @@ def ar_log():
         try:
             st = os.fstat(fd)
             if stat.S_ISREG(st.st_mode) and st.st_nlink == 1:
-                os.write(fd, (msg + '\n').encode())
+                data = msg + '\n'
+                # On Python 2 msg is already bytes; encoding it would decode as ASCII first
+                # and fail on non-ASCII arguments, aborting the AR.
+                if not isinstance(data, bytes):
+                    data = data.encode('utf-8', 'replace')
+                os.write(fd, data)
+        except Exception:
+            # A logging failure must never abort the active response.
+            pass
         finally:
             os.close(fd)
 
