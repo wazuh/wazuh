@@ -353,6 +353,43 @@ TEST_F(ServerSelectorTest, GetNextFallsBackToThrottledWhenNothingIsAvailable)
     EXPECT_EQ(hits.count(down), 0u);
 }
 
+/**
+ * @brief Throttled and down hosts only: the selector still serves, but has no available server.
+ */
+TEST_F(ServerSelectorTest, HasAvailableServerIsFalseWhenEveryHostIsThrottledOrDown)
+{
+    const std::string throttled {"http://localhost:9218"};
+    const std::string down {"http://localhost:9219"};
+    setupProbeAnswers(
+        {{"9218", {429, R"({"error":{"type":"circuit_breaking_exception"},"status":429})"}}, {"9219", {503, ""}}});
+
+    const auto selector = std::make_shared<TestServerSelector>(std::vector<std::string> {throttled, down},
+                                                               SERVER_SELECTOR_HEALTH_CHECK_INTERVAL,
+                                                               SecureCommunication {},
+                                                               m_mockHttpRequest.get());
+
+    EXPECT_TRUE(selector->isAvailable());
+    EXPECT_FALSE(selector->hasAvailableServer());
+}
+
+/**
+ * @brief One available host is enough, whatever the others answer.
+ */
+TEST_F(ServerSelectorTest, HasAvailableServerIsTrueWithOneAvailableHost)
+{
+    const std::string throttled {"http://localhost:9220"};
+    const std::string available {"http://localhost:9221"};
+    setupProbeAnswers(
+        {{"9220", {429, R"({"error":{"type":"circuit_breaking_exception"},"status":429})"}}, {"9221", {200, ""}}});
+
+    const auto selector = std::make_shared<TestServerSelector>(std::vector<std::string> {throttled, available},
+                                                               SERVER_SELECTOR_HEALTH_CHECK_INTERVAL,
+                                                               SecureCommunication {},
+                                                               m_mockHttpRequest.get());
+
+    EXPECT_TRUE(selector->hasAvailableServer());
+}
+
 // =============================================================================
 // isAvailable Tests — ServerSelector
 // =============================================================================

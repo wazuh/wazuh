@@ -1129,8 +1129,8 @@ responses as `/stateless`. This endpoint's body cap (4 KiB) is far tighter than 
 remoted holds no scan state: after the offset gate it makes one inline
 `POST /vulnerability-detector/scan` to the `vulnerability_scanner` module (over the same UDS
 socket `VdClient` uses), which answers at **admission**. VD first checks its readiness — feed
-loaded, scanner initialized, and the indexer's health (at least one host green or yellow, from the
-indexer connector's periodic health poll); with no healthy host it answers `503
+loaded, scanner initialized, and the indexer's health (at least one host green or yellow and not
+throttled with HTTP 429, from the indexer connector's periodic health poll); with no such host it answers `503
 indexer_unavailable` instead of admitting. It then records the scan as a durable `vd_scan`
 [manager task](../task_manager/manager-tasks.md) in the Task Manager: one pending scan per agent
 (a repeated request coalesces into it and is still answered `200`), at most one running at a time,

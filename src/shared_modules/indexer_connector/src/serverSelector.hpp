@@ -123,6 +123,26 @@ public:
         }
         return false;
     }
+
+    /**
+     * @brief Check have a server that accepts requests now: Available, not merely Throttled.
+     *
+     * Stricter than isAvailable(), for callers that make a promise on the answer (an admission that
+     * lets the requester forget its request). Like isAvailable(), it does not move the cursor.
+     *
+     * @return true if some server is Available, false otherwise.
+     */
+    bool hasAvailableServer() const
+    {
+        for (const auto& server : RoundRobinSelector<std::string>::values())
+        {
+            if (m_monitoring->state(server) == HostState::Available)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 };
 
 #endif // _SERVER_SELECTOR_HPP
