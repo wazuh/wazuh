@@ -217,6 +217,100 @@ static inline int wz_cgroup_subsys_index(const char* controller)
     return -1;
 }
 
+/* Whether a controller is MOUNTED as its own v1 hierarchy on this host.
+ *
+ * /proc/cgroups' `hierarchy` column is 0 for a controller that is not in a v1
+ * hierarchy — either unmounted, or bound to the unified one. Being listed there
+ * only means the kernel was built with it; being in a hierarchy means a task
+ * actually has a cgroup under it to key on.
+ *
+ * Returns 1 when mounted in a v1 hierarchy, 0 otherwise (including on error).
+ */
+static inline int wz_cgroup_v1_controller_mounted(const char* controller)
+{
+    char line[256];
+    FILE* file;
+    int mounted = 0;
+
+    if (controller == NULL || controller[0] == '\0')
+    {
+        return 0;
+    }
+
+    file = fopen("/proc/cgroups", "re");
+    if (file == NULL)
+    {
+        return 0;
+    }
+
+    while (fgets(line, sizeof(line), file) != NULL)
+    {
+        char name[64];
+        int hierarchy = 0;
+
+        if (line[0] == '#')
+        {
+            continue;
+        }
+        if (sscanf(line, "%63s %d", name, &hierarchy) != 2)
+        {
+            continue;
+        }
+        if (strcmp(name, controller) == 0)
+        {
+            mounted = (hierarchy != 0);
+            break;
+        }
+    }
+
+    fclose(file);
+    return mounted;
+}
+
+/* The controller this host will be keyed by, as an index into
+ * enum cgroup_subsys_id. Returns -1 when none of the candidates can serve.
+ *
+ * ONE chooser, so the resolver and the eBPF engine cannot settle on different
+ * hierarchies — which would not fail loudly, it would simply make every lookup
+ * between them miss, because the two numbers come from unrelated kernfs trees.
+ *
+ * A candidate has to pass both tests: mounted as a v1 hierarchy (or there is no
+ * cgroup under it to read), and possessing a subsystem slot (or the BPF program
+ * has nothing to index). `name=systemd` passes the first and fails the second,
+ * which is why the engine's usable list is shorter than the resolver's.
+ */
+static inline int wz_cgroup_v1_select_subsys(const char** chosen)
+{
+    unsigned int rank;
+
+    if (chosen != NULL)
+    {
+        *chosen = NULL;
+    }
+
+    for (rank = 0; rank < WZ_CGROUP_V1_PRIORITY_COUNT; ++rank)
+    {
+        const char* candidate = wz_cgroup_v1_priority(rank);
+        int index;
+
+        if (candidate == NULL || !wz_cgroup_v1_controller_mounted(candidate))
+        {
+            continue;
+        }
+        index = wz_cgroup_subsys_index(candidate);
+        if (index < 0)
+        {
+            continue; /* a named hierarchy: nothing for the program to read */
+        }
+        if (chosen != NULL)
+        {
+            *chosen = candidate;
+        }
+        return index;
+    }
+    return -1;
+}
+
 /* Whether an eBPF consumer may read container cgroup ids from a v1 controller
  * hierarchy on this host.
  *
