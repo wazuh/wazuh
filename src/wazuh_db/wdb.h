@@ -94,7 +94,7 @@ typedef enum wdb_global_group_hash_operations_t {
 #define WDB_GROUP_MODE_OVERRIDE "override"
 #define WDB_GROUP_MODE_APPEND "append"
 
-#define WDB_GROUP_HASH_SIZE        8 /* Size of the groups hash */
+#define WDB_GROUP_HASH_SIZE        32 /* Size of the groups hash */
 
 #define WDB_BLOCK_SEND_TIMEOUT_S   1 /* Max time in seconds waiting for the client to receive the information sent with a blocking method*/
 #define WDB_RESPONSE_OK_SIZE     3
@@ -474,6 +474,7 @@ extern char *schema_global_upgrade_v4_sql;
 extern char *schema_global_upgrade_v5_sql;
 extern char *schema_global_upgrade_v6_sql;
 extern char *schema_global_upgrade_v7_sql;
+extern char *schema_global_upgrade_v8_sql;
 
 extern wdb_config wconfig;
 extern _Config gconfig;

@@ -462,6 +462,11 @@ void test_wdb_upgrade_global_full_upgrade_success(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 7");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v7_sql);
     will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
+    // Upgrading database from version 7 to 8
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 8");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v8_sql);
+    will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
+    will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
 
     ret = wdb_upgrade_global(data->wdb);
 
@@ -520,6 +525,11 @@ void test_wdb_upgrade_global_full_upgrade_success_from_unversioned_db(void **sta
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 7");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v7_sql);
     will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
+    // Upgrading database from version 7 to 8
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 8");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v8_sql);
+    will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
+    will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
 
     ret = wdb_upgrade_global(data->wdb);
 
@@ -569,6 +579,11 @@ void test_wdb_upgrade_global_update_v1_to_latest_success(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 7");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v7_sql);
     will_return(__wrap_wdb_sql_exec, 0);
+    // Upgrade to version 8
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 8");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v8_sql);
+    will_return(__wrap_wdb_sql_exec, 0);
+    will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
 
     ret = wdb_upgrade_global(data->wdb);
 
@@ -643,6 +658,11 @@ void test_wdb_upgrade_global_update_v2_to_latest_success(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 7");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v7_sql);
     will_return(__wrap_wdb_sql_exec, 0);
+    // Upgrade to version 8
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 8");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v8_sql);
+    will_return(__wrap_wdb_sql_exec, 0);
+    will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
 
     ret = wdb_upgrade_global(data->wdb);
 
@@ -713,6 +733,11 @@ void test_wdb_upgrade_global_update_v3_to_latest_success(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 7");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v7_sql);
     will_return(__wrap_wdb_sql_exec, 0);
+    // Upgrade to version 8
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 8");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v8_sql);
+    will_return(__wrap_wdb_sql_exec, 0);
+    will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
 
     ret = wdb_upgrade_global(data->wdb);
 
@@ -779,6 +804,12 @@ void test_wdb_upgrade_global_update_v4_to_latest_success(void **state)
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v7_sql);
     will_return(__wrap_wdb_sql_exec, 0);
 
+    // Upgrade to version 8
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 8");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v8_sql);
+    will_return(__wrap_wdb_sql_exec, 0);
+    will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
+
     ret = wdb_upgrade_global(data->wdb);
 
     assert_int_equal(ret, data->wdb);
@@ -839,6 +870,12 @@ void test_wdb_upgrade_global_update_v5_to_latest_success(void **state)
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v7_sql);
     will_return(__wrap_wdb_sql_exec, 0);
 
+    // Upgrade to version 8
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 8");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v8_sql);
+    will_return(__wrap_wdb_sql_exec, 0);
+    will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
+
     ret = wdb_upgrade_global(data->wdb);
 
     assert_int_equal(ret, data->wdb);
@@ -892,6 +929,11 @@ void test_wdb_upgrade_global_update_v6_to_latest_success(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 7");
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v7_sql);
     will_return(__wrap_wdb_sql_exec, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 8");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v8_sql);
+    will_return(__wrap_wdb_sql_exec, 0);
+    will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
 
     ret = wdb_upgrade_global(data->wdb);
 

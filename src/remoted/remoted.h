@@ -25,7 +25,7 @@
 #define FD_LIST_INIT_VALUE 1024
 #define REMOTED_MSG_HEADER "1:" ARGV0 ":"
 #define AG_STOP_MSG REMOTED_MSG_HEADER OS_AG_STOPPED
-#define MAX_SHARED_PATH 200
+#define MAX_SHARED_PATH 224
 
 /* Hash table for agent data */
 extern OSHash *agent_data_hash;

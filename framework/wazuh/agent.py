@@ -1444,7 +1444,7 @@ def get_agents_sync_group(agent_list: list = None) -> AffectedItemsWazuhResult:
                 # Check if it has a multigroup
                 if len(agent_info['group']) > 1:
                     multi_group = ','.join(agent_info['group'])
-                    multi_group = hashlib.sha256(multi_group.encode()).hexdigest()[:8]
+                    multi_group = hashlib.sha256(multi_group.encode()).hexdigest()[:32]
                     group_merged_path = path.join(common.MULTI_GROUPS_PATH, multi_group, "merged.mg")
                 else:
                     group_merged_path = path.join(common.SHARED_PATH, agent_info['group'][0], "merged.mg")
