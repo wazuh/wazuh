@@ -386,6 +386,18 @@ def test_upload_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
                                 mock_remove.assert_called_once()
 
 
+@patch('builtins.open')
+def test_upload_group_configuration_removes_tmp_file_on_xml_error(mock_open):
+    """A body that does not parse as XML must not leave its temporary file behind."""
+    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')), \
+            patch('wazuh.core.configuration.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file']), \
+            patch('wazuh.core.configuration.os.path.exists', return_value=True), \
+            patch('wazuh.core.configuration.remove') as mock_remove:
+        with pytest.raises(WazuhError, match=".* 1113 .*"):
+            configuration.upload_group_configuration('default', "<agent_config>unclosed")
+    mock_remove.assert_called_once_with('mock_tmp_file')
+
+
 @patch('wazuh.core.configuration.common.wazuh_gid')
 @patch('wazuh.core.configuration.common.wazuh_uid')
 @patch('builtins.open')
