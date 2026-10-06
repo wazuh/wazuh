@@ -292,7 +292,7 @@ task_struct -> cgroups              (struct css_set *)
             -> cgroup -> kn -> id   (u64)
 ```
 
-Every link verified in BTF on kernel 6.8 (`20-…` §20.4.1). The value it yields is **the inode WP2
+Every link verified in BTF on kernel 7.0.0-34 (`20-…` §20.4.1). The value it yields is **the inode WP2
 already keys the store on**, so store and kernel meet on one number again — the property the whole
 design rests on, restored on the hierarchy where it was believed impossible.
 
@@ -537,7 +537,7 @@ on every supported host. The v2 evidence in §15.10 is the baseline it has to re
 ## 18.7 Open questions
 
 1. ~~**Is `mnt_ns` stable enough to be a correlation key in production?**~~ **Measured 2026-10-06 on
-   `wazuh_manager` (Ubuntu 24.04, kernel 6.8, Docker 29.1.3). Answer: unique in SPACE, not in TIME —
+   `wazuh_manager` (Ubuntu 24.04, kernel 7.0.0-34, Docker 29.1.3). Answer: unique in SPACE, not in TIME —
    usable, but only with the mitigations below.**
 
    | Property | Result |
