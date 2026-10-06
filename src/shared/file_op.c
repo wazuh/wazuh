@@ -778,7 +778,14 @@ static int unmerge_valid_component(const char *component, size_t length)
     return 1;
 }
 
-/* Validation and extraction share these rules. Empty, absolute and '..' names and control characters
+/* The agent keeps the accepted bundle and the one being extracted next to the entries, so no entry may
+ * replace them. Case is ignored because Windows and macOS file systems usually ignore it. */
+static int unmerge_reserved_name(const char *name)
+{
+    return !strcasecmp(name, SHAREDCFG_FILENAME) || !strcasecmp(name, SHAREDCFG_FILENAME ".tmp");
+}
+
+/* Validation and extraction share these rules. Empty, absolute, '..' and reserved names and control characters
  * are rejected on every platform; names that are only invalid on Windows stay valid elsewhere.
  * 'normalized' must hold strlen(name) + 1 bytes; 'name' is left as received for diagnostics. */
 STATIC int unmerge_normalize_name(const char *name, char *normalized)
@@ -822,7 +829,7 @@ STATIC int unmerge_normalize_name(const char *name, char *normalized)
         }
     }
     *dst = '\0';
-    return dst != normalized;
+    return dst != normalized && !unmerge_reserved_name(normalized);
 }
 
 static int unmerge_parse_header(char *buf, size_t *size, char **name)

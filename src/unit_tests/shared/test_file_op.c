@@ -1795,11 +1795,12 @@ static void write_unmerge_bundle(const char *content) {
 void test_unmerge_normalize_name_windows(void **state) {
     const char *invalid[] = {
         "", "..", "/a", "a\rb", "\\a", "a\\", "a\\..\\b", "sub/..\\x", "C:a", "C:\\a", "a:b", "a?b",
-        "a<b", "a>b", "a|b", "a\"b", "a*b", "notes.", "space ", "...", "a./b", "a /b"
+        "a<b", "a>b", "a|b", "a\"b", "a*b", "notes.", "space ", "...", "a./b", "a /b", "merged.mg",
+        ".\\MERGED.mg.TMP"
     };
     const char *valid[][2] = {
         {"a\\b", "a/b"}, {"sub/c\\.\\d", "sub/c/d"}, {".\\upgrade.sh", "upgrade.sh"}, {"a\\\\b", "a/b"},
-        {".hidden", ".hidden"}, {"..name", "..name"}
+        {".hidden", ".hidden"}, {"..name", "..name"}, {"sub\\merged.mg", "sub/merged.mg"}
     };
     char normalized[64];
 

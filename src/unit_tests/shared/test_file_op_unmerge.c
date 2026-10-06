@@ -405,7 +405,7 @@ static void test_entry_name_validation(void** state)
     const char* invalid[] =
     {
         "", ".", "..", "a/../b", "/a", "a/..", "a/", "a/.", "./",
-        "a\rb", "a\tb", "a\177b"
+        "a\rb", "a\tb", "a\177b", "merged.mg", "merged.mg.tmp", "MERGED.MG", "./Merged.mg.TMP"
     };
 
     for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i)
@@ -417,6 +417,25 @@ static void test_entry_name_validation(void** state)
     }
 
     assert_int_equal(count_entries(sb->dest), 0);
+}
+
+/* The bundle being extracted and the accepted one live next to the entries, and no entry may replace them. */
+static void test_unmerge_reserved_names(void** state)
+{
+    sandbox_t* sb = *state;
+    const char* content = "!3 merged.mg.tmp\nbad!3 ./Merged.MG\nbad!2 sub/merged.mg\nok";
+    char bundle[PATH_MAX];
+    char accepted[PATH_MAX];
+    snprintf(bundle, sizeof(bundle), "%s/merged.mg.tmp", sb->dest);
+    snprintf(accepted, sizeof(accepted), "%s/merged.mg", sb->dest);
+    write_file(bundle, content);
+    write_file(accepted, "previous");
+    expect_any_count(__wrap__merror, formatted_msg, 2);
+    assert_int_equal(UnmergeFiles(bundle, sb->dest, OS_TEXT, NULL), 0);
+    assert_content(sb, "merged.mg.tmp", content);
+    assert_content(sb, "merged.mg", "previous");
+    assert_content(sb, "sub/merged.mg", "ok");
+    assert_int_equal(count_entries(sb->dest), 3);
 }
 
 /* Names that only Windows rejects keep their literal meaning on other platforms. */
@@ -536,6 +555,7 @@ int main(void)
     {
         cmocka_unit_test_setup_teardown(test_entry_name_validation, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_names_invalid_only_on_windows, setup_sandbox, teardown_sandbox),
+        cmocka_unit_test_setup_teardown(test_unmerge_reserved_names, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_relative_name_normalization, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_invalid_header_validation, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_invalid_name_diagnostic, setup_sandbox, teardown_sandbox),
