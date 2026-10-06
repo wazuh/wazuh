@@ -520,6 +520,15 @@ public:
 
                             if (m_totalReadSize > BUFFER_MAX_SIZE)
                             {
+                                if (m_totalReadSize == UINT32_MAX)
+                                {
+                                    // m_totalReadSize + 1 would wrap to 0, resizing the buffer down
+                                    // to BUFFER_MAX_SIZE while m_readSize (below) still asks recv()
+                                    // for up to UINT32_MAX bytes. Reject it instead of silently
+                                    // reading into an undersized buffer.
+                                    throw std::runtime_error {"Declared message length is invalid."};
+                                }
+
                                 m_recvDataBuffer.resize(m_totalReadSize + 1);
                             }
 

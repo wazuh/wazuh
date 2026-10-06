@@ -164,6 +164,51 @@ TEST_F(SocketWrapperTest, DISABLED_ReadSuccess)
     EXPECT_NO_THROW({ socketWrapper.read(callbackBody); });
 }
 
+TEST_F(SocketWrapperTest, ReadRejectsLengthThatWouldWrapToZero)
+{
+    // Create a mock object.
+    Socket<OSWrapper> socketWrapper;
+
+    // Set up the test data: a declared length of UINT32_MAX, which would make
+    // m_totalReadSize + 1 wrap to 0 and resize the buffer down instead of up.
+    const int sock = 123;
+    const ssize_t metaDataSize = PACKET_FIELD_SIZE;
+    const PacketFieldType packetSize = UINT32_MAX;
+
+    // Only the header read is expected: a correct fix must reject the length
+    // before ever attempting a second (body) recv() call.
+    EXPECT_CALL(socketWrapper, recv(sock, _, _, _))
+        .WillOnce(DoAll(Invoke(
+                            [&packetSize](int, void* buffer, size_t size, int)
+                            {
+                                std::copy((char*)&packetSize, (char*)&packetSize + size, (char*)buffer);
+                                return size;
+                            }),
+                        Return(metaDataSize)));
+
+    std::function<void(const int, const char*, uint32_t, const char*, uint32_t)> callbackBody =
+        [&](const int, const char*, uint32_t, const char*, uint32_t) { FAIL() << "callback should not run"; };
+
+    // Connect expect calls
+    EXPECT_CALL(socketWrapper, socket(_, _, _)).WillOnce(Return(123));
+    EXPECT_CALL(socketWrapper, connect(123, _, _)).WillOnce(Return(0));
+    EXPECT_CALL(socketWrapper, setsockopt(123, _, _, _, _)).Times(2);
+
+    EXPECT_CALL(socketWrapper, close(123)).WillOnce(Return(0));
+    EXPECT_CALL(socketWrapper, shutdown(123, _)).WillOnce(Return(0));
+
+    // Connect call.
+    auto unixAddress {UnixAddress::builder().address("test_socket").build()};
+    EXPECT_NO_THROW({ socketWrapper.connect(unixAddress.data()); });
+
+    // Read header: declared length is UINT32_MAX, must throw instead of
+    // proceeding to read a body into an undersized buffer.
+    EXPECT_THROW({ socketWrapper.read(callbackBody); }, std::runtime_error);
+
+    // The buffer was never resized down to 0 nor grown to UINT32_MAX+1.
+    EXPECT_EQ(socketWrapper.recvBufferSize(), BUFFER_MAX_SIZE);
+}
+
 TEST_F(SocketWrapperTest, DISABLED_ReadPartialHeader)
 {
     // Create a mock object.
