@@ -866,189 +866,269 @@ static void unmerge_invalid_name(const char *bundle, const char *name)
     merror("Unmerging '%s': invalid entry name '%s'.", bundle, display);
 }
 
+#define UNMERGE_NAME_SIZE (2048 + 1)
+
+/* A merged file being read. UnmergeFiles() and TestUnmergeFiles() read entries through the same functions,
+ * so the agent extracts exactly the bundles that the manager validates. */
+typedef struct {
+    const char *path;
+    int mode;
+    FILE *fp;
+    long size;
+    char line[UNMERGE_NAME_SIZE];
+} unmerge_bundle_t;
+
+enum { UNMERGE_ENTRY_EXTRACTED, UNMERGE_ENTRY_SKIPPED, UNMERGE_ENTRY_FAILED, UNMERGE_ENTRY_TRUNCATED };
+
+/* Opens a merged file and records its size, so that no entry can declare more data than the file holds. */
+static int unmerge_open(unmerge_bundle_t *bundle)
+{
+    if (bundle->fp = wfopen(bundle->path, bundle->mode == OS_BINARY ? "rb" : "r"), !bundle->fp) {
+        merror("Unable to read merged file: '%s' due to [(%d)-(%s)].", bundle->path, errno, strerror(errno));
+        return 0;
+    }
+    if (bundle->size = get_fp_size(bundle->fp), bundle->size < 0) {
+        merror("Unable to determine merged file size: '%s'.", bundle->path);
+        fclose(bundle->fp);
+        return 0;
+    }
+    return 1;
+}
+
+/* Returns 0 if the merged file could not be read to the end or closed. */
+static int unmerge_close(unmerge_bundle_t *bundle)
+{
+    int read_ok = !ferror(bundle->fp);
+
+    return fclose(bundle->fp) == 0 && read_ok;
+}
+
+/* Reads the next entry header, skipping comment lines. Returns 1 with an entry, 0 at the end of the file and -1
+ * if the header is invalid or declares more data than the file has left. */
+static int unmerge_next_entry(unmerge_bundle_t *bundle, size_t *size, char **name)
+{
+    while (fgets(bundle->line, sizeof(bundle->line), bundle->fp)) {
+        if (bundle->line[0] == '#' && strchr(bundle->line, '\n')) {
+            continue;
+        }
+        if (!unmerge_parse_header(bundle->line, size, name)) {
+            return -1;
+        }
+        return unmerge_size_available(bundle->fp, bundle->size, *size) ? 1 : -1;
+    }
+    return 0;
+}
+
+/* Reads '*size' bytes of entry data and writes them to 'out' unless it is NULL. Reading goes on after a failed write
+ * so the next header can be found. Returns 0 if a write failed; '*size' keeps the bytes that could not be read. */
+static int unmerge_copy_data(unmerge_bundle_t *bundle, size_t *size, FILE *out)
+{
+    char buf[2048];
+    int written = 1;
+
+    while (*size > 0) {
+        size_t n = fread(buf, 1, *size < sizeof(buf) ? *size : sizeof(buf), bundle->fp);
+
+        if (n == 0) {
+            break;
+        }
+        *size -= n;
+        if (out && written && fwrite(buf, 1, n, out) != n) {
+            written = 0;
+        }
+    }
+    return written;
+}
+
+/* Data shorter than its declared size ends the bundle, since the next header cannot be found. */
+static int unmerge_truncated(const unmerge_bundle_t *bundle)
+{
+    merror("Unmerging '%s': incomplete entry data.", bundle->path);
+    return UNMERGE_ENTRY_TRUNCATED;
+}
+
+/* Reads past the data of an entry that is not extracted. */
+static int unmerge_skip_entry(unmerge_bundle_t *bundle, size_t size, int result)
+{
+    unmerge_copy_data(bundle, &size, NULL);
+    return size > 0 ? unmerge_truncated(bundle) : result;
+}
+
+/* Normalizes an entry name and builds its destination path. Returns 0 if the name is invalid or too long. */
+static int unmerge_destination(const char *optdir, char *name, char *final_name)
+{
+    int length;
+
+    if (!unmerge_normalize_name(name)) {
+        return 0;
+    }
+    length = optdir && *optdir ? snprintf(final_name, UNMERGE_NAME_SIZE, "%s/%s", optdir, name) :
+             snprintf(final_name, UNMERGE_NAME_SIZE, "%s", name);
+    return length >= 0 && length < UNMERGE_NAME_SIZE;
+}
+
+static int unmerge_create_parent(const char *final_name)
+{
+    char *copy;
+    int result;
+
+    os_strdup(final_name, copy);
+    result = mkdir_ex(dirname(copy));
+    free(copy);
+    return result == 0;
+}
+
+/* Creates the destination directory and opens a new temporary file next to the destination. */
+static FILE *unmerge_create_tmp(const unmerge_bundle_t *bundle, const char *name, const char *final_name,
+                                char *tmp_file)
+{
+    FILE *fp;
+
+    if (!unmerge_create_parent(final_name)) {
+        merror("Unmerging '%s': couldn't create directory '%s'", bundle->path, name);
+        return NULL;
+    }
+    snprintf(tmp_file, UNMERGE_NAME_SIZE + 6, "%sXXXXXX", final_name);
+    if (mkstemp_ex(tmp_file) == -1) {
+        merror("Unmerging '%s': could not create temporary file for '%s'", bundle->path, name);
+        return NULL;
+    }
+    if (fp = wfopen(tmp_file, bundle->mode == OS_BINARY ? "wb" : "w"), !fp) {
+        merror("Unable to unmerge file '%s' due to [(%d)-(%s)].", tmp_file, errno, strerror(errno));
+        unlink(tmp_file);
+    }
+    return fp;
+}
+
+/* Returns 0 if the entry data could not be written to the temporary file completely. */
+static int unmerge_fill_tmp(unmerge_bundle_t *bundle, FILE *fp, size_t *size, const char *final_name)
+{
+    int written = unmerge_copy_data(bundle, size, fp);
+
+    if (!written) {
+        merror("Unable to write unmerged file '%s'.", final_name);
+    }
+    if (fclose(fp) != 0) {
+        merror("Unable to close unmerged file '%s'.", final_name);
+        written = 0;
+    }
+    return written;
+}
+
+/* Writes an entry to a temporary file, which replaces the destination only once it holds the complete data. */
+static int unmerge_write_entry(unmerge_bundle_t *bundle, const char *name, const char *final_name, size_t size)
+{
+    char tmp_file[UNMERGE_NAME_SIZE + 6];
+    FILE *fp = unmerge_create_tmp(bundle, name, final_name, tmp_file);
+    int written;
+
+    if (!fp) {
+        return unmerge_skip_entry(bundle, size, UNMERGE_ENTRY_FAILED);
+    }
+    written = unmerge_fill_tmp(bundle, fp, &size, final_name);
+    if (size > 0 || !written || rename_ex(tmp_file, final_name) != 0) {
+        unlink(tmp_file);
+        return size > 0 ? unmerge_truncated(bundle) : UNMERGE_ENTRY_FAILED;
+    }
+    return UNMERGE_ENTRY_EXTRACTED;
+}
+
+/* Extracts one entry into 'optdir', or reads past it if its name is invalid. */
+static int unmerge_entry(unmerge_bundle_t *bundle, const char *optdir, char *name, size_t size)
+{
+    char final_name[UNMERGE_NAME_SIZE];
+
+    if (!unmerge_destination(optdir, name, final_name)) {
+        unmerge_invalid_name(bundle->path, name);
+        return unmerge_skip_entry(bundle, size, UNMERGE_ENTRY_SKIPPED);
+    }
+    return unmerge_write_entry(bundle, name, final_name, size);
+}
+
+static int unmerge_list_length(char ***list)
+{
+    int count = 0;
+
+    if (list != NULL) {
+        while ((*list)[count]) {
+            count++;
+        }
+    }
+    return count;
+}
+
+static void unmerge_list_append(char ***list, int *count, const char *name)
+{
+    char *copy;
+
+    if (list != NULL) {
+        os_strdup(name, copy);
+        *list = w_strarray_append(*list, copy, (*count)++);
+    }
+}
+
+/* Extracts every entry of an open merged file. Returns 0 if any entry was not extracted. */
+static int unmerge_entries(unmerge_bundle_t *bundle, const char *optdir, char ***unmerged_files)
+{
+    int file_count = unmerge_list_length(unmerged_files);
+    int entry = UNMERGE_ENTRY_EXTRACTED;
+    int result = 1;
+    int next = 0;
+    size_t size;
+    char *name;
+
+    while (entry != UNMERGE_ENTRY_TRUNCATED && (next = unmerge_next_entry(bundle, &size, &name)) > 0) {
+        if (entry = unmerge_entry(bundle, optdir, name, size), entry == UNMERGE_ENTRY_EXTRACTED) {
+            unmerge_list_append(unmerged_files, &file_count, name);
+        } else {
+            result = 0;
+        }
+    }
+    if (next < 0) {
+        merror("Unmerging '%s': invalid entry header.", bundle->path);
+        result = 0;
+    }
+    return result;
+}
+
 int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***unmerged_files)
 {
-    int ret = 1;
-    int file_count = 0;
-    size_t optdir_len = optdir ? strlen(optdir) : 0;
-    char final_name[2048 + 1];
-    char buf[2048 + 1];
-    FILE *finalfp;
-    long bundle_size;
+    unmerge_bundle_t bundle = { .path = finalpath, .mode = mode };
+    int result;
 
-    finalfp = wfopen(finalpath, mode == OS_BINARY ? "rb" : "r");
-    if (!finalfp) {
-        merror("Unable to read merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
+    if (!unmerge_open(&bundle)) {
         return 0;
     }
-    if ((bundle_size = get_fp_size(finalfp)) < 0) {
-        merror("Unable to determine merged file size: '%s'.", finalpath);
-        fclose(finalfp);
+    result = unmerge_entries(&bundle, optdir, unmerged_files);
+    return unmerge_close(&bundle) ? result : 0;
+}
+
+/* Validates an entry the way UnmergeFiles() reads it, without extracting it. */
+static int unmerge_check_entry(unmerge_bundle_t *bundle, char *name, size_t size)
+{
+    if (!unmerge_normalize_name(name)) {
         return 0;
     }
-
-    if (unmerged_files != NULL) {
-        for (file_count = 0; (*unmerged_files)[file_count]; file_count++);
-    }
-
-    while (fgets(buf, sizeof(buf), finalfp)) {
-        int state_ok = 1;
-        int tmp_created = 0;
-        size_t files_size;
-        FILE *fp = NULL;
-        char *files;
-
-        if (buf[0] == '#' && strchr(buf, '\n')) {
-            continue;
-        }
-        if (!unmerge_parse_header(buf, &files_size, &files)) {
-            merror("Unmerging '%s': invalid entry header.", finalpath);
-            ret = 0;
-            break;
-        }
-        if (!unmerge_size_available(finalfp, bundle_size, files_size)) {
-            merror("Unmerging '%s': invalid entry size.", finalpath);
-            ret = 0;
-            break;
-        }
-        if (!unmerge_normalize_name(files)) {
-            unmerge_invalid_name(finalpath, files);
-            state_ok = 0;
-        }
-
-        int length = optdir_len ? snprintf(final_name, sizeof(final_name), "%s/%s", optdir, files) :
-                     snprintf(final_name, sizeof(final_name), "%s", files);
-        if (length < 0 || (size_t)length >= sizeof(final_name)) {
-            if (state_ok) {
-                unmerge_invalid_name(finalpath, files);
-            }
-            state_ok = 0;
-        }
-        char tmp_file[sizeof(final_name) + 6];
-        snprintf(tmp_file, sizeof(tmp_file), "%sXXXXXX", final_name);
-
-        if (state_ok) {
-            char *copy;
-            os_strdup(final_name, copy);
-            if (mkdir_ex(dirname(copy))) {
-                merror("Unmerging '%s': couldn't create directory '%s'", finalpath, files);
-                state_ok = 0;
-            }
-            free(copy);
-        }
-        if (state_ok) {
-            if (mkstemp_ex(tmp_file) == -1) {
-                merror("Unmerging '%s': could not create temporary file for '%s'", finalpath, files);
-                state_ok = 0;
-            } else {
-                tmp_created = 1;
-            }
-        }
-        if (state_ok) {
-            fp = wfopen(tmp_file, mode == OS_BINARY ? "wb" : "w");
-            if (!fp) {
-                merror("Unable to unmerge file '%s' due to [(%d)-(%s)].", tmp_file, errno, strerror(errno));
-                state_ok = 0;
-            }
-        }
-
-        /* Consume complete entries even when their destination is unavailable. */
-        while (files_size > 0) {
-            size_t count = files_size < sizeof(buf) ? files_size : sizeof(buf);
-            size_t n = fread(buf, 1, count, finalfp);
-            if (n == 0) {
-                merror("Unmerging '%s': incomplete entry data.", finalpath);
-                state_ok = 0;
-                break;
-            }
-            files_size -= n;
-            if (fp && state_ok && fwrite(buf, 1, n, fp) != n) {
-                merror("Unable to write unmerged file '%s'.", final_name);
-                state_ok = 0;
-            }
-        }
-        if (fp && fclose(fp) != 0) {
-            merror("Unable to close unmerged file '%s'.", final_name);
-            state_ok = 0;
-        }
-        if (!state_ok) {
-            if (tmp_created) {
-                unlink(tmp_file);
-            }
-            ret = 0;
-            if (files_size > 0) {
-                break;
-            }
-            continue;
-        }
-        if (rename_ex(tmp_file, final_name) != 0) {
-            unlink(tmp_file);
-            ret = 0;
-            continue;
-        }
-        if (unmerged_files != NULL) {
-            char *file_name_copy;
-            const char *file_name = optdir_len ? final_name + optdir_len + 1 : final_name;
-            os_strdup(file_name, file_name_copy);
-            *unmerged_files = w_strarray_append(*unmerged_files, file_name_copy, file_count++);
-        }
-    }
-    if (ferror(finalfp)) {
-        ret = 0;
-    }
-    if (fclose(finalfp) != 0) {
-        ret = 0;
-    }
-    return ret;
+    unmerge_copy_data(bundle, &size, NULL);
+    return size == 0;
 }
 
 int TestUnmergeFiles(const char *finalpath, int mode)
 {
-    int ret = 1;
-    char buf[2048 + 1];
-    FILE *fp = wfopen(finalpath, mode == OS_BINARY ? "rb" : "r");
-    long bundle_size;
+    unmerge_bundle_t bundle = { .path = finalpath, .mode = mode };
+    int next;
+    size_t size;
+    char *name;
 
-    if (!fp) {
-        merror("Unable to read merged file: '%s'.", finalpath);
+    if (!unmerge_open(&bundle)) {
         return 0;
     }
-    if ((bundle_size = get_fp_size(fp)) < 0) {
-        fclose(fp);
-        return 0;
-    }
-    while (fgets(buf, sizeof(buf), fp)) {
-        size_t size;
-        char *name;
-
-        if (buf[0] == '#' && strchr(buf, '\n')) {
-            continue;
-        }
-        if (!unmerge_parse_header(buf, &size, &name) ||
-            !unmerge_size_available(fp, bundle_size, size) || !unmerge_normalize_name(name)) {
-            ret = 0;
-            break;
-        }
-        while (size > 0) {
-            size_t count = size < sizeof(buf) ? size : sizeof(buf);
-            size_t n = fread(buf, 1, count, fp);
-            if (!n) {
-                ret = 0;
-                break;
-            }
-            size -= n;
-        }
-        if (!ret) {
+    while ((next = unmerge_next_entry(&bundle, &size, &name)) > 0) {
+        if (!unmerge_check_entry(&bundle, name, size)) {
             break;
         }
     }
-    if (ferror(fp)) {
-        ret = 0;
-    }
-    if (fclose(fp) != 0) {
-        ret = 0;
-    }
-    return ret;
+    return unmerge_close(&bundle) && next == 0;
 }
 
 
