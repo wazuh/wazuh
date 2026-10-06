@@ -208,26 +208,48 @@ int main(int argc, char** argv)
 {
     const char* obj = (argc > 1) ? argv[1] : "rt_file.bpf.o";
 
-    const char* cg_allow = "/sys/fs/cgroup/rt_filt_allow";
-    const char* cg_deny = "/sys/fs/cgroup/rt_filt_deny";
+    char cg_allow[512];
+    char cg_deny[512];
     const char* dir_allow = "/tmp/rt_filt_allow";
     const char* dir_deny = "/tmp/rt_filt_deny";
 
     printf("rt_engine in-kernel cgroup filter test (object: %s)\n", obj);
 
-    /* These tests create cgroups directly under /sys/fs/cgroup, so they need
-     * the unified hierarchy mounted AT THE ROOT — which is a stricter
-     * requirement than "cgroup_id is usable". A hybrid host has a working v2
-     * hierarchy at /sys/fs/cgroup/unified and would pass
-     * wz_cgroup_mode_has_usable_cgroup_id(), but make_cgroup() below would
-     * write into a v1 tmpfs there and the test would fail for a reason that
-     * has nothing to do with what it is checking. Hence the exact comparison
-     * against UNIFIED rather than the usable-key helper. */
-    if (wz_cgroup_mode() != WZ_CGROUP_MODE_UNIFIED)
+    /* WHERE the test cgroups go depends on the host's hierarchy, and getting
+     * this wrong makes the test fail for a reason unrelated to what it checks.
+     *
+     * A unified host keeps its cgroups at the root. A host without one keeps a
+     * tmpfs there and the real hierarchies one level down, per controller — so
+     * the test must create its cgroups under the SAME controller the engine
+     * will be reading ids from, or it would allowlist inodes from one kernfs
+     * tree and receive events keyed by another. A hybrid host has both, and is
+     * driven down the unified path because that is what its events carry. */
+    const wz_cgroup_mode_t mode = wz_cgroup_mode();
+    const char* controller = NULL;
+    int subsys = -1;
+
+    if (wz_cgroup_mode_has_usable_cgroup_id(mode))
     {
-        printf("not a cgroup v2 unified hierarchy at the root (%s) — skipping\n",
-               wz_cgroup_mode_name(wz_cgroup_mode()));
-        return SKIP_EXIT;
+        const char* root = (mode == WZ_CGROUP_MODE_HYBRID) ? "/sys/fs/cgroup/unified" : "/sys/fs/cgroup";
+        snprintf(cg_allow, sizeof(cg_allow), "%s/rt_filt_allow", root);
+        snprintf(cg_deny, sizeof(cg_deny), "%s/rt_filt_deny", root);
+    }
+    else
+    {
+        subsys = wz_cgroup_v1_select_subsys(&controller);
+        if (subsys < 0 || controller == NULL)
+        {
+            printf("no controller on this host can identify a container (%s) — skipping\n",
+                   wz_cgroup_mode_name(mode));
+            return SKIP_EXIT;
+        }
+        snprintf(cg_allow, sizeof(cg_allow), "/sys/fs/cgroup/%s/rt_filt_allow", controller);
+        snprintf(cg_deny, sizeof(cg_deny), "/sys/fs/cgroup/%s/rt_filt_deny", controller);
+    }
+    printf("  host hierarchy    : %s\n", wz_cgroup_mode_name(mode));
+    if (controller != NULL)
+    {
+        printf("  keying controller : %s (subsystem %d)\n", controller, subsys);
     }
 
     const unsigned long long inode_allow = make_cgroup(cg_allow);
@@ -249,6 +271,26 @@ int main(int argc, char** argv)
     filter.cgroup_mode = RT_CGROUP_MODE_ALLOWLIST;
 
     const rt_handle_t h = rt_open(&filter);
+    if (h != NULL && subsys >= 0 && rt_set_cgroup_v1_subsys(h, (unsigned int)subsys) != 0)
+    {
+        /* Without this the program reads bpf_get_current_cgroup_id(), which on
+         * such a host identifies nothing — so every event would be filtered
+         * out and the test would "pass" its exclusion check for entirely the
+         * wrong reason. */
+        printf("could not point the engine at the '%s' controller — skipping\n", controller);
+        rt_close(h);
+        rmdir(cg_allow);
+        rmdir(cg_deny);
+        return SKIP_EXIT;
+    }
+    if (h != NULL && rt_cgroup_id_is_usable(h) == 0)
+    {
+        printf("the engine reports no usable container identifier — skipping\n");
+        rt_close(h);
+        rmdir(cg_allow);
+        rmdir(cg_deny);
+        return SKIP_EXIT;
+    }
     if (!h)
     {
         printf("rt_open failed — skipping\n");
