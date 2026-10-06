@@ -762,11 +762,11 @@ def load_wazuh_xml(xml_path, data=None):
             except Exception as e:
                 raise WazuhError(1113, extra_message=str(e))
 
-    # -- characters are not allowed in XML comments
-    xml_comment = re.compile(r"(<!--(.*?)-->)", flags=re.MULTILINE | re.DOTALL)
-    for comment in xml_comment.finditer(data):
-        good_comment = comment.group(2).replace('--', '..')
-        data = data.replace(comment.group(2), good_comment)
+    # -- characters are not allowed in XML comments. Rewrite each comment in place in a single pass:
+    # replacing every comment body over the whole document is quadratic in the number of comments,
+    # and also rewrites any text outside a comment that happens to match a comment body.
+    data = re.sub(r"<!--(.*?)-->", lambda comment: f"<!--{comment.group(1).replace('--', '..')}-->", data,
+                  flags=re.DOTALL)
 
     # Replace &lt; and &gt; currently present in the config
     data = data.replace('&lt;', '_custom_amp_lt_').replace('&gt;', '_custom_amp_gt_')
@@ -779,8 +779,17 @@ def load_wazuh_xml(xml_path, data=None):
     for character, replacement in custom_entities.items():
         data = re.sub(replacement.replace('\\', '\\\\'), f'&{character};', data)
 
-    # < characters should be escaped as &lt; unless < is starting a <tag> or a comment
-    data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
+    # < characters should be escaped as &lt; unless < is starting a <tag> or a comment. A <tag> is a name
+    # followed by at least one character and a > later on the same line. Each line's last > is located
+    # once: a lookahead scanning to the end of the line for every < is quadratic in the line length.
+    lt_candidate = re.compile(r"<(?!!--)(/?\w)?")
+
+    def escape_lt(line):
+        last_gt = line.rfind('>')
+        return lt_candidate.sub(
+            lambda lt: lt.group(0) if lt.group(1) and last_gt > lt.end() else f"&lt;{lt.group(1) or ''}", line)
+
+    data = '\n'.join(escape_lt(line) for line in data.split('\n'))
 
     # replace \< by &lt, only outside xml tags;
     data = re.sub(r'^&backslash;<(.*[^>])$', r'&backslash;&lt;\g<1>', data)
