@@ -764,3 +764,4 @@ async def update_configuration(node_id: str, body: bytes, pretty: bool = False,
     data = raise_if_exc(await dapi.distribute_function())
 
     return json_response(data, pretty=pretty)
+# AC-2 of #39594: trigger the cluster tests on a branch cut before #39410
