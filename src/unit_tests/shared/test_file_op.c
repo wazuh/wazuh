@@ -1797,15 +1797,15 @@ void test_unmerge_normalize_name_windows(void **state) {
         "", "..", "/a", "a\rb", "\\a", "a\\", "a\\..\\b", "sub/..\\x", "C:a", "C:\\a", "a:b", "a?b",
         "a<b", "a>b", "a|b", "a\"b", "a*b", "notes.", "space ", "...", "a./b", "a /b", "merged.mg",
         ".\\MERGED.MGT", "COM1", "nul.txt", "Aux", "sub/LPT9.log", "con .conf", "com0", "PRN.tar.gz",
-        "LPT\xC2\xB9", "sub\\COM\xC2\xB3.cfg", "MERGED~1.TMP", "merged~1.tmp", "sub\\AGENT~2.CON",
-        "AR034B~1.CON", "a~1", "DIR~12/x"
+        "LPT\xC2\xB9", "sub\\COM\xC2\xB3.cfg", "CONIN$", "sub\\conout$.txt", "MERGED~1.TMP", "merged~1.tmp",
+        "sub\\AGENT~2.CON", "AR034B~1.CON", "a~1", "DIR~12/x"
     };
     const char *valid[][2] = {
         {"a\\b", "a/b"}, {"sub/c\\.\\d", "sub/c/d"}, {".\\upgrade.sh", "upgrade.sh"}, {"a\\\\b", "a/b"},
         {".hidden", ".hidden"}, {"..name", "..name"}, {"sub\\merged.mg", "sub/merged.mg"},
         {"COM10", "COM10"}, {"NULL", "NULL"}, {"console.conf", "console.conf"}, {"sub\\aux_rules", "sub/aux_rules"},
-        {"LPT\xC2\xB4", "LPT\xC2\xB4"}, {"merged.mg.tmp", "merged.mg.tmp"}, {"file~1.conf", "file~1.conf"},
-        {"foo~bar.txt", "foo~bar.txt"}, {"longname~1.txt", "longname~1.txt"}
+        {"LPT\xC2\xB4", "LPT\xC2\xB4"}, {"CONIN", "CONIN"}, {"merged.mg.tmp", "merged.mg.tmp"},
+        {"file~1.conf", "file~1.conf"}, {"foo~bar.txt", "foo~bar.txt"}, {"longname~1.txt", "longname~1.txt"}
     };
     char normalized[64];
 

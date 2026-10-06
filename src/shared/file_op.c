@@ -764,10 +764,11 @@ static int unmerge_port_name(const char *base, size_t length)
 }
 
 /* Win32 documents device names as reserved in every directory, with or without an extension. Windows 11
- * creates such entries as files, but older versions may open the device instead. */
+ * creates such entries as files, but older versions may open the device instead. CONIN$ and CONOUT$ open the
+ * console. */
 static int unmerge_device_name(const char *component, size_t length)
 {
-    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL"};
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"};
     const char *dot = memchr(component, '.', length);
     size_t base = dot ? (size_t)(dot - component) : length;
 
