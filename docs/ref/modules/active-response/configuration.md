@@ -100,7 +100,9 @@ dashboard:
 1. a **notification channel** of the Active Response type says what to run: `name`, `executable`,
    `extra_arguments`, `type` and `stateful_timeout`, `location` and, for `defined-agent`, `agent_id`;
 2. an **Alerting monitor** says when: a trigger whose action targets that channel writes one response
-   document per matching event into `wazuh-active-responses`.
+   document per matching event into `wazuh-active-responses`. The monitor must watch
+   `wazuh-events-v5-*` or `wazuh-findings-v5-*`: the manager discards a response whose event lives
+   in any other index.
 
 The manager's part is the poller in `wazuh-manager-clusterd`, described in
 [Manager-side ingestion](architecture.md#manager-side-ingestion). Its settings are internal, in
