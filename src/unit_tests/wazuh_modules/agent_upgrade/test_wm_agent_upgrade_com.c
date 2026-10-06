@@ -1216,7 +1216,7 @@ void test_wm_agent_upgrade_com_installer_error(void **state) {
     expect_any(__wrap_UnmergeFiles, finalpath);
     expect_any(__wrap_UnmergeFiles, optdir);
     expect_value(__wrap_UnmergeFiles, mode, OS_BINARY);
-    will_return(__wrap_UnmergeFiles, -1);
+    will_return(__wrap_UnmergeFiles, UNMERGE_COMPLETE);
 
     expect_any(__wrap_unlink, file);
     will_return(__wrap_unlink, 0);
@@ -1298,7 +1298,7 @@ void test_wm_agent_upgrade_com_chmod_error(void **state) {
     expect_any(__wrap_UnmergeFiles, finalpath);
     expect_any(__wrap_UnmergeFiles, optdir);
     expect_value(__wrap_UnmergeFiles, mode, OS_BINARY);
-    will_return(__wrap_UnmergeFiles, -1);
+    will_return(__wrap_UnmergeFiles, UNMERGE_COMPLETE);
 
     expect_any(__wrap_unlink, file);
     will_return(__wrap_unlink, 0);
@@ -1386,7 +1386,7 @@ void test_wm_agent_upgrade_com_execute_error(void **state) {
     expect_any(__wrap_UnmergeFiles, finalpath);
     expect_any(__wrap_UnmergeFiles, optdir);
     expect_value(__wrap_UnmergeFiles, mode, OS_BINARY);
-    will_return(__wrap_UnmergeFiles, -1);
+    will_return(__wrap_UnmergeFiles, UNMERGE_COMPLETE);
 
     expect_any(__wrap_unlink, file);
     will_return(__wrap_unlink, 0);
@@ -1491,7 +1491,7 @@ void test_wm_agent_upgrade_com_success(void **state) {
     expect_any(__wrap_UnmergeFiles, finalpath);
     expect_any(__wrap_UnmergeFiles, optdir);
     expect_value(__wrap_UnmergeFiles, mode, OS_BINARY);
-    will_return(__wrap_UnmergeFiles, -1);
+    will_return(__wrap_UnmergeFiles, UNMERGE_COMPLETE);
 
     expect_any(__wrap_unlink, file);
     will_return(__wrap_unlink, 0);
@@ -1893,7 +1893,7 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state) {
         expect_any(__wrap_UnmergeFiles, finalpath);
         expect_any(__wrap_UnmergeFiles, optdir);
         expect_value(__wrap_UnmergeFiles, mode, OS_BINARY);
-        will_return(__wrap_UnmergeFiles, -1);
+        will_return(__wrap_UnmergeFiles, UNMERGE_COMPLETE);
 
         expect_any(__wrap_unlink, file);
         will_return(__wrap_unlink, 0);

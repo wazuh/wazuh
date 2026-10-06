@@ -233,13 +233,19 @@ void DeleteState();
 int MergeAppendFile(FILE *finalfp, const char *files, int path_offset) __attribute__((nonnull(1, 2)));
 
 
+/* UnmergeFiles() results */
+#define UNMERGE_FAILED          0   /* An entry could not be written, or the merged file could not be read */
+#define UNMERGE_COMPLETE        1   /* Every entry was unmerged */
+#define UNMERGE_NAMES_SKIPPED   2   /* Entries with invalid names were skipped, every other one was unmerged */
+
 /**
  * @brief Unmerge file.
  *
  * @param finalpath Path of the merged file.
  * @param optdir Path of the folder to unmerge the files. If not specified, the files will be unmerged in the current working directory.
  * @param mode Indicates if the merged file must be readed as a binary file  or not. Use `#OS_TEXT`, `#OS_BINARY`.
- * @return 1 if the file was unmerged, 0 on error.
+ * @param unmerged_files Optional list to which successfully extracted names are appended, including on error.
+ * @return `#UNMERGE_COMPLETE`, `#UNMERGE_NAMES_SKIPPED` or `#UNMERGE_FAILED`. Successful entries are retained.
  */
 int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***unmerged_files) __attribute__((nonnull(1)));
 

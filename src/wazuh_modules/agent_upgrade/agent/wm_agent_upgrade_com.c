@@ -370,8 +370,8 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
         return wm_agent_upgrade_command_ack(ERROR_CLEAN_DIRECTORY, error_messages[ERROR_CLEAN_DIRECTORY]);
     }
 
-    //Unmerge
-    if (UnmergeFiles(merged, UPGRADE_DIR, OS_BINARY, NULL) == 0) {
+    // Unmerge, requiring every file of the package
+    if (UnmergeFiles(merged, UPGRADE_DIR, OS_BINARY, NULL) != UNMERGE_COMPLETE) {
         unlink(merged);
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNMERGING_FILE_ERROR, "upgrade", merged);
         return wm_agent_upgrade_command_ack(ERROR_UNMERGE, error_messages[ERROR_UNMERGE]);
