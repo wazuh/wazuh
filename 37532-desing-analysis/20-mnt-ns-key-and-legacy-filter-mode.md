@@ -8,10 +8,17 @@ stated in `18-cgroup-v1-unified-resolver-plan.md` as written.
 
 **Verdict:** `mnt_ns` works as a correlation key, but it is **unique in space and not in time** — the
 kernel hands the same inode number to the next container started. Three mechanisms in the store
-assume the opposite. Separately, the in-kernel cgroup allowlist **cannot select containers at all**
-on such a host, so phase 2 there has to run `RT_CGROUP_MODE_ALL` and filter in userspace. That is
-not a design preference; it is the only mode that can work, and it carries back the cost that
-`541077159e` was written to remove.
+assume the opposite. Separately, the in-kernel allowlist **as the BPF program is written today**
+cannot select containers on such a host, so phase 2 built on the current object has to run
+`RT_CGROUP_MODE_ALL` and filter in userspace, carrying back the cost that `541077159e` was written
+to remove.
+
+> **Correction, 2026-10-06, after this document's first revision.** The paragraph above originally
+> said the kernel *cannot* supply a per-container number on a legacy host. That is false, and the
+> distinction matters more than anything else here: the **helper** cannot, the **kernel** can. A BPF
+> program can read the v1 controller's cgroup id directly, which removes both problems in this
+> document rather than mitigating them. See §20.4.1 — it is now the recommended route, and §20.3 to
+> §20.5 describe the fallback, not the plan.
 
 ---
 
@@ -148,9 +155,9 @@ start time, so "same number, different run" is distinguishable from "same contai
 
 ---
 
-## 20.4 Why the in-kernel filter cannot be used on a legacy host
+## 20.4 Why the in-kernel filter cannot be used *as the program stands*
 
-This is independent of the reuse problem, and it is the harder constraint.
+This is independent of the reuse problem.
 
 The allowlist is implemented in the BPF program, before the ring-buffer reservation, and it keys on
 exactly one thing:
@@ -175,21 +182,78 @@ a legacy host the allowlist has exactly two reachable behaviours:
 | does not contain the constant | **no event on the host is submitted** — the drain sees nothing at all |
 | contains the constant | **every event on the host is submitted** — identical to `RT_CGROUP_MODE_ALL`, with a map lookup added per event |
 
-Neither is filtering. There is no third case, because there is no per-container input to filter on:
-the one number the kernel can supply is the same for every task on the machine.
+Neither is filtering. There is no third case **given this input**, because `cgroup_id` is the same
+for every task on the machine.
 
-**Could the BPF program filter on `mnt_ns` instead?** Not as the engine stands. The value is read
-per event into the event struct, but `event_is_wanted()` runs *before* the record is reserved and
-populated, which is the entire point of filtering there — the saving comes from never reserving. A
-`mnt_ns` allowlist would mean reading `nsproxy->mnt_ns->ns.inum` on every event before deciding,
-which is a CO-RE read per event on the hot path, plus a second allowlist map, plus a config flag to
-choose between them, plus a rebuild and redeployment of `rt_file.bpf.o` on every supported
-architecture. That is a real option, and it is **not a small one**; it is noted here as future work
-rather than smuggled into WP6.
+But that is a statement about the **helper**, not about the kernel — and conflating the two is the
+mistake the first revision of this document made.
 
-**Therefore, on a legacy host, phase 2 must open the engine in `RT_CGROUP_MODE_ALL` and discard
-unwanted events in userspace, by comparing `ev->mnt_ns` against the keys it holds.** Unified and
-hybrid hosts are untouched and keep the in-kernel allowlist exactly as it is today.
+### 20.4.1 The kernel does have a per-container number on v1, and BPF can read it
+
+`bpf_get_current_cgroup_id()` is not magic. It returns `cgrp->kn->id` for the task's cgroup **in the
+v2 hierarchy**, which is why it degenerates when there is no v2 hierarchy. The v1 controllers'
+cgroups are kernfs nodes too, with ids of exactly the same kind, and they are reachable by an
+ordinary CO-RE walk:
+
+```
+task_struct -> cgroups                       (struct css_set *)
+            -> subsys[memory_cgrp_id]        (struct cgroup_subsys_state *)
+            -> cgroup                        (struct cgroup *)
+            -> kn                            (struct kernfs_node *)
+            -> id                            (u64)
+```
+
+**Every link verified in this host's BTF** (`bpftool btf dump file /sys/kernel/btf/vmlinux`,
+kernel 6.8): `css_set.subsys[15]`, `cgroup_subsys_state.cgroup`, `cgroup.kn`, `kernfs_node.id`, and
+`enum cgroup_subsys_id` with `memory_cgrp_id = 4`.
+
+The one subtlety is that **4 is not a constant across kernels.** The enum is generated from
+`cgroup_subsys.h` and its ordering depends on which controllers are compiled in — this kernel has 15
+and another build will differ. Hardcoding the index would silently read the wrong controller's
+cgroup, which is the worst possible failure here: a plausible number for the wrong thing. It must be
+resolved from BTF at load time with `bpf_core_enum_value(enum cgroup_subsys_id, memory_cgrp_id)`,
+which is precisely what CO-RE enum relocation exists for.
+
+**Why this is the better route, by some distance:**
+
+| | `mnt_ns` (§20.2–20.5) | v1 cgroup id via CO-RE |
+| --- | --- | --- |
+| Reused across containers | **yes** — the whole of §20.3 | **no** — kernfs ids advance, measured 8/8 distinct |
+| Removal grace, pending TTL, cached keys | each needs a legacy-specific mitigation | unchanged from v2 |
+| In-kernel filtering | impossible without a second map and a second key space | **works with `cgroup_allow_map` untouched** |
+| Engine mode on legacy | `RT_CGROUP_MODE_ALL` + userspace filter | `RT_CGROUP_MODE_ALLOWLIST`, as on v2 |
+| Cost of §20.5 | paid in full | **not paid at all** |
+| Store and kernel meet on | two different numbers | **one number**, as on v2 |
+
+That last row is the point. The resolver **already computes this exact value** on a legacy host:
+WP2 picks the `memory` controller first and stats
+`/sys/fs/cgroup/memory/<path>` (`proc_cgroup_resolver.cpp`), so the store is keyed on the memory
+controller's cgroup inode before anything about `mnt_ns` is involved. Reading the same cgroup's
+`kn->id` in BPF restores the design's original property — one number, no translation — on the
+hierarchy where it was thought to be impossible.
+
+**What it costs, honestly:**
+
+- Four pointer dereferences per event before the reservation. The program already does far longer
+  CO-RE walks on this path (the dentry/mount chain in `get_path_str()` is a bounded loop), and
+  `event_is_wanted()` already performs a map lookup, so this is a small addition to a hot path
+  rather than a new kind of work on it.
+- **It is BPF work**, which in this tree means rebuilding `rt_file.bpf.o` and refreshing the
+  per-architecture prebuilt objects — and the build environment this branch is developed in has
+  neither clang, nor bpftool, nor a vendored `vmlinux.h` (see `ebpf_provider/CMakeLists.txt`). This
+  is the real reason it is not already done, and it is a scheduling problem, not a design one.
+- **One assumption is unverified.** That `subsys[memory_cgrp_id]->cgroup->kn->id` equals the
+  `stat()` inode of that controller's directory is expected by the same kernfs mechanism that makes
+  it true on v2 — where it is not assumed but **measured** (`rt_engine_drops_test`, observed 28126
+  and 28206, pinned since `9e884232c5`). It has not been measured on a v1 host, and that
+  measurement is the first thing this route needs, not the last.
+
+### 20.4.2 The fallback, if the BPF work cannot be scheduled
+
+On a legacy host, open the engine in `RT_CGROUP_MODE_ALL` and discard unwanted events in userspace
+by comparing `ev->mnt_ns` against the keys held. Unified and hybrid hosts are untouched and keep the
+in-kernel allowlist exactly as it is today. This is what §20.5 prices, and it is the only route that
+needs no new BPF object — which is its sole advantage.
 
 ---
 
@@ -232,13 +296,24 @@ decision to ship phase 2 is a decision to accept that on RHEL 8 and Amazon Linux
 | WP6: "Replace the refusal with selection" (`container_event_drain.cpp:694`) | Key selection is necessary but not sufficient — the filter mode must change with it | WP6 selects **both** the key and the engine mode by host mode |
 | §18.4 lists `unshare -m` and deliberate namespace sharing as the `mnt_ns` weaknesses | The dominant weakness is **sequential reuse**, which §18.4 does not mention | §18.7 Q1 updated with the measurement; this document is the long form |
 | §18.7 Q1: "worth a probe before committing to phase 2" | Probed. Usable with mitigations | Q1 closed |
-| Nothing about filter mode | Legacy hosts cannot filter in-kernel at all | Recorded here and in §18.7 |
+| Nothing about filter mode | Legacy hosts cannot filter in-kernel **with the current BPF object**; with a new one they can, on a better key than `mnt_ns` (§20.4.1) | Recorded here and in §18.7 |
 
-**Still open, and genuinely a judgement call rather than an engineering one:** whether the cost in
-§20.5 is acceptable for the hosts in question, or whether O4 should resolve to *inventory-only* —
-which works on legacy hosts **today**, as of WP2/WP4, and costs nothing extra because inventory
-discovers through `list` and collects through `/proc/<pid>/root`, neither of which touches the event
-stream.
+**Still open, and genuinely a judgement call rather than an engineering one.** There are now three
+answers, not two:
+
+1. **Phase 2 on the v1 cgroup id (§20.4.1).** The best outcome and the most work: new BPF code, a
+   rebuilt object per architecture, and one measurement on a real v1 host before any of it is
+   trusted. Legacy hosts then behave like unified ones, with none of §20.3's mitigations and none of
+   §20.5's cost.
+2. **Phase 2 on `mnt_ns` (§20.4.2).** No BPF work. Carries §20.3's three mitigations and §20.5's
+   cost on legacy hosts only.
+3. **Inventory-only.** Works on legacy hosts **today**, as of WP2/WP4, and costs nothing extra —
+   inventory discovers through `list` and collects through `/proc/<pid>/root`, neither of which
+   touches the event stream.
+
+Option 1 does not block option 2: the key kind is already a host constant behind one abstraction
+(`KeyKind`, `18-…` WP4), so moving a legacy host from `mnt_ns` to a v1 cgroup id later is a change
+of which number fills the key, not a change of shape.
 
 ---
 
