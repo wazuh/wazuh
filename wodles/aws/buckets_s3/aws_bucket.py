@@ -829,20 +829,29 @@ class AWSCustomBucket(AWSBucket):
 
     def load_information_from_file(self, log_key):
         def json_event_generator(data):
-            while data:
+            # Track a position instead of re-slicing `data` every iteration: `data[pos:]` would
+            # copy the entire remaining string on every single object, well or malformed, which
+            # is what made this loop quadratic in file size. raw_decode(data, pos) parses
+            # forward from `pos` without touching (or needing) anything before it.
+            pos = 0
+            length = len(data)
+            while pos < length:
                 try:
-                    json_data, json_index = decoder.raw_decode(data)
+                    json_data, pos = decoder.raw_decode(data, pos)
                 except ValueError as err:
-                    # Handle undefined values for lat and lon fields in Macie logs
-                    match = self.macie_location_pattern.search(data)
+                    # Handle undefined values for lat and lon fields in Macie logs. Only the
+                    # unconsumed remainder is searched/rewritten, not the whole file from the
+                    # start -- `data[:pos]` was already parsed and yielded.
+                    remainder = data[pos:]
+                    match = self.macie_location_pattern.search(remainder)
                     if not match or not match.group(1) or not match.group(2):
                         raise err
                     lat = float(match.group(1))
                     lon = float(match.group(2))
                     new_pattern = f'"lat":{lat},"lon":{lon}'
-                    data = re.sub(self.macie_location_pattern, new_pattern, data)
-                    json_data, json_index = decoder.raw_decode(data)
-                data = data[json_index:]
+                    data = data[:pos] + re.sub(self.macie_location_pattern, new_pattern, remainder)
+                    length = len(data)
+                    json_data, pos = decoder.raw_decode(data, pos)
                 yield json_data
 
         with self.decompress_file(self.bucket, log_key=log_key) as f:
