@@ -474,7 +474,7 @@ bool SudoersProvider::isUserSudoer(const nlohmann::json& sudoers,
 
         const auto userList = ruleUserList(header, rule.value("rule_details", ""));
 
-        if (userListMatchState(userList, userName, userGroups, userAliases, 0) == ListMatchState::Granted)
+        if (userListGrants(userList, userName, userGroups, userAliases, 0))
         {
             return true;
         }

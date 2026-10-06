@@ -320,6 +320,9 @@ TEST(SudoersIsUserSudoerTest, NegatedRuleAfterADirectGrantDoesNotRevokeIt)
     ])"_json;
 
     EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "alice", {}));
+
+    // A user list made only of "!alice" names nobody else either, so it grants nothing to "bob".
+    EXPECT_FALSE(SudoersProvider::isUserSudoer(sudoers, "bob", {}));
 }
 
 TEST(SudoersIsUserSudoerTest, NegatedRuleBeforeADirectGrantDoesNotBlockIt)
@@ -330,6 +333,7 @@ TEST(SudoersIsUserSudoerTest, NegatedRuleBeforeADirectGrantDoesNotBlockIt)
     ])"_json;
 
     EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "alice", {}));
+    EXPECT_FALSE(SudoersProvider::isUserSudoer(sudoers, "bob", {}));
 }
 
 TEST(SudoersIsUserSudoerTest, ExclusionInASeparateRuleDoesNotGrantTheExcludedUser)
