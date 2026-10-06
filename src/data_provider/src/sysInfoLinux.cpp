@@ -34,6 +34,7 @@
 #include "user_groups_linux.hpp"
 #include "auth_failures_linux.hpp"
 #include "last_login_linux.hpp"
+#include "last_login_resolution.hpp"
 #include "logged_in_users_linux.hpp"
 #include "shadow_linux.hpp"
 #include "sudoers_unix.hpp"
@@ -722,52 +723,14 @@ nlohmann::json SysInfo::getUsers() const
                              : userGroupsProvider.getGroupNamesByUid(allUids);
 
     // The last login is the newest of lastlog, lastlog2 and the sessions open now. It is known for
-    // every account before the loop because the failed attempts are counted since that login.
-    std::unordered_map<std::string, uint32_t> lastLoginByName;
-    auto lastLoginKnown = false;
-    {
-        LastLoginProvider lastLoginProvider;
-
-        for (const auto& user : collectedUsers)
-        {
-            if (user.contains("username") && !user["username"].get<std::string>().empty())
-            {
-                auto& lastLogin = lastLoginByName[user["username"].get<std::string>()];
-                lastLogin = std::max(lastLogin, lastLoginProvider.lastLogin(user["uid"].get<uid_t>(), user["username"]));
-            }
-        }
-
-        for (const auto& item : collectedLoggedInUser)
-        {
-            // Only a live session dates a login. utmp also keeps the logout as a DEAD_PROCESS row,
-            // and boot and init rows carry times of their own, so folding every row in would move the
-            // anchor to the logout and hide the failures that happened while the session was open.
-            if (item.value("type", std::string {}) != "user")
-            {
-                continue;
-            }
-
-            const auto entry = lastLoginByName.find(item["user"].get<std::string>());
-
-            if (entry != lastLoginByName.end())
-            {
-                entry->second = std::max(entry->second, static_cast<uint32_t>(std::max<int32_t>(item["time"].get<int32_t>(), 0)));
-            }
-        }
-    }
-
-    // The count is anchored to the last login, so the anchor has to be a time somebody actually has.
-    // A lastlog that opens and reads back as zeros, which a restore or a tool that extends the file
-    // can leave behind, would otherwise anchor every account at the epoch and count every failure
-    // btmp still holds against accounts that have since logged in.
-    lastLoginKnown = std::any_of(lastLoginByName.cbegin(), lastLoginByName.cend(),
-                                 [](const auto & entry)
-    {
-        return entry.second > 0;
-    });
+    // every account before the loop because the failed attempts are counted since that login. The
+    // rules, and the order they have to be applied in, live in resolveLastLogins().
+    LastLoginProvider lastLoginProvider;
+    const auto lastLogins = resolveLastLogins(collectedUsers, collectedLoggedInUser, lastLoginProvider);
+    auto lastLoginByName = lastLogins.byName;
 
     AuthFailuresProvider authFailuresProvider;
-    authFailuresProvider.load(lastLoginByName, lastLoginKnown);
+    authFailuresProvider.load(lastLoginByName, lastLogins.known);
 
     for (auto& user : collectedUsers)
     {
