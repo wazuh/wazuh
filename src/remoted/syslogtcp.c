@@ -80,7 +80,7 @@ void send_buffer(sockbuffer_t *socket_buffer, char *srcip) {
 }
 
 /* Handle each client */
-static void HandleClient(int client_socket, char *srcip)
+STATIC void HandleClient(int client_socket, char *srcip)
 {
     int r_sz = 0;
     sockbuffer_t socket_buff;
@@ -95,7 +95,9 @@ static void HandleClient(int client_socket, char *srcip)
     while (1) {
         /* If an error occurred, or received 0 bytes, we need to return and close the socket */
         r_sz = recv(client_socket, socket_buff.data + socket_buff.data_len, OS_MAXSTR - socket_buff.data_len, 0);
-        socket_buff.data_len += r_sz;
+        if (r_sz > 0) {
+            socket_buff.data_len += r_sz;
+        }
 
         socket_buff.data[socket_buff.data_len] = '\0';
         switch (r_sz) {
