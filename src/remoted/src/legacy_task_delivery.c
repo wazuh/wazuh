@@ -518,13 +518,16 @@ STATIC bool legacy_task_send_step(const char *agent_id, const char *target, cons
                     os_strdup(message_obj->valuestring, *out_message);
                 }
             } else {
+                // Agent-supplied free text: escape CR/LF so it cannot forge lines in the plain-text log.
+                char *reason = escape_newlines(cJSON_IsString(message_obj) ? message_obj->valuestring : "unknown error");
                 if (is_last_attempt) {
                     mwarn("legacy_task_delivery: agent '%s' rejected step targeting '%s': %s", agent_id, target,
-                          cJSON_IsString(message_obj) ? message_obj->valuestring : "unknown error");
+                          reason);
                 } else {
                     mdebug1("legacy_task_delivery: agent '%s' rejected step targeting '%s': %s", agent_id, target,
-                            cJSON_IsString(message_obj) ? message_obj->valuestring : "unknown error");
+                            reason);
                 }
+                os_free(reason);
                 if (out_message && cJSON_IsString(message_obj)) {
                     os_strdup(message_obj->valuestring, *out_message);
                 }
@@ -811,13 +814,16 @@ STATIC bool legacy_task_ca_push(const char *agent_id, const char *pem, unsigned 
         }
 
         if (!reported_sha1 || strcmp(reported_sha1, expected_sha1) != 0) {
+            // Agent-supplied: escape CR/LF so it cannot forge lines in the plain-text log.
+            char *got = escape_newlines(reported_sha1 ? reported_sha1 : "(none)");
             if (is_last_attempt) {
                 mwarn("legacy_task_delivery: agent '%s': CA sha1 mismatch after transfer (expected '%s', got '%s')",
-                      agent_id, expected_sha1, reported_sha1 ? reported_sha1 : "(none)");
+                      agent_id, expected_sha1, got);
             } else {
                 mdebug1("legacy_task_delivery: agent '%s': CA sha1 mismatch after transfer (expected '%s', got '%s')",
-                        agent_id, expected_sha1, reported_sha1 ? reported_sha1 : "(none)");
+                        agent_id, expected_sha1, got);
             }
+            os_free(got);
             os_free(reported_sha1);
             return false;
         }
@@ -1165,13 +1171,16 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
 
         if (!reported_sha1 || strcmp(reported_sha1, wpk_sha1) != 0) {
             // debug1/warning ladder -- see the lock_restart step's comment.
+            // Agent-supplied: escape CR/LF so it cannot forge lines in the plain-text log.
+            char *got = escape_newlines(reported_sha1 ? reported_sha1 : "(none)");
             if (is_last_attempt) {
                 mwarn("legacy_task_delivery: agent '%s': sha1 mismatch after transfer (expected '%s', got '%s'), aborting",
-                       agent_id, wpk_sha1, reported_sha1 ? reported_sha1 : "(none)");
+                       agent_id, wpk_sha1, got);
             } else {
                 mdebug1("legacy_task_delivery: agent '%s': sha1 mismatch after transfer (expected '%s', got '%s'), aborting",
-                        agent_id, wpk_sha1, reported_sha1 ? reported_sha1 : "(none)");
+                        agent_id, wpk_sha1, got);
             }
+            os_free(got);
             os_free(reported_sha1);
             // Most likely one-off corruption in transit; a fresh transfer is likely to match.
             return LEGACY_TASK_PUSH_RETRYABLE;
@@ -1216,8 +1225,11 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
         }
 
         if (!exit_status || strncmp("0", exit_status, 1) != 0) {
+            // Agent-supplied: escape CR/LF so it cannot forge lines in the plain-text log.
+            char *status = escape_newlines(exit_status ? exit_status : "unknown");
             merror("legacy_task_delivery: agent '%s': installer script failed (exit status: %s)",
-                   agent_id, exit_status ? exit_status : "unknown");
+                   agent_id, status);
+            os_free(status);
             os_free(exit_status);
             // The agent ran the installer and it affirmatively reported failure (bad package,
             // wrong arch, disk full, etc.) -- retrying the identical WPK will fail the same way.
@@ -1645,7 +1657,8 @@ bool legacy_task_process_upgrade_ack(const char *agent_id, const char *ack_json)
     }
 
     cJSON *message_obj = cJSON_GetObjectItem(parameters_obj, "message");
-    const char *message = cJSON_IsString(message_obj) ? message_obj->valuestring : "(no message)";
+    // Agent-supplied free text: escape CR/LF so it cannot forge lines in the plain-text log.
+    char *message = escape_newlines(cJSON_IsString(message_obj) ? message_obj->valuestring : "(no message)");
 
     if (error_obj->valueint == 0) {
         minfo("legacy_task_delivery: agent '%s' reported upgrade result (error %d: %s), replying with "
@@ -1661,6 +1674,7 @@ bool legacy_task_process_upgrade_ack(const char *agent_id, const char *ack_json)
               "clear_upgrade_result", agent_id, error_obj->valueint, message);
     }
 
+    os_free(message);
     cJSON_Delete(ack);
 
     // Enqueue rather than reply inline: this function runs on a shared rem_handler worker-pool
