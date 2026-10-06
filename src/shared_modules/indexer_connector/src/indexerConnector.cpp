@@ -26,6 +26,7 @@
 #include <mutex>
 #include <pwd.h>
 #include <unistd.h>
+#include <vector>
 
 constexpr auto USER_GROUP {"wazuh"};
 constexpr auto DEFAULT_PATH {"tmp/root-ca-merged.pem"};
@@ -64,6 +65,25 @@ constexpr auto SYNC_QUEUE_LIMIT = 4096;
 constexpr auto MINIMAL_SYNC_TIME {30}; // In minutes
 
 static std::mutex G_CREDENTIAL_MUTEX;
+
+// The vulnerability scanner stores documents as "<id>_<feed offset>" while DELETED carries the bare "<id>". The "_"
+// keeps CVE-2023-1 from reaching CVE-2023-100, and the bare key covers documents stored without an offset.
+static std::vector<std::string> keysToDelete(Utils::RocksDBWrapper& db, const std::string& id)
+{
+    std::vector<std::string> keys;
+    if (std::string value; db.get(id, value))
+    {
+        keys.push_back(id);
+    }
+
+    // Named local: seek() only borrows the key as a string_view, read lazily on the loop's begin().
+    const auto idPrefix = id + "_";
+    for (const auto& [key, _] : db.seek(idPrefix))
+    {
+        keys.emplace_back(key);
+    }
+    return keys;
+}
 
 static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, std::string& caRootCertificate)
 {
@@ -1189,18 +1209,8 @@ IndexerConnector::IndexerConnector(
                 {
                     if (m_useSeekDelete)
                     {
-                        // The id here is already the full composite key (every element's deleteElement() builds
-                        // it as agentId + "_" + itemId) - no separator needed. seek() is a plain byte-prefix
-                        // scan though, so a longer sibling key starting with this id (e.g. CVE-2023-100 when
-                        // deleting CVE-2023-1) would also match. The default comparator visits the exact match
-                        // first, so stop as soon as the key stops being exactly the id.
-                        for (const auto& [key, _] : m_db->seek(id))
+                        for (const auto& key : keysToDelete(*m_db, id))
                         {
-                            if (key != id)
-                            {
-                                break;
-                            }
-
                             logDebug2(IC_NAME, "Added document for deletion with id: %s.", key.c_str());
                             if (!noIndex)
                             {
@@ -1533,16 +1543,8 @@ IndexerConnector::IndexerConnector(
                 {
                     if (m_useSeekDelete)
                     {
-                        // Same as the index-enabled constructor's DELETED branch: id is already the full
-                        // composite key, no separator appended - stop as soon as the key stops being exactly
-                        // the id, so a longer sibling key sharing the same byte-prefix isn't also deleted.
-                        for (const auto& [key, _] : m_db->seek(id))
+                        for (const auto& key : keysToDelete(*m_db, id))
                         {
-                            if (key != id)
-                            {
-                                break;
-                            }
-
                             m_db->delete_(key);
                         }
                     }
