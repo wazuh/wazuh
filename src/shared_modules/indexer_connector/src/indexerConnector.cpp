@@ -1159,6 +1159,26 @@ IndexerConnector::IndexerConnector(
             // Accumulator for data to be sent to the indexer via query requests.
             nlohmann::json queryData;
 
+            // Requests in the order of the operations that produced them (true: delete by query). A delete by query
+            // sent after the bulk that follows it would remove the documents that bulk has just indexed.
+            std::vector<std::pair<bool, std::string>> requests;
+            const auto flushBulk = [&bulkData, &requests]()
+            {
+                if (!bulkData.empty())
+                {
+                    requests.emplace_back(false, std::move(bulkData));
+                    bulkData.clear();
+                }
+            };
+            const auto flushQuery = [&queryData, &requests]()
+            {
+                if (!queryData.empty())
+                {
+                    requests.emplace_back(true, queryData.dump());
+                    queryData.clear();
+                }
+            };
+
             while (!dataQueue.empty())
             {
                 auto data = dataQueue.front();
@@ -1201,6 +1221,7 @@ IndexerConnector::IndexerConnector(
                             logDebug2(IC_NAME, "Added document for deletion with id: %s.", key.c_str());
                             if (!noIndex)
                             {
+                                flushQuery();
                                 builderBulkDelete(bulkData, key, m_indexName);
                             }
 
@@ -1232,6 +1253,7 @@ IndexerConnector::IndexerConnector(
                     {
                         if (!noIndex)
                         {
+                            flushQuery();
                             builderBulkDelete(bulkData, id, m_indexName);
                         }
 
@@ -1243,6 +1265,7 @@ IndexerConnector::IndexerConnector(
                     logDebug2(IC_NAME, "Added document for deletion by query with id: %s.", id.c_str());
                     if (!noIndex)
                     {
+                        flushBulk();
                         builderDeleteByQuery(queryData, id);
                     }
 
@@ -1267,6 +1290,7 @@ IndexerConnector::IndexerConnector(
                     const auto dataString = parsedData.at("data").dump();
                     if (!noIndex)
                     {
+                        flushQuery();
                         builderBulkIndex(bulkData, id, m_indexName, dataString);
                     }
                     m_db->put(id, dataString);
@@ -1407,16 +1431,14 @@ IndexerConnector::IndexerConnector(
 
             const auto serverUrl = selector->getNext();
 
-            if (!bulkData.empty())
-            {
-                const auto url = serverUrl + "/_bulk?refresh=wait_for";
-                processData(bulkData, url);
-            }
+            flushBulk();
+            flushQuery();
 
-            if (!queryData.empty())
+            for (const auto& [isQuery, payload] : requests)
             {
-                const auto url = serverUrl + "/" + m_indexName + "/_delete_by_query";
-                processData(queryData.dump(), url);
+                const auto url = isQuery ? serverUrl + "/" + m_indexName + "/_delete_by_query"
+                                         : serverUrl + "/_bulk?refresh=wait_for";
+                processData(payload, url);
             }
         },
         DATABASE_BASE_PATH + m_indexName,
