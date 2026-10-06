@@ -420,17 +420,55 @@ on every supported host. The v2 evidence in §15.10 is the baseline it has to re
 
 ## 18.7 Open questions
 
-1. **Is `mnt_ns` stable enough to be a correlation key in production?** Measured behaviour under
-   container restart, `docker exec`, and init systems inside containers is unknown. Worth a probe
-   before committing to Phase 2.
-2. **Which controller should be canonical on v1?** The priority list above is a proposal; a survey of
+1. ~~**Is `mnt_ns` stable enough to be a correlation key in production?**~~ **Measured 2026-10-06 on
+   `wazuh_manager` (Ubuntu 24.04, kernel 6.8, Docker 29.1.3). Answer: unique in SPACE, not in TIME —
+   usable, but only with the mitigations below.**
+
+   | Property | Result |
+   | --- | --- |
+   | Distinct between concurrently running containers | **pass** (4/4 distinct) |
+   | Distinct from the host's root namespace | **pass** |
+   | Stable while the container runs | **pass** (5 samples) |
+   | `docker exec` processes share the container's namespace | **pass** — their file events attribute correctly |
+   | Survives `docker restart` / `stop`+`start` | same inode reused |
+   | **Distinct across sequential containers** | **FAIL — 8 different containers, 8 different ids, all got inode `4026532274`** |
+
+   The last row is the finding. Namespace inode numbers come from `nsfs` and are **recycled
+   immediately**: destroy a container and the next one started is handed the same number. The
+   control run makes the contrast unambiguous — over the identical sequence, cgroup inodes were
+   `55212, 55292, …, 55772`, **8 of 8 distinct and monotonically increasing**.
+
+   So `mnt_ns` is strictly weaker than the cgroup inode, and weaker in the one dimension this design
+   leans on hardest. Three places assume a key stays meaningful for a while after its container
+   stops, and each is now wrong on a legacy host:
+
+   - **The removal grace.** `MetadataStore` deliberately keeps a removed container's entry for
+     `REMOVAL_GRACE` so late events can still be attributed. Within that window the kernel may
+     already have given the inode to a new container, so the grace does not merely fail to help —
+     it **mis-attributes the new container's events to the dead one**. On a legacy host the grace
+     must be **zero**: there is nothing a late event can safely be served against.
+   - **The pending / cold-resolve path.** An unknown key is parked and resolved later. By then it
+     may belong to a different container.
+   - **Any cached key held across a container's lifetime**, in FIM or in a consumer.
+
+   `startedAt` (WP-P4, already landed) is what distinguishes one run from the next and should be
+   paired with the key wherever a stale entry could survive.
+
+2. **The in-kernel filter cannot select containers on a legacy host, and WP6 as written does not say
+   so.** `event_is_wanted()` looks up `cgroup_allow_map` by `bpf_get_current_cgroup_id()`
+   (`bpf/rt_file.bpf.c:173-185`), which is the collapsed constant there — so an allowlist matches
+   either every event on the node or none of them. Phase 2 on legacy therefore has to run
+   `RT_CGROUP_MODE_ALL` and filter on `ev->mnt_ns` **in userspace**, which is precisely the mode the
+   allowlist change (`541077159e`) moved away from and measured a cost for. Phase 2's real price is
+   that cost, on legacy hosts only; WP6 must state it rather than discover it.
+3. **Which controller should be canonical on v1?** The priority list above is a proposal; a survey of
    what RHEL 8 and AL2 actually mount by default would settle it.
-3. ~~**Does the 32-bit `mnt_ns` field need widening?**~~ **Closed, 2026-10-05, no.** The BPF side
+4. ~~**Does the 32-bit `mnt_ns` field need widening?**~~ **Closed, 2026-10-05, no.** The BPF side
    reads `ns.inum` into a `__u32` (`get_mnt_ns_inum()`, `bpf/rt_file.bpf.c:380-390`) and the contract
    declares `unsigned int mnt_ns` (`rt_event_contract.h:89`) — the two match the kernel's own type
    for a namespace inode exactly, so there is nothing to widen. It still travels as a decimal string
    on the wire (WP5): the JSON slot is shared with 64-bit cgroup inodes, and the encoding is a
    property of the slot, not of the value in it.
-4. **Should Phase 2 exist at all?** Correlating FIM on a namespace rather than a cgroup is a
+5. **Should Phase 2 exist at all?** Correlating FIM on a namespace rather than a cgroup is a
    different security property. If the answer is no, WP5/WP6 drop and O4 resolves to
    "inventory-only, permanently".
