@@ -784,10 +784,12 @@ End Function
 
 ' Deletes legacy DBs when upgrading from pre-5.x; WiX filters the version.
 ' #39064: drop the fleet-wide enrollment password on upgrade. It is one secret that enrols any
-' endpoint, left at rest on every one of them; 5.0 replaces it with an enrollment token for the
-' first credential and a per-agent re-enrollment secret thereafter. A fresh 5.0 install never
-' creates the file, so without this an upgraded host -- the longest-running one in the estate,
-' which is exactly where the exposure matters most -- would keep it for ever.
+' endpoint, left at rest on every one of them; 5.0 replaces it with an enrollment token. An
+' agent that enrols through POST /enroll also receives a per-agent re-enrollment secret; one
+' enrolled before the upgrade holds none, so once the file is gone it has no unattended
+' recovery left. A fresh 5.0 install never creates the file, so without this an upgraded host
+' -- the longest-running one in the estate, which is exactly where the exposure matters most --
+' would keep it for ever.
 '
 ' Overwritten before it is deleted, because the bytes are a secret. Best-effort throughout: an
 ' upgrade must not fail over this.

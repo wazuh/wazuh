@@ -379,6 +379,35 @@ TEST_F(RemotedModuleTest, GlobalPrefixMovesEveryRoute)
     remoted_module_stop();
 }
 
+// /enroll is served as an exact route: a path under it is not registered and answers 404, while
+// /enroll itself still reaches its handler. The contrast keeps the 404 from passing on a listener
+// that answers nothing at all.
+TEST_F(RemotedModuleTest, EnrollSubpathsAreNotRoutes)
+{
+    TempTlsFiles tls;
+    const auto cfg = makeConfig(tls);
+    remoted_module_start(testLogCallback, &cfg);
+
+    const auto port = static_cast<std::uint16_t>(cfg.port);
+    const auto post = [port](const std::string& target)
+    {
+        return remoted::test::sendRawOverTls(
+            port,
+            "POST " + target +
+                " HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: "
+                "application/json\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}");
+    };
+
+    const auto enroll = post("/enroll");
+    ASSERT_FALSE(enroll.empty());
+    EXPECT_EQ(enroll.find(" 404 "), std::string::npos) << enroll;
+
+    const auto subpath = post("/enroll/secret");
+    EXPECT_NE(subpath.find(" 404 "), std::string::npos) << subpath;
+
+    remoted_module_stop();
+}
+
 // stop() on a module that was never started must be a safe no-op.
 TEST_F(RemotedModuleTest, StopWithoutStartIsSafe)
 {

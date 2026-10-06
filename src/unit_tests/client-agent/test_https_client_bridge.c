@@ -59,8 +59,26 @@ void __wrap_hc_destroy(hc_handle *handle)
     check_expected_ptr(handle);
 }
 
+/* When armed, __wrap_hc_set_agent_identity() frees the keystore before it looks at its arguments:
+ * a concurrent OS_UpdateKeys() landing while the identity is in flight. */
+static bool g_identity_frees_the_keystore = false;
+
 bool __wrap_hc_set_agent_identity(hc_handle *handle, const char *agent_id, const char *key_hex)
 {
+    if (g_identity_frees_the_keystore) {
+        /* Exactly what OS_UpdateKeys() does to the entry the caller read from: OS_FreeKeys() frees
+         * the keyentry AND the id/raw_key strings inside it. A caller that had passed borrowed
+         * pointers would now be pointing at freed memory -- under ASAN the checks below are the
+         * use-after-free, without it a silently corrupted identity. */
+        g_identity_frees_the_keystore = false;
+        os_free(keys.keyentries[0]->id);
+        os_free(keys.keyentries[0]->raw_key);
+        os_free(keys.keyentries[0]);
+        os_free(keys.keyentries);
+        keys.keyentries = NULL;
+        keys.keysize = 0;
+    }
+
     check_expected_ptr(handle);
     check_expected(agent_id);
     check_expected(key_hex);
@@ -113,45 +131,6 @@ bool __wrap_hc_enroll(const hc_config_t *config, const hc_enroll_request_t *requ
         memset(result, 0, sizeof(*result));
         result->http_code = mock_type(long);
     }
-    return mock();
-}
-
-/* The POST /enroll/secret boundary (#39315). Captures the config the bridge built, and -- when
- * armed -- destroys the keystore entry from INSIDE the call, which is the point: by the time the
- * module is running, the bridge must already be holding its own copy of the identity. */
-static hc_config_t g_captured_secret_config;
-static bool g_captured_secret_valid = false;
-static bool g_secret_frees_the_keystore = false;
-
-bool __wrap_hc_fetch_reenroll_secret(const hc_config_t *config, const hc_secret_request_t *request,
-                                     hc_secret_result_t *result)
-{
-    (void)request;
-
-    if (config) {
-        g_captured_secret_config = *config;
-        g_captured_secret_valid = true;
-    }
-
-    if (g_secret_frees_the_keystore) {
-        /* Exactly what OS_UpdateKeys() does to the entry the caller read from: OS_FreeKeys() frees
-         * the keyentry AND the id/raw_key strings inside it. A bridge that had passed borrowed
-         * pointers would now be pointing at freed memory -- under ASAN this is the use-after-free,
-         * without it a silently corrupted request. */
-        g_secret_frees_the_keystore = false;
-        os_free(keys.keyentries[0]->id);
-        os_free(keys.keyentries[0]->raw_key);
-        os_free(keys.keyentries[0]);
-        os_free(keys.keyentries);
-        keys.keyentries = NULL;
-        keys.keysize = 0;
-    }
-
-    if (result) {
-        memset(result, 0, sizeof(*result));
-        result->http_code = mock_type(long);
-    }
-
     return mock();
 }
 
@@ -398,8 +377,7 @@ static int setup_test(void **state)
     agt = (agent *)calloc(1, sizeof(agent));
     memset(&keys, 0, sizeof(keys));
     g_captured_config_valid = false;
-    g_captured_secret_valid = false;
-    g_secret_frees_the_keystore = false;
+    g_identity_frees_the_keystore = false;
     g_https_client_stopping = false;
     g_populate_metadata_calls = 0;
     g_resolved_options[0] = '\0';
@@ -784,73 +762,6 @@ static void test_enroll_passes_the_keyed_credential_through(void **state)
     assert_string_equal(g_captured_enroll_request.password, "s3cr3t");
 }
 
-/* --- #39315 F2: the secret request owns its identity, it does not borrow the keystore's --------- */
-
-/* setup_test() already installs this identity; installing another here would leak the first. */
-static const char *const SECRET_KEY_HEX = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-
-static void test_fetch_reenroll_secret_signs_with_the_keystore_identity(void **state)
-{
-    (void)state;
-
-    will_return(__wrap_hc_fetch_reenroll_secret, 200L);
-    will_return(__wrap_hc_fetch_reenroll_secret, true);
-
-    hc_secret_result_t result;
-    assert_true(w_https_client_fetch_reenroll_secret(&result));
-
-    assert_true(g_captured_secret_valid);
-    assert_string_equal(g_captured_secret_config.agent_id, "001");
-    assert_string_equal(g_captured_secret_config.agent_key, SECRET_KEY_HEX);
-}
-
-/* THE regression for the use-after-free. The bootstrap runs on a detached thread that wakes up to a
- * minute after start, by which point the HTTPS client is up and a 401 can have spawned the
- * re-enrollment worker -- whose OS_UpdateKeys() frees every keyentry and the strings inside it.
- * Borrowed pointers made that a read of freed memory; the copy taken under g_agent_keys_lock makes
- * it a request that simply carries the identity it started with.
- *
- * The keystore is destroyed from inside the module call, so the freed strings are the very ones the
- * config would have been pointing at. Under ASAN this test is what turns red if the copy is ever
- * replaced by a borrow again. */
-static void test_fetch_reenroll_secret_survives_a_keystore_reload_mid_request(void **state)
-{
-    (void)state;
-
-    g_secret_frees_the_keystore = true;
-    will_return(__wrap_hc_fetch_reenroll_secret, 200L);
-    will_return(__wrap_hc_fetch_reenroll_secret, true);
-
-    hc_secret_result_t result;
-    assert_true(w_https_client_fetch_reenroll_secret(&result));
-
-    /* The config the module received is intact and still names the identity that was current when
-     * the request was built -- it is a copy, not a view of a freed entry. */
-    assert_string_equal(g_captured_secret_config.agent_id, "001");
-    assert_string_equal(g_captured_secret_config.agent_key, SECRET_KEY_HEX);
-    /* And the keystore really is gone, so this is not asserting on a still-live entry. */
-    assert_null(keys.keyentries);
-}
-
-static void test_fetch_reenroll_secret_without_an_entry_sends_nothing(void **state)
-{
-    (void)state;
-    /* A never-enrolled agent: nothing to prove possession of, and no use for the credential
-     * either. Not an error -- and above all, not a dereference of keyentries[0]. Released rather
-     * than never created, because setup_test() installs an identity for every case. */
-    os_free(keys.keyentries[0]->id);
-    os_free(keys.keyentries[0]->raw_key);
-    os_free(keys.keyentries[0]);
-    os_free(keys.keyentries);
-    keys.keyentries = NULL;
-    keys.keysize = 0;
-
-    expect_any(__wrap__mdebug1, formatted_msg);
-
-    hc_secret_result_t result;
-    assert_false(w_https_client_fetch_reenroll_secret(&result));
-}
-
 /* Half a credential is no credential: a `kid` with no key (or the reverse) must arrive empty, so
  * the module falls back to the password instead of minting a bearer it cannot sign. */
 static void test_enroll_ignores_a_half_keyed_credential(void **state)
@@ -1145,6 +1056,33 @@ static void test_reenroll_thread_succeeds_on_first_attempt(void **state)
      * stamped from it, and each module compares against it to notice its own id changed, so
      * leaving it stale means 403s and blind detection until something else republishes. */
     assert_int_equal(g_populate_metadata_calls, 1);
+}
+
+/* The identity handed to the module is a copy taken under the keystore lock, not a view of the
+ * keystore: OS_UpdateKeys() frees every keyentry and the strings inside it, so a borrowed identity
+ * would dangle after any later reload. The keystore is destroyed from inside the module call, before the module reads its
+ * arguments, so the freed strings are the very ones a borrowed identity would point at. Under ASAN
+ * this case turns red if the copy is ever replaced by a borrow. */
+static void test_reenroll_thread_reloads_a_copied_identity(void **state)
+{
+    (void)state;
+    enable_enrollment();
+
+    g_identity_frees_the_keystore = true;
+    will_return(__wrap_try_enroll_to_server, W_ENROLL_OK);
+    expect_value(__wrap_hc_set_agent_identity, handle, FAKE_HANDLE);
+    expect_string(__wrap_hc_set_agent_identity, agent_id, "001");
+    expect_string(__wrap_hc_set_agent_identity, key_hex,
+                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    will_return(__wrap_hc_set_agent_identity, true);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "https_client: re-enrollment succeeded; reloading the signing identity.");
+
+    bridge_reenroll_thread(FAKE_HANDLE);
+
+    assert_int_equal(g_populate_metadata_calls, 1);
+    /* The keystore really is gone, so the checks above ran against the copy, not a live entry. */
+    assert_null(keys.keyentries);
 }
 
 /* #39064: the loop used to run for ever on any failure. A credential the manager judged and
@@ -2919,13 +2857,6 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_enroll_passes_body_and_password_through, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_passes_the_keyed_credential_through, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_ignores_a_half_keyed_credential, setup_test, teardown_test),
-        // #39315 F2: the secret request owns its identity rather than borrowing the keystore's.
-        cmocka_unit_test_setup_teardown(test_fetch_reenroll_secret_signs_with_the_keystore_identity, setup_test,
-                                        teardown_test),
-        cmocka_unit_test_setup_teardown(test_fetch_reenroll_secret_survives_a_keystore_reload_mid_request, setup_test,
-                                        teardown_test),
-        cmocka_unit_test_setup_teardown(test_fetch_reenroll_secret_without_an_entry_sends_nothing, setup_test,
-                                        teardown_test),
         cmocka_unit_test_setup_teardown(test_config_checksum_is_sha256_of_local_merged_file, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_checksum_is_empty_when_local_file_unreadable, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_missing_key_refuses_to_start, setup_test, teardown_test),
@@ -2940,6 +2871,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_reenroll_callback_disabled_enrollment_logs_error_only, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_callback_enabled_enrollment_only_warns, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_succeeds_on_first_attempt, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_reenroll_thread_reloads_a_copied_identity, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_stops_on_a_fatal_rejection, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_retries_with_backoff_then_succeeds, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_backoff_follows_the_resolved_ramp, setup_test,

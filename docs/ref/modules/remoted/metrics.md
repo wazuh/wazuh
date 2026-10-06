@@ -176,9 +176,8 @@ it alone: [timing tuning, invariant 2](timing-tuning.md#3-invariants).
 
 ### Request outcomes — `remoted.http.<endpoint>.responses.<code>`
 
-What each endpoint actually answered its agents. Seven endpoints carry this family — `stateless`,
-`stateful`, `stats`, `config`, `enroll`, `enroll.secret` (`POST /enroll/secret`, hence
-`remoted.http.enroll.secret.responses.<code>`) and `cacerts` (the only `GET` route with this
+What each endpoint actually answered its agents. Six endpoints carry this family — `stateless`,
+`stateful`, `stats`, `config`, `enroll` and `cacerts` (the only `GET` route with this
 family) — each with the same
 closed set of nine status cells, so a scraper's columns line up across endpoints (some cells
 are structurally zero for a given endpoint, e.g. `/stateless` never answers 409, and
@@ -199,7 +198,7 @@ useful than the status —
 | `403` | Identity rejection relayed from the sync server (`/stateful` contract), or enrollment administratively disabled (`/enroll`) | diagnostic — the sync server's own view is [`sync.requests.total.*`](../inventory-sync-server/metrics.md#request-outcomes--syncrequeststotalcode); for `/enroll` see [`remoted.enroll.disabled`](#agent-enrollment--remotedenroll) |
 | `409` | Checksum mismatch relayed from the sync server (`/stateful` contract) | diagnostic — same cross-reference as `403` |
 | `413` | Body over the accepted size | [`remoted.auth_max_body_size`](configuration.md#remotedauth_max_body_size), [`https.max_body_size`](configuration.md#httpsmax_body_size) |
-| `429` | The endpoint's rate limit refused the request before the handler ran. Structurally zero except on `/enroll`, `/enroll/secret` and `/cacerts`, the three rate-limited routes | [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes); the cause is [`remoted.<endpoint>.rate_limited`](#rate-limits--remotedendpointrate_limit) |
+| `429` | The endpoint's rate limit refused the request before the handler ran. Structurally zero except on `/enroll` and `/cacerts`, the two rate-limited routes | [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes); the cause is [`remoted.<endpoint>.rate_limited`](#rate-limits--remotedendpointrate_limit) |
 | `500` | Internal error while building the reply | diagnostic — a bug signal, report it |
 | `503` | Downstream failure or a deferred-limiter shed | [`remoted.max_deferred_requests`](configuration.md#remotedmax_deferred_requests) for the limiter share; the [downstream failures](#downstream-failures--remotedforwarder) family for the rest |
 | `other` | Any status outside the set above. Includes `/enroll` authentication `401`/encoding `415` responses and `/cacerts`'s `404`; other routes' gateway rejections are excluded | [`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled) for the `415` share, which [`remoted.auth.reject.bad_encoding`](#authentication-rejections--remotedauthreject) counts by cause |
@@ -328,22 +327,6 @@ database), so every cell is `authd`'s verdict on the master:
 | `remoted.enroll.reenroll.rejected_stale` | 9028: correctly signed but outside the accepted time window — the agent gets `401 stale_token` | [`remoted.jwt_max_age`](configuration.md#remotedjwt_max_age), [`remoted.jwt_clock_skew`](configuration.md#remotedjwt_clock_skew) (`authd` reads the same two) — but fix NTP first |
 | `remoted.enroll.reenroll.rejected_in_progress` | 9030: a rotation for that agent is already accepted and not yet persisted — the agent gets `409` and retries, its bearer was fine | — (transient; a sustained count means the writer is not draining, look at wazuh-db) |
 
-The **re-enrollment secret** subset (`POST /enroll/secret`) — an agent that already holds a
-`client.keys` identity asking for the secret its enrollment never gave it (one upgraded from 4.x
-over WPK, one enrolled over port 1515, one whose row was rebuilt from `client.keys`). A family of
-its own, because none of the rows above describes it: no enrollment happens, no identity is minted,
-and nothing is rotated — the agent's key is deliberately left alone, which is what makes a lost
-answer harmless. A busy `issued` after a fleet upgrade is the feature working; a `issued` that keeps
-climbing for the same fleet afterwards is not, since every agent needs exactly one.
-
-| Metric | Meaning | Tuning |
-|---|---|---|
-| `remoted.enroll.secret.issued` | `200`: a secret was minted for the identity the bearer proved and stored against that agent's **unchanged** key | — |
-| `remoted.enroll.secret.rejected_in_progress` | 9030: a rotation for that agent is already accepted and not yet persisted — the agent gets `409` and retries | — (transient; sustained means the writer is not draining, look at wazuh-db) |
-| `remoted.enroll.secret.authd_error` | `authd` refused on its own rules. Overwhelmingly 9026 → `401`: the agent has no row in `global.db` **yet**, because `wm_database` rebuilds it asynchronously from `client.keys`. That is an honest refusal rather than a secret nothing would store, and the agent's next start succeeds once the sync pass has run. Also 9031/9016 → `503` | diagnostic — a 9026 that persists past one sync cycle is a `wm_database` problem |
-| `remoted.enroll.secret.authd_unavailable` | `503`: no clean answer from `authd` — unreachable, timed out, unparseable, or its bounded queue full. Subtract `remoted.enroll.authd.queue.rejected.total` to separate saturation from an absent `authd` | [`remoted.authd_max_queue_size`](configuration.md#remotedauthd_max_queue_size), [`remoted.authd_worker_threads`](configuration.md#remotedauthd_worker_threads) |
-| `remoted.enroll.secret.rate_limited` | `429`: refused by the ceiling **shared with `POST /enroll`**, charged before authentication and before any `authd` round trip — so it is in none of the rows above, and a request carrying no bearer at all lands here rather than in `rejected_auth`. Expected in bulk during a fleet-wide upgrade wave; each agent retries on its next start | [`https.enroll_rate_limit`](configuration.md#httpsenroll_rate_limit) — the same number governs `/enroll` |
-
 The replica of the token store this node authenticates enrollment tokens against (pulls; present
 whenever enrollment is enabled, `0` otherwise):
 
@@ -355,8 +338,7 @@ whenever enrollment is enabled, `0` otherwise):
 
 The enrollment-token, re-enrollment and token-store metrics are read from the admin socket dump
 only; the [API projection](#api-projection)'s `enrollment` group carries the six outcome counters,
-`rate_limited`, the `authd` queue pulls, the `rate_limit` pulls and the re-enrollment secret
-subset (under `secret`).
+`rate_limited`, the `authd` queue pulls, and the `rate_limit` pulls.
 
 The queue in front of `authd` (pulls, so they read as levels):
 
@@ -473,11 +455,9 @@ overlap window — see the [CA Rotation Runbook](ca-rotation.md).
 ### Rate limits — `remoted.<endpoint>.rate_limit.*`
 
 The live state of the two rate-limit **buckets** (`enroll`, `cacerts`). There are two buckets and
-three routes: `remoted.enroll.rate_limit.*` governs `POST /enroll` **and** `POST /enroll/secret`
-together, so a bootstrap wave and an enrollment wave drain the same allowance. The **refusals** are
-not here — those are `remoted.enroll.rate_limited`, `remoted.enroll.secret.rate_limited` and
-`remoted.cacerts.rate_limited` above, one per route, which is what keeps the two enrollment routes
-distinguishable under a single ceiling. These three answer a different question: how much of the
+two routes: `remoted.enroll.rate_limit.*` governs `POST /enroll` and `remoted.cacerts.rate_limit.*`
+governs `GET /cacerts`. The **refusals** are not here — those are `remoted.enroll.rate_limited`
+and `remoted.cacerts.rate_limited` above, with the rest of each endpoint's outcomes. The three pulls below answer a different question: how much of the
 bucket's budget is left?
 
 All are pull metrics (read at scrape time) and read `0` while the listener is down. Reading them
@@ -549,7 +529,7 @@ legacy daemon counters that same response has always carried:
         "stateless": { "total": 98220, "2xx": 98213, "400": 2, "403": 0, "409": 0,
                        "413": 1, "429": 0, "500": 0, "503": 4, "other": 0 },
         "stateful":  { "...": 0 }, "stats": { "...": 0 },
-        "config":    { "...": 0 }, "enroll": { "...": 0 }, "enroll.secret": { "...": 0 },
+        "config":    { "...": 0 }, "enroll": { "...": 0 },
         "cacerts":   { "total": 34, "2xx": 34, "...": 0 }
       },
       "latency": {
@@ -560,8 +540,7 @@ legacy daemon counters that same response has always carried:
       "auth_rejections": { "total": 5, "unknown_agent": 3, "bad_token": 1, "...": 0 },
       "enrollment":      { "accepted": 34, "authd_queue": { "depth": 0, "capacity": 256, "...": 0 },
                            "rate_limited": 0,
-                           "rate_limit": { "limit": 100, "burst": 200, "available": 200 },
-                           "secret": { "issued": 3, "...": 0 } },
+                           "rate_limit": { "limit": 100, "burst": 200, "available": 200 } },
       "control":         { "notify": 421337, "registry_agents": 32, "wdb_latency": { "...": 0 } },
       "keystore":        { "agents": 34, "reloads_total": 3, "...": 0 },
       "downstream":      { "errors": { "...": 0 }, "deferred": { "capacity": 128, "...": 0 } },
@@ -580,10 +559,10 @@ The group names map onto the catalog sections above one-for-one:
 
 | API group under `metrics.http_server` | Catalog family |
 |---|---|
-| `responses.<endpoint>` | [`remoted.http.<endpoint>.responses.<code>`](#request-outcomes--remotedhttpendpointresponsescode), plus a `total` rollup (`/enroll/secret` under the key `enroll.secret`) |
+| `responses.<endpoint>` | [`remoted.http.<endpoint>.responses.<code>`](#request-outcomes--remotedhttpendpointresponsescode), plus a `total` rollup |
 | `latency.<endpoint>` | [`remoted.http.<endpoint>.latency`](#request-latency--remotedhttpendpointlatency) |
 | `auth_rejections` | [`remoted.auth.reject.*`](#authentication-rejections--remotedauthreject) except the three `token_*` causes, plus a `total` rollup |
-| `enrollment` | [`remoted.enroll.*`](#agent-enrollment--remotedenroll) outcome counters and `rate_limited`, with `remoted.enroll.authd.queue.*` under `authd_queue`, [`remoted.enroll.rate_limit.*`](#rate-limits--remotedendpointrate_limit) under `rate_limit` and `remoted.enroll.secret.*` under `secret` |
+| `enrollment` | [`remoted.enroll.*`](#agent-enrollment--remotedenroll) outcome counters and `rate_limited`, with `remoted.enroll.authd.queue.*` under `authd_queue`, [`remoted.enroll.rate_limit.*`](#rate-limits--remotedendpointrate_limit) under `rate_limit` |
 | `control` | [`remoted.control.*`](#control-plane--remotedcontrol), with `registry.agents` as `registry_agents` and `wdb.latency` as `wdb_latency` |
 | `keystore` | [`remoted.auth.keystore.*`](#keystore-health--remotedauthkeystore) |
 | `downstream` | [`remoted.forwarder.*`](#downstream-failures--remotedforwarder), with `error.*` under `errors` and [`deferred.*`](#deferred-forwarding--remotedforwarderdeferred) under `deferred` |

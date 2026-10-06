@@ -72,33 +72,16 @@ bool w_https_client_enroll(const char *body_json, const char *password, const ch
                            const char *enroll_key_hex, hc_enroll_result_t *result);
 
 /**
- * @brief Perform exactly one POST /enroll/secret request (#39315): ask the manager for this
- *        agent's re-enrollment secret, authenticating with the client.keys key it already
- *        holds. Handle-less like w_https_client_enroll(), against the same manager/TLS
- *        material every other endpoint dials.
+ * @brief Take/release the writer side of the global keystore lock.
  *
- * The identity is read from the in-memory keystore (`keys`), not from a caller argument, so it
- * is by construction the same identity the rest of the agent signs with.
+ * Wraps whatever REPLACES `keys` -- OS_UpdateKeys() and the crypto-method reset that follows it.
+ * OS_UpdateKeys() frees every keyentry, on the re-enrollment thread or on the initial-enrollment
+ * path, while other threads may be copying the agent's identity out of the keystore; the lock
+ * serializes those readers, which copy the identity out instead of borrowing pointers, against
+ * that writer.
  *
- * @param result Filled with the HTTP outcome; http_code stays 0 when nothing was ever sent (an
- *        invalid transport config, or a key that could not mint a bearer).
- * @return true once a request was sent and answered, whatever the HTTP status; false when
- *         nothing was ever sent -- including the case where this agent has no usable
- *         client.keys entry, which is not an error, just nothing to ask with.
- */
-bool w_https_client_fetch_reenroll_secret(hc_secret_result_t *result);
-
-/**
- * @brief Take/release the writer side of the global keystore lock (#39315).
- *
- * Wraps whatever REPLACES `keys` -- OS_UpdateKeys() and the crypto-method reset that follows it --
- * so that readers running on other threads (the re-enrollment secret bootstrap, which wakes up to
- * a minute after start) copy the identity out instead of borrowing pointers OS_FreeKeys() is about
- * to free.
- *
- * Declared here rather than in keys.h because the reader that needs it lives here: this is the
- * agent's only concurrent keystore reader, and a lock in the shared keystore API would imply a
- * guarantee the manager-side users of that API do not get.
+ * Declared here rather than in keys.h because the readers that need it live here: a lock in the
+ * shared keystore API would imply a guarantee the manager-side users of that API do not get.
  *
  * Not recursive: never call these while already holding them. Where the handle lock is also held,
  * it is taken FIRST.
