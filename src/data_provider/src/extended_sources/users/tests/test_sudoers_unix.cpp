@@ -265,32 +265,84 @@ TEST(SudoersIsUserSudoerTest, LaterPositiveEntryRegrantsAfterAnEarlierNegation)
     EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "baduser", {"admin"}));
 }
 
-TEST(SudoersIsUserSudoerTest, LaterNegatedEntryInASeparateRuleRevokesAnEarlierGroupGrant)
+TEST(SudoersIsUserSudoerTest, NegatedEntryInASeparateRuleDoesNotRevokeAnEarlierGroupGrant)
 {
     const auto sudoers = R"([
         {"header": "%wheel", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"},
-        {"header": "!alice,", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"}
+        {"header": "!alice", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"}
     ])"_json;
 
-    // "alice" is in "wheel" and would be granted by the first rule alone, but the negated entry
-    // in the later, separate rule is the one that actually applies to her last, per sudoers(5)
-    // last-match-wins evaluation across the whole policy, not just within one rule's user list.
-    EXPECT_FALSE(SudoersProvider::isUserSudoer(sudoers, "alice", {"wheel"}));
+    // "alice" is in "wheel" and the first rule grants her. The later rule's user list denies her,
+    // so sudo skips that rule instead of revoking the grant of the first one.
+    EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "alice", {"wheel"}));
 
     // Any other member of "wheel" is unaffected by the negated entry naming "alice".
     EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "bob", {"wheel"}));
 }
 
-TEST(SudoersIsUserSudoerTest, LaterGroupGrantInASeparateRuleRegrantsAfterAnEarlierNegation)
+TEST(SudoersIsUserSudoerTest, GroupGrantInASeparateRuleAfterAnEarlierNegatedRuleStillGrants)
 {
     const auto sudoers = R"([
-        {"header": "!alice,", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"},
+        {"header": "!alice", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"},
         {"header": "%wheel", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"}
     ])"_json;
 
-    // The negated rule for "alice" comes first, but the later, separate rule granting via her
-    // "wheel" membership is the last rule that applies to her, so it wins.
+    // The negated rule for "alice" is skipped, and the later, separate rule granting via her
+    // "wheel" membership applies.
     EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "alice", {"wheel"}));
+}
+
+TEST(SudoersIsUserSudoerTest, ExcludedUserInASeparateRuleAfterADirectGrantStaysASudoer)
+{
+    const auto sudoers = R"([
+        {"header": "alice", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"},
+        {"header": "ALL,", "rule_details": "!alice ALL=(ALL) NOPASSWD: /usr/bin/foo", "source": "/etc/sudoers"}
+    ])"_json;
+
+    EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "alice", {}));
+}
+
+TEST(SudoersIsUserSudoerTest, ExcludedUserInASeparateRuleBeforeADirectGrantStaysASudoer)
+{
+    const auto sudoers = R"([
+        {"header": "ALL,", "rule_details": "!alice ALL=(ALL) ALL", "source": "/etc/sudoers"},
+        {"header": "alice", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"}
+    ])"_json;
+
+    EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "alice", {}));
+}
+
+TEST(SudoersIsUserSudoerTest, NegatedRuleAfterADirectGrantDoesNotRevokeIt)
+{
+    const auto sudoers = R"([
+        {"header": "alice", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"},
+        {"header": "!alice", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"}
+    ])"_json;
+
+    EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "alice", {}));
+}
+
+TEST(SudoersIsUserSudoerTest, NegatedRuleBeforeADirectGrantDoesNotBlockIt)
+{
+    const auto sudoers = R"([
+        {"header": "!alice", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"},
+        {"header": "alice", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"}
+    ])"_json;
+
+    EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "alice", {}));
+}
+
+TEST(SudoersIsUserSudoerTest, ExclusionInASeparateRuleDoesNotGrantTheExcludedUser)
+{
+    const auto sudoers = R"([
+        {"header": "ALL,", "rule_details": "!alice ALL=(ALL) NOPASSWD: /usr/bin/foo", "source": "/etc/sudoers"}
+    ])"_json;
+
+    // Nothing else grants "alice", and "!alice" does not grant her by itself.
+    EXPECT_FALSE(SudoersProvider::isUserSudoer(sudoers, "alice", {}));
+
+    // Everyone else is covered by "ALL".
+    EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "bob", {}));
 }
 
 TEST(SudoersIsUserSudoerTest, IrrelevantLaterRuleDoesNotClobberAnEarlierApplicableGrant)
@@ -301,8 +353,7 @@ TEST(SudoersIsUserSudoerTest, IrrelevantLaterRuleDoesNotClobberAnEarlierApplicab
     ])"_json;
 
     // "alice" is granted by the first rule via her "wheel" membership. The second rule names
-    // "bob", not "alice", so it never applies to her and must leave her running state alone
-    // instead of resetting it back to NoMatch/false.
+    // "bob", not "alice", so it never applies to her and must not undo the grant of the first.
     EXPECT_TRUE(SudoersProvider::isUserSudoer(sudoers, "alice", {"wheel"}));
 }
 
