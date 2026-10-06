@@ -135,19 +135,21 @@ int __wrap_rename_ex(const char* source, const char* destination)
 
 int __wrap_unlink(const char* path)
 {
-    if (real_files)
+    if (!strcmp(path, SHAREDCFG_FILE ".tmp"))
     {
-        if (!strcmp(path, SHAREDCFG_FILE ".tmp"))
-        {
-            ++discarded;
-        }
-
-        return __real_unlink(path);
+        ++discarded;
+    }
+    else if (!strcmp(path, SHAREDCFG_FILE))
+    {
+        accepted_hash = NULL;
+    }
+    else
+    {
+        /* Only the real cleanup and teardown remove other files. */
+        assert_true(real_files);
     }
 
-    assert_string_equal(path, SHAREDCFG_FILE ".tmp");
-    ++discarded;
-    return 0;
+    return real_files ? __real_unlink(path) : 0;
 }
 
 void __wrap_clear_merged_hash_cache(void)
@@ -269,15 +271,16 @@ static void test_complete_update(void** state)
     assert_string_equal(accepted_hash, checksum);
 }
 
+/* The shared directory may match neither bundle, so the agent stops reporting the previous one. */
 static void assert_update_pending(void)
 {
     assert_int_equal(errors, 1);
-    assert_int_equal(cache_clears, 0);
+    assert_int_equal(cache_clears, 1);
     assert_int_equal(validations, 0);
     assert_int_equal(reloads, 0);
     assert_int_equal(publications, 0);
     assert_int_equal(discarded, 1);
-    assert_string_equal(accepted_hash, "previous");
+    assert_null(accepted_hash);
 }
 
 /* Entries with invalid names would come back unchanged, so the bundle is accepted and reported once. */
@@ -323,7 +326,7 @@ static void test_retry_after_partial_update(void** state)
     assert_int_equal(errors, 1);
     assert_int_equal(cleanups, 1);
     assert_int_equal(publications, 1);
-    assert_int_equal(cache_clears, 1);
+    assert_int_equal(cache_clears, 2);
     assert_int_equal(validations, 1);
     assert_int_equal(reloads, 1);
     assert_string_equal(accepted_hash, checksum);
@@ -402,7 +405,7 @@ static void test_filesystem_retry(void** state)
     receive_bundle();
     assert_update_pending();
     assert_int_equal(cleanups, 0);
-    assert_fixture_contents(SHAREDCFG_FILE, "previous bundle");
+    assert_int_equal(access(SHAREDCFG_FILE, F_OK), -1);
     assert_fixture_contents(SHAREDCFG_DIR "/agent.conf", "new");
     assert_fixture_contents(SHAREDCFG_DIR "/obsolete", "old");
     assert_int_equal(IsDir(SHAREDCFG_DIR "/policy"), 0);
@@ -414,7 +417,7 @@ static void test_filesystem_retry(void** state)
     assert_int_equal(errors, 1);
     assert_int_equal(cleanups, 1);
     assert_int_equal(publications, 1);
-    assert_int_equal(cache_clears, 1);
+    assert_int_equal(cache_clears, 2);
     assert_int_equal(validations, 1);
     assert_int_equal(reloads, 1);
     assert_fixture_contents(SHAREDCFG_FILE, bundle_data);
@@ -422,6 +425,37 @@ static void test_filesystem_retry(void** state)
     assert_fixture_contents(SHAREDCFG_DIR "/policy", "rule");
     assert_int_equal(access(SHAREDCFG_DIR "/obsolete", F_OK), -1);
     assert_int_equal(access(SHAREDCFG_FILE ".tmp", F_OK), -1);
+}
+
+/* After a failed update the shared directory may match neither bundle. If the group goes back to the previous
+ * bundle, the manager must still send it, so the agent no longer reports that bundle as accepted. */
+static void test_filesystem_revert_after_failure(void** state)
+{
+    const char* previous = "!3 agent.conf\nold";
+    os_md5 failed_hash;
+    os_md5 previous_hash;
+    enter_filesystem_fixture(state);
+    write_fixture_file(SHAREDCFG_FILE, previous);
+    write_fixture_file(SHAREDCFG_DIR "/agent.conf", "old");
+    assert_int_equal(mkdir_ex(SHAREDCFG_DIR "/policy"), 0);
+
+    bundle_data = "!3 agent.conf\nbad!4 policy\nrule";
+    assert_int_equal(OS_MD5_Str(bundle_data, strlen(bundle_data), failed_hash), 0);
+    checksum = failed_hash;
+    extraction_result = UNMERGE_FAILED;
+    expect_any(__wrap__mferror, formatted_msg);
+    receive_bundle();
+    assert_fixture_contents(SHAREDCFG_DIR "/agent.conf", "bad");
+    assert_int_equal(access(SHAREDCFG_FILE, F_OK), -1);
+
+    bundle_data = previous;
+    assert_int_equal(OS_MD5_Str(bundle_data, strlen(bundle_data), previous_hash), 0);
+    checksum = previous_hash;
+    extraction_result = UNMERGE_COMPLETE;
+    receive_bundle();
+    assert_fixture_contents(SHAREDCFG_FILE, previous);
+    assert_fixture_contents(SHAREDCFG_DIR "/agent.conf", "old");
+    assert_int_equal(access(SHAREDCFG_DIR "/policy", F_OK), -1);
 }
 
 /* A name the agent cannot create, as a tab, no longer makes the manager resend the bundle forever. */
@@ -488,6 +522,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_publication_failure, setup, teardown),
         cmocka_unit_test_setup_teardown(test_filesystem_retry, setup, teardown),
         cmocka_unit_test_setup_teardown(test_filesystem_invalid_name, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_filesystem_revert_after_failure, setup, teardown),
         cmocka_unit_test_setup_teardown(test_update_without_restart, setup, teardown),
         cmocka_unit_test_setup_teardown(test_update_without_remote_conf, setup, teardown),
     };

@@ -51,6 +51,16 @@ static void apply_shared_configuration(void)
     }
 }
 
+/* Drops the received bundle and the accepted one, since the shared directory may now match neither. Without an
+ * accepted bundle the agent reports no hash, so the manager sends whatever the group holds again. */
+static void discard_shared_bundles(const char *bundle)
+{
+    unlink(bundle);
+    unlink(SHAREDCFG_FILE);
+    clear_merged_hash_cache();
+    report_unmerge_error();
+}
+
 /* Files kept in the shared directory besides the extracted entries */
 static char **shared_bundle_files(void)
 {
@@ -83,8 +93,7 @@ static void update_shared_files(const char *bundle)
     int result = extract_shared_bundle(bundle);
 
     if (result == UNMERGE_FAILED || rename_ex(bundle, SHAREDCFG_FILE) != 0) {
-        unlink(bundle);
-        report_unmerge_error();
+        discard_shared_bundles(bundle);
         return;
     }
     if (result == UNMERGE_NAMES_SKIPPED) {
