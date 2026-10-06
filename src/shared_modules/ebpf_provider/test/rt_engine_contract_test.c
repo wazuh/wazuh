@@ -443,6 +443,30 @@ static void test_v1_subsys_configuration(void)
     CHECK(wz_cgroup_v1_subsys_read_allowed(WZ_CGROUP_MODE_LEGACY, -1) == 0,
           "a controller with no subsystem slot gives the program nothing to read");
 
+    /* The chooser. Both tests have to pass for a controller to serve, and on
+     * this (unified) host neither can: nothing is mounted as a v1 hierarchy,
+     * so the selector correctly finds nothing rather than picking a controller
+     * that is merely compiled in. */
+    {
+        const char* chosen = NULL;
+        const int selected = wz_cgroup_v1_select_subsys(&chosen);
+        const int unified = wz_cgroup_mode_has_usable_cgroup_id(wz_cgroup_mode());
+
+        if (unified)
+        {
+            CHECK(selected == -1, "a unified host has no v1 hierarchy to key by, got index %d", selected);
+            CHECK(chosen == NULL, "nothing should have been chosen");
+            CHECK(wz_cgroup_v1_controller_mounted("memory") == 0,
+                  "memory is bound to the unified hierarchy here, not to a v1 one");
+        }
+        else
+        {
+            CHECK(selected < 0 || chosen != NULL, "a selected index must come with the controller's name");
+        }
+        CHECK(wz_cgroup_v1_controller_mounted("no_such_controller") == 0, "an unknown controller is not mounted");
+        CHECK(wz_cgroup_v1_controller_mounted(NULL) == 0, "a NULL controller must not crash or match");
+    }
+
     /* One list, read by both the resolver and the engine, so the two cannot
      * choose different controllers and key on unrelated hierarchies. */
     CHECK(wz_cgroup_v1_priority(0) != NULL && strcmp(wz_cgroup_v1_priority(0), "memory") == 0,

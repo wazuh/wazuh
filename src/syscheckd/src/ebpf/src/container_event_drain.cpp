@@ -22,6 +22,8 @@
 
 #include "rt_engine.h"
 
+#include "cgroup_host_mode.h"
+
 #include <json.hpp>
 
 #include <algorithm>
@@ -693,12 +695,53 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
 
     if (rt_host_cgroup_v1(impl->handle) != 0)
     {
-        /* bpf_get_current_cgroup_id() collapses to a fixed value on cgroup v1
-         * (spike #37396 ADR-002), so every container shares one cgroup_id and
-         * attribution would file every container's events under whichever
-         * resolved first. Wrong attribution is worse than none. */
-        LogError("Container eBPF drain: this host uses cgroup v1, where an event's cgroup_id "
-                 "cannot identify a container; disabling the event-driven reconcile.");
+        /* A host with no unified hierarchy. bpf_get_current_cgroup_id() reports
+         * the task's cgroup in THAT hierarchy, so here it reports nothing that
+         * identifies a container (spike #37396 ADR-002) — which is why this
+         * used to refuse outright.
+         *
+         * It refuses no longer, because the helper was the limit and not the
+         * kernel: the v1 controllers' cgroups are kernfs nodes carrying ids of
+         * exactly the same kind, and the engine can be pointed at one. The
+         * controller is chosen by the shared selector, so this and the resolver
+         * cannot settle on different hierarchies and then miss every lookup
+         * between them. */
+        const char* controller = nullptr;
+        const int subsys = wz_cgroup_v1_select_subsys(&controller);
+
+        if (subsys < 0 || rt_set_cgroup_v1_subsys(impl->handle, static_cast<unsigned int>(subsys)) != 0)
+        {
+            /* The floor the old refusal existed to provide, kept: a host where
+             * no controller can serve as a key gets no attribution rather than
+             * wrong attribution. Reached when none of the candidates is mounted
+             * as a v1 hierarchy, or when the only one that is has no subsystem
+             * slot to read — `name=systemd` is the realistic case. */
+            LogError("Container eBPF drain: this host has no unified cgroup hierarchy and no controller "
+                     "that can identify a container, so an event's cgroup_id cannot be attributed; "
+                     "disabling the event-driven reconcile.");
+            rt_close(impl->handle);
+            delete impl;
+            return false;
+        }
+
+        /* Worth a line on the healthy path: "which hierarchy did the agent
+         * think it was on, and what did it key by?" is the first question
+         * asked of any attribution bug, and an answer that appears only when
+         * something is wrong leaves the working case indistinguishable from
+         * the probe never having run. */
+        LogWarn(std::string{"Container eBPF drain: no unified cgroup hierarchy on this host; reading "
+                            "container cgroup ids from the '"} +
+                (controller != nullptr ? controller : "?") + "' controller instead.");
+    }
+
+    if (rt_cgroup_id_is_usable(impl->handle) == 0)
+    {
+        /* Belt and braces, and cheap: every path above either configured a
+         * usable key or returned. Asking the engine rather than re-deriving the
+         * answer here keeps one source of truth for whether attribution works,
+         * which is the question this consumer exists to answer. */
+        LogError("Container eBPF drain: the engine reports no usable container identifier; "
+                 "disabling the event-driven reconcile.");
         rt_close(impl->handle);
         delete impl;
         return false;

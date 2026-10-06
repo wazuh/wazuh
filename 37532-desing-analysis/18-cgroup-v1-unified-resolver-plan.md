@@ -367,7 +367,7 @@ Effort: M. Files: `bpf/rt_file.bpf.c`, `include/rt_engine.h` (the new `filter_cf
 `src/rt_engine.c`, `prebuilt/<arch>/rt_file.bpf.o`, and the four
 `.github/actions/check_files/*.csv` manifests that pin the object.
 
-### WP6b — Drain selects the key and the engine mode by host mode
+### WP6b — Drain selects the key and the engine mode by host mode — **DONE**
 
 Replace the refusal at `container_event_drain.cpp:694` with selection. With WP6a in place the
 selection is almost trivial, because the key kind no longer changes:
@@ -389,6 +389,20 @@ to zero there (`20-…` §20.3). That route works, costs what `19-option-c-test-
 roughly 15× the consumer CPU and about twice the writer CPU — and must say so in the release notes.
 The two routes differ only in which number fills `KeyKind`, which WP4 already made a host constant
 behind one abstraction, so neither forecloses the other.
+
+**What it turned out to involve, now that it is done.** Less than the package assumed, and for a
+reason worth recording: `cgroup_container_map` needed **no change at all**. It compares opaque
+integers and never interprets them, so a host keyed by a v1 controller's cgroup inode flows through
+`install()` and `applyDelta()` exactly as a unified one does — the zero-means-no-key rule holds
+because zero is still what a producer sends when there is no key, whichever hierarchy supplied it.
+Only its comment needed restating. That the map was already key-agnostic is why WP4's abstraction
+paid off here rather than merely moving the problem.
+
+The selection itself is one call to `wz_cgroup_v1_select_subsys()`, which applies two tests a
+candidate must both pass: **mounted as a v1 hierarchy** (or there is no cgroup under it to read) and
+**possessing a subsystem slot** (or the BPF program has nothing to index). The second is what rules
+out `name=systemd`. The old refusal survives as the floor for a host where neither test can be
+satisfied, so "wrong attribution is worse than none" still stands.
 
 Effort: M. The only package that touches FIM's hot path.
 
