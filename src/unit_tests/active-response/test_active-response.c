@@ -322,6 +322,7 @@ void test_get_username_from_json_rejects_root(void **state) {
 
 static char ar_log_dir[PATH_MAX + 1];
 static char ar_log_cwd[PATH_MAX + 1];
+static int ar_log_saved_test_mode;
 
 static off_t ar_log_size(const char * name) {
     struct stat statbuf;
@@ -340,6 +341,7 @@ static void ar_log_create_other(void) {
 
 static int setup_ar_log(void **state) {
     // The file operations below must reach the file system, not the wrappers.
+    ar_log_saved_test_mode = test_mode;
     test_mode = 0;
     assert_non_null(getcwd(ar_log_cwd, sizeof(ar_log_cwd)));
     snprintf(ar_log_dir, sizeof(ar_log_dir), "/tmp/wazuh_ar_log_XXXXXX");
@@ -355,6 +357,7 @@ static int teardown_ar_log(void **state) {
     remove(LOG_DIR);
     assert_int_equal(chdir(ar_log_cwd), 0);
     remove(ar_log_dir);
+    test_mode = ar_log_saved_test_mode;
     return 0;
 }
 

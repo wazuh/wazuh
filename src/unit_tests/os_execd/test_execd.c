@@ -29,6 +29,8 @@
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/exec_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/time_op_wrappers.h"
 
 extern int test_mode;
 extern OSList *timeout_list;
@@ -1175,6 +1177,42 @@ static void test_ExecdStart_long_ar_keys(void **state) {
     os_free(long_keys);
 }
 
+static void expect_restart_log(const char *line) {
+    will_return(__wrap_time, 1000);
+    expect_value(__wrap_w_get_timestamp, time, 1000);
+    will_return(__wrap_w_get_timestamp, strdup("2026/10/05 12:00:00"));
+    expect_w_fopen_nofollow("logs", "active-responses.log", "a", (FILE *)1);
+    expect_fprintf((FILE *)1, line, 0);
+    expect_fclose((FILE *)1, 0);
+}
+
+void test_ExecdLogRestart_agent(void **state) {
+    char *cmd[] = { "active-response/bin/restart.sh", "agent", NULL };
+
+    expect_restart_log("2026/10/05 12:00:00 active-response/bin/restart.sh agent\n");
+
+    ExecdLogRestart(cmd);
+}
+
+void test_ExecdLogRestart_reload(void **state) {
+    char *cmd[] = { "active-response/bin/restart.sh", "agent", "reload", NULL };
+
+    expect_restart_log("2026/10/05 12:00:00 active-response/bin/restart.sh agent reload\n");
+
+    ExecdLogRestart(cmd);
+}
+
+void test_ExecdLogRestart_open_fails(void **state) {
+    char *cmd[] = { "active-response/bin/restart.sh", "agent", NULL };
+
+    will_return(__wrap_time, 1000);
+    expect_value(__wrap_w_get_timestamp, time, 1000);
+    will_return(__wrap_w_get_timestamp, strdup("2026/10/05 12:00:00"));
+    expect_w_fopen_nofollow("logs", "active-responses.log", "a", NULL);
+
+    ExecdLogRestart(cmd);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_ExecdStart_ok, test_setup_file, test_teardown_file),
@@ -1186,6 +1224,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_ExecdStart_get_name_err, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_ExecdStart_json_err, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_ExecdStart_long_ar_keys, test_setup_file, test_teardown_file),
+        cmocka_unit_test(test_ExecdLogRestart_agent),
+        cmocka_unit_test(test_ExecdLogRestart_reload),
+        cmocka_unit_test(test_ExecdLogRestart_open_fails),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

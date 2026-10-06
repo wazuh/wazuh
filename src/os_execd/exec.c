@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "os_regex/os_regex.h"
 #include "execd.h"
+#include "active-response/active_responses.h"
 
 /* Number of command slots the table grows by */
 #define EXEC_TABLE_CHUNK 32
@@ -262,6 +263,22 @@ void ExecCmd(char *const *cmd)
     }
 
     return;
+}
+
+/* Record a restart.sh invocation in the active responses log */
+void ExecdLogRestart(char *const *cmd)
+{
+    char *args = w_strcat_list((char **)cmd + 1, ' ');
+    char *timestamp = w_get_timestamp(time(NULL));
+    FILE *fp = w_fopen_nofollow(LOG_DIR, LOG_FILE_NAME, "a");
+
+    if (fp) {
+        fprintf(fp, "%s %s %s\n", timestamp, cmd[0], args ? args : "");
+        fclose(fp);
+    }
+
+    os_free(timestamp);
+    os_free(args);
 }
 
 #else

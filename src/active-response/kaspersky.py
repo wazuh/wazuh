@@ -15,6 +15,7 @@ import argparse
 import logging
 import socket
 import os
+import stat
 import sys
 import json
 import time
@@ -81,9 +82,18 @@ def ar_log():
         # Logging the AR request
         args_list = (' '.join(sys.argv[1:]))
         msg = '{0} {1} {2}'.format(now, os.path.realpath(__file__), args_list)
-        f = open(ar_log_file, 'a')
-        f.write(msg +'\n')
-        f.close()
+        flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_NOCTTY
+        flags |= getattr(os, 'O_CLOEXEC', 0)
+        try:
+            fd = os.open(ar_log_file, flags, 0o640)
+        except OSError:
+            return
+        try:
+            st = os.fstat(fd)
+            if stat.S_ISREG(st.st_mode) and st.st_nlink == 1:
+                os.write(fd, (msg + '\n').encode())
+        finally:
+            os.close(fd)
 
 ##################################################################################################################
 # Kaspersky logs management.

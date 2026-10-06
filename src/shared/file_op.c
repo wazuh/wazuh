@@ -2696,15 +2696,53 @@ static int w_openat_nofollow_vetted(const char * basedir, const char * filename,
     int saved_errno;
     int flags;
 
-#ifdef HPUX
-    // HP-UX has no openat(): open by path. filename is a bare name, so the path stays inside basedir.
+#if defined(HPUX) || defined(AIX)
+    // Neither has openat(): open by path. filename is a bare name, so the path stays inside basedir.
     char path[PATH_MAX + 1];
 
     if (snprintf(path, sizeof(path), "%s/%s", basedir, filename) >= (int) sizeof(path)) {
         errno = ENAMETOOLONG;
         return -1;
     }
+#endif
 
+#ifdef AIX
+    // AIX 6.1 has no O_NOFOLLOW either: refuse a symlink seen by lstat(), then check that the descriptor
+    // is the file lstat() saw, so a symlink swapped in between is caught too.
+    struct stat linkbuf;
+
+    if (lstat(path, &linkbuf) == 0) {
+        if (S_ISLNK(linkbuf.st_mode)) {
+            errno = ELOOP;
+            return -1;
+        }
+
+        // Without O_CREAT, a dangling symlink swapped in meanwhile cannot create its target.
+        if (fd = open(path, oflags & ~O_CREAT, mode), fd < 0) {
+            return -1;
+        }
+
+        if (fstat(fd, &statbuf) < 0) {
+            saved_errno = errno;
+            close(fd);
+            errno = saved_errno;
+            return -1;
+        }
+
+        if (statbuf.st_dev != linkbuf.st_dev || statbuf.st_ino != linkbuf.st_ino) {
+            close(fd);
+            errno = ELOOP;
+            return -1;
+        }
+    } else if (errno == ENOENT && (oflags & O_CREAT)) {
+        // O_EXCL fails on anything created at path meanwhile, a symlink included.
+        if (fd = open(path, oflags | O_EXCL, mode), fd < 0) {
+            return -1;
+        }
+    } else {
+        return -1;
+    }
+#elif defined(HPUX)
     if (fd = open(path, oflags | O_NOFOLLOW, mode), fd < 0) {
         return -1;
     }
