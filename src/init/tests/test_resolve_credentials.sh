@@ -555,14 +555,14 @@ cleanup "${root}"
 
 root="$(make_tree)"
 run_resolver "${root}" --install
-for pair in remoted indexer-connector; do
+for pair in remoted indexer-connector apid; do
     check "${pair} is issued and verifies against the CA" "yes" \
         "$(openssl verify -CAfile "${root}/base/ca/root-ca.pem" \
             "${root}/home/etc/certs/${pair}.pem" > /dev/null 2>&1 && echo yes)"
 done
 check "the anchor is installed for the manager to read" "yes" \
     "$([ -f "${root}/home/etc/certs/root-ca.pem" ] && echo yes)"
-for pair in remoted indexer-connector; do
+for pair in remoted indexer-connector apid; do
     check "the ${pair} DN and SANs are logged" "yes" \
         "$(grep -qE "${pair}\.pem: DN .*CN ?= ?[^;]+; SANs .*DNS:" <<< "$(resolver_output)" && echo yes)"
 done
@@ -572,8 +572,35 @@ check "the connector leaf is a client certificate" "yes" \
 check "the remoted leaf is a server certificate" "yes" \
     "$(openssl x509 -in "${root}/home/etc/certs/remoted.pem" -noout -ext extendedKeyUsage \
         2>/dev/null | grep -q 'Server Authentication' && echo yes)"
+check "the Server API leaf is a server certificate" "yes" \
+    "$(openssl x509 -in "${root}/home/etc/certs/apid.pem" -noout -ext extendedKeyUsage \
+        2>/dev/null | grep -q 'Server Authentication' && echo yes)"
 check "the CA private key is never copied into the service directory" "" \
     "$(ls "${root}/home/etc/certs" | grep 'root-ca.key')"
+cleanup "${root}"
+
+# Certificates are issued at install and nowhere else: the Server API pair is no exception. An
+# existing pair is left byte-for-byte and owner/mode alone, and a deleted one is not reissued.
+apid_state() {
+    sha256sum "$1/home/etc/certs/apid.pem" "$1/home/etc/certs/apid-key.pem" 2>/dev/null
+    stat -c '%n %u:%g:%a' "$1/home/etc/certs/apid.pem" "$1/home/etc/certs/apid-key.pem" 2>/dev/null
+}
+root="$(make_tree)"
+write_credentials "${root}" "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'"
+run_resolver "${root}" --install
+before="$(apid_state "${root}")"
+check "the install leaves a Server API pair to compare against" "yes" \
+    "$([ -f "${root}/home/etc/certs/apid.pem" ] && [ -f "${root}/home/etc/certs/apid-key.pem" ] && echo yes)"
+for mode in --upgrade --prestart --check; do
+    run_resolver "${root}" "${mode}"
+    check "${mode} leaves the Server API pair untouched" "${before}" "$(apid_state "${root}")"
+done
+rm -f "${root}/home/etc/certs/apid.pem" "${root}/home/etc/certs/apid-key.pem"
+for mode in --upgrade --prestart --check; do
+    run_resolver "${root}" "${mode}"
+    check "${mode} does not reissue a deleted Server API pair" "" \
+        "$(ls "${root}/home/etc/certs" | grep '^apid')"
+done
 cleanup "${root}"
 
 # An anchor with no private key: this host cannot sign and must not pretend to.
@@ -590,6 +617,7 @@ check "but the resolver says the certificates are missing" "yes" \
     "$(grep -q "has no TLS certificates and this install could not issue them" \
         <<< "$(resolver_output)" && echo yes)"
 check "no leaf is issued" "" "$(ls "${root}/home/etc/certs" | grep '^remoted')"
+check "not even the Server API one" "" "$(ls "${root}/home/etc/certs" | grep '^apid')"
 check "and no CA private key appears on this host" "" "$(ls "${root}/base/ca" | grep 'root-ca.key')"
 cleanup "${root}"
 
@@ -732,6 +760,7 @@ write_credentials "${root}" "WAZUH_INDEXER_MANAGER_PASSWORD='Indexer.Wr0te1'"
 run_resolver "${root}" --install
 baked="$(seeded_password "${root}" wazuh)"
 baked_ca="$(openssl x509 -in "${root}/base/ca/root-ca.pem" -noout -fingerprint 2>/dev/null)"
+check "the baked image carries a Server API pair" "2" "$(ls "${root}/home/etc/certs" | grep -c '^apid')"
 
 run_resolver "${root}" --clear
 check "--clear exits 0" "0" "${RC}"

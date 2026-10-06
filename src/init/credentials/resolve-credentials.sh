@@ -101,9 +101,9 @@
 # `key` reach the TLS layer unchecked, and nothing anywhere tests readability, exists() being a stat
 # rather than access(R_OK). So a leaf that is missing, or present and unreadable by the service user,
 # passes every root-side check AND every check the connector makes, and surfaces from the handshake
-# at the first indexer request. Installation checks the ownership and mode of both pairs, so what
-# this script issues is right by construction; material provisioned by hand is only covered once it
-# is used.
+# at the first indexer request. Installation checks the ownership and mode of all three pairs
+# (indexer-connector, remoted, apid), so what this script issues is right by construction; material
+# provisioned by hand is only covered once it is used.
 #
 # The step never opens a network connection. It validates presence and format only -- making a
 # service's start depend on reaching its peer would break boot ordering and cluster restarts.
@@ -556,9 +556,9 @@ resolve_indexer_password() {
 #
 # wazuh_manager_certificates_ensure() decides between minting a bootstrap CA, issuing from the
 # CA it finds, and leaving an anchor-only deployment unresolved -- from the contents of the CA
-# directory, with no mode flag. It also issues both pairs the manager needs (the indexer
-# connector's clientAuth leaf and remoted's serverAuth leaf) and leaves an existing complete
-# pair alone, which is how an operator supplies a pre-issued one.
+# directory, with no mode flag. It also issues the three pairs the manager needs (the indexer
+# connector's clientAuth leaf, remoted's serverAuth leaf and the Server API's serverAuth leaf, apid)
+# and leaves an existing complete pair alone, which is how an operator supplies a pre-issued one.
 # -----------------------------------------------------------------------------------------
 
 resolve_certificates() {
@@ -584,7 +584,7 @@ resolve_certificates() {
 
     # A wrong name fails only at the first peer connection, not here, so the DN and SANs each leaf
     # carries are logged. -text rather than -ext keeps this working on OpenSSL older than 1.1.1.
-    for _rc_leaf in indexer-connector remoted; do
+    for _rc_leaf in indexer-connector remoted apid; do
         _rc_text=$(openssl x509 -in "${DIR}/etc/certs/${_rc_leaf}.pem" -noout -subject -text 2>/dev/null) || continue
         _rc_dn=$(printf '%s\n' "${_rc_text}" | sed -n 's/^subject= *//p' | head -n 1)
         _rc_sans=$(printf '%s\n' "${_rc_text}" | sed -n '/X509v3 Subject Alternative Name:/{n;s/^ *//p;}')
@@ -649,7 +649,8 @@ clear_credentials() {
         fi
     fi
 
-    for _cc_file in remoted.pem remoted-key.pem indexer-connector.pem indexer-connector-key.pem root-ca.pem; do
+    for _cc_file in remoted.pem remoted-key.pem apid.pem apid-key.pem \
+        indexer-connector.pem indexer-connector-key.pem root-ca.pem; do
         if [ -e "${DIR}/etc/certs/${_cc_file}" ]; then
             rm -f "${DIR}/etc/certs/${_cc_file}"
             log "removed etc/certs/${_cc_file}"

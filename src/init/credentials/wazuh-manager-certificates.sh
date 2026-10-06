@@ -15,20 +15,23 @@
 # Public API
 # ----------
 #   wazuh_manager_certificates_ensure
-#       Idempotently installs the manager's two certificate pairs:
+#       Idempotently installs the manager's three certificate pairs:
 #
 #         indexer-connector.pem       clientAuth
 #         indexer-connector-key.pem
 #         remoted.pem                 serverAuth; leaf followed by root CA
 #         remoted-key.pem
+#         apid.pem                    serverAuth; Server API, fixed
+#         apid-key.pem                CN=wazuh.com and SAN DNS:localhost (no SAN setting)
 #         root-ca.pem                 public trust anchor
 #
 #       Existing complete pairs are validated and never regenerated. A partial
 #       pair is an error. Missing pairs are issued only when root-ca.key exists.
 #
 #   wazuh_manager_certificates_validate
-#       Validates paths, ownership, modes, key/certificate correspondence,
-#       validity, CA chain, basic constraints, EKU, and Remoted SAN presence.
+#       Validates the three pairs: paths, ownership, modes, key/certificate
+#       correspondence, validity, CA chain, basic constraints, EKU, and SAN
+#       presence on the Remoted and Server API certificates.
 #
 #   wazuh_manager_remoted_sans
 #       Prints the resolved Remoted SANs, one typed entry per line. If no
@@ -966,6 +969,81 @@ _wmc_generate_remoted_pair() (
     trap - 0 1 2 3 15
 )
 
+_wmc_write_apid_config() (
+    _wmc_config=${1-}
+
+    {
+        printf '%s\n' '[ req ]'
+        printf '%s\n' 'prompt = no'
+        printf '%s\n' 'default_bits = 2048'
+        printf '%s\n' 'default_md = sha256'
+        printf '%s\n' 'distinguished_name = req_dn'
+        printf '\n'
+        printf '%s\n' '[ req_dn ]'
+        printf '%s\n' 'C = US'
+        printf '%s\n' 'ST = California'
+        printf '%s\n' 'L = San Francisco'
+        printf '%s\n' 'O = Wazuh'
+        printf '%s\n' 'CN = wazuh.com'
+        printf '\n'
+        printf '%s\n' '[ v3_leaf ]'
+        printf '%s\n' 'authorityKeyIdentifier = keyid,issuer'
+        printf '%s\n' 'subjectKeyIdentifier = hash'
+        printf '%s\n' 'basicConstraints = critical,CA:FALSE'
+        printf '%s\n' 'keyUsage = critical,digitalSignature,keyEncipherment'
+        printf '%s\n' 'extendedKeyUsage = serverAuth'
+        printf '%s\n' 'subjectAltName = DNS:localhost'
+    } >"$_wmc_config"
+)
+
+# The Server API pair has a fixed profile (no node name, no SAN setting) and is
+# owned by the service identity, which apid runs as after dropping privileges.
+_wmc_generate_apid_pair() (
+    _wmc_dir=${1-}
+    _wmc_ca_dir=${2-}
+    _wmc_user=${3-}
+    _wmc_group=${4-}
+    _wmc_uid=${5-}
+    _wmc_gid=${6-}
+    _wmc_enter_cert_dir "$_wmc_dir" "$_wmc_gid" || return 1
+    _wmc_tmp_dir=$(mktemp -d .apid.XXXXXX) || return 1
+    trap 'rm -rf -- "$_wmc_tmp_dir"' 0
+    trap 'return 130' 1 2 3 15
+    chmod 0700 "$_wmc_tmp_dir" || return 1
+
+    _wmc_config=$_wmc_tmp_dir/apid.cnf
+    _wmc_write_apid_config "$_wmc_config" || return 1
+    (umask 077; openssl req -new -nodes -newkey rsa:2048 -sha256 \
+        -keyout "$_wmc_tmp_dir/apid-key.pem" \
+        -out "$_wmc_tmp_dir/apid.csr" \
+        -config "$_wmc_config" >/dev/null 2>&1) || {
+        _wmc_error 'failed to create the Server API CSR'
+        return 1
+    }
+    _wmc_serial=$(openssl rand -hex 16) || return 1
+    openssl x509 -req -sha256 -days 3650 \
+        -set_serial "0x$_wmc_serial" \
+        -in "$_wmc_tmp_dir/apid.csr" \
+        -CA "$_wmc_ca_dir/root-ca.pem" \
+        -CAkey "$_wmc_ca_dir/root-ca.key" -passin pass: \
+        -extfile "$_wmc_config" -extensions v3_leaf \
+        -out "$_wmc_tmp_dir/apid.pem" >/dev/null 2>&1 || {
+        _wmc_error 'failed to issue the Server API certificate'
+        return 1
+    }
+
+    chown "$_wmc_user":"$_wmc_group" \
+        "$_wmc_tmp_dir/apid.pem" "$_wmc_tmp_dir/apid-key.pem" || return 1
+    chmod 0640 "$_wmc_tmp_dir/apid.pem" "$_wmc_tmp_dir/apid-key.pem" || return 1
+
+    _wmc_validate_pair "$_wmc_tmp_dir/apid.pem" "$_wmc_tmp_dir/apid-key.pem" \
+        "$_wmc_ca_dir/root-ca.pem" "$_wmc_uid" "$_wmc_gid" serverAuth 1 || return 1
+    ln -T -- "$_wmc_tmp_dir/apid-key.pem" apid-key.pem || return 1
+    ln -T -- "$_wmc_tmp_dir/apid.pem" apid.pem || return 1
+    rm -rf -- "$_wmc_tmp_dir"
+    trap - 0 1 2 3 15
+)
+
 _wmc_restore_contexts() (
     _wmc_dir=${1-}
     if command -v restorecon >/dev/null 2>&1; then
@@ -973,7 +1051,9 @@ _wmc_restore_contexts() (
             "$_wmc_dir/indexer-connector.pem" \
             "$_wmc_dir/indexer-connector-key.pem" \
             "$_wmc_dir/remoted.pem" \
-            "$_wmc_dir/remoted-key.pem" >/dev/null 2>&1 || {
+            "$_wmc_dir/remoted-key.pem" \
+            "$_wmc_dir/apid.pem" \
+            "$_wmc_dir/apid-key.pem" >/dev/null 2>&1 || {
             _wmc_error "failed to restore certificate SELinux contexts in $_wmc_dir"
             return 1
         }
@@ -1007,6 +1087,10 @@ _wmc_validate_locked() (
     _wmc_validate_pair \
         "$_wmc_dir/remoted.pem" \
         "$_wmc_dir/remoted-key.pem" \
+        "$_wmc_ca_dir/root-ca.pem" "$_wmc_uid" "$_wmc_gid" serverAuth 1 || return 1
+    _wmc_validate_pair \
+        "$_wmc_dir/apid.pem" \
+        "$_wmc_dir/apid-key.pem" \
         "$_wmc_ca_dir/root-ca.pem" "$_wmc_uid" "$_wmc_gid" serverAuth 1
 )
 
@@ -1025,7 +1109,8 @@ _wmc_ensure_locked() (
     _wmc_ca_was_absent=0
     if [ ! -e "$_wmc_ca_dir/root-ca.pem" ] && [ ! -L "$_wmc_ca_dir/root-ca.pem" ]; then
         _wmc_ca_was_absent=1
-        for _wmc_existing in root-ca.pem indexer-connector.pem indexer-connector-key.pem remoted.pem remoted-key.pem; do
+        for _wmc_existing in root-ca.pem indexer-connector.pem indexer-connector-key.pem \
+            remoted.pem remoted-key.pem apid.pem apid-key.pem; do
             if [ -e "$_wmc_dir/$_wmc_existing" ] || [ -L "$_wmc_dir/$_wmc_existing" ]; then
                 _wmc_error 'shared CA missing but manager material exists; refusing to mint another CA'
                 return 1
@@ -1062,6 +1147,7 @@ _wmc_ensure_locked() (
         "$_wmc_dir/indexer-connector-key.pem") || return 1
     _wmc_remoted_state=$(_wmc_pair_state \
         "$_wmc_dir/remoted.pem" "$_wmc_dir/remoted-key.pem") || return 1
+    _wmc_apid_state=$(_wmc_pair_state "$_wmc_dir/apid.pem" "$_wmc_dir/apid-key.pem") || return 1
 
     if [ "$_wmc_indexer_state" = partial ]; then
         _wmc_error 'partial Indexer Connector certificate pair; refusing to modify it'
@@ -1069,6 +1155,10 @@ _wmc_ensure_locked() (
     fi
     if [ "$_wmc_remoted_state" = partial ]; then
         _wmc_error 'partial Remoted certificate pair; refusing to modify it'
+        return 1
+    fi
+    if [ "$_wmc_apid_state" = partial ]; then
+        _wmc_error 'partial Server API certificate pair; refusing to modify it'
         return 1
     fi
 
@@ -1083,12 +1173,21 @@ _wmc_ensure_locked() (
             "$_wmc_dir/remoted.pem" "$_wmc_dir/remoted-key.pem" \
             "$_wmc_ca_dir/root-ca.pem" "$_wmc_uid" "$_wmc_gid" serverAuth 1 || return 1
     fi
+    if [ "$_wmc_apid_state" = complete ]; then
+        _wmc_validate_pair \
+            "$_wmc_dir/apid.pem" "$_wmc_dir/apid-key.pem" \
+            "$_wmc_ca_dir/root-ca.pem" "$_wmc_uid" "$_wmc_gid" serverAuth 1 || return 1
+    fi
 
-    if [ "$_wmc_indexer_state" = absent ] || [ "$_wmc_remoted_state" = absent ]; then
+    if [ "$_wmc_indexer_state" = absent ] || [ "$_wmc_remoted_state" = absent ] ||
+        [ "$_wmc_apid_state" = absent ]; then
         if [ ! -e "$_wmc_ca_dir/root-ca.key" ] && [ ! -L "$_wmc_ca_dir/root-ca.key" ]; then
             _wmc_error 'a manager certificate is missing and the shared CA has no private key; stage a pre-issued pair'
             return 1
         fi
+    fi
+    # The Server API pair carries no node name, so only the other two pairs need one.
+    if [ "$_wmc_indexer_state" = absent ] || [ "$_wmc_remoted_state" = absent ]; then
         _wmc_node=$(_wmc_node_name) || return 1
     fi
 
@@ -1113,6 +1212,10 @@ _wmc_ensure_locked() (
                 "$_wmc_stage/remoted" "$_wmc_user" "$_wmc_group" \
                 "$_wmc_uid" "$_wmc_gid" || return 1
         fi
+    fi
+    if [ "$_wmc_apid_state" = absent ]; then
+        _wmc_generate_apid_pair "$_wmc_dir" "$_wmc_ca_dir" \
+            "$_wmc_user" "$_wmc_group" "$_wmc_uid" "$_wmc_gid" || return 1
     fi
 
     _wmc_restore_contexts "$_wmc_dir" || return 1

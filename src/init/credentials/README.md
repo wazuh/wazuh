@@ -87,7 +87,7 @@ It runs in five modes:
 | `--upgrade` | the same three, when a previous version was installed | resolve; exits 0 | untouched |
 | `--prestart` | `resolvecredentials()` in `../wazuh-server.sh` — that is, `wazuh-manager-control start`, which is what the unit's `ExecStart` runs, and `restart`/`reload` after the daemons are stopped; skipped while `wazuh-manager-modulesd` runs | resolve, exit 1 with an `INVALID <key>` / `MISSING <key>` line per unresolved key | untouched |
 | `--check` | `checkcredentials()` in `../wazuh-server.sh`, before `testconfig` on `start`, `restart` and `reload`; read-only, refuses naming the rule | untouched | untouched |
-| `--clear` (default when no mode is given is `--prestart`) | nothing in the product; refuses while any `var/run` pidfile is alive | remove `rbac.db`, the keystore contents and the two API password keys (not the `*_CERT_SANS` keys) | remove the five `etc/certs` PEMs, and the CA only if this host minted it |
+| `--clear` (default when no mode is given is `--prestart`) | nothing in the product; refuses while any `var/run` pidfile is alive | remove `rbac.db`, the keystore contents and the two API password keys (not the `*_CERT_SANS` keys) | remove the seven `etc/certs` PEMs, and the CA only if this host minted it |
 
 `--check` asks the shared helper for the reserved name `WAZUH_MANAGER_CREDENTIALS_CHECK`, which is
 never written to the file: a well-formed line with it is ignored, a malformed one refuses the file. It
@@ -135,7 +135,7 @@ readability test, since `exists()` is a stat and not `access(R_OK)`.
 So an `indexer-connector-key.pem` that is missing, or present and unreadable by `wazuh-manager`,
 passes every root-side check and every check the connector makes, and surfaces from the TLS layer at
 the first indexer request. `wazuh_manager_certificates_ensure()` does check the ownership and mode of
-**both** pairs at installation, and more strictly than remoted's runtime probe, so material this
+**all three** pairs at installation, and more strictly than remoted's runtime probe, so material this
 helper issued is right by construction; material provisioned by hand, or whose mode drifted
 afterwards, is not covered until it is used. The missing piece is an existence-and-`access(R_OK)`
 preflight for that pair after the privilege drop, matching `w_remoted_check_tls_files()`.
@@ -207,13 +207,17 @@ component owns. Do not use `wazuh_env_set` as a password rotation mechanism.
 ## SAN and cryptographic behavior
 
 - Indexer Connector: `clientAuth`, RSA-2048/SHA-256, 3650 days.
+- Server API (`apid.pem`/`apid-key.pem`): `serverAuth`, RSA-2048/SHA-256, signed by the manager CA at
+  `--install`, 3650 days, leaf only. Fixed DN `C=US, ST=California, L=San Francisco, O=Wazuh,
+  CN=wazuh.com` and the single SAN `DNS:localhost`; there is no SAN setting for it.
 - Remoted/Authd: `serverAuth`, RSA-2048/SHA-256, leaf plus CA chain, notBefore
   backdated one day, notAfter 3650 days ahead. Trust-chain validity is still
   limited by CA validity.
 - `WAZUH_MANAGER_CERT_SANS` configures the connector. Absent, it is the hostname/FQDN, loopback and
   the global-scope addresses of the interfaces carrying a default route (`ip route show default`),
   or the output of `hostname -I` when `ip` is unavailable.
-- Both leaves take `WAZUH_MANAGER_NODE_NAME` (default `hostname -s`) as their CN.
+- The Indexer Connector and Remoted leaves take `WAZUH_MANAGER_NODE_NAME` (default `hostname -s`) as
+  their CN; the Server API leaf always uses the fixed CN `wazuh.com`.
 - `WAZUH_MANAGER_REMOTED_CERT_SANS` configures Remoted. Explicit values replace
   discovery; loopback is appended to them. Absent values include every **global-scope** IPv4/IPv6 address
   reported by `ip -o addr show` — including addresses on interfaces that are not
@@ -226,7 +230,8 @@ component owns. Do not use `wazuh_env_set` as a password rotation mechanism.
   explicit SANs if netlink is unavailable. Wildcard DNS, scoped IPv6 and CIDRs
   are rejected; equivalent textual IPv6 addresses are deduplicated.
 - Complete existing pairs win over SAN inputs. Changing SANs does not renew or
-  regenerate anything. CA-only deployments require pre-issued missing leaves.
+  regenerate anything. CA-only deployments require all three pairs (indexer-connector, remoted,
+  apid) pre-issued.
 - The CA private key is never copied into the service directory.
 
 ## Tests
@@ -270,7 +275,9 @@ permissions/symlinks, concurrent writes/issuance, password constraints,
 CA-only and orphan-key states, chain/EKU/hostname verification, idempotence,
 invalid SANs, canonical IPv6, simulated all-interface discovery, discovery
 failure, mismatched keys, existing material with a missing shared CA, a
-certificate symlink, and reissue over a `wazuh-manager-certs`-stamped bundle.
+certificate symlink, and reissue over a `wazuh-manager-certs`-stamped bundle; for the Server API
+pair, `apid_mode`, `apid_partial`, `apid_anchor_only`, `apid_only_missing`, `apid_key_mismatch` and
+`apid_foreign_chain`.
 
 This is not a live Wazuh, RPM/DEB, SELinux or real-network integration suite.
 The interface test deliberately stubs `ip` for deterministic coverage.
