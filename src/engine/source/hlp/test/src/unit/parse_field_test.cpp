@@ -161,7 +161,7 @@ TEST(ParseFieldTest, UpdateDocDepthValueBranch)
     }
 }
 
-// An empty value is written as null under the key as given: its dots are not converted and do not count.
+// An empty value is written as null under the converted key: its dots nest and count, as with a value.
 TEST(ParseFieldTest, UpdateDocDepthEmptyBranch)
 {
     const auto limit = json::Json::MAX_DEPTH;
@@ -174,11 +174,16 @@ TEST(ParseFieldTest, UpdateDocDepthEmptyBranch)
     EXPECT_FALSE(hlp::updateDoc(doc, deepPath(limit + 1, '/'), "", false, "\\", false));
     EXPECT_EQ(doc, seededDoc());
 
-    const auto dotted = deepPath(limit + 1, '.');
-    doc = seededDoc();
-    ASSERT_TRUE(hlp::updateDoc(doc, dotted, "", false, "\\", false));
-    EXPECT_TRUE(doc.isNull(dotted));
-    EXPECT_EQ(doc.size(), 2u);
+    for (const auto sep : {'.', '/'})
+    {
+        doc = seededDoc();
+        ASSERT_TRUE(hlp::updateDoc(doc, deepPath(limit, sep), "", false, "\\", false)) << sep;
+        EXPECT_TRUE(doc.isNull(deepPath(limit, '/'))) << sep;
+
+        doc = seededDoc();
+        EXPECT_FALSE(hlp::updateDoc(doc, deepPath(limit + 1, sep), "", false, "\\", false)) << sep;
+        EXPECT_EQ(doc, seededDoc()) << sep;
+    }
 }
 
 namespace
@@ -337,4 +342,16 @@ TEST(ParseFieldTest, UpdateDocNumericWorstCaseCost)
                 pairs,
                 json::Json::MAX_DEPTH,
                 static_cast<long long>(elapsed / pairs));
+}
+
+// A dotted key nests the same way with an empty value and with a value
+TEST(ParseFieldTest, UpdateDocEmptyValueNestsDots)
+{
+    json::Json empty;
+    ASSERT_TRUE(hlp::updateDoc(empty, "/a.b", "", false, "\\", false));
+    EXPECT_EQ(empty, json::Json {R"({"a":{"b":null}})"});
+
+    json::Json valued;
+    ASSERT_TRUE(hlp::updateDoc(valued, "/a.b", "v", false, "\\", false));
+    EXPECT_EQ(valued, json::Json {R"({"a":{"b":"v"}})"});
 }

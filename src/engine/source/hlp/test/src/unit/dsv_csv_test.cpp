@@ -280,6 +280,17 @@ TEST(CsvNumericHeader, HeadersAreMembers)
     EXPECT_EQ(event, json::Json {R"({"TargetField":{"1":"x","2":"y"}})"});
 }
 
+// A dotted header nests its field also when the field is empty
+TEST(CsvDottedHeader, EmptyFieldNests)
+{
+    const auto parser = getCSVParser({NAME, TARGET, {""}, {"x.y", "z"}});
+    json::Json event;
+    event.setObject();
+    const auto error = hlp::parser::run(parser, ",v", event, true);
+    ASSERT_FALSE(error.has_value()) << error->message;
+    EXPECT_EQ(event, json::Json {R"({"TargetField":{"x":{"y":null},"z":"v"}})"});
+}
+
 /************************************
  *  DSV Parser
  ************************************/

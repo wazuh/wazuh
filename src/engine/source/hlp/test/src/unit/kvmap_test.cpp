@@ -394,10 +394,10 @@ INSTANTIATE_TEST_SUITE_P(
                getKVParser,
                {NAME, TARGET, {}, {"::=", " || ", "\"", "\\"}}),
 
-        // Dots in the key nest the value; an empty value is written under the key as given (flat null).
+        // Dots in the key nest the value, also when the value is empty.
         ParseT(SUCCESS,
                R"(a.b.c=v d.e=)",
-               j(fmt::format(R"({{"{}":{{"a":{{"b":{{"c":"v"}}}},"d.e":null}}}})", TARGET.substr(1))),
+               j(fmt::format(R"({{"{}":{{"a":{{"b":{{"c":"v"}}}},"d":{{"e":null}}}}}})", TARGET.substr(1))),
                12,
                getKVParser,
                {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
@@ -426,7 +426,7 @@ INSTANTIATE_TEST_SUITE_P(
                getKVParser,
                {NAME, TARGET, {}, {"=", " ", "'", "\\"}}),
 
-        // An empty value keeps the key unconverted, and its path of 257 '/' still exceeds the limit.
+        // An empty value converts the key too, and its path of 257 '/' exceeds the limit.
         ParseT(FAILURE,
                deepKey(257, '/') + "=",
                {},
@@ -475,12 +475,11 @@ TEST(KvParserDepth, MaxDepthMaps)
         EXPECT_FALSE(event.exists(TARGET + "/a"));
     }
 
-    // An empty value is written under the key as given: 256 dots are one token, a flat null
+    // An empty value nests its dots as well: 255 dots map to a null 256 tokens deep (256 dots are rejected below)
     {
-        const auto key = deepKey(257, '.');
         json::Json event;
-        ASSERT_NO_FATAL_FAILURE(mapInto(key + "=", event));
-        EXPECT_TRUE(event.isNull(TARGET + "/" + key));
+        ASSERT_NO_FATAL_FAILURE(mapInto(deepKey(256, '.') + "=", event));
+        EXPECT_TRUE(event.isNull(TARGET + "/" + deepKey(256, '/')));
         EXPECT_EQ(event.size(TARGET), 1u);
     }
 
@@ -501,7 +500,10 @@ TEST(KvParserDepth, TraceNamesLimit)
 {
     const auto parser = depthParser();
     // Value branch, empty-value branch, and a deep key between two valid pairs
-    for (const auto& input : {deepKey(257, '.') + "=v", deepKey(257, '/') + "=", "a=1 " + deepKey(257, '.') + "=v b=2"})
+    for (const auto& input : {deepKey(257, '.') + "=v",
+                              deepKey(257, '/') + "=",
+                              deepKey(257, '.') + "=",
+                              "a=1 " + deepKey(257, '.') + "=v b=2"})
     {
         auto result = parser(input);
         ASSERT_TRUE(result.success()) << result.trace();
