@@ -52,6 +52,11 @@
  * must stay in step: the BPF side reads these keys. */
 #define FILTER_CFG_KEY_MODE 0
 #define FILTER_CFG_KEY_SKIP 1
+/* index+1, so an unwritten slot means "not configured" and stays
+ * distinguishable from subsystem 0, which is a real controller. Must match
+ * bpf/rt_file.bpf.c. */
+#define FILTER_CFG_KEY_V1_SUBSYS 2
+#define RT_V1_SUBSYS_MAX         64
 
 #define BPF_OBJ_PATH_FALLBACK "rt_file.bpf.o"
 #define LSM_LIST_FILE "/sys/kernel/security/lsm"
@@ -233,6 +238,7 @@ struct rt_engine_handle
     int cgroup_allow_fd;
 
     wz_cgroup_mode_t cgroup_mode;
+    int v1_subsys_configured;
 
     /* Rejected-record accounting; reported once per handle so a stale object
      * cannot flood the log. */
@@ -615,6 +621,61 @@ int rt_set_cgroup_mode(rt_handle_t handle, int mode)
         return -1;
     }
     return 0;
+}
+
+int rt_set_cgroup_v1_subsys(rt_handle_t handle, unsigned int subsys_index)
+{
+    struct rt_engine_handle* h = (struct rt_engine_handle*)handle;
+    if (!h || h->filter_cfg_fd < 0)
+    {
+        return -1;
+    }
+
+    /* Refused rather than trusted to the caller. On a unified or hybrid host
+     * css_set.subsys[i] can point at an ANCESTOR cgroup — the nearest one
+     * where controller i is enabled — so this read would attribute a
+     * container's events to its parent slice, with a number that looks
+     * entirely reasonable. The helper is correct there and must be used. */
+    if (!wz_cgroup_v1_subsys_read_allowed(h->cgroup_mode, (int)subsys_index))
+    {
+        rt_log(&h->log,
+               RT_LOG_ERROR,
+               "refusing to read cgroup ids from a v1 controller on a %s host: the helper is correct here "
+               "and the controller read can resolve to an ancestor cgroup",
+               wz_cgroup_mode_name(h->cgroup_mode));
+        return -1;
+    }
+
+    if (subsys_index >= RT_V1_SUBSYS_MAX)
+    {
+        rt_log(&h->log, RT_LOG_ERROR, "cgroup subsystem index %u out of range", subsys_index);
+        return -1;
+    }
+
+    const unsigned int key = FILTER_CFG_KEY_V1_SUBSYS;
+    const unsigned int value = subsys_index + 1u;
+    if (g_libbpf.map_update_elem(h->filter_cfg_fd, &key, &value, 0 /* BPF_ANY */) != 0)
+    {
+        rt_log(&h->log, RT_LOG_ERROR, "could not configure the v1 cgroup subsystem index");
+        return -1;
+    }
+
+    h->v1_subsys_configured = 1;
+    rt_log(&h->log,
+           RT_LOG_INFO,
+           "reading container cgroup ids from v1 controller subsystem %u; cgroup filtering is available",
+           subsys_index);
+    return 0;
+}
+
+int rt_cgroup_id_is_usable(rt_handle_t handle)
+{
+    const struct rt_engine_handle* h = (const struct rt_engine_handle*)handle;
+    if (!h)
+    {
+        return 0;
+    }
+    return wz_cgroup_mode_has_usable_cgroup_id(h->cgroup_mode) || h->v1_subsys_configured;
 }
 
 int rt_allow_cgroup(rt_handle_t handle, unsigned long long cgroup_id)

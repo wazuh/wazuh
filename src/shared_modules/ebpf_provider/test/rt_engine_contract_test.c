@@ -398,6 +398,58 @@ static void test_cgroup_mode_probe(void)
     remove(tmp);
 }
 
+/* ---------------------------------------------------------------------------
+ * Reading container cgroup ids from a v1 controller.
+ *
+ * The refusal is the part worth pinning. On a unified or hybrid host
+ * css_set.subsys[i] points at the nearest ANCESTOR cgroup where controller i
+ * is enabled, which need not be the task's own — so this read would attribute
+ * a container's events to its parent slice, with a number that looks entirely
+ * reasonable and nothing to flag it. The engine refuses rather than leaving
+ * that to the caller.
+ * ------------------------------------------------------------------------- */
+static void test_v1_subsys_configuration(void)
+{
+    /* NULL handle: the documented contract for every setter. */
+    CHECK(rt_set_cgroup_v1_subsys(NULL, 4) == -1, "rt_set_cgroup_v1_subsys(NULL) must fail");
+    CHECK(rt_cgroup_id_is_usable(NULL) == 0, "a NULL handle has no usable cgroup id");
+
+    /* The index this host would configure, resolved the way the engine's
+     * callers must resolve it — from /proc/cgroups, never hardcoded, because
+     * enum cgroup_subsys_id is ordered by what the kernel was built with. */
+    const int memory = wz_cgroup_subsys_index("memory");
+    CHECK(memory >= 0, "memory should be listed in /proc/cgroups on any Linux host, got %d", memory);
+    printf("  (memory is subsystem %d on this host)\n", memory);
+
+    /* A named hierarchy has no controller, so it has no subsystem slot and the
+     * BPF program has nothing to read. Userspace can still stat its
+     * directories, which is why it remains in the resolver's priority list and
+     * not in the engine's. */
+    CHECK(wz_cgroup_subsys_index("systemd") == -1,
+          "name=systemd is not a subsystem; the engine cannot key on it");
+    CHECK(wz_cgroup_subsys_index("no_such_controller") == -1, "an unknown controller must not resolve");
+
+    /* THE REFUSAL. Asserted through the pure predicate rather than through the
+     * setter, because the setter needs a loaded handle this test has no way to
+     * build — and an assertion that cannot reach the decision is not an
+     * assertion. An earlier version of this test checked only the NULL-handle
+     * path and passed happily with the refusal removed. */
+    CHECK(wz_cgroup_v1_subsys_read_allowed(WZ_CGROUP_MODE_UNIFIED, 4) == 0,
+          "a unified host must refuse the controller read: subsys[i] can resolve to an ancestor cgroup");
+    CHECK(wz_cgroup_v1_subsys_read_allowed(WZ_CGROUP_MODE_HYBRID, 4) == 0,
+          "a hybrid host must refuse it too — the helper is correct there");
+    CHECK(wz_cgroup_v1_subsys_read_allowed(WZ_CGROUP_MODE_LEGACY, 4) == 1,
+          "a legacy host is exactly where the controller read is correct");
+    CHECK(wz_cgroup_v1_subsys_read_allowed(WZ_CGROUP_MODE_LEGACY, -1) == 0,
+          "a controller with no subsystem slot gives the program nothing to read");
+
+    /* One list, read by both the resolver and the engine, so the two cannot
+     * choose different controllers and key on unrelated hierarchies. */
+    CHECK(wz_cgroup_v1_priority(0) != NULL && strcmp(wz_cgroup_v1_priority(0), "memory") == 0,
+          "memory must be tried first");
+    CHECK(wz_cgroup_v1_priority(WZ_CGROUP_V1_PRIORITY_COUNT) == NULL, "the priority list must be bounded");
+}
+
 /* The anti-drift assertion, and the reason the probe was made shared at all:
  * the engine's public answer and the shared probe must be the same answer on
  * this host. If these two ever disagree, a second copy of the probe has grown
@@ -422,6 +474,7 @@ int main(void)
     test_rt_open_rejects_useless_filters();
     test_null_handle_contracts();
     test_cgroup_mode_probe();
+    test_v1_subsys_configuration();
     test_engine_agrees_with_the_shared_probe();
 
     if (g_failures != 0)

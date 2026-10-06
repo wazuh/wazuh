@@ -174,6 +174,36 @@ int rt_deny_cgroup(rt_handle_t handle, unsigned long long cgroup_id);
  * leaves a window in which the allowlist is empty and so nothing is delivered. */
 int rt_set_cgroup_mode(rt_handle_t handle, int mode);
 
+/* Read container cgroup ids from a v1 controller hierarchy instead of from
+ * bpf_get_current_cgroup_id().
+ *
+ * ONLY for a host with no unified hierarchy. There, the helper reports nothing
+ * useful, but the v1 controllers' cgroups carry ids of the same kind and the
+ * program can read one directly — so cgroup_id becomes a real per-container
+ * value and the allowlist filters exactly as it does elsewhere.
+ *
+ * `subsys_index` is the controller's position in the kernel's
+ * `enum cgroup_subsys_id`, which is build-dependent and must be resolved at
+ * runtime — wz_cgroup_subsys_index() in shared_modules/common does it from
+ * /proc/cgroups. It MUST name the same controller the caller resolves
+ * container paths under, or the two will key on different hierarchies.
+ *
+ * MUST NOT be called on a unified or hybrid host: there a controller is only
+ * enabled where an ancestor enabled it, so the read can return an ancestor's
+ * cgroup and attribute a container's events to its parent slice. Refused when
+ * rt_host_cgroup_v1() is zero rather than left to the caller.
+ *
+ * Returns 0 on success, -1 otherwise. */
+int rt_set_cgroup_v1_subsys(rt_handle_t handle, unsigned int subsys_index);
+
+/* Non-zero when this handle's events carry a cgroup_id that identifies a
+ * container: always on a unified or hybrid host, and on a legacy host once
+ * rt_set_cgroup_v1_subsys() has succeeded.
+ *
+ * Consumers should branch on THIS rather than on rt_host_cgroup_v1(), which
+ * reports the host's hierarchy and not whether attribution is available. */
+int rt_cgroup_id_is_usable(rt_handle_t handle);
+
 /* Reports one cgroup's dropped-event count. `drops` is the number lost since
  * the previous drain for that cgroup, never a running total. */
 typedef void (*rt_drop_fn)(unsigned long long cgroup_id, unsigned int drops, void* user);

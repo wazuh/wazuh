@@ -146,6 +146,21 @@ struct
 #define FILTER_CFG_KEY_MODE 0
 #define FILTER_CFG_KEY_SKIP 1
 
+/* Which v1 controller hierarchy to read a container's cgroup id from, stored
+ * as index+1 so that an unwritten slot — array maps start zeroed — means "not
+ * configured" and is distinguishable from subsystem 0, which is a real
+ * controller (cpuset).
+ *
+ * Unset is the normal case: on a unified or hybrid host
+ * bpf_get_current_cgroup_id() already reports a usable per-cgroup id, and this
+ * path is never taken. */
+#define FILTER_CFG_KEY_V1_SUBSYS 2
+
+/* An upper bound for the verifier, not a kernel limit. CGROUP_SUBSYS_COUNT is
+ * build-dependent (15 on the hosts measured); anything at or above this is
+ * refused rather than read. */
+#define RT_V1_SUBSYS_MAX 64
+
 /* Mirrors RT_SKIP_PROC_CONTEXT in rt_engine.h; the two must stay in step. */
 #define RT_SKIP_PROC_CONTEXT (1u << 0)
 
@@ -154,7 +169,7 @@ struct
     __uint(type, BPF_MAP_TYPE_ARRAY);
     __type(key, __u32);
     __type(value, __u32);
-    __uint(max_entries, 2);
+    __uint(max_entries, 3);
 } filter_cfg SEC(".maps");
 
 struct
@@ -166,6 +181,67 @@ struct
 } cgroup_allow_map SEC(".maps");
 
 extern int LINUX_KERNEL_VERSION __kconfig;
+
+/* The id of the cgroup this task's container is filed under.
+ *
+ * bpf_get_current_cgroup_id() reports the task's cgroup in the UNIFIED (v2)
+ * hierarchy. On a host that has no unified hierarchy it therefore reports
+ * nothing useful — which is why container attribution was refused there
+ * (#37396 ADR-002). That is a limit of the HELPER, not of the kernel: the v1
+ * controllers' cgroups are kernfs nodes with ids of exactly the same kind, and
+ * the id read here is the one `stat()` returns for that controller's directory
+ * — measured on a non-unified host, both 8387 for the same container
+ * (`20-mnt-ns-key-and-legacy-filter-mode.md` §20.4.4).
+ *
+ * WHY THIS IS ONLY EVER CONFIGURED ON A LEGACY HOST, and must never be turned
+ * on elsewhere: on a unified hierarchy a controller is only enabled where an
+ * ancestor enabled it through cgroup.subtree_control, so css_set.subsys[i]
+ * points at the nearest ANCESTOR where controller i is enabled — not
+ * necessarily the task's own cgroup. Reading it there would attribute a
+ * container's events to its parent slice, with a real and plausible number.
+ * Where v1 hierarchies are mounted the question cannot arise: a task is in
+ * exactly one cgroup per mounted hierarchy. */
+statfunc __u64 current_container_cgroup_id(void)
+{
+    __u32 key = FILTER_CFG_KEY_V1_SUBSYS;
+    __u32* configured = bpf_map_lookup_elem(&filter_cfg, &key);
+
+    if (!configured || *configured == 0)
+    {
+        return bpf_get_current_cgroup_id();
+    }
+
+    const __u32 index = *configured - 1;
+    if (index >= RT_V1_SUBSYS_MAX)
+    {
+        return 0;
+    }
+
+    struct task_struct* task = (struct task_struct*)bpf_get_current_task();
+    struct css_set* cset = BPF_CORE_READ(task, cgroups);
+    if (!cset)
+    {
+        return 0;
+    }
+
+    /* A VARIABLE index, so BPF_CORE_READ(cset, subsys[index]) cannot be used —
+     * it resolves a field offset at load time and needs a constant. CO-RE
+     * supplies the array's offset instead and the index is applied by hand;
+     * the bound above is what lets the verifier accept the read. */
+    struct cgroup_subsys_state* css = NULL;
+    const __u64 offset = (__u64)bpf_core_field_offset(struct css_set, subsys) + (__u64)index * sizeof(void*);
+    if (bpf_probe_read_kernel(&css, sizeof(css), (void*)cset + offset) != 0 || !css)
+    {
+        return 0;
+    }
+
+    struct cgroup* cgrp = BPF_CORE_READ(css, cgroup);
+    if (!cgrp)
+    {
+        return 0;
+    }
+    return BPF_CORE_READ(cgrp, kn, id);
+}
 
 /* Returns non-zero when this event should reach the ring buffer. Called before
  * bpf_ringbuf_reserve() so a filtered event costs one map lookup rather than a
@@ -206,8 +282,10 @@ statfunc void bump_drop_counter(void)
         __sync_fetch_and_add(counter, 1);
     }
 
-    /* Attribute the same drop to the cgroup that would have owned the event. */
-    __u64 cgroup_id = bpf_get_current_cgroup_id();
+    /* Attribute the same drop to the cgroup that would have owned the event.
+     * The same reader as the submit path, so drop attribution and event
+     * attribution cannot disagree about which cgroup a task is in. */
+    __u64 cgroup_id = current_container_cgroup_id();
     __u32* per_cgroup = bpf_map_lookup_elem(&cgroup_drops_map, &cgroup_id);
     if (!per_cgroup)
     {
@@ -394,7 +472,7 @@ statfunc void submit_event(__u16 event_type, const char* filename, __u64 ino, __
 {
     /* Resolved once, up front: the filter needs it before deciding whether to
      * reserve, and the event needs it afterwards. */
-    __u64 cgroup_id = bpf_get_current_cgroup_id();
+    __u64 cgroup_id = current_container_cgroup_id();
 
     if (!event_is_wanted(cgroup_id))
     {

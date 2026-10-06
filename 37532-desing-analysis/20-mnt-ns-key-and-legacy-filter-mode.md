@@ -238,10 +238,12 @@ hierarchy where it was thought to be impossible.
   CO-RE walks on this path (the dentry/mount chain in `get_path_str()` is a bounded loop), and
   `event_is_wanted()` already performs a map lookup, so this is a small addition to a hot path
   rather than a new kind of work on it.
-- **It is BPF work**, which in this tree means rebuilding `rt_file.bpf.o` and refreshing the
-  per-architecture prebuilt objects — and the build environment this branch is developed in has
-  neither clang, nor bpftool, nor a vendored `vmlinux.h` (see `ebpf_provider/CMakeLists.txt`). This
-  is the real reason it is not already done, and it is a scheduling problem, not a design one.
+- **It is BPF work**, but less of it than this originally claimed. `prebuilt/x86/` and
+  `prebuilt/arm64/` are both empty and no `check_files` manifest lists `rt_file.bpf.o`: nothing is
+  shipped prebuilt, so the object is compiled from source wherever the toolchain exists and skipped
+  with a diagnostic where it does not. The development environment's missing clang and bpftool
+  affect local *testing*, not shipping — and the work was in fact built, loaded and regression-tested
+  on `wazuh_manager`, which has the full toolchain.
 - **The assumption was measured on 2026-10-06, and mostly holds. See §20.4.3.**
 
 ### 20.4.3 Measured: the walk works, and one trap came with it

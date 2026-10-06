@@ -27,6 +27,7 @@
 #define _CGROUP_HOST_MODE_H_
 
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 
 /* Where a Linux host mounts its cgroup hierarchy. Not configurable: a host
@@ -125,6 +126,123 @@ static inline const char* wz_cgroup_mode_name(wz_cgroup_mode_t mode)
         case WZ_CGROUP_MODE_HYBRID: return "hybrid (v1 + v2 at /unified)";
         default: return "unknown";
     }
+}
+
+/* The controllers a legacy host may be keyed by, in the order they are tried.
+ *
+ * ONE list, because two components must reach the same answer: the resolver
+ * stats a container's directory under this controller, and the eBPF engine is
+ * configured to read the cgroup id from the SAME controller's hierarchy. Each
+ * one works as a key provided it is the same one everywhere — two components
+ * choosing differently would key on numbers drawn from unrelated hierarchies,
+ * and every lookup between them would miss.
+ *
+ * Ordered by how reliably each is mounted and how closely it tracks the
+ * container rather than the host: `memory` and `pids` are per-container on
+ * every runtime, `cpuacct` is nearly always mounted, and `systemd` (the
+ * `name=systemd` hierarchy) exists even where no controller does.
+ *
+ * BUT `systemd` IS NOT USABLE BY THE eBPF ENGINE, and the difference matters.
+ * A `name=` hierarchy has no controller, so it has no entry in the kernel's
+ * `enum cgroup_subsys_id` and none in css_set.subsys[] — wz_cgroup_subsys_index
+ * returns -1 for it. Userspace can still stat its directories, so it remains a
+ * valid key for the resolver and for inventory; what it cannot do is let the
+ * BPF program read a container's cgroup id, because there is no subsystem slot
+ * to read from. A host offering only `name=systemd` can therefore be
+ * inventoried but not filtered in-kernel. Callers configuring the engine must
+ * treat a -1 index as "no in-kernel attribution here", not as an error to
+ * retry.
+ */
+#define WZ_CGROUP_V1_PRIORITY_COUNT 4
+
+static inline const char* wz_cgroup_v1_priority(unsigned int rank)
+{
+    static const char* const order[WZ_CGROUP_V1_PRIORITY_COUNT] = {"memory", "pids", "cpuacct", "systemd"};
+    return (rank < WZ_CGROUP_V1_PRIORITY_COUNT) ? order[rank] : NULL;
+}
+
+/* A controller's position in the kernel's `enum cgroup_subsys_id`, which is
+ * what indexes css_set.subsys[] and therefore what the BPF program needs.
+ *
+ * Read from /proc/cgroups, whose rows are in enum order — verified against the
+ * kernel's own BTF on the test host (`cpuset, cpu, cpuacct, blkio, memory, …`
+ * against `0,1,2,3,4,…`). Deriving it this way rather than from BTF keeps it
+ * working on a kernel without BTF, and handles any controller name without a
+ * table of enumerators to keep in step with the kernel's.
+ *
+ * NOTE the enum and the file disagree on one NAME: position 3 is `io_cgrp_id`
+ * in the enum and `blkio` in the file. The same subsystem under its v1 name,
+ * and harmless here because the position is what matters.
+ *
+ * Returns the index, or -1 when the controller is not listed.
+ */
+static inline int wz_cgroup_subsys_index(const char* controller)
+{
+    char line[256];
+    int index = 0;
+    FILE* file;
+
+    if (controller == NULL || controller[0] == '\0')
+    {
+        return -1;
+    }
+
+    file = fopen("/proc/cgroups", "re");
+    if (file == NULL)
+    {
+        return -1;
+    }
+
+    while (fgets(line, sizeof(line), file) != NULL)
+    {
+        char name[64];
+
+        if (line[0] == '#')
+        {
+            continue; /* the header row is not a subsystem */
+        }
+        if (sscanf(line, "%63s", name) != 1)
+        {
+            continue;
+        }
+        if (strcmp(name, controller) == 0)
+        {
+            fclose(file);
+            return index;
+        }
+        ++index;
+    }
+
+    fclose(file);
+    return -1;
+}
+
+/* Whether an eBPF consumer may read container cgroup ids from a v1 controller
+ * hierarchy on this host.
+ *
+ * A pure decision, separated from the engine so it can be asserted without a
+ * loaded BPF object, a kernel or root — none of which the dependency-free
+ * contract tests have. The engine calls this; so can anything else that needs
+ * to know before opening a handle.
+ *
+ * False on a unified or hybrid host, and that is the important direction:
+ * there, css_set.subsys[i] points at the nearest ANCESTOR cgroup where
+ * controller i is enabled rather than at the task's own, so the read returns a
+ * real and plausible number for the WRONG cgroup — a container's events filed
+ * under its parent slice, with nothing to flag it. The helper is correct on
+ * those hosts and must be used instead.
+ *
+ * False for a negative index, which is how wz_cgroup_subsys_index() reports a
+ * controller with no subsystem slot (a `name=` hierarchy). That is "no
+ * in-kernel attribution here", not an error to retry.
+ */
+static inline int wz_cgroup_v1_subsys_read_allowed(wz_cgroup_mode_t mode, int subsys_index)
+{
+    if (wz_cgroup_mode_has_usable_cgroup_id(mode))
+    {
+        return 0;
+    }
+    return subsys_index >= 0;
 }
 
 #endif /* _CGROUP_HOST_MODE_H_ */
