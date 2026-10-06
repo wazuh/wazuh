@@ -779,18 +779,20 @@ static int unmerge_valid_component(const char *component, size_t length)
 }
 
 /* Validation and extraction share these rules. Empty, absolute and '..' names and control characters
- * are rejected on every platform; names that are only invalid on Windows stay valid elsewhere. */
-STATIC int unmerge_normalize_name(char *name)
+ * are rejected on every platform; names that are only invalid on Windows stay valid elsewhere.
+ * 'normalized' must hold strlen(name) + 1 bytes; 'name' is left as received for diagnostics. */
+STATIC int unmerge_normalize_name(const char *name, char *normalized)
 {
-    char *src = name;
-    char *dst = name;
+    const char *src = name;
+    char *dst = normalized;
 
+    *normalized = '\0';
     if (!*name || strchr(UNMERGE_SEPARATORS, *name)) {
         return 0;
     }
 
     while (*src) {
-        char *end = src + strcspn(src, UNMERGE_SEPARATORS);
+        const char *end = src + strcspn(src, UNMERGE_SEPARATORS);
         size_t length = end - src;
         int last = !*end;
 
@@ -805,10 +807,10 @@ STATIC int unmerge_normalize_name(char *name)
             if (!unmerge_valid_component(src, length)) {
                 return 0;
             }
-            if (dst != name) {
+            if (dst != normalized) {
                 *dst++ = '/';
             }
-            memmove(dst, src, length);
+            memcpy(dst, src, length);
             dst += length;
         }
         if (last) {
@@ -820,7 +822,7 @@ STATIC int unmerge_normalize_name(char *name)
         }
     }
     *dst = '\0';
-    return dst != name;
+    return dst != normalized;
 }
 
 static int unmerge_parse_header(char *buf, size_t *size, char **name)
@@ -955,15 +957,15 @@ static int unmerge_skip_entry(unmerge_bundle_t *bundle, size_t size, int result)
 }
 
 /* Normalizes an entry name and builds its destination path. Returns 0 if the name is invalid or too long. */
-static int unmerge_destination(const char *optdir, char *name, char *final_name)
+static int unmerge_destination(const char *optdir, const char *name, char *normalized, char *final_name)
 {
     int length;
 
-    if (!unmerge_normalize_name(name)) {
+    if (!unmerge_normalize_name(name, normalized)) {
         return 0;
     }
-    length = optdir && *optdir ? snprintf(final_name, UNMERGE_NAME_SIZE, "%s/%s", optdir, name) :
-             snprintf(final_name, UNMERGE_NAME_SIZE, "%s", name);
+    length = optdir && *optdir ? snprintf(final_name, UNMERGE_NAME_SIZE, "%s/%s", optdir, normalized) :
+             snprintf(final_name, UNMERGE_NAME_SIZE, "%s", normalized);
     return length >= 0 && length < UNMERGE_NAME_SIZE;
 }
 
@@ -1033,16 +1035,17 @@ static int unmerge_write_entry(unmerge_bundle_t *bundle, const char *name, const
     return UNMERGE_ENTRY_EXTRACTED;
 }
 
-/* Extracts one entry into 'optdir', or reads past it if its name is invalid. */
-static int unmerge_entry(unmerge_bundle_t *bundle, const char *optdir, char *name, size_t size)
+/* Extracts one entry into 'optdir' under its normalized name, or reads past it if its name is invalid. */
+static int unmerge_entry(unmerge_bundle_t *bundle, const char *optdir, const char *name, size_t size,
+                         char *normalized)
 {
     char final_name[UNMERGE_NAME_SIZE];
 
-    if (!unmerge_destination(optdir, name, final_name)) {
+    if (!unmerge_destination(optdir, name, normalized, final_name)) {
         unmerge_invalid_name(bundle->path, name);
         return unmerge_skip_entry(bundle, size, UNMERGE_ENTRY_SKIPPED);
     }
-    return unmerge_write_entry(bundle, name, final_name, size);
+    return unmerge_write_entry(bundle, normalized, final_name, size);
 }
 
 static int unmerge_list_length(char ***list)
@@ -1078,8 +1081,10 @@ static int unmerge_entries(unmerge_bundle_t *bundle, const char *optdir, char **
     char *name;
 
     while (entry != UNMERGE_ENTRY_TRUNCATED && (next = unmerge_next_entry(bundle, &size, &name)) > 0) {
-        if (entry = unmerge_entry(bundle, optdir, name, size), entry == UNMERGE_ENTRY_EXTRACTED) {
-            unmerge_list_append(unmerged_files, &file_count, name);
+        char normalized[UNMERGE_NAME_SIZE];
+
+        if (entry = unmerge_entry(bundle, optdir, name, size, normalized), entry == UNMERGE_ENTRY_EXTRACTED) {
+            unmerge_list_append(unmerged_files, &file_count, normalized);
         } else {
             result = 0;
         }
@@ -1104,9 +1109,11 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***un
 }
 
 /* Validates an entry the way UnmergeFiles() reads it, without extracting it. */
-static int unmerge_check_entry(unmerge_bundle_t *bundle, char *name, size_t size)
+static int unmerge_check_entry(unmerge_bundle_t *bundle, const char *name, size_t size)
 {
-    if (!unmerge_normalize_name(name)) {
+    char normalized[UNMERGE_NAME_SIZE];
+
+    if (!unmerge_normalize_name(name, normalized)) {
         return 0;
     }
     unmerge_copy_data(bundle, &size, NULL);

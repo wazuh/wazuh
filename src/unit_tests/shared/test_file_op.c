@@ -1757,7 +1757,7 @@ void test_w_win_reparse_tag_is_plain(void **state) {
 
 // Entry names and bundle framing of UnmergeFiles and TestUnmergeFiles under Windows rules
 
-int unmerge_normalize_name(char *name);
+int unmerge_normalize_name(const char *name, char *normalized);
 
 static char unmerge_cwd[MAX_PATH];
 static char unmerge_dir[MAX_PATH];
@@ -1801,17 +1801,15 @@ void test_unmerge_normalize_name_windows(void **state) {
         {"a\\b", "a/b"}, {"sub/c\\.\\d", "sub/c/d"}, {".\\upgrade.sh", "upgrade.sh"}, {"a\\\\b", "a/b"},
         {".hidden", ".hidden"}, {"..name", "..name"}
     };
-    char name[64];
+    char normalized[64];
 
     for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); i++) {
-        snprintf(name, sizeof(name), "%s", invalid[i]);
-        assert_int_equal(unmerge_normalize_name(name), 0);
+        assert_int_equal(unmerge_normalize_name(invalid[i], normalized), 0);
     }
 
     for (size_t i = 0; i < sizeof(valid) / sizeof(*valid); i++) {
-        snprintf(name, sizeof(name), "%s", valid[i][0]);
-        assert_int_equal(unmerge_normalize_name(name), 1);
-        assert_string_equal(name, valid[i][1]);
+        assert_int_equal(unmerge_normalize_name(valid[i][0], normalized), 1);
+        assert_string_equal(normalized, valid[i][1]);
     }
 }
 

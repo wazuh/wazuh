@@ -510,6 +510,26 @@ static void test_invalid_name_diagnostic(void** state)
     assert_int_equal(count_entries(sb->dest), 1);
 }
 
+/* Names that normalization would shorten before rejecting them are logged as the manager sent them. */
+static void test_invalid_name_logged_as_received(void** state)
+{
+    sandbox_t* sb = *state;
+    const char* names[] = {"a//b/..", "a/./b/", "sub//x/../y"};
+
+    for (size_t i = 0; i < sizeof(names) / sizeof(*names); ++i)
+    {
+        char bundle[256];
+        char expected[OS_MAXSTR];
+        snprintf(bundle, sizeof(bundle), "!0 %s\n", names[i]);
+        write_file(sb->merged, bundle);
+        snprintf(expected, sizeof(expected), "Unmerging '%s': invalid entry name '%s'.", sb->merged, names[i]);
+        expect_string(__wrap__merror, formatted_msg, expected);
+        assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, NULL), 0);
+    }
+
+    assert_int_equal(count_entries(sb->dest), 0);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] =
@@ -519,6 +539,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_relative_name_normalization, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_invalid_header_validation, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_invalid_name_diagnostic, setup_sandbox, teardown_sandbox),
+        cmocka_unit_test_setup_teardown(test_invalid_name_logged_as_received, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_unmerge_regular_entries, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_unmerge_binary_entry, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_unmerge_open_failure, setup_sandbox, teardown_sandbox),
