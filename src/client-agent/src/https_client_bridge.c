@@ -104,11 +104,13 @@ static pthread_mutex_t g_https_client_lock = PTHREAD_MUTEX_INITIALIZER;
  * that one only AFTER try_enroll_to_server() has already replaced the keystore, so it does not
  * protect `keys` and cannot be made to without holding it across enrollment.
  *
- * The writer is OS_UpdateKeys(), run on the re-enrollment thread (or on the initial-enrollment
- * path): its OS_FreeKeys() frees every keyentry AND the `id`/`raw_key` strings inside it while
- * other threads may be copying the agent's identity out of the keystore. This lock serializes
- * those readers against that writer: a reader copies the strings out under it
- * (bridge_copy_agent_identity()) and keeps no pointer into an entry past the unlock.
+ * Defensive: today no reader runs concurrently with the writer. The writer is OS_UpdateKeys()
+ * (try_enroll_to_server()), whose OS_FreeKeys() frees every keyentry AND the `id`/`raw_key`
+ * strings inside it; the one reader that takes this lock, bridge_copy_agent_identity(), runs on
+ * the re-enrollment thread after that write returns. The lock is kept so that any future reader
+ * outside that thread is serialized against the writer by construction: it copies the strings out
+ * under the lock and keeps no pointer into an entry past the unlock. Other readers of `keys`
+ * (bridge_build_config(), the legacy crypto path) do not take it.
  *
  * Lock ORDER, where both are held: g_https_client_lock first, then this one. Nothing takes them
  * the other way round. */
@@ -240,9 +242,9 @@ void *bridge_reenroll_thread(void *arg)
      * id after the key changed would desync from whatever id the manager
      * now associates with this key). Both move together, never just the key.
      *
-     * Copied out under the keystore lock rather than passed by pointer: the keystore can also be
-     * replaced by the initial-enrollment path, and no reader may dereference an entry another
-     * thread may be freeing.
+     * Copied out under the keystore lock rather than passed by pointer, so this module never holds
+     * a pointer into an entry a later keystore reload would free (the lock is defensive; see
+     * g_agent_keys_lock).
      * Lock order as documented at g_agent_keys_lock: handle lock first, this one inside it. */
     char reloaded_id[HC_MAX_ID] = {0};
     char reloaded_key[HC_MAX_KEY] = {0};

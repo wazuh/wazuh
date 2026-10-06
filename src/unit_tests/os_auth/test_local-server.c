@@ -1921,16 +1921,22 @@ static void test_reenroll_on_worker_forwards_kid_and_bearer(void **state) {
 }
 
 /* A well-formed request naming a function authd does not serve is answered as such, not as an
- * internal error. */
+ * internal error. issue_reenroll_secret is one of them: authd no longer serves it. */
 static void test_local_dispatch_unknown_function_is_9003(void **state) {
     (void)state;
+    static const char *const requests[] = {
+        "{\"function\":\"no_such_function\",\"arguments\":{\"id\":\"001\"}}",
+        "{\"function\":\"issue_reenroll_secret\",\"arguments\":{\"id\":\"001\"}}",
+    };
     EXPECT_LOG_ERROR();
 
-    cJSON *response = dispatch("{\"function\":\"no_such_function\",\"arguments\":{\"id\":\"001\"}}");
-    char *printed = cJSON_PrintUnformatted(response);
-    assert_string_equal(printed, "{\"error\":9003,\"message\":\"No such function\"}");
-    free(printed);
-    cJSON_Delete(response);
+    for (size_t i = 0; i < sizeof(requests) / sizeof(requests[0]); i++) {
+        cJSON *response = dispatch(requests[i]);
+        char *printed = cJSON_PrintUnformatted(response);
+        assert_string_equal(printed, "{\"error\":9003,\"message\":\"No such function\"}");
+        free(printed);
+        cJSON_Delete(response);
+    }
 }
 
 int main(void) {

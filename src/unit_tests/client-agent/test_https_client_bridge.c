@@ -1059,8 +1059,8 @@ static void test_reenroll_thread_succeeds_on_first_attempt(void **state)
 }
 
 /* The identity handed to the module is a copy taken under the keystore lock, not a view of the
- * keystore: OS_UpdateKeys() can free every keyentry and the strings inside it while the identity is
- * in flight. The keystore is destroyed from inside the module call, before the module reads its
+ * keystore: OS_UpdateKeys() frees every keyentry and the strings inside it, so a borrowed identity
+ * would dangle after any later reload. The keystore is destroyed from inside the module call, before the module reads its
  * arguments, so the freed strings are the very ones a borrowed identity would point at. Under ASAN
  * this case turns red if the copy is ever replaced by a borrow. */
 static void test_reenroll_thread_reloads_a_copied_identity(void **state)

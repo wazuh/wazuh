@@ -610,7 +610,8 @@ it holds on disk still changes, and it is worth knowing before you upgrade a fle
 
    ```console
    wazuh-agent: removed the fleet-wide enrollment password at /var/ossec/etc/authd.pass. 5.0 enrols
-   with an enrollment token (WAZUH_ENROLLMENT_TOKEN) and re-enrols with a per-agent secret.
+   with an enrollment token (WAZUH_ENROLLMENT_TOKEN); an agent enrolled before the upgrade holds no
+   re-enrollment secret and must be re-pointed with a token if the manager stops recognising its key.
    ```
 
 4. The agent restarts, reads the manager address out of its legacy `<client>` block, and connects
@@ -620,8 +621,8 @@ it holds on disk still changes, and it is worth knowing before you upgrade a fle
 
 So the endpoint ends up holding its key and no fleet-wide credential at all. That is the point of
 the exercise: the shared password is gone from every host. If the manager later stops recognising
-the key (an `unknown_agent` answer), the agent falls back to the credential it is configured with,
-or is re-pointed with a token, as below.
+the key (an `unknown_agent` answer), the agent has no credential left unless an enrollment password
+path was configured explicitly; re-point it with a token, as below.
 
 Two cases need an operator, and both are handled from the endpoint with `wazuh-agent-auth`
 and a token minted on the manager:

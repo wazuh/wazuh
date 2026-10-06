@@ -150,11 +150,11 @@ w_enroll_status_t try_enroll_to_server(void) {
     sleep(agt->enrollment.delay_after_enrollment);
 
     /* Under the keystore writer lock: OS_UpdateKeys() frees every keyentry and the id/raw_key
-     * strings inside it before reading the replacements, and this runs on the re-enrollment thread
-     * (or on the initial-enrollment path) while other threads may be copying the agent's identity
-     * out of that same keystore. The lock serializes those readers against this write. The
-     * crypto-method reset is inside the same critical section: it walks the entries this call just
-     * installed, and a reader seeing the keystore between the two would see them half set up. */
+     * strings inside it before reading the replacements. No reader runs concurrently today (see
+     * g_agent_keys_lock); the lock is defensive, for any future reader outside the re-enrollment
+     * thread. The crypto-method reset is inside the same critical section: it walks the entries
+     * this call just installed, and a reader seeing the keystore between the two would see them
+     * half set up. */
     w_agent_keys_write_lock();
     /* Successful enroll, read keys */
     OS_UpdateKeys(&keys);
