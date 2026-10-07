@@ -18,12 +18,42 @@
 #include "../../analysisd/cdb/cdb.h"
 #include "../../analysisd/analysisd.h"
 #include "../../analysisd/rules.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 void os_count_rules(RuleNode *node, int *num_rules);
 void os_remove_rulenode(RuleNode *node, RuleInfo **rules, int *pos, int *max_size);
 void os_remove_ruleinfo(RuleInfo *ruleinfo);
 void os_remove_rules_list(RuleNode *node);
-int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg);
+int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg, w_rule_tree_build_t *build);
+RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule, w_rule_tree_build_t *build);
+bool w_rule_tree_add_node(w_rule_tree_build_t *build, const RuleInfo *read_rule);
+
+/* helpers */
+
+static RuleInfo *create_rule(int sigid, int level, const char *group) {
+    RuleInfo *rule;
+    os_calloc(1, sizeof(RuleInfo), rule);
+    rule->sigid = sigid;
+    rule->level = level;
+    os_strdup(group, rule->group);
+    os_strdup("rules.xml", rule->file);
+    return rule;
+}
+
+static RuleNode *create_node(RuleInfo *rule) {
+    RuleNode *node;
+    os_calloc(1, sizeof(RuleNode), node);
+    node->ruleinfo = rule;
+    return node;
+}
+
+/* Three top-level rules (100, 200 and 300) with level 300 and group "parent" */
+static RuleNode *create_parents(void) {
+    RuleNode *first = create_node(create_rule(100, 300, "parent,"));
+    first->next = create_node(create_rule(200, 300, "parent,"));
+    first->next->next = create_node(create_rule(300, 300, "parent,"));
+    return first;
+}
 
 /* setup/teardown */
 
@@ -315,6 +345,236 @@ void test_os_remove_rules_list_OK(void **state)
 
 }
 
+/* w_rule_tree_add_node */
+void test_w_rule_tree_add_node_null_build(void **state)
+{
+    assert_true(w_rule_tree_add_node(NULL, NULL));
+}
+
+void test_w_rule_tree_add_node_no_limit(void **state)
+{
+    w_rule_tree_build_t build = {0};
+
+    for (int i = 0; i < 3; i++) {
+        assert_true(w_rule_tree_add_node(&build, NULL));
+    }
+
+    assert_int_equal(build.node_count, 3);
+    assert_int_equal(build.rule_node_count, 3);
+    assert_false(build.limit_reached);
+}
+
+void test_w_rule_tree_add_node_limit(void **state)
+{
+    w_rule_tree_build_t build = {.node_limit = 2};
+
+    assert_true(w_rule_tree_add_node(&build, NULL));
+    assert_true(w_rule_tree_add_node(&build, NULL));
+    assert_false(w_rule_tree_add_node(&build, NULL));
+
+    assert_int_equal(build.node_count, 2);
+    assert_int_equal(build.rule_node_count, 2);
+    assert_true(build.limit_reached);
+
+    // Once reached, the build stays stopped
+    build.node_limit = 0;
+    assert_false(w_rule_tree_add_node(&build, NULL));
+    assert_int_equal(build.node_count, 2);
+}
+
+void test_w_rule_tree_add_node_warning_on_crossing(void **state)
+{
+    OSList list_msg = {0};
+    w_rule_tree_build_t build = {.node_warning = 2, .log_msg = &list_msg};
+    RuleInfo *rule = create_rule(100, 300, "parent,");
+
+    // Reaching the threshold is not exceeding it
+    assert_true(w_rule_tree_add_node(&build, rule));
+    assert_true(w_rule_tree_add_node(&build, rule));
+    assert_false(build.warning_emitted);
+
+    // The node that exceeds it is reported immediately, to the log and to the requester
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(7621): The rule tree exceeded the warning threshold of 2 nodes while adding rule '100' from 'rules.xml'.");
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
+    expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg,
+                  "(7621): The rule tree exceeded the warning threshold of 2 nodes while adding rule '100' from 'rules.xml'.");
+
+    assert_true(w_rule_tree_add_node(&build, rule));
+    assert_true(build.warning_emitted);
+
+    // Only once per build
+    assert_true(w_rule_tree_add_node(&build, rule));
+    assert_int_equal(build.node_count, 4);
+
+    os_remove_ruleinfo(rule);
+}
+
+void test_w_rule_tree_add_node_warning_without_log_msg(void **state)
+{
+    w_rule_tree_build_t build = {.node_warning = 1, .node_count = 1};
+    RuleInfo *rule = create_rule(100, 300, "parent,");
+
+    // Without a requester list, the warning only goes to the log
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(7621): The rule tree exceeded the warning threshold of 1 nodes while adding rule '100' from 'rules.xml'.");
+
+    assert_true(w_rule_tree_add_node(&build, rule));
+    assert_true(build.warning_emitted);
+
+    os_remove_ruleinfo(rule);
+}
+
+/* _OS_AddRule */
+void test__OS_AddRule_limit_reached(void **state)
+{
+    w_rule_tree_build_t build = {.node_limit = 1, .node_count = 1};
+    RuleInfo *rule = create_rule(100, 300, "parent,");
+
+    assert_null(_OS_AddRule(NULL, rule, &build));
+
+    assert_true(build.limit_reached);
+    assert_int_equal(build.node_count, 1);
+    assert_int_equal(build.rule_node_count, 0);
+
+    os_remove_ruleinfo(rule);
+}
+
+/* OS_AddRule */
+void test_OS_AddRule_limit_reached(void **state)
+{
+    w_rule_tree_build_t build = {.node_limit = 1};
+    RuleNode *list = NULL;
+    RuleInfo *first = create_rule(1, 0, "root,");
+    RuleInfo *second = create_rule(2, 0, "root,");
+
+    assert_int_equal(OS_AddRule(first, &list, &build), 0);
+    assert_non_null(list);
+    assert_ptr_equal(list->ruleinfo, first);
+
+    assert_int_equal(OS_AddRule(second, &list, &build), RULE_TREE_LIMIT_REACHED);
+    assert_null(list->next);
+    assert_int_equal(build.node_count, 1);
+
+    os_remove_ruleinfo(second);
+    os_remove_rules_list(list);
+}
+
+/* OS_AddChild */
+void test_OS_AddChild_if_group_no_build(void **state)
+{
+    RuleNode *tree = create_parents();
+    RuleInfo *child = create_rule(400, 500, "child,");
+    os_strdup("parent", child->if_group);
+
+    assert_int_equal(OS_AddChild(child, &tree, NULL, NULL), 0);
+
+    assert_ptr_equal(tree->child->ruleinfo, child);
+    assert_ptr_equal(tree->next->child->ruleinfo, child);
+    assert_ptr_equal(tree->next->next->child->ruleinfo, child);
+
+    // The child RuleInfo appears in three nodes and must be released once
+    os_remove_rules_list(tree);
+}
+
+void test_OS_AddChild_if_group_limit_mid_rule(void **state)
+{
+    w_rule_tree_build_t build = {.node_limit = 4, .node_count = 3};
+    RuleNode *tree = create_parents();
+    RuleInfo *child = create_rule(400, 500, "child,");
+    os_strdup("parent", child->if_group);
+
+    assert_int_equal(OS_AddChild(child, &tree, NULL, &build), RULE_TREE_LIMIT_REACHED);
+
+    assert_ptr_equal(tree->child->ruleinfo, child);
+    assert_null(tree->next->child);
+    assert_null(tree->next->next->child);
+    assert_int_equal(build.node_count, 4);
+    assert_int_equal(build.rule_node_count, 1);
+
+    // The tree references the child RuleInfo: it is released with the tree
+    os_remove_rules_list(tree);
+}
+
+void test_OS_AddChild_if_sid_limit_mid_rule(void **state)
+{
+    w_rule_tree_build_t build = {.node_limit = 4, .node_count = 3};
+    RuleNode *tree = create_parents();
+    RuleInfo *child = create_rule(400, 500, "child,");
+    os_strdup("100, 200", child->if_sid);
+
+    // The second if_sid entry is not processed after the limit is reached
+    assert_int_equal(OS_AddChild(child, &tree, NULL, &build), RULE_TREE_LIMIT_REACHED);
+
+    assert_ptr_equal(tree->child->ruleinfo, child);
+    assert_null(tree->next->child);
+    assert_int_equal(build.rule_node_count, 1);
+
+    os_remove_rules_list(tree);
+}
+
+void test_OS_AddChild_if_level_limit_mid_rule(void **state)
+{
+    w_rule_tree_build_t build = {.node_limit = 5, .node_count = 3};
+    RuleNode *tree = create_parents();
+    RuleInfo *child = create_rule(400, 500, "child,");
+    os_strdup("3", child->if_level);
+
+    assert_int_equal(OS_AddChild(child, &tree, NULL, &build), RULE_TREE_LIMIT_REACHED);
+
+    assert_ptr_equal(tree->child->ruleinfo, child);
+    assert_ptr_equal(tree->next->child->ruleinfo, child);
+    assert_null(tree->next->next->child);
+    assert_int_equal(build.rule_node_count, 2);
+
+    os_remove_rules_list(tree);
+}
+
+void test_OS_AddChild_warning_then_limit_in_same_rule(void **state)
+{
+    OSList list_msg = {0};
+    w_rule_tree_build_t build = {.node_warning = 4, .node_limit = 5, .node_count = 3, .log_msg = &list_msg};
+    RuleNode *tree = create_parents();
+    RuleInfo *child = create_rule(400, 500, "child,");
+    os_strdup("parent", child->if_group);
+
+    // The rule exceeds the warning threshold before reaching the limit: the warning is not lost
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(7621): The rule tree exceeded the warning threshold of 4 nodes while adding rule '400' from 'rules.xml'.");
+    expect_value(__wrap__os_analysisd_add_logmsg, level, LOGLEVEL_WARNING);
+    expect_value(__wrap__os_analysisd_add_logmsg, list, &list_msg);
+    expect_string(__wrap__os_analysisd_add_logmsg, formatted_msg,
+                  "(7621): The rule tree exceeded the warning threshold of 4 nodes while adding rule '400' from 'rules.xml'.");
+
+    assert_int_equal(OS_AddChild(child, &tree, NULL, &build), RULE_TREE_LIMIT_REACHED);
+
+    assert_true(build.warning_emitted);
+    assert_int_equal(build.node_count, 5);
+    assert_int_equal(build.rule_node_count, 2);
+
+    os_remove_rules_list(tree);
+}
+
+void test_OS_AddChild_limit_before_first_node(void **state)
+{
+    w_rule_tree_build_t build = {.node_limit = 3, .node_count = 3};
+    RuleNode *tree = create_parents();
+    RuleInfo *child = create_rule(400, 500, "child,");
+    os_strdup("parent", child->if_group);
+
+    // The limit stops the rule: no "group not found" warning is logged
+    assert_int_equal(OS_AddChild(child, &tree, NULL, &build), RULE_TREE_LIMIT_REACHED);
+
+    assert_null(tree->child);
+    assert_null(tree->next->child);
+    assert_int_equal(build.rule_node_count, 0);
+
+    // No node references the child RuleInfo: the caller releases it
+    os_remove_ruleinfo(child);
+    os_remove_rules_list(tree);
+}
+
 
 int main(void)
 {
@@ -329,7 +589,24 @@ int main(void)
         cmocka_unit_test(test_os_remove_ruleinfo_NULL),
         cmocka_unit_test_setup_teardown(test_os_remove_ruleinfo_OK, setup_AR, teardown_AR),
         // Tests os_remove_rules_list
-        cmocka_unit_test_setup_teardown(test_os_remove_rules_list_OK, setup_AR, teardown_AR)
+        cmocka_unit_test_setup_teardown(test_os_remove_rules_list_OK, setup_AR, teardown_AR),
+        // Tests w_rule_tree_add_node
+        cmocka_unit_test(test_w_rule_tree_add_node_null_build),
+        cmocka_unit_test(test_w_rule_tree_add_node_no_limit),
+        cmocka_unit_test(test_w_rule_tree_add_node_limit),
+        cmocka_unit_test(test_w_rule_tree_add_node_warning_on_crossing),
+        cmocka_unit_test(test_w_rule_tree_add_node_warning_without_log_msg),
+        // Tests _OS_AddRule
+        cmocka_unit_test(test__OS_AddRule_limit_reached),
+        // Tests OS_AddRule
+        cmocka_unit_test(test_OS_AddRule_limit_reached),
+        // Tests OS_AddChild
+        cmocka_unit_test(test_OS_AddChild_if_group_no_build),
+        cmocka_unit_test(test_OS_AddChild_if_group_limit_mid_rule),
+        cmocka_unit_test(test_OS_AddChild_if_sid_limit_mid_rule),
+        cmocka_unit_test(test_OS_AddChild_if_level_limit_mid_rule),
+        cmocka_unit_test(test_OS_AddChild_warning_then_limit_in_same_rule),
+        cmocka_unit_test(test_OS_AddChild_limit_before_first_node),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

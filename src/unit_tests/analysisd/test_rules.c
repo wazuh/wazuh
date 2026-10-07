@@ -19,6 +19,7 @@
 #include "../../analysisd/analysisd.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/os_xml/os_xml_wrappers.h"
+#include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 
 char *loadmemory(char *at, const char *str, OSList* log_msg);
 int get_info_attributes(char **attributes, char **values, OSList* log_msg);
@@ -857,6 +858,62 @@ void w_free_rules_tmp_params_null(void ** state){
     w_free_rules_tmp_params(NULL);
 }
 
+// w_rule_tree_build_init
+void test_w_rule_tree_build_init(void ** state)
+{
+    w_rule_tree_build_t build;
+    OSList list_msg = {0};
+    memset(&build, 0xff, sizeof(build));
+
+    Config.rule_tree_node_warning = 10;
+    Config.rule_tree_node_limit = 20;
+
+    w_rule_tree_build_init(&build, &list_msg);
+
+    assert_int_equal(build.node_count, 0);
+    assert_int_equal(build.rule_node_count, 0);
+    assert_int_equal(build.node_warning, 10);
+    assert_int_equal(build.node_limit, 20);
+    assert_false(build.warning_emitted);
+    assert_false(build.limit_reached);
+    assert_ptr_equal(build.log_msg, &list_msg);
+}
+
+// w_rule_tree_read_config
+void test_w_rule_tree_read_config_ok(void ** state)
+{
+    will_return(__wrap_getDefine_Int, 100);
+    will_return(__wrap_getDefine_Int, 200);
+
+    w_rule_tree_read_config();
+
+    assert_int_equal(Config.rule_tree_node_warning, 100);
+    assert_int_equal(Config.rule_tree_node_limit, 200);
+}
+
+void test_w_rule_tree_read_config_limit_disabled(void ** state)
+{
+    will_return(__wrap_getDefine_Int, 100);
+    will_return(__wrap_getDefine_Int, 0);
+
+    w_rule_tree_read_config();
+
+    assert_int_equal(Config.rule_tree_node_warning, 100);
+    assert_int_equal(Config.rule_tree_node_limit, 0);
+}
+
+void test_w_rule_tree_read_config_warning_not_lower(void ** state)
+{
+    will_return(__wrap_getDefine_Int, 200);
+    will_return(__wrap_getDefine_Int, 200);
+
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "(5109): Invalid rule tree thresholds: 'analysisd.rule_tree_node_warning' (200) "
+                  "must be lower than 'analysisd.rule_tree_node_limit' (200).");
+
+    expect_assert_failure(w_rule_tree_read_config());
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -898,6 +955,12 @@ int main(void)
         cmocka_unit_test(w_free_rules_tmp_params_only_rule_arr),
         cmocka_unit_test(w_free_rules_tmp_params_only_params),
         cmocka_unit_test(w_free_rules_tmp_params_null),
+        // Test w_rule_tree_build_init
+        cmocka_unit_test(test_w_rule_tree_build_init),
+        // Test w_rule_tree_read_config
+        cmocka_unit_test(test_w_rule_tree_read_config_ok),
+        cmocka_unit_test(test_w_rule_tree_read_config_limit_disabled),
+        cmocka_unit_test(test_w_rule_tree_read_config_warning_not_lower),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
