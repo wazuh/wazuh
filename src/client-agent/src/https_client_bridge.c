@@ -1292,7 +1292,7 @@ static void bridge_shared_restore(hc_handle *handle)
 static void bridge_handle_unmerge_failure(hc_handle *handle)
 {
     merror("Failed to unmerge the downloaded configuration into '%s'; "
-           "keeping the previously applied files.", SHAREDCFG_DIR);
+           "restoring the previously applied configuration.", SHAREDCFG_DIR);
 
     /* Manager-visible report, now over /stateless. */
     char unmerge_fail_msg[OS_MAXSTR];

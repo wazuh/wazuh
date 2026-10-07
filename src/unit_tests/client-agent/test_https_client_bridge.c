@@ -1635,7 +1635,7 @@ static void expect_unmerge_failure_report(void)
 {
     expect_string(__wrap__merror, formatted_msg,
                   "Failed to unmerge the downloaded configuration into '" SHAREDCFG_DIR "'; "
-                  "keeping the previously applied files.");
+                  "restoring the previously applied configuration.");
     /* AG_IN_UNMERGE manager-visible report, now submitted to the /stateless
      * accumulator like any other event. */
     expect_value(__wrap_hc_submit_event, handle, FAKE_HANDLE);
