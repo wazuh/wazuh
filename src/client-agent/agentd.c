@@ -42,6 +42,13 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         goDaemon();
     }
 
+    /* Resolve the server address only after daemonizing: getaddrinfo() is not safe to call
+     * in a child forked without exec() once the parent has used it (it crashes on macOS 26) */
+    if (!Validate_IPv6_Link_Local_Interface(agt->server)){
+        merror(AG_INV_INT);
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
+    }
+
     /* Set group ID */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));

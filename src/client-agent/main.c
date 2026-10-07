@@ -217,11 +217,6 @@ int main(int argc, char **argv)
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
-    if (!Validate_IPv6_Link_Local_Interface(agt->server)){
-        merror(AG_INV_INT);
-        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
-    }
-
     if (agt->notify_time == 0) {
         agt->notify_time = NOTIFY_TIME;
     }
@@ -242,6 +237,11 @@ int main(int argc, char **argv)
 
     /* Exit if test config */
     if (test_config) {
+        /* -t exits without forking, so resolving the server address here is safe */
+        if (!Validate_IPv6_Link_Local_Interface(agt->server)){
+            merror(AG_INV_INT);
+            mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
+        }
         exit(0);
     }
 
