@@ -380,4 +380,24 @@ TEST_F(WindowsHelperTest, getIpV6AddressZeroLengthBufferReturnsEmptyString)
     EXPECT_EQ(Utils::NetworkWindowsHelper::getIpV6Address(emptyAddr.data()), "");
 }
 
+TEST_F(WindowsHelperTest, isLocalFixedPathAcceptsLocalDrive)
+{
+    EXPECT_TRUE(Utils::isLocalFixedPath(R"(C:\Python312\)"));
+    EXPECT_TRUE(Utils::isLocalFixedPath("C:/Program Files/nodejs"));
+}
+
+TEST_F(WindowsHelperTest, isLocalFixedPathRejectsNetworkAndDevicePaths)
+{
+    const std::vector<std::string> paths
+    {
+        R"(\\h\s\)", "//h/s/", R"(/\h\s)", R"(\\?\UNC\h\s)", "//?/UNC/h/s", R"(\\.\pipe\x)",
+        R"(\??\UNC\h)", R"(\\?\C:\Python312)", "C:", "C:Python", R"(1:\x)", ""
+    };
+
+    for (const auto& path : paths)
+    {
+        EXPECT_FALSE(Utils::isLocalFixedPath(path)) << path;
+    }
+}
+
 #endif
