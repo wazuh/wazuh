@@ -3374,7 +3374,7 @@ void test_remoted_module_https_config_defaults(void** state)
 
     // __wrap_getDefine_Int_default is a plain FIFO mock(), so these MUST stay in the same order
     // as the getDefine_Int_default() calls in remoted_module_https_config(): 14 http_*, then
-    // 4 memory-management, then 7 downstream_*, then 4 auth_*. Adding an option there without
+    // 5 memory-management, then 7 downstream_*, then 4 auth_*. Adding an option there without
     // adding a value here makes the queue run dry and cmocka aborts the test.
     // http_*
     will_return(__wrap_getDefine_Int_default, 0); // http_io_threads (0 = auto, cpp_get_nproc())
@@ -3398,6 +3398,7 @@ void test_remoted_module_https_config_defaults(void** state)
     will_return(__wrap_getDefine_Int_default, 256);
     will_return(__wrap_getDefine_Int_default, 128);
     will_return(__wrap_getDefine_Int_default, 6); // max_requests_per_agent
+    will_return(__wrap_getDefine_Int_default, 0); // max_inflight_bytes_per_agent (0 = half the budget)
     // downstream_*
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
@@ -3434,6 +3435,7 @@ void test_remoted_module_https_config_defaults(void** state)
     assert_int_equal(rm_config.max_parallel_connections, 256);
     assert_int_equal(rm_config.max_deferred_requests, 128);
     assert_int_equal(rm_config.max_requests_per_agent, 6);
+    assert_int_equal(rm_config.max_inflight_bytes_per_agent, 0);
     assert_int_equal(rm_config.downstream_connect_timeout, 2);
     assert_int_equal(rm_config.downstream_write_timeout, 5);
     assert_int_equal(rm_config.downstream_response_timeout, 5);
@@ -3479,6 +3481,7 @@ void test_remoted_module_https_config_custom_values(void** state)
     will_return(__wrap_getDefine_Int_default, 256);
     will_return(__wrap_getDefine_Int_default, 128);
     will_return(__wrap_getDefine_Int_default, 12); // max_requests_per_agent
+    will_return(__wrap_getDefine_Int_default, 100663296); // max_inflight_bytes_per_agent
     // downstream_*
     will_return(__wrap_getDefine_Int_default, 7);
     will_return(__wrap_getDefine_Int_default, 11);
@@ -3515,6 +3518,7 @@ void test_remoted_module_https_config_custom_values(void** state)
     assert_int_equal(rm_config.max_parallel_connections, 256);
     assert_int_equal(rm_config.max_deferred_requests, 128);
     assert_int_equal(rm_config.max_requests_per_agent, 12);
+    assert_int_equal(rm_config.max_inflight_bytes_per_agent, 100663296);
     assert_int_equal(rm_config.downstream_connect_timeout, 7);
     assert_int_equal(rm_config.downstream_write_timeout, 11);
     assert_int_equal(rm_config.downstream_response_timeout, 13);
@@ -3541,7 +3545,7 @@ void test_remoted_module_https_config_decoded_cap_below_wire_cap(void** state)
         will_return(__wrap_getDefine_Int_default, 1); // http_*
     }
     will_return(__wrap_getDefine_Int_default, 1); // http_content_encoding_enabled
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 5; ++i) {
         will_return(__wrap_getDefine_Int_default, 1); // memory-management
     }
     for (int i = 0; i < 7; ++i) {
@@ -3666,7 +3670,7 @@ void test_remoted_enrollment_config_read_config_fails_closed(void** state)
 //
 // w_remoted_build_module_config() calls remoted_module_https_config() internally, so
 // each test below must queue the same __wrap_getDefine_Int_default return values
-// (14 http_*, then 4 memory-management, then 7 downstream_*, then 4 auth_*, in that
+// (14 http_*, then 5 memory-management, then 7 downstream_*, then 4 auth_*, in that
 // fixed order) as the remoted_module_https_config tests above, even though these
 // tests assert on the <https>-driven fields instead. Each also queues one
 // __wrap_w_mconf_section scenario (see remoted_enrollment_config tests above) plus its 5
@@ -3714,6 +3718,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     will_return(__wrap_getDefine_Int_default, 512);
     will_return(__wrap_getDefine_Int_default, 256);
     will_return(__wrap_getDefine_Int_default, 6); // max_requests_per_agent
+    will_return(__wrap_getDefine_Int_default, 0); // max_inflight_bytes_per_agent (0 = half the budget)
     // downstream_*
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
@@ -3945,6 +3950,7 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     will_return(__wrap_getDefine_Int_default, 512);
     will_return(__wrap_getDefine_Int_default, 256);
     will_return(__wrap_getDefine_Int_default, 6); // max_requests_per_agent
+    will_return(__wrap_getDefine_Int_default, 0); // max_inflight_bytes_per_agent (0 = half the budget)
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 5);

@@ -168,9 +168,10 @@ namespace remoted::endpoints
                                        "count"),
             manager.getOrCreateCounter(
                 METRIC_AUTH_REJECT_AGENT_BUSY,
-                "Rejections: an authenticated agent already had 'remoted.max_requests_per_agent' "
-                "requests open; answered 503 before its body was decoded (never reached by an "
-                "honest agent with the default -- investigate the agent)",
+                "Rejections: an authenticated agent already held its share -- "
+                "'remoted.max_requests_per_agent' open requests or 'remoted.max_inflight_bytes_per_agent' "
+                "decoded bytes; answered 503 (never reached by an honest agent with the defaults -- "
+                "investigate the agent)",
                 "count")};
     }
 

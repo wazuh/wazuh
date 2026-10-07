@@ -17,7 +17,7 @@ Three documentation layers cover this module, each with its own job:
 
 - **This README** — the developer's map: how the pieces fit, which invariants are load-bearing,
   where to touch what, and WHY it is built this way ([requirements](#requirements),
-  [design decisions](#design-decisions-d1d27), [developer FAQ](#developer-faq)).
+  [design decisions](#design-decisions-d1d28), [developer FAQ](#developer-faq)).
 - **[`docs/ref/modules/inventory-sync-server/`](../../../docs/ref/modules/inventory-sync-server/README.md)**
   — the operator- and integrator-facing reference:
   [architecture](../../../docs/ref/modules/inventory-sync-server/architecture.md),
@@ -38,7 +38,7 @@ purge means for enrollment.
 
 Distilled (and translated) from the migration's design corpus, where they were extracted from the
 legacy module's observable behavior before this rewrite. They are inlined here because the corpus
-is not part of the repository, and the D-numbers they cite are the [design decisions](#design-decisions-d1d27)
+is not part of the repository, and the D-numbers they cite are the [design decisions](#design-decisions-d1d28)
 below. Status: **kept** = the module provides it; **superseded by D-n** = deliberately replaced.
 
 ### Functional (RF)
@@ -56,7 +56,7 @@ below. Status: **kept** = the module provides it; **superseded by D-n** = delibe
 | RF-9 | VD orchestration: trigger VDFirst/VDSync with their gates (feed ready, `feed_offset` validation, VDFirst dedup) and expose in-flight-session queries + per-agent lock to the scanner | kept (as the scan lane + `ServerScanCoordinator`; the scanner gets the per-agent fence and quiesce wait, not a query of in-flight sessions) |
 | RF-10 | Whole-agent deletion sweeping the agent's indices, retriable | kept, and widened past the original `wazuh-states-*` to `AGENT_DELETION_SCOPE_BY_QUERY` + `AGENT_DELETION_SCOPE_BY_ID` (`POST /_internal/agents/delete`; the Task Manager's dispatcher is the only caller, authd the only producer — D21) |
 | RF-11 | `_id = {cluster}_{agent}_{id}` and cluster scoping on every operation | kept |
-| RF-12 | Admission limits: session cap and a global byte budget | kept (`max_inflight_bytes`, `max_parallel_connections`, `sync_queue_bytes`) |
+| RF-12 | Admission limits: session cap and a global byte budget | kept (`max_inflight_bytes`, `max_parallel_connections`, `sync_queue_bytes`), plus a per-agent cap on pending sessions (D28) |
 | RF-13 | Recovery on agent restart (new session replaces the old) and on modulesd restart (transient state is discardable) | kept (trivially: there is no session state — D1/D9) |
 
 ### Non-functional (RNF)
@@ -65,7 +65,7 @@ below. Status: **kept** = the module provides it; **superseded by D-n** = delibe
 |---|---|---|
 | RNF-1 | Preserve the 9 security controls: anti-spoofing, index allowlists, authoritative `wazuh.*` overlay, strict JSON, `external_gte` guard, idempotency, admission quota, cluster isolation | [Validation](#validation-syncfullsessionvalidator), [the allowlist](#the-allowlist-syncstateindexallowlisthpp), the overlay in `sessionProcessor` |
 | RNF-2 | No head-of-line blocking: no sleeps or unbounded waits on the completion path | sharding + the VD lane; a slow agent/scan delays only its shard/lane |
-| RNF-3 | Explicit backpressure at admission and ingestion (no silent drops) | the four `503` gates; every refusal is an HTTP answer |
+| RNF-3 | Explicit backpressure at admission and ingestion (no silent drops) | the five `503` gates (D28's per-agent cap included); every refusal is an HTTP answer |
 | RNF-4 | Every abort observable by the agent | deferred responders always answer (weak captures → `503`; batch abandoned on stop → `503`) |
 | RNF-5 | Deterministic teardown; no half-built startup states | [Lifecycle](#lifecycle-the-facade): phased build, reverse teardown, startup gate |
 | RNF-6 | Unit-testability of the orchestration | seams: `IIndexerConnectorSync`, `IVdScanner`, test hooks ([Tests](#tests)) |
@@ -105,7 +105,7 @@ pipeline satisfies it structurally rather than by discipline:
 | REQ-VDQ-9 | No RocksDB in the VD path (or at all) | kept (D9 — the module has NO local store) |
 | REQ-VDQ-10 | Queue observability: depth, ages, outcomes, durations | kept (`vd.lane.*`, `vd.scans.*` metrics — see [Statistics](#statistics-d18)) |
 
-## Design decisions (D1–D27)
+## Design decisions (D1–D28)
 
 The numbered decisions the requirements above refer to, in their original numbering. The
 [official architecture page](../../../docs/ref/modules/inventory-sync-server/architecture.md)
@@ -140,6 +140,7 @@ carries the narrative version of the load-bearing ones; this is the complete cat
 | D25 | A `/stateful` message may not reach more bytes than it carries. After the Verifier passes, validation charges every string, byte vector, vector slot and table that the message can reach the **minimum** each one takes when encoded on its own. It answers `400` when the total is larger than the decoded body. Strings are charged 4 + length + 1, byte vectors 4 + length, each vector slot 4, and each table 4 plus 4 for each offset field it carries. The walk covers the `Start` strings and its `index`/`groups`, `SyncData.values`/`contexts` and `Cleans.items`. This corrects D24's "the Verifier bounds it": the Verifier bounds depth and the table count (1,000,000), but it never checks that two offsets point at different bytes. N four-byte slots can therefore name one multi-MiB string or table, and every slot was copied (`Start`) or parsed, dumped and staged (`SyncData`) again. A sub-5 MiB body asked for terabytes, and that is a modulesd OOM. A buffer whose objects are not shared always passes, because each one really occupies at least what it is charged. The rule therefore becomes a wire contract: agents must not deduplicate strings or tables in a `FullSession` (`CreateSharedString` and the like), and none in this tree does. Runs before any copy or parse: O(elements), no allocation |
 | D26 | `Start.groups` carries at most 128 entries of at most 255 bytes each, mirroring `MAX_GROUPS_PER_MULTIGROUP`/`MAX_GROUP_NAME` (`defs.h` is not included from C++, so the values are restated in `fullSessionValidator.hpp`). `Start.index` carries at most 64 entries of at most 255 bytes each (the indexer's limit on an index name). Anything over is `400`. D25 already stops aliasing; these caps bound what an honest-shaped message can make every document repeat, because `groups` is copied into each staged document |
 | D27 | A document whose `_id` (`{cluster}_{agent}_{id}`) is longer than 512 bytes, the indexer's limit, is skipped with a WARN like any other bad document (D24's family), instead of being staged and rejected by the indexer. That rejection would fail the whole group commit and every co-batched session with it, on every retry. Documents the strict state mapping would reject are deliberately **not** pre-validated: mirroring the templates in the server would be a second copy of the mapping to keep in sync. Such a document still fails its batch through the [failure mapping](#the-pipeline-syncsyncpipeline-syncsessionprocessor). Attributing a rejection to the session that owns the item is a known follow-up, not done here |
+| D28 | One agent may have only `inventory_sync_server_max_sessions_per_agent` sessions (default 2) admitted and not yet answered, across the pipeline and the scan lane, counted by the validated agent id. One more is answered `503` and counted as `sync.agent_busy.total`. remoted caps what an agent has open on its side, but it gives up at its downstream deadline (`remoted.downstream_stateful_response_timeout`, 20 s) and frees the agent's slot there, while nothing here cancels admitted work. Without a count of its own, one agent could re-send on every timeout and fill the global `sync_queue_bytes` and the scan lane for everyone. The count is taken right after validation (`AgentSessionLimiter`) and released when the session is answered: the endpoint wraps the responder in an `AdmittedSessionResponder`, and the worker, the lane or a shutdown always answers through it, whether or not anyone is still listening. Two is the session being applied plus one re-send after such a timeout. The re-sends after that are refused instead of queued as duplicates of work already in progress. Kept as a count, not deduplicated by session: the server has no session id (D3) |
 
 ## Layout
 
@@ -325,6 +326,8 @@ sequenceDiagram
     Note over S: validateFullSession(): verifier → FullSession →<br/>shape → identity (403) → mode×payload → per-payload
     alt invalid
         S-->>R: 400 / 403
+    else agent already has max_sessions_per_agent pending (D28)
+        S-->>R: 503 (sync.agent_busy.total)
     else VD data session
         alt feed still downloading (D17)
             S-->>R: 503 + Retry-After, NOTHING processed

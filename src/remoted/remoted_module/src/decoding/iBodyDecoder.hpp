@@ -14,6 +14,8 @@
 
 #include "auth/authTypes.hpp" // remoted::auth::{AuthError, Payload}
 
+#include <cstddef>
+#include <functional>
 #include <string_view>
 
 namespace remoted::decoding
@@ -45,6 +47,36 @@ namespace remoted::decoding
     ContentEncoding parseContentEncoding(std::string_view header);
 
     /**
+     * @brief Caller-side charge for the memory a decode takes, called as the decoded output grows
+     *        and BEFORE it does, with the bytes about to be added.
+     *
+     * Returning false refuses that growth: decode() then fails with AuthError::BodyTooLarge, and the
+     * caller -- who knows why it refused -- may answer differently. An empty function charges
+     * nothing. This is how AuthGateway counts an agent's byte share DURING decompression rather
+     * than after, so a frame that only claims a large size cannot hold the shared budget meanwhile.
+     */
+    using ChargeFn = std::function<bool(std::size_t bytes)>;
+
+    /**
+     * @brief Gives back bytes an earlier ChargeFn call accepted, for a growth that did not happen
+     *        after all (the decoder's own shared-budget reservation refused it).
+     *
+     * Without it the decoder's retry of a refused doubling at exactly the bytes needed charges the
+     * caller a second time, and the caller keeps both for as long as the decoded body lives.
+     */
+    using RefundFn = std::function<void(std::size_t bytes)>;
+
+    /**
+     * @brief The caller's side of a decode's memory accounting. Both empty (`{}`) charges nothing;
+     *        `refund` must be set whenever `charge` is.
+     */
+    struct DecodeCharge
+    {
+        ChargeFn charge;
+        RefundFn refund;
+    };
+
+    /**
      * @brief Post-authentication body-decoding step.
      *
      * Lets the `Content-Encoding` contract live entirely outside the auth layer: AuthGateway is
@@ -69,11 +101,16 @@ namespace remoted::decoding
          * @param encoding The request's parsed Content-Encoding.
          * @param payload  The verified body, REPLACED in place with the decoded bytes on success.
          *                 ContentEncoding::None must leave it untouched.
+         * @param charge   `charge.charge` is called before every growth of the decoded output (see
+         *                 ChargeFn), and `charge.refund` gives back a charged growth the decoder could
+         *                 not make; may be empty. Not called for ContentEncoding::None, which
+         *                 allocates nothing.
          * @return AuthError::None on success (including the None passthrough), otherwise the
          *         rejection AuthGateway answers with -- e.g. UnsupportedContentEncoding,
          *         MalformedContentEncoding or BodyTooLarge.
          */
-        virtual remoted::auth::AuthError decode(ContentEncoding encoding, remoted::auth::Payload& payload) const = 0;
+        virtual remoted::auth::AuthError
+        decode(ContentEncoding encoding, remoted::auth::Payload& payload, const DecodeCharge& charge) const = 0;
     };
 
 } // namespace remoted::decoding

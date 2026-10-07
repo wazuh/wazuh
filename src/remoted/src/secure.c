@@ -318,6 +318,12 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     // agent cannot hold every slot of the fleet-wide limits above (503 over it). An honest agent
     // peaks at 5 (four client threads plus a WPK download), hence the default of 6.
     rm_config->max_requests_per_agent = getDefine_Int_default("remoted", "max_requests_per_agent", 1, 65536, 6);
+    // max_inflight_bytes_per_agent caps the decoded-body bytes ONE agent may hold across its open
+    // requests. 0 (the default) lets the module use half of max_inflight_bytes: room for a whole
+    // vulnerability-detection first sync, which the agent cannot split, with the other half left to
+    // the rest of the fleet.
+    rm_config->max_inflight_bytes_per_agent =
+        getDefine_Int_default("remoted", "max_inflight_bytes_per_agent", 0, 1073741824, 0);
 
     // Downstream (async UDS client to the engine's event ingress) tunables.
     rm_config->downstream_connect_timeout = getDefine_Int_default("remoted", "downstream_connect_timeout", 1, 60, 2);

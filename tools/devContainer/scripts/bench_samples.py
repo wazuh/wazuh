@@ -187,6 +187,7 @@ REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.auth.reject.token_unknown", "auth_reject_token_unknown"),
     ("remoted.auth.reject.token_expired", "auth_reject_token_expired"),
     ("remoted.auth.reject.token_revoked", "auth_reject_token_revoked"),
+    ("remoted.auth.reject.agent_busy", "auth_reject_agent_busy"),
     # Keystore health: agents and entries_skipped are levels, the totals are cumulative.
     ("remoted.auth.keystore.agents", "keystore_agents"),
     ("remoted.auth.keystore.entries_skipped", "keystore_entries_skipped"),

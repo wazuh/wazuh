@@ -469,11 +469,62 @@ private:
         const auto maxRequestsPerAgent = m_config.max_requests_per_agent > 0
                                              ? static_cast<std::size_t>(m_config.max_requests_per_agent)
                                              : static_cast<std::size_t>(REMOTED_MODULE_DEFAULT_MAX_REQUESTS_PER_AGENT);
+        // Per-agent byte share: what one agent's decoded bodies may hold at once, across all its
+        // requests. Half the in-flight budget by default -- enough for the whole inventory of a
+        // vulnerability-detection first sync, which the agent cannot split, while every other agent
+        // keeps the other half. Never below the decoded cap of the other routes, or a body legal there
+        // could never be charged. Each warning names the key the operator actually set: the explicit
+        // share when there is one, the budget it was derived from otherwise.
+        const bool explicitShare = m_config.max_inflight_bytes_per_agent > 0;
+        auto agentByteShare = explicitShare ? static_cast<std::size_t>(m_config.max_inflight_bytes_per_agent)
+                                            : config.maxInFlightBytes / 2;
+        if (agentByteShare < authConfig.maxDecodedBodySize)
+        {
+            if (explicitShare)
+            {
+                LOGFN_WARN(moduleLogFn(),
+                           "'remoted.max_inflight_bytes_per_agent' (%zu) is below 'remoted.auth_max_decoded_body_size' "
+                           "(%zu); using %zu.",
+                           agentByteShare,
+                           authConfig.maxDecodedBodySize,
+                           authConfig.maxDecodedBodySize);
+            }
+            agentByteShare = authConfig.maxDecodedBodySize;
+        }
+        // A share as large as the whole budget bounds nothing: one agent could hold all of it again.
+        // Kept rather than shrunk below what a legal body needs, but said out loud, naming the key
+        // that causes it. (The derived default is half the budget, so it only gets here through the
+        // decoded cap.)
+        if (config.maxInFlightBytes != 0 && agentByteShare >= config.maxInFlightBytes)
+        {
+            if (authConfig.maxDecodedBodySize >= config.maxInFlightBytes)
+            {
+                LOGFN_WARN(moduleLogFn(),
+                           "'remoted.auth_max_decoded_body_size' (%zu) is not below 'remoted.max_inflight_bytes' "
+                           "(%zu): one agent can hold the whole in-flight budget.",
+                           authConfig.maxDecodedBodySize,
+                           config.maxInFlightBytes);
+            }
+            else
+            {
+                LOGFN_WARN(moduleLogFn(),
+                           "'remoted.max_inflight_bytes_per_agent' (%zu) is not below 'remoted.max_inflight_bytes' "
+                           "(%zu): one agent can hold the whole in-flight budget.",
+                           agentByteShare,
+                           config.maxInFlightBytes);
+            }
+        }
         m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(
             authConfig,
             m_keystore,
             bodyDecoder,
-            std::make_shared<remoted::endpoints::AgentRequestLimiter>(maxRequestsPerAgent));
+            std::make_shared<remoted::endpoints::AgentRequestLimiter>(maxRequestsPerAgent, agentByteShare));
+        // /stateful's own decoder, capped at the agent's whole byte share instead of
+        // auth_max_decoded_body_size: a vulnerability-detection first sync carries a host's entire
+        // inventory in ONE session the agent cannot split. The share, not this cap, is what keeps one
+        // agent from holding the budget.
+        const auto statefulBodyDecoder = std::make_shared<const remoted::decoding::BodyDecoder>(
+            *m_httpServer, m_config.http_content_encoding_enabled, agentByteShare);
 
         // /enroll gets its OWN BodyDecoder instance, not the shared one above: every AuthGateway
         // route requires a verified credential before decode() ever runs -- but /enroll's Open mode
@@ -672,7 +723,9 @@ private:
             remoted::endpoints::stateful::makeHandler(*m_forwarder,
                                                       inventorySyncSocketPath,
                                                       downstreamConfig.statefulResponseTimeoutMs,
-                                                      &m_statefulHttpMetrics));
+                                                      &m_statefulHttpMetrics),
+            remoted::http::ResponseMode::Buffered,
+            statefulBodyDecoder);
 
         warnIfDownstreamBudgetExceedsRequestTimeout(
             "/stateful",

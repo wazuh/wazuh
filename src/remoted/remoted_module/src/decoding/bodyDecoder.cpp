@@ -79,7 +79,8 @@ namespace remoted::decoding
     {
     }
 
-    remoted::auth::AuthError BodyDecoder::decode(ContentEncoding encoding, remoted::auth::Payload& payload) const
+    remoted::auth::AuthError
+    BodyDecoder::decode(ContentEncoding encoding, remoted::auth::Payload& payload, const DecodeCharge& charge) const
     {
         switch (encoding)
         {
@@ -131,14 +132,26 @@ namespace remoted::decoding
                     windowReservation = m_server.tryReserveInFlightBytes(bytes);
                     return windowReservation.has_value();
                 },
-                [this, &outputReservation, &decodedSoFar](std::size_t more)
+                [this, &outputReservation, &decodedSoFar, &charge](std::size_t more)
                 {
                     if (m_maxDecodedSize != 0 && decodedSoFar + more > m_maxDecodedSize)
                     {
                         return false;
                     }
+                    // The caller's charge first (an agent's byte share): a growth it refuses must not
+                    // take shared budget even for the length of this decode.
+                    if (charge.charge && !charge.charge(more))
+                    {
+                        return false;
+                    }
                     if (!outputReservation->grow(more))
                     {
+                        // Not grown, so not charged: zstdDecode() retries a refused doubling at
+                        // exactly the bytes needed, and that retry charges again.
+                        if (charge.charge && charge.refund)
+                        {
+                            charge.refund(more);
+                        }
                         return false;
                     }
                     decodedSoFar += more;

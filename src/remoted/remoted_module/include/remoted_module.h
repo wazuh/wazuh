@@ -140,6 +140,8 @@ extern "C"
         int max_parallel_connections; ///< HTTPS max simultaneous connections (<=0 -> module default).
         int max_deferred_requests; ///< Max requests parked awaiting a downstream service; 503 over it (<=0 -> default).
         int max_requests_per_agent; ///< Max requests one authenticated agent may have open; 503 over it (<=0 -> default).
+        long long max_inflight_bytes_per_agent; ///< Max decoded-body bytes one agent may hold at once; 503 over it
+                                                ///< (<=0 -> half of max_inflight_bytes).
 
         // Downstream (async UDS client to the engine's event ingress) tunables. <=0 -> module default
         // (see remoted.downstream_*).

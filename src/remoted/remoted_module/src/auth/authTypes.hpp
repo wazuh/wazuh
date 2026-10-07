@@ -177,7 +177,9 @@ namespace remoted::auth
                                     ///< remoted.auth.reject.token_* cell.
         AgentBusy,                  ///< Raised ONLY by the AuthGateway, after authentication: the
                                     ///< verified agent already has `remoted.max_requests_per_agent`
-                                    ///< requests open (AgentRequestLimiter). A plain 503 like every
+                                    ///< requests open, or its decoded body does not fit what is left
+                                    ///< of `remoted.max_inflight_bytes_per_agent` (AgentRequestLimiter).
+                                    ///< A plain 503 like every
                                     ///< other capacity shed -- not a credential failure, so no class
                                     ///< and no challenge.
     };

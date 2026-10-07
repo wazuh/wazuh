@@ -103,7 +103,7 @@ namespace
         EnrollmentKeyUnavailable, ///< /enroll's Password mode: etc/authd.pass unavailable, or HKDF
                                   ///< unavailable manager-wide. Deliberately NOT UnusableKey -- there
                                   ///< is no agent and no client.keys entry yet to "re-enroll".
-        AgentBusy,                ///< One authenticated agent hit max_requests_per_agent. The client
+        AgentBusy,                ///< One authenticated agent hit its request or byte share. The client
                                   ///< pulls the trigger, but it is an AUTHENTICATED one: the operator
                                   ///< acts on the agent, so it is a throttled WARN naming it.
     };
@@ -165,7 +165,9 @@ namespace
                     LOGFN_WARN(logFn(),
                                "Rejected %llu request(s) with 413 in the last %d s: the body exceeded the "
                                "authenticated-body cap. Consider increasing the value of 'auth_max_body_size' or, "
-                               "for zstd bodies, 'auth_max_decoded_body_size'.",
+                               "for zstd bodies, 'auth_max_decoded_body_size' -- or 'max_inflight_bytes_per_agent' "
+                               "on /stateful, whose vulnerability-detection first sync carries a host's whole "
+                               "inventory and cannot be split by the agent.",
                                static_cast<unsigned long long>(d.total),
                                LogThrottle::kDefaultWindowSeconds);
                 }
@@ -219,9 +221,9 @@ namespace
                     // Names the agent of the request that emits the line; the count covers every
                     // agent shed since the last one. An honest agent never reaches the default cap.
                     LOGFN_WARN(logFn(),
-                               "Rejected %llu request(s) with 503 in the last %d s from agent(s) that already had "
-                               "'max_requests_per_agent' requests open (agent '%.*s'). Investigate the agent "
-                               "before raising the value.",
+                               "Rejected %llu request(s) with 503 in the last %d s from agent(s) already holding "
+                               "their share: 'max_requests_per_agent' open requests or 'max_inflight_bytes_per_agent' "
+                               "decoded bytes (agent '%.*s'). Investigate the agent before raising either value.",
                                static_cast<unsigned long long>(d.total),
                                LogThrottle::kDefaultWindowSeconds,
                                static_cast<int>(agentContext.size()),

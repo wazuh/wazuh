@@ -38,7 +38,8 @@ namespace remoted::endpoints
      *      body is not part of authentication), the authenticated-body size cap and the
      *      per-agent request cap (AgentRequestLimiter, when one is given),
      *   2. on failure, answers with publicErrorFor()'s status/message,
-     *   3. on success, runs the injected IBodyDecoder over the verified body and
+     *   3. on success, runs the injected IBodyDecoder over the verified body -- charging the
+     *      agent's byte share as the output grows (503 when the share refuses) -- and
      *      answers with publicErrorFor() if it rejects, then
      *   4. hands the verified (and, if applicable, decoded) request and the responder to
      *      the handler.
@@ -82,12 +83,16 @@ namespace remoted::endpoints
          * @param mode    Whether the handler may answer with a streamed body. Forwarded verbatim to
          *                IHttpServer::addRoute(): the transport fixes a response's output mode when
          *                the request is dispatched, so a route that streams must declare it here.
+         * @param routeDecoder This route's own decoder, replacing the gateway's shared one; null keeps
+         *                the shared one. For a route whose bodies legitimately decode far larger
+         *                than every other's (/stateful), so that one cap does not have to fit both.
          */
         void addAuthenticatedRoute(remoted::http::IHttpServer& server,
                                    Method method,
                                    const std::string& path,
                                    AuthenticatedHandler handler,
-                                   remoted::http::ResponseMode mode = remoted::http::ResponseMode::Buffered);
+                                   remoted::http::ResponseMode mode = remoted::http::ResponseMode::Buffered,
+                                   std::shared_ptr<const remoted::decoding::IBodyDecoder> routeDecoder = nullptr);
 
     private:
         std::shared_ptr<remoted::auth::AuthMiddleware> m_middleware;

@@ -16,6 +16,11 @@
 
 #include <gtest/gtest.h>
 
+// ZSTD_getFrameHeader()/ZSTD_decodingBufferSize_min(), to size a budget around the decoder's own
+// buffers exactly as zstdDecoder.cpp reserves them.
+#define ZSTD_STATIC_LINKING_ONLY
+#include <zstd.h>
+
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -50,7 +55,7 @@ TEST(BodyDecoderTest, EmptyContentEncodingLeavesThePayloadUntouched)
     auto bytes = std::make_shared<std::string>("plain uncompressed body");
     auto payload = payloadOver(bytes);
 
-    EXPECT_EQ(decoder.decode(ContentEncoding::None, payload), AuthError::None);
+    EXPECT_EQ(decoder.decode(ContentEncoding::None, payload, {}), AuthError::None);
     EXPECT_EQ(payload.bytes(), "plain uncompressed body");
     // Nothing was charged: an uncompressed body needs no decoding memory at all.
     EXPECT_EQ(server.m_budget.inFlightCount(), 0U);
@@ -65,7 +70,7 @@ TEST(BodyDecoderTest, ZstdBodyIsDecompressed)
     auto bytes = std::make_shared<std::string>(zstdCompress(plain));
     auto payload = payloadOver(bytes);
 
-    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::None);
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {}), AuthError::None);
     EXPECT_EQ(payload.bytes(), plain);
 }
 
@@ -77,7 +82,7 @@ TEST(BodyDecoderTest, UnsupportedEncodingIsRejectedAndThePayloadLeftAlone)
     auto bytes = std::make_shared<std::string>("some-body");
     auto payload = payloadOver(bytes);
 
-    EXPECT_EQ(decoder.decode(ContentEncoding::Unsupported, payload), AuthError::UnsupportedContentEncoding);
+    EXPECT_EQ(decoder.decode(ContentEncoding::Unsupported, payload, {}), AuthError::UnsupportedContentEncoding);
     EXPECT_EQ(payload.bytes(), "some-body"); // rejected, so left as-is
 }
 
@@ -92,7 +97,7 @@ TEST(BodyDecoderTest, AGzipBodyIsNeverDecodedEvenThoughItIsAValidGzipStream)
     auto bytes = std::make_shared<std::string>(remoted::testutil::gzipCompress("some payload"));
     auto payload = payloadOver(bytes);
 
-    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::MalformedContentEncoding);
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {}), AuthError::MalformedContentEncoding);
 }
 
 // ---------------------------------------------------------------------------
@@ -140,7 +145,7 @@ TEST(BodyDecoderTest, ZstdIsUnsupportedWhenDisabled)
     auto payload = payloadOver(bytes);
 
     // Same rejection as any unknown encoding -- no separate code path for "turned off".
-    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::UnsupportedContentEncoding);
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {}), AuthError::UnsupportedContentEncoding);
 }
 
 // ---------------------------------------------------------------------------
@@ -155,7 +160,7 @@ TEST(BodyDecoderTest, BodyThatIsNotAZstdFrameIsMalformed)
     auto bytes = std::make_shared<std::string>("definitely not a zstd frame");
     auto payload = payloadOver(bytes);
 
-    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::MalformedContentEncoding);
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {}), AuthError::MalformedContentEncoding);
 }
 
 TEST(BodyDecoderTest, TruncatedFrameIsMalformed)
@@ -167,7 +172,7 @@ TEST(BodyDecoderTest, TruncatedFrameIsMalformed)
     auto bytes = std::make_shared<std::string>(full.substr(0, full.size() / 2));
     auto payload = payloadOver(bytes);
 
-    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::MalformedContentEncoding);
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {}), AuthError::MalformedContentEncoding);
 }
 
 // ---------------------------------------------------------------------------
@@ -188,7 +193,7 @@ TEST(BodyDecoderTest, DecodedBytesStayChargedUntilThePayloadIsDropped)
 
     {
         auto payload = payloadOver(bytes);
-        ASSERT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::None);
+        ASSERT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {}), AuthError::None);
         ASSERT_EQ(payload.bytes().size(), kPlainSize);
 
         // Only the OUTPUT is still charged: the decoder's own buffers were released as soon as
@@ -217,7 +222,7 @@ TEST(BodyDecoderTest, OutputNotFittingTheBudgetIsTooLarge)
     ASSERT_LT(bytes->size(), 100U);
     auto payload = payloadOver(bytes);
 
-    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::BodyTooLarge);
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {}), AuthError::BodyTooLarge);
     // Refused: nothing stays charged, and the payload still holds the original wire bytes.
     EXPECT_EQ(server.m_budget.availableBytes(), 100U);
     EXPECT_EQ(payload.bytes(), *bytes);
@@ -239,7 +244,7 @@ TEST(BodyDecoderTest, FrameNeedingMoreBuffersThanTheBudgetHasIsTooLarge)
     ASSERT_LT(bytes->size(), 1024U); // the compressed body itself is tiny
     auto payload = payloadOver(bytes);
 
-    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::BodyTooLarge);
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {}), AuthError::BodyTooLarge);
     EXPECT_EQ(server.m_budget.availableBytes(), 1024U);
     // A refused WINDOW reservation must not register as a budget shed: the transport never turned
     // anyone away -- the request was admitted and answered 413, which already counts in
@@ -259,7 +264,7 @@ TEST(BodyDecoderTest, AmpleBudgetAllowsTheSameLargeFrame)
     auto bytes = std::make_shared<std::string>(zstdCompress(plain));
     auto payload = payloadOver(bytes);
 
-    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::None);
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {}), AuthError::None);
     EXPECT_EQ(payload.bytes().size(), plain.size());
 }
 
@@ -284,7 +289,7 @@ TEST(BodyDecoderTest, MaxDecodedSizeRejectsOutputThatWouldExceedItEvenWithBudget
     auto bytes = std::make_shared<std::string>(zstdCompress(plain));
     auto payload = payloadOver(bytes);
 
-    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::BodyTooLarge);
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {}), AuthError::BodyTooLarge);
     // Refused before ever charging the shared budget for it.
     EXPECT_EQ(server.m_budget.availableBytes(), 10U * 1024U * 1024U);
 }
@@ -299,7 +304,7 @@ TEST(BodyDecoderTest, MaxDecodedSizeAllowsOutputAtOrUnderTheCap)
     auto bytes = std::make_shared<std::string>(zstdCompress(plain));
     auto payload = payloadOver(bytes);
 
-    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::None);
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {}), AuthError::None);
     EXPECT_EQ(payload.bytes().size(), kMaxDecodedSize);
 }
 
@@ -315,7 +320,7 @@ TEST(BodyDecoderTest, DefaultMaxDecodedSizeOfZeroMeansNoExtraCapBeyondTheSharedB
     auto bytes = std::make_shared<std::string>(zstdCompress(plain));
     auto payload = payloadOver(bytes);
 
-    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::None);
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {}), AuthError::None);
 }
 
 TEST(BodyDecoderTest, MaxDecodedSizeAcceptsASmallStreamingCompressedBodyWithNoDeclaredSize)
@@ -335,7 +340,7 @@ TEST(BodyDecoderTest, MaxDecodedSizeAcceptsASmallStreamingCompressedBodyWithNoDe
     auto bytes = std::make_shared<std::string>(remoted::testutil::zstdCompressWithoutDeclaredSize(plain));
     auto payload = payloadOver(bytes);
 
-    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::None);
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {}), AuthError::None);
     EXPECT_EQ(payload.bytes(), plain);
 }
 
@@ -351,5 +356,136 @@ TEST(BodyDecoderTest, MaxDecodedSizeStillRejectsAnOverCapBodyWithNoDeclaredSize)
     auto bytes = std::make_shared<std::string>(remoted::testutil::zstdCompressWithoutDeclaredSize(plain));
     auto payload = payloadOver(bytes);
 
-    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload), AuthError::BodyTooLarge);
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {}), AuthError::BodyTooLarge);
+}
+
+// ---------------------------------------------------------------------------
+// ChargeFn -- the caller's charge (AuthGateway's per-agent byte share), offered every growth of the
+// decoded output BEFORE the shared budget is touched. Regression guard: charged only after decode(),
+// one agent's frames that merely claim a large size held that much shared budget meanwhile.
+// ---------------------------------------------------------------------------
+
+TEST(BodyDecoderTest, ChargeSeesEveryGrowthOfTheDecodedOutput)
+{
+    FakeHttpServer server;
+    const BodyDecoder decoder {server, /*enabled=*/true};
+
+    const std::string plain(256 * 1024, 'a'); // past the 64 KiB step, so the output grows repeatedly
+    auto bytes = std::make_shared<std::string>(remoted::testutil::zstdCompressWithoutDeclaredSize(plain));
+    auto payload = payloadOver(bytes);
+
+    std::size_t charged = 0;
+    std::size_t calls = 0;
+    const remoted::decoding::ChargeFn charge = [&charged, &calls](std::size_t more)
+    {
+        charged += more;
+        ++calls;
+        return true;
+    };
+
+    ASSERT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {charge, {}}), AuthError::None);
+    EXPECT_EQ(payload.bytes().size(), plain.size());
+    EXPECT_GT(calls, 1U);
+    // Charged for the capacity actually reserved, which is at least what the body decoded to.
+    EXPECT_GE(charged, plain.size());
+}
+
+TEST(BodyDecoderTest, ARefusedChargeFailsTheDecodeWithoutTakingSharedBudget)
+{
+    constexpr std::size_t kBudget = 10U * 1024U * 1024U;
+    FakeHttpServer server {kBudget};
+    const BodyDecoder decoder {server, /*enabled=*/true};
+
+    const std::string plain(1024U * 1024U, 'a');
+    auto bytes = std::make_shared<std::string>(zstdCompress(plain));
+    auto payload = payloadOver(bytes);
+
+    std::size_t calls = 0;
+    const remoted::decoding::ChargeFn refuse = [&calls](std::size_t)
+    {
+        ++calls;
+        return false;
+    };
+
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {refuse, {}}), AuthError::BodyTooLarge);
+    EXPECT_EQ(calls, 1U);                                 // refused on the first growth, nothing decoded
+    EXPECT_EQ(server.m_budget.availableBytes(), kBudget); // and the output never reserved shared budget
+    EXPECT_EQ(payload.bytes(), *bytes);                   // the wire body is left in place
+}
+
+TEST(BodyDecoderTest, AChargedGrowthTheSharedBudgetRefusesIsRefunded)
+{
+    // A frame with no declared size grows its output a 64 KiB step at a time. With shared budget
+    // for the decoder's buffers plus the real body only, the first step is refused by the budget
+    // AFTER the caller charged it, and the decoder retries at exactly the bytes needed. Regression
+    // guard: the refused step was never given back, so the caller was charged for both -- an
+    // agent's share holding memory nobody allocated for as long as the decoded body lived.
+    const std::string plain(100, 'a');
+    auto bytes = std::make_shared<std::string>(remoted::testutil::zstdCompressWithoutDeclaredSize(plain));
+
+    ZSTD_FrameHeader header {};
+    ASSERT_EQ(ZSTD_getFrameHeader(&header, bytes->data(), bytes->size()), 0U);
+    ASSERT_EQ(header.frameContentSize, ZSTD_CONTENTSIZE_UNKNOWN);
+    const auto window =
+        static_cast<std::size_t>(ZSTD_decodingBufferSize_min(header.windowSize, header.frameContentSize));
+
+    FakeHttpServer server {window + plain.size()};
+    const BodyDecoder decoder {server, /*enabled=*/true};
+    auto payload = payloadOver(bytes);
+
+    std::size_t charged = 0;
+    std::size_t refunded = 0;
+    const remoted::decoding::DecodeCharge charge {[&charged](std::size_t more)
+                                                  {
+                                                      charged += more;
+                                                      return true;
+                                                  },
+                                                  [&refunded](std::size_t less) { refunded += less; }};
+
+    ASSERT_EQ(decoder.decode(ContentEncoding::Zstd, payload, charge), AuthError::None);
+    EXPECT_EQ(payload.bytes(), plain);
+    EXPECT_GT(refunded, 0U) << "the 64 KiB step the shared budget refused was given back";
+    EXPECT_EQ(charged - refunded, plain.size()) << "net charge is the output actually reserved";
+}
+
+TEST(BodyDecoderTest, MaxDecodedSizeIsCheckedBeforeTheCharge)
+{
+    // A body over the route's own cap is the route's 413, not the caller's refusal: the charge must
+    // not even be asked, so a caller cannot mistake "too large ever" for "busy right now".
+    FakeHttpServer server {10U * 1024U * 1024U};
+    constexpr std::size_t kMaxDecodedSize = 1024;
+    const BodyDecoder decoder {server, /*enabled=*/true, kMaxDecodedSize};
+
+    const std::string plain(kMaxDecodedSize + 1, 'a');
+    auto bytes = std::make_shared<std::string>(zstdCompress(plain));
+    auto payload = payloadOver(bytes);
+
+    bool asked = false;
+    const remoted::decoding::ChargeFn charge = [&asked](std::size_t)
+    {
+        asked = true;
+        return true;
+    };
+
+    EXPECT_EQ(decoder.decode(ContentEncoding::Zstd, payload, {charge, {}}), AuthError::BodyTooLarge);
+    EXPECT_FALSE(asked);
+}
+
+TEST(BodyDecoderTest, AnUnencodedBodyIsNeverCharged)
+{
+    FakeHttpServer server;
+    const BodyDecoder decoder {server, /*enabled=*/true};
+
+    auto bytes = std::make_shared<std::string>("plain uncompressed body");
+    auto payload = payloadOver(bytes);
+
+    bool asked = false;
+    const remoted::decoding::ChargeFn charge = [&asked](std::size_t)
+    {
+        asked = true;
+        return true;
+    };
+
+    EXPECT_EQ(decoder.decode(ContentEncoding::None, payload, {charge, {}}), AuthError::None);
+    EXPECT_FALSE(asked); // the gateway charges the plain body itself, after decode()
 }

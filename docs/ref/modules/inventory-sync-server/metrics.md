@@ -78,7 +78,7 @@ in this family** (see [Accounting boundaries](#accounting-boundaries)).
 | `403` | Identity rejection: the session's agent id does not match the authenticated one | diagnostic |
 | `409` | Checksum or feed-offset mismatch (the agent retries with a fresh session), or an on-demand scan refused as `scan_in_progress` | diagnostic |
 | `500` | Scan or apply failed server-side | diagnostic — check the indexer and the logs |
-| `503` | Shed or unavailable: any of the admission gates | the gate counters below say which: [`…sync_queue_bytes`](configuration.md#wazuh_modulesinventory_sync_server_sync_queue_bytes), [`…vd_scan_queue_slots`](configuration.md#wazuh_modulesinventory_sync_server_vd_scan_queue_slots); the transport's own gates are counted in [`server.rejected.*`](#transport--server), except the accept-time connection cap, which shows only in the `server.sessions.*` levels |
+| `503` | Shed or unavailable: any of the admission gates | the gate counters below say which: [`…sync_queue_bytes`](configuration.md#wazuh_modulesinventory_sync_server_sync_queue_bytes), [`…vd_scan_queue_slots`](configuration.md#wazuh_modulesinventory_sync_server_vd_scan_queue_slots), [`…max_sessions_per_agent`](configuration.md#wazuh_modulesinventory_sync_server_max_sessions_per_agent); the transport's own gates are counted in [`server.rejected.*`](#transport--server), except the accept-time connection cap, which shows only in the `server.sessions.*` levels |
 | `other` | Any status outside the set: today only the on-demand scan's `404 agent_not_found` | diagnostic — anything else here is a bug signal |
 
 ### Sync pipeline — `sync.pipeline.*`, `sync.shard.<i>.*`, `sync.session.duration.*`
@@ -89,6 +89,7 @@ The sharded ingestion pipeline behind `POST /stateful`: sessions land on
 | Metric | Type | Unit | Meaning | Tuning |
 |---|---|---|---|---|
 | `sync.pipeline.shed.total` | counter | count | Enqueue refusals: the pipeline queue **byte** cap was reached (the endpoint answers the 503) | [`…sync_queue_bytes`](configuration.md#wazuh_modulesinventory_sync_server_sync_queue_bytes); drain rate: [`…sync_workers`](configuration.md#wazuh_modulesinventory_sync_server_sync_workers) |
+| `sync.agent_busy.total` | counter | count | Sessions refused because their agent already had that many sessions admitted and not yet answered, on the pipeline or the scan lane (the endpoint answers the 503). Rises when agents re-send faster than their sessions are applied | [`…max_sessions_per_agent`](configuration.md#wazuh_modulesinventory_sync_server_max_sessions_per_agent) — but check the indexer and scanner first |
 | `sync.shard.<i>.depth` (one per worker) | gauge_int | items | Items queued on shard `i` (sessions **and** deletions ride the same queue) | [`…sync_workers`](configuration.md#wazuh_modulesinventory_sync_server_sync_workers) sets the shard count |
 | `sync.shard.<i>.bytes` | gauge_int | bytes | Request payload bytes queued on shard `i` — the sum across shards is the quantity `sync_queue_bytes` caps | [`…sync_queue_bytes`](configuration.md#wazuh_modulesinventory_sync_server_sync_queue_bytes) |
 | `sync.session.duration.bulk` | histogram | microseconds | Enqueue-to-response time of bulk sessions, all outcomes (failures included) | [`…sync_workers`](configuration.md#wazuh_modulesinventory_sync_server_sync_workers), [`…indexer_sync_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_bulk_size) (batch hold time); bounded by [`…response_timeout`](configuration.md#wazuh_modulesinventory_sync_server_response_timeout) (the transport's 504) |
@@ -190,10 +191,10 @@ These rules say what sums to what — read them before comparing families:
   shutdown answer and the handler that returned without answering. The rest appear in **no
   counter**: `413` declared-bytes-over-budget, the accept-time connection cap, `504` response
   timeout and malformed-HTTP `400`/`431`.
-- **Shed counters are cause counters.** `sync.pipeline.shed.total` and
-  `vd.capacity.503.total` count the *refusal decision*; the corresponding `503` response is
-  counted once by the endpoint. So `sync.requests.total.503 ≥ shed + capacity` (the remainder
-  is availability-gate and shutdown 503s).
+- **Shed counters are cause counters.** `sync.pipeline.shed.total`, `vd.capacity.503.total` and
+  `sync.agent_busy.total` count the *refusal decision*; the corresponding `503` response is
+  counted once by the endpoint. So `sync.requests.total.503 ≥ shed + capacity + agent_busy` (the
+  remainder is availability-gate and shutdown 503s).
 - **VD data sessions live in the lane's numbers**: their durations are `vd.lane.time`, never
   `sync.session.duration.*`; their documents still count in `sync.docs.*`.
 - `/stats`, `/config`, `GET /` and `GET /metrics` have no counters of their own (only the

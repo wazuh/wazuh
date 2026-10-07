@@ -47,7 +47,9 @@ namespace remoted::decoding
      *  2. The output buffer, charged for the memory it really takes from the allocator and always
      *     reserved BEFORE it grows. It is bundled into the new payload's keep-alive, so those bytes
      *     stay charged for exactly as long as the payload is held and are released (RAII) the moment
-     *     the handler drops it.
+     *     the handler drops it. Before the shared budget, each growth is offered to the caller's
+     *     ChargeFn (the agent's byte share), so a refused one never reaches the shared budget at all;
+     *     one the shared budget then refuses is given back through the RefundFn.
      *
      * Thread-safe: holds no mutable state, so one instance serves every route and every in-flight
      * request (all per-request state lives on the stack of decode()).
@@ -76,7 +78,8 @@ namespace remoted::decoding
          */
         explicit BodyDecoder(remoted::http::IHttpServer& server, bool enabled, std::size_t maxDecodedSize = 0);
 
-        remoted::auth::AuthError decode(ContentEncoding encoding, remoted::auth::Payload& payload) const override;
+        remoted::auth::AuthError
+        decode(ContentEncoding encoding, remoted::auth::Payload& payload, const DecodeCharge& charge) const override;
 
     private:
         remoted::http::IHttpServer& m_server;

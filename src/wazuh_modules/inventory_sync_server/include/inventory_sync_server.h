@@ -185,6 +185,9 @@ extern "C"
         int vd_scan_queue_slots;         ///< Short admission queue of the scan lane; full -> 503
                                          ///< "scan capacity exhausted". Range 0..256.
                                          ///< <=0 -> 2x vd_workers.
+        int max_sessions_per_agent;      ///< Sessions one agent may have admitted and not yet answered,
+                                         ///< across the pipeline and the scan lane; over it -> 503.
+                                         ///< Range 1..1024. <=0 -> 2.
 
         /* ---- SYNC indexer connector (IndexerConnectorSync) tuning. Overlaid onto the <indexer>
          *      block below by buildSyncConnectorConfig() before construction. This is the same

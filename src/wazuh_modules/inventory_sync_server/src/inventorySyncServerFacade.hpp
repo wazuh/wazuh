@@ -96,6 +96,9 @@ namespace invsync
     constexpr std::size_t DEFAULT_SYNC_QUEUE_BYTES {64U * 1024U * 1024U};
     /// Group-commit flush threshold fallback; mirrors the sync connector's own max_bulk_size default.
     constexpr std::size_t DEFAULT_BULK_FLUSH_BYTES {10U * 1024U * 1024U};
+    /// Sessions one agent may have pending when 'inventory_sync_server_max_sessions_per_agent' has no
+    /// opinion (D28): the session being applied plus one re-send after remoted gave up waiting.
+    constexpr std::size_t DEFAULT_MAX_SESSIONS_PER_AGENT {2};
     /// Retry-After fallback for rejected vulnerability-detection sessions (D17).
     constexpr int DEFAULT_VD_RETRY_AFTER_SECS {10};
     /// 0 = no background flush timer: the pipeline workers and the VD scan lane own every flush,
@@ -412,6 +415,16 @@ namespace invsync
                            "manager configuration.");
             }
 
+            // D28: the per-agent cap on sessions admitted and not yet answered. Owned by the route.
+            const auto agentSessions = std::make_shared<invsync::sync::AgentSessionLimiter>(
+                m_config.max_sessions_per_agent > 0 ? static_cast<std::size_t>(m_config.max_sessions_per_agent)
+                                                    : DEFAULT_MAX_SESSIONS_PER_AGENT);
+            const auto agentBusyTotal =
+                m_metricsManager->getOrCreateCounter(invsync::metrics::AGENT_BUSY_TOTAL,
+                                                     "Sessions refused with 503 because their agent already had "
+                                                     "'inventory_sync_server_max_sessions_per_agent' sessions pending",
+                                                     "count");
+
             // The ingestion route: everything past the strand-side validation runs on the
             // pipeline, or on the VD scan lane for vulnerability-detection data sessions.
             m_httpServer->addRoute(invsync::endpoints::sync::method(),
@@ -429,7 +442,9 @@ namespace invsync
                                        // registers this counter too, and getOrCreate keeps only the first
                                        // registration's metadata -- a second copy of the strings here would be dead
                                        // text that silently drifts.
-                                       invsync::metrics::makeVdRetryAfterCounter(*m_metricsManager)}),
+                                       invsync::metrics::makeVdRetryAfterCounter(*m_metricsManager),
+                                       agentSessions,
+                                       agentBusyTotal}),
                                    wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
             // Reached through remoted's authenticated /stats and /config routes. Registered separately
