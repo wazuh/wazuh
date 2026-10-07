@@ -53,8 +53,9 @@ int __wrap_w_update_file_status(const char * path, int64_t pos, EVP_MD_CTX * con
     return mock_type(int);
 }
 
-void __wrap_OS_SHA1_Stream(EVP_MD_CTX *c, os_sha1 output, char * buf) {
+void __wrap_OS_SHA1_Stream_Bytes(EVP_MD_CTX *c, const char * buf, size_t len) {
     function_called();
+    check_expected(len);
     return;
 }
 
@@ -83,7 +84,8 @@ void test_buffer_space(void ** state) {
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) OS_MAX_LOG_SIZE - 1);
 
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_any(__wrap_OS_SHA1_Stream_Bytes, len);
 
     will_return(__wrap_can_read, 1);
 
@@ -93,7 +95,8 @@ void test_buffer_space(void ** state) {
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) OS_MAX_LOG_SIZE);
 
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_any(__wrap_OS_SHA1_Stream_Bytes, len);
 
     will_return(__wrap_can_read, 1);
 
@@ -103,7 +106,8 @@ void test_buffer_space(void ** state) {
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) (OS_MAX_LOG_SIZE) * 2 - 1);
 
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_any(__wrap_OS_SHA1_Stream_Bytes, len);
 
     expect_any(__wrap__merror, formatted_msg);
 
@@ -201,7 +205,8 @@ void test_maximum_lines(void ** state) {
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) strlen(line1));
 
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_any(__wrap_OS_SHA1_Stream_Bytes, len);
 
     will_return(__wrap_can_read, 1);
 
@@ -211,7 +216,8 @@ void test_maximum_lines(void ** state) {
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2));
 
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_any(__wrap_OS_SHA1_Stream_Bytes, len);
 
     will_return(__wrap_can_read, 1);
 
@@ -245,7 +251,8 @@ void test_maximum_lines_disabled(void ** state) {
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) strlen(line1));
 
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_any(__wrap_OS_SHA1_Stream_Bytes, len);
 
     will_return(__wrap_can_read, 1);
 
@@ -255,7 +262,8 @@ void test_maximum_lines_disabled(void ** state) {
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2));
 
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_any(__wrap_OS_SHA1_Stream_Bytes, len);
 
     will_return(__wrap_can_read, 1);
 
@@ -265,7 +273,8 @@ void test_maximum_lines_disabled(void ** state) {
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2) + strlen(line3));
 
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_any(__wrap_OS_SHA1_Stream_Bytes, len);
 
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2) + strlen(line3));

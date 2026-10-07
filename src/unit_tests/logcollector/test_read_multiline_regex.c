@@ -75,9 +75,7 @@ int __wrap_w_update_file_status(const char * path, int64_t pos, EVP_MD_CTX * con
 static size_t sha1_stream_bytes = 0;
 static size_t sha1_stream_max_block = 0;
 
-void __wrap_OS_SHA1_Stream(EVP_MD_CTX *c, os_sha1 output, char * buf) {
-    size_t len = strlen(buf);
-
+void __wrap_OS_SHA1_Stream_Bytes(EVP_MD_CTX *c, const char * buf, size_t len) {
     function_called();
     sha1_stream_bytes += len;
     if (len > sha1_stream_max_block) {
@@ -1591,7 +1589,7 @@ void test_read_multiline_regex_log_process(void ** state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, NULL);
 
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
@@ -1742,7 +1740,7 @@ void test_read_multiline_regex_log_ignored(void ** state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, NULL);
 
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
@@ -1818,7 +1816,7 @@ void test_hash_file_span_ok(void ** state) {
     will_return(__wrap_w_fseek, 0);
     will_return(__wrap_fread, "test0");
     will_return(__wrap_fread, 5);
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
 
     assert_true(hash_file_span(NULL, context, initial_pos, final_pos));
     assert_int_equal(sha1_stream_bytes, 5);
@@ -1845,11 +1843,11 @@ void test_hash_file_span_several_blocks(void ** state) {
     for (int i = 0; i < 3; i++) {
         will_return(__wrap_fread, data);
         will_return(__wrap_fread, OS_MAXSTR);
-        expect_function_call(__wrap_OS_SHA1_Stream);
+        expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
     }
     will_return(__wrap_fread, data);
     will_return(__wrap_fread, tail);
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
 
     assert_true(hash_file_span(NULL, context, 0, final_pos));
     assert_int_equal(sha1_stream_bytes, (size_t) final_pos);
@@ -1857,10 +1855,11 @@ void test_hash_file_span_several_blocks(void ** state) {
     EVP_MD_CTX_free(context);
 }
 
-/* Bytes after the first NUL of the span are not hashed, the stream is moved to the end of the span instead */
-void test_hash_file_span_stops_hashing_after_nul(void ** state) {
+/* Bytes after a NUL of the span are hashed too, every block of the span is read */
+void test_hash_file_span_hashes_bytes_after_nul(void ** state) {
 
     EVP_MD_CTX * context = EVP_MD_CTX_new();
+    const int64_t final_pos = 2 * (int64_t) OS_MAXSTR + 7;
 
     sha1_stream_bytes = 0;
     sha1_stream_max_block = 0;
@@ -1872,14 +1871,17 @@ void test_hash_file_span_stops_hashing_after_nul(void ** state) {
     /* First block: 10 bytes followed by NULs */
     will_return(__wrap_fread, "0123456789");
     will_return(__wrap_fread, OS_MAXSTR);
-    expect_function_call(__wrap_OS_SHA1_Stream);
-    /* Second and third blocks: skipped */
-    expect_any(__wrap_w_fseek, x);
-    expect_value(__wrap_w_fseek, pos, 2 * (int64_t) OS_MAXSTR + 7);
-    will_return(__wrap_w_fseek, 0);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    /* Second and third blocks: read and hashed as well */
+    will_return(__wrap_fread, "");
+    will_return(__wrap_fread, OS_MAXSTR);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    will_return(__wrap_fread, "");
+    will_return(__wrap_fread, 7);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
 
-    assert_true(hash_file_span(NULL, context, 0, 2 * (int64_t) OS_MAXSTR + 7));
-    assert_int_equal(sha1_stream_bytes, 10);
+    assert_true(hash_file_span(NULL, context, 0, final_pos));
+    assert_int_equal(sha1_stream_bytes, (size_t) final_pos);
     EVP_MD_CTX_free(context);
 }
 
@@ -2005,7 +2007,7 @@ int main(void) {
         cmocka_unit_test(test_hash_file_span_size_reduce),
         cmocka_unit_test(test_hash_file_span_ok),
         cmocka_unit_test(test_hash_file_span_several_blocks),
-        cmocka_unit_test(test_hash_file_span_stops_hashing_after_nul),
+        cmocka_unit_test(test_hash_file_span_hashes_bytes_after_nul),
         cmocka_unit_test(test_hash_file_span_no_context),
         cmocka_unit_test(test_hash_file_span_no_context_fseek_fail),
     };

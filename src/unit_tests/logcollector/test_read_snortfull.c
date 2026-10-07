@@ -57,9 +57,9 @@ int __wrap_w_update_file_status(const char *path, int64_t pos, EVP_MD_CTX *conte
     return mock_type(int);
 }
 
-void __wrap_OS_SHA1_Stream(EVP_MD_CTX *c, os_sha1 output, char *buf) {
+void __wrap_OS_SHA1_Stream_Bytes(EVP_MD_CTX *c, const char * buf, size_t len) {
     function_called();
-    return;
+    check_expected(len);
 }
 
 int __wrap_w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget *log_target, char queue_mq) {
@@ -109,14 +109,27 @@ static char * build_date_line(size_t space_idx, const char *tail) {
     return line;
 }
 
-static void expect_line(char *line) {
+/* File position reported by w_ftell after each line read */
+static int64_t mock_position = 0;
+
+/* Expect a line of line_len bytes, which may contain NUL bytes, to be read and hashed */
+static void expect_line_bytes(char *line, size_t line_len) {
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, line);
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    mock_position += (int64_t) line_len;
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, mock_position);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, line_len);
+}
+
+static void expect_line(char *line) {
+    expect_line_bytes(line, strlen(line));
 }
 
 static void expect_prologue(void) {
+    mock_position = 0;
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) 0);
     will_return(__wrap_w_get_hash_context, true);
