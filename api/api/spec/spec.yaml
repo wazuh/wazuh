@@ -242,7 +242,7 @@ x-rbac-catalog:
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "deny"
     'cluster:read_secrets':
-      description: "Read the sensitive configuration values -- the enrollment password and the cluster key -- in clear instead of masked, and change the cluster key"
+      description: "Read the sensitive configuration values -- the enrollment password and the cluster key -- in clear instead of masked, and change the cluster key or the indexer section"
       resources:
         - $ref: '#/x-rbac-catalog/resources/node:id'
       example:
@@ -7026,7 +7026,7 @@ paths:
       tags:
         - Cluster
       summary: "Update node configuration"
-      description: "Replace the manager configuration (etc/wazuh-manager.conf) of the given node with the XML text contained in the API request. The text is validated (syntax, schema, protected sections, secret options) before the file is written. A cluster key sent back masked (`*****`), as this API returns it to a caller without `cluster:read_secrets`, keeps the node's current key; changing the key to any other value requires `cluster:read_secrets` over that node and is refused with error 1132 otherwise."
+      description: "Replace the manager configuration (etc/wazuh-manager.conf) of the given node with the XML text contained in the API request. The text is validated (syntax, schema, protected sections, secret options) before the file is written. A cluster key sent back masked (`*****`), as this API returns it to a caller without `cluster:read_secrets`, keeps the node's current key; changing the key to any other value requires `cluster:read_secrets` over that node and is refused with error 1132 otherwise. So is any change to the indexer section (hosts, TLS): every indexer host receives the manager's indexer credential."
       operationId: api.controllers.cluster_controller.update_configuration
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:update_config'

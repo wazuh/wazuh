@@ -195,7 +195,7 @@ Options of `wazuh-manager.conf` that `PUT /cluster/{node_id}/configuration` may 
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `indexer.allow` | `true` | With `false`, a new configuration that changes the `indexer` section is refused with error `1127` |
+| `indexer.allow` | `true` | With `false`, a new configuration that changes the `indexer` section is refused with error `1127`, for every caller. With `true` a change still requires `cluster:read_secrets` over the node (error `1132` otherwise): the indexer hosts receive the manager's indexer credential |
 | `agents.allow_higher_versions.allow` | `true` | With `false`, a change to `auth.agents.allow_higher_versions` or `remote.agents.allow_higher_versions` is refused with error `1129` |
 
 The cluster key is protected by RBAC rather than by this block: see

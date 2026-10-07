@@ -92,6 +92,32 @@ def test_cluster_key_change_is_allowed_with_read_secrets():
 
 
 @pytest.mark.parametrize('pointer, value', [
+    ('/indexer/hosts', ['https://attacker.example:9200']),
+    ('/indexer/hosts', ['https://127.0.0.1:9200', 'https://attacker.example:9200']),
+    ('/indexer/ssl/certificate_authorities', ['/etc/ssl/certs/ca-certificates.crt']),
+    ('/indexer/ssl/certificate', 'etc/certs/other.pem'),
+    ('/indexer/ssl/key', 'etc/certs/other-key.pem'),
+])
+def test_indexer_change_is_refused_without_read_secrets(pointer, value):
+    """Every indexer host receives the manager's indexer credential: choosing them is worth reading it."""
+    with pytest.raises(WazuhError, match='.* 1132 .*') as exc:
+        check_secret_sections(_changed(pointer, value), CURRENT, can_read_secrets=False)
+    assert str(exc.value).endswith('/indexer')
+
+
+def test_indexer_change_is_allowed_with_read_secrets():
+    check_secret_sections(_changed('/indexer/hosts', ['https://10.0.0.2:9200']), CURRENT, can_read_secrets=True)
+
+
+def test_indexer_knob_does_not_lift_the_rbac_check():
+    """upload_configuration.indexer.allow (api.yaml, true by default) is an extra lock, never a substitute."""
+    changed = _changed('/indexer/hosts', ['https://attacker.example:9200'])
+    check_protected_sections(changed, CURRENT, upload_configuration=ALLOW_ALL)
+    with pytest.raises(WazuhError, match='.* 1132 .*'):
+        check_secret_sections(changed, CURRENT, can_read_secrets=False)
+
+
+@pytest.mark.parametrize('pointer, value', [
     ('/cluster/node_type', 'worker'),
     ('/cluster/nodes', ['10.0.0.2']),
     ('/cluster/port', 1600),

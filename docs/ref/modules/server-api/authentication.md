@@ -133,6 +133,15 @@ before the text is validated and written, so `cluster:update_config` alone still
 option, cluster membership (`node_type`, `nodes`, `bind_addr`, `port`) included — without the key those
 grant nothing.
 
+It also guards the **indexer section**, which is not a secret but chooses where one goes. Every
+indexer client of the manager (clusterd, modulesd, the engine) authenticates to each `indexer.hosts`
+entry with the manager's indexer service-account credential, and `indexer.ssl` decides whether that
+peer is trusted. Pointing them at a host of one's choosing hands that credential over, so any change
+under `<indexer>` is refused with `1132` without `cluster:read_secrets` over the node. The section is
+served in clear, and sending it back unchanged keeps working. The api.yaml knob
+`upload_configuration.indexer.allow` (error `1127`) is an extra lock on top, for every caller: setting
+it to `true` never lifts this check.
+
 ### Agent keys
 
 An agent's pre-shared key — the `client.keys` line that authenticates it — is the third secret behind

@@ -1050,3 +1050,34 @@ def test_update_manager_conf_cluster_key_needs_read_secrets(update_mocks, read_s
     else:
         assert result.render()['data']['total_failed_items'] == 0
         update_mocks['write_manager_conf'].assert_called_once_with(_conf_with_key(sent_key))
+
+
+INDEXER = {'hosts': ['https://127.0.0.1:9200'], 'ssl': {'certificate_authorities': ['etc/certs/root-ca.pem'],
+                                                       'certificate': '', 'key': ''}}
+
+
+@pytest.mark.parametrize('read_secrets, sent_hosts, expected_code', [
+    (False, ['https://127.0.0.1:9200'], None),
+    (False, ['https://attacker.example:9200'], 1132),
+    (True, ['https://10.0.0.2:9200'], None),
+])
+def test_update_manager_conf_indexer_needs_read_secrets(update_mocks, read_secrets, sent_hosts, expected_code):
+    """Every indexer host receives the manager's indexer credential, so redirecting the indexer section requires
+    cluster:read_secrets: without it the text is refused before anything is written, whatever api.yaml's
+    upload_configuration.indexer.allow says. An unchanged section is accepted."""
+    sent = {'hosts': sent_hosts, 'ssl': INDEXER['ssl']}
+    update_mocks['load_manager_conf'].return_value = {'indexer': INDEXER}
+    update_mocks['load_manager_conf_text'].return_value = {'indexer': sent}
+    update_mocks['can_read_secrets'].return_value = read_secrets
+
+    result = update_manager_conf(new_conf='<wazuh_config/>')
+
+    if expected_code:
+        failed = result.render()['data']['failed_items'][0]['error']
+        assert failed['code'] == expected_code
+        assert '/indexer' in failed['message']
+        update_mocks['write_manager_conf'].assert_not_called()
+        update_mocks['full_copy'].assert_not_called()
+    else:
+        assert result.render()['data']['total_failed_items'] == 0
+        update_mocks['write_manager_conf'].assert_called_once()
