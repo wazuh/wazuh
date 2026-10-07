@@ -104,61 +104,44 @@ public:
 
         m_db.reset(db);
 
-        // RocksDB counter initialization.
-        m_size = 0;
-        auto it = std::unique_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions()));
-        it->SeekToFirst();
-
-        if (it->Valid())
-        {
-            auto key = std::stoull(it->key().ToString());
-            m_first = key;
-            m_last = key;
-        }
-        else
-        {
-            m_first = 1;
-            m_last = 0;
-        }
-
         uint64_t unreachableKeys = 0;
+        auto scanStatus = scanKeys(unreachableKeys);
 
-        while (it->Valid())
+        // A corruption that only shows when the keys are read is repaired like the one found when opening the
+        // database. The entries of the damaged files are lost, and the queue recovers instead of rejecting elements
+        // until its directory is removed.
+        if (scanStatus.IsCorruption())
         {
-            const auto keyString = it->key().ToString();
-            const auto key = std::stoull(keyString);
+            logWarn(LOGGER_DEFAULT_TAG,
+                    "Queue '%s': the scan of the keys failed after reading %llu keys (%s). Repairing the database.",
+                    connectorName.c_str(),
+                    static_cast<unsigned long long>(m_size),
+                    scanStatus.ToString().c_str());
 
-            if (keyString.size() < ROCKSDB_QUEUE_PADDING)
+            m_db.reset();
+            if (const auto repairStatus {rocksdb::RepairDB(connectorName, rocksdb::Options {})}; !repairStatus.ok())
             {
-                m_legacyKeyMode = true;
+                logError(LOGGER_DEFAULT_TAG,
+                         "Queue '%s': failed to repair the database. Reason: %s",
+                         connectorName.c_str(),
+                         repairStatus.ToString().c_str());
             }
 
-            // Count the keys that are neither the plain decimal nor the padded form of their index.
-            if (keyString != formatKey(key, true) && keyString != formatKey(key, false))
+            if (const auto status = rocksdb::DB::Open(options, connectorName, &db); !status.ok())
             {
-                ++unreachableKeys;
+                throw std::runtime_error("Failed to open RocksDB database after repairing. Reason: " +
+                                         std::string {status.getState()});
             }
-
-            if (key > m_last)
-            {
-                m_last = key;
-            }
-
-            if (key < m_first)
-            {
-                m_first = key;
-            }
-            ++m_size;
-
-            it->Next();
+            m_db.reset(db);
+            scanStatus = scanKeys(unreachableKeys);
         }
 
         // Valid() is false both at the end of the store and when the iteration fails, so the status tells them apart.
         // Bounds computed from a partial scan would make push() overwrite queued entries, so push() is refused.
-        if (const auto status = it->status(); !status.ok())
+        if (!scanStatus.ok())
         {
             m_unreliableBounds =
-                "the scan failed after reading " + std::to_string(m_size) + " keys: " + status.ToString();
+                "the scan failed after reading " + std::to_string(m_size) + " keys: " + scanStatus.ToString();
             logError(LOGGER_DEFAULT_TAG,
                      "Queue '%s': the bounds could not be established (%s). New elements are rejected.",
                      connectorName.c_str(),
@@ -327,6 +310,62 @@ private:
     bool m_legacyKeyMode = false;
     std::string m_unreliableBounds; ///< Why the bounds are not trustworthy; empty when they are.
     mutable bool m_readUnpadded = false; ///< Format that answered the last read, tried first on the next one.
+
+    // Computes the bounds and the size of the queue from the keys it stores. The status it returns is the one of the
+    // iteration, which is not OK when the scan failed before the end of the store.
+    rocksdb::Status scanKeys(uint64_t& unreachableKeys)
+    {
+        m_size = 0;
+        m_legacyKeyMode = false;
+        unreachableKeys = 0;
+
+        auto it = std::unique_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions()));
+        it->SeekToFirst();
+
+        if (it->Valid())
+        {
+            auto key = std::stoull(it->key().ToString());
+            m_first = key;
+            m_last = key;
+        }
+        else
+        {
+            m_first = 1;
+            m_last = 0;
+        }
+
+        while (it->Valid())
+        {
+            const auto keyString = it->key().ToString();
+            const auto key = std::stoull(keyString);
+
+            if (keyString.size() < ROCKSDB_QUEUE_PADDING)
+            {
+                m_legacyKeyMode = true;
+            }
+
+            // Count the keys that are neither the plain decimal nor the padded form of their index.
+            if (keyString != formatKey(key, true) && keyString != formatKey(key, false))
+            {
+                ++unreachableKeys;
+            }
+
+            if (key > m_last)
+            {
+                m_last = key;
+            }
+
+            if (key < m_first)
+            {
+                m_first = key;
+            }
+            ++m_size;
+
+            it->Next();
+        }
+
+        return it->status();
+    }
 
     static std::string formatKey(const uint64_t key, const bool unpadded)
     {

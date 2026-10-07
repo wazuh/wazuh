@@ -85,7 +85,15 @@ public:
                 const auto queueSize = m_queue->size();
                 if (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || queueSize < m_maxQueueSize)
                 {
-                    m_queue->push(value);
+                    try
+                    {
+                        m_queue->push(value);
+                    }
+                    catch (const std::exception& ex)
+                    {
+                        reportPushError(ex);
+                        return;
+                    }
                     rearmDiscardReport(queueSize);
                     warnQueueSize(queueSize + 1);
                 }
@@ -112,7 +120,15 @@ public:
                 const auto queueSize = m_queue->size(prefix);
                 if (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || queueSize < m_maxQueueSize)
                 {
-                    m_queue->push(prefix, value);
+                    try
+                    {
+                        m_queue->push(prefix, value);
+                    }
+                    catch (const std::exception& ex)
+                    {
+                        reportPushError(ex);
+                        return;
+                    }
                     rearmDiscardReport(queueSize);
                 }
                 else
@@ -209,7 +225,8 @@ public:
 private:
     void dispatch()
     {
-        auto lastErrorLog = std::chrono::steady_clock::time_point {};
+        // Starts one interval back so that the first error is logged at once, even right after the system boots.
+        auto lastErrorLog = std::chrono::steady_clock::now() - std::chrono::minutes(1);
 
         while (m_running)
         {
@@ -302,6 +319,19 @@ private:
         }
     }
 
+    // A push that fails drops its element, so that the callers, which do not expect an exception, keep working. The
+    // failure is reported at most once a minute.
+    void reportPushError(const std::exception& ex)
+    {
+        constexpr auto INTERVAL = std::chrono::steady_clock::duration(std::chrono::minutes(1)).count();
+        const auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+        auto last = m_lastPushErrorLog.load();
+        if ((last == 0 || now - last >= INTERVAL) && m_lastPushErrorLog.compare_exchange_strong(last, now))
+        {
+            logWarn(LOGGER_DEFAULT_TAG, "Queue '%s': element dropped, %s", m_name.c_str(), ex.what());
+        }
+    }
+
     void rearmDiscardReport(const size_t queueSize)
     {
         if (queueSize == 0)
@@ -330,6 +360,7 @@ private:
 
     std::atomic_bool m_discardReported {false};
     std::atomic<size_t> m_nextSizeWarning {QUEUE_SIZE_WARNING};
+    std::atomic<std::chrono::steady_clock::rep> m_lastPushErrorLog {0};
 };
 
 template<typename Type, typename Functor>
