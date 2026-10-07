@@ -148,26 +148,24 @@ class RBAChecker:
         int
             1 or 0, 1 if the function is evaluated as True else return False.
         """
-        counter = 0
-        for index, value in enumerate(auth_context):
-            for v in role_chunk:
-                pattern = self.check_regex(v)
-                if pattern:
-                    try:
-                        if pattern.fullmatch(value, timeout=REGEX_TIME_LIMIT):
-                            counter += 1
-                    except TimeoutError:
-                        continue
-                else:
-                    if value == v:
-                        counter += 1
-                if mode == self._functions[0]:  # MATCH
-                    if counter == len(role_chunk):
-                        return 1
-                elif mode == self._functions[1]:  # MATCH$
-                    if counter == len(auth_context) and counter == len(role_chunk):
-                        return 1
+        def matches(rule_item, value) -> bool:
+            pattern = self.check_regex(rule_item)
+            if not pattern:
+                return value == rule_item
+            try:
+                return bool(pattern.fullmatch(value, timeout=REGEX_TIME_LIMIT))
+            except TimeoutError:
+                return False
 
+        # Every rule item must be satisfied by at least one value of the authorization context
+        all_rule_items_present = bool(role_chunk) and all(
+            any(matches(item, value) for value in auth_context) for item in role_chunk)
+        if mode == self._functions[0]:  # MATCH
+            return int(all_rule_items_present)
+        if mode == self._functions[1]:  # MATCH$
+            # Besides, every value of the authorization context must satisfy some rule item
+            return int(all_rule_items_present and len(auth_context) == len(role_chunk) and
+                       all(any(matches(item, value) for item in role_chunk) for value in auth_context))
         return 0
 
     def set_mode(self, mode: str, role_id: int = None) -> str:
@@ -236,7 +234,7 @@ class RBAChecker:
             Compiled regex if a valid regex is provided else return False.
         """
         if isinstance(expression, str):
-            if not expression.startswith(self._regex_prefix):
+            if not expression.startswith(self._regex_prefix) or not expression.endswith("'") or len(expression) < 3:
                 return False
             try:
                 pattern = ''.join(expression[self._initial_index_for_regex:-1])
