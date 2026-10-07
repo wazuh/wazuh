@@ -280,89 +280,86 @@ STATIC char *w_agent_auth_current_id(void) {
 
 
 /**
+ * @brief Reads the token from --token-file.
+ * @return Newly allocated token text, or NULL (a reason is written to @p err).
+ */
+static char *w_agent_auth_read_token_file(const char *path, FILE *err) {
+    /* The shared reader refuses a token too long to fit rather than truncating it, so the size is
+     * checked here only to say why: it reports the same "could not read" as a file that is
+     * missing or empty, and those want different responses. The stdin path below already names
+     * this case; this gives the file path the same answer. */
+    struct stat token_st;
+
+    if (stat(path, &token_st) == 0 && token_st.st_size >= W_ETOKEN_MAX_FILE_BYTES) {
+        fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", AGENT_AUTH_NAME,
+                W_ETOKEN_MAX_FILE_BYTES);
+        return NULL;
+    }
+
+    char *text = w_agent_token_read_file(path);
+
+    if (text == NULL) {
+        fprintf(err, "%s: could not read an enrollment token from '%s'.\n", AGENT_AUTH_NAME, path);
+    }
+
+    return text;
+}
+
+/* Reading stdin from a terminal would block on input nobody is going to type, which reads as the
+ * command having hung. Say what is wanted instead: a token only ever arrives here from a redirect
+ * or a pipe. */
+static void w_agent_auth_explain_no_token(FILE *err) {
+    fprintf(err, "%s: no token given. Pass --token-file <path>, or redirect one in:\n",
+            AGENT_AUTH_NAME);
+    fprintf(err, "\n");
+    fprintf(err, "      %s --token-file %s\n", AGENT_AUTH_NAME, AGENT_AUTH_EXAMPLE_TOKEN);
+    fprintf(err, "      %s < %s\n", AGENT_AUTH_NAME, AGENT_AUTH_EXAMPLE_TOKEN);
+    fprintf(err, "\n");
+    fprintf(err, "  Run with --help for the full usage.\n");
+}
+
+/**
+ * @brief Reads the token from standard input, through the reader --show-token shares.
+ * @return Newly allocated token text, or NULL (a reason is written to @p err).
+ */
+static char *w_agent_auth_read_token_stdin(FILE *in, FILE *err) {
+    char *text = NULL;
+
+    switch (w_agent_token_read_stream(in, &text)) {
+    case W_TOKEN_READ_OK:
+        break;
+    case W_TOKEN_READ_TTY:
+        w_agent_auth_explain_no_token(err);
+        return NULL;
+    case W_TOKEN_READ_TOO_BIG:
+        fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", AGENT_AUTH_NAME,
+                W_ETOKEN_MAX_FILE_BYTES);
+        return NULL;
+    default:
+        fprintf(err, "%s: could not read the enrollment token from standard input.\n",
+                AGENT_AUTH_NAME);
+        return NULL;
+    }
+
+    if (*text == '\0') {
+        fprintf(err, "%s: the enrollment token is empty. Pass --token-file <path>,\n"
+                "  or redirect one on standard input.\n", AGENT_AUTH_NAME);
+        os_free(text);
+    }
+
+    return text;
+}
+
+/**
  * @brief Reads the token for this run, from wherever the operator pointed us.
  * @return Newly allocated token text, or NULL (a reason is written to @p err).
  */
 STATIC char *w_agent_auth_read_token(const agent_auth_opts_t *opts, FILE *in, FILE *err) {
     if (opts->source == AGENT_AUTH_SOURCE_FILE) {
-        /* The shared reader refuses a token too long to fit rather than truncating it, so the
-         * size is checked here only to say why: it reports the same "could not read" as a file
-         * that is missing or empty, and those want different responses. The stdin path below
-         * already names this case; this gives the file path the same answer. */
-        struct stat token_st;
-
-        if (stat(opts->token_file, &token_st) == 0 && token_st.st_size >= W_ETOKEN_MAX_FILE_BYTES) {
-            fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", AGENT_AUTH_NAME,
-                    W_ETOKEN_MAX_FILE_BYTES);
-            return NULL;
-        }
-
-        char *text = w_agent_token_read_file(opts->token_file);
-
-        if (text == NULL) {
-            fprintf(err, "%s: could not read an enrollment token from '%s'.\n", AGENT_AUTH_NAME,
-                    opts->token_file);
-        }
-
-        return text;
+        return w_agent_auth_read_token_file(opts->token_file, err);
     }
 
-    /* Reading stdin from a terminal would block on input nobody is going to type, which reads as
-     * the command having hung. Say what is wanted instead: a token only ever arrives here from a
-     * redirect or a pipe. Checked BEFORE the buffer exists so the common mistake costs nothing. */
-    if (isatty(fileno(in))) {
-        fprintf(err, "%s: no token given. Pass --token-file <path>, or redirect one in:\n",
-                AGENT_AUTH_NAME);
-        fprintf(err, "\n");
-        fprintf(err, "      %s --token-file %s\n", AGENT_AUTH_NAME, AGENT_AUTH_EXAMPLE_TOKEN);
-        fprintf(err, "      %s < %s\n", AGENT_AUTH_NAME, AGENT_AUTH_EXAMPLE_TOKEN);
-        fprintf(err, "\n");
-        fprintf(err, "  Run with --help for the full usage.\n");
-        return NULL;
-    }
-
-    /* Heap, not a stack array. Since #39321 this bound is sized for a token with a CA bundle
-     * embedded in it, and 96 KB is far too much to put on a frame -- the same reason
-     * w_agent_token_read_file() and the bootstrap's own reader allocate theirs. Zeroed, as the
-     * array it replaces was, so the trim loop below can never walk into anything unwritten. */
-    char *text;
-    os_calloc(W_ETOKEN_MAX_FILE_BYTES + 1, sizeof(char), text);
-
-    size_t length = fread(text, 1, W_ETOKEN_MAX_FILE_BYTES, in);
-
-    if (ferror(in)) {
-        fprintf(err, "%s: could not read the enrollment token from standard input.\n",
-                AGENT_AUTH_NAME);
-        os_free(text);
-        return NULL;
-    }
-
-    if (length == W_ETOKEN_MAX_FILE_BYTES) {
-        fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", AGENT_AUTH_NAME,
-                W_ETOKEN_MAX_FILE_BYTES);
-        os_free(text);
-        return NULL;
-    }
-
-    while (length > 0 && (text[length - 1] == '\n' || text[length - 1] == '\r' ||
-                          text[length - 1] == ' ' || text[length - 1] == '\t')) {
-        text[--length] = '\0';
-    }
-
-    if (length == 0) {
-        fprintf(err, "%s: the enrollment token is empty. Pass --token-file <path>,\n"
-                "  or redirect one on standard input.\n", AGENT_AUTH_NAME);
-        os_free(text);
-        return NULL;
-    }
-
-    /* Handed back at its real size rather than as the 96 KB it was read into: the caller holds
-     * this for the rest of the run, and a token is a few hundred bytes. */
-    char *owned;
-    os_strdup(text, owned);
-    os_free(text);
-
-    return owned;
+    return w_agent_auth_read_token_stdin(in, err);
 }
 
 /**

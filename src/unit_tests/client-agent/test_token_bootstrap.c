@@ -1722,6 +1722,86 @@ static void test_a_token_that_fills_the_buffer_exactly_is_read_whole(void **stat
     os_free(token);
 }
 
+/* The stream form, shared by --show-token and wazuh-agent-auth. A shell pipe appends a newline and
+ * an editor may leave trailing blanks; both go, and nothing inside the token is touched. */
+static void test_a_streamed_token_comes_back_trimmed(void **state) {
+    (void) state;
+    char input[] = "TOKEN with inner space \t\r\n";
+    FILE *in = fmemopen(input, strlen(input), "r");
+    char *token = NULL;
+
+    assert_int_equal(w_agent_token_read_stream(in, &token), W_TOKEN_READ_OK);
+    fclose(in);
+
+    assert_string_equal(token, "TOKEN with inner space");
+    os_free(token);
+}
+
+/* Empty is not this reader's to refuse: --show-token hands it to the decoder, which says what is
+ * wrong with it, and wazuh-agent-auth refuses it with its own message. */
+static void test_an_empty_stream_reads_as_an_empty_token(void **state) {
+    (void) state;
+    char input[] = "\n";
+    FILE *in = fmemopen(input, strlen(input), "r");
+    char *token = NULL;
+
+    assert_int_equal(w_agent_token_read_stream(in, &token), W_TOKEN_READ_OK);
+    fclose(in);
+
+    assert_string_equal(token, "");
+    os_free(token);
+}
+
+/* fread() never terminates what it reads. The longest token that fits comes back whole, at its
+ * own length and terminated. */
+static void test_a_streamed_token_that_fills_the_buffer_exactly_is_read_whole(void **state) {
+    (void) state;
+    const size_t longest = W_ETOKEN_MAX_FILE_BYTES - 1;
+    char *input;
+    char *token = NULL;
+
+    os_calloc(longest + 1, sizeof(char), input);
+    memset(input, 'A', longest);
+    FILE *in = fmemopen(input, longest, "r");
+
+    assert_int_equal(w_agent_token_read_stream(in, &token), W_TOKEN_READ_OK);
+    fclose(in);
+
+    assert_int_equal(strlen(token), longest);
+    assert_string_equal(token, input);
+    os_free(input);
+    os_free(token);
+}
+
+static void test_a_streamed_token_too_long_to_fit_is_refused(void **state) {
+    (void) state;
+    char *input;
+    char *token = NULL;
+
+    os_calloc(W_ETOKEN_MAX_FILE_BYTES + 1, sizeof(char), input);
+    memset(input, 'A', W_ETOKEN_MAX_FILE_BYTES);
+    FILE *in = fmemopen(input, W_ETOKEN_MAX_FILE_BYTES, "r");
+
+    assert_int_equal(w_agent_token_read_stream(in, &token), W_TOKEN_READ_TOO_BIG);
+    fclose(in);
+
+    assert_null(token);
+    os_free(input);
+}
+
+/* A stream that cannot be read is told apart from one that held nothing. */
+static void test_an_unreadable_stream_is_reported_as_such(void **state) {
+    (void) state;
+    char backing[16] = {0};
+    FILE *in = fmemopen(backing, sizeof(backing), "w");
+    char *token = NULL;
+
+    assert_int_equal(w_agent_token_read_stream(in, &token), W_TOKEN_READ_IO);
+    fclose(in);
+
+    assert_null(token);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_no_token_file_is_noop, setup_test, teardown_test),
@@ -1767,6 +1847,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_a_token_that_fills_the_buffer_exactly_is_read_whole, setup_test,
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_embedded_ca_token_larger_than_the_old_cap_is_read, setup_test, teardown_test),
+        cmocka_unit_test(test_a_streamed_token_comes_back_trimmed),
+        cmocka_unit_test(test_an_empty_stream_reads_as_an_empty_token),
+        cmocka_unit_test(test_a_streamed_token_that_fills_the_buffer_exactly_is_read_whole),
+        cmocka_unit_test(test_a_streamed_token_too_long_to_fit_is_refused),
+        cmocka_unit_test(test_an_unreadable_stream_is_reported_as_such),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

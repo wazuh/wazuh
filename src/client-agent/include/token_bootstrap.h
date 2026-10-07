@@ -178,6 +178,27 @@ const char *w_agent_token_enroll_strerror(w_token_enroll_status_t status);
  */
 char *w_agent_token_read_file(const char *path);
 
+/** @brief Outcome of w_agent_token_read_stream(). */
+typedef enum {
+    W_TOKEN_READ_OK = 0,
+    W_TOKEN_READ_TTY,       ///< The stream is a terminal: a token never arrives that way
+    W_TOKEN_READ_IO,        ///< Reading the stream failed
+    W_TOKEN_READ_TOO_BIG    ///< W_ETOKEN_MAX_FILE_BYTES or more: refused, never truncated
+} w_token_read_status_t;
+
+/**
+ * @brief Reads an enrollment token from a stream: all of it, trailing whitespace trimmed,
+ *        bounded by W_ETOKEN_MAX_FILE_BYTES.
+ *
+ * The stdin form shared by --show-token and wazuh-agent-auth. An empty stream is not refused
+ * here: it reads as an empty token, and each caller says what is wrong with it in its own words.
+ *
+ * @param in Stream to read.
+ * @param text Receives newly allocated token text the caller must free; NULL unless OK.
+ * @return W_TOKEN_READ_OK, or the reason nothing was read.
+ */
+w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text);
+
 /**
  * @brief Outcome of w_agent_token_bootstrap(): whether the caller should give up or retry.
  *
