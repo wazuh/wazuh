@@ -17,6 +17,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 #include "shared.h"
 #include "sec.h"
@@ -290,6 +292,93 @@ static void test_valid_reenroll_secret_accepts_and_rejects_shapes(void **state) 
     assert_false(OS_IsValidReenrollSecret("0123456789abcdeg0123456789abcdef0123456789abcdef0123456789abcdef"));  /* g */
 }
 
+#ifndef TEST_WINAGENT
+/* OS_MoveFile() reaches the real one unless a test makes it fail. */
+static bool g_fail_move = false;
+
+int __real_OS_MoveFile(const char *src, const char *dst);
+
+int __wrap_OS_MoveFile(const char *src, const char *dst) {
+    if (g_fail_move) {
+        return -1;
+    }
+
+    return __real_OS_MoveFile(src, dst);
+}
+
+#define TIMESTAMPS "001 web-01 any 2026-10-07 10:00:00\n" \
+                   "002 db-01 any 2026-10-07 10:00:01\n" \
+                   "003 mail-01 any 2026-10-07 10:00:02\n"
+
+static void write_timestamps(const char *content) {
+    FILE *fp;
+
+    mkdir("queue", 0750);
+    fp = fopen(TIMESTAMP_FILE, "w");
+    assert_non_null(fp);
+    fputs(content, fp);
+    fclose(fp);
+}
+
+static void assert_timestamps(const char *expected) {
+    char buf[512] = {0};
+    FILE *fp = fopen(TIMESTAMP_FILE, "r");
+
+    assert_non_null(fp);
+    assert_true(fread(buf, 1, sizeof(buf) - 1, fp) > 0);
+    fclose(fp);
+    assert_string_equal(buf, expected);
+}
+
+/* TempFile() stages the rewrite beside TIMESTAMP_FILE, as "<name>.XXXXXX". */
+static int count_staged_timestamp_files(void) {
+    DIR *dir = opendir("queue");
+    struct dirent *entry;
+    int staged = 0;
+
+    assert_non_null(dir);
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (strncmp(entry->d_name, "agents-timestamp.", 17) == 0) {
+            staged++;
+        }
+    }
+
+    closedir(dir);
+    return staged;
+}
+
+static int teardown_timestamps(void **state) {
+    (void) state;
+    g_fail_move = false;
+    unlink(TIMESTAMP_FILE);
+    return 0;
+}
+
+static void test_remove_agent_timestamp_drops_only_that_agent(void **state) {
+    (void) state;
+    write_timestamps(TIMESTAMPS);
+
+    OS_RemoveAgentTimestamp("002");
+
+    assert_timestamps("001 web-01 any 2026-10-07 10:00:00\n003 mail-01 any 2026-10-07 10:00:02\n");
+    assert_int_equal(count_staged_timestamp_files(), 0);
+}
+
+/* When the staged copy can't be moved into place, the timestamps stay as they were and the copy
+ * is removed rather than left in queue/, one more for every agent removed. */
+static void test_remove_agent_timestamp_cleans_up_after_a_failed_move(void **state) {
+    (void) state;
+    write_timestamps(TIMESTAMPS);
+    g_fail_move = true;
+
+    OS_RemoveAgentTimestamp("002");
+
+    assert_timestamps(TIMESTAMPS);
+    assert_int_equal(count_staged_timestamp_files(), 0);
+}
+#endif
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_add_new_agent_generates_a_64_hex_key, setup_keys, teardown_keys),
@@ -307,6 +396,11 @@ int main(void) {
         cmocka_unit_test(test_new_reenroll_secret_is_64_lowercase_hex_and_fresh),
         cmocka_unit_test(test_new_agent_key_is_64_lowercase_hex_and_fresh),
         cmocka_unit_test(test_valid_reenroll_secret_accepts_and_rejects_shapes),
+#ifndef TEST_WINAGENT
+        cmocka_unit_test_teardown(test_remove_agent_timestamp_drops_only_that_agent, teardown_timestamps),
+        cmocka_unit_test_teardown(test_remove_agent_timestamp_cleans_up_after_a_failed_move,
+                                  teardown_timestamps),
+#endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

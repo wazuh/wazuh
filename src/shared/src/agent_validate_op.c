@@ -531,7 +531,13 @@ void OS_RemoveAgentTimestamp(const char *id)
 
     fclose(fp);
     fclose(file.fp);
-    OS_MoveFile(file.name, TIMESTAMP_FILE);
+
+    /* OS_MoveFile() has already said why. On some of its failures the staged copy is still there,
+     * and nothing else would ever remove it. */
+    if (OS_MoveFile(file.name, TIMESTAMP_FILE) < 0) {
+        unlink(file.name);
+    }
+
     free(file.name);
 }
 
