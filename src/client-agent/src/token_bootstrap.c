@@ -821,9 +821,11 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
             /* The four-way /cacerts taxonomy: each cause gets its own greppable name, so a
              * misprovisioned manager (ca_mismatch) is never read as the one abort that actually
              * is hostile (a pin mismatch, logged separately below once a body is in hand to
-             * compare). adr_unreachable and ca_mismatch may clear on their own (no response at
-             * all, or a 5xx); not_found is the manager's settled answer -- it has no CA to
-             * serve, provisioned or not, and repeating the request cannot change that. */
+             * compare). adr_unreachable, ca_mismatch and rate_limited may clear on their own (no
+             * response at all, a 5xx, or a 429 -- the manager pacing a node-wide bucket, which a
+             * single caller cannot drain on its own); not_found is the manager's settled answer --
+             * it has no CA to serve, provisioned or not, and repeating the request cannot change
+             * that. */
             bool fetch_transient;
 
             if (fetch_result.http_code == 0) {
@@ -836,6 +838,14 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
                 fetch_transient = false;
                 token_report_fail(report, "/cacerts not_found -- the manager has no certificate "
                        "authority configured (it may predate this feature).");
+            } else if (fetch_result.http_code == 429) {
+                /* Not a verdict on this agent: the route's rate limit is the whole node's, so a
+                 * mass bootstrap -- or anyone else asking fast enough -- can exhaust it. Reading
+                 * it as permanent would make agentd exit at startup over a condition that clears
+                 * within seconds. */
+                fetch_transient = true;
+                token_report_fail(report, "/cacerts rate_limited -- the manager is serving the "
+                       "certificate authority at its configured rate; retrying later.");
             } else if (fetch_result.http_code == 503) {
                 fetch_transient = true;
                 token_report_fail(report, "/cacerts ca_mismatch -- the manager's configured "
