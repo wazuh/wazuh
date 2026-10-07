@@ -42,9 +42,9 @@ namespace
     // this owns 24900-24911. Two constraints, both learned the hard way:
     //
     // 1. Keep clear of the other component files' fixed ports -- httpsClient 24853,
-    //    tlsVerification 24857-24869, enroll 24870-24874, cacerts 24880-24882, caRefresh
-    //    24930-24938 -- because they all run in ONE gtest binary. A base of 44861 covered
-    //    44861-44872 and collided with four of them.
+    //    tlsVerification 24857-24869, enroll 24870-24874, cacerts 24880-24882, fakeManager
+    //    24890, caRefresh 24930-24938 -- because they all run in ONE gtest binary. A base of
+    //    44861 covered 44861-44872 and collided with four of them.
     // 2. Stay BELOW the ephemeral range (net.ipv4.ip_local_port_range, 32768-60999 on the CI
     //    image). A fixed listener port inside that range is racing every outbound connection the
     //    suite makes: these tests open many local TLS connections, and one of them holding the
@@ -52,10 +52,9 @@ namespace
     //    hypothetical -- 44898 lost this race in CI and cost the run 336s, and enroll/cacerts
     //    later lost it on 44874, 44880 and 44882. Every component file now follows this rule.
     //
-    // Either way the symptom is the same and is worth recognising: the loser spends
-    // waitUntilReady()'s full 300s budget probing a listener that never came up, then fails on
-    // whatever it asserts first, which reads as a product hang rather than a port clash.
-    // FakeManager::waitUntilReady() prints a diagnostic naming the port for exactly this reason.
+    // Either way the loser's server never listens. FakeManager::waitUntilReady() fails the test as
+    // soon as that child exits, naming the port; it used to probe for 300s and leave the run to
+    // fail on whatever it asserted first, which read as a product hang rather than a port clash.
     constexpr uint16_t TLS_PORT = 24900;
     const std::string KEY_HEX = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
 
