@@ -26,6 +26,11 @@ static void append_part(char *f_msg, size_t size, const char *part) {
     strncat(f_msg, part, size - len - 1);
 }
 
+/* MM/DD-hh:mm:ss, or MM/DD/YY-hh:mm:ss with Snort's show_year */
+static int is_date_line(const char *str) {
+    return str[2] == '/' && (str[5] == '-' || (str[5] == '/' && str[8] == '-'));
+}
+
 /* Read snort_full files */
 void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     const char *one = "one";
@@ -54,6 +59,9 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
         /* Remove \n at the end of the string */
         if ((q = strrchr(str, '\n')) != NULL) {
             *q = '\0';
+            if (q > str && *(q - 1) == '\r') {
+                *(q - 1) = '\0';
+            }
         } else {
             goto file_error;
         }
@@ -71,14 +79,14 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                     append_part(f_msg, sizeof(f_msg), str);
                     p = two;
                 } else if (strncmp(str, "[Priority: ", 10) == 0) {
-                    append_part(f_msg, sizeof(f_msg), LABEL_PREPROCESSOR_MESSAGE);
+                    append_part(f_msg, sizeof(f_msg), str);
                     p = two;
                 }
 
                 /* If it is a preprocessor message, it will not have
                  * the classification.
                  */
-                else if ((str[2] == '/') && (str[5] == '-') && (q = strchr(str, ' '))) {
+                else if (is_date_line(str) && (q = strchr(str, ' '))) {
                     append_part(f_msg, sizeof(f_msg), LABEL_PREPROCESSOR_MESSAGE);
                     append_part(f_msg, sizeof(f_msg), ++q);
 
@@ -98,7 +106,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                 }
             } else if (p == two) {
                 /* Third line has the 01/13-15 (date) */
-                if ((str[2] == '/') && (str[5] == '-') && (q = strchr(str, ' '))) {
+                if (is_date_line(str) && (q = strchr(str, ' '))) {
                     append_part(f_msg, sizeof(f_msg), ++q);
                     p = NULL;
 
