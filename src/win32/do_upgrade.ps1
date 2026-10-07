@@ -956,6 +956,9 @@ if ($ssl_verification_mode -ceq "full" -or $ssl_verification_mode -ceq "certific
         write-output "$(Get-Date -format u) - System CA trust check skipped (test mode)." >> .\upgrade\upgrade.log
     } elseif (probe_server_verified $server_address $server_port $server_endpoint) {
         write-output "$(Get-Date -format u) - The system trust store already verifies the manager's certificate; proceeding under verify_mode=system." >> .\upgrade\upgrade.log
+    } elseif ($ssl_verification_mode_explicit -and $anchor_available) {
+        # Under 'system' the agent falls back to the anchor when the OS trust store fails.
+        write-output "$(Get-Date -format u) - <ssl><verification_mode> is explicitly 'system' and the system trust store does not verify the manager's certificate at $($server_address):$($server_port), but a trust anchor is present at $($default_ca_file) -- the upgraded agent falls back to it when the OS trust store fails, so proceeding." >> .\upgrade\upgrade.log
     } elseif ($ssl_verification_mode_explicit) {
         # <verification_mode>system</verification_mode> was set explicitly: pinning a
         # CA here would be rejected at runtime (validateTls() in moduleConfig.cpp

@@ -199,6 +199,27 @@ STUB_CACERT_RC=60 run_case explicit_system "$(ssl_conf '      <verification_mode
 check "the probe runs under explicit system and a mismatch aborts" "1" \
       "$(log_count explicit_system "Upgrade failed. Delivered CA at .* does not verify the manager")"
 
+# The OS store never verifies here, so explicit 'system' proceeds only when the anchor is there to
+# fall back to. Passing the gates shows as reaching the (unstaged) package.
+STUB_CACERT_RC=0 run_case explicit_system_ok "$(ssl_conf '      <verification_mode>system</verification_mode>')" yes 5.0.0 no
+check "explicit system proceeds on a delivered CA that verifies the manager" "1" \
+      "$(log_count explicit_system_ok "explicitly 'system' .* but a trust anchor is present.* so proceeding")"
+check "that CA is installed under explicit system" "yes" "$(present explicit_system_ok etc/certs/root-ca.pem)"
+check "explicit system with that CA passes the gates" "1" \
+      "$(log_count explicit_system_ok "No package or sources found")"
+
+run_case explicit_system_anchor "$(ssl_conf '      <verification_mode>system</verification_mode>')" no 5.0.0 yes
+check "explicit system proceeds on an existing anchor" "1" \
+      "$(log_count explicit_system_anchor "explicitly 'system' .* but a trust anchor is present.* so proceeding")"
+check "explicit system with an existing anchor passes the gates" "1" \
+      "$(log_count explicit_system_anchor "No package or sources found")"
+
+run_case explicit_system_no_anchor "$(ssl_conf '      <verification_mode>system</verification_mode>')" no 5.0.0 no
+check "explicit system with no anchor aborts" "1" \
+      "$(log_count explicit_system_no_anchor "Upgrade failed. <ssl><verification_mode> is explicitly 'system'")"
+check "the upgrade result is 2 under explicit system with no anchor" "2" \
+      "$(cat "${WORK}/explicit_system_no_anchor/var/upgrade/upgrade_result" 2>/dev/null)"
+
 # A handshake error is a rejection when the same handshake succeeds without verification.
 STUB_CACERT_RC=35 STUB_RETRY_RC=0 run_case handshake_ca "${LEGACY_CONF}" yes 4.14.7 no
 check "a handshake error that -k does not reproduce aborts the upgrade" "1" \
