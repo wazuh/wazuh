@@ -144,11 +144,13 @@ static int setup_test(void **state) {
 
     _s_verify_counter = 0;
     poll_fallback_logged = false;
+    wrap_sockopt_errno = 0;
 
     return 0;
 }
 
 static int teardown_test(void **state) {
+    wrap_sockopt_errno = 0;
     for (unsigned i=0; agt->server[i].rip; i++) {
         os_free(agt->server[i].rip);
     }
@@ -195,6 +197,8 @@ static void test_connect_server_keepalive_fails(void **state) {
 static void test_connect_server_send_timeout_fails(void **state) {
     bool connected = false;
 
+    errno = 0;
+
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[1].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.2"));
@@ -230,6 +234,8 @@ static void test_connect_server_send_timeout_fails(void **state) {
 static void test_connect_server_timeouts_unsupported(void **state) {
     bool connected = false;
 
+    errno = 0;
+
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[1].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.2"));
@@ -239,12 +245,10 @@ static void test_connect_server_timeouts_unsupported(void **state) {
     expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, 10);
     will_return(__wrap_OS_SetKeepalive, 0);
-#ifndef TEST_WINAGENT
     expect_function_call(__wrap_OS_SetKeepalive_Options);
     will_return(__wrap_getDefine_Int, 60);   /* tcp_keepidle */
     will_return(__wrap_getDefine_Int, 15);   /* tcp_keepintvl */
     will_return(__wrap_getDefine_Int, 4);    /* tcp_keepcnt */
-#endif
     will_return(__wrap_getDefine_Int, 30);   /* send_timeout */
     wrap_sockopt_errno = ENOPROTOOPT;
     will_return(__wrap_OS_SetSendTimeout, -1);
@@ -254,7 +258,6 @@ static void test_connect_server_timeouts_unsupported(void **state) {
     expect_any(__wrap__mdebug1, formatted_msg);     /* poll() fallback, logged once */
 
     connected = connect_server(1, true);
-    wrap_sockopt_errno = 0;
     assert_true(connected);
     assert_int_equal(atomic_int_get(&agt->sock), 10);
     assert_int_equal(handshake_poll_timeout, 5);
@@ -276,6 +279,8 @@ static void test_connect_server_timeouts_unsupported(void **state) {
 
 /* Handshake reply over a TCP socket without SO_RCVTIMEO is read with the poll() bound */
 static void test_agent_handshake_to_server_poll_timeout(void **state) {
+    errno = 0;
+
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[1].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.2"));
@@ -285,12 +290,10 @@ static void test_agent_handshake_to_server_poll_timeout(void **state) {
     expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, 22);
     will_return(__wrap_OS_SetKeepalive, 0);
-#ifndef TEST_WINAGENT
     expect_function_call(__wrap_OS_SetKeepalive_Options);
     will_return(__wrap_getDefine_Int, 60);  /* tcp_keepidle */
     will_return(__wrap_getDefine_Int, 15);  /* tcp_keepintvl */
     will_return(__wrap_getDefine_Int, 4);   /* tcp_keepcnt */
-#endif
     will_return(__wrap_getDefine_Int, 30);  /* send_timeout */
     wrap_sockopt_errno = ENOPROTOOPT;
     will_return(__wrap_OS_SetSendTimeout, -1);
@@ -310,7 +313,6 @@ static void test_agent_handshake_to_server_poll_timeout(void **state) {
     expect_any(__wrap__mdebug1, formatted_msg);
 
     assert_true(agent_handshake_to_server(1, false));
-    wrap_sockopt_errno = 0;
 }
 #endif
 

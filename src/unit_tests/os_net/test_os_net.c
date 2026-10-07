@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <cmocka.h>
 #include <errno.h>
+#include <limits.h>
 #include <poll.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,10 +43,33 @@ int __wrap_getgid(void) {
     return mock();
 }
 
-int __wrap_poll(struct pollfd *fds, __attribute__((unused)) nfds_t nfds, __attribute__((unused)) int timeout) {
+/* errno set by the next __wrap_poll() calls when it fails; 0 leaves errno untouched */
+static int wrap_poll_errno = 0;
+
+int __wrap_poll(struct pollfd *fds, __attribute__((unused)) nfds_t nfds, int timeout) {
     check_expected(fds->events);
+    check_expected(timeout);
+
+    if (wrap_poll_errno) {
+        errno = wrap_poll_errno;
+    }
 
     return mock();
+}
+
+time_t __wrap_w_get_monotonic_time(void) {
+    return mock_type(time_t);
+}
+
+/* Expect a poll() call waiting `timeout_ms` that returns `ret` */
+static void expect_poll(short events, int timeout_ms, int ret) {
+    expect_value(__wrap_poll, fds->events, events);
+    expect_value(__wrap_poll, timeout, timeout_ms);
+    will_return(__wrap_poll, ret);
+}
+
+static void will_monotonic(time_t now) {
+    will_return(__wrap_w_get_monotonic_time, now);
 }
 
 // Structs
@@ -77,6 +101,8 @@ static int test_setup(void **state) {
     *state = init_data;
 
     test_mode = 1;
+    wrap_send_errno = 0;
+    wrap_poll_errno = 0;
 
     return OS_SUCCESS;
 }
@@ -94,6 +120,8 @@ static int test_teardown(void **state) {
     os_free(data);
 
     test_mode = 0;
+    wrap_send_errno = 0;
+    wrap_poll_errno = 0;
 
     return OS_SUCCESS;
 }
@@ -306,73 +334,173 @@ void test_send_secure_TCP_timeout_zero_is_plain_send(void **state) {
     assert_int_equal(OS_SendSecureTCPTimeout(3, strlen(SENDSTRING), SENDSTRING, 0), 0);
 }
 
+/* The send timeout tests use a 5 seconds timeout and a monotonic clock starting at 100.
+ * The first clock reading sets the deadline, one more is taken before each poll(). */
+
 void test_send_secure_TCP_timeout_success(void **state) {
-    expect_value(__wrap_poll, fds->events, POLLOUT);
-    will_return(__wrap_poll, 1);
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLOUT, 5000, 1);
     will_return(__wrap_send, 17);
 
     assert_int_equal(OS_SendSecureTCPTimeout(3, strlen(SENDSTRING), SENDSTRING, 5), 0);
 }
 
 void test_send_secure_TCP_timeout_partial_send(void **state) {
-    expect_value(__wrap_poll, fds->events, POLLOUT);
-    will_return(__wrap_poll, 1);
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLOUT, 5000, 1);
     will_return(__wrap_send, 5);
-    expect_value(__wrap_poll, fds->events, POLLOUT);
-    will_return(__wrap_poll, 1);
+    will_monotonic(101);
+    expect_poll(POLLOUT, 4000, 1);
     will_return(__wrap_send, 12);
 
     assert_int_equal(OS_SendSecureTCPTimeout(3, strlen(SENDSTRING), SENDSTRING, 5), 0);
 }
 
+/* The time left shrinks across chunks: the timeout bounds the whole message, not each chunk */
 void test_send_secure_TCP_timeout_chunks(void **state) {
     char msg[2500];
 
     memset(msg, 'a', sizeof(msg));
 
     /* 4-byte header + 2500 bytes in chunks of at most 1024 bytes */
-    expect_value(__wrap_poll, fds->events, POLLOUT);
-    will_return(__wrap_poll, 1);
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLOUT, 5000, 1);
     will_return(__wrap_send, 1024);
-    expect_value(__wrap_poll, fds->events, POLLOUT);
-    will_return(__wrap_poll, 1);
+    will_monotonic(102);
+    expect_poll(POLLOUT, 3000, 1);
     will_return(__wrap_send, 1024);
-    expect_value(__wrap_poll, fds->events, POLLOUT);
-    will_return(__wrap_poll, 1);
+    will_monotonic(104);
+    expect_poll(POLLOUT, 1000, 1);
     will_return(__wrap_send, 456);
 
     assert_int_equal(OS_SendSecureTCPTimeout(3, sizeof(msg), msg, 5), 0);
 }
 
 void test_send_secure_TCP_timeout_expired(void **state) {
-    expect_value(__wrap_poll, fds->events, POLLOUT);
-    will_return(__wrap_poll, 0);
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLOUT, 5000, 0);
+
+    assert_int_equal(OS_SendSecureTCPTimeout(3, strlen(SENDSTRING), SENDSTRING, 5), OS_SOCKTERR);
+    assert_int_equal(errno, EAGAIN);
+}
+
+void test_send_secure_TCP_timeout_deadline_reached_before_poll(void **state) {
+    will_monotonic(100);
+    will_monotonic(105);
 
     assert_int_equal(OS_SendSecureTCPTimeout(3, strlen(SENDSTRING), SENDSTRING, 5), OS_SOCKTERR);
     assert_int_equal(errno, EAGAIN);
 }
 
 void test_send_secure_TCP_timeout_expired_after_partial_send(void **state) {
-    expect_value(__wrap_poll, fds->events, POLLOUT);
-    will_return(__wrap_poll, 1);
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLOUT, 5000, 1);
     will_return(__wrap_send, 5);
-    expect_value(__wrap_poll, fds->events, POLLOUT);
-    will_return(__wrap_poll, 0);
+    will_monotonic(101);
+    expect_poll(POLLOUT, 4000, 0);
 
     assert_int_equal(OS_SendSecureTCPTimeout(3, strlen(SENDSTRING), SENDSTRING, 5), OS_SOCKTERR);
     assert_int_equal(errno, EAGAIN);
 }
 
+/* A huge timeout must not overflow the milliseconds argument of poll() */
+void test_send_secure_TCP_timeout_clamps_poll_timeout(void **state) {
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLOUT, (INT_MAX / 1000) * 1000, 1);
+    will_return(__wrap_send, 17);
+
+    assert_int_equal(OS_SendSecureTCPTimeout(3, strlen(SENDSTRING), SENDSTRING, 4000000), 0);
+}
+
 void test_send_secure_TCP_timeout_socket_error(void **state) {
-    wrap_send_errno = EPIPE;
-    expect_value(__wrap_poll, fds->events, POLLOUT);
-    will_return(__wrap_poll, 1);
+    wrap_send_errno = ECONNRESET;
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLOUT, 5000, 1);
+    will_return(__wrap_send, -1);
+
+    assert_int_equal(OS_SendSecureTCPTimeout(3, strlen(SENDSTRING), SENDSTRING, 5), OS_SOCKTERR);
+    assert_int_equal(errno, ECONNRESET);
+}
+
+/* Part of the message is already written: the framing is broken, report a dead socket */
+void test_send_secure_TCP_timeout_socket_error_after_partial_send(void **state) {
+    wrap_send_errno = ENOMEM;
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLOUT, 5000, 1);
+    will_return(__wrap_send, 5);
+    will_monotonic(100);
+    expect_poll(POLLOUT, 5000, 1);
     will_return(__wrap_send, -1);
 
     assert_int_equal(OS_SendSecureTCPTimeout(3, strlen(SENDSTRING), SENDSTRING, 5), OS_SOCKTERR);
     assert_int_equal(errno, EPIPE);
+}
 
-    wrap_send_errno = 0;
+void test_send_secure_TCP_timeout_send_returns_zero(void **state) {
+    wrap_send_errno = ENOMEM;
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLOUT, 5000, 1);
+    will_return(__wrap_send, 0);
+
+    assert_int_equal(OS_SendSecureTCPTimeout(3, strlen(SENDSTRING), SENDSTRING, 5), OS_SOCKTERR);
+    assert_int_equal(errno, EPIPE);
+}
+
+void test_send_secure_TCP_timeout_eintr_on_send(void **state) {
+    wrap_send_errno = EINTR;
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLOUT, 5000, 1);
+    will_return(__wrap_send, -1);
+    will_monotonic(100);
+    expect_poll(POLLOUT, 5000, 1);
+    will_return(__wrap_send, 17);
+
+    assert_int_equal(OS_SendSecureTCPTimeout(3, strlen(SENDSTRING), SENDSTRING, 5), 0);
+}
+
+void test_send_secure_TCP_timeout_eintr_on_poll(void **state) {
+    wrap_poll_errno = EINTR;
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLOUT, 5000, -1);
+    will_monotonic(101);
+    expect_poll(POLLOUT, 4000, 1);
+    will_return(__wrap_send, 17);
+
+    assert_int_equal(OS_SendSecureTCPTimeout(3, strlen(SENDSTRING), SENDSTRING, 5), 0);
+}
+
+void test_send_secure_TCP_timeout_poll_error(void **state) {
+    wrap_poll_errno = EBADF;
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLOUT, 5000, -1);
+
+    assert_int_equal(OS_SendSecureTCPTimeout(3, strlen(SENDSTRING), SENDSTRING, 5), OS_SOCKTERR);
+    assert_int_equal(errno, EBADF);
+}
+
+void test_send_secure_TCP_timeout_poll_error_after_partial_send(void **state) {
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLOUT, 5000, 1);
+    will_return(__wrap_send, 5);
+    wrap_poll_errno = EBADF;
+    will_monotonic(100);
+    expect_poll(POLLOUT, 5000, -1);
+
+    assert_int_equal(OS_SendSecureTCPTimeout(3, strlen(SENDSTRING), SENDSTRING, 5), OS_SOCKTERR);
+    assert_int_equal(errno, EPIPE);
 }
 
 void test_recv_secure_TCP_timeout_zero_is_plain_recv(void **state) {
@@ -385,14 +513,16 @@ void test_recv_secure_TCP_timeout_zero_is_plain_recv(void **state) {
     assert_string_equal(buffer, SENDSTRING);
 }
 
+/* The receive deadline covers the header and the payload together */
 void test_recv_secure_TCP_timeout_success(void **state) {
     char buffer[BUFFERSIZE];
 
-    expect_value(__wrap_poll, fds->events, POLLIN);
-    will_return(__wrap_poll, 1);
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLIN, 5000, 1);
     will_return(__wrap_recv, 4);
-    expect_value(__wrap_poll, fds->events, POLLIN);
-    will_return(__wrap_poll, 1);
+    will_monotonic(102);
+    expect_poll(POLLIN, 3000, 1);
     will_return(__wrap_recv, 13);
 
     assert_int_equal(OS_RecvSecureTCPTimeout(5, buffer, BUFFERSIZE, 5), 13);
@@ -402,8 +532,9 @@ void test_recv_secure_TCP_timeout_success(void **state) {
 void test_recv_secure_TCP_timeout_header_expired(void **state) {
     char buffer[BUFFERSIZE];
 
-    expect_value(__wrap_poll, fds->events, POLLIN);
-    will_return(__wrap_poll, 0);
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLIN, 5000, 0);
 
     assert_int_equal(OS_RecvSecureTCPTimeout(5, buffer, BUFFERSIZE, 5), -1);
     assert_int_equal(errno, EAGAIN);
@@ -412,11 +543,11 @@ void test_recv_secure_TCP_timeout_header_expired(void **state) {
 void test_recv_secure_TCP_timeout_payload_expired(void **state) {
     char buffer[BUFFERSIZE];
 
-    expect_value(__wrap_poll, fds->events, POLLIN);
-    will_return(__wrap_poll, 1);
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLIN, 5000, 1);
     will_return(__wrap_recv, 4);
-    expect_value(__wrap_poll, fds->events, POLLIN);
-    will_return(__wrap_poll, 0);
+    will_monotonic(105);
 
     assert_int_equal(OS_RecvSecureTCPTimeout(5, buffer, BUFFERSIZE, 5), -1);
     assert_int_equal(errno, EAGAIN);
@@ -425,8 +556,9 @@ void test_recv_secure_TCP_timeout_payload_expired(void **state) {
 void test_recv_secure_TCP_timeout_disconnected(void **state) {
     char buffer[BUFFERSIZE];
 
-    expect_value(__wrap_poll, fds->events, POLLIN);
-    will_return(__wrap_poll, 1);
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLIN, 5000, 1);
     will_return(__wrap_recv, 0);
 
     assert_int_equal(OS_RecvSecureTCPTimeout(5, buffer, BUFFERSIZE, 5), 0);
@@ -1126,9 +1258,17 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_send_secure_TCP_timeout_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_send_secure_TCP_timeout_partial_send, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_send_secure_TCP_timeout_chunks, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_send_secure_TCP_timeout_expired_after_partial_send, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_send_secure_TCP_timeout_expired, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_send_secure_TCP_timeout_deadline_reached_before_poll, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_send_secure_TCP_timeout_expired_after_partial_send, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_send_secure_TCP_timeout_clamps_poll_timeout, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_send_secure_TCP_timeout_socket_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_send_secure_TCP_timeout_socket_error_after_partial_send, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_send_secure_TCP_timeout_send_returns_zero, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_send_secure_TCP_timeout_eintr_on_send, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_send_secure_TCP_timeout_eintr_on_poll, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_send_secure_TCP_timeout_poll_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_send_secure_TCP_timeout_poll_error_after_partial_send, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_recv_secure_TCP_timeout_zero_is_plain_recv, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_recv_secure_TCP_timeout_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_recv_secure_TCP_timeout_header_expired, test_setup, test_teardown),

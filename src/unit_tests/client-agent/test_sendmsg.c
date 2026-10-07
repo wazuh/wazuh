@@ -46,10 +46,12 @@ static int setup(void **state) {
     atomic_int_set(&agt->sock, DUMMY_VALID_SOCKET_FD);
     sender_init();
     errno = 0;
+    wrap_sockopt_errno = 0;
     return 0;
 }
 
 static int teardown(void **state) {
+    wrap_sockopt_errno = 0;
     return 0;
 }
 

@@ -14,6 +14,7 @@
 
 #include <errno.h>
 #ifndef WIN32
+#include <limits.h>
 #include <poll.h>
 #endif
 #include "shared.h"
@@ -50,7 +51,8 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
 
 #endif /* WIN32*/
 
-/* Largest write while bounding a send with poll() */
+/* Must stay below the socket send low-water mark (tcp_xmit_lowat, 2048 by default on Solaris 10):
+ * POLLOUT only guarantees that much room, so a larger write could block send(). */
 #define SEND_CHUNK_SIZE 1024
 
 #define RECV_SOCK 0
@@ -689,25 +691,31 @@ int OS_SetSendTimeout(int socket, int seconds)
 // Send secure TCP message
 
 #ifndef WIN32
-/* Wait for `events` on sock until `deadline`.
+/* Wait for `events` on sock until `deadline`, a w_get_monotonic_time() value,
+ * so wall-clock jumps cannot expire or extend the wait (1 s resolution).
  * Returns > 0 when ready, 0 on timeout (errno = EAGAIN), -1 on error. */
 static int os_poll_deadline(int sock, short events, time_t deadline) {
     struct pollfd pfd;
-    time_t now;
+    time_t remaining;
     int ret;
 
     pfd.fd = sock;
     pfd.events = events;
 
     do {
-        now = time(NULL);
+        remaining = deadline - w_get_monotonic_time();
 
-        if (now >= deadline) {
+        if (remaining <= 0) {
             errno = EAGAIN;
             return 0;
         }
 
-        ret = poll(&pfd, 1, (int)(deadline - now) * 1000);
+        /* poll() takes an int of milliseconds */
+        if (remaining > INT_MAX / 1000) {
+            remaining = INT_MAX / 1000;
+        }
+
+        ret = poll(&pfd, 1, (int)remaining * 1000);
     } while (ret < 0 && errno == EINTR);
 
     if (ret == 0) {
@@ -721,16 +729,29 @@ static int os_poll_deadline(int sock, short events, time_t deadline) {
  * SEND_CHUNK_SIZE (below the send low-water mark) keep send() from blocking,
  * because Solaris 10 has no SO_SNDTIMEO and MSG_DONTWAIT is recv-only there.
  * The socket mode is left unchanged as the receiving thread shares it.
- * Returns 0 or OS_SOCKTERR (errno = EAGAIN on timeout). */
+ * A poll()/send() error after part of the message was written reports EPIPE;
+ * a timeout keeps EAGAIN. send_msg() reconnects on both.
+ * Returns 0 or OS_SOCKTERR. */
 static int send_all_timeout(int sock, const char * buffer, size_t size, int timeout) {
-    time_t deadline = time(NULL) + timeout;
+    time_t deadline = w_get_monotonic_time() + timeout;
     size_t offset = 0;
 
     while (offset < size) {
         size_t chunk = size - offset;
         ssize_t sent;
+        int ready;
 
-        if (os_poll_deadline(sock, POLLOUT, deadline) <= 0) {
+        ready = os_poll_deadline(sock, POLLOUT, deadline);
+
+        if (ready == 0) {
+            return OS_SOCKTERR;
+        }
+
+        if (ready < 0) {
+            if (offset > 0) {
+                errno = EPIPE;
+            }
+
             return OS_SOCKTERR;
         }
 
@@ -742,7 +763,14 @@ static int send_all_timeout(int sock, const char * buffer, size_t size, int time
 
         if (sent > 0) {
             offset += sent;
-        } else if (sent == 0 || errno != EINTR) {
+        } else if (sent == 0) {
+            errno = EPIPE;
+            return OS_SOCKTERR;
+        } else if (errno != EINTR) {
+            if (offset > 0) {
+                errno = EPIPE;
+            }
+
             return OS_SOCKTERR;
         }
     }
@@ -836,7 +864,7 @@ static ssize_t recv_exact(int sock, void * buf, size_t size, __attribute__((unus
 static int recv_secure_tcp(int sock, char * ret, uint32_t size, __attribute__((unused)) int timeout) {
     ssize_t recvval, recvb;
     uint32_t msgsize;
-    time_t deadline = timeout > 0 ? time(NULL) + timeout : 0;
+    time_t deadline = timeout > 0 ? w_get_monotonic_time() + timeout : 0;
 
     /* Get header */
     recvval = recv_exact(sock, &msgsize, sizeof(msgsize), timeout, deadline);
