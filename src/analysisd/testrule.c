@@ -206,6 +206,7 @@ int main(int argc, char **argv)
     nowChroot();
 
     Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
+    w_rule_tree_read_config();
 
     if (!os_analysisd_last_events) {
         os_calloc(1, sizeof(EventList), os_analysisd_last_events);
@@ -398,6 +399,10 @@ int main(int argc, char **argv)
 
             /* Read the rules */
             {
+                w_rule_tree_build_t rule_tree_build;
+                /* list_msg is written to the log after each file: the warning is logged directly */
+                w_rule_tree_build_init(&rule_tree_build, NULL);
+
                 char **rulesfiles;
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
@@ -408,7 +413,8 @@ int main(int argc, char **argv)
                                            &os_analysisd_last_events,
                                            &os_analysisd_decoder_store,
                                            list_msg,
-                                           false) < 0)
+                                           false,
+                                           &rule_tree_build) < 0)
                     {
                         error_exit = 1;
                     }

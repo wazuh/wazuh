@@ -99,7 +99,7 @@ void Rules_OP_CreateRules() {
 
 int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node,
                        EventList **last_event_list, OSStore **decoder_list, OSList* log_msg,
-                       bool is_ar_link_enabled)
+                       bool is_ar_link_enabled, w_rule_tree_build_t *build)
 {
     OS_XML xml;
     XML_NODE node = NULL;
@@ -1904,33 +1904,46 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
             j++; /* next rule */
 
+            int add_result = 0;
+
+            if (build != NULL) {
+                build->rule_node_count = 0;
+            }
+
             /* Add the rule to the rules list.
              * Only the template rules are supposed
              * to be at the top level. All others
              * will be a "child" of someone.
              */
             if (config_ruleinfo->sigid < 10) {
-                OS_AddRule(config_ruleinfo, r_node);
+                add_result = OS_AddRule(config_ruleinfo, r_node, build);
             } else if (config_ruleinfo->alert_opts & DO_OVERWRITE) {
 
                 if (!OS_AddRuleInfo(*r_node, config_ruleinfo, config_ruleinfo->sigid, log_msg)) {
 
                     // If there is no rule to overwrite, then the rule is added as any other rule
-                    if (OS_AddChild(config_ruleinfo, r_node, log_msg) == -1) {
-                        // Skip rule, without having to abort analysisd execution
-                        os_remove_ruleinfo(config_ruleinfo);
-                        config_ruleinfo = NULL;
-                        continue;
-                    }
+                    add_result = OS_AddChild(config_ruleinfo, r_node, log_msg, build);
                 }
             } else {
+                add_result = OS_AddChild(config_ruleinfo, r_node, log_msg, build);
+            }
 
-                if (OS_AddChild(config_ruleinfo, r_node, log_msg) == -1) {
-                    // Skip rule, without having to abort analysisd execution
-                    os_remove_ruleinfo(config_ruleinfo);
+            if (add_result == RULE_TREE_LIMIT_REACHED) {
+                smerror(log_msg, RL_TREE_NODE_LIMIT, config_ruleinfo->sigid, rulefile, build->node_count,
+                        build->node_limit);
+
+                /* Nodes already inserted for this rule point to its RuleInfo:
+                 * it is released with the rule tree, not here.
+                 */
+                if (build->rule_node_count > 0) {
                     config_ruleinfo = NULL;
-                    continue;
                 }
+                goto cleanup;
+            } else if (add_result == -1) {
+                // Skip rule, without having to abort analysisd execution
+                os_remove_ruleinfo(config_ruleinfo);
+                config_ruleinfo = NULL;
+                continue;
             }
 
             /* Clean what we do not need */
@@ -3267,4 +3280,23 @@ STATIC INLINE void w_free_rules_tmp_params(rules_tmp_params_t * rule_tmp_params)
         rule_tmp_params->rule_arr_opt = NULL;
     }
 
+}
+
+void w_rule_tree_read_config(void) {
+
+    Config.rule_tree_node_warning = getDefine_Int("analysisd", "rule_tree_node_warning", 0, INT32_MAX);
+    Config.rule_tree_node_limit = getDefine_Int("analysisd", "rule_tree_node_limit", 0, INT32_MAX);
+
+    if (Config.rule_tree_node_warning > 0 && Config.rule_tree_node_limit > 0
+        && Config.rule_tree_node_warning >= Config.rule_tree_node_limit) {
+        merror_exit(RL_TREE_NODE_THRESHOLDS, Config.rule_tree_node_warning, Config.rule_tree_node_limit);
+    }
+}
+
+void w_rule_tree_build_init(w_rule_tree_build_t * build, OSList * log_msg) {
+
+    memset(build, 0, sizeof(w_rule_tree_build_t));
+    build->node_warning = (size_t)Config.rule_tree_node_warning;
+    build->node_limit = (size_t)Config.rule_tree_node_limit;
+    build->log_msg = log_msg;
 }

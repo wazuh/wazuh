@@ -258,6 +258,24 @@ typedef struct _RuleNode {
 } RuleNode;
 
 /**
+ * @brief Return code of the rule insertion functions when the rule tree node limit is reached.
+ */
+#define RULE_TREE_LIMIT_REACHED -2
+
+/**
+ * @brief Rule tree build state, shared by every rules file of the same ruleset build.
+ */
+typedef struct w_rule_tree_build_t {
+    size_t node_count;          ///< Nodes allocated by this build
+    size_t node_warning;        ///< Node count above which a warning is logged (0 = disabled)
+    size_t node_limit;          ///< Maximum number of nodes (0 = disabled)
+    size_t rule_node_count;     ///< Nodes allocated for the rule being inserted
+    bool warning_emitted;       ///< The warning threshold was already reported
+    bool limit_reached;         ///< A node allocation was refused because of node_limit
+    OSList * log_msg;           ///< Requester's message list that also receives the warning (may be NULL)
+} w_rule_tree_build_t;
+
+/**
  * @brief Structure to save all rules read in starting.
  */
 extern RuleNode *os_analysisd_rulelist;
@@ -314,19 +332,29 @@ RuleInfo * OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
  */
 void OS_CreateRuleList(void);
 
-/* Add rule information to the list */
-int OS_AddRule(RuleInfo *read_rule, RuleNode **r_node);
+/**
+ * @brief Add rule information to the top level of the list.
+ * @param read_rule rule information.
+ * @param r_node reference to the rule list.
+ * @param build rule tree build state. NULL disables node accounting.
+ * @retval 0 successful.
+ * @retval RULE_TREE_LIMIT_REACHED the node limit of the build was reached.
+ */
+int OS_AddRule(RuleInfo *read_rule, RuleNode **r_node, w_rule_tree_build_t *build);
 
 /**
  * @brief Add rule information as a child.
  * @param read_rule rule information.
  * @param r_node node to add as a child rule information.
  * @param log_msg List to save log messages.
+ * @param build rule tree build state. NULL disables node accounting.
  * @retval -1 Critical errors.
  * @retval  0 successful.
  * @retval  1 for errors.
+ * @retval RULE_TREE_LIMIT_REACHED the node limit of the build was reached. Nodes already
+ *         inserted for read_rule remain in the tree.
  */
-int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg);
+int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg, w_rule_tree_build_t *build);
 
 /**
  * @brief Add an overwrite rule.
@@ -393,11 +421,30 @@ void Rules_OP_CreateRules(void);
  * @param last_event_list reference to first node to the previous events list
  * @param log_msg List to save log messages.
  * @param is_ar_link_enabled determine if the rule should be linked to the active response
- * @return 0 on success, otherwise -1
+ * @param build rule tree build state, shared by all the files of the ruleset. NULL disables node accounting.
+ * @return 0 on success, otherwise -1. If the node limit is reached, the partial rule tree
+ *         remains in r_node and must be released with os_remove_rules_list().
  */
 int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node,
                        EventList **last_event_list, OSStore **decoder_list, OSList* log_msg,
-                       bool is_ar_link_enabled);
+                       bool is_ar_link_enabled, w_rule_tree_build_t *build);
+
+/**
+ * @brief Read the rule tree thresholds from the internal options into Config.
+ *
+ * Exits if the warning threshold is not lower than the node limit while both are enabled.
+ */
+void w_rule_tree_read_config(void);
+
+/**
+ * @brief Initialize a rule tree build state with the thresholds from Config.
+ *
+ * The warning threshold is logged as soon as it is exceeded, while the tree is being built.
+ * @param build build state to initialize.
+ * @param log_msg List returned to the requester (logtest, hot reload) that also receives the warning.
+ *        NULL if the caller writes its message list to the log itself, so the warning is not logged twice.
+ */
+void w_rule_tree_build_init(w_rule_tree_build_t *build, OSList *log_msg);
 
 int AddHash_Rule(RuleNode *node);
 
