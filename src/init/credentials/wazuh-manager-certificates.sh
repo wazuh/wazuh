@@ -940,8 +940,9 @@ _wmc_generate_indexer_pair() (
 )
 
 # The manager's server leaves -- remoted's agent listener (remoted.pem) and the Server API
-# (apid.pem) -- share one profile: CN=<node>, the Remoted SANs, serverAuth, notBefore backdated
-# one day, leaf followed by the root CA, owned by the service identity they are opened as.
+# (apid.pem) -- share one profile: CN=<node>, serverAuth, notBefore backdated one day, leaf
+# followed by the root CA, owned by the service identity they are opened as; each takes its own
+# SAN list.
 _wmc_generate_server_pair() (
     _wmc_name=${1-}
     _wmc_label=${2-}

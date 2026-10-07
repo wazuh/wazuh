@@ -19,7 +19,8 @@ fi
 ./wazuh-certs-tool.sh -A
 
 # Issue the Server API (apid) pair, signed by the root CA the tool just created: the API no longer
-# generates its own certificate. Same profile as the installer's.
+# generates its own certificate. A localhost-only leaf, unlike the installer's: this environment uses
+# the upstream tool, which issues no listener pair to reuse, and the tests reach the API on localhost.
 echo "Issuing the Server API certificate..."
 CA_DIR=wazuh-certificates
 OUT=wazuh-certificates
