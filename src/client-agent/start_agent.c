@@ -217,8 +217,8 @@ bool connect_server(int server_id, bool verbose)
          * it ever takes this mutex, so a sender must never be able to see the
          * new socket paired with the previous (possibly different-protocol)
          * server's rip_id. */
-        send_set_poll_timeout(send_poll_timeout);
         send_mutex_lock();
+        send_set_poll_timeout(send_poll_timeout);
         agt->rip_id = server_id;
         atomic_int_set(&agt->sock, new_sock);
         send_mutex_unlock();

@@ -23,9 +23,7 @@ void sender_init() {
 }
 
 void send_set_poll_timeout(int seconds) {
-    w_mutex_lock(&send_mutex);
     send_poll_timeout = seconds;
-    w_mutex_unlock(&send_mutex);
 }
 
 void send_mutex_lock(void) {

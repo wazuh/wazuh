@@ -553,6 +553,20 @@ void test_recv_secure_TCP_timeout_payload_expired(void **state) {
     assert_int_equal(errno, EAGAIN);
 }
 
+void test_recv_secure_TCP_timeout_payload_poll_expired(void **state) {
+    char buffer[BUFFERSIZE];
+
+    will_monotonic(100);
+    will_monotonic(100);
+    expect_poll(POLLIN, 5000, 1);
+    will_return(__wrap_recv, 4);
+    will_monotonic(102);
+    expect_poll(POLLIN, 3000, 0);
+
+    assert_int_equal(OS_RecvSecureTCPTimeout(5, buffer, BUFFERSIZE, 5), -1);
+    assert_int_equal(errno, EAGAIN);
+}
+
 void test_recv_secure_TCP_timeout_disconnected(void **state) {
     char buffer[BUFFERSIZE];
 
@@ -1273,6 +1287,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_recv_secure_TCP_timeout_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_recv_secure_TCP_timeout_header_expired, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_recv_secure_TCP_timeout_payload_expired, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_recv_secure_TCP_timeout_payload_poll_expired, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_recv_secure_TCP_timeout_disconnected, test_setup, test_teardown),
 
         /* Send a TCP packet of a specific size */
