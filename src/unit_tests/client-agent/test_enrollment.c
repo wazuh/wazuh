@@ -553,6 +553,19 @@ static void test_process_response_409_is_duplicate(void **state) {
     assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_DUPLICATE);
 }
 
+/* A 429 is the manager's node-wide enrollment rate limit, not a verdict on this request: retryable
+ * (W_ENROLL_ERR_SERVER, which both enrollment loops ramp on), and named at info level so a mass
+ * enrollment does not read as a failure of each agent. */
+static void test_process_response_429_is_rate_limited_and_retryable(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    result.http_code = 429;
+
+    expect_string(__wrap__minfo, formatted_msg, "Enrollment is being rate-limited by the manager; retrying.");
+
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_SERVER);
+}
+
 static void test_process_response_unrecognized_status_is_server_error(void **state) {
     (void)state;
     hc_enroll_result_t result = {0};
@@ -1015,6 +1028,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_response_403_is_disabled_not_an_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_404_names_the_configured_path, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_409_is_duplicate, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_process_response_429_is_rate_limited_and_retryable, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_unrecognized_status_is_server_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_with_malformed_json_is_server_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_200_missing_field_is_server_error, setup_test, teardown_test),
