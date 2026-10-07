@@ -13,7 +13,7 @@
 policy:
   id: "cis_rhel10_linux"
   file: "cis_rhel10_linux.yml"
-  name: "CIS Red Hat Enterprise Linux 10 Benchmark."
+  name: "CIS Red Hat Enterprise Linux 10 Benchmark"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Red Hat Enterprise Linux 10 systems running on x86 and x64 platforms. This document was tested against Red Hat Enterprise Linux 10. This document is based on Center for Internet Security Red Hat Enterprise Linux 9 Benchmark v1.0.0."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
@@ -2053,7 +2053,7 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - "c:grubby --info=ALL -> r:audit=1"
+      - 'not c:grubby --info=ALL -> r:^args= && !r:audit=1'
 
   # 4.1.1.3 Ensure audit_backlog_limit is sufficient (Automated)
   - id: 37080
@@ -2075,7 +2075,8 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - 'c:grubby --info=ALL -> n:^args=\.*\saudit_backlog_limit=(\d+) compare >= 8192'
+      - 'not c:grubby --info=ALL -> r:^args= && !r:audit_backlog_limit='
+      - 'not c:grubby --info=ALL -> r:^args= && n:audit_backlog_limit=(\d+) compare < 8192'
 
   # 4.1.1.4 Ensure auditd service is enabled (Automated)
   - id: 37081

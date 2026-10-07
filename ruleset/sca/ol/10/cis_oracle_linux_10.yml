@@ -3678,8 +3678,8 @@ checks:
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*MaxSessions\s+(\d+) compare <= 10'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+(\d+) compare => 10'
-      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxSessions\s+(\d+) compare => 10'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+(\d+) compare >= 10'
+      - 'not d:/etc/ssh/sshd_config.d -> r:\.*.conf -> n:^\s*MaxSessions\s+(\d+) compare >= 10'
 
   # 5.2.19 Ensure SSH LoginGraceTime is set to one minute or less. (Automated)
   - id: 38647

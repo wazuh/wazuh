@@ -975,8 +975,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:apparmor=1'
-      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor'
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*\s*linux && !r:memtest86 && !r:apparmor=1'
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*\s*linux && !r:memtest86 && !r:security=apparmor'
 
   # 1.6.1.3 Ensure all AppArmor Profiles are in enforce or complain mode. (Automated)
   - id: 2540
@@ -3390,9 +3390,10 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: all
     rules:
-      - 'c:sudo -V -> r:Authentication timestamp timeout:\s*\t*15.0 minutes'
-      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare <=15'
-      - 'd:/etc/sudoers.d -> r:\.* -> n:timestamp_timeout=(\d+) compare <=15'
+      - 'not f:/etc/sudoers -> !r:^\s*\t*# && r:timestamp_timeout\s*\t*=\s*\t*-1'
+      - 'not d:/etc/sudoers.d -> r:\.+ -> !r:^\s*\t*# && r:timestamp_timeout\s*\t*=\s*\t*-1'
+      - 'not f:/etc/sudoers -> !r:^\s*\t*# && n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
+      - 'not d:/etc/sudoers.d -> r:\.+ -> !r:^\s*\t*# && n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
 
   # 4.3.7 Ensure access to the su command is restricted. (Automated)
   - id: 2643
@@ -3487,7 +3488,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare >= 5'
       - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:success && r:default\s*=\s*ignore && r:pam_unix.so && r:use_authtok'
 
   # 4.4.4 Ensure strong password hashing algorithm is configured. (Automated)
@@ -3627,7 +3628,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/security/pwquality.conf -> !r:^# && n:difok\s*\t*=\s*\t*(\d+) compare => 2'
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:difok\s*\t*=\s*\t*(\d+) compare >= 2'
 
   # 4.5.1.7 Ensure preventing the use of dictionary words for passwords is configured. (Automated)
   - id: 2653
@@ -4121,7 +4122,7 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:audit=1'
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*\s*linux && !r:memtest86 && !r:audit=1'
 
   # 5.2.1.4 Ensure audit_backlog_limit is sufficient. (Automated)
   - id: 2674
@@ -4144,7 +4145,8 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:audit_backlog_limit'
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*\s*linux && !r:memtest86 && !r:audit_backlog_limit='
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*\s*linux && !r:memtest86 && n:audit_backlog_limit=(\d+) compare < 8192'
 
   # 5.2.2.1 Ensure audit log storage size is configured. (Automated)
   - id: 2675
