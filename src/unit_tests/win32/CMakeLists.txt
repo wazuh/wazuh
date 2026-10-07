@@ -59,6 +59,11 @@ list(APPEND win32_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Sysch
                         -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                         -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND win32_names "test_win32ui_enroll")
+list(APPEND win32_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+                        -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                        -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
+
 list(LENGTH win32_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})

@@ -727,6 +727,39 @@ static void test_refused_enrollment_leaves_the_old_state(void **state) {
     assert_non_null(strstr(err_buf, "Nothing was changed"));
 }
 
+/* The Windows agent UI shows the manager's reason by finding this exact line on stderr, so a
+ * refusal must carry it, prefix and text together. */
+static void test_refused_enrollment_reports_the_manager_reason(void **state) {
+    (void) state;
+    agent_auth_opts_t opts;
+    char out_buf[1024] = {0};
+    char err_buf[2048] = {0};
+    char token[] = TOKEN_PIN_ONLY;
+    FILE *in = fmemopen(token, strlen(token), "r");
+    FILE *out = fmemopen(out_buf, sizeof(out_buf), "w");
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    write_file(KEYS_FILE, EXISTING_KEY_LINE);
+    write_file(AGENT_ANCHOR_CA, "OLD-CA");
+    w_agent_auth_opts_init(&opts);
+    opts.force_enroll = true;
+
+    allow_any_logging(LOG_INFO | LOG_ERROR);
+    will_return(__wrap_hc_spki_pinned_certificate, 1);
+    will_return(__wrap_hc_enroll, 409);
+    will_return(__wrap_hc_enroll, "{\"error\":{\"code\":9008,\"message\":\"Duplicate name\"}}");
+    will_return(__wrap_hc_enroll, 1);
+
+    assert_int_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_ERR_ENROLL);
+
+    fclose(in);
+    fclose(out);
+    fclose(err);
+
+    assert_non_null(strstr(err_buf, "  " AGENT_AUTH_MANAGER_SAID "Duplicate name\n"));
+    assert_string_equal(out_buf, "");
+}
+
 /* The config rewrite is the one step that reports success without the data changing: OS_WriteXML
  * returns 0 when the node is absent. Reading the value back is what tells the two apart. */
 static void test_config_rewrite_refuses_when_the_node_is_absent(void **state) {
@@ -1292,6 +1325,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_enroll_never_sends_key_hash, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_operator_token_file_is_never_removed, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_refused_enrollment_leaves_the_old_state, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_refused_enrollment_reports_the_manager_reason, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_rewrite_refuses_when_the_node_is_absent, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_is_decided_by_content_not_by_shape, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_dry_run_previews_instead_of_refusing, setup_test, teardown_test),
