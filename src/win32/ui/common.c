@@ -324,6 +324,19 @@ int config_read(__attribute__((unused)) HWND hwnd)
     return (0);
 }
 
+/* The Windows ossec.conf ships "0.0.0.0:1517/wazuh-manager/" as a placeholder that the
+ * installer only replaces when it is given an enrollment token. 0.0.0.0 can never be a
+ * manager to connect to, so a target whose host is exactly that means nothing was
+ * configured yet, whatever port or prefix follows it. */
+static int is_placeholder_server(const char *target)
+{
+    static const char placeholder_host[] = "0.0.0.0";
+    const size_t len = sizeof(placeholder_host) - 1;
+
+    return strncmp(target, placeholder_host, len) == 0
+           && (target[len] == '\0' || target[len] == ':' || target[len] == '/');
+}
+
 /* Get OSSEC Server IP */
 int get_ossec_server()
 {
@@ -423,6 +436,13 @@ int get_ossec_server()
     config_inst.server = strdup(FL_NOSERVER);
 
     ret:
+    if (success && is_placeholder_server(config_inst.server)) {
+        free(config_inst.server);
+        config_inst.server = strdup(FL_NOSERVER);
+        config_inst.server_type = 0;
+        success = 0;
+    }
+
     OS_ClearXML(&xml);
     return success;
 }

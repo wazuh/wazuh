@@ -159,6 +159,39 @@ static void test_no_manager_configuration_returns_no_server(void **state) {
     assert_string_equal(config_inst.server, FL_NOSERVER);
 }
 
+/* The endpoint the Windows ossec.conf ships until an enrollment token replaces it:
+ * 0.0.0.0 is not a manager, so the GUI reports that none is configured instead of
+ * showing the placeholder as if it were one. */
+static void test_shipped_placeholder_endpoint_returns_no_server(void **state) {
+    (void) state;
+
+    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <endpoint>0.0.0.0:1517/wazuh-manager/</endpoint>\n    </manager>\n  </agent>\n</ossec_config>\n");
+
+    assert_int_equal(get_ossec_server(), 0);
+    assert_string_equal(config_inst.server, FL_NOSERVER);
+    assert_int_equal(config_inst.server_type, 0);
+}
+
+static void test_placeholder_address_returns_no_server(void **state) {
+    (void) state;
+
+    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <address>0.0.0.0</address>\n    </manager>\n  </agent>\n</ossec_config>\n");
+
+    assert_int_equal(get_ossec_server(), 0);
+    assert_string_equal(config_inst.server, FL_NOSERVER);
+}
+
+/* Only a host that is exactly 0.0.0.0 is the placeholder: a real host that merely
+ * starts with those characters is still shown as the manager. */
+static void test_host_starting_with_placeholder_is_kept(void **state) {
+    (void) state;
+
+    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <endpoint>0.0.0.0.example.com:1517/</endpoint>\n    </manager>\n  </agent>\n</ossec_config>\n");
+
+    assert_int_equal(get_ossec_server(), 1);
+    assert_string_equal(config_inst.server, "0.0.0.0.example.com:1517/");
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_agent_manager_endpoint_is_read_verbatim, setup, teardown),
@@ -168,6 +201,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_agent_block_wins_over_legacy_client_block_when_both_present, setup, teardown),
         cmocka_unit_test_setup_teardown(test_agent_address_wins_over_legacy_client_endpoint, setup, teardown),
         cmocka_unit_test_setup_teardown(test_no_manager_configuration_returns_no_server, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_shipped_placeholder_endpoint_returns_no_server, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_placeholder_address_returns_no_server, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_host_starting_with_placeholder_is_kept, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
