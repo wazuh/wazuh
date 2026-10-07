@@ -51,7 +51,7 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
 
 #endif /* WIN32*/
 
-/* Must stay below the socket send low-water mark (tcp_xmit_lowat, 2048 by default on Solaris 10):
+/* Must stay below the socket send low-water mark (tcp_xmit_lowat, 4096 by default on Solaris 10):
  * POLLOUT only guarantees that much room, so a larger write could block send(). */
 #define SEND_CHUNK_SIZE 1024
 
