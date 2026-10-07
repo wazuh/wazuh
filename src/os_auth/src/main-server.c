@@ -807,6 +807,12 @@ static void process_message(struct client *client) {
         return;
     }
 
+    /* The peer's address, before w_auth_parse_data() replaces client->ip with the address to register
+     * ("any", or the agent's own IP:'...'): a worker forwards it so the master's log names the agent's
+     * source rather than "requested locally" */
+    char source[IPSIZE + 1];
+    snprintf(source, sizeof(source), "%s", client->ip);
+
     int auth_parse_result = w_auth_parse_data(client->read_buffer, response, authpass, client->ip, &client->agentname, &client->centralized_group, &key_hash);
     if (serialize_authpass) {
         w_mutex_unlock(&mutex_authpass);
@@ -816,7 +822,7 @@ static void process_message(struct client *client) {
         if (config.worker_node) {
             minfo("Dispatching request to master node");
             // The force registration settings are ignored for workers. The master decides.
-            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL, NULL, NULL, NULL, NULL)) {
+            if (0 == w_request_agent_add_clustered(response, client->agentname, client->ip, client->centralized_group, key_hash, &client->new_id, &new_key, NULL, NULL, NULL, NULL, NULL, NULL, source, NULL)) {
                 client->enrollment_ok = TRUE;
             }
         }

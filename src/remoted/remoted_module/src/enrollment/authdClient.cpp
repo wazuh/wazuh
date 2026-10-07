@@ -117,6 +117,10 @@ namespace remoted::enrollment
             {
                 arguments["reenroll"] = {{"kid", request.reenroll->kid}, {"bearer", request.reenroll->bearer}};
             }
+            if (request.source)
+            {
+                arguments["source"] = *request.source;
+            }
 
             nlohmann::json payload;
             payload["function"] = "add";

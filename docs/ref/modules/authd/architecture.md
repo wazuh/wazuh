@@ -537,7 +537,8 @@ The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` a
 | `Recovered N identity transition(s) that the previous run did not finish writing to the database.` | startup found credentials still owed; the writer applies them on its own clock |
 | `Discarded N recorded identity transition(s) whose agent is no longer in client.keys and M superseded by a later one.` | startup reconciliation dropped what is no longer owed |
 | `Enrollment token 'X' minted for '…' (expires …, max_uses …, credential …)…` | a mint; never the secret or the token text |
-| `Enrollment token 'X' consumed by agent 'N'.` / `Enrollment token 'X' revoked.` | the token paths. A refused token logs `ERROR 902x: …`; a re-enrollment the master's verification refuses (`9026`–`9028`) logs at debug level only |
+| `Agent key generated for agent 'N' (requested by <address>)` / `… (requested locally)` | a new agent on the local socket: the agent's peer address when the request came through remoted's `POST /enroll` (also when a worker forwarded it), `locally` for `manage_agents` and the API |
+| `Enrollment token 'X' used by agent 'N' (U/M).` / `Enrollment token 'X' revoked.` | the token paths; `U/M` is uses spent against `max_uses` (`U/unlimited` when it is `0`, the default). A refused token logs `ERROR 902x: …`; a re-enrollment the master's verification refuses (`9026`–`9028`) logs at debug level only |
 | `The enrollment token store holds N of the 5000 tokens it accepts…` | 80% of the cap reached; purge before it binds |
 | `Could not load the enrollment tokens from '…'` | the store could not be loaded at start; enrollments presenting a token are refused until it is fixed |
 | `Agent 'N' (id 'I') re-enrolled: key and re-enrollment secret rotated.` | a rotation in place; nothing was deleted |

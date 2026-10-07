@@ -244,7 +244,7 @@ this whole procedure exists to preserve is gone for that agent, and nothing says
 
 ```console
 agent:   WARNING: https_client: credential rejected (401); re-enrolling.
-manager: INFO: Agent key generated for agent 'agent-ubuntu24' (requested locally)
+manager: INFO: Agent key generated for agent 'agent-ubuntu24' (requested by 192.0.2.15)
 ```
 
 And an agent that was refused an enrollment, because its per-agent secret is not something this

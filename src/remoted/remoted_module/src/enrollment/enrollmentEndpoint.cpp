@@ -595,9 +595,14 @@ namespace remoted::enrollment
             addRequest.ip = resolveIp(config.useSourceIp, request->remoteIp, parsed.ip);
             addRequest.groups = parsed.groups;
             addRequest.keyHash = parsed.keyHash;
+            // The peer, whatever `ip` resolved to: authd names it in its log instead of "requested locally"
+            if (!request->remoteIp.empty())
+            {
+                addRequest.source = request->remoteIp;
+            }
             // The verified enrollment token id, when one was used: authd consumes the use and is the
             // final word on its state (9022/9023/9024 -> 403 above). Absent otherwise, so the wire
-            // request of the password and Open paths is byte-identical to what it always was.
+            // request of the password and Open paths carries no token_id.
             addRequest.tokenId = granted ? granted->tokenId : std::nullopt;
             // The re-enrollment credential, when the bearer named an agent: verbatim, for authd on the
             // master to verify and, when it verifies, to rotate that agent's key and secret in place

@@ -67,6 +67,7 @@ int __wrap_w_request_agent_add_clustered(char *err_response,
                                          const char *token_id,
                                          const char *reenroll_kid,
                                          const char *reenroll_bearer,
+                                         const char *source,
                                          int *master_error_code) {
     check_expected(name);
     check_expected(ip);
@@ -75,6 +76,8 @@ int __wrap_w_request_agent_add_clustered(char *err_response,
     // NULL for a first enrollment; the agent id and its bearer, verbatim, for a re-enrollment (#38993).
     check_expected(reenroll_kid);
     check_expected(reenroll_bearer);
+    // NULL for a local request; the agent's peer address when the request came from the network.
+    check_expected(source);
 
     // Mirrors local_add_clustered()'s contract: no caller-supplied id/key/force is ever
     // forwarded on a worker, and the master's re-enrollment secret is always asked for.
@@ -134,12 +137,13 @@ static void test_local_add_clustered_success(void **state) {
     expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
     will_return(__wrap_w_request_agent_add_clustered, 0);
     will_return(__wrap_w_request_agent_add_clustered, "003");
     will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
     will_return(__wrap_w_request_agent_add_clustered, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
 
-    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL);
+    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL);
     assert_non_null(response);
 
     assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, 0);
@@ -161,11 +165,12 @@ static void test_local_add_clustered_success(void **state) {
     expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
     will_return(__wrap_w_request_agent_add_clustered, 0);
     will_return(__wrap_w_request_agent_add_clustered, "004");
     will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
     will_return(__wrap_w_request_agent_add_clustered, "");
-    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL);
+    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL);
     assert_non_null(response);
     data = cJSON_GetObjectItem(response, "data");
     assert_string_equal(cJSON_GetObjectItem(data, "id")->valuestring, "004");
@@ -186,11 +191,12 @@ static void test_local_add_clustered_business_rejection_preserves_master_code(vo
     expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
     will_return(__wrap_w_request_agent_add_clustered, -1);
     will_return(__wrap_w_request_agent_add_clustered, 9008);
     will_return(__wrap_w_request_agent_add_clustered, "ERROR: Duplicate name");
 
-    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL);
+    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL);
     assert_non_null(response);
 
     // The master's own numeric code (9008, Duplicate name) must be surfaced verbatim --
@@ -213,11 +219,12 @@ static void test_local_add_clustered_transport_failure_maps_to_9016(void **state
     expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
     will_return(__wrap_w_request_agent_add_clustered, -2);
     will_return(__wrap_w_request_agent_add_clustered, 0); // master_error_code left untouched
     will_return(__wrap_w_request_agent_add_clustered, "ERROR: Cannot communicate with master");
 
-    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL);
+    response = local_add_clustered("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL);
     assert_non_null(response);
 
     // No well-formed business code came back -- transport failure and a malformed/unparseable
@@ -241,14 +248,14 @@ static void test_local_add_rejects_a_malformed_explicit_key(void **state) {
 
     expect_any_always(__wrap__mdebug2, formatted_msg);
 
-    response = local_add(NULL, "agent1", "any", NULL, "2b7e151628aed2a6abf7158809cf4f3c", NULL, &config.force_options);
+    response = local_add(NULL, "agent1", "any", NULL, "2b7e151628aed2a6abf7158809cf4f3c", NULL, &config.force_options, NULL);
     assert_non_null(response);
     assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, 9019);
     assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "Invalid agent key");
     cJSON_Delete(response);
 
     response = local_add(NULL, "agent1", "any", NULL,
-                         "0030557A9FC4E90E33587DA2C7EC11365B80A5CAEF14395E83A8CDF2173C61FF", NULL, &config.force_options);
+                         "0030557A9FC4E90E33587DA2C7EC11365B80A5CAEF14395E83A8CDF2173C61FF", NULL, &config.force_options, NULL);
     assert_non_null(response);
     assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, 9019);
     cJSON_Delete(response);
@@ -265,7 +272,7 @@ static void test_local_add_rejects_an_out_of_range_or_reserved_id(void **state) 
     expect_any_always(__wrap__mdebug2, formatted_msg);
 
     for (i = 0; i < sizeof(invalid_ids) / sizeof(invalid_ids[0]); i++) {
-        response = local_add(invalid_ids[i], "agent1", "any", NULL, NULL, NULL, &config.force_options);
+        response = local_add(invalid_ids[i], "agent1", "any", NULL, NULL, NULL, &config.force_options, NULL);
         assert_non_null(response);
         assert_int_equal(cJSON_GetObjectItem(response, "error")->valueint, 9020);
         assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "Invalid agent ID");
@@ -1406,6 +1413,7 @@ static void test_add_with_token_on_worker_forwards_it(void **state) {
     expect_string(__wrap_w_request_agent_add_clustered, token_id, "AAECAwQFBgcICQoLDA0ODw");
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
     expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
     will_return(__wrap_w_request_agent_add_clustered, 0);
     will_return(__wrap_w_request_agent_add_clustered, "007");
     will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
@@ -1417,6 +1425,108 @@ static void test_add_with_token_on_worker_forwards_it(void **state) {
     // The shape check runs on the worker too: garbage never travels to the master.
     response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"wk-agent\",\"ip\":\"any\",\"token_id\":\"nope\"}}");
     assert_int_equal(response_error(response), 9022);
+    cJSON_Delete(response);
+    config.worker_node = FALSE;
+}
+
+// An enrollment that came over the network names the agent's peer address (`source`), not "requested
+// locally", and the token line counts the uses spent against the limit instead of saying "consumed"
+// (tokens are unlimited by default). Unlike the cases above, these pin the wording: it is the fix.
+static void test_add_logs_its_source_and_the_token_use_count(void **state) {
+    (void)state;
+    char id[ETOKEN_ID_CHARS + 1];
+    char limited[ETOKEN_ID_CHARS + 1];
+    char request[512];
+    char expected_unlimited[256];
+    char expected_limited[256];
+    cJSON *minted;
+    cJSON *response;
+
+    EXPECT_LOG_DEBUG2();
+
+    expect_any(__wrap__minfo, formatted_msg); // the mint's own summary line
+    minted = mint("{\"address\":\"wazuh-1\"}");
+    snprintf(id, sizeof(id), "%s", data_string(minted, "id"));
+    cJSON_Delete(minted);
+
+    expect_any(__wrap__minfo, formatted_msg);
+    minted = mint("{\"address\":\"wazuh-1\",\"max_uses\":3}");
+    snprintf(limited, sizeof(limited), "%s", data_string(minted, "id"));
+    cJSON_Delete(minted);
+
+    // Unlimited token, from the network
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    expect_string(__wrap__minfo, formatted_msg, "Agent key generated for agent 'src-agent' (requested by 192.168.60.71)");
+    snprintf(expected_unlimited, sizeof(expected_unlimited),
+             "Enrollment token '%s' used by agent 'src-agent' (1/unlimited).", id);
+    expect_string(__wrap__minfo, formatted_msg, expected_unlimited);
+    snprintf(request, sizeof(request),
+             "{\"function\":\"add\",\"arguments\":{\"name\":\"src-agent\",\"ip\":\"any\",\"token_id\":\"%s\",\"source\":\"192.168.60.71\"}}", id);
+    response = dispatch(request);
+    assert_int_equal(response_error(response), 0);
+    cJSON_Delete(response);
+
+    // Limited token, from an IPv6 peer
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    expect_string(__wrap__minfo, formatted_msg, "Agent key generated for agent 'src-agent-6' (requested by 2001:db8::71)");
+    snprintf(expected_limited, sizeof(expected_limited),
+             "Enrollment token '%s' used by agent 'src-agent-6' (1/3).", limited);
+    expect_string(__wrap__minfo, formatted_msg, expected_limited);
+    snprintf(request, sizeof(request),
+             "{\"function\":\"add\",\"arguments\":{\"name\":\"src-agent-6\",\"ip\":\"any\",\"token_id\":\"%s\",\"source\":\"2001:db8::71\"}}", limited);
+    response = dispatch(request);
+    assert_int_equal(response_error(response), 0);
+    cJSON_Delete(response);
+
+    // No source: manage_agents or the API, which is what "requested locally" means
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    expect_string(__wrap__minfo, formatted_msg, "Agent key generated for agent 'api-agent' (requested locally)");
+    response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"api-agent\",\"ip\":\"any\"}}");
+    assert_int_equal(response_error(response), 0);
+    cJSON_Delete(response);
+
+    // A source that could forge a log line is dropped, and costs the agent nothing
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Ignoring an unprintable enrollment source for agent 'forged-agent'.");
+    expect_string(__wrap__minfo, formatted_msg, "Agent key generated for agent 'forged-agent' (requested locally)");
+    response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"forged-agent\",\"ip\":\"any\",\"source\":\"10.0.0.1\\nwazuh-manager-authd: INFO: forged\"}}");
+    assert_int_equal(response_error(response), 0);
+    cJSON_Delete(response);
+
+    // A source of the wrong type is a malformed request, like every other optional argument
+    EXPECT_LOG_ERROR();
+    response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"typed-agent\",\"ip\":\"any\",\"source\":5}}");
+    assert_int_equal(response_error(response), 9002);
+    cJSON_Delete(response);
+}
+
+// A worker forwards the agent's peer address so the master's log can name it.
+static void test_add_on_worker_forwards_its_source(void **state) {
+    (void)state;
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_INFO();
+    config.worker_node = TRUE;
+    expect_string(__wrap_w_request_agent_add_clustered, name, "wk-src-agent");
+    expect_string(__wrap_w_request_agent_add_clustered, ip, "any");
+    expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_kid, NULL);
+    expect_value(__wrap_w_request_agent_add_clustered, reenroll_bearer, NULL);
+    expect_string(__wrap_w_request_agent_add_clustered, source, "192.168.60.71");
+    will_return(__wrap_w_request_agent_add_clustered, 0);
+    will_return(__wrap_w_request_agent_add_clustered, "008");
+    will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
+    will_return(__wrap_w_request_agent_add_clustered, "");
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"wk-src-agent\",\"ip\":\"any\",\"source\":\"192.168.60.71\"}}");
+    assert_int_equal(response_error(response), 0);
+    assert_string_equal(data_string(response, "id"), "008");
     cJSON_Delete(response);
     config.worker_node = FALSE;
 }
@@ -1908,6 +2018,7 @@ static void test_reenroll_on_worker_forwards_kid_and_bearer(void **state) {
     expect_value(__wrap_w_request_agent_add_clustered, token_id, NULL);
     expect_string(__wrap_w_request_agent_add_clustered, reenroll_kid, "001");
     expect_string(__wrap_w_request_agent_add_clustered, reenroll_bearer, REENROLL_BEARER);
+    expect_value(__wrap_w_request_agent_add_clustered, source, NULL);
     will_return(__wrap_w_request_agent_add_clustered, 0);
     will_return(__wrap_w_request_agent_add_clustered, "001");
     will_return(__wrap_w_request_agent_add_clustered, "675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915");
@@ -1980,6 +2091,8 @@ int main(void) {
         cmocka_unit_test(test_add_with_token_closes_the_reservation),
         cmocka_unit_test(test_add_with_revoked_or_expired_token),
         cmocka_unit_test(test_add_with_token_on_worker_forwards_it),
+        cmocka_unit_test(test_add_logs_its_source_and_the_token_use_count),
+        cmocka_unit_test(test_add_on_worker_forwards_its_source),
         cmocka_unit_test(test_local_add_returns_and_queues_a_reenroll_secret),
         cmocka_unit_test(test_local_get_never_returns_the_secret),
         cmocka_unit_test(test_reenroll_unknown_agent_9026),

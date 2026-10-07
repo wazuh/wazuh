@@ -210,6 +210,22 @@ STATIC int is_storable_agent_name(const char *name) {
     return 1;
 }
 
+// `source` only ever reaches a log line, so it only has to be safe to print: the characters of a
+// textual IPv4/IPv6 address (a zone id included), within IPSIZE. Anything else could forge a line.
+STATIC int is_loggable_source(const char *source) {
+    if (!source || !*source || strlen(source) > IPSIZE) {
+        return 0;
+    }
+
+    for (const char *c = source; *c; c++) {
+        if (!isalnum((unsigned char)*c) && *c != '.' && *c != ':' && *c != '%' && *c != '-' && *c != '_') {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 // Reads an optional string argument. cJSON_GetObjectItem() returning non-NULL only means the KEY is
 // present; valuestring is NULL for a number, bool, null or object.
 //
@@ -476,6 +492,7 @@ char* local_dispatch(const char *input) {
             char *token_id = NULL;
             char *reenroll_kid = NULL;
             char *reenroll_bearer = NULL;
+            char *source = NULL;
             // Borrowed from the parsed JSON. Kept separate from the enclosing `groups`, which owns
             // wstr_delete_repeated_groups()'s allocation and is what the fail path frees.
             char *groups_arg = NULL;
@@ -529,9 +546,18 @@ char* local_dispatch(const char *input) {
 
             if (get_optional_string_arg(arguments, "key_hash", &key_hash) < 0 ||
                 get_optional_string_arg(arguments, "key", &key) < 0 ||
-                get_optional_string_arg(arguments, "token_id", &token_id) < 0) {
+                get_optional_string_arg(arguments, "token_id", &token_id) < 0 ||
+                get_optional_string_arg(arguments, "source", &source) < 0) {
                 ierror = EJSON;
                 goto fail;
+            }
+
+            // Where the request came from (remoted's /enroll, or a worker forwarding one): the agent's
+            // peer address, which `ip` cannot carry since it is the address to register. Only logged,
+            // so an unprintable one is dropped rather than costing the agent its enrollment.
+            if (source && !is_loggable_source(source)) {
+                mdebug1("Ignoring an unprintable enrollment source for agent '%s'.", name);
+                source = NULL;
             }
 
             // A token id of the wrong shape is "not found" (9022), not a JSON error: the caller
@@ -613,7 +639,7 @@ char* local_dispatch(const char *input) {
                 }
                 // Self-enrollment shape. force is ignored for workers, as on port 1515: the master
                 // assigns the ID, generates the key, and decides force-replace itself.
-                response = local_add_clustered(name, ip, groups, key_hash, token_id, reenroll_kid, reenroll_bearer);
+                response = local_add_clustered(name, ip, groups, key_hash, token_id, reenroll_kid, reenroll_bearer, source);
             } else if (reenroll_kid) {
                 // force is irrelevant here: nothing is replaced, the agent's own entry is rotated in place,
                 // and the secret already proved the caller IS that agent.
@@ -639,7 +665,7 @@ char* local_dispatch(const char *input) {
                         goto fail;
                     }
                 }
-                response = local_add(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options);
+                response = local_add(id, name, ip, groups, key, key_hash, force ? &force_options : &config.force_options, source);
                 if (token_id) {
                     cJSON *err = response ? cJSON_GetObjectItem(response, "error") : NULL;
                     // Every path closes the reservation: committed when the agent was created, given
@@ -648,8 +674,20 @@ char* local_dispatch(const char *input) {
                     // The NULL check is redundant with cJSON_IsNumber(), which refuses NULL: it is
                     // there because the static analyzer does not model that (same as `j_secret` below).
                     if (err != NULL && cJSON_IsNumber(err) && err->valueint == 0) {
-                        etoken_store_commit(token_id);
-                        minfo("Enrollment token '%s' consumed by agent '%s'.", token_id, name);
+                        unsigned int uses = 0;
+                        unsigned int max_uses = 0;
+
+                        if (etoken_store_commit(token_id, &uses, &max_uses) == 0) {
+                            // Not "consumed": a token allows unlimited uses unless minted with max_uses
+                            if (max_uses == 0) {
+                                minfo("Enrollment token '%s' used by agent '%s' (%u/unlimited).", token_id, name, uses);
+                            } else {
+                                minfo("Enrollment token '%s' used by agent '%s' (%u/%u).", token_id, name, uses, max_uses);
+                            }
+                        } else {
+                            // Revoked and purged while the enrollment was in flight: the use still happened
+                            minfo("Enrollment token '%s' used by agent '%s'.", token_id, name);
+                        }
                     } else {
                         etoken_store_release(token_id);
                     }
@@ -789,7 +827,8 @@ cJSON* local_add(const char *id,
                  const char *groups,
                  const char *key,
                  const char *key_hash,
-                 authd_force_options_t *force_options) {
+                 authd_force_options_t *force_options,
+                 const char *source) {
     int index;
     cJSON *response = NULL;
     int ierror;
@@ -985,7 +1024,11 @@ cJSON* local_add(const char *id,
     w_mutex_unlock(&mutex_keys);
     OPENSSL_cleanse(reenroll_secret, sizeof(reenroll_secret));
 
-    minfo("Agent key generated for agent '%s' (requested locally)", name);
+    if (source) {
+        minfo("Agent key generated for agent '%s' (requested by %s)", name, source);
+    } else {
+        minfo("Agent key generated for agent '%s' (requested locally)", name);
+    }
     os_free(str_result);
     return response;
 
@@ -1175,7 +1218,7 @@ fail:
 
 // Forward an "add" request to the master node over the cluster (worker nodes only)
 cJSON* local_add_clustered(const char *name, const char *ip, const char *groups, const char *key_hash, const char *token_id,
-                           const char *reenroll_kid, const char *reenroll_bearer) {
+                           const char *reenroll_kid, const char *reenroll_bearer, const char *source) {
     char *new_id = NULL;
     char *new_key = NULL;
     char *new_secret = NULL;
@@ -1189,7 +1232,7 @@ cJSON* local_add_clustered(const char *name, const char *ip, const char *groups,
 
     result = w_request_agent_add_clustered(err_response, name, ip, groups, key_hash,
                                             &new_id, &new_key, &new_secret, NULL, NULL, token_id, reenroll_kid, reenroll_bearer,
-                                            &master_error_code);
+                                            source, &master_error_code);
 
     if (result == 0) {
         // The master's re-enrollment secret travels through untouched (#38993); a master that predates

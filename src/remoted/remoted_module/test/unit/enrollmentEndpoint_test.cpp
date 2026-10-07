@@ -549,6 +549,8 @@ TEST(EnrollmentEndpointTest, BodyIpUsedWhenSourceIpDisabledAndPresent)
     std::lock_guard<std::mutex> lock(mu);
     const auto j = nlohmann::json::parse(captured);
     EXPECT_EQ(j["arguments"]["ip"], "10.0.0.1");
+    // The address to register and the peer the request came from are different things
+    EXPECT_EQ(j["arguments"]["source"], "203.0.113.7");
 }
 
 TEST(EnrollmentEndpointTest, AnyUsedWhenNeitherSourceIpNorBodyIpPresent)
@@ -571,6 +573,8 @@ TEST(EnrollmentEndpointTest, AnyUsedWhenNeitherSourceIpNorBodyIpPresent)
     std::lock_guard<std::mutex> lock(mu);
     const auto j = nlohmann::json::parse(captured);
     EXPECT_EQ(j["arguments"]["ip"], "any");
+    // authd logs the agent's peer address, not "requested locally"
+    EXPECT_EQ(j["arguments"]["source"], "203.0.113.7");
 }
 
 TEST(EnrollmentEndpointTest, SrcSentinelResolvesToThePeerAddressNotForwardedLiterally)
