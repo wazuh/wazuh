@@ -391,6 +391,63 @@ void test_write_debug_file_hard_link_not_followed(void **state) {
     assert_int_equal(ar_log_size("other"), 14);
 }
 
+// Tests for canonicalize_ip
+void test_canonicalize_ip_ipv4_canonical(void **state) {
+    (void)state;
+    char out[NI_MAXHOST] = {0};
+
+    assert_true(canonicalize_ip("10.0.0.1", out, sizeof(out)));
+    assert_string_equal(out, "10.0.0.1");
+}
+
+void test_canonicalize_ip_ipv6_compressed(void **state) {
+    (void)state;
+    char out[NI_MAXHOST] = {0};
+
+    assert_true(canonicalize_ip("2001:0db8::0001", out, sizeof(out)));
+    assert_string_equal(out, "2001:db8::1");
+}
+
+void test_canonicalize_ip_rejects_non_canonical(void **state) {
+    (void)state;
+    char out[NI_MAXHOST] = {0};
+
+    // Octal, hex, short and decimal-integer IPv4 forms must be rejected, not reinterpreted.
+    assert_false(canonicalize_ip("012.0.0.1", out, sizeof(out)));
+    assert_false(canonicalize_ip("0177.0.0.1", out, sizeof(out)));
+    assert_false(canonicalize_ip("127.1", out, sizeof(out)));
+    assert_false(canonicalize_ip("2130706433", out, sizeof(out)));
+    assert_false(canonicalize_ip("192.168.001.010", out, sizeof(out)));
+}
+
+void test_canonicalize_ip_invalid(void **state) {
+    (void)state;
+    char out[NI_MAXHOST] = {0};
+
+    assert_false(canonicalize_ip("not_an_ip", out, sizeof(out)));
+    assert_false(canonicalize_ip(NULL, out, sizeof(out)));
+}
+
+// Tests for hosts_deny_rule_matches
+void test_hosts_deny_rule_matches_exact(void **state) {
+    (void)state;
+    assert_true(hosts_deny_rule_matches("ALL:10.0.0.1\n", "ALL:10.0.0.1"));
+    assert_true(hosts_deny_rule_matches("ALL:10.0.0.1  \t\n", "ALL:10.0.0.1"));
+}
+
+void test_hosts_deny_rule_matches_substring_no_match(void **state) {
+    (void)state;
+    assert_false(hosts_deny_rule_matches("ALL: 110.0.0.1\n", "ALL:10.0.0.1"));
+    assert_false(hosts_deny_rule_matches("sshd: 210.0.0.1\n", "ALL:10.0.0.1"));
+    assert_false(hosts_deny_rule_matches("ALL:10.0.0.10\n", "ALL:10.0.0.1"));
+}
+
+void test_hosts_deny_rule_matches_null(void **state) {
+    (void)state;
+    assert_false(hosts_deny_rule_matches(NULL, "ALL:10.0.0.1"));
+    assert_false(hosts_deny_rule_matches("ALL:10.0.0.1", NULL));
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // get_ip_version tests
@@ -398,6 +455,17 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_get_ip_version_success_ipv6, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_get_ip_version_no_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_get_ip_version_success_invalid_ip, test_setup, test_teardown),
+
+        // canonicalize_ip tests
+        cmocka_unit_test(test_canonicalize_ip_ipv4_canonical),
+        cmocka_unit_test(test_canonicalize_ip_ipv6_compressed),
+        cmocka_unit_test(test_canonicalize_ip_rejects_non_canonical),
+        cmocka_unit_test(test_canonicalize_ip_invalid),
+
+        // hosts_deny_rule_matches tests
+        cmocka_unit_test(test_hosts_deny_rule_matches_exact),
+        cmocka_unit_test(test_hosts_deny_rule_matches_substring_no_match),
+        cmocka_unit_test(test_hosts_deny_rule_matches_null),
 
         // is_valid_username tests
         cmocka_unit_test(test_is_valid_username_valid_simple),
