@@ -473,6 +473,24 @@ TEST_F(ControlStreamTest, AReleaseWithoutAnIncidentDoesNotReRegister)
     EXPECT_EQ(std::vector<hc_conn_state_t> {HC_STATE_REGISTERED}, states);
 }
 
+TEST_F(ControlStreamTest, ARetryable401WhileAnotherSenderLatchedTheGateStillGoesAuthError)
+{
+    // The gate decides, not this 401's class: a stale_token on /control, which #39064 retries,
+    // still means AUTH_ERROR when another sender latched the gate while it was in flight.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}"))) // Startup.
+    .WillOnce(Invoke([this](const HttpRequestSpec&)           // Notify: another sender latches mid-flight.
+    {
+        m_authGate.reportAuthFailure();
+        return authFail("stale_token");
+    }))
+    .WillOnce(Return(authFail("stale_token")));                 // Fresh-timestamp retry.
+
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_FALSE(m_stream.step(m_waiter));
+    EXPECT_EQ(HC_STATE_AUTH_ERROR, m_stream.connState());
+}
+
 TEST_F(ControlStreamTest, NotifyCarriesTypeVersionAndHost)
 {
     // The collector supplies hostname/architecture/os; host.ip is injected by
