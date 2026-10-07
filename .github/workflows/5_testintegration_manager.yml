@@ -223,8 +223,9 @@ jobs:
           # The pairs come from the devcontainer copy of the installation assistant tool; the manager
           # node's SAN carries DNS:wazuh-manager, which the integration tests assert on the listener
           # certificate. All three pairs (indexer connector, remoted, apid) come from that PKI: the
-          # API no longer generates its own certificate, so the apid pair is issued here from the
-          # same CA as a localhost-only serverAuth leaf, which is all the tests connect to.
+          # API no longer generates its own certificate, and the installation issues the apid pair
+          # with the remoted profile, so the listener pair is installed for the Server API as well
+          # (serverAuth, leaf followed by the CA, SAN including localhost, which the tests connect to).
           sudo systemctl stop wazuh-manager 2>/dev/null || true
           CERTS_YML="$RUNNER_TEMP/wazuh-certs.yml"
           CERTS_OUT="$RUNNER_TEMP/wazuh-certificates"
@@ -254,23 +255,8 @@ jobs:
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-key.pem" "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem"
           sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$INSTALLATION_DIR/etc/certs/remoted.pem"
           sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$INSTALLATION_DIR/etc/certs/remoted-key.pem"
-          printf '%s\n' \
-            'basicConstraints = critical,CA:FALSE' \
-            'keyUsage = critical,digitalSignature,keyEncipherment' \
-            'extendedKeyUsage = serverAuth' \
-            'subjectAltName = DNS:localhost' \
-            'subjectKeyIdentifier = hash' \
-            'authorityKeyIdentifier = keyid,issuer' > "$CERTS_OUT/apid.ext"
-          (umask 077; openssl req -new -nodes -newkey rsa:2048 -sha256 \
-            -subj '/C=US/ST=California/L=San Francisco/O=Wazuh/CN=wazuh.com' \
-            -keyout "$CERTS_OUT/apid-key.pem" -out "$CERTS_OUT/apid.csr")
-          openssl x509 -req -sha256 -days 3650 -set_serial "0x$(openssl rand -hex 16)" \
-            -in "$CERTS_OUT/apid.csr" -CA "$CERTS_OUT/root-ca.pem" -CAkey "$CERTS_OUT/root-ca.key" \
-            -extfile "$CERTS_OUT/apid.ext" -out "$CERTS_OUT/apid.pem"
-          rm -f "$CERTS_OUT/apid.csr" "$CERTS_OUT/apid.ext"
-          openssl verify -purpose sslserver -verify_hostname localhost -CAfile "$CERTS_OUT/root-ca.pem" "$CERTS_OUT/apid.pem"
-          sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/apid.pem" "$INSTALLATION_DIR/etc/certs/apid.pem"
-          sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/apid-key.pem" "$INSTALLATION_DIR/etc/certs/apid-key.pem"
+          sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$INSTALLATION_DIR/etc/certs/apid.pem"
+          sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$INSTALLATION_DIR/etc/certs/apid-key.pem"
           sudo chown root:wazuh-manager "$INSTALLATION_DIR/etc/certs"
           sudo chmod 1770 "$INSTALLATION_DIR/etc/certs"
           # The installation minted a bootstrap CA here, including its private key. Nothing consults it

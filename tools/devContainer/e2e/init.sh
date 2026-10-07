@@ -192,70 +192,6 @@ function manager_node_name() {
   ' "$CERTS_CONFIG"
 }
 
-# Server API (apid) pair: <manager>-apid.pem / <manager>-apid-key.pem, signed by the root
-# CA as a localhost-only serverAuth leaf (the manager installer gives etc/certs/apid.pem the
-# profile and SANs of remoted.pem; the e2e only reaches the API on localhost). The certs
-# tool does not issue it, so this completes any PKI that lacks it and validates one that
-# has it. Returns 1 on any inconsistency.
-function ensure_manager_apid_pair() {
-  local manager_name="$1"
-  local crt="$CERTS_DIR/${manager_name}-apid.pem"
-  local key="$CERTS_DIR/${manager_name}-apid-key.pem"
-  local ca="$CERTS_DIR/root-ca.pem"
-  local cakey="$CERTS_DIR/root-ca.key"
-
-  if [ -e "$crt" ] && [ -e "$key" ]; then
-    local out
-    if ! out="$(openssl verify -purpose sslserver -verify_hostname localhost -CAfile "$ca" "$crt" 2>&1)"; then
-      echo "$out" | sed 's/^/    /' >&2
-      echo "ERROR: $crt does not verify against $ca for a server named localhost;" >&2
-      echo "       remove the apid pair to have it re-issued, or run --regen-certs." >&2
-      return 1
-    fi
-    echo "==> Server API pair present and valid (${manager_name}-apid.pem)."
-    return 0
-  fi
-  if [ -e "$crt" ] || [ -e "$key" ]; then
-    echo "ERROR: partial apid pair in ${CERTS_DIR}: need both ${manager_name}-apid.pem and ${manager_name}-apid-key.pem." >&2
-    return 1
-  fi
-  if [ ! -f "$ca" ] || [ ! -f "$cakey" ]; then
-    echo "ERROR: no apid pair in ${CERTS_DIR} and no root-ca.pem/root-ca.key to issue one; run --regen-certs." >&2
-    return 1
-  fi
-
-  echo "==> Issuing the Server API pair (${manager_name}-apid.pem) from ${ca}..."
-  local work rc=0
-  work="$(mktemp -d)" || return 1
-  {
-    printf '%s\n' \
-      'basicConstraints = critical,CA:FALSE' \
-      'keyUsage = critical,digitalSignature,keyEncipherment' \
-      'extendedKeyUsage = serverAuth' \
-      'subjectAltName = DNS:localhost' \
-      'subjectKeyIdentifier = hash' \
-      'authorityKeyIdentifier = keyid,issuer' > "$work/apid.ext" \
-    && (umask 077; openssl req -new -nodes -newkey rsa:2048 -sha256 \
-      -subj '/C=US/ST=California/L=San Francisco/O=Wazuh/CN=wazuh.com' \
-      -keyout "$work/apid-key.pem" -out "$work/apid.csr") \
-    && openssl x509 -req -sha256 -days 3650 -set_serial "0x$(openssl rand -hex 16)" \
-      -in "$work/apid.csr" -CA "$ca" -CAkey "$cakey" \
-      -extfile "$work/apid.ext" -out "$work/apid.pem" \
-    && openssl verify -purpose sslserver -verify_hostname localhost -CAfile "$ca" "$work/apid.pem" \
-    && install -m 644 "$work/apid.pem" "$crt" \
-    && install -m 600 "$work/apid-key.pem" "$key"
-  } >"$work/log" 2>&1 || rc=$?
-  if (( rc != 0 )); then
-    echo "ERROR: could not issue the Server API pair:" >&2
-    sed 's/^/    /' "$work/log" >&2
-    rm -f "$crt" "$key"
-  else
-    sed 's/^/    /' "$work/log" | tail -n 1
-  fi
-  rm -rf "$work"
-  return "$rc"
-}
-
 function upsert_certs() {
   echo "==> Certificates (${CERTS_DIR})..."
   need_cmd openssl
@@ -281,7 +217,6 @@ function upsert_certs() {
     echo "==> Certificates directory already exists."
     if (( REUSE_CERTS == 1 )) && (( REGEN_CERTS == 0 )); then
       echo "==> --reuse-certs: keeping the existing certificates."
-      ensure_manager_apid_pair "$manager_name" || return 1
       return 0
     fi
     if (( REGEN_CERTS == 0 )); then
@@ -289,7 +224,6 @@ function upsert_certs() {
       echo
       if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo "==> Skipping certificate generation."
-        ensure_manager_apid_pair "$manager_name" || return 1
         return 0
       fi
     fi
@@ -347,8 +281,6 @@ function upsert_certs() {
       return 1
     fi
   done
-
-  ensure_manager_apid_pair "$manager_name" || return 1
 
   echo "==> Agent listener certificate (${manager_name}-remoted.pem, leaf followed by the CA):"
   openssl x509 -in "$CERTS_DIR/${manager_name}-remoted.pem" -noout -subject -issuer -enddate \

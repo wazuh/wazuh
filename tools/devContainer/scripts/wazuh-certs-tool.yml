@@ -21,9 +21,7 @@ nodes:
 
   # Wazuh manager nodes. Every entry yields <name>.pem / <name>-key.pem (indexer
   # connector, mTLS client) and <name>-remoted.pem / <name>-remoted-key.pem (agent
-  # listener leaf followed by the CA, EKU serverAuth). The tool does not issue the Server
-  # API pair <name>-apid.pem / <name>-apid-key.pem: e2e/init.sh adds it for the first
-  # manager node only (the one it deploys), not for every entry. The SAN of the listener leaf is
+  # listener leaf followed by the CA, EKU serverAuth). The SAN of the listener leaf is
   # ip + dns + the node name, so agents must reach the manager through one of them:
   #   - wazuh-manager: DNS name the integration tests assert (SAN DNS:wazuh-manager)
   #   - localhost / 127.0.0.1: local clients (curl, openssl s_client, benchmarks)
