@@ -50,6 +50,7 @@ bool __wrap_w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t posi
 }
 
 int __wrap_w_update_file_status(const char *path, int64_t pos, EVP_MD_CTX *context) {
+    check_expected(pos);
     bool free_context = mock_type(bool);
     if (free_context) {
         EVP_MD_CTX_free(context);
@@ -143,6 +144,7 @@ static void expect_epilogue(void) {
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) 0);
 
+    expect_value(__wrap_w_update_file_status, pos, 0);
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
@@ -322,6 +324,36 @@ void test_read_snortfull_consecutive_full_records(void **state) {
     free(line3);
 }
 
+/**
+ * Test: a line that breaks the record format.
+ * The reader stops with an error, but the state covering the bad line is stored, so the next read and a
+ * restart resume after it instead of hashing from a stale state.
+ */
+void test_read_snortfull_bad_line_keeps_state(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char line1[] = "[**] [1:1000001:0] Test alert [**]\n";
+    char line2[] = "[Classification: no line end";
+
+    expect_prologue();
+
+    expect_line(line1);
+    expect_line(line2);
+
+    expect_string(__wrap__merror, formatted_msg, "Bad formated snort full file.");
+
+    expect_value(__wrap_w_update_file_status, pos, (int64_t) (strlen(line1) + strlen(line2)));
+    will_return(__wrap_w_update_file_status, true);
+    will_return(__wrap_w_update_file_status, 0);
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, -1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_read_snortfull_complete_record),
@@ -329,6 +361,7 @@ int main(void) {
         cmocka_unit_test(test_read_snortfull_third_line_full_buffer),
         cmocka_unit_test(test_read_snortfull_preprocessor_message_length),
         cmocka_unit_test(test_read_snortfull_consecutive_full_records),
+        cmocka_unit_test(test_read_snortfull_bad_line_keeps_state),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

@@ -46,6 +46,7 @@ bool __wrap_w_get_hash_context(const char * path, EVP_MD_CTX * context, int64_t 
 }
 
 int __wrap_w_update_file_status(const char * path, int64_t pos, EVP_MD_CTX * context) {
+    check_expected(pos);
     bool free_context = mock_type(bool);
     if (free_context) {
         EVP_MD_CTX_free(context);
@@ -119,6 +120,7 @@ void test_buffer_space(void ** state) {
 
     will_return(__wrap_can_read, 0);
 
+    expect_value(__wrap_w_update_file_status, pos, (int64_t) (OS_MAX_LOG_SIZE) * 2 - 1);
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
@@ -221,6 +223,11 @@ void test_maximum_lines(void ** state) {
 
     will_return(__wrap_can_read, 1);
 
+    // Stopped by the line limit inside a group: the stored offset covers the lines read
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2));
+
+    expect_value(__wrap_w_update_file_status, pos, (int64_t) (strlen(line1) + strlen(line2)));
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
@@ -284,6 +291,62 @@ void test_maximum_lines_disabled(void ** state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, NULL);
 
+    expect_value(__wrap_w_update_file_status, pos, (int64_t) (strlen(line1) + strlen(line2) + strlen(line3)));
+    will_return(__wrap_w_update_file_status, true);
+    will_return(__wrap_w_update_file_status, 0);
+
+    read_multiline(&lf, &rc, 1);
+}
+
+/* A group still open at the end of the file is rolled back: the file is rewound to its first line */
+void test_partial_group_at_eof(void ** state) {
+    logreader lf = { .file = "test", .linecount = 3 };
+    int rc;
+    char line1[] = "Line 1\n";
+    char line2[] = "Line 2\n";
+    maximum_lines = 0;
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_w_get_hash_context, true);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line1);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1));
+
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, strlen(line1));
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line2);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2));
+
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, strlen(line2));
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, NULL);
+
+    // The group is not complete: back to its first line, which is also the stored offset
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
+
+    expect_value(__wrap_w_update_file_status, pos, 0);
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
@@ -295,7 +358,8 @@ int main(void) {
         cmocka_unit_test(test_buffer_space),
         cmocka_unit_test(test_buffer_space_invalid_context),
         cmocka_unit_test(test_maximum_lines),
-        cmocka_unit_test(test_maximum_lines_disabled)
+        cmocka_unit_test(test_maximum_lines_disabled),
+        cmocka_unit_test(test_partial_group_at_eof)
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
