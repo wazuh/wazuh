@@ -88,11 +88,16 @@ class TestGCloudError:
         assert exc.key == 'GCloudIntegrationTypeError'
         assert 'invalid_type' in exc.message
 
-    def test_errcode_1003_import_error(self):
-        exc = exceptions.GCloudError(errcode=1003, package='google-cloud-storage')
+    @pytest.mark.parametrize('error', [
+        ImportError("No module named 'google.cloud.storage'", name='google.cloud.storage'),
+        ImportError('urllib3 v2 only supports OpenSSL 1.1.1+'),
+    ])
+    def test_errcode_1003_import_error(self, error):
+        exc = exceptions.GCloudError(errcode=1003, error=error)
         logger.info(f"errcode=1003 => key={exc.key}, message={exc.message}")
         assert exc.key == 'GCloudImportError'
-        assert 'google-cloud-storage' in exc.message
+        assert str(error) in exc.message
+        assert 'None' not in exc.message
 
     def test_errcode_1100_bucket_not_found(self):
         exc = exceptions.GCloudError(errcode=1100, bucket_name='my-bucket')
