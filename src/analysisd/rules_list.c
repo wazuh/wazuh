@@ -22,9 +22,11 @@
 
 
 /* _OS_Addrule: Internal AddRule */
-STATIC RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule);
+STATIC RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule, w_rule_tree_build_t *build);
 STATIC int _AddtoRule(int sid, int level, int none, const char *group,
-               RuleNode *r_node, RuleInfo *read_rule);
+               RuleNode *r_node, RuleInfo *read_rule, w_rule_tree_build_t *build);
+STATIC bool w_rule_tree_add_node(w_rule_tree_build_t *build, const RuleInfo *read_rule);
+STATIC bool w_rule_tree_aborted(const w_rule_tree_build_t *build);
 
 
 RuleNode *os_analysisd_rulelist;
@@ -43,7 +45,7 @@ RuleNode *OS_GetFirstRule()
 
 /* Search all rules, including children */
 STATIC int _AddtoRule(int sid, int level, int none, const char *group,
-               RuleNode *r_node, RuleInfo *read_rule)
+               RuleNode *r_node, RuleInfo *read_rule, w_rule_tree_build_t *build)
 {
     int r_code = 0;
 
@@ -64,7 +66,7 @@ STATIC int _AddtoRule(int sid, int level, int none, const char *group,
                 read_rule->category = r_node->ruleinfo->category;
 
                 r_node->child =
-                    _OS_AddRule(r_node->child, read_rule);
+                    _OS_AddRule(r_node->child, read_rule, build);
                 return (1);
             }
         }
@@ -75,8 +77,12 @@ STATIC int _AddtoRule(int sid, int level, int none, const char *group,
                     (r_node->ruleinfo->sigid != read_rule->sigid)) {
                 /* Loop over all rules until we find it */
                 r_node->child =
-                    _OS_AddRule(r_node->child, read_rule);
+                    _OS_AddRule(r_node->child, read_rule, build);
                 r_code = 1;
+
+                if (w_rule_tree_aborted(build)) {
+                    return r_code;
+                }
             }
         }
 
@@ -85,8 +91,12 @@ STATIC int _AddtoRule(int sid, int level, int none, const char *group,
             if ((r_node->ruleinfo->level >= level) &&
                     (r_node->ruleinfo->sigid != read_rule->sigid)) {
                 r_node->child =
-                    _OS_AddRule(r_node->child, read_rule);
+                    _OS_AddRule(r_node->child, read_rule, build);
                 r_code = 1;
+
+                if (w_rule_tree_aborted(build)) {
+                    return r_code;
+                }
             }
         }
 
@@ -103,14 +113,18 @@ STATIC int _AddtoRule(int sid, int level, int none, const char *group,
             /* Set the parent category to it */
             read_rule->category = r_node->ruleinfo->category;
             r_node->child =
-                _OS_AddRule(r_node->child, read_rule);
+                _OS_AddRule(r_node->child, read_rule, build);
             return (1);
         }
 
         /* Check if the child has a rule */
         if (r_node->child) {
-            if (_AddtoRule(sid, level, none, group, r_node->child, read_rule)) {
+            if (_AddtoRule(sid, level, none, group, r_node->child, read_rule, build)) {
                 r_code = 1;
+            }
+
+            if (w_rule_tree_aborted(build)) {
+                return r_code;
             }
         }
 
@@ -121,7 +135,7 @@ STATIC int _AddtoRule(int sid, int level, int none, const char *group,
 }
 
 /* Add a child */
-int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
+int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg, w_rule_tree_build_t *build)
 {
     if (read_rule == NULL) {
         smwarn(log_msg, ANALYSISD_NULL_RULE);
@@ -146,8 +160,13 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
                     id_found = true;
 
                     int if_sid_rule_id = atoi(sid_ptr);
+                    int added = _AddtoRule(if_sid_rule_id, 0, 0, NULL, *r_node, read_rule, build);
 
-                    if (_AddtoRule(if_sid_rule_id, 0, 0, NULL, *r_node, read_rule) == 0) {
+                    if (w_rule_tree_aborted(build)) {
+                        return RULE_TREE_LIMIT_REACHED;
+                    }
+
+                    if (added == 0) {
                         if (read_rule->if_matched_sid != 0) {
                             // if_matched_sid is not a list of sid, but a single sid
                             smwarn(log_msg, ANALYSISD_SIG_ID_NOT_FOUND_MID, if_sid_rule_id, read_rule->sigid);
@@ -187,7 +206,13 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
 
         ilevel *= 100;
 
-        if (_AddtoRule(0, ilevel, 0, NULL, *r_node, read_rule) == 0) {
+        int added = _AddtoRule(0, ilevel, 0, NULL, *r_node, read_rule, build);
+
+        if (w_rule_tree_aborted(build)) {
+            return RULE_TREE_LIMIT_REACHED;
+        }
+
+        if (added == 0) {
             smwarn(log_msg, ANALYSISD_LEVEL_NOT_FOUND, ilevel, read_rule->sigid);
             return -1;
         }
@@ -195,7 +220,13 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
 
     /* Adding for if_group */
     else if (read_rule->if_group != NULL) {
-        if (_AddtoRule(0, 0, 0, read_rule->if_group, *r_node, read_rule) == 0) {
+        int added = _AddtoRule(0, 0, 0, read_rule->if_group, *r_node, read_rule, build);
+
+        if (w_rule_tree_aborted(build)) {
+            return RULE_TREE_LIMIT_REACHED;
+        }
+
+        if (added == 0) {
             smwarn(log_msg, ANALYSISD_GROUP_NOT_FOUND, read_rule->if_group, read_rule->sigid);
             return -1;
         }
@@ -203,7 +234,13 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
 
     /* Just add based on the category */
     else {
-        if (_AddtoRule(0, 0, 0, NULL, *r_node, read_rule) == 0) {
+        int added = _AddtoRule(0, 0, 0, NULL, *r_node, read_rule, build);
+
+        if (w_rule_tree_aborted(build)) {
+            return RULE_TREE_LIMIT_REACHED;
+        }
+
+        if (added == 0) {
             smwarn(log_msg, ANALYSISD_CATEGORY_NOT_FOUND, read_rule->sigid);
             return -1;
         }
@@ -214,9 +251,14 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
 }
 
 /* Add a rule in the chain */
-STATIC RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
+STATIC RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule, w_rule_tree_build_t *build)
 {
     RuleNode *tmp_rulenode = _rulenode;
+
+    /* Leave the list unchanged if the build cannot allocate another node */
+    if (!w_rule_tree_add_node(build, read_rule)) {
+        return (_rulenode);
+    }
 
     if (tmp_rulenode != NULL) {
         int middle_insertion = 0;
@@ -269,11 +311,46 @@ STATIC RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
 }
 
 /* External AddRule */
-int OS_AddRule(RuleInfo *read_rule, RuleNode **r_node)
+int OS_AddRule(RuleInfo *read_rule, RuleNode **r_node, w_rule_tree_build_t *build)
 {
-    *r_node = _OS_AddRule(*r_node, read_rule);
+    *r_node = _OS_AddRule(*r_node, read_rule, build);
 
-    return (0);
+    return w_rule_tree_aborted(build) ? RULE_TREE_LIMIT_REACHED : 0;
+}
+
+/* Account for a new node of read_rule in the build. Returns false if the node limit does not allow it */
+STATIC bool w_rule_tree_add_node(w_rule_tree_build_t *build, const RuleInfo *read_rule)
+{
+    if (build == NULL) {
+        return true;
+    }
+
+    if (build->limit_reached || (build->node_limit > 0 && build->node_count >= build->node_limit)) {
+        build->limit_reached = true;
+        return false;
+    }
+
+    build->node_count++;
+    build->rule_node_count++;
+
+    /* Report the warning threshold right away: the build may be aborted or run out of memory before ending */
+    if (!build->warning_emitted && build->node_warning > 0 && build->node_count > build->node_warning) {
+        build->warning_emitted = true;
+        mwarn(ANALYSISD_RULE_TREE_NODE_WARNING, build->node_warning, read_rule->sigid, read_rule->file);
+
+        if (build->log_msg != NULL) {
+            smwarn(build->log_msg, ANALYSISD_RULE_TREE_NODE_WARNING, build->node_warning, read_rule->sigid,
+                   read_rule->file);
+        }
+    }
+
+    return true;
+}
+
+/* Check if the build was stopped by the node limit */
+STATIC bool w_rule_tree_aborted(const w_rule_tree_build_t *build)
+{
+    return build != NULL && build->limit_reached;
 }
 
 /* Update rule info for overwritten ones */

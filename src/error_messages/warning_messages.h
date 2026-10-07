@@ -129,6 +129,8 @@
 #define ANALYSISD_EMPTY_SID                     "(7619): Empty 'if_sid' value. Rule '%d' will be ignored."
 #define ANALYSISD_SIG_ID_NOT_FOUND_MID          "(7620): Signature ID '%d' was not found. Invalid 'if_matched_sid'."\
                                                          "Rule '%d' will be ignored."
+#define ANALYSISD_RULE_TREE_NODE_WARNING        "(7621): The rule tree exceeded the warning threshold of %zu nodes " \
+                                                        "while adding rule '%d' from '%s'."
 
 /* Logcollector */
 #define LOGCOLLECTOR_INV_VALUE_DEFAULT          "(8000): Invalid value '%s' for attribute '%s' in '%s' option. " \
