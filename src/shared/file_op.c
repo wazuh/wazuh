@@ -2917,20 +2917,27 @@ static HANDLE w_createfile_nofollow_vetted(const char * basedir, const char * fi
 // fstat() identity check.
 #if (defined(AIX) && !defined(O_NOFOLLOW)) || defined(W_VETTED_TEST_NO_O_NOFOLLOW)
 #define W_VETTED_NO_O_NOFOLLOW
-#undef O_NOFOLLOW
-#define O_NOFOLLOW 0
 #ifndef W_VETTED_NO_AT_WALK
 #define W_VETTED_NO_AT_WALK
 #endif
 #endif
 
+// 0 where O_NOFOLLOW is emulated (AIX 6.1); O_NOFOLLOW itself stays undefined there, so a raw use fails to build
+// instead of following symlinks.
+#ifdef W_VETTED_NO_O_NOFOLLOW
+#define W_NOFOLLOW_FLAG 0
+#else
+#define W_NOFOLLOW_FLAG O_NOFOLLOW
+#endif
+
 #if defined(AIX) || defined(W_VETTED_NO_O_NOFOLLOW)
 /**
- * open() without O_NOFOLLOW: lstat() the path, open it, and require the descriptor to match the lstat() identity. O_CREAT
- * is dropped when the path exists, so a dangling symlink swapped in meanwhile cannot create its target, and a missing
- * path is only created with O_EXCL.
+ * open() without O_NOFOLLOW: lstat() the path, open it, and require the descriptor to match the lstat() identity. A
+ * symlink swapped in after the lstat() is still opened (never created: O_CREAT is dropped when the path exists) and
+ * closed unread when its identity differs. A missing path is only created with O_EXCL.
  *
- * @return A descriptor, or -1 on error (sets errno; ELOOP for a symlink, or if the path changed during the open).
+ * @return A descriptor, or -1 on error (sets errno; ELOOP for a symlink or an entry swapped in during the open, EAGAIN
+ *         if the missing path appeared meanwhile).
  */
 static int w_open_nofollow_emulated(const char * path, int oflags, mode_t mode) {
     struct stat listed;
@@ -2954,7 +2961,7 @@ static int w_open_nofollow_emulated(const char * path, int oflags, mode_t mode) 
 
     if (fd = open(path, oflags, mode), fd < 0) {
         if (errno == EEXIST) {
-            errno = ELOOP;
+            errno = EAGAIN;
         }
 
         return -1;
@@ -3206,6 +3213,9 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
 
 // Walks retried when an entry changes between its checks, as a symlink re-pointed during rotation does.
 #define W_VETTED_RACE_RETRIES 3
+// Retries exhausted: callers would otherwise only log this at debug level.
+#define W_VETTED_GAVE_UP \
+    "Could not check '%s' after %d attempts: it keeps changing, or a component name cannot be resolved."
 
 // Same limit as Linux's MAXSYMLINKS; bounds a chain of junctions or symbolic links on either platform.
 #define W_VETTED_MAX_SYMLINKS 40
@@ -3353,6 +3363,11 @@ static void w_fork_child_signals(const sigset_t * previous) {
     }
 
     pthread_sigmask(SIG_SETMASK, previous, NULL);
+}
+
+// fork() failing with EAGAIN would pass for a path swapped under the walk and be retried silently; ENOMEM is logged.
+static int w_fork_failed_errno(int err) {
+    return err == EAGAIN ? ENOMEM : err;
 }
 
 #endif
@@ -3508,7 +3523,7 @@ static ssize_t w_readlinkat(int dirfd, const char * name, char * buf, size_t siz
         err = errno;
         close(fds[0]);
         close(fds[1]);
-        errno = err;
+        errno = w_fork_failed_errno(err);
         return -1;
     }
 
@@ -3800,7 +3815,7 @@ static int w_open_vetted_walk_fd(const char * path, bool follow_last) {
 
             // O_NOFOLLOW, or the identity check below where it is emulated, rejects an entry swapped to a symlink
             // since fstatat().
-            if (fd = w_open_walk_dir(dirfd, name, O_NOFOLLOW | O_NONBLOCK), fd < 0) {
+            if (fd = w_open_walk_dir(dirfd, name, W_NOFOLLOW_FLAG | O_NONBLOCK), fd < 0) {
                 goto fail_swapped;
             }
 
@@ -3832,7 +3847,7 @@ static int w_open_vetted_walk_fd(const char * path, bool follow_last) {
         break;
     }
 
-    if (fd = openat(dirfd, name, O_RDONLY | (nofollow ? O_NOFOLLOW : 0) | O_NONBLOCK | O_CLOEXEC), fd < 0) {
+    if (fd = openat(dirfd, name, O_RDONLY | (nofollow ? W_NOFOLLOW_FLAG : 0) | O_NONBLOCK | O_CLOEXEC), fd < 0) {
         if (!nofollow) {
             goto fail;
         }
@@ -4020,7 +4035,7 @@ static int w_open_vetted_follow_fd(const char * path, bool follow_last) {
     if (pid < 0) {
         close(sv[0]);
         close(sv[1]);
-        errno = saved_errno;
+        errno = w_fork_failed_errno(saved_errno);
         return -1;
     }
 
@@ -5306,6 +5321,11 @@ FILE * w_fopen_vetted_follow(const char * path, const char * mode) {
     } while (hFile == INVALID_HANDLE_VALUE && errno == EAGAIN && retries++ < W_VETTED_RACE_RETRIES);
 
     if (hFile == INVALID_HANDLE_VALUE) {
+        if (errno == EAGAIN) {
+            mwarn(W_VETTED_GAVE_UP, path, W_VETTED_RACE_RETRIES + 1);
+            errno = EAGAIN;
+        }
+
         return NULL;
     }
 
@@ -5335,6 +5355,11 @@ FILE * w_fopen_vetted_follow(const char * path, const char * mode) {
     } while (fd < 0 && errno == EAGAIN && retries++ < W_VETTED_RACE_RETRIES);
 
     if (fd < 0) {
+        if (errno == EAGAIN) {
+            mwarn(W_VETTED_GAVE_UP, path, W_VETTED_RACE_RETRIES + 1);
+            errno = EAGAIN;
+        }
+
         return NULL;
     }
 
