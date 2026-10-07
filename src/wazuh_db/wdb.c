@@ -214,7 +214,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GET_GROUPS] = "SELECT DISTINCT `group`, group_hash from agent WHERE id > 0 AND group_hash > ? ORDER BY group_hash;",
     [WDB_STMT_GLOBAL_GET_AGENTS] = "SELECT id FROM agent WHERE id > ?;",
     [WDB_STMT_GLOBAL_GET_AGENTS_AND_GROUP] = "SELECT id, `group` FROM agent WHERE id > ?;",
-    [WDB_STMT_GLOBAL_GET_AGENTS_CONTEXT] = "SELECT id,version,name,ip,node_name,connection_status FROM agent;",
+    [WDB_STMT_GLOBAL_GET_AGENTS_CONTEXT] = "SELECT id,version,name,ip,node_name,connection_status,status_code FROM agent;",
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS] = "SELECT id FROM agent WHERE id > ? AND connection_status = ?;",
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE] = "SELECT id FROM agent WHERE id > ? AND connection_status = ? AND node_name = ? ORDER BY id LIMIT ?;",
     [WDB_STMT_GLOBAL_GET_AGENT_INFO] = "SELECT * FROM agent WHERE id = ?;",

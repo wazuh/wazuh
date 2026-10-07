@@ -121,8 +121,7 @@ public:
             m_last = 0;
         }
 
-        uint64_t paddedKeys = 0;
-        uint64_t otherKeys = 0;
+        uint64_t unreachableKeys = 0;
 
         while (it->Valid())
         {
@@ -135,16 +134,9 @@ public:
             }
 
             // Count the keys that are neither the plain decimal nor the padded form of their index.
-            if (keyString != std::to_string(key))
+            if (keyString != formatKey(key, true) && keyString != formatKey(key, false))
             {
-                if (keyString == Utils::padString(std::to_string(key), '0', ROCKSDB_QUEUE_PADDING))
-                {
-                    ++paddedKeys;
-                }
-                else
-                {
-                    ++otherKeys;
-                }
+                ++unreachableKeys;
             }
 
             if (key > m_last)
@@ -173,16 +165,18 @@ public:
                      m_unreliableBounds.c_str());
         }
 
-        // A stored key the queue would never build cannot be read or removed.
-        if (const auto unreachableKeys = otherKeys + (m_legacyKeyMode ? paddedKeys : 0); unreachableKeys > 0)
+        // Reads try the format of the store first.
+        m_readUnpadded = m_legacyKeyMode;
+
+        // A stored key that is not in either format cannot be read or removed.
+        if (unreachableKeys > 0)
         {
             logWarn(LOGGER_DEFAULT_TAG,
-                    "Queue '%s': %llu of %llu stored keys do not match the %s key format the queue reads and will "
-                    "not be dequeued.",
+                    "Queue '%s': %llu of %llu stored keys are neither the plain nor the padded form of their index and "
+                    "will not be dequeued.",
                     connectorName.c_str(),
                     static_cast<unsigned long long>(unreachableKeys),
-                    static_cast<unsigned long long>(m_size),
-                    m_legacyKeyMode ? "unpadded" : "padded");
+                    static_cast<unsigned long long>(m_size));
         }
     }
 
@@ -214,10 +208,11 @@ public:
 
         auto index = m_first;
         std::string value;
+        std::string key;
 
-        // Find the first element in the queue from m_first (included).
-        while (index <= m_last &&
-               !m_db->KeyMayExist(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), paddedKey(index), &value))
+        // Find the first element in the queue from m_first (included). The key to delete is the one that is stored,
+        // which KeyMayExist cannot tell.
+        while (index <= m_last && !readKey(index, value, &key))
         {
             // If the key does not exist, it means that the queue is not continuous.
             // This incremental is only for the head, because this is a part of recovery algorithm when the queue
@@ -232,9 +227,9 @@ public:
         }
 
         // RocksDB dequeue element.
-        if (const auto status = m_db->Delete(rocksdb::WriteOptions(), paddedKey(index)); !status.ok())
+        if (const auto status = m_db->Delete(rocksdb::WriteOptions(), key); !status.ok())
         {
-            throw std::runtime_error("Failed to dequeue element: " + paddedKey(index));
+            throw std::runtime_error("Failed to dequeue element: " + key);
         }
         else
         {
@@ -273,20 +268,10 @@ public:
         // Get the first "elementsQuantity" elements in increasing order.
         while (counter < elementsQuantity && index <= m_last)
         {
-            U value;
-            if (const auto status =
-                    m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), paddedKey(index), &value);
-                status.ok())
+            if (U value; readKey(index, value))
             {
                 queue.push(std::move(value));
                 ++counter;
-            }
-            else
-            {
-                if (status != rocksdb::Status::NotFound())
-                {
-                    throw std::runtime_error("Failed to get elements, error: " + std::to_string(status.code()));
-                }
             }
             ++index;
         }
@@ -312,21 +297,8 @@ public:
         // If the queue have bumps between elements, get the first element in increasing order.
         auto index = m_first;
 
-        while (index <= m_last)
+        while (index <= m_last && !readKey(index, value))
         {
-            if (const auto status =
-                    m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), paddedKey(index), &value);
-                status.ok())
-            {
-                break;
-            }
-            else
-            {
-                if (status != rocksdb::Status::NotFound())
-                {
-                    throw std::runtime_error("Failed to get elements, error: " + status.code());
-                }
-            }
             ++index;
         }
 
@@ -337,11 +309,9 @@ public:
     {
         U value;
 
-        if (const auto status =
-                m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), paddedKey(m_first + index), &value);
-            !status.ok())
+        if (!readKey(m_first + index, value))
         {
-            throw std::runtime_error("Failed to get element at index: " + paddedKey(m_first + index));
+            throw std::runtime_error("Failed to get element at index: " + std::to_string(m_first + index));
         }
 
         return value;
@@ -356,11 +326,45 @@ private:
     uint64_t m_last = 0;
     bool m_legacyKeyMode = false;
     std::string m_unreliableBounds; ///< Why the bounds are not trustworthy; empty when they are.
+    mutable bool m_readUnpadded = false; ///< Format that answered the last read, tried first on the next one.
 
+    static std::string formatKey(const uint64_t key, const bool unpadded)
+    {
+        return unpadded ? std::to_string(key) : Utils::padString(std::to_string(key), '0', ROCKSDB_QUEUE_PADDING);
+    }
+
+    // The format new elements are written in.
     std::string paddedKey(const uint64_t key) const
     {
-        return m_legacyKeyMode ? std::to_string(key)
-                               : Utils::padString(std::to_string(key), '0', ROCKSDB_QUEUE_PADDING);
+        return formatKey(key, m_legacyKeyMode);
+    }
+
+    // Reads an index in either format, so a store that mixes both can be drained without migrating it.
+    template<typename V>
+    bool readKey(const uint64_t index, V& value, std::string* key = nullptr) const
+    {
+        for (const auto unpadded : {m_readUnpadded, !m_readUnpadded})
+        {
+            auto candidate = formatKey(index, unpadded);
+            const auto status = m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), candidate, &value);
+
+            if (status.ok())
+            {
+                m_readUnpadded = unpadded;
+                if (key != nullptr)
+                {
+                    *key = std::move(candidate);
+                }
+                return true;
+            }
+
+            if (!status.IsNotFound())
+            {
+                throw std::runtime_error("Failed to get elements, error: " + std::to_string(status.code()));
+            }
+        }
+
+        return false;
     }
 };
 

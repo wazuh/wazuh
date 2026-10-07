@@ -41,7 +41,7 @@ All notable changes to this project will be documented in this file.
 - Fixed a quadratic-time loop in the AWS Macie/custom-bucket JSON parser caused by re-slicing the remaining buffer on every object, and its zero-matching regex backtracking quadratically on long runs of zeros. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
 - Fixed the Maltiverse integration sending an unvalidated alert hostname unescaped in the request path, allowing path or query manipulation within the Maltiverse API. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
 - Fixed the Azure Storage integration resending every record of an append blob each time new records were appended to it. ([#40177](https://github.com/wazuh/wazuh/pull/40177))
-- Fixed the vulnerability scanner outbox queue hanging with a busy thread and no log when its stored keys do not match the ones it reads: the read now fails with an error, the dispatcher reports it through the logger, the queue rejects new elements when its startup key scan is incomplete and the startup reports unreadable keys. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+- Fixed the vulnerability scanner outbox queue hanging with a busy thread and no log when its stored keys mix the plain and the padded formats: the queue now reads and removes each key in the format it is stored in, the dispatcher reports failures through the logger, the queue rejects new elements when its startup key scan is incomplete and the startup reports keys it cannot read. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 - Fixed the vulnerability scanner re-scan leaving findings in the local mirror that its inventory no longer tracks: each agent is now cleared by prefix, and in a cluster each node scans only the agents that report to it and clears the others. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 - Fixed the single-agent vulnerability re-scan aborting on a NULL agent column after its state had been cleared. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 - Fixed the indexer connector waiting for the initialization of the indexer before applying operations that do not call it, and looking for the mappings backup index by listing every index of the cluster, which needed a cluster-wide permission and left an orphan backup behind. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
@@ -52,7 +52,7 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
-- Changed the full vulnerability re-scan to scan only the agents that are connected and to leave the stored state of the others untouched. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
+- Changed the full vulnerability re-scan to scan only the agents that are connected or that the start of the manager disconnected, and to leave the stored state of the others untouched. ([#39607](https://github.com/wazuh/wazuh/issues/39607))
 
 ### Agent
 

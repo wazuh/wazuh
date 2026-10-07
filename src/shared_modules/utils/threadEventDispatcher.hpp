@@ -114,7 +114,6 @@ public:
                 {
                     m_queue->push(prefix, value);
                     rearmDiscardReport(queueSize);
-                    warnQueueSize(queueSize + 1);
                 }
                 else
                 {
@@ -210,7 +209,6 @@ public:
 private:
     void dispatch()
     {
-        std::string lastError;
         auto lastErrorLog = std::chrono::steady_clock::time_point {};
 
         while (m_running)
@@ -253,13 +251,15 @@ private:
                 {
                     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-                    // The same batch is retried every second: log a new error at once and a persistent one once
-                    // a minute.
+                    // The same batch is retried every second: log the first error at once and at most one per minute
+                    // after that, since the text of the error can change on every retry.
                     const auto now = std::chrono::steady_clock::now();
-                    if (lastError != ex.what() || now - lastErrorLog >= std::chrono::minutes(1))
+                    if (now - lastErrorLog >= std::chrono::minutes(1))
                     {
-                        logWarn(LOGGER_DEFAULT_TAG, "Dispatch handler error, %s", ex.what());
-                        lastError = ex.what();
+                        logWarn(LOGGER_DEFAULT_TAG,
+                                "Queue '%s': dispatch handler error, %s",
+                                m_name.c_str(),
+                                ex.what());
                         lastErrorLog = now;
                     }
                 }
@@ -284,18 +284,19 @@ private:
     }
 
     // A queue that keeps growing means its consumer is not draining it. It is reported at QUEUE_SIZE_WARNING elements
-    // and every time its size doubles, and the report is re-armed once the queue is back under the first threshold.
+    // and every time it doubles the size it was reported at, and the report is re-armed once the queue falls under
+    // half of the first threshold, so a queue that hovers around it is not reported on every cycle.
     void warnQueueSize(const size_t queueSize)
     {
         auto threshold = m_nextSizeWarning.load();
-        if (queueSize >= threshold && m_nextSizeWarning.compare_exchange_strong(threshold, threshold * 2))
+        if (queueSize >= threshold && m_nextSizeWarning.compare_exchange_strong(threshold, queueSize * 2))
         {
             logWarn(LOGGER_DEFAULT_TAG,
                     "Queue '%s' holds %llu elements and keeps growing. Check that its consumer is draining it.",
                     m_name.c_str(),
                     static_cast<unsigned long long>(queueSize));
         }
-        else if (queueSize < QUEUE_SIZE_WARNING)
+        else if (queueSize < QUEUE_SIZE_WARNING / 2)
         {
             m_nextSizeWarning = QUEUE_SIZE_WARNING;
         }
