@@ -14,6 +14,8 @@
 #include "enrollment_token.h"
 #include "reenroll_secret.h"
 
+#include <openssl/crypto.h>
+
 #ifdef WAZUH_UNIT_TESTING
     // Remove static qualifier when unit testing
     #define STATIC
@@ -86,6 +88,51 @@ char *w_agent_token_read_file(const char *path) {
     os_strdup(buf, token);
     os_free(buf);
     return token;
+}
+
+/* Drops trailing newlines, carriage returns, spaces and tabs from the first `length` bytes */
+static void w_agent_token_trim(char *text, size_t length) {
+    while (length > 0 && (text[length - 1] == '\n' || text[length - 1] == '\r' ||
+                          text[length - 1] == ' ' || text[length - 1] == '\t')) {
+        text[--length] = '\0';
+    }
+}
+
+w_token_read_status_t w_agent_token_read_stream(FILE *in, char **text) {
+    w_token_read_status_t status = W_TOKEN_READ_OK;
+    char *buf;
+    size_t length;
+
+    *text = NULL;
+
+    /* A terminal will never produce a token, so blocking on it reads as a hang. Checked before
+     * the buffer exists, so the common mistake costs nothing. */
+    if (isatty(fileno(in))) {
+        return W_TOKEN_READ_TTY;
+    }
+
+    /* Heap, not stack: since #39321 this bound is sized for an embedded-CA token, and 96 KB is far
+     * too much to put on a frame. */
+    os_calloc(W_ETOKEN_MAX_FILE_BYTES + 1, sizeof(char), buf);
+    length = fread(buf, 1, W_ETOKEN_MAX_FILE_BYTES, in);
+    /* fread() never terminates what it reads */
+    buf[length] = '\0';
+
+    if (ferror(in)) {
+        status = W_TOKEN_READ_IO;
+    } else if (length == W_ETOKEN_MAX_FILE_BYTES) {
+        status = W_TOKEN_READ_TOO_BIG;
+    } else {
+        w_agent_token_trim(buf, length);
+        /* Handed back at its real size: a token is a few hundred bytes */
+        os_strdup(buf, *text);
+    }
+
+    /* The token carries the credential; the copy handed back is the only one left */
+    OPENSSL_cleanse(buf, length);
+    os_free(buf);
+
+    return status;
 }
 
 /**
