@@ -908,8 +908,12 @@ void expandFromRegistry(const HKEY key, const std::string& subKey, const std::st
         {
             // Get install path from registry, based on version key.
             const auto dir {Utils::Registry {key, versionKey, KEY_READ | KEY_WOW64_64KEY}.string(field)};
-            // Add install path to dirList.
-            postAction(dir);
+
+            // HKEY_USERS values are user-writable; probing a network path as SYSTEM leaks the machine credentials.
+            if (Utils::isLocalFixedPath(dir))
+            {
+                postAction(dir);
+            }
         }
         catch (const std::exception& e)
         {
