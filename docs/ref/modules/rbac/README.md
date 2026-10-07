@@ -172,7 +172,7 @@ re-seeded with new defaults unless `CURRENT_ORM_VERSION` in `framework/wazuh/rba
 | `secrets_read` | `cluster:read_secrets` on every node; `agent:read_secrets` on every agent (`agent:id:*`) |
 | `mitre_read` | `mitre:read` |
 
-The default users `wazuh` and `wazuh-wui` both hold `administrator`; see
+The default users `wazuh` and `wazuh-internal-client` both hold `administrator`; see
 [Default Users](../server-api/authentication.md#default-users).
 
 ### Default rules
@@ -185,14 +185,14 @@ The default users `wazuh` and `wazuh-wui` both hold `administrator`; see
 | `wazuh_indexer_readonly` | `user_name` is `wazuh-readonly` |
 | `wazuh_indexer_demo` | `user_name` is `wazuh-demo` |
 
-These reserved rules are evaluated only for the `wazuh-wui` user (ID 2); rules created through the API
+These reserved rules are evaluated only for the `wazuh-internal-client` user (ID 2); rules created through the API
 apply to any user with `allow_run_as`.
 
 ---
 
 ## Mapping dashboard users to Wazuh roles
 
-The Wazuh dashboard authenticates to the API as `wazuh-wui` with `run_as` enabled
+The Wazuh dashboard authenticates to the API as `wazuh-internal-client` with `run_as` enabled
 (`wazuh_core.hosts.<host>.run_as: true` in the dashboard's `opensearch_dashboards.yml`), sending the
 logged-in indexer user as the authorization context. A **role mapping** created in the dashboard
 (**Server management** > **Security** > **Roles mapping**) is a rule linked to a Wazuh role: every

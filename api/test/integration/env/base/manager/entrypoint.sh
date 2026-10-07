@@ -38,7 +38,7 @@ for sh_file in /tmp_volume/configuration_files/*.sh; do
 done
 
 # The start resolves credentials first and refuses to run without them. The tavern suites log in as
-# wazuh-wui with a known password, and this environment has no indexer, so its value only has to be
+# wazuh-internal-client with a known password, and this environment has no indexer, so its value only has to be
 # present. Same values on every node: they share the api_security volume and any of them may seed it.
 export WAZUH_MANAGER_API_PASSWORD='Wazuh-Integration1'
 export WAZUH_MANAGER_WUI_PASSWORD='WazuhWui-Integration1'

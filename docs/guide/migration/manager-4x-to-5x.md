@@ -150,7 +150,7 @@ with the Wazuh installation assistant's passwords tool, to one inside the set, a
 value here. Validation is of presence and format only; a wrong password passes it and fails as a
 `401` when the manager first talks to the indexer.
 
-**The API passwords.** The manager generates the `wazuh` and `wazuh-wui` passwords when the package
+**The API passwords.** The manager generates the `wazuh` and `wazuh-internal-client` passwords when the package
 is installed and publishes them into a managed block of the same file; nothing prints them. The
 file's layout, and how to read a value back without its quotation marks, are in
 [The credentials file](../../ref/getting-started/credentials.md#the-credentials-file).
@@ -409,14 +409,15 @@ install -m 640 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/rbac.db /
 sqlite3 /var/wazuh-manager/api/configuration/security/rbac.db 'PRAGMA user_version = 0'
 ```
 
-The 4.x database has the same tables as the 5.0 one and the API accepts it as-is, but only the
-`PRAGMA user_version` decides whether it is *upgraded*. Both 4.x and 5.0 stamp version `1`, so a
-copied database is taken for a current one and keeps its 4.x **default** roles and policies: the
-ones 5.0 added for endpoints that did not exist in 4.x — minting enrollment tokens among them — are
-never created, and no role, `administrator` included, can use them through the API. Setting the
-version back to `0` is what asks for the supported upgrade, which the API performs on its next
-start and records in `logs/api.log`: it builds a database with the 5.0 defaults and migrates your
-own resources into it.
+The API accepts a 4.x database as it is: on start it adds the tables 5.0 introduced, and only the
+`PRAGMA user_version` decides whether the database is *upgraded*. Both 4.x and 5.0 stamp version
+`1`, so a copied database would be taken for a current one and keep its 4.x **default** roles and
+policies: the ones 5.0 added for endpoints that did not exist in 4.x — minting enrollment tokens
+among them — would never be created, and no role, `administrator` included, could use them through
+the API. Setting the version to `0` is what asks for the upgrade, which the API performs on its
+next start and records in `logs/api.log`: it builds a database with the 5.0 defaults, migrates your
+own resources into it, and gives the 4.x user `wazuh-wui` (ID `2`) its 5.0 name,
+`wazuh-internal-client`, keeping its password.
 
 ```console
 INFO: RBAC database migration required. Current version is 0 but it should be 1. Upgrading RBAC database to version 1
@@ -424,7 +425,8 @@ INFO: /var/wazuh-manager/api/configuration/security/rbac.db database upgraded su
 INFO: RBAC database integrity check finished successfully
 ```
 
-What survives that upgrade: the `wazuh` and `wazuh-wui` users with their 4.x passwords, and every
+What survives that upgrade: the `wazuh` and `wazuh-wui` users with their 4.x passwords (the second
+one under its 5.0 name, `wazuh-internal-client`), and every
 user, role, policy, rule and relationship you created yourself (ids from 100 up). What it drops:
 the 4.x default policies, including those naming endpoints removed in 5.0 (`syscollector:read`,
 `active-response:command`, `rootcheck:*`, `ciscat:*`, ...), replaced by the 5.0 set.
@@ -433,9 +435,9 @@ Verify after [Step 5](#5-start-the-manager-open-it-to-the-fleet-and-verify-the-r
 and their roles still apply. Minting enrollment tokens never depends on this: the
 `wazuh-manager-authd` command line does not go through the API.
 
-Carrying the database also carries the `wazuh` and `wazuh-wui` passwords, and that reaches outside
+Carrying the database also carries the `wazuh` and `wazuh-internal-client` passwords, and that reaches outside
 it. The 5.0 install generated both and published them in `/etc/wazuh/credentials.env`, which is
-where a dashboard installed against this manager took its `wazuh-wui` password from. An existing
+where a dashboard installed against this manager took its `wazuh-internal-client` password from. An existing
 `rbac.db` is never reseeded, so from the next start both users answer to their 4.x passwords, the
 two published values are stale, and that dashboard can no longer log in. Choose one: set both users
 back to the published values once the manager is up again,
@@ -444,13 +446,13 @@ back to the published values once the manager is up again,
 sudo sh -c '. /var/wazuh-manager/lib/wazuh-credentials.sh && wazuh_env_get WAZUH_MANAGER_API_PASSWORD' \
     | sudo /var/wazuh-manager/bin/rbac_control change-password -u wazuh -p -
 sudo sh -c '. /var/wazuh-manager/lib/wazuh-credentials.sh && wazuh_env_get WAZUH_MANAGER_WUI_PASSWORD' \
-    | sudo /var/wazuh-manager/bin/rbac_control change-password -u wazuh-wui -p -
+    | sudo /var/wazuh-manager/bin/rbac_control change-password -u wazuh-internal-client -p -
 ```
 
 The values are read through the same parser the manager uses, which strips their quotation marks
 (see [Reading a value back](../../ref/getting-started/credentials.md#reading-a-value-back)).
 
-or keep the 4.x passwords and give the dashboard the 4.x `wazuh-wui` one. The migration tool
+or keep the 4.x passwords and give the dashboard the one `wazuh-wui` had on 4.x. The migration tool
 prints this same warning when it installs `rbac.db`.
 
 ## 4. Migrate the configuration

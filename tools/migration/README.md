@@ -75,7 +75,7 @@ world-readable. The credentials file is parsed as `KEY=VALUE` and never sourced,
 itself reads it.
 
 One consequence of `--with-rbac` is worth knowing before you use it: the manager never reseeds an
-existing `rbac.db`, so from the next start the `wazuh` and `wazuh-wui` passwords are the 4.x ones
+existing `rbac.db`, so from the next start the `wazuh` and `wazuh-internal-client` passwords are the 4.x ones
 the database carries, and the two values in `credentials.env` are stale. The import says so. Either
 set both users back to the published values with `rbac_control change-password` after the restart,
 or keep the 4.x passwords and give `check` the 4.x one explicitly.

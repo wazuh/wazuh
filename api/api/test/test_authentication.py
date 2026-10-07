@@ -292,7 +292,7 @@ def test_check_token_runas_revoked_at_user_level(mock_optimize):
 def test_check_token_runas_checks_the_authorization_context(mock_optimize):
     """A run_as token is validated against the revocation of its own authorization context."""
     am = MagicMock()
-    am.get_user.return_value = {'id': 2, 'username': 'wazuh-wui'}
+    am.get_user.return_value = {'id': 2, 'username': 'wazuh-internal-client'}
     am.user_allow_run_as.return_value = True
     urm = MagicMock()
     urm.get_all_roles_from_user.return_value = []
@@ -302,9 +302,9 @@ def test_check_token_runas_checks_the_authorization_context(mock_optimize):
     with patch('api.authentication.AuthenticationManager', _orm_manager_mock(am)), \
             patch('api.authentication.UserRolesManager', _orm_manager_mock(urm)), \
             patch('api.authentication.TokenManager', _orm_manager_mock(tm)):
-        assert check_token(username='wazuh-wui', roles=tuple([1]), token_nbf_time=100, run_as=True,
+        assert check_token(username='wazuh-internal-client', roles=tuple([1]), token_nbf_time=100, run_as=True,
                            origin_node_type='master', hash_auth_context='revoked') == {'valid': False}
-        assert check_token(username='wazuh-wui', roles=tuple([1]), token_nbf_time=100, run_as=True,
+        assert check_token(username='wazuh-internal-client', roles=tuple([1]), token_nbf_time=100, run_as=True,
                            origin_node_type='master', hash_auth_context='other')['valid'] is True
 
     tm.is_token_valid.assert_any_call(user_id=2, token_nbf_time=100, run_as=True, hash_auth_context='revoked')

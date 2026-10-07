@@ -22,7 +22,7 @@ stages:
               roles:
                 - 1
             - id: 2
-              username: wazuh-wui
+              username: wazuh-internal-client
               allow_run_as: true
               roles:
                 - 1
@@ -474,7 +474,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        name: wazuh-wuiModified
+        name: wazuh-internal-clientModified
     response:
       <<: *permission_denied
 

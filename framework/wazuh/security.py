@@ -17,7 +17,7 @@ from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, inva
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources, require_role_update
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
-from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED, WAZUH_WUI_USER_ID
+from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED, WAZUH_INTERNAL_CLIENT_USER_ID
 from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
 
 # At least one letter and one digit, PCI DSS v4.0 requirement 8.3.6, in printable ASCII without spaces.
@@ -40,7 +40,7 @@ from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
 #     control that does move it -- is unchanged, and the 64-character ceiling still exists only
 #     because bcrypt truncates past 72 bytes.
 #   * The weakness that actually mattered was not the shape of a chosen password: it was that every
-#     installation shipped `wazuh`/`wazuh` and `wazuh-wui`/`wazuh-wui`. That is what #39554 removes.
+#     4.x installation shipped `wazuh`/`wazuh` and `wazuh-wui`/`wazuh-wui`. That is what #39554 removes.
 #     Where nothing is supplied the seeding generates 32 characters from a 73-character alphabet
 #     (~198 bits), which no composition rule would have improved on.
 #
@@ -192,7 +192,7 @@ def _check_reserved_target(user_id: int, current_user: str = None, run_as: bool 
         Name of the user that made the request.
     run_as : bool
         Whether the request was made with a run_as token. The `sub` of such a token is the account that
-        logged in (e.g. `wazuh-wui`), not the end user whose roles the token carries, so it is never
+        logged in (e.g. `wazuh-internal-client`), not the end user whose roles the token carries, so it is never
         treated as a reserved caller.
 
     Raises
@@ -218,7 +218,7 @@ def _run_as_reachable_roles(user_id: int) -> set:
     """Return the roles a run_as login of the given user can resolve to.
 
     Mirrors `AuthorizationContextProcessor.get_user_roles`: a run_as login evaluates every rule above
-    the reserved range, and every rule at all for `wazuh-wui`. The authorization context is chosen by
+    the reserved range, and every rule at all for `wazuh-internal-client`. The authorization context is chosen by
     whoever logs in, so any role linked to one of those rules is reachable, whatever the rule matches.
 
     Parameters
@@ -236,7 +236,7 @@ def _run_as_reachable_roles(user_id: int) -> set:
         if isinstance(roles, SecurityError):
             return set()
         return {role.id for role in roles
-                if any(rule.id > MAX_ID_RESERVED or user_id == WAZUH_WUI_USER_ID for rule in role.rules)}
+                if any(rule.id > MAX_ID_RESERVED or user_id == WAZUH_INTERNAL_CLIENT_USER_ID for rule in role.rules)}
 
 
 def _check_role_escalation(user_id: int, current_user: str = None, run_as_roles: bool = False,

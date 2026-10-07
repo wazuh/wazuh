@@ -17,7 +17,7 @@ from sqlalchemy.sql import text
 
 from wazuh.core.utils import get_utc_now
 from wazuh.rbac.tests.utils import init_db
-from wazuh.rbac.orm import WAZUH_USER_ID, WAZUH_WUI_USER_ID, MAX_ID_RESERVED, User
+from wazuh.rbac.orm import WAZUH_USER_ID, WAZUH_INTERNAL_CLIENT_USER_ID, MAX_ID_RESERVED, User
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
@@ -827,7 +827,7 @@ def test_databasemanager_insert_default_resources_uses_supplied_passwords(fresh_
 
         # The shipped default this change removes: the password must no longer be the username,
         # and `users.yaml` must no longer carry one at all.
-        assert not auth.check_user('wazuh-wui', 'wazuh-wui')
+        assert not auth.check_user('wazuh-internal-client', 'wazuh-internal-client')
 
     with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                            'default', 'users.yaml')) as f:
@@ -845,7 +845,7 @@ def test_databasemanager_insert_default_resources_generates_when_absent(fresh_in
     with fresh_in_memory_db.AuthenticationManager(
             fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as auth:
         assert auth.check_user('wazuh', 'Gener4ted.One!')
-        assert auth.check_user('wazuh-wui', 'Gener4ted.Two!')
+        assert auth.check_user('wazuh-internal-client', 'Gener4ted.Two!')
         assert not auth.check_user('wazuh', 'wazuh')
 
 
@@ -911,7 +911,7 @@ def test_check_database_integrity(chmod_mock, chown_mock, remove_mock, safe_move
                     call.insert_default_resources(fresh_in_memory_db.DB_FILE_TMP),
                     call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
                                       from_id=fresh_in_memory_db.WAZUH_USER_ID,
-                                      to_id=fresh_in_memory_db.WAZUH_WUI_USER_ID),
+                                      to_id=fresh_in_memory_db.WAZUH_INTERNAL_CLIENT_USER_ID),
                     call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
                                       from_id=fresh_in_memory_db.CLOUD_RESERVED_RANGE,
                                       to_id=fresh_in_memory_db.MAX_ID_RESERVED),
@@ -957,9 +957,9 @@ def test_check_database_integrity_exceptions(remove_mock, close_sessions_mock, e
             remove_mock.assert_called_with(fresh_in_memory_db.DB_FILE_TMP)
 
 @pytest.mark.parametrize('from_id, to_id, users', [
-    (WAZUH_USER_ID, WAZUH_WUI_USER_ID, [
+    (WAZUH_USER_ID, WAZUH_INTERNAL_CLIENT_USER_ID, [
         User('wazuh', 'test', user_id=WAZUH_USER_ID),
-        User('wazuh-wui', 'test2', user_id=WAZUH_WUI_USER_ID)
+        User('wazuh-internal-client', 'test2', user_id=WAZUH_INTERNAL_CLIENT_USER_ID)
     ]),
     (MAX_ID_RESERVED + 1, None, [
         User('custom', 'test', user_id=110),
@@ -971,7 +971,7 @@ def test_migrate_data(db_setup, from_id, to_id, users):
 
     NOTE: To correctly test this procedure, use the RBAC database migration integration tests."""
     # This test case updates the default user passwords and omits the rest of the migration
-    if to_id == WAZUH_WUI_USER_ID:
+    if to_id == WAZUH_INTERNAL_CLIENT_USER_ID:
         with patch("wazuh.rbac.orm.db_manager.get_data", return_value=users):
             with patch("wazuh.rbac.orm.AuthenticationManager.update_user") as mock_update_user:
                 db_setup.db_manager.migrate_data(source=db_setup.DB_FILE, target=db_setup.DB_FILE,
@@ -1036,7 +1036,7 @@ def test_check_database_integrity_missing_default_policy(chmod_mock, chown_mock,
                     call.insert_default_resources(fresh_in_memory_db.DB_FILE_TMP),
                     call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
                                       from_id=fresh_in_memory_db.WAZUH_USER_ID,
-                                      to_id=fresh_in_memory_db.WAZUH_WUI_USER_ID),
+                                      to_id=fresh_in_memory_db.WAZUH_INTERNAL_CLIENT_USER_ID),
                     call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
                                       from_id=fresh_in_memory_db.CLOUD_RESERVED_RANGE,
                                       to_id=fresh_in_memory_db.MAX_ID_RESERVED),
@@ -1079,7 +1079,7 @@ def test_check_database_integrity_modified_default_policy(chmod_mock, chown_mock
                     call.insert_default_resources(fresh_in_memory_db.DB_FILE_TMP),
                     call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
                                       from_id=fresh_in_memory_db.WAZUH_USER_ID,
-                                      to_id=fresh_in_memory_db.WAZUH_WUI_USER_ID),
+                                      to_id=fresh_in_memory_db.WAZUH_INTERNAL_CLIENT_USER_ID),
                     call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
                                       from_id=fresh_in_memory_db.CLOUD_RESERVED_RANGE,
                                       to_id=fresh_in_memory_db.MAX_ID_RESERVED),

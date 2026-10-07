@@ -856,7 +856,7 @@ async def test_access_log_hashes_the_unredacted_auth_context(mock_req):
     mock_req.json = AsyncMock(return_value=auth_context)
     mock_req.query_params = {}
     mock_req.method = 'POST'
-    mock_req.context = {'user': 'wazuh-wui', 'token_info': {}}
+    mock_req.context = {'user': 'wazuh-internal-client', 'token_info': {}}
     mock_req.scope = {'path': RUN_AS_LOGIN_ENDPOINT}
     mock_req.headers = {'content-type': 'None'}
 
@@ -890,7 +890,7 @@ async def test_access_log_run_as_context_only_logged_at_debug(debug_enabled, moc
     mock_req.json = AsyncMock(return_value=auth_context)
     mock_req.query_params = {}
     mock_req.method = 'POST'
-    mock_req.context = {'user': 'wazuh-wui', 'token_info': {}}
+    mock_req.context = {'user': 'wazuh-internal-client', 'token_info': {}}
     mock_req.scope = {'path': RUN_AS_LOGIN_ENDPOINT}
     mock_req.headers = {'content-type': 'None'}
 

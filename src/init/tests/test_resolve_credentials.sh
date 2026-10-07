@@ -208,10 +208,10 @@ root="$(make_tree)"
 run_resolver "${root}" --install
 check "a clean install exits 0" "0" "${RC}"
 check "the two API passwords are seeded" "yes" \
-    "$([ -n "$(seeded_password "${root}" wazuh)" ] && [ -n "$(seeded_password "${root}" wazuh-wui)" ] && echo yes)"
+    "$([ -n "$(seeded_password "${root}" wazuh)" ] && [ -n "$(seeded_password "${root}" wazuh-internal-client)" ] && echo yes)"
 check "both are published to the credentials file" "yes" \
     "$([ "$(published "${root}" WAZUH_MANAGER_API_PASSWORD)" = "$(seeded_password "${root}" wazuh)" ] && \
-       [ "$(published "${root}" WAZUH_MANAGER_WUI_PASSWORD)" = "$(seeded_password "${root}" wazuh-wui)" ] && echo yes)"
+       [ "$(published "${root}" WAZUH_MANAGER_WUI_PASSWORD)" = "$(seeded_password "${root}" wazuh-internal-client)" ] && echo yes)"
 check "the consumed indexer key is never published" "" \
     "$(published "${root}" WAZUH_INDEXER_MANAGER_PASSWORD)"
 
@@ -304,7 +304,7 @@ write_credentials "${root}" "WAZUH_MANAGER_API_PASSWORD='Supplied.Api1'"
 run_resolver "${root}" --install
 check "a supplied value is what gets seeded" "Supplied.Api1" "$(seeded_password "${root}" wazuh)"
 check "and the user with no supplied value still gets one" "yes" \
-    "$([ -n "$(seeded_password "${root}" wazuh-wui)" ] && echo yes)"
+    "$([ -n "$(seeded_password "${root}" wazuh-internal-client)" ] && echo yes)"
 cleanup "${root}"
 
 root="$(make_tree)"
