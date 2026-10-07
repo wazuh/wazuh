@@ -1136,7 +1136,7 @@ checks:
     rules:
       - "f:/etc/ntp.conf"
       - 'f:/etc/ntp.conf -> r:^\s*\t*server|^\s*\t*pool'
-      - "f:/etc/ntp.conf -> r:restrict -(d+) && r:default && r:kod && r:nomodify && r:notrap && r:nopeer && r:noquery"
+      - "f:/etc/ntp.conf -> r:restrict -4 && r:default && r:kod && r:nomodify && r:notrap && r:nopeer && r:noquery"
       - "f:/etc/ntp.conf -> r:restrict -6 && r:default && r:kod && r:nomodify && r:notrap && r:nopeer && r:noquery"
 
   # 2.2.1.3 Ensure chrony is configured. (Scored)

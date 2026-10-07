@@ -2989,7 +2989,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-password -> r:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(d+)'
+      - 'f:/etc/pam.d/common-password -> r:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(\d+)'
 
   # 5.3.2.4 Ensure pam_pwhistory module is enabled. (Automated)
   - id: 33189
@@ -3112,8 +3112,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: any
     rules:
-      - 'f:/etc/security/pwquality.conf -> n:difok\s*\t*=\s*\t*(d+) compare >= 2'
-      - 'd:/etc/security/pwquality.conf.d/* -> r:\.+.conf$ -> n:difok\s*\t*=\s*\t*(d+) compare >= 2'
+      - 'f:/etc/security/pwquality.conf -> n:difok\s*\t*=\s*\t*(\d+) compare >= 2'
+      - 'd:/etc/security/pwquality.conf.d -> r:\.+.conf$ -> n:difok\s*\t*=\s*\t*(\d+) compare >= 2'
 
   # 5.3.3.2.2 Ensure minimum password length is configured. (Automated)
   - id: 33194
@@ -3135,8 +3135,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: any
     rules:
-      - 'f:/etc/security/pwquality.conf -> n:minlen\s*\t*=\s*\t*(d+) compare >= 14'
-      - 'd:/etc/security/pwquality.conf.d/* -> r:\.+.conf$ -> n:minlen\s*\t*=\s*\t*(d+) compare >= 14'
+      - 'f:/etc/security/pwquality.conf -> n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
+      - 'd:/etc/security/pwquality.conf.d -> r:\.+.conf$ -> n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
 
   # 5.3.3.2.3 Ensure password complexity is configured. (Manual)
   - id: 33195
@@ -3160,8 +3160,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: any
     rules:
-      - 'f:/etc/security/pwquality.conf -> n:ucredit\s*\t*=\s*\t*(d+) compare < 0 && n:lcredit\s*\t*=\s*\t*(d+) compare < 0 && n:dcredit\s*\t*=\s*\t*(d+) compare < 0 && n:ocredit\s*\t*=\s*\t*(d+) < 0'
-      - 'd:/etc/security/pwquality.conf.d/* -> r:\.+.conf$ -> n:ucredit\s*\t*=\s*\t*(d+) compare < 0 && n:lcredit\s*\t*=\s*\t*(d+) compare < 0 && n:dcredit\s*\t*=\s*\t*(d+) compare < 0 && n:ocredit\s*\t*=\s*\t*(d+) < 0'
+      - 'f:/etc/security/pwquality.conf -> n:ucredit\s*\t*=\s*\t*(\d+) compare < 0 && n:lcredit\s*\t*=\s*\t*(\d+) compare < 0 && n:dcredit\s*\t*=\s*\t*(\d+) compare < 0 && n:ocredit\s*\t*=\s*\t*(\d+) compare < 0'
+      - 'd:/etc/security/pwquality.conf.d -> r:\.+.conf$ -> n:ucredit\s*\t*=\s*\t*(\d+) compare < 0 && n:lcredit\s*\t*=\s*\t*(\d+) compare < 0 && n:dcredit\s*\t*=\s*\t*(\d+) compare < 0 && n:ocredit\s*\t*=\s*\t*(\d+) compare < 0'
 
   # 5.3.3.2.4 Ensure password same consecutive characters is configured. (Automated)
   - id: 33196
@@ -3182,8 +3182,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: any
     rules:
-      - 'f:/etc/security/pwquality.conf -> n:maxrepeat\s*\t*=\s*\t*(d+) compare > 0 && n:maxrepeat\s*\t*=\s*\t*(d+) compare =< 3'
-      - 'd:/etc/security/pwquality.conf.d/* -> r:\.+.conf$ -> n:maxrepeat\s*\t*=\s*\t*(d+) compare > 0 && n:maxrepeat\s*\t*=\s*\t*(d+) compare =< 3'
+      - 'f:/etc/security/pwquality.conf -> n:maxrepeat\s*\t*=\s*\t*(\d+) compare > 0 && n:maxrepeat\s*\t*=\s*\t*(\d+) compare <= 3'
+      - 'd:/etc/security/pwquality.conf.d -> r:\.+.conf$ -> n:maxrepeat\s*\t*=\s*\t*(\d+) compare > 0 && n:maxrepeat\s*\t*=\s*\t*(\d+) compare <= 3'
 
   # 5.3.3.2.5 Ensure password maximum sequential characters is configured. (Automated)
   - id: 33197
@@ -3204,8 +3204,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: any
     rules:
-      - 'f:/etc/security/pwquality.conf -> n:maxsequence\s*\t*=\s*\t*(d+) compare > 0 && n:maxsequence\s*\t*=\s*\t*(d+) compare =< 3'
-      - 'd:/etc/security/pwquality.conf.d/* -> r:\.+.conf$ -> n:maxsequence\s*\t*=\s*\t*(d+) compare > 0 && n:maxsequence\s*\t*=\s*\t*(d+) compare =< 3'
+      - 'f:/etc/security/pwquality.conf -> n:maxsequence\s*\t*=\s*\t*(\d+) compare > 0 && n:maxsequence\s*\t*=\s*\t*(\d+) compare <= 3'
+      - 'd:/etc/security/pwquality.conf.d -> r:\.+.conf$ -> n:maxsequence\s*\t*=\s*\t*(\d+) compare > 0 && n:maxsequence\s*\t*=\s*\t*(\d+) compare <= 3'
 
   # 5.3.3.2.6 Ensure password dictionary check is enabled. (Automated)
   - id: 33198
@@ -3226,8 +3226,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: any
     rules:
-      - 'f:/etc/security/pwquality.conf -> n:dictcheck\s*\t*=\s*\t*(d+) compare != 0'
-      - 'not d:/etc/security/pwquality.conf.d/* -> r:\.+.conf$ -> n:dictcheck\s*\t*=\s*\t*(d+) compare = 0'
+      - 'f:/etc/security/pwquality.conf -> n:dictcheck\s*\t*=\s*\t*(\d+) compare != 0'
+      - 'not d:/etc/security/pwquality.conf.d -> r:\.+.conf$ -> n:dictcheck\s*\t*=\s*\t*(\d+) compare = 0'
 
   # 5.3.3.2.7 Ensure password quality checking is enforced. (Automated)
   - id: 33199
@@ -3245,8 +3245,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: any
     rules:
-      - 'f:/etc/security/pwquality.conf -> n:enforcing\s*\t*=\s*\t*(d+) compare != 0'
-      - 'not d:/etc/security/pwquality.conf.d/* -> r:\.+.conf$ -> n:enforcing\s*\t*=\s*\t*(d+) compare = 0'
+      - 'f:/etc/security/pwquality.conf -> n:enforcing\s*\t*=\s*\t*(\d+) compare != 0'
+      - 'not d:/etc/security/pwquality.conf.d -> r:\.+.conf$ -> n:enforcing\s*\t*=\s*\t*(\d+) compare = 0'
 
   # 5.3.3.2.8 Ensure password quality is enforced for the root user. (Automated)
   - id: 33200
@@ -3265,7 +3265,7 @@ checks:
     condition: any
     rules:
       - "f:/etc/security/pwquality.conf -> r:enforce_for_root"
-      - 'd:/etc/security/pwquality.conf.d/* -> r:\.+.conf$ -> r:enforce_for_root'
+      - 'd:/etc/security/pwquality.conf.d -> r:\.+.conf$ -> r:enforce_for_root'
 
   # 5.3.3.3.1 Ensure password history remember is configured. (Automated)
   - id: 33201
