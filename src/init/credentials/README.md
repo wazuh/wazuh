@@ -207,18 +207,16 @@ component owns. Do not use `wazuh_env_set` as a password rotation mechanism.
 ## SAN and cryptographic behavior
 
 - Indexer Connector: `clientAuth`, RSA-2048/SHA-256, 3650 days.
-- Server API (`apid.pem`/`apid-key.pem`): `serverAuth`, RSA-2048/SHA-256, signed by the manager CA at
-  `--install`, 3650 days, leaf only. Fixed DN `C=US, ST=California, L=San Francisco, O=Wazuh,
-  CN=wazuh.com` and the single SAN `DNS:localhost`; there is no SAN setting for it.
-- Remoted/Authd: `serverAuth`, RSA-2048/SHA-256, leaf plus CA chain, notBefore
-  backdated one day, notAfter 3650 days ahead. Trust-chain validity is still
-  limited by CA validity.
+- Remoted/Authd and the Server API (`remoted.pem` and `apid.pem`, issued by the same function):
+  `serverAuth`, RSA-2048/SHA-256, leaf plus CA chain, notBefore backdated one day, notAfter 3650
+  days ahead, and the SANs the Remoted list resolves to when each is issued (the same list when
+  both are issued together). Trust-chain validity is still limited by CA validity.
 - `WAZUH_MANAGER_CERT_SANS` configures the connector. Absent, it is the hostname/FQDN, loopback and
   the global-scope addresses of the interfaces carrying a default route (`ip route show default`),
   or the output of `hostname -I` when `ip` is unavailable.
-- The Indexer Connector and Remoted leaves take `WAZUH_MANAGER_NODE_NAME` (default `hostname -s`) as
-  their CN; the Server API leaf always uses the fixed CN `wazuh.com`.
-- `WAZUH_MANAGER_REMOTED_CERT_SANS` configures Remoted. Explicit values replace
+- The three leaves take `WAZUH_MANAGER_NODE_NAME` (default `hostname -s`) as their CN.
+- `WAZUH_MANAGER_REMOTED_CERT_SANS` configures Remoted and the Server API (issuing either needs it or
+  the discovery below, and the node name). Explicit values replace
   discovery; loopback is appended to them. Absent values include every **global-scope** IPv4/IPv6 address
   reported by `ip -o addr show` — including addresses on interfaces that are not
   on the default route, that are virtual, or that are down — plus hostname/FQDN

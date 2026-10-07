@@ -446,7 +446,8 @@ afterwards — either way they are used as they are and never replaced. The inst
 ### Subject alternative names
 
 The `indexer-connector.pem` and `remoted.pem` leaves are configured independently, because they are
-presented to different peers (`apid.pem` has no such setting: its only SAN is `DNS:localhost`):
+presented to different peers (`apid.pem` has no setting of its own: it is issued with the Remoted list, so
+issuing it, alone or with `remoted.pem`, needs that discovery or `WAZUH_MANAGER_REMOTED_CERT_SANS`):
 
 | Setting | Configures | Discovery when unset |
 |---------|------------|----------------------|

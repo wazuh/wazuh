@@ -233,18 +233,23 @@ if [ "${1-}" = --case ]; then
             eq "$(grep -c 'BEGIN CERTIFICATE' "$dir/remoted.pem")" 2 chain
             openssl verify -purpose sslclient -CAfile "$dir/root-ca.pem" "$dir/indexer-connector.pem"
             openssl verify -purpose sslserver -verify_hostname agents.test -CAfile "$dir/root-ca.pem" "$dir/remoted.pem"
-            # Server API pair: leaf only, fixed DN and SAN, server EKU, ten years.
-            eq "$(grep -c 'BEGIN CERTIFICATE' "$dir/apid.pem")" 1 apid-leaf-only
+            # Server API pair: remoted's profile -- leaf followed by the CA, CN=<node>, the Remoted SANs,
+            # server EKU, notBefore backdated a day, ten years.
+            eq "$(grep -c 'BEGIN CERTIFICATE' "$dir/apid.pem")" 2 apid-chain
+            openssl verify -purpose sslserver -verify_hostname agents.test -CAfile "$dir/root-ca.pem" "$dir/apid.pem"
             openssl verify -purpose sslserver -verify_hostname localhost -CAfile "$dir/root-ca.pem" "$dir/apid.pem"
-            subject=$(openssl x509 -in "$dir/apid.pem" -noout -subject)
-            for part in 'CN = wazuh.com' 'ST = California' 'L = San Francisco'; do
-                case $subject in *"$part"*) ;; *) fail "apid subject lacks $part: $subject" ;; esac
-            done
-            eq "$(openssl x509 -in "$dir/apid.pem" -noout -ext subjectAltName | sed -n '2,$p' | tr -d ' ')" DNS:localhost apid-san
+            openssl verify -purpose sslserver -verify_ip 192.0.2.11 -CAfile "$dir/root-ca.pem" "$dir/apid.pem"
+            eq "$(openssl x509 -in "$dir/apid.pem" -noout -subject)" \
+                "$(openssl x509 -in "$dir/remoted.pem" -noout -subject)" apid-subject-as-remoted
+            case $(openssl x509 -in "$dir/apid.pem" -noout -subject) in *'CN = test-manager'*) ;; *) fail 'apid CN is not the node name' ;; esac
+            eq "$(openssl x509 -in "$dir/apid.pem" -noout -ext subjectAltName)" \
+                "$(openssl x509 -in "$dir/remoted.pem" -noout -ext subjectAltName)" apid-san-as-remoted
             text=$(LC_ALL=C openssl x509 -in "$dir/apid.pem" -noout -text)
             case $text in *'CA:FALSE'*) ;; *) fail 'apid lacks CA:FALSE' ;; esac
             case $text in *'TLS Web Server Authentication'*) ;; *) fail 'apid lacks serverAuth' ;; esac
             openssl x509 -in "$dir/apid.pem" -noout -checkend $((3649*86400)) >/dev/null || fail 'apid expires before ~10 years'
+            not_before=$(date -u -d "$(openssl x509 -in "$dir/apid.pem" -noout -startdate | cut -d= -f2)" +%s)
+            [ "$not_before" -le "$(( $(date -u +%s) - 23*3600 ))" ] || fail 'apid notBefore is not backdated'
             before=$(sha256sum "$dir"/*.pem)
             WAZUH_MANAGER_REMOTED_CERT_SANS='' wazuh_manager_certificates_ensure
             eq "$(sha256sum "$dir"/*.pem)" "$before" manager-idempotence
@@ -386,14 +391,24 @@ if [ "${1-}" = --case ]; then
         apid_only_missing)
             fixture
             dir="$WAZUH_MANAGER_HOME/etc/certs"
+            others=$(sha256sum "$dir/indexer-connector.pem" "$dir/indexer-connector-key.pem" "$dir/remoted.pem" "$dir/remoted-key.pem")
             rm "$dir/apid.pem" "$dir/apid-key.pem"
-            # Issuing only the Server API pair must not need a node name.
-            export WAZUH_MANAGER_NODE_NAME='bad..name'
+            # Only the Server API pair is reissued, with the node name and the SANs remoted has.
             wazuh_manager_certificates_ensure
             [ -f "$dir/apid.pem" ]
             [ -f "$dir/apid-key.pem" ]
-            openssl verify -purpose sslserver -verify_hostname localhost -CAfile "$dir/root-ca.pem" "$dir/apid.pem"
+            eq "$(sha256sum "$dir/indexer-connector.pem" "$dir/indexer-connector-key.pem" "$dir/remoted.pem" "$dir/remoted-key.pem")" \
+                "$others" other-pairs-untouched
+            eq "$(openssl x509 -in "$dir/apid.pem" -noout -ext subjectAltName)" \
+                "$(openssl x509 -in "$dir/remoted.pem" -noout -ext subjectAltName)" apid-san-as-remoted
+            openssl verify -purpose sslserver -verify_hostname agents.test -CAfile "$dir/root-ca.pem" "$dir/apid.pem"
             wazuh_manager_certificates_validate
+            # It now needs the node name, like remoted: an invalid one is refused and nothing is issued.
+            rm "$dir/apid.pem" "$dir/apid-key.pem"
+            export WAZUH_MANAGER_NODE_NAME='bad..name'
+            reject wazuh_manager_certificates_ensure
+            [ ! -e "$dir/apid.pem" ]
+            [ ! -e "$dir/apid-key.pem" ]
             ;;
         apid_key_mismatch)
             fixture

@@ -138,16 +138,20 @@ contain only letters, digits, `_`, `-` and `.`.
 | `ssl_ciphers` | `""` | OpenSSL cipher list; empty keeps the default |
 
 The installer (`wazuh-manager-resolve-credentials --install`, run by the package post-install step or
-`install.sh` on a clean installation) issues `apid.pem` and `apid-key.pem` as a leaf of the manager's CA:
-subject `C=US, ST=California, L=San Francisco, O=Wazuh, CN=wazuh.com`, SAN `DNS:localhost` only (there is
-no setting for it), 2048-bit RSA, valid 3650 days, `serverAuth`, the leaf alone, owned by
-`wazuh-manager:wazuh-manager` with mode `0640`.
+`install.sh` on a clean installation) issues `apid.pem` and `apid-key.pem` from the manager's CA with the
+same profile as the agent listener's `remoted.pem`: subject `C=US, L=California, O=Wazuh, OU=Wazuh,
+CN=<node name>`, the SANs the Remoted list resolves to when it is issued (the node's host names and
+global-scope addresses plus `localhost`, `127.0.0.1` and `::1`, or `WAZUH_MANAGER_REMOTED_CERT_SANS`;
+the same list `remoted.pem` gets when both are issued together), 2048-bit RSA, `serverAuth`, `notBefore` one day
+before issuance and `notAfter` 3650 days after it, the leaf followed by the CA, owned by
+`wazuh-manager:wazuh-manager` with mode `0640`. Issuing it therefore needs the node name and the Remoted SAN
+discovery (or `WAZUH_MANAGER_REMOTED_CERT_SANS`), like `remoted.pem`.
 
 `wazuh-manager-apid` generates no certificate. When `enabled` is `true` and the configured pair is
 missing, not readable by `wazuh-manager`, or the key does not match the certificate, it logs error
 `2003` naming the files in `logs/api.log` and does not start.
 
-A client that verifies the API trusts `root-ca.pem` and checks the name `localhost`. `use_ca` is
+A client that verifies the API trusts `root-ca.pem` and checks any of those names or addresses. `use_ca` is
 unchanged: it requires a client certificate. To serve another certificate, place it in `etc/certs` under
 other file names and point `key` and `cert` at them; both must be readable by `wazuh-manager`.
 

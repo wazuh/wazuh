@@ -224,7 +224,7 @@ jobs:
           # node's SAN carries DNS:wazuh-manager, which the integration tests assert on the listener
           # certificate. All three pairs (indexer connector, remoted, apid) come from that PKI: the
           # API no longer generates its own certificate, so the apid pair is issued here from the
-          # same CA, with the profile the installer uses (leaf only, SAN DNS:localhost, serverAuth).
+          # same CA as a localhost-only serverAuth leaf, which is all the tests connect to.
           sudo systemctl stop wazuh-manager 2>/dev/null || true
           CERTS_YML="$RUNNER_TEMP/wazuh-certs.yml"
           CERTS_OUT="$RUNNER_TEMP/wazuh-certificates"

@@ -193,9 +193,10 @@ function manager_node_name() {
 }
 
 # Server API (apid) pair: <manager>-apid.pem / <manager>-apid-key.pem, signed by the root
-# CA with the same profile the manager installer uses for etc/certs/apid.pem (leaf only,
-# SAN DNS:localhost, EKU serverAuth). The certs tool does not issue it, so this completes
-# any PKI that lacks it and validates one that has it. Returns 1 on any inconsistency.
+# CA as a localhost-only serverAuth leaf (the manager installer gives etc/certs/apid.pem the
+# profile and SANs of remoted.pem; the e2e only reaches the API on localhost). The certs
+# tool does not issue it, so this completes any PKI that lacks it and validates one that
+# has it. Returns 1 on any inconsistency.
 function ensure_manager_apid_pair() {
   local manager_name="$1"
   local crt="$CERTS_DIR/${manager_name}-apid.pem"
