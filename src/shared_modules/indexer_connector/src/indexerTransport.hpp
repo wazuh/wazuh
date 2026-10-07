@@ -32,7 +32,7 @@
  * @param config The `<indexer>` configuration block. Only `ssl.certificate_authorities`,
  *               `ssl.certificate` and `ssl.key` are read; `hosts` is NOT validated here (callers
  *               check it first, since it is the cheaper check).
- * @param logFn Logger used for the "no credentials in the keystore" warnings.
+ * @param logFn Logger used to report the indexer account selected for authentication.
  * @return Transport settings ready to hand to a server selector or an HTTP request.
  *
  * @throw IndexerConnectorException if a single configured CA file does not exist on disk.

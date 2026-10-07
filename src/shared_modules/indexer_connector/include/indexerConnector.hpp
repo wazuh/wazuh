@@ -339,7 +339,7 @@ public:
      * @param id ID.
      * @param index Index name.
      * @param data Data.
-     * @param version Document version for external versioning.
+     * @param version Document version compared against `state.document_version` by a scripted update.
      */
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version);
 
@@ -382,9 +382,9 @@ public:
     [[nodiscard]] std::unique_lock<std::mutex> scopeLock();
 
     /**
-     * @brief Register a callback to be called when the indexer is flushed.
+     * @brief Register a callback to be called after a bulk or update-by-query operation succeeds.
      *
-     * @param callback Callback to be called when the indexer is flushed.
+     * @param callback Callback to be called after the operation succeeds. Failed operations do not invoke it.
      */
     void registerNotify(std::function<void()> callback);
 
