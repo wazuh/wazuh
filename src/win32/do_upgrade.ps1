@@ -646,7 +646,9 @@ function probe_server($server, $port, $endpoint) {
             $host_part = "[$host_part]"
         }
 
-        $response = Invoke-WebRequest -Uri "https://$($host_part):$($port)$($path)" -UseBasicParsing -TimeoutSec 5
+        # No keep-alive: a pooled connection would let probe_server_verified() reuse it and skip
+        # the handshake, which is where the certificate gets validated.
+        $response = Invoke-WebRequest -Uri "https://$($host_part):$($port)$($path)" -UseBasicParsing -TimeoutSec 5 -DisableKeepAlive
         return ($response.StatusCode -eq 200)
     } catch {
         if ($_.Exception -is [System.Net.WebException] -and $_.Exception.Status -eq [System.Net.WebExceptionStatus]::SecureChannelFailure) {
@@ -682,7 +684,10 @@ function probe_server_verified($server, $port, $endpoint) {
         # the same $false, since probe_server() already confirmed reachability moments ago
         # and this function's only job is the trust decision -- but log which one it was, so
         # upgrade.log doesn't read "certificate not trusted" for a transient network blip.
-        if ($_.Exception -is [System.Net.WebException] -and $_.Exception.Status -eq [System.Net.WebExceptionStatus]::SecureChannelFailure) {
+        # An untrusted certificate surfaces as TrustFailure; SecureChannelFailure covers a failed handshake.
+        if ($_.Exception -is [System.Net.WebException] -and
+            ($_.Exception.Status -eq [System.Net.WebExceptionStatus]::TrustFailure -or
+             $_.Exception.Status -eq [System.Net.WebExceptionStatus]::SecureChannelFailure)) {
             write-output "$(Get-Date -format u) - Certificate trust check failed: the system trust store does not verify the manager's certificate ($($_.Exception.Message))." >> .\upgrade\upgrade.log
         } else {
             write-output "$(Get-Date -format u) - Certificate trust check failed for a reason other than certificate trust ($($_.Exception.GetType().Name): $($_.Exception.Message)); treating as not verified." >> .\upgrade\upgrade.log
