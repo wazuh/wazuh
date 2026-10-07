@@ -831,3 +831,11 @@ class IndexerUnavailableError(WazuhIndexerError):
     """
     _default_type = "about:blank"
     _default_title = "Wazuh Indexer Unavailable"
+
+
+class IndexerConfigurationError(IndexerUnavailableError):
+    """
+    Raised when the indexer cannot be used because of the manager's own configuration or credentials (the indexer
+    section, its hosts or TLS material, the keystore entries). Retrying without changing them cannot succeed.
+    """
+    _default_title = "Wazuh Indexer Misconfigured"

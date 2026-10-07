@@ -15,7 +15,7 @@ from opensearchpy import AsyncOpenSearch
 from opensearchpy.exceptions import ImproperlyConfigured, TransportError
 from wazuh.core import common
 from wazuh.core.configuration import get_manager_conf
-from wazuh.core.exception import WazuhIndexerError, IndexerUnavailableError
+from wazuh.core.exception import WazuhIndexerError, IndexerConfigurationError, IndexerUnavailableError
 from wazuh.core.indexer.credential_manager import KeystoreClient
 from wazuh.core.indexer.states_components import StatesIndex
 from wazuh.core.indexer.metrics import MetricsIndex
@@ -156,8 +156,16 @@ class _IndexerCircuitBreaker:
     """
 
     _open_until: Optional[datetime] = None
+    _opened_at_conf_mtime: Optional[float] = None
     _lock = asyncio.Lock()
     BACKOFF_TIME = 60  # seconds before allowing retry after circuit opens
+
+    @staticmethod
+    def _conf_mtime() -> Optional[float]:
+        try:
+            return os.path.getmtime(common.MANAGER_CONF)
+        except OSError:
+            return None
 
     @classmethod
     async def check(cls) -> None:
@@ -170,6 +178,11 @@ class _IndexerCircuitBreaker:
             If circuit breaker is open (indexer recently failed)
         """
         async with cls._lock:
+            # A changed wazuh-manager.conf may have fixed what made the attempts fail (a wrong
+            # host, for example): it closes the breaker instead of waiting out the backoff.
+            if cls._open_until and cls._conf_mtime() != cls._opened_at_conf_mtime:
+                logger.info("Circuit breaker closed - the manager configuration changed")
+                cls._open_until = None
             if cls._open_until and datetime.now() < cls._open_until:
                 wait_seconds = (cls._open_until - datetime.now()).total_seconds()
                 raise IndexerUnavailableError(
@@ -182,6 +195,7 @@ class _IndexerCircuitBreaker:
         """Record indexer connection failure and open circuit breaker."""
         async with cls._lock:
             cls._open_until = datetime.now() + timedelta(seconds=cls.BACKOFF_TIME)
+            cls._opened_at_conf_mtime = cls._conf_mtime()
             logger.warning(f"Circuit breaker opened until {cls._open_until}")
 
     @classmethod
@@ -476,12 +490,11 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
 
     Raises
     ------
-    WazuhIndexerError
-        If initialization or connection fails.
-    ConfigurationError
-        If configuration is missing or malformed.
-    CredentialsError
-        If credentials are missing or invalid.
+    IndexerConfigurationError
+        The indexer section (hosts, TLS) or the keystore credentials cannot be used. Retrying without
+        changing them cannot succeed.
+    IndexerUnavailableError
+        The indexer, the keystore or the configuration could not be reached, or the circuit breaker is open.
     """
     # Check circuit breaker before attempting connection
     await _IndexerCircuitBreaker.check()
@@ -490,17 +503,17 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
         # Use cached configuration
         wazuh_config = await _get_cached_indexer_config()
         if not wazuh_config:
-            raise IndexerUnavailableError(
+            raise IndexerConfigurationError(
                 code=2200, extra_message="Missing indexer configuration in Wazuh config"
             )
     except Exception as e:
-        raise IndexerUnavailableError(
+        raise IndexerConfigurationError(
             code=2200, extra_message=f"Failed to parse Wazuh configuration: {e}"
         )
 
     indexer_section = wazuh_config.get("indexer", {})
     if not indexer_section:
-        raise IndexerUnavailableError(
+        raise IndexerConfigurationError(
             code=2200, extra_message="Empty indexer section in configuration"
         )
 
@@ -512,7 +525,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
                 user_response = ks_client.get("indexer", "username")
                 pass_response = ks_client.get("indexer", "password")
             except KeyError as e:
-                raise IndexerUnavailableError(
+                raise IndexerConfigurationError(
                     code=2201, extra_message=f"Missing credential entry in keystore: {e}"
                 )
             except Exception as e:
@@ -524,11 +537,11 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
             indexer_pass = pass_response.get("value") if pass_response else None
 
             if not indexer_user:
-                raise IndexerUnavailableError(
+                raise IndexerConfigurationError(
                     code=2201, extra_message="Empty or missing username in keystore"
                 )
             if not indexer_pass:
-                raise IndexerUnavailableError(
+                raise IndexerConfigurationError(
                     code=2201, extra_message="Empty or missing password in keystore"
                 )
     except IndexerUnavailableError:
@@ -541,7 +554,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
     # Parse host URLs
     hosts_raw = indexer_section.get("hosts", [])
     if not hosts_raw:
-        raise IndexerUnavailableError(
+        raise IndexerConfigurationError(
             code=2200, extra_message="No hosts specified in indexer configuration"
         )
 
@@ -553,7 +566,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
 
         for i, p in enumerate(parsed_urls):
             if not p.hostname:
-                raise IndexerUnavailableError(
+                raise IndexerConfigurationError(
                     code=2200,
                     extra_message=f"Invalid host URL at position {i}: {hosts_raw[i]}",
                 )
@@ -561,17 +574,17 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
             list_of_ports.append(p.port)
             schemes.add(p.scheme.lower())
     except Exception as e:
-        raise IndexerUnavailableError(code=2200, extra_message=f"Failed to parse host URLs: {e}")
+        raise IndexerConfigurationError(code=2200, extra_message=f"Failed to parse host URLs: {e}")
 
     # The scheme of the configured hosts decides TLS, as it does for the C++ indexer connector.
     # The client has a single TLS setting for every node, so the hosts must agree on it.
     if schemes - {"http", "https"}:
-        raise IndexerUnavailableError(
+        raise IndexerConfigurationError(
             code=2200,
             extra_message=f"Unsupported indexer host scheme: {', '.join(sorted(schemes - {'http', 'https'}))}",
         )
     if len(schemes) > 1:
-        raise IndexerUnavailableError(
+        raise IndexerConfigurationError(
             code=2200,
             extra_message="indexer.hosts mixes http:// and https:// URLs; every host must use the same scheme",
         )
@@ -624,7 +637,7 @@ def _build_ssl_context(ssl_config: dict) -> ssl.SSLContext:
 
     Raises
     ------
-    IndexerUnavailableError(2200)
+    IndexerConfigurationError(2200)
         A certificate without its key (or the reverse), an empty CA entry, or a context that cannot be built.
     """
     # TLS material is optional per the configuration schema: an empty certificate/key
@@ -636,13 +649,13 @@ def _build_ssl_context(ssl_config: dict) -> ssl.SSLContext:
     cas = ssl_config.get("certificate_authorities") or []
 
     if bool(certificate) != bool(key):
-        raise IndexerUnavailableError(
+        raise IndexerConfigurationError(
             code=2200,
             extra_message="indexer.ssl.certificate and indexer.ssl.key must be set together",
         )
 
     if any(not ca for ca in cas):
-        raise IndexerUnavailableError(
+        raise IndexerConfigurationError(
             code=2200,
             extra_message="indexer.ssl.certificate_authorities must not contain empty entries",
         )
@@ -657,6 +670,6 @@ def _build_ssl_context(ssl_config: dict) -> ssl.SSLContext:
     except IndexerUnavailableError:
         raise
     except Exception as e:
-        raise IndexerUnavailableError(code=2200, extra_message=f"Failed to build SSL context: {e}")
+        raise IndexerConfigurationError(code=2200, extra_message=f"Failed to build SSL context: {e}")
 
     return ssl_context

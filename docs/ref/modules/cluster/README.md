@@ -103,6 +103,21 @@ started only while the indexer is reachable: on every node, the
 synchronization of disconnected agents' indexed documents, and a periodic metrics snapshot. Without
 `<indexer><hosts>` it logs `Indexer configuration is unavailable; Indexer tasks will not be started.`
 
+The indexer is checked every 300 s while it is reachable. The scheme of `<indexer><hosts>` decides
+TLS: `https://` hosts use `<ssl>`, `http://` hosts ignore it, and a list mixing both is refused. Two
+kinds of failure are told apart:
+
+- **A configuration that cannot work** — an `<indexer>` section that does not parse, mixed schemes, a
+  `<certificate>` without its `<key>`, a TLS file that cannot be loaded, or a missing indexer
+  credential in the keystore — is logged once, as an error: `Indexer tasks cannot start, the indexer
+  configuration is not usable: <reason>`. It is logged again only when the reason changes, and is
+  checked again every 300 s.
+- **An unreachable indexer** is logged as a warning on every check, and checked again with an
+  exponential backoff from 300 s, capped at 3600 s.
+
+Either wait ends within 10 s of a change to `wazuh-manager.conf`, so a corrected configuration is
+picked up without a restart. A change to the keystore alone is picked up at the next check.
+
 ---
 
 ## Local socket

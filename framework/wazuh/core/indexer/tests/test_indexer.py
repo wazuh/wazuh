@@ -508,3 +508,67 @@ async def test_get_indexer_client_raises_when_circuit_breaker_open():
     finally:
         # Reset for other tests
         _IndexerCircuitBreaker._open_until = None
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_closes_when_the_configuration_changes():
+    """A wazuh-manager.conf change may have fixed the failure: the next attempt is let through."""
+    with patch("wazuh.core.indexer.indexer.os.path.getmtime", return_value=100.0):
+        await _IndexerCircuitBreaker.record_failure()
+        with pytest.raises(IndexerUnavailableError, match="Circuit breaker open"):
+            await _IndexerCircuitBreaker.check()
+
+    with patch("wazuh.core.indexer.indexer.os.path.getmtime", return_value=200.0):
+        await _IndexerCircuitBreaker.check()
+
+    assert _IndexerCircuitBreaker._open_until is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("indexer_extra, hosts", [
+    ({"ssl": {"certificate": "etc/certs/indexer-connector.pem"}}, ("https://localhost:9200",)),
+    ({}, ("https://node1:9200", "http://node2:9200")),
+    ({}, ()),
+], ids=["certificate-without-key", "mixed-schemes", "no-hosts"])
+async def test_get_indexer_client_reports_unusable_configuration_as_configuration_error(indexer_extra, hosts):
+    """Failures that retrying cannot fix are IndexerConfigurationError, so clusterd reports them once instead
+    of backing off as for an outage. It stays an IndexerUnavailableError for every existing handler."""
+    from wazuh.core.exception import IndexerConfigurationError
+
+    with pytest.raises(IndexerConfigurationError) as error:
+        await _run_get_indexer_client(indexer_extra, hosts=hosts)
+
+    assert isinstance(error.value, IndexerUnavailableError)
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_missing_keystore_entry_is_a_configuration_error():
+    from wazuh.core.exception import IndexerConfigurationError
+
+    keystore_client = MagicMock()
+    keystore_client.__enter__.return_value.get.side_effect = KeyError("indexer/username")
+    with patch("wazuh.core.indexer.indexer._get_cached_indexer_config", new_callable=AsyncMock,
+               return_value={"indexer": {"hosts": ["https://localhost:9200"]}}), \
+            patch("wazuh.core.indexer.indexer.KeystoreClient", return_value=keystore_client), \
+            patch("wazuh.core.indexer.indexer._IndexerCircuitBreaker.check", new_callable=AsyncMock):
+        with pytest.raises(IndexerConfigurationError, match="Missing credential entry"):
+            async with get_indexer_client():
+                pass
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_unreachable_keystore_is_not_a_configuration_error():
+    """The keystore daemon being down is transient: it keeps the outage backoff."""
+    from wazuh.core.exception import IndexerConfigurationError
+
+    keystore_client = MagicMock()
+    keystore_client.__enter__.return_value.get.side_effect = ConnectionRefusedError("keystore.sock")
+    with patch("wazuh.core.indexer.indexer._get_cached_indexer_config", new_callable=AsyncMock,
+               return_value={"indexer": {"hosts": ["https://localhost:9200"]}}), \
+            patch("wazuh.core.indexer.indexer.KeystoreClient", return_value=keystore_client), \
+            patch("wazuh.core.indexer.indexer._IndexerCircuitBreaker.check", new_callable=AsyncMock):
+        with pytest.raises(IndexerUnavailableError, match="Keystore operation failed") as error:
+            async with get_indexer_client():
+                pass
+
+    assert not isinstance(error.value, IndexerConfigurationError)
