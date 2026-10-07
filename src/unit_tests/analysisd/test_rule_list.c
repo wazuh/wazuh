@@ -27,6 +27,7 @@ void os_remove_rules_list(RuleNode *node);
 int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg, w_rule_tree_build_t *build);
 RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule, w_rule_tree_build_t *build);
 bool w_rule_tree_add_node(w_rule_tree_build_t *build, const RuleInfo *read_rule);
+void os_mark_ruleinfo(RuleNode *node, bool value, int *changed);
 
 /* helpers */
 
@@ -575,6 +576,28 @@ void test_OS_AddChild_limit_before_first_node(void **state)
     os_remove_rules_list(tree);
 }
 
+/* os_mark_ruleinfo */
+void test_os_mark_ruleinfo_counts_unique(void **state)
+{
+    RuleNode *tree = create_parents();
+    RuleInfo *child = create_rule(400, 500, "child,");
+    os_strdup("parent", child->if_group);
+    assert_int_equal(OS_AddChild(child, &tree, NULL, NULL), 0);
+
+    int marked = 0;
+    int cleared = 0;
+
+    // Six nodes, four unique RuleInfo
+    os_mark_ruleinfo(tree, true, &marked);
+    os_mark_ruleinfo(tree, false, &cleared);
+
+    assert_int_equal(marked, 4);
+    assert_int_equal(cleared, 4);
+    assert_false(child->internal_saving);
+
+    os_remove_rules_list(tree);
+}
+
 
 int main(void)
 {
@@ -607,6 +630,8 @@ int main(void)
         cmocka_unit_test(test_OS_AddChild_if_level_limit_mid_rule),
         cmocka_unit_test(test_OS_AddChild_warning_then_limit_in_same_rule),
         cmocka_unit_test(test_OS_AddChild_limit_before_first_node),
+        // Tests os_mark_ruleinfo
+        cmocka_unit_test(test_os_mark_ruleinfo_counts_unique),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
