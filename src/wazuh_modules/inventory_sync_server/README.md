@@ -364,7 +364,10 @@ zero-padded to at least three characters (`001`, `1000`) — by delegating to re
 `wazuh.agent.id` and query uses that form, and the session stores the AUTHENTICATED id, never the
 claim. `isCanonicalAgentId()` gates every `X-Wazuh-Agent-Id` (`/stateful`, `/stats`, `/config`) and
 the claim compared against it; `canonicalAgentId()` normalizes the `agent_id` of the two `_internal`
-endpoints' BODY (`7`, `"7"`, `"0007"` → `007`) and rejects anything out of range.
+endpoints' BODY (`7`, `"7"`, `"0007"` → `007`) and rejects anything out of range. The two producers keep their side of
+it: the agent serializes `Start.agentid` canonically whatever its `client.keys` spells
+(`agent_sync_protocol.cpp`), and authd stores a `POST /agents/insert` id canonically
+(`OS_CanonicalAgentInsertID()`), so a strict comparison never rejects a legitimately registered agent.
 
 ### The pipeline (`sync/syncPipeline.*`, `sync/sessionProcessor.*`)
 

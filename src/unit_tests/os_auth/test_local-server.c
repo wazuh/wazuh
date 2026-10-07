@@ -29,6 +29,7 @@
 #include "enrollment_token.h"
 #include "enrollment_token_store.h"
 #include "reenroll_verify.h"
+#include "manager_task_op.h"
 #include "../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 
 #include "cJSON.h"
@@ -1350,6 +1351,44 @@ static void test_add_with_revoked_or_expired_token(void **state) {
     assert_int_equal(OS_IsAllowedName(&keys, "exp-agent"), -1);
 }
 
+/* The one wazuh-db call purge_is_pending() makes, wrapped so a caller-supplied id can be followed
+ * through it: the id it is asked about is the one every later check and client.keys will see. */
+int __wrap_manager_task_agent_status(const char *agent_id, const char *task_type, int timeout) {
+    check_expected(agent_id);
+    (void)task_type;
+    (void)timeout;
+    return mock_type(int);
+}
+
+/* An agent id is a string: "0042" and "042" would be two identities for one number, which remoted
+ * resolves to the same agent while the agent claims, and the indexer stores, "042". So a caller-supplied
+ * id is stored canonically, and normalized BEFORE the purge and duplicate checks, which match by string. */
+static void test_local_add_stores_a_caller_supplied_id_in_its_canonical_spelling(void **state) {
+    (void)state;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    EXPECT_LOG_WARN();
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    expect_string(__wrap_manager_task_agent_status, agent_id, "042");
+    will_return(__wrap_manager_task_agent_status, MANAGER_TASK_STATUS_NONE);
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"canon-agent\",\"ip\":\"any\",\"id\":\"0042\"}}");
+    assert_int_equal(response_error(response), 0);
+    assert_string_equal(data_string(response, "id"), "042");
+    cJSON_Delete(response);
+    assert_true(OS_IsAllowedID(&keys, "042") >= 0);
+    assert_int_equal(OS_IsAllowedID(&keys, "0042"), -1);
+
+    /* Another spelling of the same number is the same id: refused as a duplicate. */
+    expect_string(__wrap_manager_task_agent_status, agent_id, "042");
+    will_return(__wrap_manager_task_agent_status, MANAGER_TASK_STATUS_NONE);
+    response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"alias-agent\",\"ip\":\"any\",\"id\":\"42\"}}");
+    assert_int_equal(response_error(response), 9012);
+    cJSON_Delete(response);
+}
+
 static void test_local_add_returns_and_queues_a_reenroll_secret(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
@@ -2094,6 +2133,7 @@ int main(void) {
         cmocka_unit_test(test_add_logs_its_source_and_the_token_use_count),
         cmocka_unit_test(test_add_on_worker_forwards_its_source),
         cmocka_unit_test(test_local_add_returns_and_queues_a_reenroll_secret),
+        cmocka_unit_test(test_local_add_stores_a_caller_supplied_id_in_its_canonical_spelling),
         cmocka_unit_test(test_local_get_never_returns_the_secret),
         cmocka_unit_test(test_reenroll_unknown_agent_9026),
         cmocka_unit_test(test_reenroll_without_secret_9026),

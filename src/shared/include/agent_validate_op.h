@@ -60,6 +60,12 @@ int OS_IsValidID(const char* id);
 // OS_IsValidID(), not capped at 8 characters: a caller-supplied id has no format-based ceiling of
 // its own, only this numeric one.
 int OS_IsValidAgentInsertID(const char* id);
+// Writes the canonical spelling of a valid insert id into `out`: the integer zero-padded to at least
+// three digits ("0001" and "1" -> "001", "01000" -> "1000"), the form self-enrollment assigns and the
+// one remoted's token, the agent's sync sessions and every indexer document use. An agent id is a
+// string, so two spellings of one number would be two identities. Returns 0, or -1 when `id` is not
+// valid for OS_IsValidAgentInsertID() or does not fit `size`.
+int OS_CanonicalAgentInsertID(const char* id, char* out, size_t size);
 char* getNameById(const char* id);
 int IDExist(const char* id, int discard_removed);
 int OS_IsValidName(const char* u_name);

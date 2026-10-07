@@ -36,8 +36,9 @@ list(APPEND os_auth_names "test_local-server")
 # at its own certificate files); the store and the X509 checks run for real on temporary files.
 # Re-enrollment (#38993): the row's secret comes from wazuh-db (wrapped: the test hands it the row) and the
 # bearer's verdict from the C++ bridge (wrapped here: test_reenroll_verify exercises the real one).
+# manager_task_agent_status: the purge check a caller-supplied id goes through, followed by its id.
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,w_request_agent_add_clustered -Wl,--wrap,w_mconf_section -Wl,--wrap,OS_IsValidIP \
-                           -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,w_reenroll_verify")
+                           -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,w_reenroll_verify -Wl,--wrap,manager_task_agent_status")
 list(APPEND os_auth_names "test_enrollment_token_store")
 # Real files in a temporary directory: the store's file IS its contract (mode, atomicity, and what
 # it never contains), so nothing about the I/O is stubbed away here.

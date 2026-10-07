@@ -222,6 +222,12 @@ answers `9012 Duplicate ID`, and one whose purge is still pending answers
 `9018 Agent ID has a pending deletion` (the server API reports it as `1763`). Delete the agent, let
 its purge finish, and then the id can be reused.
 
+**A named id is stored in its canonical spelling.** An agent id is a string, so `0042`, `42` and `042`
+would otherwise be three identities for one number — remoted resolves all of them to the same agent,
+while the agent's inventory sessions and every indexer document carry `042`. authd therefore stores
+the id zero-padded to at least three digits (`0042` and `42` → `042`, `01000` → `1000`) **before** the
+duplicate and pending-deletion checks, which compare it as a string; the API returns that stored id.
+
 `9018` also covers a wazuh-db that cannot answer whether the id still owes a deletion: the guard fails
 closed, because allowing the reuse risks an outstanding purge deleting the new agent's documents.
 Auto-assigned ids are unaffected — the id counter comes from authd's own journal.

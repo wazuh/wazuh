@@ -13,6 +13,7 @@
 #include "persistent_queue.hpp"
 #include "defs.h"
 #include "metadata_provider.h"
+#include "jwt/canonicalAgentId.hpp"
 
 #include <flatbuffers/flatbuffers.h>
 #include "json.hpp"
@@ -214,8 +215,8 @@ long AgentSyncProtocol::currentAgentId()
     // Ids are validated by OS_IsValidID() before client.keys is written: digits only, at most
     // 8 characters, so the value always fits a long and strtol cannot overflow here. Parse
     // defensively anyway -- anything that is not a plain number reads as unknown, never as a
-    // new identity. Zero-padding ("001") is presentational; the manager compares ids
-    // numerically too (fullSessionValidator.cpp).
+    // new identity. Zero-padding ("001") does not change which agent this is; what the manager
+    // receives in Start.agentid is the canonical spelling (see waitMetadataAndBuildStart()).
     if (metadata.agent_id[0] != '\0')
     {
         char* end = nullptr;
@@ -947,7 +948,13 @@ flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::waitMetadataAnd
         auto osversion = builder.CreateString(metadata.os_version);
         auto agentversion = builder.CreateString(metadata.agent_version);
         auto agentname = builder.CreateString(metadata.agent_name);
-        auto agentid = builder.CreateString(metadata.agent_id);
+        // The manager requires this to be, byte for byte, the id remoted authenticated, and that id is
+        // canonical ("001"): JwtSigner canonicalizes this same client.keys text. A client.keys written
+        // with another spelling ("0001") must still synchronize, so the claim goes out in that same
+        // canonical form. Anything that is not an id goes out verbatim, and the manager rejects it.
+        const auto canonicalAgentId = jwt_profile::v1::CanonicalAgentId::parse(metadata.agent_id);
+        auto agentid =
+            builder.CreateString(canonicalAgentId ? canonicalAgentId->text() : std::string {metadata.agent_id});
         auto clustername = builder.CreateString(metadata.cluster_name);
 
         auto groups = builder.CreateVector(groups_vec);
