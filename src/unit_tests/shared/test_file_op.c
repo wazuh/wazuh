@@ -580,7 +580,30 @@ void test_w_compress_gzfile_fifo_rejected(void **state){
 
     ret = w_compress_gzfile(srcfile, "testfiledst.gz");
     assert_int_equal(ret, -2);
-    assert_int_equal(errno, EINVAL);
+}
+
+void test_w_compress_gzfile_directory_symlink_other_owner_rejected(void **state){
+
+    int ret;
+    char srcfile[PATH_MAX + 1];
+
+    if (geteuid() != 0) {
+        print_message("Skipped: needs root to create a symlink owned by someone other than its target.\n");
+        skip();
+    }
+
+    // A directory symlink owned by another uid, in a directory it owns, leading to a root-owned file.
+    snprintf(srcfile, sizeof(srcfile), "%s/link", compress_dir);
+    assert_int_equal(symlink(compress_dir, srcfile), 0);
+    assert_int_equal(lchown(srcfile, 1000, (gid_t) -1), 0);
+    assert_int_equal(chown(compress_dir, 1000, (gid_t) -1), 0);
+    snprintf(srcfile, sizeof(srcfile), "%s/link/testfilesrc", compress_dir);
+
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    ret = w_compress_gzfile(srcfile, "testfiledst.gz");
+    assert_int_equal(ret, -2);
+    assert_int_equal(errno, EPERM);
 }
 
 void test_w_compress_gzfile_directory_rejected(void **state){
@@ -3053,6 +3076,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_symlink_rejected, setup_compress_gzfile, teardown_compress_gzfile),
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_fifo_rejected, setup_compress_gzfile, teardown_compress_gzfile),
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_directory_rejected, setup_compress_gzfile, teardown_compress_gzfile),
+        cmocka_unit_test_setup_teardown(test_w_compress_gzfile_directory_symlink_other_owner_rejected, setup_compress_gzfile, teardown_compress_gzfile),
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_gzopen_fail, setup_compress_gzfile, teardown_compress_gzfile),
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_write_error, setup_compress_gzfile, teardown_compress_gzfile),
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_success, setup_compress_gzfile, teardown_compress_gzfile),

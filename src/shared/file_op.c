@@ -3405,9 +3405,10 @@ static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat
  * Resolves path one component at a time with openat()/fstatat()/readlinkat(), so no symlink is followed
  * without first being inspected, then opens the final entry non-blocking and vets it.
  *
+ * @param follow_last Whether a symlink as the final entry is followed; if not, it fails with ELOOP.
  * @return A vetted descriptor with O_NONBLOCK cleared, or -1 on error (sets errno).
  */
-static int w_open_vetted_follow_fd(const char * path) {
+static int w_open_vetted_follow_fd(const char * path, bool follow_last) {
     char pending[PATH_MAX + 1];
     char target[PATH_MAX + 1];
     char next[PATH_MAX + 1];
@@ -3462,6 +3463,11 @@ static int w_open_vetted_follow_fd(const char * path) {
         }
 
         if (S_ISLNK(entry_stat.st_mode)) {
+            if (!follow_last && *cursor == '\0') {
+                errno = ELOOP;
+                goto fail;
+            }
+
             if (++symlinks > W_VETTED_MAX_SYMLINKS) {
                 errno = ELOOP;
                 goto fail;
@@ -3642,9 +3648,10 @@ static int w_stat_parent_dir(const char * path, struct stat * dir_stat) {
  * last entry is checked as a symlink, and by path, so a symlink swapped in a directory higher up, or swapped
  * and restored between the checks, is not caught.
  *
+ * @param follow_last Whether a symlink as the final entry is followed; if not, it fails with ELOOP.
  * @return A vetted descriptor with O_NONBLOCK cleared, or -1 on error (sets errno).
  */
-static int w_open_vetted_follow_fd(const char * path) {
+static int w_open_vetted_follow_fd(const char * path, bool follow_last) {
     char resolved[PATH_MAX + 1];
     struct stat link_stat;
     struct stat link_dir_stat;
@@ -3661,6 +3668,11 @@ static int w_open_vetted_follow_fd(const char * path) {
     }
 
     if (S_ISLNK(link_stat.st_mode)) {
+        if (!follow_last) {
+            errno = ELOOP;
+            return -1;
+        }
+
         if (w_stat_parent_dir(path, &link_dir_stat) < 0) {
             return -1;
         }
@@ -4883,7 +4895,7 @@ FILE * w_fopen_vetted_follow(const char * path, const char * mode) {
 
     // Restart from the root: re-checking only the changed entry would trust stale stat data.
     do {
-        fd = w_open_vetted_follow_fd(path);
+        fd = w_open_vetted_follow_fd(path, true);
     } while (fd < 0 && errno == EAGAIN && retries++ < W_VETTED_RACE_RETRIES);
 
     if (fd < 0) {
@@ -4925,8 +4937,7 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
 #else
     struct stat statbuf;
     int saved_errno;
-    int flags;
-    int srcfd = open(filesrc, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK);
+    int srcfd = w_open_vetted_follow_fd(filesrc, false);
 
     fd = NULL;
 
@@ -4936,10 +4947,6 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
         } else if (!S_ISREG(statbuf.st_mode)) {
             saved_errno = EINVAL;
         } else {
-            if (flags = fcntl(srcfd, F_GETFL), flags != -1) {
-                fcntl(srcfd, F_SETFL, flags & ~O_NONBLOCK);
-            }
-
             fd = fdopen(srcfd, "rb");
             saved_errno = errno;
         }
@@ -4951,12 +4958,12 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
     }
 
     if (!fd) {
-        if (errno == ELOOP || errno == EINVAL || errno == ENXIO || errno == EMLINK
+        if (errno == ELOOP || errno == EINVAL || errno == ENXIO || errno == EMLINK || errno == EPERM
 #ifdef EFTYPE
             || errno == EFTYPE
 #endif
         ) {
-            mdebug2("in w_compress_gzfile(): skipping '%s': not a regular file", filesrc);
+            mdebug2("in w_compress_gzfile(): skipping '%s' (%d):'%s'", filesrc, errno, strerror(errno));
             return -2;
         }
 
