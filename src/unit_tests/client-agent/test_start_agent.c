@@ -223,6 +223,7 @@ static void test_connect_server_send_timeout_fails(void **state) {
     assert_int_equal(agt->rip_id, 1);
 }
 
+#ifndef TEST_WINAGENT
 /* TCP connection where the socket timeouts are unsupported (ENOPROTOOPT):
  * no warning is logged and the handshake reply gets a poll() bound. A later
  * connection that doesn't need it clears the bound. */
@@ -311,6 +312,7 @@ static void test_agent_handshake_to_server_poll_timeout(void **state) {
     assert_true(agent_handshake_to_server(1, false));
     wrap_sockopt_errno = 0;
 }
+#endif
 
 static void test_connect_server(void **state) {
     bool connected = false;
@@ -642,8 +644,10 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_connect_server_keepalive_fails, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_connect_server_send_timeout_fails, setup_test, teardown_test),
+#ifndef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_connect_server_timeouts_unsupported, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_agent_handshake_to_server_poll_timeout, setup_test, teardown_test),
+#endif
         cmocka_unit_test_setup_teardown(test_connect_server, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_agent_handshake_to_server, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_agent_handshake_to_server_invalid_version, setup_test, teardown_test),
