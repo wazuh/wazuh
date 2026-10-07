@@ -506,7 +506,9 @@ test_name: UPDATE RULES RBAC
 
 stages:
 
-  - name: Update one specified rule in the system (Allow)
+  # Rule 105 is allowed, but it is linked to role 105, whose security:update is denied: a new body
+  # would remap that role, so it is refused.
+  - name: Update the body of a rule linked to a denied role (Deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules/105"
@@ -519,6 +521,19 @@ stages:
           MATCH:
             modified: "modified_rule"
     response:
+      <<: *permission_denied
+
+  # A rename does not change which authorization contexts the rule maps, so only the rule is checked.
+  - name: Rename a rule linked to a denied role (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules/105"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: normalRuleModified
+    response:
       status_code: 200
       json:
         error: !anyint
@@ -526,6 +541,32 @@ stages:
           affected_items:
             - id: 105
               name: normalRuleModified
+              rule:
+                MATCH:
+                  definition: "ossecRule"
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+  # Rule 101 is linked only to role 101, which is not denied.
+  - name: Update the body of a rule whose linked roles are allowed (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules/101"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        rule:
+          MATCH:
+            modified: "modified_rule"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: 101
               rule:
                 MATCH:
                   modified: "modified_rule"

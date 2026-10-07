@@ -966,6 +966,8 @@ def update_rule(rule_id: str = None, name: str = None, rule: dict = None) -> Aff
     ------
     WazuhError(4001)
         If no name nor rule are provided.
+    WazuhPermissionError(4000)
+        If a new rule body is given and the caller lacks 'security:update' over any role the rule is linked to.
 
     Returns
     -------
@@ -977,6 +979,12 @@ def update_rule(rule_id: str = None, name: str = None, rule: dict = None) -> Aff
     result = AffectedItemsWazuhResult(none_msg='Security rule was not updated',
                                       all_msg='Security rule was successfully updated')
     with RulesManager() as rum:
+        # A new body changes which authorization contexts every linked role maps to, so it asks for what
+        # `set_role_rule` asks to link a rule to a role: 'security:update' over each of those roles.
+        # Otherwise update over the rule alone is enough to map oneself to administrator through run_as.
+        current = rum.get_rule(rule_id[0])
+        if rule is not None and isinstance(current, dict):
+            require_role_update(current['roles'])
         status = rum.update_rule(rule_id=rule_id[0], name=name, rule=rule)
         if status == SecurityError.ALREADY_EXIST:
             result.add_failed_item(id_=int(rule_id[0]), error=WazuhError(4005))
