@@ -549,6 +549,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
         parsed_urls = [urlparse(h) for h in hosts_raw]
         list_of_hosts = []
         list_of_ports = []
+        schemes = set()
 
         for i, p in enumerate(parsed_urls):
             if not p.hostname:
@@ -558,9 +559,74 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
                 )
             list_of_hosts.append(p.hostname)
             list_of_ports.append(p.port)
+            schemes.add(p.scheme.lower())
     except Exception as e:
         raise IndexerUnavailableError(code=2200, extra_message=f"Failed to parse host URLs: {e}")
 
+    # The scheme of the configured hosts decides TLS, as it does for the C++ indexer connector.
+    # The client has a single TLS setting for every node, so the hosts must agree on it.
+    if schemes - {"http", "https"}:
+        raise IndexerUnavailableError(
+            code=2200,
+            extra_message=f"Unsupported indexer host scheme: {', '.join(sorted(schemes - {'http', 'https'}))}",
+        )
+    if len(schemes) > 1:
+        raise IndexerUnavailableError(
+            code=2200,
+            extra_message="indexer.hosts mixes http:// and https:// URLs; every host must use the same scheme",
+        )
+    use_ssl = schemes == {"https"}
+
+    # Plain HTTP: indexer.ssl does not apply, so it is neither validated nor loaded.
+    ssl_context = _build_ssl_context(ssl_config) if use_ssl else None
+
+    # Create indexer client with cached SSL context
+    try:
+        client = await create_indexer(
+            hosts=list_of_hosts,
+            ports=list_of_ports,
+            user=indexer_user,
+            password=indexer_pass,
+            use_ssl=use_ssl,
+            ssl_context=ssl_context,
+        )
+    except IndexerUnavailableError:
+        raise
+    except Exception as e:
+        raise IndexerUnavailableError(code=2200, extra_message=f"Failed to create indexer client: {e}")
+
+    try:
+        yield client
+    except Exception as e:
+        logger.error(f"Error in indexer client context: {e}")
+        raise
+    finally:
+        try:
+            await client.close()
+        except Exception as e:
+            logger.warning(
+                f"Failed to close indexer client gracefully: {e}"
+            )
+
+
+def _build_ssl_context(ssl_config: dict) -> ssl.SSLContext:
+    """Validate the indexer.ssl section and return the (cached) TLS context it describes.
+
+    Parameters
+    ----------
+    ssl_config : dict
+        The indexer.ssl section of the effective configuration.
+
+    Returns
+    -------
+    ssl.SSLContext
+        Context for the https:// indexer hosts.
+
+    Raises
+    ------
+    IndexerUnavailableError(2200)
+        A certificate without its key (or the reverse), an empty CA entry, or a context that cannot be built.
+    """
     # TLS material is optional per the configuration schema: an empty certificate/key
     # means no client certificate, an empty CA list means the system trust store. An
     # empty entry inside an otherwise non-empty list is neither: it can never resolve to
@@ -593,30 +659,4 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
     except Exception as e:
         raise IndexerUnavailableError(code=2200, extra_message=f"Failed to build SSL context: {e}")
 
-    # Create indexer client with cached SSL context
-    try:
-        client = await create_indexer(
-            hosts=list_of_hosts,
-            ports=list_of_ports,
-            user=indexer_user,
-            password=indexer_pass,
-            use_ssl=True,
-            ssl_context=ssl_context,
-        )
-    except IndexerUnavailableError:
-        raise
-    except Exception as e:
-        raise IndexerUnavailableError(code=2200, extra_message=f"Failed to create indexer client: {e}")
-
-    try:
-        yield client
-    except Exception as e:
-        logger.error(f"Error in indexer client context: {e}")
-        raise
-    finally:
-        try:
-            await client.close()
-        except Exception as e:
-            logger.warning(
-                f"Failed to close indexer client gracefully: {e}"
-            )
+    return ssl_context

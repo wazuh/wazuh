@@ -116,9 +116,10 @@ async def test_get_indexer_client_resolves_relative_certificate_paths():
     client.close.assert_awaited_once()
 
 
-async def _run_get_indexer_client(indexer_extra):
+async def _run_get_indexer_client(indexer_extra, hosts=("https://localhost:9200",), with_create_indexer=False):
     """Run get_indexer_client() with a given indexer config and return the
-    _create_ssl_context mock, so callers can assert what it was called with."""
+    _create_ssl_context mock, so callers can assert what it was called with (and the
+    create_indexer mock too when with_create_indexer is set)."""
     client = AsyncMock()
     client.close = AsyncMock()
     keystore_client = MagicMock()
@@ -127,7 +128,7 @@ async def _run_get_indexer_client(indexer_extra):
         {"value": "wazuh-manager"},
     ]
 
-    wazuh_config = {"indexer": {"hosts": ["https://localhost:9200"], **indexer_extra}}
+    wazuh_config = {"indexer": {"hosts": list(hosts), **indexer_extra}}
     mock_ssl_context = MagicMock(spec=ssl.SSLContext)
 
     with patch("wazuh.core.indexer.indexer.common.WAZUH_PATH", "/var/wazuh-manager"), \
@@ -148,7 +149,7 @@ async def _run_get_indexer_client(indexer_extra):
                 "wazuh.core.indexer.indexer.create_indexer",
                 new_callable=AsyncMock,
                 return_value=client,
-            ), \
+            ) as create_indexer, \
             patch(
                 "wazuh.core.indexer.indexer._IndexerCircuitBreaker.check",
                 new_callable=AsyncMock,
@@ -156,7 +157,60 @@ async def _run_get_indexer_client(indexer_extra):
         async with get_indexer_client():
             pass
 
+    if with_create_indexer:
+        return create_ssl_context, create_indexer
     return create_ssl_context
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("ssl_section", [
+    {},
+    {"certificate_authorities": ["etc/certs/root-ca.pem"]},
+    # Invalid for TLS (certificate without key), irrelevant without it.
+    {"certificate": "etc/certs/indexer-connector.pem"},
+], ids=["no-ssl", "ca-only", "certificate-without-key"])
+async def test_get_indexer_client_http_hosts_connect_without_tls(ssl_section):
+    """An http:// host means plain HTTP, as for the C++ indexer connector: no TLS context is built
+    and indexer.ssl is neither required nor validated."""
+    create_ssl_context, create_indexer = await _run_get_indexer_client(
+        {"ssl": ssl_section}, hosts=("http://wazuh.indexer:9200",), with_create_indexer=True
+    )
+
+    create_ssl_context.assert_not_called()
+    create_indexer.assert_awaited_once_with(
+        hosts=["wazuh.indexer"],
+        ports=[9200],
+        user="wazuh-manager",
+        password="wazuh-manager",
+        use_ssl=False,
+        ssl_context=None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_https_hosts_use_tls():
+    create_ssl_context, create_indexer = await _run_get_indexer_client(
+        {}, hosts=("https://node1:9200", "HTTPS://node2:9201"), with_create_indexer=True
+    )
+
+    create_ssl_context.assert_called_once_with(None, None, [])
+    kwargs = create_indexer.await_args.kwargs
+    assert kwargs["use_ssl"] is True
+    assert kwargs["ssl_context"] is create_ssl_context.return_value
+    assert (kwargs["hosts"], kwargs["ports"]) == (["node1", "node2"], [9200, 9201])
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_refuses_mixed_schemes():
+    """The client has one TLS setting for every node: a mixed list is refused, naming the cause."""
+    with pytest.raises(IndexerUnavailableError, match="mixes http:// and https://"):
+        await _run_get_indexer_client({}, hosts=("https://node1:9200", "http://node2:9200"))
+
+
+@pytest.mark.asyncio
+async def test_get_indexer_client_refuses_an_unknown_scheme():
+    with pytest.raises(IndexerUnavailableError, match="Unsupported indexer host scheme: ftp"):
+        await _run_get_indexer_client({}, hosts=("ftp://node1:9200",))
 
 
 @pytest.mark.asyncio
