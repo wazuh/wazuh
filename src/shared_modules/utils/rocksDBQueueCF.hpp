@@ -45,8 +45,11 @@ private:
         QUEUE_NUMBER = 1
     };
 
-    void initializeQueueData()
+    // Computes the metadata of every queue from the keys the store holds. The status it returns is the one of the
+    // iteration, which is not OK when the scan failed before the end of the store.
+    rocksdb::Status scanKeys()
     {
+        m_queueMetadata.clear();
         auto it = std::unique_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions()));
         it->SeekToFirst();
         while (it->Valid())
@@ -78,15 +81,7 @@ private:
             it->Next();
         }
 
-        // Valid() is false both at the end of the store and when the iteration fails, so the status tells them apart.
-        // Metadata computed from a partial scan would make push() overwrite queued entries, so push() is refused.
-        if (const auto status = it->status(); !status.ok())
-        {
-            m_unreliableBounds = "the scan failed: " + status.ToString();
-            logError(LOGGER_DEFAULT_TAG,
-                     "The bounds of the queue could not be established (%s). New elements are rejected.",
-                     m_unreliableBounds.c_str());
-        }
+        return it->status();
     }
 
 public:
@@ -153,7 +148,46 @@ public:
         m_db.reset(dbRawPtr);
 
         // Initialize queue data.
-        initializeQueueData();
+        auto scanStatus = scanKeys();
+
+        // A corruption that only shows when the keys are read is repaired like the one found when opening the
+        // database. The entries of the damaged files are lost, and the queue recovers instead of rejecting elements
+        // until its directory is removed.
+        if (scanStatus.IsCorruption())
+        {
+            logWarn(LOGGER_DEFAULT_TAG,
+                    "Queue '%s': the scan of the keys failed (%s). Repairing the database.",
+                    path.c_str(),
+                    scanStatus.ToString().c_str());
+
+            m_db.reset();
+            if (const auto repairStatus {rocksdb::RepairDB(path, rocksdb::Options {})}; !repairStatus.ok())
+            {
+                logError(LOGGER_DEFAULT_TAG,
+                         "Queue '%s': failed to repair the database. Reason: %s",
+                         path.c_str(),
+                         repairStatus.ToString().c_str());
+            }
+
+            if (const auto status = rocksdb::DB::Open(options, path, &dbRawPtr); !status.ok())
+            {
+                throw std::runtime_error("Failed to open RocksDB database after repairing. Reason: " +
+                                         std::string {status.getState()});
+            }
+            m_db.reset(dbRawPtr);
+            scanStatus = scanKeys();
+        }
+
+        // Valid() is false both at the end of the store and when the iteration fails, so the status tells them apart.
+        // Metadata computed from a partial scan would make push() overwrite queued entries, so push() is refused.
+        if (!scanStatus.ok())
+        {
+            m_unreliableBounds = "the scan failed: " + scanStatus.ToString();
+            logError(LOGGER_DEFAULT_TAG,
+                     "Queue '%s': the bounds could not be established (%s). New elements are rejected.",
+                     path.c_str(),
+                     m_unreliableBounds.c_str());
+        }
     }
 
     void push(std::string_view id, const T& data)
