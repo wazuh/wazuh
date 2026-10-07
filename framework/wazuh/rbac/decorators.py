@@ -298,7 +298,8 @@ def _canonicalize_dynamic_ids(resources: list, kwargs: dict):
     """Rewrite in place every dynamic resource id in kwargs to its canonical spelling.
 
     RBAC compares ids as strings and the framework functions cast them to integers, so both must see
-    the same value: otherwise a padded id (`01`, `0005`) is allowed by a wildcard, missed by a deny
+    the same value: otherwise another spelling `int()` reads as the same id (`01`, `0005`, `5\\n`, a
+    non-ASCII digit) is allowed by a wildcard, missed by a deny
     written for the canonical id, and then reaches the denied object anyway. Duplicates a list gains
     this way are dropped, keeping the first occurrence.
 

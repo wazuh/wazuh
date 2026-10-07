@@ -1220,3 +1220,12 @@ def test_mask_xml_by_path_three_level_path_missing_middle_tag_is_fast(db_setup):
 
     assert elapsed < 2.0
     assert result == payload
+
+
+@pytest.mark.parametrize('spelling', ['5', '05', '5\n', ' 5 ', '٥', '５', '+5', '0_5'])
+def test_canonicalize_dynamic_ids_maps_every_int_spelling_to_the_denied_id(db_setup, spelling):
+    """Every spelling int() reads as 5 must reach the matcher as '5', so a deny on user:id:5 applies to it."""
+    kwargs = {'user_ids': [spelling, '6'], 'user_id': spelling}
+    db_setup._canonicalize_dynamic_ids(['user:id:{user_ids}', 'user:id:{user_id}'], kwargs)
+
+    assert kwargs == {'user_ids': ['5', '6'], 'user_id': '5'}
