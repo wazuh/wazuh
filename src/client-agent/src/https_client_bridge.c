@@ -98,6 +98,13 @@ bool g_https_client_stopping = false;
  * could run long / re-enter). */
 static pthread_mutex_t g_https_client_lock = PTHREAD_MUTEX_INITIALIZER;
 
+/* A condition the running module reported it can never recover from (on_fatal), and the reason
+ * it logged. Its own lock: on_fatal can fire while a caller here holds g_https_client_lock. */
+static pthread_mutex_t g_https_client_fatal_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t g_https_client_fatal_cond = PTHREAD_COND_INITIALIZER;
+static char g_https_client_fatal_reason[OS_SIZE_1024];
+static bool g_https_client_fatal = false;
+
 /* Guards the GLOBAL `keys` keystore against its own reload.
  *
  * Distinct from g_https_client_lock, which guards the module HANDLE: bridge_reenroll_thread() takes
@@ -1478,6 +1485,67 @@ static char *bridge_collect_stats(void *user_data)
     return w_agent_collect_stats();
 }
 
+/* Runs on the module thread that hit the condition, so it only records it and wakes
+ * bridge_fatal_exit_thread(): exiting here would run the atexit w_https_client_stop() on a thread
+ * the module's teardown has to join, which aborts. */
+static void bridge_on_fatal(const char *reason, void *user_data)
+{
+    (void)user_data;
+
+    w_mutex_lock(&g_https_client_fatal_lock);
+    snprintf(g_https_client_fatal_reason, sizeof(g_https_client_fatal_reason), "%s", reason);
+    g_https_client_fatal = true;
+    w_cond_signal(&g_https_client_fatal_cond);
+    w_mutex_unlock(&g_https_client_fatal_lock);
+}
+
+/* Stops the agent once the module reports a fatal condition, from a thread the module neither owns
+ * nor joins, and whatever the main thread happens to be blocked on. Started only after hc_start()
+ * succeeds: a configuration hc_start() rejects is left to w_https_client_start()'s caller, which
+ * exits on its own. Not static: tests run it directly. */
+void *bridge_fatal_exit_thread(void *arg)
+{
+    char reason[OS_SIZE_1024];
+
+    (void)arg;
+
+    w_mutex_lock(&g_https_client_fatal_lock);
+    while (!g_https_client_fatal) {
+        w_cond_wait(&g_https_client_fatal_cond, &g_https_client_fatal_lock);
+    }
+    snprintf(reason, sizeof(reason), "%s", g_https_client_fatal_reason);
+    w_mutex_unlock(&g_https_client_fatal_lock);
+
+    merror_exit("%s Exiting.", reason);
+    return NULL;
+}
+
+#ifdef WIN32
+static DWORD WINAPI bridge_fatal_exit_thread_win(LPVOID arg)
+{
+    bridge_fatal_exit_thread(arg);
+    return 0;
+}
+#endif
+
+/* Creates and starts the module, false (already logged) if either step fails. */
+static bool bridge_create_and_start(const hc_config_t *config, const hc_callbacks_t *callbacks)
+{
+    g_https_client = hc_create(config, callbacks);
+    if (!g_https_client) {
+        merror("https_client: failed to create the client instance.");
+        return false;
+    }
+    if (!hc_start(g_https_client)) {
+        merror("https_client: failed to start (configuration rejected).");
+        hc_destroy(g_https_client);
+        g_https_client = NULL;
+        return false;
+    }
+
+    return true;
+}
+
 static void bridge_on_producer_pause(bool paused, const char *reason, void *user_data)
 {
     (void)user_data;
@@ -2054,6 +2122,10 @@ bool w_https_client_start(void)
     g_https_client_stopping = false;
     w_mutex_unlock(&g_https_client_lock);
 
+    w_mutex_lock(&g_https_client_fatal_lock);
+    g_https_client_fatal = false;
+    w_mutex_unlock(&g_https_client_fatal_lock);
+
     hc_config_t config;
     if (!bridge_build_config(&config)) {
         return false; /* bridge_build_config already logged the reason. */
@@ -2062,6 +2134,7 @@ bool w_https_client_start(void)
     hc_callbacks_t callbacks;
     memset(&callbacks, 0, sizeof(callbacks));
     callbacks.log = mtLoggingFunctionsWrapper;
+    callbacks.on_fatal = bridge_on_fatal;
     callbacks.on_startup_result = bridge_on_startup_result;
     callbacks.on_reenroll_required = bridge_on_reenroll_required;
     callbacks.on_task = bridge_on_task;
@@ -2083,20 +2156,35 @@ bool w_https_client_start(void)
     callbacks.on_collect_stateless_host = bridge_on_collect_stateless_host;
     callbacks.on_producer_pause = bridge_on_producer_pause;
 
-    g_https_client = hc_create(&config, &callbacks);
-    if (!g_https_client) {
-        merror("https_client: failed to create the client instance.");
-        return false;
-    }
-    if (!hc_start(g_https_client)) {
-        merror("https_client: failed to start (configuration rejected).");
-        hc_destroy(g_https_client);
-        g_https_client = NULL;
+#ifndef WIN32
+    /* Every module thread, and any thread one of them starts, inherits this mask, so a stop signal
+     * is always handled on an agent thread: its handler exit()s, and the atexit teardown then has
+     * to join the module's threads. */
+    sigset_t stop_signals;
+    sigset_t previous_mask;
+    sigemptyset(&stop_signals);
+    sigaddset(&stop_signals, SIGTERM);
+    sigaddset(&stop_signals, SIGINT);
+    sigaddset(&stop_signals, SIGQUIT);
+    sigaddset(&stop_signals, SIGALRM);
+    pthread_sigmask(SIG_BLOCK, &stop_signals, &previous_mask);
+#endif
+
+    const bool started = bridge_create_and_start(&config, &callbacks);
+
+#ifndef WIN32
+    pthread_sigmask(SIG_SETMASK, &previous_mask, NULL);
+#endif
+
+    if (!started) {
         return false;
     }
 
 #ifdef WIN32
+    w_create_thread(NULL, 0, bridge_fatal_exit_thread_win, NULL, 0, NULL);
     asp_set_session_sender(bridge_submit_sync_session);
+#else
+    w_create_thread(bridge_fatal_exit_thread, NULL);
 #endif
 
     return true;

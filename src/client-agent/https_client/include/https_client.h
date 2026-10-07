@@ -276,6 +276,15 @@ typedef int (*hc_vd_offset_clear_pending_fn)(uint64_t offset, void* user_data);
 typedef struct hc_callbacks_t
 {
     full_log_fnc_t log;
+    /// The running module hit a condition it can never recover from: what it would
+    /// otherwise log at critical level, which the agent's log callback turns into exit().
+    /// The reason is logged at error level instead and reported here, at most once per
+    /// hc_create(), from whichever module thread hit it. Record it and stop the process
+    /// from a thread the module does not own: exiting on this one would run an atexit
+    /// hc_destroy() on a thread it has to join. Before hc_start() and after hc_stop(), a
+    /// critical message still reaches log unchanged (before start, startup is single
+    /// threaded). Optional: when null, every critical message reaches log unchanged.
+    void (*on_fatal)(const char* reason, void* user_data);
     void (*on_startup_result)(bool accepted, const char* handshake_json, void* user_data);
     /// The signing credential was rejected (401 on any endpoint), so the
     /// module has paused all outbound traffic and entered HC_STATE_AUTH_ERROR.
