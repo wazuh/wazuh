@@ -3,7 +3,8 @@
 The Wazuh Indexer decides when a response fires, the manager relays it to the agent as a task, and
 the agent's `wazuh-execd` runs the executable. What runs and when is configured in the dashboard;
 the only configuration file involved is the agent's own `ossec.conf`, whose `<active-response>`
-block can turn execution off or lengthen the timeouts of repeat offenders.
+block can turn execution off, lengthen the timeouts of repeat offenders, or add addresses that a
+response must never target.
 
 For module overview and architecture, see [Active Response Module](README.md).
 
@@ -48,6 +49,22 @@ Longer timeouts for stateful responses that recur for the same keys.
   last value once the list is exhausted. The count lives in execd's memory and restarts with it.
   execd logs `Adding offenders timeout: <n> (for #<k>)` for each value it reads
 
+### allowlist
+
+An address or network that no active response may target. Repeat the element for each entry.
+
+- **Default value:** none. These are always protected, whatever this list holds: the manager's
+  address from `<agent><manager><endpoint>` (a name is resolved when execd starts and on every
+  response, and every address it has resolved stays protected if a later lookup fails), loopback
+  (`127.0.0.0/8`, `::1`) and the unspecified addresses (`0.0.0.0`, `::`)
+- **Allowed values:** an IPv4 or IPv6 address, optionally with a CIDR prefix (`10.0.0.0/8`,
+  `2001:db8::/32`); a name, `any` or a `!` negation is a configuration error and `wazuh-execd` does
+  not start
+- **Note:** execd checks the response's `source.ip`, for every executable, before running it. A
+  response whose `source.ip` matches is not executed and execd logs
+  `Active response '<executable>' not executed: source.ip '<ip>' is the manager or in the allowlist.`
+  at warning level
+
 ### ca_store, ca_verification
 
 The installer also writes `<ca_store>` and `<ca_verification>` into this block. `wazuh-execd` does
@@ -74,6 +91,18 @@ Prevent this agent from executing any active response:
 ```xml
 <active-response>
   <disabled>yes</disabled>
+</active-response>
+```
+
+### Allowlist
+
+Never block the internal network or the monitoring host, on top of the manager and loopback:
+
+```xml
+<active-response>
+  <disabled>no</disabled>
+  <allowlist>10.0.0.0/8</allowlist>
+  <allowlist>192.168.1.50</allowlist>
 </active-response>
 ```
 
