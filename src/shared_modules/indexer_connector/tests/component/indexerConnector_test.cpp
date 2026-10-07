@@ -878,6 +878,63 @@ TEST_F(IndexerConnectorTest, PublishKeepsTheOrderBetweenBulksAndDeletesByQuery)
 }
 
 /**
+ * @brief Test that the operations of different agents are grouped: the deletes by query of two agents go in one
+ * request, ahead of the bulk with the documents of both, since only the order within an agent matters.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishGroupsTheRequestsOfDifferentAgents)
+{
+    std::mutex requestsMutex;
+    std::vector<std::string> requests;
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&requestsMutex, &requests](const std::string& data)
+        {
+            std::lock_guard<std::mutex> lock {requestsMutex};
+            requests.push_back(data);
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    const auto operation = [](const std::string& id, const std::string& type)
+    {
+        nlohmann::json element;
+        element["id"] = id;
+        element["operation"] = type;
+        if (type == "INSERTED")
+        {
+            element["data"] = "content";
+        }
+        return element.dump();
+    };
+
+    // Published back to back so that they reach the dispatcher in the same batch.
+    ASSERT_NO_THROW(indexerConnector.publish(operation("001", "DELETED_BY_QUERY")));
+    ASSERT_NO_THROW(indexerConnector.publish(operation("001_first_CVE-1_1", "INSERTED")));
+    ASSERT_NO_THROW(indexerConnector.publish(operation("002", "DELETED_BY_QUERY")));
+    ASSERT_NO_THROW(indexerConnector.publish(operation("002_second_CVE-2_1", "INSERTED")));
+
+    ASSERT_NO_THROW(waitUntil(
+        [&requestsMutex, &requests]()
+        {
+            std::lock_guard<std::mutex> lock {requestsMutex};
+            return requests.size() >= 2;
+        },
+        MAX_INDEXER_PUBLISH_TIME_MS));
+
+    std::lock_guard<std::mutex> lock {requestsMutex};
+    ASSERT_EQ(requests.size(), 2);
+    EXPECT_NE(requests[0].find("agent.id"), std::string::npos) << requests[0];
+    EXPECT_NE(requests[0].find("\"001\""), std::string::npos) << requests[0];
+    EXPECT_NE(requests[0].find("\"002\""), std::string::npos) << requests[0];
+    EXPECT_NE(requests[1].find("001_first_CVE-1_1"), std::string::npos) << requests[1];
+    EXPECT_NE(requests[1].find("002_second_CVE-2_1"), std::string::npos) << requests[1];
+}
+
+/**
  * @brief Test the connection and posterior data publication into a server. The published data is checked against the
  * expected one. The publication contains a DELETED_BY_QUERY operation.
  *

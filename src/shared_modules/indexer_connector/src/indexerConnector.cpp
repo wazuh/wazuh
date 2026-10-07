@@ -25,6 +25,7 @@
 #include <map>
 #include <mutex>
 #include <pwd.h>
+#include <set>
 #include <unistd.h>
 #include <vector>
 
@@ -1245,16 +1246,23 @@ IndexerConnector::IndexerConnector(
             // Accumulator for data to be sent to the indexer via query requests.
             nlohmann::json queryData;
 
-            // Requests in the order of the operations that produced them (true: delete by query). A delete by query
-            // sent after the bulk that follows it would remove the documents that bulk has just indexed.
+            // Requests in the order they have to reach the indexer (true: delete by query). Only the operations of
+            // the same agent have to keep their order: a delete by query must not run after the bulk that follows it,
+            // which would remove the documents that bulk has just indexed. So the pending queries are sent before the
+            // pending bulk, and the requests are cut only when a query arrives for an agent that already has
+            // operations in the bulk. The agent is the first field of an id, which is the node name for the manager
+            // agent in a cluster.
             std::vector<std::pair<bool, std::string>> requests;
-            const auto flushBulk = [&bulkData, &requests]()
+            std::set<std::string> bulkAgents;
+            const auto agentOf = [](const std::string& id) { return id.substr(0, id.find('_')); };
+            const auto flushBulk = [&bulkData, &bulkAgents, &requests]()
             {
                 if (!bulkData.empty())
                 {
                     requests.emplace_back(false, std::move(bulkData));
                     bulkData.clear();
                 }
+                bulkAgents.clear();
             };
             const auto flushQuery = [&queryData, &requests]()
             {
@@ -1302,7 +1310,7 @@ IndexerConnector::IndexerConnector(
                             logDebug2(IC_NAME, "Added document for deletion with id: %s.", key.c_str());
                             if (!noIndex)
                             {
-                                flushQuery();
+                                bulkAgents.insert(agentOf(key));
                                 builderBulkDelete(bulkData, key, m_indexName);
                             }
 
@@ -1313,7 +1321,7 @@ IndexerConnector::IndexerConnector(
                     {
                         if (!noIndex)
                         {
-                            flushQuery();
+                            bulkAgents.insert(agentOf(id));
                             builderBulkDelete(bulkData, id, m_indexName);
                         }
 
@@ -1325,7 +1333,11 @@ IndexerConnector::IndexerConnector(
                     logDebug2(IC_NAME, "Added document for deletion by query with id: %s.", id.c_str());
                     if (!noIndex)
                     {
-                        flushBulk();
+                        if (bulkAgents.count(agentOf(id)))
+                        {
+                            flushQuery();
+                            flushBulk();
+                        }
                         builderDeleteByQuery(queryData, id);
                     }
 
@@ -1350,7 +1362,7 @@ IndexerConnector::IndexerConnector(
                     const auto dataString = parsedData.at("data").dump();
                     if (!noIndex)
                     {
-                        flushQuery();
+                        bulkAgents.insert(agentOf(id));
                         builderBulkIndex(bulkData, id, m_indexName, dataString);
                     }
                     m_db->put(id, dataString);
@@ -1489,8 +1501,8 @@ IndexerConnector::IndexerConnector(
                     {});
             };
 
-            flushBulk();
             flushQuery();
+            flushBulk();
 
             // Only what goes to the indexer needs it: the operations flagged no-index have already been applied to the
             // local mirror, so they neither wait for its initialization nor for an available server.
