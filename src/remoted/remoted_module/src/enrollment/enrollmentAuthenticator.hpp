@@ -72,6 +72,13 @@ namespace remoted::enrollment
         /// an enrollment token; nullopt for the password bearer and for the credential-less (Open /
         /// mTLS-only) paths. The endpoint forwards it as authd's `token_id` so the use is consumed.
         std::optional<std::string> tokenId;
+
+        /// Whether a credential was actually VERIFIED here (the password bearer or an enrollment
+        /// token), as opposed to a request admitted with none (Open mode, or a listener that
+        /// requires a client certificate instead). The endpoint charges the two against separate
+        /// rate-limit buckets, so a caller holding no credential cannot spend the allowance verified
+        /// enrollments are served from.
+        bool credentialVerified {false};
     };
 
     /**

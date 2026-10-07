@@ -1199,14 +1199,16 @@ paths:
         "429":
           description: |
             The endpoint was asked faster than `<remote><https><enroll_rate_limit>` allows (100/s
-            with a burst of 200 by default). Decided **before** the body is decoded, the bearer is
-            examined or `authd` is contacted -- which is the point: without it, a caller holding no
-            usable credential still costs the manager an `authd` round trip and, on a cluster
-            worker, a further round trip to the master.
+            with a burst of 200 by default). Decided **after** the request passed its own checks
+            (credential, body, version) and **before** `authd` is contacted -- so a request that
+            fails them is answered 400/401 without spending the allowance, and one that passes them
+            does not cost the manager an `authd` round trip and, on a cluster worker, a further
+            round trip to the master, once the limit is reached.
 
-            The bucket belongs to the route, so this ceiling is shared by the whole fleet: during a
-            mass enrollment many agents can see it at once, and each simply retries with its own
-            backoff until it is served. Carries `Retry-After` in whole seconds.
+            Two buckets of that rate: one for enrollments whose password or enrollment token was
+            verified, one for re-enrollments and credential-less enrollments. Neither is per agent:
+            during a mass enrollment many agents can see this at once, and each simply retries with
+            its own backoff until it is served. Carries `Retry-After` in whole seconds.
           headers:
             Retry-After:
               description: Whole seconds to wait before retrying.

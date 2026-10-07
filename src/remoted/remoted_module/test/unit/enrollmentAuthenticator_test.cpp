@@ -98,6 +98,14 @@ namespace
         return granted ? granted->tokenId : std::nullopt;
     }
 
+    /// Whether the grant says a credential was verified (the bucket /enroll charges it to).
+    bool verifiedOf(const EnrollmentDecision& decision)
+    {
+        const auto* granted = std::get_if<EnrollmentGranted>(&decision);
+        EXPECT_NE(granted, nullptr);
+        return granted && granted->credentialVerified;
+    }
+
     struct PasswordFixture : public ::testing::Test
     {
         std::string path = writePasswordFile(std::string {tv::kPassword});
@@ -344,6 +352,8 @@ TEST(EnrollmentAuthenticatorTest, RequirePasswordFalseAlwaysPasses)
     EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {false}, nullptr};
     EXPECT_EQ(errorOf(authenticator.authenticate(kVersion, "", kSmallBody, kNow)), std::nullopt);
     EXPECT_EQ(errorOf(authenticator.authenticate(kVersion, "garbage", kSmallBody, kNow)), std::nullopt);
+    // Admitted, but nothing was proved: /enroll charges it to the unverified bucket.
+    EXPECT_FALSE(verifiedOf(authenticator.authenticate(kVersion, "", kSmallBody, kNow)));
 }
 
 // -----------------------------------------------------------------------------
@@ -452,6 +462,7 @@ TEST_F(TokenFixture, TokenBearerIsAcceptedEvenWhenPasswordIsNotRequired)
     EnrollmentAuthenticator open {EnrollmentAuthConfig {false}, nullptr, tokenSource};
     const auto decision = open.authenticate(kVersion, validTokenBearer(), kSmallBody, kNow);
     EXPECT_EQ(tokenIdOf(decision), std::string {tvt::kIdB64Url});
+    EXPECT_TRUE(verifiedOf(decision));
 }
 
 TEST_F(TokenFixture, TokenBearerIsAcceptedInPasswordMode)
@@ -629,6 +640,8 @@ TEST_F(TokenFixture, SharedKeyBearerInOpenModeIsIgnoredAsBefore)
     const auto decision =
         open.authenticate(kVersion, "Bearer " + std::string {tv::kWrongPasswordToken}, kSmallBody, kNow);
     EXPECT_EQ(tokenIdOf(decision), std::nullopt);
+    // Ignored is not verified: a bearer nobody checked must not reach the verified bucket.
+    EXPECT_FALSE(verifiedOf(decision));
 }
 
 TEST_F(PasswordFixture, PasswordBearerGrantsWithoutATokenId)
@@ -636,4 +649,5 @@ TEST_F(PasswordFixture, PasswordBearerGrantsWithoutATokenId)
     // The password path never names a token: authd's `add` stays byte-identical for it.
     const auto decision = authenticator.authenticate(kVersion, validBearer(), kSmallBody, kNow);
     EXPECT_EQ(tokenIdOf(decision), std::nullopt);
+    EXPECT_TRUE(verifiedOf(decision));
 }

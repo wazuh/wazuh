@@ -388,7 +388,9 @@ a `Retry-After`.
 
 > **The limit is a ceiling for the endpoint, not an allowance per agent.** One bucket per route,
 > shared by every caller: a single client asking fast enough can consume the whole route's budget,
-> and a fleet-wide burst is paced by the same number. Size these for the fleet — at
+> and a fleet-wide burst is paced by the same number. `/enroll` narrows who can do that: it charges
+> its bucket only once a request has passed its own checks, and keeps a separate bucket for
+> enrollments whose credential was verified (see [`https.enroll_rate_limit`](#httpsenroll_rate_limit)). Size these for the fleet — at
 > `enroll_rate_limit` `100`, a bootstrap of 10 000 agents needs at least ~100 seconds of `/enroll`
 > traffic. The agent retries with its own backoff ramp, so a paced rollout completes; it is slower,
 > not broken.
@@ -411,8 +413,8 @@ counts what was refused.
 
 ### https.enroll_rate_limit
 
-Sustained `POST /enroll` requests per second the manager serves, counted for the endpoint as a
-whole.
+Sustained `POST /enroll` requests per second the manager forwards to authd, counted for the node as
+a whole.
 
 - **Default value:** `100`
 - **Allowed values:** Integer from `0` to `100000`. `0` disables the limit.
@@ -420,6 +422,18 @@ whole.
 - **Effect:** Requests over the limit are answered `429` with `Retry-After` **without reaching
   authd**, so a peer with no usable credential can no longer turn `/enroll` into an amplifier onto
   the cluster's internal socket.
+- **When it is charged:** after the request's own checks (protocol version, body size, credential,
+  body, version policy), right before the authd round trip. A request that fails any of them is
+  answered `400`/`401`/`413`/`415` and spends nothing, so a flood of them cannot starve the agents
+  that pass them.
+- **Two buckets of this rate:** enrollments whose password or enrollment token was **verified** by
+  remoted are charged to one; re-enrollments (their bearer is only verifiable on the master) and
+  enrollments without a credential (Open mode, or a listener requiring a client certificate instead)
+  to the other. Anyone can produce the second kind, so exhausting it never refuses the first. authd
+  may therefore be asked up to twice this rate when both run at their ceiling at once; the authd
+  queue (`remoted.authd_max_queue_size`) still bounds what is in flight.
+- **Note:** Neither bucket is per caller. In Open mode, and for re-enrollments, one source can still
+  exhaust its bucket for everyone in it.
 - **Note:** Higher than `/cacerts`'s default even though it is the more expensive route: every agent
   must pass through it at least once (a bootstrap, or a mass re-enrollment after a credential
   rotation).

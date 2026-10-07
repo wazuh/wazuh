@@ -505,16 +505,22 @@ namespace remoted::enrollment
                                             const Config& config,
                                             EnrollmentMetrics& metrics,
                                             std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder,
-                                            remoted::metrics::EndpointHttpMetrics httpMetrics)
+                                            remoted::metrics::EndpointHttpMetrics httpMetrics,
+                                            RateGates rateGates)
     {
         return [&authenticator,
                 &authdClient,
                 config,
                 &metrics,
                 bodyDecoder = std::move(bodyDecoder),
-                httpMetrics = std::move(httpMetrics)](std::shared_ptr<const remoted::http::HttpRequest> request,
-                                                      std::shared_ptr<remoted::http::IHttpResponder> responder)
+                httpMetrics = std::move(httpMetrics),
+                rateGates = std::move(rateGates)](std::shared_ptr<const remoted::http::HttpRequest> request,
+                                                  std::shared_ptr<remoted::http::IHttpResponder> responder)
         {
+            // The transport's own responder, kept for the rate-limit refusal below: that one counts
+            // its status cell itself and must stay out of the latency histogram (rateLimitGate.hpp).
+            const auto unmeteredResponder = responder;
+
             // Wrapped once, here, so the status/latency accounting covers every answer below --
             // the five inline rejections AND the one authd's callback delivers on a worker thread
             // -- without repeating an instrumentation line per branch (and without a later branch
@@ -587,6 +593,18 @@ namespace remoted::enrollment
             {
                 incRejectedValidation(metrics);
                 responder->send(errorResponse(400, 0, "Agent version is newer than this manager allows"));
+                return;
+            }
+
+            // The rate limit, charged only now: every check above is local and cheap, so a request
+            // that cannot pass them -- no credential, a bad one, a malformed body -- has been answered
+            // without spending anything. What is left is the authd round trip (and, on a worker, the
+            // master's) the limit exists to pace, and the bucket is picked by what was PROVED: see
+            // RateGates on why a re-enrollment or a credential-less request cannot share the bucket
+            // of an enrollment whose password or token was verified here.
+            const auto& admission = granted && granted->credentialVerified ? rateGates.verified : rateGates.unverified;
+            if (admission && !admission(*unmeteredResponder))
+            {
                 return;
             }
 
