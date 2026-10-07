@@ -11,6 +11,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 #include <cstdio>
@@ -167,7 +168,9 @@ InterfaceScan ScanContainerInterfaces(pid_t pid, const ContainerScope& scope)
     bool          entered = false;
     std::thread   worker([&]
     {
-        if (setns(ns_fd, CLONE_NEWNET) == 0)
+        // Raw syscall, not setns(): the wrapper only arrived in glibc 2.14 and
+        // the oldest packaging image (Debian 7) ships 2.13.
+        if (syscall(SYS_setns, ns_fd, CLONE_NEWNET) == 0)
         {
             entered = true;
             result  = CollectCurrentNetns();
