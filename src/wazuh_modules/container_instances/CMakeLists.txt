@@ -51,11 +51,21 @@ file(GLOB CONTAINER_INSTANCES_SRC "src/*.cpp" "ci_impl/src/*/*.cpp")
 
 add_library(container_instances SHARED ${CONTAINER_INSTANCES_SRC})
 
+# curl is reached through wazuhext, never as -lcurl. src/CMakeLists.txt sets
+# CURL_DEP=wazuhext for the whole tree: libwazuhext.so links libcurl.a and
+# re-exports its symbols, so nothing in an installed agent carries a
+# DT_NEEDED on the system libcurl.so.4. Linking -lcurl here resolved against
+# external/curl/lib/.libs/libcurl.so instead, which made this the only shipped
+# library with that dependency -- and because wazuh_modulesd_lib links
+# container_instances directly, a host without libcurl installed got a
+# modulesd that could not start at all, not one with the feature switched off.
+# Nothing ships libcurl.so.4 into the install directory and dh_shlibdeps is
+# disabled, so no package dependency would have declared it either.
 target_link_libraries(
   container_instances
   PRIVATE ${FILESYSTEM_WRAPPER_LIB}
           ${FILE_IO_LIB}
-          curl
+          wazuhext
           yaml
           ssl
           crypto
