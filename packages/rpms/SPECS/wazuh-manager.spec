@@ -382,7 +382,7 @@ mkdir -p %{_localstatedir}/etc/certs
 # here about a state that no longer exists is what trains operators to ignore installer output.
 
 # The certificates the service daemons read after dropping privileges (the provisioned listener
-# pair and the API certificate apid issues for itself) are owned by wazuh-manager. Re-applied
+# pair and the Server API pair the installer issues) are owned by wazuh-manager. Re-applied
 # unconditionally so upgrades that left them root-owned get corrected.
 for CERT_FILE in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
   if [ -f "%{_localstatedir}/etc/certs/${CERT_FILE}" ]; then
@@ -506,7 +506,8 @@ if [ $1 = 0 ]; then
     set -e
 
     for CRED_KEY in WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD \
-                    WAZUH_MANAGER_CERT_SANS WAZUH_MANAGER_REMOTED_CERT_SANS; do
+                    WAZUH_MANAGER_CERT_SANS WAZUH_MANAGER_REMOTED_CERT_SANS \
+                    WAZUH_MANAGER_APID_CERT_SANS; do
       wazuh_env_unset "${CRED_KEY}" > /dev/null 2>&1 || true
     done
 

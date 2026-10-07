@@ -222,7 +222,10 @@ jobs:
           # someone else's PKI is under no obligation to keep a copy of its root CA.
           # The pairs come from the devcontainer copy of the installation assistant tool; the manager
           # node's SAN carries DNS:wazuh-manager, which the integration tests assert on the listener
-          # certificate.
+          # certificate. All three pairs (indexer connector, remoted, apid) come from that PKI: the
+          # API no longer generates its own certificate, and the installation issues the apid pair
+          # with the remoted profile, so the listener pair is installed for the Server API as well
+          # (serverAuth, leaf followed by the CA, SAN including localhost, which the tests connect to).
           sudo systemctl stop wazuh-manager 2>/dev/null || true
           CERTS_YML="$RUNNER_TEMP/wazuh-certs.yml"
           CERTS_OUT="$RUNNER_TEMP/wazuh-certificates"
@@ -252,6 +255,8 @@ jobs:
           sudo install -o root -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-key.pem" "$INSTALLATION_DIR/etc/certs/indexer-connector-key.pem"
           sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$INSTALLATION_DIR/etc/certs/remoted.pem"
           sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$INSTALLATION_DIR/etc/certs/remoted-key.pem"
+          sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted.pem" "$INSTALLATION_DIR/etc/certs/apid.pem"
+          sudo install -o wazuh-manager -g wazuh-manager -m 640 "$CERTS_OUT/wazuh-manager-remoted-key.pem" "$INSTALLATION_DIR/etc/certs/apid-key.pem"
           sudo chown root:wazuh-manager "$INSTALLATION_DIR/etc/certs"
           sudo chmod 1770 "$INSTALLATION_DIR/etc/certs"
           # The installation minted a bootstrap CA here, including its private key. Nothing consults it

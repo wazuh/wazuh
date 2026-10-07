@@ -375,16 +375,20 @@ sudo chown root:wazuh-manager /var/wazuh-manager/etc \
 sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/etc/client.keys
 sudo chmod 660 /var/wazuh-manager/etc/client.keys
 
-# Certificates, in the modes the installer applies: root-owned and sticky so a
-# daemon can regenerate its own certificate but not replace the indexer material.
-# Do not make the directory read-only, or regeneration stops working. The glob and
-# the test run inside the root shell -- unprivileged they expand to nothing.
+# Certificates, in the modes the installer applies: root-owned and sticky so the
+# service cannot replace the indexer material. The listener and Server API pairs
+# belong to wazuh-manager (an apid pair restored root:root, unreadable by the
+# service, stops the API with error 2003). The glob and the test run inside the root shell -- unprivileged
+# they expand to nothing.
 
 sudo sh -c 'cd /var/wazuh-manager/etc/certs || exit 1
     chown root:wazuh-manager . && chmod 1770 .
     chmod 640 * 2>/dev/null
     for CERT in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
         [ -f "$CERT" ] && chown root:wazuh-manager "$CERT"
+    done
+    for CERT in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
+        [ -f "$CERT" ] && chown wazuh-manager:wazuh-manager "$CERT"
     done'
 
 # Databases, credential store, pending agent deletions and detection content
@@ -575,6 +579,9 @@ sudo sh -c 'cd /var/wazuh-manager/etc/certs || exit 1
     chmod 640 * 2>/dev/null
     for CERT in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
         [ -f "$CERT" ] && chown root:wazuh-manager "$CERT"
+    done
+    for CERT in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
+        [ -f "$CERT" ] && chown wazuh-manager:wazuh-manager "$CERT"
     done'
 
 sudo /var/wazuh-manager/bin/wazuh-manager-conf validate
@@ -667,6 +674,9 @@ docker compose exec -u root wazuh.manager sh -c '
     chmod 1770 /var/wazuh-manager/etc/certs
     for CERT in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
         [ -f "/var/wazuh-manager/etc/certs/$CERT" ] && chown root:wazuh-manager "/var/wazuh-manager/etc/certs/$CERT"
+    done
+    for CERT in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
+        [ -f "/var/wazuh-manager/etc/certs/$CERT" ] && chown wazuh-manager:wazuh-manager "/var/wazuh-manager/etc/certs/$CERT"
     done
     chown -R root:wazuh-manager /var/wazuh-manager/api/configuration
     chown wazuh-manager:wazuh-manager /var/wazuh-manager/api/configuration/security/rbac.db
@@ -903,6 +913,9 @@ sudo sh -c 'cd /var/wazuh-manager/etc/certs || exit 1
     chmod 640 * 2>/dev/null
     for CERT in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
         [ -f "$CERT" ] && chown root:wazuh-manager "$CERT"
+    done
+    for CERT in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
+        [ -f "$CERT" ] && chown wazuh-manager:wazuh-manager "$CERT"
     done'
 
 # Check logs

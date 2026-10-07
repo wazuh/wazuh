@@ -36,6 +36,7 @@ silently and leave the deployment holding a credential nobody else has.
 | `WAZUH_INDEXER_MANAGER_PASSWORD` | `wazuh-manager` (on the indexer) | **consumes** it — never generates it, never publishes it |
 | `WAZUH_MANAGER_CERT_SANS` | the indexer-connector certificate | **owns** it |
 | `WAZUH_MANAGER_REMOTED_CERT_SANS` | the agent-listener certificate | **owns** it |
+| `WAZUH_MANAGER_APID_CERT_SANS` | the Server API certificate | **owns** it |
 | `WAZUH_CA_DIR` | trust material, default `/etc/wazuh/ca` | path only, not a secret |
 
 A credential the manager *owns* lives in its own datastore, so generating one makes it true. A
@@ -274,7 +275,7 @@ forwarded to the master — so a change made with it does not reach the database
 after a promotion. See [Server API authentication](../modules/server-api/authentication.md).
 
 Certificates work the same way — each node issues its own at installation — so stage one CA in
-`/etc/wazuh/ca` on every node before installing, or provision each node's pair from your own PKI.
+`/etc/wazuh/ca` on every node before installing, or provision each node's pairs from your own PKI.
 A node that mints its own bootstrap CA trusts only itself, and agents that reach a different node
 will not trust what it presents.
 
@@ -337,13 +338,14 @@ reported by the name of its key and the rule it failed.
 
 ## Certificates
 
-The manager needs two TLS pairs, both leaves of the same CA:
+The manager needs three TLS pairs, all leaves of the same CA:
 
 | File | Used by |
 |------|---------|
 | `etc/certs/remoted.pem`, `remoted-key.pem` | the HTTPS agent listener on 1517, and `wazuh-manager-authd` on 1515 |
 | `etc/certs/indexer-connector.pem`, `indexer-connector-key.pem` | the client certificate presented to the indexer |
-| `etc/certs/root-ca.pem` | the trust anchor for both, served to agents on `GET /cacerts` |
+| `etc/certs/apid.pem`, `apid-key.pem` | the certificate of the Server API (`wazuh-manager-apid`) |
+| `etc/certs/root-ca.pem` | the trust anchor for all of them, served to agents on `GET /cacerts` |
 
 ### Issued at installation, and at no other moment
 
@@ -369,6 +371,9 @@ are at start — which is the only state that matters:
   tell you whether the `wazuh-manager` user can read them.
 * `remoted` probes its own pair with `access(R_OK)` **after** dropping privileges, and refuses to
   start the listener when it cannot read either file.
+* `wazuh-manager-apid` generates no certificate. When `https.enabled` is on and the configured pair is
+  missing, not readable by `wazuh-manager`, or its key does not match the certificate, it logs error
+  `2003` naming the files in `logs/api.log` and does not start.
 * The TLS handshake decides the rest.
 
 > [!NOTE]
@@ -379,7 +384,7 @@ are at start — which is the only state that matters:
 > nothing tests whether the service user can read them. An `indexer-connector-key.pem` that is
 > missing, or present but not readable by `wazuh-manager`, therefore passes everything that runs
 > before the daemons and surfaces from the TLS handshake at the first indexer request. The install
-> checks the ownership and mode of both pairs, so a pair the manager issued is correct by
+> checks the ownership and mode of the pairs, so a pair the manager issued is correct by
 > construction — when you provision one by hand, take the owners and modes from
 > [Using certificates issued elsewhere](installation.md#using-certificates-issued-elsewhere).
 
@@ -390,12 +395,12 @@ mode flag, because the presence of a private key beside the anchor is the signal
 
 | In the CA directory | Already in `etc/certs` | Result |
 |---------------------|------------------------|--------|
-| nothing | nothing | mint a bootstrap CA, then issue both pairs from it |
-| nothing | any of the five files | **nothing issued**: no CA is minted, since its anchor would not match what is there |
-| anchor + key | no pair | install the anchor, issue both pairs from the CA found |
-| anchor + key | one pair | keep that pair and issue only the missing one, if the kept pair was issued by that CA; **nothing issued** otherwise |
-| anchor + key, or anchor only | both pairs | install the anchor if `etc/certs` lacks it, issue nothing; both pairs must chain to that anchor |
-| anchor only | no pair, or one | install the anchor; **nothing issued** |
+| nothing | nothing | mint a bootstrap CA, then issue the three pairs from it |
+| nothing | any of the seven files | **nothing issued**: no CA is minted, since its anchor would not match what is there |
+| anchor + key | no pair | install the anchor, issue the three pairs from the CA found |
+| anchor + key | some of the pairs | keep those pairs and issue only the missing ones, if the kept pairs were issued by that CA; **nothing issued** otherwise |
+| anchor + key, or anchor only | all three pairs | install the anchor if `etc/certs` lacks it, issue nothing; the three pairs must chain to that anchor |
+| anchor only | not all three pairs | install the anchor; **nothing issued** |
 
 A file already in `etc/certs` is never overwritten. A `root-ca.pem` already there must contain the CA
 directory's anchor (it may carry more CAs, as `wazuh-manager-certs` leaves it), or nothing is issued.
@@ -425,7 +430,7 @@ either, the manager refuses to start with the configuration validator's verdict 
 provisioned externally, e.g. with wazuh-certs-tool)
 ```
 
-Provision the pair and start the service again; nothing has to be reinstalled.
+Provision the pairs and start the service again; nothing has to be reinstalled.
 
 If the install issued nothing because the credentials file was unsafe, the first start names the
 file instead (see [When the manager does not start](#when-the-manager-does-not-start)). Fix it and
@@ -433,28 +438,33 @@ start again: the next start shows the `(1244)` above, because no pair was issued
 stopped, issue the pair with `sudo /var/wazuh-manager/bin/wazuh-manager-resolve-credentials
 --install`, reinstall the package, or provision your own pair; then start the service.
 
-To supply a pre-issued pair, place it in `etc/certs` **before** installing, or afterwards — either
-way it is used as it is and never replaced. The file names, owners and modes are in
+To supply pre-issued pairs (the three of them), place them in `etc/certs` **before** installing, or
+afterwards — either way they are used as they are and never replaced. The installer sets the owner of
+`remoted*` and `apid*` to `wazuh-manager`, and validates `apid.pem` (chain to the CA, `serverAuth`,
+`CA:FALSE`, not expired, with a SAN extension, key, owner and mode). The file names, owners and modes are in
 [Using certificates issued elsewhere](installation.md#using-certificates-issued-elsewhere).
 
 ### Subject alternative names
 
-The two leaves are configured independently, because they are presented to different peers:
+The three leaves are configured independently, because they are presented to different peers: agents
+dial `remoted.pem`, API clients `apid.pem`, and the indexer verifies `indexer-connector.pem`:
 
 | Setting | Configures | Discovery when unset |
 |---------|------------|----------------------|
 | `WAZUH_MANAGER_CERT_SANS` | `indexer-connector.pem` | hostname, FQDN, `localhost`, loopback, and the global addresses on default-route interfaces |
 | `WAZUH_MANAGER_REMOTED_CERT_SANS` | `remoted.pem` | hostname, FQDN, `localhost`, loopback, and **every global-scope** address `ip -o addr show` reports — including addresses on interfaces that are not on the default route, that are virtual, or that are down |
+| `WAZUH_MANAGER_APID_CERT_SANS` | `apid.pem` | the same discovery as `remoted.pem`; it never inherits `WAZUH_MANAGER_REMOTED_CERT_SANS` |
 
-Remoted's list is deliberately the wider of the two: agents reach the manager over whatever address
-the operator pointed them at, which is frequently not the one on the default route, and a manager
-issued a narrower certificate installs cleanly and then fails at the first peer connection.
+The Remoted and Server API discovery is deliberately wider than the connector's: agents reach the
+manager over whatever address the operator pointed them at, which is frequently not the one on the
+default route, and a manager issued a narrower certificate installs cleanly and then fails at the
+first peer connection.
 
 It is wider by *interface*, not by *scope*. Link-local (`fe80::`) and host-scope addresses are left
 out: no peer can match them, so they would be disclosure with no function — and a link-local address
 formed the classic way carries the interface's MAC into a certificate that is served to every client
 completing a handshake on port 1517. If a node must present an address discovery does not pick up,
-set `WAZUH_MANAGER_REMOTED_CERT_SANS` explicitly; it replaces the whole list.
+set that leaf's setting explicitly; it replaces the whole list.
 
 An explicit value **replaces** discovery for that leaf; it does not extend it. `localhost`,
 `127.0.0.1` and `::1` are appended to it all the same. Wildcard DNS names,
@@ -465,9 +475,10 @@ present a certificate for any other node — and equivalent textual IPv6 address
 ```sh
 WAZUH_MANAGER_CERT_SANS='DNS:wazuh.corp.local,IP:10.0.1.11'
 WAZUH_MANAGER_REMOTED_CERT_SANS='DNS:agents.corp.local,IP:10.0.1.11,IP:2001:db8::10'
+WAZUH_MANAGER_APID_CERT_SANS='DNS:api.corp.local,IP:10.0.1.11'
 ```
 
-Changing either setting afterwards renews nothing: a complete existing pair always wins, and a start
+Changing any of them afterwards renews nothing: a complete existing pair always wins, and a start
 issues nothing in any case. To reissue, stop the manager (the resolver opens the keystore, which
 `wazuh-manager-modulesd` holds while it runs), remove the pair and run the resolver's `--install`
 mode again. It issues from the CA in `$WAZUH_CA_DIR`, so the CA and its private key must still be
@@ -489,8 +500,8 @@ sudo systemctl start wazuh-manager
 
 The bootstrap CA is local to the host and disposable. A host that minted its own and later joins a
 cluster keeps the certificates it issued, which no other node trusts: nothing reissues them. Replace
-both pairs and `etc/certs/root-ca.pem` with material from the cluster's CA — provisioned directly, or
-issued by `--install` as above after staging that CA in `$WAZUH_CA_DIR` and removing the five files
+the three pairs and `etc/certs/root-ca.pem` with material from the cluster's CA — provisioned directly, or
+issued by `--install` as above after staging that CA in `$WAZUH_CA_DIR` and removing the seven files
 and the bootstrap CA.
 
 ## Container images
@@ -515,9 +526,9 @@ RUN /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --clear
 /var/wazuh-manager/bin/wazuh-manager-resolve-credentials --install
 ```
 
-`--clear` removes `rbac.db`, the keystore contents, the five files in `etc/certs`
+`--clear` removes `rbac.db`, the keystore contents, the seven files in `etc/certs`
 (`remoted.pem`, `remoted-key.pem`, `indexer-connector.pem`, `indexer-connector-key.pem`,
-`root-ca.pem`) and the bootstrap CA, and takes `WAZUH_MANAGER_API_PASSWORD` and
+`apid.pem`, `apid-key.pem`, `root-ca.pem`) and the bootstrap CA, and takes `WAZUH_MANAGER_API_PASSWORD` and
 `WAZUH_MANAGER_WUI_PASSWORD` out of the managed block of the credentials file. The two `*_CERT_SANS`
 keys stay.
 
@@ -556,7 +567,7 @@ credential are left untouched, and the matching keys in the file are ignored wha
 Only a credential this host never resolved is read from the file or the environment. Replacing a
 credential on a running deployment is rotation, not installation.
 
-Certificates are not looked at at all. An upgrade never re-examines, re-anchors or reissues the pair
+Certificates are not looked at at all. An upgrade never re-examines, re-anchors or reissues the pairs
 in `etc/certs`, so one you replaced with your own PKI's — and the absent CA directory that usually
 goes with it — survives every upgrade untouched.
 
@@ -584,9 +595,9 @@ What removal does depends on which package manager, because they do not offer th
 | `rpm -e wazuh-manager` / `dnf remove` | the manager's own keys are removed from the managed block |
 
 RPM has no operation that removes a package while keeping its configuration, so an erase is the
-equivalent of a DEB purge and is treated as one. Both take exactly the same four keys
+equivalent of a DEB purge and is treated as one. Both take exactly the same five keys
 (`WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD`, `WAZUH_MANAGER_CERT_SANS`,
-`WAZUH_MANAGER_REMOTED_CERT_SANS`) and only from inside the managed block — lines you wrote are never
+`WAZUH_MANAGER_REMOTED_CERT_SANS`, `WAZUH_MANAGER_APID_CERT_SANS`) and only from inside the managed block — lines you wrote are never
 touched, even when they carry the same key.
 
 The last component out then removes what is left, `/etc/wazuh` included. "Last" is asked of the

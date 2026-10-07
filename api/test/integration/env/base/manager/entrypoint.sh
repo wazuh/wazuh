@@ -37,24 +37,6 @@ for sh_file in /tmp_volume/configuration_files/*.sh; do
   . $sh_file
 done
 
-# API SSL sync (only when cluster + shared ssl volume)
-SSL_DIR="/var/wazuh-manager/etc/certs"
-SSL_KEY="${SSL_DIR}/apid-key.pem"
-SSL_CRT="${SSL_DIR}/apid.pem"
-
-if [ "$4" != "standalone" ] && [ "$3" != "master" ]; then
-  echo "[entrypoint] Worker waiting for shared API SSL files..."
-  elapsed_time=0
-  while [ ! -s "$SSL_KEY" ] || [ ! -s "$SSL_CRT" ]; do
-    if [ $elapsed_time -gt 120 ]; then
-      echo "Timeout waiting for API SSL files ($SSL_KEY, $SSL_CRT)" >&2
-      exit 1
-    fi
-    sleep 1
-    elapsed_time=$((elapsed_time+1))
-  done
-fi
-
 # The start resolves credentials first and refuses to run without them. The tavern suites log in as
 # wazuh-wui with a known password, and this environment has no indexer, so its value only has to be
 # present. Same values on every node: they share the api_security volume and any of them may seed it.

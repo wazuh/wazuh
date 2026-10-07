@@ -188,17 +188,17 @@ CheckListenerCerts()
     # root-owned indexer trust material (see SetIndexerCertsOwnership()).
     ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/certs
 
-    # Owned by ${WAZUH_USER}: remoted opens its certificate and key after dropping
-    # privileges. Re-applied unconditionally so upgrades from installs that left them
-    # root-owned also get corrected.
-    for CERT_FILE in remoted.pem remoted-key.pem; do
+    # Owned by ${WAZUH_USER}: remoted and the Server API open their certificates and keys
+    # after dropping privileges. Re-applied unconditionally so upgrades from installs that left
+    # them root-owned also get corrected.
+    for CERT_FILE in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
         if [ -f "${INSTALLDIR}/etc/certs/${CERT_FILE}" ]; then
             chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/${CERT_FILE}
             chmod 640 ${INSTALLDIR}/etc/certs/${CERT_FILE}
         fi
     done
 
-    # No notice when the pair is absent. The credential resolver issues it later in this same
+    # No notice when a pair is absent. The credential resolver issues it later in this same
     # installation, from whatever is in $WAZUH_CA_DIR -- and only there, never at a service start
     # or an upgrade. It reports for itself when it could not, and the service then refuses to start
     # on the configuration validator's (1244) verdict naming the file, which is where someone
@@ -212,7 +212,7 @@ CheckListenerCerts()
 ##########
 # etc/certs holds two kinds of material: the certificates the service daemons read after
 # dropping privileges (the externally provisioned listener pair, see CheckListenerCerts(), and
-# the API certificate apid issues for itself -- owned by ${WAZUH_USER}) and the indexer trust
+# the Server API pair the installer issues -- owned by ${WAZUH_USER}) and the indexer trust
 # material provisioned externally (root-owned, the manager only reads it). The directory is
 # root-owned and sticky so the daemons can write their own files but cannot replace the
 # root-owned indexer material; the indexer certs are group-readable by ${WAZUH_GROUP} so the

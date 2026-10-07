@@ -51,8 +51,10 @@ skel 770 wazuh-manager:wazuh-manager var/multigroups
 # manager layout (wazuh/wazuh#38278): dir root:wazuh-manager 1770 (sticky); the
 # externally provisioned indexer material root:wazuh-manager 0640; the agent
 # listener pair wazuh-manager-owned, since remoted opens it after dropping
-# privileges. The installer no longer generates remoted.pem, so the worker deploys
-# the manager node's <name>-remoted leaf, as wazuh_copy_certs.sh does on the host.
+# privileges, and so is the Server API pair (apid, opened by apid after it drops
+# privileges). The e2e PKI replaces the installer's, so the worker deploys the manager
+# node's <name>-remoted leaf as both, as wazuh_copy_certs.sh does on the host (the
+# installer issues apid.pem with the profile of remoted.pem).
 NODE_CERT="${MANAGER_NODE_NAME:-wazuh-1}"
 install -d -o root -g wazuh-manager -m 1770 "$CERT_DST"
 install -o root -g wazuh-manager -m 640 "$CERT_SRC/root-ca.pem"                  "$CERT_DST/root-ca.pem"
@@ -60,6 +62,8 @@ install -o root -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}.pem"            
 install -o root -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-key.pem"         "$CERT_DST/indexer-connector-key.pem"
 install -o wazuh-manager -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted.pem"     "$CERT_DST/remoted.pem"
 install -o wazuh-manager -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted-key.pem" "$CERT_DST/remoted-key.pem"
+install -o wazuh-manager -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted.pem"     "$CERT_DST/apid.pem"
+install -o wazuh-manager -g wazuh-manager -m 640 "$CERT_SRC/${NODE_CERT}-remoted-key.pem" "$CERT_DST/apid-key.pem"
 
 # Indexer credentials live in the manager keystore, not in the config file.
 "$BIN/wazuh-manager-keystore" -f indexer -k username -v "$INDEXER_USER"

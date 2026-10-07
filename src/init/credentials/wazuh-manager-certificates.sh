@@ -15,28 +15,32 @@
 # Public API
 # ----------
 #   wazuh_manager_certificates_ensure
-#       Idempotently installs the manager's two certificate pairs:
+#       Idempotently installs the manager's three certificate pairs:
 #
 #         indexer-connector.pem       clientAuth
 #         indexer-connector-key.pem
 #         remoted.pem                 serverAuth; leaf followed by root CA
 #         remoted-key.pem
+#         apid.pem                    serverAuth; Server API, same profile as
+#         apid-key.pem                remoted.pem, its own SANs (leaf followed by root CA)
 #         root-ca.pem                 public trust anchor
 #
 #       Existing complete pairs are validated and never regenerated. A partial
 #       pair is an error. Missing pairs are issued only when root-ca.key exists.
 #
 #   wazuh_manager_certificates_validate
-#       Validates paths, ownership, modes, key/certificate correspondence,
-#       validity, CA chain, basic constraints, EKU, and Remoted SAN presence.
+#       Validates the three pairs: paths, ownership, modes, key/certificate
+#       correspondence, validity, CA chain, basic constraints, EKU, and SAN
+#       presence on the Remoted and Server API certificates.
 #
-#   wazuh_manager_remoted_sans
-#       Prints the resolved Remoted SANs, one typed entry per line. If no
-#       explicit list is configured, every GLOBAL-scope IPv4/IPv6 address
+#   wazuh_manager_remoted_sans / wazuh_manager_apid_sans
+#       Print the resolved Remoted / Server API SANs, one typed entry per line.
+#       The two lists are resolved independently, with the same rules. If
+#       no explicit list is configured, every GLOBAL-scope IPv4/IPv6 address
 #       assigned to every local interface is included -- whether or not the
-#       interface carries the default route, is virtual, or is down -- together
-#       with the node hostname/FQDN and loopback. Link-local and host scope are
-#       excluded; see _wmc_default_remoted_sans() for why.
+#       interface carries the default route, is virtual, or is down --
+#       together with the node hostname/FQDN and loopback. Link-local and
+#       host scope are excluded; see _wmc_default_remoted_sans() for why.
 #       Requires successful iproute2 discovery (no loopback-only fallback).
 #       Tentative/DAD-failed addresses are skipped; IPs are canonicalized.
 #       This helper creates a private temporary workspace below the base.
@@ -52,6 +56,11 @@
 #       discovered from the global-scope addresses of all interfaces; set this
 #       to present an address discovery does not reach, since it replaces the
 #       whole list. An explicitly empty value is invalid.
+#
+#   WAZUH_MANAGER_APID_CERT_SANS
+#       Exact comma-separated SAN list for apid.pem (the Server API leaf). When
+#       absent, SANs are discovered the way Remoted's are; it never inherits
+#       WAZUH_MANAGER_REMOTED_CERT_SANS. An explicitly empty value is invalid.
 #
 #   WAZUH_MANAGER_NODE_NAME
 #       Certificate common name. Defaults to hostname -s.
@@ -527,6 +536,28 @@ _wmc_resolve_remoted_san_setting() (
     printf '%s\n' "$_wmc_value"
 )
 
+_wmc_resolve_apid_san_setting() (
+    _wmc_value=
+    _wmc_is_set=0
+    _wmc_status=0
+    _wmc_file_value=$(_wmc_get_file_setting WAZUH_MANAGER_APID_CERT_SANS) || _wmc_status=$?
+    case $_wmc_status in
+        0) _wmc_value=$_wmc_file_value; _wmc_is_set=1 ;;
+        1) ;;
+        *) return 2 ;;
+    esac
+    if [ "${WAZUH_MANAGER_APID_CERT_SANS+x}" = x ]; then
+        _wmc_value=${WAZUH_MANAGER_APID_CERT_SANS-}
+        _wmc_is_set=1
+    fi
+    [ "$_wmc_is_set" -eq 1 ] || return 1
+    if [ -z "$_wmc_value" ]; then
+        _wmc_error 'WAZUH_MANAGER_APID_CERT_SANS is explicitly empty'
+        return 2
+    fi
+    printf '%s\n' "$_wmc_value"
+)
+
 _wmc_node_name() (
     if [ "${WAZUH_MANAGER_NODE_NAME+x}" = x ]; then
         _wmc_node=${WAZUH_MANAGER_NODE_NAME-}
@@ -584,13 +615,14 @@ _wmc_default_manager_sans() (
 
 _wmc_default_remoted_sans() (
     _wmc_output=$1
+    _wmc_setting_name=${2:-WAZUH_MANAGER_REMOTED_CERT_SANS}
     # Require successful enumeration, not just presence of the ip binary.
     #
     # Every GLOBAL address on every interface, including interfaces that are not on the default
     # route, that are virtual, or that are currently down -- deliberately wider than
     # _wmc_default_manager_sans().
     _wmc_addresses=$(ip -o addr show) || {
-        _wmc_error 'cannot enumerate interfaces; supply WAZUH_MANAGER_REMOTED_CERT_SANS'
+        _wmc_error "cannot enumerate interfaces; supply $_wmc_setting_name"
         return 1
     }
     _wmc_list=$(printf '%s\n' "$_wmc_addresses" | awk '
@@ -600,7 +632,7 @@ _wmc_default_remoted_sans() (
         }
     ') || return 1
     [ -n "$_wmc_list" ] || {
-        _wmc_error 'no global interface address; supply WAZUH_MANAGER_REMOTED_CERT_SANS'
+        _wmc_error "no global interface address; supply $_wmc_setting_name"
         return 1
     }
     _wmc_append_host_names "$_wmc_output.names" || return 1
@@ -634,6 +666,18 @@ _wmc_resolve_remoted_sans_to() (
     esac
 )
 
+# The Server API leaf: its own setting, else the same discovery as Remoted's.
+_wmc_resolve_apid_sans_to() (
+    _wmc_output=${1-}
+    _wmc_status=0
+    _wmc_setting=$(_wmc_resolve_apid_san_setting) || _wmc_status=$?
+    case $_wmc_status in
+        0) _wmc_normalize_sans "$_wmc_setting,DNS:localhost,IP:127.0.0.1,IP:::1" "$_wmc_output" ;;
+        1) _wmc_default_remoted_sans "$_wmc_output" WAZUH_MANAGER_APID_CERT_SANS ;;
+        *) return 1 ;;
+    esac
+)
+
 wazuh_manager_remoted_sans() (
     _wmc_require_shared_helpers || return 1
     _wazuh_ensure_base_dir || return 1
@@ -642,6 +686,17 @@ wazuh_manager_remoted_sans() (
     trap 'rm -rf -- "$_wmc_tmp"' 0
     trap 'return 130' 1 2 3 15
     _wmc_resolve_remoted_sans_to "$_wmc_tmp/sans" || return 1
+    cat "$_wmc_tmp/sans"
+)
+
+wazuh_manager_apid_sans() (
+    _wmc_require_shared_helpers || return 1
+    _wazuh_ensure_base_dir || return 1
+    _wmc_base=$(wazuh_base_get_dir) || return 1
+    _wmc_tmp=$(mktemp -d "$_wmc_base/.sans.XXXXXX") || return 1
+    trap 'rm -rf -- "$_wmc_tmp"' 0
+    trap 'return 130' 1 2 3 15
+    _wmc_resolve_apid_sans_to "$_wmc_tmp/sans" || return 1
     cat "$_wmc_tmp/sans"
 )
 _wmc_write_leaf_config() (
@@ -884,17 +939,23 @@ _wmc_generate_indexer_pair() (
     trap - 0 1 2 3 15
 )
 
-_wmc_generate_remoted_pair() (
-    _wmc_dir=${1-}
-    _wmc_ca_dir=${2-}
-    _wmc_node=${3-}
-    _wmc_sans=${4-}
-    _wmc_user=${5-}
-    _wmc_group=${6-}
-    _wmc_uid=${7-}
-    _wmc_gid=${8-}
+# The manager's server leaves -- remoted's agent listener (remoted.pem) and the Server API
+# (apid.pem) -- share one profile: CN=<node>, serverAuth, notBefore backdated one day, leaf
+# followed by the root CA, owned by the service identity they are opened as; each takes its own
+# SAN list.
+_wmc_generate_server_pair() (
+    _wmc_name=${1-}
+    _wmc_label=${2-}
+    _wmc_dir=${3-}
+    _wmc_ca_dir=${4-}
+    _wmc_node=${5-}
+    _wmc_sans=${6-}
+    _wmc_user=${7-}
+    _wmc_group=${8-}
+    _wmc_uid=${9-}
+    _wmc_gid=${10-}
     _wmc_enter_cert_dir "$_wmc_dir" "$_wmc_gid" || return 1
-    _wmc_tmp_dir=$(mktemp -d .remoted.XXXXXX) || return 1
+    _wmc_tmp_dir=$(mktemp -d ".$_wmc_name.XXXXXX") || return 1
     trap 'rm -rf -- "$_wmc_tmp_dir"' 0
     trap 'return 130' 1 2 3 15
     chmod 0700 "$_wmc_tmp_dir" || return 1
@@ -902,10 +963,10 @@ _wmc_generate_remoted_pair() (
     _wmc_config=$_wmc_tmp_dir/leaf.cnf
     _wmc_write_leaf_config "$_wmc_config" "$_wmc_node" serverAuth "$_wmc_sans" || return 1
     (umask 077; openssl req -new -nodes -newkey rsa:2048 -sha256 \
-        -keyout "$_wmc_tmp_dir/remoted-key.pem" \
-        -out "$_wmc_tmp_dir/remoted.csr" \
+        -keyout "$_wmc_tmp_dir/$_wmc_name-key.pem" \
+        -out "$_wmc_tmp_dir/$_wmc_name.csr" \
         -config "$_wmc_config" >/dev/null 2>&1) || {
-        _wmc_error 'failed to create the Remoted CSR'
+        _wmc_error "failed to create the $_wmc_label CSR"
         return 1
     }
 
@@ -943,25 +1004,25 @@ _wmc_generate_remoted_pair() (
     _wmc_end=$(date -u -d '+3650 days' '+%y%m%d%H%M%SZ' 2>/dev/null) || return 1
     openssl ca -batch -notext -md sha256 \
         -config "$_wmc_ca_workspace/ca.cnf" \
-        -in "$_wmc_tmp_dir/remoted.csr" \
-        -out "$_wmc_tmp_dir/remoted.pem" \
+        -in "$_wmc_tmp_dir/$_wmc_name.csr" \
+        -out "$_wmc_tmp_dir/$_wmc_name.pem" \
         -extfile "$_wmc_config" -extensions v3_leaf \
         -startdate "$_wmc_start" -enddate "$_wmc_end" \
         -passin pass: >/dev/null 2>&1 || {
-        _wmc_error 'failed to issue the Remoted certificate'
+        _wmc_error "failed to issue the $_wmc_label certificate"
         return 1
     }
-    printf '\n' >>"$_wmc_tmp_dir/remoted.pem" || return 1
-    cat "$_wmc_ca_dir/root-ca.pem" >>"$_wmc_tmp_dir/remoted.pem" || return 1
+    printf '\n' >>"$_wmc_tmp_dir/$_wmc_name.pem" || return 1
+    cat "$_wmc_ca_dir/root-ca.pem" >>"$_wmc_tmp_dir/$_wmc_name.pem" || return 1
 
     chown "$_wmc_user":"$_wmc_group" \
-        "$_wmc_tmp_dir/remoted.pem" "$_wmc_tmp_dir/remoted-key.pem" || return 1
-    chmod 0640 "$_wmc_tmp_dir/remoted.pem" "$_wmc_tmp_dir/remoted-key.pem" || return 1
+        "$_wmc_tmp_dir/$_wmc_name.pem" "$_wmc_tmp_dir/$_wmc_name-key.pem" || return 1
+    chmod 0640 "$_wmc_tmp_dir/$_wmc_name.pem" "$_wmc_tmp_dir/$_wmc_name-key.pem" || return 1
 
-    _wmc_validate_pair "$_wmc_tmp_dir/remoted.pem" "$_wmc_tmp_dir/remoted-key.pem" \
+    _wmc_validate_pair "$_wmc_tmp_dir/$_wmc_name.pem" "$_wmc_tmp_dir/$_wmc_name-key.pem" \
         "$_wmc_ca_dir/root-ca.pem" "$_wmc_uid" "$_wmc_gid" serverAuth 1 || return 1
-    ln -T -- "$_wmc_tmp_dir/remoted-key.pem" remoted-key.pem || return 1
-    ln -T -- "$_wmc_tmp_dir/remoted.pem" remoted.pem || return 1
+    ln -T -- "$_wmc_tmp_dir/$_wmc_name-key.pem" "$_wmc_name-key.pem" || return 1
+    ln -T -- "$_wmc_tmp_dir/$_wmc_name.pem" "$_wmc_name.pem" || return 1
     rm -rf -- "$_wmc_tmp_dir"
     trap - 0 1 2 3 15
 )
@@ -973,7 +1034,9 @@ _wmc_restore_contexts() (
             "$_wmc_dir/indexer-connector.pem" \
             "$_wmc_dir/indexer-connector-key.pem" \
             "$_wmc_dir/remoted.pem" \
-            "$_wmc_dir/remoted-key.pem" >/dev/null 2>&1 || {
+            "$_wmc_dir/remoted-key.pem" \
+            "$_wmc_dir/apid.pem" \
+            "$_wmc_dir/apid-key.pem" >/dev/null 2>&1 || {
             _wmc_error "failed to restore certificate SELinux contexts in $_wmc_dir"
             return 1
         }
@@ -1007,6 +1070,10 @@ _wmc_validate_locked() (
     _wmc_validate_pair \
         "$_wmc_dir/remoted.pem" \
         "$_wmc_dir/remoted-key.pem" \
+        "$_wmc_ca_dir/root-ca.pem" "$_wmc_uid" "$_wmc_gid" serverAuth 1 || return 1
+    _wmc_validate_pair \
+        "$_wmc_dir/apid.pem" \
+        "$_wmc_dir/apid-key.pem" \
         "$_wmc_ca_dir/root-ca.pem" "$_wmc_uid" "$_wmc_gid" serverAuth 1
 )
 
@@ -1025,7 +1092,8 @@ _wmc_ensure_locked() (
     _wmc_ca_was_absent=0
     if [ ! -e "$_wmc_ca_dir/root-ca.pem" ] && [ ! -L "$_wmc_ca_dir/root-ca.pem" ]; then
         _wmc_ca_was_absent=1
-        for _wmc_existing in root-ca.pem indexer-connector.pem indexer-connector-key.pem remoted.pem remoted-key.pem; do
+        for _wmc_existing in root-ca.pem indexer-connector.pem indexer-connector-key.pem \
+            remoted.pem remoted-key.pem apid.pem apid-key.pem; do
             if [ -e "$_wmc_dir/$_wmc_existing" ] || [ -L "$_wmc_dir/$_wmc_existing" ]; then
                 _wmc_error 'shared CA missing but manager material exists; refusing to mint another CA'
                 return 1
@@ -1062,6 +1130,7 @@ _wmc_ensure_locked() (
         "$_wmc_dir/indexer-connector-key.pem") || return 1
     _wmc_remoted_state=$(_wmc_pair_state \
         "$_wmc_dir/remoted.pem" "$_wmc_dir/remoted-key.pem") || return 1
+    _wmc_apid_state=$(_wmc_pair_state "$_wmc_dir/apid.pem" "$_wmc_dir/apid-key.pem") || return 1
 
     if [ "$_wmc_indexer_state" = partial ]; then
         _wmc_error 'partial Indexer Connector certificate pair; refusing to modify it'
@@ -1069,6 +1138,10 @@ _wmc_ensure_locked() (
     fi
     if [ "$_wmc_remoted_state" = partial ]; then
         _wmc_error 'partial Remoted certificate pair; refusing to modify it'
+        return 1
+    fi
+    if [ "$_wmc_apid_state" = partial ]; then
+        _wmc_error 'partial Server API certificate pair; refusing to modify it'
         return 1
     fi
 
@@ -1083,34 +1156,52 @@ _wmc_ensure_locked() (
             "$_wmc_dir/remoted.pem" "$_wmc_dir/remoted-key.pem" \
             "$_wmc_ca_dir/root-ca.pem" "$_wmc_uid" "$_wmc_gid" serverAuth 1 || return 1
     fi
+    if [ "$_wmc_apid_state" = complete ]; then
+        _wmc_validate_pair \
+            "$_wmc_dir/apid.pem" "$_wmc_dir/apid-key.pem" \
+            "$_wmc_ca_dir/root-ca.pem" "$_wmc_uid" "$_wmc_gid" serverAuth 1 || return 1
+    fi
 
-    if [ "$_wmc_indexer_state" = absent ] || [ "$_wmc_remoted_state" = absent ]; then
+    if [ "$_wmc_indexer_state" = absent ] || [ "$_wmc_remoted_state" = absent ] ||
+        [ "$_wmc_apid_state" = absent ]; then
         if [ ! -e "$_wmc_ca_dir/root-ca.key" ] && [ ! -L "$_wmc_ca_dir/root-ca.key" ]; then
             _wmc_error 'a manager certificate is missing and the shared CA has no private key; stage a pre-issued pair'
             return 1
         fi
+    fi
+    if [ "$_wmc_indexer_state" = absent ] || [ "$_wmc_remoted_state" = absent ] ||
+        [ "$_wmc_apid_state" = absent ]; then
         _wmc_node=$(_wmc_node_name) || return 1
     fi
 
-    if [ "$_wmc_indexer_state" = absent ] || [ "$_wmc_remoted_state" = absent ]; then
+    if [ "$_wmc_indexer_state" = absent ] || [ "$_wmc_remoted_state" = absent ] ||
+        [ "$_wmc_apid_state" = absent ]; then
         _wmc_base=$(wazuh_base_get_dir) || return 1
         _wmc_stage=$(mktemp -d "$_wmc_base/.manager-sans.XXXXXX") || return 1
         trap 'rm -rf -- "$_wmc_stage"' 0
         trap 'return 130' 1 2 3 15
-        # Resolve BOTH requested inputs before issuing either leaf.
+        # Resolve every requested input before issuing any leaf.
         if [ "$_wmc_indexer_state" = absent ]; then
             _wmc_resolve_manager_sans_to "$_wmc_stage/indexer" || return 1
         fi
         if [ "$_wmc_remoted_state" = absent ]; then
             _wmc_resolve_remoted_sans_to "$_wmc_stage/remoted" || return 1
         fi
+        if [ "$_wmc_apid_state" = absent ]; then
+            _wmc_resolve_apid_sans_to "$_wmc_stage/apid" || return 1
+        fi
         if [ "$_wmc_indexer_state" = absent ]; then
             _wmc_generate_indexer_pair "$_wmc_dir" "$_wmc_ca_dir" "$_wmc_node" \
                 "$_wmc_stage/indexer" "$_wmc_group" "$_wmc_gid" || return 1
         fi
         if [ "$_wmc_remoted_state" = absent ]; then
-            _wmc_generate_remoted_pair "$_wmc_dir" "$_wmc_ca_dir" "$_wmc_node" \
+            _wmc_generate_server_pair remoted Remoted "$_wmc_dir" "$_wmc_ca_dir" "$_wmc_node" \
                 "$_wmc_stage/remoted" "$_wmc_user" "$_wmc_group" \
+                "$_wmc_uid" "$_wmc_gid" || return 1
+        fi
+        if [ "$_wmc_apid_state" = absent ]; then
+            _wmc_generate_server_pair apid 'Server API' "$_wmc_dir" "$_wmc_ca_dir" "$_wmc_node" \
+                "$_wmc_stage/apid" "$_wmc_user" "$_wmc_group" \
                 "$_wmc_uid" "$_wmc_gid" || return 1
         fi
     fi

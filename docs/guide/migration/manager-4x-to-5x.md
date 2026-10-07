@@ -160,19 +160,20 @@ They matter twice in this procedure: the [migration tool](#1-back-up-the-4x-mana
 [Step 3](#api-users-roles-and-policies) replaces both with the 4.x ones. Delete the file once every
 component is installed and running, not before.
 
-**The certificates.** Two pairs, both leaves of one `root-ca.pem`: `remoted.pem`/`remoted-key.pem`
+**The certificates.** Three pairs, all leaves of one `root-ca.pem`: `remoted.pem`/`remoted-key.pem`
 for the agent listener on `1517` and `wazuh-manager-authd` on `1515`, and
-`indexer-connector.pem`/`indexer-connector-key.pem`, the client certificate presented to the indexer.
+`indexer-connector.pem`/`indexer-connector-key.pem`, the client certificate presented to the indexer, and
+`apid.pem`/`apid-key.pem`, the certificate of the Server API on `55000`.
 The install decides what to do about them from what it finds in `/etc/wazuh/ca` and in `etc/certs`
 ([What the install does](../../ref/getting-started/credentials.md#what-the-install-does) has every
 case). For a migration there are three choices:
 
-- **Nothing in either place.** The manager mints a bootstrap CA on this host and issues both pairs
+- **Nothing in either place.** The manager mints a bootstrap CA on this host and issues the three pairs
   from it. Enough for a single manager; the CA it mints is the one the fleet will pin.
 - **A CA with its key in `/etc/wazuh/ca`** (`root-ca.pem` and `root-ca.key`, with the owners and
-  modes that page lists, or the install refuses it and issues nothing). The install issues both pairs
+  modes that page lists, or the install refuses it and issues nothing). The install issues the three pairs
   from that CA.
-- **Both pairs and their `root-ca.pem` in `etc/certs`, issued elsewhere.** The install uses them as
+- **The three pairs and their `root-ca.pem` in `etc/certs`, issued elsewhere.** The install uses them as
   they are and issues nothing.
 
 A cluster must give every node the same CA, through either of the last two, because certificates are
@@ -186,7 +187,7 @@ installer sets the ownership each daemon needs:
 ```bash
 sudo install -d -m 1770 -o root -g root /var/wazuh-manager/etc/certs
 sudo install -m 0640 -o root -g root root-ca.pem indexer-connector.pem indexer-connector-key.pem \
-    remoted.pem remoted-key.pem /var/wazuh-manager/etc/certs/
+    remoted.pem remoted-key.pem apid.pem apid-key.pem /var/wazuh-manager/etc/certs/
 ```
 
 With no CA directory the install still prints `the manager has no TLS certificates and this install
@@ -209,8 +210,11 @@ Two requirements come from the fleet rather than from whoever signs, and hold in
   back up `/etc/wazuh/ca` before anything else; the manager itself does not need it after the
   install.
 
-The API listener on `55000` is the exception to all of this: `wazuh-manager-apid` issues its own
-self-signed certificate on first start and needs nothing from you.
+`wazuh-manager-apid` generates no certificate of its own: if `https.enabled` is on and its pair is
+missing, it logs error `2003` in `logs/api.log` and does not start. A client of the API trusts
+`root-ca.pem` and verifies any name in its certificate; the one the install issues carries
+`WAZUH_MANAGER_APID_CERT_SANS` or, when unset, the node's discovered names and addresses (and `localhost` in
+either case).
 
 When the install issued nothing, the manager has no listener pair and refuses to start, before any
 daemon runs, with the configuration validator's verdict:

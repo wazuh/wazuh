@@ -55,7 +55,7 @@ fixture() {
 
 if [ "${1-}" = --case ]; then
     # Unset inherited production selectors. These assignments are test-only.
-    unset WAZUH_CA_DIR WAZUH_MANAGER_CERT_SANS WAZUH_MANAGER_REMOTED_CERT_SANS
+    unset WAZUH_CA_DIR WAZUH_MANAGER_CERT_SANS WAZUH_MANAGER_REMOTED_CERT_SANS WAZUH_MANAGER_APID_CERT_SANS
     export WAZUH_BASE_DIR="$WAZUH_TEST_ROOT/$2/nested/base"
     export WAZUH_MANAGER_HOME="$WAZUH_TEST_ROOT/$2/manager"
     unset WAZUH_MANAGER_CERT_DIR
@@ -63,6 +63,7 @@ if [ "${1-}" = --case ]; then
     export WAZUH_MANAGER_NODE_NAME=test-manager
     export WAZUH_MANAGER_CERT_SANS='DNS:connector.test,IP:192.0.2.10'
     export WAZUH_MANAGER_REMOTED_CERT_SANS='DNS:agents.test,IP:192.0.2.11,IP:2001:db8::11'
+    export WAZUH_MANAGER_APID_CERT_SANS='DNS:api.test,IP:192.0.2.12'
     if [ "${TEST_PIPEFAIL-0}" = 1 ]; then set -o pipefail; fi
     . "$WAZUH_SHARED_HELPER_DIR/wazuh-credentials.sh"
     . "$WAZUH_HELPER_DIR/wazuh-manager-certificates.sh"
@@ -227,14 +228,31 @@ if [ "${1-}" = --case ]; then
             [ ! -e "$dir/root-ca.key" ]
             eq "$(stat -c %a "$dir")" 1770 directory-mode
             eq "$(stat -c %a "$WAZUH_MANAGER_HOME")" 750 parent-mode
-            for f in root-ca.pem indexer-connector.pem indexer-connector-key.pem remoted.pem remoted-key.pem; do
+            for f in root-ca.pem indexer-connector.pem indexer-connector-key.pem remoted.pem remoted-key.pem apid.pem apid-key.pem; do
                 eq "$(stat -c %a "$dir/$f")" 640 mode
             done
             eq "$(grep -c 'BEGIN CERTIFICATE' "$dir/remoted.pem")" 2 chain
             openssl verify -purpose sslclient -CAfile "$dir/root-ca.pem" "$dir/indexer-connector.pem"
             openssl verify -purpose sslserver -verify_hostname agents.test -CAfile "$dir/root-ca.pem" "$dir/remoted.pem"
+            # Server API pair: remoted's profile -- leaf followed by the CA, CN=<node>, server EKU,
+            # notBefore backdated a day, ten years -- with its own SANs.
+            eq "$(grep -c 'BEGIN CERTIFICATE' "$dir/apid.pem")" 2 apid-chain
+            openssl verify -purpose sslserver -verify_hostname api.test -CAfile "$dir/root-ca.pem" "$dir/apid.pem"
+            openssl verify -purpose sslserver -verify_hostname localhost -CAfile "$dir/root-ca.pem" "$dir/apid.pem"
+            openssl verify -purpose sslserver -verify_ip 192.0.2.12 -CAfile "$dir/root-ca.pem" "$dir/apid.pem"
+            reject openssl verify -purpose sslserver -verify_hostname agents.test -CAfile "$dir/root-ca.pem" "$dir/apid.pem"
+            reject openssl verify -purpose sslserver -verify_hostname api.test -CAfile "$dir/root-ca.pem" "$dir/remoted.pem"
+            eq "$(openssl x509 -in "$dir/apid.pem" -noout -subject)" \
+                "$(openssl x509 -in "$dir/remoted.pem" -noout -subject)" apid-subject-as-remoted
+            case $(openssl x509 -in "$dir/apid.pem" -noout -subject) in *'CN = test-manager'*) ;; *) fail 'apid CN is not the node name' ;; esac
+            text=$(LC_ALL=C openssl x509 -in "$dir/apid.pem" -noout -text)
+            case $text in *'CA:FALSE'*) ;; *) fail 'apid lacks CA:FALSE' ;; esac
+            case $text in *'TLS Web Server Authentication'*) ;; *) fail 'apid lacks serverAuth' ;; esac
+            openssl x509 -in "$dir/apid.pem" -noout -checkend $((3649*86400)) >/dev/null || fail 'apid expires before ~10 years'
+            not_before=$(date -u -d "$(openssl x509 -in "$dir/apid.pem" -noout -startdate | cut -d= -f2)" +%s)
+            [ "$not_before" -le "$(( $(date -u +%s) - 23*3600 ))" ] || fail 'apid notBefore is not backdated'
             before=$(sha256sum "$dir"/*.pem)
-            WAZUH_MANAGER_REMOTED_CERT_SANS='' wazuh_manager_certificates_ensure
+            WAZUH_MANAGER_REMOTED_CERT_SANS='' WAZUH_MANAGER_APID_CERT_SANS='' wazuh_manager_certificates_ensure
             eq "$(sha256sum "$dir"/*.pem)" "$before" manager-idempotence
             mv "$ca/root-ca.key" "$ca/key.saved"
             wazuh_manager_certificates_ensure
@@ -323,6 +341,151 @@ if [ "${1-}" = --case ]; then
             reject wazuh_manager_certificates_ensure
             [ ! -e "$ca/root-ca.pem" ]
             [ ! -e "$ca/root-ca.key" ]
+            # A fresh base whose only manager material is a Server API certificate: still no new CA.
+            export WAZUH_BASE_DIR="$WAZUH_TEST_ROOT/$2/second/base"
+            export WAZUH_MANAGER_HOME="$WAZUH_TEST_ROOT/$2/second/manager"
+            ca=$(wazuh_ca_get_dir)
+            mkdir -p "$WAZUH_MANAGER_HOME/etc/certs"
+            openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 30 -subj /CN=stray-apid \
+                -keyout "$WAZUH_TEST_ROOT/$2/stray-apid.key" \
+                -out "$WAZUH_MANAGER_HOME/etc/certs/apid.pem" 2>/dev/null
+            reject wazuh_manager_certificates_ensure
+            [ ! -e "$ca/root-ca.pem" ]
+            ;;
+        apid_mode)
+            # The Server API pair belongs to the service identity, not root: use a non-root one.
+            export WAZUH_MANAGER_USER=nobody
+            WAZUH_MANAGER_GROUP=$(id -gn nobody)
+            export WAZUH_MANAGER_GROUP
+            fixture
+            dir="$WAZUH_MANAGER_HOME/etc/certs"
+            want="$(id -u nobody):$(getent group "$(id -gn nobody)" | cut -d: -f3):640"
+            for f in apid.pem apid-key.pem; do
+                eq "$(stat -c '%u:%g:%a' "$dir/$f")" "$want" "apid owner/mode $f"
+            done
+            chmod 0600 "$dir/apid-key.pem"
+            reject wazuh_manager_certificates_validate
+            ;;
+        apid_partial)
+            fixture
+            dir="$WAZUH_MANAGER_HOME/etc/certs"
+            before=$(sha256sum "$dir/apid.pem")
+            rm "$dir/apid-key.pem"
+            out=$(wazuh_manager_certificates_ensure 2>&1) && fail 'expected failure'
+            case $out in *'partial Server API certificate pair; refusing to modify it'*) ;; *) fail "apid partial message: $out" ;; esac
+            eq "$(sha256sum "$dir/apid.pem")" "$before" apid-cert-untouched
+            [ ! -e "$dir/apid-key.pem" ]
+            ;;
+        apid_anchor_only)
+            fixture
+            dir="$WAZUH_MANAGER_HOME/etc/certs"
+            ca=$(wazuh_ca_get_dir)
+            rm "$dir/apid.pem" "$dir/apid-key.pem"
+            mv "$ca/root-ca.key" "$ca/key.saved"
+            before=$(sha256sum "$dir"/indexer-connector*.pem "$dir"/remoted*.pem)
+            out=$(wazuh_manager_certificates_ensure 2>&1) && fail 'expected failure'
+            case $out in *'stage a pre-issued pair'*) ;; *) fail "anchor-only message: $out" ;; esac
+            eq "$(sha256sum "$dir"/indexer-connector*.pem "$dir"/remoted*.pem)" "$before" other-pairs-untouched
+            [ ! -e "$dir/apid.pem" ]
+            [ ! -e "$dir/apid-key.pem" ]
+            ;;
+        apid_only_missing)
+            fixture
+            dir="$WAZUH_MANAGER_HOME/etc/certs"
+            others=$(sha256sum "$dir/indexer-connector.pem" "$dir/indexer-connector-key.pem" "$dir/remoted.pem" "$dir/remoted-key.pem")
+            rm "$dir/apid.pem" "$dir/apid-key.pem"
+            # Only the Server API pair is reissued, with the node name and its own SANs: a Remoted
+            # setting that is now invalid is not even read.
+            WAZUH_MANAGER_REMOTED_CERT_SANS='' wazuh_manager_certificates_ensure
+            [ -f "$dir/apid.pem" ]
+            [ -f "$dir/apid-key.pem" ]
+            eq "$(sha256sum "$dir/indexer-connector.pem" "$dir/indexer-connector-key.pem" "$dir/remoted.pem" "$dir/remoted-key.pem")" \
+                "$others" other-pairs-untouched
+            openssl verify -purpose sslserver -verify_hostname api.test -CAfile "$dir/root-ca.pem" "$dir/apid.pem"
+            wazuh_manager_certificates_validate
+            # It now needs the node name, like remoted: an invalid one is refused and nothing is issued.
+            rm "$dir/apid.pem" "$dir/apid-key.pem"
+            export WAZUH_MANAGER_NODE_NAME='bad..name'
+            reject wazuh_manager_certificates_ensure
+            [ ! -e "$dir/apid.pem" ]
+            [ ! -e "$dir/apid-key.pem" ]
+            ;;
+        apid_sans)
+            dir="$WAZUH_MANAGER_HOME/etc/certs"
+            # Invalid or explicitly empty: refused before any leaf is issued.
+            for san in '' 'DNS:*.test' 'IP:fe80::1%eth0'; do
+                WAZUH_MANAGER_APID_CERT_SANS=$san
+                export WAZUH_MANAGER_APID_CERT_SANS
+                reject wazuh_manager_certificates_ensure
+                [ ! -e "$dir/remoted.pem" ]
+                [ ! -e "$dir/apid.pem" ]
+            done
+            out=$(WAZUH_MANAGER_APID_CERT_SANS='' wazuh_manager_apid_sans 2>&1) && fail 'expected failure'
+            case $out in *'WAZUH_MANAGER_APID_CERT_SANS is explicitly empty'*) ;; *) fail "apid empty message: $out" ;; esac
+            # The credentials file supplies it; the process environment wins over the file.
+            unset WAZUH_MANAGER_APID_CERT_SANS
+            wazuh_env_set WAZUH_MANAGER_APID_CERT_SANS 'DNS:file-api.test'
+            eq "$(wazuh_manager_apid_sans | head -1)" DNS:file-api.test apid-san-file
+            export WAZUH_MANAGER_APID_CERT_SANS='DNS:process-api.test'
+            eq "$(wazuh_manager_apid_sans | head -1)" DNS:process-api.test apid-san-environment
+            # Unset: discovered like Remoted's list, never inherited from WAZUH_MANAGER_REMOTED_CERT_SANS.
+            wazuh_env_unset WAZUH_MANAGER_APID_CERT_SANS
+            unset WAZUH_MANAGER_APID_CERT_SANS
+            ip() {
+                printf '%s\n' \
+                    '1: lo inet 127.0.0.1/8 scope host lo' \
+                    '2: eth0 inet 192.0.2.10/24 scope global eth0' \
+                    '3: eth1 inet 198.51.100.12/24 scope global eth1'
+            }
+            sans=$(wazuh_manager_apid_sans)
+            for expected in DNS:test-manager DNS:localhost IP:127.0.0.1 IP:192.0.2.10 IP:198.51.100.12; do
+                eq "$(printf '%s\n' "$sans" | grep -Fxc "$expected")" 1 "apid discovery $expected"
+            done
+            if printf '%s\n' "$sans" | grep -Fxq DNS:agents.test; then
+                fail 'apid SANs inherited WAZUH_MANAGER_REMOTED_CERT_SANS'
+            fi
+            fixture
+            openssl verify -purpose sslserver -verify_ip 198.51.100.12 -CAfile "$dir/root-ca.pem" "$dir/apid.pem"
+            reject openssl verify -purpose sslserver -verify_hostname agents.test -CAfile "$dir/root-ca.pem" "$dir/apid.pem"
+            # Discovery failing names the Server API setting, and nothing of the missing pair is issued.
+            rm "$dir/apid.pem" "$dir/apid-key.pem"
+            ip() { return 1; }
+            out=$(wazuh_manager_certificates_ensure 2>&1) && fail 'expected failure'
+            case $out in *'supply WAZUH_MANAGER_APID_CERT_SANS'*) ;; *) fail "apid discovery message: $out" ;; esac
+            [ ! -e "$dir/apid.pem" ]
+            [ ! -e "$dir/apid-key.pem" ]
+            ;;
+        apid_key_mismatch)
+            fixture
+            dir="$WAZUH_MANAGER_HOME/etc/certs"
+            mv "$dir/apid-key.pem" "$dir/apid-key.original"
+            openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$dir/apid-key.pem" >/dev/null 2>&1
+            chown "$WAZUH_MANAGER_USER":"$WAZUH_MANAGER_GROUP" "$dir/apid-key.pem"
+            chmod 0640 "$dir/apid-key.pem"
+            before=$(sha256sum "$dir/apid-key.pem")
+            out=$(wazuh_manager_certificates_validate 2>&1) && fail 'expected failure'
+            case $out in *apid.pem*) ;; *) fail "validate does not name apid.pem: $out" ;; esac
+            reject wazuh_manager_certificates_ensure
+            eq "$(sha256sum "$dir/apid-key.pem")" "$before" apid-key-no-regeneration
+            ;;
+        apid_foreign_chain)
+            # A complete apid pair that does not chain to the manager CA (self-signed, matching key,
+            # right owner and mode) is refused and never replaced.
+            fixture
+            dir="$WAZUH_MANAGER_HOME/etc/certs"
+            rm "$dir/apid.pem" "$dir/apid-key.pem"
+            openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 30 \
+                -subj '/CN=wazuh.com' -addext 'subjectAltName = DNS:localhost' \
+                -addext 'extendedKeyUsage = serverAuth' -addext 'basicConstraints = critical,CA:FALSE' \
+                -keyout "$dir/apid-key.pem" -out "$dir/apid.pem" >/dev/null 2>&1
+            chown "$WAZUH_MANAGER_USER":"$WAZUH_MANAGER_GROUP" "$dir/apid.pem" "$dir/apid-key.pem"
+            chmod 0640 "$dir/apid.pem" "$dir/apid-key.pem"
+            before=$(sha256sum "$dir/apid.pem" "$dir/apid-key.pem")
+            out=$(wazuh_manager_certificates_validate 2>&1) && fail 'expected failure'
+            case $out in *apid.pem*) ;; *) fail "validate does not name apid.pem: $out" ;; esac
+            out=$(wazuh_manager_certificates_ensure 2>&1) && fail 'expected failure'
+            case $out in *apid.pem*) ;; *) fail "ensure does not name apid.pem: $out" ;; esac
+            eq "$(sha256sum "$dir/apid.pem" "$dir/apid-key.pem")" "$before" apid-foreign-not-replaced
             ;;
         key_mismatch)
             fixture
@@ -383,7 +546,7 @@ test_log="$WAZUH_TEST_ROOT/test.log"
 test_fail=0
 test_count=0
 printf 'Test workspace: %s\n' "$WAZUH_TEST_ROOT"
-for test_case in import defaults env operator malformed no_newline precedence invalid_paths permissions symlinks concurrent_env passwords ca manager external_missing invalid_sans san_precedence interfaces discovery_failure concurrent_manager ca_missing_existing key_mismatch cert_symlink stamped_bundle; do
+for test_case in import defaults env operator malformed no_newline precedence invalid_paths permissions symlinks concurrent_env passwords ca manager external_missing invalid_sans san_precedence interfaces discovery_failure concurrent_manager ca_missing_existing key_mismatch cert_symlink stamped_bundle apid_mode apid_partial apid_anchor_only apid_only_missing apid_sans apid_key_mismatch apid_foreign_chain; do
     test_count=$((test_count+1))
     printf '\nCASE %s\n' "$test_case" >>"$test_log"
     if "$TEST_SHELL" -eu "$TEST_SCRIPT_DIR/test-wazuh-helpers.sh" --case "$test_case" >>"$test_log" 2>&1; then
