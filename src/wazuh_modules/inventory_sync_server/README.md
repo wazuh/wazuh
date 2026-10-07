@@ -348,17 +348,23 @@ sequenceDiagram
 
 Runs entirely on the connection strand — CPU-only, O(body bytes), no I/O — in a fixed order so
 every rejection is deterministic: FlatBuffers verifier → root must be `FullSession` → shape
-(start present, module non-empty) → identity (agent id NUMERICALLY equal to the authenticated
-header value; cluster name byte-equal to the manager's → `403`) → mode × payload matrix →
+(start present, module non-empty) → identity (the claimed agent id byte-equal to the authenticated
+header value — both must be canonical, `400` otherwise; cluster name byte-equal to the manager's →
+`403`) → mode × payload matrix →
 per-payload rules (`SyncData` needs ≥ 1 value, `Cleans` ≥ 1 item, `ChecksumModule` an allowlisted
 index and a checksum). The output is a `ValidatedSession`: small `Start` fields are OWNED copies,
 while the payload stays a pointer into the request body — whoever carries it across threads must
 keep the `HttpRequest` alive, which is exactly what a pipeline `Item` does (and holding the
 request also holds its in-flight byte reservation).
 
-`padAgentId()` left-pads to 3 characters — the historical `wazuh.agent.id` form every document
-`_id` and every query uses. `isNumericAgentId()` is shared with the two `_internal` endpoints, which
-validate the `agent_id` of their BODY the same way.
+An agent id is a **string**: `001` is agent 001, and `1`, `01` or `0001` are not other spellings of
+it. `common/agentId.hpp` defines the one canonical spelling — digits that fit a 32-bit unsigned value,
+zero-padded to at least three characters (`001`, `1000`) — by delegating to remoted's own
+`jwt/canonicalAgentId.hpp`, the rule its token verifier enforces on `kid`/`sub`. Every document `_id`,
+`wazuh.agent.id` and query uses that form, and the session stores the AUTHENTICATED id, never the
+claim. `isCanonicalAgentId()` gates every `X-Wazuh-Agent-Id` (`/stateful`, `/stats`, `/config`) and
+the claim compared against it; `canonicalAgentId()` normalizes the `agent_id` of the two `_internal`
+endpoints' BODY (`7`, `"7"`, `"0007"` → `007`) and rejects anything out of range.
 
 ### The pipeline (`sync/syncPipeline.*`, `sync/sessionProcessor.*`)
 

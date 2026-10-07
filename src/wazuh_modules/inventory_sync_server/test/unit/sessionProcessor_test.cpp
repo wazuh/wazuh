@@ -50,7 +50,7 @@ namespace
     Prepared prepare(std::string body)
     {
         Prepared prepared {std::move(body), {}};
-        auto result = invsync::sync::validateFullSession(prepared.body, "1", CLUSTER);
+        auto result = invsync::sync::validateFullSession(prepared.body, "001", CLUSTER);
         auto* session = std::get_if<ValidatedSession>(&result);
         if (session == nullptr)
         {

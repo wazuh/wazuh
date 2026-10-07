@@ -11,6 +11,7 @@
 
 #include "statsEndpoint.hpp"
 
+#include "common/agentId.hpp"
 #include "common/jsonNestingDepth.hpp"
 #include "loggerHelper.h"
 #include "timeHelper.h"
@@ -120,6 +121,14 @@ namespace invsync::endpoints::stats
             if (agentIdIt == request->headers.end() || agentIdIt->second.empty())
             {
                 responder->send(badRequest("Missing agent id header"));
+                return;
+            }
+            // It is also the document id and `wazuh.agent.id`, so it must be the one canonical spelling
+            // the whole-agent deletion matches: anything else would index a document no deletion
+            // reaches. remoted only ever sends that form, so this rejects a bypassing caller.
+            if (!invsync::common::isCanonicalAgentId(agentIdIt->second))
+            {
+                responder->send(badRequest("Agent id header must be a canonical agent id"));
                 return;
             }
 

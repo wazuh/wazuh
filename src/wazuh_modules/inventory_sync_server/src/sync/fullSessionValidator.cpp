@@ -11,13 +11,10 @@
 
 #include "sync/fullSessionValidator.hpp"
 
+#include "common/agentId.hpp"
 #include "sync/stateIndexAllowlist.hpp"
 
 #include <flatbuffers/flatbuffers.h>
-
-#include <algorithm>
-#include <cctype>
-#include <cstdlib>
 
 namespace
 {
@@ -60,22 +57,6 @@ namespace
 namespace invsync::sync
 {
 
-    bool isNumericAgentId(std::string_view value)
-    {
-        return !value.empty() &&
-               std::all_of(value.begin(), value.end(), [](unsigned char c) { return std::isdigit(c) != 0; });
-    }
-
-    std::string padAgentId(std::string_view agentId)
-    {
-        std::string padded {agentId};
-        if (padded.length() < 3)
-        {
-            padded.insert(0, 3 - padded.length(), '0');
-        }
-        return padded;
-    }
-
     ValidationResult validateFullSession(std::string_view body,
                                          std::string_view authenticatedAgentId,
                                          const std::string& managerClusterName)
@@ -112,14 +93,19 @@ namespace invsync::sync
             return badRequest("Start is missing the module name");
         }
 
-        // 4. Identity. The header carries the id remoted AUTHENTICATED (bearer token); the session
-        // claims one. Compared as integers so leading zeros cannot defeat the check.
+        // 4. Identity. The header carries the id remoted AUTHENTICATED (bearer token), always in its
+        // canonical spelling; the session claims one. An agent id is a string: the claim must be that
+        // same text, byte for byte. Comparing numbers instead let "0001" pass for "001" and then index
+        // documents under an id no agent has, which the agent's deletion never matches. A claim that
+        // is not a canonical id (not digits, out of range, or another spelling such as "0001") is
+        // malformed input, 400; a well-formed id other than the authenticated one is spoofing, 403.
         const auto claimedAgentId = viewOf(start->agentid());
-        if (!isNumericAgentId(claimedAgentId) || !isNumericAgentId(authenticatedAgentId))
+        if (!invsync::common::isCanonicalAgentId(claimedAgentId) ||
+            !invsync::common::isCanonicalAgentId(authenticatedAgentId))
         {
-            return badRequest("Agent id must be numeric");
+            return badRequest("Agent id must be a canonical agent id");
         }
-        if (std::atoi(std::string {authenticatedAgentId}.c_str()) != std::atoi(std::string {claimedAgentId}.c_str()))
+        if (claimedAgentId != authenticatedAgentId)
         {
             return forbidden("identity mismatch");
         }
@@ -202,7 +188,9 @@ namespace invsync::sync
         validated.payloadType = payloadType;
         validated.isVD = start->option() == fb::Option_VDFirst || start->option() == fb::Option_VDSync;
         validated.moduleName = std::string {viewOf(start->module_())};
-        validated.agentId = padAgentId(claimedAgentId);
+        // The authenticated id, not the claim: equal by now, but the stored identity must never be
+        // one the agent chose.
+        validated.agentId = std::string {authenticatedAgentId};
         validated.agentName = std::string {viewOf(start->agentname())};
         validated.agentVersion = std::string {viewOf(start->agentversion())};
         validated.architecture = std::string {viewOf(start->architecture())};

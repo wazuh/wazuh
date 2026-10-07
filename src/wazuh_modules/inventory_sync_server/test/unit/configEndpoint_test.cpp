@@ -429,6 +429,21 @@ TEST(ConfigEndpointTest, AnEmptyAgentIdHeaderIsRejected)
     EXPECT_EQ(400, response.status);
 }
 
+/// The header is the document id and `wazuh.agent.id`, so it must be the one canonical spelling the
+/// whole-agent deletion matches. remoted only ever sends that form; a caller that bypasses it with
+/// another spelling, or an id out of range, would index a document no deletion reaches.
+TEST(ConfigEndpointTest, ANonCanonicalAgentIdHeaderIsRejected)
+{
+    for (const auto* agentId : {"1", "07", "0007", "agent-one", "4294967297"})
+    {
+        auto connector = std::make_shared<FakeAsyncConnector>();
+        const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", agentId), connector);
+
+        EXPECT_EQ(400, response.status) << "header '" << agentId << "'";
+        EXPECT_TRUE(connector->indexed.empty()) << "header '" << agentId << "'";
+    }
+}
+
 // A null request must not crash the handler: the transport never passes one today, but a null deref
 // here would be a daemon crash.
 TEST(ConfigEndpointTest, NullRequestIsToleratedAndStillAnswered)

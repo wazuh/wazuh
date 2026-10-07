@@ -79,7 +79,7 @@ fail the indexer's own `index.mapping.depth.limit`, which is much lower.
 
 | Header | Required | Meaning |
 |---|---|---|
-| `X-Wazuh-Agent-Id` | Yes for `/stateful`, `/stats` and `/config` | The agent identity remoted authenticated. Missing or empty is answered `400` on all three. On `/stateful` it must also be numeric (`400` otherwise) and the session's claimed `Start.agentid` must equal it numerically, or the answer is `403`. `/stats` and `/config` use it verbatim as `wazuh.agent.id` and as the document id. **Ignored by both `_internal` routes**, which read their target from the body — their caller sends no headers of its own. |
+| `X-Wazuh-Agent-Id` | Yes for `/stateful`, `/stats` and `/config` | The agent identity remoted authenticated. Missing or empty is answered `400` on all three. It must be a canonical agent id — decimal digits that fit a 32-bit unsigned value, zero-padded to at least three characters (`001`, `1000`), the only form remoted forwards — or the answer is `400`. On `/stateful` the session's claimed `Start.agentid` must be that same string: another spelling of the same number (`1`, `0001`) is `400`, another agent's id is `403`. All three routes use it verbatim as `wazuh.agent.id` and as the document id. **Ignored by both `_internal` routes**, which read their target from the body — their caller sends no headers of its own. |
 | `Content-Type` | No | Recorded, not interpreted. |
 
 ## Enrichment (`/stats` and `/config`)
@@ -165,7 +165,9 @@ Its caller is the Task Manager's dispatcher, executing a durable `agent_delete_i
 authd created after removing the agent from `client.keys`. The agent id travels in the **body**, not
 in `X-Wazuh-Agent-Id`: the dispatcher POSTs a task row's payload verbatim and sets no headers of its
 own, so the header is ignored even when present. Both `{"agent_id":"7"}` and `{"agent_id":7}` are
-accepted.
+accepted, with or without leading zeros: the id is normalized to its canonical spelling (`007`), the
+one every document carries. A value that is not digits or does not fit a 32-bit unsigned value is
+`400`.
 
 The deletion has **two halves, one per writer**, because a document can only be deleted in order by
 the connector that writes it:

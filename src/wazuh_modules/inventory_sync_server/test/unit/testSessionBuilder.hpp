@@ -32,7 +32,7 @@ namespace invsync::test
         std::string moduleName {"syscollector"};
         fb::Mode mode {fb::Mode_ModuleDelta};
         fb::Option option {fb::Option_Sync};
-        std::string agentId {"1"};
+        std::string agentId {"001"};
         std::string agentName {"agent-one"};
         std::string agentVersion {"v5.0.0"};
         std::string architecture {"x86_64"};
