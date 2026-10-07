@@ -221,6 +221,12 @@ int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, EVP_MD_CTX ** c, os_sh
     return (0);
 }
 
+void OS_SHA1_Stream_Bytes(EVP_MD_CTX *c, const char * buf, size_t len) {
+    if (buf && len > 0) {
+        EVP_DigestUpdate(c, buf, len);
+    }
+}
+
 void OS_SHA1_Stream(EVP_MD_CTX *c, os_sha1 output, char * buf) {
     if(buf) {
         size_t n = strlen(buf);

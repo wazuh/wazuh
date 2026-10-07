@@ -3006,6 +3006,19 @@ bool w_get_hash_context(logreader *lf, EVP_MD_CTX ** context, int64_t position) 
     return true;
 }
 
+void w_hash_read_line(logreader *lf, EVP_MD_CTX *context, const char *line, int64_t *position) {
+
+    int64_t line_end = w_ftell(lf->fp);
+    size_t line_len = strlen(line);
+
+    if (*position >= 0 && line_end > *position) {
+        line_len = (size_t) (line_end - *position);
+    }
+
+    OS_SHA1_Stream_Bytes(context, line, line_len);
+    *position = line_end;
+}
+
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 void w_macos_release_log_show(void) {
 

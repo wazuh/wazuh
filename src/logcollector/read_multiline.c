@@ -46,13 +46,17 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
             if (is_valid_context_file) {
-                OS_SHA1_Stream(context, NULL, str);
+                OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
             }
             str[rbytes - 1] = '\0';
 
             if ((int64_t)strlen(str) != rbytes - 1)
             {
                 mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
+                /* Keep the rewind point at the start of a group still being collected */
+                if (buffer[0] == '\0') {
+                    current_position = offset + rbytes;
+                }
                 continue;
             }
         }
@@ -63,7 +67,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         else if (rbytes == OS_MAX_LOG_SIZE - 1) {
             /* Message size > maximum allowed */
             if (is_valid_context_file) {
-                OS_SHA1_Stream(context, NULL, str);
+                OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
             }
             __ms = 1;
         } else if (feof(lf->fp)) {
@@ -129,7 +133,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
                 }
 
                 if (is_valid_context_file) {
-                    OS_SHA1_Stream(context, NULL, str);
+                    OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
                 }
 
                 /* Get the last occurrence of \n */
