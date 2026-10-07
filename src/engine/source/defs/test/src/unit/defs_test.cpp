@@ -1,3 +1,5 @@
+#include <functional>
+
 #include <defs/defs.hpp>
 #include <gtest/gtest.h>
 
@@ -444,4 +446,115 @@ TEST(DefsBuilderTest, Builder)
     // Test that builder handles errors properly
     auto invalidDefinitions = json::Json(R"([])");
     ASSERT_THROW(builder.build(invalidDefinitions), std::runtime_error);
+}
+
+namespace
+{
+using Defs = defs::Definitions;
+
+// {"d0": "<refs to d1>", ..., "d<levels-1>": "<refs to d<levels>>", "d<levels>": "x"}, each level holding `width` refs
+json::Json nestedDefinitions(std::size_t levels, std::size_t width)
+{
+    std::string jsonStr = "{";
+    for (std::size_t i = 0; i < levels; ++i)
+    {
+        jsonStr += "\"d" + std::to_string(i) + "\":\"";
+        for (std::size_t w = 0; w < width; ++w)
+        {
+            jsonStr += "$d" + std::to_string(i + 1);
+        }
+        jsonStr += "\",";
+    }
+    jsonStr += "\"d" + std::to_string(levels) + "\":\"x\"}";
+    return json::Json(jsonStr.c_str());
+}
+
+std::string repeat(std::string_view piece, std::size_t times)
+{
+    std::string out;
+    out.reserve(piece.size() * times);
+    for (std::size_t i = 0; i < times; ++i)
+    {
+        out += piece;
+    }
+    return out;
+}
+
+void expectThrowWith(const std::function<void()>& fn, std::string_view text)
+{
+    try
+    {
+        fn();
+        FAIL() << "expected an exception containing: " << text;
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_NE(std::string(e.what()).find(text), std::string::npos) << e.what();
+    }
+}
+} // namespace
+
+TEST(DefsLimitsTest, DepthAtLimitBuilds)
+{
+    auto def = Defs(nestedDefinitions(Defs::MAX_DEPTH - 1, 1));
+    ASSERT_EQ(def.replace("$d0"), "x");
+}
+
+TEST(DefsLimitsTest, DepthOverLimitThrows)
+{
+    expectThrowWith([] { Defs(nestedDefinitions(Defs::MAX_DEPTH, 1)); }, "nested deeper than the limit (256)");
+}
+
+TEST(DefsLimitsTest, DoublingAtSizeLimitBuilds)
+{
+    // d0 expands to 2^16 bytes == MAX_EXPANDED_SIZE
+    auto def = Defs(nestedDefinitions(16, 2));
+    ASSERT_EQ(def.replace("$d0").size(), Defs::MAX_EXPANDED_SIZE);
+}
+
+TEST(DefsLimitsTest, DoublingOverSizeLimitThrows)
+{
+    expectThrowWith([] { Defs(nestedDefinitions(17, 2)); }, "expands beyond the size limit (65536 bytes)");
+}
+
+TEST(DefsLimitsTest, ExponentialBlocksFailFast)
+{
+    // Unbounded, these would expand to 2^34 and 4^20 bytes
+    expectThrowWith([] { Defs(nestedDefinitions(34, 2)); }, "expands beyond the size limit");
+    expectThrowWith([] { Defs(nestedDefinitions(20, 4)); }, "expands beyond the size limit");
+}
+
+TEST(DefsLimitsTest, TotalExpansionOverLimitThrows)
+{
+    // Each "b<i>" expands to 60 KiB: 10 fit in 1 MiB, 20 do not
+    const auto build = [](std::size_t count)
+    {
+        std::string jsonStr = R"({"a":")" + std::string(1024, 'x') + "\"";
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            jsonStr += ",\"b" + std::to_string(i) + "\":\"" + repeat("$a", 60) + "\"";
+        }
+        jsonStr += "}";
+        return Defs(json::Json(jsonStr.c_str()));
+    };
+
+    ASSERT_NO_THROW(build(10));
+    expectThrowWith([&] { build(20); }, "total size limit (1048576 bytes)");
+}
+
+TEST(DefsLimitsTest, ReplaceExpansionOverLimitThrows)
+{
+    const auto jsonStr = R"({"a":")" + std::string(32 * 1024, 'x') + "\"}";
+    auto def = Defs(json::Json(jsonStr.c_str()));
+
+    ASSERT_EQ(def.replace(repeat("$a ", 20)).size(), 20 * (32 * 1024 + 1));
+    // The budget is per Definitions object: the 20 above count against it
+    expectThrowWith([&] { def.replace(repeat("$a ", 20)); }, "total size limit");
+}
+
+TEST(DefsLimitsTest, LargeLiteralWithoutReferencesBuilds)
+{
+    const auto jsonStr = R"({"big":")" + std::string(100 * 1024, 'x') + "\"}";
+    auto def = Defs(json::Json(jsonStr.c_str()));
+    ASSERT_EQ(def.replace("$big").size(), 100 * 1024);
 }
