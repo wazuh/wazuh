@@ -2913,6 +2913,72 @@ static HANDLE w_createfile_nofollow_vetted(const char * basedir, const char * fi
     return hFile;
 }
 #else
+// AIX 6.1 lacks O_NOFOLLOW and the *at() calls: it takes the HP-UX walk, with O_NOFOLLOW emulated by an lstat() and
+// fstat() identity check.
+#if (defined(AIX) && !defined(O_NOFOLLOW)) || defined(W_VETTED_TEST_NO_O_NOFOLLOW)
+#define W_VETTED_NO_O_NOFOLLOW
+#undef O_NOFOLLOW
+#define O_NOFOLLOW 0
+#ifndef W_VETTED_NO_AT_WALK
+#define W_VETTED_NO_AT_WALK
+#endif
+#endif
+
+#if defined(AIX) || defined(W_VETTED_NO_O_NOFOLLOW)
+/**
+ * open() without O_NOFOLLOW: lstat() the path, open it, and require the descriptor to match the lstat() identity. O_CREAT
+ * is dropped when the path exists, so a dangling symlink swapped in meanwhile cannot create its target, and a missing
+ * path is only created with O_EXCL.
+ *
+ * @return A descriptor, or -1 on error (sets errno; ELOOP for a symlink, or if the path changed during the open).
+ */
+static int w_open_nofollow_emulated(const char * path, int oflags, mode_t mode) {
+    struct stat listed;
+    struct stat opened;
+    bool existed = lstat(path, &listed) == 0;
+    int saved_errno;
+    int fd;
+
+    if (existed) {
+        if (S_ISLNK(listed.st_mode)) {
+            errno = ELOOP;
+            return -1;
+        }
+
+        oflags &= ~(O_EXCL | O_CREAT);
+    } else if (errno != ENOENT || !(oflags & O_CREAT)) {
+        return -1;
+    } else {
+        oflags |= O_EXCL;
+    }
+
+    if (fd = open(path, oflags, mode), fd < 0) {
+        if (errno == EEXIST) {
+            errno = ELOOP;
+        }
+
+        return -1;
+    }
+
+    if (existed) {
+        if (fstat(fd, &opened) < 0) {
+            saved_errno = errno;
+            close(fd);
+            errno = saved_errno;
+            return -1;
+        }
+
+        if (opened.st_dev != listed.st_dev || opened.st_ino != listed.st_ino) {
+            close(fd);
+            errno = ELOOP;
+            return -1;
+        }
+    }
+
+    return fd;
+}
+#endif
+
 /**
  * Opens @p filename inside @p basedir without following symlinks, and vets the resulting descriptor as
  * a lone regular file — rejecting hard links, FIFOs, devices, and directories — before handing it back.
@@ -2924,7 +2990,7 @@ static HANDLE w_createfile_nofollow_vetted(const char * basedir, const char * fi
  * @param oflags open()/openat() flags; must include O_CLOEXEC | O_NONBLOCK | O_NOCTTY (the last two so
  *               a FIFO cannot block the open and a terminal cannot become the daemon's controlling tty)
  *               on top of whichever of O_RDONLY/O_WRONLY/O_CREAT the caller needs.
- *               O_NOFOLLOW is added here, or emulated on AIX, which does not define it. Deliberately
+ *               O_NOFOLLOW is added here, or emulated where the platform lacks it (AIX 6.1). Deliberately
  *               never includes O_TRUNC: truncating at open time would destroy the target before
  *               anything about it can be checked, which is precisely how a hard link slips through —
  *               it is a regular file, so no file type test can tell it apart. A caller that needs the
@@ -2938,8 +3004,8 @@ static int w_openat_nofollow_vetted(const char * basedir, const char * filename,
     int saved_errno;
     int flags;
 
-#if defined(HPUX) || defined(AIX)
-    // Neither has openat(): open by path. filename is a bare name, so the path stays inside basedir.
+#if defined(HPUX) || defined(AIX) || defined(W_VETTED_NO_O_NOFOLLOW)
+    // None of these has openat(): open by path. filename is a bare name, so the path stays inside basedir.
     char path[PATH_MAX + 1];
 
     if (snprintf(path, sizeof(path), "%s/%s", basedir, filename) >= (int) sizeof(path)) {
@@ -2948,40 +3014,9 @@ static int w_openat_nofollow_vetted(const char * basedir, const char * filename,
     }
 #endif
 
-#ifdef AIX
-    // AIX 6.1 has no O_NOFOLLOW either: refuse a symlink seen by lstat(), then check that the descriptor
-    // is the file lstat() saw, so a symlink swapped in between is caught too.
-    struct stat linkbuf;
-
-    if (lstat(path, &linkbuf) == 0) {
-        if (S_ISLNK(linkbuf.st_mode)) {
-            errno = ELOOP;
-            return -1;
-        }
-
-        // Without O_CREAT, a dangling symlink swapped in meanwhile cannot create its target.
-        if (fd = open(path, oflags & ~O_CREAT, mode), fd < 0) {
-            return -1;
-        }
-
-        if (fstat(fd, &statbuf) < 0) {
-            saved_errno = errno;
-            close(fd);
-            errno = saved_errno;
-            return -1;
-        }
-
-        if (statbuf.st_dev != linkbuf.st_dev || statbuf.st_ino != linkbuf.st_ino) {
-            close(fd);
-            errno = ELOOP;
-            return -1;
-        }
-    } else if (errno == ENOENT && (oflags & O_CREAT)) {
-        // O_EXCL fails on anything created at path meanwhile, a symlink included.
-        if (fd = open(path, oflags | O_EXCL, mode), fd < 0) {
-            return -1;
-        }
-    } else {
+#if defined(AIX) || defined(W_VETTED_NO_O_NOFOLLOW)
+    // O_NOFOLLOW is emulated here: refuse a symlink, and an entry swapped in meanwhile.
+    if (fd = w_open_nofollow_emulated(path, oflags, mode), fd < 0) {
         return -1;
     }
 #elif defined(HPUX)
@@ -3281,7 +3316,8 @@ static int w_clear_nonblock(int fd) {
     return fd;
 }
 
-// HP-UX lacks openat(), fstatat() and readlinkat(); Solaris < 11 lacks only readlinkat() (see w_readlinkat()).
+// HP-UX and AIX 6.1 lack openat(), fstatat() and readlinkat(); Solaris < 11 lacks only readlinkat() (see
+// w_readlinkat()).
 #if !defined(W_VETTED_NO_AT_WALK) && defined(HPUX)
 #define W_VETTED_NO_AT_WALK
 #endif
@@ -3322,8 +3358,8 @@ static void w_fork_child_signals(const sigset_t * previous) {
 #endif
 
 #ifdef W_VETTED_NO_AT_WALK
-// HP-UX has no *at() calls; the walk runs in a forked child, so fchdir() into a held descriptor can stand in for
-// dirfd without changing the daemon's directory.
+// HP-UX and AIX 6.1 have no *at() calls; the walk runs in a forked child, so fchdir() into a held descriptor can
+// stand in for dirfd without changing the daemon's directory.
 #ifndef AT_FDCWD
 #define AT_FDCWD (-100)
 #endif
@@ -3614,10 +3650,13 @@ static int w_open_vetted_walk_fd(const char * path, bool follow_last) {
     struct stat entry_stat;
     struct stat fd_stat;
     struct stat dir_stat;
+#ifdef W_VETTED_NO_O_NOFOLLOW
+    struct stat listed_stat;
+#endif
     uid_t link_uid = 0;
     bool has_link_uid = false;
     int symlinks = 0;
-    int nofollow = O_NOFOLLOW;
+    bool nofollow = true;
     int dirfd;
     int fd = -1;
     int saved_errno;
@@ -3699,7 +3738,7 @@ static int w_open_vetted_walk_fd(const char * path, bool follow_last) {
             // with the process, so what bounds it is the owner check above and the vetting of the final file.
             if (w_is_procfs(dirfd)) {
                 if (*cursor == '\0') {
-                    nofollow = 0;
+                    nofollow = false;
                     break;
                 }
 
@@ -3759,14 +3798,26 @@ static int w_open_vetted_walk_fd(const char * path, bool follow_last) {
                 goto fail;
             }
 
-            // O_NOFOLLOW fails the open if it was swapped to a symlink since fstatat().
+            // O_NOFOLLOW, or the identity check below where it is emulated, rejects an entry swapped to a symlink
+            // since fstatat().
             if (fd = w_open_walk_dir(dirfd, name, O_NOFOLLOW | O_NONBLOCK), fd < 0) {
                 goto fail_swapped;
             }
 
+#ifdef W_VETTED_NO_O_NOFOLLOW
+            listed_stat = entry_stat;
+#endif
+
             if (w_fstat_walk(fd, &entry_stat) < 0) {
                 goto fail;
             }
+
+#ifdef W_VETTED_NO_O_NOFOLLOW
+            if (entry_stat.st_dev != listed_stat.st_dev || entry_stat.st_ino != listed_stat.st_ino) {
+                errno = EAGAIN;
+                goto fail;
+            }
+#endif
 
             if (!S_ISDIR(entry_stat.st_mode)) {
                 errno = ENOTDIR;
@@ -3781,7 +3832,7 @@ static int w_open_vetted_walk_fd(const char * path, bool follow_last) {
         break;
     }
 
-    if (fd = openat(dirfd, name, O_RDONLY | nofollow | O_NONBLOCK | O_CLOEXEC), fd < 0) {
+    if (fd = openat(dirfd, name, O_RDONLY | (nofollow ? O_NOFOLLOW : 0) | O_NONBLOCK | O_CLOEXEC), fd < 0) {
         if (!nofollow) {
             goto fail;
         }
@@ -3793,6 +3844,14 @@ static int w_open_vetted_walk_fd(const char * path, bool follow_last) {
     if (fstat(fd, &fd_stat) < 0 || w_fstat_walk(dirfd, &dir_stat) < 0) {
         goto fail;
     }
+
+#ifdef W_VETTED_NO_O_NOFOLLOW
+    // Stands in for O_NOFOLLOW on the final entry.
+    if (nofollow && (fd_stat.st_dev != entry_stat.st_dev || fd_stat.st_ino != entry_stat.st_ino)) {
+        errno = EAGAIN;
+        goto fail;
+    }
+#endif
 
     if (!nofollow) {
         // The file came through a procfs link, so the directory really holding it is unknown: grant nothing
