@@ -321,7 +321,7 @@ void test_read_snortfull_snort_trailing_space(void **state) {
 
 /**
  * Test: record without classification.
- * The preprocessor label stands in for the priority line.
+ * The real priority line is kept.
  */
 void test_read_snortfull_priority_only(void **state) {
     logreader lf = {0};
@@ -339,8 +339,68 @@ void test_read_snortfull_priority_only(void **state) {
     expect_line(line2);
     expect_line(line3);
 
-    const char *msg = "[**] [1:1000003:1] no classtype test [**] [Classification: Preprocessor] [Priority: 3] "
-                      "10.4.12.26:43844 -> 10.4.10.231:8080";
+    const char *msg = "[**] [1:1000003:1] no classtype test [**] [Priority: 0] 10.4.12.26:43844 -> 10.4.10.231:8080";
+    expect_queued(msg, strlen(msg) + 1);
+
+    expect_epilogue();
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
+/**
+ * Test: date line with the year (Snort show_year).
+ */
+void test_read_snortfull_date_with_year(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char line1[] = "[**] [1:1054:7] WEB-MISC test [**]\n";
+    char line2[] = "[Classification: Web Application Attack] [Priority: 1] \n";
+    char line3[] = "10/06/26-08:25:55.575491 10.4.12.26:43832 -> 10.4.10.231:8080\n";
+
+    expect_prologue();
+
+    expect_line(line1);
+    expect_line(line2);
+    expect_line(line3);
+
+    const char *msg = "[**] [1:1054:7] WEB-MISC test [**] [Classification: Web Application Attack] [Priority: 1] "
+                      "10.4.12.26:43832 -> 10.4.10.231:8080";
+    expect_queued(msg, strlen(msg) + 1);
+
+    expect_epilogue();
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, 0);
+}
+
+/**
+ * Test: record with CRLF line endings.
+ * The carriage returns are not queued.
+ */
+void test_read_snortfull_crlf(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char line1[] = "[**] [1:1054:7] WEB-MISC test [**]\r\n";
+    char line2[] = "[Classification: Web Application Attack] [Priority: 1] \r\n";
+    char line3[] = "10/06-08:25:55.575491 10.4.12.26:43832 -> 10.4.10.231:8080\r\n";
+
+    expect_prologue();
+
+    expect_line(line1);
+    expect_line(line2);
+    expect_line(line3);
+
+    const char *msg = "[**] [1:1054:7] WEB-MISC test [**] [Classification: Web Application Attack] [Priority: 1] "
+                      "10.4.12.26:43832 -> 10.4.10.231:8080";
     expect_queued(msg, strlen(msg) + 1);
 
     expect_epilogue();
@@ -429,6 +489,8 @@ int main(void) {
         cmocka_unit_test(test_read_snortfull_snort_trailing_space),
         cmocka_unit_test(test_read_snortfull_priority_only),
         cmocka_unit_test(test_read_snortfull_ignored_record),
+        cmocka_unit_test(test_read_snortfull_date_with_year),
+        cmocka_unit_test(test_read_snortfull_crlf),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
