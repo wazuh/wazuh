@@ -60,7 +60,8 @@ static cJSON* w_create_agent_add_payload(const char *name,
                                          authd_force_options_t *force_options,
                                          const char *token_id,
                                          const char *reenroll_kid,
-                                         const char *reenroll_bearer);
+                                         const char *reenroll_bearer,
+                                         const char *source);
 
 
 /* Read the agent name for the current agent
@@ -342,7 +343,8 @@ static cJSON* w_create_agent_add_payload(const char *name,
                                          authd_force_options_t *force_options,
                                          const char *token_id,
                                          const char *reenroll_kid,
-                                         const char *reenroll_bearer) {
+                                         const char *reenroll_bearer,
+                                         const char *source) {
     cJSON* request = cJSON_CreateObject();
     cJSON* arguments = cJSON_CreateObject();
 
@@ -378,6 +380,12 @@ static cJSON* w_create_agent_add_payload(const char *name,
         cJSON *reenroll = cJSON_AddObjectToObject(arguments, "reenroll");
         cJSON_AddStringToObject(reenroll, "kid", reenroll_kid);
         cJSON_AddStringToObject(reenroll, "bearer", reenroll_bearer);
+    }
+
+    // Where the agent's request came from, for the master's log line only: `ip` cannot say it, since
+    // it is the address to register (often "any"), not the peer's.
+    if (source) {
+        cJSON_AddStringToObject(arguments, "source", source);
     }
 
     cJSON* j_force = w_force_options_to_json(force_options);
@@ -639,6 +647,7 @@ int w_request_agent_add_clustered(char *err_response,
                                   const char *token_id,
                                   const char *reenroll_kid,
                                   const char *reenroll_bearer,
+                                  const char *source,
                                   int *master_error_code) {
     int result;
     char response[OS_MAXSTR + 1];
@@ -646,7 +655,7 @@ int w_request_agent_add_clustered(char *err_response,
     char new_key[KEYSIZE+1] = { '\0' };
     char new_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = { '\0' };
 
-    cJSON* message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force_options, token_id, reenroll_kid, reenroll_bearer);
+    cJSON* message = w_create_agent_add_payload(name, ip, groups, key_hash, *key, agent_id, force_options, token_id, reenroll_kid, reenroll_bearer, source);
 
     cJSON* payload = w_create_sendsync_payload("authd", message);
     char* output = cJSON_PrintUnformatted(payload);
@@ -701,7 +710,7 @@ int w_request_agent_remove_clustered(char *err_response, const char* agent_id, i
 int w_request_agent_add_local(int sock, char *id, const char *name, const char *ip, const char *groups, const char *key, authd_force_options_t *force_options, const int json_format, const char *agent_id, int exit_on_error) {
     int result;
 
-    cJSON* payload = w_create_agent_add_payload(name, ip, groups, NULL, key, agent_id, force_options, NULL, NULL, NULL);
+    cJSON* payload = w_create_agent_add_payload(name, ip, groups, NULL, key, agent_id, force_options, NULL, NULL, NULL, NULL);
     char* output = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);
 

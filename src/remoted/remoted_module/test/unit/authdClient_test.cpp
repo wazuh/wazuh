@@ -323,6 +323,7 @@ TEST(AuthdClientTest, RequestOmitsForceIdAndKeyAndIncludesOptionalFieldsWhenProv
     req.ip = "10.0.0.15";
     req.groups = "default,web-servers";
     req.keyHash = "abc123";
+    req.source = "192.168.60.71";
 
     ResultWaiter waiter;
     client.addAgent(req, waiter.callback());
@@ -340,6 +341,7 @@ TEST(AuthdClientTest, RequestOmitsForceIdAndKeyAndIncludesOptionalFieldsWhenProv
     EXPECT_EQ(arguments.at("ip"), "10.0.0.15");
     EXPECT_EQ(arguments.at("groups"), "default,web-servers");
     EXPECT_EQ(arguments.at("key_hash"), "abc123");
+    EXPECT_EQ(arguments.at("source"), "192.168.60.71");
     EXPECT_FALSE(arguments.contains("force"));
     EXPECT_FALSE(arguments.contains("id"));
     EXPECT_FALSE(arguments.contains("key"));
@@ -374,6 +376,7 @@ TEST(AuthdClientTest, OptionalFieldsAreOmittedWhenNotProvided)
     const auto& arguments = json.at("arguments");
     EXPECT_FALSE(arguments.contains("groups"));
     EXPECT_FALSE(arguments.contains("key_hash"));
+    EXPECT_FALSE(arguments.contains("source")); // authd then logs the request as local
 }
 
 TEST(AuthdClientTest, QueueFullRejectsBeyondCapacity)

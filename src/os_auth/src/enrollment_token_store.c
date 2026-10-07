@@ -1390,16 +1390,31 @@ void etoken_store_release(const char *id) {
     }
 }
 
-void etoken_store_commit(const char *id) {
+int etoken_store_commit(const char *id, unsigned int *uses, unsigned int *max_uses) {
+    int index;
+
     if (id == NULL) {
-        return;
+        return -1;
     }
 
     w_mutex_lock(&etoken_mutex);
     etoken_inflight_drop_locked(id);
+
+    /* Read under the same lock, for the caller's log line: a concurrent reservation of the same
+     * token may already be counted in `uses`, which is what the store holds at this moment */
+    if (index = etoken_find_locked(id), index >= 0) {
+        if (uses != NULL) {
+            *uses = etoken_tokens[index].uses;
+        }
+        if (max_uses != NULL) {
+            *max_uses = etoken_tokens[index].max_uses;
+        }
+    }
+
     w_mutex_unlock(&etoken_mutex);
 
     mdebug2("Use of the enrollment token '%s' committed.", id);
+    return index >= 0 ? 0 : -1;
 }
 
 int etoken_store_count(void) {

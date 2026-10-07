@@ -1048,7 +1048,7 @@ sequenceDiagram
     end
     EA-->>EP: EnrollmentGranted{tokenId?} / ReenrollmentRequested / AuthError
     Note over EP: parse JSON, validate name/version/groups/ip
-    EP->>AC: addAgent({name, ip, groups, key_hash, token_id?, reenroll?})
+    EP->>AC: addAgent({name, ip, groups, key_hash, token_id?, reenroll?, source})
     AC->>AD: {"function":"add","arguments":{...}} (SizeHeaderProtocol)
     AD-->>AC: {"error":0,"data":{id,name,ip,key,reenroll_secret}} or {"error":90xx,...}
     AC-->>EP: AuthdResult
@@ -1297,15 +1297,16 @@ distinguishable from a slow one (a fast "could not connect" instead of waiting o
 timeout). The response wait itself is bounded the same way authd's own `OS_SetRecvTimeout` bounds its
 side: `SO_RCVTIMEO`/`SO_SNDTIMEO` set directly on the connected socket.
 
-Wire request: `{"function":"add","arguments":{"name":...,"ip":...,"groups":...,"key_hash":...,"token_id":...,"reenroll":{"kid":...,"bearer":...}}}`,
-where the last two are optional and never sent together (issue #38993): `token_id` is the verified
+Wire request: `{"function":"add","arguments":{"name":...,"ip":...,"groups":...,"key_hash":...,"source":...,"token_id":...,"reenroll":{"kid":...,"bearer":...}}}`.
+`source` is the connection's peer address (`HttpRequest::remoteIp`), sent whatever `ip` resolved to:
+authd only logs it (`Agent key generated for agent 'N' (requested by <source>)`), and a worker
+forwards it to the master. The last two are optional and never sent together (issue #38993): `token_id` is the verified
 enrollment token id, exactly as the bearer's `kid` spelled it, so authd consumes one use of that
 token (`etoken_store_consume()`, answering 9022/9023/9024 when it disagrees with remoted's replica
 about the token's state); `reenroll` is the re-enrollment bearer and the agent id it named, both
 verbatim and **unverified**, for authd on the master to verify against that agent's `reenroll_secret`
 (`local_reenroll()`) and, when it verifies, rotate the agent's key and secret in place (9026/9027/
-9028 otherwise). Neither is present on the password and Open paths, whose wire request stays
-byte-identical to what it was before tokens. authd's reply `data` carries `id`, `name`, `ip`, `key`
+9028 otherwise). Neither is present on the password and Open paths. authd's reply `data` carries `id`, `name`, `ip`, `key`
 and — for every `add` — `reenroll_secret` (64 hex chars, generated next to the key and stored in
 `global.db`); `AuthdResult::reenrollSecret` is empty when an older authd sent none.
 **`force`, `id`, and `key` are never sent** — self-enrollment always gets an auto-assigned ID and an

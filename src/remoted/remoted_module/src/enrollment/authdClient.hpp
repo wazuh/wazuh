@@ -35,7 +35,7 @@ namespace remoted::enrollment
         /// bearer's `kid` spelled it and as EnrollmentAuthenticator verified it. Forwarded as
         /// `token_id` so authd consumes one use of that token (and answers 9022/9023/9024 when it
         /// disagrees with remoted's replica about the token's state). Absent for the password and
-        /// Open paths, where the wire request stays byte-identical to what it was before tokens.
+        /// Open paths.
         std::optional<std::string> tokenId;
         /// Re-enrollment (issue #38993): the agent id the bearer named (`kid`) and the bearer itself, both
         /// verbatim and UNVERIFIED -- forwarded as `reenroll` = {kid, bearer} for authd on the master to
@@ -47,6 +47,10 @@ namespace remoted::enrollment
             std::string bearer;
         };
         std::optional<ReenrollCredential> reenroll;
+        /// The HTTPS connection's peer address, forwarded as `source` for authd's log line only ("Agent
+        /// key generated for agent 'X' (requested by <source>)"). Distinct from `ip`, which is the
+        /// address to register and is usually "any". Absent: authd logs the request as local.
+        std::optional<std::string> source;
     };
 
     /// The request never reached authd: stopping, queue full, or connect failure. Safe to retry.

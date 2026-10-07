@@ -300,7 +300,9 @@ operations as `POST`/`GET /agents/enrollment-tokens`, `DELETE /agents/enrollment
 A mint is checked against the listener as it is on disk, and a failed check answers `9025` with the
 reason (`Enrollment token refused: address not in certificate SAN`): `--address` must be a subject
 alternative name of `remote.https.certificate` (a DNS name without partial wildcards and never the
-subject; an IP literal only against `iPAddress` entries, and accepted with a warning), the certificate
+subject; an IP literal only against `iPAddress` entries, and accepted with a warning — `Enrollment
+token address '…' is an IP address: the token stops working if the manager's address changes. Use a
+DNS name if the manager's IP address can change.`), the certificate
 must name something **other than loopback only** — a certificate whose entire SAN set is loopback (or
 that carries no SAN extension at all) is refused, while `--address localhost` against a certificate that
 also names something reachable is minted normally — and `remote.https.ca_certificate` must have signed it.
@@ -507,6 +509,11 @@ A request is a single-line JSON object:
     chars, or the request answers `9022`
   - `reenroll` (optional, object `{"kid": "<agent id>", "bearer": "<wazuh-enroll+jwt>"}`) — a
     [re-enrollment](#re-enrollment-secret); cannot be combined with `token_id`, `id` or `key` (`9027`)
+  - `source` (optional) — the address the enrollment request came from, sent by remoted's
+    `POST /enroll` (the agent's peer address) and forwarded by a worker to the master. Only logged:
+    `Agent key generated for agent 'N' (requested by <source>)`; without it the line says
+    `(requested locally)` (`manage_agents`, the API). A value that is not printable as an address is
+    ignored; a non-string one answers `9002`
 - **`remove`** — delete an agent. Arguments: `id` (required), `purge` (optional boolean; same
   meaning as the [`purge`](configuration.md#purge) configuration option, but scoped to this one
   request)
