@@ -15,8 +15,8 @@
 #include <ifilesystem_wrapper.hpp>
 #include <filesystem_wrapper.hpp>
 
-#include <file_io_utils.hpp>
 #include <ifile_io_utils.hpp>
+#include "packageMetadataFile.hpp"
 #include "stdFileSystemHelper.hpp"
 #include "json.hpp"
 #include "sharedDefs.h"
@@ -110,6 +110,14 @@ class PYPI final
                             correctPath = path / value;
                         }
 
+                        // Only read regular files, PackageMetadataFileIOUtils also bounds their size
+                        if (!m_fileSystemWrapper->is_regular_file(correctPath))
+                        {
+                            std::cerr << "Skipping PYPI package metadata: " << (correctPath.empty() ? path : correctPath).string()
+                                      << ", not a regular file" << std::endl;
+                            continue;
+                        }
+
                         if (m_pathsToExclude.find(correctPath.string()) != m_pathsToExclude.end())
                         {
                             return;
@@ -161,7 +169,7 @@ class PYPI final
     public:
         PYPI(std::unique_ptr<IFileIOUtils> fileIOUtils = nullptr,
              std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr)
-            : m_fileIOUtils(fileIOUtils ? std::move(fileIOUtils) : std::make_unique<file_io::FileIOUtils>())
+            : m_fileIOUtils(fileIOUtils ? std::move(fileIOUtils) : std::make_unique<PackageMetadataFileIOUtils>())
             , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
                                   : std::make_unique<file_system::FileSystemWrapper>())
         {

@@ -17,7 +17,7 @@
 
 #include "stdFileSystemHelper.hpp"
 #include "json.hpp"
-#include "jsonIO.hpp"
+#include "packageMetadataFile.hpp"
 #include "sharedDefs.h"
 #include <filesystem>
 #include <fstream>
@@ -25,7 +25,7 @@
 #include <set>
 #include <memory>
 
-template<typename TJsonReader = JsonIO<nlohmann::json>>
+template<typename TJsonReader = PackageMetadataJsonReader>
 class NPM final
     : public TJsonReader
 {
@@ -46,7 +46,15 @@ class NPM final
 
             try
             {
-                if (m_fileSystemWrapper->exists(path))
+                // Only read regular files, PackageMetadataJsonReader also bounds their size
+                if (!m_fileSystemWrapper->is_regular_file(path))
+                {
+                    if (m_fileSystemWrapper->exists(path))
+                    {
+                        std::cerr << "Skipping NPM package metadata: " << path.string() << ", not a regular file" << std::endl;
+                    }
+                }
+                else
                 {
                     // Read json from filesystem path.
                     const auto packageJson = TJsonReader::readJson(path);
