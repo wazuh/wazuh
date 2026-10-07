@@ -111,7 +111,12 @@ file_error:
 
         merror("Bad formated snort full file.");
         *rc = -1;
-        EVP_MD_CTX_free(context);
+        /* The bad line was hashed: store the state so the next read and a restart resume after it */
+        if (is_valid_context_file) {
+            w_update_file_status(lf->file, current_position, context);
+        } else {
+            EVP_MD_CTX_free(context);
+        }
         return (NULL);
 
     }
