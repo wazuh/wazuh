@@ -19,7 +19,7 @@ pthread_cond_t audit_hc_cond;
 
 
 // Audit healthcheck before starting the main thread
-int audit_health_check(int audit_socket) {
+int audit_health_check(int *audit_socket) {
     int retval = -1;
     unsigned int timer = 10;
     char abs_path_healthcheck[PATH_MAX] = {'\0'};
@@ -47,7 +47,7 @@ int audit_health_check(int audit_socket) {
     w_cond_init(&audit_hc_cond, NULL);
 
     // Start reading thread
-    w_create_thread(audit_healthcheck_thread, &audit_socket);
+    w_create_thread(audit_healthcheck_thread, audit_socket);
 
     w_mutex_lock(&audit_hc_mutex);
     while (atomic_int_get(&hc_thread_active) == 0) {
