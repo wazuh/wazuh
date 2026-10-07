@@ -1113,6 +1113,8 @@ stages:
                   log_fw: !anyint
                   min_rotate_interval: !anyint
                   rlimit_nofile: !anyint
+                  rule_tree_node_limit: !anyint
+                  rule_tree_node_warning: !anyint
                   show_hidden_labels: !anyint
                   stats_maxdiff: !anyint
                   stats_mindiff: !anyint
