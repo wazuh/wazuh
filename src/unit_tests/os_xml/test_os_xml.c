@@ -654,6 +654,66 @@ void test_os_write_xml_failures(void **state) {
     assert_int_equal(OS_WriteXML(data->xml_file_name, data->xml_out_file_name, xml_path, "test", "test_new"), XMLW_ERROR);
 }
 
+/* Writes through OS_WriteXMLToStream() into a stream the test opened on the out file, then checks
+ * the stream is still the caller's: open, and writable after the call returns. */
+static void assert_os_xml_write_to_stream_eq(test_struct_t *data,
+                                             const char *xml_str_old,
+                                             const char *xml_str_new,
+                                             const char **xml_path,
+                                             const char *oldval,
+                                             const char *newval) {
+    create_xml_file(xml_str_old, data->xml_file_name, 256);
+    create_xml_file("", data->xml_out_file_name, 256);
+
+    FILE *out = fopen(data->xml_out_file_name, "w");
+    assert_non_null(out);
+
+    assert_int_equal(OS_WriteXMLToStream(data->xml_file_name, out, xml_path, oldval, newval), 0);
+    assert_true(fputs("<!--still open-->", out) >= 0);
+    assert_int_equal(fclose(out), 0);
+
+    assert_int_equal(OS_ReadXML(data->xml_out_file_name, &data->xml), 0);
+    assert_os_xml_eq_str(&data->xml, xml_str_new, data->buffer);
+}
+
+void test_os_write_xml_to_stream_replaces_the_node(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char *xml_path[] = { "root", "child", NULL };
+    const char *xml_str_old = "<root><child>test</child></root>";
+    const char *xml_str_new = "<root><child>test_new</child></root>";
+
+    assert_os_xml_write_to_stream_eq(data, xml_str_old, xml_str_new, xml_path, "test", "test_new");
+}
+
+void test_os_write_xml_to_stream_appends_a_missing_node(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char *xml_path[] = { "root", "child", NULL };
+    const char *xml_str_old = "<root2><child></child></root2>";
+    const char *xml_str_new = "<root2><child></child></root2><root>\n <child>test</child></root>";
+
+    assert_os_xml_write_to_stream_eq(data, xml_str_old, xml_str_new, xml_path, NULL, "test");
+}
+
+/* A failure reports the same codes as OS_WriteXML(), writes nothing a caller could mistake for
+ * output, and still leaves the caller's stream open. */
+void test_os_write_xml_to_stream_failures(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char *xml_path[] = { "root", "child", NULL };
+
+    create_xml_file("", data->xml_out_file_name, 256);
+    FILE *out = fopen(data->xml_out_file_name, "w");
+    assert_non_null(out);
+
+    assert_int_equal(OS_WriteXMLToStream("invalid", out, xml_path, "test", "test_new"), XMLW_NOIN);
+    assert_int_equal(ftell(out), 0);
+
+    create_xml_file("<!--Invalid comment--", data->xml_file_name, 256);
+    assert_int_equal(OS_WriteXMLToStream(data->xml_file_name, out, xml_path, "test", "test_new"), XMLW_ERROR);
+
+    assert_true(fputs("x", out) >= 0);
+    assert_int_equal(fclose(out), 0);
+}
+
 void test_os_get_attribute_content(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     create_xml_file("<root attr=\"value\" attr2=\"value1\"></root>", data->xml_file_name, 256);
@@ -1080,6 +1140,11 @@ int main(void) {
 
         // OS_WriteXML failures test
         cmocka_unit_test_setup_teardown(test_os_write_xml_failures, test_setup, test_teardown),
+
+        // OS_WriteXMLToStream tests
+        cmocka_unit_test_setup_teardown(test_os_write_xml_to_stream_replaces_the_node, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_os_write_xml_to_stream_appends_a_missing_node, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_os_write_xml_to_stream_failures, test_setup, test_teardown),
 
         // OS_GetAttributeContent test
         cmocka_unit_test_setup_teardown(test_os_get_attribute_content, test_setup, test_teardown),

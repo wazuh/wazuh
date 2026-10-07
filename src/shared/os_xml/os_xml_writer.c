@@ -20,6 +20,9 @@ static int _oswcomment(FILE *fp_in, FILE *fp_out) __attribute__((nonnull));
 static int _WReadElem(FILE *fp_in, FILE *fp_out, unsigned int position, unsigned int parent,
                       const char **node, const char *value, unsigned int node_pos) __attribute__((nonnull));
 static int _xml_wfgetc(FILE *fp_in, FILE *fp_out) __attribute__((nonnull));
+static int _WriteXMLStreams(FILE *fp_in, FILE *fp_out, const char **nodes, const char *oldval,
+                            const char *newval) __attribute__((nonnull(1, 2, 3, 5)));
+static void _WriteXMLNode(FILE *fp_out, const char **nodes, const char *newval) __attribute__((nonnull));
 
 
 /* Local wfgetc */
@@ -40,7 +43,7 @@ static int _xml_wfgetc(FILE *fp_in, FILE *fp_out)
 int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
                 const char *oldval, const char *newval)
 {
-    int r = 0;
+    int r;
     FILE *fp_in;
     FILE *fp_out;
 
@@ -50,8 +53,6 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
         return (XMLW_NOIN);
     }
 
-    setvbuf(fp_in, NULL,_IOFBF , XML_MAXSIZE + 1);
-
     /* Open outfile */
     fp_out = wfopen(outfile, "w");
     if (!fp_out) {
@@ -59,49 +60,85 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
         return (XMLW_NOOUT);
     }
 
+    r = _WriteXMLStreams(fp_in, fp_out, nodes, oldval, newval);
+
+    fclose(fp_in);
+    fclose(fp_out);
+    return (r);
+}
+
+/* Write an XML stream, based on the input file and values to change */
+int OS_WriteXMLToStream(const char *infile, FILE *fp_out, const char **nodes,
+                        const char *oldval, const char *newval)
+{
+    int r;
+    FILE *fp_in;
+
+    /* Open infile */
+    fp_in = wfopen(infile, "r");
+    if (!fp_in) {
+        return (XMLW_NOIN);
+    }
+
+    r = _WriteXMLStreams(fp_in, fp_out, nodes, oldval, newval);
+
+    fclose(fp_in);
+    return (r);
+}
+
+/* Copy fp_in to fp_out, replacing the value of the node path, or appending it when absent */
+static int _WriteXMLStreams(FILE *fp_in, FILE *fp_out, const char **nodes, const char *oldval,
+                            const char *newval)
+{
+    int r;
+
+    setvbuf(fp_in, NULL, _IOFBF, XML_MAXSIZE + 1);
+
     if ((r = _WReadElem(fp_in, fp_out, 0, 0,
                         nodes, newval, 0)) < 0) { /* First position */
-        fclose(fp_in);
-        fclose(fp_out);
         return (XMLW_ERROR);
     }
 
     /* We didn't find an entry, add at the end */
     if (!oldval && r == 0) {
-        int s = 0;
-        int rwidth = 0;
+        _WriteXMLNode(fp_out, nodes, newval);
+    }
 
-        fseek(fp_out, 0, SEEK_END);
-        fprintf(fp_out, "\n");
+    return (0);
+}
 
-        /* Print each node */
-        while (nodes[s]) {
-            fprintf(fp_out, "%*c<%s>", rwidth, ' ', nodes[s]);
-            s++;
-            rwidth += 3;
+/* Append the node path, holding newval, at the end of fp_out */
+static void _WriteXMLNode(FILE *fp_out, const char **nodes, const char *newval)
+{
+    int s = 0;
+    int rwidth = 0;
 
-            if (nodes[s]) {
-                fprintf(fp_out, "\n");
-            }
-        }
+    fseek(fp_out, 0, SEEK_END);
+    fprintf(fp_out, "\n");
 
-        /* Print val */
-        s--;
-        rwidth -= 6;
-        fprintf(fp_out, "%s</%s>\n", newval, nodes[s]);
-        s--;
+    /* Print each node */
+    while (nodes[s]) {
+        fprintf(fp_out, "%*c<%s>", rwidth, ' ', nodes[s]);
+        s++;
+        rwidth += 3;
 
-        /* Close each node */
-        while (s >= 0) {
-            fprintf(fp_out, "%*c</%s>\n", rwidth, ' ', nodes[s]);
-            s--;
-            rwidth -= 3;
+        if (nodes[s]) {
+            fprintf(fp_out, "\n");
         }
     }
 
-    fclose(fp_in);
-    fclose(fp_out);
-    return (0);
+    /* Print val */
+    s--;
+    rwidth -= 6;
+    fprintf(fp_out, "%s</%s>\n", newval, nodes[s]);
+    s--;
+
+    /* Close each node */
+    while (s >= 0) {
+        fprintf(fp_out, "%*c</%s>\n", rwidth, ' ', nodes[s]);
+        s--;
+        rwidth -= 3;
+    }
 }
 
 /* Get comments */
