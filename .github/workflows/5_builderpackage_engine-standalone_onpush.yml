@@ -28,5 +28,5 @@ jobs:
     uses: ./.github/workflows/5_builderpackage_engine-standalone.yml
     secrets: inherit
     with:
-      wazuh-branch: ${{ github.head_ref }}
+      wazuh-branch: ${{ github.event.pull_request.head.sha }}
       build-type: 'release'
