@@ -25,7 +25,8 @@ by construction, not by observation."*
 | 4 | **C16 is still live, on both hosts.** Containers removed in a burst remain in `list` indefinitely on an idle host — 3 of 5 stranded on Ubuntu 22.04 *and* Debian 13 — until one unrelated Docker event flushes them. O9 was recorded as fixing this. | §22.6 |
 | 5 | Container **resolution**, **live FIM detection** and the **host negative control** pass on both hosts, across both BPF variants (kprobe and LSM). | §22.5, §22.8 |
 | 6 | **Kubernetes passes in full**, including the two assertions nothing had tested: one independent record per container in a multi-container pod, and the transitive `ReplicaSet → Deployment` owner chain. | §22.9 |
-| 7 | **GAP 2 fix verified in the production build** — no `libcurl.so.4` dependency. | §22.3 |
+| 7 | **A container running an init system is never resolved and is silently invisible** — no `list` entry, no baseline, no inventory, no log line. Triggered by PID 1 creating child cgroups, so it covers systemd-in-container images generally, not just KinD. | §22.9.1 |
+| 8 | **GAP 2 fix verified in the production build** — no `libcurl.so.4` dependency. | §22.3 |
 
 ---
 
@@ -263,17 +264,68 @@ Baselines ran over the pod containers — `Container FIM baseline finished: 5 co
 2 row(s)` (only `writer`/`sidecar` have `/data`) and `Container baseline scan finished (5
 container(s), 170 row(s))`.
 
-**One observation, not yet a finding.** Both connectors are registered, but the only container the
-host dockerd runs — the KinD node `demo-control-plane` itself — does **not** appear in `list`; all
-five records are `runtime: kubernetes`. Whether infrastructure containers are deliberately excluded
-or the Docker connector is being shadowed on this host needs a dedicated check before it is called
-either way.
+---
+
+## 22.9.1 DEFECT — a container that runs an init system is never resolved, and is silently invisible
+
+The KinD node `demo-control-plane` is a running Docker container on this host and does **not** appear
+in `list`. It is not an exclusion and the Docker connector is not broken — a plain container started
+on the same host at the same moment appears immediately:
+
+```
+plainc                   docker      key=18201        <- resolved, listed
+writer / sidecar / …     kubernetes  key=16097 …      <- resolved, listed
+demo-control-plane       (absent)
+```
+
+**The mechanism.** `ProcCgroupResolver` joins a container to the cgroup inode that its processes sit
+in *directly*. `kindest/node` runs systemd as its PID 1, so the container's own cgroup holds no
+processes at all — they live in nested children:
+
+```
+/sys/fs/cgroup/system.slice/docker-b1b6….scope/            cgroup.procs: 0      inode 7964
+/sys/fs/cgroup/system.slice/docker-b1b6….scope/init.scope/ cgroup.procs: 1      inode 9358
+  child cgroups: init.scope, kubelet, kubelet.slice, dev-hugepages.mount, sys-kernel-config.mount, …
+
+/sys/fs/cgroup/system.slice/docker-7b4467ec….scope/        cgroup.procs: 1      inode 18201
+  child cgroups: none                                       <- plainc, the flat control
+```
+
+Both halves of the join then fail, and the store says so in two different ways:
+
+| `resolve` | Answer |
+|---|---|
+| `7964` — the container's canonical cgroup | `{"status":"pending","retry_after_ms":500}` — parked and retried forever; no process ever appears there |
+| `9358` — `init.scope`, where PID 1 actually is | `{"status":"not_container","reason":"host_process"}` |
+| `18201` — `plainc`, control | fully resolved, with `container_id`, `container_name`, `image`, … |
+
+So the container is listed by the Docker API, fails to join a cgroup, keeps `cgroupId == 0`, and is
+then hidden by the *hide unresolved running* filter. **Nothing is logged** — it is indistinguishable
+from the container not existing.
+
+**Why this is more than a KinD curiosity.** The trigger is "PID 1 creates child cgroups", which is
+exactly what any init system does. That covers systemd-in-container images (RHEL UBI `init`
+variants, legacy applications packaged with systemd, CI runners-in-containers) as well as KinD.
+For every such container:
+
+- it is absent from `list`, so it is never baselined and never inventoried;
+- its cgroup is never allowlisted, so its file events are filtered out in the kernel;
+- an event from inside it that does reach userspace resolves to `host_process` and is discarded;
+- the `pending` entry is retried indefinitely rather than reaching a verdict.
+
+The `pending` answer is itself the evidence that this is not a deliberate exclusion: a container the
+module meant to ignore would get a `VerdictEntry`, not an eternal retry.
+
+**Not yet established:** whether the fix is to walk up to the nearest ancestor cgroup matching
+`docker-<id>.scope` / the container id, or to key on the *container's* cgroup from the runtime's own
+metadata rather than from `/proc/<pid>/cgroup`. Both have implications for the cgroup v1 path, which
+derives its key the same way.
 
 ---
 
 ## 22.10 Not yet run
 
-cgroup hybrid and legacy passes (Phase 5) · degradation injections (Phase 6: missing `rt_file.bpf.o`,
+the fix direction for §22.9.1 · cgroup hybrid and legacy passes (Phase 5) · degradation injections (Phase 6: missing `rt_file.bpf.o`,
 notify-socket unbind, map-full `disableAllowlist()`, drop-storm `rebaselineAll`) · manager-side alert
 assertions via the engine file output · hash-versus-oracle (item 40) · ConfigMap live-invisibility
 (4.9) · the Docker-connector observation in §22.9.
