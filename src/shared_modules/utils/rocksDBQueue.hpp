@@ -162,42 +162,15 @@ public:
         }
 
         // Valid() is false both at the end of the store and when the iteration fails, so the status tells them apart.
-        // Bounds computed from a partial scan would make push() overwrite queued entries.
+        // Bounds computed from a partial scan would make push() overwrite queued entries, so push() is refused.
         if (const auto status = it->status(); !status.ok())
         {
-            throw std::runtime_error("Failed to scan the keys of queue '" + connectorName + "' after reading " +
-                                     std::to_string(m_size) + " keys: " + status.ToString());
-        }
-
-        // Independent check of the bounds: a stored key outside them proves the scan did not see the whole store.
-        for (const auto fromEnd : {false, true})
-        {
-            if (fromEnd)
-            {
-                it->SeekToLast();
-            }
-            else
-            {
-                it->SeekToFirst();
-            }
-
-            if (!it->Valid())
-            {
-                if (!it->status().ok())
-                {
-                    throw std::runtime_error("Failed to check the bounds of queue '" + connectorName +
-                                             "': " + it->status().ToString());
-                }
-                continue;
-            }
-
-            if (const auto key = std::stoull(it->key().ToString()); key < m_first || key > m_last)
-            {
-                throw std::runtime_error("The scan of queue '" + connectorName +
-                                         "' did not cover the whole store: key " + std::to_string(key) +
-                                         " is outside the computed bounds " + std::to_string(m_first) + "-" +
-                                         std::to_string(m_last));
-            }
+            m_unreliableBounds =
+                "the scan failed after reading " + std::to_string(m_size) + " keys: " + status.ToString();
+            logError(LOGGER_DEFAULT_TAG,
+                     "Queue '%s': the bounds could not be established (%s). New elements are rejected.",
+                     connectorName.c_str(),
+                     m_unreliableBounds.c_str());
         }
 
         // A stored key the queue would never build cannot be read or removed.
@@ -215,6 +188,12 @@ public:
 
     void push(const T& data)
     {
+        if (!m_unreliableBounds.empty())
+        {
+            throw std::runtime_error("Failed to enqueue element, the bounds of the queue are unreliable: " +
+                                     m_unreliableBounds);
+        }
+
         // RocksDB enqueue element.
         if (const auto status = m_db->Put(rocksdb::WriteOptions(), paddedKey(m_last + 1), data); !status.ok())
         {
@@ -376,6 +355,7 @@ private:
     uint64_t m_first = 1;
     uint64_t m_last = 0;
     bool m_legacyKeyMode = false;
+    std::string m_unreliableBounds; ///< Why the bounds are not trustworthy; empty when they are.
 
     std::string paddedKey(const uint64_t key) const
     {

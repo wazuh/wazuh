@@ -79,44 +79,13 @@ private:
         }
 
         // Valid() is false both at the end of the store and when the iteration fails, so the status tells them apart.
-        // Metadata computed from a partial scan would make push() overwrite queued entries.
+        // Metadata computed from a partial scan would make push() overwrite queued entries, so push() is refused.
         if (const auto status = it->status(); !status.ok())
         {
-            throw std::runtime_error("Failed to scan the keys of the queue: " + status.ToString());
-        }
-
-        // Independent check of the metadata: a stored key outside the range of its queue proves the scan did not see
-        // the whole store.
-        for (const auto fromEnd : {false, true})
-        {
-            if (fromEnd)
-            {
-                it->SeekToLast();
-            }
-            else
-            {
-                it->SeekToFirst();
-            }
-
-            if (!it->Valid())
-            {
-                if (!it->status().ok())
-                {
-                    throw std::runtime_error("Failed to check the bounds of the queue: " + it->status().ToString());
-                }
-                continue;
-            }
-
-            const auto data = Utils::split(it->key().ToString(), '_');
-            const auto metadata = m_queueMetadata.find(data.at(KeyFields::ID_QUEUE));
-            const auto queueNumber = std::stoull(data.at(KeyFields::QUEUE_NUMBER));
-
-            if (metadata == m_queueMetadata.end() || queueNumber < metadata->second.head ||
-                queueNumber > metadata->second.tail)
-            {
-                throw std::runtime_error("The scan of the queue did not cover the whole store: key " +
-                                         it->key().ToString() + " is outside the computed bounds");
-            }
+            m_unreliableBounds = "the scan failed: " + status.ToString();
+            logError(LOGGER_DEFAULT_TAG,
+                     "The bounds of the queue could not be established (%s). New elements are rejected.",
+                     m_unreliableBounds.c_str());
         }
     }
 
@@ -189,6 +158,12 @@ public:
 
     void push(std::string_view id, const T& data)
     {
+        if (!m_unreliableBounds.empty())
+        {
+            throw std::runtime_error("Failed to enqueue element, the bounds of the queue are unreliable: " +
+                                     m_unreliableBounds);
+        }
+
         if (m_queueMetadata.find(id.data()) == m_queueMetadata.end())
         {
             m_queueMetadata.emplace(id, QueueMetadata {1, 0, 0, std::chrono::system_clock::now()});
@@ -400,6 +375,7 @@ private:
     std::shared_ptr<rocksdb::Cache> m_readCache;
     std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager;
     std::map<std::string, QueueMetadata> m_queueMetadata; ///< Map queue.
+    std::string m_unreliableBounds; ///< Why the bounds are not trustworthy; empty when they are.
 };
 
 #endif // _ROCKSDB_QUEUE_CF_HPP
