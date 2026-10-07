@@ -212,8 +212,9 @@ Two requirements come from the fleet rather than from whoever signs, and hold in
 
 `wazuh-manager-apid` generates no certificate of its own: if `https.enabled` is on and its pair is
 missing, it logs error `2003` in `logs/api.log` and does not start. A client of the API trusts
-`root-ca.pem` and verifies any name in its certificate; the one the install issues carries the Remoted
-SAN list (the node's names and addresses, and `localhost`).
+`root-ca.pem` and verifies any name in its certificate; the one the install issues carries
+`WAZUH_MANAGER_APID_CERT_SANS` or, when unset, the node's discovered names and addresses (and `localhost` in
+either case).
 
 When the install issued nothing, the manager has no listener pair and refuses to start, before any
 daemon runs, with the configuration validator's verdict:

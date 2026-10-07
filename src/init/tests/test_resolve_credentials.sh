@@ -621,10 +621,11 @@ check "not even the Server API one" "" "$(ls "${root}/home/etc/certs" | grep '^a
 check "and no CA private key appears on this host" "" "$(ls "${root}/base/ca" | grep 'root-ca.key')"
 cleanup "${root}"
 
-# Explicit SANs replace discovery, for each of the two leaves independently.
+# Explicit SANs replace discovery, for each of the three leaves independently.
 root="$(make_tree)"
 write_credentials "${root}" "WAZUH_MANAGER_CERT_SANS='DNS:connector.corp.local'
-WAZUH_MANAGER_REMOTED_CERT_SANS='DNS:agents.corp.local,IP:10.0.1.11'"
+WAZUH_MANAGER_REMOTED_CERT_SANS='DNS:agents.corp.local,IP:10.0.1.11'
+WAZUH_MANAGER_APID_CERT_SANS='DNS:api.corp.local,IP:10.0.2.11'"
 run_resolver "${root}" --install
 check "the connector SAN setting is honoured" "yes" \
     "$(openssl x509 -in "${root}/home/etc/certs/indexer-connector.pem" -noout -ext subjectAltName \
@@ -632,6 +633,12 @@ check "the connector SAN setting is honoured" "yes" \
 check "the remoted SAN setting is honoured separately" "yes" \
     "$(openssl x509 -in "${root}/home/etc/certs/remoted.pem" -noout -ext subjectAltName \
         2>/dev/null | grep -q 'agents.corp.local' && echo yes)"
+check "the Server API SAN setting is honoured separately" "yes" \
+    "$(openssl x509 -in "${root}/home/etc/certs/apid.pem" -noout -ext subjectAltName \
+        2>/dev/null | grep -q 'DNS:api.corp.local, IP Address:10.0.2.11' && echo yes)"
+check "and the Server API leaf does not take Remoted's" "no" \
+    "$(openssl x509 -in "${root}/home/etc/certs/apid.pem" -noout -ext subjectAltName \
+        2>/dev/null | grep -q 'agents.corp.local' && echo yes || echo no)"
 cleanup "${root}"
 
 # The installed tree has <manager-home>/etc at 0770 root:wazuh-manager -- a contract

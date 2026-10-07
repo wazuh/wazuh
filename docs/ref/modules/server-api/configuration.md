@@ -140,12 +140,13 @@ contain only letters, digits, `_`, `-` and `.`.
 The installer (`wazuh-manager-resolve-credentials --install`, run by the package post-install step or
 `install.sh` on a clean installation) issues `apid.pem` and `apid-key.pem` from the manager's CA with the
 same profile as the agent listener's `remoted.pem`: subject `C=US, L=California, O=Wazuh, OU=Wazuh,
-CN=<node name>`, the SANs the Remoted list resolves to when it is issued (the node's host names and
-global-scope addresses plus `localhost`, `127.0.0.1` and `::1`, or `WAZUH_MANAGER_REMOTED_CERT_SANS`;
-the same list `remoted.pem` gets when both are issued together), 2048-bit RSA, `serverAuth`, `notBefore` one day
-before issuance and `notAfter` 3650 days after it, the leaf followed by the CA, owned by
-`wazuh-manager:wazuh-manager` with mode `0640`. Issuing it therefore needs the node name and the Remoted SAN
-discovery (or `WAZUH_MANAGER_REMOTED_CERT_SANS`), like `remoted.pem`.
+CN=<node name>`, its own SANs (`WAZUH_MANAGER_APID_CERT_SANS` in the credentials file, plus `localhost`,
+`127.0.0.1` and `::1`; when unset, discovered the way Remoted's are: the node's host names and
+global-scope addresses plus those three — it never inherits `WAZUH_MANAGER_REMOTED_CERT_SANS`), 2048-bit
+RSA, `serverAuth`, `notBefore` one day before issuance and `notAfter` 3650 days after it, the leaf
+followed by the CA, owned by `wazuh-manager:wazuh-manager` with mode `0640`. Issuing it therefore needs
+the node name and either that discovery or `WAZUH_MANAGER_APID_CERT_SANS`. See
+[Subject alternative names](../../getting-started/credentials.md#subject-alternative-names).
 
 `wazuh-manager-apid` generates no certificate. When `enabled` is `true` and the configured pair is
 missing, not readable by `wazuh-manager`, or the key does not match the certificate, it logs error

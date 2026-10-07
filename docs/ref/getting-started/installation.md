@@ -153,7 +153,7 @@ these names:
 |---|---|---|
 | `remoted.pem`, `remoted-key.pem` | the certificate chain the agent listener presents (a `serverAuth` leaf; the one the install issues is followed by the CA) and its key | `wazuh-manager:wazuh-manager`, `0640` |
 | `indexer-connector.pem`, `indexer-connector-key.pem` | the indexer client leaf (`clientAuth`) and its key | `root:wazuh-manager`, `0640` |
-| `apid.pem`, `apid-key.pem` | the Server API certificate chain (a `serverAuth` leaf, `CA:FALSE`, not expired, with a SAN extension; the one the install issues carries the Remoted SAN list and is followed by the CA) and its key | `wazuh-manager:wazuh-manager`, `0640` |
+| `apid.pem`, `apid-key.pem` | the Server API certificate chain (a `serverAuth` leaf, `CA:FALSE`, not expired, with a SAN extension; the one the install issues carries the `WAZUH_MANAGER_APID_CERT_SANS` list or the discovered one, and is followed by the CA) and its key | `wazuh-manager:wazuh-manager`, `0640` |
 | `root-ca.pem` | the CA all the leaves chain to | `root:wazuh-manager`, `0640` |
 
 ```bash

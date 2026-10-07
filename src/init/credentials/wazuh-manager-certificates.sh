@@ -21,8 +21,8 @@
 #         indexer-connector-key.pem
 #         remoted.pem                 serverAuth; leaf followed by root CA
 #         remoted-key.pem
-#         apid.pem                    serverAuth; Server API, same profile and SANs
-#         apid-key.pem                as remoted.pem (leaf followed by root CA)
+#         apid.pem                    serverAuth; Server API, same profile as
+#         apid-key.pem                remoted.pem, its own SANs (leaf followed by root CA)
 #         root-ca.pem                 public trust anchor
 #
 #       Existing complete pairs are validated and never regenerated. A partial
@@ -33,14 +33,14 @@
 #       correspondence, validity, CA chain, basic constraints, EKU, and SAN
 #       presence on the Remoted and Server API certificates.
 #
-#   wazuh_manager_remoted_sans
-#       Prints the resolved Remoted SANs, also used for the Server API leaf,
-#       one typed entry per line. If no explicit list is configured, every
-#       GLOBAL-scope IPv4/IPv6 address assigned to every local interface is
-#       included -- whether or not the interface carries the default route, is
-#       virtual, or is down -- together with the node hostname/FQDN and
-#       loopback. Link-local and host scope are excluded; see
-#       _wmc_default_remoted_sans() for why.
+#   wazuh_manager_remoted_sans / wazuh_manager_apid_sans
+#       Print the resolved Remoted / Server API SANs, one typed entry per line.
+#       The two lists are resolved independently, with the same rules. If
+#       no explicit list is configured, every GLOBAL-scope IPv4/IPv6 address
+#       assigned to every local interface is included -- whether or not the
+#       interface carries the default route, is virtual, or is down --
+#       together with the node hostname/FQDN and loopback. Link-local and
+#       host scope are excluded; see _wmc_default_remoted_sans() for why.
 #       Requires successful iproute2 discovery (no loopback-only fallback).
 #       Tentative/DAD-failed addresses are skipped; IPs are canonicalized.
 #       This helper creates a private temporary workspace below the base.
@@ -56,6 +56,11 @@
 #       discovered from the global-scope addresses of all interfaces; set this
 #       to present an address discovery does not reach, since it replaces the
 #       whole list. An explicitly empty value is invalid.
+#
+#   WAZUH_MANAGER_APID_CERT_SANS
+#       Exact comma-separated SAN list for apid.pem (the Server API leaf). When
+#       absent, SANs are discovered the way Remoted's are; it never inherits
+#       WAZUH_MANAGER_REMOTED_CERT_SANS. An explicitly empty value is invalid.
 #
 #   WAZUH_MANAGER_NODE_NAME
 #       Certificate common name. Defaults to hostname -s.
@@ -531,6 +536,28 @@ _wmc_resolve_remoted_san_setting() (
     printf '%s\n' "$_wmc_value"
 )
 
+_wmc_resolve_apid_san_setting() (
+    _wmc_value=
+    _wmc_is_set=0
+    _wmc_status=0
+    _wmc_file_value=$(_wmc_get_file_setting WAZUH_MANAGER_APID_CERT_SANS) || _wmc_status=$?
+    case $_wmc_status in
+        0) _wmc_value=$_wmc_file_value; _wmc_is_set=1 ;;
+        1) ;;
+        *) return 2 ;;
+    esac
+    if [ "${WAZUH_MANAGER_APID_CERT_SANS+x}" = x ]; then
+        _wmc_value=${WAZUH_MANAGER_APID_CERT_SANS-}
+        _wmc_is_set=1
+    fi
+    [ "$_wmc_is_set" -eq 1 ] || return 1
+    if [ -z "$_wmc_value" ]; then
+        _wmc_error 'WAZUH_MANAGER_APID_CERT_SANS is explicitly empty'
+        return 2
+    fi
+    printf '%s\n' "$_wmc_value"
+)
+
 _wmc_node_name() (
     if [ "${WAZUH_MANAGER_NODE_NAME+x}" = x ]; then
         _wmc_node=${WAZUH_MANAGER_NODE_NAME-}
@@ -588,13 +615,14 @@ _wmc_default_manager_sans() (
 
 _wmc_default_remoted_sans() (
     _wmc_output=$1
+    _wmc_setting_name=${2:-WAZUH_MANAGER_REMOTED_CERT_SANS}
     # Require successful enumeration, not just presence of the ip binary.
     #
     # Every GLOBAL address on every interface, including interfaces that are not on the default
     # route, that are virtual, or that are currently down -- deliberately wider than
     # _wmc_default_manager_sans().
     _wmc_addresses=$(ip -o addr show) || {
-        _wmc_error 'cannot enumerate interfaces; supply WAZUH_MANAGER_REMOTED_CERT_SANS'
+        _wmc_error "cannot enumerate interfaces; supply $_wmc_setting_name"
         return 1
     }
     _wmc_list=$(printf '%s\n' "$_wmc_addresses" | awk '
@@ -604,7 +632,7 @@ _wmc_default_remoted_sans() (
         }
     ') || return 1
     [ -n "$_wmc_list" ] || {
-        _wmc_error 'no global interface address; supply WAZUH_MANAGER_REMOTED_CERT_SANS'
+        _wmc_error "no global interface address; supply $_wmc_setting_name"
         return 1
     }
     _wmc_append_host_names "$_wmc_output.names" || return 1
@@ -638,6 +666,18 @@ _wmc_resolve_remoted_sans_to() (
     esac
 )
 
+# The Server API leaf: its own setting, else the same discovery as Remoted's.
+_wmc_resolve_apid_sans_to() (
+    _wmc_output=${1-}
+    _wmc_status=0
+    _wmc_setting=$(_wmc_resolve_apid_san_setting) || _wmc_status=$?
+    case $_wmc_status in
+        0) _wmc_normalize_sans "$_wmc_setting,DNS:localhost,IP:127.0.0.1,IP:::1" "$_wmc_output" ;;
+        1) _wmc_default_remoted_sans "$_wmc_output" WAZUH_MANAGER_APID_CERT_SANS ;;
+        *) return 1 ;;
+    esac
+)
+
 wazuh_manager_remoted_sans() (
     _wmc_require_shared_helpers || return 1
     _wazuh_ensure_base_dir || return 1
@@ -646,6 +686,17 @@ wazuh_manager_remoted_sans() (
     trap 'rm -rf -- "$_wmc_tmp"' 0
     trap 'return 130' 1 2 3 15
     _wmc_resolve_remoted_sans_to "$_wmc_tmp/sans" || return 1
+    cat "$_wmc_tmp/sans"
+)
+
+wazuh_manager_apid_sans() (
+    _wmc_require_shared_helpers || return 1
+    _wazuh_ensure_base_dir || return 1
+    _wmc_base=$(wazuh_base_get_dir) || return 1
+    _wmc_tmp=$(mktemp -d "$_wmc_base/.sans.XXXXXX") || return 1
+    trap 'rm -rf -- "$_wmc_tmp"' 0
+    trap 'return 130' 1 2 3 15
+    _wmc_resolve_apid_sans_to "$_wmc_tmp/sans" || return 1
     cat "$_wmc_tmp/sans"
 )
 _wmc_write_leaf_config() (
@@ -1128,13 +1179,15 @@ _wmc_ensure_locked() (
         _wmc_stage=$(mktemp -d "$_wmc_base/.manager-sans.XXXXXX") || return 1
         trap 'rm -rf -- "$_wmc_stage"' 0
         trap 'return 130' 1 2 3 15
-        # Resolve BOTH requested inputs before issuing either leaf.
+        # Resolve every requested input before issuing any leaf.
         if [ "$_wmc_indexer_state" = absent ]; then
             _wmc_resolve_manager_sans_to "$_wmc_stage/indexer" || return 1
         fi
-        # The Server API leaf is issued with the Remoted SANs: both are this node's server leaves.
-        if [ "$_wmc_remoted_state" = absent ] || [ "$_wmc_apid_state" = absent ]; then
+        if [ "$_wmc_remoted_state" = absent ]; then
             _wmc_resolve_remoted_sans_to "$_wmc_stage/remoted" || return 1
+        fi
+        if [ "$_wmc_apid_state" = absent ]; then
+            _wmc_resolve_apid_sans_to "$_wmc_stage/apid" || return 1
         fi
         if [ "$_wmc_indexer_state" = absent ]; then
             _wmc_generate_indexer_pair "$_wmc_dir" "$_wmc_ca_dir" "$_wmc_node" \
@@ -1147,7 +1200,7 @@ _wmc_ensure_locked() (
         fi
         if [ "$_wmc_apid_state" = absent ]; then
             _wmc_generate_server_pair apid 'Server API' "$_wmc_dir" "$_wmc_ca_dir" "$_wmc_node" \
-                "$_wmc_stage/remoted" "$_wmc_user" "$_wmc_group" \
+                "$_wmc_stage/apid" "$_wmc_user" "$_wmc_group" \
                 "$_wmc_uid" "$_wmc_gid" || return 1
         fi
     fi

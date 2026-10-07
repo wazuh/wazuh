@@ -36,6 +36,7 @@ silently and leave the deployment holding a credential nobody else has.
 | `WAZUH_INDEXER_MANAGER_PASSWORD` | `wazuh-manager` (on the indexer) | **consumes** it — never generates it, never publishes it |
 | `WAZUH_MANAGER_CERT_SANS` | the indexer-connector certificate | **owns** it |
 | `WAZUH_MANAGER_REMOTED_CERT_SANS` | the agent-listener certificate | **owns** it |
+| `WAZUH_MANAGER_APID_CERT_SANS` | the Server API certificate | **owns** it |
 | `WAZUH_CA_DIR` | trust material, default `/etc/wazuh/ca` | path only, not a secret |
 
 A credential the manager *owns* lives in its own datastore, so generating one makes it true. A
@@ -445,24 +446,25 @@ afterwards — either way they are used as they are and never replaced. The inst
 
 ### Subject alternative names
 
-The `indexer-connector.pem` and `remoted.pem` leaves are configured independently, because they are
-presented to different peers (`apid.pem` has no setting of its own: it is issued with the Remoted list, so
-issuing it, alone or with `remoted.pem`, needs that discovery or `WAZUH_MANAGER_REMOTED_CERT_SANS`):
+The three leaves are configured independently, because they are presented to different peers: agents
+dial `remoted.pem`, API clients `apid.pem`, and the indexer verifies `indexer-connector.pem`:
 
 | Setting | Configures | Discovery when unset |
 |---------|------------|----------------------|
 | `WAZUH_MANAGER_CERT_SANS` | `indexer-connector.pem` | hostname, FQDN, `localhost`, loopback, and the global addresses on default-route interfaces |
 | `WAZUH_MANAGER_REMOTED_CERT_SANS` | `remoted.pem` | hostname, FQDN, `localhost`, loopback, and **every global-scope** address `ip -o addr show` reports — including addresses on interfaces that are not on the default route, that are virtual, or that are down |
+| `WAZUH_MANAGER_APID_CERT_SANS` | `apid.pem` | the same discovery as `remoted.pem`; it never inherits `WAZUH_MANAGER_REMOTED_CERT_SANS` |
 
-Remoted's list is deliberately the wider of the two: agents reach the manager over whatever address
-the operator pointed them at, which is frequently not the one on the default route, and a manager
-issued a narrower certificate installs cleanly and then fails at the first peer connection.
+The Remoted and Server API discovery is deliberately wider than the connector's: agents reach the
+manager over whatever address the operator pointed them at, which is frequently not the one on the
+default route, and a manager issued a narrower certificate installs cleanly and then fails at the
+first peer connection.
 
 It is wider by *interface*, not by *scope*. Link-local (`fe80::`) and host-scope addresses are left
 out: no peer can match them, so they would be disclosure with no function — and a link-local address
 formed the classic way carries the interface's MAC into a certificate that is served to every client
 completing a handshake on port 1517. If a node must present an address discovery does not pick up,
-set `WAZUH_MANAGER_REMOTED_CERT_SANS` explicitly; it replaces the whole list.
+set that leaf's setting explicitly; it replaces the whole list.
 
 An explicit value **replaces** discovery for that leaf; it does not extend it. `localhost`,
 `127.0.0.1` and `::1` are appended to it all the same. Wildcard DNS names,
@@ -473,9 +475,10 @@ present a certificate for any other node — and equivalent textual IPv6 address
 ```sh
 WAZUH_MANAGER_CERT_SANS='DNS:wazuh.corp.local,IP:10.0.1.11'
 WAZUH_MANAGER_REMOTED_CERT_SANS='DNS:agents.corp.local,IP:10.0.1.11,IP:2001:db8::10'
+WAZUH_MANAGER_APID_CERT_SANS='DNS:api.corp.local,IP:10.0.1.11'
 ```
 
-Changing either setting afterwards renews nothing: a complete existing pair always wins, and a start
+Changing any of them afterwards renews nothing: a complete existing pair always wins, and a start
 issues nothing in any case. To reissue, stop the manager (the resolver opens the keystore, which
 `wazuh-manager-modulesd` holds while it runs), remove the pair and run the resolver's `--install`
 mode again. It issues from the CA in `$WAZUH_CA_DIR`, so the CA and its private key must still be
@@ -592,9 +595,9 @@ What removal does depends on which package manager, because they do not offer th
 | `rpm -e wazuh-manager` / `dnf remove` | the manager's own keys are removed from the managed block |
 
 RPM has no operation that removes a package while keeping its configuration, so an erase is the
-equivalent of a DEB purge and is treated as one. Both take exactly the same four keys
+equivalent of a DEB purge and is treated as one. Both take exactly the same five keys
 (`WAZUH_MANAGER_API_PASSWORD`, `WAZUH_MANAGER_WUI_PASSWORD`, `WAZUH_MANAGER_CERT_SANS`,
-`WAZUH_MANAGER_REMOTED_CERT_SANS`) and only from inside the managed block — lines you wrote are never
+`WAZUH_MANAGER_REMOTED_CERT_SANS`, `WAZUH_MANAGER_APID_CERT_SANS`) and only from inside the managed block — lines you wrote are never
 touched, even when they carry the same key.
 
 The last component out then removes what is left, `/etc/wazuh` included. "Last" is asked of the

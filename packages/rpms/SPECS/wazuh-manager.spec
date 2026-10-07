@@ -506,7 +506,8 @@ if [ $1 = 0 ]; then
     set -e
 
     for CRED_KEY in WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD \
-                    WAZUH_MANAGER_CERT_SANS WAZUH_MANAGER_REMOTED_CERT_SANS; do
+                    WAZUH_MANAGER_CERT_SANS WAZUH_MANAGER_REMOTED_CERT_SANS \
+                    WAZUH_MANAGER_APID_CERT_SANS; do
       wazuh_env_unset "${CRED_KEY}" > /dev/null 2>&1 || true
     done
 
