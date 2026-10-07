@@ -801,8 +801,7 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
             throw std::runtime_error("Couldn't retrieve current mappings.");
         }
 
-        // The backup is looked up by its own name, which only needs access to that index, instead of listing every
-        // index of the cluster.
+        // The backup is looked up by its own name, which only needs access to that index.
         const auto backupIndexUrl = [&]() { return selector->getNext() + "/" + m_indexName + "-backup"; };
         const auto backupExists = [&]()
         {
@@ -825,21 +824,67 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
                 ConfigurationParameters {});
             return exists;
         };
+        const auto documentCount = [&](const std::string& indexName)
+        {
+            nlohmann::json countResponse;
+            HTTPRequest::instance().get(
+                RequestParameters {.url = HttpURL(selector->getNext() + "/" + indexName + "/_count?filter_path=count"),
+                                   .secureCommunication = secureCommunication},
+                PostRequestParameters {.onSuccess = [&countResponse](const std::string& response)
+                                       { countResponse = nlohmann::json::parse(response, nullptr, false); },
+                                       .onError = onError},
+                ConfigurationParameters {});
+
+            if (countResponse.is_discarded() || !countResponse.contains("count"))
+            {
+                throw std::runtime_error("Couldn't retrieve the document count of '" + indexName + "'.");
+            }
+            return countResponse.at("count").get<uint64_t>();
+        };
 
         // Calculating hashes.
         auto hashTemplateMappings = hashMappings(templateMappings.dump());
         auto hashCurrentMappings = hashMappings(currentMappings[m_indexName]["mappings"].dump());
         if (hashTemplateMappings == hashCurrentMappings)
         {
-            // The mappings match, so a backup left by an earlier migration is no longer needed and the migration
-            // below, which is the only place that removes it, will not run again.
-            if (backupExists())
+            // Matching mappings only prove that the index was recreated, not that the reindex from the backup
+            // finished, so the backup is deleted only when it holds no more documents than the index.
+            const auto removeOrphanBackup = [&]()
             {
+                if (!backupExists())
+                {
+                    return;
+                }
+
+                const auto backupDocuments = documentCount(m_indexName + "-backup");
+                const auto indexDocuments = documentCount(m_indexName);
+                if (backupDocuments > indexDocuments)
+                {
+                    logWarn(IC_NAME,
+                            "Keeping backup index '%s-backup' with %llu documents: index '%s' holds %llu, so a "
+                            "migration may not have finished.",
+                            m_indexName.c_str(),
+                            static_cast<unsigned long long>(backupDocuments),
+                            m_indexName.c_str(),
+                            static_cast<unsigned long long>(indexDocuments));
+                    return;
+                }
+
                 logInfo(IC_NAME, "Deleting orphan backup index '%s-backup'.", m_indexName.c_str());
-                HTTPRequest::instance().delete_(
-                    RequestParameters {.url = HttpURL(backupIndexUrl()), .secureCommunication = secureCommunication},
-                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                    ConfigurationParameters {});
+                HTTPRequest::instance().delete_(RequestParameters {.url = HttpURL(backupIndexUrl()),
+                                                                   .secureCommunication = secureCommunication},
+                                                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                                ConfigurationParameters {});
+            };
+
+            // The cleanup is optional: a failure in it is not a failure of the mappings validation.
+            try
+            {
+                removeOrphanBackup();
+            }
+            catch (const std::exception& e)
+            {
+                logWarn(IC_NAME, "Unable to clean up the backup index '%s-backup': %s.", m_indexName.c_str(), e.what());
             }
         }
         else
@@ -1444,27 +1489,29 @@ IndexerConnector::IndexerConnector(
                     {});
             };
 
-            const auto serverUrl = selector->getNext();
-
             flushBulk();
             flushQuery();
 
-            // Only what goes to the indexer waits for its initialization: the operations flagged no-index have
-            // already been applied to the local mirror.
-            if (!requests.empty())
+            // Only what goes to the indexer needs it: the operations flagged no-index have already been applied to the
+            // local mirror, so they neither wait for its initialization nor for an available server.
+            if (requests.empty())
             {
-                if (!m_initialized && m_initializeThread.joinable())
-                {
-                    logDebug2(IC_NAME, "Waiting for initialization thread to process events.");
-                    m_initializeThread.join();
-                }
-
-                if (m_stopping.load())
-                {
-                    logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
-                    throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
-                }
+                return;
             }
+
+            if (!m_initialized && m_initializeThread.joinable())
+            {
+                logDebug2(IC_NAME, "Waiting for initialization thread to process events.");
+                m_initializeThread.join();
+            }
+
+            if (m_stopping.load())
+            {
+                logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
+                throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
+            }
+
+            const auto serverUrl = selector->getNext();
 
             for (const auto& [isQuery, payload] : requests)
             {
