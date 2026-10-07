@@ -366,11 +366,79 @@ STATIC char *w_agent_auth_read_token(const agent_auth_opts_t *opts, FILE *in, FI
 }
 
 /**
+ * @brief Whether the staged file at @p path names @p adr at @p nodes.
+ *
+ * OS_WriteXMLToStream() reports success for a rewrite that changed nothing: when the node path is
+ * absent it copies the file through untouched and still returns 0, and its "replaced" result is
+ * not exposed. An agent whose manager address is spelled some other supported way --
+ * <agent><manager><address>, <agent><server-ip>, or a 4.x <client><server><address>, all of which
+ * populate the same parsed field this was called about -- would therefore be reported as moved
+ * while still dialling the old manager. Reading the value back is the only check that
+ * distinguishes "replaced" from "did nothing".
+ *
+ * @return true when it does; false otherwise (a reason is written to @p err).
+ */
+STATIC bool w_agent_auth_endpoint_written(const char *path, const char **nodes, const char *adr,
+                                          FILE *err) {
+    OS_XML xml;
+    char *written;
+    bool matches;
+
+    if (OS_ReadXML(path, &xml) < 0) {
+        fprintf(err, "%s: could not re-read the rewritten '%s'.\n", AGENT_AUTH_NAME, WAZUHCONF);
+        return false;
+    }
+
+    written = OS_GetOneContentforElement(&xml, nodes);
+    OS_ClearXML(&xml);
+    matches = (written != NULL && strcmp(written, adr) == 0);
+    os_free(written);
+
+    if (!matches) {
+        fprintf(err, "%s: '%s' has no <agent><manager><endpoint> to point at '%s'.\n",
+                AGENT_AUTH_NAME, WAZUHCONF, adr);
+        fprintf(err, "  The manager address is configured some other way there, so it was left\n");
+        fprintf(err, "  alone rather than silently reported as changed.\n");
+    }
+
+    return matches;
+}
+
+#ifndef WIN32
+/**
+ * @brief Whether @p path still names the regular file open on @p fd.
+ *
+ * Decides whether the name about to be renamed onto ossec.conf is still the file this run wrote.
+ * Nothing is written, chmod'ed or chown'ed through that name -- all of it goes through @p fd --
+ * so a swap can no longer reach another file; this is what keeps a swapped name from being
+ * installed in its place.
+ */
+STATIC bool w_agent_auth_staged_is_ours(int fd, const char *path) {
+    struct stat ours;
+    struct stat named;
+
+    return fstat(fd, &ours) == 0 && lstat(path, &named) == 0 && S_ISREG(named.st_mode) &&
+           named.st_nlink == 1 && named.st_dev == ours.st_dev && named.st_ino == ours.st_ino;
+}
+
+/** Gives the file open on @p fd the mode and ownership of @p original, through the descriptor. */
+STATIC int w_agent_auth_copy_mode_and_owner(int fd, const struct stat *original) {
+    if (fchmod(fd, original->st_mode & 07777) != 0 ||
+        fchown(fd, original->st_uid, original->st_gid) != 0) {
+        return -1;
+    }
+
+    return 0;
+}
+#endif
+
+/**
  * @brief Points <agent><manager><endpoint> at @p adr.
  *
- * Only ever a replacement, never an insertion: OS_WriteXML() appends a node it cannot find --
- * after </ossec_config>, and still returning 0 -- so this refuses unless ClientConf() already
- * proved the element is there, and passes the old value as a second guard against that branch.
+ * Only ever a replacement, never an insertion: OS_WriteXMLToStream() appends a node it cannot
+ * find -- after </ossec_config>, and still returning 0 -- so this refuses unless ClientConf()
+ * already proved the element is there, and passes the old value as a second guard against that
+ * branch.
  *
  * @return 0 on success, -1 on failure (a reason is written to @p err).
  */
@@ -378,8 +446,6 @@ STATIC int w_agent_auth_update_endpoint(const char *adr, const char *configured,
     const char *nodes[] = {"ossec_config", "agent", "manager", "endpoint", NULL};
     File staged = {NULL, NULL};
     struct stat original;
-    OS_XML xml;
-    char *written = NULL;
     int result = -1;
 
     /* Whatever the live file is, that is what the rewritten one has to look like. Reading it
@@ -401,73 +467,52 @@ STATIC int w_agent_auth_update_endpoint(const char *adr, const char *configured,
         return -1;
     }
 
-    /* Recorded through the descriptor TempFile() still holds, so it names the file we created
-     * rather than whatever the path resolves to later. OS_WriteXML() reopens by NAME, which
-     * hands the account that can write INSTALLDIR/etc a window: unlink the staged file and plant
-     * a symlink at the same name, and root writes through it, then chowns and renames it onto
-     * ossec.conf. The unpredictable name makes that a race rather than a certainty; this check
-     * is what decides it. */
-#ifndef WIN32
-    struct stat staged_before;
-    bool staged_known = (fstat(fileno(staged.fp), &staged_before) == 0);
-#endif
-
-    fclose(staged.fp);
-
-    if (OS_WriteXML(WAZUHCONF, staged.name, nodes, configured, adr) != 0) {
+    /* Written through the stream TempFile() returned, never reopened by name. That account can
+     * see the staged name appear and swap it for a symlink; a reopen by name would then have root
+     * truncate and write whatever the link points at, before any check could refuse. */
+    if (OS_WriteXMLToStream(WAZUHCONF, staged.fp, nodes, configured, adr) != 0 ||
+        fflush(staged.fp) != 0) {
         fprintf(err, "%s: could not rewrite <manager><endpoint> in '%s'.\n", AGENT_AUTH_NAME,
                 WAZUHCONF);
         goto done;
     }
 
-    /* OS_WriteXML() reports success for a rewrite that changed nothing: when the node path is
-     * absent it copies the file through untouched and still returns 0, and its "replaced" result
-     * is not exposed. An agent whose manager address is spelled some other supported way --
-     * <agent><manager><address>, <agent><server-ip>, or a 4.x <client><server><address>, all of
-     * which populate the same parsed field this was called about -- would therefore be reported
-     * as moved while still dialling the old manager. Reading the value back is the only check
-     * that distinguishes "replaced" from "did nothing". */
-    if (OS_ReadXML(staged.name, &xml) < 0) {
-        fprintf(err, "%s: could not re-read the rewritten '%s'.\n", AGENT_AUTH_NAME, WAZUHCONF);
+#ifndef WIN32
+    if (!w_agent_auth_staged_is_ours(fileno(staged.fp), staged.name)) {
+        fprintf(err, "%s: the staged copy of '%s' was replaced while it was being written; "
+                "refusing to install it.\n", AGENT_AUTH_NAME, WAZUHCONF);
         goto done;
     }
+#endif
 
-    written = OS_GetOneContentforElement(&xml, nodes);
-    OS_ClearXML(&xml);
-
-    if (written == NULL || strcmp(written, adr) != 0) {
-        fprintf(err, "%s: '%s' has no <agent><manager><endpoint> to point at '%s'.\n",
-                AGENT_AUTH_NAME, WAZUHCONF, adr);
-        fprintf(err, "  The manager address is configured some other way there, so it was left\n");
-        fprintf(err, "  alone rather than silently reported as changed.\n");
+    if (!w_agent_auth_endpoint_written(staged.name, nodes, adr, err)) {
         goto done;
     }
 
 #ifndef WIN32
-    {
-        struct stat staged_after;
-
-        if (!staged_known || lstat(staged.name, &staged_after) != 0 ||
-                !S_ISREG(staged_after.st_mode) || staged_after.st_nlink != 1 ||
-                staged_after.st_dev != staged_before.st_dev ||
-                staged_after.st_ino != staged_before.st_ino) {
-            fprintf(err, "%s: the staged copy of '%s' was replaced while it was being written; "
-                    "refusing to install it.\n", AGENT_AUTH_NAME, WAZUHCONF);
-            goto done;
-        }
-    }
-
-    /* Windows carries no uid, gid or permission bits to carry over. What protects the file there
+    /* Through the descriptor, for the same reason as the write: by name, the mode and owner land
+     * on whatever the name points at by then.
+     *
+     * Windows carries no uid, gid or permission bits to carry over. What protects the file there
      * is the DACL mkstemp_ex() puts on it -- Administrators and SYSTEM only, set explicitly
      * rather than inherited from the directory (file_op.c) -- which MoveFileEx() then carries
      * onto ossec.conf. */
-    if (fchmodat(AT_FDCWD, staged.name, original.st_mode & 07777, 0) != 0 ||
-        chown(staged.name, original.st_uid, original.st_gid) != 0) {
+    if (w_agent_auth_copy_mode_and_owner(fileno(staged.fp), &original) != 0) {
         fprintf(err, "%s: could not preserve the permissions of '%s': %s (%d).\n",
                 AGENT_AUTH_NAME, WAZUHCONF, strerror(errno), errno);
         goto done;
     }
 #endif
+
+    /* Closed before the move: Windows will not move a file that still has a handle open on it. */
+    if (fclose(staged.fp) != 0) {
+        staged.fp = NULL;
+        fprintf(err, "%s: could not finish writing the rewritten '%s'.\n", AGENT_AUTH_NAME,
+                WAZUHCONF);
+        goto done;
+    }
+
+    staged.fp = NULL;
 
     if (OS_MoveFile(staged.name, WAZUHCONF) < 0) {
         fprintf(err, "%s: could not install the rewritten '%s'.\n", AGENT_AUTH_NAME, WAZUHCONF);
@@ -477,7 +522,9 @@ STATIC int w_agent_auth_update_endpoint(const char *adr, const char *configured,
     result = 0;
 
 done:
-    os_free(written);
+    if (staged.fp != NULL) {
+        fclose(staged.fp);
+    }
 
     if (result != 0) {
         unlink(staged.name);
@@ -551,8 +598,8 @@ STATIC bool w_agent_auth_endpoint_differs(const char *adr, const agent_server *c
 STATIC int w_agent_auth_point_config(const char *adr, const agent_server *server,
                                      const char *configured, const char *succeeded, FILE *err) {
     if (server == NULL || server->rip == NULL) {
-        /* No <manager><endpoint> to replace. OS_WriteXML() cannot insert one -- it appends the
-         * node after </ossec_config> and still reports success -- so this says so instead of
+        /* No <manager><endpoint> to replace. OS_WriteXMLToStream() cannot insert one -- it appends
+         * the node after </ossec_config> and still reports success -- so this says so instead of
          * returning 0 and leaving an enrolled agent with no address to dial, which is the
          * half-done move this whole path exists to prevent. */
         fprintf(err, "  %s, but %s has no <agent><manager><endpoint> to point\n", succeeded,
