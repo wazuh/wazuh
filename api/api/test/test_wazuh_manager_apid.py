@@ -498,9 +498,28 @@ def test_start_hands_the_bound_sockets_to_uvicorn(apid):
     bind_mock.assert_called_once_with(['0.0.0.0', '::'], 55000)
     config_kwargs = apid.uvicorn.Config.call_args.kwargs
     assert 'host' not in config_kwargs and 'port' not in config_kwargs
-    assert config_kwargs == {'server_header': False, 'loop': 'uvloop'}
+    assert config_kwargs == {'server_header': False, 'loop': 'uvloop', 'proxy_headers': False}
     apid.uvicorn.Server.assert_called_once_with(apid.uvicorn.Config.return_value)
     apid.uvicorn.Server.return_value.run.assert_called_once_with(sockets=bound)
+
+
+def test_start_ignores_forwarded_headers_from_loopback(apid):
+    """uvicorn must not take the client address from X-Forwarded-For.
+
+    With its defaults (proxy_headers=True, FORWARDED_ALLOW_IPS=127.0.0.1) any local user could send
+    the header over loopback and choose the address the login lockout, the per-IP rate limits and
+    api.log see: unlimited guesses, or another host locked out.
+    """
+    from uvicorn import Config
+
+    _prepare_start(apid)
+    apid.uvicorn.Config.side_effect = lambda app, **kwargs: Config(app, **kwargs)
+    with patch.dict(os.environ, {'FORWARDED_ALLOW_IPS': '*'}), \
+            patch.object(apid, '_bind_listening_sockets', return_value=[MagicMock()]):
+        apid.start({'host': ['0.0.0.0'], 'port': 55000, 'server_header': False})
+
+    config = apid.uvicorn.Server.call_args.args[0]
+    assert config.proxy_headers is False
 
 
 def test_start_exits_when_the_server_never_started(apid):

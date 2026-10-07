@@ -441,8 +441,12 @@ def start(params: dict):
         raise SystemExit(0)
 
     try:
+        # proxy_headers=False: uvicorn otherwise replaces the client address with X-Forwarded-For
+        # from any peer in FORWARDED_ALLOW_IPS (127.0.0.1 by default), so a local user could pick
+        # the address the login lockout, the rate limits and api.log see. Nothing in front of the
+        # API is a trusted proxy.
         config = uvicorn.Config(app, **{key: value for key, value in params.items()
-                                        if key not in ('host', 'port')})
+                                        if key not in ('host', 'port')}, proxy_headers=False)
         server = uvicorn.Server(config)
         server.run(sockets=sockets)
     except OSError as exc:
