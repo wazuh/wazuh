@@ -223,6 +223,110 @@ void ExecdTimeoutRun(int *childcount)
 #endif
 }
 
+static bool ar_ip_in(const os_ip *entry, const struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET) {
+        if (entry->is_ipv6) {
+            return false;
+        }
+        const struct sockaddr_in *in4 = (const struct sockaddr_in *)sa;
+        return (in4->sin_addr.s_addr & entry->ipv4->netmask) == entry->ipv4->ip_address;
+    }
+
+    if (!entry->is_ipv6) {
+        return false;
+    }
+    const uint8_t *addr = (const uint8_t *)&((const struct sockaddr_in6 *)sa)->sin6_addr;
+    for (int i = 0; i < 16; i++) {
+        if ((addr[i] & entry->ipv6->netmask[i]) != entry->ipv6->ip_address[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool ar_same_ip(const struct sockaddr *a, const struct sockaddr *b)
+{
+    if (a->sa_family != b->sa_family) {
+        return false;
+    }
+    if (a->sa_family == AF_INET) {
+        return ((const struct sockaddr_in *)a)->sin_addr.s_addr == ((const struct sockaddr_in *)b)->sin_addr.s_addr;
+    }
+    return !memcmp(&((const struct sockaddr_in6 *)a)->sin6_addr, &((const struct sockaddr_in6 *)b)->sin6_addr,
+                   sizeof(struct in6_addr));
+}
+
+#define AR_MANAGER_ADDR_MAX 32
+static struct sockaddr_storage ar_manager_addrs[AR_MANAGER_ADDR_MAX];
+static int ar_manager_addrs_n = 0;
+
+void ar_resolve_manager_hosts(void)
+{
+    // Addresses are only ever added, so a failed lookup keeps the ones resolved before.
+    for (int i = 0; ar_manager_hosts && ar_manager_hosts[i]; i++) {
+        struct addrinfo hints = {0};
+        struct addrinfo *res = NULL;
+        hints.ai_family = AF_UNSPEC;
+
+        if (getaddrinfo(ar_manager_hosts[i], NULL, &hints, &res) != 0) {
+            mdebug1("Could not resolve manager address '%s' for the active response allowlist.", ar_manager_hosts[i]);
+            continue;
+        }
+
+        for (struct addrinfo *r = res; r && ar_manager_addrs_n < AR_MANAGER_ADDR_MAX; r = r->ai_next) {
+            bool known = false;
+            for (int j = 0; j < ar_manager_addrs_n && !known; j++) {
+                known = ar_same_ip((struct sockaddr *)&ar_manager_addrs[j], r->ai_addr);
+            }
+            if (!known && r->ai_addrlen <= sizeof(struct sockaddr_storage)) {
+                memcpy(&ar_manager_addrs[ar_manager_addrs_n++], r->ai_addr, r->ai_addrlen);
+            }
+        }
+        freeaddrinfo(res);
+    }
+}
+
+bool ar_source_allowlisted(const char *srcip)
+{
+    struct addrinfo hints = {0};
+    struct addrinfo *src = NULL;
+    struct sockaddr_storage addr = {0};
+    bool found = false;
+
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_flags = AI_NUMERICHOST;
+
+    // Same parser block-ip uses, so shorthand forms like "127.1" cannot slip past the list.
+    if (!srcip || getaddrinfo(srcip, NULL, &hints, &src) != 0 || !src) {
+        return false;
+    }
+    memcpy(&addr, src->ai_addr, src->ai_addrlen);
+    freeaddrinfo(src);
+
+    struct sockaddr_in6 *in6 = (struct sockaddr_in6 *)&addr;
+    if (addr.ss_family == AF_INET6 && IN6_IS_ADDR_V4MAPPED(&in6->sin6_addr)) {
+        struct sockaddr_in in4 = {0};
+        in4.sin_family = AF_INET;
+        memcpy(&in4.sin_addr, (const uint8_t *)&in6->sin6_addr + 12, sizeof(in4.sin_addr));
+        memset(&addr, 0, sizeof(addr));
+        memcpy(&addr, &in4, sizeof(in4));
+    }
+
+    for (int i = 0; ar_allowlist && ar_allowlist[i] && !found; i++) {
+        found = ar_ip_in(ar_allowlist[i], (struct sockaddr *)&addr);
+    }
+
+    if (!found && ar_manager_hosts) {
+        ar_resolve_manager_hosts();
+        for (int i = 0; i < ar_manager_addrs_n && !found; i++) {
+            found = ar_same_ip((struct sockaddr *)&ar_manager_addrs[i], (struct sockaddr *)&addr);
+        }
+    }
+
+    return found;
+}
+
 #ifdef WIN32
 void ExecdRun(char *exec_msg)
 #else
@@ -272,6 +376,14 @@ void ExecdRun(char *exec_msg, int *childcount)
         return;
     }
     name = json_executable->valuestring;
+
+    cJSON *json_srcip = cJSON_GetObjectItem(cJSON_GetObjectItem(json_root, "source"), "ip");
+    if (cJSON_IsString(json_srcip) && ar_source_allowlisted(json_srcip->valuestring)) {
+        mwarn("Active response '%s' not executed: source.ip '%s' is the manager or in the allowlist.",
+              name, json_srcip->valuestring);
+        cJSON_Delete(json_root);
+        return;
+    }
 
     /* Directory traversal protection */
     if (w_ref_parent_folder(name)) {

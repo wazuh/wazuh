@@ -16,6 +16,60 @@
 #include "os_net.h"
 
 int is_disabled;
+os_ip **ar_allowlist = NULL;
+char **ar_manager_hosts = NULL;
+
+/* Never blocked: loopback and unspecified. The manager is added from the agent's own configuration. */
+static const char *AR_ALLOWLIST_DEFAULTS[] = {"127.0.0.0/8", "::1", "0.0.0.0", "::", NULL};
+
+static int ar_allowlist_add(const char *entry)
+{
+    os_ip *ip = NULL;
+    size_t n = 0;
+
+    if (!entry || *entry == '!' || strcmp(entry, "any") == 0) {
+        merror(XML_VALUEERR, "allowlist", entry ? entry : "");
+        return -1;
+    }
+
+    os_calloc(1, sizeof(os_ip), ip);
+    if (!OS_IsValidIP(entry, ip)) {
+        merror(XML_VALUEERR, "allowlist", entry);
+        w_free_os_ip(ip);
+        return -1;
+    }
+
+    while (ar_allowlist && ar_allowlist[n]) {
+        n++;
+    }
+    os_realloc(ar_allowlist, (n + 2) * sizeof(os_ip *), ar_allowlist);
+    ar_allowlist[n] = ip;
+    ar_allowlist[n + 1] = NULL;
+    return 0;
+}
+
+static void ar_load_manager_hosts(const char *cfgfile)
+{
+    agent agt = { .server = NULL };
+    size_t n = 0;
+
+    if (ReadConfig(CCLIENT, cfgfile, &agt, NULL) < 0) {
+        mwarn("Could not read the manager address. Active responses will only skip the configured allowlist.");
+    }
+
+    for (int i = 0; agt.server && agt.server[i].rip; i++) {
+        os_realloc(ar_manager_hosts, (n + 2) * sizeof(char *), ar_manager_hosts);
+        os_strdup(agt.server[i].rip, ar_manager_hosts[n]);
+        // Legacy <server-hostname> entries carry a trailing "/".
+        char *slash = strchr(ar_manager_hosts[n], '/');
+        if (slash) {
+            *slash = '\0';
+        }
+        ar_manager_hosts[++n] = NULL;
+    }
+
+    Free_Agent(&agt);
+}
 
 /* Read the config file */
 int ExecdConfig(const char *cfgfile)
@@ -58,47 +112,49 @@ int ExecdConfig(const char *cfgfile)
         free(disable_entry);
     }
 
-    XML_NODE node;
-    node = OS_GetElementsbyNode(&xml, NULL);
+    XML_NODE node = OS_GetElementsbyNode(&xml, NULL);
 
-    XML_NODE child = NULL;
-    while (node && node[i])
-    {
-        child = OS_GetElementsbyNode(&xml, node[i]);
-        int j = 0;
+    for (i = 0; node && node[i]; i++) {
+        XML_NODE child = OS_GetElementsbyNode(&xml, node[i]);
 
-        while (child && child[j]){
-
-            if (strcmp(child[j]->element, "active-response") == 0){
-                XML_NODE child_attr = NULL;
-                child_attr = OS_GetElementsbyNode(&xml, child[j]);
-                int p = 0;
-
-                while (child_attr && child_attr[p])
-                {
-                    if (!strcmp(child_attr[p]->element, "repeated_offenders"))
-                    {
-                        os_strdup(child_attr[p]->content, repeated_t);
-                        OS_ClearNode(child_attr);
-                        goto next;
-                    }
-                    p++;
-                }
-
-                OS_ClearNode(child_attr);
-
+        for (int j = 0; child && child[j]; j++) {
+            if (strcmp(child[j]->element, "active-response") != 0) {
+                continue;
             }
-            j++;
+
+            XML_NODE child_attr = OS_GetElementsbyNode(&xml, child[j]);
+
+            for (int p = 0; child_attr && child_attr[p]; p++) {
+                if (!strcmp(child_attr[p]->element, "repeated_offenders")) {
+                    if (!repeated_t) {
+                        os_strdup(child_attr[p]->content, repeated_t);
+                    }
+                } else if (!strcmp(child_attr[p]->element, "allowlist")) {
+                    if (ar_allowlist_add(child_attr[p]->content) < 0) {
+                        OS_ClearNode(child_attr);
+                        OS_ClearNode(child);
+                        OS_ClearNode(node);
+                        OS_ClearXML(&xml);
+                        os_free(repeated_t);
+                        return (-1);
+                    }
+                }
+            }
+
+            OS_ClearNode(child_attr);
         }
 
-        i++;
         OS_ClearNode(child);
-        child = NULL;
     }
 
-next:
-    OS_ClearNode(child);
     OS_ClearNode(node);
+
+    for (i = 0; AR_ALLOWLIST_DEFAULTS[i]; i++) {
+        ar_allowlist_add(AR_ALLOWLIST_DEFAULTS[i]);
+    }
+
+    ar_load_manager_hosts(cfgfile);
+    ar_resolve_manager_hosts();
 
     //repeated_t = OS_GetOneContentforElement(&xml, blocks);
     if (repeated_t)
@@ -174,6 +230,14 @@ cJSON *getARConfig(void) {
             cJSON_AddItemToArray(rot,cJSON_CreateNumber(repeated_offenders_timeout[i]));
         }
         cJSON_AddItemToObject(ar,"repeated_offenders",rot);
+    }
+
+    if (ar_allowlist) {
+        cJSON *allowlist = cJSON_CreateArray();
+        for (i = 0; ar_allowlist[i]; i++) {
+            cJSON_AddItemToArray(allowlist, cJSON_CreateString(ar_allowlist[i]->ip));
+        }
+        cJSON_AddItemToObject(ar, "allowlist", allowlist);
     }
 
     cJSON_AddItemToObject(root,"active-response",ar);
