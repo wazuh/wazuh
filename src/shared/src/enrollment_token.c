@@ -34,6 +34,12 @@
 #include "x509_op.h"
 #include "enrollment_token.h"
 
+#ifdef WAZUH_UNIT_TESTING
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 /* Info label of the HKDF that derives the key of a token credential */
 #define W_ETOKEN_HKDF_LABEL "WAZUH-ENROLL-TOKEN-KEY"
 
@@ -72,22 +78,39 @@ typedef struct {
     const char *prefix; /* Text after that '/', possibly empty */
 } etoken_adr;
 
-static int buf_append(etoken_buf *buf, const char *text, size_t len)
+/* Grow buf to hold at least `needed` bytes, doubling from 256 until doubling would wrap */
+static int buf_grow(etoken_buf *buf, size_t needed)
 {
-    if (buf->len + len + 1 > buf->cap) {
-        size_t cap = (buf->cap == 0) ? 256 : buf->cap;
-        char *grown = NULL;
+    size_t cap = (buf->cap == 0) ? 256 : buf->cap;
+    char *grown = NULL;
 
-        while (cap < buf->len + len + 1) {
-            cap *= 2;
-        }
+    while (cap < needed) {
+        cap = (cap > SIZE_MAX / 2) ? needed : cap * 2;
+    }
 
-        if ((grown = (char *) realloc(buf->text, cap)) == NULL) {
+    if ((grown = (char *) realloc(buf->text, cap)) == NULL) {
+        return -1;
+    }
+
+    buf->text = grown;
+    buf->cap = cap;
+
+    return 0;
+}
+
+/* Append `len` bytes of text to buf, keeping it terminated. A length whose terminator would wrap
+ * the size is refused: it would otherwise pass for a fit and copy into the buffer as it is, which
+ * is still NULL before the first append. */
+STATIC int buf_append(etoken_buf *buf, const char *text, size_t len)
+{
+    if (len > SIZE_MAX - buf->len - 1) {
+        return -1;
+    }
+
+    if (buf->text == NULL || buf->len + len + 1 > buf->cap) {
+        if (buf_grow(buf, buf->len + len + 1) != 0) {
             return -1;
         }
-
-        buf->text = grown;
-        buf->cap = cap;
     }
 
     memcpy(buf->text + buf->len, text, len);

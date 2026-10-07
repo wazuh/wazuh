@@ -78,6 +78,24 @@ static const uint8_t PIN_BYTES[W_ETOKEN_PIN_BYTES] = {
     0xf3, 0x59, 0x0a, 0xa2
 };
 
+/* enrollment_token.c's output buffer and its append, exported only under WAZUH_UNIT_TESTING
+ * (STATIC). The layout has to match the one there. */
+typedef struct {
+    char *text;
+    size_t len;
+    size_t cap;
+} etoken_buf;
+
+int buf_append(etoken_buf *buf, const char *text, size_t len);
+
+/* test_buf_append_refuses_a_length_it_cannot_allocate needs realloc() to fail the way it does in a
+ * release build, by returning NULL. AddressSanitizer, which DEBUG builds link in, aborts the
+ * process instead unless told otherwise. Unused when the sanitizer isn't there. */
+const char *__asan_default_options(void)
+{
+    return "allocator_may_return_null=1";
+}
+
 static void hex_of(const uint8_t *bytes, size_t len, char *out)
 {
     size_t i;
@@ -646,6 +664,52 @@ void test_decode_rejects_an_embedded_nul(void **state)
     free(token);
 }
 
+/* The output buffer every rendering is built in starts empty, with no storage: the first append
+ * allocates it, and each one leaves the text terminated. */
+static void test_buf_append_grows_and_terminates(void **state)
+{
+    (void) state;
+    etoken_buf buf = {NULL, 0, 0};
+
+    assert_int_equal(buf_append(&buf, "ab", 2), 0);
+    assert_int_equal(buf_append(&buf, "cd", 2), 0);
+
+    assert_string_equal(buf.text, "abcd");
+    assert_int_equal(buf.len, 4);
+    free(buf.text);
+}
+
+/* A length that wraps the size check used to skip the growth and copy into the buffer as it was,
+ * which on the first append is NULL. Refused instead, and the buffer is left as it was. */
+static void test_buf_append_refuses_a_length_that_would_wrap(void **state)
+{
+    (void) state;
+    etoken_buf buf = {NULL, 0, 0};
+
+    assert_int_equal(buf_append(&buf, "x", SIZE_MAX), -1);
+    assert_null(buf.text);
+    assert_int_equal(buf.len, 0);
+
+    assert_int_equal(buf_append(&buf, "abc", 3), 0);
+    assert_int_equal(buf_append(&buf, "x", SIZE_MAX - 3), -1);
+
+    assert_string_equal(buf.text, "abc");
+    assert_int_equal(buf.len, 3);
+    free(buf.text);
+}
+
+/* Short of wrapping, a length no allocation can hold fails cleanly rather than doubling the
+ * capacity past SIZE_MAX, where it wraps to zero and never grows again. */
+static void test_buf_append_refuses_a_length_it_cannot_allocate(void **state)
+{
+    (void) state;
+    etoken_buf buf = {NULL, 0, 0};
+
+    assert_int_equal(buf_append(&buf, "x", SIZE_MAX / 2 + 1), -1);
+    assert_null(buf.text);
+    assert_int_equal(buf.len, 0);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -661,7 +725,10 @@ int main(void)
         cmocka_unit_test(test_derive_key_matches_the_cpp_vector),
         cmocka_unit_test(test_reenroll_derive_key_matches_the_cpp_vector),
         cmocka_unit_test(test_the_two_derivations_are_domain_separated),
-        cmocka_unit_test(test_strerror_covers_every_code)
+        cmocka_unit_test(test_strerror_covers_every_code),
+        cmocka_unit_test(test_buf_append_grows_and_terminates),
+        cmocka_unit_test(test_buf_append_refuses_a_length_that_would_wrap),
+        cmocka_unit_test(test_buf_append_refuses_a_length_it_cannot_allocate)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
