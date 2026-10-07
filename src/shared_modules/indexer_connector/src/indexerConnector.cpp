@@ -679,11 +679,11 @@ void IndexerConnector::diff(const nlohmann::json& responseJson,
     // Iterate over the database and check if the element is in the status vector. The trailing separator keeps
     // this an exact per-agent scan: without it, a shorter agent ID prefix-matches a longer sibling's keys too
     // (RocksDBIterator::valid() is a raw prefix check with no key-boundary awareness).
-    std::size_t mirrorEntryCount {0};
     // Named local, not passed inline: seek() takes the key as a non-owning string_view and RocksDBIterator
     // only reads through it lazily (on the range-for's begin()), so a temporary here would already be destroyed
     // by the time it's read.
     const auto agentPrefix = agentId + "_";
+    std::size_t mirrorEntryCount {0};
     for (const auto& [key, value] : m_db->seek(agentPrefix))
     {
         ++mirrorEntryCount;
@@ -708,26 +708,27 @@ void IndexerConnector::diff(const nlohmann::json& responseJson,
 
     // Iterate over the status vector and check if the element is marked as not found.
     // This means that the element is in the indexer but not in the database. To solve this, the element will be
-    // deleted. Skip entirely when the mirror scan came back completely empty while the index reports documents for this
-    // agent: that combination is the signature of a corrupted/gapped local mirror, not proof the
-    // agent's real documents should be deleted. A partially-populated mirror is trusted as before.
-    if (mirrorEntryCount == 0 && !status.empty())
+    // deleted. An empty mirror is no exception: on a node that has never processed the agent (it has just moved
+    // there from another cluster node) this removes the previous node's documents, and the full sync the agent is
+    // sending to this node reinserts the current ones. The same deletion on a node that did process the agent means
+    // the mirror was lost, so the event is worth a log line either way.
+    std::size_t deletions {0};
+    for (const auto& [id, data] : status)
+    {
+        if (!data)
+        {
+            actions.emplace_back(id, true);
+            ++deletions;
+        }
+    }
+
+    if (mirrorEntryCount == 0 && deletions > 0)
     {
         logWarn(IC_NAME,
-                "Skipping deletion for agent '%s': local mirror is empty but the index reports %zu document(s) - "
-                "assuming a corrupted mirror instead of deleting real data.",
+                "Local mirror holds no entry for agent '%s': deleting the %zu document(s) the index reports for it. "
+                "Expected when the agent has just moved to this node; otherwise the mirror was lost.",
                 agentId.c_str(),
-                status.size());
-    }
-    else
-    {
-        for (const auto& [id, data] : status)
-        {
-            if (!data)
-            {
-                actions.emplace_back(id, true);
-            }
-        }
+                deletions);
     }
 
     auto url = selector->getNext();
@@ -1205,17 +1206,25 @@ IndexerConnector::IndexerConnector(
                             m_db->delete_(key);
                         };
 
-                        if (std::string value; !id.empty() && m_db->get(id, value))
+                        if (id.empty())
                         {
-                            deleteKey(id);
+                            // An empty id would match every key under "_"; the exact lookup rejects it anyway.
+                            logWarn(IC_NAME, "Ignoring DELETED event with an empty id: %s", data.c_str());
                         }
-
-                        // Named local: seek() only borrows the key as a string_view, read lazily on the loop's
-                        // begin() - a temporary here would already be gone by then.
-                        const auto idPrefix = id + "_";
-                        for (const auto& [key, _] : m_db->seek(idPrefix))
+                        else
                         {
-                            deleteKey(key);
+                            if (std::string value; m_db->get(id, value))
+                            {
+                                deleteKey(id);
+                            }
+
+                            // Named local: seek() only borrows the key as a string_view, read lazily on the
+                            // loop's begin() - a temporary here would already be gone by then.
+                            const auto idPrefix = id + "_";
+                            for (const auto& [key, _] : m_db->seek(idPrefix))
+                            {
+                                deleteKey(key);
+                            }
                         }
                     }
                     else
@@ -1542,18 +1551,23 @@ IndexerConnector::IndexerConnector(
                     if (m_useSeekDelete)
                     {
                         // Same match as the index-enabled constructor's DELETED branch: the exact id plus every
-                        // versioned key under "<id>_", never a sibling that merely shares the byte prefix.
-                        if (std::string value; !id.empty() && m_db->get(id, value))
+                        // versioned key under "<id>_", never a sibling that merely shares the byte prefix. With no
+                        // bulk request to build, deleting a key that is not there is a harmless no-op.
+                        if (id.empty())
+                        {
+                            logWarn(IC_NAME, "Ignoring DELETED event with an empty id: %s", data.c_str());
+                        }
+                        else
                         {
                             m_db->delete_(id);
-                        }
 
-                        // Named local: seek() only borrows the key as a string_view, read lazily on the loop's
-                        // begin() - a temporary here would already be gone by then.
-                        const auto idPrefix = id + "_";
-                        for (const auto& [key, _] : m_db->seek(idPrefix))
-                        {
-                            m_db->delete_(key);
+                            // Named local: seek() only borrows the key as a string_view, read lazily on the
+                            // loop's begin() - a temporary here would already be gone by then.
+                            const auto idPrefix = id + "_";
+                            for (const auto& [key, _] : m_db->seek(idPrefix))
+                            {
+                                m_db->delete_(key);
+                            }
                         }
                     }
                     else
