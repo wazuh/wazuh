@@ -104,8 +104,11 @@ bool restartAgent(void) {
 	return controlAgent("restart");
 }
 
-int verifyRemoteConf(const char *configPath){
+int verifyRemoteConf(){
+	const char *configPath;
  	char msg_output[OS_MAXSTR];
+
+	configPath = AGENTCONFIG;
 
 	if (Test_Syscheck(configPath) < 0) {
 		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "wazuh-agent", AG_IN_RCON, "syscheck");

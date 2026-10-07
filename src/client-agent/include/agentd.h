@@ -142,9 +142,8 @@ bool reloadAgent(void);
 // Linux/macOS, a detached service restart on Windows).
 bool restartAgent(void);
 
-// Verify the shared agent configuration at configPath (a staged copy, not
-// necessarily AGENTCONFIG). Return 0 on success or -1 on error.
-int verifyRemoteConf(const char *configPath);
+// Verify remote configuration. Return 0 on success or -1 on error.
+int verifyRemoteConf();
 
 // Initialize startup gate state for module workload blocking.
 void startup_gate_initialize(void);
@@ -164,10 +163,11 @@ void startup_gate_release_from_https_apply(void);
 // apply's own release.
 void startup_gate_check_manager_config_hash(const char *manager_sha256);
 
-// Mark that bridge_on_config_downloaded() has validated and published a
-// downloaded config and is about to write SHAREDCFG_FILE and drive a reload. Call before that
-// write: from this point until startup_gate_release_from_https_apply() (or
-// the next startup_gate_initialize()) runs, startup_gate_check_manager_config_hash()
+// Mark that bridge_on_config_downloaded() has validated a downloaded config
+// in place and is about to write SHAREDCFG_FILE and drive a reload. Call
+// before that write: from this point until
+// startup_gate_release_from_https_apply() (or the next
+// startup_gate_initialize()) runs, startup_gate_check_manager_config_hash()
 // will not release the gate on its own, even though the just-written file's
 // hash already matches the manager's -- that match is a side effect of this
 // same download, not proof the reload it is driving has actually completed.

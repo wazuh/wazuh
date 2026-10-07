@@ -24,6 +24,7 @@
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
+#include "../wrappers/posix/time_wrappers.h"
 #include "ferror_wrapper.h"
 #include "sha256_op.h"
 
@@ -156,9 +157,8 @@ void __wrap_w_agentd_state_update(w_agentd_state_update_t type, void *data)
  * wrapper for these two ABIs either (unlike w_copy_file/UnmergeFiles/
  * cldir_ex_ignore below, which reuse the shared wrappers already used by
  * remoted/test_manager.c and wazuh_modules/agent_upgrade). */
-int __wrap_verifyRemoteConf(const char *configPath)
+int __wrap_verifyRemoteConf(void)
 {
-    check_expected(configPath);
     return mock();
 }
 
@@ -168,6 +168,20 @@ bool __wrap_reloadAgent(void)
 }
 
 void __wrap_startup_gate_release_from_https_apply(void)
+{
+    function_called();
+}
+
+/* The pending mark is what keeps a hash match from opening the gate ahead of
+ * the reload an apply drives, and from opening it on a manual SIGUSR1 when no
+ * validated apply is pending: wrapped so every test pins exactly when it is
+ * set and cleared. */
+void __wrap_startup_gate_mark_download_pending(void)
+{
+    function_called();
+}
+
+void __wrap_startup_gate_clear_download_pending(void)
 {
     function_called();
 }
@@ -1517,76 +1531,111 @@ static void expect_config_downloaded_log(const char *hash, const char *file)
     expect_string(__wrap__mdebug1, formatted_msg, expected);
 }
 
-#define STAGING_DIR   SHAREDCFG_DIR "/.staging"
-#define STAGING_AGENT STAGING_DIR "/agent.conf"
+#define APPLYING   SHAREDCFG_DIR "/.applying"
+#define MERGED_TMP SHAREDCFG_FILE ".tmp"
 
-/* Stage: clear any leftover, then unmerge the module's file into the scratch
- * directory. */
-static void expect_stage(int unmerge_ret)
+static FILE *const APPLYING_FP = (FILE *)0x6860;
+static const char *const OTHER_DOWNLOAD_HASH = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+
+/* wfopen()/fclose() only mock while test_mode is set; scoped to the callback
+ * so nothing else in the test reaches the real or the mocked versions by
+ * surprise. */
+static void deliver_download(const char *file)
 {
-    expect_rmdir_ex_call(STAGING_DIR, -1); /* Usually absent: result ignored. */
-
-    expect_string(__wrap_UnmergeFiles, finalpath, DOWNLOAD_FILE);
-    expect_string(__wrap_UnmergeFiles, optdir, STAGING_DIR);
-    expect_value(__wrap_UnmergeFiles, mode, OS_TEXT);
-    will_return(__wrap_UnmergeFiles, unmerge_ret); /* UnmergeFiles: 1 = success, 0 = failure. */
+    test_mode = 1;
+    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, file, g_captured_callbacks.user_data);
+    test_mode = 0;
 }
 
-static void expect_validation(int ret)
+static void expect_unlink_ok(const char *path)
 {
-    expect_string(__wrap_verifyRemoteConf, configPath, STAGING_AGENT);
-    will_return(__wrap_verifyRemoteConf, ret);
+    expect_string(__wrap_unlink, file, path);
+    will_return(__wrap_unlink, 0);
 }
 
-/* Publish: drop the scratch directory, unmerge into SHAREDCFG_DIR, sweep it,
- * and only then write SHAREDCFG_FILE (the startup gate's commit marker). */
-static void expect_publish_until_copy(int copy_ret)
+static void expect_begin_apply(void)
 {
-    expect_rmdir_ex_call(STAGING_DIR, 0);
+    expect_wfopen(APPLYING, "w", APPLYING_FP);
+    expect_fclose(APPLYING_FP, 0);
+}
 
-    expect_string(__wrap_UnmergeFiles, finalpath, DOWNLOAD_FILE);
+/* UnmergeFiles into SHAREDCFG_DIR, then the sweep when it succeeded. */
+static void expect_unmerge_into_shared(const char *bundle, int unmerge_ret, int sweep_ret)
+{
+    expect_string(__wrap_UnmergeFiles, finalpath, bundle);
     expect_string(__wrap_UnmergeFiles, optdir, SHAREDCFG_DIR);
     expect_value(__wrap_UnmergeFiles, mode, OS_TEXT);
-    will_return(__wrap_UnmergeFiles, 1);
+    will_return(__wrap_UnmergeFiles, unmerge_ret); /* UnmergeFiles: 1 = success, 0 = failure. */
 
+    if (unmerge_ret) {
+        expect_string(__wrap_cldir_ex_ignore, name, SHAREDCFG_DIR);
+        will_return(__wrap_cldir_ex_ignore, sweep_ret);
+    }
+}
+
+/* Rebuild SHAREDCFG_DIR from SHAREDCFG_FILE: everything else goes, then the
+ * previous bundle is unmerged again (or nothing, on a fresh agent). */
+static void expect_rollback(bool has_previous)
+{
     expect_string(__wrap_cldir_ex_ignore, name, SHAREDCFG_DIR);
     will_return(__wrap_cldir_ex_ignore, 0);
+    expect_string(__wrap_IsFile, file, SHAREDCFG_FILE);
+    will_return(__wrap_IsFile, has_previous ? 0 : -1);
+
+    if (has_previous) {
+        expect_unmerge_into_shared(SHAREDCFG_FILE, 1, 0);
+    }
+
+    expect_unlink_ok(APPLYING);
+}
+
+/* Pending mark, then SHAREDCFG_FILE copied next to itself and renamed in. */
+static void expect_commit(int copy_ret, int rename_ret)
+{
+    expect_function_call(__wrap_startup_gate_mark_download_pending);
 
     expect_string(__wrap_w_copy_file, src, DOWNLOAD_FILE);
-    expect_string(__wrap_w_copy_file, dst, SHAREDCFG_FILE);
+    expect_string(__wrap_w_copy_file, dst, MERGED_TMP);
     expect_value(__wrap_w_copy_file, mode, 'b');
     expect_value(__wrap_w_copy_file, silent, 0);
     will_return(__wrap_w_copy_file, copy_ret);
+
+    if (copy_ret == 0) {
+        expect_rename_ex(MERGED_TMP, SHAREDCFG_FILE, rename_ret);
+    }
+
+    if (copy_ret != 0 || rename_ret != 0) {
+        expect_unlink_ok(MERGED_TMP);
+    } else {
+        expect_unlink_ok(APPLYING);
+    }
 }
 
-static void expect_stage_validate_publish_ok(void)
+static void expect_apply_ok(void)
 {
-    expect_stage(1);
-    expect_validation(0); /* valid */
-    expect_publish_until_copy(0);
+    expect_begin_apply();
+    expect_unmerge_into_shared(DOWNLOAD_FILE, 1, 0);
+    will_return(__wrap_verifyRemoteConf, 0); /* valid */
+    expect_commit(0, 0);
 }
 
-static const char *const OTHER_DOWNLOAD_HASH = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
-
-static void expect_rejected_config_warning(bool gate_open)
+static void expect_rejected_config_warning(const char *hash, bool gate_open)
 {
-    expect_string(__wrap__mwarn, formatted_msg,
-                  gate_open
-                  ? "The shared configuration the manager provides (hash="
-                    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85) is invalid; the agent "
-                    "keeps its current configuration until the manager provides a valid one."
-                  : "The shared configuration the manager provides (hash="
-                    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85) is invalid; the modules "
-                    "stay on hold until the manager provides a valid one.");
+    static char expected[2][320];
+    char *buf = expected[gate_open ? 1 : 0];
+
+    snprintf(buf, sizeof(expected[0]),
+             "The shared configuration the manager provides (hash=%s) is invalid; %s until the manager "
+             "provides a valid one.",
+             hash, gate_open ? "the agent keeps its current configuration" : "the modules stay on hold");
+    expect_string(__wrap__mwarn, formatted_msg, buf);
 }
 
-static void expect_unmerge_failure_report(const char *dir)
+static void expect_unmerge_failure_report(void)
 {
-    static char expected[256];
-    snprintf(expected, sizeof(expected),
-             "Failed to unmerge the downloaded configuration into '%s'; "
-             "keeping the previously applied files.", dir);
-    expect_string(__wrap__merror, formatted_msg, expected);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Failed to unmerge the downloaded configuration into '" SHAREDCFG_DIR "'; "
+                  "keeping the previously applied files.");
     /* AG_IN_UNMERGE manager-visible report, now submitted to the /stateless
      * accumulator like any other event. */
     expect_value(__wrap_hc_submit_event, handle, FAKE_HANDLE);
@@ -1596,6 +1645,13 @@ static void expect_unmerge_failure_report(const char *dir)
     expect_value(__wrap_hc_set_config_hash, handle, FAKE_HANDLE);
     expect_string(__wrap_hc_set_config_hash, config_hash, "");
     will_return(__wrap_hc_set_config_hash, true);
+}
+
+static void expect_keepalive(time_t now)
+{
+    will_return(__wrap_time, now);
+    expect_value(__wrap_w_agentd_state_update, type, UPDATE_KEEPALIVE);
+    expect_any(__wrap_w_agentd_state_update, data);
 }
 
 /* The hash of the bytes just applied: a debug detail, unlike the reload the
@@ -1621,7 +1677,7 @@ static void test_config_downloaded_happy_path_reload_dispatched_defers_gate_to_s
     start_client_successfully();
 
     expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
-    expect_stage_validate_publish_ok();
+    expect_apply_ok();
     expect_applying_config_log();
     will_return(__wrap_startup_gate_is_ready, false); /* Still blocked: initial apply. */
     expect_string(__wrap__minfo, formatted_msg,
@@ -1630,7 +1686,7 @@ static void test_config_downloaded_happy_path_reload_dispatched_defers_gate_to_s
     /* No expect_function_call(__wrap_startup_gate_release_from_https_apply):
      * must NOT be reached when the reload chain actually dispatched. */
 
-    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+    deliver_download(DOWNLOAD_FILE);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
@@ -1650,7 +1706,7 @@ static void test_config_downloaded_releases_gate_when_reload_chain_unreachable(v
     start_client_successfully();
 
     expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
-    expect_stage_validate_publish_ok();
+    expect_apply_ok();
     expect_applying_config_log();
     will_return(__wrap_startup_gate_is_ready, false);
     expect_string(__wrap__minfo, formatted_msg,
@@ -1661,14 +1717,14 @@ static void test_config_downloaded_releases_gate_when_reload_chain_unreachable(v
                   "the startup gate directly instead (no restart will arrive to do it).");
     expect_function_call(__wrap_startup_gate_release_from_https_apply);
 
-    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+    deliver_download(DOWNLOAD_FILE);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
 }
 
 /* <auto_restart>no</auto_restart> on an agent whose modules are already
- * running: the configuration is staged for the next restart, nothing is
+ * running: the configuration is put in place for the next restart, nothing is
  * reloaded behind the user's back, and the operator is told at INFO that the
  * agent is now running configuration older than what is on disk. */
 static void test_config_downloaded_auto_restart_disabled_stages_without_reloading(void **state)
@@ -1679,14 +1735,14 @@ static void test_config_downloaded_auto_restart_disabled_stages_without_reloadin
     start_client_successfully();
 
     expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
-    expect_stage_validate_publish_ok();
+    expect_apply_ok();
     expect_applying_config_log();
     will_return(__wrap_startup_gate_is_ready, true); /* Modules already started. */
     expect_string(__wrap__minfo, formatted_msg,
                   "Agent must restart to apply the new shared configuration; auto_restart is disabled.");
     /* No reloadAgent/gate-release expectation: must not be reached. */
 
-    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+    deliver_download(DOWNLOAD_FILE);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
@@ -1704,41 +1760,95 @@ static void test_config_downloaded_blocked_gate_reloads_despite_auto_restart_dis
     start_client_successfully();
 
     expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
-    expect_stage_validate_publish_ok();
+    expect_apply_ok();
     expect_applying_config_log();
     will_return(__wrap_startup_gate_is_ready, false);
     expect_string(__wrap__minfo, formatted_msg,
                   "Agent is reloading to apply startup hash validated configuration.");
     will_return(__wrap_reloadAgent, true);
 
-    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+    deliver_download(DOWNLOAD_FILE);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
 }
 
-static void test_config_downloaded_invalid_config_skips_reload_and_gate(void **state)
+/* Validated in place, so references to files the bundle ships resolve the way
+ * they will at runtime; on failure SHAREDCFG_DIR is rebuilt from the previous
+ * SHAREDCFG_FILE, which is never replaced, and the pending mark is never set
+ * (no __wrap_startup_gate_mark_download_pending expectation, so cmocka fails
+ * if it is). The module keeps the adopted hash (no hc_set_config_hash): the
+ * bundle is not downloaded again until the manager advertises another one. */
+static void test_config_downloaded_invalid_config_rolls_back_without_marking(void **state)
 {
     (void)state;
     agt->flags.remote_conf = 1;
     start_client_successfully();
 
     expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
-    expect_stage(1);
-    expect_validation(-1); /* invalid */
-    expect_rmdir_ex_call(STAGING_DIR, 0);
-    expect_string(__wrap__merror, formatted_msg,
-                  "Downloaded configuration failed validation; not applying it.");
+    expect_begin_apply();
+    expect_unmerge_into_shared(DOWNLOAD_FILE, 1, 0);
+    will_return(__wrap_verifyRemoteConf, -1); /* invalid */
+    expect_rollback(true);
+    will_return(__wrap_time, (time_t)1000);
     will_return(__wrap_startup_gate_is_ready, false);
-    expect_rejected_config_warning(false);
-    /* No second UnmergeFiles, cldir_ex_ignore or w_copy_file expectation:
-     * neither SHAREDCFG_DIR nor SHAREDCFG_FILE may be touched, or a restart
-     * would find the manager's hash on disk and open the gate on this
-     * configuration. No hc_set_config_hash either: the bundle is not
-     * downloaded again until the manager advertises a different one. No
-     * reloadAgent/gate-release expectation: must not be reached. */
+    expect_rejected_config_warning(DOWNLOAD_HASH, false);
 
-    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+    deliver_download(DOWNLOAD_FILE);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* Fresh agent (no SHAREDCFG_FILE yet): the rollback leaves the directory empty. */
+static void test_config_downloaded_invalid_config_on_fresh_agent_empties_shared_dir(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+    start_client_successfully();
+
+    expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
+    expect_begin_apply();
+    expect_unmerge_into_shared(DOWNLOAD_FILE, 1, 0);
+    will_return(__wrap_verifyRemoteConf, -1);
+    expect_rollback(false);
+    will_return(__wrap_time, (time_t)1000);
+    will_return(__wrap_startup_gate_is_ready, false);
+    expect_rejected_config_warning(DOWNLOAD_HASH, false);
+
+    deliver_download(DOWNLOAD_FILE);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* The rollback itself fails: SHAREDCFG_FILE is dropped so no hash can match
+ * a directory that holds no bundle, and the module downloads again. */
+static void test_config_downloaded_rollback_failure_discards_merged_file(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+    start_client_successfully();
+
+    expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
+    expect_begin_apply();
+    expect_unmerge_into_shared(DOWNLOAD_FILE, 1, 0);
+    will_return(__wrap_verifyRemoteConf, -1);
+    expect_string(__wrap_cldir_ex_ignore, name, SHAREDCFG_DIR);
+    will_return(__wrap_cldir_ex_ignore, -1); /* rollback sweep fails */
+    expect_string(__wrap__merror, formatted_msg,
+                  "Could not restore '" SHAREDCFG_DIR "' from '" SHAREDCFG_FILE "'; discarding it so the "
+                  "manager's configuration is downloaded and validated again.");
+    expect_unlink_ok(SHAREDCFG_FILE);
+    expect_value(__wrap_hc_set_config_hash, handle, FAKE_HANDLE);
+    expect_string(__wrap_hc_set_config_hash, config_hash, "");
+    will_return(__wrap_hc_set_config_hash, true);
+    /* APPLYING stays: a restart discards the directory before anything reads it. */
+    will_return(__wrap_time, (time_t)1000);
+    will_return(__wrap_startup_gate_is_ready, false);
+    expect_rejected_config_warning(DOWNLOAD_HASH, false);
+
+    deliver_download(DOWNLOAD_FILE);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
@@ -1746,130 +1856,182 @@ static void test_config_downloaded_invalid_config_skips_reload_and_gate(void **s
 
 /* Not downloaded again while the manager advertises the same rejected hash, so
  * the WARNING is what keeps it from going unnoticed: issued with the failure,
- * repeated only after BRIDGE_REJECTED_CONFIG_WARN_INTERVAL while the manager
- * keeps advertising that hash, and dropped as soon as it advertises another. */
-static void test_rejected_config_warning_not_repeated_within_interval_and_cleared_on_new_hash(void **state)
+ * repeated once BRIDGE_REJECTED_CONFIG_WARN_INTERVAL has elapsed while the
+ * manager keeps advertising that hash, and dropped as soon as it advertises
+ * another. */
+static void test_rejected_config_warning_repeats_after_interval_and_clears_on_new_hash(void **state)
 {
     (void)state;
     agt->flags.remote_conf = 1;
     start_client_successfully();
 
     expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
-    expect_stage(1);
-    expect_validation(-1);
-    expect_rmdir_ex_call(STAGING_DIR, 0);
-    expect_string(__wrap__merror, formatted_msg,
-                  "Downloaded configuration failed validation; not applying it.");
+    expect_begin_apply();
+    expect_unmerge_into_shared(DOWNLOAD_FILE, 1, 0);
+    will_return(__wrap_verifyRemoteConf, -1);
+    expect_rollback(true);
+    will_return(__wrap_time, (time_t)1000);
     will_return(__wrap_startup_gate_is_ready, true); /* Already running: keeps its configuration. */
-    expect_rejected_config_warning(true);
+    expect_rejected_config_warning(DOWNLOAD_HASH, true);
+    deliver_download(DOWNLOAD_FILE);
 
-    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+    /* Same hash, inside the interval: no repeat (no __wrap__mwarn expectation
+     * queued, so cmocka fails if one is logged). */
+    expect_keepalive((time_t)1599);
+    g_captured_callbacks.on_manager_config_hash(DOWNLOAD_HASH, g_captured_callbacks.user_data);
 
-    /* Same hash on the next Notify, well inside the interval: no repeat (no
-     * __wrap__mwarn expectation queued, so cmocka fails if one is logged). */
-    expect_value(__wrap_w_agentd_state_update, type, UPDATE_KEEPALIVE);
-    expect_any(__wrap_w_agentd_state_update, data);
+    /* Same hash, interval elapsed: repeated. */
+    expect_keepalive((time_t)1600);
+    will_return(__wrap_startup_gate_is_ready, true);
+    expect_rejected_config_warning(DOWNLOAD_HASH, true);
     g_captured_callbacks.on_manager_config_hash(DOWNLOAD_HASH, g_captured_callbacks.user_data);
 
     /* The manager advertises another configuration: the rejection is dropped... */
-    expect_value(__wrap_w_agentd_state_update, type, UPDATE_KEEPALIVE);
-    expect_any(__wrap_w_agentd_state_update, data);
+    expect_keepalive((time_t)1700);
     g_captured_callbacks.on_manager_config_hash(OTHER_DOWNLOAD_HASH, g_captured_callbacks.user_data);
 
-    /* ...so even the old hash coming back later is not reported as rejected
-     * until a download of it fails again. */
-    expect_value(__wrap_w_agentd_state_update, type, UPDATE_KEEPALIVE);
-    expect_any(__wrap_w_agentd_state_update, data);
+    /* ...so even the old hash coming back much later is not reported until a
+     * download of it fails again. */
+    expect_keepalive((time_t)5000);
     g_captured_callbacks.on_manager_config_hash(DOWNLOAD_HASH, g_captured_callbacks.user_data);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
 }
 
-static void test_config_downloaded_remote_conf_disabled_stages_files_only(void **state)
+static void test_config_downloaded_remote_conf_disabled_applies_without_validating(void **state)
 {
     (void)state;
     agt->flags.remote_conf = 0;
     start_client_successfully();
 
     expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
-    expect_stage(1);
-    expect_publish_until_copy(0);
+    expect_begin_apply();
+    expect_unmerge_into_shared(DOWNLOAD_FILE, 1, 0);
+    expect_commit(0, 0);
     /* No verifyRemoteConf/reloadAgent/gate-release expectation: remote_conf is
      * off, mirrors receiver.c's own guard. */
 
-    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+    deliver_download(DOWNLOAD_FILE);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
 }
 
-static void test_config_downloaded_copy_failure_corrects_module_hash(void **state)
+/* SHAREDCFG_FILE could not be written: the pending mark set just before is
+ * cleared again (nothing else would, and a stale one would let an unrelated
+ * SIGUSR1 open the gate), SHAREDCFG_DIR goes back to the previous bundle, and
+ * the module downloads again. */
+static void test_config_downloaded_copy_failure_clears_mark_and_rolls_back(void **state)
 {
     (void)state;
     agt->flags.remote_conf = 1;
     start_client_successfully();
 
     expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
-    expect_stage(1);
-    expect_validation(0);
-    expect_publish_until_copy(-1); /* I/O error */
-
+    expect_begin_apply();
+    expect_unmerge_into_shared(DOWNLOAD_FILE, 1, 0);
+    will_return(__wrap_verifyRemoteConf, 0);
+    expect_commit(-1, 0); /* I/O error */
     expect_string(__wrap__merror, formatted_msg,
-                  "Could not copy the downloaded configuration into "
-                  "'" SHAREDCFG_FILE "'; it will be downloaded again.");
+                  "Could not write '" SHAREDCFG_FILE "'; the configuration will be downloaded again.");
+    expect_function_call(__wrap_startup_gate_clear_download_pending);
+    expect_rollback(true);
     expect_value(__wrap_hc_set_config_hash, handle, FAKE_HANDLE);
     expect_string(__wrap_hc_set_config_hash, config_hash, "");
     will_return(__wrap_hc_set_config_hash, true);
-    /* No reloadAgent/gate-release expectation: SHAREDCFG_FILE was not written. */
+    /* No reloadAgent/gate-release expectation. */
 
-    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+    deliver_download(DOWNLOAD_FILE);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
 }
 
-static void test_config_downloaded_staging_unmerge_failure_corrects_module_hash(void **state)
+static void test_config_downloaded_rename_failure_clears_mark_and_rolls_back(void **state)
 {
     (void)state;
     agt->flags.remote_conf = 1;
     start_client_successfully();
 
     expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
-    expect_stage(0); /* failure */
-    expect_rmdir_ex_call(STAGING_DIR, 0);
-    expect_unmerge_failure_report(STAGING_DIR);
-    /* No verifyRemoteConf, publish, w_copy_file, reloadAgent or gate-release
-     * expectation: nothing reached SHAREDCFG_DIR or SHAREDCFG_FILE. */
+    expect_begin_apply();
+    expect_unmerge_into_shared(DOWNLOAD_FILE, 1, 0);
+    will_return(__wrap_verifyRemoteConf, 0);
+    expect_commit(0, -1);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Could not write '" SHAREDCFG_FILE "'; the configuration will be downloaded again.");
+    expect_function_call(__wrap_startup_gate_clear_download_pending);
+    expect_rollback(true);
+    expect_value(__wrap_hc_set_config_hash, handle, FAKE_HANDLE);
+    expect_string(__wrap_hc_set_config_hash, config_hash, "");
+    will_return(__wrap_hc_set_config_hash, true);
 
-    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+    deliver_download(DOWNLOAD_FILE);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
 }
 
-/* Validated but could not be published: SHAREDCFG_FILE keeps its previous
- * hash, so the startup gate cannot open on a half-unmerged directory. */
-static void test_config_downloaded_publish_unmerge_failure_keeps_merged_file(void **state)
+/* Unmerge failure: reported, the previous bundle is restored, never marked. */
+static void test_config_downloaded_unmerge_failure_rolls_back_without_marking(void **state)
 {
     (void)state;
     agt->flags.remote_conf = 1;
     start_client_successfully();
 
     expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
-    expect_stage(1);
-    expect_validation(0);
-    expect_rmdir_ex_call(STAGING_DIR, 0);
+    expect_begin_apply();
+    expect_unmerge_into_shared(DOWNLOAD_FILE, 0, 0); /* failure */
+    expect_unmerge_failure_report();
+    expect_rollback(true);
+    /* No verifyRemoteConf, mark, w_copy_file, reloadAgent or gate-release expectation. */
 
-    expect_string(__wrap_UnmergeFiles, finalpath, DOWNLOAD_FILE);
-    expect_string(__wrap_UnmergeFiles, optdir, SHAREDCFG_DIR);
-    expect_value(__wrap_UnmergeFiles, mode, OS_TEXT);
-    will_return(__wrap_UnmergeFiles, 0); /* failure */
+    deliver_download(DOWNLOAD_FILE);
 
-    expect_unmerge_failure_report(SHAREDCFG_DIR);
-    /* No cldir_ex_ignore, w_copy_file, reloadAgent or gate-release expectation. */
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
 
-    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+/* A file the new bundle no longer carries could not be removed: it could still
+ * be referenced, so the apply fails like an unmerge failure. */
+static void test_config_downloaded_sweep_failure_rolls_back(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+    start_client_successfully();
+
+    expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
+    expect_begin_apply();
+    expect_unmerge_into_shared(DOWNLOAD_FILE, 1, -1);
+    expect_string(__wrap__mwarn, formatted_msg, "Could not clean up the shared configuration directory.");
+    expect_unmerge_failure_report();
+    expect_rollback(true);
+
+    deliver_download(DOWNLOAD_FILE);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* Without the in-progress marker a crash could not be told apart from a
+ * consistent directory, so the apply does not start. */
+static void test_config_downloaded_marker_failure_does_not_touch_shared_dir(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+    start_client_successfully();
+
+    expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
+    expect_wfopen(APPLYING, "w", NULL);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Could not create '" APPLYING "'; not applying the downloaded configuration.");
+    expect_value(__wrap_hc_set_config_hash, handle, FAKE_HANDLE);
+    expect_string(__wrap_hc_set_config_hash, config_hash, "");
+    will_return(__wrap_hc_set_config_hash, true);
+    /* No UnmergeFiles expectation: SHAREDCFG_DIR is not touched. */
+
+    deliver_download(DOWNLOAD_FILE);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
@@ -1884,12 +2046,120 @@ static void test_config_downloaded_null_file_path_is_a_noop(void **state)
     expect_config_downloaded_log(DOWNLOAD_HASH, NULL);
     expect_string(__wrap__merror, formatted_msg,
                   "https_client: config downloaded callback fired without a file path; nothing to apply.");
-    /* No w_copy_file expectation: must not be reached. */
+    /* No wfopen expectation: must not be reached. */
 
-    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, NULL, g_captured_callbacks.user_data);
+    deliver_download(NULL);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
     w_https_client_stop();
+}
+
+/* w_https_client_reconcile_shared_config(): runs before the client starts. */
+
+static void expect_reconcile_probe(bool applying, bool has_merged)
+{
+    expect_unlink_ok(MERGED_TMP);
+    expect_string(__wrap_IsFile, file, APPLYING);
+    will_return(__wrap_IsFile, applying ? 0 : -1);
+
+    if (!applying && agt->flags.remote_conf) {
+        expect_string(__wrap_IsFile, file, SHAREDCFG_FILE);
+        will_return(__wrap_IsFile, has_merged ? 0 : -1);
+    }
+}
+
+static void expect_discard(const char *reason, int sweep_ret)
+{
+    static char expected[256];
+    snprintf(expected, sizeof(expected),
+             "Discarding the shared configuration in '" SHAREDCFG_DIR "' because %s; the manager's "
+             "configuration will be downloaded and validated again.", reason);
+    expect_string(__wrap__mwarn, formatted_msg, expected);
+    expect_unlink_ok(SHAREDCFG_FILE);
+    expect_string(__wrap_cldir_ex_ignore, name, SHAREDCFG_DIR);
+    will_return(__wrap_cldir_ex_ignore, sweep_ret);
+}
+
+static void test_reconcile_consistent_valid_config_is_kept(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+
+    expect_reconcile_probe(false, true);
+    will_return(__wrap_verifyRemoteConf, 0);
+    /* No discard expectation. */
+
+    w_https_client_reconcile_shared_config();
+}
+
+static void test_reconcile_without_merged_file_does_not_validate(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+
+    expect_reconcile_probe(false, false);
+    /* No verifyRemoteConf expectation: nothing was applied yet. */
+
+    w_https_client_reconcile_shared_config();
+}
+
+/* An apply was interrupted: the directory may mix two bundles, and a daemon
+ * reading it before the gate opens may already have loaded part of it, so it
+ * is discarded whole and downloaded again, which also drives the reload. */
+static void test_reconcile_interrupted_apply_discards_shared_dir(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+
+    expect_reconcile_probe(true, false);
+    expect_discard("an update of it was interrupted", 0);
+    expect_unlink_ok(APPLYING);
+
+    w_https_client_reconcile_shared_config();
+}
+
+/* A configuration that does not validate (for example one an older version
+ * left behind after rejecting it) is not trusted either. */
+static void test_reconcile_invalid_config_on_disk_discards_shared_dir(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+
+    expect_reconcile_probe(false, true);
+    will_return(__wrap_verifyRemoteConf, -1);
+    expect_discard("it does not pass validation", 0);
+    expect_unlink_ok(APPLYING);
+
+    w_https_client_reconcile_shared_config();
+}
+
+/* The cleanup fails: the marker stays, so the next start tries again, and
+ * SHAREDCFG_FILE is already gone so nothing can match its hash meanwhile. */
+static void test_reconcile_cleanup_failure_keeps_marker(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+
+    expect_reconcile_probe(true, false);
+    expect_discard("an update of it was interrupted", -1);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Could not clean up '" SHAREDCFG_DIR "'; it is discarded again on the next start.");
+    /* No unlink(APPLYING) expectation. */
+
+    w_https_client_reconcile_shared_config();
+}
+
+/* remote_conf off: the daemons do not read the shared configuration, so only
+ * an interrupted apply is cleaned up. */
+static void test_reconcile_remote_conf_disabled_skips_validation(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 0;
+
+    expect_reconcile_probe(false, true);
+    /* No IsFile(SHAREDCFG_FILE)/verifyRemoteConf expectation. */
+
+    w_https_client_reconcile_shared_config();
 }
 
 /* bridge_on_startup_result: module limits + cluster-name authority + agent groups. */
@@ -3071,12 +3341,22 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_config_downloaded_releases_gate_when_reload_chain_unreachable, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_downloaded_auto_restart_disabled_stages_without_reloading, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_downloaded_blocked_gate_reloads_despite_auto_restart_disabled, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_config_downloaded_invalid_config_skips_reload_and_gate, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_rejected_config_warning_not_repeated_within_interval_and_cleared_on_new_hash, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_config_downloaded_remote_conf_disabled_stages_files_only, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_config_downloaded_copy_failure_corrects_module_hash, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_config_downloaded_staging_unmerge_failure_corrects_module_hash, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_config_downloaded_publish_unmerge_failure_keeps_merged_file, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_invalid_config_rolls_back_without_marking, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_invalid_config_on_fresh_agent_empties_shared_dir, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_rollback_failure_discards_merged_file, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_rejected_config_warning_repeats_after_interval_and_clears_on_new_hash, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_remote_conf_disabled_applies_without_validating, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_copy_failure_clears_mark_and_rolls_back, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_rename_failure_clears_mark_and_rolls_back, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_unmerge_failure_rolls_back_without_marking, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_sweep_failure_rolls_back, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_marker_failure_does_not_touch_shared_dir, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_reconcile_consistent_valid_config_is_kept, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_reconcile_without_merged_file_does_not_validate, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_reconcile_interrupted_apply_discards_shared_dir, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_reconcile_invalid_config_on_disk_discards_shared_dir, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_reconcile_cleanup_failure_keeps_marker, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_reconcile_remote_conf_disabled_skips_validation, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_downloaded_null_file_path_is_a_noop, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_startup_result_rejected_does_not_touch_globals, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_startup_result_invalid_json_logs_and_returns, setup_test, teardown_test),

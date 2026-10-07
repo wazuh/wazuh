@@ -1212,20 +1212,87 @@ static void bridge_on_agent_groups(const char *groups_csv, void *user_data)
     }
 }
 
-/* Scratch directory a downloaded bundle is unmerged into and validated in
- * before anything the daemons or the startup gate read is touched. Kept under
- * SHAREDCFG_DIR so it is on the same filesystem, with the same ownership, as
- * the files it stands in for; the publish step's cldir_ex_ignore() sweeps it
- * away should an earlier removal have failed. */
-#define BRIDGE_SHAREDCFG_STAGING_DIR    SHAREDCFG_DIR "/.staging"
-#define BRIDGE_SHAREDCFG_STAGING_AGENT  BRIDGE_SHAREDCFG_STAGING_DIR "/agent.conf"
+/* SHAREDCFG_FILE is the only record of what SHAREDCFG_DIR should hold: it is
+ * written only for a bundle that passed validation, and always whole (a copy
+ * renamed into place). While a downloaded bundle is being unmerged and
+ * validated in place, BRIDGE_SHAREDCFG_APPLYING exists; it goes away once the
+ * bundle is committed or SHAREDCFG_DIR is rebuilt from SHAREDCFG_FILE. Found at
+ * startup, it means an apply was interrupted and the directory may hold a mix of
+ * both bundles (see w_https_client_reconcile_shared_config()). */
+#define BRIDGE_SHAREDCFG_APPLYING_NAME  ".applying"
+#define BRIDGE_SHAREDCFG_APPLYING       SHAREDCFG_DIR "/" BRIDGE_SHAREDCFG_APPLYING_NAME
+#define BRIDGE_SHAREDCFG_FILE_TMP_NAME  SHAREDCFG_FILENAME ".tmp"
+#define BRIDGE_SHAREDCFG_FILE_TMP       SHAREDCFG_DIR "/" BRIDGE_SHAREDCFG_FILE_TMP_NAME
+
+/* Unmerges a bundle into SHAREDCFG_DIR and removes whatever the bundle does not
+ * carry, so the directory ends up holding exactly that bundle. A sweep failure
+ * counts as a failure: a leftover file is one a configuration could still
+ * reference. */
+static bool bridge_shared_unmerge(const char *bundle)
+{
+    char **keep;
+    os_calloc(4, sizeof(char *), keep);
+    os_strdup(SHAREDCFG_FILENAME, keep[0]);
+    os_strdup(BRIDGE_SHAREDCFG_FILE_TMP_NAME, keep[1]);
+    os_strdup(BRIDGE_SHAREDCFG_APPLYING_NAME, keep[2]);
+
+    bool ok = UnmergeFiles(bundle, SHAREDCFG_DIR, OS_TEXT, &keep) != 0;
+
+    if (ok && cldir_ex_ignore(SHAREDCFG_DIR, (const char **)keep)) {
+        mwarn("Could not clean up the shared configuration directory.");
+        ok = false;
+    }
+
+    free_strarray(keep);
+    return ok;
+}
+
+/* Rebuilds SHAREDCFG_DIR from SHAREDCFG_FILE after a bundle failed to apply.
+ * Everything but SHAREDCFG_FILE goes first, which also frees the room the
+ * failed bundle took; with no SHAREDCFG_FILE (nothing applied yet) the
+ * directory is left empty. */
+static bool bridge_shared_rollback(void)
+{
+    const char *keep[] = { SHAREDCFG_FILENAME, BRIDGE_SHAREDCFG_APPLYING_NAME, NULL };
+
+    if (cldir_ex_ignore(SHAREDCFG_DIR, keep)) {
+        return false;
+    }
+
+    if (IsFile(SHAREDCFG_FILE) == 0 && !bridge_shared_unmerge(SHAREDCFG_FILE)) {
+        return false;
+    }
+
+    unlink(BRIDGE_SHAREDCFG_APPLYING);
+    return true;
+}
+
+/* A rollback that fails leaves SHAREDCFG_DIR matching no bundle. Dropping
+ * SHAREDCFG_FILE keeps the startup gate from opening on a hash match against
+ * it, and resetting the module's hash downloads the manager's configuration
+ * again, as on a freshly enrolled agent. BRIDGE_SHAREDCFG_APPLYING stays, so a
+ * restart discards the directory before anything reads it. */
+static void bridge_shared_restore(hc_handle *handle)
+{
+    if (bridge_shared_rollback()) {
+        return;
+    }
+
+    merror("Could not restore '%s' from '%s'; discarding it so the manager's configuration is "
+           "downloaded and validated again.", SHAREDCFG_DIR, SHAREDCFG_FILE);
+    unlink(SHAREDCFG_FILE);
+
+    if (handle) {
+        hc_set_config_hash(handle, "");
+    }
+}
 
 /* Unmerge failure: report it to the manager and make the module forget the hash
  * it optimistically adopted, so the next Notify mismatch downloads it again. */
-static void bridge_report_unmerge_failure(hc_handle *handle, const char *dir)
+static void bridge_handle_unmerge_failure(hc_handle *handle)
 {
     merror("Failed to unmerge the downloaded configuration into '%s'; "
-           "keeping the previously applied files.", dir);
+           "keeping the previously applied files.", SHAREDCFG_DIR);
 
     /* Manager-visible report, now over /stateless. */
     char unmerge_fail_msg[OS_MAXSTR];
@@ -1237,33 +1304,86 @@ static void bridge_report_unmerge_failure(hc_handle *handle, const char *dir)
     }
 }
 
+/* Binary mode ('b'): the module already SHA-256-verified these exact bytes
+ * against the manager's config_hash before the callback fired
+ * (configFetcher.cpp). A text-mode copy on Windows would silently rewrite '\n'
+ * as '\r\n', corrupting the file relative to what the hash was computed over --
+ * the SHA-256 recomputed from SHAREDCFG_FILE on the next fresh instance
+ * (bridge_build_config()) would then never match the manager's hash, forcing an
+ * endless re-download/reload loop (observed as a real, Windows-only regression
+ * during real-package validation). Copied next to SHAREDCFG_FILE and renamed
+ * over it, so SHAREDCFG_FILE is always one bundle or the other, never part of
+ * one. */
+static bool bridge_shared_commit(const char *bundle)
+{
+    if (w_copy_file(bundle, BRIDGE_SHAREDCFG_FILE_TMP, 'b', NULL, 0) != 0 ||
+        rename_ex(BRIDGE_SHAREDCFG_FILE_TMP, SHAREDCFG_FILE) != 0) {
+        unlink(BRIDGE_SHAREDCFG_FILE_TMP);
+        return false;
+    }
+
+    unlink(BRIDGE_SHAREDCFG_APPLYING);
+    return true;
+}
+
+void w_https_client_reconcile_shared_config(void)
+{
+    const char *keep[] = { BRIDGE_SHAREDCFG_APPLYING_NAME, NULL };
+    const char *reason = NULL;
+
+    // Left by a commit that stopped between the copy and the rename.
+    unlink(BRIDGE_SHAREDCFG_FILE_TMP);
+
+    if (IsFile(BRIDGE_SHAREDCFG_APPLYING) == 0) {
+        reason = "an update of it was interrupted";
+    } else if (agt->flags.remote_conf && IsFile(SHAREDCFG_FILE) == 0 && verifyRemoteConf()) {
+        reason = "it does not pass validation";
+    }
+
+    if (!reason) {
+        return;
+    }
+
+    mwarn("Discarding the shared configuration in '%s' because %s; the manager's configuration "
+          "will be downloaded and validated again.", SHAREDCFG_DIR, reason);
+
+    // SHAREDCFG_FILE first: whatever is left, nothing can match its hash any more.
+    unlink(SHAREDCFG_FILE);
+
+    if (cldir_ex_ignore(SHAREDCFG_DIR, keep)) {
+        merror("Could not clean up '%s'; it is discarded again on the next start.", SHAREDCFG_DIR);
+        return;
+    }
+
+    unlink(BRIDGE_SHAREDCFG_APPLYING);
+}
+
 /* Applies a downloaded merged configuration and releases the startup gate.
  *
  * file_path is a module-owned temp file valid ONLY until the callback that
  * received it returns (the module deletes it right after), so every step below
  * reads it directly and finishes before returning.
  *
- * SHAREDCFG_FILE is the commit marker of this chain, not its input: its SHA-256
- * is what startup_gate_check_manager_config_hash() compares with the manager's
- * config_hash -- on every Notify and again on every agent start -- and what
- * bridge_build_config() seeds the module's local hash from. So it is written
- * last, once the bundle has been validated and published, and never for a
- * bundle that failed: otherwise a later restart would find the hashes equal and
- * open the gate on a configuration this agent rejected.
- *
- * The chain is: unmerge into BRIDGE_SHAREDCFG_STAGING_DIR -> verifyRemoteConf
- * on the staged agent.conf -> unmerge into SHAREDCFG_DIR -> cldir_ex_ignore ->
- * write SHAREDCFG_FILE -> reloadAgent. Whether that last step runs depends on
- * two things: a blocked startup gate (modules are waiting for this very
- * configuration to start, so they must be started with it) and <auto_restart>
- * (which governs picking up a configuration change on an agent already
- * running).
+ * The bundle is unmerged and validated in place, because agent.conf refers to
+ * the files it ships with by their SHAREDCFG_DIR path (a GCP credentials file,
+ * an SCA policy): validated anywhere else, those references would resolve to
+ * the previous bundle's files. If validation or the unmerge fails,
+ * SHAREDCFG_DIR is rebuilt from SHAREDCFG_FILE, which still holds the previous
+ * bundle. Only a bundle that passed replaces SHAREDCFG_FILE, so its SHA-256 --
+ * what startup_gate_check_manager_config_hash() compares with the manager's
+ * config_hash on every Notify and every agent start, and what
+ * bridge_build_config() seeds the module's local hash from -- never matches a
+ * configuration this agent rejected.
  *
  * A bundle that fails validation leaves the gate as it was: the module keeps
  * the hash it adopted, so it is not downloaded again until the manager
  * advertises a different one (announced meanwhile, see
- * bridge_warn_rejected_config()), and SHAREDCFG_FILE keeps the previous hash,
- * so the gate cannot open on it either now or after a restart.
+ * bridge_warn_rejected_config()) or the agent restarts.
+ *
+ * Whether reloadAgent() runs depends on two things: a blocked startup gate
+ * (modules are waiting for this very configuration to start, so they must be
+ * started with it) and <auto_restart> (which governs picking up a
+ * configuration change on an agent already running).
  *
  * Anti-race sequencing between reloadAgent() and the gate release: when
  * reloadAgent() dispatches, the gate is deliberately NOT released here --
@@ -1298,48 +1418,35 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
         return;
     }
 
-    /* Stage: a leftover from an interrupted earlier run must not be validated
-     * in place of this bundle's own agent.conf. The removal's result is not
-     * checked -- the directory usually does not exist. */
-    rmdir_ex(BRIDGE_SHAREDCFG_STAGING_DIR);
+    FILE *applying = wfopen(BRIDGE_SHAREDCFG_APPLYING, "w");
 
-    if (!UnmergeFiles(file_path, BRIDGE_SHAREDCFG_STAGING_DIR, OS_TEXT, NULL)) {
-        rmdir_ex(BRIDGE_SHAREDCFG_STAGING_DIR);
-        bridge_report_unmerge_failure(handle, BRIDGE_SHAREDCFG_STAGING_DIR);
+    if (!applying) {
+        merror("Could not create '%s'; not applying the downloaded configuration.", BRIDGE_SHAREDCFG_APPLYING);
+        if (handle) {
+            hc_set_config_hash(handle, "");
+        }
         return;
     }
 
-    if (agt->flags.remote_conf && verifyRemoteConf(BRIDGE_SHAREDCFG_STAGING_AGENT)) {
+    fclose(applying);
+
+    if (!bridge_shared_unmerge(file_path)) {
+        bridge_handle_unmerge_failure(handle);
+        bridge_shared_restore(handle);
+        return;
+    }
+
+    if (agt->flags.remote_conf && verifyRemoteConf()) {
         /* Invalid remote configuration: verifyRemoteConf() already reported it
-         * to the manager (AG_IN_RCON). Nothing was published, so neither the
-         * running daemons nor the startup gate see it. */
-        rmdir_ex(BRIDGE_SHAREDCFG_STAGING_DIR);
-        merror("Downloaded configuration failed validation; not applying it.");
+         * to the manager (AG_IN_RCON). */
+        bridge_shared_restore(handle);
         snprintf(bridge_rejected_config_hash, sizeof(bridge_rejected_config_hash), "%s",
                  config_hash ? config_hash : "?");
         bridge_warn_rejected_config(time(NULL));
         return;
     }
 
-    rmdir_ex(BRIDGE_SHAREDCFG_STAGING_DIR);
-
-    /* Publish. */
-    char **ignore_list;
-    os_calloc(2, sizeof(char *), ignore_list);
-    os_strdup(SHAREDCFG_FILENAME, *ignore_list);
-
-    if (!UnmergeFiles(file_path, SHAREDCFG_DIR, OS_TEXT, &ignore_list)) {
-        free_strarray(ignore_list);
-        bridge_report_unmerge_failure(handle, SHAREDCFG_DIR);
-        return;
-    }
-
-    if (cldir_ex_ignore(SHAREDCFG_DIR, (const char **)ignore_list)) {
-        mwarn("Could not clean up the shared configuration directory.");
-    }
-    free_strarray(ignore_list);
-
-    /* The SHAREDCFG_FILE written next matches the manager's config_hash, so
+    /* The SHAREDCFG_FILE committed next matches the manager's config_hash, so
      * startup_gate_check_manager_config_hash() (fired independently on every
      * accepted Notify) would otherwise race ahead and release the gate with
      * reason=https_hash_match before the reload this function is about to
@@ -1348,20 +1455,12 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
      * or via reloadAgent()'s own completion) clears it. */
     startup_gate_mark_download_pending();
 
-    /* Binary mode ('b'): the module already SHA-256-verified these exact
-     * bytes against the manager's config_hash before this callback fired
-     * (configFetcher.cpp). A text-mode copy on Windows would silently
-     * rewrite '\n' as '\r\n', corrupting the file relative to what the hash
-     * was computed over -- the SHA-256 recomputed from SHAREDCFG_FILE on the
-     * next fresh instance (bridge_build_config()) would then never match the
-     * manager's hash, forcing an endless re-download/reload loop (observed
-     * as a real, Windows-only regression during real-package validation). */
-    if (w_copy_file(file_path, SHAREDCFG_FILE, 'b', NULL, 0) != 0) {
-        merror("Could not copy the downloaded configuration into '%s'; "
-               "it will be downloaded again.", SHAREDCFG_FILE);
+    if (!bridge_shared_commit(file_path)) {
+        merror("Could not write '%s'; the configuration will be downloaded again.", SHAREDCFG_FILE);
         /* No reload follows, so nothing else would clear it: a stale pending
          * flag would let a later, unrelated SIGUSR1 open the gate. */
         startup_gate_clear_download_pending();
+        bridge_shared_restore(handle);
         if (handle) {
             /* What's actually on disk is not config_hash: correct the module's
              * optimistic view so the next Notify mismatch re-triggers the
@@ -1372,7 +1471,7 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
     }
 
     if (!agt->flags.remote_conf) {
-        /* The files are staged either way, but nothing reloads or gates on
+        /* The files are in place either way, but nothing reloads or gates on
          * remote configuration when the agent has opted out of it. */
         return;
     }
@@ -2218,6 +2317,10 @@ bool w_https_client_start(void)
     w_mutex_lock(&g_https_client_fatal_lock);
     g_https_client_fatal = false;
     w_mutex_unlock(&g_https_client_fatal_lock);
+
+    // A fresh client downloads and validates the configuration on its own.
+    bridge_rejected_config_hash[0] = '\0';
+    bridge_rejected_config_warned_at = 0;
 
     hc_config_t config;
     if (!bridge_build_config(&config)) {
