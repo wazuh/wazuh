@@ -415,6 +415,64 @@ TEST_F(ControlStreamTest, AKeyRenewedInsideTheReenrollCallbackDuringStartupStill
     EXPECT_EQ(HC_STATE_REGISTERED, m_stream.connState());
 }
 
+TEST_F(ControlStreamTest, AnotherSendersRenewedIncidentStillReRegisters)
+{
+    // A 401 latched by another sender sharing the gate -- here the config fetcher's /download,
+    // run from this very Notify -- can be renewed before the next step polls the gate. That
+    // incident must still go through AUTH_ERROR and re-register (#38329).
+    const std::string notify =
+        R"({"status":"ok","agent":{"config_token":"web-servers","config_hash":"0123456789abcdef"}})";
+    std::vector<hc_conn_state_t> states;
+    EXPECT_CALL(m_sink, onStateChange(_)).WillRepeatedly(Invoke([&](hc_conn_state_t state)
+    {
+        states.push_back(state);
+    }));
+    EXPECT_CALL(m_sink, onReenrollRequired()).WillOnce(Invoke([this] { m_authGate.release(); }));
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))   // Startup.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify))) // Notify advertising a new config.
+    .WillOnce(Return(authFail()))                                 // /download -> 401 unknown_agent.
+    .WillOnce(Return(authFail()))                                 // Auth retry -> latch + release.
+    .WillOnce(Invoke(                                              // The renewed key re-registers.
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_NE(std::string::npos, bodyOf(spec).find("\"type\":\"startup\""));
+        return response(TransportStatus::Ok, 200, R"({"limits":{}})");
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> /download 401 -> latched and already renewed.
+    EXPECT_FALSE(m_authGate.paused());
+
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    const std::vector<hc_conn_state_t> expected {HC_STATE_REGISTERED, HC_STATE_AUTH_ERROR, HC_STATE_STARTING, HC_STATE_REGISTERED};
+    EXPECT_EQ(expected, states);
+}
+
+TEST_F(ControlStreamTest, AReleaseWithoutAnIncidentDoesNotReRegister)
+{
+    // hc_set_agent_identity() also runs outside any incident (e.g. after the first enrollment):
+    // a release() with nothing latched must not cost an AUTH_ERROR and a re-registration.
+    std::vector<hc_conn_state_t> states;
+    EXPECT_CALL(m_sink, onStateChange(_)).WillRepeatedly(Invoke([&](hc_conn_state_t state)
+    {
+        states.push_back(state);
+    }));
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}"))) // Startup.
+    .WillOnce(Invoke(                                            // Still a plain notify.
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_NE(std::string::npos, bodyOf(spec).find("\"type\":\"notify\""));
+        return response(TransportStatus::Ok, 200, "{}");
+    }));
+
+    m_stream.step(m_waiter);
+    m_authGate.release();
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_EQ(std::vector<hc_conn_state_t> {HC_STATE_REGISTERED}, states);
+}
+
 TEST_F(ControlStreamTest, NotifyCarriesTypeVersionAndHost)
 {
     // The collector supplies hostname/architecture/os; host.ip is injected by

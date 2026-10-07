@@ -148,7 +148,10 @@ class ControlStream final
         void maybeAdoptCaPublication(std::optional<std::int64_t> advertised);
         void maybeRequestVdRescan(uint64_t offset, Waiter& waiter);
         void updateConnectionInfo(const HttpResponse& response);
-        ControlStateMachine::Event eventFor(const RetrySender::Result& result) const;
+        ControlStateMachine::Event eventFor(OutcomeClass outcome);
+        /// True when the AuthGate is paused or has latched an incident this stream has not
+        /// handled yet; either way it records the current count as handled. Control thread only.
+        bool takeAuthIncident();
 
         const ModuleConfig& m_config;
         Backoff m_backoff;
@@ -237,6 +240,9 @@ class ControlStream final
 
         /// The last step()'s outcome; see unescalatedAuthFailBackoff().
         OutcomeClass m_lastOutcome {OutcomeClass::Interrupted};
+
+        /// The last AuthGate::incidents() value takeAuthIncident() handled.
+        uint64_t m_authIncidentsSeen {0};
 };
 
 #endif // _HC_CONTROL_STREAM_HPP

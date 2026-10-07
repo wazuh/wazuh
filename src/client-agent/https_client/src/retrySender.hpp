@@ -41,9 +41,6 @@ class RetrySender final
         {
             OutcomeClass outcome {OutcomeClass::Interrupted};
             HttpResponse response;
-            /// The final 401 named `unknown_agent`. Carried here so the caller does not have to
-            /// re-read the AuthGate, which hc_set_agent_identity() may already have released.
-            bool credentialRejected {false};
         };
 
         /// compressionEnabled: zstd-compress in-memory bodies (Content-Encoding:
