@@ -46,8 +46,6 @@ A fresh installation seeds `rbac.db` from `rbac/default/*.yaml` with exactly two
 | 1 | `wazuh` | No | Operators and scripts calling the API directly |
 | 2 | `wazuh-internal-client` | Yes | The Wazuh dashboard backend, to call the API on behalf of the indexer user who logged in. It is not an account to log into the dashboard with |
 
-This user was named `wazuh-wui` until 5.0.0. A database created under that name is stamped `user_version` `1`; the API now stamps `2`, so it is upgraded on the next start (see [Default roles and policies](../rbac/README.md#default-roles-and-policies)), which renames user `2` and keeps its password; its role link and `allow_run_as` flag are re-seeded from the defaults, as on every upgrade. Tokens issued to `wazuh-wui` before the upgrade no longer resolve.
-
 Only `wazuh-internal-client` can authenticate with an authorization context, because resolving one into roles is the dashboard's mechanism for mapping the indexer user who logged in onto a Wazuh role (see the rules in `rbac/default/rules.yaml`). `wazuh` has no use for it, so the flag is off: `POST /security/user/authenticate/run_as` as `wazuh` answers `403` with error `6004`. Either flag can be changed with `PUT /security/users/{user_id}/run_as`.
 
 The flag on its own does not grant the shipped mappings, which is easy to miss. `RBAChecker.get_user_roles` evaluates a rule holding a reserved ID — the five in `rules.yaml` get IDs `1..5`, while rules created through the API start at `100` — only when the caller is user ID 2. Enabling `allow_run_as` on any other account therefore lets it resolve **custom rules only**, and a context that matches one grants that role whatever the account's own role links say.
@@ -75,7 +73,7 @@ Change them with `bin/rbac_control change-password`, which prompts for each pass
 
 ```bash
 # One user, password read from the first line of a file (use '-' for the standard input)
-bin/rbac_control change-password -u wazuh-internal-client -p /root/wui.pass
+bin/rbac_control change-password -u wazuh-internal-client -p /root/internal-client.pass
 
 # Every default user in a single execution
 echo '{"wazuh": "...", "wazuh-internal-client": "..."}' | bin/rbac_control change-password --passwords-file -

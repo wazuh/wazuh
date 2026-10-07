@@ -406,19 +406,21 @@ New 5.0 agents are covered in [After the migration](#after-the-migration-enrolli
 
 ```bash
 install -m 640 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/rbac.db /var/wazuh-manager/api/configuration/security/rbac.db
+sqlite3 /var/wazuh-manager/api/configuration/security/rbac.db 'PRAGMA user_version = 0'
 ```
 
-The 4.x database has the same tables as the 5.0 one and the API accepts it as-is, but only the
-`PRAGMA user_version` decides whether it is *upgraded*. 4.x stamps version `1` and 5.0 stamps
-version `2`, so the API upgrades a copied database on its next start and records it in
-`logs/api.log`: it builds a database with the 5.0 defaults and migrates your own resources into it.
-Without that upgrade the database would keep its 4.x **default** roles and policies: the ones 5.0
-added for endpoints that did not exist in 4.x — minting enrollment tokens among them — would never
-be created, and no role, `administrator` included, could use them through the API. The upgrade also
-renames the 4.x user `wazuh-wui` (ID `2`) to `wazuh-internal-client`, keeping its password.
+The API accepts a 4.x database as it is: on start it adds the tables 5.0 introduced, and only the
+`PRAGMA user_version` decides whether the database is *upgraded*. Both 4.x and 5.0 stamp version
+`1`, so a copied database would be taken for a current one and keep its 4.x **default** roles and
+policies: the ones 5.0 added for endpoints that did not exist in 4.x — minting enrollment tokens
+among them — would never be created, and no role, `administrator` included, could use them through
+the API. Setting the version to `0` is what asks for the upgrade, which the API performs on its
+next start and records in `logs/api.log`: it builds a database with the 5.0 defaults, migrates your
+own resources into it, and gives the 4.x user `wazuh-wui` (ID `2`) its 5.0 name,
+`wazuh-internal-client`, keeping its password.
 
 ```console
-INFO: RBAC database migration required. Current version is 1 but it should be 2. Upgrading RBAC database to version 2
+INFO: RBAC database migration required. Current version is 0 but it should be 1. Upgrading RBAC database to version 1
 INFO: /var/wazuh-manager/api/configuration/security/rbac.db database upgraded successfully
 INFO: RBAC database integrity check finished successfully
 ```
@@ -450,7 +452,7 @@ sudo sh -c '. /var/wazuh-manager/lib/wazuh-credentials.sh && wazuh_env_get WAZUH
 The values are read through the same parser the manager uses, which strips their quotation marks
 (see [Reading a value back](../../ref/getting-started/credentials.md#reading-a-value-back)).
 
-or keep the 4.x passwords and give the dashboard the 4.x `wazuh-internal-client` one. The migration tool
+or keep the 4.x passwords and give the dashboard the one `wazuh-wui` had on 4.x. The migration tool
 prints this same warning when it installs `rbac.db`.
 
 ## 4. Migrate the configuration

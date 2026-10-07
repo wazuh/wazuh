@@ -191,7 +191,7 @@ what the resolver is handed — was deliberate, for three reasons:
   against them: they push operators toward predictable substitutions while barely enlarging the
   search space. The 12-character minimum — the control that does — is unchanged.
 * **The weakness this release closes was not the shape of a chosen password.** It was that every
-  installation shipped `wazuh`/`wazuh` and `wazuh-wui`/`wazuh-wui`. Where you supply nothing, a
+  4.x installation shipped `wazuh`/`wazuh` and `wazuh-wui`/`wazuh-wui`. Where you supply nothing, a
   32-character value is generated instead, which no composition rule would improve on.
 
 ## Installing and starting

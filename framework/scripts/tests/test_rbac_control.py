@@ -284,12 +284,12 @@ def test_drop_privileges(euid, expected_calls):
 def test_password_files_are_read_before_privileges_are_dropped(tmp_path, db_setup):
     """The operator's password file is commonly root-only, so it must be read while still root.
 
-    `--password-file /root/wui.pass` at `0600 root:root` is the documented unattended form. Opening
+    `--password-file /root/internal-client.pass` at `0600 root:root` is the documented unattended form. Opening
     it after the drop fails with `Permission denied` and the command reports it as an unreadable
     file, which tells the operator nothing about why.
     """
     calls = MagicMock()
-    password_file = tmp_path / 'wui.pass'
+    password_file = tmp_path / 'internal-client.pass'
     password_file.write_text('Some.Password12\n')
 
     def record_open(*args, **kwargs):

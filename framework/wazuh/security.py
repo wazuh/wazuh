@@ -40,7 +40,7 @@ from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
 #     control that does move it -- is unchanged, and the 64-character ceiling still exists only
 #     because bcrypt truncates past 72 bytes.
 #   * The weakness that actually mattered was not the shape of a chosen password: it was that every
-#     installation shipped `wazuh`/`wazuh` and `wazuh-wui`/`wazuh-wui`. That is what #39554 removes.
+#     4.x installation shipped `wazuh`/`wazuh` and `wazuh-wui`/`wazuh-wui`. That is what #39554 removes.
 #     Where nothing is supplied the seeding generates 32 characters from a 73-character alphabet
 #     (~198 bits), which no composition rule would have improved on.
 #

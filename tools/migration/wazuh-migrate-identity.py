@@ -597,10 +597,11 @@ def install_secret(bundle, name, target_dir, dry_run):
 def stage_rbac(target_dir, dry_run):
     """Asks the API to rebuild its defaults on the next start.
 
-    A database stamped with a version below the API's own is upgraded on the next start: the
-    defaults are rebuilt (the policies 5.0 added, enrollment-token minting among them, and the
-    5.0 name of user 2) and the users, roles and policies an operator created are migrated across.
-    Setting the version to 0 asks for that upgrade whatever the carried database was stamped with.
+    4.x and 5.0 both stamp RBAC version 1, so a carried database is taken for a current one and
+    keeps the 4.x default policies: the ones 5.0 added, enrollment-token minting among them, are
+    never created. Setting the version to 0 is what asks for the supported upgrade, which rebuilds
+    the defaults, gives user 2 its 5.0 name (`wazuh-internal-client`, keeping its password) and
+    migrates across the users, roles and policies an operator created.
     """
     path = os.path.join(target_dir, "api", "configuration", "security", "rbac.db")
     if not os.path.isfile(path):
@@ -653,7 +654,7 @@ def command_import(args):
                 # the install generated and handed to the dashboard. Two records, one true.
                 warn("from the next start the 'wazuh' and 'wazuh-internal-client' passwords are the 4.x ones"
                      " carried in rbac.db; %s and WAZUH_MANAGER_WUI_PASSWORD in %s no longer"
-                     " match them, and a dashboard installed with that WUI value cannot log in."
+                     " match them, and a dashboard installed with that value cannot log in."
                      " Either set both users back to the published values with"
                      " 'rbac_control change-password' after the restart, or update the dashboard"
                      " and pass --api-password-file to 'check'."
