@@ -9,9 +9,10 @@ by construction, not by observation."*
 (contains `37532-5-0-0-container-integration` and `37532-container-lifecycle-notify`)
 **Issues:** #37203 / #37532 / #37396 · **Indexer traffic: out of scope**
 
-> **Status: IN PROGRESS.** Docker passes are complete on Ubuntu 22.04 and Debian 13; Kubernetes is
-> complete on the manager host. The cgroup hybrid/legacy passes, the degradation injections and the
-> manager-side alert assertions are not yet run. Rows marked *not-run* are not claims.
+> **Status.** Phases 1-6 are complete except where noted: Docker on Ubuntu 22.04 and Debian 13,
+> Kubernetes on the manager host, all three cgroup layouts, and the degradation injections. The
+> manager-side alert assertions, the >512-container case and hash-versus-oracle are not run. Rows
+> marked *not-run* are not claims.
 
 ---
 
@@ -26,7 +27,10 @@ by construction, not by observation."*
 | 5 | Container **resolution**, **live FIM detection** and the **host negative control** pass on both hosts, across both BPF variants (kprobe and LSM). | §22.5, §22.8 |
 | 6 | **Kubernetes passes in full**, including the two assertions nothing had tested: one independent record per container in a multi-container pod, and the transitive `ReplicaSet → Deployment` owner chain. | §22.9 |
 | 7 | **A container running an init system is never resolved and is silently invisible** — no `list` entry, no baseline, no inventory, no log line. Triggered by PID 1 creating child cgroups, so it covers systemd-in-container images generally, not just KinD. | §22.9.1 |
-| 8 | **GAP 2 fix verified in the production build** — no `libcurl.so.4` dependency. | §22.3 |
+| 8 | **Container security is non-functional on a pure cgroup v1 host.** The store keys on `mnt_ns` while the drain reads v1 cgroup ids, so nothing joins: 0 events, 0 inventory rows, despite both halves reporting healthy. | §22.11.3 |
+| 9 | **Load is lost silently.** 20,000 creates in a monitored container produced 4,545 rows and no drop, loss or truncation diagnostic of any kind. | §22.10.1 |
+| 10 | **cgroup v1 can no longer be selected on systemd ≥ 257** (Debian 13), so the v1 posture cannot be reproduced or regression-tested there at all. | §22.11.1 |
+| 11 | **GAP 2 fix verified in the production build** — no `libcurl.so.4` dependency. | §22.3 |
 
 ---
 
@@ -323,12 +327,173 @@ derives its key the same way.
 
 ---
 
-## 22.10 Not yet run
+## 22.10 Phase 6 — degradation and failure modes (Ubuntu 22.04)
 
-the fix direction for §22.9.1 · cgroup hybrid and legacy passes (Phase 5) · degradation injections (Phase 6: missing `rt_file.bpf.o`,
-notify-socket unbind, map-full `disableAllowlist()`, drop-storm `rebaselineAll`) · manager-side alert
-assertions via the engine file output · hash-versus-oracle (item 40) · ConfigMap live-invisibility
-(4.9) · the Docker-connector observation in §22.9.
+| # | Injection | Result | Evidence |
+|---|---|---|---|
+| 6.1 | remove `lib/rt_file.bpf.o` | **PASS** | WARNING (not debug): *"Container FIM: the eBPF event engine could not start, so container file changes will NOT be detected after the initial baseline. Container directories are configured, so this is a degradation, not a no-op."* plus debug *"the eBPF engine is unavailable (no rt_file.bpf.o…)"*. Baseline still ran (1 container, 3 rows); inventory still ran (78 rows); **0** whodata events after a live change. **This is exactly what an officially packaged agent does — §22.3.** |
+| 6.2 | notify socket bind blocked | **PASS** | *"could not bind the container lifecycle notification socket; container discovery falls back to polling every 5000 ms."* Walk latency **471 ms** median with notify (661/471/458) vs **4734 ms** without (1798/4779/4734). Discovery still happens — a hint, not an authority (Contract 3). |
+| 6.3 | connector (modulesd) stopped | **PASS** | *"container connector unavailable, skipping stale-container cleanup to avoid false deletions."* `0 stale container(s) cleaned` — Rule 2 holds. |
+| 6.6 | writer holds an fd past `settle_delay_ms` | **PASS (documented behaviour)** | opened `/data/slow.txt`, waited 3 s, then wrote 13 bytes. File is 13 bytes `FINALCONTENT`; FIM recorded `"size":0` and `sha256:e3b0c442…` — the hash of the **empty** file. A bound, not a guarantee (C23). **Nothing later corrected the record.** |
+| 6.5 | drop storm | **FINDING — §22.10.1** | 20,000 creates → 4,545 rows, no diagnostic |
+| 6.4 | >512 containers → `disableAllowlist()` | **not run** | 512 containers is not feasible on a 2 vCPU / 4 GB VM. Still untested, as doc 19 §5 says. |
+
+### 22.10.1 FINDING — load is lost silently, with no diagnostic at all
+
+Five parallel writers created **20,000** files inside a monitored container in 2 seconds:
+
+```
+files created in the container : 20000
+rows in fim.db for /data/storm : 4545
+total container rows           : 4550
+max_paths_per_container        : 4096 (default)
+```
+
+So roughly **77% of the created files are not recorded** — and **no drop, loss or truncation line
+was emitted anywhere**. Specifically absent: the per-cgroup drop-accounting error, the
+re-baselining fallback, any `rt_poll failed` line, and any truncation message.
+
+The cause is not isolated here: 4,545 is close to but **above** `max_paths_per_container` (4096), so
+the per-container path cap is not a sufficient explanation on its own, and ring-buffer drops cannot
+be distinguished from it without instrumentation. What *is* established is the observability
+consequence, and it is Q19's gap exactly: **an operator cannot tell this happened.** A container that
+silently records a quarter of its file changes is indistinguishable, from the logs, from one that
+recorded all of them.
+
+Worth noting alongside §22.5: the agent's own loss accounting is designed to fall back to
+re-baselining on any attributed loss, and that fallback did not fire — which is consistent with the
+loss never being attributed in the first place.
+
+---
+
+## 22.11 Phase 5 — cgroup layouts
+
+### 22.11.1 FINDING — cgroup v1 cannot be selected at all on current distros
+
+`systemd.unified_cgroup_hierarchy=0` was applied to Debian 13 and the host **booted straight back
+into pure unified v2**, ignoring it:
+
+```
+cmdline  : … quiet systemd.unified_cgroup_hierarchy=0
+cgroup2 mounts            : 1
+/sys/fs/cgroup/cgroup.controllers : PRESENT      <- unified marker at the root
+/sys/fs/cgroup/unified            : ABSENT       <- not hybrid either
+Docker   : Cgroup Version: 2, Driver: systemd
+/proc/self/cgroup : 0::/user.slice/…
+```
+
+The reason is the systemd version, not the parameter:
+
+| Host | systemd | cgroup v1 selectable |
+|---|---|---|
+| Debian 13 (trixie) | **257** | **no** — v1 support was deprecated in 256 and **removed in 257** |
+| Ubuntu 22.04 | 249 | yes |
+
+**This bears directly on the O4 / D22 posture.** The v1 work targets RHEL 8 and Amazon Linux 2,
+which is still correct for those hosts — but the runway is closing: on any distro shipping
+systemd ≥ 257 the layout cannot be produced even deliberately, so v1 cannot be reproduced,
+regression-tested or supported there. Any future v1 test host must pin systemd ≤ 256.
+
+Phase 5's hybrid and legacy passes therefore run on Ubuntu 22.04 only.
+
+### 22.11.2 Hybrid — PASS, and it validates the WP2 rule end to end
+
+Ubuntu 22.04 booted with `systemd.unified_cgroup_hierarchy=0` produced a genuine hybrid host: the
+unified marker is **absent** at the root, a v2 hierarchy is mounted at `/sys/fs/cgroup/unified`,
+eight v1 controllers are mounted, and Docker switched itself to `Cgroup Driver: cgroupfs,
+Cgroup Version: 1`.
+
+For a running container, with `0::/docker/a387d1aa…` and `12:memory:/docker/a387d1aa…`:
+
+| | Inode |
+|---|---|
+| `stat /sys/fs/cgroup<0:: path>` — **the pre-WP2 mistake** | **UNRESOLVABLE** |
+| `stat /sys/fs/cgroup/unified<0:: path>` — the WP2 rule | **2764** |
+| `stat /sys/fs/cgroup/memory<memory path>` | 4163 |
+| what `list` actually reports | **`"key":"2764"`** |
+
+That is the hybrid rule confirmed in the resolver, not just in a probe: statting the `0::` path at
+the root finds nothing, and the store keys on the inode found under `/unified`. The memory
+controller yields a *different* inode for the same task, so the two key spaces are genuinely
+distinct here — the same separation doc 20 §20.4.4 measured as 8387 vs 6225.
+
+| Assertion | Result |
+|---|---|
+| Mode reported | **PASS** — `hybrid (v1 + v2 at /unified); container attribution is supported` |
+| Helper still usable (a unified hierarchy exists) | **PASS** — `cgroup_id is a usable correlation key` |
+| Engine in allowlist mode | **PASS** — `4 program(s) attached, ABI 1.1, cgroup filter allowlist` |
+| Live FIM | **PASS** — 1 `modified` + 1 `added`, both `"mode":"whodata"` |
+| Host negative control | **PASS** — 0 container-attributed events for a host write |
+| Inventory | **PASS** — `Container baseline scan finished (1 container(s), 76 row(s)…)` |
+
+### 22.11.3 DEFECT — on pure cgroup v1 the two halves key on different number spaces, and nothing is attributed
+
+Ubuntu 22.04 with `systemd.unified_cgroup_hierarchy=0 systemd.legacy_systemd_cgroup_controller=1`
+produced a genuine legacy host: **zero cgroup2 mounts**, no unified marker anywhere, Docker on
+`Cgroup Version: 1`. (Note: `/proc/self/cgroup` here has **no `0::` line at all**, where doc 20
+§20.4.5 recorded `0::/` on kernel 7.0 — the kernel differs, the resolver ignores that line on legacy
+either way.)
+
+Both halves individually report success:
+
+```
+container_instances : Host cgroup hierarchy: legacy …
+drain               : no unified cgroup hierarchy on this host; reading container cgroup ids
+                      from the 'memory' controller instead.
+engine              : reading container cgroup ids from v1 controller subsystem 4;
+                      cgroup filtering is available
+engine              : 4 program(s) attached, ABI 1.1, cgroup filter allowlist
+```
+
+**But they are keyed on different things.** For the one running container:
+
+| | Value |
+|---|---|
+| `list` reply | `"data":{"connector":"docker","key_kind":"mnt_ns"}`, `"key":"4026532256"`, `cgroup_id` **omitted** |
+| `stat -Lc %i /proc/<pid>/ns/mnt` | **4026532256** — the key really is the mount-namespace inode |
+| `stat -c %i /sys/fs/cgroup/memory<path>` | **4291** — what the drain's BPF program will report |
+
+The store took the `mnt_ns` fallback route (doc 20 §20.4.2) while the drain took the v1-cgroup-id
+route (§20.4.1, WP6a). The producer's key space and the consumer's key space never intersect, so the
+join cannot succeed. Measured consequences on that host:
+
+```
+live file change inside the container -> whodata events          : 0
+                                      -> container-attributed rows: 0
+Container baseline scan finished (0 container(s), 0 row(s), …)
+```
+
+This is **§18.6's negative control 2 failing**: the container baseline reports zero containers while
+`list` is non-empty and the container is running. Negative control 1 passes only superficially — a
+*running* container is listed, but under the wrong key kind.
+
+**Container runtime security is therefore non-functional on a pure cgroup v1 host**, despite both
+halves reporting themselves healthy, and despite each route working in isolation (doc 20 §20.4.5
+validated the v1 cgroup-id walk with a prototype and `rt_engine_filter_test`, not with the
+integrated agent where `container_instances` independently chooses the key kind).
+
+**The ERROR message is right about the outcome and wrong about the reason.** `container_instances`
+logs *"…inventory stays empty and container file integrity monitoring is disabled… Container
+security requires a cgroup v2 (unified) host."* The outcome is exactly right. The stated reason is
+now false — the drain does support v1. The real cause is that the resolver was never switched to the
+v1 cgroup-id key when WP6a taught the kernel side to read it.
+
+**Fix direction (not established here):** make the key kind one decision rather than two. Either the
+resolver adopts the v1 controller cgroup inode it already computes — doc 20 §20.4.1 notes it stats
+`/sys/fs/cgroup/memory/<path>` anyway — or the drain is told to fall back to `mnt_ns`. The first is
+what doc 20 recommends and it is the one that keeps in-kernel filtering; whichever is chosen, the two
+sides must agree on `key_kind`, and the protocol already carries that field to make the disagreement
+detectable rather than silent.
+
+---
+
+## 22.12 Not yet run
+
+Manager-side alert assertions via the engine file output (`output/file-output-integrations/0`) ·
+the >512-container `disableAllowlist()` case, which needs a host that can actually run 512 containers ·
+hash-versus-oracle (acceptance item 40) · ConfigMap live-invisibility (4.9) · the Docker-connector
+observation in §22.9 · and the fix directions for §22.9.1 and §22.11.3, which are decisions rather
+than measurements.
 
 ---
 
