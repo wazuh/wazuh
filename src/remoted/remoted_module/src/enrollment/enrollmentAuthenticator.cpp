@@ -152,7 +152,7 @@ namespace remoted::enrollment
         {
             return remoted::auth::toAuthError(verdict);
         }
-        return EnrollmentGranted {};
+        return EnrollmentGranted {std::nullopt, /*credentialVerified=*/true};
     }
 
     EnrollmentDecision EnrollmentAuthenticator::authenticateToken(std::string_view kid,
@@ -199,7 +199,7 @@ namespace remoted::enrollment
         {
             return remoted::auth::AuthError::TokenRevoked;
         }
-        return EnrollmentGranted {std::string {kid}};
+        return EnrollmentGranted {std::string {kid}, /*credentialVerified=*/true};
     }
 
 } // namespace remoted::enrollment
