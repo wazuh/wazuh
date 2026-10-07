@@ -27,6 +27,7 @@ STATIC int _AddtoRule(int sid, int level, int none, const char *group,
                RuleNode *r_node, RuleInfo *read_rule, w_rule_tree_build_t *build);
 STATIC bool w_rule_tree_add_node(w_rule_tree_build_t *build, const RuleInfo *read_rule);
 STATIC bool w_rule_tree_aborted(const w_rule_tree_build_t *build);
+STATIC void os_mark_ruleinfo(RuleNode *node, bool value, int *changed);
 
 
 RuleNode *os_analysisd_rulelist;
@@ -645,13 +646,36 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
     return (0);
 }
 
+/* Set internal_saving on every RuleInfo of the tree, counting the RuleInfo whose flag changed */
+STATIC void os_mark_ruleinfo(RuleNode *node, bool value, int *changed) {
+
+    while (node) {
+
+        if (node->child) {
+            os_mark_ruleinfo(node->child, value, changed);
+        }
+
+        if (node->ruleinfo->internal_saving != value) {
+            node->ruleinfo->internal_saving = value;
+            (*changed)++;
+        }
+
+        node = node->next;
+    }
+}
+
 void os_remove_rules_list(RuleNode *node) {
 
     RuleInfo **rules;
     int pos = 0;
     int num_rules = 0;
+    int marked = 0;
 
-    os_count_rules(node, &num_rules);
+    /* A RuleInfo can appear in many nodes: size the array by unique RuleInfo, not by node.
+     * After marking every RuleInfo, clearing the marks counts each one exactly once.
+     */
+    os_mark_ruleinfo(node, true, &marked);
+    os_mark_ruleinfo(node, false, &num_rules);
 
     os_calloc(num_rules + 1, sizeof(RuleInfo *), rules);
 
