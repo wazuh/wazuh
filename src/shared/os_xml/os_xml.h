@@ -150,6 +150,17 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
                 const char *oldval, const char *newval) __attribute__((nonnull(1, 2, 3, 5)));
 
 /**
+ * @brief Writes an XML stream, based on the input file and values to change.
+ *
+ * Same as OS_WriteXML(), but into a stream the caller already holds, so the output is never
+ * reopened by name. @p fp_out is left open and unflushed: closing it is the caller's.
+ *
+ * @return 0 on success, XMLW_NOIN when @p infile cannot be opened, XMLW_ERROR on a parse error.
+ */
+int OS_WriteXMLToStream(const char *infile, FILE *fp_out, const char **nodes,
+                        const char *oldval, const char *newval) __attribute__((nonnull(1, 2, 3, 5)));
+
+/**
  * @brief Get value of an attribute of a node
  * @param node node to find value of attribute
  * @param name name of the attribute
