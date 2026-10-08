@@ -12,16 +12,16 @@
 #define LEGACY_TASK_DELIVERY_H
 
 /**
- * @brief Allocate the pending clear_upgrade_result reply queue.
+ * @brief Empty the pending clear_upgrade_result reply list.
  *
- * Must be called before the poller thread (legacy_upgrade_task_delivery) is started and before
- * the rem_handler worker pool that calls legacy_task_process_upgrade_ack() is created, since both
- * touch the queue.
+ * Called before the poller thread (legacy_upgrade_task_delivery) is started and before the
+ * rem_handler worker pool that calls legacy_task_process_upgrade_ack() is created, since both
+ * touch the list.
  */
 void legacy_task_delivery_init(void);
 
 /**
- * @brief Drain and free the pending clear_upgrade_result reply queue.
+ * @brief Free the pending clear_upgrade_result reply list and the retry list.
  *
  * Not wired into any daemon shutdown path today; provided for test cleanup, same as
  * agent_metadata_teardown().
@@ -53,10 +53,15 @@ void *legacy_upgrade_task_delivery(void *arg);
  * design (the agent's own durable dedup is what guards against a duplicate/late redelivery, not
  * a manager-side status field).
  *
+ * The reply is only queued here, at most once per agent, and sent later by the poller thread. An
+ * ack from an agent that already has a reply pending, that was sent a failed reply less than five
+ * minutes ago, or that arrives while too many agents are pending, queues nothing and is logged
+ * only at debug level -- the agent resends it on its own backoff.
+ *
  * @param agent_id Agent identifier.
  * @param ack_json The ack's JSON body, with the `u:upgrade_module:` header already stripped.
- * @return true if the ack was a recognized `upgrade_update_status` message and was replied to;
- * false if it was malformed/unrecognized and ignored.
+ * @return true if the ack was a recognized `upgrade_update_status` message, whether or not it
+ * queued a reply; false if it was malformed/unrecognized and ignored.
  */
 bool legacy_task_process_upgrade_ack(const char *agent_id, const char *ack_json) __attribute__((nonnull));
 
