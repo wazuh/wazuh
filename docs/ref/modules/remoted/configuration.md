@@ -620,6 +620,8 @@ Capacity, in bytes, of the per-connection send buffer holding messages queued fo
 - **Allowed values:** Integer from `65536` to `1048576` (bytes)
 - **Note:** When it is full, remoted waits [`remoted.send_timeout_to_retry`](#remotedsend_timeout_to_retry)
   and tries once more (`Not enough buffer space. Retrying...` at debug level)
+- **Note:** `#pong` replies to `#ping` frames are queued here too, but never wait: a peer that lets
+  this buffer fill with replies it does not read is disconnected
 
 ### remoted.recv_timeout
 
@@ -651,6 +653,43 @@ Number of unacknowledged TCP keepalive probes before considering connection dead
 - **Default value:** `3`
 - **Allowed values:** Integer from `1` to `50`
 - **Note:** Total dead detection time = `tcp_keepidle + (tcp_keepintvl × tcp_keepcnt)`
+
+### remoted.unauthenticated_timeout
+
+Seconds a legacy TCP connection may stay open without authenticating, that is, without sending a
+message that decrypts with a registered agent's key. Connections still unauthenticated after this
+time are closed. Authenticated connections are never subject to it.
+
+- **Default value:** `60`
+- **Allowed values:** Integer from `10` to `3600` (seconds)
+- **Note:** A 4.x agent authenticates with the first message it sends after connecting, so normally
+  only peers without a key reach this limit. Closures are logged at debug level
+  (`TCP peer [<socket>] sent no authenticated message within <n> seconds. Closing.`)
+- **Note:** A connection counts as authenticated only once a
+  [`remoted.worker_pool`](#remotedworker_pool) thread has processed its first message, not when that
+  message arrives. If the workers fall more than this many seconds behind the input queue (for example
+  while a large 4.x fleet reconnects after a restart), legitimate agents are closed too and have to
+  reconnect. If those closures show up without an attack, raise this value
+
+### remoted.unauthenticated_max
+
+Maximum number of legacy TCP connections open at once without having authenticated (see
+[`remoted.unauthenticated_timeout`](#remotedunauthenticated_timeout)). A new connection arriving at
+the cap is closed immediately, so peers without a key cannot exhaust the descriptors the registered
+agents need.
+
+- **Default value:** `16384`
+- **Allowed values:** Integer from `64` to `1048576`
+- **Note:** Refusals are logged as a warning at most once a minute, with the number refused since the
+  previous one (`Refused <n> legacy TCP connection(s): ...`). Refusals that stop within that minute are
+  still reported once it is up
+- **Note:** Keep it well below [`remoted.rlimit_nofile`](#remotedrlimit_nofile): the default is a
+  quarter of that option's default. When the legacy TCP listener is enabled and this value is above
+  half the effective descriptor limit (after any lowering to the hard limit), remoted logs a warning at
+  start: `remoted.unauthenticated_max (<n>) is above half the file descriptor limit (<limit>): ...`
+- **Note:** When a large 4.x fleet reconnects at once (for example after a manager restart), each
+  connection counts until its first message is processed. If the warning appears without an
+  attack, raise this value
 
 ### remoted.merge_shared
 
