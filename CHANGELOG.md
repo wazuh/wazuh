@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Fixed a directory-naming collision in the multigroup shared-configuration path. ([#39773](https://github.com/wazuh/wazuh/pull/39773))
 - Fixed `run_as` authorization-context regex rules without a closing quote being evaluated as a partial expression, and rejected such rules when creating or updating security rules. ([#39855](https://github.com/wazuh/wazuh/pull/39855))
 - Fixed `MATCH` and `MATCH$` security rules granting a role when a rule item was not satisfied, because matches were counted instead of checked per rule item. ([#39855](https://github.com/wazuh/wazuh/pull/39855))
+- Fixed `GET /groups` returning no results for users restricted by RBAC to groups whose name is made of digits with leading zeros, such as `007`. ([#40161](https://github.com/wazuh/wazuh/pull/40161))
 
 ### Agent
 
