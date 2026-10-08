@@ -141,8 +141,12 @@ async def get_agents_summary(agent_list: list[str] = None) -> WazuhResult:
     WazuhResult
         Result object.
     """
+    # As in every other agent sink, only ids of agents in the system reach wazuh-db: the summary counts
+    # exactly the ids it is sent, so it must never see one in a spelling the RBAC check did not match.
+    agent_ids = sorted(set(agent_list or []) & get_agents_info())
+
     async with get_wdb_http_client() as wdb_client:
-        agents_summary = await wdb_client.get_agents_summary(agent_list)
+        agents_summary = await wdb_client.get_agents_summary(agent_ids)
 
     return WazuhResult({'data': agents_summary.to_dict()})
 
