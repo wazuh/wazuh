@@ -428,20 +428,22 @@ def test_upload_file_ko(*args):
 
 @pytest.mark.parametrize('validation_error', [WazuhError(1113), WazuhError(1132), WazuhInternalError(1013),
                                               WazuhException(1014)])
-@pytest.mark.parametrize('overwrite', [False, True])
+@pytest.mark.parametrize('overwrite, original_exists', [(False, False), (True, True), (True, False)])
 @patch('wazuh.rule.delete_rule_file')
 @patch('wazuh.rule.full_copy')
 @patch('wazuh.rule.upload_file')
 @patch('wazuh.rule.remove')
 @patch('wazuh.rule.safe_move')
 def test_upload_rule_file_validation_rollback(mock_safe_move, mock_remove, mock_upload, mock_full_copy, mock_delete,
-                                              overwrite, validation_error):
+                                              overwrite, original_exists, validation_error):
     """Test that a failed logtest validation does not leave the uploaded rule file installed.
 
     Parameters
     ----------
     overwrite : bool
-        True if the upload replaces an existing file, False if it creates a new one.
+        Value of the overwrite parameter of the upload.
+    original_exists : bool
+        True if the file existed before the upload.
     validation_error : WazuhException
         Exception raised by the validation. Socket errors, for example when analysisd stops during the
         validation, are not WazuhError.
@@ -454,9 +456,9 @@ def test_upload_rule_file_validation_rollback(mock_safe_move, mock_remove, mock_
     backup_file = f'{full_path}.backup'
 
     def exists(path):
-        # An overwritten file exists before the upload and a new one only after it
+        # A previous version exists before the upload and a new file only after it
         if path == full_path:
-            return overwrite or mock_upload.called
+            return original_exists or mock_upload.called
         return path == backup_file and mock_full_copy.called
 
     with patch('wazuh.rule.validate_upload_delete_dir', return_value=ret_validation), \
@@ -470,9 +472,10 @@ def test_upload_rule_file_validation_rollback(mock_safe_move, mock_remove, mock_
                 rule.upload_rule_file(filename=filename, content='test', overwrite=overwrite)
             assert exc_info.value is validation_error
 
-    # A new file is deleted. An overwritten one was deleted before the upload and is restored from the backup
+    # Without a previous version, the uploaded file is deleted, also with overwrite. A previous version was
+    # deleted before the upload and is restored from the backup
     mock_delete.assert_called_once_with(filename=filename, relative_dirname=relative_dirname)
-    if overwrite:
+    if original_exists:
         mock_safe_move.assert_called_once_with(backup_file, full_path)
     else:
         mock_safe_move.assert_not_called()
