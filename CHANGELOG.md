@@ -54,7 +54,7 @@ All notable changes to this project will be documented in this file.
 - Fixed MTA check in multiple SCA files. ([#39771](https://github.com/wazuh/wazuh/pull/39771))
 - Fixed the Debian 13 SCA policy reusing the Debian 12 check IDs, renumbering it to a dedicated 42000+ range. ([#39764](https://github.com/wazuh/wazuh/issues/39764))
 - Fixed polarity and matching errors in the Debian 10, Ubuntu 20.04 and RHEL 10 SCA policies (AppArmor bootloader, audit at boot, audit backlog limit and sudo timeout checks), the `compare =>` operator in 16 SCA policies, and GRUB kernel-line matching (tab or mixed indentation, memtest86+ entries) in 10 SCA policies. ([#39342](https://github.com/wazuh/wazuh/issues/39342))
-- Fixed `gcp-bucket` storage log rule (`65075`) sitting below the default `log_alert_level`, so Cloud Storage daily summaries were never alerted or indexed; corrected its description, which referred to VPC, and did the same for the access log rule (`65074`). Added child rules so access log writes and failed requests alert, while routine reads stay below the alert level to avoid noise. ([#40126](https://github.com/wazuh/wazuh/issues/40126))
+- Fixed `gcp-bucket` storage log rule (`65075`) sitting below the default `log_alert_level`, and fixed its and the access log rule's (`65074`) descriptions, which referred to VPC. ([#40126](https://github.com/wazuh/wazuh/issues/40126))
 
 ### RESTful API
 
