@@ -946,7 +946,7 @@ void resolve_hostname(char **hostname, int attempts) {
 }
 
 const char *get_ip_from_resolved_hostname(const char *resolved_hostname){
-    char *tmp_str;
+    const char *tmp_str;
     assert(resolved_hostname != NULL);
 
     /* Check if we have a resolved_hostname or an IP */

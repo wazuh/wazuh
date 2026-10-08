@@ -156,7 +156,7 @@ char *os_shell_escape(const char *src)
 /* Count the number of repetitions of needle at haystack */
 size_t os_strcnt(const char *haystack, char needle) {
     size_t count = 0;
-    char *ptr;
+    const char *ptr;
 
     if (haystack == NULL) {
         return 0;
@@ -187,7 +187,7 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 
     cJSON *object;
     char *current;
-    char *nest = strchr(key, '.');
+    const char *nest = strchr(key, '.');
     size_t length;
 
     if (nest) {

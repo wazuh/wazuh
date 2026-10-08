@@ -560,9 +560,9 @@ static inline bool bpf_link_is_error(const struct bpf_link* link)
  * Decide which programs in the loaded object should autoload.
  *
  * Three knobs:
- *   - use_lsm:       true  -> keep lsm/* programs, drop the create/delete kprobes
- *                    false -> keep kprobes, drop lsm/*
- *   - prefer_dpath:  among the lsm/* variants, true keeps *_dpath and drops
+ *   - use_lsm:       true  -> keep lsm/... programs, drop the create/delete kprobes
+ *                    false -> keep kprobes, drop lsm/...
+ *   - prefer_dpath:  among the lsm/... variants, true keeps *_dpath and drops
  *                    *_walk; false keeps *_walk and drops *_dpath.
  *
  * security_inode_setattr and mnt_want_write are always enabled (they work

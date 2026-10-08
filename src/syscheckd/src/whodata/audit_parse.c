@@ -245,7 +245,7 @@ void clean_regex() {
  */
 STATIC char *get_audit_field(const char *buffer, const char *key) {
     char *value = NULL;
-    char *start = NULL;
+    const char *start = NULL;
     char *ascii_value = NULL;
     int is_hex_buffer = 1;
     int limiter_pos = 0;
@@ -427,8 +427,8 @@ void get_parent_process_info(char *ppid, char **const parent_name, char **const 
 
 // Extract id: node=... type=CWD msg=audit(1529332881.955:3867): cwd="..."
 char *audit_get_id(const char *event) {
-    char *begin;
-    char *end;
+    const char *begin;
+    const char *end;
     char *id;
     size_t len;
 
