@@ -3373,8 +3373,8 @@ void test_remoted_module_https_config_defaults(void** state)
     remoted_module_config_t rm_config = {0};
 
     // __wrap_getDefine_Int_default is a plain FIFO mock(), so these MUST stay in the same order
-    // as the getDefine_Int_default() calls in remoted_module_https_config(): 13 http_*, then
-    // 3 memory-management, then 7 downstream_*, then 3 auth_*. Adding an option there without
+    // as the getDefine_Int_default() calls in remoted_module_https_config(): 14 http_*, then
+    // 5 memory-management, then 7 downstream_*, then 4 auth_*. Adding an option there without
     // adding a value here makes the queue run dry and cmocka aborts the test.
     // http_*
     will_return(__wrap_getDefine_Int_default, 0); // http_io_threads (0 = auto, cpp_get_nproc())
@@ -3397,6 +3397,8 @@ void test_remoted_module_https_config_defaults(void** state)
     will_return(__wrap_getDefine_Int_default, 268435456);
     will_return(__wrap_getDefine_Int_default, 256);
     will_return(__wrap_getDefine_Int_default, 128);
+    will_return(__wrap_getDefine_Int_default, 6); // max_requests_per_agent
+    will_return(__wrap_getDefine_Int_default, 0); // max_inflight_bytes_per_agent (0 = half the budget)
     // downstream_*
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
@@ -3409,6 +3411,7 @@ void test_remoted_module_https_config_defaults(void** state)
     will_return(__wrap_getDefine_Int_default, 60); // jwt_max_age
     will_return(__wrap_getDefine_Int_default, 30); // jwt_clock_skew
     will_return(__wrap_getDefine_Int_default, 5242880); // auth_max_body_size
+    will_return(__wrap_getDefine_Int_default, 33554432); // auth_max_decoded_body_size
 
     remoted_module_https_config(&rm_config);
 
@@ -3431,6 +3434,8 @@ void test_remoted_module_https_config_defaults(void** state)
     assert_int_equal(rm_config.max_inflight_bytes, 268435456);
     assert_int_equal(rm_config.max_parallel_connections, 256);
     assert_int_equal(rm_config.max_deferred_requests, 128);
+    assert_int_equal(rm_config.max_requests_per_agent, 6);
+    assert_int_equal(rm_config.max_inflight_bytes_per_agent, 0);
     assert_int_equal(rm_config.downstream_connect_timeout, 2);
     assert_int_equal(rm_config.downstream_write_timeout, 5);
     assert_int_equal(rm_config.downstream_response_timeout, 5);
@@ -3442,6 +3447,7 @@ void test_remoted_module_https_config_defaults(void** state)
     assert_int_equal(rm_config.jwt_clock_skew, 30);
     assert_int_equal(rm_config.jwt_clock_skew_set, 1);
     assert_int_equal(rm_config.auth_max_body_size, 5242880);
+    assert_int_equal(rm_config.auth_max_decoded_body_size, 33554432);
     assert_true(rm_config.http_content_encoding_enabled);
 }
 
@@ -3474,6 +3480,8 @@ void test_remoted_module_https_config_custom_values(void** state)
     will_return(__wrap_getDefine_Int_default, 33554432);
     will_return(__wrap_getDefine_Int_default, 256);
     will_return(__wrap_getDefine_Int_default, 128);
+    will_return(__wrap_getDefine_Int_default, 12); // max_requests_per_agent
+    will_return(__wrap_getDefine_Int_default, 100663296); // max_inflight_bytes_per_agent
     // downstream_*
     will_return(__wrap_getDefine_Int_default, 7);
     will_return(__wrap_getDefine_Int_default, 11);
@@ -3486,6 +3494,7 @@ void test_remoted_module_https_config_custom_values(void** state)
     will_return(__wrap_getDefine_Int_default, 45); // jwt_max_age
     will_return(__wrap_getDefine_Int_default, 20); // jwt_clock_skew
     will_return(__wrap_getDefine_Int_default, 31457280);
+    will_return(__wrap_getDefine_Int_default, 67108864); // auth_max_decoded_body_size
 
     remoted_module_https_config(&rm_config);
 
@@ -3508,6 +3517,8 @@ void test_remoted_module_https_config_custom_values(void** state)
     assert_int_equal(rm_config.max_inflight_bytes, 33554432);
     assert_int_equal(rm_config.max_parallel_connections, 256);
     assert_int_equal(rm_config.max_deferred_requests, 128);
+    assert_int_equal(rm_config.max_requests_per_agent, 12);
+    assert_int_equal(rm_config.max_inflight_bytes_per_agent, 100663296);
     assert_int_equal(rm_config.downstream_connect_timeout, 7);
     assert_int_equal(rm_config.downstream_write_timeout, 11);
     assert_int_equal(rm_config.downstream_response_timeout, 13);
@@ -3519,7 +3530,41 @@ void test_remoted_module_https_config_custom_values(void** state)
     assert_int_equal(rm_config.jwt_clock_skew, 20);
     assert_int_equal(rm_config.jwt_clock_skew_set, 1);
     assert_int_equal(rm_config.auth_max_body_size, 31457280);
+    assert_int_equal(rm_config.auth_max_decoded_body_size, 67108864);
     assert_false(rm_config.http_content_encoding_enabled);
+}
+
+void test_remoted_module_https_config_decoded_cap_below_wire_cap(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config = {0};
+
+    // A decoded cap below the wire cap would refuse, once decoded, a body the wire cap accepted:
+    // it is raised to the wire cap with a warning. Same FIFO order as the tests above.
+    for (int i = 0; i < 13; ++i) {
+        will_return(__wrap_getDefine_Int_default, 1); // http_*
+    }
+    will_return(__wrap_getDefine_Int_default, 1); // http_content_encoding_enabled
+    for (int i = 0; i < 5; ++i) {
+        will_return(__wrap_getDefine_Int_default, 1); // memory-management
+    }
+    for (int i = 0; i < 7; ++i) {
+        will_return(__wrap_getDefine_Int_default, 1); // downstream_*
+    }
+    will_return(__wrap_getDefine_Int_default, 60);       // jwt_max_age
+    will_return(__wrap_getDefine_Int_default, 30);       // jwt_clock_skew
+    will_return(__wrap_getDefine_Int_default, 8388608);  // auth_max_body_size: 8 MiB
+    will_return(__wrap_getDefine_Int_default, 2097152);  // auth_max_decoded_body_size: 2 MiB
+
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "'remoted.auth_max_decoded_body_size' (2097152) is below 'remoted.auth_max_body_size' (8388608); "
+                  "using 8388608.");
+
+    remoted_module_https_config(&rm_config);
+
+    assert_int_equal(rm_config.auth_max_body_size, 8388608);
+    assert_int_equal(rm_config.auth_max_decoded_body_size, 8388608);
 }
 
 // Tests remoted_enrollment_config
@@ -3624,8 +3669,8 @@ void test_remoted_enrollment_config_read_config_fails_closed(void** state)
 /* Tests w_remoted_build_module_config */
 //
 // w_remoted_build_module_config() calls remoted_module_https_config() internally, so
-// each test below must queue the same 25 __wrap_getDefine_Int_default return values
-// (13 http_*, then 3 memory-management, then 6 downstream_*, then 3 auth_*, in that
+// each test below must queue the same __wrap_getDefine_Int_default return values
+// (14 http_*, then 5 memory-management, then 7 downstream_*, then 4 auth_*, in that
 // fixed order) as the remoted_module_https_config tests above, even though these
 // tests assert on the <https>-driven fields instead. Each also queues one
 // __wrap_w_mconf_section scenario (see remoted_enrollment_config tests above) plus its 5
@@ -3672,6 +3717,8 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     will_return(__wrap_getDefine_Int_default, 268435456);
     will_return(__wrap_getDefine_Int_default, 512);
     will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 6); // max_requests_per_agent
+    will_return(__wrap_getDefine_Int_default, 0); // max_inflight_bytes_per_agent (0 = half the budget)
     // downstream_*
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
@@ -3684,6 +3731,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     will_return(__wrap_getDefine_Int_default, 60); // jwt_max_age
     will_return(__wrap_getDefine_Int_default, 30); // jwt_clock_skew
     will_return(__wrap_getDefine_Int_default, 10485760);
+    will_return(__wrap_getDefine_Int_default, 33554432); // auth_max_decoded_body_size
 
     // remoted_enrollment_config(): the `auth` section is a "normally enabled" authd config, then
     // its own getDefine_Int_default calls.
@@ -3901,6 +3949,8 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     will_return(__wrap_getDefine_Int_default, 268435456);
     will_return(__wrap_getDefine_Int_default, 512);
     will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 6); // max_requests_per_agent
+    will_return(__wrap_getDefine_Int_default, 0); // max_inflight_bytes_per_agent (0 = half the budget)
     will_return(__wrap_getDefine_Int_default, 2);
     will_return(__wrap_getDefine_Int_default, 5);
     will_return(__wrap_getDefine_Int_default, 5);
@@ -3911,6 +3961,7 @@ void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(v
     will_return(__wrap_getDefine_Int_default, 300);
     will_return(__wrap_getDefine_Int_default, 30);
     will_return(__wrap_getDefine_Int_default, 10485760);
+    will_return(__wrap_getDefine_Int_default, 33554432); // auth_max_decoded_body_size
 
     // remoted_enrollment_config(): no `auth` section available (document not loaded) --
     // enrollment_enabled must fail closed, not default to enabled.
@@ -4008,6 +4059,7 @@ int main(void)
         // Tests remoted_module_https_config
         cmocka_unit_test(test_remoted_module_https_config_defaults),
         cmocka_unit_test(test_remoted_module_https_config_custom_values),
+        cmocka_unit_test(test_remoted_module_https_config_decoded_cap_below_wire_cap),
         // Tests remoted_enrollment_config
         cmocka_unit_test(test_remoted_enrollment_config_enabled_and_flags_passed_through),
         cmocka_unit_test(test_remoted_enrollment_config_authd_disabled_wins),

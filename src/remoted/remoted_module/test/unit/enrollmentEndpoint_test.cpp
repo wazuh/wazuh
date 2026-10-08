@@ -131,7 +131,9 @@ namespace
         {
         }
 
-        remoted::auth::AuthError decode(ContentEncoding encoding, remoted::auth::Payload& payload) const override
+        remoted::auth::AuthError decode(ContentEncoding encoding,
+                                        remoted::auth::Payload& payload,
+                                        const remoted::decoding::DecodeCharge& /*charge*/) const override
         {
             return m_fn(encoding, payload);
         }

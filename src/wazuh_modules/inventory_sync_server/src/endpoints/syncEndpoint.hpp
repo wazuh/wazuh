@@ -15,6 +15,7 @@
 #include "common/clusterIdentity.hpp"
 #include "common/metricNames.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
+#include "sync/agentSessionLimiter.hpp"
 #include "sync/syncPipeline.hpp"
 #include "vd/IVdScanner.hpp"
 #include "vd/vdScanLane.hpp"
@@ -81,6 +82,11 @@ namespace invsync::endpoints::sync
         invsync::metrics::RequestCounters requestCounters;
         /// D18: 503-with-Retry-After responses (the strand-side feed gate).
         std::shared_ptr<wazuh::metrics::ICounter> retryAfterTotal;
+        /// D28: per-agent cap on sessions admitted and not yet answered. Owned by the route; null
+        /// means no cap.
+        std::shared_ptr<invsync::sync::AgentSessionLimiter> agentSessions;
+        /// D28: sessions refused by that cap (sync.agent_busy.total).
+        std::shared_ptr<wazuh::metrics::ICounter> agentBusyTotal;
     };
 
     /**

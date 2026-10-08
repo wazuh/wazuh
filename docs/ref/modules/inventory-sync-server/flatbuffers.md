@@ -160,6 +160,13 @@ I/O happens. There is deliberately no `ModuleFull` mode: a full resync is compos
 as two ordinary requests — a `Cleans` of the module's indices followed by a `ModuleDelta` with
 the complete dataset — so the server has no special case for it.
 
+A `FullSession` must be built **without shared objects**: no two vector entries may point at the
+same string or table (`CreateSharedString` and similar builder deduplication are out). The server
+counts every object a message reaches at its minimum encoded size, and answers `400` when the total
+is larger than the message. See the
+[session semantics](api-reference.md#the-stateful-session-semantics) for this rule and the limits on
+`Start.groups` and `Start.index`.
+
 ## See Also
 
 - [API Reference](api-reference.md)

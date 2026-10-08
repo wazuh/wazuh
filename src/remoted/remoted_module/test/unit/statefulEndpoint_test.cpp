@@ -386,7 +386,8 @@ namespace
     {
     public:
         remoted::auth::AuthError decode(remoted::decoding::ContentEncoding /*encoding*/,
-                                        Payload& /*payload*/) const override
+                                        Payload& /*payload*/,
+                                        const remoted::decoding::DecodeCharge& /*charge*/) const override
         {
             return remoted::auth::AuthError::None;
         }

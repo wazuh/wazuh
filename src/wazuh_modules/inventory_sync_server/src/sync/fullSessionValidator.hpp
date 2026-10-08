@@ -14,6 +14,7 @@
 
 #include "schema/syncSchema.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -22,6 +23,16 @@
 
 namespace invsync::sync
 {
+
+    /// D26: Start.groups ceiling. Restates MAX_GROUPS_PER_MULTIGROUP (defs.h), which C++ does not
+    /// include -- keep the two equal.
+    constexpr std::size_t MAX_START_GROUPS {128};
+    /// D26: one group name. Restates MAX_GROUP_NAME (defs.h).
+    constexpr std::size_t MAX_START_GROUP_NAME_BYTES {255};
+    /// D26: Start.index ceiling. The agent declares one entry per index a module syncs.
+    constexpr std::size_t MAX_START_INDICES {64};
+    /// D26: one index name -- the indexer's own limit on an index name.
+    constexpr std::size_t MAX_START_INDEX_NAME_BYTES {255};
 
     /**
      * @brief A FullSession that passed every request-level validation, ready for a pipeline worker.
@@ -84,8 +95,10 @@ namespace invsync::sync
      * shape (start present, module non-empty) -> identity (agent id numeric-equal to the
      * authenticated header value, cluster byte-equal to the manager's) -> mode x payload matrix ->
      * per-payload rules (SyncData needs values >= 1; Cleans needs items >= 1; ChecksumModule needs
-     * an allowlisted index and a checksum). Anything past this point is per-document policy that
-     * runs on the worker (skip-with-WARN, never a request failure).
+     * an allowlisted index and a checksum) -> Start list caps (D26) -> reachable-bytes budget (D25:
+     * the objects the message reaches may not add up to more than the body, which is what catches
+     * vector entries aliasing one string or table). Both run before any copy. Anything past this
+     * point is per-document policy that runs on the worker (skip-with-WARN, never a request failure).
      *
      * @param body                 Raw request body (the FlatBuffer).
      * @param authenticatedAgentId Value of the X-Wazuh-Agent-Id header remoted authenticated.

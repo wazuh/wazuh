@@ -284,8 +284,9 @@ paths:
         decompressing anything. Both the decoder's own buffers (sized from the frame header, so each
         frame accounts for exactly what it needs) and the decompressed output (tracked incrementally
         as it is produced) are charged against the server's live in-flight memory capacity -- so a
-        `413` here means the frame didn't fit in the capacity free at that moment, and a
-        highly-compressed body can never balloon past it in memory first. Any `Content-Encoding`
+        `413` here means the frame didn't fit in the capacity free at that moment, or would decode
+        past `remoted.auth_max_decoded_body_size` (32 MiB default), and a highly-compressed body can
+        never balloon past either in memory first. Any `Content-Encoding`
         value other than `zstd` is rejected with `415` (so is `zstd` itself when
         `remoted.http_content_encoding_enabled` is `0`); a missing header is treated as an
         uncompressed body, unchanged from today.
@@ -375,7 +376,8 @@ paths:
         "413":
           description: |
             The request body exceeds the configured auth body limit (5 MiB). For
-            `Content-Encoding: zstd`, it instead means the frame didn't fit in the server's live
+            `Content-Encoding: zstd`, it instead means the decoded body would exceed
+            `remoted.auth_max_decoded_body_size` (32 MiB default), or the frame didn't fit in the server's live
             in-flight memory capacity -- either the decoder's buffers (refused up front, from the
             frame header) or the decompressed output as it was produced. Retryable: the same request
             may succeed once the server is less loaded.
@@ -397,8 +399,10 @@ paths:
                   value: { error: "Unsupported Content-Encoding", code: 415 }
         "503":
           description: |
-            The server is temporarily out of capacity (its in-flight byte budget is exhausted or too
-            many requests are already parked awaiting the downstream service), or the downstream engine
+            The server is temporarily out of capacity (its in-flight byte budget is exhausted, too
+            many requests are already parked awaiting the downstream service, or this agent already
+            holds its share: `remoted.max_requests_per_agent` open requests or
+            `remoted.max_inflight_bytes_per_agent` decoded bytes), or the downstream engine
             was unreachable / errored. Server-side load-shedding, not rate limiting: no
             `Retry-After` is sent — the agent applies its own retry/backoff. The in-flight-budget
             shed also closes the connection.
@@ -1347,8 +1351,10 @@ components:
     PayloadTooLarge:
       description: |
         The request body exceeds the configured auth body limit (5 MiB default). For
-        `Content-Encoding: zstd` it instead means the frame declares a window over 8 MiB, or did not
-        fit in the server's live in-flight memory capacity. Retryable. A body over the transport cap
+        `Content-Encoding: zstd` it instead means the decoded body would exceed
+        `remoted.auth_max_decoded_body_size` (32 MiB default; on `/stateful`, the agent's byte share
+        `remoted.max_inflight_bytes_per_agent`), the frame declares a window over 8 MiB, or it did
+        not fit in the server's live in-flight memory capacity. Retryable. A body over the transport cap
         (`<remote><https><max_body_size>`, 10 MiB by default) gets no response at all: the
         connection is closed.
       content:
@@ -1371,8 +1377,10 @@ components:
 
     ServiceUnavailable:
       description: |
-        The server is temporarily out of capacity (its in-flight byte budget is exhausted or too many
-        requests are already parked awaiting a downstream service), or the downstream service was
+        The server is temporarily out of capacity (its in-flight byte budget is exhausted, too many
+        requests are already parked awaiting a downstream service, or this agent already holds its
+        share: `remoted.max_requests_per_agent` open requests or `remoted.max_inflight_bytes_per_agent`
+        decoded bytes), or the downstream service was
         unreachable or errored. Server-side load-shedding, not rate limiting: no
         `Retry-After` is sent on this route -- the agent applies its own retry/backoff.
       content:

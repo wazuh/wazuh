@@ -131,6 +131,10 @@ constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
 // remoted_module_config_t::max_deferred_requests <= 0).
 constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {128};
 
+// Default cap on requests ONE authenticated agent may have open (used when the caller leaves
+// remoted_module_config_t::max_requests_per_agent <= 0). An honest agent peaks at 5.
+constexpr int REMOTED_MODULE_DEFAULT_MAX_REQUESTS_PER_AGENT {6};
+
 // Fixed path of the module's LOCAL admin socket (GET / + GET /metrics + GET /status + GET /tls). RELATIVE on
 // purpose: remoted chroot()s into the install dir, so the bind lands at $WAZUH_HOME/queue/sockets/.
 // Named "-admin" (not "-http"/"-stats"): remoted's HTTP identity is the public listener, this is
@@ -453,15 +457,79 @@ private:
         // the auth layer stays about authentication only. Built ONCE and shared (BodyDecoder is
         // stateless -- see its own class comment) across every AuthGateway route, so they all get
         // the same policy and none can accidentally opt out or drift out of sync with each other.
+        //
+        // Capped at 'remoted.auth_max_decoded_body_size'. The credential gate keeps strangers away
+        // from the decoder, but not an enrolled agent: uncapped, one agent's zstd frame of a few KB
+        // could reserve nearly the whole in-flight budget and get every other agent a 503/413.
         const auto authConfig = remoted::auth::buildAuthConfig(m_config);
         const auto bodyDecoder = std::make_shared<const remoted::decoding::BodyDecoder>(
-            *m_httpServer, m_config.http_content_encoding_enabled);
-        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(authConfig, m_keystore, bodyDecoder);
+            *m_httpServer, m_config.http_content_encoding_enabled, authConfig.maxDecodedBodySize);
+        // Per-agent open-request cap: every other capacity limit is fleet-wide, so without it one
+        // agent could hold all of them. Owned by the routes (each captures it), not by the facade.
+        const auto maxRequestsPerAgent = m_config.max_requests_per_agent > 0
+                                             ? static_cast<std::size_t>(m_config.max_requests_per_agent)
+                                             : static_cast<std::size_t>(REMOTED_MODULE_DEFAULT_MAX_REQUESTS_PER_AGENT);
+        // Per-agent byte share: what one agent's decoded bodies may hold at once, across all its
+        // requests. Half the in-flight budget by default -- enough for the whole inventory of a
+        // vulnerability-detection first sync, which the agent cannot split, while every other agent
+        // keeps the other half. Never below the decoded cap of the other routes, or a body legal there
+        // could never be charged. Each warning names the key the operator actually set: the explicit
+        // share when there is one, the budget it was derived from otherwise.
+        const bool explicitShare = m_config.max_inflight_bytes_per_agent > 0;
+        auto agentByteShare = explicitShare ? static_cast<std::size_t>(m_config.max_inflight_bytes_per_agent)
+                                            : config.maxInFlightBytes / 2;
+        if (agentByteShare < authConfig.maxDecodedBodySize)
+        {
+            if (explicitShare)
+            {
+                LOGFN_WARN(moduleLogFn(),
+                           "'remoted.max_inflight_bytes_per_agent' (%zu) is below 'remoted.auth_max_decoded_body_size' "
+                           "(%zu); using %zu.",
+                           agentByteShare,
+                           authConfig.maxDecodedBodySize,
+                           authConfig.maxDecodedBodySize);
+            }
+            agentByteShare = authConfig.maxDecodedBodySize;
+        }
+        // A share as large as the whole budget bounds nothing: one agent could hold all of it again.
+        // Kept rather than shrunk below what a legal body needs, but said out loud, naming the key
+        // that causes it. (The derived default is half the budget, so it only gets here through the
+        // decoded cap.)
+        if (config.maxInFlightBytes != 0 && agentByteShare >= config.maxInFlightBytes)
+        {
+            if (authConfig.maxDecodedBodySize >= config.maxInFlightBytes)
+            {
+                LOGFN_WARN(moduleLogFn(),
+                           "'remoted.auth_max_decoded_body_size' (%zu) is not below 'remoted.max_inflight_bytes' "
+                           "(%zu): one agent can hold the whole in-flight budget.",
+                           authConfig.maxDecodedBodySize,
+                           config.maxInFlightBytes);
+            }
+            else
+            {
+                LOGFN_WARN(moduleLogFn(),
+                           "'remoted.max_inflight_bytes_per_agent' (%zu) is not below 'remoted.max_inflight_bytes' "
+                           "(%zu): one agent can hold the whole in-flight budget.",
+                           agentByteShare,
+                           config.maxInFlightBytes);
+            }
+        }
+        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(
+            authConfig,
+            m_keystore,
+            bodyDecoder,
+            std::make_shared<remoted::endpoints::AgentRequestLimiter>(maxRequestsPerAgent, agentByteShare));
+        // /stateful's own decoder, capped at the agent's whole byte share instead of
+        // auth_max_decoded_body_size: a vulnerability-detection first sync carries a host's entire
+        // inventory in ONE session the agent cannot split. The share, not this cap, is what keeps one
+        // agent from holding the budget.
+        const auto statefulBodyDecoder = std::make_shared<const remoted::decoding::BodyDecoder>(
+            *m_httpServer, m_config.http_content_encoding_enabled, agentByteShare);
 
         // /enroll gets its OWN BodyDecoder instance, not the shared one above: every AuthGateway
-        // route requires a verified credential before decode() ever runs, which closes the
-        // amplification lever a decoded-size cap exists for -- but /enroll's Open mode has NO
-        // credential check at all by design, so an unauthenticated peer CAN reach decode() there.
+        // route requires a verified credential before decode() ever runs -- but /enroll's Open mode
+        // has NO credential check at all by design, so an unauthenticated peer CAN reach decode()
+        // there, and it gets a far tighter cap than an enrolled agent does.
         // Capped at kMaxEnrollBodySize (the same cap parseAndValidateBody() applies post-decode,
         // enrollmentEndpoint.hpp) so a small, highly-compressed frame can't hold much of the
         // shared in-flight byte budget (the same one /stateless and friends draw from) even
@@ -655,7 +723,9 @@ private:
             remoted::endpoints::stateful::makeHandler(*m_forwarder,
                                                       inventorySyncSocketPath,
                                                       downstreamConfig.statefulResponseTimeoutMs,
-                                                      &m_statefulHttpMetrics));
+                                                      &m_statefulHttpMetrics),
+            remoted::http::ResponseMode::Buffered,
+            statefulBodyDecoder);
 
         warnIfDownstreamBudgetExceedsRequestTimeout(
             "/stateful",

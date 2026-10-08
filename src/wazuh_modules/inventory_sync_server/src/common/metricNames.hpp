@@ -33,6 +33,7 @@ namespace invsync::metrics
     // -- pipeline ---------------------------------------------------------------------------
     constexpr auto REQUESTS_TOTAL_PREFIX {"sync.requests.total."}; ///< + HTTP status code
     constexpr auto PIPELINE_SHED_TOTAL {"sync.pipeline.shed.total"};
+    constexpr auto AGENT_BUSY_TOTAL {"sync.agent_busy.total"}; ///< D28: per-agent session cap refusals
     constexpr auto BULK_FLUSHES {"sync.bulk.flushes"};
     constexpr auto BULK_BYTES_TOTAL {"sync.bulk.bytes.total"};
     constexpr auto BULK_SESSIONS_TOTAL {"sync.bulk.sessions.total"};

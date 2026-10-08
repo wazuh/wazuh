@@ -985,6 +985,54 @@ Maximum requests parked awaiting a downstream service before replying with HTTP 
   `remoted.forwarder.deferred.*` in
   [`GET /metrics`](metrics.md#deferred-forwarding--remotedforwarderdeferred).
 
+#### remoted.max_requests_per_agent
+
+Maximum requests a single agent may have open at once on the authenticated routes. One more is
+answered HTTP 503 before its body is decoded.
+
+- **Default value:** `6`
+- **Allowed values:** Integer from `1` to `65536`
+- **Note:** The other capacity limits (`max_inflight_bytes`, `max_deferred_requests`,
+  `max_parallel_connections`) are shared by every agent. This is the one that stops a single agent
+  from filling them and starving the rest of the fleet. An honest agent never has more than five
+  requests open (four in normal operation, plus a WPK download during an upgrade), so the default
+  is never reached in normal operation. Lowering it below `5` makes ordinary agents hit it.
+- **Note:** Counted per verified agent id, from the moment the bearer is accepted until the reply
+  has left: a buffered reply when it is handed to the transport, a streamed `/download` when the
+  transfer ends, however slowly the agent reads it. No `Retry-After` header is sent; the agent
+  retries as for any other `503`. Refusals are visible as `remoted.auth.reject.agent_busy` in
+  [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject). A rising count from one
+  agent points at a misbehaving or compromised agent, not at a capacity problem.
+- **Note:** remoted stops counting a `/stateful` request when it stops waiting for it, at
+  `remoted.downstream_stateful_response_timeout`. The inventory sync server keeps its own per-agent
+  count for the work it is still doing,
+  [`inventory_sync_server_max_sessions_per_agent`](../inventory-sync-server/configuration.md#wazuh_modulesinventory_sync_server_max_sessions_per_agent).
+
+#### remoted.max_inflight_bytes_per_agent
+
+Maximum bytes of decoded request bodies a single agent may hold at once, across all its open
+requests on the authenticated routes.
+
+- **Default value:** `0`, meaning half of [`remoted.max_inflight_bytes`](#remotedmax_inflight_bytes)
+  (128 MiB with the defaults)
+- **Allowed values:** Integer from `0` to `1073741824` (1 GiB). A value below
+  [`remoted.auth_max_decoded_body_size`](#remotedauth_max_decoded_body_size) is raised to it, with a
+  warning, so a body accepted on the other routes can always be charged. The default is raised the
+  same way, silently. If the resulting share is not below `remoted.max_inflight_bytes`, it no longer
+  keeps one agent from holding the whole budget, and remoted logs a warning at start naming the
+  option that causes it — `remoted.auth_max_decoded_body_size` or this one. Keep
+  `remoted.max_inflight_bytes` at least twice `remoted.auth_max_decoded_body_size`.
+- **Note:** This is also the decoded-size cap of `POST /stateful`. A vulnerability-detection first
+  sync sends the host's whole inventory in a single session that the agent cannot split, so that
+  route cannot live with the 32 MiB that is generous for the others. The share is what still keeps
+  one agent from holding the budget: whatever its requests and routes, it holds at most this much.
+- **Note:** A body larger than the whole share is answered `413`, and counted as
+  `remoted.auth.reject.body_too_large`. A host whose `/stateful` sessions keep getting that
+  answer has an inventory too large to sync. Raise this value, and `max_inflight_bytes` with it,
+  since the agent cannot send it in smaller parts. A body that fits the share but not what the
+  agent's other open requests leave of it is answered `503` and counted as
+  `remoted.auth.reject.agent_busy`; it fits once one of them is answered.
+
 #### remoted.http_stream_chunk_size
 
 Bytes per chunk when streaming a response body (`POST /download`).
@@ -1131,9 +1179,10 @@ Hard cap on the authenticated request body size, in bytes (checked by the auth m
 independent of the transport's own body cap -- [`https.max_body_size`](#httpsmax_body_size), a
 regular `<remote>` setting, not an internal option).
 
-Applies to the body **as received on the wire**. It does not bound a `Content-Encoding: zstd` body
-once decompressed -- that is bounded by the in-flight memory budget instead (`max_inflight_bytes`);
-see [HTTPS Agent API](https-events-api.md#content-encoding-zstd). Rejections against either cap
+Applies to the body **as received on the wire**. A `Content-Encoding: zstd` body, once
+decompressed, is bounded by [`remoted.auth_max_decoded_body_size`](#remotedauth_max_decoded_body_size)
+and by the in-flight memory budget (`max_inflight_bytes`); see
+[HTTPS Agent API](https-events-api.md#content-encoding-zstd). Rejections against any of the three
 are visible as `remoted.auth.reject.body_too_large` in
 [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject).
 
@@ -1145,6 +1194,25 @@ are visible as `remoted.auth.reject.body_too_large` in
   instead of being cut at the transport with no response at all. The agent's own ceiling is
   `<client><batch><size>` (1 MiB by default), which also bounds `/stateful` sessions, so the
   default leaves 5x headroom — raise this one if that setting is raised.
+
+#### remoted.auth_max_decoded_body_size
+
+Hard cap on an authenticated request body **after** `Content-Encoding: zstd` decompression, in
+bytes. A frame that declares a larger size is refused before anything is allocated. A streamed
+frame is refused as soon as its output would cross the cap. Either way the answer is HTTP 413.
+
+- **Default value:** `33554432` (32 MiB)
+- **Allowed values:** Integer from `1048576` (1 MiB) to `1073741824` (1 GiB). A value below
+  [`remoted.auth_max_body_size`](#remotedauth_max_body_size) is raised to it, with a warning, so a
+  body accepted on the wire is never refused once decoded.
+- **Note:** Without this cap, one enrolled agent could send a zstd frame of a few kilobytes that
+  decompressed into the whole in-flight budget, and every other agent was answered `503` until it
+  was released. It is larger than `auth_max_body_size` on purpose. The agent sizes its batches
+  before compressing them (`<client><batch><size>`), so legitimate bodies decode well past 5 MiB.
+- **Note:** Applies to every authenticated route except `POST /stateful`, whose cap is the agent's
+  whole byte share, [`remoted.max_inflight_bytes_per_agent`](#remotedmax_inflight_bytes_per_agent):
+  a vulnerability-detection first sync carries a host's whole inventory and cannot be split. What
+  one agent holds in total, on any route, is bounded by that share.
 
 #### remoted.control_keepalive_throttle
 

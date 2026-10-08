@@ -555,7 +555,7 @@ namespace remoted::enrollment
             // technique AuthGateway uses (authGateway.cpp) for the same reason: one physical copy
             // of the wire body, decoding replaces the view in place only on the Zstd path.
             remoted::auth::Payload payload {std::string_view {request->body}, request};
-            const auto decodeError = bodyDecoder->decode(contentEncoding, payload);
+            const auto decodeError = bodyDecoder->decode(contentEncoding, payload, /*charge=*/ {});
             if (decodeError != remoted::auth::AuthError::None)
             {
                 incRejectedValidation(metrics);

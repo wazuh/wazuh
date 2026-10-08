@@ -489,7 +489,14 @@ for one `/stateful` session.
   (10 MiB by default) the manager closes the connection with no response; the agent reads that as a
   network failure, keeps the batch and retries it indefinitely, and no further events leave the
   agent. If this value is raised, raise both manager settings first and keep `size` at or below the
-  auth cap. See [remoted's configuration](../remoted/configuration.md#httpsmax_body_size).
+  auth cap. See [remoted's configuration](../remoted/configuration.md#httpsmax_body_size). Because
+  `size` counts bytes before compression, it must also stay under the manager's decoded-body cap,
+  [`remoted.auth_max_decoded_body_size`](../remoted/configuration.md#remotedauth_max_decoded_body_size)
+  (32 MiB by default). `/stateful` sessions are bounded instead by the agent's byte share on the
+  manager,
+  [`remoted.max_inflight_bytes_per_agent`](../remoted/configuration.md#remotedmax_inflight_bytes_per_agent)
+  (128 MiB by default), which is what a vulnerability-detection first sync, sent unsplit, has to
+  fit in.
 
 ### stats_report
 

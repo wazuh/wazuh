@@ -314,6 +314,16 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     // max_deferred_requests caps requests parked awaiting a downstream service (503 over it).
     // No Retry-After is sent: the agent runs its own retry/backoff on a 503.
     rm_config->max_deferred_requests = getDefine_Int_default("remoted", "max_deferred_requests", 1, 65536, 128);
+    // max_requests_per_agent caps the requests ONE authenticated agent may have open, so a single
+    // agent cannot hold every slot of the fleet-wide limits above (503 over it). An honest agent
+    // peaks at 5 (four client threads plus a WPK download), hence the default of 6.
+    rm_config->max_requests_per_agent = getDefine_Int_default("remoted", "max_requests_per_agent", 1, 65536, 6);
+    // max_inflight_bytes_per_agent caps the decoded-body bytes ONE agent may hold across its open
+    // requests. 0 (the default) lets the module use half of max_inflight_bytes: room for a whole
+    // vulnerability-detection first sync, which the agent cannot split, with the other half left to
+    // the rest of the fleet.
+    rm_config->max_inflight_bytes_per_agent =
+        getDefine_Int_default("remoted", "max_inflight_bytes_per_agent", 0, 1073741824, 0);
 
     // Downstream (async UDS client to the engine's event ingress) tunables.
     rm_config->downstream_connect_timeout = getDefine_Int_default("remoted", "downstream_connect_timeout", 1, 60, 2);
@@ -341,6 +351,19 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->jwt_clock_skew = getDefine_Int_default("remoted", "jwt_clock_skew", 0, 43200, 30);
     rm_config->jwt_clock_skew_set = 1;
     rm_config->auth_max_body_size = getDefine_Int_default("remoted", "auth_max_body_size", 1048576, 67108864, 5242880);
+    // The cap on a zstd body once decoded. Larger than the wire cap on purpose: the agent sizes its
+    // batches BEFORE compressing them, and a VD-first session carries a whole package list.
+    rm_config->auth_max_decoded_body_size =
+        getDefine_Int_default("remoted", "auth_max_decoded_body_size", 1048576, 1073741824, 33554432);
+    // Below the wire cap, a body legal on the wire would be refused once decoded.
+    if (rm_config->auth_max_decoded_body_size < rm_config->auth_max_body_size) {
+        mwarn("'remoted.auth_max_decoded_body_size' (%lld) is below 'remoted.auth_max_body_size' (%lld); "
+              "using %lld.",
+              rm_config->auth_max_decoded_body_size,
+              rm_config->auth_max_body_size,
+              rm_config->auth_max_body_size);
+        rm_config->auth_max_decoded_body_size = rm_config->auth_max_body_size;
+    }
 }
 
 /**

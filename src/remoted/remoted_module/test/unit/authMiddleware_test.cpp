@@ -490,7 +490,8 @@ namespace
                                AuthError::PayloadAgentMismatch,
                                AuthError::BodyTooLarge,
                                AuthError::MalformedContentEncoding,
-                               AuthError::UnsupportedContentEncoding})
+                               AuthError::UnsupportedContentEncoding,
+                               AuthError::AgentBusy})
         {
             const auto pub = publicErrorFor(err);
             EXPECT_NE(pub.status, 401) << toString(err);
@@ -500,6 +501,7 @@ namespace
         EXPECT_EQ(publicErrorFor(AuthError::MissingProtocolVersion).status, 400);
         EXPECT_EQ(publicErrorFor(AuthError::UnsupportedProtocolVersion).status, 400);
         EXPECT_EQ(publicErrorFor(AuthError::BodyTooLarge).status, 413);
+        EXPECT_EQ(publicErrorFor(AuthError::AgentBusy).status, 503);
     }
 
     TEST(AuthErrorToString, CoversEveryEnumerator)
@@ -520,7 +522,8 @@ namespace
                                  AuthError::BodyTooLarge,
                                  AuthError::UnsupportedContentEncoding,
                                  AuthError::MalformedContentEncoding,
-                                 AuthError::EnrollmentKeyUnavailable};
+                                 AuthError::EnrollmentKeyUnavailable,
+                                 AuthError::AgentBusy};
 
         std::set<std::string> seen;
         for (const auto err : all)

@@ -75,12 +75,13 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
 
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
              "sync pipeline: sync_workers=%d, sync_queue_bytes=%lld, vd_feed_retry_after_seconds=%d, vd_workers=%d, "
-             "vd_scan_queue_slots=%d, vd_configured_enabled=%s",
+             "vd_scan_queue_slots=%d, max_sessions_per_agent=%d, vd_configured_enabled=%s",
              config->sync_workers,
              config->sync_queue_bytes,
              config->vd_feed_retry_after_seconds,
              config->vd_workers,
              config->vd_scan_queue_slots,
+             config->max_sessions_per_agent,
              config->vd_configured_enabled ? "yes" : "no");
 
     /* Split from the line above so the two indexer families stay visually distinct in the log, the
@@ -236,6 +237,11 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
     config->vd_workers = getDefine_Int_default("wazuh_modules", "inventory_sync_server_vd_workers", 0, 64, 0);
     config->vd_scan_queue_slots =
         getDefine_Int_default("wazuh_modules", "inventory_sync_server_vd_scan_queue_slots", 0, 256, 0);
+    /* Sessions one agent may have pending (admitted, not yet answered). remoted frees its own
+     * per-agent slot when it stops waiting, but this module keeps working on the session; 2 is the
+     * session being applied plus one re-send after such a timeout. */
+    config->max_sessions_per_agent =
+        getDefine_Int_default("wazuh_modules", "inventory_sync_server_max_sessions_per_agent", 1, 1024, 2);
 
     /* ---- Indexer connector tunables. Unlike the transport options above these carry real
      * ranges and defaults rather than the 0 sentinel, because they are forwarded to a shared
