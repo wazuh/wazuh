@@ -511,10 +511,16 @@ def read_requirements(path, warnings=None):
     return pins
 
 
+# The name Grype reports in the code scanning rule ids (<CVE>-<name>) of an entry; the interpreter keeps the
+# name its scan had before this one, python.
+SBOM_NAMES = {"cpython": "python"}
+
+
 def sbom(entries, requirements):
     components = []
     for e in entries:
-        component = {"bom-ref": e["name"], "type": "library", "name": e["name"], "version": e["version"]}
+        component = {"bom-ref": e["name"], "type": "library", "name": SBOM_NAMES.get(e["name"], e["name"]),
+                     "version": e["version"]}
         cpes = e.get("cpe") if isinstance(e.get("cpe"), list) else [e.get("cpe")]
         if cpes[0]:
             component["cpe"] = cpes[0]

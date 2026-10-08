@@ -2,7 +2,7 @@
 
 Wazuh 5.x vendors its external dependencies (curl, openssl, rocksdb, ...) as a per-library pool published at `packages.wazuh.com/deps/pool/`. Each library is built once for every platform it ships on, and a build downloads it from the pool instead of rebuilding it. `src/deps.lock.mk` records which pool entry every library uses, and `make deps` reads it. A GitHub Actions workflow builds, tests and publishes the entries the pool does not have yet.
 
-Workflow: `.github/workflows/5_builderpackage_externals.yml`. Lock check: `.github/workflows/5_codequality_externals-lock.yml`. Weekly scan: `.github/workflows/5_codeanalysis_externals-vulns.yml`.
+Workflow: `.github/workflows/5_builderpackage_externals.yml`. Lock check: `.github/workflows/5_codequality_externals-lock.yml`. Daily scan: `.github/workflows/5_codeanalysis_externals-vulns.yml`.
 
 Files under `packages/externals/`:
 
@@ -79,9 +79,9 @@ make -C src deps TARGET=manager DEPS_POOL_URL=file:///tmp/pool
 
 1. Edit `packages/externals/dependencies.json` (version, revision, `url`, sha256 of the downloaded archive, patches). For `libbpf-bootstrap` the revision must match `LIBBPF_TAG` in `ebpf/build_ebpf.sh`, for `cpython` the version must match `framework/.python-version`.
 2. Run `deps.py check`, `deps.py readme` and `deps.py lock`, and commit `dependencies.json`, `README.md` and `src/deps.lock.mk`.
-3. Open the PR. The build workflow runs on pull requests that touch a path of the keys. `deps.py plan` lists the entries whose ref the pool does not have, and only those are built; it fails if a published ref was built from other inputs. A change that gives no new ref, such as a license fix, builds nothing.
+3. Open the PR in Draft. The build workflow runs on pull requests, drafts included, that touch a path of the keys. `deps.py plan` lists the entries whose ref the pool does not have, and only those are built; it fails if a published ref was built from other inputs. A change that gives no new ref, such as a license fix, builds nothing.
 4. When `pool`, `smoke-build` and the rest are green, approve the `deps-publish` environment on the `publish` job. Whoever approves reviews the whole diff of the PR at that SHA, workflow included. `publish` is skipped until the `DEPS_POOL_PUBLISH` repository variable is `true`.
-5. Merge after the refs are published. The lock check (`deps.py pool-check`) stays red until every ref of the lock is in the pool with the inputs it was keyed on; re-run it after publishing.
+5. Mark the PR ready for review after the refs are published: the rest of the CI downloads the refs of the lock from the pool and fails on one that is not published yet. The lock check (`deps.py pool-check`) stays red until every ref of the lock is in the pool with the inputs it was keyed on; re-run it after publishing. Merge once it is green.
 
 ## Workflow
 
@@ -233,9 +233,9 @@ Only `geo_db`, which is data, stays a `source: snapshot`. `deps.py check` requir
 
 Step 5 is what keeps a bump from merging before its refs exist.
 
-## Weekly vulnerability scan
+## Daily vulnerability scan
 
-`5_codeanalysis_externals-vulns.yml` runs on Mondays at 12:17 UTC, after the daily Grype database is published, and on demand, from the default branch. The weekly operational report reads its results on Tuesday at 06:00 UTC; if the Monday run fails, dispatch it again before then. For every versioned branch (`main`, `5.0.x`, `4.14.x`, ...) with commits in the last 120 days, it builds the SBOM of the dependencies `make deps TARGET=manager` downloads (`deps.py sbom --target manager`, which also counts header-only and test dependencies, plus the wheels of `framework/requirements.txt`): from the branch's `dependencies.json`, or, on branches without one (4.x), from the `manifest.json` of the set its `DEPS_VERSION` points at; a branch whose set has no manifest is skipped with a notice. Grype scans it and the SARIF goes to code scanning under the category `externals-vulns-<branch>`. Agent-only dependencies are not scanned.
+`5_codeanalysis_externals-vulns.yml` runs every day at 08:00 UTC, after the daily Grype database is published, and on demand, from the default branch. The daily dependency report of internal-devel-requests lists the new alerts at 09:00 UTC and the weekly operational report reads the results on Tuesdays; if a run fails, dispatch it again. For every versioned branch (`main`, `5.0.x`, `4.14.x`, ...) with commits in the last 120 days, it builds the SBOM of every dependency of the branch, agent and manager alike (`deps.py sbom`, which also counts header-only and test dependencies, plus the wheels of `framework/requirements.txt`): from the branch's `dependencies.json`, or, on branches without one (4.x), from the `manifest.json` of the set its `DEPS_VERSION` points at; a branch with neither is reported as not supported yet, in a workflow warning and in the run summary, and the rest are scanned; the next run after one of them exists includes it. The interpreter is the component `python` of the SBOM, so its alerts are named `<CVE>-python`. Grype scans it and the SARIF goes to code scanning under the category `externals-vulns-<branch>`. Agent and manager dependencies share the scan and the daily report.
 
 Grype applies no verdicts here: CVEs that do not affect a dependency are recorded and discounted by the weekly report that reads these results. A CVE that is fixed in a later version is not a verdict: bump the dependency instead.
 
