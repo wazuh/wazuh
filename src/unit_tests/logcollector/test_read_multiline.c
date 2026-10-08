@@ -41,6 +41,14 @@ int __wrap_can_read() {
     return mock_type(int);
 }
 
+extern int __real_feof(FILE * stream);
+int __wrap_feof(FILE * stream) {
+    if (test_mode) {
+        return mock_type(int);
+    }
+    return __real_feof(stream);
+}
+
 bool __wrap_w_get_hash_context(const char * path, EVP_MD_CTX * context, int64_t position) {
     return mock_type(bool);
 }
@@ -353,13 +361,63 @@ void test_partial_group_at_eof(void ** state) {
     read_multiline(&lf, &rc, 1);
 }
 
+/* The line limit is reached on a line that is not complete yet: the open group is rolled back, not stored */
+void test_partial_group_at_eof_maximum_lines(void ** state) {
+    logreader lf = { .file = "test", .linecount = 3, .fp = (FILE *) 1 };
+    int rc;
+    char line1[] = "Line 1\n";
+    char line2[] = "Line 2";
+    maximum_lines = 2;
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_w_get_hash_context, true);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 0);
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line1);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1));
+
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, strlen(line1));
+
+    will_return(__wrap_can_read, 1);
+
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line2);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) strlen(line1) + strlen(line2));
+
+    will_return(__wrap_feof, 1);
+
+    // The group is not complete: back to its first line, which is also the stored offset
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
+
+    expect_value(__wrap_w_update_file_status, pos, 0);
+    will_return(__wrap_w_update_file_status, true);
+    will_return(__wrap_w_update_file_status, 0);
+
+    read_multiline(&lf, &rc, 1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_buffer_space),
         cmocka_unit_test(test_buffer_space_invalid_context),
         cmocka_unit_test(test_maximum_lines),
         cmocka_unit_test(test_maximum_lines_disabled),
-        cmocka_unit_test(test_partial_group_at_eof)
+        cmocka_unit_test(test_partial_group_at_eof),
+        cmocka_unit_test(test_partial_group_at_eof_maximum_lines)
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

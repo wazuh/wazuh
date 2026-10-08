@@ -109,7 +109,7 @@ else()
                                     -Wl,--wrap,time -Wl,--wrap,can_read -Wl,--wrap,w_ftell -Wl,--wrap,w_expression_match \
                                     -Wl,--wrap,fgetpos -Wl,--wrap=w_update_file_status -Wl,--wrap,_merror \
                                     -Wl,--wrap=w_get_hash_context -Wl,--wrap=_fseeki64 -Wl,--wrap=OS_SHA1_Stream_Bytes \
-                                    -Wl,--wrap=w_fseek -Wl,--wrap,wfopen")
+                                    -Wl,--wrap=w_fseek -Wl,--wrap,wfopen -Wl,--wrap,feof")
 
     list(APPEND logcollector_names "test_read_journal")
     list(APPEND logcollector_flags "-Wl,--wrap,_mwarn -Wl,--wrap,fgets -Wl,--wrap,remove -Wl,--wrap,fgetc \
