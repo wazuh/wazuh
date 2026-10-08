@@ -369,7 +369,8 @@ MapOp opBuilderHelperIntTransformation(NumberOperator op,
             {
                 bool overflow = (l > 0) && (r > 0) && (l > std::numeric_limits<int64_t>::max() / r);
                 overflow = overflow || (l < 0) && (r < 0) && (l < std::numeric_limits<int64_t>::max() / r);
-                overflow = overflow || (l > 0) && (r < 0) && (l > std::numeric_limits<int64_t>::min() / r);
+                // Divide by l, not r: min() / -1 is itself an overflow and traps (SIGFPE)
+                overflow = overflow || (l > 0) && (r < 0) && (r < std::numeric_limits<int64_t>::min() / l);
                 overflow = overflow || (l < 0) && (r > 0) && (l < std::numeric_limits<int64_t>::min() / r);
 
                 if (overflow)
@@ -385,6 +386,11 @@ MapOp opBuilderHelperIntTransformation(NumberOperator op,
                 if (0 == r)
                 {
                     throw std::runtime_error(fmt::format(R"("{}" function: Division by zero)", name));
+                }
+                else if (std::numeric_limits<int64_t>::min() == l && -1 == r)
+                {
+                    // The quotient is max() + 1, and the division traps (SIGFPE)
+                    throw std::runtime_error(overflowFailureTrace);
                 }
                 else
                 {
