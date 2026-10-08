@@ -2388,6 +2388,60 @@ void test_w_fopen_nofollow_symlink_rejected(void **state) {
     assert_int_equal(nofollow_size("victim"), 14);
 }
 
+#ifdef W_VETTED_TEST_NO_O_NOFOLLOW
+// Emulated O_NOFOLLOW, as on AIX 6.1.
+void test_w_fopen_nofollow_emulated_symlink_eloop(void **state) {
+    const char * modes[] = { "wb", "ab", NULL };
+    char target[PATH_MAX + 1];
+    char link[PATH_MAX + 1];
+    int i;
+
+    nofollow_create_file("victim", "sensitive data");
+    nofollow_path(target, "victim");
+    nofollow_path(link, "link");
+    assert_int_equal(symlink(target, link), 0);
+
+    for (i = 0; modes[i]; i++) {
+        errno = 0;
+        assert_null(w_fopen_nofollow(nofollow_dir, "link", modes[i]));
+        assert_int_equal(errno, ELOOP);
+    }
+
+    assert_int_equal(nofollow_size("victim"), 14);
+}
+
+void test_w_fopen_nofollow_emulated_dangling_symlink_not_created(void **state) {
+    char link[PATH_MAX + 1];
+    char created[PATH_MAX + 1];
+    struct stat statbuf;
+
+    nofollow_path(link, "dangling");
+    nofollow_path(created, "target");
+    assert_int_equal(symlink(created, link), 0);
+
+    errno = 0;
+    assert_null(w_fopen_nofollow(nofollow_dir, "dangling", "ab"));
+    assert_int_equal(errno, ELOOP);
+    assert_int_equal(stat(created, &statbuf), -1);
+    assert_int_equal(errno, ENOENT);
+}
+
+void test_w_fopen_nofollow_emulated_create_and_append(void **state) {
+    FILE * fp;
+
+    fp = w_fopen_nofollow(nofollow_dir, "regular", "wb");
+    assert_non_null(fp);
+    fclose(fp);
+    assert_int_equal(nofollow_size("regular"), 0);
+
+    nofollow_create_file("regular", "kept");
+    fp = w_fopen_nofollow(nofollow_dir, "regular", "ab");
+    assert_non_null(fp);
+    fclose(fp);
+    assert_int_equal(nofollow_size("regular"), 4);
+}
+#endif
+
 void test_w_fopen_nofollow_hard_link_rejected(void **state) {
     char target[PATH_MAX + 1];
     char hardlink[PATH_MAX + 1];
@@ -2626,6 +2680,12 @@ void test_w_fopen_vetted_follow_search_only_dir_accepted(void **state) {
         skip();
     }
 
+#ifdef W_VETTED_TEST_NO_O_NOFOLLOW
+    // No search-only directory open on HP-UX/AIX 6.1 (the agent runs as root there), so the walk refuses it.
+    print_message("Skipped: the forked walk cannot hold a search-only directory.\n");
+    skip();
+#endif
+
     nofollow_path(path, "subdir");
     assert_int_equal(mkdir(path, 0750), 0);
     nofollow_create_file("subdir/victim", "content");
@@ -2733,6 +2793,9 @@ void test_w_fopen_vetted_follow_repointed_symlink_not_rejected(void **state) {
     nofollow_path(link_path, "link");
     nofollow_path(tmp_path, "dangling");
     assert_int_equal(symlink(targets[0], link_path), 0);
+
+    // A walk that keeps losing the race logs a warning once its retries run out.
+    expect_any_always(__wrap__mwarn, formatted_msg);
 
     // Re-point the link the way rotation does (ln -sfn + mv -T) while it is opened: a swap caught mid-walk
     // must be retried, never reported as a trust rejection.
@@ -3050,6 +3113,7 @@ void test_w_vet_opened_file_hard_link_writable_dir_rejected(void **state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
 #ifndef TEST_WINAGENT
+#ifndef W_VETTED_TEST_NO_O_NOFOLLOW
         cmocka_unit_test(test_CreatePID_success),
         cmocka_unit_test(test_CreatePID_failure_chmod),
         cmocka_unit_test(test_CreatePID_failure_fopen),
@@ -3111,6 +3175,7 @@ int main(void) {
         cmocka_unit_test(test_cldir_ex_ignore_rmdir_ex_failure),
         cmocka_unit_test(test_cldir_ex_ignore_multiple_files_in_ignore),
         cmocka_unit_test(test_cldir_ex_ignore_partial_path_match),
+#endif
         // w_fopen_nofollow
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_regular_file, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_truncates_existing_file, setup_nofollow, teardown_nofollow),
@@ -3119,6 +3184,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_append_symlink_rejected, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_append_hard_link_rejected, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_symlink_rejected, setup_nofollow, teardown_nofollow),
+#ifdef W_VETTED_TEST_NO_O_NOFOLLOW
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_emulated_symlink_eloop, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_emulated_dangling_symlink_not_created, setup_nofollow, teardown_nofollow),
+        cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_emulated_create_and_append, setup_nofollow, teardown_nofollow),
+#endif
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_hard_link_rejected, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_dangling_symlink_rejected, setup_nofollow, teardown_nofollow),
         cmocka_unit_test_setup_teardown(test_w_fopen_nofollow_fifo_rejected, setup_nofollow, teardown_nofollow),
