@@ -1236,8 +1236,7 @@ class WazuhDBBackend(AbstractDatabaseBackend):
         rendered = {}
         for k, v in request.items():
             if isinstance(v, list):
-                values = [element if isinstance(element, (int, float)) or
-                          (isinstance(element, str) and element.isnumeric()) else quote(element) for element in v]
+                values = [element if isinstance(element, (int, float)) else quote(element) for element in v]
                 rendered[str(k)] = ','.join(str(element) for element in values)
             elif isinstance(v, (int, float)):
                 rendered[str(k)] = f"{v}"

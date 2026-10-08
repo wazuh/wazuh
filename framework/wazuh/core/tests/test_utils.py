@@ -1572,10 +1572,12 @@ def test_WazuhDBQuery_substitute_params(mock_socket_conn, mock_conn_db, mock_glo
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_substitute_params_values(mock_socket_conn, mock_conn_db, mock_glob, mock_exists):
-    """Scalars, ints and lists render with the historical quoting."""
+    """Parameter values retain their Python types when rendered."""
     backend = utils.WazuhDBBackend(agent_id=0)
     assert backend._substitute_params("a = :a AND b = :b", {'a': 'hello', 'b': 5}) == "a = 'hello' AND b = 5"
-    assert backend._substitute_params("id IN (:ids)", {'ids': ['001', '002', 'abc']}) == "id IN (001,002,'abc')"
+    assert backend._substitute_params("id IN (:ids)", {'ids': [1, 2]}) == "id IN (1,2)"
+    assert backend._substitute_params("name IN (:names)", {'names': ['001', '002', 'abc']}) == \
+        "name IN ('001','002','abc')"
     assert backend._substitute_params("no placeholders", {}) == "no placeholders"
     with pytest.raises(TypeError):
         backend._substitute_params("x = :x", {'x': object()})
