@@ -42,6 +42,7 @@ All notable changes to this project will be documented in this file.
 - Fixed logcollector following junctions and symbolic links and opening non-regular files without validating them on Windows. ([#39781](https://github.com/wazuh/wazuh/pull/39781))
 - Added macOS support to the disable-account active response. ([#39463](https://github.com/wazuh/wazuh/pull/39463))
 - Fixed the macOS ULS reader losing the stored timestamp after log lines shorter than 31 characters. ([#39171](https://github.com/wazuh/wazuh/issues/39171))
+- Fixed FIM not reporting files whose name is not valid UTF-8. ([#40065](https://github.com/wazuh/wazuh/pull/40065))
 - Fixed a macOS logcollector crash on agent stop and `log stream` exits going undetected with `logcollector.max_lines=0`. ([#39597](https://github.com/wazuh/wazuh/issues/39597))
 - Fixed the Windows agent reporting the operating system it had before an in-place feature update. ([#39547](https://github.com/wazuh/wazuh/pull/39547))
 - Fixed the Windows agent installer not applying the configuration file permissions to the `shared` directory. ([#39734](https://github.com/wazuh/wazuh/pull/39734))

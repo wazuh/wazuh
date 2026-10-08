@@ -129,7 +129,7 @@ else()
 endif()
 
 # fim_diff_changes.c tests
-set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,lstat -Wl,--wrap,stat \
+set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap=fim_db_utf8_sanitize -Wl,--wrap,lstat -Wl,--wrap,stat \
                                  -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fclose -Wl,--wrap,fwrite -Wl,--wrap,wfopen \
                                  -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir_ex -Wl,--wrap,fflush \
                                  -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,OS_MD5_File -Wl,--wrap,File_DateofChange \
@@ -155,7 +155,7 @@ else()
 endif()
 
 # run_realtime.c tests
-set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_file_pattern_search \
+set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap=fim_db_utf8_sanitize -Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_file_pattern_search \
                              -Wl,--wrap,read -Wl,--wrap,rbtree_insert -Wl,--wrap,fim_db_init -Wl,--wrap,fim_db_file_update \
                              -Wl,--wrap,W_Vector_insert_unique -Wl,--wrap,send_log_msg  -Wl,--wrap,fim_db_remove_path \
                              -Wl,--wrap,rbtree_keys -Wl,--wrap,fim_realtime_event -Wl,--wrap=pthread_mutex_lock -Wl,--wrap,wfopen \
@@ -187,7 +187,7 @@ else()
 endif()
 
 # syscheck_config.c tests
-set(SYSCHECK_CONFIG_BASE_FLAGS "-Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock \
+set(SYSCHECK_CONFIG_BASE_FLAGS "-Wl,--wrap=fim_db_utf8_sanitize -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock \
                                 -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_rwlock_wrlock \
                                 -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fim_db_init \
                                 -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
@@ -212,7 +212,7 @@ else()
 endif()
 
 # syscheck.c tests
-set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int -Wl,--wrap,wfopen \
+set(SYSCHECK_BASE_FLAGS "-Wl,--wrap=fim_db_utf8_sanitize -Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int -Wl,--wrap,wfopen \
                          -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
                          -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                          -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
@@ -239,7 +239,7 @@ else()
 endif()
 
 # run_check.c tests
-set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,sleep -Wl,--wrap,SendMSGPredicated -Wl,--wrap,StartMQ \
+set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap=fim_db_utf8_sanitize -Wl,--wrap,sleep -Wl,--wrap,SendMSGPredicated -Wl,--wrap,StartMQ \
                           -Wl,--wrap,realtime_adddir -Wl,--wrap,audit_set_db_consistency -Wl,--wrap,fim_checker \
                           -Wl,--wrap,lstat -Wl,--wrap,fim_db_file_pattern_search \
                           -Wl,--wrap,fim_configuration_directory -Wl,--wrap,inotify_rm_watch -Wl,--wrap,os_random \
@@ -346,7 +346,7 @@ if(${TARGET} STREQUAL "winagent")
 endif()
 
 if(NOT ${TARGET} STREQUAL "winagent")
-  set(CHECK_RC_SYS_FLAGS "-Wl,--wrap,lstat \
+  set(CHECK_RC_SYS_FLAGS "-Wl,--wrap=fim_db_utf8_sanitize -Wl,--wrap,lstat \
                            -Wl,--wrap,notify_rk \
                            -Wl,--wrap,wopendir \
                            -Wl,--wrap,wfopen \
@@ -374,7 +374,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
   target_link_libraries(test_check_rc_if SYSCHECK_O ${TEST_DEPS} "${CHECK_RC_IF_FLAGS}")
   add_test(NAME test_check_rc_if COMMAND test_check_rc_if)
 
-  set(COMMON_FLAGS "-Wl,--wrap,wopendir \
+  set(COMMON_FLAGS "-Wl,--wrap=fim_db_utf8_sanitize -Wl,--wrap,wopendir \
                     -Wl,--wrap,closedir \
                     -Wl,--wrap,w_stat \
                     -Wl,--wrap,waccess \
@@ -397,7 +397,7 @@ add_executable(test_create_db test_create_db.c)
 
 target_compile_options(test_create_db PRIVATE "-Wall")
 
-set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg \
+set(CREATE_DB_BASE_FLAGS "-Wl,--wrap=fim_db_utf8_sanitize -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg \
                           -Wl,--wrap,readdir -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,realtime_adddir \
                           -Wl,--wrap,HasFilesystem -Wl,--wrap,fim_db_get_path \
                           -Wl,--wrap,delete_target_file -Wl,--wrap,OS_MD5_SHA1_SHA256_File \

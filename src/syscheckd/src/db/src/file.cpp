@@ -16,6 +16,7 @@
 #include "fimDB.hpp"
 #include "dbFileItem.hpp"
 #include "cjsonSmartDeleter.hpp"
+#include "cjsonHelper.hpp"
 
 static const char* FIM_EVENT_TYPE_ARRAY[] =
 {
@@ -612,7 +613,7 @@ FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback)
                     }
                 }
 
-                const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(patchedJson.dump().c_str()) };
+                const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ Utils::toCJSON(patchedJson) };
                 callback.callback(spJson.get(), callback.context);
             });
             retVal = FIMDB_OK;

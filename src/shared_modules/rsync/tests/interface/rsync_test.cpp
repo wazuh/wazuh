@@ -12,6 +12,8 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <mutex>
+#include <vector>
 #include "rsync_test.h"
 #include "rsync.h"
 #include "rsync.hpp"
@@ -1839,4 +1841,116 @@ TEST_F(RSyncTest, RegisterAndPushCPPWithDeletedElement)
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
     remoteSync.reset();
+}
+
+TEST_F(RSyncTest, syncMessagesWithInvalidUtf8Index)
+{
+    // First row is "/boot/a\xff" (not valid UTF-8), followed by a valid one.
+    constexpr auto sql
+    {
+        R"(CREATE TABLE entry_path (path TEXT NOT NULL, inode_id INTEGER, mode INTEGER, last_event INTEGER, entry_type INTEGER, scanned INTEGER, options INTEGER, checksum TEXT NOT NULL, PRIMARY KEY(path));
+        INSERT INTO entry_path VALUES(CAST(X'2f626f6f742f61ff' AS TEXT),1,0,1596489273,0,1,131583,'96482cde495f716fcd66a71a601fbb905c13b426');
+        INSERT INTO entry_path VALUES('/boot/b',2,0,1596489273,0,1,131583,'e041159610c7ec18490345af13f7f49371b56893');)"
+    };
+    constexpr auto registerConfigStmt
+    {
+        R"({"decoder_type":"JSON_RANGE",
+            "table":"entry_path",
+            "component":"test_id",
+            "index":"path",
+            "last_event":"last_event",
+            "checksum_field":"checksum",
+            "no_data_query_json":
+                {
+                    "row_filter":" ",
+                    "column_list":["path, checksum, last_event"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "count_range_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "count_field_name":"count",
+                    "column_list":["count(*) AS count "],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "row_data_query_json":
+                {
+                    "row_filter":"WHERE path ='?'",
+                    "column_list":["path, checksum, last_event"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                },
+            "range_checksum_query_json":
+                {
+                    "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                    "column_list":["path, checksum"],
+                    "distinct_opt":false,
+                    "order_by_opt":"",
+                    "count_opt":100
+                }
+        })"
+    };
+    const std::string sanitizedPath {"/boot/a\xef\xbf\xbd"};
+
+    std::mutex mutex;
+    std::vector<nlohmann::json> messages;
+    SyncCallbackData callbackData
+    {
+        [&](const std::string & data)
+        {
+            std::lock_guard<std::mutex> lock {mutex};
+            messages.push_back(nlohmann::json::parse(data));
+        }
+    };
+
+    std::unique_ptr<DBSync> dbSync;
+    EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql));
+    std::unique_ptr<RemoteSync> remoteSync;
+    EXPECT_NO_THROW(remoteSync = std::make_unique<RemoteSync>());
+
+    ASSERT_NO_THROW(remoteSync->registerSyncID("test_id", dbSync->handle(), nlohmann::json::parse(registerConfigStmt), callbackData));
+    EXPECT_NO_THROW(remoteSync->startSync(dbSync->handle(), nlohmann::json::parse(START_CONFIG_STMT_PATH), callbackData));
+
+    const std::string noData {R"(test_id no_data {"begin":"/boot/a","end":"/boot/b","id":1})"};
+    ASSERT_NO_THROW(remoteSync->pushMessage({ noData.begin(), noData.end() }));
+
+    for (auto i = 0; i < 50; ++i)
+    {
+        {
+            std::lock_guard<std::mutex> lock {mutex};
+
+            if (messages.size() >= 3)
+            {
+                break;
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    remoteSync.reset();
+
+    ASSERT_EQ(3u, messages.size());
+    std::vector<std::string> stateIndexes;
+
+    for (const auto& message : messages)
+    {
+        if (message.at("type") == "integrity_check_global")
+        {
+            EXPECT_EQ("/boot/b", message.at("data").at("begin"));
+            EXPECT_EQ(sanitizedPath, message.at("data").at("end"));
+        }
+        else
+        {
+            EXPECT_EQ("state", message.at("type"));
+            EXPECT_EQ(message.at("data").at("index"), message.at("data").at("attributes").at("path"));
+            stateIndexes.push_back(message.at("data").at("index"));
+        }
+    }
+
+    EXPECT_EQ((std::vector<std::string> {sanitizedPath, "/boot/b"}), stateIndexes);
 }
