@@ -355,6 +355,47 @@ TEST(FullSessionValidatorTest, StartListsAtTheirLimitsValidate)
     EXPECT_EQ(invsync::sync::MAX_START_INDICES, session.indices.size());
 }
 
+/**
+ * D29: the Start strings are stamped into every staged document, and nlohmann checks UTF-8 only at
+ * dump() time. Accepted, one bad byte made the dump of every document throw on the worker, which
+ * fails the whole open batch -- other agents' sessions with it.
+ */
+TEST(FullSessionValidatorTest, StartStringsThatAreNotUtf8Are400)
+{
+    const std::string invalid {"agent-\xff"};
+    const std::vector<std::pair<const char*, void (*)(SessionSpec&, const std::string&)>> fields {
+        {"agentName", [](SessionSpec& spec, const std::string& v) { spec.agentName = v; }},
+        {"agentVersion", [](SessionSpec& spec, const std::string& v) { spec.agentVersion = v; }},
+        {"architecture", [](SessionSpec& spec, const std::string& v) { spec.architecture = v; }},
+        {"hostname", [](SessionSpec& spec, const std::string& v) { spec.hostname = v; }},
+        {"osname", [](SessionSpec& spec, const std::string& v) { spec.osname = v; }},
+        {"osplatform", [](SessionSpec& spec, const std::string& v) { spec.osplatform = v; }},
+        {"ostype", [](SessionSpec& spec, const std::string& v) { spec.ostype = v; }},
+        {"osversion", [](SessionSpec& spec, const std::string& v) { spec.osversion = v; }},
+        {"groups", [](SessionSpec& spec, const std::string& v) { spec.groups = {"default", v}; }},
+    };
+
+    for (const auto& [name, set] : fields)
+    {
+        SessionSpec spec;
+        set(spec, invalid);
+        const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
+        // Held by name: failureOf() returns a reference into the result.
+        const auto result = validateFullSession(body, "001", CLUSTER);
+        const auto& failure = failureOf(result);
+        EXPECT_EQ(400, failure.status) << name;
+        EXPECT_NE(std::string::npos, failure.reason.find("UTF-8")) << name;
+    }
+
+    // Multi-byte UTF-8 is not a false positive.
+    SessionSpec accented;
+    accented.agentName = "equipo-de-se\xc3\xb1ora";
+    accented.groups = {"\xe6\x97\xa5\xe6\x9c\xac"};
+    const auto body = invsync::test::buildSyncDataSession(accented, {invsync::test::ValueSpec {}});
+    const auto result = validateFullSession(body, "001", CLUSTER);
+    EXPECT_EQ(accented.agentName, sessionOf(result).agentName);
+}
+
 TEST(FullSessionValidatorTest, VectorEntriesAliasingOneObjectAre400)
 {
     using invsync::test::AliasedVector;

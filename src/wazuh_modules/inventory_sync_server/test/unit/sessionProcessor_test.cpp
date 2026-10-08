@@ -27,6 +27,7 @@
 #include <memory>
 #include <string>
 #include <variant>
+#include <vector>
 
 using invsync::sync::ProcessOutcome;
 using invsync::sync::SessionProcessor;
@@ -177,6 +178,57 @@ TEST_F(SessionProcessorTest, PerDocumentProblemsAreSkippedNotFailed)
     const auto ops = events->syncOps();
     ASSERT_EQ(1U, ops.size()) << "only the good document may reach the bulk";
     EXPECT_EQ("test-cluster_001_doc-good", std::get<1>(ops[0]));
+}
+
+/**
+ * D29: a non-object value on the overlay's path made operator[] throw out of stageBulk(), and the
+ * pipeline fails the worker's whole open batch on a throw -- the co-batched sessions of other agents
+ * with it. The overlay now replaces such a value; the agent's other fields under wazuh.* survive.
+ */
+TEST_F(SessionProcessorTest, NonObjectValuesOnTheOverlayPathAreReplacedNotThrown)
+{
+    const std::vector<std::string> shapes {
+        R"({"wazuh":"x"})",
+        R"({"wazuh":[1]})",
+        R"({"wazuh":{"agent":"x"}})",
+        R"({"wazuh":{"agent":{"host":3}}})",
+        R"({"wazuh":{"agent":{"host":{"os":true}}}})",
+        R"({"wazuh":{"cluster":null}})",
+    };
+    std::vector<ValueSpec> values;
+    for (std::size_t i = 0; i < shapes.size(); ++i)
+    {
+        ValueSpec value;
+        value.id = "doc-" + std::to_string(i);
+        value.data = shapes[i];
+        values.push_back(value);
+    }
+    ValueSpec siblings;
+    siblings.id = "doc-siblings";
+    siblings.data = R"({"package":{"name":"vim"},"wazuh":{"schema":{"version":"1.0"},"agent":{"type":"endpoint"}}})";
+    values.push_back(siblings);
+
+    const auto prepared = prepare(invsync::test::buildSyncDataSession(SessionSpec {}, values));
+    ProcessOutcome outcome;
+    ASSERT_NO_THROW(outcome = processor.stageBulk(prepared.session, connector));
+
+    EXPECT_EQ(200, outcome.status);
+    EXPECT_TRUE(outcome.staged);
+    const auto ops = events->syncOps();
+    ASSERT_EQ(values.size(), ops.size()) << "every document must be staged, none skipped";
+    for (const auto& op : ops)
+    {
+        const auto document = nlohmann::json::parse(std::get<3>(op));
+        EXPECT_EQ("001", document["wazuh"]["agent"]["id"]) << std::get<1>(op);
+        EXPECT_EQ("x86_64", document["wazuh"]["agent"]["host"]["architecture"]) << std::get<1>(op);
+        EXPECT_EQ("Ubuntu", document["wazuh"]["agent"]["host"]["os"]["name"]) << std::get<1>(op);
+        EXPECT_EQ(CLUSTER, document["wazuh"]["cluster"]["name"]) << std::get<1>(op);
+    }
+
+    const auto document = nlohmann::json::parse(std::get<3>(ops.back()));
+    EXPECT_EQ("1.0", document["wazuh"]["schema"]["version"]) << "fields outside the overlay must survive";
+    EXPECT_EQ("endpoint", document["wazuh"]["agent"]["type"]);
+    EXPECT_EQ("vim", document["package"]["name"]);
 }
 
 /**

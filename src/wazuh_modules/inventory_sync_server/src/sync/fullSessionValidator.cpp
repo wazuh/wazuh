@@ -15,6 +15,7 @@
 #include "sync/stateIndexAllowlist.hpp"
 
 #include <flatbuffers/flatbuffers.h>
+#include <json.hpp>
 
 namespace
 {
@@ -70,6 +71,49 @@ namespace
                            list->end(),
                            [maxEntryBytes](const flatbuffers::String* entry)
                            { return entry == nullptr || entry->size() <= maxEntryBytes; });
+    }
+
+    /**
+     * @brief D29: whether every Start string the server stamps into a document will serialize.
+     *
+     * nlohmann validates UTF-8 at dump() time, not on assignment, and the FlatBuffers Verifier does
+     * not look at string contents. One stray byte in the agent name would therefore make the dump of
+     * EVERY document of the session throw on the worker, where a throw fails the whole open batch,
+     * other agents' sessions included. Asked of nlohmann itself, so the verdict is the serializer's
+     * own and cannot drift from it. The agent id is canonical digits by now and the cluster name is
+     * byte-equal to the manager's (sanitized at startup), so neither needs asking.
+     */
+    bool startStringsSerialize(const fb::Start* start)
+    {
+        nlohmann::json strings = nlohmann::json::array();
+        for (const auto* field : {start->agentname(),
+                                  start->agentversion(),
+                                  start->architecture(),
+                                  start->hostname(),
+                                  start->osname(),
+                                  start->osplatform(),
+                                  start->ostype(),
+                                  start->osversion()})
+        {
+            strings.emplace_back(std::string {viewOf(field)});
+        }
+        if (start->groups() != nullptr)
+        {
+            for (const auto* group : *start->groups())
+            {
+                strings.emplace_back(std::string {viewOf(group)});
+            }
+        }
+
+        try
+        {
+            static_cast<void>(strings.dump());
+            return true;
+        }
+        catch (const nlohmann::json::exception&)
+        {
+            return false;
+        }
     }
 
     /**
@@ -328,8 +372,8 @@ namespace invsync::sync
                               std::to_string(MAX_START_INDEX_NAME_BYTES) + " bytes");
         }
 
-        // 8. D25: the message may not reach more bytes than it carries. Last, because it is the
-        // only check whose cost grows with the payload, and before step 9's first copy.
+        // 8. D25: the message may not reach more bytes than it carries. After the cheap checks,
+        // because it is the only one whose cost grows with the payload, and before any copy.
         ReachableBytes reached {body.size()};
         if (!startFitsBody(start, reached) || !payloadFitsBody(session, reached))
         {
@@ -337,7 +381,14 @@ namespace invsync::sync
                               "accepted)");
         }
 
-        // 9. Validated: copy the small Start-derived fields out; the payload stays zero-copy.
+        // 9. D29: the Start strings copied into every document must be valid UTF-8. After D25, so
+        // an aliased string is refused before it is copied here.
+        if (!startStringsSerialize(start))
+        {
+            return badRequest("Start holds bytes that are not valid UTF-8");
+        }
+
+        // 10. Validated: copy the small Start-derived fields out; the payload stays zero-copy.
         ValidatedSession validated;
         validated.session = session;
         validated.mode = mode;
