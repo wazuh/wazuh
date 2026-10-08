@@ -138,6 +138,8 @@ def test_win_upgrade_shared_dir_permissions():
 def test_win_upgrade_start_menu():
     # Runs after test_win_upgrade, on the upgraded installation. The agent GUI must be reachable
     # from a Start menu search for "Wazuh", and the folder the released version used is gone.
+    # That folder is removed by the released MSI's own uninstall, which the upgrade runs, so this
+    # does not cover the new cleanup of shortcuts the NSIS installer left there.
     gui_shortcut = os.path.join(START_MENU_PATH, 'Wazuh', 'Wazuh Agent Manager.lnk')
     assert os.path.isfile(gui_shortcut), f"Shortcut '{gui_shortcut}' not found"
 

@@ -210,7 +210,7 @@ public function config()
     deployment_refused = False
 
     If WAZUH_ENROLLMENT_TOKEN = "" Then
-        install_log home_dir, objFSO, "No manager configured [INFO_NO_MANAGER]: enroll the agent with Manage > Enroll in the agent GUI, or reinstall with WAZUH_ENROLLMENT_TOKEN."
+        install_log home_dir, objFSO, "No manager configured [INFO_NO_MANAGER]: enroll the agent with Manage > Enroll in the agent GUI or with wazuh-agent-auth.exe, or reinstall with WAZUH_ENROLLMENT_TOKEN."
     Else
         ' Decoded before the endpoint is looked at, matching resolve_deployment_conflicts() in
         ' src/init/register_configure_agent.sh: a malformed token passed together with an

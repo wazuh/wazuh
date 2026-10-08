@@ -125,6 +125,8 @@ def verify_installation(expected_version):
         if not os.path.isfile(gui_shortcut):
             print(f"Error: agent GUI shortcut not found at {gui_shortcut}")
             return False
+        # The released MSI's own uninstall, which the upgrade runs, removes this folder, so this
+        # does not cover the new cleanup of shortcuts the NSIS installer left there.
         legacy_folder = os.path.join(start_menu, "OSSEC")
         if os.path.exists(legacy_folder):
             print(f"Error: legacy Start menu folder still present at {legacy_folder}: {os.listdir(legacy_folder)}")
