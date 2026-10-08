@@ -32,10 +32,11 @@
  * @param config The `<indexer>` configuration block. Only `ssl.certificate_authorities`,
  *               `ssl.certificate` and `ssl.key` are read; `hosts` is NOT validated here (callers
  *               check it first, since it is the cheaper check).
- * @param logFn Logger used for the "no credentials in the keystore" warnings.
+ * @param logFn Logger for the debug line naming the account the manager authenticates as.
  * @return Transport settings ready to hand to a server selector or an HTTP request.
  *
- * @throw IndexerConnectorException if a single configured CA file does not exist on disk.
+ * @throw IndexerConnectorException if a single configured CA file does not exist on disk, or if the
+ *        keystore holds no indexer username or password (there is no built-in fallback).
  * @throw std::runtime_error from Utils::CertHelper if merging several CA files fails.
  */
 SecureCommunication buildSecureCommunication(const nlohmann::json& config, const LogFn& logFn);
