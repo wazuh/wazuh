@@ -535,6 +535,45 @@ every child cgroup means one container mapping to many keys, which the store, th
 
 ---
 
+### Fix 2 — cgroup v1 key-space mismatch (§22.11.3) — **FIXED**
+
+The producer decided its key from the host mode alone and never called
+`wz_cgroup_v1_select_subsys()`, the chooser that exists so the resolver and the engine cannot settle
+on different hierarchies. It does now, so legacy keys on the controller cgroup id the resolver was
+already computing and discarding. Validated on Ubuntu 22.04 booted pure legacy (0 cgroup2 mounts,
+Docker `Cgroup Version: 1`):
+
+| Assertion | Before | After |
+|---|---|---|
+| `key_kind` | `mnt_ns` | **`cgroup`** |
+| published key | 4026532376 = `stat /proc/<pid>/ns/mnt` | **4067** = `stat /sys/fs/cgroup/memory/<path>` |
+| `cgroup_id` field | omitted (correctly — the key was not a cgroup) | **emitted**, equal to `key` |
+| container baseline | `0 container(s), 0 row(s)` | **`1 container(s), 77 row(s)`** |
+| live file change | nothing | **2 events, `"mode":"whodata"`** |
+| host negative control | — | **0** container-attributed host events |
+| `docker stop` → `docker start` | — | key re-resolved 4067 → 5379 → **5731**, each equal to `stat` |
+| startup message | *"Container security requires a cgroup v2 (unified) host"* | *"keyed on the 'memory' controller because this host has no unified hierarchy"* |
+
+**§18.6's journal-inversion control passes** — the one v1 assertion with no v2 counterpart. A broken
+v1 host emits `added` on stop and `removed` on start, exactly backwards:
+
+```
+docker stop  -> seq=4 kind=changed key=0
+docker start -> seq=5 kind=changed key=5731
+```
+
+`changed` both times, which is the v2 behaviour, on a host with no v2 hierarchy at all.
+
+**A second v1 defect surfaced during this validation and is fixed in the same change.** With the key
+agreed, FIM still produced nothing and the baseline still reported zero — but the log now said why:
+`0 container(s) scanned, 1 container(s) known`. The baseline's own process-to-container mapping read
+**only** the `0::` line, and a pure v1 host has **no `0::` line at all** (measured: `0:: lines: 0`,
+every line a numbered v1 hierarchy). No process mapped to any container. It now falls back to the
+first controller line, which carries the same path. This is why the fix is validated end to end and
+not merely at the key: agreeing on the key was necessary and, on its own, still produced nothing.
+
+---
+
 ## 22.13 Not yet run
 
 Manager-side alert assertions via the engine file output (`output/file-output-integrations/0`) ·
