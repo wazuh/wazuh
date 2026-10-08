@@ -134,7 +134,7 @@ def test_get_processed_bytes(mock_get, row, expected):
     mock_get.assert_called_with(md5='hash', container='container', blob='blob')
 
 
-@patch('db.orm.delete_blob_offsets')
+@patch('db.orm.delete_stale_blob_offsets')
 @patch('db.orm.set_blob_offset')
 def test_save_and_remove_offsets(mock_set, mock_delete):
     """Test the blob offset functions invoke the ORM functionality with the given values."""
@@ -154,7 +154,7 @@ def test_save_and_remove_offsets(mock_set, mock_delete):
     ],
 )
 @patch('azure_utils.logging.error')
-@patch('db.orm.delete_blob_offsets', side_effect=orm.AzureORMError)
+@patch('db.orm.delete_stale_blob_offsets', side_effect=orm.AzureORMError)
 @patch('db.orm.set_blob_offset', side_effect=orm.AzureORMError)
 @patch('db.orm.get_blob_offset', side_effect=orm.AzureORMError)
 def test_blob_offset_functions_ko(mock_get, mock_set, mock_delete, mock_logging, function, args):

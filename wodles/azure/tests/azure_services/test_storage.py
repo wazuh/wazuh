@@ -346,7 +346,10 @@ def test_get_blobs(
     service_client.get_container_client.assert_called_with(container_name)
     container_client.list_blobs.assert_called_with(name_starts_with=None)
     container_client.download_blob.assert_has_calls(
-        [call(blob, offset=None, encoding='UTF-8', max_concurrency=2) for blob in blob_list if extension and extension in blob.name]
+        [
+            call(blob, offset=None, encoding='UTF-8', max_concurrency=2)
+            for blob in blob_list if extension and extension in blob.name
+        ]
     )
     if send_events:
         calls = list()
@@ -574,12 +577,13 @@ def test_download_blob_success(retries):
     """Test download_blob download blob as expected."""
     container = MagicMock()
     blob = create_mocked_blob("blob1")
-    data_mock = object()
+    data_mock = MagicMock(name='data_mock', size=7)
+    data_mock.readall.return_value = 'content'
 
     container.download_blob.return_value = data_mock
 
     result = download_blob(container, blob, number_of_retries=retries)
-    assert result is data_mock
+    assert result == ('content', 7)
     container.download_blob.assert_called_once_with(blob, offset=None, encoding="UTF-8", max_concurrency=2)
 
 
@@ -587,12 +591,13 @@ def test_download_blob_retry_then_success():
     """Test download_blob retries download after a ResourceModifiedError is raised."""
     container = MagicMock()
     blob = create_mocked_blob("blob2")
-    data_mock = object()
+    data_mock = MagicMock(name='data_mock', size=7)
+    data_mock.readall.return_value = 'content'
 
     container.download_blob.side_effect = [ResourceModifiedError("mod"), data_mock]
 
     result = download_blob(container, blob, number_of_retries=3)
-    assert result is data_mock
+    assert result == ('content', 7)
     assert container.download_blob.call_count == 2
 
 
@@ -607,6 +612,21 @@ def test_download_blob_fails_immediately_on_other_exceptions(exc):
     with pytest.raises(type(exc)):
         download_blob(container, blob, number_of_retries=5)
     container.download_blob.assert_called_once()
+
+
+def test_download_blob_retry_when_modified_while_reading():
+    """Test download_blob retries the download if the blob changes while its contents are read."""
+    container = MagicMock()
+    blob = create_mocked_blob("blob4")
+    modified = MagicMock(name='modified_mock')
+    modified.readall.side_effect = ResourceModifiedError("mod")
+    data_mock = MagicMock(name='data_mock', size=7)
+    data_mock.readall.return_value = 'content'
+
+    container.download_blob.side_effect = [modified, data_mock]
+
+    assert download_blob(container, blob, number_of_retries=3) == ('content', 7)
+    assert container.download_blob.call_count == 2
 
 
 def test_download_blob_retry_then_fail():
@@ -633,16 +653,19 @@ class FakeContainer:
     def __init__(self):
         self.blobs = {}
         self.downloads = []
+        self.failed_reads = 0
         self.clock = datetime.now(pytz.UTC) - timedelta(hours=1)
 
-    def write(self, name: str, content: str, blob_type: str = BlobType.APPENDBLOB, append: bool = True):
+    def write(self, name: str, content: str, blob_type: str = BlobType.APPENDBLOB, append: bool = True,
+              keep_creation_time: bool = False):
         self.clock += timedelta(minutes=1)
         blob = self.blobs.get(name)
         if append and blob:
             blob.update(data=blob['data'] + content.encode(), last_modified=self.clock)
         else:
+            creation_time = blob['creation_time'] if keep_creation_time and blob else self.clock
             self.blobs[name] = {
-                'data': content.encode(), 'type': blob_type, 'creation_time': self.clock, 'last_modified': self.clock
+                'data': content.encode(), 'type': blob_type, 'creation_time': creation_time, 'last_modified': self.clock
             }
 
     def exists(self):
@@ -657,14 +680,19 @@ class FakeContainer:
             listed.append(item)
         return iter(listed)
 
-    def download_blob(self, blob, offset=None, length=None, encoding=None, max_concurrency=1):
+    def download_blob(self, blob, offset=None, encoding=None, max_concurrency=1):
         self.downloads.append(offset)
         data = self.blobs[blob.name]['data']
         if offset is not None and offset >= len(data):
             raise HttpResponseError('The range specified is invalid for the current size of the resource.')
         data = data[offset or 0:]
         downloader = MagicMock(name='downloader_mock', size=len(data))
-        downloader.readall.return_value = data.decode(encoding) if encoding else data
+        if self.failed_reads:
+            # The blob changes while its chunks are downloaded
+            self.failed_reads -= 1
+            downloader.readall.side_effect = ResourceModifiedError('The condition specified was not met.')
+        else:
+            downloader.readall.return_value = data.decode(encoding) if encoding else data
         return downloader
 
 
@@ -744,6 +772,27 @@ def test_append_blob_created_again_is_read_from_the_start(in_memory_db, new_even
     container.write(HOURLY_BLOB, audit_records(*new_events), append=False)
 
     assert run_storage(container) == new_events
+
+
+def test_append_blob_smaller_than_its_offset_is_read_from_the_start(in_memory_db):
+    """Test a blob replaced with less data than already processed is read from its start even if it keeps its
+    creation time."""
+    container = FakeContainer()
+    container.write(HOURLY_BLOB, audit_records('E1', 'E2', 'E3'))
+    run_storage(container)
+    container.write(HOURLY_BLOB, audit_records('E9'), append=False, keep_creation_time=True)
+
+    assert run_storage(container) == ['E9']
+
+
+def test_blob_modified_while_downloading_does_not_move_the_bookmark(in_memory_db):
+    """Test a blob that keeps changing while it is downloaded doesn't move the bookmark, so the next run can send it."""
+    container = FakeContainer()
+    container.write(HOURLY_BLOB, audit_records('E1'))
+    container.failed_reads = 3
+
+    assert run_storage(container) == []
+    assert run_storage(container) == ['E1']
 
 
 def test_append_blob_offset_removed_with_the_blob(in_memory_db):

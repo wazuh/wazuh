@@ -275,7 +275,7 @@ def set_blob_offset(md5: str, container: str, blob: str, creation_time: str, pro
         raise AzureORMError(str(e))
 
 
-def delete_blob_offsets(md5: str, container: str, prefix: Optional[str], keep: set):
+def delete_stale_blob_offsets(md5: str, container: str, prefix: Optional[str], keep: set):
     """Delete the offsets stored for the blobs under the prefix that are not in the given set.
 
     Parameters

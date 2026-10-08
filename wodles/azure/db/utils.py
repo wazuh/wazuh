@@ -138,7 +138,9 @@ def get_processed_bytes(md5_hash: str, container: str, blob: str, creation_time:
     try:
         row = orm.get_blob_offset(md5=md5_hash, container=container, blob=blob)
     except orm.AzureORMError as e:
-        logging.error(f'Error trying to obtain the offset of blob "{blob}" from {orm.StorageBlobOffset.__tablename__}: {e}')
+        logging.error(
+            f'Error trying to obtain the offset of blob "{blob}" from {orm.StorageBlobOffset.__tablename__}: {e}'
+        )
         sys.exit(1)
     if row is None:
         return None
@@ -186,7 +188,7 @@ def remove_stale_offsets(md5_hash: str, container: str, prefix: Optional[str], k
         Names of the blobs present in the container.
     """
     try:
-        orm.delete_blob_offsets(md5=md5_hash, container=container, prefix=prefix, keep=keep)
+        orm.delete_stale_blob_offsets(md5=md5_hash, container=container, prefix=prefix, keep=keep)
     except orm.AzureORMError as e:
         logging.error(f'Error removing stale offsets from {orm.StorageBlobOffset.__tablename__}: {e}')
         sys.exit(1)
