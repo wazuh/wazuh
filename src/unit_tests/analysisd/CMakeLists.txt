@@ -195,6 +195,9 @@ list(APPEND analysisd_flags "-Wl,--wrap,strdup -Wl,--wrap,free")
 list(APPEND analysisd_names "test_analysisd_upgrade_module")
 list(APPEND analysisd_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND analysisd_names "test_analysisd_dodiff")
+list(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS}")
+
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
