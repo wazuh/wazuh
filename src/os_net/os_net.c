@@ -133,39 +133,122 @@ int OS_Bindportudp(u_int16_t _port, const char *_ip, int ipv6)
 }
 
 #ifndef WIN32
+/* Platforms without the *at family (HP-UX, Solaris before 11) fall back to path-based calls. */
+#if defined(HPUX) || (defined(SUN_MAJOR_VERSION) && SUN_MAJOR_VERSION < 11)
+#define OS_BIND_NO_AT
+#endif
+
 /* Bind to a Unix domain, DGRAM sockets while allowing the caller to specify owner and permission bits. */
 int OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t mode)
 {
     struct sockaddr_un n_us;
-    int ossock = 0;
+    char tmp_dir[sizeof(n_us.sun_path) - 2];
+    const char *base = strrchr(path, '/');
+    int prefix_len = base ? (int)(base - path + 1) : 0;
+    const int pid = (int)getpid();
+    int dir_len;
+    int ossock = -1;
+    int saved_errno;
+    int i;
 
-    /* Make sure the path isn't there */
-    unlink(path);
+    /* Create the socket in a private directory, set its mode and owner there through a descriptor,
+     * and move it into its final place. */
+    if (strlen(path) >= sizeof(n_us.sun_path)) {
+        errno = ENAMETOOLONG;
+        return (OS_SOCKTERR);
+    }
+
+    for (i = 0; ; i++) {
+        dir_len = snprintf(tmp_dir, sizeof(tmp_dir), "%.*s.w%d_%d", prefix_len, path, pid, i);
+        if (dir_len < 0 || dir_len >= (int)sizeof(tmp_dir)) {
+            errno = ENAMETOOLONG;
+            return (OS_SOCKTERR);
+        }
+        if (i == 100) {
+            /* errno is left as the last mkdir()'s EEXIST */
+            return (OS_SOCKTERR);
+        }
+        if (mkdir(tmp_dir, 0700) == 0) {
+            break;
+        }
+        if (errno != EEXIST) {
+            return (OS_SOCKTERR);
+        }
+    }
 
     memset(&n_us, 0, sizeof(n_us));
     n_us.sun_family = AF_UNIX;
-    strncpy(n_us.sun_path, path, sizeof(n_us.sun_path) - 1);
+    memcpy(n_us.sun_path, tmp_dir, dir_len);
+    memcpy(n_us.sun_path + dir_len, "/s", 2);
 
+#ifndef OS_BIND_NO_AT
+    {
+        struct stat dir_st;
+        int dfd = open(tmp_dir, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
+
+        /* Confirm the pinned descriptor is a private directory we own */
+        if (dfd < 0 || fstat(dfd, &dir_st) < 0) {
+            saved_errno = errno;
+            if (dfd >= 0) {
+                close(dfd);
+            }
+            rmdir(tmp_dir);
+            errno = saved_errno;
+            return (OS_SOCKTERR);
+        }
+        if (!S_ISDIR(dir_st.st_mode) || dir_st.st_uid != geteuid() || (dir_st.st_mode & (S_IRWXG | S_IRWXO)) != 0) {
+            close(dfd);
+            rmdir(tmp_dir);
+            errno = EPERM;
+            return (OS_SOCKTERR);
+        }
+
+        if ((ossock = socket(AF_UNIX, type, 0)) < 0) {
+            saved_errno = errno;
+            close(dfd);
+            rmdir(tmp_dir);
+            errno = saved_errno;
+            return (OS_SOCKTERR);
+        }
+
+        /* Apply the mode and owner through the pinned descriptor, then move the socket into place */
+        if (bind(ossock, (struct sockaddr *)&n_us, SUN_LEN(&n_us)) < 0
+            || fchmodat(dfd, "s", mode, 0) < 0
+            || fchownat(dfd, "s", uid, gid, AT_SYMLINK_NOFOLLOW) < 0
+            || renameat(dfd, "s", AT_FDCWD, path) < 0) {
+            saved_errno = errno;
+            unlinkat(dfd, "s", 0);
+            close(dfd);
+            rmdir(tmp_dir);
+            OS_CloseSocket(ossock);
+            errno = saved_errno;
+            return (OS_SOCKTERR);
+        }
+        close(dfd);
+    }
+#else
     if ((ossock = socket(AF_UNIX, type, 0)) < 0) {
+        saved_errno = errno;
+        rmdir(tmp_dir);
+        errno = saved_errno;
         return (OS_SOCKTERR);
     }
 
-    if (bind(ossock, (struct sockaddr *)&n_us, SUN_LEN(&n_us)) < 0) {
+    /* No *at family on this platform: set mode and owner by path inside the private directory */
+    if (bind(ossock, (struct sockaddr *)&n_us, SUN_LEN(&n_us)) < 0
+        || chmod(n_us.sun_path, mode) < 0
+        || lchown(n_us.sun_path, uid, gid) < 0
+        || rename(n_us.sun_path, path) < 0) {
+        saved_errno = errno;
+        unlink(n_us.sun_path);
+        rmdir(tmp_dir);
         OS_CloseSocket(ossock);
+        errno = saved_errno;
         return (OS_SOCKTERR);
     }
+#endif
 
-    /* Change permissions */
-    if (chmod(path, mode) < 0) {
-        OS_CloseSocket(ossock);
-        return (OS_SOCKTERR);
-    }
-
-    /* Change owner */
-    if (chown(path, uid, gid) < 0) {
-        OS_CloseSocket(ossock);
-        return (OS_SOCKTERR);
-    }
+    rmdir(tmp_dir);
 
     if (type == SOCK_STREAM && listen(ossock, 128) < 0) {
         OS_CloseSocket(ossock);

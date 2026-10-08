@@ -33,6 +33,7 @@ All notable changes to this project will be documented in this file.
 - Fixed syscollector dropping process and port inventory on names with invalid UTF-8. ([#39956](https://github.com/wazuh/wazuh/pull/39956))
 - Fixed FIM crash on first scan when inotify cannot be initialized. ([#39707](https://github.com/wazuh/wazuh/pull/39707))
 - Fixed `force_reconnect_interval` from centralized configuration not applied on agent hot reload. ([#39573](https://github.com/wazuh/wazuh/pull/39573))
+- Hardened the creation of agent Unix domain sockets. ([#39870](https://github.com/wazuh/wazuh/pull/39870))
 - Fixed the `report_changes` snapshot following symbolic links and accepting non-regular files on Linux and macOS. ([#39476](https://github.com/wazuh/wazuh/pull/39476))
 - Fixed a root-level OS command injection in the rootcheck promiscuous-interface check. ([#39622](https://github.com/wazuh/wazuh/pull/39622))
 - Fixed logcollector following symbolic links and opening non-regular files without validating them on Linux and macOS. ([#39649](https://github.com/wazuh/wazuh/pull/39649))
