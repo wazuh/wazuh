@@ -324,6 +324,12 @@ REMOTED_MODULE_SCALARS: tuple[tuple[str, str], ...] = (
     ("remoted.forwarder.deferred.rejected.total", "forwarder_deferred_rejected_total"),
     ("remoted.server.connections.open", "server_connections_open"),
     ("remoted.server.connections.max", "server_connections_max"),
+    # The TLS handshake guard (issue #6883): a slot is taken at accept, before the handshake, so
+    # peers that never complete one hold slots no request metric sees. handshaking is a level (a
+    # subset of connections.open); the two totals are what the deadline and the per-source cap closed.
+    ("remoted.server.connections.handshaking", "server_connections_handshaking"),
+    ("remoted.server.handshake.timeouts.total", "server_handshake_timeouts_total"),
+    ("remoted.server.handshake.rejected_per_source.total", "server_handshake_rejected_per_source_total"),
     # The served TLS certificate: days to expiry (the catalog's one signed value -- negative once
     # expired; _as_int keeps the sign) and whether remote.https.ca_certificate signs it (0/1; 0
     # also while the listener is down). Levels, re-evaluated by remoted daily.

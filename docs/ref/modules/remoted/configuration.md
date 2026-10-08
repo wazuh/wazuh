@@ -848,8 +848,11 @@ Seconds to wait for a full request to arrive on a connection.
 
 - **Default value:** `10`
 - **Allowed values:** Integer from `1` to `300`
-- **Note:** The clock starts as soon as the connection is established, so this also bounds a
-  stalled TLS handshake -- there is no separate handshake timeout
+- **Note:** The same value also bounds the TLS handshake, on a clock of its own that starts when
+  the connection is accepted: a peer that has not completed the handshake by then is disconnected
+  and its connection slot released. The request clock starts only once the handshake has
+  succeeded, so a connection gets up to this long for each. Handshakes closed this way are counted
+  in [`remoted.server.handshake.timeouts.total`](metrics.md#public-transport-backpressure--remotedserverbudget)
 - **Note:** It is a **total** deadline on receiving the request, not an idle timer: it is armed
   once and never rearmed as bytes arrive, so a body that takes longer than this to upload is cut
   even though it never stalled, and the connection is closed without an HTTP status. This is the
@@ -957,6 +960,10 @@ Maximum simultaneous HTTPS connections.
   than as an error the agent can see. There is consequently no rejection counter for it — watch
   [`remoted.server.connections.open`](metrics.md#public-transport-backpressure--remotedserverbudget)
   against `.max` instead, which is the only visibility into how close the listener is running to it.
+- **Note:** A connection takes its slot when it is accepted, before the TLS handshake. A peer that
+  never completes the handshake keeps it for at most
+  [`remoted.http_read_timeout`](#remotedhttp_read_timeout), and one address can hold at most
+  [`remoted.max_handshakes_per_source`](#remotedmax_handshakes_per_source) slots that way.
 - **Note:** Bounds the read-phase memory peak (~`max_parallel_connections` × `max_body_size`). Also
   the only bound on concurrent streamed responses (`POST /download`): chunked output rearms
   `remoted.http_write_timeout` per chunk and there is no per-stream limiter, so a fast reader holds
@@ -966,6 +973,26 @@ Maximum simultaneous HTTPS connections.
   fetching a WPK at once, many over slow links) is therefore bounded only by this value. Started transfers and
   offered bytes are visible as `remoted.download.*` in
   [`GET /metrics`](metrics.md#downloads--remoteddownload).
+
+#### remoted.max_handshakes_per_source
+
+Maximum connections from one address that may be in the TLS handshake at once. One more from that
+address is disconnected as soon as it is accepted.
+
+- **Default value:** `32`
+- **Allowed values:** Integer from `0` to `65536` (`0` disables the cap)
+- **Note:** A connection takes one of the
+  [`remoted.max_parallel_connections`](#remotedmax_parallel_connections) slots when it is accepted,
+  before the handshake. Without this cap a single host could hold every slot by connecting and never
+  completing a handshake, reconnecting each time
+  [`remoted.http_read_timeout`](#remotedhttp_read_timeout) disconnects it.
+- **Note:** Only connections still in the handshake are counted, never established ones. An agent
+  completes its handshake in milliseconds, so a fleet that reaches the manager through one address
+  (behind NAT, or an L4 load balancer that does not preserve the client address) is not limited by
+  it in normal operation. Raise it only if that address legitimately opens many connections at the
+  same instant, for example after a manager restart, and
+  [`remoted.server.handshake.rejected_per_source.total`](metrics.md#public-transport-backpressure--remotedserverbudget)
+  moves while no attack is under way.
 
 #### remoted.max_deferred_requests
 

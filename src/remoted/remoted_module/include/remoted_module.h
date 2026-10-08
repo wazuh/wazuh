@@ -138,6 +138,11 @@ extern "C"
         bool http_content_encoding_enabled;
         long long max_inflight_bytes; ///< Max in-flight request payload bytes; 503 over it (<=0 -> module default).
         int max_parallel_connections; ///< HTTPS max simultaneous connections (<=0 -> module default).
+        int max_handshakes_per_source; ///< Max connections from one address still in the TLS handshake; one more
+                                       ///< is closed at once. remoted.max_handshakes_per_source, 0..65536 (default
+                                       ///< 32). Zero is a VALID setting ("no cap"), so this field is only read when
+                                       ///< max_handshakes_per_source_set is non-zero; otherwise the module default.
+        int max_handshakes_per_source_set; ///< Non-zero when max_handshakes_per_source carries a configured value.
         int max_deferred_requests; ///< Max requests parked awaiting a downstream service; 503 over it (<=0 -> default).
         int max_requests_per_agent; ///< Max requests one authenticated agent may have open; 503 over it (<=0 -> default).
         long long max_inflight_bytes_per_agent; ///< Max decoded-body bytes one agent may hold at once; 503 over it

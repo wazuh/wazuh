@@ -14,6 +14,8 @@
 #include "caPublicationRecord.hpp"
 #include "caRecordEvents.hpp"
 #include "common/logThrottle.hpp"
+#include "guardedTlsSocket.hpp"
+#include "handshakeLedger.hpp"
 #include "httpServerConfig.hpp"
 #include "httpServerFactory.hpp"
 #include "inFlightBudget.hpp"
@@ -201,6 +203,45 @@ namespace
         remoted::common::LogThrottle m_errorThrottle;
     };
 
+    /**
+     * @brief The two handshake-guard events worth a line (see guardedTlsSocket.hpp), as
+     *        HandshakeGuardPolicy hooks.
+     *
+     * WARN, unlike RESTinio's own per-connection diagnostics above: a handshake that never completes
+     * within the read timeout, or one address holding many at once, is what the slot-exhaustion
+     * attack of issue #6883 looks like -- an honest agent finishes its handshake in milliseconds, and
+     * a load balancer's TCP health check closes rather than stalls. Throttled like every per-connection
+     * line, one per window carrying the count, so an attack costs one line, not one per socket.
+     * Function-local throttles: the hooks are plain function pointers, shared by every server run.
+     */
+    void logHandshakeRefused(const std::string& peer)
+    {
+        static remoted::common::LogThrottle throttle;
+        if (const auto refused = throttle.record())
+        {
+            LOGFN_WARN(logFn(),
+                       "Refused %llu connection(s) in the last %d s: too many TLS handshakes in progress from one "
+                       "address (last one: %s). See 'remoted.max_handshakes_per_source'.",
+                       static_cast<unsigned long long>(refused.total),
+                       remoted::common::LogThrottle::kDefaultWindowSeconds,
+                       peer.c_str());
+        }
+    }
+
+    void logHandshakeTimedOut(const std::string& peer)
+    {
+        static remoted::common::LogThrottle throttle;
+        if (const auto expired = throttle.record())
+        {
+            LOGFN_WARN(logFn(),
+                       "Closed %llu connection(s) in the last %d s that did not complete the TLS handshake in time "
+                       "(last one: %s). See 'remoted.http_read_timeout'.",
+                       static_cast<unsigned long long>(expired.total),
+                       remoted::common::LogThrottle::kDefaultWindowSeconds,
+                       peer.empty() ? "unknown" : peer.c_str());
+        }
+    }
+
     // Enable RESTinio's connection-count limiter so max_parallel_connections() is honored
     // (the default noop limiter turns that setter into a compile-time error).
     /**
@@ -278,32 +319,28 @@ namespace
          *                 RESTinio needs an instance whenever the traits name a listener type
          *                 (it throws otherwise), so the listener is always installed and this is
          *                 what makes it inert.
-         * @param open     Live connection count, maintained in EVERY verification mode -- unlike
-         *                 the peer-address check, which only runs in Full. Shared with the server
-         *                 so diagnostics() can read it.
+         * @param ledger   Where every connection of the listener is counted (handshakeLedger.hpp), in
+         *                 EVERY verification mode -- unlike the peer-address check, which only runs
+         *                 in Full. Shared with the server so diagnostics() can read it.
          */
         explicit FullModeListener(std::shared_ptr<RejectedConnections> rejected = nullptr,
-                                  std::shared_ptr<std::atomic<std::size_t>> open = nullptr)
+                                  std::shared_ptr<remoted::http::HandshakeLedger> ledger = nullptr)
             : m_rejected {std::move(rejected)}
-            , m_open {std::move(open)}
+            , m_ledger {std::move(ledger)}
         {
         }
 
         void state_changed(const restinio::connection_state::notice_t& notice) noexcept
         {
-            // Counted before the Full-mode gate below: the level must be observable in every
-            // verification mode, and a connection rejected by that check was still accepted by the
-            // transport and still holds one of max_parallel_connections' slots until it closes.
-            if (m_open)
+            // Only the CLOSE is counted here, before the Full-mode gate below: a connection rejected
+            // by that check still holds one of max_parallel_connections' slots until it closes. The
+            // OPEN is counted by the handshake guard, when the handshake starts: RESTinio's accepted
+            // notice arrives only after a successful handshake, while its closed notice also follows
+            // a failed one -- counting the pair against each other underflowed on every failed
+            // handshake and never saw a stalled one (issue #6883).
+            if (m_ledger && std::holds_alternative<restinio::connection_state::closed_t>(notice.cause()))
             {
-                if (std::holds_alternative<restinio::connection_state::accepted_t>(notice.cause()))
-                {
-                    m_open->fetch_add(1, std::memory_order_relaxed);
-                }
-                else if (std::holds_alternative<restinio::connection_state::closed_t>(notice.cause()))
-                {
-                    m_open->fetch_sub(1, std::memory_order_relaxed);
-                }
+                m_ledger->closed(notice.connection_id());
             }
 
             if (!m_rejected)
@@ -378,10 +415,17 @@ namespace
         }
 
         std::shared_ptr<RejectedConnections> m_rejected;
-        std::shared_ptr<std::atomic<std::size_t>> m_open;
+        std::shared_ptr<remoted::http::HandshakeLedger> m_ledger;
     };
 
-    struct ServerTraits : public restinio::tls_traits_t<restinio::asio_timer_manager_t, WazuhRestinioLogger, Router>
+    // restinio::tls_traits_t with GuardedTlsSocket in place of tls_socket_t (same strand): RESTinio
+    // runs the TLS handshake with no timer, and that socket is what adds one (guardedTlsSocket.hpp).
+    struct ServerTraits
+        : public restinio::traits_t<restinio::asio_timer_manager_t,
+                                    WazuhRestinioLogger,
+                                    Router,
+                                    restinio::asio_ns::strand<restinio::default_asio_executor>,
+                                    remoted::http::GuardedTlsSocket>
     {
         static constexpr bool use_connection_count_limiter = true;
 
@@ -1230,14 +1274,14 @@ namespace remoted::http
         /// null in the other modes, which is what keeps the listener inert.
         std::shared_ptr<RejectedConnections> m_rejectedConnections;
 
-        /// Connections currently open on the listener, maintained by FullModeListener in EVERY
-        /// verification mode. Allocated once and never reset: the listener RESTinio holds outlives
-        /// a stop(), so handing it a pointer that start() replaces would leave the old listener
-        /// decrementing a counter nobody reads. Shared (not a plain member) for the same reason --
-        /// RESTinio copies the listener around.
-        std::shared_ptr<std::atomic<std::size_t>> m_openConnections {std::make_shared<std::atomic<std::size_t>>(0)};
+        /// Every connection of the listener, from the start of its TLS handshake to its close, and the
+        /// per-source cap on handshakes in progress (issue #6883): fed by the handshake guard and by
+        /// FullModeListener, in EVERY verification mode. Allocated once and never replaced: the
+        /// listener RESTinio holds outlives a stop(), so handing it a pointer that start() replaces
+        /// would leave the old listener updating a ledger nobody reads. start() reset()s it instead.
+        std::shared_ptr<HandshakeLedger> m_handshakeLedger {std::make_shared<HandshakeLedger>()};
 
-        /// The ceiling m_openConnections is counted against (config.maxParallelConnections),
+        /// The ceiling the ledger's open connections are counted against (config.maxParallelConnections),
         /// captured at start() so diagnostics() can report the level AND its limit together.
         std::size_t m_maxConnections {0};
 
@@ -1517,8 +1561,12 @@ namespace remoted::http
         d.budgetInFlightBytes = budget->maxBytes() - budget->availableBytes();
         d.budgetInFlightCount = budget->inFlightCount();
         d.budgetRejectedTotal = budget->rejectedTotal();
-        d.connectionsOpen = m_impl->m_openConnections->load(std::memory_order_relaxed);
+        const auto handshakes = m_impl->m_handshakeLedger->snapshot();
+        d.connectionsOpen = handshakes.open;
         d.connectionsMax = m_impl->m_maxConnections;
+        d.connectionsHandshaking = handshakes.handshaking;
+        d.handshakeTimeoutsTotal = handshakes.timeoutsTotal;
+        d.handshakeRejectedPerSourceTotal = handshakes.rejectedPerSourceTotal;
         return d;
     }
 
@@ -1715,7 +1763,23 @@ namespace remoted::http
         // ("connection state listener is not specified") if the traits name a listener type and no
         // instance is set. A null registry inside makes it inert for None/Certificate.
         settings.connection_state_listener(
-            std::make_shared<FullModeListener>(m_impl->m_rejectedConnections, m_impl->m_openConnections));
+            std::make_shared<FullModeListener>(m_impl->m_rejectedConnections, m_impl->m_handshakeLedger));
+
+        // The previous run's connections are gone (stop() joined its I/O threads), and the ids of
+        // this run start over, so nothing it counted may survive into this one.
+        m_impl->m_handshakeLedger->reset();
+        m_impl->m_handshakeLedger->setMaxPerSource(config.maxHandshakesPerSource);
+
+        // RESTinio arms no timer before the TLS handshake has succeeded: without this deadline a
+        // peer that connects and sends nothing holds its max_parallel_connections slot until it
+        // leaves (issue #6883). The read timeout is reused: it is the window an honest peer
+        // already gets to send its request, and a handshake takes milliseconds.
+        auto handshakeGuard = std::make_shared<HandshakeGuardPolicy>();
+        handshakeGuard->timeout = std::chrono::seconds {config.readTimeoutSec};
+        handshakeGuard->ledger = m_impl->m_handshakeLedger;
+        handshakeGuard->onRefused = &logHandshakeRefused;
+        handshakeGuard->onTimedOut = &logHandshakeTimedOut;
+        settings.handshake_guard(std::move(handshakeGuard));
 
         settings.address(config.bindAddress)
             .port(config.port)
@@ -1748,9 +1812,8 @@ namespace remoted::http
             .request_handler(std::move(requestRouter))
             .tls_context(std::move(tls.context))
             .buffer_size(config.bufferSize)
-            // read_next_http_message_timelimit also stands in for a TLS handshake timeout:
-            // it starts counting as soon as the connection is established, before anything
-            // has been read, so it already bounds a stalled/never-completed handshake.
+            // Armed only once the TLS handshake has succeeded, so it does NOT bound the handshake
+            // itself: the handshake guard above does, with the same value.
             .read_next_http_message_timelimit(std::chrono::seconds {config.readTimeoutSec})
             .write_http_response_timelimit(std::chrono::seconds {config.writeTimeoutSec})
             .handle_request_timeout(std::chrono::seconds {config.requestTimeoutSec})
@@ -1760,7 +1823,9 @@ namespace remoted::http
             // received, before they reach the in-flight budget) can't grow unbounded. Reaching it
             // does NOT reject anything: RESTinio postpones the accept and the connection waits in
             // the kernel backlog, so the level is published as remoted.server.connections.* --
-            // saturation here is latency, and nothing else would make it visible.
+            // saturation here is latency, and nothing else would make it visible. A slot is taken
+            // at accept, before the TLS handshake: the handshake guard is what bounds how long a
+            // peer that never completes one can keep it.
             .max_parallel_connections(config.maxParallelConnections)
             .separate_accept_and_create_connect(true)
             .incoming_http_msg_limits(restinio::incoming_http_msg_limits_t {}

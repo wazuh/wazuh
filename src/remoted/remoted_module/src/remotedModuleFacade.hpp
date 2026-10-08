@@ -62,6 +62,7 @@
 #include "enrollment/enrollmentEndpoint.hpp"
 #include "enrollment/metrics.hpp"
 #include "http_server/IHttpServer.hpp"
+#include "http_server/handshakeMetrics.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
 #include "loggerHelper.h"
@@ -1650,6 +1651,28 @@ private:
             [snapshot] { return static_cast<uint64_t>(snapshot().connectionsMax); },
             "Connections the listener accepts at once ('remoted.max_parallel_connections'); over it "
             "new connections wait in the backlog instead of being refused",
+            "connections");
+
+        // A connection holds its slot from accept, BEFORE the TLS handshake, so peers that connect
+        // and never speak TLS fill the ceiling above without a single request -- invisible to every
+        // request-level metric (issue #6883). These three show it: the level, and what the two
+        // guards (the handshake deadline, the per-source cap) closed.
+        m_metricsManager->registerPullMetric(
+            remoted::http::metrics::METRIC_CONNECTIONS_HANDSHAKING,
+            [snapshot] { return static_cast<uint64_t>(snapshot().connectionsHandshaking); },
+            "Connections still in the TLS handshake (a subset of connections.open); an honest one leaves it "
+            "in milliseconds",
+            "connections");
+        m_metricsManager->registerPullMetric(
+            remoted::http::metrics::METRIC_HANDSHAKE_TIMEOUTS,
+            [snapshot] { return snapshot().handshakeTimeoutsTotal; },
+            "Connections closed for not completing the TLS handshake within 'remoted.http_read_timeout'",
+            "connections");
+        m_metricsManager->registerPullMetric(
+            remoted::http::metrics::METRIC_HANDSHAKE_REJECTED_PER_SOURCE,
+            [snapshot] { return snapshot().handshakeRejectedPerSourceTotal; },
+            "Connections closed at once because their address already had 'remoted.max_handshakes_per_source' "
+            "TLS handshakes in progress",
             "connections");
 
         // The served certificate's health, read from the same weak target. Expiry is the

@@ -31,7 +31,8 @@ Each hop has its own clock, and they are not nested inside one another:
 
 | Phase | Bounded by | Default | How it ends |
 |---|---|---|---|
-| TLS handshake **plus** reading the whole request | [`remoted.http_read_timeout`](configuration.md#remotedhttp_read_timeout) | 10 s | connection closed, no HTTP status |
+| TLS handshake | [`remoted.http_read_timeout`](configuration.md#remotedhttp_read_timeout) (same value, its own clock) | 10 s | connection closed, no HTTP status |
+| Reading the whole request, once the handshake succeeded | [`remoted.http_read_timeout`](configuration.md#remotedhttp_read_timeout) | 10 s | connection closed, no HTTP status |
 | Handling, once the request is fully read | [`remoted.http_request_timeout`](configuration.md#remotedhttp_request_timeout) | 30 s | request torn down |
 | Downstream connect | [`remoted.downstream_connect_timeout`](configuration.md#remoteddownstream_connect_timeout) | 2 s | `503` |
 | Downstream body write | [`remoted.downstream_write_timeout`](configuration.md#remoteddownstream_write_timeout) | 5 s | `503` |
