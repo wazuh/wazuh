@@ -129,9 +129,12 @@ the cluster as a peer, so being able to choose it is worth as much as being able
 `PUT /cluster/{node_id}/configuration` refuses a new `<cluster><key>` with error `1132` unless the
 caller holds `cluster:read_secrets` over that node. A configuration read masked and sent back
 unchanged keeps working: a key equal to the mask `*****` is replaced with the node's current key
-before the text is validated and written, so `cluster:update_config` alone still edits every other
+before the text is written, so `cluster:update_config` alone still edits every other
 option, cluster membership (`node_type`, `nodes`, `bind_addr`, `port`) included — without the key those
-grant nothing.
+grant nothing. The key is put back only where the parsed configuration holds `<cluster><key>`
+itself: a mask the parser drops (inside a comment) is written back as the mask, and a mask that would
+land anywhere else (another section's `<key>`, a CDATA section) is refused with `1132`, whatever the
+caller's permissions.
 
 It also guards the **indexer section**, which is not a secret but chooses where one goes. Every
 indexer client of the manager (clusterd, modulesd, the engine) authenticates to each `indexer.hosts`
