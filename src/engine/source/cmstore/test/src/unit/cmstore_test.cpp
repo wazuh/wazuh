@@ -1431,6 +1431,20 @@ TEST(PolicyTest, ConstructorInvalidOriginSpaceThrows)
                  std::runtime_error);
 }
 
+TEST(PolicyTest, OriginSpaceValidationIsLinear)
+{
+    // 1M characters overflowed the stack with std::regex_match
+    const std::string longValid(1'000'000, 'a');
+    EXPECT_NO_THROW(cm::store::dataType::Policy(
+        "title", true, validUUID(), {}, {}, {}, {}, longValid, "", false, false, true));
+
+    std::string longInvalid(1'000'000, 'a');
+    longInvalid.back() = '-';
+    EXPECT_THROW(cm::store::dataType::Policy(
+                     "title", true, validUUID(), {}, {}, {}, {}, longInvalid, "", false, false, true),
+                 std::runtime_error);
+}
+
 TEST(PolicyTest, ConstructorNonV4RootDecoderAccepted)
 {
     // The root decoder identifier is opaque: any UUID version or custom string is accepted
