@@ -167,6 +167,9 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
 
+/* ACK a control message. Call with no lock held: closes the connection of an agent that does not read. */
+STATIC void send_control_ack(const char * agent_id);
+
 /* Get current timestamp */
 STATIC void *current_timestamp(void *none);
 
@@ -1440,8 +1443,9 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             // Validate control message before unlocking to update startup status safely
             char *cleaned_msg = NULL;
             int is_startup = 0, is_shutdown = 0;
+            bool send_ack = false;
             size_t tmp_msg_length = msg_length - 3; // Exclude the header length (3 characters)
-            int validation_result = validate_control_msg(key, tmp_msg, tmp_msg_length, &cleaned_msg, &is_startup, &is_shutdown);
+            int validation_result = validate_control_msg(key, tmp_msg, tmp_msg_length, &cleaned_msg, &is_startup, &is_shutdown, &send_ack);
 
             // Update keystore startup status immediately after validation
             if (is_startup) {
@@ -1452,6 +1456,10 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             bool post_startup = keys.keyentries[agentid]->post_startup;
 
             key_unlock();
+
+            if (send_ack) {
+                send_control_ack(key->id);
+            }
 
             if (sock_idle >= 0) {
                 _close_sock(&keys, sock_idle);
@@ -1614,6 +1622,26 @@ STATIC bool discard_legacy_agent_message(const char* msg, const char* agent_id) 
     }
 
     return false;
+}
+
+STATIC void send_control_ack(const char * agent_id) {
+    int full_sock = -1;
+
+    // The agent sets the pace of these ACKs with its own messages, so they never wait for buffer space:
+    // a worker waiting on an agent that does not read would delay every other agent's messages.
+    switch (send_msg_nowait(agent_id, CONTROL_HEADER HC_ACK, -1, &full_sock)) {
+    case OS_SUCCESS:
+        rem_inc_send_ack();
+        break;
+    case SEND_MSG_QUEUE_FULL:
+        rem_inc_send_discarded();
+        mdebug1("Agent '%s' is not reading the messages sent to it on TCP peer [%d]. Closing.", agent_id, full_sock);
+        _close_sock(&keys, full_sock);
+        break;
+    default:
+        // send_msg_nowait() already logged why
+        break;
+    }
 }
 
 // Close and remove socket from keystore

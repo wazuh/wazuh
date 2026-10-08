@@ -121,13 +121,6 @@ int __wrap_send_msg(const char *agent_id, const char *msg, ssize_t msg_length) {
     return 0;
 }
 
-int __wrap_send_msg_with_key_control(const char *agent_id, const char *msg, ssize_t msg_length, bool skip_key_lock) {
-    check_expected(agent_id);
-    check_expected(msg);
-    check_expected(skip_key_lock);
-    return 0;
-}
-
 static int test_setup_group(void ** state) {
     test_mode = 1;
     return 0;
@@ -4008,6 +4001,7 @@ void test_validate_control_msg_hc_request_success(void** state)
     size_t msg_length = strlen(r_msg);
     char* cleaned_msg = NULL;
     int is_startup = 99, is_shutdown = 99;
+    bool send_ack = true;
 
     keyentry_init(&key, "agent1", "001", "192.168.1.1", "test_key");
 
@@ -4018,9 +4012,10 @@ void test_validate_control_msg_hc_request_success(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_ctrl_request);
 
-    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
+    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown, &send_ack);
 
     assert_int_equal(result, 0); // Should not be queued
+    assert_false(send_ack);
     assert_int_equal(is_startup, 0);
     assert_int_equal(is_shutdown, 0);
     assert_null(cleaned_msg);
@@ -4036,15 +4031,17 @@ void test_validate_control_msg_hc_request_error(void** state)
     size_t msg_length = strlen(r_msg);
     char* cleaned_msg = NULL;
     int is_startup = 0, is_shutdown = 0;
+    bool send_ack = true;
 
     keyentry_init(&key, "agent1", "001", "192.168.1.1", "test_key");
 
     expect_string(__wrap__merror, formatted_msg, "Request control format error.");
     expect_string(__wrap__mdebug2, formatted_msg, "r_msg = \"req \"");
 
-    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
+    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown, &send_ack);
 
     assert_int_equal(result, -1); // Error
+    assert_false(send_ack);
     assert_int_equal(is_startup, 0);
     assert_int_equal(is_shutdown, 0);
     assert_null(cleaned_msg);
@@ -4060,6 +4057,7 @@ void test_validate_control_msg_shutdown_success(void** state)
     size_t msg_length = strlen(r_msg);
     char* cleaned_msg = NULL;
     int is_startup = 99, is_shutdown = 99;
+    bool send_ack = true;
 
     keyentry_init(&key, "agent1", "001", "192.168.1.1", "test_key");
     key.peer_info.ss_family = AF_INET;
@@ -4075,9 +4073,10 @@ void test_validate_control_msg_shutdown_success(void** state)
     // Expect mdebug1 to be called with OS_AG_STOPPED format
     expect_string(__wrap__mdebug1, formatted_msg, "wazuh: Agent stopped: [001] (agent1).");
 
-    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
+    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown, &send_ack);
 
     assert_int_equal(result, 1); // Should be queued
+    assert_false(send_ack);
     assert_int_equal(is_startup, 0);
     assert_int_equal(is_shutdown, 1);
     assert_non_null(cleaned_msg);
@@ -4094,6 +4093,7 @@ void test_validate_control_msg_startup_success(void** state)
     size_t msg_length = strlen(r_msg);
     char* cleaned_msg = NULL;
     int is_startup = 99, is_shutdown = 99;
+    bool send_ack = true;
 
     keyentry_init(&key, "agent1", "001", "192.168.1.1", "test_key");
     key.peer_info.ss_family = AF_INET;
@@ -4112,9 +4112,10 @@ void test_validate_control_msg_startup_success(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_ctrl_startup);
 
-    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
+    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown, &send_ack);
 
     assert_int_equal(result, 1);
+    assert_false(send_ack);
     assert_int_equal(is_startup, 1);
     assert_int_equal(is_shutdown, 0);
     assert_non_null(cleaned_msg);
@@ -4131,19 +4132,17 @@ void test_validate_control_msg_keepalive_success(void** state)
     size_t msg_length = strlen(r_msg);
     char* cleaned_msg = NULL;
     int is_startup = 0, is_shutdown = 0;
+    bool send_ack = false;
 
     keyentry_init(&key, "agent1", "001", "192.168.1.1", "test_key");
 
     expect_function_call(__wrap_rem_inc_recv_ctrl_keepalive);
-    expect_string(__wrap_send_msg_with_key_control, agent_id, "001");
-    expect_string(__wrap_send_msg_with_key_control, msg, "#!-agent ack ");
-    expect_value(__wrap_send_msg_with_key_control, skip_key_lock, true);
 
-    expect_function_call(__wrap_rem_inc_send_ack);
-
-    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
+    // The ACK is only requested here: the caller sends it once it releases the key lock
+    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown, &send_ack);
 
     assert_int_equal(result, 1); // Should be queued
+    assert_true(send_ack);
     assert_int_equal(is_startup, 0);
     assert_int_equal(is_shutdown, 0);
     assert_non_null(cleaned_msg);
@@ -4160,14 +4159,16 @@ void test_validate_control_msg_invalid_msg(void** state)
     size_t msg_length = strlen(r_msg);
     char* cleaned_msg = NULL;
     int is_startup = 0, is_shutdown = 0;
+    bool send_ack = true;
 
     keyentry_init(&key, "agent1", "001", "192.168.1.1", "test_key");
 
     expect_string(__wrap__mwarn, formatted_msg, "Invalid message from agent: 'agent1' (001)");
 
-    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
+    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown, &send_ack);
 
     assert_int_equal(result, -1); // Error
+    assert_false(send_ack);
     assert_int_equal(is_startup, 0);
     assert_int_equal(is_shutdown, 0);
     assert_non_null(cleaned_msg);
@@ -4183,14 +4184,16 @@ void test_validate_control_msg_invalid_msg_2(void** state)
     size_t msg_length = strlen(r_msg);
     char* cleaned_msg = NULL;
     int is_startup = 0, is_shutdown = 0;
+    bool send_ack = true;
 
     keyentry_init(&key, "agent1", "001", "192.168.1.1", "test_key");
 
     expect_string(__wrap__mwarn, formatted_msg, "Invalid message from agent: 'agent1' (001)");
 
-    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
+    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown, &send_ack);
 
     assert_int_equal(result, -1); // Error
+    assert_false(send_ack);
     assert_int_equal(is_startup, 0);
     assert_int_equal(is_shutdown, 0);
     assert_non_null(cleaned_msg);
@@ -4206,6 +4209,7 @@ void test_validate_control_msg_invalid_agent_version(void** state)
     size_t msg_length = strlen(r_msg);
     char* cleaned_msg = NULL;
     int is_startup = 99, is_shutdown = 99;
+    bool send_ack = true;
 
     keyentry_init(&key, "agent1", "001", "192.168.1.1", "test_key");
 
@@ -4218,9 +4222,10 @@ void test_validate_control_msg_invalid_agent_version(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_ctrl_startup);
 
-    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
+    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown, &send_ack);
 
     assert_int_equal(result, 1); // We need to queue this message, for saving later
+    assert_false(send_ack);
     assert_int_equal(is_startup, 1);
     assert_non_null(cleaned_msg);
 
@@ -4238,17 +4243,19 @@ void test_validate_control_msg_get_agent_version_fail(void** state)
     size_t msg_length = strlen(r_msg);
     char* cleaned_msg = NULL;
     int is_startup = 99, is_shutdown = 99;
+    bool send_ack = true;
 
     keyentry_init(&key, "agent1", "001", "192.168.1.1", "test_key");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent agent1 sent HC_STARTUP from ''");
     expect_function_call(__wrap_rem_inc_recv_ctrl_startup);
 
-    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
+    int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown, &send_ack);
 
     // We store the message for later processing, if the version cannot be retrieved
     // but we need to queue it for wazuh-manager-db processing
     assert_int_equal(result, 1);
+    assert_false(send_ack);
     assert_int_equal(is_startup, 1);
     assert_int_equal(is_shutdown, 0);
     assert_non_null(cleaned_msg);

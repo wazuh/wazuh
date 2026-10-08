@@ -622,6 +622,10 @@ Capacity, in bytes, of the per-connection send buffer holding messages queued fo
   and tries once more (`Not enough buffer space. Retrying...` at debug level)
 - **Note:** `#pong` replies to `#ping` frames are queued here too, but never wait: a peer that lets
   this buffer fill with replies it does not read is disconnected
+- **Note:** The same applies to the ACK remoted sends for every control message (keepalive, startup):
+  it never waits, and an agent whose buffer is full when its ACK is queued is disconnected
+  (`Agent '<id>' is not reading the messages sent to it on TCP peer [<socket>]. Closing.` at debug
+  level). The agent reconnects with its next message
 
 ### remoted.recv_timeout
 
