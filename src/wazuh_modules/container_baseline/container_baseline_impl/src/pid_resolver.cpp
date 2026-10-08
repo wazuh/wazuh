@@ -36,18 +36,42 @@ bool IsHexId(std::string_view s, std::size_t min_len, std::size_t max_len) noexc
     return true;
 }
 
+// Returns a cgroup path for `pid` that a container id can be read from.
+//
+// Prefers the unified line, which is the only one a v2 host has. A pure cgroup
+// v1 host has NO "0::" line at all -- measured on Ubuntu 22.04 booted with
+// systemd.unified_cgroup_hierarchy=0 systemd.legacy_systemd_cgroup_controller=1,
+// where every line is a numbered v1 hierarchy -- so reading only "0::" found
+// nothing, no PID mapped to any container, and the baseline reported zero
+// containers scanned while the connector was reporting one known. Any v1
+// controller line carries the same container path, so fall back to the first
+// one rather than giving up.
 std::string ReadProcCgroupV2Path(const std::string& pid)
 {
     std::ifstream f("/proc/" + pid + "/cgroup");
     if (!f) return {};
 
+    std::string fallback;
     std::string line;
     while (std::getline(f, line)) {
         if (line.size() >= 3 && line[0] == '0' && line[1] == ':' && line[2] == ':') {
             return line.substr(3);
         }
+
+        // "<hierarchy-id>:<controllers>:<path>" -- take the path after the
+        // second colon. Skipped when the controller field is empty, which is
+        // what the unified line looks like and is handled above.
+        if (fallback.empty()) {
+            const auto first = line.find(':');
+            if (first != std::string::npos) {
+                const auto second = line.find(':', first + 1);
+                if (second != std::string::npos && second > first + 1) {
+                    fallback = line.substr(second + 1);
+                }
+            }
+        }
     }
-    return {};
+    return fallback;
 }
 
 // Invokes `visit(container_id, pid)` once for every PID on the host whose cgroup

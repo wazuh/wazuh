@@ -68,10 +68,38 @@ static inline int wz_container_key_kind_from_name(const char* name, wz_container
 }
 
 /* What this host uses, from the one hierarchy probe. A host constant: read it
- * once, never per record and never inferred from an event. */
+ * once, never per record and never inferred from an event.
+ *
+ * On a legacy host the helper bpf_get_current_cgroup_id() is useless, because it
+ * reports the unified hierarchy and there is none -- but the KERNEL still has a
+ * per-container cgroup under every mounted v1 controller, and the eBPF program
+ * reads it directly. So the question is not "is the helper usable" but "is there
+ * a controller both sides can agree on", which is exactly what
+ * wz_cgroup_v1_select_subsys() answers. Asking it here is what keeps the
+ * producer's key and the consumer's key in the same number space: the resolver
+ * already stats that controller's cgroup directory, and the BPF program returns
+ * that directory's inode.
+ *
+ * Falling back to the mount namespace only when no controller qualifies keeps
+ * the previous behaviour for hosts where nothing better exists -- at the cost
+ * the mount namespace has always carried, that the kernel reuses its inode for
+ * the next container. */
 static inline wz_container_key_kind_t wz_container_key_kind_for_host(void)
 {
-    return wz_cgroup_mode_has_usable_cgroup_id(wz_cgroup_mode()) ? WZ_CONTAINER_KEY_CGROUP : WZ_CONTAINER_KEY_MNT_NS;
+    const wz_cgroup_mode_t mode = wz_cgroup_mode();
+
+    if (wz_cgroup_mode_has_usable_cgroup_id(mode))
+    {
+        return WZ_CONTAINER_KEY_CGROUP;
+    }
+
+    /* Legacy: usable as a cgroup key iff a controller both sides can read. */
+    if (wz_cgroup_v1_select_subsys(NULL) >= 0)
+    {
+        return WZ_CONTAINER_KEY_CGROUP;
+    }
+
+    return WZ_CONTAINER_KEY_MNT_NS;
 }
 
 #endif /* _CONTAINER_KEY_KIND_H_ */
