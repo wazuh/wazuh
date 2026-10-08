@@ -33,6 +33,7 @@ All notable changes to this project will be documented in this file.
 - Fixed a root-level OS command injection in the rootcheck promiscuous-interface check. ([#39622](https://github.com/wazuh/wazuh/pull/39622))
 - Fixed logcollector following symbolic links and opening non-regular files without validating them on Linux and macOS. ([#39649](https://github.com/wazuh/wazuh/pull/39649))
 - Fixed logcollector memory usage growing with the length of a line read with the `multi-line-regex` format. ([#39800](https://github.com/wazuh/wazuh/pull/39800))
+- Fixed the snort-full log format not sending each Snort alert as one event. ([#40056](https://github.com/wazuh/wazuh/pull/40056))
 - Fixed the syscollector browser extensions inventory reading non-regular or oversized files from user profiles. ([#39802](https://github.com/wazuh/wazuh/pull/39802))
 - Fixed the syscollector browser extensions inventory following symbolic links and reading files not owned by the profile owner on Linux and macOS. ([#39802](https://github.com/wazuh/wazuh/pull/39802))
 - Fixed logcollector following junctions and symbolic links and opening non-regular files without validating them on Windows. ([#39781](https://github.com/wazuh/wazuh/pull/39781))

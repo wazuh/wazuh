@@ -14,6 +14,23 @@
 
 #define LABEL_PREPROCESSOR_MESSAGE  "[Classification: Preprocessor] [Priority: 3] "
 
+/* Snort already ends the priority line with a space; a second one breaks the snort decoder */
+static void append_part(char *f_msg, size_t size, const char *part) {
+    size_t len = strlen(f_msg);
+
+    if (len > 0 && len < size - 1 && f_msg[len - 1] != ' ') {
+        f_msg[len++] = ' ';
+        f_msg[len] = '\0';
+    }
+
+    strncat(f_msg, part, size - len - 1);
+}
+
+/* MM/DD-hh:mm:ss, or MM/DD/YY-hh:mm:ss with Snort's show_year */
+static int is_date_line(const char *str) {
+    return str[2] == '/' && (str[5] == '-' || (str[5] == '/' && str[8] == '-'));
+}
+
 /* Read snort_full files */
 void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     const char *one = "one";
@@ -42,6 +59,9 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
         /* Remove \n at the end of the string */
         if ((q = strrchr(str, '\n')) != NULL) {
             *q = '\0';
+            if (q > str && *(q - 1) == '\r') {
+                *(q - 1) = '\0';
+            }
         } else {
             goto file_error;
         }
@@ -56,27 +76,27 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
             if (p == one) {
                 /* Second line has the [Classification: */
                 if (strncmp(str, "[Classification: ", 16) == 0) {
-                    strncat(f_msg, str, sizeof(f_msg) - strlen(f_msg) - 1);
+                    append_part(f_msg, sizeof(f_msg), str);
                     p = two;
                 } else if (strncmp(str, "[Priority: ", 10) == 0) {
-                    strncat(f_msg, LABEL_PREPROCESSOR_MESSAGE, sizeof(f_msg) - strlen(f_msg) - 1);
+                    append_part(f_msg, sizeof(f_msg), str);
                     p = two;
                 }
 
                 /* If it is a preprocessor message, it will not have
                  * the classification.
                  */
-                else if ((str[2] == '/') && (str[5] == '-') && (q = strchr(str, ' '))) {
-                    strncat(f_msg, LABEL_PREPROCESSOR_MESSAGE, sizeof(f_msg) - strlen(f_msg) - 1);
-                    strncat(f_msg, ++q, sizeof(f_msg) - strlen(f_msg) - 1);
+                else if (is_date_line(str) && (q = strchr(str, ' '))) {
+                    append_part(f_msg, sizeof(f_msg), LABEL_PREPROCESSOR_MESSAGE);
+                    append_part(f_msg, sizeof(f_msg), ++q);
 
                     /* Clean for next event */
                     p = NULL;
 
                     /* Check ignore and restrict log regex, if configured. */
-                    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str)) {
+                    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, f_msg)) {
                         /* Send message to queue */
-                        w_msg_hash_queues_push(str, lf->file, strlen(str) + 1, lf->log_target, LOCALFILE_MQ);
+                        w_msg_hash_queues_push(f_msg, lf->file, strlen(f_msg) + 1, lf->log_target, LOCALFILE_MQ);
                     }
 
                     f_msg[0] = '\0';
@@ -86,14 +106,14 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                 }
             } else if (p == two) {
                 /* Third line has the 01/13-15 (date) */
-                if ((str[2] == '/') && (str[5] == '-') && (q = strchr(str, ' '))) {
-                    strncat(f_msg, ++q, sizeof(f_msg) - strlen(f_msg) - 1);
+                if (is_date_line(str) && (q = strchr(str, ' '))) {
+                    append_part(f_msg, sizeof(f_msg), ++q);
                     p = NULL;
 
                     /* Check ignore and restrict log regex, if configured. */
-                    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str)) {
+                    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, f_msg)) {
                         /* Send message to queue */
-                        w_msg_hash_queues_push(str, lf->file, strlen(str) + 1, lf->log_target, LOCALFILE_MQ);
+                        w_msg_hash_queues_push(f_msg, lf->file, strlen(f_msg) + 1, lf->log_target, LOCALFILE_MQ);
                     }
 
                     f_msg[0] = '\0';
