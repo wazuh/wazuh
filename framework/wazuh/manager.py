@@ -2,9 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import json
 import logging
 from os import remove
 from os.path import exists
+from secrets import token_hex
 
 from wazuh import Wazuh
 from wazuh.core import common, configuration
@@ -20,7 +22,8 @@ from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.manager_conf import load_manager_conf, load_manager_conf_text, write_manager_conf
 from wazuh.core.manager_conf_policy import SECRET_SECTIONS, check_protected_sections, check_secret_sections
 from wazuh.core.utils import process_array, safe_move, full_copy
-from wazuh.rbac.decorators import can_read_secrets, expose_resources, mask_sensitive_config, unmask_xml_by_path
+from wazuh.rbac.decorators import (MASK_DEFAULT, can_read_secrets, expose_resources, mask_sensitive_config,
+                                   unmask_xml_by_path)
 
 logger = logging.getLogger('wazuh')
 
@@ -603,8 +606,13 @@ def get_basic_info() -> AffectedItemsWazuhResult:
     return result
 
 
-def _restore_masked_secrets(new_conf: str, current_document: dict) -> str:
-    """Replace every masked secret option of `new_conf` with its current value.
+def _placeholder_masked_secrets(new_conf: str, current_document: dict) -> tuple:
+    """Replace every masked secret option of `new_conf` with a one-time placeholder, never with the secret itself.
+
+    The text scan that finds the masks (`unmask_xml_by_path`) cannot tell the real option from a same-named leaf in
+    another section, a comment or a CDATA section, and a crafted text can widen its span at will. So the secret is not
+    put back here: each mask gets its own random placeholder, valid for the option's schema, and
+    `_restore_masked_secrets` decides from the parsed document which one, if any, is the option.
 
     Parameters
     ----------
@@ -615,16 +623,76 @@ def _restore_masked_secrets(new_conf: str, current_document: dict) -> str:
 
     Returns
     -------
-    str
-        The text with the masks replaced, or unchanged when it holds none.
+    tuple
+        The text with the placeholders, and {pointer: (current value, [placeholders])} for every secret option that had
+        a mask to replace.
     """
+    placeholders = {}
     for pointer in SECRET_SECTIONS:
         parts = pointer.strip('/').split('/')
         current = current_document
         for part in parts:
             current = current.get(part) if isinstance(current, dict) else None
-        if isinstance(current, str):
-            new_conf = unmask_xml_by_path(new_conf, '.'.join(parts), current)
+        if not isinstance(current, str):
+            continue
+
+        marker = token_hex(16)
+        chunks = unmask_xml_by_path(new_conf, '.'.join(parts), marker).split(marker)
+        if len(chunks) == 1:
+            continue
+
+        # 32 hex characters: what the cluster key's schema accepts, so the text still parses.
+        tokens = [token_hex(16) for _ in chunks[1:]]
+        new_conf = chunks[0] + ''.join(token + chunk for token, chunk in zip(tokens, chunks[1:]))
+        placeholders[pointer] = (current, tokens)
+
+    return new_conf, placeholders
+
+
+def _restore_masked_secrets(new_conf: str, new_document: dict, placeholders: dict) -> str:
+    """Put the current secret back at the one placeholder the parsed document holds at the secret's own option.
+
+    Placeholders the parser dropped (comments) become the mask again. A placeholder that reached the document anywhere
+    else -- another option, a CDATA section -- is a decoy built to copy the secret into a field served unmasked, and
+    the text is refused.
+
+    Parameters
+    ----------
+    new_conf : str
+        Configuration text returned by `_placeholder_masked_secrets`.
+    new_document : dict
+        Effective document of that text. Updated in place with the restored values.
+    placeholders : dict
+        Placeholders returned by `_placeholder_masked_secrets`.
+
+    Raises
+    ------
+    WazuhError(1132)
+        A masked secret was placed outside its own option.
+
+    Returns
+    -------
+    str
+        The text with the secret restored at its option and the mask everywhere else.
+    """
+    serialized = json.dumps(new_document)
+    for pointer, (value, tokens) in placeholders.items():
+        parts = pointer.strip('/').split('/')
+        parent = new_document
+        for part in parts[:-1]:
+            parent = parent.get(part) if isinstance(parent, dict) else None
+
+        parsed = [token for token in tokens if token in serialized]
+        if not parsed:
+            restored = None
+        elif len(parsed) == 1 and isinstance(parent, dict) and parent.get(parts[-1]) == parsed[0]:
+            restored = parsed[0]
+            parent[parts[-1]] = value
+        else:
+            raise WazuhError(1132, extra_message=f'{pointer}: a masked value is only restored at that option')
+
+        for token in tokens:
+            new_conf = new_conf.replace(token, value if token == restored else MASK_DEFAULT)
 
     return new_conf
 
@@ -663,14 +731,16 @@ def update_manager_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
         if not new_conf:
             raise WazuhError(1125)
 
-        # A secret sent back masked keeps the current value: the mask would not even pass the schema.
+        # A secret sent back masked keeps the current value: the mask would not even pass the schema. It is parsed
+        # behind a placeholder and restored only where the parser puts the option itself.
         current_document = load_manager_conf()
-        new_conf = _restore_masked_secrets(new_conf, current_document)
+        new_conf, placeholders = _placeholder_masked_secrets(new_conf, current_document)
 
         # XML syntax (1131), schema (1130), protected sections (1127/1129) and secret options (1132), before
         # touching the file. One CLI call parses, validates and applies the defaults (the certificate files it
         # names are not required to exist yet: validate_manager_conf() checks them against the written file).
         new_document = load_manager_conf_text(new_conf)
+        new_conf = _restore_masked_secrets(new_conf, new_document, placeholders)
         check_protected_sections(new_document, current_document)
         check_secret_sections(new_document, current_document, can_read_secrets())
 
