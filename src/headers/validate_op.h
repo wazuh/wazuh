@@ -15,6 +15,17 @@
 /* Run-time definitions */
 int getDefine_Int(const char *high_name, const char *low_name, int min, int max) __attribute__((nonnull));
 
+/**
+ * @brief Read a run-time definition as a string, for values that the caller parses.
+ *
+ * Exits if the definition is not found.
+ *
+ * @param high_name Definition prefix.
+ * @param low_name Definition name.
+ * @return Value. The caller must free it.
+ */
+char *getDefine_String(const char *high_name, const char *low_name) __attribute__((nonnull));
+
 
 /**
  * @brief Check if IP_address is present at that_ip
