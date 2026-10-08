@@ -160,7 +160,7 @@ other file names and point `key` and `cert` at them; both must be readable by `w
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `level` | `info` | `debug2`, `debug`, `info`, `warning`, `error` or `critical` |
+| `level` | `info` | `debug2`, `debug`, `info`, `warning`, `error` or `critical`. `debug2` also writes each request's headers, with credential values (`Authorization`, `Proxy-Authorization`, `Cookie`, API keys) masked |
 | `format` | `plain` | `plain` (`logs/api.log`), `json` (`logs/api.json`), or both: `plain,json` / `json,plain` |
 | `max_size.enabled` | `false` | Rotate by size instead of at midnight |
 | `max_size.size` | `1M` | `<number>K` or `<number>M`, at least `1M` (error `2011` otherwise) |
