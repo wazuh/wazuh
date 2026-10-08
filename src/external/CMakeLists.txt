@@ -45,6 +45,7 @@ endif()
 # Section 1: Autotools-based dependencies (ExternalProject_Add)
 # ==============================================================================
 
+# deps-entry openssl: begin
 # ------------------------------------------------------------------------------
 # OpenSSL
 # ------------------------------------------------------------------------------
@@ -128,7 +129,9 @@ set(OPENSSL_LIB
 set(OPENSSL_CRYPTO_LIB
     ${EXTERNAL_DIR}/openssl/libcrypto.a
     CACHE FILEPATH "OpenSSL Crypto library" FORCE)
+# deps-entry openssl: end
 
+# deps-entry zlib: begin
 # ------------------------------------------------------------------------------
 # zlib
 # ------------------------------------------------------------------------------
@@ -207,7 +210,9 @@ if(NOT IS_WINDOWS)
   target_include_directories(ext_minizip INTERFACE ${EXTERNAL_DIR}/zlib/contrib)
   add_library(minizip ALIAS ext_minizip)
 endif()
+# deps-entry zlib: end
 
+# deps-entry libyaml: begin
 # ------------------------------------------------------------------------------
 # libyaml
 # ------------------------------------------------------------------------------
@@ -252,7 +257,9 @@ set_target_properties(
   ext_libyaml PROPERTIES IMPORTED_LOCATION
                          ${EXTERNAL_DIR}/libyaml/src/.libs/libyaml.a)
 add_dependencies(ext_libyaml libyaml_external)
+# deps-entry libyaml: end
 
+# deps-entry curl: begin
 # ------------------------------------------------------------------------------
 # curl (depends on OpenSSL)
 # ------------------------------------------------------------------------------
@@ -366,7 +373,9 @@ set_target_properties(
   ext_curl PROPERTIES IMPORTED_LOCATION
                       ${EXTERNAL_DIR}/curl/lib/.libs/libcurl.a)
 add_dependencies(ext_curl curl_external)
+# deps-entry curl: end
 
+# deps-entry libpcre2: begin
 # ------------------------------------------------------------------------------
 # PCRE2
 # ------------------------------------------------------------------------------
@@ -401,7 +410,8 @@ else()
     pcre2_external
     SOURCE_DIR ${EXTERNAL_DIR}/libpcre2
     CONFIGURE_COMMAND ${PCRE2_CONFIGURE_CMD}
-    BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
+    # Library and headers only: pcre2posix_test and the tools do not link with MinGW.
+    BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} PROGRAMS=
     COMMAND ${CMAKE_COMMAND} -E make_directory ${EXTERNAL_DIR}/libpcre2/include
     COMMAND ${CMAKE_COMMAND} -E copy ${EXTERNAL_DIR}/libpcre2/src/pcre2.h
             ${EXTERNAL_DIR}/libpcre2/include/pcre2.h
@@ -416,7 +426,9 @@ set_target_properties(
                        ${EXTERNAL_DIR}/libpcre2/.libs/libpcre2-8.a)
 add_dependencies(ext_pcre2 pcre2_external)
 add_library(pcre2-8 ALIAS ext_pcre2)
+# deps-entry libpcre2: end
 
+# deps-entry audit-userspace: begin
 # ------------------------------------------------------------------------------
 # audit-userspace (Linux agent only)
 # ------------------------------------------------------------------------------
@@ -444,7 +456,9 @@ if(IS_LINUX AND IS_AGENT)
                          ${EXTERNAL_DIR}/audit-userspace/lib/.libs/libaudit.a)
   add_dependencies(ext_audit audit_external)
 endif()
+# deps-entry audit-userspace: end
 
+# deps-entry libffi: begin
 # ------------------------------------------------------------------------------
 # libffi (not for agent target)
 # ------------------------------------------------------------------------------
@@ -483,7 +497,9 @@ if(NOT IS_AGENT)
                                               ${LIBFFI_LIBRARY})
   add_dependencies(ext_libffi libffi_external)
 endif()
+# deps-entry libffi: end
 
+# deps-entry libplist: begin
 # ------------------------------------------------------------------------------
 # libplist (macOS only)
 # ------------------------------------------------------------------------------
@@ -497,7 +513,7 @@ if(IS_DARWIN)
       libplist_external
       SOURCE_DIR ${EXTERNAL_DIR}/libplist
       CONFIGURE_COMMAND ${EXTERNAL_DIR}/libplist/autogen.sh
-                        --prefix=${EXTERNAL_DIR}/libplist/bin
+                        --prefix=${EXTERNAL_DIR}/libplist/bin --without-cython
       BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
       INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
       BUILD_IN_SOURCE TRUE
@@ -511,7 +527,9 @@ if(IS_DARWIN)
   add_dependencies(ext_libplist libplist_external)
   add_library(plist ALIAS ext_libplist)
 endif()
+# deps-entry libplist: end
 
+# deps-entry bzip2: begin
 # ------------------------------------------------------------------------------
 # bzip2 (not winagent)
 # ------------------------------------------------------------------------------
@@ -537,7 +555,9 @@ if(NOT IS_WINDOWS)
                                              ${EXTERNAL_DIR}/bzip2/libbz2.a)
   add_dependencies(ext_bzip2 bzip2_external)
 endif()
+# deps-entry bzip2: end
 
+# deps-entry libdb: begin
 # ------------------------------------------------------------------------------
 # Berkeley DB (Linux agent only)
 # ------------------------------------------------------------------------------
@@ -568,7 +588,9 @@ if(IS_LINUX AND IS_AGENT)
                          ${EXTERNAL_DIR}/libdb/build_unix/.libs/libdb-18.1.a)
   add_dependencies(ext_libdb libdb_external)
 endif()
+# deps-entry libdb: end
 
+# deps-entry lua: begin
 # ------------------------------------------------------------------------------
 # Lua (Linux agent only)
 # ------------------------------------------------------------------------------
@@ -582,8 +604,11 @@ if(IS_LINUX AND IS_AGENT)
       lua_external
       SOURCE_DIR ${EXTERNAL_DIR}/lua
       CONFIGURE_COMMAND ""
-      BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} all "MYCFLAGS=-fPIC -DLUA_USE_LINUX"
-                    "MYLIBS=-lm -ldl"
+      # Upstream CFLAGS without -march=native, so the library runs on any CPU of the target architecture.
+      BUILD_COMMAND
+        ${CMAKE_MAKE_PROGRAM} all
+        "CFLAGS=-Wall -O2 -fPIC -DLUA_USE_LINUX -fno-stack-protector -fno-common"
+        "MYLIBS=-lm -ldl"
       BUILD_IN_SOURCE TRUE
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS ${EXTERNAL_DIR}/lua/liblua.a)
@@ -594,7 +619,9 @@ if(IS_LINUX AND IS_AGENT)
                                            ${EXTERNAL_DIR}/lua/liblua.a)
   add_dependencies(ext_lua lua_external)
 endif()
+# deps-entry lua: end
 
+# deps-entry dbus: begin
 # ------------------------------------------------------------------------------
 # dbus (Linux agent only)
 # ------------------------------------------------------------------------------
@@ -633,7 +660,9 @@ if(IS_LINUX AND IS_AGENT)
     ext_dbus PROPERTIES IMPORTED_LOCATION ${EXTERNAL_DIR}/dbus/lib/libdbus-1.a)
   add_dependencies(ext_dbus dbus_external)
 endif()
+# deps-entry dbus: end
 
+# deps-entry jemalloc: begin
 # ------------------------------------------------------------------------------
 # jemalloc (server only)
 # ------------------------------------------------------------------------------
@@ -666,11 +695,13 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
                             ${EXTERNAL_DIR}/jemalloc/lib/libjemalloc.so.2)
   add_dependencies(ext_jemalloc jemalloc_external)
 endif()
+# deps-entry jemalloc: end
 
 # ==============================================================================
 # Section 2: CMake-based dependencies (ExternalProject_Add)
 # ==============================================================================
 
+# deps-entry rocksdb: begin
 # ------------------------------------------------------------------------------
 # RocksDB (server only, shared lib)
 # ------------------------------------------------------------------------------
@@ -713,7 +744,9 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
                              INTERFACE ${EXTERNAL_DIR}/rocksdb/include)
   add_library(rocksdb ALIAS ext_rocksdb)
 endif()
+# deps-entry rocksdb: end
 
+# deps-entry simdjson: begin
 # ------------------------------------------------------------------------------
 # simdjson (server only)
 # ------------------------------------------------------------------------------
@@ -741,7 +774,9 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
   target_include_directories(ext_simdjson
                              INTERFACE ${EXTERNAL_DIR}/simdjson/include)
 endif()
+# deps-entry simdjson: end
 
+# deps-entry abseil-cpp: begin
 # ------------------------------------------------------------------------------
 # abseil-cpp (server only)
 # ------------------------------------------------------------------------------
@@ -770,7 +805,9 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
   # Note: abseil produces many libabsl_*.a files. Consumers should link against
   # the install prefix directory.
 endif()
+# deps-entry abseil-cpp: end
 
+# deps-entry re2: begin
 # ------------------------------------------------------------------------------
 # RE2 (server only, depends on abseil-cpp)
 # ------------------------------------------------------------------------------
@@ -802,7 +839,9 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
                                            ${EXTERNAL_DIR}/re2/build/libre2.a)
   add_dependencies(ext_re2 re2_external)
 endif()
+# deps-entry re2: end
 
+# deps-entry flatbuffers: begin
 # ------------------------------------------------------------------------------
 # FlatBuffers (all targets need headers; server links the static lib)
 # ------------------------------------------------------------------------------
@@ -834,7 +873,9 @@ set_target_properties(
   ext_flatbuffers PROPERTIES IMPORTED_LOCATION
                              ${EXTERNAL_DIR}/flatbuffers/build/libflatbuffers.a)
 add_dependencies(ext_flatbuffers flatbuffers_external)
+# deps-entry flatbuffers: end
 
+# deps-entry spdlog: begin
 # ------------------------------------------------------------------------------
 # spdlog (server only)
 # ------------------------------------------------------------------------------
@@ -865,7 +906,9 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
                           ${EXTERNAL_DIR}/spdlog/build/libspdlog.a)
   add_dependencies(ext_spdlog spdlog_external)
 endif()
+# deps-entry spdlog: end
 
+# deps-entry yaml-cpp: begin
 # ------------------------------------------------------------------------------
 # yaml-cpp (server only)
 # ------------------------------------------------------------------------------
@@ -891,7 +934,9 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
                            ${EXTERNAL_DIR}/yaml-cpp/build/libyaml-cpp.a)
   add_dependencies(ext_yamlcpp yamlcpp_external)
 endif()
+# deps-entry yaml-cpp: end
 
+# deps-entry pugixml: begin
 # ------------------------------------------------------------------------------
 # pugixml (server only)
 # ------------------------------------------------------------------------------
@@ -917,7 +962,9 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
                            ${EXTERNAL_DIR}/pugixml/build/libpugixml.a)
   add_dependencies(ext_pugixml pugixml_external)
 endif()
+# deps-entry pugixml: end
 
+# deps-entry libmaxminddb: begin
 # ------------------------------------------------------------------------------
 # libmaxminddb (server only)
 # ------------------------------------------------------------------------------
@@ -945,7 +992,9 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
                              ${EXTERNAL_DIR}/libmaxminddb/build/libmaxminddb.a)
   add_dependencies(ext_maxminddb maxminddb_external)
 endif()
+# deps-entry libmaxminddb: end
 
+# deps-entry protobuf: begin
 # ------------------------------------------------------------------------------
 # protobuf (server only)
 # ------------------------------------------------------------------------------
@@ -971,7 +1020,9 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
                             ${EXTERNAL_DIR}/protobuf/build/libprotobuf.a)
   add_dependencies(ext_protobuf protobuf_external)
 endif()
+# deps-entry protobuf: end
 
+# deps-entry date: begin
 # ------------------------------------------------------------------------------
 # date (Howard Hinnant, server only)
 # ------------------------------------------------------------------------------
@@ -1004,7 +1055,9 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
                         ${EXTERNAL_DIR}/date/build/libdate-tz.a)
   add_dependencies(ext_date date_external)
 endif()
+# deps-entry date: end
 
+# deps-entry fmt: begin
 # ------------------------------------------------------------------------------
 # fmt (server only)
 # ------------------------------------------------------------------------------
@@ -1030,7 +1083,9 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
   add_dependencies(ext_fmt fmt_external)
   target_include_directories(ext_fmt INTERFACE ${EXTERNAL_DIR}/fmt/include)
 endif()
+# deps-entry fmt: end
 
+# deps-entry llhttp: begin
 # ------------------------------------------------------------------------------
 # llhttp (Linux server only)
 # ------------------------------------------------------------------------------
@@ -1058,7 +1113,9 @@ if(IS_LINUX AND NOT IS_AGENT)
     target_include_directories(ext_llhttp PUBLIC ${EXTERNAL_DIR}/llhttp/include)
   endif()
 endif()
+# deps-entry llhttp: end
 
+# deps-entry restinio: begin
 # ------------------------------------------------------------------------------
 # RESTinio (Linux server only)
 # ------------------------------------------------------------------------------
@@ -1077,7 +1134,9 @@ if(IS_LINUX AND NOT IS_AGENT)
   target_link_libraries(ext_restinio INTERFACE ext_asio ext_llhttp ext_fmt
                                               ext_expected_lite pthread ssl crypto)
 endif()
+# deps-entry restinio: end
 
+# deps-entry zstd: begin
 # ------------------------------------------------------------------------------
 # zstd (manager + agent, all platforms incl. winagent)
 # ------------------------------------------------------------------------------
@@ -1158,7 +1217,9 @@ set_target_properties(
   ext_zstd PROPERTIES IMPORTED_LOCATION ${ZSTD_BINARY_DIR}/lib/libzstd.a)
 add_dependencies(ext_zstd zstd_external)
 target_include_directories(ext_zstd INTERFACE ${EXTERNAL_DIR}/zstd/lib)
+# deps-entry zstd: end
 
+# deps-entry popt: begin
 # ------------------------------------------------------------------------------
 # popt (Linux agent only)
 # ------------------------------------------------------------------------------
@@ -1183,7 +1244,9 @@ if(IS_LINUX AND IS_AGENT)
                         ${EXTERNAL_DIR}/popt/build/output/src/.libs/libpopt.a)
   add_dependencies(ext_popt popt_external)
 endif()
+# deps-entry popt: end
 
+# deps-entry googletest: begin
 # ------------------------------------------------------------------------------
 # GoogleTest (test builds only)
 # ------------------------------------------------------------------------------
@@ -1260,7 +1323,9 @@ if(UNIT_TEST OR WAZUH_ENGINE_TEST)
   add_dependencies(gmock_main googletest_external)
   add_library(gmock_maind ALIAS gmock_main)
 endif()
+# deps-entry googletest: end
 
+# deps-entry benchmark: begin
 # ------------------------------------------------------------------------------
 # Google Benchmark (test builds only; server/manager targets)
 # ------------------------------------------------------------------------------
@@ -1290,11 +1355,13 @@ if((UNIT_TEST OR WAZUH_ENGINE_TEST) AND NOT IS_AGENT)
   # Create the benchmark::benchmark alias that benchmark tests expect
   add_library(benchmark::benchmark ALIAS benchmark)
 endif()
+# deps-entry benchmark: end
 
 # ==============================================================================
 # Section 3: Manually compiled dependencies (add_library STATIC)
 # ==============================================================================
 
+# deps-entry cJSON: begin
 # ------------------------------------------------------------------------------
 # cJSON
 # ------------------------------------------------------------------------------
@@ -1312,7 +1379,9 @@ else()
                                              C_STANDARD 99)
 endif()
 add_library(cjson ALIAS ext_cjson)
+# deps-entry cJSON: end
 
+# deps-entry sqlite: begin
 # ------------------------------------------------------------------------------
 # SQLite
 # ------------------------------------------------------------------------------
@@ -1333,7 +1402,9 @@ else()
 endif()
 add_library(sqlite3 ALIAS ext_sqlite)
 add_library(sqlite ALIAS ext_sqlite)
+# deps-entry sqlite: end
 
+# deps-entry procps: begin
 # ------------------------------------------------------------------------------
 # procps (Linux agent only)
 # ------------------------------------------------------------------------------
@@ -1355,7 +1426,9 @@ if(IS_LINUX AND IS_AGENT)
   endif()
   add_library(proc ALIAS ext_procps)
 endif()
+# deps-entry procps: end
 
+# deps-entry rpm: begin
 # ------------------------------------------------------------------------------
 # RPM (Linux agent only, CMake-based but with special env)
 # ------------------------------------------------------------------------------
@@ -1394,6 +1467,7 @@ if(IS_LINUX AND IS_AGENT)
     ext_rpm PROPERTIES IMPORTED_LOCATION ${EXTERNAL_DIR}/rpm/builddir/librpm.a)
   add_dependencies(ext_rpm rpm_external)
 endif()
+# deps-entry rpm: end
 
 # ==============================================================================
 # Section 4: Header-only libraries
@@ -1469,6 +1543,7 @@ if(NOT IS_AGENT)
   endif()
 endif()
 
+# deps-entry libwazuhext: begin
 # ==============================================================================
 # Section 5: libwazuhext — shared library bundling all core external deps
 # ==============================================================================
@@ -1616,3 +1691,4 @@ set_target_properties(
 target_include_directories(
   wazuhext PUBLIC ${EXTERNAL_DIR}/cJSON ${EXTERNAL_DIR}/openssl/include
                   ${EXTERNAL_DIR}/zlib ${EXTERNAL_DIR}/zlib/contrib)
+# deps-entry libwazuhext: end

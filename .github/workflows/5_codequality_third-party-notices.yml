@@ -13,6 +13,7 @@ on:
       - "src/engine/tools/third-party-notices/**"
       # What `deps` downloads into src/external, and therefore the license files read.
       - "src/Makefile"
+      - "src/deps.lock.mk"
       - "tools/get_git_refs.sh"
       - "src/external/CMakeLists.txt"
   workflow_dispatch:
