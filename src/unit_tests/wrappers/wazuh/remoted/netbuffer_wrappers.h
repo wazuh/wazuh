@@ -14,7 +14,12 @@
 
 #include "../../../../remoted/remoted.h"
 
-void __wrap_nb_close(__attribute__((unused)) netbuffer_t * buffer, int sock);
+int __wrap_nb_close_socket(__attribute__((unused)) netbuffer_t * recv,
+                           __attribute__((unused)) netbuffer_t * send,
+                           int sock,
+                           int * was_unassociated);
+
+int __wrap_nb_mark_associated(__attribute__((unused)) netbuffer_t * buffer, int sock, size_t counter);
 
 void __wrap_nb_open(__attribute__((unused)) netbuffer_t * buffer, int sock, const struct sockaddr_storage * peer_info);
 

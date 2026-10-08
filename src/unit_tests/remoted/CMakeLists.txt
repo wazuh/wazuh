@@ -63,13 +63,15 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,router_provider_send_fb_json \
                             -Wl,--wrap,fgetpos -Wl,--wrap,fgets -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fread \
                             -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,getpid -Wl,--wrap,key_lock_read \
-                            -Wl,--wrap,key_lock_write -Wl,--wrap,key_unlock -Wl,--wrap,nb_close \
+                            -Wl,--wrap,key_lock_write -Wl,--wrap,key_unlock -Wl,--wrap,nb_close_socket \
                             -Wl,--wrap,nb_open -Wl,--wrap,nb_recv -Wl,--wrap,nb_send -Wl,--wrap,OS_AddSocket \
                             -Wl,--wrap,OS_DeleteSocket -Wl,--wrap,OS_IsAllowedDynamicID -Wl,--wrap,OS_IsAllowedIP \
                             -Wl,--wrap,ReadSecMSG -Wl,--wrap,recvfrom -Wl,--wrap,rem_add_recv \
                             -Wl,--wrap,rem_add_send -Wl,--wrap,rem_dec_tcp -Wl,--wrap,wfopen \
                             -Wl,--wrap,rem_getCounter -Wl,--wrap,rem_inc_recv_ctrl \
                             -Wl,--wrap,rem_inc_recv_unknown -Wl,--wrap,rem_inc_tcp \
+                            -Wl,--wrap,nb_mark_associated -Wl,--wrap,rem_inc_tcp_unassociated \
+                            -Wl,--wrap,rem_dec_tcp_unassociated \
                             -Wl,--wrap,rem_msgpush -Wl,--wrap,rem_setCounter -Wl,--wrap,remove \
                             -Wl,--wrap,save_controlmsg -Wl,--wrap,validate_control_msg -Wl,--wrap,sleep -Wl,--wrap,stat -Wl,--wrap,time \
                             -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int \
@@ -89,7 +91,8 @@ list(APPEND remoted_names "test_netbuffer")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,wnet_order -Wl,--wrap,wnotify_modify \
                             -Wl,--wrap,bqueue_push -Wl,--wrap,bqueue_peek -Wl,--wrap,bqueue_drop -Wl,--wrap,bqueue_clear -Wl,--wrap,sleep \
                             -Wl,--wrap,send -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fcntl -Wl,--wrap,getpid \
-                            -Wl,--wrap,bqueue_used -Wl,--wrap,rem_inc_send_discarded -Wl,--wrap,recv -Wl,--wrap,rem_msgpush")
+                            -Wl,--wrap,bqueue_used -Wl,--wrap,rem_inc_send_discarded -Wl,--wrap,recv -Wl,--wrap,rem_msgpush \
+                            -Wl,--wrap,close -Wl,--wrap,rem_setCounter -Wl,--wrap,rem_getCounter")
 
 list(APPEND remoted_names "test_sendmsg")
 list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsAllowedID -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
@@ -108,7 +111,10 @@ list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,r
                             -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Clean \
                             -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_SetFreeDataPointer \
                             -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Update -Wl,--wrap,OSHash_Get_Elem_ex \
-                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,_merror")
+                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,_merror \
+                            -Wl,--wrap,wfopen -Wl,--wrap,fprintf -Wl,--wrap,fclose -Wl,--wrap,rename \
+                            -Wl,--wrap,fflush -Wl,--wrap,fgetc -Wl,--wrap,fgetpos -Wl,--wrap,fgets -Wl,--wrap,fopen \
+                            -Wl,--wrap,popen -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove")
 
 list(APPEND remoted_names "test_remcom")
 list(APPEND remoted_flags "-Wl,--wrap,rem_create_state_json -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept \
