@@ -747,6 +747,31 @@ bool ContainerEventDrain::start(const DrainConfig& config, ReconcileHandler hand
         return false;
     }
 
+    /* The two sides choose their key independently -- the producer from the
+     * cgroup layout, this consumer from what the engine can read -- and they are
+     * meant to reach the same answer through the same shared selector. When they
+     * did not, nothing said so: the store held mount-namespace inodes, the
+     * events carried controller cgroup ids, every lookup missed, and both halves
+     * logged success. Ask once at startup, because a mismatch makes the whole
+     * feature a no-op and is otherwise invisible.
+     *
+     * This consumer always keys on a cgroup id: the helper on a unified host,
+     * the configured v1 controller on a legacy one. Anything else disagrees. */
+    if (const auto producerKind = impl->client.hostKeyKind())
+    {
+        if (*producerKind != WZ_CONTAINER_KEY_CGROUP)
+        {
+            LogError(std::string{"Container eBPF drain: container_instances is publishing '"} +
+                     wz_container_key_kind_name(*producerKind) +
+                     "' keys while this consumer reads cgroup ids, so no event can ever be attributed. "
+                     "Disabling the event-driven reconcile rather than running with a key space the "
+                     "producer does not serve.");
+            rt_close(impl->handle);
+            delete impl;
+            return false;
+        }
+    }
+
     impl->handler = std::move(handler);
 
     impl->allowlist_active = (filter.cgroup_mode == RT_CGROUP_MODE_ALLOWLIST);

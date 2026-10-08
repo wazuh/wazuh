@@ -30,7 +30,7 @@ namespace wazuh::container_instances
                            wz_cgroup_mode_t cgroupMode = wz_cgroup_mode());
 
         [[nodiscard]] CgroupScan scan() const override;
-        [[nodiscard]] std::optional<CgroupEntry> scanOne(std::uint64_t cgroupInode) const override;
+        [[nodiscard]] std::optional<CgroupEntry> scanOne(std::uint64_t hostKey) const override;
 
     private:
         const IFileSystemWrapper& m_filesystem;
@@ -40,6 +40,13 @@ namespace wazuh::container_instances
         std::string m_procRoot;
         std::string m_cgroupRoot;
         wz_cgroup_mode_t m_cgroupMode;
+
+        /// On legacy, the controller the SHARED selector picked — the same one
+        /// the eBPF program is configured to read. Resolved once at construction
+        /// because it is a host constant, and passed to selectCanonicalCgroup so
+        /// the resolver cannot settle on a different hierarchy than the engine.
+        /// Empty on unified and hybrid, where the unified id is used instead.
+        std::string m_v1Controller;
     };
 
 } // namespace wazuh::container_instances

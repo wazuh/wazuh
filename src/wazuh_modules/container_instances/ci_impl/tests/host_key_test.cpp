@@ -56,13 +56,32 @@ namespace
 
 TEST(HostKeyTest, TheKindFollowsTheHostHierarchy)
 {
-    EXPECT_EQ(KeyKind::cgroupInode, keyKindFor(WZ_CGROUP_MODE_UNIFIED));
-    EXPECT_EQ(KeyKind::mntNsInode, keyKindFor(WZ_CGROUP_MODE_LEGACY));
+    // The v1-controller verdict is passed in rather than probed, so both legacy
+    // branches run on any build host.
+    EXPECT_EQ(KeyKind::cgroupInode, keyKindFor(WZ_CGROUP_MODE_UNIFIED, false));
+    EXPECT_EQ(KeyKind::cgroupInode, keyKindFor(WZ_CGROUP_MODE_UNIFIED, true));
 
     // Hybrid follows unified: the helper returns unified-hierarchy ids there,
     // so cgroup_id does correlate and there is no reason to fall back to a
     // weaker key.
-    EXPECT_EQ(KeyKind::cgroupInode, keyKindFor(WZ_CGROUP_MODE_HYBRID));
+    EXPECT_EQ(KeyKind::cgroupInode, keyKindFor(WZ_CGROUP_MODE_HYBRID, false));
+}
+
+TEST(HostKeyTest, ALegacyHostKeysOnTheControllerCgroupWheneverOneIsUsable)
+{
+    // The defect this pins: legacy used to mean "mount namespace" unconditionally,
+    // decided from the host mode alone. But the mode says only that
+    // bpf_get_current_cgroup_id() is useless — the kernel still has a
+    // per-container cgroup under every mounted v1 controller, and the eBPF
+    // program reads it directly. Measured consequence of getting this wrong: the
+    // store published mount-namespace inodes while the engine reported memory
+    // controller cgroup ids, so nothing joined, no file event was attributed and
+    // the container baseline reported zero containers on a host that had one.
+    EXPECT_EQ(KeyKind::cgroupInode, keyKindFor(WZ_CGROUP_MODE_LEGACY, true));
+
+    // Only with no controller the two sides can agree on does the weaker key
+    // remain, and then BOTH sides fall back together.
+    EXPECT_EQ(KeyKind::mntNsInode, keyKindFor(WZ_CGROUP_MODE_LEGACY, false));
 }
 
 TEST(HostKeyTest, ALegacyStoreIsFoundByItsMountNamespaceKey)

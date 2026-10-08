@@ -159,8 +159,17 @@ namespace wazuh::container_instances
     /// remove. On unified and hybrid hosts the v2 line wins outright — it is the
     /// hierarchy whose inode `bpf_get_current_cgroup_id()` reports, so choosing a
     /// v1 controller there would key the store on a number no event carries.
+    /// `preferredController` is the controller the SHARED selector
+    /// (`wz_cgroup_v1_select_subsys`) chose for this host, and when it is set it
+    /// is tried first. The two lists hold the same names but apply different
+    /// filters — the shared one also demands a subsystem slot, so it rejects
+    /// `name=systemd` while this one accepts it — and a host where they disagree
+    /// is a host where the resolver keys on one hierarchy and the eBPF program
+    /// reads another. Empty keeps the local order, which is what the fixture
+    /// tests use so they need no live host.
     [[nodiscard]] inline std::optional<CgroupSelection> selectCanonicalCgroup(const std::vector<CgroupLine>& lines,
-                                                                              wz_cgroup_mode_t mode)
+                                                                              wz_cgroup_mode_t mode,
+                                                                              std::string_view preferredController = {})
     {
         if (mode != WZ_CGROUP_MODE_LEGACY)
         {
@@ -181,7 +190,7 @@ namespace wazuh::container_instances
             return std::nullopt;
         }
 
-        for (const auto& wanted : CGROUP_V1_CONTROLLER_PRIORITY)
+        const auto pick = [&lines](std::string_view wanted) -> std::optional<CgroupSelection>
         {
             for (const auto& line : lines)
             {
@@ -193,6 +202,23 @@ namespace wazuh::container_instances
                     selection.controller = std::string {wanted};
                     return selection;
                 }
+            }
+            return std::nullopt;
+        };
+
+        if (!preferredController.empty())
+        {
+            if (auto chosen = pick(preferredController))
+            {
+                return chosen;
+            }
+        }
+
+        for (const auto& wanted : CGROUP_V1_CONTROLLER_PRIORITY)
+        {
+            if (auto chosen = pick(wanted))
+            {
+                return chosen;
             }
         }
 

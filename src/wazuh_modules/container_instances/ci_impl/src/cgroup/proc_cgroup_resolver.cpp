@@ -40,6 +40,14 @@ namespace wazuh::container_instances
         , m_cgroupRoot(std::move(cgroupRoot))
         , m_cgroupMode(cgroupMode)
     {
+        if (m_cgroupMode == WZ_CGROUP_MODE_LEGACY)
+        {
+            const char* chosen = nullptr;
+            if (wz_cgroup_v1_select_subsys(&chosen) >= 0 && chosen != nullptr)
+            {
+                m_v1Controller = chosen;
+            }
+        }
     }
 
     CgroupScan ProcCgroupResolver::scan() const
@@ -93,7 +101,7 @@ namespace wazuh::container_instances
                 continue; // Process exited mid-scan: normal.
             }
 
-            const auto selection = selectCanonicalCgroup(lines, m_cgroupMode);
+            const auto selection = selectCanonicalCgroup(lines, m_cgroupMode, m_v1Controller);
             if (!selection || selection->path == "/")
             {
                 continue;
@@ -185,22 +193,28 @@ namespace wazuh::container_instances
         return result;
     }
 
-    std::optional<CgroupEntry> ProcCgroupResolver::scanOne(std::uint64_t cgroupInode) const
+    std::optional<CgroupEntry> ProcCgroupResolver::scanOne(std::uint64_t hostKey) const
     {
         const auto snapshot = scan();
 
+        // Both arms must read the SAME space. This compared containers by their
+        // cgroup inode while comparing host cgroups against allHostKeys, which
+        // holds host KEYS — identical on a unified host, and two unrelated sets
+        // of numbers wherever the key is not the cgroup inode. A container was
+        // then never matched, and the caller turned that into a permanent
+        // host-process verdict for a cgroup that in fact belonged to a container.
         for (const auto& container : snapshot.containers)
         {
-            if (container.inode == cgroupInode)
+            if (hostKeyOf(container, snapshot.keyKind) == hostKey)
             {
                 return container;
             }
         }
 
-        if (snapshot.allHostKeys.count(cgroupInode) > 0)
+        if (snapshot.allHostKeys.count(hostKey) > 0)
         {
             CgroupEntry hostEntry; // Observed, but not a container: host-process evidence.
-            hostEntry.inode = cgroupInode;
+            hostEntry.inode = hostKey;
             return hostEntry;
         }
 

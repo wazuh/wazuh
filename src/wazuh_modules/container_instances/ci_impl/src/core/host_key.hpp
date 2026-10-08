@@ -51,9 +51,32 @@ namespace wazuh::container_instances
     /// Hybrid follows unified because `bpf_get_current_cgroup_id()` returns
     /// unified-hierarchy ids there, which is also how the mode probe classifies
     /// it.
+    ///
+    /// Legacy is NOT decided from the mode alone, and deciding it that way was
+    /// the defect: the mode says only that the helper is unusable, while what
+    /// matters is whether a v1 controller exists that the resolver and the eBPF
+    /// program can both read. Delegated to the shared C header so that question
+    /// is answered in exactly one place — this function used to duplicate the
+    /// ternary, which is how the producer came to key on the mount namespace
+    /// while the consumer read cgroup ids from the memory controller.
+    /// `v1ControllerUsable` is the shared selector's verdict, taken as a
+    /// parameter so both legacy branches are reachable from a test on any build
+    /// host — asking the live host inside here would make the answer depend on
+    /// where the suite runs, and the legacy branch would simply never execute on
+    /// a developer machine.
+    [[nodiscard]] inline KeyKind keyKindFor(wz_cgroup_mode_t mode, bool v1ControllerUsable)
+    {
+        if (wz_cgroup_mode_has_usable_cgroup_id(mode))
+        {
+            return KeyKind::cgroupInode;
+        }
+        return v1ControllerUsable ? KeyKind::cgroupInode : KeyKind::mntNsInode;
+    }
+
+    /// Production entry point: asks the shared selector about this host.
     [[nodiscard]] inline KeyKind keyKindFor(wz_cgroup_mode_t mode)
     {
-        return wz_cgroup_mode_has_usable_cgroup_id(mode) ? KeyKind::cgroupInode : KeyKind::mntNsInode;
+        return keyKindFor(mode, wz_cgroup_v1_select_subsys(nullptr) >= 0);
     }
 
     /// The wire spelling. Stable across versions: it is published in the

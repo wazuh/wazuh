@@ -89,7 +89,7 @@ namespace wazuh::container_instances
 
         /// Cold-path targeted rescan for one inode. nullopt = inode not currently
         /// observable (retry-worthy); entry with empty containerId = host cgroup.
-        [[nodiscard]] virtual std::optional<CgroupEntry> scanOne(std::uint64_t cgroupInode) const = 0;
+        [[nodiscard]] virtual std::optional<CgroupEntry> scanOne(std::uint64_t hostKey) const = 0;
     };
 
 } // namespace wazuh::container_instances

@@ -359,6 +359,55 @@ namespace wazuh::container_instances_client
             return roundTrip(R"({"version":2,"op":"status"})").json;
         }
 
+        /// Which key space the PRODUCER is publishing, straight from `status`.
+        ///
+        /// A consumer needs this because the two sides pick their key
+        /// independently: the producer from the cgroup layout, this consumer
+        /// from what the eBPF engine can read. They are meant to reach the same
+        /// answer through the same shared selector, and when they do not, every
+        /// lookup silently misses — the store holds numbers from one kernfs tree
+        /// and the events carry numbers from another. Asking is cheap and makes
+        /// the disagreement reportable instead of invisible.
+        ///
+        /// `std::nullopt` means the producer did not say, which is also how an
+        /// older producer answers; the caller should treat that as "cannot
+        /// verify" rather than as a mismatch.
+        [[nodiscard]] std::optional<wz_container_key_kind_t> hostKeyKind() const
+        {
+            const auto reply = status();
+            if (reply.empty())
+            {
+                return std::nullopt;
+            }
+
+            try
+            {
+                const auto parsed = nlohmann::json::parse(reply);
+                const auto data = parsed.find("data");
+                if (data == parsed.end() || !data->is_object())
+                {
+                    return std::nullopt;
+                }
+                const auto kind = data->find("key_kind");
+                if (kind == data->end() || !kind->is_string())
+                {
+                    return std::nullopt;
+                }
+
+                wz_container_key_kind_t out {};
+                if (wz_container_key_kind_from_name(kind->get<std::string>().c_str(), &out) == 1)
+                {
+                    return out;
+                }
+            }
+            catch (const std::exception&)
+            {
+                return std::nullopt;
+            }
+
+            return std::nullopt;
+        }
+
     private:
         /// Builds a v2 resolve line. Kept in one place so the key and its kind
         /// cannot be sent apart — a key with no kind is refused by the
