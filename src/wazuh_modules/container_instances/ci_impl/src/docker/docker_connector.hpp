@@ -26,11 +26,15 @@ namespace wazuh::container_instances
         , public IOnDemandRefresher
     {
     public:
+        /// `idleReconcileInterval` is how often a snapshot is taken with nothing
+        /// pending. Injectable only so a test need not sleep through the real
+        /// one; production always uses the default.
         DockerConnector(IDockerApiClient& client,
                         const ICgroupResolver& resolver,
                         IMetadataStore& store,
                         SourceId source,
-                        Logger logger);
+                        Logger logger,
+                        std::chrono::milliseconds idleReconcileInterval = std::chrono::seconds {10});
 
         void run(const StopController& stop) override;
 
@@ -64,6 +68,11 @@ namespace wazuh::container_instances
         /// synchronisation, unlike m_seenEvents above which refreshOne() also
         /// reaches from an IPC worker.
         bool m_reconcilePending {false};
+
+        /// See the constructor: how often a reconcile runs with nothing pending,
+        /// so that applySnapshot() — the only place anything expires — keeps
+        /// being called on a host that has gone quiet.
+        std::chrono::milliseconds m_idleReconcileInterval;
     };
 
 } // namespace wazuh::container_instances
