@@ -307,6 +307,10 @@ def test_sbom_real_tree(tmp_path):
     assert len(pypi) == len(requirements) and len(bom["components"]) == len(requirements) + len(deps.load(INVENTORY)["entries"])
     cpython = next(c for c in bom["components"] if c["bom-ref"] == "cpython")
     assert cpython["cpe"].startswith("cpe:2.3:a:python:python:*")
+    # Grype names the rule ids after the component: <CVE>-python, as the scan of the cpython tarball did.
+    assert cpython["name"] == "python" and cpython["purl"].startswith("pkg:github/python/cpython@")
+    assert all(c["name"] == c["bom-ref"] for c in bom["components"]
+               if not c["purl"].startswith("pkg:pypi/") and c["bom-ref"] != "cpython")
     assert all("version" in c and c["properties"][0]["name"] == "syft:location:0:path" for c in bom["components"])
 
 
@@ -1573,6 +1577,15 @@ def job_needs(job):
     return [n.strip() for n in needs.group(1).split(",")] if needs else []
 
 
+def test_scan_covers_every_target():
+    """The daily scan takes the agent and the manager dependencies of each branch in one SBOM."""
+    text = (WORKFLOWS / "5_codeanalysis_externals-vulns.yml").read_text(encoding="utf-8")
+    calls = re.findall(r"^\s*\$deps sbom (.*)$", text, re.M)
+    assert len(calls) == 2 and all("--target" not in call for call in calls)
+    assert any("--inventory branch/packages/externals/dependencies.json" in call for call in calls)
+    assert any('--manifest "$manifest"' in call for call in calls)
+
+
 def test_build_workflow_paths():
     blocks = paths_blocks(EXTERNALS_WORKFLOW.read_text(encoding="utf-8"))
     assert len(blocks) == 1, "the workflow needs one pull_request paths list"
@@ -1593,6 +1606,12 @@ def test_lock_workflow_paths():
     for command in ("deps.py lock --check", "deps.py pool-check", "deps.py check"):
         assert [step for step in steps if step["run"] and command in step["run"]], command
     assert not (WORKFLOWS / "5_codequality_externals-drift.yml").exists()
+
+
+def test_workflows_run_on_drafts():
+    # A draft PR builds and publishes its refs, so the rest of the CI finds them once it is ready for review.
+    for workflow in (EXTERNALS_WORKFLOW, LOCK_WORKFLOW):
+        assert "pull_request.draft" not in workflow.read_text(encoding="utf-8"), workflow.name
 
 
 def test_workflows_filter_lock():
