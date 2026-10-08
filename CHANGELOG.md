@@ -72,6 +72,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the Windows agent accepting `<whodata><provider>ebpf</provider></whodata>` and silently disabling whodata. ([#39353](https://github.com/wazuh/wazuh/issues/39353))
 - Fixed the FIM eBPF whodata healthcheck failing on RHEL 9 kernels and discarding the eBPF provider. ([#39570](https://github.com/wazuh/wazuh/pull/39570))
 - Fixed FIM eBPF whodata dropping events for files outside the root mount. ([#39708](https://github.com/wazuh/wazuh/pull/39708))
+- Fixed the Windows `netsh` and `route-null` active responses failing with `Cannot read 'srcip' from data` since v4.14.7, because the IP validation called `getaddrinfo()` without initializing Winsock. ([#40084](https://github.com/wazuh/wazuh/pull/40084))
 
 ### Ruleset
 
