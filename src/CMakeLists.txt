@@ -1,3 +1,4 @@
+# deps-recipe: begin
 cmake_minimum_required(VERSION 3.12.4)
 
 # Force ranlib and windres for scan-build cross-compilation compatibility Must
@@ -235,6 +236,7 @@ endif()
 
 # External dependencies
 add_subdirectory(external)
+# deps-recipe: end
 
 # Common modules (all targets)
 add_subdirectory(config)

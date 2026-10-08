@@ -12,6 +12,7 @@ on:
       - 'src/shared_modules/manager_config/**'
       - 'src/CMakeLists.txt'
       - 'src/Makefile'
+      - 'src/deps.lock.mk'
       # API unit tests
       - '!api/api/**/test/**'
   workflow_dispatch:

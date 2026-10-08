@@ -1,0 +1,52 @@
+name: 5.X - Check external dependencies lock
+
+# packages/externals/dependencies.json must list exactly the EXTERNAL_RES of every
+# target and match the README table; src/deps.lock.mk must be the one it generates,
+# and every ref in it must be published in the pool with the inputs it was keyed on,
+# so a lock is merged only with its refs published.
+# The paths are the ones `deps.py key-paths` prints, which a test keeps in sync.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "framework/.python-version"
+      - "framework/cpython/**"
+      - "framework/requirements.txt"
+      - "packages/externals/**"
+      - "src/CMakeLists.txt"
+      - "src/Makefile"
+      - "src/deps.lock.mk"
+      - "src/external/CMakeLists.txt"
+      - "src/syscheckd/src/ebpf/src/modern.bpf.c"
+      - "README.md"
+      - ".github/workflows/5_codequality_externals-lock.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check-lock:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # src/Makefile only resolves the winagent dependency list with the MinGW compiler present.
+      - name: Install the MinGW cross-compiler
+        run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-i686
+
+      - name: Run the inventory tool tests
+        run: pipx run pytest packages/externals/tests -q
+
+      - name: Check the inventory against EXTERNAL_RES
+        run: python3 packages/externals/deps.py check
+
+      - name: Check the README table
+        run: python3 packages/externals/deps.py readme --check
+
+      - name: Check the lock
+        run: python3 packages/externals/deps.py lock --check
+
+      - name: Check the lock against the pool
+        run: python3 packages/externals/deps.py pool-check

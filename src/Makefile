@@ -97,6 +97,7 @@ IMAGE_TRUST_CHECKS?=1
 CA_NAME?=Microsoft Identity Verification Root Certificate Authority 2020
 HTTP_REQUEST_BRANCH?=c5f94080441fc35a80c5cf8ddd9cc1ca9fc20d9b
 
+# deps-recipe: begin
 ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC}$(if $(filter gcc,${CC}),-posix) -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX} -DEVENTCHANNEL_SUPPORT=ON
 endif
@@ -234,6 +235,7 @@ endif
 endif
 endif
 endif #winagent
+# deps-recipe: end
 
 ####################
 #### Target ########
@@ -268,7 +270,7 @@ help: failtarget
 	@echo "   make V=yes                   						Display full compiler messages. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DEBUG=yes               						Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make INSTALLDIR=/path        						Wazuh's installation path. Mandatory when compiling the python interpreter from sources using PYTHON_SOURCE."
-	@echo "   make RESOURCES_URL           						Set the Wazuh resources URL"
+	@echo "   make DEPS_POOL_URL           						Set the URL of the dependency pool that the refs of deps.lock.mk are read from"
 	@echo "   make EXTERNAL_SRC_ONLY=yes   						Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building."
 	@echo "   make USE_INOTIFY=yes         						Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_BIG_ENDIAN=yes      						Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
@@ -296,7 +298,7 @@ settings:
 	@echo "    V:                  ${V}"
 	@echo "    DEBUG:              ${DEBUG}"
 	@echo "    INSTALLDIR:         ${INSTALLDIR}"
-	@echo "    RESOURCES_URL:      ${RESOURCES_URL}"
+	@echo "    DEPS_POOL_URL:      ${DEPS_POOL_URL}"
 	@echo "    EXTERNAL_SRC_ONLY:  ${EXTERNAL_SRC_ONLY}"
 	@echo "    HTTP_REQUEST_BRANCH:${HTTP_REQUEST_BRANCH}"
 	@echo "User settings:"
@@ -378,12 +380,14 @@ build_wazuh_cmake:
 #### External ######
 ####################
 
+# deps-recipe: begin
 # Build all external dependencies
 .PHONY: build-external
 build-external:
 	@echo "Building external dependencies for TARGET=${TARGET}..."
 	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${CMAKE_ENGINE_OPTS}
 	cd build/external && $(MAKE) all
+# deps-recipe: end
 
 # CPython build
 ifneq (${TARGET},winagent)
@@ -418,9 +422,19 @@ ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-all-errors'))
 	FETCH_CURL_FLAGS += --retry-all-errors
 endif
 FETCH_CURL := curl $(FETCH_CURL_FLAGS) -o
-DEPS_VERSION = 99-37702
-RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
-RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
+# Curl for the dependency pool: it retries transient errors but not a 403/404, which is how a missing
+# precompiled tarball looks, so the fallback to the sources is immediate. A stalled transfer, not a
+# slow one, is what fails: the cpython sources are about 175 MB.
+POOL_CURL_FLAGS := -fsS --retry 5 --retry-delay 2 --connect-timeout 20 --speed-limit 1024 --speed-time 60
+ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-connrefused'))
+	POOL_CURL_FLAGS += --retry-connrefused
+endif
+POOL_CURL := curl $(POOL_CURL_FLAGS) -o
+# Every dependency is downloaded from $(DEPS_POOL_URL)/<ref>/, with its ref from deps.lock.mk.
+include $(dir $(lastword $(MAKEFILE_LIST)))deps.lock.mk
+DEPS_POOL_URL ?= https://packages.wazuh.com/deps/pool
+dep_url = $(DEPS_POOL_URL)/$(or $(DEP_REF_$(1)),$(error $(1): no DEP_REF_$(1) in deps.lock.mk; run packages/externals/deps.py lock))/$(2)
+dep_failed = { printf "\033[31m[-] Dependency %s failed installation\033[0m\n" "$(1)"; exit 1; }
 CPYTHON := cpython
 PYTHON_SOURCE := no
 
@@ -616,18 +630,18 @@ ifneq (,$(PRECOMPILED_RES))
 external/$(CPYTHON).tar.gz: external-precompiled/$(CPYTHON).tar.gz
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
 	@test -e $(patsubst %.gz,%,$@) ||\
-	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz &&\
+	(($(POOL_CURL) $@ $(call dep_url,cpython,sources/$(CPYTHON_ARCHIVE).tar.gz) || $(call dep_failed,cpython)) &&\
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
 	@test -d $(patsubst %.tar.gz,%,$@) || (cd external && $(GZIP) $(patsubst external/%.gz,%,$@))
 	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"
 
 external-precompiled/$(CPYTHON).tar.gz:
-	-@$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
+	-@$(POOL_CURL) external/$(patsubst external-precompiled/%,%,$@) $(call dep_url,cpython,$(PRECOMPILED_RES)/cpython.tar.gz) 2>/dev/null || true
 	-@cd external && [ -f $(patsubst external-precompiled/%,%,$@) ] && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
 else
 external/$(CPYTHON).tar.gz:
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
-	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz || { printf "\033[31m[-] Dependency %s failed installation\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"; exit 1; }
+	@$(POOL_CURL) $@ $(call dep_url,cpython,sources/$(CPYTHON_ARCHIVE).tar.gz) || $(call dep_failed,cpython)
 	 @cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	 @cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	 @rm $(patsubst %.gz,%,$@)
@@ -636,7 +650,7 @@ endif
 else
 external/$(CPYTHON).tar.gz:
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
-	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz || { printf "\033[31m[-] Dependency %s failed installation\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"; exit 1; }
+	@$(POOL_CURL) $@ $(call dep_url,cpython,sources/$(CPYTHON_ARCHIVE).tar.gz) || $(call dep_failed,cpython)
 	 @cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	 @cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	 @rm $(patsubst %.gz,%,$@)
@@ -646,7 +660,7 @@ endif
 # Explicit rule for tzdata - always download from sources URL
 external/tzdata.tar.gz:
 	test -d $(patsubst %.tar.gz,%,$@) ||\
-	($(TZDATA_CURL) $@ $(RESOURCES_URL)/libraries/sources/tzdata.tar.gz && \
+	($(TZDATA_CURL) $@ $(call dep_url,tzdata,sources/tzdata.tar.gz) && \
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
 	rm -f external/tzdata/tzdata.tar.gz
 
@@ -655,13 +669,13 @@ ifneq (,$(PRECOMPILED_RES))
 external/%.tar.gz: external-precompiled/%.tar.gz
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
 	@test -d $(patsubst %.tar.gz,%,$@) ||\
-	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) &&\
+	(($(POOL_CURL) $@ $(call dep_url,$*,sources/$*.tar.gz) || $(call dep_failed,$*)) &&\
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
 	@printf "\033[32m[+] Dependency %s installed successfully\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"
 else
 external/%.tar.gz:
 	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
-	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) || { printf "\033[31m[-] Dependency %s failed installation\033[0m\n" "$(notdir $(patsubst %.tar.gz,%,$@))"; exit 1; }
+	@$(POOL_CURL) $@ $(call dep_url,$*,sources/$*.tar.gz) || $(call dep_failed,$*)
 	 @cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	 @cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	 @rm $(patsubst %.gz,%,$@)
@@ -670,7 +684,7 @@ endif
 
 ifneq (,$(PRECOMPILED_RES))
 external-precompiled/%.tar.gz:
-	-@$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
+	-@$(POOL_CURL) external/$(patsubst external-precompiled/%,%,$@) $(call dep_url,$*,$(PRECOMPILED_RES)/$*.tar.gz) 2>/dev/null || true
 	-@cd external && [ -f $(patsubst external-precompiled/%,%,$@) ] && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
 	-@cd external && [ -f $(patsubst external-precompiled/%.gz,%,$@) ] && $(TAR) $(patsubst external-precompiled/%.gz,%,$@) || true
 	-@[ -f external/$(patsubst external-precompiled/%.gz,%,$@) ] && rm external/$(patsubst external-precompiled/%.gz,%,$@) || true
@@ -796,6 +810,7 @@ $(WCS_FLAT_DIR)/wcs_flat.yml: | $(WCS_FLAT_DIR)
 #### Python ########
 ####################
 
+# cpython-recipe: begin
 WPYTHON_DIR := ${INSTALLDIR}/framework/python
 OPTIMIZE_CPYTHON?=no
 WPYTHON_TAR=cpython.tar.gz
@@ -848,6 +863,8 @@ ifneq (,$(wildcard ${EXTERNAL_CPYTHON}))
 	${WPYTHON_DIR}/bin/python3 -m pip install --upgrade pip --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 	LD_LIBRARY_PATH="${INSTALLDIR}/lib" LDFLAGS="-L${INSTALLDIR}/lib" ${WPYTHON_DIR}/bin/pip3 install -r ../framework/${python_dependencies}  --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 endif
+
+# cpython-recipe: end
 
 install_framework: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/python3 -m pip install . --use-pep517 --prefix=${WPYTHON_DIR} && rm -rf build/

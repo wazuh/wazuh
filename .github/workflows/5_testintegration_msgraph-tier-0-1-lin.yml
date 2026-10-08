@@ -9,6 +9,7 @@ on:
         - "src/wazuh_modules/src/wm_ms_graph.h"
         - "src/wazuh_modules/src/wm_ms_graph.c"
         - "src/Makefile"
+        - "src/deps.lock.mk"
         - "tests/integration/conftest.py"
         - "tests/integration/test_msgraph/**"
         - ".github/actions/reinstall_cmake/**"

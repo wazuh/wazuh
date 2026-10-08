@@ -1,0 +1,21 @@
+Why: Build date-tz with AUTO_DOWNLOAD=0 and HAS_REMOTE_API=1, since the engine date parser calls date::remote_* but must not download the tz database implicitly; the engine downloads it explicitly through remote_download. Upstream only sets both to 0 or both to 1, and forcing -DCMAKE_CXX_FLAGS=-DAUTO_DOWNLOAD=0 instead only wins because CMake puts CXX_FLAGS after CXX_DEFINES on the command line, with an "AUTO_DOWNLOAD redefined" warning.
+Upstream: none: upstream CMakeLists.txt has no option to set AUTO_DOWNLOAD and HAS_REMOTE_API independently.
+Remove when: upstream allows AUTO_DOWNLOAD=0 with HAS_REMOTE_API=1, or Wazuh stops using date::remote_*.
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 6885a43..3100afc 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -126,11 +126,7 @@ if( BUILD_TZ_LIB )
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+         $<INSTALL_INTERFACE:include> )
+ 
+-    if ( USE_SYSTEM_TZ_DB OR MANUAL_TZ_DB )
+-      target_compile_definitions( date-tz PRIVATE AUTO_DOWNLOAD=0 HAS_REMOTE_API=0 )
+-    else()
+-      target_compile_definitions( date-tz PRIVATE AUTO_DOWNLOAD=1 HAS_REMOTE_API=1 )
+-    endif()
++    target_compile_definitions( date-tz PRIVATE AUTO_DOWNLOAD=0 HAS_REMOTE_API=1 )
+ 
+     if ( USE_SYSTEM_TZ_DB AND NOT WIN32 AND NOT MANUAL_TZ_DB )
+       target_compile_definitions( date-tz PRIVATE INSTALL=. PUBLIC USE_OS_TZDB=1 )

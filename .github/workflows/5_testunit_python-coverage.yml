@@ -10,6 +10,7 @@ on:
       - 'src/shared_modules/manager_config/**'
       - 'src/CMakeLists.txt'
       - 'src/Makefile'
+      - 'src/deps.lock.mk'
   workflow_dispatch:
     inputs:
       base_branch:

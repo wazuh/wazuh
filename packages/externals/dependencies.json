@@ -1,0 +1,1241 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "name": "RxCpp",
+      "version": "4.1.1",
+      "revision": "v4.1.1",
+      "source": "upstream",
+      "url": "https://github.com/ReactiveX/RxCpp/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "054a9be63e66904ecaa552ce56d6458b4545d6da5ea32f5103c7fc379cebb374",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [
+        "RxCpp/0001-delete-on-error-notification-assignment.patch"
+      ],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "built": false,
+      "cpe": null,
+      "purl": "pkg:github/ReactiveX/RxCpp@v4.1.1",
+      "scan": false,
+      "reason": "no CPE in NVD",
+      "license": "Apache-2.0",
+      "author": "Microsoft Open Technologies",
+      "homepage": "https://github.com/ReactiveX/RxCpp",
+      "notes": "Tag v4.1.1 with one Wazuh patch: the on_error_notification assignment operator is deleted, since it does not compile with GCC 14."
+    },
+    {
+      "name": "abseil-cpp",
+      "version": "20240116.3",
+      "revision": "20240116.3",
+      "source": "upstream",
+      "url": "https://github.com/abseil/abseil-cpp/archive/refs/tags/{version}.tar.gz",
+      "upstream_sha256": "e887b423da5a1ba66e71610094fd7147ff2febfedccdfbf00f2c644ac21adf83",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:abseil:common_libraries:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/abseil/abseil-cpp@20240116.3",
+      "license": "Apache-2.0",
+      "author": "Google Inc.",
+      "homepage": "https://github.com/abseil/abseil-cpp"
+    },
+    {
+      "name": "asio",
+      "version": "1.38.2",
+      "revision": "asio-1-38-2",
+      "source": "upstream",
+      "url": "https://github.com/chriskohlhoff/asio/archive/refs/tags/asio-{version_dash}.tar.gz",
+      "upstream_sha256": "9f2648fa483e58a6bf848d970ee0ea650ca19ed7769dfa520ed4f7b8d27af1db",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "built": false,
+      "prebuilt": false,
+      "cpe": null,
+      "purl": "pkg:github/chriskohlhoff/asio@asio-1-38-2",
+      "scan": false,
+      "reason": "no CPE in NVD",
+      "license": "BSL-1.0",
+      "author": "Christopher M. Kohlhoff",
+      "homepage": "https://github.com/chriskohlhoff/asio"
+    },
+    {
+      "name": "audit-userspace",
+      "version": "2.8.4",
+      "revision": "v2.8.4",
+      "source": "upstream",
+      "url": "https://github.com/linux-audit/audit-userspace/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "089dfdceb38edf056202a6de4892fd0c9aaa964c08bd7806c5d0c7c33f09e18d",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:audit-userspace_project:audit-userspace:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/linux-audit/audit-userspace@v2.8.4",
+      "license": "GNU Lesser General Public License",
+      "author": "Rik Faith",
+      "homepage": "https://github.com/linux-audit/audit-userspace",
+      "notes": "Git archive of v2.8.4, which ships autogen.sh (the release tarball does not); the build runs autogen.sh, so the published tree only added its output."
+    },
+    {
+      "name": "benchmark",
+      "version": "1.6.1",
+      "revision": "v1.6.1",
+      "source": "upstream",
+      "url": "https://github.com/google/benchmark/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "6132883bc8c9b0df5375b16ab520fac1a85dc9e4cf5be59480448ece74b278d4",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "darwin",
+        "linux",
+        "windows"
+      ],
+      "built": false,
+      "cpe": null,
+      "purl": "pkg:github/google/benchmark@v1.6.1",
+      "scan": false,
+      "reason": "no CPE in NVD",
+      "license": "Apache 2.0 License",
+      "author": "Google Inc.",
+      "homepage": "https://github.com/google/benchmark"
+    },
+    {
+      "name": "bzip2",
+      "version": "1.0.8",
+      "revision": "bzip2-1.0.8",
+      "source": "upstream",
+      "url": "https://github.com/libarchive/bzip2/archive/refs/tags/bzip2-{version}.tar.gz",
+      "upstream_sha256": "db106b740252669664fd8f3a1c69fe7f689d5cd4b132f82ba82b9afba27627df",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "darwin",
+        "linux",
+        "windows"
+      ],
+      "binaries": [
+        "darwin",
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:bzip:bzip2:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/libarchive/bzip2@bzip2-1.0.8",
+      "license": "BSD License",
+      "author": "Julian Seward",
+      "homepage": "https://github.com/libarchive/bzip2"
+    },
+    {
+      "name": "cJSON",
+      "version": "1.7.18",
+      "revision": "v1.7.18",
+      "source": "upstream",
+      "url": "https://github.com/DaveGamble/cJSON/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "3aa806844a03442c00769b83e99970be70fbef03735ff898f4811dd03b9f5ee5",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "darwin",
+        "linux",
+        "windows"
+      ],
+      "cpe": "cpe:2.3:a:cjson_project:cjson:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/DaveGamble/cJSON@v1.7.18",
+      "license": "MIT License",
+      "author": "Dave Gamble",
+      "homepage": "https://github.com/DaveGamble/cJSON"
+    },
+    {
+      "name": "concurrentqueue",
+      "version": "1.0.4",
+      "revision": "v1.0.4",
+      "source": "upstream",
+      "url": "https://github.com/cameron314/concurrentqueue/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "87fbc9884d60d0d4bf3462c18f4c0ee0a9311d0519341cac7cbd361c885e5281",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "built": false,
+      "cpe": null,
+      "purl": "pkg:github/cameron314/concurrentqueue@v1.0.4",
+      "scan": false,
+      "reason": "no CPE in NVD",
+      "license": "BSD-2-Clause",
+      "author": "Cameron Desrochers",
+      "homepage": "https://github.com/cameron314/concurrentqueue"
+    },
+    {
+      "name": "cpp-httplib",
+      "version": "0.25.0",
+      "revision": "v0.25.0",
+      "source": "upstream",
+      "url": "https://github.com/yhirose/cpp-httplib/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "ac7c59fa72325d4cb9f73af266312d82632ac35a5c4c8a1be620c1f946ec9cea",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "built": false,
+      "cpe": "cpe:2.3:a:yhirose:cpp-httplib:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/yhirose/cpp-httplib@v0.25.0",
+      "license": "MIT License",
+      "author": "yhirose",
+      "homepage": "https://github.com/yhirose/cpp-httplib"
+    },
+    {
+      "name": "cpython",
+      "version": "3.12.14",
+      "revision": "v3.12.14",
+      "source": "upstream",
+      "url": "https://github.com/python/cpython/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "5b8f5847fc28eea401f7415dc367b8365485ee97f068cd1a0cee124a096bb171",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "links": [
+        "bzip2",
+        "cJSON",
+        "curl",
+        "libffi",
+        "libpcre2",
+        "libyaml",
+        "openssl",
+        "sqlite",
+        "zlib"
+      ],
+      "cpe": "cpe:2.3:a:python:python:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/python/cpython@v3.12.14",
+      "license": "PSF-2.0",
+      "author": "Python Software Foundation",
+      "homepage": "https://github.com/python/cpython",
+      "notes": "Built by the cpython job of 5_builderpackage_externals.yml (framework/cpython/compile.sh with framework/cpython/custom/); published as cpython_<arch>.tar.gz."
+    },
+    {
+      "name": "curl",
+      "version": "8.20.0",
+      "revision": "curl-8_20_0",
+      "source": "upstream",
+      "url": "https://curl.se/download/curl-{version}.tar.gz",
+      "upstream_sha256": "fc5819cad3f9f5482669adcdc49a782c15f36d2a0715b395b06d9173593d2dc0",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "darwin",
+        "linux",
+        "windows"
+      ],
+      "links": [
+        "openssl",
+        "zlib"
+      ],
+      "cpe": "cpe:2.3:a:haxx:curl:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/curl/curl@curl-8_20_0",
+      "license": "MIT License",
+      "author": "Daniel Stenberg",
+      "homepage": "https://github.com/curl/curl"
+    },
+    {
+      "name": "date",
+      "version": "3.0.1",
+      "revision": "1ead6715dec030d340a316c927c877a3c4e5a00c",
+      "source": "upstream",
+      "url": "https://github.com/HowardHinnant/date/archive/{revision}.tar.gz",
+      "upstream_sha256": "8b4096b7b49e06d756f4aa0949151863ab7b812679a1646039fab6e821d3c049",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [
+        "date/0001-disable-tz-auto-download.patch"
+      ],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "links": [
+        "curl"
+      ],
+      "cpe": null,
+      "purl": "pkg:github/HowardHinnant/date@1ead6715dec030d340a316c927c877a3c4e5a00c",
+      "scan": false,
+      "reason": "no CPE in NVD",
+      "license": "MIT",
+      "author": "Howard Hinnant",
+      "homepage": "https://github.com/HowardHinnant/date",
+      "notes": "Commit 1ead6715 (48 commits after v3.0.1) with one Wazuh patch: date-tz is built with AUTO_DOWNLOAD=0 HAS_REMOTE_API=1."
+    },
+    {
+      "name": "dbus",
+      "version": "1.14.10",
+      "revision": "dbus-1.14.10",
+      "source": "upstream",
+      "url": "https://dbus.freedesktop.org/releases/dbus/dbus-{version}.tar.xz",
+      "upstream_sha256": "ba1f21d2bd9d339da2d4aa8780c09df32fea87998b73da24f49ab9df1e36a50f",
+      "format": "tar.xz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:freedesktop:dbus:*:*:*:*:*:*:*:*",
+      "purl": "pkg:generic/dbus@1.14.10",
+      "license": "GNU Public License version 2",
+      "author": "freedesktop.org",
+      "homepage": "https://gitlab.freedesktop.org/dbus/dbus"
+    },
+    {
+      "name": "expected-lite",
+      "version": "0.10.0",
+      "revision": "v0.10.0",
+      "source": "upstream",
+      "url": "https://github.com/martinmoene/expected-lite/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "cfe082e4ffedeeedac47763504102646a39c080599c7c1fe99299d6a1f99af92",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "built": false,
+      "prebuilt": false,
+      "cpe": null,
+      "purl": "pkg:github/martinmoene/expected-lite@v0.10.0",
+      "scan": false,
+      "reason": "no CPE in NVD",
+      "license": "BSL-1.0",
+      "author": "Martin Moene",
+      "homepage": "https://github.com/martinmoene/expected-lite"
+    },
+    {
+      "name": "fast_float",
+      "version": "6.1.4",
+      "revision": "v6.1.4",
+      "source": "upstream",
+      "url": "https://github.com/fastfloat/fast_float/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "12cb6d250824160ca16bcb9d51f0ca7693d0d10cb444f34f1093bc02acfce704",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "built": false,
+      "cpe": null,
+      "purl": "pkg:github/fastfloat/fast_float@v6.1.4",
+      "scan": false,
+      "reason": "no CPE in NVD",
+      "license": "Apache-2.0 OR MIT OR BSL-1.0",
+      "author": "Daniel Lemire",
+      "homepage": "https://github.com/fastfloat/fast_float"
+    },
+    {
+      "name": "flatbuffers",
+      "version": "23.5.26",
+      "revision": "v23.5.26",
+      "source": "upstream",
+      "url": "https://github.com/google/flatbuffers/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "1cce06b17cddd896b6d73cc047e36a254fb8df4d7ea18a46acf16c4c0cd3f3f3",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "darwin",
+        "linux",
+        "windows"
+      ],
+      "cpe": "cpe:2.3:a:google:flatbuffers:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/google/flatbuffers@v23.5.26",
+      "license": "Apache 2.0 License",
+      "author": "Google Inc.",
+      "homepage": "https://github.com/google/flatbuffers",
+      "notes": "Tag v23.5.26 as released. The zero_on_float_to_int parser option the published tree carried is unused in 5.x."
+    },
+    {
+      "name": "fmt",
+      "version": "8.1.1",
+      "revision": "8.1.1",
+      "source": "upstream",
+      "url": "https://github.com/fmtlib/fmt/archive/refs/tags/{version}.tar.gz",
+      "upstream_sha256": "3d794d3cf67633b34b2771eb9f073bde87e846e0d395d254df7b211ef1ec7346",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:fmt:fmt:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/fmtlib/fmt@8.1.1",
+      "license": "MIT",
+      "author": "Victor Zverovich",
+      "homepage": "https://github.com/fmtlib/fmt"
+    },
+    {
+      "name": "geo_db",
+      "version": "2026-02-02",
+      "revision": "1770030728",
+      "source": "snapshot",
+      "url": "https://packages.wazuh.com/deps/99-37702/libraries/sources/geo_db.tar.gz",
+      "snapshot_sha256": "ce5fe5d7fa743a16d04ec3472b48eb9c36304dbd17f91a15ab3bacd91bdec423",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "built": false,
+      "cpe": null,
+      "purl": "pkg:generic/geo_db@2026-02-02",
+      "scan": false,
+      "reason": "data, not a library",
+      "license": "CC-BY-SA-4.0",
+      "author": "MaxMind Inc.",
+      "homepage": "https://www.maxmind.com/",
+      "notes": "MaxMind GeoLite2 databases from the CTI export 1770030728 (ASN built 2026-02-02, City 2026-01-30)."
+    },
+    {
+      "name": "googletest",
+      "version": "1.11.0",
+      "revision": "release-1.11.0",
+      "source": "upstream",
+      "url": "https://github.com/google/googletest/archive/refs/tags/release-{version}.tar.gz",
+      "upstream_sha256": "b4870bf121ff7795ba20d20bcdd8627b8e088f2d1dab299a031c1034eddc93d5",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "darwin",
+        "linux",
+        "windows"
+      ],
+      "built": false,
+      "cpe": "cpe:2.3:a:google:google_test:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/google/googletest@release-1.11.0",
+      "license": "3-Clause \"New\" BSD License",
+      "author": "Google Inc.",
+      "homepage": "https://github.com/google/googletest"
+    },
+    {
+      "name": "jemalloc",
+      "version": "5.2.1",
+      "revision": "5.2.1",
+      "source": "upstream",
+      "url": "https://github.com/jemalloc/jemalloc/releases/download/{version}/jemalloc-{version}.tar.bz2",
+      "upstream_sha256": "34330e5ce276099e2e8950d9335db5a875689a4c6a56751ef3b1d8c537f887f6",
+      "format": "tar.bz2",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": null,
+      "purl": "pkg:github/jemalloc/jemalloc@5.2.1",
+      "scan": false,
+      "reason": "no CPE in NVD",
+      "license": "2-Clause \"Simplified\" BSD License",
+      "author": "Jason Evans",
+      "homepage": "https://github.com/jemalloc/jemalloc"
+    },
+    {
+      "name": "jwt-cpp",
+      "version": "0.7.2",
+      "revision": "v0.7.2",
+      "source": "upstream",
+      "url": "https://github.com/Thalhammer/jwt-cpp/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "6e815d86c168eb521a27937d603747dec0ca3c39ffc12d6fa72e2cf78a5b02d2",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "darwin",
+        "linux",
+        "windows"
+      ],
+      "built": false,
+      "prebuilt": false,
+      "cpe": null,
+      "purl": "pkg:github/Thalhammer/jwt-cpp@v0.7.2",
+      "scan": false,
+      "reason": "no CPE in NVD",
+      "license": "MIT License",
+      "author": "Dominik Thalhammer",
+      "homepage": "https://github.com/Thalhammer/jwt-cpp"
+    },
+    {
+      "name": "libbpf-bootstrap",
+      "version": "1.7.0",
+      "revision": "v1.7.0",
+      "source": "upstream",
+      "url": "https://github.com/libbpf/libbpf/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "7ab5feffbf78557f626f2e3e3204788528394494715a30fc2070fcddc2051b7b",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:libbpf_project:libbpf:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/libbpf/libbpf@v1.7.0",
+      "license": "GNU Lesser General Public License version 2.1",
+      "author": "libbpf",
+      "homepage": "https://github.com/libbpf/libbpf",
+      "notes": "Built by packages/externals/ebpf/build_ebpf.sh (LIBBPF_TAG v1.7.0 = f5dcbae7, VMLINUX_H_COMMIT c32912840154a82205530cd6d498b346ac73a6d1). Its pool ref carries only the linux/<arch>/ tarballs, no sources/."
+    },
+    {
+      "name": "libdb",
+      "version": "18.1.40",
+      "revision": "18.1.40",
+      "source": "upstream",
+      "url": "https://github.com/yasuhirokimura/db18/archive/refs/tags/{version}.tar.gz",
+      "upstream_sha256": "f237a63b63c260bcc5fc7ba854c5ba898b5fa2806952da18d9262335de8fb1ae",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:oracle:berkeley_db:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/yasuhirokimura/db18@18.1.40",
+      "license": "Affero GPL v3",
+      "author": "Oracle Corporation",
+      "homepage": "https://github.com/yasuhirokimura/db18"
+    },
+    {
+      "name": "libffi",
+      "version": "3.2.1",
+      "revision": "v3.2.1",
+      "source": "upstream",
+      "url": "https://sourceware.org/pub/libffi/libffi-{version}.tar.gz",
+      "upstream_sha256": "d06ebb8e1d9a22d19e38d63fdb83954253f39bedc5d46232a05645685722ca37",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:libffi_project:libffi:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/libffi/libffi@v3.2.1",
+      "license": "MIT License",
+      "author": "Anthony Green",
+      "homepage": "https://github.com/libffi/libffi"
+    },
+    {
+      "name": "libmaxminddb",
+      "version": "1.9.1",
+      "revision": "1.9.1",
+      "source": "upstream",
+      "url": "https://github.com/maxmind/libmaxminddb/archive/refs/tags/{version}.tar.gz",
+      "upstream_sha256": "6087d5ecb93e5223da7f08067bd8cd97c3b155a6bb99a0c710fc86cf0c3c246b",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:maxmind:libmaxminddb:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/maxmind/libmaxminddb@1.9.1",
+      "license": "Apache-2.0",
+      "author": "MaxMind Inc.",
+      "homepage": "https://github.com/maxmind/libmaxminddb"
+    },
+    {
+      "name": "libpcre2",
+      "version": "10.42",
+      "revision": "pcre2-10.42",
+      "source": "upstream",
+      "url": "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-{version}/pcre2-{version}.tar.gz",
+      "upstream_sha256": "c33b418e3b936ee3153de2c61cc638e7e4fe3156022a5c77d0711bcbb9d64f1f",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "darwin",
+        "linux",
+        "windows"
+      ],
+      "cpe": "cpe:2.3:a:pcre:pcre2:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/PCRE2Project/pcre2@pcre2-10.42",
+      "license": "BSD License",
+      "author": "Philip Hazel",
+      "homepage": "https://github.com/PCRE2Project/pcre2",
+      "notes": "Release 10.42, built with make PROGRAMS= in src/external/CMakeLists.txt (library and headers only, as the published tree did): pcre2posix_test does not link with MinGW."
+    },
+    {
+      "name": "libplist",
+      "version": "2.2.0",
+      "revision": "bf5aeec5005f93f3e5094a0c7df1e63ddf772196",
+      "source": "upstream",
+      "url": "https://github.com/libimobiledevice/libplist/archive/{revision}.tar.gz",
+      "upstream_sha256": "563d4a46d0131e7b81722d15ef371648a8cffd100e78b07fd770c5a74ec28b52",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent"
+      ],
+      "platforms": [
+        "darwin"
+      ],
+      "cpe": "cpe:2.3:a:libimobiledevice:libplist:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/libimobiledevice/libplist@bf5aeec5005f93f3e5094a0c7df1e63ddf772196",
+      "license": "GNU Lesser General Public License version 2.1",
+      "author": "Aaron Burghardt et al.",
+      "homepage": "https://github.com/libimobiledevice/libplist",
+      "notes": "Commit bf5aeec5 (4 commits after 2.2.0), configured with --without-cython in src/external/CMakeLists.txt."
+    },
+    {
+      "name": "libyaml",
+      "version": "0.2.1",
+      "revision": "0.2.1",
+      "source": "upstream",
+      "url": "https://pyyaml.org/download/libyaml/yaml-{version}.tar.gz",
+      "upstream_sha256": "78281145641a080fb32d6e7a87b9c0664d611dcb4d542e90baf731f51cbb59cd",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "darwin",
+        "linux",
+        "windows"
+      ],
+      "cpe": "cpe:2.3:a:pyyaml:libyaml:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/yaml/libyaml@0.2.1",
+      "license": "MIT License",
+      "author": "Kirill Simonov",
+      "homepage": "https://github.com/yaml/libyaml",
+      "notes": "Release tarball 0.2.1, which ships configure. The published tree was commit 01f3a878 with the same code, whose build files still declared 0.1.7; yaml_get_version_string() now reports 0.2.1."
+    },
+    {
+      "name": "llhttp",
+      "version": "9.4.2",
+      "revision": "release/v9.4.2",
+      "source": "upstream",
+      "url": "https://github.com/nodejs/llhttp/archive/refs/tags/release/v{version}.tar.gz",
+      "upstream_sha256": "ba717a2f99f340a0ee9796aaf2b1acca057e1e37682ffd2bc4def4d3b6bc4005",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:llhttp:llhttp:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/nodejs/llhttp@release%2Fv9.4.2",
+      "license": "MIT",
+      "author": "Fedor Indutny",
+      "homepage": "https://github.com/nodejs/llhttp"
+    },
+    {
+      "name": "lua",
+      "version": "5.4.8",
+      "revision": "v5.4.8",
+      "source": "upstream",
+      "url": "https://github.com/lua/lua/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "d85b70a65f43c5d2254944d58d625e822c8e2e10d9c6a3bd9b5b657e46376a19",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:lua:lua:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/lua/lua@v5.4.8",
+      "license": "MIT License",
+      "author": "PUC-Rio",
+      "homepage": "https://github.com/lua/lua",
+      "notes": "Tag v5.4.8, built in src/external/CMakeLists.txt with an explicit CFLAGS that drops -march=native from its makefile."
+    },
+    {
+      "name": "nlohmann",
+      "version": "3.11.2",
+      "revision": "v3.11.2",
+      "source": "upstream",
+      "url": "https://github.com/nlohmann/json/releases/download/v{version}/json.hpp",
+      "upstream_sha256": "665fa14b8af3837966949e8eb0052d583e2ac105d3438baba9951785512cf921",
+      "format": "file",
+      "strip": 0,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "darwin",
+        "linux",
+        "windows"
+      ],
+      "built": false,
+      "cpe": "cpe:2.3:a:nlohmann:json:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/nlohmann/json@v3.11.2",
+      "license": "MIT License",
+      "author": "Niels Lohmann",
+      "homepage": "https://github.com/nlohmann/json"
+    },
+    {
+      "name": "openssl",
+      "version": "3.6.2",
+      "revision": "openssl-3.6.2",
+      "source": "upstream",
+      "url": "https://www.openssl.org/source/openssl-{version}.tar.gz",
+      "upstream_sha256": "aaf51a1fe064384f811daeaeb4ec4dce7340ec8bd893027eee676af31e83a04f",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "darwin",
+        "linux",
+        "windows"
+      ],
+      "cpe": "cpe:2.3:a:openssl:openssl:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/openssl/openssl@openssl-3.6.2",
+      "license": "Apache 2.0 License",
+      "author": "OpenSSL Software Foundation",
+      "homepage": "https://github.com/openssl/openssl"
+    },
+    {
+      "name": "popt",
+      "version": "1.18",
+      "revision": "popt-1.18-release",
+      "source": "upstream",
+      "url": "https://ftp.osuosl.org/pub/rpm/popt/releases/popt-1.x/popt-{version}.tar.gz",
+      "upstream_sha256": "5159bc03a20b28ce363aa96765f37df99ea4d8850b1ece17d1e6ad5c24fdc5d1",
+      "format": "tar.gz",
+      "strip": 1,
+      "overlay": "popt",
+      "patches": [],
+      "targets": [
+        "agent"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:popt_project:popt:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/rpm-software-management/popt@popt-1.18-release",
+      "license": "MIT License",
+      "author": "Jeff Johnson & Erik Troan",
+      "homepage": "https://github.com/rpm-software-management/popt",
+      "notes": "Release tarball 1.18 with a Wazuh CMakeLists.txt (overlay) that runs its configure."
+    },
+    {
+      "name": "procps",
+      "version": "3.2.8",
+      "revision": "procps-3.2.8",
+      "source": "upstream",
+      "url": "https://archive.debian.org/debian/pool/main/p/procps/procps_{version}.orig.tar.gz",
+      "upstream_sha256": "11ed68d8a4433b91cd833deb714a3aa849c02aea738c42e6b4557982419c1535",
+      "format": "tar.gz",
+      "strip": 1,
+      "subdir": "proc",
+      "patches": [
+        "procps/0001-wazuh-libproc-fixes.patch"
+      ],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:procps_project:procps:*:*:*:*:*:*:*:*",
+      "purl": "pkg:generic/procps@3.2.8",
+      "license": "GNU Lesser General Public License",
+      "author": "Brian Edmonds et al.",
+      "homepage": "https://gitlab.com/procps-ng/procps",
+      "notes": "libprocps: proc/ of the procps-3.2.8 release tarball (procps-ng has no 3.2.x tags), with one Wazuh patch (constructor priorities and checked reads, #9743)."
+    },
+    {
+      "name": "protobuf",
+      "version": "3.21.12",
+      "revision": "v3.21.12",
+      "source": "upstream",
+      "url": "https://github.com/protocolbuffers/protobuf/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "930c2c3b5ecc6c9c12615cf5ad93f1cd6e12d0aba862b572e076259970ac3a53",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:google:protobuf:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/protocolbuffers/protobuf@v3.21.12",
+      "license": "BSD-3-Clause",
+      "author": "Google Inc.",
+      "homepage": "https://github.com/protocolbuffers/protobuf"
+    },
+    {
+      "name": "pugixml",
+      "version": "1.15",
+      "revision": "v1.15",
+      "source": "upstream",
+      "url": "https://github.com/zeux/pugixml/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "b39647064d9e28297a34278bfb897092bf33b7c487906ddfc094c9e8868bddcb",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:pugixml_project:pugixml:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/zeux/pugixml@v1.15",
+      "license": "MIT",
+      "author": "Arseny Kapoulkine",
+      "homepage": "https://github.com/zeux/pugixml"
+    },
+    {
+      "name": "rapidjson",
+      "version": "1.1.0",
+      "revision": "a95e013b97ca6523f32da23f5095fcc9dd6067e5",
+      "source": "upstream",
+      "url": "https://github.com/Tencent/rapidjson/archive/{revision}.tar.gz",
+      "upstream_sha256": "558683755fc99c3dc7930f679b9f617af9d03dc600b7a79f6314ecf4cea18aac",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "darwin",
+        "linux",
+        "windows"
+      ],
+      "built": false,
+      "cpe": "cpe:2.3:a:tencent:rapidjson:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/Tencent/rapidjson@a95e013b97ca6523f32da23f5095fcc9dd6067e5",
+      "license": "MIT",
+      "author": "Tencent and Milo Yip",
+      "homepage": "https://github.com/Tencent/rapidjson",
+      "notes": "master at a95e013b, 731 commits after v1.1.0; the CVE-2024-38517 fix (8269bc2) is included."
+    },
+    {
+      "name": "re2",
+      "version": "2024-06-01",
+      "revision": "2024-06-01",
+      "source": "upstream",
+      "url": "https://github.com/google/re2/archive/refs/tags/{version}.tar.gz",
+      "upstream_sha256": "7326c74cddaa90b12090fcfc915fe7b4655723893c960ee3c2c66e85c5504b6c",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "links": [
+        "abseil-cpp"
+      ],
+      "cpe": null,
+      "purl": "pkg:github/google/re2@2024-06-01",
+      "scan": false,
+      "reason": "no CPE in NVD",
+      "license": "BSD-3-Clause",
+      "author": "The RE2 Authors",
+      "homepage": "https://github.com/google/re2"
+    },
+    {
+      "name": "restinio",
+      "version": "0.7.10",
+      "revision": "v0.7.10",
+      "source": "upstream",
+      "url": "https://github.com/Stiffstream/restinio/releases/download/v{version}/restinio-{version}.tar.bz2",
+      "upstream_sha256": "15d60b0c96012a911e67226c4ffb50db4eea90a51e503315c17cb978f9a73d20",
+      "format": "tar.bz2",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "built": false,
+      "prebuilt": false,
+      "cpe": null,
+      "purl": "pkg:github/Stiffstream/restinio@v0.7.10",
+      "scan": false,
+      "reason": "no CPE in NVD",
+      "license": "BSD-3-Clause",
+      "author": "Stiffstream",
+      "homepage": "https://github.com/Stiffstream/restinio"
+    },
+    {
+      "name": "rocksdb",
+      "version": "8.3.2",
+      "revision": "v8.3.2",
+      "source": "upstream",
+      "url": "https://github.com/facebook/rocksdb/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "b55d6da6f562eb79bad7fdc9c368efc9ea4bfa239e69cead37923fc845a43fba",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "links": [
+        "bzip2"
+      ],
+      "cpe": null,
+      "purl": "pkg:github/facebook/rocksdb@v8.3.2",
+      "scan": false,
+      "reason": "no CPE in NVD",
+      "license": "Apache 2.0 License",
+      "author": "Facebook Inc.",
+      "homepage": "https://github.com/facebook/rocksdb"
+    },
+    {
+      "name": "rpm",
+      "version": "4.20.1",
+      "revision": "rpm-4.20.1-release",
+      "source": "upstream",
+      "url": "https://github.com/rpm-software-management/rpm/archive/refs/tags/rpm-{version}-release.tar.gz",
+      "upstream_sha256": "f3e0139f70acb69c977b8ff2baeb828d61dbd680a33b2f5e51552eda65034d80",
+      "format": "tar.gz",
+      "strip": 1,
+      "overlay": "rpm",
+      "patches": [
+        "rpm/0001-ndb-harden-integer-overflows.patch"
+      ],
+      "targets": [
+        "agent"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "links": [
+        "lua",
+        "openssl",
+        "popt",
+        "sqlite",
+        "zlib"
+      ],
+      "cpe": "cpe:2.3:a:rpm:rpm:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/rpm-software-management/rpm@rpm-4.20.1-release",
+      "license": "GNU Public License version 2",
+      "author": "Marc Ewing & Erik Troan",
+      "homepage": "https://github.com/rpm-software-management/rpm",
+      "notes": "rpm-4.20.1-release with a Wazuh CMakeLists.txt (overlay) that trims optional dependencies, plus upstream commit f85845c26cc8 backported to the ndb backend."
+    },
+    {
+      "name": "simdjson",
+      "version": "3.13.0",
+      "revision": "v3.13.0",
+      "source": "upstream",
+      "url": "https://github.com/simdjson/simdjson/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "07a1bb3587aac18fd6a10a83fe4ab09f1100ab39f0cb73baea1317826b9f9e0d",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:simdjson_project:simdjson:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/simdjson/simdjson@v3.13.0",
+      "license": "Apache License 2.0",
+      "author": "Daniel Lemire",
+      "homepage": "https://github.com/simdjson/simdjson"
+    },
+    {
+      "name": "spdlog",
+      "version": "1.14.1",
+      "revision": "v1.14.1",
+      "source": "upstream",
+      "url": "https://github.com/gabime/spdlog/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "1586508029a7d0670dfcb2d97575dcdc242d3868a259742b69f100801ab4e16b",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:gabime:spdlog:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/gabime/spdlog@v1.14.1",
+      "license": "MIT",
+      "author": "Gabi Melman",
+      "homepage": "https://github.com/gabime/spdlog"
+    },
+    {
+      "name": "sqlite",
+      "version": "3.53.1",
+      "revision": "version-3.53.1",
+      "source": "upstream",
+      "url": "https://www.sqlite.org/2026/sqlite-autoconf-{version_concat}.tar.gz",
+      "upstream_sha256": "83e6b2020a034e9a7ad4a72feea59e1ad52f162e09cbd26735a3ffb98359fc4f",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "darwin",
+        "linux",
+        "windows"
+      ],
+      "cpe": "cpe:2.3:a:sqlite:sqlite:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/sqlite/sqlite@version-3.53.1",
+      "license": "Public Domain (no restrictions)",
+      "author": "D. Richard Hipp",
+      "homepage": "https://github.com/sqlite/sqlite"
+    },
+    {
+      "name": "taskflow",
+      "version": "3.7.0",
+      "revision": "v3.7.0",
+      "source": "upstream",
+      "url": "https://github.com/taskflow/taskflow/archive/refs/tags/v{version}.tar.gz",
+      "upstream_sha256": "788b88093fb3788329ebbf7c7ee05d1f8960d974985a301798df01e77e04233b",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "built": false,
+      "cpe": null,
+      "purl": "pkg:github/taskflow/taskflow@v3.7.0",
+      "scan": false,
+      "reason": "no CPE in NVD",
+      "license": "MIT",
+      "author": "Tsung-Wei Huang",
+      "homepage": "https://github.com/taskflow/taskflow"
+    },
+    {
+      "name": "tzdata",
+      "version": "2026a",
+      "revision": "2026a",
+      "source": "upstream",
+      "url": "https://data.iana.org/time-zones/releases/tzdata{version}.tar.gz",
+      "upstream_sha256": "77b541725937bb53bd92bd484c0b43bec8545e2d3431ee01f04ef8f2203ba2b7",
+      "format": "tar.gz",
+      "strip": 0,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "built": false,
+      "cpe": null,
+      "purl": "pkg:generic/tzdata@2026a",
+      "scan": false,
+      "reason": "no CPE in NVD",
+      "license": "LicenseRef-public-domain",
+      "author": "IANA",
+      "homepage": "https://www.iana.org/time-zones"
+    },
+    {
+      "name": "yaml-cpp",
+      "version": "0.8.0",
+      "revision": "0.8.0",
+      "source": "upstream",
+      "url": "https://github.com/jbeder/yaml-cpp/archive/refs/tags/{version}.tar.gz",
+      "upstream_sha256": "fbe74bbdcee21d656715688706da3c8becfd946d92cd44705cc6098bb23b3a16",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "manager"
+      ],
+      "platforms": [
+        "linux"
+      ],
+      "cpe": "cpe:2.3:a:yaml-cpp_project:yaml-cpp:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/jbeder/yaml-cpp@0.8.0",
+      "license": "MIT",
+      "author": "Jesse Beder",
+      "homepage": "https://github.com/jbeder/yaml-cpp"
+    },
+    {
+      "name": "zlib",
+      "version": "1.3.1",
+      "revision": "v1.3.1",
+      "source": "upstream",
+      "url": "https://github.com/madler/zlib/releases/download/v{version}/zlib-{version}.tar.gz",
+      "upstream_sha256": "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "darwin",
+        "linux",
+        "windows"
+      ],
+      "cpe": "cpe:2.3:a:zlib:zlib:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/madler/zlib@v1.3.1",
+      "license": "zlib/libpng License",
+      "author": "Jean-loup Gailly & Mark Adler",
+      "homepage": "https://github.com/madler/zlib"
+    },
+    {
+      "name": "zstd",
+      "version": "1.5.7",
+      "revision": "v1.5.7",
+      "source": "upstream",
+      "url": "https://github.com/facebook/zstd/releases/download/v{version}/zstd-{version}.tar.gz",
+      "upstream_sha256": "eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3",
+      "format": "tar.gz",
+      "strip": 1,
+      "patches": [],
+      "targets": [
+        "agent",
+        "manager"
+      ],
+      "platforms": [
+        "darwin",
+        "linux",
+        "windows"
+      ],
+      "prebuilt": false,
+      "cpe": "cpe:2.3:a:facebook:zstandard:*:*:*:*:*:*:*:*",
+      "purl": "pkg:github/facebook/zstd@v1.5.7",
+      "license": "BSD-3-Clause OR GPL-2.0-only",
+      "author": "Meta Platforms Inc.",
+      "homepage": "https://github.com/facebook/zstd"
+    }
+  ]
+}

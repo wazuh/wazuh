@@ -1,78 +1,106 @@
-run-name: External deps - ${{ inputs.dependencies && format('{0}', inputs.dependencies) || '(no version overrides)' }}
 name: 5.X - Package - Build external dependencies
 
-# Rebuilds Wazuh's external dependencies across every (system, architecture)
-# leg we ship. Each runner uploads a per-leg .tar.gz laid out in the S3
-# layout expected by `make deps` (libraries/<os>/<arch>/<dep>.tar.gz plus
-# libraries/sources/<dep>.tar.gz). The `consolidate` job then merges every
-# per-leg tarball into a single externals-all.tar.gz ready for upload to
-# packages.wazuh.com/deps/<version>/ — use that artifact, not a hand-merge
-# of the per-leg ones, since on Linux the agent and manager legs overlap.
+# Builds the pool refs of src/deps.lock.mk that packages.wazuh.com/deps/pool/ does
+# not have yet, tests them and publishes them. A ref is <name>/<version>-<key>,
+# where the key hashes everything that decides its bytes (`deps.py key` prints
+# it), so a change to the inventory, a patch, the build recipe or a builder image
+# gives new refs, and only those are built:
 #
-# A deps release is whole-or-nothing: every consumer platform needs its
-# leg in the published tarball, so the matrix is fixed and runs all 5
-# supported legs every time:
-#   - 2 Linux Docker legs:  rpm-amd64, rpm-arm64 (rpm is the oldest common
-#                           denominator — its glibc is forward-compatible
-#                           with deb, so we don't build deb separately)
-#   - 2 macOS native legs:  macos-intel64, macos-arm64
-#   - 1 Windows leg:        windows-i686 (MinGW cross-compile inside the
-#                                         compile_windows_agent image —
-#                                         ubuntu:22.04 with mingw pre-baked,
-#                                         the same image used by the official
-#                                         windows agent build)
-# macOS and Windows are agent-only (no manager binaries exist for them).
-# To re-run a single broken leg, use Actions' "Re-run failed jobs" rather
-# than reintroducing a per-leg dispatch input.
+#   check        the lock is the one the inventory generates; `deps.py plan` lists the
+#                entries whose ref is not published
+#   build        the build legs, building only those entries (DEPS_BUILD); make deps
+#                takes the others from the pool
+#   build-ebpf   libbpf-bootstrap, when its ref is new
+#   consolidate  one pool tree with a manifest.json per new ref (consolidate.sh)
+#   cpython      the embedded Python of each Linux architecture, linked against the
+#                pool tree of this run (framework/cpython/compile.sh)
+#   pool         consolidate + cpython: the pool-new artifact
+#   smoke        agent, manager and windows agent builds against pool-new + the pool
+#   publish      pool-new to s3://<bucket>/deps/pool/, with the approval of the
+#                deps-publish environment; disabled until the DEPS_POOL_PUBLISH
+#                repository variable is 'true'
+#   verify       every published ref, through packages.wazuh.com
 #
-# Each Linux leg always runs twice — once with the agent builder image and
-# once with the manager builder image. The agent image is the oldest common
-# denominator (centos:6 / wheezy era, glibc 2.12), so any binary produced
-# there runs everywhere we ship; the manager image (centos:7, glibc 2.17)
-# can build deps the agent image's older toolchain can't handle. Both legs
-# pack everything they built; the `consolidate` job decides which copy of
-# each dep ships, straight from the build output (see that job below):
-# a compiled binary beats a source-only snapshot, and where both legs
-# compiled a dep the agent copy wins on glibc compatibility. Sources are
-# identical across legs.
+# Builder images are pulled by the digest of packages/externals/builder-images.json,
+# which is part of the keys; macOS builds use the Xcode pinned there.
 #
-# libbpf-bootstrap is built apart by the `build-ebpf` job, which cross-compiles
-# it for every Linux arch on one ubuntu-24.04 runner; `consolidate` ships that
-# copy under libraries/linux/<arch>/.
+# Build legs: rpm amd64/arm64 with the agent image (centos:6, glibc 2.12, whose
+# binaries run everywhere) and with the manager image (centos:7, for what the
+# agent toolchain cannot build); macOS intel64/arm64 natively; windows i686
+# cross-compiled in compile_windows_agent. Where two legs compiled the same
+# dependency, consolidate.sh keeps the agent copy. To re-run a broken leg, use
+# "Re-run failed jobs".
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    # Every path that goes into a pool key (`deps.py key-paths`, kept in sync by a test).
+    paths:
+      - "framework/.python-version"
+      - "framework/cpython/compile.sh"
+      - "framework/cpython/custom/**"
+      - "framework/requirements.txt"
+      - "packages/externals/build_external.sh"
+      - "packages/externals/builder-images.json"
+      - "packages/externals/consolidate.sh"
+      - "packages/externals/dependencies.json"
+      - "packages/externals/ebpf/build_ebpf.sh"
+      - "packages/externals/generate_external.sh"
+      - "packages/externals/overlay/**"
+      - "packages/externals/patches/**"
+      - "src/CMakeLists.txt"
+      - "src/Makefile"
+      - "src/deps.lock.mk"
+      - "src/external/CMakeLists.txt"
+      - "src/syscheckd/src/ebpf/src/modern.bpf.c"
+      - ".github/workflows/5_builderpackage_externals.yml"
   workflow_dispatch:
-    inputs:
-      dependencies:
-        description: |
-          Semicolon-separated list of deps to update, in "name:version" form.
-          Example: "curl:8.13.0;openssl:3.5.2".
-          Empty = rebuild all deps from currently vendored sources without
-          replacing any.
-        type: string
-        required: false
-        default: ""
-      docker_image_tag:
-        description: |
-          GHCR builder image tag. "auto" derives it from VERSION.json,
-          "developer" uses the branch name. Otherwise a literal tag.
-        type: string
-        default: "auto"
-        required: false
+
+permissions:
+  contents: read
 
 jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      missing: ${{ steps.plan.outputs.missing }}
+      legs: ${{ steps.plan.outputs.legs }}
+      ebpf: ${{ steps.plan.outputs.ebpf }}
+      cpython: ${{ steps.plan.outputs.cpython }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the lock
+        run: python3 packages/externals/deps.py lock --check
+
+      - name: Plan the refs to build
+        id: plan
+        run: |
+          set -euo pipefail
+          missing="$(python3 packages/externals/deps.py plan)"
+          echo "refs to build: ${missing:-none}"
+          # cpython and libbpf-bootstrap have their own jobs; the legs build the rest.
+          rest=" ${missing} "
+          for name in cpython libbpf-bootstrap; do rest="${rest// ${name} / }"; done
+          has() { [[ " ${missing} " == *" $1 "* ]] && echo true || echo false; }
+          {
+            echo "missing=${missing}"
+            echo "legs=$([ -n "${rest// /}" ] && echo true || echo false)"
+            echo "ebpf=$(has libbpf-bootstrap)"
+            echo "cpython=$(has cpython)"
+          } >> "${GITHUB_OUTPUT}"
+
   build-externals:
+    needs: check
+    if: needs.check.outputs.legs == 'true'
     permissions:
       contents: read
-      packages: write
+      packages: read
       id-token: write
     strategy:
       fail-fast: false
       matrix:
-        # Linux legs run twice (agent image + manager image); macOS and
-        # Windows have no manager builder image so they run agent-only.
-        # windows-i686 is MinGW cross-compile inside the compile_windows_agent
-        # container on the Linux amd64 runner — see "Resolve image tag" below.
         include:
           - { system: rpm,     architecture: amd64,   runner: wz-linux-amd64, leg: rpm-amd64,     target: agent }
           - { system: rpm,     architecture: arm64,   runner: wz-linux-arm64, leg: rpm-arm64,     target: agent }
@@ -88,56 +116,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Resolve image tag
-        if: matrix.system == 'rpm' || matrix.system == 'windows'
+      - name: Pull the pinned builder image
+        if: matrix.system != 'macos'
+        env:
+          GHCR_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}
         run: |
-          VERSION="$(grep '"version"' "${GITHUB_WORKSPACE}/VERSION.json" | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
-          if [ "${{ inputs.docker_image_tag }}" = "auto" ]; then
-            echo "TAG=${VERSION}" >> "${GITHUB_ENV}"
-          elif [ "${{ inputs.docker_image_tag }}" = "developer" ]; then
-            echo "TAG=$(sed 's|[/\\]|--|g' <<< "${{ github.ref_name }}")" >> "${GITHUB_ENV}"
-          else
-            echo "TAG=${{ inputs.docker_image_tag }}" >> "${GITHUB_ENV}"
-          fi
-          # rpm legs use one builder image per (system, target, arch). The
-          # windows leg uses compile_windows_agent — the same ubuntu:22.04 +
-          # MinGW image 5_builderpackage_agent-windows.yml builds the agent
-          # in, so the host glibc the externals link against matches what
-          # downstream windows agent consumers see.
           if [ "${{ matrix.system }}" = "windows" ]; then
-            echo "CONTAINER_NAME=compile_windows_agent" >> "${GITHUB_ENV}"
+            bash packages/externals/pull_builder_image.sh compile_windows_agent windows agent
           else
-            echo "CONTAINER_NAME=pkg_${{ matrix.system }}_${{ matrix.target }}_builder_${{ matrix.architecture }}" >> "${GITHUB_ENV}"
+            bash packages/externals/pull_builder_image.sh "pkg_${{ matrix.system }}_${{ matrix.target }}_builder_${{ matrix.architecture }}" \
+              linux "${{ matrix.target }}" "${{ matrix.architecture }}"
           fi
 
-      - name: Pull builder image from GHCR
-        if: matrix.system == 'rpm' || matrix.system == 'windows'
-        timeout-minutes: 20
-        run: |
-          bash "${GITHUB_WORKSPACE}/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh" \
-            "${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}" "${{ github.actor }}" "${CONTAINER_NAME}" "${TAG}"
-
-      - name: Install build tools (macOS leg)
+      - name: Install build tools and select the pinned Xcode (macOS leg)
         if: matrix.system == 'macos'
         # gnu-tar provides `gtar`. The system /usr/bin/tar (BSD) rejects
-        # --owner/--group/--no-same-owner, which we use to keep the packed
-        # tarballs reproducible across runners.
-        run: brew install bash automake gnu-tar
+        # --owner/--group/--no-same-owner, which keep the packed tarballs
+        # reproducible across runners.
+        run: |
+          brew install bash automake gnu-tar
+          xcode="$(python3 packages/externals/deps.py builder-image darwin xcode)"
+          sudo xcode-select -s "/Applications/Xcode_${xcode}.app"
+          xcodebuild -version
 
       - name: Build externals
         timeout-minutes: 60
         working-directory: packages
+        env:
+          DEPS_BUILD: ${{ needs.check.outputs.missing }}
         run: |
-          # nproc is Linux-only; macOS runners use sysctl. The scripts also
-          # have this fallback internally, but compute JOBS here so it shows
-          # in the workflow log for diagnosis.
           jobs="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
           bash externals/generate_external.sh \
             --system "${{ matrix.system }}" \
             --architecture "${{ matrix.architecture }}" \
             --target "${{ matrix.target }}" \
-            --tag "${TAG:-}" \
-            --dependencies "${{ inputs.dependencies }}" \
+            --tag "${BUILDER_TAG:-}" \
             --jobs "${jobs}" \
             --verbose
 
@@ -145,7 +158,7 @@ jobs:
         if: always()
         run: |
           ls -lh packages/output_externals/externals-*.tar.gz 2>/dev/null || echo "no per-leg tarball produced"
-          ls -la packages/output_externals/libraries/ 2>/dev/null || echo "no libraries/ tree"
+          find packages/output_externals/pool -name '*.tar.gz' 2>/dev/null || echo "no pool/ tree"
 
       - name: Upload per-leg tarball
         if: always()
@@ -158,6 +171,8 @@ jobs:
           aws_region: ${{ secrets.CI_AWS_REGION }}
 
   build-ebpf:
+    needs: check
+    if: needs.check.outputs.ebpf == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -178,6 +193,17 @@ jobs:
       - name: Build libbpf-bootstrap
         run: bash packages/externals/ebpf/build_ebpf.sh
 
+      # Recorded in the manifests by consolidate.sh, like the toolchain of the legs.
+      - name: Record the toolchain
+        run: |
+          {
+            echo "leg: build-ebpf"
+            echo "runner image: ${ImageOS:-} ${ImageVersion:-}"
+            echo "clang-20: $(clang-20 --version | head -n1)"
+            echo "zig: $(zig version)"
+            dpkg-query -W -f='${Package} ${Version}\n' libelf-dev zlib1g-dev
+          } > output/toolchain.txt
+
       - name: Upload libbpf-bootstrap tarballs
         uses: ./.github/actions/upload_s3_artifact
         with:
@@ -188,128 +214,36 @@ jobs:
           aws_region: ${{ secrets.CI_AWS_REGION }}
 
   consolidate:
-    # Merge every per-leg tarball into a single libraries/ tree shaped
-    # like the packages.wazuh.com/deps/<version>/ layout: sources/ holds
-    # the union of upstream blobs (byte-identical across legs, so any
-    # leg's copy works), linux/<arch>/ holds the Linux binaries, darwin/<arch>/
-    # holds the macOS leg binaries, and windows/ holds the MinGW leg
-    # binaries. Output is a single externals-all.tar.gz the user can
-    # extract straight into S3.
-    #
-    # On Linux the agent and manager legs both build the agent dep set, so
-    # their per-leg tarballs overlap. The merge picks a winner per dep from
-    # the build output itself — no dep lists — so changing a dependency
-    # never needs a workflow change.
-    needs: [build-externals, build-ebpf]
+    # Merge the legs and the libbpf-bootstrap build into one pool tree with the
+    # manifest.json of every ref in it (consolidate.sh). Output: externals-all.
+    needs: [check, build-externals, build-ebpf]
+    if: >-
+      always() && needs.check.result == 'success' &&
+      (needs.check.outputs.legs == 'true' || needs.check.outputs.ebpf == 'true') &&
+      !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-24.04
     permissions:
       id-token: write
       contents: read
     timeout-minutes: 30
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Download all per-leg tarballs
+        if: needs.check.outputs.legs == 'true'
         uses: ./.github/actions/download_package
         with:
           build_run_id: ${{ github.run_id }}
           producer_workflow: 5_builderpackage_externals
-          name_regexp: 'externals-.*'
+          name_regexp: 'externals-(rpm|deb|macos|windows)-.*'
           path: per-leg
           extract_into_name_subdir: 'true'
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
 
-      - name: Merge into single libraries/ tree
-        run: |
-          set -euo pipefail
-          mkdir -p consolidated/libraries staging
-
-          # Unpack each per-leg artifact into its own staging dir so copies
-          # of the same dep can be compared across legs before one is chosen.
-          for art_dir in per-leg/*/; do
-            art_name="$(basename "${art_dir}")"   # e.g. externals-rpm-amd64-agent
-            # download_package (extract_into_name_subdir) preserves the artifact's
-            # inner path, so the tarball sits under packages/output_externals/ within
-            # the per-artifact dir rather than at its root; find it wherever it landed.
-            leg_tar="$(find "${art_dir}" -name 'externals-*.tar.gz' | head -n1)"
-            mkdir -p "staging/${art_name}"
-            echo "unpacking ${leg_tar}"
-            tar -xzf "${leg_tar}" -C "staging/${art_name}"
-          done
-
-          # True when a packed <dep>.tar.gz actually carries compiled output
-          # (a static or shared library) rather than just a source snapshot.
-          # `tar` is read fully into a variable first rather than piped into
-          # `grep -q`: under `set -o pipefail`, grep -q closing the pipe early
-          # makes tar exit on SIGPIPE and the whole pipeline reports failure,
-          # so the piped form returns false even when the artifact IS present.
-          has_compiled_artifact() {
-            local listing
-            listing="$(tar -tzf "$1" 2>/dev/null)" || return 1
-            grep -qE '\.(a|so|lib)([.0-9]+)?$' <<<"${listing}"
-          }
-
-          # Should an incoming <dep>.tar.gz replace what's already placed?
-          # Precedence, highest first:
-          #   1. a compiled copy beats a source-only copy — this is what
-          #      keeps a server-only dep the agent leg couldn't build
-          #      (rocksdb, lzma: gated by `if(NOT IS_AGENT ...)` in
-          #      src/external/CMakeLists.txt) coming from the manager leg.
-          #   2. between two compiled copies the agent leg wins — its
-          #      centos:6 / glibc-2.12 binaries link in every Wazuh builder
-          #      image; the manager's centos:7 / glibc-2.17 ones do not.
-          # Output-driven only: no dependency names appear here.
-          should_replace() {
-            local incoming="$1" existing="$2" incoming_is_agent="$3"
-            [ -f "${existing}" ] || return 0
-            has_compiled_artifact "${incoming}" || return 1
-            has_compiled_artifact "${existing}" || return 0
-            [ "${incoming_is_agent}" = "yes" ]
-          }
-
-          # Process manager legs first, then agent legs, so an agent copy is
-          # the last writer and can take the intersection per rule 2 above.
-          ordered_legs="$( (ls -d staging/*/ | grep -- '-manager/$' || true);
-                            (ls -d staging/*/ | grep -v -- '-manager/$' || true) )"
-
-          for leg_dir in ${ordered_legs}; do
-            case "${leg_dir}" in
-              *-agent/) is_agent=yes ;;
-              *)        is_agent=no  ;;
-            esac
-            [ -d "${leg_dir}libraries" ] || continue
-            while IFS= read -r src_file; do
-              rel="${src_file#${leg_dir}libraries/}"
-              dst="consolidated/libraries/${rel}"
-              mkdir -p "$(dirname "${dst}")"
-              case "${rel}" in
-                sources/*)
-                  # byte-identical across legs; first writer wins
-                  [ -f "${dst}" ] || cp "${src_file}" "${dst}"
-                  ;;
-                *)
-                  if should_replace "${src_file}" "${dst}" "${is_agent}"; then
-                    cp "${src_file}" "${dst}"
-                  fi
-                  ;;
-              esac
-            done < <(find "${leg_dir}libraries" -type f -name '*.tar.gz')
-          done
-
-          echo "---"
-          echo "consolidated libraries/ tree layout:"
-          find consolidated/libraries -maxdepth 2 -type d | sort
-          echo "---"
-          echo "per-subtree dep counts:"
-          for d in consolidated/libraries/*/ consolidated/libraries/*/*/; do
-            n="$(find "${d}" -maxdepth 1 -name '*.tar.gz' | wc -l | xargs)"
-            [ "${n}" -gt 0 ] && echo "  ${d}  ${n} tarballs"
-          done
-
       - name: Download libbpf-bootstrap tarballs
+        if: needs.check.outputs.ebpf == 'true'
         uses: ./.github/actions/download_s3_artifact
         with:
           name: libbpf-bootstrap
@@ -318,16 +252,12 @@ jobs:
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
 
-      - name: Place libbpf-bootstrap tarballs
-        # Replaces the copy the Linux legs re-ship from the current deps release.
-        run: |
-          cp -rv libbpf-bootstrap/. consolidated/libraries/linux/
+      - name: Merge the legs into one pool tree and write the manifests
+        run: bash packages/externals/consolidate.sh per-leg libbpf-bootstrap consolidated "${{ github.event.pull_request.head.sha || github.sha }}" "${{ github.run_id }}"
 
       - name: Pack consolidated tarball
         run: |
-          tar -czf externals-all.tar.gz \
-              --owner=0 --group=0 --no-same-owner \
-              -C consolidated libraries
+          tar -czf externals-all.tar.gz --owner=0 --group=0 --no-same-owner -C consolidated pool toolchain
           ls -lh externals-all.tar.gz
 
       - name: Upload consolidated tarball
@@ -339,16 +269,13 @@ jobs:
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
 
-  smoke-build:
-    # Sanity check: build the agent and the manager from source against the
-    # dependency tree we just consolidated, to confirm the binaries actually
-    # link. No package is produced — this runs `make deps` (pointed at the
-    # local tree, not packages.wazuh.com) then the plain `make` build inside
-    # the same builder images build-externals uses. The full build log is
-    # uploaded for human review; the analysis step only flags the obvious
-    # signal (a dep that got recompiled from source instead of being consumed
-    # as a precompiled archive means its binary was packed at the wrong path).
-    needs: consolidate
+  cpython:
+    # The embedded Python and its wheels, built against the refs of this run
+    # (externals-all) and the published pool; its own ref is left out of make deps.
+    needs: [check, build-externals, build-ebpf, consolidate]
+    if: >-
+      always() && needs.check.outputs.cpython == 'true' &&
+      !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     permissions:
       contents: read
       packages: read
@@ -356,20 +283,170 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # `image` is the builder image to consume the consolidated deps inside.
-        # For agent/manager that's the same rpm builder build-externals used;
-        # for winagent it's compile_windows_agent (ubuntu:22.04) so the windows
-        # binaries shipped in libraries/windows/ are exercised against the same
-        # glibc baseline the downstream windows agent build sees. Without this,
-        # a host-side tool packed in the windows externals (e.g. flatbuffers'
-        # `flatc`) that was built on a newer glibc than the consumer slips
-        # through the smoke check.
         include:
-          - { architecture: amd64, runner: wz-linux-amd64, target: agent,    image: pkg_rpm_agent_builder_amd64 }
-          - { architecture: amd64, runner: wz-linux-amd64, target: manager,  image: pkg_rpm_manager_builder_amd64 }
-          - { architecture: arm64, runner: wz-linux-arm64, target: agent,    image: pkg_rpm_agent_builder_arm64 }
-          - { architecture: arm64, runner: wz-linux-arm64, target: manager,  image: pkg_rpm_manager_builder_arm64 }
-          - { architecture: i686,  runner: wz-linux-amd64, target: winagent, image: compile_windows_agent }
+          - { architecture: amd64, runner: wz-linux-amd64, archive: x86_64, platform: linux/amd64 }
+          - { architecture: arm64, runner: wz-linux-arm64, archive: arm64,  platform: linux/aarch64 }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    name: Build cpython (${{ matrix.architecture }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pull the pinned builder image
+        env:
+          GHCR_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}
+        run: bash packages/externals/pull_builder_image.sh "pkg_rpm_manager_builder_${{ matrix.architecture }}" linux manager "${{ matrix.architecture }}"
+
+      - name: Download the refs built by this run
+        if: needs.consolidate.result == 'success'
+        uses: ./.github/actions/download_s3_artifact
+        with:
+          name: externals-all
+          path: ${{ runner.temp }}/consolidated
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Lay out the dependencies of the manager
+        run: |
+          set -euo pipefail
+          local_pool=()
+          if [ -f "${RUNNER_TEMP}/consolidated/externals-all.tar.gz" ]; then
+            tar -xzf "${RUNNER_TEMP}/consolidated/externals-all.tar.gz" -C "${RUNNER_TEMP}/consolidated"
+            local_pool=(--local "${RUNNER_TEMP}/consolidated/pool")
+          fi
+          python3 packages/externals/deps.py mirror "${local_pool[@]}" --target manager \
+            --platform "${{ matrix.platform }}" --without cpython --dest "${RUNNER_TEMP}/deps/pool"
+
+      - name: Build cpython
+        timeout-minutes: 75
+        run: |
+          mkdir -p "${RUNNER_TEMP}/cpython-output"
+          docker run --rm \
+            -e ARCH="${{ matrix.archive }}" \
+            -e DEPS_POOL_URL="file:///deps/pool" \
+            -v "${GITHUB_WORKSPACE}:/wazuh_host" \
+            -v "${RUNNER_TEMP}/deps:/deps:ro" \
+            -v "${RUNNER_TEMP}/cpython-output:/output" \
+            --entrypoint bash "pkg_rpm_manager_builder_${{ matrix.architecture }}:${BUILDER_TAG}" \
+            /wazuh_host/framework/cpython/compile.sh --build-cpython --build-deps
+
+      - name: Lay out the cpython ref
+        run: |
+          set -euo pipefail
+          ref="$(sed -n 's/^DEP_REF_cpython := //p' src/deps.lock.mk)"
+          out="${RUNNER_TEMP}/cpython-out"
+          mkdir -p "${out}/pool/${ref}/sources" "${out}/pool/${ref}/${{ matrix.platform }}" "${out}/toolchain"
+          cp "${RUNNER_TEMP}/cpython-output/cpython_${{ matrix.archive }}.tar.gz" "${out}/pool/${ref}/sources/"
+          cp "${RUNNER_TEMP}/cpython-output/cpython.tar.gz" "${out}/pool/${ref}/${{ matrix.platform }}/"
+          cp "${RUNNER_TEMP}/cpython-output/toolchain.txt" "${out}/toolchain/cpython-${{ matrix.architecture }}.txt"
+          tar -czf "cpython-${{ matrix.architecture }}.tar.gz" --owner=0 --group=0 --no-same-owner -C "${out}" pool toolchain
+          ls -lh "cpython-${{ matrix.architecture }}.tar.gz"
+
+      - name: Upload the cpython ref
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: cpython-${{ matrix.architecture }}
+          path: cpython-${{ matrix.architecture }}.tar.gz
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+  pool:
+    # Every ref this run built, with its manifest.json: what smoke tests and publish uploads.
+    needs: [check, build-externals, build-ebpf, consolidate, cpython]
+    if: >-
+      always() && needs.check.result == 'success' && needs.check.outputs.missing != '' &&
+      !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the consolidated refs
+        if: needs.consolidate.result == 'success'
+        uses: ./.github/actions/download_s3_artifact
+        with:
+          name: externals-all
+          path: downloaded
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Download the amd64 cpython ref
+        if: needs.cpython.result == 'success'
+        uses: ./.github/actions/download_s3_artifact
+        with:
+          name: cpython-amd64
+          path: downloaded
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Download the arm64 cpython ref
+        if: needs.cpython.result == 'success'
+        uses: ./.github/actions/download_s3_artifact
+        with:
+          name: cpython-arm64
+          path: downloaded
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Merge and write the cpython manifest
+        run: |
+          set -euo pipefail
+          mkdir -p pool-new/pool pool-new/toolchain cpython-toolchain
+          find downloaded -name 'externals-all.tar.gz' -exec tar -xzf {} -C pool-new \;
+          while IFS= read -r tarball; do
+            tar -xzf "${tarball}" -C pool-new
+            tar -xzf "${tarball}" -C cpython-toolchain --strip-components=1 toolchain
+          done < <(find downloaded -name 'cpython-*.tar.gz' | sort)
+          if [ "${{ needs.cpython.result }}" = "success" ]; then
+            python3 packages/externals/deps.py manifest --pool pool-new/pool --only cpython \
+              --platforms linux/amd64,linux/aarch64 --toolchain cpython-toolchain \
+              --wazuh-commit "${{ github.event.pull_request.head.sha || github.sha }}" --workflow-run "${{ github.run_id }}"
+          fi
+          echo "pool refs:"
+          (cd pool-new/pool && find . -name manifest.json | sed 's|^\./||; s|/manifest.json$||' | sort)
+          tar -czf pool-new.tar.gz --owner=0 --group=0 --no-same-owner -C pool-new pool toolchain
+          ls -lh pool-new.tar.gz
+
+      - name: Upload the new refs
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: pool-new
+          path: pool-new.tar.gz
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+  smoke-build:
+    # Build the agent and the manager against pool-new and the published pool
+    # inside the pinned builder images, to confirm the new refs link. No package
+    # is produced. The windows agent build runs in compile_windows_agent so the
+    # host-side tools shipped under windows/ (flatbuffers' flatc) run on the
+    # glibc the windows agent build sees. The log is uploaded; the analysis step
+    # flags a dependency recompiled from source, the sign of a binary packed at
+    # the wrong path.
+    needs: [check, pool]
+    if: always() && needs.pool.result == 'success'
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { architecture: amd64, runner: wz-linux-amd64, target: agent,    image: pkg_rpm_agent_builder_amd64,   platform: linux/amd64 }
+          - { architecture: amd64, runner: wz-linux-amd64, target: manager,  image: pkg_rpm_manager_builder_amd64, platform: linux/amd64 }
+          - { architecture: arm64, runner: wz-linux-arm64, target: agent,    image: pkg_rpm_agent_builder_arm64,   platform: linux/aarch64 }
+          - { architecture: arm64, runner: wz-linux-arm64, target: manager,  image: pkg_rpm_manager_builder_arm64, platform: linux/aarch64 }
+          - { architecture: i686,  runner: wz-linux-amd64, target: winagent, image: compile_windows_agent,         platform: windows }
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     name: Smoke build (${{ matrix.target }}-${{ matrix.architecture }})
@@ -377,59 +454,49 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Resolve image tag
+      - name: Pull the pinned builder image
+        env:
+          GHCR_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}
         run: |
-          VERSION="$(grep '"version"' "${GITHUB_WORKSPACE}/VERSION.json" | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
-          if [ "${{ inputs.docker_image_tag }}" = "auto" ]; then
-            echo "TAG=${VERSION}" >> "${GITHUB_ENV}"
-          elif [ "${{ inputs.docker_image_tag }}" = "developer" ]; then
-            echo "TAG=$(sed 's|[/\\]|--|g' <<< "${{ github.ref_name }}")" >> "${GITHUB_ENV}"
-          else
-            echo "TAG=${{ inputs.docker_image_tag }}" >> "${GITHUB_ENV}"
-          fi
-          echo "CONTAINER_NAME=${{ matrix.image }}" >> "${GITHUB_ENV}"
+          case "${{ matrix.target }}" in
+            winagent) bash packages/externals/pull_builder_image.sh "${{ matrix.image }}" windows agent ;;
+            *)        bash packages/externals/pull_builder_image.sh "${{ matrix.image }}" linux "${{ matrix.target }}" "${{ matrix.architecture }}" ;;
+          esac
 
-      - name: Pull builder image from GHCR
-        timeout-minutes: 20
-        run: |
-          bash "${GITHUB_WORKSPACE}/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh" \
-            "${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}" "${{ github.actor }}" "${CONTAINER_NAME}" "${TAG}"
-
-      - name: Download consolidated dependency tree
+      - name: Download the new refs
         uses: ./.github/actions/download_s3_artifact
         with:
-          name: externals-all
+          name: pool-new
           path: consolidated-deps
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
 
-      - name: Build ${{ matrix.target }} against consolidated deps
+      - name: Build ${{ matrix.target }} against the new refs
         timeout-minutes: 75
         run: |
           set -o pipefail
           mkdir -p smoke-logs
           log="smoke-logs/smoke-build-${{ matrix.target }}-${{ matrix.architecture }}.log"
 
-          # externals-all artifact holds externals-all.tar.gz -> libraries/.
-          # Extract it so smoke_build.sh can point `make deps` at libraries/.
-          tar -xzf consolidated-deps/externals-all.tar.gz -C consolidated-deps
-          rm -f consolidated-deps/externals-all.tar.gz
+          # The builder images have no python3, so the tree is laid out here.
+          tar -xzf consolidated-deps/pool-new.tar.gz -C consolidated-deps
+          rm -f consolidated-deps/pool-new.tar.gz
+          python3 packages/externals/deps.py mirror --local consolidated-deps/pool \
+            --target "${{ matrix.target }}" --platform "${{ matrix.platform }}" --dest smoke-deps/pool
 
           jobs="$(nproc 2>/dev/null || echo 2)"
-          # Same mount layout as generate_external.sh: working tree at
-          # /wazuh-local-src (rw — the build writes into src/external/ and
-          # src/build/). The consolidated tree lives inside the workspace so
-          # it is visible in the container without a second mount.
+          # The working tree is mounted read-write: the build writes into
+          # src/external/ and src/build/. smoke-deps/ is inside it.
           docker run --rm -t \
             -v "${GITHUB_WORKSPACE}:/wazuh-local-src:Z" \
             -e BUILD_TARGET="${{ matrix.target }}" \
             -e ARCHITECTURE_TARGET="${{ matrix.architecture }}" \
-            -e DEPS_DIR="/wazuh-local-src/consolidated-deps" \
+            -e DEPS_DIR="/wazuh-local-src/smoke-deps" \
             -e JOBS="${jobs}" \
             -e WAZUH_VERBOSE="yes" \
             --entrypoint /bin/bash \
-            "${CONTAINER_NAME}:${TAG}" \
+            "${{ matrix.image }}:${BUILDER_TAG}" \
             /wazuh-local-src/packages/externals/smoke_build.sh 2>&1 | tee "${log}"
 
       - name: Analyze dependency usage
@@ -458,8 +525,7 @@ jobs:
           #    ext_<dep>.dir/. (wazuhext is Wazuh's own aggregation lib, not a
           #    dep — its target is `wazuhext`, never `ext_<name>`, so the
           #    \bext_ word boundary below does not match it.)
-          # For a build against a complete consolidated tree both should be
-          # empty.
+          # Both should be empty, except for the entries the pool only has as sources.
           ep="$(grep -nE "(Performing build step for|Creating directories for) '[^']+_external'" "${log}" || true)"
           pb="$(grep -nE 'Building (C|CXX) object .*\bext_[a-z0-9_]+\.dir/' "${log}" || true)"
           if [ -n "${ep}${pb}" ]; then
@@ -483,3 +549,69 @@ jobs:
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
+
+  publish:
+    # Whoever approves the deps-publish environment reviews the whole diff of the
+    # PR, this file included, at the SHA being published. Publishing is
+    # idempotent per ref (publish_pool.sh), so runs queue instead of cancelling.
+    needs: [check, pool, smoke-build]
+    if: vars.DEPS_POOL_PUBLISH == 'true'
+    runs-on: ubuntu-24.04
+    environment: deps-publish
+    concurrency:
+      group: deps-pool-publish
+      cancel-in-progress: false
+    permissions:
+      id-token: write
+      contents: read
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the new refs
+        uses: ./.github/actions/download_s3_artifact
+        with:
+          name: pool-new
+          path: pool-new
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Check every file against its manifest
+        run: |
+          tar -xzf pool-new/pool-new.tar.gz -C pool-new
+          python3 packages/externals/deps.py verify --local pool-new/pool --pool "file://${PWD}/pool-new/pool"
+
+      # Assumed after the downloads: from here on only the publishing role is in use.
+      - name: Assume the publishing role
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.DEPS_POOL_ROLE_ARN }}
+          aws-region: ${{ vars.DEPS_POOL_REGION || 'us-west-1' }}
+
+      - name: Publish the new refs
+        run: bash packages/externals/publish_pool.sh pool-new/pool "${{ secrets.DEPS_POOL_BUCKET }}"
+
+  verify:
+    needs: publish
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the new refs
+        uses: ./.github/actions/download_s3_artifact
+        with:
+          name: pool-new
+          path: pool-new
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Verify the published refs through packages.wazuh.com
+        run: |
+          tar -xzf pool-new/pool-new.tar.gz -C pool-new
+          python3 packages/externals/deps.py verify --local pool-new/pool

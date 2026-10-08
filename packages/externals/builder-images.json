@@ -1,0 +1,19 @@
+{
+  "linux": {
+    "agent": {
+      "amd64": "ghcr.io/wazuh/pkg_rpm_agent_builder_amd64@sha256:fce4a9def964dd6fdbba226e5bd3d3f0e391d3f33a8071d24acda15bfbf42e8b",
+      "arm64": "ghcr.io/wazuh/pkg_rpm_agent_builder_arm64@sha256:eaf65cbd4a23a76ba4dd681f8bb06180e55f0cc6333632839f4844c48f2a7876"
+    },
+    "manager": {
+      "amd64": "ghcr.io/wazuh/pkg_rpm_manager_builder_amd64@sha256:93201971c60ded2391200421aca3bf6ac9397c4c9ec5dd019cd0e0400db04b08",
+      "arm64": "ghcr.io/wazuh/pkg_rpm_manager_builder_arm64@sha256:b968297ba294e94b24c3986120064ee3dde5c36fd4b88406a16bd6fe8cede63a"
+    }
+  },
+  "windows": {
+    "agent": "ghcr.io/wazuh/compile_windows_agent@sha256:ab69c887305132dac8253239e1af28385744bbfbae796080593e7935a114f998"
+  },
+  "darwin": {
+    "runners": ["macos-14", "macos-14-large"],
+    "xcode": "15.4"
+  }
+}

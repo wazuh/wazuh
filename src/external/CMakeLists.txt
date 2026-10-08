@@ -394,7 +394,8 @@ else()
     pcre2_external
     SOURCE_DIR ${EXTERNAL_DIR}/libpcre2
     CONFIGURE_COMMAND ${PCRE2_CONFIGURE_CMD}
-    BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
+    # Library and headers only: pcre2posix_test and the tools do not link with MinGW.
+    BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} PROGRAMS=
     COMMAND ${CMAKE_COMMAND} -E make_directory ${EXTERNAL_DIR}/libpcre2/include
     COMMAND ${CMAKE_COMMAND} -E copy ${EXTERNAL_DIR}/libpcre2/src/pcre2.h
             ${EXTERNAL_DIR}/libpcre2/include/pcre2.h
@@ -490,7 +491,7 @@ if(IS_DARWIN)
       libplist_external
       SOURCE_DIR ${EXTERNAL_DIR}/libplist
       CONFIGURE_COMMAND ${EXTERNAL_DIR}/libplist/autogen.sh
-                        --prefix=${EXTERNAL_DIR}/libplist/bin
+                        --prefix=${EXTERNAL_DIR}/libplist/bin --without-cython
       BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
       INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
       BUILD_IN_SOURCE TRUE
@@ -575,8 +576,11 @@ if(IS_LINUX AND IS_AGENT)
       lua_external
       SOURCE_DIR ${EXTERNAL_DIR}/lua
       CONFIGURE_COMMAND ""
-      BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} all "MYCFLAGS=-fPIC -DLUA_USE_LINUX"
-                    "MYLIBS=-lm -ldl"
+      # Upstream CFLAGS without -march=native, so the library runs on any CPU of the target architecture.
+      BUILD_COMMAND
+        ${CMAKE_MAKE_PROGRAM} all
+        "CFLAGS=-Wall -O2 -fPIC -DLUA_USE_LINUX -fno-stack-protector -fno-common"
+        "MYLIBS=-lm -ldl"
       BUILD_IN_SOURCE TRUE
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS ${EXTERNAL_DIR}/lua/liblua.a)
