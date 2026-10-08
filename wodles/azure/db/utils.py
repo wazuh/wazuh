@@ -10,6 +10,7 @@ import sys
 from datetime import datetime
 from hashlib import md5
 from os.path import abspath, dirname
+from typing import Optional
 
 from dateutil.parser import parse
 
@@ -112,3 +113,80 @@ def create_new_row(table: orm.Base, md5_hash: str, query: str, offset: str) -> o
         logging.error(f'Error inserting row object into {table.__tablename__}: {e}')
         sys.exit(1)
     return item
+
+
+def get_processed_bytes(md5_hash: str, container: str, blob: str, creation_time: str) -> Optional[int]:
+    """Get the number of bytes already processed from a blob.
+
+    Parameters
+    ----------
+    md5_hash : str
+        md5 value of the storage account name.
+    container : str
+        Name of the container holding the blob.
+    blob : str
+        Name of the blob.
+    creation_time : str
+        Creation time of the blob.
+
+    Returns
+    -------
+    Optional[int]
+        The number of bytes processed, 0 if the blob was created again after storing its offset, or None if the blob
+        has no offset stored.
+    """
+    try:
+        row = orm.get_blob_offset(md5=md5_hash, container=container, blob=blob)
+    except orm.AzureORMError as e:
+        logging.error(f'Error trying to obtain the offset of blob "{blob}" from {orm.StorageBlobOffset.__tablename__}: {e}')
+        sys.exit(1)
+    if row is None:
+        return None
+    return row.processed_bytes if row.creation_time == creation_time else 0
+
+
+def save_processed_bytes(md5_hash: str, container: str, blob: str, creation_time: str, processed_bytes: int):
+    """Store the number of bytes already processed from a blob.
+
+    Parameters
+    ----------
+    md5_hash : str
+        md5 value of the storage account name.
+    container : str
+        Name of the container holding the blob.
+    blob : str
+        Name of the blob.
+    creation_time : str
+        Creation time of the blob.
+    processed_bytes : int
+        Number of bytes processed.
+    """
+    logging.debug(f'Storing {processed_bytes} processed bytes for blob "{blob}" of container "{container}"')
+    try:
+        orm.set_blob_offset(
+            md5=md5_hash, container=container, blob=blob, creation_time=creation_time, processed_bytes=processed_bytes
+        )
+    except orm.AzureORMError as e:
+        logging.error(f'Error storing the offset of blob "{blob}" into {orm.StorageBlobOffset.__tablename__}: {e}')
+        sys.exit(1)
+
+
+def remove_stale_offsets(md5_hash: str, container: str, prefix: Optional[str], keep: set):
+    """Remove the offsets of the blobs under the prefix that are no longer in the container.
+
+    Parameters
+    ----------
+    md5_hash : str
+        md5 value of the storage account name.
+    container : str
+        Name of the container holding the blobs.
+    prefix : Optional[str]
+        Only offsets of blobs whose name starts with this prefix are considered.
+    keep : set
+        Names of the blobs present in the container.
+    """
+    try:
+        orm.delete_blob_offsets(md5=md5_hash, container=container, prefix=prefix, keep=keep)
+    except orm.AzureORMError as e:
+        logging.error(f'Error removing stale offsets from {orm.StorageBlobOffset.__tablename__}: {e}')
+        sys.exit(1)

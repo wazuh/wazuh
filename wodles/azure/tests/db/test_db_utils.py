@@ -16,7 +16,13 @@ sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 
 from azure_utils import DATETIME_MASK
 from db import orm
-from db.utils import create_new_row, update_row_object
+from db.utils import (
+    create_new_row,
+    get_processed_bytes,
+    remove_stale_offsets,
+    save_processed_bytes,
+    update_row_object,
+)
 
 PAST_DATE = '2022-01-01T12:00:00.000000Z'
 PRESENT_DATE = '2022-06-15T12:00:00.000000Z'
@@ -107,5 +113,53 @@ def test_create_new_row_ko(mock_add_row, mock_logging):
             query='query',
             offset=None,
         )
+    assert err.value.code == 1
+    mock_logging.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    'row, expected',
+    [
+        (None, None),
+        (MagicMock(creation_time='t1', processed_bytes=10), 10),
+        # The blob was created again after storing its offset
+        (MagicMock(creation_time='t0', processed_bytes=10), 0),
+    ],
+)
+@patch('db.orm.get_blob_offset')
+def test_get_processed_bytes(mock_get, row, expected):
+    """Test get_processed_bytes returns the stored offset only if it belongs to the same blob."""
+    mock_get.return_value = row
+    assert get_processed_bytes(md5_hash='hash', container='container', blob='blob', creation_time='t1') == expected
+    mock_get.assert_called_with(md5='hash', container='container', blob='blob')
+
+
+@patch('db.orm.delete_blob_offsets')
+@patch('db.orm.set_blob_offset')
+def test_save_and_remove_offsets(mock_set, mock_delete):
+    """Test the blob offset functions invoke the ORM functionality with the given values."""
+    save_processed_bytes(md5_hash='hash', container='container', blob='blob', creation_time='t1', processed_bytes=20)
+    mock_set.assert_called_with(md5='hash', container='container', blob='blob', creation_time='t1', processed_bytes=20)
+
+    remove_stale_offsets(md5_hash='hash', container='container', prefix='prefix', keep={'blob'})
+    mock_delete.assert_called_with(md5='hash', container='container', prefix='prefix', keep={'blob'})
+
+
+@pytest.mark.parametrize(
+    'function, args',
+    [
+        (get_processed_bytes, ('hash', 'container', 'blob', 't1')),
+        (save_processed_bytes, ('hash', 'container', 'blob', 't1', 1)),
+        (remove_stale_offsets, ('hash', 'container', None, set())),
+    ],
+)
+@patch('azure_utils.logging.error')
+@patch('db.orm.delete_blob_offsets', side_effect=orm.AzureORMError)
+@patch('db.orm.set_blob_offset', side_effect=orm.AzureORMError)
+@patch('db.orm.get_blob_offset', side_effect=orm.AzureORMError)
+def test_blob_offset_functions_ko(mock_get, mock_set, mock_delete, mock_logging, function, args):
+    """Test the blob offset functions handle ORM errors as expected."""
+    with pytest.raises(SystemExit) as err:
+        function(*args)
     assert err.value.code == 1
     mock_logging.assert_called_once()
