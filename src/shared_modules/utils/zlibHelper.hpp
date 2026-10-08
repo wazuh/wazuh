@@ -237,7 +237,7 @@ namespace Utils
 
                 // Check for possible Zip Slip vulnerability.
                 const auto outputFilepath {(outputDir / std::string(filename)).lexically_normal()};
-                if (!Utils::startsWith(outputFilepath, outputDir))
+                if (!Utils::startsWith(outputFilepath.string(), outputDir.string()))
                 {
                     throw std::runtime_error {"A potentially insecure path was found: " + outputFilepath.string()};
                 }
