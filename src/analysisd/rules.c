@@ -1930,7 +1930,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
             if (add_result == RULE_TREE_LIMIT_REACHED) {
                 smerror(log_msg, RL_TREE_NODE_LIMIT, config_ruleinfo->sigid, rulefile, build->node_count,
-                        build->node_limit);
+                        build->rule_node_count, build->node_limit);
 
                 /* Nodes already inserted for this rule point to its RuleInfo:
                  * it is released with the rule tree, not here.

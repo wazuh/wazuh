@@ -329,7 +329,7 @@
                         "It may lead to false positives. Exiting. "
 #define RL_REGEX_SYNTAX "(5107): Syntax error on tag '%s' in rule %d"
 #define RL_TREE_NODE_LIMIT  "(5108): Rule '%d' in '%s' exceeds the rule tree node limit " \
-                            "(%zu nodes allocated, limit %zu). Ruleset loading aborted."
+                            "(%zu nodes in the tree, %zu added by this rule, limit %zu). Ruleset loading aborted."
 #define RL_TREE_NODE_THRESHOLDS "(5109): Invalid rule tree thresholds: 'analysisd.rule_tree_node_warning' (%d) " \
                                 "must be lower than 'analysisd.rule_tree_node_limit' (%d)."
 
