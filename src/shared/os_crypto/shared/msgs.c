@@ -316,18 +316,26 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     unsigned int msg_global = 0;
     unsigned int msg_local = 0;
     char *f_msg;
+    crypt_method method;
 
     w_mutex_lock(&keys->keyentries[id]->mutex);
+
+    /* The "#AES" prefix travels in clear, so it only selects the cipher for
+     * this message. The manager records it on the key entry (used to encrypt
+     * the replies) once the message has been decrypted and authenticated. */
+#ifdef CLIENT
+    method = keys->keyentries[id]->crypto_method;
+#endif
 
     if(strncmp(buffer, "#AES", 4)==0){
         buffer+=4;
         #ifndef CLIENT
-            keys->keyentries[id]->crypto_method = W_METH_AES;
+            method = W_METH_AES;
         #endif
     }
     else{
         #ifndef CLIENT
-            keys->keyentries[id]->crypto_method = W_METH_BLOWFISH;
+            method = W_METH_BLOWFISH;
         #endif
     }
 
@@ -340,7 +348,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     }
 
     /* Decrypt message */
-    switch((crypt_method)keys->keyentries[id]->crypto_method){
+    switch(method){
         case W_METH_BLOWFISH:
             if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
                         buffer_size, OS_DECRYPT)) {
@@ -438,6 +446,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
                 rcv_count = 0;
             }
             rcv_count++;
+            keys->keyentries[id]->crypto_method = method;
             w_mutex_unlock(&keys->keyentries[id]->mutex);
             *output = f_msg;
             return KS_VALID;
@@ -458,6 +467,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
                 rcv_count = 0;
             }
             rcv_count++;
+            keys->keyentries[id]->crypto_method = method;
             w_mutex_unlock(&keys->keyentries[id]->mutex);
             *output = f_msg;
             return KS_VALID;
@@ -520,6 +530,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
                 f_msg++;
                 *final_size = buffer_size - (f_msg - cleartext);
                 *output = f_msg;
+                keys->keyentries[id]->crypto_method = method;
                 w_mutex_unlock(&keys->keyentries[id]->mutex);
                 return KS_VALID;
             } else {
@@ -541,6 +552,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
                 f_msg++;
                 *final_size = buffer_size - (f_msg - cleartext);
                 *output = f_msg;
+                keys->keyentries[id]->crypto_method = method;
                 w_mutex_unlock(&keys->keyentries[id]->mutex);
                 return KS_VALID;
             } else {
