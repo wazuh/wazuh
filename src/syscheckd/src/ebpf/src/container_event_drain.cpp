@@ -134,6 +134,19 @@ struct ContainerEventDrain::Impl
     std::uint64_t cursor_epoch{0};
     std::uint64_t cursor_seq{0};
 
+    /* Previous values of the counters that record work being shed.
+     *
+     * Every bound on this path -- the per-container path budget, the container
+     * budget, the unknown-cgroup set, the kernel ring -- escalates or discards
+     * SILENTLY. The counters were already collected and thread-safe, and nothing
+     * ever read them: a container that recorded a quarter of its file changes
+     * looked exactly like one that recorded all of them. Diffed once per
+     * resolver pass so a steady state stays quiet and movement gets one line. */
+    StagingStats    last_staging{};
+    RouterStats     last_router{};
+    CgroupMapStats  last_map{};
+    bool            stats_primed{false};
+
     /* Woken by container_instances when its container list changes. Unbound is
      * a supported state, not a failure: fd() is then -1 and the resolver falls
      * back to its interval, which is what it did before this existed. */
@@ -250,6 +263,75 @@ struct ContainerEventDrain::Impl
                      "accounting, so lost events cannot be attributed to a container. "
                      "Falling back to re-baselining every container on any loss.");
         }
+
+        /* The successful path logged nothing, so the only visible drop message
+         * was the one saying drops could not be attributed. Events lost while
+         * accounting worked perfectly were invisible. */
+        if (reported > 0)
+        {
+            LogWarn("Container eBPF drain: the kernel dropped events for " + std::to_string(reported) +
+                    " container(s) since the last check; each is being re-baselined, so its file state "
+                    "stays correct but the individual changes are gone.");
+        }
+    }
+
+    /* One line when work is being shed, nothing while the numbers hold still. */
+    void reportShedWork()
+    {
+        const auto st = staging.stats();
+        const auto rt = router.stats();
+        const auto mp = map.stats();
+
+        if (!stats_primed)
+        {
+            last_staging = st;
+            last_router = rt;
+            last_map = mp;
+            stats_primed = true;
+            return;
+        }
+
+        const auto moved = [](unsigned long long now, unsigned long long before) -> unsigned long long
+        {
+            return (now > before) ? (now - before) : 0ULL;
+        };
+
+        const auto pathOverflows = moved(st.path_overflows, last_staging.path_overflows);
+        const auto containerOverflows = moved(st.unknown_overflows, last_staging.unknown_overflows);
+        const auto dropEscalations = moved(st.drop_escalations, last_staging.drop_escalations);
+        const auto unattributed = moved(rt.unattributed, last_router.unattributed);
+        const auto globalEscalations = moved(rt.global_escalations, last_router.global_escalations);
+        const auto mapOverflows = moved(mp.unknown_overflows, last_map.unknown_overflows);
+        const auto negativeResets = moved(mp.negative_cache_resets, last_map.negative_cache_resets);
+
+        last_staging = st;
+        last_router = rt;
+        last_map = mp;
+
+        if ((pathOverflows | containerOverflows | dropEscalations | unattributed | globalEscalations |
+             mapOverflows | negativeResets) == 0ULL)
+        {
+            return;
+        }
+
+        std::string line = "Container eBPF drain: shedding work -";
+        const auto add = [&line](const char* what, unsigned long long n)
+        {
+            if (n > 0)
+            {
+                line += " " + std::string{what} + "=" + std::to_string(n);
+            }
+        };
+        add("containers_over_path_budget", pathOverflows);
+        add("containers_over_budget", containerOverflows);
+        add("escalated_on_loss", dropEscalations);
+        add("events_unattributed", unattributed);
+        add("full_rewalks", globalEscalations);
+        add("unknown_cgroups_dropped", mapOverflows);
+        add("negative_cache_resets", negativeResets);
+        line += ". Affected containers are re-walked, so their recorded state stays correct, but the "
+                "individual changes in between are not reported.";
+        LogWarn(line);
     }
 
     void resolverLoop()
@@ -263,6 +345,7 @@ struct ContainerEventDrain::Impl
             if (now >= next_list)
             {
                 refreshContainerList();
+                reportShedWork();
                 next_list = now + std::chrono::milliseconds(config.resolver_interval_ms);
             }
 
