@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import contextlib
 import fcntl
 import hashlib
 import json
@@ -10,7 +11,6 @@ import jwt
 import logging
 import os
 import time
-from concurrent.futures import ThreadPoolExecutor
 from typing import Union
 
 from cryptography.exceptions import UnsupportedAlgorithm
@@ -21,6 +21,7 @@ from connexion.exceptions import Unauthorized
 import api.configuration as conf
 import wazuh.core.utils as core_utils
 import wazuh.rbac.utils as rbac_utils
+from api.api_exception import MaxRequestsException
 from api.constants import SECURITY_CONFIG_PATH
 from api.constants import SECURITY_PATH
 from api.util import raise_if_exc
@@ -34,7 +35,69 @@ from wazuh.core.decorators import dapi_allower
 
 INVALID_TOKEN = "Invalid token"
 EXPIRED_TOKEN = "Token expired"
-pool = ThreadPoolExecutor(max_workers=1)
+
+# Password checks a login may wait for, per check allowed to run, before further logins are refused.
+LOGIN_PENDING_PER_SLOT = 8
+
+
+class LoginGate:
+    """Bound the password checks this API process has in flight.
+
+    A password check costs a scrypt derivation (~80 ms) in the `authentication_pool`, which also
+    validates the token of every authenticated request. Left unbounded, a burst of failed logins
+    from addresses the per-IP lockout cannot group queues enough derivations ahead of those token
+    checks to time every authenticated request out. At most `slots` checks run at once, so with a
+    pool of two or more workers one is always left for token checks, and once `max_pending` logins
+    are running or waiting, a further one is refused before it costs anything.
+
+    Parameters
+    ----------
+    slots : int
+        Password checks allowed to run at once.
+    max_pending : int
+        Password checks allowed to run or wait at once.
+    """
+
+    def __init__(self, slots: int, max_pending: int):
+        self._slots = asyncio.Semaphore(slots)
+        self._max_pending = max_pending
+        self._pending = 0
+
+    @contextlib.asynccontextmanager
+    async def admit(self):
+        """Hold a password-check slot for the duration of the block.
+
+        Raises
+        ------
+        MaxRequestsException
+            If `max_pending` password checks are already running or waiting (6006).
+        """
+        if self._pending >= self._max_pending:
+            raise MaxRequestsException(code=6006)
+        self._pending += 1
+        try:
+            async with self._slots:
+                yield
+        finally:
+            self._pending -= 1
+
+
+_login_gate = None
+
+
+def get_login_gate() -> LoginGate:
+    """Return this process's `LoginGate`, sized from `authentication_pool_size` on first use.
+
+    Returns
+    -------
+    LoginGate
+        The gate every password check goes through.
+    """
+    global _login_gate
+    if _login_gate is None:
+        slots = max(1, conf.api_conf['authentication_pool_size'] - 1)
+        _login_gate = LoginGate(slots=slots, max_pending=slots * LOGIN_PENDING_PER_SLOT)
+    return _login_gate
 
 
 @dapi_allower()
@@ -62,10 +125,12 @@ def check_user_master(user: str, password: str) -> dict:
     return {'result': False}
 
 
-def check_user(user: str, password: str, required_scopes=None) -> Union[dict, None]:
+async def check_user(user: str, password: str, required_scopes=None) -> Union[dict, None]:
     """Validate a username-password pair.
 
-    Convenience method to use in OpenAPI specification.
+    Convenience method to use in OpenAPI specification. connexion calls it on the event loop, so it
+    awaits the check rather than waiting for it: a blocking wait here froze every other request for
+    as long as the password check, and its queue in the `authentication_pool`, took.
 
     Parameters
     ----------
@@ -74,23 +139,29 @@ def check_user(user: str, password: str, required_scopes=None) -> Union[dict, No
     password : str
         User password.
 
+    Raises
+    ------
+    MaxRequestsException
+        If too many password checks are already running or waiting (see `LoginGate`).
+
     Returns
     -------
     dict or None
         Dictionary with the username, its status and the time the credential check started or None.
     """
-    # Taken before the stored hash is read, and used as the issue time of the token this login
-    # gets, so the token is ordered against user token rules by when its credentials were checked
-    # rather than by when it was signed.
-    auth_time_ms = int(core_utils.get_utc_now().timestamp() * 1000)
-    dapi = DistributedAPI(f=check_user_master,
-                          f_kwargs={'user': user, 'password': password},
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=False,
-                          logger=logging.getLogger('wazuh-api')
-                          )
-    data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
+    async with get_login_gate().admit():
+        # Taken before the stored hash is read, and used as the issue time of the token this login
+        # gets, so the token is ordered against user token rules by when its credentials were
+        # checked rather than by when it was signed.
+        auth_time_ms = int(core_utils.get_utc_now().timestamp() * 1000)
+        dapi = DistributedAPI(f=check_user_master,
+                              f_kwargs={'user': user, 'password': password},
+                              request_type='local_master',
+                              is_async=False,
+                              wait_for_complete=False,
+                              logger=logging.getLogger('wazuh-api')
+                              )
+        data = raise_if_exc(await dapi.distribute_function())
 
     if data['result']:
         return {'sub': user, 'active': True, 'auth_time_ms': auth_time_ms}
@@ -502,7 +573,8 @@ def get_security_conf() -> dict:
     return conf.security_conf
 
 
-def generate_token(issued_at_ms: int, user_id: str = None, data: dict = None, auth_context: dict = None) -> str:
+async def generate_token(issued_at_ms: int, user_id: str = None, data: dict = None,
+                         auth_context: dict = None) -> str:
     """Generate an encoded JWT token. This method should be called once a user is properly logged on.
 
     Parameters
@@ -528,7 +600,7 @@ def generate_token(issued_at_ms: int, user_id: str = None, data: dict = None, au
                           wait_for_complete=False,
                           logger=logging.getLogger('wazuh-api')
                           )
-    result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
+    result = raise_if_exc(await dapi.distribute_function()).dikt
     issued_at_seconds = issued_at_ms // 1000
 
     payload = {
@@ -636,9 +708,12 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool,
     return {'valid': True, 'policies': dict(policies)}
 
 
-def decode_token(token: str) -> dict:
+async def decode_token(token: str) -> dict:
     """Decode a JWT formatted token and add processed policies.
     Raise an Unauthorized exception in case validation fails.
+
+    connexion calls it on the event loop for every authenticated request, so the checks below are
+    awaited, never waited for.
 
     Parameters
     ----------
@@ -678,7 +753,7 @@ def decode_token(token: str) -> dict:
                               wait_for_complete=False,
                               logger=logging.getLogger('wazuh-api')
                               )
-        data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).to_dict()
+        data = raise_if_exc(await dapi.distribute_function()).to_dict()
 
         if not data['result']['valid']:
             raise Unauthorized(INVALID_TOKEN)
@@ -692,7 +767,7 @@ def decode_token(token: str) -> dict:
                               wait_for_complete=False,
                               logger=logging.getLogger('wazuh-api')
                               )
-        result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
+        result = raise_if_exc(await dapi.distribute_function())
 
         current_rbac_mode = result['rbac_mode']
         current_expiration_time = result['auth_token_exp_timeout']
