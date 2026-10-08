@@ -3,6 +3,7 @@
 #include "../core/logger.hpp"
 #include "i_metadata_store.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <shared_mutex>
@@ -108,6 +109,15 @@ namespace wazuh::container_instances
 
         /// Set once at startup before any thread races for it, then only read.
         std::function<void(LifecycleCursor)> m_onLifecycleChange;
+
+        /// How many running-but-unresolved records listContainers() withheld the
+        /// last time it said so. Withholding them is correct, but doing it in
+        /// silence made a container that can NEVER be resolved — one whose PID 1
+        /// is an init system, so nothing ever reports its cgroup — look exactly
+        /// like a container that does not exist. Logging on change rather than
+        /// per call keeps a steady state quiet while still naming a new one.
+        /// Atomic because listContainers() is const and holds only a shared lock.
+        mutable std::atomic<std::size_t> m_withheldReported {SIZE_MAX};
     };
 
 } // namespace wazuh::container_instances

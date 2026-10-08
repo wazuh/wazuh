@@ -119,11 +119,21 @@ namespace wazuh::container_instances
         std::shared_lock lock(m_mutex);
         std::vector<ContainerRecordPtr> result;
         std::unordered_set<std::string> seen;
+        std::size_t withheld = 0;
+        std::string withheldExample;
 
         for (const auto& [source, records] : m_bySource)
         {
             for (const auto& [containerId, record] : records)
             {
+                if (record && record->hostKey == 0 && isRunning(record->state))
+                {
+                    ++withheld;
+                    if (withheldExample.empty())
+                    {
+                        withheldExample = containerId;
+                    }
+                }
                 // Hide only UNRESOLVED RUNNING records. A running container with
                 // no inode yet is one the resolver has not caught up with, and
                 // publishing it would let a consumer act on an attribution key
@@ -135,6 +145,25 @@ namespace wazuh::container_instances
                     continue;
                 }
                 result.push_back(record);
+            }
+        }
+
+        // Say so when the number changes. A container stuck here forever is the
+        // signature of one the resolver can never key -- see the comment on
+        // m_withheldReported -- and it used to be indistinguishable from absence.
+        if (m_withheldReported.exchange(withheld) != withheld && m_logger)
+        {
+            if (withheld == 0)
+            {
+                m_logger(LogLevel::debug, "All running containers are resolved; none withheld from the list.");
+            }
+            else
+            {
+                m_logger(LogLevel::debug,
+                         "Withholding " + std::to_string(withheld) +
+                             " running container(s) from the list until the resolver keys them (e.g. '" +
+                             withheldExample.substr(0, 12) +
+                             "'). A container that stays here is one whose cgroup no process reports.");
             }
         }
 

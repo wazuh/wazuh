@@ -207,16 +207,14 @@ namespace wazuh::container_instances
         RuntimeHint hint {RuntimeHint::unknown};
     };
 
-    /// Matches the LEAF basename of a cgroup path against the known container
-    /// naming schemes. Leaf-only matching survives outer-Docker wraps
-    /// (kind/k3d/minikube). Carried over from the #36095 prototype.
-    [[nodiscard]] inline std::optional<CriMatch> extractContainerId(const std::string& cgroupPath)
+    /// Matches ONE cgroup path component against the known container naming
+    /// schemes. Carried over from the #36095 prototype.
+    [[nodiscard]] inline std::optional<CriMatch> matchContainerIdComponent(const std::string& component)
     {
         static const std::regex scopePattern {R"(^(cri-containerd-|crio-|docker-)([0-9a-f]{12,128})\.scope$)"};
         static const std::regex bareHexPattern {R"(^[0-9a-f]{32,128}$)"}; // cgroupfs driver.
 
-        const auto slash = cgroupPath.find_last_of('/');
-        const std::string leaf = (slash == std::string::npos) ? cgroupPath : cgroupPath.substr(slash + 1);
+        const std::string& leaf = component;
 
         std::smatch match;
         if (std::regex_match(leaf, match, scopePattern))
@@ -247,6 +245,57 @@ namespace wazuh::container_instances
             result.containerId = leaf;
             result.hint = RuntimeHint::unknown;
             return result;
+        }
+
+        return std::nullopt;
+    }
+
+    /// Finds the container a cgroup path belongs to, scanning its components
+    /// INNERMOST FIRST and stopping at the first match.
+    ///
+    /// This used to match the leaf basename only, so that an outer-Docker wrap
+    /// (kind/k3d/minikube) could not mask the inner container that actually owns
+    /// the process. Scanning right to left preserves that property exactly — a
+    /// matching leaf is still found first and still wins — while also resolving
+    /// the case leaf-only matching could not: a container whose PID 1 is an init
+    /// system puts every process in a CHILD cgroup of the container's own, so no
+    /// process ever reports the container's cgroup as its leaf.
+    ///
+    ///     /docker/<id>                                  -> <id>   (unchanged)
+    ///     /system.slice/docker-<id>.scope               -> <id>   (unchanged)
+    ///     /…/kubelet.slice/…/cri-containerd-<pod>.scope -> <pod>  (unchanged: leaf wins)
+    ///     /docker/<id>/init.scope                       -> <id>   (was: nothing)
+    ///     /user.slice/user-1000.slice/session-3.scope   -> nothing (unchanged)
+    ///
+    /// Right-to-left is therefore a strict superset of the old behaviour: it
+    /// returns a match wherever the leaf rule did, with the same value, and adds
+    /// one only where the leaf rule returned nothing at all.
+    [[nodiscard]] inline std::optional<CriMatch> extractContainerId(const std::string& cgroupPath)
+    {
+        std::size_t end = cgroupPath.size();
+
+        while (end > 0)
+        {
+            // Skip a trailing separator, then take the component before it.
+            if (cgroupPath[end - 1] == '/')
+            {
+                --end;
+                continue;
+            }
+
+            const auto slash = cgroupPath.find_last_of('/', end - 1);
+            const auto begin = (slash == std::string::npos) ? 0U : slash + 1U;
+
+            if (auto match = matchContainerIdComponent(cgroupPath.substr(begin, end - begin)))
+            {
+                return match;
+            }
+
+            if (begin == 0U)
+            {
+                break;
+            }
+            end = begin - 1U; // step over the separator onto the parent component
         }
 
         return std::nullopt;

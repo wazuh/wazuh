@@ -277,4 +277,60 @@ TEST(CgroupParseTest, AHostCgroupPathIsNotMistakenForAContainer)
     EXPECT_FALSE(extractContainerId("/system.slice/sshd.service").has_value());
     EXPECT_FALSE(extractContainerId("/user.slice/user-1000.slice").has_value());
     EXPECT_FALSE(extractContainerId("/").has_value());
+    EXPECT_FALSE(extractContainerId("").has_value());
+}
+
+TEST(CgroupParseTest, AContainerRunningAnInitSystemIsFoundFromItsChildCgroup)
+{
+    // The defect this exists for: when a container's PID 1 is an init system it
+    // puts itself in a CHILD cgroup, so NO process ever reports the container's
+    // own cgroup as its leaf. Measured on a kindest/node container: the
+    // container's own cgroup held zero processes while init.scope held one, so
+    // the container resolved to nothing at all and was silently absent from the
+    // list. Scanning components innermost-first finds it.
+    const auto initScope =
+        extractContainerId("/system.slice/docker-b1b6ccc5c74210b8218705474216b5066936036017bb89d9fdaf1a1959425c5d.scope/"
+                           "init.scope");
+    ASSERT_TRUE(initScope.has_value());
+    EXPECT_EQ("b1b6ccc5c74210b8218705474216b5066936036017bb89d9fdaf1a1959425c5d", initScope->containerId);
+    EXPECT_EQ(RuntimeHint::docker, initScope->hint);
+
+    // The same container seen through the cgroupfs driver, and through the other
+    // children a systemd-in-container image creates.
+    const auto bareHex =
+        extractContainerId("/docker/3f2abc9900112233445566778899aabbccddeeff00112233445566778899aabb/kubelet.slice");
+    ASSERT_TRUE(bareHex.has_value());
+    EXPECT_EQ("3f2abc9900112233445566778899aabbccddeeff00112233445566778899aabb", bareHex->containerId);
+
+    const auto deeper = extractContainerId(
+        "/docker/3f2abc9900112233445566778899aabbccddeeff00112233445566778899aabb/system.slice/containerd.service");
+    ASSERT_TRUE(deeper.has_value());
+    EXPECT_EQ("3f2abc9900112233445566778899aabbccddeeff00112233445566778899aabb", deeper->containerId);
+}
+
+TEST(CgroupParseTest, AnOuterDockerWrapStillDoesNotMaskTheInnerContainer)
+{
+    // The property the old leaf-only rule existed to protect, and the reason the
+    // scan goes right to left rather than left to right. On a kind/k3d node the
+    // host sees the inner pod container BENEATH the outer node container; the
+    // innermost match must win, or every pod on the node would be attributed to
+    // the node itself.
+    const auto match =
+        extractContainerId("/docker/b1b6ccc5c74210b8218705474216b5066936036017bb89d9fdaf1a1959425c5d/"
+                           "kubelet.slice/kubelet-kubepods-besteffort.slice/"
+                           "cri-containerd-3f2a9900112233445566778899aabbcc.scope");
+    ASSERT_TRUE(match.has_value());
+    EXPECT_EQ("3f2a9900112233445566778899aabbcc", match->containerId);
+    EXPECT_EQ(RuntimeHint::containerd, match->hint);
+}
+
+TEST(CgroupParseTest, AHostPathWithAContainerLikeAncestorIsStillNotAContainer)
+{
+    // Guards the obvious over-reach of scanning ancestors: a host slice must not
+    // acquire a container id just because some component looks hex-ish. None of
+    // these components matches either naming scheme.
+    EXPECT_FALSE(extractContainerId("/user.slice/user-1000.slice/session-3.scope").has_value());
+    EXPECT_FALSE(extractContainerId("/system.slice/systemd-journald.service/deadbeef.service").has_value());
+    // Too short to be a bare id, and not a .scope.
+    EXPECT_FALSE(extractContainerId("/deadbeef/init.scope").has_value());
 }

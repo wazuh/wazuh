@@ -79,12 +79,13 @@ void SweepProc(Visitor&& visit)
 
 } // namespace
 
-std::string ExtractContainerIdFromCgroupPath(const std::string& cgroup_path)
+namespace {
+
+/// Matches ONE cgroup path component. Split out of
+/// ExtractContainerIdFromCgroupPath() so the path can be scanned component by
+/// component; the rules themselves are unchanged.
+std::string MatchContainerIdComponent(std::string_view leaf)
 {
-    const auto last_slash = cgroup_path.find_last_of('/');
-    std::string_view leaf =
-        (last_slash == std::string::npos) ? std::string_view{cgroup_path}
-                                          : std::string_view{cgroup_path}.substr(last_slash + 1);
     if (leaf.empty()) return {};
 
     // systemd cgroup driver: "<runtime-prefix><hex-id>.scope".
@@ -107,6 +108,38 @@ std::string ExtractContainerIdFromCgroupPath(const std::string& cgroup_path)
 
     // cgroupfs driver: the leaf is the bare container id.
     if (IsHexId(leaf, 32, 128)) return std::string{leaf};
+
+    return {};
+}
+
+} // namespace
+
+std::string ExtractContainerIdFromCgroupPath(const std::string& cgroup_path)
+{
+    // Scan components INNERMOST FIRST, stopping at the first match. A matching
+    // leaf still wins, so an outer-Docker wrap (kind/k3d) still cannot mask the
+    // inner container; this only adds a result where the leaf alone gave none —
+    // notably a container whose PID 1 is an init system, which places every
+    // process in a CHILD cgroup of the container's own. Mirrors
+    // container_instances' extractContainerId(); the two must agree.
+    std::size_t end = cgroup_path.size();
+
+    while (end > 0) {
+        if (cgroup_path[end - 1] == '/') {
+            --end;
+            continue;
+        }
+
+        const auto slash = cgroup_path.find_last_of('/', end - 1);
+        const std::size_t begin = (slash == std::string::npos) ? 0U : slash + 1U;
+
+        auto id = MatchContainerIdComponent(
+            std::string_view{cgroup_path}.substr(begin, end - begin));
+        if (!id.empty()) return id;
+
+        if (begin == 0U) break;
+        end = begin - 1U;
+    }
 
     return {};
 }
