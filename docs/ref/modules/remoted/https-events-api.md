@@ -592,6 +592,7 @@ transport:
 | --------------------------------------------------- | --------- | ---------------------------------- |
 | Max in-flight payload bytes (→ `503`)               | `256 MiB` | `remoted.max_inflight_bytes`       |
 | Max simultaneous connections                        | `256`     | `remoted.max_parallel_connections` |
+| Max connections per address still in the TLS handshake (→ disconnected) | `32` | `remoted.max_handshakes_per_source` |
 | Max deferred requests awaiting downstream (→ `503`) | `128`     | `remoted.max_deferred_requests`    |
 | Max open requests per agent (→ `503`)               | `6`       | `remoted.max_requests_per_agent`   |
 | Max decoded bytes per agent (→ `503`/`413`)         | half the budget | `remoted.max_inflight_bytes_per_agent` |
@@ -706,6 +707,8 @@ the throttled log line can only sample:
 |---|---|---|
 | In-flight request memory budget exhausted | `remoted.max_inflight_bytes` | `remoted.server.budget.rejected.total` (+ `budget.inflight.bytes` vs the cap) |
 | Deferred-work slots exhausted | `remoted.max_deferred_requests` | `remoted.forwarder.deferred.rejected.total` (+ `deferred.inflight` vs `deferred.capacity`) |
+| Closed connection(s) that did not complete the TLS handshake in time | `remoted.http_read_timeout` — usually a client holding connection slots without speaking TLS, not a setting to raise | `remoted.server.handshake.timeouts.total` (+ `connections.handshaking`) |
+| Refused connection(s): too many TLS handshakes in progress from one address | `remoted.max_handshakes_per_source` | `remoted.server.handshake.rejected_per_source.total` |
 | Timed out connecting to / sending to / waiting for the downstream service | `remoted.downstream_connect_timeout`, `_write_timeout`, `_response_timeout` | `remoted.forwarder.error.connect_timeout` / `.write_timeout` / `.response_timeout` |
 | Downstream response exceeded the configured cap | `remoted.downstream_max_response_body_size` | `remoted.forwarder.error.response_too_large` |
 | Tokens outside the accepted time window (agent clock drift) | `remoted.jwt_max_age`, `remoted.jwt_clock_skew` | `remoted.auth.reject.clock_skew` |

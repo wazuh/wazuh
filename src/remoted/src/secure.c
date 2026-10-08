@@ -311,6 +311,13 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     // A mass upgrade (the whole fleet fetching a WPK at once, many over slow links) is therefore
     // bounded only by this value, which is why it is settable rather than fixed.
     rm_config->max_parallel_connections = getDefine_Int_default("remoted", "max_parallel_connections", 1, 65536, 256);
+    // max_handshakes_per_source caps the connections ONE address may have in the TLS handshake at
+    // once; one more is closed at accept. A connection takes its max_parallel_connections slot before
+    // the handshake, so without it one host could hold every slot by connecting and never speaking
+    // TLS. Established connections are not counted, so a fleet behind one NAT or load-balancer
+    // address is not limited by it. 0 disables the cap.
+    rm_config->max_handshakes_per_source = getDefine_Int_default("remoted", "max_handshakes_per_source", 0, 65536, 32);
+    rm_config->max_handshakes_per_source_set = 1;
     // max_deferred_requests caps requests parked awaiting a downstream service (503 over it).
     // No Retry-After is sent: the agent runs its own retry/backoff on a 503.
     rm_config->max_deferred_requests = getDefine_Int_default("remoted", "max_deferred_requests", 1, 65536, 128);

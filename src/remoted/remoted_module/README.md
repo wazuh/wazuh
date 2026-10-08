@@ -106,8 +106,48 @@ src/http_server/
 ├── tlsInventory.hpp/.cpp    # TlsInventory (served leaf + CA snapshot from ONE call) and the GET /tls document
 ├── httpServerConfig.hpp/.cpp# buildHttpServerConfig(): C-ABI struct -> HttpServerConfig (+ fallbacks)
 ├── httpServerFactory.hpp    # makeHttpServer() -> the single transport swap point
+├── handshakeLedger.hpp/.cpp # connections holding a slot, which are mid-handshake and from where; the
+│                            #   per-source handshake cap (RESTinio-free, unit-tested without a socket)
+├── handshakeMetrics.hpp     # names of the handshake-guard pulls (remoted.server.connections.handshaking,
+│                            #   remoted.server.handshake.*)
+├── guardedTlsSocket.hpp     # PRIVATE to the .cpp: RESTinio's TLS socket + a deadline on the handshake
+│                            #   (traits customization point; see "TLS handshake guard" below)
 └── RestinioHttpServer.hpp/.cpp # RESTinio + OpenSSL implementation (PImpl hides RESTinio in the .cpp)
 ```
+
+- **TLS handshake guard (`guardedTlsSocket.hpp`, `handshakeLedger.hpp`; issue #6883):** RESTinio
+  0.7.x takes one of `max_parallel_connections`' slots when it accepts a socket, but arms the
+  connection's first timer only in the handshake's *success* callback
+  (`connection_t::init()` → `prepare_connection_and_start_read()`). `read_next_http_message_timelimit`
+  therefore never covered the handshake, contrary to what this module used to say, and a peer that
+  connected and sent nothing held its slot until it chose to leave: 256 such sockets locked every
+  agent out. Two guards close it, without patching RESTinio:
+    1. **A deadline on the handshake**, equal to `remoted.http_read_timeout` (no new knob: it is the
+       window an honest peer already gets to send its request, and a handshake takes milliseconds).
+       `ServerTraits` uses `GuardedTlsSocket` (a `tls_socket_t`) as its stream socket, and its
+       `prepare_connection_and_start_read()` overload — found by ADL, preferred as the exact match —
+       runs RESTinio's handshake plus a `steady_timer`, both on one strand. On expiry the TCP socket
+       is shut down in both directions, which fails the handshake whatever step it is in (a pending
+       read gets EOF, a later one fails at once); RESTinio's own failure path then closes the
+       connection and frees the slot. Two RESTinio specializations carry the policy in
+       (`socket_type_dependent_settings_t::handshake_guard()`, `socket_supplier_t`). **Re-check the
+       three customization points when RESTinio is upgraded.**
+    2. **A per-source cap on handshakes in progress** (`remoted.max_handshakes_per_source`, default
+       32, 0 disables): one more connection from an address that already has that many mid-handshake
+       is closed at once. The deadline alone only turns "hold forever" into "reconnect every few
+       seconds", which one host does as cheaply. Only connections *in the handshake* count — an
+       honest one leaves it in milliseconds — so a fleet behind one NAT or L4-balancer address, which
+       shares all its *established* connections, is not limited by it. A cap on all connections per
+       source was rejected for exactly that reason.
+
+  The same ledger fixes `remoted.server.connections.open`, which was counted from RESTinio's
+  `accepted` notice (sent only after a successful handshake) against its `closed` notice (sent after
+  a failed one too): it underflowed on every port scan, plain-HTTP probe or rejected client
+  certificate, and never saw a stalled socket. A connection is now counted from the start of its
+  handshake — when it already holds its slot — to its close, keyed by connection id so a repeated or
+  unmatched notice is a no-op. Both guards are WARN-logged (throttled, with the count and the last
+  peer) and counted: `remoted.server.connections.handshaking`,
+  `remoted.server.handshake.{timeouts,rejected_per_source}.total`.
 
 - **Certificate status (`tlsCertificateStatus.hpp`, `IHttpServer::certificateStatus()`):** when
   `start()` builds the TLS context it evaluates the leaf it just loaded — days to `notAfter`
@@ -188,7 +228,9 @@ src/http_server/
        request's peak.
     3. **`maxParallelConnections`** — bounds simultaneous connections, so the read-phase peak (bodies
        still arriving, before they reach the budget) is bounded by `maxParallelConnections *
-       maxBodySize`.
+       maxBodySize`. A slot is taken at accept, *before* the TLS handshake; the *TLS handshake
+       guard* above bounds how long a peer that never completes one can hold it, and how many one
+       address can hold that way.
     4. **Deferred-work limiter** (`max_deferred_requests`) — a **count**-based sibling of the byte
        budget (`downstream/deferredWorkLimiter.hpp`) that bounds how many requests are **parked
        awaiting a downstream service**. A `Slot` is acquired before forwarding and held (RAII) until
@@ -288,10 +330,12 @@ src/http_server/
        deterministic ERROR when either is missing or unreadable, so this module's own load
        failure only fires for files that exist and are readable but unusable.
     3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
-       `max_parallel_connections` (default 256), `max_deferred_requests` (default 128),
+       `max_parallel_connections` (default 256), `max_handshakes_per_source` (default 32; 0 is a
+       real setting, "no cap", so it travels with a `_set` flag like `jwt_clock_skew`),
+       `max_deferred_requests` (default 128),
        `max_requests_per_agent` (default 6) and `max_inflight_bytes_per_agent` (default 0, meaning
        half of `max_inflight_bytes`) -- populated from the `remoted.max_inflight_bytes`/
-       `remoted.max_parallel_connections`/`remoted.max_deferred_requests`/
+       `remoted.max_parallel_connections`/`remoted.max_handshakes_per_source`/`remoted.max_deferred_requests`/
        `remoted.max_requests_per_agent`/`remoted.max_inflight_bytes_per_agent` internal options in
        `secure.c` (same pattern as group 1).
        The transport still clamps the in-flight budget up to at least one max-size request at
@@ -2236,7 +2280,8 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.cacerts.{served, not_found, ca_mismatch, rate_limited}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, refused because the served leaf does not chain to any CA of the bundle (`ca_mismatch`: a signature alone is not enough, C33), or refused by the route's rate limit before the CA was even read | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch; `rate_limited` is bumped by the gate (`endpoints/rateLimitGate.cpp`), which runs before the handler |
 | `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does it CHAIN to `remote.https.ca_certificate` (0 when it does not — including a CA that signs it but is expired, not a CA, or under another subject — or when the last successful read yielded no certificate; a read that fails after a good one keeps that bundle's verdict) | `IHttpServer::certificateStatus()`: `cert_expiry_days` from the transport's `TlsCertificateMonitor` snapshot (evaluated at start and every 24 h); `ca_matches_leaf` re-read from the same `CaCertificateSource` `/cacerts` answers from, on every scrape; registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
-| `remoted.server.connections.{open, max}` (pulls) | how close the listener runs to `remoted.max_parallel_connections` — the only view of it, since reaching the cap postpones the accept instead of refusing | registered next to the budget pulls in `registerPublicTransportDiagnostics()` |
+| `remoted.server.connections.{open, max}` (pulls) | how close the listener runs to `remoted.max_parallel_connections` — the only view of it, since reaching the cap postpones the accept instead of refusing | registered next to the budget pulls in `registerPublicTransportDiagnostics()`; `open` reads the transport's `HandshakeLedger` (counted from the start of the TLS handshake to the close) |
+| `remoted.server.connections.handshaking`, `remoted.server.handshake.{timeouts, rejected_per_source}.total` (pulls) | are slots being held by peers that never complete a TLS handshake — invisible to every request-level metric; what the deadline (`remoted.http_read_timeout`) and the per-source cap (`remoted.max_handshakes_per_source`) closed | `IHttpServer::diagnostics()` over the `HandshakeLedger`; names in `http_server/handshakeMetrics.hpp` |
 | `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable, rate_limited}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above). `rate_limited` is the odd one: the request was refused before the handler ran, so it has no outcome among the others | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp`; `rate_limited` by the gate (`endpoints/rateLimitGate.cpp`) |
 | `remoted.<enroll\|cacerts>.rate_limit.{limit, burst, available}` (pulls) | is the BUCKET's ceiling sized right: `available` pinned at 0 while `rate_limited` climbs is a rate below what the fleet needs, not necessarily an attack. Two buckets, two routes — `enroll` governs `POST /enroll`, `cacerts` governs `GET /cacerts` | `EndpointRateLimiter::diagnostics()` through `registerRateLimitDiagnostics()`; reads the bucket WITHOUT charging it, so scraping never costs an agent its enrollment |
 | `remoted.enroll.token.{accepted, rejected_unknown, rejected_expired, rejected_revoked, rejected_exhausted}` | the enrollment-token subset of the above, by what happened to the TOKEN: unknown/expired/revoked decided by remoted's replica (and by authd's 9022/9023 when the replica lagged), exhausted by authd alone (9024) | `countTokenRejection()` (remoted's own verdict) + `countTokenOutcome()` (authd's) in `enrollmentEndpoint.cpp` |
@@ -2491,7 +2536,13 @@ listener, while a foreign CA does not; prefixed vs bare target; a foreign CA con
 is a 404 without a restart; the fixture's CA file is a stamped bundle, so what the route answers is
 the certificate this process reserialised and never the file's `##` lines),
 `inFlightBudget_test.cpp` (reserve/release accounting, exhaustion, RAII move-once, disabled mode,
-concurrency), `deferredWorkLimiter_test.cpp` (count-based limiter: acquire-to-capacity, RAII/move
+concurrency), `handshakeLedger_test.cpp` (a connection counted from handshake to close, a close
+while handshaking leaving both levels at zero, repeated or unknown notices as no-ops, the per-source
+cap refusing only the excess and freeing a share when a handshake finishes, 0 disabling it, reset()
+keeping the totals, concurrency) with `httpServer_test.cpp`'s `HandshakeGuardTest` over a real
+listener (every slot held by a stalled handshake, then an honest request served once the deadline
+closes them; the per-source cap closing the excess at once; failed handshakes not underflowing
+`connectionsOpen`), `deferredWorkLimiter_test.cpp` (count-based limiter: acquire-to-capacity, RAII/move
 release, disabled mode, concurrency), `agentRequestLimiter_test.cpp` (the per-agent cap: one agent
 at its cap never touches another, an idle agent's entry is erased, release-once across moves, a slot
 co-owning its limiter, concurrency, the byte share across an agent's requests, and the

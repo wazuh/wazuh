@@ -280,8 +280,8 @@ namespace remoted::http
         std::size_t ioThreads {2};                          ///< RESTinio/asio I/O threads (accept + read/write).
         std::size_t workerThreads {4};                      ///< Handler worker-pool size (blocking work offload).
         std::size_t maxBodySize {10U * 1024U * 1024U}; ///< Transport hard cap (backstop above the auth body limit).
-        std::size_t readTimeoutSec {10};               ///< Time to receive a full request on a connection (also covers
-                                                       ///< the TLS handshake window).
+        std::size_t readTimeoutSec {10};               ///< Time to receive a full request on a connection, and,
+                                                       ///< separately, to complete the TLS handshake before it.
         std::size_t writeTimeoutSec {10};              ///< Time allowed to write a response.
         std::size_t requestTimeoutSec {30};            ///< Time allowed to handle a request end-to-end.
         std::size_t maxUrlSize {2048};                 ///< Max URL size, bytes.
@@ -298,6 +298,10 @@ namespace remoted::http
         std::size_t maxInFlightBytes {256U * 1024U * 1024U};
         /// Max simultaneous TCP connections (bounds the read-phase peak: maxParallelConnections * maxBodySize).
         std::size_t maxParallelConnections {256};
+        /// Max connections from one address still in the TLS handshake; one more is closed at once
+        /// (remoted.max_handshakes_per_source). 0 disables the cap. Established connections are never
+        /// counted, so a fleet behind one NAT or load-balancer address is not limited by it.
+        std::size_t maxHandshakesPerSource {32};
         /// How often the served certificate is re-evaluated (expiry, and whether caCertificatePath
         /// signs it) after the start-time evaluation -- see IHttpServer::certificateStatus(). Not a
         /// configuration option: buildHttpServerConfig() leaves the default, tests inject a short one.
@@ -344,8 +348,18 @@ namespace remoted::http
         /// the transport postpones the accept and the connection waits in the kernel's backlog,
         /// so saturation shows up as latency, never as a counted rejection -- which is exactly
         /// why the level has to be observable.
+        ///
+        /// Counted from the start of the TLS handshake, when the connection already holds its slot.
         std::size_t connectionsOpen {0};
         std::size_t connectionsMax {0};
+        /// Of connectionsOpen, those still in the TLS handshake. An honest one leaves it in
+        /// milliseconds, so a level that stays up is peers holding slots without ever speaking TLS.
+        std::size_t connectionsHandshaking {0};
+        /// Handshakes the deadline (readTimeoutSec) closed, cumulative.
+        std::uint64_t handshakeTimeoutsTotal {0};
+        /// Connections closed at once because their address already had maxHandshakesPerSource
+        /// handshakes in progress, cumulative.
+        std::uint64_t handshakeRejectedPerSourceTotal {0};
     };
 
     /**
