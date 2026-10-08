@@ -697,6 +697,23 @@ TEST_F(CMStoreNSTest, CreateDuplicateNameThrows)
         std::runtime_error);
 }
 
+// Both names fold to decoder_a_b_0.json: the second create must not overwrite the first
+TEST_F(CMStoreNSTest, CreateCollidingFileNameThrows)
+{
+    auto store = makeStore();
+
+    auto uuid =
+        store->createResource("decoder/a_b/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/a_b/0"));
+    EXPECT_THROW(
+        store->createResource("decoder/a/b_0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/a/b_0")),
+        std::runtime_error);
+
+    EXPECT_FALSE(store->assetExistsByName(base::Name("decoder/a/b_0")));
+    std::string nameStr;
+    EXPECT_EQ(store->getAssetByUUID(uuid).getString(nameStr, "/name"), json::RetGet::Success);
+    EXPECT_EQ(nameStr, "decoder/a_b/0");
+}
+
 TEST_F(CMStoreNSTest, ResolveUUIDFromName)
 {
     auto store = makeStore();
@@ -1435,14 +1452,14 @@ TEST(PolicyTest, OriginSpaceValidationIsLinear)
 {
     // 1M characters overflowed the stack with std::regex_match
     const std::string longValid(1'000'000, 'a');
-    EXPECT_NO_THROW(cm::store::dataType::Policy(
-        "title", true, validUUID(), {}, {}, {}, {}, longValid, "", false, false, true));
+    EXPECT_NO_THROW(
+        cm::store::dataType::Policy("title", true, validUUID(), {}, {}, {}, {}, longValid, "", false, false, true));
 
     std::string longInvalid(1'000'000, 'a');
     longInvalid.back() = '-';
-    EXPECT_THROW(cm::store::dataType::Policy(
-                     "title", true, validUUID(), {}, {}, {}, {}, longInvalid, "", false, false, true),
-                 std::runtime_error);
+    EXPECT_THROW(
+        cm::store::dataType::Policy("title", true, validUUID(), {}, {}, {}, {}, longInvalid, "", false, false, true),
+        std::runtime_error);
 }
 
 TEST(PolicyTest, ConstructorNonV4RootDecoderAccepted)

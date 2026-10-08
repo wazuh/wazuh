@@ -309,6 +309,18 @@ std::string CMStoreNS::createResource(const std::string& name, ResourceType type
             fmt::format("Resource with name '{}' and type '{}' already exists", name, resourceTypeToString(type)));
     }
 
+    // '/' is folded to '_' in file names, so different names can map to the same file (decoder/a_b/0 and
+    // decoder/a/b_0): never overwrite a file another resource owns
+    std::error_code ec;
+    if (std::filesystem::exists(resourcePath, ec) || ec)
+    {
+        throw std::runtime_error(
+            fmt::format("Resource name '{}' of type '{}' collides with an existing resource file '{}'",
+                        name,
+                        resourceTypeToString(type),
+                        resourcePath.filename().string()));
+    }
+
     // Store resource to disk
     auto error = fileutils::upsertFile(resourcePath, contentToStore.str());
     if (error.has_value())
