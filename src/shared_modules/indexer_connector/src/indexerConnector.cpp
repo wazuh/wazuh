@@ -803,25 +803,26 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
         }
 
         // The backup is looked up by its own name, which only needs access to that index.
-        const auto backupIndexUrl = [&]() { return selector->getNext() + "/" + m_indexName + "-backup"; };
+        const auto backupIndexUrl = [&]()
+        {
+            return selector->getNext() + "/" + m_indexName + "-backup";
+        };
         const auto backupExists = [&]()
         {
             auto exists = true;
+            const auto onLookupError =
+                [&exists, &onError](const std::string& error, const long statusCode, const std::string& body)
+            {
+                if (statusCode != HTTP_NOT_FOUND)
+                {
+                    onError(error, statusCode, body);
+                }
+                exists = false;
+            };
             HTTPRequest::instance().get(
                 RequestParameters {.url = HttpURL(backupIndexUrl() + "/_settings?filter_path=*.settings.index.uuid"),
                                    .secureCommunication = secureCommunication},
-                PostRequestParameters {.onSuccess = onSuccess,
-                                       .onError = [&exists, &onError](
-                                                      const std::string& error,
-                                                      const long statusCode,
-                                                      const std::string& responseBody)
-                                       {
-                                           if (statusCode != HTTP_NOT_FOUND)
-                                           {
-                                               onError(error, statusCode, responseBody);
-                                           }
-                                           exists = false;
-                                       }},
+                PostRequestParameters {.onSuccess = onSuccess, .onError = onLookupError},
                 ConfigurationParameters {});
             return exists;
         };
@@ -872,10 +873,10 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
                 }
 
                 logInfo(IC_NAME, "Deleting orphan backup index '%s-backup'.", m_indexName.c_str());
-                HTTPRequest::instance().delete_(RequestParameters {.url = HttpURL(backupIndexUrl()),
-                                                                   .secureCommunication = secureCommunication},
-                                                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                                ConfigurationParameters {});
+                HTTPRequest::instance().delete_(
+                    RequestParameters {.url = HttpURL(backupIndexUrl()), .secureCommunication = secureCommunication},
+                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                    ConfigurationParameters {});
             };
 
             // The cleanup is optional: a failure in it is not a failure of the mappings validation.
@@ -1254,7 +1255,10 @@ IndexerConnector::IndexerConnector(
             // agent in a cluster.
             std::vector<std::pair<bool, std::string>> requests;
             std::set<std::string> bulkAgents;
-            const auto agentOf = [](const std::string& id) { return id.substr(0, id.find('_')); };
+            const auto agentOf = [](const std::string& id)
+            {
+                return id.substr(0, id.find('_'));
+            };
             const auto flushBulk = [&bulkData, &bulkAgents, &requests]()
             {
                 if (!bulkData.empty())
