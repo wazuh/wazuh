@@ -129,7 +129,11 @@ void fim_send_sync_state(const char *location, const char* msg) {
 void send_syscheck_msg(const cJSON *_msg) {
     char *msg = cJSON_PrintUnformatted(_msg);
 
-    if (msg != NULL && !w_utf8_valid(msg)) {
+    if (msg == NULL) {
+        return;
+    }
+
+    if (!w_utf8_valid(msg)) {
         // e.g. a file name that is not UTF-8. Sanitized like the sync messages, so the manager gets a single path.
         char *sanitized = fim_db_utf8_sanitize(msg);
 

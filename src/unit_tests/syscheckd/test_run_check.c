@@ -839,7 +839,6 @@ void test_fim_send_scan_info(void **state) {
     fim_send_scan_info(FIM_SCAN_START);
 }
 
-#ifndef TEST_WINAGENT
 void test_send_syscheck_msg_invalid_utf8(void **state) {
     (void) state;
     cJSON *event = cJSON_CreateObject();
@@ -874,6 +873,7 @@ void test_send_syscheck_msg_invalid_utf8_sanitize_error(void **state) {
     cJSON_Delete(event);
 }
 
+#ifndef TEST_WINAGENT
 void test_fim_link_update(void **state) {
     char *new_path = "/new_path";
     char pattern[PATH_MAX] = {0};
