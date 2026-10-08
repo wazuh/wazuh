@@ -3459,6 +3459,62 @@ void test_HandleSecureMessage_ping_udp_send_fails(void** state)
     HandleSecureMessage(&message, NULL, NULL);
 }
 
+/* send_msg_nowait() as send_control_ack() drives it: full_sock is set only on SEND_MSG_QUEUE_FULL */
+int __wrap_send_msg_nowait(const char* agent_id, const char* msg, ssize_t msg_length, int* full_sock)
+{
+    check_expected(agent_id);
+    check_expected(msg);
+    check_expected(msg_length);
+
+    int retval = mock_type(int);
+
+    if (retval == SEND_MSG_QUEUE_FULL) {
+        *full_sock = mock_type(int);
+    }
+
+    return retval;
+}
+
+static void expect_ack_sent(int retval)
+{
+    expect_string(__wrap_send_msg_nowait, agent_id, "001");
+    expect_string(__wrap_send_msg_nowait, msg, "#!-agent ack ");
+    expect_value(__wrap_send_msg_nowait, msg_length, -1);
+    will_return(__wrap_send_msg_nowait, retval);
+}
+
+void test_send_control_ack_queued(void** state)
+{
+    expect_ack_sent(OS_SUCCESS);
+    expect_function_call(__wrap_rem_inc_send_ack);
+
+    send_control_ack("001");
+}
+
+void test_send_control_ack_agent_not_reading(void** state)
+{
+    global_counter = 0;
+
+    // The agent's send queue is full: the ACK is dropped and the connection closed, without waiting
+    expect_ack_sent(SEND_MSG_QUEUE_FULL);
+    will_return(__wrap_send_msg_nowait, 4);
+    expect_function_call(__wrap_rem_inc_send_discarded);
+    expect_string(__wrap__mdebug1,
+                  formatted_msg,
+                  "Agent '001' is not reading the messages sent to it on TCP peer [4]. Closing.");
+    expect_close_sock(4, "TCP peer disconnected [4]");
+
+    send_control_ack("001");
+}
+
+void test_send_control_ack_not_sent(void** state)
+{
+    // Unknown or disconnected agent, closed socket, encryption failure: logged by send_msg_nowait()
+    expect_ack_sent(OS_INVALID);
+
+    send_control_ack("001");
+}
+
 void test_handle_incoming_data_from_udp_socket_0(void** state)
 {
     struct sockaddr_in peer_info;
@@ -4384,6 +4440,10 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_ping_tcp_socket_gone),
         cmocka_unit_test(test_HandleSecureMessage_ping_udp),
         cmocka_unit_test(test_HandleSecureMessage_ping_udp_send_fails),
+        // Tests send_control_ack
+        cmocka_unit_test(test_send_control_ack_queued),
+        cmocka_unit_test(test_send_control_ack_agent_not_reading),
+        cmocka_unit_test(test_send_control_ack_not_sent),
         // Tests handle_incoming_data_from_udp_socket
         cmocka_unit_test(test_handle_incoming_data_from_udp_socket_0),
         cmocka_unit_test(test_handle_incoming_data_from_udp_socket_success),

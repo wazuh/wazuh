@@ -118,9 +118,15 @@ void* update_shared_files(void* none);
 void save_controlmsg(
     const keyentry* key, char* msg, int* wdb_sock, bool* post_startup, int is_startup, int is_shutdown);
 
-/* Pre process control message and return whether it should be queued for wdb processing */
-int validate_control_msg(
-    const keyentry* key, char* r_msg, size_t msg_length, char** cleaned_msg, int* is_startup, int* is_shutdown);
+/* Pre process control message and return whether it should be queued for wdb processing. Sets
+ * *send_ack when the agent is owed an ACK, which the caller sends once it holds no lock. */
+int validate_control_msg(const keyentry* key,
+                         char* r_msg,
+                         size_t msg_length,
+                         char** cleaned_msg,
+                         int* is_startup,
+                         int* is_shutdown,
+                         bool* send_ack);
 
 /* Assign a group to an agent without group */
 cJSON* assign_group_to_agent(const char* agent_id, const char* md5);
@@ -153,7 +159,25 @@ int req_send_and_wait(const char* agent_id, const char* payload, size_t length, 
 /* Send message to agent */
 /* Must not call key_lock() before this */
 int send_msg(const char* agent_id, const char* msg, ssize_t msg_length);
-int send_msg_with_key_control(const char* agent_id, const char* msg, ssize_t msg_length, bool skip_key_lock);
+
+/* send_msg_nowait() result when the agent's TCP send queue is full */
+#define SEND_MSG_QUEUE_FULL -2
+
+/**
+ * @brief Send a message to an agent without ever waiting.
+ *
+ * For replies an agent triggers with its own messages: unlike send_msg(), a full send queue is
+ * reported at once instead of waited on, so an agent that does not read cannot hold the caller.
+ * Must not call key_lock() before this.
+ *
+ * @param agent_id Target agent ID.
+ * @param msg Message to encrypt and send.
+ * @param msg_length Length of msg, or -1 to use strlen().
+ * @param full_sock On SEND_MSG_QUEUE_FULL, set to the agent's TCP connection, which the caller closes
+ *                  with _close_sock() (the message is dropped either way).
+ * @return OS_SUCCESS, SEND_MSG_QUEUE_FULL, or OS_INVALID on any other failure.
+ */
+int send_msg_nowait(const char* agent_id, const char* msg, ssize_t msg_length, int* full_sock);
 
 int check_keyupdate(void);
 

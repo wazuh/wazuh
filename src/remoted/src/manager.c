@@ -224,15 +224,17 @@ void free_file_time(void *data) {
 
 /* Pre process control message and return whether it should be queued for wdb processing
  * Returns: 1 if message should be queued, 0 if not, -1 on error
+ * Runs under the key lock, so it only decides whether the agent is owed an ACK (*send_ack): the caller
+ * sends it after releasing the lock.
  */
-int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, char **cleaned_msg, int *is_startup, int *is_shutdown)
+int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, char **cleaned_msg, int *is_startup, int *is_shutdown, bool *send_ack)
 {
     char *end = NULL;
-    char msg_ack[OS_SIZE_1024 + 1] = "";
 
     *is_startup = 0;
     *is_shutdown = 0;
     *cleaned_msg = NULL;
+    *send_ack = false;
 
     /* Handle HC_REQUEST messages immediately - don't queue them */
     if (strncmp(r_msg, HC_REQUEST, strlen(HC_REQUEST)) == 0) {
@@ -315,14 +317,8 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
         rem_inc_recv_ctrl_keepalive();
     }
 
-    /* Send ACK for non-shutdown messages */
-    if (*is_shutdown == 0) {
-        snprintf(msg_ack, OS_SIZE_1024, "%s%s", CONTROL_HEADER, HC_ACK);
-
-        if (send_msg_with_key_control(key->id, msg_ack, -1, true) >= 0) {
-            rem_inc_send_ack();
-        }
-    }
+    /* ACK non-shutdown messages */
+    *send_ack = (*is_shutdown == 0);
 
     return 1;  // Queue the message
 }
@@ -341,7 +337,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
     int result = 0;
 
     // Process only database-related operations here
-    // All validation and ACK sending was done in validate_control_msg
+    // All validation was done in validate_control_msg, and the ACK was sent by its caller
     // Parameters is_startup and is_shutdown come from validation results
 
     if (is_startup) {
