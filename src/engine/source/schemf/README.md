@@ -209,9 +209,9 @@ Per-type validators in `valueValidators.hpp`:
 | `getDoubleValidator` | `json.isDouble()` |
 | `getUnsignedLongValidator` | `json.isUint64()` |
 | `getStringValidator` | `json.isString()` |
-| `getDateValidator` | String matching `%Y-%m-%dT%H:%M:%SZ` format |
-| `getIpValidator` | Valid IP address string |
-| `getBinaryValidator` | Valid base64-encoded string |
+| `getDateValidator` | String in the exact form `YYYY-MM-DDTHH:MM:SS[.fraction]Z` (two-digit fields, 1-9 fraction digits, zone `Z` or `Zulu` and nothing after it) that is a real calendar date and time (month 1-12, valid day of month, hour < 24, minute < 60, second < 60) |
+| `getIpValidator` | String that `inet_pton` accepts as IPv4 or IPv6 (whole string; no embedded NUL, no zone id) |
+| `getBinaryValidator` | String that is entirely Base64 (padding allowed, nothing after it) |
 | `getObjectValidator` | `json.isObject()` |
 | `getIncompatibleValidator` | Always fails (for types that cannot be written to) |
 

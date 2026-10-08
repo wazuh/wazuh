@@ -190,7 +190,7 @@ add_executable(builder_utest
 	${UNIT_SRC_DIR}/builders/stage/indexerOutput_test.cpp
 	${UNIT_SRC_DIR}/builders/stage/first_of_test.cpp
 )
-target_include_directories(builder_utest PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})
+target_include_directories(builder_utest PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR} ${CMAKE_CURRENT_LIST_DIR}/../schemf/src)
 target_link_libraries(builder_utest
 	PUBLIC
 	GTest::gtest_main
@@ -208,6 +208,7 @@ target_link_libraries(builder_utest
 	streamlogger::mocks
 	wIndexerConnector::mocks
 	fastmetrics::mocks
+	date::date
 )
 gtest_discover_tests(builder_utest)
 
