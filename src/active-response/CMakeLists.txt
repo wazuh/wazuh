@@ -138,5 +138,5 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
     block-ip PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER}/build/bin
                        OUTPUT_NAME block-ip)
-  target_link_libraries(block-ip PRIVATE wazuh ${WAZUH_WINDOWS_LIBS})
+  target_link_libraries(block-ip PRIVATE wazuh ${WAZUH_WINDOWS_LIBS} iphlpapi)
 endif()
