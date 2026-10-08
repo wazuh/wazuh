@@ -76,7 +76,6 @@
 #include "version_op.h"
 #include "os_net.h"
 #include "legacy_task_delivery.h"
-#include "queue_linked_op.h"
 #include "http_op.h"
 #include "sha1_op.h"
 
@@ -206,15 +205,58 @@
  * doesn't keep resending for the full, much longer poll interval. */
 #define LEGACY_TASK_ACK_DRAIN_INTERVAL_SEC 5
 
-/* FIFO of agent IDs (heap-allocated strings, owned by the queue until drained) awaiting a
- * clear_upgrade_result reply. Decouples ack detection -- done inline on a rem_handler worker
- * thread in secure.c, which must stay fast since that fixed-size pool is what dequeues and
- * processes every incoming secure message from every connected agent -- from the reply itself,
- * which needs a blocking round-trip to the agent (req_send_and_wait, up to response_timeout
- * seconds). Draining a burst of acks inline used to be able to tie up the whole worker pool for
- * that long, stalling every other agent's traffic; this queue lets this module's own poller
- * thread perform that blocking wait instead, off the shared pool entirely. */
-static w_linked_queue_t *pending_clear_upgrade_replies = NULL;
+/* Bound on legacy_task_ack_list. Each agent holds at most one slot (acks are deduplicated per
+ * agent), so this is only reached when more distinct agents than this ack at once. An ack refused
+ * for lack of room loses nothing: a 4.x agent keeps resending its ack on its own backoff until it
+ * is answered, so it is simply answered on a later resend. */
+#define LEGACY_TASK_ACK_LIST_MAX_SIZE 1024
+
+/* Wait for the agent's answer to clear_upgrade_result, capped by response_timeout. Far shorter
+ * than the WPK steps' response_timeout because the agent's work here is a local file delete, and
+ * because every second spent waiting is a second this thread is not serving the rest of the
+ * fleet. */
+#define LEGACY_TASK_ACK_REPLY_TIMEOUT_SEC 10
+
+/* After a clear_upgrade_result that failed (no answer, or a rejection), further acks from that
+ * agent are not answered for this long. Without it, an agent that acks and then never answers
+ * would cost this thread one LEGACY_TASK_ACK_REPLY_TIMEOUT_SEC every LEGACY_TASK_ACK_DRAIN_INTERVAL_SEC.
+ * A 4.x agent waits 300 seconds (its upgrade_wait_start default) before resending, doubling each
+ * time, so a genuine agent loses at most one resend to it. */
+#define LEGACY_TASK_ACK_RETRY_COOLDOWN_SEC 300
+
+/* One agent awaiting, or recently sent, a clear_upgrade_result reply. `queued` is set while a
+ * reply is owed; once taken by the poller it is cleared and `not_before` is the earliest moment a
+ * new ack from the same agent is queued again (covering the reply in flight, then the cooldown
+ * after a failed reply). A successful reply removes the entry. */
+typedef struct {
+    char *agent_id;
+    bool queued;
+    time_t not_before;
+} legacy_task_ack_entry_t;
+
+/* Outcome of offering an ack to legacy_task_ack_list. */
+typedef enum {
+    LEGACY_TASK_ACK_QUEUED,
+    LEGACY_TASK_ACK_ALREADY_QUEUED,
+    LEGACY_TASK_ACK_COOLING_DOWN,
+    LEGACY_TASK_ACK_LIST_FULL
+} legacy_task_ack_offer_t;
+
+/* Agents awaiting a clear_upgrade_result reply, in arrival order, one entry per agent.
+ * Decouples ack detection -- done inline on a rem_handler worker thread in secure.c, which must
+ * stay fast since that fixed-size pool is what dequeues and processes every incoming secure message
+ * from every connected agent -- from the reply itself, which needs a blocking round-trip to the
+ * agent (req_send_and_wait). This module's own poller thread performs that wait instead, off the
+ * shared pool entirely.
+ *
+ * Bounded three ways, so that acks an agent can send at will cannot grow memory or monopolize the
+ * poller thread: one entry per agent however many acks it sends, LEGACY_TASK_ACK_LIST_MAX_SIZE
+ * entries in total, and LEGACY_TASK_ACK_RETRY_COOLDOWN_SEC between replies to an agent whose last
+ * reply failed. Written by the worker pool and read by the poller, so every access holds
+ * legacy_task_ack_mutex; the blocking reply itself runs with the mutex released. */
+static legacy_task_ack_entry_t legacy_task_ack_list[LEGACY_TASK_ACK_LIST_MAX_SIZE];
+static size_t legacy_task_ack_count = 0;
+static pthread_mutex_t legacy_task_ack_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Distinguishes failures a retry can plausibly fix from ones it can't -- see each return site in
  * legacy_task_deliver_remote_upgrade() for the specific reasoning behind its classification. */
@@ -239,9 +281,8 @@ typedef struct {
 } legacy_task_retry_entry_t;
 
 /* Fixed-capacity, compacted (no gaps) array of pointers -- only ever touched by this module's own
- * poller thread, so no lock is needed, same assumption pending_clear_upgrade_replies makes for its
- * queue. LEGACY_TASK_RETRY_LIST_MAX_SIZE bounds it; legacy_task_retry_list_count tracks how many of
- * the leading slots are actually populated. */
+ * poller thread, so no lock is needed. LEGACY_TASK_RETRY_LIST_MAX_SIZE bounds it;
+ * legacy_task_retry_list_count tracks how many of the leading slots are actually populated. */
 /* Deadlines for the Task Manager round trip. Both are set EXPLICITLY because zero means different
  * things to libcurl: an unset request timeout is "never", while an unset connect timeout is its own
  * 300-second default -- either would let one unanswered poll stall this thread far past its cycle. */
@@ -256,7 +297,7 @@ STATIC char *legacy_task_manager_request(const char *route, const char *request_
 STATIC cJSON *legacy_task_get_pending(const char *agent_id) __attribute__((nonnull));
 STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *agent_id, const char *task_id, const cJSON *payload_obj, bool is_last_attempt, bool *out_no_response) __attribute__((nonnull(1, 2, 3, 5)));
 STATIC legacy_task_push_result_t legacy_task_attempt_delivery(const char *agent_id, const char *task_id, const cJSON *payload_json, bool *out_no_response) __attribute__((nonnull));
-STATIC bool legacy_task_send_step(const char *agent_id, const char *target, const char *rest, char **out_message, bool *out_malformed, bool *out_no_response, bool is_last_attempt) __attribute__((nonnull(1, 2, 3)));
+STATIC bool legacy_task_send_step(const char *agent_id, const char *target, const char *rest, char **out_message, bool *out_malformed, bool *out_no_response, bool is_last_attempt, int timeout_sec) __attribute__((nonnull(1, 2, 3)));
 STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *command_name, cJSON *params, char **out_data, bool *out_malformed, bool *out_no_response, bool is_last_attempt) __attribute__((nonnull(1, 2, 3)));
 STATIC bool legacy_task_ca_target_speaks_https(const char *wpk_version);
 STATIC const char *legacy_task_ca_path(void);
@@ -265,8 +306,12 @@ STATIC void legacy_task_ca_truncate(const char *agent_id) __attribute__((nonnull
 STATIC bool legacy_task_ca_push(const char *agent_id, const char *pem, unsigned int length, const char *expected_sha1, bool is_last_attempt, bool *out_no_response) __attribute__((nonnull(1, 2, 4, 6)));
 STATIC void legacy_task_deliver_ca(const char *agent_id, const char *task_id, const char *wpk_version) __attribute__((nonnull(1, 2)));
 STATIC void legacy_upgrade_poll_cycle(void);
-STATIC void legacy_task_send_clear_upgrade_result(const char *agent_id) __attribute__((nonnull));
-STATIC void legacy_task_drain_clear_upgrade_replies(void);
+STATIC bool legacy_task_send_clear_upgrade_result(const char *agent_id) __attribute__((nonnull));
+STATIC void legacy_task_ack_remove_at(size_t index);
+STATIC legacy_task_ack_offer_t legacy_task_ack_offer(const char *agent_id) __attribute__((nonnull));
+STATIC char *legacy_task_ack_take_next(void);
+STATIC void legacy_task_ack_settle(const char *agent_id, bool replied) __attribute__((nonnull));
+STATIC void legacy_task_drain_clear_upgrade_replies(time_t deadline);
 STATIC void legacy_task_retry_list_free_entry(legacy_task_retry_entry_t *entry);
 STATIC void legacy_task_retry_list_remove_at(size_t index);
 STATIC void legacy_task_retry_list_purge_expired(void);
@@ -275,23 +320,19 @@ STATIC void legacy_task_retry_list_add(const char *agent_id, const char *task_id
 STATIC void legacy_task_retry_list_process(char **connected_agent_ids, size_t agent_count);
 
 void legacy_task_delivery_init(void) {
-    pending_clear_upgrade_replies = linked_queue_init();
+    w_mutex_lock(&legacy_task_ack_mutex);
+    while (legacy_task_ack_count > 0) {
+        legacy_task_ack_remove_at(0);
+    }
+    w_mutex_unlock(&legacy_task_ack_mutex);
 }
 
 void legacy_task_delivery_teardown(void) {
-    if (pending_clear_upgrade_replies) {
-        char *agent_id;
-
-        // linked_queue_pop_ex() blocks on an empty queue (waits on its condition variable), so
-        // draining must check for a pending node first rather than looping on its NULL return.
-        while (pending_clear_upgrade_replies->first) {
-            agent_id = (char *) linked_queue_pop_ex(pending_clear_upgrade_replies);
-            os_free(agent_id);
-        }
-
-        linked_queue_free(pending_clear_upgrade_replies);
-        pending_clear_upgrade_replies = NULL;
+    w_mutex_lock(&legacy_task_ack_mutex);
+    while (legacy_task_ack_count > 0) {
+        legacy_task_ack_remove_at(0);
     }
+    w_mutex_unlock(&legacy_task_ack_mutex);
 
     while (legacy_task_retry_list_count > 0) {
         legacy_task_retry_list_remove_at(0);
@@ -475,16 +516,17 @@ STATIC cJSON *legacy_task_get_pending(const char *agent_id) {
  * LEGACY_TASK_MAX_PUSH_ATTEMPTS) -- controls the severity of any failure logged here: `debug1`
  * for an attempt that still has budget left to recover on its own, `warning` for the one that
  * doesn't.
+ * @param timeout_sec How long to wait for the agent's answer.
  * @return true on a successful ack, false on any send/timeout/error response.
  */
-STATIC bool legacy_task_send_step(const char *agent_id, const char *target, const char *rest, char **out_message, bool *out_malformed, bool *out_no_response, bool is_last_attempt) {
+STATIC bool legacy_task_send_step(const char *agent_id, const char *target, const char *rest, char **out_message, bool *out_malformed, bool *out_no_response, bool is_last_attempt, int timeout_sec) {
     size_t payload_len = strlen(target) + 1 + strlen(rest);
     char *payload;
     os_malloc(payload_len + 1, payload);
     snprintf(payload, payload_len + 1, "%s %s", target, rest);
 
     char *response = NULL;
-    int rc = req_send_and_wait(agent_id, payload, payload_len, &response, response_timeout);
+    int rc = req_send_and_wait(agent_id, payload, payload_len, &response, timeout_sec);
     os_free(payload);
 
     if (rc != 0 || !response) {
@@ -573,7 +615,8 @@ STATIC bool legacy_task_send_upgrade_step(const char *agent_id, const char *comm
     cJSON_AddItemToObject(cmd, "parameters", params);
     char *cmd_str = cJSON_PrintUnformatted(cmd);
 
-    bool ok = legacy_task_send_step(agent_id, "upgrade", cmd_str, out_data, out_malformed, out_no_response, is_last_attempt);
+    bool ok = legacy_task_send_step(agent_id, "upgrade", cmd_str, out_data, out_malformed, out_no_response, is_last_attempt,
+                                    response_timeout);
 
     os_free(cmd_str);
     cJSON_Delete(cmd);
@@ -1023,7 +1066,8 @@ STATIC legacy_task_push_result_t legacy_task_deliver_remote_upgrade(const char *
     minfo("legacy_task_delivery: delivering remote_upgrade task '%s' to agent '%s' (wpk: '%s')", task_id, agent_id, wpk_file);
 
     // Step 1: lock_restart (execd, plain-text protocol)
-    if (!legacy_task_send_step(agent_id, "com", "lock_restart -1", NULL, NULL, out_no_response, is_last_attempt)) {
+    if (!legacy_task_send_step(agent_id, "com", "lock_restart -1", NULL, NULL, out_no_response, is_last_attempt,
+                               response_timeout)) {
         // debug1 while attempts remain, warning on the last one -- retryable, and either a later
         // in-cycle attempt recovers, a no-response defers it to legacy_task_retry_list for a future
         // cycle, or every in-cycle attempt is spent and this poller simply logs and drops it (see
@@ -1298,17 +1342,151 @@ STATIC legacy_task_push_result_t legacy_task_attempt_delivery(const char *agent_
  * (wm_agent_upgrade_check_status(), agent-side, unmodified): on receipt it deletes its local
  * `upgrade_result` file and the loop exits.
  *
+ * Waits at most LEGACY_TASK_ACK_REPLY_TIMEOUT_SEC (or response_timeout, if lower) for the answer,
+ * not the full response_timeout the WPK steps get -- see LEGACY_TASK_ACK_REPLY_TIMEOUT_SEC.
+ *
  * @param agent_id Target agent identifier.
+ * @return true if the agent acknowledged the command.
  */
-STATIC void legacy_task_send_clear_upgrade_result(const char *agent_id) {
-    cJSON *params = cJSON_CreateObject();
+STATIC bool legacy_task_send_clear_upgrade_result(const char *agent_id) {
+    int timeout_sec = response_timeout < LEGACY_TASK_ACK_REPLY_TIMEOUT_SEC ? response_timeout
+                                                                            : LEGACY_TASK_ACK_REPLY_TIMEOUT_SEC;
 
     // Not part of the push-attempt retry loop -- always pass true so a failure here keeps logging
     // at its usual severity regardless of any in-progress task delivery.
-    if (!legacy_task_send_upgrade_step(agent_id, "clear_upgrade_result", params, NULL, NULL, NULL, true)) {
+    if (!legacy_task_send_step(agent_id, "upgrade", "{\"command\":\"clear_upgrade_result\",\"parameters\":{}}",
+                               NULL, NULL, NULL, true, timeout_sec)) {
         mwarn("legacy_task_delivery: agent '%s': failed to deliver 'clear_upgrade_result', "
               "the agent may keep resending its upgrade acknowledgment", agent_id);
+        return false;
     }
+
+    return true;
+}
+
+/**
+ * @brief Remove the entry at the given index from legacy_task_ack_list, keeping it gap-free and
+ * in arrival order. Caller holds legacy_task_ack_mutex.
+ *
+ * @param index Index to remove; must be < legacy_task_ack_count.
+ */
+STATIC void legacy_task_ack_remove_at(size_t index) {
+    os_free(legacy_task_ack_list[index].agent_id);
+
+    for (size_t i = index; i + 1 < legacy_task_ack_count; i++) {
+        legacy_task_ack_list[i] = legacy_task_ack_list[i + 1];
+    }
+
+    legacy_task_ack_count--;
+    memset(&legacy_task_ack_list[legacy_task_ack_count], 0, sizeof(legacy_task_ack_entry_t));
+}
+
+/**
+ * @brief Queue a clear_upgrade_result reply for an agent, unless one is already owed, the agent is
+ * cooling down after a failed reply, or the list is full.
+ *
+ * Runs on a rem_handler worker thread: a linear scan of at most LEGACY_TASK_ACK_LIST_MAX_SIZE short
+ * strings under the mutex, never anything that blocks.
+ *
+ * @param agent_id Agent identifier (copied).
+ * @return What happened to the ack.
+ */
+STATIC legacy_task_ack_offer_t legacy_task_ack_offer(const char *agent_id) {
+    legacy_task_ack_offer_t result = LEGACY_TASK_ACK_QUEUED;
+    time_t now = time(0);
+
+    w_mutex_lock(&legacy_task_ack_mutex);
+
+    size_t i = 0;
+    while (i < legacy_task_ack_count && strcmp(legacy_task_ack_list[i].agent_id, agent_id) != 0) {
+        i++;
+    }
+
+    if (i < legacy_task_ack_count) {
+        legacy_task_ack_entry_t *entry = &legacy_task_ack_list[i];
+
+        if (entry->queued) {
+            result = LEGACY_TASK_ACK_ALREADY_QUEUED;
+        } else if (now < entry->not_before) {
+            result = LEGACY_TASK_ACK_COOLING_DOWN;
+        } else {
+            entry->queued = true;
+        }
+    } else if (legacy_task_ack_count >= LEGACY_TASK_ACK_LIST_MAX_SIZE) {
+        result = LEGACY_TASK_ACK_LIST_FULL;
+    } else {
+        legacy_task_ack_entry_t *entry = &legacy_task_ack_list[legacy_task_ack_count++];
+        os_strdup(agent_id, entry->agent_id);
+        entry->queued = true;
+        entry->not_before = 0;
+    }
+
+    w_mutex_unlock(&legacy_task_ack_mutex);
+
+    return result;
+}
+
+/**
+ * @brief Take the oldest agent still owed a reply, marking it in flight.
+ *
+ * Also drops every entry whose cooldown has ended, so that slots held by agents that went quiet
+ * are given back. The taken entry stays in the list, not queued, with a not_before past the end of
+ * the reply's wait: an ack that arrives while the reply is in flight is not queued a second time.
+ * legacy_task_ack_settle() decides what happens to it once the reply is over.
+ *
+ * @return Caller-owned copy of the agent ID, or NULL if no reply is owed.
+ */
+STATIC char *legacy_task_ack_take_next(void) {
+    char *agent_id = NULL;
+    time_t now = time(0);
+
+    w_mutex_lock(&legacy_task_ack_mutex);
+
+    for (size_t i = 0; i < legacy_task_ack_count; /* no increment: removal shifts i's slot */) {
+        legacy_task_ack_entry_t *entry = &legacy_task_ack_list[i];
+
+        if (!entry->queued && now >= entry->not_before) {
+            legacy_task_ack_remove_at(i);
+        } else if (entry->queued && !agent_id) {
+            entry->queued = false;
+            entry->not_before = now + LEGACY_TASK_ACK_REPLY_TIMEOUT_SEC + LEGACY_TASK_ACK_RETRY_COOLDOWN_SEC;
+            os_strdup(entry->agent_id, agent_id);
+            i++;
+        } else {
+            i++;
+        }
+    }
+
+    w_mutex_unlock(&legacy_task_ack_mutex);
+
+    return agent_id;
+}
+
+/**
+ * @brief Record the outcome of a reply taken with legacy_task_ack_take_next().
+ *
+ * A successful reply removes the entry: the agent has deleted its result file and stops acking.
+ * A failed one keeps it for LEGACY_TASK_ACK_RETRY_COOLDOWN_SEC, during which further acks from the
+ * agent are not answered.
+ *
+ * @param agent_id Agent the reply was sent to.
+ * @param replied Whether the agent acknowledged clear_upgrade_result.
+ */
+STATIC void legacy_task_ack_settle(const char *agent_id, bool replied) {
+    w_mutex_lock(&legacy_task_ack_mutex);
+
+    for (size_t i = 0; i < legacy_task_ack_count; i++) {
+        if (strcmp(legacy_task_ack_list[i].agent_id, agent_id) == 0) {
+            if (replied) {
+                legacy_task_ack_remove_at(i);
+            } else {
+                legacy_task_ack_list[i].not_before = time(0) + LEGACY_TASK_ACK_RETRY_COOLDOWN_SEC;
+            }
+            break;
+        }
+    }
+
+    w_mutex_unlock(&legacy_task_ack_mutex);
 }
 
 /**
@@ -1656,6 +1834,36 @@ bool legacy_task_process_upgrade_ack(const char *agent_id, const char *ack_json)
         return false;
     }
 
+    // Queue rather than reply inline: this function runs on a shared rem_handler worker-pool
+    // thread (secure.c) and must not block it. legacy_task_send_clear_upgrade_result() performs a
+    // synchronous round-trip to the agent -- doing that here, under a burst of acks (e.g. right
+    // after a mass upgrade completes), could occupy every worker thread at once and stall all
+    // other agents' traffic. The poller thread drains the list and performs the actual round-trip
+    // off the shared pool instead.
+    legacy_task_ack_offer_t offer = legacy_task_ack_offer(agent_id);
+
+    if (offer != LEGACY_TASK_ACK_QUEUED) {
+        // Nothing logged above debug for an ack that queues nothing: the agent decides how often
+        // it acks, so anything louder would let it fill the manager's log at will.
+        switch (offer) {
+            case LEGACY_TASK_ACK_ALREADY_QUEUED:
+                mdebug2("legacy_task_delivery: agent '%s' resent its upgrade acknowledgment, a "
+                        "clear_upgrade_result reply is already pending", agent_id);
+                break;
+            case LEGACY_TASK_ACK_COOLING_DOWN:
+                mdebug1("legacy_task_delivery: agent '%s' resent its upgrade acknowledgment, not replying "
+                        "within %ds of the previous clear_upgrade_result", agent_id, LEGACY_TASK_ACK_RETRY_COOLDOWN_SEC);
+                break;
+            default:
+                mdebug1("legacy_task_delivery: agent '%s': too many upgrade acknowledgments pending (%d), not "
+                        "replying to this one, the agent will resend it", agent_id, LEGACY_TASK_ACK_LIST_MAX_SIZE);
+                break;
+        }
+
+        cJSON_Delete(ack);
+        return true;
+    }
+
     cJSON *message_obj = cJSON_GetObjectItem(parameters_obj, "message");
     // Agent-supplied free text: escape CR/LF so it cannot forge lines in the plain-text log.
     char *message = escape_newlines(cJSON_IsString(message_obj) ? message_obj->valuestring : "(no message)");
@@ -1677,35 +1885,26 @@ bool legacy_task_process_upgrade_ack(const char *agent_id, const char *ack_json)
     os_free(message);
     cJSON_Delete(ack);
 
-    // Enqueue rather than reply inline: this function runs on a shared rem_handler worker-pool
-    // thread (secure.c) and must not block it. legacy_task_send_clear_upgrade_result() performs a
-    // synchronous round-trip to the agent (up to response_timeout seconds) -- doing that here,
-    // under a burst of acks (e.g. right after a mass upgrade completes), could occupy every
-    // worker thread at once and stall all other agents' traffic. The poller thread drains this
-    // queue and performs the actual round-trip off the shared pool instead.
-    char *agent_id_copy;
-    os_strdup(agent_id, agent_id_copy);
-    linked_queue_push_ex(pending_clear_upgrade_replies, agent_id_copy);
-
     return true;
 }
 
 /**
- * @brief Drain and reply to every agent ID currently queued for a clear_upgrade_result reply.
+ * @brief Reply to the agents owed a clear_upgrade_result, oldest first, until none is left or the
+ * deadline passes.
  *
  * Runs on this module's own poller thread, off the shared rem_handler worker pool -- see
- * pending_clear_upgrade_replies' doc comment. No dedup: the same agent ID may appear more than
- * once (its own backoff loop can resend an ack before this drains), and replying twice is
- * harmless, so each queued entry is answered independently.
+ * legacy_task_ack_list's doc comment. The deadline is checked before every reply, so the next poll
+ * cycle starts at most one LEGACY_TASK_ACK_REPLY_TIMEOUT_SEC late however many replies are owed;
+ * whatever is left stays queued for the next drain.
+ *
+ * @param deadline Moment after which no further reply is started.
  */
-STATIC void legacy_task_drain_clear_upgrade_replies(void) {
+STATIC void legacy_task_drain_clear_upgrade_replies(time_t deadline) {
     char *agent_id;
 
-    // linked_queue_pop_ex() blocks on an empty queue (waits on its condition variable), so
-    // draining must check for a pending node first rather than looping on its NULL return.
-    while (pending_clear_upgrade_replies->first) {
-        agent_id = (char *) linked_queue_pop_ex(pending_clear_upgrade_replies);
-        legacy_task_send_clear_upgrade_result(agent_id);
+    while (time(0) < deadline && (agent_id = legacy_task_ack_take_next()) != NULL) {
+        bool replied = legacy_task_send_clear_upgrade_result(agent_id);
+        legacy_task_ack_settle(agent_id, replied);
         os_free(agent_id);
     }
 }
@@ -1721,16 +1920,17 @@ void *legacy_upgrade_task_delivery(void *arg) {
 
     while (1) {
         legacy_upgrade_poll_cycle();
-        legacy_task_drain_clear_upgrade_replies();
 
-        int slept = 0;
-        while (slept < legacy_task_polling_interval) {
-            int nap = (legacy_task_polling_interval - slept < LEGACY_TASK_ACK_DRAIN_INTERVAL_SEC)
-                      ? (legacy_task_polling_interval - slept)
-                      : LEGACY_TASK_ACK_DRAIN_INTERVAL_SEC;
-            sleep(nap);
-            slept += nap;
-            legacy_task_drain_clear_upgrade_replies();
+        // Time spent replying to acks counts toward the poll interval rather than extending it,
+        // so however many acks are owed, the next cycle starts on schedule (see
+        // legacy_task_drain_clear_upgrade_replies()).
+        time_t next_cycle = time(0) + legacy_task_polling_interval;
+        legacy_task_drain_clear_upgrade_replies(next_cycle);
+
+        for (time_t now = time(0); now < next_cycle; now = time(0)) {
+            sleep((next_cycle - now < LEGACY_TASK_ACK_DRAIN_INTERVAL_SEC) ? (unsigned int) (next_cycle - now)
+                                                                         : LEGACY_TASK_ACK_DRAIN_INTERVAL_SEC);
+            legacy_task_drain_clear_upgrade_replies(next_cycle);
 
 #ifdef WAZUH_UNIT_TESTING
             break;
