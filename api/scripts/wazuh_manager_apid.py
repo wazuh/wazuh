@@ -26,6 +26,11 @@ BIND_BACKOFF_BASE_SECONDS = 2
 # Exit code uvicorn.run() used when the server never started (uvicorn.main.STARTUP_FAILURE).
 UVICORN_STARTUP_FAILURE = 3
 
+# TLS 1.2 cipher list served when https.ssl_ciphers is empty: AEAD suites with forward secrecy only.
+# uvicorn's own default for an unset cipher string is "TLSv1", which on TLS 1.2 leaves two CBC/SHA-1
+# suites and no GCM one. TLS 1.3 suites are chosen by OpenSSL's ciphersuites list, not by this string.
+DEFAULT_SSL_CIPHERS = 'ECDHE+AESGCM:ECDHE+CHACHA20'
+
 # Set by exit_handler(), so a signal arriving while _bind_listening_sockets() waits to retry
 # aborts the wait instead of running out the backoff clock with the pidfiles already deleted.
 _shutdown_event = threading.Event()
@@ -77,7 +82,7 @@ def configure_ssl(params):
 
     The pair is never generated here: the installer issues it signed by the manager CA. The files
     are loaded once the way uvicorn will load them (certificate chain, client CA when `use_ca` is
-    set, cipher string) with the service's uid/gid: this runs after drop_privileges, before
+    set, cipher string as written) with the service's uid/gid: this runs after drop_privileges, before
     daemonizing, so a missing, unreadable or invalid file is logged by the service user, printed
     to the terminal and turned into exit code 1 before uvicorn starts.
 
@@ -95,7 +100,7 @@ def configure_ssl(params):
 
     key, cert = api_conf['https']['key'], api_conf['https']['cert']
     use_ca, ca = api_conf['https']['use_ca'], api_conf['https']['ca']
-    ciphers = api_conf['https']['ssl_ciphers'].upper() if api_conf['https']['ssl_ciphers'] else ''
+    ciphers = api_conf['https']['ssl_ciphers'] or DEFAULT_SSL_CIPHERS
 
     def _files(paths):
         return ', '.join(f'WAZUH_PATH/{to_relative_path(path)}' for path in paths)
@@ -145,11 +150,20 @@ def configure_ssl(params):
             logger.error(msg)
             raise APIError(2003, details=msg) from exc
 
-    if ciphers:
+    try:
+        context.set_ciphers(ciphers)
+    except ssl.SSLError as exc:
+        # OpenSSL cipher keywords are case-sensitive (`!kRSA`, not `!KRSA`). Earlier releases
+        # uppercased the whole string, so a lowercase list that only ever worked because of that
+        # still starts, uppercased, with a warning.
         try:
-            context.set_ciphers(ciphers)
-        except ssl.SSLError as exc:
+            context.set_ciphers(ciphers.upper())
+        except ssl.SSLError:
             _fail(APIError(2003, details=f'No usable cipher in https.ssl_ciphers: {ciphers}'), exc)
+        logger.warning(f'https.ssl_ciphers "{ciphers}" is not an OpenSSL cipher list as written and was '
+                       f'applied as "{ciphers.upper()}". OpenSSL keywords are case-sensitive: write them in '
+                       'their exact case')
+        ciphers = ciphers.upper()
 
     params['ssl_version'] = ssl.PROTOCOL_TLS_SERVER
 
@@ -159,10 +173,7 @@ def configure_ssl(params):
 
     params['ssl_certfile'] = cert
     params['ssl_keyfile'] = key
-
-    # Load SSL ciphers if any has been specified
-    if ciphers:
-        params['ssl_ciphers'] = ciphers
+    params['ssl_ciphers'] = ciphers
 
 
 def drop_privileges(run_as_root: bool) -> None:

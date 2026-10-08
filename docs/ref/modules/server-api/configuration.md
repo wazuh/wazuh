@@ -135,7 +135,7 @@ contain only letters, digits, `_`, `-` and `.`.
 | `cert` | `apid.pem` | Certificate |
 | `use_ca` | `false` | Require a client certificate signed by `ca` |
 | `ca` | `root-ca.pem` | CA used to verify client certificates when `use_ca` is `true` |
-| `ssl_ciphers` | `""` | OpenSSL cipher list; empty keeps the default |
+| `ssl_ciphers` | `""` | OpenSSL cipher list for TLS 1.2, passed to OpenSSL as written (keywords are case-sensitive: `!kRSA`, not `!KRSA`). Empty serves `ECDHE+AESGCM:ECDHE+CHACHA20`: forward-secret AEAD suites only. TLS 1.3 suites are not selected by this list. A list OpenSSL rejects as written but accepts uppercased is applied uppercased with a warning in `logs/api.log` |
 
 The installer (`wazuh-manager-resolve-credentials --install`, run by the package post-install step or
 `install.sh` on a clean installation) issues `apid.pem` and `apid-key.pem` from the manager's CA with the
