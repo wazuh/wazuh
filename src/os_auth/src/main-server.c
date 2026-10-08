@@ -756,7 +756,8 @@ static void process_message(struct client *client) {
     char* key_hash = NULL;
     char* new_key = NULL;
 
-    mdebug2("Request received: <%s>", client->read_buffer);
+    /* Never log the buffer: a legacy request starts with "OSSEC PASS: <authd.pass>". */
+    mdebug2("Enrollment request received from %s", client->ip);
 
     /* authpass is only mutable on the worker: the watcher thread reloads it and so does the
      * block below. The master sets it once at startup, so it needs no serialisation there and
