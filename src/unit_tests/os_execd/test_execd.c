@@ -33,6 +33,9 @@
 
 extern int test_mode;
 extern OSList *timeout_list;
+extern int ar_manager_addrs_n;
+extern int ar_manager_addrs_next;
+extern time_t ar_manager_resolved_at;
 
 void ExecdStart(int q);
 
@@ -1141,6 +1144,23 @@ static void test_ExecdStart_long_ar_keys(void **state) {
 
 /* Allowlist */
 
+static void reset_manager_cache(void) {
+    ar_manager_addrs_n = 0;
+    ar_manager_addrs_next = 0;
+    ar_manager_resolved_at = 0;
+}
+
+static void set_manager_hosts(const char **hosts) {
+    size_t n = 0;
+    while (hosts[n]) {
+        n++;
+    }
+    os_calloc(n + 1, sizeof(char *), ar_manager_hosts);
+    for (size_t i = 0; i < n; i++) {
+        os_strdup(hosts[i], ar_manager_hosts[i]);
+    }
+}
+
 static void free_allowlist(void) {
     for (int i = 0; ar_allowlist && ar_allowlist[i]; i++) {
         os_ip *ip = ar_allowlist[i];
@@ -1149,6 +1169,12 @@ static void free_allowlist(void) {
     os_free(ar_allowlist);
     free_strarray(ar_manager_hosts);
     ar_manager_hosts = NULL;
+    reset_manager_cache();
+}
+
+static int setup_allowlist(void **state) {
+    reset_manager_cache();
+    return 0;
 }
 
 static int teardown_allowlist(void **state) {
@@ -1178,6 +1204,7 @@ static void test_ExecdConfig_allowlist(void **state) {
                                  "<active-response><allowlist>10.1.0.0/16</allowlist>"
                                  "<allowlist>2001:db8::/32</allowlist></active-response>"
                                  "</ossec_config>"), 0);
+    will_return_maybe(__wrap_time, 1000);
 
     // Manager, defaults (loopback, unspecified) and the configured entries, in any numeric form.
     const char *allowed[] = {"172.30.68.10", "127.0.0.1", "127.9.9.9", "127.1", "::1", "::ffff:127.0.0.1",
@@ -1217,10 +1244,11 @@ static void test_ExecdConfig_allowlist_invalid(void **state) {
 static void test_ExecdStart_allowlisted_source(void **state) {
     int queue = 1;
     char *message = "{\"wazuh\":{\"active_response\":{\"name\":\"block-ip\",\"executable\":\"block-ip\","
-                    "\"type\":\"stateless\",\"location\":\"local\"}},\"source\":{\"ip\":\"172.30.68.10\"}}";
+                    "\"type\":\"stateless\",\"location\":\"local\"}},\"source\":{\"ip\":\"172.30.68.30\"}}";
 
-    os_calloc(2, sizeof(char *), ar_manager_hosts);
-    os_strdup("172.30.68.10", ar_manager_hosts[0]);
+    const char *hosts[] = {"172.30.68.30", NULL};
+    reset_manager_cache();
+    set_manager_hosts(hosts);
 
     will_return(__wrap_time, 123456789);
     will_return(__wrap_select, 1);
@@ -1230,30 +1258,67 @@ static void test_ExecdStart_allowlisted_source(void **state) {
     will_return(__wrap_OS_RecvUnix, strlen(message));
     expect_any(__wrap__mdebug2, formatted_msg);
     will_return(__wrap_time, 123456789);
+    will_return(__wrap_time, 123456789);
 
     // No wfopen/wpopenv expectations: the executable must not run.
     expect_string(__wrap__mwarn, formatted_msg, "Active response 'block-ip' not executed: source.ip "
-                                                "'172.30.68.10' is the manager or in the allowlist.");
+                                                "'172.30.68.30' is the manager or in the allowlist.");
 
     ExecdStart(queue);
     free_allowlist();
 }
 
 static void test_ar_manager_kept_when_resolution_fails(void **state) {
-    os_calloc(2, sizeof(char *), ar_manager_hosts);
-    os_strdup("172.30.68.12", ar_manager_hosts[0]);
+    const char *hosts[] = {"172.30.68.12", NULL};
+    set_manager_hosts(hosts);
+
+    will_return(__wrap_time, 1000);
     assert_true(ar_source_allowlisted("172.30.68.12"));
 
     // The same host stops resolving: the address resolved before must still be protected.
     os_free(ar_manager_hosts[0]);
     os_strdup("", ar_manager_hosts[0]);
-    expect_string_count(__wrap__mdebug1, formatted_msg,
-                        "Could not resolve manager address '' for the active response allowlist.", 2);
+    will_return(__wrap_time, 1060);
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not resolve manager address '' for the active response allowlist.");
     assert_true(ar_source_allowlisted("172.30.68.12"));
+}
+
+static void test_ar_manager_resolution_rate_limited(void **state) {
+    const char *hosts[] = {"", NULL};
+    set_manager_hosts(hosts);
+
+    will_return(__wrap_time, 1000);
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not resolve manager address '' for the active response allowlist.");
     assert_false(ar_source_allowlisted("172.30.68.13"));
 
-    free_strarray(ar_manager_hosts);
-    ar_manager_hosts = NULL;
+    // Within the interval: no new lookup, so no second debug message.
+    will_return(__wrap_time, 1059);
+    assert_false(ar_source_allowlisted("172.30.68.13"));
+}
+
+static void test_ar_manager_cache_replaces_oldest(void **state) {
+    char *hosts[34] = {NULL};
+    for (int i = 0; i < 33; i++) {
+        os_calloc(16, sizeof(char), hosts[i]);
+        snprintf(hosts[i], 16, "10.9.0.%d", i + 1);
+    }
+    set_manager_hosts((const char **)hosts);
+    for (int i = 0; i < 33; i++) {
+        os_free(hosts[i]);
+    }
+
+    will_return_maybe(__wrap_time, 1000);
+    assert_true(ar_source_allowlisted("10.9.0.33"));
+    assert_true(ar_source_allowlisted("10.9.0.2"));
+    assert_false(ar_source_allowlisted("10.9.0.1"));
+}
+
+static void test_ar_manager_ipv4_mapped(void **state) {
+    const char *hosts[] = {"::ffff:10.8.0.1", NULL};
+    set_manager_hosts(hosts);
+
+    will_return(__wrap_time, 1000);
+    assert_true(ar_source_allowlisted("10.8.0.1"));
 }
 
 int main(void) {
@@ -1270,10 +1335,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_ExecdStart_get_name_err, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_ExecdStart_json_err, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_ExecdStart_long_ar_keys, test_setup_file, test_teardown_file),
-        cmocka_unit_test_teardown(test_ExecdConfig_allowlist, teardown_allowlist),
-        cmocka_unit_test_teardown(test_ExecdConfig_allowlist_invalid, teardown_allowlist),
+        cmocka_unit_test_setup_teardown(test_ExecdConfig_allowlist, setup_allowlist, teardown_allowlist),
+        cmocka_unit_test_setup_teardown(test_ExecdConfig_allowlist_invalid, setup_allowlist, teardown_allowlist),
         cmocka_unit_test_setup_teardown(test_ExecdStart_allowlisted_source, test_setup_file, test_teardown_file),
-        cmocka_unit_test(test_ar_manager_kept_when_resolution_fails),
+        cmocka_unit_test_setup_teardown(test_ar_manager_kept_when_resolution_fails, setup_allowlist, teardown_allowlist),
+        cmocka_unit_test_setup_teardown(test_ar_manager_resolution_rate_limited, setup_allowlist, teardown_allowlist),
+        cmocka_unit_test_setup_teardown(test_ar_manager_cache_replaces_oldest, setup_allowlist, teardown_allowlist),
+        cmocka_unit_test_setup_teardown(test_ar_manager_ipv4_mapped, setup_allowlist, teardown_allowlist),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

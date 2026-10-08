@@ -154,7 +154,6 @@ int ExecdConfig(const char *cfgfile)
     }
 
     ar_load_manager_hosts(cfgfile);
-    ar_resolve_manager_hosts();
 
     //repeated_t = OS_GetOneContentforElement(&xml, blocks);
     if (repeated_t)

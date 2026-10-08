@@ -54,12 +54,12 @@ Longer timeouts for stateful responses that recur for the same keys.
 An address or network that no active response may target. Repeat the element for each entry.
 
 - **Default value:** none. These are always protected, whatever this list holds: the manager's
-  address from `<agent><manager><endpoint>` (a name is resolved when execd starts and on every
-  response, and every address it has resolved stays protected if a later lookup fails), loopback
+  address from `<agent><manager><endpoint>` (a name is resolved when execd starts and again at most
+  once a minute; the last 32 addresses it resolved stay protected if a later lookup fails), loopback
   (`127.0.0.0/8`, `::1`) and the unspecified addresses (`0.0.0.0`, `::`)
 - **Allowed values:** an IPv4 or IPv6 address, optionally with a CIDR prefix (`10.0.0.0/8`,
-  `2001:db8::/32`); a name, `any` or a `!` negation is a configuration error and `wazuh-execd` does
-  not start
+  `2001:db8::/32`); a name, `any` or a `!` negation is a configuration error and the agent does not
+  start
 - **Note:** execd checks the response's `source.ip`, for every executable, before running it. A
   response whose `source.ip` matches is not executed and execd logs
   `Active response '<executable>' not executed: source.ip '<ip>' is the manager or in the allowlist.`
