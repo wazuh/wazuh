@@ -281,7 +281,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/wodles/*
 
 %changelog
-* Wed Oct 07 2026 support <info@wazuh.com> - 4.14.9
+* Wed Oct 14 2026 support <info@wazuh.com> - 4.14.9
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-9.html
 * Wed Jul 29 2026 support <info@wazuh.com> - 4.14.7
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-7.html
