@@ -50,7 +50,7 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
         str_len = strlen(str);
 
         if (is_valid_context_file) {
-            OS_SHA1_Stream(context, NULL, str);
+            w_hash_read_line(lf, context, str, &current_position);
         }
 
         /* Check str_len size. Very useless, but just to make sure.. */

@@ -53,8 +53,9 @@ int __wrap_w_update_file_status(const char *path, int64_t pos, EVP_MD_CTX *conte
     return mock_type(int);
 }
 
-void __wrap_OS_SHA1_Stream(EVP_MD_CTX *c, os_sha1 output, char *buf) {
+void __wrap_OS_SHA1_Stream_Bytes(EVP_MD_CTX *c, const char * buf, size_t len) {
     function_called();
+    check_expected(len);
 }
 
 int __wrap_w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget *log_target, char queue_mq) {
@@ -80,15 +81,30 @@ static char * build_cont_line(size_t len, bool newline) {
     return line;
 }
 
-static void expect_line(char *line) {
+/* File position reported by w_ftell after each line read */
+static int64_t mock_position = 0;
+
+/* Expect a line of line_len bytes, which may contain NUL bytes, to be read and hashed */
+static void expect_line_bytes(char *line, size_t line_len) {
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, line);
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    mock_position += (int64_t) line_len;
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, mock_position);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, line_len);
 }
 
-/* Reads "<header>\n<continuation>" and expects a single message of expected_len bytes. */
-static void run_reader(void *(*reader)(logreader *, int *, int), const char *header, size_t cont_len, bool newline, size_t expected_len) {
+static void expect_line(char *line) {
+    expect_line_bytes(line, strlen(line));
+}
+
+/* Reads "<header>\n<continuation>" and expects a single message of expected_len bytes.
+ * With hidden_len > 0 the continuation is followed by a NUL, hidden_len more bytes and '\n': the reader only
+ * sees the bytes before the NUL, but every byte of the line must be hashed. */
+static void run_reader_hidden(void *(*reader)(logreader *, int *, int), const char *header, size_t cont_len, bool newline,
+                              size_t hidden_len, size_t expected_len) {
     logreader lf = {0};
     lf.file = "test.log";
     lf.fp = (FILE *) 1;
@@ -96,14 +112,29 @@ static void run_reader(void *(*reader)(logreader *, int *, int), const char *hea
 
     char line1[OS_SIZE_256];
     snprintf(line1, sizeof(line1), "%s\n", header);
-    char *line2 = build_cont_line(cont_len, newline);
+    char *line2 = NULL;
+    size_t line2_len = 0;
 
+    if (hidden_len > 0) {
+        line2 = calloc(cont_len + hidden_len + 3, sizeof(char));
+        assert_non_null(line2);
+        memset(line2, 'A', cont_len);
+        line2[0] = '\t';
+        memset(line2 + cont_len + 1, 'B', hidden_len);
+        line2[cont_len + 1 + hidden_len] = '\n';
+        line2_len = cont_len + hidden_len + 2;
+    } else {
+        line2 = build_cont_line(cont_len, newline);
+        line2_len = strlen(line2);
+    }
+
+    mock_position = 0;
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) 0);
     will_return(__wrap_w_get_hash_context, true);
 
     expect_line(line1);
-    expect_line(line2);
+    expect_line_bytes(line2, line2_len);
 
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
@@ -123,6 +154,10 @@ static void run_reader(void *(*reader)(logreader *, int *, int), const char *hea
 
     assert_int_equal(rc, 0);
     free(line2);
+}
+
+static void run_reader(void *(*reader)(logreader *, int *, int), const char *header, size_t cont_len, bool newline, size_t expected_len) {
+    run_reader_hidden(reader, header, cont_len, newline, 0, expected_len);
 }
 
 /* Tests */
@@ -165,6 +200,15 @@ void test_read_postgresql_log_newline_line_fits(void **state) {
     run_reader(read_postgresql_log, PGSQL_HEADER, cont_len, true, strlen(PGSQL_HEADER) + 1 + cont_len);
 }
 
+void test_read_mssql_log_hashes_bytes_after_nul(void **state) {
+    // Only "\tAAAA" reaches the message, but the 12 bytes of the line are hashed
+    run_reader_hidden(read_mssql_log, MSSQL_HEADER, 5, false, 5, strlen(MSSQL_HEADER) + 1 + 5);
+}
+
+void test_read_postgresql_log_hashes_bytes_after_nul(void **state) {
+    run_reader_hidden(read_postgresql_log, PGSQL_HEADER, 5, false, 5, strlen(PGSQL_HEADER) + 1 + 5);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_read_mssql_log_last_line_fills_buffer),
@@ -173,6 +217,8 @@ int main(void) {
         cmocka_unit_test(test_read_postgresql_log_last_line_fills_buffer),
         cmocka_unit_test(test_read_postgresql_log_last_line_fits),
         cmocka_unit_test(test_read_postgresql_log_newline_line_fits),
+        cmocka_unit_test(test_read_mssql_log_hashes_bytes_after_nul),
+        cmocka_unit_test(test_read_postgresql_log_hashes_bytes_after_nul),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

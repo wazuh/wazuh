@@ -50,6 +50,7 @@ bool __wrap_w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t posi
 }
 
 int __wrap_w_update_file_status(const char *path, int64_t pos, EVP_MD_CTX *context) {
+    check_expected(pos);
     bool free_context = mock_type(bool);
     if (free_context) {
         EVP_MD_CTX_free(context);
@@ -57,9 +58,9 @@ int __wrap_w_update_file_status(const char *path, int64_t pos, EVP_MD_CTX *conte
     return mock_type(int);
 }
 
-void __wrap_OS_SHA1_Stream(EVP_MD_CTX *c, os_sha1 output, char *buf) {
+void __wrap_OS_SHA1_Stream_Bytes(EVP_MD_CTX *c, const char * buf, size_t len) {
     function_called();
-    return;
+    check_expected(len);
 }
 
 int __wrap_w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget *log_target, char queue_mq) {
@@ -109,14 +110,27 @@ static char * build_date_line(size_t space_idx, const char *tail) {
     return line;
 }
 
-static void expect_line(char *line) {
+/* File position reported by w_ftell after each line read */
+static int64_t mock_position = 0;
+
+/* Expect a line of line_len bytes, which may contain NUL bytes, to be read and hashed */
+static void expect_line_bytes(char *line, size_t line_len) {
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, line);
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    mock_position += (int64_t) line_len;
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, mock_position);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, line_len);
+}
+
+static void expect_line(char *line) {
+    expect_line_bytes(line, strlen(line));
 }
 
 static void expect_prologue(void) {
+    mock_position = 0;
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) 0);
     will_return(__wrap_w_get_hash_context, true);
@@ -130,6 +144,7 @@ static void expect_epilogue(void) {
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) 0);
 
+    expect_value(__wrap_w_update_file_status, pos, 0);
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
@@ -309,6 +324,36 @@ void test_read_snortfull_consecutive_full_records(void **state) {
     free(line3);
 }
 
+/**
+ * Test: a line that breaks the record format.
+ * The reader stops with an error, but the state covering the bad line is stored, so the next read and a
+ * restart resume after it instead of hashing from a stale state.
+ */
+void test_read_snortfull_bad_line_keeps_state(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *) 1;
+    int rc;
+
+    char line1[] = "[**] [1:1000001:0] Test alert [**]\n";
+    char line2[] = "[Classification: no line end";
+
+    expect_prologue();
+
+    expect_line(line1);
+    expect_line(line2);
+
+    expect_string(__wrap__merror, formatted_msg, "Bad formated snort full file.");
+
+    expect_value(__wrap_w_update_file_status, pos, (int64_t) (strlen(line1) + strlen(line2)));
+    will_return(__wrap_w_update_file_status, true);
+    will_return(__wrap_w_update_file_status, 0);
+
+    read_snortfull(&lf, &rc, 0);
+
+    assert_int_equal(rc, -1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_read_snortfull_complete_record),
@@ -316,6 +361,7 @@ int main(void) {
         cmocka_unit_test(test_read_snortfull_third_line_full_buffer),
         cmocka_unit_test(test_read_snortfull_preprocessor_message_length),
         cmocka_unit_test(test_read_snortfull_consecutive_full_records),
+        cmocka_unit_test(test_read_snortfull_bad_line_keeps_state),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
