@@ -219,6 +219,10 @@ check "explicit system with no anchor aborts" "1" \
       "$(log_count explicit_system_no_anchor "Upgrade failed. <ssl><verification_mode> is explicitly 'system'")"
 check "the upgrade result is 2 under explicit system with no anchor" "2" \
       "$(cat "${WORK}/explicit_system_no_anchor/var/upgrade/upgrade_result" 2>/dev/null)"
+check "that abort offers placing the CA at the anchor" "1" \
+      "$(log_count explicit_system_no_anchor "explicitly 'system'.*place it at ./etc/certs/root-ca.pem and retry")"
+check "that abort points back to the hint when openssl is missing" "1" \
+      "$(log_count explicit_system_no_anchor "explicitly 'system'.*See the 'No trust anchor' line above")"
 
 # A handshake error is a rejection when the same handshake succeeds without verification.
 STUB_CACERT_RC=35 STUB_RETRY_RC=0 run_case handshake_ca "${LEGACY_CONF}" yes 4.14.7 no
