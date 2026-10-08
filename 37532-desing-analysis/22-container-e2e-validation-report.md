@@ -28,7 +28,7 @@ by construction, not by observation."*
 | 6 | **Kubernetes passes in full**, including the two assertions nothing had tested: one independent record per container in a multi-container pod, and the transitive `ReplicaSet → Deployment` owner chain. | §22.9 |
 | 7 | **A container running an init system is never resolved and is silently invisible** — no `list` entry, no baseline, no inventory, no log line. Triggered by PID 1 creating child cgroups, so it covers systemd-in-container images generally, not just KinD. | §22.9.1 |
 | 8 | **Container security is non-functional on a pure cgroup v1 host.** The store keys on `mnt_ns` while the drain reads v1 cgroup ids, so nothing joins: 0 events, 0 inventory rows, despite both halves reporting healthy. | §22.11.3 |
-| 9 | **Load is lost silently.** 20,000 creates in a monitored container produced 4,545 rows and no drop, loss or truncation diagnostic of any kind. | §22.10.1 |
+| 9 | **Work is shed silently.** 20,000 creates in a monitored container exceeded the per-container path budget and the kernel ring, and not one diagnostic of any kind was emitted. The recorded state stays correct via a full re-walk — the individual change events are what is lost. | §22.10.1 |
 | 10 | **cgroup v1 can no longer be selected on systemd ≥ 257** (Debian 13), so the v1 posture cannot be reproduced or regression-tested there at all. | §22.11.1 |
 | 11 | **GAP 2 fix verified in the production build** — no `libcurl.so.4` dependency. | §22.3 |
 
@@ -359,16 +359,22 @@ total container rows           : 4550
 max_paths_per_container        : 4096 (default)
 ```
 
-So roughly **77% of the created files are not recorded** — and **no drop, loss or truncation line
-was emitted anywhere**. Specifically absent: the per-cgroup drop-accounting error, the
-re-baselining fallback, any `rt_poll failed` line, and any truncation message.
+**No drop, loss or truncation line was emitted anywhere.** Specifically absent: the per-cgroup
+drop-accounting error, the re-baselining fallback, any `rt_poll failed` line, and any truncation
+message. That is Q19's gap exactly — **an operator cannot tell this happened.**
 
-The cause is not isolated here: 4,545 is close to but **above** `max_paths_per_container` (4096), so
-the per-container path cap is not a sufficient explanation on its own, and ring-buffer drops cannot
-be distinguished from it without instrumentation. What *is* established is the observability
-consequence, and it is Q19's gap exactly: **an operator cannot tell this happened.** A container that
-silently records a quarter of its file changes is indistinguishable, from the logs, from one that
-recorded all of them.
+> **Correction, 2026-10-08.** The row count above, and the conclusion originally drawn from it
+> ("roughly 77% of the created files are not recorded"), were **wrong**. The count was taken ~45 s
+> after the storm, while the escalated re-walk was still running and with `fim.db-journal` present —
+> a condition this very report flags as making an external read unreliable, and which I then drew a
+> conclusion from anyway. Re-measured once the agent had settled and the journal was gone:
+> **20,000 files in the container, 20,000 rows recorded.**
+>
+> So nothing was lost from the recorded state. What was shed is the per-file *change events*: the
+> container blew its path budget, the kernel ring also dropped, and it was escalated to a full
+> re-walk — which is the designed response and did capture everything. The defect is therefore
+> narrower and purely about observability, not data loss, and §22.10's "20,000 creates → 4,545 rows"
+> row should be read as "measured mid-re-walk", not as a loss figure.
 
 Worth noting alongside §22.5: the agent's own loss accounting is designed to fall back to
 re-baselining on any attributed loss, and that fallback did not fire — which is consistent with the
@@ -571,6 +577,74 @@ agreed, FIM still produced nothing and the baseline still reported zero — but 
 every line a numbered v1 hierarchy). No process mapped to any container. It now falls back to the
 first controller line, which carries the same path. This is why the fix is validated end to end and
 not merely at the key: agreeing on the key was necessary and, on its own, still produced nothing.
+
+---
+
+### Fix 3 — burst removals strand entries (§22.6) — **FIXED**
+
+The debounce was not at fault. Its trailing edge works, but it only runs while work is pending and
+`reSeed()` clears that flag, so after the last deferred reconcile a quiet host **never takes another
+snapshot** — and `applySnapshot()` is the only place removal grace, pending TTL and verdict liveness
+are evaluated, with the two connectors its only callers. A quiet host therefore stopped expiring
+anything at all. Kubernetes escapes this only because the apiserver closes its watch every few
+minutes and the re-list reconciles unconditionally.
+
+The fix reconciles periodically with nothing pending, well inside the 60 s grace and far above the
+500 ms poll. Re-validated with the report's own reproduction — five `docker rm -f` at once, then the
+host left completely idle, **no unrelated Docker event permitted**:
+
+| | Ubuntu 22.04 | Debian 13 |
+|---|---|---|
+| listed after start | 5 of 5 | 5 of 5 |
+| t+20 / 40 / 60 s | 2 | 3 |
+| **t+80 s, t+100 s** | **0** | **0** |
+| final list | empty | empty |
+
+Before: three stranded on both hosts, stable past t+90 s and cleared only by an unrelated
+`docker run`. The records that linger until t+80 s are the 60 s grace behaving exactly as designed —
+holding a removed container briefly so events still in flight can be attributed — which is now
+actually evaluated rather than never read.
+
+**A note on the unit test, because the first one I wrote was wrong.** It asserted the five records
+were gone immediately and failed, correctly: `REMOVAL_GRACE` is 60 s and records are *meant* to
+linger. The test now pins the mechanism that was broken — snapshots keep being taken after a burst
+of removals on a quiet host — and the expiry itself is proven here, on a real host, where the grace
+can actually elapse. The suite previously had no test that removed a container through the connector
+at all, which is how a defect this visible survived.
+
+---
+
+### Fix 4 — work shed in silence (§22.10.1) — **FIXED**
+
+Three `stats()` accessors were already implemented, thread-safe, and read by nothing:
+`grep -n "stats" container_event_drain.cpp` returned zero hits. The struct comment had said it
+outright — *"a silently-escalating consumer is impossible to explain in the field."* They are now
+diffed once per resolver pass, and `drainDrops()` reports attributed drops, which previously logged
+only when attribution was **impossible**.
+
+Re-running the storm (5 writers × 4,000 creates, 20,000 files in 2 s):
+
+```
+Container eBPF drain: shedding work - containers_over_path_budget=1 escalated_on_loss=1.
+  Affected containers are re-walked, so their recorded state stays correct, but the
+  individual changes in between are not reported.
+Container eBPF drain: the kernel dropped events for 1 container(s) since the last check;
+  each is being re-baselined, so its file state stays correct but the individual changes are gone.
+```
+
+Both mechanisms named, where before there was nothing at all. This also **isolates the cause** that
+§22.10.1 said could not be isolated: the per-container path budget *and* genuine ring drops, both.
+
+**And it is what exposed the measurement error corrected above.** The diagnostic asserts the re-walk
+keeps recorded state correct; checking that claim is what revealed the original 4,545 figure had been
+read mid-re-walk. A diagnostic that made a falsifiable claim about its own behaviour is what made the
+earlier mistake findable.
+
+**Weaker evidence than Fixes 1-3, stated plainly.** The reporting function lives inside the drain's
+implementation struct in a `.cpp` and has no unit-test seam without exposing internals to assert on
+counters that are already individually tested. Its only proof is this reproduction, and its falsifier
+is reverting and re-running to confirm the log goes silent — not the unit-level falsifier the other
+three fixes have.
 
 ---
 
