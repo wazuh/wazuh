@@ -299,7 +299,7 @@ class TAppxWindowsWrapper final : public IPackageWrapper
 
             try
             {
-                if (!registry.string("DisplayName", name))
+                if (!registry.stringUtf8("DisplayName", name))
                 {
                     name.clear();
                 }
@@ -367,7 +367,7 @@ class TAppxWindowsWrapper final : public IPackageWrapper
                         std::string value;
                         const TRegistry nameReg(m_key, m_userId  + "\\" + APPLICATION_STORE_REGISTRY + "\\" + m_appName + "\\" + folder + "\\Capabilities");
 
-                        if (nameReg.string("ApplicationName", value))
+                        if (nameReg.stringUtf8("ApplicationName", value))
                         {
                             name = value;
                             break;
@@ -479,7 +479,7 @@ class TAppxWindowsWrapper final : public IPackageWrapper
             std::string value;
             const TRegistry registry(m_key, path);
 
-            if (!registry.string(key, value))
+            if (!registry.stringUtf8(key, value))
             {
                 for (const auto& folder : TRegistry(m_key, path).enumerate())
                 {
@@ -512,10 +512,12 @@ class TAppxWindowsWrapper final : public IPackageWrapper
                 std::string data;
                 std::string vendorRegistry;
 
+                // Not reported data: this is a ProgID used as a subkey of the path opened below.
+                // The registry is opened through the ANSI API, so it must stay ANSI encoded.
                 registry.string(value, vendorRegistry);
                 const TRegistry pubRegistry(m_key, m_userId  + "\\" + APPLICATION_VENDOR_REGISTRY + "\\" + vendorRegistry + "\\Application");
 
-                if (pubRegistry.string("ApplicationCompany", data))
+                if (pubRegistry.stringUtf8("ApplicationCompany", data))
                 {
                     if (!Utils::startsWith(data, PREFIX_LOCALIZATION))
                     {
