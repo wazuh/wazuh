@@ -160,7 +160,7 @@ TEST(VdScanEndpoint, TheScanRunsForTheAgentNamedInTheBody)
     const auto ops = fixture.events->syncOps();
     ASSERT_EQ(1U, ops.size());
     EXPECT_EQ("scanAgent", std::get<0>(ops[0]));
-    // Padded, like every registry key: the per-agent exclusion between this lane and the pipeline
+    // Canonical, like every registry key: the per-agent exclusion between this lane and the pipeline
     // only works if both spell the agent the same way.
     EXPECT_EQ("007", std::get<1>(ops[0]));
 }
@@ -178,20 +178,38 @@ TEST(VdScanEndpoint, TheNumberSpellingOfAnAgentIdIsAccepted)
     EXPECT_EQ("007", std::get<1>(ops[0])) << "the same agent, written the other way";
 }
 
+/// Leading zeros are a spelling, not another agent: the id is normalized to the canonical form every
+/// document carries, so "0007" reaches agent 007 instead of an id no document has.
+TEST(VdScanEndpoint, ALeadingZeroSpellingIsNormalizedToTheCanonicalId)
+{
+    EndpointUnderTest fixture;
+
+    auto responder = std::make_shared<FutureResponder>();
+    fixture.handler(scanRequest(R"({"agent_id":"0007"})"), responder);
+    ASSERT_EQ(200, responder->get().status);
+
+    const auto ops = fixture.events->syncOps();
+    ASSERT_EQ(1U, ops.size());
+    EXPECT_EQ("007", std::get<1>(ops[0]));
+}
+
 TEST(VdScanEndpoint, ABodyThatNamesNoAgentIs400)
 {
     EndpointUnderTest fixture;
 
-    const std::vector<std::string> bodies {
-        "",                        // the dispatcher sent an empty payload
-        "not json",                // malformed: discarded, and a discarded value is not an object
-        "[]",                      // valid JSON, wrong shape
-        R"({})",                   // no member
-        R"({"agent_id":null})",    // present and useless
-        R"({"agent_id":"12x"})",   // not an id
-        R"({"agent_id":"-1"})",    // nor is this
-        R"({"agent_id":{"id":7}})" // nor this
-    };
+    const std::vector<std::string> bodies {"",         // the dispatcher sent an empty payload
+                                           "not json", // malformed: discarded, and a discarded value is not an object
+                                           "[]",       // valid JSON, wrong shape
+                                           R"({})",    // no member
+                                           R"({"agent_id":null})",     // present and useless
+                                           R"({"agent_id":"12x"})",    // not an id
+                                           R"({"agent_id":"-1"})",     // nor is this
+                                           R"({"agent_id":{"id":7}})", // nor this
+                                           // Out of the 32-bit range: no agent can have these ids, and they must never
+                                           // wrap onto one that exists (atoi("4294967297") is 1 on glibc LP64).
+                                           R"({"agent_id":"4294967297"})",
+                                           R"({"agent_id":4294967297})",
+                                           R"({"agent_id":"99999999999"})"};
 
     for (const auto& body : bodies)
     {

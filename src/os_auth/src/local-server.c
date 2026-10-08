@@ -835,6 +835,7 @@ cJSON* local_add(const char *id,
     char* str_result = NULL;
     char _ip[IPSIZE + 1] = {0};
     char reenroll_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {0};
+    char canonical_id[12] = {0}; /* INT32_MAX has 10 digits */
     long long journal_seq = 0;
     bool warn = false;
 
@@ -852,6 +853,17 @@ cJSON* local_add(const char *id,
      * held yet. */
     if (id && !OS_IsValidAgentInsertID(id)) {
         return local_create_error_response(ERRORS[EINVALIDID].code, ERRORS[EINVALIDID].message);
+    }
+
+    /* An agent id is a string, and "0001" and "001" would be two identities for one number: remoted's
+     * keystore resolves both to the same agent, but the agent claims (and the indexer stores) the
+     * canonical "001", and every check below matches by string. So a caller-supplied id is stored in
+     * its canonical spelling, before the purge and duplicate checks look at it. */
+    if (id) {
+        if (OS_CanonicalAgentInsertID(id, canonical_id, sizeof(canonical_id)) != 0) {
+            return local_create_error_response(ERRORS[EINVALIDID].code, ERRORS[EINVALIDID].message);
+        }
+        id = canonical_id;
     }
 
     /* An explicitly chosen id is the one case where the caller can land on an id whose previous

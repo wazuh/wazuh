@@ -298,8 +298,8 @@ TEST(DeleteAgentEndpoint, TheRouteReadsTheAgentIdFromTheBody)
     fixture.handler(executionRequest(R"({"agent_id":"7"})"), responder);
     ASSERT_EQ(200, responder->get().status);
 
-    // Padded exactly like the header route pads: the deletion must match what indexing wrote,
-    // whichever route asked for it.
+    // Canonical, exactly the spelling the header route requires: the deletion must match what
+    // indexing wrote, whichever route asked for it.
     const auto ops = fixture.events->syncOps();
     ASSERT_EQ(1U, ops.size());
     EXPECT_EQ("deleteByQuery", std::get<0>(ops[0]));
@@ -330,20 +330,38 @@ TEST(DeleteAgentEndpoint, TheRouteAcceptsTheNumberSpellingOfAnAgentId)
     EXPECT_EQ("007", std::get<1>(ops[0])) << "the same agent, written the other way";
 }
 
+/// Leading zeros are a spelling, not another agent: the id is normalized to the canonical form every
+/// document carries, so "0007" reaches agent 007 instead of an id no document has.
+TEST(DeleteAgentEndpoint, ALeadingZeroSpellingIsNormalizedToTheCanonicalId)
+{
+    EndpointUnderTest fixture;
+
+    auto responder = std::make_shared<FutureResponder>();
+    fixture.handler(executionRequest(R"({"agent_id":"0007"})"), responder);
+    ASSERT_EQ(200, responder->get().status);
+
+    const auto ops = fixture.events->syncOps();
+    ASSERT_EQ(1U, ops.size());
+    EXPECT_EQ("007", std::get<1>(ops[0]));
+}
+
 TEST(DeleteAgentEndpoint, TheRouteRejectsABodyThatNamesNoAgent)
 {
     EndpointUnderTest fixture;
 
-    const std::vector<std::string> bodies {
-        "",                        // the dispatcher sent an empty payload
-        "not json",                // malformed: discarded, and a discarded value is not an object
-        "[]",                      // valid JSON, wrong shape
-        R"({})",                   // no member
-        R"({"agent_id":null})",    // present and useless
-        R"({"agent_id":"12x"})",   // not an id
-        R"({"agent_id":"-1"})",    // nor is this
-        R"({"agent_id":{"id":7}})" // nor this
-    };
+    const std::vector<std::string> bodies {"",         // the dispatcher sent an empty payload
+                                           "not json", // malformed: discarded, and a discarded value is not an object
+                                           "[]",       // valid JSON, wrong shape
+                                           R"({})",    // no member
+                                           R"({"agent_id":null})",     // present and useless
+                                           R"({"agent_id":"12x"})",    // not an id
+                                           R"({"agent_id":"-1"})",     // nor is this
+                                           R"({"agent_id":{"id":7}})", // nor this
+                                           // Out of the 32-bit range: no agent can have these ids, and they must never
+                                           // wrap onto one that exists (atoi("4294967297") is 1 on glibc LP64).
+                                           R"({"agent_id":"4294967297"})",
+                                           R"({"agent_id":4294967297})",
+                                           R"({"agent_id":"99999999999"})"};
 
     for (const auto& body : bodies)
     {

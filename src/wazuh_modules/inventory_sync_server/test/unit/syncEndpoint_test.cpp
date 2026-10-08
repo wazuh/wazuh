@@ -73,7 +73,7 @@ namespace
         bool m_resolved {false};
     };
 
-    std::shared_ptr<const HttpRequest> makeRequest(std::string body, const char* agentId = "1")
+    std::shared_ptr<const HttpRequest> makeRequest(std::string body, const char* agentId = "001")
     {
         auto request = std::make_shared<HttpRequest>();
         request->method = Method::Post;
@@ -199,7 +199,7 @@ TEST(SyncEndpointTest, AnIdentityMismatchIs403)
     HandlerUnderTest fixture;
     auto responder = std::make_shared<CapturingResponder>();
 
-    fixture.handler(makeRequest(validDelta(), "42"), responder);
+    fixture.handler(makeRequest(validDelta(), "042"), responder);
 
     ASSERT_TRUE(responder->captured.has_value());
     EXPECT_EQ(403, responder->captured->status);
@@ -273,16 +273,16 @@ TEST(SyncEndpointTest, AVDSessionAgainstAFullLaneGets503ScanCapacity)
 
     SessionSpec second;
     second.option = invsync::test::fb::Option_VDFirst;
-    second.agentId = "2";
+    second.agentId = "002";
     auto queued = std::make_shared<CapturingResponder>();
-    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(second, {invsync::test::ValueSpec {}}), "2"),
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(second, {invsync::test::ValueSpec {}}), "002"),
                     queued);
 
     SessionSpec third;
     third.option = invsync::test::fb::Option_VDFirst;
-    third.agentId = "3";
+    third.agentId = "003";
     auto rejected = std::make_shared<CapturingResponder>();
-    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(third, {invsync::test::ValueSpec {}}), "3"),
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(third, {invsync::test::ValueSpec {}}), "003"),
                     rejected);
 
     ASSERT_TRUE(rejected->captured.has_value());

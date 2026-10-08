@@ -94,7 +94,7 @@ namespace
         auto request = std::make_shared<HttpRequest>();
         request->body = std::move(body);
 
-        auto result = invsync::sync::validateFullSession(request->body, "1", CLUSTER);
+        auto result = invsync::sync::validateFullSession(request->body, "001", CLUSTER);
         auto* session = std::get_if<invsync::sync::ValidatedSession>(&result);
         if (session == nullptr)
         {

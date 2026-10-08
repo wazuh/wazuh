@@ -250,7 +250,8 @@ os_strdup(keys.keyentries[index]->raw_key, *key);
 
 An insertion may also *name* an id explicitly (`POST /agents/insert`). That path is
 refused rather than served when the id is taken (`9012`) or still owes a purge (`9018`); self-enrolling
-agents never send one.
+agents never send one. The id is first rewritten to its canonical spelling (`OS_CanonicalAgentInsertID()`:
+`0042` → `042`), so another spelling of a taken id is a duplicate, not a second agent.
 
 ## Duplicate handling and force replacement
 

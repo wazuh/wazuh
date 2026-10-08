@@ -435,8 +435,7 @@ TEST_F(AgentSyncProtocolTest, CurrentAgentIdIsZeroWhenNothingPublished)
     EXPECT_EQ(AgentSyncProtocol::currentAgentId(), 0);
 }
 
-// Zero-padding is presentational: "001" is agent 1, and the manager compares ids numerically for
-// the same reason (fullSessionValidator.cpp).
+// Zero-padding does not change which agent this is: "007" is agent 7.
 TEST_F(AgentSyncProtocolTest, CurrentAgentIdIgnoresZeroPadding)
 {
     agent_metadata_t metadata = {};
@@ -1281,6 +1280,55 @@ TEST_F(AgentSyncProtocolTest, VdSyncWithoutAFeedOffsetIsStillSent)
     ASSERT_NE(fullSession->start(), nullptr);
     EXPECT_EQ(fullSession->start()->option(), Wazuh::SyncSchema::Option::VDFirst);
     EXPECT_EQ(fullSession->start()->feed_offset(), 0u);
+}
+
+// The manager requires Start.agentid to equal, byte for byte, the canonical id remoted authenticated
+// (JwtSigner canonicalizes the same client.keys text). An agent whose client.keys spells its id
+// another way ("0001", as /agents/insert could register it) must still claim "001", or every one of
+// its sessions would be rejected.
+TEST_F(AgentSyncProtocolTest, StartCarriesTheCanonicalAgentId)
+{
+    for (const auto& [stored, claimed] : std::vector<std::pair<std::string, std::string>> {
+             {"001", "001"}, {"0001", "001"}, {"1", "001"}, {"1000", "1000"}, {"01000", "1000"}})
+    {
+        agent_metadata_t metadata = {};
+        strncpy(metadata.agent_id, stored.c_str(), sizeof(metadata.agent_id) - 1);
+        strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
+        char* groups[] = {const_cast<char*>("group1")};
+        metadata.groups = groups;
+        metadata.groups_count = 1;
+        metadata_provider_update(&metadata);
+
+        // A fresh transport per spelling: its session counter is cumulative.
+        mockSyncTransport = std::make_shared<MockSyncTransport>();
+        mockQueue = std::make_shared<MockPersistentQueue>();
+        LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+        protocol =
+            std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+        std::vector<PersistedData> testData = {{0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}};
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+            .WillOnce(Return(testData))
+            .WillOnce(Return(std::vector<PersistedData> {}));
+        EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
+
+        SyncModuleResult result;
+        std::thread syncThread([this, &result]() { result = protocol->synchronizeModule(Mode::DELTA); });
+
+        EXPECT_TRUE(mockSyncTransport->waitForSession());
+        feedHttpResult(200);
+        syncThread.join();
+        EXPECT_TRUE(result.success);
+
+        const auto raw = mockSyncTransport->lastMessage();
+        const auto* message = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(raw.data());
+        ASSERT_NE(message, nullptr);
+        const auto* fullSession = message->content_as_FullSession();
+        ASSERT_NE(fullSession, nullptr);
+        ASSERT_NE(fullSession->start(), nullptr);
+        ASSERT_NE(fullSession->start()->agentid(), nullptr);
+        EXPECT_EQ(fullSession->start()->agentid()->str(), claimed) << "client.keys id '" << stored << "'";
+    }
 }
 
 // The groups gate is untouched by that: it is the one prerequisite the agent still cannot
