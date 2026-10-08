@@ -2516,6 +2516,28 @@ FILE * wfopen(const char * pathname, const char * mode) {
 }
 
 
+FILE * w_fopen_regular(const char * pathname, const char * mode) {
+#ifdef WIN32
+    return wfopen(pathname, mode);
+#else
+    struct stat statbuf;
+    FILE * fp;
+    int fd = open(pathname, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
+
+    if (fd < 0) {
+        return NULL;
+    }
+
+    if (fstat(fd, &statbuf) < 0 || !S_ISREG(statbuf.st_mode) || (fp = fdopen(fd, mode), !fp)) {
+        close(fd);
+        return NULL;
+    }
+
+    return fp;
+#endif
+}
+
+
 #ifdef WIN32
 /**
  * Translate a Win32 error into an errno value. Assigning GetLastError() straight into errno, as the

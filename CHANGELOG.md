@@ -235,3 +235,4 @@
 | [#39514](https://github.com/wazuh/wazuh/pull/39514) | Fixed SCA ISO 27001 compliance mappings, remapped from the superseded 2013 numbering to 2022 Annex A. |
 | [#39192](https://github.com/wazuh/wazuh/issues/39192) | Fixed the `block-ip` active response not blocking IPs on a default macOS install. |
 | [#39667](https://github.com/wazuh/wazuh/issues/39667) | Fixed `azure-logs` logging a collection whose Python script failed as finished: a non-zero exit code is now reported as a warning, the script output that is not in its log format (e.g. a Python traceback) is logged as an error, also after a timeout, and the request, container and domain are logged as failed instead of finished. A script that cannot be executed, e.g. because python3 is missing, is now reported and no longer stops the module. |
+| [#39869](https://github.com/wazuh/wazuh/pull/39869) | Fixed FIM scan hanging when a monitored file is replaced by a FIFO. |

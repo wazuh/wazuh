@@ -498,6 +498,19 @@ int w_stat(const char * pathname,
  */
 FILE * wfopen(const char * pathname, const char * mode);
 
+/**
+ * @brief Open a file for reading only if it is a regular file.
+ *
+ * On POSIX the last component of the path must not be a symbolic link, and the type is checked on the
+ * opened descriptor, so it is the type of the file that will be read. The open does not wait for a
+ * writer when the path is a FIFO. On Windows this is wfopen().
+ *
+ * @param pathname Path of the file.
+ * @param mode Read mode, "r" or "rb".
+ * @return File pointer, or NULL on error.
+ */
+FILE * w_fopen_regular(const char * pathname, const char * mode);
+
 
 /**
  * @brief Create or truncate a file inside a base directory for writing, without following symlinks.

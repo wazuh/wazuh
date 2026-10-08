@@ -133,6 +133,18 @@ void expect_w_fopen_nofollow(const char * basedir, const char * filename, const 
     will_return(__wrap_w_fopen_nofollow, ret);
 }
 
+FILE *__wrap_w_fopen_regular(const char * pathname, const char * mode) {
+    check_expected(pathname);
+    check_expected(mode);
+    return mock_type(FILE *);
+}
+
+void expect_w_fopen_regular(const char * pathname, const char * mode, FILE *ret) {
+    expect_string(__wrap_w_fopen_regular, pathname, pathname);
+    expect_string(__wrap_w_fopen_regular, mode, mode);
+    will_return(__wrap_w_fopen_regular, ret);
+}
+
 #ifdef WIN32
 // Always-mock wrapper (no __real_w_fopen_r fallback): the only callers in
 // tests are setup_group-wrapped (test_mode=1), and dropping the __real
