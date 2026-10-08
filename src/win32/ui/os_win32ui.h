@@ -132,4 +132,9 @@ int run_agent_enroll(HWND hwnd);
 /* Refresh this agent's trust anchor/manager address with a token, without re-registering */
 int run_agent_certs_only(HWND hwnd);
 
+/* Writes @base to @out, extended with the manager's reason when wazuh-agent-auth's stderr
+ * (@cli_stderr, may be NULL) carries one: "<base without its period>: <reason>." */
+void agent_auth_append_manager_reason(const char *base, const char *cli_stderr,
+                                      char *out, size_t size);
+
 #endif

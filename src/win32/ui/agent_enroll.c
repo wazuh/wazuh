@@ -8,7 +8,6 @@
  */
 
 #include <ctype.h>
-#include <process.h>
 #include <stdbool.h>
 #include "shared.h"
 #include "os_win32ui.h"
@@ -144,7 +143,12 @@ static void invoke_wazuh_agent_auth(HWND hwnd, const char *title, const char *to
     FILE *fp;
     const char *argv[6];
     int argc = 0;
-    intptr_t exit_code;
+    char cli_stderr[OS_SIZE_4096] = "";
+    char chunk[OS_SIZE_512];
+    size_t used = 0;
+    size_t n;
+    wfd_t *wfd;
+    int exit_code = -1;
     bool succeeded = false;
 
     /* wazuh-agent-auth refuses outright while the service is running -- it loads the
@@ -212,20 +216,43 @@ static void invoke_wazuh_agent_auth(HWND hwnd, const char *title, const char *to
 
     argv[argc] = NULL;
 
+    /* stderr is where wazuh-agent-auth names the manager's reason for a refusal, which the
+     * exit code alone cannot carry. It is read to EOF -- past what fits, too -- so the child
+     * never blocks on a full pipe before wpclose() waits for it. */
+    if (wfd = wpopenv(ENROLL_AUTH_EXE, (char * const *)argv, W_BIND_STDERR), wfd) {
+        while (n = fread(chunk, 1, sizeof(chunk), wfd->file_out), n > 0) {
+            size_t room = sizeof(cli_stderr) - 1 - used;
+            size_t keep = n < room ? n : room;
+
+            memcpy(cli_stderr + used, chunk, keep);
+            used += keep;
+        }
+
+        cli_stderr[used] = '\0';
+        exit_code = wpclose(wfd);
+    }
+
     /* wazuh-agent-auth never deletes --token-file itself (it may be stdin, '-'), so this
      * UI owns cleanup -- same as token_bootstrap.c unlinking the installer's one-shot
      * enrollment token once it has been consumed. */
-    exit_code = _spawnv(_P_WAIT, ENROLL_AUTH_EXE, argv);
     unlink(tmp_path);
 
     if (exit_code < 0) {
         MessageBox(hwnd, "Could not run wazuh-agent-auth.exe.", title, MB_OK | MB_ICONERROR);
     } else {
-        int result_code = (int)exit_code;
-        UINT icon = result_code == AGENT_AUTH_OK ? MB_ICONINFORMATION : MB_ICONWARNING;
-        succeeded = result_code == AGENT_AUTH_OK;
-        MessageBox(hwnd, agent_auth_exit_message(result_code, force_enroll, certs_only),
-                   title, MB_OK | icon);
+        const char *base = agent_auth_exit_message(exit_code, force_enroll, certs_only);
+        UINT icon = exit_code == AGENT_AUTH_OK ? MB_ICONINFORMATION : MB_ICONWARNING;
+        char message[OS_SIZE_1024];
+
+        succeeded = exit_code == AGENT_AUTH_OK;
+
+        if (succeeded) {
+            snprintf(message, sizeof(message), "%s", base);
+        } else {
+            agent_auth_append_manager_reason(base, cli_stderr, message, sizeof(message));
+        }
+
+        MessageBox(hwnd, message, title, MB_OK | icon);
     }
 
     config_read(hwnd);
