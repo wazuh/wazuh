@@ -330,8 +330,8 @@
 #define RL_REGEX_SYNTAX "(5107): Syntax error on tag '%s' in rule %d"
 #define RL_TREE_NODE_LIMIT  "(5108): Rule '%d' in '%s' exceeds the rule tree node limit " \
                             "(%zu nodes in the tree, %zu added by this rule, limit %zu). Ruleset loading aborted."
-#define RL_TREE_NODE_THRESHOLDS "(5109): Invalid rule tree thresholds: 'analysisd.rule_tree_node_warning' (%d) " \
-                                "must be lower than 'analysisd.rule_tree_node_limit' (%d)."
+#define RL_TREE_NODE_THRESHOLDS "(5109): Invalid rule tree thresholds: 'analysisd.rule_tree_memory_warning' " \
+                                "(%zu nodes) must be lower than 'analysisd.rule_tree_memory_limit' (%zu nodes)."
 
 /* Syslog output */
 #define XML_INV_CSYSLOG    "(5301): Invalid client-syslog configuration."

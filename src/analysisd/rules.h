@@ -432,9 +432,17 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 /**
  * @brief Read the rule tree thresholds from the internal options into Config.
  *
+ * Each threshold is a memory size or a percentage of the memory of the process, which is converted to nodes with
+ * w_rule_tree_node_size(). The memory is read from /proc and /sys: call it before the process enters a chroot.
  * Exits if the warning threshold is not lower than the node limit while both are enabled.
  */
 void w_rule_tree_read_config(void);
+
+/**
+ * @brief Estimate the memory that each rule tree node takes, including the allocator overhead.
+ * @return Bytes per node.
+ */
+size_t w_rule_tree_node_size(void);
 
 /**
  * @brief Initialize a rule tree build state with the thresholds from Config.

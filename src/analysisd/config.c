@@ -270,8 +270,12 @@ cJSON *getAnalysisInternalOptions(void) {
     cJSON_AddNumberToObject(analysisd, "fts_min_size_for_str", fts_minsize_for_str);
     cJSON_AddNumberToObject(analysisd, "log_fw", Config.logfw);
     cJSON_AddNumberToObject(analysisd, "decoder_order_size", Config.decoder_order_size);
-    cJSON_AddNumberToObject(analysisd, "rule_tree_node_warning", Config.rule_tree_node_warning);
-    cJSON_AddNumberToObject(analysisd, "rule_tree_node_limit", Config.rule_tree_node_limit);
+    if (Config.rule_tree_memory_warning) {
+        cJSON_AddStringToObject(analysisd, "rule_tree_memory_warning", Config.rule_tree_memory_warning);
+    }
+    if (Config.rule_tree_memory_limit) {
+        cJSON_AddStringToObject(analysisd, "rule_tree_memory_limit", Config.rule_tree_memory_limit);
+    }
     cJSON_AddNumberToObject(analysisd, "label_cache_maxage", Config.label_cache_maxage);
     cJSON_AddNumberToObject(analysisd, "show_hidden_labels", Config.show_hidden_labels);
     cJSON_AddNumberToObject(analysisd, "rlimit_nofile", nofile);

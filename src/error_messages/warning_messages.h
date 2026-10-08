@@ -131,6 +131,8 @@
                                                          "Rule '%d' will be ignored."
 #define ANALYSISD_RULE_TREE_NODE_WARNING        "(7621): The rule tree exceeded the warning threshold of %zu nodes " \
                                                         "while adding rule '%d' from '%s'."
+#define ANALYSISD_RULE_TREE_NO_MEMORY           "(7622): Could not determine the memory size. " \
+                                                        "'analysisd.%s' (%d%%) is disabled."
 
 /* Logcollector */
 #define LOGCOLLECTOR_INV_VALUE_DEFAULT          "(8000): Invalid value '%s' for attribute '%s' in '%s' option. " \

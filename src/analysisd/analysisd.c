@@ -521,6 +521,8 @@ int main_analysisd(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
+    w_rule_tree_read_config();
+
     /* Chroot */
     if (Privsep_Chroot(home_path) < 0) {
         merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
@@ -552,7 +554,6 @@ int main_analysisd(int argc, char **argv)
     }
 
     Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
-    w_rule_tree_read_config();
 
     if (!os_analysisd_last_events) {
         os_calloc(1, sizeof(EventList), os_analysisd_last_events);
