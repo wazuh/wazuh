@@ -42,9 +42,9 @@ finished task is kept", does not describe what the module does with it.)
 
 Interval between cleanup passes. Each pass expires pending agent tasks older than `task_ttl`, deletes
 `expired` agent tasks created more than 24 h ago and `delivered` ones delivered more than 24 h ago,
-applies the [manager-task retention rules](manager-tasks.md#retention), and checkpoints the database
-WAL. A database `VACUUM` runs once a day, independently of this interval; the time of the last one is
-persisted, so restarts do not reset it.
+applies the [manager-task retention rules](manager-tasks.md#retention), returns the space those
+deletions freed to the filesystem in 1 MiB steps, and checkpoints the database WAL. There is no
+separate daily `VACUUM`.
 
 - **Default value:** `300` (5 minutes)
 - **Allowed values:** integer ≥ 0 (seconds). `0` means "use default".
@@ -201,9 +201,14 @@ short triage guide are in [Metrics](metrics.md).
 
 **Issue:** `tasks.db` keeps growing.
 **Solution:** Agent-task rows are deleted 24 h after they expire or are delivered, on the next
-cleanup pass, and a daily `VACUUM` returns the space; a long `cleanup_interval` delays both deletion
-and expiry. Manager-task rows are bounded by the [retention rules](manager-tasks.md#retention). If the
-log shows `Could not checkpoint the tasks database`, the `tasks.db-wal` file is what is growing.
+cleanup pass, and the same pass returns the freed space to the filesystem; a long `cleanup_interval`
+delays deletion, expiry and the shrink. Manager-task rows are bounded by the
+[retention rules](manager-tasks.md#retention). If the log shows `Could not checkpoint the tasks
+database`, the `tasks.db-wal` file is what is growing. If it shows `The tasks database was created
+without incremental auto-vacuum`, the database predates the incremental compaction: its freed space
+is reused but the file never shrinks. Stop the manager and run
+`sqlite3 /var/wazuh-manager/queue/tasks/tasks.db 'PRAGMA auto_vacuum=INCREMENTAL; VACUUM;'` once to
+convert it.
 
 ---
 

@@ -39,6 +39,12 @@ namespace
     ///        `now >= it` stays false and computeNextWake()'s future-only filter ignores it,
     ///        without either place needing to know which timers are optional.
     constexpr Timestamp NEVER_DUE {std::numeric_limits<Timestamp>::max()};
+
+    /// @brief Pages handed back per compaction step: 1 MiB at the 4 KiB page size. The store
+    ///        mutex is held for one step and released between them, so a request waits behind at
+    ///        most one -- measured at no more than ~100 ms with synchronous=FULL. A pass keeps
+    ///        stepping until less than one step's worth is free.
+    constexpr int COMPACT_STEP_PAGES {256};
 } // namespace
 
 namespace task_manager::schedule
@@ -73,24 +79,6 @@ namespace task_manager::schedule
         m_nextSweep = now + m_options.sweepInterval.count();
         m_nextCleanup = now + m_options.cleanupInterval.count();
         m_nextSizeRotate = m_options.sizeRotationEnabled ? now + m_options.sizeRotateInterval.count() : NEVER_DUE;
-
-        // The vacuum interval survives a restart, so a manager that is restarted daily still
-        // compacts. Without this it would vacuum on every boot, or never.
-        if (const auto last {m_store.getMetadata("last_vacuum_time")}; last.has_value())
-        {
-            try
-            {
-                m_nextVacuum = std::stoll(*last) + m_options.vacuumInterval.count();
-            }
-            catch (const std::exception&)
-            {
-                m_nextVacuum = now + m_options.vacuumInterval.count();
-            }
-        }
-        else
-        {
-            m_nextVacuum = now + m_options.vacuumInterval.count();
-        }
 
         m_thread = std::thread(&Scheduler::loop, this);
     }
@@ -345,7 +333,45 @@ namespace task_manager::schedule
                        m_options.maxRows);
         }
 
+        // Before the checkpoint, which is what moves the compacted pages into the file and lets it
+        // shrink -- and truncates the WAL the compaction itself wrote.
+        compact();
         checkpointWal();
+    }
+
+    void Scheduler::compact()
+    {
+        // Every cleanup pass, and only what that pass freed. The retired daily VACUUM rebuilt the
+        // whole database in heap instead -- a day of Active Response, hundreds of MB at once -- and
+        // held the store for the seconds it took.
+        std::int64_t steps {0};
+        storage::CompactStats stats;
+
+        do
+        {
+            stats = m_store.compactStep(COMPACT_STEP_PAGES);
+
+            if (!stats.supported)
+            {
+                if (!m_compactUnsupportedLogged)
+                {
+                    m_compactUnsupportedLogged = true;
+                    LOGFN_INFO(schedulerLogFn(),
+                               "The tasks database was created without incremental auto-vacuum: freed space is "
+                               "reused, but queue/tasks/tasks.db will not shrink. To enable it, stop the manager "
+                               "and run: sqlite3 /var/wazuh-manager/queue/tasks/tasks.db 'PRAGMA "
+                               "auto_vacuum=INCREMENTAL; VACUUM;'");
+                }
+                return;
+            }
+
+            ++steps;
+        } while (stats.freePages >= COMPACT_STEP_PAGES && !m_stopping.load(std::memory_order_acquire));
+
+        LOGFN_DEBUG2(schedulerLogFn(),
+                     "Compacted the tasks database in %lld step(s); %lld free page(s) left",
+                     static_cast<long long>(steps),
+                     static_cast<long long>(stats.freePages));
     }
 
     void Scheduler::checkpointWal()
@@ -376,7 +402,7 @@ namespace task_manager::schedule
         // function rather than a detail.
         //
         // Every candidate below that is already due has, by this point, either been handled by the
-        // pass that just ran (the four timers advance themselves) or belongs to somebody else --
+        // pass that just ran (the three timers advance themselves) or belongs to somebody else --
         // and minPendingNextAttemptAt() is routinely in the PAST for a reason that is normal rather
         // than exceptional: a type whose concurrency group is saturated leaves its remaining rows
         // pending and eligible. Deleting 5000 agents leaves ~4996 of them in exactly that state for
@@ -401,7 +427,6 @@ namespace task_manager::schedule
         consider(m_store.minScheduleNextRun());
         consider(m_nextSweep);
         consider(m_nextCleanup);
-        consider(m_nextVacuum);
         consider(m_nextSizeRotate);
 
         // Never the past, and never `now` either: a zero-length wait is the spin this guards
@@ -438,13 +463,6 @@ namespace task_manager::schedule
                     // inline, and this thread is also the sweeper and the retention pass.
                     m_executor.signalPeriodicAction("log_rotate_size");
                     m_nextSizeRotate = now + m_options.sizeRotateInterval.count();
-                }
-
-                if (now >= m_nextVacuum)
-                {
-                    m_store.vacuum();
-                    m_store.setMetadata("last_vacuum_time", std::to_string(now));
-                    m_nextVacuum = now + m_options.vacuumInterval.count();
                 }
 
                 // Rows whose backoff has just elapsed.
