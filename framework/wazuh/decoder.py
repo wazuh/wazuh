@@ -372,14 +372,15 @@ def upload_decoder_file(filename: str, content: str, relative_dirname: str = Non
 
         upload_file(content, to_relative_path(full_path))
 
-        # After uploading the file, validate it using a logtest dummy msg
+        # After uploading the file, validate it using a logtest dummy msg.
+        # Remove a new file on any failure, including socket errors when analysisd stops during the validation.
         try:
             validate_dummy_logtest()
-        except WazuhError as exc:
+        except Exception:
             if not overwrite and exists(full_path):
                 delete_decoder_file(filename=filename, relative_dirname=relative_dirname)
 
-            raise exc
+            raise
 
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
