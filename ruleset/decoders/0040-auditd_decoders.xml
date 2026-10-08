@@ -45,7 +45,7 @@
 <!-- SYSCALL - key -->
 <decoder name="auditd-syscall">
   <parent>auditd</parent>
-  <regex offset="after_regex">key=\((\S+)\)|key="(\S+)"|key=(\S+) </regex>
+  <regex type="pcre2" offset="after_regex">key=(?|\(([^\s)]+)\)|"([^\s"]+)"|([^\s\x1d]+))</regex>
   <order>audit.key</order>
 </decoder>
 
@@ -143,19 +143,19 @@
 
 <decoder name="auditd-config_change">
   <parent>auditd</parent>
-  <regex offset="after_regex">key=\((\S+)\)|key="(\S+)"|key=(\S+) </regex>
+  <regex type="pcre2" offset="after_regex">key=(?|\(([^\s)]+)\)|"([^\s"]+)"|([^\s\x1d]+))</regex>
   <order>audit.key</order>
 </decoder>
 
 <decoder name="auditd-config_change">
   <parent>auditd</parent>
-  <regex offset="after_regex">list=(\S+)</regex>
+  <regex type="pcre2" offset="after_regex">list=([^\s\x1d]+)</regex>
   <order>audit.list</order>
 </decoder>
 
 <decoder name="auditd-config_change">
   <parent>auditd</parent>
-  <regex offset="after_regex">res=(\S+)</regex>
+  <regex type="pcre2" offset="after_regex">res=([^\s\x1d]+)</regex>
   <order>audit.res</order>
 </decoder>
 
