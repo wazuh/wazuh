@@ -13,6 +13,7 @@
 #include "eventinfo.h"
 #include "compiled_rules/compiled_rules.h"
 #include "analysisd.h"
+#include "system_memory.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -60,6 +61,14 @@ STATIC void printRuleinfo(const RuleInfo *rule, int node);
  * @param rule_tmp_params Struct to free
  */
 STATIC INLINE void w_free_rules_tmp_params(rules_tmp_params_t * rule_tmp_params);
+
+/**
+ * @brief Read a rule tree threshold, given as a memory size or as a percentage of the memory of the process
+ * @param option name of the analysisd internal option
+ * @param configured set to the value as configured. The previous value is freed.
+ * @return Number of nodes. 0 disables the threshold.
+ */
+STATIC size_t w_rule_tree_read_threshold(const char * option, char ** configured);
 
 /**
  * @brief Check if a option has attribute negate
@@ -3284,8 +3293,10 @@ STATIC INLINE void w_free_rules_tmp_params(rules_tmp_params_t * rule_tmp_params)
 
 void w_rule_tree_read_config(void) {
 
-    Config.rule_tree_node_warning = getDefine_Int("analysisd", "rule_tree_node_warning", 0, INT32_MAX);
-    Config.rule_tree_node_limit = getDefine_Int("analysisd", "rule_tree_node_limit", 0, INT32_MAX);
+    Config.rule_tree_node_warning = w_rule_tree_read_threshold("rule_tree_memory_warning",
+                                                               &Config.rule_tree_memory_warning);
+    Config.rule_tree_node_limit = w_rule_tree_read_threshold("rule_tree_memory_limit",
+                                                             &Config.rule_tree_memory_limit);
 
     if (Config.rule_tree_node_warning > 0 && Config.rule_tree_node_limit > 0
         && Config.rule_tree_node_warning >= Config.rule_tree_node_limit) {
@@ -3293,10 +3304,90 @@ void w_rule_tree_read_config(void) {
     }
 }
 
+STATIC size_t w_rule_tree_read_threshold(const char * option, char ** configured) {
+
+    char * value = getDefine_String("analysisd", option);
+    size_t length = strlen(value);
+    char description[OS_SIZE_256];
+    uint64_t bytes;
+
+    os_free(*configured);
+    *configured = value;
+
+    if (length > 1 && value[length - 1] == '%') {
+        bool cgroup_limited = false;
+        int percent = 0;
+
+        /* Between 1% and 100%, digits only */
+        for (size_t i = 0; i < length - 1; i++) {
+            if (!isdigit((unsigned char)value[i]) || (percent = percent * 10 + value[i] - '0') > 100) {
+                merror_exit(INV_DEF, "analysisd", option, value);
+            }
+        }
+        if (percent == 0) {
+            merror_exit(INV_DEF, "analysisd", option, value);
+        }
+
+        uint64_t memory = w_get_memory_size(&cgroup_limited);
+        if (memory == 0) {
+            mwarn(ANALYSISD_RULE_TREE_NO_MEMORY, option, percent);
+            return 0;
+        }
+
+        /* Multiply first for precision, unless the product could overflow */
+        bytes = memory > UINT64_MAX / 100 ? memory / 100 * (uint64_t)percent : memory * (uint64_t)percent / 100;
+        snprintf(description, sizeof(description), "%d%% of %" PRIu64 " MiB of %s memory", percent, memory >> 20,
+                 cgroup_limited ? "cgroup" : "physical");
+    } else {
+        /* Same size format as other options: bytes, or a number followed by K, M or G */
+        ssize_t size = w_parse_size(value);
+
+        if (size < 0) {
+            merror_exit(INV_DEF, "analysisd", option, value);
+        }
+        if (size == 0) {
+            return 0;
+        }
+
+        bytes = (uint64_t)size;
+        snprintf(description, sizeof(description), "%" PRIu64 " bytes", bytes);
+    }
+
+    size_t node_size = w_rule_tree_node_size();
+    uint64_t nodes = bytes / node_size;
+
+    /* A tiny threshold must not disable the check */
+    if (nodes == 0) {
+        nodes = 1;
+    }
+    if (nodes > SIZE_MAX) {
+        nodes = SIZE_MAX;
+    }
+
+    minfo("Rule tree threshold 'analysisd.%s' set to %" PRIu64 " nodes: %s, %zu bytes per node.", option, nodes,
+          description, node_size);
+
+    return (size_t)nodes;
+}
+
+size_t w_rule_tree_node_size(void) {
+
+    /* glibc serves each request from a chunk: the requested size plus a size_t header, rounded up to
+     * 2 * sizeof(size_t), and never smaller than 4 * sizeof(size_t). On 64-bit systems, a RuleNode of 24 bytes
+     * takes a 32-byte chunk.
+     */
+    const size_t header = sizeof(size_t);
+    const size_t alignment = 2 * sizeof(size_t);
+    const size_t min_chunk = 4 * sizeof(size_t);
+    size_t chunk = (sizeof(RuleNode) + header + alignment - 1) / alignment * alignment;
+
+    return chunk > min_chunk ? chunk : min_chunk;
+}
+
 void w_rule_tree_build_init(w_rule_tree_build_t * build, OSList * log_msg) {
 
     memset(build, 0, sizeof(w_rule_tree_build_t));
-    build->node_warning = (size_t)Config.rule_tree_node_warning;
-    build->node_limit = (size_t)Config.rule_tree_node_limit;
+    build->node_warning = Config.rule_tree_node_warning;
+    build->node_limit = Config.rule_tree_node_limit;
     build->log_msg = log_msg;
 }
