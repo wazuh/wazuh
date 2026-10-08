@@ -107,4 +107,5 @@ def test_invalid_connection_protocol(test_configuration, test_metadata, configur
 
         real_config_list = get_real_configuration
 
+        utils.login(login_attempts=8)
         utils.compare_config_api_response(real_config_list, 'remote')

@@ -74,4 +74,6 @@ def test_rids_closing_time_valid(test_configuration, test_metadata, configure_lo
 
     real_config_list = get_real_configuration
 
+    # The restart returns before wazuh-apid accepts connections; wait for it.
+    utils.login(login_attempts=8)
     utils.compare_config_api_response(real_config_list, 'remote')
