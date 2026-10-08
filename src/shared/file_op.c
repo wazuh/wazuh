@@ -2933,8 +2933,8 @@ static HANDLE w_createfile_nofollow_vetted(const char * basedir, const char * fi
 #if defined(AIX) || defined(W_VETTED_NO_O_NOFOLLOW)
 /**
  * open() without O_NOFOLLOW: lstat() the path, open it, and require the descriptor to match the lstat() identity. A
- * symlink swapped in after the lstat() is still opened (never created: O_CREAT is dropped when the path exists) and
- * closed unread when its identity differs. A missing path is only created with O_EXCL.
+ * symlink swapped in after the lstat() has its target opened (never created: O_CREAT is dropped when the path exists)
+ * before the identity check rejects it; nothing is read from it. A missing path is only created with O_EXCL.
  *
  * @return A descriptor, or -1 on error (sets errno; ELOOP for a symlink or an entry swapped in during the open, EAGAIN
  *         if the missing path appeared meanwhile).
@@ -3365,9 +3365,11 @@ static void w_fork_child_signals(const sigset_t * previous) {
     pthread_sigmask(SIG_SETMASK, previous, NULL);
 }
 
-// fork() failing with EAGAIN would pass for a path swapped under the walk and be retried silently; ENOMEM is logged.
-static int w_fork_failed_errno(int err) {
-    return err == EAGAIN ? ENOMEM : err;
+// pipe/socketpair/fork failures are resource exhaustion, not a path swapped under the walk: EAGAIN would be retried
+// silently and the file dropped, so report ENOMEM.
+static int w_walk_resource_failed(const char * what, int err) {
+    mwarn("Could not check a monitored path: %s failed: %s (%d)", what, strerror(err), err);
+    return ENOMEM;
 }
 
 #endif
@@ -3504,6 +3506,7 @@ static ssize_t w_readlinkat(int dirfd, const char * name, char * buf, size_t siz
     }
 
     if (pipe(fds) < 0) {
+        errno = w_walk_resource_failed("pipe()", errno);
         return -1;
     }
 
@@ -3523,7 +3526,7 @@ static ssize_t w_readlinkat(int dirfd, const char * name, char * buf, size_t siz
         err = errno;
         close(fds[0]);
         close(fds[1]);
-        errno = w_fork_failed_errno(err);
+        errno = w_walk_resource_failed("fork()", err);
         return -1;
     }
 
@@ -4018,6 +4021,7 @@ static int w_open_vetted_follow_fd(const char * path, bool follow_last) {
     sigset_t previous;
 
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0) {
+        errno = w_walk_resource_failed("socketpair()", errno);
         return -1;
     }
 
@@ -4035,7 +4039,7 @@ static int w_open_vetted_follow_fd(const char * path, bool follow_last) {
     if (pid < 0) {
         close(sv[0]);
         close(sv[1]);
-        errno = w_fork_failed_errno(saved_errno);
+        errno = w_walk_resource_failed("fork()", saved_errno);
         return -1;
     }
 
