@@ -59,6 +59,48 @@ asyncio.set_event_loop_policy(EventLoopPolicy())
 loop = new_event_loop()
 
 
+class ConnectorHandler(cluster_common.Handler):
+    """Handler on the side that opens the connection."""
+    is_connector = True
+
+
+def established(handler):
+    """Complete the handler's handshake against a random peer nonce, without any transport."""
+    handler.local_nonce = os.urandom(cluster_common.SESSION_NONCE_SIZE)
+    handler._establish_session(os.urandom(cluster_common.SESSION_NONCE_SIZE))
+    return handler
+
+
+def wire(handler):
+    """Attach a mock transport to the handler and return the list collecting every write."""
+    written = []
+    handler.transport = MagicMock()
+    handler.transport.write.side_effect = lambda data: written.append(bytes(data))
+    handler.logger = MagicMock()
+    return written
+
+
+def connected_pair():
+    """Return a connector and an acceptor whose handshake completed through their real preambles.
+
+    The acceptor dispatches into its 'received' list instead of processing requests.
+    """
+    connector, acceptor = ConnectorHandler(fernet_key, cluster_items), cluster_common.Handler(fernet_key, cluster_items)
+    connector.sent, acceptor.sent = wire(connector), wire(acceptor)
+    acceptor.received = []
+    acceptor.dispatch = lambda command, counter, payload: acceptor.received.append((command, counter, payload))
+    connector.start_session()
+    acceptor.start_session()
+    connector.data_received(acceptor.sent.pop())
+    acceptor.data_received(connector.sent.pop())
+    return connector, acceptor
+
+
+def frames(handler, command, counter, data):
+    """Build a message with the handler and return its frames as one byte string."""
+    return b''.join(bytes(frame) for frame in handler.msg_build(command, counter, data))
+
+
 # Test Response class methods
 
 @pytest.mark.asyncio
@@ -108,6 +150,7 @@ def test_inbuffer_init():
     assert in_buffer.cmd == ""
     assert in_buffer.flag_divided == b""
     assert in_buffer.payload == bytearray(bytearray(in_buffer.total))
+    assert in_buffer.header_received is False
 
 
 def test_inbuffer_init_ko():
@@ -127,6 +170,7 @@ def test_inbuffer_get_info_from_header(unpack_mock):
 
     assert in_buffer.counter == 0
     assert in_buffer.total == 2048
+    assert in_buffer.header_received is True
     # Test how the first part of the command is being taken as the command, while the second corresponds to the value.
     # If the flag value is the same as divide_flag, we will forward this value to the flag_divided attribute.
     assert in_buffer.cmd == b"pw"
@@ -527,7 +571,10 @@ def test_handler_init():
         assert handler.in_file == {}
         assert handler.in_str == {}
         assert handler.request_chunk == 5242880
-        assert handler.my_fernet is None
+        assert handler.cluster_key is None
+        assert handler.local_nonce is None
+        assert handler.send_fernet is None and handler.recv_fernet is None
+        assert handler.send_seq == handler.recv_seq == 0
         assert handler.logger == logging.getLogger("wazuh")
         assert handler.tag == "Handler"
         assert handler.cluster_items == cluster_items
@@ -535,8 +582,10 @@ def test_handler_init():
         assert handler.interrupted_tasks == set()
         assert cv.get() == handler.tag
 
-    # Check other logger and my_fernet behaviors
-    assert isinstance(cluster_common.Handler(fernet_key, cluster_items).my_fernet, cryptography.fernet.Fernet)
+    # Check other logger and key behaviors: no session key exists before the handshake
+    keyed = cluster_common.Handler(fernet_key, cluster_items)
+    assert keyed.cluster_key == fernet_key.encode()
+    assert keyed.send_fernet is None and keyed.recv_fernet is None
     assert isinstance(cluster_common.Handler(None, cluster_items, logger=LoggerMock()).logger, LoggerMock)
 
 
@@ -560,7 +609,7 @@ def test_handler_next_counter():
 @patch('struct.pack', return_value=b"v1")
 def test_handler_msg_build_ok(pack_mock):
     """Test if a message is being built with the right header and payload."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = established(cluster_common.Handler(fernet_key, cluster_items))
 
     # Test first if
     assert isinstance(handler.msg_build(b"command", 12345, b"data"), list)
@@ -573,7 +622,10 @@ def test_handler_msg_build_ok(pack_mock):
     assert isinstance(handler.msg_build(b"command", 12345, b"000000000000000000000"), list)
     assert isinstance(handler.msg_build(b"command", 12345, b"data")[0], bytearray)
 
-    assert pack_mock.call_count == 10
+    # One sealed header per message plus one header per frame: 2 + 2 + (1 + 7 divided frames) + 2
+    assert pack_mock.call_count == 14
+    # Every built message consumes one sequence number
+    assert handler.send_seq == 4
 
 
 def test_handler_msg_build_ko():
@@ -597,10 +649,24 @@ def test_handler_msg_parse():
     assert handler.msg_parse() is True
 
     # Test nested else
-    handler.in_msg.received = 1
+    assert handler.in_msg.header_received is True
     handler.in_buffer = b"command"
     assert len(handler.in_buffer) < handler.header_len
     assert handler.msg_parse() is True
+
+
+def test_handler_msg_parse_header_at_read_boundary():
+    """Payload bytes that arrive after a read ending exactly at the header are taken as payload, not as a header."""
+    handler = cluster_common.Handler(None, cluster_items)
+    payload = b"P" * (handler.header_len + 5)
+    message = struct.pack(handler.header_format, 1, len(payload), b"echo -------") + payload
+
+    with patch.object(handler, 'dispatch') as dispatch_mock:
+        handler.data_received(message[:handler.header_len])
+        assert handler.in_msg.header_received is True and handler.in_msg.received == 0
+        handler.data_received(message[handler.header_len:])
+
+        dispatch_mock.assert_called_once_with(b"echo", 1, payload)
 
 
 def test_handler_get_messages_ok():
@@ -608,7 +674,7 @@ def test_handler_get_messages_ok():
     handler = cluster_common.Handler(fernet_key, cluster_items)
     yield_value = None
 
-    with patch('cryptography.fernet.Fernet.decrypt', return_value="decrypted payload"):
+    with patch('wazuh.core.cluster.common.Handler._open', return_value="decrypted payload"):
         with patch('wazuh.core.cluster.common.Handler.msg_parse', return_value=True) as handler_mock:
 
             # Test if
@@ -629,7 +695,7 @@ def test_handler_get_messages_ok():
 @patch('cryptography.fernet.Fernet.decrypt', side_effect=cryptography.fernet.InvalidToken)
 def test_handler_get_messages_ko(decrypt_mock, msg_parse_mock):
     """Test whether the exception were correctly raised."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = established(cluster_common.Handler(fernet_key, cluster_items))
 
     with pytest.raises(exception.WazuhClusterError, match=r'.* 3025 .*'):
         handler.in_msg.total = 0
@@ -685,7 +751,7 @@ def test_handler_data_received_max_concurrent_divided_msgs():
     Validate that error 3051 is raised if the maximum number of
     concurrent divided messages is exceeded (DoS mitigation).
     """
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = established(cluster_common.Handler(fernet_key, cluster_items))
 
     handler.div_msg_box = {i: b"data" for i in range(cluster_common.MAX_CONCURRENT_DIVIDED_MSGS)}
     handler.logger = MagicMock()
@@ -701,7 +767,7 @@ def test_handler_data_received_payload_limit_warning():
     Validate that if accumulating fragments exceeds MAX_TOTAL_SIZE,
     a warning is logged and the connection is closed (Error 3050).
     """
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = established(cluster_common.Handler(fernet_key, cluster_items))
     handler.transport = MagicMock()
     handler.logger = MagicMock()
 
@@ -1056,7 +1122,7 @@ async def test_handler_forward_sendsync_response_ko(exception, expected_error):
 
 def test_handler_data_received_ok():
     """Test if the data received from other peers is being properly handled."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = established(cluster_common.Handler(fernet_key, cluster_items))
 
     # Test first if
     with patch('wazuh.core.cluster.common.Handler.get_messages', return_value=[(b"bytes1", 123, b"bytes2", b"d")]):
@@ -1071,7 +1137,7 @@ def test_handler_data_received_ok():
 
     # Test first else and first nested if
     with patch('wazuh.core.cluster.common.Handler.get_messages', return_value=[(b"bytes1", 123, b"bytes2", b"bytes3")]):
-        with patch('cryptography.fernet.Fernet.decrypt', return_value="decrypted payload"):
+        with patch('wazuh.core.cluster.common.Handler._open', return_value="decrypted payload"):
             # Test second nested if and the else inside of it
             with patch('asyncio.WriteTransport.write') as write_mock:
                 handler.box = {123: asyncio.WriteTransport}
@@ -1090,14 +1156,236 @@ def test_handler_data_received_ok():
 
 
 def test_handler_data_received_ko():
-    """Test the 'data_received' function exceptions."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    """Test that a message failing decryption closes the connection instead of being dispatched."""
+    handler = established(cluster_common.Handler(fernet_key, cluster_items))
+    wire(handler)
 
     with patch('wazuh.core.cluster.common.Handler.get_messages', return_value=[(b"bytes1", 123, b"bytes2", b"bytes3")]):
         with patch('cryptography.fernet.Fernet.decrypt', side_effect=cryptography.fernet.InvalidToken):
-            with pytest.raises(exception.WazuhClusterError, match=r'.* 3025 .*'):
+            with patch('wazuh.core.cluster.common.Handler.dispatch') as dispatch_mock:
                 handler.div_msg_box = {123: b"bytes"}
                 handler.data_received(b"message")
+
+                dispatch_mock.assert_not_called()
+                handler.transport.close.assert_called_once()
+                assert '3025' in handler.logger.error.call_args[0][0]
+
+    # Any other cluster error is still propagated
+    with patch('wazuh.core.cluster.common.Handler.get_messages',
+               side_effect=exception.WazuhClusterError(3024)):
+        with pytest.raises(exception.WazuhClusterError, match=r'.* 3024 .*'):
+            handler.data_received(b"message")
+
+
+# Test the session protocol (docs/ref/security/cluster-model.md, "Transport Protection")
+
+def test_handler_start_session_sends_preamble():
+    """A keyed handler opens with its preamble and waits; a handler without key is established right away."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    written = wire(handler)
+    with patch.object(handler, 'session_established') as established_mock:
+        handler.start_session()
+        established_mock.assert_not_called()
+
+    assert written == [struct.pack(cluster_common.PREAMBLE_FORMAT, b'WZCP', 1, handler.local_nonce)]
+    assert len(written[0]) == cluster_common.PREAMBLE_SIZE == 37
+
+    local = cluster_common.Handler('', cluster_items)
+    written = wire(local)
+    with patch.object(local, 'session_established') as established_mock:
+        local.start_session()
+        established_mock.assert_called_once_with()
+    assert written == []
+    assert local.local_nonce is None
+
+
+def test_handler_session_round_trip():
+    """Messages of both directions, including divided ones, are delivered in order after the handshake."""
+    connector, acceptor = connected_pair()
+    assert connector.send_fernet is not None and acceptor.recv_fernet is not None
+
+    # Commands whose header form differs from the name: trailing space, and the full 11 bytes
+    acceptor.data_received(frames(connector, b'hello', 7, b'worker1'))
+    acceptor.data_received(frames(connector, b'ok-m ', 8, b'pong'))
+    acceptor.data_received(frames(connector, b'syn_i_w_m_e', 9, b'x'))
+
+    # A divided message, fed one byte at a time: every frame header ends at a read boundary
+    connector.request_chunk = acceptor.request_chunk = 64
+    divided = frames(connector, b'sendsync', 10, b'B' * 500)
+    assert len(divided) > connector.request_chunk
+    for byte in divided:
+        acceptor.data_received(bytes([byte]))
+
+    assert acceptor.received == [(b'hello', 7, b'worker1'), (b'ok-m', 8, b'pong'), (b'syn_i_w_m_e', 9, b'x'),
+                                 (b'sendsync', 10, b'B' * 500)]
+    assert connector.send_seq == acceptor.recv_seq == 4
+
+    # The other direction uses its own key and sequence
+    connector.received = []
+    connector.dispatch = lambda command, counter, payload: connector.received.append((command, counter, payload))
+    connector.data_received(frames(acceptor, b'dapi', 3, b'request'))
+    assert connector.received == [(b'dapi', 3, b'request')]
+    acceptor.transport.close.assert_not_called()
+    connector.transport.close.assert_not_called()
+
+
+def test_handler_session_preamble_split_across_reads():
+    """A preamble and the first frame may arrive in any split of reads."""
+    connector, acceptor = ConnectorHandler(fernet_key, cluster_items), cluster_common.Handler(fernet_key, cluster_items)
+    wire(connector)
+    acceptor_sent = wire(acceptor)
+    acceptor.received = []
+    acceptor.dispatch = lambda command, counter, payload: acceptor.received.append((command, counter, payload))
+    connector.start_session()
+    acceptor.start_session()
+    connector.data_received(acceptor_sent.pop())
+    preamble = bytes(connector.transport.write.call_args_list[0][0][0])
+
+    stream = preamble + frames(connector, b'echo', 1, b'ping')
+    acceptor.data_received(stream[:10])
+    assert acceptor.recv_fernet is None
+    acceptor.data_received(stream[10:40])
+    acceptor.data_received(stream[40:])
+    assert acceptor.received == [(b'echo', 1, b'ping')]
+
+
+@pytest.mark.parametrize('preamble', [
+    struct.pack(cluster_common.PREAMBLE_FORMAT, b'XXXX', 1, bytes(32)),
+    struct.pack(cluster_common.PREAMBLE_FORMAT, b'WZCP', 2, bytes(32)),
+    # A peer that speaks the previous protocol starts with a frame header instead of a preamble
+    struct.pack('!2I12s', 1, 200, b'hello ------') + b'A' * 17,
+])
+def test_handler_session_rejects_unknown_preamble(preamble):
+    """A wrong magic or version closes the connection with 3063 before any frame is parsed."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    wire(handler)
+    handler.start_session()
+    with patch.object(handler, 'dispatch') as dispatch_mock:
+        handler.data_received(preamble)
+
+    dispatch_mock.assert_not_called()
+    handler.transport.close.assert_called_once()
+    assert '3063' in handler.logger.error.call_args[0][0]
+    assert handler.recv_fernet is None
+
+
+def test_handler_session_rejects_cross_connection_replay():
+    """Frames captured from one connection do not decrypt on another one."""
+    connector, _ = connected_pair()
+    captured = frames(connector, b'hello', 1, b'worker1') + frames(connector, b'dapi', 2, b'delete agents')
+
+    _, acceptor = connected_pair()
+    acceptor.data_received(captured)
+
+    assert acceptor.received == []
+    acceptor.transport.close.assert_called_once()
+    assert '3025' in acceptor.logger.error.call_args[0][0]
+
+
+def test_handler_session_rejects_replay_within_connection():
+    """Delivering a frame a second time on the same connection fails the sequence check."""
+    connector, acceptor = connected_pair()
+    message = frames(connector, b'dapi', 2, b'delete agents')
+    acceptor.data_received(message)
+    acceptor.data_received(message)
+
+    assert acceptor.received == [(b'dapi', 2, b'delete agents')]
+    acceptor.transport.close.assert_called_once()
+    assert '3064' in acceptor.logger.error.call_args[0][0]
+
+
+def test_handler_session_rejects_reordering():
+    """A message delivered before the previous one fails the sequence check."""
+    connector, acceptor = connected_pair()
+    frames(connector, b'echo', 1, b'first')  # built (sequence 0) but never delivered
+    second = frames(connector, b'echo', 2, b'second')
+    acceptor.data_received(second)
+
+    assert acceptor.received == []
+    assert 'expected message 0, got 1' in acceptor.logger.error.call_args[0][0]
+
+
+def test_handler_session_rejects_reflection():
+    """A frame sent back to its sender does not decrypt, because each direction has its own key."""
+    connector, acceptor = connected_pair()
+    acceptor.data_received(frames(acceptor, b'dapi', 5, b'request'))
+
+    assert acceptor.received == []
+    assert '3025' in acceptor.logger.error.call_args[0][0]
+
+
+@pytest.mark.parametrize('header', [
+    struct.pack('!2I12s', 2, 0, b'sendsync ---'),   # relabelled command
+    struct.pack('!2I12s', 99, 0, b'dapi -------'),  # relabelled counter
+])
+def test_handler_session_rejects_relabelled_header(header):
+    """A valid token under another command or counter fails the sealed header check."""
+    connector, acceptor = connected_pair()
+    original = frames(connector, b'dapi', 2, b'request')
+    token = original[connector.header_len:]
+    relabelled = header[:4] + struct.pack('!I', len(token)) + header[8:] + token
+
+    acceptor.data_received(relabelled)
+
+    assert acceptor.received == []
+    acceptor.transport.close.assert_called_once()
+    assert 'header does not match the sealed header' in acceptor.logger.error.call_args[0][0]
+
+
+def test_handler_session_rejects_truncated_sealed_header():
+    """A token whose plaintext is shorter than the sealed header is rejected."""
+    connector, acceptor = connected_pair()
+    token = connector.send_fernet.encrypt(b'short')
+
+    with pytest.raises(exception.WazuhClusterError, match=r'.* 3064 .*'):
+        acceptor._open(token, 1, b'echo')
+
+
+def test_handler_session_not_established():
+    """A keyed handler neither builds nor opens a message before the handshake completes."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    with pytest.raises(exception.WazuhClusterError, match=r'.* 3063 .*'):
+        handler.msg_build(b'hello', 1, b'worker1')
+    with pytest.raises(exception.WazuhClusterError, match=r'.* 3063 .*'):
+        handler._open(b'token', 1, b'hello')
+    # A peer preamble cannot be accepted before ours is sent
+    with pytest.raises(exception.WazuhClusterError, match=r'.* 3063 .*'):
+        handler._establish_session(bytes(32))
+
+
+def test_handler_session_failed_build_keeps_sequence():
+    """A message whose frames could not be built does not consume a sequence number."""
+    connector, acceptor = connected_pair()
+    with patch('wazuh.core.cluster.common.bytearray', side_effect=MemoryError, create=True):
+        with pytest.raises(MemoryError):
+            connector.msg_build(b'echo', 1, b'lost')
+    assert connector.send_seq == 0
+
+    acceptor.data_received(frames(connector, b'echo', 2, b'kept'))
+    assert acceptor.received == [(b'echo', 2, b'kept')]
+
+
+def test_handler_session_keys_are_per_connection_and_direction():
+    """Both ends derive the same keys for one connection; every connection and direction differs."""
+    first_connector, first_acceptor = connected_pair()
+    second_connector, _ = connected_pair()
+
+    token = first_connector.send_fernet.encrypt(b'x')
+    assert first_acceptor.recv_fernet.decrypt(token) == b'x'
+    for other in (first_connector.recv_fernet, second_connector.send_fernet):
+        with pytest.raises(cryptography.fernet.InvalidToken):
+            other.decrypt(token)
+
+
+def test_handler_without_key_stays_plaintext():
+    """The local socket handler sends and parses frames with no preamble and no encryption."""
+    sender, receiver = cluster_common.Handler('', cluster_items), cluster_common.Handler(None, cluster_items)
+    message = frames(sender, b'dapi', 4, b'{"f": 1}')
+    assert message.endswith(b'{"f": 1}')
+
+    with patch.object(receiver, 'dispatch') as dispatch_mock:
+        receiver.data_received(message)
+        dispatch_mock.assert_called_once_with(b'dapi', 4, b'{"f": 1}')
 
 
 @patch('wazuh.core.cluster.common.Handler.msg_build', return_value=["msg"])
