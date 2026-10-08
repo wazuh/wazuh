@@ -48,6 +48,8 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,getpid -Wl,--wrap,key_lock_read \
                             -Wl,--wrap,key_lock_write -Wl,--wrap,key_unlock -Wl,--wrap,nb_close \
                             -Wl,--wrap,nb_open -Wl,--wrap,nb_recv -Wl,--wrap,nb_send -Wl,--wrap,OS_AddSocket \
+                            -Wl,--wrap,nb_queue_nowait -Wl,--wrap,nb_set_authenticated -Wl,--wrap,nb_unauthenticated_count \
+                            -Wl,--wrap,nb_collect_unauthenticated -Wl,--wrap,sendto \
                             -Wl,--wrap,OS_DeleteSocket -Wl,--wrap,OS_IsAllowedDynamicID -Wl,--wrap,OS_IsAllowedIP \
                             -Wl,--wrap,ReadSecMSG -Wl,--wrap,recvfrom -Wl,--wrap,rem_add_recv \
                             -Wl,--wrap,rem_add_send -Wl,--wrap,rem_dec_tcp -Wl,--wrap,wfopen \

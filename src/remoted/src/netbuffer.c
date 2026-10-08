@@ -19,18 +19,54 @@ extern wnotify_t * notify;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
+// Release a slot's resources and drop it from the unauthenticated count. Call with the mutex held.
+static void nb_release_slot(netbuffer_t * buffer, int sock) {
+    sockbuffer_t * sockbuf = &buffer->buffers[sock];
+
+    if (sockbuf->bqueue) {
+        if (buffer->tracks_authentication && !sockbuf->authenticated && buffer->unauthenticated > 0) {
+            buffer->unauthenticated--;
+        }
+
+        bqueue_destroy(sockbuf->bqueue);
+    }
+
+    os_free(sockbuf->data);
+    memset(sockbuf, 0, sizeof(sockbuffer_t));
+}
+
+// Whether sock indexes an open slot. Call with the mutex held.
+static bool nb_is_open(const netbuffer_t * buffer, int sock) {
+    return buffer->buffers && sock >= 0 && sock <= buffer->max_fd && buffer->buffers[sock].bqueue;
+}
+
 void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_storage * peer_info) {
     w_mutex_lock(&mutex);
 
-    if (sock >= buffer->max_fd) {
+    if (!buffer->buffers || sock > buffer->max_fd) {
+        // Grow only: every slot from the old end through sock is new, and the expiry scan walks all
+        // of them, so zero them so they read as closed.
+        int old_slots = buffer->buffers ? buffer->max_fd + 1 : 0;
         os_realloc(buffer->buffers, sizeof(sockbuffer_t) * (sock + 1), buffer->buffers);
+        memset(buffer->buffers + old_slots, 0, sizeof(sockbuffer_t) * (sock + 1 - old_slots));
+
         buffer->max_fd = sock;
     }
 
-    memset(buffer->buffers + sock, 0, sizeof(sockbuffer_t));
+    // _close_sock() calls close() before nb_close(), so accept() can hand this number back while the old
+    // slot is still open. Release it here so neither its queue nor its unauthenticated count leaks. This
+    // only covers the leak: the pending nb_close() still frees this new slot (a known descriptor-number
+    // race, same as before).
+    nb_release_slot(buffer, sock);
+
     memcpy(&buffer->buffers[sock].peer_info, peer_info, sizeof(struct sockaddr_storage));
 
     buffer->buffers[sock].bqueue = bqueue_init(send_buffer_size, BQUEUE_SHRINK);
+    buffer->buffers[sock].opened_at = time(NULL);
+
+    if (buffer->tracks_authentication) {
+        buffer->unauthenticated++;
+    }
 
     w_mutex_unlock(&mutex);
 }
@@ -39,12 +75,7 @@ void nb_close(netbuffer_t * buffer, int sock) {
 
     w_mutex_lock(&mutex);
 
-    if (buffer->buffers[sock].bqueue) {
-        bqueue_destroy(buffer->buffers[sock].bqueue);
-    }
-
-    os_free(buffer->buffers[sock].data);
-    memset(buffer->buffers + sock, 0, sizeof(sockbuffer_t));
+    nb_release_slot(buffer, sock);
 
     w_mutex_unlock(&mutex);
 }
@@ -184,6 +215,20 @@ int nb_send(netbuffer_t * buffer, int socket) {
     return sent_bytes;
 }
 
+// Push a framed message into an open slot's send queue and, if it was empty, start watching the
+// socket for writability. Call with the mutex held. Returns 0 on success, -1 if the queue is full.
+static int nb_push(netbuffer_t * buffer, int socket, const char * data, size_t length) {
+    if (bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, length, BQUEUE_NOFLAG)) {
+        return -1;
+    }
+
+    if (bqueue_used(buffer->buffers[socket].bqueue) == length) {
+        wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
+    }
+
+    return 0;
+}
+
 int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size, char * agent_id) {
     int retval = -1;
     int header_size = sizeof(uint32_t);
@@ -198,11 +243,7 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
 
     if (buffer->buffers[socket].bqueue) {
 
-        if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_NOFLAG)) {
-
-            if (bqueue_used(buffer->buffers[socket].bqueue) == (size_t)(msg_size + header_size)) {
-                wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
-            }
+        if (!nb_push(buffer, socket, data, (size_t)(msg_size + header_size))) {
             retval = 0;
         } else {
             mdebug1("Not enough buffer space. Retrying... [buffer_size=%lu, used=%lu, msg_size=%lu]",
@@ -214,11 +255,7 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
 
             if (buffer->buffers[socket].bqueue) {
 
-                if (!bqueue_push(buffer->buffers[socket].bqueue, (const void *) data, (size_t)(msg_size + header_size), BQUEUE_NOFLAG)) {
-
-                    if (bqueue_used(buffer->buffers[socket].bqueue) == (size_t)(msg_size + header_size)) {
-                        wnotify_modify(notify, socket, (WO_READ | WO_WRITE));
-                    }
+                if (!nb_push(buffer, socket, data, (size_t)(msg_size + header_size))) {
                     retval = 0;
                 }
             }
@@ -233,4 +270,78 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
     }
 
     return retval;
+}
+
+int nb_queue_nowait(netbuffer_t * buffer, int socket, const char * msg, size_t msg_size) {
+    int retval = -2;
+    const size_t header_size = sizeof(uint32_t);
+    char data[msg_size + header_size];
+    const uint32_t bytes = wnet_order(msg_size);
+
+    memcpy(data, &bytes, header_size);
+    memcpy(data + header_size, msg, msg_size);
+
+    w_mutex_lock(&mutex);
+
+    if (nb_is_open(buffer, socket)) {
+        retval = nb_push(buffer, socket, data, msg_size + header_size);
+    }
+
+    w_mutex_unlock(&mutex);
+
+    return retval;
+}
+
+void nb_set_authenticated(netbuffer_t * buffer, int sock) {
+    w_mutex_lock(&mutex);
+
+    if (nb_is_open(buffer, sock) && !buffer->buffers[sock].authenticated) {
+        buffer->buffers[sock].authenticated = true;
+
+        if (buffer->tracks_authentication && buffer->unauthenticated > 0) {
+            buffer->unauthenticated--;
+        }
+    }
+
+    w_mutex_unlock(&mutex);
+}
+
+size_t nb_unauthenticated_count(netbuffer_t * buffer) {
+    w_mutex_lock(&mutex);
+    size_t count = buffer->unauthenticated;
+    w_mutex_unlock(&mutex);
+
+    return count;
+}
+
+int * nb_collect_unauthenticated(netbuffer_t * buffer, time_t deadline, size_t * count) {
+    int * socks = NULL;
+
+    *count = 0;
+
+    w_mutex_lock(&mutex);
+
+    if (buffer->buffers && buffer->unauthenticated > 0) {
+        for (int sock = 0; sock <= buffer->max_fd; sock++) {
+            sockbuffer_t * sockbuf = &buffer->buffers[sock];
+
+            if (!sockbuf->bqueue || sockbuf->authenticated || sockbuf->opened_at > deadline) {
+                continue;
+            }
+
+            if (!socks) {
+                os_malloc(sizeof(int) * buffer->unauthenticated, socks);
+            }
+
+            socks[(*count)++] = sock;
+
+            if (*count == buffer->unauthenticated) {
+                break;
+            }
+        }
+    }
+
+    w_mutex_unlock(&mutex);
+
+    return socks;
 }

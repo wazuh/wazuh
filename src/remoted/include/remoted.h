@@ -69,12 +69,16 @@ typedef struct sockbuffer_t
     unsigned long data_size;
     unsigned long data_len;
     bqueue_t* bqueue;
+    time_t opened_at;   ///< When the connection was accepted
+    bool authenticated; ///< A message from this connection decrypted with a registered agent key
 } sockbuffer_t;
 
 typedef struct netbuffer_t
 {
     int max_fd;
     sockbuffer_t* buffers;
+    bool tracks_authentication; ///< Whether this buffer keeps the unauthenticated count below
+    size_t unauthenticated;     ///< Open slots whose connection has not authenticated yet
 } netbuffer_t;
 
 /** Function prototypes **/
@@ -87,6 +91,9 @@ void HandleRemote(int uid) __attribute__((noreturn));
 
 /* Handle Secure connections */
 void HandleSecure() __attribute__((noreturn));
+
+/* Warn when remoted.unauthenticated_max is above half the effective file descriptor limit (nofile) */
+void rem_check_unauthenticated_cap(void);
 
 /* Resolve every internal option the C++ module config owns, so 'remoted -t' refuses the same
  * values the daemon would. RemotedConfig() only reaches the options resolved in config.c. */
@@ -224,6 +231,52 @@ int nb_send(netbuffer_t* buffer, int socket);
  */
 int nb_queue(netbuffer_t* buffer, int socket, char* crypt_msg, ssize_t msg_size, char* agent_id);
 
+/**
+ * @brief Queue a message through TCP protocol without ever waiting for buffer space.
+ *
+ * For replies that an unauthenticated peer can trigger: unlike nb_queue(), a full buffer is
+ * reported at once instead of sleeping the calling worker and retrying.
+ *
+ * @param buffer buffer where messages will be stored.
+ * @param socket socket id where send message.
+ * @param msg msg to send.
+ * @param msg_size message size.
+ *
+ * @return 0 on success.
+ * @return -1 if the socket's send buffer is full (the peer is not reading).
+ * @return -2 if the socket is no longer open.
+ */
+int nb_queue_nowait(netbuffer_t* buffer, int socket, const char* msg, size_t msg_size);
+
+/**
+ * @brief Mark a connection as authenticated, exempting it from the unauthenticated timeout and cap.
+ *
+ * @param buffer buffer holding the connection.
+ * @param sock socket of the connection.
+ */
+void nb_set_authenticated(netbuffer_t* buffer, int sock);
+
+/**
+ * @brief Number of open connections that have not authenticated yet.
+ *
+ * @param buffer buffer holding the connections.
+ * @return Number of unauthenticated connections.
+ */
+size_t nb_unauthenticated_count(netbuffer_t* buffer);
+
+/**
+ * @brief Collect the unauthenticated connections opened at or before a deadline.
+ *
+ * The caller closes each one with _close_sock(), which releases its slot even when close() fails
+ * (on EBADF, the _close_sock() that did close it releases it), so a socket is never collected twice.
+ *
+ * @param buffer buffer holding the connections.
+ * @param deadline connections opened at or before this time are collected.
+ * @param count set to the number of collected sockets.
+ * @return Allocated array of sockets (caller frees), or NULL when none expired.
+ */
+int* nb_collect_unauthenticated(netbuffer_t* buffer, time_t deadline, size_t* count);
+
 /* Network counter */
 
 void rem_initList(int initial_size);
@@ -276,6 +329,8 @@ extern size_t queue_max_bytes;
 extern size_t batch_events_max_bytes;
 extern int enrich_cache_expire_time;
 extern int legacy_task_polling_interval;
+extern int unauthenticated_timeout;
+extern int unauthenticated_max;
 
 extern module_limits_t manager_module_limits;
 extern bool manager_module_limits_enabled;

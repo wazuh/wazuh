@@ -165,6 +165,8 @@ static void mock_remoted_internal_option_values(int legacy_value) {
     expect_value(__wrap_getDefine_Int_default, max, 86400);
     expect_value(__wrap_getDefine_Int_default, default_val, 900);
     will_return(__wrap_getDefine_Int_default, legacy_value); // legacy_task_polling_interval
+    will_return(__wrap_getDefine_Int_default, 137);    // unauthenticated_timeout
+    will_return(__wrap_getDefine_Int_default, 139);    // unauthenticated_max
 }
 
 /* RemotedConfig() fills the global logr; the default local_ip is heap-allocated, so every test that
@@ -249,6 +251,8 @@ static void test_remoted_internal_options_config(void **state) {
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "batch_events_max_bytes")->valueint, 1033);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "enrich_cache_expire_time")->valueint, 127);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "legacy_task_polling_interval")->valueint, 131);
+    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "unauthenticated_timeout")->valueint, 137);
+    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "unauthenticated_max")->valueint, 139);
 
     cJSON_Delete(json);
     os_free(logr.lip);

@@ -86,6 +86,7 @@ static int setup_new_tcp(void** state)
     test_mode = 1;
     os_calloc(1, sizeof(wnotify_t), notify);
     notify->fd = 0;
+    unauthenticated_max = 16384;
     return 0;
 }
 
@@ -600,6 +601,7 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, "#!-agent shutdown ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
@@ -715,6 +717,7 @@ void test_HandleSecureMessage_shutdown_message_embedded_null(void** state)
     will_return(__wrap_ReadSecMSG, decrypted_length);
     will_return(__wrap_ReadSecMSG, decrypted);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
@@ -817,6 +820,7 @@ void test_HandleSecureMessage_HC_req_message(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, "#!-req payload");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
@@ -907,6 +911,7 @@ void test_HandleSecureMessage_invalid_HC_req_message(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, "#!-req witouthCounter");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
@@ -1002,6 +1007,7 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, "#!-agent startup ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
@@ -1108,6 +1114,7 @@ void test_HandleSecureMessage_OldMessage_NoShutdownMessage(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, "#!-agent startup ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
@@ -1551,6 +1558,7 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -1650,6 +1658,7 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     will_return(__wrap_ReadSecMSG, 3);
     will_return(__wrap_ReadSecMSG, "AAA");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
     expect_function_call(__wrap_key_lock_read);
@@ -2123,6 +2132,7 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_value(__wrap_rem_getCounter, fd, 1);
     will_return(__wrap_rem_getCounter, 10);
@@ -2261,6 +2271,7 @@ void test_HandleSecureMessage_close_same_sock(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
     expect_string(__wrap__mdebug1, formatted_msg, "Stripped 1 trailing null byte(s) from event payload of agent '001'");
@@ -2337,6 +2348,7 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
     will_return(__wrap_ReadSecMSG, 4);
     will_return(__wrap_ReadSecMSG, "AAA");
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
     expect_string(__wrap__mdebug1, formatted_msg, "Stripped 1 trailing null byte(s) from event payload of agent '001'");
@@ -2439,6 +2451,7 @@ static void run_upgrade_ack_forwarded_test(const char *ack_json, int enqueue_rc)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -2608,6 +2621,7 @@ void test_HandleSecureMessage_event_enqueue_failed(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -2680,6 +2694,7 @@ void test_HandleSecureMessage_discard_dbsync_message(void** state)
     will_return(__wrap_ReadSecMSG, message.size);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -2768,6 +2783,7 @@ void test_HandleSecureMessage_event_without_trailing_null(void** state)
     will_return(__wrap_ReadSecMSG, payload_len);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -2840,6 +2856,7 @@ void test_HandleSecureMessage_event_enqueue_success(void** state)
     will_return(__wrap_ReadSecMSG, payload_len);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -2931,6 +2948,7 @@ void test_HandleSecureMessage_event_with_trailing_null(void** state)
     will_return(__wrap_ReadSecMSG, payload_len + 1);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -3011,6 +3029,7 @@ void test_HandleSecureMessage_discard_legacy_stateful_sync(void** state)
     will_return(__wrap_ReadSecMSG, total_len);
     will_return(__wrap_ReadSecMSG, buffer);
     will_return(__wrap_ReadSecMSG, KS_VALID);
+    expect_value(__wrap_nb_set_authenticated, sock, 1);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -3041,6 +3060,8 @@ void test_handle_new_tcp_connection_success(void** state)
     will_return(__wrap_accept, AF_INET);
     will_return(__wrap_accept, sock_client);
 
+    will_return(__wrap_nb_unauthenticated_count, 0);
+
     // nb_open
     expect_value(__wrap_nb_open, sock, sock_client);
     expect_value(__wrap_nb_open, peer_info, (struct sockaddr_storage*)&peer_info);
@@ -3070,6 +3091,8 @@ void test_handle_new_tcp_connection_wnotify_fail(void** state)
 
     will_return(__wrap_accept, AF_INET);
     will_return(__wrap_accept, sock_client);
+
+    will_return(__wrap_nb_unauthenticated_count, 0);
 
     // nb_open
     expect_value(__wrap_nb_open, sock, sock_client);
@@ -3145,6 +3168,295 @@ void test_handle_new_tcp_connection_socket_fail_err(void** state)
                   "(1242): Couldn't accept TCP connections: Software caused connection abort (103)");
 
     handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+}
+
+void test_handle_new_tcp_connection_refused_at_unauthenticated_cap(void** state)
+{
+    struct sockaddr_in peer_info;
+    int sock_client = 12;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0A00A8C0;
+
+    will_return(__wrap_accept, AF_INET);
+    will_return(__wrap_accept, sock_client);
+
+    will_return(__wrap_nb_unauthenticated_count, 16384);
+
+    unauthenticated_refused = 0;
+    unauthenticated_refused_warned = 0;
+
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 1000);
+
+    // Closed before nb_open(): no buffers, no TCP counter to undo
+    will_return(__wrap_close, 0);
+
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Refused 1 legacy TCP connection(s): 16384 connections are already waiting to authenticate "
+                  "(remoted.unauthenticated_max).");
+
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+}
+
+/* _close_sock() over a socket, as the reaper and the ping path drive it. cmocka keeps the pointer
+ * expect_string() is given, so the disconnect message must outlive this frame: callers pass a literal. */
+static void expect_close_sock(int sock, const char* disconnected_msg)
+{
+    expect_value(__wrap_rem_setCounter, fd, sock);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_function_call(__wrap_key_lock_read);
+    expect_value(__wrap_OS_DeleteSocket, sock, sock);
+    will_return(__wrap_OS_DeleteSocket, 0);
+    expect_function_call(__wrap_key_unlock);
+
+    will_return(__wrap_close, 0);
+
+    expect_value(__wrap_nb_close, sock, sock);
+    expect_value(__wrap_nb_close, sock, sock);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    expect_string(__wrap__mdebug1, formatted_msg, disconnected_msg);
+}
+
+void test_reap_unauthenticated_connections_closes_expired(void** state)
+{
+    int socks[] = {7, 9};
+
+    global_counter = 0;
+    unauthenticated_timeout = 60;
+    unauthenticated_refused = 0;
+
+    expect_value(__wrap_nb_collect_unauthenticated, deadline, 1940);
+    will_return(__wrap_nb_collect_unauthenticated, 2);
+    will_return(__wrap_nb_collect_unauthenticated, socks);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer [7] sent no authenticated message within 60 seconds. Closing.");
+    expect_close_sock(7, "TCP peer disconnected [7]");
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer [9] sent no authenticated message within 60 seconds. Closing.");
+    expect_close_sock(9, "TCP peer disconnected [9]");
+
+    reap_unauthenticated_connections(2000);
+
+    // A second call within the same second does not sweep again
+    reap_unauthenticated_connections(2000);
+}
+
+void test_reap_unauthenticated_connections_none_expired(void** state)
+{
+    unauthenticated_timeout = 60;
+    unauthenticated_refused = 0;
+
+    expect_value(__wrap_nb_collect_unauthenticated, deadline, 2940);
+    will_return(__wrap_nb_collect_unauthenticated, 0);
+    will_return(__wrap_nb_collect_unauthenticated, NULL);
+
+    reap_unauthenticated_connections(3000);
+}
+
+void test_handle_new_tcp_connection_refusal_within_window_not_reported(void** state)
+{
+    struct sockaddr_in peer_info;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0A00A8C0;
+
+    unauthenticated_refused = 0;
+    unauthenticated_refused_warned = 1000;
+
+    will_return(__wrap_accept, AF_INET);
+    will_return(__wrap_accept, 12);
+    will_return(__wrap_nb_unauthenticated_count, 16384);
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 1010);
+    will_return(__wrap_close, 0);
+
+    // Under a minute since the last warning: counted, not logged
+    handle_new_tcp_connection(notify, (struct sockaddr_storage*)&peer_info);
+
+    assert_int_equal(unauthenticated_refused, 1);
+}
+
+void test_reap_unauthenticated_connections_reports_pending_refusals(void** state)
+{
+    // Refusals that stopped after the last warning are reported by the sweep once the minute is up
+    unauthenticated_refused = 3;
+    unauthenticated_refused_warned = 1000;
+    unauthenticated_timeout = 60;
+    unauthenticated_max = 16384;
+
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Refused 3 legacy TCP connection(s): 16384 connections are already waiting to authenticate "
+                  "(remoted.unauthenticated_max).");
+
+    expect_value(__wrap_nb_collect_unauthenticated, deadline, 1000);
+    will_return(__wrap_nb_collect_unauthenticated, 0);
+    will_return(__wrap_nb_collect_unauthenticated, NULL);
+
+    reap_unauthenticated_connections(1060);
+
+    assert_int_equal(unauthenticated_refused, 0);
+    assert_int_equal(unauthenticated_refused_warned, 1060);
+}
+
+/* _close_sock() up to close(): the counter and the keystore */
+static void expect_close_sock_until_close(int sock)
+{
+    expect_value(__wrap_rem_setCounter, fd, sock);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_function_call(__wrap_key_lock_read);
+    expect_value(__wrap_OS_DeleteSocket, sock, sock);
+    will_return(__wrap_OS_DeleteSocket, 0);
+    expect_function_call(__wrap_key_unlock);
+}
+
+void test_close_sock_failed_close_still_releases_slots(void** state)
+{
+    global_counter = 0;
+
+    expect_close_sock_until_close(5);
+
+    // Linux frees the descriptor even when close() fails: the slots must go too, or the reaper would
+    // close() the number again once something else owns it
+    will_return(__wrap_close, -1);
+    errno = EINTR;
+
+    expect_value(__wrap_nb_close, sock, 5);
+    expect_value(__wrap_nb_close, sock, 5);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [5]");
+
+    _close_sock(&keys, 5);
+}
+
+void test_close_sock_ebadf_leaves_slots_alone(void** state)
+{
+    global_counter = 0;
+
+    expect_close_sock_until_close(5);
+
+    // EBADF: another _close_sock() already closed it and releases the slots itself, and the number may
+    // already belong to a newly accepted connection. No nb_close(), no counter change.
+    will_return(__wrap_close, -1);
+    errno = EBADF;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [5]");
+
+    _close_sock(&keys, 5);
+}
+
+void test_rem_check_unauthenticated_cap_within_limit(void** state)
+{
+    nofile = 65536;
+    unauthenticated_max = 32768; // exactly half: no warning
+
+    rem_check_unauthenticated_cap();
+}
+
+void test_rem_check_unauthenticated_cap_above_half_warns(void** state)
+{
+    nofile = 1024;
+    unauthenticated_max = 16384;
+
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "remoted.unauthenticated_max (16384) is above half the file descriptor limit (1024): connections "
+                  "that never authenticate could take the descriptors registered agents need.");
+
+    rem_check_unauthenticated_cap();
+}
+
+/* A "#ping" frame from 127.0.0.1 over the given socket */
+static void make_ping_message(message_t* message, char* buffer, int sock)
+{
+    struct sockaddr_in peer_info = {0};
+
+    snprintf(buffer, OS_MAXSTR + 1, "#ping");
+    memset(message, 0, sizeof(*message));
+    message->buffer = buffer;
+    message->size = 5;
+    message->sock = sock;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0100007F;
+    memcpy(&message->addr, &peer_info, sizeof(peer_info));
+}
+
+static void expect_pong_queued(int sock, int retval)
+{
+    expect_value(__wrap_nb_queue_nowait, socket, sock);
+    expect_string(__wrap_nb_queue_nowait, msg, "#pong");
+    expect_value(__wrap_nb_queue_nowait, msg_size, 5);
+    will_return(__wrap_nb_queue_nowait, retval);
+}
+
+void test_HandleSecureMessage_ping_tcp_reply_queued(void** state)
+{
+    char buffer[OS_MAXSTR + 1];
+    message_t message;
+    make_ping_message(&message, buffer, 1);
+
+    expect_pong_queued(1, 0);
+
+    HandleSecureMessage(&message, NULL, NULL);
+}
+
+void test_HandleSecureMessage_ping_tcp_peer_not_reading(void** state)
+{
+    char buffer[OS_MAXSTR + 1];
+    message_t message;
+    make_ping_message(&message, buffer, 1);
+
+    global_counter = 0;
+
+    expect_pong_queued(1, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer [1] from '127.0.0.1' is not reading its ping replies. Closing.");
+    expect_close_sock(1, "TCP peer disconnected [1]");
+
+    HandleSecureMessage(&message, NULL, NULL);
+}
+
+void test_HandleSecureMessage_ping_tcp_socket_gone(void** state)
+{
+    char buffer[OS_MAXSTR + 1];
+    message_t message;
+    make_ping_message(&message, buffer, 1);
+
+    // Nothing to close: the connection was released before the worker got the message
+    expect_pong_queued(1, -2);
+
+    HandleSecureMessage(&message, NULL, NULL);
+}
+
+void test_HandleSecureMessage_ping_udp(void** state)
+{
+    char buffer[OS_MAXSTR + 1];
+    message_t message;
+    make_ping_message(&message, buffer, USING_UDP_NO_CLIENT_SOCKET);
+
+    will_return(__wrap_sendto, 5);
+
+    HandleSecureMessage(&message, NULL, NULL);
+}
+
+void test_HandleSecureMessage_ping_udp_send_fails(void** state)
+{
+    char buffer[OS_MAXSTR + 1];
+    message_t message;
+    make_ping_message(&message, buffer, USING_UDP_NO_CLIENT_SOCKET);
+
+    will_return(__wrap_sendto, -1);
+    errno = EAGAIN;
+    expect_string(__wrap__mdebug1,
+                  formatted_msg,
+                  "Ping reply to '127.0.0.1' could not be sent: Resource temporarily unavailable (11)");
+
+    HandleSecureMessage(&message, NULL, NULL);
 }
 
 void test_handle_incoming_data_from_udp_socket_0(void** state)
@@ -4052,6 +4364,26 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_socket_fail, setup_new_tcp, teardown_new_tcp),
         cmocka_unit_test_setup_teardown(
             test_handle_new_tcp_connection_socket_fail_err, setup_new_tcp, teardown_new_tcp),
+        cmocka_unit_test_setup_teardown(
+            test_handle_new_tcp_connection_refused_at_unauthenticated_cap, setup_new_tcp, teardown_new_tcp),
+        // Tests reap_unauthenticated_connections
+        cmocka_unit_test(test_reap_unauthenticated_connections_closes_expired),
+        cmocka_unit_test(test_reap_unauthenticated_connections_none_expired),
+        cmocka_unit_test(test_reap_unauthenticated_connections_reports_pending_refusals),
+        cmocka_unit_test_setup_teardown(
+            test_handle_new_tcp_connection_refusal_within_window_not_reported, setup_new_tcp, teardown_new_tcp),
+        // Tests _close_sock
+        cmocka_unit_test(test_close_sock_failed_close_still_releases_slots),
+        cmocka_unit_test(test_close_sock_ebadf_leaves_slots_alone),
+        // Tests rem_check_unauthenticated_cap
+        cmocka_unit_test(test_rem_check_unauthenticated_cap_within_limit),
+        cmocka_unit_test(test_rem_check_unauthenticated_cap_above_half_warns),
+        // Tests HandleSecureMessage #ping
+        cmocka_unit_test(test_HandleSecureMessage_ping_tcp_reply_queued),
+        cmocka_unit_test(test_HandleSecureMessage_ping_tcp_peer_not_reading),
+        cmocka_unit_test(test_HandleSecureMessage_ping_tcp_socket_gone),
+        cmocka_unit_test(test_HandleSecureMessage_ping_udp),
+        cmocka_unit_test(test_HandleSecureMessage_ping_udp_send_fails),
         // Tests handle_incoming_data_from_udp_socket
         cmocka_unit_test(test_handle_incoming_data_from_udp_socket_0),
         cmocka_unit_test(test_handle_incoming_data_from_udp_socket_success),
