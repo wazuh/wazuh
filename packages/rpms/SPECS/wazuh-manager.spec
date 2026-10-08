@@ -170,6 +170,9 @@ if [ "$1" -eq 2 ]; then
     OLD_VERSION="${VERSION}"
   elif [ -x %{_localstatedir}/bin/wazuh-manager-control ]; then
     OLD_VERSION=$(%{_localstatedir}/bin/wazuh-manager-control info -v 2>/dev/null || echo "")
+  elif [ -x /var/ossec/bin/wazuh-control ] && [ "$(/var/ossec/bin/wazuh-control info -t 2>/dev/null)" = "server" ]; then
+    # 4.x managers live in /var/ossec, not %{_localstatedir}.
+    OLD_VERSION=$(/var/ossec/bin/wazuh-control info -v 2>/dev/null || echo "")
   fi
 
   if [ -n "${OLD_VERSION}" ]; then
