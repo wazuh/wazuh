@@ -14,6 +14,8 @@ export WAZUH_STANDALONE_LOG_LEVEL="info"
 export WAZUH_STORE_PATH="${DATA_PATH}/store"
 export WAZUH_OUTPUTS_PATH="${DATA_PATH}/outputs"
 export WAZUH_KVDB_IOC_PATH="${DATA_PATH}/kvdb-ioc"
+# wazuh-indexer writes its IOC feed to <path.home>/engine/data/iocs.ndjson
+export WAZUH_KVDB_IOC_INPUT_PATH="${DATA_PATH}"
 export WAZUH_CM_RULESET_PATH="${DATA_PATH}/content"
 export WAZUH_SERVER_API_SOCKET="${SOCKET_PATH}/engine-api-http.sock"
 export WAZUH_STREAMLOG_BASE_PATH="${LOG_PATH}"
