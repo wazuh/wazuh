@@ -258,13 +258,40 @@ static bool ar_same_ip(const struct sockaddr *a, const struct sockaddr *b)
 }
 
 #define AR_MANAGER_ADDR_MAX 32
-static struct sockaddr_storage ar_manager_addrs[AR_MANAGER_ADDR_MAX];
-static int ar_manager_addrs_n = 0;
+#define AR_MANAGER_RESOLVE_INTERVAL 60
+STATIC struct sockaddr_storage ar_manager_addrs[AR_MANAGER_ADDR_MAX];
+STATIC int ar_manager_addrs_n = 0;
+STATIC int ar_manager_addrs_next = 0;
+STATIC time_t ar_manager_resolved_at = 0;
+
+static void ar_unmap_ipv4(struct sockaddr_storage *addr)
+{
+    struct sockaddr_in6 *in6 = (struct sockaddr_in6 *)addr;
+
+    if (addr->ss_family == AF_INET6 && IN6_IS_ADDR_V4MAPPED(&in6->sin6_addr)) {
+        struct sockaddr_in in4 = {0};
+        in4.sin_family = AF_INET;
+        memcpy(&in4.sin_addr, (const uint8_t *)&in6->sin6_addr + 12, sizeof(in4.sin_addr));
+        memset(addr, 0, sizeof(*addr));
+        memcpy(addr, &in4, sizeof(in4));
+    }
+}
 
 void ar_resolve_manager_hosts(void)
 {
-    // Addresses are only ever added, so a failed lookup keeps the ones resolved before.
-    for (int i = 0; ar_manager_hosts && ar_manager_hosts[i]; i++) {
+    if (!ar_manager_hosts) {
+        return;
+    }
+
+    // Bounded so a slow resolver cannot stall execd on every response.
+    time_t now = time(NULL);
+    if (ar_manager_resolved_at && now - ar_manager_resolved_at < AR_MANAGER_RESOLVE_INTERVAL) {
+        return;
+    }
+    ar_manager_resolved_at = now;
+
+    // Failed lookups keep what was resolved before; when full, the oldest address is replaced.
+    for (int i = 0; ar_manager_hosts[i]; i++) {
         struct addrinfo hints = {0};
         struct addrinfo *res = NULL;
         hints.ai_family = AF_UNSPEC;
@@ -274,13 +301,25 @@ void ar_resolve_manager_hosts(void)
             continue;
         }
 
-        for (struct addrinfo *r = res; r && ar_manager_addrs_n < AR_MANAGER_ADDR_MAX; r = r->ai_next) {
+        for (struct addrinfo *r = res; r; r = r->ai_next) {
+            struct sockaddr_storage addr = {0};
             bool known = false;
-            for (int j = 0; j < ar_manager_addrs_n && !known; j++) {
-                known = ar_same_ip((struct sockaddr *)&ar_manager_addrs[j], r->ai_addr);
+
+            if (r->ai_addrlen > sizeof(addr)) {
+                continue;
             }
-            if (!known && r->ai_addrlen <= sizeof(struct sockaddr_storage)) {
-                memcpy(&ar_manager_addrs[ar_manager_addrs_n++], r->ai_addr, r->ai_addrlen);
+            memcpy(&addr, r->ai_addr, r->ai_addrlen);
+            ar_unmap_ipv4(&addr);
+
+            for (int j = 0; j < ar_manager_addrs_n && !known; j++) {
+                known = ar_same_ip((struct sockaddr *)&ar_manager_addrs[j], (struct sockaddr *)&addr);
+            }
+            if (!known) {
+                ar_manager_addrs[ar_manager_addrs_next] = addr;
+                ar_manager_addrs_next = (ar_manager_addrs_next + 1) % AR_MANAGER_ADDR_MAX;
+                if (ar_manager_addrs_n < AR_MANAGER_ADDR_MAX) {
+                    ar_manager_addrs_n++;
+                }
             }
         }
         freeaddrinfo(res);
@@ -304,14 +343,7 @@ bool ar_source_allowlisted(const char *srcip)
     memcpy(&addr, src->ai_addr, src->ai_addrlen);
     freeaddrinfo(src);
 
-    struct sockaddr_in6 *in6 = (struct sockaddr_in6 *)&addr;
-    if (addr.ss_family == AF_INET6 && IN6_IS_ADDR_V4MAPPED(&in6->sin6_addr)) {
-        struct sockaddr_in in4 = {0};
-        in4.sin_family = AF_INET;
-        memcpy(&in4.sin_addr, (const uint8_t *)&in6->sin6_addr + 12, sizeof(in4.sin_addr));
-        memset(&addr, 0, sizeof(addr));
-        memcpy(&addr, &in4, sizeof(in4));
-    }
+    ar_unmap_ipv4(&addr);
 
     for (int i = 0; ar_allowlist && ar_allowlist[i] && !found; i++) {
         found = ar_ip_in(ar_allowlist[i], (struct sockaddr *)&addr);
@@ -777,6 +809,8 @@ DWORD WINAPI win_exec_main(__attribute__((unused)) void * args) {
     if (startup_gate_wait_for_ready("wazuh-execd") != STARTUP_GATE_READY) {
         return 0;
     }
+
+    ar_resolve_manager_hosts();
 
     while(1) {
         char* exec_msg = queue_pop_ex(winexec_queue);
