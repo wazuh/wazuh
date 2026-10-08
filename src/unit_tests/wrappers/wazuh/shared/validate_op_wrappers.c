@@ -30,6 +30,14 @@ int __wrap_getDefine_Int(__attribute__((unused)) const char *high_name,
     return mock();
 }
 
+char *__wrap_getDefine_String(__attribute__((unused)) const char *high_name, const char *low_name) {
+    char *value;
+
+    check_expected(low_name);
+    os_strdup(mock_type(char *), value);
+    return value;
+}
+
 int __wrap_OS_IsValidIP(const char *ip_address, os_ip *final_ip) {
     check_expected(ip_address);
     check_expected(final_ip);
