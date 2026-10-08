@@ -70,8 +70,8 @@ list(APPEND analysisd_flags "-Wl,--wrap,wdbc_connect_with_attempts -Wl,--wrap,wd
 
 list(APPEND analysisd_names "test_rules")
 LIST(APPEND analysisd_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,_os_analysisd_add_logmsg \
-                             -Wl,--wrap,OS_ClearNode -Wl,--wrap,w_get_attr_val_by_name -Wl,--wrap,getDefine_Int \
-                             ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,OS_ClearNode -Wl,--wrap,w_get_attr_val_by_name \
+                             -Wl,--wrap,getDefine_String -Wl,--wrap,w_get_memory_size ${DEBUG_OP_WRAPPERS}")
 
 LIST(APPEND analysisd_names "test_same_different_loop")
 LIST(APPEND analysisd_flags "-W")
