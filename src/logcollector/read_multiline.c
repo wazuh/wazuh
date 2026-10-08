@@ -181,7 +181,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
 
     /* Lines of a group that is not complete yet were hashed beyond the stored offset */
     if (group_pending) {
-        if (maximum_lines && lines >= maximum_lines) {
+        if (maximum_lines && lines >= maximum_lines && !rewound) {
             /* Stopped by the line limit: the stored offset covers the lines already read */
             current_position = w_ftell(lf->fp);
         } else {
