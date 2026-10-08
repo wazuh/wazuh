@@ -611,21 +611,29 @@
   </rule>
 
   <!-- GCP Cloud Storage access log rules (usage logs) -->
-  <rule id="65074" level="3">
+  <rule id="65074" level="2">
     <if_sid>65000</if_sid>
     <field name="gcp.s_request_id" type="pcre2">^(?!^$).+$</field>
     <options>no_full_log</options>
     <description>GCP Cloud Storage access log event from bucket $(gcp.cs_bucket): $(gcp.cs_method) $(gcp.cs_operation) - status $(gcp.sc_status).</description>
   </rule>
 
-  <rule id="65076" level="5">
+  <!-- State-changing requests (reads stay at the base level to avoid alerting on routine traffic) -->
+  <rule id="65076" level="3">
+    <if_sid>65074</if_sid>
+    <field name="gcp.cs_method" type="pcre2">^(PUT|POST|DELETE)$</field>
+    <options>no_full_log</options>
+    <description>GCP Cloud Storage access log event, $(gcp.cs_method) request from bucket $(gcp.cs_bucket): $(gcp.cs_operation) - status $(gcp.sc_status).</description>
+  </rule>
+
+  <rule id="65077" level="5">
     <if_sid>65074</if_sid>
     <field name="gcp.sc_status" type="pcre2">^4\d\d$</field>
     <options>no_full_log</options>
     <description>GCP Cloud Storage access log event with client error status $(gcp.sc_status) from bucket $(gcp.cs_bucket): $(gcp.cs_method) $(gcp.cs_operation).</description>
   </rule>
 
-  <rule id="65077" level="7">
+  <rule id="65078" level="7">
     <if_sid>65074</if_sid>
     <field name="gcp.sc_status" type="pcre2">^5\d\d$</field>
     <options>no_full_log</options>
