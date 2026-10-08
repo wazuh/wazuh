@@ -19,6 +19,7 @@
 #include "../../headers/validate_op.h"
 #include "../wrappers/wazuh/shared/expression_wrappers.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../shared/validate_op.c"
 
 /* tests */
@@ -1305,6 +1306,54 @@ void OS_GetIPv4FromIPv6_empty_group(void **state) {
     assert_int_equal(ret, 0);
 }
 
+/* getDefine_String */
+
+static void write_defines(const char *file, const char *content)
+{
+    FILE *fp = fopen(file, "w");
+    assert_non_null(fp);
+    fputs(content, fp);
+    fclose(fp);
+}
+
+static int teardown_defines(void **state)
+{
+    remove(OSSEC_DEFINES);
+    remove(OSSEC_LDEFINES);
+    return 0;
+}
+
+void test_getDefine_String(void **state)
+{
+    write_defines(OSSEC_DEFINES, "analysisd.rule_tree_memory_warning=25%\n");
+
+    char *value = getDefine_String("analysisd", "rule_tree_memory_warning");
+
+    assert_string_equal(value, "25%");
+    os_free(value);
+}
+
+void test_getDefine_String_local(void **state)
+{
+    write_defines(OSSEC_DEFINES, "analysisd.rule_tree_memory_warning=25%\n");
+    write_defines(OSSEC_LDEFINES, "analysisd.rule_tree_memory_warning=2G\n");
+
+    char *value = getDefine_String("analysisd", "rule_tree_memory_warning");
+
+    assert_string_equal(value, "2G");
+    os_free(value);
+}
+
+void test_getDefine_String_not_found(void **state)
+{
+    write_defines(OSSEC_DEFINES, "analysisd.decoder_order_size=256\n");
+
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "(2301): Definition not found for: 'analysisd.rule_tree_memory_warning'.");
+
+    expect_assert_failure(getDefine_String("analysisd", "rule_tree_memory_warning"));
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -1366,6 +1415,10 @@ int main(void) {
         cmocka_unit_test(OS_GetIPv4FromIPv6_compile_fail),
         cmocka_unit_test(OS_GetIPv4FromIPv6_match_fail),
         cmocka_unit_test(OS_GetIPv4FromIPv6_empty_group),
+        // Tests getDefine_String
+        cmocka_unit_test_teardown(test_getDefine_String, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_String_local, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_String_not_found, teardown_defines),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
