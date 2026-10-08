@@ -45,6 +45,24 @@ TEST(ExtractContainerIdFromCgroupPath, OuterDockerWrapReadsLeafNotMiddleSegment)
               "eeee111122223333444455556666777788889999aaaabbbb");
 }
 
+TEST(ExtractContainerIdFromCgroupPath, InitSystemContainerIsFoundFromItsChildCgroup)
+{
+    // An image whose PID 1 is an init system puts every process in a CHILD
+    // cgroup, so no process ever names the container's own cgroup. Reading only
+    // the leaf found nothing and the container contributed no PIDs at all, so
+    // the baseline reported zero containers scanned while the connector was
+    // reporting one known. Must agree with container_instances'
+    // extractContainerId(), which scans the same way.
+    EXPECT_EQ(ExtractContainerIdFromCgroupPath(
+                  "/system.slice/docker-b1b6ccc5c74210b8218705474216b5066936036017bb89d9fdaf1a1959425c5d.scope/"
+                  "init.scope"),
+              "b1b6ccc5c74210b8218705474216b5066936036017bb89d9fdaf1a1959425c5d");
+
+    EXPECT_EQ(ExtractContainerIdFromCgroupPath(
+                  "/docker/0000111122223333444455556666777788889999aaaabbbbccccdddd/system.slice/containerd.service"),
+              "0000111122223333444455556666777788889999aaaabbbbccccdddd");
+}
+
 TEST(ExtractContainerIdFromCgroupPath, SystemSliceReturnsEmpty)
 {
     EXPECT_EQ(ExtractContainerIdFromCgroupPath("/system.slice/kubelet.service"), "");
