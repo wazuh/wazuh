@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 #### Added
 
 - Added the `tcp_sessions_unassociated` counter to the `wazuh-remoted` statistics, reporting TCP connections not yet associated with an agent. ([#39799](https://github.com/wazuh/wazuh/pull/39799))
+- Added rule tree memory thresholds to `wazuh-analysisd` to warn about and reject rulesets whose rule tree grows too large. `analysisd.rule_tree_memory_warning` and `analysisd.rule_tree_memory_limit` accept a size or a percentage of the available memory, including cgroup limits. ([#39930](https://github.com/wazuh/wazuh/issues/39930))
 
 #### Fixed
 
@@ -76,6 +77,8 @@ All notable changes to this project will be documented in this file.
 - Fixed configuration masking not applying to XML tags written with whitespace or attributes. ([#39663](https://github.com/wazuh/wazuh/pull/39663))
 - Fixed `wazuh-apid` staying alive without its PID file when it receives `SIGTERM` during startup. ([#39922](https://github.com/wazuh/wazuh/pull/39922))
 - Fixed the API login attempt counter refreshing its time window on every request to the login endpoints, which let sporadic failed logins from a client that logs in frequently accumulate until the IP was blocked. ([#39361](https://github.com/wazuh/wazuh/issues/39361))
+- Fixed rule and decoder uploads reporting any ruleset validation failure as an XML syntax error. The error now includes the `wazuh-analysisd` details, and the new error 1132 reports a ruleset that exceeds the rule tree node limit. ([#39930](https://github.com/wazuh/wazuh/issues/39930))
+- Fixed rule and decoder uploads leaving the uploaded file installed when the validation could not be completed or the file had no previous version. ([#39930](https://github.com/wazuh/wazuh/issues/39930))
 
 ## [v4.14.9]
 
