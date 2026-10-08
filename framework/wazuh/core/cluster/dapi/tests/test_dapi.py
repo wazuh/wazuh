@@ -29,7 +29,8 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue, SendSyncRequestQueue
+        from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue, SendSyncRequestQueue, \
+            WazuhRequestQueue
         from wazuh.core.manager import get_manager_status
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
         from wazuh import agent, cluster, manager, WazuhError, WazuhInternalError
@@ -908,8 +909,8 @@ def test_APIRequestQueue_init(queue_mock):
 
 @patch("wazuh.core.cluster.common.import_module", return_value="os.path")
 @patch("asyncio.get_running_loop")
-async def test_APIRequestQueue_run(loop_mock, import_module_mock):
-    """Test `APIRequestQueue.run` function."""
+async def test_APIRequestQueue_process(loop_mock, import_module_mock):
+    """Test `APIRequestQueue.process` function."""
 
     class DistributedAPI_mock:
         def __init__(self):
@@ -943,7 +944,7 @@ async def test_APIRequestQueue_run(loop_mock, import_module_mock):
         apirequest.logger = logger
         apirequest.request_queue = RequestQueueMock()
         with pytest.raises(Exception, match=".*break while true.*"):
-            await apirequest.run()
+            await apirequest.process(await apirequest.request_queue.get())
         logger_mock.assert_called_once_with("Error in DAPI request. The destination node is "
                                             "not connected or does not exist: 'wazuh'.")
 
@@ -953,20 +954,20 @@ async def test_APIRequestQueue_run(loop_mock, import_module_mock):
                 with patch("wazuh.core.cluster.dapi.dapi.DistributedAPI", return_value=DistributedAPI_mock()):
                     server.clients = {"wazuh": node}
                     with pytest.raises(Exception):
-                        await apirequest.run()
+                        await apirequest.process(await apirequest.request_queue.get())
 
             with patch.object(node, "send_string", Exception("break while true")):
                 with patch("wazuh.core.cluster.dapi.dapi.DistributedAPI", return_value=DistributedAPI_mock()):
                     with patch("wazuh.core.cluster.dapi.dapi.contextlib.suppress", side_effect=Exception()):
                         apirequest.logger = logging.getLogger("apirequest")
                         with pytest.raises(Exception):
-                            await apirequest.run()
+                            await apirequest.process(await apirequest.request_queue.get())
 
 
 @patch("wazuh.core.cluster.dapi.dapi.contextlib.suppress", side_effect=Exception())
 @patch("asyncio.get_running_loop")
-async def test_SendSyncRequestQueue_run(loop_mock, contexlib_mock):
-    """Test `SendSyncRequestQueue.run` function."""
+async def test_SendSyncRequestQueue_process(loop_mock, contexlib_mock):
+    """Test `SendSyncRequestQueue.process` function."""
 
     class NodeMock:
         async def send_request(self, command, data):
@@ -992,7 +993,7 @@ async def test_SendSyncRequestQueue_run(loop_mock, contexlib_mock):
         sendsync.logger = logger
         sendsync.request_queue = RequestQueueMock()
         with pytest.raises(Exception, match=".*break while true.*"):
-            await sendsync.run()
+            await sendsync.process(await sendsync.request_queue.get())
         logger_mock.assert_called_once_with("Error in Sendsync. The destination node is "
                                             "not connected or does not exist: 'wazuh'.")
 
@@ -1002,11 +1003,84 @@ async def test_SendSyncRequestQueue_run(loop_mock, contexlib_mock):
                 server.clients = {"wazuh": node}
                 sendsync.logger = logging.getLogger("sendsync")
                 with pytest.raises(Exception):
-                    await sendsync.run()
+                    await sendsync.process(await sendsync.request_queue.get())
 
             with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect="noerror"):
                 with pytest.raises(Exception):
-                    await sendsync.run()
+                    await sendsync.process(await sendsync.request_queue.get())
+
+
+@pytest.mark.parametrize('raw_request, expected', [
+    ('worker1*abc {"f": 1}', (['worker1', 'abc'], '{"f": 1}')),
+    ('wazuh-apid {"f": 1}', (['wazuh-apid'], '{"f": 1}')),
+    ('worker1*abc ', (['worker1', 'abc'], '')),
+    ('worker1*abc', None),
+    ('', None),
+    (' {"f": 1}', None),
+])
+def test_WazuhRequestQueue_split_request(raw_request, expected):
+    """Check that `split_request` rejects a request with no sender or no payload instead of raising."""
+    assert WazuhRequestQueue.split_request(raw_request) == expected
+
+
+class _ScriptedQueue:
+    """Request queue returning the given items in order, then cancelling the consumer."""
+
+    def __init__(self, items):
+        self.items = list(items)
+
+    async def get(self):
+        if not self.items:
+            raise asyncio.CancelledError
+        return self.items.pop(0)
+
+
+class _QueueServerMock:
+    def __init__(self):
+        self.client = None
+        self.clients = {}
+        self.configuration = {'node_type': 'master'}
+        self.tasks_event = asyncio.Event()
+        self.tasks_event.set()
+
+
+@pytest.mark.parametrize('queue_class, label', [
+    (APIRequestQueue, 'DAPI'),
+    (SendSyncRequestQueue, 'SendSync'),
+])
+async def test_request_queue_process_discards_payload_without_space(queue_class, label):
+    """A request with no payload is logged and dropped, never raised."""
+    request_queue = queue_class(server=_QueueServerMock())
+    with patch.object(request_queue.logger, 'error') as error_mock:
+        await request_queue.process('worker1*no-space-at-all')
+    error_mock.assert_called_once_with(
+        f"Discarding malformed {label} request from 'worker1': no request payload.")
+
+
+@pytest.mark.parametrize('queue_class', [APIRequestQueue, SendSyncRequestQueue])
+async def test_request_queue_run_survives_malformed_request(queue_class):
+    """A malformed request must not end the queue: the next request is still processed."""
+    request_queue = queue_class(server=_QueueServerMock())
+    request_queue.request_queue = _ScriptedQueue(['worker1*no-space', 'worker1*abc {}'])
+    with patch.object(request_queue.logger, 'error') as error_mock:
+        with pytest.raises(asyncio.CancelledError):
+            await request_queue.run()
+    assert error_mock.call_count == 2
+    assert 'not connected or does not exist' in error_mock.call_args_list[1].args[0]
+
+
+@pytest.mark.parametrize('queue_class', [APIRequestQueue, SendSyncRequestQueue])
+async def test_request_queue_run_survives_unexpected_error(queue_class):
+    """An exception escaping `process` is logged and the loop carries on with the next request."""
+    request_queue = queue_class(server=_QueueServerMock())
+    request_queue.request_queue = _ScriptedQueue(['first', 'second'])
+    with patch.object(request_queue, 'process', side_effect=[ValueError('boom'), None]) as process_mock, \
+            patch.object(request_queue.logger, 'error') as error_mock:
+        with pytest.raises(asyncio.CancelledError):
+            await request_queue.run()
+    assert process_mock.call_args_list == [call('first'), call('second')]
+    error_mock.assert_called_once()
+    assert 'boom' in error_mock.call_args.args[0]
 
 
 @pytest.mark.asyncio
