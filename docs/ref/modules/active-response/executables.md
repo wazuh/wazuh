@@ -112,7 +112,7 @@ block out quick from any to <wazuh_fwtable>
 | Priority | Method | Tool | Command Example |
 |----------|--------|------|-----------------|
 | 1 | netsh | `netsh.exe` | `netsh advfirewall firewall add rule name="WAZUH ACTIVE RESPONSE BLOCKED IP" interface=any dir=in action=block remoteip=192.168.1.100/32` (plus a matching `dir=out` rule) |
-| 2 | route | `route.exe` | `route -p ADD 192.168.1.100 MASK 255.255.255.255 127.0.0.1` (null-route to loopback) |
+| 2 | route | `route.exe` | `route -p ADD 192.168.1.100 MASK 255.255.255.255 0.0.0.0 IF 1` (blackhole via the loopback interface) |
 
 The `remoteip` prefix matches the address family: `/32` for IPv4 and `/128` for IPv6.
 
@@ -124,7 +124,7 @@ The `remoteip` prefix matches the address family: `/32` for IPv4 and `/128` for 
   - otherwise, an **absent** value defaults to **enabled** (the Windows default).
 
   If any profile is effectively enabled, netsh is used; if the firewall is effectively off, netsh is skipped and the chain defers to the `route` fallback (adding a rule that would sit dormant is avoided). This check is **not** applied on DISABLE, so an unblock always attempts to remove the rule.
-- **Route Fallback (best-effort)**: When netsh is unavailable, or the firewall is effectively off, the target is **null-routed to loopback** (`route -p ADD <IP> MASK 255.255.255.255 127.0.0.1`) so the host discards packets destined to it. This is **best-effort**: it can break routed/remote attackers but does **not** block a host on a directly-connected subnet (on-link traffic is delivered via ARP, which the loopback route does not redirect). The `route add` exit code is checked: a failed `route add` is reported as a failure. **Windows Firewall (netsh) remains the only comprehensive blocking mechanism.**
+- **Route Fallback (best-effort)**: When netsh is unavailable, or the firewall is effectively off, the target is **blackholed through the loopback interface** (`route -p ADD <IP> MASK 255.255.255.255 0.0.0.0 IF 1`) so the host discards packets destined to it. A `0.0.0.0 IF 1` gateway stays in the active routing table; a `127.0.0.1` gateway is only saved to the persistent store and never becomes active, so it would not block anything. This is **best-effort**: the /32 host route is more specific than the on-link subnet route and wins, so it drops egress to the target (including a host on a directly-connected subnet) and breaks the reverse path of inbound sessions, but it does **not** filter inbound packets the way a firewall rule does. Because `route.exe` exits 0 even when it rejects the route, the route is verified against the active routing table after the add (`GetBestRoute`); if it did not take, the method reports a failure. **Windows Firewall (netsh) remains the preferred, bidirectional blocking mechanism.**
 - **IPv4-only fallback**: The `route` fallback applies to **IPv4 targets only**; IPv6 targets are skipped (netsh already covers IPv6).
 - **Input validation**: `source.ip` must consist only of the characters of a numeric IPv4 address, or of hex digits, `:` and `.` for IPv6, 2 to 45 characters long, so nothing else reaches the netsh or route command line.
 - **Permissions**: Requires Administrator privileges
