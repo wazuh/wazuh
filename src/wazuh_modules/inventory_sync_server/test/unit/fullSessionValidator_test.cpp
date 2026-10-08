@@ -314,12 +314,12 @@ TEST(FullSessionValidatorTest, StartGroupsOverTheMultigroupLimitsAre400)
         tooMany.groups.push_back("group-" + std::to_string(i));
     }
     const auto many = invsync::test::buildSyncDataSession(tooMany, {invsync::test::ValueSpec {}});
-    EXPECT_EQ(400, failureOf(validateFullSession(many, "1", CLUSTER)).status);
+    EXPECT_EQ(400, failureOf(validateFullSession(many, "001", CLUSTER)).status);
 
     SessionSpec tooLong;
     tooLong.groups = {std::string(invsync::sync::MAX_START_GROUP_NAME_BYTES + 1, 'g')};
     const auto longName = invsync::test::buildSyncDataSession(tooLong, {invsync::test::ValueSpec {}});
-    EXPECT_EQ(400, failureOf(validateFullSession(longName, "1", CLUSTER)).status);
+    EXPECT_EQ(400, failureOf(validateFullSession(longName, "001", CLUSTER)).status);
 }
 
 TEST(FullSessionValidatorTest, StartIndicesOverTheirLimitsAre400)
@@ -327,12 +327,12 @@ TEST(FullSessionValidatorTest, StartIndicesOverTheirLimitsAre400)
     SessionSpec tooMany;
     tooMany.indices.assign(invsync::sync::MAX_START_INDICES + 1, "wazuh-states-inventory-packages");
     const auto many = invsync::test::buildSyncDataSession(tooMany, {invsync::test::ValueSpec {}});
-    EXPECT_EQ(400, failureOf(validateFullSession(many, "1", CLUSTER)).status);
+    EXPECT_EQ(400, failureOf(validateFullSession(many, "001", CLUSTER)).status);
 
     SessionSpec tooLong;
     tooLong.indices = {std::string(invsync::sync::MAX_START_INDEX_NAME_BYTES + 1, 'i')};
     const auto longName = invsync::test::buildSyncDataSession(tooLong, {invsync::test::ValueSpec {}});
-    EXPECT_EQ(400, failureOf(validateFullSession(longName, "1", CLUSTER)).status);
+    EXPECT_EQ(400, failureOf(validateFullSession(longName, "001", CLUSTER)).status);
 }
 
 TEST(FullSessionValidatorTest, StartListsAtTheirLimitsValidate)
@@ -349,7 +349,7 @@ TEST(FullSessionValidatorTest, StartListsAtTheirLimitsValidate)
     spec.indices.assign(invsync::sync::MAX_START_INDICES, std::string(invsync::sync::MAX_START_INDEX_NAME_BYTES, 'i'));
     const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
 
-    const auto result = validateFullSession(body, "1", CLUSTER);
+    const auto result = validateFullSession(body, "001", CLUSTER);
     const auto& session = sessionOf(result);
     EXPECT_EQ(invsync::sync::MAX_START_GROUPS, session.groups.size());
     EXPECT_EQ(invsync::sync::MAX_START_INDICES, session.indices.size());
@@ -374,7 +374,7 @@ TEST(FullSessionValidatorTest, VectorEntriesAliasingOneObjectAre400)
     for (const auto& [target, copies, payload, name] : cases)
     {
         const auto body = invsync::test::buildAliasedSession(SessionSpec {}, target, copies, payload);
-        const auto result = validateFullSession(body, "1", CLUSTER);
+        const auto result = validateFullSession(body, "001", CLUSTER);
         const auto& failure = failureOf(result);
         EXPECT_EQ(400, failure.status) << name;
         EXPECT_NE(std::string::npos, failure.reason.find("more data than it carries")) << name;
@@ -387,7 +387,7 @@ TEST(FullSessionValidatorTest, AnAliasedVectorOfOneEntryIsJustAnHonestMessage)
     // ordinary message, so the builder used above is not what is being rejected.
     using invsync::test::AliasedVector;
     const auto body = invsync::test::buildAliasedSession(SessionSpec {}, AliasedVector::Values, 1, R"({"a":1})");
-    EXPECT_TRUE(std::holds_alternative<ValidatedSession>(validateFullSession(body, "1", CLUSTER)));
+    EXPECT_TRUE(std::holds_alternative<ValidatedSession>(validateFullSession(body, "001", CLUSTER)));
 }
 
 TEST(FullSessionValidatorTest, ManyDistinctSmallObjectsStayWithinTheBudget)
@@ -410,9 +410,9 @@ TEST(FullSessionValidatorTest, ManyDistinctSmallObjectsStayWithinTheBudget)
         contexts[i].data.clear();
     }
     const auto sync = invsync::test::buildSyncDataSession(SessionSpec {}, values, contexts);
-    EXPECT_TRUE(std::holds_alternative<ValidatedSession>(validateFullSession(sync, "1", CLUSTER)));
+    EXPECT_TRUE(std::holds_alternative<ValidatedSession>(validateFullSession(sync, "001", CLUSTER)));
 
     const std::vector<std::string> indices(5000, "wazuh-states-inventory-packages");
     const auto cleans = invsync::test::buildCleansSession(SessionSpec {}, indices);
-    EXPECT_TRUE(std::holds_alternative<ValidatedSession>(validateFullSession(cleans, "1", CLUSTER)));
+    EXPECT_TRUE(std::holds_alternative<ValidatedSession>(validateFullSession(cleans, "001", CLUSTER)));
 }
