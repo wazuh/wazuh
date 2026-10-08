@@ -2098,6 +2098,9 @@ TEST_F(IndexerConnectorSyncTest, BulkIndexWithVersionHandling)
     EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("update")"));
     EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("doc_version":12345)"));
     EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"(state.document_version)"));
+    // The update API only accepts 'none' as a no-op; 'noop' is skipped too but logs a WARN per document.
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"(ctx.op = 'none')"));
+    EXPECT_THAT(capturedBulkData, ::testing::Not(::testing::HasSubstr("'noop'")));
 
     // Verify doc2 does not have version information
     std::size_t doc2_pos = capturedBulkData.find("doc2");

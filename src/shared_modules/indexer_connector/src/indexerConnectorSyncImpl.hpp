@@ -116,6 +116,9 @@ inline void appendEscapedId(std::string& bulkData, std::string_view id)
  * The script implements external_gte behavior on state.document_version:
  * - Updates if state.document_version is null or <= provided version
  * - No-op if state.document_version > provided version
+ *
+ * The no-op is `ctx.op = 'none'`, the value the update API accepts; any other value is still skipped but
+ * logged by OpenSearch as a WARN per document. `_update_by_query` scripts use `noop` instead and reject `none`.
  */
 inline void appendScriptedUpdate(
     std::string& bulkData, std::string_view index, std::string_view id, std::string_view version, std::string_view data)
@@ -131,7 +134,7 @@ inline void appendScriptedUpdate(
     // Build script that checks state.document_version field
     bulkData.append(R"({"script":{"source":")");
     bulkData.append(
-        R"(if (ctx._source?.state?.document_version == null || ctx._source.state.document_version <= params.doc_version) { ctx._source = params.doc } else { ctx.op = 'noop' })");
+        R"(if (ctx._source?.state?.document_version == null || ctx._source.state.document_version <= params.doc_version) { ctx._source = params.doc } else { ctx.op = 'none' })");
     bulkData.append(R"(","lang":"painless","params":{"doc_version":)");
     bulkData.append(version);
     bulkData.append(R"(,"doc":)");
