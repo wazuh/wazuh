@@ -713,8 +713,9 @@ public:
      * unrefreshed document.
      *
      * Deleting a document that is not there is not an error: the item comes back `404`
-     * ("result": "not_found") with no `error` element, and the response handler above only inspects
-     * `index`/`create` items, so it is ignored. That makes repeating a delete free.
+     * ("result": "not_found") with no `error` element, and the response handler above, which inspects
+     * `delete` items as well as `index`/`create` ones, only acts on items that carry an `error`, so
+     * it is ignored. That makes repeating a delete free.
      */
     void bulkDelete(std::string_view id, std::string_view index)
     {
