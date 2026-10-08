@@ -30,6 +30,17 @@
  */
 bool w_https_client_start(void);
 
+/**
+ * @brief Make SHAREDCFG_DIR trustworthy before anything reads it.
+ *
+ * Called once at startup, before the HTTPS client starts. If an apply of a
+ * downloaded configuration was interrupted, or the shared agent.conf on disk
+ * does not pass validation, the shared directory and merged.mg are discarded:
+ * the startup gate stays closed and the manager's configuration is downloaded
+ * and validated again, as on a freshly enrolled agent.
+ */
+void w_https_client_reconcile_shared_config(void);
+
 /** @brief Stop and destroy the HTTPS client module if it was started. */
 void w_https_client_stop(void);
 

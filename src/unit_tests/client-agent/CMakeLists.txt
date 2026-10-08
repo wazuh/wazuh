@@ -190,6 +190,9 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
                                 -Wl,--wrap,w_agentd_state_update -Wl,--wrap,getDefine_Int \
                                 -Wl,--wrap,getDefine_Int_default \
                                 -Wl,--wrap,w_copy_file -Wl,--wrap,UnmergeFiles -Wl,--wrap,cldir_ex_ignore \
+                                -Wl,--wrap,IsFile -Wl,--wrap,rename_ex -Wl,--wrap,time \
+                                -Wl,--wrap,startup_gate_mark_download_pending \
+                                -Wl,--wrap,startup_gate_clear_download_pending \
                                 -Wl,--wrap,wfopen -Wl,--wrap,w_fopen_nofollow -Wl,--wrap,unlink \
                                 ${STDIO_OP_WRAPPERS} -Wl,--wrap,popen -Wl,--wrap,ferror \
                                 -Wl,--wrap,verifyRemoteConf -Wl,--wrap,reloadAgent \
