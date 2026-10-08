@@ -621,7 +621,7 @@
   <!-- State-changing requests (reads stay at the base level to avoid alerting on routine traffic) -->
   <rule id="65076" level="3">
     <if_sid>65074</if_sid>
-    <field name="gcp.cs_method" type="pcre2">^(PUT|POST|DELETE)$</field>
+    <field name="gcp.cs_method" type="pcre2">^(PUT|POST|PATCH|DELETE)$</field>
     <options>no_full_log</options>
     <description>GCP Cloud Storage access log event, $(gcp.cs_method) request from bucket $(gcp.cs_bucket): $(gcp.cs_operation) - status $(gcp.sc_status).</description>
   </rule>
