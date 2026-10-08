@@ -12,6 +12,23 @@ namespace wazuh::container_instances
     {
 
         constexpr auto RECONCILE_DEBOUNCE = std::chrono::milliseconds {500};
+
+        /// How often a reconcile runs with NOTHING pending.
+        ///
+        /// The debounce's trailing edge only runs while work is outstanding, and
+        /// reSeed() clears that flag — so on a host that goes quiet the connector
+        /// stops reconciling entirely. That would merely be idle, except that
+        /// applySnapshot() is the only place removal grace, pending TTL and
+        /// verdict liveness are evaluated, and the connectors are its only
+        /// callers. A quiet host therefore stops expiring anything: containers
+        /// removed with a live key keep their grace timestamp and are never
+        /// erased, which is why `docker rm` on an idle host left records in the
+        /// list indefinitely until some unrelated event happened along.
+        ///
+        /// Well under REMOVAL_GRACE (60 s) so expiry is evaluated several times
+        /// inside the window, and far above the 500 ms poll so a quiet host pays
+        /// one snapshot every ten seconds rather than two a second. The default
+        /// lives on the constructor; tests inject a shorter one.
         constexpr auto BACKOFF_BASE = std::chrono::seconds {5};
         constexpr auto BACKOFF_CAP = std::chrono::seconds {60};
         constexpr std::size_t EVENT_DEDUPE_LIMIT = 1024;
@@ -22,12 +39,14 @@ namespace wazuh::container_instances
                                      const ICgroupResolver& resolver,
                                      IMetadataStore& store,
                                      SourceId source,
-                                     Logger logger)
+                                     Logger logger,
+                                     std::chrono::milliseconds idleReconcileInterval)
         : m_client(client)
         , m_resolver(resolver)
         , m_store(store)
         , m_source(std::move(source))
         , m_logger(std::move(logger))
+        , m_idleReconcileInterval(idleReconcileInterval)
     {
     }
 
@@ -117,7 +136,21 @@ namespace wazuh::container_instances
     /// m_reconcilePending and m_lastReconcile need no synchronisation.
     void DockerConnector::flushPendingReconcile()
     {
-        if (m_reconcilePending && std::chrono::steady_clock::now() - m_lastReconcile >= RECONCILE_DEBOUNCE)
+        const auto now = std::chrono::steady_clock::now();
+
+        if (m_reconcilePending && now - m_lastReconcile >= RECONCILE_DEBOUNCE)
+        {
+            reSeed();
+            return;
+        }
+
+        // Nothing pending, but the store still needs a snapshot periodically:
+        // everything that expires — removal grace, pending TTL, verdict liveness
+        // — is evaluated inside applySnapshot() and nowhere else. Kubernetes gets
+        // this for free because the apiserver closes its watch every few minutes
+        // and the re-list reconciles unconditionally; Docker's event stream is
+        // deliberately unterminated, so a quiet host never reconciles again.
+        if (now - m_lastReconcile >= m_idleReconcileInterval)
         {
             reSeed();
         }

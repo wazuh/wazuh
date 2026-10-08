@@ -158,12 +158,17 @@ namespace
 
     struct Fixture
     {
+        explicit Fixture(std::chrono::milliseconds idleReconcile = std::chrono::seconds {10})
+            : connector {api, resolver, store, SourceId {"docker"}, [](LogLevel, const std::string&) {}, idleReconcile}
+        {
+        }
+
         FakeResolver resolver;
         ScriptedDockerApi api {resolver};
         MetadataStore store {[](LogLevel, const std::string&) {}};
         StopController stop;
 
-        DockerConnector connector {api, resolver, store, SourceId {"docker"}, [](LogLevel, const std::string&) {}};
+        DockerConnector connector;
 
         [[nodiscard]] std::vector<std::string> listed()
         {
@@ -240,15 +245,106 @@ TEST(DockerConnectorDebounceTest, QuietStreamStillReconcilesWithinDeadline)
         const auto listsAfterFlush = f.api.listCalls.load();
         EXPECT_GT(listsAfterFlush, listsBefore) << "the first idle tick past the window must flush the deferral";
 
-        // Pending is now clear, so further ticks on a still-quiet stream are free.
+        // Pending is now clear, so further ticks at the POLL cadence are free.
+        // They are not free forever — see IdleHostKeepsReconcilingSoExpiryRuns —
+        // but a quiet host must not pay a full list+inspect sweep every poll
+        // interval, which is what this guards.
         onIdle();
         onIdle();
         EXPECT_EQ(listsAfterFlush, f.api.listCalls.load())
-            << "idle ticks with nothing pending must not re-seed; otherwise a quiet host pays a full "
-               "list+inspect sweep every poll interval";
+            << "idle ticks with nothing pending must not re-seed at the poll cadence; otherwise a quiet "
+               "host pays a full list+inspect sweep every poll interval";
     };
 
     f.connector.run(f.stop);
 
     EXPECT_TRUE(Contains(f.listed(), "beta"));
+}
+
+TEST(DockerConnectorDebounceTest, SnapshotsContinueAfterABurstOfRemovalsOnAQuietHost)
+{
+    // The defect: `docker rm -f` of five containers on an otherwise idle host
+    // left three of them in the list indefinitely -- stable well past the 60 s
+    // removal grace, reproduced on two hosts -- and one unrelated `docker run`
+    // flushed all three at once. Nothing removed a container through the
+    // connector in this suite before, which is why it survived.
+    //
+    // What is asserted here is the MECHANISM, not the end state. Records are
+    // meant to linger for REMOVAL_GRACE so events still in flight can be
+    // attributed, so "gone already" would be the wrong assertion -- and asserting
+    // it was my first mistake here. What was broken is that no snapshot was ever
+    // taken again, and grace is evaluated inside applySnapshot() and nowhere
+    // else, so the grace timer was never read. Expiry at the full 60 s is proven
+    // on a real host instead.
+    Fixture f {std::chrono::milliseconds {40}};
+
+    f.api.script = [&f](const DockerEventSink& sink, const std::function<void()>& onIdle, const StopController&)
+    {
+        f.api.setContainers({"c1", "c2", "c3", "c4", "c5"});
+        sink(DockerEvent {"c1", "start", 1});
+        std::this_thread::sleep_for(PAST_DEBOUNCE);
+        onIdle();
+        ASSERT_EQ(5U, f.listed().size()) << "all five must be present before the removals";
+
+        // All five torn down inside one debounce window: the leading edge fires
+        // for the first, every later one is suppressed.
+        f.api.setContainers({});
+        sink(DockerEvent {"c1", "die", 2});
+        sink(DockerEvent {"c2", "die", 3});
+        sink(DockerEvent {"c3", "die", 4});
+        sink(DockerEvent {"c4", "die", 5});
+        sink(DockerEvent {"c5", "die", 6});
+
+        std::this_thread::sleep_for(PAST_DEBOUNCE);
+        onIdle(); // trailing edge drains what it can; the host now goes quiet
+
+        const auto afterTrailingEdge = f.api.listCalls.load();
+
+        // No further events, ever. Snapshots must keep coming anyway, because
+        // that is the only thing that will ever read the grace timers set above.
+        for (int i = 0; i < 10; ++i)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds {10});
+            onIdle();
+        }
+
+        EXPECT_GT(f.api.listCalls.load(), afterTrailingEdge)
+            << "after a burst of removals the host went quiet and no snapshot was ever taken again, "
+               "so the grace timers set by those removals would never be read";
+    };
+
+    f.connector.run(f.stop);
+}
+
+TEST(DockerConnectorDebounceTest, AQuietHostKeepsReconcilingSoExpiryKeepsRunning)
+{
+    // The narrower statement of the same thing, and the one that pins the new
+    // behaviour directly: with nothing pending and no events whatsoever, a
+    // snapshot must still be taken periodically. applySnapshot() is the only
+    // place removal grace, pending TTL and verdict liveness are evaluated, and
+    // the connectors are its only callers, so a connector that stops reconciling
+    // stops every one of them.
+    Fixture f {std::chrono::milliseconds {40}};
+
+    f.api.script = [&f](const DockerEventSink& sink, const std::function<void()>& onIdle, const StopController&)
+    {
+        f.api.setContainers({"alpha"});
+        sink(DockerEvent {"alpha", "start", 1});
+        std::this_thread::sleep_for(PAST_DEBOUNCE);
+        onIdle(); // drains the deferral; nothing pending from here on
+
+        const auto settled = f.api.listCalls.load();
+
+        // Below the idle interval: still free.
+        onIdle();
+        EXPECT_EQ(settled, f.api.listCalls.load()) << "a tick inside the idle interval must not re-seed";
+
+        // Past it: must reconcile even though nothing is pending.
+        std::this_thread::sleep_for(std::chrono::milliseconds {60});
+        onIdle();
+        EXPECT_GT(f.api.listCalls.load(), settled)
+            << "a quiet host must keep reconciling, or nothing in the store ever expires";
+    };
+
+    f.connector.run(f.stop);
 }
