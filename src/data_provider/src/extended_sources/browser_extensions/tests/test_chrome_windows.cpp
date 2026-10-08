@@ -12,6 +12,8 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include "filesystemHelper.h"
+#include <filesystem>
+#include <fstream>
 
 class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
@@ -76,4 +78,35 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
             break;
         }
     }
+}
+
+TEST(ChromeExtensionsTests, AbsoluteExtensionPathMustBeOnLocalFixedDrive)
+{
+    const auto home {std::filesystem::temp_directory_path() / "wazuh_chrome_local_path_test"};
+    const auto profile {home / "mock-user" / "AppData" / "Local" / "Google" / "Chrome" / "User Data" / "Default"};
+    const auto extensionDir {home / "unpacked"};
+    std::filesystem::remove_all(home);
+    std::filesystem::create_directories(profile);
+    std::filesystem::create_directories(extensionDir);
+    std::ofstream(extensionDir / "manifest.json") << R"({"name":"unpacked","version":"1.0"})";
+
+    const auto collectWithPath = [&](const std::string & extensionPath)
+    {
+        nlohmann::json preferences;
+        preferences["extensions"]["settings"]["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]["path"] = extensionPath;
+        std::ofstream(profile / "Preferences", std::ios::trunc) << preferences.dump();
+
+        auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
+        EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(home.string()));
+        EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::_)).WillRepeatedly(::testing::Return(""));
+
+        chrome::ChromeExtensionsProvider chromeExtensionsProvider(mockExtensionsWrapper);
+        return chromeExtensionsProvider.collect().size();
+    };
+
+    EXPECT_EQ(collectWithPath(extensionDir.string()), static_cast<size_t>(1));
+    EXPECT_EQ(collectWithPath(R"(\\?\)" + extensionDir.string()), static_cast<size_t>(0));
+    EXPECT_EQ(collectWithPath(R"(\\10.0.0.5\share\ext)"), static_cast<size_t>(0));
+
+    std::filesystem::remove_all(home);
 }
