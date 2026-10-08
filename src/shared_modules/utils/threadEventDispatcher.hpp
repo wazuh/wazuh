@@ -273,10 +273,8 @@ private:
                     const auto now = std::chrono::steady_clock::now();
                     if (now - lastErrorLog >= std::chrono::minutes(1))
                     {
-                        logWarn(LOGGER_DEFAULT_TAG,
-                                "Queue '%s': dispatch handler error, %s",
-                                m_name.c_str(),
-                                ex.what());
+                        logWarn(
+                            LOGGER_DEFAULT_TAG, "Queue '%s': dispatch handler error, %s", m_name.c_str(), ex.what());
                         lastErrorLog = now;
                     }
                 }

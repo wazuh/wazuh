@@ -409,7 +409,7 @@ private:
     std::shared_ptr<rocksdb::Cache> m_readCache;
     std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager;
     std::map<std::string, QueueMetadata> m_queueMetadata; ///< Map queue.
-    std::string m_unreliableBounds; ///< Why the bounds are not trustworthy; empty when they are.
+    std::string m_unreliableBounds;                       ///< Why the bounds are not trustworthy; empty when they are.
 };
 
 #endif // _ROCKSDB_QUEUE_CF_HPP

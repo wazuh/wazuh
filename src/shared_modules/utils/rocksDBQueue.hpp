@@ -308,7 +308,7 @@ private:
     uint64_t m_first = 1;
     uint64_t m_last = 0;
     bool m_legacyKeyMode = false;
-    std::string m_unreliableBounds; ///< Why the bounds are not trustworthy; empty when they are.
+    std::string m_unreliableBounds;      ///< Why the bounds are not trustworthy; empty when they are.
     mutable bool m_readUnpadded = false; ///< Format that answered the last read, tried first on the next one.
 
     // Computes the bounds and the size of the queue from the keys it stores. The status it returns is the one of the
