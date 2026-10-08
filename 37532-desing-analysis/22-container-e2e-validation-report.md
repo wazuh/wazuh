@@ -194,11 +194,21 @@ SELECT count(*) FROM dbsync_osinfo        WHERE container_id <> '';  -- 0
 SELECT count(*) FROM dbsync_network_iface WHERE container_id <> '';  -- 0
 ```
 
-**The SCA load-order question is answered, and it is the bad case.** SCA is enabled in the stock
-agent configuration, SCA initialises the process-wide `schema_validator` singleton, and syscollector
-then validates against templates that have no `container` property. Container inventory therefore
-produces **nothing persistent at all** on a default install — not merely "nothing reaches the
-indexer".
+**The rejection is unconditional.** Container inventory produces **nothing persistent at all** —
+not merely "nothing reaches the indexer".
+
+> **Correction, 2026-10-08.** This section originally said the rejection was *SCA-load-order
+> dependent*: that SCA initialises the process-wide `schema_validator` singleton and syscollector
+> inherits it, so disabling SCA would let rows through unvalidated. **That is wrong.** Syscollector
+> initialises the validator itself (`syscollectorImp.cpp:3321-3334`) and validates at `:6330-6360`,
+> deleting the failed rows inside the DBSync transaction (`:2857`). SCA's initialisation
+> (`sca_impl.cpp:565-579`) is redundant, not load-bearing.
+>
+> The error was methodological, not clerical: the run observed SCA enabled *and* rejections, and I
+> attributed causation without running the control the test plan itself specified (Phase 3.6 said to
+> run once with SCA enabled and once disabled). One configuration cannot establish a dependency.
+> The corrected statement is simpler and worse — there is no configuration in which these rows
+> survive.
 
 **Container FIM is affected differently and less severely.** Its baseline rows are rejected the same
 way:
