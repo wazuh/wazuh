@@ -214,21 +214,25 @@ def get_blobs(
             # Skip the blob if already processed
             last_modified = blob.last_modified
             if processed_bytes is not None:
-                if blob.size == processed_bytes:
-                    logging.info(f"Storage: Skipping blob {blob.name} due to being already processed")
-                    continue
-            elif not reparse and (
-                last_modified < desired_datetime
-                or (min_datetime <= last_modified <= max_datetime)
-            ):
+                if blob.size < processed_bytes:
+                    # The blob was replaced with less data than already processed
+                    processed_bytes = 0
+                already_processed = blob.size == processed_bytes
+            else:
+                already_processed = not reparse and (
+                    last_modified < desired_datetime
+                    or (min_datetime <= last_modified <= max_datetime)
+                )
+            if already_processed:
                 logging.info(f"Storage: Skipping blob {blob.name} due to being already processed")
                 continue
 
             # Get the blob data
             try:
-                data = download_blob(container_client, blob, offset=processed_bytes or None)
+                content, downloaded_bytes = download_blob(container_client, blob, offset=processed_bytes or None)
             except ResourceModifiedError as e:
                 logging.error(f'Storage: Error downloading blob "{blob.name}" after multiple retries: {e}')
+                continue
             except (ValueError, AzureError, HttpResponseError) as e:
                 logging.error(f'Storage: Error reading the blob data: "{e}".')
                 continue
@@ -236,7 +240,7 @@ def get_blobs(
                 # Process the data as a JSON
                 if json_file:
                     try:
-                        content_list = loads(data.readall())
+                        content_list = loads(content)
                         records = content_list['records']
                     except (JSONDecodeError, TypeError) as e:
                         logging.error(
@@ -258,7 +262,7 @@ def get_blobs(
                             send_message(dumps(log_record))
                 # Process the data as plain text
                 else:
-                    for line in [s for s in str(data.readall()).splitlines() if s]:
+                    for line in [s for s in str(content).splitlines() if s]:
                         if json_inline:
                             msg = '{"azure_tag": "azure-storage"'
                             if tag:
@@ -273,7 +277,7 @@ def get_blobs(
                         send_message(msg)
                 if track_offset:
                     save_processed_bytes(
-                        md5_hash, container_name, blob.name, creation_time, (processed_bytes or 0) + data.size
+                        md5_hash, container_name, blob.name, creation_time, (processed_bytes or 0) + downloaded_bytes
                     )
             update_row_object(
                 table=orm.Storage,
@@ -285,6 +289,7 @@ def get_blobs(
 
         if append_blobs:
             remove_stale_offsets(md5_hash, container_name, prefix, append_blobs)
+
 
 def download_blob(container_client, blob, offset=None, number_of_retries=3):
     """
@@ -303,8 +308,8 @@ def download_blob(container_client, blob, offset=None, number_of_retries=3):
 
     Returns
     -------
-    StorageStreamDownloader[str]
-        Message that will be sent to the WazuhQueue socket.
+    tuple
+        The blob contents and the number of bytes downloaded.
 
     Raises
     ------
@@ -319,7 +324,8 @@ def download_blob(container_client, blob, offset=None, number_of_retries=3):
         try:
             logging.info(f"Getting data from blob {blob.name}{f' from byte {offset}' if offset else ''}")
             data = container_client.download_blob(blob, offset=offset, encoding="UTF-8", max_concurrency=2)
-            return data
+            # Large blobs are read in chunks, which also fail if the blob changes meanwhile
+            return data.readall(), data.size
         except ResourceModifiedError as e:
             if attempt == number_of_retries:
                 raise e

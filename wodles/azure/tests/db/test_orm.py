@@ -167,14 +167,14 @@ def test_blob_offset(create_and_teardown_db):
         (None, {'prefix/kept'}),
     ],
 )
-def test_delete_blob_offsets(create_and_teardown_db, prefix, expected_blobs):
+def test_delete_stale_blob_offsets(create_and_teardown_db, prefix, expected_blobs):
     """Test only the offsets of the blobs under the prefix that are not kept are deleted."""
     for blob in ['prefix/kept', 'prefix/deleted', 'other/blob']:
         orm.set_blob_offset(md5='md5', container='container', blob=blob, creation_time='t', processed_bytes=1)
     orm.set_blob_offset(md5='md5', container='other', blob='prefix/deleted', creation_time='t', processed_bytes=1)
     orm.set_blob_offset(md5='other', container='container', blob='prefix/deleted', creation_time='t', processed_bytes=1)
 
-    orm.delete_blob_offsets(md5='md5', container='container', prefix=prefix, keep={'prefix/kept'})
+    orm.delete_stale_blob_offsets(md5='md5', container='container', prefix=prefix, keep={'prefix/kept'})
 
     rows = orm.get_all_rows(table=orm.StorageBlobOffset)
     assert {row.blob for row in rows if (row.md5, row.container) == ('md5', 'container')} == expected_blobs
@@ -189,7 +189,7 @@ def test_blob_offset_ko(create_and_teardown_db):
     with pytest.raises(orm.AzureORMError):
         orm.set_blob_offset(md5='md5', container='container', blob='blob', creation_time='t', processed_bytes=1)
     with pytest.raises(orm.AzureORMError):
-        orm.delete_blob_offsets(md5='md5', container='container', prefix=None, keep=set())
+        orm.delete_stale_blob_offsets(md5='md5', container='container', prefix=None, keep=set())
 
 
 @pytest.mark.parametrize(
