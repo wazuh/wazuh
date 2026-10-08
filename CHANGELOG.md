@@ -39,6 +39,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the AWS wodle decompressing gzip objects twice before processing them, doubling memory and CPU use per object. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
 - Fixed a quadratic-time loop in the AWS Macie/custom-bucket JSON parser caused by re-slicing the remaining buffer on every object, and its zero-matching regex backtracking quadratically on long runs of zeros. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
 - Fixed the Maltiverse integration sending an unvalidated alert hostname unescaped in the request path, allowing path or query manipulation within the Maltiverse API. ([#40010](https://github.com/wazuh/wazuh/pull/40010))
+- Fixed the Azure Storage integration resending every record of an append blob each time new records were appended to it. ([#40177](https://github.com/wazuh/wazuh/pull/40177))
 
 ### Agent
 
