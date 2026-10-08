@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
+#include <initializer_list>
 #include <iostream>
 #include <limits>
 #include <optional>
@@ -665,6 +666,517 @@ TEST_F(JsonRuntime, Str)
     ASSERT_EQ(expected, doc.str());
 }
 
+/****************************************************************************************/
+// Output validity: str()/prettyStr()/str(path) always emit JSON that re-parses
+/****************************************************************************************/
+namespace
+{
+// Builds a string from explicit byte values (avoids greedy "\x.." escapes swallowing hex letters).
+std::string bytes(std::initializer_list<unsigned int> values)
+{
+    std::string out;
+    out.reserve(values.size());
+    for (const auto v : values)
+    {
+        out.push_back(static_cast<char>(static_cast<unsigned char>(v)));
+    }
+    return out;
+}
+
+// U+FFFD REPLACEMENT CHARACTER encoded in UTF-8: EF BF BD.
+const std::string REPLACEMENT = bytes({0xEF, 0xBF, 0xBD});
+
+size_t countReplacements(const std::string& value)
+{
+    size_t count = 0;
+    for (auto pos = value.find(REPLACEMENT); pos != std::string::npos; pos = value.find(REPLACEMENT, pos + 3))
+    {
+        ++count;
+    }
+    return count;
+}
+
+std::string repeat(const std::string& unit, size_t times)
+{
+    std::string out;
+    out.reserve(unit.size() * times);
+    for (size_t i = 0; i < times; ++i)
+    {
+        out += unit;
+    }
+    return out;
+}
+} // namespace
+
+struct SanitizeValueParams
+{
+    std::string name;
+    std::string input;         // raw bytes stored in /s
+    size_t inputLen;           // expected fixture length (guards against escape mistakes)
+    size_t expectedFffd;       // U+FFFD occurrences in the re-parsed /s
+    std::string expectedValue; // exact re-parsed /s
+};
+
+class JsonSanitizeValue : public ::testing::TestWithParam<SanitizeValueParams>
+{
+protected:
+    void SetUp() override { logging::testInit(); }
+};
+
+TEST_P(JsonSanitizeValue, StrReparses)
+{
+    const auto& p = GetParam();
+    ASSERT_EQ(p.input.size(), p.inputLen);
+
+    Json doc;
+    doc.setString(p.input, "/s");
+    doc.setInt(1, "/keep");
+
+    const auto out = doc.str();
+    std::optional<Json> parsed;
+    ASSERT_NO_THROW(parsed.emplace(out)) << "output: " << out;
+
+    ASSERT_EQ(parsed->getInt("/keep"), 1);
+    std::string value;
+    ASSERT_EQ(RetGet::Success, parsed->getString(value, "/s"));
+    EXPECT_EQ(countReplacements(value), p.expectedFffd);
+    EXPECT_EQ(value, p.expectedValue);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Json,
+    JsonSanitizeValue,
+    ::testing::Values(
+        // 63 61 66 E9: Latin-1 e-acute is a lone lead byte
+        SanitizeValueParams {"LatinOneTail", bytes({0x63, 0x61, 0x66, 0xE9}), 4, 1, "caf" + REPLACEMENT},
+        // E2 41 42: 3-byte lead followed by ASCII; the ASCII bytes survive
+        SanitizeValueParams {"LeadThenAscii", bytes({0xE2, 0x41, 0x42}), 3, 1, REPLACEMENT + "AB"},
+        // ED A0 80: UTF-16 surrogate encoded in UTF-8 (CESU), every byte invalid
+        SanitizeValueParams {"Surrogate", bytes({0xED, 0xA0, 0x80}), 3, 3, repeat(REPLACEMENT, 3)},
+        // C0 80: overlong encoding of NUL
+        SanitizeValueParams {"OverlongNul", bytes({0xC0, 0x80}), 2, 2, repeat(REPLACEMENT, 2)},
+        // BB 41: lone continuation byte then ASCII
+        SanitizeValueParams {"LoneContinuation", bytes({0xBB, 0x41}), 2, 1, REPLACEMENT + "A"},
+        // EF 41: truncated 3-byte sequence then ASCII
+        SanitizeValueParams {"TruncatedThenAscii", bytes({0xEF, 0x41}), 2, 1, REPLACEMENT + "A"},
+        // BF: lone continuation byte alone
+        SanitizeValueParams {"LoneContinuationOnly", bytes({0xBF}), 1, 1, REPLACEMENT},
+        // E2 82 AC: valid euro sign, control case, unchanged
+        SanitizeValueParams {"ValidEuroUnchanged", bytes({0xE2, 0x82, 0xAC}), 3, 0, bytes({0xE2, 0x82, 0xAC})}),
+    [](const ::testing::TestParamInfo<SanitizeValueParams>& info) { return info.param.name; });
+
+TEST(JsonSanitizeKey, StrReparsesWithReplacedKey)
+{
+    logging::testInit();
+
+    // The key bytes 6B FF go in through a raw JSON Pointer token ("/k" + FF): rapidjson::Pointer does not
+    // validate UTF-8 in plain (non URI-fragment) pointers, so the member name is stored unvalidated.
+    const std::string rawPointer = std::string {"/k"} + bytes({0xFF});
+    ASSERT_EQ(rawPointer.size(), 3u);
+    const std::string rawKey = bytes({0x6B, 0xFF});
+
+    Json doc;
+    doc.setInt(1, rawPointer);
+    doc.setInt(2, "/ok");
+
+    // Fixture sanity: the invalid key really is in the document
+    const auto fields = doc.getFields();
+    ASSERT_TRUE(fields.has_value());
+    ASSERT_EQ(fields.value(), (std::vector<std::string> {rawKey, "ok"}));
+
+    const auto out = doc.str();
+    std::optional<Json> parsed;
+    ASSERT_NO_THROW(parsed.emplace(out)) << "output: " << out;
+
+    const std::string sanitizedKey = "k" + REPLACEMENT;
+    ASSERT_EQ(sanitizedKey, bytes({0x6B, 0xEF, 0xBF, 0xBD}));
+    const auto parsedFields = parsed->getFields();
+    ASSERT_TRUE(parsedFields.has_value());
+    EXPECT_EQ(parsedFields.value(), (std::vector<std::string> {sanitizedKey, "ok"}));
+    EXPECT_EQ(parsed->getInt("/" + sanitizedKey), 1);
+    EXPECT_EQ(parsed->getInt("/ok"), 2);
+}
+
+// A sanitized key that would duplicate a sibling name drops its member (value included): the output never carries
+// duplicate keys, and a valid key is never renamed or dropped.
+class JsonSanitizeKeyCollision : public ::testing::Test
+{
+protected:
+    const std::string sanitizedKey = "k" + REPLACEMENT; // k EF BF BD, what both raw keys sanitize to
+    const std::string rawPointerFF = std::string {"/k"} + bytes({0xFF});
+    const std::string rawPointerFE = std::string {"/k"} + bytes({0xFE});
+    const std::string validPointer = "/" + sanitizedKey;
+
+    void SetUp() override { logging::testInit(); }
+
+    static Json reparse(const std::string& out)
+    {
+        std::optional<Json> parsed;
+        EXPECT_NO_THROW(parsed.emplace(out)) << "output: " << out;
+        return parsed.value_or(Json {});
+    }
+
+    static std::vector<std::string> fieldsOf(const Json& doc)
+    {
+        const auto fields = doc.getFields();
+        EXPECT_TRUE(fields.has_value());
+        return fields.value_or(std::vector<std::string> {});
+    }
+
+    static std::string stringAt(const Json& doc, const std::string& path)
+    {
+        std::string out;
+        EXPECT_EQ(doc.getString(out, path), json::RetGet::Success) << path;
+        return out;
+    }
+};
+
+TEST_F(JsonSanitizeKeyCollision, TwoInvalidKeysKeepTheFirst)
+{
+    Json doc;
+    doc.setInt(1, rawPointerFF);
+    doc.setInt(2, rawPointerFE);
+    doc.setInt(3, "/ok");
+    ASSERT_EQ(fieldsOf(doc).size(), 3u);
+
+    const auto parsed = reparse(doc.str());
+    EXPECT_EQ(fieldsOf(parsed), (std::vector<std::string> {sanitizedKey, "ok"}));
+    EXPECT_EQ(parsed.getInt(validPointer), 1);
+    EXPECT_EQ(parsed.getInt("/ok"), 3);
+}
+
+TEST_F(JsonSanitizeKeyCollision, ValidKeyBeforeInvalidOneWins)
+{
+    Json doc;
+    doc.setInt(1, validPointer);
+    doc.setInt(2, rawPointerFF);
+    doc.setInt(3, "/ok");
+
+    const auto parsed = reparse(doc.str());
+    EXPECT_EQ(fieldsOf(parsed), (std::vector<std::string> {sanitizedKey, "ok"}));
+    EXPECT_EQ(parsed.getInt(validPointer), 1);
+    EXPECT_EQ(parsed.getInt("/ok"), 3);
+}
+
+TEST_F(JsonSanitizeKeyCollision, ValidKeyAfterInvalidOneWins)
+{
+    Json doc;
+    doc.setInt(1, rawPointerFF);
+    doc.setInt(2, validPointer);
+    doc.setInt(3, "/ok");
+
+    // The valid key comes later in the object: the sanitized one is still the one dropped
+    const auto parsed = reparse(doc.str());
+    EXPECT_EQ(fieldsOf(parsed), (std::vector<std::string> {sanitizedKey, "ok"}));
+    EXPECT_EQ(parsed.getInt(validPointer), 2);
+    EXPECT_EQ(parsed.getInt("/ok"), 3);
+}
+
+TEST_F(JsonSanitizeKeyCollision, DroppedMemberSkipsItsNestedValue)
+{
+    Json doc;
+    doc.setInt(0, "/first");
+    // The dropped member carries an object with an array and a nested object, all of it must be skipped
+    doc.set(rawPointerFF, Json {R"({"a":[1,{"b":2}],"c":"x"})"});
+    doc.setInt(5, validPointer);
+    doc.setString(bytes({0x63, 0x61, 0x66, 0xE9}), "/last"); // a sanitized value after the dropped member
+
+    const auto parsed = reparse(doc.str());
+    EXPECT_EQ(fieldsOf(parsed), (std::vector<std::string> {"first", sanitizedKey, "last"}));
+    EXPECT_EQ(parsed.getInt("/first"), 0);
+    EXPECT_EQ(parsed.getInt(validPointer), 5);
+    EXPECT_EQ(stringAt(parsed, "/last"), "caf" + REPLACEMENT);
+    EXPECT_FALSE(parsed.exists("/a"));
+    EXPECT_FALSE(parsed.exists(validPointer + "/a"));
+}
+
+TEST_F(JsonSanitizeKeyCollision, CollisionOnlyWithinTheSameObject)
+{
+    Json doc;
+    doc.setInt(1, rawPointerFF);
+    doc.setInt(2, "/nested" + rawPointerFF); // same raw key in a child object: no collision across objects
+    doc.setInt(3, "/nested" + validPointer); // the valid sibling of the nested one wins there
+
+    const auto parsed = reparse(doc.str());
+    // getFields() flattens nested members as dotted paths: the nested object keeps a single member
+    EXPECT_EQ(fieldsOf(parsed), (std::vector<std::string> {sanitizedKey, "nested." + sanitizedKey}));
+    EXPECT_EQ(parsed.getInt(validPointer), 1);
+    EXPECT_EQ(parsed.getInt("/nested" + validPointer), 3);
+}
+
+TEST_F(JsonSanitizeKeyCollision, PrettyStrAndPathStrDropTheSameMember)
+{
+    Json doc;
+    doc.setInt(1, "/obj" + rawPointerFF);
+    doc.setInt(2, "/obj" + rawPointerFE);
+    doc.setInt(3, "/obj/ok");
+
+    const auto pretty = reparse(doc.prettyStr());
+    EXPECT_EQ(fieldsOf(pretty.getJson("/obj").value_or(Json {})), (std::vector<std::string> {sanitizedKey, "ok"}));
+    EXPECT_EQ(pretty.getInt("/obj" + validPointer), 1);
+
+    const auto byPath = doc.str("/obj");
+    ASSERT_TRUE(byPath.has_value());
+    const auto sub = reparse(byPath.value());
+    EXPECT_EQ(fieldsOf(sub), (std::vector<std::string> {sanitizedKey, "ok"}));
+    EXPECT_EQ(sub.getInt(validPointer), 1);
+    EXPECT_EQ(sub.getInt("/ok"), 3);
+}
+
+TEST_F(JsonSanitizeKeyCollision, ObjectsInsideADroppedMemberKeepTheIndexInStep)
+{
+    // The dropped member holds an object and an array of objects; the objects after it must still be checked
+    // against their own sibling names (a desynchronised index would use the skipped objects' sets)
+    Json doc;
+    doc.set(rawPointerFF, Json {R"({"inner":{"deep":1},"list":[{"a":1},{"b":2}]})"});
+    doc.setInt(0, validPointer);
+    doc.setInt(1, "/next" + rawPointerFF); // collides with the valid sibling below: dropped
+    doc.setInt(2, "/next" + validPointer);
+    doc.setInt(3, "/next/keep");
+    doc.setInt(4, "/tail" + rawPointerFF); // no valid sibling: kept, sanitized
+    doc.setInt(5, "/tail/other");
+
+    for (const auto& out : {doc.str(), doc.prettyStr()})
+    {
+        const auto parsed = reparse(out);
+        EXPECT_EQ(fieldsOf(parsed),
+                  (std::vector<std::string> {
+                      sanitizedKey, "next." + sanitizedKey, "next.keep", "tail." + sanitizedKey, "tail.other"}))
+            << out;
+        EXPECT_EQ(parsed.getInt(validPointer), 0);
+        EXPECT_EQ(parsed.getInt("/next" + validPointer), 2);
+        EXPECT_EQ(parsed.getInt("/next/keep"), 3);
+        EXPECT_EQ(parsed.getInt("/tail" + validPointer), 4);
+        EXPECT_EQ(parsed.getInt("/tail/other"), 5);
+    }
+}
+
+TEST_F(JsonSanitizeKeyCollision, DroppedEmptyAndLastMembers)
+{
+    // Empty containers as the dropped value, and a dropped member in last position, close the skip cleanly
+    Json doc;
+    doc.setObject("/a" + rawPointerFF);
+    doc.setObject("/a" + validPointer);
+    doc.setArray("/b" + rawPointerFF);
+    doc.setInt(1, "/b" + validPointer);
+    doc.setInt(2, "/c/keep");
+    doc.set("/c" + rawPointerFF, Json {R"([{"x":[]},[]])"});
+    doc.setInt(3, "/c" + validPointer);
+
+    const auto parsed = reparse(doc.str());
+    // getFields() lists leaves only: the kept empty object under "a" is checked with isObject()
+    EXPECT_EQ(fieldsOf(parsed), (std::vector<std::string> {"b." + sanitizedKey, "c.keep", "c." + sanitizedKey}));
+    EXPECT_TRUE(parsed.isObject("/a" + validPointer));
+    EXPECT_EQ(parsed.getInt("/b" + validPointer), 1);
+    EXPECT_EQ(parsed.getInt("/c/keep"), 2);
+    EXPECT_EQ(parsed.getInt("/c" + validPointer), 3);
+}
+
+TEST_F(JsonSanitizeKeyCollision, DuplicateValidKeysAreNotTouched)
+{
+    // Two valid duplicate keys (possible in a parsed document) stay as they were: only sanitized keys are policed
+    const std::string raw = R"({"d":1,"d":2,"v":"caf)" + bytes({0xE9}) + R"("})";
+    const Json doc {raw};
+    ASSERT_EQ(fieldsOf(doc), (std::vector<std::string> {"d", "d", "v"}));
+
+    const auto out = doc.str();
+    EXPECT_NE(out.find(R"("d":1,"d":2)"), std::string::npos) << out;
+    const auto parsed = reparse(out);
+    EXPECT_EQ(stringAt(parsed, "/v"), "caf" + REPLACEMENT);
+}
+
+TEST_F(JsonRuntime, PrettyStrAndPathStrSanitize)
+{
+    const auto input = bytes({0x63, 0x61, 0x66, 0xE9});
+    ASSERT_EQ(input.size(), 4u);
+    const std::string expected = "caf" + REPLACEMENT;
+
+    Json doc;
+    doc.setString(input, "/a");
+
+    // prettyStr()
+    const auto pretty = doc.prettyStr();
+    std::optional<Json> parsedPretty;
+    ASSERT_NO_THROW(parsedPretty.emplace(pretty)) << "output: " << pretty;
+    std::string value;
+    ASSERT_EQ(RetGet::Success, parsedPretty->getString(value, "/a"));
+    EXPECT_EQ(value, expected);
+
+    // str(path)
+    const auto atPath = doc.str("/a");
+    ASSERT_TRUE(atPath.has_value());
+    std::optional<Json> parsedPath;
+    ASSERT_NO_THROW(parsedPath.emplace(atPath.value())) << "output: " << atPath.value();
+    std::string scalar;
+    ASSERT_EQ(RetGet::Success, parsedPath->getString(scalar));
+    EXPECT_EQ(scalar, expected);
+}
+
+TEST_F(JsonRuntime, StrNonFiniteDoubleAsNull)
+{
+    Json doc;
+    doc.setDouble(std::numeric_limits<double>::infinity(), "/p");
+    doc.setDouble(-std::numeric_limits<double>::infinity(), "/n");
+    doc.setDouble(std::numeric_limits<double>::quiet_NaN(), "/q");
+    doc.setDouble(1.5, "/d");
+
+    const auto out = doc.str();
+    std::optional<Json> parsed;
+    ASSERT_NO_THROW(parsed.emplace(out)) << "output: " << out;
+
+    EXPECT_TRUE(parsed->isNull("/p"));
+    EXPECT_TRUE(parsed->isNull("/n"));
+    EXPECT_TRUE(parsed->isNull("/q"));
+    ASSERT_TRUE(parsed->getDouble("/d").has_value());
+    EXPECT_EQ(parsed->getDouble("/d").value(), 1.5);
+}
+
+struct TruncatedTailParams
+{
+    std::string name;
+    std::string tail; // incomplete multibyte sequence at the very end of the string
+    size_t tailLen;
+};
+
+// One lead byte per rapidjson UTF8 range type (2, 3, 4, 5, 6, 10, 11) plus partial continuations, so every entry of
+// the continuation-length table is exercised. The string is 65535 bytes so its copy lands at the edge of a fresh
+// 64 KiB allocator chunk: with the base writer, ASAN reports the overread for every tail that needs more bytes than
+// the terminator.
+const std::vector<TruncatedTailParams> TRUNCATED_TAILS {
+    {"C3", bytes({0xC3}), 1},
+    {"E2", bytes({0xE2}), 1},
+    {"E2_82", bytes({0xE2, 0x82}), 2},
+    {"F0", bytes({0xF0}), 1},
+    {"F0_9F", bytes({0xF0, 0x9F}), 2},
+    {"F0_9F_98", bytes({0xF0, 0x9F, 0x98}), 3},
+    {"E0", bytes({0xE0}), 1},
+    {"ED", bytes({0xED}), 1},
+    {"EF", bytes({0xEF}), 1},
+    {"F1", bytes({0xF1}), 1},
+    {"F4", bytes({0xF4}), 1},
+    {"F4_8F", bytes({0xF4, 0x8F}), 2},
+};
+
+constexpr size_t TRUNCATED_TOTAL_LEN = 65535;
+
+std::string truncatedTailName(const ::testing::TestParamInfo<TruncatedTailParams>& info)
+{
+    return info.param.name;
+}
+
+class JsonSanitizeTruncatedTail : public ::testing::TestWithParam<TruncatedTailParams>
+{
+protected:
+    void SetUp() override { logging::testInit(); }
+};
+
+TEST_P(JsonSanitizeTruncatedTail, StrReparses)
+{
+    const auto& p = GetParam();
+    ASSERT_EQ(p.tail.size(), p.tailLen);
+
+    const std::string body(TRUNCATED_TOTAL_LEN - p.tailLen, 'a');
+    const std::string input = body + p.tail;
+    ASSERT_EQ(input.size(), TRUNCATED_TOTAL_LEN);
+
+    // Fresh document whose only string value is the input: its copy lands at the edge of a fresh 64 KiB chunk.
+    Json doc;
+    doc.setString(input, "/s");
+
+    const auto out = doc.str();
+    std::optional<Json> parsed;
+    ASSERT_NO_THROW(parsed.emplace(out));
+
+    std::string value;
+    ASSERT_EQ(RetGet::Success, parsed->getString(value, "/s"));
+    EXPECT_EQ(countReplacements(value), p.tailLen);
+    EXPECT_EQ(value, body + repeat(REPLACEMENT, p.tailLen));
+}
+
+INSTANTIATE_TEST_SUITE_P(Json, JsonSanitizeTruncatedTail, ::testing::ValuesIn(TRUNCATED_TAILS), truncatedTailName);
+
+// Same tails as member names: the engine builds keys from event content (parse_kv, kvdb, rename), and the writer
+// decodes keys exactly like values.
+class JsonSanitizeTruncatedKeyTail : public ::testing::TestWithParam<TruncatedTailParams>
+{
+protected:
+    void SetUp() override { logging::testInit(); }
+};
+
+TEST_P(JsonSanitizeTruncatedKeyTail, StrReparses)
+{
+    const auto& p = GetParam();
+    ASSERT_EQ(p.tail.size(), p.tailLen);
+
+    const std::string body(TRUNCATED_TOTAL_LEN - p.tailLen, 'a');
+    const std::string key = body + p.tail;
+    ASSERT_EQ(key.size(), TRUNCATED_TOTAL_LEN);
+
+    // The raw pointer token is copied as the member name: the first allocation of a fresh document.
+    Json doc;
+    doc.setInt(1, "/" + key);
+    const auto fields = doc.getFields();
+    ASSERT_TRUE(fields.has_value());
+    ASSERT_EQ(fields.value(), (std::vector<std::string> {key}));
+
+    const auto out = doc.str();
+    std::optional<Json> parsed;
+    ASSERT_NO_THROW(parsed.emplace(out));
+
+    const auto parsedFields = parsed->getFields();
+    ASSERT_TRUE(parsedFields.has_value());
+    ASSERT_EQ(parsedFields->size(), 1u);
+    EXPECT_EQ(countReplacements(parsedFields->front()), p.tailLen);
+    EXPECT_EQ(parsedFields->front(), body + repeat(REPLACEMENT, p.tailLen));
+}
+
+INSTANTIATE_TEST_SUITE_P(Json, JsonSanitizeTruncatedKeyTail, ::testing::ValuesIn(TRUNCATED_TAILS), truncatedTailName);
+
+TEST_F(JsonRuntime, StrValidUnchanged)
+{
+    // Leading BOM (EF BB BF) + "x" + euro (E2 82 AC), valid UTF-8 that must not be altered.
+    const std::string validString = bytes({0xEF, 0xBB, 0xBF, 0x78, 0xE2, 0x82, 0xAC});
+    ASSERT_EQ(validString.size(), 7u);
+
+    Json doc;
+    doc.setString(validString, "/s");
+    doc.setInt(42, "/i");
+    doc.setInt(-7, "/neg");
+    doc.setDouble(1.5, "/d");
+    doc.setDouble(-0.25, "/nested/d");
+    doc.setString("plain", "/nested/obj/k");
+    doc.appendString("first", "/nested/arr");
+    doc.appendString("second", "/nested/arr");
+    doc.setBool(true, "/nested/t");
+    doc.setNull("/nested/z");
+
+    // The writer targets ASCII, so non-ASCII code points are emitted as \uXXXX (uppercase hex).
+    const std::string expected =
+        R"({"s":"\uFEFFx\u20AC","i":42,"neg":-7,"d":1.5,)"
+        R"("nested":{"d":-0.25,"obj":{"k":"plain"},"arr":["first","second"],"t":true,"z":null}})";
+
+    EXPECT_EQ(doc.str(), expected);
+}
+
+TEST_F(JsonRuntime, StrValidAfterFallback)
+{
+    // Euro (E2 82 AC) + BOM (EF BB BF): valid UTF-8 in a document that also needs the fallback (non-finite double).
+    const std::string validString = bytes({0xE2, 0x82, 0xAC, 0xEF, 0xBB, 0xBF});
+    ASSERT_EQ(validString.size(), 6u);
+
+    Json doc;
+    doc.setDouble(std::numeric_limits<double>::infinity(), "/x");
+    doc.setString(validString, "/s");
+
+    const auto out = doc.str();
+    std::optional<Json> parsed;
+    ASSERT_NO_THROW(parsed.emplace(out)) << "output: " << out;
+
+    EXPECT_TRUE(parsed->isNull("/x"));
+    std::string value;
+    ASSERT_EQ(RetGet::Success, parsed->getString(value, "/s"));
+    EXPECT_EQ(value, validString);
+}
 // Checking basic functionality of str from path method
 TEST_F(JsonRuntime, strFromPath)
 {

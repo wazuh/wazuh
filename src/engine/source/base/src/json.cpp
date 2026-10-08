@@ -1,5 +1,7 @@
 #include <base/json.hpp>
 
+#include <atomic>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <exception>
@@ -8,6 +10,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "rapidjson/memorystream.h"
 #include "rapidjson/schema.h"
 
 #include <base/logging.hpp>
@@ -752,21 +755,369 @@ std::optional<std::vector<std::string>> Json::getFields(std::string_view path) c
     return out;
 }
 
+namespace
+{
+using PlainWriter = rapidjson::Writer<rapidjson::StringBuffer, rapidjson::Document::EncodingType, rapidjson::ASCII<>>;
+using PrettyWriter =
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::Document::EncodingType, rapidjson::ASCII<>>;
+
+constexpr std::string_view REPLACEMENT_CHAR {"\xEF\xBF\xBD"}; // U+FFFD
+
+// Bytes that rapidjson::UTF8<>::Decode reads after a lead byte of each range type (encodings.h), valid or not.
+unsigned continuationBytes(unsigned char lead)
+{
+    switch (rapidjson::UTF8<>::GetRange(lead))
+    {
+        case 2: return 1;
+        case 3:
+        case 4:
+        case 10: return 2;
+        case 5:
+        case 6:
+        case 11: return 3;
+        default: return 0;
+    }
+}
+
+// The writer decodes a string through an unbounded stream and keeps reading continuation bytes after a lead byte
+// even when the sequence is invalid, so a lead byte whose sequence does not fit inside the string reads past its
+// end. Only the last three bytes can start such a sequence. The check is deliberately conservative: it also
+// rejects a sequence that would only read the terminator, and a lead byte that an earlier sequence would have
+// consumed; those strings just take the sanitizing pass.
+inline bool tailIsSafe(const char* str, rapidjson::SizeType length)
+{
+    // Fast path: an ASCII tail (the common case) is safe; one test over the last three bytes, no branch per byte
+    const auto* bytes = reinterpret_cast<const unsigned char*>(str);
+    if (length >= 3 && ((bytes[length - 1] | bytes[length - 2] | bytes[length - 3]) & 0x80) == 0)
+    {
+        return true;
+    }
+
+    for (rapidjson::SizeType pos = length > 3 ? length - 3 : 0; pos < length; ++pos)
+    {
+        const auto byte = static_cast<unsigned char>(str[pos]);
+        // pos < length here, so the subtraction cannot wrap (an addition could, for a string near SizeType's limit)
+        if (byte >= 0x80 && continuationBytes(byte) >= length - pos)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// Forwards every SAX event to the writer. The string events are overridden by the two handlers below.
+template<typename Writer>
+class ForwardingHandler
+{
+public:
+    using Ch = char;
+
+    explicit ForwardingHandler(Writer& writer)
+        : m_writer(writer)
+    {
+    }
+
+    bool Null() { return m_writer.Null(); }
+    bool Bool(bool value) { return m_writer.Bool(value); }
+    bool Int(int value) { return m_writer.Int(value); }
+    bool Uint(unsigned value) { return m_writer.Uint(value); }
+    bool Int64(int64_t value) { return m_writer.Int64(value); }
+    bool Uint64(uint64_t value) { return m_writer.Uint64(value); }
+    bool Double(double value) { return m_writer.Double(value); }
+    bool RawNumber(const Ch* str, rapidjson::SizeType length, bool copy)
+    {
+        return m_writer.RawNumber(str, length, copy);
+    }
+    bool StartObject() { return m_writer.StartObject(); }
+    bool EndObject(rapidjson::SizeType memberCount) { return m_writer.EndObject(memberCount); }
+    bool StartArray() { return m_writer.StartArray(); }
+    bool EndArray(rapidjson::SizeType elementCount) { return m_writer.EndArray(elementCount); }
+
+protected:
+    Writer& m_writer;
+};
+
+// First pass: the writer's own output, as long as no string could make it read past its end.
+template<typename Writer>
+class TailCheckingHandler : public ForwardingHandler<Writer>
+{
+public:
+    using Ch = char;
+    using ForwardingHandler<Writer>::ForwardingHandler;
+
+    bool String(const Ch* str, rapidjson::SizeType length, bool copy)
+    {
+        return tailIsSafe(str, length) && this->m_writer.String(str, length, copy);
+    }
+    bool Key(const Ch* str, rapidjson::SizeType length, bool copy)
+    {
+        return tailIsSafe(str, length) && this->m_writer.Key(str, length, copy);
+    }
+};
+
+// Replaces every byte that does not start a valid UTF-8 sequence with U+FFFD (the same policy as the agent's
+// w_utf8_filter). Returns whether anything was replaced; `clean` holds the result only in that case.
+bool sanitizeUtf8(const char* str, rapidjson::SizeType length, std::string& clean)
+{
+    bool changed = false;
+
+    for (rapidjson::SizeType pos = 0; pos < length;)
+    {
+        rapidjson::SizeType consumed = 1;
+        bool valid = true;
+        if (static_cast<unsigned char>(str[pos]) >= 0x80)
+        {
+            // Bounded by the string length: Take() yields '\0' at the end instead of reading past it.
+            rapidjson::MemoryStream stream(str + pos, length - pos);
+            unsigned codepoint = 0;
+            valid = rapidjson::UTF8<>::Decode(stream, &codepoint);
+            consumed = static_cast<rapidjson::SizeType>(stream.Tell());
+        }
+
+        if (valid)
+        {
+            if (changed)
+            {
+                clean.append(str + pos, consumed);
+            }
+            pos += consumed;
+        }
+        else
+        {
+            if (!changed)
+            {
+                clean.assign(str, pos);
+                changed = true;
+            }
+            clean.append(REPLACEMENT_CHAR);
+            // Decode consumes the whole expected sequence even when it is invalid; resynchronize one byte later
+            ++pos;
+        }
+    }
+
+    return changed;
+}
+
+using NameSet = std::unordered_set<std::string>;
+
+// The valid (unchanged) member names of every object, in the order Accept() visits the objects (document order,
+// parents before their children). A sanitized key must not collide with any of them.
+void collectValidNames(const rapidjson::Value& value, std::vector<NameSet>& names)
+{
+    if (value.IsObject())
+    {
+        const auto index = names.size();
+        names.emplace_back();
+        for (auto it = value.MemberBegin(); it != value.MemberEnd(); ++it)
+        {
+            std::string clean;
+            if (!sanitizeUtf8(it->name.GetString(), it->name.GetStringLength(), clean))
+            {
+                names[index].emplace(it->name.GetString(), it->name.GetStringLength());
+            }
+            collectValidNames(it->value, names);
+        }
+    }
+    else if (value.IsArray())
+    {
+        for (auto it = value.Begin(); it != value.End(); ++it)
+        {
+            collectValidNames(*it, names);
+        }
+    }
+}
+
+// Second pass: strings and keys go through sanitizeUtf8 and every non-finite number becomes null, so the output
+// always parses. A sanitized key whose name collides with a valid sibling (anywhere in the object) or with a
+// sanitized sibling already written would duplicate the name, which the indexer rejects: that member, value
+// included, is dropped instead. Valid keys are never renamed or dropped.
+template<typename Writer>
+class SanitizingHandler : public ForwardingHandler<Writer>
+{
+public:
+    using Ch = char;
+
+    SanitizingHandler(Writer& writer, const rapidjson::Value& root)
+        : ForwardingHandler<Writer>(writer)
+    {
+        collectValidNames(root, m_validNames);
+    }
+
+    bool Null() { return skipping() || this->m_writer.Null(); }
+    bool Bool(bool value) { return skipping() || this->m_writer.Bool(value); }
+    bool Int(int value) { return skipping() || this->m_writer.Int(value); }
+    bool Uint(unsigned value) { return skipping() || this->m_writer.Uint(value); }
+    bool Int64(int64_t value) { return skipping() || this->m_writer.Int64(value); }
+    bool Uint64(uint64_t value) { return skipping() || this->m_writer.Uint64(value); }
+    bool Double(double value)
+    {
+        return skipping() || (std::isfinite(value) ? this->m_writer.Double(value) : this->m_writer.Null());
+    }
+    bool RawNumber(const Ch* str, rapidjson::SizeType length, bool copy)
+    {
+        return skipping() || this->m_writer.RawNumber(str, length, copy);
+    }
+
+    bool String(const Ch* str, rapidjson::SizeType length, bool copy)
+    {
+        if (skipping())
+        {
+            return true;
+        }
+        std::string clean;
+        return sanitizeUtf8(str, length, clean)
+                   ? this->m_writer.String(clean.data(), static_cast<rapidjson::SizeType>(clean.size()), true)
+                   : this->m_writer.String(str, length, copy);
+    }
+
+    bool Key(const Ch* str, rapidjson::SizeType length, bool copy)
+    {
+        if (m_skipDepth > 0)
+        {
+            return true; // a key inside the dropped value
+        }
+        std::string clean;
+        if (!sanitizeUtf8(str, length, clean))
+        {
+            return this->m_writer.Key(str, length, copy);
+        }
+
+        const auto& valid = m_validNames[m_objectIndex.back()];
+        auto& written = m_writtenNames.back();
+        if (valid.count(clean) != 0 || !written.insert(clean).second)
+        {
+            LOG_DEBUG("[Json] Dropped a member whose sanitized key collides with a sibling key");
+            m_skipDepth = 1; // the member's value follows: skip it whole
+            return true;
+        }
+        return this->m_writer.Key(clean.data(), static_cast<rapidjson::SizeType>(clean.size()), true);
+    }
+
+    bool StartObject()
+    {
+        if (m_skipDepth > 0)
+        {
+            // collectValidNames counted this object too: keep the index in step with the traversal
+            ++m_nextObject;
+            ++m_skipDepth;
+            return true;
+        }
+        m_objectIndex.push_back(m_nextObject++);
+        m_writtenNames.emplace_back();
+        return this->m_writer.StartObject();
+    }
+    bool EndObject(rapidjson::SizeType memberCount)
+    {
+        if (m_skipDepth > 0)
+        {
+            closeSkipped();
+            return true;
+        }
+        m_objectIndex.pop_back();
+        m_writtenNames.pop_back();
+        return this->m_writer.EndObject(memberCount);
+    }
+    bool StartArray()
+    {
+        if (m_skipDepth > 0)
+        {
+            ++m_skipDepth;
+            return true;
+        }
+        return this->m_writer.StartArray();
+    }
+    bool EndArray(rapidjson::SizeType elementCount)
+    {
+        if (m_skipDepth > 0)
+        {
+            closeSkipped();
+            return true;
+        }
+        return this->m_writer.EndArray(elementCount);
+    }
+
+private:
+    // A dropped member's value is skipped whole. m_skipDepth is 1 while the value is pending, one more per container
+    // opened inside it: a scalar at depth 1 is the whole value, and closing the container that brings the depth back
+    // to 1 ends the skip. Called for every scalar event: consumes it while skipping.
+    bool skipping()
+    {
+        if (m_skipDepth == 0)
+        {
+            return false;
+        }
+        if (m_skipDepth == 1)
+        {
+            m_skipDepth = 0; // the scalar was the whole value
+        }
+        return true;
+    }
+
+    void closeSkipped()
+    {
+        if (--m_skipDepth == 1)
+        {
+            m_skipDepth = 0; // the container was the whole value
+        }
+    }
+
+    std::vector<NameSet> m_validNames;      // per object, in visiting order
+    std::vector<std::size_t> m_objectIndex; // stack: index into m_validNames of each open object
+    std::vector<NameSet> m_writtenNames;    // stack: sanitized names already written in each open object
+    std::size_t m_nextObject {0};
+    unsigned m_skipDepth {0};
+};
+
+std::atomic<bool> g_sanitizedOnce {false};
+
+// The fast path is a single traversal with the writer's own output. Only a document the writer cannot serialize
+// (invalid UTF-8 or a non-finite number) takes the second, sanitizing traversal: a truncated document is never
+// returned, because the indexer rejects it and the event would be lost.
+template<typename Writer>
+std::string serialize(const rapidjson::Value& value)
+{
+    {
+        rapidjson::StringBuffer buffer;
+        Writer writer(buffer);
+        TailCheckingHandler<Writer> handler(writer);
+        if (value.Accept(handler))
+        {
+            return buffer.GetString();
+        }
+    }
+
+    rapidjson::StringBuffer buffer;
+    Writer writer(buffer);
+    SanitizingHandler<Writer> handler(writer, value);
+    if (!value.Accept(handler))
+    {
+        LOG_ERROR("[Json] Cannot serialize a document even after replacing its invalid UTF-8 and non-finite numbers");
+        throw std::runtime_error("Json serialization failed after sanitizing the document");
+    }
+
+    if (!g_sanitizedOnce.exchange(true, std::memory_order_relaxed))
+    {
+        LOG_WARNING("[Json] Serialized a document with invalid UTF-8 or a non-finite number: the invalid bytes were "
+                    "replaced with U+FFFD and the numbers with null. Further occurrences are logged at debug level");
+    }
+    else
+    {
+        LOG_DEBUG("[Json] Serialized a document with invalid UTF-8 or a non-finite number (replaced with U+FFFD/null)");
+    }
+
+    return buffer.GetString();
+}
+} // namespace
+
 std::string Json::prettyStr() const
 {
-    rapidjson::StringBuffer buffer;
-    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::Document::EncodingType, rapidjson::ASCII<>> writer(
-        buffer);
-    this->m_document.Accept(writer);
-    return buffer.GetString();
+    return serialize<PrettyWriter>(m_document);
 }
 
 std::string Json::str() const
 {
-    rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer, rapidjson::Document::EncodingType, rapidjson::ASCII<>> writer(buffer);
-    this->m_document.Accept(writer);
-    return buffer.GetString();
+    return serialize<PlainWriter>(m_document);
 }
 
 std::optional<std::string> Json::str(std::string_view path) const
@@ -779,11 +1130,7 @@ std::optional<std::string> Json::str(std::string_view path) const
         const auto& value = pp.Get(m_document);
         if (value)
         {
-            rapidjson::StringBuffer buffer;
-            rapidjson::Writer<rapidjson::StringBuffer, rapidjson::Document::EncodingType, rapidjson::ASCII<>> writer(
-                buffer);
-            value->Accept(writer);
-            retval = std::string {buffer.GetString()};
+            retval = serialize<PlainWriter>(*value);
         }
         return retval;
     }

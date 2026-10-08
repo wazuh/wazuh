@@ -572,10 +572,14 @@ MapOp opBuilderHelperFloatTransformation(NumberOperator op,
                 {
                     throw std::runtime_error(fmt::format(R"("{}" function: Division by zero)", name));
                 }
-                else
+
+                // A subnormal divisor passes the zero check and still overflows; a NaN operand propagates
+                double result = l / r;
+                if (std::isinf(result) || std::isnan(result))
                 {
-                    return l / r;
+                    throw std::runtime_error(overflowFailureTrace);
                 }
+                return result;
             };
             break;
         default: break;
