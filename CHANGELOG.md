@@ -49,6 +49,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the browser extensions inventory dropping entries when an extension metadata file contains unexpected values. ([#39931](https://github.com/wazuh/wazuh/pull/39931))
 - Fixed active responses following symbolic links when writing their log file on UNIX systems. ([#40017](https://github.com/wazuh/wazuh/pull/40017))
 - Fixed FIM `report_changes` following directory symbolic links when saving file snapshots on UNIX systems. ([#40110](https://github.com/wazuh/wazuh/pull/40110))
+- Fixed logcollector reading files that contain NUL bytes again from the start, and sending their events again, after every agent restart. ([#40134](https://github.com/wazuh/wazuh/pull/40134))
 
 ### Ruleset
 
