@@ -123,8 +123,10 @@ def delete_child_pids(name: str, ppid: int, logger: logging.Logger):
     for process in psutil.Process(ppid).children(recursive=True):
         try:
             process.kill()
-        except psutil.Error:
-            logger.error(f'Error while trying to terminate the process with ID {process.pid}.')
+        except psutil.NoSuchProcess:
+            logger.debug(f'Process with ID {process.pid} had already exited.')
+        except psutil.Error as exc:
+            logger.error(f'Error while trying to terminate the process with ID {process.pid}: {exc}')
         except Exception as exc:
             logger.error(f'Unhandled exception while trying to terminate the process with ID {process.pid}: {exc}')
         for filename in filenames[:]:
