@@ -476,9 +476,9 @@ TEST(SyncEndpointTest, AnAgentOverItsPendingSessionCapIs503UntilOneIsAnswered)
     // Another agent still gets in.
     SessionSpec other;
     other.option = invsync::test::fb::Option_VDFirst;
-    other.agentId = "2";
+    other.agentId = "002";
     auto otherAgent = std::make_shared<CapturingResponder>();
-    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(other, {invsync::test::ValueSpec {}}), "2"),
+    fixture.handler(makeRequest(invsync::test::buildSyncDataSession(other, {invsync::test::ValueSpec {}}), "002"),
                     otherAgent);
     EXPECT_FALSE(otherAgent->captured.has_value()) << "admitted";
     EXPECT_EQ(1U, sessions->pendingSessions("002"));
