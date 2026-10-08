@@ -426,7 +426,8 @@ def test_upload_file_ko(*args):
             os.remove(bkp)
 
 
-@pytest.mark.parametrize('validation_error', [WazuhError(1113), WazuhInternalError(1013), WazuhException(1014)])
+@pytest.mark.parametrize('validation_error', [WazuhError(1113), WazuhError(1132), WazuhInternalError(1013),
+                                              WazuhException(1014)])
 @pytest.mark.parametrize('overwrite', [False, True])
 @patch('wazuh.rule.delete_rule_file')
 @patch('wazuh.rule.full_copy')
