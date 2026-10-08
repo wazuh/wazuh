@@ -24,7 +24,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
-- Fixed `wazuh-syscheckd` and `wazuh-modulesd` aborting with `SIGABRT` on Solaris 11 SPARC when a C++ exception was thrown, by making the bundled `libstdc++.so.6` resolve the bundled `libgcc_s.so.1`.
+- Fixed `wazuh-syscheckd` and `wazuh-modulesd` aborting on Solaris 11 SPARC when a C++ exception was thrown. ([#40140](https://github.com/wazuh/wazuh/pull/40140))
 - Fixed the host-deny active response removing unrelated hosts.deny entries matching the IP as a substring. ([#39905](https://github.com/wazuh/wazuh/pull/39905))
 - Fixed one-byte buffer overflows in whodata, logcollector and FIM config parsing. ([#39705](https://github.com/wazuh/wazuh/pull/39705))
 - Fixed syscollector dropping process and port inventory on names with invalid UTF-8. ([#39956](https://github.com/wazuh/wazuh/pull/39956))
