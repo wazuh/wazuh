@@ -85,3 +85,38 @@ def test_delete_child_pids_matches_pid_exactly(mock_process):
         child.kill.assert_called_once()
         assert not os.path.exists(os.path.join(tmpdirname, 'wazuh-manager-apid_auth-16.pid'))
         assert os.path.exists(os.path.join(tmpdirname, 'wazuh-manager-apid_auth-161.pid'))
+
+
+@patch('wazuh.core.pyDaemonModule.common.OS_PIDFILE_PATH', new='')
+@patch('wazuh.core.pyDaemonModule.psutil.Process')
+def test_delete_child_pids_ignores_already_exited_child(mock_process):
+    """An already exited child is a successful shutdown outcome, not an error."""
+    with TemporaryDirectory() as tmpdirname:
+        pidfile = os.path.join(tmpdirname, 'wazuh-manager-apid_auth-16.pid')
+        open(pidfile, 'w').close()
+        child = MagicMock(pid=16)
+        child.kill.side_effect = psutil.NoSuchProcess(16)
+        mock_process.return_value.children.return_value = [child]
+        logger = MagicMock()
+
+        with patch('wazuh.core.pyDaemonModule.common.WAZUH_PATH', new=tmpdirname):
+            delete_child_pids('wazuh-manager-apid', 1234, logger)
+
+        logger.debug.assert_called_once_with('Process with ID 16 had already exited.')
+        logger.error.assert_not_called()
+        assert not os.path.exists(pidfile)
+
+
+@patch('wazuh.core.pyDaemonModule.common.OS_PIDFILE_PATH', new='')
+@patch('wazuh.core.pyDaemonModule.psutil.Process')
+def test_delete_child_pids_logs_other_psutil_errors(mock_process):
+    """Unexpected psutil errors remain visible and include their cause."""
+    child = MagicMock(pid=16)
+    error = psutil.AccessDenied(16)
+    child.kill.side_effect = error
+    mock_process.return_value.children.return_value = [child]
+    logger = MagicMock()
+
+    delete_child_pids('wazuh-manager-apid', 1234, logger)
+
+    logger.error.assert_called_once_with(f'Error while trying to terminate the process with ID 16: {error}')
