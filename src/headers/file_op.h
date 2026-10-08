@@ -611,9 +611,12 @@ FILE * w_fopen_vetted_follow(const char * path, const char * mode);
 /**
  * @brief Compress a file in GZIP.
  *
+ * On POSIX the source is opened as w_fopen_vetted_follow() does, except a symlink as its last entry is not
+ * followed, and it must be a regular file.
+ *
  * @param filesrc Source file.
  * @param filedst Compressed file path.
- * @return 0 on success, -1 on error.
+ * @return 0 on success, -2 if the source is skipped, -1 on error.
  */
 int w_compress_gzfile(const char *filesrc, const char *filedst);
 
