@@ -97,8 +97,9 @@ namespace invsync::sync
      * per-payload rules (SyncData needs values >= 1; Cleans needs items >= 1; ChecksumModule needs
      * an allowlisted index and a checksum) -> Start list caps (D26) -> reachable-bytes budget (D25:
      * the objects the message reaches may not add up to more than the body, which is what catches
-     * vector entries aliasing one string or table). Both run before any copy. Anything past this
-     * point is per-document policy that runs on the worker (skip-with-WARN, never a request failure).
+     * vector entries aliasing one string or table) -> the Start strings stamped into every document
+     * must be valid UTF-8 (D29). D26 and D25 run before any copy. Anything past this point is
+     * per-document policy that runs on the worker (skip-with-WARN, never a request failure).
      *
      * @param body                 Raw request body (the FlatBuffer).
      * @param authenticatedAgentId Value of the X-Wazuh-Agent-Id header remoted authenticated.

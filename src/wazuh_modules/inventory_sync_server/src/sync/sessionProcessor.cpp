@@ -157,6 +157,25 @@ namespace invsync::sync
             }
         }
 
+        // Manager-controlled metadata, built once and merged over every upsert. Any field the agent
+        // tries to set under these keys gets clobbered, so the agent cannot impersonate another agent
+        // or another cluster (legacy facade:1244-1258). merge_patch() replaces whatever non-object
+        // value the agent put on the path (`"wazuh":"x"`, `"wazuh":{"agent":[1]}`), where operator[]
+        // would throw out of this function and fail every co-batched session with it (D29). Its
+        // strings are the Start's, which validation proved serializable.
+        nlohmann::json overlay;
+        overlay["wazuh"]["agent"]["id"] = session.agentId;
+        overlay["wazuh"]["agent"]["name"] = session.agentName;
+        overlay["wazuh"]["agent"]["version"] = session.agentVersion;
+        overlay["wazuh"]["agent"]["groups"] = session.groups;
+        overlay["wazuh"]["agent"]["host"]["architecture"] = session.architecture;
+        overlay["wazuh"]["agent"]["host"]["hostname"] = session.hostname;
+        overlay["wazuh"]["agent"]["host"]["os"]["name"] = session.osname;
+        overlay["wazuh"]["agent"]["host"]["os"]["platform"] = session.osplatform;
+        overlay["wazuh"]["agent"]["host"]["os"]["type"] = session.ostype;
+        overlay["wazuh"]["agent"]["host"]["os"]["version"] = session.osversion;
+        overlay["wazuh"]["cluster"]["name"] = session.clusterName;
+
         std::size_t staged {0};
         std::size_t skipped {0};
         std::size_t stagedBytes {0};
@@ -262,22 +281,25 @@ namespace invsync::sync
                     continue;
                 }
 
-                // Overlay manager-controlled metadata on top of the agent payload. Any field the
-                // agent tries to set under wazuh.* gets clobbered here, so the agent cannot
-                // impersonate another agent or another cluster (legacy facade:1244-1258).
-                document["wazuh"]["agent"]["id"] = session.agentId;
-                document["wazuh"]["agent"]["name"] = session.agentName;
-                document["wazuh"]["agent"]["version"] = session.agentVersion;
-                document["wazuh"]["agent"]["groups"] = session.groups;
-                document["wazuh"]["agent"]["host"]["architecture"] = session.architecture;
-                document["wazuh"]["agent"]["host"]["hostname"] = session.hostname;
-                document["wazuh"]["agent"]["host"]["os"]["name"] = session.osname;
-                document["wazuh"]["agent"]["host"]["os"]["platform"] = session.osplatform;
-                document["wazuh"]["agent"]["host"]["os"]["type"] = session.ostype;
-                document["wazuh"]["agent"]["host"]["os"]["version"] = session.osversion;
-                document["wazuh"]["cluster"]["name"] = session.clusterName;
-
-                const auto dataString = document.dump();
+                // Everything that can throw while BUILDING the document stays per-document (D29): an
+                // exception out of stageBulk() fails the worker's whole open batch, because the
+                // pipeline cannot tell it from a connector failure. Nothing has reached the connector
+                // for this document yet, so skipping it leaves the staged state exact.
+                std::string dataString;
+                try
+                {
+                    document.merge_patch(overlay);
+                    dataString = document.dump();
+                }
+                catch (const nlohmann::json::exception& e)
+                {
+                    LOGFN_WARN(logFn(),
+                               "Skipping bulk entry for agent %s: DataValue body cannot be serialized: %s.",
+                               session.agentId.c_str(),
+                               e.what());
+                    ++skipped;
+                    continue;
+                }
                 stagedBytes += dataString.size();
 
                 // version > 0 rides the external_gte path (a scripted update that checks

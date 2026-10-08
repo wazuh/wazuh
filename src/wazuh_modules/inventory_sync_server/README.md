@@ -17,7 +17,7 @@ Three documentation layers cover this module, each with its own job:
 
 - **This README** — the developer's map: how the pieces fit, which invariants are load-bearing,
   where to touch what, and WHY it is built this way ([requirements](#requirements),
-  [design decisions](#design-decisions-d1d28), [developer FAQ](#developer-faq)).
+  [design decisions](#design-decisions-d1d29), [developer FAQ](#developer-faq)).
 - **[`docs/ref/modules/inventory-sync-server/`](../../../docs/ref/modules/inventory-sync-server/README.md)**
   — the operator- and integrator-facing reference:
   [architecture](../../../docs/ref/modules/inventory-sync-server/architecture.md),
@@ -38,7 +38,7 @@ purge means for enrollment.
 
 Distilled (and translated) from the migration's design corpus, where they were extracted from the
 legacy module's observable behavior before this rewrite. They are inlined here because the corpus
-is not part of the repository, and the D-numbers they cite are the [design decisions](#design-decisions-d1d28)
+is not part of the repository, and the D-numbers they cite are the [design decisions](#design-decisions-d1d29)
 below. Status: **kept** = the module provides it; **superseded by D-n** = deliberately replaced.
 
 ### Functional (RF)
@@ -105,7 +105,7 @@ pipeline satisfies it structurally rather than by discipline:
 | REQ-VDQ-9 | No RocksDB in the VD path (or at all) | kept (D9 — the module has NO local store) |
 | REQ-VDQ-10 | Queue observability: depth, ages, outcomes, durations | kept (`vd.lane.*`, `vd.scans.*` metrics — see [Statistics](#statistics-d18)) |
 
-## Design decisions (D1–D28)
+## Design decisions (D1–D29)
 
 The numbered decisions the requirements above refer to, in their original numbering. The
 [official architecture page](../../../docs/ref/modules/inventory-sync-server/architecture.md)
@@ -141,6 +141,7 @@ carries the narrative version of the load-bearing ones; this is the complete cat
 | D26 | `Start.groups` carries at most 128 entries of at most 255 bytes each, mirroring `MAX_GROUPS_PER_MULTIGROUP`/`MAX_GROUP_NAME` (`defs.h` is not included from C++, so the values are restated in `fullSessionValidator.hpp`). `Start.index` carries at most 64 entries of at most 255 bytes each (the indexer's limit on an index name). Anything over is `400`. D25 already stops aliasing; these caps bound what an honest-shaped message can make every document repeat, because `groups` is copied into each staged document |
 | D27 | A document whose `_id` (`{cluster}_{agent}_{id}`) is longer than 512 bytes, the indexer's limit, is skipped with a WARN like any other bad document (D24's family), instead of being staged and rejected by the indexer. That rejection would fail the whole group commit and every co-batched session with it, on every retry. Documents the strict state mapping would reject are deliberately **not** pre-validated: mirroring the templates in the server would be a second copy of the mapping to keep in sync. Such a document still fails its batch through the [failure mapping](#the-pipeline-syncsyncpipeline-syncsessionprocessor). Attributing a rejection to the session that owns the item is a known follow-up, not done here |
 | D28 | One agent may have only `inventory_sync_server_max_sessions_per_agent` sessions (default 2) admitted and not yet answered, across the pipeline and the scan lane, counted by the validated agent id. One more is answered `503` and counted as `sync.agent_busy.total`. remoted caps what an agent has open on its side, but it gives up at its downstream deadline (`remoted.downstream_stateful_response_timeout`, 20 s) and frees the agent's slot there, while nothing here cancels admitted work. Without a count of its own, one agent could re-send on every timeout and fill the global `sync_queue_bytes` and the scan lane for everyone. The count is taken right after validation (`AgentSessionLimiter`) and released when the session is answered: the endpoint wraps the responder in an `AdmittedSessionResponder`, and the worker, the lane or a shutdown always answers through it, whether or not anyone is still listening. Two is the session being applied plus one re-send after such a timeout. The re-sends after that are refused instead of queued as duplicates of work already in progress. Kept as a count, not deduplicated by session: the server has no session id (D3) |
+| D29 | Nothing an agent sends can make `stageBulk()` throw. A throw there fails the worker's whole open batch, other agents' co-batched sessions included, because the pipeline cannot tell it from a connector failure (the buffer state is unknown after a failed `bulkIndex`). Two inputs did. A non-object value on the overlay's path (`"wazuh":"x"`, `"wazuh":{"agent":[1]}`, …) made `operator[]` throw, so the overlay is now built once per session and applied with `merge_patch()`, which replaces such a value; the agent's other `wazuh.*` fields survive, as before. `Start` strings that are not valid UTF-8 made every document's `dump()` throw (nlohmann checks UTF-8 when serializing, the Verifier never looks inside a string), so validation answers them `400` (step 9, after D25), with nlohmann's own `dump()` as the judge. As a backstop, any other `nlohmann::json::exception` while building a document skips that DOCUMENT with a WARN (D24's family). Only connector errors still leave `stageBulk()`, and those really do poison the batch |
 
 ## Layout
 
@@ -359,8 +360,9 @@ header value — both must be canonical, `400` otherwise; cluster name byte-equa
 `403`) → mode × payload matrix →
 per-payload rules (`SyncData` needs ≥ 1 value, `Cleans` ≥ 1 item, `ChecksumModule` an allowlisted
 index and a checksum) → `Start` list caps (D26) → reachable-bytes budget (D25: the whole message
-may not reach more bytes than the body holds, which is how an aliased offset is caught). Both
-`400`s come before the first `str()` copy, so a rejected message has cost one pass over its
+may not reach more bytes than the body holds, which is how an aliased offset is caught) → the
+`Start` strings stamped into every document must be valid UTF-8 (D29). The D26 and D25 `400`s come
+before the first `str()` copy, so a rejected message has cost one pass over its
 offsets and nothing else. The output is a `ValidatedSession`: small `Start` fields are OWNED copies,
 while the payload stays a pointer into the request body — whoever carries it across threads must
 keep the `HttpRequest` alive, which is exactly what a pipeline `Item` does (and holding the
@@ -388,7 +390,7 @@ lock: two requests of the same agent traverse the same FIFO. Sessions classify i
   invalid operations (a bad enum is a `400` BEFORE anything is staged), skipping per-document
   problems with a WARN (a bad document never fails the request), building
   `_id = {cluster}_{agent}_{id}` (skipped when that exceeds the indexer's 512-byte limit — D27), overlaying authoritative `wazuh.*` fields so a payload cannot
-  impersonate another agent, and using the versioned-upsert form when `version > 0`. Staged
+  impersonate another agent (a non-object value in the way is replaced, never thrown on — D29), and using the versioned-upsert form when `version > 0`. Staged
   sessions join the worker's open batch; the **group commit** flushes when the batch bytes reach
   the threshold or the shard's queue drains, and only then answers every batched session `200`.
 - **Immediate** (cleans, checksum, metadata/groups, deletions): executes its own I/O and responds
@@ -760,7 +762,7 @@ internal delete-to-flush window — eventually consistent either way.
 **What the server deliberately does NOT validate**: declared counts (none exist); duplicate or
 out-of-order `id`s inside `values` (last-write-wins in vector order); a re-POST of the same
 session (re-applied — idempotent by construction, D3). Per-document problems (unlisted index,
-empty id, invalid JSON on upsert, JSON nested past D24's limit) skip that DOCUMENT with a WARN and never fail the request — a
+empty id, invalid JSON on upsert, JSON nested past D24's limit, a document that fails to serialize — D29) skip that DOCUMENT with a WARN and never fail the request — a
 session whose every document was skipped answers a no-op `200`.
 
 ## Tests
