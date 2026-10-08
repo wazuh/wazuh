@@ -192,8 +192,8 @@ CheckListenerCerts()
     # after dropping privileges. Re-applied unconditionally so upgrades from installs that left
     # them root-owned also get corrected.
     for CERT_FILE in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
-        if [ -f "${INSTALLDIR}/etc/certs/${CERT_FILE}" ]; then
-            chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/${CERT_FILE}
+        if [ -f "${INSTALLDIR}/etc/certs/${CERT_FILE}" ] && [ ! -L "${INSTALLDIR}/etc/certs/${CERT_FILE}" ]; then
+            chown -h ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/${CERT_FILE}
             chmod 640 ${INSTALLDIR}/etc/certs/${CERT_FILE}
         fi
     done
@@ -228,8 +228,8 @@ SetIndexerCertsOwnership()
     chown root:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs
     chmod 1770 ${INSTALLDIR}/etc/certs
     for CERT_FILE in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
-        if [ -f "${INSTALLDIR}/etc/certs/${CERT_FILE}" ]; then
-            chown root:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/${CERT_FILE}
+        if [ -f "${INSTALLDIR}/etc/certs/${CERT_FILE}" ] && [ ! -L "${INSTALLDIR}/etc/certs/${CERT_FILE}" ]; then
+            chown -h root:${WAZUH_GROUP} ${INSTALLDIR}/etc/certs/${CERT_FILE}
             chmod 640 ${INSTALLDIR}/etc/certs/${CERT_FILE}
         fi
     done

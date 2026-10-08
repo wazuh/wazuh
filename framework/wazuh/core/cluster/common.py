@@ -28,7 +28,7 @@ from wazuh import Wazuh
 from wazuh.core import common, exception, utils
 from wazuh.core.cluster import cluster
 from wazuh.core.cluster import utils as cluster_utils
-from wazuh.core.indexer.indexer import get_indexer_client
+from wazuh.core.indexer.indexer import IndexerConfigurationError, get_indexer_client
 from wazuh.core.wdb import AsyncWazuhDBConnection, WazuhDBConnection
 from wazuh.core.wdb_http import get_wdb_http_client
 
@@ -2026,6 +2026,9 @@ class IndexerTaskManager:
     created automatically.
     """
 
+    # Seconds between checks of wazuh-manager.conf's mtime while waiting to retry the indexer.
+    CONF_POLL_INTERVAL = 10
+
     def __init__(self):
         """Class constructor.
 
@@ -2055,10 +2058,18 @@ class IndexerTaskManager:
             in an ``asyncio.Task``.
         base_delay : int, optional
             Seconds to wait between availability checks when the indexer is
-            reachable, by default 300.
+            reachable, and between checks while the indexer configuration is
+            unusable, by default 300.
         max_delay : int, optional
             Upper bound in seconds for the exponential backoff delay applied
             when the indexer is unavailable, by default 3600.
+
+        Notes
+        -----
+        A configuration error (the indexer section or the keystore credentials) is not an outage:
+        it is logged once, as an error, and checked again every ``base_delay`` seconds without
+        doubling. Any wait after a failure ends early when wazuh-manager.conf changes, so a fixed
+        configuration is picked up within ``CONF_POLL_INTERVAL`` seconds.
 
         Returns
         -------
@@ -2066,10 +2077,14 @@ class IndexerTaskManager:
         """
         delay = base_delay
         active_tasks: List[asyncio.Task] = []
+        config_error = None
 
         while True:
             try:
-                self.logger.info("Checking if the indexer is available to initiate indexer tasks.")
+                if config_error is None:
+                    self.logger.info("Checking if the indexer is available to initiate indexer tasks.")
+                else:
+                    self.logger.debug("Checking if the indexer configuration is usable.")
                 async with get_indexer_client() as client:
                     await client.healthcheck()
 
@@ -2086,9 +2101,26 @@ class IndexerTaskManager:
                     }
 
                 delay = base_delay
+                config_error = None
                 await asyncio.sleep(base_delay)
 
+            except IndexerConfigurationError as e:
+                if str(e) != config_error:
+                    self.logger.error(f"Indexer tasks cannot start, the indexer configuration is not usable: {e}. "
+                                      f"Checking again when {common.MANAGER_CONF} changes, or every {base_delay} "
+                                      f"seconds.")
+                config_error = str(e)
+
+                if active_tasks:
+                    await self._stop_indexer_tasks(active_tasks)
+                    active_tasks = []
+                    self.indexer_tasks = {}
+
+                delay = base_delay
+                await self._wait_for_retry(base_delay)
+
             except Exception as e:
+                config_error = None
                 self.logger.warning(f"Indexer is not configured or unavailable: {e}.", exc_info=True)
 
                 if active_tasks:
@@ -2097,8 +2129,32 @@ class IndexerTaskManager:
                     self.indexer_tasks = {}
 
                 self.logger.info(f"Retrying indexer check in {delay} seconds.")
-                await asyncio.sleep(delay)
+                await self._wait_for_retry(delay)
                 delay = min(delay * 2, max_delay)
+
+    async def _wait_for_retry(self, delay: int) -> None:
+        """Wait up to ``delay`` seconds, returning early when wazuh-manager.conf changes.
+
+        Parameters
+        ----------
+        delay : int
+            Longest wait, in seconds.
+        """
+        def conf_mtime():
+            try:
+                return os.stat(common.MANAGER_CONF).st_mtime_ns
+            except OSError:
+                return None
+
+        initial = conf_mtime()
+        remaining = delay
+        while remaining > 0:
+            step = min(self.CONF_POLL_INTERVAL, remaining)
+            await asyncio.sleep(step)
+            remaining -= step
+            if conf_mtime() != initial:
+                self.logger.info(f"{common.MANAGER_CONF} changed. Checking the indexer again.")
+                return
 
     async def _stop_indexer_tasks(self, tasks: List[asyncio.Task]) -> None:
         """Cancel and await all active indexer tasks.

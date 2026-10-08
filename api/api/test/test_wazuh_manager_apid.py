@@ -498,9 +498,28 @@ def test_start_hands_the_bound_sockets_to_uvicorn(apid):
     bind_mock.assert_called_once_with(['0.0.0.0', '::'], 55000)
     config_kwargs = apid.uvicorn.Config.call_args.kwargs
     assert 'host' not in config_kwargs and 'port' not in config_kwargs
-    assert config_kwargs == {'server_header': False, 'loop': 'uvloop'}
+    assert config_kwargs == {'server_header': False, 'loop': 'uvloop', 'proxy_headers': False}
     apid.uvicorn.Server.assert_called_once_with(apid.uvicorn.Config.return_value)
     apid.uvicorn.Server.return_value.run.assert_called_once_with(sockets=bound)
+
+
+def test_start_ignores_forwarded_headers_from_loopback(apid):
+    """uvicorn must not take the client address from X-Forwarded-For.
+
+    With its defaults (proxy_headers=True, FORWARDED_ALLOW_IPS=127.0.0.1) any local user could send
+    the header over loopback and choose the address the login lockout, the per-IP rate limits and
+    api.log see: unlimited guesses, or another host locked out.
+    """
+    from uvicorn import Config
+
+    _prepare_start(apid)
+    apid.uvicorn.Config.side_effect = lambda app, **kwargs: Config(app, **kwargs)
+    with patch.dict(os.environ, {'FORWARDED_ALLOW_IPS': '*'}), \
+            patch.object(apid, '_bind_listening_sockets', return_value=[MagicMock()]):
+        apid.start({'host': ['0.0.0.0'], 'port': 55000, 'server_header': False})
+
+    config = apid.uvicorn.Server.call_args.args[0]
+    assert config.proxy_headers is False
 
 
 def test_start_exits_when_the_server_never_started(apid):
@@ -582,7 +601,7 @@ def test_drop_privileges_clears_supplementary_groups_before_switching_ids(apid):
     with patch.object(apid.os, 'setgroups', calls.setgroups), \
             patch.object(apid.os, 'setgid', calls.setgid), \
             patch.object(apid.os, 'setuid', calls.setuid):
-        apid.drop_privileges(False, False)
+        apid.drop_privileges(False)
 
     assert calls.mock_calls == [call.setgroups([]), call.setgid(998), call.setuid(997)]
 
@@ -860,42 +879,142 @@ def test_configure_ssl_turns_any_other_ioerror_into_api_error(ssl_apid, pem_pair
     ssl_apid.logger.error.assert_called_once()
 
 
-def _drop_privileges_calls(apid, foreground, run_as_root):
+def _drop_privileges_calls(apid, run_as_root):
     parent = MagicMock()
     with patch('os.setgroups') as setgroups, patch('os.setgid') as setgid, patch('os.setuid') as setuid:
         parent.attach_mock(setgroups, 'setgroups')
         parent.attach_mock(setgid, 'setgid')
         parent.attach_mock(setuid, 'setuid')
         parent.attach_mock(apid.logger.info, 'info')
-        apid.drop_privileges(foreground, run_as_root)
+        apid.drop_privileges(run_as_root)
     return parent.mock_calls
 
 
-def test_drop_privileges_logs_after_switching_user(ssl_apid):
-    """The group and user switch happen before the first record, so a rotation creates service files."""
-    from unittest.mock import call
-
-    assert _drop_privileges_calls(ssl_apid, foreground=True, run_as_root=False) == [
-        call.setgroups([]), call.setgid(1002), call.setuid(1001), call.info('Starting API in foreground')]
+def test_drop_privileges_switches_user_without_logging(ssl_apid):
+    """The switch logs nothing: the logging configuration is applied only after it."""
+    assert _drop_privileges_calls(ssl_apid, run_as_root=False) == [
+        call.setgroups([]), call.setgid(1002), call.setuid(1001)]
 
 
-@pytest.mark.parametrize('foreground', [False, True], ids=['foreground=False', 'foreground=True'])
-def test_drop_privileges_keeps_root_when_asked(ssl_apid, foreground):
-    """-r keeps root and says so; with -f the foreground announcement comes first."""
-    from unittest.mock import call
-
-    expected = [call.info('Starting API in foreground')] if foreground else []
-    expected.append(call.info('Starting API as root'))
-    assert _drop_privileges_calls(ssl_apid, foreground=foreground, run_as_root=True) == expected
+def test_drop_privileges_keeps_root_when_asked(ssl_apid):
+    """-r keeps root."""
+    assert _drop_privileges_calls(ssl_apid, run_as_root=True) == []
 
 
 def test_drop_privileges_honours_drop_privileges_false(ssl_apid):
     """drop_privileges: false in api.yaml keeps the current user."""
-    from unittest.mock import call
-
     ssl_apid.api_conf['drop_privileges'] = False
-    assert _drop_privileges_calls(ssl_apid, foreground=True, run_as_root=False) == [
-        call.info('Starting API in foreground')]
+    assert _drop_privileges_calls(ssl_apid, run_as_root=False) == []
+
+
+# --- prepare_log_file ------------------------------------------------------------------------------
+#
+# It runs as root in logs/, which the service account can write, so a planted symbolic link must
+# never redirect the chown/chmod to another file (or create one elsewhere).
+
+
+@pytest.fixture()
+def log_apid(apid):
+    """The launcher with the service ids set to the current user, so fchown() needs no privilege."""
+    apid.common = MagicMock()
+    apid.common.wazuh_uid.return_value = os.getuid()
+    apid.common.wazuh_gid.return_value = os.getgid()
+    return apid
+
+
+def test_prepare_log_file_creates_a_missing_file(log_apid, tmp_path):
+    """An absent log file is created empty with mode 0660, owned by the service user."""
+    path = tmp_path / 'api.log'
+    log_apid.prepare_log_file(str(path))
+
+    st = os.lstat(path)
+    assert st.st_size == 0
+    assert (st.st_mode & 0o7777, st.st_uid, st.st_gid) == (0o660, os.getuid(), os.getgid())
+
+
+def test_prepare_log_file_keeps_the_content_and_fixes_the_mode(log_apid, tmp_path):
+    """An existing log file keeps its records; only its mode is corrected."""
+    path = tmp_path / 'api.log'
+    path.write_text('previous run\n')
+    path.chmod(0o600)
+    log_apid.prepare_log_file(str(path))
+
+    assert path.read_text() == 'previous run\n'
+    assert os.lstat(path).st_mode & 0o7777 == 0o660
+
+
+def test_prepare_log_file_chowns_through_the_descriptor(log_apid, tmp_path):
+    """A file not owned by the service user is changed with fchown(), never chown() by path."""
+    path = tmp_path / 'api.log'
+    path.touch()
+    log_apid.common.wazuh_uid.return_value = os.getuid() + 1
+    with patch('os.fchown') as fchown, patch('os.chown') as chown, patch('os.lchown') as lchown:
+        log_apid.prepare_log_file(str(path))
+
+    fchown.assert_called_once()
+    assert fchown.call_args.args[1:] == (os.getuid() + 1, os.getgid())
+    chown.assert_not_called()
+    lchown.assert_not_called()
+
+
+@pytest.mark.parametrize('target_exists', [True, False], ids=['existing-target', 'dangling'])
+def test_prepare_log_file_refuses_a_symbolic_link(log_apid, tmp_path, target_exists):
+    """A symbolic link is refused: its target is neither created nor changed."""
+    target = tmp_path / 'root-owned'
+    if target_exists:
+        target.write_text('secret')
+        target.chmod(0o600)
+    link = tmp_path / 'api.log'
+    link.symlink_to(target)
+
+    with patch('os.fchown') as fchown, pytest.raises(OSError) as error:
+        log_apid.prepare_log_file(str(link))
+
+    assert error.value.errno == errno.ELOOP
+    assert error.value.filename == str(link)
+    fchown.assert_not_called()
+    if target_exists:
+        assert target.read_text() == 'secret'
+        assert os.stat(target).st_mode & 0o7777 == 0o600
+    else:
+        assert not target.exists()
+
+
+def test_prepare_log_file_refuses_a_hard_link(log_apid, tmp_path):
+    """A file with a second link may be another file reached through logs/: it is not changed."""
+    target = tmp_path / 'elsewhere'
+    target.write_text('secret')
+    target.chmod(0o600)
+    link = tmp_path / 'api.log'
+    os.link(target, link)
+
+    with pytest.raises(OSError) as error:
+        log_apid.prepare_log_file(str(link))
+
+    assert error.value.errno == errno.EPERM
+    assert os.stat(target).st_mode & 0o7777 == 0o600
+
+
+def test_prepare_log_file_refuses_a_fifo_without_blocking(log_apid, tmp_path):
+    """A FIFO with no reader fails at once (O_NONBLOCK) instead of hanging the start."""
+    path = tmp_path / 'api.log'
+    os.mkfifo(path)
+
+    with pytest.raises(OSError) as error:
+        log_apid.prepare_log_file(str(path))
+
+    assert error.value.errno == errno.ENXIO
+
+
+def test_prepare_log_file_refuses_a_directory(log_apid, tmp_path):
+    """A directory in place of the log file is refused, not changed."""
+    path = tmp_path / 'api.log'
+    path.mkdir(mode=0o700)
+
+    with pytest.raises(OSError):
+        log_apid.prepare_log_file(str(path))
+
+    assert os.stat(path).st_mode & 0o7777 == 0o700
 
 
 def _call_name(node):
@@ -903,15 +1022,20 @@ def _call_name(node):
     return func.attr if isinstance(func, ast.Attribute) else getattr(func, 'id', None)
 
 
-# Calls allowed between dictConfig() and drop_privileges(): none of them writes a log record.
-SILENT_BEFORE_DROP = {'dictConfig', 'getLogger', 'clean_pid_files'}
+# Calls allowed before drop_privileges() in __main__ that touch the filesystem as root. The log
+# files are prepared only through prepare_log_file() (no-follow descriptors); everything that opens,
+# chowns or chmods by path -- dictConfig() among them -- comes after the switch.
+UNSAFE_BEFORE_DROP = {'dictConfig', 'getLogger', 'open', 'chown', 'chmod', 'lchown', 'info', 'error',
+                      'assign_wazuh_ownership'}
 
 
-def test_main_drops_privileges_before_any_ssl_work():
-    """`__main__` logs nothing before drop_privileges() and checks TLS after it, before daemonizing.
+def test_main_drops_privileges_before_opening_logs_and_any_ssl_work():
+    """`__main__` opens no log file before drop_privileges() and checks TLS after it, before daemonizing.
 
-    pyDaemon() exits the first parent with 0 and sends stdout/stderr to /dev/null, so a TLS check
-    after it would fail silently with exit 0.
+    A log file opened as root keeps root's descriptor after setuid(), and a chown or chmod by path in
+    the service-writable logs/ directory follows a planted symbolic link. pyDaemon() exits the first
+    parent with 0 and sends stdout/stderr to /dev/null, so a TLS check after it would fail silently
+    with exit 0.
     """
     with open(APID_PATH) as source:
         tree = ast.parse(source.read())
@@ -926,16 +1050,16 @@ def test_main_drops_privileges_before_any_ssl_work():
     for node in calls:
         lines.setdefault(_call_name(node), []).append(node.lineno)
 
-    for name in ('drop_privileges', 'configure_ssl', 'pyDaemon'):
+    for name in ('prepare_log_file', 'drop_privileges', 'dictConfig', 'configure_ssl', 'pyDaemon'):
         assert len(lines.get(name, [])) == 1, f'{name} must be called exactly once in __main__'
 
-    order = ['dictConfig', 'drop_privileges', 'configure_ssl', 'pyDaemon', 'create_pid']
+    order = ['set_logging', 'prepare_log_file', 'drop_privileges', 'dictConfig', 'configure_ssl', 'pyDaemon',
+             'create_pid']
     first = [lines[name][0] for name in order]
     assert first == sorted(first), dict(zip(order, first))
 
-    between = {_call_name(node) for node in calls
-               if lines['dictConfig'][0] <= node.lineno < lines['drop_privileges'][0]}
-    assert between <= SILENT_BEFORE_DROP, between - SILENT_BEFORE_DROP
+    before = {_call_name(node) for node in calls if node.lineno < lines['drop_privileges'][0]}
+    assert not before & UNSAFE_BEFORE_DROP, before & UNSAFE_BEFORE_DROP
 
     guard = next(node for node in ast.walk(body) if isinstance(node, ast.If)
                  and any(isinstance(inner, ast.Call) and _call_name(inner) == 'pyDaemon'

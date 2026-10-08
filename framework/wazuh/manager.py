@@ -638,7 +638,8 @@ def update_manager_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
     restores the previous file.
 
     A secret option (the cluster key) sent back masked, as the API serves it to a caller without
-    `cluster:read_secrets`, keeps its current value; changing it to anything else requires that action.
+    `cluster:read_secrets`, keeps its current value; changing it to anything else requires that action. So does
+    changing the indexer section: its hosts receive the manager's indexer credential.
 
     Parameters
     ----------

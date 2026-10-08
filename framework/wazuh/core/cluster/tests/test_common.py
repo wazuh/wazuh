@@ -2330,3 +2330,113 @@ async def test_manage_indexer_tasks_logs_traceback_on_failure():
         exc_info=True,
     )
     manager.logger.debug.assert_not_called()
+
+
+def _indexer_client_ok():
+    """An async context manager standing in for get_indexer_client() when the indexer is reachable."""
+    client = MagicMock()
+    client.healthcheck = AsyncMock(return_value=True)
+    context = MagicMock()
+    context.__aenter__ = AsyncMock(return_value=client)
+    context.__aexit__ = AsyncMock(return_value=False)
+    return context
+
+
+@pytest.mark.asyncio
+async def test_manage_indexer_tasks_reports_a_configuration_error_once_and_does_not_back_off():
+    """A configuration error cannot heal by itself: it is logged once as an error (no traceback), every
+    retry waits base_delay instead of doubling, a different error is logged again, and the tasks start as
+    soon as the configuration is usable."""
+    from wazuh.core.exception import IndexerConfigurationError
+
+    manager = cluster_common.IndexerTaskManager()
+    manager.logger = MagicMock()
+    missing = IndexerConfigurationError(2200, extra_message="indexer.ssl.certificate and indexer.ssl.key must be set together")
+    other = IndexerConfigurationError(2200, extra_message="No hosts specified in indexer configuration")
+    outcomes = [missing, missing, missing, other, _indexer_client_ok()]
+
+    def client():
+        outcome = outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    factory = AsyncMock()
+    waits = []
+
+    async def wait_for_retry(delay):
+        waits.append(delay)
+
+    with (
+        patch("wazuh.core.cluster.common.get_indexer_client", side_effect=client),
+        patch.object(manager, "_wait_for_retry", side_effect=wait_for_retry),
+        patch("wazuh.core.cluster.common.asyncio.sleep", side_effect=asyncio.CancelledError),
+    ):
+        with pytest.raises(asyncio.CancelledError):
+            await manager.manage_indexer_tasks([factory], base_delay=300, max_delay=3600)
+
+    assert waits == [300, 300, 300, 300]
+    errors = [c.args[0] for c in manager.logger.error.call_args_list]
+    assert len(errors) == 2
+    assert "must be set together" in errors[0] and "No hosts specified" in errors[1]
+    assert all("exc_info" not in c.kwargs for c in manager.logger.error.call_args_list)
+    manager.logger.warning.assert_not_called()
+    manager.logger.info.assert_any_call("Indexer is available. Starting indexer tasks.")
+    factory.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_manage_indexer_tasks_keeps_backing_off_on_an_outage():
+    """An outage (anything that is not a configuration error) keeps the doubling backoff, capped."""
+    from wazuh.core.exception import IndexerUnavailableError
+
+    manager = cluster_common.IndexerTaskManager()
+    manager.logger = MagicMock()
+    waits = []
+
+    async def wait_for_retry(delay):
+        waits.append(delay)
+        if len(waits) == 4:
+            raise asyncio.CancelledError
+
+    with (
+        patch("wazuh.core.cluster.common.get_indexer_client",
+              side_effect=IndexerUnavailableError(2200, extra_message="Indexer unavailable after 3 retries")),
+        patch.object(manager, "_wait_for_retry", side_effect=wait_for_retry),
+    ):
+        with pytest.raises(asyncio.CancelledError):
+            await manager.manage_indexer_tasks([], base_delay=300, max_delay=1000)
+
+    assert waits == [300, 600, 1000, 1000]
+    assert manager.logger.warning.call_count == 4
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("changes_at, expected_sleeps", [
+    (None, [10, 10, 5]),
+    (2, [10, 10]),
+], ids=["unchanged", "changed-after-two-polls"])
+async def test_wait_for_retry_returns_early_when_the_configuration_changes(changes_at, expected_sleeps):
+    """The wait polls wazuh-manager.conf's mtime and ends as soon as it changes."""
+    manager = cluster_common.IndexerTaskManager()
+    manager.logger = MagicMock()
+    sleeps = []
+
+    async def fake_sleep(seconds):
+        sleeps.append(seconds)
+
+    def fake_stat(_path):
+        mtime = 2 if changes_at is not None and len(sleeps) >= changes_at else 1
+        return MagicMock(st_mtime_ns=mtime)
+
+    with (
+        patch("wazuh.core.cluster.common.asyncio.sleep", side_effect=fake_sleep),
+        patch("wazuh.core.cluster.common.os.stat", side_effect=fake_stat),
+    ):
+        await manager._wait_for_retry(25)
+
+    assert sleeps == expected_sleeps
+    if changes_at is None:
+        manager.logger.info.assert_not_called()
+    else:
+        manager.logger.info.assert_called_once()

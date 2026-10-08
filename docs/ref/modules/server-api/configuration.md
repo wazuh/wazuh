@@ -186,6 +186,10 @@ Cross-origin resource sharing, applied with Starlette's `CORSMiddleware`.
 | `max_request_per_minute` | `300` | Authenticated requests per minute per client address (`429`, error `6001`); `0` disables it |
 | `max_unauthenticated_request_per_minute` | `10` | Unauthenticated or failed-authentication requests per minute per client address (`429`, error `6005`); `0` disables it |
 
+The client address is always the TCP peer of the connection. The API ignores `X-Forwarded-For` and
+`X-Forwarded-Proto` from any peer, loopback included, so behind a reverse proxy every client shares
+the proxy's address for the lockout, the limits and `api.log`.
+
 See [Request rate limiting](#request-rate-limiting) and
 [Rate Limiting & Brute-Force Protection](authentication.md#rate-limiting--brute-force-protection).
 
@@ -195,7 +199,7 @@ Options of `wazuh-manager.conf` that `PUT /cluster/{node_id}/configuration` may 
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `indexer.allow` | `true` | With `false`, a new configuration that changes the `indexer` section is refused with error `1127` |
+| `indexer.allow` | `true` | With `false`, a new configuration that changes the `indexer` section is refused with error `1127`, for every caller. With `true` a change still requires `cluster:read_secrets` over the node (error `1132` otherwise): the indexer hosts receive the manager's indexer credential |
 | `agents.allow_higher_versions.allow` | `true` | With `false`, a change to `auth.agents.allow_higher_versions` or `remote.agents.allow_higher_versions` is refused with error `1129` |
 
 The cluster key is protected by RBAC rather than by this block: see

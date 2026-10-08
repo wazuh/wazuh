@@ -365,7 +365,7 @@ get_rbac_actions:
           - GET /cluster/api/config
       cluster:read_secrets:
         description: Read the sensitive configuration values -- the enrollment password and the cluster
-          key -- in clear instead of masked, and change the cluster key
+          key -- in clear instead of masked, and change the cluster key or the indexer section
         example:
           actions:
             - cluster:read_secrets

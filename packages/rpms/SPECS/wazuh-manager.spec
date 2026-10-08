@@ -274,10 +274,13 @@ fi
 # 5.x, and %pre refuses an upgrade from an earlier major, so no other file can
 # reach it. Anything left at the old paths is ignored.
 
-if [ -f %{_localstatedir}/queue/db/global.db ]; then
-  chmod 660 %{_localstatedir}/queue/db/global.db*
-  chown wazuh-manager:wazuh-manager %{_localstatedir}/queue/db/global.db*
-fi
+# queue/db/ is writable by wazuh-manager: never follow a link planted there (chmod has no -h).
+for DB_FILE in %{_localstatedir}/queue/db/global.db*; do
+  if [ -f "${DB_FILE}" ] && [ ! -L "${DB_FILE}" ]; then
+    chmod 660 "${DB_FILE}"
+    chown -h wazuh-manager:wazuh-manager "${DB_FILE}"
+  fi
+done
 
 # Remove Vuln-detector database
 rm -f %{_localstatedir}/queue/vulnerabilities/cve.db || true
@@ -358,13 +361,16 @@ if [ "$1" -eq 1 ]; then
   chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.conf
   chmod 0660 %{_localstatedir}/etc/wazuh-manager.conf
 
-  touch %{_localstatedir}/logs/wazuh-manager.log
-  chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/wazuh-manager.log
-  chmod 0660 %{_localstatedir}/logs/wazuh-manager.log
-
-  touch %{_localstatedir}/logs/wazuh-manager.json
-  chown wazuh-manager:wazuh-manager %{_localstatedir}/logs/wazuh-manager.json
-  chmod 0660 %{_localstatedir}/logs/wazuh-manager.json
+  # logs/ is writable by wazuh-manager: a link there is never a log file, and touch, chown and
+  # chmod would all act on its target as root.
+  for LOG_FILE in wazuh-manager.log wazuh-manager.json; do
+    if [ -L "%{_localstatedir}/logs/${LOG_FILE}" ]; then
+      rm -f "%{_localstatedir}/logs/${LOG_FILE}"
+    fi
+    touch %{_localstatedir}/logs/${LOG_FILE}
+    chown -h wazuh-manager:wazuh-manager %{_localstatedir}/logs/${LOG_FILE}
+    chmod 0660 %{_localstatedir}/logs/${LOG_FILE}
+  done
 fi
 
 if [[ -d /run/systemd/system ]]; then
@@ -385,8 +391,8 @@ mkdir -p %{_localstatedir}/etc/certs
 # pair and the Server API pair the installer issues) are owned by wazuh-manager. Re-applied
 # unconditionally so upgrades that left them root-owned get corrected.
 for CERT_FILE in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
-  if [ -f "%{_localstatedir}/etc/certs/${CERT_FILE}" ]; then
-    chown wazuh-manager:wazuh-manager %{_localstatedir}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
+  if [ -f "%{_localstatedir}/etc/certs/${CERT_FILE}" ] && [ ! -L "%{_localstatedir}/etc/certs/${CERT_FILE}" ]; then
+    chown -h wazuh-manager:wazuh-manager %{_localstatedir}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
     chmod 640 %{_localstatedir}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
   fi
 done
@@ -394,8 +400,8 @@ done
 # The indexer trust material is provisioned externally and only read by the manager, so it is
 # owned root and group wazuh-manager (read-only for the service).
 for CERT_FILE in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
-  if [ -f "%{_localstatedir}/etc/certs/${CERT_FILE}" ]; then
-    chown root:wazuh-manager %{_localstatedir}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
+  if [ -f "%{_localstatedir}/etc/certs/${CERT_FILE}" ] && [ ! -L "%{_localstatedir}/etc/certs/${CERT_FILE}" ]; then
+    chown -h root:wazuh-manager %{_localstatedir}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
     chmod 640 %{_localstatedir}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
   fi
 done

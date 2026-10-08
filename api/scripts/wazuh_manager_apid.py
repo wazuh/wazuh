@@ -10,6 +10,7 @@ import os
 import random
 import signal
 import socket
+import stat
 import sys
 import threading
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
@@ -30,20 +31,45 @@ UVICORN_STARTUP_FAILURE = 3
 _shutdown_event = threading.Event()
 
 
-def assign_wazuh_ownership(filepath: str):
-    """Create a file if it doesn't exist and assign ownership.
+def prepare_log_file(filepath: str):
+    """Create the log file if it does not exist, and give it to the service user with mode 0660.
+
+    This runs as root, in `logs/`, a directory the service account can write. Its entries are
+    therefore untrusted: a symbolic link planted there would hand any root file to the service
+    account if it were followed by a chown or chmod by path. The file is opened without following
+    a final symbolic link, checked through the descriptor to be a regular file with a single link,
+    and changed through that same descriptor, so what is checked is what is changed. It is never
+    written here: the handlers open it only after the privilege drop.
 
     Parameters
     ----------
     filepath : str
-        File to assign ownership.
+        Log file path.
+
+    Raises
+    ------
+    OSError
+        The path is a symbolic link, is not a regular file, has more than one link, or cannot be
+        opened or changed.
     """
-    if not os.path.isfile(filepath):
-        f = open(filepath, "w")
-        f.close()
-    if os.stat(filepath).st_gid != common.wazuh_gid() or \
-        os.stat(filepath).st_uid != common.wazuh_uid():
-        os.chown(filepath, common.wazuh_uid(), common.wazuh_gid())
+    # O_NONBLOCK keeps a planted FIFO from blocking the start (it fails with ENXIO instead).
+    flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
+    try:
+        fd = os.open(filepath, flags, 0o660)
+    except OSError as exc:
+        if exc.errno == errno.ELOOP:
+            raise OSError(errno.ELOOP, 'Refusing a log file that is a symbolic link', filepath) from None
+        raise
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1:
+            raise OSError(errno.EPERM, 'Refusing a log file that is not a regular file with a single link',
+                          filepath)
+        if st.st_uid != common.wazuh_uid() or st.st_gid != common.wazuh_gid():
+            os.fchown(fd, common.wazuh_uid(), common.wazuh_gid())
+        os.fchmod(fd, 0o660)  # nosec B103 - the service group writes the API log
+    finally:
+        os.close(fd)
 
 
 def configure_ssl(params):
@@ -139,18 +165,17 @@ def configure_ssl(params):
         params['ssl_ciphers'] = ciphers
 
 
-def drop_privileges(foreground: bool, run_as_root: bool) -> None:
-    """Switch to the service user and group, then announce how the API runs.
+def drop_privileges(run_as_root: bool) -> None:
+    """Switch to the service user and group.
 
-    Nothing is logged before the switch: the first record of a run may rotate the API log files,
-    and the files a rotation creates must belong to the service, not to root. Root's supplementary
-    groups are cleared first: setgid() and setuid() leave them in place, so the dropped process would
-    otherwise keep group access to whatever root's groups can read.
+    It runs before the logging configuration is applied, so the log handlers open their files as
+    the service user: a root-opened descriptor would survive the switch and keep root's access to
+    whatever the path pointed to. Root's supplementary groups are cleared first: setgid() and
+    setuid() leave them in place, so the dropped process would otherwise keep group access to
+    whatever root's groups can read.
 
     Parameters
     ----------
-    foreground : bool
-        The API runs in the foreground (-f).
     run_as_root : bool
         The API keeps running as root (-r).
     """
@@ -158,11 +183,6 @@ def drop_privileges(foreground: bool, run_as_root: bool) -> None:
         os.setgroups([])
         os.setgid(common.wazuh_gid())
         os.setuid(common.wazuh_uid())
-
-    if foreground:
-        logger.info('Starting API in foreground')
-    if run_as_root:
-        logger.info('Starting API as root')
 
 
 def _bind_listening_sockets(hosts, port: int, retries: int = BIND_MAX_RETRIES,
@@ -421,8 +441,12 @@ def start(params: dict):
         raise SystemExit(0)
 
     try:
+        # proxy_headers=False: uvicorn otherwise replaces the client address with X-Forwarded-For
+        # from any peer in FORWARDED_ALLOW_IPS (127.0.0.1 by default), so a local user could pick
+        # the address the login lockout, the rate limits and api.log see. Nothing in front of the
+        # API is a trusted proxy.
         config = uvicorn.Config(app, **{key: value for key, value in params.items()
-                                        if key not in ('host', 'port')})
+                                        if key not in ('host', 'port')}, proxy_headers=False)
         server = uvicorn.Server(config)
         server.run(sockets=sockets)
     except OSError as exc:
@@ -577,28 +601,37 @@ if __name__ == '__main__':
         print(f"Error when trying to start the Wazuh API. {api_log_error}")
         sys.exit(1)
 
-    # set permission on log files
-    for handler in uvicorn_params['log_config']['handlers'].values():
-        if 'filename' in handler:
-            assign_wazuh_ownership(handler['filename'])
-            os.chmod(handler['filename'], 0o660)  # nosec B103
-
-    # Configure and create the wazuh-api logger
-    add_debug2_log_level_and_error()
-    logging.config.dictConfig(uvicorn_params['log_config'])
-    logger = logging.getLogger('wazuh-api')
+    # Create the log files and give them to the service user, through descriptors that never
+    # follow a symbolic link: logs/ is writable by the service account.
+    try:
+        for handler in uvicorn_params['log_config']['handlers'].values():
+            if 'filename' in handler:
+                prepare_log_file(handler['filename'])
+    except OSError as e:
+        print(f"Error when trying to start the Wazuh API. {e}")
+        sys.exit(1)
 
     # Check for unused PID files
     utils.clean_pid_files(pyDaemonModule.API_MAIN_PROCESS)
 
-    # Drop privileges to wazuh before the first log record and before touching the TLS files. Nothing
-    # is logged if it fails: the switch may not have happened, and a record written as root could
-    # make a pending rotation recreate the API log files as root.
+    # Drop privileges to wazuh before the log handlers open their files and before touching the TLS
+    # files. Nothing is logged if it fails: the logging configuration is not applied yet.
     try:
-        drop_privileges(args.foreground, args.root)
+        drop_privileges(args.root)
     except Exception as e:
         print(f"Error when trying to start the Wazuh API. {e}")
         sys.exit(1)
+
+    # Configure and create the wazuh-api logger. dictConfig() opens the log files, now as the
+    # service user.
+    add_debug2_log_level_and_error()
+    logging.config.dictConfig(uvicorn_params['log_config'])
+    logger = logging.getLogger('wazuh-api')
+
+    if args.foreground:
+        logger.info('Starting API in foreground')
+    if args.root:
+        logger.info('Starting API as root')
 
     # Check the TLS files as the service user while still in the foreground: configure_ssl() logs
     # the error, and the print and the exit code reach the terminal and wazuh-manager-control.

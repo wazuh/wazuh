@@ -107,10 +107,13 @@ case "$1" in
     # in 5.x, and preinst refuses an upgrade from an earlier major, so no other
     # file can reach it. Anything left at the old paths is ignored.
 
-    if [ -f ${DIR}/queue/db/global.db ]; then
-        chmod 660 ${DIR}/queue/db/global.db*
-        chown ${USER}:${GROUP} ${DIR}/queue/db/global.db*
-    fi
+    # queue/db/ is writable by ${USER}: never follow a link planted there (chmod has no -h).
+    for DB_FILE in ${DIR}/queue/db/global.db*; do
+        if [ -f "${DB_FILE}" ] && [ ! -L "${DB_FILE}" ]; then
+            chmod 660 "${DB_FILE}"
+            chown -h ${USER}:${GROUP} "${DB_FILE}"
+        fi
+    done
 
     # Delete uncompatible DBs versions
     if [ ! -z $2 ]; then
@@ -144,8 +147,8 @@ case "$1" in
     # listener pair and the Server API pair the installer issues) are owned by ${USER}.
     # Re-applied unconditionally so upgrades that left them root-owned get corrected.
     for CERT_FILE in remoted.pem remoted-key.pem apid.pem apid-key.pem; do
-        if [ -f "${DIR}/etc/certs/${CERT_FILE}" ]; then
-            chown ${USER}:${GROUP} ${DIR}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
+        if [ -f "${DIR}/etc/certs/${CERT_FILE}" ] && [ ! -L "${DIR}/etc/certs/${CERT_FILE}" ]; then
+            chown -h ${USER}:${GROUP} ${DIR}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
             chmod 640 ${DIR}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
         fi
     done
@@ -153,8 +156,8 @@ case "$1" in
     # The indexer trust material is provisioned externally and only read by the manager, so it
     # is owned root and group ${GROUP} (read-only for the service).
     for CERT_FILE in root-ca.pem indexer-connector.pem indexer-connector-key.pem; do
-        if [ -f "${DIR}/etc/certs/${CERT_FILE}" ]; then
-            chown root:${GROUP} ${DIR}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
+        if [ -f "${DIR}/etc/certs/${CERT_FILE}" ] && [ ! -L "${DIR}/etc/certs/${CERT_FILE}" ]; then
+            chown -h root:${GROUP} ${DIR}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
             chmod 640 ${DIR}/etc/certs/${CERT_FILE} > /dev/null 2>&1 || true
         fi
     done
@@ -222,13 +225,16 @@ case "$1" in
     # More files
     touch ${DIR}/etc/client.keys
 
-    touch ${DIR}/logs/wazuh-manager.log
-    chown ${USER}:${GROUP} ${DIR}/logs/wazuh-manager.log
-    chmod 0660 ${DIR}/logs/wazuh-manager.log
-
-    touch ${DIR}/logs/wazuh-manager.json
-    chown ${USER}:${GROUP} ${DIR}/logs/wazuh-manager.json
-    chmod 0660 ${DIR}/logs/wazuh-manager.json
+    # logs/ is writable by ${USER}: a link there is never a log file, and touch, chown and chmod
+    # would all act on its target as root.
+    for LOG_FILE in wazuh-manager.log wazuh-manager.json; do
+        if [ -L "${DIR}/logs/${LOG_FILE}" ]; then
+            rm -f "${DIR}/logs/${LOG_FILE}"
+        fi
+        touch ${DIR}/logs/${LOG_FILE}
+        chown -h ${USER}:${GROUP} ${DIR}/logs/${LOG_FILE}
+        chmod 0660 ${DIR}/logs/${LOG_FILE}
+    done
 
     # Restore preserved etc/ and data/ as the last content-restore/overwrite
     # step for those trees, matching the RPM %posttrans ordering and the
