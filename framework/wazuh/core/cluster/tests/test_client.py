@@ -233,8 +233,9 @@ def test_ac_connection_result():
 async def test_ac_connection_made():
     """Check that the process of connection to the manager is correctly performed.
 
-    1. A hello request is sent with self.client_data
-    2. connection_result ends up setting connected=True
+    1. Only the protocol preamble is sent when the connection is made
+    2. A hello request is sent with self.client_data once the session is established
+    3. connection_result ends up setting connected=True
     """
 
     async def check_connected(abs_cli):
@@ -243,15 +244,21 @@ async def test_ac_connection_made():
 
     # Ensure a clean state (avoid leaking state from other tests)
     abstract_client.connected = False
-
-    msg = abstract_client.msg_build(b"return", 1, b"ok")
+    assert abstract_client.is_connector is True
 
     with patch(
         "wazuh.core.cluster.client.AbstractClient.send_request",
         new_callable=AsyncMock,
-        return_value=msg,
+        return_value=b"ok",
     ) as g_mock:
-        abstract_client.connection_made(asyncio.Transport())
+        transport = MagicMock()
+        abstract_client.connection_made(transport)
+
+        transport.write.assert_called_once()
+        assert transport.write.call_args[0][0][:5] == client.common.PROTOCOL_MAGIC + b'\x01'
+        g_mock.assert_not_called()
+
+        abstract_client.session_established()
 
         # wait that abstract_client.connected is set to True for 10 seconds
         await asyncio.wait_for(check_connected(abstract_client), 10)

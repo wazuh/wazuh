@@ -437,6 +437,14 @@ class WazuhException(Exception):
                               'directory, is listed as an excluded file, or belongs to a cluster item which is not '
                               'allowed to be synchronized. Check the `WAZUH_HOME/logs/cluster.log` file to identify '
                               'the rejected file.'},
+        3063: {'message': 'Cluster protocol handshake failed',
+               'remediation': 'The peer did not open the connection with a supported cluster protocol preamble. '
+                              'Check that every node of the cluster runs the same Wazuh version and check the '
+                              '`WAZUH_HOME/logs/cluster.log` file for the rejected connection.'},
+        3064: {'message': 'Cluster message failed session verification',
+               'remediation': 'A message was decrypted but was not the next message of this connection, or its header '
+                              'did not match its contents. The connection was closed; it may indicate replayed or '
+                              'tampered cluster traffic. Check the `WAZUH_HOME/logs/cluster.log` file.'},
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
