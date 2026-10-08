@@ -373,11 +373,12 @@ def upload_decoder_file(filename: str, content: str, relative_dirname: str = Non
         upload_file(content, to_relative_path(full_path))
 
         # After uploading the file, validate it using a logtest dummy msg.
-        # Remove a new file on any failure, including socket errors when analysisd stops during the validation.
+        # On any failure, including socket errors when analysisd stops during the validation, remove the file if
+        # there was no previous version. A previous version is restored from the backup.
         try:
             validate_dummy_logtest()
         except Exception:
-            if not overwrite and exists(full_path):
+            if not backup_file and exists(full_path):
                 delete_decoder_file(filename=filename, relative_dirname=relative_dirname)
 
             raise
