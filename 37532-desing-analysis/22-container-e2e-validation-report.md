@@ -497,7 +497,45 @@ detectable rather than silent.
 
 ---
 
-## 22.12 Not yet run
+## 22.12 Fixes applied and re-validated
+
+### Fix 1 — init-system containers (§22.9.1) — **FIXED**, with a residual limit
+
+Container-id matching now scans a cgroup path's components innermost-first and stops at the first
+match, instead of looking only at the basename. `container_baseline`'s independent copy of the same
+rules got the same treatment, or it would still have found no processes for these containers.
+
+Re-validated on the **packaged** build (`GLIBC_2.10` max requirement, so portable to all three VMs):
+
+| | Before | After |
+|---|---|---|
+| `demo-control-plane` in `list` | absent | **present**, `runtime: docker`, `key=9358` |
+| Baseline coverage, manager | 5 containers / 170 rows | **7 containers / 655 rows** |
+| Write inside the KinD node | nothing | detected `whodata`, attributed to `b1b6ccc5…` |
+| Kubernetes pod records | 5, keys 16097/16177/14534/14126/13966 | **unchanged** — innermost-first still lets the leaf win |
+| Flat container (Ubuntu 22 control) | key = `stat` of its cgroup | **unchanged**, key 13714 = `stat` |
+| Host writes | unattributed | **unattributed** |
+
+The falsifier behaves correctly: against the old leaf-only matcher the init-system test fails, while
+the outer-wrap and host-path guard tests pass against both — one test proves the fix, two protect it.
+
+**Residual limitation, not fixed and not implied by the pass.** A container gets **one** key, but a
+container running an init system has many cgroups holding processes — the KinD node has **25**. It
+took `init.scope`'s inode (9358), not its own cgroup (7964). `docker exec` happens to land in
+`init.scope`, which is why the FIM assertion above passes, but a process in a sibling cgroup such as
+`system.slice/containerd.service` (inode 10624) is still outside the allowlist. So these containers
+are now **discovered, inventoried and monitored on their main cgroup** — not fully covered. Covering
+every child cgroup means one container mapping to many keys, which the store, the connectors'
+`inodeByContainerId` join and the allowlist all currently treat as 1:1.
+
+> **A method note that cost an agent restart.** The per-artefact copy loop (build locally, scp the
+> `.so`) is only valid where the target's glibc is at least the build host's. Copying a WSL build
+> (glibc 2.39) to Ubuntu 22.04 (2.35) made every daemon fail with `GLIBC_2.38 not found`. Cross-VM
+> validation must use the packaged build, which the Debian 7 image links against glibc 2.13.
+
+---
+
+## 22.13 Not yet run
 
 Manager-side alert assertions via the engine file output (`output/file-output-integrations/0`) ·
 the >512-container `disableAllowlist()` case, which needs a host that can actually run 512 containers ·
@@ -507,7 +545,7 @@ than measurements.
 
 ---
 
-## 22.9 Incidents and deviations from the plan
+## 22.14 Incidents and deviations from the plan
 
 - **A live snapshot of the manager VM stalled and had to be aborted.** `VBoxManage snapshot take
   --live` on a 12 GB VM degraded from ~450 KB/s to ~800 B/s, froze the VM for ~90 minutes and never
