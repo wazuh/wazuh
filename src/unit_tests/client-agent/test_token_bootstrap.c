@@ -353,6 +353,16 @@ int __wrap_OS_MoveFile(const char *src, const char *dst) {
     return __real_OS_MoveFile(src, dst);
 }
 
+/* Stands in for an operator's terminal on stdin, which a test can't open. Everything else reaches
+ * the real one. */
+static bool g_stream_is_a_tty = false;
+
+int __real_isatty(int fd);
+
+int __wrap_isatty(int fd) {
+    return g_stream_is_a_tty ? 1 : __real_isatty(fd);
+}
+
 /* ---- fixtures ---- */
 
 /* Removes every "<name>.XXXXXX" TempFile() staged beside @p path. A failed commit leaves one
@@ -1802,6 +1812,26 @@ static void test_an_unreadable_stream_is_reported_as_such(void **state) {
     assert_null(token);
 }
 
+/* A terminal never produces a token, and blocking on one reads as a hang. Refused before anything
+ * is read from it. */
+static void test_a_terminal_is_refused_before_it_is_read(void **state) {
+    (void) state;
+    char input[] = "TOKEN\n";
+    FILE *in = fmemopen(input, strlen(input), "r");
+    char *token = NULL;
+    w_token_read_status_t status;
+
+    g_stream_is_a_tty = true;
+    status = w_agent_token_read_stream(in, &token);
+    g_stream_is_a_tty = false;
+
+    assert_int_equal(status, W_TOKEN_READ_TTY);
+    assert_int_equal(ftell(in), 0);
+    fclose(in);
+
+    assert_null(token);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_no_token_file_is_noop, setup_test, teardown_test),
@@ -1852,6 +1882,7 @@ int main(void) {
         cmocka_unit_test(test_a_streamed_token_that_fills_the_buffer_exactly_is_read_whole),
         cmocka_unit_test(test_a_streamed_token_too_long_to_fit_is_refused),
         cmocka_unit_test(test_an_unreadable_stream_is_reported_as_such),
+        cmocka_unit_test(test_a_terminal_is_refused_before_it_is_read),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
