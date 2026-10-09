@@ -99,6 +99,8 @@ void __wrap_is_fim_shutdown();
 
 void __wrap_fim_db_teardown();
 
+char *__wrap_fim_db_utf8_sanitize(const char *input);
+
 void __wrap__imp__dbsync_initialize();
 
 void __wrap__imp__rsync_initialize();

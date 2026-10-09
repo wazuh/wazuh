@@ -839,6 +839,40 @@ void test_fim_send_scan_info(void **state) {
     fim_send_scan_info(FIM_SCAN_START);
 }
 
+void test_send_syscheck_msg_invalid_utf8(void **state) {
+    (void) state;
+    cJSON *event = cJSON_CreateObject();
+    cJSON_AddStringToObject(event, "path", "/tmp/b\xff");
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_string(__wrap_fim_db_utf8_sanitize, input, "{\"path\":\"/tmp/b\xff\"}");
+    will_return(__wrap_fim_db_utf8_sanitize, strdup("{\"path\":\"/tmp/b\xef\xbf\xbd\"}"));
+    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {\"path\":\"/tmp/b\xef\xbf\xbd\"}");
+    expect_w_send_sync_msg("{\"path\":\"/tmp/b\xef\xbf\xbd\"}", SYSCHECK, SYSCHECK_MQ, fim_shutdown_process_on, 0);
+
+    send_syscheck_msg(event);
+
+    cJSON_Delete(event);
+}
+
+void test_send_syscheck_msg_invalid_utf8_sanitize_error(void **state) {
+    (void) state;
+    cJSON *event = cJSON_CreateObject();
+    cJSON_AddStringToObject(event, "path", "/tmp/b\xff");
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_string(__wrap_fim_db_utf8_sanitize, input, "{\"path\":\"/tmp/b\xff\"}");
+    will_return(__wrap_fim_db_utf8_sanitize, NULL);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {\"path\":\"/tmp/b\xff\"}");
+    expect_w_send_sync_msg("{\"path\":\"/tmp/b\xff\"}", SYSCHECK, SYSCHECK_MQ, fim_shutdown_process_on, 0);
+
+    send_syscheck_msg(event);
+
+    cJSON_Delete(event);
+}
+
 #ifndef TEST_WINAGENT
 void test_fim_link_update(void **state) {
     char *new_path = "/new_path";
@@ -1184,6 +1218,8 @@ int main(void) {
         cmocka_unit_test(test_log_realtime_status),
         cmocka_unit_test(test_fim_db_remove_validated_path),
         cmocka_unit_test(test_fim_send_scan_info),
+        cmocka_unit_test(test_send_syscheck_msg_invalid_utf8),
+        cmocka_unit_test(test_send_syscheck_msg_invalid_utf8_sanitize_error),
         cmocka_unit_test_setup_teardown(test_check_max_fps_no_sleep, setup_max_fps, teardown_max_fps),
         cmocka_unit_test_setup_teardown(test_check_max_fps_sleep, setup_max_fps, teardown_max_fps),
 #ifndef TEST_WINAGENT

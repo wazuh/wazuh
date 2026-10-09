@@ -129,6 +129,25 @@ void fim_send_sync_state(const char *location, const char* msg) {
 void send_syscheck_msg(const cJSON *_msg) {
     char *msg = cJSON_PrintUnformatted(_msg);
 
+    if (msg == NULL) {
+        return;
+    }
+
+    if (!w_utf8_valid(msg)) {
+        // e.g. a file name that is not UTF-8. Sanitized like the sync messages, so the manager gets a single path.
+        char *sanitized = fim_db_utf8_sanitize(msg);
+
+        // Each replaced byte grows to 3: keep the original if the sanitized one would be cut by SendMSG.
+        if (sanitized != NULL && strlen(sanitized) >= OS_MAXSTR - OS_SK_HEADER) {
+            os_free(sanitized);
+        }
+
+        if (sanitized != NULL) {
+            os_free(msg);
+            msg = sanitized;
+        }
+    }
+
     mdebug2(FIM_SEND, msg);
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg);
 
