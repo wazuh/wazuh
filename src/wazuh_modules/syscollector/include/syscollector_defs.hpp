@@ -67,6 +67,7 @@
     FRIEND_TEST(SyscollectorIdentityTest, NoDisabledCollectorsDataLeavesTheRecoverySlotAlone);                        \
     FRIEND_TEST(SyscollectorIdentityTest, UncheckedTableIsStampedAndReportedOnce);                                     \
     FRIEND_TEST(SyscollectorIdentityTest, CheckInterruptedByStopLeavesTheTableUnstamped);                              \
+    FRIEND_TEST(SyscollectorIdentityTest, UncheckedTablesShareOneWarningAndKeepAReportedMismatch);                     \
     FRIEND_TEST(SyscollectorIdentityTest, RefusedRecoveryDataCleanStampsAndMovesOn);                                   \
     FRIEND_TEST(SyscollectorIdentityTest, StopBetweenTablesLeavesTheRestUnstamped);                                    \
     FRIEND_TEST(SyscollectorIdentityTest, RecoveryInterruptedByStopLeavesTheTableUnstamped);                           \

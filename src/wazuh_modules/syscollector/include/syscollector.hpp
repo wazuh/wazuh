@@ -486,8 +486,8 @@ class EXPORTED Syscollector final
         ///                  saying when the caller will try again.
         bool resyncTableToManager(const std::string& tableName,
                                   const std::string& index,
-                                  bool syncNow = true,
-                                  const std::string& retryNote = "it will be retried on the next sync cycle");
+                                  bool syncNow,
+                                  const std::string& retryNote);
 
         /// @brief Whether the collector that owns a table is enabled in the configuration.
         /// @param tableName dbsync table to check.

@@ -27,6 +27,24 @@ using YamlToJsonFunc = std::function<nlohmann::json(const std::string&)>;
 
 class SCASyncManager;
 
+/// @brief How a recovery (DataClean + resend of the whole snapshot) ended.
+enum class RecoveryOutcome
+{
+    COMPLETED, ///< The manager received the whole snapshot.
+    QUEUED,    ///< The index was cleared and the snapshot queued, but sending it failed; the next
+    ///< regular synchronization delivers it.
+    FAILED     ///< Nothing was queued; the recovery is retried in the next integrity_interval.
+};
+
+/// @brief Result of SecurityConfigurationAssessment::synchronizeDatabaseSnapshot().
+struct SnapshotSyncResult
+{
+    SyncModuleResult sync;
+    /// @brief True once the index was cleared and the snapshot queued, so a failure after that
+    /// point is delivered by the next regular synchronization.
+    bool queued{false};
+};
+
 class SecurityConfigurationAssessment
 {
     public:
@@ -215,10 +233,10 @@ class SecurityConfigurationAssessment
         int executeFlushSync();
 
         /// @brief Perform full recovery: load all checks and resync
-        /// @return true on success, false on failure.
+        /// @return How the recovery ended; see RecoveryOutcome.
         /// @note Protected (rather than private) so test subclasses can drive recovery
         ///       deterministically, same reason as executeFlushSync() above.
-        bool performRecovery();
+        RecoveryOutcome performRecovery();
 
         /// @brief Handle case when all policies are removed from config
         /// Sends DataClean, clears DB, syncs, and signals exit
@@ -309,11 +327,8 @@ class SecurityConfigurationAssessment
         /// @brief Synchronize the current DB snapshot using FULL mode.
         /// @param increaseVersions Whether to bump versions before building the snapshot.
         /// @param syncReason Reason used in logs.
-        /// @param queued Optional; set to true once the index is cleared and the snapshot is queued, so a
-        /// failure after that point is delivered by the next regular synchronization.
-        /// @return SyncModuleResult with success flag and an optional failure reason string.
-        SyncModuleResult synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason,
-                                                     bool* queued = nullptr);
+        /// @return The sync result, and whether the snapshot was queued before it ended.
+        SnapshotSyncResult synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
 
         /// @brief Logs a failed SyncModuleResult at the right level: INFO for an expected
         /// shutdown/prerequisite/manager-not-ready-within-tolerance hiccup, WARNING (or

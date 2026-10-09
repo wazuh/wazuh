@@ -613,7 +613,7 @@ TEST_F(SyscollectorIdentityTest, VDRecoveryAttachesTheDataContext)
     EXPECT_CALL(*plainProtocol, fetchPendingItems(_)).Times(0);
 
     EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
-                    PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ true));
+                    PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ true, "retry note"));
 }
 
 // The context step belongs to the VD lane only. A plain table has no DataContext rule to honour,
@@ -631,7 +631,7 @@ TEST_F(SyscollectorIdentityTest, PlainRecoveryLeavesTheVDContextAlone)
     EXPECT_CALL(*plainProtocol, clearAllDataContext()).Times(0);
 
     EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
-                    USERS_TABLE, SYSCOLLECTOR_SYNC_INDEX_USERS, /* syncNow */ true));
+                    USERS_TABLE, SYSCOLLECTOR_SYNC_INDEX_USERS, /* syncNow */ true, "retry note"));
 }
 
 // A deferred recovery is the identity path: checkAgentIdentity() queues every VD table and clears
@@ -650,7 +650,7 @@ TEST_F(SyscollectorIdentityTest, DeferredVDRecoveryDoesNotAttachContext)
     EXPECT_CALL(*plainProtocol, clearAllDataContext()).Times(0);
 
     EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
-                    PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ false));
+                    PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ false, "retry note"));
 }
 
 // The sync thread polls this to resync right after a re-enrollment instead of waiting out a sync
@@ -1125,6 +1125,47 @@ TEST_F(SyscollectorIdentityTest, CheckInterruptedByStopLeavesTheTableUnstamped)
 
     EXPECT_EQ(integrityClock(USERS_TABLE), 1);
     EXPECT_TRUE(anyContains(infos, "a checksum mismatch reported by the manager was not confirmed"));
+}
+
+// Every table left unchecked in a pass goes into one WARNING, each with its own reason. A mismatch
+// the manager had reported before the check failed (a 409, then a 503) is named, not lost.
+TEST_F(SyscollectorIdentityTest, UncheckedTablesShareOneWarningAndKeepAReportedMismatch)
+{
+    initWithIntegrityDue(true, true, {OS_TABLE, USERS_TABLE});
+    INJECT_MOCK_PROTOCOLS();
+    (void)vdProtocol;
+
+    EXPECT_CALL(*plainProtocol, requiresFullSync(_, _)).WillRepeatedly([](const std::string & index, const std::string&)
+    {
+        IntegrityCheckResult notChecked;
+
+        if (index.find("users") != std::string::npos)
+        {
+            notChecked.failureReason = "Timed out waiting for manager response.";
+        }
+        else
+        {
+            notChecked.failureReason = "Failed to communicate with the manager.";
+            notChecked.managerNotReady = true;
+            notChecked.mismatchUnconfirmed = true;
+        }
+
+        return notChecked;
+    });
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(0);
+
+    std::vector<std::string> warnings;
+    captureLogs(warnings, LOG_WARNING);
+
+    Syscollector::instance().runRecoveryProcess();
+
+    EXPECT_GT(integrityClock(OS_TABLE), 1);
+    EXPECT_GT(integrityClock(USERS_TABLE), 1);
+    ASSERT_EQ(warnings.size(), 1u);
+    EXPECT_NE(warnings[0].find("Integrity check could not be performed for 2 table(s)"), std::string::npos) << warnings[0];
+    EXPECT_NE(warnings[0].find("(Failed to communicate with the manager, after a checksum mismatch reported by the manager)"),
+              std::string::npos) << warnings[0];
+    EXPECT_NE(warnings[0].find("inventory-users (Timed out waiting for manager response)"), std::string::npos) << warnings[0];
 }
 
 // A recovery that cannot start is retried in the next integrity_interval, like a failed check, and
