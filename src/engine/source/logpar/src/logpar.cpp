@@ -212,7 +212,8 @@ parsec::Parser<parsec::Values<ParserInfo>> pExpr()
 
 namespace
 {
-parsec::Result<Group> pG(std::string_view text, size_t i)
+// depth is the nesting level of the group starting at i (1 for a top-level group)
+parsec::Result<Group> pG(std::string_view text, size_t i, size_t depth, size_t maxDepth)
 {
     auto resStart = (pChar({syntax::EXPR_GROUP_BEGIN}) & pChar({syntax::EXPR_OPT}))(text, i);
     auto lastIdx = i;
@@ -222,7 +223,17 @@ parsec::Result<Group> pG(std::string_view text, size_t i)
     }
     lastIdx = resStart.index();
 
-    parsec::Parser<Group> pGfn = pG;
+    // Enforce the nesting cap before descending, so the recursion depth is bounded by maxDepth and not by the
+    // length of the expression
+    if (depth > maxDepth)
+    {
+        return parsec::makeError<Group>("Max group recursion level reached", i);
+    }
+
+    parsec::Parser<Group> pGfn = [depth, maxDepth](std::string_view t, size_t idx)
+    {
+        return pG(t, idx, depth + 1, maxDepth);
+    };
     auto pGmap =
         parsec::fmap<parsec::Values<ParserInfo>, Group>([](auto v) { return parsec::Values<ParserInfo> {v}; }, pGfn);
     auto pBody = parsec::fmap<parsec::Values<ParserInfo>, parsec::Values<parsec::Values<ParserInfo>>>(
@@ -254,18 +265,18 @@ parsec::Result<Group> pG(std::string_view text, size_t i)
 }
 } // namespace
 
-parsec::Parser<Group> pGroup()
+parsec::Parser<Group> pGroup(size_t maxDepth)
 {
-    return [](std::string_view text, size_t i)
+    return [maxDepth](std::string_view text, size_t i)
     {
-        return pG(text, i);
+        return pG(text, i, 1, maxDepth);
     };
 }
 
-parsec::Parser<std::list<ParserInfo>> pLogpar()
+parsec::Parser<std::list<ParserInfo>> pLogpar(size_t maxGroupDepth)
 {
     auto pE = pExpr();
-    auto pG = pGroup();
+    auto pG = pGroup(maxGroupDepth);
     auto p = pE | parsec::fmap<std::list<ParserInfo>, Group>([](auto g) { return std::list<ParserInfo> {g}; }, pG);
     return parsec::fmap<std::list<ParserInfo>, parsec::Values<parsec::Values<ParserInfo>>>(
                [](auto v)
@@ -292,6 +303,12 @@ Logpar::Logpar(const json::Json& fieldParserOverrides,
     : m_maxGroupRecursion(maxGroupRecursion)
     , m_debugLvl(debugLvl)
 {
+    if (maxGroupRecursion > parser::MAX_GROUP_NESTING)
+    {
+        throw std::runtime_error(fmt::format(
+            "Max group recursion {} exceeds the limit of {}", maxGroupRecursion, parser::MAX_GROUP_NESTING));
+    }
+
     if (!schemaValidator)
     {
         throw std::runtime_error("Schema must not be null");
@@ -665,7 +682,7 @@ void Logpar::registerBuilder(ParserType type, const ParserBuilder& builder)
 
 Logpar::Hlp Logpar::build(std::string_view logpar) const
 {
-    auto result = parser::pLogpar()(logpar, 0);
+    auto result = parser::pLogpar(m_maxGroupRecursion)(logpar, 0);
     if (result.failure())
     {
         throw std::runtime_error(parsec::formatTrace(logpar, result.trace(), 1));

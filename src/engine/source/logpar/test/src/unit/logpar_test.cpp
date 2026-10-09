@@ -31,6 +31,12 @@ TEST_F(LogparTest, Builds)
     ASSERT_NO_THROW(logpar::Logpar logpar(config, schema));
 }
 
+TEST_F(LogparTest, BuildsMaxGroupRecursionOverLimit)
+{
+    auto config = logpar_test::getConfig();
+    ASSERT_THROW(logpar::Logpar logpar(config, schema, logp::MAX_GROUP_NESTING + 1), std::runtime_error);
+}
+
 TEST_F(LogparTest, BuildsNotObjectConfig)
 {
     json::Json config {"\"config\""};
@@ -411,6 +417,30 @@ INSTANTIATE_TEST_SUITE_P(
                        logp::Literal {" "},
                        logp::Group {{logp::Choice {{{"long"}, {}, false}, {{"~"}, {"literal", "-"}, false}}}}}},
                      39)));
+
+TEST(LogparGroupParserDepthTest, RespectsMaxDepth)
+{
+    ASSERT_TRUE(logp::pGroup(3)("(?(?(?a)))", 0).success());
+    ASSERT_FALSE(logp::pGroup(2)("(?(?(?a)))", 0).success());
+    ASSERT_FALSE(logp::pGroup(0)("(?a)", 0).success());
+}
+
+TEST(LogparGroupParserDepthTest, DeepNestingFailsWithoutExhaustingTheStack)
+{
+    // Far deeper than the stack allowed before the cap was checked on descent
+    constexpr size_t levels = 100000;
+    std::string text;
+    text.reserve(levels * 3 + 1);
+    for (size_t i = 0; i < levels; ++i)
+    {
+        text += "(?";
+    }
+    text += "a";
+    text.append(levels, ')');
+
+    ASSERT_FALSE(logp::pGroup()(text, 0).success());
+    ASSERT_FALSE(logp::pLogpar()(text, 0).success());
+}
 
 using LogparParserT = std::tuple<bool, std::string, std::list<logp::ParserInfo>, size_t>;
 class LogparLogparParserTest : public ::testing::TestWithParam<LogparParserT>
