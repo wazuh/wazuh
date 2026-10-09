@@ -149,7 +149,9 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
                 # well-formed JSON value, so a message cannot close the "gcp" field early and add
                 # sibling keys (e.g. "srcip") to the event analysisd ultimately decodes.
                 message = dumps(loads(raw_message))
-            except JSONDecodeError as error:
+            except (ValueError, RecursionError) as error:
+                # JSONDecodeError is a ValueError; an over-long integer literal raises a plain ValueError and
+                # deeply nested arrays raise RecursionError, neither of which may escape before the ack.
                 self.logger.warning(f'Discarding a Pub/Sub message that is not valid JSON: {error}')
                 continue
 

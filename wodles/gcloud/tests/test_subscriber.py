@@ -147,6 +147,9 @@ def test_WazuhGCloudSubscriber_pull_request_ko(mock_credentials, mock_send_msg):
     # Would otherwise close the "gcp" value early and splice a top-level "srcip" key into the
     # event analysisd decodes, overriding a trusted field.
     '{}, "srcip": "8.8.8.8"',
+    # Not JSONDecodeError: an integer past the digit limit raises ValueError, deep nesting RecursionError.
+    pytest.param('1' * 5000, id='integer-over-digit-limit'),
+    pytest.param('[' * 100000, id='deeply-nested'),
 ])
 @patch('pubsub.subscriber.WazuhGCloudSubscriber.send_msg')
 @patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')
