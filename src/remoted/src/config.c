@@ -65,6 +65,13 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     manager_module_limits.fim.registry_key = getDefine_Int_default("fim", "registry_key_limit", 0, INT_MAX, 30000);
     manager_module_limits.fim.registry_value = getDefine_Int_default("fim", "registry_value_limit", 0, INT_MAX, 30000);
 
+    /* Container FIM cap (#37532 / O10). Default 0 = UNLIMITED, like the
+     * container inventory caps below and unlike the host FIM cap above: an
+     * operator who has not thought about containers gets the behaviour they
+     * had before container FIM existed, and the separation from the host
+     * budget is the fix on its own. */
+    manager_module_limits.fim_containers.file = getDefine_Int_default("fim_containers", "file_limit", 0, INT_MAX, 0);
+
     /* Syscollector limits */
     manager_module_limits.syscollector.hotfixes = getDefine_Int_default("syscollector", "hotfixes_limit", 0, INT_MAX, 30000);
     manager_module_limits.syscollector.packages = getDefine_Int_default("syscollector", "packages_limit", 0, INT_MAX, 30000);
