@@ -36,7 +36,7 @@ with patch('wazuh.core.common.wazuh_uid'):
             restart_agents, upgrade_agents, upload_group_file, \
             reload_agents, \
             check_uninstall_permission, ERROR_CODES_UPGRADE_SOCKET
-        from wazuh.core.agent import Agent
+        from wazuh.core.agent import Agent, WazuhDBQueryGroup
         from wazuh import WazuhError, WazuhException, WazuhInternalError
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
         from wazuh.core.tests.test_agent import InitAgent
@@ -643,6 +643,25 @@ def test_agent_get_agent_groups(socket_mock, send_mock, group_list, q, expected_
         assert item['name'] == group_name
         assert item['mergedSum']
         assert item['configSum']
+
+
+@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
+@patch('wazuh.agent.get_groups', return_value={'default', 'group-1', 'group-2', '007'})
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_agent_groups_leading_zeros(socket_mock, send_mock, mock_get_groups):
+    """Test the RBAC group filter matches the group named 007 and not the group named 7."""
+    test_data.cur.execute("INSERT INTO `group` (name) VALUES ('7'), ('007')")
+    try:
+        # `get_agent_groups` drops names outside the allowed list, so the query result is checked directly.
+        with WazuhDBQueryGroup(filters={'rbac_ids': ['007']}, rbac_negate=False, limit=None) as group_query:
+            queried_names = [group['name'] for group in group_query.run()['items']]
+        group_result = get_agent_groups(['007'])
+    finally:
+        test_data.cur.execute("DELETE FROM `group` WHERE name IN ('7', '007')")
+
+    assert queried_names == ['007']
+    assert [item['name'] for item in group_result.affected_items] == ['007']
 
 
 @pytest.mark.parametrize('db_global, system_groups, error_code', [

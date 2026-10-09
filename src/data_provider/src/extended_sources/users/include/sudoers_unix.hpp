@@ -42,9 +42,11 @@ class SudoersProvider
         ///
         /// Never matches what the endpoint cannot resolve -- netgroups ("+netgroup") and numeric ids
         /// ("#501", "%#80"). A "!"-prefixed entry does not itself grant, but per sudoers(5) it can
-        /// revoke a grant an earlier entry gave -- last-match-wins applies both to the entries within
-        /// one rule's user list and across separate rules in the whole policy, so the last rule (and,
-        /// within it, the last entry) that actually applies to the user decides the result.
+        /// revoke a grant an earlier entry gave -- last-match-wins applies only within one rule's
+        /// user list, so the last entry that applies to the user decides whether that rule grants.
+        /// A rule whose list does not grant (it denies the user or does not name them) is skipped and
+        /// never revokes another rule's grant. Command-level negation ("alice ALL=(ALL) !ALL") is not
+        /// evaluated.
         ///
         /// This overload builds the User_Alias map itself; prefer the one below when checking
         /// several users against the same sudoers rules, and build the map once with
@@ -53,7 +55,7 @@ class SudoersProvider
         /// @param sudoers Rules as returned by collect().
         /// @param userName Name of the user to look up.
         /// @param userGroups Names of the groups the user belongs to.
-        /// @return true when the last applicable rule grants sudo to the user.
+        /// @return true when any rule grants sudo to the user.
         static bool isUserSudoer(const nlohmann::json& sudoers,
                                  const std::string& userName,
                                  const std::set<std::string>& userGroups);
@@ -65,7 +67,7 @@ class SudoersProvider
         /// @param userName Name of the user to look up.
         /// @param userGroups Names of the groups the user belongs to.
         /// @param userAliases Result of collectUserAliases(sudoers).
-        /// @return true when the last applicable rule grants sudo to the user.
+        /// @return true when any rule grants sudo to the user.
         static bool isUserSudoer(const nlohmann::json& sudoers,
                                  const std::string& userName,
                                  const std::set<std::string>& userGroups,

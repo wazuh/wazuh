@@ -17,6 +17,12 @@
 #include <zlib.h>
 
 #ifdef WAZUH_UNIT_TESTING
+#define STATIC
+#else
+#define STATIC static
+#endif
+
+#ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
 #include "../../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
 #include "../../unit_tests/wrappers/windows/fileapi_wrappers.h"
@@ -28,12 +34,15 @@
 
 #ifndef WIN32
 #include <regex.h>
+#include <sys/uio.h>
 #ifdef __linux__
 #include <sys/vfs.h>
 #endif
 #else
 #include <aclapi.h>
 #include <winreg.h>
+#include <winioctl.h>
+#include <lm.h>
 #endif
 
 /* Vista product information */
@@ -731,268 +740,493 @@ void DeleteState() {
 }
 
 
-int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***unmerged_files)
+/* Separators follow the local platform, as in mkdir_ex() and w_ref_parent_folder(). */
+#ifdef WIN32
+#define UNMERGE_SEPARATORS "/\\"
+#else
+#define UNMERGE_SEPARATORS "/"
+#endif
+
+#ifdef WIN32
+/* COM and LPT followed by a digit or by a superscript one, two or three in UTF-8. */
+static int unmerge_port_name(const char *base, size_t length)
 {
-    int ret = 1;
-    int state_ok;
-    int file_count = 0;
-    size_t i = 0, n = 0, files_size = 0;
-    size_t optdir_len = 0;
-    char *files;
-    char * copy;
-    char final_name[2048 + 1];
-    char buf[2048 + 1];
-    char *file_name;
-    FILE *fp;
-    FILE *finalfp;
-
-    finalfp = wfopen(finalpath, mode == OS_BINARY ? "rb" : "r");
-    if (!finalfp) {
-        merror("Unable to read merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
-        return (0);
+    if (length < 4 || length > 5 || (strncasecmp(base, "COM", 3) && strncasecmp(base, "LPT", 3))) {
+        return 0;
     }
-
-    /* Calculate optdir length once for optimization */
-    if (optdir) {
-        optdir_len = strlen(optdir);
+    if (length == 4) {
+        return isdigit((unsigned char)base[3]);
     }
-
-    /* Finds index of the last element on the list */
-    if (unmerged_files != NULL) {
-        for(file_count = 0; *(*unmerged_files + file_count); file_count++);
-    }
-
-    while (1) {
-        /* Read header portion */
-        if (fgets(buf, sizeof(buf) - 1, finalfp) == NULL) {
-            break;
-        }
-
-        /* Initiator */
-        if (buf[0] != '!') {
-            continue;
-        }
-
-        /* Get file size and name */
-        files_size = (size_t) atol(buf + 1);
-
-        files = strchr(buf, '\n');
-        if (files) {
-            *files = '\0';
-        }
-
-        files = strchr(buf, ' ');
-        if (!files) {
-            ret = 0;
-            continue;
-        }
-        files++;
-        state_ok = 1;
-
-        if (optdir) {
-            snprintf(final_name, 2048, "%s/%s", optdir, files);
-
-            // Check that final_name is inside optdir
-
-            if (w_ref_parent_folder(final_name)) {
-                merror("Unmerging '%s': unable to unmerge '%s' (it contains '..')", finalpath, final_name);
-                state_ok = 0;
-            }
-        } else {
-            strncpy(final_name, files, 2048);
-            final_name[2048] = '\0';
-        }
-
-        // Create directory
-
-        copy = strdup(final_name);
-
-        if (mkdir_ex(dirname(copy))) {
-            merror("Unmerging '%s': couldn't create directory '%s'", finalpath, files);
-            state_ok = 0;
-        }
-
-        free(copy);
-
-        /* Create temporary file */
-        char tmp_file[strlen(final_name) + 7];
-        snprintf(tmp_file, sizeof(tmp_file), "%sXXXXXX", final_name);
-
-        if (mkstemp_ex(tmp_file) == -1) {
-            merror("Unmerging '%s': could not create temporary file for '%s'", finalpath, files);
-            state_ok = 0;
-        }
-
-        /* Open filename */
-
-        if (state_ok) {
-            if (fp = wfopen(tmp_file, mode == OS_BINARY ? "wb" : "w"), !fp) {
-                ret = 0;
-                merror("Unable to unmerge file '%s' due to [(%d)-(%s)].", tmp_file, errno, strerror(errno));
-            }
-        } else {
-            fp = NULL;
-            ret = 0;
-        }
-
-        if (files_size < sizeof(buf) - 1) {
-            i = files_size;
-            files_size = 0;
-        } else {
-            i = sizeof(buf) - 1;
-            files_size -= sizeof(buf) - 1;
-        }
-
-        while ((n = fread(buf, 1, i, finalfp)) > 0) {
-            buf[n] = '\0';
-
-            if (fp) {
-                fwrite(buf, n, 1, fp);
-            }
-
-            if (files_size == 0) {
-                break;
-            } else {
-                if (files_size < sizeof(buf) - 1) {
-                    i = files_size;
-                    files_size = 0;
-                } else {
-                    i = sizeof(buf) - 1;
-                    files_size -= sizeof(buf) - 1;
-                }
-            }
-        }
-
-        if (fp) {
-            fclose(fp);
-        }
-
-        /* Mv to original name */
-        if (rename_ex(tmp_file, final_name) != 0) {
-            unlink(tmp_file);
-            ret = 0;
-            break;
-        }
-
-        if (unmerged_files != NULL) {
-            char *file_name_copy = NULL;
-
-            /* Calculate relative path from optdir to preserve directory structure */
-            if (optdir_len > 0) {
-                /* Skip optdir and the following '/' to get relative path */
-                if (strncmp(final_name, optdir, optdir_len) == 0 && final_name[optdir_len] == '/') {
-                    file_name = final_name + optdir_len + 1;
-                } else {
-                    /* Fallback: remove path from file name */
-                    file_name = strrchr(final_name, '/');
-                    file_name = file_name ? file_name + 1 : final_name;
-                }
-            } else {
-                /* No optdir specified, use full path */
-                file_name = final_name;
-            }
-
-            /* Append relative file path to unmerged files list */
-            os_strdup(file_name, file_name_copy);
-            *unmerged_files = w_strarray_append(*unmerged_files, file_name_copy, file_count);
-            file_count++;
-        }
-    }
-
-    fclose(finalfp);
-    return (ret);
+    return !memcmp(base + 3, "\xC2\xB9", 2) || !memcmp(base + 3, "\xC2\xB2", 2) || !memcmp(base + 3, "\xC2\xB3", 2);
 }
 
+/* Win32 documents device names as reserved in every directory, with or without an extension. Windows 11
+ * creates such entries as files, but older versions may open the device instead. CONIN$ and CONOUT$ open the
+ * console. */
+static int unmerge_device_name(const char *component, size_t length)
+{
+    static const char *const devices[] = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"};
+    const char *dot = memchr(component, '.', length);
+    size_t base = dot ? (size_t)(dot - component) : length;
+
+    while (base > 0 && component[base - 1] == ' ') {
+        --base;
+    }
+    for (size_t i = 0; i < sizeof(devices) / sizeof(*devices); ++i) {
+        if (base == strlen(devices[i]) && !strncasecmp(component, devices[i], base)) {
+            return 1;
+        }
+    }
+    return unmerge_port_name(component, base);
+}
+
+/* NTFS can give every name that is not 8.3 a short alias, such as MERGED~1.TMP for merged.mg.tmp, which opens the
+ * same file. An entry with that form could write through the alias of another file, or of its own temporary file. */
+static int unmerge_short_alias(const char *component, size_t length)
+{
+    const char *dot = memchr(component, '.', length);
+    size_t base = dot ? (size_t)(dot - component) : length;
+    size_t extension = dot ? length - base - 1 : 0;
+    size_t digits = 0;
+
+    if (base > 8 || extension > 3 || (dot && memchr(dot + 1, '.', extension))) {
+        return 0;
+    }
+    while (digits < base && isdigit((unsigned char)component[base - 1 - digits])) {
+        ++digits;
+    }
+    return digits > 0 && digits < base && component[base - 1 - digits] == '~';
+}
+#endif
+
+/* Reject components the local filesystem would not create under their literal name. */
+static int unmerge_valid_component(const char *component, size_t length)
+{
+    if (!length) {
+        return 0;
+    }
+#ifdef WIN32
+    /* Win32 strips trailing dots and spaces, so the created file would not match the entry. */
+    if (component[length - 1] == '.' || component[length - 1] == ' ') {
+        return 0;
+    }
+    if (unmerge_device_name(component, length) || unmerge_short_alias(component, length)) {
+        return 0;
+    }
+#endif
+    for (size_t i = 0; i < length; ++i) {
+        unsigned char c = component[i];
+
+        if (c < 32 || c == 127) {
+            return 0;
+        }
+#ifdef WIN32
+        /* Reserved by Win32; ':' would also select a drive or an alternate data stream. */
+        if (strchr(":<>\"|?*", c)) {
+            return 0;
+        }
+#endif
+    }
+    return 1;
+}
+
+/* The agent keeps the accepted bundle and the one being extracted next to the entries, so no entry may
+ * replace them. Case is ignored because Windows and macOS file systems usually ignore it. */
+static int unmerge_reserved_name(const char *name)
+{
+    return !strcasecmp(name, SHAREDCFG_FILENAME) || !strcasecmp(name, SHAREDCFG_TMPFILENAME);
+}
+
+/* Validation and extraction share these rules. Empty, absolute, '..' and reserved names and control characters
+ * are rejected on every platform; names that are only invalid on Windows stay valid elsewhere.
+ * 'normalized' must hold strlen(name) + 1 bytes; 'name' is left as received for diagnostics. */
+STATIC int unmerge_normalize_name(const char *name, char *normalized)
+{
+    const char *src = name;
+    char *dst = normalized;
+
+    *normalized = '\0';
+    if (!*name || strchr(UNMERGE_SEPARATORS, *name)) {
+        return 0;
+    }
+
+    while (*src) {
+        const char *end = src + strcspn(src, UNMERGE_SEPARATORS);
+        size_t length = end - src;
+        int last = !*end;
+
+        if (length == 2 && src[0] == '.' && src[1] == '.') {
+            return 0;
+        }
+        if (length == 1 && src[0] == '.') {
+            if (last) {
+                return 0;
+            }
+        } else {
+            if (!unmerge_valid_component(src, length)) {
+                return 0;
+            }
+            if (dst != normalized) {
+                *dst++ = '/';
+            }
+            memcpy(dst, src, length);
+            dst += length;
+        }
+        if (last) {
+            break;
+        }
+        src = end + strspn(end, UNMERGE_SEPARATORS);
+        if (!*src) {
+            return 0;
+        }
+    }
+    *dst = '\0';
+    return dst != normalized && !unmerge_reserved_name(normalized);
+}
+
+static int unmerge_parse_header(char *buf, size_t *size, char **name)
+{
+    char *end = strchr(buf, '\n');
+    char *p = buf + 1;
+
+    if (buf[0] != '!' || !end || *p < '0' || *p > '9') {
+        return 0;
+    }
+    *end = '\0';
+    *size = 0;
+    for (; *p >= '0' && *p <= '9'; ++p) {
+        unsigned int digit = *p - '0';
+        if (*size > (SIZE_MAX - digit) / 10) {
+            return 0;
+        }
+        *size = *size * 10 + digit;
+    }
+    if (*p != ' ') {
+        return 0;
+    }
+    *name = p + 1;
+    return 1;
+}
+
+static int unmerge_size_available(FILE *fp, long bundle_size, size_t size)
+{
+    long offset = ftell(fp);
+    return offset >= 0 && offset <= bundle_size && size <= (unsigned long)(bundle_size - offset);
+}
+
+static void unmerge_invalid_name(const char *bundle, const char *name)
+{
+    char display[129];
+    size_t i;
+
+    for (i = 0; i < sizeof(display) - 1 && name[i]; ++i) {
+        unsigned char c = name[i];
+        display[i] = c < 32 || c == 127 ? '?' : c;
+    }
+    display[i] = '\0';
+    merror("Unmerging '%s': invalid entry name '%s'.", bundle, display);
+}
+
+#define UNMERGE_NAME_SIZE (2048 + 1)
+
+/* A merged file being read. UnmergeFiles() and TestUnmergeFiles() read entries through the same functions,
+ * so the agent extracts exactly the bundles that the manager validates. */
+typedef struct {
+    const char *path;
+    int mode;
+    FILE *fp;
+    long size;
+    char line[UNMERGE_NAME_SIZE];
+} unmerge_bundle_t;
+
+enum { UNMERGE_ENTRY_EXTRACTED, UNMERGE_ENTRY_SKIPPED, UNMERGE_ENTRY_FAILED, UNMERGE_ENTRY_TRUNCATED };
+
+/* Opens a merged file and records its size, so that no entry can declare more data than the file holds. */
+static int unmerge_open(unmerge_bundle_t *bundle)
+{
+    if (bundle->fp = wfopen(bundle->path, bundle->mode == OS_BINARY ? "rb" : "r"), !bundle->fp) {
+        merror("Unable to read merged file: '%s' due to [(%d)-(%s)].", bundle->path, errno, strerror(errno));
+        return 0;
+    }
+    if (bundle->size = get_fp_size(bundle->fp), bundle->size < 0) {
+        merror("Unable to determine merged file size: '%s'.", bundle->path);
+        fclose(bundle->fp);
+        return 0;
+    }
+    return 1;
+}
+
+/* Returns 0 if the merged file could not be read to the end or closed. */
+static int unmerge_close(unmerge_bundle_t *bundle)
+{
+    int read_ok = !ferror(bundle->fp);
+
+    return fclose(bundle->fp) == 0 && read_ok;
+}
+
+/* Reads the next entry header, skipping comment lines. Returns 1 with an entry, 0 at the end of the file and -1
+ * if the header is invalid or declares more data than the file has left. */
+static int unmerge_next_entry(unmerge_bundle_t *bundle, size_t *size, char **name)
+{
+    while (fgets(bundle->line, sizeof(bundle->line), bundle->fp)) {
+        if (bundle->line[0] == '#' && strchr(bundle->line, '\n')) {
+            continue;
+        }
+        if (!unmerge_parse_header(bundle->line, size, name)) {
+            return -1;
+        }
+        return unmerge_size_available(bundle->fp, bundle->size, *size) ? 1 : -1;
+    }
+    return 0;
+}
+
+/* Reads '*size' bytes of entry data and writes them to 'out' unless it is NULL. Reading goes on after a failed write
+ * so the next header can be found. Returns 0 if a write failed; '*size' keeps the bytes that could not be read. */
+static int unmerge_copy_data(unmerge_bundle_t *bundle, size_t *size, FILE *out)
+{
+    char buf[2048];
+    int written = 1;
+
+    while (*size > 0) {
+        size_t n = fread(buf, 1, *size < sizeof(buf) ? *size : sizeof(buf), bundle->fp);
+
+        if (n == 0) {
+            break;
+        }
+        *size -= n;
+        if (out && written && fwrite(buf, 1, n, out) != n) {
+            written = 0;
+        }
+    }
+    return written;
+}
+
+/* Data shorter than its declared size ends the bundle, since the next header cannot be found. */
+static int unmerge_truncated(const unmerge_bundle_t *bundle)
+{
+    merror("Unmerging '%s': incomplete entry data.", bundle->path);
+    return UNMERGE_ENTRY_TRUNCATED;
+}
+
+/* Reads past the data of an entry that is not extracted. */
+static int unmerge_skip_entry(unmerge_bundle_t *bundle, size_t size, int result)
+{
+    unmerge_copy_data(bundle, &size, NULL);
+    return size > 0 ? unmerge_truncated(bundle) : result;
+}
+
+/* Normalizes an entry name and builds its destination path. Returns 0 if the name is invalid or too long. */
+static int unmerge_destination(const char *optdir, const char *name, char *normalized, char *final_name)
+{
+    int length;
+
+    if (!unmerge_normalize_name(name, normalized)) {
+        return 0;
+    }
+    length = optdir && *optdir ? snprintf(final_name, UNMERGE_NAME_SIZE, "%s/%s", optdir, normalized) :
+             snprintf(final_name, UNMERGE_NAME_SIZE, "%s", normalized);
+    return length >= 0 && length < UNMERGE_NAME_SIZE;
+}
+
+static int unmerge_create_parent(const char *final_name)
+{
+    char *copy;
+    int result;
+
+    os_strdup(final_name, copy);
+    result = mkdir_ex(dirname(copy));
+    free(copy);
+    return result == 0;
+}
+
+/* Creates the destination directory and opens a new temporary file next to the destination. */
+static FILE *unmerge_create_tmp(const unmerge_bundle_t *bundle, const char *name, const char *final_name,
+                                char *tmp_file)
+{
+    FILE *fp;
+
+    if (!unmerge_create_parent(final_name)) {
+        merror("Unmerging '%s': couldn't create directory '%s'", bundle->path, name);
+        return NULL;
+    }
+    snprintf(tmp_file, UNMERGE_NAME_SIZE + 6, "%sXXXXXX", final_name);
+    if (mkstemp_ex(tmp_file) == -1) {
+        merror("Unmerging '%s': could not create temporary file for '%s'", bundle->path, name);
+        return NULL;
+    }
+    if (fp = wfopen(tmp_file, bundle->mode == OS_BINARY ? "wb" : "w"), !fp) {
+        merror("Unable to unmerge file '%s' due to [(%d)-(%s)].", tmp_file, errno, strerror(errno));
+        unlink(tmp_file);
+    }
+    return fp;
+}
+
+/* Returns 0 if the entry data could not be written to the temporary file completely. */
+static int unmerge_fill_tmp(unmerge_bundle_t *bundle, FILE *fp, size_t *size, const char *final_name)
+{
+    int written = unmerge_copy_data(bundle, size, fp);
+
+    if (!written) {
+        merror("Unable to write unmerged file '%s'.", final_name);
+    }
+    if (fclose(fp) != 0) {
+        merror("Unable to close unmerged file '%s'.", final_name);
+        written = 0;
+    }
+    return written;
+}
+
+/* rename_ex() leaves errno, or the Win32 error on Windows, set to the reason of its failure. */
+static void unmerge_rename_failed(const unmerge_bundle_t *bundle, const char *name)
+{
+#ifdef WIN32
+    DWORD error = GetLastError();
+
+    merror("Unmerging '%s': could not save entry '%s' due to [(%lu)-(%s)].", bundle->path, name, error,
+           win_strerror(error));
+#else
+    int error = errno;
+
+    merror("Unmerging '%s': could not save entry '%s' due to [(%d)-(%s)].", bundle->path, name, error,
+           strerror(error));
+#endif
+}
+
+/* Writes an entry to a temporary file, which replaces the destination only once it holds the complete data. */
+static int unmerge_write_entry(unmerge_bundle_t *bundle, const char *name, const char *final_name, size_t size)
+{
+    char tmp_file[UNMERGE_NAME_SIZE + 6];
+    FILE *fp = unmerge_create_tmp(bundle, name, final_name, tmp_file);
+    int written;
+
+    if (!fp) {
+        return unmerge_skip_entry(bundle, size, UNMERGE_ENTRY_FAILED);
+    }
+    written = unmerge_fill_tmp(bundle, fp, &size, final_name);
+    if (size > 0 || !written) {
+        unlink(tmp_file);
+        return size > 0 ? unmerge_truncated(bundle) : UNMERGE_ENTRY_FAILED;
+    }
+    if (rename_ex(tmp_file, final_name) != 0) {
+        unmerge_rename_failed(bundle, name);
+        unlink(tmp_file);
+        return UNMERGE_ENTRY_FAILED;
+    }
+    return UNMERGE_ENTRY_EXTRACTED;
+}
+
+/* Extracts one entry into 'optdir' under its normalized name, or reads past it if its name is invalid. */
+static int unmerge_entry(unmerge_bundle_t *bundle, const char *optdir, const char *name, size_t size,
+                         char *normalized)
+{
+    char final_name[UNMERGE_NAME_SIZE];
+
+    if (!unmerge_destination(optdir, name, normalized, final_name)) {
+        unmerge_invalid_name(bundle->path, name);
+        return unmerge_skip_entry(bundle, size, UNMERGE_ENTRY_SKIPPED);
+    }
+    return unmerge_write_entry(bundle, normalized, final_name, size);
+}
+
+static int unmerge_list_length(char ***list)
+{
+    int count = 0;
+
+    if (list != NULL) {
+        while ((*list)[count]) {
+            count++;
+        }
+    }
+    return count;
+}
+
+static void unmerge_list_append(char ***list, int *count, const char *name)
+{
+    char *copy;
+
+    if (list != NULL) {
+        os_strdup(name, copy);
+        *list = w_strarray_append(*list, copy, (*count)++);
+    }
+}
+
+/* A failed entry fails the bundle, while a skipped one only makes it incomplete. */
+static int unmerge_result(int result, int entry)
+{
+    if (entry == UNMERGE_ENTRY_FAILED || entry == UNMERGE_ENTRY_TRUNCATED) {
+        return UNMERGE_FAILED;
+    }
+    if (entry == UNMERGE_ENTRY_SKIPPED && result == UNMERGE_COMPLETE) {
+        return UNMERGE_NAMES_SKIPPED;
+    }
+    return result;
+}
+
+/* Extracts every entry of an open merged file, skipping those with invalid names. */
+static int unmerge_entries(unmerge_bundle_t *bundle, const char *optdir, char ***unmerged_files)
+{
+    int file_count = unmerge_list_length(unmerged_files);
+    int entry = UNMERGE_ENTRY_EXTRACTED;
+    int result = UNMERGE_COMPLETE;
+    int next = 0;
+    size_t size;
+    char *name;
+
+    while (entry != UNMERGE_ENTRY_TRUNCATED && (next = unmerge_next_entry(bundle, &size, &name)) > 0) {
+        char normalized[UNMERGE_NAME_SIZE];
+
+        if (entry = unmerge_entry(bundle, optdir, name, size, normalized), entry == UNMERGE_ENTRY_EXTRACTED) {
+            unmerge_list_append(unmerged_files, &file_count, normalized);
+        }
+        result = unmerge_result(result, entry);
+    }
+    if (next < 0) {
+        merror("Unmerging '%s': invalid entry header.", bundle->path);
+        return UNMERGE_FAILED;
+    }
+    return result;
+}
+
+int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***unmerged_files)
+{
+    unmerge_bundle_t bundle = { .path = finalpath, .mode = mode };
+    int result;
+
+    if (!unmerge_open(&bundle)) {
+        return UNMERGE_FAILED;
+    }
+    result = unmerge_entries(&bundle, optdir, unmerged_files);
+    return unmerge_close(&bundle) ? result : UNMERGE_FAILED;
+}
+
+/* Validates an entry the way UnmergeFiles() reads it, without extracting it. */
+static int unmerge_check_entry(unmerge_bundle_t *bundle, const char *name, size_t size)
+{
+    char normalized[UNMERGE_NAME_SIZE];
+
+    if (!unmerge_normalize_name(name, normalized)) {
+        return 0;
+    }
+    unmerge_copy_data(bundle, &size, NULL);
+    return size == 0;
+}
 
 int TestUnmergeFiles(const char *finalpath, int mode)
 {
-    int ret = 1;
-    size_t i = 0, n = 0, files_size = 0, read_bytes = 0,data_size = 0;
-    char *files;
-    char buf[2048 + 1];
-    FILE *finalfp;
+    unmerge_bundle_t bundle = { .path = finalpath, .mode = mode };
+    int next;
+    size_t size;
+    char *name;
 
-    finalfp = wfopen(finalpath, mode == OS_BINARY ? "rb" : "r");
-    if (!finalfp) {
-        merror("Unable to read merged file: '%s'.", finalpath);
-        return (0);
+    if (!unmerge_open(&bundle)) {
+        return 0;
     }
-
-    while (1) {
-        /* Read header portion */
-        if (fgets(buf, sizeof(buf) - 1, finalfp) == NULL) {
+    while ((next = unmerge_next_entry(&bundle, &size, &name)) > 0) {
+        if (!unmerge_check_entry(&bundle, name, size)) {
             break;
         }
-
-        /* Initiator */
-        switch(buf[0]) {
-            case '#':
-                continue;
-            case '!':
-                goto parse;
-            default:
-                ret = 0;
-                goto end;
-        }
-
-parse:
-        /* Get file size and name */
-        files_size = (size_t) atol(buf + 1);
-        data_size = files_size;
-
-        files = strchr(buf, '\n');
-        if (files) {
-            *files = '\0';
-        }
-
-        files = strchr(buf, ' ');
-        if (!files) {
-            ret = 0;
-            continue;
-        }
-        files++;
-
-        /* Check for file name */
-        if(*files == '\0') {
-            ret = 0;
-            goto end;
-        }
-
-        if (files_size < sizeof(buf) - 1) {
-            i = files_size;
-            files_size = 0;
-        } else {
-            i = sizeof(buf) - 1;
-            files_size -= sizeof(buf) - 1;
-        }
-
-        read_bytes = 0;
-        while ((n = fread(buf, 1, i, finalfp)) > 0) {
-            buf[n] = '\0';
-            read_bytes += n;
-
-            if (files_size == 0) {
-                break;
-            } else {
-                if (files_size < sizeof(buf) - 1) {
-                    i = files_size;
-                    files_size = 0;
-                } else {
-                    i = sizeof(buf) - 1;
-                    files_size -= sizeof(buf) - 1;
-                }
-            }
-        }
-
-        if(read_bytes != data_size){
-            ret = 0;
-            goto end;
-        }
-
     }
-end:
-    fclose(finalfp);
-    return (ret);
+    return unmerge_close(&bundle) && next == 0;
 }
 
 
@@ -1114,11 +1348,14 @@ char *basename_ex(char *path)
     return (basename(path));
 }
 
-/* Rename file or directory */
+/* Rename file or directory. On failure, errno keeps the reason. */
 int rename_ex(const char *source, const char *destination)
 {
     if (rename(source, destination)) {
-        mferror(RENAME_ERROR, source, destination, errno, strerror(errno));
+        int error = errno;
+
+        mferror(RENAME_ERROR, source, destination, error, strerror(error));
+        errno = error;
 
         return (-1);
     }
@@ -1375,7 +1612,10 @@ int rename_ex(const char *source, const char *destination)
         HANDLE hFile = wCreateFile(destination, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
 
         if (hFile == INVALID_HANDLE_VALUE) {
-            mdebug2("Could not create file (%s) which returned (%lu)", destination, GetLastError());
+            DWORD error = GetLastError();
+
+            mdebug2("Could not create file (%s) which returned (%lu)", destination, error);
+            SetLastError(error);
             return -1;
         }
 
@@ -1384,13 +1624,17 @@ int rename_ex(const char *source, const char *destination)
     }
 
     if (!utf8_ReplaceFile(destination, source, NULL, 0)) {
-        mdebug2("Could not move (%s) to (%s) which returned (%lu)", source, destination, GetLastError());
+        DWORD error = GetLastError();
+
+        mdebug2("Could not move (%s) to (%s) which returned (%lu)", source, destination, error);
 
         if (file_created) {
             // Delete the destination file as it's been created by this function.
             utf8_DeleteFile(destination);
         }
 
+        // Callers can report why the move failed.
+        SetLastError(error);
         return (-1);
     }
 
@@ -2639,6 +2883,79 @@ static HANDLE w_createfile_nofollow_vetted(const char * basedir, const char * fi
     return hFile;
 }
 #else
+// AIX 6.1 lacks O_NOFOLLOW and the *at() calls: it takes the HP-UX walk, with O_NOFOLLOW emulated by an lstat() and
+// fstat() identity check.
+#if (defined(AIX) && !defined(O_NOFOLLOW)) || defined(W_VETTED_TEST_NO_O_NOFOLLOW)
+#define W_VETTED_NO_O_NOFOLLOW
+#ifndef W_VETTED_NO_AT_WALK
+#define W_VETTED_NO_AT_WALK
+#endif
+#endif
+
+// 0 where O_NOFOLLOW is emulated (AIX 6.1); O_NOFOLLOW itself stays undefined there, so a raw use fails to build
+// instead of following symlinks.
+#ifdef W_VETTED_NO_O_NOFOLLOW
+#define W_NOFOLLOW_FLAG 0
+#else
+#define W_NOFOLLOW_FLAG O_NOFOLLOW
+#endif
+
+#if defined(AIX) || defined(W_VETTED_NO_O_NOFOLLOW)
+/**
+ * open() without O_NOFOLLOW: lstat() the path, open it, and require the descriptor to match the lstat() identity. A
+ * symlink swapped in after the lstat() has its target opened (never created: O_CREAT is dropped when the path exists)
+ * before the identity check rejects it; nothing is read from it. A missing path is only created with O_EXCL.
+ *
+ * @return A descriptor, or -1 on error (sets errno; ELOOP for a symlink or an entry swapped in during the open, EAGAIN
+ *         if the missing path appeared meanwhile).
+ */
+static int w_open_nofollow_emulated(const char * path, int oflags, mode_t mode) {
+    struct stat listed;
+    struct stat opened;
+    bool existed = lstat(path, &listed) == 0;
+    int saved_errno;
+    int fd;
+
+    if (existed) {
+        if (S_ISLNK(listed.st_mode)) {
+            errno = ELOOP;
+            return -1;
+        }
+
+        oflags &= ~(O_EXCL | O_CREAT);
+    } else if (errno != ENOENT || !(oflags & O_CREAT)) {
+        return -1;
+    } else {
+        oflags |= O_EXCL;
+    }
+
+    if (fd = open(path, oflags, mode), fd < 0) {
+        if (errno == EEXIST) {
+            errno = EAGAIN;
+        }
+
+        return -1;
+    }
+
+    if (existed) {
+        if (fstat(fd, &opened) < 0) {
+            saved_errno = errno;
+            close(fd);
+            errno = saved_errno;
+            return -1;
+        }
+
+        if (opened.st_dev != listed.st_dev || opened.st_ino != listed.st_ino) {
+            close(fd);
+            errno = ELOOP;
+            return -1;
+        }
+    }
+
+    return fd;
+}
+#endif
+
 /* See file_op.h for the full doc comment. Declared there (non-static) so callers outside this file --
  * e.g. client-agent's token_bootstrap.c -- can reuse this vetting logic instead of duplicating it. */
 int w_openat_nofollow_vetted(const char * basedir, const char * filename, int oflags, mode_t mode) {
@@ -2654,16 +2971,23 @@ int w_openat_nofollow_vetted(const char * basedir, const char * filename, int of
         return -1;
     }
 
-#ifdef HPUX
-    // HP-UX has no openat(): open by path. filename is a bare name, so the path stays inside basedir.
+#if defined(HPUX) || defined(AIX) || defined(W_VETTED_NO_O_NOFOLLOW)
+    // None of these has openat(): open by path. filename is a bare name, so the path stays inside basedir.
     char path[PATH_MAX + 1];
 
     if (snprintf(path, sizeof(path), "%s/%s", basedir, filename) >= (int) sizeof(path)) {
         errno = ENAMETOOLONG;
         return -1;
     }
+#endif
 
-    if (fd = open(path, oflags, mode), fd < 0) {
+#if defined(AIX) || defined(W_VETTED_NO_O_NOFOLLOW)
+    // O_NOFOLLOW is emulated here: refuse a symlink, and an entry swapped in meanwhile.
+    if (fd = w_open_nofollow_emulated(path, oflags, mode), fd < 0) {
+        return -1;
+    }
+#elif defined(HPUX)
+    if (fd = open(path, oflags | O_NOFOLLOW, mode), fd < 0) {
         return -1;
     }
 #else
@@ -2719,13 +3043,16 @@ int w_openat_nofollow_vetted(const char * basedir, const char * filename, int of
 
 
 FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char * mode) {
-    if (!basedir || !mode || (strcmp(mode, "w") && strcmp(mode, "wb")) || !w_is_bare_filename(filename)) {
+    if (!basedir || !mode || (strcmp(mode, "w") && strcmp(mode, "wb") && strcmp(mode, "a") && strcmp(mode, "ab"))
+        || !w_is_bare_filename(filename)) {
         errno = EINVAL;
         return NULL;
     }
 
+    const bool append = mode[0] == 'a';
+
 #ifdef WIN32
-    int flags = strchr(mode, 'b') ? 0 : _O_TEXT;
+    int flags = (strchr(mode, 'b') ? 0 : _O_TEXT) | (append ? _O_APPEND : 0);
     int fd;
     FILE * fp;
 
@@ -2739,7 +3066,7 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 
     // The file pointer sits at the beginning of the file, so this truncates it. Safe now: the handle is
     // known to refer to a lone regular file, so this can no longer destroy a hard link's target early.
-    if (!SetEndOfFile(hFile)) {
+    if (!append && !SetEndOfFile(hFile)) {
         errno = w_win32_to_errno(GetLastError());
         CloseHandle(hFile);
         return NULL;
@@ -2765,7 +3092,9 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 #else
     FILE * fp;
     int saved_errno;
-    int fd = w_openat_nofollow_vetted(basedir, filename, O_WRONLY | O_CREAT | O_CLOEXEC | O_NONBLOCK | O_NOCTTY, 0640);
+    int fd = w_openat_nofollow_vetted(basedir, filename,
+                                      O_WRONLY | O_CREAT | O_CLOEXEC | O_NONBLOCK | O_NOCTTY | (append ? O_APPEND : 0),
+                                      0640);
 
     if (fd < 0) {
         return NULL;
@@ -2773,7 +3102,7 @@ FILE * w_fopen_nofollow(const char * basedir, const char * filename, const char 
 
     // Safe now: the descriptor is known to point at a lone regular file. Mirrors what the Windows branch
     // does with OPEN_ALWAYS plus SetEndOfFile() — the file is truncated only once vetted, not at open time.
-    if (ftruncate(fd, 0) < 0) {
+    if (!append && ftruncate(fd, 0) < 0) {
         saved_errno = errno;
         close(fd);
         errno = saved_errno;
@@ -2831,7 +3160,7 @@ FILE * w_fopen_nofollow_update(const char * basedir, const char * filename) {
     // O_RDWR rather than O_WRONLY so the "r+b" handed to fdopen() below matches the descriptor's
     // access mode. No O_CREAT: there is nothing to overwrite in a file that did not exist, and
     // creating one would turn a vanished target into a fresh empty file the caller then "shreds".
-    int fd = w_openat_nofollow_vetted(basedir, filename, O_RDWR | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK | O_NOCTTY, 0);
+    int fd = w_openat_nofollow_vetted(basedir, filename, O_RDWR | O_CLOEXEC | O_NONBLOCK | O_NOCTTY, 0);
 
     if (fd < 0) {
         return NULL;
@@ -2898,11 +3227,30 @@ gzFile w_gzopen_nofollow(const char * basedir, const char * filename, const char
 }
 
 
-#ifndef WIN32
-// Same limit as Linux's MAXSYMLINKS; bounds a symlink loop the kernel would stop with ELOOP.
-#define W_VETTED_MAX_SYMLINKS 40
 // Walks retried when an entry changes between its checks, as a symlink re-pointed during rotation does.
 #define W_VETTED_RACE_RETRIES 3
+// Retries exhausted: callers would otherwise only log this at debug level.
+#define W_VETTED_GAVE_UP \
+    "Could not check '%s' after %d attempts: it keeps changing, or a component name cannot be resolved."
+
+// Same limit as Linux's MAXSYMLINKS; bounds a chain of junctions or symbolic links on either platform.
+#define W_VETTED_MAX_SYMLINKS 40
+
+#ifndef WIN32
+
+// O_CLOEXEC is 0 on some platforms (see defs.h), so set it here to keep fds out of <localfile><command>
+// children; a failure is ignored, as the descriptor stays usable. Returns fd unchanged.
+static int w_fd_cloexec(int fd) {
+#if O_CLOEXEC == 0
+    int flags;
+
+    if (fd >= 0 && (flags = fcntl(fd, F_GETFD), flags >= 0)) {
+        fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+    }
+#endif
+
+    return fd;
+}
 
 /**
  * A hard link can be made by anyone who can write to its directory, so an entry with more than one link
@@ -2994,12 +3342,87 @@ static int w_clear_nonblock(int fd) {
     return fd;
 }
 
-// Solaris before 11 has no readlinkat(), and HP-UX has none of openat(), fstatat() and readlinkat().
-#if !defined(W_VETTED_NO_AT_WALK) && (defined(HPUX) || (defined(SUN_MAJOR_VERSION) && SUN_MAJOR_VERSION < 11))
+// HP-UX and AIX 6.1 lack openat(), fstatat() and readlinkat(); Solaris < 11 lacks only readlinkat() (see
+// w_readlinkat()).
+#if !defined(W_VETTED_NO_AT_WALK) && defined(HPUX)
 #define W_VETTED_NO_AT_WALK
 #endif
 
-#ifndef W_VETTED_NO_AT_WALK
+#if !defined(W_VETTED_NO_READLINKAT) && !defined(W_VETTED_NO_AT_WALK) && \
+    (defined(SUN_MAJOR_VERSION) && SUN_MAJOR_VERSION < 11)
+#define W_VETTED_NO_READLINKAT
+#endif
+
+#if defined(W_VETTED_NO_AT_WALK) || defined(W_VETTED_NO_READLINKAT)
+// A forked child must not run the daemon's handlers (e.g. a SIGTERM for the whole process group): the signals are
+// blocked across fork(), reset to their defaults in the child, and unblocked there and in the parent.
+static const int w_fork_signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM, SIGUSR1, SIGUSR2};
+
+static void w_fork_block_signals(sigset_t * previous) {
+    sigset_t blocked;
+    size_t i;
+
+    sigemptyset(&blocked);
+
+    for (i = 0; i < sizeof(w_fork_signals) / sizeof(w_fork_signals[0]); i++) {
+        sigaddset(&blocked, w_fork_signals[i]);
+    }
+
+    pthread_sigmask(SIG_BLOCK, &blocked, previous);
+}
+
+static void w_fork_child_signals(const sigset_t * previous) {
+    size_t i;
+
+    for (i = 0; i < sizeof(w_fork_signals) / sizeof(w_fork_signals[0]); i++) {
+        signal(w_fork_signals[i], SIG_DFL);
+    }
+
+    pthread_sigmask(SIG_SETMASK, previous, NULL);
+}
+
+// pipe/socketpair/fork failures are resource exhaustion, not a path swapped under the walk: EAGAIN would be retried
+// silently and the file dropped, so report ENOMEM.
+static int w_walk_resource_failed(const char * what, int err) {
+    mwarn("Could not check a monitored path: %s failed: %s (%d)", what, strerror(err), err);
+    return ENOMEM;
+}
+
+#endif
+
+#ifdef W_VETTED_NO_AT_WALK
+// HP-UX and AIX 6.1 have no *at() calls; the walk runs in a forked child, so fchdir() into a held descriptor can
+// stand in for dirfd without changing the daemon's directory.
+#ifndef AT_FDCWD
+#define AT_FDCWD (-100)
+#endif
+
+#ifndef AT_SYMLINK_NOFOLLOW
+#define AT_SYMLINK_NOFOLLOW 0x1000
+#endif
+
+static int w_enter_dir(int dirfd) {
+    return dirfd == AT_FDCWD ? 0 : fchdir(dirfd);
+}
+
+// Only the AT_SYMLINK_NOFOLLOW form is used by the walk.
+static int w_emul_fstatat(int dirfd, const char * name, struct stat * buf, int flags) {
+    (void) flags;
+    return w_enter_dir(dirfd) < 0 ? -1 : lstat(name, buf);
+}
+
+static int w_emul_openat(int dirfd, const char * name, int oflags) {
+    return w_enter_dir(dirfd) < 0 ? -1 : open(name, oflags);
+}
+
+static ssize_t w_emul_readlinkat(int dirfd, const char * name, char * buf, size_t size) {
+    return w_enter_dir(dirfd) < 0 ? -1 : readlink(name, buf, size);
+}
+
+#define fstatat w_emul_fstatat
+#define openat w_emul_openat
+#define w_readlinkat w_emul_readlinkat
+#else
 // O_PATH is spelled out for the agent packages, built with headers older than glibc 2.14 that lack it; it has
 // this value on these architectures, and kernels before 2.6.39 ignore it.
 #if defined(O_PATH)
@@ -3020,6 +3443,7 @@ static int w_clear_nonblock(int fd) {
 #define W_VETTED_AT_EMPTY_PATH AT_EMPTY_PATH
 #elif defined(__linux__)
 #define W_VETTED_AT_EMPTY_PATH 0x1000
+#endif
 #endif
 
 /**
@@ -3055,7 +3479,7 @@ static int w_open_walk_dir(int dirfd, const char * name, int flags) {
     }
 #endif
 
-    return fd;
+    return w_fd_cloexec(fd);
 }
 
 #ifdef __linux__
@@ -3074,6 +3498,121 @@ static bool w_is_procfs(int dirfd) {
 }
 #endif
 
+#if defined(W_VETTED_NO_READLINKAT) && !defined(W_VETTED_NO_AT_WALK)
+/**
+ * readlinkat() for Solaris 10. A child fchdir()s into dirfd and readlink()s the bare name, as changing the
+ * directory in this process would affect every thread. The child calls only async-signal-safe functions and
+ * hands the result back over a pipe: first an errno value (0 on success), then the link text.
+ *
+ * @return Target length as readlinkat(), or -1 on error (sets errno).
+ */
+static ssize_t w_readlinkat(int dirfd, const char * name, char * buf, size_t size) {
+    char text[PATH_MAX + 1];
+    int fds[2];
+    int err = 0;
+    int status;
+    pid_t pid;
+    pid_t reaped;
+    sigset_t previous;
+    ssize_t n;
+    ssize_t total = -1;
+
+    if (size > PATH_MAX) {
+        size = PATH_MAX;
+    }
+
+    if (pipe(fds) < 0) {
+        errno = w_walk_resource_failed("pipe()", errno);
+        return -1;
+    }
+
+    w_fd_cloexec(fds[0]);
+    w_fd_cloexec(fds[1]);
+
+    w_fork_block_signals(&previous);
+    pid = fork();
+
+    if (pid != 0) {
+        err = errno;
+        pthread_sigmask(SIG_SETMASK, &previous, NULL);
+        errno = err;
+    }
+
+    if (pid < 0) {
+        err = errno;
+        close(fds[0]);
+        close(fds[1]);
+        errno = w_walk_resource_failed("fork()", err);
+        return -1;
+    }
+
+    if (pid == 0) {
+        ssize_t len = -1;
+
+        w_fork_child_signals(&previous);
+        close(fds[0]);
+
+        if (fchdir(dirfd) == 0) {
+            len = readlink(name, text, size);
+        }
+
+        err = len < 0 ? errno : 0;
+
+        if (write(fds[1], &err, sizeof(err)) == sizeof(err) && len > 0) {
+            if (write(fds[1], text, len) != len) {
+                _exit(1);
+            }
+        }
+
+        _exit(len < 0 ? 1 : 0);
+    }
+
+    close(fds[1]);
+
+    while (n = read(fds[0], &err, sizeof(err)), n < 0 && errno == EINTR) {
+    }
+
+    if (n == sizeof(err) && err == 0) {
+        total = 0;
+
+        while (n = read(fds[0], text + total, size - total), n > 0 || (n < 0 && errno == EINTR)) {
+            if (n > 0) {
+                total += n;
+            }
+        }
+
+        if (n < 0) {
+            err = errno;
+            total = -1;
+        }
+    } else if (n != sizeof(err)) {
+        err = n < 0 ? errno : EIO;
+    }
+
+    close(fds[0]);
+
+    // SIGCHLD ignored makes the child reap itself, so ECHILD is not a failure.
+    while (reaped = waitpid(pid, &status, 0), reaped < 0 && errno == EINTR) {
+    }
+
+    // A child that died between its two writes would otherwise read as an empty target.
+    if (total >= 0 && reaped >= 0 && !(WIFEXITED(status) && WEXITSTATUS(status) == 0)) {
+        total = -1;
+        err = EIO;
+    }
+
+    if (total < 0) {
+        errno = err ? err : EIO;
+        return -1;
+    }
+
+    memcpy(buf, text, total);
+    return total;
+}
+#elif !defined(W_VETTED_NO_AT_WALK)
+#define w_readlinkat readlinkat
+#endif
+
 /**
  * Reads the target of symlink name in dirfd, failing unless it is still a symlink with the inode and owner
  * link_stat describes, so an entry swapped in after its owner was checked is not followed, even on inode reuse.
@@ -3083,7 +3622,8 @@ static bool w_is_procfs(int dirfd) {
 static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat * link_stat, char * target) {
     struct stat now;
     ssize_t n;
-#ifdef W_VETTED_O_PATH
+// w_readlinkat() cannot read through a pinned link descriptor (empty name), so the emulation skips the pin.
+#if defined(W_VETTED_O_PATH) && !defined(W_VETTED_NO_READLINKAT)
     // Pin the link itself, so the target read belongs to the inode compared below. O_NONBLOCK is for kernels
     // that ignore O_PATH, where this is a plain open: a FIFO swapped in for the link must not block it.
     int linkfd;
@@ -3097,7 +3637,7 @@ static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat
             errno = EAGAIN;
             n = -1;
         } else {
-            n = readlinkat(linkfd, "", target, PATH_MAX);
+            n = w_readlinkat(linkfd, "", target, PATH_MAX);
         }
 
         saved_errno = errno;
@@ -3112,7 +3652,7 @@ static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat
     }
 #endif
     // No way to pin a link here: check it is the same one after reading it.
-    if (n = readlinkat(dirfd, name, target, PATH_MAX), n < 0) {
+    if (n = w_readlinkat(dirfd, name, target, PATH_MAX), n < 0) {
         return -1;
     }
 
@@ -3133,9 +3673,10 @@ static ssize_t w_readlink_vetted(int dirfd, const char * name, const struct stat
  * Resolves path one component at a time with openat()/fstatat()/readlinkat(), so no symlink is followed
  * without first being inspected, then opens the final entry non-blocking and vets it.
  *
+ * @param follow_last Whether a symlink as the final entry is followed; if not, it fails with ELOOP.
  * @return A vetted descriptor with O_NONBLOCK cleared, or -1 on error (sets errno).
  */
-static int w_open_vetted_follow_fd(const char * path) {
+static int w_open_vetted_walk_fd(const char * path, bool follow_last) {
     char pending[PATH_MAX + 1];
     char target[PATH_MAX + 1];
     char next[PATH_MAX + 1];
@@ -3143,10 +3684,13 @@ static int w_open_vetted_follow_fd(const char * path) {
     struct stat entry_stat;
     struct stat fd_stat;
     struct stat dir_stat;
+#ifdef W_VETTED_NO_O_NOFOLLOW
+    struct stat listed_stat;
+#endif
     uid_t link_uid = 0;
     bool has_link_uid = false;
     int symlinks = 0;
-    int nofollow = O_NOFOLLOW;
+    bool nofollow = true;
     int dirfd;
     int fd = -1;
     int saved_errno;
@@ -3190,6 +3734,11 @@ static int w_open_vetted_follow_fd(const char * path) {
         }
 
         if (S_ISLNK(entry_stat.st_mode)) {
+            if (!follow_last && *cursor == '\0') {
+                errno = ELOOP;
+                goto fail;
+            }
+
             if (++symlinks > W_VETTED_MAX_SYMLINKS) {
                 errno = ELOOP;
                 goto fail;
@@ -3223,7 +3772,7 @@ static int w_open_vetted_follow_fd(const char * path) {
             // with the process, so what bounds it is the owner check above and the vetting of the final file.
             if (w_is_procfs(dirfd)) {
                 if (*cursor == '\0') {
-                    nofollow = 0;
+                    nofollow = false;
                     break;
                 }
 
@@ -3254,10 +3803,15 @@ static int w_open_vetted_follow_fd(const char * path) {
             }
             target[n] = '\0';
 
-            if (snprintf(next, sizeof(next), "%s%s", target, cursor) >= (int) sizeof(next)) {
+            // memcpy() rather than snprintf(), as this may run in a forked child of a threaded process.
+            len = strlen(cursor);
+
+            if ((size_t) n + len > PATH_MAX) {
                 errno = ENAMETOOLONG;
                 goto fail;
             }
+            memcpy(next, target, n);
+            memcpy(next + n, cursor, len + 1);
             strcpy(pending, next);
             cursor = pending;
 
@@ -3278,14 +3832,26 @@ static int w_open_vetted_follow_fd(const char * path) {
                 goto fail;
             }
 
-            // O_NOFOLLOW fails the open if it was swapped to a symlink since fstatat().
-            if (fd = w_open_walk_dir(dirfd, name, O_NOFOLLOW | O_NONBLOCK), fd < 0) {
+            // O_NOFOLLOW, or the identity check below where it is emulated, rejects an entry swapped to a symlink
+            // since fstatat().
+            if (fd = w_open_walk_dir(dirfd, name, W_NOFOLLOW_FLAG | O_NONBLOCK), fd < 0) {
                 goto fail_swapped;
             }
+
+#ifdef W_VETTED_NO_O_NOFOLLOW
+            listed_stat = entry_stat;
+#endif
 
             if (w_fstat_walk(fd, &entry_stat) < 0) {
                 goto fail;
             }
+
+#ifdef W_VETTED_NO_O_NOFOLLOW
+            if (entry_stat.st_dev != listed_stat.st_dev || entry_stat.st_ino != listed_stat.st_ino) {
+                errno = EAGAIN;
+                goto fail;
+            }
+#endif
 
             if (!S_ISDIR(entry_stat.st_mode)) {
                 errno = ENOTDIR;
@@ -3300,16 +3866,26 @@ static int w_open_vetted_follow_fd(const char * path) {
         break;
     }
 
-    if (fd = openat(dirfd, name, O_RDONLY | nofollow | O_NONBLOCK | O_CLOEXEC), fd < 0) {
+    if (fd = openat(dirfd, name, O_RDONLY | (nofollow ? W_NOFOLLOW_FLAG : 0) | O_NONBLOCK | O_CLOEXEC), fd < 0) {
         if (!nofollow) {
             goto fail;
         }
         goto fail_swapped;
     }
 
+    w_fd_cloexec(fd);
+
     if (fstat(fd, &fd_stat) < 0 || w_fstat_walk(dirfd, &dir_stat) < 0) {
         goto fail;
     }
+
+#ifdef W_VETTED_NO_O_NOFOLLOW
+    // Stands in for O_NOFOLLOW on the final entry.
+    if (nofollow && (fd_stat.st_dev != entry_stat.st_dev || fd_stat.st_ino != entry_stat.st_ino)) {
+        errno = EAGAIN;
+        goto fail;
+    }
+#endif
 
     if (!nofollow) {
         // The file came through a procfs link, so the directory really holding it is unknown: grant nothing
@@ -3325,9 +3901,19 @@ static int w_open_vetted_follow_fd(const char * path) {
     return w_clear_nonblock(fd);
 
 fail_swapped:
-    // O_NOFOLLOW reports a symlink as ELOOP (EMLINK on FreeBSD): the entry changed under us.
+    // Not every platform reports a swapped symlink as ELOOP/EMLINK, so re-stat the entry to detect it.
     if (errno == ELOOP || errno == EMLINK) {
         errno = EAGAIN;
+    } else {
+        struct stat swapped;
+        int open_errno = errno;
+
+        if (fstatat(dirfd, name, &swapped, AT_SYMLINK_NOFOLLOW) == 0 &&
+            (S_ISLNK(swapped.st_mode) || swapped.st_dev != entry_stat.st_dev || swapped.st_ino != entry_stat.st_ino)) {
+            open_errno = EAGAIN;
+        }
+
+        errno = open_errno;
     }
 fail:
     saved_errno = errno;
@@ -3338,110 +3924,1401 @@ fail:
     errno = saved_errno;
     return -1;
 }
-#else
+#ifdef W_VETTED_NO_AT_WALK
+#undef fstatat
+#undef openat
+#undef w_readlinkat
+
+#ifndef SCM_RIGHTS
+#error "HP-UX needs _XOPEN_SOURCE_EXTENDED for SCM_RIGHTS (set in src/Makefile)"
+#endif
+
 /**
- * dirname() may modify its argument and is not thread-safe everywhere, so the parent is cut out of path by
- * hand. A bare file name resolves to ".".
+ * Sends the result of the walk to the parent: errno (0 on success) in the data, and fd as ancillary data on success.
+ *
+ * @return 0 on success, -1 on error.
+ */
+static int w_send_walk_result(int sock, int fd, int err) {
+    struct msghdr msg;
+    struct iovec iov;
+    union {
+        struct cmsghdr align;
+        char buf[CMSG_SPACE(sizeof(int))];
+    } control;
+    struct cmsghdr * cmsg;
+
+    memset(&msg, 0, sizeof(msg));
+    iov.iov_base = &err;
+    iov.iov_len = sizeof(err);
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+
+    if (fd >= 0) {
+        memset(&control, 0, sizeof(control));
+        msg.msg_control = control.buf;
+        msg.msg_controllen = sizeof(control.buf);
+        cmsg = CMSG_FIRSTHDR(&msg);
+        cmsg->cmsg_level = SOL_SOCKET;
+        cmsg->cmsg_type = SCM_RIGHTS;
+        cmsg->cmsg_len = CMSG_LEN(sizeof(int));
+        memcpy(CMSG_DATA(cmsg), &fd, sizeof(int));
+    }
+
+    return sendmsg(sock, &msg, 0) == (ssize_t) sizeof(err) ? 0 : -1;
+}
+
+/**
+ * Receives what w_send_walk_result() sent.
+ *
+ * @return The descriptor, or -1 with errno set to the child's error.
+ */
+static int w_recv_walk_result(int sock) {
+    struct msghdr msg;
+    struct iovec iov;
+    union {
+        struct cmsghdr align;
+        char buf[CMSG_SPACE(sizeof(int))];
+    } control;
+    struct cmsghdr * cmsg;
+    int err = EIO;
+    int fd = -1;
+    ssize_t n;
+
+    memset(&msg, 0, sizeof(msg));
+    iov.iov_base = &err;
+    iov.iov_len = sizeof(err);
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+    memset(&control, 0, sizeof(control));
+    msg.msg_control = control.buf;
+    msg.msg_controllen = sizeof(control.buf);
+
+    while (n = recvmsg(sock, &msg, 0), n < 0 && errno == EINTR) {
+    }
+
+    // Take the descriptor first: the kernel installed it even if the data is short.
+    if (n >= 0 && (cmsg = CMSG_FIRSTHDR(&msg)) && cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
+        memcpy(&fd, CMSG_DATA(cmsg), sizeof(int));
+    }
+
+    if (n < 0) {
+        err = errno;
+    } else if (n != (ssize_t) sizeof(err) || (msg.msg_flags & MSG_CTRUNC) || (err == 0 && fd < 0)) {
+        err = EIO;
+    }
+
+    if (err != 0 || fd < 0) {
+        if (fd >= 0) {
+            close(fd);
+        }
+
+        errno = err ? err : EIO;
+        return -1;
+    }
+
+    // The kernel-made descriptor does not inherit the child's close-on-exec.
+    fcntl(fd, F_SETFD, FD_CLOEXEC);
+    return fd;
+}
+
+/**
+ * Runs the walk in a forked child (no *at() calls on this platform) and receives the vetted descriptor over a
+ * socket pair; the parent never changes directory.
+ *
+ * @param follow_last Whether a symlink as the final entry is followed; if not, it fails with ELOOP.
+ * @return A vetted descriptor with O_NONBLOCK cleared, or -1 on error (sets errno).
+ */
+static int w_open_vetted_follow_fd(const char * path, bool follow_last) {
+    int sv[2];
+    int fd;
+    int saved_errno;
+    int status;
+    pid_t pid;
+    sigset_t previous;
+
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0) {
+        errno = w_walk_resource_failed("socketpair()", errno);
+        return -1;
+    }
+
+    fcntl(sv[0], F_SETFD, FD_CLOEXEC);
+    fcntl(sv[1], F_SETFD, FD_CLOEXEC);
+
+    w_fork_block_signals(&previous);
+    pid = fork();
+    saved_errno = errno;
+
+    if (pid != 0) {
+        pthread_sigmask(SIG_SETMASK, &previous, NULL);
+    }
+
+    if (pid < 0) {
+        close(sv[0]);
+        close(sv[1]);
+        errno = w_walk_resource_failed("fork()", saved_errno);
+        return -1;
+    }
+
+    if (pid == 0) {
+        w_fork_child_signals(&previous);
+        close(sv[0]);
+        fd = w_open_vetted_walk_fd(path, follow_last);
+        w_send_walk_result(sv[1], fd, fd < 0 ? errno : 0);
+        _exit(0);
+    }
+
+    close(sv[1]);
+    fd = w_recv_walk_result(sv[0]);
+    saved_errno = errno;
+    close(sv[0]);
+
+    // SIGCHLD ignored makes the child reap itself, so a failure here is not an error.
+    while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {
+    }
+
+    errno = saved_errno;
+    return fd;
+}
+#else
+#define w_open_vetted_follow_fd w_open_vetted_walk_fd
+#endif
+#endif
+
+
+#ifdef WIN32
+// Wide-character capacity for the paths handled below; longer ones are rejected with ENAMETOOLONG.
+#define W_VETTED_WIN_PATH_MAX 4096
+#define W_VETTED_WIN_EXTENDED_PREFIX L"\\\\?\\"
+#define W_VETTED_WIN_UNC_PREFIX L"\\\\?\\UNC\\"
+#define W_VETTED_WIN_NT_MUP L"\\Device\\Mup\\"
+#define W_VETTED_WIN_NT_REDIRECTOR L"\\Device\\LanmanRedirector\\"
+
+#if _WIN32_WINNT < 0x0600
+// file_op.c also builds without -D_WIN32_WINNT=0x600 (file_op_proc.o), where MinGW hides this Vista API.
+WINBASEAPI DWORD WINAPI GetFinalPathNameByHandleW(HANDLE hFile, LPWSTR lpszFilePath, DWORD cchFilePath, DWORD dwFlags);
+#endif
+
+/**
+ * Maps a Win32 error to errno, reporting a vanished path as EAGAIN, not ENOENT: while a path is being
+ * vetted it means the path is changing, and the caller retries it.
+ */
+static int w_win_race_errno(DWORD error) {
+    return (error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND || error == ERROR_SHARING_VIOLATION) ?
+           EAGAIN : w_win32_to_errno(error);
+}
+
+/**
+ * Compares two paths exactly, case included: on a case-sensitive directory a difference in case can
+ * name another file, so any difference is left to the reparse walk to settle.
+ */
+static bool w_win_same_path(const wchar_t * a, const wchar_t * b) {
+    return wcscmp(a, b) == 0;
+}
+
+/**
+ * Resolves the final path of an open handle, following every reparse point, and rejects a network
+ * location. The "\\?\" prefix is removed from a local path so it compares against a normalized request.
  *
  * @return 0 on success, -1 on error (sets errno).
  */
-static int w_stat_parent_dir(const char * path, struct stat * dir_stat) {
-    char dir[PATH_MAX + 1];
-    const char * slash = strrchr(path, '/');
-    size_t len;
+static int w_win_final_path(HANDLE hFile, wchar_t * path) {
+    char narrow[W_VETTED_WIN_PATH_MAX * 4];
+    DWORD len = GetFinalPathNameByHandleW(hFile, path, W_VETTED_WIN_PATH_MAX, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
 
-    if (!slash) {
-        return stat(".", dir_stat);
+    if (len == 0 && GetLastError() == ERROR_PATH_NOT_FOUND) {
+        // A folder-mounted volume has no DOS name; its NT name never matches the requested path, so the reparse walk vets it.
+        len = GetFinalPathNameByHandleW(hFile, path, W_VETTED_WIN_PATH_MAX, FILE_NAME_NORMALIZED | VOLUME_NAME_NT);
+
+        if (len > 0 && len < W_VETTED_WIN_PATH_MAX &&
+            (!_wcsnicmp(path, W_VETTED_WIN_NT_MUP, wcslen(W_VETTED_WIN_NT_MUP)) ||
+             !_wcsnicmp(path, W_VETTED_WIN_NT_REDIRECTOR, wcslen(W_VETTED_WIN_NT_REDIRECTOR)))) {
+            // NT form of a network path; see the UNC prefix check below.
+            errno = EPERM;
+            return -1;
+        }
     }
 
-    if (len = slash == path ? 1 : (size_t) (slash - path), len > PATH_MAX) {
+    if (len == 0) {
+        // The handle is already open, so a failure is not a vanished path: only a sharing violation is transient.
+        DWORD error = GetLastError();
+        errno = error == ERROR_SHARING_VIOLATION ? EAGAIN : w_win32_to_errno(error);
+        return -1;
+    }
+
+    if (len >= W_VETTED_WIN_PATH_MAX) {
         errno = ENAMETOOLONG;
         return -1;
     }
 
-    memcpy(dir, path, len);
-    dir[len] = '\0';
-    return stat(dir, dir_stat);
-}
-
-/**
- * Path-based stand-in for the component walk, for platforms without its *at() calls. The type, owner and link
- * count rules are applied to the opened descriptor, so a FIFO still cannot block the read. Only the path's
- * last entry is checked as a symlink, and by path, so a symlink swapped in a directory higher up, or swapped
- * and restored between the checks, is not caught.
- *
- * @return A vetted descriptor with O_NONBLOCK cleared, or -1 on error (sets errno).
- */
-static int w_open_vetted_follow_fd(const char * path) {
-    char resolved[PATH_MAX + 1];
-    struct stat link_stat;
-    struct stat link_dir_stat;
-    struct stat fd_stat;
-    struct stat dir_stat;
-    struct stat now;
-    uid_t link_uid = 0;
-    bool has_link_uid = false;
-    int saved_errno;
-    int fd;
-
-    if (lstat(path, &link_stat) < 0) {
+    if (!wcsncmp(path, W_VETTED_WIN_UNC_PREFIX, wcslen(W_VETTED_WIN_UNC_PREFIX))) {
+        errno = EPERM;
         return -1;
     }
 
-    if (S_ISLNK(link_stat.st_mode)) {
-        if (w_stat_parent_dir(path, &link_dir_stat) < 0) {
+    if (!wcsncmp(path, W_VETTED_WIN_EXTENDED_PREFIX, wcslen(W_VETTED_WIN_EXTENDED_PREFIX))) {
+        wmemmove(path, path + wcslen(W_VETTED_WIN_EXTENDED_PREFIX), len - wcslen(W_VETTED_WIN_EXTENDED_PREFIX) + 1);
+    }
+
+    if (!WideCharToMultiByte(CP_UTF8, 0, path, -1, narrow, sizeof(narrow), NULL, NULL)) {
+        errno = GetLastError() == ERROR_INSUFFICIENT_BUFFER ? ENAMETOOLONG : EINVAL;
+        return -1;
+    }
+
+    if (is_network_path(narrow)) {
+        errno = EPERM;
+        return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * Reads the owner of an object. The returned SID lives inside @p sd, which the caller frees with LocalFree().
+ *
+ * @return 0 on success, -1 on error (sets errno).
+ */
+static int w_win_get_owner(HANDLE hFile, PSID * owner, PSECURITY_DESCRIPTOR * sd) {
+    DWORD rc = GetSecurityInfo(hFile, SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION, owner, NULL, NULL, NULL, sd);
+
+    if (rc != ERROR_SUCCESS) {
+        errno = w_win32_to_errno(rc);
+        return -1;
+    }
+
+    // The call can succeed with no owner recorded; that cannot be trusted.
+    if (*owner == NULL) {
+        LocalFree(*sd);
+        errno = EPERM;
+        return -1;
+    }
+
+    return 0;
+}
+
+#define W_VETTED_WIN_TRUSTED_SIDS 3
+
+/**
+ * Builds the SIDs of the owners only administrators can be: SYSTEM, BUILTIN\Administrators and
+ * NT SERVICE\TrustedInstaller. Release them with w_win_free_trusted_sids().
+ *
+ * @return 0 on success, -1 on error (sets errno).
+ */
+static int w_win_init_trusted_sids(PSID sids[W_VETTED_WIN_TRUSTED_SIDS]) {
+    SID_IDENTIFIER_AUTHORITY nt = SECURITY_NT_AUTHORITY;
+
+    if (AllocateAndInitializeSid(&nt, 1, SECURITY_LOCAL_SYSTEM_RID, 0, 0, 0, 0, 0, 0, 0, &sids[0]) &&
+        AllocateAndInitializeSid(&nt, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &sids[1]) &&
+        AllocateAndInitializeSid(&nt, 6, 80, 956008885, 3418522649, 1831038044, 1853292631, 2271478464, 0, 0, &sids[2])) {
+        return 0;
+    }
+
+    errno = w_win32_to_errno(GetLastError());
+    return -1;
+}
+
+static void w_win_free_trusted_sids(PSID sids[W_VETTED_WIN_TRUSTED_SIDS]) {
+    int i;
+
+    for (i = 0; i < W_VETTED_WIN_TRUSTED_SIDS; i++) {
+        if (sids[i]) {
+            FreeSid(sids[i]);
+        }
+    }
+}
+
+// netapi32 is loaded at run time so this file needs no extra link dependency.
+typedef NET_API_STATUS (WINAPI * NetLocalGroupGetMembers_t)(LPCWSTR, LPCWSTR, DWORD, LPBYTE *, DWORD, LPDWORD,
+                                                            LPDWORD, PDWORD_PTR);
+typedef NET_API_STATUS (WINAPI * NetApiBufferFree_t)(LPVOID);
+
+// The members of the local Administrators group, used to trust a reparse point an administrator owns.
+typedef struct w_win_admins {
+    HMODULE lib;
+    LOCALGROUP_MEMBERS_INFO_0 * members;
+    DWORD count;
+    NetApiBufferFree_t free_buffer;
+} w_win_admins_t;
+
+/**
+ * Loads the SIDs of the direct members of the local Administrators group (found via its well-known SID, so
+ * it works on localized systems); groups nested inside it are not expanded. Any failure leaves the list
+ * empty, which only makes the trust check stricter. Release with w_win_admins_free().
+ */
+static void w_win_admins_load(w_win_admins_t * admins) {
+    SID_IDENTIFIER_AUTHORITY nt = SECURITY_NT_AUTHORITY;
+    NetLocalGroupGetMembers_t get_members;
+    PSID admins_sid = NULL;
+    wchar_t lib_path[MAX_PATH];
+    wchar_t name[256];
+    wchar_t domain[256];
+    DWORD name_len = 256;
+    DWORD domain_len = 256;
+    SID_NAME_USE use;
+    LPBYTE buffer = NULL;
+    DWORD read = 0;
+    DWORD total = 0;
+    UINT dir_len;
+    NET_API_STATUS rc;
+
+    memset(admins, 0, sizeof(*admins));
+
+    // Load from System32 by full path, not through the default DLL search order.
+    dir_len = GetSystemDirectoryW(lib_path, MAX_PATH);
+
+    if (dir_len == 0 || dir_len >= MAX_PATH - wcslen(L"\\netapi32.dll") - 1) {
+        return;
+    }
+
+    wcscat(lib_path, L"\\netapi32.dll");
+    admins->lib = LoadLibraryW(lib_path);
+
+    if (admins->lib == NULL) {
+        return;
+    }
+
+    get_members = (NetLocalGroupGetMembers_t) GetProcAddress(admins->lib, "NetLocalGroupGetMembers");
+    admins->free_buffer = (NetApiBufferFree_t) GetProcAddress(admins->lib, "NetApiBufferFree");
+
+    if (get_members == NULL || admins->free_buffer == NULL) {
+        FreeLibrary(admins->lib);
+        admins->lib = NULL;
+        return;
+    }
+
+    if (!AllocateAndInitializeSid(&nt, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0,
+                                  &admins_sid)) {
+        return;
+    }
+
+    if (!LookupAccountSidW(NULL, admins_sid, name, &name_len, domain, &domain_len, &use)) {
+        FreeSid(admins_sid);
+        return;
+    }
+
+    FreeSid(admins_sid);
+
+    // ERROR_MORE_DATA still returns a usable, if partial, list.
+    rc = get_members(NULL, name, 0, &buffer, MAX_PREFERRED_LENGTH, &read, &total, NULL);
+
+    if (rc != NERR_Success && rc != ERROR_MORE_DATA) {
+        if (buffer != NULL) {
+            admins->free_buffer(buffer);
+        }
+        return;
+    }
+
+    admins->members = (LOCALGROUP_MEMBERS_INFO_0 *) buffer;
+    admins->count = read;
+}
+
+static void w_win_admins_free(w_win_admins_t * admins) {
+    if (admins->members != NULL && admins->free_buffer != NULL) {
+        admins->free_buffer(admins->members);
+    }
+
+    if (admins->lib != NULL) {
+        FreeLibrary(admins->lib);
+    }
+
+    memset(admins, 0, sizeof(*admins));
+}
+
+/**
+ * True if @p sid is a direct member of the local Administrators group loaded in @p admins.
+ */
+static bool w_win_sid_is_admin(PSID sid, const w_win_admins_t * admins) {
+    DWORD i;
+
+    if (sid == NULL || admins == NULL || admins->members == NULL) {
+        return false;
+    }
+
+    for (i = 0; i < admins->count; i++) {
+        PSID member = admins->members[i].lgrmi0_sid;
+
+        if (member != NULL && IsValidSid(member) && EqualSid(sid, member)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * An owner is trusted when it is one of @p trusted, a member of the local Administrators group, or the owner
+ * of the file finally read: a link its own owner made grants nothing that owner could not already read. A
+ * missing owner is never trusted. @p admins may be NULL, which skips the group-membership check.
+ *
+ * Not declared in file_op.h: given external linkage only so the unit tests can reach it.
+ */
+bool w_win_owner_trusted(PSID owner, PSID file_owner, PSID trusted[W_VETTED_WIN_TRUSTED_SIDS],
+                         const w_win_admins_t * admins) {
+    int i;
+
+    if (!owner || !file_owner) {
+        return false;
+    }
+
+    if (EqualSid(owner, file_owner)) {
+        return true;
+    }
+
+    for (i = 0; i < W_VETTED_WIN_TRUSTED_SIDS; i++) {
+        if (EqualSid(owner, trusted[i])) {
+            return true;
+        }
+    }
+
+    return w_win_sid_is_admin(owner, admins);
+}
+
+/**
+ * Reports whether a principal other than a trusted one may re-point or replace @p hReparse, which a trusted
+ * owner alone does not prevent on Windows. The Windows counterpart of the POSIX "a link is trusted only in a
+ * directory only root can write to" rule; the owner's own implicit rights are covered by w_win_owner_trusted().
+ *
+ * Deny ACEs are not subtracted and inherit-only ACEs are skipped, so the decision errs toward rejecting; an
+ * allow ACE that cannot be parsed, or any DACL read failure, counts as writable.
+ *
+ * @return true if an untrusted principal may modify it (so it must not be trusted), false otherwise.
+ */
+static bool w_win_reparse_untrusted_writable(HANDLE hReparse, PSID file_owner, PSID trusted[W_VETTED_WIN_TRUSTED_SIDS],
+                                              const w_win_admins_t * admins) {
+    PSECURITY_DESCRIPTOR sd = NULL;
+    PACL dacl = NULL;
+    ACL_SIZE_INFORMATION size_info;
+    GENERIC_MAPPING file_map = {FILE_GENERIC_READ, FILE_GENERIC_WRITE, FILE_GENERIC_EXECUTE, FILE_ALL_ACCESS};
+    const DWORD modify_mask = FILE_WRITE_DATA | FILE_APPEND_DATA | FILE_WRITE_EA | FILE_WRITE_ATTRIBUTES |
+                              DELETE | WRITE_DAC | WRITE_OWNER;
+    SID_IDENTIFIER_AUTHORITY creator_authority = SECURITY_CREATOR_SID_AUTHORITY;
+    PSID creator_owner = NULL;
+    bool writable = false;
+    DWORD i;
+
+    if (GetSecurityInfo(hReparse, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &dacl, NULL, &sd) !=
+        ERROR_SUCCESS) {
+        return true;
+    }
+
+    // A NULL (not empty) DACL grants everyone full access.
+    if (dacl == NULL || !GetAclInformation(dacl, &size_info, sizeof(size_info), AclSizeInformation)) {
+        LocalFree(sd);
+        return true;
+    }
+
+    // CREATOR OWNER on an applied ACE resolves to the owner, already covered by w_win_owner_trusted().
+    AllocateAndInitializeSid(&creator_authority, 1, SECURITY_CREATOR_OWNER_RID, 0, 0, 0, 0, 0, 0, 0, &creator_owner);
+
+    for (i = 0; i < size_info.AceCount; i++) {
+        ACCESS_ALLOWED_ACE * ace = NULL;
+        PSID ace_sid;
+        DWORD mask;
+
+        if (!GetAce(dacl, i, (void **)&ace)) {
+            writable = true;
+            break;
+        }
+
+        // Inherit-only ACEs do not apply to this object.
+        if (ace->Header.AceFlags & INHERIT_ONLY_ACE) {
+            continue;
+        }
+
+        if (ace->Header.AceType != ACCESS_ALLOWED_ACE_TYPE) {
+            // A plain allow ACE is the only kind parsed here. Deny, audit and system ACEs grant nothing and
+            // are skipped; an allow ACE of another kind (compound, object or callback) cannot be read, so fail
+            // closed.
+            if (ace->Header.AceType == ACCESS_ALLOWED_COMPOUND_ACE_TYPE ||
+                ace->Header.AceType == ACCESS_ALLOWED_OBJECT_ACE_TYPE ||
+                ace->Header.AceType == ACCESS_ALLOWED_CALLBACK_ACE_TYPE ||
+                ace->Header.AceType == ACCESS_ALLOWED_CALLBACK_OBJECT_ACE_TYPE) {
+                writable = true;
+                break;
+            }
+            continue;
+        }
+
+        mask = ace->Mask;
+        MapGenericMask(&mask, &file_map);
+
+        if (!(mask & modify_mask)) {
+            continue;
+        }
+
+        ace_sid = (PSID) &ace->SidStart;
+
+        if (!IsValidSid(ace_sid)) {
+            writable = true;
+            break;
+        }
+
+        if (w_win_owner_trusted(ace_sid, file_owner, trusted, admins) ||
+            (creator_owner && EqualSid(ace_sid, creator_owner))) {
+            continue;
+        }
+
+        writable = true;
+        break;
+    }
+
+    if (creator_owner) {
+        FreeSid(creator_owner);
+    }
+
+    LocalFree(sd);
+    return writable;
+}
+
+// A path cannot have more components than half its length (each is at least a separator and one character).
+#define W_VETTED_WIN_MAX_COMPONENTS (W_VETTED_WIN_PATH_MAX / 2)
+
+/**
+ * Handles kept open on the directories and links of the path being walked. Held without FILE_SHARE_DELETE
+ * so none of them can be renamed, deleted or replaced between the check and the caller's final comparison.
+ * The caller releases them all at once with w_win_held_release().
+ */
+typedef struct {
+    HANDLE handles[W_VETTED_WIN_MAX_COMPONENTS];
+    size_t count;
+} w_win_held_t;
+
+static void w_win_held_release(w_win_held_t * held) {
+    while (held->count > 0) {
+        CloseHandle(held->handles[--held->count]);
+    }
+}
+
+/* The REPARSE_DATA_BUFFER of the DDK's ntifs.h, which the user-mode MinGW headers do not provide. The
+ * Microsoft field names are kept so the layout can be checked against the documentation. */
+typedef struct {
+    DWORD ReparseTag;
+    WORD ReparseDataLength;
+    WORD Reserved;
+    union {
+        struct {
+            WORD SubstituteNameOffset;
+            WORD SubstituteNameLength;
+            WORD PrintNameOffset;
+            WORD PrintNameLength;
+            DWORD Flags;
+            WCHAR PathBuffer[1];
+        } SymbolicLinkReparseBuffer;
+        struct {
+            WORD SubstituteNameOffset;
+            WORD SubstituteNameLength;
+            WORD PrintNameOffset;
+            WORD PrintNameLength;
+            WCHAR PathBuffer[1];
+        } MountPointReparseBuffer;
+    } u;
+} w_win_reparse_data_t;
+
+#define W_VETTED_WIN_REPARSE_HEADER 8   // ReparseTag + ReparseDataLength + Reserved.
+
+#ifndef FSCTL_GET_REPARSE_POINT
+#define FSCTL_GET_REPARSE_POINT CTL_CODE(FILE_DEVICE_FILE_SYSTEM, 42, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#endif
+#ifndef MAXIMUM_REPARSE_DATA_BUFFER_SIZE
+#define MAXIMUM_REPARSE_DATA_BUFFER_SIZE (16 * 1024)
+#endif
+#ifndef IO_REPARSE_TAG_MOUNT_POINT
+#define IO_REPARSE_TAG_MOUNT_POINT 0xA0000003L
+#endif
+#ifndef IO_REPARSE_TAG_SYMLINK
+#define IO_REPARSE_TAG_SYMLINK 0xA000000CL
+#endif
+#ifndef SYMLINK_FLAG_RELATIVE
+#define SYMLINK_FLAG_RELATIVE 1
+#endif
+#ifndef IsReparseTagMicrosoft
+#define IsReparseTagMicrosoft(tag) (((DWORD)(tag) & 0x80000000) != 0)
+#endif
+#ifndef IsReparseTagNameSurrogate
+#define IsReparseTagNameSurrogate(tag) (((DWORD)(tag) & 0x20000000) != 0)
+#endif
+#ifndef ERROR_NOT_A_REPARSE_POINT
+#define ERROR_NOT_A_REPARSE_POINT 4390L
+#endif
+
+/**
+ * True for a name-preserving reparse point (deduplication, WOF, cloud files) that redirects nothing and needs no
+ * vetting. Not declared in file_op.h: given external linkage only so the unit tests can reach it.
+ */
+bool w_win_reparse_tag_is_plain(DWORD tag) {
+    return IsReparseTagMicrosoft(tag) && !IsReparseTagNameSurrogate(tag);
+}
+
+/**
+ * Length of the volume root at the start of a prefix-less path: 3 for "X:\", 45 for "Volume{GUID}\", or 0
+ * for anything else. The second form is how a mounted-folder junction names its target.
+ */
+static size_t w_win_root_len(const wchar_t * p) {
+    if (((p[0] >= L'A' && p[0] <= L'Z') || (p[0] >= L'a' && p[0] <= L'z')) && p[1] == L':' && p[2] == L'\\') {
+        return 3;
+    }
+
+    if (!wcsncmp(p, L"Volume{", 7) && wcslen(p) >= 45 && p[43] == L'}' && p[44] == L'\\') {
+        return 45;
+    }
+
+    return 0;
+}
+
+/**
+ * Appends the backslash-separated components of @p rel to @p out, whose first @p root characters are its
+ * volume root. "." is dropped and ".." pops a component but never above the root, matching how the I/O
+ * manager re-parses a relative reparse target by name. A ':' in a component is refused, so no stream or
+ * drive-relative name can be formed. GetFullPathNameW is deliberately not used: it would also strip
+ * trailing dots and spaces, which the kernel does not do to a reparse target.
+ *
+ * @return 0 on success, -1 on error (sets errno).
+ */
+static int w_win_append_lexical(wchar_t * out, size_t root, const wchar_t * rel) {
+    size_t out_len = wcslen(out);
+    const size_t rel_len = wcslen(rel);
+    size_t i = 0;
+
+    while (i < rel_len) {
+        size_t start, seg_len, k;
+
+        while (i < rel_len && rel[i] == L'\\') {
+            i++;
+        }
+
+        start = i;
+
+        while (i < rel_len && rel[i] != L'\\') {
+            i++;
+        }
+
+        seg_len = i - start;
+
+        if (seg_len == 0 || (seg_len == 1 && rel[start] == L'.')) {
+            continue;
+        }
+
+        if (seg_len == 2 && rel[start] == L'.' && rel[start + 1] == L'.') {
+            while (out_len > root && out[out_len - 1] != L'\\') {
+                out_len--;
+            }
+
+            if (out_len > root) {
+                out_len--;
+            }
+
+            continue;
+        }
+
+        for (k = 0; k < seg_len; k++) {
+            if (rel[start + k] == L':') {
+                errno = EPERM;
+                return -1;
+            }
+        }
+
+        if (out_len > 0 && out[out_len - 1] != L'\\') {
+            if (out_len + 1 >= W_VETTED_WIN_PATH_MAX) {
+                errno = ENAMETOOLONG;
+                return -1;
+            }
+
+            out[out_len++] = L'\\';
+        }
+
+        if (out_len + seg_len >= W_VETTED_WIN_PATH_MAX) {
+            errno = ENAMETOOLONG;
             return -1;
         }
 
-        if (!w_vet_link_count(&link_stat, &link_dir_stat)) {
+        wmemcpy(out + out_len, rel + start, seg_len);
+        out_len += seg_len;
+    }
+
+    out[out_len] = L'\0';
+    return 0;
+}
+
+/**
+ * Parses @p data (@p got bytes, as returned by FSCTL_GET_REPARSE_POINT) and, for a junction or symlink,
+ * rewrites @p path to the target joined with the components that followed the link (@p end is the offset
+ * in @p path just past the link). One level only: no reparse point inside the target is resolved, so the
+ * walk can vet each one in turn. Not declared in file_op.h: given external linkage only so the unit tests
+ * can feed it crafted buffers.
+ *
+ * @return 1 if @p path was rewritten, 0 if the reparse point does not redirect the name (nothing to
+ *         follow), -1 on error or rejection (sets errno).
+ */
+int w_win_reparse_target(const w_win_reparse_data_t * data, DWORD got, wchar_t * path, size_t end) {
+    wchar_t next[W_VETTED_WIN_PATH_MAX];
+    wchar_t name[W_VETTED_WIN_PATH_MAX];
+    const WCHAR * base;
+    DWORD tag;
+    size_t fixed, root, start, count;
+    WORD offset, length;
+    bool relative = false;
+
+    if (got < W_VETTED_WIN_REPARSE_HEADER || (DWORD)W_VETTED_WIN_REPARSE_HEADER + data->ReparseDataLength > got) {
+        errno = EPERM;
+        return -1;
+    }
+
+    tag = data->ReparseTag;
+
+    // fixed: bytes of fixed fields before PathBuffer in the union variant -- four WORDs for a mount point,
+    // four WORDs plus the Flags DWORD for a symlink -- so ReparseDataLength - fixed is the PathBuffer size.
+    if (tag == (DWORD)IO_REPARSE_TAG_MOUNT_POINT) {
+        fixed = 8;
+        offset = data->u.MountPointReparseBuffer.SubstituteNameOffset;
+        length = data->u.MountPointReparseBuffer.SubstituteNameLength;
+        base = data->u.MountPointReparseBuffer.PathBuffer;
+    } else if (tag == (DWORD)IO_REPARSE_TAG_SYMLINK) {
+        fixed = 12;
+        offset = data->u.SymbolicLinkReparseBuffer.SubstituteNameOffset;
+        length = data->u.SymbolicLinkReparseBuffer.SubstituteNameLength;
+        base = data->u.SymbolicLinkReparseBuffer.PathBuffer;
+        relative = (data->u.SymbolicLinkReparseBuffer.Flags & SYMLINK_FLAG_RELATIVE) != 0;
+    } else if (w_win_reparse_tag_is_plain(tag)) {
+        // Deduplication, cloud files and the like keep the name: there is nothing to follow.
+        return 0;
+    } else {
+        // It redirects the name in a way that cannot be read one level at a time.
+        errno = EPERM;
+        return -1;
+    }
+
+    count = (size_t)length / sizeof(WCHAR);
+
+    if (data->ReparseDataLength < fixed || ((offset | length) & 1) || length == 0 ||
+        (size_t)offset + length > (size_t)data->ReparseDataLength - fixed || count >= W_VETTED_WIN_PATH_MAX) {
+        errno = EPERM;
+        return -1;
+    }
+
+    wmemcpy(name, base + offset / sizeof(WCHAR), count);
+    name[count] = L'\0';
+
+    if (wcslen(name) != count) {
+        // An embedded NUL would truncate the name silently.
+        errno = EPERM;
+        return -1;
+    }
+
+    if (relative) {
+        // Relative to the directory holding the link, or to the volume root for a leading backslash.
+        root = w_win_root_len(path);
+
+        for (start = end; start > root && path[start - 1] != L'\\'; start--);
+
+        wmemcpy(next, path, start);
+        next[start > root ? start - 1 : root] = L'\0';
+
+        if (name[0] == L'\\') {
+            next[root] = L'\0';
+        }
+
+        if (w_win_append_lexical(next, root, name) < 0) {
+            return -1;
+        }
+    } else {
+        // An absolute target is an NT path ("\??\X:\..."); only a local volume is followed.
+        if (wcsncmp(name, L"\\??\\", 4) || (root = w_win_root_len(name + 4)) == 0) {
             errno = EPERM;
             return -1;
         }
 
-        if (link_stat.st_uid != 0 && !w_vet_root_only_dir(&link_dir_stat)) {
-            link_uid = link_stat.st_uid;
-            has_link_uid = true;
+        wmemcpy(next, name + 4, root);
+        next[root] = L'\0';
+
+        if (w_win_append_lexical(next, root, name + 4 + root) < 0) {
+            return -1;
         }
     }
 
-    if (fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC), fd < 0) {
+    if (w_win_append_lexical(next, root, path + end) < 0) {
         return -1;
     }
 
-    // The directory rules need the file's real location, and the inode checks reject a path changed meanwhile.
-    if (fstat(fd, &fd_stat) < 0 || lstat(path, &now) < 0 || !realpath(path, resolved) ||
-        w_stat_parent_dir(resolved, &dir_stat) < 0) {
+    wcscpy(path, next);
+    return 1;
+}
+
+typedef union {
+    w_win_reparse_data_t data;
+    BYTE raw[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+} w_win_reparse_buf_t;
+
+/**
+ * Reads the reparse data of @p hLink, a reparse point already held, with FSCTL_GET_REPARSE_POINT. Issued on the
+ * held handle, so the bytes read belong to the exact object about to be vetted.
+ *
+ * @return 0 on success, -1 on error (sets errno).
+ */
+static int w_win_read_reparse_point(HANDLE hLink, w_win_reparse_buf_t * buf, DWORD * got) {
+    *got = 0;
+
+    if (!DeviceIoControl(hLink, FSCTL_GET_REPARSE_POINT, NULL, 0, buf, sizeof(*buf), got, NULL)) {
+        // Held without delete sharing, it can only have stopped being a reparse point in place.
+        errno = GetLastError() == ERROR_NOT_A_REPARSE_POINT ? EAGAIN : EPERM;
+        return -1;
+    }
+
+    if (*got < W_VETTED_WIN_REPARSE_HEADER) {
+        errno = EPERM;
+        return -1;
+    }
+
+    return 0;
+}
+
+// ntdll's NtCreateFile() is the only call that opens a name relative to a directory handle, as openat() does; it
+// is not in the MinGW import libraries, so it is loaded at run time and its types are declared here.
+typedef struct {
+    USHORT Length;
+    USHORT MaximumLength;
+    PWSTR Buffer;
+} w_nt_unicode_t;
+
+typedef struct {
+    ULONG Length;
+    HANDLE RootDirectory;
+    w_nt_unicode_t * ObjectName;
+    ULONG Attributes;
+    PVOID SecurityDescriptor;
+    PVOID SecurityQualityOfService;
+} w_nt_attributes_t;
+
+typedef struct {
+    LONG Status;
+    ULONG_PTR Information;
+} w_nt_iosb_t;
+
+typedef LONG(NTAPI * w_nt_create_file_t)(PHANDLE, ACCESS_MASK, w_nt_attributes_t *, w_nt_iosb_t *, PLARGE_INTEGER, ULONG,
+                                         ULONG, ULONG, ULONG, PVOID, ULONG);
+typedef ULONG(NTAPI * w_nt_status_to_dos_t)(LONG);
+
+#define W_NT_OBJ_CASE_INSENSITIVE 0x40
+#define W_NT_FILE_OPEN 1
+#define W_NT_FILE_SYNCHRONOUS_IO_NONALERT 0x20
+#define W_NT_FILE_OPEN_FOR_BACKUP_INTENT 0x4000
+#define W_NT_FILE_OPEN_REPARSE_POINT 0x200000
+#define W_NT_STATUS_OBJECT_NAME_INVALID ((LONG) 0xC0000033)
+
+/**
+ * Opens one path component. With a held @p parent directory the name is looked up relative to that handle, which is
+ * bound to the directory itself: a reparse point set on it afterwards cannot redirect the lookup, as a lookup by
+ * full path can. Without one, @p full_path is opened by name. Reparse points are not followed either way.
+ *
+ * @return The handle, or INVALID_HANDLE_VALUE with the last error set as CreateFileW() would.
+ */
+static HANDLE w_win_open_component(HANDLE parent, const wchar_t * full_path, const wchar_t * name, size_t name_len,
+                                   DWORD access, DWORD share) {
+    static w_nt_create_file_t create_file = NULL;
+    static w_nt_status_to_dos_t status_to_dos = NULL;
+    HMODULE ntdll;
+    w_nt_unicode_t unicode;
+    w_nt_attributes_t attributes;
+    w_nt_iosb_t iosb;
+    HANDLE handle = INVALID_HANDLE_VALUE;
+    LONG status;
+
+    if (parent == NULL) {
+        return CreateFileW(full_path, access, share, NULL, OPEN_EXISTING,
+                           FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+    }
+
+    // Resolved once; a concurrent first call resolves the same addresses.
+    if (create_file == NULL || status_to_dos == NULL) {
+        ntdll = GetModuleHandleW(L"ntdll.dll");
+        create_file = ntdll ? (w_nt_create_file_t) GetProcAddress(ntdll, "NtCreateFile") : NULL;
+        status_to_dos = ntdll ? (w_nt_status_to_dos_t) GetProcAddress(ntdll, "RtlNtStatusToDosError") : NULL;
+    }
+
+    if (name_len == 0 || name_len >= W_VETTED_WIN_PATH_MAX) {
+        SetLastError(ERROR_INVALID_NAME);
+        return INVALID_HANDLE_VALUE;
+    }
+
+    if (create_file == NULL || status_to_dos == NULL) {
+        SetLastError(ERROR_PROC_NOT_FOUND);
+        return INVALID_HANDLE_VALUE;
+    }
+
+    // A counted string, so the name is used in place within the longer path.
+    unicode.Length = (USHORT)(name_len * sizeof(wchar_t));
+    unicode.MaximumLength = unicode.Length;
+    unicode.Buffer = (PWSTR) name;
+
+    memset(&attributes, 0, sizeof(attributes));
+    attributes.Length = sizeof(attributes);
+    attributes.RootDirectory = parent;
+    attributes.ObjectName = &unicode;
+    attributes.Attributes = W_NT_OBJ_CASE_INSENSITIVE;
+
+    status = create_file(&handle, access | SYNCHRONIZE, &attributes, &iosb, NULL, 0, share, W_NT_FILE_OPEN,
+                         W_NT_FILE_SYNCHRONOUS_IO_NONALERT | W_NT_FILE_OPEN_FOR_BACKUP_INTENT |
+                         W_NT_FILE_OPEN_REPARSE_POINT, NULL, 0);
+
+    if (status < 0 || handle == INVALID_HANDLE_VALUE) {
+        // Invalid relative to the parent means it was turned into a reparse point, or the name is one CreateFileW
+        // would normalise: retry rather than call the path bad.
+        SetLastError(status == W_NT_STATUS_OBJECT_NAME_INVALID ? ERROR_PATH_NOT_FOUND :
+                     (status < 0 ? status_to_dos(status) : ERROR_GEN_FAILURE));
+        return INVALID_HANDLE_VALUE;
+    }
+
+    return handle;
+}
+
+/**
+ * Walks @p full, an absolute normalized path, one component at a time without following reparse points,
+ * and checks that every junction or symlink on it is trusted. Each junction or symlink met is vetted, then
+ * its target is read one level only and the walk continues from that target with the components that
+ * followed the link, so the reparse points inside a link's destination are vetted in turn; no link is ever
+ * followed before it is vetted. At most W_VETTED_MAX_SYMLINKS links are followed. Each directory and each
+ * link on the way is kept open in @p held (no FILE_SHARE_DELETE) so it cannot be renamed or deleted until the
+ * caller finishes vetting, and each component after the first (and after each followed link) is opened
+ * relative to the directory held before it, so a reparse point set on that directory later cannot redirect
+ * the lookup. The final plain file is not held, to keep rotation working; it is matched against
+ * @p file_info, the file already opened, instead. A component that vanishes, changes type or is in a
+ * sharing violation means the path is changing: EAGAIN, not ENOENT. The caller releases @p held on every
+ * path.
+ *
+ * @return 0 if every reparse point is trusted, -1 on error or rejection (sets errno).
+ */
+static int w_win_check_reparse_points(const wchar_t * full, const BY_HANDLE_FILE_INFORMATION * file_info,
+                                      PSID file_owner, PSID trusted_sids[W_VETTED_WIN_TRUSTED_SIDS],
+                                      const w_win_admins_t * admins, w_win_held_t * held) {
+    wchar_t component[W_VETTED_WIN_PATH_MAX];
+    wchar_t path[W_VETTED_WIN_PATH_MAX];
+    const size_t prefix_len = wcslen(W_VETTED_WIN_EXTENDED_PREFIX);
+    size_t len = wcslen(full);
+    size_t root;
+    size_t end;
+    size_t name_start;
+    HANDLE parent = NULL;
+    int hops = 0;
+    int rc;
+
+    if (prefix_len + len >= W_VETTED_WIN_PATH_MAX) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    wcscpy(path, full);
+    root = w_win_root_len(path);
+
+    if (root == 0) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    name_start = root;
+
+    for (end = root; end <= len; end++) {
+        BY_HANDLE_FILE_INFORMATION info;
+        PSECURITY_DESCRIPTOR sd = NULL;
+        PSID owner = NULL;
+        HANDLE hComponent;
+        w_win_reparse_buf_t reparse;
+        DWORD reparse_len;
+        DWORD tag;
+        bool last;
+        bool trusted;
+
+        if (path[end] != L'\\' && path[end] != L'\0') {
+            continue;
+        }
+
+        last = path[end] == L'\0';
+
+        wcscpy(component, W_VETTED_WIN_EXTENDED_PREFIX);
+        wcsncat(component, path, end);
+
+        if (last) {
+            // Probe the last entry without holding it: a plain file must stay rotatable, so it is matched
+            // by identity; a link at the last hop is pinned and vetted below like any other.
+            hComponent = w_win_open_component(parent, component, path + name_start, end - name_start,
+                                              READ_CONTROL | FILE_READ_ATTRIBUTES,
+                                              FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE);
+
+            if (hComponent == INVALID_HANDLE_VALUE) {
+                errno = w_win_race_errno(GetLastError());
+                return -1;
+            }
+
+            if (!GetFileInformationByHandle(hComponent, &info)) {
+                errno = w_win32_to_errno(GetLastError());
+                CloseHandle(hComponent);
+                return -1;
+            }
+
+            if (!(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+                // The prefix is pinned, so this entry must be the file already opened.
+                bool same = info.dwVolumeSerialNumber == file_info->dwVolumeSerialNumber &&
+                            info.nFileIndexHigh == file_info->nFileIndexHigh &&
+                            info.nFileIndexLow == file_info->nFileIndexLow;
+                CloseHandle(hComponent);
+
+                if (!same) {
+                    errno = EAGAIN;
+                    return -1;
+                }
+
+                continue;
+            }
+
+            CloseHandle(hComponent);
+        }
+
+        // Pin it: reopened without FILE_SHARE_DELETE so it cannot change while held. FILE_TRAVERSE makes the share
+        // mode apply; attribute and security access alone would leave the component renamable.
+        hComponent = w_win_open_component(parent, component, path + name_start, end - name_start,
+                                          READ_CONTROL | FILE_READ_ATTRIBUTES | FILE_TRAVERSE,
+                                          FILE_SHARE_READ | FILE_SHARE_WRITE);
+
+        if (hComponent == INVALID_HANDLE_VALUE) {
+            errno = w_win_race_errno(GetLastError());
+            return -1;
+        }
+
+        if (!GetFileInformationByHandle(hComponent, &info)) {
+            errno = w_win32_to_errno(GetLastError());
+            CloseHandle(hComponent);
+            return -1;
+        }
+
+        if (last && !(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+            // The last-hop link turned into a plain file between the two opens: the path is changing.
+            CloseHandle(hComponent);
+            errno = EAGAIN;
+            return -1;
+        }
+
+        if (held->count >= W_VETTED_WIN_MAX_COMPONENTS) {
+            errno = ENAMETOOLONG;
+            CloseHandle(hComponent);
+            return -1;
+        }
+
+        // Held from here on: the caller releases it, so the error paths below must not close it.
+        held->handles[held->count++] = hComponent;
+
+        if (!(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+            // Next component is opened relative to this directory.
+            parent = hComponent;
+            name_start = end + 1;
+            continue;
+        }
+
+        if (w_win_read_reparse_point(hComponent, &reparse, &reparse_len) < 0) {
+            return -1;
+        }
+
+        tag = reparse.data.ReparseTag;
+
+        if (w_win_reparse_tag_is_plain(tag)) {
+            // Name-preserving: nothing to vet or follow; the last one must still be the opened file.
+            if (last && (info.dwVolumeSerialNumber != file_info->dwVolumeSerialNumber ||
+                         info.nFileIndexHigh != file_info->nFileIndexHigh ||
+                         info.nFileIndexLow != file_info->nFileIndexLow)) {
+                errno = EAGAIN;
+                return -1;
+            }
+
+            parent = (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? hComponent : NULL;
+            name_start = end + 1;
+            continue;
+        }
+
+        if (w_win_get_owner(hComponent, &owner, &sd) < 0) {
+            return -1;
+        }
+
+        // Ownership alone is not enough: anyone with write access can re-point a junction.
+        trusted = w_win_owner_trusted(owner, file_owner, trusted_sids, admins) &&
+                  !w_win_reparse_untrusted_writable(hComponent, file_owner, trusted_sids, admins);
+        LocalFree(sd);
+
+        if (!trusted) {
+            errno = EPERM;
+            return -1;
+        }
+
+        // Walk on from the target so reparse points inside it are vetted too, not followed unseen.
+        rc = w_win_reparse_target(&reparse.data, reparse_len, path, end);
+
+        if (rc < 0) {
+            return -1;
+        }
+
+        parent = (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? hComponent : NULL;
+        name_start = end + 1;
+
+        if (rc > 0) {
+            // Bounds a link cycle.
+            if (++hops > W_VETTED_MAX_SYMLINKS) {
+                errno = EPERM;
+                return -1;
+            }
+
+            len = wcslen(path);
+            root = w_win_root_len(path);
+
+            if (prefix_len + len >= W_VETTED_WIN_PATH_MAX) {
+                errno = ENAMETOOLONG;
+                return -1;
+            }
+
+            // A target with no volume root, or one that ends on a root rather than a file, is not valid.
+            if (root == 0 || len <= root) {
+                errno = EINVAL;
+                return -1;
+            }
+
+            // Resume at the target's first component; the loop's end++ advances past the root slot.
+            end = root - 1;
+            name_start = root;
+            parent = NULL;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * A hard link can be made by anyone who can write to the directory holding it, so a file with more than one
+ * link is trusted only when its directory is owned by a trusted account and no untrusted principal can write
+ * to it: the Windows counterpart of w_vet_link_count(). A path with no drive or volume root (such as the NT name
+ * of a folder-mounted volume) cannot be told apart from a network one, so it is not trusted.
+ *
+ * @param hFile The file already opened.
+ * @param final_path Its final path, as returned by w_win_final_path().
+ * @return true if the file may be read, false otherwise (sets errno).
+ */
+static bool w_win_hard_link_dir_trusted(HANDLE hFile, const wchar_t * final_path) {
+    wchar_t dir[W_VETTED_WIN_PATH_MAX];
+    PSID trusted_sids[W_VETTED_WIN_TRUSTED_SIDS] = {NULL};
+    PSECURITY_DESCRIPTOR file_sd = NULL;
+    PSECURITY_DESCRIPTOR dir_sd = NULL;
+    PSID file_owner = NULL;
+    PSID dir_owner = NULL;
+    w_win_admins_t admins;
+    HANDLE hDir;
+    wchar_t * slash;
+    size_t root = w_win_root_len(final_path);
+    bool trusted = false;
+    int saved_errno = EPERM;
+
+    if (root == 0 || wcslen(final_path) + wcslen(W_VETTED_WIN_EXTENDED_PREFIX) >= W_VETTED_WIN_PATH_MAX) {
+        errno = EPERM;
+        return false;
+    }
+
+    wcscpy(dir, W_VETTED_WIN_EXTENDED_PREFIX);
+    wcscat(dir, final_path);
+    slash = wcsrchr(dir + wcslen(W_VETTED_WIN_EXTENDED_PREFIX), L'\\');
+
+    // A file in a root keeps the root's trailing separator.
+    if (slash == NULL || (size_t)(slash - dir) < wcslen(W_VETTED_WIN_EXTENDED_PREFIX) + root) {
+        slash = dir + wcslen(W_VETTED_WIN_EXTENDED_PREFIX) + root - 1;
+    }
+
+    slash[1] = L'\0';
+
+    hDir = CreateFileW(dir, READ_CONTROL | FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                       NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+    if (hDir == INVALID_HANDLE_VALUE) {
+        errno = w_win_race_errno(GetLastError());
+        return false;
+    }
+
+    if (w_win_init_trusted_sids(trusted_sids) < 0 || w_win_get_owner(hFile, &file_owner, &file_sd) < 0 ||
+        w_win_get_owner(hDir, &dir_owner, &dir_sd) < 0) {
+        saved_errno = errno;
+        goto end;
+    }
+
+    w_win_admins_load(&admins);
+    trusted = w_win_owner_trusted(dir_owner, file_owner, trusted_sids, &admins) &&
+              !w_win_reparse_untrusted_writable(hDir, file_owner, trusted_sids, &admins);
+    w_win_admins_free(&admins);
+
+end:
+    CloseHandle(hDir);
+    LocalFree(file_sd);
+    LocalFree(dir_sd);
+    w_win_free_trusted_sids(trusted_sids);
+    errno = trusted ? 0 : saved_errno;
+    return trusted;
+}
+
+/**
+ * Opens @p path for reading, following reparse points, and vets what was reached: a disk file, on a
+ * local volume, with every junction or symlink on the way, including those inside the destination of
+ * another link, trusted (see w_win_check_reparse_points()).
+ *
+ * @return A vetted handle on success, or INVALID_HANDLE_VALUE on error (sets errno).
+ */
+static HANDLE w_open_vetted_follow_handle(const char * path) {
+    wchar_t wide[W_VETTED_WIN_PATH_MAX];
+    wchar_t full[W_VETTED_WIN_PATH_MAX];
+    wchar_t requested[W_VETTED_WIN_PATH_MAX];
+    wchar_t final_path[W_VETTED_WIN_PATH_MAX];
+    wchar_t again[W_VETTED_WIN_PATH_MAX];
+    PSID trusted_sids[W_VETTED_WIN_TRUSTED_SIDS] = {NULL};
+    PSECURITY_DESCRIPTOR sd = NULL;
+    w_win_admins_t admins;
+    BY_HANDLE_FILE_INFORMATION info;
+    BY_HANDLE_FILE_INFORMATION info_again;
+    PSID file_owner = NULL;
+    wchar_t * converted;
+    HANDLE hFile;
+    HANDLE hAgain;
+    w_win_held_t held = {0};
+    DWORD len;
+    int saved_errno;
+    int rc;
+
+    if (is_network_path(path)) {
+        // Reported as EPERM like the trust checks: a policy rejection, not a missing file.
+        errno = EPERM;
+        return INVALID_HANDLE_VALUE;
+    }
+
+    // auto_to_wide() falls back to the ANSI code page for non-UTF-8 bytes, as wfopen() does.
+    converted = auto_to_wide(path);
+
+    if (converted == NULL) {
+        errno = EINVAL;
+        return INVALID_HANDLE_VALUE;
+    }
+
+    if (wcslen(converted) >= W_VETTED_WIN_PATH_MAX) {
+        os_free(converted);
+        errno = ENAMETOOLONG;
+        return INVALID_HANDLE_VALUE;
+    }
+
+    wcscpy(wide, converted);
+    os_free(converted);
+
+    hFile = CreateFileW(wide, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        errno = w_win32_to_errno(GetLastError());
+        return INVALID_HANDLE_VALUE;
+    }
+
+    if (GetFileType(hFile) != FILE_TYPE_DISK) {
+        errno = EINVAL;
         goto fail;
     }
 
-    if (now.st_dev != link_stat.st_dev || now.st_ino != link_stat.st_ino || now.st_uid != link_stat.st_uid ||
-        (!S_ISLNK(link_stat.st_mode) && (fd_stat.st_dev != link_stat.st_dev || fd_stat.st_ino != link_stat.st_ino))) {
+    if (!GetFileInformationByHandle(hFile, &info)) {
+        errno = w_win32_to_errno(GetLastError());
+        goto fail;
+    }
+
+    if (w_win_final_path(hFile, final_path) < 0) {
+        goto fail;
+    }
+
+    if (info.nNumberOfLinks != 1 && !w_win_hard_link_dir_trusted(hFile, final_path)) {
+        goto fail;
+    }
+
+    len = GetFullPathNameW(wide, W_VETTED_WIN_PATH_MAX, full, NULL);
+
+    if (len == 0 || len >= W_VETTED_WIN_PATH_MAX) {
+        errno = len ? ENAMETOOLONG : w_win32_to_errno(GetLastError());
+        goto fail;
+    }
+
+    // GetFullPathNameW() keeps a "\\?\" prefix, which w_win_final_path() strips and the walk adds itself; drop it
+    // from a drive path so the comparison and the walk see the same form.
+    if (!wcsncmp(full, W_VETTED_WIN_EXTENDED_PREFIX, wcslen(W_VETTED_WIN_EXTENDED_PREFIX)) &&
+        w_win_root_len(full + wcslen(W_VETTED_WIN_EXTENDED_PREFIX)) == 3) {
+        wmemmove(full, full + wcslen(W_VETTED_WIN_EXTENDED_PREFIX), len - wcslen(W_VETTED_WIN_EXTENDED_PREFIX) + 1);
+    }
+
+    // Expand 8.3 names so the requested path compares against the long form the final path uses.
+    len = GetLongPathNameW(full, requested, W_VETTED_WIN_PATH_MAX);
+
+    if (len == 0 || len >= W_VETTED_WIN_PATH_MAX) {
+        wcscpy(requested, full);
+    }
+
+    // GetFinalPathNameByHandleW() upper-cases the drive letter; a lower-case letter in the configured path
+    // must not force the slow walk, so normalize it before the comparison.
+    if (requested[0] >= L'a' && requested[0] <= L'z' && requested[1] == L':') {
+        requested[0] -= L'a' - L'A';
+    }
+
+    // An identical path means no reparse point was traversed.
+    if (w_win_same_path(requested, final_path)) {
+        return hFile;
+    }
+
+    if (w_win_init_trusted_sids(trusted_sids) < 0 || w_win_get_owner(hFile, &file_owner, &sd) < 0) {
+        goto fail;
+    }
+
+    w_win_admins_load(&admins);
+    rc = w_win_check_reparse_points(full, &info, file_owner, trusted_sids, &admins, &held);
+    saved_errno = errno;
+    w_win_admins_free(&admins);
+    LocalFree(sd);
+
+    if (rc < 0) {
+        errno = saved_errno;
+        goto fail;
+    }
+
+    // The path may have been re-pointed while it was checked, so open it again and compare.
+    hAgain = CreateFileW(wide, FILE_READ_ATTRIBUTES, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+    if (hAgain == INVALID_HANDLE_VALUE) {
+        errno = w_win_race_errno(GetLastError());
+        goto fail;
+    }
+
+    // Same final path and same file identity: a delete-and-recreate at that path is caught too.
+    rc = w_win_final_path(hAgain, again);
+    saved_errno = errno;
+
+    if (rc == 0 && !GetFileInformationByHandle(hAgain, &info_again)) {
+        rc = -1;
+        saved_errno = w_win32_to_errno(GetLastError());
+    }
+
+    CloseHandle(hAgain);
+
+    if (rc < 0) {
+        errno = saved_errno;
+        goto fail;
+    }
+
+    if (!w_win_same_path(again, final_path) || info.dwVolumeSerialNumber != info_again.dwVolumeSerialNumber ||
+        info.nFileIndexHigh != info_again.nFileIndexHigh || info.nFileIndexLow != info_again.nFileIndexLow) {
         errno = EAGAIN;
         goto fail;
     }
 
-    if (stat(resolved, &now) < 0) {
-        goto fail;
-    }
-
-    if (now.st_dev != fd_stat.st_dev || now.st_ino != fd_stat.st_ino) {
-        errno = EAGAIN;
-        goto fail;
-    }
-
-    if (w_vet_opened_file(&fd_stat, &dir_stat, has_link_uid ? &link_uid : NULL) < 0) {
-        goto fail;
-    }
-
-    return w_clear_nonblock(fd);
+    w_win_held_release(&held);
+    w_win_free_trusted_sids(trusted_sids);
+    return hFile;
 
 fail:
     saved_errno = errno;
-    close(fd);
+    w_win_held_release(&held);
+    w_win_free_trusted_sids(trusted_sids);
+    CloseHandle(hFile);
     errno = saved_errno;
-    return -1;
+    return INVALID_HANDLE_VALUE;
 }
-#endif
 #endif
 
 
@@ -3452,8 +5329,40 @@ FILE * w_fopen_vetted_follow(const char * path, const char * mode) {
     }
 
 #ifdef WIN32
-    // The vetting below is POSIX-only; Windows keeps wfopen().
-    return wfopen(path, mode);
+    int saved_errno;
+    FILE * fp;
+    HANDLE hFile;
+    int retries = 0;
+    int fd;
+
+    // Restart from the top: re-checking only the changed component would trust stale results.
+    do {
+        hFile = w_open_vetted_follow_handle(path);
+    } while (hFile == INVALID_HANDLE_VALUE && errno == EAGAIN && retries++ < W_VETTED_RACE_RETRIES);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        if (errno == EAGAIN) {
+            mwarn(W_VETTED_GAVE_UP, path, W_VETTED_RACE_RETRIES + 1);
+            errno = EAGAIN;
+        }
+
+        return NULL;
+    }
+
+    if (fd = _open_osfhandle((intptr_t)hFile, _O_RDONLY | (strchr(mode, 'b') ? 0 : _O_TEXT)), fd < 0) {
+        saved_errno = errno;
+        CloseHandle(hFile);
+        errno = saved_errno;
+        return NULL;
+    }
+
+    if (fp = _fdopen(fd, mode), fp == NULL) {
+        saved_errno = errno;
+        _close(fd);
+        errno = saved_errno;
+    }
+
+    return fp;
 #else
     int saved_errno;
     FILE * fp;
@@ -3462,10 +5371,15 @@ FILE * w_fopen_vetted_follow(const char * path, const char * mode) {
 
     // Restart from the root: re-checking only the changed entry would trust stale stat data.
     do {
-        fd = w_open_vetted_follow_fd(path);
+        fd = w_open_vetted_follow_fd(path, true);
     } while (fd < 0 && errno == EAGAIN && retries++ < W_VETTED_RACE_RETRIES);
 
     if (fd < 0) {
+        if (errno == EAGAIN) {
+            mwarn(W_VETTED_GAVE_UP, path, W_VETTED_RACE_RETRIES + 1);
+            errno = EAGAIN;
+        }
+
         return NULL;
     }
 
@@ -3504,8 +5418,7 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
 #else
     struct stat statbuf;
     int saved_errno;
-    int flags;
-    int srcfd = open(filesrc, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK);
+    int srcfd = w_open_vetted_follow_fd(filesrc, false);
 
     fd = NULL;
 
@@ -3515,10 +5428,6 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
         } else if (!S_ISREG(statbuf.st_mode)) {
             saved_errno = EINVAL;
         } else {
-            if (flags = fcntl(srcfd, F_GETFL), flags != -1) {
-                fcntl(srcfd, F_SETFL, flags & ~O_NONBLOCK);
-            }
-
             fd = fdopen(srcfd, "rb");
             saved_errno = errno;
         }
@@ -3530,12 +5439,12 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
     }
 
     if (!fd) {
-        if (errno == ELOOP || errno == EINVAL || errno == ENXIO || errno == EMLINK
+        if (errno == ELOOP || errno == EINVAL || errno == ENXIO || errno == EMLINK || errno == EPERM
 #ifdef EFTYPE
             || errno == EFTYPE
 #endif
         ) {
-            mdebug2("in w_compress_gzfile(): skipping '%s': not a regular file", filesrc);
+            mdebug2("in w_compress_gzfile(): skipping '%s' (%d):'%s'", filesrc, errno, strerror(errno));
             return -2;
         }
 
@@ -3946,8 +5855,11 @@ bool is_network_path(const char *path) {
         return false;
     }
 
-    // Block any path starting with \\ (UNC, extended-length UNC, device paths)
-    if (strlen(path) >= 2 && path[0] == '\\' && path[1] == '\\') {
+    // Block any path starting with two separators (UNC, extended-length UNC, device paths).
+    // Windows treats '/' and '\' as equivalent, so the forward-slash UNC form must be caught too.
+    if (strlen(path) >= 2 &&
+        (path[0] == '\\' || path[0] == '/') &&
+        (path[1] == '\\' || path[1] == '/')) {
         return true;
     }
 

@@ -1742,7 +1742,7 @@ before the pump runs; the per-chunk loop is deliberately uninstrumented) — cat
   descriptor — verified: 25 mid-transfer disconnects left the fd count unchanged.
 - **`resource_id` is what the agent asks for, and the manager serves exactly that.** A `config`
   request names either one group (`etc/shared/<group>/merged.mg`) or several, comma-separated —
-  wazuh's own multigroup form — which resolves to `var/multigroups/<sha256(resource_id)[:8]>/merged.mg`.
+  wazuh's own multigroup form — which resolves to `var/multigroups/<sha256(resource_id)[:32]>/merged.mg`.
   A `wpk` request names a filename and gets `var/upgrade/<filename>`. The multigroup form is what
   lets an agent in several groups fetch its *effective* configuration rather than one member
   group's, and it needs no database: the selector is hashed exactly as wazuh-db names the directory.
@@ -2665,7 +2665,7 @@ erases; eviction keys off `max(lastActivity, createdAt)`; concurrent refresh is 
 derived from real os-release strings like `15-SP7`, `12 (bookworm)`, `2023` and `9.4 (Plow)`; latency observed only on successful round trips),
 `taskClient_test.cpp` (the request body is the zero-padded agent id with no `action` member; a
 stall maps to `Timeout`, not `Io`; the destructor drains), `hashCache_test.cpp` (the multigroup
-`sha256[:8]` directory rule, and **an empty hash is never cached** — the fresh-install poisoning
+`sha256[:32]` directory rule, and **an empty hash is never cached** — the fresh-install poisoning
 bug), `mergedMgWatcher_test.cpp` (fires for `merged.mg` only — never `agent.conf`/`shared.conf` —
 including arrival by rename, and auto-watches group directories created after startup),
 `groupSelector_test.cpp` (the CSV is joined verbatim in wdb order, duplicates and empties included,

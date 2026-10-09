@@ -721,12 +721,12 @@ paths:
         | `resource_type` | `resource_id` | Resolves to |
         | --- | --- | --- |
         | `config` | one group name | `etc/shared/<group>/merged.mg` |
-        | `config` | several, comma-separated | `var/multigroups/<sha256(resource_id)[0..8)>/merged.mg` |
+        | `config` | several, comma-separated | `var/multigroups/<sha256(resource_id)[0..32)>/merged.mg` |
         | `wpk` | a package filename | `var/upgrade/<filename>` |
 
         The comma-separated form is wazuh's multigroup selector: it lets an agent in several groups
         fetch its **effective** configuration, and needs no database lookup because the directory
-        name is the first 8 hex characters of the SHA-256 of the selector verbatim.
+        name is the first 32 hex characters of the SHA-256 of the selector verbatim.
 
         **A `config` download is authorized against the requesting agent's own groups.**
         `resource_id` must equal the selector `/control` handed that agent as `config_token` -- the

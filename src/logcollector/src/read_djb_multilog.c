@@ -103,7 +103,7 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
     while (can_read() && (!maximum_lines || lines < maximum_lines) && fgets(str, OS_MAX_LOG_SIZE, lf->fp)) {
 
         if (is_valid_context_file) {
-            OS_SHA1_Stream(context, NULL, str);
+            w_hash_read_line(lf, context, str, &current_position);
         }
 
         lines++;

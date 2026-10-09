@@ -46,7 +46,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,fclose -Wl,--wrap,fcntl -Wl,--wrap,fflush -Wl,--wrap,fgetc \
                             -Wl,--wrap,fgetpos -Wl,--wrap,fgets -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fread \
                             -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,getpid -Wl,--wrap,key_lock_read \
-                            -Wl,--wrap,key_lock_write -Wl,--wrap,key_unlock -Wl,--wrap,nb_close \
+                            -Wl,--wrap,key_lock_write -Wl,--wrap,key_unlock -Wl,--wrap,nb_close_socket \
                             -Wl,--wrap,nb_open -Wl,--wrap,nb_recv -Wl,--wrap,nb_send -Wl,--wrap,OS_AddSocket \
                             -Wl,--wrap,nb_queue_nowait -Wl,--wrap,nb_set_authenticated -Wl,--wrap,nb_unauthenticated_count \
                             -Wl,--wrap,nb_collect_unauthenticated -Wl,--wrap,sendto \
@@ -83,6 +83,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdeb
                             -Wl,--wrap,bqueue_push -Wl,--wrap,bqueue_peek -Wl,--wrap,bqueue_drop -Wl,--wrap,bqueue_clear -Wl,--wrap,sleep \
                             -Wl,--wrap,send -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fcntl -Wl,--wrap,getpid \
                             -Wl,--wrap,bqueue_used -Wl,--wrap,rem_inc_send_discarded -Wl,--wrap,recv -Wl,--wrap,rem_msgpush \
+                            -Wl,--wrap,close -Wl,--wrap,rem_setCounter -Wl,--wrap,rem_getCounter \
                             -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_bulk")
@@ -101,6 +102,7 @@ list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,w_mconf_load -Wl,--wr
 
 list(APPEND remoted_names "test_remote-state")
 list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_input_bytes_used -Wl,--wrap,rem_get_input_max_bytes \
+                            -Wl,--wrap,nb_unauthenticated_count \
                             -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_remcom")

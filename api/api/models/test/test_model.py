@@ -283,6 +283,25 @@ async def test_agent_added_model_force_disabled_by_default():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('force,expected', [
+    ({}, {'enabled': False,
+          'disconnected_time': {'enabled': True, 'value': '1h'},
+          'after_registration_time': '1h'}),
+    ({'after_registration_time': '2h'}, {'enabled': False,
+                                         'disconnected_time': {'enabled': True, 'value': '1h'},
+                                         'after_registration_time': '2h'}),
+    ({'disconnected_time': {'value': '5m'}}, {'enabled': False,
+                                              'disconnected_time': {'enabled': True, 'value': '5m'},
+                                              'after_registration_time': '1h'}),
+])
+async def test_agent_added_model_force_without_enabled(force, expected):
+    """Check that a `force` object without `enabled` keeps replacement disabled on `POST /agents`."""
+    f_kwargs = await AgentAddedModel.get_kwargs({'name': 'test_agent', 'ip': 'any', 'force': force})
+
+    assert f_kwargs['force'] == expected
+
+
+@pytest.mark.asyncio
 async def test_agent_added_model_force_provided():
     """Check that `POST /agents` honors a `force` object, which its schema now declares."""
     f_kwargs = await AgentAddedModel.get_kwargs(

@@ -198,6 +198,8 @@ namespace chrome
             std::string base64Decode(const std::string& input);
             /// @brief Checks if a string is in snake_case format.
             bool isSnakeCase(const std::string& s);
+            /// @brief Checks if a string is a plain locale name (letters, digits, '_' and '-' only), such as "en" or "pt_BR".
+            bool isValidLocaleName(const std::string& locale);
             /// @brief Localizes parameters for a Chrome extension.
             /// This method retrieves the locales for a Chrome extension and sets the current locale based on the
             /// default locale. It reads the messages file for the current locale and sets the extension's
@@ -237,10 +239,10 @@ namespace chrome
             /// @param key
             /// @return A string representing the unique identifier for the extension.
             std::string generateIdentifier(const std::string& key);
-            /// @brief Computes the SHA-256 hash of a file.
-            /// @param filepath
+            /// @brief Computes the SHA-256 hash of a file content already read.
+            /// @param content
             /// @return The generated SHA-256 hash as a hexadecimal string.
-            std::string sha256File(const std::string& filepath);
+            std::string sha256Content(const std::string& content);
             /// @brief Retrieves the profile name from the preferences files.
             std::string getProfileFromPreferences(const std::string& preferencesFilePath, const std::string& securePreferencesFilePath);
             /// @brief Parses the manifest JSON of a Chrome extension and populates the extension data structure.
@@ -248,7 +250,7 @@ namespace chrome
             /// @brief Parses preference settings for a Chrome extension and populates the extension data structure.
             void parsePreferenceSettings(chrome::ChromeExtension& extension, const std::string& key, const nlohmann::json& value);
             /// @brief Retrieves common settings for a Chrome extension and populates the extension data structure.
-            void getCommonSettings(chrome::ChromeExtension& extension, const std::string& manifestPath);
+            void getCommonSettings(chrome::ChromeExtension& extension, const std::string& manifestContent);
             /// @brief Retrieves extensions from the preferences file of a Chrome profile.
             chrome::ChromeExtensionList getExtensionsFromPreferences(const std::string& profilePath, const std::string& preferencesFilePath, const std::string& profileName);
             /// @brief Retrieves extensions from the given profile path that are referenced in the Preferences files.
@@ -263,6 +265,8 @@ namespace chrome
             std::shared_ptr<IBrowserExtensionsWrapper> m_chromeExtensionsWrapper;
             std::string m_currentBrowserType;
             std::string m_currentUid;
+            // Owner required for the files read from the current user's profiles
+            std::string m_currentOwnerUid;
 
             /**
              * @brief Pointer to the file system wrapper implementation.

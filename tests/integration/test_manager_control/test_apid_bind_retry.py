@@ -120,6 +120,19 @@ def _control_start_background():
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def _port_holders(port):
+    """Describe the processes listening on 'port', so a failed '_occupy' names what still holds it."""
+    holders = []
+    for conn in psutil.net_connections(kind='inet'):
+        if conn.status == psutil.CONN_LISTEN and conn.laddr and conn.laddr.port == port:
+            try:
+                cmdline = ' '.join(psutil.Process(conn.pid).cmdline()) if conn.pid else '?'
+            except psutil.Error:
+                cmdline = '?'
+            holders.append(f'pid {conn.pid} ({cmdline})')
+    return ', '.join(holders) or 'no listener found'
+
+
 @contextlib.contextmanager
 def _occupy(port):
     """Hold a listening socket on 'port' so apid's own bind gets EADDRINUSE.
@@ -129,7 +142,11 @@ def _occupy(port):
     """
     blocker = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     blocker.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    blocker.bind(('0.0.0.0', port))  # nosec B104
+    try:
+        blocker.bind(('0.0.0.0', port))  # nosec B104
+    except OSError as exc:
+        blocker.close()
+        raise OSError(exc.errno, f'{exc.strerror}; listening on {port}: {_port_holders(port)}') from exc
     blocker.listen(1)
     try:
         yield blocker

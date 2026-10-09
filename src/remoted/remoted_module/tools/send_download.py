@@ -116,9 +116,9 @@ def prefixed(path: str) -> str:
     return GLOBAL_PREFIX + path
 
 def multigroup_dir_name(selector: str) -> str:
-    """Same formula wazuh-db uses to NAME the directory: OS_SHA256_String_sized(sel, out, 8).
+    """Same formula wazuh-db uses to NAME the directory: OS_SHA256_String_sized(sel, out, 32).
     Replicated, not queried -- the manager derives it the same way."""
-    return hashlib.sha256(selector.encode()).hexdigest()[:8]
+    return hashlib.sha256(selector.encode()).hexdigest()[:32]
 
 
 def expected_config_path(paths: ManagerPaths, selector: str) -> str:

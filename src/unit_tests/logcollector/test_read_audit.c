@@ -50,6 +50,7 @@ bool __wrap_w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t posi
 }
 
 int __wrap_w_update_file_status(const char *path, int64_t pos, EVP_MD_CTX *context) {
+    check_expected(pos);
     bool free_context = mock_type(bool);
     if (free_context) {
         EVP_MD_CTX_free(context);
@@ -57,8 +58,9 @@ int __wrap_w_update_file_status(const char *path, int64_t pos, EVP_MD_CTX *conte
     return mock_type(int);
 }
 
-void __wrap_OS_SHA1_Stream(EVP_MD_CTX *c, os_sha1 output, char *buf) {
+void __wrap_OS_SHA1_Stream_Bytes(EVP_MD_CTX *c, const char * buf, size_t len) {
     function_called();
+    check_expected(len);
     return;
 }
 
@@ -97,6 +99,7 @@ void test_read_audit_empty_file(void **state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, NULL);
 
+    expect_value(__wrap_w_update_file_status, pos, (int64_t) 0);
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
@@ -148,7 +151,8 @@ void test_read_audit_single_line(void **state) {
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t)strlen(line));
 
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, strlen(line));
 
     // Next iteration starts
     will_return(__wrap_can_read, 1);
@@ -163,6 +167,7 @@ void test_read_audit_single_line(void **state) {
     expect_any(__wrap_w_msg_hash_queues_push, str);
     will_return(__wrap_w_msg_hash_queues_push, 0);
 
+    expect_value(__wrap_w_update_file_status, pos, (int64_t) strlen(line));
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
@@ -202,11 +207,13 @@ void test_read_audit_invalid_syntax(void **state) {
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t)strlen(line));
 
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, strlen(line));
 
-    // Error message for invalid syntax
+    // Error message for invalid syntax. The discarded line was hashed, so the stored offset covers it
     expect_string(__wrap__mwarn, formatted_msg, "Discarding audit message because of invalid syntax.");
 
+    expect_value(__wrap_w_update_file_status, pos, (int64_t) strlen(line));
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
@@ -246,7 +253,8 @@ void test_read_audit_drop_it(void **state) {
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t)strlen(line));
 
-    expect_function_call(__wrap_OS_SHA1_Stream);
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, strlen(line));
 
     // Next iteration starts
     will_return(__wrap_can_read, 1);
@@ -257,12 +265,73 @@ void test_read_audit_drop_it(void **state) {
     // Message should NOT be sent when drop_it=1
     // (audit_send_msg is called but doesn't push to queue)
 
+    expect_value(__wrap_w_update_file_status, pos, (int64_t) strlen(line));
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
     expect_any(__wrap__mdebug2, formatted_msg);
 
     read_audit(&lf, &rc, 1); // drop_it = 1
+}
+
+/**
+ * Test: Line longer than the buffer
+ * Verifies that every chunk of the discarded line is hashed and covered by the stored offset
+ */
+void test_read_audit_oversize_line(void **state) {
+    logreader lf = {0};
+    lf.file = "test.log";
+    lf.fp = (FILE *)1;
+    int rc;
+
+    char *line1 = calloc(OS_MAX_LOG_SIZE, sizeof(char));
+    char line2[] = "BBB\n";
+    const int64_t len1 = OS_MAX_LOG_SIZE - 1;
+
+    assert_non_null(line1);
+    memset(line1, 'A', len1);
+
+    // Initial ftell
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t)0);
+
+    will_return(__wrap_w_get_hash_context, true);
+
+    // Loop start ftell
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t)0);
+
+    will_return(__wrap_can_read, 1);
+
+    // First chunk fills the buffer
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line1);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, len1);
+
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, len1);
+
+    // Rest of the line, discarded
+    expect_any(__wrap_fgets, __stream);
+    will_return(__wrap_fgets, line2);
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, len1 + (int64_t)strlen(line2));
+
+    expect_function_call(__wrap_OS_SHA1_Stream_Bytes);
+    expect_value(__wrap_OS_SHA1_Stream_Bytes, len, strlen(line2));
+
+    expect_value(__wrap_w_update_file_status, pos, len1 + (int64_t)strlen(line2));
+    will_return(__wrap_w_update_file_status, true);
+    will_return(__wrap_w_update_file_status, 0);
+
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    read_audit(&lf, &rc, 0);
+
+    free(line1);
 }
 
 int main(void) {
@@ -272,6 +341,7 @@ int main(void) {
         cmocka_unit_test(test_read_audit_single_line),
         cmocka_unit_test(test_read_audit_invalid_syntax),
         cmocka_unit_test(test_read_audit_drop_it),
+        cmocka_unit_test(test_read_audit_oversize_line),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

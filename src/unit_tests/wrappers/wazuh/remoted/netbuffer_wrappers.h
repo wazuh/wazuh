@@ -14,7 +14,9 @@
 
 #include "../../../../remoted/include/remoted.h"
 
-void __wrap_nb_close(__attribute__((unused)) netbuffer_t * buffer, int sock);
+bool __wrap_nb_close_socket(__attribute__((unused)) netbuffer_t * recv,
+                            __attribute__((unused)) netbuffer_t * send,
+                            int sock);
 
 void __wrap_nb_open(__attribute__((unused)) netbuffer_t * buffer, int sock, const struct sockaddr_storage * peer_info);
 
@@ -26,7 +28,9 @@ int __wrap_nb_send(__attribute__((unused)) netbuffer_t * buffer, int sock);
 
 int __wrap_nb_queue_nowait(__attribute__((unused)) netbuffer_t * buffer, int socket, const char * msg, size_t msg_size);
 
-void __wrap_nb_set_authenticated(__attribute__((unused)) netbuffer_t * buffer, int sock);
+void __wrap_nb_set_authenticated(__attribute__((unused)) netbuffer_t * buffer,
+                                 int sock,
+                                 __attribute__((unused)) size_t counter);
 
 size_t __wrap_nb_unauthenticated_count(__attribute__((unused)) netbuffer_t * buffer);
 

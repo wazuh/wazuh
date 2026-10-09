@@ -24,7 +24,7 @@
 #include "sec.h"
 
 #define FD_LIST_INIT_VALUE 1024
-#define MAX_SHARED_PATH    200
+#define MAX_SHARED_PATH    224
 
 /* Preflight of the HTTPS agent listener's TLS files (w_remoted_check_tls_files() in secure.c): exactly
  * one of the three messages is logged, with the hint appended, and remoted exits. The texts are pinned
@@ -227,7 +227,24 @@ cJSON* getRemoteGlobalConfig(void);
 /* Network buffer */
 
 void nb_open(netbuffer_t* buffer, int sock, const struct sockaddr_storage* peer_info);
-void nb_close(netbuffer_t* buffer, int sock);
+
+/**
+ * @brief Close a socket and release its receive and send slots in one critical section.
+ *
+ * The socket's message counter fence is set to the current global counter before closing, so a message
+ * queued earlier from this connection cannot be taken for one of a later connection reusing the descriptor.
+ * Closing under the netbuffer mutex makes an accept() that reuses the descriptor wait in nb_open() until
+ * both slots are released.
+ *
+ * @param recv Receive network buffer.
+ * @param send Send network buffer.
+ * @param sock Socket to close.
+ * @return true if the slots were released: close() succeeded, or failed with anything but EBADF (Linux
+ *         frees the descriptor even then).
+ * @return false on EBADF: the descriptor was not open, so another call already closed it and released its
+ *         slots, and its number may belong to a newly accepted connection whose slots are left alone.
+ */
+bool nb_close_socket(netbuffer_t* recv, netbuffer_t* send, int sock);
 int nb_recv(netbuffer_t* buffer, int sock);
 
 /**
@@ -277,8 +294,11 @@ int nb_queue_nowait(netbuffer_t* buffer, int socket, const char* msg, size_t msg
  *
  * @param buffer buffer holding the connection.
  * @param sock socket of the connection.
+ * @param counter counter of the message that authenticates the connection. It must be newer than the fence
+ *                set by the last close of the descriptor, otherwise the message belongs to a previous
+ *                connection and the slot is left as it is.
  */
-void nb_set_authenticated(netbuffer_t* buffer, int sock);
+void nb_set_authenticated(netbuffer_t* buffer, int sock, size_t counter);
 
 /**
  * @brief Number of open connections that have not authenticated yet.

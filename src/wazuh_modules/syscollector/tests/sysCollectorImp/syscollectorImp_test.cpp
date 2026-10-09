@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdio>
@@ -4215,6 +4216,81 @@ TEST_F(SyscollectorImpTest, networkCollectorDisabledThreeIndices)
     EXPECT_TRUE(logCapture.contains(LOG_DEBUG, "Cleared table dbsync_network_address"));
 
     Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, invalidUtf8DoesNotAbortScan)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    auto badProcess = R"({"name":"","pid":"1","parent_pid":0,"state":"S"})"_json;
+    badProcess["name"] = std::string{"bad\xff"};
+    const auto goodProcess = R"({"name":"good","pid":"2","parent_pid":0,"state":"S"})"_json;
+
+    auto badPort =
+        R"({"file_inode":1,"source_ip":"127.0.0.1","source_port":631,"process_pid":1,"process_name":"","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0})"_json;
+    badPort["process_name"] = std::string{"bad\xff"};
+    const auto goodPort =
+        R"({"file_inode":2,"source_ip":"127.0.0.1","source_port":632,"process_pid":2,"process_name":"good","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0})"_json;
+
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::array({badPort, goodPort})));
+    EXPECT_CALL(*spInfoWrapper, processes(_))
+    .Times(::testing::AtLeast(1))
+    .WillOnce(::testing::DoAll(::testing::InvokeArgument<0>(badProcess),
+                               ::testing::InvokeArgument<0>(goodProcess)));
+
+    std::mutex insertedMutex;
+    std::vector<std::string> inserted;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&inserted, &insertedMutex](const std::string & data)
+        {
+            const auto delta = nlohmann::json::parse(data);
+            const auto namePointer = nlohmann::json::json_pointer("/data/process/name");
+
+            if (delta.contains("collector") && delta.contains(namePointer))
+            {
+                std::lock_guard<std::mutex> lock(insertedMutex);
+                inserted.push_back(delta.at("collector").get<std::string>() + ":" +
+                                   delta.at(namePointer).get<std::string>());
+            }
+        }
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          persistFunction,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false, false, false, false, true, false, true, false, false, false, false, false, true);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds{2});
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    std::sort(inserted.begin(), inserted.end());
+    const std::vector<std::string> expected
+    {
+        "dbsync_ports:bad\xEF\xBF\xBD",
+        "dbsync_ports:good",
+        "dbsync_processes:bad\xEF\xBF\xBD",
+        "dbsync_processes:good",
+    };
+    EXPECT_EQ(inserted, expected);
 }
 
 TEST_F(SyscollectorImpTest, destroyWaitsForSyncLoopCompletion)

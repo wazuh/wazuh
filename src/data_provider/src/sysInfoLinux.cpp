@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <regex>
@@ -33,6 +34,9 @@
 #include "timeHelper.h"
 #include "groups_linux.hpp"
 #include "user_groups_linux.hpp"
+#include "auth_failures_linux.hpp"
+#include "last_login_linux.hpp"
+#include "last_login_resolution.hpp"
 #include "logged_in_users_linux.hpp"
 #include "shadow_linux.hpp"
 #include "sudoers_unix.hpp"
@@ -739,6 +743,16 @@ nlohmann::json SysInfo::getUsers() const
                              ? nlohmann::json::object()
                              : userGroupsProvider.getGroupNamesByUid(allUids);
 
+    // The last login is the newest of lastlog, lastlog2 and the sessions open now. It is known for
+    // every account before the loop because the failed attempts are counted since that login. The
+    // rules, and the order they have to be applied in, live in resolveLastLogins().
+    LastLoginProvider lastLoginProvider;
+    const auto lastLogins = resolveLastLogins(collectedUsers, collectedLoggedInUser, lastLoginProvider);
+    auto lastLoginByName = lastLogins.byName;
+
+    AuthFailuresProvider authFailuresProvider;
+    authFailuresProvider.load(lastLoginByName, lastLogins.known);
+
     for (auto& user : collectedUsers)
     {
         nlohmann::json userItem {};
@@ -812,8 +826,20 @@ nlohmann::json SysInfo::getUsers() const
         // Macos
         userItem["user_is_hidden"] = 0;
         userItem["user_created"] = UNKNOWN_VALUE;
-        userItem["user_auth_failed_count"] = 0;
-        userItem["user_auth_failed_timestamp"] = UNKNOWN_VALUE;
+
+        // Without a source the count is not collected and the timestamp is unknown.
+        const auto authFailures = authFailuresProvider.get(username);
+        userItem["user_auth_failed_count"] =
+            authFailures.known ? nlohmann::json(static_cast<int64_t>(authFailures.count)) : nlohmann::json(NOT_COLLECTED_VALUE);
+        userItem["user_auth_failed_timestamp"] =
+            authFailures.known && authFailures.latest > 0
+            ? Utils::rawTimestampToISO8601(static_cast<uint32_t>(authFailures.latest))
+            : UNKNOWN_VALUE;
+
+        const auto lastLoginEntry = lastLoginByName.find(username);
+        userItem["user_last_login"] = lastLoginEntry != lastLoginByName.end() && lastLoginEntry->second > 0
+                                      ? Utils::rawTimestampToISO8601(lastLoginEntry->second)
+                                      : UNKNOWN_VALUE;
 
         auto matched = false;
         auto lastLogin = 0;
@@ -834,7 +860,6 @@ nlohmann::json SysInfo::getUsers() const
                 if (newDate > lastLogin)
                 {
                     lastLogin = newDate;
-                    userItem["user_last_login"] = Utils::rawTimestampToISO8601(static_cast<uint32_t>(newDate));
                     userItem["login_tty"] = item["tty"].get<std::string>();
                     userItem["login_type"] = item["type"].get<std::string>();
                     userItem["process_pid"] = item["pid"].get<int32_t>();
@@ -857,7 +882,6 @@ nlohmann::json SysInfo::getUsers() const
             userItem["login_tty"] = UNKNOWN_VALUE;
             userItem["login_type"] = UNKNOWN_VALUE;
             userItem["process_pid"] = 0;
-            userItem["user_last_login"] = UNKNOWN_VALUE;
         }
 
         matched = false;
@@ -1017,7 +1041,14 @@ nlohmann::json SysInfo::getBrowserExtensions() const
 
             result.push_back(std::move(extensionItem));
         }
+    }
+    catch (const std::exception&)
+    {
+        // Keep collecting the remaining browsers
+    }
 
+    try
+    {
         // Collect Firefox extensions
         FirefoxAddonsProvider firefoxProvider;
         auto collectedFirefoxExtensions = firefoxProvider.collect();

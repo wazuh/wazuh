@@ -192,6 +192,9 @@ static void sanitizeJsonValue(nlohmann::json& input)
         {
             input = Utils::trim(stringValue);
         }
+
+        // Collected strings (e.g. process names) may hold invalid UTF-8, which makes every later dump() throw.
+        input = nlohmann::json::parse(input.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
     }
 }
 

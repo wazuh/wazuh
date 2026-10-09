@@ -21,6 +21,7 @@ TEST_F(NPMTest, getPackages_ValidPackagesTest)
 
     EXPECT_CALL(*mockFileSystem, exists(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_directory(testing::_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, list_directory(testing::_)).WillRepeatedly(Return(fakePackages));
 
     nlohmann::json fakePackageJson1 = {{"name", "TestPackage1"}, {"version", "1.0.0"}};
@@ -79,6 +80,7 @@ TEST_F(NPMTest, getPackages_NoPackageJsonTest)
 
     EXPECT_CALL(*mockFileSystem, exists(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_directory(testing::_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, list_directory(testing::_)).WillRepeatedly(Return(fakePackages));
 
     EXPECT_CALL(*npm, readJson(std::filesystem::path("/fake/node_modules/package1/package.json")))
@@ -102,6 +104,7 @@ TEST_F(NPMTest, getPackages_InvalidPackageJsonNameTest)
 
     EXPECT_CALL(*mockFileSystem, exists(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_directory(testing::_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, list_directory(testing::_)).WillRepeatedly(Return(fakePackages));
 
     EXPECT_CALL(*npm, readJson(std::filesystem::path("/fake/node_modules/package1/package.json")))
@@ -125,6 +128,7 @@ TEST_F(NPMTest, getPackages_InvalidPackageJsonVersionTest)
 
     EXPECT_CALL(*mockFileSystem, exists(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_directory(testing::_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, list_directory(testing::_)).WillRepeatedly(Return(fakePackages));
 
     EXPECT_CALL(*npm, readJson(std::filesystem::path("/fake/node_modules/package1/package.json")))
@@ -148,6 +152,7 @@ TEST_F(NPMTest, getPackages_ValidPackageJson2Test)
 
     EXPECT_CALL(*mockFileSystem, exists(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_directory(testing::_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, list_directory(testing::_)).WillOnce(Return(fakePackages));
 
     EXPECT_CALL(*npm, readJson(std::filesystem::path("/fake/node_modules/package1/package.json")))
@@ -182,3 +187,24 @@ TEST_F(NPMTest, getPackages_ValidPackageJson2Test)
     EXPECT_TRUE(callbackCalledSecond);
 }
 
+TEST_F(NPMTest, getPackages_NonRegularPackageJsonIsSkipped)
+{
+    std::vector<std::filesystem::path> fakePackages = {"/fake/node_modules/package1"};
+
+    EXPECT_CALL(*mockFileSystem, exists(testing::_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_directory(testing::_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(testing::_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*mockFileSystem, list_directory(testing::_)).WillRepeatedly(Return(fakePackages));
+    EXPECT_CALL(*npm, readJson(testing::_)).Times(0);
+
+    bool callbackCalled = false;
+
+    std::set<std::string> folders = {"/fake"};
+
+    npm->getPackages(folders, [&](nlohmann::json&)
+    {
+        callbackCalled = true;
+    });
+
+    EXPECT_FALSE(callbackCalled);
+}

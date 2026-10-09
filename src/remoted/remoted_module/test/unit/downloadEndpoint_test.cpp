@@ -494,12 +494,11 @@ TEST(DownloadLocateTest, AnyRequestedGroupResolvesRegardlessOfTheAgent)
 TEST(DownloadMultigroupDirNameTest, MatchesWhatWazuhDbComputesForTheSameSelector)
 {
     // wazuh-db builds the directory with OS_SHA256_String_sized(csv, out, WDB_GROUP_HASH_SIZE),
-    // WDB_GROUP_HASH_SIZE == 8, i.e. the first FOUR digest bytes as eight lowercase hex characters.
-    // Pinned literals, confirmed against a live manager which created var/multigroups/97d66859 for
-    // "web-servers,databases" and /76ba5a3b for "alpha,beta".
-    EXPECT_EQ(multigroupDirName("web-servers,databases"), "97d66859");
-    EXPECT_EQ(multigroupDirName("alpha,beta"), "76ba5a3b");
-    EXPECT_EQ(multigroupDirName("default,web-servers"), "b9d4f263");
+    // WDB_GROUP_HASH_SIZE == 32, i.e. the first SIXTEEN digest bytes as 32 lowercase hex characters.
+    // Pinned literals: the first 32 hex characters of sha256 over each selector verbatim.
+    EXPECT_EQ(multigroupDirName("web-servers,databases"), "97d668590155b0b50fb09c254d636adc");
+    EXPECT_EQ(multigroupDirName("alpha,beta"), "76ba5a3bc22ef0b439168b9a5c771ceb");
+    EXPECT_EQ(multigroupDirName("default,web-servers"), "b9d4f26372114529987a9805a4049313");
 }
 
 TEST(DownloadMultigroupDirNameTest, IsOrderSensitiveJustLikeWazuhDb)
@@ -514,7 +513,7 @@ TEST(DownloadLocateTest, AMultigroupSelectorResolvesUnderVarMultigroups)
     const auto result = locateResource(configRequest("web-servers,databases"), {});
 
     EXPECT_EQ(result.error, LocateError::None);
-    EXPECT_EQ(result.path, "/var/multigroups/97d66859/merged.mg");
+    EXPECT_EQ(result.path, "/var/multigroups/97d668590155b0b50fb09c254d636adc/merged.mg");
 }
 
 TEST(DownloadLocateTest, HonoursInjectedBaseDirectories)

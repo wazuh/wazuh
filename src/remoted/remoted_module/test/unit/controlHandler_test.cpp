@@ -565,8 +565,8 @@ TEST(ControlHandlerTest, NotifyConfigTokenIsTheFullMultigroupSelectorInWdbOrder)
     wdb->onSelectAgentGroup([](const std::string&) { return "ok [{\"group\":\"web,default\"}]"; });
     HandlerFixture h(wdb, [](const std::string&) { return "{\"tasks\":[]}"; });
 
-    // sha256("web,default") = 4b323b4242e8... -> the multigroup dir is its first 8 hex chars.
-    const auto mergedMg = h.env.base / "multi" / "4b323b42" / "merged.mg";
+    // sha256("web,default") = 4b323b4242e8... -> the multigroup dir is its first 32 hex chars.
+    const auto mergedMg = h.env.base / "multi" / "4b323b4242e8638181e257d8a0097166" / "merged.mg";
     fs::create_directories(mergedMg.parent_path());
     {
         std::ofstream f(mergedMg, std::ios::binary);

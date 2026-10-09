@@ -268,6 +268,17 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.diff_folder_size, 0);
 }
 
+void test_read_data_unit_short_values(void **state)
+{
+    (void) state;
+    // "KB" right before the string: an unguarded content[len - 1] read sees a valid unit
+    char buf[] = "KB";
+
+    assert_int_equal(read_data_unit(buf + 2), -1);
+    assert_int_equal(read_data_unit(buf + 1), -1);
+    assert_int_equal(read_data_unit("5"), 5);
+}
+
 void test_getSyscheckConfig(void **state)
 {
     (void) state;
@@ -884,6 +895,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_invalid, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_undefined, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_unparsed, setup_read_config, restart_syscheck),
+        cmocka_unit_test(test_read_data_unit_short_values),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_audit, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_directories, setup_read_config, restart_syscheck),

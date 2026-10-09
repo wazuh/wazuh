@@ -53,7 +53,7 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
         str_len = strlen(str);
 
         if (is_valid_context_file) {
-            OS_SHA1_Stream(context, NULL, str);
+            w_hash_read_line(lf, context, str, &current_position);
         }
 
         /* Check str_len size. Very useless, but just to make sure */
@@ -135,15 +135,14 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
                 p++;
             }
 
-            /* Add additional message to the saved buffer */
-            if (sizeof(buffer) - buffer_len > str_len) {
-                /* Here we make sure that the size of the buffer
-                 * minus what was used (strlen) is greater than
-                 * the length of the received message.
-                 */
+            /* Append to the saved buffer, leaving room for the separator and the terminator. Copy the exact
+             * length: ASAN's strncat check spans one byte past the write, so a line that fills the buffer to its
+             * last byte is reported as overlapping the adjacent str */
+            const size_t append_len = strlen(str);
+
+            if (sizeof(buffer) - buffer_len > append_len + 1) {
                 buffer[buffer_len] = ' ';
-                buffer[buffer_len + 1] = '\0';
-                strncat(buffer, str, str_len + 3);
+                memcpy(buffer + buffer_len + 1, str, append_len + 1);
             }
         }
     }

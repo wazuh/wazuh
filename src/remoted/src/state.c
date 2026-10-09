@@ -17,6 +17,8 @@
 remoted_state_t remoted_state = {0};
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+extern netbuffer_t netbuffer_recv;
+
 void rem_inc_tcp() {
     w_mutex_lock(&state_mutex);
     remoted_state.tcp_sessions++;
@@ -224,6 +226,8 @@ cJSON* rem_create_state_json() {
     cJSON_AddNumberToObject(_received_q, "usage", rem_get_input_bytes_used());
 
     cJSON_AddNumberToObject(_metrics, "tcp_sessions", state_cpy.tcp_sessions);
+    // Legacy TCP sessions not yet tied to an agent: the open receive slots that have not authenticated
+    cJSON_AddNumberToObject(_metrics, "tcp_sessions_unassociated", nb_unauthenticated_count(&netbuffer_recv));
 
     cJSON_AddNumberToObject(_metrics, "control_messages_queue_usage", control_msg_queue ? indexed_queue_size(control_msg_queue) : 0);
 

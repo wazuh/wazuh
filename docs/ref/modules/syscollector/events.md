@@ -458,6 +458,8 @@ All Syscollector events share a common structure:
 | `login_tty` | `login.tty` |
 | `login_type` | `login.type` |
 
+On Linux, `user.last_login` is the newest of the `lastlog` record, the `lastlog2` database and any session open at scan time, and is `null` where the host records none. `user.auth_failures.count` counts the `btmp` records, including the rotated generation, that are newer than the account's last login, and is `-1` (not collected) where the host keeps no usable record of either; `user.auth_failures.timestamp` is `null` when no failure is counted.
+
 ```json
 {
     "collector": "dbsync_users",

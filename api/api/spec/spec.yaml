@@ -2079,7 +2079,11 @@ components:
             tcp_sessions:
               type: integer
               format: int32
-              description: "Current active TCP sessions (agents) on the legacy TCP channel. Stays 0 unless `remote.legacy.enabled` is set; for the HTTPS channel see `http_server`"
+              description: "Current active TCP sessions on the legacy TCP channel. Stays 0 unless `remote.legacy.enabled` is set; for the HTTPS channel see `http_server`"
+            tcp_sessions_unassociated:
+              type: integer
+              format: int32
+              description: "Current active TCP sessions on the legacy TCP channel not yet authenticated with an agent key (subset of tcp_sessions)"
             http_server:
               type: object
               description: |
@@ -7142,6 +7146,7 @@ paths:
                             size: 67108864
                             usage: 0
                         tcp_sessions: 0
+                        tcp_sessions_unassociated: 0
                         http_server:
                           timestamp: 2022-07-21T10:48:32Z
                           responses:

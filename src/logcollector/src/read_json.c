@@ -46,7 +46,7 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
             if (is_valid_context_file) {
-                OS_SHA1_Stream(context, NULL, str);
+                OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
             }
 
             str[rbytes - 1] = '\0';
@@ -54,6 +54,7 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
             if ((int64_t)strlen(str) != rbytes - 1)
             {
                 mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
+                current_position = offset + rbytes;
                 continue;
             }
         }
@@ -64,7 +65,7 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
         else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
             if (is_valid_context_file) {
-                OS_SHA1_Stream(context, NULL, str);
+                OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
             }
             __ms = 1;
         } else if (feof(lf->fp)) {
@@ -98,6 +99,7 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
 
         /* Check ignore and restrict log regex, if configured. */
         if (check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str)) {
+            current_position = offset + rbytes;
             continue;
         }
 
@@ -112,6 +114,7 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
         } else {
           cJSON_Delete(obj);
           mdebug1("Line '%.*s'%s read from '%s' is not a JSON object.", sample_log_length, str, rbytes > sample_log_length ? "..." : "", lf->file);
+          current_position = offset + rbytes;
           continue;
         }
 
@@ -143,7 +146,7 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
                 }
 
                 if (is_valid_context_file) {
-                    OS_SHA1_Stream(context, NULL, str);
+                    OS_SHA1_Stream_Bytes(context, str, (size_t) rbytes);
                 }
 
                 /* Get the last occurrence of \n */

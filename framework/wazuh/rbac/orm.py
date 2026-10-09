@@ -12,9 +12,10 @@ import string
 from datetime import datetime
 from enum import IntEnum
 from shutil import chown
-from time import time
+from time import perf_counter, sleep, time
 from typing import Optional, Union
 
+import regex
 import yaml
 from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String, Integer, ForeignKey, Boolean, or_, \
     CheckConstraint
@@ -43,6 +44,35 @@ CLOUD_RESERVED_RANGE = 89
 
 # Dummy hash for constant-time username enumeration protection
 _DUMMY_HASH = generate_password_hash("wazuh-dummy-constant-never-matches-any-real-password")
+_DEFAULT_HASH_PREFIX = _DUMMY_HASH.split('$', 1)[0]
+# Formats stored by earlier releases: Werkzeug 1.x (4.0-4.2) and 2.x (4.3-4.8)
+_LEGACY_HASH_METHODS = ('pbkdf2:sha256:150000', 'pbkdf2:sha256:260000')
+_failed_check_seconds = None
+
+
+def _failed_check_floor() -> float:
+    """Get the duration every failed password check is padded to.
+
+    Calibrated once per process as 1.5 times the slowest known hash format on this host, so that neither a missing
+    user nor any stored format answers in its own time.
+
+    Returns
+    -------
+    float
+        Floor duration in seconds.
+    """
+    global _failed_check_seconds
+    if _failed_check_seconds is None:
+        costs = []
+        for pwhash in (_DUMMY_HASH, *(generate_password_hash('wazuh-timing', method=m) for m in _LEGACY_HASH_METHODS)):
+            samples = []
+            for _ in range(3):
+                start = perf_counter()
+                check_password_hash(pwhash, 'wazuh-timing-sample')
+                samples.append(perf_counter() - start)
+            costs.append(sorted(samples)[1])
+        _failed_check_seconds = 1.5 * max(costs)
+    return _failed_check_seconds
 
 # Generated-password shape. This is the same alphabet and length as wazuh_password_generate() in
 # wazuh-credentials.sh -- the shared credential library downloaded from wazuh-installation-assistant
@@ -1076,7 +1106,25 @@ class AuthenticationManager(RBACManager):
         user = self.session.scalars(select(User).filter_by(username=username).limit(1)).first()
 
         hash_to_check = user.password if user else _DUMMY_HASH
+        check_start = perf_counter()
         result = check_password_hash(hash_to_check, password)
+
+        if not (result and user is not None):
+            deadline = check_start + _failed_check_floor()
+            # sleep() overshoots more the longer it sleeps, so the last 2 ms are spun to end every path at the deadline
+            remaining = deadline - perf_counter()
+            if remaining > 0.002:
+                sleep(remaining - 0.002)
+            while perf_counter() < deadline:
+                pass
+        elif not hash_to_check.startswith(f'{_DEFAULT_HASH_PREFIX}$'):
+            # Conditioned on the verified hash so a concurrent password change is not overwritten
+            try:
+                self.session.query(User).filter_by(id=user.id, password=hash_to_check).update(
+                    {'password': generate_password_hash(password)})
+                self.session.commit()
+            except OperationalError:
+                self.session.rollback()
 
         return result and user is not None
 
@@ -1321,6 +1369,33 @@ class RolesManager(RBACManager):
             return SecurityError.ALREADY_EXIST
 
 
+def has_malformed_regex(rule) -> bool:
+    """Check whether a rule body holds a regular expression (r'...') that is not closed or does not compile.
+
+    Parameters
+    ----------
+    rule : dict, list or str
+        Rule body, or any nested part of it.
+
+    Returns
+    -------
+    bool
+        True if any key or value starts with the regex prefix but is not a valid r'...' expression.
+    """
+    if isinstance(rule, dict):
+        return any(has_malformed_regex(k) or has_malformed_regex(v) for k, v in rule.items())
+    if isinstance(rule, list):
+        return any(has_malformed_regex(item) for item in rule)
+    if isinstance(rule, str) and rule.startswith("r'"):
+        if len(rule) < 3 or not rule.endswith("'"):
+            return True
+        try:
+            regex.compile(rule[2:-1])
+        except regex.error:
+            return True
+    return False
+
+
 class RulesManager(RBACManager):
     """Manager of the Rules class.
     This class provides all the methods needed for the administration of the Rules objects.
@@ -1405,7 +1480,7 @@ class RulesManager(RBACManager):
             True if the rule was added successfully or a SecurityError code.
         """
         try:
-            if rule is not None and not isinstance(rule, dict):
+            if rule is not None and (not isinstance(rule, dict) or has_malformed_regex(rule)):
                 return SecurityError.INVALID
             try:
                 if check_default and \
@@ -1490,7 +1565,7 @@ class RulesManager(RBACManager):
             if rule_to_update and rule_to_update is not None:
                 if rule_to_update.id > MAX_ID_RESERVED:
                     # Rule is not a valid json
-                    if rule is not None and not isinstance(rule, dict):
+                    if rule is not None and (not isinstance(rule, dict) or has_malformed_regex(rule)):
                         return SecurityError.INVALID
                     # Change the rule
                     if name is not None:

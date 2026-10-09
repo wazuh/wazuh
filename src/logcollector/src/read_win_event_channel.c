@@ -157,7 +157,7 @@ EVT_HANDLE read_bookmark(os_channel *channel)
         return (NULL);
     }
 
-    size = fread(bookmark_xml, sizeof(wchar_t), OS_MAXSTR, fp);
+    size = fread(bookmark_xml, sizeof(wchar_t), OS_MAXSTR - 1, fp);
     if (ferror(fp)) {
         merror(
             "Could not fread() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
