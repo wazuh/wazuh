@@ -326,25 +326,26 @@ static char *w_agent_auth_read_token_stdin(FILE *in, FILE *err) {
     char *text = NULL;
 
     switch (w_agent_token_read_stream(in, &text)) {
-    case W_TOKEN_READ_OK:
-        break;
-    case W_TOKEN_READ_TTY:
-        w_agent_auth_explain_no_token(err);
-        return NULL;
-    case W_TOKEN_READ_TOO_BIG:
-        fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", AGENT_AUTH_NAME,
-                W_ETOKEN_MAX_FILE_BYTES);
-        return NULL;
-    default:
-        fprintf(err, "%s: could not read the enrollment token from standard input.\n",
-                AGENT_AUTH_NAME);
-        return NULL;
+        case W_TOKEN_READ_OK:
+            break;
+        case W_TOKEN_READ_TTY:
+            w_agent_auth_explain_no_token(err);
+            return NULL;
+        case W_TOKEN_READ_TOO_BIG:
+            fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", AGENT_AUTH_NAME,
+                    W_ETOKEN_MAX_FILE_BYTES);
+            return NULL;
+        case W_TOKEN_READ_IO:
+            fprintf(err, "%s: could not read the enrollment token from standard input.\n",
+                    AGENT_AUTH_NAME);
+            return NULL;
     }
 
     if (*text == '\0') {
         fprintf(err, "%s: the enrollment token is empty. Pass --token-file <path>,\n"
                 "  or redirect one on standard input.\n", AGENT_AUTH_NAME);
         os_free(text);
+        return NULL;
     }
 
     return text;
