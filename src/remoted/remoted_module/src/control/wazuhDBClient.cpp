@@ -423,58 +423,71 @@ namespace remoted::control
     }
 
     /**
+     * @brief Length of the run of ASCII digits starting at @p pos.
+     */
+    static size_t digitRunLength(const std::string& str, size_t pos)
+    {
+        size_t end = pos;
+        while (end < str.size() && str[end] >= '0' && str[end] <= '9')
+        {
+            ++end;
+        }
+        return end - pos;
+    }
+
+    /**
      * @brief Parse os_major and os_minor from os_version string
-     * @param osVersion The OS version string (e.g., "22.04", "20.04.5", "15-SP7")
+     *
+     * The agent sends the raw os-release VERSION, so the string may carry no separator at all
+     * ("2023", "12 (bookworm)", "40 (Server Edition)") or trailing text after the minor
+     * ("9.4 (Plow)", "24.04.1 LTS (Noble Numbat)"). Like syscollector, the major is the leading run
+     * of digits and the minor the run of digits after the first dot.
+     *
+     * @param osVersion The OS version string (e.g., "22.04", "20.04.5", "15-SP7", "12 (bookworm)")
      * @param osMajor Output string for major version
      * @param osMinor Output string for minor version
      */
     static void parseOsVersion(const std::string& osVersion, std::string& osMajor, std::string& osMinor)
     {
-        if (osVersion.empty())
+        const size_t majorLen = digitRunLength(osVersion, 0);
+        if (majorLen == 0)
         {
             return;
         }
 
-        // Find the first dot or hyphen separator
-        size_t dotPos = osVersion.find('.');
-        size_t hyphenPos = osVersion.find('-');
-        size_t sepPos = std::min(dotPos, hyphenPos);
+        osMajor = osVersion.substr(0, majorLen);
 
-        if (sepPos == std::string::npos || sepPos == 0)
+        if (majorLen == osVersion.size())
         {
             return;
         }
 
-        // Extract major version
-        osMajor = osVersion.substr(0, sepPos);
-
-        // Extract minor version
-        if (dotPos != std::string::npos && dotPos == sepPos)
+        if (osVersion[majorLen] == '.')
         {
-            // Standard format: "22.04" or "20.04.5"
-            size_t minorStart = dotPos + 1;
-            size_t minorEnd = osVersion.find('.', minorStart);
-            if (minorEnd == std::string::npos)
+            // Standard format: "22.04", "20.04.5", "9.4 (Plow)"
+            const size_t minorStart = majorLen + 1;
+            const size_t minorLen = digitRunLength(osVersion, minorStart);
+            if (minorLen > 0)
             {
-                minorEnd = osVersion.length();
-            }
-            if (minorEnd > minorStart)
-            {
-                osMinor = osVersion.substr(minorStart, minorEnd - minorStart);
+                osMinor = osVersion.substr(minorStart, minorLen);
             }
         }
-        else if (hyphenPos != std::string::npos && hyphenPos == sepPos)
+        else if (osVersion[majorLen] == '-')
         {
             // SUSE format: "15-SP7"
-            size_t spPos = osVersion.find("SP", hyphenPos);
+            size_t spPos = osVersion.find("SP", majorLen);
             if (spPos == std::string::npos)
             {
-                spPos = osVersion.find("sp", hyphenPos);
+                spPos = osVersion.find("sp", majorLen);
             }
             if (spPos != std::string::npos)
             {
-                size_t minorStart = spPos + 2;
-                osMinor = osVersion.substr(minorStart);
+                const size_t minorStart = spPos + 2;
+                const size_t minorLen = digitRunLength(osVersion, minorStart);
+                if (minorLen > 0)
+                {
+                    osMinor = osVersion.substr(minorStart, minorLen);
+                }
             }
         }
     }
