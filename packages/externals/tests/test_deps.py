@@ -1339,6 +1339,12 @@ def test_lock_workflow_paths():
     assert not (WORKFLOWS / "5_codequality_externals-drift.yml").exists()
 
 
+def test_workflows_skip_drafts():
+    guard = "    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}\n"
+    assert guard in jobs(EXTERNALS_WORKFLOW.read_text(encoding="utf-8"))["check"]
+    assert guard in jobs(LOCK_WORKFLOW.read_text(encoding="utf-8"))["check-lock"]
+
+
 def test_workflows_filter_lock():
     missing = [path.name for path in sorted(WORKFLOWS.glob("*.yml"))
                for block in paths_blocks(path.read_text(encoding="utf-8"))
