@@ -306,6 +306,24 @@ int __wrap_OS_MoveFile(const char *src, const char *dst) {
     return __real_OS_MoveFile(src, dst);
 }
 
+/* TempFile() reaches the real one unless a test needs every write to the staged copy to fail, as
+ * on a full disk: its stream is then pointed at /dev/full, and the file stays where it was made. */
+static bool g_staged_disk_full = false;
+
+int __real_TempFile(File *file, const char *source, int copy);
+
+int __wrap_TempFile(File *file, const char *source, int copy) {
+    int result = __real_TempFile(file, source, copy);
+
+    if (result == 0 && g_staged_disk_full) {
+        fclose(file->fp);
+        file->fp = fopen("/dev/full", "w");
+        assert_non_null(file->fp);
+    }
+
+    return result;
+}
+
 #define TIMESTAMPS "001 web-01 any 2026-10-07 10:00:00\n" \
                    "002 db-01 any 2026-10-07 10:00:01\n" \
                    "003 mail-01 any 2026-10-07 10:00:02\n"
@@ -382,7 +400,9 @@ static int setup_timestamps(void **state) {
 static int teardown_timestamps(void **state) {
     (void) state;
     g_fail_move = false;
+    g_staged_disk_full = false;
     unlink(TIMESTAMP_FILE);
+    rmdir(TIMESTAMP_FILE);
     remove_staged_timestamp_files();
     return 0;
 }
@@ -409,6 +429,43 @@ static void test_remove_agent_timestamp_cleans_up_after_a_failed_move(void **sta
     assert_timestamps(TIMESTAMPS);
     assert_int_equal(count_staged_timestamp_files(), 0);
 }
+
+#ifdef __linux__
+/* A rewrite that couldn't be written in full is never moved into place: it would replace every
+ * remaining agent's timestamp with whatever made it to disk. */
+static void test_remove_agent_timestamp_keeps_the_file_when_the_rewrite_fails(void **state) {
+    (void) state;
+    write_timestamps(TIMESTAMPS);
+    g_staged_disk_full = true;
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1110): Could not write file 'queue/agents-timestamp' due to [(28)-(No space left on device)].");
+
+    OS_RemoveAgentTimestamp("002");
+
+    assert_timestamps(TIMESTAMPS);
+    assert_int_equal(count_staged_timestamp_files(), 0);
+}
+#endif
+
+/* Nor is a copy of a file that couldn't be read through. A directory where the file should be
+ * stands in for a read error: it opens, and every read from it fails. */
+static void test_remove_agent_timestamp_keeps_the_file_when_it_cannot_be_read(void **state) {
+    struct stat st;
+
+    (void) state;
+    mkdir("queue", 0750);
+    assert_int_equal(mkdir(TIMESTAMP_FILE, 0750), 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1115): Could not read from file 'queue/agents-timestamp' due to [(21)-(Is a directory)].");
+
+    OS_RemoveAgentTimestamp("002");
+
+    assert_int_equal(stat(TIMESTAMP_FILE, &st), 0);
+    assert_true(S_ISDIR(st.st_mode));
+    assert_int_equal(count_staged_timestamp_files(), 0);
+}
 #endif
 
 int main(void) {
@@ -433,6 +490,12 @@ int main(void) {
                                         teardown_timestamps),
         cmocka_unit_test_setup_teardown(test_remove_agent_timestamp_cleans_up_after_a_failed_move, setup_timestamps,
                                         teardown_timestamps),
+#ifdef __linux__
+        cmocka_unit_test_setup_teardown(test_remove_agent_timestamp_keeps_the_file_when_the_rewrite_fails,
+                                        setup_timestamps, teardown_timestamps),
+#endif
+        cmocka_unit_test_setup_teardown(test_remove_agent_timestamp_keeps_the_file_when_it_cannot_be_read,
+                                        setup_timestamps, teardown_timestamps),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
