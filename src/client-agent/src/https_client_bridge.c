@@ -370,6 +370,17 @@ static bool bridge_parse_syscollector_containers_limits(const cJSON *limits_obj,
            bridge_get_required_int(module, "hardware", &containers->hardware);
 }
 
+static bool bridge_parse_fim_containers_limits(const cJSON *limits_obj,
+                                              fim_containers_limits_t *fim_containers)
+{
+    cJSON *module = cJSON_GetObjectItem(limits_obj, "fim_containers");
+    if (!module || !cJSON_IsObject(module)) {
+        return false;
+    }
+
+    return bridge_get_required_int(module, "file", &fim_containers->file);
+}
+
 static bool bridge_parse_sca_limits(const cJSON *limits_obj, sca_limits_t *sca)
 {
     cJSON *module = cJSON_GetObjectItem(limits_obj, "sca");
@@ -399,6 +410,12 @@ static bool bridge_parse_limits(const cJSON *root, module_limits_t *limits)
      * already initialised to unlimited, which is the right answer in that case. */
     if (!bridge_parse_syscollector_containers_limits(limits_obj, &limits->syscollector_containers)) {
         mdebug1("Handshake carries no 'syscollector_containers' limits; container inventory stays unlimited.");
+    }
+
+    /* Optional for the same reason, and new in O10: a manager that predates the
+     * container FIM cap sends no "fim_containers" object. */
+    if (!bridge_parse_fim_containers_limits(limits_obj, &limits->fim_containers)) {
+        mdebug1("Handshake carries no 'fim_containers' limits; container FIM stays unlimited.");
     }
 
     limits->limits_received = true;

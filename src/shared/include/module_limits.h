@@ -17,6 +17,18 @@
 #define DEFAULT_FIM_REGISTRY_KEY_LIMIT                  0
 #define DEFAULT_FIM_REGISTRY_VALUE_LIMIT                0
 
+/* FIM container-scope default value (#37532 / O10).
+ *
+ * Separate from DEFAULT_FIM_FILE_LIMIT above for the same reason the
+ * syscollector container caps are separate: container rows and host rows share
+ * the file_entry table and the FIM sync index, so one budget lets a node's
+ * containers spend the agent's own allowance. There is no registry counterpart
+ * -- containers are Linux-only here and registry monitoring is Windows-only.
+ *
+ * Default 0 = unlimited, so an agent whose manager never sends this behaves
+ * exactly as before. */
+#define DEFAULT_FIM_CONTAINERS_FILE_LIMIT               0
+
 /* Syscollector default values */
 #define DEFAULT_SYSCOLLECTOR_HOTFIXES_LIMIT             0
 #define DEFAULT_SYSCOLLECTOR_PACKAGES_LIMIT             0
@@ -64,6 +76,16 @@ typedef struct fim_limits_t {
     int registry_key;
     int registry_value;
 } fim_limits_t;
+
+/**
+ * @brief FIM container-scope limits structure (#37532 / O10).
+ *
+ * One field: container FIM tracks files and nothing else. Kept a struct rather
+ * than a bare int so adding a dimension later does not change every signature.
+ */
+typedef struct fim_containers_limits_t {
+    int file;
+} fim_containers_limits_t;
 
 /**
  * @brief Syscollector module limits structure
@@ -118,6 +140,7 @@ typedef struct sca_limits_t {
  */
 typedef struct module_limits_t {
     fim_limits_t fim;
+    fim_containers_limits_t fim_containers;
     syscollector_limits_t syscollector;
     syscollector_containers_limits_t syscollector_containers;
     sca_limits_t sca;
@@ -141,6 +164,12 @@ void module_limits_reset(module_limits_t *limits);
  * @param fim Pointer to FIM limits structure
  */
 void fim_limits_init(fim_limits_t *fim);
+
+/**
+ * @brief Initialize FIM container-scope limits with defaults
+ * @param fim_containers Pointer to FIM container limits structure
+ */
+void fim_containers_limits_init(fim_containers_limits_t *fim_containers);
 
 /**
  * @brief Initialize Syscollector limits with defaults

@@ -18,6 +18,13 @@ void fim_limits_init(fim_limits_t *fim) {
     fim->registry_value = DEFAULT_FIM_REGISTRY_VALUE_LIMIT;
 }
 
+void fim_containers_limits_init(fim_containers_limits_t *fim_containers) {
+    if (!fim_containers) {
+        return;
+    }
+    fim_containers->file = DEFAULT_FIM_CONTAINERS_FILE_LIMIT;
+}
+
 void syscollector_limits_init(syscollector_limits_t *syscollector) {
     if (!syscollector) {
         return;
@@ -65,6 +72,7 @@ void module_limits_init(module_limits_t *limits) {
         return;
     }
     fim_limits_init(&limits->fim);
+    fim_containers_limits_init(&limits->fim_containers);
     syscollector_limits_init(&limits->syscollector);
     syscollector_containers_limits_init(&limits->syscollector_containers);
     sca_limits_init(&limits->sca);
@@ -84,6 +92,11 @@ bool module_limits_changed(const module_limits_t *limits1, const module_limits_t
     if (limits1->fim.file != limits2->fim.file ||
         limits1->fim.registry_key != limits2->fim.registry_key ||
         limits1->fim.registry_value != limits2->fim.registry_value) {
+        return true;
+    }
+
+    // Compare FIM container-scope limits
+    if (limits1->fim_containers.file != limits2->fim_containers.file) {
         return true;
     }
 
