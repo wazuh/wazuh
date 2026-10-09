@@ -188,6 +188,10 @@ The `table_metadata` table supports FIM recovery functionality by tracking each 
 - `registry_key` - Registry key monitoring state (Windows only)
 - `registry_data` - Registry value monitoring state (Windows only)
 
+**Identity Markers:** the same table holds the agent ID FIM data was last synchronized under, stored in `last_sync_time`:
+- `synced_agent_id`: Agent ID under which the manager holds every FIM table; when the agent's current ID differs (for example, after re-enrolling), FIM resends every monitored entry
+- `synced_agent_id:<table>`: Agent ID under which that table was last resent, so a resend cut short by a restart or by a failed table resumes with the tables still pending
+
 ---
 
 ## Sync Protocol Database
