@@ -947,7 +947,7 @@ def test_aws_custom_bucket_initializes_properly(mock_bucket, mock_wazuh_aws_data
     assert instance.retain_db_records == aws_bucket.MAX_RECORD_RETENTION
     mock_sts.assert_called_with(access_key, secret_key, profile=profile)
     mock_client.get_caller_identity.assert_called_once()
-    assert instance.macie_location_pattern == re.compile(r'"lat":(-?0+\d+\.\d+),"lon":(-?0+\d+\.\d+)')
+    assert instance.macie_location_pattern == re.compile(r'"lat":(-?0\d+\.\d+),"lon":(-?0\d+\.\d+)')
     assert instance.check_prefix
 
 

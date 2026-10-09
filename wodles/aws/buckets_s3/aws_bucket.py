@@ -752,7 +752,7 @@ class AWSCustomBucket(AWSBucket):
         self.sts_client = self.get_sts_client(access_key, secret_key, profile=profile)
         # get account ID
         self.aws_account_id = self.sts_client.get_caller_identity().get('Account')
-        self.macie_location_pattern = re.compile(r'"lat":(-?0+\d+\.\d+),"lon":(-?0+\d+\.\d+)')
+        self.macie_location_pattern = re.compile(r'"lat":(-?0\d+\.\d+),"lon":(-?0\d+\.\d+)')
         self.check_prefix = True
         # SQL queries for custom buckets
         self.sql_already_processed = """
