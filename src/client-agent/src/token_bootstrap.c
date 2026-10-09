@@ -1206,8 +1206,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
         os_free(anchor_file.name);
 
         /* A 200 means the manager accepted and it is the LOCAL store that failed -- and by then
-         * client.keys may already be gone: enrollment.c's Windows branch opens it "w" outright,
-         * and OS_MoveFile()'s copy fallback truncates its destination before streaming into it.
+         * client.keys may already be gone: enrollment.c's Windows branch opens it "w" outright.
          * Discarding the backup there deletes the last copy of a working key and then reports
          * that none was ever taken. Anything else is the manager refusing, which writes nothing
          * locally, so the backup is genuinely surplus. */
