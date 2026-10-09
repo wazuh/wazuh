@@ -14,6 +14,9 @@
 #include <cstdarg>
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
+#include <memory>
+#include <random>
 #include <string>
 #include <utility>
 #include <vector>
@@ -338,4 +341,72 @@ TEST_F(RocksDBQueueTest, StartupIsSilentWithWellFormedKeys)
 
     EXPECT_TRUE(logs.empty()) << logs;
     EXPECT_EQ(queue->size(), 2);
+}
+
+// Test that a corrupted block found at startup is repaired, and that the queue then either accepts elements or rejects
+// them because its bounds are unreliable
+TEST_F(RocksDBQueueTest, StartupRepairsACorruptedBlockOfAnSstFile)
+{
+    // Values that do not compress, so that the file has several data blocks.
+    std::mt19937 generator {42};
+    std::uniform_int_distribution<int> letters {'a', 'z'};
+    for (auto i = 0; i < 100; ++i)
+    {
+        std::string value(200, ' ');
+        for (auto& character : value)
+        {
+            character = static_cast<char>(letters(generator));
+        }
+        queue->push(value);
+    }
+    queue.reset();
+
+    // Moves the keys from the log to an .sst file.
+    {
+        rocksdb::DB* db;
+        rocksdb::Options options;
+        ASSERT_TRUE(rocksdb::DB::Open(options, TEST_DB, &db).ok());
+        ASSERT_TRUE(db->Flush(rocksdb::FlushOptions()).ok());
+        delete db;
+    }
+
+    std::filesystem::path sst;
+    for (const auto& entry : std::filesystem::directory_iterator(TEST_DB))
+    {
+        if (entry.path().extension() == ".sst" && (sst.empty() || entry.file_size() > std::filesystem::file_size(sst)))
+        {
+            sst = entry.path();
+        }
+    }
+    ASSERT_FALSE(sst.empty());
+
+    // Overwrites 64 bytes in the middle of the file, inside its data blocks.
+    {
+        std::fstream file {sst, std::ios::in | std::ios::out | std::ios::binary};
+        ASSERT_TRUE(file.is_open());
+        file.seekp(static_cast<std::streamoff>(std::filesystem::file_size(sst) / 2));
+        const std::string garbage(64, '\xff');
+        file.write(garbage.data(), static_cast<std::streamsize>(garbage.size()));
+    }
+
+    std::unique_ptr<RocksDBQueue<std::string>> repaired;
+    const auto logs = captureLogs(
+        [&repaired]() { EXPECT_NO_THROW(repaired = std::make_unique<RocksDBQueue<std::string>>(TEST_DB)); });
+    ASSERT_NE(repaired, nullptr);
+
+    // The corruption is found and the database repaired, either when opening it or when scanning its keys.
+    EXPECT_TRUE(logs.find("Repairing the database") != std::string::npos ||
+                logs.find("was repaired") != std::string::npos)
+        << logs;
+
+    try
+    {
+        repaired->push("after the repair");
+        EXPECT_GE(repaired->size(), 1);
+        EXPECT_NO_THROW(repaired->front());
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_NE(std::string {e.what()}.find("bounds"), std::string::npos) << e.what();
+    }
 }
