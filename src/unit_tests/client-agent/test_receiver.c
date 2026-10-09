@@ -36,6 +36,8 @@ static int cleanup_result;
 static int publish_result;
 static int publications;
 static int discarded;
+static int plain_receives;
+static int timeout_errno;
 static const char* accepted_hash;
 static const char* checksum = "0123456789abcdef0123456789abcdef";
 
@@ -43,8 +45,19 @@ ssize_t __wrap_OS_RecvSecureTCP(int sock, char* buffer, size_t size)
 {
     (void)sock;
     (void)size;
+    ++plain_receives;
     strcpy(buffer, "message");
     return 7;
+}
+
+int __wrap_OS_RecvSecureTCPTimeout(int sock, char* buffer, uint32_t size, int timeout)
+{
+    check_expected(sock);
+    check_expected(size);
+    check_expected(timeout);
+    errno = timeout_errno;
+    strcpy(buffer, "message");
+    return mock_type(int);
 }
 
 int __wrap_ReadSecMSG(keystore* store, char* buffer, char* cleartext, int id,
@@ -202,6 +215,8 @@ static int setup(void** state)
     errors = cleanups = cache_clears = validations = reloads = 0;
     cleanup_result = publish_result = publications = discarded = 0;
     accepted_hash = "previous";
+    plain_receives = timeout_errno = 0;
+    atomic_int_set(&recv_poll_timeout, 0);
     return 0;
 }
 
@@ -217,6 +232,7 @@ static int teardown(void** state)
     }
 
     real_files = 0;
+    atomic_int_set(&recv_poll_timeout, 0);
     free(agt->server[0].rip);
     free(agt->server);
     free(agt);
@@ -519,6 +535,45 @@ static void test_update_without_remote_conf(void** state)
     assert_int_equal(reloads, 0);
 }
 
+/* Without a poll() bound the receive stays on the blocking read. */
+static void test_receive_without_poll_timeout(void** state)
+{
+    (void)state;
+    message = CONTROL_HEADER HC_ACK;
+    expect_any(__wrap__mdebug2, formatted_msg);
+    assert_int_equal(receive_msg(), 0);
+    assert_int_equal(plain_receives, 1);
+}
+
+static void test_receive_with_poll_timeout(void** state)
+{
+    (void)state;
+    atomic_int_set(&recv_poll_timeout, 5);
+    message = CONTROL_HEADER HC_ACK;
+    expect_value(__wrap_OS_RecvSecureTCPTimeout, sock, 0);
+    expect_value(__wrap_OS_RecvSecureTCPTimeout, size, OS_MAXSTR);
+    expect_value(__wrap_OS_RecvSecureTCPTimeout, timeout, 5);
+    will_return(__wrap_OS_RecvSecureTCPTimeout, 7);
+    expect_any(__wrap__mdebug2, formatted_msg);
+    assert_int_equal(receive_msg(), 0);
+    assert_int_equal(plain_receives, 0);
+}
+
+/* A poll() timeout is logged as a connection error and makes the agent reconnect. */
+static void test_receive_poll_timeout_expires(void** state)
+{
+    (void)state;
+    atomic_int_set(&recv_poll_timeout, 5);
+    timeout_errno = EAGAIN;
+    expect_value(__wrap_OS_RecvSecureTCPTimeout, sock, 0);
+    expect_value(__wrap_OS_RecvSecureTCPTimeout, size, OS_MAXSTR);
+    expect_value(__wrap_OS_RecvSecureTCPTimeout, timeout, 5);
+    will_return(__wrap_OS_RecvSecureTCPTimeout, -1);
+    expect_string(__wrap__merror, formatted_msg, "Connection socket: Resource temporarily unavailable (11)");
+    assert_int_equal(receive_msg(), -1);
+    assert_int_equal(plain_receives, 0);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] =
@@ -535,6 +590,9 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_filesystem_revert_after_failure, setup, teardown),
         cmocka_unit_test_setup_teardown(test_update_without_restart, setup, teardown),
         cmocka_unit_test_setup_teardown(test_update_without_remote_conf, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_receive_without_poll_timeout, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_receive_with_poll_timeout, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_receive_poll_timeout_expires, setup, teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

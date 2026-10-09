@@ -110,7 +110,7 @@ endif()
 
 if(${TARGET} STREQUAL "agent")
 list(APPEND client-agent_names "test_receiver")
-list(APPEND client-agent_flags "-Wl,--wrap,OS_RecvSecureTCP,--wrap,ReadSecMSG,--wrap,wfopen \
+list(APPEND client-agent_flags "-Wl,--wrap,OS_RecvSecureTCP,--wrap,OS_RecvSecureTCPTimeout,--wrap,ReadSecMSG,--wrap,wfopen \
                                 -Wl,--wrap,OS_MD5_File,--wrap,UnmergeFiles,--wrap,cldir_ex_ignore,--wrap,rename_ex,--wrap,unlink \
                                 -Wl,--wrap,clear_merged_hash_cache,--wrap,verifyRemoteConf,--wrap,reloadAgent \
                                 -Wl,--wrap,send_msg,--wrap,w_agentd_state_update ${DEBUG_OP_WRAPPERS}")
