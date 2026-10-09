@@ -863,6 +863,98 @@ void OS_IPFound_valid_ipv6_fail(void **state)
     w_free_os_ip(ret_ip);
 }
 
+void OS_IPFound_ipv4_query_ipv6_rule(void **state)
+{
+    os_ip *rule;
+    os_calloc(1, sizeof(os_ip), rule);
+    os_strdup("::/0", rule->ip);
+    os_calloc(1, sizeof(os_ipv6), rule->ipv6);
+    rule->is_ipv6 = true;
+
+    will_return(__wrap_get_ipv4_numeric, 1);
+    will_return(__wrap_get_ipv4_numeric, 0x0302010A);
+
+    assert_int_equal(OS_IPFound("10.1.2.3", rule), 0);
+
+    w_free_os_ip(rule);
+}
+
+void OS_IPFound_ipv6_query_ipv4_rule(void **state)
+{
+    os_ip *rule;
+    os_calloc(1, sizeof(os_ip), rule);
+    os_strdup("10.0.0.0/8", rule->ip);
+    os_calloc(1, sizeof(os_ipv4), rule->ipv4);
+    rule->is_ipv6 = false;
+    rule->ipv4->ip_address = 0x0000000A;
+    rule->ipv4->netmask = 0x000000FF;
+
+    will_return(__wrap_get_ipv4_numeric, OS_INVALID);
+    will_return(__wrap_get_ipv6_numeric, 1);
+    will_return(__wrap_get_ipv6_numeric, 0x00);
+
+    // The os_ipv4 allocation is 8 bytes: reading it as an os_ipv6 runs past its end.
+    assert_int_equal(OS_IPFound("1010:1010:1010:1010:1010:1010:1010:1010", rule), 0);
+
+    w_free_os_ip(rule);
+}
+
+void OS_IPFound_ipv6_query_any_rule(void **state)
+{
+    os_ip *rule;
+    os_calloc(1, sizeof(os_ip), rule);
+    os_strdup("any", rule->ip);
+    os_calloc(1, sizeof(os_ipv6), rule->ipv6);
+    rule->is_ipv6 = false;
+
+    will_return(__wrap_get_ipv4_numeric, OS_INVALID);
+    will_return(__wrap_get_ipv6_numeric, 1);
+    will_return(__wrap_get_ipv6_numeric, 0x00);
+
+    assert_int_equal(OS_IPFound("1010:1010:1010:1010:1010:1010:1010:1010", rule), 1);
+
+    w_free_os_ip(rule);
+}
+
+void OS_IPFoundList_ipv6_query_ipv4_rule(void **state)
+{
+    os_ip **rules;
+    os_calloc(2, sizeof(os_ip *), rules);
+    os_calloc(1, sizeof(os_ip), rules[0]);
+    os_strdup("10.0.0.0/8", rules[0]->ip);
+    os_calloc(1, sizeof(os_ipv4), rules[0]->ipv4);
+    rules[0]->is_ipv6 = false;
+    rules[0]->ipv4->ip_address = 0x0000000A;
+    rules[0]->ipv4->netmask = 0x000000FF;
+
+    will_return(__wrap_get_ipv4_numeric, OS_INVALID);
+    will_return(__wrap_get_ipv6_numeric, 1);
+    will_return(__wrap_get_ipv6_numeric, 0x00);
+
+    assert_int_equal(OS_IPFoundList("1010:1010:1010:1010:1010:1010:1010:1010", rules), 0);
+
+    w_free_os_ip(rules[0]);
+    free(rules);
+}
+
+void OS_IPFoundList_ipv4_query_ipv6_rule(void **state)
+{
+    os_ip **rules;
+    os_calloc(2, sizeof(os_ip *), rules);
+    os_calloc(1, sizeof(os_ip), rules[0]);
+    os_strdup("::/0", rules[0]->ip);
+    os_calloc(1, sizeof(os_ipv6), rules[0]->ipv6);
+    rules[0]->is_ipv6 = true;
+
+    will_return(__wrap_get_ipv4_numeric, 1);
+    will_return(__wrap_get_ipv4_numeric, 0x0302010A);
+
+    assert_int_equal(OS_IPFoundList("10.1.2.3", rules), 0);
+
+    w_free_os_ip(rules[0]);
+    free(rules);
+}
+
 void OS_IPFoundList_fail(void **state)
 {
     char ip_to_test[] = {"1010:1010:1010:1010:1010:1010:1010:1010"};
@@ -1348,6 +1440,9 @@ int main(void) {
         cmocka_unit_test(OS_IPFound_valid_ipv4_negated),
         cmocka_unit_test(OS_IPFound_valid_ipv6),
         cmocka_unit_test(OS_IPFound_valid_ipv6_fail),
+        cmocka_unit_test(OS_IPFound_ipv4_query_ipv6_rule),
+        cmocka_unit_test(OS_IPFound_ipv6_query_ipv4_rule),
+        cmocka_unit_test(OS_IPFound_ipv6_query_any_rule),
         // Test OS_IPFoundList
         cmocka_unit_test(OS_IPFoundList_fail),
         cmocka_unit_test(OS_IPFoundList_valid_ipv4),
@@ -1355,6 +1450,8 @@ int main(void) {
         cmocka_unit_test(OS_IPFoundList_valid_ipv4_not_found),
         cmocka_unit_test(OS_IPFoundList_valid_ipv6_fail),
         cmocka_unit_test(OS_IPFoundList_valid_ipv6),
+        cmocka_unit_test(OS_IPFoundList_ipv4_query_ipv6_rule),
+        cmocka_unit_test(OS_IPFoundList_ipv6_query_ipv4_rule),
         // Test OS_CIDRtoStr
         cmocka_unit_test(OS_CIDRtoStr_any),
         cmocka_unit_test(OS_CIDRtoStr_valid_ipv4),
