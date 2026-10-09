@@ -43,15 +43,17 @@ def teardown_db():
 
 
 @pytest.mark.parametrize(
-    'expected_table_names, expected_columns',
+    'expected_tables',
     [
-        (
-            ['graph', 'log_analytics', 'storage'],
-            ['md5', 'query', 'min_processed_date', 'max_processed_date'],
-        )
+        {
+            'graph': ['md5', 'query', 'min_processed_date', 'max_processed_date'],
+            'log_analytics': ['md5', 'query', 'min_processed_date', 'max_processed_date'],
+            'storage': ['md5', 'query', 'min_processed_date', 'max_processed_date'],
+            'storage_blob_offset': ['md5', 'container', 'blob', 'creation_time', 'processed_bytes'],
+        }
     ],
 )
-def test_create_db(expected_table_names, expected_columns, teardown_db):
+def test_create_db(expected_tables, teardown_db):
     """Check if the create_db function works as expected."""
     # Check there is no tables available
     inspector = inspect(orm.engine)
@@ -63,9 +65,9 @@ def test_create_db(expected_table_names, expected_columns, teardown_db):
     # Validate the tables and their structure
     inspector = inspect(orm.engine)
     table_names = inspector.get_table_names()
-    assert table_names == expected_table_names
+    assert table_names == list(expected_tables)
     for table in table_names:
-        assert [x['name'] for x in inspector.get_columns(table)] == expected_columns
+        assert [x['name'] for x in inspector.get_columns(table)] == expected_tables[table]
 
 
 def test_add_get_row(create_and_teardown_db):
@@ -131,6 +133,63 @@ def test_update_row_ko(create_and_teardown_db):
     """Ensure the update_row function catch exceptions when trying to commit the changes."""
     with pytest.raises(orm.AzureORMError):
         orm.update_row(orm.Graph, md5='test', min_date='', max_date='')
+
+
+def test_create_db_adds_missing_tables(teardown_db):
+    """Test create_db adds the tables missing from a database created by a previous version, keeping its rows."""
+    orm.Storage.__table__.create(orm.engine)
+    date = '2022-01-01T23:59:59.1234567Z'
+    orm.add_row(row=orm.Storage(md5='md5', query='container', min_processed_date=date, max_processed_date=date))
+
+    orm.create_db()
+
+    assert 'storage_blob_offset' in inspect(orm.engine).get_table_names()
+    assert orm.get_row(table=orm.Storage, md5='md5').max_processed_date == date
+
+
+def test_blob_offset(create_and_teardown_db):
+    """Test the offset of a blob can be stored, updated and retrieved."""
+    assert orm.get_blob_offset(md5='md5', container='container', blob='blob') is None
+
+    orm.set_blob_offset(md5='md5', container='container', blob='blob', creation_time='t1', processed_bytes=10)
+    orm.set_blob_offset(md5='md5', container='container', blob='blob', creation_time='t2', processed_bytes=20)
+
+    row = orm.get_blob_offset(md5='md5', container='container', blob='blob')
+    assert (row.creation_time, row.processed_bytes) == ('t2', 20)
+    assert orm.get_blob_offset(md5='md5', container='other', blob='blob') is None
+    assert orm.get_blob_offset(md5='other', container='container', blob='blob') is None
+
+
+@pytest.mark.parametrize(
+    'prefix, expected_blobs',
+    [
+        ('prefix/', {'prefix/kept', 'other/blob'}),
+        (None, {'prefix/kept'}),
+    ],
+)
+def test_delete_stale_blob_offsets(create_and_teardown_db, prefix, expected_blobs):
+    """Test only the offsets of the blobs under the prefix that are not kept are deleted."""
+    for blob in ['prefix/kept', 'prefix/deleted', 'other/blob']:
+        orm.set_blob_offset(md5='md5', container='container', blob=blob, creation_time='t', processed_bytes=1)
+    orm.set_blob_offset(md5='md5', container='other', blob='prefix/deleted', creation_time='t', processed_bytes=1)
+    orm.set_blob_offset(md5='other', container='container', blob='prefix/deleted', creation_time='t', processed_bytes=1)
+
+    orm.delete_stale_blob_offsets(md5='md5', container='container', prefix=prefix, keep={'prefix/kept'})
+
+    rows = orm.get_all_rows(table=orm.StorageBlobOffset)
+    assert {row.blob for row in rows if (row.md5, row.container) == ('md5', 'container')} == expected_blobs
+    assert len([row for row in rows if (row.md5, row.container) != ('md5', 'container')]) == 2
+
+
+def test_blob_offset_ko(create_and_teardown_db):
+    """Ensure the blob offset functions fail when using an invalid database."""
+    orm.Base.metadata.drop_all(orm.engine)
+    with pytest.raises(orm.AzureORMError):
+        orm.get_blob_offset(md5='md5', container='container', blob='blob')
+    with pytest.raises(orm.AzureORMError):
+        orm.set_blob_offset(md5='md5', container='container', blob='blob', creation_time='t', processed_bytes=1)
+    with pytest.raises(orm.AzureORMError):
+        orm.delete_stale_blob_offsets(md5='md5', container='container', prefix=None, keep=set())
 
 
 @pytest.mark.parametrize(

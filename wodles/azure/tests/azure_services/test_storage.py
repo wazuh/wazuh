@@ -6,8 +6,9 @@
 # it and/or modify it under the terms of GPLv2
 
 import json
+import re
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from hashlib import md5
 from os.path import abspath, dirname, join, realpath
 from typing import Optional
@@ -16,7 +17,9 @@ from unittest.mock import MagicMock, PropertyMock, call, patch
 import pytest
 import pytz
 from azure.core.exceptions import AzureError, ClientAuthenticationError, HttpResponseError, ResourceModifiedError
+from azure.storage.blob import BlobType
 from dateutil.parser import parse
+from sqlalchemy import create_engine
 
 sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 
@@ -343,7 +346,10 @@ def test_get_blobs(
     service_client.get_container_client.assert_called_with(container_name)
     container_client.list_blobs.assert_called_with(name_starts_with=None)
     container_client.download_blob.assert_has_calls(
-        [call(blob, encoding='UTF-8', max_concurrency=2) for blob in blob_list if extension and extension in blob.name]
+        [
+            call(blob, offset=None, encoding='UTF-8', max_concurrency=2)
+            for blob in blob_list if extension and extension in blob.name
+        ]
     )
     if send_events:
         calls = list()
@@ -457,7 +463,7 @@ def test_get_blobs_only_with_prefix(mock_send, mock_update):
 
     container_client.list_blobs.assert_called_with(name_starts_with=prefix)
     container_client.download_blob.assert_has_calls(
-        [call(blob, encoding='UTF-8', max_concurrency=2) for blob in blob_list if prefix in blob.name]
+        [call(blob, offset=None, encoding='UTF-8', max_concurrency=2) for blob in blob_list if prefix in blob.name]
     )
 
 
@@ -571,25 +577,27 @@ def test_download_blob_success(retries):
     """Test download_blob download blob as expected."""
     container = MagicMock()
     blob = create_mocked_blob("blob1")
-    data_mock = object()
+    data_mock = MagicMock(name='data_mock', size=7)
+    data_mock.readall.return_value = 'content'
 
     container.download_blob.return_value = data_mock
 
     result = download_blob(container, blob, number_of_retries=retries)
-    assert result is data_mock
-    container.download_blob.assert_called_once_with(blob, encoding="UTF-8", max_concurrency=2)
+    assert result == ('content', 7)
+    container.download_blob.assert_called_once_with(blob, offset=None, encoding="UTF-8", max_concurrency=2)
 
 
 def test_download_blob_retry_then_success():
     """Test download_blob retries download after a ResourceModifiedError is raised."""
     container = MagicMock()
     blob = create_mocked_blob("blob2")
-    data_mock = object()
+    data_mock = MagicMock(name='data_mock', size=7)
+    data_mock.readall.return_value = 'content'
 
     container.download_blob.side_effect = [ResourceModifiedError("mod"), data_mock]
 
     result = download_blob(container, blob, number_of_retries=3)
-    assert result is data_mock
+    assert result == ('content', 7)
     assert container.download_blob.call_count == 2
 
 
@@ -606,6 +614,21 @@ def test_download_blob_fails_immediately_on_other_exceptions(exc):
     container.download_blob.assert_called_once()
 
 
+def test_download_blob_retry_when_modified_while_reading():
+    """Test download_blob retries the download if the blob changes while its contents are read."""
+    container = MagicMock()
+    blob = create_mocked_blob("blob4")
+    modified = MagicMock(name='modified_mock')
+    modified.readall.side_effect = ResourceModifiedError("mod")
+    data_mock = MagicMock(name='data_mock', size=7)
+    data_mock.readall.return_value = 'content'
+
+    container.download_blob.side_effect = [modified, data_mock]
+
+    assert download_blob(container, blob, number_of_retries=3) == ('content', 7)
+    assert container.download_blob.call_count == 2
+
+
 def test_download_blob_retry_then_fail():
     """Test download_blob raises exception after multiple retries."""
     container = MagicMock()
@@ -618,4 +641,190 @@ def test_download_blob_retry_then_fail():
     with pytest.raises(ResourceModifiedError):
         result = download_blob(container, blob, number_of_retries=3)
     assert container.download_blob.call_count == 3
+
+
+HOURLY_BLOB = 'tenantId=00000000-0000-0000-0000-000000000000/y=2026/m=10/d=07/h=08/m=00/PT1H.json'
+
+
+class FakeContainer:
+    """In-memory container that serves its blobs like Azure Storage does: every write updates the blob size and
+    last modified time, append blobs only grow, and a blob created again gets a new creation time."""
+
+    def __init__(self):
+        self.blobs = {}
+        self.downloads = []
+        self.failed_reads = 0
+        self.clock = datetime.now(pytz.UTC) - timedelta(hours=1)
+
+    def write(self, name: str, content: str, blob_type: str = BlobType.APPENDBLOB, append: bool = True,
+              keep_creation_time: bool = False):
+        self.clock += timedelta(minutes=1)
+        blob = self.blobs.get(name)
+        if append and blob:
+            blob.update(data=blob['data'] + content.encode(), last_modified=self.clock)
+        else:
+            creation_time = blob['creation_time'] if keep_creation_time and blob else self.clock
+            self.blobs[name] = {
+                'data': content.encode(), 'type': blob_type, 'creation_time': creation_time, 'last_modified': self.clock
+            }
+
+    def exists(self):
+        return True
+
+    def list_blobs(self, name_starts_with=None):
+        listed = []
+        for name, blob in self.blobs.items():
+            item = create_mocked_blob(name, last_modified=blob['last_modified'], content_length=len(blob['data']))
+            item.blob_type = blob['type']
+            item.creation_time = blob['creation_time']
+            listed.append(item)
+        return iter(listed)
+
+    def download_blob(self, blob, offset=None, encoding=None, max_concurrency=1):
+        self.downloads.append(offset)
+        data = self.blobs[blob.name]['data']
+        if offset is not None and offset >= len(data):
+            raise HttpResponseError('The range specified is invalid for the current size of the resource.')
+        data = data[offset or 0:]
+        downloader = MagicMock(name='downloader_mock', size=len(data))
+        if self.failed_reads:
+            # The blob changes while its chunks are downloaded
+            self.failed_reads -= 1
+            downloader.readall.side_effect = ResourceModifiedError('The condition specified was not met.')
+        else:
+            downloader.readall.return_value = data.decode(encoding) if encoding else data
+        return downloader
+
+
+def audit_records(*event_ids: str) -> str:
+    """Return Entra ID audit log records, one JSON object per line, as written to the hourly blobs."""
+    return ''.join(
+        json.dumps({'operationName': 'Add application', 'category': 'AuditLogs', 'properties': {'id': event_id}}) + '\n'
+        for event_id in event_ids
+    )
+
+
+def run_storage(container: FakeContainer, json_inline: bool = True, json_file: bool = False,
+                reparse: bool = False) -> list:
+    """Run the Storage integration once against the given container and return the ids of the events sent."""
+    args = MagicMock(
+        storage_auth_path='auth_path',
+        container='insights-logs-auditlogs',
+        storage_time_offset='24h',
+        prefix=None,
+        storage_tag='tag',
+        reparse=reparse,
+        json_file=json_file,
+        json_inline=json_inline,
+        blobs='.json',
+    )
+    service_client = MagicMock(name='service_client_mock')
+    service_client.get_container_client.return_value = container
+    with patch('azure_services.storage.read_auth_file', return_value=('account', 'key')), \
+            patch('azure_services.storage.BlobServiceClient', return_value=service_client), \
+            patch('azure_services.storage.send_message') as mock_send:
+        start_storage(args)
+    return [event_id for c in mock_send.call_args_list for event_id in re.findall(r'"id": "(\w+)"', c.args[0])]
+
+
+@pytest.fixture
+def in_memory_db():
+    """Point the ORM to an empty in-memory database during the test."""
+    engine = create_engine('sqlite:///', echo=False)
+    session = orm.sessionmaker(bind=engine)()
+    with patch.object(orm, 'engine', engine), patch.object(orm, 'session', session):
+        orm.create_db()
+        yield
+    session.close()
+
+
+@pytest.mark.parametrize('json_inline', [True, False])
+def test_append_blob_only_new_records_are_sent(in_memory_db, json_inline):
+    """Test records appended to a blob after a run are the only ones sent by the next run."""
+    container = FakeContainer()
+    container.write(HOURLY_BLOB, audit_records('E1'))
+    sent_per_run = [run_storage(container, json_inline=json_inline)]
+    container.write(HOURLY_BLOB, audit_records('E2'))
+    sent_per_run.append(run_storage(container, json_inline=json_inline))
+    container.write(HOURLY_BLOB, audit_records('E3'))
+    sent_per_run.append(run_storage(container, json_inline=json_inline))
+    sent_per_run.append(run_storage(container, json_inline=json_inline))
+
+    assert sent_per_run == [['E1'], ['E2'], ['E3'], []]
+
+
+def test_append_blob_reparse_sends_all_records(in_memory_db):
+    """Test the reparse option sends every record of an append blob again."""
+    container = FakeContainer()
+    container.write(HOURLY_BLOB, audit_records('E1'))
+    run_storage(container)
+    container.write(HOURLY_BLOB, audit_records('E2'))
+
+    assert run_storage(container, reparse=True) == ['E1', 'E2']
+
+
+@pytest.mark.parametrize('new_events', [['E9'], ['E7', 'E8', 'E9'], ['E6', 'E7', 'E8', 'E9']])
+def test_append_blob_created_again_is_read_from_the_start(in_memory_db, new_events):
+    """Test a blob deleted and created again with the same name is read from its start, whatever its new size."""
+    container = FakeContainer()
+    container.write(HOURLY_BLOB, audit_records('E1', 'E2', 'E3'))
+    run_storage(container)
+    container.write(HOURLY_BLOB, audit_records(*new_events), append=False)
+
+    assert run_storage(container) == new_events
+
+
+def test_append_blob_smaller_than_its_offset_is_read_from_the_start(in_memory_db):
+    """Test a blob replaced with less data than already processed is read from its start even if it keeps its
+    creation time."""
+    container = FakeContainer()
+    container.write(HOURLY_BLOB, audit_records('E1', 'E2', 'E3'))
+    run_storage(container)
+    container.write(HOURLY_BLOB, audit_records('E9'), append=False, keep_creation_time=True)
+
+    assert run_storage(container) == ['E9']
+
+
+def test_blob_modified_while_downloading_does_not_move_the_bookmark(in_memory_db):
+    """Test a blob that keeps changing while it is downloaded doesn't move the bookmark, so the next run can send it."""
+    container = FakeContainer()
+    container.write(HOURLY_BLOB, audit_records('E1'))
+    container.failed_reads = 3
+
+    assert run_storage(container) == []
+    assert run_storage(container) == ['E1']
+
+
+def test_append_blob_offset_removed_with_the_blob(in_memory_db):
+    """Test the offset of an append blob is removed once the blob is no longer in the container."""
+    container = FakeContainer()
+    next_hour_blob = HOURLY_BLOB.replace('/h=08/', '/h=09/')
+    container.write(HOURLY_BLOB, audit_records('E1'))
+    container.write(next_hour_blob, audit_records('E2'))
+    run_storage(container)
+    del container.blobs[HOURLY_BLOB]
+    run_storage(container)
+
+    assert [row.blob for row in orm.get_all_rows(table=orm.StorageBlobOffset)] == [next_hour_blob]
+
+
+def test_block_blob_replaced_is_sent_again(in_memory_db):
+    """Test a block blob replaced with new content is sent in full, as block blobs are not appended to."""
+    container = FakeContainer()
+    container.write(HOURLY_BLOB, audit_records('E1'), blob_type=BlobType.BLOCKBLOB)
+    run_storage(container)
+    container.write(HOURLY_BLOB, audit_records('E1', 'E2'), blob_type=BlobType.BLOCKBLOB, append=False)
+
+    assert run_storage(container) == ['E1', 'E2']
+
+
+def test_append_blob_json_file_is_read_whole(in_memory_db):
+    """Test blobs holding a single JSON document are always downloaded whole, as they cannot be parsed in parts."""
+    container = FakeContainer()
+    container.write(HOURLY_BLOB, json.dumps({'records': [{'properties': {'id': 'E1'}}]}))
+    assert run_storage(container, json_inline=False, json_file=True) == ['E1']
+    container.write(HOURLY_BLOB, '\n')
+    run_storage(container, json_inline=False, json_file=True)
+
+    assert container.downloads == [None, None]
 
