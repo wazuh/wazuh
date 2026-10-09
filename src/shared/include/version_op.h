@@ -81,7 +81,9 @@ void free_osinfo(os_info * osinfo);
 int get_nproc();
 
 /**
- * Compare two versions with format v4.0.0
+ * Compare two versions with format v4.0.0. Each side is read as up to three dot-separated numbers after
+ * the first 'v' (or from the start): missing or non-numeric parts are 0, a suffix such as "-rc1" is
+ * ignored and there is no length limit. Reentrant: safe to call from several threads at once.
  * @param version1 char * with the string version
  * @param version2 char * with the string version
  * @param compare_patch bool to compare or not patch version

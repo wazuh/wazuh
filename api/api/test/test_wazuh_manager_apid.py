@@ -685,7 +685,7 @@ def test_configure_ssl_sets_the_uvicorn_ssl_params(ssl_apid, pem_pairs, use_ca):
     _use_pair(ssl_apid, cert, key)
     ssl_apid.api_conf['https']['use_ca'] = use_ca
     ssl_apid.api_conf['https']['ca'] = other_cert
-    ssl_apid.api_conf['https']['ssl_ciphers'] = 'ecdhe+aesgcm'
+    ssl_apid.api_conf['https']['ssl_ciphers'] = 'DEFAULT:!kRSA'
     params = {}
 
     with patch('os.chown') as chown:
@@ -694,7 +694,9 @@ def test_configure_ssl_sets_the_uvicorn_ssl_params(ssl_apid, pem_pairs, use_ca):
     assert params['ssl_certfile'] == cert
     assert params['ssl_keyfile'] == key
     assert params['ssl_version'] == ssl_apid.ssl.PROTOCOL_TLS_SERVER
-    assert params['ssl_ciphers'] == 'ECDHE+AESGCM'
+    # As written: OpenSSL keywords are case-sensitive, and `!KRSA` would have excluded nothing.
+    assert params['ssl_ciphers'] == 'DEFAULT:!kRSA'
+    ssl_apid.logger.warning.assert_not_called()
     if use_ca:
         assert params['ssl_cert_reqs'] == ssl_apid.ssl.CERT_REQUIRED
         assert params['ssl_ca_certs'] == other_cert
@@ -817,9 +819,52 @@ def test_configure_ssl_refuses_a_cipher_string_that_selects_nothing(ssl_apid, pe
         ssl_apid.configure_ssl({})
 
     assert error.value.code == 2003
-    assert 'NO-SUCH-CIPHER' in str(error.value)
+    assert 'no-such-cipher' in str(error.value)
     assert 'does not match' not in str(error.value)
     ssl_apid.logger.error.assert_called_once_with(error.value)
+
+
+def test_configure_ssl_uppercases_a_lowercase_cipher_list_with_a_warning(ssl_apid, pem_pairs):
+    """A list that OpenSSL rejects as written but accepts uppercased still starts, and says so.
+
+    Earlier releases uppercased every cipher string, so `ecdhe+aesgcm` is a configuration that
+    works today only because of that; it keeps working, with one warning naming the option.
+    """
+    (cert, key), _ = pem_pairs
+    _use_pair(ssl_apid, cert, key)
+    ssl_apid.api_conf['https']['ssl_ciphers'] = 'ecdhe+aesgcm'
+    params = {}
+
+    ssl_apid.configure_ssl(params)
+
+    assert params['ssl_ciphers'] == 'ECDHE+AESGCM'
+    ssl_apid.logger.warning.assert_called_once()
+    warning = ssl_apid.logger.warning.call_args.args[0]
+    assert 'ssl_ciphers' in warning and 'ecdhe+aesgcm' in warning and 'ECDHE+AESGCM' in warning
+    ssl_apid.logger.error.assert_not_called()
+
+
+def test_configure_ssl_serves_an_aead_default_when_ssl_ciphers_is_empty(ssl_apid, pem_pairs):
+    """An empty ssl_ciphers hands uvicorn the API's own default instead of uvicorn's "TLSv1".
+
+    uvicorn's default left TLS 1.2 with two CBC/SHA-1 suites and no AEAD one. The default selects
+    forward-secret AEAD suites only; the TLS 1.3 suites are not chosen by a cipher string.
+    """
+    (cert, key), _ = pem_pairs
+    _use_pair(ssl_apid, cert, key)
+    ssl_apid.api_conf['https']['ssl_ciphers'] = ''
+    params = {}
+
+    ssl_apid.configure_ssl(params)
+
+    assert params['ssl_ciphers'] == ssl_apid.DEFAULT_SSL_CIPHERS
+    ssl_apid.logger.warning.assert_not_called()
+
+    context = ssl_apid.ssl.SSLContext(ssl_apid.ssl.PROTOCOL_TLS_SERVER)
+    context.set_ciphers(params['ssl_ciphers'])
+    tls12 = [cipher['name'] for cipher in context.get_ciphers() if cipher['protocol'] == 'TLSv1.2']
+    assert tls12
+    assert all(name.startswith('ECDHE') and ('GCM' in name or 'CHACHA20' in name) for name in tls12)
 
 
 def _failing_load(apid, exc):

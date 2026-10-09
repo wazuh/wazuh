@@ -13,8 +13,10 @@ from api.api_exception import APIError
 from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH, CERTS_PATH
 from api.validator import api_config_schema, security_config_schema
 
-# Fields that must preserve case sensitivity when converting to lowercase
-PRESERVE_CASE_SENSITIVITY_FIELDS = {'https.key', 'https.cert', 'https.ca'}
+# Fields that must preserve case sensitivity when converting to lowercase: file paths, and the
+# OpenSSL cipher list, whose keywords are case-sensitive (`!kRSA` excludes RSA key exchange,
+# `!KRSA` is unknown and silently dropped)
+PRESERVE_CASE_SENSITIVITY_FIELDS = {'https.key', 'https.cert', 'https.ca', 'https.ssl_ciphers'}
 
 default_security_configuration = {
     "auth_token_exp_timeout": 900,

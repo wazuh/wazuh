@@ -11,7 +11,7 @@
 #  cert: "apid.pem"
 #  use_ca: False
 #  ca: "root-ca.pem"
-#  ssl_ciphers: ""
+#  ssl_ciphers: ""  # Passed to OpenSSL as written (case-sensitive); empty = ECDHE+AESGCM:ECDHE+CHACHA20
 
 # Modify API's intervals (time in seconds)
 # intervals:

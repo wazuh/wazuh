@@ -23,7 +23,7 @@ custom_api_configuration = {
         "cert": "manager.crt",
         "use_ca": False,
         "ca": "rootCA.pem",
-        "ssl_ciphers": ""
+        "ssl_ciphers": "ECDHE+AESGCM:!kRSA"
     },
     "logs": {
         "level": "info",
@@ -87,9 +87,11 @@ def test_read_configuration(mock_open, mock_exists, read_config):
         for section, subsection in [('https', 'key'), ('https', 'cert'), ('https', 'ca')]:
             config[section][subsection] = config[section][subsection].replace(f'{api.constants.CERTS_PATH}/', '')
 
-        # SSL paths (key, cert, ca) must preserve their original case
+        # SSL paths (key, cert, ca) and the OpenSSL cipher list must preserve their original case
         if 'https' in read_config and 'ca' in read_config['https']:
             assert config['https']['ca'] == read_config['https']['ca']
+        if 'https' in read_config and 'ssl_ciphers' in read_config['https']:
+            assert config['https']['ssl_ciphers'] == read_config['https']['ssl_ciphers']
 
         check_config_values(config, {}, read_config)
 
