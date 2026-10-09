@@ -73,6 +73,19 @@ int OS_ReadXML(const char *file, OS_XML *lxml) __attribute__((nonnull));
 int OS_ReadXML_Ex(const char *file, OS_XML *_lxml, bool flag_truncate) __attribute__((nonnull));
 
 /**
+ * @brief Parses XML from a stream the caller already holds and stores the content in the OS_XML
+ *        struct.
+ *
+ * Same as OS_ReadXML(), from @p fp instead of a file opened by name. Like OS_ReadXML() with the
+ * stream it opens, it closes @p fp when it is done, whether parsing succeeded or not.
+ *
+ * @param fp The stream to read, from its current position. Closed on return.
+ * @param lxml The struct to store the result.
+ * @return int OS_SUCCESS on success, OS_INVALID otherwise.
+ */
+int OS_ReadXMLFromStream(FILE *fp, OS_XML *lxml) __attribute__((nonnull));
+
+/**
  * @brief Parses a XML string and stores the content in the OS_XML struct.
  *        This legacy method will always fail if the content of a tag is bigger than XML_MAXSIZE.
  *

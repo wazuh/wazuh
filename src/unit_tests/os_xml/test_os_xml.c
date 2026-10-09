@@ -410,6 +410,35 @@ void test_invalid_file(void **state) {
     assert_int_equal(data->xml.err_line, 0);
 }
 
+/* A stream the caller opened parses the same as a file OS_ReadXML() opens by name. The stream is
+ * the parser's to close, so the test never closes it. */
+void test_os_read_xml_from_stream(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char *xml_str = "<root><child>value</child></root>";
+    FILE *fp;
+
+    create_xml_file(xml_str, data->xml_file_name, 256);
+    fp = fopen(data->xml_file_name, "r");
+    assert_non_null(fp);
+
+    assert_int_equal(OS_ReadXMLFromStream(fp, &data->xml), 0);
+    assert_os_xml_eq_str(&data->xml, xml_str, data->buffer);
+}
+
+/* A parse error is reported as OS_ReadXML() reports it, and the stream is closed all the same. */
+void test_os_read_xml_from_stream_parse_error(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    FILE *fp;
+
+    create_xml_file("<root></root2>", data->xml_file_name, 256);
+    fp = fopen(data->xml_file_name, "r");
+    assert_non_null(fp);
+
+    assert_int_not_equal(OS_ReadXMLFromStream(fp, &data->xml), 0);
+    assert_string_equal(data->xml.err, "XMLERR: Element 'root' not closed.");
+    assert_int_equal(data->xml.err_line, 1);
+}
+
 void test_unclosed_node1(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     create_xml_file("<root>", data->xml_file_name, 256);
@@ -1073,6 +1102,10 @@ int main(void) {
 
         // Invalid XML test
         cmocka_unit_test_setup_teardown(test_invalid_file, test_setup, test_teardown),
+
+        // OS_ReadXMLFromStream tests
+        cmocka_unit_test_setup_teardown(test_os_read_xml_from_stream, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_os_read_xml_from_stream_parse_error, test_setup, test_teardown),
 
         // Unclosed node XML test
         cmocka_unit_test_setup_teardown(test_unclosed_node1, test_setup, test_teardown),
