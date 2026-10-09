@@ -376,6 +376,42 @@ stages:
           rbac_mode: !anystr
 
 ---
+test_name: GET RBAC CATALOG
+
+stages:
+
+  - name: Get RBAC actions (allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/actions"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        endpoint: "GET /security/actions"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          security:read_config:
+            related_endpoints:
+              - GET /security/actions
+
+  - name: Get RBAC resources (allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/resources"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data: !anydict
+
+---
 test_name: UPDATE SECURITY CONFIG
 
 stages:
