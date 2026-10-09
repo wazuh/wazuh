@@ -101,7 +101,8 @@ daemons apply). Constructs the 4.x parser tolerated are now rejected at startup,
   schema (see the [generated reference](../../ref/configuration/manager/reference.md)).
 - **`<cluster>` and `<indexer>` are required sections**, and `<cluster><key>` and `<indexer><hosts>`
   cannot be omitted within them: every manager runs as a cluster node and needs at least one indexer
-  host to start `wazuh-manager-analysisd` (the installer always generates both).
+  host to start `wazuh-manager-analysisd` (the installer always generates both). The 4.x
+  `<cluster><disabled>` option is gone — see [`<cluster>` section](#cluster-section).
 - The **minimal valid document** is
   `<wazuh_config><cluster><key>...32 alphanumeric...</key></cluster><indexer><hosts><host>scheme://host:port</host></hosts></indexer></wazuh_config>`:
   every other option then takes its schema default (`bin/wazuh-manager-conf dump` prints the resulting
@@ -345,6 +346,59 @@ In 4.x the certificates pointed to Filebeat's certificate directory. In 5.0, Fil
 > The 5.0 installer generates the `<indexer>` section with these certificates as paths relative to
 > `/var/wazuh-manager` (`etc/certs/root-ca.pem`, …); relative and absolute paths are equivalent. See
 > [Configure the indexer address](../../ref/getting-started/installation.md#configure-the-indexer-address).
+
+### `<cluster>` section
+
+The `<cluster>` section exists in both 4.x and 5.0, but **`<disabled>` has been removed**. Every 4.x
+`<cluster>` block carries it (`<disabled>yes</disabled>` on a standalone manager, `<disabled>no</disabled>`
+on a cluster node), and 5.0 rejects it whatever its value:
+
+```
+(1244): Invalid configuration at '/cluster/disabled': unknown option (does not satisfy 'additionalProperties') [schema /properties/cluster]
+```
+
+so a 4.x cluster block copied as-is stops the manager. In 5.0 every manager is a cluster node and the
+cluster is always active: a 4.x standalone manager (`<disabled>yes</disabled>`) becomes a single
+`master` node, which needs no configuration beyond the generated defaults.
+
+The other 4.x options carry over: `<name>`, `<node_name>`, `<node_type>`, `<key>`, `<port>`,
+`<bind_addr>`, `<nodes>` and `<hidden>`. `<key>` is now mandatory and must be exactly 32 alphanumeric
+characters; `<hidden>` is still accepted but has no effect.
+
+**4.x:**
+```xml
+<cluster>
+  <name>wazuh</name>
+  <node_name>node01</node_name>
+  <node_type>master</node_type>
+  <key>c98b62a9b6169ac5f67dae55ae4a9088</key>
+  <port>1516</port>
+  <bind_addr>0.0.0.0</bind_addr>
+  <nodes>
+    <node>NODE_IP</node>
+  </nodes>
+  <hidden>no</hidden>
+  <disabled>no</disabled>
+</cluster>
+```
+
+**5.0:**
+```xml
+<cluster>
+  <name>wazuh</name>
+  <node_name>node01</node_name>
+  <node_type>master</node_type>
+  <key>c98b62a9b6169ac5f67dae55ae4a9088</key>
+  <port>1516</port>
+  <bind_addr>0.0.0.0</bind_addr>
+  <nodes>
+    <node>NODE_IP</node>
+  </nodes>
+  <hidden>no</hidden>
+</cluster>
+```
+
+See the [generated reference](../../ref/configuration/manager/reference.md) for the 5.0 defaults.
 
 ---
 
