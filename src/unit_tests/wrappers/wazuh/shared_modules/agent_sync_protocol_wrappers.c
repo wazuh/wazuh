@@ -70,13 +70,13 @@ SyncModuleResult_t __wrap_asp_sync_module_bounded(AgentSyncProtocolHandle* handl
     return result;
 }
 
-bool __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
-                                   const char* index,
-                                   const char* checksum) {
+IntegrityCheckResult_t __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
+                                                     const char* index,
+                                                     const char* checksum) {
     check_expected_ptr(handle);
     check_expected_ptr(index);
     check_expected_ptr(checksum);
-    return mock_type(bool);
+    return *mock_ptr_type(IntegrityCheckResult_t*);
 }
 
 long __wrap_asp_get_agent_id(void) {

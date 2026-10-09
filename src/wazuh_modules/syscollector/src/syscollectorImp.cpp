@@ -4874,7 +4874,7 @@ size_t Syscollector::getDocumentLimit(const std::string& index)
 }
 
 // LCOV_EXCL_START
-bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
+IntegrityCheckResult Syscollector::checkIfFullSyncRequired(const std::string& tableName)
 {
     m_logFunction(LOG_DEBUG, "Attempting to get checksum for " + tableName + " table");
 
@@ -4907,22 +4907,26 @@ bool Syscollector::checkIfFullSyncRequired(const std::string& tableName)
 
     m_logFunction(LOG_DEBUG, "Success! Final file table checksum is: " + std::string(final_checksum));
 
-    bool needs_full_sync;
-    needs_full_sync = m_spSyncProtocol->requiresFullSync(
-                          INDEX_MAP.at(tableName),
-                          final_checksum
-                      );
+    auto result = m_spSyncProtocol->requiresFullSync(
+                      INDEX_MAP.at(tableName),
+                      final_checksum
+                  );
 
-    if (needs_full_sync)
+    if (result.status == IntegrityCheckStatus::MISMATCH)
     {
         m_logFunction(LOG_DEBUG, "Checksum mismatch detected for index " + tableName + " full sync required");
     }
-    else
+    else if (result.status == IntegrityCheckStatus::VALID)
     {
         m_logFunction(LOG_DEBUG, "Checksum valid for index " + tableName + ", delta sync sufficient");
     }
+    else
+    {
+        // Reported by runRecoveryProcess(), once per pass for every table left unchecked.
+        m_logFunction(LOG_DEBUG, "Checksum not verified for index " + tableName + ": " + result.failureReason);
+    }
 
-    return needs_full_sync;
+    return result;
 }
 // LCOV_EXCL_STOP
 
@@ -5056,6 +5060,33 @@ void Syscollector::updateLastSyncTime(const std::string& tableName, int64_t time
     updateMetadataValue(tableName, timestamp);
 }
 
+/// @brief integrity_interval in the largest whole unit that fits (86400 -> "24h").
+static std::string formatIntegrityInterval(uint32_t seconds)
+{
+    if (seconds != 0 && seconds % 3600 == 0)
+    {
+        return std::to_string(seconds / 3600) + "h";
+    }
+
+    if (seconds != 0 && seconds % 60 == 0)
+    {
+        return std::to_string(seconds / 60) + "m";
+    }
+
+    return std::to_string(seconds) + "s";
+}
+
+/// @brief Sync-protocol failure reasons are full sentences; this lets them sit inside parentheses.
+static std::string withoutTrailingPeriod(std::string reason)
+{
+    if (!reason.empty() && reason.back() == '.')
+    {
+        reason.pop_back();
+    }
+
+    return reason;
+}
+
 bool Syscollector::recoveryIntervalHasEllapsed(const std::string& tableName, int64_t integrityInterval)
 {
     int64_t currentTime = Utils::getSecondsFromEpoch();
@@ -5103,7 +5134,10 @@ bool Syscollector::isCollectorEnabledForTable(const std::string& tableName) cons
 // #38601: no longer excluded wholesale. The lane choice, the DataClean and the marker gating
 // are driven by syscollector_identity_tests.cpp against mocked protocols; only the per-item
 // persist loop below still needs a manager, and that is what stays excluded.
-bool Syscollector::resyncTableToManager(const std::string& tableName, const std::string& index, const bool syncNow)
+bool Syscollector::resyncTableToManager(const std::string& tableName,
+                                        const std::string& index,
+                                        const bool syncNow,
+                                        const std::string& retryNote)
 {
     try
     {
@@ -5111,7 +5145,7 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
     }
     catch (const std::exception& ex)
     {
-        m_logFunction(LOG_ERROR, "Couldn't update version for every entry in " + tableName);
+        m_logFunction(LOG_ERROR, "Couldn't update version for every entry in " + tableName + "; " + retryNote);
         return false;
     }
 
@@ -5155,7 +5189,7 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
     }
     catch (const std::exception& ex)
     {
-        m_logFunction(LOG_ERROR, "Failed to retrieve elements from " + tableName);
+        m_logFunction(LOG_ERROR, "Failed to retrieve elements from " + tableName + "; " + retryNote);
         return false;
     }
 
@@ -5173,13 +5207,20 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
 
     if (!protocol)
     {
-        m_logFunction(LOG_WARNING, "No sync protocol available to recover table " + tableName + "; will retry later");
+        m_logFunction(LOG_WARNING, "No sync protocol available to recover table " + tableName + "; " + retryNote);
         return false;
     }
 
-    if (!protocol->notifyDataClean({index}).success)
+    if (const auto cleanResult = protocol->notifyDataClean({index}); !cleanResult.success)
     {
-        m_logFunction(LOG_WARNING, "Failed to clear index " + index + " before recovery resync for table " + tableName + "; will retry later");
+        if (cleanResult.stopped || m_stopping.load())
+        {
+            m_logFunction(LOG_INFO, "Recovery of index " + index + " interrupted: module is stopping.");
+            return false;
+        }
+
+        m_logFunction(LOG_WARNING, "Failed to clear index " + index + " before recovery resync for table " + tableName +
+                      (cleanResult.failureReason.empty() ? "" : " (" + withoutTrailingPeriod(cleanResult.failureReason) + ")") + "; " + retryNote);
         return false;
     }
 
@@ -5247,11 +5288,14 @@ bool Syscollector::resyncTableToManager(const std::string& tableName, const std:
 
     if (recoverySucceeded)
     {
-        m_logFunction(LOG_DEBUG, "Recovery completed successfully");
+        m_logFunction(LOG_INFO, "Recovery of index " + index + " completed.");
     }
     else
     {
-        m_logFunction(LOG_DEBUG, "Recovery synchronization failed, will retry later");
+        // syncModule() already reported why the session failed. The rows are queued, so the
+        // ordinary cycle delivers them; nothing about this table has to be redone.
+        m_logFunction(LOG_INFO, "Recovery of index " + index + " did not finish sending; the queued rows will be "
+                      "delivered by the next regular synchronization.");
     }
 
 
@@ -5523,9 +5567,20 @@ void Syscollector::runRecoveryProcess()
     // reaching syncModule() internally cannot recurse.
     checkAgentIdentity();
 
+    const auto retryNote = "it will be retried in the next integrity_interval (" +
+                           formatIntegrityInterval(m_integrityIntervalValue) + ")";
+    std::vector<std::string> notChecked;
+
     for (const auto& [tableName, index] : INDEX_MAP)
     {
         if (!isCollectorEnabledForTable(tableName)) continue;
+
+        // A stop leaves every remaining table unstamped, so it is checked after the restart
+        // instead of being counted as checked without one.
+        if (m_stopping.load())
+        {
+            break;
+        }
 
         // LCOV_EXCL_START
         // Recovery process requires manager integration for checksum validation.
@@ -5533,20 +5588,57 @@ void Syscollector::runRecoveryProcess()
         {
             m_logFunction(LOG_DEBUG, "Starting integrity validation process for " + tableName);
 
-            if (checkIfFullSyncRequired(tableName) && !resyncTableToManager(tableName, index))
+            const auto check = checkIfFullSyncRequired(tableName);
+
+            // m_stopping too: quiesce() raises it before it stops the protocol, so a check that
+            // failed in between does not carry the stopped flag.
+            if (check.status == IntegrityCheckStatus::NOT_CHECKED && (check.stopped || m_stopping.load()))
             {
-                // Preserved from before this was extracted: a table that cannot be resynced
-                // aborts the whole pass instead of moving on, so its integrity timestamp is
-                // left untouched and the next cycle retries it from the same point.
-                return;
+                m_logFunction(LOG_INFO, "Integrity check for " + index + " interrupted: module is stopping" +
+                              (check.mismatchUnconfirmed ? "; a checksum mismatch reported by the manager was not confirmed" : "") +
+                              ". It will be checked again after the restart.");
+                break;
             }
 
-            // Update the last sync time regardless of whether full sync was required
-            // This ensures the integrity check doesn't run again until integrity_interval has elapsed
+            if (check.status == IntegrityCheckStatus::NOT_CHECKED)
+            {
+                notChecked.push_back(index + " (" + withoutTrailingPeriod(check.failureReason) + ")");
+            }
+            else if (check.status == IntegrityCheckStatus::MISMATCH)
+            {
+                m_logFunction(LOG_INFO, "Checksum mismatch confirmed for " + index +
+                              "; starting recovery (index cleanup and full resend).");
+
+                // A failure here is reported by resyncTableToManager() itself. Like any other
+                // failure of this pass, the table still counts as checked, so it is not retried
+                // until the next integrity_interval -- unless a stop cut it short: the mismatch is
+                // confirmed, so the table is left unstamped and checked again after the restart.
+                if (!resyncTableToManager(tableName, index, true, retryNote) && m_stopping.load())
+                {
+                    break;
+                }
+            }
+
+            // Stamped whatever the outcome: a failed check or recovery is re-evaluated in the
+            // next integrity_interval, never in the next sync cycle.
             updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
         }
 
         // LCOV_EXCL_STOP
+    }
+
+    if (!notChecked.empty())
+    {
+        std::string tables;
+
+        for (const auto& entry : notChecked)
+        {
+            tables += (tables.empty() ? "" : ", ") + entry;
+        }
+
+        m_logFunction(LOG_WARNING, "Integrity check could not be performed for " + std::to_string(notChecked.size()) +
+                      " table(s): " + tables + "; they will be checked again in the next integrity_interval (" +
+                      formatIntegrityInterval(m_integrityIntervalValue) + ").");
     }
 }
 

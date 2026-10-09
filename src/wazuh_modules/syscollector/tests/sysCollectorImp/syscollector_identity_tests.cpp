@@ -62,7 +62,7 @@ namespace
                         (const std::string& id, Operation operation, const std::string& index,
                          const std::string& data, uint64_t version, bool isDataContext), (override));
             MOCK_METHOD(SyncModuleResult, synchronizeModule, (Mode mode, Option option), (override));
-            MOCK_METHOD(bool, requiresFullSync, (const std::string& index, const std::string& checksum), (override));
+            MOCK_METHOD(IntegrityCheckResult, requiresFullSync, (const std::string& index, const std::string& checksum), (override));
             MOCK_METHOD(SyncModuleResult, synchronizeMetadataOrGroups,
                         (Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion), (override));
             MOCK_METHOD(SyncModuleResult, notifyDataClean, (const std::vector<std::string>& indices, Option option, bool trackConsecutiveFailures), (override));
@@ -170,6 +170,43 @@ class SyscollectorIdentityTest : public ::testing::Test
             Syscollector::instance().destroy();
             seedMarker(marker);
             initModule(packages, users, os);
+        }
+
+        /// @brief Brings the module up with the identity already synchronized (so the recovery
+        /// pass goes straight to the integrity checks) and the given tables' integrity clocks
+        /// long expired, so each one is due.
+        static void initWithIntegrityDue(bool users, bool os, const std::vector<std::string>& dueTables)
+        {
+            initModule(false, users, os);
+            Syscollector::instance().destroy();
+            seedMarker(5);
+
+            for (const auto& table : dueTables)
+            {
+                seedMetadata(table, 1);
+            }
+
+            initModule(false, users, os);
+            publishAgentId("5");
+        }
+
+        static int64_t integrityClock(const std::string& table)
+        {
+            int64_t stamped = 0;
+            EXPECT_TRUE(Syscollector::instance().getMetadataValue(table, stamped));
+            return stamped;
+        }
+
+        /// @brief Replaces the module's logger, keeping what it logs at @p level.
+        static void captureLogs(std::vector<std::string>& logs, modules_log_level_t level)
+        {
+            Syscollector::instance().m_logFunction = [&logs, level](const modules_log_level_t logLevel, const std::string & msg)
+            {
+                if (logLevel == level)
+                {
+                    logs.push_back(msg);
+                }
+            };
         }
 
         /// @brief Writes any metadata row, for the markers other than synced_agent_id.
@@ -1021,4 +1058,151 @@ TEST_F(SyscollectorIdentityTest, SyncSkipsWhileTheStartupDataCleanRuns)
     EXPECT_FALSE(Syscollector::instance().syncModule(Mode::DELTA).success);
     Syscollector::instance().m_startupDataCleanInProgress = false;
     EXPECT_EQ(queryResyncAttempts(), before);
+}
+
+namespace
+{
+    IntegrityCheckResult integrityResult(IntegrityCheckStatus status)
+    {
+        IntegrityCheckResult result;
+        result.status = status;
+        return result;
+    }
+
+    bool anyContains(const std::vector<std::string>& logs, const std::string& text)
+    {
+        return std::any_of(logs.begin(), logs.end(), [&text](const std::string & log)
+        {
+            return log.find(text) != std::string::npos;
+        });
+    }
+}
+
+// A check that could not run still counts the table as checked for this interval, but it must say
+// so -- once per pass, with the reason -- instead of passing for a valid checksum.
+TEST_F(SyscollectorIdentityTest, UncheckedTableIsStampedAndReportedOnce)
+{
+    initWithIntegrityDue(true, false, {USERS_TABLE});
+    INJECT_MOCK_PROTOCOLS();
+    (void)vdProtocol;
+
+    IntegrityCheckResult notChecked;
+    notChecked.failureReason = "Failed to communicate with the manager.";
+    notChecked.managerNotReady = true;
+    EXPECT_CALL(*plainProtocol, requiresFullSync(_, _)).WillOnce(Return(notChecked));
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(0);
+
+    std::vector<std::string> warnings;
+    captureLogs(warnings, LOG_WARNING);
+
+    Syscollector::instance().runRecoveryProcess();
+
+    EXPECT_GT(integrityClock(USERS_TABLE), 1);
+    ASSERT_EQ(warnings.size(), 1u);
+    EXPECT_NE(warnings[0].find("Integrity check could not be performed for 1 table(s)"), std::string::npos) << warnings[0];
+    EXPECT_NE(warnings[0].find("inventory-users (Failed to communicate with the manager)"), std::string::npos) << warnings[0];
+    EXPECT_NE(warnings[0].find("next integrity_interval (24h)"), std::string::npos) << warnings[0];
+}
+
+// A stop in the middle of a check is not a failed check: the table is left unstamped so it is
+// checked after the restart, and a mismatch the manager had already reported is mentioned.
+TEST_F(SyscollectorIdentityTest, CheckInterruptedByStopLeavesTheTableUnstamped)
+{
+    initWithIntegrityDue(true, false, {USERS_TABLE});
+    INJECT_MOCK_PROTOCOLS();
+    (void)vdProtocol;
+
+    IntegrityCheckResult stopped;
+    stopped.failureReason = "Module is stopping.";
+    stopped.stopped = true;
+    stopped.mismatchUnconfirmed = true;
+    EXPECT_CALL(*plainProtocol, requiresFullSync(_, _)).WillOnce(Return(stopped));
+
+    std::vector<std::string> infos;
+    captureLogs(infos, LOG_INFO);
+
+    Syscollector::instance().runRecoveryProcess();
+
+    EXPECT_EQ(integrityClock(USERS_TABLE), 1);
+    EXPECT_TRUE(anyContains(infos, "a checksum mismatch reported by the manager was not confirmed"));
+}
+
+// A recovery that cannot start is retried in the next integrity_interval, like a failed check, and
+// the pass goes on to the next table instead of stopping there.
+TEST_F(SyscollectorIdentityTest, RefusedRecoveryDataCleanStampsAndMovesOn)
+{
+    initWithIntegrityDue(true, true, {OS_TABLE, USERS_TABLE});
+    INJECT_MOCK_PROTOCOLS();
+
+    // dbsync_osinfo comes first in the pass and mismatches; dbsync_users matches.
+    EXPECT_CALL(*plainProtocol, requiresFullSync(_, _)).WillRepeatedly([](const std::string & index, const std::string&)
+    {
+        return integrityResult(index.find("users") != std::string::npos ? IntegrityCheckStatus::VALID
+                               : IntegrityCheckStatus::MISMATCH);
+    });
+
+    SyncModuleResult refused;
+    refused.failureReason = "Failed to communicate with the manager.";
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(refused));
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(refused));
+
+    std::vector<std::string> warnings;
+    captureLogs(warnings, LOG_WARNING);
+
+    Syscollector::instance().runRecoveryProcess();
+
+    EXPECT_GT(integrityClock(OS_TABLE), 1);
+    EXPECT_GT(integrityClock(USERS_TABLE), 1);
+    EXPECT_TRUE(anyContains(warnings, "it will be retried in the next integrity_interval (24h)"));
+}
+
+// A stop between two tables ends the pass: the tables not reached keep their old clock instead
+// of being counted as checked during the shutdown.
+TEST_F(SyscollectorIdentityTest, StopBetweenTablesLeavesTheRestUnstamped)
+{
+    initWithIntegrityDue(true, true, {OS_TABLE, USERS_TABLE});
+    INJECT_MOCK_PROTOCOLS();
+    (void)vdProtocol;
+
+    EXPECT_CALL(*plainProtocol, requiresFullSync(_, _)).WillOnce([](const std::string&, const std::string&)
+    {
+        Syscollector::instance().m_stopping = true;
+        return integrityResult(IntegrityCheckStatus::VALID);
+    });
+
+    Syscollector::instance().runRecoveryProcess();
+    Syscollector::instance().m_stopping = false;
+
+    EXPECT_GT(integrityClock(OS_TABLE), 1);
+    EXPECT_EQ(integrityClock(USERS_TABLE), 1);
+}
+
+// A confirmed mismatch whose recovery a stop cuts short must not wait a whole integrity_interval:
+// the table stays unstamped and is checked again after the restart.
+TEST_F(SyscollectorIdentityTest, RecoveryInterruptedByStopLeavesTheTableUnstamped)
+{
+    initWithIntegrityDue(true, false, {USERS_TABLE});
+    INJECT_MOCK_PROTOCOLS();
+    (void)vdProtocol;
+
+    EXPECT_CALL(*plainProtocol, requiresFullSync(_, _)).WillOnce(Return(integrityResult(IntegrityCheckStatus::MISMATCH)));
+
+    // As quiesce() does: m_stopping is raised before the protocol is stopped, so a DataClean the stop
+    // cuts short always finds it set.
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).WillOnce([](const std::vector<std::string>&, Option, bool)
+    {
+        Syscollector::instance().m_stopping = true;
+        SyncModuleResult stopped;
+        stopped.stopped = true;
+        return stopped;
+    });
+
+    std::vector<std::string> warnings;
+    captureLogs(warnings, LOG_WARNING);
+
+    Syscollector::instance().runRecoveryProcess();
+    Syscollector::instance().m_stopping = false;
+
+    EXPECT_EQ(integrityClock(USERS_TABLE), 1);
+    EXPECT_TRUE(warnings.empty());
 }

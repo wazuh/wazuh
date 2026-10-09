@@ -1143,7 +1143,7 @@ TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyWithinToleranceLogsDefer
     EXPECT_FALSE(scaMock.callPerformRecovery());
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA recovery deferred: Failed to communicate with the manager. Will retry next cycle."));
+                    "SCA recovery deferred: Failed to communicate with the manager. It will be retried in the next integrity_interval"));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA recovery failed")));
 }
 
@@ -1199,7 +1199,7 @@ TEST_F(ScaTest, PerformRecovery_DataCleanLocalTransportUnavailableWithinToleranc
     EXPECT_FALSE(scaMock.callPerformRecovery());
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA recovery deferred: Failed to reach the sync intake socket. Will retry next cycle."));
+                    "SCA recovery deferred: Failed to reach the sync intake socket. It will be retried in the next integrity_interval"));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA recovery failed")));
 }
 

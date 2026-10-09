@@ -1288,8 +1288,10 @@ TEST_F(AgentSyncProtocolTest, VdSyncWithoutAFeedOffsetIsStillSent)
 // its sessions would be rejected.
 TEST_F(AgentSyncProtocolTest, StartCarriesTheCanonicalAgentId)
 {
-    for (const auto& [stored, claimed] : std::vector<std::pair<std::string, std::string>> {
-             {"001", "001"}, {"0001", "001"}, {"1", "001"}, {"1000", "1000"}, {"01000", "1000"}})
+    for (const auto& [stored, claimed] : std::vector<std::pair<std::string, std::string>>
+{
+    {"001", "001"}, {"0001", "001"}, {"1", "001"}, {"1000", "1000"}, {"01000", "1000"}
+})
     {
         agent_metadata_t metadata = {};
         strncpy(metadata.agent_id, stored.c_str(), sizeof(metadata.agent_id) - 1);
@@ -1308,12 +1310,15 @@ TEST_F(AgentSyncProtocolTest, StartCarriesTheCanonicalAgentId)
 
         std::vector<PersistedData> testData = {{0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}};
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
-            .WillOnce(Return(testData))
-            .WillOnce(Return(std::vector<PersistedData> {}));
+        .WillOnce(Return(testData))
+        .WillOnce(Return(std::vector<PersistedData> {}));
         EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
 
         SyncModuleResult result;
-        std::thread syncThread([this, &result]() { result = protocol->synchronizeModule(Mode::DELTA); });
+        std::thread syncThread([this, &result]()
+        {
+            result = protocol->synchronizeModule(Mode::DELTA);
+        });
 
         EXPECT_TRUE(mockSyncTransport->waitForSession());
         feedHttpResult(200);
@@ -1950,11 +1955,12 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithMatchingChecksum)
     // Start requiresFullSync in a separate thread
     std::thread syncThread([this, &testIndex, &testChecksum]()
     {
-        bool result = protocol->requiresFullSync(
-                          testIndex,
-                          testChecksum
-                      );
-        EXPECT_FALSE(result);
+        const auto result = protocol->requiresFullSync(
+                                testIndex,
+                                testChecksum
+                            );
+        EXPECT_EQ(result.status, IntegrityCheckStatus::VALID);
+        EXPECT_TRUE(result.failureReason.empty());
     });
 
     // Wait for start message
@@ -1988,7 +1994,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithNonMatchingChecksum)
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
     .Times(0);
 
-    bool result = false;
+    IntegrityCheckResult result;
     std::thread syncThread([this, &testIndex, &testChecksum, &result]()
     {
         result = protocol->requiresFullSync(testIndex, testChecksum);
@@ -2013,7 +2019,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncWithNonMatchingChecksum)
     }
 
     syncThread.join();
-    EXPECT_TRUE(result);
+    EXPECT_EQ(result.status, IntegrityCheckStatus::MISMATCH);
     EXPECT_EQ(mockSyncTransport->sendCount(), 5);
 }
 
@@ -2029,7 +2035,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncRecoversAfterTransientMismatch)
     const std::string testIndex = "test_index";
     const std::string testChecksum = "test_checksum";
 
-    bool result = true;
+    IntegrityCheckResult result;
     std::thread syncThread([this, &testIndex, &testChecksum, &result]()
     {
         result = protocol->requiresFullSync(testIndex, testChecksum);
@@ -2050,7 +2056,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncRecoversAfterTransientMismatch)
     feedHttpResult(200);
 
     syncThread.join();
-    EXPECT_FALSE(result);
+    EXPECT_EQ(result.status, IntegrityCheckStatus::VALID);
     EXPECT_EQ(mockSyncTransport->sendCount(), 2);
 }
 
@@ -2064,12 +2070,16 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncNoQueueAvailable)
     const std::string testIndex = "test_index";
     const std::string testChecksum = "test_checksum";
 
-    bool result = protocol->requiresFullSync(
-                      testIndex,
-                      testChecksum
-                  );
+    // No answer: the session times out, which says nothing about the checksum.
+    const auto result = protocol->requiresFullSync(
+                            testIndex,
+                            testChecksum
+                        );
 
-    EXPECT_FALSE(result);
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(result.managerNotReady);
+    EXPECT_FALSE(result.stopped);
+    EXPECT_FALSE(result.failureReason.empty());
 }
 
 TEST_F(AgentSyncProtocolTest, RequiresFullSyncSendStartFails)
@@ -2081,12 +2091,16 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncSendStartFails)
     const std::string testIndex = "test_index";
     const std::string testChecksum = "test_checksum";
 
-    bool result = protocol->requiresFullSync(
-                      testIndex,
-                      testChecksum
-                  );
+    // No answer: the session times out, which says nothing about the checksum.
+    const auto result = protocol->requiresFullSync(
+                            testIndex,
+                            testChecksum
+                        );
 
-    EXPECT_FALSE(result);
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(result.managerNotReady);
+    EXPECT_FALSE(result.stopped);
+    EXPECT_FALSE(result.failureReason.empty());
 }
 
 TEST_F(AgentSyncProtocolTest, RequiresFullSyncStartAckTimeout)
@@ -2098,12 +2112,116 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncStartAckTimeout)
     const std::string testIndex = "test_index";
     const std::string testChecksum = "test_checksum";
 
-    bool result = protocol->requiresFullSync(
-                      testIndex,
-                      testChecksum
-                  );
+    // No answer: the session times out, which says nothing about the checksum.
+    const auto result = protocol->requiresFullSync(
+                            testIndex,
+                            testChecksum
+                        );
 
-    EXPECT_FALSE(result);
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(result.managerNotReady);
+    EXPECT_FALSE(result.stopped);
+    EXPECT_FALSE(result.failureReason.empty());
+}
+
+// A check that cannot reach the local sync intake sends nothing, so it must not read as VALID.
+TEST_F(AgentSyncProtocolTest, RequiresFullSyncNotCheckedWhenLocalTransportUnavailable)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    mockSyncTransport->setAvailable(false);
+
+    const auto result = protocol->requiresFullSync("test_index", "test_checksum");
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(result.localTransportUnavailable);
+    EXPECT_FALSE(result.managerNotReady);
+    EXPECT_FALSE(result.stopped);
+    EXPECT_FALSE(result.failureReason.empty());
+    EXPECT_EQ(mockSyncTransport->sendCount(), 0);
+}
+
+TEST_F(AgentSyncProtocolTest, RequiresFullSyncNotCheckedWhenManagerNotReady)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    IntegrityCheckResult result;
+    std::thread syncThread([this, &result]()
+    {
+        result = protocol->requiresFullSync("test_index", "test_checksum");
+    });
+
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
+    feedHttpResult(503);
+
+    syncThread.join();
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(result.managerNotReady);
+    EXPECT_FALSE(result.stopped);
+    EXPECT_FALSE(result.mismatchUnconfirmed);
+    EXPECT_FALSE(result.failureReason.empty());
+    // A 503 does not spend the 409 retry budget.
+    EXPECT_EQ(mockSyncTransport->sendCount(), 1);
+}
+
+TEST_F(AgentSyncProtocolTest, RequiresFullSyncNotCheckedWhenHandOffFails)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    mockSyncTransport->setAccept(false);
+
+    const auto result = protocol->requiresFullSync("test_index", "test_checksum");
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_FALSE(result.stopped);
+    EXPECT_FALSE(result.failureReason.empty());
+}
+
+TEST_F(AgentSyncProtocolTest, RequiresFullSyncNotCheckedWhenStoppedBeforeStart)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    protocol->stop();
+
+    const auto result = protocol->requiresFullSync("test_index", "test_checksum");
+
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(result.stopped);
+    EXPECT_FALSE(result.mismatchUnconfirmed);
+    EXPECT_EQ(mockSyncTransport->sendCount(), 0);
+}
+
+// A stop while a 409 is still being confirmed abandons that mismatch; the result must say so
+// instead of reading as VALID.
+TEST_F(AgentSyncProtocolTest, RequiresFullSyncReportsUnconfirmedMismatchWhenStopped)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    IntegrityCheckResult result;
+    std::thread syncThread([this, &result]()
+    {
+        result = protocol->requiresFullSync("test_index", "test_checksum");
+    });
+
+    EXPECT_TRUE(mockSyncTransport->waitForSession());
+    feedHttpResult(409);
+    protocol->stop();
+
+    syncThread.join();
+    EXPECT_EQ(result.status, IntegrityCheckStatus::NOT_CHECKED);
+    EXPECT_TRUE(result.stopped);
+    EXPECT_TRUE(result.mismatchUnconfirmed);
+    EXPECT_FALSE(result.managerNotReady);
 }
 
 // Tests for synchronizeMetadataOrGroups
