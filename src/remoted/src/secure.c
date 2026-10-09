@@ -544,6 +544,15 @@ STATIC char* build_limits_json(const module_limits_t *limits) {
         cJSON_AddItemToObject(limits_obj, "fim", fim);
     }
 
+    /* Container FIM cap (#37532 / O10). Its own object rather than another key
+     * under "fim": container rows and host rows share the FIM sync index but
+     * not a budget, so syscheckd fetches the two separately. */
+    cJSON *fim_containers = cJSON_CreateObject();
+    if (fim_containers) {
+        cJSON_AddNumberToObject(fim_containers, "file", limits->fim_containers.file);
+        cJSON_AddItemToObject(limits_obj, "fim_containers", fim_containers);
+    }
+
     /* Syscollector limits */
     cJSON *syscollector = cJSON_CreateObject();
     if (syscollector) {
