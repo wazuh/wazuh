@@ -202,6 +202,8 @@ w_err_t w_auth_add_agent(char *response,
  * @param key Agent key if was already registered
  * @param key_hash Hash of the agent key
  * @param force_options Options to decide if forcing the insertion
+ * @param source Address the enrollment request came from (the agent's peer address), or NULL when the
+ *        request is local (manage_agents, the API). Only logged.
  * @return JSON object with the response
  * */
 cJSON* local_add(const char *id,
@@ -210,7 +212,8 @@ cJSON* local_add(const char *id,
                         const char *groups,
                         const char *key,
                         const char *key_hash,
-                        authd_force_options_t *force_options);
+                        authd_force_options_t *force_options,
+                        const char *source);
 
 /**
  * @brief Forwards an "add" request to the master node over the cluster (worker nodes only).
@@ -225,6 +228,7 @@ cJSON* local_add(const char *id,
  * @param reenroll_kid Re-enrollment (#38993): the agent id the bearer names, or NULL. The master
  *        verifies the bearer against that agent's secret and rotates its credentials in place.
  * @param reenroll_bearer The `wazuh-enroll+jwt` the agent re-enrolls with (with reenroll_kid), or NULL
+ * @param source Address the enrollment request came from, forwarded for the master's log, or NULL
  * @return JSON object with the response
  * */
 cJSON* local_add_clustered(const char *name,
@@ -233,7 +237,8 @@ cJSON* local_add_clustered(const char *name,
                            const char *key_hash,
                            const char *token_id,
                            const char *reenroll_kid,
-                           const char *reenroll_bearer);
+                           const char *reenroll_bearer,
+                           const char *source);
 
 /* The shared enrollment password's size: 32 CSPRNG bytes, stored in etc/authd.pass as 64
  * lowercase hex chars. Same shape and same discipline as the agent key (AGENT_KEY_BYTES). */

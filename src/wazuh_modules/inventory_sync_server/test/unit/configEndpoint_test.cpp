@@ -10,11 +10,13 @@
  */
 
 #include "common/clusterIdentity.hpp"
+#include "common/jsonNestingDepth.hpp"
 #include "endpoints/configEndpoint.hpp"
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <json.hpp>
 #include <memory>
 #include <optional>
@@ -371,6 +373,31 @@ TEST(ConfigEndpointTest, NonObjectModuleConfigurationsAreRejected)
     }
 }
 
+/**
+ * The copy out of the parsed document and dump() both recurse once per level: a deep enough report
+ * would overflow the I/O thread's stack and crash the whole of modulesd. The cap is checked on the raw
+ * body, so the deepest legal report still goes through and one level more never reaches the parser or
+ * the indexer. The attack-sized body would crash this test binary without the cap.
+ */
+TEST(ConfigEndpointTest, ReportsNestedPastTheLimitAreRejectedBeforeParsing)
+{
+    // root, modules and the module body are three levels; the rest is arrays under one field.
+    const auto nested = [](std::size_t depth)
+    {
+        const std::size_t arrays = depth - 3;
+        return R"({"modules":{"fim":{"x":)" + std::string(arrays, '[') + std::string(arrays, ']') + "}}}";
+    };
+
+    auto connector = std::make_shared<FakeAsyncConnector>();
+    EXPECT_EQ(200, run(makeRequest(nested(invsync::common::MAX_JSON_NESTING_DEPTH), "001"), connector).status);
+    EXPECT_EQ(1U, connector->indexed.size());
+
+    connector = std::make_shared<FakeAsyncConnector>();
+    EXPECT_EQ(400, run(makeRequest(nested(invsync::common::MAX_JSON_NESTING_DEPTH + 1), "001"), connector).status);
+    EXPECT_EQ(400, run(makeRequest(nested(1'000'000), "001"), connector).status);
+    EXPECT_TRUE(connector->indexed.empty());
+}
+
 TEST(ConfigEndpointTest, The400BodyIsValidParseableJsonEvenWhenTheReasonContainsQuotes)
 {
     const auto response = run(makeRequest(R"({"modules":{"fim":42}})", "001"));
@@ -400,6 +427,21 @@ TEST(ConfigEndpointTest, AnEmptyAgentIdHeaderIsRejected)
     const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", ""));
 
     EXPECT_EQ(400, response.status);
+}
+
+/// The header is the document id and `wazuh.agent.id`, so it must be the one canonical spelling the
+/// whole-agent deletion matches. remoted only ever sends that form; a caller that bypasses it with
+/// another spelling, or an id out of range, would index a document no deletion reaches.
+TEST(ConfigEndpointTest, ANonCanonicalAgentIdHeaderIsRejected)
+{
+    for (const auto* agentId : {"1", "07", "0007", "agent-one", "4294967297"})
+    {
+        auto connector = std::make_shared<FakeAsyncConnector>();
+        const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", agentId), connector);
+
+        EXPECT_EQ(400, response.status) << "header '" << agentId << "'";
+        EXPECT_TRUE(connector->indexed.empty()) << "header '" << agentId << "'";
+    }
 }
 
 // A null request must not crash the handler: the transport never passes one today, but a null deref

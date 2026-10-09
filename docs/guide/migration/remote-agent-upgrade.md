@@ -224,8 +224,12 @@ out of attempts or ages out of the retry list is logged and dropped. Its row in 
 An agent that is still on 4.x after the attempt (a step to 4.14.x, or a 5.x install that failed)
 reports its result over the legacy session as `upgrade_update_status`. `remoted` logs it (`INFO` on
 success, `WARNING` on a failure the agent reports), replies with `clear_upgrade_result` — which stops
-the agent from resending it — and passes the message on to the Engine like any other agent event. An
-agent that comes up as 5.x reports its result once, as a stateless `upgrade_result` event (see
+the agent from resending it — and passes the message on to the Engine like any other agent event.
+Replies are sent from the delivery thread, one per agent however often it resends, each waiting at
+most 10 seconds for the agent's answer, without delaying the next poll cycle. If an agent does not
+answer the reply, its acks are not answered again for 5 minutes. The agent keeps resending on its own
+backoff, so a resend that is not answered (including when more than 1024 agents are waiting for a
+reply at once) is answered on a later one. An agent that comes up as 5.x reports its result once, as a stateless `upgrade_result` event (see
 [Agent Upgrade](../../ref/modules/agent_upgrade/README.md#flow)).
 
 Progress is observable through:

@@ -27,10 +27,9 @@
  *
  * Ports live below 32768 deliberately: net.ipv4.ip_local_port_range starts at
  * 32768, and a fixed listener port inside it loses races against the many
- * short-lived TLS connections this suite opens. That failure does not look
- * like a port problem -- the child never listens, the parent burns
- * FakeManager::waitUntilReady()'s full 300s budget, and the run fails on
- * whatever it asserts first.
+ * short-lived TLS connections this suite opens. The child then never listens,
+ * and FakeManager::waitUntilReady() fails the test as soon as it exits,
+ * naming the port.
  */
 
 #include "caBundleFetcher.hpp"

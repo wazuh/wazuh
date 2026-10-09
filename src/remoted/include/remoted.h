@@ -40,9 +40,6 @@
 #define REMOTED_TLS_FILES_MISSING_KEY "Cannot start the HTTPS agent listener: the TLS private key '%s' is " \
     "missing or unreadable by the service user." REMOTED_TLS_FILES_HINT
 
-/* Hash table for agent data */
-extern OSHash* agent_data_hash;
-
 /* Pending data structure */
 
 typedef struct pending_data_t
@@ -72,12 +69,16 @@ typedef struct sockbuffer_t
     unsigned long data_size;
     unsigned long data_len;
     bqueue_t* bqueue;
+    time_t opened_at;   ///< When the connection was accepted
+    bool authenticated; ///< A message from this connection decrypted with a registered agent key
 } sockbuffer_t;
 
 typedef struct netbuffer_t
 {
     int max_fd;
     sockbuffer_t* buffers;
+    bool tracks_authentication; ///< Whether this buffer keeps the unauthenticated count below
+    size_t unauthenticated;     ///< Open slots whose connection has not authenticated yet
 } netbuffer_t;
 
 /** Function prototypes **/
@@ -90,6 +91,9 @@ void HandleRemote(int uid) __attribute__((noreturn));
 
 /* Handle Secure connections */
 void HandleSecure() __attribute__((noreturn));
+
+/* Warn when remoted.unauthenticated_max is above half the effective file descriptor limit (nofile) */
+void rem_check_unauthenticated_cap(void);
 
 /* Resolve every internal option the C++ module config owns, so 'remoted -t' refuses the same
  * values the daemon would. RemotedConfig() only reaches the options resolved in config.c. */
@@ -114,9 +118,15 @@ void* update_shared_files(void* none);
 void save_controlmsg(
     const keyentry* key, char* msg, int* wdb_sock, bool* post_startup, int is_startup, int is_shutdown);
 
-/* Pre process control message and return whether it should be queued for wdb processing */
-int validate_control_msg(
-    const keyentry* key, char* r_msg, size_t msg_length, char** cleaned_msg, int* is_startup, int* is_shutdown);
+/* Pre process control message and return whether it should be queued for wdb processing. Sets
+ * *send_ack when the agent is owed an ACK, which the caller sends once it holds no lock. */
+int validate_control_msg(const keyentry* key,
+                         char* r_msg,
+                         size_t msg_length,
+                         char** cleaned_msg,
+                         int* is_startup,
+                         int* is_shutdown,
+                         bool* send_ack);
 
 /* Assign a group to an agent without group */
 cJSON* assign_group_to_agent(const char* agent_id, const char* md5);
@@ -149,7 +159,25 @@ int req_send_and_wait(const char* agent_id, const char* payload, size_t length, 
 /* Send message to agent */
 /* Must not call key_lock() before this */
 int send_msg(const char* agent_id, const char* msg, ssize_t msg_length);
-int send_msg_with_key_control(const char* agent_id, const char* msg, ssize_t msg_length, bool skip_key_lock);
+
+/* send_msg_nowait() result when the agent's TCP send queue is full */
+#define SEND_MSG_QUEUE_FULL -2
+
+/**
+ * @brief Send a message to an agent without ever waiting.
+ *
+ * For replies an agent triggers with its own messages: unlike send_msg(), a full send queue is
+ * reported at once instead of waited on, so an agent that does not read cannot hold the caller.
+ * Must not call key_lock() before this.
+ *
+ * @param agent_id Target agent ID.
+ * @param msg Message to encrypt and send.
+ * @param msg_length Length of msg, or -1 to use strlen().
+ * @param full_sock On SEND_MSG_QUEUE_FULL, set to the agent's TCP connection, which the caller closes
+ *                  with _close_sock() (the message is dropped either way).
+ * @return OS_SUCCESS, SEND_MSG_QUEUE_FULL, or OS_INVALID on any other failure.
+ */
+int send_msg_nowait(const char* agent_id, const char* msg, ssize_t msg_length, int* full_sock);
 
 int check_keyupdate(void);
 
@@ -227,6 +255,52 @@ int nb_send(netbuffer_t* buffer, int socket);
  */
 int nb_queue(netbuffer_t* buffer, int socket, char* crypt_msg, ssize_t msg_size, char* agent_id);
 
+/**
+ * @brief Queue a message through TCP protocol without ever waiting for buffer space.
+ *
+ * For replies that an unauthenticated peer can trigger: unlike nb_queue(), a full buffer is
+ * reported at once instead of sleeping the calling worker and retrying.
+ *
+ * @param buffer buffer where messages will be stored.
+ * @param socket socket id where send message.
+ * @param msg msg to send.
+ * @param msg_size message size.
+ *
+ * @return 0 on success.
+ * @return -1 if the socket's send buffer is full (the peer is not reading).
+ * @return -2 if the socket is no longer open.
+ */
+int nb_queue_nowait(netbuffer_t* buffer, int socket, const char* msg, size_t msg_size);
+
+/**
+ * @brief Mark a connection as authenticated, exempting it from the unauthenticated timeout and cap.
+ *
+ * @param buffer buffer holding the connection.
+ * @param sock socket of the connection.
+ */
+void nb_set_authenticated(netbuffer_t* buffer, int sock);
+
+/**
+ * @brief Number of open connections that have not authenticated yet.
+ *
+ * @param buffer buffer holding the connections.
+ * @return Number of unauthenticated connections.
+ */
+size_t nb_unauthenticated_count(netbuffer_t* buffer);
+
+/**
+ * @brief Collect the unauthenticated connections opened at or before a deadline.
+ *
+ * The caller closes each one with _close_sock(), which releases its slot even when close() fails
+ * (on EBADF, the _close_sock() that did close it releases it), so a socket is never collected twice.
+ *
+ * @param buffer buffer holding the connections.
+ * @param deadline connections opened at or before this time are collected.
+ * @param count set to the number of collected sockets.
+ * @return Allocated array of sockets (caller frees), or NULL when none expired.
+ */
+int* nb_collect_unauthenticated(netbuffer_t* buffer, time_t deadline, size_t* count);
+
 /* Network counter */
 
 void rem_initList(int initial_size);
@@ -279,6 +353,8 @@ extern size_t queue_max_bytes;
 extern size_t batch_events_max_bytes;
 extern int enrich_cache_expire_time;
 extern int legacy_task_polling_interval;
+extern int unauthenticated_timeout;
+extern int unauthenticated_max;
 
 extern module_limits_t manager_module_limits;
 extern bool manager_module_limits_enabled;

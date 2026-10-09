@@ -108,6 +108,77 @@ class AgentSyncProtocolTest : public ::testing::Test
             return protocol->parseResponseBuffer(buf.data(), buf.size());
         }
 
+        /// Runs one DELTA sync against a queue that never runs dry, acknowledging every block,
+        /// and returns how many blocks the cycle sent before it stopped on its own. With
+        /// @p boundedTo set, the sync goes through synchronizeModuleBounded() instead.
+        int sendBlocksUntilTheCycleStops(size_t expectedBlocks, std::optional<size_t> boundedTo = std::nullopt)
+        {
+            std::vector<PersistedData> testData =
+            {
+                {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+            };
+
+            EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+            .Times(static_cast<int>(expectedBlocks))
+            .WillRepeatedly(Return(testData));
+            EXPECT_CALL(*mockQueue, clearSyncedItems())
+            .Times(static_cast<int>(expectedBlocks));
+            EXPECT_CALL(*mockQueue, resetSyncingItems())
+            .Times(0);
+
+            std::atomic<bool> syncDone{false};
+            auto syncFuture = std::async(std::launch::async, [this, &syncDone, boundedTo]()
+            {
+                auto result = boundedTo ? protocol->synchronizeModuleBounded(Mode::DELTA, *boundedTo)
+                              : protocol->synchronizeModule(Mode::DELTA);
+                syncDone.store(true, std::memory_order_release);
+                return result;
+            });
+
+            // One acknowledgement more than expected, so a cycle that does not stop shows up
+            // as an extra block instead of hanging the test.
+            std::thread ackThread([this, &syncDone, expectedBlocks]()
+            {
+                size_t handled = 0;
+                int lastSendCount = 0;
+
+                while (handled <= expectedBlocks)
+                {
+                    const int currentSendCount = mockSyncTransport->sendCount();
+
+                    if (currentSendCount > lastSendCount)
+                    {
+                        lastSendCount = currentSendCount;
+                        feedHttpResult(200);
+                        ++handled;
+                        continue;
+                    }
+
+                    if (syncDone.load(std::memory_order_acquire))
+                    {
+                        break;
+                    }
+
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+            });
+
+            if (syncFuture.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
+            {
+                protocol->stop();
+                syncFuture.wait();
+                ackThread.join();
+                ADD_FAILURE() << "Sync thread did not finish in time; block limit may be broken";
+                return mockSyncTransport->sendCount();
+            }
+
+            const SyncModuleResult result = syncFuture.get();
+            ackThread.join();
+
+            EXPECT_TRUE(result.success);
+            return mockSyncTransport->sendCount();
+        }
+
         std::shared_ptr<MockPersistentQueue> mockQueue;
         std::shared_ptr<MockSyncTransport> mockSyncTransport =
             std::make_shared<MockSyncTransport>();
@@ -364,8 +435,7 @@ TEST_F(AgentSyncProtocolTest, CurrentAgentIdIsZeroWhenNothingPublished)
     EXPECT_EQ(AgentSyncProtocol::currentAgentId(), 0);
 }
 
-// Zero-padding is presentational: "001" is agent 1, and the manager compares ids numerically for
-// the same reason (fullSessionValidator.cpp).
+// Zero-padding does not change which agent this is: "007" is agent 7.
 TEST_F(AgentSyncProtocolTest, CurrentAgentIdIgnoresZeroPadding)
 {
     agent_metadata_t metadata = {};
@@ -841,73 +911,95 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
     syncThread.join();
 }
 
-TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaStopsAfterTenBlocks)
+/// Puts the built-in block limit back when it goes out of scope. The limit is
+/// process-wide, so a test that changes it would otherwise leak into the next one.
+class MaxBlocksPerSyncGuard final
+{
+    public:
+        explicit MaxBlocksPerSyncGuard(size_t blocks)
+        {
+            AgentSyncProtocol::setMaxBlocksPerSync(blocks);
+        }
+
+        ~MaxBlocksPerSyncGuard()
+        {
+            AgentSyncProtocol::setMaxBlocksPerSync(50U);
+        }
+
+        MaxBlocksPerSyncGuard(const MaxBlocksPerSyncGuard&) = delete;
+        MaxBlocksPerSyncGuard& operator=(const MaxBlocksPerSyncGuard&) = delete;
+};
+
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaStopsAfterFiftyBlocksByDefault)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
 
-    std::vector<PersistedData> testData =
-    {
-        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
-    };
+    EXPECT_EQ(sendBlocksUntilTheCycleStops(50U), 50);
+}
 
-    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_) )
-    .Times(10)
-    .WillRepeatedly(Return(testData));
-    EXPECT_CALL(*mockQueue, clearSyncedItems())
-    .Times(10);
-    EXPECT_CALL(*mockQueue, resetSyncingItems())
-    .Times(0);
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaStopsAtTheConfiguredBlockLimit)
+{
+    const MaxBlocksPerSyncGuard guard {3U};
 
-    std::atomic<bool> syncDone{false};
-    auto syncFuture = std::async(std::launch::async, [this, &syncDone]()
-    {
-        auto result = protocol->synchronizeModule(Mode::DELTA);
-        syncDone.store(true, std::memory_order_release);
-        return result;
-    });
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
 
-    std::thread ackThread([this, &syncDone]()
-    {
-        int handled = 0;
-        int lastSendCount = 0;
+    EXPECT_EQ(sendBlocksUntilTheCycleStops(3U), 3);
+}
 
-        while (handled < 10)
-        {
-            const int currentSendCount = mockSyncTransport->sendCount();
+TEST_F(AgentSyncProtocolTest, AnUnsetBlockLimitKeepsTheBuiltInDefault)
+{
+    // Zero is what an absent agent.sync_max_blocks_per_cycle reaches the module as.
+    const MaxBlocksPerSyncGuard guard {0U};
 
-            if (currentSendCount > lastSendCount)
-            {
-                lastSendCount = currentSendCount;
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
 
-                feedHttpResult(200);  // was Status::Ok
-                ++handled;
-                continue;
-            }
+    EXPECT_EQ(sendBlocksUntilTheCycleStops(50U), 50);
+}
 
-            if (syncDone.load(std::memory_order_acquire) && currentSendCount == lastSendCount)
-            {
-                break;
-            }
+TEST_F(AgentSyncProtocolTest, ABlockLimitSetAfterConstructionDoesNotChangeTheInstance)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-    });
+    const MaxBlocksPerSyncGuard guard {3U};
 
-    if (syncFuture.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
-    {
-        syncDone.store(true, std::memory_order_release);
-        ackThread.join();
-        FAIL() << "Sync thread did not finish in time; block limit may be broken";
-    }
+    EXPECT_EQ(sendBlocksUntilTheCycleStops(50U), 50);
+}
 
-    const SyncModuleResult result = syncFuture.get();
-    syncDone.store(true, std::memory_order_release);
-    ackThread.join();
+TEST_F(AgentSyncProtocolTest, ABoundedSyncStopsAtTheRequestedLimit)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
 
-    EXPECT_TRUE(result.success);
-    EXPECT_EQ(mockSyncTransport->sendCount(), 10);
+    EXPECT_EQ(sendBlocksUntilTheCycleStops(10U, 10U), 10);
+}
+
+TEST_F(AgentSyncProtocolTest, ABoundedSyncNeverExceedsTheConfiguredLimit)
+{
+    const MaxBlocksPerSyncGuard guard {3U};
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    EXPECT_EQ(sendBlocksUntilTheCycleStops(3U, 10U), 3);
+}
+
+TEST_F(AgentSyncProtocolTest, ABoundedSyncWithZeroUsesTheConfiguredLimit)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    EXPECT_EQ(sendBlocksUntilTheCycleStops(50U, 0U), 50);
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaUsesBytePrefilterBudgetForSyncOption)
@@ -1188,6 +1280,55 @@ TEST_F(AgentSyncProtocolTest, VdSyncWithoutAFeedOffsetIsStillSent)
     ASSERT_NE(fullSession->start(), nullptr);
     EXPECT_EQ(fullSession->start()->option(), Wazuh::SyncSchema::Option::VDFirst);
     EXPECT_EQ(fullSession->start()->feed_offset(), 0u);
+}
+
+// The manager requires Start.agentid to equal, byte for byte, the canonical id remoted authenticated
+// (JwtSigner canonicalizes the same client.keys text). An agent whose client.keys spells its id
+// another way ("0001", as /agents/insert could register it) must still claim "001", or every one of
+// its sessions would be rejected.
+TEST_F(AgentSyncProtocolTest, StartCarriesTheCanonicalAgentId)
+{
+    for (const auto& [stored, claimed] : std::vector<std::pair<std::string, std::string>> {
+             {"001", "001"}, {"0001", "001"}, {"1", "001"}, {"1000", "1000"}, {"01000", "1000"}})
+    {
+        agent_metadata_t metadata = {};
+        strncpy(metadata.agent_id, stored.c_str(), sizeof(metadata.agent_id) - 1);
+        strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
+        char* groups[] = {const_cast<char*>("group1")};
+        metadata.groups = groups;
+        metadata.groups_count = 1;
+        metadata_provider_update(&metadata);
+
+        // A fresh transport per spelling: its session counter is cumulative.
+        mockSyncTransport = std::make_shared<MockSyncTransport>();
+        mockQueue = std::make_shared<MockPersistentQueue>();
+        LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+        protocol =
+            std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+        std::vector<PersistedData> testData = {{0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}};
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+            .WillOnce(Return(testData))
+            .WillOnce(Return(std::vector<PersistedData> {}));
+        EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
+
+        SyncModuleResult result;
+        std::thread syncThread([this, &result]() { result = protocol->synchronizeModule(Mode::DELTA); });
+
+        EXPECT_TRUE(mockSyncTransport->waitForSession());
+        feedHttpResult(200);
+        syncThread.join();
+        EXPECT_TRUE(result.success);
+
+        const auto raw = mockSyncTransport->lastMessage();
+        const auto* message = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(raw.data());
+        ASSERT_NE(message, nullptr);
+        const auto* fullSession = message->content_as_FullSession();
+        ASSERT_NE(fullSession, nullptr);
+        ASSERT_NE(fullSession->start(), nullptr);
+        ASSERT_NE(fullSession->start()->agentid(), nullptr);
+        EXPECT_EQ(fullSession->start()->agentid()->str(), claimed) << "client.keys id '" << stored << "'";
+    }
 }
 
 // The groups gate is untouched by that: it is the one prerequisite the agent still cannot

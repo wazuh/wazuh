@@ -54,6 +54,22 @@ SyncModuleResult_t __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
     return result;
 }
 
+SyncModuleResult_t __wrap_asp_sync_module_bounded(AgentSyncProtocolHandle* handle,
+                                                  int mode,
+                                                  uint32_t max_blocks) {
+    check_expected_ptr(handle);
+    check_expected(mode);
+    check_expected(max_blocks);
+
+    if (s_asp_sync_module_use_full_result) {
+        return *(SyncModuleResult_t *)mock_type(SyncModuleResult_t *);
+    }
+
+    SyncModuleResult_t result = {0};
+    result.success = mock_type(bool);
+    return result;
+}
+
 bool __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
                                    const char* index,
                                    const char* checksum) {

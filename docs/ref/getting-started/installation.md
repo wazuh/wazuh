@@ -143,16 +143,18 @@ node that does not sign is exposure with no purpose:
 sudo rm -rf /etc/wazuh/ca
 ```
 
-The manager uses two pairs, both of which must be leaves of the same `root-ca.pem`: the HTTPS agent
-listener served by `wazuh-manager-remoted` and reused by `wazuh-manager-authd` on port 1515, and the
-client certificate it presents to the indexer. Whatever issues them, they go in `etc/certs` under
+The manager uses three pairs, all of which must be leaves of the same `root-ca.pem`: the HTTPS agent
+listener served by `wazuh-manager-remoted` and reused by `wazuh-manager-authd` on port 1515, the
+client certificate it presents to the indexer, and the certificate of the Server API
+(`wazuh-manager-apid`). Whatever issues them, they go in `etc/certs` under
 these names:
 
 | File in `/var/wazuh-manager/etc/certs/` | Content | Owner:group, mode |
 |---|---|---|
 | `remoted.pem`, `remoted-key.pem` | the certificate chain the agent listener presents (a `serverAuth` leaf; the one the install issues is followed by the CA) and its key | `wazuh-manager:wazuh-manager`, `0640` |
 | `indexer-connector.pem`, `indexer-connector-key.pem` | the indexer client leaf (`clientAuth`) and its key | `root:wazuh-manager`, `0640` |
-| `root-ca.pem` | the CA both leaves chain to | `root:wazuh-manager`, `0640` |
+| `apid.pem`, `apid-key.pem` | the Server API certificate chain (a `serverAuth` leaf, `CA:FALSE`, not expired, with a SAN extension; the one the install issues carries the `WAZUH_MANAGER_APID_CERT_SANS` list or the discovered one, and is followed by the CA) and its key | `wazuh-manager:wazuh-manager`, `0640` |
+| `root-ca.pem` | the CA all the leaves chain to | `root:wazuh-manager`, `0640` |
 
 ```bash
 # <node>-remoted.pem, <node>.pem, ... stand for the files your PKI issued for this node.
@@ -166,18 +168,26 @@ sudo install -m 0640 -o root -g wazuh-manager <node>.pem \
     /var/wazuh-manager/etc/certs/indexer-connector.pem
 sudo install -m 0640 -o root -g wazuh-manager <node>-key.pem \
     /var/wazuh-manager/etc/certs/indexer-connector-key.pem
+sudo install -m 0640 -o wazuh-manager -g wazuh-manager <node>-apid.pem \
+    /var/wazuh-manager/etc/certs/apid.pem
+sudo install -m 0640 -o wazuh-manager -g wazuh-manager <node>-apid-key.pem \
+    /var/wazuh-manager/etc/certs/apid-key.pem
 ```
 
-The two pairs do not share an owner. The indexer trust material is root-owned and group-readable, so
+The three pairs do not share an owner. The indexer trust material is root-owned and group-readable, so
 the manager reads it after dropping privileges but cannot replace its own trust anchor;
 `wazuh-manager-remoted` and `wazuh-manager-authd` open the listener pair after dropping privileges, so
-that pair belongs to `wazuh-manager`.
+that pair belongs to `wazuh-manager`, and so does the Server API pair. The installer normalizes the
+owner of `remoted*` and `apid*` to `wazuh-manager`. To serve another certificate on the API, use other
+file names in `etc/certs` and point `https.key` and `https.cert` at them, readable by `wazuh-manager`.
 
 A wrong certificate is not caught at start: nothing re-examines the pair, and no network connection
 is opened, so it fails at the first peer connection instead. What *is* caught at start is an
 agent-listener file that is missing (`wazuh-manager-conf validate`, with the `(1244)` verdict naming
 it) or unreadable by the `wazuh-manager` user (`wazuh-manager-remoted`, after it drops privileges).
-The indexer pair is not checked at start at all — see
+`wazuh-manager-apid` loads its own pair at start, after dropping privileges and before daemonizing,
+and refuses to start (error `2003` on the terminal and in `logs/api.log`) when it is missing,
+unreadable by `wazuh-manager`, mismatched or encrypted. The indexer pair is not checked at start at all — see
 [Certificates](credentials.md#issued-at-installation-and-at-no-other-moment). Check what a node
 presents with `openssl x509 -in /var/wazuh-manager/etc/certs/remoted.pem -noout -text`.
 
@@ -247,7 +257,7 @@ The manager ships two Server API users, both linked to the `administrator` role:
 | User | Used by |
 | ---- | ------- |
 | `wazuh` | Operators and automation calling the Server API |
-| `wazuh-wui` | The Wazuh dashboard, to reach the Server API on port 55000 |
+| `wazuh-internal-client` | The Wazuh dashboard, to reach the Server API on port 55000 |
 
 Neither ships with a password. Each is seeded on the first installation with the value supplied
 through `WAZUH_MANAGER_API_PASSWORD` / `WAZUH_MANAGER_WUI_PASSWORD`, or with a freshly generated one
@@ -270,7 +280,7 @@ sudo /var/wazuh-manager/bin/rbac_control change-password
 ```
 
 The same change can be made through the API, which is the option for automation. `wazuh` has ID `1`
-and `wazuh-wui` has ID `2` (`GET /security/users`). Change `wazuh-wui` first: changing a user's
+and `wazuh-internal-client` has ID `2` (`GET /security/users`). Change `wazuh-internal-client` first: changing a user's
 password invalidates every token that user holds, so once `wazuh`'s own password changes the token
 obtained below stops working.
 

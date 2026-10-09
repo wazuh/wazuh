@@ -12,7 +12,7 @@ from concurrent.futures import process, ProcessPoolExecutor
 from copy import copy, deepcopy
 from functools import reduce, partial
 from operator import or_
-from typing import Callable, Dict, Tuple, List
+from typing import Callable, Dict, Tuple, List, Optional
 
 from sqlalchemy.exc import OperationalError
 
@@ -691,6 +691,49 @@ class WazuhRequestQueue:
         self.logger.debug(f"Received request: {request}")
         self.request_queue.put_nowait(request.decode())
 
+    @staticmethod
+    def split_request(raw_request: str) -> Optional[Tuple[List[str], str]]:
+        """Split a queued request into its sender names and its payload.
+
+        Parameters
+        ----------
+        raw_request : str
+            Queued request, shaped `<node>[*<origin>] <payload>`.
+
+        Returns
+        -------
+        tuple or None
+            Sender names and payload, or None when the request has no sender or no payload.
+        """
+        names, separator, request = raw_request.partition(' ')
+        if not separator or not names:
+            return None
+        return names.split('*', 1), request
+
+    async def run(self):
+        """Process queued requests forever. A request that fails is logged and dropped; it never ends the loop."""
+        while True:
+            await self.wait_until_ready()
+            raw_request = await self.request_queue.get()
+            try:
+                await self.process(raw_request)
+            except Exception as e:
+                self.logger.error(f"Unexpected error processing a queued request, request discarded: {e}",
+                                  exc_info=True)
+
+    async def wait_until_ready(self):
+        """Block until the queue may take its next request."""
+
+    async def process(self, raw_request: str):
+        """Process one queued request.
+
+        Parameters
+        ----------
+        raw_request : str
+            Queued request, shaped `<node>[*<origin>] <payload>`.
+        """
+        raise NotImplementedError
+
 
 class APIRequestQueue(WazuhRequestQueue):
     """
@@ -703,40 +746,43 @@ class APIRequestQueue(WazuhRequestQueue):
         self.logger = logging.getLogger('wazuh').getChild('dapi')
         self.logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag='Cluster', subtag='D API'))
 
-    async def run(self):
-        while True:
-            names, request = (await self.request_queue.get()).split(' ', 1)
-            names = names.split('*', 1)
-            # name    -> node name the request must be sent to. None if called from a worker node.
-            # id      -> id of the request.
-            # request -> JSON containing request's necessary information
-            name_2 = '' if len(names) == 1 else names[1] + ' '
+    async def process(self, raw_request: str):
+        parsed = self.split_request(raw_request)
+        if parsed is None:
+            self.logger.error(f"Discarding malformed DAPI request from '{raw_request.partition('*')[0][:64]}': "
+                              f"no request payload.")
+            return
+        names, request = parsed
+        # name    -> node name the request must be sent to. None if called from a worker node.
+        # id      -> id of the request.
+        # request -> JSON containing request's necessary information
+        name_2 = '' if len(names) == 1 else names[1] + ' '
 
-            # Get reference to MasterHandler or WorkerHandler
-            try:
-                node = self.server.client if names[0] == 'master' else self.server.clients[names[0]]
-            except KeyError as e:
-                self.logger.error(
-                    f"Error in DAPI request. The destination node is not connected or does not exist: {e}.")
-                continue
+        # Get reference to MasterHandler or WorkerHandler
+        try:
+            node = self.server.client if names[0] == 'master' else self.server.clients[names[0]]
+        except KeyError as e:
+            self.logger.error(
+                f"Error in DAPI request. The destination node is not connected or does not exist: {e}.")
+            return
 
+        try:
+            request = json.loads(request, object_hook=c_common.as_wazuh_object)
+            self.logger.info("Receiving request: {} from {}".format(
+                request['f'].__name__, names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
+            result = await DistributedAPI(**request,
+                                          logger=self.logger,
+                                          node=node).distribute_function()
+            task_id = await node.send_string(json.dumps(result, cls=c_common.WazuhJSONEncoder).encode())
+        except Exception as e:
+            self.logger.error(f"Error in distributed API: {e}", exc_info=True)
+            with contextlib.suppress(Exception):
+                await node.send_request(b"dapi_err", f"{name_2}{str(e)}".encode())
+        else:
             try:
-                request = json.loads(request, object_hook=c_common.as_wazuh_object)
-                self.logger.info("Receiving request: {} from {}".format(
-                    request['f'].__name__, names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
-                result = await DistributedAPI(**request,
-                                              logger=self.logger,
-                                              node=node).distribute_function()
-                task_id = await node.send_string(json.dumps(result, cls=c_common.WazuhJSONEncoder).encode())
-            except Exception as e:
-                self.logger.error(f"Error in distributed API: {e}", exc_info=True)
-                with contextlib.suppress(Exception):
-                    await node.send_request(b"dapi_err", f"{name_2}{str(e)}".encode())
-            else:
-                try:
-                    await node.send_request(b"dapi_res", name_2.encode() + task_id)
-                except WazuhException as e:
-                    self.logger.error(e.message, exc_info=False)
+                await node.send_request(b"dapi_res", name_2.encode() + task_id)
+            except WazuhException as e:
+                self.logger.error(e.message, exc_info=False)
 
 
 class SendSyncRequestQueue(WazuhRequestQueue):
@@ -750,35 +796,39 @@ class SendSyncRequestQueue(WazuhRequestQueue):
         self.logger = logging.getLogger('wazuh').getChild('sendsync')
         self.logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag='Cluster', subtag='SendSync'))
 
-    async def run(self):
-        while True:
-            if self.server.configuration['node_type'] == 'master':
-                await self.server.tasks_event.wait()
+    async def wait_until_ready(self):
+        if self.server.configuration['node_type'] == 'master':
+            await self.server.tasks_event.wait()
 
-            names, request = (await self.request_queue.get()).split(' ', 1)
-            names = names.split('*', 1)
-            # name    -> node name the request must be sent to. None if called from a worker node.
-            # id      -> id of the request.
-            # request -> JSON containing request's necessary information
-            name_2 = '' if len(names) == 1 else names[1] + ' '
+    async def process(self, raw_request: str):
+        parsed = self.split_request(raw_request)
+        if parsed is None:
+            self.logger.error(f"Discarding malformed SendSync request from '{raw_request.partition('*')[0][:64]}': "
+                              f"no request payload.")
+            return
+        names, request = parsed
+        # name    -> node name the request must be sent to. None if called from a worker node.
+        # id      -> id of the request.
+        # request -> JSON containing request's necessary information
+        name_2 = '' if len(names) == 1 else names[1] + ' '
 
+        try:
+            node = self.server.clients[names[0]]
+        except KeyError as e:
+            self.logger.error(f"Error in Sendsync. The destination node is not connected or does not exist: {e}.")
+            return
+
+        try:
+            request = json.loads(request, object_hook=c_common.as_wazuh_object)
+            self.logger.debug(f"Receiving SendSync request ({request['daemon_name']}) from {names[0]} ({names[1]})")
+            result = await wazuh_sendsync(**request)
+            task_id = await node.send_string(result.encode())
+        except Exception as e:
+            self.logger.error(f"Error in SendSync (parameters {request}): {str(e)}", exc_info=False)
+            with contextlib.suppress(Exception):
+                await node.send_request(b"sendsyn_err", f"{name_2}{str(e)}".encode())
+        else:
             try:
-                node = self.server.clients[names[0]]
-            except KeyError as e:
-                self.logger.error(f"Error in Sendsync. The destination node is not connected or does not exist: {e}.")
-                continue
-
-            try:
-                request = json.loads(request, object_hook=c_common.as_wazuh_object)
-                self.logger.debug(f"Receiving SendSync request ({request['daemon_name']}) from {names[0]} ({names[1]})")
-                result = await wazuh_sendsync(**request)
-                task_id = await node.send_string(result.encode())
-            except Exception as e:
-                self.logger.error(f"Error in SendSync (parameters {request}): {str(e)}", exc_info=False)
-                with contextlib.suppress(Exception):
-                    await node.send_request(b"sendsyn_err", f"{name_2}{str(e)}".encode())
-            else:
-                try:
-                    await node.send_request(b"sendsyn_res", name_2.encode() + task_id)
-                except WazuhException as e:
-                    self.logger.error(e.message, exc_info=False)
+                await node.send_request(b"sendsyn_res", name_2.encode() + task_id)
+            except WazuhException as e:
+                self.logger.error(e.message, exc_info=False)

@@ -135,6 +135,15 @@ namespace task_manager::storage
         bool busy {false};
     };
 
+    struct CompactStats
+    {
+        /// @brief Free pages left in the database file after the step.
+        std::int64_t freePages {0};
+        /// @brief False on a database created without incremental auto-vacuum (one made by an
+        ///        earlier build): its free pages are reused in place, but the file never shrinks.
+        bool supported {true};
+    };
+
     /**
      * @brief Everything the module persists.
      *
@@ -282,9 +291,15 @@ namespace task_manager::storage
         /// log line instead of silent unbounded growth.
         virtual CheckpointStats checkpointWal() = 0;
 
-        /// @brief Compact the database. Commits and finalizes first: VACUUM cannot run inside a
-        ///        transaction.
-        virtual void vacuum() = 0;
+        /// @brief Hand up to `maxPages` free pages back to the filesystem. Commits and releases the
+        ///        connection's cursors first, like checkpointWal().
+        ///
+        /// One bounded step rather than a VACUUM: VACUUM builds a full copy of the database in its
+        /// temporary store and holds the store mutex for the whole rewrite, which on a day of
+        /// Active Response was hundreds of MB of heap and seconds of stalled requests. A step
+        /// moves at most `maxPages` pages and the caller loops, so the mutex is released between
+        /// steps. The file shrinks at the next WAL checkpoint.
+        virtual CompactStats compactStep(int maxPages) = 0;
 
         virtual std::optional<std::string> getMetadata(const std::string& key) = 0;
         virtual void setMetadata(const std::string& key, const std::string& value) = 0;

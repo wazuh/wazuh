@@ -71,6 +71,7 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/dotPath_test.cpp
     ${UNIT_SRC_DIR}/eventParser_test.cpp
     ${UNIT_SRC_DIR}/json_test.cpp
+    ${UNIT_SRC_DIR}/json_copy_memory_test.cpp
     ${UNIT_SRC_DIR}/error_test.cpp
     ${UNIT_SRC_DIR}/timer_test.cpp
     ${UNIT_SRC_DIR}/expression_test.cpp

@@ -150,7 +150,9 @@ void startup_gate_initialize(void);
 
 // Release the startup gate from the HTTPS /control apply chain
 // (bridge_on_config_downloaded, once a downloaded config has been verified
-// and applied).
+// and applied). Opens the gate only while such an apply is pending (see
+// startup_gate_mark_download_pending()): agentd's SIGUSR1 handler calls this
+// on every reload, including ones no validated download asked for.
 void startup_gate_release_from_https_apply(void);
 
 // Release the startup gate from the manager's per-Notify config_hash (SHA-256
@@ -161,14 +163,19 @@ void startup_gate_release_from_https_apply(void);
 // apply's own release.
 void startup_gate_check_manager_config_hash(const char *manager_sha256);
 
-// Mark that bridge_on_config_downloaded() is about to write a downloaded
-// config to SHAREDCFG_FILE and (on success) drive a reload. Call before that
-// write: from this point until startup_gate_release_from_https_apply() (or
-// the next startup_gate_initialize()) runs, startup_gate_check_manager_config_hash()
+// Mark that bridge_on_config_downloaded() has validated a downloaded config
+// in place and is about to write SHAREDCFG_FILE and drive a reload. Call
+// before that write: from this point until
+// startup_gate_release_from_https_apply() (or the next
+// startup_gate_initialize()) runs, startup_gate_check_manager_config_hash()
 // will not release the gate on its own, even though the just-written file's
 // hash already matches the manager's -- that match is a side effect of this
 // same download, not proof the reload it is driving has actually completed.
 void startup_gate_mark_download_pending(void);
+
+// Undo startup_gate_mark_download_pending() when the write it announced
+// failed, so no reload will follow to clear it.
+void startup_gate_clear_download_pending(void);
 
 // Read current startup gate state.
 void startup_gate_get_status(bool *ready, char *reason, size_t reason_size);

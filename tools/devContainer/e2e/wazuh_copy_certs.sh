@@ -14,6 +14,11 @@ set -euo pipefail
 #   <node>-key.pem          -> indexer-connector-key.pem   root:wazuh-manager           640
 #   <node>-remoted.pem      -> remoted.pem                 wazuh-manager:wazuh-manager  640
 #   <node>-remoted-key.pem  -> remoted-key.pem             wazuh-manager:wazuh-manager  640
+#   <node>-remoted.pem      -> apid.pem                    wazuh-manager:wazuh-manager  640
+#   <node>-remoted-key.pem  -> apid-key.pem                wazuh-manager:wazuh-manager  640
+#
+# The Server API pair is the listener pair: the installer issues apid.pem with the
+# profile of remoted.pem, and the e2e reaches the API on localhost, which its SAN carries.
 #
 # remoted opens its certificate and key after dropping privileges, hence the
 # wazuh-manager owner; the indexer connector files are read as root. root-ca.key
@@ -92,6 +97,8 @@ CERT_TABLE=(
     "${MANAGER_NODE_NAME}-key.pem|indexer-connector-key.pem|root"
     "${MANAGER_NODE_NAME}-remoted.pem|remoted.pem|${WAZUH_USER}"
     "${MANAGER_NODE_NAME}-remoted-key.pem|remoted-key.pem|${WAZUH_USER}"
+    "${MANAGER_NODE_NAME}-remoted.pem|apid.pem|${WAZUH_USER}"
+    "${MANAGER_NODE_NAME}-remoted-key.pem|apid-key.pem|${WAZUH_USER}"
 )
 
 for entry in "${CERT_TABLE[@]}"; do
@@ -112,7 +119,7 @@ for entry in "${CERT_TABLE[@]}"; do
 done
 
 echo "==> Verifying the deployed certificates..."
-openssl verify -CAfile "${DEST_DIR}/root-ca.pem" "${DEST_DIR}/remoted.pem" "${DEST_DIR}/indexer-connector.pem" | sed 's/^/    /'
+openssl verify -CAfile "${DEST_DIR}/root-ca.pem" "${DEST_DIR}/remoted.pem" "${DEST_DIR}/apid.pem" "${DEST_DIR}/indexer-connector.pem" | sed 's/^/    /'
 if ! openssl x509 -in "${DEST_DIR}/remoted.pem" -noout -checkend 0 >/dev/null; then
     echo "ERROR: ${DEST_DIR}/remoted.pem has expired." >&2
     exit 1

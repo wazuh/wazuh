@@ -151,7 +151,7 @@ and adds three things of its own:
 | Field | Written by the channel as | The manager uses it for |
 |---|---|---|
 | `@timestamp` | the instant the document was written | read order and cursor, the task's `create_time`, and the age that bounds the visibility hold |
-| `event.index`, `event.doc_id` | the monitored index and the matching document's `_id` | fetching the event whose fields are merged into the payload the agent receives |
+| `event.index`, `event.doc_id` | the monitored index and the matching document's `_id` | fetching the event whose fields are merged into the payload the agent receives; `event.index` must name one `wazuh-events-v5-*` or `wazuh-findings-v5-*` index (see below) |
 | `wazuh.active_response.*` | the channel configuration: `name`, `executable`, `extra_arguments`, `type` (`stateful` or `stateless`), `stateful_timeout`, `location`, `agent_id` | what to run, and on which agents |
 | `wazuh.agent.id` | copied from the event, when the event has it | the target when `location` is `local` |
 | `wazuh.agent.version` | copied from the event, when the event has it | documents whose version matches `v[0-4]\..*` are never read: an agent below 5.0 has no delivery path |
@@ -165,13 +165,22 @@ and adds three things of its own:
 | `all` | every registered agent | nothing; an empty fleet dispatches nothing |
 
 `AR_SCHEMA` is the first thing a document meets, and it states the contract above: `event.index`
-and `event.doc_id` as non-empty strings; `wazuh.active_response` with `executable`,
+matching `EVENT_INDEX_PATTERN` and `event.doc_id` a non-empty string; `wazuh.active_response` with `executable`,
 `extra_arguments`, `location`, `name` and `type`, typed and enumerated as above and with no unknown
 keys; `stateful_timeout` when `type` is `stateful`; a non-empty `agent_id` when `location` is
 `defined-agent`; and a non-empty `wazuh.agent.id` when `location` is `local`. A document that fails
 it is discarded there, once, with its `_id` in the WARNING. What the schema cannot reach is the
 *referenced* event, whose shape is only known after the `mget`; that is why dispatch still guards
 against a document raising on its own shape.
+
+`event.index` is an allow-list because the event is fetched with the manager's own indexer
+credentials and merged into the payload delivered to agents (and written to their
+`active-responses.log`): an unrestricted name would let whoever can write the stream copy any index
+the manager can read onto an agent. The pattern accepts one concrete index of the
+`wazuh-events-v5-` or `wazuh-findings-v5-` family — a rolled-over index or a data stream's
+`.ds-` backing index included — in lowercase `[a-z0-9._-]`, so nothing the indexer would expand
+into more than that index (`,`, `*`, `?`, `<date math>`, `cluster:`) gets through. A response
+from a monitor over any other index is discarded at validation.
 
 The indexer's own template (`dynamic: strict`) rejects unknown field names and nothing else: it
 cannot express that a field is required, an enum or a conditional, and the manager reads `_source`
@@ -294,7 +303,7 @@ reached counts as held, together with the not-visible-yet case.
 | INFO | `Starting` / `Finished in N.NNNs.` | one polling cycle | nothing |
 | INFO | `Created T task(s) for D of R active response(s) read.` (`Held: H.`, `Discarded: reason=n, ….` only when non-zero) | the cycle summary described above | nothing when it is one sentence; otherwise the WARNING or ERROR for each discard is above it |
 | WARNING | ``Discarding active response document `<id>` (`<index>`). Reason: <schema error>`` | the document fails `AR_SCHEMA`; terminal | fix the channel, or the client that wrote the document; the document itself is skipped |
-| WARNING | ``Active response `<id>` carries no usable event reference. Discarding it.`` | `event.index` or `event.doc_id` missing, empty or not a string; terminal | same |
+| WARNING | ``Active response `<id>` carries no usable event reference. Discarding it.`` | `event.index` or `event.doc_id` missing, empty or not a string, or `event.index` outside the allow-list; terminal, and reached only when schema validation is skipped | same |
 | WARNING | ``Expected event `<doc_id>` (`<index>`) not found after <grace>s. Discarding active response `<id>`.`` | the referenced event never became visible; terminal | check that the monitored index still holds the event; a wrong `event.index` lands here once the response is older than the grace window |
 | WARNING | ``Expected event `<doc_id>` (`<index>`) not found, and the response carries no readable @timestamp. Discarding active response `<id>`.`` | same, with no age to wait on | same |
 | WARNING | `AR document <id> missing @timestamp, skipping` | no `@timestamp`; terminal | the document was not written by the notification channel |

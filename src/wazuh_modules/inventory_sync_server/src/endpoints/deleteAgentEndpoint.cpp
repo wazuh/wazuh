@@ -11,9 +11,9 @@
 
 #include "deleteAgentEndpoint.hpp"
 
+#include "common/agentId.hpp"
 #include "loggerHelper.h"
-#include "sync/fullSessionValidator.hpp" // isNumericAgentId(), padAgentId()
-#include "sync/stateIndexAllowlist.hpp"  // AGENT_DELETION_SCOPE_BY_ID
+#include "sync/stateIndexAllowlist.hpp" // AGENT_DELETION_SCOPE_BY_ID
 #include <uds_http_server/logThrottle.hpp>
 
 #include <cstdint>
@@ -51,7 +51,8 @@ namespace
      * manager daemon, so this guards against a caller bug, not against spoofing.
      *
      * @param[out] reason Caller-facing 400 message, set only on failure.
-     * @return The id as written by the caller (unpadded), or nullopt when it is absent or not an id.
+     * @return The id in its canonical spelling ("7" and "0007" -> "007"), or nullopt when it is
+     *         absent or not an agent id (not digits, or out of the 32-bit range).
      */
     std::optional<std::string> resolveAgentId(const wazuh::uds_http::HttpRequest& request, const char*& reason)
     {
@@ -86,13 +87,14 @@ namespace
             agentId = std::to_string(agentIdIt->get<std::uint64_t>());
         }
 
-        if (!invsync::sync::isNumericAgentId(agentId))
+        auto canonical = invsync::common::canonicalAgentId(agentId);
+        if (!canonical)
         {
             reason = R"("agent_id" must be a numeric agent id)";
             return std::nullopt;
         }
 
-        return agentId;
+        return canonical;
     }
 
 } // namespace
@@ -189,18 +191,18 @@ namespace invsync::endpoints::delete_agent
             // item, there has just never been anyone to answer.
             item.responder = responder;
             item.kind = invsync::sync::SyncPipeline::Item::Kind::DeleteAgent;
-            // Padded like every document `_id` and query -- the deletion must match what indexing
+            // Canonical like every document `_id` and query -- the deletion must match what indexing
             // wrote. The shard hash uses this same string, so the deletion lands on the SAME
             // worker queue as the agent's sessions (FIFO ordering is the whole point, doc 04 §1).
-            const auto agentId = invsync::sync::padAgentId(*callerAgentId);
+            const auto& agentId = *callerAgentId;
             item.session.agentId = agentId;
 
             /*
              * The BY-ID half, and it goes FIRST.
              *
              * AGENT_DELETION_SCOPE_BY_ID holds one document per agent whose `_id` IS the agent id --
-             * the padded form below, which is what POST /config and POST /stats write because
-             * remoted authenticates and forwards the canonical 3-character id. They are written
+             * the canonical form below, which is what POST /config and POST /stats write because
+             * remoted authenticates and forwards the canonical id (common/agentId.hpp). They are written
              * through the async connector's accumulating queue, so queueing their deletes on that
              * same queue is what orders them after a report it has already accepted: the queue is
              * FIFO, so anything enqueued before this point is applied before it. First rather than

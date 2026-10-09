@@ -48,3 +48,25 @@ jobs:
         env:
           WAZUH_DOCS_NODE_DIR: ${{ runner.temp }}/wazuh-docs-tools
         run: cd docs && sh build.sh
+
+      - name: "Verify check-docs.py degrades gracefully without Node/npm (regression for #39955)"
+        run: |
+          GREP=$(command -v grep); CAT=$(command -v cat); PY=$(command -v python3)
+          STRIPPED_PATH=""
+          IFS=':' read -ra DIRS <<< "$PATH"
+          # Strip every PATH dir with node/npm, not just one: ubuntu-24.04 ships Node preinstalled
+          # via the n version manager in addition to whatever actions/setup-node adds, so a single
+          # directory is not enough (see the #39955 review history for the runner image evidence).
+          for d in "${DIRS[@]}"; do
+            [ -x "$d/node" ] || [ -x "$d/npm" ] && continue
+            STRIPPED_PATH="${STRIPPED_PATH:+$STRIPPED_PATH:}$d"
+          done
+          if PATH="$STRIPPED_PATH" command -v node >/dev/null 2>&1; then
+            echo "::error::node still resolvable after stripping PATH — fix the filter (runner image changed?)"
+            exit 1
+          fi
+          cd docs
+          PATH="$STRIPPED_PATH" "$PY" tools/check-docs.py --book book > /tmp/check-docs-no-node.log 2>&1 || true
+          "$CAT" /tmp/check-docs-no-node.log
+          "$GREP" -qF 'check-docs: node not found on PATH, skipping Mermaid validation' /tmp/check-docs-no-node.log
+          ! "$GREP" -q 'Traceback (most recent call last)' /tmp/check-docs-no-node.log

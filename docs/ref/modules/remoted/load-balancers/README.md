@@ -233,7 +233,7 @@ you have a reason, leave those off.
 
 Never retry on `400`, `401` or `413`: those are deterministic client errors, and retrying them on
 another manager produces the same error while multiplying load. A `429` (with `Retry-After`) comes
-only from `POST /enroll`, `POST /enroll/secret` and `GET /cacerts`, whose rate limits are per node;
+only from `POST /enroll` and `GET /cacerts`, whose rate limits are per node;
 the agent already retries it after the delay.
 
 ### 4.8. The manager sees the balancer's address

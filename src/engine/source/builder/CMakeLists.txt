@@ -177,6 +177,8 @@ add_executable(builder_utest
 	# ${UNIT_SRC_DIR}/builders/optransform/windows_test.cpp
 	${UNIT_SRC_DIR}/builders/optransform/hlp_test.cpp
 	${UNIT_SRC_DIR}/builders/optransform/hlpAllParsers_test.cpp
+	# Per-event array helpers under an address space cap
+	${UNIT_SRC_DIR}/builders/arrayHelpersMemory_test.cpp
 	# Stage Builders
 	${UNIT_SRC_DIR}/builders/stage/check_test.cpp
 	${UNIT_SRC_DIR}/builders/stage/map_test.cpp

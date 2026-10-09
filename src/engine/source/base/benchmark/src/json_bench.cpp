@@ -685,3 +685,53 @@ static void BM_CompactCopy(benchmark::State& state)
     state.counters["alloc_bytes_per_doc"] = static_cast<double>(allocated);
 }
 BENCHMARK(BM_CompactCopy);
+
+// =============================================================================
+// Element copies: getArray() over a large array of ~317-byte objects
+// =============================================================================
+
+// Keep in sync with the generator in json_copy_memory_test.cpp
+static std::string makeLargeArrayText(size_t count)
+{
+    std::string text {"["};
+    for (size_t i = 0; i < count; ++i)
+    {
+        if (i != 0)
+        {
+            text += ',';
+        }
+        const auto n = std::to_string(i);
+        text +=
+            R"({"id":)" + n + R"(,"name":"process-name-for-memory-test-)" + n
+            + R"(","path":"/usr/lib/systemd/system-generators/systemd-generator-helper-run-)" + n
+            + R"(","args":["--config=/etc/wazuh-manager/some-long-option","--verbose"],"user":{"name":"wazuh-manager","id":"1001"},"hash":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"})";
+    }
+    text += ']';
+    return text;
+}
+
+/**
+ * getArray() of a large array: one Json per element. Reports the bytes the element pools reserve, measured once
+ * after the timed loop.
+ */
+static void BM_GetArray_Large(benchmark::State& state)
+{
+    const auto text = makeLargeArrayText(static_cast<size_t>(state.range(0)));
+    const Json source {std::string_view {text}};
+    for (auto _ : state)
+    {
+        auto elements = source.getArray();
+        benchmark::DoNotOptimize(elements);
+    }
+
+    const auto measured = source.getArray();
+    size_t allocated = 0;
+    for (const auto& element : *measured)
+    {
+        allocated += element.getAllocatedMemory();
+    }
+    state.SetItemsProcessed(state.iterations() * state.range(0));
+    state.counters["alloc_bytes_elements"] = static_cast<double>(allocated);
+    state.counters["text_bytes"] = static_cast<double>(text.size());
+}
+BENCHMARK(BM_GetArray_Large)->Arg(1500)->Arg(13000)->Unit(benchmark::kMillisecond);

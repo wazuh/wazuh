@@ -160,19 +160,25 @@ def test_agent_sort_order(socket_mock, send_mock, fields, order, expected_items)
                                                            f'"{expected_items}". '
 
 
+@pytest.mark.parametrize('agent_list, expected_ids', [
+    ([], []),
+    (['002', '001'], ['001', '002']),
+    (['001', '999'], ['001']),
+    (['001', '5\n', '١'], ['001']),
+])
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb_http.WazuhDBHTTPClient')
-async def test_get_agents_summary(wdb_http_client_mock: AsyncMock):
-    """Test if get_agent_groups() asks for agent's groups correctly."""
-    agent_ids = []
+async def test_get_agents_summary(wdb_http_client_mock: AsyncMock, agent_list: list, expected_ids: list):
+    """Test that get_agents_summary() sends wazuh-db only the ids of agents in the system."""
     summary = AgentsSummary(agents_by_status={'active': 10, 'disconnected': 2})
     wdb_http_client_mock.return_value.close = AsyncMock()
     get_agents_summary_mock = AsyncMock(return_value=summary)
     wdb_http_client_mock.return_value.get_agents_summary = get_agents_summary_mock
 
-    agents_summary = await get_agents_summary(agent_ids)
+    agents_summary = await get_agents_summary.__wrapped__(agent_list)
     assert agents_summary['data'] == summary.to_dict()
 
-    get_agents_summary_mock.assert_called_once_with(agent_ids)
+    get_agents_summary_mock.assert_called_once_with(expected_ids)
 
 
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))

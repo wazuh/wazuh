@@ -489,7 +489,14 @@ for one `/stateful` session.
   (10 MiB by default) the manager closes the connection with no response; the agent reads that as a
   network failure, keeps the batch and retries it indefinitely, and no further events leave the
   agent. If this value is raised, raise both manager settings first and keep `size` at or below the
-  auth cap. See [remoted's configuration](../remoted/configuration.md#httpsmax_body_size).
+  auth cap. See [remoted's configuration](../remoted/configuration.md#httpsmax_body_size). Because
+  `size` counts bytes before compression, it must also stay under the manager's decoded-body cap,
+  [`remoted.auth_max_decoded_body_size`](../remoted/configuration.md#remotedauth_max_decoded_body_size)
+  (32 MiB by default). `/stateful` sessions are bounded instead by the agent's byte share on the
+  manager,
+  [`remoted.max_inflight_bytes_per_agent`](../remoted/configuration.md#remotedmax_inflight_bytes_per_agent)
+  (128 MiB by default), which is what a vulnerability-detection first sync, sent unsplit, has to
+  fit in.
 
 ### stats_report
 
@@ -644,6 +651,23 @@ Both values are resolved once, when the agent starts, and the loops use the reso
 life of the process. Editing either one on a running agent has no effect until it restarts, and an
 out-of-range value refuses the start rather than terminating the agent later, at its first failed
 re-enrollment.
+
+### Stateful Sync Cycle
+
+```ini
+# Most stateful sync sessions (blocks) one FIM, SCA or Syscollector sync cycle
+# sends (default: 50, range 1-1000). Each block is bounded by <agent><batch><size>.
+agent.sync_max_blocks_per_cycle=50
+```
+
+Whatever is still queued after the last block waits for the module's next synchronization interval,
+so one cycle carries at most about `sync_max_blocks_per_cycle × <batch><size>` (about 50 MiB with the
+defaults). A first synchronization larger than that, such as the Windows registry baseline, takes
+several intervals to reach the indexer, and items queued after it wait their turn. Syscollector's
+vulnerability detection sync is bounded too, but it has no byte budget, so its first block already
+carries everything queued. FIM's recovery resync (after an agent ID change or a failed integrity check)
+runs while it holds the scan locks, so it sends at most 10 blocks per table whatever this option says,
+and the regular cycle sends the rest. The value is read once, when the agent starts.
 
 ### Buffer Settings
 

@@ -6,7 +6,7 @@ relationships:
       role_ids:
         - administrator
 
-    wazuh-wui:
+    wazuh-internal-client:
       role_ids:
         - administrator
 

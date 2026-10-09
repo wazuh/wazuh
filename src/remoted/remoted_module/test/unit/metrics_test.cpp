@@ -316,14 +316,16 @@ TEST(AuthRejectMetricsTest, MakeRegistersFamilyAtZero)
                              remoted::endpoints::METRIC_AUTH_REJECT_MALFORMED,
                              remoted::endpoints::METRIC_AUTH_REJECT_TOKEN_UNKNOWN,
                              remoted::endpoints::METRIC_AUTH_REJECT_TOKEN_EXPIRED,
-                             remoted::endpoints::METRIC_AUTH_REJECT_TOKEN_REVOKED})
+                             remoted::endpoints::METRIC_AUTH_REJECT_TOKEN_REVOKED,
+                             remoted::endpoints::METRIC_AUTH_REJECT_AGENT_BUSY})
     {
         EXPECT_TRUE(manager.exists(name)) << name;
     }
-    EXPECT_EQ(manager.count(), 15U);
+    EXPECT_EQ(manager.count(), 16U);
     EXPECT_EQ(m.unknownAgent->get(), 0U);
     EXPECT_EQ(m.malformed->get(), 0U);
     EXPECT_EQ(m.tokenRevoked->get(), 0U);
+    EXPECT_EQ(m.agentBusy->get(), 0U);
 }
 
 // makeEnrollmentMetrics() registers the whole remoted.enroll.* family at zero, the enrollment-token
@@ -434,7 +436,7 @@ TEST(AuthRejectMetricsTest, ErrorResponseForCountsEveryAuthErrorInItsCell)
         }
     }
     // Sanity floor: if the probe stopped finding values, the discovery itself broke.
-    ASSERT_GE(live.size(), 15U) << "AuthError discovery via toString() found implausibly few values";
+    ASSERT_GE(live.size(), 16U) << "AuthError discovery via toString() found implausibly few values";
 
     for (const auto err : live)
     {
@@ -457,6 +459,7 @@ TEST(AuthRejectMetricsTest, ErrorResponseForCountsEveryAuthErrorInItsCell)
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BODY_TOO_LARGE), 1U);
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_BAD_ENCODING), 2U); // both encoding causes
     EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_MALFORMED), 4U);    // the four header faults
+    EXPECT_EQ(valueOf(remoted::endpoints::METRIC_AUTH_REJECT_AGENT_BUSY), 1U);
 
     // The tripwire: every discovered AuthError landed in exactly one cell. A value appended to
     // the enum without a cell of its own lands in `malformed`, which makes that cell exceed the
@@ -476,7 +479,8 @@ TEST(AuthRejectMetricsTest, ErrorResponseForCountsEveryAuthErrorInItsCell)
                        valueOf(remoted::endpoints::METRIC_AUTH_REJECT_MALFORMED) +
                        valueOf(remoted::endpoints::METRIC_AUTH_REJECT_TOKEN_UNKNOWN) +
                        valueOf(remoted::endpoints::METRIC_AUTH_REJECT_TOKEN_EXPIRED) +
-                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_TOKEN_REVOKED);
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_TOKEN_REVOKED) +
+                       valueOf(remoted::endpoints::METRIC_AUTH_REJECT_AGENT_BUSY);
     EXPECT_EQ(total, live.size()) << "an AuthError is not accounted for in any remoted.auth.reject.* cell";
 
     // Uninstall (back to the null object): the instance is process-wide, so leaving these

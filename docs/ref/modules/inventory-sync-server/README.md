@@ -150,7 +150,7 @@ agent's documents). The situations an operator will recognize:
 Two in-repo companions to these pages (plain paths — they live outside this book):
 
 - `src/wazuh_modules/inventory_sync_server/README.md` — the developer's map of the module: the
-  functional/non-functional requirements catalog, the full set of design decisions (D1–D23), the
+  functional/non-functional requirements catalog, the full set of design decisions (D1–D24), the
   annotated schema, the developer FAQ, and where to touch what.
 - `tools/manager_benchmark/` — the load harness: the same wire as a real fleet over UDS or
   through remoted, the `contract_*` scenarios that pin this module's `400`/`413`/`503` contracts,

@@ -23,6 +23,12 @@ PROTECTED_SECTIONS = (
 # able to choose it either. Unlike PROTECTED_SECTIONS this is RBAC (`cluster:read_secrets`), not an api.yaml knob.
 SECRET_SECTIONS = ('/cluster/key',)
 
+# Options that choose where the manager sends a secret it never serves: every indexer client (clusterd, modulesd, the
+# engine) authenticates to each `indexer.hosts` entry with the manager's indexer service-account credential from the
+# keystore, and `indexer.ssl` decides whether that peer is trusted. Changing them hands the credential to a host of the
+# caller's choosing, so they take the same RBAC as the secrets. Not masked on read: a host list is not itself a secret.
+SECRET_DESTINATION_SECTIONS = ('/indexer',)
+
 
 def _resolve_pointer(document: dict, pointer: str):
     node = document
@@ -73,8 +79,8 @@ def check_protected_sections(new_document: dict, current_document: dict, upload_
 
 
 def check_secret_sections(new_document: dict, current_document: dict, can_read_secrets: bool):
-    """Raise if a secret option differs between the new and the current effective documents and the caller may not
-    read it.
+    """Raise if a secret option, or an option choosing where a secret is sent, differs between the new and the current
+    effective documents and the caller may not read secrets.
 
     Parameters
     ----------
@@ -88,11 +94,12 @@ def check_secret_sections(new_document: dict, current_document: dict, can_read_s
     Raises
     ------
     WazuhError(1132)
-        A secret option was modified by a caller without `cluster:read_secrets`.
+        A secret option (the cluster key) or the indexer section was modified by a caller without
+        `cluster:read_secrets`.
     """
     if can_read_secrets:
         return
 
-    for pointer in SECRET_SECTIONS:
+    for pointer in SECRET_SECTIONS + SECRET_DESTINATION_SECTIONS:
         if _resolve_pointer(new_document, pointer) != _resolve_pointer(current_document, pointer):
             raise WazuhError(1132, extra_message=pointer)

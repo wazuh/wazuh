@@ -23,6 +23,7 @@ module's own periodic cycle to retry after failures.
   transport layer (internal options `agent.https_stateful_attempts`, `agent.https_stateful_timeout`);
   the protocol layer only adds a 15-minute safety-net ceiling for a result that never arrives
 - **Byte-Capped Sessions**: Delta sessions are capped at `<agent><batch><size>` (1 MiB by default), except `Option::VDFIRST`/`Option::VDSYNC`; a single larger item is sent alone, and dropped after repeated failures
+- **Bounded Sync Cycles**: One delta sync cycle sends at most `agent.sync_max_blocks_per_cycle` sessions (50 by default); the rest stays queued for the next cycle. `Option::VDFIRST`/`Option::VDSYNC` fetch with no byte budget, so their first session already carries the whole queue. `synchronizeModuleBounded()` / `asp_sync_module_bounded()` lower the limit for one call
 - **Multiple Sync Modes**: Delta, integrity check, metadata, and groups synchronization, plus `DataClean`
 
 ## Architecture Overview

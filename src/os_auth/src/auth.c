@@ -618,17 +618,20 @@ w_err_t w_auth_replace_agent(keyentry *key,
     if (force_options->disconnected_time_enabled) {
         if (strcmp(j_connection_status->valuestring, AGENT_CS_NEVER_CONNECTED)) {
             time_t time_since_disconnected = difftime(time(NULL), j_disconnection_time->valueint);
-            if (!strcmp(j_connection_status->valuestring, AGENT_CS_DISCONNECTED) && j_disconnection_time->valueint > 0 && time_since_disconnected < force_options->disconnected_time) {
-                snprintf(message, OS_SIZE_128, "Agent '%s' has not been disconnected long enough to be replaced.", key->id);
-                os_strdup(message, *str_result);
-                replace_agent = false;
-            } else if (j_disconnection_time->valueint == 0) {
+            /* The status is the verdict, the timestamp only measures it: a disconnection_time left behind
+             * by a write that set the agent active without clearing it must not make a live agent
+             * replaceable. */
+            if (strcmp(j_connection_status->valuestring, AGENT_CS_DISCONNECTED) || j_disconnection_time->valueint == 0) {
                 snprintf(message, OS_SIZE_128, "Agent '%s' can't be replaced since it is not disconnected.", key->id);
                 os_strdup(message, *str_result);
                 replace_agent = false;
                 if (warn) {
                     *warn = true;
                 }
+            } else if (time_since_disconnected < force_options->disconnected_time) {
+                snprintf(message, OS_SIZE_128, "Agent '%s' has not been disconnected long enough to be replaced.", key->id);
+                os_strdup(message, *str_result);
+                replace_agent = false;
             }
         }
     }

@@ -37,7 +37,7 @@ logger = logging.getLogger("wazuh-api")
 
 # Max reserved ID value
 WAZUH_USER_ID = 1
-WAZUH_WUI_USER_ID = 2
+WAZUH_INTERNAL_CLIENT_USER_ID = 2
 MAX_ID_RESERVED = 99
 CLOUD_RESERVED_RANGE = 89
 
@@ -2373,7 +2373,7 @@ class DatabaseManager:
         old_users = self.get_data(source, User, User.id, from_id=from_id, to_id=to_id)
         with AuthenticationManager(self.sessions[target]) as auth_manager:
             for user in old_users:
-                if user.id in (WAZUH_USER_ID, WAZUH_WUI_USER_ID):
+                if user.id in (WAZUH_USER_ID, WAZUH_INTERNAL_CLIENT_USER_ID):
                     auth_manager.update_user(user.id, user.password, hashed_password=True)
                     continue
                 
@@ -2396,7 +2396,7 @@ class DatabaseManager:
                                           check_default=False)
         
         # This is to avoid an error when trying to update default users roles, policies and rules
-        if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
+        if from_id == WAZUH_USER_ID and to_id == WAZUH_INTERNAL_CLIENT_USER_ID:
             return
 
         old_roles = self.get_data(source, Roles, Roles.id, from_id=from_id, to_id=to_id)
@@ -2657,7 +2657,7 @@ def check_database_integrity(passwords: Optional[dict] = None):
 
                 # Migrate data from old database
                 db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=WAZUH_USER_ID,
-                                        to_id=WAZUH_WUI_USER_ID)
+                                        to_id=WAZUH_INTERNAL_CLIENT_USER_ID)
                 db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=CLOUD_RESERVED_RANGE,
                                         to_id=MAX_ID_RESERVED)
                 db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=MAX_ID_RESERVED + 1)

@@ -646,7 +646,9 @@ function probe_server($server, $port, $endpoint) {
             $host_part = "[$host_part]"
         }
 
-        $response = Invoke-WebRequest -Uri "https://$($host_part):$($port)$($path)" -UseBasicParsing -TimeoutSec 5
+        # No keep-alive: a pooled connection would let probe_server_verified() reuse it and skip
+        # the handshake, which is where the certificate gets validated.
+        $response = Invoke-WebRequest -Uri "https://$($host_part):$($port)$($path)" -UseBasicParsing -TimeoutSec 5 -DisableKeepAlive
         return ($response.StatusCode -eq 200)
     } catch {
         if ($_.Exception -is [System.Net.WebException] -and $_.Exception.Status -eq [System.Net.WebExceptionStatus]::SecureChannelFailure) {
@@ -675,15 +677,22 @@ function probe_server_verified($server, $port, $endpoint) {
             $host_part = "[$host_part]"
         }
 
-        $response = Invoke-WebRequest -Uri "https://$($host_part):$($port)$($path)" -UseBasicParsing -TimeoutSec 5
+        # Drop any connection already pooled for this target, so this request does its own handshake.
+        $uri = "https://$($host_part):$($port)$($path)"
+        [System.Net.ServicePointManager]::FindServicePoint([Uri]$uri).CloseConnectionGroup("") | Out-Null
+
+        $response = Invoke-WebRequest -Uri $uri -UseBasicParsing -TimeoutSec 5
         return ($response.StatusCode -eq 200)
     } catch {
         # Both a real cert-trust failure and an unrelated hiccup (DNS, timeout) land here as
         # the same $false, since probe_server() already confirmed reachability moments ago
         # and this function's only job is the trust decision -- but log which one it was, so
         # upgrade.log doesn't read "certificate not trusted" for a transient network blip.
-        if ($_.Exception -is [System.Net.WebException] -and $_.Exception.Status -eq [System.Net.WebExceptionStatus]::SecureChannelFailure) {
-            write-output "$(Get-Date -format u) - Certificate trust check failed: the system trust store does not verify the manager's certificate ($($_.Exception.Message))." >> .\upgrade\upgrade.log
+        # TrustFailure covers any certificate validation error (chain or name); SecureChannelFailure a failed handshake.
+        if ($_.Exception -is [System.Net.WebException] -and
+            ($_.Exception.Status -eq [System.Net.WebExceptionStatus]::TrustFailure -or
+             $_.Exception.Status -eq [System.Net.WebExceptionStatus]::SecureChannelFailure)) {
+            write-output "$(Get-Date -format u) - Certificate trust check failed: the manager's certificate does not validate against the system trust store (untrusted issuer, or a name that does not match the address) ($($_.Exception.Message))." >> .\upgrade\upgrade.log
         } else {
             write-output "$(Get-Date -format u) - Certificate trust check failed for a reason other than certificate trust ($($_.Exception.GetType().Name): $($_.Exception.Message)); treating as not verified." >> .\upgrade\upgrade.log
         }
@@ -951,12 +960,13 @@ if ($ssl_verification_mode -ceq "full" -or $ssl_verification_mode -ceq "certific
         write-output "$(Get-Date -format u) - System CA trust check skipped (test mode)." >> .\upgrade\upgrade.log
     } elseif (probe_server_verified $server_address $server_port $server_endpoint) {
         write-output "$(Get-Date -format u) - The system trust store already verifies the manager's certificate; proceeding under verify_mode=system." >> .\upgrade\upgrade.log
+    } elseif ($ssl_verification_mode_explicit -and $anchor_available) {
+        # Under 'system' the agent falls back to the anchor when the OS trust store fails.
+        write-output "$(Get-Date -format u) - <ssl><verification_mode> is explicitly 'system' and the system trust store does not verify the manager's certificate at $($server_address):$($server_port), but a trust anchor is present at $($default_ca_file) -- the upgraded agent falls back to it when the OS trust store fails, so proceeding." >> .\upgrade\upgrade.log
     } elseif ($ssl_verification_mode_explicit) {
-        # <verification_mode>system</verification_mode> was set explicitly: pinning a
-        # CA here would be rejected at runtime (validateTls() in moduleConfig.cpp
-        # refuses system+certificate_authorities together), so there is nothing this
-        # script can safely fix on the operator's behalf.
-        write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at $($server_address):$($server_port). Import it into the OS trust store, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> .\upgrade\upgrade.log
+        # Explicit 'system' with no anchor to fall back to. A <certificate_authorities> pin is
+        # rejected alongside 'system', so the fix is the operator's.
+        write-output "$(Get-Date -format u) - Upgrade failed: <ssl><verification_mode> is explicitly 'system' but the system trust store does not verify the manager's certificate at $($server_address):$($server_port), and no trust anchor is present at $($default_ca_file) to fall back to. Import the manager's CA into the OS trust store, place it at $($default_ca_file) and retry, or switch to <verification_mode>certificate</verification_mode> with a <certificate_authorities> path, interrupting upgrade." >> .\upgrade\upgrade.log
         abort_upgrade "2"
     } elseif ($anchor_available) {
         # <verification_mode> was left unset (not explicit), so the new binary resolves

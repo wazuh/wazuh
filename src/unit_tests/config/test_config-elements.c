@@ -17,6 +17,8 @@
 #include "os_xml.h"
 #include "config.h"
 #include "global-config.h"
+#include "syscheck-config.h"
+#include "wmodules.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../external/cJSON/cJSON.h"
 
@@ -176,6 +178,124 @@ static void test_manager_section_is_ignored_with_warning(void **state) {
     assert_int_equal(ReadConfig(CLOCALFILE, TEST_CONF_PATH, NULL, NULL), 0);
 }
 
+#ifdef TEST_AGENT_TARGET
+static int read_syscheck(void) {
+    syscheck_config syscheck;
+    int ret;
+
+    if (initialize_syscheck_configuration(&syscheck) == OS_INVALID) {
+        return OS_INVALID;
+    }
+
+    ret = ReadConfig(CSYSCHECK, TEST_CONF_PATH, &syscheck, NULL);
+    Free_Syscheck(&syscheck);
+
+    return ret;
+}
+
+static int read_wmodules(void) {
+    wmodule *wmodules = NULL;
+    int ret = ReadConfig(CWMODULE, TEST_CONF_PATH, &wmodules, NULL);
+
+    wm_free(wmodules);
+
+    return ret;
+}
+
+/* The SCA reader first tries to load the default ruleset, a path relative to the
+ * installation directory that does not exist where the tests run. */
+static void expect_sca_ruleset_not_found(void) {
+    expect_any(__wrap__mtinfo, tag);
+    expect_any(__wrap__mtinfo, formatted_msg);
+}
+
+/* A 4.x default ossec.conf sets these deprecated options, and an upgrade keeps
+ * that file, so every upgraded agent reports them: they must log at INFO, not
+ * WARNING, like the other harmless 4.x leftovers. */
+static void test_syscheck_deprecated_defaults_are_info(void **state) {
+    if (write_conf("<syscheck>"
+                   "<scan_on_start>yes</scan_on_start>"
+                   "<synchronization>"
+                   "<max_interval>1h</max_interval>"
+                   "<max_eps>10</max_eps>"
+                   "</synchronization>"
+                   "</syscheck>") != 0) {
+        fail();
+    }
+
+    expect_string(__wrap__minfo, formatted_msg, "The <scan_on_start> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__minfo, formatted_msg, "The <max_interval> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__minfo, formatted_msg, "The <max_eps> option is deprecated and no longer has any effect.");
+
+    assert_int_equal(read_syscheck(), 0);
+}
+
+/* Options only a user sets, some of which did something in 4.x, keep the warning. */
+static void test_syscheck_deprecated_user_options_are_warning(void **state) {
+    if (write_conf("<syscheck>"
+                   "<synchronization><queue_size>16384</queue_size></synchronization>"
+                   "<prefilter_cmd>/usr/sbin/prelink -y</prefilter_cmd>"
+                   "</syscheck>") != 0) {
+        fail();
+    }
+
+    expect_string(__wrap__mwarn, formatted_msg, "The <queue_size> option is deprecated and no longer has any effect.");
+    expect_string(__wrap__mwarn, formatted_msg, "The <prefilter_cmd> option is deprecated and no longer has any effect.");
+
+    assert_int_equal(read_syscheck(), 0);
+}
+
+/* The top-level <restart_audit> is still applied, only spelled the older way. */
+static void test_syscheck_top_level_restart_audit_is_info(void **state) {
+    if (write_conf("<syscheck><restart_audit>no</restart_audit></syscheck>") != 0) {
+        fail();
+    }
+
+    expect_string(__wrap__minfo, formatted_msg,
+                  "The <restart_audit> tag is deprecated, please use <whodata><restart_audit> instead.");
+
+    assert_int_equal(read_syscheck(), 0);
+}
+
+static void test_syscollector_deprecated_default_is_info(void **state) {
+    if (write_conf("<wodle name=\"syscollector\">"
+                   "<synchronization><max_eps>10</max_eps></synchronization>"
+                   "</wodle>") != 0) {
+        fail();
+    }
+
+    expect_string(__wrap__minfo, formatted_msg, "The <max_eps> option is deprecated and no longer has any effect.");
+
+    assert_int_equal(read_wmodules(), 0);
+}
+
+static void test_sca_deprecated_default_is_info(void **state) {
+    if (write_conf("<sca><skip_nfs>yes</skip_nfs></sca>") != 0) {
+        fail();
+    }
+
+    expect_sca_ruleset_not_found();
+    expect_any(__wrap__mtinfo, tag);
+    expect_string(__wrap__mtinfo, formatted_msg, "The <skip_nfs> option is deprecated and no longer has any effect.");
+
+    assert_int_equal(read_wmodules(), 0);
+}
+
+/* Only a user sets <day>, <wday> or <time>, and they changed when SCA scanned:
+ * losing them still deserves a warning. */
+static void test_sca_deprecated_schedule_is_warning(void **state) {
+    if (write_conf("<sca><day>1</day></sca>") != 0) {
+        fail();
+    }
+
+    expect_sca_ruleset_not_found();
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg, "The <day> option is deprecated and no longer has any effect.");
+
+    assert_int_equal(read_wmodules(), 0);
+}
+#endif
+
 #ifndef TEST_AGENT_TARGET
 
 /* Read_Global_JSON(): the `global` section of the effective document (manager only). */
@@ -224,6 +344,14 @@ int main(void) {
         cmocka_unit_test_teardown(test_unknown_element_is_still_fatal, teardown_conf_file),
         cmocka_unit_test_teardown(test_active_response_is_valid, teardown_conf_file),
         cmocka_unit_test_teardown(test_manager_section_is_ignored_with_warning, teardown_conf_file),
+#ifdef TEST_AGENT_TARGET
+        cmocka_unit_test_teardown(test_syscheck_deprecated_defaults_are_info, teardown_conf_file),
+        cmocka_unit_test_teardown(test_syscheck_deprecated_user_options_are_warning, teardown_conf_file),
+        cmocka_unit_test_teardown(test_syscheck_top_level_restart_audit_is_info, teardown_conf_file),
+        cmocka_unit_test_teardown(test_syscollector_deprecated_default_is_info, teardown_conf_file),
+        cmocka_unit_test_teardown(test_sca_deprecated_default_is_info, teardown_conf_file),
+        cmocka_unit_test_teardown(test_sca_deprecated_schedule_is_warning, teardown_conf_file),
+#endif
 #ifndef TEST_AGENT_TARGET
         cmocka_unit_test(test_Read_Global_JSON_accepts_int_and_duration),
         cmocka_unit_test(test_Read_Global_JSON_absent_keeps_defaults),

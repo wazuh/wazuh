@@ -26,7 +26,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
                             -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \
                             -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
                             -Wl,--wrap,w_copy_file -Wl,--wrap,OSHash_Begin -Wl,--wrap,OSHash_Begin_ex \
-                            -Wl,--wrap,req_save -Wl,--wrap,send_msg -Wl,--wrap,send_msg_with_key_control \
+                            -Wl,--wrap,req_save -Wl,--wrap,send_msg \
                             -Wl,--wrap,wdb_update_agent_keepalive -Wl,--wrap,parse_agent_update_msg -Wl,--wrap,req_save \
                             -Wl,--wrap,wdb_update_agent_data -Wl,--wrap,linked_queue_push_ex \
                             -Wl,--wrap,wdb_update_agent_connection_status -Wl,--wrap,wdb_update_agent_status_code -Wl,--wrap,SendMSG -Wl,--wrap,StartMQ \
@@ -48,6 +48,8 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,getpid -Wl,--wrap,key_lock_read \
                             -Wl,--wrap,key_lock_write -Wl,--wrap,key_unlock -Wl,--wrap,nb_close \
                             -Wl,--wrap,nb_open -Wl,--wrap,nb_recv -Wl,--wrap,nb_send -Wl,--wrap,OS_AddSocket \
+                            -Wl,--wrap,nb_queue_nowait -Wl,--wrap,nb_set_authenticated -Wl,--wrap,nb_unauthenticated_count \
+                            -Wl,--wrap,nb_collect_unauthenticated -Wl,--wrap,sendto \
                             -Wl,--wrap,OS_DeleteSocket -Wl,--wrap,OS_IsAllowedDynamicID -Wl,--wrap,OS_IsAllowedIP \
                             -Wl,--wrap,ReadSecMSG -Wl,--wrap,recvfrom -Wl,--wrap,rem_add_recv \
                             -Wl,--wrap,rem_add_send -Wl,--wrap,rem_dec_tcp -Wl,--wrap,wfopen \
@@ -60,7 +62,8 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default \
                             -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_events \
                             -Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,rem_inc_recv_events_failed \
-                            -Wl,--wrap,rem_inc_recv_upgrade_ack \
+                            -Wl,--wrap,rem_inc_recv_upgrade_ack -Wl,--wrap,rem_inc_send_ack \
+                            -Wl,--wrap,rem_inc_send_discarded -Wl,--wrap,send_msg_nowait \
                             -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop \
                             -Wl,--wrap,w_query_agentd -Wl,--wrap,legacy_task_process_upgrade_ack ${HASH_OP_WRAPPERS} \
@@ -87,7 +90,8 @@ list(APPEND remoted_flags "-W -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted
 
 list(APPEND remoted_names "test_sendmsg")
 list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsAllowedID -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
-                            -Wl,--wrap,rwlock_lock_read -Wl,--wrap,rwlock_unlock -Wl,--wrap,CreateSecMSG -Wl,--wrap,nb_queue -Wl,--wrap,time \
+                            -Wl,--wrap,rwlock_lock_read -Wl,--wrap,rwlock_unlock -Wl,--wrap,CreateSecMSG -Wl,--wrap,nb_queue \
+                            -Wl,--wrap,nb_queue_nowait -Wl,--wrap,time \
                             -Wl,--wrap,sendto -Wl,--wrap,fcntl -Wl,--wrap,rem_add_send -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop \
                             -Wl,--wrap,w_query_agentd")
 

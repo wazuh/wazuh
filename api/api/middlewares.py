@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import binascii
+import ipaddress
 import json
 import hashlib
 import time
@@ -75,6 +76,39 @@ general_request_lock = asyncio.Lock()
 
 # Rolling-window length used by the general_request_stats buckets below
 RATE_LIMIT_WINDOW_SECONDS = 60
+
+# Prefix length an IPv6 client is grouped by in the pre-authentication limiters
+CLIENT_IPV6_PREFIX = 64
+
+
+def get_client_key(host: str) -> str:
+    """Return the key the pre-authentication limiters charge `host` under.
+
+    A single IPv6 subscriber is routinely delegated a whole /64, so keying the login lockout and the
+    unauthenticated bucket on the full address let one client rotate through 2^64 fresh counters.
+    An IPv6 client is grouped by its /64 instead, and an IPv4-mapped address (`::ffff:a.b.c.d`, as a
+    dual-stack listener reports an IPv4 peer) by the IPv4 address it carries, so the same peer is
+    never counted under two keys. Anything that does not parse as an address is used as is.
+
+    Parameters
+    ----------
+    host : str
+        Client address, as `request.client.host` reports it.
+
+    Returns
+    -------
+    str
+        The IPv4 address, the IPv6 /64 network in CIDR notation, or `host` unchanged.
+    """
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return host
+    if address.version == 4:
+        return str(address)
+    if address.ipv4_mapped is not None:
+        return str(address.ipv4_mapped)
+    return str(ipaddress.IPv6Network((address, CLIENT_IPV6_PREFIX), strict=False))
 
 
 def get_declared_content_length(request: Request) -> Optional[int]:
@@ -290,6 +324,9 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
 async def check_blocked_ip(request: Request):
     """Blocks/unblocks the IPs that are requesting an API token, counting the attempt.
 
+    Attempts are counted per client key (see `get_client_key`), so an IPv6 client is limited by
+    its /64 rather than by each address it can rotate through.
+
     The attempt is counted in the same locked section that checks the block, before the
     request is dispatched to authentication, so concurrent requests observe each other's
     in-flight attempts instead of only already-recorded failures.
@@ -306,7 +343,7 @@ async def check_blocked_ip(request: Request):
     access_conf = configuration.api_conf['access']
     block_time = access_conf['block_time']
     max_login_attempts = access_conf['max_login_attempts']
-    host = request.client.host
+    host = get_client_key(request.client.host)
 
     async with ip_lock:
         try:
@@ -348,7 +385,7 @@ async def settle_login_attempt(request: Request):
     """
     global ip_block, ip_stats
     max_login_attempts = configuration.api_conf['access']['max_login_attempts']
-    host = request.client.host
+    host = get_client_key(request.client.host)
 
     async with ip_lock:
         if host not in ip_stats:
@@ -360,7 +397,7 @@ async def settle_login_attempt(request: Request):
 
 
 async def charge_unauthenticated_request(request: Request, max_requests: int, error_code: int) -> int:
-    """Charge and check `request.client.host`'s unauthenticated bucket.
+    """Charge and check the unauthenticated bucket of the client's key (see `get_client_key`).
 
     Only ever called from `CheckRateLimitsMiddleware`'s `except Unauthorized` branch — reaching
     this function is itself proof this specific request just failed authentication. A request
@@ -386,7 +423,7 @@ async def charge_unauthenticated_request(request: Request, max_requests: int, er
     if max_requests == 0:
         return 0
 
-    host = request.client.host
+    host = get_client_key(request.client.host)
     now = get_utc_now().timestamp()
 
     async with general_request_lock:
@@ -507,6 +544,29 @@ async def cleanup_general_request_stats(now: float = None) -> None:
         ]
         for host in stale_hosts:
             del general_request_stats[host]
+
+
+async def cleanup_login_attempt_stats(now: float = None) -> None:
+    """Drop the login-attempt entries, and blocks, whose `block_time` has elapsed.
+
+    `check_blocked_ip` only expires an entry when the same client key comes back, so every key
+    that tried once and never returned stayed in ip_stats for good. The condition here is the one
+    that function applies, so the sweep changes no lockout decision.
+
+    Parameters
+    ----------
+    now : float
+        Current UTC timestamp; defaults to the real current time. Overridable for tests.
+    """
+    global ip_block, ip_stats
+    now = now if now is not None else get_utc_now().timestamp()
+    block_time = configuration.api_conf['access']['block_time']
+
+    async with ip_lock:
+        stale_hosts = [host for host, entry in ip_stats.items() if now - block_time >= entry['timestamp']]
+        for host in stale_hosts:
+            del ip_stats[host]
+            ip_block.discard(host)
 
 
 class CheckRateLimitsMiddleware(BaseHTTPMiddleware):

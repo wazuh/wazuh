@@ -69,11 +69,17 @@ Two details worth knowing:
 holds a module whose body is not an object. The empty case is a rejection on purpose: indexing a
 report with no statistics would replace the agent's last good one.
 
+Both `/stats` and `/config` also answer `400` to a body that nests objects and arrays more than **256**
+levels deep, counting the root as level 1. This check runs on the raw bytes before parsing, so such a
+body never reaches the indexer. It protects modulesd: the JSON serializer recurses once per level, and a
+deep enough report would overflow the stack and crash the process. A report under the limit can still
+fail the indexer's own `index.mapping.depth.limit`, which is much lower.
+
 ## Request headers
 
 | Header | Required | Meaning |
 |---|---|---|
-| `X-Wazuh-Agent-Id` | Yes for `/stateful`, `/stats` and `/config` | The agent identity remoted authenticated. Missing or empty is answered `400` on all three. On `/stateful` it must also be numeric (`400` otherwise) and the session's claimed `Start.agentid` must equal it numerically, or the answer is `403`. `/stats` and `/config` use it verbatim as `wazuh.agent.id` and as the document id. **Ignored by both `_internal` routes**, which read their target from the body — their caller sends no headers of its own. |
+| `X-Wazuh-Agent-Id` | Yes for `/stateful`, `/stats` and `/config` | The agent identity remoted authenticated. Missing or empty is answered `400` on all three. It must be a canonical agent id — decimal digits that fit a 32-bit unsigned value, zero-padded to at least three characters (`001`, `1000`), the only form remoted forwards — or the answer is `400`. On `/stateful` the session's claimed `Start.agentid` must be that same string: another spelling of the same number (`1`, `0001`) is `400`, another agent's id is `403`. All three routes use it verbatim as `wazuh.agent.id` and as the document id. **Ignored by both `_internal` routes**, which read their target from the body — their caller sends no headers of its own. |
 | `Content-Type` | No | Recorded, not interpreted. |
 
 ## Enrichment (`/stats` and `/config`)
@@ -159,7 +165,9 @@ Its caller is the Task Manager's dispatcher, executing a durable `agent_delete_i
 authd created after removing the agent from `client.keys`. The agent id travels in the **body**, not
 in `X-Wazuh-Agent-Id`: the dispatcher POSTs a task row's payload verbatim and sets no headers of its
 own, so the header is ignored even when present. Both `{"agent_id":"7"}` and `{"agent_id":7}` are
-accepted.
+accepted, with or without leading zeros: the id is normalized to its canonical spelling (`007`), the
+one every document carries. A value that is not digits or does not fit a 32-bit unsigned value is
+`400`.
 
 The deletion has **two halves, one per writer**, because a document can only be deleted in order by
 the connector that writes it:
@@ -238,7 +246,7 @@ The body is a FlatBuffers `Message{FullSession}` (see [Schemas](flatbuffers.md))
 
 | `Start.mode` | Accepted payload | What it does |
 |---|---|---|
-| `ModuleDelta` | `SyncData` (values ≥ 1, contexts optional) | Upserts/deletes state documents. Each value maps to one document: `_id` = `{cluster}_{agent}_{id}`, the document is overlaid with authoritative `wazuh.*` fields (agent id/name/version, groups, cluster) so a payload can never impersonate another agent, and a positive `version` becomes a versioned upsert. Documents targeting an index outside the allowlist are skipped with a warning, never failing the request; if everything was skipped the answer is a no-op `200`. |
+| `ModuleDelta` | `SyncData` (values ≥ 1, contexts optional) | Upserts/deletes state documents. Each value maps to one document: `_id` = `{cluster}_{agent}_{id}`, the document is overlaid with authoritative `wazuh.*` fields (agent id/name/version, groups, cluster) so a payload can never impersonate another agent (a non-object value the payload put on one of those paths, such as `"wazuh":"x"`, is replaced), and a positive `version` becomes a versioned upsert. Documents targeting an index outside the allowlist, documents whose `_id` would exceed the indexer's 512-byte limit, and upserts whose `data` is not a JSON object or nests deeper than 256 levels, are skipped with a warning, never failing the request; if everything was skipped the answer is a no-op `200`. |
 | `ModuleDelta` | `Cleans` (items ≥ 1) | Deletes this agent's documents from each named index (deduplicated, allowlisted). A full resync is composed by the agent as two requests: a `Cleans` of the module's indices, then a `ModuleDelta` with the complete dataset. |
 | `ModuleCheck` | `ChecksumModule` | Integrity verification of one index: the server pages this agent's documents in deterministic order, aggregates their checksums (SHA-1), and compares with the declared value — `200` on match, `409` on mismatch. One attempt, no retry loop: a mismatch means the agent full-resyncs. |
 | `MetadataDelta` / `GroupDelta` | *(none)* | Reconciles agent metadata (or group membership) across the agent's already-indexed documents with one update-by-query, guarded by `global_version` so a stale update can never overwrite a newer one. |
@@ -247,6 +255,20 @@ The body is a FlatBuffers `Message{FullSession}` (see [Schemas](flatbuffers.md))
 Sessions whose `Start.option` is `VDFirst` or `VDSync` additionally run the vulnerability scanner
 synchronously BEFORE indexing (see [Architecture](architecture.md)); only `SyncData` sessions
 scan — a VD-flagged `Cleans`/`ChecksumModule` follows the normal path.
+
+Three structural limits apply to every session, whatever its payload. Each is answered `400` before
+any document is touched:
+
+- **No shared objects.** The strings, byte vectors and tables a message reaches may not add up to
+  more bytes than the message itself, counting each one at the smallest size it could be encoded in.
+  FlatBuffers allows two vector entries to point at the same string or table. Encoding many entries
+  that point at one large object would make the server repeat work the wire never paid for, so a
+  `FullSession` must be built without deduplicating strings or tables (no `CreateSharedString`). A
+  message built without sharing always passes.
+- **`Start` lists.** `Start.groups` holds at most 128 names of at most 255 bytes each (the manager's
+  multigroup limits), and `Start.index` at most 64 names of at most 255 bytes each.
+- **UTF-8 `Start` strings.** The agent name and version, architecture, hostname, the four OS fields
+  and every group name are copied into each indexed document, so each must be valid UTF-8.
 
 Re-POSTing any session is idempotent: same `_id`s, same overlay, versioned upserts. That is the
 whole retry contract — there are no acknowledgments and no session state to resume.
@@ -263,7 +285,7 @@ whole retry contract — there are no acknowledgments and no session state to re
 | `403` | `{"error":"identity mismatch","code":403}` | claimed an identity that does not match the authenticated one (or a foreign cluster). |
 | `413` | `{"error":...,"code":413}` | declared more bytes than the server's TOTAL in-flight budget; must split the session. |
 | `500` | `{"error":"vulnerability scan failed","code":500}` or `{"error":"Internal error","code":500}` | retries next cycle; NOTHING was indexed for this session. |
-| `503` | One deliberately GENERIC body for indexer-unavailable / admission-queue-full / shutting-down (which of them fired is an operator concern, not the agent's — the pipeline and VD-capacity gates have their own counters in [`GET /metrics`](metrics.md), `sync.pipeline.shed.total` and `vd.capacity.503.total`; the transport's byte-budget and connection-cap gates are visible only as the `server.*` levels there, plus the logs). The two VD gates are the exception, with reason-specific bodies: `"vulnerability feed not ready"` — the only `503` that carries `Retry-After: <seconds>` — and `"scan capacity exhausted"`. | retries later; on `Retry-After` it re-sends the same session after the delay. |
+| `503` | One deliberately GENERIC body for indexer-unavailable / admission-queue-full / too-many-pending-sessions-for-this-agent / shutting-down (which of them fired is an operator concern, not the agent's — the pipeline, per-agent and VD-capacity gates have their own counters in [`GET /metrics`](metrics.md), `sync.pipeline.shed.total`, `sync.agent_busy.total` and `vd.capacity.503.total`; the transport's byte-budget and connection-cap gates are visible only as the `server.*` levels there, plus the logs). The two VD gates are the exception, with reason-specific bodies: `"vulnerability feed not ready"` — the only `503` that carries `Retry-After: <seconds>` — and `"scan capacity exhausted"`. | retries later; on `Retry-After` it re-sends the same session after the delay. |
 
 ## `GET /metrics`
 
@@ -310,7 +332,7 @@ These can be returned on any route, by the transport rather than by a handler:
 
 | Status | Cause |
 |---|---|
-| `400` | Malformed HTTP, a missing/invalid agent id header, or a body that does not match the route's shape (for `/stats` and `/config`: a non-empty `modules`-keyed object whose every module value is an object — an empty `modules` is rejected on purpose, since indexing a report with nothing to store would replace the agent's last good document; for `/_internal/agents/delete`: an object carrying a usable `agent_id`) |
+| `400` | Malformed HTTP, a missing/invalid agent id header, or a body that does not match the route's shape (for `/stats` and `/config`: a non-empty `modules`-keyed object whose every module value is an object — an empty `modules` is rejected on purpose, since indexing a report with nothing to store would replace the agent's last good document, and no nesting deeper than 256 levels; for `/_internal/agents/delete`: an object carrying a usable `agent_id`) |
 | `404` | Unknown path |
 | `405` | Known path, wrong verb. Carries an `Allow` header listing that path's verbs |
 | `411` | Chunked transfer encoding, which is not supported |

@@ -20,6 +20,10 @@
 #include "registry.h"
 #endif
 
+/* Recovery runs with the scan and realtime mutexes held, so each resync keeps the smaller
+ * per-call block limit; the regular cycle sends whatever is left without them. */
+#define FIM_RECOVERY_MAX_BLOCKS_PER_SYNC 10
+
 /**
  * @brief Build stateful event for a file from cJSON object
  * @param path File path
@@ -281,7 +285,7 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     cJSON_Delete(items);
 
     // Synchronize
-    SyncModuleResult_t result = asp_sync_module(handle, MODE_DELTA);
+    SyncModuleResult_t result = asp_sync_module_bounded(handle, MODE_DELTA, FIM_RECOVERY_MAX_BLOCKS_PER_SYNC);
 
     if (result.success) {
         mdebug1("Recovery completed successfully");

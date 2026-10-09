@@ -195,13 +195,17 @@ OutcomeClass ControlStream::runStep(Waiter& waiter)
 {
     // The 401 pause converges the machine to AUTH_ERROR from the control
     // thread only (whichever stream saw the first 401 woke this loop); once a
-    // new key clears the pause, recover and re-register.
-    if (m_authGate.paused())
+    // new key clears the pause, recover and re-register (even if it was already cleared).
+    if (takeAuthIncident())
     {
         applyEffects(m_machine.onEvent(ControlStateMachine::Event::AuthFailed), {});
-        // Nothing is sent while the gate is latched, so the cycle itself is what
-        // gets observed: the credential is still rejected.
-        return OutcomeClass::AuthFail;
+
+        if (m_authGate.paused())
+        {
+            // Nothing is sent while the gate is latched, so the cycle itself is what
+            // gets observed: the credential is still rejected.
+            return OutcomeClass::AuthFail;
+        }
     }
 
     if (m_machine.state() == ControlStateMachine::State::AuthError)
@@ -890,7 +894,7 @@ void ControlStream::updateConnectionInfo(const HttpResponse& response)
     m_lastCertVerificationFailed = isCertificateVerificationFailure(response);
 }
 
-ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const
+ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome)
 {
     if (outcome == OutcomeClass::Ok)
     {
@@ -911,7 +915,10 @@ ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const
         // lie when nothing was renewed. The net effect was a full re-registration and an
         // AUTH_ERROR -> REGISTERED flap on every retryable 401 -- the disruption #39064 set out to
         // remove for exactly these classes.
-        return m_authGate.paused() ? ControlStateMachine::Event::AuthFailed
+        //
+        // "Latched" is the incident count, not only paused(): a key renewed from inside
+        // on_reenroll_required can already have released the gate here (#38329).
+        return takeAuthIncident() ? ControlStateMachine::Event::AuthFailed
                : ControlStateMachine::Event::TransientFailure;
     }
 
@@ -921,4 +928,15 @@ ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const
     }
 
     return ControlStateMachine::Event::TransientFailure;
+}
+
+bool ControlStream::takeAuthIncident()
+{
+    // paused() first: a release() it observes was preceded by its incident's count (see
+    // AuthGate::reportAuthFailure()), so this read order cannot miss a renewed incident.
+    const bool paused = m_authGate.paused();
+    const uint64_t incidents = m_authGate.incidents();
+    const bool unhandled = incidents != m_authIncidentsSeen;
+    m_authIncidentsSeen = incidents;
+    return paused || unhandled;
 }

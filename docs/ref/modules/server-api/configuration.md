@@ -137,12 +137,24 @@ contain only letters, digits, `_`, `-` and `.`.
 | `ca` | `root-ca.pem` | CA used to verify client certificates when `use_ca` is `true` |
 | `ssl_ciphers` | `""` | OpenSSL cipher list; empty keeps the default |
 
-The installer does not issue `apid.pem`. When `enabled` is `true` and the key or certificate is
-missing, `wazuh-manager-apid` generates, at startup, a 2048-bit RSA key and a self-signed certificate
-valid for one year (subject `CN=wazuh.com`, SAN `localhost`), and logs *HTTPS is enabled but cannot
-find the private key and/or certificate. Attempting to generate them*. Replace them with a certificate
-your clients trust and restart the API. A key that does not match the certificate stops the API with
-error `2003`.
+The installer (`wazuh-manager-resolve-credentials --install`, run by the package post-install step or
+`install.sh` on a clean installation) issues `apid.pem` and `apid-key.pem` from the manager's CA with the
+same profile as the agent listener's `remoted.pem`: subject `C=US, L=California, O=Wazuh, OU=Wazuh,
+CN=<node name>`, its own SANs (`WAZUH_MANAGER_APID_CERT_SANS` in the credentials file, plus `localhost`,
+`127.0.0.1` and `::1`; when unset, discovered the way Remoted's are: the node's host names and
+global-scope addresses plus those three — it never inherits `WAZUH_MANAGER_REMOTED_CERT_SANS`), 2048-bit
+RSA, `serverAuth`, `notBefore` one day before issuance and `notAfter` 3650 days after it, the leaf
+followed by the CA, owned by `wazuh-manager:wazuh-manager` with mode `0640`. Issuing it therefore needs
+the node name and either that discovery or `WAZUH_MANAGER_APID_CERT_SANS`. See
+[Subject alternative names](../../getting-started/credentials.md#subject-alternative-names).
+
+`wazuh-manager-apid` generates no certificate. When `enabled` is `true` and the configured pair is
+missing, not readable by `wazuh-manager`, or the key does not match the certificate, it logs error
+`2003` naming the files in `logs/api.log` and does not start.
+
+A client that verifies the API trusts `root-ca.pem` and checks any of those names or addresses. `use_ca` is
+unchanged: it requires a client certificate. To serve another certificate, place it in `etc/certs` under
+other file names and point `key` and `cert` at them; both must be readable by `wazuh-manager`.
 
 ### logs
 
@@ -174,6 +186,10 @@ Cross-origin resource sharing, applied with Starlette's `CORSMiddleware`.
 | `max_request_per_minute` | `300` | Authenticated requests per minute per client address (`429`, error `6001`); `0` disables it |
 | `max_unauthenticated_request_per_minute` | `10` | Unauthenticated or failed-authentication requests per minute per client address (`429`, error `6005`); `0` disables it |
 
+The client address is always the TCP peer of the connection. The API ignores `X-Forwarded-For` and
+`X-Forwarded-Proto` from any peer, loopback included, so behind a reverse proxy every client shares
+the proxy's address for the lockout, the limits and `api.log`.
+
 See [Request rate limiting](#request-rate-limiting) and
 [Rate Limiting & Brute-Force Protection](authentication.md#rate-limiting--brute-force-protection).
 
@@ -183,7 +199,7 @@ Options of `wazuh-manager.conf` that `PUT /cluster/{node_id}/configuration` may 
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `indexer.allow` | `true` | With `false`, a new configuration that changes the `indexer` section is refused with error `1127` |
+| `indexer.allow` | `true` | With `false`, a new configuration that changes the `indexer` section is refused with error `1127`, for every caller. With `true` a change still requires `cluster:read_secrets` over the node (error `1132` otherwise): the indexer hosts receive the manager's indexer credential |
 | `agents.allow_higher_versions.allow` | `true` | With `false`, a change to `auth.agents.allow_higher_versions` or `remote.agents.allow_higher_versions` is refused with error `1129` |
 
 The cluster key is protected by RBAC rather than by this block: see

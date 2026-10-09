@@ -101,9 +101,9 @@
 # `key` reach the TLS layer unchecked, and nothing anywhere tests readability, exists() being a stat
 # rather than access(R_OK). So a leaf that is missing, or present and unreadable by the service user,
 # passes every root-side check AND every check the connector makes, and surfaces from the handshake
-# at the first indexer request. Installation checks the ownership and mode of both pairs, so what
-# this script issues is right by construction; material provisioned by hand is only covered once it
-# is used.
+# at the first indexer request. Installation checks the ownership and mode of all three pairs
+# (indexer-connector, remoted, apid), so what this script issues is right by construction; material
+# provisioned by hand is only covered once it is used.
 #
 # The step never opens a network connection. It validates presence and format only -- making a
 # service's start depend on reaching its peer would break boot ordering and cluster restarts.
@@ -430,7 +430,7 @@ resolve_api_passwords() {
     #
     # Note that this writes a value the operator supplied through the process environment into the
     # file as well, which is deliberate and not an oversight: the dashboard has to authenticate as
-    # `wazuh-wui`, and it reads the value from here. Publishing only generated values would mean a
+    # `wazuh-internal-client`, and it reads the value from here. Publishing only generated values would mean a
     # deployment that chose its own passwords silently never hands them over. What protects it is
     # the file, not the fact that it was generated: wazuh_env_set() writes 0600 root:root inside a
     # 0700 root:root directory and refuses the file outright -- on every read and every write --
@@ -472,7 +472,7 @@ seed_rbac() {
     # it the operator is left with "MISSING rbac.db" and a service that will not start, which names
     # the symptom and nothing else. It prints usernames and error messages, never a password value
     # (seed_rbac_database() is explicit about that), so relaying it in full leaks nothing.
-    _sr_out=$(printf '{"wazuh": "%s", "wazuh-wui": "%s"}' "${_sr_api}" "${_sr_wui}" \
+    _sr_out=$(printf '{"wazuh": "%s", "wazuh-internal-client": "%s"}' "${_sr_api}" "${_sr_wui}" \
         | "${RBAC_CONTROL}" seed --passwords-file - 2>&1)
     _sr_status=$?
 
@@ -556,9 +556,9 @@ resolve_indexer_password() {
 #
 # wazuh_manager_certificates_ensure() decides between minting a bootstrap CA, issuing from the
 # CA it finds, and leaving an anchor-only deployment unresolved -- from the contents of the CA
-# directory, with no mode flag. It also issues both pairs the manager needs (the indexer
-# connector's clientAuth leaf and remoted's serverAuth leaf) and leaves an existing complete
-# pair alone, which is how an operator supplies a pre-issued one.
+# directory, with no mode flag. It also issues the three pairs the manager needs (the indexer
+# connector's clientAuth leaf, remoted's serverAuth leaf and the Server API's serverAuth leaf, apid)
+# and leaves an existing complete pair alone, which is how an operator supplies a pre-issued one.
 # -----------------------------------------------------------------------------------------
 
 resolve_certificates() {
@@ -584,7 +584,7 @@ resolve_certificates() {
 
     # A wrong name fails only at the first peer connection, not here, so the DN and SANs each leaf
     # carries are logged. -text rather than -ext keeps this working on OpenSSL older than 1.1.1.
-    for _rc_leaf in indexer-connector remoted; do
+    for _rc_leaf in indexer-connector remoted apid; do
         _rc_text=$(openssl x509 -in "${DIR}/etc/certs/${_rc_leaf}.pem" -noout -subject -text 2>/dev/null) || continue
         _rc_dn=$(printf '%s\n' "${_rc_text}" | sed -n 's/^subject= *//p' | head -n 1)
         _rc_sans=$(printf '%s\n' "${_rc_text}" | sed -n '/X509v3 Subject Alternative Name:/{n;s/^ *//p;}')
@@ -649,7 +649,8 @@ clear_credentials() {
         fi
     fi
 
-    for _cc_file in remoted.pem remoted-key.pem indexer-connector.pem indexer-connector-key.pem root-ca.pem; do
+    for _cc_file in remoted.pem remoted-key.pem apid.pem apid-key.pem \
+        indexer-connector.pem indexer-connector-key.pem root-ca.pem; do
         if [ -e "${DIR}/etc/certs/${_cc_file}" ]; then
             rm -f "${DIR}/etc/certs/${_cc_file}"
             log "removed etc/certs/${_cc_file}"
@@ -723,8 +724,8 @@ if [ "${MODE}" = "install" ]; then
     # validator. The helper has already printed which file or which rule was at fault.
     if ! resolve_certificates; then
         err "the manager has no TLS certificates and this install could not issue them"
-        err "        provision the pair into ${DIR}/etc/certs before starting the service"
-        err "        (e.g. with wazuh-certs-tool); the service will not start without it"
+        err "        provision the missing pairs (remoted, indexer-connector, apid) into ${DIR}/etc/certs"
+        err "        before starting the service (e.g. with wazuh-certs-tool); it will not start without them"
     fi
 fi
 

@@ -92,7 +92,8 @@ static void maybe_log_events_queue_drop(void) {
 w_indexed_queue_t *control_msg_queue = NULL;
 w_rr_queue_t *events_queue = NULL;
 
-netbuffer_t netbuffer_recv;
+/* Authentication is only ever marked on the receive side, so only that buffer counts it. */
+netbuffer_t netbuffer_recv = {.tracks_authentication = true};
 netbuffer_t netbuffer_send;
 
 wnotify_t * notify = NULL;
@@ -106,6 +107,16 @@ STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
+STATIC void reap_unauthenticated_connections(time_t now);
+STATIC void report_refused_connections(time_t now);
+
+/* Connections refused at remoted.unauthenticated_max since the last warning, and when that was. */
+static size_t unauthenticated_refused = 0;
+static time_t unauthenticated_refused_warned = 0;
+
+/* Upper bound on how long the event loop waits, so the unauthenticated-connection sweep runs on an
+ * otherwise idle listener too. */
+#define SECURE_EVENT_WAIT_MILLIS 1000
 
 // Read the remoted.http_* internal options into the C++ module's config struct
 STATIC void remoted_module_https_config(remoted_module_config_t *rm_config);
@@ -155,6 +166,9 @@ STATIC void w_remoted_build_module_config(const remoted *logr, remoted_module_co
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
+
+/* ACK a control message. Call with no lock held: closes the connection of an agent that does not read. */
+STATIC void send_control_ack(const char * agent_id);
 
 /* Get current timestamp */
 STATIC void *current_timestamp(void *none);
@@ -311,9 +325,26 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     // A mass upgrade (the whole fleet fetching a WPK at once, many over slow links) is therefore
     // bounded only by this value, which is why it is settable rather than fixed.
     rm_config->max_parallel_connections = getDefine_Int_default("remoted", "max_parallel_connections", 1, 65536, 256);
+    // max_handshakes_per_source caps the connections ONE address may have in the TLS handshake at
+    // once; one more is closed at accept. A connection takes its max_parallel_connections slot before
+    // the handshake, so without it one host could hold every slot by connecting and never speaking
+    // TLS. Established connections are not counted, so a fleet behind one NAT or load-balancer
+    // address is not limited by it. 0 disables the cap.
+    rm_config->max_handshakes_per_source = getDefine_Int_default("remoted", "max_handshakes_per_source", 0, 65536, 32);
+    rm_config->max_handshakes_per_source_set = 1;
     // max_deferred_requests caps requests parked awaiting a downstream service (503 over it).
     // No Retry-After is sent: the agent runs its own retry/backoff on a 503.
     rm_config->max_deferred_requests = getDefine_Int_default("remoted", "max_deferred_requests", 1, 65536, 128);
+    // max_requests_per_agent caps the requests ONE authenticated agent may have open, so a single
+    // agent cannot hold every slot of the fleet-wide limits above (503 over it). An honest agent
+    // peaks at 5 (four client threads plus a WPK download), hence the default of 6.
+    rm_config->max_requests_per_agent = getDefine_Int_default("remoted", "max_requests_per_agent", 1, 65536, 6);
+    // max_inflight_bytes_per_agent caps the decoded-body bytes ONE agent may hold across its open
+    // requests. 0 (the default) lets the module use half of max_inflight_bytes: room for a whole
+    // vulnerability-detection first sync, which the agent cannot split, with the other half left to
+    // the rest of the fleet.
+    rm_config->max_inflight_bytes_per_agent =
+        getDefine_Int_default("remoted", "max_inflight_bytes_per_agent", 0, 1073741824, 0);
 
     // Downstream (async UDS client to the engine's event ingress) tunables.
     rm_config->downstream_connect_timeout = getDefine_Int_default("remoted", "downstream_connect_timeout", 1, 60, 2);
@@ -341,6 +372,19 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->jwt_clock_skew = getDefine_Int_default("remoted", "jwt_clock_skew", 0, 43200, 30);
     rm_config->jwt_clock_skew_set = 1;
     rm_config->auth_max_body_size = getDefine_Int_default("remoted", "auth_max_body_size", 1048576, 67108864, 5242880);
+    // The cap on a zstd body once decoded. Larger than the wire cap on purpose: the agent sizes its
+    // batches BEFORE compressing them, and a VD-first session carries a whole package list.
+    rm_config->auth_max_decoded_body_size =
+        getDefine_Int_default("remoted", "auth_max_decoded_body_size", 1048576, 1073741824, 33554432);
+    // Below the wire cap, a body legal on the wire would be refused once decoded.
+    if (rm_config->auth_max_decoded_body_size < rm_config->auth_max_body_size) {
+        mwarn("'remoted.auth_max_decoded_body_size' (%lld) is below 'remoted.auth_max_body_size' (%lld); "
+              "using %lld.",
+              rm_config->auth_max_decoded_body_size,
+              rm_config->auth_max_body_size,
+              rm_config->auth_max_body_size);
+        rm_config->auth_max_decoded_body_size = rm_config->auth_max_body_size;
+    }
 }
 
 /**
@@ -686,7 +730,13 @@ void HandleSecure()
     while (1) {
 
         /* It waits for a socket event */
-        if (n_events = wnotify_wait(notify, EPOLL_MILLIS), n_events < 0) {
+        n_events = wnotify_wait(notify, (protocol & REMOTED_NET_PROTOCOL_TCP) ? SECURE_EVENT_WAIT_MILLIS : EPOLL_MILLIS);
+
+        if (protocol & REMOTED_NET_PROTOCOL_TCP) {
+            reap_unauthenticated_connections(time(NULL));
+        }
+
+        if (n_events < 0) {
             if (errno != EINTR) {
                 merror("Waiting for connection: %s (%d)", strerror(errno), errno);
                 sleep(1);
@@ -837,6 +887,15 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
     int sock_client = accept(logr.tcp_sock, (struct sockaddr *) peer_info, &logr.peer_size);
 
     if (sock_client >= 0) {
+        // Connections that have not authenticated yet are capped, so peers without a key cannot
+        // take the descriptors the registered agents need. Refused before nb_open(): nothing to undo.
+        if (nb_unauthenticated_count(&netbuffer_recv) >= (size_t)unauthenticated_max) {
+            close(sock_client);
+            unauthenticated_refused++;
+            report_refused_connections(time(NULL));
+            return;
+        }
+
         nb_open(&netbuffer_recv, sock_client, peer_info);
         nb_open(&netbuffer_send, sock_client, peer_info);
 
@@ -857,6 +916,62 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
             merror(ACCEPT_ERROR, strerror(errno), errno);
         }
     }
+}
+
+void rem_check_unauthenticated_cap(void)
+{
+    if ((rlim_t)unauthenticated_max > nofile / 2) {
+        mwarn("remoted.unauthenticated_max (%d) is above half the file descriptor limit (%lu): connections "
+              "that never authenticate could take the descriptors registered agents need.",
+              unauthenticated_max,
+              (unsigned long)nofile);
+    }
+}
+
+/* Warn about the connections refused at remoted.unauthenticated_max, at most once a minute. Called on
+ * every refusal and by the once-per-second sweep, so refusals that stop after a warning are still
+ * reported once the minute is up. Event-loop thread only. */
+STATIC void report_refused_connections(time_t now)
+{
+    if (unauthenticated_refused == 0 || now - unauthenticated_refused_warned < 60) {
+        return;
+    }
+
+    mwarn("Refused %zu legacy TCP connection(s): %d connections are already waiting to "
+          "authenticate (remoted.unauthenticated_max).",
+          unauthenticated_refused,
+          unauthenticated_max);
+    unauthenticated_refused = 0;
+    unauthenticated_refused_warned = now;
+}
+
+/* Close the legacy TCP connections that have not sent a message decrypting with a registered key
+ * within remoted.unauthenticated_timeout. Runs on the event-loop thread, at most once per second. */
+STATIC void reap_unauthenticated_connections(time_t now)
+{
+    static time_t last_sweep = 0;
+    size_t count = 0;
+
+    if (now == last_sweep) {
+        return;
+    }
+
+    last_sweep = now;
+
+    report_refused_connections(now);
+
+    // Collected under the netbuffer mutex and closed after it is released: _close_sock() takes the
+    // key lock, which is ordered before that mutex (send_msg() holds it around nb_queue()).
+    int * socks = nb_collect_unauthenticated(&netbuffer_recv, now - unauthenticated_timeout, &count);
+
+    for (size_t i = 0; i < count; i++) {
+        mdebug1("TCP peer [%d] sent no authenticated message within %d seconds. Closing.",
+                socks[i],
+                unauthenticated_timeout);
+        _close_sock(&keys, socks[i]);
+    }
+
+    os_free(socks);
 }
 
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info)
@@ -1139,18 +1254,28 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             w_mutex_unlock(&keys.keyentries[agentid]->mutex);
         }
     } else if (strncmp(buffer, "#ping", 5) == 0) {
-            int retval = 0;
-            char *msg = "#pong";
+            const char *msg = "#pong";
             ssize_t msg_size = strlen(msg);
 
+            // Any peer can ping, before authenticating: the reply must never block this worker, and
+            // its failures are logged at debug level only, since the peer controls how many occur.
             if (protocol == REMOTED_NET_PROTOCOL_UDP) {
-                retval = sendto(logr.udp_sock, msg, msg_size, 0, (struct sockaddr *)&message->addr, logr.peer_size) == msg_size ? 0 : -1;
+                if (sendto(logr.udp_sock, msg, msg_size, MSG_DONTWAIT, (struct sockaddr *)&message->addr, logr.peer_size) != msg_size) {
+                    mdebug1("Ping reply to '%s' could not be sent: %s (%d)", srcip, strerror(errno), errno);
+                }
             } else {
-                retval = OS_SendSecureTCP(message->sock, msg_size, msg);
-            }
-
-            if (retval < 0) {
-                mwarn("Ping operation could not be delivered completely (%d)", retval);
+                switch (nb_queue_nowait(&netbuffer_send, message->sock, msg, (size_t)msg_size)) {
+                case 0:
+                    break;
+                case -1:
+                    // The send buffer only fills when the peer does not read its replies.
+                    mdebug1("TCP peer [%d] from '%s' is not reading its ping replies. Closing.", message->sock, srcip);
+                    _close_sock(&keys, message->sock);
+                    break;
+                default:
+                    // The connection was already closed.
+                    break;
+                }
             }
 
             rem_inc_recv_ping();
@@ -1265,6 +1390,11 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         return;
     }
 
+    /* The connection proved it holds a registered key: exempt it from the unauthenticated timeout and cap. */
+    if (message->sock >= 0) {
+        nb_set_authenticated(&netbuffer_recv, message->sock);
+    }
+
     /* Recieved valid message timestamp updated. */
     keys.keyentries[agentid]->rcvd = current_ts;
 
@@ -1313,8 +1443,9 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             // Validate control message before unlocking to update startup status safely
             char *cleaned_msg = NULL;
             int is_startup = 0, is_shutdown = 0;
+            bool send_ack = false;
             size_t tmp_msg_length = msg_length - 3; // Exclude the header length (3 characters)
-            int validation_result = validate_control_msg(key, tmp_msg, tmp_msg_length, &cleaned_msg, &is_startup, &is_shutdown);
+            int validation_result = validate_control_msg(key, tmp_msg, tmp_msg_length, &cleaned_msg, &is_startup, &is_shutdown, &send_ack);
 
             // Update keystore startup status immediately after validation
             if (is_startup) {
@@ -1325,6 +1456,10 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             bool post_startup = keys.keyentries[agentid]->post_startup;
 
             key_unlock();
+
+            if (send_ack) {
+                send_control_ack(key->id);
+            }
 
             if (sock_idle >= 0) {
                 _close_sock(&keys, sock_idle);
@@ -1489,6 +1624,26 @@ STATIC bool discard_legacy_agent_message(const char* msg, const char* agent_id) 
     return false;
 }
 
+STATIC void send_control_ack(const char * agent_id) {
+    int full_sock = -1;
+
+    // The agent sets the pace of these ACKs with its own messages, so they never wait for buffer space:
+    // a worker waiting on an agent that does not read would delay every other agent's messages.
+    switch (send_msg_nowait(agent_id, CONTROL_HEADER HC_ACK, -1, &full_sock)) {
+    case OS_SUCCESS:
+        rem_inc_send_ack();
+        break;
+    case SEND_MSG_QUEUE_FULL:
+        rem_inc_send_discarded();
+        mdebug1("Agent '%s' is not reading the messages sent to it on TCP peer [%d]. Closing.", agent_id, full_sock);
+        _close_sock(&keys, full_sock);
+        break;
+    default:
+        // send_msg_nowait() already logged why
+        break;
+    }
+}
+
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock) {
     int retval = 0;
@@ -1499,7 +1654,15 @@ int _close_sock(keystore * keys, int sock) {
     retval = OS_DeleteSocket(keys, sock);
     key_unlock();
 
-    if (!close(sock)) {
+    const int close_ret = close(sock);
+    const int close_errno = errno;
+
+    // Release the slots even when close() fails: on Linux a failed close() still frees the descriptor, so
+    // its number can be handed to anything else at once, and a slot left open would let the
+    // unauthenticated-connection reaper close() that number again later. EBADF is the exception: the
+    // descriptor was not open, so another _close_sock() already closed it and releases the slots itself,
+    // and by now its number may already belong to a newly accepted connection whose slots must survive.
+    if (close_ret == 0 || close_errno != EBADF) {
         nb_close(&netbuffer_recv, sock);
         nb_close(&netbuffer_send, sock);
         rem_dec_tcp();

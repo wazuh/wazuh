@@ -13,6 +13,7 @@
 #ifdef WIN32
 
 #include "dll_load_notify.h"
+#include <iphlpapi.h>
 
 /**
  * Windows-specific block-ip implementation
@@ -348,18 +349,48 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
 // WINDOWS: route implementation (fallback)
 // ============================================================================
 
+// Parse a validated dotted-quad IPv4 string into a network-byte-order address
+// (as GetBestRoute expects), without pulling in a winsock link dependency.
+static DWORD ipv4_to_network(const char *ip) {
+    unsigned int a, b, c, d;
+    if (sscanf(ip, "%u.%u.%u.%u", &a, &b, &c, &d) != 4 ||
+        a > 255 || b > 255 || c > 255 || d > 255) {
+        return INADDR_NONE;
+    }
+    return (DWORD)(a | (b << 8) | (c << 16) | (d << 24));
+}
+
+// Confirm the /32 blackhole for srcip is actually in the active routing table.
+// route.exe exits 0 even when it rejects the route, so the exit code alone is not
+// proof. Query the forwarding table and require a host route (/32) that resolves
+// through the loopback interface (IF 1) we asked for.
+static bool route_blackhole_is_active(const char *srcip) {
+    DWORD dest = ipv4_to_network(srcip);
+    if (dest == INADDR_NONE) {
+        return false;
+    }
+
+    MIB_IPFORWARDROW row;
+    memset(&row, 0, sizeof(row));
+    if (GetBestRoute(dest, 0, &row) != NO_ERROR) {
+        return false;
+    }
+
+    return row.dwForwardMask == 0xFFFFFFFF && row.dwForwardIfIndex == 1;
+}
+
 firewall_result_t try_route_windows(const char *srcip, int action, int ip_version, const char *argv0) {
     char log_msg[OS_MAXSTR];
     char *route_path = NULL;
 
     // Reached when netsh is unavailable, or (via try_netsh) when the firewall is
-    // effectively OFF. BEST-EFFORT: null-routes the target to loopback so the host drops
-    // packets destined to it, which in principle also breaks the reverse path of inbound
-    // TCP sessions to a routed/remote attacker.
-    // LIMITATION: this does NOT block a target on a directly-connected
-    // subnet - on-link hosts are reached via ARP and the /32-via-loopback route does not
-    // redirect that egress. Effectiveness against routed/remote attackers was not verified.
-    // netsh (Windows Firewall) remains the only comprehensive blocking mechanism.
+    // effectively OFF. BEST-EFFORT: adds a /32 blackhole for the target via the loopback
+    // interface so the host drops all egress to it. The /32 host route is more specific
+    // than the on-link subnet route and wins, so it also covers a host on a
+    // directly-connected subnet, and it breaks the reverse path of inbound sessions.
+    // LIMITATION: it only affects routing (egress); it does not filter inbound packets the
+    // way a firewall rule does. netsh (Windows Firewall) remains the preferred, bidirectional
+    // blocking mechanism.
 
     // The IPv4 mask below only applies to IPv4 targets; netsh already covers IPv6.
     if (ip_version == 6) {
@@ -383,13 +414,15 @@ firewall_result_t try_route_windows(const char *srcip, int action, int ip_versio
 
     if (action == ENABLE_COMMAND) {
         log_firewall_action(argv0, LOG_LEVEL_WARNING, "route", "best_effort",
-                          "Applying best-effort null-route (firewall off or netsh unavailable): "
-                          "blocks routed/remote attackers but NOT same-subnet hosts - enable "
-                          "Windows Firewall for comprehensive blocking");
+                          "Applying best-effort blackhole route (firewall off or netsh unavailable): "
+                          "drops egress to the target (including same-subnet hosts) but does not "
+                          "filter inbound packets - enable Windows Firewall for comprehensive blocking");
 
-        // Null-route to the loopback so packets to the target are discarded.
+        // Blackhole the target through the loopback interface (gateway 0.0.0.0, IF 1): this
+        // stays in the active routing table. A 127.0.0.1 gateway is only saved to the
+        // persistent store and never becomes active, so it would not block anything.
         char *add_cmd[] = {route_path, "-p", "ADD", (char *)srcip,
-                           "MASK", "255.255.255.255", "127.0.0.1", NULL};
+                           "MASK", "255.255.255.255", "0.0.0.0", "IF", "1", NULL};
         wfd_t *wfd = wpopenv(route_path, add_cmd, W_BIND_STDERR);
         if (!wfd) {
             os_free(route_path);
@@ -400,6 +433,14 @@ firewall_result_t try_route_windows(const char *srcip, int action, int ip_versio
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "route add failed with exit code %d", rc);
             write_debug_file(argv0, log_msg);
+            os_free(route_path);
+            return FIREWALL_EXECUTION_FAILED;
+        }
+
+        // route.exe exits 0 even when it silently rejects the route, so confirm it took.
+        if (!route_blackhole_is_active(srcip)) {
+            write_debug_file(argv0,
+                "route add reported success but the blackhole route is not in the active table");
             os_free(route_path);
             return FIREWALL_EXECUTION_FAILED;
         }

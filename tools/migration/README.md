@@ -58,7 +58,7 @@ is for when it is somewhere else.
 | `--api-url URL` | `import`, `check` | `https://localhost:55000` | The manager's Server API |
 | `--api-user USER` | `import`, `check` | `wazuh` | The API user |
 | `--api-password-file FILE` | `import`, `check` | — | File holding the API password, `-` for standard input |
-| `--api-ca FILE` | `import`, `check` | — | CA bundle to verify the API certificate; without it the connection is not verified |
+| `--api-ca FILE` | `import`, `check` | the target's `etc/certs/root-ca.pem`, for a loopback `--api-url` only | CA bundle to verify the API certificate with; required for any other `--api-url` |
 | `--with-password` | `export`, `import` | off | Carry `etc/authd.pass`, the shared enrollment password |
 | `--with-rbac` | `export`, `import` | off | Carry the API users, roles and policies |
 | `--dry-run` | `export`, `import` | off | Report what would happen and change nothing |
@@ -74,8 +74,13 @@ one at install, or prompted for on a terminal. Never from the command line, beca
 world-readable. The credentials file is parsed as `KEY=VALUE` and never sourced, the way the manager
 itself reads it.
 
+The connection to the API is always verified, chain and host name, because it carries that password
+and every agent key. Against a loopback `--api-url` the tool trusts the CA the manager issued
+`apid.pem` from at install, `etc/certs/root-ca.pem` under `--target-dir`; any other address needs
+`--api-ca`, and plain `http://` is accepted only on loopback.
+
 One consequence of `--with-rbac` is worth knowing before you use it: the manager never reseeds an
-existing `rbac.db`, so from the next start the `wazuh` and `wazuh-wui` passwords are the 4.x ones
+existing `rbac.db`, so from the next start the `wazuh` and `wazuh-internal-client` passwords are the 4.x ones
 the database carries, and the two values in `credentials.env` are stale. The import says so. Either
 set both users back to the published values with `rbac_control change-password` after the restart,
 or keep the 4.x passwords and give `check` the 4.x one explicitly.

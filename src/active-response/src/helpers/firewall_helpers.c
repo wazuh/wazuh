@@ -19,6 +19,34 @@ firewall_result_t check_binary_available(
     char log_msg[OS_MAXSTR];
     char *binary_path = NULL;
 
+#ifdef WIN32
+    // On Windows, resolve the tool from the system directory instead of searching %PATH%,
+    // so resolution is deterministic and independent of %PATH% contents or ordering.
+    // Fail closed: if the tool is not found under the system directory, report it as
+    // unavailable instead of falling back to the bare name.
+    char sys_dir[MAX_PATH];
+    char full_path[OS_MAXSTR];
+
+    if (GetSystemDirectoryA(sys_dir, sizeof(sys_dir)) == 0) {
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR - 1,
+                 "Could not determine the system directory to resolve '%s'", binary_name);
+        write_debug_file(log_prefix, log_msg);
+        return FIREWALL_NOT_AVAILABLE;
+    }
+
+    snprintf(full_path, OS_MAXSTR - 1, "%s\\%s", sys_dir, binary_name);
+
+    if (IsFile(full_path) != 0) {
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR - 1,
+                 "Binary '%s' not found under the system directory '%s'", binary_name, sys_dir);
+        write_debug_file(log_prefix, log_msg);
+        return FIREWALL_NOT_AVAILABLE;
+    }
+
+    os_strdup(full_path, binary_path);
+#else
     if (get_binary_path(binary_name, &binary_path) < 0) {
         memset(log_msg, '\0', OS_MAXSTR);
         snprintf(log_msg, OS_MAXSTR - 1,
@@ -30,6 +58,7 @@ firewall_result_t check_binary_available(
         os_free(binary_path);
         return FIREWALL_NOT_AVAILABLE;
     }
+#endif
 
     if (path_out) {
         *path_out = binary_path;

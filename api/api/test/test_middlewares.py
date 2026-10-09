@@ -27,7 +27,8 @@ from wazuh.core.exception import WazuhInternalError
 
 from api.middlewares import charge_unauthenticated_request, charge_authenticated_request, \
     is_authenticated_bucket_exhausted, check_blocked_ip, \
-    settle_login_attempt, cleanup_general_request_stats, UNKNOWN_USER_STRING, LOGIN_ENDPOINT, \
+    settle_login_attempt, cleanup_general_request_stats, cleanup_login_attempt_stats, get_client_key, \
+    UNKNOWN_USER_STRING, LOGIN_ENDPOINT, \
     RUN_AS_LOGIN_ENDPOINT, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, CheckAuthContextSizeMiddleware, CheckRateLimitsMiddleware, \
     CheckAuthenticatedRateLimitMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, SecureHeadersMiddleware, \
     CheckExpectHeaderMiddleware, secure_headers, access_log, get_declared_content_length, read_capped_body, \
@@ -498,6 +499,108 @@ async def test_cleanup_general_request_stats_noop_on_empty_dict():
         assert mock_stats == {}
 
 
+@pytest.mark.parametrize('host, expected', [
+    ('192.0.2.7', '192.0.2.7'),
+    ('2001:db8:1:2:aaaa:bbbb:cccc:dddd', '2001:db8:1:2::/64'),
+    ('2001:db8:1:2::1', '2001:db8:1:2::/64'),
+    ('2001:DB8:1:2::1', '2001:db8:1:2::/64'),
+    ('::ffff:192.0.2.7', '192.0.2.7'),
+    ('::1', '::/64'),
+    ('testclient', 'testclient'),
+])
+def test_get_client_key(host, expected):
+    """IPv4 is kept as is, IPv6 is grouped by its /64, an IPv4-mapped address folds to its IPv4
+       address, and anything that is not an address is used unchanged."""
+    assert get_client_key(host) == expected
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_check_blocked_ip_groups_an_ipv6_client_by_its_64():
+    """Rotating the interface identifier of an IPv6 address must not reset the login lockout:
+       every address of the /64 is charged to, and blocked under, one key."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 3}}
+    with patch("api.middlewares.ip_stats", new={}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
+        for suffix in ('1', '2', '3'):
+            await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host=f'2001:db8::{suffix}')))
+
+        assert mock_ip_stats == {'2001:db8::/64': {'attempts': 3, 'timestamp': 10.0}}
+        assert mock_ip_block == {'2001:db8::/64'}
+
+        with pytest.raises(ProblemException) as exc_info:
+            await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host='2001:db8::ffff')))
+        assert exc_info.value.status == 403
+
+        # A different /64 is a different client.
+        await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host='2001:db8:0:1::1')))
+        assert mock_ip_stats['2001:db8:0:1::/64']['attempts'] == 1
+
+
+@pytest.mark.asyncio
+async def test_settle_login_attempt_uses_the_client_key():
+    """A successful login releases the attempt under the same key it was charged to."""
+    with patch("api.middlewares.ip_stats", new={'2001:db8::/64': {'attempts': 2, 'timestamp': 10}}) as stats, \
+         patch("api.middlewares.ip_block", new=set()), \
+         patch("api.middlewares.configuration.api_conf", new={'access': {'max_login_attempts': 5}}):
+        await settle_login_attempt(SimpleNamespace(client=SimpleNamespace(host='2001:db8::99')))
+
+        assert stats['2001:db8::/64']['attempts'] == 1
+
+
+@pytest.mark.asyncio
+async def test_charge_unauthenticated_request_groups_an_ipv6_client_by_its_64():
+    """The unauthenticated bucket is charged per /64, so rotating addresses share one budget."""
+    with patch("api.middlewares.general_request_stats", new={}) as mock_stats:
+        assert await charge_unauthenticated_request(
+            SimpleNamespace(client=SimpleNamespace(host='2001:db8::1')), max_requests=1, error_code=6005) == 0
+        assert await charge_unauthenticated_request(
+            SimpleNamespace(client=SimpleNamespace(host='2001:db8::2')), max_requests=1, error_code=6005) == 6005
+
+        assert list(mock_stats) == ['2001:db8::/64']
+
+
+@pytest.mark.asyncio
+async def test_charge_authenticated_request_keeps_the_full_address():
+    """The authenticated bucket stays per address: rotating there requires valid credentials."""
+    with patch("api.middlewares.general_request_stats", new={}) as mock_stats:
+        await charge_authenticated_request(
+            SimpleNamespace(client=SimpleNamespace(host='2001:db8::1')), max_requests=10, error_code=6001)
+
+        assert list(mock_stats) == ['2001:db8::1']
+
+
+@pytest.mark.asyncio
+async def test_cleanup_login_attempt_stats():
+    """Entries whose block_time has elapsed are dropped, with their block; live ones are kept."""
+    stats = {
+        'expired-blocked': {'attempts': 50, 'timestamp': 0},
+        'expired': {'attempts': 1, 'timestamp': 100},
+        'live-blocked': {'attempts': 50, 'timestamp': 101},
+        'live': {'attempts': 1, 'timestamp': 350},
+    }
+    with patch("api.middlewares.ip_stats", new=stats) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new={'expired-blocked', 'live-blocked'}) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new={'access': {'block_time': 300}}):
+        await cleanup_login_attempt_stats(now=400)
+
+        assert set(mock_ip_stats) == {'live-blocked', 'live'}
+        assert mock_ip_block == {'live-blocked'}
+
+
+@pytest.mark.asyncio
+async def test_cleanup_login_attempt_stats_noop_on_empty_dict():
+    """Cleanup must be a no-op (no error) when there is nothing to prune."""
+    with patch("api.middlewares.ip_stats", new={}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new={'access': {'block_time': 300}}):
+        await cleanup_login_attempt_stats(now=400)
+
+        assert mock_ip_stats == {}
+        assert mock_ip_block == set()
+
+
 @pytest.mark.asyncio
 async def test_check_rate_limits_middleware_passes_through_on_success(mock_req):
     """Test that `CheckRateLimitsMiddleware` never charges the unauthenticated bucket for a
@@ -856,7 +959,7 @@ async def test_access_log_hashes_the_unredacted_auth_context(mock_req):
     mock_req.json = AsyncMock(return_value=auth_context)
     mock_req.query_params = {}
     mock_req.method = 'POST'
-    mock_req.context = {'user': 'wazuh-wui', 'token_info': {}}
+    mock_req.context = {'user': 'wazuh-internal-client', 'token_info': {}}
     mock_req.scope = {'path': RUN_AS_LOGIN_ENDPOINT}
     mock_req.headers = {'content-type': 'None'}
 
@@ -890,7 +993,7 @@ async def test_access_log_run_as_context_only_logged_at_debug(debug_enabled, moc
     mock_req.json = AsyncMock(return_value=auth_context)
     mock_req.query_params = {}
     mock_req.method = 'POST'
-    mock_req.context = {'user': 'wazuh-wui', 'token_info': {}}
+    mock_req.context = {'user': 'wazuh-internal-client', 'token_info': {}}
     mock_req.scope = {'path': RUN_AS_LOGIN_ENDPOINT}
     mock_req.headers = {'content-type': 'None'}
 

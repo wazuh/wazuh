@@ -11,6 +11,7 @@
 
 #include "sync/sessionProcessor.hpp"
 
+#include "common/jsonNestingDepth.hpp"
 #include "sync/fullSessionValidator.hpp"
 #include "testIndexerConnectorFakes.hpp"
 #include "testSessionBuilder.hpp"
@@ -22,9 +23,11 @@
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <variant>
+#include <vector>
 
 using invsync::sync::ProcessOutcome;
 using invsync::sync::SessionProcessor;
@@ -48,7 +51,7 @@ namespace
     Prepared prepare(std::string body)
     {
         Prepared prepared {std::move(body), {}};
-        auto result = invsync::sync::validateFullSession(prepared.body, "1", CLUSTER);
+        auto result = invsync::sync::validateFullSession(prepared.body, "001", CLUSTER);
         auto* session = std::get_if<ValidatedSession>(&result);
         if (session == nullptr)
         {
@@ -175,6 +178,123 @@ TEST_F(SessionProcessorTest, PerDocumentProblemsAreSkippedNotFailed)
     const auto ops = events->syncOps();
     ASSERT_EQ(1U, ops.size()) << "only the good document may reach the bulk";
     EXPECT_EQ("test-cluster_001_doc-good", std::get<1>(ops[0]));
+}
+
+/**
+ * D29: a non-object value on the overlay's path made operator[] throw out of stageBulk(), and the
+ * pipeline fails the worker's whole open batch on a throw -- the co-batched sessions of other agents
+ * with it. The overlay now replaces such a value; the agent's other fields under wazuh.* survive.
+ */
+TEST_F(SessionProcessorTest, NonObjectValuesOnTheOverlayPathAreReplacedNotThrown)
+{
+    const std::vector<std::string> shapes {
+        R"({"wazuh":"x"})",
+        R"({"wazuh":[1]})",
+        R"({"wazuh":{"agent":"x"}})",
+        R"({"wazuh":{"agent":{"host":3}}})",
+        R"({"wazuh":{"agent":{"host":{"os":true}}}})",
+        R"({"wazuh":{"cluster":null}})",
+    };
+    std::vector<ValueSpec> values;
+    for (std::size_t i = 0; i < shapes.size(); ++i)
+    {
+        ValueSpec value;
+        value.id = "doc-" + std::to_string(i);
+        value.data = shapes[i];
+        values.push_back(value);
+    }
+    ValueSpec siblings;
+    siblings.id = "doc-siblings";
+    siblings.data = R"({"package":{"name":"vim"},"wazuh":{"schema":{"version":"1.0"},"agent":{"type":"endpoint"}}})";
+    values.push_back(siblings);
+
+    const auto prepared = prepare(invsync::test::buildSyncDataSession(SessionSpec {}, values));
+    ProcessOutcome outcome;
+    ASSERT_NO_THROW(outcome = processor.stageBulk(prepared.session, connector));
+
+    EXPECT_EQ(200, outcome.status);
+    EXPECT_TRUE(outcome.staged);
+    const auto ops = events->syncOps();
+    ASSERT_EQ(values.size(), ops.size()) << "every document must be staged, none skipped";
+    for (const auto& op : ops)
+    {
+        const auto document = nlohmann::json::parse(std::get<3>(op));
+        EXPECT_EQ("001", document["wazuh"]["agent"]["id"]) << std::get<1>(op);
+        EXPECT_EQ("x86_64", document["wazuh"]["agent"]["host"]["architecture"]) << std::get<1>(op);
+        EXPECT_EQ("Ubuntu", document["wazuh"]["agent"]["host"]["os"]["name"]) << std::get<1>(op);
+        EXPECT_EQ(CLUSTER, document["wazuh"]["cluster"]["name"]) << std::get<1>(op);
+    }
+
+    const auto document = nlohmann::json::parse(std::get<3>(ops.back()));
+    EXPECT_EQ("1.0", document["wazuh"]["schema"]["version"]) << "fields outside the overlay must survive";
+    EXPECT_EQ("endpoint", document["wazuh"]["agent"]["type"]);
+    EXPECT_EQ("vim", document["package"]["name"]);
+}
+
+/**
+ * The indexer refuses an _id over 512 bytes, and one refused item fails the whole group commit -- the
+ * co-batched sessions of other agents with it (D27). The limit applies to the BUILT _id, cluster and
+ * padded agent included, and to deletes as much as to upserts.
+ */
+TEST_F(SessionProcessorTest, DocumentIdsOverTheIndexerLimitAreSkipped)
+{
+    const std::string prefix {"test-cluster_001_"};
+    const std::size_t idAtTheLimit {512 - prefix.size()};
+
+    ValueSpec atTheLimit;
+    atTheLimit.id = std::string(idAtTheLimit, 'a');
+    ValueSpec overTheLimit;
+    overTheLimit.id = std::string(idAtTheLimit + 1, 'b');
+    ValueSpec deleteOverTheLimit;
+    deleteOverTheLimit.operation = invsync::schema::fb::Operation_Delete;
+    deleteOverTheLimit.id = std::string(idAtTheLimit + 1, 'c');
+
+    const auto prepared =
+        prepare(invsync::test::buildSyncDataSession(SessionSpec {}, {atTheLimit, overTheLimit, deleteOverTheLimit}));
+    const auto outcome = processor.stageBulk(prepared.session, connector);
+
+    EXPECT_EQ(200, outcome.status);
+    EXPECT_TRUE(outcome.staged);
+    const auto ops = events->syncOps();
+    ASSERT_EQ(1U, ops.size()) << "only the _id that fits may reach the bulk";
+    EXPECT_EQ(prefix + atTheLimit.id, std::get<1>(ops[0]));
+    EXPECT_EQ(512U, std::get<1>(ops[0]).size());
+}
+
+/**
+ * dump() recurses once per level: a deep enough document would overflow the worker's stack and crash
+ * the whole of modulesd (D24). The cap is checked on the raw bytes, so the deepest legal document is
+ * still staged and one level more is skipped like any other bad document. The attack-sized one would
+ * crash this test binary without the cap.
+ */
+TEST_F(SessionProcessorTest, DocumentsNestedPastTheLimitAreSkippedBeforeParsing)
+{
+    // The root object is one level; the rest is arrays under one field.
+    const auto nested = [](std::size_t depth)
+    {
+        const std::size_t arrays = depth - 1;
+        return R"({"a":)" + std::string(arrays, '[') + std::string(arrays, ']') + "}";
+    };
+
+    ValueSpec atTheLimit;
+    atTheLimit.id = "doc-deepest";
+    atTheLimit.data = nested(invsync::common::MAX_JSON_NESTING_DEPTH);
+    ValueSpec overTheLimit;
+    overTheLimit.id = "doc-over";
+    overTheLimit.data = nested(invsync::common::MAX_JSON_NESTING_DEPTH + 1);
+    ValueSpec attack;
+    attack.id = "doc-attack";
+    attack.data = nested(1'000'000);
+
+    const auto prepared =
+        prepare(invsync::test::buildSyncDataSession(SessionSpec {}, {atTheLimit, overTheLimit, attack}));
+    const auto outcome = processor.stageBulk(prepared.session, connector);
+
+    EXPECT_EQ(200, outcome.status);
+    EXPECT_TRUE(outcome.staged);
+    const auto ops = events->syncOps();
+    ASSERT_EQ(1U, ops.size()) << "only the document within the limit may reach the bulk";
+    EXPECT_EQ("test-cluster_001_doc-deepest", std::get<1>(ops[0]));
 }
 
 TEST_F(SessionProcessorTest, AnOutOfEnumOperationIs400WithNothingStaged)

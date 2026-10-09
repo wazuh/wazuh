@@ -44,9 +44,9 @@ A fresh installation seeds `rbac.db` from `rbac/default/*.yaml` with exactly two
 | ID | User | `allow_run_as` | Used by |
 |----|------|----------------|---------|
 | 1 | `wazuh` | No | Operators and scripts calling the API directly |
-| 2 | `wazuh-wui` | Yes | The Wazuh dashboard |
+| 2 | `wazuh-internal-client` | Yes | The Wazuh dashboard backend, to call the API on behalf of the indexer user who logged in. It is not an account to log into the dashboard with |
 
-Only `wazuh-wui` can authenticate with an authorization context, because resolving one into roles is the dashboard's mechanism for mapping the indexer user who logged in onto a Wazuh role (see the rules in `rbac/default/rules.yaml`). `wazuh` has no use for it, so the flag is off: `POST /security/user/authenticate/run_as` as `wazuh` answers `403` with error `6004`. Either flag can be changed with `PUT /security/users/{user_id}/run_as`.
+Only `wazuh-internal-client` can authenticate with an authorization context, because resolving one into roles is the dashboard's mechanism for mapping the indexer user who logged in onto a Wazuh role (see the rules in `rbac/default/rules.yaml`). `wazuh` has no use for it, so the flag is off: `POST /security/user/authenticate/run_as` as `wazuh` answers `403` with error `6004`. Either flag can be changed with `PUT /security/users/{user_id}/run_as`.
 
 The flag on its own does not grant the shipped mappings, which is easy to miss. `RBAChecker.get_user_roles` evaluates a rule holding a reserved ID — the five in `rules.yaml` get IDs `1..5`, while rules created through the API start at `100` — only when the caller is user ID 2. Enabling `allow_run_as` on any other account therefore lets it resolve **custom rules only**, and a context that matches one grants that role whatever the account's own role links say.
 
@@ -73,13 +73,13 @@ Change them with `bin/rbac_control change-password`, which prompts for each pass
 
 ```bash
 # One user, password read from the first line of a file (use '-' for the standard input)
-bin/rbac_control change-password -u wazuh-wui -p /root/wui.pass
+bin/rbac_control change-password -u wazuh-internal-client -p /root/internal-client.pass
 
 # Every default user in a single execution
-echo '{"wazuh": "...", "wazuh-wui": "..."}' | bin/rbac_control change-password --passwords-file -
+echo '{"wazuh": "...", "wazuh-internal-client": "..."}' | bin/rbac_control change-password --passwords-file -
 ```
 
-Passwords are never accepted as a command-line argument, so they do not reach the process list. The command exits non-zero if any requested change was not applied. It always changes the master's database: run on a worker, the change is forwarded to the master (see [Cluster deployments](../../getting-started/credentials.md#cluster-deployments) for what that means after a promotion). A new password must satisfy the policy enforced by `framework/wazuh/security.py`: 12 to 64 printable ASCII characters without spaces, with at least one letter and one digit (PCI DSS v4.0 requirement 8.3.6). Changing `wazuh-wui`'s password requires updating the dashboard configuration to match.
+Passwords are never accepted as a command-line argument, so they do not reach the process list. The command exits non-zero if any requested change was not applied. It always changes the master's database: run on a worker, the change is forwarded to the master (see [Cluster deployments](../../getting-started/credentials.md#cluster-deployments) for what that means after a promotion). A new password must satisfy the policy enforced by `framework/wazuh/security.py`: 12 to 64 printable ASCII characters without spaces, with at least one letter and one digit (PCI DSS v4.0 requirement 8.3.6). Changing `wazuh-internal-client`'s password requires updating the dashboard configuration to match.
 
 `bin/rbac_control factory-reset` (asks for confirmation unless `-f`/`--force` is given) recreates `rbac.db` and gives both default users new random passwords that are neither printed nor written to `/etc/wazuh/credentials.env`. The running API keeps authenticating against the previous database until the manager restarts, so run `change-password` and then restart the manager.
 
@@ -93,7 +93,7 @@ Once a change goes through:
 - **No daemon restart** is required. The next `POST /security/user/authenticate` already uses the new password.
 - Every token held by the modified user is **revoked immediately** (`update_user` calls `invalid_users_tokens`), so a script that changes its own user's password must authenticate again before its next call. Tokens of other users are untouched; `PUT /security/user/revoke` revokes all of them at once.
 - A client left with the old password — typically a dashboard whose stored copy was not updated — is counted against `max_login_attempts` (50) and its IP is then blocked for `block_time` (300 seconds), answering `403`. The block is lifted when that time elapses, not when the password is corrected.
-- No manager component authenticates with `wazuh` or `wazuh-wui`, so the keystore and the manager configuration files are unaffected. The only copy outside the manager is the dashboard's `wazuh_core.hosts.<host>.password`, which is why changing `wazuh-wui` — and only that user — needs the dashboard updated and restarted.
+- No manager component authenticates with `wazuh` or `wazuh-internal-client`, so the keystore and the manager configuration files are unaffected. The only copy outside the manager is the dashboard's `wazuh_core.hosts.<host>.password`, which is why changing `wazuh-internal-client` — and only that user — needs the dashboard updated and restarted.
 
 The step-by-step procedure, including the dashboard side and the container variants, is in [Installation](../../getting-started/installation.md#server-api-users).
 
@@ -129,9 +129,21 @@ the cluster as a peer, so being able to choose it is worth as much as being able
 `PUT /cluster/{node_id}/configuration` refuses a new `<cluster><key>` with error `1132` unless the
 caller holds `cluster:read_secrets` over that node. A configuration read masked and sent back
 unchanged keeps working: a key equal to the mask `*****` is replaced with the node's current key
-before the text is validated and written, so `cluster:update_config` alone still edits every other
+before the text is written, so `cluster:update_config` alone still edits every other
 option, cluster membership (`node_type`, `nodes`, `bind_addr`, `port`) included — without the key those
-grant nothing.
+grant nothing. The key is put back only where the parsed configuration holds `<cluster><key>`
+itself: a mask the parser drops (inside a comment) is written back as the mask, and a mask that would
+land anywhere else (another section's `<key>`, a CDATA section) is refused with `1132`, whatever the
+caller's permissions.
+
+It also guards the **indexer section**, which is not a secret but chooses where one goes. Every
+indexer client of the manager (clusterd, modulesd, the engine) authenticates to each `indexer.hosts`
+entry with the manager's indexer service-account credential, and `indexer.ssl` decides whether that
+peer is trusted. Pointing them at a host of one's choosing hands that credential over, so any change
+under `<indexer>` is refused with `1132` without `cluster:read_secrets` over the node. The section is
+served in clear, and sending it back unchanged keeps working. The api.yaml knob
+`upload_configuration.indexer.allow` (error `1127`) is an extra lock on top, for every caller: setting
+it to `true` never lifts this check.
 
 ### Agent keys
 

@@ -1964,6 +1964,11 @@ public:
         return m_selector->isAvailable();
     }
 
+    bool hasAvailableServer() const
+    {
+        return m_selector->hasAvailableServer();
+    }
+
     /**
      * @brief Returns the `_bulk` request counts accumulated since the previous call and resets them.
      */

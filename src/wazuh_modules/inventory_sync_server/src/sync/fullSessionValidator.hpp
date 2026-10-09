@@ -14,6 +14,7 @@
 
 #include "schema/syncSchema.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -22,6 +23,16 @@
 
 namespace invsync::sync
 {
+
+    /// D26: Start.groups ceiling. Restates MAX_GROUPS_PER_MULTIGROUP (defs.h), which C++ does not
+    /// include -- keep the two equal.
+    constexpr std::size_t MAX_START_GROUPS {128};
+    /// D26: one group name. Restates MAX_GROUP_NAME (defs.h).
+    constexpr std::size_t MAX_START_GROUP_NAME_BYTES {255};
+    /// D26: Start.index ceiling. The agent declares one entry per index a module syncs.
+    constexpr std::size_t MAX_START_INDICES {64};
+    /// D26: one index name -- the indexer's own limit on an index name.
+    constexpr std::size_t MAX_START_INDEX_NAME_BYTES {255};
 
     /**
      * @brief A FullSession that passed every request-level validation, ready for a pipeline worker.
@@ -43,9 +54,9 @@ namespace invsync::sync
         bool isVD {false};
 
         std::string moduleName;
-        /// Agent id LEFT-PADDED to 3 characters -- the form every document `_id` and every
-        /// `wazuh.agent.id` field has always used (inherited from the legacy module). Used
-        /// consistently for indexing, queries and deletes.
+        /// The AUTHENTICATED agent id, in its canonical spelling (common/agentId.hpp) -- never the
+        /// session's own claim, which only has to equal it. The form every document `_id` and every
+        /// `wazuh.agent.id` field uses, consistently for indexing, queries and deletes.
         std::string agentId;
         std::string agentName;
         std::string agentVersion;
@@ -81,11 +92,14 @@ namespace invsync::sync
      * @brief Runs every request-level validation, in order, CPU-only (safe on an I/O strand).
      *
      * Order (design doc 02 §4): FlatBuffers verifier -> root/content type must be FullSession ->
-     * shape (start present, module non-empty) -> identity (agent id numeric-equal to the
-     * authenticated header value, cluster byte-equal to the manager's) -> mode x payload matrix ->
+     * shape (start present, module non-empty) -> identity (header a canonical agent id, the claimed
+     * agent id byte-equal to it, cluster byte-equal to the manager's) -> mode x payload matrix ->
      * per-payload rules (SyncData needs values >= 1; Cleans needs items >= 1; ChecksumModule needs
-     * an allowlisted index and a checksum). Anything past this point is per-document policy that
-     * runs on the worker (skip-with-WARN, never a request failure).
+     * an allowlisted index and a checksum) -> Start list caps (D26) -> reachable-bytes budget (D25:
+     * the objects the message reaches may not add up to more than the body, which is what catches
+     * vector entries aliasing one string or table) -> the Start strings stamped into every document
+     * must be valid UTF-8 (D29). D26 and D25 run before any copy. Anything past this point is
+     * per-document policy that runs on the worker (skip-with-WARN, never a request failure).
      *
      * @param body                 Raw request body (the FlatBuffer).
      * @param authenticatedAgentId Value of the X-Wazuh-Agent-Id header remoted authenticated.
@@ -94,14 +108,6 @@ namespace invsync::sync
     ValidationResult validateFullSession(std::string_view body,
                                          std::string_view authenticatedAgentId,
                                          const std::string& managerClusterName);
-
-    /// Shared with the deletion route, which validates an agent id the same way -- from its body
-    /// rather than a header, but against this same predicate.
-    bool isNumericAgentId(std::string_view value);
-
-    /// Left-pad to 3 characters, the historical `_id`/`wazuh.agent.id` form inherited from the
-    /// legacy module. Every query, document id and deletion uses this form.
-    std::string padAgentId(std::string_view agentId);
 
 } // namespace invsync::sync
 

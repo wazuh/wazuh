@@ -197,8 +197,10 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
         } else if (strcmp(node[i]->element, xml_max_time_reconnect_try) == 0) {
             /* Deprecated with the HTTPS transport (#37702 restriction 4): no
              * persistent connection to reconnect. Accepted so upgraded configs
-             * do not fail; it no longer has any effect. */
-            mwarn(XML_DEPRECATED, xml_max_time_reconnect_try);
+             * do not fail; it no longer has any effect. The 4.x default
+             * configuration sets it, so every upgraded agent carries it once
+             * <client> is renamed to <agent>: INFO, like <crypto_method>. */
+            minfo(XML_DEPRECATED, xml_max_time_reconnect_try);
         } else if (strcmp(node[i]->element, "force_reconnect_interval") == 0) {
             mwarn("Deprecated option 'force_reconnect_interval' is not longer available.");
         } else if (strcmp(node[i]->element, xml_main_ip_update_interval) == 0) {

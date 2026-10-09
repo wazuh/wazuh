@@ -213,13 +213,31 @@ private:
      */
     Json(CompactTag, size_t capacityHint);
 
+    /// Tag to select the exact-size document constructor.
+    struct ExactTag
+    {
+    };
+
     /**
-     * @brief Construct a new Json object form a rapidjason::Value.
-     * Copies the value.
+     * @brief Construct an empty document whose pool holds exactly @p poolBytes.
+     *
+     * Allocates one block of the allocator bookkeeping header plus @p poolBytes bytes and binds
+     * the document to a small-chunk allocator living in it. Unlike Json(CompactTag, size_t) it
+     * never rounds up to COMPACT_INITIAL_CAPACITY; if the document later outgrows the block,
+     * the pool grows in COMPACT_CHUNK_CAPACITY steps.
+     *
+     * @param poolBytes Bytes the document will allocate from its pool (0 = header only).
+     */
+    Json(ExactTag, size_t poolBytes);
+
+    /**
+     * @brief Construct a new Json object from a rapidjson::Value.
+     * Deep-copies the value into a pool sized exactly to it (const strings are copied too), so
+     * the new document is independent of the source and reserves no more than it uses.
      *
      * @param value The rapidjson::Value to copy.
      */
-    Json(const rapidjson::Value& value);
+    explicit Json(const rapidjson::Value& value);
 
     /**
      * @brief Construct a new Json object form a rapidjason::GenericObject.
@@ -417,7 +435,7 @@ public:
      *
      * The initial block is max(COMPACT_INITIAL_CAPACITY, capacityHint rounded up to a
      * COMPACT_CHUNK_CAPACITY multiple); if the document outgrows it, the pool grows in
-     * COMPACT_CHUNK_CAPACITY steps. A small allocator bookkeeping header (~48 bytes)
+     * COMPACT_CHUNK_CAPACITY steps. A small allocator bookkeeping header (56 bytes on LP64)
      * lives inside the initial block.
      *
      * @param src The JSON string to parse.
@@ -447,7 +465,9 @@ public:
     /**
      * @brief Bytes actually allocated by the document's memory pool (its capacity).
      * For a standard document this is a multiple of 64 KB once anything is allocated;
-     * for a compact one, the initial block plus COMPACT_CHUNK_CAPACITY-sized chunks.
+     * for a compact one, the initial block plus COMPACT_CHUNK_CAPACITY-sized chunks; for an
+     * element copied by getArray(), getObject() or getJson(), exactly its content (plus
+     * COMPACT_CHUNK_CAPACITY-sized chunks if it is mutated later).
      */
     size_t getAllocatedMemory() const;
 
@@ -732,6 +752,10 @@ public:
     /**
      * @brief Get the value of the array field at the given path.
      *
+     * Each element is an independent document whose pool is sized exactly to its content: it is
+     * meant to be read or copied into another document. To mutate one heavily, copy it with
+     * Json(const Json&), which yields a standard (64 KB-chunk) document.
+     *
      * @param path JSON pointer path to the field (default: root).
      * @return std::optional<std::vector<Json>> The array elements, or std::nullopt if not found or not an array.
      * @throws std::runtime_error If the pointer path is invalid.
@@ -740,6 +764,10 @@ public:
 
     /**
      * @brief get the value of the object field.
+     *
+     * Each member value is an independent document whose pool is sized exactly to its content: it
+     * is meant to be read or copied into another document. To mutate one heavily, copy it with
+     * Json(const Json&), which yields a standard (64 KB-chunk) document.
      *
      * @param path The base pointer path to get.
      *
@@ -809,7 +837,11 @@ public:
     std::optional<std::string> str(std::string_view path) const;
 
     /**
-     * @brief Get a copy of the Json object or nothing if the path not found.c++ diagram
+     * @brief Get a copy of the Json object or nothing if the path not found.
+     *
+     * The copy is an independent document whose pool is sized exactly to its content: it is meant
+     * to be read or copied into another document. To mutate it heavily, copy it with
+     * Json(const Json&), which yields a standard (64 KB-chunk) document.
      *
      * @param path The path to the object, default value is root object ("").
      * @return std::optional<Json> The Json object if it exists, std::nullopt otherwise.
@@ -1141,6 +1173,29 @@ public:
      * @throws std::runtime_error If path is invalid.
      */
     void setString(std::string_view value, std::string_view path = "");
+
+    /**
+     * @brief Set the String object at the path, reading every token of the path as an object member name.
+     * Unlike setString, a token made only of digits is never an array index: every node on the way that is not an
+     * object becomes one, so the cost does not depend on the value of a numeric token. Use it when the path comes
+     * from event data. As in JSON Pointer, a "-" token on an existing array still appends to it.
+     *
+     * @param value The value to set.
+     * @param path The path to the object.
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void setStringAsMembers(std::string_view value, std::string_view path);
+
+    /**
+     * @brief Set the Null object at the path, reading every token of the path as an object member name.
+     * @see setStringAsMembers
+     *
+     * @param path The path to the object.
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void setNullAsMembers(std::string_view path);
 
     /**
      * @brief Set the Array object at the path.

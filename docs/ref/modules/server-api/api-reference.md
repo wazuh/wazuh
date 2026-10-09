@@ -83,7 +83,7 @@ curl -k -X GET "https://localhost:55000/?pretty=true" \
   "data": {
     "title": "Wazuh API REST",
     "api_version": "5.0.0",
-    "revision": "rc1",
+    "revision": "rc2",
     "license_name": "GPL 2.0",
     "license_url": "https://github.com/wazuh/wazuh/blob/v5.0.0-rc1/LICENSE",
     "hostname": "wazuh-manager",
@@ -407,7 +407,7 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 | GET | `/cluster/{node_id}/status` | Node status |
 | GET | `/cluster/{node_id}/info` | Node info |
 | GET | `/cluster/{node_id}/configuration` | Node config. Sensitive values are masked unless the caller holds `cluster:read_secrets` over that node |
-| PUT | `/cluster/{node_id}/configuration` | Update node config. A cluster key sent back masked keeps the current one; changing it requires `cluster:read_secrets` over that node (`1132` otherwise) |
+| PUT | `/cluster/{node_id}/configuration` | Update node config. A cluster key sent back masked keeps the current one; changing it, or changing the indexer section, requires `cluster:read_secrets` over that node (`1132` otherwise) |
 | GET | `/cluster/{node_id}/configuration/{component}/{configuration}` | Active config. `auth/auth` carries the enrollment password, masked unless the caller holds `cluster:read_secrets` over that node; serving it in clear is logged as `secret_read` in that node's `cluster.log` |
 | GET | `/cluster/{node_id}/daemons/stats` | Daemon stats |
 | GET | `/cluster/{node_id}/daemons/remoted/tls` | TLS certificate validity of remoted's listener and its CA bundle (dates, `x509-sha256` identities, which CA signs the leaf). `available: false` with a `reason` when remoted on that node cannot answer |

@@ -91,7 +91,7 @@ This applies to `.deb`, `.rpm`, and source-based upgrades.
 
 File contents are preserved for the paths listed above. Ownership and modes depend on the stack:
 
-- **DEB and RPM** copy the preserved files back with `cp -a`, so their ownership and modes come back as they were. Both then re-own `data/ruleset/` and `data/kvdb-ioc/` to `wazuh-manager:wazuh-manager`, and the DEB `postinst` additionally re-applies the package's own ownership and modes to every path the package ships (`restore-permissions.sh`).
+- **DEB and RPM** copy the preserved files back with `cp -a`, so their ownership and modes come back as they were. Both then re-own `data/ruleset/` and `data/kvdb-ioc/` to `wazuh-manager:wazuh-manager`, and the DEB `postinst` additionally re-applies the package's own ownership and modes to every path the package ships (`restore-permissions.sh`). Below a directory `wazuh-manager` can write (such as `etc/`, `logs/` or `queue/`), a path that is, or passes through, a symbolic link is left untouched, and so is a file with a second hard link.
 - **Source** (`install.sh`) copies them back with `cp -R`, so the ownership and modes are the ones the installer assigns, not the ones the files had.
 
 **Seeing new defaults.** Because `etc/` is fully preserved, new default values shipped by the package are not automatically applied to existing files. On DEB manager upgrades a `wazuh-manager.conf.new` side-file is written alongside the live config so you can compare changes manually. On RPM no equivalent side-file is generated for the preserved paths; compare against the package defaults manually if needed.

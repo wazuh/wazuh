@@ -19,7 +19,8 @@
 #         "(4102): Connected to the server" in the agent log.
 #   5.x — the token bootstrap: "Token bootstrap: enrollment succeeded" in the agent log,
 #         etc/certs/root-ca.pem created and etc/enrollment_token unlinked inside the container, and
-#         "Enrollment token '<id>' consumed by agent '<name>'" (authd) in the manager log.
+#         "Enrollment token '<id>' used by agent '<name>' (<n>/<max>)." (authd) in the manager log
+#         ("consumed by agent" on managers built before a167a63104 is still accepted).
 set -u
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -141,7 +142,7 @@ if [ -n "$MARK" ] && [ -f "$MARK" ] && [ -f "$LOGF" ]; then
   off=$(tr -dc '0-9' < "$MARK"); tail -c +$(( ${off:-0} + 1 )) "$LOGF"
 else
   [ -f "$LOGF" ] && tail -n 3000 "$LOGF"
-fi | grep -E "Enrollment token '.*' consumed by agent|Recorded credentials of agent|Invalid password|Duplicate name|Duplicate IP|enrollment-endpoint|Agent key generated|Enrollment token store loaded|agent-auth|New connection from|Agent '.*' connected" > "$OUT/manager-enroll.log" || true
+fi | grep -E "Enrollment token '.*' (used|consumed) by agent|Recorded credentials of agent|Invalid password|Duplicate name|Duplicate IP|enrollment-endpoint|Agent key generated|Enrollment token store loaded|agent-auth|New connection from|Agent '.*' connected" > "$OUT/manager-enroll.log" || true
 if [ "$API" -eq 1 ]; then
   API_PORT=$(grep -E '^port:' "$HOME_DIR/api/configuration/api.yaml" 2>/dev/null | awk '{print $2}'); API_PORT="${API_PORT:-55000}"
   API_PASS="${WAZUH_API_PASSWORD:-$(sed -n "s/^WAZUH_MANAGER_API_PASSWORD=[\"']\{0,1\}\(.*[^\"']\)[\"']\{0,1\}$/\1/p" \
@@ -201,13 +202,13 @@ for i in "${!CONTAINERS[@]}"; do
   if [ "$fl" = 4.x ]; then
     skip "${n}e" "$c" "manager log" "authd logs the 1515 enrollment at debug level only; proof = a+b"
   else
-    ml=$(grep -oE "Enrollment token '[^']*' consumed by agent '$nm'" "$OUT/manager-enroll.log" | tail -1)
-    check "${n}e" "$c" "manager log: token consumed by this agent" yes "$([ -n "$ml" ] && echo yes || echo no)"
+    ml=$(grep -oE "Enrollment token '[^']*' (used|consumed) by agent '$nm'" "$OUT/manager-enroll.log" | tail -1)
+    check "${n}e" "$c" "manager log: token used by this agent" yes "$([ -n "$ml" ] && echo yes || echo no)"
   fi
   hint=$(grep -oE 'Invalid password|Duplicate name|refusing to enroll unverified|Enrollment request could not be sent|HTTP/[0-9.]+ (401|403|404|429|503)|Invalid endpoint|Deployment variables refused \[[A-Z_]+\]' "$OUT/$c.log" | sort -u | tr '\n' ';')
   [ -z "$hint" ] || say "      hints in $c.log: $hint"
   if [ "$fl" = 4.x ]; then mlcell='n/a (authd 1515 logs at debug level)'
-  elif [ -n "$ml" ]; then mlcell="token $(sed -n "s/Enrollment token '\\([^']*\\)'.*/\\1/p" <<<"$ml") consumed"
+  elif [ -n "$ml" ]; then mlcell="token $(sed -n "s/Enrollment token '\\([^']*\\)'.*/\\1/p" <<<"$ml") used"
   else mlcell='—'; fi
   ROWS_MD+=("| $c | $fl | ${VERSIONS[$i]:-?} | $nm | ${keyline%% *} | ${status:-absent} | $c.log | $mlcell |")
 done

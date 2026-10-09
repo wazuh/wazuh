@@ -168,7 +168,7 @@ update_user:
       user_id:
         - 1
       password: HackedPassword1!
-      current_user: wazuh-wui
+      current_user: wazuh-internal-client
       run_as: true
     result:
       affected_items: []
@@ -179,7 +179,7 @@ update_user:
       user_id:
         - 2
       password: HackedPassword1!
-      current_user: wazuh-wui
+      current_user: wazuh-internal-client
       run_as: true
     result:
       affected_items: []
@@ -200,7 +200,7 @@ update_user:
       user_id:
         - 1
       password: HackedPassword1!
-      current_user: wazuh-wui
+      current_user: wazuh-internal-client
       run_as: false
     result:
       affected_items:

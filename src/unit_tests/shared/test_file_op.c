@@ -2000,6 +2000,7 @@ void test_w_fopen_nofollow_fifo_rejected(void **state) {
 
     // Must return instead of blocking on the FIFO waiting for a reader.
     assert_null(w_fopen_nofollow(nofollow_dir, "fifo", "wb"));
+    assert_null(w_fopen_regular(path, "rb"));
     assert_int_equal(stat(path, &statbuf), 0);
     assert_true(S_ISFIFO(statbuf.st_mode));
 }

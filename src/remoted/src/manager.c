@@ -208,9 +208,6 @@ static int poll_interval_time = 0;
 /* This variable is used to prevent flooding when group files exceed the maximum size */
 static int reported_path_size_exceeded = 0;
 
-/* Hash table for agent data */
-OSHash *agent_data_hash;
-
 // Frees data in m_hash table
 void cleaner(void* data) {
     os_free(data);
@@ -227,15 +224,17 @@ void free_file_time(void *data) {
 
 /* Pre process control message and return whether it should be queued for wdb processing
  * Returns: 1 if message should be queued, 0 if not, -1 on error
+ * Runs under the key lock, so it only decides whether the agent is owed an ACK (*send_ack): the caller
+ * sends it after releasing the lock.
  */
-int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, char **cleaned_msg, int *is_startup, int *is_shutdown)
+int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, char **cleaned_msg, int *is_startup, int *is_shutdown, bool *send_ack)
 {
     char *end = NULL;
-    char msg_ack[OS_SIZE_1024 + 1] = "";
 
     *is_startup = 0;
     *is_shutdown = 0;
     *cleaned_msg = NULL;
+    *send_ack = false;
 
     /* Handle HC_REQUEST messages immediately - don't queue them */
     if (strncmp(r_msg, HC_REQUEST, strlen(HC_REQUEST)) == 0) {
@@ -277,8 +276,6 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
             if (agent_info = cJSON_Parse(strchr(clean, '{')), agent_info) {
                 cJSON *version = NULL;
                 if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
-                    // Update agent data to keep context of events to forward
-                    OSHash_Set_ex(agent_data_hash, key->id, strdup(version->valuestring));
                     if (!logr.allow_higher_versions &&
                         compare_wazuh_versions(__wazuh_version, version->valuestring, false) < 0) {
 
@@ -303,9 +300,6 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
             mdebug1("Agent %s sent HC_SHUTDOWN from '%s'", key->name, aux_ip);
             *is_shutdown = 1;
             rem_inc_recv_ctrl_shutdown();
-            void *deleted = OSHash_Delete_ex(agent_data_hash, key->id);
-            os_free(deleted);
-
             /* Log agent shutdown event to ossec.log */
             mdebug1(OS_AG_STOPPED, atoi(key->id), key->name);
         }
@@ -323,14 +317,8 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
         rem_inc_recv_ctrl_keepalive();
     }
 
-    /* Send ACK for non-shutdown messages */
-    if (*is_shutdown == 0) {
-        snprintf(msg_ack, OS_SIZE_1024, "%s%s", CONTROL_HEADER, HC_ACK);
-
-        if (send_msg_with_key_control(key->id, msg_ack, -1, true) >= 0) {
-            rem_inc_send_ack();
-        }
-    }
+    /* ACK non-shutdown messages */
+    *send_ack = (*is_shutdown == 0);
 
     return 1;  // Queue the message
 }
@@ -349,7 +337,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
     int result = 0;
 
     // Process only database-related operations here
-    // All validation and ACK sending was done in validate_control_msg
+    // All validation was done in validate_control_msg, and the ACK was sent by its caller
     // Parameters is_startup and is_shutdown come from validation results
 
     if (is_startup) {
@@ -1650,8 +1638,6 @@ void manager_init()
     groups = OSHash_Create();
     multi_groups = OSHash_Create();
 
-    agent_data_hash = OSHash_Create();
-
     /* Run initial groups and multigroups scan */
     c_files(true);
 
@@ -1665,16 +1651,6 @@ void manager_init()
     OSHash_SetFreeDataPointer(pending_data, (void (*)(void *))free_pending_data);
 }
 
-/**
- * @brief Custom deleter to clean the entries of the hash table without compilation warnings.
- *
- * @param data The cJSON pointer to remove.
- */
-void agent_data_hash_cleaner(void *data) {
-    os_free(data);
-}
-
 void manager_free() {
     linked_queue_free(pending_queue);
-    OSHash_Clean(agent_data_hash, agent_data_hash_cleaner);
 }

@@ -12,12 +12,13 @@ unreachable, since the `except OSError` around `uvicorn.run()` never fired -- is
 exhausted retry budget actually produces.
 """
 
+import ast
 import errno
 import importlib.util
 import os
 import socket
 import threading
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -497,9 +498,28 @@ def test_start_hands_the_bound_sockets_to_uvicorn(apid):
     bind_mock.assert_called_once_with(['0.0.0.0', '::'], 55000)
     config_kwargs = apid.uvicorn.Config.call_args.kwargs
     assert 'host' not in config_kwargs and 'port' not in config_kwargs
-    assert config_kwargs == {'server_header': False, 'loop': 'uvloop'}
+    assert config_kwargs == {'server_header': False, 'loop': 'uvloop', 'proxy_headers': False}
     apid.uvicorn.Server.assert_called_once_with(apid.uvicorn.Config.return_value)
     apid.uvicorn.Server.return_value.run.assert_called_once_with(sockets=bound)
+
+
+def test_start_ignores_forwarded_headers_from_loopback(apid):
+    """uvicorn must not take the client address from X-Forwarded-For.
+
+    With its defaults (proxy_headers=True, FORWARDED_ALLOW_IPS=127.0.0.1) any local user could send
+    the header over loopback and choose the address the login lockout, the per-IP rate limits and
+    api.log see: unlimited guesses, or another host locked out.
+    """
+    from uvicorn import Config
+
+    _prepare_start(apid)
+    apid.uvicorn.Config.side_effect = lambda app, **kwargs: Config(app, **kwargs)
+    with patch.dict(os.environ, {'FORWARDED_ALLOW_IPS': '*'}), \
+            patch.object(apid, '_bind_listening_sockets', return_value=[MagicMock()]):
+        apid.start({'host': ['0.0.0.0'], 'port': 55000, 'server_header': False})
+
+    config = apid.uvicorn.Server.call_args.args[0]
+    assert config.proxy_headers is False
 
 
 def test_start_exits_when_the_server_never_started(apid):
@@ -564,3 +584,484 @@ def test_start_logs_an_oserror_raised_by_uvicorn_startup(apid):
 
     assert exc_info.value is ssl_error
     apid.logger.error.assert_called_once_with(ssl_error)
+
+
+def test_drop_privileges_clears_supplementary_groups_before_switching_ids(apid):
+    """`drop_privileges()` must clear root's supplementary groups, and must do it while still root.
+
+    `setgid()`/`setuid()` leave the supplementary list untouched, so without `setgroups([])` the
+    API would keep root's groups (gid 0 among them). It has to run first: after `setuid()` the
+    process can no longer change its groups.
+    """
+    apid.common = MagicMock()
+    apid.common.wazuh_gid.return_value = 998
+    apid.common.wazuh_uid.return_value = 997
+    apid.api_conf = {'drop_privileges': True}
+    calls = MagicMock()
+    with patch.object(apid.os, 'setgroups', calls.setgroups), \
+            patch.object(apid.os, 'setgid', calls.setgid), \
+            patch.object(apid.os, 'setuid', calls.setuid):
+        apid.drop_privileges(False)
+
+    assert calls.mock_calls == [call.setgroups([]), call.setgid(998), call.setuid(997)]
+
+
+# --- configure_ssl / drop_privileges (#40053) -----------------------------------------------------
+#
+# The API no longer generates its TLS pair: the installer issues it signed by the manager CA. The
+# launcher drops privileges first and only then loads the TLS files, still in the foreground, so
+# every record of the run -- the start-up announcement or a TLS error -- is written by the service
+# user, and a TLS error still reaches the terminal and the exit code. A record written as root
+# before setuid() used to let the midnight rotation recreate api.log as root, which the service
+# then could not open.
+
+
+def _write_self_signed_pair(directory, name, passphrase=None):
+    """Write an independent self-signed RSA 2048 pair; the API does not verify the chain."""
+    import datetime
+
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.x509.oid import NameOID
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'localhost')])
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cert = x509.CertificateBuilder().subject_name(subject).issuer_name(subject) \
+        .public_key(key.public_key()).serial_number(x509.random_serial_number()) \
+        .not_valid_before(now).not_valid_after(now + datetime.timedelta(days=1)) \
+        .sign(key, hashes.SHA256())
+    encryption = serialization.BestAvailableEncryption(passphrase) if passphrase \
+        else serialization.NoEncryption()
+    cert_path, key_path = directory / f'{name}.pem', directory / f'{name}-key.pem'
+    cert_path.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
+    key_path.write_bytes(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                           encryption))
+    return str(cert_path), str(key_path)
+
+
+@pytest.fixture(scope='module')
+def pem_pairs(tmp_path_factory):
+    """Two unrelated real pairs, so a certificate can be combined with the other pair's key.
+
+    The second pair's certificate doubles as a real client CA file for `use_ca`.
+    """
+    directory = tmp_path_factory.mktemp('pairs')
+    return _write_self_signed_pair(directory, 'apid'), _write_self_signed_pair(directory, 'other')
+
+
+@pytest.fixture()
+def ssl_apid(apid, tmp_path):
+    """The launcher with what its `__main__` block would have imported for configure_ssl()."""
+    import ssl
+
+    from api.api_exception import APIError
+
+    apid.ssl = ssl
+    apid.APIError = APIError
+    # api.util.to_relative_path() is relative to WAZUH_PATH; the identity keeps the paths readable.
+    apid.to_relative_path = lambda path: path
+    apid.api_conf = {
+        'https': {'key': str(tmp_path / 'apid-key.pem'), 'cert': str(tmp_path / 'apid.pem'),
+                  'use_ca': False, 'ca': str(tmp_path / 'ca.pem'), 'ssl_ciphers': ''},
+        'drop_privileges': True,
+    }
+    apid.common = MagicMock()
+    apid.common.wazuh_uid.return_value = 1001
+    apid.common.wazuh_gid.return_value = 1002
+    return apid
+
+
+def _use_pair(apid, cert, key):
+    apid.api_conf['https']['cert'] = cert
+    apid.api_conf['https']['key'] = key
+
+
+@pytest.mark.parametrize('use_ca', [False, True], ids=['use_ca=False', 'use_ca=True'])
+def test_configure_ssl_sets_the_uvicorn_ssl_params(ssl_apid, pem_pairs, use_ca):
+    """A present, coherent pair (and a real CA with use_ca) is loaded and handed to uvicorn."""
+    (cert, key), (other_cert, _) = pem_pairs
+    _use_pair(ssl_apid, cert, key)
+    ssl_apid.api_conf['https']['use_ca'] = use_ca
+    ssl_apid.api_conf['https']['ca'] = other_cert
+    ssl_apid.api_conf['https']['ssl_ciphers'] = 'ecdhe+aesgcm'
+    params = {}
+
+    with patch('os.chown') as chown:
+        ssl_apid.configure_ssl(params)
+
+    assert params['ssl_certfile'] == cert
+    assert params['ssl_keyfile'] == key
+    assert params['ssl_version'] == ssl_apid.ssl.PROTOCOL_TLS_SERVER
+    assert params['ssl_ciphers'] == 'ECDHE+AESGCM'
+    if use_ca:
+        assert params['ssl_cert_reqs'] == ssl_apid.ssl.CERT_REQUIRED
+        assert params['ssl_ca_certs'] == other_cert
+    else:
+        assert 'ssl_cert_reqs' not in params and 'ssl_ca_certs' not in params
+    chown.assert_not_called()
+    ssl_apid.logger.error.assert_not_called()
+
+
+@pytest.mark.parametrize('missing', ['key', 'cert'])
+def test_configure_ssl_refuses_a_missing_file(ssl_apid, pem_pairs, tmp_path, missing):
+    """A missing certificate or key is a 2003 naming it; nothing is generated in its place."""
+    import shutil
+
+    (cert, key), _ = pem_pairs
+    present = {'cert': cert, 'key': key}
+    for which in ('cert', 'key'):
+        if which != missing:
+            shutil.copy(present[which], ssl_apid.api_conf['https'][which])
+    absent = ssl_apid.api_conf['https'][missing]
+    before = sorted(os.listdir(tmp_path))
+
+    with pytest.raises(ssl_apid.APIError) as error:
+        ssl_apid.configure_ssl({})
+
+    assert error.value.code == 2003
+    assert absent in str(error.value)
+    assert 'not found' in str(error.value)
+    # The up-front check names exactly the missing file; the errno 2 fallback of a failed load
+    # (ssl gives no filename) could only name both.
+    other = ssl_apid.api_conf['https']['cert' if missing == 'key' else 'key']
+    assert other not in str(error.value)
+    ssl_apid.logger.error.assert_called_once_with(error.value)
+    assert sorted(os.listdir(tmp_path)) == before
+
+
+def test_configure_ssl_refuses_a_missing_client_ca(ssl_apid, pem_pairs):
+    """With use_ca, a missing CA file is a 2003 naming the CA, not the pair."""
+    (cert, key), _ = pem_pairs
+    _use_pair(ssl_apid, cert, key)
+    ssl_apid.api_conf['https']['use_ca'] = True
+    ca = ssl_apid.api_conf['https']['ca']
+
+    with pytest.raises(ssl_apid.APIError) as error:
+        ssl_apid.configure_ssl({})
+
+    assert error.value.code == 2003
+    assert ca in str(error.value) and cert not in str(error.value) and key not in str(error.value)
+    ssl_apid.logger.error.assert_called_once_with(error.value)
+
+
+def test_configure_ssl_refuses_a_client_ca_that_is_not_pem(ssl_apid, pem_pairs, tmp_path):
+    """With use_ca, a CA file that is not PEM is loaded and refused now, naming it, not inside uvicorn."""
+    (cert, key), _ = pem_pairs
+    _use_pair(ssl_apid, cert, key)
+    ca = tmp_path / 'ca.pem'
+    ca.write_text('not a certificate\n')
+    ssl_apid.api_conf['https'].update(use_ca=True, ca=str(ca))
+
+    with pytest.raises(ssl_apid.APIError) as error:
+        ssl_apid.configure_ssl({})
+
+    assert error.value.code == 2003
+    assert str(ca) in str(error.value)
+    ssl_apid.logger.error.assert_called_once_with(error.value)
+
+
+def test_configure_ssl_refuses_a_key_that_does_not_match(ssl_apid, pem_pairs):
+    """A certificate with somebody else's key is a 2003 naming both files."""
+    (cert, _), (_, other_key) = pem_pairs
+    _use_pair(ssl_apid, cert, other_key)
+
+    with pytest.raises(ssl_apid.APIError) as error:
+        ssl_apid.configure_ssl({})
+
+    assert error.value.code == 2003
+    assert 'does not match' in str(error.value)
+    assert cert in str(error.value) and other_key in str(error.value)
+    ssl_apid.logger.error.assert_called_once_with(error.value)
+
+
+def test_configure_ssl_refuses_a_garbage_certificate(ssl_apid, pem_pairs, tmp_path):
+    """A certificate file that is not PEM is a 2003 saying so, naming both files."""
+    (_, key), _ = pem_pairs
+    garbage = tmp_path / 'garbage.pem'
+    garbage.write_text('not a certificate\n')
+    _use_pair(ssl_apid, str(garbage), key)
+
+    with pytest.raises(ssl_apid.APIError) as error:
+        ssl_apid.configure_ssl({})
+
+    assert error.value.code == 2003
+    assert 'not a valid unencrypted PEM' in str(error.value)
+    assert str(garbage) in str(error.value) and key in str(error.value)
+    ssl_apid.logger.error.assert_called_once_with(error.value)
+
+
+def test_configure_ssl_refuses_an_encrypted_key_without_prompting(ssl_apid, tmp_path):
+    """An encrypted key fails at once: OpenSSL must not prompt for its passphrase on the terminal.
+
+    Run pytest with stdin from /dev/null too; with a tty and no password callback this would hang.
+    """
+    cert, key = _write_self_signed_pair(tmp_path, 'encrypted', passphrase=b'secret')
+    _use_pair(ssl_apid, cert, key)
+
+    with pytest.raises(ssl_apid.APIError) as error:
+        ssl_apid.configure_ssl({})
+
+    assert error.value.code == 2003
+    assert 'not a valid unencrypted PEM' in str(error.value) and key in str(error.value)
+
+
+def test_configure_ssl_refuses_a_cipher_string_that_selects_nothing(ssl_apid, pem_pairs):
+    """An ssl_ciphers value OpenSSL cannot use is a 2003 naming it, not a key/cert mismatch."""
+    (cert, key), _ = pem_pairs
+    _use_pair(ssl_apid, cert, key)
+    ssl_apid.api_conf['https']['ssl_ciphers'] = 'no-such-cipher'
+
+    with pytest.raises(ssl_apid.APIError) as error:
+        ssl_apid.configure_ssl({})
+
+    assert error.value.code == 2003
+    assert 'NO-SUCH-CIPHER' in str(error.value)
+    assert 'does not match' not in str(error.value)
+    ssl_apid.logger.error.assert_called_once_with(error.value)
+
+
+def _failing_load(apid, exc):
+    context = MagicMock()
+    context.load_cert_chain.side_effect = exc
+    return patch.object(apid.ssl, 'create_default_context', return_value=context)
+
+
+def test_configure_ssl_reports_an_unreadable_pair(ssl_apid, pem_pairs):
+    """A pair the service user cannot read is a 2003 about permissions naming both files."""
+    (cert, key), _ = pem_pairs
+    _use_pair(ssl_apid, cert, key)
+
+    with _failing_load(ssl_apid, PermissionError(13, 'denied')), pytest.raises(ssl_apid.APIError) as error:
+        ssl_apid.configure_ssl({})
+
+    assert error.value.code == 2003
+    assert 'correct permissions' in str(error.value)
+    assert cert in str(error.value) and key in str(error.value)
+    ssl_apid.logger.error.assert_called_once_with(error.value)
+
+
+@pytest.mark.parametrize('filename', ['/p/f', None], ids=['with_filename', 'without_filename'])
+def test_configure_ssl_reports_a_file_removed_before_the_load(ssl_apid, pem_pairs, filename):
+    """A file gone between the check and the load names it when known, else every file loaded."""
+    (cert, key), _ = pem_pairs
+    _use_pair(ssl_apid, cert, key)
+    exc = FileNotFoundError(2, 'x', filename) if filename else FileNotFoundError(2, 'x')
+
+    with _failing_load(ssl_apid, exc), pytest.raises(ssl_apid.APIError) as error:
+        ssl_apid.configure_ssl({})
+
+    assert error.value.code == 2003
+    assert 'not found' in str(error.value)
+    if filename:
+        assert filename in str(error.value)
+        assert cert not in str(error.value) and key not in str(error.value)
+    else:
+        assert cert in str(error.value) and key in str(error.value)
+    ssl_apid.logger.error.assert_called_once_with(error.value)
+
+
+def test_configure_ssl_turns_any_other_ioerror_into_api_error(ssl_apid, pem_pairs):
+    """Any other I/O failure while loading the pair still leaves configure_ssl() as an APIError."""
+    from api.constants import CONFIG_FILE_PATH
+
+    (cert, key), _ = pem_pairs
+    _use_pair(ssl_apid, cert, key)
+    eio = OSError(5, 'eio')
+
+    with _failing_load(ssl_apid, eio), pytest.raises(ssl_apid.APIError) as error:
+        ssl_apid.configure_ssl({})
+
+    assert error.value.code == 2003
+    assert CONFIG_FILE_PATH in str(error.value)
+    assert error.value.__cause__ is eio
+    ssl_apid.logger.error.assert_called_once()
+
+
+def _drop_privileges_calls(apid, run_as_root):
+    parent = MagicMock()
+    with patch('os.setgroups') as setgroups, patch('os.setgid') as setgid, patch('os.setuid') as setuid:
+        parent.attach_mock(setgroups, 'setgroups')
+        parent.attach_mock(setgid, 'setgid')
+        parent.attach_mock(setuid, 'setuid')
+        parent.attach_mock(apid.logger.info, 'info')
+        apid.drop_privileges(run_as_root)
+    return parent.mock_calls
+
+
+def test_drop_privileges_switches_user_without_logging(ssl_apid):
+    """The switch logs nothing: the logging configuration is applied only after it."""
+    assert _drop_privileges_calls(ssl_apid, run_as_root=False) == [
+        call.setgroups([]), call.setgid(1002), call.setuid(1001)]
+
+
+def test_drop_privileges_keeps_root_when_asked(ssl_apid):
+    """-r keeps root."""
+    assert _drop_privileges_calls(ssl_apid, run_as_root=True) == []
+
+
+def test_drop_privileges_honours_drop_privileges_false(ssl_apid):
+    """drop_privileges: false in api.yaml keeps the current user."""
+    ssl_apid.api_conf['drop_privileges'] = False
+    assert _drop_privileges_calls(ssl_apid, run_as_root=False) == []
+
+
+# --- prepare_log_file ------------------------------------------------------------------------------
+#
+# It runs as root in logs/, which the service account can write, so a planted symbolic link must
+# never redirect the chown/chmod to another file (or create one elsewhere).
+
+
+@pytest.fixture()
+def log_apid(apid):
+    """The launcher with the service ids set to the current user, so fchown() needs no privilege."""
+    apid.common = MagicMock()
+    apid.common.wazuh_uid.return_value = os.getuid()
+    apid.common.wazuh_gid.return_value = os.getgid()
+    return apid
+
+
+def test_prepare_log_file_creates_a_missing_file(log_apid, tmp_path):
+    """An absent log file is created empty with mode 0660, owned by the service user."""
+    path = tmp_path / 'api.log'
+    log_apid.prepare_log_file(str(path))
+
+    st = os.lstat(path)
+    assert st.st_size == 0
+    assert (st.st_mode & 0o7777, st.st_uid, st.st_gid) == (0o660, os.getuid(), os.getgid())
+
+
+def test_prepare_log_file_keeps_the_content_and_fixes_the_mode(log_apid, tmp_path):
+    """An existing log file keeps its records; only its mode is corrected."""
+    path = tmp_path / 'api.log'
+    path.write_text('previous run\n')
+    path.chmod(0o600)
+    log_apid.prepare_log_file(str(path))
+
+    assert path.read_text() == 'previous run\n'
+    assert os.lstat(path).st_mode & 0o7777 == 0o660
+
+
+def test_prepare_log_file_chowns_through_the_descriptor(log_apid, tmp_path):
+    """A file not owned by the service user is changed with fchown(), never chown() by path."""
+    path = tmp_path / 'api.log'
+    path.touch()
+    log_apid.common.wazuh_uid.return_value = os.getuid() + 1
+    with patch('os.fchown') as fchown, patch('os.chown') as chown, patch('os.lchown') as lchown:
+        log_apid.prepare_log_file(str(path))
+
+    fchown.assert_called_once()
+    assert fchown.call_args.args[1:] == (os.getuid() + 1, os.getgid())
+    chown.assert_not_called()
+    lchown.assert_not_called()
+
+
+@pytest.mark.parametrize('target_exists', [True, False], ids=['existing-target', 'dangling'])
+def test_prepare_log_file_refuses_a_symbolic_link(log_apid, tmp_path, target_exists):
+    """A symbolic link is refused: its target is neither created nor changed."""
+    target = tmp_path / 'root-owned'
+    if target_exists:
+        target.write_text('secret')
+        target.chmod(0o600)
+    link = tmp_path / 'api.log'
+    link.symlink_to(target)
+
+    with patch('os.fchown') as fchown, pytest.raises(OSError) as error:
+        log_apid.prepare_log_file(str(link))
+
+    assert error.value.errno == errno.ELOOP
+    assert error.value.filename == str(link)
+    fchown.assert_not_called()
+    if target_exists:
+        assert target.read_text() == 'secret'
+        assert os.stat(target).st_mode & 0o7777 == 0o600
+    else:
+        assert not target.exists()
+
+
+def test_prepare_log_file_refuses_a_hard_link(log_apid, tmp_path):
+    """A file with a second link may be another file reached through logs/: it is not changed."""
+    target = tmp_path / 'elsewhere'
+    target.write_text('secret')
+    target.chmod(0o600)
+    link = tmp_path / 'api.log'
+    os.link(target, link)
+
+    with pytest.raises(OSError) as error:
+        log_apid.prepare_log_file(str(link))
+
+    assert error.value.errno == errno.EPERM
+    assert os.stat(target).st_mode & 0o7777 == 0o600
+
+
+def test_prepare_log_file_refuses_a_fifo_without_blocking(log_apid, tmp_path):
+    """A FIFO with no reader fails at once (O_NONBLOCK) instead of hanging the start."""
+    path = tmp_path / 'api.log'
+    os.mkfifo(path)
+
+    with pytest.raises(OSError) as error:
+        log_apid.prepare_log_file(str(path))
+
+    assert error.value.errno == errno.ENXIO
+
+
+def test_prepare_log_file_refuses_a_directory(log_apid, tmp_path):
+    """A directory in place of the log file is refused, not changed."""
+    path = tmp_path / 'api.log'
+    path.mkdir(mode=0o700)
+
+    with pytest.raises(OSError):
+        log_apid.prepare_log_file(str(path))
+
+    assert os.stat(path).st_mode & 0o7777 == 0o700
+
+
+def _call_name(node):
+    func = node.func
+    return func.attr if isinstance(func, ast.Attribute) else getattr(func, 'id', None)
+
+
+# Calls allowed before drop_privileges() in __main__ that touch the filesystem as root. The log
+# files are prepared only through prepare_log_file() (no-follow descriptors); everything that opens,
+# chowns or chmods by path -- dictConfig() among them -- comes after the switch.
+UNSAFE_BEFORE_DROP = {'dictConfig', 'getLogger', 'open', 'chown', 'chmod', 'lchown', 'info', 'error',
+                      'assign_wazuh_ownership'}
+
+
+def test_main_drops_privileges_before_opening_logs_and_any_ssl_work():
+    """`__main__` opens no log file before drop_privileges() and checks TLS after it, before daemonizing.
+
+    A log file opened as root keeps root's descriptor after setuid(), and a chown or chmod by path in
+    the service-writable logs/ directory follows a planted symbolic link. pyDaemon() exits the first
+    parent with 0 and sends stdout/stderr to /dev/null, so a TLS check after it would fail silently
+    with exit 0.
+    """
+    with open(APID_PATH) as source:
+        tree = ast.parse(source.read())
+    main = next(node for node in tree.body if isinstance(node, ast.If)
+                and isinstance(node.test, ast.Compare) and isinstance(node.test.left, ast.Name)
+                and node.test.left.id == '__name__')
+    body = ast.Module(body=main.body, type_ignores=[])
+
+    calls = sorted((node for node in ast.walk(body) if isinstance(node, ast.Call)),
+                   key=lambda node: (node.lineno, node.col_offset))
+    lines = {}
+    for node in calls:
+        lines.setdefault(_call_name(node), []).append(node.lineno)
+
+    for name in ('prepare_log_file', 'drop_privileges', 'dictConfig', 'configure_ssl', 'pyDaemon'):
+        assert len(lines.get(name, [])) == 1, f'{name} must be called exactly once in __main__'
+
+    order = ['set_logging', 'prepare_log_file', 'drop_privileges', 'dictConfig', 'configure_ssl', 'pyDaemon',
+             'create_pid']
+    first = [lines[name][0] for name in order]
+    assert first == sorted(first), dict(zip(order, first))
+
+    before = {_call_name(node) for node in calls if node.lineno < lines['drop_privileges'][0]}
+    assert not before & UNSAFE_BEFORE_DROP, before & UNSAFE_BEFORE_DROP
+
+    guard = next(node for node in ast.walk(body) if isinstance(node, ast.If)
+                 and any(isinstance(inner, ast.Call) and _call_name(inner) == 'pyDaemon'
+                         for stmt in node.body for inner in ast.walk(stmt)))
+    assert 'args.foreground' in ast.unparse(guard.test)

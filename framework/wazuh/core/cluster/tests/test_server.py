@@ -80,8 +80,12 @@ def test_AbstractServerHandler_connection_made(event_loop):
             abstract_server_handler = AbstractServerHandler(server=server_mock, loop=event_loop,
                                                             fernet_key=fernet_key,
                                                             cluster_items={"test": "server"})
-            with patch.object(asyncio.Transport, "get_extra_info", get_extra_info):
+            with patch.object(asyncio.Transport, "get_extra_info", get_extra_info), \
+                    patch.object(asyncio.Transport, "write") as write_mock:
                 abstract_server_handler.connection_made(transport=transport)
+                # The accepted connection opens with the protocol preamble
+                write_mock.assert_called_once()
+                assert write_mock.call_args[0][0][:5] == c_common.PROTOCOL_MAGIC + b'\x01'
                 assert abstract_server_handler.ip == "peername"
                 assert abstract_server_handler.transport == transport
                 assert abstract_server_handler._counted_connection is True
@@ -102,6 +106,8 @@ def test_AbstractServerHandler_connection_made(event_loop):
         mock_transport.get_extra_info = lambda name: ["1.2.3.4", 9999]
         rejected_handler.connection_made(transport=mock_transport)
         mock_transport.close.assert_called_once()
+        # A rejected connection is not offered a session
+        mock_transport.write.assert_not_called()
         assert rejected_handler._counted_connection is False
         # Count must not have been incremented for the rejected connection.
         assert server_mock2.connection_counts["1.2.3.4"] == MAX_CONNECTIONS_PER_IP

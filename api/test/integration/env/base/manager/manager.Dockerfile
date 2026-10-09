@@ -36,6 +36,10 @@ RUN /wazuh/install.sh
 # scoped to names only this test environment answers to, and the resolver never re-examines a pair
 # once it is in place -- not at service start, not on upgrade. No CA directory is left behind, so
 # no signing key reaches the layer.
+#
+# The Server API (apid) pair is the same listener pair: the API no longer generates its own
+# certificate, so every image has to ship one, and the installation issues it with the remoted
+# profile (serverAuth, leaf followed by the CA, the same SANs, localhost among them).
 COPY base/manager/certs-config.yml /wazuh/certs-config.yml
 RUN bash /wazuh/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c /wazuh/certs-config.yml -o /tmp/wazuh-certificates && \
     mkdir -p /var/wazuh-manager/etc/certs && \
@@ -44,6 +48,8 @@ RUN bash /wazuh/tools/devContainer/scripts/wazuh-certs-tool.sh -A -c /wazuh/cert
     install -o root -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-key.pem /var/wazuh-manager/etc/certs/indexer-connector-key.pem && \
     install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted.pem /var/wazuh-manager/etc/certs/remoted.pem && \
     install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted-key.pem /var/wazuh-manager/etc/certs/remoted-key.pem && \
+    install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted.pem /var/wazuh-manager/etc/certs/apid.pem && \
+    install -o wazuh-manager -g wazuh-manager -m 640 /tmp/wazuh-certificates/wazuh-manager-remoted-key.pem /var/wazuh-manager/etc/certs/apid-key.pem && \
     rm -rf /tmp/wazuh-certificates /etc/wazuh/ca
 COPY base/manager/entrypoint.sh /scripts/entrypoint.sh
 

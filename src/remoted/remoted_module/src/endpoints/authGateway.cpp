@@ -11,15 +11,17 @@
 
 #include "authGateway.hpp"
 
-#include "common/logThrottle.hpp"
 #include "http_server/headerUtils.hpp"
 #include "loggerHelper.h"
 
+#include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <ctime>
 #include <exception>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -81,9 +83,11 @@ namespace remoted::endpoints
 
     AuthGateway::AuthGateway(remoted::auth::AuthConfig config,
                              std::shared_ptr<remoted::auth::IAgentKeystore> keystore,
-                             std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder)
+                             std::shared_ptr<const remoted::decoding::IBodyDecoder> bodyDecoder,
+                             std::shared_ptr<AgentRequestLimiter> agentLimiter)
         : m_middleware {std::make_shared<remoted::auth::AuthMiddleware>(config, std::move(keystore))}
         , m_bodyDecoder {std::move(bodyDecoder)}
+        , m_agentLimiter {std::move(agentLimiter)}
     {
     }
 
@@ -92,43 +96,23 @@ namespace remoted::endpoints
                                             const std::string& path,
                                             AuthenticatedHandler handler,
                                             remoted::http::ResponseMode mode,
-                                            AuthenticatedRouteGate gate)
+                                            std::shared_ptr<const remoted::decoding::IBodyDecoder> routeDecoder)
     {
         const char* methodStr = methodToCanonical(method);
-
-        // Everything the gate needs is resolved ONCE, here, so a gated route costs one pointer
-        // test per request and an ungated one costs nothing at all. A null or disabled limiter is
-        // dropped now rather than re-checked per request -- the same shortcut ratelimit::wrap()
-        // takes when it hands back the unwrapped handler.
-        const bool gateEnabled = gate.limiter && gate.limiter->enabled();
-        const auto retryAfter = gateEnabled ? std::to_string(gate.limiter->retryAfterSeconds()) : std::string {};
-        // One throttle per gate, not a file-static: two gated routes must not silence each other's
-        // line, and a static would also outlive a restart of the module within one process.
-        const auto throttle = gateEnabled ? std::make_shared<remoted::common::LogThrottle>() : nullptr;
-        const std::string routeName {gateEnabled && gate.route != nullptr ? gate.route : ""};
-        auto limiter = gateEnabled ? std::move(gate.limiter) : nullptr;
-        auto rejection = gateEnabled ? std::move(gate.rejection) : nullptr;
-        auto rejected = gateEnabled ? std::move(gate.rejected) : nullptr;
-        const auto* gateHttpMetrics = gateEnabled ? gate.httpMetrics : nullptr;
 
         server.addRoute(
             method,
             path,
-            // Both dependencies are captured as their own shared_ptr copy (a refcount bump), not by
+            // Every dependency is captured as its own shared_ptr copy (a refcount bump), not by
             // reference to the member: the lambda lives in the server's route table and runs per
             // request, long after this call returns. Copying keeps each registered route
             // self-contained instead of tying its validity to this gateway still being alive.
             [middleware = m_middleware,
              methodStr,
-             bodyDecoder = m_bodyDecoder,
-             handler = std::move(handler),
-             limiter = std::move(limiter),
-             rejection = std::move(rejection),
-             rejected = std::move(rejected),
-             gateHttpMetrics,
-             throttle,
-             routeName,
-             retryAfter](std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> responder)
+             bodyDecoder = routeDecoder ? std::move(routeDecoder) : m_bodyDecoder,
+             agentLimiter = m_agentLimiter,
+             handler = std::move(handler)](std::shared_ptr<const HttpRequest> request,
+                                           std::shared_ptr<IHttpResponder> responder)
             {
                 // Everything below -- authentication AND the endpoint handler -- runs inside one
                 // try/catch. authenticate() calls into the keystore and OpenSSL (HMAC), either of
@@ -139,51 +123,6 @@ namespace remoted::endpoints
                 // throw, the responder's send-once guarantee makes this 500 a no-op.
                 try
                 {
-                    // The rate limit, when this route carries one, is charged FIRST: before
-                    // authenticate(), before the receipt stamp, before a single header is read.
-                    // The bucket belongs to the endpoint, so the caller's address, credential and
-                    // body are all irrelevant to the decision -- which is precisely why the
-                    // decision can be made before any of them is looked at, and why a refused
-                    // request costs neither a keystore lookup nor an HMAC. A request carrying no
-                    // bearer at all is therefore answered 429, not 401.
-                    if (limiter && !limiter->allow())
-                    {
-                        if (rejected)
-                        {
-                            rejected->add();
-                        }
-
-                        auto response =
-                            rejection ? rejection()
-                                      : remoted::http::HttpResponse::json(429, R"({"error":"too_many_requests"})");
-                        response.headers.emplace_back("Retry-After", retryAfter);
-
-                        // Only the status cell, and counted directly rather than through a
-                        // MeteredResponder: that decorator also feeds the endpoint's latency
-                        // histogram, and this request never entered the handler. During the very
-                        // burst the limiter exists for, those microsecond samples would dominate
-                        // the distribution and hide the latency of the requests actually served.
-                        if (gateHttpMetrics != nullptr)
-                        {
-                            gateHttpMetrics->responses.count(response.status);
-                        }
-
-                        responder->send(std::move(response));
-
-                        if (const auto decision = throttle->record())
-                        {
-                            LOGFN_WARN(logFn(),
-                                       "%s refused %llu request(s) in the last %d s with 429: the endpoint is "
-                                       "being asked faster than its configured rate, which is a ceiling for this "
-                                       "whole node and not a per-agent one. Raise the matching 'remote.https' "
-                                       "rate if this load is legitimate.",
-                                       routeName.c_str(),
-                                       static_cast<unsigned long long>(decision.total),
-                                       remoted::common::LogThrottle::kDefaultWindowSeconds);
-                        }
-                        return;
-                    }
-
                     // Stamped ONCE, before authentication: this is the origin of the
                     // remoted.http.<endpoint>.latency measurement (gateway receipt -> response
                     // delivery). One clock read per authenticated request, no atomics.
@@ -217,6 +156,23 @@ namespace remoted::endpoints
                         return;
                     }
 
+                    auto& agentId = std::get<remoted::auth::VerifiedAgent>(verified).agentId;
+
+                    // The per-agent request cap, BEFORE decoding: decoding is where one request can
+                    // grow to the decoded-body cap, so an agent over its share must not get that far.
+                    // Held in this scope until the decoded body is charged below, so every early
+                    // answer (and an exception) gives it back on the way out.
+                    std::optional<AgentRequestLimiter::Slot> slot;
+                    if (agentLimiter)
+                    {
+                        slot = agentLimiter->tryAcquire(agentId);
+                        if (!slot)
+                        {
+                            responder->send(errorResponseFor(remoted::auth::AuthError::AgentBusy, agentId));
+                            return;
+                        }
+                    }
+
                     // Authenticated: hand the verified request AND the responder to the
                     // endpoint handler, which now owns delivering the response (inline or
                     // asynchronously). The gateway no longer sends on the success path.
@@ -227,9 +183,7 @@ namespace remoted::endpoints
                     // becomes the sole owner -- dropping it (or calling payload.release()) then
                     // frees the buffer and restores the budget while the responder lives on to reply.
                     remoted::auth::AuthenticatedRequest authRequest;
-                    auto& verifiedAgent = std::get<remoted::auth::VerifiedAgent>(verified);
-                    authRequest.agentId = std::move(verifiedAgent.agentId);
-                    authRequest.keyFingerprint = std::move(verifiedAgent.keyFingerprint);
+                    authRequest.agentId = std::move(agentId);
                     authRequest.protocolVersion = protocolVersion;
                     authRequest.method = methodStr;
                     authRequest.requestTarget = request->target;
@@ -242,11 +196,61 @@ namespace remoted::endpoints
                     // actually does (which
                     // encodings are implemented, how a body is decoded, how the memory that costs is
                     // accounted for) is deliberately unknown here; see remoted::decoding::IBodyDecoder.
-                    const auto decodeError = bodyDecoder->decode(contentEncoding, authRequest.payload);
+                    //
+                    // The per-agent byte share is charged AS the decoder grows its output, not after:
+                    // charged afterwards, a frame that merely claims a large size would hold that much
+                    // of the shared budget for the whole decode, and a few parallel ones from one agent
+                    // would starve the fleet before the share check ever ran. A body larger than the
+                    // whole share is the decoder's own cap (413, checked first); a refusal here is one
+                    // that only fits once the agent's other open requests are answered -- transient,
+                    // so 503 and the agent retries.
+                    //
+                    // shareRefused tracks the LAST charge only: the decoder retries a refused growth
+                    // at a smaller size, so an earlier refusal followed by an accepted retry is a
+                    // decode that went on (and may well succeed), not one the share stopped.
+                    std::size_t chargedWhileDecoding = 0;
+                    bool shareRefused = false;
+                    remoted::decoding::DecodeCharge chargeShare;
+                    if (slot)
+                    {
+                        chargeShare.charge = [&slot, &chargedWhileDecoding, &shareRefused](std::size_t bytes)
+                        {
+                            shareRefused = !slot->charge(bytes);
+                            if (shareRefused)
+                            {
+                                return false;
+                            }
+                            chargedWhileDecoding += bytes;
+                            return true;
+                        };
+                        chargeShare.refund = [&slot, &chargedWhileDecoding](std::size_t bytes)
+                        {
+                            slot->refund(bytes);
+                            chargedWhileDecoding -= std::min(bytes, chargedWhileDecoding);
+                        };
+                    }
+                    const auto decodeError = bodyDecoder->decode(contentEncoding, authRequest.payload, chargeShare);
                     if (decodeError != remoted::auth::AuthError::None)
                     {
-                        responder->send(errorResponseFor(decodeError));
+                        responder->send(shareRefused
+                                            ? errorResponseFor(remoted::auth::AuthError::AgentBusy, authRequest.agentId)
+                                            : errorResponseFor(decodeError));
                         return;
+                    }
+
+                    if (slot)
+                    {
+                        // Whatever decoding did not charge: the whole body when it was not encoded,
+                        // nothing when the decoder already charged its output capacity.
+                        const auto bodySize = authRequest.payload.bytes().size();
+                        if (bodySize > chargedWhileDecoding && !slot->charge(bodySize - chargedWhileDecoding))
+                        {
+                            responder->send(errorResponseFor(remoted::auth::AuthError::AgentBusy, authRequest.agentId));
+                            return;
+                        }
+                        // From here on the responder carries the slot and gives it back when the
+                        // reply leaves -- the handler's answer included, however late.
+                        responder = std::make_shared<AdmittedResponder>(std::move(responder), std::move(*slot));
                     }
 
                     // Hand the handler a shared_ptr<const> so it can retain the verified

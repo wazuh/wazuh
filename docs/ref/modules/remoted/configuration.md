@@ -374,8 +374,6 @@ Two of the HTTPS routes cannot be put behind the bearer-token gateway, because t
 yet have the credential it verifies: `POST /enroll` (an enrolling agent has no `client.keys` entry
 yet) and `GET /cacerts` (a caller fetching the trust anchor does not have one yet by definition).
 For those two, these two options cap how fast the manager serves the route at all.
-`POST /enroll/secret` is authenticated, but it costs the manager the same `authd` round trip as
-`/enroll`, so it shares `/enroll`'s bucket and is charged **before** its bearer is verified.
 
 **Neither is written into the shipped `wazuh-manager.conf`** — the defaults below apply without any
 `<https>` block, and an operator only adds a line to change one.
@@ -413,14 +411,14 @@ counts what was refused.
 
 ### https.enroll_rate_limit
 
-Sustained requests per second the manager serves across `POST /enroll` and `POST /enroll/secret`
-together, counted for the two routes as a whole and not per agent.
+Sustained `POST /enroll` requests per second the manager serves, counted for the endpoint as a
+whole.
 
 - **Default value:** `100`
 - **Allowed values:** Integer from `0` to `100000`. `0` disables the limit.
 - **Note:** Short bursts of up to twice this value are absorbed before the rate paces them.
 - **Effect:** Requests over the limit are answered `429` with `Retry-After` **without reaching
-  authd** (on `/enroll/secret`, without even being authenticated), so a peer with no usable credential can no longer turn `/enroll` into an amplifier onto
+  authd**, so a peer with no usable credential can no longer turn `/enroll` into an amplifier onto
   the cluster's internal socket.
 - **Note:** Higher than `/cacerts`'s default even though it is the more expensive route: every agent
   must pass through it at least once (a bootstrap, or a mass re-enrollment after a credential
@@ -622,6 +620,12 @@ Capacity, in bytes, of the per-connection send buffer holding messages queued fo
 - **Allowed values:** Integer from `65536` to `1048576` (bytes)
 - **Note:** When it is full, remoted waits [`remoted.send_timeout_to_retry`](#remotedsend_timeout_to_retry)
   and tries once more (`Not enough buffer space. Retrying...` at debug level)
+- **Note:** `#pong` replies to `#ping` frames are queued here too, but never wait: a peer that lets
+  this buffer fill with replies it does not read is disconnected
+- **Note:** The same applies to the ACK remoted sends for every control message (keepalive, startup):
+  it never waits, and an agent whose buffer is full when its ACK is queued is disconnected
+  (`Agent '<id>' is not reading the messages sent to it on TCP peer [<socket>]. Closing.` at debug
+  level). The agent reconnects with its next message
 
 ### remoted.recv_timeout
 
@@ -653,6 +657,43 @@ Number of unacknowledged TCP keepalive probes before considering connection dead
 - **Default value:** `3`
 - **Allowed values:** Integer from `1` to `50`
 - **Note:** Total dead detection time = `tcp_keepidle + (tcp_keepintvl × tcp_keepcnt)`
+
+### remoted.unauthenticated_timeout
+
+Seconds a legacy TCP connection may stay open without authenticating, that is, without sending a
+message that decrypts with a registered agent's key. Connections still unauthenticated after this
+time are closed. Authenticated connections are never subject to it.
+
+- **Default value:** `60`
+- **Allowed values:** Integer from `10` to `3600` (seconds)
+- **Note:** A 4.x agent authenticates with the first message it sends after connecting, so normally
+  only peers without a key reach this limit. Closures are logged at debug level
+  (`TCP peer [<socket>] sent no authenticated message within <n> seconds. Closing.`)
+- **Note:** A connection counts as authenticated only once a
+  [`remoted.worker_pool`](#remotedworker_pool) thread has processed its first message, not when that
+  message arrives. If the workers fall more than this many seconds behind the input queue (for example
+  while a large 4.x fleet reconnects after a restart), legitimate agents are closed too and have to
+  reconnect. If those closures show up without an attack, raise this value
+
+### remoted.unauthenticated_max
+
+Maximum number of legacy TCP connections open at once without having authenticated (see
+[`remoted.unauthenticated_timeout`](#remotedunauthenticated_timeout)). A new connection arriving at
+the cap is closed immediately, so peers without a key cannot exhaust the descriptors the registered
+agents need.
+
+- **Default value:** `16384`
+- **Allowed values:** Integer from `64` to `1048576`
+- **Note:** Refusals are logged as a warning at most once a minute, with the number refused since the
+  previous one (`Refused <n> legacy TCP connection(s): ...`). Refusals that stop within that minute are
+  still reported once it is up
+- **Note:** Keep it well below [`remoted.rlimit_nofile`](#remotedrlimit_nofile): the default is a
+  quarter of that option's default. When the legacy TCP listener is enabled and this value is above
+  half the effective descriptor limit (after any lowering to the hard limit), remoted logs a warning at
+  start: `remoted.unauthenticated_max (<n>) is above half the file descriptor limit (<limit>): ...`
+- **Note:** When a large 4.x fleet reconnects at once (for example after a manager restart), each
+  connection counts until its first message is processed. If the warning appears without an
+  attack, raise this value
 
 ### remoted.merge_shared
 
@@ -850,8 +891,11 @@ Seconds to wait for a full request to arrive on a connection.
 
 - **Default value:** `10`
 - **Allowed values:** Integer from `1` to `300`
-- **Note:** The clock starts as soon as the connection is established, so this also bounds a
-  stalled TLS handshake -- there is no separate handshake timeout
+- **Note:** The same value also bounds the TLS handshake, on a clock of its own that starts when
+  the connection is accepted: a peer that has not completed the handshake by then is disconnected
+  and its connection slot released. The request clock starts only once the handshake has
+  succeeded, so a connection gets up to this long for each. Handshakes closed this way are counted
+  in [`remoted.server.handshake.timeouts.total`](metrics.md#public-transport-backpressure--remotedserverbudget)
 - **Note:** It is a **total** deadline on receiving the request, not an idle timer: it is armed
   once and never rearmed as bytes arrive, so a body that takes longer than this to upload is cut
   even though it never stalled, and the connection is closed without an HTTP status. This is the
@@ -959,6 +1003,10 @@ Maximum simultaneous HTTPS connections.
   than as an error the agent can see. There is consequently no rejection counter for it — watch
   [`remoted.server.connections.open`](metrics.md#public-transport-backpressure--remotedserverbudget)
   against `.max` instead, which is the only visibility into how close the listener is running to it.
+- **Note:** A connection takes its slot when it is accepted, before the TLS handshake. A peer that
+  never completes the handshake keeps it for at most
+  [`remoted.http_read_timeout`](#remotedhttp_read_timeout), and one address can hold at most
+  [`remoted.max_handshakes_per_source`](#remotedmax_handshakes_per_source) slots that way.
 - **Note:** Bounds the read-phase memory peak (~`max_parallel_connections` × `max_body_size`). Also
   the only bound on concurrent streamed responses (`POST /download`): chunked output rearms
   `remoted.http_write_timeout` per chunk and there is no per-stream limiter, so a fast reader holds
@@ -968,6 +1016,26 @@ Maximum simultaneous HTTPS connections.
   fetching a WPK at once, many over slow links) is therefore bounded only by this value. Started transfers and
   offered bytes are visible as `remoted.download.*` in
   [`GET /metrics`](metrics.md#downloads--remoteddownload).
+
+#### remoted.max_handshakes_per_source
+
+Maximum connections from one address that may be in the TLS handshake at once. One more from that
+address is disconnected as soon as it is accepted.
+
+- **Default value:** `32`
+- **Allowed values:** Integer from `0` to `65536` (`0` disables the cap)
+- **Note:** A connection takes one of the
+  [`remoted.max_parallel_connections`](#remotedmax_parallel_connections) slots when it is accepted,
+  before the handshake. Without this cap a single host could hold every slot by connecting and never
+  completing a handshake, reconnecting each time
+  [`remoted.http_read_timeout`](#remotedhttp_read_timeout) disconnects it.
+- **Note:** Only connections still in the handshake are counted, never established ones. An agent
+  completes its handshake in milliseconds, so a fleet that reaches the manager through one address
+  (behind NAT, or an L4 load balancer that does not preserve the client address) is not limited by
+  it in normal operation. Raise it only if that address legitimately opens many connections at the
+  same instant, for example after a manager restart, and
+  [`remoted.server.handshake.rejected_per_source.total`](metrics.md#public-transport-backpressure--remotedserverbudget)
+  moves while no attack is under way.
 
 #### remoted.max_deferred_requests
 
@@ -986,6 +1054,54 @@ Maximum requests parked awaiting a downstream service before replying with HTTP 
   downstream service is slow. Live occupancy and the cumulative shed count are visible as
   `remoted.forwarder.deferred.*` in
   [`GET /metrics`](metrics.md#deferred-forwarding--remotedforwarderdeferred).
+
+#### remoted.max_requests_per_agent
+
+Maximum requests a single agent may have open at once on the authenticated routes. One more is
+answered HTTP 503 before its body is decoded.
+
+- **Default value:** `6`
+- **Allowed values:** Integer from `1` to `65536`
+- **Note:** The other capacity limits (`max_inflight_bytes`, `max_deferred_requests`,
+  `max_parallel_connections`) are shared by every agent. This is the one that stops a single agent
+  from filling them and starving the rest of the fleet. An honest agent never has more than five
+  requests open (four in normal operation, plus a WPK download during an upgrade), so the default
+  is never reached in normal operation. Lowering it below `5` makes ordinary agents hit it.
+- **Note:** Counted per verified agent id, from the moment the bearer is accepted until the reply
+  has left: a buffered reply when it is handed to the transport, a streamed `/download` when the
+  transfer ends, however slowly the agent reads it. No `Retry-After` header is sent; the agent
+  retries as for any other `503`. Refusals are visible as `remoted.auth.reject.agent_busy` in
+  [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject). A rising count from one
+  agent points at a misbehaving or compromised agent, not at a capacity problem.
+- **Note:** remoted stops counting a `/stateful` request when it stops waiting for it, at
+  `remoted.downstream_stateful_response_timeout`. The inventory sync server keeps its own per-agent
+  count for the work it is still doing,
+  [`inventory_sync_server_max_sessions_per_agent`](../inventory-sync-server/configuration.md#wazuh_modulesinventory_sync_server_max_sessions_per_agent).
+
+#### remoted.max_inflight_bytes_per_agent
+
+Maximum bytes of decoded request bodies a single agent may hold at once, across all its open
+requests on the authenticated routes.
+
+- **Default value:** `0`, meaning half of [`remoted.max_inflight_bytes`](#remotedmax_inflight_bytes)
+  (128 MiB with the defaults)
+- **Allowed values:** Integer from `0` to `1073741824` (1 GiB). A value below
+  [`remoted.auth_max_decoded_body_size`](#remotedauth_max_decoded_body_size) is raised to it, with a
+  warning, so a body accepted on the other routes can always be charged. The default is raised the
+  same way, silently. If the resulting share is not below `remoted.max_inflight_bytes`, it no longer
+  keeps one agent from holding the whole budget, and remoted logs a warning at start naming the
+  option that causes it — `remoted.auth_max_decoded_body_size` or this one. Keep
+  `remoted.max_inflight_bytes` at least twice `remoted.auth_max_decoded_body_size`.
+- **Note:** This is also the decoded-size cap of `POST /stateful`. A vulnerability-detection first
+  sync sends the host's whole inventory in a single session that the agent cannot split, so that
+  route cannot live with the 32 MiB that is generous for the others. The share is what still keeps
+  one agent from holding the budget: whatever its requests and routes, it holds at most this much.
+- **Note:** A body larger than the whole share is answered `413`, and counted as
+  `remoted.auth.reject.body_too_large`. A host whose `/stateful` sessions keep getting that
+  answer has an inventory too large to sync. Raise this value, and `max_inflight_bytes` with it,
+  since the agent cannot send it in smaller parts. A body that fits the share but not what the
+  agent's other open requests leave of it is answered `503` and counted as
+  `remoted.auth.reject.agent_busy`; it fits once one of them is answered.
 
 #### remoted.http_stream_chunk_size
 
@@ -1133,9 +1249,10 @@ Hard cap on the authenticated request body size, in bytes (checked by the auth m
 independent of the transport's own body cap -- [`https.max_body_size`](#httpsmax_body_size), a
 regular `<remote>` setting, not an internal option).
 
-Applies to the body **as received on the wire**. It does not bound a `Content-Encoding: zstd` body
-once decompressed -- that is bounded by the in-flight memory budget instead (`max_inflight_bytes`);
-see [HTTPS Agent API](https-events-api.md#content-encoding-zstd). Rejections against either cap
+Applies to the body **as received on the wire**. A `Content-Encoding: zstd` body, once
+decompressed, is bounded by [`remoted.auth_max_decoded_body_size`](#remotedauth_max_decoded_body_size)
+and by the in-flight memory budget (`max_inflight_bytes`); see
+[HTTPS Agent API](https-events-api.md#content-encoding-zstd). Rejections against any of the three
 are visible as `remoted.auth.reject.body_too_large` in
 [`GET /metrics`](metrics.md#authentication-rejections--remotedauthreject).
 
@@ -1147,6 +1264,25 @@ are visible as `remoted.auth.reject.body_too_large` in
   instead of being cut at the transport with no response at all. The agent's own ceiling is
   `<client><batch><size>` (1 MiB by default), which also bounds `/stateful` sessions, so the
   default leaves 5x headroom — raise this one if that setting is raised.
+
+#### remoted.auth_max_decoded_body_size
+
+Hard cap on an authenticated request body **after** `Content-Encoding: zstd` decompression, in
+bytes. A frame that declares a larger size is refused before anything is allocated. A streamed
+frame is refused as soon as its output would cross the cap. Either way the answer is HTTP 413.
+
+- **Default value:** `33554432` (32 MiB)
+- **Allowed values:** Integer from `1048576` (1 MiB) to `1073741824` (1 GiB). A value below
+  [`remoted.auth_max_body_size`](#remotedauth_max_body_size) is raised to it, with a warning, so a
+  body accepted on the wire is never refused once decoded.
+- **Note:** Without this cap, one enrolled agent could send a zstd frame of a few kilobytes that
+  decompressed into the whole in-flight budget, and every other agent was answered `503` until it
+  was released. It is larger than `auth_max_body_size` on purpose. The agent sizes its batches
+  before compressing them (`<client><batch><size>`), so legitimate bodies decode well past 5 MiB.
+- **Note:** Applies to every authenticated route except `POST /stateful`, whose cap is the agent's
+  whole byte share, [`remoted.max_inflight_bytes_per_agent`](#remotedmax_inflight_bytes_per_agent):
+  a vulnerability-detection first sync carries a host's whole inventory and cannot be split. What
+  one agent holds in total, on any route, is bounded by that share.
 
 #### remoted.control_keepalive_throttle
 

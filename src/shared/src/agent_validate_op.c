@@ -205,6 +205,18 @@ int OS_IsValidAgentInsertID(const char *id)
     return errno == 0 && '\0' == *endptr && value > 0 && value <= INT32_MAX;
 }
 
+int OS_CanonicalAgentInsertID(const char *id, char *out, size_t size)
+{
+    int written;
+
+    if (!out || size == 0 || !OS_IsValidAgentInsertID(id)) {
+        return -1;
+    }
+
+    written = snprintf(out, size, "%03ld", strtol(id, NULL, 10));
+    return written > 0 && (size_t)written < size ? 0 : -1;
+}
+
 /* Get agent name of ID */
 char *getNameById(const char *id)
 {

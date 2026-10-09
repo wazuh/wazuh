@@ -12,7 +12,7 @@ DIR=`dirname $PWD`;
 
 # Installation info
 VERSION="v5.0.0"
-REVISION="rc1"
+REVISION="rc2"
 TYPE="agent"
 
 ###  Do not modify below here ###
@@ -21,6 +21,13 @@ DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-ex
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
+
+# glibc >= 2.43 backs every aarch64 malloc arena with 2 MiB huge pages. Kept if already set:
+# operator choice, or a reload launched by a daemon that inherited it.
+case ":${GLIBC_TUNABLES}:" in
+    *:glibc.malloc.hugetlb=*) ;;
+    *) GLIBC_TUNABLES="glibc.malloc.hugetlb=0${GLIBC_TUNABLES:+:$GLIBC_TUNABLES}"; export GLIBC_TUNABLES ;;
+esac
 
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"

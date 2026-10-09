@@ -1,7 +1,10 @@
 #include <base/json.hpp>
 
+#include <cstdint>
+#include <cstdlib>
 #include <exception>
 #include <limits>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -13,15 +16,131 @@ namespace
 {
 constexpr auto INVALID_POINTER_TYPE_MSG = "Invalid pointer path '{}'";
 constexpr auto PATH_NOT_FOUND_MSG = "Path '{}' not found";
+
+// Tokens of a parsed pointer with every one marked as an object member name. rapidjson reads a token made only of
+// digits as an array index, and creating it on a node that is not an object yet reserves index + 1 elements; a name
+// token turns that node into an object instead. The names still point into `pointer`, which must outlive the result.
+std::vector<rapidjson::Pointer::Token> asMemberTokens(const rapidjson::Pointer& pointer)
+{
+    std::vector<rapidjson::Pointer::Token> tokens(pointer.GetTokens(), pointer.GetTokens() + pointer.GetTokenCount());
+    for (auto& token : tokens)
+    {
+        token.index = rapidjson::kPointerInvalidIndex;
+    }
+    return tokens;
+}
+
+// Exact-size copies of sub-values (Json(const rapidjson::Value&)): the pool of the new document is sized to what
+// CopyFrom will allocate, instead of the 64 KB chunk of a default document. The walk below mirrors rapidjson's
+// allocations; if it ever falls short the pool simply grows, it never corrupts.
+static_assert(!RAPIDJSON_USE_MEMBERSMAP, "copyFootprint assumes rapidjson's flat member storage");
+
+constexpr size_t align8(size_t bytes)
+{
+    return RAPIDJSON_ALIGN(bytes);
+}
+
+// Bytes the pool bookkeeping header (SharedData + ChunkHeader) takes inside a user-supplied block
+size_t poolHeaderBytes()
+{
+    static const size_t bytes = []()
+    {
+        // A heap block (malloc is 16-byte aligned, like the blocks of Json(ExactTag, ...)): with a stack buffer the
+        // compiler cannot tell that the allocator never frees a user-supplied block and warns
+        constexpr size_t probeSize = 256;
+        const std::unique_ptr<void, decltype(&std::free)> block {std::malloc(probeSize), &std::free};
+        if (!block)
+        {
+            return probeSize;
+        }
+        const rapidjson::MemoryPoolAllocator<> probe(block.get(), probeSize);
+        const auto capacity = probe.Capacity();
+        // Unexpected layout: a too large header only wastes bytes, a too small one would break the block
+        return capacity < probeSize ? probeSize - capacity : probeSize;
+    }();
+    return bytes;
+}
+
+// Longest string rapidjson stores inline in the value (no allocation): 13 chars on x86_64, 21 on aarch64
+size_t maxInlineStringLength()
+{
+    static const size_t length = []()
+    {
+        constexpr size_t maxProbe = 64;
+        constexpr size_t probeChunk = 256;
+        const std::string text(maxProbe, 'x');
+        size_t inlineMax = 0;
+        for (size_t len = 1; len <= maxProbe; ++len)
+        {
+            // Small chunks: the first length that allocates takes one 256-byte chunk and ends the probe
+            rapidjson::MemoryPoolAllocator<> probe(probeChunk);
+            const rapidjson::Value value(text.data(), static_cast<rapidjson::SizeType>(len), probe);
+            if (probe.Size() != 0)
+            {
+                return inlineMax;
+            }
+            inlineMax = len;
+        }
+        // Unexpected: nothing allocated. Count every string as allocated (a larger pool, never a smaller one)
+        return size_t {0};
+    }();
+    return length;
+}
+
+// Bytes CopyFrom(value, allocator, true) allocates from the destination pool. The walk starts at depth 0 and stops
+// past MAX_DEPTH (one level more than the parser admits); deeper levels are not counted, so the pool grows for them.
+// CopyFrom itself recurses to the full depth.
+size_t copyFootprint(const rapidjson::Value& value, size_t inlineMax, size_t depth)
+{
+    if (depth > json::Json::MAX_DEPTH)
+    {
+        return 0;
+    }
+
+    switch (value.GetType())
+    {
+        case rapidjson::kStringType:
+        {
+            const size_t length = value.GetStringLength();
+            return length > inlineMax ? align8((length + 1) * sizeof(rapidjson::Value::Ch)) : 0;
+        }
+        case rapidjson::kArrayType:
+        {
+            size_t bytes = align8(value.Size() * sizeof(rapidjson::Value));
+            for (const auto& item : value.GetArray())
+            {
+                bytes += copyFootprint(item, inlineMax, depth + 1);
+            }
+            return bytes;
+        }
+        case rapidjson::kObjectType:
+        {
+            size_t bytes = align8(value.MemberCount() * sizeof(rapidjson::Value::Member));
+            for (const auto& member : value.GetObject())
+            {
+                bytes += copyFootprint(member.name, inlineMax, depth + 1);
+                bytes += copyFootprint(member.value, inlineMax, depth + 1);
+            }
+            return bytes;
+        }
+        default: return 0;
+    }
+}
+
+size_t exactPoolBytes(const rapidjson::Value& value)
+{
+    return copyFootprint(value, maxInlineStringLength(), 0);
+}
 } // namespace
 
 namespace json
 {
 
 Json::Json(const rapidjson::Value& value)
-    : m_document {rapidjson::Document()}
+    : Json(ExactTag {}, exactPoolBytes(value))
 {
-    m_document.CopyFrom(value, m_document.GetAllocator());
+    // Const strings are copied as well: the walk counts them, and the copy must not point into the source
+    m_document.CopyFrom(value, m_document.GetAllocator(), /*copyConstStrings=*/true);
 }
 
 Json::Json(const rapidjson::GenericObject<true, rapidjson::Value>& object)
@@ -96,6 +215,15 @@ Json::Json(CompactTag, size_t capacityHint)
     : m_compactBuffer {std::make_unique<uint8_t[]>(compactInitialCapacity(capacityHint))}
     , m_ownAllocator {std::make_unique<rapidjson::MemoryPoolAllocator<>>(
           m_compactBuffer.get(), compactInitialCapacity(capacityHint), COMPACT_CHUNK_CAPACITY)}
+    , m_document {m_ownAllocator.get()}
+{
+}
+
+Json::Json(ExactTag, size_t poolBytes)
+    // new[] on purpose: make_unique<uint8_t[]> would zero the whole block, which CopyFrom overwrites anyway
+    : m_compactBuffer {new uint8_t[poolHeaderBytes() + poolBytes]}
+    , m_ownAllocator {std::make_unique<rapidjson::MemoryPoolAllocator<>>(
+          m_compactBuffer.get(), poolHeaderBytes() + poolBytes, COMPACT_CHUNK_CAPACITY)}
     , m_document {m_ownAllocator.get()}
 {
 }
@@ -503,6 +631,7 @@ std::optional<std::vector<Json>> Json::getArray(std::string_view path) const
         if (value && value->IsArray())
         {
             std::vector<Json> result;
+            result.reserve(value->Size());
             for (const auto& item : value->GetArray())
             {
                 result.push_back(Json(item));
@@ -526,6 +655,7 @@ std::optional<std::vector<std::tuple<std::string, Json>>> Json::getObject(std::s
         if (value && value->IsObject())
         {
             std::vector<std::tuple<std::string, Json>> result;
+            result.reserve(value->MemberCount());
             for (auto& [key, value] : value->GetObject())
             {
                 result.emplace_back(std::make_tuple(key.GetString(), Json(value)));
@@ -1071,6 +1201,36 @@ void Json::setDouble(double_t value, std::string_view path)
     if (pp.IsValid())
     {
         pp.Set(m_document, value);
+        return;
+    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+}
+
+void Json::setStringAsMembers(std::string_view value, std::string_view path)
+{
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
+
+    if (pp.IsValid())
+    {
+        const auto tokens = asMemberTokens(pp);
+        const auto* data = value.data() ? value.data() : "";
+        rapidjson::Value v(data, static_cast<rapidjson::SizeType>(value.size()), m_document.GetAllocator());
+        rapidjson::Pointer(tokens.data(), tokens.size()).Set(m_document, v);
+        return;
+    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+}
+
+void Json::setNullAsMembers(std::string_view path)
+{
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
+
+    if (pp.IsValid())
+    {
+        const auto tokens = asMemberTokens(pp);
+        rapidjson::Pointer(tokens.data(), tokens.size()).Set(m_document, rapidjson::Value().SetNull());
         return;
     }
 

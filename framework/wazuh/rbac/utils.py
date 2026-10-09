@@ -144,16 +144,25 @@ def canonical_id(resource_type: str, value):
     -------
     Any
         `str(int(value))` for the integer resources, `str(int(value)).zfill(3)` for agents, or the
-        value unchanged when it is not a string of ASCII digits (wildcards, names, None) or belongs to
-        any other resource type.
+        value unchanged when `int()` does not read it as a non-negative integer (wildcards, names,
+        None) or it belongs to any other resource type.
+
+    Notes
+    -----
+    Every string `int()` accepts is rewritten, not only ASCII digits: `int()` also reads surrounding
+    whitespace (`5\\n`), non-ASCII decimal digits, `+` and `_`, and the sinks will cast whatever the
+    decorator lets through. Anything left unchanged here must therefore be something no sink can turn
+    into a non-negative id.
     """
-    if not isinstance(value, str) or not value.isascii() or not value.isdigit():
+    if not isinstance(value, str) or (resource_type != AGENT_RESOURCE and resource_type not in INTEGER_RESOURCES):
         return value
-    if resource_type == AGENT_RESOURCE:
-        return str(int(value)).zfill(3)
-    if resource_type in INTEGER_RESOURCES:
-        return str(int(value))
-    return value
+    try:
+        number = int(value)
+    except ValueError:
+        return value
+    if number < 0:
+        return value
+    return str(number).zfill(3) if resource_type == AGENT_RESOURCE else str(number)
 
 
 def canonical_resource(resource: str) -> str:

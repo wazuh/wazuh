@@ -1914,7 +1914,7 @@ static void test_read_agent_batch_survives_a_missing_file(void **state) {
     assert_int_equal(batch.interval, 42);
 }
 
-/* Deprecated legacy-TCP options: accepted, ignored, warned (#37702 restriction 4) */
+/* Deprecated legacy-TCP options: accepted, ignored, reported (#37702 restriction 4) */
 
 static void test_time_reconnect_is_deprecated(void **state) {
     OS_XML xml = {0};
@@ -1925,7 +1925,7 @@ static void test_time_reconnect_is_deprecated(void **state) {
         "<manager><endpoint>10.0.0.1:1517</endpoint></manager>"
         "<time-reconnect>60</time-reconnect>";
 
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__minfo, formatted_msg,
                   "The <time-reconnect> option is deprecated and no longer has any effect.");
 
     assert_int_equal(parse_agent(xml_str, &xml, &nodes, &cfg), 0);

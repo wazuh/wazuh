@@ -393,7 +393,7 @@ class RBAChecker:
         list_roles = list()
         for role in self.roles_list:
             for rule in role['rules']:
-                # wazuh-wui has id 2
+                # wazuh-internal-client has id 2
                 try:
                     if (rule['id'] > orm.MAX_ID_RESERVED or self.user_id == 2) and self.check_rule(rule['rule']):
                         list_roles.append(role['id'])

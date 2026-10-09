@@ -28,14 +28,17 @@
 static void w_agentd_keys_init (void);
 STATIC void send_msg_on_startup(void);
 
-/* Arm the startup gate and block until the agent has a usable key, enrolling
- * if needed (see w_agentd_keys_init()). Must complete before the HTTPS client
+/* Arm the startup gate, make the shared configuration directory consistent
+ * with merged.mg (see w_https_client_reconcile_shared_config()), and block until
+ * the agent has a usable key, enrolling if needed (see w_agentd_keys_init()).
+ * Must complete before the HTTPS client
  * is ever started: bridge_build_config() reads client.keys exactly once, at
  * hc_create() time, with no retry -- if it sees an empty keystore there the
  * client never runs, silently, for the rest of the process's life. */
 void start_agent_prepare(void)
 {
     startup_gate_initialize();
+    w_https_client_reconcile_shared_config();
     w_agentd_keys_init();
 }
 
@@ -149,12 +152,12 @@ w_enroll_status_t try_enroll_to_server(void) {
     mdebug1("Waiting %ld seconds before server connection", (long)agt->enrollment.delay_after_enrollment);
     sleep(agt->enrollment.delay_after_enrollment);
 
-    /* Under the keystore writer lock (#39315): OS_UpdateKeys() frees every keyentry and the
-     * id/raw_key strings inside it before reading the replacements, and this runs on the
-     * re-enrollment thread while other threads may be reading that same keystore -- the
-     * re-enrollment secret bootstrap wakes up to a minute after start and does exactly that.
-     * The crypto-method reset is inside the same critical section: it walks the entries this call
-     * just installed, and a reader seeing the keystore between the two would see them half set up. */
+    /* Under the keystore writer lock: OS_UpdateKeys() frees every keyentry and the id/raw_key
+     * strings inside it before reading the replacements. No reader runs concurrently today (see
+     * g_agent_keys_lock); the lock is defensive, for any future reader outside the re-enrollment
+     * thread. The crypto-method reset is inside the same critical section: it walks the entries
+     * this call just installed, and a reader seeing the keystore between the two would see them
+     * half set up. */
     w_agent_keys_write_lock();
     /* Successful enroll, read keys */
     OS_UpdateKeys(&keys);

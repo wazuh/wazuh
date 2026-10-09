@@ -121,8 +121,9 @@ class WazuhException(Exception):
                'remediation': 'Please, provide a well-formed XML file with the single root <wazuh_config>: unescaped '
                               '& or <, legacy comments and multiple roots are not accepted.'},
         1132: {'message': 'Secret option was modified',
-               'remediation': 'Changing the cluster key requires the `cluster:read_secrets` action over the node. '
-                              'Send the key back as returned by the API (masked as `*****`) to keep the current one.'},
+               'remediation': 'Changing the cluster key or the indexer section (hosts, TLS) requires the '
+                              '`cluster:read_secrets` action over the node. Send the key back as returned by the API '
+                              '(masked as `*****`) and the indexer section unchanged to keep the current ones.'},
 
         # Stats: 1300 - 1399
         1307: {'message': 'Invalid parameters',
@@ -436,6 +437,14 @@ class WazuhException(Exception):
                               'directory, is listed as an excluded file, or belongs to a cluster item which is not '
                               'allowed to be synchronized. Check the `WAZUH_HOME/logs/cluster.log` file to identify '
                               'the rejected file.'},
+        3063: {'message': 'Cluster protocol handshake failed',
+               'remediation': 'The peer did not open the connection with a supported cluster protocol preamble. '
+                              'Check that every node of the cluster runs the same Wazuh version and check the '
+                              '`WAZUH_HOME/logs/cluster.log` file for the rejected connection.'},
+        3064: {'message': 'Cluster message failed session verification',
+               'remediation': 'A message was decrypted but was not the next message of this connection, or its header '
+                              'did not match its contents. The connection was closed; it may indicate replayed or '
+                              'tampered cluster traffic. Check the `WAZUH_HOME/logs/cluster.log` file.'},
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
@@ -518,6 +527,8 @@ class WazuhException(Exception):
                'remediation': f'This limit can be changed in api.yaml file. More information here: https:/'
                               f'/documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html#'
                               f'configuration-file'},
+        6006: {'message': 'Too many login attempts are being processed',
+               'remediation': 'Try again later'},
         6002: {'message': 'The body type is not the one specified in the content-type'},
         6003: {'message': 'Error trying to load the JWT secret',
                'remediation': 'Make sure you have the right permissions: WAZUH_PATH/api/configuration/security/'
@@ -830,3 +841,11 @@ class IndexerUnavailableError(WazuhIndexerError):
     """
     _default_type = "about:blank"
     _default_title = "Wazuh Indexer Unavailable"
+
+
+class IndexerConfigurationError(IndexerUnavailableError):
+    """
+    Raised when the indexer cannot be used because of the manager's own configuration or credentials (the indexer
+    section, its hosts or TLS material, the keystore entries). Retrying without changing them cannot succeed.
+    """
+    _default_title = "Wazuh Indexer Misconfigured"

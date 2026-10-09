@@ -65,9 +65,8 @@ remoted_module/
     ├── send_download.py            # CLI to sign + POST /download: config/WPK, the 403 authorization
     │                               #   case, and a concurrency+RSS check (see below)
     ├── send_enroll.py              # CLI for POST /enroll in all three modes (open / password / mTLS)
-    ├── auth_class_matrix.py        # runs on a real manager: every 401 authentication class (and
-    │                               #   POST /enroll/secret) asserted by status, error code and
-    │                               #   WWW-Authenticate challenge
+    ├── auth_class_matrix.py        # runs on a real manager: every 401 authentication class
+    │                               #   asserted by status, error code and WWW-Authenticate challenge
     ├── monitor.py                  # samples remoted from /proc while a load test runs (connections,
     │                               #   threads, fds, RSS, CPU as a counter delta) -- pairs with
     │                               #   send_download.py; NOT the metrics scraper
@@ -107,8 +106,48 @@ src/http_server/
 ├── tlsInventory.hpp/.cpp    # TlsInventory (served leaf + CA snapshot from ONE call) and the GET /tls document
 ├── httpServerConfig.hpp/.cpp# buildHttpServerConfig(): C-ABI struct -> HttpServerConfig (+ fallbacks)
 ├── httpServerFactory.hpp    # makeHttpServer() -> the single transport swap point
+├── handshakeLedger.hpp/.cpp # connections holding a slot, which are mid-handshake and from where; the
+│                            #   per-source handshake cap (RESTinio-free, unit-tested without a socket)
+├── handshakeMetrics.hpp     # names of the handshake-guard pulls (remoted.server.connections.handshaking,
+│                            #   remoted.server.handshake.*)
+├── guardedTlsSocket.hpp     # PRIVATE to the .cpp: RESTinio's TLS socket + a deadline on the handshake
+│                            #   (traits customization point; see "TLS handshake guard" below)
 └── RestinioHttpServer.hpp/.cpp # RESTinio + OpenSSL implementation (PImpl hides RESTinio in the .cpp)
 ```
+
+- **TLS handshake guard (`guardedTlsSocket.hpp`, `handshakeLedger.hpp`; issue #6883):** RESTinio
+  0.7.x takes one of `max_parallel_connections`' slots when it accepts a socket, but arms the
+  connection's first timer only in the handshake's *success* callback
+  (`connection_t::init()` → `prepare_connection_and_start_read()`). `read_next_http_message_timelimit`
+  therefore never covered the handshake, contrary to what this module used to say, and a peer that
+  connected and sent nothing held its slot until it chose to leave: 256 such sockets locked every
+  agent out. Two guards close it, without patching RESTinio:
+    1. **A deadline on the handshake**, equal to `remoted.http_read_timeout` (no new knob: it is the
+       window an honest peer already gets to send its request, and a handshake takes milliseconds).
+       `ServerTraits` uses `GuardedTlsSocket` (a `tls_socket_t`) as its stream socket, and its
+       `prepare_connection_and_start_read()` overload — found by ADL, preferred as the exact match —
+       runs RESTinio's handshake plus a `steady_timer`, both on one strand. On expiry the TCP socket
+       is shut down in both directions, which fails the handshake whatever step it is in (a pending
+       read gets EOF, a later one fails at once); RESTinio's own failure path then closes the
+       connection and frees the slot. Two RESTinio specializations carry the policy in
+       (`socket_type_dependent_settings_t::handshake_guard()`, `socket_supplier_t`). **Re-check the
+       three customization points when RESTinio is upgraded.**
+    2. **A per-source cap on handshakes in progress** (`remoted.max_handshakes_per_source`, default
+       32, 0 disables): one more connection from an address that already has that many mid-handshake
+       is closed at once. The deadline alone only turns "hold forever" into "reconnect every few
+       seconds", which one host does as cheaply. Only connections *in the handshake* count — an
+       honest one leaves it in milliseconds — so a fleet behind one NAT or L4-balancer address, which
+       shares all its *established* connections, is not limited by it. A cap on all connections per
+       source was rejected for exactly that reason.
+
+  The same ledger fixes `remoted.server.connections.open`, which was counted from RESTinio's
+  `accepted` notice (sent only after a successful handshake) against its `closed` notice (sent after
+  a failed one too): it underflowed on every port scan, plain-HTTP probe or rejected client
+  certificate, and never saw a stalled socket. A connection is now counted from the start of its
+  handshake — when it already holds its slot — to its close, keyed by connection id so a repeated or
+  unmatched notice is a no-op. Both guards are WARN-logged (throttled, with the count and the last
+  peer) and counted: `remoted.server.connections.handshaking`,
+  `remoted.server.handshake.{timeouts,rejected_per_source}.total`.
 
 - **Certificate status (`tlsCertificateStatus.hpp`, `IHttpServer::certificateStatus()`):** when
   `start()` builds the TLS context it evaluates the leaf it just loaded — days to `notAfter`
@@ -155,7 +194,7 @@ src/http_server/
   request and responder, offload the blocking work, and call `responder->send(...)` later from any
   thread. The request is a `shared_ptr<const>` so it can travel across deferred pipeline stages;
   keeping it alive keeps its in-flight byte reservation charged (see below).
-- **Memory management (layered):** the worker-pool queue is unbounded on its own, so four layers
+- **Memory management (layered):** the worker-pool queue is unbounded on its own, so five layers
   bound memory:
     1. **In-flight byte budget** — the transport reserves each request's payload (`body + a small
        per-request overhead`) against a global budget *before* handing it to the worker pool. When
@@ -189,13 +228,74 @@ src/http_server/
        request's peak.
     3. **`maxParallelConnections`** — bounds simultaneous connections, so the read-phase peak (bodies
        still arriving, before they reach the budget) is bounded by `maxParallelConnections *
-       maxBodySize`.
+       maxBodySize`. A slot is taken at accept, *before* the TLS handshake; the *TLS handshake
+       guard* above bounds how long a peer that never completes one can hold it, and how many one
+       address can hold that way.
     4. **Deferred-work limiter** (`max_deferred_requests`) — a **count**-based sibling of the byte
        budget (`downstream/deferredWorkLimiter.hpp`) that bounds how many requests are **parked
        awaiting a downstream service**. A `Slot` is acquired before forwarding and held (RAII) until
        the reply is sent; when full, the forwarder sheds with the same plain **`503`**. This is the
        second phase of a two-phase backpressure: the byte budget covers *receive + send* (and is
        released once the payload has been sent), the deferred limiter covers *the wait*.
+    5. **Per-agent share** (`max_requests_per_agent`, default 6; `max_inflight_bytes_per_agent`,
+       default half of `max_inflight_bytes`) — layers 1–4 are global, so on their own one enrolled
+       agent could fill every one of them. The agent holds its own key and can mint as many bearers
+       as it likes, so a single agent could take the whole byte budget through zstd and all 128
+       deferred slots. Every other agent then got a `503`, ingest on `/stateless` included.
+       `AgentRequestLimiter` (`endpoints/agentRequestLimiter.hpp`) counts, per **verified** agent id,
+       the requests open and the decoded-body bytes they hold. The `AuthGateway` acquires a `Slot`
+       right after the token is verified and the wire-body cap passes, and before the body is
+       decoded. It charges the body to that slot **while it decodes**: the decoder offers every growth
+       of its output to the slot (`IBodyDecoder`'s `DecodeCharge`) before it reserves shared budget
+       for it, refunds a charged growth the shared budget then refuses (the decoder retries it at
+       exactly the bytes needed, which would otherwise be charged a second time), and an unencoded
+       body is charged whole once `decode()` returns. A refused growth answers `503` only when it
+       is what ended the decode: a refused doubling whose smaller retry fits decodes as usual.
+       Charging only after
+       decoding was not enough: each of one agent's parallel zstd frames held up to the route's cap
+       of the *shared* budget for its whole decode — the agent's entire share on `/stateful` — before
+       the share check ever ran, so a few frames that merely claimed a large size starved the fleet
+       in a loop. Only then does the gateway wrap the responder in an `AdmittedResponder` that holds
+       the slot until the reply leaves:
+       - a buffered reply releases it when the reply is handed to the transport;
+       - a streamed one moves it into the stream source (`AdmittedByteSource`), which the transport's
+         pump drops when the transfer ends (finished, failed, peer gone, or teardown), so a slow
+         `/download` counts for as long as it runs;
+       - a responder dropped unanswered releases it in its destructor.
+
+       `send()`/`stream()` may race (the forwarder's pool thread against the gateway's 500 after a
+       handler throws). The transport's send-once keeps the reply safe; an atomic flag in
+       `AdmittedResponder` makes only the first caller touch the slot, which is not thread-safe on
+       its own — a double release would let the agent past its cap and wrap its byte total.
+
+       Releasing on the reply, not when the request object dies, is deliberate. The deferred
+       forwarder drops the request at *send* time to free the byte budget, long before the
+       downstream answers, and `/download` releases its payload before it streams. A slot tied to the
+       request would therefore stop counting exactly while the agent is waiting.
+
+       Over the request cap, or over what the agent's other open requests leave of its byte share,
+       the answer is a plain **`503`**, with no `Retry-After`, as for every other shed. It is counted
+       as `remoted.auth.reject.agent_busy` and logged through a throttled WARN that names both
+       options. A body larger than the whole share is a `413` from the decoder (below). The table
+       holds only agents with a request open: an entry is erased when its count drops to 0, so the
+       table never grows with the number of agents, only with the requests in flight, which
+       `max_parallel_connections` already bounds.
+
+       Six requests is above an honest agent's peak. The agent's HTTPS client runs four blocking
+       threads (control, stateless, stateful, reporter), plus one WPK download thread during an
+       upgrade, and drains every module's `/stateful` sessions through one queue. The byte share is
+       what lets `/stateful` accept a body far larger than every other route's (see
+       [Body decoding](#body-decoding-srcdecoding)) without letting that agent hold the budget:
+       whatever its requests and routes, one agent holds at most half of it by default, and the rest
+       of the fleet keeps the other half.
+
+       What this layer does **not** bound is downstream work remoted has given up on. At
+       `downstream_stateful_response_timeout` remoted answers the agent `503` and frees its slot, but
+       inventory-sync keeps the admitted session queued. So inventory-sync keeps its own per-agent
+       count of pending sessions (its D28) rather than relying on this one.
+
+       Both options are internal options rather than XML, because they bound a misbehaving agent,
+       which is not something an operator tunes per deployment.
 - **Single-copy payload + early release:** the payload is copied exactly **once** — into the shared
   `RequestContext`. RESTinio's original buffer is freed on the I/O thread right after (the responder
   is a pre-created `response_builder` that no longer holds the request handle), the auth middleware
@@ -230,15 +330,20 @@ src/http_server/
        deterministic ERROR when either is missing or unreadable, so this module's own load
        failure only fires for files that exist and are readable but unusable.
     3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
-       `max_parallel_connections` (default 256) and `max_deferred_requests` (default 128) --
-       populated from the `remoted.max_inflight_bytes`/`remoted.max_parallel_connections`/
-       `remoted.max_deferred_requests` internal options in `secure.c` (same pattern as group 1).
+       `max_parallel_connections` (default 256), `max_handshakes_per_source` (default 32; 0 is a
+       real setting, "no cap", so it travels with a `_set` flag like `jwt_clock_skew`),
+       `max_deferred_requests` (default 128),
+       `max_requests_per_agent` (default 6) and `max_inflight_bytes_per_agent` (default 0, meaning
+       half of `max_inflight_bytes`) -- populated from the `remoted.max_inflight_bytes`/
+       `remoted.max_parallel_connections`/`remoted.max_handshakes_per_source`/`remoted.max_deferred_requests`/
+       `remoted.max_requests_per_agent`/`remoted.max_inflight_bytes_per_agent` internal options in
+       `secure.c` (same pattern as group 1).
        The transport still clamps the in-flight budget up to at least one max-size request at
        start(), so a too-small value can't reject everything.
     4. Downstream client + auth middleware tuning: `downstream_connect_timeout`,
        `downstream_write_timeout`, `downstream_response_timeout`, `downstream_io_threads`,
        `downstream_post_process_threads`, `downstream_max_response_body_size`,
-       `jwt_max_age`, `jwt_clock_skew`, `auth_max_body_size` -- populated from the
+       `jwt_max_age`, `jwt_clock_skew`, `auth_max_body_size`, `auth_max_decoded_body_size` -- populated from the
        `remoted.downstream_*`/`remoted.jwt_*`/`remoted.auth_*` internal options in `secure.c` and translated by
        `remoted::downstream::buildDownstreamConfig()` (`downstream/downstreamConfig.cpp`) and
        `remoted::auth::buildAuthConfig()` (`auth/authTypes.cpp`) respectively; the facade calls
@@ -276,8 +381,7 @@ src/endpoints/
 ├── iAgentGroupSource.hpp     # interface: the selector an authenticated agent may download
 ├── cacertsEndpoint.hpp/.cpp  # GET /cacerts: the CA the listener cert chains to, certificates only (no auth)
 ├── rateLimitGate.hpp/.cpp    # per-endpoint rate limit in front of the two unauthenticated routes
-└── reenrollSecretEndpoint.hpp/.cpp # POST /enroll/secret: a re-enrollment secret for an agent that
-                             #   already holds a key (authenticated; authd mints, the key is untouched)
+└── agentRequestLimiter.hpp   # per-agent open-request cap + the AdmittedResponder that releases it
 ```
 
 - **`rateLimitGate.hpp/.cpp` (ns `remoted::endpoints::ratelimit`):** `wrap()` takes a
@@ -317,29 +421,6 @@ src/endpoints/
 
   `EndpointRateLimiter::diagnostics()` reads the bucket **without charging it** — the facade
   publishes `available` as a pull metric, and a scrape must never cost an agent its enrollment.
-
-  **`wrap()` does not reach authenticated routes, so the gateway grew a gate of its own.**
-  `POST /enroll/secret` shares `/enroll`'s bucket (see its chapter below), and it is authenticated.
-  `wrap()` cannot express that: it takes and returns a `RouteHandler`, while
-  `AuthGateway::addAuthenticatedRoute()` takes an `AuthenticatedHandler` and builds the
-  `RouteHandler` itself, with `authenticate()` inside it — so a wrapped handler could only ever be
-  charged *after* authentication, which puts `401` before `429` and makes every refusal pay a
-  keystore lookup and an HMAC. `addAuthenticatedRoute()` therefore takes an optional
-  `AuthenticatedRouteGate` (limiter, 429-body factory, refusal counter, `EndpointHttpMetrics`, route
-  name), charged inside the registered lambda **before `authenticate()` and before the `receivedAt`
-  stamp**, reproducing `wrap()`'s semantics exactly — including recording **only**
-  `httpMetrics->responses.count(429)` and never the latency histogram. Default-constructed the gate
-  is inert and resolved once at registration, so the seven authenticated routes registered without one are untouched
-  and cost nothing. `AnEmptyBucketRefusesBeforeAuthenticationRuns` in `authGateway_test.cpp` is the
-  assertion that pins the ordering: with a drained bucket, a request carrying **no bearer at all**
-  is answered `429`, not `401`.
-
-  **The one failure mode no test catches by itself:** a gate handed a *null* limiter is silently
-  inert — no log, no error — and the route then ships unlimited. `m_enrollRateLimiter` is
-  constructed in `startHttpServer()` **after** the authenticated-route block, so the
-  `/enroll/secret` registration deliberately sits below that construction rather than with its
-  siblings. A registration moved back up would still pass every unit test, because those inject a
-  live limiter and never see the facade's construction order.
 
 - **`GET /cacerts` (`cacertsEndpoint.hpp/.cpp`, ns `remoted::endpoints::cacerts`):** with the health probe
   and `POST /enroll`, one of the three routes registered as a *raw* `addRoute()` — no `AuthGateway` (the caller holds
@@ -1074,7 +1155,7 @@ sequenceDiagram
     end
     EA-->>EP: EnrollmentGranted{tokenId?} / ReenrollmentRequested / AuthError
     Note over EP: parse JSON, validate name/version/groups/ip
-    EP->>AC: addAgent({name, ip, groups, key_hash, token_id?, reenroll?})
+    EP->>AC: addAgent({name, ip, groups, key_hash, token_id?, reenroll?, source})
     AC->>AD: {"function":"add","arguments":{...}} (SizeHeaderProtocol)
     AD-->>AC: {"error":0,"data":{id,name,ip,key,reenroll_secret}} or {"error":90xx,...}
     AC-->>EP: AuthdResult
@@ -1323,15 +1404,16 @@ distinguishable from a slow one (a fast "could not connect" instead of waiting o
 timeout). The response wait itself is bounded the same way authd's own `OS_SetRecvTimeout` bounds its
 side: `SO_RCVTIMEO`/`SO_SNDTIMEO` set directly on the connected socket.
 
-Wire request: `{"function":"add","arguments":{"name":...,"ip":...,"groups":...,"key_hash":...,"token_id":...,"reenroll":{"kid":...,"bearer":...}}}`,
-where the last two are optional and never sent together (issue #38993): `token_id` is the verified
+Wire request: `{"function":"add","arguments":{"name":...,"ip":...,"groups":...,"key_hash":...,"source":...,"token_id":...,"reenroll":{"kid":...,"bearer":...}}}`.
+`source` is the connection's peer address (`HttpRequest::remoteIp`), sent whatever `ip` resolved to:
+authd only logs it (`Agent key generated for agent 'N' (requested by <source>)`), and a worker
+forwards it to the master. The last two are optional and never sent together (issue #38993): `token_id` is the verified
 enrollment token id, exactly as the bearer's `kid` spelled it, so authd consumes one use of that
 token (`etoken_store_consume()`, answering 9022/9023/9024 when it disagrees with remoted's replica
 about the token's state); `reenroll` is the re-enrollment bearer and the agent id it named, both
 verbatim and **unverified**, for authd on the master to verify against that agent's `reenroll_secret`
 (`local_reenroll()`) and, when it verifies, rotate the agent's key and secret in place (9026/9027/
-9028 otherwise). Neither is present on the password and Open paths, whose wire request stays
-byte-identical to what it was before tokens. authd's reply `data` carries `id`, `name`, `ip`, `key`
+9028 otherwise). Neither is present on the password and Open paths. authd's reply `data` carries `id`, `name`, `ip`, `key`
 and — for every `add` — `reenroll_secret` (64 hex chars, generated next to the key and stored in
 `global.db`); `AuthdResult::reenrollSecret` is empty when an older authd sent none.
 **`force`, `id`, and `key` are never sent** — self-enrollment always gets an auto-assigned ID and an
@@ -1589,7 +1671,7 @@ registry, a silent no-op on a null-object instance), the `remoted.enroll.*` cata
   still trying an enrollment path an operator turned off), `remoted.enroll.authd_error` (any 90xx
   authd business rejection, the token `403`s of 9022/9023/9024 included),
   `remoted.enroll.authd_unavailable` (no clean answer from authd: queue full, unreachable, timeout,
-  shutdown), and `remoted.enroll.rate_limited` (`429`s of the shared enrollment bucket, counted by the
+  shutdown), and `remoted.enroll.rate_limited` (`429`s of the enrollment bucket, counted by the
   rate-limit gate before the handler runs, so in none of the other outcome counters).
 - **The enrollment-token subset** (issue #38993), by what happened to the TOKEN —
   `remoted.enroll.token.accepted` (a `200` obtained with a token), `.rejected_unknown`,
@@ -1628,67 +1710,6 @@ die with it; their diagnostics are reachable through weak targets repointed per 
 (`registerPasswordKeySourceDiagnostics()`/`registerTokenKeySourceDiagnostics()`). Torn down in the same phase as
 `m_downstreamClient` — `AuthdClient::stop()` before the HTTP transport's final `stop()` releases its
 I/O runtime, matching the ordering documented in *Deferred forwarding* above.
-
-## Re-enrollment secret (`POST /enroll/secret`) — `src/endpoints/reenrollSecretEndpoint.{hpp,cpp}`
-
-`reenroll_secret` is minted only by an enrollment, so three populations end up holding a valid key
-and no way to recover with it: an agent **upgraded from 4.x over WPK** (it keeps its `client.keys`
-identity, so it never calls `POST /enroll` — and issue #39064 removes `etc/authd.pass` at package
-upgrade, leaving that key as its only credential), an agent **enrolled over port 1515**, and a row
-**rebuilt from `client.keys`** by `wm_database`. The moment the manager stops accepting such an
-agent's key, recovery needs an operator at the endpoint with a freshly minted token — exactly the
-cost the token-less upgrade path exists to remove. This route closes that gap.
-
-**Authenticated, unlike `/enroll`.** Registered through `m_authGateway->addAuthenticatedRoute()`
-like `/stats` and `/control`, because here the caller *is* a known agent: the middleware runs
-verbatim (keystore lookup, the entry's `ip` column against the peer address, HS256 over the agent's
-own key, the `jwt_max_age`/`jwt_clock_skew` window). **The id is the middleware's verified `sub`,
-never a body field** — there is no id input at all, so no request shape exists in which one agent
-asks about another, and the body is not read (`{}` and an empty body are equally acceptable).
-
-Three design points, each the reason the next one holds:
-
-- **The key is never rotated on this path.** authd stores the new secret against the agent's
-  *existing* key (`issue_reenroll_secret`, see `os_auth/README.md` D14). Reusing the re-enrollment
-  path would rotate both, and an answer lost in flight would then leave the agent holding a key the
-  manager no longer accepts — a bricked endpoint produced by the very mechanism meant to avoid one.
-- **Reissue is always allowed**, precisely because a lost answer is harmless. A one-shot gate would
-  strand the agent whose answer never arrived: the database would hold a credential it never
-  received and could never ask for again.
-- **The agent asks once per start**, on a detached thread after its HTTPS client comes up, and only
-  when its store is empty — so every 5.0 agent, which already has a secret, never reaches this route.
-
-Status mapping (`mapAuthdResult()`): `200` with `{id, reenroll_secret}`; **`401`** for the
-middleware's own classes *and* for authd's `9026` and `9032`. `9026` folds "no such agent" and "no row in
-`global.db` yet"; `9032` is a bearer that verified against a key that is no longer the agent's (a
-rotation superseded it), deliberately not told apart on the wire. The "no row yet" case is the freshly migrated agent whose row `wm_database` has not
-rebuilt, and it is answered through `errorResponseFor()` so it carries the same envelope, challenge
-and `remoted.auth.reject.unknown_agent` cell the gateway itself would have produced; **`409`** on
-`9030` (a rotation already in flight); **`503`** on `9031`, `9015`/`9016`, and `errorCode -1` (an
-unreachable authd, a timeout, an unparseable reply, or a **full `AuthdClient` queue** — all the same
-"no clean answer"); **`500`** for an authd code this route does not map, which would mean the two
-sides disagree about the verb. A `200` carrying an empty secret is treated as `503`, not as a
-success: this verb exists only to produce one, so there is no "an older authd sent none" case to
-tolerate as there is on `/enroll`.
-
-The bodies use this module's flat `{"error":"..."}` envelope (the `cacerts` shape), not `/enroll`'s
-nested numeric one: sharing a rate-limit bucket is not sharing an error envelope.
-
-**Why it shares `/enroll`'s bucket.** A fleet-wide 4.x→5.0 upgrade puts every migrated agent here at
-once. One request costs an authd round trip (plus a cluster round trip on a worker) and, on top of
-`/enroll`, an identity-journal append and a writer pass — against `IDENTITY_JOURNAL_MAX_ENTRIES`
-(5000). Once that journal is full, **real enrollments are refused with 9031 too**, so an unthrottled
-wave would take down the path this feature exists to protect. One shared ceiling makes that
-unprovokable from this route; the accepted residual is that the wave can throttle real enrollments
-*at the limiter* instead, which is paced backpressure with a retry behind it rather than an outright
-refusal. The refusal **counters** stay one per route (`remoted.enroll.rate_limited`,
-`remoted.enroll.secret.rate_limited`), which is what keeps the two distinguishable under one number.
-The mechanics of the gate, and the ordering trap in its registration, are in the *Endpoints* chapter
-above.
-
-Metrics: `remoted.enroll.secret.*` (catalog in `enrollment/metrics.hpp`, next to `remoted.enroll.*`
-because the downstream — the shared `AuthdClient` — belongs to the enrollment subsystem) plus
-`remoted.http.enroll.secret.responses.*`.
 
 ## Streamed responses — `POST /download`
 
@@ -1768,6 +1789,33 @@ that isn't a valid/complete zstd frame is `400`.
 - **Runs strictly AFTER the bearer is verified.** The token is checked from the headers alone (the
   body is not part of it — TLS protects the wire bytes), so an unauthenticated peer never reaches
   the decoder and cannot spend our CPU or memory on it.
+- **The decoded body has its own cap: `auth_max_decoded_body_size`, 32 MiB by default, and on
+  `/stateful` the agent's byte share.** The shared decoder of the authenticated routes used to be
+  built uncapped, on the grounds that the credential gate already closes the amplification lever.
+  That argument covered strangers, not enrolled agents. `auth_max_body_size` is checked once, on
+  the wire bytes, so one agent's zstd frame of a few KB could declare, and reserve, nearly the whole
+  256 MiB budget. Every other agent then got a `503` or `413` until it was dropped.
+  - **How the cap is applied.** The decoder now refuses to grow past its cap. A frame that declares
+    a larger content size is refused before anything is allocated, and a streamed frame is refused
+    at the first block that would cross it. Both answers are `413`, counted as
+    `remoted.auth.reject.body_too_large`.
+  - **Why it is not `auth_max_body_size`.** The agent sizes its batches *before* compressing.
+    `/stateless` cuts at `<batch><size>` raw bytes, so honest bodies already decode past 5 MiB.
+    `secure.c` raises a decoded cap set below `auth_max_body_size` to it, with a WARN, so a frame
+    that is legal on the wire is never refused once decoded.
+  - **`/stateful` gets its own decoder.** It is registered with a second `BodyDecoder` capped at
+    `max_inflight_bytes_per_agent` (`addAuthenticatedRoute()`'s `routeDecoder`). A
+    vulnerability-detection first sync carries a host's whole inventory in **one** session, which
+    the agent cannot split, so the 32 MiB that is generous everywhere else would leave a very large
+    host unscanned for good. The per-agent byte share, not this cap, is what keeps that agent from
+    holding the budget.
+  - **`/enroll`** keeps its own 16 KiB-capped instance (`kMaxEnrollBodySize`), as before.
+- **One frame per body, and no window past 8 MiB.** The window check (`kMaxDeclaredWindowSize`) and
+  its reservation are read from the *first* frame's header. A body is therefore exactly one frame:
+  data left after it ends (a second frame, a skippable frame) is a `400`. The decoder is also held
+  to `ZSTD_d_windowLogMax = 23`, so no frame it starts can allocate a larger window. Without both, a
+  tiny first frame followed by one declaring libzstd's default limit (windowLog 27) made it allocate
+  about 128 MiB the budget never saw. The agent always sends a single frame.
 - **Both of the decoder's memory costs are charged to the in-flight byte budget as real
   reservations, not merely capped** (see *Memory management* above). (1) The buffers zstd allocates
   before producing any output, reserved at exactly what *this* frame's header declares it needs
@@ -2009,7 +2057,8 @@ and the keystore's health as the `remoted.auth.keystore.*` pulls — see the
 `iAgentKeystore.hpp` the key-lookup interface; `authMiddleware`, `keystore`, `addressRule` are the
 implementation. It knows nothing about RESTinio or sockets -- the `AuthGateway` (in `endpoints/`)
 is the only adapter between it and our transport. The token does **not** cover the body: the
-middleware authenticates from the headers alone, the gateway applies the body cap directly, and the
+middleware authenticates from the headers alone, the gateway applies the wire-body cap and the
+per-agent request cap directly (the decoded cap lives in the decoder), and the
 body is exposed as a zero-copy `Payload` view that the `AuthGateway` attaches from the transport's
 single request buffer. Every credential `401` carries a `WWW-Authenticate` challenge naming its class.
 
@@ -2039,8 +2088,21 @@ On `/enroll`, authd's verdicts on a re-enrollment bearer (9026 unknown agent or 
 `remoted.auth.reject.*` cells as a native rejection — the wire never carries authd's code or text
 for them.
 
-The 5.x agent classifies a `401` by status alone today (`client-agent/https_client/src/outcomeClassifier.cpp`)
-and corrects its clock from the `Date` header; acting on the class is the agent's follow-up.
+The 5.x agent corrects its clock from the `Date` header (`client-agent/https_client/src/outcomeClassifier.cpp`)
+and acts on the class (issue #39064): `client-agent/https_client/src/authFailureClass.cpp` parses it,
+only `unknown_agent` latches the agent into its credential-dead state or makes enrollment drop the
+stored re-enrollment secret (`client-agent/src/enrollment.c`), and every other class keeps the
+credential and retries.
+
+Because `unknown_agent` is answered before any signature check, it is an **accepted existence
+oracle**: an unauthenticated peer can tell an enrolled id from a free one, both on the authenticated
+routes and, through authd's 9026 vs 9027, on `/enroll`. That is inherent to the class: an agent whose
+identity was deleted must learn it without being able to prove anything, so the same question is open
+to anyone. Folding it into `invalid_signature` would leave a deleted agent retrying a dead credential
+forever; folding the other way would make every signature failure cost a live agent its identity.
+The disclosure is worth little: ids are sequential (see `AddressNotAllowed` in `auth/authTypes.hpp`),
+and knowing one grants nothing without that agent's key or secret. Probing shows up as a rising
+`remoted.auth.reject.unknown_agent`.
 
 `AuthConfig`'s tunables (`timePolicy` -- accepted token age and clock skew -- and `maxBodySize`) are
 populated from the matching C-ABI fields (`jwt_max_age`, `jwt_clock_skew`,
@@ -2209,19 +2271,19 @@ linked into the settings' own documentation — is the official docs page:
 | `remoted.control.*` (6 counters + `rejected` + `wdb.latency` histogram) | control-plane health, wazuh-db sizing | `controlHandler`/`controlEndpoint`/`wazuhDBClient`/`taskClient` (see the /control section) |
 | `remoted.control.registry.agents` (pull) | how many agents this node currently tracks — diagnostic only: the registry TTL (6 h) and eviction cadence (5 min) are compile-time constants, not settings | `AgentRegistry::size()` |
 | `remoted.scanvd.*` (7 counters) | VD scan admission split | `scanVdHandler` (see the /scan/vd section) |
-| `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed, token_unknown, token_expired, token_revoked}` | WHY authentication failed, finer than the class the wire names (see [401 classes](#401-classes)); the three `token_*` cells are `/enroll`'s enrollment-token states | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
+| `remoted.auth.reject.{unknown_agent, invalid_signature, bad_token, identity_mismatch, clock_skew, unusable_key, address_not_allowed, enrollment_key_unavailable, payload_mismatch, body_too_large, bad_encoding, malformed, token_unknown, token_expired, token_revoked, agent_busy}` | WHY authentication failed, finer than the class the wire names (see [401 classes](#401-classes)); the three `token_*` cells are `/enroll`'s enrollment-token states; `agent_busy` is the per-agent request cap's `503`, an authenticated agent over its share | `errorResponseFor()` — the single funnel, shared with `/enroll`; installed process-wide via `installAuthRejectMetrics()`. `metrics_test.cpp` DISCOVERS the live `AuthError` values through `toString()` instead of listing them, so a value appended upstream without its own cell fails the test — a hand-written list missed `address_not_allowed` and then `enrollment_key_unavailable` |
 | `remoted.auth.keystore.{agents, entries_skipped, reloads.total, reload_failures.total}` (pulls) | did the client.keys hot-reload pick up re-enrolls; is the file unreadable/unstable; how many lines the load could not use | atomics maintained by `Keystore::reload()`. `agents`/`entries_skipped` are LEVELS of the adopted load (a failed load leaves both untouched); neither counts comments, blanks or removed entries |
-| `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|enroll.secret\|cacerts>.responses.{2xx,400,403,409,413,429,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
+| `remoted.http.<stateless\|stateful\|stats\|config\|enroll\|cacerts>.responses.{2xx,400,403,409,413,429,500,503,other}` | WHAT each endpoint answered agents (some cells structurally zero per endpoint — kept so the vocabulary is uniform; `/cacerts`'s 404 lands in `other`) | the single place each response is sent: the forwarder's delivery task, the limiter-shed 503 in `forward()`, or the handler's own pre-forward 400. `/enroll` and `/cacerts` are not forwarded, so they count through a `MeteredResponder` wrapper instead (`common/requestOutcomeMetrics.hpp`; the description carries the route's method, `GET` for `/cacerts`) — one wrap covers `/enroll`'s five inline answers AND the one authd's callback delivers on another thread |
 | `remoted.http.<stateless\|stateful\|enroll>.latency` (histograms, µs) | end-to-end time; sizes `remoted.http_worker_threads` / `remoted.downstream_stateful_response_timeout` / the `authd_*` timeouts | stamped once in the auth gateway (`AuthenticatedRequest::receivedAt`), observed on the forwarder's post-processing pool. `/enroll` has no gateway, so `MeteredResponder` times it from handler entry. `/stats`/`/config` deliberately have none (same downstream as `/stateful`, no new answer) |
 | `remoted.forwarder.error.{connect, connect_timeout, write_timeout, response_timeout, transport, protocol, response_too_large}` + `downstream_5xx` + `route_mismatch` | WHY the 503s: which timeout knob, transport vs protocol, a downstream 5xx, or a route contract mismatch. Aggregate across services — the per-endpoint 503 cells already say which path | the forwarder's classification branches, next to the throttles that log the same cause |
 | `remoted.download.{rejected, denied, not_found, open_error, started, bytes.total}` | group/WPK drift (404 retry storms) and offered transfer volume, plus `denied` — the 403 authorization signal (`resource_id` is not the requesting agent's own selector, or the manager has no established membership for it). It is the ONLY operator-facing signal for a denial, since the event itself is logged at debug; distinct from `rejected` (malformed request) and from `not_found` (an *entitled* request whose file is not on disk) | `downloadEndpoint` admission + stream start (the per-chunk pump is deliberately uninstrumented) |
 | `remoted.cacerts.{served, not_found, ca_mismatch, rate_limited}` | WHY `GET /cacerts` answered what it did: CA handed out, no CA file to hand out, refused because the served leaf does not chain to any CA of the bundle (`ca_mismatch`: a signature alone is not enough, C33), or refused by the route's rate limit before the CA was even read | `cacertsEndpoint` (`endpoints/cacertsMetrics.hpp`), one counter per branch; `rate_limited` is bumped by the gate (`endpoints/rateLimitGate.cpp`), which runs before the handler |
 | `remoted.server.tls.{cert_expiry_days, ca_matches_leaf}` (pulls; `cert_expiry_days` is the catalog's one **Double**, via `registerPullMetricDouble()` — negative once expired) | is the listener certificate about to expire; does it CHAIN to `remote.https.ca_certificate` (0 when it does not — including a CA that signs it but is expired, not a CA, or under another subject — or when the last successful read yielded no certificate; a read that fails after a good one keeps that bundle's verdict) | `IHttpServer::certificateStatus()`: `cert_expiry_days` from the transport's `TlsCertificateMonitor` snapshot (evaluated at start and every 24 h); `ca_matches_leaf` re-read from the same `CaCertificateSource` `/cacerts` answers from, on every scrape; registered by `registerPublicTransportDiagnostics()` on the same weak target as the budget pulls, so both read 0 while the listener is down |
 | `remoted.server.budget.{available.bytes, inflight.bytes, inflight.requests, rejected.total}` (pulls) | is `remoted.max_inflight_bytes` sized right; how much did the byte budget shed | `IHttpServer::diagnostics()` over the transport's `InFlightBudget` |
-| `remoted.server.connections.{open, max}` (pulls) | how close the listener runs to `remoted.max_parallel_connections` — the only view of it, since reaching the cap postpones the accept instead of refusing | registered next to the budget pulls in `registerPublicTransportDiagnostics()` |
+| `remoted.server.connections.{open, max}` (pulls) | how close the listener runs to `remoted.max_parallel_connections` — the only view of it, since reaching the cap postpones the accept instead of refusing | registered next to the budget pulls in `registerPublicTransportDiagnostics()`; `open` reads the transport's `HandshakeLedger` (counted from the start of the TLS handshake to the close) |
+| `remoted.server.connections.handshaking`, `remoted.server.handshake.{timeouts, rejected_per_source}.total` (pulls) | are slots being held by peers that never complete a TLS handshake — invisible to every request-level metric; what the deadline (`remoted.http_read_timeout`) and the per-source cap (`remoted.max_handshakes_per_source`) closed | `IHttpServer::diagnostics()` over the `HandshakeLedger`; names in `http_server/handshakeMetrics.hpp` |
 | `remoted.enroll.{accepted, rejected_auth, rejected_validation, disabled, authd_error, authd_unavailable, rate_limited}` | WHY each `/enroll` request ended that way (the status/latency view is the `enroll` families above). `rate_limited` is the odd one: the request was refused before the handler ran, so it has no outcome among the others | `enrollment/metrics.hpp`, counted in `enrollmentEndpoint.cpp`; `rate_limited` by the gate (`endpoints/rateLimitGate.cpp`) |
-| `remoted.<enroll\|cacerts>.rate_limit.{limit, burst, available}` (pulls) | is the BUCKET's ceiling sized right: `available` pinned at 0 while `rate_limited` climbs is a rate below what the fleet needs, not necessarily an attack. Two buckets, three routes — the `enroll` one governs `POST /enroll` and `POST /enroll/secret` together | `EndpointRateLimiter::diagnostics()` through `registerRateLimitDiagnostics()`; reads the bucket WITHOUT charging it, so scraping never costs an agent its enrollment |
-| `remoted.enroll.secret.{issued, rejected_in_progress, authd_error, authd_unavailable, rate_limited}` | WHY each `POST /enroll/secret` request ended that way. Its own family because none of the `remoted.enroll.*` outcomes describes it: no enrollment happens, no identity is minted, nothing is rotated. `authd_error` is overwhelmingly 9026 — the agent's `global.db` row has not been rebuilt from `client.keys` yet — and `rate_limited` is the shared bucket refusing before authentication | `enrollment/metrics.hpp`, counted in `endpoints/reenrollSecretEndpoint.cpp`; `rate_limited` by the gateway's gate (`endpoints/authGateway.cpp`), which runs before `authenticate()` |
+| `remoted.<enroll\|cacerts>.rate_limit.{limit, burst, available}` (pulls) | is the BUCKET's ceiling sized right: `available` pinned at 0 while `rate_limited` climbs is a rate below what the fleet needs, not necessarily an attack. Two buckets, two routes — `enroll` governs `POST /enroll`, `cacerts` governs `GET /cacerts` | `EndpointRateLimiter::diagnostics()` through `registerRateLimitDiagnostics()`; reads the bucket WITHOUT charging it, so scraping never costs an agent its enrollment |
 | `remoted.enroll.token.{accepted, rejected_unknown, rejected_expired, rejected_revoked, rejected_exhausted}` | the enrollment-token subset of the above, by what happened to the TOKEN: unknown/expired/revoked decided by remoted's replica (and by authd's 9022/9023 when the replica lagged), exhausted by authd alone (9024) | `countTokenRejection()` (remoted's own verdict) + `countTokenOutcome()` (authd's) in `enrollmentEndpoint.cpp` |
 | `remoted.enroll.reenroll.{accepted, rejected_unknown, rejected_signature, rejected_stale, rejected_in_progress}` | the re-enrollment subset (`kid` = agent id): authd's verdict on the master — 9026 / 9027 / 9028 / 9030 — since remoted forwards that bearer unverified; each rejection also lands in the `remoted.auth.reject.*` cell of the `AuthError` it maps to | `countReenrollOutcome()` in `enrollmentEndpoint.cpp` |
 | `remoted.enroll.token_store.{tokens, reloads.total, reload_failures.total}` (pulls) | does this node recognise the tokens the operator minted (an empty replica on a worker = the sync has not landed); is `etc/enrollment_tokens.json` being picked up, or is a corrupt/hand-edited store making the previous replica serve | `TokenKeySource::diagnostics()` through `registerTokenKeySourceDiagnostics()`; 0 while enrollment is disabled |
@@ -2474,8 +2536,18 @@ listener, while a foreign CA does not; prefixed vs bare target; a foreign CA con
 is a 404 without a restart; the fixture's CA file is a stamped bundle, so what the route answers is
 the certificate this process reserialised and never the file's `##` lines),
 `inFlightBudget_test.cpp` (reserve/release accounting, exhaustion, RAII move-once, disabled mode,
-concurrency), `deferredWorkLimiter_test.cpp` (count-based limiter: acquire-to-capacity, RAII/move
-release, disabled mode, concurrency), `endpointRateLimiter_test.cpp` (the third limiter, a token
+concurrency), `handshakeLedger_test.cpp` (a connection counted from handshake to close, a close
+while handshaking leaving both levels at zero, repeated or unknown notices as no-ops, the per-source
+cap refusing only the excess and freeing a share when a handshake finishes, 0 disabling it, reset()
+keeping the totals, concurrency) with `httpServer_test.cpp`'s `HandshakeGuardTest` over a real
+listener (every slot held by a stalled handshake, then an honest request served once the deadline
+closes them; the per-source cap closing the excess at once; failed handshakes not underflowing
+`connectionsOpen`), `deferredWorkLimiter_test.cpp` (count-based limiter: acquire-to-capacity, RAII/move
+release, disabled mode, concurrency), `agentRequestLimiter_test.cpp` (the per-agent cap: one agent
+at its cap never touches another, an idle agent's entry is erased, release-once across moves, a slot
+co-owning its limiter, concurrency, the byte share across an agent's requests, and the
+`AdmittedResponder` releasing on send, when a stream's source is dropped, and when dropped
+unanswered), `endpointRateLimiter_test.cpp` (the fourth limiter, a token
 bucket per endpoint: burst spent before the rate paces it, refill over time, saturation at the
 burst, one bucket shared by every caller, **the bucket starting full** — an empty one would refuse
 the first requests after every restart — a `diagnostics()` read that never charges it, and
@@ -2502,7 +2574,10 @@ answers 400 without ever reaching `forward()`),
 Content-Type/Content-Length** — the assertion that the agent id really reaches modulesd),
 `payload_test.cpp` (zero-copy `Payload`: view validity,
 keep-alive pinning, explicit `release()` + RAII), `authGateway_test.cpp` (gateway: 400/401 paths, valid-auth success + payload
-view, payload outliving dispatch + release keeping metadata, handler-exception → 500), plus the auth
+view, payload outliving dispatch + release keeping metadata, handler-exception → 500, a zstd body
+decoding past the decoded cap → 413 with the handler untouched, an agent over its request cap → 503
+before the decoder, a body over the agent's remaining byte share → 503, a per-route decoder used for
+that route only, and every early answer giving the agent's slot back), plus the auth
 core `jwtVerify_test.cpp`/`jwtEnrollSignVerify_test.cpp`, `authMiddleware_test.cpp` (incl. a non-canonical
 `kid` → `InvalidToken`), `keystore_test.cpp` (incl. a non-numeric `client.keys` id line being
 skipped without blocking the rest of the file), and the three primitives underneath them:
@@ -2572,7 +2647,9 @@ Body decoding: `bodyDecoder_test.cpp` (only an exact, case-insensitive `zstd` de
 `"zstd, gzip"` and prefixes are refused — the decoded bytes stay charged to the in-flight budget
 until the payload dies, and a `413` there is never counted as a budget shed) and
 `zstdDecoder_test.cpp` (the frame header drives one up-front window reservation; a declared window size above
-the 8 MiB ceiling is refused without consulting the budget at all).
+the 8 MiB ceiling is refused without consulting the budget at all; an empty first frame followed by
+a 128 MiB-window frame, two valid frames back to back, and a skippable frame before or after the real
+one are all refused, with only the first frame's window ever reserved).
 
 Control-plane coverage: `controlEndpoint_test.cpp` (empty/oversized bodies, non-JSON, non-object
 roots and non-numeric/negative/trailing-garbage agent ids each get their own `400` code, all

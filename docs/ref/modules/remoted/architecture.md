@@ -35,7 +35,7 @@ flowchart LR
         direction TB
         subgraph HTTPS["HTTPS server (C++, remoted_module) — :1517"]
             AUTH["Auth middleware<br/>JWT bearer + registered address"]
-            EP["Endpoints<br/>/ · cacerts · enroll · enroll/secret · stateless<br/>stateful · control · download · stats · config · scan/vd"]
+            EP["Endpoints<br/>/ · cacerts · enroll · stateless · stateful<br/>control · download · stats · config · scan/vd"]
             BUD["In-flight byte budget<br/>+ deferred-work limiter"]
         end
         subgraph LEG["Legacy pipeline (C) — :1514"]
@@ -63,14 +63,14 @@ flowchart LR
     EP -->|"/stateful · /stats · /config"| SYNC
     EP -->|"/control"| WDB
     EP -->|"/control"| TASK
-    EP -->|"/enroll · /enroll/secret"| AUTHD
+    EP -->|"/enroll"| AUTHD
     EP -->|"/scan/vd"| VD
     DISP --> ENG
     META --> WDB
 ```
 
 Every downstream hop is HTTP over a Unix-domain socket, except `authd`'s local socket
-(`queue/sockets/auth.sock`), which `POST /enroll` and `POST /enroll/secret` speak authd's own
+(`queue/sockets/auth.sock`), which `POST /enroll` speaks authd's own
 framed JSON protocol over.
 
 ## HTTPS agent API (`remoted_module`)
@@ -102,7 +102,7 @@ when it silently is not.
 
 ### Endpoints
 
-Eleven agent-facing routes, each served under the
+Ten agent-facing routes, each served under the
 [`https.global_prefix`](configuration.md#httpsglobal_prefix) (`/wazuh-manager/` by default). Full
 request/response contracts in [HTTPS Agent API](https-events-api.md); machine-readable in
 [`agent-api.yaml`](agent-api.yaml).
@@ -112,7 +112,6 @@ request/response contracts in [HTTPS Agent API](https-events-api.md); machine-re
 | `GET /` | Unauthenticated liveness probe | — |
 | `GET /cacerts` | Unauthenticated CA distribution; the agent must independently authenticate the CA, for example with a pin | filesystem |
 | `POST /enroll` | Agent registration; bridges to `authd`, which keeps all enrollment logic | authd local socket |
-| `POST /enroll/secret` | Authenticated re-enrollment secret for agents that hold a valid key but no secret; the key is not rotated | authd local socket |
 | `POST /stateless` | Event batches (H/E wire format) | Engine, `POST /events/enriched` |
 | `POST /stateful` | Whole inventory sync sessions, relayed opaquely | Inventory Sync Server |
 | `POST /control` | `startup` / `notify` / `shutdown`; returns limits, groups, change-detection hashes and pending tasks | wazuh-db, task-manager |
@@ -135,8 +134,8 @@ Neither sends `Retry-After`: this is server-side load-shedding, not rate limitin
 agent runs its own retry/backoff. See [Configuration](configuration.md) for the sizing knobs and
 [Metrics](metrics.md) for what to watch.
 
-Rate limiting is the third, separate bound: two token buckets, one in front of `GET /cacerts` and
-one shared by `POST /enroll` and `POST /enroll/secret` (charged before authentication on both). It caps how fast each route is served at all — a fleet-wide ceiling, not a per-caller
+Rate limiting is the third, separate bound: two token buckets, one in front of `POST /enroll` and
+one in front of `GET /cacerts`, the two routes whose callers hold no credential to gate them with. It caps how fast each route is served at all — a fleet-wide ceiling, not a per-caller
 allowance — and answers `429` with a `Retry-After` —
 [the `remote.https` rate options](configuration.md#rate-limits-of-the-unauthenticated-routes).
 
@@ -231,7 +230,7 @@ For the complete set, see [Configuration](configuration.md).
 
 ## References
 
-- [HTTPS Agent API](https-events-api.md) — the agent-facing protocol and all eleven endpoints
+- [HTTPS Agent API](https-events-api.md) — the agent-facing protocol and all ten endpoints
 - [OpenAPI contract](agent-api.yaml) — the same contract as OpenAPI 3 (rendered in the book by the `agent-api-reference.html` viewer beside this page)
 - [Configuration](configuration.md)
 - [Metrics](metrics.md)

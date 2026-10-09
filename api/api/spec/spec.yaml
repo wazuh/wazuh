@@ -40,11 +40,11 @@ info:
     <SecurityDefinitions />
 
   version: '5.0.0'
-  x-revision: 'rc1'
+  x-revision: 'rc2'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/v5.0.0-rc1/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/v5.0.0-rc2/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -242,7 +242,7 @@ x-rbac-catalog:
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "deny"
     'cluster:read_secrets':
-      description: "Read the sensitive configuration values -- the enrollment password and the cluster key -- in clear instead of masked, and change the cluster key"
+      description: "Read the sensitive configuration values -- the enrollment password and the cluster key -- in clear instead of masked, and change the cluster key or the indexer section"
       resources:
         - $ref: '#/x-rbac-catalog/resources/node:id'
       example:
@@ -4063,9 +4063,9 @@ paths:
               example:
                 title: "Wazuh API"
                 api_version: "v4.5.0"
-                revision: 'rc1'
+                revision: 'rc2'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/v5.0.0-rc1/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/v5.0.0-rc2/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
@@ -7026,7 +7026,7 @@ paths:
       tags:
         - Cluster
       summary: "Update node configuration"
-      description: "Replace the manager configuration (etc/wazuh-manager.conf) of the given node with the XML text contained in the API request. The text is validated (syntax, schema, protected sections, secret options) before the file is written. A cluster key sent back masked (`*****`), as this API returns it to a caller without `cluster:read_secrets`, keeps the node's current key; changing the key to any other value requires `cluster:read_secrets` over that node and is refused with error 1132 otherwise."
+      description: "Replace the manager configuration (etc/wazuh-manager.conf) of the given node with the XML text contained in the API request. The text is validated (syntax, schema, protected sections, secret options) before the file is written. A cluster key sent back masked (`*****`), as this API returns it to a caller without `cluster:read_secrets`, keeps the node's current key; changing the key to any other value requires `cluster:read_secrets` over that node and is refused with error 1132 otherwise. So is any change to the indexer section (hosts, TLS): every indexer host receives the manager's indexer credential."
       operationId: api.controllers.cluster_controller.update_configuration
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:update_config'
@@ -8472,9 +8472,9 @@ paths:
         - Security
       summary: "Enable/Disable run_as"
       description: "Modify a user's allow_run_as flag by specifying their ID. The flag of a reserved user (`wazuh`,
-        `wazuh-wui`) can only be changed by a reserved user authenticated without an authorization context
+        `wazuh-internal-client`) can only be changed by a reserved user authenticated without an authorization context
         (run_as). Enabling it also requires `security:update` over every role linked to a rule with ID above
-        99 (any rule for `wazuh-wui`), because a run_as login of the user can resolve to any of them"
+        99 (any rule for `wazuh-internal-client`), because a run_as login of the user can resolve to any of them"
       operationId: api.controllers.security_controller.edit_run_as
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:edit_run_as'
@@ -8681,7 +8681,7 @@ paths:
                         roles:
                           - 1
                       - id: 2
-                        username: wazuh-wui
+                        username: wazuh-internal-client
                         allow_run_as: true
                         roles: []
                     total_affected_items: 8

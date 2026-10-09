@@ -36,7 +36,7 @@
 
 /* redefinitons/wrapping */
 
-extern cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char *groups, const char *key_hash, const char *key, const char *id, authd_force_options_t *force_options, const char *token_id, const char *reenroll_kid, const char *reenroll_bearer);
+extern cJSON* w_create_agent_add_payload(const char *name, const char *ip, const char *groups, const char *key_hash, const char *key, const char *id, authd_force_options_t *force_options, const char *token_id, const char *reenroll_kid, const char *reenroll_bearer, const char *source);
 extern cJSON* w_create_agent_remove_payload(const char *id, const int purge);
 extern cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 extern int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, char* reenroll_secret, const int json_format, const int exit_on_error, int *error_code);
@@ -65,7 +65,7 @@ static void test_create_agent_add_payload(void **state) {
     force_options.key_mismatch = false;
     force_options.after_registration_time = 0;
 
-    payload = w_create_agent_add_payload(agent, ip, groups, key_hash, key, id, &force_options, NULL, NULL, NULL);
+    payload = w_create_agent_add_payload(agent, ip, groups, key_hash, key, id, &force_options, NULL, NULL, NULL, NULL);
 
     assert_non_null(payload);
     cJSON* function = cJSON_GetObjectItem(payload, "function");
@@ -98,9 +98,11 @@ static void test_create_agent_add_payload(void **state) {
     char* str_force = cJSON_PrintUnformatted(j_force);
     assert_string_equal(str_force, expected_force_payload);
 
-    // No enrollment token was presented: the member must be absent, not null. Nor a re-enrollment.
+    // No enrollment token was presented: the member must be absent, not null. Nor a re-enrollment,
+    // nor a network source.
     assert_null(cJSON_GetObjectItem(arguments, "token_id"));
     assert_null(cJSON_GetObjectItem(arguments, "reenroll"));
+    assert_null(cJSON_GetObjectItem(arguments, "source"));
 
     cJSON_Delete(payload);
     os_free(str_force);
@@ -111,7 +113,7 @@ static void test_create_agent_add_payload(void **state) {
 // target, like test_create_agent_add_payload: the payload builder is plain cJSON.
 static void test_create_agent_add_payload_carries_token_id(void **state) {
     (void)state;
-    cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, "AAECAwQFBgcICQoLDA0ODw", NULL, NULL);
+    cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, "AAECAwQFBgcICQoLDA0ODw", NULL, NULL, NULL);
     assert_non_null(payload);
     cJSON* arguments = cJSON_GetObjectItem(payload, "arguments");
     assert_non_null(arguments);
@@ -128,7 +130,7 @@ static void test_create_agent_add_payload_carries_token_id(void **state) {
 // `arguments.reenroll.{kid,bearer}`. A kid without a bearer (or the reverse) travels as nothing.
 static void test_create_agent_add_payload_carries_reenroll_credential(void **state) {
     (void)state;
-    cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, "001", "eyJ.claims.sig");
+    cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, "001", "eyJ.claims.sig", NULL);
     assert_non_null(payload);
     cJSON* arguments = cJSON_GetObjectItem(payload, "arguments");
     assert_non_null(arguments);
@@ -140,8 +142,21 @@ static void test_create_agent_add_payload_carries_reenroll_credential(void **sta
     assert_null(cJSON_GetObjectItem(arguments, "id"));
     cJSON_Delete(payload);
 
-    payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, "001", NULL);
+    payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, "001", NULL, NULL);
     assert_null(cJSON_GetObjectItem(cJSON_GetObjectItem(payload, "arguments"), "reenroll"));
+    cJSON_Delete(payload);
+}
+
+// An enrollment that arrived over the network: the worker forwards the agent's peer address so the
+// master's log names it, and the master reads it back as `arguments.source`. It never replaces `ip`.
+static void test_create_agent_add_payload_carries_source(void **state) {
+    (void)state;
+    cJSON* payload = w_create_agent_add_payload("agent1", "any", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "192.168.60.71");
+    assert_non_null(payload);
+    cJSON* arguments = cJSON_GetObjectItem(payload, "arguments");
+    assert_non_null(arguments);
+    assert_string_equal(cJSON_GetObjectItem(arguments, "source")->valuestring, "192.168.60.71");
+    assert_string_equal(cJSON_GetObjectItem(arguments, "ip")->valuestring, "any");
     cJSON_Delete(payload);
 }
 
@@ -571,140 +586,6 @@ void test_w_send_clustered_message_success_after_recv_error(void **state) {
     assert_string_equal(recv_response, response);
 }
 
-/* Tests w_request_agent_secret_clustered (#39315): the worker's half of the secret-issuance path.
- *
- * What these pin is the ENVELOPE -- exactly the sendsync/authd payload the master's local_dispatch()
- * accepts -- and the two answers the parser has to tell apart. The relay itself is generic, which is
- * the point: no cluster-protocol command and no Python change were added for this verb. */
-/* The fingerprint rides in the SAME envelope (#39315 F1): no new cluster command, one extra
- * argument. Pinned here because the master refuses any request that arrives without it, so a
- * worker that dropped the field on the way through would turn every forwarded request into a
- * 9032 -- and nothing else in this path would notice. */
-#define SECRET_FINGERPRINT "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
-#define SECRET_SENDSYNC_PAYLOAD \
-    "{\"daemon_name\":\"authd\",\"message\":{\"function\":\"issue_reenroll_secret\",\"arguments\":{\"id\":\"001\",\"key_fingerprint\":\"" SECRET_FINGERPRINT "\"}}}"
-#define SECRET_HEX "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
-
-// Arms one successful cluster round trip answering `reply`.
-static void expect_secret_round_trip(const char *reply) {
-    const int sock_num = 3;
-    will_return(__wrap_external_socket_connect, sock_num);
-
-    expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
-    expect_string(__wrap_OS_SendSecureTCPCluster, command, "sendsync");
-    expect_string(__wrap_OS_SendSecureTCPCluster, payload, SECRET_SENDSYNC_PAYLOAD);
-    expect_value(__wrap_OS_SendSecureTCPCluster, length, strlen(SECRET_SENDSYNC_PAYLOAD));
-    will_return(__wrap_OS_SendSecureTCPCluster, 1);
-
-    expect_value(__wrap_OS_RecvSecureClusterTCP, sock, sock_num);
-    expect_value(__wrap_OS_RecvSecureClusterTCP, length, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureClusterTCP, reply);
-    will_return(__wrap_OS_RecvSecureClusterTCP, strlen(reply));
-}
-
-void test_w_request_agent_secret_clustered_success(void **state) {
-    (void)state;
-    char err_response[OS_SIZE_2048] = {0};
-    char *secret = NULL;
-    int master_error_code = 0;
-
-    expect_secret_round_trip("{\"error\":0,\"data\":{\"id\":\"001\",\"reenroll_secret\":\"" SECRET_HEX "\"}}");
-
-    assert_int_equal(w_request_agent_secret_clustered(err_response, "001", SECRET_FINGERPRINT, &secret, &master_error_code), 0);
-    assert_non_null(secret);
-    assert_string_equal(secret, SECRET_HEX);
-    // Untouched on success, exactly like the add path's contract.
-    assert_int_equal(master_error_code, 0);
-    os_free(secret);
-}
-
-void test_w_request_agent_secret_clustered_business_rejection(void **state) {
-    (void)state;
-    char err_response[OS_SIZE_2048] = {0};
-    char *secret = NULL;
-    int master_error_code = 0;
-
-    expect_secret_round_trip("{\"error\":9026,\"message\":\"Unknown agent or no re-enrollment credential\"}");
-    expect_string(__wrap__mwarn, formatted_msg, "9026: Unknown agent or no re-enrollment credential");
-
-    // The master's exact code survives the trip, which is what lets remoted map it precisely
-    // (9026 -> 401, 9030 -> 409, 9031 -> 503) instead of collapsing every rejection into one status.
-    assert_int_equal(w_request_agent_secret_clustered(err_response, "001", SECRET_FINGERPRINT, &secret, &master_error_code), -1);
-    assert_int_equal(master_error_code, 9026);
-    assert_string_equal(err_response, "ERROR: Unknown agent or no re-enrollment credential");
-    assert_null(secret);
-}
-
-void test_w_request_agent_secret_clustered_success_without_a_secret_is_malformed(void **state) {
-    (void)state;
-    char err_response[OS_SIZE_2048] = {0};
-    char *secret = NULL;
-    int master_error_code = 0;
-
-    // error 0 but no credential in it. Reported as a malformed response (-2), never as a success:
-    // this verb exists only to produce a secret, so the worker must not answer "here you are" with
-    // an empty one.
-    expect_secret_round_trip("{\"error\":0,\"data\":{\"id\":\"001\"}}");
-
-    assert_int_equal(w_request_agent_secret_clustered(err_response, "001", SECRET_FINGERPRINT, &secret, &master_error_code), -2);
-    assert_null(secret);
-    assert_string_equal(err_response, "ERROR: Invalid message format");
-}
-
-void test_w_request_agent_secret_clustered_transport_failure(void **state) {
-    (void)state;
-    char err_response[OS_SIZE_2048] = {0};
-    char *secret = NULL;
-    int master_error_code = 0;
-
-    for (int i = 0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i) {
-        will_return(__wrap_external_socket_connect, -1);
-        will_return(__wrap_strerror, "ERROR");
-        expect_string(__wrap__mdebug1, formatted_msg,
-                      "Could not connect to socket 'queue/sockets/cluster-internal.sock': ERROR (0).");
-    }
-    expect_value_count(__wrap_sleep, seconds, 1, 9);
-    expect_string(__wrap__mwarn, formatted_msg, "Could not send message through the cluster after '10' attempts.");
-
-    assert_int_equal(w_request_agent_secret_clustered(err_response, "001", SECRET_FINGERPRINT, &secret, &master_error_code), -2);
-    assert_null(secret);
-    assert_string_equal(err_response, "ERROR: Cannot communicate with master");
-}
-
-void test_w_request_agent_secret_clustered_omits_an_absent_fingerprint(void **state) {
-    (void)state;
-    char err_response[OS_SIZE_2048] = {0};
-    char *secret = NULL;
-    int master_error_code = 0;
-
-    // No `key_fingerprint` key at all, rather than an empty string: the master distinguishes "the
-    // caller named no key" from "the caller named a key that did not match", and an empty value
-    // would blur the two into one message nobody can act on. The refusal is the same either way --
-    // that is the point of testing the SHAPE here rather than the outcome.
-    static const char *const payload =
-        "{\"daemon_name\":\"authd\",\"message\":{\"function\":\"issue_reenroll_secret\","
-        "\"arguments\":{\"id\":\"001\"}}}";
-
-    const int sock_num = 3;
-    will_return(__wrap_external_socket_connect, sock_num);
-    expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
-    expect_string(__wrap_OS_SendSecureTCPCluster, command, "sendsync");
-    expect_string(__wrap_OS_SendSecureTCPCluster, payload, payload);
-    expect_value(__wrap_OS_SendSecureTCPCluster, length, strlen(payload));
-    will_return(__wrap_OS_SendSecureTCPCluster, 1);
-
-    static const char *const reply = "{\"error\":9032,\"message\":\"Agent key changed since the request was "
-                                     "authenticated\"}";
-    expect_value(__wrap_OS_RecvSecureClusterTCP, sock, sock_num);
-    expect_value(__wrap_OS_RecvSecureClusterTCP, length, OS_MAXSTR);
-    will_return(__wrap_OS_RecvSecureClusterTCP, reply);
-    will_return(__wrap_OS_RecvSecureClusterTCP, strlen(reply));
-    expect_string(__wrap__mwarn, formatted_msg, "9032: Agent key changed since the request was authenticated");
-
-    assert_int_equal(w_request_agent_secret_clustered(err_response, "001", NULL, &secret, &master_error_code), -1);
-    assert_int_equal(master_error_code, 9032);
-    assert_null(secret);
-}
 #endif
 
 static void test_parse_agent_add_response(void **state) {
@@ -1083,6 +964,7 @@ int main(void) {
         cmocka_unit_test(test_create_agent_add_payload),
         cmocka_unit_test(test_create_agent_add_payload_carries_token_id),
         cmocka_unit_test(test_create_agent_add_payload_carries_reenroll_credential),
+        cmocka_unit_test(test_create_agent_add_payload_carries_source),
         cmocka_unit_test(test_parse_agent_add_response),
         cmocka_unit_test(test_os_write_agent_info_success),
         #ifndef WIN32
@@ -1101,12 +983,6 @@ int main(void) {
         cmocka_unit_test(test_w_send_clustered_message_success_after_send_error),
         cmocka_unit_test(test_w_send_clustered_message_success_after_cluster_error),
         cmocka_unit_test(test_w_send_clustered_message_success_after_recv_error),
-        // Tests w_request_agent_secret_clustered (#39315)
-        cmocka_unit_test(test_w_request_agent_secret_clustered_success),
-        cmocka_unit_test(test_w_request_agent_secret_clustered_business_rejection),
-        cmocka_unit_test(test_w_request_agent_secret_clustered_success_without_a_secret_is_malformed),
-        cmocka_unit_test(test_w_request_agent_secret_clustered_transport_failure),
-        cmocka_unit_test(test_w_request_agent_secret_clustered_omits_an_absent_fingerprint),
         // Tests getPrimaryIP
         cmocka_unit_test(test_getPrimaryIP_no_sysinfo_network),
         cmocka_unit_test(test_getPrimaryIP_no_sysinfo_free),

@@ -125,7 +125,7 @@ namespace task_manager::storage
         // ---- maintenance ---------------------------------------------------------------------
         void flushWrites() override;
         CheckpointStats checkpointWal() override;
-        void vacuum() override;
+        CompactStats compactStep(int maxPages) override;
         std::optional<std::string> getMetadata(const std::string& key) override;
         void setMetadata(const std::string& key, const std::string& value) override;
 
@@ -219,6 +219,7 @@ namespace task_manager::storage
         void applyPragmas() const;
         void applySchema() const;
         void migrate();
+        void readAutoVacuumMode();
 
         Options m_options;
 
@@ -226,6 +227,8 @@ namespace task_manager::storage
         std::unique_ptr<Session> m_session;
         bool m_txnOpen {false};
         std::chrono::steady_clock::time_point m_txnOpenedAt {};
+        /// @brief Whether the database was created with incremental auto-vacuum. Read once at open.
+        bool m_incrementalVacuum {false};
     };
 } // namespace task_manager::storage
 
