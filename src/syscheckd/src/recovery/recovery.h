@@ -69,6 +69,12 @@ EXPORTED bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncP
 #define FIM_SYNCED_AGENT_ID_METADATA_KEY "synced_agent_id"
 
 /**
+ * @brief Prefix of the per-table pseudo-key, followed by the table name, holding the agent id
+ *        that table was last resent under, so a resync cut short resumes with the pending tables.
+ */
+#define FIM_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX "synced_agent_id:"
+
+/**
  * @brief Resends every monitored entry when this agent's id has changed since the last sync.
  *
  * An agent deleted on the manager re-enrolls under a new id while its local database, and the
@@ -88,7 +94,8 @@ EXPORTED bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncP
  * @return true when the id had changed and every table was resent, so the caller should record
  *         the first-sync marker as current. false when there was nothing to do (unknown id,
  *         nothing recorded yet, or the id is unchanged) or when a table failed to resync, in
- *         which case nothing is recorded and the next cycle tries again.
+ *         which case the identity marker is not recorded and the next cycle tries again with
+ *         the tables not yet resent under this id.
  */
 EXPORTED bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table_names, int table_count, const OSList* directories_list);
 
