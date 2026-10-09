@@ -190,6 +190,21 @@ static void undo_swap_at_rename(void) {
     }
 }
 
+/* Counts reads of the staged copy by name. Its name can be swapped for a symlink at any time, and
+ * root opening it -- even only to read -- then opens whatever the link points at: a FIFO blocks
+ * the command, and some device nodes act on open. */
+static int g_staged_reads_by_name = 0;
+
+int __real_OS_ReadXML(const char *file, OS_XML *lxml);
+
+int __wrap_OS_ReadXML(const char *file, OS_XML *lxml) {
+    if (g_staged_name[0] != '\0' && strcmp(file, g_staged_name) == 0) {
+        g_staged_reads_by_name++;
+    }
+
+    return __real_OS_ReadXML(file, lxml);
+}
+
 
 /* --- the https_client boundary, mocked exactly as test_token_bootstrap.c mocks it ---------- */
 
@@ -373,6 +388,7 @@ static int setup_test(void **state) {
     g_swap_staged = false;
     g_staged_name[0] = '\0';
     g_swap_at_rename = false;
+    g_staged_reads_by_name = 0;
     unlink(SWAP_TARGET);
     unlink(KEYS_FILE);
     unlink(AGENT_ANCHOR_CA);
@@ -975,6 +991,27 @@ static void test_config_rewrite_install_never_writes_through_a_symlink(void **st
     assert_non_null(strstr(err_buf, "could not install"));
 }
 
+/* The rewrite is read back to confirm the node changed. That read goes through the staged file's
+ * descriptor, never its name, which can point anywhere by then. */
+static void test_config_rewrite_reads_the_staged_copy_back_through_its_descriptor(void **state) {
+    (void) state;
+    char err_buf[2048] = {0};
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    write_file(WAZUHCONF, CONFIG_WITH_ENDPOINT);
+
+    expect_string(__wrap_OS_WriteXMLToStream, newval, "new.example.local:1518");
+    will_return(__wrap_OS_WriteXMLToStream, REWRITTEN_CONFIG);
+    will_return(__wrap_OS_WriteXMLToStream, 0);
+
+    assert_int_equal(w_agent_auth_update_endpoint("new.example.local:1518", "siem.example.local", err), 0);
+
+    fclose(err);
+
+    assert_int_equal(g_staged_reads_by_name, 0);
+    assert_file_content(WAZUHCONF, REWRITTEN_CONFIG);
+}
+
 
 /* --- the three agent states, and --certs-only ------------------------------------------ */
 
@@ -1523,6 +1560,8 @@ int main(void) {
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_config_rewrite_install_never_writes_through_a_symlink, setup_test,
                                         teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_rewrite_reads_the_staged_copy_back_through_its_descriptor,
+                                        setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_is_decided_by_content_not_by_shape, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_dry_run_previews_instead_of_refusing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certs_only_refuses_when_not_enrolled, setup_test, teardown_test),
