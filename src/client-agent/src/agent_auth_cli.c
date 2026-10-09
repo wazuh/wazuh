@@ -366,7 +366,40 @@ STATIC char *w_agent_auth_read_token(const agent_auth_opts_t *opts, FILE *in, FI
 }
 
 /**
- * @brief Whether the staged file at @p path names @p adr at @p nodes.
+ * @brief Parses the staged rewrite into @p xml without opening it by name.
+ *
+ * Its name can be swapped for a symlink at any time, and root opening it, even only to read, opens
+ * whatever the link points at: a FIFO blocks the command, and some device nodes act on open. On
+ * POSIX it is parsed through a duplicate of the descriptor TempFile() returned, from the start;
+ * the parser closes the duplicate, and the original stays open. On Windows that handle is
+ * write-only, and nothing less privileged can write the install directory, so the name is read.
+ *
+ * @return 0 on success, -1 on failure. @p xml can be cleared either way.
+ */
+STATIC int w_agent_auth_parse_staged(const File *staged, OS_XML *xml) {
+#ifdef WIN32
+    return (OS_ReadXML(staged->name, xml) < 0) ? -1 : 0;
+#else
+    int copy;
+    FILE *fp;
+
+    memset(xml, 0, sizeof(*xml));
+
+    if ((copy = dup(fileno(staged->fp))) < 0) {
+        return -1;
+    }
+
+    if (lseek(copy, 0, SEEK_SET) != 0 || (fp = fdopen(copy, "r")) == NULL) {
+        close(copy);
+        return -1;
+    }
+
+    return (OS_ReadXMLFromStream(fp, xml) < 0) ? -1 : 0;
+#endif
+}
+
+/**
+ * @brief Whether the staged rewrite names @p adr at @p nodes.
  *
  * OS_WriteXMLToStream() reports success for a rewrite that changed nothing: when the node path is
  * absent it copies the file through untouched and still returns 0, and its "replaced" result is
@@ -378,13 +411,14 @@ STATIC char *w_agent_auth_read_token(const agent_auth_opts_t *opts, FILE *in, FI
  *
  * @return true when it does; false otherwise (a reason is written to @p err).
  */
-STATIC bool w_agent_auth_endpoint_written(const char *path, const char **nodes, const char *adr,
+STATIC bool w_agent_auth_endpoint_written(const File *staged, const char **nodes, const char *adr,
                                           FILE *err) {
     OS_XML xml;
     char *written;
     bool matches;
 
-    if (OS_ReadXML(path, &xml) < 0) {
+    if (w_agent_auth_parse_staged(staged, &xml) != 0) {
+        OS_ClearXML(&xml);
         fprintf(err, "%s: could not re-read the rewritten '%s'.\n", AGENT_AUTH_NAME, WAZUHCONF);
         return false;
     }
@@ -408,10 +442,11 @@ STATIC bool w_agent_auth_endpoint_written(const char *path, const char **nodes, 
 /**
  * @brief Whether @p path still names the regular file open on @p fd.
  *
- * Decides whether the name about to be renamed onto ossec.conf is still the file this run wrote.
- * Nothing is written, chmod'ed or chown'ed through that name -- all of it goes through @p fd --
- * so a swap can no longer reach another file; this is what keeps a swapped name from being
- * installed in its place.
+ * The last step before the move, so the name the move uses named this run's file a moment
+ * earlier. It can still be swapped after this, and the move then installs whatever was put there;
+ * that gives the account that can write etc/ nothing it can't do with mv. What matters is that
+ * root never opens that name: the write, the read-back, the mode and the owner all go through
+ * @p fd, and the move is a bare rename().
  */
 STATIC bool w_agent_auth_staged_is_ours(int fd, const char *path) {
     struct stat ours;
@@ -510,15 +545,7 @@ STATIC int w_agent_auth_update_endpoint(const char *adr, const char *configured,
         goto done;
     }
 
-#ifndef WIN32
-    if (!w_agent_auth_staged_is_ours(fileno(staged.fp), staged.name)) {
-        fprintf(err, "%s: the staged copy of '%s' was replaced while it was being written; "
-                "refusing to install it.\n", AGENT_AUTH_NAME, WAZUHCONF);
-        goto done;
-    }
-#endif
-
-    if (!w_agent_auth_endpoint_written(staged.name, nodes, adr, err)) {
+    if (!w_agent_auth_endpoint_written(&staged, nodes, adr, err)) {
         goto done;
     }
 
@@ -533,6 +560,12 @@ STATIC int w_agent_auth_update_endpoint(const char *adr, const char *configured,
     if (w_agent_auth_copy_mode_and_owner(fileno(staged.fp), &original) != 0) {
         fprintf(err, "%s: could not preserve the permissions of '%s': %s (%d).\n",
                 AGENT_AUTH_NAME, WAZUHCONF, strerror(errno), errno);
+        goto done;
+    }
+
+    if (!w_agent_auth_staged_is_ours(fileno(staged.fp), staged.name)) {
+        fprintf(err, "%s: the staged copy of '%s' was replaced while it was being written; "
+                "refusing to install it.\n", AGENT_AUTH_NAME, WAZUHCONF);
         goto done;
     }
 #endif
