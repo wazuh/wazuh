@@ -60,7 +60,7 @@
 _Static_assert(W_REENROLL_SECRET_BYTES == AGENT_REENROLL_SECRET_BYTES,
                "the re-enrollment secret's size must match the one agent_validate_op.h defines");
 
-/* Growable text buffer, only used to assemble the output of w_etoken_describe() */
+/* Growable text buffer: assembles adr_normalise()'s address and w_etoken_describe()'s output */
 typedef struct {
     char *text;
     size_t len;
