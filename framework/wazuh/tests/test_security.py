@@ -185,6 +185,14 @@ def test_rbac_catalog(db_setup, security_function, params, expected_result):
     assert result['result']['data'] == expected_result
 
 
+@pytest.mark.parametrize('security_function', ['get_rbac_resources', 'get_rbac_actions'])
+def test_rbac_catalog_cache_is_behind_permission_check(db_setup, security_function):
+    """The cache must sit below expose_resources, otherwise cache hits skip the permission check."""
+    security, _, _ = db_setup
+    function = getattr(security, security_function)
+    assert not hasattr(function, 'cache_clear')
+    assert hasattr(function.__wrapped__, 'cache_clear')
+
 @pytest.mark.parametrize('policy_case', sanitize_policies['policies'])
 def test_sanitize_rbac_policy(db_setup, policy_case):
     _, _, core_security = db_setup

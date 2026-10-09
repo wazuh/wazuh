@@ -1237,8 +1237,8 @@ def get_api_endpoints() -> list:
     return endpoints_list
 
 
-@lru_cache(maxsize=None)
 @expose_resources(actions=['security:read_config'], resources=['*:*:*'])
+@lru_cache(maxsize=None)
 def get_rbac_resources(resource: str = None) -> WazuhResult:
     """Get the RBAC resources from the catalog.
 
@@ -1265,8 +1265,8 @@ def get_rbac_resources(resource: str = None) -> WazuhResult:
         return WazuhResult({'data': {resource: load_spec()['x-rbac-catalog']['resources'][resource]}})
 
 
-@lru_cache(maxsize=None)
 @expose_resources(actions=['security:read_config'], resources=['*:*:*'])
+@lru_cache(maxsize=None)
 def get_rbac_actions(endpoint: str = None) -> WazuhResult:
     """Get the RBAC actions from the catalog.
 
