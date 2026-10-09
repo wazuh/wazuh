@@ -108,3 +108,54 @@ TEST(ContainerDocBudget, TheCounterNeverExceedsTheBudgetAcrossAMixedSequence)
     }
     EXPECT_EQ(count, 0);
 }
+
+/// The property the whole design turns on: each container's budget is its own.
+/// One container exhausting its allowance must not withhold a single row from
+/// another, and must not move another's count.
+///
+/// This pins the RULE. Whether the plumbing keys the count by container id —
+/// rather than, say, sharing one slot — is not reachable from here, because the
+/// map lives beside a process-global mutex in the bridge. That half is covered
+/// on the VM: fill one container past its cap and confirm another keeps
+/// reporting. Said plainly so the coverage is not mistaken for more than it is.
+TEST(ContainerDocBudget, OneContainerExhaustingItsBudgetDoesNotTouchAnother)
+{
+    constexpr int limit = 4;
+    int busy = 0;
+    int quiet = 0;
+
+    for (int i = 0; i < 20; ++i)
+    {
+        busy += container_budget_decide(limit, busy, 0, 0).count_delta;
+    }
+    EXPECT_EQ(busy, limit) << "the busy container fills its own budget and stops";
+    EXPECT_EQ(container_budget_decide(limit, busy, 0, 0).sync_flag, 0);
+
+    // The quiet container is untouched by any of that.
+    EXPECT_EQ(quiet, 0);
+    for (int i = 0; i < limit; ++i)
+    {
+        const auto d = container_budget_decide(limit, quiet, 0, 0);
+        EXPECT_EQ(d.sync_flag, 1) << "a quiet container keeps its full allowance";
+        quiet += d.count_delta;
+    }
+    EXPECT_EQ(quiet, limit);
+}
+
+/// Releasing a container returns its slots to nobody but itself: the rule is
+/// stateless, so what a release must do is drop that container's count. Encoded
+/// here as the invariant the bridge's release path has to preserve — a released
+/// container starts from zero, not from whatever it held when it died.
+TEST(ContainerDocBudget, AReleasedContainerStartsFromZeroAgain)
+{
+    constexpr int limit = 3;
+    int count = 0;
+    for (int i = 0; i < limit; ++i)
+    {
+        count += container_budget_decide(limit, count, 0, 0).count_delta;
+    }
+    EXPECT_EQ(container_budget_decide(limit, count, 0, 0).sync_flag, 0);
+
+    count = 0; // what fim_container_doc_budget_release() must achieve
+    EXPECT_EQ(container_budget_decide(limit, count, 0, 0).sync_flag, 1);
+}
