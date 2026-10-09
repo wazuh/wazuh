@@ -422,10 +422,11 @@ a whole.
 - **Effect:** Requests over the limit are answered `429` with `Retry-After` **without reaching
   authd**, so a peer with no usable credential can no longer turn `/enroll` into an amplifier onto
   the cluster's internal socket.
-- **When it is charged:** after the request's own checks (protocol version, body size, credential,
-  body, version policy), right before the authd round trip. A request that fails any of them is
-  answered `400`/`401`/`413`/`415` and spends nothing, so a flood of them cannot starve the agents
-  that pass them.
+- **When it is charged:** after the protocol version, body size and credential checks. A request
+  that fails them is answered `400`/`401`/`413` and spends nothing, so a flood of them cannot starve
+  the agents that pass them. The unverified bucket (below) is charged right then, before the body is
+  decoded or parsed; the verified one after the body and version policy checks, right before the
+  authd round trip.
 - **Two buckets of this rate:** enrollments whose password or enrollment token was **verified** by
   remoted, with uses left for a token, are charged to one; re-enrollments (their bearer is only
   verifiable on the master), enrollments without a credential (Open mode, or a listener requiring a

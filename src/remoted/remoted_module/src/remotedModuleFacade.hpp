@@ -920,10 +920,11 @@ private:
         // an unauthenticated caller from turning /enroll into an amplifier onto the cluster's
         // internal socket.
         //
-        // Charged by the handler AFTER its local checks, not in front of the route, and from two
-        // buckets of the same configured rate (enrollmentEndpoint.hpp, RateGates): one for the
-        // enrollments whose password or token was verified here, one for everything authd still has
-        // to judge or nobody judges at all (re-enrollment bearers, Open mode). A pre-auth bucket
+        // Charged by the handler once the credential is classified, not in front of the route, and
+        // from two buckets of the same configured rate (enrollmentEndpoint.hpp, RateGates): one for
+        // the enrollments whose password or token was verified here, charged after the body checks,
+        // and one for everything authd still has to judge or nobody judges at all (re-enrollment
+        // bearers, Open mode), charged before the body is decoded. A pre-auth bucket
         // shared by both let one unauthenticated source starve every enrollment on the node. The
         // price is that authd may be asked up to twice the configured rate when both classes run at
         // their ceiling at once; the AuthdClient queue still bounds what is in flight. Each bucket is

@@ -1085,8 +1085,9 @@ TEST(EnrollmentEndpointTest, ReenrollmentAuthdBusinessErrorsKeepTheirOwnMapping)
 }
 
 // -----------------------------------------------------------------------------
-// Rate gates -- charged after the local checks, from the bucket
-// of what the request PROVED, so a caller without a credential cannot starve the agents with one.
+// Rate gates -- charged once the credential is classified, from the bucket of what the request
+// PROVED, so a caller without a credential cannot starve the agents with one. The unverified bucket
+// is charged before the body is decoded; the verified one after the body checks.
 // -----------------------------------------------------------------------------
 
 namespace
@@ -1123,7 +1124,8 @@ namespace
                       HttpRequest request,
                       GateProbe& verified,
                       GateProbe& unverified,
-                      const std::string& tag)
+                      const std::string& tag,
+                      std::shared_ptr<const IBodyDecoder> bodyDecoder = nullptr)
     {
         GatedRun out;
         wazuh::metrics::Manager metricsManager;
@@ -1144,8 +1146,13 @@ namespace
         RateGates gates;
         gates.verified = verified.admission();
         gates.unverified = unverified.admission();
-        auto handler =
-            makeHandler(authenticator, authdClient, config, metrics, passthroughDecoder(), {}, std::move(gates));
+        auto handler = makeHandler(authenticator,
+                                   authdClient,
+                                   config,
+                                   metrics,
+                                   bodyDecoder ? bodyDecoder : passthroughDecoder(),
+                                   {},
+                                   std::move(gates));
 
         auto responder = std::make_shared<CapturingResponder>();
         handler(std::make_shared<const HttpRequest>(std::move(request)), responder);
@@ -1155,26 +1162,97 @@ namespace
     }
 } // namespace
 
-TEST(EnrollmentEndpointTest, ARequestRejectedLocallyNeverSpendsTheRateLimit)
+TEST(EnrollmentEndpointTest, ACredentialRejectionNeverSpendsTheRateLimit)
 {
     // Password mode with no Authorization header: the 401 is answered before either bucket is
     // charged, so a flood of such requests leaves the allowance untouched for agents that hold the
-    // password. Same for a malformed body in Open mode.
+    // password.
     GateProbe verified;
     GateProbe unverified;
 
     EnrollmentAuthenticator passwordMode {EnrollmentAuthConfig {/*requirePassword=*/true}, nullptr};
-    const auto noCredential = runGated(passwordMode, makeRequest(kValidBody), verified, unverified, "no_cred");
-    EXPECT_EQ(noCredential.response.status, 401);
+    const auto run = runGated(passwordMode, makeRequest(kValidBody), verified, unverified, "no_cred");
 
-    EnrollmentAuthenticator openMode {EnrollmentAuthConfig {false}, nullptr};
-    const auto badBody = runGated(openMode, makeRequest("{not json"), verified, unverified, "bad_body");
-    EXPECT_EQ(badBody.response.status, 400);
-
+    EXPECT_EQ(run.response.status, 401);
     EXPECT_EQ(verified.charged.load(), 0);
     EXPECT_EQ(unverified.charged.load(), 0);
-    EXPECT_FALSE(noCredential.authdReached);
-    EXPECT_FALSE(badBody.authdReached);
+    EXPECT_FALSE(run.authdReached);
+}
+
+TEST(EnrollmentEndpointTest, AVerifiedEnrollmentWithABadBodyNeverSpendsTheRateLimit)
+{
+    const std::string store = writeTokenStore("_gated_bad_body");
+    GateProbe verified;
+    GateProbe unverified;
+
+    auto tokenSource = std::make_shared<remoted::auth::TokenKeySource>(store);
+    EnrollmentAuthenticator authenticator {EnrollmentAuthConfig {false}, nullptr, tokenSource};
+    auto request = makeRequest("{not json");
+    request.headers.emplace("authorization", vectorTokenBearer(static_cast<std::int64_t>(std::time(nullptr))));
+    const auto run = runGated(authenticator, std::move(request), verified, unverified, "verified_bad_body");
+
+    EXPECT_EQ(run.response.status, 400);
+    EXPECT_EQ(verified.charged.load(), 0);
+    EXPECT_EQ(unverified.charged.load(), 0);
+    EXPECT_FALSE(run.authdReached);
+
+    std::remove(store.c_str());
+}
+
+TEST(EnrollmentEndpointTest, AnUnverifiedEnrollmentIsChargedBeforeItsBodyIsChecked)
+{
+    // Open mode proves nothing, so its bucket is charged before the body is looked at: a malformed
+    // body spends it like any other credential-less request.
+    GateProbe verified;
+    GateProbe unverified;
+
+    EnrollmentAuthenticator openMode {EnrollmentAuthConfig {false}, nullptr};
+    const auto run = runGated(openMode, makeRequest("{not json"), verified, unverified, "unverified_bad_body");
+
+    EXPECT_EQ(run.response.status, 400);
+    EXPECT_EQ(unverified.charged.load(), 1);
+    EXPECT_EQ(verified.charged.load(), 0);
+    EXPECT_FALSE(run.authdReached);
+}
+
+TEST(EnrollmentEndpointTest, AnExhaustedUnverifiedBucketRefusesBeforeTheDecoderRuns)
+{
+    // Decoding a compressed body reserves shared in-flight budget, so an unverified request the bucket
+    // refuses must never reach the decoder: neither a forged re-enrollment bearer nor a credential-less
+    // (Open mode) request, whatever their body.
+    std::atomic<int> decodes {0};
+    const auto countingDecoder = stubDecoder(
+        [&decodes](ContentEncoding, remoted::auth::Payload&)
+        {
+            ++decodes;
+            return remoted::auth::AuthError::MalformedContentEncoding;
+        });
+
+    GateProbe verified;
+    GateProbe unverified;
+    unverified.admits = false;
+
+    EnrollmentAuthenticator passwordMode {EnrollmentAuthConfig {/*requirePassword=*/true}, nullptr};
+    auto reenroll = makeRequestWithContentEncoding("\x28\xb5\x2f\xfd garbage", "zstd");
+    reenroll.headers.emplace("authorization", "Bearer " + std::string {tvt::kAgentKidJwt});
+    const auto forged =
+        runGated(passwordMode, std::move(reenroll), verified, unverified, "zstd_reenroll", countingDecoder);
+
+    EnrollmentAuthenticator openMode {EnrollmentAuthConfig {false}, nullptr};
+    const auto open = runGated(openMode,
+                               makeRequestWithContentEncoding("\x28\xb5\x2f\xfd garbage", "zstd"),
+                               verified,
+                               unverified,
+                               "zstd_open",
+                               countingDecoder);
+
+    EXPECT_EQ(forged.response.status, 429);
+    EXPECT_EQ(open.response.status, 429);
+    EXPECT_EQ(decodes.load(), 0);
+    EXPECT_EQ(unverified.charged.load(), 2);
+    EXPECT_EQ(verified.charged.load(), 0);
+    EXPECT_FALSE(forged.authdReached);
+    EXPECT_FALSE(open.authdReached);
 }
 
 TEST(EnrollmentEndpointTest, AnOpenModeEnrollmentIsChargedToTheUnverifiedBucket)
