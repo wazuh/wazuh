@@ -1140,11 +1140,41 @@ TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyWithinToleranceLogsDefer
     .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
 
     m_logOutput.clear();
-    EXPECT_FALSE(scaMock.callPerformRecovery());
+    EXPECT_EQ(scaMock.callPerformRecovery(), RecoveryOutcome::FAILED);
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA recovery deferred: Failed to communicate with the manager. Will retry next cycle."));
+                    "SCA recovery deferred: Failed to communicate with the manager. It will be retried in the next integrity_interval"));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA recovery failed")));
+}
+
+// Once the DataClean went through, the snapshot is already queued, so a failed resend is delivered
+// by the next regular synchronization -- not by the next integrity_interval, which only a recovery
+// that failed before clearing the index waits for.
+TEST_F(ScaTest, PerformRecovery_ResendFailsAfterDataCleanSaysQueuedRowsGoWithNextSync)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+
+    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check"))
+    .Times(1);
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
+    .WillOnce(testing::Return(SyncModuleResult{true, "", false, false, 0u}));
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, ::testing::_))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
+
+    m_logOutput.clear();
+    EXPECT_EQ(scaMock.callPerformRecovery(), RecoveryOutcome::QUEUED);
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA recovery deferred: Failed to communicate with the manager. The queued checks will be "
+                    "delivered by the next regular synchronization."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("next integrity_interval")));
 }
 
 // performRecovery() has no periodic-cycle caller to log its outcome for it (unlike syncModule()),
@@ -1168,7 +1198,7 @@ TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyPastToleranceLogsWarning
     .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, streak}));
 
     m_logOutput.clear();
-    EXPECT_FALSE(scaMock.callPerformRecovery());
+    EXPECT_EQ(scaMock.callPerformRecovery(), RecoveryOutcome::FAILED);
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
                     "SCA recovery failed " + std::to_string(streak) +
@@ -1196,10 +1226,10 @@ TEST_F(ScaTest, PerformRecovery_DataCleanLocalTransportUnavailableWithinToleranc
     .WillOnce(testing::Return(SyncModuleResult{false, "Failed to reach the sync intake socket.", false, false, 1u, false, true}));
 
     m_logOutput.clear();
-    EXPECT_FALSE(scaMock.callPerformRecovery());
+    EXPECT_EQ(scaMock.callPerformRecovery(), RecoveryOutcome::FAILED);
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA recovery deferred: Failed to reach the sync intake socket. Will retry next cycle."));
+                    "SCA recovery deferred: Failed to reach the sync intake socket. It will be retried in the next integrity_interval"));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA recovery failed")));
 }
 
@@ -1221,7 +1251,7 @@ TEST_F(ScaTest, PerformRecovery_DataCleanLocalTransportUnavailablePastToleranceL
     .WillOnce(testing::Return(SyncModuleResult{false, "Failed to reach the sync intake socket.", false, false, streak, false, true}));
 
     m_logOutput.clear();
-    EXPECT_FALSE(scaMock.callPerformRecovery());
+    EXPECT_EQ(scaMock.callPerformRecovery(), RecoveryOutcome::FAILED);
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
                     "SCA recovery failed " + std::to_string(streak) +

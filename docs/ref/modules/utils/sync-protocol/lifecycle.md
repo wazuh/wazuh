@@ -110,8 +110,8 @@ bool applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSessi
 `applyHttpResult()` (see `agent_sync_protocol.cpp`) is where the outcome is decided, entirely from `httpCode`; `body` is used only for logging:
 
 - **Wrong phase, or `expectedSession` doesn't match the in-flight session**: the result is stale (a previous, already-timed-out session, or nothing in flight) — discarded, logged at DEBUG, returns `true` without touching state. A zero `expectedSession` skips this correlation check (the legacy `HCRESULT:<code>` form with no session number).
-- **Any `2xx`**: success (`SyncResult::SUCCESS`). `synchronizeModule()`/`notifyDataClean()` delete the synced items from the persistent queue; `requiresFullSync()` returns `false` (integrity valid). Any 2xx counts, not just 200, since the `/stateful` contract already reserves 202 for a future queued-processing response.
-- **`409`**: checksum mismatch (`SyncResult::CHECKSUM_ERROR`) — meaningful only as the answer to a `ChecksumModule` session; `requiresFullSync()` returns `true` (full sync needed).
+- **Any `2xx`**: success (`SyncResult::SUCCESS`). `synchronizeModule()`/`notifyDataClean()` delete the synced items from the persistent queue; `requiresFullSync()` returns `VALID`. Any 2xx counts, not just 200, since the `/stateful` contract already reserves 202 for a future queued-processing response.
+- **`409`**: checksum mismatch (`SyncResult::CHECKSUM_ERROR`) — meaningful only as the answer to a `ChecksumModule` session; `requiresFullSync()` retries it and returns `MISMATCH` (full sync needed) only if every attempt answers `409`.
 - **`503`**: the manager cannot serve this agent right now (indexer down, at capacity, shutting down, or a VD feed still downloading) — `SyncResult::COMMUNICATION_ERROR`, `managerNotReady = true` on the result. Covers both a brief post-restart window and a lasting outage; see `SyncModuleResult::managerNotReady` / `consecutiveFailures` in the [API Reference](api-reference.md#result-type) for how callers tell them apart.
 - **`415`**: the manager rejected the compressed encoding — treated the same as `503` (`COMMUNICATION_ERROR`, `managerNotReady = true`), since the agent's own `RetrySender` already retries once uncompressed within the same send.
 - **`0`** (no HTTP response at all — timeout, connect failure, TLS failure, abort): also treated as `COMMUNICATION_ERROR` / `managerNotReady = true`.
@@ -146,7 +146,7 @@ Agent                                   Manager
   |<--- HCRESULT:<session>:200|409:<body> - |
 ```
 
-Returns `true` (full sync required) on HTTP `409` (`SyncResult::CHECKSUM_ERROR`), `false` (integrity valid) on any `2xx`.
+Returns `VALID` on any `2xx`, and `MISMATCH` (full sync required) when every attempt answers HTTP `409` (`SyncResult::CHECKSUM_ERROR`). Any other outcome (intake socket unreachable, `503`, no response, stop) returns `NOT_CHECKED` with the reason, never `VALID`.
 
 ### Metadata/Groups Sync (`synchronizeMetadataOrGroups`)
 

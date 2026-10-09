@@ -110,10 +110,12 @@ SyncModuleResult_t asp_sync_module_bounded(AgentSyncProtocolHandle* handle,
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param index The index/table to check.
 /// @param checksum The calculated checksum for the index.
-/// @return true if full sync is required (checksum mismatch); false if integrity is valid.
-bool asp_requires_full_sync(AgentSyncProtocolHandle* handle,
-                            const char* index,
-                            const char* checksum);
+/// @return IntegrityCheckResult_t: INTEGRITY_CHECK_MISMATCH if full sync is required,
+///         INTEGRITY_CHECK_VALID if the manager confirmed the checksum, INTEGRITY_CHECK_NOT_CHECKED
+///         (with the reason) if the check did not complete.
+IntegrityCheckResult_t asp_requires_full_sync(AgentSyncProtocolHandle* handle,
+                                              const char* index,
+                                              const char* checksum);
 
 /// @brief Parses a response buffer encoded in FlatBuffer format.
 /// @param handle Protocol handle.
