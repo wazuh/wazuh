@@ -557,6 +557,14 @@ namespace remoted::enrollment
             const auto* granted = std::get_if<EnrollmentGranted>(&decision);
             const auto* reenroll = std::get_if<ReenrollmentRequested>(&decision);
 
+            // A request that proved nothing here is paced now, before the decoder: anyone can produce
+            // one, and the decoder reserves shared in-flight budget for a compressed body.
+            const bool verified = granted && granted->credentialVerified;
+            if (!verified && rateGates.unverified && !rateGates.unverified(*unmeteredResponder))
+            {
+                return;
+            }
+
             // Zero-copy view into request->body, kept alive by the request itself -- same
             // technique AuthGateway uses (authGateway.cpp) for the same reason: one physical copy
             // of the wire body, decoding replaces the view in place only on the Zstd path.
@@ -596,14 +604,9 @@ namespace remoted::enrollment
                 return;
             }
 
-            // The rate limit, charged only now: every check above is local and cheap, so a request
-            // that cannot pass them -- no credential, a bad one, a malformed body -- has been answered
-            // without spending anything. What is left is the authd round trip (and, on a worker, the
-            // master's) the limit exists to pace, and the bucket is picked by what was PROVED: see
-            // RateGates on why a re-enrollment or a credential-less request cannot share the bucket
-            // of an enrollment whose password or token was verified here.
-            const auto& admission = granted && granted->credentialVerified ? rateGates.verified : rateGates.unverified;
-            if (admission && !admission(*unmeteredResponder))
+            // A verified request is charged only now: one that fails a body or version check above
+            // has been answered without spending the bucket the agents holding a credential share.
+            if (verified && rateGates.verified && !rateGates.verified(*unmeteredResponder))
             {
                 return;
             }

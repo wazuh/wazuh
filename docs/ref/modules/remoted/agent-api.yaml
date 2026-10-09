@@ -1199,11 +1199,12 @@ paths:
         "429":
           description: |
             The endpoint was asked faster than `<remote><https><enroll_rate_limit>` allows (100/s
-            with a burst of 200 by default). Decided **after** the request passed its own checks
-            (credential, body, version) and **before** `authd` is contacted -- so a request that
-            fails them is answered 400/401 without spending the allowance, and one that passes them
-            does not cost the manager an `authd` round trip and, on a cluster worker, a further
-            round trip to the master, once the limit is reached.
+            with a burst of 200 by default). Decided **after** the credential check and **before**
+            `authd` is contacted -- so a request that fails its credential is answered 401 without
+            spending the allowance, and one that passes it does not cost the manager an `authd`
+            round trip and, on a cluster worker, a further round trip to the master, once the limit
+            is reached. A verified enrollment is charged after its body and version checks too; an
+            unverified one before its body is decoded.
 
             Two buckets of that rate: one for enrollments whose password or enrollment token was
             verified (a token with uses left), one for re-enrollments, credential-less enrollments
