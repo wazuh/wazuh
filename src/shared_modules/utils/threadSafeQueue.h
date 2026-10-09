@@ -117,18 +117,11 @@ namespace Utils
                               });
             }
 
-            // If the queue is not canceled, get the elements.
+            // If the queue is not canceled, get the elements. frontQueue throws when the stored keys do not match
+            // what the queue accounts for, and the caller has to see it.
             if (!m_canceled)
             {
-                try
-                {
-                    m_queue.frontQueue(bulkQueue,
-                                       m_queue.size() > elementsQuantity ? elementsQuantity : m_queue.size());
-                }
-                catch (const std::exception& e)
-                {
-                    bulkQueue = {};
-                }
+                m_queue.frontQueue(bulkQueue, m_queue.size() > elementsQuantity ? elementsQuantity : m_queue.size());
             }
 
             return bulkQueue;

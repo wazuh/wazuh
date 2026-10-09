@@ -25,7 +25,9 @@
 #include <map>
 #include <mutex>
 #include <pwd.h>
+#include <set>
 #include <unistd.h>
+#include <vector>
 
 constexpr auto USER_GROUP {"wazuh"};
 constexpr auto DEFAULT_PATH {"tmp/root-ca-merged.pem"};
@@ -37,6 +39,7 @@ constexpr auto ELEMENTS_PER_BULK {25000};
 constexpr auto MINIMAL_ELEMENTS_PER_BULK {5};
 
 constexpr auto HTTP_BAD_REQUEST {400};
+constexpr auto HTTP_NOT_FOUND {404};
 constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_VERSION_CONFLICT {409};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
@@ -64,6 +67,25 @@ constexpr auto SYNC_QUEUE_LIMIT = 4096;
 constexpr auto MINIMAL_SYNC_TIME {30}; // In minutes
 
 static std::mutex G_CREDENTIAL_MUTEX;
+
+// The vulnerability scanner stores documents as "<id>_<feed offset>" while DELETED carries the bare "<id>". The "_"
+// keeps CVE-2023-1 from reaching CVE-2023-100, and the bare key covers documents stored without an offset.
+static std::vector<std::string> keysToDelete(Utils::RocksDBWrapper& db, const std::string& id)
+{
+    std::vector<std::string> keys;
+    if (std::string value; db.get(id, value))
+    {
+        keys.push_back(id);
+    }
+
+    // Named local: seek() only borrows the key as a string_view, read lazily on the loop's begin().
+    const auto idPrefix = id + "_";
+    for (const auto& [key, _] : db.seek(idPrefix))
+    {
+        keys.emplace_back(key);
+    }
+    return keys;
+}
 
 static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, std::string& caRootCertificate)
 {
@@ -780,10 +802,94 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
             throw std::runtime_error("Couldn't retrieve current mappings.");
         }
 
+        // The backup is looked up by its own name, which only needs access to that index.
+        const auto backupIndexUrl = [&]()
+        {
+            return selector->getNext() + "/" + m_indexName + "-backup";
+        };
+        const auto backupExists = [&]()
+        {
+            auto exists = true;
+            const auto onLookupError =
+                [&exists, &onError](const std::string& error, const long statusCode, const std::string& body)
+            {
+                if (statusCode != HTTP_NOT_FOUND)
+                {
+                    onError(error, statusCode, body);
+                }
+                exists = false;
+            };
+            HTTPRequest::instance().get(
+                RequestParameters {.url = HttpURL(backupIndexUrl() + "/_settings?filter_path=*.settings.index.uuid"),
+                                   .secureCommunication = secureCommunication},
+                PostRequestParameters {.onSuccess = onSuccess, .onError = onLookupError},
+                ConfigurationParameters {});
+            return exists;
+        };
+        const auto documentCount = [&](const std::string& indexName)
+        {
+            nlohmann::json countResponse;
+            HTTPRequest::instance().get(
+                RequestParameters {.url = HttpURL(selector->getNext() + "/" + indexName + "/_count?filter_path=count"),
+                                   .secureCommunication = secureCommunication},
+                PostRequestParameters {.onSuccess = [&countResponse](const std::string& response)
+                                       { countResponse = nlohmann::json::parse(response, nullptr, false); },
+                                       .onError = onError},
+                ConfigurationParameters {});
+
+            if (countResponse.is_discarded() || !countResponse.contains("count"))
+            {
+                throw std::runtime_error("Couldn't retrieve the document count of '" + indexName + "'.");
+            }
+            return countResponse.at("count").get<uint64_t>();
+        };
+
         // Calculating hashes.
         auto hashTemplateMappings = hashMappings(templateMappings.dump());
         auto hashCurrentMappings = hashMappings(currentMappings[m_indexName]["mappings"].dump());
-        if (hashTemplateMappings != hashCurrentMappings)
+        if (hashTemplateMappings == hashCurrentMappings)
+        {
+            // Matching mappings only prove that the index was recreated, not that the reindex from the backup
+            // finished, so the backup is deleted only when it holds no more documents than the index.
+            const auto removeOrphanBackup = [&]()
+            {
+                if (!backupExists())
+                {
+                    return;
+                }
+
+                const auto backupDocuments = documentCount(m_indexName + "-backup");
+                const auto indexDocuments = documentCount(m_indexName);
+                if (backupDocuments > indexDocuments)
+                {
+                    logWarn(IC_NAME,
+                            "Keeping backup index '%s-backup' with %llu documents: index '%s' holds %llu, so a "
+                            "migration may not have finished.",
+                            m_indexName.c_str(),
+                            static_cast<unsigned long long>(backupDocuments),
+                            m_indexName.c_str(),
+                            static_cast<unsigned long long>(indexDocuments));
+                    return;
+                }
+
+                logInfo(IC_NAME, "Deleting orphan backup index '%s-backup'.", m_indexName.c_str());
+                HTTPRequest::instance().delete_(
+                    RequestParameters {.url = HttpURL(backupIndexUrl()), .secureCommunication = secureCommunication},
+                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                    ConfigurationParameters {});
+            };
+
+            // The cleanup is optional: a failure in it is not a failure of the mappings validation.
+            try
+            {
+                removeOrphanBackup();
+            }
+            catch (const std::exception& e)
+            {
+                logWarn(IC_NAME, "Unable to clean up the backup index '%s-backup': %s.", m_indexName.c_str(), e.what());
+            }
+        }
+        else
         {
             logDebug2(IC_NAME,
                       "Current mappings '%s' do not match the expected mappings '%s'.",
@@ -823,21 +929,11 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
                 R"(}}})";
 
             // Remove any previous backup if exists.
-            std::string currentIndices;
-            HTTPRequest::instance().get(
-                RequestParameters {.url = HttpURL(selector->getNext() + "/_cat/indices/"),
-                                   .secureCommunication = secureCommunication},
-                PostRequestParameters {.onSuccess = [&currentIndices](const std::string& response)
-                                       { currentIndices = response; },
-                                       .onError = onError},
-                ConfigurationParameters {});
-
-            if (currentIndices.find(m_indexName + "-backup") != std::string::npos)
+            if (backupExists())
             {
                 logDebug2(IC_NAME, "Deleting previous backup index '%s-backup'.", m_indexName.c_str());
                 HTTPRequest::instance().delete_(
-                    RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName + "-backup"),
-                                       .secureCommunication = secureCommunication},
+                    RequestParameters {.url = HttpURL(backupIndexUrl()), .secureCommunication = secureCommunication},
                     PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                     ConfigurationParameters {});
             }
@@ -1139,12 +1235,6 @@ IndexerConnector::IndexerConnector(
         {
             std::scoped_lock lock(m_syncMutex);
 
-            if (!m_initialized && m_initializeThread.joinable())
-            {
-                logDebug2(IC_NAME, "Waiting for initialization thread to process events.");
-                m_initializeThread.join();
-            }
-
             if (m_stopping.load())
             {
                 logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
@@ -1156,6 +1246,36 @@ IndexerConnector::IndexerConnector(
 
             // Accumulator for data to be sent to the indexer via query requests.
             nlohmann::json queryData;
+
+            // Requests in the order they have to reach the indexer (true: delete by query). Only the operations of
+            // the same agent have to keep their order: a delete by query must not run after the bulk that follows it,
+            // which would remove the documents that bulk has just indexed. So the pending queries are sent before the
+            // pending bulk, and the requests are cut only when a query arrives for an agent that already has
+            // operations in the bulk. The agent is the first field of an id, which is the node name for the manager
+            // agent in a cluster.
+            std::vector<std::pair<bool, std::string>> requests;
+            std::set<std::string> bulkAgents;
+            const auto agentOf = [](const std::string& id)
+            {
+                return id.substr(0, id.find('_'));
+            };
+            const auto flushBulk = [&bulkData, &bulkAgents, &requests]()
+            {
+                if (!bulkData.empty())
+                {
+                    requests.emplace_back(false, std::move(bulkData));
+                    bulkData.clear();
+                }
+                bulkAgents.clear();
+            };
+            const auto flushQuery = [&queryData, &requests]()
+            {
+                if (!queryData.empty())
+                {
+                    requests.emplace_back(true, queryData.dump());
+                    queryData.clear();
+                }
+            };
 
             while (!dataQueue.empty())
             {
@@ -1189,21 +1309,12 @@ IndexerConnector::IndexerConnector(
                 {
                     if (m_useSeekDelete)
                     {
-                        // The id here is already the full composite key (every element's deleteElement() builds
-                        // it as agentId + "_" + itemId) - no separator needed. seek() is a plain byte-prefix
-                        // scan though, so a longer sibling key starting with this id (e.g. CVE-2023-100 when
-                        // deleting CVE-2023-1) would also match. The default comparator visits the exact match
-                        // first, so stop as soon as the key stops being exactly the id.
-                        for (const auto& [key, _] : m_db->seek(id))
+                        for (const auto& key : keysToDelete(*m_db, id))
                         {
-                            if (key != id)
-                            {
-                                break;
-                            }
-
                             logDebug2(IC_NAME, "Added document for deletion with id: %s.", key.c_str());
                             if (!noIndex)
                             {
+                                bulkAgents.insert(agentOf(key));
                                 builderBulkDelete(bulkData, key, m_indexName);
                             }
 
@@ -1214,6 +1325,7 @@ IndexerConnector::IndexerConnector(
                     {
                         if (!noIndex)
                         {
+                            bulkAgents.insert(agentOf(id));
                             builderBulkDelete(bulkData, id, m_indexName);
                         }
 
@@ -1225,6 +1337,11 @@ IndexerConnector::IndexerConnector(
                     logDebug2(IC_NAME, "Added document for deletion by query with id: %s.", id.c_str());
                     if (!noIndex)
                     {
+                        if (bulkAgents.count(agentOf(id)))
+                        {
+                            flushQuery();
+                            flushBulk();
+                        }
                         builderDeleteByQuery(queryData, id);
                     }
 
@@ -1249,6 +1366,7 @@ IndexerConnector::IndexerConnector(
                     const auto dataString = parsedData.at("data").dump();
                     if (!noIndex)
                     {
+                        bulkAgents.insert(agentOf(id));
                         builderBulkIndex(bulkData, id, m_indexName, dataString);
                     }
                     m_db->put(id, dataString);
@@ -1387,18 +1505,35 @@ IndexerConnector::IndexerConnector(
                     {});
             };
 
-            const auto serverUrl = selector->getNext();
+            flushQuery();
+            flushBulk();
 
-            if (!bulkData.empty())
+            // Only what goes to the indexer needs it: the operations flagged no-index have already been applied to the
+            // local mirror, so they neither wait for its initialization nor for an available server.
+            if (requests.empty())
             {
-                const auto url = serverUrl + "/_bulk?refresh=wait_for";
-                processData(bulkData, url);
+                return;
             }
 
-            if (!queryData.empty())
+            if (!m_initialized && m_initializeThread.joinable())
             {
-                const auto url = serverUrl + "/" + m_indexName + "/_delete_by_query";
-                processData(queryData.dump(), url);
+                logDebug2(IC_NAME, "Waiting for initialization thread to process events.");
+                m_initializeThread.join();
+            }
+
+            if (m_stopping.load())
+            {
+                logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
+                throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
+            }
+
+            const auto serverUrl = selector->getNext();
+
+            for (const auto& [isQuery, payload] : requests)
+            {
+                const auto url = isQuery ? serverUrl + "/" + m_indexName + "/_delete_by_query"
+                                         : serverUrl + "/_bulk?refresh=wait_for";
+                processData(payload, url);
             }
         },
         DATABASE_BASE_PATH + m_indexName,
@@ -1533,16 +1668,8 @@ IndexerConnector::IndexerConnector(
                 {
                     if (m_useSeekDelete)
                     {
-                        // Same as the index-enabled constructor's DELETED branch: id is already the full
-                        // composite key, no separator appended - stop as soon as the key stops being exactly
-                        // the id, so a longer sibling key sharing the same byte-prefix isn't also deleted.
-                        for (const auto& [key, _] : m_db->seek(id))
+                        for (const auto& key : keysToDelete(*m_db, id))
                         {
-                            if (key != id)
-                            {
-                                break;
-                            }
-
                             m_db->delete_(key);
                         }
                     }
