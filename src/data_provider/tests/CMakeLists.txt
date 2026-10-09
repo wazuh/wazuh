@@ -14,6 +14,7 @@ include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_subdirectory(sysInfoHardwareLinux)
   add_subdirectory(sysInfoPackagesLinuxHelper)
   add_subdirectory(sysInfoPackagesBerkeleyDB)
   add_subdirectory(sysInfoNetworkLinux)
