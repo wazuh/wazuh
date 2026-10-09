@@ -1263,8 +1263,8 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     w_token_bootstrap_mark_anchor_committed(opts->gid);
     token_discard_delivered_ca();
 
-    /* enrollment.c's TempFile()+OS_MoveFile() replace only chmod()s client.keys to a fixed 0640
-     * on the temp file, never its group, so it inherits this root process's group instead of
+    /* enrollment.c's TempFile()+rename_ex() replace only sets a fixed 0640 mode on the temp
+     * file, never its group, so client.keys inherits this root process's group instead of
      * root:wazuh -- chown to root:gid (not uid:gid, mirroring the anchor's ownership model)
      * restores read access without handing the credential to the runtime user. If this fails
      * (e.g. a namespaced container without CAP_CHOWN), the anchor above is already committed, so
