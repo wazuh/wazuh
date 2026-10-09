@@ -73,6 +73,19 @@ int OS_ReadXML(const char *file, OS_XML *lxml) __attribute__((nonnull));
 int OS_ReadXML_Ex(const char *file, OS_XML *_lxml, bool flag_truncate) __attribute__((nonnull));
 
 /**
+ * @brief Parses XML from a stream the caller already holds and stores the content in the OS_XML
+ *        struct.
+ *
+ * Same as OS_ReadXML(), from @p fp instead of a file opened by name. Like OS_ReadXML() with the
+ * stream it opens, it closes @p fp when it is done, whether parsing succeeded or not.
+ *
+ * @param fp The stream to read, from its current position. Closed on return.
+ * @param lxml The struct to store the result.
+ * @return int OS_SUCCESS on success, OS_INVALID otherwise.
+ */
+int OS_ReadXMLFromStream(FILE *fp, OS_XML *lxml) __attribute__((nonnull));
+
+/**
  * @brief Parses a XML string and stores the content in the OS_XML struct.
  *        This legacy method will always fail if the content of a tag is bigger than XML_MAXSIZE.
  *
@@ -148,6 +161,22 @@ char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
 /* Write an XML file, based on the input and values to change */
 int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
                 const char *oldval, const char *newval) __attribute__((nonnull(1, 2, 3, 5)));
+
+/**
+ * @brief Writes an XML stream, based on the input file and values to change.
+ *
+ * Same as OS_WriteXML(), but into a stream the caller already holds, so the output is never
+ * reopened by name. @p fp_out is left open and unflushed: closing it is the caller's.
+ *
+ * @p fp_out must be seekable, such as a regular file: the copy steps back over bytes it has
+ * already written, and a missing node is appended at the end of the stream.
+ *
+ * @return 0 on success, XMLW_NOIN when @p infile cannot be opened (nothing was written),
+ *         XMLW_ERROR on a parse error (@p fp_out may already hold part of the copy, which the
+ *         caller has to discard).
+ */
+int OS_WriteXMLToStream(const char *infile, FILE *fp_out, const char **nodes,
+                        const char *oldval, const char *newval) __attribute__((nonnull(1, 2, 3, 5)));
 
 /**
  * @brief Get value of an attribute of a node

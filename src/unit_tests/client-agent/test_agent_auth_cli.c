@@ -97,14 +97,117 @@ int __wrap_Privsep_GetGroup(__attribute__((unused)) const char *name) {
     return (int) getgid();
 }
 
+/* Counted so the config rewrite can be held to setting the staged file's owner through its
+ * descriptor: a chown() by name follows whatever the name points at by then. The inode is what
+ * says which file the owner would have landed on. */
+static int g_chown_calls = 0;
+static int g_fchown_calls = 0;
+static uid_t g_fchown_owner = (uid_t) -1;
+static gid_t g_fchown_group = (gid_t) -1;
+static ino_t g_fchown_ino = 0;
+
 int __wrap_chown(__attribute__((unused)) const char *path, __attribute__((unused)) uid_t owner,
                  __attribute__((unused)) gid_t group) {
+    g_chown_calls++;
     return 0;
 }
 
-int __wrap_fchown(__attribute__((unused)) int fd, __attribute__((unused)) uid_t owner,
-                  __attribute__((unused)) gid_t group) {
+int __wrap_fchown(int fd, uid_t owner, gid_t group) {
+    struct stat st;
+
+    g_fchown_calls++;
+    g_fchown_owner = owner;
+    g_fchown_group = group;
+    g_fchown_ino = (fstat(fd, &st) == 0) ? st.st_ino : 0;
     return 0;
+}
+
+/* Same reason as chown(): a mode set by name lands on whatever the name points at. */
+static int g_fchmodat_calls = 0;
+
+int __real_fchmodat(int dirfd, const char *path, mode_t mode, int flags);
+
+int __wrap_fchmodat(int dirfd, const char *path, mode_t mode, int flags) {
+    g_fchmodat_calls++;
+    return __real_fchmodat(dirfd, path, mode, flags);
+}
+
+/* Plays the account that can write etc/ winning the race for the staged copy of ossec.conf: the
+ * moment TempFile() has created it, the name is swapped for a symlink to SWAP_TARGET. The stream
+ * TempFile() returned still refers to the file it created. */
+#define SWAP_TARGET "etc/swap-target"
+#define SWAP_TARGET_CONTENT "not ossec.conf\n"
+
+static bool g_swap_staged = false;
+
+/* The name TempFile() chose, for the hooks below that act on it later. */
+static char g_staged_name[PATH_MAX] = {0};
+
+int __real_TempFile(File *file, const char *source, int copy);
+
+int __wrap_TempFile(File *file, const char *source, int copy) {
+    int result = __real_TempFile(file, source, copy);
+
+    if (result == 0) {
+        snprintf(g_staged_name, sizeof(g_staged_name), "%s", file->name);
+    }
+
+    if (result == 0 && g_swap_staged) {
+        assert_int_equal(unlink(file->name), 0);
+        /* Relative to the link's own directory, etc/. */
+        assert_int_equal(symlink("swap-target", file->name), 0);
+    }
+
+    return result;
+}
+
+/* The same account, later: once every check on the staged copy has passed, it puts a directory at
+ * the staged name, so rename() cannot move it, and points ossec.conf itself at SWAP_TARGET. A
+ * failed move must stay a failure; anything that falls back to copying by name would open
+ * ossec.conf for writing and truncate the target as root. */
+static bool g_swap_at_rename = false;
+
+int __real_rename(const char *oldpath, const char *newpath);
+
+int __wrap_rename(const char *oldpath, const char *newpath) {
+    if (g_swap_at_rename && strcmp(newpath, WAZUHCONF) == 0) {
+        g_swap_at_rename = false;
+        assert_int_equal(unlink(oldpath), 0);
+        assert_int_equal(mkdir(oldpath, 0700), 0);
+        assert_int_equal(unlink(newpath), 0);
+        assert_int_equal(symlink("swap-target", newpath), 0);
+    }
+
+    return __real_rename(oldpath, newpath);
+}
+
+/* Puts things back after the hook above: the directory left at the staged name, and the link at
+ * ossec.conf, which the next test's write_file() would otherwise follow. */
+static void undo_swap_at_rename(void) {
+    struct stat st;
+
+    if (g_staged_name[0] != '\0') {
+        rmdir(g_staged_name);
+    }
+
+    if (lstat(WAZUHCONF, &st) == 0 && S_ISLNK(st.st_mode)) {
+        unlink(WAZUHCONF);
+    }
+}
+
+/* Counts reads of the staged copy by name. Its name can be swapped for a symlink at any time, and
+ * root opening it -- even only to read -- then opens whatever the link points at: a FIFO blocks
+ * the command, and some device nodes act on open. */
+static int g_staged_reads_by_name = 0;
+
+int __real_OS_ReadXML(const char *file, OS_XML *lxml);
+
+int __wrap_OS_ReadXML(const char *file, OS_XML *lxml) {
+    if (g_staged_name[0] != '\0' && strcmp(file, g_staged_name) == 0) {
+        g_staged_reads_by_name++;
+    }
+
+    return __real_OS_ReadXML(file, lxml);
 }
 
 
@@ -186,8 +289,29 @@ int __wrap_OS_MoveFile(const char *src, const char *dst) {
     return __real_OS_MoveFile(src, dst);
 }
 
-int __wrap_OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
-                       const char *oldval, const char *newval) {
+/* Set by the test of a write that fails and then recovers. stdio drops a buffer it could not write
+ * and keeps only the error flag, so the fflush() and fclose() that follow can both succeed with
+ * part of the rewrite gone. */
+static bool g_lose_staged_write = false;
+
+static void lose_a_write(FILE *fp_out) {
+    char filler[3 * BUFSIZ];
+    int fd = fileno(fp_out);
+    int saved = dup(fd);
+
+    assert_true(saved >= 0);
+    memset(filler, ' ', sizeof(filler));
+
+    /* Larger than the buffer, so it has to reach write(), which fails on the closed descriptor.
+     * Nothing opens a file before dup2() puts the descriptor back. */
+    close(fd);
+    assert_true(fwrite(filler, 1, sizeof(filler), fp_out) < sizeof(filler));
+    assert_int_equal(dup2(saved, fd), fd);
+    close(saved);
+}
+
+int __wrap_OS_WriteXMLToStream(const char *infile, FILE *fp_out, const char **nodes,
+                               const char *oldval, const char *newval) {
     (void) infile;
     (void) oldval;
 
@@ -203,11 +327,14 @@ int __wrap_OS_WriteXML(const char *infile, const char *outfile, const char **nod
 
     /* The real one copies the file through when the node is absent; the caller is supposed to
      * notice by reading the value back, so the mock can simply produce whatever the test wants
-     * that read to find. */
-    FILE *fp = fopen(outfile, "w");
-    assert_non_null(fp);
-    fputs((const char *) mock(), fp);
-    fclose(fp);
+     * that read to find. Into the caller's stream, which stays the caller's to flush and close. */
+    assert_non_null(fp_out);
+
+    if (g_lose_staged_write) {
+        lose_a_write(fp_out);
+    }
+
+    fputs((const char *) mock(), fp_out);
 
     return mock_type(int);
 }
@@ -284,6 +411,18 @@ static int setup_test(void **state) {
     g_enroll_calls = 0;
     g_enroll_body[0] = '\0';
     g_fail_anchor_move = false;
+    g_chown_calls = 0;
+    g_fchown_calls = 0;
+    g_fchown_owner = (uid_t) -1;
+    g_fchown_group = (gid_t) -1;
+    g_fchmodat_calls = 0;
+    g_fchown_ino = 0;
+    g_swap_staged = false;
+    g_staged_name[0] = '\0';
+    g_swap_at_rename = false;
+    g_staged_reads_by_name = 0;
+    g_lose_staged_write = false;
+    unlink(SWAP_TARGET);
     unlink(KEYS_FILE);
     unlink(AGENT_ANCHOR_CA);
     unlink(AGENT_DELIVERED_CA);
@@ -308,6 +447,7 @@ static int teardown_test(void **state) {
     rmdir(AGENT_DELIVERED_CA);
     unlink(AGENT_DELIVERED_CA);
     rmdir("var/incoming");
+    undo_swap_at_rename();
     clear_agentd_pidfiles();
 
     if (agt != NULL) {
@@ -760,8 +900,9 @@ static void test_refused_enrollment_reports_the_manager_reason(void **state) {
     assert_string_equal(out_buf, "");
 }
 
-/* The config rewrite is the one step that reports success without the data changing: OS_WriteXML
- * returns 0 when the node is absent. Reading the value back is what tells the two apart. */
+/* The config rewrite is the one step that reports success without the data changing:
+ * OS_WriteXMLToStream returns 0 when the node is absent. Reading the value back is what tells the
+ * two apart. */
 static void test_config_rewrite_refuses_when_the_node_is_absent(void **state) {
     (void) state;
     char err_buf[2048] = {0};
@@ -771,10 +912,10 @@ static void test_config_rewrite_refuses_when_the_node_is_absent(void **state) {
 
     /* No logging expectations: this path reaches neither the debug line TempFile() emits on a
      * missing source nor any info/error -- everything it reports goes to the caller's stream. */
-    expect_string(__wrap_OS_WriteXML, newval, "new.example.local");
+    expect_string(__wrap_OS_WriteXMLToStream, newval, "new.example.local");
     /* What the rewritten file ends up containing: the node still absent. */
-    will_return(__wrap_OS_WriteXML, "<ossec_config><agent></agent></ossec_config>\n");
-    will_return(__wrap_OS_WriteXML, 0);          /* ...and OS_WriteXML still says success */
+    will_return(__wrap_OS_WriteXMLToStream, "<ossec_config><agent></agent></ossec_config>\n");
+    will_return(__wrap_OS_WriteXMLToStream, 0);          /* ...and OS_WriteXMLToStream still says success */
 
     assert_int_equal(w_agent_auth_update_endpoint("new.example.local", "old.example.local", err), -1);
 
@@ -783,6 +924,153 @@ static void test_config_rewrite_refuses_when_the_node_is_absent(void **state) {
     assert_non_null(strstr(err_buf, "has no <agent><manager><endpoint>"));
     /* The live file was left alone rather than replaced with an unchanged copy. */
     assert_non_null(strstr(err_buf, "left"));
+}
+
+static void assert_file_content(const char *path, const char *expected) {
+    char buf[1024] = {0};
+    FILE *fp = fopen(path, "r");
+
+    assert_non_null(fp);
+    assert_int_equal(fread(buf, 1, sizeof(buf) - 1, fp), strlen(expected));
+    fclose(fp);
+    assert_string_equal(buf, expected);
+}
+
+/* etc/ is writable by the account the agent runs as, and this command runs as root. If that
+ * account swaps the staged copy for a symlink, nothing may be written through it, nor have its
+ * mode or owner changed -- the target can be any file on the host. */
+static void test_config_rewrite_never_follows_a_swapped_staging_file(void **state) {
+    (void) state;
+    char err_buf[2048] = {0};
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+    struct stat target;
+
+    write_file(WAZUHCONF, CONFIG_WITH_ENDPOINT);
+    write_file(SWAP_TARGET, SWAP_TARGET_CONTENT);
+    assert_int_equal(chmod(SWAP_TARGET, 0600), 0);
+    g_swap_staged = true;
+
+    expect_string(__wrap_OS_WriteXMLToStream, newval, "new.example.local:1518");
+    will_return(__wrap_OS_WriteXMLToStream, REWRITTEN_CONFIG);
+    will_return(__wrap_OS_WriteXMLToStream, 0);
+
+    assert_int_equal(w_agent_auth_update_endpoint("new.example.local:1518", "siem.example.local", err), -1);
+
+    fclose(err);
+
+    assert_file_content(SWAP_TARGET, SWAP_TARGET_CONTENT);
+    assert_int_equal(stat(SWAP_TARGET, &target), 0);
+    assert_int_equal(target.st_mode & 07777, 0600);
+    /* chown() and fchown() are no-ops here, so who would have owned what is checked by name and
+     * by inode instead: never by name, and never the target's inode. */
+    assert_int_equal(g_chown_calls, 0);
+    assert_int_not_equal(g_fchown_ino, target.st_ino);
+    assert_file_content(WAZUHCONF, CONFIG_WITH_ENDPOINT);
+    assert_non_null(strstr(err_buf, "was replaced while it was being written"));
+}
+
+/* The rewritten file keeps the live one's mode and owner, and both are set through the staged
+ * file's descriptor: by name, they land on whatever the name points at by then. */
+static void test_config_rewrite_sets_mode_and_owner_through_the_descriptor(void **state) {
+    (void) state;
+    char err_buf[2048] = {0};
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+    struct stat rewritten;
+
+    write_file(WAZUHCONF, CONFIG_WITH_ENDPOINT);
+    assert_int_equal(chmod(WAZUHCONF, 0640), 0);
+
+    expect_string(__wrap_OS_WriteXMLToStream, newval, "new.example.local:1518");
+    will_return(__wrap_OS_WriteXMLToStream, REWRITTEN_CONFIG);
+    will_return(__wrap_OS_WriteXMLToStream, 0);
+
+    assert_int_equal(w_agent_auth_update_endpoint("new.example.local:1518", "siem.example.local", err), 0);
+
+    fclose(err);
+
+    assert_int_equal(g_chown_calls, 0);
+    assert_int_equal(g_fchmodat_calls, 0);
+    assert_int_equal(g_fchown_calls, 1);
+    assert_int_equal(g_fchown_owner, getuid());
+    assert_int_equal(g_fchown_group, getgid());
+    assert_int_equal(stat(WAZUHCONF, &rewritten), 0);
+    /* The owner went to the file that was installed, whichever call carried it there. */
+    assert_int_equal(g_fchown_ino, rewritten.st_ino);
+    assert_int_equal(rewritten.st_mode & 07777, 0640);
+    assert_file_content(WAZUHCONF, REWRITTEN_CONFIG);
+}
+
+/* After every check on the staged copy has passed, the account that can write etc/ makes the move
+ * fail and points ossec.conf at another file. The move has to fail as a move: copying into
+ * ossec.conf by name instead would have root truncate that other file. */
+static void test_config_rewrite_install_never_writes_through_a_symlink(void **state) {
+    (void) state;
+    char err_buf[2048] = {0};
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    write_file(WAZUHCONF, CONFIG_WITH_ENDPOINT);
+    write_file(SWAP_TARGET, SWAP_TARGET_CONTENT);
+    g_swap_at_rename = true;
+
+    /* Allowed, not required: only a fallback copy would log here. Optional, so that a regression
+     * fails on the target below rather than on an unexpected log line. */
+    expect_any_count(__wrap__mdebug1, formatted_msg, WILL_RETURN_ONCE);
+    expect_any_count(__wrap__merror, formatted_msg, WILL_RETURN_ONCE);
+
+    expect_string(__wrap_OS_WriteXMLToStream, newval, "new.example.local:1518");
+    will_return(__wrap_OS_WriteXMLToStream, REWRITTEN_CONFIG);
+    will_return(__wrap_OS_WriteXMLToStream, 0);
+
+    assert_int_equal(w_agent_auth_update_endpoint("new.example.local:1518", "siem.example.local", err), -1);
+
+    fclose(err);
+
+    assert_false(g_swap_at_rename);
+    assert_file_content(SWAP_TARGET, SWAP_TARGET_CONTENT);
+    assert_non_null(strstr(err_buf, "could not install"));
+}
+
+/* The rewrite is read back to confirm the node changed. That read goes through the staged file's
+ * descriptor, never its name, which can point anywhere by then. */
+static void test_config_rewrite_reads_the_staged_copy_back_through_its_descriptor(void **state) {
+    (void) state;
+    char err_buf[2048] = {0};
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    write_file(WAZUHCONF, CONFIG_WITH_ENDPOINT);
+
+    expect_string(__wrap_OS_WriteXMLToStream, newval, "new.example.local:1518");
+    will_return(__wrap_OS_WriteXMLToStream, REWRITTEN_CONFIG);
+    will_return(__wrap_OS_WriteXMLToStream, 0);
+
+    assert_int_equal(w_agent_auth_update_endpoint("new.example.local:1518", "siem.example.local", err), 0);
+
+    fclose(err);
+
+    assert_int_equal(g_staged_reads_by_name, 0);
+    assert_file_content(WAZUHCONF, REWRITTEN_CONFIG);
+}
+
+/* stdio can lose part of a write and still let the flush and the close after it succeed; only the
+ * stream's error flag remembers. A rewrite with a hole in it is refused, not installed. */
+static void test_config_rewrite_refuses_a_rewrite_that_lost_a_write(void **state) {
+    (void) state;
+    char err_buf[2048] = {0};
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    write_file(WAZUHCONF, CONFIG_WITH_ENDPOINT);
+    g_lose_staged_write = true;
+
+    expect_string(__wrap_OS_WriteXMLToStream, newval, "new.example.local:1518");
+    will_return(__wrap_OS_WriteXMLToStream, REWRITTEN_CONFIG);
+    will_return(__wrap_OS_WriteXMLToStream, 0);
+
+    assert_int_equal(w_agent_auth_update_endpoint("new.example.local:1518", "siem.example.local", err), -1);
+
+    fclose(err);
+
+    assert_file_content(WAZUHCONF, CONFIG_WITH_ENDPOINT);
+    assert_non_null(strstr(err_buf, "could not rewrite"));
 }
 
 
@@ -902,7 +1190,7 @@ static void test_certs_only_needs_no_force_enroll(void **state) {
     assert_int_equal(FileSize(AGENT_ANCHOR_CA), (int64_t) strlen(PINNED_CERT));
     /* This token names the address already configured, so the rewrite is a no-op. Asserted
      * rather than left incidental: it is the other half of "only when it differs", and without
-     * it no OS_WriteXML expectation is queued and the mock would have to be the one to complain. */
+     * it no OS_WriteXMLToStream expectation is queued and the mock would have to be the one to complain. */
     assert_null(strstr(err_buf, "now points"));
 }
 
@@ -1094,7 +1382,7 @@ static void test_certs_only_warns_when_a_staged_ca_cannot_be_removed(void **stat
 }
 
 /* An ossec.conf with no <agent><manager> block at all parses fine and leaves the agent with no
- * address to dial. The rewrite cannot insert the node -- OS_WriteXML() appends it after
+ * address to dial. The rewrite cannot insert the node -- OS_WriteXMLToStream() appends it after
  * </ossec_config> and still reports success -- so the command has to say so rather than report a
  * move it did not make. Regression guard for a run that enrolled and exited 0 with the agent
  * still pointed nowhere. */
@@ -1150,9 +1438,9 @@ static void test_certs_only_points_the_config_at_the_new_address(void **state) {
     allow_any_logging(LOG_DEBUG1 | LOG_INFO);
     will_return(__wrap_hc_spki_pinned_certificate, 1);
 
-    expect_string(__wrap_OS_WriteXML, newval, "new.example.local:1518");
-    will_return(__wrap_OS_WriteXML, REWRITTEN_CONFIG);
-    will_return(__wrap_OS_WriteXML, 0);
+    expect_string(__wrap_OS_WriteXMLToStream, newval, "new.example.local:1518");
+    will_return(__wrap_OS_WriteXMLToStream, REWRITTEN_CONFIG);
+    will_return(__wrap_OS_WriteXMLToStream, 0);
 
     assert_int_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_OK);
 
@@ -1187,11 +1475,11 @@ static void test_certs_only_reports_a_failed_config_rewrite(void **state) {
     allow_any_logging(LOG_DEBUG1 | LOG_INFO);
     will_return(__wrap_hc_spki_pinned_certificate, 1);
 
-    expect_string(__wrap_OS_WriteXML, newval, "new.example.local:1518");
-    /* OS_WriteXML reports success having changed nothing -- the silent no-op the read-back
+    expect_string(__wrap_OS_WriteXMLToStream, newval, "new.example.local:1518");
+    /* OS_WriteXMLToStream reports success having changed nothing -- the silent no-op the read-back
      * guard in w_agent_auth_update_endpoint() exists to catch. */
-    will_return(__wrap_OS_WriteXML, CONFIG_WITH_ENDPOINT);
-    will_return(__wrap_OS_WriteXML, 0);
+    will_return(__wrap_OS_WriteXMLToStream, CONFIG_WITH_ENDPOINT);
+    will_return(__wrap_OS_WriteXMLToStream, 0);
 
     assert_int_equal(w_agent_auth_run(&opts, in, out, err), AGENT_AUTH_ERR_CONFIG);
 
@@ -1327,6 +1615,16 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_refused_enrollment_leaves_the_old_state, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_refused_enrollment_reports_the_manager_reason, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_config_rewrite_refuses_when_the_node_is_absent, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_rewrite_never_follows_a_swapped_staging_file, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_rewrite_sets_mode_and_owner_through_the_descriptor, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_rewrite_install_never_writes_through_a_symlink, setup_test,
+                                        teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_rewrite_reads_the_staged_copy_back_through_its_descriptor,
+                                        setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_rewrite_refuses_a_rewrite_that_lost_a_write, setup_test,
+                                        teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_is_decided_by_content_not_by_shape, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_dry_run_previews_instead_of_refusing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certs_only_refuses_when_not_enrolled, setup_test, teardown_test),

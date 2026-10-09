@@ -617,10 +617,10 @@ static void token_rollback(const w_token_enroll_opts_t *opts, token_snapshot_t *
         goto keep_backup;
     }
 
-    /* Same window as the config rewrite in agent_auth_cli.c: w_copy_file() reopens by NAME, so
-     * the account that can write INSTALLDIR/etc could swap the staged file for a symlink between
-     * the close and that reopen and have root restore through it. Recorded from the descriptor
-     * TempFile() still holds, and checked below before the rename. */
+    /* w_copy_file() reopens by NAME, so the account that can write INSTALLDIR/etc could swap the
+     * staged file for a symlink between the close and that reopen and have root restore through
+     * it. Recorded from the descriptor TempFile() still holds, and checked below before the
+     * rename. */
     struct stat restored_before;
     bool restored_known = (fstat(fileno(restored.fp), &restored_before) == 0);
 
