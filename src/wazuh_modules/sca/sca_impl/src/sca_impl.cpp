@@ -1318,7 +1318,7 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
                     {
                         // Not a failed check: left unstamped, so it runs again after the restart.
                         LoggingHelper::getInstance().log(
-                            LOG_INFO, std::string("Integrity check for " SCA_SYNC_INDEX " interrupted: module is stopping") +
+                            LOG_INFO, "Integrity check for " + std::string(SCA_SYNC_INDEX) + " interrupted: module is stopping" +
                             (check.mismatchUnconfirmed ? "; a checksum mismatch reported by the manager was not confirmed" : "") +
                             ". It will be checked again after the restart.");
                         stampIntegrityCheck = false;
@@ -1338,7 +1338,7 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
                         }
 
                         LoggingHelper::getInstance().log(
-                            LOG_WARNING, "Integrity check could not be performed for " SCA_SYNC_INDEX " (" + reason +
+                            LOG_WARNING, "Integrity check could not be performed for " + std::string(SCA_SYNC_INDEX) + " (" + reason +
                             "); it will be checked again in the next integrity_interval (" + integrityIntervalText() + ").");
                         response["error"] = 1;
                         response["message"] = "Integrity check could not be performed: " + check.failureReason;
@@ -1348,7 +1348,7 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
                     }
                     else if (check.status == IntegrityCheckStatus::MISMATCH)
                     {
-                        LoggingHelper::getInstance().log(LOG_INFO, "Checksum mismatch confirmed for " SCA_SYNC_INDEX
+                        LoggingHelper::getInstance().log(LOG_INFO, "Checksum mismatch confirmed for " + std::string(SCA_SYNC_INDEX) +
                                                          "; starting recovery (index cleanup and full resend).");
 
                         // Perform full recovery
@@ -1356,7 +1356,7 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
 
                         if (success)
                         {
-                            LoggingHelper::getInstance().log(LOG_INFO, "Recovery of index " SCA_SYNC_INDEX " completed.");
+                            LoggingHelper::getInstance().log(LOG_INFO, "Recovery of index " + std::string(SCA_SYNC_INDEX) + " completed.");
                         }
                         else if (!m_keepRunning.load())
                         {
