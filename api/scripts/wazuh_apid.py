@@ -241,10 +241,11 @@ def version():
 
 
 def exit_handler(signum, frame):
-    """Try to kill API child processes and remove their PID files."""
+    """Kill API child processes, remove their PID files and terminate."""
     api_pid = os.getpid()
     pyDaemonModule.delete_child_pids(pyDaemonModule.API_MAIN_PROCESS, api_pid, logger)
     pyDaemonModule.delete_pid(pyDaemonModule.API_MAIN_PROCESS, api_pid)
+    os._exit(0)
 
 
 def add_debug2_log_level_and_error():
