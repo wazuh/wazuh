@@ -29,6 +29,79 @@
 #define VALID_SECRET "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 #define OTHER_SECRET "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
 
+/* ---- hooks on the staged copy ----
+ *
+ * Nothing here mocks the filesystem either: the files stay real. These record the name TempFile()
+ * chose and count chmod() calls on it and, when a test asks, make a step fail the way the disk or
+ * the directory could. */
+
+static char g_staged_name[PATH_MAX] = {0};
+static int g_staged_chmods = 0;
+static bool g_staged_disk_full = false;
+static bool g_fail_staged_rename = false;
+
+#define SWAP_TARGET "etc/swap-target"
+#define SWAP_TARGET_CONTENT "not the re-enrollment secret\n"
+
+int __real_TempFile(File *file, const char *source, int copy);
+
+int __wrap_TempFile(File *file, const char *source, int copy) {
+    int result = __real_TempFile(file, source, copy);
+
+    if (result == 0) {
+        snprintf(g_staged_name, sizeof(g_staged_name), "%s", file->name);
+    }
+
+    if (result == 0 && g_staged_disk_full) {
+        /* Every write through the staged stream fails from here on, as on a full disk. */
+        int full = open("/dev/full", O_WRONLY);
+
+        assert_true(full >= 0);
+        assert_int_equal(dup2(full, fileno(file->fp)), fileno(file->fp));
+        close(full);
+    }
+
+    return result;
+}
+
+int __real_chmod(const char *path, mode_t mode);
+
+int __wrap_chmod(const char *path, mode_t mode) {
+    if (g_staged_name[0] != '\0' && strcmp(path, g_staged_name) == 0) {
+        g_staged_chmods++;
+    }
+
+    return __real_chmod(path, mode);
+}
+
+/* Makes the move of the staged copy fail, with a directory at its name, and points the
+ * destination's name at SWAP_TARGET, which has to come through untouched. */
+int __real_rename(const char *oldpath, const char *newpath);
+
+int __wrap_rename(const char *oldpath, const char *newpath) {
+    if (g_fail_staged_rename && strcmp(oldpath, g_staged_name) == 0) {
+        g_fail_staged_rename = false;
+        assert_int_equal(unlink(oldpath), 0);
+        assert_int_equal(mkdir(oldpath, 0700), 0);
+        unlink(newpath);
+        assert_int_equal(symlink("swap-target", newpath), 0);
+    }
+
+    return __real_rename(oldpath, newpath);
+}
+
+static void reset_staged_hooks(void) {
+    if (g_staged_name[0] != '\0') {
+        rmdir(g_staged_name);
+    }
+
+    unlink(SWAP_TARGET);
+    g_staged_name[0] = '\0';
+    g_staged_chmods = 0;
+    g_staged_disk_full = false;
+    g_fail_staged_rename = false;
+}
+
 /* ---- fixtures ---- */
 
 static int group_setup(void **state) {
@@ -63,6 +136,7 @@ static int setup_test(void **state) {
 
 static int teardown_test(void **state) {
     (void) state;
+    reset_staged_hooks();
     unlink(AGENT_REENROLL_SECRET);
     return 0;
 }
@@ -139,6 +213,65 @@ static void test_stored_file_has_client_keys_mode(void **state) {
     assert_int_equal(stat(AGENT_REENROLL_SECRET, &info), 0);
     assert_int_equal(info.st_mode & 0777, 0640);
 }
+
+/* That mode goes on through the descriptor TempFile() returned, never by name: by then the name
+ * can point at another file. */
+static void test_store_sets_the_mode_through_the_descriptor(void **state) {
+    (void) state;
+    ignore_debug_lines();
+
+    assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), 0);
+
+    assert_int_equal(g_staged_chmods, 0);
+    assert_string_equal(read_store(), "001 " VALID_SECRET "\n");
+}
+
+/* A move that fails is a failed store. Nothing is copied into the secret's file by name instead,
+ * so whatever that name points at comes through untouched. */
+static void test_store_never_copies_over_a_failed_move(void **state) {
+    (void) state;
+    FILE *fp;
+    char content[64] = {0};
+
+    write_store("001 " OTHER_SECRET "\n");
+    fp = fopen(SWAP_TARGET, "w");
+    assert_non_null(fp);
+    fputs(SWAP_TARGET_CONTENT, fp);
+    fclose(fp);
+    g_fail_staged_rename = true;
+
+    /* Allowed, not required: a regression should fail on the target below, not on a log line. */
+    ignore_debug_lines();
+    expect_any_count(__wrap__merror, formatted_msg, -2);
+    expect_any_count(__wrap__mferror, formatted_msg, -2);
+
+    assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), -1);
+
+    assert_false(g_fail_staged_rename);
+    fp = fopen(SWAP_TARGET, "r");
+    assert_non_null(fp);
+    assert_non_null(fgets(content, sizeof(content), fp));
+    fclose(fp);
+    assert_string_equal(content, SWAP_TARGET_CONTENT);
+}
+
+#ifdef __linux__
+/* A secret that could not be written in full is not installed: the store keeps the one it had. */
+static void test_store_keeps_the_previous_secret_when_the_write_fails(void **state) {
+    (void) state;
+
+    write_store("001 " OTHER_SECRET "\n");
+    g_staged_disk_full = true;
+
+    ignore_debug_lines();
+    expect_any(__wrap__merror, formatted_msg);
+
+    assert_int_equal(w_reenroll_secret_store("001", VALID_SECRET), -1);
+
+    assert_string_equal(read_store(), "001 " OTHER_SECRET "\n");
+    assert_int_equal(IsFile(g_staged_name), -1);
+}
+#endif
 #endif
 
 /* ---- refusals at the store boundary ---- */
@@ -306,6 +439,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_storing_again_replaces_the_previous_secret, setup_test, teardown_test),
 #ifndef WIN32
         cmocka_unit_test_setup_teardown(test_stored_file_has_client_keys_mode, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_store_sets_the_mode_through_the_descriptor, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_store_never_copies_over_a_failed_move, setup_test, teardown_test),
+#ifdef __linux__
+        cmocka_unit_test_setup_teardown(test_store_keeps_the_previous_secret_when_the_write_fails, setup_test,
+                                        teardown_test),
+#endif
 #endif
         cmocka_unit_test_setup_teardown(test_store_refuses_an_invalid_id, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_store_refuses_a_malformed_secret, setup_test, teardown_test),
