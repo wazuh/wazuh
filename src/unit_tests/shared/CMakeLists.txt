@@ -31,7 +31,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                             -Wl,--wrap,realpath,--wrap,getenv,--wrap,atexit ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap,merror,--wrap,fseek,--wrap,access \
                             -Wl,--wrap,opendir,--wrap,readdir,--wrap,closedir,--wrap,rmdir \
-                            -Wl,--wrap,IsDir")
+                            -Wl,--wrap,IsDir,--wrap,fcntl")
     list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
 else()
     list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,mdebug2 \
@@ -202,7 +202,8 @@ if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,RAND_bytes -Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown")
 else()
-list(APPEND shared_tests_flags "-Wl,--wrap,RAND_bytes -Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS}")
+list(APPEND shared_tests_flags "-Wl,--wrap,RAND_bytes -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OS_MoveFile \
+                                -Wl,--wrap,TempFile ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_agent_op")

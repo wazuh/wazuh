@@ -501,6 +501,30 @@ void test_MergeAppendFile_success(void **state) {
 
 // w_compress_gzfile
 
+#ifndef TEST_WINAGENT
+/* fcntl() reaches the real one unless a test asks F_SETFL to fail: clearing O_NONBLOCK on a regular
+ * file never fails on its own, so this is the only way to see that the compressor checks it. */
+static bool g_fail_fcntl_setfl = false;
+
+int __real_fcntl(int fd, int cmd, ...);
+
+int __wrap_fcntl(int fd, int cmd, ...) {
+    va_list ap;
+    long arg;
+
+    va_start(ap, cmd);
+    arg = va_arg(ap, long);
+    va_end(ap);
+
+    if (g_fail_fcntl_setfl && cmd == F_SETFL) {
+        errno = EBADF;
+        return -1;
+    }
+
+    return __real_fcntl(fd, cmd, arg);
+}
+#endif
+
 static char compress_dir[PATH_MAX + 1];
 static char compress_src[PATH_MAX + 1];
 
@@ -525,6 +549,9 @@ static int setup_compress_gzfile(void **state) {
 static int teardown_compress_gzfile(void **state) {
     char path[PATH_MAX + 1];
 
+#ifndef TEST_WINAGENT
+    g_fail_fcntl_setfl = false;
+#endif
     test_mode = 0;
     snprintf(path, sizeof(path), "%s/link", compress_dir);
     remove(path);
@@ -596,6 +623,26 @@ void test_w_compress_gzfile_directory_rejected(void **state){
     assert_int_equal(ret, -2);
     assert_int_equal(errno, EINVAL);
 }
+
+#ifndef TEST_WINAGENT
+/* The source is opened O_NONBLOCK so a FIFO can't block the open; reading it with O_NONBLOCK still
+ * set is not what the rest of the function expects. A failure to clear it is a failure to open. */
+void test_w_compress_gzfile_clear_nonblock_fail(void **state){
+
+    int ret;
+    char expected[2 * PATH_MAX];
+
+    g_fail_fcntl_setfl = true;
+    /* The reason given is F_SETFL's, kept across the close() that follows it. */
+    snprintf(expected, sizeof(expected), "in w_compress_gzfile(): cannot open %s (%d):'%s'", compress_src, EBADF,
+             strerror(EBADF));
+    expect_string(__wrap__merror, formatted_msg, expected);
+
+    ret = w_compress_gzfile(compress_src, "testfiledst.gz");
+    assert_int_equal(ret, -1);
+    assert_int_equal(errno, EBADF);
+}
+#endif
 
 void test_w_compress_gzfile_gzopen_fail(void **state){
 
@@ -2647,6 +2694,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_symlink_rejected, setup_compress_gzfile, teardown_compress_gzfile),
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_fifo_rejected, setup_compress_gzfile, teardown_compress_gzfile),
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_directory_rejected, setup_compress_gzfile, teardown_compress_gzfile),
+        cmocka_unit_test_setup_teardown(test_w_compress_gzfile_clear_nonblock_fail, setup_compress_gzfile,
+                                        teardown_compress_gzfile),
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_gzopen_fail, setup_compress_gzfile, teardown_compress_gzfile),
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_write_error, setup_compress_gzfile, teardown_compress_gzfile),
         cmocka_unit_test_setup_teardown(test_w_compress_gzfile_success, setup_compress_gzfile, teardown_compress_gzfile),

@@ -32,6 +32,34 @@
  * second as "invalid token" sends an operator looking in the wrong place. */
 #define ETOKEN_SHOW_REJECTED 2
 
+/* Reads the token to show, saying why when it can't. Trailing whitespace is trimmed by the reader:
+ * piping the token in from a shell appends a newline, which the decoder would read as one more
+ * base64url character and reject the whole token over.
+ *
+ * Returns the token text, or NULL. */
+static char *w_agent_show_token_read(FILE *in, FILE *err, const char *progname)
+{
+    char *text = NULL;
+
+    switch (w_agent_token_read_stream(in, &text)) {
+        case W_TOKEN_READ_OK:
+            break;
+        case W_TOKEN_READ_TTY:
+            /* A terminal will never produce a token, so blocking on it reads as a hang. */
+            fprintf(err, "%s: no token given. Redirect one in, or pipe it:\n", progname);
+            fprintf(err, "      %s --show-token < /path/to/token\n", progname);
+            break;
+        case W_TOKEN_READ_TOO_BIG:
+            fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", progname, W_ETOKEN_MAX_FILE_BYTES);
+            break;
+        case W_TOKEN_READ_IO:
+            fprintf(err, "%s: could not read the enrollment token.\n", progname);
+            break;
+    }
+
+    return text;
+}
+
 /* Decode an enrollment token and print what it carries, for the package installer to read
  * the address out of and for an operator to inspect one by hand.
  *
@@ -48,41 +76,13 @@
  */
 int w_agent_show_token(FILE *in, FILE *out, FILE *err, const char *progname)
 {
-    /* Heap, not stack: since #39321 this bound is sized for an embedded-CA token (see
-     * W_ETOKEN_MAX_FILE_BYTES) and 96 KB is far too much to put on a frame. */
     char *text;
     w_etoken_t token;
     w_etoken_error_t error;
     char *description = NULL;
-    size_t length;
 
-    /* A terminal will never produce a token, so blocking on it reads as a hang. */
-    if (isatty(fileno(in))) {
-        fprintf(err, "%s: no token given. Redirect one in, or pipe it:\n", progname);
-        fprintf(err, "      %s --show-token < /path/to/token\n", progname);
+    if ((text = w_agent_show_token_read(in, err, progname)) == NULL) {
         return 1;
-    }
-
-    os_calloc(W_ETOKEN_MAX_FILE_BYTES + 1, sizeof(char), text);
-    length = fread(text, 1, W_ETOKEN_MAX_FILE_BYTES, in);
-
-    if (ferror(in)) {
-        fprintf(err, "%s: could not read the enrollment token.\n", progname);
-        os_free(text);
-        return 1;
-    }
-
-    if (length == W_ETOKEN_MAX_FILE_BYTES) {
-        fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", progname, W_ETOKEN_MAX_FILE_BYTES);
-        os_free(text);
-        return 1;
-    }
-
-    /* Piping the token in from a shell appends a newline, which the decoder would read as
-     * one more base64url character and reject the whole token over. */
-    while (length > 0 && (text[length - 1] == '\n' || text[length - 1] == '\r' ||
-                          text[length - 1] == ' ' || text[length - 1] == '\t')) {
-        text[--length] = '\0';
     }
 
     error = w_etoken_decode(text, &token);

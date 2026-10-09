@@ -664,9 +664,9 @@ STATIC char *w_enrollment_load_password(const char *path) {
 /**
  * @brief Stores one "ID NAME IP KEY" line to client.keys.
  *
- * Platform split preserved verbatim from the legacy
+ * Platform split preserved from the legacy
  * enrollment_op.c:w_enrollment_store_key_entry() (#38465 -- do not unify):
- * Linux writes atomically (temp file + chmod 0640 + rename); Windows writes
+ * Linux writes atomically (temp file + fchmod 0640 + rename); Windows writes
  * the file directly, without atomicity.
  */
 STATIC int w_enrollment_store_key_entry(const char *line) {
@@ -690,7 +690,10 @@ STATIC int w_enrollment_store_key_entry(const char *line) {
         return -1;
     }
 
-    if (chmod(file.name, 0640) == -1) {
+    /* The mode and the key go through the descriptor TempFile() returned, and the staged copy is
+     * installed with a bare rename: nothing is done to it by name but the rename, and a rename
+     * that fails is a failed store, never a copy into client.keys by name. */
+    if (fchmod(fileno(file.fp), 0640) == -1) {
         merror(CHMOD_ERROR, file.name, errno, strerror(errno));
         fclose(file.fp);
         unlink(file.name);
@@ -698,10 +701,18 @@ STATIC int w_enrollment_store_key_entry(const char *line) {
         return -1;
     }
 
-    fprintf(file.fp, "%s\n", line);
-    fclose(file.fp);
+    /* A short write would install a cut-off key. */
+    bool written = (fprintf(file.fp, "%s\n", line) >= 0);
 
-    if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
+    if (fclose(file.fp) != 0 || !written) {
+        merror(FWRITE_ERROR, file.name, errno, strerror(errno));
+        unlink(file.name);
+        os_free(file.name);
+        return -1;
+    }
+
+    if (rename_ex(file.name, KEYS_FILE) != 0) {
+        unlink(file.name);
         os_free(file.name);
         return -1;
     }

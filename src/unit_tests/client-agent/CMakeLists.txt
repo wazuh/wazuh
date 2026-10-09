@@ -133,13 +133,15 @@ list(APPEND client-agent_flags " ")
 # unmocked in a unit test -- same convention every other test in this
 # tree already follows).
 list(APPEND client-agent_names "test_enrollment")
-list(APPEND client-agent_flags "-Wl,--wrap,OS_IsValidIP ${DEBUG_OP_WRAPPERS}")
+list(APPEND client-agent_flags "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,TempFile -Wl,--wrap,rename \
+                                -Wl,--wrap,chmod ${DEBUG_OP_WRAPPERS}")
 
 # w_reenroll_secret_store()/load()/clear() (#39064): the real store against real files relative to
 # the working directory -- the atomic rename and the 0640 mode are the point, so nothing about the
-# filesystem is mocked. Only the log wrappers, same as test_client_conf_ssl_resolution above.
+# filesystem is mocked. TempFile, rename and chmod are wrapped only to record the staged name and
+# to make a step fail on request; they reach the real calls.
 list(APPEND client-agent_names "test_reenroll_secret")
-list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS}")
+list(APPEND client-agent_flags "-Wl,--wrap,TempFile -Wl,--wrap,rename -Wl,--wrap,chmod ${DEBUG_OP_WRAPPERS}")
 
 # w_shred_file_in_place()/w_agent_shred_enrollment_password() (#39064): the real shredder against
 # real files relative to the working directory. Whether the open truncates is the whole point, so
@@ -165,7 +167,7 @@ list(APPEND client-agent_flags "-Wl,--wrap,hc_fetch_cacerts -Wl,--wrap,hc_enroll
                                 -Wl,--wrap,hc_spki_pinned_certificate -Wl,--wrap,OS_IsValidIP \
                                 -Wl,--wrap,chown -Wl,--wrap,chmod -Wl,--wrap,fchown \
                                 -Wl,--wrap,fchmod \
-                                -Wl,--wrap,OS_MoveFile \
+                                -Wl,--wrap,OS_MoveFile -Wl,--wrap,isatty -Wl,--wrap,TempFile \
                                 ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_agent_auth_cli")

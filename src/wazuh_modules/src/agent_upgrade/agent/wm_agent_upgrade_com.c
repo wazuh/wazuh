@@ -238,6 +238,9 @@ STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]) {
 #ifndef WIN32
     int fd;
 
+    // mkstemp() creates the file 0600 and fchmod(fd) below sets its final mode, so no umask() is
+    // needed -- and umask() is process-wide, which would race every other thread creating files.
+    // coverity[secure_temp]
     if (fd = mkstemp(dest), fd >= 0) {
         // Not chmod(dest, ...): between mkstemp() creating dest and a name-based chmod() looking
         // it up again, dest could be unlinked and replaced with a symlink, making chmod() follow
@@ -323,6 +326,8 @@ STATIC int _uncompress(const char * source, const char *package, char dest[PATH_
     // name-based open that would reintroduce the same race.
 #ifndef WIN32
     {
+        // Same as in _unsign(): created 0600, final mode set through fd, no process-wide umask().
+        // coverity[secure_temp]
         int fd = mkstemp(dest);
 
         if (fd < 0) {

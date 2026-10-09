@@ -3504,7 +3504,6 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
 #else
     struct stat statbuf;
     int saved_errno;
-    int flags;
     int srcfd = open(filesrc, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK);
 
     fd = NULL;
@@ -3514,17 +3513,19 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
             saved_errno = errno;
         } else if (!S_ISREG(statbuf.st_mode)) {
             saved_errno = EINVAL;
+        } else if (w_clear_nonblock(srcfd) < 0) {
+            /* Already closed by w_clear_nonblock() */
+            srcfd = -1;
+            saved_errno = errno;
         } else {
-            if (flags = fcntl(srcfd, F_GETFL), flags != -1) {
-                fcntl(srcfd, F_SETFL, flags & ~O_NONBLOCK);
-            }
-
             fd = fdopen(srcfd, "rb");
             saved_errno = errno;
         }
 
         if (fd == NULL) {
-            close(srcfd);
+            if (srcfd >= 0) {
+                close(srcfd);
+            }
             errno = saved_errno;
         }
     }
