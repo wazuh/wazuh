@@ -99,7 +99,7 @@ All notable changes to this project will be documented in this file.
 - Added Fluentd server identity verification to the `fluent-forward` module: the certificate name is now checked against the configured address and the shared key digest returned by the server is verified. ([#38686](https://github.com/wazuh/wazuh/pull/38686))
 - Aligned the API `force` parameter with its OpenAPI schema: `POST /agents` now declares it, and `POST /agents/insert` no longer sends a `force` object that the request did not carry. ([#38804](https://github.com/wazuh/wazuh/pull/38804))
 - Escaped control characters in the request path of the API plain-text access log, so an unauthenticated request can no longer forge access log entries. ([#38894](https://github.com/wazuh/wazuh/pull/38894))
-- Fixed the indexer connector silently diverging from the `wazuh-states-*` indices: per-item `_bulk` rejections are now logged instead of ignored, aggregated by error type and reason, `_delete_by_query` responses reporting failures or version conflicts are now logged too, agent-ID deletions no longer match by raw string prefix, `diff()` no longer deletes real documents when its local mirror comes up empty, and a DELETED document no longer sweeps in sibling documents whose ID merely starts with the deleted one. ([#39041](https://github.com/wazuh/wazuh/pull/39041))
+- Fixed the indexer connector silently diverging from the `wazuh-states-*` indices: per-item `_bulk` rejections are now logged instead of ignored, aggregated by error type and reason, `_delete_by_query` responses reporting failures or version conflicts are now logged too, agent-ID deletions no longer match by raw string prefix, and a DELETED document no longer sweeps in sibling documents whose ID merely starts with the deleted one. ([#39041](https://github.com/wazuh/wazuh/pull/39041))
 - Raised the default API `run_as` authentication-context payload size limit from 8 KB to 64 KB and made it configurable via the new `auth_context_max_payload_size` option, for AD/LDAP/SSO logins with large group-membership contexts. ([#39471](https://github.com/wazuh/wazuh/pull/39471))
 
 ### Agent
@@ -148,6 +148,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the Windows agent accepting `<whodata><provider>ebpf</provider></whodata>` and silently disabling whodata. ([#39353](https://github.com/wazuh/wazuh/issues/39353))
 - Fixed the FIM eBPF whodata healthcheck failing on RHEL 9 kernels and discarding the eBPF provider. ([#39570](https://github.com/wazuh/wazuh/pull/39570))
 - Fixed FIM eBPF whodata dropping events for files outside the root mount. ([#39708](https://github.com/wazuh/wazuh/pull/39708))
+- Fixed the Windows `netsh` and `route-null` active responses failing with `Cannot read 'srcip' from data` since v4.14.7, because the IP validation called `getaddrinfo()` without initializing Winsock. ([#40084](https://github.com/wazuh/wazuh/pull/40084))
 
 ### Ruleset
 

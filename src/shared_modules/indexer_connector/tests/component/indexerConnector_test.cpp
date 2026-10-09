@@ -685,8 +685,7 @@ TEST_F(IndexerConnectorTest, PublishDeletedDoesNotCollideWithLongerItemId)
     auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
     ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
 
-    // Populate the local mirror. `unrelatedId` keeps the mirror non-empty after the deletion below, so the
-    // final diff() exercises the real comparison instead of short-circuiting on the empty-mirror guard.
+    // Populate the local mirror.
     for (const auto& id : {deletedId, siblingId, unrelatedId})
     {
         callbackCalled = false;
@@ -736,6 +735,95 @@ TEST_F(IndexerConnectorTest, PublishDeletedDoesNotCollideWithLongerItemId)
 
     EXPECT_ANY_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
     ASSERT_FALSE(deleteRequested) << "The sibling document was wrongly removed from the local mirror";
+}
+
+/**
+ * @brief Test that a DELETED operation whose id carries no version suffix removes every document indexed under
+ * "<id>_<suffix>" - the shape the vulnerability scanner publishes, where the documents are versioned with the feed
+ * offset and the deletions are not - while a sibling id that merely shares the byte prefix is left alone, in the
+ * index and in the local mirror.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDeletedRemovesEveryVersionedDocument)
+{
+    const std::string deletedId {"000_openssl_CVE-2023-1"};
+    const std::vector<std::string> versionedIds {"000_openssl_CVE-2023-1_3984622", "000_openssl_CVE-2023-1_4058234"};
+    const std::string siblingId {"000_openssl_CVE-2023-100_3990122"};
+
+    std::atomic<bool> callbackCalled {false};
+    std::mutex deleteRequestsMutex;
+    std::string deleteRequests;
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&callbackCalled, &deleteRequestsMutex, &deleteRequests](const std::string& data)
+        {
+            if (data.find(R"("delete")") != std::string::npos)
+            {
+                std::lock_guard<std::mutex> lock {deleteRequestsMutex};
+                deleteRequests.append(data);
+            }
+            callbackCalled = true;
+        });
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    for (const auto& id : {versionedIds[0], versionedIds[1], siblingId})
+    {
+        callbackCalled = false;
+        nlohmann::json publishData;
+        publishData["id"] = id;
+        publishData["operation"] = "INSERTED";
+        publishData["data"] = "content";
+        ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+        ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    }
+
+    callbackCalled = false;
+    nlohmann::json deleteData;
+    deleteData["id"] = deletedId;
+    deleteData["operation"] = "DELETED";
+    ASSERT_NO_THROW(indexerConnector.publish(deleteData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS))
+        << "The DELETED operation matched no document, so no bulk request was sent";
+
+    {
+        std::lock_guard<std::mutex> lock {deleteRequestsMutex};
+        for (const auto& id : versionedIds)
+        {
+            EXPECT_NE(deleteRequests.find(R"("_id":")" + id + R"(")"), std::string::npos)
+                << "Versioned document " << id << " was not deleted from the index";
+        }
+        EXPECT_EQ(deleteRequests.find(R"("_id":")" + siblingId + R"(")"), std::string::npos)
+            << "The sibling document was also deleted from the index";
+    }
+
+    // The mirror must agree with the index: a resync that finds only the sibling there has nothing to delete and
+    // nothing to reindex, so no bulk request fires at all.
+    std::atomic<bool> searchRequested {false};
+    m_indexerServers[A_IDX]->setSearchCallback(
+        [&searchRequested, &siblingId](const std::string&) -> std::string
+        {
+            searchRequested = true;
+            return R"({"_scroll_id":"abcdef","hits":{"total":{"value":1},"hits":[{"_id":")" + siblingId + R"("}]}})";
+        });
+
+    std::atomic<bool> publishCallbackFired {false};
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&publishCallbackFired](const std::string& data)
+        {
+            std::ignore = data;
+            publishCallbackFired = true;
+        });
+
+    indexerConnector.sync("000");
+
+    EXPECT_ANY_THROW(
+        waitUntil([&publishCallbackFired]() { return publishCallbackFired.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_TRUE(searchRequested) << "sync() never queried the index, so the mirror assertion proves nothing";
+    ASSERT_FALSE(publishCallbackFired) << "The local mirror and the index disagree after the versioned deletion";
 }
 
 /**
@@ -821,9 +909,7 @@ TEST_F(IndexerConnectorTest, PublishDeletedByQueryDoesNotCollideWithLongerAgentI
 
     // Agent "2502"'s routine resync, with the index reporting no document for it. The assertion is that
     // diff() reindexes "2502_wheel", which it can only do by reading that key back out of the local mirror -
-    // so it holds exactly when the mirror survived agent "250"'s deletion. Asserting instead that no delete
-    // fires would prove nothing: a wrongly emptied mirror trips diff()'s empty-mirror guard, which suppresses
-    // every deletion on its own.
+    // so it holds exactly when the mirror survived agent "250"'s deletion.
     std::atomic<bool> searchRequested {false};
     m_indexerServers[A_IDX]->setSearchCallback(
         [&searchRequested](const std::string&) -> std::string
@@ -852,23 +938,34 @@ TEST_F(IndexerConnectorTest, PublishDeletedByQueryDoesNotCollideWithLongerAgentI
 }
 
 /**
- * @brief Test that `diff()` does not delete real index documents when the local mirror scan comes back
- * completely empty for an agent, independent of the mirror-prefix-collision mechanism - an empty
- * mirror is not proof the documents don't belong, it can just as easily mean a corrupted/gapped mirror.
+ * @brief Test that `diff()` deletes the index documents of an agent whose local mirror holds nothing: this connector
+ * stands in for a cluster node the agent has just moved to, so the documents the index reports were written by the
+ * previous node and the full sync the agent is now sending will reinsert the current ones. Skipping the deletion here
+ * leaves the previous node's documents next to the new ones for every item whose identity changed with the move.
  *
  */
-TEST_F(IndexerConnectorTest, DiffSkipsDeletionOnEmptyMirror)
+TEST_F(IndexerConnectorTest, DiffDeletesPreviousNodeDocumentsOnEmptyMirror)
 {
+    const std::string staleId {"010_stale_process"};
+
+    std::atomic<bool> searchRequested {false};
     m_indexerServers[A_IDX]->setSearchCallback(
-        [](const std::string&) -> std::string
-        { return R"({"_scroll_id":"abcdef","hits":{"total":{"value":1},"hits":[{"_id":"004_preseeded"}]}})"; });
+        [&searchRequested, &staleId](const std::string&) -> std::string
+        {
+            searchRequested = true;
+            return R"({"_scroll_id":"abcdef","hits":{"total":{"value":1},"hits":[{"_id":")" + staleId + R"("}]}})";
+        });
 
     std::atomic<bool> deleteRequested {false};
+    std::mutex deleteRequestsMutex;
+    std::string deleteRequests;
     m_indexerServers[A_IDX]->setPublishCallback(
-        [&deleteRequested](const std::string& data)
+        [&deleteRequested, &deleteRequestsMutex, &deleteRequests](const std::string& data)
         {
-            if (data.find("\"delete\"") != std::string::npos)
+            if (data.find(R"("delete")") != std::string::npos)
             {
+                std::lock_guard<std::mutex> lock {deleteRequestsMutex};
+                deleteRequests.append(data);
                 deleteRequested = true;
             }
         });
@@ -879,20 +976,22 @@ TEST_F(IndexerConnectorTest, DiffSkipsDeletionOnEmptyMirror)
     auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
     ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
 
-    // Never publish anything for agent "004" - its mirror is empty by construction, matching a case where the
-    // local RocksDB mirror never held (or lost) this agent's entries while the real index still has them.
-    indexerConnector.sync("004");
+    // Nothing is ever published for agent "010" here: its mirror partition is empty by construction.
+    indexerConnector.sync("010");
 
-    EXPECT_ANY_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
-    ASSERT_FALSE(deleteRequested) << "diff() deleted a real document based on an empty per-agent mirror scan";
+    ASSERT_NO_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS))
+        << "The previous node's document was kept in the index";
+    ASSERT_TRUE(searchRequested) << "sync() never queried the index";
+
+    std::lock_guard<std::mutex> lock {deleteRequestsMutex};
+    EXPECT_NE(deleteRequests.find(R"("_id":")" + staleId + R"(")"), std::string::npos)
+        << "The deletion did not target the previous node's document";
 }
 
 /**
  * @brief Test that `diff()` is a clean no-op once an agent's deletion has fully landed on both sides: the local
  * mirror is empty because the agent's own DELETED_BY_QUERY purged it, and the index no longer reports any
- * document for it either. This is the far end of the legitimate-deletion timeline whose mid-flight state
- * `DiffSkipsDeletionOnEmptyMirror` covers - here the empty-mirror guard must not fire at all, and no request
- * of any kind should reach the indexer.
+ * document for it either. No request of any kind should reach the indexer.
  *
  */
 TEST_F(IndexerConnectorTest, DiffIsNoOpOnceAgentDeletionHasFullyLanded)
@@ -954,51 +1053,6 @@ TEST_F(IndexerConnectorTest, DiffIsNoOpOnceAgentDeletionHasFullyLanded)
     // never reached diff() at all.
     ASSERT_TRUE(searchRequested) << "sync() never queried the index, so the no-op assertion proves nothing";
     ASSERT_FALSE(publishCallbackFired) << "A fully deleted agent's sync issued a bulk request instead of a no-op";
-}
-
-/**
- * @brief Test that `diff()`'s empty-mirror guard also protects an agent that has simply moved to a node which
- * never processed it: this connector's mirror holds no entries for the agent, while the shared index still
- * reports the documents written by its previous node. Shares the guard's code path with
- * `DiffSkipsDeletionOnEmptyMirror` on purpose - that test pins corruption containment, this one pins failover
- * safety, so a refactor motivated by only one of them cannot silently break the other.
- *
- */
-TEST_F(IndexerConnectorTest, DiffGuardProtectsFailedOverAgentSameAsCorruption)
-{
-    std::atomic<bool> searchRequested {false};
-    m_indexerServers[A_IDX]->setSearchCallback(
-        [&searchRequested](const std::string&) -> std::string
-        {
-            searchRequested = true;
-            return R"({"_scroll_id":"abcdef","hits":{"total":{"value":1},"hits":[{"_id":"010_preseeded"}]}})";
-        });
-
-    std::atomic<bool> deleteRequested {false};
-    m_indexerServers[A_IDX]->setPublishCallback(
-        [&deleteRequested](const std::string& data)
-        {
-            if (data.find("\"delete\"") != std::string::npos)
-            {
-                deleteRequested = true;
-            }
-        });
-
-    nlohmann::json indexerConfig;
-    indexerConfig["name"] = INDEXER_NAME;
-    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
-    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
-    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
-
-    // This connector instance stands in for a cluster node that has never processed agent "010": nothing is ever
-    // published for it here, so its mirror partition is empty by construction.
-    indexerConnector.sync("010");
-
-    EXPECT_ANY_THROW(waitUntil([&deleteRequested]() { return deleteRequested.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
-    // The reconciliation really ran: without this the negative assertion below would also hold for a sync() that
-    // never reached diff() at all.
-    ASSERT_TRUE(searchRequested) << "sync() never queried the index, so the no-deletion assertion proves nothing";
-    ASSERT_FALSE(deleteRequested) << "A failed-over agent's real document was deleted by the node it moved to";
 }
 
 /**

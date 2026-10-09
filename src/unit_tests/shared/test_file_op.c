@@ -2794,8 +2794,9 @@ void test_w_fopen_vetted_follow_repointed_symlink_not_rejected(void **state) {
     nofollow_path(tmp_path, "dangling");
     assert_int_equal(symlink(targets[0], link_path), 0);
 
-    // A walk that keeps losing the race logs a warning once its retries run out.
-    expect_any_always(__wrap__mwarn, formatted_msg);
+    // A walk that keeps losing the race logs a warning once its retries run out. Whether that happens
+    // depends on scheduling, so the expectation must be optional: _always would demand at least one call.
+    expect_any_count(__wrap__mwarn, formatted_msg, WILL_RETURN_ONCE);
 
     // Re-point the link the way rotation does (ln -sfn + mv -T) while it is opened: a swap caught mid-walk
     // must be retried, never reported as a trust rejection.
