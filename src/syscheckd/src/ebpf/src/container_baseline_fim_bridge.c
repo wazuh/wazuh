@@ -10,6 +10,8 @@
 #include "container_baseline_fim_bridge.h"
 #include "container_baseline_host_api.h"
 
+#include "container_doc_budget.h"
+
 #include "file.h"
 #include "shared.h"
 #include "syscheck.h"
@@ -414,6 +416,41 @@ void fim_compute_row_checksum(const char* row_json, char out_sha1[41])
     OS_SHA1_Str(row_json, (ssize_t)strlen(row_json), out_sha1);
 }
 
+/* Applies container_budget_decide() to one row, owning the lock and the
+ * counter it decides against. The rule itself lives in container_doc_budget.h
+ * so it can be tested without a daemon; this is only the plumbing. */
+static int container_row_sync_flag(const cJSON* row, int operation)
+{
+    const int limit = syscheck.container_file_limit;
+
+    if (limit <= 0) {
+        return 1; /* Unlimited: today's behaviour, and the default. */
+    }
+
+    /* The stored row's own flag, where DBSync gave us one: absent on a fresh
+     * insert, present on rows a scoped transaction reports as deleted. */
+    int stored_sync = 0;
+    const cJSON* sync_json = cJSON_GetObjectItem(row, "sync");
+    if (sync_json != NULL && cJSON_IsNumber(sync_json)) {
+        stored_sync = sync_json->valueint;
+    }
+
+    /* Check-then-apply must be atomic for the same reason it must be on the
+     * host path: the scheduled baseline and an event-driven reconcile reach
+     * this concurrently. */
+    w_mutex_lock(&synced_docs_mutex);
+    const container_budget_decision_t decision =
+        container_budget_decide(limit, synced_docs_container_files, stored_sync,
+                                operation == OPERATION_DELETE);
+    synced_docs_container_files += decision.count_delta;
+    if (synced_docs_container_files < 0) {
+        synced_docs_container_files = 0;
+    }
+    w_mutex_unlock(&synced_docs_mutex);
+
+    return decision.sync_flag;
+}
+
 void fim_persist_baseline_row(const char* id, int operation, const char* index, const char* json, uint64_t version)
 {
     cJSON* msg = cJSON_Parse(json);
@@ -421,6 +458,10 @@ void fim_persist_baseline_row(const char* id, int operation, const char* index, 
         mdebug1("Container FIM baseline: dropping row '%s' - failed to parse JSON.", id);
         return;
     }
+
+    /* BEFORE normalisation: the stored row's own "sync" column is what the
+     * accounting reads, and normalisation reshapes the row for the schema. */
+    const int sync_flag = container_row_sync_flag(msg, operation);
 
     normalize_container_fim_row(msg);
 
@@ -501,7 +542,7 @@ void fim_persist_baseline_row(const char* id, int operation, const char* index, 
                                 false,
                                 NULL,
                                 NULL,
-                                1);
+                                sync_flag);
 
     cJSON_Delete(msg);
 }

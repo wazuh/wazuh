@@ -293,6 +293,10 @@ cJSON *getDocumentLimits(const char *module) {
         cJSON_AddNumberToObject(cfg, "file", agent_module_limits.fim.file);
         cJSON_AddNumberToObject(cfg, "registry_key", agent_module_limits.fim.registry_key);
         cJSON_AddNumberToObject(cfg, "registry_value", agent_module_limits.fim.registry_value);
+    } else if (strcmp(module, "fim_containers") == 0) {
+        /* Its own module name, like syscollector_containers: container FIM rows
+         * share the FIM sync index with host rows but not a budget (#37532/O10). */
+        cJSON_AddNumberToObject(cfg, "file", agent_module_limits.fim_containers.file);
     } else if (strcmp(module, "syscollector") == 0) {
         cJSON_AddNumberToObject(cfg, "hotfixes", agent_module_limits.syscollector.hotfixes);
         cJSON_AddNumberToObject(cfg, "packages", agent_module_limits.syscollector.packages);
