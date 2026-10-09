@@ -8,7 +8,7 @@
 import logging
 from os.path import abspath, dirname
 from sys import path
-from json import JSONDecodeError
+from json import dumps, JSONDecodeError, loads
 
 path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 import exceptions
@@ -137,9 +137,26 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
 
         ack_ids = []
         for received_message in response.received_messages:
-            formatted_message = self.format_msg(received_message.message.data.decode(errors='replace'))
-            self.logger.debug(f'Processing event: {formatted_message}')
+            # Ack every pulled message regardless of its content: an ack only tells Pub/Sub to
+            # stop holding this message for us, it is unrelated to whether the payload made sense.
+            # Not acking a message we will never be able to parse would make Pub/Sub redeliver it
+            # forever.
             ack_ids.append(received_message.ack_id)
+
+            raw_message = received_message.message.data.decode(errors='replace')
+            try:
+                # Re-serializing the parsed payload guarantees format_msg() receives exactly one
+                # well-formed JSON value, so a message cannot close the "gcp" field early and add
+                # sibling keys (e.g. "srcip") to the event analysisd ultimately decodes.
+                message = dumps(loads(raw_message))
+            except (ValueError, RecursionError) as error:
+                # JSONDecodeError is a ValueError; an over-long integer literal raises a plain ValueError and
+                # deeply nested arrays raise RecursionError, neither of which may escape before the ack.
+                self.logger.warning(f'Discarding a Pub/Sub message that is not valid JSON: {error}')
+                continue
+
+            formatted_message = self.format_msg(message)
+            self.logger.debug(f'Processing event: {formatted_message}')
             self.send_msg(formatted_message)
 
         ack_ids and self.subscriber.acknowledge(

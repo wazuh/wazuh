@@ -7,6 +7,7 @@ import gzip
 import os
 import sqlite3
 import sys
+import time
 import zipfile
 import re
 import csv
@@ -946,7 +947,7 @@ def test_aws_custom_bucket_initializes_properly(mock_bucket, mock_wazuh_aws_data
     assert instance.retain_db_records == aws_bucket.MAX_RECORD_RETENTION
     mock_sts.assert_called_with(access_key, secret_key, profile=profile)
     mock_client.get_caller_identity.assert_called_once()
-    assert instance.macie_location_pattern == re.compile(r'"lat":(-?0+\d+\.\d+),"lon":(-?0+\d+\.\d+)')
+    assert instance.macie_location_pattern == re.compile(r'"lat":(-?0\d+\.\d+),"lon":(-?0\d+\.\d+)')
     assert instance.check_prefix
 
 
@@ -973,6 +974,51 @@ def test_aws_custom_bucket_load_information_from_file(mock_wazuh_aws_database, m
 
     with patch('aws_bucket.AWSBucket.decompress_file', mock_open(read_data=data)):
         assert result == instance.load_information_from_file(utils.TEST_LOG_KEY)
+
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_custom_bucket_load_information_from_file_macie_recovery_unchanged(mock_wazuh_aws_database, mock_sts):
+    """Test 'load_information_from_file' keeps its existing (buggy) Macie lat/lon recovery
+    behavior unchanged after the performance fix: re.sub() in the recovery branch is still a
+    global substitution, so a second finding with its OWN different malformed lat/lon still ends
+    up with the FIRST finding's corrected value. The fix is scoped to performance only (tracking
+    a position instead of re-slicing data every iteration); this is a regression guard proving
+    that refactor did not also change this pre-existing, separately-tracked behavior.
+    """
+    data = ('{"source":"aws.macie","detail":{"id":"finding-1","lat":0010.0,"lon":0020.0}}'
+            '{"source":"aws.macie","detail":{"id":"finding-2","lat":0099.9,"lon":0088.8}}')
+    expected = [
+        {"id": "finding-1", "lat": 10.0, "lon": 20.0, "source": "macie"},
+        {"id": "finding-2", "lat": 10.0, "lon": 20.0, "source": "macie"},  # inherits finding-1's values
+    ]
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
+
+    with patch('aws_bucket.AWSBucket.decompress_file', mock_open(read_data=data)):
+        assert expected == instance.load_information_from_file(utils.TEST_LOG_KEY)
+
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_custom_bucket_load_information_from_file_is_not_quadratic(mock_wazuh_aws_database, mock_sts):
+    """Test 'load_information_from_file' processes a large number of concatenated JSON objects in
+    time roughly proportional to the file size, not to its square. The pre-fix
+    `data = data[json_index:]` pattern took ~0.75s for this exact input; the fix takes ~0.04s --
+    0.3s is a decisive, non-flaky threshold between the two.
+    """
+    n_objects = 6000
+    pad = "x" * 800
+    obj = f'{{"source":"aws.custombucket","detail":{{"note":"{pad}","lat":5.5,"lon":6.6}}}}'
+    data = obj * n_objects
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
+
+    with patch('aws_bucket.AWSBucket.decompress_file', mock_open(read_data=data)):
+        start = time.perf_counter()
+        result = instance.load_information_from_file(utils.TEST_LOG_KEY)
+        elapsed = time.perf_counter() - start
+
+    assert len(result) == n_objects
+    assert elapsed < 0.3, f"took {elapsed:.3f}s -- quadratic rescan likely reintroduced"
 
 
 @pytest.mark.parametrize('log_file, expected_date', [

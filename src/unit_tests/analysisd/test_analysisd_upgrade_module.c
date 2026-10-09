@@ -92,6 +92,26 @@ static void test_DispatchUpgradeModule_allows_status_update(void **state) {
     DispatchUpgradeModule(lf);
 }
 
+static void test_DispatchUpgradeModule_overrides_agent_supplied_agents(void **state) {
+    Eventinfo *lf = *state;
+
+    os_strdup("{\"command\":\"upgrade_update_status\",\"parameters\":{\"agents\":[2,3],\"status\":\"Done\"}}",
+              lf->log);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WM_UPGRADE_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, 44);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, 44);
+    expect_any(__wrap_OS_SendSecureTCP, size);
+    expect_string(__wrap_OS_SendSecureTCP, msg,
+                  "{\"command\":\"upgrade_update_status\",\"parameters\":{\"status\":\"Done\",\"agents\":[1]}}");
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    DispatchUpgradeModule(lf);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_DispatchUpgradeModule_blocks_upgrade_custom_from_agent,
@@ -99,6 +119,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_DispatchUpgradeModule_blocks_upgrade_from_agent,
                                          setup_upgrade_event, teardown_upgrade_event),
         cmocka_unit_test_setup_teardown(test_DispatchUpgradeModule_allows_status_update,
+                                         setup_upgrade_event, teardown_upgrade_event),
+        cmocka_unit_test_setup_teardown(test_DispatchUpgradeModule_overrides_agent_supplied_agents,
                                          setup_upgrade_event, teardown_upgrade_event),
     };
 
