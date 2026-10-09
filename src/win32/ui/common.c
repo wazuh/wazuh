@@ -325,16 +325,29 @@ int config_read(__attribute__((unused)) HWND hwnd)
 }
 
 /* The Windows ossec.conf ships "0.0.0.0:1517/wazuh-manager/" as a placeholder that the
- * installer only replaces when it is given an enrollment token. 0.0.0.0 can never be a
- * manager to connect to, so a target whose host is exactly that means nothing was
- * configured yet, whatever port or prefix follows it. */
+ * installer only replaces when it is given an enrollment token, and the Linux packages
+ * ship "MANAGER_IP". The agent refuses to start with either host, or with an empty one
+ * (Validate_Address() in client-config.c), so the GUI treats the same values as "nothing
+ * configured yet", whatever port or prefix follows the host. */
 static int is_placeholder_server(const char *target)
 {
-    static const char placeholder_host[] = "0.0.0.0";
-    const size_t len = sizeof(placeholder_host) - 1;
+    static const char *const placeholder_hosts[] = {"0.0.0.0", "MANAGER_IP"};
+    size_t i;
 
-    return strncmp(target, placeholder_host, len) == 0
-           && (target[len] == '\0' || target[len] == ':' || target[len] == '/');
+    if (target[0] == '\0') {
+        return 1;
+    }
+
+    for (i = 0; i < sizeof(placeholder_hosts) / sizeof(placeholder_hosts[0]); i++) {
+        const size_t len = strlen(placeholder_hosts[i]);
+
+        if (strncmp(target, placeholder_hosts[i], len) == 0
+            && (target[len] == '\0' || target[len] == ':' || target[len] == '/')) {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 /* Get OSSEC Server IP */

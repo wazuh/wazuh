@@ -181,6 +181,25 @@ static void test_placeholder_address_returns_no_server(void **state) {
     assert_string_equal(config_inst.server, FL_NOSERVER);
 }
 
+/* The Linux packages' placeholder: the agent refuses it too, e.g. in an ossec.conf copied by hand. */
+static void test_linux_placeholder_endpoint_returns_no_server(void **state) {
+    (void) state;
+
+    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <endpoint>MANAGER_IP</endpoint>\n    </manager>\n  </agent>\n</ossec_config>\n");
+
+    assert_int_equal(get_ossec_server(), 0);
+    assert_string_equal(config_inst.server, FL_NOSERVER);
+}
+
+static void test_empty_endpoint_returns_no_server(void **state) {
+    (void) state;
+
+    write_conf("<ossec_config>\n  <agent>\n    <manager>\n      <endpoint></endpoint>\n    </manager>\n  </agent>\n</ossec_config>\n");
+
+    assert_int_equal(get_ossec_server(), 0);
+    assert_string_equal(config_inst.server, FL_NOSERVER);
+}
+
 /* Only a host that is exactly 0.0.0.0 is the placeholder: a real host that merely
  * starts with those characters is still shown as the manager. */
 static void test_host_starting_with_placeholder_is_kept(void **state) {
@@ -203,6 +222,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_no_manager_configuration_returns_no_server, setup, teardown),
         cmocka_unit_test_setup_teardown(test_shipped_placeholder_endpoint_returns_no_server, setup, teardown),
         cmocka_unit_test_setup_teardown(test_placeholder_address_returns_no_server, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_linux_placeholder_endpoint_returns_no_server, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_empty_endpoint_returns_no_server, setup, teardown),
         cmocka_unit_test_setup_teardown(test_host_starting_with_placeholder_is_kept, setup, teardown),
     };
 
