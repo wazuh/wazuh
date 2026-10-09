@@ -961,7 +961,7 @@ private:
             &remoted::enrollment::rateLimitedResponse,
             m_enrollmentMetrics.rateLimited,
             &m_enrollHttpMetrics,
-            "POST /enroll (re-enrollment or no credential)"));
+            "POST /enroll (unverified: re-enrollment, no credential or spent token)"));
 
         m_httpServer->addRoute(remoted::http::Method::Post,
                                "/enroll",
@@ -1126,7 +1126,7 @@ private:
         registerFor(&RemotedModuleFacade::m_enrollRateLimiter, "enroll", "POST /enroll (verified credential)");
         registerFor(&RemotedModuleFacade::m_enrollUnverifiedRateLimiter,
                     "enroll.unverified",
-                    "POST /enroll (re-enrollment or no credential)");
+                    "POST /enroll (unverified: re-enrollment, no credential or spent token)");
         registerFor(&RemotedModuleFacade::m_cacertsRateLimiter, "cacerts", "GET /cacerts");
     }
 

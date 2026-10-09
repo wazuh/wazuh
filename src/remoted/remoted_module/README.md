@@ -392,8 +392,10 @@ src/endpoints/
   so neither can sit behind the bearer-token gateway that bounds every other route. `GET /cacerts`
   is wrapped at registration. `POST /enroll` is not: its handler charges a `Gate` itself, only once
   the request passed its local checks (credential, body, version) and right before the authd round
-  trip, from one of two buckets of the same rate — verified password or enrollment token, or not
-  (a re-enrollment bearer, which only the master can verify, and Open mode). A caller without a
+  trip, from one of two buckets of the same rate — verified password or enrollment token with uses
+  left, or not (a re-enrollment bearer, which only the master can verify, Open mode, and a token the
+  store shows as spent: only authd can refuse it, and a found single-use token must not drain the
+  verified bucket). A caller without a
   credential therefore neither spends the allowance by failing those checks nor reaches the bucket
   verified agents are served from (`enrollment::RateGates`).
 

@@ -460,9 +460,9 @@ overlap window — see the [CA Rotation Runbook](ca-rotation.md).
 
 The live state of the three rate-limit **buckets** (`enroll`, `enroll.unverified`, `cacerts`).
 `POST /enroll` has two buckets of the same configured rate: `remoted.enroll.rate_limit.*` is the one
-enrollments with a **verified** password or enrollment token are charged to, and
-`remoted.enroll.unverified.rate_limit.*` the one re-enrollments and credential-less (Open mode)
-enrollments are charged to. `remoted.cacerts.rate_limit.*` governs `GET /cacerts`. The **refusals** are not here — those are `remoted.enroll.rate_limited`
+enrollments with a **verified** password or enrollment token with uses left are charged to, and
+`remoted.enroll.unverified.rate_limit.*` the one re-enrollments, credential-less (Open mode)
+enrollments and spent enrollment tokens are charged to. `remoted.cacerts.rate_limit.*` governs `GET /cacerts`. The **refusals** are not here — those are `remoted.enroll.rate_limited`
 and `remoted.cacerts.rate_limited` above, with the rest of each endpoint's outcomes. The three pulls below answer a different question: how much of the
 bucket's budget is left?
 

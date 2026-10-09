@@ -1206,7 +1206,8 @@ paths:
             round trip to the master, once the limit is reached.
 
             Two buckets of that rate: one for enrollments whose password or enrollment token was
-            verified, one for re-enrollments and credential-less enrollments. Neither is per agent:
+            verified (a token with uses left), one for re-enrollments, credential-less enrollments
+            and enrollment tokens with no uses left. Neither is per agent:
             during a mass enrollment many agents can see this at once, and each simply retries with
             its own backoff until it is served. Carries `Retry-After` in whole seconds.
           headers:
