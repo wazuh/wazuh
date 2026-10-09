@@ -344,16 +344,67 @@ static bool g_anchor_chown_recorded_before_move = false;
  * fail is the only way to reach the path where an enrollment has already replaced client.keys. */
 static bool g_fail_anchor_move = false;
 
+/* Set by the rollback test whose backup is no longer the copy taken: by the time the anchor's
+ * rename fails, the backup's name holds a link to SWAP_TARGET instead. */
+#define SWAP_TARGET "etc/swap-target"
+#define SWAP_TARGET_CONTENT "not a key\n"
+
+static bool g_replace_keys_backup = false;
+
+static void replace_keys_backup_with_a_link(void) {
+    char **entries = wreaddir("etc");
+    char path[PATH_MAX];
+    int replaced = 0;
+
+    assert_non_null(entries);
+
+    for (int i = 0; entries[i] != NULL; i++) {
+        if (strncmp(entries[i], "client.keys.", 12) == 0) {
+            snprintf(path, sizeof(path), "etc/%s", entries[i]);
+            assert_int_equal(unlink(path), 0);
+            assert_int_equal(symlink("swap-target", path), 0);
+            replaced++;
+        }
+    }
+
+    free_strarray(entries);
+    assert_int_equal(replaced, 1);
+}
+
 int __wrap_OS_MoveFile(const char *src, const char *dst) {
     if (is_anchor_path(src) && g_anchor_chown_uid != (uid_t) -1) {
         g_anchor_chown_recorded_before_move = true;
     }
 
     if (g_fail_anchor_move && is_anchor_path(src)) {
+        if (g_replace_keys_backup) {
+            replace_keys_backup_with_a_link();
+        }
+
         return -1;
     }
 
     return __real_OS_MoveFile(src, dst);
+}
+
+/* Set by the test of a backup that can't be written: TempFile()'s copy of client.keys is pointed
+ * at /dev/full before it is flushed, so writing it out fails as on a full disk. */
+static bool g_backup_disk_full = false;
+
+int __real_TempFile(File *file, const char *source, int copy);
+
+int __wrap_TempFile(File *file, const char *source, int copy) {
+    int result = __real_TempFile(file, source, copy);
+
+    if (result == 0 && copy && g_backup_disk_full && strcmp(source, KEYS_FILE) == 0) {
+        int full = open("/dev/full", O_WRONLY);
+
+        assert_true(full >= 0);
+        assert_int_equal(dup2(full, fileno(file->fp)), fileno(file->fp));
+        close(full);
+    }
+
+    return result;
 }
 
 /* Stands in for an operator's terminal on stdin, which a test can't open. Everything else reaches
@@ -402,6 +453,7 @@ static void remove_test_paths(void) {
     unlink("etc/other-file");
     unlink(AGENT_REENROLL_SECRET);
     unlink(AGENT_DELIVERED_CA);
+    unlink(SWAP_TARGET);
     remove_staged_siblings("etc/certs", "root-ca.pem.");
     remove_staged_siblings("etc", "client.keys.");
 }
@@ -437,6 +489,8 @@ static int setup_test(void **state) {
     g_fetch_call_count = 0;
     g_enroll_call_count = 0;
     g_fail_anchor_move = false;
+    g_replace_keys_backup = false;
+    g_backup_disk_full = false;
     g_spki_call_count = 0;
     g_anchor_chown_uid = (uid_t) -1;
     g_anchor_chown_gid = (gid_t) -1;
@@ -1695,6 +1749,85 @@ static void test_failed_commit_leaves_no_staged_anchor(void **state) {
     free(token);
 }
 
+/* The backup sits beside client.keys for the whole enrollment. When its name no longer holds the
+ * copy that was taken, nothing is put back from it, and it is not reported as the backup either. */
+static void test_failed_commit_never_restores_a_replaced_backup(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(true, true, NULL);
+
+    write_file(KEYS_FILE, PREVIOUS_KEY_LINE);
+    write_file(AGENT_ANCHOR_CA, "OLD-CA");
+    write_file(SWAP_TARGET, SWAP_TARGET_CONTENT);
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+    opts.transactional = true;
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    will_return(__wrap_hc_enroll, 200L);
+    will_return(__wrap_hc_enroll, VALID_ENROLL_BODY);
+    will_return(__wrap_hc_enroll, 1);
+    expect_valid_ip("10.0.0.5");
+    /* The subject is the on-disk outcome, as in the tests above. */
+    expect_any_count(__wrap__mdebug1, formatted_msg, -2);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any_always(__wrap__merror, formatted_msg);
+
+    g_fail_anchor_move = true;
+    g_replace_keys_backup = true;
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_COMMIT);
+
+    assert_false(report.rolled_back);
+    assert_string_equal(report.keys_backup, "");
+    assert_string_not_equal(read_file(KEYS_FILE), SWAP_TARGET_CONTENT);
+    assert_string_equal(read_file(SWAP_TARGET), SWAP_TARGET_CONTENT);
+
+    free(token);
+}
+
+#ifdef __linux__
+/* A copy of client.keys that could not be written in full is no backup. The enrollment is not
+ * attempted -- no request is queued for hc_enroll() here -- and client.keys stays as it was. */
+static void test_a_key_backup_that_cannot_be_written_stops_the_enrollment(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(true, true, NULL);
+
+    write_file(KEYS_FILE, PREVIOUS_KEY_LINE);
+    write_file(AGENT_ANCHOR_CA, "OLD-CA");
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+    opts.transactional = true;
+
+    will_return(__wrap_hc_fetch_cacerts, 200L);
+    will_return(__wrap_hc_fetch_cacerts, "FAKE-CA-BODY");
+    will_return(__wrap_hc_fetch_cacerts, 1);
+    will_return(__wrap_hc_spki_pinned_certificate, PINNED_CERT);
+    expect_any_count(__wrap__mdebug1, formatted_msg, -2);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any_always(__wrap__merror, formatted_msg);
+
+    g_backup_disk_full = true;
+
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ANCHOR);
+
+    assert_string_equal(read_file(KEYS_FILE), PREVIOUS_KEY_LINE);
+    assert_false(report.rolled_back);
+
+    free(token);
+}
+#endif
+
 /* A token longer than the reader's buffer used to come back silently cut short, and the caller
  * then refused it as malformed -- which points whoever reads that message at the token's contents
  * instead of its size. Refusing it outright is what lets both callers say so. */
@@ -1868,6 +2001,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_failed_commit_restores_the_previous_key, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_without_a_previous_key_reports_no_rollback, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_failed_commit_leaves_no_staged_anchor, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_failed_commit_never_restores_a_replaced_backup, setup_test, teardown_test),
+#ifdef __linux__
+        cmocka_unit_test_setup_teardown(test_a_key_backup_that_cannot_be_written_stops_the_enrollment, setup_test,
+                                        teardown_test),
+#endif
         cmocka_unit_test_setup_teardown(test_fresh_enrollment_keys_chown_failure_logs_merror, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_credential_less_token_enrolls_without_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_happy_path_via_ca_pem, setup_test, teardown_test),

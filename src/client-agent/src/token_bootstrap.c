@@ -582,7 +582,8 @@ static bool token_anchor_matches(const char *candidate, size_t candidate_len) {
  * the trust anchor at rest for no benefit.
  */
 typedef struct {
-    char *keys_backup;   /**< mkstemp()-chosen path, or NULL when nothing was copied aside */
+    char *keys_backup;      /**< mkstemp()-chosen path, or NULL when nothing was copied aside */
+    FILE *keys_backup_fp;   /**< Its stream, held open until the restore or the discard */
 } token_snapshot_t;
 
 /**
@@ -595,12 +596,18 @@ typedef struct {
  * mkstemp() closes that: the name is unpredictable and the file is created O_EXCL at 0600, so
  * there is no window in which the secret sits at the umask's mode either.
  *
+ * The copy is flushed and checked here: one cut short, by a full disk say, would otherwise only
+ * show once it had been restored as the only key left. Its stream stays open until the restore or
+ * the discard, so the restore can tell this copy from anything else put at its name since.
+ *
  * @return 0 on success, -1 when a backup was needed but could not be taken.
  */
 static int token_snapshot(const w_token_enroll_opts_t *opts, token_snapshot_t *snapshot) {
     File backup = {NULL, NULL};
+    int saved_errno;
 
     snapshot->keys_backup = NULL;
+    snapshot->keys_backup_fp = NULL;
 
     if (!opts->transactional || FileSize(KEYS_FILE) <= 0) {
         return 0;
@@ -612,45 +619,63 @@ static int token_snapshot(const w_token_enroll_opts_t *opts, token_snapshot_t *s
         return -1;
     }
 
-    fclose(backup.fp);
+    if (fflush(backup.fp) != 0 || ferror(backup.fp)) {
+        saved_errno = errno;
+        merror("Could not copy the current agent key aside: %s (%d).",
+               strerror(saved_errno), saved_errno);
+        fclose(backup.fp);
+        unlink(backup.name);
+        os_free(backup.name);
+        errno = saved_errno;
+        return -1;
+    }
+
     snapshot->keys_backup = backup.name;
+    snapshot->keys_backup_fp = backup.fp;
 
     return 0;
 }
 
 /**
- * @brief Puts client.keys back after a commit that failed with the new key already written.
+ * @brief Whether the backup's name still holds the copy token_snapshot() took.
  *
- * Restores by copying out of the backup rather than renaming it in: OS_MoveFile() unlinks its
- * source on the copy fallback, so a restore that consumed the backup would destroy the last copy
- * of the old key if it then failed itself. The copy goes through TempFile()+OS_MoveFile() so
- * client.keys is replaced atomically, like every other write to it in this module.
+ * Compared against the stream token_snapshot() kept open, so the inode can't have been reused in
+ * the meantime. Always true on Windows, which has no inode to compare and whose staged files carry
+ * an explicit Administrators/SYSTEM DACL instead (mkstemp_ex()).
  */
-/**
- * @brief Whether @p path is still the file whose identity @p before recorded.
- *
- * A staged file is created through a descriptor and then handed to helpers that reopen it by
- * name; this is what makes that reopen safe in a directory the runtime user can write.
- * Always true on Windows, which has no inode to compare and whose staged files carry an explicit
- * Administrators/SYSTEM DACL instead (mkstemp_ex()).
- */
-static bool token_staged_file_is_ours(const char *path, const struct stat *before, bool known) {
+static bool token_backup_is_ours(const token_snapshot_t *snapshot) {
 #ifdef WIN32
-    (void)path;
-    (void)before;
-    (void)known;
+    (void)snapshot;
     return true;
 #else
-    struct stat after;
+    struct stat taken;
+    struct stat named;
 
-    return known && lstat(path, &after) == 0 && S_ISREG(after.st_mode) && after.st_nlink == 1 &&
-           after.st_dev == before->st_dev && after.st_ino == before->st_ino;
+    return fstat(fileno(snapshot->keys_backup_fp), &taken) == 0 &&
+           lstat(snapshot->keys_backup, &named) == 0 && S_ISREG(named.st_mode) &&
+           named.st_nlink == 1 && named.st_dev == taken.st_dev && named.st_ino == taken.st_ino;
 #endif
 }
 
+/** Closes the backup's stream, which only token_backup_is_ours() needed. */
+static void token_snapshot_close(token_snapshot_t *snapshot) {
+    if (snapshot->keys_backup_fp != NULL) {
+        fclose(snapshot->keys_backup_fp);
+        snapshot->keys_backup_fp = NULL;
+    }
+}
+
+/**
+ * @brief Puts client.keys back after a commit that failed with the new key already written.
+ *
+ * Renames the backup back into place rather than copying it out. rename_ex() either moves it or
+ * leaves both files as they were, so a restore that fails still leaves the backup for the
+ * operator, and nothing is opened by name to make a copy. The backup's name is checked first:
+ * whatever else stands there is neither restored nor reported as the backup.
+ */
 static void token_rollback(const w_token_enroll_opts_t *opts, token_snapshot_t *snapshot,
                            w_token_enroll_report_t *report) {
-    File restored = {NULL, NULL};
+    bool ours;
 
     if (snapshot->keys_backup == NULL) {
         /* Nothing was copied aside, so there is nothing to put back. The caller reports this as
@@ -658,56 +683,31 @@ static void token_rollback(const w_token_enroll_opts_t *opts, token_snapshot_t *
         return;
     }
 
-    if (TempFile(&restored, KEYS_FILE, 0) < 0) {
-        merror("Could not stage the previous agent key for restore: %s (%d).",
-               strerror(errno), errno);
-        goto keep_backup;
-    }
+    ours = token_backup_is_ours(snapshot);
+    /* Closed before the move: Windows will not move a file that still has a handle open on it. */
+    token_snapshot_close(snapshot);
 
-    /* w_copy_file() reopens by NAME, so the account that can write INSTALLDIR/etc could swap the
-     * staged file for a symlink between the close and that reopen and have root restore through
-     * it. Recorded from the descriptor TempFile() still holds, and checked below before the
-     * rename. */
-    struct stat restored_before;
-    bool restored_known = (fstat(fileno(restored.fp), &restored_before) == 0);
+    if (ours && rename_ex(snapshot->keys_backup, KEYS_FILE) == 0) {
+        if (opts->gid != -1) {
+            w_token_bootstrap_chown_keys_file(opts->gid, true);
+        }
 
-    fclose(restored.fp);
-
-    if (w_copy_file(snapshot->keys_backup, restored.name, 'b', NULL, 1) != 0 ||
-        !token_staged_file_is_ours(restored.name, &restored_before, restored_known) ||
-        OS_MoveFile(restored.name, KEYS_FILE) < 0) {
+        if (report != NULL) {
+            report->rolled_back = true;
+        }
+    } else {
         merror("Could not restore the previous agent key. The agent now holds a "
                "key the configured manager does not know.");
-        unlink(restored.name);
-        os_free(restored.name);
-        goto keep_backup;
-    }
 
-    os_free(restored.name);
-
-    if (opts->gid != -1) {
-        w_token_bootstrap_chown_keys_file(opts->gid, true);
-    }
-
-    unlink(snapshot->keys_backup);
-    os_free(snapshot->keys_backup);
-    snapshot->keys_backup = NULL;
-
-    if (report != NULL) {
-        report->rolled_back = true;
-    }
-
-    return;
-
-keep_backup:
-    /* The backup outlives this process on purpose: it is the only remaining copy of a working
-     * credential, and the caller prints its path so an operator can put it back by hand. */
-    if (report != NULL) {
-        strncpy(report->keys_backup, snapshot->keys_backup, sizeof(report->keys_backup) - 1);
+        /* The backup outlives this process on purpose: it is the only remaining copy of a working
+         * credential, and the caller prints its path so an operator can put it back by hand --
+         * as long as that path still holds it. */
+        if (ours && report != NULL) {
+            strncpy(report->keys_backup, snapshot->keys_backup, sizeof(report->keys_backup) - 1);
+        }
     }
 
     os_free(snapshot->keys_backup);
-    snapshot->keys_backup = NULL;
 }
 
 /** Removes the backup once the enrollment has committed and it can no longer be needed. */
@@ -716,9 +716,9 @@ static void token_snapshot_discard(token_snapshot_t *snapshot) {
         return;
     }
 
+    token_snapshot_close(snapshot);
     unlink(snapshot->keys_backup);
     os_free(snapshot->keys_backup);
-    snapshot->keys_backup = NULL;
 }
 
 /**
