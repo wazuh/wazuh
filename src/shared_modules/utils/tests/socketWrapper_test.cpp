@@ -211,59 +211,63 @@ TEST_F(SocketWrapperTest, ReadRejectsLengthThatWouldWrapToZero)
 
 TEST_F(SocketWrapperTest, ReadRejectsHeaderSizeThatMovesOffsetPastMessage)
 {
-    // Create a mock object.
-    Socket<OSWrapper> socketWrapper;
+    // 0xFFFFFFFC and above make 4 + headerSize reach 2^32 or more: they must be rejected too, not
+    // wrapped around by a 32-bit comparison.
+    for (const PacketFieldType maliciousHeaderSize : {0xFFFFFFF0u, 0xFFFFFFFCu, 0xFFFFFFFFu})
+    {
+        // Create a mock object.
+        Socket<OSWrapper> socketWrapper;
 
-    // Set up the test data: a small, well-formed total length (no 4 GiB send needed), whose
-    // body embeds a header-size field claiming to be huge. dataOffset (4 + headerSize) then
-    // moves past the declared total length.
-    const int sock = 123;
-    const ssize_t metaDataSize = PACKET_FIELD_SIZE;
-    const PacketFieldType packetSize = 8;
+        // Set up the test data: a small, well-formed total length (no 4 GiB send needed), whose
+        // body embeds a header-size field claiming to be huge. dataOffset (4 + headerSize) then
+        // moves past the declared total length.
+        const int sock = 123;
+        const ssize_t metaDataSize = PACKET_FIELD_SIZE;
+        const PacketFieldType packetSize = 8;
 
-    const PacketFieldType maliciousHeaderSize = 0xFFFFFFF0;
-    std::vector<char> body(8, 0);
-    std::copy(
-        (char*)&maliciousHeaderSize, (char*)&maliciousHeaderSize + sizeof(maliciousHeaderSize), body.data());
+        std::vector<char> body(8, 0);
+        std::copy(
+            (char*)&maliciousHeaderSize, (char*)&maliciousHeaderSize + sizeof(maliciousHeaderSize), body.data());
 
-    // Both the header and body reads are expected: a correct fix only rejects the message
-    // once the embedded header size is known, after the body has arrived.
-    EXPECT_CALL(socketWrapper, recv(sock, _, _, _))
-        .WillOnce(DoAll(Invoke(
-                            [&packetSize](int, void* buffer, size_t size, int)
-                            {
-                                std::copy((char*)&packetSize, (char*)&packetSize + size, (char*)buffer);
-                                return size;
-                            }),
-                        Return(metaDataSize)))
-        .WillOnce(DoAll(Invoke(
-                            [&body](int, void* buffer, size_t size, int)
-                            {
-                                std::copy(body.begin(), body.end(), (char*)buffer);
-                                return size;
-                            }),
-                        Return((ssize_t)body.size())));
+        // Both the header and body reads are expected: a correct fix only rejects the message
+        // once the embedded header size is known, after the body has arrived.
+        EXPECT_CALL(socketWrapper, recv(sock, _, _, _))
+            .WillOnce(DoAll(Invoke(
+                                [&packetSize](int, void* buffer, size_t size, int)
+                                {
+                                    std::copy((char*)&packetSize, (char*)&packetSize + size, (char*)buffer);
+                                    return size;
+                                }),
+                            Return(metaDataSize)))
+            .WillOnce(DoAll(Invoke(
+                                [&body](int, void* buffer, size_t size, int)
+                                {
+                                    std::copy(body.begin(), body.end(), (char*)buffer);
+                                    return size;
+                                }),
+                            Return((ssize_t)body.size())));
 
-    std::function<void(const int, const char*, uint32_t, const char*, uint32_t)> callbackBody =
-        [&](const int, const char*, uint32_t, const char*, uint32_t) { FAIL() << "callback should not run"; };
+        std::function<void(const int, const char*, uint32_t, const char*, uint32_t)> callbackBody =
+            [&](const int, const char*, uint32_t, const char*, uint32_t) { FAIL() << "callback should not run"; };
 
-    // Connect expect calls
-    EXPECT_CALL(socketWrapper, socket(_, _, _)).WillOnce(Return(123));
-    EXPECT_CALL(socketWrapper, connect(123, _, _)).WillOnce(Return(0));
-    EXPECT_CALL(socketWrapper, setsockopt(123, _, _, _, _)).Times(2);
+        // Connect expect calls
+        EXPECT_CALL(socketWrapper, socket(_, _, _)).WillOnce(Return(123));
+        EXPECT_CALL(socketWrapper, connect(123, _, _)).WillOnce(Return(0));
+        EXPECT_CALL(socketWrapper, setsockopt(123, _, _, _, _)).Times(2);
 
-    EXPECT_CALL(socketWrapper, close(123)).WillOnce(Return(0));
-    EXPECT_CALL(socketWrapper, shutdown(123, _)).WillOnce(Return(0));
+        EXPECT_CALL(socketWrapper, close(123)).WillOnce(Return(0));
+        EXPECT_CALL(socketWrapper, shutdown(123, _)).WillOnce(Return(0));
 
-    // Connect call.
-    auto unixAddress {UnixAddress::builder().address("test_socket").build()};
-    EXPECT_NO_THROW({ socketWrapper.connect(unixAddress.data()); });
+        // Connect call.
+        auto unixAddress {UnixAddress::builder().address("test_socket").build()};
+        EXPECT_NO_THROW({ socketWrapper.connect(unixAddress.data()); });
 
-    // read() drains both the header and the body in this one call (it only stops looping on
-    // EAGAIN/EWOULDBLOCK or an error), so the throw is expected here, not on a second call.
-    // The embedded header size pushes dataOffset past m_totalReadSize: must throw instead of
-    // calling back with an out-of-bounds pointer and an underflowed size.
-    EXPECT_THROW({ socketWrapper.read(callbackBody); }, std::runtime_error);
+        // read() drains both the header and the body in this one call (it only stops looping on
+        // EAGAIN/EWOULDBLOCK or an error), so the throw is expected here, not on a second call.
+        // The embedded header size pushes dataOffset past m_totalReadSize: must throw instead of
+        // calling back with an out-of-bounds pointer and an underflowed size.
+        EXPECT_THROW({ socketWrapper.read(callbackBody); }, std::runtime_error);
+    }
 }
 
 TEST_F(SocketWrapperTest, DISABLED_ReadPartialHeader)

@@ -581,9 +581,9 @@ public:
 
                             // dataOffset's type depends on TCommunicationProtocol (size_t for
                             // AppendHeaderProtocol, int for SizeHeaderProtocol/NoHeaderProtocol,
-                            // which always return 0) — cast to match m_totalReadSize's type so the
-                            // comparison itself never warns or behaves differently per protocol.
-                            if (static_cast<uint32_t>(dataOffset) > m_totalReadSize)
+                            // which always return 0) — widen to 64 bits so a size_t offset of 2^32
+                            // or more is not truncated before the comparison.
+                            if (static_cast<uint64_t>(dataOffset) > m_totalReadSize)
                             {
                                 // A declared header size that pushes the body offset past the
                                 // message length would make m_totalReadSize - dataOffset wrap to
