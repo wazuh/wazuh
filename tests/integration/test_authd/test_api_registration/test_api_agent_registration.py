@@ -59,7 +59,7 @@ import pytest
 from pathlib import Path
 
 from wazuh_testing.utils.client_keys import wait_for_client_keys_entry
-from wazuh_testing.modules.api.utils import get_base_url, login, wait_for_api_port
+from wazuh_testing.modules.api.utils import get_base_url, login
 from wazuh_testing.utils.configuration import get_test_cases_data
 
 from . import TEST_CASES_FOLDER_PATH
@@ -154,9 +154,6 @@ def test_agentd_server_configuration(test_metadata, truncate_monitored_files_mod
         expected = test_metadata['expected'][stage]
 
         url = get_base_url()
-        # wazuh-apid logs "Listening on" from its ASGI lifespan, which uvicorn runs before it
-        # actually binds the socket, so the port may still refuse connections right after restart.
-        assert wait_for_api_port(), "wazuh-apid did not start accepting connections in time"
         authentication_headers, _ = login()
         api_query = f"{url}/agents?"
 

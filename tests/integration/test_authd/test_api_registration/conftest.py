@@ -10,14 +10,15 @@ from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.constants.api import WAZUH_API_PORT
 from wazuh_testing.modules.api.patterns import API_STARTED_MSG
+from wazuh_testing.modules.api.utils import wait_for_api_port
 
 
 @pytest.fixture(scope='module')
 def wait_for_api_startup_module():
-    """Monitor the API log file to detect whether it has been started or not.
+    """Monitor the API log file and port to detect whether it has been started or not.
 
     Raises:
-        RuntimeError: When the log was not found.
+        RuntimeError: When the log was not found or the port never accepted connections.
     """
     # Set the default values
     logs_format = 'plain'
@@ -36,3 +37,8 @@ def wait_for_api_startup_module():
 
     if monitor_start_message.callback_result is None:
         raise RuntimeError('The API was not started as expected.')
+
+    # The log above is written from the ASGI lifespan, before uvicorn actually binds
+    # the port, so it is not a reliable readiness signal on its own.
+    if not wait_for_api_port(timeout=30):
+        raise RuntimeError('wazuh-apid did not start accepting connections in time.')
