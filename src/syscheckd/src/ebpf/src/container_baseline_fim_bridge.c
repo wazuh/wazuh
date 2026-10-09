@@ -416,15 +416,73 @@ void fim_compute_row_checksum(const char* row_json, char out_sha1[41])
     OS_SHA1_Str(row_json, (ssize_t)strlen(row_json), out_sha1);
 }
 
-/* Applies container_budget_decide() to one row, owning the lock and the
- * counter it decides against. The rule itself lives in container_doc_budget.h
- * so it can be tested without a daemon; this is only the plumbing. */
+/* Per-container document counts: container id -> int*.
+ *
+ * PER CONTAINER is the decision (#37532 / O10), so the count has to be too. A
+ * single total would let one container spend the rest's allowance and decide by
+ * scan order which of them reported -- measured on a real node, one container
+ * produced 25% of the node's rows.
+ *
+ * Guarded by synced_docs_mutex, the same lock the host counters use, so the two
+ * populations cannot interleave an update. */
+static OSHash* container_doc_counts = NULL;
+
+/* Returns the container's count slot, creating it at zero, or NULL if it could
+ * not be created. Caller holds synced_docs_mutex. */
+static int* container_doc_count_slot(const char* container_id)
+{
+    if (container_doc_counts == NULL) {
+        container_doc_counts = OSHash_Create();
+        if (container_doc_counts == NULL) {
+            return NULL;
+        }
+        OSHash_SetFreeDataPointer(container_doc_counts, free);
+    }
+
+    int* slot = (int*)OSHash_Get(container_doc_counts, container_id);
+    if (slot != NULL) {
+        return slot;
+    }
+
+    os_calloc(1, sizeof(int), slot);
+    if (OSHash_Add(container_doc_counts, container_id, slot) != 2) {
+        os_free(slot);
+        return NULL;
+    }
+    return slot;
+}
+
+void fim_container_doc_budget_release(const char* container_id)
+{
+    if (container_id == NULL || *container_id == '\0') {
+        return;
+    }
+
+    w_mutex_lock(&synced_docs_mutex);
+    if (container_doc_counts != NULL) {
+        int* slot = (int*)OSHash_Delete(container_doc_counts, container_id);
+        os_free(slot);
+    }
+    w_mutex_unlock(&synced_docs_mutex);
+}
+
+/* Applies container_budget_decide() to one row, owning the lock and the count
+ * it decides against. The rule itself lives in container_doc_budget.h so it can
+ * be tested without a daemon; this is only the plumbing. */
 static int container_row_sync_flag(const cJSON* row, int operation)
 {
     const int limit = syscheck.container_file_limit;
 
     if (limit <= 0) {
         return 1; /* Unlimited: today's behaviour, and the default. */
+    }
+
+    const cJSON* id_json = cJSON_GetObjectItem(row, "container_id");
+    if (id_json == NULL || !cJSON_IsString(id_json) || id_json->valuestring == NULL
+            || *id_json->valuestring == '\0') {
+        /* No container to charge it to. Report it rather than withhold it: a row
+         * we cannot attribute is not evidence that a budget was exceeded. */
+        return 1;
     }
 
     /* The stored row's own flag, where DBSync gave us one: absent on a fresh
@@ -439,16 +497,24 @@ static int container_row_sync_flag(const cJSON* row, int operation)
      * host path: the scheduled baseline and an event-driven reconcile reach
      * this concurrently. */
     w_mutex_lock(&synced_docs_mutex);
-    const container_budget_decision_t decision =
-        container_budget_decide(limit, synced_docs_container_files, stored_sync,
-                                operation == OPERATION_DELETE);
-    synced_docs_container_files += decision.count_delta;
-    if (synced_docs_container_files < 0) {
-        synced_docs_container_files = 0;
+    int* slot = container_doc_count_slot(id_json->valuestring);
+    int granted = 1;
+
+    if (slot != NULL) {
+        const container_budget_decision_t decision =
+            container_budget_decide(limit, *slot, stored_sync,
+                                    operation == OPERATION_DELETE);
+        *slot += decision.count_delta;
+        if (*slot < 0) {
+            *slot = 0;
+        }
+        granted = decision.sync_flag;
     }
+    /* slot == NULL means the table could not be grown. Fail OPEN: a counter we
+     * could not keep is not grounds for withholding a container's state. */
     w_mutex_unlock(&synced_docs_mutex);
 
-    return decision.sync_flag;
+    return granted;
 }
 
 void fim_persist_baseline_row(const char* id, int operation, const char* index, const char* json, uint64_t version)

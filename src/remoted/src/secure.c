@@ -474,18 +474,10 @@ STATIC char* build_limits_json(const module_limits_t *limits) {
     cJSON *fim = cJSON_CreateObject();
     if (fim) {
         cJSON_AddNumberToObject(fim, "file", limits->fim.file);
+        cJSON_AddNumberToObject(fim, "container_file", limits->fim.container_file);
         cJSON_AddNumberToObject(fim, "registry_key", limits->fim.registry_key);
         cJSON_AddNumberToObject(fim, "registry_value", limits->fim.registry_value);
         cJSON_AddItemToObject(limits_obj, "fim", fim);
-    }
-
-    /* Container FIM cap (#37532 / O10). Its own object rather than another key
-     * under "fim": container rows and host rows share the FIM sync index but
-     * not a budget, so syscheckd fetches the two separately. */
-    cJSON *fim_containers = cJSON_CreateObject();
-    if (fim_containers) {
-        cJSON_AddNumberToObject(fim_containers, "file", limits->fim_containers.file);
-        cJSON_AddItemToObject(limits_obj, "fim_containers", fim_containers);
     }
 
     /* Syscollector limits */
@@ -504,26 +496,20 @@ STATIC char* build_limits_json(const module_limits_t *limits) {
         cJSON_AddNumberToObject(syscollector, "groups", limits->syscollector.groups);
         cJSON_AddNumberToObject(syscollector, "services", limits->syscollector.services);
         cJSON_AddNumberToObject(syscollector, "browser_extensions", limits->syscollector.browser_extensions);
+        /* Per container, in the same object: one reply carries both scopes and
+         * the consumer splits them on the prefix (#37532 / O10). */
+        cJSON_AddNumberToObject(syscollector, "container_processes", limits->syscollector.container_processes);
+        cJSON_AddNumberToObject(syscollector, "container_ports", limits->syscollector.container_ports);
+        cJSON_AddNumberToObject(syscollector, "container_packages", limits->syscollector.container_packages);
+        cJSON_AddNumberToObject(syscollector, "container_users", limits->syscollector.container_users);
+        cJSON_AddNumberToObject(syscollector, "container_groups", limits->syscollector.container_groups);
+        cJSON_AddNumberToObject(syscollector, "container_os_info", limits->syscollector.container_os_info);
+        cJSON_AddNumberToObject(syscollector, "container_network_iface", limits->syscollector.container_network_iface);
+        cJSON_AddNumberToObject(syscollector, "container_network_protocol", limits->syscollector.container_network_protocol);
+        cJSON_AddNumberToObject(syscollector, "container_network_address", limits->syscollector.container_network_address);
+        cJSON_AddNumberToObject(syscollector, "container_hardware", limits->syscollector.container_hardware);
+        cJSON_AddNumberToObject(syscollector, "container_services", limits->syscollector.container_services);
         cJSON_AddItemToObject(limits_obj, "syscollector", syscollector);
-    }
-
-    /* Syscollector container-inventory limits (#37532 / #37534). A separate
-     * object rather than more keys in "syscollector": container rows and host
-     * rows share a sync index but must not share a budget, and an agent that
-     * does not understand this object simply ignores it. */
-    cJSON *syscollector_containers = cJSON_CreateObject();
-    if (syscollector_containers) {
-        cJSON_AddNumberToObject(syscollector_containers, "processes", limits->syscollector_containers.processes);
-        cJSON_AddNumberToObject(syscollector_containers, "ports", limits->syscollector_containers.ports);
-        cJSON_AddNumberToObject(syscollector_containers, "packages", limits->syscollector_containers.packages);
-        cJSON_AddNumberToObject(syscollector_containers, "users", limits->syscollector_containers.users);
-        cJSON_AddNumberToObject(syscollector_containers, "groups", limits->syscollector_containers.groups);
-        cJSON_AddNumberToObject(syscollector_containers, "os_info", limits->syscollector_containers.os_info);
-        cJSON_AddNumberToObject(syscollector_containers, "network_iface", limits->syscollector_containers.network_iface);
-        cJSON_AddNumberToObject(syscollector_containers, "network_protocol", limits->syscollector_containers.network_protocol);
-        cJSON_AddNumberToObject(syscollector_containers, "network_address", limits->syscollector_containers.network_address);
-        cJSON_AddNumberToObject(syscollector_containers, "hardware", limits->syscollector_containers.hardware);
-        cJSON_AddItemToObject(limits_obj, "syscollector_containers", syscollector_containers);
     }
 
     /* SCA limits */

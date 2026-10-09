@@ -48,7 +48,6 @@ int notify_scan = 0;
 int sys_debug_level;
 int audit_queue_full_reported = 0;
 int synced_docs_files = 0;
-int synced_docs_container_files = 0;
 int synced_docs_registry_keys = 0;
 int synced_docs_registry_values = 0;
 
@@ -488,6 +487,19 @@ bool fetch_document_limits_from_agentd(){
         }
     }
 
+    /* Optional within the fim reply: a manager that predates the per-container
+     * cap (#37532 / O10) simply does not send it, and container FIM stays
+     * unlimited, which is what it did before the cap existed. */
+    cJSON* container_file = cJSON_GetObjectItem(root, "container_file");
+    if (container_file && cJSON_IsNumber(container_file))
+    {
+        const double value = cJSON_GetNumberValue(container_file);
+        if (value >= 0)
+        {
+            syscheck.container_file_limit = (int)value;
+        }
+    }
+
     cJSON* registry_key = cJSON_GetObjectItem(root, "registry_key");
     if (registry_key && cJSON_IsNumber(registry_key))
     {
@@ -509,38 +521,6 @@ bool fetch_document_limits_from_agentd(){
     }
 
     cJSON_Delete(root);
-
-    /* Container FIM's budget is a separate query, not more keys on "fim":
-     * agentd serves it under its own module name so a manager that predates
-     * O10 simply answers nothing and container FIM stays unlimited, exactly as
-     * it behaves today (#37532 / O10). */
-    char container_buffer[OS_MAXSTR] = {0};
-
-    if (w_query_agentd(SYSCHECK, "getdoclimits fim_containers", container_buffer, sizeof(container_buffer)))
-    {
-        cJSON* container_root = cJSON_Parse(container_buffer);
-        if (container_root)
-        {
-            cJSON* container_file = cJSON_GetObjectItem(container_root, "file");
-            if (container_file && cJSON_IsNumber(container_file))
-            {
-                const double value = cJSON_GetNumberValue(container_file);
-                if (value >= 0)
-                {
-                    syscheck.container_file_limit = (int)value;
-                }
-            }
-            cJSON_Delete(container_root);
-        }
-        else
-        {
-            mdebug1("Failed to parse getdoclimits fim_containers response");
-        }
-    }
-    else
-    {
-        mdebug1("No container FIM document limits available; container FIM stays unlimited");
-    }
 
     return true;
 }
