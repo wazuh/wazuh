@@ -174,7 +174,84 @@ alike, and the agent records no new file state at all. The sole diagnostic remai
 
 ---
 
-## 23.6 What this implies for the decision
+## 23.6 The limits, validated end to end (WP4, 2026-10-09)
+
+Measured on `wazuh_manager` with the branch build deployed, against the same 50-container x 2,000-file
+load 23.4 used. Two notes on the method, because both bound what these numbers mean:
+
+- The local build links with **RUNPATH** where the package links with **RPATH**. RPATH is inherited by
+  a binary's dependencies and RUNPATH is not, so the packaged `libfimebpf.so` resolves its siblings
+  through the daemon's RPATH and a locally built one cannot. The agent refused to start until
+  `LD_LIBRARY_PATH` was set. Not a product defect — the package works — but locally built binaries are
+  **not drop-in replaceable** on a packaged install.
+- `CMAKE_BUILD_TYPE` is empty, so this is an unoptimised build. Row counts, refusals and the `partial`
+  flag are unaffected; **wall-clock is not comparable** to 23.2 and is not quoted.
+
+### Test A — a node budget sized for a node that runs containers
+
+`fim.file_entry_limit` raised from the host-era 100,000 to 300,000; no per-container ceiling.
+
+| | 23.4 (before) | Test A |
+| --- | --- | --- |
+| Table total | **pinned at 100,000** | **108,644** |
+| Container rows | 91,420 | **100,063** |
+| Rows the walk PRODUCED | 100,063 | 100,063 |
+| **Produced vs stored** | **8,643 refused** | **0 — identical** |
+| Containers complete | 45 of 50 | **50 of 50** |
+| Containers with no rows at all | **4** | **0** |
+
+The decisive line is produced == stored. The same walk produces the same 100,063 rows either way; what
+changed is that none are now turned away. `0 partial scan(s)` is finally *correct* — in 23.4 the same
+message was emitted while 8,643 rows were being refused.
+
+### Test B — a per-container ceiling, and the flag it makes possible
+
+`fim.container_file_entry_limit` = 500, against containers offering 2,000 files each.
+
+```
+56 container(s) scanned, 100063 row(s), 50 partial scan(s), 0 stale container(s) cleaned
+```
+
+| Rows stored | Containers |
+| --- | --- |
+| 500 | **50** — every bench container, truncated exactly at its ceiling |
+| 1 | 3 — KinD containers, under the ceiling |
+
+Each truncated container logs its own warning, naming itself and both limits:
+
+```
+Container FIM baseline: container 'ff705e46...' stored 500 row(s) and 1500 were refused
+  (per-container limit 500, node limit 300000). Its file state is incomplete, so delete
+  detection is suppressed for it this pass.
+```
+
+**The control holds:** 50 partial of 56 scanned — the six containers under the ceiling are not
+flagged, so the flag is not simply always-on.
+
+### The falsifier
+
+`container_scan_is_partial()` reverted to `return walker_partial;` — refusals ignored — rebuilt and
+redeployed:
+
+```
+56 container(s) scanned, 100063 row(s), 0 partial scan(s)      <- while 54 refusal warnings were logged
+```
+
+That is 23.4's condition reproduced on demand: rows refused, scan reporting itself whole. Restoring
+the guard returned `50 partial scan(s)`. **The rule is load-bearing, not decorative.**
+
+### What this does NOT show
+
+- Only on `wazuh_manager`. Both sides are glibc 2.39; Ubuntu 22 (2.35) and Debian 13 reject these
+  artefacts, so the ceiling is unvalidated there.
+- The **reconcile path** (`syncRowDirect`) is not capped — it has no transaction to count within.
+  Bounded in practice by event rate and corrected at the next baseline, but it is a gap.
+- A *false delete* was still never observed. 23.4 measured the precondition and this measures the
+  guard; neither measures the consequence.
+
+---
+
+## 23.7 What this implies for the decision
 
 1. **Two levels are required, not one.** One container produced 25% of the node's inventory (23.3), and
    walk order decided which containers were monitored at all (23.4). A node-wide budget bounds the
