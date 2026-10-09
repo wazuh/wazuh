@@ -723,8 +723,9 @@ void test_os_write_xml_to_stream_appends_a_missing_node(void **state) {
     assert_os_xml_write_to_stream_eq(data, xml_str_old, xml_str_new, xml_path, NULL, "test");
 }
 
-/* A failure reports the same codes as OS_WriteXML(), writes nothing a caller could mistake for
- * output, and still leaves the caller's stream open. */
+/* A failure reports the same codes as OS_WriteXML() and still leaves the caller's stream open.
+ * XMLW_NOIN writes nothing; XMLW_ERROR may leave part of the copy behind, for the caller to
+ * discard. */
 void test_os_write_xml_to_stream_failures(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     const char *xml_path[] = { "root", "child", NULL };
