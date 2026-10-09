@@ -128,6 +128,18 @@ def test_custom_logging(path, hash_auth_context, body, loggerlevel):
         log_info_mock.debug2.assert_called_with(f'Receiving headers {headers}')
 
 
+def test_custom_logging_masks_credential_headers():
+    """Check credential-bearing headers are masked in the debug2 log while the others are kept."""
+    headers = {'Authorization': 'Bearer secret-token', 'cookie': 'sid=secret-cookie', 'Host': 'localhost'}
+    with patch('api.alogging.logger') as log_mock:
+        log_mock.level = 1
+        alogging.custom_logging('wazuh', '1.1.1.1', 'GET', '/agents', {}, {}, 1.0, 200, headers=headers)
+
+    logged = log_mock.debug2.call_args.args[0]
+    assert 'secret-token' not in logged and 'secret-cookie' not in logged
+    assert "'Authorization': '****'" in logged and "'Host': 'localhost'" in logged
+
+
 @pytest.mark.parametrize("value, expected", [
     ('plain', 'plain'),
     ('a\nb', 'a\\nb'),
