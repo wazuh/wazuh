@@ -300,9 +300,14 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     } else {
         // The rows are queued, so the ordinary cycle delivers them; nothing about this table
         // has to be redone.
-        minfo("Recovery of index '%s' did not finish sending%s%s%s; the queued rows will be delivered by the next "
-              "regular synchronization.", recovery_index, result.failure_reason[0] != '\0' ? " (" : "",
-              result.failure_reason, result.failure_reason[0] != '\0' ? ")" : "");
+        // Sync-protocol reasons are full sentences; drop the trailing period inside the parentheses.
+        int reason_len = (int)strlen(result.failure_reason);
+        if (reason_len > 0 && result.failure_reason[reason_len - 1] == '.') {
+            reason_len--;
+        }
+        minfo("Recovery of index '%s' did not finish sending%s%.*s%s; the queued rows will be delivered by the next "
+              "regular synchronization.", recovery_index, reason_len > 0 ? " (" : "", reason_len,
+              result.failure_reason, reason_len > 0 ? ")" : "");
     }
 
     // True from here on: the manager accepted the DataClean above and every row is queued, so
@@ -466,10 +471,29 @@ static void fim_recovery_format_interval(int64_t seconds, char* buffer, size_t s
 }
 
 /**
+ * @brief Returns the sync index a FIM table is stored in, or the table name itself when it has none, so
+ *        the integrity-pass messages name what the manager and the Indexer call it, as Syscollector does.
+ */
+static const char* fim_recovery_sync_index(const char* table_name) {
+    if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+        return FIM_FILES_SYNC_INDEX;
+    }
+#ifdef WIN32
+    if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
+        return FIM_REGISTRY_KEYS_SYNC_INDEX;
+    }
+    if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+        return FIM_REGISTRY_VALUES_SYNC_INDEX;
+    }
+#endif
+    return table_name;
+}
+
+/**
  * @brief Appends "<index> (<reason>)" to the list of tables left unchecked. Sync-protocol reasons are
  *        full sentences, so the trailing period is dropped to let them sit inside parentheses.
  */
-static void fim_recovery_append_unchecked(char* list, size_t size, const char* table_name, const char* reason) {
+static void fim_recovery_append_unchecked(char* list, size_t size, const char* index, const char* reason) {
     size_t used = strlen(list);
     size_t reason_len = strlen(reason);
 
@@ -477,7 +501,7 @@ static void fim_recovery_append_unchecked(char* list, size_t size, const char* t
         reason_len--;
     }
 
-    snprintf(list + used, size - used, "%s%s (%.*s)", used > 0 ? ", " : "", table_name, (int)reason_len, reason);
+    snprintf(list + used, size - used, "%s%s (%.*s)", used > 0 ? ", " : "", index, (int)reason_len, reason);
 }
 
 void fim_recovery_run_integrity_checks(AgentSyncProtocolHandle* handle, char** table_names, int table_count,
@@ -508,18 +532,19 @@ void fim_recovery_run_integrity_checks(AgentSyncProtocolHandle* handle, char** t
         // fim_shutdown_process_on() too: the protocol is stopped after the shutdown flag is raised,
         // so a check that failed in between does not carry the stopped flag.
         if (check.status == INTEGRITY_CHECK_NOT_CHECKED && (check.stopped || fim_shutdown_process_on())) {
-            minfo("Integrity check for table %s interrupted: module is stopping%s. It will be checked again after "
-                  "the restart.", table_names[i],
+            minfo("Integrity check for %s interrupted: module is stopping%s. It will be checked again after "
+                  "the restart.", fim_recovery_sync_index(table_names[i]),
                   check.mismatch_unconfirmed ? "; a checksum mismatch reported by the manager was not confirmed" : "");
             break;
         }
 
         if (check.status == INTEGRITY_CHECK_NOT_CHECKED) {
-            fim_recovery_append_unchecked(unchecked, OS_MAXSTR, table_names[i], check.failure_reason);
+            fim_recovery_append_unchecked(unchecked, OS_MAXSTR, fim_recovery_sync_index(table_names[i]),
+                                          check.failure_reason);
             unchecked_count++;
         } else if (check.status == INTEGRITY_CHECK_MISMATCH) {
-            minfo("Checksum mismatch confirmed for table %s; starting recovery (index cleanup and full resend).",
-                  table_names[i]);
+            minfo("Checksum mismatch confirmed for %s; starting recovery (index cleanup and full resend).",
+                  fim_recovery_sync_index(table_names[i]));
 
             // A failure here is reported by fim_recovery_persist_table_and_resync() itself. Like any
             // other failure of this pass, the table still counts as checked, so it is not retried

@@ -309,8 +309,11 @@ class SecurityConfigurationAssessment
         /// @brief Synchronize the current DB snapshot using FULL mode.
         /// @param increaseVersions Whether to bump versions before building the snapshot.
         /// @param syncReason Reason used in logs.
+        /// @param queued Optional; set to true once the index is cleared and the snapshot is queued, so a
+        /// failure after that point is delivered by the next regular synchronization.
         /// @return SyncModuleResult with success flag and an optional failure reason string.
-        SyncModuleResult synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
+        SyncModuleResult synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason,
+                                                     bool* queued = nullptr);
 
         /// @brief Logs a failed SyncModuleResult at the right level: INFO for an expected
         /// shutdown/prerequisite/manager-not-ready-within-tolerance hiccup, WARNING (or
