@@ -366,6 +366,30 @@ STATIC char *w_agent_auth_read_token(const agent_auth_opts_t *opts, FILE *in, FI
 }
 
 /**
+ * @brief Writes the rewrite of <agent><manager><endpoint> into the staged file, through its stream.
+ *
+ * Never reopened by name: the account that can write etc/ can see the staged name appear and swap
+ * it for a symlink, and a reopen by name would then have root truncate and write whatever the link
+ * points at, before any check could refuse.
+ *
+ * ferror() as well as fflush(): a write that fails drops the part of the buffer it could not write
+ * and only sets the stream's error flag, so the flush after it can still succeed.
+ *
+ * @return 0 on success, -1 on failure (a reason is written to @p err).
+ */
+STATIC int w_agent_auth_write_staged(const File *staged, const char **nodes, const char *configured,
+                                     const char *adr, FILE *err) {
+    if (OS_WriteXMLToStream(WAZUHCONF, staged->fp, nodes, configured, adr) != 0 ||
+        fflush(staged->fp) != 0 || ferror(staged->fp)) {
+        fprintf(err, "%s: could not rewrite <manager><endpoint> in '%s'.\n", AGENT_AUTH_NAME,
+                WAZUHCONF);
+        return -1;
+    }
+
+    return 0;
+}
+
+/**
  * @brief Parses the staged rewrite into @p xml without opening it by name.
  *
  * Its name can be swapped for a symlink at any time, and root opening it, even only to read, opens
@@ -535,17 +559,8 @@ STATIC int w_agent_auth_update_endpoint(const char *adr, const char *configured,
         return -1;
     }
 
-    /* Written through the stream TempFile() returned, never reopened by name. That account can
-     * see the staged name appear and swap it for a symlink; a reopen by name would then have root
-     * truncate and write whatever the link points at, before any check could refuse. */
-    if (OS_WriteXMLToStream(WAZUHCONF, staged.fp, nodes, configured, adr) != 0 ||
-        fflush(staged.fp) != 0) {
-        fprintf(err, "%s: could not rewrite <manager><endpoint> in '%s'.\n", AGENT_AUTH_NAME,
-                WAZUHCONF);
-        goto done;
-    }
-
-    if (!w_agent_auth_endpoint_written(&staged, nodes, adr, err)) {
+    if (w_agent_auth_write_staged(&staged, nodes, configured, adr, err) != 0 ||
+        !w_agent_auth_endpoint_written(&staged, nodes, adr, err)) {
         goto done;
     }
 
@@ -573,8 +588,8 @@ STATIC int w_agent_auth_update_endpoint(const char *adr, const char *configured,
     /* Closed before the move: Windows will not move a file that still has a handle open on it. */
     if (fclose(staged.fp) != 0) {
         staged.fp = NULL;
-        fprintf(err, "%s: could not finish writing the rewritten '%s'.\n", AGENT_AUTH_NAME,
-                WAZUHCONF);
+        fprintf(err, "%s: could not finish writing the rewritten '%s': %s (%d).\n", AGENT_AUTH_NAME,
+                WAZUHCONF, strerror(errno), errno);
         goto done;
     }
 

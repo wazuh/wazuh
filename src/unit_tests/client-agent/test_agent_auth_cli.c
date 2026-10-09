@@ -284,6 +284,27 @@ int __wrap_OS_MoveFile(const char *src, const char *dst) {
     return __real_OS_MoveFile(src, dst);
 }
 
+/* Set by the test of a write that fails and then recovers. stdio drops a buffer it could not write
+ * and keeps only the error flag, so the fflush() and fclose() that follow can both succeed with
+ * part of the rewrite gone. */
+static bool g_lose_staged_write = false;
+
+static void lose_a_write(FILE *fp_out) {
+    char filler[3 * BUFSIZ];
+    int fd = fileno(fp_out);
+    int saved = dup(fd);
+
+    assert_true(saved >= 0);
+    memset(filler, ' ', sizeof(filler));
+
+    /* Larger than the buffer, so it has to reach write(), which fails on the closed descriptor.
+     * Nothing opens a file before dup2() puts the descriptor back. */
+    close(fd);
+    assert_true(fwrite(filler, 1, sizeof(filler), fp_out) < sizeof(filler));
+    assert_int_equal(dup2(saved, fd), fd);
+    close(saved);
+}
+
 int __wrap_OS_WriteXMLToStream(const char *infile, FILE *fp_out, const char **nodes,
                                const char *oldval, const char *newval) {
     (void) infile;
@@ -303,6 +324,11 @@ int __wrap_OS_WriteXMLToStream(const char *infile, FILE *fp_out, const char **no
      * notice by reading the value back, so the mock can simply produce whatever the test wants
      * that read to find. Into the caller's stream, which stays the caller's to flush and close. */
     assert_non_null(fp_out);
+
+    if (g_lose_staged_write) {
+        lose_a_write(fp_out);
+    }
+
     fputs((const char *) mock(), fp_out);
 
     return mock_type(int);
@@ -389,6 +415,7 @@ static int setup_test(void **state) {
     g_staged_name[0] = '\0';
     g_swap_at_rename = false;
     g_staged_reads_by_name = 0;
+    g_lose_staged_write = false;
     unlink(SWAP_TARGET);
     unlink(KEYS_FILE);
     unlink(AGENT_ANCHOR_CA);
@@ -1012,6 +1039,28 @@ static void test_config_rewrite_reads_the_staged_copy_back_through_its_descripto
     assert_file_content(WAZUHCONF, REWRITTEN_CONFIG);
 }
 
+/* stdio can lose part of a write and still let the flush and the close after it succeed; only the
+ * stream's error flag remembers. A rewrite with a hole in it is refused, not installed. */
+static void test_config_rewrite_refuses_a_rewrite_that_lost_a_write(void **state) {
+    (void) state;
+    char err_buf[2048] = {0};
+    FILE *err = fmemopen(err_buf, sizeof(err_buf), "w");
+
+    write_file(WAZUHCONF, CONFIG_WITH_ENDPOINT);
+    g_lose_staged_write = true;
+
+    expect_string(__wrap_OS_WriteXMLToStream, newval, "new.example.local:1518");
+    will_return(__wrap_OS_WriteXMLToStream, REWRITTEN_CONFIG);
+    will_return(__wrap_OS_WriteXMLToStream, 0);
+
+    assert_int_equal(w_agent_auth_update_endpoint("new.example.local:1518", "siem.example.local", err), -1);
+
+    fclose(err);
+
+    assert_file_content(WAZUHCONF, CONFIG_WITH_ENDPOINT);
+    assert_non_null(strstr(err_buf, "could not rewrite"));
+}
+
 
 /* --- the three agent states, and --certs-only ------------------------------------------ */
 
@@ -1562,6 +1611,8 @@ int main(void) {
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_config_rewrite_reads_the_staged_copy_back_through_its_descriptor,
                                         setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_rewrite_refuses_a_rewrite_that_lost_a_write, setup_test,
+                                        teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_is_decided_by_content_not_by_shape, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_dry_run_previews_instead_of_refusing, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certs_only_refuses_when_not_enrolled, setup_test, teardown_test),
