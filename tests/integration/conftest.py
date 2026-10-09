@@ -12,7 +12,7 @@ from typing import List
 from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
 from wazuh_testing.constants.platforms import WINDOWS
-from wazuh_testing.constants.daemons import WAZUH_MANAGER, API_DAEMONS_REQUIREMENTS
+from wazuh_testing.constants.daemons import WAZUH_MANAGER, API_DAEMONS_REQUIREMENTS, WAZUH_DB_DAEMON
 from wazuh_testing.constants.paths import ROOT_PREFIX
 from wazuh_testing.constants.paths.api import RBAC_DATABASE_PATH
 from wazuh_testing.constants.paths.logs import ACTIVE_RESPONSE_LOG_PATH, WAZUH_LOG_PATH, ALERTS_JSON_PATH, \
@@ -477,10 +477,13 @@ def configure_sockets_environment_implementation(request: pytest.FixtureRequest)
     for daemon, mitm, daemon_first in monitored_sockets_params:
         not daemon_first and mitm is not None and mitm.start()
         services.control_service('start', daemon=daemon, debug_mode=True)
+        # wazuh-db runs its schema creation synchronously before opening its socket, which
+        # can take longer than the default timeout on a loaded host.
         services.wait_expected_daemon_status(
             running_condition=True,
             target_daemon=daemon,
-            extra_sockets=[mitm.listener_socket_address] if mitm is not None and mitm.family == 'AF_UNIX' else []
+            extra_sockets=[mitm.listener_socket_address] if mitm is not None and mitm.family == 'AF_UNIX' else [],
+            timeout=30 if daemon == WAZUH_DB_DAEMON else 10
         )
         daemon_first and mitm is not None and mitm.start()
         if mitm is not None:
