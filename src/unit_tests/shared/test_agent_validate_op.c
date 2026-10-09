@@ -331,6 +331,10 @@ static void assert_timestamps(const char *expected) {
 }
 
 /* TempFile() stages the rewrite beside TIMESTAMP_FILE, as "<name>.XXXXXX". */
+static bool is_staged_timestamp_file(const char *name) {
+    return strncmp(name, "agents-timestamp.", 17) == 0;
+}
+
 static int count_staged_timestamp_files(void) {
     DIR *dir = opendir("queue");
     struct dirent *entry;
@@ -339,7 +343,7 @@ static int count_staged_timestamp_files(void) {
     assert_non_null(dir);
 
     while ((entry = readdir(dir)) != NULL) {
-        if (strncmp(entry->d_name, "agents-timestamp.", 17) == 0) {
+        if (is_staged_timestamp_file(entry->d_name)) {
             staged++;
         }
     }
@@ -348,10 +352,38 @@ static int count_staged_timestamp_files(void) {
     return staged;
 }
 
+/* A run that failed before cleaning up leaves its staged copies in queue/, and the next run would
+ * count them as its own. */
+static void remove_staged_timestamp_files(void) {
+    char path[PATH_MAX];
+    DIR *dir = opendir("queue");
+    struct dirent *entry;
+
+    if (dir == NULL) {
+        return;
+    }
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (is_staged_timestamp_file(entry->d_name)) {
+            snprintf(path, sizeof(path), "queue/%s", entry->d_name);
+            unlink(path);
+        }
+    }
+
+    closedir(dir);
+}
+
+static int setup_timestamps(void **state) {
+    (void) state;
+    remove_staged_timestamp_files();
+    return 0;
+}
+
 static int teardown_timestamps(void **state) {
     (void) state;
     g_fail_move = false;
     unlink(TIMESTAMP_FILE);
+    remove_staged_timestamp_files();
     return 0;
 }
 
@@ -397,9 +429,10 @@ int main(void) {
         cmocka_unit_test(test_new_agent_key_is_64_lowercase_hex_and_fresh),
         cmocka_unit_test(test_valid_reenroll_secret_accepts_and_rejects_shapes),
 #ifndef TEST_WINAGENT
-        cmocka_unit_test_teardown(test_remove_agent_timestamp_drops_only_that_agent, teardown_timestamps),
-        cmocka_unit_test_teardown(test_remove_agent_timestamp_cleans_up_after_a_failed_move,
-                                  teardown_timestamps),
+        cmocka_unit_test_setup_teardown(test_remove_agent_timestamp_drops_only_that_agent, setup_timestamps,
+                                        teardown_timestamps),
+        cmocka_unit_test_setup_teardown(test_remove_agent_timestamp_cleans_up_after_a_failed_move, setup_timestamps,
+                                        teardown_timestamps),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
