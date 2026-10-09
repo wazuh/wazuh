@@ -931,7 +931,7 @@ static void test_fim_recovery_run_integrity_checks_unchecked_table_is_stamped_an
     expect_table_due_and_checked(handle, &not_checked);
     expect_table_stamped();
     expect_string(__wrap__mwarn, formatted_msg,
-                  "Integrity check could not be performed for 1 table(s): " FIMDB_FILE_TABLE_NAME
+                  "Integrity check could not be performed for 1 table(s): " FIM_FILES_SYNC_INDEX
                   " (Failed to communicate with the manager); they will be checked again in the next "
                   "integrity_interval (24h).");
 
@@ -955,7 +955,7 @@ static void test_fim_recovery_run_integrity_checks_stop_during_check_leaves_tabl
     expect_table_due_and_checked(handle, &stopped);
     // No stamp expectation: stamping here is what would hide the table for a whole interval.
     expect_string(__wrap__minfo, formatted_msg,
-                  "Integrity check for table " FIMDB_FILE_TABLE_NAME " interrupted: module is stopping; a checksum "
+                  "Integrity check for " FIM_FILES_SYNC_INDEX " interrupted: module is stopping; a checksum "
                   "mismatch reported by the manager was not confirmed. It will be checked again after the restart.");
 
     fim_recovery_run_integrity_checks(handle, tables, 1, &mock_directories, RUN_CHECKS_INTERVAL);
@@ -974,7 +974,7 @@ static void test_fim_recovery_run_integrity_checks_refused_data_clean_stamps(voi
     expect_any_always(__wrap__mdebug1, formatted_msg);
     expect_table_due_and_checked(handle, &mismatch);
     expect_string(__wrap__minfo, formatted_msg,
-                  "Checksum mismatch confirmed for table " FIMDB_FILE_TABLE_NAME
+                  "Checksum mismatch confirmed for " FIM_FILES_SYNC_INDEX
                   "; starting recovery (index cleanup and full resend).");
 
     expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);

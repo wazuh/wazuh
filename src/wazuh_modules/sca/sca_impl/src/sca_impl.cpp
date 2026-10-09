@@ -1470,20 +1470,26 @@ std::string SecurityConfigurationAssessment::integrityIntervalText() const
 
 bool SecurityConfigurationAssessment::performRecovery()
 {
-    SyncModuleResult result = synchronizeDatabaseSnapshot(true, "recovery");
+    bool queued = false;
+    SyncModuleResult result = synchronizeDatabaseSnapshot(true, "recovery", &queued);
 
     if (!result.success)
     {
         // Unlike syncModule(), performRecovery() has no periodic-cycle caller to log this for it
         // (it runs on demand from the check_integrity command), so it must log its own outcome. (#38579)
+        // Once the index is cleared the snapshot is already queued, and the next regular
+        // synchronization delivers it; only a recovery that failed before that waits for the next
+        // integrity_interval.
         logSyncFailure(result, "recovery", LOG_WARNING,
-                       "It will be retried in the next integrity_interval (" + integrityIntervalText() + ").");
+                       queued ? std::string("The queued checks will be delivered by the next regular synchronization.")
+                       : "It will be retried in the next integrity_interval (" + integrityIntervalText() + ").");
     }
 
     return result.success;
 }
 
-SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason)
+SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason,
+                                                                              bool* queued)
 {
     LoggingHelper::getInstance().log(LOG_DEBUG, "Starting SCA " + syncReason + " full synchronization");
 
@@ -1641,6 +1647,12 @@ SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bo
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Triggering full synchronization for SCA " + syncReason);
+
+        if (queued)
+        {
+            *queued = true;
+        }
+
         SyncModuleResult result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
 
         if (result.success)
