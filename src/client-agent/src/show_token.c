@@ -42,19 +42,19 @@ static char *w_agent_show_token_read(FILE *in, FILE *err, const char *progname)
     char *text = NULL;
 
     switch (w_agent_token_read_stream(in, &text)) {
-    case W_TOKEN_READ_OK:
-        break;
-    case W_TOKEN_READ_TTY:
-        /* A terminal will never produce a token, so blocking on it reads as a hang. */
-        fprintf(err, "%s: no token given. Redirect one in, or pipe it:\n", progname);
-        fprintf(err, "      %s --show-token < /path/to/token\n", progname);
-        break;
-    case W_TOKEN_READ_TOO_BIG:
-        fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", progname, W_ETOKEN_MAX_FILE_BYTES);
-        break;
-    default:
-        fprintf(err, "%s: could not read the enrollment token.\n", progname);
-        break;
+        case W_TOKEN_READ_OK:
+            break;
+        case W_TOKEN_READ_TTY:
+            /* A terminal will never produce a token, so blocking on it reads as a hang. */
+            fprintf(err, "%s: no token given. Redirect one in, or pipe it:\n", progname);
+            fprintf(err, "      %s --show-token < /path/to/token\n", progname);
+            break;
+        case W_TOKEN_READ_TOO_BIG:
+            fprintf(err, "%s: the enrollment token does not fit in %d bytes.\n", progname, W_ETOKEN_MAX_FILE_BYTES);
+            break;
+        case W_TOKEN_READ_IO:
+            fprintf(err, "%s: could not read the enrollment token.\n", progname);
+            break;
     }
 
     return text;
