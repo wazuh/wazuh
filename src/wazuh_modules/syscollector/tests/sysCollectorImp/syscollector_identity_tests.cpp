@@ -54,6 +54,7 @@ namespace
     constexpr auto IDENTITY_DB_PATH {"syscollector_identity_test.db"};
     constexpr auto WORK_DIR {"syscollector_identity_test_workdir"};
     constexpr auto SYNCED_AGENT_ID_KEY {"synced_agent_id"};
+    constexpr auto TABLE_SYNCED_AGENT_ID_PREFIX {"synced_agent_id:"};
 
     class MockAgentSyncProtocol : public IAgentSyncProtocol
     {
@@ -509,10 +510,10 @@ TEST_F(SyscollectorIdentityTest, DisabledVDLaneDoesNotClaimTheVDMarker)
     publishAgentId("2");
     INJECT_MOCK_PROTOCOLS();
 
-    // packages is resent on both cycles: no marker exists to skip it, and the plain lane keeps
-    // failing so the combined marker never advances either. Its data still rides the VD
-    // protocol -- that routing is by index and is not what the lane decides.
-    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(2).WillRepeatedly(Return(okResult()));
+    // packages rides the plain lane here, so its own per-table marker skips it on the second
+    // cycle while users keeps failing. Its data still rides the VD protocol -- that routing is by
+    // index and is not what the lane decides.
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(1).WillOnce(Return(okResult()));
     EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(2).WillRepeatedly(Return(SyncModuleResult {}));
     EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
     EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
@@ -526,6 +527,82 @@ TEST_F(SyscollectorIdentityTest, DisabledVDLaneDoesNotClaimTheVDMarker)
     EXPECT_TRUE(Syscollector::instance().getMetadataValue("vd_synced_agent_id", vdMarker));
     EXPECT_EQ(vdMarker, 0);
     EXPECT_EQ(readMarker(), 1);
+}
+
+// A table that failed is retried on the next pass, but the ones that landed are not cleared and
+// resent again: each plain-lane table keeps its own marker for the current id.
+TEST_F(SyscollectorIdentityTest, NextPassResendsOnlyThePendingTables)
+{
+    // os off, so packages rides the plain lane next to users.
+    initWithMarker(true, true, 1);
+    publishAgentId("2");
+    INJECT_MOCK_PROTOCOLS();
+
+    // packages lands on the first pass and is not touched on the second.
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(1).WillOnce(Return(okResult()));
+    // users fails on the first pass and lands on the second.
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _))
+    .Times(2)
+    .WillOnce(Return(SyncModuleResult {}))
+    .WillOnce(Return(okResult()));
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+
+    Syscollector::instance().checkAgentIdentity();
+    EXPECT_EQ(readMarker(), 1);
+
+    Syscollector::instance().checkAgentIdentity();
+    EXPECT_EQ(readMarker(), 2);
+}
+
+// A stop mid-pass leaves the identity marker alone, and the next start resumes with the tables
+// that had not been resent yet instead of starting over.
+TEST_F(SyscollectorIdentityTest, PassCutByStopResumesWithThePendingTables)
+{
+    initWithMarker(true, true, 1);
+    publishAgentId("2");
+    INJECT_MOCK_PROTOCOLS();
+
+    // packages comes first in the pass; the stop lands right after the manager accepted it.
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _))
+    .Times(1)
+    .WillOnce([](const std::vector<std::string>&, Option, bool)
+    {
+        Syscollector::instance().m_stopping = true;
+        return okResult();
+    });
+    // users is only reached by the resumed pass.
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(1).WillOnce(Return(okResult()));
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+
+    Syscollector::instance().checkAgentIdentity();
+    EXPECT_EQ(readMarker(), 1);
+
+    Syscollector::instance().m_stopping = false;
+    Syscollector::instance().checkAgentIdentity();
+    EXPECT_EQ(readMarker(), 2);
+}
+
+// A per-table marker left by an earlier identity does not skip anything under the new one.
+TEST_F(SyscollectorIdentityTest, PerTableMarkerFromAnotherIdIsIgnored)
+{
+    initModule(true, true);
+    Syscollector::instance().destroy();
+    seedMarker(1);
+    seedMetadata(std::string(TABLE_SYNCED_AGENT_ID_PREFIX) + USERS_TABLE, 1);
+    initModule(true, true);
+    publishAgentId("2");
+    INJECT_MOCK_PROTOCOLS();
+
+    EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(1).WillOnce(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(1).WillOnce(Return(okResult()));
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
+
+    Syscollector::instance().checkAgentIdentity();
+
+    EXPECT_EQ(readMarker(), 2);
 }
 
 // A recovery session has to carry the same DataContext a scan would attach, and

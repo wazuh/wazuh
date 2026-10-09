@@ -107,6 +107,9 @@ constexpr auto SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY {"synced_agent_id"};
 // cleared and resent on every cycle -- each time as a first scan, which suppresses alerts, so a
 // genuinely new CVE appearing between two of those cycles would never raise one.
 constexpr auto SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY {"vd_synced_agent_id"};
+// Per plain-lane table, followed by the table name: the agent id the table was last resent under,
+// so a resync cut short by a restart or a failed table resumes with the tables still pending.
+constexpr auto SYSCOLLECTOR_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX {"synced_agent_id:"};
 
 static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
 {
@@ -5337,10 +5340,6 @@ void Syscollector::checkAgentIdentity()
 
     m_identityResyncAttempts.fetch_add(1);
 
-    m_logFunction(LOG_INFO,
-                  "Inventory was last synchronized as agent " + std::to_string(syncedId) +
-                  ", now running as agent " + std::to_string(currentId) + ". Resending every table.");
-
     bool anyFailed = false;
     std::vector<std::string> vdTablesResent;
 
@@ -5351,6 +5350,40 @@ void Syscollector::checkAgentIdentity()
     int64_t vdSyncedId = 0;
     const bool vdAlreadyResent = getMetadataValue(SYSCOLLECTOR_VD_SYNCED_AGENT_ID_METADATA_KEY, vdSyncedId)
                                  && vdSyncedId == static_cast<int64_t>(currentId);
+
+    // Same rule per plain-lane table: one already resent under this id is not cleared again, and
+    // a failed read counts as "not done".
+    const auto tableMarkerKey = [](const std::string & tableName)
+    {
+        return std::string(SYSCOLLECTOR_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX) + tableName;
+    };
+    std::set<std::string> plainTablesAlreadyResent;
+
+    for (const auto& [tableName, index] : INDEX_MAP)
+    {
+        int64_t tableSyncedId = 0;
+
+        if (!(isVDIndex(index) && m_vdSyncEnabled)
+                && getMetadataValue(tableMarkerKey(tableName), tableSyncedId)
+                && tableSyncedId == static_cast<int64_t>(currentId))
+        {
+            plainTablesAlreadyResent.insert(tableName);
+        }
+    }
+
+    if (plainTablesAlreadyResent.empty() && !vdAlreadyResent)
+    {
+        m_logFunction(LOG_INFO,
+                      "Inventory was last synchronized as agent " + std::to_string(syncedId) +
+                      ", now running as agent " + std::to_string(currentId) + ". Resending every table.");
+    }
+    else
+    {
+        m_logFunction(LOG_INFO,
+                      "Inventory was last synchronized as agent " + std::to_string(syncedId) +
+                      ", now running as agent " + std::to_string(currentId) +
+                      ". Resuming the resend with the tables not yet sent under this id.");
+    }
 
     // The plain lane keeps one session per table: an index is cleared immediately before its own
     // rows are queued, so a session that never reaches the manager leaves the others untouched
@@ -5379,8 +5412,9 @@ void Syscollector::checkAgentIdentity()
         {
             if (m_stopping.load())
             {
-                // Cut short by shutdown: leave the marker alone so the next boot re-fires rather
-                // than recording a pass that never finished.
+                // Cut short by shutdown: leave the identity marker alone so the next boot re-fires
+                // rather than recording a pass that never finished. The tables already resent keep
+                // their own markers, so that pass resumes with the pending ones.
                 return;
             }
 
@@ -5413,6 +5447,12 @@ void Syscollector::checkAgentIdentity()
                 continue;
             }
 
+            if (!vdTable && plainTablesAlreadyResent.count(tableName) != 0)
+            {
+                // Already resent under this identity by an earlier, unfinished pass.
+                continue;
+            }
+
             if (!resyncTableToManager(tableName, index, !vdTable))
             {
                 // Keep going: the tables that can be resent should be, and aborting here would
@@ -5436,6 +5476,10 @@ void Syscollector::checkAgentIdentity()
                 // and if that second clean is ordered after the rows queued here, it deletes
                 // them.
                 updateLastSyncTime(tableName, Utils::getSecondsFromEpoch());
+
+                // Same proof the combined marker waits for: the manager accepted the DataClean
+                // and the rows are queued in the persistent sync queue.
+                updateMetadataValue(tableMarkerKey(tableName), currentId);
             }
         }
     }
@@ -5484,9 +5528,10 @@ void Syscollector::checkAgentIdentity()
     // the next cycle sees a mismatch and resends everything. One extra pass under rapid
     // re-enrollment churn, never a marker claiming more than was actually sent.
     //
-    // Both markers move together, and only once every table above proved the manager accepted
-    // its DataClean. Gating on a plain sync result instead would let an empty queue -- which
-    // reports success without opening a session at all -- record a cycle that never landed.
+    // Both markers move together, and only once every table proved the manager accepted its
+    // DataClean, in this pass or in an earlier one under the same id. Gating on a plain sync
+    // result instead would let an empty queue -- which reports success without opening a session
+    // at all -- record a cycle that never landed.
     updateMetadataValue(SYSCOLLECTOR_SYNCED_AGENT_ID_METADATA_KEY, currentId);
     updateMetadataValue(SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
 }

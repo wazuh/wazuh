@@ -354,8 +354,20 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
     for (int i = 0; i < table_count; i++) {
         if (fim_shutdown_process_on()) {
             // Cut short by shutdown, like the integrity loop that follows this one: leave the
-            // marker alone so the next boot re-fires rather than recording a partial pass.
+            // marker alone so the next boot re-fires rather than recording a partial pass. The
+            // tables already resent keep their own markers, so that pass resumes with the rest.
             return false;
+        }
+
+        char table_key[OS_SIZE_256];
+        snprintf(table_key, sizeof(table_key), "%s%s", FIM_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX, table_names[i]);
+
+        int64_t table_synced_id = 0;
+
+        // A failed read counts as "not done": one redundant resend is noise.
+        if (fim_db_try_get_last_sync_time(table_key, &table_synced_id) && table_synced_id == (int64_t)current_id) {
+            mdebug1("FIM table '%s' was already resent under agent %ld; skipping it.", table_names[i], current_id);
+            continue;
         }
 
         if (!fim_recovery_persist_table_and_resync(table_names[i], handle, directories_list)) {
@@ -365,6 +377,10 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
             // not one. The marker is the part that must not move -- recording it would claim the
             // manager holds data it never received -- so remember the failure for the end.
             any_failed = true;
+        } else {
+            // The manager accepted the DataClean and the rows are queued: this table is done for
+            // this id even if another one is not.
+            fim_db_update_last_sync_time_value(table_key, (int64_t)current_id);
         }
     }
 
