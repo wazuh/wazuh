@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed `POST /agents` enabling the `force` option when the request body sends a `force` object without `enabled`, contrary to the API specification. ([#39925](https://github.com/wazuh/wazuh/issues/39925))
 - Fixed path traversal in the agent diff-folder cleanup by rejecting agent names that escape `queue/diff`. ([#39723](https://github.com/wazuh/wazuh/pull/39723))
 - Added type validation for the `path` and `index` fields of FIM synchronization entries in `wazuh-db`. ([#39709](https://github.com/wazuh/wazuh/pull/39709))
 - Fixed a one-byte heap buffer underflow in the GCP wodle output parser. ([#39606](https://github.com/wazuh/wazuh/pull/39606))
