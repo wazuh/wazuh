@@ -1,7 +1,7 @@
 #ifndef ICMSTORE_DATA_POLICY
 #define ICMSTORE_DATA_POLICY
 
-#include <regex>
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -93,7 +93,13 @@ private:
 
     void validateOriginSpace(std::string_view value) const
     {
-        if (!std::regex_match(value.begin(), value.end(), std::regex("^[a-zA-Z0-9_]+$")))
+        // Linear scan instead of std::regex_match: libstdc++'s regex recurses per character, so an
+        // unbounded value overflows the stack.
+        const auto isAllowed = [](unsigned char c)
+        {
+            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
+        };
+        if (value.empty() || !std::all_of(value.begin(), value.end(), isAllowed))
         {
             throw std::runtime_error(fmt::format(
                 "'origin_space' contains invalid characters: '{}'. Only alphanumeric and underscores are allowed.",

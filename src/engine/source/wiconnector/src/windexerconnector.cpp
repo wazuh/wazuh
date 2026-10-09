@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <array>
 #include <optional>
-#include <regex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -65,17 +64,18 @@ enum class IndexResourceType
 
 IndexResourceType fromIndexName(std::string_view indexName)
 {
-    // Static regex patterns compiled once
-    static const std::array<std::pair<std::regex, IndexResourceType>, 5> patterns = {
-        {{std::regex(R"(.*kvdbs.*)"), IndexResourceType::KVDB},
-         {std::regex(R"(.*decoders.*)"), IndexResourceType::DECODER},
-         {std::regex(R"(.*filters.*)"), IndexResourceType::FILTER},
-         {std::regex(R"(.*integrations.*)"), IndexResourceType::INTEGRATION_DECODER},
-         {std::regex(R"(.*policies.*)"), IndexResourceType::POLICY}}};
+    // Substring search instead of std::regex: libstdc++'s regex recurses per character, so an unbounded name
+    // overflows the stack.
+    static constexpr std::array<std::pair<std::string_view, IndexResourceType>, 5> patterns = {
+        {{"kvdbs", IndexResourceType::KVDB},
+         {"decoders", IndexResourceType::DECODER},
+         {"filters", IndexResourceType::FILTER},
+         {"integrations", IndexResourceType::INTEGRATION_DECODER},
+         {"policies", IndexResourceType::POLICY}}};
 
     for (const auto& [pattern, resourceType] : patterns)
     {
-        if (std::regex_match(indexName.begin(), indexName.end(), pattern))
+        if (indexName.find(pattern) != std::string_view::npos)
         {
             return resourceType;
         }
