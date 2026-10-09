@@ -380,6 +380,12 @@ class BaselineDriver {
                         id.c_str());
                 ScopedContainerTxn txn{id, m_origin};
                 txn.finish(true); // no rows synced -> every stored row becomes DELETED
+
+                // After the rows are gone, not before: the DELETEs above run
+                // through container_txn_callback and decrement the very count
+                // being released, so releasing first would drop a map entry
+                // that the sweep then re-creates and leaves non-zero.
+                fim_container_doc_budget_release(id.c_str());
             }
 
             m_stale = stale.size();
