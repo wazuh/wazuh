@@ -187,6 +187,9 @@ list(APPEND analysisd_flags "-Wl,--wrap,asys_create_state_json -Wl,--wrap,OS_Bin
 LIST(APPEND analysisd_names "test_system_memory")
 LIST(APPEND analysisd_flags " ")
 
+LIST(APPEND analysisd_names "test_rules_read")
+LIST(APPEND analysisd_flags "-Wl,--wrap,_os_analysisd_add_logmsg -Wl,--wrap,getDefine_Int")
+
 LIST(APPEND analysisd_names "test_limits")
 LIST(APPEND analysisd_flags "-Wl,--wrap,_minfo -Wl,--wrap,_mwarn")
 

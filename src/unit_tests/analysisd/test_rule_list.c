@@ -56,6 +56,13 @@ static RuleNode *create_parents(void) {
     return first;
 }
 
+/* Rule in group "loop" that is also a child of group "loop", as in the ruleset of issue #39930 */
+static RuleInfo *create_loop_rule(int sigid) {
+    RuleInfo *rule = create_rule(sigid, 3, "loop,");
+    os_strdup("loop", rule->if_group);
+    return rule;
+}
+
 /* setup/teardown */
 
 static int setup_AR(void **state) {
@@ -576,6 +583,65 @@ void test_OS_AddChild_limit_before_first_node(void **state)
     os_remove_rules_list(tree);
 }
 
+void test_OS_AddChild_if_group_self_reference_doubles(void **state)
+{
+    w_rule_tree_build_t build = {0};
+    RuleNode *tree = create_node(create_rule(100, 3, "loop,"));
+
+    // Each rule is added under the root and under every node of the previous rules
+    for (int i = 0; i < 5; i++) {
+        build.rule_node_count = 0;
+        assert_int_equal(OS_AddChild(create_loop_rule(101 + i), &tree, NULL, &build), 0);
+        assert_int_equal(build.rule_node_count, 1 << i);
+    }
+
+    assert_int_equal(build.node_count, 31);
+
+    os_remove_rules_list(tree);
+}
+
+void test_OS_AddChild_if_group_self_reference_limit_in_recursion(void **state)
+{
+    w_rule_tree_build_t build = {0};
+    RuleNode *tree = create_node(create_rule(100, 3, "loop,"));
+
+    for (int i = 0; i < 3; i++) {
+        build.rule_node_count = 0;
+        assert_int_equal(OS_AddChild(create_loop_rule(101 + i), &tree, NULL, &build), 0);
+    }
+    assert_int_equal(build.node_count, 7);
+
+    // Rule 104 needs 8 nodes: the limit stops it three levels deep, under 100 > 101 > 102 > 103
+    build.node_limit = 10;
+    build.rule_node_count = 0;
+    RuleInfo *rule = create_loop_rule(104);
+
+    assert_int_equal(OS_AddChild(rule, &tree, NULL, &build), RULE_TREE_LIMIT_REACHED);
+
+    assert_int_equal(build.node_count, 10);
+    assert_int_equal(build.rule_node_count, 3);
+
+    // Tree before rule 104: 100 > [101 > [102 > [103], 103], 102 > [103], 103]
+    RuleNode *r101 = tree->child;
+    RuleNode *r101_r102 = r101->child;
+    RuleNode *r101_r102_r103 = r101_r102->child;
+    RuleNode *r101_r103 = r101_r102->next;
+    RuleNode *r102 = r101->next;
+
+    // Rule 104 was added under 100, 100 > 101 and 100 > 101 > 102
+    assert_ptr_equal(r102->next->next->ruleinfo, rule);
+    assert_ptr_equal(r101_r103->next->ruleinfo, rule);
+    assert_ptr_equal(r101_r102_r103->next->ruleinfo, rule);
+
+    // The node under 100 > 101 > 102 > 103 was refused, and the rest of the tree was not visited
+    assert_null(r101_r102_r103->child);
+    assert_null(r101_r103->child);
+    assert_null(r102->child->next);
+
+    // The tree references rule 104: it is released with the tree
+    os_remove_rules_list(tree);
+}
+
 /* os_mark_ruleinfo */
 void test_os_mark_ruleinfo_counts_unique(void **state)
 {
@@ -630,6 +696,8 @@ int main(void)
         cmocka_unit_test(test_OS_AddChild_if_level_limit_mid_rule),
         cmocka_unit_test(test_OS_AddChild_warning_then_limit_in_same_rule),
         cmocka_unit_test(test_OS_AddChild_limit_before_first_node),
+        cmocka_unit_test(test_OS_AddChild_if_group_self_reference_doubles),
+        cmocka_unit_test(test_OS_AddChild_if_group_self_reference_limit_in_recursion),
         // Tests os_mark_ruleinfo
         cmocka_unit_test(test_os_mark_ruleinfo_counts_unique),
     };
