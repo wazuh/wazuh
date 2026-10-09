@@ -19,7 +19,7 @@ with patch('wazuh.core.common.wazuh_uid'):
 
         from wazuh import rule
         from wazuh.core.results import AffectedItemsWazuhResult
-        from wazuh.core.exception import WazuhError
+        from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 
 
 # Variables
@@ -424,6 +424,62 @@ def test_upload_file_ko(*args):
         search_pattern = os.path.join(wazuh.core.common.WAZUH_PATH, "**", "*.backup")
         for bkp in glob.glob(search_pattern, recursive=True):
             os.remove(bkp)
+
+
+@pytest.mark.parametrize('validation_error', [WazuhError(1113), WazuhError(1132), WazuhInternalError(1013),
+                                              WazuhException(1014)])
+@pytest.mark.parametrize('overwrite, original_exists', [(False, False), (True, True), (True, False)])
+@patch('wazuh.rule.delete_rule_file')
+@patch('wazuh.rule.full_copy')
+@patch('wazuh.rule.upload_file')
+@patch('wazuh.rule.remove')
+@patch('wazuh.rule.safe_move')
+def test_upload_rule_file_validation_rollback(mock_safe_move, mock_remove, mock_upload, mock_full_copy, mock_delete,
+                                              overwrite, original_exists, validation_error):
+    """Test that a failed logtest validation does not leave the uploaded rule file installed.
+
+    Parameters
+    ----------
+    overwrite : bool
+        Value of the overwrite parameter of the upload.
+    original_exists : bool
+        True if the file existed before the upload.
+    validation_error : WazuhException
+        Exception raised by the validation. Socket errors, for example when analysisd stops during the
+        validation, are not WazuhError.
+    """
+    filename = 'test_rules.xml'
+    with patch('wazuh.core.configuration.get_ossec_conf', return_value=get_rule_file_ossec_conf):
+        ret_validation = rule.validate_upload_delete_dir(relative_dirname=None)
+    relative_dirname = ret_validation[0]
+    full_path = os.path.join(wazuh.core.common.WAZUH_PATH, relative_dirname, filename)
+    backup_file = f'{full_path}.backup'
+
+    def exists(path):
+        # A previous version exists before the upload and a new file only after it
+        if path == full_path:
+            return original_exists or mock_upload.called
+        return path == backup_file and mock_full_copy.called
+
+    with patch('wazuh.rule.validate_upload_delete_dir', return_value=ret_validation), \
+            patch('wazuh.rule.exists', side_effect=exists), \
+            patch('wazuh.rule.validate_dummy_logtest', side_effect=validation_error):
+        if isinstance(validation_error, WazuhError):
+            result = rule.upload_rule_file(filename=filename, content='test', overwrite=overwrite)
+            assert result.render()['data']['failed_items'][0]['error']['code'] == validation_error.code
+        else:
+            with pytest.raises(WazuhException) as exc_info:
+                rule.upload_rule_file(filename=filename, content='test', overwrite=overwrite)
+            assert exc_info.value is validation_error
+
+    # Without a previous version, the uploaded file is deleted, also with overwrite. A previous version was
+    # deleted before the upload and is restored from the backup
+    mock_delete.assert_called_once_with(filename=filename, relative_dirname=relative_dirname)
+    if original_exists:
+        mock_safe_move.assert_called_once_with(backup_file, full_path)
+    else:
+        mock_safe_move.assert_not_called()
+    mock_remove.assert_not_called()
 
 
 @patch('wazuh.rule.upload_file')

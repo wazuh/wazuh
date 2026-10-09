@@ -199,6 +199,9 @@ int main(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
+    /* Read the rule tree thresholds before the chroot: a percentage needs /proc and /sys */
+    w_rule_tree_read_config();
+
     /* Chroot */
     if (Privsep_Chroot(home_path) < 0) {
         merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
@@ -398,6 +401,10 @@ int main(int argc, char **argv)
 
             /* Read the rules */
             {
+                w_rule_tree_build_t rule_tree_build;
+                /* list_msg is written to the log after each file: the warning is logged directly */
+                w_rule_tree_build_init(&rule_tree_build, NULL);
+
                 char **rulesfiles;
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
@@ -408,7 +415,8 @@ int main(int argc, char **argv)
                                            &os_analysisd_last_events,
                                            &os_analysisd_decoder_store,
                                            list_msg,
-                                           false) < 0)
+                                           false,
+                                           &rule_tree_build) < 0)
                     {
                         error_exit = 1;
                     }

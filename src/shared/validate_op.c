@@ -290,6 +290,22 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
     return (ret);
 }
 
+char *getDefine_String(const char *high_name, const char *low_name)
+{
+    char *value;
+
+    /* Try to read from the local define file */
+    value = _read_file(high_name, low_name, OSSEC_LDEFINES);
+    if (!value) {
+        value = _read_file(high_name, low_name, OSSEC_DEFINES);
+        if (!value) {
+            merror_exit(DEF_NOT_FOUND, high_name, low_name);
+        }
+    }
+
+    return value;
+}
+
 /* Check if IP_address is present at that_IP
  * Returns 1 on success or 0 on failure
  */

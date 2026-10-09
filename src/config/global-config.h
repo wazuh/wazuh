@@ -45,6 +45,10 @@ typedef struct __Config {
     u_int8_t logfw;
     u_int8_t update_check;
     int decoder_order_size;
+    size_t rule_tree_node_warning;
+    size_t rule_tree_node_limit;
+    char *rule_tree_memory_warning;
+    char *rule_tree_memory_limit;
 
     /* Agent's disconnection global parameters */
     long agents_disconnection_time;

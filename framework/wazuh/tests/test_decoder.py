@@ -19,7 +19,7 @@ with patch('wazuh.core.common.getgrnam'):
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from wazuh.core.exception import WazuhInternalError, WazuhError
+        from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError
         from wazuh.core.results import AffectedItemsWazuhResult
         from wazuh import decoder
 
@@ -360,6 +360,62 @@ def test_upload_file_ko(*_):
     search_pattern = os.path.join(wazuh.core.common.WAZUH_PATH, "**", "*.backup")
     for bkp in glob.glob(search_pattern, recursive=True):
         os.remove(bkp)
+
+
+@pytest.mark.parametrize('validation_error', [WazuhError(1113), WazuhError(1132), WazuhInternalError(1013),
+                                              WazuhException(1014)])
+@pytest.mark.parametrize('overwrite, original_exists', [(False, False), (True, True), (True, False)])
+@patch('wazuh.decoder.delete_decoder_file')
+@patch('wazuh.decoder.full_copy')
+@patch('wazuh.decoder.validate_wazuh_xml')
+@patch('wazuh.decoder.upload_file')
+@patch('wazuh.decoder.remove')
+@patch('wazuh.decoder.safe_move')
+def test_upload_decoder_file_validation_rollback(mock_safe_move, mock_remove, mock_upload, mock_xml, mock_full_copy,
+                                                 mock_delete, overwrite, original_exists, validation_error):
+    """Test that a failed logtest validation does not leave the uploaded decoder file installed.
+
+    Parameters
+    ----------
+    overwrite : bool
+        Value of the overwrite parameter of the upload.
+    original_exists : bool
+        True if the file existed before the upload.
+    validation_error : WazuhException
+        Exception raised by the validation. Socket errors, for example when analysisd stops during the
+        validation, are not WazuhError.
+    """
+    filename = 'test_decoders.xml'
+    ret_validation = decoder.validate_upload_delete_dir(relative_dirname=None)
+    relative_dirname = ret_validation[0]
+    full_path = os.path.join(wazuh.core.common.WAZUH_PATH, relative_dirname, filename)
+    backup_file = f'{full_path}.backup'
+
+    def exists(path):
+        # A previous version exists before the upload and a new file only after it
+        if path == full_path:
+            return original_exists or mock_upload.called
+        return path == backup_file and mock_full_copy.called
+
+    with patch('wazuh.decoder.validate_upload_delete_dir', return_value=ret_validation), \
+            patch('wazuh.decoder.exists', side_effect=exists), \
+            patch('wazuh.decoder.validate_dummy_logtest', side_effect=validation_error):
+        if isinstance(validation_error, WazuhError):
+            result = decoder.upload_decoder_file(filename=filename, content='test', overwrite=overwrite)
+            assert result.render()['data']['failed_items'][0]['error']['code'] == validation_error.code
+        else:
+            with pytest.raises(WazuhException) as exc_info:
+                decoder.upload_decoder_file(filename=filename, content='test', overwrite=overwrite)
+            assert exc_info.value is validation_error
+
+    # Without a previous version, the uploaded file is deleted, also with overwrite. A previous version was
+    # deleted before the upload and is restored from the backup
+    mock_delete.assert_called_once_with(filename=filename, relative_dirname=relative_dirname)
+    if original_exists:
+        mock_safe_move.assert_called_once_with(backup_file, full_path)
+    else:
+        mock_safe_move.assert_not_called()
+    mock_remove.assert_not_called()
 
 
 @patch('wazuh.decoder.upload_file')
