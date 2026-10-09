@@ -2662,7 +2662,7 @@ collapses to `{}`), `controlTypes_test.cpp` (the version grammar and `compareVer
 shared with `/enroll`), `agentRegistry_test.cpp` (an updater returning null is a no-op that never
 erases; eviction keys off `max(lastActivity, createdAt)`; concurrent refresh is tolerated),
 `wazuhDBClient_test.cpp` (`"ok"`/`"ok "` accepted but `"okabc"` rejected; `os_major`/`os_minor`
-derived from real strings like `15-SP7`; latency observed only on successful round trips),
+derived from real os-release strings like `15-SP7`, `12 (bookworm)`, `2023` and `9.4 (Plow)`; latency observed only on successful round trips),
 `taskClient_test.cpp` (the request body is the zero-padded agent id with no `action` member; a
 stall maps to `Timeout`, not `Io`; the destructor drains), `hashCache_test.cpp` (the multigroup
 `sha256[:8]` directory rule, and **an empty hash is never cached** — the fresh-install poisoning

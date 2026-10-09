@@ -24,6 +24,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <vector>
 
 using namespace remoted::control;
 using remoted::test::FakeUdsServer;
@@ -354,6 +355,62 @@ TEST(WazuhDBClientTest, UpdateAgentDataParsesOsMajorAndMinorFromVersion)
         << "Ubuntu 20.04.5 should parse major=20, got: " << got3;
     EXPECT_NE(got3.find("\"os_minor\":\"04\""), std::string::npos)
         << "Ubuntu 20.04.5 should parse minor=04, got: " << got3;
+}
+
+TEST(WazuhDBClientTest, UpdateAgentDataParsesOsMajorAndMinorFromRawOsReleaseVersion)
+{
+    const auto path = remoted::test::makeUniqueSocketPath("wdb_osrel");
+    std::mutex mu;
+    std::string received;
+    FakeUdsServer server(path,
+                         [&](const std::string& req) -> std::string
+                         {
+                             std::lock_guard<std::mutex> lock(mu);
+                             received = req;
+                             return "ok";
+                         });
+
+    ControlMetrics metrics;
+    WazuhDBClient client(path, 1, 1000, 100, metrics);
+
+    struct Case
+    {
+        std::string osVersion;
+        std::string major;
+        std::string minor;
+    };
+    // os-release VERSION strings as the agent sends them (get_unix_version()).
+    const std::vector<Case> cases {
+        {"2023", "2023", ""},                       // Amazon Linux 2023
+        {"2", "2", ""},                             // Amazon Linux 2
+        {"12 (bookworm)", "12", ""},                // Debian 12
+        {"40 (Server Edition)", "40", ""},          // Fedora 40
+        {"9.4 (Plow)", "9", "4"},                   // RHEL 9
+        {"24.04.1 LTS (Noble Numbat)", "24", "04"}, // Ubuntu 24.04
+        {"15-SP7", "15", "7"},                      // SLES 15
+        {"bookworm/sid", "", ""},                   // no numeric version
+    };
+
+    AgentId id = 1;
+    for (const auto& c : cases)
+    {
+        HostInfo host;
+        host.osVersion = c.osVersion;
+
+        Waiter<SocketError> w;
+        client.updateAgentData(id++, "v5.0.0", "active", "synced", &host, [&](SocketError e) { w.complete(e); });
+        ASSERT_TRUE(w.wait(3000ms)) << c.osVersion;
+
+        std::string got;
+        {
+            std::lock_guard<std::mutex> lock(mu);
+            got = received;
+        }
+        EXPECT_NE(got.find("\"os_major\":\"" + c.major + "\""), std::string::npos)
+            << "'" << c.osVersion << "' should parse major=" << c.major << ", got: " << got;
+        EXPECT_NE(got.find("\"os_minor\":\"" + c.minor + "\""), std::string::npos)
+            << "'" << c.osVersion << "' should parse minor=" << c.minor << ", got: " << got;
+    }
 }
 
 TEST(WazuhDBClientTest, UpdateAgentDataOmitsOsTypeWhenEmpty)
