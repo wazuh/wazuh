@@ -169,7 +169,7 @@ Fields need to know where their value ends. The algorithm:
 
 ### Group Recursion
 
-Groups `(?...content...)` make their content optional. They can be nested, but nesting depth is limited by `maxGroupRecursion` (default: 1). Groups that follow a field create a choice: the field+group vs. the field alone with the token after the group as delimiter.
+Groups `(?...content...)` make their content optional. They can be nested, but nesting depth is limited by `maxGroupRecursion` (default: 1). The limit is enforced while the expression is parsed, before a nested group is descended into, so the recursive group parser's stack use is bounded by the limit rather than by the expression length; the constructor refuses a `maxGroupRecursion` above `parser::MAX_GROUP_NESTING` (64). Groups that follow a field create a choice: the field+group vs. the field alone with the token after the group as delimiter.
 
 ### Schema Type Mapping
 
