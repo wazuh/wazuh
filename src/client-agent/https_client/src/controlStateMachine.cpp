@@ -59,11 +59,11 @@ ControlStateMachine::Effects ControlStateMachine::onEvent(Event event)
         case Event::AuthFailed:
             {
                 // The credential is dead -- which since #39064 means a 401 naming `unknown_agent`,
-                // and nothing else: ControlStream::eventFor() raises this event only for a 401 the
-                // AuthGate actually latched, so the other seven classes arrive as TransientFailure
-                // and never get here. All traffic pauses (via the AuthGate); recovery is
-                // hc_set_agent_identity -> CredentialRenewed, NOT a slow re-sign. An armed settings
-                // refresh is dropped.
+                // and nothing else: ControlStream raises this event only for an incident the
+                // AuthGate latched (from any sender, even one already renewed), so the other seven
+                // classes arrive as TransientFailure and never get here. All traffic pauses (via
+                // the AuthGate); recovery is hc_set_agent_identity -> CredentialRenewed, NOT a slow
+                // re-sign. An armed settings refresh is dropped.
                 m_startupRequested = false;
                 return transitionTo(State::AuthError);
             }
