@@ -163,7 +163,9 @@ In 5.0 the `<global>` parser accepts exactly one element: `<agents_disconnection
 > Remove the second `<global>` block that 4.x configurations used for active-response whitelisting
 > (`<white_list>`). 5.0 rejects it at startup: a repeated section is reported as
 > `(1244): Invalid configuration at '/global': duplicate element <global>`, and `<white_list>` is not
-> a 5.0 option either.
+> a 5.0 option either. Its replacement is `<allowlist>` in the `<active-response>` block of each
+> agent's `ossec.conf`; the manager and loopback are always protected. See
+> [Active Response configuration](../../ref/modules/active-response/configuration.md#allowlist).
 
 ### `<remote>` section
 

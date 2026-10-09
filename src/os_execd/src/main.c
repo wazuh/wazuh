@@ -184,6 +184,8 @@ int main(int argc, char **argv)
     // merged.mg hash to validate (issue 36239).
     minfo(STARTUP_MSG, (int)getpid());
 
+    ar_resolve_manager_hosts();
+
     /* The real daemon Now */
     ExecdStart(m_queue);
 
