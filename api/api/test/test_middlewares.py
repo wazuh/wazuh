@@ -18,7 +18,8 @@ from freezegun import freeze_time
 
 from api.middlewares import check_rate_limit, check_blocked_ip, MAX_REQUESTS_EVENTS_DEFAULT, UNKNOWN_USER_STRING, \
     LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, CheckRateLimitsMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, \
-    SecureHeadersMiddleware, CheckExpectHeaderMiddleware, secure_headers, access_log
+    SecureHeadersMiddleware, CheckExpectHeaderMiddleware, secure_headers, access_log, get_declared_content_length
+from api.alogging import MAX_LOGGED_BODY_SIZE
 from api.api_exception import ExpectFailedException
 
 @pytest.fixture
@@ -404,4 +405,191 @@ async def test_check_expect_header_middleware(expect_value):
         returned_response = await middleware.dispatch(mock_request, call_next_mock)
         call_next_mock.assert_called_once_with(mock_request)
         assert returned_response == response
-        
+
+
+@pytest.mark.parametrize('content_length, expected', [
+    ('1024', 1024),
+    ('0', 0),
+    (None, None),
+    ('not-a-number', None),
+    ('-1', None),
+])
+def test_get_declared_content_length(content_length, expected):
+    """Check that the declared body length is read from the header and unusable values ignored."""
+    request = MagicMock()
+    request.headers = {'content-length': content_length} if content_length is not None else {}
+
+    assert get_declared_content_length(request) == expected
+
+
+def test_get_declared_content_length_ignores_transfer_encoding():
+    """Check that a chunked request is treated as unknown-length even with a small Content-Length.
+
+    h11 frames a request that carries `Transfer-Encoding` by chunks whatever `Content-Length` says,
+    so that header bounds nothing and must not be trusted as an upper bound on the body size.
+    """
+    request = MagicMock()
+    request.headers = {'content-length': '10', 'transfer-encoding': 'chunked'}
+
+    assert get_declared_content_length(request) is None
+
+
+@pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_shares_extensions_in_scope():
+    """Check that dispatch creates `extensions` in the request scope.
+
+    connexion passes a shallow copy of the scope downwards, so `extensions` has to exist here for
+    the copy to share it -- otherwise the identity the security handler writes into it never
+    becomes visible to `access_log` through `request.context`.
+    """
+    mock_req = AsyncMock()
+    mock_req.headers = {}
+    mock_req.scope = {}
+    response = MagicMock()
+    response.status_code = 200
+    dispatch_mock = AsyncMock(return_value=response)
+
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with patch('api.middlewares.access_log'), \
+        patch('api.middlewares.ConnexionRequest.from_starlette_request', return_value=mock_req):
+        await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
+
+    assert mock_req.scope['extensions'] == {}
+
+
+@pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_does_not_read_oversized_body():
+    """Check that the access logger does not read a body too large to be logged.
+
+    This is the root cause of the memory footprint an unauthenticated caller used to be able to
+    set: the middleware is the outermost one, so a body buffered here is paid for before the
+    security handler has been consulted.
+    """
+    mock_req = AsyncMock()
+    mock_req.headers = {'content-length': str(9 * 1024 * 1024)}
+    response = MagicMock()
+    response.status_code = 401
+    dispatch_mock = AsyncMock(return_value=response)
+
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with patch('api.middlewares.access_log'), \
+        patch('api.middlewares.ConnexionRequest.from_starlette_request', return_value=mock_req):
+        assert await middleware.dispatch(request=mock_req, call_next=dispatch_mock) == response
+
+    mock_req.body.assert_not_awaited()
+
+
+@pytest.mark.parametrize('content_length', [None, '0'])
+@pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_does_not_read_undeclared_body(content_length):
+    """Check that the access logger only reads a body whose size the request declares."""
+    mock_req = AsyncMock()
+    mock_req.headers = {'content-length': content_length} if content_length is not None else {}
+    response = MagicMock()
+    response.status_code = 200
+    dispatch_mock = AsyncMock(return_value=response)
+
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with patch('api.middlewares.access_log'), \
+        patch('api.middlewares.ConnexionRequest.from_starlette_request', return_value=mock_req):
+        assert await middleware.dispatch(request=mock_req, call_next=dispatch_mock) == response
+
+    mock_req.body.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_reads_loggable_body():
+    """Check that a body small enough to be logged is still read before the stream is consumed."""
+    mock_req = AsyncMock()
+    mock_req.headers = {'content-length': str(MAX_LOGGED_BODY_SIZE)}
+    response = MagicMock()
+    response.status_code = 200
+    dispatch_mock = AsyncMock(return_value=response)
+
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with patch('api.middlewares.access_log'), \
+        patch('api.middlewares.ConnexionRequest.from_starlette_request', return_value=mock_req):
+        assert await middleware.dispatch(request=mock_req, call_next=dispatch_mock) == response
+
+    mock_req.body.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_omits_unauthenticated_body(mock_req):
+    """Check that the body is logged for an authenticated caller and omitted otherwise."""
+    response = MagicMock()
+    response.status_code = 401
+    body = {'field': 'value'}
+    mock_req.json = AsyncMock(return_value=body)
+    mock_req.query_params = {}
+    mock_req.method = 'POST'
+    mock_req.context = {}
+    mock_req.scope = {'path': '/agents'}
+    mock_req.headers = {'content-type': 'application/json'}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value', side_effect=OAuthProblem):
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    assert mock_custom_logging.call_args.args[5] == {}
+
+    response.status_code = 200
+    mock_req.context = {'user': 'wazuh'}
+    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value', side_effect=OAuthProblem):
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    assert mock_custom_logging.call_args.args[5] == body
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('parsed_body', [None, ['a', 'list']])
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_keeps_a_non_mapping_body_as_is(parsed_body, mock_req):
+    """Check that a body that does not parse as a mapping is logged unmasked, not dropped."""
+    response = MagicMock()
+    response.status_code = 200
+    mock_req._body = b'<xml>not json</xml>'
+    mock_req.json = AsyncMock(return_value=parsed_body)
+    mock_req.query_params = {}
+    mock_req.method = 'PUT'
+    mock_req.context = {'user': 'wazuh'}
+    mock_req.scope = {'path': '/rules/files/local_rules.xml'}
+    mock_req.headers = {'content-type': 'application/octet-stream'}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value', side_effect=OAuthProblem):
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    assert mock_custom_logging.call_args.args[5] == parsed_body
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_run_as_auth_context_from_controller(mock_req):
+    """Check that a run_as auth context that was not cached is taken from the request context."""
+    response = MagicMock()
+    response.status_code = 200
+    auth_context = {'groups': ['g'] * 5000}
+    mock_req.query_params = {}
+    mock_req.method = 'POST'
+    mock_req.context = {'user': 'wazuh', 'run_as_auth_context': auth_context}
+    mock_req.scope = {'path': RUN_AS_LOGIN_ENDPOINT}
+    mock_req.headers = {'content-type': 'application/json'}
+    del mock_req._body
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value', side_effect=OAuthProblem):
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    assert mock_custom_logging.call_args.args[5] == auth_context
+    assert mock_custom_logging.call_args.kwargs['hash_auth_context'] != ''

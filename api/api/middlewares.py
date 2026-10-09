@@ -10,6 +10,8 @@ import logging
 import base64
 import jwt
 
+from typing import Optional
+
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -23,7 +25,7 @@ from secure import Secure, ContentSecurityPolicy, XFrameOptions, Server
 from wazuh.core.utils import get_utc_now
 
 from api import configuration
-from api.alogging import custom_logging
+from api.alogging import MAX_LOGGED_BODY_SIZE, custom_logging
 from api.authentication import generate_keypair, JWT_ALGORITHM
 from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
 from api.configuration import default_api_configuration
@@ -58,6 +60,19 @@ events_request_counter = 0
 events_current_time = None
 
 
+def get_declared_content_length(request: Request) -> Optional[int]:
+    """Return the declared Content-Length, or None if absent, invalid, negative or chunked."""
+    if 'transfer-encoding' in request.headers:
+        return None
+
+    try:
+        declared_length = int(request.headers.get('content-length'))
+    except (TypeError, ValueError):
+        return None
+
+    return declared_length if declared_length >= 0 else None
+
+
 async def access_log(request: ConnexionRequest, response: Response, prev_time: time):
     """Generate Log message from the request."""
 
@@ -69,18 +84,30 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     host = request.client.host if hasattr(request, 'client') else ''
     method = request.method if hasattr(request, 'method') else ''
     query = dict(request.query_params) if hasattr(request, 'query_params') else {}
-    # If the request content is valid, the _json attribute is set when the
-    # first time the json function is awaited. This check avoids raising an
-    # exception when the request json content is invalid.
-    body = await request.json() if hasattr(request, '_json') else {}
     hash_auth_context = context.get('token_info', {}).get(HASH_AUTH_CONTEXT_KEY, '')
+
+    # The identity is only in the context once authentication has succeeded
+    log_body = bool(context.get('user', None) or context.get('token_info', None))
+
+    # Parse only the bytes cached by the middleware, and only if they are going to be used
+    body_read = hasattr(request, '_body')
+    body = {}
+    if body_read and (log_body or path == RUN_AS_LOGIN_ENDPOINT):
+        try:
+            body = await request.json()
+        except RecursionError:
+            body = {}
+    if not body_read and path == RUN_AS_LOGIN_ENDPOINT and 'run_as_auth_context' in context:
+        body, body_read = dict(context['run_as_auth_context']), True
 
     if 'password' in query:
         query['password'] = '****'
-    if 'password' in body:
-        body['password'] = '****'
-    if 'key' in body and '/agents' in path:
-        body['key'] = '****'
+    # request.json() can return None or a non-dict for malformed or non-object payloads
+    if isinstance(body, dict):
+        if 'password' in body:
+            body['password'] = '****'
+        if 'key' in body and '/agents' in path:
+            body['key'] = '****'
 
     # Get the username from the request. If it is not found in the context, try
     # to get it from the headers using basic or bearer authentication methods.
@@ -101,9 +128,13 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
             user = UNKNOWN_USER_STRING
 
     # Create hash if run_as login
-    if not hash_auth_context and path == RUN_AS_LOGIN_ENDPOINT:
+    if not hash_auth_context and path == RUN_AS_LOGIN_ENDPOINT and body_read:
         hash_auth_context = hashlib.blake2b(json.dumps(body).encode(),
                                             digest_size=16).hexdigest()
+
+    # The hash is kept even when the body is not logged
+    if not log_body:
+        body = {}
 
     custom_logging(user, host, method, path, query, body, time_diff, response.status_code,
                    hash_auth_context=hash_auth_context, headers=headers)
@@ -237,15 +268,15 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
         """
         prev_time = time.time()
 
-        body = await request.body()
-        if body:
-            try:
-                # Load the request body to the _json field before calling the controller so it's cached before the stream 
-                # is consumed. If there's a json error we skip it so it's handled later.
-                # Related to https://github.com/wazuh/wazuh/issues/24060.
-                _ = await request.json()
-            except json.decoder.JSONDecodeError:
-                pass
+        # Shared with connexion's copy of the scope, so access_log sees the identity set by the security handler
+        request.scope.setdefault('extensions', {})
+
+        # Buffer only small bodies, so access_log can still log them after the stream is consumed.
+        # Larger or chunked ones are left for the endpoint and are not logged.
+        content_length = get_declared_content_length(request)
+        if content_length is not None and 0 < content_length <= MAX_LOGGED_BODY_SIZE:
+            # Related to https://github.com/wazuh/wazuh/issues/24060.
+            await request.body()
 
         response = await call_next(request)
         await access_log(ConnexionRequest.from_starlette_request(request), response, prev_time)

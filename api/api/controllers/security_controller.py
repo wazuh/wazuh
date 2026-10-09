@@ -131,6 +131,7 @@ async def run_as_login(user: str, raw: bool = False) -> ConnexionResponse:
         Raw or JSON response with the generated access token.
     """
     auth_context = await request.json()
+    request.context['run_as_auth_context'] = auth_context
     f_kwargs = {'user_id': user, 'auth_context': auth_context}
 
     dapi = DistributedAPI(f=preprocessor.get_permissions,
