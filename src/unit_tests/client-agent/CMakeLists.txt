@@ -167,7 +167,7 @@ list(APPEND client-agent_flags "-Wl,--wrap,hc_fetch_cacerts -Wl,--wrap,hc_enroll
                                 -Wl,--wrap,hc_spki_pinned_certificate -Wl,--wrap,OS_IsValidIP \
                                 -Wl,--wrap,chown -Wl,--wrap,chmod -Wl,--wrap,fchown \
                                 -Wl,--wrap,fchmod \
-                                -Wl,--wrap,OS_MoveFile -Wl,--wrap,isatty \
+                                -Wl,--wrap,OS_MoveFile -Wl,--wrap,isatty -Wl,--wrap,TempFile \
                                 ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_agent_auth_cli")
