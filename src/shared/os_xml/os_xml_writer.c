@@ -22,7 +22,7 @@ static int _WReadElem(FILE *fp_in, FILE *fp_out, unsigned int position, unsigned
 static int _xml_wfgetc(FILE *fp_in, FILE *fp_out) __attribute__((nonnull));
 static int _WriteXMLStreams(FILE *fp_in, FILE *fp_out, const char **nodes, const char *oldval,
                             const char *newval) __attribute__((nonnull(1, 2, 3, 5)));
-static void _WriteXMLNode(FILE *fp_out, const char **nodes, const char *newval) __attribute__((nonnull));
+static void _AppendXMLNode(FILE *fp_out, const char **nodes, const char *newval) __attribute__((nonnull));
 
 
 /* Local wfgetc */
@@ -101,14 +101,14 @@ static int _WriteXMLStreams(FILE *fp_in, FILE *fp_out, const char **nodes, const
 
     /* We didn't find an entry, add at the end */
     if (!oldval && r == 0) {
-        _WriteXMLNode(fp_out, nodes, newval);
+        _AppendXMLNode(fp_out, nodes, newval);
     }
 
     return (0);
 }
 
 /* Append the node path, holding newval, at the end of fp_out */
-static void _WriteXMLNode(FILE *fp_out, const char **nodes, const char *newval)
+static void _AppendXMLNode(FILE *fp_out, const char **nodes, const char *newval)
 {
     int s = 0;
     int rwidth = 0;

@@ -168,7 +168,12 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
  * Same as OS_WriteXML(), but into a stream the caller already holds, so the output is never
  * reopened by name. @p fp_out is left open and unflushed: closing it is the caller's.
  *
- * @return 0 on success, XMLW_NOIN when @p infile cannot be opened, XMLW_ERROR on a parse error.
+ * @p fp_out must be seekable, such as a regular file: the copy steps back over bytes it has
+ * already written, and a missing node is appended at the end of the stream.
+ *
+ * @return 0 on success, XMLW_NOIN when @p infile cannot be opened (nothing was written),
+ *         XMLW_ERROR on a parse error (@p fp_out may already hold part of the copy, which the
+ *         caller has to discard).
  */
 int OS_WriteXMLToStream(const char *infile, FILE *fp_out, const char **nodes,
                         const char *oldval, const char *newval) __attribute__((nonnull(1, 2, 3, 5)));
