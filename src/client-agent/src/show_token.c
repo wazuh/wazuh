@@ -32,20 +32,6 @@
  * second as "invalid token" sends an operator looking in the wrong place. */
 #define ETOKEN_SHOW_REJECTED 2
 
-/* Decode an enrollment token and print what it carries, for the package installer to read
- * the address out of and for an operator to inspect one by hand.
- *
- * Read from stdin, never from an argument: a token carries the credential secret, and argv
- * is world-readable through /proc. w_etoken_describe() renders the token without its
- * identifier or secret, so the output is safe to print, log and parse.
- *
- * Decodes with the same w_etoken_decode() the agent itself uses at first boot, so a token
- * this accepts is a token the bootstrap will accept, and a malformed one is reported while
- * the operator is still watching the install rather than at the first start.
- *
- * Returns 0 on success, ETOKEN_SHOW_REJECTED when the token is bad, and 1 when it could not
- * be read at all.
- */
 /* Reads the token to show, saying why when it can't. Trailing whitespace is trimmed by the reader:
  * piping the token in from a shell appends a newline, which the decoder would read as one more
  * base64url character and reject the whole token over.
@@ -74,6 +60,20 @@ static char *w_agent_show_token_read(FILE *in, FILE *err, const char *progname)
     return text;
 }
 
+/* Decode an enrollment token and print what it carries, for the package installer to read
+ * the address out of and for an operator to inspect one by hand.
+ *
+ * Read from stdin, never from an argument: a token carries the credential secret, and argv
+ * is world-readable through /proc. w_etoken_describe() renders the token without its
+ * identifier or secret, so the output is safe to print, log and parse.
+ *
+ * Decodes with the same w_etoken_decode() the agent itself uses at first boot, so a token
+ * this accepts is a token the bootstrap will accept, and a malformed one is reported while
+ * the operator is still watching the install rather than at the first start.
+ *
+ * Returns 0 on success, ETOKEN_SHOW_REJECTED when the token is bad, and 1 when it could not
+ * be read at all.
+ */
 int w_agent_show_token(FILE *in, FILE *out, FILE *err, const char *progname)
 {
     char *text;
