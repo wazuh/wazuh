@@ -98,11 +98,13 @@ int __wrap_Privsep_GetGroup(__attribute__((unused)) const char *name) {
 }
 
 /* Counted so the config rewrite can be held to setting the staged file's owner through its
- * descriptor: a chown() by name follows whatever the name points at by then. */
+ * descriptor: a chown() by name follows whatever the name points at by then. The inode is what
+ * says which file the owner would have landed on. */
 static int g_chown_calls = 0;
 static int g_fchown_calls = 0;
 static uid_t g_fchown_owner = (uid_t) -1;
 static gid_t g_fchown_group = (gid_t) -1;
+static ino_t g_fchown_ino = 0;
 
 int __wrap_chown(__attribute__((unused)) const char *path, __attribute__((unused)) uid_t owner,
                  __attribute__((unused)) gid_t group) {
@@ -110,10 +112,13 @@ int __wrap_chown(__attribute__((unused)) const char *path, __attribute__((unused
     return 0;
 }
 
-int __wrap_fchown(__attribute__((unused)) int fd, uid_t owner, gid_t group) {
+int __wrap_fchown(int fd, uid_t owner, gid_t group) {
+    struct stat st;
+
     g_fchown_calls++;
     g_fchown_owner = owner;
     g_fchown_group = group;
+    g_fchown_ino = (fstat(fd, &st) == 0) ? st.st_ino : 0;
     return 0;
 }
 
@@ -411,6 +416,7 @@ static int setup_test(void **state) {
     g_fchown_owner = (uid_t) -1;
     g_fchown_group = (gid_t) -1;
     g_fchmodat_calls = 0;
+    g_fchown_ino = 0;
     g_swap_staged = false;
     g_staged_name[0] = '\0';
     g_swap_at_rename = false;
@@ -955,6 +961,10 @@ static void test_config_rewrite_never_follows_a_swapped_staging_file(void **stat
     assert_file_content(SWAP_TARGET, SWAP_TARGET_CONTENT);
     assert_int_equal(stat(SWAP_TARGET, &target), 0);
     assert_int_equal(target.st_mode & 07777, 0600);
+    /* chown() and fchown() are no-ops here, so who would have owned what is checked by name and
+     * by inode instead: never by name, and never the target's inode. */
+    assert_int_equal(g_chown_calls, 0);
+    assert_int_not_equal(g_fchown_ino, target.st_ino);
     assert_file_content(WAZUHCONF, CONFIG_WITH_ENDPOINT);
     assert_non_null(strstr(err_buf, "was replaced while it was being written"));
 }
@@ -984,6 +994,8 @@ static void test_config_rewrite_sets_mode_and_owner_through_the_descriptor(void 
     assert_int_equal(g_fchown_owner, getuid());
     assert_int_equal(g_fchown_group, getgid());
     assert_int_equal(stat(WAZUHCONF, &rewritten), 0);
+    /* The owner went to the file that was installed, whichever call carried it there. */
+    assert_int_equal(g_fchown_ino, rewritten.st_ino);
     assert_int_equal(rewritten.st_mode & 07777, 0640);
     assert_file_content(WAZUHCONF, REWRITTEN_CONFIG);
 }
