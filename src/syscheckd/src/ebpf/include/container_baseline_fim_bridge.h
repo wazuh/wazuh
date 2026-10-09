@@ -74,6 +74,18 @@ int fim_container_baseline_abspath(const char* relative, char* out, size_t out_s
  * included it would take the symbol with C++ linkage and fail to link. */
 void fim_container_baseline_rate_limit(void);
 
+/**
+ * @brief Release a container's per-container document count (#37532 / O10).
+ *
+ * Called when a container's rows are swept. Without it the count map grows with
+ * every container the node has ever run, and the released budget is never
+ * returned -- on a churning node that is a slow leak toward a cap that reports
+ * no space while holding none.
+ *
+ * @param container_id The container whose count to drop. NULL/empty is a no-op.
+ */
+void fim_container_doc_budget_release(const char* container_id);
+
 void fim_persist_baseline_row(const char* id,
                               int operation,
                               const char* index,

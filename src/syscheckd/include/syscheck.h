@@ -88,10 +88,6 @@ extern int audit_queue_full_reported;
 extern int ebpf_kernel_queue_full_reported;
 
 extern int synced_docs_files;
-/* Container FIM's synced-document count, kept apart from synced_docs_files so
- * container rows cannot spend the host's budget (#37532 / O10). Guarded by
- * synced_docs_mutex, like its host counterpart. */
-extern int synced_docs_container_files;
 extern int synced_docs_registry_keys;
 extern int synced_docs_registry_values;
 extern pthread_mutex_t synced_docs_mutex;
