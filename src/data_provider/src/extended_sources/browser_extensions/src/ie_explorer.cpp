@@ -7,6 +7,7 @@
  * Foundation.
  */
 
+#include "windowsHelper.h"
 #include "ie_explorer.hpp"
 #include <iostream>
 #include <string>
@@ -309,6 +310,12 @@ std::vector<std::string> IEExtensionsProvider::getExecutables(const std::string&
 
 std::string IEExtensionsProvider::GetFileVersion(const std::string& filePath)
 {
+    // HKEY_USERS values are user-writable; only bare DLL names and local fixed paths are opened.
+    if (filePath.find_first_of("\\/") != std::string::npos && !Utils::isLocalFixedPath(filePath))
+    {
+        return "No version info";
+    }
+
     // Convert std::string (UTF-8/ANSI) to std::wstring (UTF-16)
     std::wstring wFilePath(filePath.begin(), filePath.end());
 

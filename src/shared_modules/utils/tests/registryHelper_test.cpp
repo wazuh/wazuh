@@ -111,4 +111,20 @@ TEST_F(RegistryUtilsTest, RegistryEnumerateNoThrow)
     EXPECT_EQ(0u, values.size());
 }
 
+TEST_F(RegistryUtilsTest, ExpandRegistryPathSkipsKeysNamedWithWildcards)
+{
+    HKEY handler;
+    ASSERT_EQ(ERROR_SUCCESS, RegCreateKeyEx(HKEY_CURRENT_USER, TEXT("WazuhTestExpand\\*\\InstallPath"), 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, nullptr, &handler, nullptr));
+    RegCloseKey(handler);
+    ASSERT_EQ(ERROR_SUCCESS, RegCreateKeyEx(HKEY_CURRENT_USER, TEXT("WazuhTestExpand\\3.12\\InstallPath"), 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, nullptr, &handler, nullptr));
+    RegCloseKey(handler);
+
+    std::vector<std::string> keys;
+    Utils::expandRegistryPath(HKEY_CURRENT_USER, "WazuhTestExpand\\*\\InstallPath", keys);
+
+    EXPECT_EQ(std::vector<std::string> {"WazuhTestExpand\\3.12\\InstallPath"}, keys);
+
+    RegDeleteTree(HKEY_CURRENT_USER, TEXT("WazuhTestExpand"));
+}
+
 #endif

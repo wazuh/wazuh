@@ -40,6 +40,8 @@ All notable changes to this project will be documented in this file.
 - Fixed logcollector memory usage growing with the length of a line read with the `multi-line-regex` format. ([#39800](https://github.com/wazuh/wazuh/pull/39800))
 - Fixed the syscollector browser extensions inventory reading non-regular or oversized files from user profiles. ([#39802](https://github.com/wazuh/wazuh/pull/39802))
 - Fixed the syscollector browser extensions inventory following symbolic links and reading files not owned by the profile owner on Linux and macOS. ([#39802](https://github.com/wazuh/wazuh/pull/39802))
+- Fixed syscollector probing network paths from user registry and browser settings on Windows. ([#40113](https://github.com/wazuh/wazuh/pull/40113))
+- Fixed syscollector crashing on Windows when a user registry key is named with a wildcard. ([#40113](https://github.com/wazuh/wazuh/pull/40113))
 - Fixed logcollector following junctions and symbolic links and opening non-regular files without validating them on Windows. ([#39781](https://github.com/wazuh/wazuh/pull/39781))
 - Added macOS support to the disable-account active response. ([#39463](https://github.com/wazuh/wazuh/pull/39463))
 - Fixed the macOS ULS reader losing the stored timestamp after log lines shorter than 31 characters. ([#39171](https://github.com/wazuh/wazuh/issues/39171))

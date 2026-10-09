@@ -7,6 +7,9 @@
  * Foundation.
  */
 
+#ifdef _WIN32
+#include "windowsHelper.h"
+#endif
 #include "chrome.hpp"
 #include <iostream>
 #include <fstream>
@@ -434,6 +437,16 @@ namespace chrome
                 const bool insideProfile = !Utils::isAbsolutePath(extensionPath);
                 const std::string extensionsDir = Utils::joinPaths(profilePath, EXTENSIONS_DIR);
                 const std::string relativePath = extensionPath;
+
+#ifdef _WIN32
+
+                // Preferences is user-writable; probing a network path as SYSTEM leaks the machine credentials.
+                if (!insideProfile && !Utils::isLocalFixedPath(extensionPath))
+                {
+                    continue;
+                }
+
+#endif
 
                 if (insideProfile)
                 {

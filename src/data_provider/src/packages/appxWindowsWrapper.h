@@ -195,7 +195,8 @@ class TAppxWindowsWrapper final : public IPackageWrapper
                     m_version.clear();
                     m_location.clear();
                 }
-                else if (Utils::startsWith(fields.at(INDEX_NAME), PYTHON_STORE_PACKAGE_PREFIX))
+                else if (Utils::startsWith(fields.at(INDEX_NAME), PYTHON_STORE_PACKAGE_PREFIX) &&
+                         Utils::isLocalFixedPath(m_location))
                 {
                     /*
                      * The version taken from the package full name is the MSIX package revision,

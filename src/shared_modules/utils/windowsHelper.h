@@ -18,6 +18,7 @@
 #include <memory>
 #include <vector>
 #include <array>
+#include <cctype>
 #include <system_error>
 #include <winsock2.h>
 #include <windows.h>
@@ -191,6 +192,19 @@ namespace Utils
             IsWindowsVistaOrGreater()
         };
         return ret;
+    }
+
+    // Allow-list: only "X:\..." or "X:/..." on a fixed local drive; rejects UNC, device and remote paths.
+    static bool isLocalFixedPath(const std::string& path)
+    {
+        if (path.size() < 3 || !std::isalpha(static_cast<unsigned char>(path[0])) || path[1] != ':' ||
+                (path[2] != '\\' && path[2] != '/'))
+        {
+            return false;
+        }
+
+        const std::string root {path.substr(0, 2) + "\\"};
+        return GetDriveTypeA(root.c_str()) == DRIVE_FIXED;
     }
 
     // https://en.wikipedia.org/wiki/ISO_8601#Calendar_dates
