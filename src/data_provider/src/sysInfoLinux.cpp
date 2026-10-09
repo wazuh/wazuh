@@ -19,6 +19,7 @@
 #include <filesystem_wrapper.hpp>
 #include "cmdHelper.h"
 #include "osinfo/sysOsParsers.h"
+#include "hardware/cpuInfoLinux.h"
 #include "sysInfo.hpp"
 #include "procpsWrapperLinux.hpp"
 #include "networkUnixHelper.h"
@@ -142,17 +143,9 @@ static std::string getSerialNumber()
 
 static std::string getCpuName()
 {
-    std::string retVal { UNKNOWN_VALUE };
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
-    const auto& it { systemInfo.find("model name") };
-
-    if (it != systemInfo.end())
-    {
-        retVal = it->second;
-    }
-
-    return retVal;
+    return CpuInfoLinux::cpuName(systemInfo);
 }
 
 static int getCpuCores()
